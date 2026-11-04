@@ -3,15 +3,18 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/memory/MemoryConsolidationController.ts"
       - "runtime/neuro-kurisu/src/organism/memory/MetacognitiveMemoryProjection.ts"
       - "runtime/neuro-kurisu/tests/workpass642-metacognitive-memory-projection.mjs"
+      - "runtime/neuro-kurisu/tests/metacognitive-full-cycle-runtime.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/metacognitive-memory-projection.yml"
   push:
     branches:
       - "aspect/metacognitive-memory-consolidation-20261103"
+      - "aspect/metacognitive-full-cycle-lineage-20261104"
     paths:
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
@@ -33,6 +36,8 @@ jobs:
           package-manager-cache: false
       - name: Run metacognitive memory projection regressions
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass642-metacognitive-memory-projection.mjs
+      - name: Run full-cycle runtime lineage regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/metacognitive-full-cycle-runtime.mjs
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: node scripts/typecheck-runtime.mjs

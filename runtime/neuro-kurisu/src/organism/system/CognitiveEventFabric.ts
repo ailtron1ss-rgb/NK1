@@ -481,7 +481,7 @@ export class CognitiveEventFabric {
     predictionError01:number;confidence01:number;
     reflectionKind:'none'|'calibration'|'contradiction'|'limitation'|'insight';
     correctionDisposition:'none'|'staged'|'accepted'|'rejected'|'rolled-back';
-    at?:number;
+    at?:number;cycleStageIds?:OperationalCycleStageIds;
   }):{resolved:boolean;replayed:boolean;eventId?:string;projectionHash?:string;reason?:string}{
     if(!Number.isSafeInteger(input.tick)||input.tick<0)return{resolved:false,replayed:false,reason:'tick-invalid'};
     const cycleId=String(input.cycleId??'').trim().slice(0,180);
@@ -508,22 +508,44 @@ export class CognitiveEventFabric {
     if(action.stage!=='action'||outcome.stage!=='outcome'||learning.stage!=='learning')return{resolved:false,replayed:false,reason:'causal-parent-stage-invalid'};
     if(action.tick!==input.tick||outcome.tick!==input.tick||learning.tick!==input.tick)return{resolved:false,replayed:false,reason:'causal-parent-tick-mismatch'};
     if(!outcome.parentIds.includes(action.id)||!learning.parentIds.includes(outcome.id))return{resolved:false,replayed:false,reason:'causal-lineage-broken'};
+    let cycleParentIds:string[]|null=null;
+    if(input.cycleStageIds){
+      const cycle=this.verifyOperationalCycle(input.cycleStageIds);
+      if(!cycle.fullComplete||cycle.tick!==input.tick)return{resolved:false,replayed:false,reason:'cycle-lineage-incomplete'};
+      const orderedStages:readonly OperationalCycleStageName[]=['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update'];
+      const ordered=orderedStages.map(stage=>input.cycleStageIds?.[stage]);
+      if(ordered.some(id=>typeof id!=='string'||!id.trim())||new Set(ordered).size!==orderedStages.length)return{resolved:false,replayed:false,reason:'cycle-parent-set-invalid'};
+      if(ordered[0]!==observation?.id||ordered[1]!==prediction?.id||ordered[7]!==action.id||ordered[8]!==outcome.id||ordered[9]!==learning.id)return{resolved:false,replayed:false,reason:'cycle-parent-anchor-mismatch'};
+      cycleParentIds=ordered as string[];
+    }
     const normalized={
       tick:input.tick,cycleIdHash:sha256Stable(cycleId),actionEventId:action.id,outcomeEventId:outcome.id,learningEventId:learning.id,
       observationEventId:observation?.id??null,predictionEventId:prediction?.id??null,
       predictedOutcomeHash:input.predictedOutcomeHash.toLowerCase(),observedOutcomeHash:input.observedOutcomeHash.toLowerCase(),
       decisionRationaleHash:input.decisionRationaleHash.toLowerCase(),predictionError01:input.predictionError01,
       confidence01:input.confidence01,reflectionKind:input.reflectionKind,correctionDisposition:input.correctionDisposition,
+      ...(cycleParentIds?{cycleParentIds}:{}),
     };
     const projectionHash=sha256Stable(normalized);
     const eventId='cef:metacognitive:'+sha256Stable({cycleIdHash:normalized.cycleIdHash,tick:input.tick,action:action.id}).slice(0,48);
     const prior=byId.get(eventId);
     if(prior){
-      if(prior.stage!=='metacognition'||prior.payload.projectionHash!==projectionHash)throw new Error('metacognitive-episode-id-conflict');
-      return{resolved:true,replayed:true,eventId,projectionHash};
+      if(prior.stage!=='metacognition')throw new Error('metacognitive-episode-id-conflict');
+      if(prior.payload.projectionHash===projectionHash)return{resolved:true,replayed:true,eventId,projectionHash};
+      // Pre-full-cycle snapshots used the same deterministic episode ID but did not
+      // include cycleParentIds. Preserve replay compatibility without rewriting history.
+      if(!Array.isArray(prior.payload.cycleParentIds)){
+        const legacyNormalized={...normalized};
+        delete (legacyNormalized as {cycleParentIds?:string[]}).cycleParentIds;
+        const legacyProjectionHash=sha256Stable(legacyNormalized);
+        if(prior.payload.projectionHash===legacyProjectionHash){
+          return{resolved:true,replayed:true,eventId,projectionHash:legacyProjectionHash};
+        }
+      }
+      throw new Error('metacognitive-episode-id-conflict');
     }
     const at=Number.isFinite(input.at)?Number(input.at):Date.now();
-    const event=this.append({id:eventId,tick:input.tick,stage:'metacognition',source:'metacognitive-episode-ledger',parentIds:[learning.id,outcome.id,...(prediction?[prediction.id]:[]),...(observation?[observation.id]:[])],external:false,confidence01:input.confidence01,at,payload:{...normalized,projectionHash}});
+    const event=this.append({id:eventId,tick:input.tick,stage:'metacognition',source:'metacognitive-episode-ledger',parentIds:cycleParentIds??[learning.id,outcome.id,...(prediction?[prediction.id]:[]),...(observation?[observation.id]:[])],external:false,confidence01:input.confidence01,at,payload:{...normalized,projectionHash}});
     return{resolved:true,replayed:false,eventId:event.id,projectionHash};
   }
 
