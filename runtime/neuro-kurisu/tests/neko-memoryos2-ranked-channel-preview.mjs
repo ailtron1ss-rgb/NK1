@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
-import { evaluateMemoryOS2ShadowPreview } from '../../../integrations/neko-memory-shadow/src/memoryos2-preview.mjs';
+import { evaluateMemoryOS2ShadowPreview, previewNekoHybridMemoryRanking } from '../../../integrations/neko-memory-shadow/src/memoryos2-preview.mjs';
 
 const memory = new MemoryOS2({ embeddingProvider: null });
 const encode = (content, entities = []) => ({
@@ -45,6 +45,16 @@ const shadow = evaluateMemoryOS2ShadowPreview(preview, {
 assert.ok(shadow.shadowIds.includes(astronomy.id), 'shadow fusion must preserve the directly grounded candidate');
 assert.equal(shadow.diagnostics.abstained, false);
 assert.ok(shadow.overlapAtK >= 0 && shadow.overlapAtK <= 8);
+
+const disabledVector = await previewNekoHybridMemoryRanking(memory, 'astronomy telescope', {
+  includeSemanticEmbeddingChannel: true,
+});
+assert.equal(disabledVector.semantic.enabled, false, 'explicit preview must report disabled local embedding provider');
+assert.equal(disabledVector.semanticIncludedInShadowFusion, false);
+assert.equal(disabledVector.userFacingEligible, false);
+assert.ok(disabledVector.shadowIds.includes(astronomy.id));
+assert.deepEqual(JSON.stringify(memory.snapshot()), before,
+  'optional shadow preview must not mutate canonical MemoryOS2 state');
 
 const abstained = memory.previewRetrieveWithRankedChannels('quantum chromodynamics', 8, 0, 0, {}, 64);
 assert.equal(abstained.diagnostics.abstained, true,
