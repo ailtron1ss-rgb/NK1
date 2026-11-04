@@ -119,8 +119,9 @@ function cloneSafeJson(
     try {
       if (Array.isArray(input)) {
         if (Object.getPrototypeOf(input) !== Array.prototype) return INVALID;
-        const descriptors = Object.getOwnPropertyDescriptors(input);
-        const length = descriptors.length?.value;
+        const descriptors = Object.getOwnPropertyDescriptors(input) as Record<string, PropertyDescriptor>;
+        const lengthDescriptor = descriptors.length;
+        const length = lengthDescriptor?.value;
         if (!Number.isSafeInteger(length) || length < 0 || length > maxProperties) return INVALID;
         const keys = Reflect.ownKeys(descriptors);
         if (keys.length !== length + 1) return INVALID;
