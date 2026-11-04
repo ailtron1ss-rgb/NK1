@@ -101,3 +101,9 @@ Before a substantial pass, read:
 **Brain analogy rule:** human brain mappings are explanatory analogies only. A software memory store is not a hippocampus, a language model is not a neocortex, and a scheduler is not a hypothalamus. Evaluate functions and observable behaviors, not anthropomorphic labels. Subjective consciousness remains UNKNOWN / UNRESOLVED absent independent evidence.
 
 **Release discipline:** the product is not release-ready until real local inference, memory quality on independent holdouts, learning transfer, action verification/restart recovery, real embodiment E2E, security/privacy, target-device performance, soak, clean-room packaging and rollback gates have evidence. Passing CI on synthetic fixtures is necessary but insufficient.
+
+## NeuroK agent write-freshness gate
+
+- Before an agent edits a claimed file, capture SHA-256 snapshots for every source/context file it relied on and include them in the coordinator claim read-set. The CLI accepts this manifest with `--readSetFile FILE`.
+- Immediately before patch creation/application, run `npm run neurok-os:claims -- verify --task TASK_ID --agent AGENT_ID`. A stale, missing, or unverified read-set blocks the write; refresh context and reacquire/renew the claim.
+- Claims without read-sets are not freshness-verified. The coordinator is advisory until the isolated patch executor enforces this gate; never bypass it on protected or shared files.
