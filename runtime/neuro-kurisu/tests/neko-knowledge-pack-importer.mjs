@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
 import { NekoKnowledgePackImporter } from '../src/organism/integration/neko/NekoKnowledgePackImporter.ts';
 
@@ -97,6 +102,9 @@ test('reimporting the same pack entry is idempotent and cannot inflate confidenc
   assert.deepEqual(second.memoryIds, first.memoryIds);
   assert.equal(memory.memoryOS.size(), countAfterFirst);
   assert.equal(secondItem?.confidence, firstItem?.confidence);
+  const changed = validPack();
+  changed.entries[0].content = 'Tampered content must not reuse the same pack command identity.';
+  assert.throws(() => importer.import(bytes(changed), approved([0])), /different payload/);
 });
 
 test('manifest, entries, term roles and derived fields are schema-closed', () => {
@@ -140,4 +148,39 @@ test('oversized packs and oversized selected material fail without truncation', 
   })), approved([0])), /entry-storage-limit-exceeded/);
 });
 
-console.log('NEKO_KNOWLEDGE_PACK_IMPORTER=PASS cases=7');
+
+test('OrganismCore persists imported knowledge through its canonical checkpoint and restores it after restart', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'nk-neko-pack-core-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const statePath = path.join(directory, 'organism-state.json');
+
+  const first = new OrganismCore(new FileStateStore(statePath, { backupEverySaves: 100, directoryFsyncEverySaves: 100 }), {
+    cycleResultMode: 'operational',
+    checkpointMinIntervalMs: 0,
+  });
+  await first.init();
+  const preview = first.previewNekoKnowledgePack(bytes(validPack()));
+  assert.equal(preview.entryCount, 2);
+  const imported = await first.importNekoKnowledgePack(bytes(validPack()), approved([1]));
+  assert.equal(imported.imported, 1);
+  assert.equal(imported.skipped, 1);
+  const firstSnapshot = first.snapshot();
+  const firstItem = firstSnapshot.facets.advanced.memoryOS.items.find(row => row.id === imported.memoryIds[0]);
+  assert.ok(firstItem);
+  assert.equal(firstItem.epistemicStatus, 'unknown');
+  assert.equal(firstItem.context.sourceLicense, 'CC-BY-4.0');
+
+  const restarted = new OrganismCore(new FileStateStore(statePath, { backupEverySaves: 100, directoryFsyncEverySaves: 100 }), {
+    cycleResultMode: 'operational',
+    checkpointMinIntervalMs: 0,
+  });
+  await restarted.init();
+  const restored = restarted.snapshot().facets.advanced.memoryOS.items.find(row => row.id === imported.memoryIds[0]);
+  assert.ok(restored);
+  assert.equal(restored.content, firstItem.content);
+  const replay = await restarted.importNekoKnowledgePack(bytes(validPack()), approved([1]));
+  assert.deepEqual(replay.memoryIds, imported.memoryIds);
+  assert.equal(restarted.snapshot().facets.advanced.memoryOS.items.filter(row => row.id === imported.memoryIds[0]).length, 1);
+});
+
+console.log('NEKO_KNOWLEDGE_PACK_IMPORTER=PASS cases=8');
