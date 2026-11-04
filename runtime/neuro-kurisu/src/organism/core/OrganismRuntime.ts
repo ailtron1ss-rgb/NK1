@@ -115,6 +115,8 @@ export interface RuntimeConfig extends OrganismConfig {
   mem0CognitiveRecall?: boolean;
   /** Explicitly injected, consent-gated observer for final user ASR transcripts; absent by default. */
   nekoPluginVoiceTranscriptBridge?: Pick<NekoPluginVoiceTranscriptBridge, 'publishFinal'>;
+  /** Host-selected session key so the consent store can bind approval to this voice session. */
+  voiceTranscriptObserverSessionId?: string;
   /** Character label sent with explicitly consented voice observations. */
   voiceTranscriptCharacterName?: string;
   /** P2836: how real device outcomes compete with the predictive simulator. */
@@ -160,7 +162,7 @@ export class OrganismRuntime {
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
   private readonly nekoPluginVoiceTranscriptBridge: Pick<NekoPluginVoiceTranscriptBridge, 'publishFinal'> | null;
-  private readonly voiceTranscriptObserverSessionId = randomUUID();
+  private readonly voiceTranscriptObserverSessionId: string;
   private readonly voiceTranscriptCharacterName: string;
   private stepsSinceConsolidation = 0;
   private readonly worldStore: JsonStateStore<PersistedWorld>;
@@ -237,6 +239,12 @@ export class OrganismRuntime {
     this.mem0Adapter = config.mem0Adapter ?? Mem0PlatformAdapter.fromEnvironment();
     this.mem0CognitiveRecallEnabled = config.mem0CognitiveRecall === true;
     this.nekoPluginVoiceTranscriptBridge = config.nekoPluginVoiceTranscriptBridge ?? null;
+    const suppliedVoiceSessionId = config.voiceTranscriptObserverSessionId;
+    if (suppliedVoiceSessionId !== undefined &&
+        (typeof suppliedVoiceSessionId !== 'string' || !/^[a-z0-9][a-z0-9._:-]{0,127}$/i.test(suppliedVoiceSessionId.trim()))) {
+      throw new Error('invalid-neko-plugin-voice-session-id');
+    }
+    this.voiceTranscriptObserverSessionId = suppliedVoiceSessionId?.trim() || randomUUID();
     this.voiceTranscriptCharacterName = String(config.voiceTranscriptCharacterName ?? 'Kurisu').trim().slice(0, 80) || 'Kurisu';
     const defaultSensorCadenceMs = config.performanceProfile === 'mobile' ? 60_000 : 60_000;
     const inheritedSensorCadenceMs = config.intervalMs == null ? defaultSensorCadenceMs : Math.max(30_000, Number(config.intervalMs) * 2);

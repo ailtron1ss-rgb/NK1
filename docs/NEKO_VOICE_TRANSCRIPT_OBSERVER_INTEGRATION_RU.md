@@ -10,7 +10,7 @@ OrganismRuntime.listen() и OrganismRuntime.voiceTurn() вызывают NekoPlu
 
 ## Включение
 
-По умолчанию мост отсутствует и публикация выключена. Хост должен явно создать NekoPluginVoiceTranscriptBridge и передать его через RuntimeConfig.nekoPluginVoiceTranscriptBridge.
+По умолчанию мост отсутствует и публикация выключена. Хост должен явно создать NekoPluginVoiceTranscriptBridge и передать его через RuntimeConfig.nekoPluginVoiceTranscriptBridge. Для привязки consent store к текущей voice-сессии хост может передать тот же непрозрачный ключ через RuntimeConfig.voiceTranscriptObserverSessionId; без него runtime генерирует случайный session ID.
 
 Для создания требуются:
 
@@ -32,6 +32,7 @@ const voiceObserver = new NekoPluginVoiceTranscriptBridge({
 const runtime = new OrganismRuntime({
   ...runtimeConfig,
   nekoPluginVoiceTranscriptBridge: voiceObserver,
+  voiceTranscriptObserverSessionId: consentSessionId,
   voiceTranscriptCharacterName: 'Kurisu',
 });
 \`\`\`
