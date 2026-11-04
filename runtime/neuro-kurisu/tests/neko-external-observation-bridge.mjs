@@ -140,6 +140,25 @@ const makeBridge = (options = {}) => {
   assert.equal(events.snapshot().total, 0);
 }
 
+// A host-disabled observer source cannot be silently re-enabled by an incoming plugin event.
+{
+  const observers = new ExternalObserverFabric();
+  observers.registerSource({
+    id: 'neko-plugin.calendar_helper',
+    sourceClass: 'unknown',
+    channel: 'tool',
+    reliability01: 0.25,
+    enabled: false,
+  });
+  const events = new CognitiveEventFabric(256);
+  const { bridge } = makeBridge({ observers, events });
+  const result = bridge.ingest(baseEvent(), { tick: 1 });
+  assert.deepEqual(result, { accepted: false, error: 'source-disabled' });
+  assert.equal(observers.snapshot().sources[0].enabled, false);
+  assert.equal(observers.snapshot().totalObservations, 0);
+  assert.equal(events.snapshot().total, 0);
+}
+
 // Invalid bridge snapshots are dropped; receipt capacity is explicit and bounded.
 {
   const { bridge } = makeBridge({ maxReceipts: 64 });
