@@ -94,6 +94,7 @@ commit with a fail-before/pass-after regression wired into
 | 22 | (this commit) | `B286SelfConflictContinuityCore`, `CentralSubjectDynamics`, `GoalIdentitySkillModulator`, `TaskAgnosticTransferRouter`, `AutonomousPersonhoodKernel`, `AutonomousValueFormationEngine` | `workpass72-b286-centralsubject-gism-tatr-personhood-valueformation-restore-integrity` |
 | 23 | (this commit) | `P50CausalSelfWorldEngine`, `P51GroundedCausalWorkspace`, `P44EmbodiedPredictiveSelfWorld`, `P52CounterfactualDevelopmentMind`, `P83PersistentRealityModel`, `GroundedWorldState` | `workpass72-p50-p51-p44-p52-p83-groundedworld-restore-integrity` |
 | 24 | (this commit) | `ParametricPolicyLearner`, `PersonalCurriculumEngine`, `DevelopmentalPortfolioEngine`, `MetaDevelopmentalStrategyEngine`, `LongitudinalSubjectTransferBattery`, `CognitiveOrganismContinuityEngine` | `workpass72-parametricpolicy-curriculum-portfolio-metadev-longitudinal-cogcontinuity-restore-integrity` |
+| 25 | (this commit) | `B267AdaptiveRegimeController`, `P2734SelfOptimizingContinualController`, `SelfOptimizingAutobiographicalMemory`, `NeuralTemporalSubstrate`, `B278NeuralPrimitiveGenesis`, `P2774ModelTimeReplayConsolidator` | `workpass72-b267-p2734-sam-nts-b278-p2774-restore-integrity` |
 
 Every batch uses the same idiom — a descriptor-safe `read(k)` accessor plus
 `finN`/`cnt`/`clamp` helpers and per-owner `sanitize*` builders — so a corrupt
@@ -105,7 +106,7 @@ workpass72 suites in one step (exit 0, 21× `=PASS`).
 ## Evidence
 
 - Batch series (5–13) re-verified after batch 13: `npm run
-  test:workpass72:core-integrity` → exit 0, 32 suites `=PASS`; `npm run
+  test:workpass72:core-integrity` → exit 0, 33 suites `=PASS`; `npm run
   typecheck` → `TYPECHECK=PASS mode=tsc compiler=runtime-lock`.
 - Consumer regressions for the batch 10/11 owners re-run green:
   `big-pass-37-spine`, `big-pass-38-autonomous-spine`,

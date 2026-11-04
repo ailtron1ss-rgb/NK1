@@ -6,6 +6,14 @@ const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait'
 const clamp=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const mean=(v:number[])=>v.length?v.reduce((a,b)=>a+b,0)/v.length:0;
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const cSigned=(v:unknown,f:number):number=>Math.max(-1,Math.min(1,finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const MODES:B267Mode[]=['exploit','monitor','verify','explore','recover'];
+const actOrNull=(v:unknown):ActionKind|null=>ACTIONS.includes(v as ActionKind)?v as ActionKind:null;
+const sanObservation=(x:unknown):B267Observation|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(!ACTIONS.includes(r.action as ActionKind))return null;return {tick:cnt(r.tick,0),surprise01:C01(r.surprise01,0),uncertainty01:C01(r.uncertainty01,0),predictionError01:C01(r.predictionError01,0),reward01:C01(r.reward01,0),action:r.action as ActionKind,context:Array.isArray(r.context)?(r.context as unknown[]).slice(0,32).map(v=>cSigned(v,0)):[]};};
+const sanShift=(x:unknown):B267ShiftEvent|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(!ACTIONS.includes(r.action as ActionKind)||!MODES.includes(r.mode as B267Mode))return null;return {tick:cnt(r.tick,0),shift01:C01(r.shift01,0),residual01:C01(r.residual01,0),mode:r.mode as B267Mode,action:r.action as ActionKind,recovery01:C01(r.recovery01,0)};};
 
 export type B267Mode='exploit'|'monitor'|'verify'|'explore'|'recover';
 export interface B267Observation { tick:number; surprise01:number; uncertainty01:number; predictionError01:number; reward01:number; action:ActionKind; context:number[]; }
@@ -25,10 +33,16 @@ export function defaultB267AdaptiveRegimeController():B267State{
 export class B267AdaptiveRegimeController {
   private state=defaultB267AdaptiveRegimeController();
   restore(raw?:Partial<B267State>|null){
-    const d=defaultB267AdaptiveRegimeController(),r=raw??{};
-    const mode:B267Mode=(r.mode==='monitor'||r.mode==='verify'||r.mode==='explore'||r.mode==='recover'||r.mode==='exploit')?r.mode:'exploit';
-    this.state={...d,...r,mode,observations:Array.isArray(r.observations)?r.observations.slice(-256):[],shifts:Array.isArray(r.shifts)?r.shifts.slice(-96):[],verificationHistory:Array.isArray(r.verificationHistory)?r.verificationHistory.slice(-128).map(clamp01):[]};
+    const d=defaultB267AdaptiveRegimeController();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const obsRaw=read('observations'),shRaw=read('shifts'),vhRaw=read('verificationHistory');
+    const mode=MODES.includes(read('mode') as B267Mode)?read('mode') as B267Mode:'exploit';
+    this.state={version:1,observations:Array.isArray(obsRaw)?obsRaw.slice(-256).map(sanObservation).filter((x):x is B267Observation=>x!==null):[],shifts:Array.isArray(shRaw)?shRaw.slice(-96).map(sanShift).filter((x):x is B267ShiftEvent=>x!==null):[],verificationHistory:Array.isArray(vhRaw)?vhRaw.slice(-128).map(v=>C01(v,0)):[],
+      baselineError01:C01(read('baselineError01'),d.baselineError01),baselineSurprise01:C01(read('baselineSurprise01'),d.baselineSurprise01),baselineReward01:C01(read('baselineReward01'),d.baselineReward01),fastError01:C01(read('fastError01'),d.fastError01),fastSurprise01:C01(read('fastSurprise01'),d.fastSurprise01),
+      cusum01:cSigned(read('cusum01'),d.cusum01),regimeShift01:C01(read('regimeShift01'),d.regimeShift01),uncertainty01:C01(read('uncertainty01'),d.uncertainty01),recovery01:C01(read('recovery01'),d.recovery01),
+      mode,observationsCount:cnt(read('observationsCount'),d.observationsCount),shiftCount:cnt(read('shiftCount'),d.shiftCount),verificationCount:cnt(read('verificationCount'),d.verificationCount),explorationCount:cnt(read('explorationCount'),d.explorationCount),
+      lastTick:cnt(read('lastTick'),d.lastTick),lastAction:actOrNull(read('lastAction')),activeInformationGain01:C01(read('activeInformationGain01'),d.activeInformationGain01),postShiftGain01:C01(read('postShiftGain01'),d.postShiftGain01),holdoutGain01:C01(read('holdoutGain01'),d.holdoutGain01)};
   }
+
   snapshot(){return structuredClone(this.state);}
   diagnostics(){return structuredClone({mode:this.state.mode,observations:this.state.observationsCount,shifts:this.state.shiftCount,baselineError01:this.state.baselineError01,fastError01:this.state.fastError01,baselineSurprise01:this.state.baselineSurprise01,fastSurprise01:this.state.fastSurprise01,cusum01:this.state.cusum01,regimeShift01:this.state.regimeShift01,uncertainty01:this.state.uncertainty01,recovery01:this.state.recovery01,verificationCount:this.state.verificationCount,explorationCount:this.state.explorationCount,exploration01:this.state.observationsCount?this.state.explorationCount/this.state.observationsCount:0,activeInformationGain01:this.state.activeInformationGain01,postShiftGain01:this.state.postShiftGain01,holdoutGain01:this.state.holdoutGain01});}
 

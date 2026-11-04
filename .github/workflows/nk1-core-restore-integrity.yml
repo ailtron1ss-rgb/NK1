@@ -156,6 +156,12 @@ on:
       - runtime/neuro-kurisu/src/organism/learning/MetaDevelopmentalStrategyEngine.ts
       - runtime/neuro-kurisu/src/organism/learning/LongitudinalSubjectTransferBattery.ts
       - runtime/neuro-kurisu/src/organism/learning/CognitiveOrganismContinuityEngine.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B267AdaptiveRegimeController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
+      - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B278NeuralPrimitiveGenesis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2774ModelTimeReplayConsolidator.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -313,6 +319,12 @@ on:
       - runtime/neuro-kurisu/src/organism/learning/MetaDevelopmentalStrategyEngine.ts
       - runtime/neuro-kurisu/src/organism/learning/LongitudinalSubjectTransferBattery.ts
       - runtime/neuro-kurisu/src/organism/learning/CognitiveOrganismContinuityEngine.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B267AdaptiveRegimeController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
+      - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B278NeuralPrimitiveGenesis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2774ModelTimeReplayConsolidator.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -438,6 +450,12 @@ jobs:
           node --experimental-strip-types tests/big-pass-122-personal-curriculum.mjs
           node --experimental-strip-types tests/big-pass-122-core-personal-curriculum.mjs
           node --experimental-strip-types tests/big-pass-123-developmental-portfolio.mjs
+          node --experimental-strip-types tests/big-pass-267-regime-adaptation.mjs
+          node --experimental-strip-types tests/p2701-neural-temporal-substrate.mjs
+          node --experimental-strip-types tests/big-pass-278-neural-primitive-genesis.mjs
+          node --experimental-strip-types tests/p2774-model-time-replay.mjs
+          node --experimental-strip-types tests/big-pass-2627-2640-ablation.mjs
+          node --experimental-strip-types tests/big-pass-267-migration-roundtrip.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
