@@ -31,6 +31,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          package-manager-cache: false
       - name: Knowledge Pack importer contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/neko-knowledge-pack-importer.mjs
