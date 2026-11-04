@@ -1,3 +1,9 @@
+## [NK1][EngineeringOS] Add agent context snapshot generator (2026-11-04)
+
+- Add a read-only CLI to generate bounded SHA-256 read-set manifests from repository files, with path normalization and symlink-root confinement.
+- Make generated manifests directly consumable by task claims; use exclusive file creation to avoid overwriting prior snapshots.
+- Add a regression proving captured bytes match the claimed context; freshness verification now also blocks a moved base commit.
+
 ## [NK1][EngineeringOS] Exclude Vibelets from active provider catalog (2026-11-04)
 
 - Remove Vibelets from the active integration catalog at the user's explicit request.
