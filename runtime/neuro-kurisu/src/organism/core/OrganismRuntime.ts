@@ -21,7 +21,7 @@ import { ContinuityLedger } from '../system/ContinuityLedger.ts';
 import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
 import { buildIndependentEvaluationEvidenceBundle } from '../system/IndependentEvaluationEvidence.ts';
-import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
+import { CognitiveResourceEconomy, attentionIntentForAction } from '../system/CognitiveResourceEconomy.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
 import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
@@ -589,8 +589,9 @@ export class OrganismRuntime {
       ramPressure01: clamp01((1-body.cognitiveCapacity01)*.65 + (1-body.cognitiveCapacity01)*.35),
       performancePressure01: 0,
       awake: body.awake,
+      attentionIntent: attentionIntentForAction(this.core.operationalStatusSnapshot().lastAction),
     });
-    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
+    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,attentionEffort01:resourceAllocation.attentionEffort01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
     this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
     const previousNeural = this.core.b365UnifiedNeuroCausalDiagnostics();
     const perceptionPlan = this.core.b365PlanActivePerception({
@@ -1298,7 +1299,7 @@ export class OrganismRuntime {
       performancePressure01: this.runtimePerformance.decision().performancePressure01,
       awake: body.awake,
     });
-    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
+    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,attentionEffort01:resourceAllocation.attentionEffort01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
     this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
       if (before.awake && !body.awake && this.sleepStartedAt == null) { this.sleepStartedAt = Date.now(); this.sleepReason = body.wakeReason || 'resource-pressure'; }
       const sensorDiagnostics = this.embodiment.sensorDiagnosticsSnapshot();

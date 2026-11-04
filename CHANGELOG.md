@@ -1,3 +1,9 @@
+## [NK1][Attention] Add voluntary attention effort regulation (2026-11-04)
+- Adapt the Will attention-effort mechanism to NK1's persisted CognitiveResourceEconomy without importing donor implementation code.
+- The previous completed action maps explore/verify to focus, rest to stand-down, and other actions to neutral recovery. Energy, thermal, RAM and cognitive scarcity remain the hard ceiling.
+- Persist the effort scalar with a legacy-safe default; omitted intent preserves old allocation behavior. Emit the scalar in resource telemetry.
+- Add five regressions for rest/focus/neutral, legacy restore, malformed intent and action mapping. This is a control-policy change, not proof of improved task performance; downstream paired-seed evaluation remains required.
+
 ## [NK1][EngineeringOS] Close nested secret-path preflight bypasses (2026-11-04)
 
 - Extend fail-closed diff policy to inspect path segments and basenames, not only repository-root exact paths.
