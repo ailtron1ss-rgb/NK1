@@ -72,6 +72,31 @@ test('collects sample-scoped VAD admission as shadow evidence without owning tra
   assert.equal(Object.isFrozen(result.speechAdmission), true);
 });
 
+test('pending speech activity evidence never delays or rejects the final ASR transcript', async () => {
+  const { port } = provider(async input => {
+    input.observeSileroProbabilityWindow(sileroFrame(0));
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.speechAdmission?.decision, 'pending');
+  assert.equal(result.speechAdmission?.reason, 'collecting');
+});
+
+test('rejected speech activity evidence remains diagnostic and cannot reject a valid ASR transcript', async () => {
+  const { port } = provider(async input => {
+    input.observeSileroProbabilityWindow(sileroFrame(0, 0.9));
+    for (let index = 1; index <= 4; index += 1) {
+      input.observeSileroProbabilityWindow(sileroFrame(index, 0.1));
+    }
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.speechAdmission?.decision, 'reject');
+  assert.equal(result.speechAdmission?.reason, 'speech_gap');
+});
+
 test('malformed local VAD evidence is diagnostic only and never rejects a valid ASR transcript', async () => {
   const { port } = provider(async input => {
     assert.equal(input.observeSileroProbabilityWindow(sileroFrame(0, Number.NaN)), null);
