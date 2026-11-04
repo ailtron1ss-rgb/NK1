@@ -85,7 +85,9 @@ const makeRegistry = (options = {}) => new NekoPluginManifestPolicyRegistry(make
     { requiresHostApproval: true },
   ]) {
     const invalid = manifest();
-    invalid.tools = invalid.tools.map((tool, index) => index === 0 ? { ...tool, ...altered } : tool);
+    invalid.tools = invalid.tools.map((tool, index) => index === 0
+      ? { ...tool, ...altered, actions: ['tool_call'] }
+      : tool);
     const registry = makeRegistry();
     assert.deepEqual(registry.register(invalid), { registered: false, reason: 'registered-tool-contract-mismatch' });
   }
