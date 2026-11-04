@@ -80,7 +80,7 @@ test('vector-only candidates remain evaluation-only when canonical answerability
       return { items: [{ id: 'exploratory-only', content: 'must not become a recall result' }], semantic: { enabled: true, provider: 'ollama', model: 'fixture', fallbackReason: null, coverage01: .25, indexedItems: 1, corpusItems: 3 } };
     },
   };
-  const result = await previewNekoHybridMemoryRanking(fakeMemory, 'unsupported query', { includeSemanticEmbeddingChannel: true });
+  const result = await previewNekoHybridMemoryRanking(fakeMemory, 'unsupported query', { includeSemanticEmbeddingChannel: true, semanticWeight: .7 });
   assert.equal(embeddingCalls, 1);
   assert.deepEqual(result.shadowIds, []);
   assert.deepEqual(result.exploratorySemanticIds, ['exploratory-only']);
