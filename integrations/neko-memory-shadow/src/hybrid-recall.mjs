@@ -99,7 +99,7 @@ export function combineRankedMemoryChannels(input) {
     uniqueCandidates: 0,
   };
 
-  for (const channelValue of channelRows.items) {
+  const parsedChannels = channelRows.items.map(channelValue => {
     const channel = readFields(channelValue, ['name', 'candidates', 'weight']);
     if (!channel) throw new TypeError('channel must be a plain data record');
     const { name, candidates } = channel;
@@ -108,10 +108,17 @@ export function combineRankedMemoryChannels(input) {
     if (names.has(name)) throw new TypeError('duplicate channel name');
     names.add(name);
     if (!Number.isFinite(weight) || weight < 0 || weight > 4) throw new TypeError('channel weight out of bounds');
-
     const candidateRows = readDensePrefix(candidates, maxCandidatesPerChannel);
     if (!candidateRows) throw new TypeError('candidates must be a dense data array');
-    if (weight === 0) {\n      diagnostics.candidatesSeen += candidateRows.items.length;\n      continue;\n    }\n    const seen = new Set();
+    return { name, weight, candidateRows };
+  }).sort((left, right) => compareCodeUnits(left.name, right.name));
+
+  for (const { name, weight, candidateRows } of parsedChannels) {
+    if (weight === 0) {
+      diagnostics.candidatesSeen += candidateRows.items.length;
+      continue;
+    }
+    const seen = new Set();
     for (let index = 0; index < candidateRows.items.length; index += 1) {
       const candidate = readFields(candidateRows.items[index], ['id', 'subjectId']);
       diagnostics.candidatesSeen += 1;
