@@ -203,10 +203,11 @@ function copyApprovalData(value: unknown): PlainRecord {
   if (prototype !== Object.prototype && prototype !== null) return fail('invalid-approval');
   const descriptors = Object.getOwnPropertyDescriptors(value);
   const keys = Reflect.ownKeys(descriptors);
-  if (keys.length > 4) return fail('invalid-approval');
+  if (keys.some(key => typeof key !== 'string')) return fail('invalid-approval-field');
+  if (keys.length > 8) return fail('invalid-approval');
   const result: PlainRecord = Object.create(null);
-  for (const key of keys) {
-    if (typeof key !== 'string' || key === '__proto__' || key === 'prototype' || key === 'constructor') {
+  for (const key of keys as string[]) {
+    if (key === '__proto__' || key === 'prototype' || key === 'constructor') {
       return fail('invalid-approval-field');
     }
     if (!Object.prototype.hasOwnProperty.call(descriptors, key)) return fail('invalid-approval-field');
