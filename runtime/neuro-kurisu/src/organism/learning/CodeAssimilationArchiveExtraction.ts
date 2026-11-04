@@ -73,12 +73,12 @@ function crc32(bytes: Uint8Array): number {
   for (const byte of bytes) crc = CRC_TABLE[(crc ^ byte) & 0xff]! ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
 }
-function normalizeLimits(raw: unknown): Partial<CodeAssimilationArchivePreflightLimits> {
+function normalizeLimits(raw: unknown): CodeAssimilationArchivePreflightLimits {
   let detached: unknown;
   try { detached = snapshotPlainData(raw, { maxDepth: 4, maxNodes: 64, maxStringUnits: 4_096 }); }
   catch { return fail('limits-untrusted'); }
   if (!isRecord(detached)) fail('limits-invalid');
-  const output: Partial<CodeAssimilationArchivePreflightLimits> = {};
+  const output: CodeAssimilationArchivePreflightLimits = { ...LIMITS };
   for (const key of Object.keys(detached)) {
     if (!LIMIT_KEYS.includes(key as keyof CodeAssimilationArchivePreflightLimits)) fail('limits-shape-invalid');
     const name = key as keyof CodeAssimilationArchivePreflightLimits;
@@ -93,7 +93,7 @@ function normalizeLimits(raw: unknown): Partial<CodeAssimilationArchivePreflight
 }
 function readInput(raw: unknown): {
   candidate: unknown; archive: Buffer; parserId: unknown; parserVersion: unknown;
-  limits?: Partial<CodeAssimilationArchivePreflightLimits>;
+  limits: CodeAssimilationArchivePreflightLimits;
 } {
   try {
     if (!isRecord(raw) || nodeUtilTypes.isProxy(raw)) fail('input-invalid');
@@ -116,12 +116,13 @@ function readInput(raw: unknown): {
         (!Buffer.isBuffer(value) && Object.getPrototypeOf(value) !== Uint8Array.prototype)) {
       fail('archive-bytes-invalid');
     }
+    if (value.byteLength > LIMITS.maxArchiveBytes) fail('archive-size-limit');
     return {
       candidate: descriptors.candidate!.value,
       archive: Buffer.from(value),
       parserId: descriptors.parserId!.value,
       parserVersion: descriptors.parserVersion!.value,
-      ...(descriptors.limits?.value === undefined ? {} : { limits: normalizeLimits(descriptors.limits.value) }),
+      limits: descriptors.limits?.value === undefined ? { ...LIMITS } : normalizeLimits(descriptors.limits.value),
     };
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('code-assimilation-extraction-')) throw error;
@@ -167,7 +168,7 @@ function checkExtra(extra: Buffer, scope: string): void {
     offset += length;
   }
 }
-function parseCentral(buffer: Buffer): { entries: ParsedEntry[]; offset: number } {
+function parseCentral(buffer: Buffer, maxEntries: number): { entries: ParsedEntry[]; offset: number } {
   const end = findEocd(buffer);
   const disk = u16(buffer, end + 4, 'end-record');
   const centralDisk = u16(buffer, end + 6, 'end-record');
@@ -177,6 +178,7 @@ function parseCentral(buffer: Buffer): { entries: ParsedEntry[]; offset: number 
   const offset = u32(buffer, end + 16, 'end-record');
   if (disk !== 0 || centralDisk !== 0 || diskCount !== count) fail('multi-disk-unsupported');
   if (count === 0xffff || size === 0xffffffff || offset === 0xffffffff) fail('zip64-unsupported');
+  if (count > maxEntries) fail('entry-count-limit');
   if (offset + size !== end) fail('central-directory-bounds-invalid');
   range(buffer, offset, size, 'central-directory');
   const entries: ParsedEntry[] = [];
@@ -306,7 +308,7 @@ export function extractCodeAssimilationArchive(
   if (input.archive.length === 0) fail('archive-empty');
   if (input.archive.length > LIMITS.maxArchiveBytes) fail('archive-size-limit');
   const archiveSha256 = sha256(input.archive);
-  const parsed = parseCentral(input.archive);
+  const parsed = parseCentral(input.archive, input.limits.maxEntries);
   validateLocalRecords(input.archive, parsed.entries, parsed.offset);
   const preflight = preflightCodeAssimilationArchive({
     candidate: input.candidate as CodeAssimilationCandidate,
@@ -319,7 +321,7 @@ export function extractCodeAssimilationArchive(
       compressedSizeBytes: entry.compressedSizeBytes,
       uncompressedSizeBytes: entry.uncompressedSizeBytes,
     })),
-    ...(input.limits ? { limits: input.limits } : {}),
+    limits: input.limits,
   });
   const reportByPath = new Map(preflight.entries.map(entry => [entry.path, entry] as const));
   const payloads = new Map<string, Buffer>();
