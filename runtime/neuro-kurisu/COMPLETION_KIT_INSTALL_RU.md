@@ -1,44 +1,65 @@
-# NK1 Completion Kit v0.1.0
+# NeuroCore Completion Kit v0.1.0 — установка в NK1
 
-Добавочная надстройка для NeuroCore. Полный пакет с исходниками, скриптами, схемами, шаблонами и тестами поставляется отдельным архивом, прикреплённым к сообщению ChatGPT. В этой GitHub-ветке находятся reviewable architecture docs, baseline checkpoint, research ledger references, package manifest, schemas и начальные audit scripts; это не полный перенос архива.
+Полный переносимый архив содержит папку `completion-kit/` со скриптами, исходниками, архитектурной картой, схемами, шаблонами и тестами.
 
-## Локальная установка полного пакета
+## Проверка архива
 
-1. Скачайте `NeuroCore_Completion_Kit_v0.1.0.zip` из сообщения ChatGPT.
-2. Распакуйте архив.
-3. Скопируйте каталог `completion-kit` в `runtime/neuro-kurisu/` вашего checkout NK1.
-4. Из `runtime/neuro-kurisu/completion-kit` выполните:
+Ожидаемый SHA-256:
+
+```text
+b1b3b5a8db38b112ef187ba89fab2b59cb197dd7c8588fd6de639ce4783e4433
+```
+
+PowerShell:
+
+```powershell
+Get-FileHash .\NeuroCore_Completion_Kit_v0.1.0-portable.zip -Algorithm SHA256
+```
+
+Linux/macOS:
+
+```bash
+sha256sum NeuroCore_Completion_Kit_v0.1.0-portable.zip
+```
+
+## Установка
+
+Распакуйте ZIP из корня репозитория NK1 в каталог `runtime/neuro-kurisu/`. В результате должен появиться путь:
+
+```text
+runtime/neuro-kurisu/completion-kit/
+```
+
+Windows PowerShell:
+
+```powershell
+Expand-Archive -LiteralPath .\NeuroCore_Completion_Kit_v0.1.0-portable.zip -DestinationPath .\runtime\neuro-kurisu -Force
+```
+
+Linux/macOS:
+
+```bash
+unzip -o NeuroCore_Completion_Kit_v0.1.0-portable.zip -d runtime/neuro-kurisu
+```
+
+## Проверки
+
+Требуется Node.js 22.12+. Перейдите в `runtime/neuro-kurisu/completion-kit`:
 
 ```bash
 npm test
 npm run audit
 npm run imports
 npm run test-surface
-npm run tree
 npm run report
+npm run tree
 npm run verify
 ```
 
-Node.js >=22.12. Пакет не добавляет внешних npm dependencies.
+`npm test` проверяет автономную тестовую поверхность Completion Kit. Команды `audit`, `imports` и `test-surface` анализируют соседний исходный код NK1, поэтому их результат имеет смысл только после распаковки внутри полного репозитория.
 
-## Что внутри полного ZIP
+## Статус доказательств
 
-- Большое дерево целевой архитектуры и канонических владельцев.
-- Строгая повторная проверка 11 стадий CEF / 20 parent edges.
-- Статические architecture/import/test-surface audits.
-- Метрики Brier, ECE, forgetting, paired-seed comparisons.
-- Консервативный skill promotion gate с frozen holdout, минимум пятью парными seeds, bootstrap CI и проверкой худшего per-seed resource regression.
-- SHA-256 dataset-manifest verifier с path traversal / symlink escape protection.
-- Gate matrix, experiment templates, research intake и 24 regression tests.
+Локально в чистом staging-каталоге portable suite завершился **24/24 PASS** на Node.js 22.16.0. Для одного теста promotion gate использовалась совместимая изолированная фикстура существующего NK1 bootstrap-контракта, поскольку полный runtime checkout не был подключён к staging-каталогу. Это не означает, что проверки полного NK1 runtime, CI, внешние holdout-наборы, Android/browser E2E или физические soak-тесты прошли.
 
-## Архитектурные ограничения
-
-Не создаёт вторую память, личность, цель или runtime owner. Не меняет production state P23 и не выполняет promotion. Не выдаёт статический аудит за доказательство когнитивного качества.
-
-Канонические владельцы остаются в NK1: семь подсистем OrganismSystemFabric, MemoryOS2 / MemoryFabric, CognitiveEventFabric, UnifiedCognitiveCycle и P23. Перед каждым запуском обновляйте source HEAD и фиксируйте точный SHA.
-
-## Тестовое ограничение
-
-Локально тестовый набор Completion Kit прошёл 24/24. Promotion tests в локальном изолированном окружении использовали интерфейсно-совместимый fixture для существующего NK1 bootstrap utility. После установки в настоящий runtime необходимо повторить `npm test` против реального `src/organism/learning/PairedSeedConfidence.ts` и затем выполнить project CI на точном PR HEAD.
-
-Физические E2E, независимый RU/EN memory uplift, обучение на unseen tasks, длительная инициатива, Android soak, power-loss recovery и human license review остаются отдельными незакрытыми воротами.
+Completion Kit не создаёт второй memory/identity/goal owner, не изменяет production state и не продвигает навыки автоматически. Внешние проекты и датасеты остаются reference-only до проверки точного commit/tag, лицензии, безопасности, совместимости, ablation и rollback.
