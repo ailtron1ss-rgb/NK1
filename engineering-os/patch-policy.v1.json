@@ -22,5 +22,26 @@
     "CHANGELOG.md",
     "package.json"
   ],
-  "description": "Fail-closed preflight policy. Human approval is required for policy, evaluator, workflow, release and project-authority changes."
+  "description": "Fail-closed preflight policy. Human approval is required for policy, evaluator, workflow, release and project-authority changes.",
+  "denySegments": [
+    ".git",
+    ".ssh"
+  ],
+  "denyBasenames": [
+    ".env",
+    ".npmrc",
+    "id_rsa",
+    "id_ed25519",
+    "credentials.json",
+    "service-account.json"
+  ],
+  "denyBasenamePrefixes": [
+    ".env."
+  ],
+  "denyBasenameSuffixes": [
+    ".pem",
+    ".p12",
+    ".pfx",
+    ".key"
+  ]
 }
