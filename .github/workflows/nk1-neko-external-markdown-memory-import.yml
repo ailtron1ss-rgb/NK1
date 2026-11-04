@@ -1,0 +1,50 @@
+name: NK1 N.E.K.O. external markdown memory import
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoExternalMarkdownMemoryAdapter.ts"
+      - "runtime/neuro-kurisu/tests/neko-external-markdown-memory-import.mjs"
+      - ".github/workflows/nk1-neko-external-markdown-memory-import.yml"
+  push:
+    branches: [aspect/neko-external-memory-import-20261104]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoExternalMarkdownMemoryAdapter.ts"
+      - "runtime/neuro-kurisu/tests/neko-external-markdown-memory-import.mjs"
+      - ".github/workflows/nk1-neko-external-markdown-memory-import.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-external-memory-import-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  external-memory-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: N.E.K.O. Markdown memory import contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-external-markdown-memory-import.mjs
+      - name: Existing memory lifecycle and restore regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/memory-subsystem-state-roundtrip-workpass570.mjs
+      - name: Memory restore shape and trust hardening
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/memory-restore-shape-hardening.mjs
+      - name: Runtime typecheck
+        if: always()
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
