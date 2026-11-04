@@ -99,8 +99,13 @@ function ownDenseArray(value: unknown, maxLength: number): unknown[] | null {
     if (!Array.isArray(value) || nodeUtilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
     const descriptors = Object.getOwnPropertyDescriptors(value);
     const keys = Reflect.ownKeys(descriptors);
-    const lengthDescriptor = descriptors.length;
-    const length = lengthDescriptor?.value;
+    // Arrays have a non-configurable own data "length" slot; read its
+    // descriptor directly because Object.getOwnPropertyDescriptors(array)
+    // is typed with a special numeric "length" member by TypeScript.
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    const length = lengthDescriptor && Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value')
+      ? lengthDescriptor.value
+      : undefined;
     if (!Number.isSafeInteger(length) || length < 1 || length > maxLength || keys.length !== length + 1) return null;
     const output: unknown[] = [];
     for (let index = 0; index < length; index += 1) {

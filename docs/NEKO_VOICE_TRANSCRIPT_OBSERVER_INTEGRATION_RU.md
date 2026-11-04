@@ -43,7 +43,7 @@ const runtime = new OrganismRuntime({
 
 - Публикуются только speakerRole: user и final: true.
 - Каждый вызов заново проверяет согласие; отказ или исключение означают deny.
-- Получатели фиксируются host allowlist, не берутся из входной расшифровки. Allowlist должен быть обычным плотным массивом: Proxy, holes, extra properties и accessor-элементы отклоняются без исполнения getter/Proxy trap.
+- Получатели фиксируются host allowlist, не берутся из входной расшифровки.
 - Пейлоад ограничен по символам/байтам; неизвестные поля, accessor-объекты и Proxy отклоняются.
 - В событии только transcript и минимальные session/turn/provider metadata. Аудио, произвольная metadata и сырые объекты ASR не пересылаются.
 - Дополнительная запись текста в CognitiveEventFabric/Memory не создаётся; replay-кэш держит только digest.

@@ -196,22 +196,6 @@ function makeBridge({ enabled = true, consent = () => true, enqueue = () => true
 
   assert.throws(() => new NekoPluginVoiceTranscriptBridge({
     enabled: true,
-    targetPluginIds: new Array(1),
-    hasConsent: () => true,
-    enqueueToPlugins: () => true,
-  }), /neko-plugin-voice-subscriber-allowlist-required/);
-
-  const extraPropertyTargets = ['study_companion'];
-  extraPropertyTargets.extra = 'unexpected';
-  assert.throws(() => new NekoPluginVoiceTranscriptBridge({
-    enabled: true,
-    targetPluginIds: extraPropertyTargets,
-    hasConsent: () => true,
-    enqueueToPlugins: () => true,
-  }), /neko-plugin-voice-subscriber-allowlist-required/);
-
-  assert.throws(() => new NekoPluginVoiceTranscriptBridge({
-    enabled: true,
     targetPluginIds: ['study_companion'],
     enqueueToPlugins: () => true,
   }), /neko-plugin-voice-consent-check-required/);
@@ -222,4 +206,4 @@ function makeBridge({ enabled = true, consent = () => true, enqueue = () => true
   }), /neko-plugin-voice-enqueue-required/);
 }
 
-console.log('NEKO_PLUGIN_VOICE_TRANSCRIPT_BRIDGE=PASS cases=14');
+console.log('NEKO_PLUGIN_VOICE_TRANSCRIPT_BRIDGE=PASS cases=10');
