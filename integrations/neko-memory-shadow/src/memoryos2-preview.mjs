@@ -205,5 +205,6 @@ export async function previewNekoHybridMemoryRanking(memory, query, options = {}
     semanticIncludedInShadowFusion: semantic.enabled && baseline.diagnostics?.abstained !== true,
     semanticExploratoryOnly: semantic.enabled && baseline.diagnostics?.abstained === true,
     userFacingEligible: false,
+    rrfProfile: settings.channelWeights !== undefined ? 'custom' : (settings.useCanonicalWeights === true ? 'memoryos2' : 'equal'),
   };
 }
