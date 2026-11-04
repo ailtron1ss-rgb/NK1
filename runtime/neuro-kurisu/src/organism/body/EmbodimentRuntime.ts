@@ -6,6 +6,7 @@ import type { OrganismState } from '../core/types.ts';
 import type { AndroidSamplingPlan } from './AndroidEmbodimentBridge.ts';
 import { nativeSpeechEventChannel, type NativeSpeechProviderEventV1 } from './NativeSpeechEventChannel.ts';
 import { NekoAsrTranscriptAdapter, type NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
+import type { NekoSpeechAdmissionSnapshotV1 } from '../integration/neko/NekoSpeechAdmissionGate.ts';
 
 export interface VoiceInputResult {
   readonly text: string;
@@ -14,6 +15,8 @@ export interface VoiceInputResult {
   readonly language?: string;
   readonly eventId?: string;
   readonly turnId?: string;
+  readonly speechAdmission?: NekoSpeechAdmissionSnapshotV1;
+  readonly speechAdmissionError?: string;
 }
 
 type OrganismNeedsLike = { energy:number; cognitiveLoad:number; uncertainty:number; socialNeed:number; novelty:number; identityCoherence:number; goalPressure:number; };
@@ -245,6 +248,8 @@ export class EmbodimentRuntime {
             ...(result.language ? { language: result.language } : {}),
             eventId: result.eventId,
             turnId: result.turnId,
+            ...(result.speechAdmission ? { speechAdmission: result.speechAdmission } : {}),
+            ...(result.speechAdmissionError ? { speechAdmissionError: result.speechAdmissionError } : {}),
           };
         }
         this.voice.lastError=result.status==='rejected'?`asr-${result.reason}`:result.status==='replayed'?'asr-replayed-final':result.status==='error'?`asr-provider-error:${result.reason}`:'asr-capture-cancelled';
