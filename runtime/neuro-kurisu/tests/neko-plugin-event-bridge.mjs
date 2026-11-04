@@ -205,7 +205,7 @@ function makeRig({ authorize = async () => true, capacity = 512 } = {}) {
   const before = rig.eventFabric.snapshot().total;
   rig.setClock(121, 1_800_000_121_000);
   const replay = await rig.adapter.handle(request);
-  assert.equal(replay.success, true);
+  assert.equal(replay.success, true, JSON.stringify({ replay, observer: rig.observer.snapshot().observations.map(row => ({ id: row.id, claimKey: row.claimKey, sourceId: row.sourceId, payloadHash: row.payloadHash, metadata: row.metadata })) }));
   assert.equal(replay.metadata?.replayed, true);
   assert.equal(rig.eventFabric.snapshot().total, before);
   assert.equal(rig.observer.snapshot().observations.length, 1);
