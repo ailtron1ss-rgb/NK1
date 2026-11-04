@@ -6,6 +6,7 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/persistence/OperationalJournal.ts'
       - 'runtime/neuro-kurisu/tests/operational-journal-durability.mjs'
+      - 'runtime/neuro-kurisu/tests/operational-hardening.mjs'
       - 'docs/engineering/NK1_OPERATIONAL_JOURNAL_DURABILITY_2026-11-04.md'
       - '.github/workflows/neko-operational-journal.yml'
   push:
@@ -14,6 +15,7 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/persistence/OperationalJournal.ts'
       - 'runtime/neuro-kurisu/tests/operational-journal-durability.mjs'
+      - 'runtime/neuro-kurisu/tests/operational-hardening.mjs'
       - 'docs/engineering/NK1_OPERATIONAL_JOURNAL_DURABILITY_2026-11-04.md'
       - '.github/workflows/neko-operational-journal.yml'
 permissions:
@@ -34,6 +36,9 @@ jobs:
       - name: Run operational journal durability regressions
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/operational-journal-durability.mjs
+      - name: Run existing operational hardening regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run operational
       - name: Typecheck organism runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
