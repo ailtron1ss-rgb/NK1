@@ -745,7 +745,7 @@ export class MemoryOS2{
      semantic:{
        enabled:false,provider:diag?.provider??'none',model:diag?.model??'',indexedItems,corpusItems,coverage01,newlyIndexed,
        fallbackReason,cacheEntries:diag?.cacheEntries??0,requests:diag?.requests??0,failures:diag?.failures??0,lastLatencyMs:diag?.lastLatencyMs??0,
-       groundedCandidateCount:0,rejectedSemanticCandidates,topSimilarity,topMargin,
+       groundedCandidateCount:fallbackItems.length,rejectedSemanticCandidates,topSimilarity,topMargin,
        answerabilityGate:'lexical-only-fallback',rankingFusion:null,
      },
    });
@@ -761,14 +761,16 @@ export class MemoryOS2{
      const current=corpusById.get(id);
      if(!current||row.providerId!==provider.providerId||row.contentHash!==memoContentHash(current.content)||!row.vector.length||row.vector.some(value=>!Number.isFinite(value)))this.semanticEmbeddingIndex.delete(id);
    }
-   const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(performanceOptions.maxLexicalPool??Math.max(24,Math.min(64,safeLimit*8)))));
+   const rawLexicalPoolLimit=Number.isFinite(performanceOptions.maxLexicalPool)?Number(performanceOptions.maxLexicalPool):Math.max(24,Math.min(64,safeLimit*8));
+   const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(rawLexicalPoolLimit)));
    const lexicalPool=this.previewRetrieve(query,lexicalPoolLimit,goalRelevance,identityRelevance,temporalOptions).filter(eligible);
    const lexicalRank=new Map(lexicalPool.map((item,index)=>[item.id,index]));
    const hasCurrentVector=(item:MemoryItem2)=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);};
    const missingSet=new Map<string,MemoryItem2>();
    // Prioritize grounded lexical candidates but reserve part of a cold-start batch
    // for recent rows with different wording, so the index can discover paraphrases.
-   const backfillBudget=Math.max(1,Math.min(96,Math.floor(performanceOptions.maxIndexItems??96)));
+   const rawBackfillBudget=Number.isFinite(performanceOptions.maxIndexItems)?Number(performanceOptions.maxIndexItems):96;
+   const backfillBudget=Math.max(1,Math.min(96,Math.floor(rawBackfillBudget)));
    const lexicalBudget=Math.max(1,Math.min(backfillBudget,Math.ceil(backfillBudget*.7)));
    for(const item of lexicalPool){if(hasCurrentVector(item))continue;missingSet.set(item.id,item);if(missingSet.size>=lexicalBudget)break;}
    for(const item of [...corpus].sort((a,b)=>Number(b.createdAt)-Number(a.createdAt)||a.id.localeCompare(b.id))){
@@ -800,7 +802,8 @@ export class MemoryOS2{
      const queryEntities=extractEntities(query);
      const minSemanticSimilarity=Math.max(.70,Math.min(.99,Number.isFinite(performanceOptions.minSemanticSimilarity)?Number(performanceOptions.minSemanticSimilarity):.84));
      const minSemanticMargin=Math.max(.01,Math.min(.30,Number.isFinite(performanceOptions.minSemanticMargin)?Number(performanceOptions.minSemanticMargin):.08));
-     const semanticCandidateLimit=Math.max(8,Math.min(160,Math.floor(performanceOptions.maxSemanticCandidates??96)));
+     const rawSemanticCandidateLimit=Number.isFinite(performanceOptions.maxSemanticCandidates)?Number(performanceOptions.maxSemanticCandidates):96;
+     const semanticCandidateLimit=Math.max(8,Math.min(160,Math.floor(rawSemanticCandidateLimit)));
      const vectorRows:Array<{item:MemoryItem2;similarity:number;coverage:number;entity:number;temporalHint:number}>=[];
      for(const item of corpus){
        const cached=this.semanticEmbeddingIndex.get(item.id);
