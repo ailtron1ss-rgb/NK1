@@ -175,6 +175,12 @@ on:
       - runtime/neuro-kurisu/src/organism/learning/P39ContinuousArtificialLife.ts
       - runtime/neuro-kurisu/src/organism/learning/P38AutonomousCausalResearch.ts
       - runtime/neuro-kurisu/src/organism/learning/ResearchGradeOrganismEngine.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B280MultiAreaNeuralCircuit.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ExternalGroundingAdaptiveController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/RiskAwareRecoveryController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B277NeuralOperatorGenesis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B279NeuralAttractorAssemblies.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -356,6 +362,12 @@ on:
       - runtime/neuro-kurisu/src/organism/learning/P39ContinuousArtificialLife.ts
       - runtime/neuro-kurisu/src/organism/learning/P38AutonomousCausalResearch.ts
       - runtime/neuro-kurisu/src/organism/learning/ResearchGradeOrganismEngine.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B280MultiAreaNeuralCircuit.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ExternalGroundingAdaptiveController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/RiskAwareRecoveryController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B277NeuralOperatorGenesis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B279NeuralAttractorAssemblies.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -513,6 +525,12 @@ jobs:
           node --experimental-strip-types tests/p38-autonomous-causal-research.mjs
           node --experimental-strip-types tests/research-grade-organism.mjs
           node --experimental-strip-types tests/research-grade-organism-restart.mjs
+          node --experimental-strip-types tests/big-pass-280-multi-area-neural-circuit.mjs
+          node --experimental-strip-types tests/p2660-external-grounding-adaptive.mjs
+          node --experimental-strip-types tests/big-pass-2613-2626-taskfree-recovery-personality-device.mjs
+          node --experimental-strip-types tests/big-pass-273-autonomous-goal-lifecycle.mjs
+          node --experimental-strip-types tests/big-pass-277-neural-operator-genesis.mjs
+          node --experimental-strip-types tests/big-pass-279-neural-attractor.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs

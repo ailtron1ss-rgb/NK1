@@ -80,15 +80,10 @@ export function defaultB277State():B277State{
 export class B277NeuralOperatorGenesis{
   private state:B277State=B277Default();
   restore(raw?:Partial<B277State>|null){
-    const d=B277Default(), r=raw??{};
-    this.state={...d,...r,operators:Array.isArray(r.operators)?r.operators.slice(-96).map((o:any)=>({
-      ...o,
-      weights:Array.isArray(o?.weights)?o.weights.slice(0,32):Array(24).fill(0),
-      dendriticGate:Array.isArray(o?.dendriticGate)?o.dendriticGate.slice(0,8):Array(8).fill(.5),
-      recurrent:Array.isArray(o?.recurrent)?o.recurrent.slice(0,8):Array(8).fill(0),
-      actionDecoder:Array.isArray(o?.actionDecoder)?o.actionDecoder.slice(0,7):Array(7).fill(0),
-      contextDecoder:Array.isArray(o?.contextDecoder)?o.contextDecoder.slice(0,7).map((r:any)=>Array.isArray(r)?r.slice(0,8):Array(8).fill(0)):Array.from({length:7},()=>Array(8).fill(0)),
-    })):[]};
+    const d=B277Default();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const oRaw=read('operators');
+    const operators=Array.isArray(oRaw)?(oRaw as unknown[]).slice(-96).map(sanOperator).filter((x):x is B277NeuralOperator=>x!==null):[];
+    this.state={version:1,ticks:cnt(read('ticks'),d.ticks),cycles:cnt(read('cycles'),d.cycles),operatorGenerations:cnt(read('operatorGenerations'),d.operatorGenerations),verifiedOperators:cnt(read('verifiedOperators'),d.verifiedOperators),rejectedOperators:cnt(read('rejectedOperators'),d.rejectedOperators),transfers:cnt(read('transfers'),d.transfers),actionDecisions:cnt(read('actionDecisions'),d.actionDecisions),learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),neuralSparsity01:clamp01(finN(read('neuralSparsity01'),d.neuralSparsity01)),assemblyCoherence01:clamp01(finN(read('assemblyCoherence01'),d.assemblyCoherence01)),homeostasis01:clamp01(finN(read('homeostasis01'),d.homeostasis01)),selfGrounding01:clamp01(finN(read('selfGrounding01'),d.selfGrounding01)),autonomy01:clamp01(finN(read('autonomy01'),d.autonomy01)),operatorNovelty01:clamp01(finN(read('operatorNovelty01'),d.operatorNovelty01)),activeOperatorId:strOrNull(read('activeOperatorId')),lastAction:ACTIONS.includes(read('lastAction') as ActionKind)?read('lastAction') as ActionKind:null,lastPredictedReward01:clamp01(finN(read('lastPredictedReward01'),d.lastPredictedReward01)),lastOutput:vec(read('lastOutput'),12,12,0),operators};
   }
   snapshot(){return structuredClone(this.state);}
   private feature(input:B277StepInput){const f=[...input.goalVector.slice(0,8),...input.selfLatent.slice(0,8),...input.worldLatent.slice(0,8),...input.neuralAssembly.slice(0,8),input.autonomy01,input.novelty01,input.predictionError01];while(f.length<32)f.push(0);return f.slice(0,32).map(x=>clamp11(Number(x)||0));}
@@ -200,6 +195,14 @@ export class B277NeuralOperatorGenesis{
     };
   }
 }
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const OP_STATUS=['germinal','plastic','verified','rejected','retired'] as const;
+const vec=(v:unknown,max:number,defLen:number,fill:number):number[]=>Array.isArray(v)?(v as unknown[]).slice(0,max).map(x=>{const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(-1,Math.min(1,n)):fill;}):new Array(defLen).fill(fill);
+const mat=(v:unknown,rows:number,cols:number):number[][]=>Array.from({length:rows},(_,i)=>{const row=Array.isArray(v)?(v as unknown[])[i]:undefined;return Array.isArray(row)?(row as unknown[]).slice(0,cols).map(c=>{const n=typeof c==='number'?c:Number(c);return Number.isFinite(n)?Math.max(-1,Math.min(1,n)):0;}):new Array(cols).fill(0);});
+const sanOperator=(x:unknown):B277NeuralOperator|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',160);if(!id)return null;return {id,weights:vec(r.weights,32,24,0),dendriticGate:vec(r.dendriticGate,8,8,.5),recurrent:vec(r.recurrent,8,8,0),actionDecoder:vec(r.actionDecoder,7,7,0),contextDecoder:mat(r.contextDecoder,7,8),bias:finN(r.bias,0),firingRate01:clamp01(finN(r.firingRate01,0)),homeostaticError01:clamp01(finN(r.homeostaticError01,0)),predictionError01:clamp01(finN(r.predictionError01,0)),reward01:clamp01(finN(r.reward01,0)),novelty01:clamp01(finN(r.novelty01,0)),maturity01:clamp01(finN(r.maturity01,0)),usage:cnt(r.usage,0),transferCount:cnt(r.transferCount,0),createdTick:cnt(r.createdTick,0),lastUsedTick:cnt(r.lastUsedTick,0),status:(OP_STATUS as readonly string[]).includes(r.status as string)?r.status as B277NeuralOperator['status']:'germinal'};};
 function B277Default():B277State{return {
   version:1,ticks:0,cycles:0,operatorGenerations:0,verifiedOperators:0,rejectedOperators:0,
   transfers:0,actionDecisions:0,learningUpdates:0,neuralSparsity01:.78,assemblyCoherence01:.5,
