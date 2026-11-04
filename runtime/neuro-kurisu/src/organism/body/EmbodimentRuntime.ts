@@ -236,7 +236,7 @@ export class EmbodimentRuntime {
       if(!text) this.voice.lastError='stt-empty-or-failed';
       return text;
     } catch(error) {
-      this.voice.lastError=`stt-failed:${String((error as Error)?.message??error).replace(/[\\r\\n\\t]+/g,' ').slice(0,100)}`;
+      this.voice.lastError=`stt-failed:${String((error as Error)?.message??error).replace(/[\r\n\t]+/g,' ').slice(0,100)}`;
       return null;
     } finally {
       this.voice.listening=false; this.voice.lastAt=Date.now();
