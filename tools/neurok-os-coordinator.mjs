@@ -262,7 +262,7 @@ async function main() {
     const snapshot = await createReadSetSnapshot(paths);
     const target = path.resolve(args.out);
     await mkdir(path.dirname(target), { recursive: true });
-    await writeFile(target, `${JSON.stringify(snapshot, null, 2)}\\n`, { flag: 'wx', mode: 0o600 });
+    await writeFile(target, `${JSON.stringify(snapshot, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
     console.log(JSON.stringify({ path: target, files: snapshot.length }, null, 2));
     return;
   }
