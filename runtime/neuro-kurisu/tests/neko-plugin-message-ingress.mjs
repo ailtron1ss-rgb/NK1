@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { PluginMessageIngress } from '../src/organism/integration/neko/PluginMessageIngress.ts';
+import { externalGoalForRuntimeInput, shouldInvokeLanguageForRuntimeStep } from '../src/organism/core/RuntimeInputPolicy.ts';
 
 const base = (overrides = {}) => ({
   type: 'MESSAGE_PUSH',
@@ -212,4 +213,19 @@ function harness(options = {}) {
   assert.equal(result.errorCode, 'presentation-unavailable');
 }
 
-console.log('NEKO_PLUGIN_MESSAGE_INGRESS=PASS cases=9');
+// Runtime policy enforcement makes "read" non-speaking and prevents plugin evidence from becoming an outside goal.
+{
+  assert.equal(externalGoalForRuntimeInput('plugin supplied text', 'evidence-only'), undefined);
+  assert.deepEqual(externalGoalForRuntimeInput('user asked for help', 'user-command'), {
+    title: 'user asked for help', importance: 0.65, urgency: 0.4,
+  });
+  const baseline = {
+    enabled: true, hasInvoker: true, languageBudgetAllows: true,
+    hasExternalText: true, hasAutonomousAgenda: false,
+  };
+  assert.equal(shouldInvokeLanguageForRuntimeStep({ ...baseline, suppressResponse: false }), true);
+  assert.equal(shouldInvokeLanguageForRuntimeStep({ ...baseline, suppressResponse: true }), false);
+  assert.equal(shouldInvokeLanguageForRuntimeStep({ ...baseline, languageBudgetAllows: false }), false);
+}
+
+console.log('NEKO_PLUGIN_MESSAGE_INGRESS=PASS cases=10');
