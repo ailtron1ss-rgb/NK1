@@ -917,3 +917,30 @@ production-ready. Рисовать плейсхолдер и заявлять г
   корректно; класса «литерал вместо инкремента» больше не найдено в `runtime/.../body/`.
 - Следующий приоритет по §20: `B3` (2.5D рендер-путь, блокер — production-арт), `C3` (live-IK рук,
   `planarArmIK` пока только типизирован, не вызывается), `F3`/`G1` (визуальная E2E и soak).
+
+### 21.4 Дефект 2: 2.5D-поза терялась для id-узлов, совпадающих с ключами `Object.prototype`
+
+- `resolveDepthRigPose`, `resolveDepthRigWorldPose` и `resolveDepthRigPoseFromMotorFrame`
+  накапливали дельты в обычном `{}`. Легальный id узла вида `__proto__` или `constructor`
+  записывался в прототип, а не как собственный ключ: дельта исчезала и слой не двигался.
+- Исправление: аккумуляторы на `Object.create(null)`; чтение `pose.deltas[node.id]` и
+  `world.transforms[node.id]` теперь находит такие узлы.
+- Регрессия: `app/scripts/depth-rig.test.mjs` — узлы `__proto__`/`constructor` сохраняют позу,
+  мировой трансформ и поворот мотор-кадра. Fail-before: 19/20; pass-after: 20/20.
+
+### 21.5 Дефект 3: IK сообщал недостижимую цель как достигнутую
+
+- `solvePlanarArmIK` возвращал запрошенную `target` даже после того, как ограничения
+  плеча/локтя урезали углы: связанное (недостижимое) решение выглядело как полное.
+- Исправление: возвращаются `endEffector` (прямая кинематика по фактическим углам) и флаг
+  `limitsApplied`; `target` сохраняется как исходный запрос.
+- Регрессия: `app/scripts/planar-arm-ik.test.mjs` — без урезания `endEffector` совпадает с
+  целью и `limitsApplied=false`; при узком лимите `limitsApplied=true` и промах > 5 см.
+
+### 21.6 Прогоны после дефектов 2–3 (OBSERVED)
+
+- `node --test app/scripts/depth-rig.test.mjs` — 20/20 PASS.
+- `node --test app/scripts/planar-arm-ik.test.mjs` — 8/8 PASS; `vrm-humanoid-rig-adapter` — 11/11 PASS.
+- `npm --prefix app run test:body-systems` — 32/32; `test:embodiment-ui-bridge` — 16/16;
+  `test:scripts` — 468/468; `app typecheck` — PASS.
+- `runtime/neuro-kurisu` typecheck и routing/aspect10-наборы остаются зелёными (см. §21.2).

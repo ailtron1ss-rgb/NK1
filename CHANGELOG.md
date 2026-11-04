@@ -1,3 +1,8 @@
+## [NK1][Body] Honest depth-rig node ids and planar-IK reach (2026-11-03)
+- Depth-rig pose/world accumulators used plain `{}`, so a legal node id that collides with an `Object.prototype` key (`__proto__`, `constructor`) was written through the prototype and its delta silently vanished. Use null-prototype accumulators in `resolveDepthRigPose`, `resolveDepthRigWorldPose` and `resolveDepthRigPoseFromMotorFrame`.
+- `solvePlanarArmIK` echoed the requested target even when shoulder/elbow limits clamped the angles, making a bound solution read as full reach. Return the forward-kinematic `endEffector` plus a `limitsApplied` flag; `target` stays the request.
+- Regressions: depth-rig 20/20 (was 19/20), planar-arm-ik 8/8; app `test:scripts` 468/468, `test:body-systems` 32/32, `test:embodiment-ui-bridge` 16/16, typecheck PASS.
+
 ## [NK1][Body] Accumulate perception-routing counters instead of resetting them each tick (2026-11-03)
 - `routePerception` returned literal `routedCount:1`/`droppedCount:1`, but the result is persisted to `facets.embodiment.perceptionRouting` every tick, so the durable cumulative counters were destroyed on the next event and the restore path was meaningless.
 - Fold each event into the sanitized previous state (`previous`), and pass the embodiment subsystem's live routing state as the prior.
