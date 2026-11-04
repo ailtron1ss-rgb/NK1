@@ -1,0 +1,34 @@
+name: N.E.K.O. operational journal durability
+on:
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/persistence/OperationalJournal.ts'
+      - 'runtime/neuro-kurisu/tests/operational-journal-durability.mjs'
+      - '.github/workflows/neko-operational-journal.yml'
+  push:
+    branches:
+      - 'aspect/neko-operational-journal-durability-20261104'
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/persistence/OperationalJournal.ts'
+      - 'runtime/neuro-kurisu/tests/operational-journal-durability.mjs'
+      - '.github/workflows/neko-operational-journal.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neko-operational-journal-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  durability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Run operational journal durability regressions
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/operational-journal-durability.mjs
