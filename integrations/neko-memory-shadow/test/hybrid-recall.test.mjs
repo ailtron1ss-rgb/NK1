@@ -34,10 +34,10 @@ test('weights and input sizes are bounded', () => {
   assert.equal(r.diagnostics.candidatesSeen, 10);
 });
 test('malformed and prototype-bearing records fail closed', () => {
-  assert.throws(() => combineRankedMemoryChannels(null), /plain record/);
+  assert.throws(() => combineRankedMemoryChannels(null), /plain.*record/);
   assert.throws(() => combineRankedMemoryChannels({ channels: [{ name: 'bm25', candidates: [{ id: '' }] }] }), /invalid/);
   const hostile = Object.create({ inherited: true }); hostile.name = 'bm25'; hostile.candidates = [];
-  assert.throws(() => combineRankedMemoryChannels({ channels: [hostile] }), /plain record/);
+  assert.throws(() => combineRankedMemoryChannels({ channels: [hostile] }), /plain.*record/);
 });
 test('channel identifiers are unique and bounded', () => {
   assert.throws(() => combineRankedMemoryChannels({ channels: [
@@ -56,7 +56,7 @@ test('accessor-backed input and candidate fields are rejected without invoking g
   Object.defineProperty(unsafeInput, 'channels', {
     get() { inputGetterCalled = true; throw new Error('input getter executed'); },
   });
-  assert.throws(() => combineRankedMemoryChannels(unsafeInput), /plain data|accessor|invalid/);
+  assert.throws(() => combineRankedMemoryChannels(unsafeInput), /plain.*record|accessor|invalid/);
   assert.equal(inputGetterCalled, false);
   let candidateGetterCalled = false;
   const unsafeCandidate = {};
@@ -65,6 +65,6 @@ test('accessor-backed input and candidate fields are rejected without invoking g
   });
   assert.throws(() => combineRankedMemoryChannels({
     channels: [{ name: 'bm25', candidates: [unsafeCandidate] }],
-  }), /plain data|accessor|invalid/);
+  }), /plain.*record|accessor|invalid/);
   assert.equal(candidateGetterCalled, false);
 });
