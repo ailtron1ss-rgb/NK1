@@ -19,6 +19,7 @@ import {
   sampleMotionProgram,
   type MotionBlendLayer,
   type MotionProgramId,
+  type SemanticGestureProgramId,
 } from "./motionLibrary.ts";
 
 export interface MotionIntent {
@@ -30,6 +31,8 @@ export interface MotionIntent {
   energy01: number;
   /** Opt-in locomotion; disabled by default so a panel avatar never walks away. */
   allowLocomotion?: boolean;
+  /** Explicit, short-lived action-card gesture from a closed assistant stage direction. */
+  gestureProgram?: SemanticGestureProgramId;
 }
 
 export interface MotionLayerState {
@@ -84,6 +87,7 @@ export function resolvePrimaryProgram(intent: MotionIntent): MotionProgramId {
   const awake = intent.awake !== false;
   if (!awake) return "idle";
   if (intent.thinking) return "think";
+  if (intent.gestureProgram && ["nod", "shake", "wave", "clap", "bow"].includes(intent.gestureProgram)) return intent.gestureProgram;
   if (intent.speaking && intent.action === "respond") return "respond";
   switch (intent.action) {
     case "explore":
@@ -108,7 +112,8 @@ function validateIntent(intent: MotionIntent): boolean {
     && typeof intent.speaking === "boolean"
     && typeof intent.thinking === "boolean"
     && typeof intent.awake === "boolean"
-    && (intent.allowLocomotion === undefined || typeof intent.allowLocomotion === "boolean");
+    && (intent.allowLocomotion === undefined || typeof intent.allowLocomotion === "boolean")
+    && (intent.gestureProgram === undefined || ["nod", "shake", "wave", "clap", "bow"].includes(intent.gestureProgram));
 }
 
 const MOTION_PROGRAM_IDS: ReadonlySet<string> = new Set(Object.keys(MOTION_PROGRAMS));
