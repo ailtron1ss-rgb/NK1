@@ -58,6 +58,8 @@ const makeRegistry = (options = {}) => new NekoPluginManifestPolicyRegistry(make
   assert.deepEqual(registry.register(manifest()), { registered: true, pluginId: 'notes', toolCount: 2 });
   const search = registeredTools[0];
   assert.equal(await registry.authorize(context(), search), true);
+  const callback = registry.asAuthorizer();
+  assert.equal(await callback(context(), search), true, 'the injected callback must retain its registry instance');
   assert.equal(await registry.authorize(context({ action: 'resource_read' }), search), true);
   assert.equal(await registry.authorize(context({ action: 'resource_read', toolId: 'notes.delete' }), registeredTools[1]), false);
   assert.equal(await registry.authorize(context({ toolId: 'notes.delete' }), registeredTools[1]), true);
