@@ -46,3 +46,7 @@ test('rejects premature provider enablement', () => {
   assert.equal(result.ok, false);
   assert.ok(result.errors.some(error => error.includes('fail-closed')));
 });
+
+test('user-excluded Vibelets provider is absent from the active capability catalog', () => {
+  assert.ok(!manifest.integrations.some(item => item.id === 'vibelets'));
+});
