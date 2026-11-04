@@ -229,9 +229,12 @@ export function materializeCodeAssimilationArchive(
       },
     });
     return workspace;
-  } catch {
+  } catch (error) {
     if (root !== null) {
       try { rmSync(root, { recursive: true, force: true }); } catch { /* preserve fail-closed result */ }
+    }
+    if (error instanceof Error && error.message.startsWith('code-assimilation-workspace-')) {
+      throw error;
     }
     return fail('materialization-failed');
   }
