@@ -55,7 +55,7 @@ function acknowledge(engine, at, topic, source) {
   }
 
   const reflection = candidate(
-    'A new reflection about embodied prediction under tactile uncertainty',
+    'A hypothesis about hyperbolic geometry and spectral graph theory',
     'reflection',
   );
   const curiosity = candidate(
