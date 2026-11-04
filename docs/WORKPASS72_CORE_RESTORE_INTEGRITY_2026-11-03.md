@@ -81,7 +81,7 @@ commit with a fail-before/pass-after regression wired into
 | 9 | `467b2dd` | `LifelongDevelopmentSystem`, `AutobiographicalNarrativeEngine`, `ValueEvolutionEngine`, `BehavioralInfluenceLedger` | `workpass72-lifelong-narrative-value-restore-integrity` |
 | 10 | `870ba62` | `ExternalEvidenceTrustEngine`, `LongHorizonPredictionBenchmark`, `P77RealityExperimentOS`, `P82RealityProgressController` | `workpass72-evidence-horizon-progress-restore-integrity` |
 | 11 | `7733e92` | `P62MemoryFabric`, `P68GoalEcology`, `P54LongHorizonEvidence`, `P59MemoryOperatingSystem` | `workpass72-fabric-goal-evidence-memos-restore-integrity` |
-| 12 | (this commit) | `P65EpistemicLedger`, `P67AutonomousGoalGenesis`, `MicroDreamEngine`, `AutonomousLearningMemoryGovernor` | `workpass72-epistemic-goalgen-dream-learningmem-restore-integrity` |
+| 12 | `3583d3f` | `P65EpistemicLedger`, `P67AutonomousGoalGenesis`, `MicroDreamEngine`, `AutonomousLearningMemoryGovernor` | `workpass72-epistemic-goalgen-dream-learningmem-restore-integrity` |
 
 Every batch uses the same idiom — a descriptor-safe `read(k)` accessor plus
 `finN`/`cnt`/`clamp` helpers and per-owner `sanitize*` builders — so a corrupt
