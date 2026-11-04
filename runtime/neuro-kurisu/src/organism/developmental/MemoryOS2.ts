@@ -454,8 +454,8 @@ type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLi
 const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; spatial?:MemorySpatialQuery; }
-export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
-export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; providerTimeoutMs?:number; }
+export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number;groundedCandidateCount:number;rejectedSemanticCandidates:number;topSimilarity:number;topMargin:number;answerabilityGate:'lexical-only-fallback'|'lexical-or-calibrated-semantic-v1';rankingFusion:'weighted-rrf-v1'|null}; }
+export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; maxSemanticCandidates?:number; minSemanticSimilarity?:number; minSemanticMargin?:number; providerTimeoutMs?:number; }
 export interface SemanticIndexMaintenanceResult {
  enabled:boolean; provider:string; model:string; considered:number; indexed:number; failed:number; staleSkipped:number;
  indexedItems:number; corpusItems:number; remaining:number; waitingForRetry:number; nextRetryAt:number|null;
