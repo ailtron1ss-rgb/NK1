@@ -62,6 +62,10 @@ function requireInteger(value, name, min, max) {
   }
 }
 
+function compareCodeUnits(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function validateId(value, name) {
   if (typeof value !== 'string' || !value.length || value.length > MAX_ID_LENGTH || value.trim() !== value) {
     throw new TypeError(name + ' invalid');
@@ -136,13 +140,13 @@ export function combineRankedMemoryChannels(input) {
   }
 
   const items = [...aggregate.values()]
-    .sort((a, b) => b.score - a.score || a.bestRank - b.bestRank || a.id.localeCompare(b.id))
+    .sort((a, b) => b.score - a.score || a.bestRank - b.bestRank || compareCodeUnits(a.id, b.id))
     .slice(0, limit)
     .map(row => ({
       id: row.id,
       score: row.score,
       bestRank: row.bestRank,
-      ranks: row.ranks.sort((a, b) => a.channel.localeCompare(b.channel)),
+      ranks: row.ranks.sort((a, b) => compareCodeUnits(a.channel, b.channel)),
     }));
   diagnostics.uniqueCandidates = aggregate.size;
   return { items, diagnostics };
