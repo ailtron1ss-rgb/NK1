@@ -184,8 +184,19 @@ for (const path of ['../escape.ts', '/absolute.ts', 'C:/drive.ts', 'src\\\\escap
   assert.throws(() => extract(zip.bytes), /duplicate-casefold-path/);
 }
 
+// Extraction defaults must not silently inherit the looser standalone preflight defaults.
+{
+  const entries = Array.from({ length: 4_097 }, (_, index) => ({
+    path: `files/${String(index).padStart(4, '0')}.txt`,
+    data: '',
+    method: 0,
+  }));
+  const zip = makeZip(entries);
+  assert.throws(() => extract(zip.bytes), /entry-count-limit/);
+}
+
 console.log(JSON.stringify({
   ok: true,
   suite: 'code-assimilation-archive-extraction-workpass658',
-  cases: 7,
+  cases: 8,
 }));
