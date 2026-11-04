@@ -89,3 +89,14 @@ test('equal-score ID tie-breaking is locale-independent', () => {
   ] });
   assert.deepEqual(r.items.map(item => item.id), ['z', 'ä']);
 });
+test('maximum configured workload stays within the declared channel and candidate bounds', () => {
+  const channels = Array.from({ length: 8 }, (_, channelIndex) => ({
+    name: `c${channelIndex}`,
+    candidates: Array.from({ length: 512 }, (_, candidateIndex) => ({ id: `${channelIndex}:${candidateIndex}` })),
+  }));
+  const r = combineRankedMemoryChannels({ channels, maxCandidatesPerChannel: 512, limit: 64 });
+  assert.equal(r.diagnostics.channels, 8);
+  assert.equal(r.diagnostics.candidatesSeen, 4096);
+  assert.equal(r.diagnostics.uniqueCandidates, 4096);
+  assert.equal(r.items.length, 64);
+});
