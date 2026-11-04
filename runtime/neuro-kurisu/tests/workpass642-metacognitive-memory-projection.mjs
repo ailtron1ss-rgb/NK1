@@ -84,7 +84,7 @@ assert.equal(first.memory.provenanceClass, 'derived');
 assert.equal(first.memory.context?.sourceEventId, event.id);
 assert.equal(first.memory.context?.observationId, cycleStageIds.observation);
 assert.equal(first.memory.context?.decisionId, cycleStageIds.action);
-assert.deepEqual(first.memory.context?.causalParentIds, expectedParentIds,
+assert.deepEqual(JSON.parse(first.memory.context?.causalParentIds ?? 'null'), expectedParentIds,
   'canonical MemoryOS2 episode must retain the complete causal parent set');
 assert.equal(first.memory.context?.outcomeDirection, 'prediction-aligned');
 assert.equal(first.memory.context?.projectionHash, episode.projectionHash);
@@ -111,7 +111,7 @@ const restoredConsolidation = new MemoryConsolidationController();
 restoredConsolidation.restore(consolidation.snapshot());
 const restoredReplay = persistMetacognitiveEpisode(event, restoredMemory, restoredConsolidation);
 assert.equal(restoredReplay.replayed, true);
-assert.deepEqual(restoredReplay.memory.context?.causalParentIds, expectedParentIds);
+assert.deepEqual(JSON.parse(restoredReplay.memory.context?.causalParentIds ?? 'null'), expectedParentIds);
 assert.equal(restoredMemory.snapshot().items.length, 1);
 
 // A conflicting projection cannot silently rewrite an already persisted episode.
