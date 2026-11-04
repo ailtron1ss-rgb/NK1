@@ -1,8 +1,9 @@
 export const SELF_PRIOR_REPRESENTATION_ID = 'b270-self-latent-v1';
 
 export interface SelfPriorDensityState {
-  version: 2;
+  version: 3;
   representationId: string;
+  highMismatchStreak: number;
   dimensions: number;
   sampleCount: number;
   effectiveSamples: number;
@@ -40,7 +41,7 @@ function finiteVector(value:unknown,dimensions:number):number[]|null{
 export function defaultSelfPriorDensityState(dimensions=16,representationId=SELF_PRIOR_REPRESENTATION_ID):SelfPriorDensityState{
   const size=Number.isSafeInteger(dimensions)&&dimensions>0&&dimensions<=MAX_DIMENSIONS?dimensions:16;
   const safeId=typeof representationId==='string'&&/^[a-z0-9][a-z0-9._:-]{0,63}$/i.test(representationId)?representationId:SELF_PRIOR_REPRESENTATION_ID;
-  return{version:2,representationId:safeId,dimensions:size,sampleCount:0,effectiveSamples:0,mean:new Array(size).fill(0),variance:new Array(size).fill(1),lastAt:0};
+  return{version:3,representationId:safeId,highMismatchStreak:0,dimensions:size,sampleCount:0,effectiveSamples:0,mean:new Array(size).fill(0),variance:new Array(size).fill(1),lastAt:0};
 }
 /** Prequential diagonal-Gaussian prior over the organism's own latent state.
  * Only bounded moments are retained. representationId prevents reuse after a
@@ -56,13 +57,15 @@ export class SelfPriorDensityModel{
       if(!isPlainRecord(value)){this.state=fallback;return;}
       const version=ownData(value,'version'),representationId=ownData(value,'representationId'),dimensions=ownData(value,'dimensions');
       const sampleCount=ownData(value,'sampleCount'),effectiveSamples=ownData(value,'effectiveSamples'),lastAt=ownData(value,'lastAt');
+      const highMismatchStreak=ownData(value,'highMismatchStreak');
       const mean=finiteVector(ownData(value,'mean'),fallback.dimensions),variance=finiteVector(ownData(value,'variance'),fallback.dimensions);
-      if(version!==2||representationId!==fallback.representationId||dimensions!==fallback.dimensions
+      if(version!==3||representationId!==fallback.representationId||dimensions!==fallback.dimensions
+        ||!Number.isSafeInteger(highMismatchStreak)||(highMismatchStreak as number)<0||(highMismatchStreak as number)>32
         ||!Number.isSafeInteger(sampleCount)||(sampleCount as number)<0||(sampleCount as number)>MAX_SAMPLES
         ||!Number.isSafeInteger(effectiveSamples)||(effectiveSamples as number)<0||(effectiveSamples as number)>MAX_EFFECTIVE_SAMPLES
         ||effectiveSamples!==Math.min(sampleCount as number,MAX_EFFECTIVE_SAMPLES)
         ||typeof lastAt!=='number'||!Number.isFinite(lastAt)||lastAt<0||!mean||!variance){this.state=fallback;return;}
-      this.state={version:2,representationId:fallback.representationId,dimensions:fallback.dimensions,sampleCount:sampleCount as number,effectiveSamples:effectiveSamples as number,mean:mean.map(v=>clamp(v,-4,4)),variance:variance.map(v=>clamp(v,MIN_VARIANCE,MAX_VARIANCE)),lastAt:lastAt as number};
+      this.state={version:3,representationId:fallback.representationId,highMismatchStreak:highMismatchStreak as number,dimensions:fallback.dimensions,sampleCount:sampleCount as number,effectiveSamples:effectiveSamples as number,mean:mean.map(v=>clamp(v,-4,4)),variance:variance.map(v=>clamp(v,MIN_VARIANCE,MAX_VARIANCE)),lastAt:lastAt as number};
     }catch{this.state=fallback;}
   }
   predict(observation:readonly number[]):SelfPriorObservation{
@@ -78,11 +81,17 @@ export class SelfPriorDensityModel{
     if(typeof at!=='number'||!Number.isFinite(at)||at<0)throw new RangeError('self-prior-observation-timestamp-must-be-finite-and-non-negative');
     if(at<this.state.lastAt)throw new RangeError('self-prior-observation-timestamp-out-of-order');
     const prediction=this.predict(vector),baseAlpha=Math.min(.2,2/(this.state.effectiveSamples+2));
-    const alpha=baseAlpha*(1-.65*prediction.mismatch01*prediction.confidence01);
+    const highMismatch=prediction.confidence01>=.5&&prediction.mismatch01>=.35;
+    const nextMismatchStreak=highMismatch?Math.min(32,this.state.highMismatchStreak+1):0;
+    const surpriseAdjustedAlpha=baseAlpha*(1-.65*prediction.mismatch01*prediction.confidence01);
+    // Isolated surprise is resisted; persistent coherent mismatch is treated as
+    // a regime shift so legitimate self-development is not permanently penalized.
+    const alpha=nextMismatchStreak>=5?Math.max(surpriseAdjustedAlpha,Math.min(.12,baseAlpha*3)):surpriseAdjustedAlpha;
     for(let i=0;i<vector.length;i+=1){const delta=vector[i]-this.state.mean[i];this.state.mean[i]+=alpha*delta;const nextVariance=(1-alpha)*(this.state.variance[i]+alpha*delta*delta);this.state.variance[i]=clamp(nextVariance,MIN_VARIANCE,MAX_VARIANCE);}
     this.state.sampleCount=Math.min(MAX_SAMPLES,this.state.sampleCount+1);
     this.state.effectiveSamples=Math.min(MAX_EFFECTIVE_SAMPLES,this.state.effectiveSamples+1);
     this.state.lastAt=at;
+    this.state.highMismatchStreak=nextMismatchStreak;
     return prediction;
   }
   private validateObservation(observation:readonly number[]):number[]{
