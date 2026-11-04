@@ -35,7 +35,7 @@ const files = [
   const result = adapter.commit(preview.importId, selected, { tick: 17 });
   assert.equal(result.committed.length, 1);
   assert.equal(result.rejected.length, 0);
-  assert.equal(runtime.fabric.canonicalSize(), beforeCount + 1);
+  assert.equal(runtime.fabric.canonicalSize(), 1);
   const saved = runtime.fabric.canonicalSnapshot().items[0];
   assert.equal(saved.kind, 'social');
   assert.equal(saved.epistemicStatus, 'unknown');
@@ -125,7 +125,7 @@ const files = [
   const a = adapter.commit(first.importId, [first.candidates[0].id], { tick: 21 });
   const b = adapter.commit(second.importId, [second.candidates[0].id], { tick: 21 });
   assert.equal(a.committed[0].memoryId, b.committed[0].memoryId);
-  assert.equal(runtime.fabric.canonicalSize(), 1);
+  assert.equal(runtime.fabric.canonicalSize(), beforeCount + 1);
 }
 
 // A caller cannot commit an unknown candidate or an expired/unknown preview.
