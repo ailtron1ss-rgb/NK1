@@ -243,12 +243,19 @@ async function main() {
       agentId: args.agent,
       baseSha: args.sha,
       paths: (args.paths ?? '').split(','),
+      readSet: args.readSetFile ? JSON.parse(await readFile(path.resolve(args.readSetFile), 'utf8')) : undefined,
       ttlMs: Number(args.ttlMs ?? 3_600_000)
     }, { currentSha });
     console.log(JSON.stringify(result, null, 2));
     return;
   }
-  if (command === 'verify') {\n    const result = await verifyClaimFreshness(args.task, args.agent);\n    console.log(JSON.stringify(result, null, 2));\n    if (!result.fresh) process.exitCode = 1;\n    return;\n  }\n  if (command === 'release') {
+  if (command === 'verify') {
+    const result = await verifyClaimFreshness(args.task, args.agent);
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.fresh) process.exitCode = 1;
+    return;
+  }
+  if (command === 'release') {
     console.log(JSON.stringify(await releaseTask({ taskId: args.task, agentId: args.agent }), null, 2));
     return;
   }
@@ -256,7 +263,7 @@ async function main() {
     console.log(JSON.stringify(await listClaims(), null, 2));
     return;
   }
-  console.error('Usage: node tools/neurok-os-coordinator.mjs [claim|verify|release|list] --task ID --agent ID --sha FULL_SHA --paths a.ts,b.ts [--ttlMs 3600000]');
+  console.error('Usage: node tools/neurok-os-coordinator.mjs [claim|verify|release|list] --task ID --agent ID --sha FULL_SHA --paths a.ts,b.ts [--readSetFile FILE] [--ttlMs 3600000]');
   process.exitCode = 2;
 }
 
