@@ -126,4 +126,31 @@ try {
   const missing = fabric.verifyOperationalCycle(ids, [attentionReceipt]);
   assert.equal(missing.ownerEvidenceComplete, false);
   assert.deepEqual(missing.missingOwnerEvidenceStages, ['memory']);
+
+  const skippedFabric = new CognitiveEventFabric();
+  const skippedMemoryReceipt = {
+    ...memoryReceipt,
+    id: 'nk1-cycle:10:memory',
+    cycleId: 'nk1-cycle:10',
+    tick: 10,
+    status: 'skipped',
+    inputRefs: ['query-sha256:' + 'd'.repeat(64)],
+  };
+  const skippedAttentionReceipt = {
+    ...attentionReceipt,
+    id: 'nk1-cycle:10:attention',
+    cycleId: 'nk1-cycle:10',
+    tick: 10,
+    outputRefs: ['attention-state:10'],
+  };
+  const skippedIds = skippedFabric.recordOperationalCycle({
+    tick: 10,
+    observation: { source: 'runtime' },
+    appraisal: { source: 'homeostatic-appraisal' },
+    attention: { source: 'OrganismCore.attend', receipt: skippedAttentionReceipt, payload: { timing: 'pre-decision' } },
+    memory: { source: 'MemoryFabric.retrieveForCognition', receipt: skippedMemoryReceipt, payload: { status: 'skipped' } },
+  });
+  const skipped = skippedFabric.verifyOperationalCycle(skippedIds, [skippedAttentionReceipt, skippedMemoryReceipt]);
+  assert.equal(skipped.ownerEvidenceComplete, false, 'a policy skip is valid evidence but cannot count as a complete full cycle');
+  assert.ok(skipped.invalidOwnerEvidence.includes('memory:status-not-full-complete'));
 }

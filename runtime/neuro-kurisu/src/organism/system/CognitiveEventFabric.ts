@@ -636,6 +636,12 @@ export class CognitiveEventFabric {
         invalidOwnerEvidence.push(stage + ':cef-owner-receipt-' + persisted.issues.join(','));
         continue;
       }
+      const fullStatuses = stage === 'attention'
+        ? new Set(['completed'])
+        : new Set(['completed','completed_empty']);
+      if (!fullStatuses.has(persisted.receipt.status)) {
+        invalidOwnerEvidence.push(stage + ':status-not-full-complete');
+      }
       if (event.source !== expectedReceipt.owner ||
           persisted.receipt.id !== expectedReceipt.id ||
           persisted.receipt.cycleId !== expectedReceipt.cycleId ||
