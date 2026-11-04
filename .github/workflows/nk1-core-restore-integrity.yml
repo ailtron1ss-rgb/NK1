@@ -92,6 +92,9 @@ on:
       - runtime/neuro-kurisu/src/organism/developmental/P63DevelopmentalOperatingSystem.ts
       - runtime/neuro-kurisu/src/organism/learning/IntegratedLifeTrajectoryEngine.ts
       - runtime/neuro-kurisu/src/organism/learning/VerifiedAutonomousLifeEngine.ts
+      - runtime/neuro-kurisu/src/organism/body/DeviceEvidenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts
+      - runtime/neuro-kurisu/src/organism/body/P37EmbodiedSensorium.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -185,6 +188,9 @@ on:
       - runtime/neuro-kurisu/src/organism/developmental/P63DevelopmentalOperatingSystem.ts
       - runtime/neuro-kurisu/src/organism/learning/IntegratedLifeTrajectoryEngine.ts
       - runtime/neuro-kurisu/src/organism/learning/VerifiedAutonomousLifeEngine.ts
+      - runtime/neuro-kurisu/src/organism/body/DeviceEvidenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts
+      - runtime/neuro-kurisu/src/organism/body/P37EmbodiedSensorium.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -267,6 +273,8 @@ jobs:
           node --experimental-strip-types tests/p56-integrated-developmental-mind.mjs
           node --experimental-strip-types tests/big-pass-126-integrated-life-trajectory.mjs
           node --experimental-strip-types tests/big-pass-155-verified-autonomous-life.mjs
+          node --experimental-strip-types tests/big-pass-364-device-evidence-boundary.mjs
+          node --experimental-strip-types tests/p37-semantic-sensorium.mjs
           node --experimental-strip-types tests/p58-p60-integrated-kernel.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
