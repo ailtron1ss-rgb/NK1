@@ -14,8 +14,9 @@ test('concurrent writes preserve invocation order and flush waits for completion
   await withTempDirectory(async directory => {
     const path = join(directory, 'nested', 'runtime.jsonl');
     const journal = new OperationalJournal(path);
-    await Promise.all(Array.from({ length: 40 }, (_, index) => journal.write('info', `tick.${index}`, { index })));
+    const pendingWrites = Array.from({ length: 40 }, (_, index) => journal.write('info', `tick.${index}`, { index }));
     await journal.flush();
+    await Promise.all(pendingWrites);
     const rows = (await readFile(path, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
     assert.deepEqual(rows.map(row => row.data.index), Array.from({ length: 40 }, (_, index) => index));
   });
@@ -31,6 +32,9 @@ test('warning, error and critical lifecycle events are fsynced while ordinary ti
     await journal.flush();
     assert.equal(journal.metrics().fsyncs, 3);
     assert.equal(journal.metrics().writes, 4);
+    const metrics = journal.metrics();
+    metrics.writes = 999;
+    assert.equal(journal.metrics().writes, 4, 'metrics must be returned as a defensive copy');
   });
 });
 
