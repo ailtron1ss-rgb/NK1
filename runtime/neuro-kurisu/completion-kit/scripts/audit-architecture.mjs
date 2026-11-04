@@ -37,7 +37,15 @@ export async function runArchitectureAudit({ root = runtimeRoot } = {}) {
     if (!compositionText.includes(moduleName)) failures.push(`composition-root-does-not-reference-owner:${owner.name}:${moduleName}`);
   }
   const statuses = {};
-  for (const module of moduleMap.modules) statuses[module.status] = (statuses[module.status] ?? 0) + 1;
+  const allowedStatuses = new Set(['EXISTS', 'GAP', 'NEW', 'PARTIAL']);
+  for (const module of moduleMap.modules) {
+    statuses[module.status] = (statuses[module.status] ?? 0) + 1;
+    if (!allowedStatuses.has(module.status)) failures.push(`unknown-module-status:${module.id}:${module.status}`);
+    if (module.status === 'EXISTS') {
+      try { await readFile(path.join(root, module.path), 'utf8'); }
+      catch { failures.push(`module-status-exists-but-file-missing:${module.id}:${module.path}`); }
+    }
+  }
   const report = {
     schemaVersion: 1,
     audit: 'nk1-completion-architecture',
