@@ -64,20 +64,29 @@ test('optional cosine preview adds a vector rank channel but never returns memor
   assert.ok(result.channelNames.includes('vector'));
   assert.ok(result.shadowIds.includes('vector-only'));
   assert.equal(result.semantic.provider, 'ollama');
+  assert.equal(result.semanticIncludedInShadowFusion, true);
+  assert.equal(result.userFacingEligible, false);
   assert.ok(!JSON.stringify(result).includes('private memory body'));
 });
 
-test('semantic provider is not called when canonical MemoryOS2 answerability abstains', async () => {
+test('vector-only candidates remain evaluation-only when canonical answerability abstains', async () => {
   let embeddingCalls = 0;
   const fakeMemory = {
     previewRetrieveWithRankedChannels() {
       return { itemIds: [], rankedChannels: { bm25: [], coverage: [] }, currentRrfK: 60, currentRrfWeights: {}, diagnostics: { abstained: true } };
     },
-    async previewRetrieveWithEmbeddings() { embeddingCalls++; throw new Error('must not run'); },
+    async previewRetrieveWithEmbeddings() {
+      embeddingCalls++;
+      return { items: [{ id: 'exploratory-only', content: 'must not become a recall result' }], semantic: { enabled: true, provider: 'ollama', model: 'fixture', fallbackReason: null, coverage01: .25, indexedItems: 1, corpusItems: 3 } };
+    },
   };
   const result = await previewNekoHybridMemoryRanking(fakeMemory, 'unsupported query', { includeSemanticEmbeddingChannel: true });
-  assert.equal(embeddingCalls, 0);
+  assert.equal(embeddingCalls, 1);
   assert.deepEqual(result.shadowIds, []);
+  assert.deepEqual(result.exploratorySemanticIds, ['exploratory-only']);
+  assert.equal(result.semanticIncludedInShadowFusion, false);
+  assert.equal(result.semanticExploratoryOnly, true);
+  assert.equal(result.userFacingEligible, false);
   assert.equal(result.diagnostics.abstained, true);
-  assert.equal(result.semantic.fallbackReason, 'canonical-answerability-abstained');
+  assert.ok(!JSON.stringify(result).includes('must not become a recall result'));
 });
