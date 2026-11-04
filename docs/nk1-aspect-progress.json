@@ -1,0 +1,1684 @@
+{
+  "schemaVersion": 1,
+  "title": "NK1 / NeuroCore — 75-aspect executable progress tracker",
+  "generatedAt": "2026-11-04",
+  "base": "workpass70-source",
+  "convention": "one aspect branch per direction; one PR per aspect; status advances only with a linked evidence artifact",
+  "statusValues": [
+    "PLANNED",
+    "IN_PROGRESS",
+    "BLOCKED",
+    "PASS",
+    "FAIL",
+    "DEFERRED",
+    "REJECTED"
+  ],
+  "waves": {
+    "W1": {
+      "name": "Стабилизация",
+      "aspects": "01-06, 60-63, 69-70"
+    },
+    "W2": {
+      "name": "Единый организм",
+      "aspects": "04-18"
+    },
+    "W3": {
+      "name": "Самостоятельность",
+      "aspects": "19-24, 45-52"
+    },
+    "W4": {
+      "name": "Внешнее взаимодействие",
+      "aspects": "25-44"
+    },
+    "W5": {
+      "name": "Реальные платформы",
+      "aspects": "53-59, 65-67"
+    },
+    "W6": {
+      "name": "Подтверждение готовности",
+      "aspects": "68, 71-75"
+    }
+  },
+  "gates": {
+    "TICK-10000": "10 000 детерминированных ticks без расхождения",
+    "SEARCH-10K<=30MS": "memory search / 10k ≤ 30 мс",
+    "RECALL-DELTA>0": "улучшение recall > 0 на независимом holdout",
+    "PAIRED-SEEDS>=5": "≥ 5 парных seed-прогонов",
+    "TICK<=50MS-MOBILE": "tick latency на телефоне ≤ 50 мс",
+    "LIPSYNC<=80MS": "lip-sync drift ≤ 80 мс",
+    "INTERRUPT<=200MS": "interrupt latency ≤ 200 мс",
+    "INITIATIVE>=1/H": "автономные инициативы ≥ 1/час",
+    "RESTART-NO-LOSS": "runtime recovery без потери подтверждённого состояния",
+    "RELEASE-ZIP-PROVENANCE": "проверенный ZIP с provenance и разрешённой лицензией",
+    "GOV-1OWNER": "один канонический владелец на изменяемую способность",
+    "STATE-MIGRATION": "миграции состояния применяются без потери данных",
+    "CI-REQUIRED": "единая обязательная проверка CI на exact head",
+    "LICENSE-REVIEW": "полный license/SBOM review пройден",
+    "HOLDOUT-INDEPENDENT": "независимый holdout не использовался для настройки",
+    "SOAK-24H": "≥ 24 ч endurance soak с логами latency/RAM/thermal",
+    "DEVICE-E2E": "реальный ПК и Android E2E"
+  },
+  "aspects": [
+    {
+      "id": "A01",
+      "num": 1,
+      "name": "Core Architecture",
+      "slug": "core-architecture",
+      "section": "I. Фундамент и архитектура",
+      "waves": [
+        "W1"
+      ],
+      "dependsOn": [],
+      "ownerPaths": [
+        "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "GOV-1OWNER"
+      ],
+      "branch": "aspect-01-core-architecture"
+    },
+    {
+      "id": "A02",
+      "num": 2,
+      "name": "OrganismBus",
+      "slug": "organism-bus",
+      "section": "I. Фундамент и архитектура",
+      "waves": [
+        "W1"
+      ],
+      "dependsOn": [
+        "A01"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-02-organism-bus"
+    },
+    {
+      "id": "A03",
+      "num": 3,
+      "name": "OrganismState",
+      "slug": "organism-state",
+      "section": "I. Фундамент и архитектура",
+      "waves": [
+        "W1"
+      ],
+      "dependsOn": [
+        "A01"
+      ],
+      "ownerPaths": [
+        "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "STATE-MIGRATION",
+        "RESTART-NO-LOSS"
+      ],
+      "branch": "aspect-03-organism-state"
+    },
+    {
+      "id": "A04",
+      "num": 4,
+      "name": "Cognitive Kernel",
+      "slug": "cognitive-kernel",
+      "section": "I. Фундамент и архитектура",
+      "waves": [
+        "W1",
+        "W2"
+      ],
+      "dependsOn": [
+        "A01",
+        "A02",
+        "A03"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-04-cognitive-kernel"
+    },
+    {
+      "id": "A05",
+      "num": 5,
+      "name": "Cognitive Cycle",
+      "slug": "cognitive-cycle",
+      "section": "I. Фундамент и архитектура",
+      "waves": [
+        "W1",
+        "W2"
+      ],
+      "dependsOn": [
+        "A04"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "TICK-10000"
+      ],
+      "branch": "aspect-05-cognitive-cycle"
+    },
+    {
+      "id": "A06",
+      "num": 6,
+      "name": "Engineering OS",
+      "slug": "engineering-os",
+      "section": "I. Фундамент и архитектура",
+      "waves": [
+        "W1",
+        "W2"
+      ],
+      "dependsOn": [
+        "A01"
+      ],
+      "ownerPaths": [
+        "tools/neurok-os.mjs"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-06-engineering-os"
+    },
+    {
+      "id": "A07",
+      "num": 7,
+      "name": "Perception",
+      "slug": "perception",
+      "section": "II. Интеллект и познание",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A03"
+      ],
+      "ownerPaths": [
+        "runtime/neuro-kurisu/src/organism/body/MultimodalPerception.ts"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-07-perception"
+    },
+    {
+      "id": "A08",
+      "num": 8,
+      "name": "World Model",
+      "slug": "world-model",
+      "section": "II. Интеллект и познание",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A07"
+      ],
+      "ownerPaths": [
+        "runtime/neuro-kurisu/src/organism/body/P35SemanticWorldBody.ts"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-08-world-model"
+    },
+    {
+      "id": "A09",
+      "num": 9,
+      "name": "Reasoning",
+      "slug": "reasoning",
+      "section": "II. Интеллект и познание",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A08"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-09-reasoning"
+    },
+    {
+      "id": "A10",
+      "num": 10,
+      "name": "Planning",
+      "slug": "planning",
+      "section": "II. Интеллект и познание",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A09"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-10-planning"
+    },
+    {
+      "id": "A11",
+      "num": 11,
+      "name": "Metacognition",
+      "slug": "metacognition",
+      "section": "II. Интеллект и познание",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A05",
+        "A09"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-11-metacognition"
+    },
+    {
+      "id": "A12",
+      "num": 12,
+      "name": "Attention",
+      "slug": "attention",
+      "section": "II. Интеллект и познание",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A04",
+        "A07"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-12-attention"
+    },
+    {
+      "id": "A13",
+      "num": 13,
+      "name": "MemoryOS2",
+      "slug": "memoryos2",
+      "section": "III. Память и обучение",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A03"
+      ],
+      "ownerPaths": [
+        "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "RECALL-DELTA>0",
+        "SEARCH-10K<=30MS"
+      ],
+      "branch": "aspect-13-memoryos2"
+    },
+    {
+      "id": "A14",
+      "num": 14,
+      "name": "Retrieval",
+      "slug": "retrieval",
+      "section": "III. Память и обучение",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A13"
+      ],
+      "ownerPaths": [
+        "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "RECALL-DELTA>0",
+        "PAIRED-SEEDS>=5"
+      ],
+      "branch": "aspect-14-retrieval"
+    },
+    {
+      "id": "A15",
+      "num": 15,
+      "name": "Consolidation",
+      "slug": "consolidation",
+      "section": "III. Память и обучение",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A13",
+        "A14"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-15-consolidation"
+    },
+    {
+      "id": "A16",
+      "num": 16,
+      "name": "Continual Learning",
+      "slug": "continual-learning",
+      "section": "III. Память и обучение",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A14",
+        "A15"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-16-continual-learning"
+    },
+    {
+      "id": "A17",
+      "num": 17,
+      "name": "Skill System",
+      "slug": "skill-system",
+      "section": "III. Память и обучение",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A10",
+        "A16"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-17-skill-system"
+    },
+    {
+      "id": "A18",
+      "num": 18,
+      "name": "Evaluation",
+      "slug": "evaluation",
+      "section": "III. Память и обучение",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A13",
+        "A14",
+        "A16"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "PAIRED-SEEDS>=5"
+      ],
+      "branch": "aspect-18-evaluation"
+    },
+    {
+      "id": "A19",
+      "num": 19,
+      "name": "SelfModel",
+      "slug": "self-model",
+      "section": "IV. Личность, мотивация, автономность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A03",
+        "A13"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-19-self-model"
+    },
+    {
+      "id": "A20",
+      "num": 20,
+      "name": "UserModel",
+      "slug": "usermodel",
+      "section": "IV. Личность, мотивация, автономность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A19"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-20-usermodel"
+    },
+    {
+      "id": "A21",
+      "num": 21,
+      "name": "Personality",
+      "slug": "personality",
+      "section": "IV. Личность, мотивация, автономность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A19",
+        "A22"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-21-personality"
+    },
+    {
+      "id": "A22",
+      "num": 22,
+      "name": "Affect System",
+      "slug": "affect-system",
+      "section": "IV. Личность, мотивация, автономность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A05",
+        "A19"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-22-affect-system"
+    },
+    {
+      "id": "A23",
+      "num": 23,
+      "name": "Motivation",
+      "slug": "motivation",
+      "section": "IV. Личность, мотивация, автономность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A19",
+        "A22"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-23-motivation"
+    },
+    {
+      "id": "A24",
+      "num": 24,
+      "name": "Autonomy",
+      "slug": "autonomy",
+      "section": "IV. Личность, мотивация, автономность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A10",
+        "A23",
+        "A45",
+        "A46",
+        "A47"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "INITIATIVE>=1/H"
+      ],
+      "branch": "aspect-24-autonomy"
+    },
+    {
+      "id": "A25",
+      "num": 25,
+      "name": "Embodiment",
+      "slug": "embodiment",
+      "section": "V. Тело, голос и взаимодействие",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A05",
+        "A08"
+      ],
+      "ownerPaths": [
+        "runtime/neuro-kurisu/src/organism/core/EmbodimentSubsystemRuntime.ts"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-25-embodiment"
+    },
+    {
+      "id": "A26",
+      "num": 26,
+      "name": "Live2D",
+      "slug": "live2d",
+      "section": "V. Тело, голос и взаимодействие",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A25"
+      ],
+      "ownerPaths": [
+        "app/"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-26-live2d"
+    },
+    {
+      "id": "A27",
+      "num": 27,
+      "name": "2.5D",
+      "slug": "depth-rig-25d",
+      "section": "V. Тело, голос и взаимодействие",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A25"
+      ],
+      "ownerPaths": [
+        "app/src/components/avatar/depthRig.ts"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-27-depth-rig-25d"
+    },
+    {
+      "id": "A28",
+      "num": 28,
+      "name": "3D Avatar",
+      "slug": "vrm-3d-avatar",
+      "section": "V. Тело, голос и взаимодействие",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A25"
+      ],
+      "ownerPaths": [
+        "app/src/components/avatar/vrmHumanoidRigAdapter.ts"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-28-vrm-3d-avatar"
+    },
+    {
+      "id": "A29",
+      "num": 29,
+      "name": "Body Intelligence",
+      "slug": "body-intelligence",
+      "section": "V. Тело, голос и взаимодействие",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A22",
+        "A23",
+        "A25"
+      ],
+      "ownerPaths": [
+        "runtime/neuro-kurisu/src/organism/body"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-29-body-intelligence"
+    },
+    {
+      "id": "A30",
+      "num": 30,
+      "name": "Speech",
+      "slug": "speech",
+      "section": "V. Тело, голос и взаимодействие",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A25"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "LIPSYNC<=80MS"
+      ],
+      "branch": "aspect-30-speech"
+    },
+    {
+      "id": "A31",
+      "num": 31,
+      "name": "Voice Interaction",
+      "slug": "voice-interaction",
+      "section": "V. Тело, голос и взаимодействие",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A30"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "INTERRUPT<=200MS"
+      ],
+      "branch": "aspect-31-voice-interaction"
+    },
+    {
+      "id": "A32",
+      "num": 32,
+      "name": "Multimodal Interaction",
+      "slug": "multimodal-interaction",
+      "section": "V. Тело, голос и взаимодействие",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A07",
+        "A30",
+        "A31"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-32-multimodal-interaction"
+    },
+    {
+      "id": "A33",
+      "num": 33,
+      "name": "N.E.K.O.",
+      "slug": "neko-gateway",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A44"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-33-neko-gateway"
+    },
+    {
+      "id": "A34",
+      "num": 34,
+      "name": "Hermes",
+      "slug": "hermes",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A17",
+        "A44"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-34-hermes"
+    },
+    {
+      "id": "A35",
+      "num": 35,
+      "name": "Firecrawl",
+      "slug": "firecrawl",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A44"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-35-firecrawl"
+    },
+    {
+      "id": "A36",
+      "num": 36,
+      "name": "TinyFish",
+      "slug": "tinyfish",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A44"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-36-tinyfish"
+    },
+    {
+      "id": "A37",
+      "num": 37,
+      "name": "Context7",
+      "slug": "context7",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A44"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-37-context7"
+    },
+    {
+      "id": "A38",
+      "num": 38,
+      "name": "Supabase",
+      "slug": "supabase",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A44"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-38-supabase"
+    },
+    {
+      "id": "A39",
+      "num": 39,
+      "name": "MongoDB",
+      "slug": "mongodb",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A44"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-39-mongodb"
+    },
+    {
+      "id": "A40",
+      "num": 40,
+      "name": "Redis",
+      "slug": "redis",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A44"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-40-redis"
+    },
+    {
+      "id": "A41",
+      "num": 41,
+      "name": "Local Models",
+      "slug": "local-models",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A05"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-41-local-models"
+    },
+    {
+      "id": "A42",
+      "num": 42,
+      "name": "Cloud Models",
+      "slug": "cloud-models",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A41"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-42-cloud-models"
+    },
+    {
+      "id": "A43",
+      "num": 43,
+      "name": "Replit / GitHub",
+      "slug": "replit-github",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A06",
+        "A70"
+      ],
+      "ownerPaths": [
+        ".github/"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-43-replit-github"
+    },
+    {
+      "id": "A44",
+      "num": 44,
+      "name": "Agent Ecosystem",
+      "slug": "agent-ecosystem",
+      "section": "VI. Интеграции и инструменты",
+      "waves": [
+        "W4"
+      ],
+      "dependsOn": [
+        "A06"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-44-agent-ecosystem"
+    },
+    {
+      "id": "A45",
+      "num": 45,
+      "name": "EthicalGate",
+      "slug": "ethical-gate",
+      "section": "VII. Безопасность и надёжность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A04"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-45-ethical-gate"
+    },
+    {
+      "id": "A46",
+      "num": 46,
+      "name": "Permission System",
+      "slug": "permission-system",
+      "section": "VII. Безопасность и надёжность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A45"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-46-permission-system"
+    },
+    {
+      "id": "A47",
+      "num": 47,
+      "name": "Action Verification",
+      "slug": "action-verification",
+      "section": "VII. Безопасность и надёжность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A46"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-47-action-verification"
+    },
+    {
+      "id": "A48",
+      "num": 48,
+      "name": "Memory Safety",
+      "slug": "memory-safety",
+      "section": "VII. Безопасность и надёжность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A13",
+        "A47"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-48-memory-safety"
+    },
+    {
+      "id": "A49",
+      "num": 49,
+      "name": "Tool Security",
+      "slug": "tool-security",
+      "section": "VII. Безопасность и надёжность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A46"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-49-tool-security"
+    },
+    {
+      "id": "A50",
+      "num": 50,
+      "name": "Self-Modification",
+      "slug": "self-modification",
+      "section": "VII. Безопасность и надёжность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A47",
+        "A49"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-50-self-modification"
+    },
+    {
+      "id": "A51",
+      "num": 51,
+      "name": "Reliability",
+      "slug": "reliability",
+      "section": "VII. Безопасность и надёжность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A03",
+        "A47"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-51-reliability"
+    },
+    {
+      "id": "A52",
+      "num": 52,
+      "name": "Observability",
+      "slug": "observability",
+      "section": "VII. Безопасность и надёжность",
+      "waves": [
+        "W3"
+      ],
+      "dependsOn": [
+        "A03"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-52-observability"
+    },
+    {
+      "id": "A53",
+      "num": 53,
+      "name": "Desktop",
+      "slug": "desktop",
+      "section": "VIII. Приложение и платформы",
+      "waves": [
+        "W5"
+      ],
+      "dependsOn": [
+        "A56"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-53-desktop"
+    },
+    {
+      "id": "A54",
+      "num": 54,
+      "name": "Android",
+      "slug": "android",
+      "section": "VIII. Приложение и платформы",
+      "waves": [
+        "W5"
+      ],
+      "dependsOn": [
+        "A53",
+        "A59"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "TICK<=50MS-MOBILE"
+      ],
+      "branch": "aspect-54-android"
+    },
+    {
+      "id": "A55",
+      "num": 55,
+      "name": "Termux",
+      "slug": "termux",
+      "section": "VIII. Приложение и платформы",
+      "waves": [
+        "W5"
+      ],
+      "dependsOn": [
+        "A41",
+        "A53"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-55-termux"
+    },
+    {
+      "id": "A56",
+      "num": 56,
+      "name": "UI/UX",
+      "slug": "ui-ux",
+      "section": "VIII. Приложение и платформы",
+      "waves": [
+        "W5"
+      ],
+      "dependsOn": [
+        "A32"
+      ],
+      "ownerPaths": [
+        "app/"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-56-ui-ux"
+    },
+    {
+      "id": "A57",
+      "num": 57,
+      "name": "Avatar Interface",
+      "slug": "avatar-interface",
+      "section": "VIII. Приложение и платформы",
+      "waves": [
+        "W5"
+      ],
+      "dependsOn": [
+        "A26",
+        "A27",
+        "A28"
+      ],
+      "ownerPaths": [
+        "app/"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-57-avatar-interface"
+    },
+    {
+      "id": "A58",
+      "num": 58,
+      "name": "Synchronization",
+      "slug": "synchronization",
+      "section": "VIII. Приложение и платформы",
+      "waves": [
+        "W5"
+      ],
+      "dependsOn": [
+        "A03",
+        "A53"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-58-synchronization"
+    },
+    {
+      "id": "A59",
+      "num": 59,
+      "name": "Performance",
+      "slug": "performance",
+      "section": "VIII. Приложение и платформы",
+      "waves": [
+        "W5"
+      ],
+      "dependsOn": [
+        "A53"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "TICK<=50MS-MOBILE"
+      ],
+      "branch": "aspect-59-performance"
+    },
+    {
+      "id": "A60",
+      "num": 60,
+      "name": "Unit Tests",
+      "slug": "unit-tests",
+      "section": "IX. Тестирование и научная проверка",
+      "waves": [
+        "W1"
+      ],
+      "dependsOn": [
+        "A01"
+      ],
+      "ownerPaths": [
+        "runtime/neuro-kurisu/tests"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-60-unit-tests"
+    },
+    {
+      "id": "A61",
+      "num": 61,
+      "name": "Integration Tests",
+      "slug": "integration-tests",
+      "section": "IX. Тестирование и научная проверка",
+      "waves": [
+        "W1"
+      ],
+      "dependsOn": [
+        "A60"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-61-integration-tests"
+    },
+    {
+      "id": "A62",
+      "num": 62,
+      "name": "Architecture Tests",
+      "slug": "architecture-tests",
+      "section": "IX. Тестирование и научная проверка",
+      "waves": [
+        "W1"
+      ],
+      "dependsOn": [
+        "A60"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-62-architecture-tests"
+    },
+    {
+      "id": "A63",
+      "num": 63,
+      "name": "Mathematical Tests",
+      "slug": "mathematical-tests",
+      "section": "IX. Тестирование и научная проверка",
+      "waves": [
+        "W1"
+      ],
+      "dependsOn": [
+        "A14",
+        "A18"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-63-mathematical-tests"
+    },
+    {
+      "id": "A64",
+      "num": 64,
+      "name": "Cognitive Benchmarks",
+      "slug": "cognitive-benchmarks",
+      "section": "IX. Тестирование и научная проверка",
+      "waves": [
+        "W2"
+      ],
+      "dependsOn": [
+        "A09",
+        "A10",
+        "A13"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-64-cognitive-benchmarks"
+    },
+    {
+      "id": "A65",
+      "num": 65,
+      "name": "Autonomy Soak",
+      "slug": "autonomy-soak",
+      "section": "IX. Тестирование и научная проверка",
+      "waves": [
+        "W5"
+      ],
+      "dependsOn": [
+        "A24",
+        "A51"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "SOAK-24H"
+      ],
+      "branch": "aspect-65-autonomy-soak"
+    },
+    {
+      "id": "A66",
+      "num": 66,
+      "name": "Device E2E",
+      "slug": "device-e2e",
+      "section": "IX. Тестирование и научная проверка",
+      "waves": [
+        "W5"
+      ],
+      "dependsOn": [
+        "A54",
+        "A55",
+        "A59"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "DEVICE-E2E"
+      ],
+      "branch": "aspect-66-device-e2e"
+    },
+    {
+      "id": "A67",
+      "num": 67,
+      "name": "Regression",
+      "slug": "regression",
+      "section": "IX. Тестирование и научная проверка",
+      "waves": [
+        "W5"
+      ],
+      "dependsOn": [
+        "A60",
+        "A61"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-67-regression"
+    },
+    {
+      "id": "A68",
+      "num": 68,
+      "name": "Independent Holdout",
+      "slug": "independent-holdout",
+      "section": "IX. Тестирование и научная проверка",
+      "waves": [
+        "W6"
+      ],
+      "dependsOn": [
+        "A18",
+        "A63"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "HOLDOUT-INDEPENDENT"
+      ],
+      "branch": "aspect-68-independent-holdout"
+    },
+    {
+      "id": "A69",
+      "num": 69,
+      "name": "Branch Consolidation",
+      "slug": "branch-consolidation",
+      "section": "X. Релиз и развитие",
+      "waves": [
+        "W1"
+      ],
+      "dependsOn": [
+        "A01"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-69-branch-consolidation"
+    },
+    {
+      "id": "A70",
+      "num": 70,
+      "name": "CI/CD",
+      "slug": "ci-cd",
+      "section": "X. Релиз и развитие",
+      "waves": [
+        "W1"
+      ],
+      "dependsOn": [
+        "A69"
+      ],
+      "ownerPaths": [
+        ".github/workflows"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "CI-REQUIRED"
+      ],
+      "branch": "aspect-70-ci-cd"
+    },
+    {
+      "id": "A71",
+      "num": 71,
+      "name": "Release Pipeline",
+      "slug": "release-pipeline",
+      "section": "X. Релиз и развитие",
+      "waves": [
+        "W6"
+      ],
+      "dependsOn": [
+        "A70"
+      ],
+      "ownerPaths": [
+        "tools/verify-final-release.mjs"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "RELEASE-ZIP-PROVENANCE"
+      ],
+      "branch": "aspect-71-release-pipeline"
+    },
+    {
+      "id": "A72",
+      "num": 72,
+      "name": "License Review",
+      "slug": "license-review",
+      "section": "X. Релиз и развитие",
+      "waves": [
+        "W6"
+      ],
+      "dependsOn": [
+        "A71"
+      ],
+      "ownerPaths": [
+        "tools/audit-release-license-readiness.mjs"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [
+        "LICENSE-REVIEW"
+      ],
+      "branch": "aspect-72-license-review"
+    },
+    {
+      "id": "A73",
+      "num": 73,
+      "name": "Documentation",
+      "slug": "documentation",
+      "section": "X. Релиз и развитие",
+      "waves": [
+        "W6"
+      ],
+      "dependsOn": [
+        "A71"
+      ],
+      "ownerPaths": [
+        "docs"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-73-documentation"
+    },
+    {
+      "id": "A74",
+      "num": 74,
+      "name": "Backup & Recovery",
+      "slug": "backup-recovery",
+      "section": "X. Релиз и развитие",
+      "waves": [
+        "W6"
+      ],
+      "dependsOn": [
+        "A51"
+      ],
+      "ownerPaths": [
+        "tools/super-backup.mjs"
+      ],
+      "ownerStatus": "HINT",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-74-backup-recovery"
+    },
+    {
+      "id": "A75",
+      "num": 75,
+      "name": "Continuous Development",
+      "slug": "continuous-development",
+      "section": "X. Релиз и развитие",
+      "waves": [
+        "W6"
+      ],
+      "dependsOn": [
+        "A70",
+        "A74"
+      ],
+      "ownerPaths": [],
+      "ownerStatus": "TO-INVENTORY",
+      "status": "PLANNED",
+      "evidence": [],
+      "blockers": [],
+      "gates": [],
+      "branch": "aspect-75-continuous-development"
+    }
+  ]
+}

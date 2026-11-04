@@ -1,0 +1,40 @@
+name: NK1 75-aspect progress tracker
+
+on:
+  pull_request:
+    paths:
+      - "docs/nk1-aspect-progress.json"
+      - "tools/nk1-aspect-progress.mjs"
+      - "tools/nk1-aspect-progress.test.mjs"
+      - "docs/NK1_75_ASPECT_EXECUTION_BACKLOG_RU_2026-11-04.md"
+      - ".github/workflows/nk1-aspect-progress.yml"
+  push:
+    paths:
+      - "docs/nk1-aspect-progress.json"
+      - "tools/nk1-aspect-progress.mjs"
+      - "tools/nk1-aspect-progress.test.mjs"
+      - ".github/workflows/nk1-aspect-progress.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-aspect-progress-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Validate tracker integrity (75 aspects, no cycles, evidence rule)
+        run: npm run aspect:progress:check
+      - name: Run tracker regression tests
+        run: npm run aspect:progress:test
+      - name: Print progress report
+        run: npm run aspect:progress

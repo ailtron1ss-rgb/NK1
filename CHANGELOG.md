@@ -1,3 +1,11 @@
+## [NK1][Governance] Add 75-aspect executable progress tracker (2026-11-04)
+
+- Add `docs/nk1-aspect-progress.json` as the machine-readable single source of truth for the 75-aspect / 6-wave plan (aspect id, name, section, waves, dependencies, owner hint, status, evidence, gates, branch).
+- Add `tools/nk1-aspect-progress.mjs` (`npm run aspect:progress[:json|:check]`): validates the tracker (all 75 aspects present, unique ids/nums, no dangling/self/cyclic dependency, valid statuses, a `PASS` requires linked evidence) and reports per-wave and overall progress plus the next dependency-satisfied aspects.
+- Add `tools/nk1-aspect-progress.test.mjs` (12 cases): real tracker has zero integrity errors and covers all 75 aspects; negative controls reject a `PASS` without evidence, a dangling dependency, a duplicate id, a dependency cycle and an invalid status.
+- Add `docs/NK1_75_ASPECT_EXECUTION_BACKLOG_RU_2026-11-04.md` (generated from the tracker) with per-wave tables, dependencies, owner hints, exit evidence and gates.
+- Add CI workflow `nk1-aspect-progress.yml`; progress advances only with a linked evidence artifact, never from module or test count.
+
 ## [NK1][EngineeringOS] Close nested secret-path preflight bypasses (2026-11-04)
 
 - Extend fail-closed diff policy to inspect path segments and basenames, not only repository-root exact paths.
