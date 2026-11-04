@@ -138,4 +138,28 @@ const files = [
   assert.throws(() => adapter.commit('unknown-import', [preview.candidates[0].id]), /preview not found/i);
 }
 
-console.log('NEKO_EXTERNAL_MARKDOWN_MEMORY_IMPORT=PASS cases=10');
+// Commit approvals are untrusted input too: accessors, proxies and sparse arrays fail closed.
+{
+  const preview = adapter.preview([{ path: 'MEMORY.md', content: '- Approval data must be inert.' }]);
+  const id = preview.candidates[0].id;
+  let getterCalls = 0;
+  const accessorSelection = [];
+  Object.defineProperty(accessorSelection, '0', {
+    enumerable: true, configurable: true,
+    get() { getterCalls += 1; return id; },
+  });
+  accessorSelection.length = 1;
+  assert.throws(() => adapter.commit(preview.importId, accessorSelection), /invalid approved candidate selection/i);
+  const proxySelection = new Proxy([id], { getPrototypeOf() { throw new Error('selection trap'); } });
+  assert.throws(() => adapter.commit(preview.importId, proxySelection), /invalid approved candidate selection/i);
+  const sparseSelection = new Array(1);
+  assert.throws(() => adapter.commit(preview.importId, sparseSelection), /invalid approved candidate selection/i);
+  const hostileOptions = {};
+  Object.defineProperty(hostileOptions, 'tick', {
+    enumerable: true, get() { getterCalls += 1; return 1; },
+  });
+  assert.throws(() => adapter.commit(preview.importId, [id], hostileOptions), /invalid Markdown import commit options/i);
+  assert.equal(getterCalls, 0);
+}
+
+console.log('NEKO_EXTERNAL_MARKDOWN_MEMORY_IMPORT=PASS cases=11');
