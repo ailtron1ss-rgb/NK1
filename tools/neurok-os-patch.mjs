@@ -154,7 +154,9 @@ export function inspectUnifiedDiff(patch) {
 
 export function evaluatePatchPolicy(inspection, policy) {
   if (policy?.schemaVersion !== 1 || !Array.isArray(policy.denyPrefixes) ||
-      !Array.isArray(policy.denyExactPaths) || !Array.isArray(policy.humanApprovalPrefixes) ||
+      !Array.isArray(policy.denyExactPaths) || !Array.isArray(policy.denySegments) ||
+      !Array.isArray(policy.denyBasenames) || !Array.isArray(policy.denyBasenamePrefixes) ||
+      !Array.isArray(policy.denyBasenameSuffixes) || !Array.isArray(policy.humanApprovalPrefixes) ||
       !Array.isArray(policy.humanApprovalExactPaths)) {
     throw new Error('invalid patch policy schema');
   }
@@ -162,8 +164,15 @@ export function evaluatePatchPolicy(inspection, policy) {
   const humanApproval = [];
   for (const file of inspection.files) {
     const target = file.path.toLowerCase();
-    if (policy.denyExactPaths.some(item => target === item.toLowerCase()) ||
-        policy.denyPrefixes.some(item => target.startsWith(item.toLowerCase()))) {
+    const segments = target.split('/');
+    const basename = segments.at(-1);
+    const sensitiveTarget = policy.denyExactPaths.some(item => target === item.toLowerCase()) ||
+      policy.denyPrefixes.some(item => target.startsWith(item.toLowerCase())) ||
+      policy.denySegments.some(item => segments.includes(item.toLowerCase())) ||
+      policy.denyBasenames.some(item => basename === item.toLowerCase()) ||
+      policy.denyBasenamePrefixes.some(item => basename.startsWith(item.toLowerCase())) ||
+      policy.denyBasenameSuffixes.some(item => basename.endsWith(item.toLowerCase()));
+    if (sensitiveTarget) {
       denied.push(file.path);
     } else if (policy.humanApprovalExactPaths.some(item => target === item.toLowerCase()) ||
         policy.humanApprovalPrefixes.some(item => target.startsWith(item.toLowerCase()))) {
