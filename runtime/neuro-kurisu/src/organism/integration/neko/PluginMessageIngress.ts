@@ -193,22 +193,28 @@ function restoreIngressResult(value: unknown): PluginMessageIngressResult | null
   if (!isRecord(value) || typeof value.accepted !== 'boolean') return null;
   const allowed = new Set(['accepted', 'errorCode', 'aiBehavior', 'visibility', 'cognitiveProcessed', 'presented', 'replayed']);
   if (Object.keys(value).some(key => !allowed.has(key))) return null;
-  if (value.errorCode !== undefined && (typeof value.errorCode !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/i.test(value.errorCode))) return null;
-  if (value.aiBehavior !== undefined && value.aiBehavior !== 'respond' && value.aiBehavior !== 'read' && value.aiBehavior !== 'blind') return null;
-  if (value.visibility !== undefined && (!Array.isArray(value.visibility) || value.visibility.length > 2 ||
-      value.visibility.some(item => item !== 'chat' && item !== 'hud') || new Set(value.visibility).size !== value.visibility.length)) return null;
-  for (const key of ['cognitiveProcessed', 'presented', 'replayed'] as const) {
-    if (value[key] !== undefined && typeof value[key] !== 'boolean') return null;
-  }
-  if (value.accepted && value.errorCode !== undefined) return null;
+  const errorCode = value.errorCode;
+  const aiBehavior = value.aiBehavior;
+  const rawVisibility = value.visibility;
+  const cognitiveProcessed = value.cognitiveProcessed;
+  const presented = value.presented;
+  const replayed = value.replayed;
+  if (errorCode !== undefined && (typeof errorCode !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/i.test(errorCode))) return null;
+  if (aiBehavior !== undefined && aiBehavior !== 'respond' && aiBehavior !== 'read' && aiBehavior !== 'blind') return null;
+  if (rawVisibility !== undefined && (!Array.isArray(rawVisibility) || rawVisibility.length > 2 ||
+      rawVisibility.some(item => item !== 'chat' && item !== 'hud') || new Set(rawVisibility).size !== rawVisibility.length)) return null;
+  if (cognitiveProcessed !== undefined && typeof cognitiveProcessed !== 'boolean') return null;
+  if (presented !== undefined && typeof presented !== 'boolean') return null;
+  if (replayed !== undefined && typeof replayed !== 'boolean') return null;
+  if (value.accepted && errorCode !== undefined) return null;
   return {
     accepted: value.accepted,
-    ...(value.errorCode === undefined ? {} : { errorCode: value.errorCode }),
-    ...(value.aiBehavior === undefined ? {} : { aiBehavior: value.aiBehavior }),
-    ...(value.visibility === undefined ? {} : { visibility: [...value.visibility] }),
-    ...(value.cognitiveProcessed === undefined ? {} : { cognitiveProcessed: value.cognitiveProcessed }),
-    ...(value.presented === undefined ? {} : { presented: value.presented }),
-    ...(value.replayed === undefined ? {} : { replayed: value.replayed }),
+    ...(errorCode === undefined ? {} : { errorCode }),
+    ...(aiBehavior === undefined ? {} : { aiBehavior }),
+    ...(rawVisibility === undefined ? {} : { visibility: [...rawVisibility] as NekoMessageVisibility[] }),
+    ...(cognitiveProcessed === undefined ? {} : { cognitiveProcessed }),
+    ...(presented === undefined ? {} : { presented }),
+    ...(replayed === undefined ? {} : { replayed }),
   };
 }
 
