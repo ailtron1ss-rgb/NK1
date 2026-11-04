@@ -6,6 +6,7 @@ import { DeviceEvidenceLedger, defaultDeviceEvidence } from '../src/organism/bod
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
 import { P35SemanticWorldBodyEngine, defaultP35SemanticWorldBody } from '../src/organism/body/P35SemanticWorldBody.ts';
 import { P37EmbodiedSensoriumEngine, defaultP37EmbodiedSensorium } from '../src/organism/body/P37EmbodiedSensorium.ts';
+import { EmbodiedRecoveryController } from '../src/organism/body/EmbodiedRecoveryController.ts';
 
 // Persisted body-subsystem snapshots are written to disk every tick and restored
 // on the next start. Before this hardening, each restore() spread raw persisted
@@ -214,5 +215,41 @@ const p37Snapshot = p37Source.snapshot();
 const p37Restored = new P37EmbodiedSensoriumEngine();
 p37Restored.restore(p37Snapshot);
 assert.deepEqual(p37Restored.snapshot(), p37Snapshot, 'valid P37 snapshot must round-trip');
+
+// --- EmbodiedRecoveryController ----------------------------------------------
+// A hostile action name such as `constructor` previously resolved to
+// Object.prototype.constructor through the actionStates record, so advise()/
+// record() would read a function instead of a ledger row.
+const recovery = new EmbodiedRecoveryController();
+recovery.restore({
+  version: 1,
+  enabled: 'yes',
+  tick: -1,
+  globalReliability01: 5,
+  mode: 'TOTALLY_BLOCKED',
+  actionStates: { explore: { attempts: 'x', reliability01: 9 }, constructor: { attempts: 5 }, ['__proto__']: { attempts: 9 } },
+  episodes: [{ tick: -1, verificationClass: 'bogus' }, 'not-a-record'],
+});
+const rec = recovery.snapshot();
+assert.equal(rec.enabled, true, 'non-boolean enabled fails closed to the safety default');
+assert.equal(rec.tick, 0);
+assert.equal(rec.globalReliability01, 1, 'reliability above 1 clamps to 1');
+assert.equal(rec.mode, 'normal', 'unknown recovery mode falls back');
+assert.equal(rec.actionStates.explore.attempts, 0, 'string counter falls back');
+assert.equal(rec.actionStates.explore.reliability01, 1);
+assert.equal(Object.prototype.hasOwnProperty.call(rec.actionStates, 'constructor'), false, 'prototype-key action names are dropped');
+assert.equal(Object.prototype.hasOwnProperty.call(rec.actionStates, '__proto__'), false);
+assert.equal(rec.episodes.length, 1, 'only plain-record episodes survive');
+assert.equal(rec.episodes[0].verificationClass, 'unverified', 'unknown reliability class falls back');
+assert.equal(rec.episodes[0].tick, 0);
+assert.equal(recovery.advise('constructor', 1_000).mode, 'normal', 'advise stays safe for a prototype-key action');
+
+// A valid recovery snapshot round-trips exactly.
+const recoverySource = new EmbodiedRecoveryController();
+recoverySource.record({ tick: 1, at: 10, action: 'explore', status: 'executed', realityClass: 'device-actuation', source: 'android-termux', verified01: 0.99, independent01: 0.99, effect01: 0.7, consequenceError01: 0.1 });
+recoverySource.record({ tick: 2, at: 20, action: 'explore', status: 'failed', realityClass: 'device-actuation', source: 'android-termux', verified01: 0, independent01: 0, effect01: 0, consequenceError01: 0.9 });
+const recoverySnapshot = recoverySource.snapshot();
+const recoveryRestored = new EmbodiedRecoveryController(recoverySnapshot);
+assert.deepEqual(recoveryRestored.snapshot(), recoverySnapshot, 'valid recovery snapshot must round-trip');
 
 console.log('EMBODIMENT_RESTORE_SANITIZATION_INTEGRITY=PASS');

@@ -967,6 +967,7 @@ production-ready. Рисовать плейсхолдер и заявлять г
 | `EmbodimentSubsystemRuntime.cameraEvidence.restore` | `captures='x'`, `cumulativeNovelty01=5`, `previousHash=7`, `last='nope'` | пересборка счётчиков/новизны/hash, `last` только как plain-record |
 | `P35SemanticWorldBodyEngine.restore` | `metrics.grounding01='x'`, `conflict01=99`, `body.energy01='bad'`, `spatialSelf.x=NaN`, `scene.label=5`, `affordances.respond=7` | полная реконструкция сущностей/отношений/утверждений, метрик, надёжностей модальностей, spatialSelf, body, scene, affordances, счётчиков и хеша |
 | `P37EmbodiedSensoriumEngine.restore` | `tick=-1`, `sensors.text='x'`, `affordance.respond=5`, `spatialSelf.x=NaN`, `entities[0].presenceStatus='TOTALLY_VISIBLE'`, `seenCount=-4` | реконструкция сущностей/событий/рёбер/запросов/сенсоров/affordance; координата при мусоре → `null` (не `NaN` и не `0`); `awake` fail-closed |
+| `EmbodiedRecoveryController.restore` | имя действия `constructor`/`__proto__` резолвилось в `Object.prototype` (чтение функции вместо строки леджера); `enabled='yes'`, `globalReliability01=5`, `mode='TOTALLY_BLOCKED'`, `episodes[0].verificationClass='bogus'` | полная реконструкция леджера действий/эпизодов/счётчиков; prototype-key имена действий отбрасываются; `enabled` fail-closed; конструктор делегирует в `restore` |
 
 ### 22.2 Прогоны (OBSERVED)
 
@@ -979,8 +980,9 @@ production-ready. Рисовать плейсхолдер и заявлять г
   `p37-episode-binding`, `p37-migration`, `aspect10-embodied-interaction`, `p14-embodied`.
 - Смежные наборы: `big-pass-57-persistence-coordinator`, `big-pass-48-subsystem-ports`,
   `big-pass-2559-2566-embodied-sensorimotor-world`, `big-pass-2551-2558-embodied-causal-memory`,
-  `big-pass-379-embodied-recovery-causal`, `embodiment-perception-routing-restore-integrity`,
-  `aspect10-grounded-bridge` — PASS.
+  `big-pass-379-embodied-recovery-causal`, `big-pass-379-embodied-recovery-performance`,
+  `big-pass-379-runtime-closed-loop`, `workpass68-speech-gateway-boundary`,
+  `embodiment-perception-routing-restore-integrity`, `aspect10-grounded-bridge` — PASS.
 - `npm --prefix runtime/neuro-kurisu run test:embodiment-restore-sanitization` — PASS (тот же шаг, что в CI).
 - CI-шаг `Embodiment restore sanitization integrity` добавлен в `.github/workflows/nk1-embodiment-restore-integrity.yml`.
 
