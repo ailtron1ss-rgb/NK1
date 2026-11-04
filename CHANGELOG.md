@@ -1,3 +1,10 @@
+## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
+
+- Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
+- Validate every restored collection's row contract, bounded scalars and identities; keep valid peer rows while discarding malformed records and duplicate belief/stage/event IDs.
+- Remove ambiguous outbox rows when either row IDs or idempotency keys collide, preserving exactly-once lookup semantics.
+- Reuse NK1's existing `PlainDataSnapshot` boundary; no new memory owner, dependency, persistence schema or release claim.
+
 ## [NK1][Aspects] Add executable 75-aspect execution registry and weekly tracker (2026-11-04)
 
 - Add `engineering-os/aspects.v1.json`: 75 development aspects across 10 domains and 6 waves, each with an owner path, owner status, dependencies, verification gate, status and evidence.
