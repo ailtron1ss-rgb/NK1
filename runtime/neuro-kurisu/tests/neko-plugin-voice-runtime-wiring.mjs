@@ -12,6 +12,7 @@ function makeRuntime(transcript, observer) {
     embodiment: {
       async listen() { return transcript; },
       userActivity() {},
+      voiceSnapshot() { return { state: { speaking: false, listening: false }, plan: null }; },
     },
     core: {
       recordMultimodalObservation(value) { observations.push(value); },
