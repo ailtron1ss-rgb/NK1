@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { snapshotPlainData } from '../../core/PlainDataSnapshot.ts';
 import { sha256Stable } from '../../core/StableSerialization.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
@@ -280,6 +281,162 @@ function normalizeHexisConnectorPolicies(value: unknown): HexisConnectorPolicy[]
     // Duplicate IDs are ambiguous for revocation; fail closed by dropping every duplicate.
     return candidates.filter(policy => counts.get(policy.id) === 1);
 }
+
+const HEXIS_SAFE_TEXT_CONTROL = /[\u0000-\u001f\u007f-\u009f]/u;
+function isHexisSafeText(value: unknown, maxLength: number, allowEmpty = false): value is string {
+    return typeof value === 'string' && value.length <= maxLength &&
+        (allowEmpty || value.trim().length > 0) && !HEXIS_SAFE_TEXT_CONTROL.test(value);
+}
+function isHexisUnit(value: unknown): value is number {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+function isHexisSafeInteger(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+function isHexisTime(value: unknown): value is number {
+    return isHexisSafeInteger(value) && value <= 8_640_000_000_000_000;
+}
+function isHexisStringList(value: unknown, maxItems: number, maxText: number): value is string[] {
+    return Array.isArray(value) && value.length <= maxItems &&
+        value.every(item => isHexisSafeText(item, maxText));
+}
+function isHexisDigest(value: unknown): value is string {
+    return typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value);
+}
+function isHexisRecordOfCounts(value: unknown): value is Record<string, number> {
+    if (!isHexisPolicyRecord(value)) return false;
+    const entries = Object.entries(value);
+    return entries.length <= 128 && entries.every(([key, count]) =>
+        isHexisSafeText(key, 128) && isHexisSafeInteger(count) && count <= 100_000);
+}
+function isHexisEvidenceSource(value: unknown): value is HexisEvidenceSource {
+    if (!isHexisPolicyRecord(value)) return false;
+    return (value.ref === undefined || isHexisSafeText(value.ref, 512)) &&
+        (value.label === undefined || isHexisSafeText(value.label, 256)) &&
+        (value.contentHash === undefined || isHexisSafeText(value.contentHash, 256)) &&
+        (value.trust01 === undefined || isHexisUnit(value.trust01)) &&
+        (value.note === undefined || isHexisSafeText(value.note, 2_000, true));
+}
+function isHexisBelief(value: unknown): value is HexisBeliefState {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.memoryId, 192) && isHexisUnit(value.confidence01) &&
+        isHexisUnit(value.trust01) && isHexisStringList(value.sourceKeys, 256, 512) &&
+        isHexisStringList(value.contradictingSourceKeys, 256, 512) && isHexisTime(value.updatedAt);
+}
+function isHexisBeliefAudit(value: unknown): value is HexisBeliefRevisionAudit {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisSafeText(value.memoryId, 192) &&
+        (value.stance === 'supports' || value.stance === 'contradicts') &&
+        isHexisEvidenceSource(value.evidence) && isHexisUnit(value.priorConfidence01) &&
+        isHexisUnit(value.posteriorConfidence01) && isHexisUnit(value.priorTrust01) &&
+        isHexisUnit(value.posteriorTrust01) && typeof value.independent === 'boolean' &&
+        typeof value.applied === 'boolean' && isHexisSafeText(value.reason, 256) &&
+        value.policy === 'residual_v1' &&
+        (value.context === undefined || isHexisSafeText(value.context, 2_000, true)) &&
+        isHexisTime(value.at) && isHexisDigest(value.digest);
+}
+function isHexisTemporalAssertion(value: unknown): value is HexisTemporalAssertion {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisSafeText(value.memoryId, 192) &&
+        isHexisDigest(value.valueHash) && isHexisSafeText(value.summary, 2_000, true) &&
+        isHexisUnit(value.confidence01) && isHexisTime(value.validFrom) &&
+        (value.validUntil === null || isHexisTime(value.validUntil)) &&
+        (value.supersedesId === undefined || isHexisSafeText(value.supersedesId, 128)) &&
+        isHexisSafeText(value.source, 256) && isHexisTime(value.at);
+}
+function isHexisLearningReviewItem(value: unknown): value is HexisLearningReviewItem {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) &&
+        ['semantic_belief', 'new_procedure', 'revised_strategy', 'proposed_skill'].includes(String(value.kind)) &&
+        isHexisSafeText(value.title, 256) && isHexisSafeText(value.content, 8_000, true) &&
+        (value.sourceMemoryId === undefined || isHexisSafeText(value.sourceMemoryId, 192)) &&
+        isHexisPolicyRecord(value.evidence) &&
+        ['pending', 'approved', 'corrected', 'forgotten'].includes(String(value.status)) &&
+        (value.correction === undefined || isHexisSafeText(value.correction, 2_000, true)) &&
+        isHexisTime(value.createdAt) &&
+        (value.decidedAt === undefined || isHexisTime(value.decidedAt));
+}
+function isHexisLearningReview(value: unknown): value is HexisLearningReview {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisTime(value.periodStart) &&
+        isHexisTime(value.periodEnd) && value.periodEnd >= value.periodStart &&
+        isHexisSafeText(value.summary, 2_000, true) &&
+        (value.status === 'pending' || value.status === 'completed') &&
+        Array.isArray(value.items) && value.items.length <= 50 &&
+        value.items.every(isHexisLearningReviewItem) && isHexisTime(value.createdAt) &&
+        (value.completedAt === undefined || isHexisTime(value.completedAt));
+}
+function isHexisRetentionProposal(value: unknown): value is HexisRetentionProposal {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisSafeText(value.memoryId, 192) &&
+        ['compress', 'archive', 'forget'].includes(String(value.action)) &&
+        isHexisSafeText(value.reason, 500, true) &&
+        isHexisSafeInteger(value.sourceBytes) && isHexisSafeInteger(value.projectedBytes) &&
+        isHexisUnit(value.estimatedFidelity01) && isHexisUnit(value.estimatedRegret01) &&
+        ['proposed', 'accepted', 'rejected'].includes(String(value.status)) && isHexisTime(value.createdAt);
+}
+function isHexisFidelityReceipt(value: unknown): value is HexisFidelityReceipt {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) &&
+        ['compression', 'archive', 'forget', 'hmx-import'].includes(String(value.operation)) &&
+        isHexisSafeInteger(value.sourceCount) && isHexisSafeInteger(value.retainedCount) &&
+        isHexisSafeInteger(value.sourceBytes) && isHexisSafeInteger(value.retainedBytes) &&
+        isHexisUnit(value.fidelity01) && isHexisUnit(value.regret01) &&
+        isHexisTime(value.at) && isHexisDigest(value.digest);
+}
+function isHexisHmxConflict(value: unknown): boolean {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.path, 512) && isHexisSafeText(value.kind, 128) &&
+        isHexisSafeText(value.detail, 2_000, true);
+}
+function isHexisHmxStage(value: unknown): value is HexisHmxStage {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.stagingId, 128) && isHexisSafeText(value.exportId, 256) &&
+        ['port', 'duplicate', 'telepathy', 'analysis'].includes(String(value.intent)) &&
+        ['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(String(value.strategy)) &&
+        (value.sourceSubjectId === undefined || isHexisSafeText(value.sourceSubjectId, 256)) &&
+        isHexisRecordOfCounts(value.sectionCounts) &&
+        isHexisStringList(value.protectedSections, 128, 128) &&
+        Array.isArray(value.conflicts) && value.conflicts.length <= 256 &&
+        value.conflicts.every(isHexisHmxConflict) &&
+        ['staged', 'accepted', 'rejected'].includes(String(value.status)) &&
+        isHexisTime(value.createdAt) && isHexisDigest(value.digest) &&
+        isHexisPolicyRecord(value.stagedSections);
+}
+function isHexisOutboxEntry(value: unknown): value is HexisOutboxEntry {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisSafeText(value.idempotencyKey, 160) &&
+        isHexisSafeText(value.kind, 128) && isHexisSafeText(value.channel, 128) &&
+        Object.prototype.hasOwnProperty.call(value, 'payload') &&
+        ['pending', 'publishing', 'published', 'failed'].includes(String(value.status)) &&
+        isHexisSafeInteger(value.attempts) && value.attempts <= 1_000_000 &&
+        isHexisTime(value.createdAt) && isHexisTime(value.updatedAt) &&
+        (value.publishedAt === undefined || isHexisTime(value.publishedAt)) &&
+        (value.lastError === undefined || isHexisSafeText(value.lastError, 1_000, true));
+}
+function isHexisExecutionPlan(value: unknown): value is HexisExecutionPlan {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisSafeText(value.actionKind, 128) &&
+        ['local', 'sandbox', 'remote', 'companion'].includes(String(value.requestedPlacement)) &&
+        ['local', 'sandbox', 'remote', 'companion'].includes(String(value.resolvedPlacement)) &&
+        isHexisUnit(value.risk01) && typeof value.requiresApproval === 'boolean' &&
+        isHexisSafeText(value.rationale, 2_000, true) && isHexisTime(value.at);
+}
+function normalizeHexisRows<T>(
+    value: unknown,
+    limit: number,
+    validate: (candidate: unknown) => candidate is T,
+    identityKeys: (row: T) => string[],
+): T[] {
+    if (!Array.isArray(value)) return [];
+    const valid = value.slice(-limit).filter(validate);
+    const counts = new Map<string, number>();
+    for (const row of valid) {
+        for (const key of identityKeys(row)) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return valid.filter(row => identityKeys(row).every(key => counts.get(key) === 1));
+}
+
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
 export function defaultHexisAdaptationState(): HexisAdaptationState {
     return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
@@ -288,9 +445,21 @@ export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
     restore(raw?: Partial<HexisAdaptationState> | null): void {
         const defaults = defaultHexisAdaptationState();
-        const value = raw ?? {};
+        let value: Record<string, unknown>;
+        try {
+            // Persisted state is untrusted input. Copy only bounded inert own-data
+            // properties before reading any field; never execute accessors or retain
+            // proxies/class instances in the live organism state.
+            const detached = snapshotPlainData(raw ?? {}, { allowNonFiniteNumbers: true });
+            if (!isHexisPolicyRecord(detached)) throw new Error('hexis-snapshot-root-invalid');
+            value = detached;
+        } catch {
+            this.state = defaults;
+            return;
+        }
+
         const normalizedPolicies = normalizeHexisConnectorPolicies(value.connectorPolicies);
-        const metricInput: Record<string, unknown> = isHexisPolicyRecord(value.metrics)
+        const metricInput = isHexisPolicyRecord(value.metrics)
             ? value.metrics
             : Object.create(null) as Record<string, unknown>;
         const metrics = Object.fromEntries(
@@ -301,24 +470,20 @@ export class HexisAdaptationFabric {
                     : fallback];
             }),
         ) as HexisAdaptationState['metrics'];
+
         this.state = {
             version: defaults.version,
             source: defaults.source,
-            beliefs: Array.isArray(value.beliefs) ? value.beliefs.slice(-1024) : [],
-            beliefAudit: Array.isArray(value.beliefAudit) ? value.beliefAudit.slice(-2048) : [],
-            temporal: Array.isArray(value.temporal) ? value.temporal.slice(-4096) : [],
-            learningReviews: Array.isArray(value.learningReviews) ? value.learningReviews.slice(-96) : [],
-            retentionProposals: Array.isArray(value.retentionProposals) ? value.retentionProposals.slice(-512) : [],
-            fidelityReceipts: Array.isArray(value.fidelityReceipts) ? value.fidelityReceipts.slice(-512) : [],
-            hmxStages: Array.isArray(value.hmxStages)
-                ? value.hmxStages.slice(-32).map((stage: any) => ({
-                    ...stage,
-                    stagedSections: stage?.stagedSections && typeof stage.stagedSections === 'object' ? stage.stagedSections : {},
-                  }))
-                : [],
-            outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
+            beliefs: normalizeHexisRows(value.beliefs, 1024, isHexisBelief, row => [row.memoryId]),
+            beliefAudit: normalizeHexisRows(value.beliefAudit, 2048, isHexisBeliefAudit, row => [row.id]),
+            temporal: normalizeHexisRows(value.temporal, 4096, isHexisTemporalAssertion, row => [row.id]),
+            learningReviews: normalizeHexisRows(value.learningReviews, 96, isHexisLearningReview, row => [row.id]),
+            retentionProposals: normalizeHexisRows(value.retentionProposals, 512, isHexisRetentionProposal, row => [row.id]),
+            fidelityReceipts: normalizeHexisRows(value.fidelityReceipts, 512, isHexisFidelityReceipt, row => [row.id]),
+            hmxStages: normalizeHexisRows(value.hmxStages, 32, isHexisHmxStage, row => [row.stagingId]),
+            outbox: normalizeHexisRows(value.outbox, 512, isHexisOutboxEntry, row => [row.id, row.idempotencyKey]),
             connectorPolicies: normalizedPolicies,
-            executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
+            executions: normalizeHexisRows(value.executions, 512, isHexisExecutionPlan, row => [row.id]),
             metrics,
         };
     }
