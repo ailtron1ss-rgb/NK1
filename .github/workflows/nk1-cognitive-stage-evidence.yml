@@ -1,0 +1,48 @@
+name: NK1 cognitive stage owner evidence W01
+
+on:
+  push:
+    branches:
+      - "aspect/cognitive-stage-receipts-w01-20261104"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-stage-evidence-workpass83.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-cognitive-stage-evidence.yml"
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-stage-evidence-workpass83.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-cognitive-stage-evidence.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-cognitive-stage-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cognitive-stage-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify real owner-to-CEF stage evidence
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass83:cognitive-stage-evidence
+      - name: Runtime typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
