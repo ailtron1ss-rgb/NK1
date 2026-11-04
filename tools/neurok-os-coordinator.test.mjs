@@ -135,7 +135,7 @@ test('read-set symlinks cannot escape the claimed repository root', async () => 
 test('claims without a read-set are explicitly unverified, never silently fresh', async () => fixture(async stateDir => {
   const { verifyClaimFreshness } = await import('./neurok-os-coordinator.mjs');
   await claimTask(request('TASK-NO-READSET', 'agent-a', ['src/change.ts']), { stateDir });
-  const result = await verifyClaimFreshness('TASK-NO-READSET', 'agent-a', { stateDir });
+  const result = await verifyClaimFreshness('TASK-NO-READSET', 'agent-a', { stateDir, currentSha: sha });
   assert.equal(result.fresh, false);
   assert.match(result.reason, /unverified/);
 }));
