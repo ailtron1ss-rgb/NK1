@@ -5016,11 +5016,10 @@ export class OrganismCore {
             if (worldGrounding.modelAgreement01 < 0.55)
                 this.cognitiveRuntime.cognitiveField.addPressure('contradiction', `world-model-disagreement:${(1 - worldGrounding.modelAgreement01).toFixed(3)}`, 1 - worldGrounding.modelAgreement01, ['world-model-ensemble'], .02);
         }
-        const activeGoalMemoryQuery = observation.text ? '' : activeGoalPressureFallback(this.persisted.goals);
-        const memoryQuery = observation.text || activeGoalMemoryQuery || 'current context';
+        const memoryQuery = observation.text || activeGoalPressureFallback(this.persisted.goals) || 'current context';
         const memoryQueryKind: 'observation-text' | 'active-goal-fallback' | 'context-fallback' = observation.text
             ? 'observation-text'
-            : activeGoalMemoryQuery ? 'active-goal-fallback' : 'context-fallback';
+            : memoryQuery !== 'current context' ? 'active-goal-fallback' : 'context-fallback';
         // Honor the planner's memory budget for every recall path; internal-goal fallback
         // must not silently bypass a decision to skip memory for this cognitive cycle.
         const advancedRetrieved = !cognitiveExecutionPlan.run.memory
