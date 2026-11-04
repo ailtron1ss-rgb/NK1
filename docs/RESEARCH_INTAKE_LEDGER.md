@@ -261,3 +261,28 @@ Do not count a reference as “used” until a source revision/paper protocol is
 Promote a candidate only when it removes a named failure of the canonical owner, survives an isolated adapter test, and beats the current clip-based baseline on a frozen comparison without unbounded latency, memory or privacy cost. Keep the donor's license and attribution; never ship model weights or datasets whose license is unreviewed. Record the result and the rollback in the handover.
 
 **Evidence boundary:** this is a candidate queue. Nothing here is an integrated dependency, a measured quality uplift or a license approval for upstream code, weights or datasets.
+
+---
+
+## WorkPass71 addendum — additional co-speech / full-body gesture candidates (2026-11-03)
+
+**Decision:** extend the candidate queue only; adopt nothing in this pass. These supplement the
+StreamTalk / LiveGesture / GlobalDiff rows above with further recent mechanisms for §17 pass 4
+(full motorics) and pass 5 (world interaction). All rows are `RESEARCH-ONLY`: no upstream code,
+weights or datasets were downloaded or installed.
+
+| Candidate / source | Revision / access | License | Mechanism | NK1 target | Boundary |
+|---|---|---|---|---|---|
+| [DIDiffGes (AAAI 2025)](https://arxiv.org/html/2503.17059v1) | paper, inspected 2026-11-03 | verify code license | Decoupled semi-implicit diffusion, 10-step sampling, 88 frames in ~0.4 s | Offline gesture-quality reference | Diffusion sampling cost; not a browser runtime |
+| [SemTalk (ICCV 2025)](https://openaccess.thecvf.com/content/ICCV2025/papers/) | paper, inspected 2026-11-03 | verify code license | Holistic co-speech motion with frame-level semantic emphasis | Semantics-to-gesture mapping reference | Offline; dataset license separate |
+| [PRIMAL (ICCV 2025)](https://github.com/Kedreamix/Awesome-Talking-Head-Synthesis) | index, inspected 2026-11-03 | verify code license | Physically reactive interactive motor model | Reference for reactive whole-body response (pass 5) | Not a web runtime; weights unreviewed |
+
+### Acceptance rule (unchanged)
+
+Promote only on measured benefit against the frozen baseline with invariants preserved
+(one canonical owner per capability; derived channels not overridden; unsupported channels
+reported, never faked). Record donor URL/revision, license, mechanism, test, resource cost,
+result and rollback. Never ship unreviewed weights or datasets.
+
+**Evidence boundary:** this is a candidate queue. Nothing here is an integrated dependency, a
+measured quality uplift or a license approval for upstream code, weights or datasets.

@@ -215,4 +215,24 @@ export function advanceBodySwitch(
   return { progress, committed: progress >= 1 };
 }
 
+/**
+ * Advance a handoff from a fixed monotonic start time.
+ *
+ * `advanceBodySwitch` takes cumulative elapsed-since-start, but a requestAnimationFrame
+ * loop naturally has only the current timestamp and the previous one. Passing the
+ * per-frame delta there keeps `elapsedMs/durationMs` at a single frame's fraction
+ * (~16/220), so the crossfade creeps forward and never reaches `committed`. This
+ * helper derives the correct cumulative elapsed from the transition origin so the
+ * handoff finishes within `durationMs`.
+ */
+export function advanceBodySwitchFromStart(
+  previous: BodySwitchProgress,
+  startMonotonicMs: number,
+  nowMonotonicMs: number,
+  durationMs: number,
+): BodySwitchProgress {
+  if (!Number.isFinite(startMonotonicMs) || !Number.isFinite(nowMonotonicMs)) return previous;
+  return advanceBodySwitch(previous, Math.max(0, nowMonotonicMs - startMonotonicMs), durationMs);
+}
+
 export type { EmbodimentMode, SwitchPlan };

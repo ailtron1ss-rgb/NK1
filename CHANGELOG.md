@@ -1,3 +1,8 @@
+## [NK1][Body] Accumulate perception-routing counters instead of resetting them each tick (2026-11-03)
+- `routePerception` returned literal `routedCount:1`/`droppedCount:1`, but the result is persisted to `facets.embodiment.perceptionRouting` every tick, so the durable cumulative counters were destroyed on the next event and the restore path was meaningless.
+- Fold each event into the sanitized previous state (`previous`), and pass the embodiment subsystem's live routing state as the prior.
+- Regression: two routed events now yield `routedCount===2` (was `1`); a sleep-dropped event yields `droppedCount===1`.
+
 ## [NK1][Memory] Restore cross-lingual recall in the bilingual concept bridge (2026-11-03)
 - The answerability gate computed `conceptCoverage` but never treated it as grounding evidence, and document-side concept detection required a literal alias token, so inflected Russian never matched. Cross-lingual `retrieve()` returned `[]` in both directions.
 - Add a reverse concept-group index (alias token and its five-character stem), document-side concept detection symmetric with query-side expansion, concept-group postings in candidate selection, and a narrow `conceptGrounding` clause in the gate bounded to focused (1-3 group) queries with >=50% group coverage.

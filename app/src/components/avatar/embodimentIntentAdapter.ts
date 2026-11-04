@@ -122,8 +122,12 @@ export function resolveDepthRigPoseFromMotorFrame(
       throw new Error("Invalid depth-rig joint calibration.");
     }
     const joint = frame.joints[binding.jointId];
-    if (!joint || joint.id !== binding.jointId || joint.available !== true || !Number.isFinite(joint.targetAngleRad)) continue;
-    const delta = clamp((joint.targetAngleRad - rest) * degreesPerRadian, -maxAbs, maxAbs);
+    // Drive the rig from the measured joint state, never the target intent:
+    // targetAngleRad is where the controller wants the joint to go, angleRad is
+    // where it actually is. The sibling motorFrameMapper maps angleRad for the
+    // same reason, so using the target here would desync the two render paths.
+    if (!joint || joint.id !== binding.jointId || joint.available !== true || !Number.isFinite(joint.angleRad)) continue;
+    const delta = clamp((joint.angleRad - rest) * degreesPerRadian, -maxAbs, maxAbs);
     deltas[binding.nodeId] = { rotation: delta };
   }
   return { rigId: rig.id, deltas };
