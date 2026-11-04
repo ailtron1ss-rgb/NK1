@@ -164,6 +164,27 @@ const makeRegistry = (options = {}) => new NekoPluginManifestPolicyRegistry(make
   assert.equal(restored.list().length, 0);
 }
 
+// Restore is all-or-nothing: a valid prefix must not survive a malformed later entry.
+{
+  const registry = makeRegistry();
+  assert.equal(registry.register(manifest()).registered, true);
+  const invalidLaterEntry = manifest({ id: 'calendar' });
+  const malformedSnapshot = { version: 1, manifests: [manifest(), invalidLaterEntry] };
+
+  assert.equal(registry.restore(malformedSnapshot), 0,
+    'one invalid manifest must reject the entire snapshot instead of restoring a valid prefix');
+  assert.equal(registry.list().length, 0,
+    'a failed restore must leave no partially restored plugin permissions');
+  assert.equal(await registry.authorize(context(), registeredTools[0]), false,
+    'partially restored policy must never authorize a plugin request');
+
+  const duplicateSnapshot = { version: 1, manifests: [manifest(), manifest()] };
+  assert.equal(registry.restore(duplicateSnapshot), 0,
+    'duplicate plugin identifiers must reject the entire snapshot');
+  assert.equal(registry.list().length, 0,
+    'duplicate snapshot entries must not leave the first duplicate active');
+}
+
 // Malformed objects cannot execute getters or Proxy traps; dynamic code fields are not in schema.
 {
   const registry = makeRegistry();
