@@ -126,26 +126,41 @@ export function validateRegistry(doc) {
 
 export function computeProgress(doc) {
   const verified = new Set(doc.verifiedStatuses ?? []);
+  const percent = (count, total) => total === 0 ? 0 : Math.round((count / total) * 1000) / 10;
+  const isImplementationRecorded = status => status === 'IMPLEMENTED' || verified.has(status);
   const byGroup = new Map();
   const byWave = new Map();
   for (const a of doc.aspects) {
     for (const [map, key] of [[byGroup, a.group], [byWave, a.wave]]) {
-      if (!map.has(key)) map.set(key, { total: 0, verified: 0, byStatus: {} });
+      if (!map.has(key)) map.set(key, { total: 0, verified: 0, implementationRecorded: 0, byStatus: {} });
       const row = map.get(key);
       row.total += 1;
       if (verified.has(a.status)) row.verified += 1;
+      if (isImplementationRecorded(a.status)) row.implementationRecorded += 1;
       row.byStatus[a.status] = (row.byStatus[a.status] ?? 0) + 1;
     }
   }
   const verifiedCount = doc.aspects.filter(a => verified.has(a.status)).length;
+  const implementationRecorded = doc.aspects.filter(a => isImplementationRecorded(a.status)).length;
+  const summarize = row => ({
+    total: row.total,
+    verified: row.verified,
+    implementationRecorded: row.implementationRecorded,
+    implementationPercent: percent(row.implementationRecorded, row.total),
+    verifiedPercent: percent(row.verified, row.total),
+    byStatus: row.byStatus,
+  });
   return {
     total: doc.aspects.length,
     verified: verifiedCount,
     implemented: doc.aspects.filter(a => a.status === 'IMPLEMENTED').length,
+    implementationRecorded,
+    implementationPercent: percent(implementationRecorded, doc.aspects.length),
+    verifiedPercent: percent(verifiedCount, doc.aspects.length),
     planned: doc.aspects.filter(a => a.status === 'PLANNED').length,
     blocked: doc.aspects.filter(a => a.status === 'BLOCKED').length,
-    groups: Object.fromEntries([...byGroup.entries()].map(([k, v]) => [k, { total: v.total, verified: v.verified, byStatus: v.byStatus }])),
-    waves: Object.fromEntries([...byWave.entries()].map(([k, v]) => [k, { total: v.total, verified: v.verified, byStatus: v.byStatus }])),
+    groups: Object.fromEntries([...byGroup.entries()].map(([k, v]) => [k, summarize(v)])),
+    waves: Object.fromEntries([...byWave.entries()].map(([k, v]) => [k, summarize(v)])),
   };
 }
 
@@ -171,15 +186,26 @@ export function renderReport(doc) {
   lines.push(`- Version: ${doc.version} (${doc.date})`);
   lines.push(`- Base branch: \`${doc.baseBranch}\``);
   lines.push(`- Observed source head: \`${doc.observedSourceHead}\` (refresh before relying on it)`);
-  lines.push(`- Aspects: ${progress.total} total, ${progress.verified} verified, ${progress.implemented} implemented, ${progress.planned} planned, ${progress.blocked} blocked`);
+  lines.push(`- Aspects: ${progress.total} total, ${progress.verified} evidence-verified, ${progress.implemented} implemented, ${progress.planned} planned, ${progress.blocked} blocked`);
+  lines.push(`- Implementation recorded: ${progress.implementationRecorded}/${progress.total} (${progress.implementationPercent.toFixed(1)}%) — IMPLEMENTED plus verified statuses`);
+  lines.push(`- Evidence verified: ${progress.verified}/${progress.total} (${progress.verifiedPercent.toFixed(1)}%) — only CONNECTED/TESTED/PROVEN`);
+  lines.push('');
+  lines.push('## Groups');
+  lines.push('');
+  lines.push('| Group | Aspects | Implementation % | Verified % |');
+  lines.push('|---|---:|---:|---:|');
+  for (const group of doc.groups) {
+    const row = progress.groups[group.id];
+    lines.push(`| ${group.id} | ${row?.total ?? 0} | ${(row?.implementationPercent ?? 0).toFixed(1)}% | ${(row?.verifiedPercent ?? 0).toFixed(1)}% |`);
+  }
   lines.push('');
   lines.push('## Waves');
   lines.push('');
-  lines.push('| Wave | Title | Aspects | Verified |');
-  lines.push('|---|---|---:|---:|');
+  lines.push('| Wave | Title | Aspects | Implementation % | Verified % |');
+  lines.push('|---|---|---:|---:|---:|');
   for (const w of doc.waves) {
     const row = progress.waves[w.id];
-    lines.push(`| ${w.id} | ${w.titleEn}${w.critical ? ' (critical)' : ''} | ${row?.total ?? 0} | ${row?.verified ?? 0} |`);
+    lines.push(`| ${w.id} | ${w.titleEn}${w.critical ? ' (critical)' : ''} | ${row?.total ?? 0} | ${(row?.implementationPercent ?? 0).toFixed(1)}% | ${(row?.verifiedPercent ?? 0).toFixed(1)}% |`);
   }
   lines.push('');
   lines.push('## Aspects');
@@ -219,11 +245,15 @@ async function main() {
       warnings: validation.warnings,
       aspects: progress.total,
       verified: progress.verified,
+      implementationRecorded: progress.implementationRecorded,
+      implementationPercent: progress.implementationPercent,
+      verifiedPercent: progress.verifiedPercent,
+      groups: progress.groups,
       byStatus: Object.fromEntries(['PLANNED', 'IMPLEMENTED', 'CONNECTED', 'TESTED', 'PROVEN', 'BLOCKED', 'DEFERRED', 'REJECTED']
         .map(s => [s, doc.aspects.filter(a => a.status === s).length])
         .filter(([, count]) => count > 0)),
       waves: progress.waves,
-      note: 'IMPLEMENTED means code exists; only CONNECTED/TESTED/PROVEN count as verified capability.'
+      note: 'Implementation % counts IMPLEMENTED plus verified statuses; evidence verified % counts only CONNECTED/TESTED/PROVEN. These percentages are not release readiness.'
     }, null, 2));
     if (!validation.ok) process.exitCode = 1;
     return;
