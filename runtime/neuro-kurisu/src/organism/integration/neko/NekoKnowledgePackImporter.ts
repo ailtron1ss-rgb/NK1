@@ -196,7 +196,7 @@ function parsePack(rawBytes: Uint8Array): NormalizedPack {
   };
 }
 function copyApprovalData(value: unknown): PlainRecord {
-  if (value === null || typeof value !== 'object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) {
+  if (value === null || typeof value !== 'object' || nodeUtilTypes.isProxy(value) || Array.isArray(value)) {
     return fail('invalid-approval');
   }
   const prototype = Object.getPrototypeOf(value);
@@ -224,7 +224,7 @@ function copyApprovalData(value: unknown): PlainRecord {
 /** Copies a small ordinary dense array without executing indexed accessors or Proxy traps. */
 function ownDenseArray(value: unknown, maxLength: number): unknown[] | null {
   try {
-    if (!Array.isArray(value) || nodeUtilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+    if (nodeUtilTypes.isProxy(value) || !Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
     const descriptors = Object.getOwnPropertyDescriptors(value);
     const keys = Reflect.ownKeys(descriptors);
     // Read the intrinsic own data slot only after rejecting Proxy values.
@@ -262,7 +262,7 @@ function selectIndices(pack: NormalizedPack, rawApproval: NekoKnowledgePackImpor
     if (pack.entries.length > MAX_SELECTED_ENTRIES) return fail('entry-selection-required');
     return pack.entries.map((_, index) => index);
   }
-  if (!Array.isArray(raw) || nodeUtilTypes.isProxy(raw) || Object.getPrototypeOf(raw) !== Array.prototype) {
+  if (nodeUtilTypes.isProxy(raw) || !Array.isArray(raw) || Object.getPrototypeOf(raw) !== Array.prototype) {
     return fail('invalid-entry-selection');
   }
   if (raw.length === 0) return fail('entry-selection-required');
