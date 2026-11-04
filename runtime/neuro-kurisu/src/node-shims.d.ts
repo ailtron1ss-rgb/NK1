@@ -66,7 +66,7 @@ declare module 'node:child_process' { export function spawn(command:string,args?
 declare module 'node:util' { export function promisify(fn:any):any; export const types: { isProxy(value:unknown):boolean }; }
 declare const process: { pid:number; platform:string; env:NodeJS.ProcessEnv; argv:string[]; cwd():string; execPath:string; exitCode?:number; on(event:string,handler:()=>void):void; memoryUsage():{rss:number;heapUsed:number;heapTotal:number;external:number;arrayBuffers?:number}; kill(pid:number|string,signal?:number|string):void; }
 
-declare module 'node:zlib' { export function deflateRawSync(data: Uint8Array): Uint8Array; export function inflateRawSync(data: Uint8Array): Uint8Array; }
+declare module 'node:zlib' { export function deflateRawSync(data: Uint8Array): Uint8Array; export function inflateRawSync(data: Uint8Array, options?: { maxOutputLength?: number }): Uint8Array; }
 declare module 'node:v8' { export function serialize(value: unknown): Uint8Array; export function deserialize(data: Uint8Array): unknown; }
 
 declare module 'node:dns/promises' { export function lookup(hostname:string, options?:{all?:boolean;verbatim?:boolean}):Promise<any>; }
