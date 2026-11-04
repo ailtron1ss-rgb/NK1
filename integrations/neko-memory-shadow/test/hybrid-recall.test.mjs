@@ -100,3 +100,12 @@ test('maximum configured workload stays within the declared channel and candidat
   assert.equal(r.diagnostics.uniqueCandidates, 4096);
   assert.equal(r.items.length, 64);
 });
+
+test('zero-weight channels are disabled without introducing zero-score candidates', () => {
+  const r = combineRankedMemoryChannels({ channels: [
+    { name: 'disabled', weight: 0, candidates: [{ id: 'must-not-appear' }] },
+    { name: 'bm25', candidates: [{ id: 'kept' }] },
+  ] });
+  assert.deepEqual(r.items.map(item => item.id), ['kept']);
+  assert.equal(r.diagnostics.candidatesSeen, 2);
+});
