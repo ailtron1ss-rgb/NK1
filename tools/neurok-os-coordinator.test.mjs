@@ -73,3 +73,38 @@ test('rejects a claim based on a stale checkout SHA', async () => fixture(async 
   );
   assert.equal((await listClaims({ stateDir })).length, 0);
 }));
+
+import { createHash } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+
+test('read-set freshness detects changed context before an agent writes', async () => fixture(async stateDir => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'neurok-os-readset-'));
+  try {
+    const target = path.join(root, 'src', 'dependency.ts');
+    await mkdir(path.dirname(target), { recursive: true });
+    const original = 'export const version = 1;\n';
+    await writeFile(target, original);
+    const digest = createHash('sha256').update(original).digest('hex');
+    const claim = await claimTask(request('TASK-READSET', 'agent-a', ['src/change.ts'], {
+      readSet: [{ path: 'src/dependency.ts', sha256: digest }]
+    }), { stateDir });
+    assert.equal(claim.readSet.length, 1);
+    const { verifyClaimFreshness } = await import('./neurok-os-coordinator.mjs');
+    assert.deepEqual(await verifyClaimFreshness('TASK-READSET', 'agent-a', { stateDir, root }), {
+      fresh: true, stalePaths: [], missingPaths: []
+    });
+    await writeFile(target, 'export const version = 2;\n');
+    assert.deepEqual(await verifyClaimFreshness('TASK-READSET', 'agent-a', { stateDir, root }), {
+      fresh: false, stalePaths: ['src/dependency.ts'], missingPaths: []
+    });
+  } finally { await rm(root, { recursive: true, force: true }); }
+}));
+
+test('read-set rejects unsafe and malformed dependency snapshots', async () => fixture(async stateDir => {
+  await assert.rejects(() => claimTask(request('TASK-READSET-BAD', 'agent-a', ['src/change.ts'], {
+    readSet: [{ path: '../outside.ts', sha256: 'a'.repeat(64) }]
+  }), { stateDir }), /unsafe claim path/);
+  await assert.rejects(() => claimTask(request('TASK-READSET-BAD2', 'agent-a', ['src/change.ts'], {
+    readSet: [{ path: 'src/dep.ts', sha256: 'not-a-digest' }]
+  }), { stateDir }), /SHA-256/);
+}));
