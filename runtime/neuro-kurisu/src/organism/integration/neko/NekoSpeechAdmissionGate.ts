@@ -36,7 +36,12 @@ export interface NekoSpeechAdmissionConfig {
   readonly maximumCandidateMs?: number;
 }
 export class NekoSpeechAdmissionGate {
-  constructor(readonly scopeId: string, readonly config: NekoSpeechAdmissionConfig = {}) {}
+  readonly scopeId: string;
+  readonly config: NekoSpeechAdmissionConfig;
+  constructor(scopeId: string, config: NekoSpeechAdmissionConfig = {}) {
+    this.scopeId = scopeId;
+    this.config = config;
+  }
   get snapshot(): NekoSpeechAdmissionSnapshotV1 | null { return null; }
   observe(_input: unknown): NekoSpeechAdmissionSnapshotV1 | null { return null; }
   seal(): NekoSpeechAdmissionSnapshotV1 | null { return null; }
