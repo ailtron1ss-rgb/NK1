@@ -1,0 +1,52 @@
+name: NK1 N.E.K.O. plugin gateway adapter
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/PluginGatewayAdapter.ts"
+      - "runtime/neuro-kurisu/tests/neko-plugin-gateway-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-plugin-gateway-adapter.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/PluginGatewayAdapter.ts"
+      - "runtime/neuro-kurisu/tests/neko-plugin-gateway-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-plugin-gateway-adapter.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-plugin-gateway-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Adapter contract and security boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-plugin-gateway-adapter
+      - name: Real ActionGateway integration
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-plugin-gateway-real-action-gateway.mjs
+      - name: Preserve existing tool-input contract regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:tool-input-contracts-workpass624
+      - name: Runtime typecheck
+        if: always()
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
