@@ -616,18 +616,6 @@
       "promotionGate": "contract-tests + security-review + exact-sha-evidence"
     },
     {
-      "id": "vibelets",
-      "name": "Vibelets",
-      "domain": "micro-apps",
-      "adapterMode": "connector",
-      "role": "Small workflow prototypes; promote only reviewed source.",
-      "connectionStatus": "unverified",
-      "runtimeIntegrated": false,
-      "enabled": false,
-      "credentialRefs": [],
-      "promotionGate": "contract-tests + security-review + exact-sha-evidence"
-    },
-    {
       "id": "plugin-creator",
       "name": "Plugin Creator",
       "domain": "plugin-development",
