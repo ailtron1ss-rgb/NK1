@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { claimTask, listClaims, normalizeClaimPath, releaseTask } from './neurok-os-coordinator.mjs';
+import { claimTask, createReadSetSnapshot, listClaims, normalizeClaimPath, releaseTask } from './neurok-os-coordinator.mjs';
 
 const sha = 'a'.repeat(40);
 async function fixture(fn) {
@@ -138,4 +138,18 @@ test('claims without a read-set are explicitly unverified, never silently fresh'
   const result = await verifyClaimFreshness('TASK-NO-READSET', 'agent-a', { stateDir, currentSha: sha });
   assert.equal(result.fresh, false);
   assert.match(result.reason, /unverified/);
+}));
+
+test('read-set snapshot helper captures exact file bytes for agent context', async () => fixture(async stateDir => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'neurok-os-snapshot-'));
+  try {
+    const target = path.join(root, 'src', 'context.ts');
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, 'export const context = "stable";\n');
+    const snapshot = await createReadSetSnapshot(['src/context.ts'], { root });
+    assert.equal(snapshot.length, 1);
+    assert.equal(snapshot[0].path, 'src/context.ts');
+    assert.equal(snapshot[0].sha256, createHash('sha256').update('export const context = "stable";\n').digest('hex'));
+    await claimTask(request('TASK-SNAPSHOT', 'agent-a', ['src/output.ts'], { readSet: snapshot }), { stateDir, root });
+  } finally { await rm(root, { recursive: true, force: true }); }
 }));
