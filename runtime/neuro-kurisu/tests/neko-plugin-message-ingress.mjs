@@ -228,4 +228,53 @@ function harness(options = {}) {
   assert.equal(shouldInvokeLanguageForRuntimeStep({ ...baseline, languageBudgetAllows: false }), false);
 }
 
-console.log('NEKO_PLUGIN_MESSAGE_INGRESS=PASS cases=10');
+// A host checkpoint must restore replay receipts across process restarts without rerunning cognition.
+{
+  const first = harness();
+  const initial = await first.ingress.handle({
+    identity: { pluginId: 'notes', messageId: 'restored-1' },
+    payload: base({ message_id: 'restored-1', visibility: [] }),
+  });
+  assert.equal(initial.accepted, true);
+  const snapshot = first.ingress.snapshot();
+  assert.equal(snapshot.version, 1);
+  assert.equal(snapshot.receipts.length, 1);
+
+  const second = harness();
+  assert.equal(second.ingress.restore(snapshot), 1);
+  const replay = await second.ingress.handle({
+    identity: { pluginId: 'notes', messageId: 'restored-1' },
+    payload: base({ message_id: 'restored-1', visibility: [] }),
+  });
+  assert.equal(replay.accepted, true);
+  assert.equal(replay.replayed, true);
+  assert.equal(second.calls.steps.length, 0);
+}
+
+// Restored receipt fingerprints must reject changed content and malformed checkpoints fail closed.
+{
+  const first = harness();
+  await first.ingress.handle({
+    identity: { pluginId: 'notes', messageId: 'restored-conflict' },
+    payload: base({ message_id: 'restored-conflict', visibility: [] }),
+  });
+  const snapshot = first.ingress.snapshot();
+  const second = harness();
+  second.ingress.restore(snapshot);
+  const conflict = await second.ingress.handle({
+    identity: { pluginId: 'notes', messageId: 'restored-conflict' },
+    payload: base({ message_id: 'restored-conflict', parts: [{ type: 'text', text: 'changed' }], visibility: [] }),
+  });
+  assert.equal(conflict.errorCode, 'message-id-conflict');
+  assert.equal(second.calls.steps.length, 0);
+
+  assert.equal(second.ingress.restore({ version: 2, receipts: [] }), 0);
+  const afterInvalidRestore = await second.ingress.handle({
+    identity: { pluginId: 'notes', messageId: 'restored-conflict' },
+    payload: base({ message_id: 'restored-conflict', parts: [{ type: 'text', text: 'changed' }], visibility: [] }),
+  });
+  assert.equal(afterInvalidRestore.accepted, true);
+  assert.equal(second.calls.steps.length, 1);
+}
+
+console.log('NEKO_PLUGIN_MESSAGE_INGRESS=PASS cases=12');
