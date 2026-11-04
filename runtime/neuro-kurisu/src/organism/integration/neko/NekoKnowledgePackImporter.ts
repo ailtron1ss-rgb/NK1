@@ -167,7 +167,14 @@ function parsePack(rawBytes: Uint8Array): NormalizedPack {
   };
 }
 function selectIndices(pack: NormalizedPack, approval: NekoKnowledgePackImportApproval): number[] {
-  if (!approval || approval.approved !== true) return fail('explicit-approval-required');
+  if (!isRecord(approval)) return fail('invalid-approval');
+  assertExactKeys(approval, ['approved', 'licenseAccepted', 'entryIndices'], 'unknown-approval-field');
+  for (const key of Reflect.ownKeys(approval)) {
+    if (typeof key !== 'string') return fail('invalid-approval-field');
+    const descriptor = Object.getOwnPropertyDescriptor(approval, key);
+    if (!descriptor || !('value' in descriptor)) return fail('approval-accessor-rejected');
+  }
+  if (approval.approved !== true) return fail('explicit-approval-required');
   if (approval.licenseAccepted !== true) return fail('license-acceptance-required');
   if (!pack.source.license?.trim()) return fail('source-license-required');
   const raw = approval.entryIndices;
@@ -176,9 +183,13 @@ function selectIndices(pack: NormalizedPack, approval: NekoKnowledgePackImportAp
     return pack.entries.map((_, index) => index);
   }
   if (!Array.isArray(raw) || raw.length === 0) return fail('entry-selection-required');
+  if (Object.getPrototypeOf(raw) !== Array.prototype) return fail('invalid-entry-selection');
   if (raw.length > MAX_SELECTED_ENTRIES) return fail('selection-limit-exceeded');
   const seen = new Set<number>();
-  for (const index of raw) {
+  for (let position = 0; position < raw.length; position += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(raw, String(position));
+    if (!descriptor || !('value' in descriptor)) return fail('invalid-entry-selection');
+    const index = descriptor.value;
     if (!Number.isSafeInteger(index) || index < 0 || index >= pack.entries.length) return fail('entry-index-out-of-range');
     if (seen.has(index)) return fail('duplicate-entry-index');
     seen.add(index);
