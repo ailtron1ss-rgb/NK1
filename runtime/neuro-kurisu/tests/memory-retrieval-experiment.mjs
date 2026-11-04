@@ -25,6 +25,31 @@ for (let i = 0; i < 8; i++) examples.push({ id: `holdout-${i}`, query: `heldout 
 const provenance = { datasetId: 'controlled-fixture', datasetVersion: '1.0', sourceRef: 'test-fixture-only', labelingProtocol: 'Hand-authored test labels; not production evidence.', licenseId: 'LicenseRef-NK1-TestFixture' };
 const options = { now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance, seeds: [13, 29, 53] };
 const before = structuredClone(snapshot);
+
+// Confirmatory Inspect evidence must bind every query to an explicit source
+// document/episode. Falling back to a unique example ID would fake independence.
+const evidenceExamples = [
+  { id: 'evidence-train-1', query: 'project fern training', relevantIds: ['m0'], split: 'train', independenceGroupId: 'source-doc-1' },
+  { id: 'evidence-holdout-1', query: 'project fern heldout', relevantIds: ['m1'], split: 'holdout', independenceGroupId: 'source-doc-2' },
+];
+const evidenceReport = runMemoryOS2RetrievalBenchmark(snapshot, evidenceExamples, {
+  ...options,
+  includeQueryEvidence: true,
+  evidenceHashSalt: 'nk1-source-group-evidence-test-key',
+});
+assert.equal(evidenceReport.queryEvidence.schemaVersion, 2);
+assert.equal(evidenceReport.queryEvidence.train[0].independenceGroupDigest.length, 64);
+assert.equal(evidenceReport.queryEvidence.holdout[0].independenceGroupDigest.length, 64);
+const missingSourceGroupExamples = evidenceExamples.map(row => ({ ...row, independenceGroupId: undefined }));
+assert.throws(
+  () => runMemoryOS2RetrievalBenchmark(snapshot, missingSourceGroupExamples, {
+    ...options,
+    includeQueryEvidence: true,
+    evidenceHashSalt: 'nk1-source-group-evidence-test-key',
+  }),
+  /memory-query-evidence-independence-group-required/,
+);
+
 const experiment = runMemoryOS2RetrievalExperiment(snapshot, examples, options);
 assert.equal(experiment.schemaVersion, 1);
 assert.equal(experiment.seedCount, 3);
@@ -302,6 +327,20 @@ try {
   assert.equal(overwrite.status, 2, 'CLI must not silently overwrite a report');
   assert.match(overwrite.stderr, /MEMORY_EXPERIMENT_FAILED/);
   assert.equal((await readdir(temp)).some(name => name.endsWith('.tmp')), false, 'failed exclusive publication must clean temporary output files');
+  const missingGroupLabelsPath = path.join(temp, 'missing-source-group.jsonl');
+  const missingGroupReportPath = path.join(temp, 'missing-source-group-report.json');
+  await writeFile(missingGroupLabelsPath, JSON.stringify({
+    id: 'missing-group-001', query: 'source identity omitted', relevantIds: ['m0'], split: 'holdout',
+  }) + String.fromCharCode(10));
+  const missingGroupCli = spawnSync(process.execPath, [
+    '--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'),
+    '--snapshot', snapshotPath, '--labels', missingGroupLabelsPath, '--provenance', provenancePath,
+    '--out', missingGroupReportPath, '--inspect-evidence', 'true',
+  ], { cwd: root, encoding: 'utf8', timeout: 120000 });
+  assert.equal(missingGroupCli.status, 2);
+  assert.match(missingGroupCli.stderr, /labels-independence-group-required-for-inspect-evidence/);
+  assert.equal((await readdir(temp)).includes('missing-source-group-report.json'), false,
+    'missing source-group identity must fail before publishing confirmatory evidence');
   const badSeed = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', labelsPath, '--provenance', provenancePath, '--out', path.join(temp, 'bad-seed.json'), '--seeds', '13,-1,53'], { cwd: root, encoding: 'utf8', timeout: 120000 });
   assert.equal(badSeed.status, 2);
   assert.match(badSeed.stderr, /seeds-must-be-3-to-9-uint32-values/);
