@@ -206,7 +206,7 @@ function restoreIngressResult(value: unknown): PluginMessageIngressResult | null
   if (cognitiveProcessed !== undefined && typeof cognitiveProcessed !== 'boolean') return null;
   if (presented !== undefined && typeof presented !== 'boolean') return null;
   if (replayed !== undefined && typeof replayed !== 'boolean') return null;
-  if (value.accepted && errorCode !== undefined) return null;
+  if ((value.accepted && errorCode !== undefined) || (!value.accepted && errorCode === undefined)) return null;
   return {
     accepted: value.accepted,
     ...(errorCode === undefined ? {} : { errorCode }),
@@ -283,7 +283,7 @@ export class PluginMessageIngress {
       if (!isRecord(item) || Object.keys(item).length !== 4 ||
           typeof item.pluginId !== 'string' || !isSafeId(item.pluginId) ||
           typeof item.messageId !== 'string' || !isSafeId(item.messageId) ||
-          typeof item.fingerprint !== 'string' || !/^[a-f0-9]{64}$/i.test(item.fingerprint)) return 0;
+          typeof item.fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(item.fingerprint)) return 0;
       if (!this.allowedPlugins.has(item.pluginId)) continue;
       const result = restoreIngressResult(item.result);
       if (!result) return 0;
