@@ -1298,6 +1298,7 @@ export class OrganismRuntime {
       ramPressure01: body.telemetry.ramPressure01,
       performancePressure01: this.runtimePerformance.decision().performancePressure01,
       awake: body.awake,
+      attentionIntent: attentionIntentForAction(this.core.operationalStatusSnapshot().lastAction),
     });
     this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,attentionEffort01:resourceAllocation.attentionEffort01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
     this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
