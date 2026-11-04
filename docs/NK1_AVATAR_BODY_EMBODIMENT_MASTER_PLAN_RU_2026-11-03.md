@@ -888,3 +888,32 @@ production-ready. Рисовать плейсхолдер и заявлять г
 - Субъективное переживание/сознание — `UNKNOWN / UNRESOLVED`.
 - Ни один шаг не считается `RELEASED` без exact-SHA CI, независимого доказательства и
   закрытого license-review.
+
+## 21. Прогресс-проход 2 (2026-11-03, ветка `workpass71-body-systems`, после §20)
+
+Продолжение по плану §20, итеративное исправление дефектов того же класса, что и в §19.
+
+### 21.1 Что исправлено (`IMPLEMENTED`, доказано регрессией)
+
+- **Счётчики маршрутизации восприятия обнулялись каждый тик.** `routePerception` возвращал
+  литеральные `routedCount:1` / `droppedCount:1`, но результат пишется в `facets.embodiment.perceptionRouting`
+  каждый тик. Значит, уже на следующем событии накопленные значения стирались, и восстановление из
+  персиста (§19.1) фактически теряло смысл. Теперь функция сворачивает событие в санитизированное
+  предыдущее состояние (`previous`), а подсистема передаёт своё живое состояние как приор.
+  - Регрессия: `tests/embodiment-perception-routing-restore-integrity.mjs` — два события дают
+    `routedCount===2` (до фикса — `1`), сон-дроп даёт `droppedCount===1`.
+
+### 21.2 Прогоны (OBSERVED)
+
+- `npm --prefix runtime/neuro-kurisu run test:embodiment-perception-routing-restore` — PASS.
+- `npm --prefix runtime/neuro-kurisu run typecheck` — PASS (`TYPECHECK=PASS mode=tsc compiler=app-lock`).
+- `node --experimental-strip-types runtime/neuro-kurisu/tests/function-contract-public-utilities.mjs` — PASS.
+- `npm --prefix runtime/neuro-kurisu run test:aspect10:interaction` — 47/47 + 13/13 PASS.
+- `npm --prefix app run test:body-systems` — 32/32 PASS; `npm --prefix app run test:scripts` — 466/466 PASS; `npm --prefix app run typecheck` — PASS.
+
+### 21.3 Остаточный аудит (`HYPOTHESIS`/`UNRESOLVED`)
+
+- Прочие счётчики сущностей (`mentionCount`, `seenCount`, `observationCount`) инкрементируются
+  корректно; класса «литерал вместо инкремента» больше не найдено в `runtime/.../body/`.
+- Следующий приоритет по §20: `B3` (2.5D рендер-путь, блокер — production-арт), `C3` (live-IK рук,
+  `planarArmIK` пока только типизирован, не вызывается), `F3`/`G1` (визуальная E2E и soak).
