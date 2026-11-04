@@ -16,6 +16,7 @@ function usage() {
     '  node --experimental-strip-types scripts/run-memory-retrieval-experiment.mjs --snapshot <MemoryOSState2.json> --labels <labels.jsonl> --provenance <dataset-provenance.json> --out <report.json> [--seeds 11,29,47,71,101] [--k 5] [--now <unix-ms>] [--inspect-evidence true] [--min-train-per-language 4] [--min-answerable-per-language 20] [--min-unanswerable-per-language 8]',
     '',
     'The label file is JSONL; optional explicit language labels are "en", "ru", or "other".',
+    'When --inspect-evidence true, every row must provide an explicit independenceGroupId identifying its source episode/document; example IDs are never accepted as a substitute.',
     'A tagged benchmark requires all rows tagged and both en and ru for promotion; per-language holdout gates run separately.',
     'For an explicitly unanswerable query, use "answerable":false with an empty relevantIds array; omitted answerable defaults to true.',
     'The snapshot must be the exported MemoryOSState2 object. The provenance file must contain datasetId, datasetVersion, sourceRef and labelingProtocol.',
@@ -135,6 +136,9 @@ async function main() {
   if (!provenance || typeof provenance !== 'object' || Array.isArray(provenance)) throw new Error('provenance-must-be-json-object');
   for (const key of ['datasetId', 'datasetVersion', 'sourceRef', 'labelingProtocol', 'licenseId']) if (typeof provenance[key] !== 'string' || !provenance[key].trim()) throw new Error(`provenance-field-required:${key}`);
   const examples = parseLabels(labelsFile.text);
+  if (includeQueryEvidence && examples.some(row => !row.independenceGroupId)) {
+    throw new Error('labels-independence-group-required-for-inspect-evidence');
+  }
   const seeds = parseSeeds(args.seeds);
   const k = args.k === undefined ? 5 : Number(args.k);
   if (!Number.isInteger(k) || k < 1 || k > 10) throw new Error('k-must-be-integer-1-to-10');
