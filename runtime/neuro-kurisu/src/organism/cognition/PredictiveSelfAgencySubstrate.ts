@@ -52,6 +52,9 @@ export interface PredictiveSelfAgencyState {
   lastAt:number;
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const vecN=(v:unknown,len:number,lo:number,hi:number,fill:number):number[]=>Array.from({length:len},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fill;});
 const defaults=():PredictiveSelfAgencyState=>({
   version:1,selfLatent:new Array(24).fill(0),previousSelfLatent:new Array(24).fill(0),intention:new Array(24).fill(0),predictions:new Array(4).fill(0),
   actionRows:ACTIONS.map((_,i)=>new Array(24).fill(0).map((__,j)=>initWeight(i,j,.028))),actionBias:new Array(ACTIONS.length).fill(0),
@@ -68,11 +71,12 @@ export class PredictiveSelfAgencySubstrate {
   private state=defaults();
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<PredictiveSelfAgencyState>|null){
-    const d=defaults(),r=raw??{}; const arr=(v:any,n:number)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-v.length)).fill(0)).slice(0,n):new Array(n).fill(0);
-    const mat=(v:any,rows:number,cols:number,seed:number,scale:number)=>Array.from({length:rows},(_,i)=>Array.isArray(v?.[i])?arr(v[i],cols):new Array(cols).fill(0).map((__,j)=>initWeight(i+seed,j,scale)));
-    this.state={...d,...r,selfLatent:arr(r.selfLatent,24),previousSelfLatent:arr(r.previousSelfLatent,24),intention:arr(r.intention,24),predictions:arr(r.predictions,4),
-      actionRows:mat(r.actionRows,ACTIONS.length,24,1,.028),actionBias:arr(r.actionBias,ACTIONS.length),selfWeights:mat(r.selfWeights,24,24,31,.022),stateWeights:mat(r.stateWeights,24,24,61,.024),
-      lastPredictedSelfState:arr(r.lastPredictedSelfState,24),lastObservedSelfState:arr(r.lastObservedSelfState,24)};
+    const d=defaults();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const mat=(v:unknown,rows:number,cols:number,seed:number,scale:number)=>Array.from({length:rows},(_,i)=>{const row=Array.isArray(v)?(v as unknown[])[i]:undefined;return Array.from({length:cols},(_,j)=>{const c=Array.isArray(row)?(row as unknown[])[j]:undefined;return Number.isFinite(Number(c))?Math.max(-1,Math.min(1,Number(c))):initWeight(i+seed,j,scale);});});
+    this.state={version:1,selfLatent:vecN(read('selfLatent'),24,-1,1,0),previousSelfLatent:vecN(read('previousSelfLatent'),24,-1,1,0),intention:vecN(read('intention'),24,-1,1,0),predictions:vecN(read('predictions'),4,-1,1,0),
+      actionRows:mat(read('actionRows'),ACTIONS.length,24,1,.028),actionBias:vecN(read('actionBias'),ACTIONS.length,-1,1,0),selfWeights:mat(read('selfWeights'),24,24,31,.022),stateWeights:mat(read('stateWeights'),24,24,61,.024),
+      learningSteps:cnt(read('learningSteps'),d.learningSteps),predictionSamples:cnt(read('predictionSamples'),d.predictionSamples),predictionError01:clamp01(finN(read('predictionError01'),d.predictionError01)),agencyError01:clamp01(finN(read('agencyError01'),d.agencyError01)),ownership01:clamp01(finN(read('ownership01'),d.ownership01)),authorship01:clamp01(finN(read('authorship01'),d.authorship01)),selfContinuity01:clamp01(finN(read('selfContinuity01'),d.selfContinuity01)),lastAction:ACTIONS.includes(read('lastAction') as ActionKind)?read('lastAction') as ActionKind:d.lastAction,lastPredictedOutcome01:clamp01(finN(read('lastPredictedOutcome01'),d.lastPredictedOutcome01)),
+      lastPredictedSelfState:vecN(read('lastPredictedSelfState'),24,-1,1,0),lastObservedSelfState:vecN(read('lastObservedSelfState'),24,-1,1,0),lastTick:cnt(read('lastTick'),d.lastTick),lastAt:finN(read('lastAt'),d.lastAt)};
   }
   private features(i:SelfAgencyInput){
     const base=[...i.self,...i.body,...i.world,...i.memory,...i.motivation];

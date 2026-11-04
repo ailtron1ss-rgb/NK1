@@ -93,6 +93,12 @@ export interface B288State {
 
 export const defaultB288State=():B288State=>({version:2,tick:0,steps:0,learningUpdates:0,replayUpdates:0,persons:[],activePersonId:null,meanPrediction01:.5,meanUncertainty01:.5,relationshipDifferentiation01:0,crossContextDivergence01:0,actionInfluence01:0,socialCausalLesionDrop01:0,neuralActivity01:0,inhibitoryBalance01:.5,canonicalOwner:'B288SocialPredictiveSelfOtherBrain',legacyAdapterCoverage01:0,legacyConflict01:0,lastConsolidationAt:0,deduplicatedSources:['SocialMindKernel','SocialPredictiveNeuralSubstrate','SocialWorldModel','RelationshipSelf','LongTermSocialMind','SocialDevelopmentSystem','AutonomousRelationshipManager','AutonomousSocialInitiativeEngine','B287RelationshipValueDevelopmentCore']});
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const vecN=(v:unknown,len:number,lo:number,hi:number,fill:number):number[]=>Array.from({length:len},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fill;});
+const matN=(v:unknown,rows:number,cols:number,fb:number[][]):number[][]=>Array.from({length:rows},(_,i)=>{const row=Array.isArray(v)?(v as unknown[])[i]:undefined;const fbr=fb[i]??[];return Array.from({length:cols},(_,j)=>{const c=Array.isArray(row)?(row as unknown[])[j]:undefined;const n=typeof c==='number'?c:Number(c);return Number.isFinite(n)?Math.max(-1,Math.min(1,n)):(fbr[j]??0);});});
 function freshPerson(personId:string,seed:number):PersonBrain{
   return {
     personId,
@@ -133,26 +139,16 @@ export class B288SocialPredictiveSelfOtherBrain {
   static create(){ return defaultB288State(); }
   snapshot(){ return structuredClone(this.state); }
   restore(raw:unknown){
-    const base=defaultB288State();
-    if(!raw || typeof raw!=='object'){ this.state=base; return; }
-    const r=raw as Partial<B288State>;
-    const persons=Array.isArray(r.persons)?r.persons.slice(0,64).map((x:any,i:number)=>{
-      const fallback=freshPerson(String(x?.personId??`person-${i}`),288001+i*193);
-      return {
-        ...fallback,...x,
-        latent:Array.isArray(x?.latent)?x.latent.slice(0,DIM):fallback.latent,
-        previousLatent:Array.isArray(x?.previousLatent)?x.previousLatent.slice(0,DIM):fallback.previousLatent,
-        recurrent:Array.isArray(x?.recurrent)?x.recurrent.slice(0,DIM).map((row:any,j:number)=>Array.isArray(row)?row.slice(0,DIM):fallback.recurrent[j]!):fallback.recurrent,
-        excitatory:Array.isArray(x?.excitatory)?x.excitatory.slice(0,EXC):fallback.excitatory,
-        inhibitory:Array.isArray(x?.inhibitory)?x.inhibitory.slice(0,INH):fallback.inhibitory,
-        actionWeights:Array.isArray(x?.actionWeights)?x.actionWeights.slice(0,ACTIONS.length).map((row:any,j:number)=>Array.isArray(row)?row.slice(0,DIM):fallback.actionWeights[j]!):fallback.actionWeights,
-        contextWeights:Array.isArray(x?.contextWeights)?x.contextWeights.slice(0,DIM).map((row:any,j:number)=>Array.isArray(row)?row.slice(0,DIM):fallback.contextWeights[j]!):fallback.contextWeights,
-        valueWeights:Array.isArray(x?.valueWeights)?x.valueWeights.slice(0,6).map((row:any,j:number)=>Array.isArray(row)?row.slice(0,DIM):fallback.valueWeights[j]!):fallback.valueWeights,
-        eligibility:Array.isArray(x?.eligibility)?x.eligibility.slice(0,DIM):fallback.eligibility,
-        recentErrors:Array.isArray(x?.recentErrors)?x.recentErrors.slice(-32):[],
-      } as PersonBrain;
+    const base=defaultB288State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const pRaw=read('persons');
+    const persons=Array.isArray(pRaw)?(pRaw as unknown[]).slice(0,64).filter(x=>x&&typeof x==='object').map((x,i)=>{
+      const r=x as Record<string,unknown>;
+      const fb=freshPerson(str(r.personId,`person-${i}`,160),288001+i*193);
+      const reRaw=r.recentErrors;
+      return {personId:str(r.personId,fb.personId,160),latent:vecN(r.latent,DIM,-1,1,0),previousLatent:vecN(r.previousLatent,DIM,-1,1,0),recurrent:matN(r.recurrent,DIM,DIM,fb.recurrent),excitatory:vecN(r.excitatory,EXC,-1,1,0),inhibitory:vecN(r.inhibitory,INH,-1,1,0),actionWeights:matN(r.actionWeights,ACTIONS.length,DIM,fb.actionWeights),contextWeights:matN(r.contextWeights,DIM,DIM,fb.contextWeights),valueWeights:matN(r.valueWeights,6,DIM,fb.valueWeights),eligibility:vecN(r.eligibility,DIM,-1,1,0),synapticAvailability:clamp(finN(r.synapticAvailability,fb.synapticAvailability)),shortTermDepression:clamp(finN(r.shortTermDepression,fb.shortTermDepression)),predictionError01:clamp(finN(r.predictionError01,fb.predictionError01)),socialUncertainty01:clamp(finN(r.socialUncertainty01,fb.socialUncertainty01)),trust01:clamp(finN(r.trust01,fb.trust01)),warmth01:clamp(finN(r.warmth01,fb.warmth01)),predictability01:clamp(finN(r.predictability01,fb.predictability01)),boundary01:clamp(finN(r.boundary01,fb.boundary01)),commitment01:clamp(finN(r.commitment01,fb.commitment01)),interactionCount:cnt(r.interactionCount,0),successfulInteractions:cnt(r.successfulInteractions,0),repairCount:cnt(r.repairCount,0),stableEpisodes:cnt(r.stableEpisodes,0),...(ACTIONS.includes(r.lastAction as ActionKind)?{lastAction:r.lastAction as ActionKind}:{}),lastReward01:clamp(finN(r.lastReward01,fb.lastReward01)),recentErrors:Array.isArray(reRaw)?(reRaw as unknown[]).slice(-32).map(v=>finN(v,0)):[]} as PersonBrain;
     }):[];
-    this.state={...base,...r,version:2,persons,canonicalOwner:'B288SocialPredictiveSelfOtherBrain'};
+    const dsRaw=read('deduplicatedSources');
+    this.state={version:2,tick:cnt(read('tick'),base.tick),steps:cnt(read('steps'),base.steps),learningUpdates:cnt(read('learningUpdates'),base.learningUpdates),replayUpdates:cnt(read('replayUpdates'),base.replayUpdates),persons,activePersonId:strOrNull(read('activePersonId')),meanPrediction01:clamp(finN(read('meanPrediction01'),base.meanPrediction01)),meanUncertainty01:clamp(finN(read('meanUncertainty01'),base.meanUncertainty01)),relationshipDifferentiation01:clamp(finN(read('relationshipDifferentiation01'),base.relationshipDifferentiation01)),crossContextDivergence01:clamp(finN(read('crossContextDivergence01'),base.crossContextDivergence01)),actionInfluence01:clamp(finN(read('actionInfluence01'),base.actionInfluence01)),socialCausalLesionDrop01:clamp(finN(read('socialCausalLesionDrop01'),base.socialCausalLesionDrop01)),neuralActivity01:clamp(finN(read('neuralActivity01'),base.neuralActivity01)),inhibitoryBalance01:clamp(finN(read('inhibitoryBalance01'),base.inhibitoryBalance01)),deduplicatedSources:Array.isArray(dsRaw)?(dsRaw as unknown[]).filter(v=>typeof v==='string').slice(0,32) as string[]:base.deduplicatedSources,canonicalOwner:'B288SocialPredictiveSelfOtherBrain',legacyAdapterCoverage01:clamp(finN(read('legacyAdapterCoverage01'),base.legacyAdapterCoverage01)),legacyConflict01:clamp(finN(read('legacyConflict01'),base.legacyConflict01)),lastConsolidationAt:cnt(read('lastConsolidationAt'),base.lastConsolidationAt)};
   }
   private ensurePerson(id:string){
     let p=this.state.persons.find(x=>x.personId===id);
