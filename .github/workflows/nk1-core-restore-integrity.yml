@@ -163,6 +163,12 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/P2853SlowMemoryConsolidationController.ts
       - runtime/neuro-kurisu/src/organism/memory/HippocampalMemorySubstrate.ts
       - runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts
+      - runtime/neuro-kurisu/src/organism/system/B292CognitiveStateBus.ts
+      - runtime/neuro-kurisu/src/organism/system/P60IdentityGuardian.ts
+      - runtime/neuro-kurisu/src/organism/system/OrganismResourceAllocator.ts
+      - runtime/neuro-kurisu/src/organism/system/AdaptiveReplayGovernor.ts
+      - runtime/neuro-kurisu/src/organism/system/ActionOwnershipGraph.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfDirectedLifeOrchestrator.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -332,6 +338,12 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/P2853SlowMemoryConsolidationController.ts
       - runtime/neuro-kurisu/src/organism/memory/HippocampalMemorySubstrate.ts
       - runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts
+      - runtime/neuro-kurisu/src/organism/system/B292CognitiveStateBus.ts
+      - runtime/neuro-kurisu/src/organism/system/P60IdentityGuardian.ts
+      - runtime/neuro-kurisu/src/organism/system/OrganismResourceAllocator.ts
+      - runtime/neuro-kurisu/src/organism/system/AdaptiveReplayGovernor.ts
+      - runtime/neuro-kurisu/src/organism/system/ActionOwnershipGraph.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfDirectedLifeOrchestrator.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -477,6 +489,11 @@ jobs:
           node --experimental-strip-types tests/big-pass-2511-active-epistemic.mjs
           node --experimental-strip-types tests/big-pass-2512-holdout.mjs
           node --experimental-strip-types tests/big-pass-2509-2510-embodiment-personality.mjs
+          node --experimental-strip-types tests/big-pass-292-cognitive-state-bus.mjs
+          node --experimental-strip-types tests/p58-p60-integrated-kernel.mjs
+          node --experimental-strip-types tests/unified-cognitive-substrate.mjs
+          node --experimental-strip-types tests/p2687-adaptive-replay-governor.mjs
+          node --experimental-strip-types tests/big-pass-225-228-autonomous-personhood-expansion.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs

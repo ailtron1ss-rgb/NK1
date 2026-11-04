@@ -96,6 +96,7 @@ commit with a fail-before/pass-after regression wired into
 | 24 | (this commit) | `ParametricPolicyLearner`, `PersonalCurriculumEngine`, `DevelopmentalPortfolioEngine`, `MetaDevelopmentalStrategyEngine`, `LongitudinalSubjectTransferBattery`, `CognitiveOrganismContinuityEngine` | `workpass72-parametricpolicy-curriculum-portfolio-metadev-longitudinal-cogcontinuity-restore-integrity` |
 | 25 | (this commit) | `B267AdaptiveRegimeController`, `P2734SelfOptimizingContinualController`, `SelfOptimizingAutobiographicalMemory`, `NeuralTemporalSubstrate`, `B278NeuralPrimitiveGenesis`, `P2774ModelTimeReplayConsolidator` | `workpass72-b267-p2734-sam-nts-b278-p2774-restore-integrity` |
 | 26 | (this commit) | `B2511ActiveEpistemicExperimentController`, `B2512EpistemicSemanticAutobiographicalConsolidator`, `B2509EmbodiedHomeostaticActionField`, `P2853SlowMemoryConsolidationController`, `HippocampalMemorySubstrate`, `ExperienceContinuumFabric` | `workpass72-b2511-b2512-hms-p2853-ecf-b2509-restore-integrity` |
+| 27 | (this commit) | `B292CognitiveStateBus`, `P60IdentityGuardian`, `OrganismResourceAllocator`, `AdaptiveReplayGovernor`, `ActionOwnershipGraph`, `SelfDirectedLifeOrchestrator` | `workpass72-b292-p60-ora-arg-aog-sdl-restore-integrity` |
 
 Every batch uses the same idiom — a descriptor-safe `read(k)` accessor plus
 `finN`/`cnt`/`clamp` helpers and per-owner `sanitize*` builders — so a corrupt
@@ -107,7 +108,7 @@ workpass72 suites in one step (exit 0, 21× `=PASS`).
 ## Evidence
 
 - Batch series (5–13) re-verified after batch 13: `npm run
-  test:workpass72:core-integrity` → exit 0, 34 suites `=PASS`; `npm run
+  test:workpass72:core-integrity` → exit 0, 35 suites `=PASS`; `npm run
   typecheck` → `TYPECHECK=PASS mode=tsc compiler=runtime-lock`.
 - Consumer regressions for the batch 10/11 owners re-run green:
   `big-pass-37-spine`, `big-pass-38-autonomous-spine`,
