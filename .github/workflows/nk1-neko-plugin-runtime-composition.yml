@@ -26,10 +26,11 @@ jobs:
   plugin-runtime-composition:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
+          package-manager-cache: false
       - name: Gateway contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/neko-plugin-gateway-adapter.mjs
