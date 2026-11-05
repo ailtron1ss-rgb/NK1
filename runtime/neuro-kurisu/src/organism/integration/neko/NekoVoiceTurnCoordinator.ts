@@ -26,12 +26,18 @@ export interface NekoAudioInputOpenRequest {
   readonly signal: AbortSignal;
 }
 
+export interface NekoAudioInputCloseResult {
+  readonly requested: boolean;
+  readonly verified: boolean;
+  readonly reason?: string;
+}
+
 export interface NekoAudioInputSession {
   readonly sessionId: string;
   readonly turnId: string;
   readonly token: VoiceTurnToken;
   readonly frames: AsyncIterable<unknown>;
-  close?(reason: string): Promise<void> | void;
+  close?(reason: string): Promise<NekoAudioInputCloseResult | void> | NekoAudioInputCloseResult | void;
 }
 
 export interface NekoAudioInputPort {
@@ -110,6 +116,8 @@ interface ActiveVoiceTurn {
   cancelled: boolean;
   sessionId?: string;
   sessionClosed: boolean;
+  sessionCloseVerified: boolean;
+  sessionClosePromise?: Promise<boolean>;
 }
 
 /** One host input, one ordered pump, one bounded ASR reader, and one existing cognition ingress. */
@@ -158,7 +166,7 @@ export class NekoVoiceTurnCoordinator {
     if (!this.validToken(request.token)) return { status: 'rejected', reason: 'voice-turn-token-invalid' };
 
     const controller = new AbortController();
-    const active: ActiveVoiceTurn = { controller, cancelled: false, sessionClosed: false };
+    const active: ActiveVoiceTurn = { controller, cancelled: false, sessionClosed: false, sessionCloseVerified: false };
     const abortFromHost = () => {
       active.cancelled = true;
       if (!controller.signal.aborted) controller.abort(request.signal?.reason ?? 'host-capture-aborted');
@@ -441,9 +449,21 @@ export class NekoVoiceTurnCoordinator {
     return value || fallback;
   }
 
-  private async closeActiveSession(active: ActiveVoiceTurn, reason: string): Promise<void> {
-    if (!active.session || active.sessionClosed) return;
+  private closeActiveSession(active: ActiveVoiceTurn, reason: string): Promise<boolean> {
+    if (!active.session) return Promise.resolve(false);
+    if (active.sessionClosePromise) return active.sessionClosePromise;
+    if (active.sessionClosed) return Promise.resolve(active.sessionCloseVerified);
     active.sessionClosed = true;
-    try { await active.session.close?.(reason); } catch { /* Preserve the turn's primary outcome. */ }
+    active.sessionClosePromise = (async () => {
+      try {
+        const result = await active.session!.close?.(reason);
+        active.sessionCloseVerified = Boolean(result && result.requested === true && result.verified === true);
+        return active.sessionCloseVerified;
+      } catch {
+        active.sessionCloseVerified = false;
+        return false;
+      }
+    })();
+    return active.sessionClosePromise;
   }
 }
