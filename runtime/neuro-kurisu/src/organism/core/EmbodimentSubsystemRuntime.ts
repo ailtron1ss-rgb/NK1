@@ -18,6 +18,7 @@ import { InteroceptiveStateEstimator } from '../system/InteroceptiveStateEstimat
 import { ActivePerceptionExecutor, defaultActivePerceptionExecutor, type ActivePerceptionModality } from '../system/ActivePerceptionExecutor.ts';
 import { ActivePerceptionNeuralSubstrate } from '../cognition/ActivePerceptionNeuralSubstrate.ts';
 import { PerceptualEvidenceCompiler, defaultPerceptualEvidence } from '../body/PerceptualEvidenceCompiler.ts';
+import { ObservationIntakeGate } from '../body/ObservationIntakeGate.ts';
 
 /** BIG PASS 51: physical owner for sensor, perception and embodied-experience state. */
 export class EmbodimentSubsystemRuntime {
@@ -48,6 +49,12 @@ export class EmbodimentSubsystemRuntime {
   readonly activePerceptionNeural = new ActivePerceptionNeuralSubstrate();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly perceptualEvidence = new PerceptualEvidenceCompiler();
+  /**
+   * Canonical observation intake. Every external observation is admitted here before
+   * any other subsystem may treat it as evidence, so validation, provenance, consent,
+   * dedupe and freshness have exactly one owner.
+   */
+  readonly observationIntake = new ObservationIntakeGate();
   /** Ownership extraction: camera evidence belongs to the embodied sensor boundary. */
   readonly cameraEvidence = {
     state: defaultCameraEvidenceState(),
@@ -69,6 +76,7 @@ export class EmbodimentSubsystemRuntime {
     this.p42Experience.restore(embodiment.p42Experience);
     this.p43Imagery.restore(embodiment.p43Imagery);
     this.p66InteroceptiveHomeostasis.restore(advanced.p66InteroceptiveHomeostasis);
+    this.observationIntake.restore(embodiment.observationIntake);
     this.perceptionRouting = sanitizePerceptionRoutingState(embodiment.perceptionRouting);
   }
 
