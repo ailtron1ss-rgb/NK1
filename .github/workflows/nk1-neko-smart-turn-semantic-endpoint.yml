@@ -1,0 +1,42 @@
+name: NK1 N.E.K.O. Smart Turn semantic endpoint
+
+on:
+  pull_request:
+    branches: [aspect/neko-speech-admission-gate-20261104]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSmartTurnCoordinator.ts"
+      - "runtime/neuro-kurisu/tests/neko-smart-turn-semantic-endpoint.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-smart-turn-semantic-endpoint.yml"
+  push:
+    branches: [aspect/neko-smart-turn-semantic-endpoint-20261105]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSmartTurnCoordinator.ts"
+      - "runtime/neuro-kurisu/tests/neko-smart-turn-semantic-endpoint.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-smart-turn-semantic-endpoint.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-smart-turn-semantic-endpoint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semantic-endpoint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Smart Turn semantic endpoint tests
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-smart-turn-semantic-endpoint
