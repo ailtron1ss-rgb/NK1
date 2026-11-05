@@ -16,6 +16,7 @@
     "test:neko-audio-frame-buffer": "node --experimental-strip-types --test tests/neko-audio-frame-buffer.mjs",
     "test:neko-asr-stream-admission": "node --experimental-strip-types --test tests/neko-asr-stream-admission.mjs",
     "test:neko-voice-turn-coordinator": "node --experimental-strip-types --test tests/neko-voice-turn-coordinator.mjs",
+    "test:neko-voice-embodiment-streaming-wiring": "node --experimental-strip-types --test tests/neko-voice-embodiment-streaming-wiring.mjs",
     "test:adaptive-experience-consolidator": "node --experimental-strip-types tests/adaptive-experience-consolidator-boundary.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
