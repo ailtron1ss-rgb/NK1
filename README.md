@@ -38,10 +38,17 @@ SHA-256 полного архива:
 
 ## Стратегический мастер-план и трекер прогресса
 
+- **Мастер-план до полного завершения (160 шагов · 16 фаз):** [docs/NK1_COMPLETE_MASTER_PLAN_16_PHASES_RU.md](docs/NK1_COMPLETE_MASTER_PLAN_16_PHASES_RU.md)
+- **Единая архитектура мозга (Unified Brain Architecture):** [docs/NK1_UNIFIED_BRAIN_ARCHITECTURE_2026-11-03_RU.md](docs/NK1_UNIFIED_BRAIN_ARCHITECTURE_2026-11-03_RU.md) (нейроанатомическое картирование и 11-фазный цикл)
 - **Мастер-план (10 жизненно важных этапов):** [docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md](docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md)
-- **Реестр статусов и отслеживание прогресса:** [docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md](docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md)
+- **Реестр статусов и отслеживание прогресса:** [docs/PROJECT_PROGRESS_TRACKER_2026-11-03_RU.md](docs/PROJECT_PROGRESS_TRACKER_2026-11-03_RU.md) (актуальная взвешенная зрелость: **82.4%**)
+- **Стратегическая программа развития (Roadmap 2→4→3→1):** [docs/NK1_STRATEGIC_DEVELOPMENT_ROADMAP_RU.md](docs/NK1_STRATEGIC_DEVELOPMENT_ROADMAP_RU.md)
+- **Анализ экосистемы доноров и адаптеров:** [docs/NK1_ECOSYSTEM_ANALYSIS_AND_ADAPTATION_RU.md](docs/NK1_ECOSYSTEM_ANALYSIS_AND_ADAPTATION_RU.md)
+- **Спецификация соматического воплощения (2D/2.5D/3D):** [docs/NK1_KURISU_EMBODIMENT_SPECIFICATION_RU.md](docs/NK1_KURISU_EMBODIMENT_SPECIFICATION_RU.md)
 - **Протокол продвижения статусов:** `PLANNED` → `IMPLEMENTED` → `TESTED` → `INTEGRATED` → `MEASURED` → `RELEASED`
 - **Проверка воспроизводимости релизов (Этап 1):** `bash scripts/verify-release-reproducibility.sh`
+- **Проверка полноты мастер-плана (16 фаз · 160 шагов):** `bash scripts/verify-master-plan-completeness.sh`
+- **Проверка готовности организма (Этапы 1–10):** `bash scripts/verify-organism-readiness.sh`
 
 ## Следующий этап
 
