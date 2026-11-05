@@ -112,7 +112,7 @@ test('reserves one active stream and fences a final result that resolves after a
 test('requires stream-capable provider and matching host turn token', async () => {
   const { port } = provider();
   const adapter = new NekoAsrTranscriptAdapter({ ...port, transcribeStream: undefined });
-  const unsupported = await adapter.captureFinalFromStream({
+  const unsupported = await captureStream(adapter, {
     sessionId: 'session-1', turnId: 'turn-1', token: token(),
     frames: [frame()][Symbol.iterator](), signal: new AbortController().signal,
   });
