@@ -31,6 +31,16 @@ export interface CodeAssimilationArchiveExtractionResult {
   /** Returns a defensive copy; null means the path is not an extracted regular file. */
   readFile(path: string): Uint8Array | null;
 }
+const TRUSTED_EXTRACTION_RESULTS = new WeakSet<object>();
+
+/** True only for an immutable result created by this module in the current process. */
+export function isTrustedCodeAssimilationArchiveExtraction(
+  value: unknown,
+): value is CodeAssimilationArchiveExtractionResult {
+  return value !== null && typeof value === 'object' &&
+    TRUSTED_EXTRACTION_RESULTS.has(value as object);
+}
+
 interface ParsedEntry {
   name: string; kind: 'file' | 'directory'; flags: number; method: number;
   crc32: number; compressedSizeBytes: number; uncompressedSizeBytes: number;
@@ -350,7 +360,7 @@ export function extractCodeAssimilationArchive(
   const filePaths = Object.freeze(immutableFiles.map(file => file.path));
   const extractionFingerprint = sha256(`${preflight.reportFingerprint}\n${canonicalJson(immutableFiles)}`);
   const stored: ReadonlyMap<string, Buffer> = payloads;
-  return Object.freeze({
+  const result: CodeAssimilationArchiveExtractionResult = Object.freeze({
     schemaVersion: 1 as const, accepted: true as const, preflight,
     filePaths, files: immutableFiles, extractionFingerprint,
     readFile(path: string): Uint8Array | null {
@@ -359,4 +369,6 @@ export function extractCodeAssimilationArchive(
       return bytes ? Uint8Array.from(bytes) : null;
     },
   });
+  TRUSTED_EXTRACTION_RESULTS.add(result);
+  return result;
 }
