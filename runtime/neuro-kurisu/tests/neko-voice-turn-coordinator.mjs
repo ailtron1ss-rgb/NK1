@@ -167,10 +167,10 @@ test('rejects a source sequence gap and never sends partial PCM as a valid final
           sessionId: 'session-1',
           turnId: 'turn-1',
           token: request.token,
-          async *frames() {
+          frames: (async function* () {
             yield frame(0);
             yield frame(2);
-          },
+          })(),
           async close(reason) { calls.close.push(reason); },
         };
       },
