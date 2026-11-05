@@ -223,6 +223,11 @@ on:
       - runtime/neuro-kurisu/src/organism/system/CapabilitySelfModelGraph.ts
       - runtime/neuro-kurisu/src/organism/system/HybridNeuroCognitiveLoop.ts
       - runtime/neuro-kurisu/src/organism/system/PlasticityHomeostasisGovernor.ts
+      - runtime/neuro-kurisu/src/organism/system/B291UnifiedSelfAgencyGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B292IntentTrace.ts
+      - runtime/neuro-kurisu/src/organism/system/B333AutonomousGoalGenesisGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B334AutonomousProjectLifecycleGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B335AutonomousProjectHoldoutGate.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -452,6 +457,11 @@ on:
       - runtime/neuro-kurisu/src/organism/system/CapabilitySelfModelGraph.ts
       - runtime/neuro-kurisu/src/organism/system/HybridNeuroCognitiveLoop.ts
       - runtime/neuro-kurisu/src/organism/system/PlasticityHomeostasisGovernor.ts
+      - runtime/neuro-kurisu/src/organism/system/B291UnifiedSelfAgencyGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B292IntentTrace.ts
+      - runtime/neuro-kurisu/src/organism/system/B333AutonomousGoalGenesisGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B334AutonomousProjectLifecycleGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B335AutonomousProjectHoldoutGate.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -639,6 +649,10 @@ jobs:
           node --experimental-strip-types tests/p57-reality-first-observatory.mjs
           node --experimental-strip-types tests/p2696-contextual-policy-learning.mjs
           node --experimental-strip-types tests/big-pass-225-228-autonomous-personhood-expansion.mjs
+          node --experimental-strip-types tests/big-pass-291-unified-self-agency-gate.mjs
+          node --experimental-strip-types tests/big-pass-333-autonomous-goal-genesis-gate.mjs
+          node --experimental-strip-types tests/big-pass-334-autonomous-project-lifecycle.mjs
+          node --experimental-strip-types tests/big-pass-335-autonomous-project-holdout.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
