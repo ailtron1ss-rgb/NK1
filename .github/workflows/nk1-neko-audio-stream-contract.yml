@@ -1,0 +1,85 @@
+name: NK1 N.E.K.O. streaming audio contract
+
+on:
+  push:
+    branches: [aspect/neko-voice-turn-coordinator-20261104]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAudioStreamContract.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAudioFrameBuffer.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoVoiceTurnCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/tests/neko-audio-*.mjs"
+      - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
+      - "runtime/neuro-kurisu/tests/neko-voice-turn-*.mjs"
+      - "runtime/neuro-kurisu/tests/neko-voice-embodiment-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/docs/NEKO_AUDIO_STREAM_CONTRACT_RU.md"
+      - ".github/workflows/nk1-neko-audio-stream-contract.yml"
+  pull_request:
+    branches: [aspect/neko-voice-perception-adapters-20261104]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAudioStreamContract.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAudioFrameBuffer.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoVoiceTurnCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/tests/neko-audio-*.mjs"
+      - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
+      - "runtime/neuro-kurisu/tests/neko-voice-turn-*.mjs"
+      - "runtime/neuro-kurisu/tests/neko-voice-embodiment-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/docs/NEKO_AUDIO_STREAM_CONTRACT_RU.md"
+      - ".github/workflows/nk1-neko-audio-stream-contract.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-audio-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audio-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Normalized PCM16 frame contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-audio-stream-contract
+      - name: Bounded PCM queue and semantic ring buffer
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-audio-frame-buffer
+      - name: Streaming ASR admission boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-stream-admission
+      - name: Voice turn coordinator boundaries
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-voice-turn-coordinator
+      - name: Embodiment streaming voice wiring
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-voice-embodiment-streaming-wiring
+      - name: Existing N.E.K.O. ASR transcript boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-transcript-adapter
+      - name: Existing one-shot ASR embodiment compatibility
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-embodiment-wiring
+      - name: ASR provenance to cognitive evidence regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-asr-voice-input-evidence.mjs
+      - name: Existing voice and cognitive-context regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:embodiment-voice-cognitive-context
+      - name: Runtime TypeScript typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
