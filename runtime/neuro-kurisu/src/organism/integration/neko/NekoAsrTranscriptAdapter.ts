@@ -5,6 +5,13 @@ import {
   type NekoSpeechAdmissionSnapshotV1,
   type NekoSpeechProbabilityWindowV1,
 } from './NekoSpeechAdmissionGate.ts';
+import {
+  NekoSmartTurnCoordinator,
+  type NekoSmartTurnActivityEvent,
+  type NekoSmartTurnAudioFrameV1,
+  type NekoSmartTurnEvaluationResult,
+  type NekoSmartTurnProviderPort,
+} from './NekoSmartTurnCoordinator.ts';
 
 export interface NekoAsrCaptureRequest {
   readonly sessionId: string;
@@ -13,6 +20,11 @@ export interface NekoAsrCaptureRequest {
   readonly observeSileroProbabilityWindow: (
     input: NekoSpeechProbabilityWindowV1,
   ) => NekoSpeechAdmissionSnapshotV1 | null;
+  /** Optional bounded PCM16 audio feed for semantic endpoint analysis. */
+  readonly pushSmartTurnAudioFrame: (input: NekoSmartTurnAudioFrameV1) => boolean;
+  readonly observeSpeechActivity: (event: NekoSmartTurnActivityEvent) => void;
+  /** Returns null when Smart Turn is not configured or capture has already closed. */
+  readonly evaluateSemanticEndpoint: () => Promise<NekoSmartTurnEvaluationResult | null>;
 }
 export interface NekoAsrCancelRequest {
   readonly sessionId: string;
@@ -30,12 +42,14 @@ export interface NekoAsrProviderPort {
   isAvailable(): boolean | Promise<boolean>;
   /** Resolves only when the provider has produced a complete transcript envelope. */
   captureFinal(request: NekoAsrCaptureRequest): Promise<unknown | null>;
+  /** Optional host-owned Smart Turn v3.x semantic endpoint predictor. */
+  readonly smartTurnProvider?: NekoSmartTurnProviderPort;
   /** verified=true is allowed only after independent confirmation that capture stopped. */
   cancelSession?(request: NekoAsrCancelRequest): Promise<NekoAsrCancelResponse>;
 }
 
 export type NekoAsrCaptureResult =
-  | { status: 'accepted'; sessionId: string; eventId: string; turnId: string; provider: string; transcript: string; confidence01?: number; language?: string; speechAdmission?: NekoSpeechAdmissionSnapshotV1; speechAdmissionError?: string }
+  | { status: 'accepted'; sessionId: string; eventId: string; turnId: string; provider: string; transcript: string; confidence01?: number; language?: string; speechAdmission?: NekoSpeechAdmissionSnapshotV1; speechAdmissionError?: string; smartTurnEvaluation?: NekoSmartTurnEvaluationResult }
   | { status: 'replayed'; sessionId: string; eventId: string }
   | { status: 'rejected'; reason: 'session-already-active' | 'provider-unavailable' | 'invalid-envelope' | 'session-mismatch' | 'provider-mismatch' | 'not-final' | 'not-user' | 'empty-transcript' | 'transcript-too-large' | 'invalid-confidence' | 'low-confidence' | 'event-id-conflict' }
   | { status: 'cancelled'; sessionId: string }
@@ -197,9 +211,15 @@ export class NekoAsrTranscriptAdapter {
     };
     this.active = active;
     let admissionOpen = false;
+    let semanticEndpointOpen = false;
+    let smartTurnCoordinator: NekoSmartTurnCoordinator | null = null;
     try {
       const admissionGate = new NekoSpeechAdmissionGate(active.sessionId);
       admissionOpen = true;
+      smartTurnCoordinator = this.provider.smartTurnProvider
+        ? new NekoSmartTurnCoordinator(active.sessionId, this.provider.smartTurnProvider)
+        : null;
+      semanticEndpointOpen = true;
       let admissionError: string | undefined;
       const observeSileroProbabilityWindow = (
         input: NekoSpeechProbabilityWindowV1,
@@ -220,6 +240,36 @@ export class NekoAsrTranscriptAdapter {
           sessionId: active.sessionId,
           signal: active.controller.signal,
           observeSileroProbabilityWindow,
+          pushSmartTurnAudioFrame: input => {
+            if (
+              !semanticEndpointOpen ||
+              active.cancelled ||
+              active.controller.signal.aborted ||
+              this.active !== active ||
+              !smartTurnCoordinator
+            ) return false;
+            return smartTurnCoordinator.pushAudioFrame(input);
+          },
+          observeSpeechActivity: event => {
+            if (
+              !semanticEndpointOpen ||
+              active.cancelled ||
+              active.controller.signal.aborted ||
+              this.active !== active ||
+              !smartTurnCoordinator
+            ) return;
+            smartTurnCoordinator.notifySpeechActivity(event);
+          },
+          evaluateSemanticEndpoint: async () => {
+            if (
+              !semanticEndpointOpen ||
+              active.cancelled ||
+              active.controller.signal.aborted ||
+              this.active !== active ||
+              !smartTurnCoordinator
+            ) return null;
+            return smartTurnCoordinator.evaluateSemanticEndpoint();
+          },
         });
       } catch (error) {
         if (active.cancelled || active.controller.signal.aborted) return { status: 'cancelled', sessionId: active.sessionId };
@@ -253,10 +303,15 @@ export class NekoAsrTranscriptAdapter {
         ...item,
         ...(speechAdmission ? { speechAdmission } : {}),
         ...(admissionError ? { speechAdmissionError: admissionError } : {}),
+        ...(smartTurnCoordinator?.latestEvaluation
+          ? { smartTurnEvaluation: smartTurnCoordinator.latestEvaluation }
+          : {}),
       };
     } finally {
       // Provider callbacks are capture-scoped; late frames cannot mutate evidence.
       admissionOpen = false;
+      semanticEndpointOpen = false;
+      smartTurnCoordinator?.close();
       if (this.active === active) this.active = null;
     }
   }
