@@ -288,9 +288,8 @@ export async function materializeCodeAssimilationArchiveWorkspace(
       const target = resolveFile(relativePath);
       const metadata = fileByPath.get(relativePath)!;
       const info = await lstat(target);
-      if (!info.isFile() || info.isSymbolicLink() || info.size !== metadata.sizeBytes) {
-        fail('workspace-file-metadata-mismatch');
-      }
+      if (!info.isFile() || info.isSymbolicLink()) fail('workspace-file-type-mismatch');
+      if (info.size !== metadata.sizeBytes) fail('workspace-file-integrity-mismatch');
       const actualPath = await realpath(target);
       if (!isWithin(rootPath, actualPath)) fail('workspace-file-realpath-escape');
       const bytes = Buffer.from(await readDiskFile(target));
