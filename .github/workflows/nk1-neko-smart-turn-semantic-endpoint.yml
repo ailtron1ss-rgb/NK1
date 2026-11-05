@@ -5,15 +5,25 @@ on:
     branches: [aspect/neko-speech-admission-gate-20261104]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSmartTurnCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/neko-smart-turn-semantic-endpoint.mjs"
+      - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md"
       - ".github/workflows/nk1-neko-smart-turn-semantic-endpoint.yml"
   push:
     branches: [aspect/neko-smart-turn-semantic-endpoint-20261105]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSmartTurnCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/neko-smart-turn-semantic-endpoint.mjs"
+      - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md"
       - ".github/workflows/nk1-neko-smart-turn-semantic-endpoint.yml"
 
 permissions:
@@ -37,6 +47,21 @@ jobs:
       - name: Install locked runtime dependencies
         working-directory: runtime/neuro-kurisu
         run: npm ci
-      - name: Smart Turn semantic endpoint tests
+      - name: Smart Turn semantic endpoint coordinator
         working-directory: runtime/neuro-kurisu
         run: npm run test:neko-smart-turn-semantic-endpoint
+      - name: ASR transcript and capture-scoped endpoint boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-transcript-adapter
+      - name: Embodiment detailed voice input
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-embodiment-wiring
+      - name: Cognitive voice evidence
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-asr-voice-input-evidence.mjs
+      - name: Existing voice/cognitive context regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:embodiment-voice-cognitive-context
+      - name: Runtime typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
