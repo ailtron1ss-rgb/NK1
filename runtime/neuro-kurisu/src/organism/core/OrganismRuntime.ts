@@ -80,6 +80,7 @@ function speechObservationEvidence(input: VoiceInputResult, suffix?: string): st
       evidence.push(`smart-turn-reason:${semantic.reason}`);
     }
   }
+  if (input.smartTurnError) evidence.push(`smart-turn-provider-error:${input.smartTurnError}`);
   if (suffix) evidence.push(suffix);
   return evidence;
 }
