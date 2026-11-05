@@ -225,6 +225,7 @@ test('Smart Turn inference errors remain diagnostic and do not reject valid ASR'
   const { port } = provider(async input => {
     input.observeSpeechActivity('speech-started');
     input.pushSmartTurnAudioFrame(smartTurnAudioFrame());
+    input.pushSmartTurnAudioFrame(smartTurnAudioFrame());
     input.observeSpeechActivity('candidate-pause');
     const evaluation = await input.evaluateSemanticEndpoint();
     assert.equal(evaluation?.status, 'error');
