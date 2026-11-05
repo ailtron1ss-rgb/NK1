@@ -276,6 +276,7 @@ export class NekoAsrTranscriptAdapter {
         return { status: 'error', reason: String((error as Error)?.message ?? error).replace(/[\r\n\t]+/gu, ' ').slice(0, 160) || 'provider-capture-failed' };
       }
       admissionOpen = false;
+      semanticEndpointOpen = false;
       if (active.cancelled || active.controller.signal.aborted || this.active !== active) {
         return { status: 'cancelled', sessionId: active.sessionId };
       }
