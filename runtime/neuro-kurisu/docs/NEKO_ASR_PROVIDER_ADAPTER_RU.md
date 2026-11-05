@@ -40,11 +40,15 @@ does not invalidate an otherwise valid ASR envelope. The callback is fenced
 when capture completes or is cancelled.
 
 Speech activity admission is not semantic turn completion. Silero-style
-probability windows indicate local speech activity; Smart Turn / endpointing
-remains a separate provider responsibility for deciding whether the user has
-finished a thought. The initial thresholds are not promoted to production
-gating until target-device latency, multilingual holdout calibration, false
-admission/rejection rates, and interrupted/resumed speech tests have passed.
+probability windows indicate local speech activity; semantic endpoint analysis
+is exposed separately through the optional host-owned Smart Turn provider and
+the capture-scoped callbacks documented in
+[NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md](./NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md).
+The coordinator's complete/incomplete result remains advisory and cannot
+finalize, reject, truncate, or delay the ASR transcript. The initial thresholds
+are not promoted to production gating until target-device latency, multilingual
+holdout calibration, false admission/rejection rates, and
+interrupted/resumed speech tests have passed.
 
 
 

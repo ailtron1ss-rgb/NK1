@@ -29,6 +29,13 @@ function sileroFrame(index, probability01 = 0.9, patch = {}) {
   };
 }
 
+function smartTurnAudioFrame(samples = 1600, value = 0) {
+  const pcm16 = new Uint8Array(samples * 2);
+  const view = new DataView(pcm16.buffer);
+  for (let i = 0; i < samples; i += 1) view.setInt16(i * 2, value, true);
+  return { sampleRateHz: 16_000, pcm16 };
+}
+
 function provider(result, overrides = {}) {
   const calls = { capture: [], cancel: [] };
   const port = {
@@ -163,6 +170,127 @@ test('deduplicates replayed final event IDs and rejects conflicting replay paylo
   const third = await adapter.captureFinal();
   assert.equal(third.status, 'rejected');
   assert.equal(third.reason, 'event-id-conflict');
+});
+
+test('Smart Turn v3.2 result travels through the capture boundary as advisory metadata', async () => {
+  const smartTurnProvider = {
+    modelId: 'pipecat-smart-turn-v3.2-cpu',
+    modelVersion: 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93',
+    isAvailable: () => true,
+    async evaluate(input) {
+      assert.equal(input.sampleRateHz, 16_000);
+      assert.equal(input.channels, 1);
+      assert.equal(input.encoding, 'pcm_s16le');
+      assert.equal(input.audioPcm16.byteLength, 32_000);
+      return { probability01: 0.84 };
+    },
+  };
+  const { port } = provider(async input => {
+    input.observeSpeechActivity('speech-started');
+    for (let index = 0; index < 10; index += 1) {
+      assert.equal(input.pushSmartTurnAudioFrame(smartTurnAudioFrame()), true);
+    }
+    input.observeSpeechActivity('candidate-pause');
+    const evaluation = await input.evaluateSemanticEndpoint();
+    assert.equal(evaluation?.status, 'ok');
+    assert.equal(evaluation?.decision, 'complete');
+    return transcript({ sessionId: input.sessionId });
+  }, { smartTurnProvider });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted', result.status === 'error' ? result.reason : undefined);
+  assert.equal(result.smartTurnEvaluation?.status, 'ok');
+  assert.equal(result.smartTurnEvaluation?.decision, 'complete');
+  assert.equal(result.smartTurnEvaluation?.probability01, 0.84);
+  assert.equal(result.smartTurnEvaluation?.modelId, 'pipecat-smart-turn-v3.2-cpu');
+});
+
+test('absence of a Smart Turn model never blocks a valid ASR final transcript', async () => {
+  const { port } = provider(async input => {
+    assert.equal(input.pushSmartTurnAudioFrame(smartTurnAudioFrame()), false);
+    assert.equal(await input.evaluateSemanticEndpoint(), null);
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.smartTurnEvaluation, undefined);
+});
+
+test('Smart Turn inference errors remain diagnostic and do not reject valid ASR', async () => {
+  const smartTurnProvider = {
+    modelId: 'pipecat-smart-turn-v3.2-cpu',
+    modelVersion: 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93',
+    isAvailable: () => true,
+    async evaluate() { return { probability01: Number.NaN }; },
+  };
+  const { port } = provider(async input => {
+    input.observeSpeechActivity('speech-started');
+    input.pushSmartTurnAudioFrame(smartTurnAudioFrame());
+    input.pushSmartTurnAudioFrame(smartTurnAudioFrame());
+    input.observeSpeechActivity('candidate-pause');
+    const evaluation = await input.evaluateSemanticEndpoint();
+    assert.equal(evaluation?.status, 'error');
+    assert.equal(evaluation?.reason, 'invalid-smart-turn-probability');
+    return transcript({ sessionId: input.sessionId });
+  }, { smartTurnProvider });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted', result.status === 'error' ? result.reason : undefined);
+  assert.equal(result.smartTurnEvaluation?.status, 'error');
+});
+
+test('invalid optional Smart Turn configuration is diagnostic and leaves ASR operational', async () => {
+  const { port } = provider(async input => {
+    assert.equal(input.pushSmartTurnAudioFrame(smartTurnAudioFrame()), false);
+    assert.equal(await input.evaluateSemanticEndpoint(), null);
+    return transcript({ sessionId: input.sessionId });
+  }, {
+    smartTurnProvider: {
+      modelId: '',
+      isAvailable: () => true,
+      async evaluate() { return { probability01: 0.9 }; },
+    },
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.smartTurnError, 'invalid-smart-turn-provider');
+});
+
+test('malformed Smart Turn PCM frames fail open without rejecting the ASR transcript', async () => {
+  const smartTurnProvider = {
+    modelId: 'pipecat-smart-turn-v3.2-cpu',
+    modelVersion: 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93',
+    isAvailable: () => true,
+    async evaluate() { return { probability01: 0.9 }; },
+  };
+  const { port } = provider(async input => {
+    assert.equal(input.pushSmartTurnAudioFrame({
+      sampleRateHz: 48_000,
+      pcm16: new Uint8Array(3200),
+    }), false);
+    return transcript({ sessionId: input.sessionId });
+  }, { smartTurnProvider });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.smartTurnError, 'invalid-smart-turn-audio-frame');
+});
+
+test('Smart Turn callbacks are fenced after the ASR capture resolves', async () => {
+  let pushLate;
+  let evaluateLate;
+  const smartTurnProvider = {
+    modelId: 'pipecat-smart-turn-v3.2-cpu',
+    modelVersion: 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93',
+    isAvailable: () => true,
+    async evaluate() { return { probability01: 0.9 }; },
+  };
+  const { port } = provider(async input => {
+    pushLate = input.pushSmartTurnAudioFrame;
+    evaluateLate = input.evaluateSemanticEndpoint;
+    return transcript({ sessionId: input.sessionId });
+  }, { smartTurnProvider });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(pushLate(smartTurnAudioFrame()), false);
+  assert.equal(await evaluateLate(), null);
 });
 
 test('allows only one active provider capture at a time', async () => {

@@ -69,6 +69,18 @@ function speechObservationEvidence(input: VoiceInputResult, suffix?: string): st
     evidence.push(`speech-admission-voiced-ms:${Math.round(input.speechAdmission.voicedAudioMs)}`);
   }
   if (input.speechAdmissionError) evidence.push('speech-admission-error');
+  if (input.smartTurnEvaluation) {
+    const semantic = input.smartTurnEvaluation;
+    evidence.push(`smart-turn-status:${semantic.status}`);
+    if (semantic.status === 'ok') {
+      evidence.push(`smart-turn-decision:${semantic.decision}`);
+      evidence.push(`smart-turn-probability:${semantic.probability01.toFixed(3)}`);
+      evidence.push(`smart-turn-model:${semantic.modelId}`);
+    } else {
+      evidence.push(`smart-turn-reason:${semantic.reason}`);
+    }
+  }
+  if (input.smartTurnError) evidence.push(`smart-turn-provider-error:${input.smartTurnError}`);
   if (suffix) evidence.push(suffix);
   return evidence;
 }
