@@ -13,6 +13,8 @@
 1. **Один мозг и одно состояние:** ни один внешний фреймворк (Letta, Hermes, LangGraph, River, CleanRL) не вправе создавать параллельный центр принятия решений или вторую память. Интеграция ведётся строго через адаптеры к `OrganismBus` и `OrganismState`.
 2. **Протокол продвижения:** $\text{PLANNED} \to \text{IMPLEMENTED} \to \text{TESTED} \to \text{INTEGRATED} \to \text{MEASURED} \to \text{RELEASED}$.
 3. **Непримиримая честность:** Любой результат без независимых доказательств на неизменяемом holdout или физическом железе имеет статус `UNVERIFIED` или `PENDING`.
+4. **Устойчивость состояния:** Использование `FileStateStore` с атомарными записями (`temp + fsync + rename`), сохранением verified backup и защитой от крашей при SIGKILL.
+5. **Мультимодальная сцена:** Архитектура `AvatarStage` объединяет Live2D, Three.js VRM Humanoid и 2.5D SVG под общим контролем `AvatarController`.
 
 ---
 
