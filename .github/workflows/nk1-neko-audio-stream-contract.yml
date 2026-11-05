@@ -50,3 +50,6 @@ jobs:
       - name: Normalized PCM16 frame contract
         working-directory: runtime/neuro-kurisu
         run: npm run test:neko-audio-stream-contract
+      - name: Bounded PCM queue and semantic ring buffer
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-audio-frame-buffer
