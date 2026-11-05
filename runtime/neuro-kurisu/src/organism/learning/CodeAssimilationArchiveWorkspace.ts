@@ -91,18 +91,22 @@ function canonicalJson(value: unknown): string {
 
 function canonicalRelativePath(value: unknown): string {
   if (typeof value !== 'string' || value.length === 0 || value.length > MAX_PATH_LENGTH ||
-      value.normalize('NFKC') !== value || value.includes('\\\\') ||
+      value.normalize('NFKC') !== value || value.includes(String.fromCharCode(92)) ||
       value.startsWith('/') || value.endsWith('/') || value.includes('//')) {
     fail('path-invalid');
   }
   const segments = value.split('/');
   if (segments.length > MAX_PATH_DEPTH) fail('path-depth-limit');
   for (const segment of segments) {
+    const lowered = segment.toLowerCase();
+    const deviceBase = lowered.split('.')[0] ?? '';
     if (segment.length === 0 || segment === '.' || segment === '..' ||
         segment.endsWith('.') || segment.endsWith(' ') ||
-        /[:<>"|?*]/.test(segment) ||
-        /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\\..*)?$/i.test(segment) ||
-        /^(?:\\.git|\\.hg|\\.svn)$/i.test(segment)) {
+        segment.includes(':') || /[<>"|?*]/.test(segment) ||
+        ['con', 'prn', 'aux', 'nul', 'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
+          'com¹', 'com²', 'com³', 'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9',
+          'lpt¹', 'lpt²', 'lpt³'].includes(deviceBase) ||
+        ['.git', '.hg', '.svn'].includes(lowered)) {
       fail('path-not-canonical');
     }
     if (Array.from(segment).some(character => {
