@@ -250,6 +250,10 @@ export class NekoSmartTurnCoordinator {
   }
 
   async evaluateSemanticEndpoint(): Promise<NekoSmartTurnEvaluationResult> {
+    if (this.currentState === 'evaluating') {
+      this.activeController?.abort('newer-evaluation-requested');
+      this.activeController = null;
+    }
     const identity: EvaluationIdentity = {
       generation: this.currentGeneration,
       activitySequence: this.currentActivitySequence,
@@ -265,16 +269,11 @@ export class NekoSmartTurnCoordinator {
     ) {
       return this.nonOk('unavailable', identity, 'no-pause-candidate');
     }
-    const audioPcm16 = this.snapshotAudio();
-    const audioSamples = audioPcm16.byteLength / 2;
-    const audioDurationMs = audioSamples / 16;
-    if (audioDurationMs < this.config.minimumAudioMs) {
-      return this.nonOk('unavailable', identity, 'insufficient_audio');
-    }
 
     let release!: () => void;
     const previous = this.inferenceTail;
     this.inferenceTail = new Promise<void>(resolve => { release = resolve; });
+    let controller: AbortController | null = null;
     await previous;
     try {
       if (this.currentState === 'closed' || identity.generation !== this.currentGeneration) {
@@ -294,8 +293,17 @@ export class NekoSmartTurnCoordinator {
         return this.nonOk('stale', identity, 'pause-candidate-ended');
       }
 
+      const audioPcm16 = this.snapshotAudio();
+      const audioSamples = audioPcm16.byteLength / 2;
+      const audioDurationMs = audioSamples / 16;
+      if (audioDurationMs < this.config.minimumAudioMs) {
+        const result = this.nonOk('unavailable', identity, 'insufficient_audio');
+        this.lastResult = result;
+        return result;
+      }
+
       this.currentState = 'evaluating';
-      const controller = new AbortController();
+      controller = new AbortController();
       this.activeController = controller;
       let available = false;
       try {
@@ -303,9 +311,19 @@ export class NekoSmartTurnCoordinator {
       } catch {
         available = false;
       }
+      if (!this.isCurrent(identity)) {
+        if (this.currentState === 'closed' || identity.generation !== this.currentGeneration) {
+          return this.nonOk('stale', identity, 'coordinator-closed');
+        }
+        if (identity.activitySequence !== this.currentActivitySequence) {
+          return this.nonOk('stale', identity, 'activity-resumed');
+        }
+        return this.nonOk('superseded', identity, 'newer-evaluation-requested');
+      }
       if (!available) {
         const result = this.nonOk('unavailable', identity, 'provider-unavailable');
-        if (this.isCurrent(identity)) this.lastResult = result;
+        this.lastResult = result;
+        this.currentState = 'pause-candidate';
         return result;
       }
 
@@ -323,7 +341,13 @@ export class NekoSmartTurnCoordinator {
         });
       } catch (error) {
         if (!this.isCurrent(identity)) {
-          return this.nonOk('stale', identity, this.currentState === 'closed' ? 'coordinator-closed' : 'activity-resumed');
+          if (this.currentState === 'closed' || identity.generation !== this.currentGeneration) {
+            return this.nonOk('stale', identity, 'coordinator-closed');
+          }
+          if (identity.activitySequence !== this.currentActivitySequence) {
+            return this.nonOk('stale', identity, 'activity-resumed');
+          }
+          return this.nonOk('superseded', identity, 'newer-evaluation-requested');
         }
         const result = this.nonOk('error', identity, boundedError(error));
         this.lastResult = result;
@@ -332,19 +356,13 @@ export class NekoSmartTurnCoordinator {
       }
 
       if (!this.isCurrent(identity)) {
-        return this.nonOk(
-          this.currentState === 'closed' || identity.generation !== this.currentGeneration
-            ? 'stale'
-            : identity.requestSequence !== this.currentRequestSequence
-              ? 'superseded'
-              : 'stale',
-          identity,
-          this.currentState === 'closed'
-            ? 'coordinator-closed'
-            : identity.activitySequence !== this.currentActivitySequence
-              ? 'activity-resumed'
-              : 'newer-evaluation-requested',
-        );
+        if (this.currentState === 'closed' || identity.generation !== this.currentGeneration) {
+          return this.nonOk('stale', identity, 'coordinator-closed');
+        }
+        if (identity.activitySequence !== this.currentActivitySequence) {
+          return this.nonOk('stale', identity, 'activity-resumed');
+        }
+        return this.nonOk('superseded', identity, 'newer-evaluation-requested');
       }
       const probability01 = readProbability(raw);
       if (probability01 === null) {
@@ -373,7 +391,7 @@ export class NekoSmartTurnCoordinator {
       this.currentState = decision === 'complete' ? 'candidate-complete' : 'wait-continuation';
       return result;
     } finally {
-      if (this.activeController?.signal.aborted === false) this.activeController = null;
+      if (controller && this.activeController === controller) this.activeController = null;
       release();
     }
   }
