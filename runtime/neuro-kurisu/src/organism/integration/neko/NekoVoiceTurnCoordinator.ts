@@ -292,17 +292,21 @@ export class NekoVoiceTurnCoordinator {
   async cancel(reason = 'manual'): Promise<boolean> {
     const active = this.active;
     if (!active) return false;
-    active.cancelled = true;
     const cleanReason = String(reason ?? 'manual').replace(/[\\r\\n\\t]+/gu, ' ').slice(0, 120) || 'manual';
-    if (!active.controller.signal.aborted) active.controller.abort(cleanReason);
-    active.channel?.invalidate('capture-cancelled');
-    const audioStopVerified = await this.closeActiveSession(active, cleanReason);
+
+    // Ask the provider to cancel before aborting the adapter's host signal. The
+    // provider cancel receipt must be observed while the provider session is active.
     let asrStopVerified = false;
     try {
       const result = await this.asrAdapter.interrupt?.(cleanReason);
       asrStopVerified = Boolean(result && typeof result === 'object' &&
         (result as { status?: unknown }).status === 'verified');
     } catch { /* Cancellation remains unverified when the provider cannot confirm it. */ }
+
+    active.cancelled = true;
+    if (!active.controller.signal.aborted) active.controller.abort(cleanReason);
+    active.channel?.invalidate('capture-cancelled');
+    const audioStopVerified = await this.closeActiveSession(active, cleanReason);
     return audioStopVerified && asrStopVerified;
   }
 
