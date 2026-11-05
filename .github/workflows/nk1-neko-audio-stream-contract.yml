@@ -12,6 +12,7 @@ on:
       - "runtime/neuro-kurisu/tests/neko-audio-*.mjs"
       - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
       - "runtime/neuro-kurisu/tests/neko-voice-turn-*.mjs"
+      - "runtime/neuro-kurisu/tests/neko-voice-embodiment-*.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/nk1-neko-audio-stream-contract.yml"
   pull_request:
@@ -25,6 +26,7 @@ on:
       - "runtime/neuro-kurisu/tests/neko-audio-*.mjs"
       - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
       - "runtime/neuro-kurisu/tests/neko-voice-turn-*.mjs"
+      - "runtime/neuro-kurisu/tests/neko-voice-embodiment-*.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/nk1-neko-audio-stream-contract.yml"
 
@@ -61,3 +63,6 @@ jobs:
       - name: Voice turn coordinator boundaries
         working-directory: runtime/neuro-kurisu
         run: npm run test:neko-voice-turn-coordinator
+      - name: Embodiment streaming voice wiring
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-voice-embodiment-streaming-wiring
