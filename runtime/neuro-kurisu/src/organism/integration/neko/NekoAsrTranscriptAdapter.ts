@@ -48,8 +48,14 @@ export interface NekoAsrProviderPort {
   cancelSession?(request: NekoAsrCancelRequest): Promise<NekoAsrCancelResponse>;
 }
 
+export type NekoSmartTurnCaptureError =
+  | 'invalid-smart-turn-provider'
+  | 'invalid-smart-turn-audio-frame'
+  | 'invalid-smart-turn-activity-event'
+  | 'smart-turn-evaluation-callback-error';
+
 export type NekoAsrCaptureResult =
-  | { status: 'accepted'; sessionId: string; eventId: string; turnId: string; provider: string; transcript: string; confidence01?: number; language?: string; speechAdmission?: NekoSpeechAdmissionSnapshotV1; speechAdmissionError?: string; smartTurnEvaluation?: NekoSmartTurnEvaluationResult }
+  | { status: 'accepted'; sessionId: string; eventId: string; turnId: string; provider: string; transcript: string; confidence01?: number; language?: string; speechAdmission?: NekoSpeechAdmissionSnapshotV1; speechAdmissionError?: string; smartTurnEvaluation?: NekoSmartTurnEvaluationResult; smartTurnError?: NekoSmartTurnCaptureError }
   | { status: 'replayed'; sessionId: string; eventId: string }
   | { status: 'rejected'; reason: 'session-already-active' | 'provider-unavailable' | 'invalid-envelope' | 'session-mismatch' | 'provider-mismatch' | 'not-final' | 'not-user' | 'empty-transcript' | 'transcript-too-large' | 'invalid-confidence' | 'low-confidence' | 'event-id-conflict' }
   | { status: 'cancelled'; sessionId: string }
@@ -213,12 +219,20 @@ export class NekoAsrTranscriptAdapter {
     let admissionOpen = false;
     let semanticEndpointOpen = false;
     let smartTurnCoordinator: NekoSmartTurnCoordinator | null = null;
+    let smartTurnError: NekoSmartTurnCaptureError | undefined;
     try {
       const admissionGate = new NekoSpeechAdmissionGate(active.sessionId);
       admissionOpen = true;
-      smartTurnCoordinator = this.provider.smartTurnProvider
-        ? new NekoSmartTurnCoordinator(active.sessionId, this.provider.smartTurnProvider)
-        : null;
+      if (this.provider.smartTurnProvider) {
+        try {
+          smartTurnCoordinator = new NekoSmartTurnCoordinator(
+            active.sessionId,
+            this.provider.smartTurnProvider,
+          );
+        } catch {
+          smartTurnError = 'invalid-smart-turn-provider';
+        }
+      }
       semanticEndpointOpen = true;
       let admissionError: string | undefined;
       const observeSileroProbabilityWindow = (
@@ -248,7 +262,12 @@ export class NekoAsrTranscriptAdapter {
               this.active !== active ||
               !smartTurnCoordinator
             ) return false;
-            return smartTurnCoordinator.pushAudioFrame(input);
+            try {
+              return smartTurnCoordinator.pushAudioFrame(input);
+            } catch {
+              smartTurnError = 'invalid-smart-turn-audio-frame';
+              return false;
+            }
           },
           observeSpeechActivity: event => {
             if (
@@ -258,7 +277,11 @@ export class NekoAsrTranscriptAdapter {
               this.active !== active ||
               !smartTurnCoordinator
             ) return;
-            smartTurnCoordinator.notifySpeechActivity(event);
+            try {
+              smartTurnCoordinator.notifySpeechActivity(event);
+            } catch {
+              smartTurnError = 'invalid-smart-turn-activity-event';
+            }
           },
           evaluateSemanticEndpoint: async () => {
             if (
@@ -268,7 +291,12 @@ export class NekoAsrTranscriptAdapter {
               this.active !== active ||
               !smartTurnCoordinator
             ) return null;
-            return smartTurnCoordinator.evaluateSemanticEndpoint();
+            try {
+              return await smartTurnCoordinator.evaluateSemanticEndpoint();
+            } catch {
+              smartTurnError = 'smart-turn-evaluation-callback-error';
+              return null;
+            }
           },
         });
       } catch (error) {
@@ -307,6 +335,7 @@ export class NekoAsrTranscriptAdapter {
         ...(smartTurnCoordinator?.latestEvaluation
           ? { smartTurnEvaluation: smartTurnCoordinator.latestEvaluation }
           : {}),
+        ...(smartTurnError ? { smartTurnError } : {}),
       };
     } finally {
       // Provider callbacks are capture-scoped; late frames cannot mutate evidence.
