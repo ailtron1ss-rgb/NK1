@@ -50,6 +50,11 @@ export interface CentralBrainState {
   qualityGate:{validated:boolean;minPredictionSamples:number;minActionSamples:number;brainPredictionError01:number;baselinePredictionError01:number;brainAdvantage01:number;reason:string};
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const vecN=(v:unknown,len:number,lo:number,hi:number,fill:number):number[]=>Array.from({length:len},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fill;});
+const matN=(v:unknown,rows:number,cols:number,fb:number[][]):number[][]=>Array.from({length:rows},(_,i)=>{const row=Array.isArray(v)?(v as unknown[])[i]:undefined;const fbr=fb[i]??[];return Array.from({length:cols},(_,j)=>{const c=Array.isArray(row)?(row as unknown[])[j]:undefined;const n=typeof c==='number'?c:Number(c);return Number.isFinite(n)?Math.max(-1,Math.min(1,n)):(fbr[j]??0);});});
 function defaultState():CentralBrainState{
   const inputDim=48, hiddenDim=64, broadcastDim=16, actionCount=ACTIONS.length;
   return {version:1,inputDim,hiddenDim,broadcastDim,actionCount,
@@ -76,19 +81,17 @@ export class CentralBrainSubstrate {
 
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<CentralBrainState>|null){
-    const d=defaultState(); const r=raw??{};
-    const arr=(v:any,n:number,fill=0)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-v.length)).fill(fill)).slice(0,n):new Array(n).fill(fill);
-    const mat=(v:any,rows:number,cols:number)=>Array.isArray(v)?Array.from({length:rows},(_,i)=>Array.isArray(v[i])?arr(v[i],cols):new Array(cols).fill(0)):matrix(rows,cols,999);
-    this.state={...d,...r,
-      hidden:arr(r.hidden,d.hiddenDim), bias:arr(r.bias,d.hiddenDim),
-      recurrentWeights:mat(r.recurrentWeights,d.hiddenDim,d.hiddenDim), inputWeights:mat(r.inputWeights,d.hiddenDim,d.inputDim),
-      outputWeights:mat(r.outputWeights,d.inputDim,d.hiddenDim), outputBias:arr(r.outputBias,d.inputDim),
-      actionWeights:mat(r.actionWeights,d.actionCount,d.hiddenDim), actionBias:arr(r.actionBias,d.actionCount),
-      lastInput:arr(r.lastInput,d.inputDim), lastPrediction:arr(r.lastPrediction,d.inputDim), previousHidden:arr(r.previousHidden,d.hiddenDim),
-      qualityGate:{...d.qualityGate,...(r.qualityGate??{})}
-    };
+    const d=defaultState();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const qgRaw=(read('qualityGate')&&typeof read('qualityGate')==='object')?read('qualityGate') as Record<string,unknown>:{};
+    this.state={version:1,inputDim:d.inputDim,hiddenDim:d.hiddenDim,broadcastDim:d.broadcastDim,actionCount:d.actionCount,
+      hidden:vecN(read('hidden'),d.hiddenDim,-1,1,0),bias:vecN(read('bias'),d.hiddenDim,-1,1,0),
+      recurrentWeights:matN(read('recurrentWeights'),d.hiddenDim,d.hiddenDim,d.recurrentWeights),inputWeights:matN(read('inputWeights'),d.hiddenDim,d.inputDim,d.inputWeights),
+      outputWeights:matN(read('outputWeights'),d.inputDim,d.hiddenDim,d.outputWeights),outputBias:vecN(read('outputBias'),d.inputDim,-1,1,0),
+      actionWeights:matN(read('actionWeights'),d.actionCount,d.hiddenDim,d.actionWeights),actionBias:vecN(read('actionBias'),d.actionCount,-1,1,0),
+      lastInput:vecN(read('lastInput'),d.inputDim,-1,1,0),lastPrediction:vecN(read('lastPrediction'),d.inputDim,-1,1,0),previousHidden:vecN(read('previousHidden'),d.hiddenDim,-1,1,0),
+      stepCount:cnt(read('stepCount'),d.stepCount),learningSteps:cnt(read('learningSteps'),d.learningSteps),predictionError01:clamp01(finN(read('predictionError01'),d.predictionError01)),rollingPredictionError01:clamp01(finN(read('rollingPredictionError01'),d.rollingPredictionError01)),actionError01:clamp01(finN(read('actionError01'),d.actionError01)),actionSamples:cnt(read('actionSamples'),d.actionSamples),parameterUpdates:cnt(read('parameterUpdates'),d.parameterUpdates),lastTick:cnt(read('lastTick'),d.lastTick),lastAt:finN(read('lastAt'),d.lastAt),
+      qualityGate:{validated:qgRaw.validated===true,minPredictionSamples:cnt(qgRaw.minPredictionSamples,d.qualityGate.minPredictionSamples),minActionSamples:cnt(qgRaw.minActionSamples,d.qualityGate.minActionSamples),brainPredictionError01:clamp01(finN(qgRaw.brainPredictionError01,d.qualityGate.brainPredictionError01)),baselinePredictionError01:clamp01(finN(qgRaw.baselinePredictionError01,d.qualityGate.baselinePredictionError01)),brainAdvantage01:clamp01(finN(qgRaw.brainAdvantage01,d.qualityGate.brainAdvantage01)),reason:str(qgRaw.reason,d.qualityGate.reason)}};
   }
-
   private pack(input:CentralBrainInput):number[]{
     const groups=[input.perception,input.world,input.self,input.memory,input.attention,input.body,input.motivation,input.actionContext??[]];
     const out=new Array(this.state.inputDim).fill(0); let k=0;

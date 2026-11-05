@@ -187,6 +187,12 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/SocialPredictiveNeuralSubstrate.ts
       - runtime/neuro-kurisu/src/organism/cognition/PredictiveSelfAgencySubstrate.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2852OfflineConsolidationController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B269SpikingPlasticNeuralSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CentralBrainSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B270NeuralGerminalOrganism.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B261UnifiedWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B262MultiTimescaleWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B264CausalPolicyLearning.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -380,6 +386,12 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/SocialPredictiveNeuralSubstrate.ts
       - runtime/neuro-kurisu/src/organism/cognition/PredictiveSelfAgencySubstrate.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2852OfflineConsolidationController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B269SpikingPlasticNeuralSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CentralBrainSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B270NeuralGerminalOrganism.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B261UnifiedWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B262MultiTimescaleWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B264CausalPolicyLearning.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -546,6 +558,12 @@ jobs:
           node --experimental-strip-types tests/big-pass-288-social-brain.mjs
           node --experimental-strip-types tests/big-pass-287-relationship-value.mjs
           node --experimental-strip-types tests/big-pass-284-neural-identity.mjs
+          node --experimental-strip-types tests/big-pass-269-spiking-plasticity.mjs
+          node --experimental-strip-types tests/big-pass-183-central-brain.mjs
+          node --experimental-strip-types tests/big-pass-270-neural-germinal-organism.mjs
+          node --experimental-strip-types tests/big-pass-261-unified-world-model.mjs
+          node --experimental-strip-types tests/big-pass-262-multitimescale-world-model.mjs
+          node --experimental-strip-types tests/big-pass-264-causal-policy-learning.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
