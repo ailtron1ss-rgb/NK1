@@ -197,7 +197,7 @@ test('Smart Turn v3.2 result travels through the capture boundary as advisory me
     return transcript({ sessionId: input.sessionId });
   }, { smartTurnProvider });
   const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
-  assert.equal(result.status, 'accepted');
+  assert.equal(result.status, 'accepted', result.status === 'error' ? result.reason : undefined);
   assert.equal(result.smartTurnEvaluation?.status, 'ok');
   assert.equal(result.smartTurnEvaluation?.decision, 'complete');
   assert.equal(result.smartTurnEvaluation?.probability01, 0.84);
@@ -232,7 +232,7 @@ test('Smart Turn inference errors remain diagnostic and do not reject valid ASR'
     return transcript({ sessionId: input.sessionId });
   }, { smartTurnProvider });
   const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
-  assert.equal(result.status, 'accepted');
+  assert.equal(result.status, 'accepted', result.status === 'error' ? result.reason : undefined);
   assert.equal(result.smartTurnEvaluation?.status, 'error');
 });
 
