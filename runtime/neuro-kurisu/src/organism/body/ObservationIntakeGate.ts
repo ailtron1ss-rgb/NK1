@@ -212,16 +212,63 @@ export function defaultObservationIntakeState(): ObservationIntakeState {
 }
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
+  try {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  } catch {
+    return false;
+  }
 };
 
 const ownValue = (record: Record<string, unknown>, key: string): unknown => {
-  const descriptor = Object.getOwnPropertyDescriptor(record, key);
-  if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return undefined;
-  return descriptor.value;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return undefined;
+    return descriptor.value;
+  } catch {
+    return undefined;
+  }
 };
+
+/** Read bounded own data properties without invoking accessors or proxy getters. */
+const ownDataEntries = (value: unknown, maxEntries = 256): Array<[string, unknown]> | null => {
+  try {
+    if (!isPlainRecord(value)) return null;
+    const keys = Reflect.ownKeys(value);
+    if (keys.length > maxEntries || keys.some((key) => typeof key !== 'string')) return null;
+    const entries: Array<[string, unknown]> = [];
+    for (const key of keys as string[]) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
+      entries.push([key, descriptor.value]);
+    }
+    return entries;
+  } catch {
+    return null;
+  }
+};
+
+/** Read a bounded dense array using descriptors; sparse/accessor slots fail closed. */
+const ownDenseArray = (value: unknown, maxLength: number): unknown[] | null => {
+  try {
+    if (!Array.isArray(value)) return null;
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    if (!lengthDescriptor || !Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value')) return null;
+    const length = lengthDescriptor.value;
+    if (!Number.isSafeInteger(length) || length < 0) return null;
+    const items: unknown[] = [];
+    for (let index = 0; index < Math.min(length, maxLength); index++) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
+      items.push(descriptor.value);
+    }
+    return items;
+  } catch {
+    return null;
+  }
+};
+
 
 const safeString = (value: unknown, limit = MAX_STRING_FIELD): string | null => {
   if (typeof value !== 'string') return null;
@@ -255,33 +302,92 @@ export function sanitizeObservationIntakeState(raw: unknown): ObservationIntakeS
       return Math.min(value, Number.MAX_SAFE_INTEGER);
     };
     const record = (key: string): Record<string, number> => {
-      const value = ownValue(raw, key);
-      if (!isPlainRecord(value)) return {};
-      const out: Record<string, number> = {};
-      for (const [k, v] of Object.entries(value)) {
-        if (typeof v === 'number' && Number.isFinite(v) && v >= 0) out[k.slice(0, 64)] = Math.min(v, Number.MAX_SAFE_INTEGER);
+      const entries = ownDataEntries(ownValue(raw, key), 256);
+      const out = Object.create(null) as Record<string, number>;
+      for (const [name, value] of entries ?? []) {
+        if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+          out[name.slice(0, 64)] = Math.min(value, Number.MAX_SAFE_INTEGER);
+        }
       }
       return out;
     };
-    const consentRaw = ownValue(raw, 'consent');
-    const consent: Record<string, boolean> = { ...fallback.consent };
-    if (isPlainRecord(consentRaw)) {
-      for (const [k, v] of Object.entries(consentRaw)) {
-        if (typeof v === 'boolean') consent[k.slice(0, 32)] = v;
-      }
+
+    const consent = Object.assign(Object.create(null), fallback.consent) as Record<string, boolean>;
+    for (const [name, value] of ownDataEntries(ownValue(raw, 'consent'), 32) ?? []) {
+      if (typeof value === 'boolean') consent[name.slice(0, 32)] = value;
     }
-    const recentRaw = ownValue(raw, 'recent');
-    const recent = Array.isArray(recentRaw)
-      ? recentRaw.filter(isPlainRecord).slice(0, LEDGER_LIMIT).map((row) => ({
-          ...(row as unknown as CanonicalObservation),
-          provenance: OBSERVATION_PROVENANCE.includes((row as any).provenance) ? (row as any).provenance : 'unresolved',
-          isRealCapture: false,
-        }))
-      : [];
-    const conflictsRaw = ownValue(raw, 'recentConflicts');
-    const recentConflicts = Array.isArray(conflictsRaw)
-      ? (conflictsRaw.filter(isPlainRecord).slice(0, CONFLICT_LIMIT) as unknown as ConflictRecord[])
-      : [];
+
+    const recent: CanonicalObservation[] = [];
+    for (const rawRow of ownDenseArray(ownValue(raw, 'recent'), LEDGER_LIMIT) ?? []) {
+      const entries = ownDataEntries(rawRow, 64);
+      if (!entries) continue;
+      const row = Object.create(null) as Record<string, unknown>;
+      for (const [key, value] of entries) row[key] = value;
+
+      const id = safeString(row.id, 120);
+      const sourceId = safeString(row.sourceId, 120);
+      const sessionId = safeString(row.sessionId, 120);
+      const modality = typeof row.modality === 'string' && OBSERVATION_MODALITIES.includes(row.modality as ObservationModality)
+        ? row.modality as ObservationModality
+        : null;
+      const capturedAt = safeTimestamp(row.capturedAt);
+      const contentHash = safeString(row.contentHash, 64);
+      if (!id || !sourceId || !sessionId || !modality || capturedAt === null || !contentHash) continue;
+
+      const payload = sanitizeObservationPayload(row.payload);
+      if (!payload.ok || payload.strippedMedia) continue;
+      const refsRaw = row.evidenceRefs;
+      const refs = refsRaw === undefined || refsRaw === null ? [] : ownDenseArray(refsRaw, MAX_EVIDENCE_REFS);
+      if (!refs) continue;
+      const coordinateFrameId = safeString(row.coordinateFrameId, 120) ?? undefined;
+      const provenance = typeof row.provenance === 'string' && OBSERVATION_PROVENANCE.includes(row.provenance as ObservationProvenance)
+        ? row.provenance as ObservationProvenance
+        : 'unresolved';
+
+      recent.push({
+        id,
+        sourceId,
+        sourceKind: safeString(row.sourceKind, 80) ?? sourceId,
+        modality,
+        capturedAt,
+        receivedAt: safeTimestamp(row.receivedAt) ?? capturedAt,
+        confidence01: typeof row.confidence01 === 'number' ? clamp01(row.confidence01) : 0,
+        reliability01: typeof row.reliability01 === 'number' ? clamp01(row.reliability01) : 0.5,
+        ...(coordinateFrameId ? { coordinateFrameId } : {}),
+        sessionId,
+        provenance,
+        // A persisted claim cannot independently prove that a real device capture occurred.
+        isRealCapture: false,
+        expiresAt: safeTimestamp(row.expiresAt) ?? capturedAt + DEFAULT_FRESHNESS_MS,
+        evidenceRefs: refs.map((ref) => safeString(ref, 120)).filter((ref): ref is string => Boolean(ref)),
+        payload: payload.payload,
+        contentHash,
+      });
+    }
+
+    const recentConflicts: ConflictRecord[] = [];
+    for (const rawConflict of ownDenseArray(ownValue(raw, 'recentConflicts'), CONFLICT_LIMIT) ?? []) {
+      const entries = ownDataEntries(rawConflict, 32);
+      if (!entries) continue;
+      const row = Object.create(null) as Record<string, unknown>;
+      for (const [key, value] of entries) row[key] = value;
+      const id = safeString(row.id, 120);
+      const at = safeTimestamp(row.at);
+      const subject = safeString(row.subject, 120);
+      const modalityA = typeof row.modalityA === 'string' && OBSERVATION_MODALITIES.includes(row.modalityA as ObservationModality) ? row.modalityA as ObservationModality : null;
+      const modalityB = typeof row.modalityB === 'string' && OBSERVATION_MODALITIES.includes(row.modalityB as ObservationModality) ? row.modalityB as ObservationModality : null;
+      const sourceA = safeString(row.sourceA, 120);
+      const sourceB = safeString(row.sourceB, 120);
+      const claimA = safeString(row.claimA, 240);
+      const claimB = safeString(row.claimB, 240);
+      if (!id || at === null || !subject || !modalityA || !modalityB || !sourceA || !sourceB || !claimA || !claimB) continue;
+      recentConflicts.push({
+        id, at, subject, modalityA, modalityB, sourceA, sourceB, claimA, claimB,
+        disagreement01: typeof row.disagreement01 === 'number' ? clamp01(row.disagreement01) : 0,
+        resolution: 'preserved-for-review',
+      });
+    }
+
     return {
       version: 1,
       admitted: counter('admitted'),
@@ -330,17 +436,19 @@ export function sanitizeObservationPayload(
   payload: unknown,
 ): { ok: true; payload: Record<string, unknown>; strippedMedia: boolean } | { ok: false; reason: RejectionReason } {
   if (payload === undefined || payload === null) return { ok: true, payload: {}, strippedMedia: false };
-  if (!isPlainRecord(payload)) return { ok: false, reason: 'malformed-observation' };
-  const out: Record<string, unknown> = {};
+  const entries = ownDataEntries(payload, 256);
+  if (!entries) return { ok: false, reason: 'malformed-observation' };
+
+  const out = Object.create(null) as Record<string, unknown>;
   let strippedMedia = false;
-  for (const [key, value] of Object.entries(payload)) {
+  for (const [key, value] of entries) {
     const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (RAW_MEDIA_KEYS.has(normalizedKey)) {
       strippedMedia = true;
       continue;
     }
     if (typeof value === 'string') {
-      if (RAW_MEDIA_KEYS.has(normalizedKey) || value.length > 512) {
+      if (value.length > 512) {
         strippedMedia = true;
         continue;
       }
@@ -356,17 +464,19 @@ export function sanitizeObservationPayload(
       continue;
     }
     if (Array.isArray(value)) {
-      const items = value
+      const items = ownDenseArray(value, 32);
+      if (!items) return { ok: false, reason: 'malformed-observation' };
+      out[key.slice(0, 64)] = items
         .filter((item) => typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')
-        .slice(0, 32)
         .map((item) => (typeof item === 'string' ? item.slice(0, 240) : item));
-      out[key.slice(0, 64)] = items;
       continue;
     }
     if (isPlainRecord(value)) {
-      const nested: Record<string, unknown> = {};
+      const nestedEntries = ownDataEntries(value, 64);
+      if (!nestedEntries) return { ok: false, reason: 'malformed-observation' };
+      const nested = Object.create(null) as Record<string, unknown>;
       let nestedMedia = false;
-      for (const [nestedKey, nestedValue] of Object.entries(value)) {
+      for (const [nestedKey, nestedValue] of nestedEntries) {
         const normalizedNested = nestedKey.toLowerCase().replace(/[^a-z0-9]/g, '');
         if (RAW_MEDIA_KEYS.has(normalizedNested)) {
           nestedMedia = true;
@@ -411,13 +521,13 @@ export function normalizeObservation(
 
   const modalityRaw = ownValue(raw, 'modality');
   if (typeof modalityRaw !== 'string' || !OBSERVATION_MODALITIES.includes(modalityRaw as ObservationModality)) {
-    return { ok: false, reason: 'unsupported-modality', detail: String(modalityRaw) };
+    return { ok: false, reason: 'unsupported-modality', detail: 'modality must be a supported string' };
   }
   const modality = modalityRaw as ObservationModality;
 
   const provenanceRaw = ownValue(raw, 'provenance');
   if (typeof provenanceRaw !== 'string' || !OBSERVATION_PROVENANCE.includes(provenanceRaw as ObservationProvenance)) {
-    return { ok: false, reason: 'invalid-provenance', detail: String(provenanceRaw) };
+    return { ok: false, reason: 'invalid-provenance', detail: 'provenance must be a supported string' };
   }
   const provenance = provenanceRaw as ObservationProvenance;
 
@@ -448,12 +558,11 @@ export function normalizeObservation(
   const coordinateFrameId = safeString(ownValue(raw, 'coordinateFrameId'), 120) ?? undefined;
 
   const refsRaw = ownValue(raw, 'evidenceRefs');
-  const evidenceRefs = Array.isArray(refsRaw)
-    ? refsRaw
-        .map((ref) => safeString(ref, 120))
-        .filter((ref): ref is string => Boolean(ref))
-        .slice(0, MAX_EVIDENCE_REFS)
-    : [];
+  const refs = refsRaw === undefined || refsRaw === null ? [] : ownDenseArray(refsRaw, MAX_EVIDENCE_REFS);
+  if (!refs) return { ok: false, reason: 'malformed-observation', detail: 'evidenceRefs' };
+  const evidenceRefs = refs
+    .map((ref) => safeString(ref, 120))
+    .filter((ref): ref is string => Boolean(ref));
 
   const contentDigest = stableHash(
     JSON.stringify({ modality, sourceId, payload: payloadResult.payload, frame: coordinateFrameId ?? '' }),

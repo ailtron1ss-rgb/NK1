@@ -291,6 +291,43 @@ check('restore: hostile persisted state falls back to defaults instead of propag
   assert.equal(sanitizeObservationIntakeState(accessor).admitted, 0);
 });
 
+check('restore: nested accessors and sparse arrays are rejected without executing getters', () => {
+  let getterCalls = 0;
+  const perSource = {};
+  Object.defineProperty(perSource, 'camera', { enumerable: true, get() { getterCalls++; throw new Error('perSource getter'); } });
+  const consent = {};
+  Object.defineProperty(consent, 'vision', { enumerable: true, get() { getterCalls++; throw new Error('consent getter'); } });
+  const payload = {};
+  Object.defineProperty(payload, 'claim', { enumerable: true, get() { getterCalls++; throw new Error('payload getter'); } });
+  const recentRow = observation({ id: 'nested-accessor', payload });
+  const conflict = {
+    id: 'conflict-1', at: T0, subject: 'door', modalityA: 'vision', modalityB: 'audio',
+    sourceA: 'camera', sourceB: 'microphone', claimA: 'open', claimB: 'closed',
+    disagreement01: .5, resolution: 'preserved-for-review',
+  };
+  Object.defineProperty(conflict, 'claimA', { enumerable: true, get() { getterCalls++; throw new Error('conflict getter'); } });
+
+  const state = sanitizeObservationIntakeState({
+    perSource, consent, recent: [recentRow], recentConflicts: [conflict],
+  });
+  assert.equal(getterCalls, 0, 'restore must inspect descriptors, never invoke nested getters');
+  assert.equal(state.perSource.camera, undefined);
+  assert.equal(state.consent.vision, false, 'unsafe consent state must not widen capture permission');
+  assert.equal(state.recent.length, 0, 'an observation with an accessor-backed payload must not be restored');
+  assert.equal(state.recentConflicts.length, 0, 'an accessor-backed conflict must not be restored');
+
+  const sparse = [];
+  sparse.length = 1;
+  assert.equal(sanitizeObservationPayload({ tags: sparse }).ok, false, 'sparse payload arrays must fail closed');
+
+  const accessorRefs = [];
+  accessorRefs.length = 1;
+  Object.defineProperty(accessorRefs, '0', { enumerable: true, get() { getterCalls++; throw new Error('reference getter'); } });
+  const gate = gateWithConsent(['vision']);
+  assert.equal(gate.admit(observation({ evidenceRefs: accessorRefs }), { now: T0 }).reason, 'malformed-observation');
+  assert.equal(getterCalls, 0, 'evidence reference getters must never execute');
+});
+
 check('restore: world model observations do not survive as live grounded facts after reset', () => {
   const world = new GroundedWorldState();
   world.integrateObservation({ at: T0, observation: observation({ payload: { subject: 'ghost', claim: 'present' } }) });
