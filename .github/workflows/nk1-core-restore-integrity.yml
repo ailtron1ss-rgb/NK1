@@ -193,6 +193,13 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/B261UnifiedWorldModel.ts
       - runtime/neuro-kurisu/src/organism/cognition/B262MultiTimescaleWorldModel.ts
       - runtime/neuro-kurisu/src/organism/cognition/B264CausalPolicyLearning.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P42UnifiedEmbodiedExperience.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P43EmbodiedImageryWorkspace.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P48FunctionalAwarenessCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P41NativePerception.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P64IntegratedOrganismDynamics.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2750UnifiedCausalWorldLoop.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -392,6 +399,13 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/B261UnifiedWorldModel.ts
       - runtime/neuro-kurisu/src/organism/cognition/B262MultiTimescaleWorldModel.ts
       - runtime/neuro-kurisu/src/organism/cognition/B264CausalPolicyLearning.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P42UnifiedEmbodiedExperience.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P43EmbodiedImageryWorkspace.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P48FunctionalAwarenessCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P41NativePerception.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P64IntegratedOrganismDynamics.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2750UnifiedCausalWorldLoop.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -564,6 +578,13 @@ jobs:
           node --experimental-strip-types tests/big-pass-261-unified-world-model.mjs
           node --experimental-strip-types tests/big-pass-262-multitimescale-world-model.mjs
           node --experimental-strip-types tests/big-pass-264-causal-policy-learning.mjs
+          node --experimental-strip-types tests/p42-unified-experience.mjs
+          node --experimental-strip-types tests/p43-mental-scene.mjs
+          node --experimental-strip-types tests/p48-functional-awareness.mjs
+          node --experimental-strip-types tests/p41-native-perception.mjs
+          node --experimental-strip-types tests/big-pass-190-p66-regression.mjs
+          node --experimental-strip-types tests/p64-mode-diversity.mjs
+          node --experimental-strip-types tests/p2750-planner-fallback.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs

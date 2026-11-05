@@ -41,6 +41,13 @@ export interface P64State {
   meanRealityGap01:number;lastFrame:P64Frame|null;history:P64Frame[];
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const MODES:P64Mode[]=['protect','experience','social','learn','reflect','develop','explore','rest','orient'];
+const numMap=(v:unknown):Record<string,number>=>{const r=(v&&typeof v==='object')?v as Record<string,unknown>:{};const out:Record<string,number>={};for(const k of Object.keys(r)){const n=Number(r[k]);if(Number.isFinite(n))out[k]=n;}return out;};
+const strArr=(v:unknown,n:number):string[]=>Array.isArray(v)?(v as unknown[]).filter(x=>typeof x==='string').slice(0,n) as string[]:[];
+const sanFrame=(x:unknown):P64Frame|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),at:finN(r.at,0),mode:MODES.includes(r.mode as P64Mode)?r.mode as P64Mode:'orient',modeChanged:r.modeChanged===true,modeStreak:cnt(r.modeStreak,0),modePressure01:clamp(finN(r.modePressure01,0)),integration01:clamp(finN(r.integration01,.5)),stability01:clamp(finN(r.stability01,.5)),agency01:clamp(finN(r.agency01,.5)),attention01:clamp(finN(r.attention01,.5)),developmentalBudget01:clamp(finN(r.developmentalBudget01,.5)),confidence01:clamp(finN(r.confidence01,.5)),epistemicGate01:clamp(finN(r.epistemicGate01,.5)),realityGap01:clamp(finN(r.realityGap01,.5)),competition01:clamp(finN(r.competition01,0)),coalition:strArr(r.coalition,16),actionBias:numMap(r.actionBias),candidateScores:numMap(r.candidateScores),reasons:strArr(r.reasons,16),broadcastToken:str(r.broadcastToken,'')};};
 export const defaultP64=():P64State=>({
   version:1,cycles:0,modeChanges:0,forcedDiversions:0,
   modeCounts:{protect:0,experience:0,social:0,learn:0,reflect:0,develop:0,explore:0,rest:0,orient:0},
@@ -51,11 +58,10 @@ export const defaultP64=():P64State=>({
 export class P64IntegratedOrganismDynamics {
   private state=defaultP64();
   restore(raw?:Partial<P64State>|null){
-    const d=defaultP64(),r=raw??{};
-    this.state={...d,...r,
-      modeCounts:{...d.modeCounts,...(r.modeCounts??{})},
-      history:Array.isArray(r.history)?r.history.slice(-128):[]
-    };
+    const d=defaultP64();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const mc=(read('modeCounts')&&typeof read('modeCounts')==='object')?read('modeCounts') as Record<string,unknown>:{};
+    const hRaw=read('history'),lfRaw=read('lastFrame');
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),modeChanges:cnt(read('modeChanges'),d.modeChanges),forcedDiversions:cnt(read('forcedDiversions'),d.forcedDiversions),modeCounts:Object.fromEntries(MODES.map(m=>[m,cnt(mc[m],d.modeCounts[m])])) as Record<P64Mode,number>,modeStreak:cnt(read('modeStreak'),d.modeStreak),lastMode:MODES.includes(read('lastMode') as P64Mode)?read('lastMode') as P64Mode:null,meanIntegration01:clamp(finN(read('meanIntegration01'),d.meanIntegration01)),meanStability01:clamp(finN(read('meanStability01'),d.meanStability01)),meanAgency01:clamp(finN(read('meanAgency01'),d.meanAgency01)),meanEpistemicGate01:clamp(finN(read('meanEpistemicGate01'),d.meanEpistemicGate01)),meanRealityGap01:clamp(finN(read('meanRealityGap01'),d.meanRealityGap01)),lastFrame:sanFrame(lfRaw),history:Array.isArray(hRaw)?(hRaw as unknown[]).slice(-128).map(sanFrame).filter((f):f is P64Frame=>f!==null):[]};
   }
   snapshot(){return structuredClone(this.state);}
   /** Durable projection keeps enough recent mode frames for diagnostics/restart without persisting the full 128-frame working window. */

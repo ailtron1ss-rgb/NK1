@@ -46,6 +46,11 @@ selfWorldCoupling01:number;
 activeAccess01:number;
 updates:number};
 }
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const vecN=(v:unknown,len:number,fill:number):number[]=>Array.from({length:len},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?clamp(n):fill;});
+const sanBias=(v:unknown,fb:Record<ActionKind,number>):Record<ActionKind,number>=>{const r=(v&&typeof v==='object')?v as Record<string,unknown>:{};return Object.fromEntries(ACTIONS.map(a=>[a,Math.max(-1,Math.min(1,finN(r[a],fb[a])))])) as Record<ActionKind,number>;};
 export const defaultP42=():P42State=>({version:1,tick:0,current:{at:0,scene:'unknown',vector:Array(24).fill(.5),salience01:.1,confidence01:.1,surprise01:.5,focus:'none'},history:[],actionBias:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,metrics:{grounding01:.1,integration01:.1,temporalBinding01:.1,selfWorldCoupling01:.1,activeAccess01:.1,updates:0}});
 
 function hash(s:string){let h=2166136261;
@@ -61,8 +66,11 @@ return v.map(x=>clamp((x/n+1)/2));
 export class P42UnifiedEmbodiedExperienceEngine{
  private state=defaultP42();
 
- restore(raw?:Partial<P42State>|null){const d=defaultP42(),r=raw??{};
-this.state={...d,...r,current:{...d.current,...(r.current??{}),vector:Array.isArray(r.current?.vector)?r.current!.vector.slice(0,24):d.current.vector},history:Array.isArray(r.history)?r.history.slice(-96):[],actionBias:{...d.actionBias,...(r.actionBias??{})},metrics:{...d.metrics,...(r.metrics??{})}};
+ restore(raw?:Partial<P42State>|null){const d=defaultP42();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+const curRaw=(read('current')&&typeof read('current')==='object')?read('current') as Record<string,unknown>:{};
+const mRaw=(read('metrics')&&typeof read('metrics')==='object')?read('metrics') as Record<string,unknown>:{};
+const hRaw=read('history');
+this.state={version:1,tick:cnt(read('tick'),d.tick),current:{at:finN(curRaw.at,d.current.at),scene:str(curRaw.scene,d.current.scene),vector:vecN(curRaw.vector,24,.5),salience01:clamp(finN(curRaw.salience01,d.current.salience01)),confidence01:clamp(finN(curRaw.confidence01,d.current.confidence01)),surprise01:clamp(finN(curRaw.surprise01,d.current.surprise01)),focus:str(curRaw.focus,d.current.focus)},history:Array.isArray(hRaw)?(hRaw as unknown[]).slice(-96).filter(v=>v&&typeof v==='object').map(v=>{const r=v as Record<string,unknown>;return {at:finN(r.at,0),scene:str(r.scene,'unknown'),vector:vecN(r.vector,24,.5),focus:str(r.focus,'none'),salience01:clamp(finN(r.salience01,.1)),confidence01:clamp(finN(r.confidence01,.1))};}):[],actionBias:sanBias(read('actionBias'),d.actionBias),metrics:{grounding01:clamp(finN(mRaw.grounding01,d.metrics.grounding01)),integration01:clamp(finN(mRaw.integration01,d.metrics.integration01)),temporalBinding01:clamp(finN(mRaw.temporalBinding01,d.metrics.temporalBinding01)),selfWorldCoupling01:clamp(finN(mRaw.selfWorldCoupling01,d.metrics.selfWorldCoupling01)),activeAccess01:clamp(finN(mRaw.activeAccess01,d.metrics.activeAccess01)),updates:cnt(mRaw.updates,d.metrics.updates)}};
 }
  snapshot(){return {version:1 as const,tick:this.state.tick,current:{...this.state.current,vector:this.state.current.vector.slice()},history:this.state.history.map(h=>({...h,vector:h.vector.slice()})),actionBias:{...this.state.actionBias},metrics:{...this.state.metrics}};
 }
