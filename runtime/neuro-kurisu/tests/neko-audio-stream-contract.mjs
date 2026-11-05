@@ -41,10 +41,11 @@ function requireApi() {
 
 test('accepts exactly one normalized 20ms PCM16 mono frame', () => {
   requireApi();
-  const result = contract.validateNekoPcm16Frame(frame());
+  const input = frame();
+  const result = contract.validateNekoPcm16Frame(input);
   assert.equal(result.status, 'accepted');
   assert.equal(result.frame.samples.byteLength, 640);
-  assert.notEqual(result.frame.samples, frame().samples, 'validated frames must own a defensive copy of PCM bytes');
+  assert.notEqual(result.frame.samples, input.samples, 'validated frames must own a defensive copy of PCM bytes');
 });
 
 test('rejects unsupported format, malformed sample payloads, and invalid timing metadata', () => {
