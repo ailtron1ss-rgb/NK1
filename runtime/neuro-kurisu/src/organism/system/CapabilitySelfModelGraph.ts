@@ -6,14 +6,19 @@ export interface CapabilityNode{
 export interface CapabilitySelfModelState{
  version:1; cycles:number; nodes:Record<string,CapabilityNode>; lastGap:string; lastGap01:number; calibration01:number;
 }
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const sanNode=(x:unknown,key:string):CapabilityNode|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {skill:str(r.skill,key),competence01:clamp(finN(r.competence01,.5)),confidence01:clamp(finN(r.confidence01,.4)),attempts:cnt(r.attempts,0),successes:cnt(r.successes,0),gap01:clamp(finN(r.gap01,.5))};};
 export const defaultCapabilitySelfModel=():CapabilitySelfModelState=>({
  version:1,cycles:0,nodes:{prediction:{skill:'prediction',competence01:.52,confidence01:.4,attempts:0,successes:0,gap01:.48}},lastGap:'prediction',lastGap01:.48,calibration01:.5
 });
 export class CapabilitySelfModelGraph{
  private state=defaultCapabilitySelfModel();
  restore(raw?:Partial<CapabilitySelfModelState>|null){
-  const d=defaultCapabilitySelfModel(),r=raw??{};
-  this.state={...d,...r,nodes:{...d.nodes,...(r.nodes??{})},version:1};
+  const d=defaultCapabilitySelfModel();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+  const nRaw=(read('nodes')&&typeof read('nodes')==='object')?read('nodes') as Record<string,unknown>:{};const nodes:Record<string,CapabilityNode>={};for(const k of Object.keys(nRaw)){const n=sanNode(nRaw[k],k);if(n)nodes[k]=n;}
+  this.state={version:1,cycles:cnt(read('cycles'),d.cycles),nodes,lastGap:str(read('lastGap'),d.lastGap),lastGap01:clamp(finN(read('lastGap01'),d.lastGap01)),calibration01:clamp(finN(read('calibration01'),d.calibration01))};
  }
  snapshot(){return structuredClone(this.state);}
  observe(input:{skill:string;success01:number;confidence01:number;difficulty01:number}){

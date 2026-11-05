@@ -13,6 +13,11 @@ export interface AdaptiveMemoryPolicyState {
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const names:MemoryPolicyName[]=['semantic','hybrid','causal','temporal','balanced'];
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const numMap=(v:unknown,fb:Record<MemoryPolicyName,number>):Record<MemoryPolicyName,number>=>{const r=(v&&typeof v==='object')?v as Record<string,unknown>:{};return Object.fromEntries(names.map(n=>[n,clamp(finN(r[n],fb[n]))])) as Record<MemoryPolicyName,number>;};
+const ctxMap=(v:unknown):Record<string,Record<MemoryPolicyName,number>>=>{const r=(v&&typeof v==='object')?v as Record<string,unknown>:{};const out:Record<string,Record<MemoryPolicyName,number>>={};for(const k of Object.keys(r))out[k]=numMap(r[k],blank());return out;};
 const blank=()=>({semantic:0,hybrid:0,causal:0,temporal:0,balanced:0} as Record<MemoryPolicyName,number>);
 const defaults=():AdaptiveMemoryPolicyState=>({version:2,weights:{semantic:.5,hybrid:.5,causal:.5,temporal:.5,balanced:.5},trials:blank(),reward:blank(),contextValue:{},contextTrials:{},cooldownUntil:0,lastPolicy:'balanced',lastContextKey:'default'});
 function contextKey(c:{pressure01?:number;goal01?:number;causal01?:number;temporal01?:number;mobile?:boolean}){
@@ -23,10 +28,8 @@ function contextKey(c:{pressure01?:number;goal01?:number;causal01?:number;tempor
 export class AdaptiveMemoryPolicy {
  private state=defaults();
  restore(raw?:Partial<AdaptiveMemoryPolicyState>|null){
-   const d=defaults();
-   const ctxV={...d.contextValue,...(raw?.contextValue??{})}; const ctxT={...d.contextTrials,...(raw?.contextTrials??{})};
-   for(const k of Object.keys(ctxV)){ctxV[k]={...blank(),...(ctxV[k]??{})};ctxT[k]={...blank(),...(ctxT[k]??{})};}
-   this.state={...d,...raw,version:2,weights:{...d.weights,...raw?.weights},trials:{...d.trials,...raw?.trials},reward:{...d.reward,...raw?.reward},contextValue:ctxV,contextTrials:ctxT};
+   const d=defaults();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+   this.state={version:2,weights:numMap(read('weights'),d.weights),trials:Object.fromEntries(names.map(n=>[n,cnt((read('trials') as Record<string,unknown>|undefined)?.[n],d.trials[n])])) as Record<MemoryPolicyName,number>,reward:numMap(read('reward'),d.reward),contextValue:ctxMap(read('contextValue')),contextTrials:ctxMap(read('contextTrials')),cooldownUntil:finN(read('cooldownUntil'),d.cooldownUntil),lastPolicy:names.includes(read('lastPolicy') as MemoryPolicyName)?read('lastPolicy') as MemoryPolicyName:d.lastPolicy,lastContextKey:str(read('lastContextKey'),d.lastContextKey)};
  }
  snapshot():AdaptiveMemoryPolicyState{return structuredClone(this.state);}
  choose(context:{pressure01?:number;goal01?:number;causal01?:number;temporal01?:number;mobile?:boolean},now=Date.now()):MemoryPolicyName{
