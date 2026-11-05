@@ -9,6 +9,10 @@ function token() {
   };
 }
 
+async function* streamFrames(items) {
+  for (const item of items) yield item;
+}
+
 function frame(sequence = 0) {
   return {
     protocol: 'neko.audio.pcm16', version: 1, sessionId: 'session-1',
@@ -58,7 +62,7 @@ test('admits one stream final through the existing transcript boundary with host
   const adapter = new NekoAsrTranscriptAdapter(port);
   const result = await captureStream(adapter, {
     sessionId: 'session-1', turnId: 'turn-1', token: token(),
-    frames: [frame()][Symbol.iterator](),
+    frames: streamFrames([frame()]),
     signal: new AbortController().signal,
   });
   assert.equal(result.status, 'accepted');
@@ -76,7 +80,7 @@ test('rejects a provider envelope bound to another turn before admitting its tra
   });
   const result = await captureStream(new NekoAsrTranscriptAdapter(port), {
     sessionId: 'session-1', turnId: 'turn-1', token: token(),
-    frames: [frame()][Symbol.iterator](), signal: new AbortController().signal,
+    frames: streamFrames([frame()]), signal: new AbortController().signal,
   });
   assert.deepEqual(result, { status: 'rejected', reason: 'turn-mismatch' });
 });
@@ -97,12 +101,12 @@ test('reserves one active stream and fences a final result that resolves after a
   const controller = new AbortController();
   const pending = adapter.captureFinalFromStream({
     sessionId: 'session-1', turnId: 'turn-1', token: token(),
-    frames: [frame()][Symbol.iterator](), signal: controller.signal,
+    frames: streamFrames([frame()]), signal: controller.signal,
   });
   await isStarted;
   const overlap = await adapter.captureFinalFromStream({
     sessionId: 'session-2', turnId: 'turn-2',
-    token: { ...token(), turnId: 'turn-2' }, frames: [frame()][Symbol.iterator](),
+    token: { ...token(), turnId: 'turn-2' }, frames: streamFrames([frame()]),
     signal: new AbortController().signal,
   });
   assert.deepEqual(overlap, { status: 'rejected', reason: 'session-already-active' });
@@ -116,7 +120,7 @@ test('requires stream-capable provider and matching host turn token', async () =
   const adapter = new NekoAsrTranscriptAdapter({ ...port, transcribeStream: undefined });
   const unsupported = await captureStream(adapter, {
     sessionId: 'session-1', turnId: 'turn-1', token: token(),
-    frames: [frame()][Symbol.iterator](), signal: new AbortController().signal,
+    frames: streamFrames([frame()]), signal: new AbortController().signal,
   });
   assert.deepEqual(unsupported, { status: 'rejected', reason: 'stream-not-supported' });
 });
