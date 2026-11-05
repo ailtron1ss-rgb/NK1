@@ -12,6 +12,7 @@ on:
       - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md"
+      - "runtime/neuro-kurisu/docs/NEKO_ASR_PROVIDER_ADAPTER_RU.md"
       - ".github/workflows/nk1-neko-smart-turn-semantic-endpoint.yml"
   push:
     branches: [aspect/neko-smart-turn-semantic-endpoint-20261105]
@@ -24,6 +25,7 @@ on:
       - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md"
+      - "runtime/neuro-kurisu/docs/NEKO_ASR_PROVIDER_ADAPTER_RU.md"
       - ".github/workflows/nk1-neko-smart-turn-semantic-endpoint.yml"
 
 permissions:
@@ -47,6 +49,12 @@ jobs:
       - name: Install locked runtime dependencies
         working-directory: runtime/neuro-kurisu
         run: npm ci
+      - name: Verify pinned Smart Turn artifact metadata
+        working-directory: runtime/neuro-kurisu
+        run: |
+          grep -Fq "f766f81d3cfdf7737ac64aad813d91bbfd56bf93" docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md
+          grep -Fq "2bb026316b14a660486a75b1733cd3fbab8c2fd0314dc9af7be49f8cca967e4f" docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md
+          grep -Fq "BSD-2-Clause" docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md
       - name: Smart Turn semantic endpoint coordinator
         working-directory: runtime/neuro-kurisu
         run: npm run test:neko-smart-turn-semantic-endpoint
