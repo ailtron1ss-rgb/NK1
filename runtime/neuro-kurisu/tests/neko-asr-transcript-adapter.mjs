@@ -186,11 +186,11 @@ test('Smart Turn v3.2 result travels through the capture boundary as advisory me
     },
   };
   const { port } = provider(async input => {
-    input.notifySpeechActivity('speech-started');
+    input.observeSpeechActivity('speech-started');
     for (let index = 0; index < 10; index += 1) {
       assert.equal(input.pushSmartTurnAudioFrame(smartTurnAudioFrame()), true);
     }
-    input.notifySpeechActivity('candidate-pause');
+    input.observeSpeechActivity('candidate-pause');
     const evaluation = await input.evaluateSemanticEndpoint();
     assert.equal(evaluation?.status, 'ok');
     assert.equal(evaluation?.decision, 'complete');
@@ -223,9 +223,9 @@ test('Smart Turn inference errors remain diagnostic and do not reject valid ASR'
     async evaluate() { return { probability01: Number.NaN }; },
   };
   const { port } = provider(async input => {
-    input.notifySpeechActivity('speech-started');
+    input.observeSpeechActivity('speech-started');
     input.pushSmartTurnAudioFrame(smartTurnAudioFrame());
-    input.notifySpeechActivity('candidate-pause');
+    input.observeSpeechActivity('candidate-pause');
     const evaluation = await input.evaluateSemanticEndpoint();
     assert.equal(evaluation?.status, 'error');
     assert.equal(evaluation?.reason, 'invalid-smart-turn-probability');
