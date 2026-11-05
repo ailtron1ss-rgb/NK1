@@ -312,8 +312,9 @@ export class NekoVoiceTurnCoordinator {
         const ordered = input.sequence.accept(raw);
         if (ordered.status === 'replayed') continue;
         if (ordered.status === 'invalidated') {
-          input.channel.invalidate(ordered.reason);
-          return { status: 'error', reason: this.sequenceReason(ordered.reason) };
+          const normalizedReason = this.sequenceReason(ordered.reason);
+          input.channel.invalidate(normalizedReason);
+          return { status: 'error', reason: normalizedReason };
         }
         const frame = ordered.frame;
         input.ring.append(frame);
