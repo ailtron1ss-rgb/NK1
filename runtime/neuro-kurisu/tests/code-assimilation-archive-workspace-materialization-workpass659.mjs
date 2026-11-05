@@ -167,37 +167,31 @@ function extractFixture() {
   }
 }
 
-// Extraction payload bytes are re-hashed before any workspace is created.
+// A cloned extraction object cannot replace the extractor-owned read boundary.
 {
   const extraction = extractFixture();
-  const altered = Object.freeze({
+  let readCalls = 0;
+  const forged = Object.freeze({
     ...extraction,
     readFile(path) {
-      const original = extraction.readFile(path);
-      if (path !== 'README.md' || !original) return original;
-      original[0] ^= 0xff;
-      return original;
-    },
-  });
-  await assert.rejects(
-    materializeCodeAssimilationArchiveWorkspace({ extraction: altered }),
-    /workspace-payload-digest-mismatch/,
-  );
-}
-
-// A failed second payload read must not leave a partially materialized workspace.
-{
-  const extraction = extractFixture();
-  const interrupted = Object.freeze({
-    ...extraction,
-    readFile(path) {
-      if (path === 'src/organism/entry.ts') throw new Error('fixture-read-interrupted');
+      readCalls += 1;
       return extraction.readFile(path);
     },
   });
   await assert.rejects(
-    materializeCodeAssimilationArchiveWorkspace({ extraction: interrupted }),
-    /fixture-read-interrupted/,
+    materializeCodeAssimilationArchiveWorkspace({ extraction: forged }),
+    /workspace-extraction-untrusted/,
+  );
+  assert.equal(readCalls, 0, 'untrusted clones must be rejected before reading payload bytes');
+}
+
+// Even a structurally identical spread clone is not an extractor-issued snapshot.
+{
+  const extraction = extractFixture();
+  const clone = Object.freeze({ ...extraction });
+  await assert.rejects(
+    materializeCodeAssimilationArchiveWorkspace({ extraction: clone }),
+    /workspace-extraction-untrusted/,
   );
 }
 
