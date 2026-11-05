@@ -293,12 +293,17 @@ export class NekoVoiceTurnCoordinator {
     const active = this.active;
     if (!active) return false;
     active.cancelled = true;
-    const cleanReason = String(reason ?? 'manual').replace(/[\r\n\t]+/gu, ' ').slice(0, 120) || 'manual';
+    const cleanReason = String(reason ?? 'manual').replace(/[\\r\\n\\t]+/gu, ' ').slice(0, 120) || 'manual';
     if (!active.controller.signal.aborted) active.controller.abort(cleanReason);
     active.channel?.invalidate('capture-cancelled');
-    if (active.session) await this.closeActiveSession(active, cleanReason);
-    try { await this.asrAdapter.interrupt?.(cleanReason); } catch { /* Cancellation remains unverified by the coordinator. */ }
-    return true;
+    const audioStopVerified = await this.closeActiveSession(active, cleanReason);
+    let asrStopVerified = false;
+    try {
+      const result = await this.asrAdapter.interrupt?.(cleanReason);
+      asrStopVerified = Boolean(result && typeof result === 'object' &&
+        (result as { status?: unknown }).status === 'verified');
+    } catch { /* Cancellation remains unverified when the provider cannot confirm it. */ }
+    return audioStopVerified && asrStopVerified;
   }
 
   private async pump(input: {
