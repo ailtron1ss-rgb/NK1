@@ -299,7 +299,7 @@ check('restore: nested accessors and sparse arrays are rejected without executin
   Object.defineProperty(consent, 'vision', { enumerable: true, get() { getterCalls++; throw new Error('consent getter'); } });
   const payload = {};
   Object.defineProperty(payload, 'claim', { enumerable: true, get() { getterCalls++; throw new Error('payload getter'); } });
-  const recentRow = observation({ id: 'nested-accessor', payload });
+  const recentRow = observation({ id: 'nested-accessor', payload, contentHash: 'nested-accessor-hash' });
   const conflict = {
     id: 'conflict-1', at: T0, subject: 'door', modalityA: 'vision', modalityB: 'audio',
     sourceA: 'camera', sourceB: 'microphone', claimA: 'open', claimB: 'closed',
