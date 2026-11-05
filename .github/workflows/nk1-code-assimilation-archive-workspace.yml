@@ -1,0 +1,51 @@
+name: NK1 code assimilation archive workspace materialization
+
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchiveWorkspace.ts'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-contracts-workpass655.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-preflight-workpass657.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-extraction-workpass658.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-workspace-materialization-workpass659.mjs'
+      - '.github/workflows/nk1-code-assimilation-archive-workspace.yml'
+  push:
+    branches:
+      - 'aspect/code-assimilation-workspace-materialization-20261105'
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchiveWorkspace.ts'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-contracts-workpass655.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-preflight-workpass657.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-extraction-workpass658.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-workspace-materialization-workpass659.mjs'
+      - '.github/workflows/nk1-code-assimilation-archive-workspace.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-code-assimilation-archive-workspace-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  archive-workspace:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate revision
+        uses: actions/checkout@v7
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Typecheck runtime source boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Test code assimilation candidate contracts
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-contracts-workpass655.mjs
+      - name: Test hostile-input archive preflight
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-archive-preflight-workpass657.mjs
+      - name: Test bounded in-memory ZIP extraction
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-archive-extraction-workpass658.mjs
+      - name: Test verified disposable workspace materialization
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-archive-workspace-materialization-workpass659.mjs
