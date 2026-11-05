@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, open, rm, lstat, realpath, readFile as readDiskFile } f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { types as nodeUtilTypes } from 'node:util';
-import type { CodeAssimilationArchiveExtractionResult } from './CodeAssimilationArchiveExtraction.ts';
+import { isTrustedCodeAssimilationArchiveExtraction, type CodeAssimilationArchiveExtractionResult } from './CodeAssimilationArchiveExtraction.ts';
 
 export interface CodeAssimilationArchiveWorkspaceInput {
   extraction: CodeAssimilationArchiveExtractionResult;
@@ -134,7 +134,9 @@ function verifyExtraction(raw: unknown): VerifiedInput {
   const input = record(raw, 'input');
   const inputKeys = Reflect.ownKeys(input);
   if (inputKeys.length !== 1 || inputKeys[0] !== 'extraction') fail('input-shape-invalid');
-  const extraction = record(dataProperty(input, 'extraction', 'input'), 'extraction');
+  const extractionValue = dataProperty(input, 'extraction', 'input');
+  if (!isTrustedCodeAssimilationArchiveExtraction(extractionValue)) fail('extraction-untrusted');
+  const extraction = record(extractionValue, 'extraction');
   const schemaVersion = dataProperty(extraction, 'schemaVersion', 'extraction');
   const accepted = dataProperty(extraction, 'accepted', 'extraction');
   const preflight = record(dataProperty(extraction, 'preflight', 'extraction'), 'preflight');
