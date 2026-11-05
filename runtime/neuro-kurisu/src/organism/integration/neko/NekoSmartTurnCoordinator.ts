@@ -259,7 +259,7 @@ export class NekoSmartTurnCoordinator {
       activitySequence: this.currentActivitySequence,
       requestSequence: ++this.currentRequestSequence,
     };
-    if (this.currentState === 'closed') {
+    if (this.isClosed()) {
       return this.nonOk('stale', identity, 'coordinator-closed');
     }
     if (
@@ -276,7 +276,7 @@ export class NekoSmartTurnCoordinator {
     let controller: AbortController | null = null;
     await previous;
     try {
-      if (this.currentState === 'closed' || identity.generation !== this.currentGeneration) {
+      if (this.isClosed() || identity.generation !== this.currentGeneration) {
         return this.nonOk('stale', identity, 'generation-changed');
       }
       if (identity.activitySequence !== this.currentActivitySequence) {
@@ -312,7 +312,7 @@ export class NekoSmartTurnCoordinator {
         available = false;
       }
       if (!this.isCurrent(identity)) {
-        if (this.currentState === 'closed' || identity.generation !== this.currentGeneration) {
+        if (this.isClosed() || identity.generation !== this.currentGeneration) {
           return this.nonOk('stale', identity, 'coordinator-closed');
         }
         if (identity.activitySequence !== this.currentActivitySequence) {
@@ -341,7 +341,7 @@ export class NekoSmartTurnCoordinator {
         });
       } catch (error) {
         if (!this.isCurrent(identity)) {
-          if (this.currentState === 'closed' || identity.generation !== this.currentGeneration) {
+          if (this.isClosed() || identity.generation !== this.currentGeneration) {
             return this.nonOk('stale', identity, 'coordinator-closed');
           }
           if (identity.activitySequence !== this.currentActivitySequence) {
@@ -356,7 +356,7 @@ export class NekoSmartTurnCoordinator {
       }
 
       if (!this.isCurrent(identity)) {
-        if (this.currentState === 'closed' || identity.generation !== this.currentGeneration) {
+        if (this.isClosed() || identity.generation !== this.currentGeneration) {
           return this.nonOk('stale', identity, 'coordinator-closed');
         }
         if (identity.activitySequence !== this.currentActivitySequence) {
@@ -481,9 +481,13 @@ export class NekoSmartTurnCoordinator {
     this.byteCount = 0;
   }
 
+  private isClosed(): boolean {
+    return this.currentState === 'closed';
+  }
+
   private isCurrent(identity: EvaluationIdentity): boolean {
     return (
-      this.currentState !== 'closed' &&
+      !this.isClosed() &&
       identity.generation === this.currentGeneration &&
       identity.activitySequence === this.currentActivitySequence &&
       identity.requestSequence === this.currentRequestSequence
