@@ -207,7 +207,7 @@ test('Smart Turn v3.2 result travels through the capture boundary as advisory me
 test('absence of a Smart Turn model never blocks a valid ASR final transcript', async () => {
   const { port } = provider(async input => {
     assert.equal(input.pushSmartTurnAudioFrame(smartTurnAudioFrame()), false);
-    assert.equal(input.evaluateSemanticEndpoint(), null);
+    assert.equal(await input.evaluateSemanticEndpoint(), null);
     return transcript({ sessionId: input.sessionId });
   });
   const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
