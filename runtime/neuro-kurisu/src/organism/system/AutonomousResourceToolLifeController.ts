@@ -13,11 +13,18 @@ export interface AutonomousToolLifeState {
   lastToolId:string|null; lastCapability:string|null; lastResult01:number; lastReason:string; lastAt:number;
   recent:Array<{tick:number;toolId:string;capability:string;ok:boolean;verified:boolean;cost01:number;reason:string;executionId?:string}>;
 }
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const sanRecent=(x:unknown):AutonomousToolLifeState['recent'][number]|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const o:AutonomousToolLifeState['recent'][number]={tick:cnt(r.tick,0),toolId:str(r.toolId,'tool'),capability:str(r.capability,'unknown'),ok:r.ok===true,verified:r.verified===true,cost01:clamp(finN(r.cost01,0)),reason:str(r.reason,'')};if(typeof r.executionId==='string'&&r.executionId)o.executionId=r.executionId.slice(0,160);return o;};
 export const defaultAutonomousResourceToolLife=():AutonomousToolLifeState=>({version:1,ticks:0,toolPlans:0,toolExecutions:0,toolSuccesses:0,toolFailures:0,blockedDestructive:0,permissionBlocked:0,budgetBlocked:0,selfStops:0,cooldownBlocks:0,resourceSpent01:0,resourceEfficiency01:.7,initiative01:.4,stopPressure01:0,lastToolId:null,lastCapability:null,lastResult01:.5,lastReason:'initial',lastAt:0,recent:[]});
 export class AutonomousResourceToolLifeController {
   private state=defaultAutonomousResourceToolLife();
   private cooldownUntil=0;
-  restore(raw?:Partial<AutonomousToolLifeState>|null){const d=defaultAutonomousResourceToolLife(),r=raw??{};this.state={...d,...r,recent:Array.isArray(r.recent)?structuredClone(r.recent).slice(0,64):[],version:1};}
+  restore(raw?:Partial<AutonomousToolLifeState>|null){const d=defaultAutonomousResourceToolLife();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const rRaw=read('recent');
+    this.state={version:1,ticks:cnt(read('ticks'),d.ticks),toolPlans:cnt(read('toolPlans'),d.toolPlans),toolExecutions:cnt(read('toolExecutions'),d.toolExecutions),toolSuccesses:cnt(read('toolSuccesses'),d.toolSuccesses),toolFailures:cnt(read('toolFailures'),d.toolFailures),blockedDestructive:cnt(read('blockedDestructive'),d.blockedDestructive),permissionBlocked:cnt(read('permissionBlocked'),d.permissionBlocked),budgetBlocked:cnt(read('budgetBlocked'),d.budgetBlocked),selfStops:cnt(read('selfStops'),d.selfStops),cooldownBlocks:cnt(read('cooldownBlocks'),d.cooldownBlocks),resourceSpent01:clamp(finN(read('resourceSpent01'),d.resourceSpent01)),resourceEfficiency01:clamp(finN(read('resourceEfficiency01'),d.resourceEfficiency01)),initiative01:clamp(finN(read('initiative01'),d.initiative01)),stopPressure01:clamp(finN(read('stopPressure01'),d.stopPressure01)),lastToolId:strOrNull(read('lastToolId')),lastCapability:strOrNull(read('lastCapability')),lastResult01:clamp(finN(read('lastResult01'),d.lastResult01)),lastReason:str(read('lastReason'),d.lastReason),lastAt:finN(read('lastAt'),d.lastAt),recent:Array.isArray(rRaw)?(rRaw as unknown[]).slice(0,64).map(sanRecent).filter((x):x is AutonomousToolLifeState['recent'][number]=>x!==null):[]};
+  }
   snapshot(){return structuredClone(this.state);}
   plan(input:{tick:number;at:number;energy01:number;thermal01:number;ramPressure01:number;externalInteractionBudget01:number;initiative01:number;uncertainty01:number;goalPressure01:number;homeostaticPressure01:number;tools:AutonomousToolCandidate[]}):{allowed:boolean;tool:AutonomousToolCandidate|null;reason:string;cost01:number;stopPressure01:number} {
     this.state.ticks++; this.state.lastAt=input.at; this.state.initiative01=clamp(input.initiative01);

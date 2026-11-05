@@ -12,11 +12,16 @@ export interface NeuroDigitalFusionState {
  predictionError01:number; coherence01:number; energyCost01:number; lesion01:number;
  lastDrive01:number; lastReward01:number;
 }
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const vecN=(v:unknown,len:number,lo:number,hi:number,fill:number):number[]=>Array.from({length:len},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fill;});
 export const defaultNeuroDigitalFusion=():NeuroDigitalFusionState=>({version:1,cycles:0,neuronCount:32,spikes:0,lastSpikeRate01:0,latent:Array.from({length:12},()=>.5),membrane:Array.from({length:32},()=>0),recurrentGain01:.42,sparsity01:.72,predictionError01:.5,coherence01:.5,energyCost01:0,lesion01:0,lastDrive01:0,lastReward01:.5});
 
 export class NeuroDigitalFusionKernel{
  private state=defaultNeuroDigitalFusion();
- restore(raw?:Partial<NeuroDigitalFusionState>|null){const d=defaultNeuroDigitalFusion(),r=raw??{};this.state={...d,...r,latent:Array.isArray(r.latent)?r.latent.slice(0,12):d.latent,membrane:Array.isArray(r.membrane)?r.membrane.slice(0,32):d.membrane,version:1};}
+ restore(raw?:Partial<NeuroDigitalFusionState>|null){const d=defaultNeuroDigitalFusion();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+this.state={version:1,cycles:cnt(read('cycles'),d.cycles),neuronCount:Math.max(8,Math.min(128,Math.floor(finN(read('neuronCount'),d.neuronCount)))),spikes:cnt(read('spikes'),d.spikes),lastSpikeRate01:clamp(finN(read('lastSpikeRate01'),d.lastSpikeRate01)),latent:vecN(read('latent'),12,0,1,.5),membrane:vecN(read('membrane'),32,-1,1,0),recurrentGain01:clamp(finN(read('recurrentGain01'),d.recurrentGain01)),sparsity01:clamp(finN(read('sparsity01'),d.sparsity01)),predictionError01:clamp(finN(read('predictionError01'),d.predictionError01)),coherence01:clamp(finN(read('coherence01'),d.coherence01)),energyCost01:clamp(finN(read('energyCost01'),d.energyCost01)),lesion01:clamp(finN(read('lesion01'),d.lesion01)),lastDrive01:clamp(finN(read('lastDrive01'),d.lastDrive01)),lastReward01:clamp(finN(read('lastReward01'),d.lastReward01))};
+}
  snapshot(){return structuredClone(this.state);}
  cycle(input:{drive01:number;predictionError01:number;novelty01:number;reward01:number;plasticity01:number;lesion01?:number}){
   const s=this.state, drive=clamp(input.drive01), err=clamp(input.predictionError01), novelty=clamp(input.novelty01), reward=clamp(input.reward01), plasticity=clamp(input.plasticity01), lesion=clamp(input.lesion01??s.lesion01);
