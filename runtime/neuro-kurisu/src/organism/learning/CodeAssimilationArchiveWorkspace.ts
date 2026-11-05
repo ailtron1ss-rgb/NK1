@@ -204,7 +204,7 @@ function verifyExtraction(raw: unknown): VerifiedInput {
   }
 
   const expectedExtractionFingerprint = sha256(
-    `${reportFingerprint}\\n${canonicalJson(files)}`,
+    `${reportFingerprint}\n${canonicalJson(files)}`,
   );
   if (expectedExtractionFingerprint !== extractionFingerprint) fail('extraction-fingerprint-mismatch');
   return { extractionFingerprint, files: Object.freeze(files), payloads };
@@ -307,7 +307,7 @@ export async function materializeCodeAssimilationArchiveWorkspace(
     };
 
     const workspaceFingerprint = sha256(
-      `${verified.extractionFingerprint}\\n${canonicalJson(verified.files)}\\nworkspace-v1`,
+      `${verified.extractionFingerprint}\n${canonicalJson(verified.files)}\nworkspace-v1`,
     );
     return Object.freeze({
       schemaVersion: 1 as const,
