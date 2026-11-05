@@ -58,3 +58,6 @@ jobs:
       - name: Streaming ASR admission boundary
         working-directory: runtime/neuro-kurisu
         run: npm run test:neko-asr-stream-admission
+      - name: Voice turn coordinator boundaries
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-voice-turn-coordinator
