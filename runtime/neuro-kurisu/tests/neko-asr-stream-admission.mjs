@@ -92,6 +92,8 @@ test('reserves one active stream and fences a final result that resolves after a
     },
   });
   const adapter = new NekoAsrTranscriptAdapter(port);
+  assert.equal(typeof adapter.captureFinalFromStream, 'function', 'streaming admission must be implemented');
+  if (typeof adapter.captureFinalFromStream !== 'function') return;
   const controller = new AbortController();
   const pending = adapter.captureFinalFromStream({
     sessionId: 'session-1', turnId: 'turn-1', token: token(),
