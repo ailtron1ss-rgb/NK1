@@ -12,6 +12,7 @@
     "test:embodiment-voice-cognitive-context": "node --experimental-strip-types tests/embodiment-voice-cognitive-context.mjs",
     "test:neko-asr-transcript-adapter": "node --experimental-strip-types --test tests/neko-asr-transcript-adapter.mjs",
     "test:neko-asr-embodiment-wiring": "node --experimental-strip-types --test tests/neko-asr-embodiment-wiring.mjs",
+    "test:neko-audio-stream-contract": "node --experimental-strip-types --test tests/neko-audio-stream-contract.mjs",
     "test:adaptive-experience-consolidator": "node --experimental-strip-types tests/adaptive-experience-consolidator-boundary.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
