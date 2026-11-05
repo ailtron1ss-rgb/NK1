@@ -86,12 +86,12 @@ test('EmbodimentRuntime preserves Smart Turn semantic endpoint evidence in detai
     },
     isAvailable: () => true,
     async captureFinal(request) {
-      request.notifySpeechActivity('speech-started');
+      request.observeSpeechActivity('speech-started');
       request.pushSmartTurnAudioFrame({
         sampleRateHz: 16_000,
         pcm16: new Uint8Array(16_000 * 2),
       });
-      request.notifySpeechActivity('candidate-pause');
+      request.observeSpeechActivity('candidate-pause');
       await request.evaluateSemanticEndpoint();
       return envelope(request.sessionId);
     },
