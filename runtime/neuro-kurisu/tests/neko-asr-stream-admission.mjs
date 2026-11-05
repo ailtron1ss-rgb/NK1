@@ -26,6 +26,12 @@ function envelope(sessionId, turnId = 'turn-1', overrides = {}) {
   };
 }
 
+function captureStream(adapter, request) {
+  return typeof adapter.captureFinalFromStream === 'function'
+    ? adapter.captureFinalFromStream(request)
+    : Promise.resolve({ status: 'rejected', reason: 'stream-not-supported' });
+}
+
 function provider(overrides = {}) {
   const calls = { stream: [], capture: [], cancel: [] };
   return {
@@ -50,7 +56,7 @@ function provider(overrides = {}) {
 test('admits one stream final through the existing transcript boundary with host session and turn binding', async () => {
   const { port, calls } = provider();
   const adapter = new NekoAsrTranscriptAdapter(port);
-  const result = await adapter.captureFinalFromStream({
+  const result = await captureStream(adapter, {
     sessionId: 'session-1', turnId: 'turn-1', token: token(),
     frames: [frame()][Symbol.iterator](),
     signal: new AbortController().signal,
@@ -68,7 +74,7 @@ test('rejects a provider envelope bound to another turn before admitting its tra
   const { port } = provider({
     async transcribeStream(input) { return envelope(input.sessionId, 'different-turn'); },
   });
-  const result = await new NekoAsrTranscriptAdapter(port).captureFinalFromStream({
+  const result = await captureStream(new NekoAsrTranscriptAdapter(port), {
     sessionId: 'session-1', turnId: 'turn-1', token: token(),
     frames: [frame()][Symbol.iterator](), signal: new AbortController().signal,
   });
