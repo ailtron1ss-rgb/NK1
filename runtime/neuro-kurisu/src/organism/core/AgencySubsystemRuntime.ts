@@ -26,6 +26,7 @@ import { AutonomousLearningMemoryGovernor } from '../system/AutonomousLearningMe
 import { AutonomousRelationshipManager } from '../system/AutonomousRelationshipManager.ts';
 import { OpenEndedSkillAcquisitionController } from '../system/OpenEndedSkillAcquisitionController.ts';
 import { AutonomousSocialInitiativeEngine } from '../system/AutonomousSocialInitiativeEngine.ts';
+import { AutonomousDecisionReceiptLog } from '../system/AutonomousDecisionReceipt.ts';
 import { LiveSelfImprovementSupervisor } from '../system/LiveSelfImprovementSupervisor.ts';
 
 /**
@@ -76,6 +77,8 @@ export class AgencySubsystemRuntime {
   readonly openEndedSkillAcquisition = new OpenEndedSkillAcquisitionController();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly autonomousSocialInitiative = new AutonomousSocialInitiativeEngine();
+  /** Canonical, evidence-derived explanation receipts for autonomous decisions. */
+  readonly decisionReceipts = new AutonomousDecisionReceiptLog();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly liveSelfImprovementSupervisor = new LiveSelfImprovementSupervisor();
   restore(input: {
