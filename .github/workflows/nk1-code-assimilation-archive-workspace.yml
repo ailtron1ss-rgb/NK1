@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchiveWorkspace.ts'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-contracts-workpass655.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-preflight-workpass657.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-extraction-workpass658.mjs'
       - 'runtime/neuro-kurisu/tests/code-assimilation-archive-workspace-materialization-workpass659.mjs'
       - '.github/workflows/nk1-code-assimilation-archive-workspace.yml'
   push:
@@ -11,6 +14,9 @@ on:
       - 'aspect/code-assimilation-workspace-materialization-20261105'
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchiveWorkspace.ts'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-contracts-workpass655.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-preflight-workpass657.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-extraction-workpass658.mjs'
       - 'runtime/neuro-kurisu/tests/code-assimilation-archive-workspace-materialization-workpass659.mjs'
       - '.github/workflows/nk1-code-assimilation-archive-workspace.yml'
 
@@ -35,5 +41,11 @@ jobs:
       - name: Typecheck runtime source boundary
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
+      - name: Test code assimilation candidate contracts
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-contracts-workpass655.mjs
+      - name: Test hostile-input archive preflight
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-archive-preflight-workpass657.mjs
+      - name: Test bounded in-memory ZIP extraction
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-archive-extraction-workpass658.mjs
       - name: Test verified disposable workspace materialization
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-archive-workspace-materialization-workpass659.mjs
