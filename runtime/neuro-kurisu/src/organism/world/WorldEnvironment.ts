@@ -74,7 +74,7 @@ function copyDenseDataArray(value: unknown, maxLength: number): unknown[] | null
     if (nodeUtilTypes.isProxy(value) || !Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
     const descriptors = Object.getOwnPropertyDescriptors(value);
     const keys = Reflect.ownKeys(descriptors);
-    const lengthDescriptor = descriptors.length;
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
     const length = lengthDescriptor && Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value')
       ? lengthDescriptor.value
       : undefined;
