@@ -1,4 +1,4 @@
-import { types as nodeUtilTypes } from 'node:util';
+import { isDeepStrictEqual, types as nodeUtilTypes } from 'node:util';
 export type EnvironmentAction =
   | 'observe'
   | 'inspect'
@@ -209,7 +209,18 @@ export class WorldEnvironment {
     const transitions: EnvironmentTransition[] = [];
     for (const entry of rawTransitions) {
       const transition = normalizeEnvironmentTransition(entry);
-      if (!transition || transition.after.tick > snapshot.tick) return;
+      if (!transition) return;
+
+      // Runtime history is newest-first. Bind its head to the restored snapshot
+      // and require every older row to end at the next newer row's pre-state.
+      // Shape-valid but detached rows must not become causal/replay history.
+      const newer = transitions[transitions.length - 1];
+      if (newer) {
+        if (!isDeepStrictEqual(newer.before, transition.after)) return;
+      } else if (!isDeepStrictEqual(transition.after, snapshot)) {
+        return;
+      }
+
       transitions.push(transition);
     }
     // Publish only after the complete snapshot and every transition validate.

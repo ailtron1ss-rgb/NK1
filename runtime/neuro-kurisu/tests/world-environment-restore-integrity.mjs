@@ -91,4 +91,18 @@ legacyWithoutHistory.restore({ snapshot: valid.snapshot });
 assert.deepEqual(legacyWithoutHistory.snapshot(), valid.snapshot, 'legacy snapshots without history remain readable');
 assert.deepEqual(legacyWithoutHistory.history(), []);
 
-console.log('WORLD_ENVIRONMENT_RESTORE_INTEGRITY=PASS cases=14');
+// Restored history is newest-first and must be a contiguous causal chain
+// ending at the exact current snapshot, not merely a list of valid-shaped rows.
+const detachedSnapshot = structuredClone(valid);
+detachedSnapshot.snapshot.energy = 0.7;
+assertRejectedWithoutMutation(detachedSnapshot);
+
+const detachedHistory = structuredClone(valid);
+detachedHistory.transitions[1].after.energy = 0.7;
+assertRejectedWithoutMutation(detachedHistory);
+
+const reversedHistory = structuredClone(valid);
+reversedHistory.transitions.reverse();
+assertRejectedWithoutMutation(reversedHistory);
+
+console.log('WORLD_ENVIRONMENT_RESTORE_INTEGRITY=PASS cases=17');
