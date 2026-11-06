@@ -1,3 +1,4 @@
+import { types as nodeUtilTypes } from 'node:util';
 export type EnvironmentAction =
   | 'observe'
   | 'inspect'
@@ -40,6 +41,143 @@ export interface EnvironmentTransition {
 
 const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 
+type PlainRecord = Record<string, unknown>;
+const ENVIRONMENT_ACTIONS = new Set<EnvironmentAction>(['observe', 'inspect', 'move', 'collect', 'rest', 'communicate']);
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/u;
+
+function copyPlainDataRecord(value: unknown, allowedKeys: readonly string[], requiredKeys: readonly string[]): PlainRecord | null {
+  try {
+    if (value === null || typeof value !== 'object' || nodeUtilTypes.isProxy(value) || Array.isArray(value)) return null;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.length > allowedKeys.length || keys.some((key) => typeof key !== 'string' || !allowedKeys.includes(key))) return null;
+    for (const key of requiredKeys) {
+      const descriptor = descriptors[key];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || descriptor.enumerable !== true) return null;
+    }
+    const copy: PlainRecord = Object.create(null);
+    for (const key of keys as string[]) {
+      const descriptor = descriptors[key];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || descriptor.enumerable !== true) return null;
+      copy[key] = descriptor.value;
+    }
+    return copy;
+  } catch {
+    return null;
+  }
+}
+
+function copyDenseDataArray(value: unknown, maxLength: number): unknown[] | null {
+  try {
+    if (nodeUtilTypes.isProxy(value) || !Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    const lengthDescriptor = descriptors.length;
+    const length = lengthDescriptor && Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value')
+      ? lengthDescriptor.value
+      : undefined;
+    if (typeof length !== 'number' || !Number.isSafeInteger(length) || length < 0 || length > maxLength || keys.length !== length + 1) return null;
+    const copy: unknown[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = descriptors[String(index)];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || descriptor.enumerable !== true) return null;
+      copy.push(descriptor.value);
+    }
+    return copy;
+  } catch {
+    return null;
+  }
+}
+
+function isSafeText(value: unknown, maxLength: number): value is string {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= maxLength
+    && value.trim() === value
+    && !CONTROL_CHARACTERS.test(value);
+}
+
+function isFiniteInRange(value: unknown, minimum: number, maximum: number): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= minimum && value <= maximum;
+}
+
+function normalizeEnvironmentSnapshot(value: unknown): EnvironmentSnapshot | null {
+  const row = copyPlainDataRecord(
+    value,
+    ['tick', 'location', 'energy', 'attention', 'uncertainty', 'facts', 'objects', 'events'],
+    ['tick', 'location', 'energy', 'attention', 'uncertainty', 'facts', 'objects', 'events'],
+  );
+  if (!row) return null;
+  if (typeof row.tick !== 'number' || !Number.isSafeInteger(row.tick) || row.tick < 0) return null;
+  if (!isSafeText(row.location, 180)) return null;
+  if (!isFiniteInRange(row.energy, 0, 1) || !isFiniteInRange(row.attention, 0, 1) || !isFiniteInRange(row.uncertainty, 0, 1)) return null;
+
+  const facts = copyDenseDataArray(row.facts, 120);
+  const events = copyDenseDataArray(row.events, 40);
+  const objects = copyDenseDataArray(row.objects, 256);
+  if (!facts || !events || !objects) return null;
+  if (!facts.every((entry) => isSafeText(entry, 240)) || !events.every((entry) => isSafeText(entry, 240))) return null;
+
+  const ids = new Set<string>();
+  const normalizedObjects: EnvironmentObject[] = [];
+  for (const entry of objects) {
+    const object = copyPlainDataRecord(entry, ['id', 'label', 'location', 'value', 'visible', 'collected'], ['id', 'label', 'location', 'value', 'visible', 'collected']);
+    if (!object || !isSafeText(object.id, 128) || !isSafeText(object.label, 240) || !isSafeText(object.location, 180)) return null;
+    if (!isFiniteInRange(object.value, 0, 1) || typeof object.visible !== 'boolean' || typeof object.collected !== 'boolean') return null;
+    if (ids.has(object.id)) return null;
+    ids.add(object.id);
+    normalizedObjects.push({
+      id: object.id,
+      label: object.label,
+      location: object.location,
+      value: object.value,
+      visible: object.visible,
+      collected: object.collected,
+    });
+  }
+
+  return {
+    tick: row.tick,
+    location: row.location,
+    energy: row.energy,
+    attention: row.attention,
+    uncertainty: row.uncertainty,
+    facts: facts as string[],
+    objects: normalizedObjects,
+    events: events as string[],
+  };
+}
+
+function normalizeEnvironmentTransition(value: unknown): EnvironmentTransition | null {
+  const row = copyPlainDataRecord(
+    value,
+    ['action', 'valid', 'before', 'after', 'reward', 'rawReward', 'displayReward01', 'surprise', 'at'],
+    ['action', 'valid', 'before', 'after', 'reward', 'rawReward', 'displayReward01', 'surprise', 'at'],
+  );
+  if (!row || typeof row.action !== 'string' || !ENVIRONMENT_ACTIONS.has(row.action as EnvironmentAction)) return null;
+  if (typeof row.valid !== 'boolean') return null;
+  const before = normalizeEnvironmentSnapshot(row.before);
+  const after = normalizeEnvironmentSnapshot(row.after);
+  if (!before || !after || after.tick !== before.tick + 1) return null;
+  if (!isFiniteInRange(row.reward, -1, 1) || !isFiniteInRange(row.rawReward, -1, 1)) return null;
+  if (!isFiniteInRange(row.displayReward01, 0, 1) || !isFiniteInRange(row.surprise, 0, 1)) return null;
+  if (typeof row.at !== 'number' || !Number.isSafeInteger(row.at) || row.at < 0) return null;
+  return {
+    action: row.action as EnvironmentAction,
+    valid: row.valid,
+    before,
+    after,
+    reward: row.reward,
+    rawReward: row.rawReward,
+    displayReward01: row.displayReward01,
+    surprise: row.surprise,
+    at: row.at,
+  };
+}
+
+
 export interface PersistedWorld { snapshot: EnvironmentSnapshot; transitions: EnvironmentTransition[]; schemaVersion: 1; }
 
 export class WorldEnvironment {
@@ -61,10 +199,22 @@ export class WorldEnvironment {
 
   snapshot(): EnvironmentSnapshot { return structuredClone(this.snapshotState); }
   history(): EnvironmentTransition[] { return structuredClone(this.transitions); }
-  restore(persisted: PersistedWorld | null | undefined): void {
-    if (!persisted?.snapshot) return;
-    this.snapshotState = structuredClone(persisted.snapshot);
-    this.transitions = Array.isArray(persisted.transitions) ? structuredClone(persisted.transitions).slice(0, 500) : [];
+  restore(persisted: unknown): void {
+    const row = copyPlainDataRecord(persisted, ['snapshot', 'transitions', 'schemaVersion'], ['snapshot']);
+    if (!row || (row.schemaVersion !== undefined && row.schemaVersion !== 1)) return;
+    const snapshot = normalizeEnvironmentSnapshot(row.snapshot);
+    if (!snapshot) return;
+    const rawTransitions = row.transitions === undefined ? [] : copyDenseDataArray(row.transitions, 500);
+    if (!rawTransitions) return;
+    const transitions: EnvironmentTransition[] = [];
+    for (const entry of rawTransitions) {
+      const transition = normalizeEnvironmentTransition(entry);
+      if (!transition || transition.after.tick > snapshot.tick) return;
+      transitions.push(transition);
+    }
+    // Publish only after the complete snapshot and every transition validate.
+    this.snapshotState = snapshot;
+    this.transitions = transitions;
   }
   persisted(): PersistedWorld { return { snapshot: this.snapshot(), transitions: this.history(), schemaVersion: 1 }; }
   observationContext(): EnvironmentSnapshot { return this.snapshot(); }
