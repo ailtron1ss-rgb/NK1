@@ -72,4 +72,23 @@ const revoked = Proxy.revocable(valid, {});
 revoked.revoke();
 assertRejectedWithoutMutation(revoked.proxy);
 
-console.log('WORLD_ENVIRONMENT_RESTORE_INTEGRITY=PASS cases=11');
+let arrayProxyTrapCalls = 0;
+const factsProxy = new Proxy([...valid.snapshot.facts], {
+  getPrototypeOf() {
+    arrayProxyTrapCalls += 1;
+    throw new Error('array proxy trap must not run');
+  },
+  ownKeys() {
+    arrayProxyTrapCalls += 1;
+    throw new Error('array proxy trap must not run');
+  },
+});
+assertRejectedWithoutMutation({ ...valid, snapshot: { ...valid.snapshot, facts: factsProxy } });
+assert.equal(arrayProxyTrapCalls, 0, 'proxy arrays must be rejected before traps execute');
+
+const legacyWithoutHistory = new WorldEnvironment();
+legacyWithoutHistory.restore({ snapshot: valid.snapshot });
+assert.deepEqual(legacyWithoutHistory.snapshot(), valid.snapshot, 'legacy snapshots without history remain readable');
+assert.deepEqual(legacyWithoutHistory.history(), []);
+
+console.log('WORLD_ENVIRONMENT_RESTORE_INTEGRITY=PASS cases=14');
