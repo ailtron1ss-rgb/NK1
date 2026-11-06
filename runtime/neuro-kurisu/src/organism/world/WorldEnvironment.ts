@@ -1,4 +1,4 @@
-import { isDeepStrictEqual, types as nodeUtilTypes } from 'node:util';
+import { types as nodeUtilTypes } from 'node:util';
 export type EnvironmentAction =
   | 'observe'
   | 'inspect'
@@ -150,6 +150,31 @@ function normalizeEnvironmentSnapshot(value: unknown): EnvironmentSnapshot | nul
   };
 }
 
+function sameEnvironmentSnapshot(left: EnvironmentSnapshot, right: EnvironmentSnapshot): boolean {
+  if (left.tick !== right.tick
+    || left.location !== right.location
+    || left.energy !== right.energy
+    || left.attention !== right.attention
+    || left.uncertainty !== right.uncertainty
+    || left.facts.length !== right.facts.length
+    || left.events.length !== right.events.length
+    || left.objects.length !== right.objects.length) return false;
+
+  for (let index = 0; index < left.facts.length; index += 1) {
+    if (left.facts[index] !== right.facts[index]) return false;
+  }
+  for (let index = 0; index < left.events.length; index += 1) {
+    if (left.events[index] !== right.events[index]) return false;
+  }
+  for (let index = 0; index < left.objects.length; index += 1) {
+    const a = left.objects[index];
+    const b = right.objects[index];
+    if (a.id !== b.id || a.label !== b.label || a.location !== b.location
+      || a.value !== b.value || a.visible !== b.visible || a.collected !== b.collected) return false;
+  }
+  return true;
+}
+
 function normalizeEnvironmentTransition(value: unknown): EnvironmentTransition | null {
   const row = copyPlainDataRecord(
     value,
@@ -216,8 +241,8 @@ export class WorldEnvironment {
       // Shape-valid but detached rows must not become causal/replay history.
       const newer = transitions[transitions.length - 1];
       if (newer) {
-        if (!isDeepStrictEqual(newer.before, transition.after)) return;
-      } else if (!isDeepStrictEqual(transition.after, snapshot)) {
+        if (!sameEnvironmentSnapshot(newer.before, transition.after)) return;
+      } else if (!sameEnvironmentSnapshot(transition.after, snapshot)) {
         return;
       }
 
