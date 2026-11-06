@@ -1,3 +1,14 @@
+## WorkPass286 — bind restored world history to the canonical snapshot (2026-11-06)
+
+- [x] Require non-empty restored transition history to be newest-first and end at the exact restored snapshot.
+- [x] Require every older transition's after-state to equal the next newer transition's before-state; reject detached or reversed history atomically.
+- [x] Add regressions for a detached snapshot, a detached history row and reversed transition order (17 total focused restore cases).
+- [x] Exact PR-head Actions: 11/11 success on `6a9261d2db9da23311edec1c9be4158cd1d8b3ac`; includes focused restore workflow, world-perception suite, runtime typecheck, core regression and the broad cognitive workflows.
+- [ ] Merge into `workpass70-source` only after explicit user authorization; PR #830 remains open/draft.
+- No dependency added. Legacy snapshots without a transition-history field remain readable. No retrieval uplift, device performance or release parity is claimed.
+
+---
+
 ## WorkPass285 — independent evaluator capability scope
 
 - [x] Reject verifier coverage IDs outside each task's declared required-capability set.
