@@ -45,7 +45,7 @@
 - `01` depends on evidence from `02`, `03`, `09`; `07` consumes the canonical phase/state outputs from `01` and drive state from `06`.
 - `08` depends on `07` and `12`; `09` depends on authenticated outcomes from `08`; `10` consumes durable evidence from `05` and `09`.
 - `04` depends on clean ingest/revision semantics `03`, restore/replay integrity `05`, and an independent frozen RU/EN dataset.
-- `13` depends on core/motivation intent `01`/`06`; `14) depends on `13` plus human license/asset approval; `15` depends on `12` and target audio/renderer timing; `16` depends on `15` and actual hardware.
+- `13` depends on core/motivation intent `01`/`06`; `14` depends on `13` plus human license/asset approval; `15` depends on `12` and target audio/renderer timing; `16` depends on `15` and actual hardware.
 - `17` remains blocked until explicit authorization; `18` is a release gate over all required evidence, not a substitute for it.
 
 ## Адаптивное решение и следующий handoff
