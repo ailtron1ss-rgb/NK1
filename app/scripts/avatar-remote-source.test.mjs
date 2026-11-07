@@ -53,6 +53,8 @@ test("rejects insecure, credentialed, local, private and service-network URLs", 
     "https://169.254.169.254/kurisu.vrm",
     "https://[::1]/kurisu.vrm",
     "https://[fd00::1]/kurisu.vrm",
+    "https://[::ffff:7f00:1]/kurisu.vrm",
+    "https://[fec0::1]/kurisu.vrm",
   ];
   for (const value of invalid) assert.throws(() => validateRemoteAvatarUrl(value), undefined, value);
 });
