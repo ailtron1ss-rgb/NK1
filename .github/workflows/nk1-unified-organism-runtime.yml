@@ -52,6 +52,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:big-pass-224
       - name: N.E.K.O. BM25 anti-repeat for proactive initiative selection
         run: npm --prefix runtime/neuro-kurisu run test:neko-social-anti-repeat
+      - name: N.E.K.O. proactive topic-source diversity
+        run: npm --prefix runtime/neuro-kurisu run test:neko-social-source-fairness
       - name: Endogenous motivation and goal genesis
         run: npm --prefix runtime/neuro-kurisu run test:workpass292:motivation-to-goal && npm --prefix runtime/neuro-kurisu run test:workpass288:intrinsic-motivation
       - name: World perception ingress and integrity
