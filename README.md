@@ -5,10 +5,30 @@
 ## Актуальная сборка
 
 - **Последний проверенный hotfix:** WorkPass70 Hotfix 1, 19 октября 2026.
+- **Генеральное обновление архитектуры воплощения и анализа:** 31 октября 2026.
+- [Мастер-план проекта: 10 этапов цифровой личности](docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md)
+- [Трекер прогресса и статусы верификации](docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md)
+- [Комплексный анализ системы, адаптация доноров и научный базис](docs/NK1_COMPREHENSIVE_SYSTEM_ANALYSIS_2026-10-31_RU.md)
 - [Полный исходный архив в GitHub Releases](https://github.com/ailtron1ss-rgb/NK1/releases/tag/workpass70-hotfix1-2026-10-19)
 - [Полное дерево исходников](https://github.com/ailtron1ss-rgb/NK1/tree/workpass70-source)
-- [Отчёт WorkPass70 Hotfix 1](https://github.com/ailtron1ss-rgb/NK1/blob/workpass70-source/WORKPASS70_HOTFIX_1_REPORT_RU.md)
-- [WorkPass71 validation run](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39270770457)
+
+## Новые возможности и модернизации (31 октября 2026)
+
+- **3D Аватар Макисэ Курису 1-в-1**:
+  - Полный процедурный 3D-риг человекоподобного аватара (`app/src/components/avatar/KurisuAnime3DAvatar.ts`) с соблюдением пропорций Steins;Gate, характерных заколок X-формы, локонов и гардероба (белый лабораторный халат, повседневный кардиган, ночное худи, строгий костюм).
+  - Вегетативная моторика: микроколебания дыхания, саккадический дрейф взгляда, спонтанное моргание.
+  - Двусторонняя кинематика рук (IK): позы "рука у подбородка" (научное размышление), "скрещенные руки" (цундэрэ-защита), жест жестикуляции/объяснения теории.
+  - Канал выражения эмоций: румянец (смущение), брови и веки (фокус, шок, радость открытия, теплота).
+  - Поддержка внешних моделей: адаптер `vrmLoaderAdapter.ts` с кешированием в IndexedDB для загрузки VRM / GLB аватаров из интернета или локальных файлов.
+  - Библиотека каноничных спрайтов Steins;Gate высокого разрешения в `app/public/sprites/kurisu/`.
+- **Интеграция передовых технологий и адаптеров**:
+  - Память и контекст: адаптеры Letta (многослойный контекст ядра и архив), Mem0 (эпизодический граф связей), HeXiS (гибридная память с консолидацией).
+  - Обучение и адаптация: адаптеры CleanRL (PPO гомеостаза), Avalanche (anti-catastrophic forgetting), River (потоковая калибровка когнитивной нагрузки).
+  - Физическое проектирование: OpenSCAD / glTF-Validator для аппаратных компонентов.
+- **Научный базис**:
+  - Complementary Learning Systems (CLS) гиппокамп-неокортекс.
+  - Free Energy Principle & Active Inference (Карл Фристон) в моторно-аффективном контуре.
+  - Воплощённое познание (Embodied Cognition) и предиктивное кодирование.
 
 SHA-256 полного архива:
 
@@ -35,13 +55,6 @@ SHA-256 полного архива:
 ## Незакрытые release gates
 
 Эта сборка — **implementation hotfix, не production-approved**. Не подтверждены production build вместе с миграцией БД, настоящий browser/Live2D E2E, синхронизация реального Android/Termux audio, независимый multi-seed retrieval uplift (текущий benchmark всё ещё показывает `recallDelta=0`), длительный soak и полный license review. Никаких выводов о субъективном сознании или общей интеллектуальной эффективности из этих тестов не делается.
-
-## Стратегический мастер-план и трекер прогресса
-
-- **Мастер-план (10 жизненно важных этапов):** [docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md](docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md)
-- **Реестр статусов и отслеживание прогресса:** [docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md](docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md)
-- **Протокол продвижения статусов:** `PLANNED` → `IMPLEMENTED` → `TESTED` → `INTEGRATED` → `MEASURED` → `RELEASED`
-- **Проверка воспроизводимости релизов (Этап 1):** `bash scripts/verify-release-reproducibility.sh`
 
 ## Следующий этап
 
