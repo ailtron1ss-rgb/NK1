@@ -1,10 +1,20 @@
+## WorkPass287 — SharedArrayBuffer remote-avatar stream regression (2026-11-07)
+
+- [x] Extend the existing PR #838 test surface with a SharedArrayBuffer-backed Uint8Array view, including a non-zero byte offset.
+- [x] Assert byte length, byte-for-byte output and downstream GLB preflight after the downloader's fallback copy.
+- [ ] Verify the new exact PR head `cc27cd02a06d90d0578102306e0456f6e0ab743c` through all relevant Actions; five runs were in progress at checkpoint.
+- [ ] Measure actual browser/mobile peak RSS before claiming a device-level memory improvement.
+- No production implementation changed in this work unit; no dependency added; PR #838 remains open/draft and must not be merged without explicit user authorization.
+
+---
+
 ## WorkPass286 — bind restored world history to the canonical snapshot (2026-11-06)
 
 - [x] Require non-empty restored transition history to be newest-first and end at the exact restored snapshot.
 - [x] Require every older transition's after-state to equal the next newer transition's before-state; reject detached or reversed history atomically.
 - [x] Add regressions for a detached snapshot, a detached history row and reversed transition order (17 total focused restore cases).
 - [x] Exact PR-head Actions: 11/11 success on `6a9261d2db9da23311edec1c9be4158cd1d8b3ac`; includes focused restore workflow, world-perception suite, runtime typecheck, core regression and the broad cognitive workflows.
-- [ ] Merge into `workpass70-source` only after explicit user authorization; PR #830 remains open/draft.
+- [x] PR #830 was merged externally on 2026-11-07 05:02 UTC (merge commit `26e2c823284d4238199c80cd1eb8363c5d5c8456`); this cycle only observed and verified the resulting source ancestry.
 - No dependency added. Legacy snapshots without a transition-history field remain readable. No retrieval uplift, device performance or release parity is claimed.
 
 ---
