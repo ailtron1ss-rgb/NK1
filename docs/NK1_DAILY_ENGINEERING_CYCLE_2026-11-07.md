@@ -8,7 +8,7 @@
 - От предыдущего checkpoint `bcd48b1fd408a1539ac537813730669c35cfb3a2`: source ahead 2, behind 0. Изменения включают внешний merge PR #830 и следующий avatar-import commit.
 - PR #830 **merged externally** 2026-11-07 05:02 UTC; merge commit `26e2c823284d4238199c80cd1eb8363c5d5c8456`. Его PR head `6a9261d2db9da23311edec1c9be4158cd1d8b3ac` имел 11/11 exact-head checks по предыдущему checkpoint. Это не merge, выполненный этим циклом.
 - Последний source commit `189643e`: bounded HTTPS VRM/GLB remote import; current exact-SHA push Actions: 7/7 success (runs 42341468790, 42341468836, 42341468820, 42341468833, 42341468783, 42341468784, 42341468785).
-- Existing avatar remote-import memory PR #838: base `189643ede8f3904dd670f0109a28b7536e894c00`; branch `aspect/avatar-remote-download-memory-20261107`; new head after this cycle's test-only commit: `cc27cd02a06d90d0578102306e0456f6e0ab743c`. Five exact-head PR workflows were observed in progress at report preparation: 42377092611, 42377092773, 42377092573, 42377092721, 42377092696.
+- Existing avatar remote-import memory PR #838: base `189643ede8f3904dd670f0109a28b7536e894c00`; branch `aspect/avatar-remote-download-memory-20261107`; new head after this cycle's test-only commit: `cc27cd02a06d90d0578102306e0456f6e0ab743c`. Five exact-head PR workflows completed successfully: 42377092611, 42377092773, 42377092573, 42377092721, 42377092696 (5/5).
 - Previous PR #838 head `02ae5c1c573972bf81a6f503be50c18c4c638c31` had 5/5 success. The SharedArrayBuffer regression is tested on exact head `cc27cd0`; all five associated Actions passed.
 - Latest Release metadata still identifies the 2026-10-19 Hotfix prerelease ZIP, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Binary download was unavailable in this run; therefore no fresh ZIP CRC/member inspection or 2026-11-07 source parity claim is made. The prior 2026-11-06 handoff records a successful archive inspection (10,213 entries, CRC clean) at the same digest.
 - License review remains pending; redistribution approval is false. No release publication, production mutation, new service, database, secret, paid action or PR merge was performed by this cycle.
@@ -84,6 +84,7 @@ Next 5 actions:
 
 ## Ограничения и честность
 
+- Existing documentation PR #831 remains open/draft on its 2026-11-06 base; current source is two commits ahead. The branch was updated without force-push or rebase; mergeability/Actions on its final docs head are not yet confirmed.
 - No global readiness percentage or area scores changed: no new independent holdout, real-device soak, licensed asset or legal approval.
 - ZIP metadata was read, but binary ZIP bytes were not downloaded or inspected during this run.
 - No PR was merged, no branch deleted, no force-push, no production change, no paid service or secret touched.
