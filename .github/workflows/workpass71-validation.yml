@@ -26,6 +26,8 @@ on:
       - "package.json"
       - "tools/verify-ci-reliability.mjs"
       - "tools/verify-ci-reliability.test.mjs"
+      - "tools/source-archive-review.test.mjs"
+      - "contracts/UPSTREAM_SOURCE_ARCHIVE_REVIEW_2026-11-03.json"
       - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
       - "docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md"
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
@@ -62,6 +64,8 @@ jobs:
           esac
       - name: Audit CI Action/runtime compatibility contract
         run: npm run audit:ci-reliability
+      - name: Validate uploaded upstream source archive provenance and license disposition
+        run: node tools/source-archive-review.test.mjs
       - name: Test CI reliability audit regressions
         run: node --test tools/verify-ci-reliability.test.mjs
       - name: Install app dependencies without lifecycle scripts
