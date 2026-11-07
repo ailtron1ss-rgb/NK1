@@ -66,6 +66,8 @@ export function validateRemoteAvatarUrl(input: string): RemoteAvatarSource {
     throw new Error("Укажите HTTPS-ссылку на файл .vrm или .glb без пробелов по краям.");
   }
 
+  if (input.length > 2048) throw new Error("Ссылка на модель слишком длинная.");
+
   let url: URL;
   try {
     url = new URL(input);
@@ -176,9 +178,8 @@ export async function fetchRemoteAvatarModel(
     }
 
     if (total < 20) throw new Error("Файл модели пустой или слишком короткий.");
-    if (declaredLength !== null && total !== declaredLength) {
-      throw new Error("Фактический размер модели не совпадает с Content-Length.");
-    }
+    // Fetch may expose a decompressed stream while Content-Length describes wire bytes.
+    // The header is only an early upper-bound hint; the streamed byte count is authoritative.
 
     const bytes = new Uint8Array(total);
     let offset = 0;
