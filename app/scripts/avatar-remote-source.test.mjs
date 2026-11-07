@@ -100,9 +100,16 @@ test("rejects an oversized declared response before reading the body", async () 
         ok: true,
         status: 200,
         headers: new Headers({ "content-length": "100000" }),
-        body: new ReadableStream({
-          pull(controller) { bodyRead = true; controller.enqueue(bytes); controller.close(); },
-        }),
+        body: {
+          getReader() {
+            bodyRead = true;
+            return {
+              read: async () => ({ done: true, value: undefined }),
+              cancel: async () => undefined,
+              releaseLock: () => undefined,
+            };
+          },
+        },
       }),
     }),
     /превышает лимит/,
