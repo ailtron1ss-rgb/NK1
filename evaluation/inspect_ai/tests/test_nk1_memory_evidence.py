@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from nk1_memory_evidence import build_ci_fixture_report, score_memory_holdout, samples_from_memory_report, export_memory_report
+from nk1_memory_evidence import _cluster_interval, build_ci_fixture_report, score_memory_holdout, samples_from_memory_report, export_memory_report
 
 
 def digest(value: str) -> str:
@@ -24,6 +24,7 @@ def make_record(source_ref: str = "https://datasets.example.org/nk1-memory-v1") 
         for index in range(4):
             train.append({
                 "exampleIdDigest": digest(f"{language}-train-id-{index}"),
+                "independenceGroupDigest": digest(f"{language}-train-source-{index}"),
                 "queryDigest": digest(f"{language}-train-query-{index}"),
                 "language": language,
                 "split": "train",
@@ -33,6 +34,7 @@ def make_record(source_ref: str = "https://datasets.example.org/nk1-memory-v1") 
             relevant = corpus_ids[index]
             holdout.append({
                 "exampleIdDigest": digest(f"{language}-answerable-id-{index}"),
+                "independenceGroupDigest": digest(f"{language}-answerable-source-{index}"),
                 "queryDigest": query_digest,
                 "language": language,
                 "split": "holdout",
@@ -51,6 +53,7 @@ def make_record(source_ref: str = "https://datasets.example.org/nk1-memory-v1") 
         for index in range(8):
             holdout.append({
                 "exampleIdDigest": digest(f"{language}-unanswerable-id-{index}"),
+                "independenceGroupDigest": digest(f"{language}-unanswerable-source-{index}"),
                 "queryDigest": digest(f"{language}-unanswerable-query-{index}"),
                 "language": language,
                 "split": "holdout",
@@ -63,6 +66,7 @@ def make_record(source_ref: str = "https://datasets.example.org/nk1-memory-v1") 
     corpus_fingerprint = digest("corpus-fingerprint")
     return {
         "kind": "memory-holdout-bilingual",
+        "evidenceSchemaVersion": 2,
         "dataset": {
             "fingerprint": dataset_fingerprint,
             "provenance": {
@@ -107,6 +111,25 @@ def make_record(source_ref: str = "https://datasets.example.org/nk1-memory-v1") 
 
 
 class MemoryHoldoutScoringTests(unittest.TestCase):
+    def test_legacy_evidence_schema_is_not_accepted_for_independent_source_gates(self):
+        record = make_record()
+        record["evidenceSchemaVersion"] = 1
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"])
+        self.assertFalse(result["promotionEligible"])
+        self.assertEqual(result["reason"], "memory-evidence-schema-version-unsupported")
+
+    def test_bootstrap_resamples_whole_independence_groups(self):
+        values = [0.0, 0.0, 1.0, 1.0]
+        groups = [digest("source-a"), digest("source-a"), digest("source-b"), digest("source-b")]
+        first = _cluster_interval(values, groups, 2000, 73)
+        replay = _cluster_interval(values, groups, 2000, 73)
+        self.assertEqual(first, replay)
+        self.assertEqual(first["samples"], 2000)
+        self.assertEqual(first["clusterCount"], 2)
+        self.assertEqual(first["resamplingUnit"], "independenceGroupDigest")
+        self.assertEqual(first["medianDelta01"], 0.5)
+
     def test_independent_scorer_recomputes_bilingual_recall_mrr_and_abstention(self):
         result = score_memory_holdout(make_record())
         self.assertTrue(result["valid"], result)
@@ -162,6 +185,48 @@ class MemoryHoldoutScoringTests(unittest.TestCase):
         self.assertFalse(result["promotionEligible"])
         self.assertFalse(result["languages"]["ru"]["gates"]["sufficientUnanswerableHoldoutQueries"])
 
+    def test_correlated_holdout_groups_cannot_satisfy_independent_source_minimums(self):
+        record = make_record()
+        for language in ("en", "ru"):
+            answerable_source = digest(f"{language}-single-answerable-source")
+            unanswerable_source = digest(f"{language}-single-unanswerable-source")
+            for row in record["holdout"]:
+                if row["language"] != language:
+                    continue
+                row["independenceGroupDigest"] = answerable_source if row["answerable"] else unanswerable_source
+
+        result = score_memory_holdout(record)
+        self.assertTrue(result["valid"], result)
+        self.assertFalse(result["promotionEligible"])
+        for language in ("en", "ru"):
+            report = result["languages"][language]
+            self.assertEqual(report["independentAnswerableHoldoutGroups"], 1)
+            self.assertEqual(report["independentUnanswerableHoldoutGroups"], 1)
+            self.assertFalse(report["gates"]["sufficientIndependentAnswerableHoldoutGroups"])
+            self.assertFalse(report["gates"]["sufficientIndependentUnanswerableHoldoutGroups"])
+        self.assertFalse(result["gates"]["englishAndRussianHoldoutEligible"])
+
+    def test_train_holdout_independence_group_overlap_is_leakage(self):
+        record = make_record()
+        record["train"][0]["independenceGroupDigest"] = record["holdout"][0]["independenceGroupDigest"]
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"], result)
+        self.assertFalse(result["promotionEligible"])
+        self.assertFalse(result["gates"]["noTrainHoldoutIndependenceGroupLeakage"])
+
+    def test_missing_or_malformed_independence_group_digest_is_rejected(self):
+        record = make_record()
+        record["train"][0].pop("independenceGroupDigest")
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"])
+        self.assertFalse(result["promotionEligible"])
+
+        record = make_record()
+        record["holdout"][0]["independenceGroupDigest"] = "not-a-sha256-digest"
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"])
+        self.assertFalse(result["promotionEligible"])
+
     def test_ci_fixture_scores_as_structurally_valid_but_never_as_external_promotion_evidence(self):
         report = build_ci_fixture_report()
         sample = json.loads(samples_from_memory_report(report)[0]["input"])
@@ -189,7 +254,7 @@ class MemoryHoldoutScoringTests(unittest.TestCase):
             "bootstrapSamplesPerSeed": record["experiment"]["bootstrapSamplesPerSeed"],
             "sensitivity": {"maximumMrrRegression01": 0.01},
             "queryEvidence": {
-                "schemaVersion": 1,
+                "schemaVersion": 2,
                 "digestAlgorithm": "hmac-sha256-ephemeral-per-experiment",
                 "queryNormalization": "NFKC-lower-punctuation-symbol-and-whitespace-normalization",
                 "datasetFingerprint": record["dataset"]["fingerprint"],
@@ -205,6 +270,8 @@ class MemoryHoldoutScoringTests(unittest.TestCase):
         samples = samples_from_memory_report(report)
         self.assertEqual(len(samples), 1)
         serialized = json.dumps(samples, sort_keys=True)
+        self.assertIn("independenceGroupDigest", serialized,
+            "the privacy-reduced export must retain source-cluster identity as an HMAC digest")
         self.assertNotIn("answerable-query-0", serialized)
         self.assertNotIn("memory-0", serialized)
         with tempfile.TemporaryDirectory() as directory:
