@@ -1,6 +1,9 @@
 declare module 'node:fs' {
   export function existsSync(path:string):boolean;
   export function lstatSync(path:string):any;
+  export function createReadStream(path:string):any;
+  export function copyFileSync(src:string,dest:string,mode?:number):void;
+  export function chmodSync(path:string,mode:number):void;
   export function statSync(path:string):any;
   export function mkdirSync(path:string, options?:{recursive?:boolean;mode?:number}):void;
   export function openSync(path:string, flags:string, mode?:number):number;
@@ -12,7 +15,7 @@ declare module 'node:fs' {
   export function closeSync(fd:number):void;
   export function renameSync(from:string,to:string):void;
   export function unlinkSync(path:string):void;
-  export const constants: { X_OK:number; F_OK:number; R_OK:number; W_OK:number; };
+  export const constants: { X_OK:number; F_OK:number; R_OK:number; W_OK:number; COPYFILE_EXCL:number; };
   export function linkSync(existingPath:string,newPath:string):void;
   export function mkdtempSync(prefix:string):string;
   export function rmSync(path:string, options?:{recursive?:boolean;force?:boolean}):void;
@@ -64,7 +67,7 @@ declare module 'node:os' { export function homedir():string; export function tmp
 declare module 'node:http' { export function createServer(handler:(req:any,res:any)=>void):any; }
 declare module 'node:child_process' { export function spawn(command:string,args?:string[],options?:any):any; export function execFile(command:string,args?:string[],options?:any,callback?:any):any; }
 declare module 'node:util' { export function promisify(fn:any):any; export const types: { isProxy(value:unknown):boolean }; }
-declare const process: { pid:number; platform:string; env:NodeJS.ProcessEnv; argv:string[]; cwd():string; execPath:string; exitCode?:number; on(event:string,handler:()=>void):void; memoryUsage():{rss:number;heapUsed:number;heapTotal:number;external:number;arrayBuffers?:number}; kill(pid:number|string,signal?:number|string):void; }
+declare const process: { pid:number; platform:string; arch:string; version:string; env:NodeJS.ProcessEnv; argv:string[]; cwd():string; execPath:string; exitCode?:number; on(event:string,handler:()=>void):void; memoryUsage():{rss:number;heapUsed:number;heapTotal:number;external:number;arrayBuffers?:number}; kill(pid:number|string,signal?:number|string):void; }
 
 declare module 'node:zlib' { export function deflateRawSync(data: Uint8Array): Uint8Array; export function inflateRawSync(data: Uint8Array): Uint8Array; }
 declare module 'node:v8' { export function serialize(value: unknown): Uint8Array; export function deserialize(data: Uint8Array): unknown; }
