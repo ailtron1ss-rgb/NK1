@@ -9,7 +9,7 @@
 - PR #830 **merged externally** 2026-11-07 05:02 UTC; merge commit `26e2c823284d4238199c80cd1eb8363c5d5c8456`. Его PR head `6a9261d2db9da23311edec1c9be4158cd1d8b3ac` имел 11/11 exact-head checks по предыдущему checkpoint. Это не merge, выполненный этим циклом.
 - Последний source commit `189643e`: bounded HTTPS VRM/GLB remote import; current exact-SHA push Actions: 7/7 success (runs 42341468790, 42341468836, 42341468820, 42341468833, 42341468783, 42341468784, 42341468785).
 - Existing avatar remote-import memory PR #838: base `189643ede8f3904dd670f0109a28b7536e894c00`; branch `aspect/avatar-remote-download-memory-20261107`; new head after this cycle's test-only commit: `cc27cd02a06d90d0578102306e0456f6e0ab743c`. Five exact-head PR workflows were observed in progress at report preparation: 42377092611, 42377092773, 42377092573, 42377092721, 42377092696.
-- Previous PR #838 head `02ae5c1c573972bf81a6f503be50c18c4c638c31` had 5/5 success. The new SharedArrayBuffer regression is not counted as tested until Actions finish on `cc27cd0`.
+- Previous PR #838 head `02ae5c1c573972bf81a6f503be50c18c4c638c31` had 5/5 success. The SharedArrayBuffer regression is tested on exact head `cc27cd0`; all five associated Actions passed.
 - Latest Release metadata still identifies the 2026-10-19 Hotfix prerelease ZIP, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Binary download was unavailable in this run; therefore no fresh ZIP CRC/member inspection or 2026-11-07 source parity claim is made. The prior 2026-11-06 handoff records a successful archive inspection (10,213 entries, CRC clean) at the same digest.
 - License review remains pending; redistribution approval is false. No release publication, production mutation, new service, database, secret, paid action or PR merge was performed by this cycle.
 
@@ -17,7 +17,7 @@
 
 | generated | attempted | completed | partially_completed | blocked | deferred | verified |
 |---:|---:|---:|---:|---:|---:|---:|
-| 18 | 3 | 1 | 2 | 3 | 12 | 1 |
+| 18 | 3 | 2 | 1 | 3 | 12 | 2 |
 
 `completed` and `partially_completed` are subsets of `attempted`; `verified` counts only exact-SHA/source evidence. Generated is not execution.
 
@@ -38,7 +38,7 @@
 | NK1-D20261107-11 | UserModel: retain explicit forget/tombstone/replay protection; no duplicate work absent regression | P1 | Integrated UserModel v2 | Privacy-critical; do not weaken deletion | Explicit-forget workflow green on current source SHA | Run 42341468836 success on 189643e | deferred / no-new-work; current source check is green |
 | NK1-D20261107-12 | EthicalGate/PEA: keep capability scope, consent and privacy consistent across import and proactive delivery | P1 | #810, #822 | High; fail closed | Out-of-scope or unapproved action rejected and cannot mint trusted evidence | #810/#822 open; #830 restore merged | deferred / no policy bypass |
 | NK1-D20261107-13 | Embodiment: keep renderer-neutral MotorFrame and 2D/3D routing stable; reserve 2.5D/device E2E for measured pass | P1 | #768, core embodiment contract | Medium; renderer adapter reversible | Existing 2D/3D contract green; 2.5D claims require real visual/device evidence | Current source embodiment switch run 42341468784 success; #768 remains separate work | deferred / no new renderer code |
-| NK1-D20261107-14 | Avatar pipeline: cover SharedArrayBuffer-backed stream chunks in the existing remote-import memory optimization PR | P1 | #838, avatar preflight | Low; test-only addition, reversible | Non-ArrayBuffer chunk view is copied safely; output bytes and GLB preflight remain exact; new-head CI green | Added regression to #838 branch; commit `cc27cd02a06d90d0578102306e0456f6e0ab743c` | partially_completed / implementation=test added; exact-head Actions pending; licensed Kurisu asset remains a separate human gate |
+| NK1-D20261107-14 | Avatar pipeline: cover SharedArrayBuffer-backed stream chunks in the existing remote-import memory optimization PR | P1 | #838, avatar preflight | Low; test-only addition, reversible | Non-ArrayBuffer chunk view is copied safely; output bytes and GLB preflight remain exact; new-head CI green | Added regression to #838 branch; commit `cc27cd02a06d90d0578102306e0456f6e0ab743c`; exact-head Actions 5/5 success | done on PR branch / exact-head Actions 5/5 success; not merged or released; licensed Kurisu asset remains a separate human gate |
 | NK1-D20261107-15 | Speech: continue consented ASR→turn→transcript stack without adding a second voice runtime | P1 | #811, #815, #819, #820, #801 | Medium/high; audio capture and interruption require consent | Actual interrupt ≤200 ms and audio/viseme drift ≤80 ms on target hardware | #811/#815/#819/#820/#801 remain open; no hardware timing measured | deferred / existing PR stack retained |
 | NK1-D20261107-16 | Mobile: Android/Termux offline/background/audio soak and 10k-tick timing | P1 | Speech path, real Android device | Medium; non-destructive | 10k deterministic ticks; ≤50 ms phone tick; real audio/lip sync soak | No target phone evidence in this run | blocked / hardware-only gate |
 | NK1-D20261107-17 | App/API/infrastructure: inspect only existing authorized data planes; no new database or secret | P2 | Explicit credential/architecture authorization | High; production/data changes prohibited | Existing NK1 adapter proven with non-production contract tests | Previous verified inventory: Atlas sample_mflix only, no Supabase project, no NK1 Redis data plane | blocked / authorization and connected data plane absent |
@@ -64,7 +64,7 @@
 
 - WorldEnvironment restore continuity: implemented, connected in canonical source after external merge #830, tested on PR head 11/11; source exact-head Actions 7/7; released: no.
 - Remote avatar import: implemented and connected in current source `189643e`; source Actions 7/7; device/browser E2E and peak-RSS measurement: not done; released: no.
-- Remote import memory optimization: implementation exists in PR #838; this cycle adds SharedArrayBuffer regression; new exact-head CI pending; not merged/released.
+- Remote import memory optimization: implementation exists in PR #838; this cycle adds SharedArrayBuffer regression and exact-head Actions pass 5/5; not merged/released.
 - UserModel explicit forget: implemented in source; current explicit-forget workflow passed; release ZIP still stale.
 - RU/EN uplift, real autonomy cadence, Android soak, licensed Kurisu asset and legal redistribution: not proven / blocked.
 
@@ -76,7 +76,7 @@
 - Не создавались дубли для #799/#810/#811/#821/#822/#813/#772/#770 or voice stack; no additional PR created.
 
 Next 5 actions:
-1. Poll all five Actions runs on `cc27cd02a06d90d0578102306e0456f6e0ab743c`; update #838 evidence only after exact-head completion.
+1. Review #838 after exact-head Actions passed 5/5; keep it open/draft pending review and explicit merge authorization.
 2. Continue existing #821/#810/#822/#799 work and check dependencies before editing.
 3. Reconcile duplicate-looking retrieval PRs #769/#770 without closing either; obtain immutable licensed RU/EN holdout and run ≥5 paired seeds.
 4. Re-download/inspect the actual Release ZIP through a binary-capable path; compare current source member hashes; keep release blocked until human license approval.
