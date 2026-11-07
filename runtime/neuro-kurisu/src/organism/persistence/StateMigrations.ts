@@ -259,6 +259,7 @@ export interface PersistedShapeCurrent {
   endogenousGoalGenesisB272?: import('../cognition/B272EndogenousGoalGenesis.ts').B272State;
   autonomousGoalLifecycleB273?: import('../cognition/B273AutonomousGoalLifecycle.ts').B273State;
   autonomousSkillLaboratoryB274?: import('../cognition/B274AutonomousSkillLaboratory.ts').B274State;
+  autonomousDecisionReceipts?: import('../system/AutonomousDecisionReceipt.ts').DecisionReceiptState;
   neuralCompositionalPolicyB275?: import('../cognition/B275NeuralCompositionalPolicy.ts').B275State;
   latentActionProgramSynthesizerB276?: import('../cognition/B276LatentActionProgramSynthesizer.ts').B276State;
   neuralOperatorGenesisB277?: import('../cognition/B277NeuralOperatorGenesis.ts').B277State;
@@ -1311,6 +1312,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
       endogenousGoalGenesisB272: raw.system?.endogenousGoalGenesisB272 ?? undefined,
       autonomousGoalLifecycleB273: raw.system?.autonomousGoalLifecycleB273 ?? undefined,
       autonomousSkillLaboratoryB274: raw.system?.autonomousSkillLaboratoryB274 ?? undefined,
+      autonomousDecisionReceipts: raw.system?.autonomousDecisionReceipts ?? undefined,
       neuralCompositionalPolicyB275: raw.system?.neuralCompositionalPolicyB275 ?? undefined,
       latentActionProgramSynthesizerB276: raw.system?.latentActionProgramSynthesizerB276 ?? undefined,
       neuralOperatorGenesisB277: raw.system?.neuralOperatorGenesisB277 ?? defaultB277State(),

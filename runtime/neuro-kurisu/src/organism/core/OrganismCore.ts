@@ -594,6 +594,8 @@ export interface OrganismSystemState {
     neuralAutobiographicalCoreB271?: import('../cognition/B271NeuralAutobiographicalCore.ts').B271State;
     endogenousGoalGenesisB272?: import('../cognition/B272EndogenousGoalGenesis.ts').B272State;
     autonomousGoalLifecycleB273?: import('../cognition/B273AutonomousGoalLifecycle.ts').B273State;
+    /** Evidence-derived explanation receipts for autonomous decisions. */
+    autonomousDecisionReceipts?: import('../system/AutonomousDecisionReceipt.ts').DecisionReceiptState;
     autonomousSkillLaboratoryB274?: import('../cognition/B274AutonomousSkillLaboratory.ts').B274State;
     neuralCompositionalPolicyB275?: import('../cognition/B275NeuralCompositionalPolicy.ts').B275State;
     latentActionProgramSynthesizerB276?: import('../cognition/B276LatentActionProgramSynthesizer.ts').B276State;
@@ -1016,6 +1018,7 @@ function defaultPersisted(): PersistedOrganism {
             neuralAutobiographicalCoreB271: defaultB271State(),
             endogenousGoalGenesisB272: defaultB272State(),
             autonomousGoalLifecycleB273: defaultB273State(),
+            autonomousDecisionReceipts: { version: 1, created: 0, closed: 0, receipts: [] },
             autonomousSkillLaboratoryB274: defaultB274State(),
             neuralCompositionalPolicyB275: defaultB275State(),
             latentActionProgramSynthesizerB276: defaultB276State(),
@@ -1598,6 +1601,7 @@ export class OrganismCore {
         this.developmentalNeural.neuralAutobiographicalCoreB271.restore(this.persisted.system.neuralAutobiographicalCoreB271 ?? defaultB271State());
         this.developmentalNeural.endogenousGoalGenesisB272.restore(this.persisted.system.endogenousGoalGenesisB272 ?? defaultB272State());
         this.developmentalNeural.autonomousGoalLifecycleB273.restore(this.persisted.system.autonomousGoalLifecycleB273 ?? defaultB273State());
+        this.organismSystems.agency.decisionReceipts.restore(this.persisted.system.autonomousDecisionReceipts);
         this.developmentalNeural.autonomousSkillLaboratoryB274.restore(this.persisted.system.autonomousSkillLaboratoryB274 ?? defaultB274State());
         this.developmentalNeural.neuralCompositionalPolicyB275.restore(this.persisted.system.neuralCompositionalPolicyB275 ?? defaultB275State());
         this.developmentalNeural.latentActionProgramSynthesizerB276.restore(this.persisted.system.latentActionProgramSynthesizerB276 ?? defaultB276State());
@@ -7988,11 +7992,42 @@ export class OrganismCore {
             requestedAction: userRequestedAction,
         });
         decision.semanticEvidence = buildDecisionSemanticEvidence({ stateBefore: previous, candidates: governedCandidates.slice(0, 7), selected: selectedIntent, worldContextKey });
+        let decisionSafety = { authorized: false, reason: 'no-action-selected' };
         if (selectedIntent) {
             this.cognitiveRuntime.adaptiveDevelopment.observeDecision(selectedIntent.action, !Boolean(observation.text), state.predictionError, n.novelty, candidates);
             this.persisted.facets.advanced.adaptiveDevelopment = this.cognitiveRuntime.adaptiveDevelopment.snapshot();
             const audit = this.cognitiveRuntime.actionGateway.authorize(selectedIntent.action, selectedIntent.goalId ? `goal:${selectedIntent.goalId}` : 'no-goal');
+            decisionSafety = { authorized: audit.accepted, reason: audit.accepted ? (selectedIntent.goalId ? `goal:${selectedIntent.goalId}` : 'policy-allowed') : String(audit.outcomeClass ?? 'policy-refused') };
             this.memorySubsystem.events.append(makeEvent('action-authorized', state.tick, audit as any));
+        }
+        // Evidence-derived explanation receipt: assembled from this cycle's actual
+        // decision inputs (intent, drives, admitted goal, safety) so the answer to
+        // "why did you decide this?" comes from records, not a retrospective story.
+        {
+            const receiptTrigger = observation.text ? 'external-user-turn'
+                : autonomousOverride ? 'endogenous-autonomy'
+                    : active ? `goal:${active.source}:${String(active.title ?? '').slice(0, 96)}`
+                        : `need-pressure:${intrinsicState.dominant}`;
+            this.organismSystems.agency.decisionReceipts.open({
+                id: `receipt:${state.tick}:${decision.id}`,
+                tick: state.tick,
+                at: state.at,
+                trigger: receiptTrigger,
+                source: observation.text ? 'external' : 'endogenous',
+                driveContributions: {
+                    epistemic: intrinsicState.epistemic, novelty: intrinsicState.novelty, competence: intrinsicState.competence,
+                    coherence: intrinsicState.coherence, social: intrinsicState.social, homeostatic: intrinsicState.homeostatic,
+                },
+                dominantDrive: intrinsicState.dominant,
+                goalId: canonicalGoalAdmission.admitted ? b272Goal.goalId : null,
+                goalSource: canonicalGoalAdmission.admitted ? 'internal' : (observation.externalGoal ? 'external' : 'none'),
+                candidates: governedCandidates.slice(0, 8).map(c => ({ action: c.action, score: c.score, confidence: c.confidence })),
+                selectedAction: selectedIntent?.action ?? null,
+                confidence01: selectedIntent?.confidence ?? 0,
+                resourceCost01: selectedIntent?.predictedCost ?? 0,
+                safety: decisionSafety,
+            });
+            this.persisted.system.autonomousDecisionReceipts = this.organismSystems.agency.decisionReceipts.snapshot();
         }
         if (selectedIntent) {
             this.cognitiveRuntime.canonicalTemporalCredit.registerDecision({
@@ -9539,6 +9574,10 @@ export class OrganismCore {
             trace.stateAfter = structuredClone(state);
             if (trace.semanticEvidence)
                 trace.semanticEvidence = closeDecisionSemanticEvidence(trace.semanticEvidence, state, { success: gatedSuccess01, reward: gatedReward01, surprise: gatedSurprise01, action: trace.selected.action }, state.at);
+            // Close the explanation receipt with the observed outcome. The learning
+            // consequence is attached separately by the goal-learning branch below.
+            if (this.organismSystems.agency.decisionReceipts.close(trace.tick, { success01: gatedSuccess01, reward01: gatedReward01, surprise01: gatedSurprise01, at: state.at }))
+                this.persisted.system.autonomousDecisionReceipts = this.organismSystems.agency.decisionReceipts.snapshot();
             this.developmentalNeural.p30Continual.captureRollback({ p26: this.developmentalNeural.p26TrueLearning.snapshot(), p27: this.worldSubsystem.p27NeuralWorld.snapshot(), p28: this.developmentalNeural.p28Plasticity.snapshot() });
             const taskId = trace.selected.goalId ?? trace.selected.action;
             const p2700BeforeP26Updates = this.developmentalNeural.p26TrueLearning.metrics().onlineUpdates;
@@ -9704,6 +9743,9 @@ export class OrganismCore {
                 }
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
+                // Attach the goal-lifecycle learning consequence to the explanation receipt.
+                if (this.organismSystems.agency.decisionReceipts.recordLearning(trace.tick, { accepted: b273Learning.accepted, gain11: b273Learning.gain01, note: b273Learning.completed ? 'goal-completed' : b273Learning.abandoned ? 'goal-abandoned' : b273Learning.revised ? 'goal-revised' : b273Learning.accepted ? 'goal-progress-accepted' : 'goal-progress-rejected' }))
+                    this.persisted.system.autonomousDecisionReceipts = this.organismSystems.agency.decisionReceipts.snapshot();
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
                 const b274CandidateId = b274Diag.activeCandidateId;
                 if (b274CandidateId) {
@@ -10857,6 +10899,19 @@ export class OrganismCore {
     b273AutonomousGoalLearn(input: Parameters<B273AutonomousGoalLifecycle['learnFromOutcome']>[0]) { const r = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome(input); this.persisted.system.autonomousGoalLifecycleB273 = this.developmentalNeural.autonomousGoalLifecycleB273.snapshot(); return r; }
     b273AutonomousGoalCurrent() { return this.developmentalNeural.autonomousGoalLifecycleB273.current(); }
     b273AutonomousGoalDiagnostics() { return this.developmentalNeural.autonomousGoalLifecycleB273.diagnostics(); }
+    /** Latest evidence-derived decision receipt, or null when none was recorded. */
+    autonomousDecisionReceipt() { return this.organismSystems.agency.decisionReceipts.latest(); }
+    /** Evidence-derived decision receipt for a specific tick. */
+    autonomousDecisionReceiptForTick(tick: number) { return this.organismSystems.agency.decisionReceipts.forTick(tick); }
+    /** Answer "why did you decide this?" strictly from stored decision records. */
+    explainAutonomousDecision(tick?: number) { return this.organismSystems.agency.decisionReceipts.explain(tick); }
+    autonomousDecisionReceiptDiagnostics() { return this.organismSystems.agency.decisionReceipts.diagnostics(); }
+    /** Grant or revoke consent for unsolicited user-visible messages (internal activity is unaffected). */
+    setAutonomousInitiativeConsent(granted: boolean) { this.organismSystems.agency.autonomousSocialInitiative.setConsent(granted); this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot(); }
+    /** Configure the optional wall-clock quiet-hours window for user-visible delivery. */
+    setAutonomousInitiativeQuietHours(input: { enabled: boolean; startHourUtc?: number; endHourUtc?: number }) { this.organismSystems.agency.autonomousSocialInitiative.setQuietHours(input); this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot(); }
+    /** Read-only user-visible delivery policy (consent + quiet hours). */
+    autonomousInitiativeDeliveryPolicy() { return this.organismSystems.agency.autonomousSocialInitiative.deliveryPolicy(); }
     b274SkillStep(input: Parameters<B274AutonomousSkillLaboratory['step']>[0]) { const r = this.developmentalNeural.autonomousSkillLaboratoryB274.step(input); this.persisted.system.autonomousSkillLaboratoryB274 = this.developmentalNeural.autonomousSkillLaboratoryB274.snapshot(); return r; }
     b274SkillTrial(input: Parameters<B274AutonomousSkillLaboratory['observeTrial']>[0]) { const r = this.developmentalNeural.autonomousSkillLaboratoryB274.observeTrial(input); this.persisted.system.autonomousSkillLaboratoryB274 = this.developmentalNeural.autonomousSkillLaboratoryB274.snapshot(); return r; }
     b274SkillDiagnostics() { return this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics(); }
