@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nk1.local/contracts/cognitive-cycle.v1.schema.json",
+  "title": "NeuroCore full cognitive cycle evidence bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sourceSha", "tick", "stageIds", "events"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sourceSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "tick": { "type": "integer", "minimum": 0 },
+    "stageIds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observation", "prediction", "appraisal", "attention", "memory", "goal", "plan", "action", "outcome", "learning", "self-update"],
+      "properties": {
+        "observation": { "type": "string", "minLength": 1 }, "prediction": { "type": "string", "minLength": 1 },
+        "appraisal": { "type": "string", "minLength": 1 }, "attention": { "type": "string", "minLength": 1 },
+        "memory": { "type": "string", "minLength": 1 }, "goal": { "type": "string", "minLength": 1 },
+        "plan": { "type": "string", "minLength": 1 }, "action": { "type": "string", "minLength": 1 },
+        "outcome": { "type": "string", "minLength": 1 }, "learning": { "type": "string", "minLength": 1 },
+        "self-update": { "type": "string", "minLength": 1 }
+      }
+    },
+    "events": { "type": "array", "minItems": 11, "items": { "type": "object", "required": ["id", "tick", "stage", "parentIds"], "properties": { "id": { "type": "string", "minLength": 1 }, "tick": { "type": "integer", "minimum": 0 }, "stage": { "type": "string" }, "parentIds": { "type": "array", "items": { "type": "string" } } } } }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nk1.local/contracts/skill-promotion.v1.schema.json",
+  "title": "NeuroCore verified skill promotion decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "candidateId", "holdoutFrozen", "usedForTuning", "baselineRuns", "candidateRuns", "thresholds"],
+  "properties": {
+    "schemaVersion": { "const": 1 }, "candidateId": { "type": "string", "minLength": 1 },
+    "holdoutFrozen": { "const": true }, "usedForTuning": { "const": false },
+    "baselineRuns": { "type": "array", "minItems": 5, "items": { "$ref": "evaluation-run.v1.schema.json" } },
+    "candidateRuns": { "type": "array", "minItems": 5, "items": { "$ref": "evaluation-run.v1.schema.json" } },
+    "thresholds": { "type": "object", "required": ["minimumSeeds", "maximumLatencyRatio", "maximumRamRatio", "maximumForgettingRegression", "maximumCatastropheRegression"], "properties": { "minimumSeeds": { "type": "integer", "minimum": 5 }, "maximumLatencyRatio": { "type": "number", "minimum": 1 }, "maximumRamRatio": { "type": "number", "minimum": 1 }, "maximumForgettingRegression": { "type": "number", "minimum": 0 }, "maximumCatastropheRegression": { "type": "number", "minimum": 0 } } }
+  }
+}

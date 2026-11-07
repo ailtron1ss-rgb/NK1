@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "policy": {
+    "evidenceStates": ["UNKNOWN", "HYPOTHESIS", "IMPLEMENTED", "WIRED", "TESTED", "OBSERVED", "MEASURED", "RELEASED", "FAILED", "UNRESOLVED"],
+    "promotionRequires": ["independent_holdout", "paired_seeds", "frozen_plan", "reproducible_results", "rollback_path"],
+    "defaultMinimumPairedSeeds": 5,
+    "noGlobalPercentFromFileCounts": true,
+    "noConsciousnessClaim": true
+  },
+  "gates": [
+    { "id": "foundation", "title": "Architecture and runtime foundation", "scripts": ["typecheck", "audit:core-ownership", "test:cognitive-cycle-boundary", "test:workpass71:strict-cycle-completeness"], "acceptance": ["seven canonical subsystem owners remain unique", "runtime imports resolve", "strict 11-stage CEF contract passes", "legacy six-stage state is not promoted to full-complete"] },
+    { "id": "memory", "title": "Memory retrieval and lifecycle", "scripts": ["test:memoryos2-metadata-retrieval", "test:memory-retrieval-grounded-abstention-workpass574", "test:memory-subsystem-state-roundtrip"], "acceptance": ["MemoryOS2 remains sole writable memory owner", "restore/replay and forgetting remain idempotent", "RU/EN external holdout shows positive paired uplift", "temporal/causal/episodic retrieval and abstention are measured"] },
+    { "id": "learning", "title": "Continual learning and skill promotion", "scripts": ["test:p23:verified-promotion", "test:p26:sequential-benchmark", "test:p23:seed-clustered-outcomes"], "acceptance": ["candidate execution is isolated", "verifier and safety scanner are independent", "at least five matched seeds on frozen holdout", "task success improves without unacceptable forgetting/catastrophes/resource regressions", "rollback and restart persistence pass"] },
+    { "id": "motivation", "title": "Intrinsic drive and endogenous goals", "scripts": ["test:workpass288:intrinsic-motivation", "test:workpass490:intrinsic-experiment", "test:workpass292:motivation-to-goal"], "acceptance": ["drive estimate has independent confidence", "goal owner remains canonical", "external requests override epistemic exploration safely", "self-initiated useful goals survive long soak and user policy"] },
+    { "id": "embodiment", "title": "Body, voice, renderer and mobile", "scripts": ["typecheck", "audit:core-ownership"], "acceptance": ["browser E2E proves rendered pose, reload, replacement and reset", "Android E2E proves interruption and audio/viseme clock sync", "30-60 minute device soak has no resource leak", "all renderer capabilities are truthful"] },
+    { "id": "reliability", "title": "Persistence, privacy and release", "scripts": ["typecheck", "audit:core-ownership"], "acceptance": ["crash/power-loss recovery is tested", "forgetting and deletion propagate through all stores", "outbound data flow is documented", "human license review is complete", "release built from exact approved source SHA"] },
+    { "id": "all", "title": "Selected software gates (does not replace physical device or external evaluation)", "scripts": ["typecheck", "audit:core-ownership", "test:cognitive-cycle-boundary", "test:workpass71:strict-cycle-completeness", "test:memoryos2-metadata-retrieval", "test:memory-retrieval-grounded-abstention-workpass574", "test:p23:verified-promotion", "test:p26:sequential-benchmark", "test:workpass288:intrinsic-motivation", "test:workpass490:intrinsic-experiment"], "acceptance": ["every subprocess exits zero", "all reports are tied to the exact source SHA", "device, bilingual holdout and human license gates remain separately tracked"] }
+  ]
+}
