@@ -10,7 +10,7 @@
 
 - PR #830 merged externally on 2026-11-07 05:02 UTC; merge commit `26e2c823284d4238199c80cd1eb8363c5d5c8456`. Its WorldEnvironment history continuity guard is now in source. PR head had 11/11 exact-head checks.
 - Commit `189643e` adds bounded remote HTTPS VRM/GLB import in the avatar UI. Exact current source push Actions: 7/7 success on `189643ede8f3904dd670f0109a28b7536e894c00`.
-- PR #838 is open/draft and not merged. Its memory optimization branch now contains an additional SharedArrayBuffer stream regression on head `cc27cd02a06d90d0578102306e0456f6e0ab743c`; five exact-head Actions were running at the last check.
+- PR #838 is open/draft and not merged. Its memory optimization branch now contains an additional SharedArrayBuffer stream regression on head `cc27cd02a06d90d0578102306e0456f6e0ab743c`; five exact-head Actions completed 5/5 successfully on `cc27cd02a06d90d0578102306e0456f6e0ab743c`.
 - Current UserModel explicit-forget workflow is green on the live source head (run 42341468836).
 
 ## Existing PR workstreams — continue, do not duplicate
