@@ -5017,6 +5017,9 @@ export class OrganismCore {
                 this.cognitiveRuntime.cognitiveField.addPressure('contradiction', `world-model-disagreement:${(1 - worldGrounding.modelAgreement01).toFixed(3)}`, 1 - worldGrounding.modelAgreement01, ['world-model-ensemble'], .02);
         }
         const memoryQuery = observation.text || activeGoalPressureFallback(this.persisted.goals) || 'current context';
+        const memoryQueryKind: 'observation-text' | 'active-goal-fallback' | 'context-fallback' = observation.text
+            ? 'observation-text'
+            : memoryQuery !== 'current context' ? 'active-goal-fallback' : 'context-fallback';
         // Honor the planner's memory budget for every recall path; internal-goal fallback
         // must not silently bypass a decision to skip memory for this cognitive cycle.
         const advancedRetrieved = !cognitiveExecutionPlan.run.memory
@@ -5025,8 +5028,9 @@ export class OrganismCore {
                 ? cognitionMemoryItems.slice(0, 4)
                 : (await this.memorySubsystem.fabric.retrieveForCognition(memoryQuery, 8, n.goalPressure, 1 - state.needs.identityCoherence, { tick: state.tick })).slice(0, 4);
         const adaptiveMemoryStrategyFrame = this.adaptiveMemoryStrategyReadout.prepare({ items: advancedRetrieved as unknown as import('../developmental/MemoryOS2.ts').MemoryItem2[], query: memoryQuery, tick: state.tick, at: state.at });
-        if (advancedRetrieved.length)
-            this.persisted.facets.memory.lastRetrievedMemoryIds = advancedRetrieved.map(m => m.id);
+        // This projection is the current retrieval result, including a valid empty result.
+        // It must never retain the earlier partial recall or imply that stored memories were retrieved now.
+        this.persisted.facets.memory.lastRetrievedMemoryIds = advancedRetrieved.map(m => m.id);
         let memoryWorldApplication: {
             strength01: number;
             applied: boolean;
@@ -8348,6 +8352,65 @@ export class OrganismCore {
         const advancedCycle = this.config.includeAdvancedCycleSnapshot
             ? structuredClone(this.persisted.facets.advanced)
             : undefined;
+        const currentAttention = this.persisted.facets.memory.attention;
+        const attentionEvidence = {
+            timing: 'pre-decision' as const,
+            target: String(currentAttention.target ?? 'none').slice(0, 180),
+            reason: String(currentAttention.reason ?? 'unknown').slice(0, 120),
+            salience: clamp(Number(currentAttention.salience ?? 0)),
+            confidence: clamp(Number(currentAttention.confidence ?? 0)),
+            budget: clamp(Number(currentAttention.budget ?? 0)),
+            inhibited: (Array.isArray(currentAttention.inhibited) ? currentAttention.inhibited : []).slice(0, 8).map(value => String(value).slice(0, 120)),
+            switchedAt: Number.isFinite(currentAttention.switchedAt) ? currentAttention.switchedAt : 0,
+        };
+        const currentCycleRetrievedMemoryIds = advancedRetrieved.map(memory => String(memory.id)).slice(0, 12);
+        const memoryEnabled = cognitiveExecutionPlan.run.memory === true;
+        const memoryStatus = !memoryEnabled ? 'skipped' as const : currentCycleRetrievedMemoryIds.length > 0 ? 'completed' as const : 'completed_empty' as const;
+        const memoryQueryDigest = createHash('sha256').update(memoryQuery).digest('hex');
+        const memoryEvidence = {
+            enabled: memoryEnabled,
+            queryKind: memoryQueryKind,
+            queryDigest: memoryQueryDigest,
+            status: memoryStatus,
+            retrievedMemoryIds: currentCycleRetrievedMemoryIds,
+            retrievedCount: currentCycleRetrievedMemoryIds.length,
+            requestedLimit: 4,
+            meanConfidence01: currentCycleRetrievedMemoryIds.length
+                ? clamp(advancedRetrieved.slice(0, 12).reduce((sum, memory) => sum + Number(memory.confidence ?? 0), 0) / currentCycleRetrievedMemoryIds.length)
+                : 0,
+        };
+        const cycleId = `nk1-cycle:${state.tick}`;
+        const attentionReceipt = {
+            id: `${cycleId}:attention`,
+            cycleId,
+            tick: state.tick,
+            stage: 'attention' as const,
+            owner: 'OrganismCore.attend' as const,
+            status: 'completed' as const,
+            inputRefs: [],
+            outputRefs: [`attention-state:${state.tick}`],
+            consumedStageReceipts: [],
+            outputHash: createHash('sha256').update(JSON.stringify(attentionEvidence)).digest('hex'),
+        };
+        const memoryReceipt = {
+            id: `${cycleId}:memory`,
+            cycleId,
+            tick: state.tick,
+            stage: 'memory' as const,
+            owner: 'MemoryFabric.retrieveForCognition' as const,
+            status: memoryStatus,
+            inputRefs: [`query-sha256:${memoryQueryDigest}`],
+            outputRefs: retrievedMemoryIds,
+            consumedStageReceipts: [],
+            outputHash: createHash('sha256').update(JSON.stringify(memoryEvidence)).digest('hex'),
+        };
+        const stageEvidence: import('../system/CognitiveStageReceipt.ts').CognitiveCycleStageEvidence = {
+            tick: state.tick,
+            cycleId,
+            attention: attentionEvidence,
+            memory: memoryEvidence,
+            receipts: [attentionReceipt, memoryReceipt],
+        };
         if (resultMode === 'operational') {
             return {
                 subjectIntegration: structuredClone(subjectIntegration),
@@ -8360,6 +8423,7 @@ export class OrganismCore {
                 workspace: { ...workspace, content: { ...workspace.content, advanced: lightAdvancedCycle } },
                 decision: structuredClone(decision),
                 advanced: undefined,
+                stageEvidence,
             };
         }
         return {
@@ -8369,6 +8433,7 @@ export class OrganismCore {
             workspace: { ...workspace, content: { ...workspace.content, advanced: advancedCycle ?? lightAdvancedCycle } },
             decision,
             advanced: advancedCycle,
+            stageEvidence,
         };
     }
     async autonomousHeartbeat(nowAt = Date.now()): Promise<OrganismCycleResult> {
