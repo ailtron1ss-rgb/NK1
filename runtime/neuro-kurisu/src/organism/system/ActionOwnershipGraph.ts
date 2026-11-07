@@ -14,6 +14,10 @@ export interface ActionOwnershipState {
 }
 
 const finite=(x:unknown,f=0)=>typeof x==='number'&&Number.isFinite(x)?x:f;
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finite(v,f)));
+const STAGES:readonly OwnershipStage[]=['b297-pre','b297-post','b291-post','p31-post','p64-post','governance-post','final'];
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const sanCheckpoint=(x:unknown):OwnershipCheckpoint|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),stage:(STAGES as readonly string[]).includes(r.stage as string)?r.stage as OwnershipStage:'final',fingerprint:typeof r.fingerprint==='string'?r.fingerprint.slice(0,160):'',changedFromPrevious:Boolean(r.changedFromPrevious),changedCandidates:cnt(r.changedCandidates,0),selectedAction:strOrNull(r.selectedAction),at:cnt(r.at,0)};};
 const stableFingerprint=(candidates:OwnershipCandidate[])=>JSON.stringify(candidates.map(c=>[
   String(c.action),
   Number(finite(c.score)).toFixed(6),
@@ -33,10 +37,13 @@ export class ActionOwnershipGraph {
   private finalizerReached=false;
 
   restore(raw?:Partial<ActionOwnershipState>|null){
-    const d=defaultActionOwnershipState(),r=raw??{};
-    this.state={...d,...r,version:1,cycles:Math.max(0,Math.floor(Number(r.cycles??0))),mutationEvents:Math.max(0,Math.floor(Number(r.mutationEvents??0))),postB297Mutations:Math.max(0,Math.floor(Number(r.postB297Mutations??0))),unauthorizedAfterFinalizer:Math.max(0,Math.floor(Number(r.unauthorizedAfterFinalizer??0))),checkpoints:Array.isArray(r.checkpoints)?r.checkpoints.slice(-192):[],lastSelectedAction:r.lastSelectedAction??null,finalOwner:String(r.finalOwner??d.finalOwner)};
+    const d=defaultActionOwnershipState();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const cRaw=read('checkpoints');
+    const checkpoints=Array.isArray(cRaw)?cRaw.slice(-192).map(sanCheckpoint).filter((x):x is OwnershipCheckpoint=>x!==null):[];
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),mutationEvents:cnt(read('mutationEvents'),d.mutationEvents),postB297Mutations:cnt(read('postB297Mutations'),d.postB297Mutations),unauthorizedAfterFinalizer:cnt(read('unauthorizedAfterFinalizer'),d.unauthorizedAfterFinalizer),finalOwner:typeof read('finalOwner')==='string'&&read('finalOwner')?String(read('finalOwner')).slice(0,160):d.finalOwner,lastSelectedAction:strOrNull(read('lastSelectedAction')),checkpoints};
     this.previousFingerprint=null;this.finalFingerprint=null;this.finalizerReached=false;
   }
+
   snapshot(){return structuredClone(this.state);}
   private record(tick:number,stage:OwnershipStage,candidates:OwnershipCandidate[],selectedAction:string|null){
     const fingerprint=stableFingerprint(candidates);

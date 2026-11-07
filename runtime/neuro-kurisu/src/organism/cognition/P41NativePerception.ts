@@ -47,6 +47,13 @@ export interface P41NativePerceptionState {
   actionBias:Record<ActionKind,number>;
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const sanAudio=(x:unknown):P41AudioFeatures|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {sampleRate:cnt(r.sampleRate,0),sampleCount:cnt(r.sampleCount,0),rms01:clamp(finN(r.rms01,0)),zeroCrossingRate01:clamp(finN(r.zeroCrossingRate01,0)),spectralCentroid01:clamp(finN(r.spectralCentroid01,0)),lowBand01:clamp(finN(r.lowBand01,0)),midBand01:clamp(finN(r.midBand01,0)),highBand01:clamp(finN(r.highBand01,0)),silence01:clamp(finN(r.silence01,0)),activity01:clamp(finN(r.activity01,0))};};
+const sanImage=(x:unknown):P41ImageFeatures|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {width:cnt(r.width,0),height:cnt(r.height,0),sampleCount:cnt(r.sampleCount,0),brightness01:clamp(finN(r.brightness01,0)),contrast01:clamp(finN(r.contrast01,0)),edgeDensity01:clamp(finN(r.edgeDensity01,0)),saturation01:clamp(finN(r.saturation01,0)),red01:clamp(finN(r.red01,0)),green01:clamp(finN(r.green01,0)),blue01:clamp(finN(r.blue01,0)),change01:clamp(finN(r.change01,0))};};
+const sanBias=(v:unknown,fb:Record<ActionKind,number>):Record<ActionKind,number>=>{const r=(v&&typeof v==='object')?v as Record<string,unknown>:{};return Object.fromEntries(ACTIONS.map(a=>[a,Math.max(-1,Math.min(1,finN(r[a],fb[a])))])) as Record<ActionKind,number>;};
+const sanCue=(x:unknown):{id:string;modality:'audio'|'vision';label:string;confidence01:number;source:'native-signal';at:number}|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {id:str(r.id,'cue'),modality:r.modality==='audio'||r.modality==='vision'?r.modality:'audio',label:str(r.label,''),confidence01:clamp(finN(r.confidence01,0)),source:'native-signal',at:finN(r.at,0)};};
 export const defaultP41NativePerception=():P41NativePerceptionState=>({
   version:1,lastAt:0,frames:0,audioFrames:0,imageFrames:0,lastAudio:null,lastImage:null,
   audioHistory:[],imageHistory:[],semanticCues:[],
@@ -67,12 +74,12 @@ export interface P41NativeInput {
 export class P41NativePerceptionEngine{
   private state=defaultP41NativePerception();
   restore(raw?:Partial<P41NativePerceptionState>|null){
-    const d=defaultP41NativePerception(); const r=raw??{};
-    this.state={...d,...r,lastAudio:r.lastAudio??null,lastImage:r.lastImage??null,
-      audioHistory:Array.isArray(r.audioHistory)?r.audioHistory.slice(-24):[],
-      imageHistory:Array.isArray(r.imageHistory)?r.imageHistory.slice(-24):[],
-      semanticCues:Array.isArray(r.semanticCues)?r.semanticCues.slice(-96):[],
-      metrics:{...d.metrics,...(r.metrics??{})},actionBias:{...d.actionBias,...(r.actionBias??{})}};
+    const d=defaultP41NativePerception();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const ahRaw=read('audioHistory'),ihRaw=read('imageHistory'),scRaw=read('semanticCues');
+    const mRaw=(read('metrics')&&typeof read('metrics')==='object')?read('metrics') as Record<string,unknown>:{};
+    this.state={version:1,lastAt:finN(read('lastAt'),d.lastAt),frames:cnt(read('frames'),d.frames),audioFrames:cnt(read('audioFrames'),d.audioFrames),imageFrames:cnt(read('imageFrames'),d.imageFrames),lastAudio:sanAudio(read('lastAudio')),lastImage:sanImage(read('lastImage')),
+      audioHistory:Array.isArray(ahRaw)?(ahRaw as unknown[]).slice(-24).map(sanAudio).filter((x):x is P41AudioFeatures=>x!==null):[],imageHistory:Array.isArray(ihRaw)?(ihRaw as unknown[]).slice(-24).map(sanImage).filter((x):x is P41ImageFeatures=>x!==null):[],semanticCues:Array.isArray(scRaw)?(scRaw as unknown[]).slice(-96).map(sanCue).filter((x):x is {id:string;modality:'audio'|'vision';label:string;confidence01:number;source:'native-signal';at:number}=>x!==null):[],
+      metrics:{audioActivity01:clamp(finN(mRaw.audioActivity01,d.metrics.audioActivity01)),visionChange01:clamp(finN(mRaw.visionChange01,d.metrics.visionChange01)),signalStability01:clamp(finN(mRaw.signalStability01,d.metrics.signalStability01)),nativeCoverage01:clamp(finN(mRaw.nativeCoverage01,d.metrics.nativeCoverage01)),updates:cnt(mRaw.updates,d.metrics.updates)},actionBias:sanBias(read('actionBias'),d.actionBias)};
   }
   snapshot(){return structuredClone(this.state);}
 

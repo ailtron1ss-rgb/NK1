@@ -10,6 +10,8 @@ const ACTIONS=['respond','explore','verify','rest','reflect','wait','defer'] as 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const zeroDomains=()=>Object.fromEntries(DOMAINS.map(d=>[d,0])) as Record<ResourceDomain,number>;
 const zeroActions=()=>Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<typeof ACTIONS[number],number>;
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
 export const defaultOrganismResourceAllocation=():ResourceAllocationState=>({
   version:1,cycles:0,battery01:.82,thermal01:.18,ramPressure01:.18,computeCapacity01:.82,
   allocations:zeroDomains(),actionBias:zeroActions(),dominantDomain:'planning',scarcity01:.18,efficiency01:.82,lastReason:'initial',lastAt:0,
@@ -18,9 +20,15 @@ export const defaultOrganismResourceAllocation=():ResourceAllocationState=>({
 export class OrganismResourceAllocator {
   private state=defaultOrganismResourceAllocation();
   restore(raw?:Partial<ResourceAllocationState>|null){
-    const d=defaultOrganismResourceAllocation(); const r=raw??{};
-    this.state={...d,...r,allocations:{...d.allocations,...(r.allocations??{})},actionBias:{...d.actionBias,...(r.actionBias??{})}};
+    const d=defaultOrganismResourceAllocation();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const aRaw=(read('allocations')&&typeof read('allocations')==='object'&&!Array.isArray(read('allocations')))?read('allocations') as Record<string,unknown>:{};
+    const bRaw=(read('actionBias')&&typeof read('actionBias')==='object'&&!Array.isArray(read('actionBias')))?read('actionBias') as Record<string,unknown>:{};
+    const allocations=zeroDomains();for(const k of DOMAINS)allocations[k]=Math.max(0,Math.min(1,finN(aRaw[k],0)));
+    const actionBias=zeroActions();for(const a of ACTIONS)actionBias[a]=Math.max(-.18,Math.min(.18,finN(bRaw[a],0)));
+    const dom=DOMAINS.includes(read('dominantDomain') as ResourceDomain)?read('dominantDomain') as ResourceDomain:d.dominantDomain;
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),battery01:Math.max(0,Math.min(1,finN(read('battery01'),d.battery01))),thermal01:Math.max(0,Math.min(1,finN(read('thermal01'),d.thermal01))),ramPressure01:Math.max(0,Math.min(1,finN(read('ramPressure01'),d.ramPressure01))),computeCapacity01:Math.max(0,Math.min(1,finN(read('computeCapacity01'),d.computeCapacity01))),allocations,actionBias,dominantDomain:dom,scarcity01:Math.max(0,Math.min(1,finN(read('scarcity01'),d.scarcity01))),efficiency01:Math.max(0,Math.min(1,finN(read('efficiency01'),d.efficiency01))),lastReason:typeof read('lastReason')==='string'?String(read('lastReason')).slice(0,240):d.lastReason,lastAt:cnt(read('lastAt'),d.lastAt)};
   }
+
   snapshot(){return structuredClone(this.state);}
   planningSnapshot():ResourceAllocationState{return {...this.state,allocations:{...this.state.allocations},actionBias:{...this.state.actionBias}};}
   decide(input:{battery01:number;thermal01:number;ramPressure01:number;uncertainty01:number;predictionError01:number;goalPressure01:number;novelty01:number;socialNeed01:number;grounding01:number;learningOpportunity01:number;languageDemand01:number;externalInput:boolean}, options:{clone?:boolean}={}){

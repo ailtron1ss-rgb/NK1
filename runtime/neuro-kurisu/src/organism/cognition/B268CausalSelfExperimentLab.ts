@@ -6,6 +6,10 @@ import { environmentForFamily, type B266TaskFamily } from './B266HiddenTaskGener
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const mean=(v:number[])=>v.length?v.reduce((a,b)=>a+b,0)/v.length:0;
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const clamp11=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
+const sanResult=(x:unknown):B268ExperimentResult|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const dec=r.decision;return {id:r.id.slice(0,160),hypothesis:typeof r.hypothesis==='string'?r.hypothesis.slice(0,320):'',targetAction:ACTIONS.includes(r.targetAction as ActionKind)?r.targetAction as ActionKind:'wait',baselineMeanReturn01:clamp01(finN(r.baselineMeanReturn01,0)),trialMeanReturn01:clamp01(finN(r.trialMeanReturn01,0)),pairedGain01:clamp11(finN(r.pairedGain01,0)),winRate01:clamp01(finN(r.winRate01,0)),baselineRobustness01:clamp01(finN(r.baselineRobustness01,0)),trialRobustness01:clamp01(finN(r.trialRobustness01,0)),robustnessDrop01:clamp01(finN(r.robustnessDrop01,0)),baselineDelayedReward01:clamp01(finN(r.baselineDelayedReward01,0)),trialDelayedReward01:clamp01(finN(r.trialDelayedReward01,0)),decision:dec==='commit'||dec==='revert'||dec==='hold'?dec as B268Decision:'hold',confidence01:clamp01(finN(r.confidence01,0))};};
 
 export type B268Decision='commit'|'revert'|'hold';
 export interface B268ExperimentSpec {
@@ -92,7 +96,7 @@ export function evaluateB264SnapshotOnFamilies(snapshot:B264State, causal:B263Re
 
 export class B268CausalSelfExperimentLab {
   private state=defaultB268CausalSelfExperimentLab();
-  restore(raw?:Partial<B268State>|null){const d=defaultB268CausalSelfExperimentLab(),r=raw??{};this.state={...d,...r,experiments:Array.isArray(r.experiments)?r.experiments.slice(-96):[]};}
+  restore(raw?:Partial<B268State>|null){const d=defaultB268CausalSelfExperimentLab();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let experiments:B268ExperimentResult[]=[];try{const e=read('experiments');if(Array.isArray(e))experiments=e.slice(-96).map(sanResult).filter((x):x is B268ExperimentResult=>x!==null);}catch{experiments=[];}const ah=read('activeHypothesisId');const ld=read('lastDecision');this.state={version:1,experiments,committed:cnt(read('committed'),d.committed),reverted:cnt(read('reverted'),d.reverted),held:cnt(read('held'),d.held),totalTrials:cnt(read('totalTrials'),d.totalTrials),successfulCommitRate01:clamp01(finN(read('successfulCommitRate01'),d.successfulCommitRate01)),meanPairedGain01:clamp11(finN(read('meanPairedGain01'),d.meanPairedGain01)),meanWinRate01:clamp01(finN(read('meanWinRate01'),d.meanWinRate01)),rollbackPressure01:clamp01(finN(read('rollbackPressure01'),d.rollbackPressure01)),baselineShadowActive:read('baselineShadowActive')!==false,activeHypothesisId:typeof ah==='string'&&ah?ah.slice(0,160):null,lastDecision:ld==='commit'||ld==='revert'||ld==='hold'?ld as B268Decision:null,lastTick:Math.max(0,finN(read('lastTick'),d.lastTick))};}
   snapshot(){return structuredClone(this.state);}
   diagnostics(){return structuredClone(this.state);}
 

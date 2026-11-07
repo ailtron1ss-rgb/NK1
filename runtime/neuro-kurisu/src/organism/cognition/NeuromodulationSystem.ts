@@ -20,6 +20,8 @@ export interface NeuromodulationState {
 }
 
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const NM_KEYS:readonly (keyof NeuromodulationState)[]=['dopamine01','norepinephrine01','acetylcholine01','serotonin01','explorationBias01','exploitationBias01','attentionGain01','updateRate01'];
 
 /** Functional control signals inspired by neuromodulatory roles; not a biological simulation. */
 export class NeuromodulationSystem {
@@ -36,6 +38,6 @@ export class NeuromodulationSystem {
     this.state.updateRate01=clamp(.12 + this.state.dopamine01*.24 + this.state.acetylcholine01*.22 + nov*.16);
     return this.snapshot();
   }
-  restore(state: NeuromodulationState | undefined): void { if (state) this.state={...this.state,...state}; }
+  restore(state: NeuromodulationState | undefined): void { if(!state||typeof state!=='object')return;const r=state as unknown as Record<string,unknown>;for(const k of NM_KEYS){try{if(k in r)this.state[k]=clamp(finN(r[k],this.state[k]));}catch{/* skip hostile getter */}} }
   snapshot(): NeuromodulationState { return structuredClone(this.state); }
 }

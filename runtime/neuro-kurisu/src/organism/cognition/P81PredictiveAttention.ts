@@ -2,10 +2,13 @@ export interface P81Candidate { action:string; score:number; predictedUtility:nu
 export interface P81Input { tick:number; candidates:P81Candidate[]; uncertainty01:number; predictionError01:number; goalPressure01:number; noveltyPressure01:number; attentionBudget01:number; externalInput:boolean; }
 export interface P81State { version:1; cycles:number; selectedAction:string; attentionFocus:string; expectedInformationGain01:number; exploitation01:number; exploration01:number; uncertainty01:number; recentFocus:string[]; }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const ACTIONS:readonly string[]=['respond','explore','verify','rest','reflect','wait','defer'];
 export const defaultP81=():P81State=>({version:1,cycles:0,selectedAction:'wait',attentionFocus:'none',expectedInformationGain01:0.2,exploitation01:.5,exploration01:.5,uncertainty01:.35,recentFocus:[]});
 export class P81PredictiveAttention {
  private state=defaultP81();
- restore(raw:Partial<P81State>|undefined){if(!raw)return;const d=defaultP81();this.state={...d,...raw,recentFocus:Array.isArray(raw.recentFocus)?raw.recentFocus.slice(-24):[]};}
+ restore(raw:Partial<P81State>|undefined){if(!raw)return;const d=defaultP81();const src:Record<string,unknown>=raw as unknown as Record<string,unknown>;const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const sa=read('selectedAction');this.state={version:1,cycles:cnt(read('cycles'),d.cycles),selectedAction:typeof sa==='string'&&ACTIONS.includes(sa)?sa:d.selectedAction,attentionFocus:typeof read('attentionFocus')==='string'?(read('attentionFocus') as string).slice(0,120):d.attentionFocus,expectedInformationGain01:clamp(finN(read('expectedInformationGain01'),d.expectedInformationGain01)),exploitation01:clamp(finN(read('exploitation01'),d.exploitation01)),exploration01:clamp(finN(read('exploration01'),d.exploration01)),uncertainty01:clamp(finN(read('uncertainty01'),d.uncertainty01)),recentFocus:Array.isArray(read('recentFocus'))?(read('recentFocus') as unknown[]).filter((x):x is string=>typeof x==='string').map(x=>x.slice(0,120)).slice(-24):[]};}
  snapshot(){return JSON.parse(JSON.stringify(this.state)) as P81State;}
  evaluate(i:P81Input){
   const candidates=i.candidates;

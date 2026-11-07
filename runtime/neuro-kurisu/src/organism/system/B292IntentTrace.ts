@@ -34,6 +34,12 @@ export interface B292IntentTraceState {
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const numOrNull=(v:unknown):number|null=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:null;};
+const sanB292Rec=(x:unknown):B292IntentTraceRecord|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),goalId:strOrNull(r.goalId),action:strOrNull(r.action),mode:str(r.mode,''),autonomy01:clamp(finN(r.autonomy01,0)),gate01:clamp(finN(r.gate01,0)),reward01:numOrNull(r.reward01),predictionError01:numOrNull(r.predictionError01),external01:clamp(finN(r.external01,0))};};
 export const defaultB292IntentTrace=():B292IntentTraceState=>({
   version:1,currentIntent:null,goalId:null,commitment01:.42,continuity01:.55,
   successEMA01:.5,failureEMA01:.0,switchCount:0,outcomeCount:0,lastDecisionTick:0,lastOutcomeTick:0,records:[]
@@ -42,8 +48,8 @@ export const defaultB292IntentTrace=():B292IntentTraceState=>({
 export class B292IntentTrace {
   private state=defaultB292IntentTrace();
   restore(raw?:Partial<B292IntentTraceState>|null){
-    const d=defaultB292IntentTrace(), r:any=raw??{};
-    this.state={...d,...r,version:1,records:Array.isArray(r.records)?r.records.slice(-96):[]};
+    const d=defaultB292IntentTrace();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const rec=read('records');
+    this.state={version:1,currentIntent:strOrNull(read('currentIntent')),goalId:strOrNull(read('goalId')),commitment01:clamp(finN(read('commitment01'),d.commitment01)),continuity01:clamp(finN(read('continuity01'),d.continuity01)),successEMA01:clamp(finN(read('successEMA01'),d.successEMA01)),failureEMA01:clamp(finN(read('failureEMA01'),d.failureEMA01)),switchCount:cnt(read('switchCount'),d.switchCount),outcomeCount:cnt(read('outcomeCount'),d.outcomeCount),lastDecisionTick:cnt(read('lastDecisionTick'),d.lastDecisionTick),lastOutcomeTick:cnt(read('lastOutcomeTick'),d.lastOutcomeTick),records:Array.isArray(rec)?(rec as unknown[]).slice(-96).map(sanB292Rec).filter((x):x is B292IntentTraceRecord=>x!==null):[]};
   }
   snapshot(){return structuredClone(this.state);}
   observeDecision(input:{tick:number;goalId:string|null;action:string|null;mode:string;autonomy01:number;gate01:number;external01:number}){

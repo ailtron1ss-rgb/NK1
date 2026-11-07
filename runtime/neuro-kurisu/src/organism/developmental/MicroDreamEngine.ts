@@ -51,19 +51,29 @@ const tokens=(text:string):string[]=>[...new Set(String(text??'').normalize('NFK
 export class MicroDreamEngine{
   private state=defaultMicroDream();
   restore(s:MicroDreamState|undefined){
-    const d=defaultMicroDream(),r:any=s??{};
+    const d=defaultMicroDream();const r:any=(s&&typeof s==='object')?s as any:{};const read=(k:string):unknown=>{try{return r[k];}catch{return undefined;}};
+    let dreams:MicroDream[]=[];try{const raw=read('dreams');if(Array.isArray(raw))dreams=raw.slice(0,64).flatMap((dream:any)=>{
+        if(!dream||typeof dream!=='object'||typeof dream.id!=='string'||!dream.id)return [];
+        const at=Number.isFinite(Number(dream.at))?Math.max(0,Number(dream.at)):0;
+        return [{
+          id:dream.id.slice(0,180),
+          at,
+          question:typeof dream.question==='string'?dream.question.slice(0,400):'',
+          simulation:typeof dream.simulation==='string'?dream.simulation.slice(0,800):'',
+          confidence:clamp01(Number(dream.confidence)||0),
+          kind:dream?.kind==='association'?'association':'question',
+          sourceMemoryIds:Array.isArray(dream?.sourceMemoryIds)?dream.sourceMemoryIds.filter((x:any)=>typeof x==='string').slice(0,2):[],
+          sharedTerms:Array.isArray(dream?.sharedTerms)?dream.sharedTerms.filter((x:any)=>typeof x==='string').slice(0,8):[],
+          validationStatus:['candidate','validated','rejected'].includes(dream?.validationStatus)?dream.validationStatus:'candidate',
+        }];
+      });}catch{dreams=[];}
     this.state={
-      ...d,...r,version:2,
-      dreams:Array.isArray(r.dreams)?r.dreams.slice(0,64).map((dream:any)=>({
-        ...dream,
-        kind:dream?.kind==='association'?'association':'question',
-        sourceMemoryIds:Array.isArray(dream?.sourceMemoryIds)?dream.sourceMemoryIds.filter((x:any)=>typeof x==='string').slice(0,2):[],
-        sharedTerms:Array.isArray(dream?.sharedTerms)?dream.sharedTerms.filter((x:any)=>typeof x==='string').slice(0,8):[],
-        validationStatus:['candidate','validated','rejected'].includes(dream?.validationStatus)?dream.validationStatus:'candidate',
-      })):[],
-      associationCandidates:Math.max(0,Math.floor(Number(r.associationCandidates)||0)),
-      deduplicatedAssociations:Math.max(0,Math.floor(Number(r.deduplicatedAssociations)||0)),
-      lastAssociativeSweepAt:Math.max(0,Number(r.lastAssociativeSweepAt)||0),
+      ...d,version:2,
+      cycles:Math.max(0,Math.floor(Number(read('cycles'))||0)),
+      dreams,
+      associationCandidates:Math.max(0,Math.floor(Number(read('associationCandidates'))||0)),
+      deduplicatedAssociations:Math.max(0,Math.floor(Number(read('deduplicatedAssociations'))||0)),
+      lastAssociativeSweepAt:Math.max(0,Number(read('lastAssociativeSweepAt'))||0),
     };
   }
   snapshot(){return structuredClone(this.state);}

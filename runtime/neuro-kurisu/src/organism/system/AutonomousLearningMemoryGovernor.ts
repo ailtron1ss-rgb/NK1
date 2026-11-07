@@ -1,5 +1,8 @@
 /** BIG PASS 226 — self-directed memory/learning governance. */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const sanitizeItem=(v:unknown):LearningMemoryItem|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,180),value:finN(r.value,0),utility01:clamp(finN(r.utility01,0)),relevance01:clamp(finN(r.relevance01,0)),uncertainty01:clamp(finN(r.uncertainty01,0)),lastAt:Math.max(0,finN(r.lastAt,0)),uses:cnt(r.uses,0),source:typeof r.source==='string'?r.source.slice(0,120):''};};
 export interface LearningMemoryItem{
   id:string; value:number; utility01:number; relevance01:number; uncertainty01:number;
   lastAt:number; uses:number; source:string;
@@ -16,8 +19,8 @@ export const defaultAutonomousLearningMemory=():AutonomousLearningMemoryState=>(
 export class AutonomousLearningMemoryGovernor {
   private state=defaultAutonomousLearningMemory();
   restore(raw?:Partial<AutonomousLearningMemoryState>|null){
-    const d=defaultAutonomousLearningMemory(),r=raw??{};
-    this.state={...d,...r,items:Array.isArray(r.items)?structuredClone(r.items).slice(0,128):[],version:1};
+    const d=defaultAutonomousLearningMemory();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let items:LearningMemoryItem[]=[];try{const it=read('items');if(Array.isArray(it))items=it.map(sanitizeItem).filter((x):x is LearningMemoryItem=>x!==null).slice(0,128);}catch{items=[];}
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),stored:cnt(read('stored'),d.stored),retrieved:cnt(read('retrieved'),d.retrieved),pruned:cnt(read('pruned'),d.pruned),consolidated:cnt(read('consolidated'),d.consolidated),meanUtility01:clamp(finN(read('meanUtility01'),d.meanUtility01)),meanRetention01:clamp(finN(read('meanRetention01'),d.meanRetention01)),learningPressure01:clamp(finN(read('learningPressure01'),d.learningPressure01)),items};
   }
   snapshot(){return structuredClone(this.state);}
   cycle(input:{

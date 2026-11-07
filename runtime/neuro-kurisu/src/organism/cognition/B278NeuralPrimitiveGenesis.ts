@@ -7,6 +7,12 @@ const clamp11=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
 const dot=(a:number[],b:number[])=>{let s=0;for(let i=0;i<Math.min(a.length,b.length);i++)s+=a[i]*b[i];return s;};
 const norm=(v:number[])=>Math.sqrt(Math.max(1e-9,dot(v,v)));
 const cosine=(a:number[],b:number[])=>Math.max(-1,Math.min(1,cosineSimilarity(a,b,1e-9)));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const SGN=(v:unknown,f:number):number=>Math.max(-1,Math.min(1,finN(v,f)));
+const vecN=(v:unknown,n:number,f=0):number[]=>Array.isArray(v)?Array.from({length:n},(_,i)=>finN((v as unknown[])[i],f)):new Array(n).fill(f);
+const STATUSES:B278NeuralPrimitive['status'][]=['germinal','candidate','verified','rejected','retired'];
 const hash=(parts:string[])=>{let h=2166136261;for(const p of parts){for(let i=0;i<p.length;i++){h^=p.charCodeAt(i);h=Math.imul(h,16777619);}}return (h>>>0).toString(16)};
 
 export interface B278NeuralPrimitive{
@@ -96,23 +102,36 @@ export function defaultB278State():B278State{
 }
 
 function cleanPrimitive(raw:any):B278NeuralPrimitive{
+  const r=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};
+  const cap=Array.isArray(r.contextActionProjection)?r.contextActionProjection as unknown[]:[];
   return {
-    ...raw,
-    transform:Array.isArray(raw?.transform)?raw.transform.slice(0,24):Array(24).fill(0),
-    recurrent:Array.isArray(raw?.recurrent)?raw.recurrent.slice(0,12):Array(12).fill(0),
-    contextGate:Array.isArray(raw?.contextGate)?raw.contextGate.slice(0,12):Array(12).fill(.5),
-    actionProjection:Array.isArray(raw?.actionProjection)?raw.actionProjection.slice(0,7):Array(7).fill(0),
-    contextActionProjection:Array.isArray(raw?.contextActionProjection)?raw.contextActionProjection.slice(0,7).map((r:any)=>Array.isArray(r)?r.slice(0,8):Array(8).fill(0)):Array.from({length:7},()=>Array(8).fill(0)),
-    traitAffinity:Array.isArray(raw?.traitAffinity)?raw.traitAffinity.slice(0,8):Array(8).fill(.5),
+    id:typeof r.id==='string'&&r.id?r.id.slice(0,160):hash([String(r.id??''),String(r.promotedTick??0)]),
+    transform:vecN(r.transform,24),recurrent:vecN(r.recurrent,12),contextGate:vecN(r.contextGate,12,.5),
+    actionProjection:vecN(r.actionProjection,7),
+    contextActionProjection:Array.from({length:7},(_,i)=>vecN(cap[i],8)),
+    traitAffinity:vecN(r.traitAffinity,8,.5),
+    bias:SGN(r.bias,0),novelty01:C01(r.novelty01,0),maturity01:C01(r.maturity01,0),confidence01:C01(r.confidence01,0),reward01:C01(r.reward01,0),predictionError01:C01(r.predictionError01,0),
+    usage:cnt(r.usage,0),transferCount:cnt(r.transferCount,0),verificationTrials:cnt(r.verificationTrials,0),promotedTick:cnt(r.promotedTick,0),
+    status:STATUSES.includes(r.status as B278NeuralPrimitive['status'])?r.status as B278NeuralPrimitive['status']:'germinal',
+    parentOperatorId:typeof r.parentOperatorId==='string'&&r.parentOperatorId?r.parentOperatorId.slice(0,160):null,
+    parentProgramId:typeof r.parentProgramId==='string'&&r.parentProgramId?r.parentProgramId.slice(0,160):null,
   };
 }
 
 export class B278NeuralPrimitiveGenesis{
   private state:B278State=defaultB278State();
   restore(raw?:Partial<B278State>|null){
-    const d=defaultB278State(),r=raw??{};
-    this.state={...d,...r,activePrimitiveIds:Array.isArray(r.activePrimitiveIds)?r.activePrimitiveIds.slice(-4):[],lastInternalVector:Array.isArray(r.lastInternalVector)?r.lastInternalVector.slice(0,12):d.lastInternalVector,primitives:Array.isArray(r.primitives)?r.primitives.slice(-128).map(cleanPrimitive):[]};
+    const d=defaultB278State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const idsRaw=read('activePrimitiveIds');const priRaw=read('primitives');
+    this.state={version:1,ticks:cnt(read('ticks'),d.ticks),cycles:cnt(read('cycles'),d.cycles),inventions:cnt(read('inventions'),d.inventions),verifiedPrimitives:cnt(read('verifiedPrimitives'),d.verifiedPrimitives),rejectedPrimitives:cnt(read('rejectedPrimitives'),d.rejectedPrimitives),realTrials:cnt(read('realTrials'),d.realTrials),virtualTrials:cnt(read('virtualTrials'),d.virtualTrials),transfers:cnt(read('transfers'),d.transfers),compositionDepthMax:cnt(read('compositionDepthMax'),d.compositionDepthMax),learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),
+      neuralGrounding01:C01(read('neuralGrounding01'),d.neuralGrounding01),selfBinding01:C01(read('selfBinding01'),d.selfBinding01),personalityBinding01:C01(read('personalityBinding01'),d.personalityBinding01),autonomy01:C01(read('autonomy01'),d.autonomy01),primitiveNovelty01:C01(read('primitiveNovelty01'),d.primitiveNovelty01),compositionCoherence01:C01(read('compositionCoherence01'),d.compositionCoherence01),
+      activePrimitiveIds:Array.isArray(idsRaw)?(idsRaw as unknown[]).filter((x):x is string=>typeof x==='string'&&x.length>0).slice(-4):[],
+      lastAction:ACTIONS.includes(read('lastAction') as ActionKind)?read('lastAction') as ActionKind:null,
+      lastInternalVector:vecN(read('lastInternalVector'),12),
+      lastBaselineScore01:C01(read('lastBaselineScore01'),d.lastBaselineScore01),lastPrimitiveScore01:C01(read('lastPrimitiveScore01'),d.lastPrimitiveScore01),lastGain01:SGN(read('lastGain01'),d.lastGain01),
+      primitives:Array.isArray(priRaw)?priRaw.slice(-128).map(cleanPrimitive):[]};
   }
+
   snapshot(){return structuredClone(this.state);}
   private context(input:B278StepInput){
     const f=[...input.goalVector.slice(0,8),...input.selfLatent.slice(0,8),...input.worldLatent.slice(0,8),...input.operatorOutput.slice(0,8),...input.neuralAssembly.slice(0,8),input.autonomy01,input.novelty01,input.predictionError01];

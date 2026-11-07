@@ -39,14 +39,33 @@ const defaultState=():P39LifeState=>({
   host:{current:'unknown-host',history:[],transfers:0},sleepSessions:[],maintenance:{runs:0,lastAt:0,compactions:0,memoryDormantDelta:0,lastReason:''},stress:{resourceEvents:0,thermalEvents:0,batteryEvents:0},events:[],metrics:{daysObserved01:0,activeRatio01:0,sleepRatio01:0,continuityGaps:0,selfMaintenanceCount:0,autonomyPreserved01:1}
 });
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const cntN=(v:unknown,f:number):number=>Math.max(0,finN(v,f));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const PHASES:readonly LifePhase[]=['wake','active','wind-down','sleep','recovering','maintenance'];
+const EVENT_TYPES=['phase','sleep','wake','maintenance','host-transfer','continuity-gap','resource-stress'] as const;
+const str=(v:unknown,f:string,n=200):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const sanHostHistory=(v:unknown):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string').slice(0,MAX_HOSTS):[];
+const sanSleepSession=(x:unknown):{startedAt:number;endedAt:number;durationMs:number;quality01:number;reason:string}|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {startedAt:cnt(r.startedAt,0),endedAt:cnt(r.endedAt,0),durationMs:cnt(r.durationMs,0),quality01:C01(r.quality01,0),reason:str(r.reason,'')};};
+const sanEvent=(x:unknown):LifeEvent|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {id:str(r.id,'',120),at:cnt(r.at,0),type:(EVENT_TYPES as readonly string[]).includes(r.type as string)?r.type as LifeEvent['type']:'phase',detail:str(r.detail,'',240)};};
 function pushBounded<T>(arr:T[],value:T,max:number){arr.unshift(value); if(arr.length>max)arr.length=max;}
 
 export class P39ContinuousArtificialLifeEngine{
   private state=defaultState();
   static defaultState=defaultState;
   restore(input:P39LifeState|undefined){
-    const d=defaultState(); const s=input??d;
-    this.state={...d,...s,host:{...d.host,...(s.host??{}),history:Array.isArray(s.host?.history)?s.host.history.slice(0,MAX_HOSTS):[]},sleepSessions:Array.isArray(s.sleepSessions)?s.sleepSessions.slice(0,MAX_SLEEP):[],maintenance:{...d.maintenance,...(s.maintenance??{})},stress:{...d.stress,...(s.stress??{})},events:Array.isArray(s.events)?s.events.slice(0,MAX_EVENTS):[],metrics:{...d.metrics,...(s.metrics??{})}};
+    const d=defaultState();
+    const src=(input&&typeof input==='object')?input as unknown as Record<string,unknown>:{};
+    const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const hostRaw=(read('host')&&typeof read('host')==='object')?read('host') as Record<string,unknown>:{};
+    const mRaw=(read('maintenance')&&typeof read('maintenance')==='object')?read('maintenance') as Record<string,unknown>:{};
+    const stRaw=(read('stress')&&typeof read('stress')==='object')?read('stress') as Record<string,unknown>:{};
+    const metRaw=(read('metrics')&&typeof read('metrics')==='object')?read('metrics') as Record<string,unknown>:{};
+    const phase=read('phase');
+    const sleepSessions=Array.isArray(read('sleepSessions'))?(read('sleepSessions') as unknown[]).slice(0,MAX_SLEEP).map(sanSleepSession).filter((x):x is {startedAt:number;endedAt:number;durationMs:number;quality01:number;reason:string}=>x!==null):[];
+    const events=Array.isArray(read('events'))?(read('events') as unknown[]).slice(0,MAX_EVENTS).map(sanEvent).filter((x):x is LifeEvent=>x!==null):[];
+    this.state={version:1,birthAt:cnt(read('birthAt'),d.birthAt),lastTickAt:cnt(read('lastTickAt'),d.lastTickAt),lastWakeAt:cnt(read('lastWakeAt'),d.lastWakeAt),lastSleepAt:cnt(read('lastSleepAt'),d.lastSleepAt),totalActiveMs:cnt(read('totalActiveMs'),d.totalActiveMs),totalSleepMs:cnt(read('totalSleepMs'),d.totalSleepMs),lifeTicks:cnt(read('lifeTicks'),d.lifeTicks),sessionCount:cnt(read('sessionCount'),d.sessionCount),phase:PHASES.includes(phase as LifePhase)?phase as LifePhase:d.phase,sleepDebtHours:cntN(read('sleepDebtHours'),d.sleepDebtHours),recovery01:C01(read('recovery01'),d.recovery01),continuity01:C01(read('continuity01'),d.continuity01),maintenanceDue01:C01(read('maintenanceDue01'),d.maintenanceDue01),host:{current:str(hostRaw.current,d.host.current,120),history:sanHostHistory(hostRaw.history),transfers:cnt(hostRaw.transfers,d.host.transfers)},sleepSessions,maintenance:{runs:cnt(mRaw.runs,d.maintenance.runs),lastAt:cnt(mRaw.lastAt,d.maintenance.lastAt),compactions:cnt(mRaw.compactions,d.maintenance.compactions),memoryDormantDelta:Math.trunc(finN(mRaw.memoryDormantDelta,d.maintenance.memoryDormantDelta)),lastReason:str(mRaw.lastReason,d.maintenance.lastReason,240)},stress:{resourceEvents:cnt(stRaw.resourceEvents,d.stress.resourceEvents),thermalEvents:cnt(stRaw.thermalEvents,d.stress.thermalEvents),batteryEvents:cnt(stRaw.batteryEvents,d.stress.batteryEvents)},events,metrics:{daysObserved01:C01(metRaw.daysObserved01,d.metrics.daysObserved01),activeRatio01:C01(metRaw.activeRatio01,d.metrics.activeRatio01),sleepRatio01:C01(metRaw.sleepRatio01,d.metrics.sleepRatio01),continuityGaps:cnt(metRaw.continuityGaps,d.metrics.continuityGaps),selfMaintenanceCount:cnt(metRaw.selfMaintenanceCount,d.metrics.selfMaintenanceCount),autonomyPreserved01:C01(metRaw.autonomyPreserved01,d.metrics.autonomyPreserved01)}};
   }
   snapshot(){return structuredClone(this.state);}
   beginCycle(input:{at:number;host?:string;awake:boolean;energy01:number;cognitiveLoad01:number;battery01?:number;thermal01?:number;storagePressure01?:number}):{phase:LifePhase;suggestedAction:ActionKind;shouldSleep:boolean;maintenanceDue01:number;continuity01:number}{

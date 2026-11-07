@@ -2,10 +2,18 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export interface SkillTrack{id:string;domain:string;target01:number;mastery01:number;practice:number;status:'queued'|'active'|'mastered'|'deferred';createdAt:number;updatedAt:number;}
 export interface SkillState{version:1;cycles:number;created:number;practiced:number;mastered:number;evaluated:number;meanMastery01:number;active:string|null;tracks:SkillTrack[];}
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const STATUSES:Array<SkillTrack['status']>=['queued','active','mastered','deferred'];
+const sanTrack=(x:unknown):SkillTrack|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {id:str(r.id,'skill:0'),domain:str(r.domain,'unknown'),target01:clamp(finN(r.target01,.62)),mastery01:clamp(finN(r.mastery01,0)),practice:cnt(r.practice,0),status:STATUSES.includes(r.status as SkillTrack['status'])?r.status as SkillTrack['status']:'queued',createdAt:finN(r.createdAt,0),updatedAt:finN(r.updatedAt,0)};};
 export const defaultOpenEndedSkill=():SkillState=>({version:1,cycles:0,created:0,practiced:0,mastered:0,evaluated:0,meanMastery01:.31,active:null,tracks:[]});
 export class OpenEndedSkillAcquisitionController{
  private state=defaultOpenEndedSkill();
- restore(raw?:Partial<SkillState>|null){const d=defaultOpenEndedSkill(),r=raw??{};this.state={...d,...r,tracks:Array.isArray(r.tracks)?structuredClone(r.tracks).slice(0,32):[],version:1};}
+ restore(raw?:Partial<SkillState>|null){const d=defaultOpenEndedSkill();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const tRaw=read('tracks');
+this.state={version:1,cycles:cnt(read('cycles'),d.cycles),created:cnt(read('created'),d.created),practiced:cnt(read('practiced'),d.practiced),mastered:cnt(read('mastered'),d.mastered),evaluated:cnt(read('evaluated'),d.evaluated),meanMastery01:clamp(finN(read('meanMastery01'),d.meanMastery01)),active:strOrNull(read('active')),tracks:Array.isArray(tRaw)?(tRaw as unknown[]).slice(0,32).map(sanTrack).filter((x):x is SkillTrack=>x!==null):[]};
+}
  snapshot(){return structuredClone(this.state);}
  cycle(input:{at:number;domain:string;gap01:number;learningPressure01:number;resource01:number;novelty01:number;identity01:number;availableSkillNames?:string[]}):{action:'create'|'practice'|'defer'|'master';track:SkillTrack|null;mastery01:number}{
   this.state.cycles++;

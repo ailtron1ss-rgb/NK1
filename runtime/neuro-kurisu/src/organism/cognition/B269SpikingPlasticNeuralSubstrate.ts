@@ -106,24 +106,27 @@ export function defaultB269SpikingPlastic():B269SpikingPlasticState {
   };
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const strOrNull=(v:unknown,n=120):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const vecN=(v:unknown,len:number,lo:number,hi:number,fill:number):number[]=>Array.from({length:len},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fill;});
+const sanSynapse=(x:unknown,n:number):B269Synapse|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {pre:Math.max(0,Math.min(n-1,Math.floor(finN(r.pre,0)))),post:Math.max(0,Math.min(n-1,Math.floor(finN(r.post,0)))),weight:clamp11(finN(r.weight,0)),usage01:clamp01(finN(r.usage01,0)),age:cnt(r.age,0),active:r.active!==false};};
+const sanHistory=(x:unknown):Array<{tick:number;action:ActionKind|null;spikes:number;prediction01:number;reward01:number;modulation01:number}>=>Array.isArray(x)?(x as unknown[]).slice(-256).filter(v=>v&&typeof v==='object').map(v=>{const r=v as Record<string,unknown>;return {tick:cnt(r.tick,0),action:ACTIONS.includes(r.action as ActionKind)?r.action as ActionKind:null,spikes:cnt(r.spikes,0),prediction01:clamp01(finN(r.prediction01,0)),reward01:clamp11(finN(r.reward01,0)),modulation01:clamp01(finN(r.modulation01,0))};}):[];
 export class B269SpikingPlasticNeuralSubstrate {
   private state=defaultB269SpikingPlastic();
 
   snapshot(options:{clone?:boolean}={}){return options.clone===false ? this.state : structuredClone(this.state);}
 
   restore(raw?:Partial<B269SpikingPlasticState>|null){
-    const d=defaultB269SpikingPlastic(),r=raw??{};
-    const n=Math.max(24,Math.min(64,Math.floor(Number(r.neuronCount??d.neuronCount))));
-    const arr=(v:unknown,len:number,fill=0)=>Array.isArray(v)?v.slice(0,len).concat(new Array(Math.max(0,len-(v as unknown[]).length)).fill(fill)).slice(0,len):new Array(len).fill(fill);
-    const syn=Array.isArray(r.synapses)?r.synapses.slice(0,512).map((s:any)=>({pre:Math.max(0,Math.min(n-1,Math.floor(Number(s?.pre??0)))),post:Math.max(0,Math.min(n-1,Math.floor(Number(s?.post??0)))),weight:clamp11(Number(s?.weight??0)),usage01:clamp01(Number(s?.usage01??0)),age:Math.max(0,Math.floor(Number(s?.age??0))),active:s?.active!==false})):makeSynapses(n,6);
-    const weights=Array.isArray(r.actionBias)?ACTIONS.map((_,ai)=>arr((r.actionBias as any)[ai],n,0)):defaultB269SpikingPlastic().actionBias;
-    this.state={...d,...r,version:1,neuronCount:n,inputDim:24,
-      membrane:arr(r.membrane,n),threshold:arr(r.threshold,n,.34).map(v=>Math.max(.16,Math.min(.9,Number(v)))),
-      refractory:arr(r.refractory,n),preTrace:arr(r.preTrace,n),postTrace:arr(r.postTrace,n),
-      synapses:syn,actionBias:weights,lastSpikes:arr(r.lastSpikes,n),lastAssembly:arr(r.lastAssembly,n),lastInput:arr(r.lastInput,24),
-      history:Array.isArray(r.history)?r.history.slice(-256):[]};
+    const d=defaultB269SpikingPlastic();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const n=Math.max(24,Math.min(64,Math.floor(finN(read('neuronCount'),d.neuronCount))));
+    const synRaw=read('synapses');
+    const synapses=Array.isArray(synRaw)?(synRaw as unknown[]).slice(0,512).map(x=>sanSynapse(x,n)).filter((x):x is B269Synapse=>x!==null):makeSynapses(n,6);
+    const abRaw=read('actionBias');
+    const actionBias=Array.isArray(abRaw)?ACTIONS.map((_,ai)=>vecN((abRaw as unknown[])[ai],n,-1,1,0)):d.actionBias;
+    this.state={version:1,neuronCount:n,inputDim:24,cycles:cnt(read('cycles'),d.cycles),learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),spikes:cnt(read('spikes'),d.spikes),synapticUpdates:cnt(read('synapticUpdates'),d.synapticUpdates),structuralUpdates:cnt(read('structuralUpdates'),d.structuralUpdates),structuralGrew:cnt(read('structuralGrew'),d.structuralGrew),structuralPruned:cnt(read('structuralPruned'),d.structuralPruned),
+      membrane:vecN(read('membrane'),n,-1,1,0),threshold:vecN(read('threshold'),n,.16,.9,.34),refractory:vecN(read('refractory'),n,0,1,0),preTrace:vecN(read('preTrace'),n,0,1,0),postTrace:vecN(read('postTrace'),n,0,1,0),synapses,actionBias,lastSpikes:vecN(read('lastSpikes'),n,0,1,0),lastAssembly:vecN(read('lastAssembly'),n,0,1,0),lastInput:vecN(read('lastInput'),24,-1,1,0),lastAction:ACTIONS.includes(read('lastAction') as ActionKind)?read('lastAction') as ActionKind:null,lastPrediction01:clamp01(finN(read('lastPrediction01'),d.lastPrediction01)),predictionErrorMean01:clamp01(finN(read('predictionErrorMean01'),d.predictionErrorMean01)),firingRate01:clamp01(finN(read('firingRate01'),d.firingRate01)),homeostaticError01:clamp01(finN(read('homeostaticError01'),d.homeostaticError01)),plasticity01:clamp01(finN(read('plasticity01'),d.plasticity01)),neuromodulation01:clamp01(finN(read('neuromodulation01'),d.neuromodulation01)),sparsity01:clamp01(finN(read('sparsity01'),d.sparsity01)),synapticEnergy01:clamp01(finN(read('synapticEnergy01'),d.synapticEnergy01)),lastTick:cnt(read('lastTick'),d.lastTick),history:sanHistory(read('history'))};
   }
-
   private actionIndex(action:ActionKind|null|undefined){return action?Math.max(0,ACTIONS.indexOf(action)):-1;}
 
   private encode(v:number[]){return Array.from({length:24},(_,i)=>clamp11(Number(v[i]??0)));}

@@ -107,21 +107,32 @@ export function defaultB273State():B273State{
   return {version:1,tick:0,cycles:0,learningUpdates:0,goalCreations:0,goalRevisions:0,goalCompletions:0,goalAbandonments:0,subgoalCreations:0,skillCreations:0,skillUses:0,activeGoalId:null,rootGoalId:null,goals:[],skills:[],goalTransitionWeights,goalUtilityWeights:[.25,.18,.18,.14,.10,.08,.07],lastGoalVector:new Array(8).fill(0),lastActionPlan:['reflect'],lastAction:'reflect',lastDecisionConfidence01:.35,autonomy01:.4,goalConflict01:.3,goalStability01:.4,selfAlignment01:.5,longHorizonValue01:.5,intrinsicDrive01:.4,lifecycleMode:'incubating',outcomeHistory:[]};
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const GOAL_STATUSES:OrganismGoalStatus[]=['candidate','active','paused','completed','abandoned'];
+const MODES:Array<'incubating'|'pursuing'|'revising'|'completing'|'recovering'>=['incubating','pursuing','revising','completing','recovering'];
+const vec8=(v:unknown):number[]=>Array.from({length:8},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;return clamp11(finN(x,0));});
+const mat88=(v:unknown,fb:number[][]):number[][]=>{if(!Array.isArray(v))return fb.map(r=>r.slice());return Array.from({length:8},(_,i)=>{const row=(v as unknown[])[i];return Array.from({length:8},(_,j)=>{const c=Array.isArray(row)?(row as unknown[])[j]:undefined;return Number.isFinite(Number(c))?clamp11(Number(c)):fb[i]![j]!;});});};
+const sanGoalNode=(x:unknown):B273GoalNode|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',160);if(!id)return null;return {id,parentId:strOrNull(r.parentId),source:(GOAL_SOURCES as readonly string[]).includes(r.source as string)?r.source as GoalSource:'intrinsic',status:GOAL_STATUSES.includes(r.status as OrganismGoalStatus)?r.status as OrganismGoalStatus:'candidate',vector:vec8(r.vector),importance01:clamp01(finN(r.importance01,0)),urgency01:clamp01(finN(r.urgency01,0)),confidence01:clamp01(finN(r.confidence01,0)),progress01:clamp01(finN(r.progress01,0)),conflict01:clamp01(finN(r.conflict01,0)),age:cnt(r.age,0),attempts:cnt(r.attempts,0),successes:cnt(r.successes,0),createdTick:cnt(r.createdTick,0),updatedTick:cnt(r.updatedTick,0),lastReward01:clamp11(finN(r.lastReward01,0)),subgoalCount:cnt(r.subgoalCount,0)};};
+const sanSkill=(x:unknown):B273SkillPrototype|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',160);if(!id)return null;return {id,actions:Array.isArray(r.actions)?r.actions.filter((a):a is ActionKind=>ACTIONS.includes(a as ActionKind)).slice(0,6):['reflect'],support01:clamp01(finN(r.support01,0)),success01:clamp01(finN(r.success01,0)),expectedGain01:clamp01(finN(r.expectedGain01,0)),uses:cnt(r.uses,0),createdTick:cnt(r.createdTick,0),lastUsedTick:cnt(r.lastUsedTick,0),goalFingerprint:str(r.goalFingerprint,'',160)};};
+const sanOutcome=(x:unknown):{tick:number;goalId:string|null;action:ActionKind;reward01:number;predictionError01:number;independentGain01:number}|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),goalId:strOrNull(r.goalId),action:ACTIONS.includes(r.action as ActionKind)?r.action as ActionKind:'reflect',reward01:clamp11(finN(r.reward01,0)),predictionError01:clamp01(finN(r.predictionError01,0)),independentGain01:clamp11(finN(r.independentGain01,0))};};
 export class B273AutonomousGoalLifecycle{
   private state=defaultB273State();
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<B273State>|null){
-    const d=defaultB273State(); const r:any=raw??{};
-    const vec=(x:any,n:number)=>Array.from({length:n},(_,i)=>clamp11(Number(x?.[i]??0)));
-    const matrix=(x:any,f:number[][])=>Array.from({length:8},(_,i)=>Array.from({length:8},(_,j)=>Number.isFinite(Number(x?.[i]?.[j]))?clamp11(Number(x[i][j])):f[i][j]));
-    this.state={...d,...r,version:1,
-      goals:Array.isArray(r.goals)?r.goals.slice(-64).map((g:any)=>({...g,vector:vec(g?.vector,8),status:(['candidate','active','paused','completed','abandoned'].includes(g?.status)?g.status:'candidate'),parentId:g?.parentId??null})):[],
-      skills:Array.isArray(r.skills)?r.skills.slice(-48).map((s:any)=>({...s,actions:Array.isArray(s?.actions)?s.actions.slice(0,6).filter((a:any)=>ACTIONS.includes(a)):['reflect']})):[],
-      goalTransitionWeights:matrix(r.goalTransitionWeights,d.goalTransitionWeights),
-      goalUtilityWeights:Array.isArray(r.goalUtilityWeights)?r.goalUtilityWeights.slice(0,8).map((x:any,i:number)=>clamp11(Number(x??d.goalUtilityWeights[i]??0))):d.goalUtilityWeights,
-      lastGoalVector:vec(r.lastGoalVector,8),lastActionPlan:Array.isArray(r.lastActionPlan)?r.lastActionPlan.slice(0,6).filter((a:any)=>ACTIONS.includes(a)):d.lastActionPlan,
-      lastAction:ACTIONS.includes(r.lastAction)?r.lastAction:'reflect',outcomeHistory:Array.isArray(r.outcomeHistory)?r.outcomeHistory.slice(-128):[]
-    };
+    const d=defaultB273State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const gRaw=read('goals'),sRaw=read('skills'),oRaw=read('outcomeHistory');
+    const goals=Array.isArray(gRaw)?(gRaw as unknown[]).slice(-64).map(sanGoalNode).filter((x):x is B273GoalNode=>x!==null):[];
+    const skills=Array.isArray(sRaw)?(sRaw as unknown[]).slice(-48).map(sanSkill).filter((x):x is B273SkillPrototype=>x!==null):[];
+    const outcomes=Array.isArray(oRaw)?(oRaw as unknown[]).slice(-128).map(sanOutcome).filter((x):x is {tick:number;goalId:string|null;action:ActionKind;reward01:number;predictionError01:number;independentGain01:number}=>x!==null):[];
+    const mode=read('lifecycleMode');
+    const uwRaw=read('goalUtilityWeights');
+    const utility=Array.isArray(uwRaw)?Array.from({length:d.goalUtilityWeights.length},(_,i)=>clamp11(finN((uwRaw as unknown[])[i],d.goalUtilityWeights[i]??0))):d.goalUtilityWeights.slice();
+    const planRaw=read('lastActionPlan');
+    const plan=Array.isArray(planRaw)?planRaw.filter((a):a is ActionKind=>ACTIONS.includes(a as ActionKind)).slice(0,6):d.lastActionPlan.slice();
+    this.state={version:1,tick:cnt(read('tick'),d.tick),cycles:cnt(read('cycles'),d.cycles),learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),goalCreations:cnt(read('goalCreations'),d.goalCreations),goalRevisions:cnt(read('goalRevisions'),d.goalRevisions),goalCompletions:cnt(read('goalCompletions'),d.goalCompletions),goalAbandonments:cnt(read('goalAbandonments'),d.goalAbandonments),subgoalCreations:cnt(read('subgoalCreations'),d.subgoalCreations),skillCreations:cnt(read('skillCreations'),d.skillCreations),skillUses:cnt(read('skillUses'),d.skillUses),activeGoalId:strOrNull(read('activeGoalId')),rootGoalId:strOrNull(read('rootGoalId')),goals,skills,goalTransitionWeights:mat88(read('goalTransitionWeights'),d.goalTransitionWeights),goalUtilityWeights:utility,lastGoalVector:vec8(read('lastGoalVector')),lastActionPlan:plan,lastAction:ACTIONS.includes(read('lastAction') as ActionKind)?read('lastAction') as ActionKind:d.lastAction,lastDecisionConfidence01:clamp01(finN(read('lastDecisionConfidence01'),d.lastDecisionConfidence01)),autonomy01:clamp01(finN(read('autonomy01'),d.autonomy01)),goalConflict01:clamp01(finN(read('goalConflict01'),d.goalConflict01)),goalStability01:clamp01(finN(read('goalStability01'),d.goalStability01)),selfAlignment01:clamp01(finN(read('selfAlignment01'),d.selfAlignment01)),longHorizonValue01:clamp01(finN(read('longHorizonValue01'),d.longHorizonValue01)),intrinsicDrive01:clamp01(finN(read('intrinsicDrive01'),d.intrinsicDrive01)),lifecycleMode:MODES.includes(mode as typeof MODES[number])?mode as typeof MODES[number]:d.lifecycleMode,outcomeHistory:outcomes};
   }
   private available(input:B273StepInput){return (input.availableActions??ACTIONS).filter((a):a is ActionKind=>ACTIONS.includes(a));}
   private traitMean(traits:Record<string,number>,keys:string[]){if(!keys.length)return .5;return clamp01(keys.reduce((s,k)=>s+Number(traits[k]??.5),0)/keys.length);}

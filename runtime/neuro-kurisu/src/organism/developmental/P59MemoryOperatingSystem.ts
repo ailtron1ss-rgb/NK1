@@ -6,6 +6,12 @@
  * encoded, reconsolidated, promoted or left dormant and exposes memory health.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const P59_MODES:readonly P59Mode[]=['maintenance','encode','reconsolidate','compress','protect'];
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,240)).slice(0,cap):[];
+const sanitizePlan=(v:unknown):P59Plan|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;return {mode:P59_MODES.includes(r.mode as P59Mode)?r.mode as P59Mode:'maintenance',priority01:clamp(finN(r.priority01,0)),retentionBias01:clamp(finN(r.retentionBias01,0)),reasons:strArr(r.reasons,8)};};
+const sanitizeHistory=(v:unknown):P59State['history'][number]|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;return {tick:cnt(r.tick,0),at:Math.max(0,finN(r.at,0)),mode:P59_MODES.includes(r.mode as P59Mode)?r.mode as P59Mode:'maintenance',health01:clamp(finN(r.health01,0)),retention01:clamp(finN(r.retention01,0))};};
 export interface P59Input {tick:number;at:number;eventCount:number;memoryCount:number;retrievalHits:number;predictionError01:number;identity01:number;goalPressure01:number;novelty01:number;uncertainty01:number;dayAge01?:number;}
 export type P59Mode='maintenance'|'encode'|'reconsolidate'|'compress'|'protect';
 export interface P59Plan {mode:P59Mode;priority01:number;retentionBias01:number;reasons:string[];}
@@ -13,7 +19,7 @@ export interface P59State {version:1;cycles:number;encodes:number;reconsolidatio
 export const defaultP59=():P59State=>({version:1,cycles:0,encodes:0,reconsolidations:0,compressions:0,protectedCycles:0,meanHealth01:.72,meanRetention01:.62,lastPlan:null,history:[]});
 export class P59MemoryOperatingSystem{
  private state=defaultP59();
- restore(raw?:Partial<P59State>|null){const d=defaultP59(),r=raw??{};this.state={...d,...r,history:Array.isArray(r.history)?r.history.slice(-96):[]};}
+ restore(raw?:Partial<P59State>|null){const d=defaultP59();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let history:P59State['history']=[];try{const h=read('history');if(Array.isArray(h))history=h.map(sanitizeHistory).filter((x):x is P59State['history'][number]=>x!==null).slice(-96);}catch{history=[];}let lastPlan:P59Plan|null=null;try{lastPlan=sanitizePlan(read('lastPlan'));}catch{lastPlan=null;}this.state={version:1,cycles:cnt(read('cycles'),d.cycles),encodes:cnt(read('encodes'),d.encodes),reconsolidations:cnt(read('reconsolidations'),d.reconsolidations),compressions:cnt(read('compressions'),d.compressions),protectedCycles:cnt(read('protectedCycles'),d.protectedCycles),meanHealth01:clamp(finN(read('meanHealth01'),d.meanHealth01)),meanRetention01:clamp(finN(read('meanRetention01'),d.meanRetention01)),lastPlan,history};}
  snapshot(){return structuredClone(this.state);}
  persistenceSnapshot(){
   return {...this.state,lastPlan:this.state.lastPlan ? structuredClone(this.state.lastPlan) : null,history:this.state.history.slice(0,48).map(row=>({...row}))};

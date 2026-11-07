@@ -1,4 +1,5 @@
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
+import { guardSelfModification, type SelfModificationGuardResult } from '../verification/ProtectedArtifactRegistry.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const ACTIONS=['respond','explore','verify','rest','reflect','wait','defer'] as const;
@@ -173,12 +174,16 @@ export class CanonicalSelfAgencyAuthority{
     return {allowed,protectedField,reason:this.state.lastReason};
   }
 
-  admitSelfModification(input:{expectedGain01:number;holdoutGain01:number;risk01:number;rollbackReady:boolean;identityContinuity01:number;invariantFingerprint?:string;evidence01:number}){
+  admitSelfModification(input:{expectedGain01:number;holdoutGain01:number;risk01:number;rollbackReady:boolean;identityContinuity01:number;invariantFingerprint?:string;evidence01:number;changedPaths?:unknown}){
     this.state.selfModificationChecks++;
     const fingerprintOK=(input.invariantFingerprint??this.state.invariantFingerprint)===this.state.invariantFingerprint;
-    const allowed=Boolean(input.rollbackReady)&&clamp(input.expectedGain01)>.5&&clamp(input.holdoutGain01)>.62&&clamp(input.risk01)<.42&&clamp(input.identityContinuity01)>.72&&clamp(input.evidence01)>.62&&fingerprintOK&&this.state.invariantIntegrity01>.85;
+    // Self-improvement may never touch its own verifiers, holdout data or evidence ledgers.
+    // A protected path blocks the change regardless of how good the measured gain looks.
+    const artifactGuard:SelfModificationGuardResult=guardSelfModification({changedPaths:input.changedPaths});
+    const allowed=artifactGuard.allowed&&Boolean(input.rollbackReady)&&clamp(input.expectedGain01)>.5&&clamp(input.holdoutGain01)>.62&&clamp(input.risk01)<.42&&clamp(input.identityContinuity01)>.72&&clamp(input.evidence01)>.62&&fingerprintOK&&this.state.invariantIntegrity01>.85;
     if(!allowed)this.state.selfModificationBlocks++;
-    this.state.lastDecision=allowed?'stable':'self-modification-block';this.state.lastReason=allowed?'self-modification-evidence-gate-open':'self-modification-evidence-or-identity-gate';
-    return {allowed,fingerprintOK,reason:this.state.lastReason};
+    this.state.lastDecision=allowed?'stable':'self-modification-block';
+    this.state.lastReason=allowed?'self-modification-evidence-gate-open':!artifactGuard.allowed?'self-modification-protected-artifact-block':artifactGuard.reason==='self-modification-input-invalid'?'self-modification-protected-artifact-block':'self-modification-evidence-or-identity-gate';
+    return {allowed,fingerprintOK,artifactGuard,reason:this.state.lastReason};
   }
 }

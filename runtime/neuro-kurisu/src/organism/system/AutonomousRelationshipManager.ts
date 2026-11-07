@@ -6,6 +6,11 @@ export interface RelationshipState{
   meanSocialNeed01:number; meanReciprocity01:number; meanContinuity01:number;
   contacts:Record<string,{trust01:number;familiarity01:number;lastAt:number;pendingFollowUp:boolean;interactions:number}>;
 }
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const sanContact=(x:unknown):RelationshipState['contacts'][string]|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {trust01:clamp(finN(r.trust01,.5)),familiarity01:clamp(finN(r.familiarity01,0)),lastAt:finN(r.lastAt,0),pendingFollowUp:r.pendingFollowUp===true,interactions:cnt(r.interactions,0)};};
+const sanContacts=(v:unknown):RelationshipState['contacts']=>{const r=(v&&typeof v==='object')?v as Record<string,unknown>:{};const out:RelationshipState['contacts']={};for(const k of Object.keys(r)){const c=sanContact(r[k]);if(c)out[k]=c;}return out;};
 export const defaultAutonomousRelationship=():RelationshipState=>({
   version:1,cycles:0,initiatives:0,followUps:0,resolved:0,meanSocialNeed01:.25,
   meanReciprocity01:.5,meanContinuity01:.55,contacts:{}
@@ -13,8 +18,8 @@ export const defaultAutonomousRelationship=():RelationshipState=>({
 export class AutonomousRelationshipManager {
   private state=defaultAutonomousRelationship();
   restore(raw?:Partial<RelationshipState>|null){
-    const d=defaultAutonomousRelationship(),r=raw??{};
-    this.state={...d,...r,contacts:{...(r.contacts??{})},version:1};
+    const d=defaultAutonomousRelationship();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),initiatives:cnt(read('initiatives'),d.initiatives),followUps:cnt(read('followUps'),d.followUps),resolved:cnt(read('resolved'),d.resolved),meanSocialNeed01:clamp(finN(read('meanSocialNeed01'),d.meanSocialNeed01)),meanReciprocity01:clamp(finN(read('meanReciprocity01'),d.meanReciprocity01)),meanContinuity01:clamp(finN(read('meanContinuity01'),d.meanContinuity01)),contacts:sanContacts(read('contacts'))};
   }
   snapshot(){return structuredClone(this.state);}
   cycle(input:{

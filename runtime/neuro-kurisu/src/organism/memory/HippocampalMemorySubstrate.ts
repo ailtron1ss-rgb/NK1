@@ -6,6 +6,14 @@ const clamp11=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
 const tokenize=(text:string)=>String(text??'').toLocaleLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}/gu)??[];
 function textVector(text:string,dim=48){const v=new Array(dim).fill(0);for(const tok of tokenize(text)){const h=hashToken(tok);v[h%dim]+=1;v[(h>>>8)%dim]-=.35;}const n=Math.sqrt(v.reduce((s,x)=>s+x*x,0))||1;return v.map(x=>x/n);}
 function normalise(v:number[]){const n=Math.sqrt(v.reduce((s,x)=>s+x*x,0))||1;return v.map(x=>x/n);}
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const vec64=(v:unknown):number[]=>Array.isArray(v)?Array.from({length:64},(_,i)=>Math.max(-1,Math.min(1,finN((v as unknown[])[i],0)))):new Array(64).fill(0);
+const idOr=(v:unknown,f:string):string=>typeof v==='string'&&v?v.slice(0,160):f;
+const mix=(v:unknown):Record<string,number>=>{if(!v||typeof v!=='object'||Array.isArray(v))return {};const out:Record<string,number>={};let n=0;for(const [k,val] of Object.entries(v as Record<string,unknown>)){if(n>=24)break;out[k.slice(0,80)]=Math.max(0,finN(val,0));n++;}return out;};
+const sanTrace=(x:unknown):HippocampalTrace|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {id:idOr(r.id,''),memoryId:idOr(r.memoryId,''),vector:vec64(r.vector),tick:cnt(r.tick,0),at:cnt(r.at,0),importance01:C01(r.importance01,0),replayCount:cnt(r.replayCount,0),lastReplayedTick:cnt(r.lastReplayedTick,0),source:typeof r.source==='string'?r.source.slice(0,160):''};};
+const sanSchema=(x:unknown):SemanticSchema|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {id:idOr(r.id,''),vector:vec64(r.vector),count:cnt(r.count,0),confidence01:C01(r.confidence01,0),firstTick:cnt(r.firstTick,0),lastTick:cnt(r.lastTick,0),sourceMix:mix(r.sourceMix)};};
 
 export interface HippocampalTrace {
   id:string;
@@ -64,12 +72,19 @@ export class HippocampalMemorySubstrate {
   }
 
   restore(raw?:Partial<HippocampalMemoryState>|null){
-    const d=defaults();const r=raw??{};
-    this.state={...d,...r,
-      traces:Array.isArray(r.traces)?r.traces.slice(-this.maxTraces).map((x:any)=>({...x,vector:Array.isArray(x?.vector)?x.vector.slice(0,64):new Array(64).fill(0)})):[],
-      schemas:Array.isArray(r.schemas)?r.schemas.slice(-this.maxSchemas).map((x:any)=>({...x,vector:Array.isArray(x?.vector)?x.vector.slice(0,64):new Array(64).fill(0),sourceMix:{...(x?.sourceMix??{})}})):[],
-      lastRecall:{...d.lastRecall,...(r.lastRecall??{})},lastReplay:{...d.lastReplay,...(r.lastReplay??{}),ids:Array.isArray(r.lastReplay?.ids)?r.lastReplay!.ids.slice(0,32):[]}
-    };
+    const d=defaults();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const trRaw=read('traces'),scRaw=read('schemas');
+    const traces=Array.isArray(trRaw)?trRaw.slice(-this.maxTraces).map(sanTrace).filter((x):x is HippocampalTrace=>x!==null):[];
+    const schemas=Array.isArray(scRaw)?scRaw.slice(-this.maxSchemas).map(sanSchema).filter((x):x is SemanticSchema=>x!==null):[];
+    const lrRaw=read('lastRecall'),lpRaw=read('lastReplay');
+    const lr=(lrRaw&&typeof lrRaw==='object')?lrRaw as Record<string,unknown>:{};
+    const lp=(lpRaw&&typeof lpRaw==='object')?lpRaw as Record<string,unknown>:{};
+    const lrIds=read('lastRecall');
+    const lpIds=lp.ids;
+    this.state={version:1,encodingCount:cnt(read('encodingCount'),d.encodingCount),replayRuns:cnt(read('replayRuns'),d.replayRuns),replayedTraces:cnt(read('replayedTraces'),d.replayedTraces),consolidationRuns:cnt(read('consolidationRuns'),d.consolidationRuns),schemaUpdates:cnt(read('schemaUpdates'),d.schemaUpdates),
+      traces,schemas,
+      lastRecall:{query:typeof lr.query==='string'?lr.query.slice(0,240):'',episodeId:typeof lr.episodeId==='string'&&lr.episodeId?lr.episodeId.slice(0,160):null,schemaId:typeof lr.schemaId==='string'&&lr.schemaId?lr.schemaId.slice(0,160):null,similarity01:C01(lr.similarity01,0),at:cnt(lr.at,0)},
+      lastReplay:{ids:Array.isArray(lpIds)?(lpIds as unknown[]).filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,160)).slice(0,32):[],meanImportance01:C01(lp.meanImportance01,0),at:cnt(lp.at,0)}};
   }
 
   snapshot(){return structuredClone(this.state);}

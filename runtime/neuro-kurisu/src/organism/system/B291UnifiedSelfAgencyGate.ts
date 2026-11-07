@@ -89,6 +89,14 @@ export interface B291OutcomeInput {
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const clamp11=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const numOrNull=(v:unknown):number|null=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:null;};
+const sanActionCounts=(v:unknown):Record<string,number>=>{const r=(v&&typeof v==='object')?v as Record<string,unknown>:{};const out:Record<string,number>={};for(const k of Object.keys(r))out[k]=cnt(r[k],0);return out;};
+const sanModeCounts=(v:unknown,d:Record<B291DecisionMode,number>):Record<B291DecisionMode,number>=>{const r=(v&&typeof v==='object')?v as Record<string,unknown>:{};return Object.fromEntries(MODES.map(m=>[m,cnt(r[m],d[m])])) as Record<B291DecisionMode,number>;};
+const sanB291Recent=(x:unknown):B291State['recent'][number]|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),mode:MODES.includes(r.mode as B291DecisionMode)?r.mode as B291DecisionMode:'maintain',action:typeof r.action==='string'?r.action as ActionKind:null,hold01:clamp(finN(r.hold01,0)),autonomy01:clamp(finN(r.autonomy01,0)),gate01:clamp(finN(r.gate01,0))};};
 const MODES:B291DecisionMode[]=['maintain','switch','external','protect','recover'];
 
 export const defaultB291State=():B291State=>({
@@ -102,13 +110,8 @@ export class B291UnifiedSelfAgencyGate {
   private state=defaultB291State();
 
   restore(raw?:Partial<B291State>|null){
-    const d=defaultB291State(),r:any=raw??{};
-    this.state={...d,...r,version:1,
-      mode:MODES.includes(r.mode)?r.mode:d.mode,
-      modeCounts:{...d.modeCounts,...(r.modeCounts??{})},
-      actionCounts:{...(r.actionCounts??{})},
-      recent:Array.isArray(r.recent)?r.recent.slice(-64):[]
-    };
+    const d=defaultB291State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const rec=read('recent');
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),mode:MODES.includes(read('mode') as B291DecisionMode)?read('mode') as B291DecisionMode:d.mode,workingIntent:typeof read('workingIntent')==='string'?read('workingIntent') as ActionKind:null,workingGoalId:strOrNull(read('workingGoalId')),hold01:clamp(finN(read('hold01'),d.hold01)),gate01:clamp(finN(read('gate01'),d.gate01)),autonomyShare01:clamp(finN(read('autonomyShare01'),d.autonomyShare01)),identityFit01:clamp(finN(read('identityFit01'),d.identityFit01)),personalityFit01:clamp(finN(read('personalityFit01'),d.personalityFit01)),externalOverride01:clamp(finN(read('externalOverride01'),d.externalOverride01)),switchPressure01:clamp(finN(read('switchPressure01'),d.switchPressure01)),volition01:clamp(finN(read('volition01'),d.volition01)),updateGate01:clamp(finN(read('updateGate01'),d.updateGate01)),lastReward01:clamp(finN(read('lastReward01'),d.lastReward01)),lastPredictionError01:clamp(finN(read('lastPredictionError01'),d.lastPredictionError01)),selectedAction:typeof read('selectedAction')==='string'?read('selectedAction') as ActionKind:null,lesions01:clamp(finN(read('lesions01'),d.lesions01)),modeCounts:sanModeCounts(read('modeCounts'),d.modeCounts),actionCounts:sanActionCounts(read('actionCounts')),recent:Array.isArray(rec)?(rec as unknown[]).slice(-64).map(sanB291Recent).filter((x):x is B291State['recent'][number]=>x!==null):[]};
   }
   snapshot(){return structuredClone(this.state);}
   currentIntent(){return this.state.workingIntent;}

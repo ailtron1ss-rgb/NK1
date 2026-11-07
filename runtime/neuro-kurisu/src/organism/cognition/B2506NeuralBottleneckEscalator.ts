@@ -72,7 +72,33 @@ export class B2506NeuralBottleneckEscalator {
   private state = defaultB2506State();
 
   snapshot() { return structuredClone(this.state); }
-  restore(raw?: Partial<B2506State> | null) { this.state = { ...defaultB2506State(), ...structuredClone(raw ?? {}), version: 1 }; }
+  restore(raw?: Partial<B2506State> | null) {
+    const d = defaultB2506State();
+    const src: Record<string, unknown> = (raw && typeof raw === 'object') ? raw as unknown as Record<string, unknown> : {};
+    const read = (k: string): unknown => { try { return src[k]; } catch { return undefined; } };
+    const numArr = (v: unknown, len: number): number[] => Array.isArray(v) ? Array.from({ length: len }, (_, i) => clamp(Number((v as unknown[])[i])) ) : d.lastComposite.map(() => 0.5);
+    const sa = read('lastSelectedAction');
+    const mode = read('mode');
+    this.state = {
+      version: 1,
+      enabled: Boolean(read('enabled') ?? d.enabled),
+      tick: Math.max(0, Math.floor(Number.isFinite(Number(read('tick'))) ? Number(read('tick')) : d.tick)),
+      cycles: Math.max(0, Math.floor(Number(read('cycles')) || 0)),
+      authority01: clamp(Number(read('authority01'))),
+      reliability01: clamp(Number(read('reliability01'))),
+      causalEvidence01: clamp(Number(read('causalEvidence01'))),
+      consensus01: clamp(Number(read('consensus01'))),
+      conflict01: clamp(Number(read('conflict01'))),
+      failure01: clamp(Number(read('failure01'))),
+      escalations: Math.max(0, Math.floor(Number(read('escalations')) || 0)),
+      deescalations: Math.max(0, Math.floor(Number(read('deescalations')) || 0)),
+      lastComposite: numArr(read('lastComposite'), ACTIONS.length),
+      lastBase: numArr(read('lastBase'), ACTIONS.length),
+      lastSelectedPrediction01: clamp(Number(read('lastSelectedPrediction01'))),
+      lastSelectedAction: typeof sa === 'string' && ACTIONS.includes(sa as ActionKind) ? sa as ActionKind : d.lastSelectedAction,
+      mode: mode === 'guarded' || mode === 'balanced' || mode === 'neural-central' ? mode : d.mode,
+    };
+  }
   setEnabled(x: boolean) { this.state.enabled = !!x; }
 
   beforeDecision(i: B2506Input): B2506Output {

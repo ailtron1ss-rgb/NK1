@@ -29,6 +29,11 @@ selfGrounding01:number;
 simulationConsistency01:number;
 updates:number};
 }
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const sanBias=(v:unknown,fb:Record<ActionKind,number>):Record<ActionKind,number>=>{const r=(v&&typeof v==='object')?v as Record<string,unknown>:{};return Object.fromEntries(ACTIONS.map(a=>[a,Math.max(-1,Math.min(1,finN(r[a],fb[a])))])) as Record<ActionKind,number>;};
+const SOURCES:Array<'perception'|'memory'|'prediction'|'self'>=['perception','memory','prediction','self'];
 export const defaultP43=():P43State=>({version:1,tick:0,scene:{label:'unknown',selfLocation:'host-local',objects:[],relations:[],at:0},activeContents:[],imagined:[],actionBias:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,metrics:{workspaceUse01:.1,sceneBinding01:.1,selfGrounding01:.1,simulationConsistency01:.2,updates:0}});
 
 function id(s:string){let h=2166136261;
@@ -41,8 +46,11 @@ h=Math.imul(h,16777619);
 export class P43EmbodiedImageryWorkspace{
  private state=defaultP43();
 
- restore(raw?:Partial<P43State>|null){const d=defaultP43(),r=raw??{};
-this.state={...d,...r,scene:{...d.scene,...(r.scene??{}),objects:Array.isArray(r.scene?.objects)?r.scene!.objects.slice(0,64):d.scene.objects,relations:Array.isArray(r.scene?.relations)?r.scene!.relations.slice(0,64):d.scene.relations},activeContents:Array.isArray(r.activeContents)?r.activeContents.slice(-96):[],imagined:Array.isArray(r.imagined)?r.imagined.slice(-64):[],actionBias:{...d.actionBias,...(r.actionBias??{})},metrics:{...d.metrics,...(r.metrics??{})}};
+ restore(raw?:Partial<P43State>|null){const d=defaultP43();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+const scRaw=(read('scene')&&typeof read('scene')==='object')?read('scene') as Record<string,unknown>:{};
+const acRaw=read('activeContents'),imRaw=read('imagined');
+const mRaw=(read('metrics')&&typeof read('metrics')==='object')?read('metrics') as Record<string,unknown>:{};
+this.state={version:1,tick:cnt(read('tick'),d.tick),scene:{label:str(scRaw.label,d.scene.label),selfLocation:str(scRaw.selfLocation,d.scene.selfLocation),objects:Array.isArray(scRaw.objects)?(scRaw.objects as unknown[]).filter(v=>typeof v==='string').slice(0,64) as string[]:d.scene.objects,relations:Array.isArray(scRaw.relations)?(scRaw.relations as unknown[]).filter(v=>typeof v==='string').slice(0,64) as string[]:d.scene.relations,at:finN(scRaw.at,d.scene.at)},activeContents:Array.isArray(acRaw)?(acRaw as unknown[]).slice(-96).filter(v=>v&&typeof v==='object').map(v=>{const r=v as Record<string,unknown>;return {id:str(r.id,'pc-00000000'),label:str(r.label,'unknown'),source:SOURCES.includes(r.source as typeof SOURCES[number])?r.source as typeof SOURCES[number]:'perception',salience01:clamp(finN(r.salience01,.1)),confidence01:clamp(finN(r.confidence01,.1)),at:finN(r.at,0)};}):[],imagined:Array.isArray(imRaw)?(imRaw as unknown[]).slice(-64).filter(v=>v&&typeof v==='object').map(v=>{const r=v as Record<string,unknown>;return {action:ACTIONS.includes(r.action as ActionKind)?r.action as ActionKind:'wait',expectedScene:str(r.expectedScene,'unknown'),expectedValue01:Math.max(-1,Math.min(1,finN(r.expectedValue01,0))),confidence01:clamp(finN(r.confidence01,.1)),at:finN(r.at,0)};}):[],actionBias:sanBias(read('actionBias'),d.actionBias),metrics:{workspaceUse01:clamp(finN(mRaw.workspaceUse01,d.metrics.workspaceUse01)),sceneBinding01:clamp(finN(mRaw.sceneBinding01,d.metrics.sceneBinding01)),selfGrounding01:clamp(finN(mRaw.selfGrounding01,d.metrics.selfGrounding01)),simulationConsistency01:clamp(finN(mRaw.simulationConsistency01,d.metrics.simulationConsistency01)),updates:cnt(mRaw.updates,d.metrics.updates)}};
 }
  snapshot(){return structuredClone(this.state);
 }

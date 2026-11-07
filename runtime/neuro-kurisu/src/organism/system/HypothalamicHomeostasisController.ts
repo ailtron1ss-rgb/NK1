@@ -43,10 +43,14 @@ export interface HypothalamicHomeostasisState {
   lastFrame:HypothalamicHomeostasisFrame|null;
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,160)).slice(0,cap):[];
+const sanFrame=(x:unknown):HypothalamicHomeostasisFrame|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {energyReserve01:clamp(finN(r.energyReserve01,0)),thermalStress01:clamp(finN(r.thermalStress01,0)),allostaticLoad01:clamp(finN(r.allostaticLoad01,0)),predictedDemand01:clamp(finN(r.predictedDemand01,0)),motivationDrive01:clamp(finN(r.motivationDrive01,0)),computeCap01:clamp(finN(r.computeCap01,0)),plasticityCap01:clamp(finN(r.plasticityCap01,0)),recoveryDrive01:clamp(finN(r.recoveryDrive01,0)),restorativePriority01:clamp(finN(r.restorativePriority01,0)),reason:strArr(r.reason,16)};};
 export const defaultHypothalamicHomeostasisState=():HypothalamicHomeostasisState=>({version:1,ticks:0,protectiveTicks:0,recoveryTicks:0,meanEnergyReserve01:.72,meanThermalStress01:.18,meanAllostaticLoad01:.2,predictedDemand01:.35,lastFrame:null});
 export class HypothalamicHomeostasisController {
   private state=defaultHypothalamicHomeostasisState();
-  restore(raw?:Partial<HypothalamicHomeostasisState>|null){const d=defaultHypothalamicHomeostasisState(),r=raw??{};this.state={...d,...r,lastFrame:r.lastFrame?structuredClone(r.lastFrame):null,version:1};}
+  restore(raw?:Partial<HypothalamicHomeostasisState>|null){const d=defaultHypothalamicHomeostasisState();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};this.state={version:1,ticks:cnt(read('ticks'),d.ticks),protectiveTicks:cnt(read('protectiveTicks'),d.protectiveTicks),recoveryTicks:cnt(read('recoveryTicks'),d.recoveryTicks),meanEnergyReserve01:clamp(finN(read('meanEnergyReserve01'),d.meanEnergyReserve01)),meanThermalStress01:clamp(finN(read('meanThermalStress01'),d.meanThermalStress01)),meanAllostaticLoad01:clamp(finN(read('meanAllostaticLoad01'),d.meanAllostaticLoad01)),predictedDemand01:clamp(finN(read('predictedDemand01'),d.predictedDemand01)),lastFrame:sanFrame(read('lastFrame'))};}
   snapshot(){return structuredClone(this.state);}
   tick(input:HypothalamicHomeostasisInput):HypothalamicHomeostasisFrame{
     const energy=clamp(input.energy01), thermal=clamp(input.thermal01), load=clamp(input.cognitiveLoad01), sleep=clamp(input.sleepPressure01), goal=clamp(input.goalPressure01), uncertainty=clamp(input.uncertainty01), novelty=clamp(input.novelty01), safety=clamp(input.safetyPressure01??0);

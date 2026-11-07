@@ -1,0 +1,684 @@
+name: NK1 Core Restore Integrity (WorkPass72)
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - "workpass7*"
+      - "aspect/**"
+    paths:
+      - runtime/neuro-kurisu/src/organism/core/TemporalResolutionGovernor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SelfModelV2.ts
+      - runtime/neuro-kurisu/src/organism/world/WorldModel.ts
+      - runtime/neuro-kurisu/src/organism/memory/MultiTimescaleMemory.ts
+      - runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts
+      - runtime/neuro-kurisu/src/organism/verification/ProtectedArtifactRegistry.ts
+      - runtime/neuro-kurisu/src/organism/system/CognitiveQuorum.ts
+      - runtime/neuro-kurisu/src/organism/system/MetaMemoryController.ts
+      - runtime/neuro-kurisu/src/organism/system/SparsePredictiveGraph.ts
+      - runtime/neuro-kurisu/src/organism/system/DevelopmentalPhaseScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/LocalNeuralCreditAssigner.ts
+      - runtime/neuro-kurisu/src/organism/system/HybridCausalPlasticityCompiler.ts
+      - runtime/neuro-kurisu/src/organism/system/SubstratePortabilityEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/SensorimotorCoSimulationEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/LongitudinalOrganismBenchmarkEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/SandboxedSelfRewriteEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousProjectExecutor.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P70MemoryLifecycleGovernor.ts
+      - runtime/neuro-kurisu/src/organism/persistence/PersistenceProjectionGovernor.ts
+      - runtime/neuro-kurisu/src/organism/persistence/PersistenceDurabilityGovernor.ts
+      - runtime/neuro-kurisu/src/organism/learning/BehavioralGenome.ts
+      - runtime/neuro-kurisu/src/organism/learning/P29LearningGovernance.ts
+      - runtime/neuro-kurisu/src/organism/learning/ScientificMethodEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/TemporalContinuityEngine.ts
+      - runtime/neuro-kurisu/src/organism/world/LearnedResidualWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/world/PhoneBodyWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/system/WorldModelEnsembleController.ts
+      - runtime/neuro-kurisu/src/organism/system/CognitiveSpineScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/B336ProjectCausalOwnershipGate.ts
+      - runtime/neuro-kurisu/src/organism/system/PredictionLedger.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SocialWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/developmental/DevelopmentalForks.ts
+      - runtime/neuro-kurisu/src/organism/developmental/CommitmentRepair.ts
+      - runtime/neuro-kurisu/src/organism/developmental/RelationshipSelf.ts
+      - runtime/neuro-kurisu/src/organism/developmental/LongTermSocialMind.ts
+      - runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts
+      - runtime/neuro-kurisu/src/organism/developmental/ModelSwitchContinuity.ts
+      - runtime/neuro-kurisu/src/organism/developmental/TemporalMemoryCompressor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/BoredomExplorer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ContradictionReservoir.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveBudgetManager.ts
+      - runtime/neuro-kurisu/src/organism/cognition/VerifiedSyntheticTrajectoryGate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveField.ts
+      - runtime/neuro-kurisu/src/organism/system/ModelSwitchBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/system/ModelOlympics.ts
+      - runtime/neuro-kurisu/src/organism/system/DerivedWorldPreviewCache.ts
+      - runtime/neuro-kurisu/src/organism/body/MultimodalSituationModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveImmuneSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/MetaCognitiveMonitor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P81PredictiveAttention.ts
+      - runtime/neuro-kurisu/src/organism/cognition/IdentityContinuity.ts
+      - runtime/neuro-kurisu/src/organism/developmental/RegretEngine.ts
+      - runtime/neuro-kurisu/src/organism/developmental/SemanticScarEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/PredictionDebt.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfPredictionBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/world/ActiveInferenceEngine.ts
+      - runtime/neuro-kurisu/src/organism/body/MultimodalPerception.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2506NeuralBottleneckEscalator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2507ConsolidationScheduler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2508AdaptiveNeuralComputeGovernor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B265IndependentPolicyEvaluator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B266HiddenTaskGeneralization.ts
+      - runtime/neuro-kurisu/src/organism/cognition/BoundedRecurrentStateSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P74IntegratedOrganismKernel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ValuePlasticity.ts
+      - runtime/neuro-kurisu/src/organism/learning/LifelongDevelopmentSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/evolution/AutobiographicalNarrative.ts
+      - runtime/neuro-kurisu/src/organism/cognition/evolution/ValueEvolutionEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/BehavioralInfluenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts
+      - runtime/neuro-kurisu/src/organism/system/LongHorizonPredictionBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/system/P77RealityExperimentOS.ts
+      - runtime/neuro-kurisu/src/organism/system/P82RealityProgressController.ts
+      - runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P68GoalEcology.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P54LongHorizonEvidence.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P59MemoryOperatingSystem.ts
+      - runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P67AutonomousGoalGenesis.ts
+      - runtime/neuro-kurisu/src/organism/developmental/MicroDreamEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousLearningMemoryGovernor.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P56IntegratedDevelopmentalMind.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P63DevelopmentalOperatingSystem.ts
+      - runtime/neuro-kurisu/src/organism/learning/IntegratedLifeTrajectoryEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/VerifiedAutonomousLifeEngine.ts
+      - runtime/neuro-kurisu/src/organism/body/DeviceEvidenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts
+      - runtime/neuro-kurisu/src/organism/body/P37EmbodiedSensorium.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P69ConstitutionalArbiter.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P61IntegratedMindKernel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P58CognitiveKernel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts
+      - runtime/neuro-kurisu/src/organism/cognition/NeuroSymbolicConceptCompiler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2518PersistentSelfWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/NeuromodulationSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2513FutureSelfProjectionField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2514MemoryNeedPrioritizer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2517SelfAuthoredRuleCompiler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2519LongHorizonCounterfactualPlanner.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2520SensorimotorImagination.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2521LearnedGenerativeOrganismLoop.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2524NonparametricWorldExperienceMemory.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2526MultiscaleCausalRegimeGraph.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2527FactorialAblationHarness.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2529PolicyInformationGainController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2530AutonomousExperimentScheduler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B268CausalSelfExperimentLab.ts
+      - runtime/neuro-kurisu/src/organism/cognition/DeviceAwareNeuralScheduler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CrossLayerAdaptiveArbiter.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ClosedLoopEvidenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2703GlobalWorkspaceConvergence.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ActiveInformationGainController.ts
+      - runtime/neuro-kurisu/src/organism/memory/HippocampalFormationCircuit.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2503ActionablePredictiveField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B275NeuralCompositionalPolicy.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B276LatentActionProgramSynthesizer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B281PredictiveInterAreaMessaging.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B282PredictiveGlobalWorkspace.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B283CompetingPredictiveHypotheses.ts
+      - runtime/neuro-kurisu/src/organism/system/ActivePerceptionExecutor.ts
+      - runtime/neuro-kurisu/src/organism/system/AdaptiveComputeGovernor.ts
+      - runtime/neuro-kurisu/src/organism/system/HypothalamicHomeostasisController.ts
+      - runtime/neuro-kurisu/src/organism/system/InteroceptiveStateEstimator.ts
+      - runtime/neuro-kurisu/src/organism/learning/AdvancedResilienceEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/CausalDevelopmentLoop.ts
+      - runtime/neuro-kurisu/src/organism/system/BrainstemArousalSleepScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/DualTimescaleMemoryBridge.ts
+      - runtime/neuro-kurisu/src/organism/system/DreamCounterfactualLaboratory.ts
+      - runtime/neuro-kurisu/src/organism/system/LongHorizonAutonomyController.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P49TemporalLifeEngine.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P55DevelopmentalForkUniverse.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B286SelfConflictContinuityCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CentralSubjectDynamics.ts
+      - runtime/neuro-kurisu/src/organism/cognition/GoalIdentitySkillModulator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/TaskAgnosticTransferRouter.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousPersonhoodKernel.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousValueFormationEngine.ts
+      - runtime/neuro-kurisu/src/organism/world/P50CausalSelfWorldEngine.ts
+      - runtime/neuro-kurisu/src/organism/world/P51GroundedCausalWorkspace.ts
+      - runtime/neuro-kurisu/src/organism/world/P44EmbodiedPredictiveSelfWorld.ts
+      - runtime/neuro-kurisu/src/organism/world/P52CounterfactualDevelopmentMind.ts
+      - runtime/neuro-kurisu/src/organism/world/P83PersistentRealityModel.ts
+      - runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts
+      - runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts
+      - runtime/neuro-kurisu/src/organism/learning/PersonalCurriculumEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/DevelopmentalPortfolioEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/MetaDevelopmentalStrategyEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/LongitudinalSubjectTransferBattery.ts
+      - runtime/neuro-kurisu/src/organism/learning/CognitiveOrganismContinuityEngine.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B267AdaptiveRegimeController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2511ActiveEpistemicExperimentController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2512EpistemicSemanticAutobiographicalConsolidator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2509EmbodiedHomeostaticActionField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2853SlowMemoryConsolidationController.ts
+      - runtime/neuro-kurisu/src/organism/memory/HippocampalMemorySubstrate.ts
+      - runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts
+      - runtime/neuro-kurisu/src/organism/system/B292CognitiveStateBus.ts
+      - runtime/neuro-kurisu/src/organism/system/P60IdentityGuardian.ts
+      - runtime/neuro-kurisu/src/organism/system/OrganismResourceAllocator.ts
+      - runtime/neuro-kurisu/src/organism/system/AdaptiveReplayGovernor.ts
+      - runtime/neuro-kurisu/src/organism/system/ActionOwnershipGraph.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfDirectedLifeOrchestrator.ts
+      - runtime/neuro-kurisu/src/organism/learning/LifeCourseNavigator.ts
+      - runtime/neuro-kurisu/src/organism/learning/PersonalWorldlineEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/DevelopmentalExecutiveEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/P39ContinuousArtificialLife.ts
+      - runtime/neuro-kurisu/src/organism/learning/P38AutonomousCausalResearch.ts
+      - runtime/neuro-kurisu/src/organism/learning/ResearchGradeOrganismEngine.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B280MultiAreaNeuralCircuit.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ExternalGroundingAdaptiveController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/RiskAwareRecoveryController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B277NeuralOperatorGenesis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B279NeuralAttractorAssemblies.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B288SocialPredictiveSelfOtherBrain.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B287RelationshipValueDevelopmentCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B284NeuralAutobiographicalIdentityCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SocialPredictiveNeuralSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/PredictiveSelfAgencySubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2852OfflineConsolidationController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B269SpikingPlasticNeuralSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CentralBrainSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B270NeuralGerminalOrganism.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B261UnifiedWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B262MultiTimescaleWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B264CausalPolicyLearning.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P42UnifiedEmbodiedExperience.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P43EmbodiedImageryWorkspace.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P48FunctionalAwarenessCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P41NativePerception.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P64IntegratedOrganismDynamics.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2750UnifiedCausalWorldLoop.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P71SelfConsistencyModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/NeuroDigitalFusionKernel.ts
+      - runtime/neuro-kurisu/src/organism/system/OpenEndedSkillAcquisitionController.ts
+      - runtime/neuro-kurisu/src/organism/system/UnifiedDevelopmentalCompiler.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousResourceToolLifeController.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfModelValidationEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/NeuralMorphogeneticConstraintSolver.ts
+      - runtime/neuro-kurisu/src/organism/system/NeuralMorphogenesisEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/NeuralDigitalCoevolutionController.ts
+      - runtime/neuro-kurisu/src/organism/system/NeuralEcologyRouter.ts
+      - runtime/neuro-kurisu/src/organism/system/CounterfactualWorldCompiler.ts
+      - runtime/neuro-kurisu/src/organism/system/P73CapabilityEvolutionLedger.ts
+      - runtime/neuro-kurisu/src/organism/system/FailureRecoveryCertification.ts
+      - runtime/neuro-kurisu/src/organism/system/LiveSelfImprovementSupervisor.ts
+      - runtime/neuro-kurisu/src/organism/system/P57RealityFirstObservatory.ts
+      - runtime/neuro-kurisu/src/organism/system/NeuralPhaseTransitionDetector.ts
+      - runtime/neuro-kurisu/src/organism/system/P72LifeCycleOrchestrator.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfGeneratedCurriculumEngine.ts
+      - runtime/neuro-kurisu/src/organism/developmental/AdaptiveMemoryPolicy.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousRelationshipManager.ts
+      - runtime/neuro-kurisu/src/organism/system/CapabilitySelfModelGraph.ts
+      - runtime/neuro-kurisu/src/organism/system/HybridNeuroCognitiveLoop.ts
+      - runtime/neuro-kurisu/src/organism/system/PlasticityHomeostasisGovernor.ts
+      - runtime/neuro-kurisu/src/organism/system/B291UnifiedSelfAgencyGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B292IntentTrace.ts
+      - runtime/neuro-kurisu/src/organism/system/B333AutonomousGoalGenesisGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B334AutonomousProjectLifecycleGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B335AutonomousProjectHoldoutGate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
+      - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B278NeuralPrimitiveGenesis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2774ModelTimeReplayConsolidator.ts
+      - runtime/neuro-kurisu/tests/workpass72-*.mjs
+      - runtime/neuro-kurisu/package.json
+      - runtime/neuro-kurisu/package-lock.json
+      - .github/workflows/nk1-core-restore-integrity.yml
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - runtime/neuro-kurisu/src/organism/core/TemporalResolutionGovernor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SelfModelV2.ts
+      - runtime/neuro-kurisu/src/organism/world/WorldModel.ts
+      - runtime/neuro-kurisu/src/organism/memory/MultiTimescaleMemory.ts
+      - runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts
+      - runtime/neuro-kurisu/src/organism/verification/ProtectedArtifactRegistry.ts
+      - runtime/neuro-kurisu/src/organism/system/CognitiveQuorum.ts
+      - runtime/neuro-kurisu/src/organism/system/MetaMemoryController.ts
+      - runtime/neuro-kurisu/src/organism/system/SparsePredictiveGraph.ts
+      - runtime/neuro-kurisu/src/organism/system/DevelopmentalPhaseScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/LocalNeuralCreditAssigner.ts
+      - runtime/neuro-kurisu/src/organism/system/HybridCausalPlasticityCompiler.ts
+      - runtime/neuro-kurisu/src/organism/system/SubstratePortabilityEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/SensorimotorCoSimulationEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/LongitudinalOrganismBenchmarkEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/SandboxedSelfRewriteEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousProjectExecutor.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P70MemoryLifecycleGovernor.ts
+      - runtime/neuro-kurisu/src/organism/persistence/PersistenceProjectionGovernor.ts
+      - runtime/neuro-kurisu/src/organism/persistence/PersistenceDurabilityGovernor.ts
+      - runtime/neuro-kurisu/src/organism/learning/BehavioralGenome.ts
+      - runtime/neuro-kurisu/src/organism/learning/P29LearningGovernance.ts
+      - runtime/neuro-kurisu/src/organism/learning/ScientificMethodEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/TemporalContinuityEngine.ts
+      - runtime/neuro-kurisu/src/organism/world/LearnedResidualWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/world/PhoneBodyWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/system/WorldModelEnsembleController.ts
+      - runtime/neuro-kurisu/src/organism/system/CognitiveSpineScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/B336ProjectCausalOwnershipGate.ts
+      - runtime/neuro-kurisu/src/organism/system/PredictionLedger.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SocialWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/developmental/DevelopmentalForks.ts
+      - runtime/neuro-kurisu/src/organism/developmental/CommitmentRepair.ts
+      - runtime/neuro-kurisu/src/organism/developmental/RelationshipSelf.ts
+      - runtime/neuro-kurisu/src/organism/developmental/LongTermSocialMind.ts
+      - runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts
+      - runtime/neuro-kurisu/src/organism/developmental/ModelSwitchContinuity.ts
+      - runtime/neuro-kurisu/src/organism/developmental/TemporalMemoryCompressor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/BoredomExplorer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ContradictionReservoir.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveBudgetManager.ts
+      - runtime/neuro-kurisu/src/organism/cognition/VerifiedSyntheticTrajectoryGate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveField.ts
+      - runtime/neuro-kurisu/src/organism/system/ModelSwitchBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/system/ModelOlympics.ts
+      - runtime/neuro-kurisu/src/organism/system/DerivedWorldPreviewCache.ts
+      - runtime/neuro-kurisu/src/organism/body/MultimodalSituationModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveImmuneSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/MetaCognitiveMonitor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P81PredictiveAttention.ts
+      - runtime/neuro-kurisu/src/organism/cognition/IdentityContinuity.ts
+      - runtime/neuro-kurisu/src/organism/developmental/RegretEngine.ts
+      - runtime/neuro-kurisu/src/organism/developmental/SemanticScarEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/PredictionDebt.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfPredictionBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/world/ActiveInferenceEngine.ts
+      - runtime/neuro-kurisu/src/organism/body/MultimodalPerception.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2506NeuralBottleneckEscalator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2507ConsolidationScheduler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2508AdaptiveNeuralComputeGovernor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B265IndependentPolicyEvaluator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B266HiddenTaskGeneralization.ts
+      - runtime/neuro-kurisu/src/organism/cognition/BoundedRecurrentStateSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P74IntegratedOrganismKernel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ValuePlasticity.ts
+      - runtime/neuro-kurisu/src/organism/learning/LifelongDevelopmentSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/evolution/AutobiographicalNarrative.ts
+      - runtime/neuro-kurisu/src/organism/cognition/evolution/ValueEvolutionEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/BehavioralInfluenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts
+      - runtime/neuro-kurisu/src/organism/system/LongHorizonPredictionBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/system/P77RealityExperimentOS.ts
+      - runtime/neuro-kurisu/src/organism/system/P82RealityProgressController.ts
+      - runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P68GoalEcology.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P54LongHorizonEvidence.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P59MemoryOperatingSystem.ts
+      - runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P67AutonomousGoalGenesis.ts
+      - runtime/neuro-kurisu/src/organism/developmental/MicroDreamEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousLearningMemoryGovernor.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P56IntegratedDevelopmentalMind.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P63DevelopmentalOperatingSystem.ts
+      - runtime/neuro-kurisu/src/organism/learning/IntegratedLifeTrajectoryEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/VerifiedAutonomousLifeEngine.ts
+      - runtime/neuro-kurisu/src/organism/body/DeviceEvidenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts
+      - runtime/neuro-kurisu/src/organism/body/P37EmbodiedSensorium.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P69ConstitutionalArbiter.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P61IntegratedMindKernel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P58CognitiveKernel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts
+      - runtime/neuro-kurisu/src/organism/cognition/NeuroSymbolicConceptCompiler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2518PersistentSelfWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/NeuromodulationSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2513FutureSelfProjectionField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2514MemoryNeedPrioritizer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2517SelfAuthoredRuleCompiler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2519LongHorizonCounterfactualPlanner.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2520SensorimotorImagination.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2521LearnedGenerativeOrganismLoop.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2524NonparametricWorldExperienceMemory.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2526MultiscaleCausalRegimeGraph.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2527FactorialAblationHarness.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2529PolicyInformationGainController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2530AutonomousExperimentScheduler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B268CausalSelfExperimentLab.ts
+      - runtime/neuro-kurisu/src/organism/cognition/DeviceAwareNeuralScheduler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CrossLayerAdaptiveArbiter.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ClosedLoopEvidenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2703GlobalWorkspaceConvergence.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ActiveInformationGainController.ts
+      - runtime/neuro-kurisu/src/organism/memory/HippocampalFormationCircuit.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2503ActionablePredictiveField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B275NeuralCompositionalPolicy.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B276LatentActionProgramSynthesizer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B281PredictiveInterAreaMessaging.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B282PredictiveGlobalWorkspace.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B283CompetingPredictiveHypotheses.ts
+      - runtime/neuro-kurisu/src/organism/system/ActivePerceptionExecutor.ts
+      - runtime/neuro-kurisu/src/organism/system/AdaptiveComputeGovernor.ts
+      - runtime/neuro-kurisu/src/organism/system/HypothalamicHomeostasisController.ts
+      - runtime/neuro-kurisu/src/organism/system/InteroceptiveStateEstimator.ts
+      - runtime/neuro-kurisu/src/organism/learning/AdvancedResilienceEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/CausalDevelopmentLoop.ts
+      - runtime/neuro-kurisu/src/organism/system/BrainstemArousalSleepScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/DualTimescaleMemoryBridge.ts
+      - runtime/neuro-kurisu/src/organism/system/DreamCounterfactualLaboratory.ts
+      - runtime/neuro-kurisu/src/organism/system/LongHorizonAutonomyController.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P49TemporalLifeEngine.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P55DevelopmentalForkUniverse.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B286SelfConflictContinuityCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CentralSubjectDynamics.ts
+      - runtime/neuro-kurisu/src/organism/cognition/GoalIdentitySkillModulator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/TaskAgnosticTransferRouter.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousPersonhoodKernel.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousValueFormationEngine.ts
+      - runtime/neuro-kurisu/src/organism/world/P50CausalSelfWorldEngine.ts
+      - runtime/neuro-kurisu/src/organism/world/P51GroundedCausalWorkspace.ts
+      - runtime/neuro-kurisu/src/organism/world/P44EmbodiedPredictiveSelfWorld.ts
+      - runtime/neuro-kurisu/src/organism/world/P52CounterfactualDevelopmentMind.ts
+      - runtime/neuro-kurisu/src/organism/world/P83PersistentRealityModel.ts
+      - runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts
+      - runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts
+      - runtime/neuro-kurisu/src/organism/learning/PersonalCurriculumEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/DevelopmentalPortfolioEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/MetaDevelopmentalStrategyEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/LongitudinalSubjectTransferBattery.ts
+      - runtime/neuro-kurisu/src/organism/learning/CognitiveOrganismContinuityEngine.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B267AdaptiveRegimeController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2511ActiveEpistemicExperimentController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2512EpistemicSemanticAutobiographicalConsolidator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2509EmbodiedHomeostaticActionField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2853SlowMemoryConsolidationController.ts
+      - runtime/neuro-kurisu/src/organism/memory/HippocampalMemorySubstrate.ts
+      - runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts
+      - runtime/neuro-kurisu/src/organism/system/B292CognitiveStateBus.ts
+      - runtime/neuro-kurisu/src/organism/system/P60IdentityGuardian.ts
+      - runtime/neuro-kurisu/src/organism/system/OrganismResourceAllocator.ts
+      - runtime/neuro-kurisu/src/organism/system/AdaptiveReplayGovernor.ts
+      - runtime/neuro-kurisu/src/organism/system/ActionOwnershipGraph.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfDirectedLifeOrchestrator.ts
+      - runtime/neuro-kurisu/src/organism/learning/LifeCourseNavigator.ts
+      - runtime/neuro-kurisu/src/organism/learning/PersonalWorldlineEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/DevelopmentalExecutiveEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/P39ContinuousArtificialLife.ts
+      - runtime/neuro-kurisu/src/organism/learning/P38AutonomousCausalResearch.ts
+      - runtime/neuro-kurisu/src/organism/learning/ResearchGradeOrganismEngine.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B280MultiAreaNeuralCircuit.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ExternalGroundingAdaptiveController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/RiskAwareRecoveryController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B277NeuralOperatorGenesis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B279NeuralAttractorAssemblies.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B288SocialPredictiveSelfOtherBrain.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B287RelationshipValueDevelopmentCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B284NeuralAutobiographicalIdentityCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SocialPredictiveNeuralSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/PredictiveSelfAgencySubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2852OfflineConsolidationController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B269SpikingPlasticNeuralSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CentralBrainSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B270NeuralGerminalOrganism.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B261UnifiedWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B262MultiTimescaleWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B264CausalPolicyLearning.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P42UnifiedEmbodiedExperience.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P43EmbodiedImageryWorkspace.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P48FunctionalAwarenessCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P41NativePerception.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P64IntegratedOrganismDynamics.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2750UnifiedCausalWorldLoop.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P71SelfConsistencyModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/NeuroDigitalFusionKernel.ts
+      - runtime/neuro-kurisu/src/organism/system/OpenEndedSkillAcquisitionController.ts
+      - runtime/neuro-kurisu/src/organism/system/UnifiedDevelopmentalCompiler.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousResourceToolLifeController.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfModelValidationEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/NeuralMorphogeneticConstraintSolver.ts
+      - runtime/neuro-kurisu/src/organism/system/NeuralMorphogenesisEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/NeuralDigitalCoevolutionController.ts
+      - runtime/neuro-kurisu/src/organism/system/NeuralEcologyRouter.ts
+      - runtime/neuro-kurisu/src/organism/system/CounterfactualWorldCompiler.ts
+      - runtime/neuro-kurisu/src/organism/system/P73CapabilityEvolutionLedger.ts
+      - runtime/neuro-kurisu/src/organism/system/FailureRecoveryCertification.ts
+      - runtime/neuro-kurisu/src/organism/system/LiveSelfImprovementSupervisor.ts
+      - runtime/neuro-kurisu/src/organism/system/P57RealityFirstObservatory.ts
+      - runtime/neuro-kurisu/src/organism/system/NeuralPhaseTransitionDetector.ts
+      - runtime/neuro-kurisu/src/organism/system/P72LifeCycleOrchestrator.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfGeneratedCurriculumEngine.ts
+      - runtime/neuro-kurisu/src/organism/developmental/AdaptiveMemoryPolicy.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousRelationshipManager.ts
+      - runtime/neuro-kurisu/src/organism/system/CapabilitySelfModelGraph.ts
+      - runtime/neuro-kurisu/src/organism/system/HybridNeuroCognitiveLoop.ts
+      - runtime/neuro-kurisu/src/organism/system/PlasticityHomeostasisGovernor.ts
+      - runtime/neuro-kurisu/src/organism/system/B291UnifiedSelfAgencyGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B292IntentTrace.ts
+      - runtime/neuro-kurisu/src/organism/system/B333AutonomousGoalGenesisGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B334AutonomousProjectLifecycleGate.ts
+      - runtime/neuro-kurisu/src/organism/system/B335AutonomousProjectHoldoutGate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
+      - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B278NeuralPrimitiveGenesis.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2774ModelTimeReplayConsolidator.ts
+      - runtime/neuro-kurisu/tests/workpass72-*.mjs
+      - runtime/neuro-kurisu/package.json
+      - runtime/neuro-kurisu/package-lock.json
+      - .github/workflows/nk1-core-restore-integrity.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-core-restore-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-restore-integrity:
+    name: WorkPass72 restore and self-improvement boundary
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts
+      - name: Run WorkPass72 restore and guard regressions
+        run: npm run test:workpass72:core-integrity
+      - name: Run owning subsystem regressions
+        run: |
+          node --experimental-strip-types tests/big-pass-75-temporal-resolution.mjs
+          node --experimental-strip-types tests/canonical-self-agency-authority.mjs
+          node --experimental-strip-types tests/p32-causal-self-model.mjs
+          node --experimental-strip-types tests/p10-world-model.mjs
+          node --experimental-strip-types tests/self-model-evidence-write-gate-workpass315.mjs
+      - name: Run live-policy and handoff regressions through the new accessors
+        run: |
+          node --experimental-strip-types tests/big-pass-308-temporal-policy-closure.mjs
+          node --experimental-strip-types tests/big-pass-309-arbitration-consolidation.mjs
+          node --experimental-strip-types tests/big-pass-313-longitudinal-divergence.mjs
+      - name: Run identity-owner consumers
+        run: |
+          node --experimental-strip-types tests/big-pass-80-developmental-identity.mjs
+          node --experimental-strip-types tests/big-pass-85-self-change-lineage.mjs
+          node --experimental-strip-types tests/big-pass-88-value-attribution.mjs
+          node --experimental-strip-types tests/big-pass-96-value-evidence-gate.mjs
+          node --experimental-strip-types tests/big-pass-163-reality-memory-influence.mjs
+          node --experimental-strip-types tests/big-pass-225-228-autonomous-personhood-expansion.mjs
+      - name: Run world and temporal-memory owner consumers
+        run: |
+          node --experimental-strip-types tests/p26-contextual-world.mjs
+          node --experimental-strip-types tests/p47-temporal-memory.mjs
+          node --experimental-strip-types tests/action-cost-unification-workpass36.mjs
+      - name: Run world-model and cadence owner consumers
+        run: |
+          node --experimental-strip-types tests/big-pass-174-function-reality-and-world-tickets.mjs
+          node --experimental-strip-types tests/big-pass-39-cognitive-spine.mjs
+          node --experimental-strip-types tests/big-pass-2504-2508-neural-stack.mjs
+          node --experimental-strip-types tests/big-pass-265-independent-evaluator.mjs
+          node --experimental-strip-types tests/big-pass-266-hidden-generalization.mjs
+          node --experimental-strip-types tests/p2906-bounded-recurrent-ablation.mjs
+          node --experimental-strip-types tests/big-pass-50-cognitive-execution.mjs
+          node --experimental-strip-types tests/big-pass-89-cognitive-substrate.mjs
+      - name: Run developmental/social owner consumers
+        run: |
+          node --experimental-strip-types tests/big-pass-288-social-consolidation.mjs
+          node --experimental-strip-types tests/big-pass-336-project-causal-ownership.mjs
+          node --experimental-strip-types tests/big-pass-36-budget-evidence.mjs
+          node --experimental-strip-types tests/big-pass-37-spine.mjs
+          node --experimental-strip-types tests/p2898-correction-aware-capsules.mjs
+          node --experimental-strip-types tests/p54-long-horizon-evidence.mjs
+          node --experimental-strip-types tests/p67-attractor-synergy.mjs
+          node --experimental-strip-types tests/p67-value-self-change-loop.mjs
+          node --experimental-strip-types tests/micro-dream-associations-workpass317.mjs
+          node --experimental-strip-types tests/p56-integrated-developmental-mind.mjs
+          node --experimental-strip-types tests/big-pass-126-integrated-life-trajectory.mjs
+          node --experimental-strip-types tests/big-pass-155-verified-autonomous-life.mjs
+          node --experimental-strip-types tests/big-pass-364-device-evidence-boundary.mjs
+          node --experimental-strip-types tests/p37-semantic-sensorium.mjs
+          node --experimental-strip-types tests/p58-p60-integrated-kernel.mjs
+          node --experimental-strip-types tests/big-pass-2518-2520-unified-self-world.mjs
+          node --experimental-strip-types tests/big-pass-207-brain-atlas-gate.mjs
+          node --experimental-strip-types tests/p41-perceptual-integrity-deep-pass.mjs
+          node --experimental-strip-types tests/b2515-b2517-holdout.mjs
+          node --experimental-strip-types tests/b2521-learned-generative-loop.mjs
+          node --experimental-strip-types tests/big-pass-2512-2514-memory-self-stack.mjs
+          node --experimental-strip-types tests/big-pass-268-self-experiment.mjs
+          node --experimental-strip-types tests/p2678-nonparametric-world-memory.mjs
+          node --experimental-strip-types tests/p2680-multiscale-causal-regime-fabric.mjs
+          node --experimental-strip-types tests/big-pass-215-hippocampal-formation.mjs
+          node --experimental-strip-types tests/p2659-cross-layer-adaptive-arbiter.mjs
+          node --experimental-strip-types tests/big-pass-2613-2626-taskfree-recovery-personality-device.mjs
+          node --experimental-strip-types tests/big-pass-2503-actionable-predictive.mjs
+          node --experimental-strip-types tests/big-pass-275-neural-compositional-policy.mjs
+          node --experimental-strip-types tests/big-pass-282-predictive-global-workspace.mjs
+          node --experimental-strip-types tests/big-pass-283-competing-hypotheses.mjs
+          node --experimental-strip-types tests/big-pass-220-hypothalamic-homeostasis.mjs
+          node --experimental-strip-types tests/big-pass-221-interoception-autonomy.mjs
+          node --experimental-strip-types tests/big-pass-209-cerebellum-sparse.mjs
+          node --experimental-strip-types tests/interoceptive-precision-allocation.mjs
+          node --experimental-strip-types tests/big-pass-219-brainstem-arousal-sleep-scheduler.mjs
+          node --experimental-strip-types tests/big-pass-222-long-horizon-autonomy.mjs
+          node --experimental-strip-types tests/p49-temporal-life.mjs
+          node --experimental-strip-types tests/p55-developmental-fork-universe.mjs
+          node --experimental-strip-types tests/big-pass-286-self-conflict-continuity.mjs
+          node --experimental-strip-types tests/big-pass-200-central-subject-dynamics.mjs
+          node --experimental-strip-types tests/big-pass-229-233-open-ended-personhood.mjs
+          node --experimental-strip-types tests/big-pass-2613-2626-taskfree-recovery-personality-device.mjs
+          node --experimental-strip-types tests/p50-causal-self-world.mjs
+          node --experimental-strip-types tests/p51-grounded-causal-workspace.mjs
+          node --experimental-strip-types tests/p44-embodied-predictive.mjs
+          node --experimental-strip-types tests/p52-counterfactual-development.mjs
+          node --experimental-strip-types tests/temporal-object-tracker.mjs
+          node --experimental-strip-types tests/world-perception-grounded-identity-provenance.mjs
+          node --experimental-strip-types tests/p2841-postcondition-grounded-world.mjs
+          node --experimental-strip-types tests/big-pass-121-meta-developmental.mjs
+          node --experimental-strip-types tests/big-pass-121-core-meta-developmental.mjs
+          node --experimental-strip-types tests/big-pass-122-personal-curriculum.mjs
+          node --experimental-strip-types tests/big-pass-122-core-personal-curriculum.mjs
+          node --experimental-strip-types tests/big-pass-123-developmental-portfolio.mjs
+          node --experimental-strip-types tests/big-pass-267-regime-adaptation.mjs
+          node --experimental-strip-types tests/p2701-neural-temporal-substrate.mjs
+          node --experimental-strip-types tests/big-pass-278-neural-primitive-genesis.mjs
+          node --experimental-strip-types tests/p2774-model-time-replay.mjs
+          node --experimental-strip-types tests/big-pass-2627-2640-ablation.mjs
+          node --experimental-strip-types tests/big-pass-267-migration-roundtrip.mjs
+          node --experimental-strip-types tests/big-pass-74-experience-continuum.mjs
+          node --experimental-strip-types tests/p2687-experience-continuum-integration.mjs
+          node --experimental-strip-types tests/p2687-snapshot-benchmark.mjs
+          node --experimental-strip-types tests/big-pass-74-cold-compression.mjs
+          node --experimental-strip-types tests/big-pass-103-memory-transfer.mjs
+          node --experimental-strip-types tests/big-pass-185-hippocampal-memory.mjs
+          node --experimental-strip-types tests/big-pass-2511-active-epistemic.mjs
+          node --experimental-strip-types tests/big-pass-2512-holdout.mjs
+          node --experimental-strip-types tests/big-pass-2509-2510-embodiment-personality.mjs
+          node --experimental-strip-types tests/big-pass-292-cognitive-state-bus.mjs
+          node --experimental-strip-types tests/p58-p60-integrated-kernel.mjs
+          node --experimental-strip-types tests/unified-cognitive-substrate.mjs
+          node --experimental-strip-types tests/p2687-adaptive-replay-governor.mjs
+          node --experimental-strip-types tests/big-pass-225-228-autonomous-personhood-expansion.mjs
+          node --experimental-strip-types tests/big-pass-124-life-course.mjs
+          node --experimental-strip-types tests/big-pass-125-personal-worldline.mjs
+          node --experimental-strip-types tests/big-pass-120-developmental-executive.mjs
+          node --experimental-strip-types tests/p39-continuous-life.mjs
+          node --experimental-strip-types tests/p38-autonomous-causal-research.mjs
+          node --experimental-strip-types tests/research-grade-organism.mjs
+          node --experimental-strip-types tests/research-grade-organism-restart.mjs
+          node --experimental-strip-types tests/big-pass-280-multi-area-neural-circuit.mjs
+          node --experimental-strip-types tests/p2660-external-grounding-adaptive.mjs
+          node --experimental-strip-types tests/big-pass-2613-2626-taskfree-recovery-personality-device.mjs
+          node --experimental-strip-types tests/big-pass-273-autonomous-goal-lifecycle.mjs
+          node --experimental-strip-types tests/big-pass-277-neural-operator-genesis.mjs
+          node --experimental-strip-types tests/big-pass-279-neural-attractor.mjs
+          node --experimental-strip-types tests/big-pass-288-social-brain.mjs
+          node --experimental-strip-types tests/big-pass-287-relationship-value.mjs
+          node --experimental-strip-types tests/big-pass-284-neural-identity.mjs
+          node --experimental-strip-types tests/big-pass-269-spiking-plasticity.mjs
+          node --experimental-strip-types tests/big-pass-183-central-brain.mjs
+          node --experimental-strip-types tests/big-pass-270-neural-germinal-organism.mjs
+          node --experimental-strip-types tests/big-pass-261-unified-world-model.mjs
+          node --experimental-strip-types tests/big-pass-262-multitimescale-world-model.mjs
+          node --experimental-strip-types tests/big-pass-264-causal-policy-learning.mjs
+          node --experimental-strip-types tests/p42-unified-experience.mjs
+          node --experimental-strip-types tests/p43-mental-scene.mjs
+          node --experimental-strip-types tests/p48-functional-awareness.mjs
+          node --experimental-strip-types tests/p41-native-perception.mjs
+          node --experimental-strip-types tests/big-pass-190-p66-regression.mjs
+          node --experimental-strip-types tests/p64-mode-diversity.mjs
+          node --experimental-strip-types tests/p2750-planner-fallback.mjs
+          node --experimental-strip-types tests/big-pass-234-241-neuro-digital-superupdate.mjs
+          node --experimental-strip-types tests/big-pass-229-233-open-ended-personhood.mjs
+          node --experimental-strip-types tests/big-pass-242-249-neuro-digital-evolution.mjs
+          node --experimental-strip-types tests/big-pass-223-autonomous-resource-tool-life.mjs
+          node --experimental-strip-types tests/big-pass-169-recovery-certification.mjs
+          node --experimental-strip-types tests/p57-reality-first-observatory.mjs
+          node --experimental-strip-types tests/p2696-contextual-policy-learning.mjs
+          node --experimental-strip-types tests/big-pass-225-228-autonomous-personhood-expansion.mjs
+          node --experimental-strip-types tests/big-pass-291-unified-self-agency-gate.mjs
+          node --experimental-strip-types tests/big-pass-333-autonomous-goal-genesis-gate.mjs
+          node --experimental-strip-types tests/big-pass-334-autonomous-project-lifecycle.mjs
+          node --experimental-strip-types tests/big-pass-335-autonomous-project-holdout.mjs
+          node --experimental-strip-types tests/p66-p68-integration.mjs
+          node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
+          node --experimental-strip-types tests/p46-prediction-ledger.mjs
+          node --experimental-strip-types tests/p2870-verified-synthetic-trajectory-gate.mjs
+          node --experimental-strip-types tests/big-pass-46-multi-project-models.mjs
+          node --experimental-strip-types tests/big-pass-40-cognitive-spine.mjs
+          node --experimental-strip-types tests/big-pass-380-evidence-and-retired-receipts.mjs
+          node --experimental-strip-types tests/evidence-hash-unification-workpass39.mjs
+          node --experimental-strip-types tests/big-pass-38-autonomous-spine.mjs
+          node --experimental-strip-types tests/big-pass-179-consciousness-battery.mjs
+          node --experimental-strip-types tests/big-pass-178-compound-adversarial.mjs
+          node --experimental-strip-types tests/cognitive-integrity-gate.mjs
+      - name: Run decision/learning owner consumers
+        run: |
+          node --experimental-strip-types tests/big-pass-49-subsystem-extraction.mjs
+          node --experimental-strip-types tests/big-pass-206-world-agency-learning.mjs
+          node --experimental-strip-types tests/big-pass-38-autonomous-spine.mjs
+      - name: Run remaining pure-spread owner consumers
+        run: |
+          node --experimental-strip-types tests/big-pass-250-258-neuro-digital-superupdate.mjs
+          node --experimental-strip-types tests/persistence-projection-governor.mjs
+      - name: Run learning/persistence/continuity owner consumers
+        run: |
+          node --experimental-strip-types tests/p20-temporal-continuity.mjs
+          node --experimental-strip-types tests/p29-learning-governance.mjs
+          node --experimental-strip-types tests/p29-integration.mjs
+          node --experimental-strip-types tests/scientific-method-verification-gate-workpass595.mjs
+      - name: Typecheck runtime
+        run: npm run typecheck

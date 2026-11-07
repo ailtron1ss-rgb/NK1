@@ -242,7 +242,9 @@ export class AutonomousProjectExecutor {
       completedAt: Math.max(0, Number((raw as any)?.completedAt ?? 0)),
       lastDecisionAt: Math.max(0, Number((raw as any)?.lastDecisionAt ?? 0)),
       lastTick: Math.max(0, Math.floor(Number((raw as any)?.lastTick ?? 0))),
-      lastOutcomeId: typeof (raw as any)?.lastOutcomeId === 'string' ? String((raw as any).lastOutcomeId).slice(0,160) : undefined,
+      // Preserve the absent-when-unset shape so a restore round-trip does not add
+      // a `lastOutcomeId: undefined` key that a fresh engine never had.
+      ...(typeof (raw as any)?.lastOutcomeId === 'string' ? { lastOutcomeId: String((raw as any).lastOutcomeId).slice(0,160) } : {}),
       lastOutcomeVerified: Boolean((raw as any)?.lastOutcomeVerified),
       failedAttempts: Math.max(0, Math.floor(Number((raw as any)?.failedAttempts ?? 0))),
       steps: Array.isArray(raw?.steps) ? raw!.steps.slice(0, 6).map(step => ({ ...step, qualifyingAttempts: Math.max(0, Math.floor(Number(step.qualifyingAttempts ?? 0))), maxAttempts: Math.max(1, Math.min(8, Math.floor(Number(step.maxAttempts ?? 4)))), blocked: Boolean(step.blocked), failureAttempts: Math.max(0, Math.floor(Number(step.failureAttempts ?? 0))) })) : [],

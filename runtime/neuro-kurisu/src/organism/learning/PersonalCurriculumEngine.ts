@@ -2,6 +2,13 @@ import type { OrganismGoal } from '../core/types.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const clean=(x:unknown,n=140)=>String(x??'').trim().replace(/\s+/g,' ').slice(0,n);
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const c01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const CSTATUS=['emerging','active','satisfied','suppressed'];
+const CSOURCE=['autobiographical','social','goal','mixed'];
+const sanThread=(x:unknown):CurriculumThread|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=clean(r.id,120);if(!id)return null;return {id,family:clean(r.family,80),title:clean(r.title,160),source:CSOURCE.includes(r.source as string)?r.source as CurriculumThread['source']:'mixed',occurrences:cnt(r.occurrences,0),verified:cnt(r.verified,0),successes:cnt(r.successes,0),failures:cnt(r.failures,0),contexts:cnt(r.contexts,0),contextKeys:Array.isArray(r.contextKeys)?Array.from(new Set((r.contextKeys as unknown[]).filter((v):v is string=>typeof v==='string').map(v=>v.trim().slice(0,180)).filter(Boolean))).slice(0,24):[],socialRelevance01:c01(r.socialRelevance01,0),identityRelevance01:c01(r.identityRelevance01,0),causalStrength01:c01(r.causalStrength01,0),unresolved01:c01(r.unresolved01,0),retention01:c01(r.retention01,0),transfer01:c01(r.transfer01,0),learningNeed01:c01(r.learningNeed01,0),confidence01:c01(r.confidence01,0),priority01:c01(r.priority01,0),status:CSTATUS.includes(r.status as string)?r.status as CurriculumThread['status']:'emerging',lastOutcome01:c01(r.lastOutcome01,.5),lastAt:cnt(r.lastAt,0)};};
+const idOrNull=(v:unknown):string|null=>typeof v==='string'?(v.trim().slice(0,120)||null):null;
 const hash=(s:string)=>{let h=2166136261>>>0;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return (h>>>0).toString(16).padStart(8,'0');};
 
 export interface CurriculumThread {
@@ -54,15 +61,12 @@ export const defaultPersonalCurriculum=():PersonalCurriculumState=>({
 export class PersonalCurriculumEngine {
   private state=defaultPersonalCurriculum();
   restore(raw?:Partial<PersonalCurriculumState>|null){
-    const d=defaultPersonalCurriculum(),r=raw??{};
-    this.state={...d,...r,version:1,
-      threads:Array.isArray(r.threads)?r.threads.slice(-64).map((x:any)=>({...x,
-        contextKeys:Array.isArray(x.contextKeys)?Array.from(new Set(x.contextKeys.map((v:any)=>clean(v,180)))).slice(0,24):[],
-        status:['emerging','active','satisfied','suppressed'].includes(x.status)?x.status:'emerging',
-        source:['autobiographical','social','goal','mixed'].includes(x.source)?x.source:'mixed'
-      })):[]
-    };
+    const d=defaultPersonalCurriculum();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const threadsRaw=read('threads');
+    const threads=Array.isArray(threadsRaw)?threadsRaw.slice(-64).map(sanThread).filter((x):x is CurriculumThread=>x!==null):[];
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),threads,focusThreadId:idOrNull(read('focusThreadId')),focusGoalId:idOrNull(read('focusGoalId')),curriculumPressure01:c01(read('curriculumPressure01'),d.curriculumPressure01),socialLearning01:c01(read('socialLearning01'),d.socialLearning01),autobiographicalLearning01:c01(read('autobiographicalLearning01'),d.autobiographicalLearning01),identityLearning01:c01(read('identityLearning01'),d.identityLearning01),transferReadiness01:c01(read('transferReadiness01'),d.transferReadiness01),completedThreads:cnt(read('completedThreads'),d.completedThreads),suppressedThreads:cnt(read('suppressedThreads'),d.suppressedThreads),lastAt:cnt(read('lastAt'),d.lastAt)};
   }
+
   snapshot(){return structuredClone(this.state);}
 
   beginCycle(){

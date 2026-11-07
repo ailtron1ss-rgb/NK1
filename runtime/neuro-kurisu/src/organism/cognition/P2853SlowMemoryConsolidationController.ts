@@ -18,6 +18,9 @@ export interface P2853SlowMemoryConsolidationState {
 
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
 const cleanContext=(x:number)=>Math.max(0,Math.min(7,Math.floor(Number.isFinite(x)?x:0)));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
 
 export const defaultP2853SlowMemoryConsolidation=():P2853SlowMemoryConsolidationState=>({
   version:1,
@@ -86,11 +89,13 @@ export class P2853SlowMemoryConsolidationController {
   snapshot(){return structuredClone(this.state);}
 
   restore(raw?:Partial<P2853SlowMemoryConsolidationState>|null){
-    const d=defaultP2853SlowMemoryConsolidation(),r:any=raw??{};
-    const matrix=(v:any)=>Array.isArray(v)?Array.from({length:8},(_,i)=>Array.isArray(v[i])?v[i].slice(0,16).concat(new Array(Math.max(0,16-v[i].length)).fill(0)).slice(0,16):new Array(16).fill(0)):d.prototypes.map(x=>x.slice());
-    const visits=Array.isArray(r.visits)?r.visits.slice(0,8).concat(new Array(Math.max(0,8-r.visits.length)).fill(0)).slice(0,8):d.visits.slice();
-    const phase=(['wake','quiet','sleepRecent','sleepPrior','transfer'] as const).includes(r.lastPhase)?r.lastPhase:d.lastPhase;
-    this.state={...d,...structuredClone(r),version:1,enabled:r.enabled!==false,slots:8,prototypes:matrix(r.prototypes),visits:visits.map((x:number)=>Math.max(0,Math.floor(Number(x)||0))),updates:Math.max(0,Math.floor(Number(r.updates)||0)),retrievals:Math.max(0,Math.floor(Number(r.retrievals)||0)),contextHits:Math.max(0,Math.floor(Number(r.contextHits)||0)),transferBlends:Math.max(0,Math.floor(Number(r.transferBlends)||0)),agreement01:clamp(Number(r.agreement01??d.agreement01)),stability01:clamp(Number(r.stability01??d.stability01)),lastContextId:cleanContext(Number(r.lastContextId??0)),lastPhase:phase};
+    const d=defaultP2853SlowMemoryConsolidation();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const pRaw=read('prototypes');
+    const matrix=(v:unknown):number[][]=>Array.isArray(v)?Array.from({length:8},(_,i)=>Array.from({length:16},(_,k)=>Math.max(-1,Math.min(1,finN(Array.isArray((v as unknown[])[i])?((v as unknown[][])[i])[k]:0,0))))):d.prototypes.map(x=>x.slice());
+    const vRaw=read('visits');
+    const visits=Array.from({length:8},(_,i)=>cnt(Array.isArray(vRaw)?(vRaw as unknown[])[i]:d.visits[i],0));
+    const phase=(['wake','quiet','sleepRecent','sleepPrior','transfer'] as const).includes(read('lastPhase') as P2853SlowMemoryPhase)?read('lastPhase') as P2853SlowMemoryPhase:d.lastPhase;
+    this.state={version:1,enabled:read('enabled')!==false,slots:8,prototypes:matrix(pRaw),visits,updates:cnt(read('updates'),d.updates),retrievals:cnt(read('retrievals'),d.retrievals),contextHits:cnt(read('contextHits'),d.contextHits),transferBlends:cnt(read('transferBlends'),d.transferBlends),agreement01:C01(read('agreement01'),d.agreement01),stability01:C01(read('stability01'),d.stability01),lastContextId:cleanContext(finN(read('lastContextId'),0)),lastPhase:phase};
   }
 
   setEnabled(enabled:boolean){this.state.enabled=Boolean(enabled);}

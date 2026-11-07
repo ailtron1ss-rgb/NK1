@@ -40,6 +40,13 @@ export interface B287StepInput{
 
 export const defaultB287State=():B287State=>({version:1,tick:0,steps:0,learningUpdates:0,replayUpdates:0,relationCreations:0,relationRevisions:0,transferUses:0,relations:[],globalIdentityInfluence01:.5,socialValueCoherence01:.5,relationshipDifferentiation01:0,hiddenGeneralization01:0,causalAblationDrop01:0});
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const vecN=(v:unknown,len:number,lo:number,hi:number,fill:number):number[]=>Array.from({length:len},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fill;});
+const matN=(v:unknown,rows:number,cols:number,fb:number[][]):number[][]=>Array.from({length:rows},(_,i)=>{const row=Array.isArray(v)?(v as unknown[])[i]:undefined;const fbr=fb[i]??[];return Array.from({length:cols},(_,j)=>{const c=Array.isArray(row)?(row as unknown[])[j]:undefined;const n=typeof c==='number'?c:Number(c);return Number.isFinite(n)?Math.max(-1,Math.min(1,n)):(fbr[j]??0);});});
+const sanValueMap=(x:unknown,fb:Record<ValueName,number>):Record<ValueName,number>=>{const r=(x&&typeof x==='object')?x as Record<string,unknown>:{};return Object.fromEntries(VALUES.map(v=>[v,clamp(finN(r[v],fb[v]))])) as Record<ValueName,number>;};
+const sanEpisode=(x:unknown):{tick:number;action:ActionKind;reward01:number;surprise01:number;importance01:number;valueVector:number[]}|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),action:ACTIONS.includes(r.action as ActionKind)?r.action as ActionKind:ACTIONS[0]!,reward01:clamp(finN(r.reward01,.5)),surprise01:clamp(finN(r.surprise01,0)),importance01:clamp(finN(r.importance01,.5)),valueVector:vecN(r.valueVector,VALUES.length,0,1,0)};};
 function freshRelation(relationId:string,seed:number):B287RelationState{
   return {
     relationId,
@@ -84,48 +91,15 @@ export class B287RelationshipValueDevelopmentCore{
   snapshot(){return structuredClone(this.state);}
   restore(raw: unknown) {
     const base = defaultB287State();
-    if (!raw || typeof raw !== 'object') {
-      this.state = base;
-      return;
-    }
-    const r = raw as Partial<B287State>;
-    const relations = Array.isArray(r.relations)
-      ? r.relations.slice(0, 32).map((x: any, i: number) => {
-          const seed = 287001 + i * 97;
-          const fallback = freshRelation(String(x?.relationId ?? `rel-${i}`), seed);
-          return {
-            ...fallback,
-            ...x,
-            latent: Array.isArray(x?.latent) ? x.latent.slice(0, DIM) : fallback.latent,
-            previousLatent: Array.isArray(x?.previousLatent) ? x.previousLatent.slice(0, DIM) : fallback.previousLatent,
-            eligibility: Array.isArray(x?.eligibility) ? x.eligibility.slice(0, DIM) : fallback.eligibility,
-            recurrent: Array.isArray(x?.recurrent)
-              ? x.recurrent.slice(0, DIM).map((row: any, j: number) =>
-                  Array.isArray(row) ? row.slice(0, DIM) : fallback.recurrent[j]!,
-                )
-              : fallback.recurrent,
-            valueWeights: Array.isArray(x?.valueWeights)
-              ? x.valueWeights.slice(0, VALUES.length).map((row: any) =>
-                  Array.isArray(row) ? row.slice(0, DIM) : new Array(DIM).fill(0),
-                )
-              : fallback.valueWeights,
-            actionWeights: Array.isArray(x?.actionWeights)
-              ? x.actionWeights.slice(0, ACTIONS.length).map((row: any) =>
-                  Array.isArray(row) ? row.slice(0, DIM) : new Array(DIM).fill(0),
-                )
-              : fallback.actionWeights,
-            valueTrace: Array.isArray(x?.valueTrace)
-              ? x.valueTrace.slice(0, VALUES.length)
-              : fallback.valueTrace,
-            relationshipValue01: {
-              ...fallback.relationshipValue01,
-              ...(x?.relationshipValue01 ?? {}),
-            },
-            episodes: Array.isArray(x?.episodes) ? x.episodes.slice(-128) : [],
-          } as B287RelationState;
-        })
-      : [];
-    this.state = { ...base, ...r, relations };
+    const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const relRaw=read('relations');
+    const relations=Array.isArray(relRaw)?(relRaw as unknown[]).slice(0,32).filter(x=>x&&typeof x==='object').map((x,i)=>{
+      const r=x as Record<string,unknown>;
+      const fb=freshRelation(str(r.relationId,`rel-${i}`,160),287001+i*97);
+      const epRaw=r.episodes;
+      return {relationId:str(r.relationId,fb.relationId,160),tick:cnt(r.tick,0),latent:vecN(r.latent,DIM,-1,1,0),previousLatent:vecN(r.previousLatent,DIM,-1,1,0),eligibility:vecN(r.eligibility,DIM,-1,1,0),recurrent:matN(r.recurrent,DIM,DIM,fb.recurrent),valueWeights:matN(r.valueWeights,VALUES.length,DIM,fb.valueWeights),actionWeights:matN(r.actionWeights,ACTIONS.length,DIM,fb.actionWeights),valueTrace:vecN(r.valueTrace,VALUES.length,-1,1,0),trust01:clamp(finN(r.trust01,fb.trust01)),attachment01:clamp(finN(r.attachment01,fb.attachment01)),reciprocity01:clamp(finN(r.reciprocity01,fb.reciprocity01)),predictability01:clamp(finN(r.predictability01,fb.predictability01)),boundary01:clamp(finN(r.boundary01,fb.boundary01)),commitment01:clamp(finN(r.commitment01,fb.commitment01)),relationshipValue01:sanValueMap(r.relationshipValue01,fb.relationshipValue01),predictedValence01:clamp(finN(r.predictedValence01,fb.predictedValence01)),predictionError01:clamp(finN(r.predictionError01,fb.predictionError01)),socialPredictionError01:clamp(finN(r.socialPredictionError01,fb.socialPredictionError01)),identityInfluence01:clamp(finN(r.identityInfluence01,fb.identityInfluence01)),repairReadiness01:clamp(finN(r.repairReadiness01,fb.repairReadiness01)),conflict01:clamp(finN(r.conflict01,fb.conflict01)),sharedGoalAlignment01:clamp(finN(r.sharedGoalAlignment01,fb.sharedGoalAlignment01)),revisionPressure01:clamp(finN(r.revisionPressure01,fb.revisionPressure01)),lastSelfInput:vecN(r.lastSelfInput,DIM,-1,1,0),successfulEpisodes:cnt(r.successfulEpisodes,0),conflictEpisodes:cnt(r.conflictEpisodes,0),repairEpisodes:cnt(r.repairEpisodes,0),transferUses:cnt(r.transferUses,0),lastReward01:clamp(finN(r.lastReward01,fb.lastReward01)),episodes:Array.isArray(epRaw)?(epRaw as unknown[]).slice(-128).map(sanEpisode).filter((e):e is {tick:number;action:ActionKind;reward01:number;surprise01:number;importance01:number;valueVector:number[]}=>e!==null):[],...(ACTIONS.includes(r.lastAction as ActionKind)?{lastAction:r.lastAction as ActionKind}:{})} as B287RelationState;
+    }):[];
+    this.state={version:1,tick:cnt(read('tick'),base.tick),steps:cnt(read('steps'),base.steps),learningUpdates:cnt(read('learningUpdates'),base.learningUpdates),replayUpdates:cnt(read('replayUpdates'),base.replayUpdates),relationCreations:cnt(read('relationCreations'),base.relationCreations),relationRevisions:cnt(read('relationRevisions'),base.relationRevisions),transferUses:cnt(read('transferUses'),base.transferUses),relations,globalIdentityInfluence01:clamp(finN(read('globalIdentityInfluence01'),base.globalIdentityInfluence01)),socialValueCoherence01:clamp(finN(read('socialValueCoherence01'),base.socialValueCoherence01)),relationshipDifferentiation01:clamp(finN(read('relationshipDifferentiation01'),base.relationshipDifferentiation01)),hiddenGeneralization01:clamp(finN(read('hiddenGeneralization01'),base.hiddenGeneralization01)),causalAblationDrop01:clamp(finN(read('causalAblationDrop01'),base.causalAblationDrop01))};
   }
   private ensureRelation(id:string){let r=this.state.relations.find(x=>x.relationId===id);if(!r){r=freshRelation(id,287001+this.state.relationCreations*193);this.state.relations.unshift(r);this.state.relationCreations++;}return r;}
   private actionIndex(action?:ActionKind){const i=action?ACTIONS.indexOf(action):-1;return i<0?0:i;}

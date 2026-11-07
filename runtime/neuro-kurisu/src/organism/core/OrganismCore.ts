@@ -8523,6 +8523,12 @@ export class OrganismCore {
     p60Summary() { return this.selfSubsystem.p60IdentityGuardian.summary(); }
     canonicalSelfAgencyDiagnostics() { return this.developmentalNeural.canonicalSelfAgencyAuthority.diagnostics(); }
     get canonicalSelfAgencyAuthority() { return this.developmentalNeural.canonicalSelfAgencyAuthority; }
+    // Read-only accessors for the canonical policy and fusion owners. These exist so
+    // external callers and regressions can inspect/train the live owner without
+    // reaching into the private cognitive-runtime cluster; they expose no mutation
+    // path the cluster did not already own.
+    get adaptivePolicy() { return this.cognitiveRuntime.adaptivePolicy; }
+    get executiveNeuralFusionB297() { return this.developmentalNeural.executiveNeuralFusionB297; }
     p61Snapshot() { return this.organismSystems.self.p61IntegratedMind.snapshot(); }
     p62Summary() { return this.memorySubsystem.p62MemoryFabric.summary(); }
     p63Summary() { return this.organismSystems.self.p63DevelopmentalOperatingSystem.summary(); }

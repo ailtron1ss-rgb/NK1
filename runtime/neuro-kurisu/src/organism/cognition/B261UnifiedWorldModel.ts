@@ -40,17 +40,24 @@ export function defaultB261UnifiedWorldModel():B261UnifiedWorldModelState {
     lesionTransitionDrop01:0,lesionRewardDrop01:0,replayGain01:0,transferGain01:0,actionSensitivity01:0,sequencePlans:0,sequenceBenchmarks:0,sequenceRegret01:0,counterfactualActionGap01:0,episodes:[]};
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const vecL=(v:unknown,len:number,lab:string,lo:number,hi:number):number[]=>Array.from({length:len},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):seed(`${lab}:${i}`);});
+const matL=(v:unknown,rows:number,cols:number,lab:string,lo:number,hi:number):number[][]=>Array.from({length:rows},(_,i)=>{const row=Array.isArray(v)?(v as unknown[])[i]:undefined;return Array.from({length:cols},(_,j)=>{const c=Array.isArray(row)?(row as unknown[])[j]:undefined;const n=typeof c==='number'?c:Number(c);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):seed(`${lab}:${i}:${j}`);});});
+const sanEpisode=(x:unknown):B261WorldModelEpisode|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),action:ACTIONS.includes(r.action as ActionKind)?r.action as ActionKind:'wait',before:vecL(r.before,DIM,'eb',-1,1),predictedAfter:vecL(r.predictedAfter,DIM,'ep',-1,1),actualAfter:vecL(r.actualAfter,DIM,'ea',-1,1),predictedReward01:clamp01(finN(r.predictedReward01,.5)),actualReward01:clamp01(finN(r.actualReward01,.5)),transitionError01:clamp01(finN(r.transitionError01,.5)),rewardError01:clamp01(finN(r.rewardError01,.5)),confidence01:clamp01(finN(r.confidence01,.5)),replayCount:cnt(r.replayCount,0)};};
 export class B261UnifiedWorldModel {
   private state=defaultB261UnifiedWorldModel();
   restore(raw?:Partial<B261UnifiedWorldModelState>|null){
-    const d=defaultB261UnifiedWorldModel(),r=raw??{}; const resize=(v:any[]|undefined,n:number,lab:string)=>Array.from({length:n},(_,i)=>clamp(Number(v?.[i]??seed(`${lab}:${i}`))));
-    const mats=(m:any[][]|undefined,rows:number,cols:number,lab:string)=>Array.from({length:rows},(_,i)=>Array.from({length:cols},(_,j)=>clamp(Number(m?.[i]?.[j]??seed(`${lab}:${i}:${j}`)))));
-    this.state={...d,...r,version:3,dimension:DIM,hidden:resize(r.hidden,DIM,'h'),lastInput:resize(r.lastInput,DIM,'in'),
-      actionEmbeddings:ACTIONS.map((a,ai)=>resize(r.actionEmbeddings?.[ai],DIM,`a:${a}`)),
-      transitionWeights:mats(r.transitionWeights,DIM,DIM,'t'),transitionBias:resize(r.transitionBias,DIM,'tb'),rewardWeights:resize(r.rewardWeights,DIM,'r'),
-      rewardActionWeights:ACTIONS.map((a,ai)=>resize(r.rewardActionWeights?.[ai],DIM,`ra:${a}`)),
-      rewardActionBias:ACTIONS.map((a,ai)=>clamp(Number(r.rewardActionBias?.[ai]??seed(`rab:${a}`)))),
-      episodes:Array.isArray(r.episodes)?r.episodes.slice(-MAX_H):d.episodes};
+    const d=defaultB261UnifiedWorldModel();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const epRaw=read('episodes');
+    const aeRaw=read('actionEmbeddings'),rawRaw=read('rewardActionWeights'),rabRaw=read('rewardActionBias');
+    this.state={version:3,dimension:DIM,steps:cnt(read('steps'),d.steps),updates:cnt(read('updates'),d.updates),trainingUpdates:cnt(read('trainingUpdates'),d.trainingUpdates),rewardSamples:cnt(read('rewardSamples'),d.rewardSamples),transitionSamples:cnt(read('transitionSamples'),d.transitionSamples),lastTick:cnt(read('lastTick'),d.lastTick),
+      hidden:vecL(read('hidden'),DIM,'h',-1,1),lastInput:vecL(read('lastInput'),DIM,'in',-1,1),lastAction:ACTIONS.includes(read('lastAction') as ActionKind)?read('lastAction') as ActionKind:null,
+      actionEmbeddings:ACTIONS.map((a,ai)=>vecL(Array.isArray(aeRaw)?(aeRaw as unknown[])[ai]:undefined,DIM,`a:${a}`,-1,1)),transitionWeights:matL(read('transitionWeights'),DIM,DIM,'t',-1,1),transitionBias:vecL(read('transitionBias'),DIM,'tb',-1,1),rewardWeights:vecL(read('rewardWeights'),DIM,'r',-1,1),rewardBias:Math.max(-1,Math.min(1,finN(read('rewardBias'),d.rewardBias))),
+      rewardActionWeights:ACTIONS.map((a,ai)=>vecL(Array.isArray(rawRaw)?(rawRaw as unknown[])[ai]:undefined,DIM,`ra:${a}`,-1,1)),rewardActionBias:ACTIONS.map((a,ai)=>Math.max(-1,Math.min(1,finN(Array.isArray(rabRaw)?(rabRaw as unknown[])[ai]:undefined,seed(`rab:${a}`))))),uncertainty01:clamp01(finN(read('uncertainty01'),d.uncertainty01)),
+      onlineTransitionError01:clamp01(finN(read('onlineTransitionError01'),d.onlineTransitionError01)),onlineRewardError01:clamp01(finN(read('onlineRewardError01'),d.onlineRewardError01)),holdoutBefore01:clamp01(finN(read('holdoutBefore01'),d.holdoutBefore01)),holdoutAfter01:clamp01(finN(read('holdoutAfter01'),d.holdoutAfter01)),holdoutDelta01:clamp01(finN(read('holdoutDelta01'),d.holdoutDelta01)),
+      lesionTransitionDrop01:clamp01(finN(read('lesionTransitionDrop01'),d.lesionTransitionDrop01)),lesionRewardDrop01:clamp01(finN(read('lesionRewardDrop01'),d.lesionRewardDrop01)),replayGain01:clamp01(finN(read('replayGain01'),d.replayGain01)),transferGain01:clamp01(finN(read('transferGain01'),d.transferGain01)),actionSensitivity01:clamp01(finN(read('actionSensitivity01'),d.actionSensitivity01)),sequencePlans:cnt(read('sequencePlans'),d.sequencePlans),sequenceBenchmarks:cnt(read('sequenceBenchmarks'),d.sequenceBenchmarks),sequenceRegret01:clamp01(finN(read('sequenceRegret01'),d.sequenceRegret01)),counterfactualActionGap01:clamp01(finN(read('counterfactualActionGap01'),d.counterfactualActionGap01)),
+      episodes:Array.isArray(epRaw)?(epRaw as unknown[]).slice(-MAX_H).map(sanEpisode).filter((e):e is B261WorldModelEpisode=>e!==null):d.episodes};
   }
   snapshot(){return structuredClone(this.state);}
   private actionIndex(a:ActionKind){return Math.max(0,ACTIONS.indexOf(a));}

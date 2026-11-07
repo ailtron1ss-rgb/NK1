@@ -17,6 +17,16 @@ const rand=(seed:number,scale=.06)=>((seeded(seed)/0xffffffff)*2-1)*scale;
 const vec=(seed:number,len:number,scale=.08)=>Array.from({length:len},(_,i)=>rand(seed+i*31,scale));
 const matrix=(r:number,c:number,seed:number,scale=.04)=>Array.from({length:r},(_,i)=>Array.from({length:c},(_,j)=>rand(seed+i*97+j*17,scale)));
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,cap=160):string=>typeof v==='string'?v.slice(0,cap):'';
+const vecN=(v:unknown,n:number,fb:number[],signed=false):number[]=>{const c=signed?clamp11:clamp01;return Array.isArray(v)?Array.from({length:n},(_,i)=>c(finN((v as unknown[])[i],fb[i]??0))):fb.slice();};
+const matN=(v:unknown,rows:number,cols:number,fb:number[][],signed=true):number[][]=>{const c=signed?clamp11:clamp01;return Array.isArray(v)?Array.from({length:rows},(_,i)=>{const row=Array.isArray((v as unknown[])[i])?(v as unknown[])[i] as unknown[]:null;return row?Array.from({length:cols},(_,j)=>c(finN(row[j],fb[i]?.[j]??0))):(fb[i]?.slice()??new Array(cols).fill(0));}):fb.map(r=>r.slice());};
+const sanConflict=(x:unknown):B286ValueConflict|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(!TRAITS.includes(r.trait as Trait))return null;return {trait:r.trait as Trait,present01:clamp01(finN(r.present01,0)),future01:clamp01(finN(r.future01,0)),pastCommitment01:clamp01(finN(r.pastCommitment01,0)),conflict01:clamp01(finN(r.conflict01,0)),resolution01:clamp01(finN(r.resolution01,0))};};
+const sanRelation=(x:unknown):B286RelationSelf|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.relationId!=='string'||!r.relationId)return null;return {relationId:r.relationId.slice(0,160),trust01:clamp01(finN(r.trust01,.5)),attachment01:clamp01(finN(r.attachment01,.5)),boundary01:clamp01(finN(r.boundary01,.5)),role01:clamp01(finN(r.role01,.5)),identityDelta01:clamp01(finN(r.identityDelta01,0))};};
+const sanEpisode=(x:unknown):B286State['episodes'][number]|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),identity:vecN(r.identity,DIM,new Array(DIM).fill(0),true),future:vecN(r.future,DIM,new Array(DIM).fill(0),true),relationId:str(r.relationId,160),reward01:clamp01(finN(r.reward01,.5)),importance01:clamp01(finN(r.importance01,0)),conflict01:clamp01(finN(r.conflict01,0))};};
+const sanCommit=(x:unknown):B286State['commitmentsHistory'][number]|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(!TRAITS.includes(r.trait as Trait))return null;return {tick:cnt(r.tick,0),trait:r.trait as Trait,value01:clamp01(finN(r.value01,.5)),strength01:clamp01(finN(r.strength01,0))};};
+const rows=<T>(v:unknown,cap:number,fn:(x:unknown)=>T|null):T[]=>Array.isArray(v)?v.slice(-cap).map(fn).filter((x):x is T=>x!==null):[];
 export interface B286ValueConflict{trait:Trait;present01:number;future01:number;pastCommitment01:number;conflict01:number;resolution01:number;}
 export interface B286RelationSelf{relationId:string;trust01:number;attachment01:number;boundary01:number;role01:number;identityDelta01:number;}
 export interface B286State{
@@ -42,22 +52,16 @@ export class B286SelfConflictContinuityCore{
   private state=B286SelfConflictContinuityCore.create();
   static create(){return defaultB286State();}
   snapshot(){return structuredClone(this.state);}
-  restore(raw:unknown){const base=defaultB286State();if(!raw||typeof raw!=='object'){this.state=base;return;}const r=raw as Partial<B286State>;const tv=(r.traitValues??{}) as Record<string,number>;this.state={...base,...r,
-    identity:Array.isArray(r.identity)?r.identity.slice(0,DIM):base.identity,
-    pastIdentity:Array.isArray(r.pastIdentity)?r.pastIdentity.slice(0,DIM):base.pastIdentity,
-    presentIdentity:Array.isArray(r.presentIdentity)?r.presentIdentity.slice(0,DIM):base.presentIdentity,
-    futureIdentities:Array.isArray(r.futureIdentities)?r.futureIdentities.slice(0,HORIZONS.length).map((x)=>Array.isArray(x)?x.slice(0,DIM):new Array(DIM).fill(0)):base.futureIdentities,
-    futureWeights:Array.isArray(r.futureWeights)?r.futureWeights.slice(0,HORIZONS.length).map((x)=>Array.isArray(x)?x.slice(0,DIM):new Array(DIM).fill(0)):base.futureWeights,
-    futureTraitWeights:Array.isArray(r.futureTraitWeights)?r.futureTraitWeights.slice(0,TRAITS.length).map((x)=>Array.isArray(x)?x.slice(0,DIM):new Array(DIM).fill(0)):base.futureTraitWeights,
-    commitmentWeights:Array.isArray(r.commitmentWeights)?r.commitmentWeights.slice(0,TRAITS.length):base.commitmentWeights,
-    conflictWeights:Array.isArray(r.conflictWeights)?r.conflictWeights.slice(0,TRAITS.length):base.conflictWeights,
-    relationWeights:Array.isArray(r.relationWeights)?r.relationWeights.slice(0,6):base.relationWeights,
-    actionWeights:Array.isArray(r.actionWeights)?r.actionWeights.slice(0,ACTIONS.length):base.actionWeights,
-    valueMemory:Array.isArray(r.valueMemory)?r.valueMemory.slice(0,TRAITS.length):base.valueMemory,
-    commitments:Array.isArray(r.commitments)?r.commitments.slice(0,TRAITS.length):base.commitments,
-    identityAnchor:Array.isArray(r.identityAnchor)?r.identityAnchor.slice(0,DIM):base.identityAnchor,
-    traitValues:Object.fromEntries(TRAITS.map(t=>[t,clamp01(tv[t]??base.traitValues[t])])) as Record<Trait,number>,
-    conflicts:Array.isArray(r.conflicts)?r.conflicts.slice(-TRAITS.length*2):[],relations:Array.isArray(r.relations)?r.relations.slice(-16):[],episodes:Array.isArray(r.episodes)?r.episodes.slice(-256):[],commitmentsHistory:Array.isArray(r.commitmentsHistory)?r.commitmentsHistory.slice(-128):[]
+  restore(raw:unknown){const base=defaultB286State();if(!raw||typeof raw!=='object'){this.state=base;return;}const src=raw as Record<string,unknown>;const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const tvRaw=read('traitValues');const tv=(tvRaw&&typeof tvRaw==='object')?tvRaw as Record<string,unknown>:{};const aftRaw=read('activeFutureIndex');const laRaw=read('lastAction');const hasLastAction=ACTIONS.includes(laRaw as ActionKind)||('lastAction' in src);this.state={
+    version:1,tick:cnt(read('tick'),base.tick),steps:cnt(read('steps'),base.steps),learningUpdates:cnt(read('learningUpdates'),base.learningUpdates),replayUpdates:cnt(read('replayUpdates'),base.replayUpdates),revisionCount:cnt(read('revisionCount'),base.revisionCount),
+    identity:vecN(read('identity'),DIM,base.identity,true),pastIdentity:vecN(read('pastIdentity'),DIM,base.pastIdentity,true),presentIdentity:vecN(read('presentIdentity'),DIM,base.presentIdentity,true),
+    futureIdentities:matN(read('futureIdentities'),HORIZONS.length,DIM,base.futureIdentities),futureWeights:matN(read('futureWeights'),HORIZONS.length,DIM,base.futureWeights),futureTraitWeights:matN(read('futureTraitWeights'),TRAITS.length,DIM,base.futureTraitWeights),commitmentWeights:matN(read('commitmentWeights'),TRAITS.length,DIM,base.commitmentWeights),conflictWeights:matN(read('conflictWeights'),TRAITS.length,DIM,base.conflictWeights),relationWeights:matN(read('relationWeights'),6,DIM,base.relationWeights),actionWeights:matN(read('actionWeights'),ACTIONS.length,DIM,base.actionWeights),
+    valueMemory:vecN(read('valueMemory'),TRAITS.length,base.valueMemory),commitments:vecN(read('commitments'),TRAITS.length,base.commitments),identityAnchor:vecN(read('identityAnchor'),DIM,base.identityAnchor,true),
+    traitValues:Object.fromEntries(TRAITS.map(t=>[t,clamp01(finN(tv[t],base.traitValues[t]))])) as Record<Trait,number>,
+    conflicts:rows(read('conflicts'),TRAITS.length*2,sanConflict),relations:rows(read('relations'),16,sanRelation),episodes:rows(read('episodes'),256,sanEpisode),commitmentsHistory:rows(read('commitmentsHistory'),128,sanCommit),
+    activeFutureIndex:Math.max(0,Math.min(HORIZONS.length-1,Math.round(finN(aftRaw,base.activeFutureIndex)))),futureHorizonWeights:vecN(read('futureHorizonWeights'),HORIZONS.length,base.futureHorizonWeights),
+    selfContinuity01:clamp01(finN(read('selfContinuity01'),base.selfContinuity01)),futureCoherence01:clamp01(finN(read('futureCoherence01'),base.futureCoherence01)),identityConflict01:clamp01(finN(read('identityConflict01'),base.identityConflict01)),relationshipConflict01:clamp01(finN(read('relationshipConflict01'),base.relationshipConflict01)),valueIntegrity01:clamp01(finN(read('valueIntegrity01'),base.valueIntegrity01)),resolutionQuality01:clamp01(finN(read('resolutionQuality01'),base.resolutionQuality01)),autonomy01:clamp01(finN(read('autonomy01'),base.autonomy01)),personalityInfluence01:clamp01(finN(read('personalityInfluence01'),base.personalityInfluence01)),causalAblationDrop01:clamp01(finN(read('causalAblationDrop01'),base.causalAblationDrop01)),
+    ...(hasLastAction?{lastAction:ACTIONS.includes(laRaw as ActionKind)?laRaw as ActionKind:undefined}:{}),lastReward01:clamp01(finN(read('lastReward01'),base.lastReward01)),lastPredictionError01:clamp01(finN(read('lastPredictionError01'),base.lastPredictionError01))
   };}
   private relationIndex(id:string){let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))>>>0;return h%6;}
   private buildContext(input:B286StepInput){const base=[...input.identityLatent,...(input.worldLatent??[]),...(input.goalVector??[]),...(input.memoryLatent??[]),...(input.personalityVector??[]),...(input.relationshipVector??[])];return Array.from({length:DIM},(_,i)=>clamp11((base.length?base[i%base.length]:0)*.42+(this.state.identity[i]??0)*.18+(this.state.identityAnchor[i]??0)*.16+(this.state.presentIdentity[i]??0)*.24));}

@@ -42,13 +42,21 @@ export interface B334State {
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const stageStatus=(status:string):B334LifecycleStatus => status==='completed'?'completed':status==='abandoned'?'abandoned':status==='paused'?'paused':status==='active'?'active':'blocked';
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=180):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=180):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const numOrNull=(v:unknown):number|null=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:null;};
+const STAGES:B334LifecycleStage[]=['genesis','commitment','execution','progress','interruption','resume','revision','completion','abandonment'];
+const STATUSES:B334LifecycleStatus[]=['active','completed','abandoned','paused','blocked'];
+const sanB334Rec=(x:unknown):B334ProjectLifecycleRecord|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const hist=Array.isArray(r.history)?(r.history as unknown[]).slice(-32).filter(v=>STAGES.includes(v as B334LifecycleStage)) as B334LifecycleStage[]:[];return {id:str(r.id,'project'),domain:str(r.domain,'general'),source:str(r.source,'unknown'),autonomous:r.autonomous===true,createdAt:finN(r.createdAt,0),updatedAt:finN(r.updatedAt,0),status:STATUSES.includes(r.status as B334LifecycleStatus)?r.status as B334LifecycleStatus:'active',stage:STAGES.includes(r.stage as B334LifecycleStage)?r.stage as B334LifecycleStage:'genesis',progress01:clamp(finN(r.progress01,0)),revisions:cnt(r.revisions,0),executions:cnt(r.executions,0),verifiedOutcomes:cnt(r.verifiedOutcomes,0),failures:cnt(r.failures,0),interruptions:cnt(r.interruptions,0),resumes:cnt(r.resumes,0),lastAction:strOrNull(r.lastAction),lastOutcome01:numOrNull(r.lastOutcome01),history:hist};};
 export const defaultB334State=():B334State=>({version:1,cycles:0,externalInputCycles:0,autonomousCycles:0,projectsStarted:0,projectsCompleted:0,projectsAbandoned:0,projectsPaused:0,revisions:0,verifiedOutcomes:0,interruptionEvents:0,resumeEvents:0,autonomousContinuity01:0,projectPersistence01:0,recent:[]});
 
 export class B334AutonomousProjectLifecycleGate {
   private state=defaultB334State();
   restore(raw?:Partial<B334State>|null){
-    const d=defaultB334State(),r=raw??{};
-    this.state={...d,...r,version:1,recent:Array.isArray(r.recent)?structuredClone(r.recent).slice(-64).map((p:any)=>({...p,progress01:clamp(Number(p?.progress01??0)),history:Array.isArray(p?.history)?p.history.slice(-32):[]})):[]};
+    const d=defaultB334State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const rec=read('recent');
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),externalInputCycles:cnt(read('externalInputCycles'),d.externalInputCycles),autonomousCycles:cnt(read('autonomousCycles'),d.autonomousCycles),projectsStarted:cnt(read('projectsStarted'),d.projectsStarted),projectsCompleted:cnt(read('projectsCompleted'),d.projectsCompleted),projectsAbandoned:cnt(read('projectsAbandoned'),d.projectsAbandoned),projectsPaused:cnt(read('projectsPaused'),d.projectsPaused),revisions:cnt(read('revisions'),d.revisions),verifiedOutcomes:cnt(read('verifiedOutcomes'),d.verifiedOutcomes),interruptionEvents:cnt(read('interruptionEvents'),d.interruptionEvents),resumeEvents:cnt(read('resumeEvents'),d.resumeEvents),autonomousContinuity01:clamp(finN(read('autonomousContinuity01'),d.autonomousContinuity01)),projectPersistence01:clamp(finN(read('projectPersistence01'),d.projectPersistence01)),recent:Array.isArray(rec)?(rec as unknown[]).slice(-64).map(sanB334Rec).filter((x):x is B334ProjectLifecycleRecord=>x!==null):[]};
   }
   snapshot(){return structuredClone(this.state);}
 

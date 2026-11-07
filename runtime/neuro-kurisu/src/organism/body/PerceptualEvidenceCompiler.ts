@@ -4,6 +4,15 @@ import type { P41TemporalPerceptionState } from '../cognition/P41TemporalPercept
 import type { MultimodalState } from './MultimodalPerception.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const KINDS:readonly PerceptualEvidenceKind[]=['observed','model-output','derived','conflict','unresolved'];
+const MODALITIES:readonly PerceptualEvidenceRecord['modality'][]=['text','vision','audio','sensor','world','fusion'];
+const METRIC_KEYS:readonly (keyof PerceptualEvidenceState['metrics'])[]=['grounding01','semanticCoverage01','crossModalAgreement01','temporalBinding01','groundedSignalRatio01','conflict01','unresolved01'];
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,180)).slice(0,cap):[];
+const sanRecord=(x:unknown):PerceptualEvidenceRecord|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,180),at:Math.max(0,finN(r.at,0)),modality:MODALITIES.includes(r.modality as PerceptualEvidenceRecord['modality'])?r.modality as PerceptualEvidenceRecord['modality']:'fusion',claim:typeof r.claim==='string'?r.claim.slice(0,400):'',confidence01:clamp(finN(r.confidence01,0)),uncertainty01:clamp(finN(r.uncertainty01,0)),kind:KINDS.includes(r.kind as PerceptualEvidenceKind)?r.kind as PerceptualEvidenceKind:'unresolved',parents:strArr(r.parents,8)};};
+const sanMetrics=(v:unknown,d:PerceptualEvidenceState['metrics']):PerceptualEvidenceState['metrics']=>{const out={...d};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const k of METRIC_KEYS)if(k in r)out[k]=clamp(finN(r[k],d[k]));return out;};
+const sanQuery=(v:unknown):PerceptualEvidenceState['activeQuery']=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,180),modality:typeof r.modality==='string'?r.modality.slice(0,64):'',query:typeof r.query==='string'?r.query.slice(0,240):'',priority01:clamp(finN(r.priority01,0)),expectedInformationGain01:clamp(finN(r.expectedInformationGain01,0)),estimatedCost01:clamp(finN(r.estimatedCost01,0))};};
 const stableHash=(value:string)=>{let h=2166136261;for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
 
 export type PerceptualEvidenceKind='observed'|'model-output'|'derived'|'conflict'|'unresolved';
@@ -40,8 +49,10 @@ export interface PerceptualEvidenceInput{
 export class PerceptualEvidenceCompiler{
   private state=defaultPerceptualEvidence();
   restore(raw?:Partial<PerceptualEvidenceState>|null){
-    const d=defaultPerceptualEvidence();const r=raw??{};
-    this.state={...d,...r,evidence:Array.isArray(r.evidence)?r.evidence.slice(0,96):[],metrics:{...d.metrics,...(r.metrics??{})},activeQuery:r.activeQuery??null};
+    const d=defaultPerceptualEvidence();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    let evidence:PerceptualEvidenceRecord[]=[];try{const e=read('evidence');if(Array.isArray(e))evidence=e.slice(0,96).map(sanRecord).filter((x):x is PerceptualEvidenceRecord=>x!==null);}catch{evidence=[];}
+    let activeQuery:PerceptualEvidenceState['activeQuery']=null;try{activeQuery=sanQuery(read('activeQuery'));}catch{activeQuery=null;}
+    this.state={version:1,updates:cnt(read('updates'),d.updates),lastAt:Math.max(0,finN(read('lastAt'),d.lastAt)),scene:typeof read('scene')==='string'?String(read('scene')).slice(0,240):d.scene,evidence,activeQuery,metrics:sanMetrics(read('metrics'),d.metrics),lastHash:typeof read('lastHash')==='string'?String(read('lastHash')).slice(0,128):''};
   }
   snapshot(){return structuredClone(this.state);}
 

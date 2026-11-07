@@ -39,6 +39,8 @@ export interface CalendarContext {
 }
 
 const clampMs = (value:number) => Number.isFinite(value) ? Math.max(0, value) : 0;
+const fin=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:typeof v==='string'&&v.trim().length?Number(v):NaN;return Number.isFinite(n)?n:(Number.isFinite(f)?f:0);};
+const GAP_CLASSES:readonly TemporalGapClass[]=['none','seconds','minutes','hours','days','weeks','months','years'];
 const gapClass = (ms:number): TemporalGapClass => {
   if (ms < 5_000) return 'none';
   if (ms < 60_000) return 'seconds';
@@ -102,11 +104,39 @@ export class TemporalContinuityEngine {
 
   restore(raw: Partial<TemporalContinuityState>|null|undefined, now = Date.now()): void {
     const base = defaultTemporalContinuity(now);
+    const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};
+    const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const ctxObj=(read('lastCalendarContext')&&typeof read('lastCalendarContext')==='object')?read('lastCalendarContext') as Record<string,unknown>:{};
+    const sessions=Array.isArray(read('sessions'))?(read('sessions') as unknown[]).filter((x):x is Record<string,unknown>=>Boolean(x&&typeof x==='object')).map(s=>({id:typeof s.id==='string'?s.id.slice(0,80):'',startedAt:clampMs(Number(s.startedAt)),endedAt:typeof s.endedAt==='number'&&Number.isFinite(s.endedAt)&&s.endedAt>=0?s.endedAt:null,reason:typeof s.reason==='string'?s.reason.slice(0,160):'',clean:Boolean(s.clean)})).slice(0,128):[];
+    // Every ms field is clamped non-negative and the gap class is validated, so a
+    // corrupt snapshot cannot produce a negative lifetime or an unknown class that
+    // would misreport continuity to the rest of the organism.
     this.state = {
-      ...base,
-      ...(raw ?? {}),
-      lastCalendarContext: { ...base.lastCalendarContext, ...(raw?.lastCalendarContext ?? {}) },
-      sessions: Array.isArray(raw?.sessions) ? raw!.sessions!.slice(0,128) : [],
+      version: 1,
+      firstSeenAt: clampMs(fin(read('firstSeenAt'), base.firstSeenAt)),
+      lastCheckpointAt: clampMs(fin(read('lastCheckpointAt'), base.lastCheckpointAt)),
+      lastActiveAt: clampMs(fin(read('lastActiveAt'), base.lastActiveAt)),
+      lastSessionEndedAt: clampMs(fin(read('lastSessionEndedAt'), base.lastSessionEndedAt)),
+      totalActiveMs: clampMs(fin(read('totalActiveMs'), base.totalActiveMs)),
+      totalOfflineMs: clampMs(fin(read('totalOfflineMs'), base.totalOfflineMs)),
+      sessionCount: Math.max(0, Math.floor(fin(read('sessionCount'), base.sessionCount))),
+      interruptionCount: Math.max(0, Math.floor(fin(read('interruptionCount'), base.interruptionCount))),
+      currentSessionId: typeof read('currentSessionId')==='string'?(read('currentSessionId') as string).slice(0,80):base.currentSessionId,
+      gapSincePreviousMs: clampMs(fin(read('gapSincePreviousMs'), base.gapSincePreviousMs)),
+      gapSincePreviousClass: GAP_CLASSES.includes(read('gapSincePreviousClass') as TemporalGapClass)?read('gapSincePreviousClass') as TemporalGapClass:base.gapSincePreviousClass,
+      lastGapSummary: typeof read('lastGapSummary')==='string'?(read('lastGapSummary') as string).slice(0,240):base.lastGapSummary,
+      lastCalendarContext: {
+        now: clampMs(fin(ctxObj.now, base.lastCalendarContext.now)),
+        iso: typeof ctxObj.iso==='string'?ctxObj.iso.slice(0,40):base.lastCalendarContext.iso,
+        localDate: typeof ctxObj.localDate==='string'?ctxObj.localDate.slice(0,20):base.lastCalendarContext.localDate,
+        localTime: typeof ctxObj.localTime==='string'?ctxObj.localTime.slice(0,20):base.lastCalendarContext.localTime,
+        timezone: typeof ctxObj.timezone==='string'?ctxObj.timezone.slice(0,80):base.lastCalendarContext.timezone,
+        timezoneOffsetMinutes: fin(ctxObj.timezoneOffsetMinutes, base.lastCalendarContext.timezoneOffsetMinutes),
+        unixMs: clampMs(fin(ctxObj.unixMs, base.lastCalendarContext.unixMs)),
+        dayOfWeek: typeof ctxObj.dayOfWeek==='string'?ctxObj.dayOfWeek.slice(0,20):base.lastCalendarContext.dayOfWeek,
+        hour: Math.max(0, Math.min(23, Math.floor(fin(ctxObj.hour, base.lastCalendarContext.hour)))),
+      },
+      sessions,
     };
   }
 

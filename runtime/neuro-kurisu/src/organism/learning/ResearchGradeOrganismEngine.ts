@@ -35,17 +35,41 @@ export const defaultResearchGradeOrganism=():ResearchGradeState=>({
   architectureFrozen:false,architectureDigest:'',lastError:''
 });
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const ACTIONS2:readonly ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const COMPONENTS:readonly ResearchComponent[]=['memory','world-model','self-model','prediction','social','agency','workspace','embodiment','active-perception','counterfactual'];
+const EVIDENCE_KINDS=['tool-postcondition','world-postcondition','device-observation','sensor-observation','internal-transition','simulation','manual'] as const;
+const FAULT_KINDS=['restart','missing-state','corrupt-state','interrupted-action','sensor-failure','resource-pressure'] as const;
+const str=(v:unknown,f:string,n=200):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const sanDecision=(x:unknown):LifeDecision|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',120);if(!id)return null;return {id,cycle:cnt(r.cycle,0),action:ACTIONS2.includes(r.action as ActionKind)?r.action as ActionKind:'reflect',predicted01:C01(r.predicted01,0),contextKey:str(r.contextKey,'',200),at:cnt(r.at,0)};};
+const sanOutcome=(x:unknown):LifeOutcome|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {decisionId:str(r.decisionId,'',120),actual01:C01(r.actual01,0),reward01:finN(r.reward01,0),predictionError01:C01(r.predictionError01,0),verified01:C01(r.verified01,0),causal01:C01(r.causal01,0),external01:C01(r.external01,0),at:cnt(r.at,0)};};
+const sanEvidence=(x:unknown):PostconditionEvidence|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',120);if(!id)return null;return {id,decisionId:str(r.decisionId,'',120),action:ACTIONS2.includes(r.action as ActionKind)?r.action as ActionKind:'reflect',expected:str(r.expected,'',240),observed:str(r.observed,'',240),matched:Boolean(r.matched),evidenceKind:(EVIDENCE_KINDS as readonly string[]).includes(r.evidenceKind as string)?r.evidenceKind as EvidenceKind:'manual',confidence01:C01(r.confidence01,0),independent01:C01(r.independent01,0),at:cnt(r.at,0)};};
+const sanIntention=(x:unknown):Intention|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',120);if(!id)return null;return {id,text:str(r.text,'',240),goalId:strOrNull(r.goalId),priority01:C01(r.priority01,0),status:['open','paused','completed','abandoned'].includes(r.status as string)?r.status as Intention['status']:'open',createdAt:cnt(r.createdAt,0),updatedAt:cnt(r.updatedAt,0),resumeCount:cnt(r.resumeCount,0)};};
+const sanLongitudinal=(x:unknown):LongitudinalWindow|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',120);if(!id)return null;return {id,startedAt:cnt(r.startedAt,0),endedAt:r.endedAt===null||r.endedAt===undefined?null:cnt(r.endedAt,0),cycles:cnt(r.cycles,0),decisions:cnt(r.decisions,0),verifiedOutcomes:cnt(r.verifiedOutcomes,0),closedLoop01:C01(r.closedLoop01,0),persistence01:C01(r.persistence01,0),externalGrounding01:C01(r.externalGrounding01,0),recovery01:C01(r.recovery01,0),status:r.status==='closed'?'closed':'active'};};
+const sanReplication=(x:unknown):ReplicationRun|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',120);if(!id)return null;return {id,component:COMPONENTS.includes(r.component as ResearchComponent)?r.component as ResearchComponent:'memory',seed:cnt(r.seed,0),cycles:cnt(r.cycles,0),baseline01:C01(r.baseline01,0),treatment01:C01(r.treatment01,0),delta01:finN(r.delta01,0),replicated:Boolean(r.replicated),at:cnt(r.at,0)};};
+const sanRecovery=(x:unknown):FaultRecoveryEvent|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',120);if(!id)return null;return {id,kind:(FAULT_KINDS as readonly string[]).includes(r.kind as string)?r.kind as FaultRecoveryEvent['kind']:'restart',detected:Boolean(r.detected),recovered:Boolean(r.recovered),continuity01:C01(r.continuity01,0),at:cnt(r.at,0)};};
+const sanProduction=(x:unknown):ProductionSample|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {at:cnt(r.at,0),uptimeMs:cnt(r.uptimeMs,0),memoryRssMB:cnt(r.memoryRssMB,0),heapUsedMB:cnt(r.heapUsedMB,0),eventLoopLagMs:Math.max(0,finN(r.eventLoopLagMs,0)),cpuLoad01:C01(r.cpuLoad01,0),thermal01:C01(r.thermal01,0),battery01:C01(r.battery01,0)};};
 export class ResearchGradeOrganismEngine {
   private state=defaultResearchGradeOrganism();
   private activeWindowId:string|null=null;
   restore(raw?:Partial<ResearchGradeState>|null){
-    const d=defaultResearchGradeOrganism(),r:any=raw??{};
-    this.state={...d,...r,version:2,
-      decisions:Array.isArray(r.decisions)?r.decisions.slice(-512):[], outcomes:Array.isArray(r.outcomes)?r.outcomes.slice(-512):[],
-      evidence:Array.isArray(r.evidence)?r.evidence.slice(-512):[], intentions:Array.isArray(r.intentions)?r.intentions.slice(-128):[],
-      longitudinal:Array.isArray(r.longitudinal)?r.longitudinal.slice(-64):[], replications:Array.isArray(r.replications)?r.replications.slice(-128):[],
-      recovery:Array.isArray(r.recovery)?r.recovery.slice(-128):[], production:Array.isArray(r.production)?r.production.slice(-256):[], metrics:{...d.metrics,...(r.metrics??{})}
-    };
+    const d=defaultResearchGradeOrganism();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const arr=(k:string,n:number):unknown[]=>Array.isArray(read(k))?(read(k) as unknown[]).slice(-n):[];
+    const mRaw=(read('metrics')&&typeof read('metrics')==='object')?read('metrics') as Record<string,unknown>:{};
+    this.state={version:2,cycles:cnt(read('cycles'),d.cycles),nextId:Math.max(1,cnt(read('nextId'),d.nextId)),lastAt:cnt(read('lastAt'),d.lastAt),startedAt:cnt(read('startedAt'),d.startedAt),
+      decisions:arr('decisions',512).map(sanDecision).filter((x):x is LifeDecision=>x!==null),
+      outcomes:arr('outcomes',512).map(sanOutcome).filter((x):x is LifeOutcome=>x!==null),
+      evidence:arr('evidence',512).map(sanEvidence).filter((x):x is PostconditionEvidence=>x!==null),
+      intentions:arr('intentions',128).map(sanIntention).filter((x):x is Intention=>x!==null),
+      longitudinal:arr('longitudinal',64).map(sanLongitudinal).filter((x):x is LongitudinalWindow=>x!==null),
+      replications:arr('replications',128).map(sanReplication).filter((x):x is ReplicationRun=>x!==null),
+      recovery:arr('recovery',128).map(sanRecovery).filter((x):x is FaultRecoveryEvent=>x!==null),
+      production:arr('production',256).map(sanProduction).filter((x):x is ProductionSample=>x!==null),
+      metrics:{closedLoop01:C01(mRaw.closedLoop01,d.metrics.closedLoop01),externalGrounding01:C01(mRaw.externalGrounding01,d.metrics.externalGrounding01),activePerception01:C01(mRaw.activePerception01,d.metrics.activePerception01),longHorizon01:C01(mRaw.longHorizon01,d.metrics.longHorizon01),causal01:C01(mRaw.causal01,d.metrics.causal01),autonomy01:C01(mRaw.autonomy01,d.metrics.autonomy01),continuity01:C01(mRaw.continuity01,d.metrics.continuity01),recovery01:C01(mRaw.recovery01,d.metrics.recovery01),replication01:C01(mRaw.replication01,d.metrics.replication01),production01:C01(mRaw.production01,d.metrics.production01),overall01:C01(mRaw.overall01,d.metrics.overall01)},
+      architectureFrozen:Boolean(read('architectureFrozen')),architectureDigest:str(read('architectureDigest'),'',160),lastError:str(read('lastError'),'',240)};
   }
   snapshot(){return structuredClone(this.state);}
   beginCycle(ctx:ResearchGradeContext){

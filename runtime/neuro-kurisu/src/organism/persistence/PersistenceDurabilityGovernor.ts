@@ -1,6 +1,9 @@
 export type PersistenceDurabilityProfile = 'quality'|'balanced'|'mobile';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const fin=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:typeof v==='string'&&v.trim().length?Number(v):NaN;return Number.isFinite(n)?n:(Number.isFinite(f)?f:0);};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(fin(v,f)));
+const DECISIONS:readonly PersistenceDurabilityState['lastDecision'][]=['default','save-cost','resource-pressure','battery-risk'];
 
 export interface PersistenceDurabilityState {
   version: 1;
@@ -44,7 +47,22 @@ export class PersistenceDurabilityGovernor {
   };
 
   restore(raw?: Partial<PersistenceDurabilityState>|null): void {
-    this.state = { ...this.state, ...(raw ?? {}) };
+    const d = this.state;
+    const src: Record<string,unknown> = (raw && typeof raw === 'object') ? raw as Record<string,unknown> : {};
+    const read = (k:string):unknown => { try { return src[k]; } catch { return undefined; } };
+    // The durability window must stay >= 1; NaN/negative values here would make
+    // the controller choose a nonsensical checkpoint cadence.
+    this.state = {
+      version: 1,
+      decisions: cnt(read('decisions'), d.decisions),
+      lastDecision: DECISIONS.includes(read('lastDecision') as PersistenceDurabilityState['lastDecision']) ? read('lastDecision') as PersistenceDurabilityState['lastDecision'] : d.lastDecision,
+      effectiveMaxDirtyCycles: Math.max(1, cnt(read('effectiveMaxDirtyCycles'), d.effectiveMaxDirtyCycles)),
+      targetCrashLossCycles: Math.max(1, cnt(read('targetCrashLossCycles'), d.targetCrashLossCycles)),
+      lastPayloadBytes: cnt(read('lastPayloadBytes'), d.lastPayloadBytes),
+      lastSaveMs: cnt(read('lastSaveMs'), d.lastSaveMs),
+      estimatedWriteAmplification01: clamp(fin(read('estimatedWriteAmplification01'), d.estimatedWriteAmplification01)),
+      lastAt: Math.max(0, fin(read('lastAt'), d.lastAt)),
+    };
   }
 
   decide(input: PersistenceDurabilityInput): number {

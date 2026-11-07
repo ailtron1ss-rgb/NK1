@@ -7,6 +7,8 @@ const TRACE_CAP=64;
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
 const finite=(x:number,f=0)=>Number.isFinite(x)?x:f;
 const zeros=(n:number)=>new Array(n).fill(0);
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finite(typeof v==='number'?v:Number(v),f)));
+const C01=(v:unknown,f:number):number=>clamp(finite(typeof v==='number'?v:Number(v),f));
 const dist=(a:number[],b:number[])=>Math.sqrt(a.reduce((s,x,i)=>{const d=finite(x)-finite(b[i]);return s+d*d;},0)/Math.max(1,a.length));
 const mean=(v:number[])=>v.length?v.reduce((s,x)=>s+finite(x),0)/v.length:0;
 
@@ -93,15 +95,17 @@ export class P2774ModelTimeReplayConsolidator{
   metrics(){return structuredClone(this.state);}
   setEnabled(v:boolean){this.state.enabled=!!v;}
   restore(raw?:Partial<P2774State>|null){
-    const d=defaultState(),r:any=raw??{};
-    const arr=(v:any,n:number,fill=0)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-(v?.length??0))).fill(fill)).slice(0,n):new Array(n).fill(fill);
-    const matrix=(v:any,rows:number,cols:number,fill=0)=>Array.from({length:rows},(_,i)=>arr(v?.[i],cols,fill));
-    const traces:Array<P2774EpisodeTrace>=Array.isArray(r.traces)?r.traces.slice(-TRACE_CAP).map((e:any)=>({
-      tick:Number(e?.tick??0),contextId:Math.max(0,Math.min(CONTEXTS-1,Math.floor(Number(e?.contextId??0)))),actionIndex:Math.max(0,Math.min(ACTIONS.length-1,Math.floor(Number(e?.actionIndex??0)))),
-      latent:arr(e?.latent,LATENT),reward01:clamp(Number(e?.reward01??.5)),predictionError01:clamp(Number(e?.predictionError01??.5)),novelty01:clamp(Number(e?.novelty01??.5)),verified01:clamp(Number(e?.verified01??0)),
-      importance01:clamp(Number(e?.importance01??.25)),recurrence01:clamp(Number(e?.recurrence01??0)),modelTimeStamp:Math.max(0,finite(Number(e?.modelTimeStamp??0))),compact01:clamp(Number(e?.compact01??0))
-    })):[];
-    this.state={...d,...structuredClone(r),version:1,contextRecurrence:arr(r.contextRecurrence,CONTEXTS),actionRecurrence:matrix(r.actionRecurrence,CONTEXTS,ACTIONS.length),contextSemantic:matrix(r.contextSemantic,CONTEXTS,LATENT),contextSemanticConfidence:arr(r.contextSemanticConfidence,CONTEXTS,.1),traces};
+    const d=defaultState();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const arr=(v:unknown,n:number,fill=0):number[]=>Array.isArray(v)?Array.from({length:n},(_,i)=>finite(Number((v as unknown[])[i]),fill)):new Array(n).fill(fill);
+    const matrix=(v:unknown,rows:number,cols:number,fill=0):number[][]=>Array.isArray(v)?Array.from({length:rows},(_,i)=>arr((v as unknown[])[i],cols,fill)):Array.from({length:rows},()=>new Array(cols).fill(fill));
+    const tracesRaw=read('traces');
+    const traces:Array<P2774EpisodeTrace>=Array.isArray(tracesRaw)?tracesRaw.slice(-TRACE_CAP).filter((e:unknown)=>e&&typeof e==='object').map((e:unknown)=>{const r=e as Record<string,unknown>;return {tick:cnt(r.tick,0),contextId:Math.max(0,Math.min(CONTEXTS-1,cnt(r.contextId,0))),actionIndex:Math.max(0,Math.min(ACTIONS.length-1,cnt(r.actionIndex,0))),latent:arr(r.latent,LATENT),reward01:C01(r.reward01,.5),predictionError01:C01(r.predictionError01,.5),novelty01:C01(r.novelty01,.5),verified01:C01(r.verified01,0),importance01:C01(r.importance01,.25),recurrence01:C01(r.recurrence01,0),modelTimeStamp:cnt(r.modelTimeStamp,0),compact01:C01(r.compact01,0)};}):[];
+    const cRec=read('contextRecurrence'),aRec=read('actionRecurrence'),cSem=read('contextSemantic'),cConf=read('contextSemanticConfidence');
+    this.state={version:1,enabled:read('enabled')!==false,tick:cnt(read('tick'),d.tick),outcomes:cnt(read('outcomes'),d.outcomes),modelTimeTotal:cnt(read('modelTimeTotal'),d.modelTimeTotal),modelTimeDelta01:C01(read('modelTimeDelta01'),d.modelTimeDelta01),lastModelTimeDelta01:C01(read('lastModelTimeDelta01'),d.lastModelTimeDelta01),
+      lastReplayModelTime:cnt(read('lastReplayModelTime'),d.lastReplayModelTime),replayIntervalModelTime:Math.max(0,finite(typeof read('replayIntervalModelTime')==='number'?Number(read('replayIntervalModelTime')):d.replayIntervalModelTime,d.replayIntervalModelTime)),replayDebt01:C01(read('replayDebt01'),d.replayDebt01),forgettingRisk01:C01(read('forgettingRisk01'),d.forgettingRisk01),replayDue01:C01(read('replayDue01'),d.replayDue01),
+      replayBudget01:C01(read('replayBudget01'),d.replayBudget01),recurrence01:C01(read('recurrence01'),d.recurrence01),consolidationPressure01:C01(read('consolidationPressure01'),d.consolidationPressure01),episodicWrites:cnt(read('episodicWrites'),d.episodicWrites),episodicCompactions:cnt(read('episodicCompactions'),d.episodicCompactions),
+      compactedTraces:cnt(read('compactedTraces'),d.compactedTraces),replayEvents:cnt(read('replayEvents'),d.replayEvents),replaySamples:cnt(read('replaySamples'),d.replaySamples),consolidationEvents:cnt(read('consolidationEvents'),d.consolidationEvents),bridgeUpdates:cnt(read('bridgeUpdates'),d.bridgeUpdates),
+      contextRecurrence:arr(cRec,CONTEXTS).map(v=>Math.max(0,v)),actionRecurrence:matrix(aRec,CONTEXTS,ACTIONS.length).map(r=>r.map(v=>Math.max(0,v))),contextSemantic:matrix(cSem,CONTEXTS,LATENT),contextSemanticConfidence:Array.from({length:CONTEXTS},(_,i)=>C01(Array.isArray(cConf)?(cConf as unknown[])[i]:d.contextSemanticConfidence[i],.1)),traces};
   }
   beforeDecision(i:P2774DecisionInput):P2774DecisionOutput{
     if(!this.state.enabled)return {actionBias:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,replayDue:false,replayBudget:0,replayPressure01:0,consolidationPressure01:0,modelTime01:0,forgettingRisk01:0,recurrence01:0,semanticConfidence01:.1};

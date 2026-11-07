@@ -27,6 +27,9 @@ export const defaultP2852OfflineConsolidation=():P2852OfflineConsolidationState=
   phase:'wake',phaseTicks:0,lastTick:0,recentMix01:.45,priorMix01:.35,transferMix01:.20,
 });
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const PHASES:P2852OfflinePhase[]=['wake','quiet','sleepRecent','sleepPrior','transfer'];
 export class P2852OfflineConsolidationController {
   private state=defaultP2852OfflineConsolidation();
   plan(tick:number, budget01:number, novelty01:number, forgetting01:number, taskShift01:number){
@@ -60,23 +63,8 @@ export class P2852OfflineConsolidationController {
   }
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<P2852OfflineConsolidationState>|null){
-    const d=defaultP2852OfflineConsolidation(),r:any=raw??{};
-    this.state={...d,...structuredClone(r),version:1,
-      cycles:Math.max(0,Math.floor(Number(r.cycles??0))),
-      replaySamples:Math.max(0,Math.floor(Number(r.replaySamples??0))),
-      recentSamples:Math.max(0,Math.floor(Number(r.recentSamples??0))),
-      priorSamples:Math.max(0,Math.floor(Number(r.priorSamples??0))),
-      transferSamples:Math.max(0,Math.floor(Number(r.transferSamples??0))),
-      consolidationUpdates:Math.max(0,Math.floor(Number(r.consolidationUpdates??0))),
-      utilityGain01:clamp(Number(r.utilityGain01??.5)),
-      interference01:clamp(Number(r.interference01??0)),
-      retention01:clamp(Number(r.retention01??.5)),
-      phase:(['wake','quiet','sleepRecent','sleepPrior','transfer'] as const).includes(r.phase)?r.phase:d.phase,
-      phaseTicks:Math.max(0,Math.floor(Number(r.phaseTicks??0))),
-      lastTick:Math.floor(Number(r.lastTick??0)),
-      recentMix01:clamp(Number(r.recentMix01??.45)),
-      priorMix01:clamp(Number(r.priorMix01??.35)),
-      transferMix01:clamp(Number(r.transferMix01??.20))};
+    const d=defaultP2852OfflineConsolidation();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),replaySamples:cnt(read('replaySamples'),d.replaySamples),recentSamples:cnt(read('recentSamples'),d.recentSamples),priorSamples:cnt(read('priorSamples'),d.priorSamples),transferSamples:cnt(read('transferSamples'),d.transferSamples),consolidationUpdates:cnt(read('consolidationUpdates'),d.consolidationUpdates),utilityGain01:clamp(finN(read('utilityGain01'),d.utilityGain01)),interference01:clamp(finN(read('interference01'),d.interference01)),retention01:clamp(finN(read('retention01'),d.retention01)),phase:PHASES.includes(read('phase') as P2852OfflinePhase)?read('phase') as P2852OfflinePhase:d.phase,phaseTicks:cnt(read('phaseTicks'),d.phaseTicks),lastTick:cnt(read('lastTick'),d.lastTick),recentMix01:clamp(finN(read('recentMix01'),d.recentMix01)),priorMix01:clamp(finN(read('priorMix01'),d.priorMix01)),transferMix01:clamp(finN(read('transferMix01'),d.transferMix01))};
   }
   metrics(){return this.snapshot();}
 }

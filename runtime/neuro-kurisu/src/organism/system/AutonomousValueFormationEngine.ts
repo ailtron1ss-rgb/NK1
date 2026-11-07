@@ -1,12 +1,18 @@
 /** BIG PASS 229 — autonomous value formation with stability/evidence gates. */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const clamp11=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
+const REASONS:ValueRevisionReason[]=['experience','learning','relationship','self-reflection','protection'];
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,cap=160):string=>typeof v==='string'?v.slice(0,cap):'';
+const sanRev=(x:unknown):ValueRevision|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const rs=r.reason;return {id:r.id.slice(0,160),domain:str(r.domain,160),delta01:clamp11(finN(r.delta01,0)),confidence01:clamp(finN(r.confidence01,0)),reason:REASONS.includes(rs as ValueRevisionReason)?rs as ValueRevisionReason:'experience',evidence01:clamp(finN(r.evidence01,0)),reversible:r.reversible===true,at:cnt(r.at,0)};};
 export type ValueRevisionReason='experience'|'learning'|'relationship'|'self-reflection'|'protection';
 export interface ValueRevision { id:string; domain:string; delta01:number; confidence01:number; reason:ValueRevisionReason; evidence01:number; reversible:boolean; at:number; }
 export interface AutonomousValueState { version:1; cycles:number; revisions:number; accepted:number; rejected:number; stability01:number; meanEvidence01:number; lastDomain:string; lastDecision:'accept'|'reject'|'hold'; values:Record<string,number>; history:ValueRevision[]; }
 export const defaultAutonomousValue=():AutonomousValueState=>({version:1,cycles:0,revisions:0,accepted:0,rejected:0,stability01:.82,meanEvidence01:.55,lastDomain:'none',lastDecision:'hold',values:{autonomy:.72,learning:.68,truthfulness:.86,care:.62,selfPreservation:.84,coherence:.80},history:[]});
 export class AutonomousValueFormationEngine{
  private state=defaultAutonomousValue();
- restore(raw?:Partial<AutonomousValueState>|null){const d=defaultAutonomousValue(),r=raw??{};this.state={...d,...r,values:{...d.values,...(r.values??{})},history:Array.isArray(r.history)?structuredClone(r.history).slice(0,96):[],version:1};}
+ restore(raw?:Partial<AutonomousValueState>|null){const d=defaultAutonomousValue();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const vRaw=read('values');const vObj=(vRaw&&typeof vRaw==='object')?vRaw as Record<string,unknown>:{};const values={...d.values};for(const [k,v] of Object.entries(vObj).slice(0,64))values[k.slice(0,64)]=clamp11(finN(v,0));const ld=read('lastDomain');const ldec=read('lastDecision');this.state={version:1,cycles:cnt(read('cycles'),d.cycles),revisions:cnt(read('revisions'),d.revisions),accepted:cnt(read('accepted'),d.accepted),rejected:cnt(read('rejected'),d.rejected),stability01:clamp(finN(read('stability01'),d.stability01)),meanEvidence01:clamp(finN(read('meanEvidence01'),d.meanEvidence01)),lastDomain:typeof ld==='string'&&ld?ld.slice(0,160):d.lastDomain,lastDecision:ldec==='accept'||ldec==='reject'||ldec==='hold'?ldec as AutonomousValueState['lastDecision']:d.lastDecision,values,history:Array.isArray(read('history'))?(read('history') as unknown[]).slice(0,96).map(sanRev).filter((x):x is ValueRevision=>x!==null):[]};}
  snapshot(){return structuredClone(this.state);}
  evaluate(input:{at:number;domain:string;pressure01:number;evidence01:number;uncertainty01:number;identity01:number;relationship01:number;novelty01:number}):{decision:'accept'|'reject'|'hold';valueDelta01:number;stability01:number;reason:ValueRevisionReason}{
   const p=clamp(input.pressure01), e=clamp(input.evidence01), u=clamp(input.uncertainty01), id=clamp(input.identity01);

@@ -32,14 +32,105 @@ export interface WorldModelSnapshot {
 
 const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 
+const ACTION_KINDS: readonly ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
+const TRANSITION_LIMIT = 1000;
+/** Copy own data properties only; accessors, exotic prototypes and hostile traps fail closed. */
+function ownDataRecord(value: unknown): Record<string, unknown> | null {
+  try {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const output: Record<string, unknown> = Object.create(null);
+    for (const key of Reflect.ownKeys(descriptors)) {
+      if (typeof key !== 'string') return null;
+      const descriptor = (descriptors as Record<string, PropertyDescriptor>)[key];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+          descriptor.get !== undefined || descriptor.set !== undefined) return null;
+      output[key] = descriptor.value;
+    }
+    return output;
+  } catch { return null; }
+}
+function ownDataArray(value: unknown, max: number): unknown[] | null {
+  try {
+    if (!Array.isArray(value)) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const length = (descriptors as Record<string, PropertyDescriptor>).length?.value;
+    if (!Number.isSafeInteger(length) || (length as number) < 0 || (length as number) > max) return null;
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.some(key => typeof key !== 'string' || (key !== 'length' && !/^(0|[1-9]\d*)$/.test(key)))) return null;
+    const result: unknown[] = [];
+    for (let index = 0; index < (length as number); index++) {
+      const descriptor = descriptors[String(index)];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+          descriptor.get !== undefined || descriptor.set !== undefined) return null;
+      result.push(descriptor.value);
+    }
+    return result;
+  } catch { return null; }
+}
+const boundedText = (value: unknown, max: number): string | null =>
+  typeof value === 'string' && value.length > 0 && value.length <= max ? value : null;
+function boundedStringList(value: unknown, max: number, itemMax: number): string[] | null {
+  const rows = ownDataArray(value, max);
+  if (!rows) return null;
+  const result: string[] = [];
+  for (const row of rows) { const text = boundedText(row, itemMax); if (text === null) return null; result.push(text); }
+  return result;
+}
+function sanitizeWorldContext(value: unknown): WorldContext | null {
+  const row = ownDataRecord(value);
+  if (!row) return null;
+  const location = boundedText(row.location, 128);
+  const facts = boundedStringList(row.facts, 240, 512);
+  const events = boundedStringList(row.events, 80, 512);
+  if (location === null || facts === null || events === null) return null;
+  const number = (input: unknown) => (typeof input === 'number' && Number.isFinite(input) ? input : 0);
+  const energy = clamp(number(row.energy)); const attention = clamp(number(row.attention)); const uncertainty = clamp(number(row.uncertainty));
+  const rawObjects = ownDataArray(row.objects, 2000);
+  if (rawObjects === null) return null;
+  const objects: WorldContext['objects'] = [];
+  for (const raw of rawObjects) {
+    const item = ownDataRecord(raw);
+    if (!item) return null;
+    const id = boundedText(item.id, 128); const label = boundedText(item.label, 256); const itemLocation = boundedText(item.location, 128);
+    if (id === null || label === null || itemLocation === null) return null;
+    objects.push({
+      ...(item as unknown as WorldContext['objects'][number]),
+      id, label, location: itemLocation, value: number(item.value),
+      visible: item.visible === true, collected: item.collected === true,
+    });
+  }
+  const tick = typeof row.tick === 'number' && Number.isSafeInteger(row.tick) && row.tick >= 0 ? row.tick : 0;
+  return { tick, location, energy, attention, uncertainty, facts: facts.slice(-120), objects, events: events.slice(-40) };
+}
+function sanitizeTransition(value: unknown): WorldTransition | null {
+  const row = ownDataRecord(value);
+  if (!row) return null;
+  if (typeof row.action !== 'string' || !(ACTION_KINDS as readonly string[]).includes(row.action)) return null;
+  const before = sanitizeWorldContext(row.before); const after = sanitizeWorldContext(row.after);
+  if (!before || !after) return null;
+  if (typeof row.reward !== 'number' || !Number.isFinite(row.reward)) return null;
+  if (typeof row.surprise !== 'number' || !Number.isFinite(row.surprise)) return null;
+  if (typeof row.at !== 'number' || !Number.isFinite(row.at) || row.at < 0) return null;
+  return { action: row.action as ActionKind, before, after, reward: clamp(row.reward), surprise: clamp(row.surprise), at: row.at };
+}
+
 export class WorldModel {
   private readonly transitions: WorldTransition[] = [];
   private beliefState: WorldContext | null = null;
 
   restore(snapshot: WorldModelSnapshot | undefined): void {
-    this.beliefState = snapshot?.belief ? structuredClone(snapshot.belief) : null;
+    const root = ownDataRecord(snapshot);
+    const belief = root ? sanitizeWorldContext(root.belief) : null;
+    const rows = root ? ownDataArray(root.transitions, TRANSITION_LIMIT) : null;
+    this.beliefState = belief;
     this.transitions.length = 0;
-    for (const row of (snapshot?.transitions ?? []).slice().reverse().slice(0, 1000)) this.transitions.push(structuredClone(row));
+    for (const row of (rows ?? []).slice().reverse()) {
+      const transition = sanitizeTransition(row);
+      if (transition) this.transitions.push(transition);
+    }
   }
 
   snapshot(): WorldTransition[] { return this.transitions.slice(0, 1000).map(x => structuredClone(x)); }
@@ -54,30 +145,57 @@ export class WorldModel {
   }
 
   observeContext(context: WorldContext): void {
-    const facts=Array.isArray(context.facts)?context.facts:[];
-    const events=Array.isArray(context.events)?context.events:[];
-    const objects=Array.isArray(context.objects)?context.objects:[];
+    const row = ownDataRecord(context);
+    // A malformed observation is rejected without wiping the last good belief.
+    if (!row) return;
+    const rawFacts = ownDataArray(row.facts, 240) ?? [];
+    const rawEvents = ownDataArray(row.events, 80) ?? [];
+    const rawObjects = ownDataArray(row.objects, 2000) ?? [];
+    const facts = rawFacts.filter((item): item is string => typeof item === 'string' && item.length > 0 && item.length <= 512);
+    const events = rawEvents.filter((item): item is string => typeof item === 'string' && item.length > 0 && item.length <= 512);
+    const objects: WorldContext['objects'] = [];
+    for (const raw of rawObjects) {
+      const item = ownDataRecord(raw);
+      if (!item) continue;
+      const id = boundedText(item.id, 128); const label = boundedText(item.label, 256); const itemLocation = boundedText(item.location, 128);
+      if (id === null || label === null || itemLocation === null) continue;
+      objects.push({
+        ...(item as unknown as WorldContext['objects'][number]),
+        id, label, location: itemLocation,
+        value: typeof item.value === 'number' && Number.isFinite(item.value) ? item.value : 0,
+        visible: item.visible === true, collected: item.collected === true,
+      });
+    }
+    const unit = (input: unknown): number => typeof input === 'number' && Number.isFinite(input) ? clamp(input) : 0;
+    const tick = typeof row.tick === 'number' && Number.isSafeInteger(row.tick) && row.tick >= 0 ? row.tick : 0;
     this.beliefState = {
-      ...structuredClone(context),
+      ...(row as unknown as WorldContext),
+      tick,
+      location: boundedText(row.location, 128) ?? 'unknown',
+      energy: unit(row.energy), attention: unit(row.attention), uncertainty: unit(row.uncertainty),
       facts: Array.from(new Set(facts)).slice(-120),
       events: Array.from(new Set(events)).slice(-40),
-      objects: structuredClone(objects),
+      objects,
     };
   }
 
   observeTransition(transition: WorldTransitionForOrganism): void {
-    const action = transition.action as ActionKind;
-    const row: WorldTransition = {
-      action,
-      before: structuredClone(transition.before),
-      after: structuredClone(transition.after),
-      reward: clamp(transition.reward),
-      surprise: clamp(transition.surprise),
-      at: transition.at,
-    };
-    this.transitions.unshift(row);
+    const row = ownDataRecord(transition);
+    if (!row) return;
+    const before = sanitizeWorldContext(row.before);
+    const after = sanitizeWorldContext(row.after);
+    // A transition that cannot be represented faithfully is rejected rather than stored partially.
+    if (!before || !after || typeof row.action !== 'string' || !(ACTION_KINDS as readonly string[]).includes(row.action)) return;
+    this.transitions.unshift({
+      action: row.action as ActionKind,
+      before,
+      after,
+      reward: clamp(typeof row.reward === 'number' ? row.reward : 0),
+      surprise: clamp(typeof row.surprise === 'number' ? row.surprise : 0),
+      at: typeof row.at === 'number' && Number.isFinite(row.at) && row.at >= 0 ? row.at : 0,
+    });
     if (this.transitions.length > 1000) this.transitions.length = 1000;
-    this.observeContext(transition.after);
+    this.observeContext(row.after as unknown as WorldContext);
   }
 
   predict(state: InternalWorldState, action: ActionKind): PredictedOutcome {

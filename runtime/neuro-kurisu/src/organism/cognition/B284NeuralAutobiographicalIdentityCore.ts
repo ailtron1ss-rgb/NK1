@@ -64,26 +64,34 @@ export const defaultB284State=():B284State=>({
   episodes:[],recentAssemblies:[],committedIdentityId:'kurisu-self-core',identityRevision:0,revisionEvidenceStreak:0,revisionIndependentEvidenceCount:0,revisionHoldoutReady:false,revisionCandidateReason:null,lastRevisionEvidenceTick:-Infinity,lastRevisionContextKey:'',revisionCooldownUntilTick:0,history:[]
 });
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'?v.slice(0,n):f;
+const vecN=(v:unknown,len:number,lo:number,hi:number,fill:number):number[]=>Array.from({length:len},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fill;});
+const matN=(v:unknown,rows:number,cols:number,seed:number,scale:number):number[][]=>Array.from({length:rows},(_,i)=>{const row=Array.isArray(v)?(v as unknown[])[i]:undefined;return Array.from({length:cols},(_,j)=>{const c=Array.isArray(row)?(row as unknown[])[j]:undefined;const n=typeof c==='number'?c:Number(c);return Number.isFinite(n)?Math.max(-1,Math.min(1,n)):rand(seed+i*97+j*17,scale);});});
+const sanTraitSnap=(x:unknown):Record<Trait,number>=>{const r=(x&&typeof x==='object')?x as Record<string,unknown>:{};return Object.fromEntries(TRAITS.map(t=>[t,clamp01(finN(r[t],.5))])) as Record<Trait,number>;};
+const sanEpisode=(x:unknown):B284Episode|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),selfState:vecN(r.selfState,DIM,-1,1,0),worldState:vecN(r.worldState,DIM,-1,1,0),goalState:vecN(r.goalState,DIM,-1,1,0),memoryState:vecN(r.memoryState,DIM,-1,1,0),outcome01:clamp01(finN(r.outcome01,.5)),predictionError01:clamp01(finN(r.predictionError01,0)),traitSnapshot:sanTraitSnap(r.traitSnapshot),identitySimilarity01:clamp01(finN(r.identitySimilarity01,.5))};};
+const REASONS:Array<'major-outcome'|'contradiction'|'new-value'|null>=[null,'major-outcome','contradiction','new-value'];
 export class B284NeuralAutobiographicalIdentityCore{
   private state=B284NeuralAutobiographicalIdentityCore.create();
   static create(){return defaultB284State();}
   snapshot(){return structuredClone(this.state);}
   restore(raw:unknown){
-    const base=defaultB284State(); if(!raw||typeof raw!=='object'){this.state=base;return;}
-    const r=raw as Partial<B284State>; const srcTraits=(r.traitValues??{}) as Record<string,number>;
-    this.state={...base,...r,
-      identityLatent:Array.isArray(r.identityLatent)?r.identityLatent.slice(0,DIM):base.identityLatent,
-      identityWeights:Array.isArray(r.identityWeights)?r.identityWeights.slice(0,DIM):base.identityWeights,
-      recurrentWeights:Array.isArray(r.recurrentWeights)?r.recurrentWeights.slice(0,DIM):base.recurrentWeights,
-      valueWeights:Array.isArray(r.valueWeights)?r.valueWeights.slice(0,TRAITS.length):base.valueWeights,
-      traitValues:Object.fromEntries(TRAITS.map((t)=>[t,clamp01(srcTraits[t]??base.traitValues[t])])) as Record<Trait,number>,
-      traitInertia:Object.fromEntries(TRAITS.map((t)=>[t,clamp01(Number((r.traitInertia as any)?.[t]??.965))])) as Record<Trait,number>,
-      episodes:Array.isArray(r.episodes)?r.episodes.slice(-192):[],
-      recentAssemblies:Array.isArray(r.recentAssemblies)?r.recentAssemblies.slice(-32).map((x)=>Array.isArray(x)?x.slice(0,DIM):[]):[],
-      history:Array.isArray(r.history)?r.history.slice(-256):[]
-    };
+    const base=defaultB284State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const traitRaw=(read('traitValues')&&typeof read('traitValues')==='object')?read('traitValues') as Record<string,unknown>:{};
+    const inertiaRaw=(read('traitInertia')&&typeof read('traitInertia')==='object')?read('traitInertia') as Record<string,unknown>:{};
+    const epRaw=read('episodes'),raRaw=read('recentAssemblies'),hRaw=read('history');
+    const reason=read('revisionCandidateReason');
+    this.state={version:1,tick:cnt(read('tick'),base.tick),steps:cnt(read('steps'),base.steps),learningUpdates:cnt(read('learningUpdates'),base.learningUpdates),replayUpdates:cnt(read('replayUpdates'),base.replayUpdates),
+      identityLatent:vecN(read('identityLatent'),DIM,-1,1,0),identityWeights:matN(read('identityWeights'),DIM,DIM,284001,.035),recurrentWeights:matN(read('recurrentWeights'),DIM,DIM,284101,.04),valueWeights:matN(read('valueWeights'),TRAITS.length,DIM,284201,.09),
+      traitValues:Object.fromEntries(TRAITS.map(t=>[t,clamp01(finN(traitRaw[t],base.traitValues[t]))])) as Record<Trait,number>,
+      traitInertia:Object.fromEntries(TRAITS.map(t=>[t,clamp01(finN(inertiaRaw[t],base.traitInertia[t]))])) as Record<Trait,number>,
+      valueCoherence01:clamp01(finN(read('valueCoherence01'),base.valueCoherence01)),autobiographicalContinuity01:clamp01(finN(read('autobiographicalContinuity01'),base.autobiographicalContinuity01)),selfConsistency01:clamp01(finN(read('selfConsistency01'),base.selfConsistency01)),agency01:clamp01(finN(read('agency01'),base.agency01)),personalityGrounding01:clamp01(finN(read('personalityGrounding01'),base.personalityGrounding01)),goalAlignment01:clamp01(finN(read('goalAlignment01'),base.goalAlignment01)),relationshipStability01:clamp01(finN(read('relationshipStability01'),base.relationshipStability01)),identityStability01:clamp01(finN(read('identityStability01'),base.identityStability01)),lastIdentityPredictionError01:clamp01(finN(read('lastIdentityPredictionError01'),base.lastIdentityPredictionError01)),lastOutcomeReward01:clamp01(finN(read('lastOutcomeReward01'),base.lastOutcomeReward01)),identityAblationDrop01:clamp01(finN(read('identityAblationDrop01'),base.identityAblationDrop01)),
+      episodes:Array.isArray(epRaw)?(epRaw as unknown[]).slice(-192).map(sanEpisode).filter((x):x is B284Episode=>x!==null):[],
+      recentAssemblies:Array.isArray(raRaw)?(raRaw as unknown[]).slice(-32).map(v=>vecN(v,DIM,-1,1,0)):[],
+      committedIdentityId:str(read('committedIdentityId'),base.committedIdentityId),identityRevision:cnt(read('identityRevision'),base.identityRevision),revisionEvidenceStreak:cnt(read('revisionEvidenceStreak'),base.revisionEvidenceStreak),revisionIndependentEvidenceCount:cnt(read('revisionIndependentEvidenceCount'),base.revisionIndependentEvidenceCount),revisionHoldoutReady:read('revisionHoldoutReady')===true,revisionCandidateReason:REASONS.includes(reason as typeof REASONS[number])?reason as typeof REASONS[number]:null,lastRevisionEvidenceTick:finN(read('lastRevisionEvidenceTick'),base.lastRevisionEvidenceTick),lastRevisionContextKey:str(read('lastRevisionContextKey'),base.lastRevisionContextKey),revisionCooldownUntilTick:cnt(read('revisionCooldownUntilTick'),base.revisionCooldownUntilTick),
+      history:Array.isArray(hRaw)?(hRaw as unknown[]).slice(-256).filter(v=>v&&typeof v==='object').map(v=>{const r=v as Record<string,unknown>;return {tick:cnt(r.tick,0),continuity:clamp01(finN(r.continuity,.5)),coherence:clamp01(finN(r.coherence,.5)),agency:clamp01(finN(r.agency,.5)),revision:cnt(r.revision,0)};}):[]};
   }
-
   step(input:B284StepInput){
     this.state.tick=input.tick;
     const combined=Array.from({length:DIM},(_,i)=>clamp11(

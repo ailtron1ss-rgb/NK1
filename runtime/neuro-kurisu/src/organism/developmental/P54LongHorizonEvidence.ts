@@ -1,11 +1,14 @@
 /** P54 — Long-horizon evidence ledger for developmental changes. */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const sanitizeWindow=(v:unknown):P54Window|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;return {startTick:cnt(r.startTick,0),endTick:cnt(r.endTick,0),cycles:cnt(r.cycles,0),meanPredictionError01:clamp(finN(r.meanPredictionError01,0)),meanSelfPredictionError01:clamp(finN(r.meanSelfPredictionError01,0)),meanIdentity01:clamp(finN(r.meanIdentity01,0)),meanGrounding01:clamp(finN(r.meanGrounding01,0)),meanCausalAlignment01:clamp(finN(r.meanCausalAlignment01,0)),improvement01:clamp(finN(r.improvement01,0)),stress01:clamp(finN(r.stress01,0))};};
 export interface P54Window { startTick:number; endTick:number; cycles:number; meanPredictionError01:number; meanSelfPredictionError01:number; meanIdentity01:number; meanGrounding01:number; meanCausalAlignment01:number; improvement01:number; stress01:number; }
 export interface P54State { version:1; windows:P54Window[]; cycles:number; baselineError01:number; currentError01:number; stability01:number; drift01:number; lastAt:number; }
 export const defaultP54=():P54State=>({version:1,windows:[],cycles:0,baselineError01:.5,currentError01:.5,stability01:.8,drift01:0,lastAt:0});
 export class P54LongHorizonEvidence {
   private state=defaultP54(); private buffer:Array<{tick:number,p:number,sp:number,i:number,g:number,c:number,stress:number}> = [];
-  restore(raw?:Partial<P54State>|null){const d=defaultP54(),r=raw??{};this.state={...d,...r,windows:Array.isArray(r.windows)?r.windows.slice(-64):[]};}
+  restore(raw?:Partial<P54State>|null){const d=defaultP54();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let windows:P54Window[]=[];try{const w=read('windows');if(Array.isArray(w))windows=w.map(sanitizeWindow).filter((x):x is P54Window=>x!==null).slice(-64);}catch{windows=[];}this.state={version:1,windows,cycles:cnt(read('cycles'),d.cycles),baselineError01:clamp(finN(read('baselineError01'),d.baselineError01)),currentError01:clamp(finN(read('currentError01'),d.currentError01)),stability01:clamp(finN(read('stability01'),d.stability01)),drift01:clamp(finN(read('drift01'),d.drift01)),lastAt:Math.max(0,finN(read('lastAt'),d.lastAt))};}
   snapshot(){return structuredClone(this.state);}
   observe(input:{tick:number;at:number;predictionError01:number;selfPredictionError01:number;identity01:number;grounding01:number;causalAlignment01:number;stress01?:number}){
     this.buffer.push({tick:input.tick,p:clamp(input.predictionError01),sp:clamp(input.selfPredictionError01),i:clamp(input.identity01),g:clamp(input.grounding01),c:clamp(input.causalAlignment01),stress:clamp(input.stress01??0)});

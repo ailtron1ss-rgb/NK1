@@ -6,6 +6,9 @@ type Source=typeof SOURCES[number];
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
 const deep=<T>(x:T):T=>structuredClone(x);
 const mean=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:.5;
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const weightMap=(v:unknown,d:Record<Source,number>):Record<Source,number>=>{const out={...d};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const s of SOURCES)if(s in r)out[s]=clamp(finN(r[s],d[s]));return out;};
 
 export interface ArbiterSourceState { reliability01:number; plasticity01:number; uses:number; wins:number; losses:number; lastGain01:number; }
 export interface CrossLayerAdaptiveArbiterState {
@@ -28,9 +31,10 @@ export type ArbiterBiases=Record<Source,Record<ActionKind,number>>;
 export class CrossLayerAdaptiveArbiter {
   private state=defaultState();
   snapshot(){return deep(this.state);}
-  restore(raw?:Partial<CrossLayerAdaptiveArbiterState>|null){const d=defaultState(),r:any=raw??{};const sr:any={...d.sourceReliability,...(r.sourceReliability??{})};
-    for(const s of SOURCES){const x=sr[s]??{};sr[s]={...defaultSource(),...x,reliability01:clamp(Number(x.reliability01??.5)),plasticity01:clamp(Number(x.plasticity01??.18),.03,.5),uses:Math.max(0,Number(x.uses)||0),wins:Math.max(0,Number(x.wins)||0),losses:Math.max(0,Number(x.losses)||0),lastGain01:clamp(Number(x.lastGain01??.5))};}
-    this.state={...d,...deep(r),version:1,sourceReliability:sr,lastWeights:{...d.lastWeights,...(r.lastWeights??{})}};
+  restore(raw?:Partial<CrossLayerAdaptiveArbiterState>|null){const d=defaultState();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const srRaw=read('sourceReliability');const srObj=(srRaw&&typeof srRaw==='object')?srRaw as Record<string,unknown>:{};const sr={} as Record<Source,ArbiterSourceState>;
+    for(const s of SOURCES){const xRaw=srObj[s];const x=(xRaw&&typeof xRaw==='object')?xRaw as Record<string,unknown>:{};sr[s]={reliability01:clamp(finN(x.reliability01,.5)),plasticity01:clamp(finN(x.plasticity01,.18),.03,.5),uses:cnt(x.uses,0),wins:cnt(x.wins,0),losses:cnt(x.losses,0),lastGain01:clamp(finN(x.lastGain01,.5))};}
+    const selA=read('selectedAction');const selS=read('selectedSource');
+    this.state={version:1,decisions:cnt(read('decisions'),d.decisions),updates:cnt(read('updates'),d.updates),disagreements:cnt(read('disagreements'),d.disagreements),abstentions:cnt(read('abstentions'),d.abstentions),correctiveReroutes:cnt(read('correctiveReroutes'),d.correctiveReroutes),fusionQuality01:clamp(finN(read('fusionQuality01'),d.fusionQuality01)),calibration01:clamp(finN(read('calibration01'),d.calibration01)),disagreement01:clamp(finN(read('disagreement01'),d.disagreement01)),sourceDiversity01:clamp(finN(read('sourceDiversity01'),d.sourceDiversity01)),learningEfficiency01:clamp(finN(read('learningEfficiency01'),d.learningEfficiency01)),sourceReliability:sr,selectedAction:ACTIONS.includes(selA as ActionKind)?selA as ActionKind:null,selectedSource:SOURCES.includes(selS as Source)?selS as Source:null,lastWeights:weightMap(read('lastWeights'),d.lastWeights)};
   }
 
   fuse(input:{baseUtilities:Record<ActionKind,number>; biases:ArbiterBiases; confidence01?:Partial<Record<Source,number>>; uncertainty01:number; computeBudget01:number; risk01?:number}):{actionBias:Record<ActionKind,number>;weights:Record<Source,number>;disagreement01:number;selectedSource:Source|null;abstain:boolean;reroute:ActionKind|null;fusionQuality01:number}{

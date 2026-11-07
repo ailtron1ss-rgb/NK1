@@ -82,24 +82,28 @@ export function defaultB279State():B279State {
   };
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const vec=(v:unknown,len:number,lo:number,hi:number,fill:number):number[]=>Array.from({length:len},(_,i)=>{const x=Array.isArray(v)?(v as unknown[])[i]:undefined;const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fill;});
+const mat=(v:unknown,rows:number,cols:number,scale:number):number[][]=>Array.from({length:rows},(_,i)=>Array.from({length:cols},(_,j)=>{const row=Array.isArray(v)?(v as unknown[])[i]:undefined;const c=Array.isArray(row)?(row as unknown[])[j]:undefined;const n=typeof c==='number'?c:Number(c);return Number.isFinite(n)?Math.max(-1,Math.min(1,n)):rand(100_000+i*31+j*17,scale);}));
+const sanHistory=(x:unknown):Array<{tick:number;action:ActionKind|null;reward01:number;similarity01:number;firingRate01:number}>=>Array.isArray(x)?(x as unknown[]).slice(-128).filter(v=>v&&typeof v==='object').map(v=>{const r=v as Record<string,unknown>;return {tick:cnt(r.tick,0),action:ACTIONS.includes(r.action as ActionKind)?r.action as ActionKind:null,reward01:clamp11(finN(r.reward01,0)),similarity01:clamp11(finN(r.similarity01,0)),firingRate01:clamp01(finN(r.firingRate01,0))};}):[];
 export class B279NeuralAttractorAssemblies {
   private state=B279NeuralAttractorAssemblies.create();
   static create(){return defaultB279State();}
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<B279State>|null){
-    const d=defaultB279State(),r=raw??{};
-    const n=Math.max(16,Math.min(32,Math.floor(Number(r.neuronCount??d.neuronCount))));
-    const m=(src:any[][]|undefined,rows:number,cols:number,scale=.1)=>Array.from({length:rows},(_,i)=>Array.from({length:cols},(_,j)=>clamp11(Number(src?.[i]?.[j]??(rand(100_000+i*31+j*17,scale))))));
-    const arr=(src:unknown,len:number,fill=0)=>Array.isArray(src)?(src as any[]).slice(0,len).concat(new Array(Math.max(0,len-(src as any[]).length)).fill(fill)).slice(0,len):new Array(len).fill(fill);
-    this.state={...d,...r,version:1,neuronCount:n,inputDim:16,
-      recurrentWeights:m(r.recurrentWeights,n,n,.085),inputWeights:m(r.inputWeights,n,16,.16),
-      thresholds:arr(r.thresholds,n,.48).map(v=>Math.max(.22,Math.min(.95,Number(v)))),
-      adaptation:arr(r.adaptation,n),actionWeights:Array.from({length:ACTIONS.length},(_,a)=>arr((r.actionWeights as any)?.[a],n,0)),
-      lastInput:arr(r.lastInput,16),lastAssembly:arr(r.lastAssembly,n),lastSettled:arr(r.lastSettled,n),
-      recentAssemblies:Array.isArray(r.recentAssemblies)?r.recentAssemblies.slice(-16).map(v=>arr(v,n)) : [],
-      recentInputs:Array.isArray(r.recentInputs)?r.recentInputs.slice(-16).map(v=>arr(v,16)) : [],
-      activeNeurons:Array.isArray(r.activeNeurons)?r.activeNeurons.slice(0,Math.ceil(n*.25)).map(v=>Math.max(0,Math.min(n-1,Math.floor(Number(v))))):[],
-      history:Array.isArray(r.history)?r.history.slice(-128):[]};
+    const d=defaultB279State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const n=Math.max(16,Math.min(32,Math.floor(finN(read('neuronCount'),d.neuronCount))));
+    const raRaw=read('recentAssemblies'),riRaw=read('recentInputs'),anRaw=read('activeNeurons');
+    const awRaw=read('actionWeights');
+    const actionWeights=Array.from({length:ACTIONS.length},(_,a)=>vec(Array.isArray(awRaw)?(awRaw as unknown[])[a]:undefined,n,-1,1,0));
+    const thresholds=vec(read('thresholds'),n,.22,.95,.48);
+    this.state={version:1,neuronCount:n,inputDim:16,cycles:cnt(read('cycles'),d.cycles),learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),consolidationCount:cnt(read('consolidationCount'),d.consolidationCount),retrievalCount:cnt(read('retrievalCount'),d.retrievalCount),successfulRecalls:cnt(read('successfulRecalls'),d.successfulRecalls),lesionCount:cnt(read('lesionCount'),d.lesionCount),
+      recurrentWeights:mat(read('recurrentWeights'),n,n,.085),inputWeights:mat(read('inputWeights'),n,16,.16),thresholds,adaptation:vec(read('adaptation'),n,0,1,0),actionWeights,
+      lastInput:vec(read('lastInput'),16,-1,1,0),lastAssembly:vec(read('lastAssembly'),n,0,1,0),lastSettled:vec(read('lastSettled'),n,0,1,0),lastAction:ACTIONS.includes(read('lastAction') as ActionKind)?read('lastAction') as ActionKind:null,
+      firingRate01:clamp01(finN(read('firingRate01'),d.firingRate01)),sparsity01:clamp01(finN(read('sparsity01'),d.sparsity01)),stability01:clamp01(finN(read('stability01'),d.stability01)),homeostaticError01:clamp01(finN(read('homeostaticError01'),d.homeostaticError01)),recurrentEnergy01:clamp01(finN(read('recurrentEnergy01'),d.recurrentEnergy01)),plasticity01:clamp01(finN(read('plasticity01'),d.plasticity01)),attractorSharpness01:clamp01(finN(read('attractorSharpness01'),d.attractorSharpness01)),lastRecallSimilarity01:clamp01(finN(read('lastRecallSimilarity01'),d.lastRecallSimilarity01)),lastCausalDrop01:clamp01(finN(read('lastCausalDrop01'),d.lastCausalDrop01)),
+      activeNeurons:Array.isArray(anRaw)?(anRaw as unknown[]).slice(0,Math.ceil(n*.25)).map(v=>Math.max(0,Math.min(n-1,Math.floor(finN(v,0))))):[],
+      recentAssemblies:Array.isArray(raRaw)?(raRaw as unknown[]).slice(-16).map(v=>vec(v,n,0,1,0)):[],recentInputs:Array.isArray(riRaw)?(riRaw as unknown[]).slice(-16).map(v=>vec(v,16,-1,1,0)):[],history:sanHistory(read('history'))};
   }
   private encode(v:number[],self:number[]=[],world:number[]=[],goal:number[]=[]){
     const base=Array.from({length:16},(_,i)=>clamp11(Number(v[i]??0)));

@@ -62,6 +62,10 @@ export interface B2511Output{
   selectedScore01:number;
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const actOr=(v:unknown,f:ActionKind):ActionKind=>ACTIONS.includes(v as ActionKind)?v as ActionKind:f;
 function blankStats():Record<ActionKind,B2511ActionStats>{
   return Object.fromEntries(ACTIONS.map(a=>[a,{count:0,infoGain01:.2,reward01:.5,predictionError01:.5,confidence01:.5}])) as Record<ActionKind,B2511ActionStats>;
 }
@@ -81,16 +85,20 @@ export class B2511ActiveEpistemicExperimentController{
 
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<B2511State>|null){
-    const d=defaultB2511State(),r:any=raw??{};
+    const d=defaultB2511State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const sRaw=(read('actionStats')&&typeof read('actionStats')==='object')?read('actionStats') as Record<string,unknown>:{};
     const stats=blankStats();
-    for(const a of ACTIONS){const q=r.actionStats?.[a];if(q)stats[a]={...stats[a],...q};}
-    this.state={...d,...structuredClone(r),version:1,
-      actionBias:ACTIONS.map((_,i)=>clamp(Number(r.actionBias?.[i]??0),-.12,.12)),
-      actionInfoGain:ACTIONS.map((_,i)=>clamp(Number(r.actionInfoGain?.[i]??d.actionInfoGain[i]),0,1)),
-      actionRisk:ACTIONS.map((_,i)=>clamp(Number(r.actionRisk?.[i]??d.actionRisk[i]),0,1)),
-      actionStats:stats,
-    };
+    for(const a of ACTIONS){const q=(sRaw[a]&&typeof sRaw[a]==='object')?sRaw[a] as Record<string,unknown>:{};const base=stats[a];stats[a]={count:cnt(q.count,base.count),infoGain01:C01(q.infoGain01,base.infoGain01),reward01:C01(q.reward01,base.reward01),predictionError01:C01(q.predictionError01,base.predictionError01),confidence01:C01(q.confidence01,base.confidence01)};}
+    const ab=read('actionBias'),aig=read('actionInfoGain'),ar=read('actionRisk');
+    this.state={version:1,enabled:read('enabled')!==false,tick:cnt(read('tick'),d.tick),cycles:cnt(read('cycles'),d.cycles),outcomes:cnt(read('outcomes'),d.outcomes),learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),informationActions:cnt(read('informationActions'),d.informationActions),
+      selectedAction:actOr(read('selectedAction'),d.selectedAction),selectedScore01:C01(read('selectedScore01'),d.selectedScore01),expectedInfoGain01:C01(read('expectedInfoGain01'),d.expectedInfoGain01),observedInfoGain01:C01(read('observedInfoGain01'),d.observedInfoGain01),
+      epistemicPressure01:C01(read('epistemicPressure01'),d.epistemicPressure01),epistemicEfficiency01:C01(read('epistemicEfficiency01'),d.epistemicEfficiency01),risk01:C01(read('risk01'),d.risk01),causalEffect01:C01(read('causalEffect01'),d.causalEffect01),sampleEfficiency01:C01(read('sampleEfficiency01'),d.sampleEfficiency01),
+      actionBias:ACTIONS.map((_,i)=>Math.max(-.12,Math.min(.12,finN(Array.isArray(ab)?(ab as unknown[])[i]:0,0)))),
+      actionInfoGain:ACTIONS.map((_,i)=>C01(Array.isArray(aig)?(aig as unknown[])[i]:d.actionInfoGain[i],d.actionInfoGain[i]!)),
+      actionRisk:ACTIONS.map((_,i)=>C01(Array.isArray(ar)?(ar as unknown[])[i]:d.actionRisk[i],d.actionRisk[i]!)),
+      actionStats:stats,lastUncertainty01:C01(read('lastUncertainty01'),d.lastUncertainty01),lastPredictionError01:C01(read('lastPredictionError01'),d.lastPredictionError01),lesionFraction01:C01(read('lesionFraction01'),d.lesionFraction01)};
   }
+
   setEnabled(x:boolean){this.state.enabled=!!x;}
 
   beforeDecision(i:B2511Input):B2511Output{

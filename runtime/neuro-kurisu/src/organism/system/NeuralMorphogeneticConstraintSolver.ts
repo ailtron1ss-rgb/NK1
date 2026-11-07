@@ -1,9 +1,12 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export interface NeuralMorphConstraintState{version:1;cycles:number;feasible01:number;growth01:number;prune01:number;rewire01:number;resourceDebt01:number;violations:number;}
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
 export const defaultNeuralMorphConstraint=():NeuralMorphConstraintState=>({version:1,cycles:0,feasible01:.8,growth01:.25,prune01:.15,rewire01:.12,resourceDebt01:.08,violations:0});
 export class NeuralMorphogeneticConstraintSolver{
  private state=defaultNeuralMorphConstraint();
- restore(raw?:Partial<NeuralMorphConstraintState>|null){const d=defaultNeuralMorphConstraint(),r=raw??{};this.state={...d,...r,version:1};}
+ restore(raw?:Partial<NeuralMorphConstraintState>|null){const d=defaultNeuralMorphConstraint();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};this.state={version:1,cycles:cnt(read('cycles'),d.cycles),feasible01:clamp(finN(read('feasible01'),d.feasible01)),growth01:clamp(finN(read('growth01'),d.growth01)),prune01:clamp(finN(read('prune01'),d.prune01)),rewire01:clamp(finN(read('rewire01'),d.rewire01)),resourceDebt01:clamp(finN(read('resourceDebt01'),d.resourceDebt01)),violations:cnt(read('violations'),d.violations)};}
  snapshot(){return structuredClone(this.state);}
  solve(input:{demand01:number;energy01:number;stability01:number;plasticity01:number;uncertainty01:number}){
   const s=this.state,d=clamp(input.demand01),e=clamp(input.energy01),st=clamp(input.stability01),p=clamp(input.plasticity01),u=clamp(input.uncertainty01);

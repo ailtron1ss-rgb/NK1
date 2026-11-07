@@ -8,6 +8,10 @@
  * separate concerns.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const GOAL_STATUSES:readonly GoalStatus[]=['candidate','active','paused','completed','abandoned'];
+const sanitizeGoalView=(v:unknown):P68GoalView|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,120),title:typeof r.title==='string'?r.title.slice(0,240):'',status:GOAL_STATUSES.includes(r.status as GoalStatus)?r.status as GoalStatus:'candidate',vitality01:clamp(finN(r.vitality01,0)),staleness01:clamp(finN(r.staleness01,0)),conflict01:clamp(finN(r.conflict01,0)),progress01:clamp(finN(r.progress01,0))};};
 
 type GoalStatus='candidate'|'active'|'paused'|'completed'|'abandoned';
 export interface P68Goal {id:string;title:string;reason:string;source:string;status:GoalStatus;importance:number;urgency:number;confidence:number;progress:number;createdAt:number;updatedAt:number;parentId?:string;}
@@ -22,7 +26,7 @@ function words(value:string){return new Set((String(value).toLowerCase().match(/
 function overlap(a:Set<string>,b:Set<string>){let common=0;for(const x of a)if(b.has(x))common++;return common/Math.max(1,Math.min(a.size,b.size));}
 export class P68GoalEcology {
  private state=defaultP68();
- restore(raw?:Partial<P68State>|null){const d=defaultP68(),r=raw??{};this.state={...d,...r,history:Array.isArray(r.history)?r.history.slice(-128):[]};}
+ restore(raw?:Partial<P68State>|null){const d=defaultP68();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let history:P68GoalView[]=[];try{const h=read('history');if(Array.isArray(h))history=h.map(sanitizeGoalView).filter((x):x is P68GoalView=>x!==null).slice(-128);}catch{history=[];}const lt=read('lastTopGoalId');this.state={version:1,cycles:cnt(read('cycles'),d.cycles),completed:cnt(read('completed'),d.completed),abandoned:cnt(read('abandoned'),d.abandoned),paused:cnt(read('paused'),d.paused),reactivated:cnt(read('reactivated'),d.reactivated),pruned:cnt(read('pruned'),d.pruned),meanVitality01:clamp(finN(read('meanVitality01'),d.meanVitality01)),meanStaleness01:clamp(finN(read('meanStaleness01'),d.meanStaleness01)),meanConflict01:clamp(finN(read('meanConflict01'),d.meanConflict01)),goalPressure01:clamp(finN(read('goalPressure01'),d.goalPressure01)),activeCount:cnt(read('activeCount'),d.activeCount),lastTopGoalId:typeof lt==='string'?lt.slice(0,120):null,lastMode:typeof read('lastMode')==='string'?(read('lastMode') as string).slice(0,80):d.lastMode,history};}
  snapshot(){return structuredClone(this.state);}
  persistenceSnapshot(){
   return {...this.state,history:this.state.history.slice(0,64).map(view=>({...view}))};

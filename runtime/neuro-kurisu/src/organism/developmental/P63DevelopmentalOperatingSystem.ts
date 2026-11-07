@@ -7,6 +7,13 @@
  * reversible and identity-gated.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const P63_MODES:readonly P63Mode[]=['protect','consolidate','observe','experiment','explore','reflect','rest'];
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,240)).slice(0,cap):[];
+const modeCounts=(v:unknown,d:Record<P63Mode,number>):Record<P63Mode,number>=>{const out:Record<P63Mode,number>={...d};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const m of P63_MODES)if(m in r)out[m]=cnt(r[m],d[m]);return out;};
+const actionBias=(v:unknown):Record<string,number>=>{const out:Record<string,number>={};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const k of Object.keys(r).slice(0,32))out[String(k).slice(0,80)]=clamp(finN(r[k],0));return out;};
+const sanitizePlan=(v:unknown):P63Plan|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;return {mode:P63_MODES.includes(r.mode as P63Mode)?r.mode as P63Mode:'observe',priority01:clamp(finN(r.priority01,0)),confidence01:clamp(finN(r.confidence01,0)),developmentBudget01:clamp(finN(r.developmentBudget01,0)),actionBias:actionBias(r.actionBias),reasons:strArr(r.reasons,8),evidenceRequired:strArr(r.evidenceRequired,8)};};
 export type P63Mode='protect'|'consolidate'|'observe'|'experiment'|'explore'|'reflect'|'rest';
 export interface P63Input {tick:number;at:number;p56:{mode:string;priority01:number;confidence01:number;realityGap01:number};p58:{mode:string;stability01:number;integrated01:number;realityGap01:number};p59:{mode:string;priority01:number;retentionBias01:number};p60:'allow'|'caution'|'veto';predictionError01:number;uncertainty01:number;novelty01:number;identity01:number;bodyEnergy01:number;thermal01:number;memoryPressure01:number;realityGap01:number;}
 export interface P63Plan {mode:P63Mode;priority01:number;confidence01:number;developmentBudget01:number;actionBias:Record<string,number>;reasons:string[];evidenceRequired:string[];}
@@ -14,7 +21,7 @@ export interface P63State {version:2;cycles:number;modeCounts:Record<P63Mode,num
 export const defaultP63=():P63State=>({version:2,cycles:0,modeCounts:{protect:0,consolidate:0,observe:0,experiment:0,explore:0,reflect:0,rest:0},promotionsBlocked:0,forcedDiversions:0,modeStreak:0,lastMode:null,meanDevelopmentBudget01:.25,meanConfidence01:.5,lastPlan:null,history:[]});
 export class P63DevelopmentalOperatingSystem{
  private state=defaultP63();
- restore(raw?:Partial<P63State>|null){const d=defaultP63(),r=raw??{};this.state={...d,...r,version:2,modeCounts:{...d.modeCounts,...(r.modeCounts??{})},lastMode:(r.lastMode??null) as P63Mode|null,modeStreak:Number(r.modeStreak??0),forcedDiversions:Number(r.forcedDiversions??0),history:Array.isArray(r.history)?r.history.slice(-96):[]};}
+ restore(raw?:Partial<P63State>|null){const d=defaultP63();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let history:P63Plan[]=[];try{const h=read('history');if(Array.isArray(h))history=h.map(sanitizePlan).filter((x):x is P63Plan=>x!==null).slice(-96);}catch{history=[];}let lastPlan:P63Plan|null=null;try{lastPlan=sanitizePlan(read('lastPlan'));}catch{lastPlan=null;}const lm=read('lastMode');this.state={version:2,cycles:cnt(read('cycles'),d.cycles),modeCounts:modeCounts(read('modeCounts'),d.modeCounts),promotionsBlocked:cnt(read('promotionsBlocked'),d.promotionsBlocked),forcedDiversions:cnt(read('forcedDiversions'),d.forcedDiversions),modeStreak:cnt(read('modeStreak'),d.modeStreak),lastMode:P63_MODES.includes(lm as P63Mode)?lm as P63Mode:null,meanDevelopmentBudget01:clamp(finN(read('meanDevelopmentBudget01'),d.meanDevelopmentBudget01)),meanConfidence01:clamp(finN(read('meanConfidence01'),d.meanConfidence01)),lastPlan,history};}
  snapshot(){return structuredClone(this.state);}
  persistenceSnapshot(){
   return {
