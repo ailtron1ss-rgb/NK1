@@ -182,15 +182,10 @@ export async function fetchRemoteAvatarModel(
     // Fetch may expose a decompressed stream while Content-Length describes wire bytes.
     // The header is only an early upper-bound hint; the streamed byte count is authoritative.
 
-    const bytes = new Uint8Array(total);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-
+    // Preserve the bounded stream chunks as Blob parts. Avoid allocating a second
+    // contiguous model-sized Uint8Array on memory-constrained mobile devices.
     return Object.freeze({
-      blob: new Blob([bytes], { type: "application/octet-stream" }),
+      blob: new Blob(chunks, { type: "application/octet-stream" }),
       filename: source.filename,
       sourceUrl: source.href,
       byteLength: total,
