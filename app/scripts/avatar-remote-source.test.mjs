@@ -205,3 +205,58 @@ test("rejects invalid policy overrides instead of permitting a larger download",
     /Тайм-аут/,
   );
 });
+
+test("preserves byte order and view offsets across multiple streamed chunks", async () => {
+  const bytes = makeGlb();
+  const padded = new Uint8Array(bytes.byteLength + 8);
+  padded.fill(0xee);
+  padded.set(bytes, 4);
+  const cuts = [1, 7, 19, bytes.byteLength - 2, bytes.byteLength];
+  const stream = new ReadableStream({
+    start(controller) {
+      let offset = 0;
+      for (const end of cuts) {
+        controller.enqueue(padded.subarray(4 + offset, 4 + end));
+        offset = end;
+      }
+      controller.close();
+    },
+  });
+
+  const result = await fetchRemoteAvatarModel(
+    "https://cdn.example/models/multichunk.glb",
+    { fetchImpl: async () => new Response(stream) },
+  );
+
+  assert.equal(result.byteLength, bytes.byteLength);
+  const downloaded = new Uint8Array(await result.blob.arrayBuffer());
+  assert.deepEqual(downloaded, bytes);
+  assert.equal(preflightAvatarModel(downloaded, result.filename).format, "glb");
+});
+
+
+test("copies SharedArrayBuffer-backed stream chunks into Blob-safe bytes", async () => {
+  const bytes = makeGlb();
+  const shared = new SharedArrayBuffer(bytes.byteLength + 8);
+  const padded = new Uint8Array(shared);
+  padded.fill(0xee);
+  padded.set(bytes, 4);
+  const view = padded.subarray(4, 4 + bytes.byteLength);
+  assert.equal(view.buffer instanceof SharedArrayBuffer, true);
+
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(view);
+      controller.close();
+    },
+  });
+  const result = await fetchRemoteAvatarModel(
+    "https://cdn.example/models/shared-buffer.glb",
+    { fetchImpl: async () => new Response(stream) },
+  );
+
+  assert.equal(result.byteLength, bytes.byteLength);
+  const downloaded = new Uint8Array(await result.blob.arrayBuffer());
+  assert.deepEqual(downloaded, bytes);
+  assert.equal(preflightAvatarModel(downloaded, result.filename).format, "glb");
+});
