@@ -206,14 +206,17 @@ test("rejects invalid policy overrides instead of permitting a larger download",
   );
 });
 
-test("preserves byte order across multiple streamed chunks", async () => {
+test("preserves byte order and view offsets across multiple streamed chunks", async () => {
   const bytes = makeGlb();
+  const padded = new Uint8Array(bytes.byteLength + 8);
+  padded.fill(0xee);
+  padded.set(bytes, 4);
   const cuts = [1, 7, 19, bytes.byteLength - 2, bytes.byteLength];
   const stream = new ReadableStream({
     start(controller) {
       let offset = 0;
       for (const end of cuts) {
-        controller.enqueue(bytes.slice(offset, end));
+        controller.enqueue(padded.subarray(4 + offset, 4 + end));
         offset = end;
       }
       controller.close();
