@@ -7,7 +7,7 @@
 - PR #830 was merged externally on 2026-11-07 05:02 UTC (merge commit `26e2c823284d4238199c80cd1eb8363c5d5c8456`); its world-history restore continuity work is now in `workpass70-source`. Do not attribute that merge to this cycle.
 - Live source HEAD `189643ede8f3904dd670f0109a28b7536e894c00` adds bounded HTTPS VRM/GLB remote import. Exact-SHA push Actions: 7/7 success (runs 42341468790, 42341468836, 42341468820, 42341468833, 42341468783, 42341468784, 42341468785).
 - PR #838 remains open/draft. Its existing memory optimization is being extended with a SharedArrayBuffer regression on head `cc27cd02a06d90d0578102306e0456f6e0ab743c`; exact-head Actions were in progress at the last check. Do not merge it.
-- Latest published ZIP metadata remains the 2026-10-19 Hotfix prerelease (136,354,713 bytes; SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c92689b9066f062e29b224286`); this run could not fetch the binary. No 2026-11-07 source parity or new Release is claimed.
+- Latest published ZIP metadata remains the 2026-10-19 Hotfix prerelease (136,354,713 bytes; SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`); this run could not fetch the binary. No 2026-11-07 source parity or new Release is claimed.
 - License review/redistribution approval remains pending. RU/EN independent holdout, phone soak, licensed 3D asset and real autonomy evidence remain open gates.
 
 ## Non-negotiable engineering workflow
