@@ -127,7 +127,7 @@ test("enforces the byte ceiling while streaming when Content-Length is absent", 
   );
 });
 
-test("rejects HTTP failures, invalid length headers and truncated bodies", async () => {
+test("rejects HTTP failures and invalid length headers, then leaves binary integrity to GLB preflight", async () => {
   await assert.rejects(
     fetchRemoteAvatarModel("https://cdn.example/kurisu.glb", {
       fetchImpl: async () => new Response("missing", { status: 404 }),
@@ -145,15 +145,17 @@ test("rejects HTTP failures, invalid length headers and truncated bodies", async
     }),
     /некорректный Content-Length/,
   );
+
   const bytes = makeGlb();
-  await assert.rejects(
-    fetchRemoteAvatarModel("https://cdn.example/kurisu.glb", {
-      fetchImpl: async () => new Response(bytes.subarray(0, bytes.byteLength - 1), {
-        headers: { "content-length": String(bytes.byteLength) },
-      }),
+  const truncated = bytes.subarray(0, bytes.byteLength - 1);
+  const downloaded = await fetchRemoteAvatarModel("https://cdn.example/kurisu.glb", {
+    fetchImpl: async () => new Response(truncated, {
+      headers: { "content-length": String(bytes.byteLength) },
     }),
-    /не совпадает с Content-Length/,
-  );
+  });
+  assert.equal(downloaded.byteLength, truncated.byteLength);
+  const data = new Uint8Array(await downloaded.blob.arrayBuffer());
+  assert.throws(() => preflightAvatarModel(data, downloaded.filename), /glb-length-mismatch/);
 });
 
 test("enforces a bounded timeout and honors caller cancellation", async () => {
