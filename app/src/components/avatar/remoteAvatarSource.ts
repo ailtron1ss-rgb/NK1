@@ -42,7 +42,8 @@ function isPrivateOrLocalHost(hostname: string): boolean {
   if (!host) return true;
   if (isPrivateIpv4(host)) return true;
   if (host.includes(":")) {
-    if (host === "::" || host === "::1" || /^(fc|fd|fe[89ab]|ff)/u.test(host)) return true;
+    // Reject IPv4-compatible/mapped forms as well as ULA, link-local, site-local and multicast ranges.
+    if (host.startsWith("::") || /^(fc|fd|fe[89abc]|ff)/u.test(host)) return true;
     const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/u.exec(host);
     return mapped ? isPrivateIpv4(mapped[1]) : false;
   }
