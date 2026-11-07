@@ -1,0 +1,593 @@
+{
+  "schema": "nk1.upstream-source-archive-review.v1",
+  "reviewedAt": "2026-11-03",
+  "provenanceNote": "All archive bytes were supplied by the user as four 7z containers. Inner ZIPs were enumerated and SHA-256 hashed locally. The inner ZIPs themselves are not copied into this branch. License detection is inventory evidence, not legal approval.",
+  "summary": {
+    "outerContainers": 4,
+    "innerZipArtifacts": 22,
+    "uniqueInnerProjects": 21,
+    "duplicateInnerZipArtifacts": 1,
+    "allInnerZipSha256Verified": true,
+    "codeCopiedByThisReview": 0,
+    "dependenciesInstalled": 0
+  },
+  "containers": [
+    {
+      "file": "one.7z",
+      "sha256": "2aa144432afd7a234b4aa3139cfa6019a97bab453dd235f623ccac2c00b83b41",
+      "members": [
+        "Agent0-main.zip",
+        "AutoGPT-master.zip",
+        "agent-framework-main.zip",
+        "autogen-main.zip",
+        "chroma-main.zip"
+      ]
+    },
+    {
+      "file": "two.7z",
+      "sha256": "f6bce0f421c727c98c978328efe0dcb2bfa93ef77f8a7fcc1686c24b24958366",
+      "members": [
+        "dspy-main.zip",
+        "faiss-main.zip",
+        "hermes-agent-main.zip",
+        "hyperon-experimental-main.zip",
+        "langroid-main.zip"
+      ]
+    },
+    {
+      "file": "three.7z",
+      "sha256": "598c8e11e176994214d2cdfcf9ec0bfe4b65e19e10e54c0190e4f5b859293f97",
+      "members": [
+        "letta-main (1).zip",
+        "llama.cpp-master.zip",
+        "mem0-main.zip",
+        "openai-agents-python-main.zip",
+        "openclaw-main.zip"
+      ]
+    },
+    {
+      "file": "four.7z",
+      "sha256": "e15b12e9617882026ab8077f7698c6a6c47df5f1e4690607d3dbcac2df4952a0",
+      "members": [
+        "Hexis-main.zip",
+        "PocketFlow-main.zip",
+        "letta-main.zip",
+        "lumina-main.zip",
+        "owl-main.zip",
+        "superpowers-main.zip",
+        "will-main.zip"
+      ]
+    }
+  ],
+  "archives": [
+    {
+      "file": "Agent0-main.zip",
+      "container": "one.7z",
+      "bytes": 18525579,
+      "members": 1594,
+      "sha256": "e064f71f36505e85de047d2d714ecfe7c0659c0554da9d67e4002c8dc2802c48",
+      "licenseEvidence": "Apache-2.0 root; nested training/verl trees require path-level review",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "SERC propose-reason-verify-repair loop",
+        "curriculum/executor co-evolution"
+      ],
+      "nk1Targets": [
+        "SelfImprovementCandidatePool",
+        "VerifiedOutcomePromotionGate",
+        "trajectory holdout"
+      ],
+      "disposition": "adapt-patterns-only",
+      "decision": "Do not import model-training framework or trust model self-reward. Reuse only bounded propose/verify/repair decomposition behind independent evaluator and immutable holdout."
+    },
+    {
+      "file": "AutoGPT-master.zip",
+      "container": "one.7z",
+      "bytes": 193470551,
+      "members": 10417,
+      "sha256": "aed501c3c9a81a7bf29a8dec8aa7db3183bfa0656716d4cd2430c2a7eec291cd",
+      "licenseEvidence": "Mixed: MIT outside autogpt_platform; Polyform Shield within autogpt_platform",
+      "licenseStatus": "path-sensitive-human-review-required",
+      "mechanisms": [
+        "task decomposition",
+        "permission-aware agent execution",
+        "workflow provenance"
+      ],
+      "nk1Targets": [
+        "Engineering OS coordinator",
+        "ActionGateway"
+      ],
+      "disposition": "reference-only-no-platform-copy",
+      "decision": "Never copy autogpt_platform under its MIT label. Classic paths are MIT per root notice but unsupported and still require path/dependency/license review."
+    },
+    {
+      "file": "agent-framework-main.zip",
+      "container": "one.7z",
+      "bytes": 19506371,
+      "members": 6853,
+      "sha256": "598514805cfb11f8c7cb3efce72517c210705791e7751c9db0504e67a2cde838",
+      "licenseEvidence": "MIT root",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "typed workflow events",
+        "durable sessions/checkpoint patterns",
+        "middleware/guardrail composition"
+      ],
+      "nk1Targets": [
+        "CognitiveEventFabric",
+        "ActionGateway",
+        "runtime recovery"
+      ],
+      "disposition": "adapt-contract-patterns-only",
+      "decision": "Keep one NK1 runtime; do not add a second workflow engine. Compare concrete checkpoint semantics before any code transplant."
+    },
+    {
+      "file": "autogen-main.zip",
+      "container": "one.7z",
+      "bytes": 24014480,
+      "members": 2320,
+      "sha256": "116a964fa7691fc673724961ac3b5c2860a7cf311aeb770dbaa6b3ed9866980d",
+      "licenseEvidence": "Root LICENSE contains Creative Commons Attribution 4.0 International text",
+      "licenseStatus": "unresolved-code-license-no-copy",
+      "mechanisms": [
+        "multi-agent conversation orchestration",
+        "group-chat routing"
+      ],
+      "nk1Targets": [
+        "Agent coordination experiments"
+      ],
+      "disposition": "research-reference-only",
+      "decision": "No source reuse until exact code licensing and all subcomponent notices are reviewed; avoid a second orchestration owner."
+    },
+    {
+      "file": "chroma-main.zip",
+      "container": "one.7z",
+      "bytes": 23834279,
+      "members": 2675,
+      "sha256": "902ca85310fdee7aba311ba526955093c2b374eef9302fb3a648531e2019581d",
+      "licenseEvidence": "Apache-2.0 root",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "vector database",
+        "embedding collection and retrieval"
+      ],
+      "nk1Targets": [
+        "MemoryFabric read-only retrieval benchmarks"
+      ],
+      "disposition": "benchmark-adapter-only",
+      "decision": "Do not replace MemoryOS2/MemoryFabric; only compare recall, latency, temporal filtering and deletion consistency on an immutable holdout."
+    },
+    {
+      "file": "dspy-main.zip",
+      "container": "two.7z",
+      "bytes": 17948768,
+      "members": 905,
+      "sha256": "c41f31f38baff7b52898116be8a739ffedb6994994b4ee5ae94cfff75011973e",
+      "licenseEvidence": "MIT root",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "signature-driven prompt/program optimization",
+        "GEPA-style reflective proposal/evaluation"
+      ],
+      "nk1Targets": [
+        "P23LearningEngine",
+        "offline trajectory evaluator"
+      ],
+      "disposition": "sandboxed-evaluator-integration-candidate",
+      "decision": "Optimize only against fixed training trajectories; final admission requires separate immutable holdout, paired seeds, cost limits and rollback."
+    },
+    {
+      "file": "faiss-main.zip",
+      "container": "two.7z",
+      "bytes": 2676625,
+      "members": 1204,
+      "sha256": "6017db0aa2aea52d0e5c8cc807f55e9a9c0e943c0393229289249fd3688f851e",
+      "licenseEvidence": "MIT root",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "approximate nearest-neighbor indexing",
+        "vector search performance baselines"
+      ],
+      "nk1Targets": [
+        "MemoryFabric retrieval evaluator"
+      ],
+      "disposition": "benchmark-only",
+      "decision": "No production dependency until measured recall/latency gain over current retrieval stack and platform compatibility are proven."
+    },
+    {
+      "file": "hermes-agent-main.zip",
+      "container": "two.7z",
+      "bytes": 91794622,
+      "members": 19797,
+      "sha256": "9aa1aecea207d81e8ee3100f4c3d1b7344d893b8594719b8a153fd09d0a4b8bb",
+      "licenseEvidence": "MIT root; optional skills include additional individual LICENSE files",
+      "licenseStatus": "path-sensitive-human-review-required",
+      "mechanisms": [
+        "memory-provider lifecycle/checkpoints",
+        "skill provenance/editability",
+        "single scheduler with non-overlapping callbacks",
+        "profile/context isolation"
+      ],
+      "nk1Targets": [
+        "Engineering OS",
+        "skill governance",
+        "memory lifecycle"
+      ],
+      "disposition": "adapt-specific-invariants-only",
+      "decision": "Strong candidate for context propagation, single-owner scheduler and explicit managed-vs-external skill provenance. Review every optional skill license separately."
+    },
+    {
+      "file": "hyperon-experimental-main.zip",
+      "container": "two.7z",
+      "bytes": 649395,
+      "members": 367,
+      "sha256": "ffd30b33a6baf2db307e4f826254ebc30dd30373175011f30fbfe6b72ece1e8e",
+      "licenseEvidence": "MIT root",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "MeTTa symbolic representation and inference"
+      ],
+      "nk1Targets": [
+        "typed symbolic reasoning adapter"
+      ],
+      "disposition": "sandboxed-research-only",
+      "decision": "No action or memory write authority. Require typed evidence premises and compare against an ordinary baseline."
+    },
+    {
+      "file": "langroid-main.zip",
+      "container": "two.7z",
+      "bytes": 60296333,
+      "members": 890,
+      "sha256": "7dfa88f8857fb09fb160f6538d81985146fd09de0fa4c27ceccd6eaf86846717",
+      "licenseEvidence": "MIT root",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "multi-agent task delegation",
+        "message/state abstractions"
+      ],
+      "nk1Targets": [
+        "Engineering OS workstream orchestration"
+      ],
+      "disposition": "reference-only",
+      "decision": "Borrow decomposition/test ideas only where they simplify current coordinator; do not create a parallel agent runtime."
+    },
+    {
+      "file": "letta-main (1).zip",
+      "container": "three.7z",
+      "bytes": 24683,
+      "members": 16,
+      "sha256": "5d28f152aba633fcc26fe20125fad28f73c6773e6526fc65249656b2d0c61075",
+      "licenseEvidence": "Apache-2.0 root LICENSE",
+      "licenseStatus": "source-snapshot-incomplete",
+      "mechanisms": [
+        "persistent agent state",
+        "memory blocks"
+      ],
+      "nk1Targets": [
+        "MemoryOS2 architecture comparison"
+      ],
+      "disposition": "incomplete-reference-only",
+      "duplicateOf": "letta-main.zip",
+      "decision": "Only 16 archive members; not treated as usable Letta source or independent integration evidence."
+    },
+    {
+      "file": "llama.cpp-master.zip",
+      "container": "three.7z",
+      "bytes": 40056730,
+      "members": 4168,
+      "sha256": "c60211456a8ab106e300fc590d973370f1b519474c49ec4219f8db4f0a7ddb8c",
+      "licenseEvidence": "MIT root; third-party model/backend assets require separate review",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "local model inference",
+        "quantized CPU/GPU execution"
+      ],
+      "nk1Targets": [
+        "existing local inference provider adapter"
+      ],
+      "disposition": "runtime-adapter-benchmark-only",
+      "decision": "Do not install or build by assumption; benchmark actual supported phone/desktop hardware, cold/warm latency, memory, cancellation and license of each model."
+    },
+    {
+      "file": "mem0-main.zip",
+      "container": "three.7z",
+      "bytes": 21006353,
+      "members": 2214,
+      "sha256": "88cfef6a9d27713c7649981ac2defc92c0dbcb5b69a442167e7c7bb512a93419",
+      "licenseEvidence": "Apache-2.0 root; integrations and skills may carry separate licenses",
+      "licenseStatus": "path-sensitive-human-review-required",
+      "mechanisms": [
+        "memory extraction/update/search",
+        "conflict and temporal metadata",
+        "explicit forget/pause/resume operations"
+      ],
+      "nk1Targets": [
+        "MemoryOS2 lifecycle commands",
+        "MemoryFabric candidate producer"
+      ],
+      "disposition": "candidate-producer-only",
+      "decision": "Route candidates through canonical MemoryOS2 lifecycle; require idempotency, explicit conflict semantics, deletion/forget replay and labelled retrieval holdout."
+    },
+    {
+      "file": "openai-agents-python-main.zip",
+      "container": "three.7z",
+      "bytes": 8329733,
+      "members": 1967,
+      "sha256": "8c88cd64087cbcd170796fb15ff1ebdea5a64d8710d206b7d5cfa369371faae5",
+      "licenseEvidence": "MIT root",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "typed tool calls",
+        "guardrail/handoff semantics",
+        "trace/evaluation"
+      ],
+      "nk1Targets": [
+        "ActionGateway",
+        "CognitiveEventFabric",
+        "independent eval"
+      ],
+      "disposition": "adapt-contract-patterns-only",
+      "decision": "Preserve NK1's existing TypeScript owner and action receipt flow; no second Agents SDK runtime."
+    },
+    {
+      "file": "openclaw-main.zip",
+      "container": "three.7z",
+      "bytes": 206736996,
+      "members": 57634,
+      "sha256": "82880f15a9bf33285bab0c591dc43a562a2451564d0c195885b26c390fcfd3a6",
+      "licenseEvidence": "MIT root; inspect bundled integrations/assets path-by-path",
+      "licenseStatus": "path-sensitive-human-review-required",
+      "mechanisms": [
+        "gateway/session lifecycle",
+        "runtime recovery",
+        "tool/plugin boundaries"
+      ],
+      "nk1Targets": [
+        "runtime session recovery",
+        "Engineering OS"
+      ],
+      "disposition": "reference-only",
+      "decision": "No parallel gateway. Adapt only a verified recovery or security invariant that has no current canonical owner."
+    },
+    {
+      "file": "Hexis-main.zip",
+      "container": "four.7z",
+      "bytes": 5532453,
+      "members": 1718,
+      "sha256": "ad53945ad6e02e0b6e2ae57a89c78b6f2fd86f14b978a512bb862559f455b252",
+      "licenseEvidence": "MIT root; this is a newer uploaded ZIP snapshot distinct from the older extracted Hexis source already in NK1",
+      "licenseStatus": "evidence-only-version-diff-required",
+      "mechanisms": [
+        "audited belief revision and provenance",
+        "multi-layer memory/temporal supersession",
+        "autonomous heartbeat with energy budget",
+        "selective memory consolidation"
+      ],
+      "nk1Targets": [
+        "MemoryOS2 revision ledger",
+        "MemoryFabric provenance",
+        "motivation/heartbeat"
+      ],
+      "disposition": "diff-against-existing-adaptation-before-code",
+      "decision": "Do not duplicate Hexis subsystem. Compare this snapshot to archived 2026-10-08 source and selectively port only missing tests/invariants.",
+      "securityFindings": [
+        {
+          "path": "Hexis-main/.env.local",
+          "classification": "potential-local-credential-config",
+          "observedKeys": [
+            "POSTGRES_DB",
+            "POSTGRES_USER",
+            "POSTGRES_PASSWORD",
+            "POSTGRES_HOST",
+            "POSTGRES_PORT",
+            "HEXIS_BIND_ADDRESS"
+          ],
+          "nonEmptyValues": 6,
+          "valuesPersisted": false,
+          "valuesPublished": false,
+          "importedToNk1": false,
+          "action": "exclude-from-import-and-release; rotate POSTGRES_PASSWORD if it is live, reused or shared"
+        },
+        {
+          "path": "Hexis-main/.env.local.redacted.example",
+          "classification": "expected-redacted-template",
+          "presentInUploadedArchive": false,
+          "importedToNk1": false
+        },
+        {
+          "path": "Hexis-main/SECURITY-SANITIZATION-NOTICE.md",
+          "classification": "sanitization-notice",
+          "presentInUploadedArchive": false,
+          "existingInNk1ArchivedSnapshot": true
+        }
+      ],
+      "differentialReview": {
+        "oldSnapshotPath": "legacy/input-archives/hexis-main-2026-10-08/",
+        "archiveFileCount": 1469,
+        "oldSnapshotBlobCount": 1469,
+        "archiveZipMemberCount": 1718,
+        "selectedExactGitBlobMatches": [
+          {
+            "path": "services/belief_propagation.py",
+            "gitBlobSha": "7eb1fc7536a1961ea68b18e6f31633c4250fabf8",
+            "identical": true
+          },
+          {
+            "path": "services/memory_supersessions.py",
+            "gitBlobSha": "5d2dc8cad50ed192e355ee602c347aca7a1dd1b6",
+            "identical": true
+          },
+          {
+            "path": "services/heartbeat_agentic.py",
+            "gitBlobSha": "88c670e9f55cdd3c1c1452f258cfa4de979015ba",
+            "identical": true
+          },
+          {
+            "path": "services/heartbeat_runner.py",
+            "gitBlobSha": "7d8e256d6f2c0ec6e57f46275833f55aba1fa272",
+            "identical": true
+          },
+          {
+            "path": "db/migrations/0213_memory_supersessions.sql",
+            "gitBlobSha": "289d421346da9061be24fcfd49e69babfa5e4ce3",
+            "identical": true
+          },
+          {
+            "path": "db/migrations/0214_belief_propagation.sql",
+            "gitBlobSha": "d79695d6b52e92ba64863d1f988b92a467eba562",
+            "identical": true
+          },
+          {
+            "path": "db/migrations/0245_fix_heartbeat_tool_advertisement.sql",
+            "gitBlobSha": "64529e6781742ca8d327e36f8edb28c92e1b9b0b",
+            "identical": true
+          },
+          {
+            "path": "db/migrations/0249_add_evidence_candidate_recovery.sql",
+            "gitBlobSha": "910e24b27203be351b071d0c67b92d5a0559fef9",
+            "identical": true
+          },
+          {
+            "path": "db/migrations/0251_dns_failure_classification.sql",
+            "gitBlobSha": "559ddd331d76a36e6b1793fea7c3cd8d7a6959a1",
+            "identical": true
+          },
+          {
+            "path": "tests/services/test_belief_propagation.py",
+            "gitBlobSha": "ceff5781becc484dd5bbd2c463eaa445e34fb6a0",
+            "identical": true
+          },
+          {
+            "path": "tests/services/test_memory_supersessions.py",
+            "gitBlobSha": "27d5505d836038c35a769510b2452feb0291e0ce",
+            "identical": true
+          }
+        ],
+        "fullTreeComparisonComplete": false,
+        "securityDifference": "Uploaded ZIP contains .env.local; archived NK1 snapshot instead contains .env.local.redacted.example and SECURITY-SANITIZATION-NOTICE.md",
+        "integrationDecision": "No code copied from this snapshot in this pass: sampled core memory/heartbeat files are exact matches and NK1 already has canonical owners. Continue full path-level diff only for changed non-sensitive files."
+      }
+    },
+    {
+      "file": "PocketFlow-main.zip",
+      "container": "four.7z",
+      "bytes": 11699657,
+      "members": 678,
+      "sha256": "821528c2dc3b161d7776dba0752b6cefa3332ca3772b1cd6cb07c19826e4aa30",
+      "licenseEvidence": "MIT root",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "small graph-based workflow and node composition"
+      ],
+      "nk1Targets": [
+        "CognitiveEventFabric plan graph"
+      ],
+      "disposition": "reference-only",
+      "decision": "Keep one event graph and current state authority; consider simplification only where a measured complexity reduction exists."
+    },
+    {
+      "file": "letta-main.zip",
+      "container": "four.7z",
+      "bytes": 24683,
+      "members": 16,
+      "sha256": "5d28f152aba633fcc26fe20125fad28f73c6773e6526fc65249656b2d0c61075",
+      "licenseEvidence": "Apache-2.0 root LICENSE",
+      "licenseStatus": "source-snapshot-incomplete",
+      "mechanisms": [
+        "persistent agent state",
+        "memory blocks"
+      ],
+      "nk1Targets": [
+        "MemoryOS2 architecture comparison"
+      ],
+      "disposition": "incomplete-reference-only",
+      "duplicateOf": "letta-main (1).zip",
+      "decision": "Byte-identical duplicate of the other Letta ZIP; only 16 members. Do not count as another source or implementation."
+    },
+    {
+      "file": "lumina-main.zip",
+      "container": "four.7z",
+      "bytes": 3240773,
+      "members": 131,
+      "sha256": "a820cb1b394018451c8ee5863ae0a1f74666bd10519007d6e37e69e42452d467",
+      "licenseEvidence": "Apache-2.0 root",
+      "licenseStatus": "evidence-only-already-indexed",
+      "mechanisms": [
+        "temporal decay",
+        "dream/replay-inspired consolidation",
+        "staged toolmaker"
+      ],
+      "nk1Targets": [
+        "offline consolidation",
+        "skill approval lifecycle"
+      ],
+      "disposition": "existing-archive-compare-no-duplicate-import",
+      "decision": "Archive SHA matches previously indexed Lumina source. Review existing adaptation first; don't duplicate."
+    },
+    {
+      "file": "owl-main.zip",
+      "container": "four.7z",
+      "bytes": 4211558,
+      "members": 193,
+      "sha256": "428b6f9ebd0286ecbef58d57d6c9fbf0fd5b9829677e3ffcbfa58f41dddd3641",
+      "licenseEvidence": "No root LICENSE/LICENCE/COPYING file detected in archive inventory",
+      "licenseStatus": "unresolved-no-copy",
+      "mechanisms": [
+        "multi-agent orchestration patterns"
+      ],
+      "nk1Targets": [
+        "multi-agent research"
+      ],
+      "disposition": "reference-only-license-blocked",
+      "decision": "No code reuse or redistribution until complete license and nested assets are audited."
+    },
+    {
+      "file": "superpowers-main.zip",
+      "container": "four.7z",
+      "bytes": 823493,
+      "members": 307,
+      "sha256": "02dbd1df4d736aa8f6016c5e163ad613a1ffeea0d58def158e12aacd4a6a41d8",
+      "licenseEvidence": "MIT root",
+      "licenseStatus": "evidence-only-human-review-required",
+      "mechanisms": [
+        "TDD red-green-refactor",
+        "small reviewable implementation tasks",
+        "separate brainstorming/planning/execution/review skills"
+      ],
+      "nk1Targets": [
+        "NK1 contributor engineering workflow",
+        "PR verification"
+      ],
+      "disposition": "methodology-adopted-no-runtime-code",
+      "decision": "Use procedures rather than copying a workflow runtime. Each implementation branch retains focused scope and exact-SHA verification."
+    },
+    {
+      "file": "will-main.zip",
+      "container": "four.7z",
+      "bytes": 5799770,
+      "members": 661,
+      "sha256": "9d0c30277f0981b67104b1e2a07d9c7f025fee60ae57bd470cca898cf0d457a4",
+      "licenseEvidence": "Apache-2.0 + NOTICE",
+      "licenseStatus": "evidence-only-exact-duplicate-already-indexed",
+      "mechanisms": [
+        "deterministic tick/clock signal",
+        "self-model trait updates",
+        "episodic consolidation",
+        "energy/allostasis",
+        "action reafference and settlement"
+      ],
+      "nk1Targets": [
+        "CognitiveEventFabric",
+        "SelfModelV2",
+        "MemoryOS2",
+        "ActionGateway"
+      ],
+      "disposition": "already-indexed-adaptation-check",
+      "decision": "SHA is byte-identical to already indexed Will source. Existing NK1 Will integration matrix covers reafference/action receipts; no duplicate import."
+    }
+  ],
+  "securityBoundary": {
+    "summary": "The uploaded Hexis ZIP contains a local .env.local with six non-empty configuration values, including a PostgreSQL password field. Values are deliberately not stored in this manifest or any report.",
+    "action": "Do not import or publish .env.local. Keep the already-sanitized NK1 archive representation. Rotate the password if it is not an isolated disposable local test credential."
+  }
+}
