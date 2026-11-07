@@ -233,3 +233,30 @@ test("preserves byte order and view offsets across multiple streamed chunks", as
   assert.deepEqual(downloaded, bytes);
   assert.equal(preflightAvatarModel(downloaded, result.filename).format, "glb");
 });
+
+
+test("copies SharedArrayBuffer-backed stream chunks into Blob-safe bytes", async () => {
+  const bytes = makeGlb();
+  const shared = new SharedArrayBuffer(bytes.byteLength + 8);
+  const padded = new Uint8Array(shared);
+  padded.fill(0xee);
+  padded.set(bytes, 4);
+  const view = padded.subarray(4, 4 + bytes.byteLength);
+  assert.equal(view.buffer instanceof SharedArrayBuffer, true);
+
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(view);
+      controller.close();
+    },
+  });
+  const result = await fetchRemoteAvatarModel(
+    "https://cdn.example/models/shared-buffer.glb",
+    { fetchImpl: async () => new Response(stream) },
+  );
+
+  assert.equal(result.byteLength, bytes.byteLength);
+  const downloaded = new Uint8Array(await result.blob.arrayBuffer());
+  assert.deepEqual(downloaded, bytes);
+  assert.equal(preflightAvatarModel(downloaded, result.filename).format, "glb");
+});
