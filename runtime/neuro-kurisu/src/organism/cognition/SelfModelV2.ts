@@ -29,14 +29,117 @@ export function defaultSelfModel(): SelfModelV2 {
 export class SelfModelEngine {
   private model=defaultSelfModel();
   restore(m:SelfModelV2|undefined){
-    const restored={...defaultSelfModel(),...(m||{})};
-    restored.identityGateAcceptedCount=Number.isFinite(restored.identityGateAcceptedCount)?Math.max(0,Math.floor(restored.identityGateAcceptedCount)):0;
-    restored.identityGateRejectedCount=Number.isFinite(restored.identityGateRejectedCount)?Math.max(0,Math.floor(restored.identityGateRejectedCount)):0;
-    const gate=restored.lastIdentityGate as any;
-    restored.lastIdentityGate=gate&&typeof gate==='object'&&typeof gate.accepted==='boolean'&&typeof gate.reason==='string'&&Number.isFinite(gate.at)
-      ? {accepted:gate.accepted,reason:gate.reason.slice(0,96),at:Math.max(0,gate.at),evidenceRef:typeof gate.evidenceRef==='string'?gate.evidenceRef.slice(0,240):null}
-      : null;
-    this.model=restored;
+    // Saved self-state is untrusted input. Rebuild only known fields and never
+    // spread/read arbitrary objects, because getters and Proxy traps may execute.
+    const defaults=defaultSelfModel();
+    const container=(value:unknown):Record<string,unknown>|null=>{
+      try {
+        if(!value || typeof value!=='object' || Array.isArray(value)) return null;
+        const proto=Object.getPrototypeOf(value);
+        return proto===Object.prototype || proto===null ? value as Record<string,unknown> : null;
+      } catch { return null; }
+    };
+    const record=(value:unknown):Record<string,unknown>|null=>{
+      const row=container(value);
+      if(!row) return null;
+      try {
+        for(const key of Reflect.ownKeys(row)){
+          const descriptor=Object.getOwnPropertyDescriptor(row,key);
+          if(!descriptor || !('value' in descriptor)) return null;
+        }
+        return row;
+      } catch { return null; }
+    };
+    const read=(value:unknown,key:string):unknown=>{
+      const row=container(value);
+      if(!row) return undefined;
+      try {
+        const descriptor=Object.getOwnPropertyDescriptor(row,key);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+      } catch { return undefined; }
+    };
+    const bounded=(value:unknown,fallback:number,min=0,max=1):number=>
+      typeof value==='number' && Number.isFinite(value) ? Math.max(min,Math.min(max,value)) : fallback;
+    const counter=(value:unknown,fallback=0,max=1_000_000_000):number=>
+      typeof value==='number' && Number.isSafeInteger(value) ? Math.max(0,Math.min(max,value)) : fallback;
+    const actionKinds:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+    const root=record(m);
+    if(!root){ this.model=defaults; return; }
+    const predicted=read(root,'predictedAction');
+    const errorsRaw=read(root,'recentErrors');
+    const errors:number[]=[];
+    try {
+      if(Array.isArray(errorsRaw)){
+        const length=Object.getOwnPropertyDescriptor(errorsRaw,'length');
+        const count=length && 'value' in length && typeof length.value==='number'
+          ? Math.min(64,Math.max(0,Math.floor(length.value))) : 0;
+        for(let i=0;i<count;i++){
+          const descriptor=Object.getOwnPropertyDescriptor(errorsRaw,String(i));
+          if(descriptor && 'value' in descriptor && typeof descriptor.value==='number' && Number.isFinite(descriptor.value))
+            errors.push(bounded(descriptor.value,0));
+        }
+      }
+    } catch { /* malformed proxy-backed history contributes no entries */ }
+    const strategiesRaw=read(root,'preferredStrategies');
+    const strategies:string[]=[];
+    try {
+      if(Array.isArray(strategiesRaw)){
+        const length=Object.getOwnPropertyDescriptor(strategiesRaw,'length');
+        const count=length && 'value' in length && typeof length.value==='number'
+          ? Math.min(64,Math.max(0,Math.floor(length.value))) : 0;
+        for(let i=0;i<count;i++){
+          const descriptor=Object.getOwnPropertyDescriptor(strategiesRaw,String(i));
+          if(!descriptor || !('value' in descriptor) || typeof descriptor.value!=='string') continue;
+          const item=descriptor.value.trim();
+          if(item && item.length<=80 && !strategies.includes(item)) strategies.push(item);
+          if(strategies.length>=8) break;
+        }
+      }
+    } catch { /* malformed strategy arrays restore empty */ }
+    const scoresRaw=read(root,'selfConsistentAction11');
+    const scores:Record<string,number>={};
+    const scoreRecord=container(scoresRaw);
+    if(scoreRecord){
+      for(const action of actionKinds){
+        const value=read(scoreRecord,action);
+        if(typeof value==='number' && Number.isFinite(value))
+          Object.defineProperty(scores,action,{value:bounded(value,0,-1,1),enumerable:true,writable:true,configurable:true});
+      }
+    }
+    const gateRaw=read(root,'lastIdentityGate');
+    const gateRecord=container(gateRaw);
+    let lastIdentityGate:SelfModelV2['lastIdentityGate']=null;
+    if(gateRecord){
+      const accepted=read(gateRecord,'accepted'),reason=read(gateRecord,'reason'),at=read(gateRecord,'at'),evidenceRef=read(gateRecord,'evidenceRef');
+      if(typeof accepted==='boolean' && typeof reason==='string' && reason.length<=256
+        && typeof at==='number' && Number.isFinite(at)
+        && (evidenceRef===null || typeof evidenceRef==='string')){
+        lastIdentityGate={
+          accepted,reason:reason.slice(0,96),at:bounded(at,0,0,Number.MAX_SAFE_INTEGER),
+          evidenceRef:typeof evidenceRef==='string'?evidenceRef.slice(0,240):null,
+        };
+      }
+    }
+    this.model={
+      predictedAction:predicted==='none'||actionKinds.includes(predicted as ActionKind)?predicted as ActionKind|'none':'none',
+      confidence:bounded(read(root,'confidence'),defaults.confidence),
+      actionAccuracy:bounded(read(root,'actionAccuracy'),defaults.actionAccuracy),
+      calibrationError:bounded(read(root,'calibrationError'),defaults.calibrationError),
+      identityCoherence:bounded(read(root,'identityCoherence'),defaults.identityCoherence),
+      agencyBelief:bounded(read(root,'agencyBelief'),defaults.agencyBelief),
+      recentErrors:errors,preferredStrategies:strategies,
+      updatedAt:bounded(read(root,'updatedAt'),defaults.updatedAt,0,Number.MAX_SAFE_INTEGER),
+      recoveryCount:counter(read(root,'recoveryCount')),
+      lastRecoveryAt:bounded(read(root,'lastRecoveryAt'),defaults.lastRecoveryAt,0,Number.MAX_SAFE_INTEGER),
+      continuityShock01:bounded(read(root,'continuityShock01'),defaults.continuityShock01),
+      postRecoveryIntegration01:bounded(read(root,'postRecoveryIntegration01'),defaults.postRecoveryIntegration01),
+      goalAlignment01:bounded(read(root,'goalAlignment01'),defaults.goalAlignment01),
+      goalAlignmentEMA01:bounded(read(root,'goalAlignmentEMA01'),defaults.goalAlignmentEMA01),
+      selfConsistentAction11:scores,
+      identityGateAcceptedCount:counter(read(root,'identityGateAcceptedCount')),
+      identityGateRejectedCount:counter(read(root,'identityGateRejectedCount')),
+      lastIdentityGate,
+    };
   }
   snapshot(){ return structuredClone(this.model); }
   predict(action:ActionKind, confidence:number){ this.model.predictedAction=action; this.model.confidence=Math.max(0,Math.min(1,confidence)); this.model.updatedAt=Date.now(); }
