@@ -226,6 +226,7 @@ export interface CausalExperimentRecord {
 
 export interface ConsciousnessFacet {
   intrinsic: import('../cognition/IntrinsicMotivationEngine.ts').IntrinsicDriveState;
+  selfPrior: import('../cognition/SelfPriorDensityModel.ts').SelfPriorDensityState;
   p31: import('../cognition/P31FunctionalConsciousness.ts').ConsciousnessFunctionalState;
   p32: import('../cognition/P32CausalSelfModel.ts').CausalSelfModelState;
   p33: import('../cognition/P33PersonhoodCore.ts').PersonhoodCoreState;
