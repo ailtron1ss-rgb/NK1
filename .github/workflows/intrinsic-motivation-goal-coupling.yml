@@ -3,7 +3,10 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationGoalCoupling.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/SelfPriorDensityModel.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
+      - "runtime/neuro-kurisu/tests/self-prior-homeostatic-drive.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/types.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts"
@@ -13,9 +16,13 @@ on:
     branches:
       - "aspect/intrinsic-drive-goal-coupling-20261103"
       - "aspect/metacognitive-memory-autonomy-live-20261103"
+      - "aspect/self-prior-homeostatic-drive-20261103"
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationGoalCoupling.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/SelfPriorDensityModel.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
+      - "runtime/neuro-kurisu/tests/self-prior-homeostatic-drive.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/types.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs"
@@ -32,7 +39,7 @@ jobs:
           node-version-file: .nvmrc
           package-manager-cache: false
       - name: Run intrinsic motivation and endogenous goal coupling regressions
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs && node --experimental-strip-types runtime/neuro-kurisu/tests/self-prior-homeostatic-drive.mjs
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: node scripts/typecheck-runtime.mjs
