@@ -1,0 +1,7 @@
+{
+  "name": "@nk1/neko-memory-shadow",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=20" }
+}

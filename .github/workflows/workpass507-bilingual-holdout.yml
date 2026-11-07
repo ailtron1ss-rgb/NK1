@@ -7,14 +7,22 @@ on:
       - "runtime/neuro-kurisu/tests/holdout-normalization.mjs"
       - "runtime/neuro-kurisu/tests/run-independent-bilingual-memory-holdout.mjs"
       - "runtime/neuro-kurisu/tests/workpass507-bilingual-holdout-runner-contract.mjs"
+      - "runtime/neuro-kurisu/tests/neko-memory-holdout-shadow-evaluation.mjs"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts"
+      - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
       - "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md"
       - ".github/workflows/workpass507-bilingual-holdout.yml"
   push:
-    branches: [workpass70-source]
+    branches: [workpass70-source, aspect/neko-memory-shadow-rrf-20261104]
     paths:
       - "runtime/neuro-kurisu/tests/holdout-normalization.mjs"
       - "runtime/neuro-kurisu/tests/run-independent-bilingual-memory-holdout.mjs"
       - "runtime/neuro-kurisu/tests/workpass507-bilingual-holdout-runner-contract.mjs"
+      - "runtime/neuro-kurisu/tests/neko-memory-holdout-shadow-evaluation.mjs"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts"
+      - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
       - ".github/workflows/workpass507-bilingual-holdout.yml"
   workflow_dispatch:
 
@@ -28,7 +36,7 @@ concurrency:
 jobs:
   contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -40,6 +48,12 @@ jobs:
       - name: Install pinned runtime dependencies
         working-directory: runtime/neuro-kurisu
         run: npm ci --no-audit --no-fund
+      - name: Exercise N.E.K.O. shadow candidate through bilingual holdout benchmark
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-memory-holdout-shadow-evaluation.mjs
+      - name: Syntax-check offline retrieval experiment runner
+        working-directory: runtime/neuro-kurisu
+        run: node --check scripts/run-memory-retrieval-experiment.mjs
       - name: Test deterministic Unicode normalization and stable fingerprints
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass507-bilingual-holdout-runner-contract.mjs

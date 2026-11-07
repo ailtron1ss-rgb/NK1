@@ -481,6 +481,10 @@ export class MemoryOS2{
  private readonly revisionGroupIndex=new Map<string,Set<string>>();
  private totalTokenLength=0;
  private lastCandidateCount=0;
+ /** Enabled only on isolated preview instances; never persists ranked IDs in canonical state. */
+ private captureRankedChannelIds=false;
+ private rankedChannelCaptureLimit=64;
+ private lastRankedChannelIds:Record<string,string[]>={};
  private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'|'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[];answerabilityGate:'direct-evidence-or-typed-recall-v1';rankedBeforeGate:number;groundedAfterGate:number;abstained:boolean;abstentionReason:'no-grounded-evidence'|null;spatialRequested:boolean;spatialInvalidQuery:boolean;spatialFrameId:string|null;spatialCandidateCount:number}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:0,groundedAfterGate:0,abstained:false,abstentionReason:null,spatialRequested:false,spatialInvalidQuery:false,spatialFrameId:null,spatialCandidateCount:0};
  private linkSupportCache:Map<string,number>|null=null;
  private linkSupportCacheVersion=-1;
@@ -641,6 +645,30 @@ export class MemoryOS2{
  }
  previewRetrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={}){
    return this.previewRetrieveWithDiagnostics(query,limit,goalRelevance,identityRelevance,temporalOptions).items;
+ }
+ /**
+  * Read-only ranked-channel export for independent retrieval evaluation.
+  * The query runs on an isolated snapshot; only bounded memory IDs and current
+  * fusion weights leave the preview. No memory text or live state is returned.
+  */
+ previewRetrieveWithRankedChannels(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},maxPerChannel=64){
+   if(!Number.isSafeInteger(maxPerChannel)||maxPerChannel<1||maxPerChannel>192)throw new RangeError('memory-ranked-channel-preview-limit-invalid');
+   if(!Number.isSafeInteger(limit)||limit<1||limit>64)throw new RangeError('memory-ranked-channel-preview-result-limit-invalid');
+   const boundedChannelLimit=maxPerChannel;
+   const boundedResultLimit=limit;
+   const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled,embeddingProvider:null});
+   isolated.restore(this.snapshot());
+   isolated.captureRankedChannelIds=true;
+   isolated.rankedChannelCaptureLimit=boundedChannelLimit;
+   const items=isolated.retrieve(query,boundedResultLimit,goalRelevance,identityRelevance,temporalOptions,true) as MemoryItem2[];
+   return {
+    itemIds:items.map(item=>item.id),
+    maxPerChannel:boundedChannelLimit,
+    rankedChannels:Object.fromEntries(Object.entries(isolated.lastRankedChannelIds).map(([name,ids])=>[name,ids.slice()])),
+    currentRrfK:60,
+    currentRrfWeights:{bm25:1,coverage:.90,fuzzy:.60,metadata:(isolated.metadataRecallEnabled ? 0.28 : 0),entity:.42,relationship:.32},
+    diagnostics:isolated.retrievalDiagnostics(),
+   };
  }
  /**
   * Low-priority, bounded semantic-index maintenance. Adapts the deferred embedding-worker
@@ -1350,6 +1378,20 @@ export class MemoryOS2{
      return lexicalEvidence||causalConceptEvidence||typedRecall;
    });
    rows.push(...groundedRows);
+   // Export only IDs that survived the same answerability gate as canonical recall.
+   // This prevents the shadow evaluator from resurrecting ungrounded lexical candidates.
+   if(this.captureRankedChannelIds){
+    const groundedIds=new Set(groundedRows.map(row=>row.m.id));
+    const take=(ranked:Map<string,number>)=>[...ranked.entries()].filter(([id])=>groundedIds.has(id)).sort((left,right)=>right[1]-left[1]||(left[0]<right[0]?-1:left[0]>right[0]?1:0)).slice(0,this.rankedChannelCaptureLimit).map(([id])=>id);
+    this.lastRankedChannelIds={
+     bm25:take(bm25Rank),
+     coverage:take(coverageRank),
+     fuzzy:take(fuzzyRank),
+     metadata:take(metadataRank),
+     entity:take(entityRank),
+     relationship:take(relationshipRank),
+    };
+   }
    this.lastHybridDiagnostics={...this.lastHybridDiagnostics,spatialRequested,spatialInvalidQuery:spatialRequested&&!spatialQuery,spatialFrameId:spatialQuery?.frameId??null,spatialCandidateCount:spatialHits.length,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...groundedRows.map(x=>x.intentBoost01)),candidateSelection:this.metadataRecallEnabled?'idf-coverage-fuzzy-concept-metadata-rrf-stable-id':'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:this.metadataRecallEnabled?['bm25','token-coverage','character-fuzzy','metadata-tags-entities-topic','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:topRows.length,groundedAfterGate:groundedRows.length,abstained:groundedRows.length===0,abstentionReason:groundedRows.length===0?'no-grounded-evidence':null};
    // semanticHits is retained only for persisted-state compatibility. It is not
    // incremented by retrieval: the legacy hashed token projection is not a semantic
