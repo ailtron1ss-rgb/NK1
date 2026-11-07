@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { AdaptiveReplayGovernor } from '../src/organism/system/AdaptiveReplayGovernor.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const clamp=x=>Math.max(0,Math.min(1,Number(x)||0));
 const kinds=['episodic','semantic','identity','autobiographical'];
@@ -19,8 +20,9 @@ const variants={
   adaptive:{surprise:.22,decay:.20,transfer:.18,identity:.12,goal:.10,novelty:.08,stability:.10,adaptive:true},
 };
 
-function runVariant(name,config){
+async function runVariant(name,config){
   const g=new AdaptiveReplayGovernor();
+  const verifier=new OutcomeVerificationService();
   g.restore({policyWeights:config});
   const selected=[]; let plans=0;
   for(let tick=1;tick<=320;tick++){
@@ -33,7 +35,18 @@ function runVariant(name,config){
         const source=nodes.find(n=>n.id===row.id);
         const retention=clamp(.52*source.decayNeed01+.30*source.transferPotential01+.18*source.surprise01-.12*source.interference01);
         const transfer=clamp(.65*source.transferPotential01+.2*source.goal01+.15*source.identity01);
-        g.feedback({memoryId:row.id,retentionGain01:retention,transferPotential01:transfer,interferenceRisk01:source.interference01,independentVerified:true,delayMs:7*86400000});
+        const feedbackInput={memoryId:row.id,retentionGain01:retention,transferPotential01:transfer,interferenceRisk01:source.interference01,delayMs:7*86400000};
+        const verification=await verifier.verify({
+          toolId:'p2687-policy-ablation-independent-verifier',
+          input:feedbackInput,
+          result:{ok:true,memoryId:row.id},
+        },()=>({
+          verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,
+          observationId:`p2687-policy-ablation-observation:${tick}:${row.id}`,
+          expectedPostcondition:'delayed replay policy feedback independently measured',
+          observedPostcondition:'delayed replay policy feedback independently measured'
+        }));
+        g.feedback({...feedbackInput,verification,verificationInput:feedbackInput});
       }
     }
   }
@@ -43,7 +56,7 @@ function runVariant(name,config){
   return {name,plans,selected:selected.length,unique:selected.length?unique.size:0,quality01:clamp((quality+1)/2),interference01:selected.length?selected.reduce((s,r)=>s+r.interferenceRisk01,0)/selected.length:0,diagnostics:g.diagnostics()};
 }
 
-const results=Object.entries(variants).map(([name,cfg])=>runVariant(name,cfg));
+const results=await Promise.all(Object.entries(variants).map(([name,cfg])=>runVariant(name,cfg)));
 for(const r of results){
   assert(r.plans>0);
   assert(r.unique>0);

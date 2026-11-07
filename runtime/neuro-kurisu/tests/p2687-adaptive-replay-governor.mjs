@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { AdaptiveReplayGovernor } from '../src/organism/system/AdaptiveReplayGovernor.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const now=Date.now();
 const make=(id,patch={})=>({
@@ -33,7 +34,19 @@ for(let tick=1;tick<=64;tick++){
 assert(scheduled>=16);
 assert(selected>0);
 const before=g.snapshot().policyWeights;
-const feedback=g.feedback({memoryId:'surprise',retentionGain01:.72,transferPotential01:.81,interferenceRisk01:.12,independentVerified:true,delayMs:7*86400000});
+const feedbackInput={memoryId:'surprise',retentionGain01:.72,transferPotential01:.81,interferenceRisk01:.12,delayMs:7*86400000};
+const verifier=new OutcomeVerificationService();
+const verification=await verifier.verify({
+  toolId:'p2687-adaptive-replay-test-verifier',
+  input:feedbackInput,
+  result:{ok:true,measurementId:'adaptive-replay-test'},
+},()=>({
+  verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,
+  observationId:'adaptive-replay-test-observation',
+  expectedPostcondition:'delayed replay outcome independently measured',
+  observedPostcondition:'delayed replay outcome independently measured'
+}));
+const feedback=g.feedback({...feedbackInput,verification,verificationInput:feedbackInput});
 assert.equal(feedback.updated,true);
 const after=g.snapshot().policyWeights;
 assert.notDeepEqual(after,before,'verified feedback did not adapt replay policy');
