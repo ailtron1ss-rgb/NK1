@@ -2,7 +2,7 @@
 
 - [x] Extend the existing PR #838 test surface with a SharedArrayBuffer-backed Uint8Array view, including a non-zero byte offset.
 - [x] Assert byte length, byte-for-byte output and downstream GLB preflight after the downloader's fallback copy.
-- [ ] Verify the new exact PR head `cc27cd02a06d90d0578102306e0456f6e0ab743c` through all relevant Actions; five runs were in progress at checkpoint.
+- [x] Verify the new exact PR head `cc27cd02a06d90d0578102306e0456f6e0ab743c` through all relevant Actions: 5/5 success (runs 42377092611, 42377092773, 42377092573, 42377092721, 42377092696).
 - [ ] Measure actual browser/mobile peak RSS before claiming a device-level memory improvement.
 - No production implementation changed in this work unit; no dependency added; PR #838 remains open/draft and must not be merged without explicit user authorization.
 
