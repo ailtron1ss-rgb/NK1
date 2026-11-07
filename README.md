@@ -1,8 +1,18 @@
-## Актуальный инженерный checkpoint — 1 ноября 2026
+## Актуальный инженерный checkpoint — 3 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  
+**Live Source HEAD:** `a3b3f4b00fcffe5bcb02161d5ac18d57dab50516` (22 commits ahead of `54d2d35176faf774e3402fdd2ac4dd7b8d01b467`; 0 behind).  
+**Exact-HEAD Actions:** 16/16 completed successfully at this SHA.  
 **`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
+
+### Live source update — 2026-11-03
+
+На текущем source HEAD подтверждены live causal outcome binding, interoceptive precision/input validation, B306 decision-bound attribution, cross-lingual concept-index lifecycle, frame-aware spatial recall, EmotionAppraisal restore, metacognitive episodic-memory projection и intrinsic-drive → endogenous-goal coupling. Exact-SHA CI: 16/16 success.
+
+- [PR #761](https://github.com/ailtron1ss-rgb/NK1/pull/761) — открытый draft на текущем base: temporal self-prior. Его текущий head `59fcc9e9c936d6ec00f0f917dd8f4bf762b15a58` дополнительно защищает restore-counter consistency и rejects stale timestamps; exact-head regression + typecheck прошли в [run #41641976733](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41641976733). Не merged.
+- [PR #760](https://github.com/ailtron1ss-rgb/NK1/pull/760) — открытый draft на текущем base: voluntary attention effort. Не merged.
+- [PR #754](https://github.com/ailtron1ss-rgb/NK1/pull/754) — ZIP inspector workflow [#41620676908](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41620676908) проверил опубликованные ZIP bytes/digest/CRC/member safety. Source parity counts в этом запуске относятся к старому base `36e576d`, а не к текущему `a3b3f4b`; их нужно пересчитать.
+- [PR #755](https://github.com/ailtron1ss-rgb/NK1/pull/755) — source-group holdout gates; его validation относится к собственному старому base и не заменяет финальный independent RU/EN holdout.
 
 > **WorkPass71 (2026-11-03, ветка `workpass71-body-systems`):** добавлены версионированный capability manifest с fail-closed реестром, renderer-neutral motion library и арбитр движений с bounded cross-fade; 3D VRM и Original 2D тела теперь управляются одними и теми же каналами. См. [docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md](docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md). Это IMPLEMENTED/OBSERVED на синтетических тестах; device E2E, soak и visual verification ещё не проведены.
 
@@ -25,7 +35,7 @@
 
 - **Последний stable Release:** tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 - **Последний опубликованный ZIP с учётом prerelease — рабочий артефакт по правилу проекта:** tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- **Новый Release ZIP на 1 ноября не собран и не опубликован.** Ни один из этих ZIP не содержит интеграции от 1 ноября.
+- **Новый Release ZIP на 3 ноября не собран и не опубликован.** Ни один из этих ZIP не содержит интеграции от 1 ноября.
 - `RELEASE_LICENSE_REVIEW.json` остаётся `pending`: root project — `NOASSERTION`, runtime — `LicenseRef-NK1-Private-All-Rights-Reserved`, redistributionApproved=false. На review gate: 477 locked npm components, 8 source archives, 11 repository LICENSE/NOTICE records. Наличие лицензии у отдельного пакета не является разрешением на перераспространение всего проекта.
 
 ### Что всё ещё НЕ доказано
@@ -61,16 +71,15 @@
 
 **Что эти изменения не доказывают:** они закрывают конкретные логические и контрактные дефекты, но не доказывают самостоятельное мышление, часовую автономную инициативу, визуальное применение позы, Android soak или субъективное сознание.
 
-**Проверка подключённых внешних хранилищ (read-only, 2026-11-01):**
-- MongoDB Atlas: доступен проект `Project 0` и свободный кластер `Cluster0` (AWS `AP_SOUTH_1`, MongoDB 8.0.36, состояние `IDLE`). В кластере сейчас присутствует только `sample_mflix`; базы/коллекции NK1 и runtime-адаптера к Atlas ещё нет.
-- Supabase: организация существует, но список проектов пуст. Следовательно, Supabase runtime/database integration пока отсутствует.
-- Redis Agent Memory: доступен skill/reference по SDK и протоколу, но подключённого Redis RAM data-plane/store и секретов `AGENT_MEMORY_*` не обнаружено. Redis нельзя объявлять интегрированным только по наличию SDK guidance.
-- Новые базы, платные сервисы, внешние схемы и секреты не создавались. Следующий правильный шаг — выбрать каноническую роль каждого хранилища и согласовать секреты/окружение; Redis RAM допустим только как shadow/session layer до проверки provenance, forgetting и independent holdout.
+**Проверка подключённых внешних хранилищ (read-only, 2026-11-03):**
+- MongoDB Atlas: проект `Project 0` и свободный кластер `Cluster0` доступны (AWS `AP_SOUTH_1`, MongoDB 8.0.36, состояние `IDLE`). Read-only database list: `sample_mflix`, `admin`, `local`; базы/коллекции NK1 и runtime-адаптера к Atlas ещё нет.
+- Supabase: актуальный project list пуст. Следовательно, Supabase runtime/database integration пока отсутствует.
+- Redis Agent Memory: доступен skill/reference по SDK и протоколу, но подключённого NK1 RAM data-plane/store и секретов `AGENT_MEMORY_*` не обнаружено. Redis нельзя объявлять интегрированным только по наличию SDK guidance.
+- Replit search по `NK1` не вернул приложений. Новые базы, платные сервисы, внешние схемы и секреты не создавались. Следующий правильный шаг — выбрать каноническую роль каждого хранилища и согласовать секреты/окружение; Redis RAM допустим только как shadow/session layer до проверки provenance, forgetting и independent holdout.
 
 **Release:** оба PR объединены только в исходную ветку. Release ZIP от 19 октября не обновлён; новый ZIP не собран и не опубликован. Правило лицензирования и exact-SHA publisher gate остаётся в силе.
 
 **Глобальный процент готовности не повышаю:** новые интеграции прошли targeted CI, но это не закрывает browser/device soak, bilingual retrieval uplift, 3D assets и legal release gates.
-
 
 ---
 
@@ -321,7 +330,6 @@ Read `docs/WORKPASS45_REPORT_2026-10-15.md`, `docs/WORKPASS45_TASKS_2026-10-15.m
 
 # Neuro-Kurisu SUPER
 
-
 ### Action approvals and protected external operations
 
 The canonical ActionGateway owns approval tickets bound to the exact tool, input, operation and expected-output contract. Tickets expire after five minutes, are persisted, require explicit owner resolution and can be consumed once. Protected operations include web/research calls, code/file/system/device tools, voice activation, current and legacy outbound channels, and the research bridge. The UI only previews redacted input metadata; it does not expose the private request fingerprint.
@@ -335,7 +343,6 @@ WorkPass43 regression entry points: `npm run test:tool-receipt-causal-workpass43
 This remains an implementation pass, not release approval. React/Vite build and interactive browser/Live2D E2E are unverified because app dependencies were not installed in the source environment; the long autonomy suite timed out and is not counted as a pass. The previous weighted release roadmap remains **78.0%**; real provider/device receipts, independent retrieval holdout, target-hardware inference, clean-room rollback, nested-license review and soak remain open.
 
 ## WorkPass42 — canonical files and reversible cleanup
-
 
 ## WorkPass42 — canonical files and reversible cleanup
 
@@ -444,18 +451,15 @@ The active UI exposes the canonical runtime through the Runtime Atlas plus WILL/
 
 The current release includes selected, adapter-only mechanisms from Conscio 4.8.2. Conscio FTS5/BM25/trigram/RRF retrieval, quarantined skill federation, peer liaison, confidence calibration, evidence-required claims and metabolic advisory are integrated without creating a second cognitive or memory owner. External source archives are preserved under `legacy/input-archives/` with provenance metadata.
 
-
 ## MemoryOS2 retrieval evaluation (WorkPass 11)
 
 The canonical memory runtime includes a reproducible, offline baseline-vs-MemoryOS2 evaluation path. It accepts a read-only `MemoryOSState2` snapshot, independently labelled query JSONL, and a provenance manifest. The tool checks duplicate/unknown labels, split leakage, corpus identity, retrieval-policy fingerprints, ranking determinism, and paired-bootstrap confidence-bound sensitivity. It never changes live memory and never automatically promotes a candidate.
 
 See `docs/MEMORY_RETRIEVAL_EXPERIMENT_PROTOCOL_2026-10-10.md` for the format and command. From `runtime/neuro-kurisu`, run `npm run run:memory-retrieval-experiment -- --help`. The included test fixture is synthetic and is not production-uplift evidence; a real independent corpus must be supplied for that conclusion.
 
-
 ## MemoryOS2 retrieval evidence gates (WorkPass 12)
 
 The offline retrieval experiment now checks both recall uplift and uncertainty-aware MRR non-inferiority. Its report lists every promotion gate and each bootstrap seed's failures. Invalid explicit seeds block eligibility. CLI output is atomically published without overwriting an existing report. These gates still require independent labeled data; synthetic regression fixtures are not production evidence.
-
 
 ## Current release status (WorkPass 13 — 2026-10-10)
 
@@ -464,7 +468,6 @@ The current weighted implementation roadmap estimate is 67.80% (fixed WorkPass 7
 Run the metadata/lockfile contract check with `npm run audit:release-metadata`, the normalized fixture tests with `npm run test:release-metadata-contract`, or the combined WorkPass 13 audit with `npm run audit:workpass13`. A UI clean-install attempt during this workpass was blocked by npm registry DNS (`EAI_AGAIN`); no successful production build is claimed.
 
 Current status details and next stage plan: `docs/PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS13.md`; weighted breakdown: `docs/PROJECT_PROGRESS_SCORECARD_2026-10-10_WORKPASS13.json`; normalized per-deliverable inventory: `docs/PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS13.json`.
-
 
 ## Current release status (WorkPass 14 — 2026-10-10)
 
@@ -487,13 +490,11 @@ The normalized inventory now contains 51 deliverables: 34 DONE, 9 PARTIAL and 8 
 
 Run `npm run audit:workpass16` for the bounded runtime/source-only gate. Run `npm run audit:workpass16:memory-experiment` for the separate multi-seed offline retrieval experiment. These commands do not claim browser E2E or production build success.
 
-
 ## WorkPass 17 — autonomous project research closure (2026-10-10)
 
 The autonomous-project DAG now distinguishes internal context from independent external research. The repeat step uses the existing allowlisted HTTPS research adapter, preflights network policy and URL before budget/retry consumption, and remains incomplete until the EvidenceFirewall promotes corroborating evidence. External promotion requires diverse source identities and content hashes. Evidence ingestion no longer completes arbitrary current project steps, and unrelated tool failures do not consume the active step's retry budget.
 
 Run the focused gates with `npm run audit:workpass17`. WorkPass 17 does not claim real provider execution, React/Vite production build, browser E2E, or release readiness.
-
 
 ## External project research (WorkPass 18)
 
@@ -516,8 +517,6 @@ External research shares the existing `MemoryOS2` memory owner; it does not crea
 
 This is provenance and source-diversity handling, not semantic proof that sources entail a claim. The next implementation step is claim-specific support/refute/unknown verification; live research providers and the full React/Vite + browser/Live2D release path remain release gates. Run `npm --prefix runtime/neuro-kurisu run audit:workpass19` for the focused runtime integration path, or `npm run audit:workpass19` for the broader current workpass gates.
 
-
-
 ## WorkPass 22 — optional local NLI and conservative claim aggregation
 
 The canonical runtime can optionally ask a local cross-encoder NLI service to score premise/hypothesis pairs. This feature is **off by default**; without `KURISU_RESEARCH_NLI_ENDPOINT`, research uses the conservative direct-text anchor path and does not claim semantic verification. NLI softmax scores are explicitly uncalibrated. Mixed/refuted claims cannot receive positive project credit; model-assisted positive credit requires support across at least two independent source-lineage families.
@@ -525,7 +524,6 @@ The canonical runtime can optionally ask a local cross-encoder NLI service to sc
 To run the optional local service, install its extra dependencies (`python3 -m pip install -r research/requirements-nli.txt`) and start `python3 tools/research_nli_server.py`. Configure the runtime with `KURISU_RESEARCH_NLI_ENDPOINT=http://127.0.0.1:8798/v1/nli`. Set `KURISU_RESEARCH_NLI_TOKEN` on both processes if using a protected remote HTTPS service; do not expose the loopback service to a network without a token. Thresholds can be adjusted through `KURISU_RESEARCH_NLI_MIN_SCORE` and `KURISU_RESEARCH_NLI_MIN_MARGIN`. Evaluate a fixed labelled holdout before treating these scores as reliable.
 
 Run `npm run test:research-nli` and `npm run audit:workpass22` for deterministic integration gates. These tests use mocked inference and do **not** establish real model quality, calibration or a retrieval uplift. UI production build and browser E2E remain open.
-
 
 ## WorkPass 23 — safe batched local NLI and holdout evaluation
 
@@ -539,7 +537,6 @@ python3 tools/evaluate_research_nli.py /path/to/labelled-holdout.jsonl --output 
 
 The JSONL rows require `premise`, `hypothesis` and `label` (`entailment`, `contradiction`, or `neutral`); `id` is optional but must be unique when provided. The evaluator records the exact dataset SHA-256 and reports accuracy, macro/per-class F1, confusion matrix, Brier score, cross-entropy and top-label expected calibration error. It never writes the source text into the report. HTTP is permitted only for loopback; sending text to a non-loopback HTTPS endpoint additionally requires `--allow-remote`. Use a genuinely held-out, domain-relevant dataset; do not tune thresholds on the evaluation split. The sandbox used for WorkPass23 could not resolve the package registry, so real pretrained inference remains an open gate rather than an asserted success.
 
-
 ## WorkPass 24 — NLI readiness, bounded load retry, and model-version provenance
 
 The optional local NLI server now separates process liveness from model readiness: `/livez` and `/healthz` remain healthy while a model warms, whereas `/readyz` returns HTTP 503 until the pinned model is loaded. Use `python3 tools/research_nli_server.py --lazy-model-load` only when a supervisor needs the HTTP process to start before model warmup; default startup remains fail-fast. Model-loading failures expose only a sanitized failure code and use a bounded cooldown so each inference request cannot trigger another repeated model download attempt.
@@ -548,11 +545,9 @@ Each claim assessment preserves model ID and immutable revision through quote-le
 
 Run `npm run audit:workpass24` for the source-side implementation gate. This environment did not download real model weights or install UI dependencies, so passing mocked service tests is not a real-model quality claim and the production UI build remains open.
 
-
 ### Optional local NLI calibration (WorkPass 25)
 
 NLI scores remain raw/uncalibrated by default. A reviewed calibration set can produce a candidate temperature-scaling artifact; see [`docs/RESEARCH_NLI_CALIBRATION.md`](docs/RESEARCH_NLI_CALIBRATION.md). Calibration is local-first, requires at least 50 reviewed examples per NLI class, binds to the exact model revision and never auto-promotes thresholds. A calibrated class score is not a probability that the external claim is true.
-
 
 ### WorkPass27 MemoryOS2 retrieval coverage and BM25 baseline
 
@@ -563,7 +558,6 @@ NLI scores remain raw/uncalibrated by default. A reviewed calibration set can pr
 ### WorkPass26 temporal MemoryOS2 inspector
 
 The canonical memory inspector now offers read-only current, point-in-time and all-revisions inspection through Runtime Atlas. Archive mode retains expired/superseded revisions, absent `asOfAt` uses current time, and inspector preview operates on an isolated snapshot. Run `npm run audit:workpass26` for the current integration gates. This does not promote Memory 2.0: independent labelled temporal holdout/BM25 comparison, frontend production build and browser/Live2D E2E remain open.
-
 
 ### WorkPass28 — numeric retrieval correctness
 
@@ -579,7 +573,6 @@ Configuration: `NK_EMBEDDINGS_ENABLED=0` disables the feature; `NK_EMBEDDINGS_PR
 
 The embedding-backed path is now connected to the normal memory retrieval inside `OrganismCore.observe`, not only the Memory Inspector. It remains opt-in: set `NK_EMBEDDINGS_RUNTIME_ENABLED=1` after configuring Ollama or the llama.cpp-compatible embeddings endpoint. The default foreground budget is `NK_EMBEDDINGS_RUNTIME_BUDGET_MS=220` ms (50–1000 ms); slow inference returns the canonical BM25/fuzzy result immediately while a single bounded index-warming job may continue. The derived embedding index is not a second memory store. Real-model performance and independent retrieval-quality uplift remain unverified until tested on the target machine.
 
-
 ## WorkPass65 update (2026-10-19)
 
 The archive revision gate now requires concrete reconciliation evidence (bounded provider receipt ID or authoritative confirmed-not-executed status), matching request/execution/tool identities, and a finite monotonic timestamp. Run `npm run test:workpass65` from the repository root. This does not replace live provider/device or production browser E2E.
@@ -594,16 +587,13 @@ The active `llama.cpp` chat provider now reads real Fetch response bodies increm
 
 Implementation notes, commit links, and the evidence boundary: [WorkPass73 handover](docs/WORKPASS73_LOCAL_LLM_STREAM_BOUNDARY_2026-10-19.md). The patch remains **implemented, pending CI observation** until a run on the new head is confirmed. This is transport/resource hardening, not proof of real-model quality or production readiness.
 
-
 ## WorkPass74 — local LLM first-choice routing (2026-10-19)
 
 When `LLAMA_CPP_URL` is configured, the server request path selects local `llama.cpp` first, preserves the existing fallback chain, and applies a bounded cooldown after repeated endpoint failures before retrying. A regression covers selection, cooldown, and recovery. This does not by itself prove real-model inference or production readiness. See [WorkPass74 handover](docs/WORKPASS74_LOCAL_LLM_SELECTION_2026-10-19.md).
 
-
 ## WorkPass97 — Node.js 24 and continual-learning retention (2026-10-20)
 
 The active cognitive branch now uses `actions/checkout@v7` and `actions/setup-node@v7` (Node.js 24 action runtime), sets the test runtime and `.nvmrc` to Node.js 24, and adds CI assertions for the runtime version, cognitive-core ownership and runtime smoke integration. A learning bug was fixed so fresh skill evidence refreshes the retention clock even when the validation score changes by less than the update threshold. See [WorkPass97 implementation and verification boundary](docs/WORKPASS97_NODE24_LEARNING_RETENTION_2026-10-20.md). The newly expanded workflow must pass on the new head before this pass is called CI-verified.
-
 
 ## WorkPass98 — multi-timescale continual replay (2026-10-20)
 
