@@ -10,7 +10,7 @@
 |---|---|---|
 | PR #830 — WorldEnvironment restore continuity | Вошёл в source через внешний merge 2026-11-07; merge SHA `26e2c823284d4238199c80cd1eb8363c5d5c8456` | PR head 11/11 checks; current source head 7/7 Actions |
 | Commit `189643e` — bounded HTTPS VRM/GLB import | Implemented + connected in source; URL policy, timeout/abort, byte ceiling, redirect/credential/referrer restrictions, existing model preflight retained | Exact-SHA source Actions 7/7 |
-| PR #838 — lower peak allocation during remote model import | Open/draft, not merged. Added SharedArrayBuffer-backed chunk regression on head `cc27cd02a06d90d0578102306e0456f6e0ab743c` | Prior head 5/5; new head Actions pending at last check |
+| PR #838 — lower peak allocation during remote model import | Open/draft, not merged. Added SharedArrayBuffer-backed chunk regression on head `cc27cd02a06d90d0578102306e0456f6e0ab743c` | Prior head 5/5; new head exact-head Actions 5/5 success (runs 42377092611, 42377092773, 42377092573, 42377092721, 42377092696) |
 | UserModel explicit-forget | Existing canonical implementation remains connected | Exact current-source run 42341468836 success |
 
 ### Открытые интеграционные потоки
