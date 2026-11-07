@@ -205,3 +205,28 @@ test("rejects invalid policy overrides instead of permitting a larger download",
     /Тайм-аут/,
   );
 });
+
+test("preserves byte order across multiple streamed chunks", async () => {
+  const bytes = makeGlb();
+  const cuts = [1, 7, 19, bytes.byteLength - 2, bytes.byteLength];
+  const stream = new ReadableStream({
+    start(controller) {
+      let offset = 0;
+      for (const end of cuts) {
+        controller.enqueue(bytes.slice(offset, end));
+        offset = end;
+      }
+      controller.close();
+    },
+  });
+
+  const result = await fetchRemoteAvatarModel(
+    "https://cdn.example/models/multichunk.glb",
+    { fetchImpl: async () => new Response(stream) },
+  );
+
+  assert.equal(result.byteLength, bytes.byteLength);
+  const downloaded = new Uint8Array(await result.blob.arrayBuffer());
+  assert.deepEqual(downloaded, bytes);
+  assert.equal(preflightAvatarModel(downloaded, result.filename).format, "glb");
+});
