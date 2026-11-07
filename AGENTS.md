@@ -6,7 +6,7 @@
 
 - PR #830 was merged externally on 2026-11-07 05:02 UTC (merge commit `26e2c823284d4238199c80cd1eb8363c5d5c8456`); its world-history restore continuity work is now in `workpass70-source`. Do not attribute that merge to this cycle.
 - Live source HEAD `189643ede8f3904dd670f0109a28b7536e894c00` adds bounded HTTPS VRM/GLB remote import. Exact-SHA push Actions: 7/7 success (runs 42341468790, 42341468836, 42341468820, 42341468833, 42341468783, 42341468784, 42341468785).
-- PR #838 remains open/draft. Its existing memory optimization is being extended with a SharedArrayBuffer regression on head `cc27cd02a06d90d0578102306e0456f6e0ab743c`; exact-head Actions completed 5/5 successfully on exact head `cc27cd02a06d90d0578102306e0456f6e0ab743c`. Do not merge it.
+- PR #838 remains open/draft. Its existing memory optimization is being extended with a SharedArrayBuffer regression on head `cc27cd02a06d90d0578102306e0456f6e0ab743c`; exact-head Actions completed 5/5 successfully on `cc27cd02a06d90d0578102306e0456f6e0ab743c`. Do not merge it.
 - Latest published ZIP metadata remains the 2026-10-19 Hotfix prerelease (136,354,713 bytes; SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`); this run could not fetch the binary. No 2026-11-07 source parity or new Release is claimed.
 - License review/redistribution approval remains pending. RU/EN independent holdout, phone soak, licensed 3D asset and real autonomy evidence remain open gates.
 
@@ -30,7 +30,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 ## Canonical navigation
 
 - `README.md`: current repository status and release gates.
-- `docs/WORKPASS93_CHECKPOINT_2026-10-20.md`: latest continuation snapshot, CI evidence and prioritized unresolved queue.
+- `docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-07.md`: latest live handoff, 18-direction backlog, exact SHA/CI evidence and next actions.
 - `docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` plus its JSON manifest: exact content-duplicate audit; candidates are not deletion instructions.
 - `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: repository inventory, audit findings and open-work register.
 - `runtime/neuro-kurisu/`: canonical organism/runtime implementation.
