@@ -64,6 +64,63 @@ export class PerceptualEvidenceCompiler{
     this.state.lastHash=stableHash(digest);
     return structuredClone(record);
   }
+  /**
+   * Fold admitted canonical observations into compiled perceptual evidence.
+   *
+   * Unlike `recordExternalEvidence` (which a caller invokes with its own claim), this
+   * consumes observations that already passed the intake gate, so the evidence kind is
+   * derived from provenance rather than asserted. Fixtures and unresolved sources land
+   * as `unresolved` and therefore cannot raise `groundedSignalRatio01`.
+   */
+  compileObservations(input:{at:number; observations:Array<{id:string;modality:string;sourceId:string;sourceKind:string;provenance:string;confidence01:number;reliability01:number;capturedAt:number;isRealCapture:boolean;payload:Record<string,unknown>}>}){
+    const at=input.at;
+    if(!Number.isFinite(at)||at<0)return this.snapshot();
+    const modalityOf=(value:string):PerceptualEvidenceRecord['modality']=>{
+      switch(value){
+        case 'vision':return 'vision';
+        case 'audio':return 'audio';
+        case 'text':return 'text';
+        case 'sensor':return 'sensor';
+        case 'device':return 'sensor';
+        default:return 'world';
+      }
+    };
+    let accepted=0; let grounded=0;
+    for(const observation of input.observations.slice(0,64)){
+      const claim=typeof observation.payload.claim==='string'&&observation.payload.claim.trim()
+        ? observation.payload.claim.trim()
+        : typeof observation.payload.subject==='string'&&observation.payload.subject.trim()
+          ? observation.payload.subject.trim()
+          : '';
+      if(!claim)continue;
+      const evidenceKind:PerceptualEvidenceKind=observation.isRealCapture?'observed':observation.provenance==='provider-model-output'?'model-output':observation.provenance==='derived'?'derived':'unresolved';
+      const confidence=clamp(observation.confidence01*observation.reliability01);
+      const record:PerceptualEvidenceRecord={
+        id:`pe-canonical-${stableHash(`${observation.id}:${claim}`)}`,
+        at:Number.isFinite(observation.capturedAt)&&observation.capturedAt<=at?observation.capturedAt:at,
+        modality:modalityOf(observation.modality),
+        claim:`${observation.sourceKind}:${claim}`.slice(0,240),
+        confidence01:confidence,
+        uncertainty01:1-confidence,
+        kind:evidenceKind,
+        parents:[observation.id],
+      };
+      const existing=this.state.evidence.findIndex(x=>x.id===record.id);
+      if(existing<0)this.state.evidence=[record,...this.state.evidence].slice(0,96);
+      accepted++; if(observation.isRealCapture)grounded++;
+    }
+    if(accepted){
+      this.state.lastAt=at;
+      this.state.updates++;
+      const observedRatio=grounded/accepted;
+      this.state.metrics.groundedSignalRatio01=clamp(this.state.metrics.groundedSignalRatio01*.9+observedRatio*.1);
+      this.state.metrics.grounding01=clamp(this.state.metrics.grounding01*.92+observedRatio*.08);
+      const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
+      this.state.lastHash=stableHash(digest);
+    }
+    return this.snapshot();
+  }
+
   compile(input:PerceptualEvidenceInput){
     const at=input.at;
     const semantic=input.semantic; const native=input.native; const temporal=input.temporal; const multi=input.multimodal;

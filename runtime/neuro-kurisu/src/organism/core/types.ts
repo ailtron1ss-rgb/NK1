@@ -292,6 +292,7 @@ export interface EmbodimentFacet {
   p42Experience: import('../cognition/P42UnifiedEmbodiedExperience.ts').P42State;
   p43Imagery: import('../cognition/P43EmbodiedImageryWorkspace.ts').P43State;
   perceptualEvidence: import('../body/PerceptualEvidenceCompiler.ts').PerceptualEvidenceState;
+  observationIntake?: import('../body/ObservationIntakeGate.ts').ObservationIntakeState;
   cameraEvidence: import('../body/CameraEvidenceProcessor.ts').CameraEvidenceState;
   deviceEvidence?: import('../body/DeviceEvidenceLedger.ts').DeviceEvidenceState;
   embodiedAction?: import('../body/EmbodiedActionExecutor.ts').EmbodiedActionResult;

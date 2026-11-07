@@ -11,6 +11,11 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
       - "runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts"
+      - "runtime/neuro-kurisu/src/organism/body/ObservationIntakeGate.ts"
+      - "runtime/neuro-kurisu/src/organism/core/EmbodimentSubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts"
+      - "runtime/neuro-kurisu/tests/nk1-grounded-world-perception.mjs"
+      - "runtime/neuro-kurisu/tests/nk1-grounded-world-perception-e2e.mjs"
       - "runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts"
       - "runtime/neuro-kurisu/src/organism/body/GeminiVisionSemanticBackend.ts"
       - "runtime/neuro-kurisu/src/organism/body/TemporalObjectTracker.ts"
@@ -102,6 +107,12 @@ jobs:
       - name: Run P41 independent-evidence truthfulness regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p41:truthfulness
+      - name: Run canonical observation admission, provenance, and privacy regressions
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/nk1-grounded-world-perception.mjs
+      - name: Run grounded-world admission through OrganismCore and durable restore
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types --test tests/nk1-grounded-world-perception-e2e.mjs
       - name: Verify grounded object identity and evidence provenance
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/world-perception-grounded-identity-provenance.mjs
