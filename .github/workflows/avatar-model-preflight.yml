@@ -8,6 +8,9 @@ on:
       - "app/src/components/avatar/avatarModelLimits.ts"
       - "app/src/components/avatar/avatarModelPreflight.ts"
       - "app/scripts/avatar-model-preflight.test.mjs"
+      - "app/src/components/avatar/remoteAvatarSource.ts"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/scripts/avatar-remote-source.test.mjs"
       - ".github/workflows/avatar-model-preflight.yml"
   pull_request:
     branches:
@@ -16,6 +19,9 @@ on:
       - "app/src/components/avatar/avatarModelLimits.ts"
       - "app/src/components/avatar/avatarModelPreflight.ts"
       - "app/scripts/avatar-model-preflight.test.mjs"
+      - "app/src/components/avatar/remoteAvatarSource.ts"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/scripts/avatar-remote-source.test.mjs"
       - ".github/workflows/avatar-model-preflight.yml"
   workflow_dispatch:
 
@@ -43,3 +49,5 @@ jobs:
           package-manager-cache: false
       - name: Run parser boundary regressions
         run: node --experimental-strip-types --test app/scripts/avatar-model-preflight.test.mjs
+      - name: Run remote URL downloader security regressions
+        run: node --experimental-strip-types --test app/scripts/avatar-remote-source.test.mjs
