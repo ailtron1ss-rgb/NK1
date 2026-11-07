@@ -44,7 +44,8 @@
     "test:glb-mouth-morph-adapter": "node --experimental-strip-types --test scripts/glb-mouth-morph-adapter.test.mjs",
     "test:vrm-normalized-humanoid": "node --experimental-strip-types --test scripts/vrm-normalized-humanoid.integration.test.mjs",
     "verify:hosted-kurisu-model": "node --experimental-strip-types scripts/verify-hosted-kurisu-model.mjs",
-    "test:semantic-gesture-intent": "node --experimental-strip-types --test scripts/semantic-gesture-intent.test.mjs scripts/motion-arbitration.test.mjs"
+    "test:semantic-gesture-intent": "node --experimental-strip-types --test scripts/semantic-gesture-intent.test.mjs scripts/motion-arbitration.test.mjs",
+    "test:avatar-remote-source": "node --experimental-strip-types --test scripts/avatar-remote-source.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
