@@ -1,9 +1,10 @@
 # NK1 — Отчёт о статусе и отслеживании прогресса (30 октября 2026)
 
 **Проект:** Neuro Kurisu / NK1
-**Связано с объектом:** `docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md`
-**Основной SHA репозитория релизов (main):** `c51bdd9920c317baa13ad86a04851b125a8f440b`
-**Актуальный SHA рабочей кодовой базы (workpass70-source):** `ad564d1879028f00549be41ec5172a2f72e25897`
+**Связано с объектом:** `docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md` и `docs/NK1_COMPLETE_MASTER_PLAN_16_PHASES_RU.md`
+**Основной SHA репозитория релизов (main):** `48dffbf4f5c9b5474c8baff61f40b8bf0c5828e8`
+**Актуальный SHA рабочей кодовой базы (workpass70-source):** `bcd48b1fd408a1539ac537813730669c35cfb3a2`
+**Общий предок между ветками:** Отсутствует (независимые деревья, автоматический merge запрещён)
 
 ---
 
@@ -59,6 +60,29 @@ $$\text{PLANNED} \longrightarrow \text{IMPLEMENTED} \longrightarrow \text{TESTED
 
 ---
 
+## Сквозной прогресс по 16 фазам мастер-плана (160 шагов)
+
+| Фаза | Описание фазы | Статус | Шаги |
+|---|---|---|---|
+| **Фаза 1** | Зафиксировать состояние проекта | `IN_PROGRESS` | 10 шагов (SHA зафиксированы, аудит divergent-веток) |
+| **Фаза 2** | Исправить CI и toolchain | `TESTED` | 10 шагов (Node 24, strip-types, setup-node cache) |
+| **Фаза 3** | Безопасно интегрировать ветки | `PLANNED` | 10 шагов (cherry-pick, no direct merge) |
+| **Фаза 4** | Завершить архитектуру единого ядра | `MEASURED` | 10 шагов (`OrganismBus`, `OrganismState`, 11 фаз) |
+| **Фаза 5** | Завершить постоянную память | `INTEGRATED` | 10 шагов (`FileStateStore`, causal ledger) |
+| **Фаза 6** | Доказать качество retrieval | `PENDING_MEASUREMENT` | 10 шагов (независимый holdout, `recallDelta`) |
+| **Фаза 7** | Завершить обучение на собственном опыте | `TESTED` | 10 шагов (`CausalExperienceStream`, replay) |
+| **Фаза 8** | Завершить Hermes, GEPA и P23 | `TESTED` | 10 шагов (P23 learning engine, promotion gate) |
+| **Фаза 9** | Завершить Hexis и mem0 | `INTEGRATED` | 10 шагов (evidence bridge, HMX receipts) |
+| **Фаза 10** | Завершить автономный цикл | `TESTED` | 10 шагов (внутренние драйвы, pause loop) |
+| **Фаза 11** | Завершить личность и эмоции | `TESTED` | 10 шагов (PAD, SelfModel, UserModel v2) |
+| **Фаза 12** | Завершить восприятие, действия и безопасность | `INTEGRATED` | 10 шагов (`EthicalGate`, action ledger, receipts) |
+| **Фаза 13** | Завершить UI, Live2D и голос | `TESTED` | 10 шагов (timeline, visemes, 2.5D/3D adapter) |
+| **Фаза 14** | Завершить локальную модель и оптимизацию | `PLANNED` | 10 шагов (local LLM, latency/thermal budgets) |
+| **Фаза 15** | Завершить безопасность и наблюдаемость | `PLANNED` | 10 шагов (threat model, telemetry, sandbox) |
+| **Фаза 16** | Довести проект до выпуска | `IN_PROGRESS` | 10 шагов (Compose smoke, SBOM 1.5, Release ZIP) |
+
+---
+
 ## Заключение
 
-Все 10 этапов Мастер-Плана имеют формализованные контракты, реализованные модули и проверочные тесты. Открытые гейты честно помечены как `UNVERIFIED` / `PENDING`, что полностью соответствует правилу исполнения №5 («Не выпускать неизвестное как готовое»).
+Все 16 фаз и 160 шагов Мастер-Плана формализованы в `docs/NK1_COMPLETE_MASTER_PLAN_16_PHASES_RU.md`. Открытые гейты честно помечены как `UNVERIFIED` / `PENDING`, что полностью соответствует правилу исполнения №5 («Не выпускать неизвестное как готовое»).
