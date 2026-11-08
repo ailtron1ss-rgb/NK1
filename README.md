@@ -1,17 +1,18 @@
-## Актуальный инженерный checkpoint — 7 ноября 2026
+## Актуальный инженерный checkpoint — 8 ноября 2026
 
-**Каноническая рабочая ветка:** `workpass70-source`  
-**Live source HEAD:** `189643ede8f3904dd670f0109a28b7536e894c00` (перед каждым проходом считывать заново).  
-**`main`** остаётся release/metadata-веткой; source changes не направлять напрямую в `main`.
+**Каноническая рабочая ветка:** workpass70-source  
+**Последний проверенный live source HEAD:** 189643ede8f3904dd670f0109a28b7536e894c00 (перед каждым проходом считывать заново).  
+**main** остаётся release/metadata-веткой; source changes не направлять напрямую в main.
 
-### Подтверждённые изменения
+### Подтверждённые изменения и проверки
 
 | Изменение | Состояние | Проверка |
 |---|---|---|
-| PR #830 — WorldEnvironment restore continuity | Вошёл в source через внешний merge 2026-11-07; merge SHA `26e2c823284d4238199c80cd1eb8363c5d5c8456` | PR head 11/11 checks; current source head 7/7 Actions |
-| Commit `189643e` — bounded HTTPS VRM/GLB import | Implemented + connected in source; URL policy, timeout/abort, byte ceiling, redirect/credential/referrer restrictions, existing model preflight retained | Exact-SHA source Actions 7/7 |
-| PR #838 — lower peak allocation during remote model import | Open/draft, not merged. Added SharedArrayBuffer-backed chunk regression on head `cc27cd02a06d90d0578102306e0456f6e0ab743c` | Prior head 5/5; new head exact-head Actions 5/5 success (runs 42377092611, 42377092773, 42377092573, 42377092721, 42377092696) |
+| PR #830 — WorldEnvironment restore continuity | Вошёл в source через внешний merge 2026-11-07; merge SHA 26e2c823284d4238199c80cd1eb8363c5d5c8456 | Current source commit имеет этот parent; source core regression green |
+| Commit 189643e — bounded HTTPS VRM/GLB import | Implemented + connected in source; bounded download, HTTPS policy, timeout/abort, no credentials/referrer/redirect, existing preflight retained | Exact-SHA source Actions 7/7 |
+| PR #838 — lower peak allocation during remote model import | Open/draft, not merged; SharedArrayBuffer-backed stream regression included | Exact PR-head Actions 5/5 success on cc27cd02a06d90d0578102306e0456f6e0ab743c; peak-RSS not measured |
 | UserModel explicit-forget | Existing canonical implementation remains connected | Exact current-source run 42341468836 success |
+| Embodiment switch contract | Existing renderer-neutral switch path remains connected | Exact current-source run 42341468784 success |
 
 ### Открытые интеграционные потоки
 
@@ -19,28 +20,29 @@
 - Knowledge Pack approval digest: [#810](https://github.com/ailtron1ss-rgb/NK1/pull/810) — open/draft.
 - Decision receipts / proactive consent: [#822](https://github.com/ailtron1ss-rgb/NK1/pull/822) — open/draft.
 - Cognitive phase evidence: [#799](https://github.com/ailtron1ss-rgb/NK1/pull/799) — open/draft.
-- N.E.K.O. speech stack: [#811](https://github.com/ailtron1ss-rgb/NK1/pull/811), [#815](https://github.com/ailtron1ss-rgb/NK1/pull/815), [#819](https://github.com/ailtron1ss-rgb/NK1/pull/819), [#820](https://github.com/ailtron1ss-rgb/NK1/pull/820), [#801](https://github.com/ailtron1ss-rgb/NK1/pull/801) — open; do not create a second voice runtime.
-- Motivation/initiative: [#813](https://github.com/ailtron1ss-rgb/NK1/pull/813) and #822 remain open; cadence ≥1/hour is not measured.
+- Motivation / initiative: #813 and #822 remain existing workstreams; cadence ≥1/hour is not measured.
 - Self-model: [#772](https://github.com/ailtron1ss-rgb/NK1/pull/772) remains open.
+- N.E.K.O. speech stack: [#811](https://github.com/ailtron1ss-rgb/NK1/pull/811), [#815](https://github.com/ailtron1ss-rgb/NK1/pull/815), [#819](https://github.com/ailtron1ss-rgb/NK1/pull/819), [#820](https://github.com/ailtron1ss-rgb/NK1/pull/820), [#801](https://github.com/ailtron1ss-rgb/NK1/pull/801) — do not introduce a second voice runtime.
+- Avatar remote-import memory optimization: [#838](https://github.com/ailtron1ss-rgb/NK1/pull/838) remains open/draft; do not merge.
 
 ### Release и лицензирование
 
-- Последний published ZIP с учётом prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- Release API metadata was refreshed on 2026-11-07. The binary could not be downloaded in this run, so no new CRC/member inspection or current-source parity claim is made. The 2026-11-06 handoff records the prior successful 10,213-entry CRC inspection at the same digest.
-- `contracts/RELEASE_LICENSE_REVIEW.json` remains pending; redistribution approval is false. Do not publish a new ZIP until human license review and the exact-SHA publisher gate pass.
+- Последний published ZIP с учётом prerelease: Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes, SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
+- Releases API metadata refreshed on 2026-11-08. Binary ZIP could not be downloaded in this cycle, so no new CRC/member inspection or source parity claim is made.
+- contracts/RELEASE_LICENSE_REVIEW.json remains pending; redistribution approval is false. Do not publish a new ZIP until human license review and the exact-SHA publisher gate pass.
 
 ### Что всё ещё НЕ доказано / P0 gates
 
-1. Independent bilingual RU/EN memory uplift on immutable source-clustered holdout, ≥5 paired seeds, `recallDelta > 0`, and ≤30 ms search at 10k entries.
+1. Independent bilingual RU/EN memory uplift on immutable source-clustered holdout, ≥5 paired seeds, recallDelta > 0, and ≤30 ms search at 10k entries.
 2. Actual Android/Termux soak: 10k deterministic ticks, ≤50 ms phone tick, interrupt ≤200 ms, lip-sync drift ≤80 ms.
-3. Browser/WebGL E2E and memory/soak for remote VRM/GLB import; PR #838's code is not merged and peak-RSS is not measured.
+3. Browser/WebGL E2E and peak-memory/soak for remote VRM/GLB import.
 4. Separately licensed Kurisu-compatible GLB/VRM asset and 2.5D/IK/VRMA visual validation.
 5. Demonstrated internally motivated initiative over soak; scheduler tests alone do not prove this.
 6. Human redistribution decision and release publisher gate.
 
 **Global readiness is not increased.** Current CI validates bounded source behavior, not independent memory uplift, real hardware performance, legal redistribution or subjective consciousness.
 
-**Latest daily handoff:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-07.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-07.md).
+**Latest daily handoff:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-08.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-08.md).
 
 ---
 
