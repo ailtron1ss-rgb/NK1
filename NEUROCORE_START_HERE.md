@@ -1,41 +1,37 @@
-# CURRENT HANDOFF — 2026-11-07
+# CURRENT HANDOFF — 2026-11-08
 
-> **Current entry point:** read [README.md](README.md), this checkpoint and [the daily engineering cycle](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-07.md), then refresh live GitHub refs and exact-SHA Actions. Historical WorkPass sections below this block are archival, not live truth.
+> **Current entry point:** read README.md, this checkpoint and the daily engineering cycle, then refresh live GitHub refs, PR heads and exact-SHA Actions. Historical WorkPass sections below this block are archival, not live truth.
 
-**Canonical source branch:** `workpass70-source`  
-**Live source HEAD:** `189643ede8f3904dd670f0109a28b7536e894c00`  
-**Branch policy:** source changes target `workpass70-source`; `main` remains release/metadata.
+**Canonical source branch:** workpass70-source  
+**Last verified live source HEAD:** 189643ede8f3904dd670f0109a28b7536e894c00  
+**Branch policy:** source changes target workpass70-source or isolated aspect branches; main remains release/metadata.
 
-## Latest observed source changes
+## Latest observed source and PR state
 
-- PR #830 merged externally on 2026-11-07 05:02 UTC; merge commit `26e2c823284d4238199c80cd1eb8363c5d5c8456`. Its WorldEnvironment history continuity guard is now in source. PR head had 11/11 exact-head checks.
-- Commit `189643e` adds bounded remote HTTPS VRM/GLB import in the avatar UI. Exact current source push Actions: 7/7 success on `189643ede8f3904dd670f0109a28b7536e894c00`.
-- PR #838 is open/draft and not merged. Its memory optimization branch now contains an additional SharedArrayBuffer stream regression on head `cc27cd02a06d90d0578102306e0456f6e0ab743c`; five exact-head Actions completed 5/5 successfully on `cc27cd02a06d90d0578102306e0456f6e0ab743c`.
-- Current UserModel explicit-forget workflow is green on the live source head (run 42341468836).
-
-## Existing PR workstreams — continue, do not duplicate
-
-- Perception #821; Knowledge Pack admission #810; decision receipts/proactive consent #822; cognitive stage receipts #799.
-- Initiative fairness #813; self-prior #772; source-group holdout #770/#769.
-- Voice stack #811/#815/#819/#820/#801. Do not introduce a second speech runtime.
-- Avatar remote-import memory optimization #838; keep it unmerged until exact-head checks and review complete.
+- Source SHA 189643e adds bounded HTTPS VRM/GLB remote import. Exact-SHA source push Actions: 7/7 success.
+- Its parent 26e2c823284d4238199c80cd1eb8363c5d5c8456 is the external merge commit for PR #830; this cycle only observed the merge and verified ancestry.
+- PR #838 is open/draft at cc27cd02a06d90d0578102306e0456f6e0ab743c; exact-head Actions 5/5 success. It is not merged/released and peak-RSS is not measured.
+- PR #831 is the existing documentation workstream. Before this update it was at d5485bea74a06366cc227b073c4cf5a545df983d, with 5/5 exact-head Actions; this cycle continues that branch. Keep it open/draft and re-read its new head/Actions.
+- PR #842 and other master-plan updates target main; they are not runtime source integrations.
 
 ## Release and external services
 
-- Latest published asset by release metadata remains the 2026-10-19 WorkPass70 Hotfix prerelease ZIP: 136,354,713 bytes; SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- This run could not download the binary ZIP; fresh CRC/member inspection and current-source parity remain unverified. The previous 2026-11-06 handoff records a clean 10,213-entry CRC inspection at the same digest.
+- Latest published ZIP including prerelease: Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes, SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
+- Binary ZIP download was unavailable in this cycle; fresh CRC/member inspection and source parity remain unverified.
 - License review remains pending and redistribution approval false. Do not publish a Release.
-- Previously inspected external services: MongoDB Atlas had only `sample_mflix`; no NK1 Supabase project or Redis RAM data plane was present. No new database, secret or schema is authorized.
+- ProductOS project available here is management-only control plane, bound to a separate ProductOS repository; it is not NK1 runtime source and has no database configured. Do not treat it as runtime infrastructure.
 
 ## Remaining P0/P1 gates
 
-1. Frozen, licensed bilingual RU/EN holdout with source-group independence and ≥5 paired seeds; no recall uplift claimed.
+1. Frozen, licensed bilingual RU/EN holdout with source-group independence and ≥5 paired seeds; no recall uplift claim.
 2. Real Android/Termux soak, including 10k ticks, phone-tick latency, audio interruption and lip-sync drift.
-3. Browser/WebGL E2E and memory/soak for remote avatar import; no licensed Kurisu GLB/VRM asset is present.
+3. Browser/WebGL E2E and peak-memory/soak for remote avatar import.
 4. Human license/redistribution review and exact-SHA release gate.
 5. Measured self-initiated Perceive → Appraise → Plan → Act → Reflect → Consolidate behavior with explainable internal causes; no consciousness claim.
 
-**Next actions:** verify PR #838's new exact-head runs; continue existing perception/memory/consent/voice PRs; obtain the immutable RU/EN dataset; re-inspect the release ZIP through a binary-capable path; run hardware tests when target devices are available.
+**Next actions:** continue existing perception/memory/consent/voice PRs after re-reading their live heads; obtain immutable RU/EN holdout; inspect the actual Release ZIP through a binary-capable path; run browser and phone hardware tests when available.
+
+---
 
 ---
 
