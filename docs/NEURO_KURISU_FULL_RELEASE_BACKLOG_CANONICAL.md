@@ -1,3 +1,19 @@
+## WorkPass288 — daily adaptive engineering cycle (2026-11-08)
+
+- [x] Refresh live workpass70-source HEAD: 189643ede8f3904dd670f0109a28b7536e894c00; verify parent 26e2c823284d4238199c80cd1eb8363c5d5c8456 (external PR #830 merge).
+- [x] Verify exact-SHA source Actions: 7/7 success on 189643ede8f3904dd670f0109a28b7536e894c00.
+- [x] Verify PR #838 exact head cc27cd02a06d90d0578102306e0456f6e0ab743c: 5/5 Actions success; keep open/draft and unmerged.
+- [x] Verify PR #831 pre-update exact head d5485bea74a06366cc227b073c4cf5a545df983d: 5/5 Actions success; continue the existing documentation branch without rebase or force-push.
+- [x] Confirm ProductOS NK1 Engineering Control Plane is management-only and not the NK1 runtime repository; no database is configured in that project.
+- [x] Generate and record the 18-direction task packet with counters: generated 18 / attempted 9 / completed 6 / partially completed 1 / blocked 2 / deferred 9 / verified 6.
+- [ ] Download and inspect the 2026-10-19 prerelease ZIP bytes; Release API metadata is known (136,354,713 bytes, SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb), but binary fetch was unavailable in this cycle.
+- [ ] Complete human license/redistribution approval; publication remains prohibited.
+- [ ] Obtain immutable licensed RU/EN holdout and target Android/browser hardware evidence.
+- No runtime source code was changed in this cycle. Existing PRs already cover the visible avatar memory optimization and the major perception/consent/voice workstreams; no duplicate code/PR was created.
+- Full task table and evidence: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-08.md](NK1_DAILY_ENGINEERING_CYCLE_2026-11-08.md).
+
+---
+
 ## WorkPass287 — SharedArrayBuffer remote-avatar stream regression (2026-11-07)
 
 - [x] Extend the existing PR #838 test surface with a SharedArrayBuffer-backed Uint8Array view, including a non-zero byte offset.
