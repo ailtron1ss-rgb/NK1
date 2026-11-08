@@ -1,14 +1,15 @@
 # NeuroCore — repository working rules
 
-> **Current continuation checkpoint — 2026-11-07:** begin with the 2026-11-07 daily engineering cycle, then refresh live `workpass70-source`, open PRs and exact-SHA Actions. Current source HEAD is `189643ede8f3904dd670f0109a28b7536e894c00`; it is a moving snapshot, not a baseline. `main` remains release/metadata; do not merge source work directly into `main`. The 2026-11-06 root entry points were stale and are being refreshed through the existing documentation PR #831 branch. Historical WorkPass records remain archival.
+> **Current continuation checkpoint — 2026-11-08:** begin with README.md, NEUROCORE_START_HERE.md and the 2026-11-08 daily cycle; then refresh live GitHub refs and exact-SHA Actions before any write. Current source HEAD at the latest verified read is 189643ede8f3904dd670f0109a28b7536e894c00, a moving snapshot rather than a baseline. main remains release/metadata; source work stays on workpass70-source or isolated feature branches. PR #831 is the existing documentation workstream; do not merge it without explicit user authorization. Historical WorkPass sections are archival.
 
 ## Current checkpoint
 
-- PR #830 was merged externally on 2026-11-07 05:02 UTC (merge commit `26e2c823284d4238199c80cd1eb8363c5d5c8456`); its world-history restore continuity work is now in `workpass70-source`. Do not attribute that merge to this cycle.
-- Live source HEAD `189643ede8f3904dd670f0109a28b7536e894c00` adds bounded HTTPS VRM/GLB remote import. Exact-SHA push Actions: 7/7 success (runs 42341468790, 42341468836, 42341468820, 42341468833, 42341468783, 42341468784, 42341468785).
-- PR #838 remains open/draft. Its existing memory optimization is being extended with a SharedArrayBuffer regression on head `cc27cd02a06d90d0578102306e0456f6e0ab743c`; exact-head Actions completed 5/5 successfully on `cc27cd02a06d90d0578102306e0456f6e0ab743c`. Do not merge it.
-- Latest published ZIP metadata remains the 2026-10-19 Hotfix prerelease (136,354,713 bytes; SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`); this run could not fetch the binary. No 2026-11-07 source parity or new Release is claimed.
-- License review/redistribution approval remains pending. RU/EN independent holdout, phone soak, licensed 3D asset and real autonomy evidence remain open gates.
+- Live workpass70-source HEAD: 189643ede8f3904dd670f0109a28b7536e894c00; exact-SHA source Actions 7/7 success (runs 42341468790, 42341468836, 42341468820, 42341468833, 42341468783, 42341468784, 42341468785).
+- Parent 26e2c823284d4238199c80cd1eb8363c5d5c8456 is the externally merged PR #830 world-history restore continuity change; do not attribute that merge to this cycle.
+- PR #838 remains open/draft at cc27cd02a06d90d0578102306e0456f6e0ab743c; its exact-head Actions are 5/5 success. Its memory optimization is not merged/released; browser peak-RSS is not measured.
+- Existing docs PR #831 remains open/draft. Before this update its head was d5485bea74a06366cc227b073c4cf5a545df983d with 5/5 exact-head Actions; this cycle extends that branch with the 2026-11-08 handoff. Re-read the new head and Actions before any further action.
+- Latest published prerelease ZIP metadata: 2026-10-19 asset, 136,354,713 bytes, SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb. Binary inspection was unavailable in this cycle; source/release parity is unverified.
+- License/redistribution approval remains pending. Independent RU/EN holdout, real Android/browser soak, licensed 3D asset and self-initiated autonomy evidence remain open gates.
 
 ## Non-negotiable engineering workflow
 
@@ -30,7 +31,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 ## Canonical navigation
 
 - `README.md`: current repository status and release gates.
-- `docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-07.md`: latest live handoff, 18-direction backlog, exact SHA/CI evidence and next actions.
+- `docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-08.md`: latest live handoff, 18-direction backlog, exact SHA/CI evidence and next actions.
 - `docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` plus its JSON manifest: exact content-duplicate audit; candidates are not deletion instructions.
 - `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: repository inventory, audit findings and open-work register.
 - `runtime/neuro-kurisu/`: canonical organism/runtime implementation.
