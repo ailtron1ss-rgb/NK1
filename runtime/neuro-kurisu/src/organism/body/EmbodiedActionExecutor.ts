@@ -33,7 +33,7 @@ function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
     try { child = (object as Record<PropertyKey, unknown>)[key]; } catch { continue; }
     deepFreeze(child, seen);
   }
-  return Object.freeze(value);
+  return Object.freeze(value) as T;
 }
 
 /**
