@@ -2,6 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { RealityGroundingController } from '../src/organism/system/RealityGroundingController.ts';
+import { ExternalPostconditionVerifier } from '../src/organism/system/ExternalPostconditionVerifier.ts';
 import { NeuralCausalTraceLedger } from '../src/organism/system/NeuralCausalTraceLedger.ts';
 import { P2820SelfKnowledgeCoresetBridge } from '../src/organism/cognition/P2820SelfKnowledgeCoresetBridge.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
@@ -12,10 +13,12 @@ const clamp=v=>Math.max(0,Math.min(1,Number(v)||0));
 const fakeEmbodied=await createTrustedEmbodiedActionFixture('explore');
 
 const controller=new RealityGroundingController();
+const postconditionVerifier=new ExternalPostconditionVerifier();
 controller.setMode('external-first');
-const external=controller.resolve({tick:1,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:fakeEmbodied,novelty01:.6,resource01:.8});
+const external=controller.resolve({tick:1,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:fakeEmbodied,postcondition:postconditionVerifier.assess(fakeEmbodied),novelty01:.6,resource01:.8});
 if(external.source!=='external' || external.verified01!==1 || external.independent01!==1 || !controller.snapshot().externalPrimary) throw new Error(`external grounding failed: ${JSON.stringify(external)}`);
-const unavailable=controller.resolve({tick:2,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:{...fakeEmbodied,status:'unavailable',source:'node-host',realityClass:'derived'},novelty01:.3,resource01:.8});
+const unavailableResult={...fakeEmbodied,status:'unavailable',source:'node-host',realityClass:'derived'};
+const unavailable=controller.resolve({tick:2,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:unavailableResult,postcondition:postconditionVerifier.assess(unavailableResult),novelty01:.3,resource01:.8});
 if(unavailable.source!=='simulation') throw new Error('safe simulation fallback failed');
 
 const replayBridge=new P2820SelfKnowledgeCoresetBridge();
