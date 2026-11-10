@@ -48,6 +48,38 @@ assert.equal(forged.source,'simulation');
 assert.equal(forgedController.snapshot().externalPrimary,0,
   'a copied receipt must not enter the external-primary lane');
 
+const copiedAssessment=structuredClone(a);
+const copiedAssessmentController=new RealityGroundingController();
+copiedAssessmentController.setMode('external-first');
+const copiedAssessmentResult=copiedAssessmentController.resolve({
+  tick:2,action:'explore',expectedReward01:.72,predictionConfidence01:.8,
+  simulatedReward01:.3,simulatedSurprise01:.1,simulatedSuccess01:1,
+  embodiedAction:strong,postcondition:copiedAssessment,novelty01:.3,resource01:.9,
+});
+assert.equal(copiedAssessmentResult.source,'simulation',
+  'a serialized postcondition assessment must not retain its trust capability');
+
+const otherObservation=await createTrustedEmbodiedActionFixture('explore');
+const crossRunController=new RealityGroundingController();
+crossRunController.setMode('external-first');
+const crossRunResult=crossRunController.resolve({
+  tick:3,action:'explore',expectedReward01:.72,predictionConfidence01:.8,
+  simulatedReward01:.3,simulatedSurprise01:.1,simulatedSuccess01:1,
+  embodiedAction:otherObservation,postcondition:a,novelty01:.3,resource01:.9,
+});
+assert.equal(crossRunResult.source,'simulation',
+  'a verified assessment must not authorize a different executor receipt');
+
+const actionMismatchController=new RealityGroundingController();
+actionMismatchController.setMode('external-first');
+const actionMismatch=actionMismatchController.resolve({
+  tick:4,action:'respond',expectedReward01:.72,predictionConfidence01:.8,
+  simulatedReward01:.3,simulatedSurprise01:.1,simulatedSuccess01:1,
+  embodiedAction:strong,postcondition:a,novelty01:.3,resource01:.9,
+});
+assert.equal(actionMismatch.source,'simulation',
+  'an observation receipt cannot be rebound to a different selected action');
+
 // Readiness requires six actual, executor-minted external observations.
 const holdout=new RealityGroundingController();
 let early=0;
