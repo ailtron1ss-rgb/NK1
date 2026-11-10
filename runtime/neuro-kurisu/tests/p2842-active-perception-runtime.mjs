@@ -8,7 +8,7 @@ import { createTrustedEmbodiedActionFixture } from './helpers/trusted-embodied-a
 const dir=await fs.mkdtemp(path.join(os.tmpdir(),'neuro-kurisu-p2842-'));
 const runtime=new OrganismRuntime({stateFile:path.join(dir,'state.json'),autoRun:false,enableLanguage:false,realityMode:'external-first',performanceProfile:'mobile'});
 await runtime.init();
-runtime.embodiedActions.execute=async()=>createTrustedEmbodiedActionFixture('explore');
+runtime.embodiedActions.execute=async(_action,input={})=>createTrustedEmbodiedActionFixture('explore',{decisionId:input.decisionId});
 const result=await runtime.step();
 const active=runtime.core.activePerceptionSnapshot();
 const calibration=runtime.core.worldCausalCalibrationSnapshot();
