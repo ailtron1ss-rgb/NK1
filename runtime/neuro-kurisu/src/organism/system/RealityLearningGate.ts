@@ -135,9 +135,9 @@ export class RealityLearningGate {
 
     neural=clamp(neural); world=clamp(world); memory=clamp(memory); identity=clamp(identity);
     const learning=clamp(.44*neural+.30*world+.18*memory+.08*identity);
-    const reward=suppressExternalLearning?.5:clamp(.5+(clamp(input.reward01)-.5)*learning);
-    const gatedSurprise=suppressExternalLearning?0:clamp(surprise*(.45+.55*learning));
-    const success=suppressExternalLearning?.5:clamp(.5+(clamp(input.success01)-.5)*learning);
+    const reward=suppressExternalLearning ? 0.5 :clamp(.5+(clamp(input.reward01)-.5)*learning);
+    const gatedSurprise=suppressExternalLearning ? 0 :clamp(surprise*(.45+.55*learning));
+    const success=suppressExternalLearning ? 0.5 :clamp(.5+(clamp(input.success01)-.5)*learning);
     const reason=!external
       ? 'simulation-teaches-predictive-substrate-with-reduced-cross-reality-promotion'
       : suppressExternalLearning
