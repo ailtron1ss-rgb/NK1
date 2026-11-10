@@ -15,10 +15,12 @@ const fakeEmbodied=await createTrustedEmbodiedActionFixture('explore');
 const controller=new RealityGroundingController();
 const postconditionVerifier=new ExternalPostconditionVerifier();
 controller.setMode('external-first');
-const external=controller.resolve({tick:1,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:fakeEmbodied,postcondition:postconditionVerifier.assess(fakeEmbodied),novelty01:.6,resource01:.8});
+const externalVerification=await postconditionVerifier.assess(fakeEmbodied);
+const external=controller.resolve({tick:1,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:fakeEmbodied,postcondition:externalVerification,novelty01:.6,resource01:.8});
 if(external.source!=='external' || external.verified01!==1 || external.independent01!==1 || !controller.snapshot().externalPrimary) throw new Error(`external grounding failed: ${JSON.stringify(external)}`);
 const unavailableResult={...fakeEmbodied,status:'unavailable',source:'node-host',realityClass:'derived'};
-const unavailable=controller.resolve({tick:2,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:unavailableResult,postcondition:postconditionVerifier.assess(unavailableResult),novelty01:.3,resource01:.8});
+const unavailableVerification=await postconditionVerifier.assess(unavailableResult);
+const unavailable=controller.resolve({tick:2,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:unavailableResult,postcondition:unavailableVerification,novelty01:.3,resource01:.8});
 if(unavailable.source!=='simulation') throw new Error('safe simulation fallback failed');
 
 const replayBridge=new P2820SelfKnowledgeCoresetBridge();
