@@ -1,5 +1,6 @@
 import { isTrustedEmbodiedActionResult, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
-import { isTrustedPostconditionAssessment, type PostconditionAssessment } from './ExternalPostconditionVerifier.ts';
+import { isTrustedEmbodiedOutcomeVerification } from './ExternalPostconditionVerifier.ts';
+import type { OutcomeVerification } from './OutcomeVerificationService.ts';
 import type { ActionKind } from '../core/types.ts';
 
 export type RealityGroundingMode = 'simulation-only' | 'hybrid' | 'external-first';
@@ -10,6 +11,7 @@ export interface RealityGroundingRecord {
   action:ActionKind|null;
   contextKey?:string;
   source:RealityOutcomeSource;
+  proofClass:string;
   realityClass:string;
   status:string;
   verified01:number;
@@ -57,6 +59,7 @@ export interface RealityGroundingState {
 
 export interface RealityGroundingResolution {
   source:RealityOutcomeSource;
+  proofClass:string;
   reward01:number;
   surprise01:number;
   success01:number;
@@ -75,11 +78,10 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const OBSERVATION_ACTIONS=new Set<ActionKind>(['explore','verify','wait','inspect' as ActionKind]);
 const ACTUATION_ACTIONS=new Set<ActionKind>(['respond','rest']);
 
-function isExternalCandidate(r:EmbodiedActionResult|null|undefined, postcondition?:PostconditionAssessment):boolean {
-  if(!isTrustedEmbodiedActionResult(r) || !isTrustedPostconditionAssessment(postcondition,r)) return false;
-  if(postcondition.proofClass!=='independent-observation' && postcondition.proofClass!=='stable-device-receipt') return false;
-  if(r.status!=='executed' || r.source!=='android-termux') return false;
-  return r.realityClass==='device-observation' || r.realityClass==='device-actuation';
+function isExternalCandidate(r:EmbodiedActionResult|null|undefined, postcondition?:OutcomeVerification):boolean {
+  if(!isTrustedEmbodiedActionResult(r) || r.status!=='executed' || r.source!=='android-termux') return false;
+  if(r.realityClass==='device-actuation') return true; // receipt only; never independent postcondition proof
+  return r.realityClass==='device-observation' && isTrustedEmbodiedOutcomeVerification(postcondition,r);
 }
 
 function rewardFromExternal(r:EmbodiedActionResult, verified01:number, independent01:number, consequence01:number):number {
@@ -106,12 +108,14 @@ export class RealityGroundingController {
   snapshot(){ return structuredClone(this.state); }
   restore(raw?:Partial<RealityGroundingState>|null){
     const d=defaultRealityGroundingState(),r:any=raw??{};
-    this.state={...d,...structuredClone(r),version:1,history:Array.isArray(r.history)?r.history.slice(-256):[],last:r.last?structuredClone(r.last):null,mode:r.mode==='simulation-only'||r.mode==='external-first'||r.mode==='hybrid'?r.mode:'hybrid'};
+    const history=Array.isArray(r.history)?r.history.slice(-256).map((x:any)=>({...x,proofClass:typeof x.proofClass==='string'?x.proofClass:'legacy-unverified'})):[];
+    const last=r.last?{...structuredClone(r.last),proofClass:typeof r.last.proofClass==='string'?r.last.proofClass:'legacy-unverified'}:null;
+    this.state={...d,...structuredClone(r),version:1,history,last,mode:r.mode==='simulation-only'||r.mode==='external-first'||r.mode==='hybrid'?r.mode:'hybrid'};
   }
   setMode(mode:RealityGroundingMode){this.state.mode=mode;}
   causalHoldoutReadiness(action:ActionKind|null, source:RealityOutcomeSource='external', minTrials=6){
     if(!action) return 0;
-    const rows=this.state.history.filter(x=>x.action===action && x.source===source).slice(0,64);
+    const rows=this.state.history.filter(x=>x.action===action && x.source===source && (source!=='external'||x.proofClass==='independent-observation')).slice(0,64);
     if(!rows.length) return 0;
     const n=Math.min(1,rows.length/Math.max(1,minTrials));
     const mae=rows.reduce((sum,x)=>sum+Math.abs(x.expectedReward01-x.reward01),0)/rows.length;
@@ -165,14 +169,16 @@ export class RealityGroundingController {
     novelty01:number;
     resource01:number;
     contextKey?:string;
-    postcondition?:PostconditionAssessment;
+    postcondition?:OutcomeVerification;
   }):RealityGroundingResolution {
     const r=input.embodiedAction;
     const mintedAction=isTrustedEmbodiedActionResult(r) ? r : null;
     // Bind the exact executor receipt to the action selected by this cognitive cycle.
     const trustedAction=mintedAction && mintedAction.action===input.action ? mintedAction : null;
+    const independentPostcondition=Boolean(trustedAction && isTrustedEmbodiedOutcomeVerification(input.postcondition,trustedAction));
     const externalCandidate=isExternalCandidate(trustedAction,input.postcondition);
     const externalObserved=Boolean(trustedAction && trustedAction.status==='executed' && trustedAction.source==='android-termux');
+    const proofClass=independentPostcondition?'independent-observation':externalCandidate&&trustedAction?.realityClass==='device-actuation'?'stable-device-receipt':trustedAction?.realityClass==='derived'?'derived-state-transition':'none';
     const observation=Boolean(input.action && OBSERVATION_ACTIONS.has(input.action));
     const actuation=Boolean(input.action && ACTUATION_ACTIONS.has(input.action));
     if(observation)this.state.observationActions++;
@@ -190,22 +196,31 @@ export class RealityGroundingController {
     let consequence01=.18;
     let reason=r && !trustedAction
       ? 'untrusted-or-action-mismatched-embodied-result;simulation-remains-primary'
-      : trustedAction && trustedAction.source==='android-termux' && !externalCandidate
-        ? 'external-outcome-lacks-admitted-postcondition;simulation-remains-primary'
-        : 'simulation-shadow-outcome-used-as-primary';
+      : trustedAction && trustedAction.source==='android-termux' && trustedAction.realityClass==='device-observation' && !independentPostcondition
+        ? 'device-observation-lacks-outcome-verification-service-proof;simulation-remains-primary'
+        : trustedAction && trustedAction.realityClass==='device-actuation'
+          ? 'device-actuation-receipt-only;no-independent-postcondition-proof'
+          : 'simulation-shadow-outcome-used-as-primary';
 
     if(this.state.mode!=='simulation-only' && externalCandidate){
       const trusted=trustedAction!;
-      const proof=input.postcondition!;
       source='external';
-      verified01=clamp(proof.verified01);
-      independent01=clamp(proof.independent01);
-      consequence01=clamp(proof.consequence01);
-      evidence01=clamp(proof.evidence01);
+      if(proofClass==='independent-observation'){
+        verified01=clamp(input.postcondition?.confidence01??0);
+        independent01=1;
+        consequence01=clamp(Math.max(trusted.consequenceVerification.changed01,trusted.effect01));
+        evidence01=clamp(.22+.46*verified01+.18*independent01+.06*trusted.effect01);
+        reason='external-device-observation-primary;outcome-verification-service=match';
+      }else{
+        verified01=0;
+        independent01=0;
+        consequence01=clamp(Math.min(.18,trusted.effect01));
+        evidence01=clamp(.22+.58*.08+.06*trusted.effect01);
+        reason='external-device-action-receipt-only;independent-postcondition-unverified';
+      }
       reward01=rewardFromExternal(trusted,verified01,independent01,consequence01);
       surprise01=surpriseFromExternal(input.expectedReward01,consequence01,input.simulatedSurprise01,verified01);
       success01=clamp(.45+.22*(trusted.status==='executed'?1:0)+.18*verified01+.10*independent01+.05*consequence01);
-      reason=verified01>0?'external-device-observation-primary':'external-device-action-primary-without-independent-effect-proof';
     } else if(this.state.mode==='external-first' && trustedAction && trustedAction.status!=='executed') {
       source='simulation';
       reason='external-first-requested-but-device-action-unavailable;safe-simulation-fallback';
@@ -226,12 +241,13 @@ export class RealityGroundingController {
     );
     const shadowSimulation=source==='external';
     const record:RealityGroundingRecord={
-      tick:input.tick,action:input.action,contextKey:input.contextKey,source,realityClass:trustedAction?.realityClass??(r?'untrusted':'simulator'),status:trustedAction?.status??(r?'untrusted':'simulated'),verified01,independent01,evidence01,expectedReward01:clamp(input.expectedReward01),reward01,surprise01,
+      tick:input.tick,action:input.action,contextKey:input.contextKey,source,proofClass,realityClass:trustedAction?.realityClass??(r?'untrusted':'simulator'),status:trustedAction?.status??(r?'untrusted':'simulated'),verified01,independent01,evidence01,expectedReward01:clamp(input.expectedReward01),reward01,surprise01,
       consequence01,consequenceError01,novelty01:clamp(input.novelty01),predictionConfidence01:clamp(input.predictionConfidence01),fallback:source==='simulation'&&externalCandidate,
       shadowSimulation,reason,
     };
     this.state.steps++;
-    if(source==='external'){this.state.externalPrimary++;this.state.verifiedExternal+=verified01>0?1:0;this.state.independentlyVerifiedExternal+=independent01>0?1:0;if(actuation&&trustedAction?.status==='executed'&&!verified01)this.state.actuationReceipts++;}
+    if(source==='external'){this.state.externalPrimary++;this.state.verifiedExternal+=verified01>0?1:0;this.state.independentlyVerifiedExternal+=independent01>0?1:0;}
+    if(proofClass==='stable-device-receipt')this.state.actuationReceipts++;
     else {this.state.simulatedPrimary++;this.state.simulatedFallbacks+=externalCandidate?1:0;}
     const alpha=.08;
     this.state.meanGrounding01=clamp(this.state.meanGrounding01*(1-alpha)+(source==='external'?1:0)*alpha);
@@ -245,6 +261,6 @@ export class RealityGroundingController {
     this.state.shadowAgreement01=clamp(this.state.shadowAgreement01*(1-alpha)+(source==='external'?(1-predictionMismatch01):.5)*alpha);
     this.state.learningPriority01=clamp(this.state.learningPriority01*(1-alpha)+learningPriority01*alpha);
     this.state.last=record;this.state.history=[record,...this.state.history].slice(0,256);
-    return {source,reward01,surprise01,success01,verified01,independent01,evidence01,consequence01,consequenceError01,learningPriority01,shadowSimulation,reason};
+    return {source,proofClass,reward01,surprise01,success01,verified01,independent01,evidence01,consequence01,consequenceError01,learningPriority01,shadowSimulation,reason};
   }
 }
