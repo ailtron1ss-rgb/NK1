@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { EnvironmentAction } from '../world/WorldEnvironment.ts';
 import type { EmbodimentRuntime } from './EmbodimentRuntime.ts';
 
@@ -11,6 +12,8 @@ export interface EmbodiedActionResult {
   realityClass:EmbodiedRealityClass;
   source:string;
   at:number;
+  executionId:string;
+  decisionId?:string;
   before:{battery01:number;thermal01:number;cognitiveCapacity01:number;awake:boolean;source:string};
   after:{battery01:number;thermal01:number;cognitiveCapacity01:number;awake:boolean;source:string};
   stateDelta:{battery01:number;thermal01:number;cognitiveCapacity01:number;awakeChanged:boolean};
@@ -56,10 +59,14 @@ export class EmbodiedActionExecutor {
   private readonly embodiment: EmbodimentRuntime;
   constructor(embodiment: EmbodimentRuntime) { this.embodiment = embodiment; }
 
-  async execute(action:string, input:{spokenText?:string;speechEventId?:string;allowCamera?:boolean;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>}={}):Promise<EmbodiedActionResult>{
+  async execute(action:string, input:{spokenText?:string;speechEventId?:string;allowCamera?:boolean;decisionId?:string;executionId?:string;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>}={}):Promise<EmbodiedActionResult>{
     const preSample=await this.embodiment.sample({force:true,requestedSensors:['battery','thermal','network']});
     const before=this.embodiment.snapshot();
     const at=Date.now();
+    const suppliedExecutionId=typeof input.executionId==='string'?input.executionId.trim():'';
+    const executionId=/^exec-[a-z0-9-]{8,80}$/i.test(suppliedExecutionId)?suppliedExecutionId:`exec-${randomUUID()}`;
+    const suppliedDecisionId=typeof input.decisionId==='string'?input.decisionId.normalize('NFKC').trim():'';
+    const decisionId=suppliedDecisionId && suppliedDecisionId.length<=180 && !/[\\u0000-\\u001f\\u007f-\\u009f]/.test(suppliedDecisionId)?suppliedDecisionId:undefined;
     const base={battery01:before.telemetry.battery01,thermal01:before.thermalStrain01,cognitiveCapacity01:before.cognitiveCapacity01,awake:before.awake,source:before.telemetry.source};
     let status:EmbodiedExecutionStatus='skipped';
     let reason='action-has-no-direct-device-effect';
@@ -160,7 +167,7 @@ export class EmbodiedActionExecutor {
     const effect01=clamp(changed01*(verified?.9:.15));
     const realityClass:EmbodiedRealityClass=verified?'device-observation':(actuationAction&&(status==='executed'||status==='ambiguous')&&afterBody.telemetry.source==='android-termux'?'device-actuation':'derived');
     const result: EmbodiedActionResult = {
-      version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,
+      version:1,action,status,realityClass,source:afterBody.telemetry.source,at,executionId,...(decisionId?{decisionId}:{}),before:base,
       after:{battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source},
       stateDelta:delta,effect01,reason,capability,artifact,
       consequenceVerification:{attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode},
