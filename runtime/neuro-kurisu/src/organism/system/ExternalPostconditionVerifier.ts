@@ -1,111 +1,144 @@
 import { isTrustedEmbodiedActionResult, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
+import { sha256Stable } from '../core/StableSerialization.ts';
+import {
+  isTrustedDecisionLinkedExternalPostcondition,
+  OutcomeVerificationService,
+  type ExpectedDecisionOutcomeBinding,
+  type OutcomeVerification,
+  type OutcomeVerificationContext,
+} from './OutcomeVerificationService.ts';
 
-const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const EMBODIED_ACTION_TOOL_ID='organism.embodied.action';
 
-export type PostconditionProofClass='independent-observation'|'stable-device-receipt'|'derived-state-transition'|'none';
-
-export interface PostconditionAssessment {
-  action:string;
-  status:string;
-  source:string;
-  proofClass:PostconditionProofClass;
-  verified01:number;
-  independent01:number;
-  evidence01:number;
-  consequence01:number;
-  effect01:number;
-  reason:string;
+interface ActionContract {
+  observation:boolean;
+  actuation:boolean;
+  minIndependent01:number;
 }
 
-const trustedPostconditionAssessments = new WeakMap<object, EmbodiedActionResult>();
-
-function mintPostconditionAssessment(result:EmbodiedActionResult, assessment:PostconditionAssessment):PostconditionAssessment {
-  const frozen=Object.freeze(assessment);
-  trustedPostconditionAssessments.set(frozen,result);
-  return frozen;
+function noVerification(notes:string):OutcomeVerification {
+  return {verified:false,basis:'none',confidence01:0,externalObservation:false,notes};
 }
 
-/** A postcondition can authorize grounding only for the exact receipt it assessed. */
-export function isTrustedPostconditionAssessment(value:unknown, expectedResult:unknown):value is PostconditionAssessment {
-  if(!value || typeof value!=='object' || !isTrustedEmbodiedActionResult(expectedResult)) return false;
-  return trustedPostconditionAssessments.get(value as object)===expectedResult;
+function bindingFor(result:EmbodiedActionResult):ExpectedDecisionOutcomeBinding|null {
+  const executionId=typeof result.executionId==='string'?result.executionId.trim():'';
+  const decisionId=typeof result.decisionId==='string'?result.decisionId.trim():'';
+  if(!/^exec-[a-z0-9-]{8,80}$/i.test(executionId)) return null;
+  if(!decisionId || decisionId.length>180 || /[\\u0000-\\u001f\\u007f-\\u009f]/.test(decisionId)) return null;
+  return {
+    toolId:EMBODIED_ACTION_TOOL_ID,
+    input:{
+      action:result.action,
+      executionId,
+      decisionId,
+      resultFingerprint:sha256Stable(result),
+    },
+    executionId,
+    decisionId,
+  };
 }
 
 /**
- * P2841: a second-stage postcondition verifier.
- *
- * EmbodiedActionExecutor reports raw device facts. This layer converts them into
- * a conservative evidence contract that downstream world/identity learning can
- * consume without treating a command receipt as proof of the intended effect.
+ * The canonical OutcomeVerificationService token is the only authority for an
+ * independently verified embodied postcondition. The result itself must first
+ * be the exact in-process object minted by EmbodiedActionExecutor; the token is
+ * then bound to its execution ID, decision ID, action and stable result digest.
  */
+export function isTrustedEmbodiedOutcomeVerification(value:unknown, expectedResult:unknown):value is OutcomeVerification {
+  if(!isTrustedEmbodiedActionResult(expectedResult)) return false;
+  const binding=bindingFor(expectedResult);
+  return Boolean(binding && isTrustedDecisionLinkedExternalPostcondition(value,binding));
+}
+
 export class ExternalPostconditionVerifier {
-  private matrix:Record<string,{observation:boolean;actuation:boolean;minIndependent01:number}>={
-    explore:{observation:true,actuation:false,minIndependent01:.65},verify:{observation:true,actuation:false,minIndependent01:.70},wait:{observation:true,actuation:false,minIndependent01:.70},inspect:{observation:true,actuation:false,minIndependent01:.70},respond:{observation:false,actuation:true,minIndependent01:.80},rest:{observation:false,actuation:true,minIndependent01:.55},reflect:{observation:false,actuation:false,minIndependent01:0},defer:{observation:false,actuation:false,minIndependent01:0}
+  private readonly verifier=new OutcomeVerificationService();
+  private matrix:Record<string,ActionContract>={
+    explore:{observation:true,actuation:false,minIndependent01:.65},
+    verify:{observation:true,actuation:false,minIndependent01:.70},
+    wait:{observation:true,actuation:false,minIndependent01:.70},
+    inspect:{observation:true,actuation:false,minIndependent01:.70},
+    respond:{observation:false,actuation:true,minIndependent01:.80},
+    rest:{observation:false,actuation:true,minIndependent01:.80},
   };
-  registerAction(action:string,contract:{observation?:boolean;actuation?:boolean;minIndependent01?:number}){this.matrix[action]={observation:Boolean(contract.observation),actuation:Boolean(contract.actuation),minIndependent01:clamp(contract.minIndependent01??.7)};}
-  actionContract(action:string){return {...(this.matrix[action]??{observation:false,actuation:false,minIndependent01:.75})};}
-  assess(result:EmbodiedActionResult):PostconditionAssessment {
-    if (!isTrustedEmbodiedActionResult(result)) {
-      return {
-        action:'unknown',status:'untrusted',source:'untrusted',proofClass:'none',
-        verified01:0,independent01:0,evidence01:0,consequence01:0,effect01:0,
-        reason:'untrusted-embodied-action-result',
-      };
-    }
 
-    const cv=result.consequenceVerification;
+  registerAction(action:string,contract:Partial<ActionContract>){
+    const current=this.actionContract(action);
+    this.matrix[action]={
+      observation:contract.observation??current.observation,
+      actuation:contract.actuation??current.actuation,
+      minIndependent01:clamp(contract.minIndependent01??current.minIndependent01),
+    };
+  }
+
+  actionContract(action:string):ActionContract {
+    const c=this.matrix[action]??{observation:false,actuation:false,minIndependent01:.80};
+    return {...c};
+  }
+
+  async assess(result:EmbodiedActionResult):Promise<OutcomeVerification> {
+    if(!isTrustedEmbodiedActionResult(result)) return noVerification('untrusted-embodied-action-result');
+    const binding=bindingFor(result);
+    if(!binding) return noVerification('missing-host-owned-execution-or-decision-binding');
+
     const contract=this.actionContract(result.action);
-    // Observation proof requires all three independent signals to agree:
-    // the action contract, the executor's reality class, and its verification mode.
-    // A device-actuation receipt can never become an observation by setting a flag.
-    const observation=contract.observation &&
-      result.realityClass==='device-observation' &&
-      cv.verificationMode==='independent-observation';
-    const actuation=contract.actuation||result.realityClass==='device-actuation';
-    const sourceIsDevice=result.source==='android-termux';
-    const executed=result.status==='executed';
-    const freshness01=Math.min(clamp(cv.freshBefore01),clamp(cv.freshAfter01));
-    // Keep the existing conservative 0.8 floor; action-specific thresholds may only raise it.
-    const fresh=Boolean(freshness01>Math.max(.8,contract.minIndependent01) && cv.sourceStable);
-    const independent=Boolean(
-      observation && cv.verified===true && cv.independent===true &&
-      fresh && sourceIsDevice
-    );
+    const threshold=Math.max(.8,contract.minIndependent01);
+    const context:OutcomeVerificationContext={
+      toolId:binding.toolId,
+      input:binding.input,
+      result:structuredClone(result) as unknown as Record<string,unknown>,
+      executionId:binding.executionId,
+      decisionId:binding.decisionId,
+    };
 
-    let proofClass:PostconditionProofClass='none';
-    if(executed && observation && independent) proofClass='independent-observation';
-    else if(executed && actuation && sourceIsDevice) proofClass='stable-device-receipt';
-    else if(executed && result.action==='rest' && cv.verificationMode==='derived-state-transition') proofClass='derived-state-transition';
+    return this.verifier.verify(context,async isolated=>{
+      const observed=isolated.result as unknown as EmbodiedActionResult;
+      const inputFingerprint=typeof isolated.input.resultFingerprint==='string'?isolated.input.resultFingerprint:'';
+      let exact=false;
+      try {
+        exact=Boolean(
+          inputFingerprint &&
+          sha256Stable(observed)===inputFingerprint &&
+          observed.executionId===binding.executionId &&
+          observed.decisionId===binding.decisionId &&
+          observed.action===result.action
+        );
+      } catch {
+        exact=false;
+      }
 
-    const verified01=proofClass==='independent-observation'
-      ? 1
-      : proofClass==='derived-state-transition' ? .72
-      : 0;
-    const independent01=proofClass==='independent-observation' ? 1 : independent ? .55 : 0;
-    const receiptStrength=proofClass==='stable-device-receipt' ? .58 : 0;
-    const evidence01=clamp(
-      (executed ? 1 : 0)*.22 +
-      verified01*.46 +
-      independent01*.18 +
-      receiptStrength*.08 +
-      clamp(result.effect01)*.06,
-    );
-    const consequence01=clamp(
-      proofClass==='independent-observation' ? Math.max(cv.changed01, result.effect01) :
-      proofClass==='derived-state-transition' ? cv.changed01 :
-      proofClass==='stable-device-receipt' ? Math.min(.18, result.effect01) : 0,
-    );
-    const reason=proofClass==='independent-observation'
-      ? 'fresh-independent-device-observation-confirms-postcondition'
-      : proofClass==='stable-device-receipt'
-        ? 'device-receipt-proves-command-acceptance-but-not-intended-external-effect'
-        : proofClass==='derived-state-transition'
-          ? 'local-embodiment-state-transition-is-observed-but-not-independent-world-proof'
-          : 'no-sufficient-postcondition-proof';
+      const cv=observed.consequenceVerification;
+      const freshness01=Math.min(clamp(cv.freshBefore01),clamp(cv.freshAfter01));
+      const valid=Boolean(
+        exact &&
+        contract.observation &&
+        observed.status==='executed' &&
+        observed.source==='android-termux' &&
+        observed.realityClass==='device-observation' &&
+        cv.verified===true &&
+        cv.independent===true &&
+        cv.sourceStable===true &&
+        cv.verificationMode==='independent-observation' &&
+        cv.freshBefore01>threshold &&
+        cv.freshAfter01>threshold
+      );
 
-    return mintPostconditionAssessment(result,{
-      action:result.action,status:result.status,source:result.source,proofClass,verified01,independent01,
-      evidence01,consequence01,effect01:clamp(result.effect01),reason,
+      if(!valid) return {
+        verified:false,basis:'none',confidence01:0,externalObservation:false,
+        notes:'no independently verified external observation postcondition',
+      };
+
+      const postcondition=`fresh-device-observation:${observed.action}:${binding.executionId}`;
+      return {
+        verified:true,
+        basis:'external-postcondition',
+        confidence01:freshness01,
+        externalObservation:true,
+        observationId:binding.executionId,
+        expectedPostcondition:postcondition,
+        observedPostcondition:postcondition,
+        notes:'executor-minted-device-observation-with-fresh-pre-and-post-samples',
+      };
     });
   }
 }
