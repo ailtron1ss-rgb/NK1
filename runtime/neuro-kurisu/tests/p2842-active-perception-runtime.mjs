@@ -3,18 +3,12 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { createTrustedEmbodiedActionFixture } from './helpers/trusted-embodied-action-fixture.mjs';
 
 const dir=await fs.mkdtemp(path.join(os.tmpdir(),'neuro-kurisu-p2842-'));
 const runtime=new OrganismRuntime({stateFile:path.join(dir,'state.json'),autoRun:false,enableLanguage:false,realityMode:'external-first',performanceProfile:'mobile'});
 await runtime.init();
-runtime.embodiedActions.execute=async(action)=>({
-  version:1,action,status:'executed',realityClass:'device-observation',source:'android-termux',at:Date.now(),
-  before:{battery01:.8,thermal01:.2,cognitiveCapacity01:.9,awake:true,source:'android-termux'},
-  after:{battery01:.8,thermal01:.2,cognitiveCapacity01:.9,awake:true,source:'android-termux'},
-  stateDelta:{battery01:0,thermal01:0,cognitiveCapacity01:0,awakeChanged:false},
-  effect01:.72,reason:'p2842-test-external-observation',capability:'android.sensors',
-  consequenceVerification:{attempted:true,independent:true,verified:true,sourceStable:true,freshBefore01:1,freshAfter01:1,changed01:.64,reason:'p2842-independent-observation',verificationMode:'independent-observation'}
-});
+runtime.embodiedActions.execute=async()=>createTrustedEmbodiedActionFixture('explore');
 const result=await runtime.step();
 const active=runtime.core.activePerceptionSnapshot();
 const calibration=runtime.core.worldCausalCalibrationSnapshot();
