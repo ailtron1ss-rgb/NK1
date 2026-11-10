@@ -1,5 +1,5 @@
 import { isTrustedEmbodiedActionResult, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
-import type { PostconditionAssessment } from './ExternalPostconditionVerifier.ts';
+import { isTrustedPostconditionAssessment, type PostconditionAssessment } from './ExternalPostconditionVerifier.ts';
 import type { ActionKind } from '../core/types.ts';
 
 export type RealityGroundingMode = 'simulation-only' | 'hybrid' | 'external-first';
@@ -76,7 +76,7 @@ const OBSERVATION_ACTIONS=new Set<ActionKind>(['explore','verify','wait','inspec
 const ACTUATION_ACTIONS=new Set<ActionKind>(['respond','rest']);
 
 function isExternalCandidate(r:EmbodiedActionResult|null|undefined, postcondition?:PostconditionAssessment):boolean {
-  if(!isTrustedEmbodiedActionResult(r) || !postcondition) return false;
+  if(!isTrustedEmbodiedActionResult(r) || !isTrustedPostconditionAssessment(postcondition,r)) return false;
   if(postcondition.proofClass!=='independent-observation' && postcondition.proofClass!=='stable-device-receipt') return false;
   if(r.status!=='executed' || r.source!=='android-termux') return false;
   return r.realityClass==='device-observation' || r.realityClass==='device-actuation';
