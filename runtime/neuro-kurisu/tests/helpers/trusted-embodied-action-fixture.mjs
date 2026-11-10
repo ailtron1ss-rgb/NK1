@@ -1,6 +1,9 @@
 import { EmbodiedActionExecutor } from '../../src/organism/body/EmbodiedActionExecutor.ts';
 
+let fixtureSequence = 0;
+
 export async function createTrustedEmbodiedActionFixture(action = 'explore', options = {}) {
+  fixtureSequence += 1;
   let sampleCount = 0;
   const body = {
     telemetry: {
@@ -32,5 +35,9 @@ export async function createTrustedEmbodiedActionFixture(action = 'explore', opt
     voiceSnapshot() { return { state: { lastError: null } }; },
   };
   const executor = new EmbodiedActionExecutor(embodiment);
-  return executor.execute(action, { spokenText: action === 'respond' ? 'test utterance' : '' });
+  return executor.execute(action, {
+    spokenText: action === 'respond' ? 'test utterance' : '',
+    executionId: `exec-fixture-${String(fixtureSequence).padStart(8,'0')}`,
+    decisionId: `fixture-decision-${fixtureSequence}`,
+  });
 }
