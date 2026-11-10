@@ -884,12 +884,9 @@ export class OrganismRuntime {
       novelty01:clamp01(Math.max(transition.surprise,cycle.state.needs.novelty)),
       resource01:clamp01(resourceAllocation.learning01),
       contextKey:causalContextKey,
+      postcondition,
     });
     if (grounded.source==='external') {
-      grounded.verified01 = Math.min(grounded.verified01, postcondition.verified01);
-      grounded.independent01 = Math.min(grounded.independent01, postcondition.independent01);
-      grounded.evidence01 = Math.min(grounded.evidence01, Math.max(postcondition.evidence01, .18));
-      grounded.consequence01 = Math.min(grounded.consequence01, postcondition.consequence01 + .35*(1-postcondition.verified01));
       grounded.reason = `${grounded.reason};postcondition=${postcondition.proofClass}`;
     }
     this.realityGrounding.refineLatest({verified01:grounded.verified01,independent01:grounded.independent01,evidence01:grounded.evidence01,consequence01:grounded.consequence01,reason:grounded.reason});
