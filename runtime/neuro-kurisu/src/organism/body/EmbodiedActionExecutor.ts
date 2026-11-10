@@ -21,6 +21,30 @@ export interface EmbodiedActionResult {
   consequenceVerification:{attempted:boolean;independent:boolean;verified:boolean;sourceStable:boolean;freshBefore01:number;freshAfter01:number;changed01:number;reason:string;verificationMode:'independent-observation'|'actuation-receipt-only'|'derived-state-transition'|'none'};
 }
 
+const trustedEmbodiedActionResults = new WeakSet<object>();
+
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (value === null || typeof value !== 'object') return value;
+  const object = value as unknown as object;
+  if (seen.has(object)) return value;
+  seen.add(object);
+  for (const key of Reflect.ownKeys(object)) {
+    let child: unknown;
+    try { child = (object as Record<PropertyKey, unknown>)[key]; } catch { continue; }
+    deepFreeze(child, seen);
+  }
+  return Object.freeze(value);
+}
+
+/**
+ * Only the exact in-process result minted by EmbodiedActionExecutor is trusted.
+ * Structured clones, restored JSON and caller-constructed receipts deliberately
+ * lose this capability and must be re-verified before affecting world learning.
+ */
+export function isTrustedEmbodiedActionResult(value: unknown): value is EmbodiedActionResult {
+  return Boolean(value && typeof value === 'object' && trustedEmbodiedActionResults.has(value as object));
+}
+
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 
 /**
@@ -135,6 +159,14 @@ export class EmbodiedActionExecutor {
     const consequenceReason=verified?'independent-live-device-post-action-measurement':(actuationAction&&status==='executed'?'device-command-acknowledged-without-independent-effect-verification':(status==='ambiguous'?'tts-result-unknown-do-not-retry-or-credit':(status==='executed'?'action-executed-without-independent-device-proof':'no-independent-device-consequence-proof')));
     const effect01=clamp(changed01*(verified?.9:.15));
     const realityClass:EmbodiedRealityClass=verified?'device-observation':(actuationAction&&(status==='executed'||status==='ambiguous')&&afterBody.telemetry.source==='android-termux'?'device-actuation':'derived');
-    return {version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,after:{battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source},stateDelta:delta,effect01,reason,capability,artifact,consequenceVerification:{attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode}};
+    const result: EmbodiedActionResult = {
+      version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,
+      after:{battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source},
+      stateDelta:delta,effect01,reason,capability,artifact,
+      consequenceVerification:{attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode},
+    };
+    deepFreeze(result);
+    trustedEmbodiedActionResults.add(result);
+    return result;
   }
 }
