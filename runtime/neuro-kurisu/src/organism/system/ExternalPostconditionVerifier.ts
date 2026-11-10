@@ -17,6 +17,20 @@ export interface PostconditionAssessment {
   reason:string;
 }
 
+const trustedPostconditionAssessments = new WeakMap<object, EmbodiedActionResult>();
+
+function mintPostconditionAssessment(result:EmbodiedActionResult, assessment:PostconditionAssessment):PostconditionAssessment {
+  const frozen=Object.freeze(assessment);
+  trustedPostconditionAssessments.set(frozen,result);
+  return frozen;
+}
+
+/** A postcondition can authorize grounding only for the exact receipt it assessed. */
+export function isTrustedPostconditionAssessment(value:unknown, expectedResult:unknown):value is PostconditionAssessment {
+  if(!value || typeof value!=='object' || !isTrustedEmbodiedActionResult(expectedResult)) return false;
+  return trustedPostconditionAssessments.get(value as object)===expectedResult;
+}
+
 /**
  * P2841: a second-stage postcondition verifier.
  *
@@ -89,9 +103,9 @@ export class ExternalPostconditionVerifier {
           ? 'local-embodiment-state-transition-is-observed-but-not-independent-world-proof'
           : 'no-sufficient-postcondition-proof';
 
-    return {
+    return mintPostconditionAssessment(result,{
       action:result.action,status:result.status,source:result.source,proofClass,verified01,independent01,
       evidence01,consequence01,effect01:clamp(result.effect01),reason,
-    };
+    });
   }
 }
