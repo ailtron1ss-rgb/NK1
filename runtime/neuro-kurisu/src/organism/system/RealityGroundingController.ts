@@ -1,4 +1,5 @@
 import { isTrustedEmbodiedActionResult, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
+import type { PostconditionAssessment } from './ExternalPostconditionVerifier.ts';
 import type { ActionKind } from '../core/types.ts';
 
 export type RealityGroundingMode = 'simulation-only' | 'hybrid' | 'external-first';
@@ -74,10 +75,10 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const OBSERVATION_ACTIONS=new Set<ActionKind>(['explore','verify','wait','inspect' as ActionKind]);
 const ACTUATION_ACTIONS=new Set<ActionKind>(['respond','rest']);
 
-function isExternalCandidate(r:EmbodiedActionResult|null|undefined):boolean {
-  if(!isTrustedEmbodiedActionResult(r)) return false;
-  if(r.status!=='executed') return false;
-  if(r.source!=='android-termux') return false;
+function isExternalCandidate(r:EmbodiedActionResult|null|undefined, postcondition?:PostconditionAssessment):boolean {
+  if(!isTrustedEmbodiedActionResult(r) || !postcondition) return false;
+  if(postcondition.proofClass!=='independent-observation' && postcondition.proofClass!=='stable-device-receipt') return false;
+  if(r.status!=='executed' || r.source!=='android-termux') return false;
   return r.realityClass==='device-observation' || r.realityClass==='device-actuation';
 }
 
@@ -164,10 +165,13 @@ export class RealityGroundingController {
     novelty01:number;
     resource01:number;
     contextKey?:string;
+    postcondition?:PostconditionAssessment;
   }):RealityGroundingResolution {
     const r=input.embodiedAction;
-    const trustedAction=isTrustedEmbodiedActionResult(r) ? r : null;
-    const externalCandidate=isExternalCandidate(trustedAction);
+    const mintedAction=isTrustedEmbodiedActionResult(r) ? r : null;
+    // Bind the exact executor receipt to the action selected by this cognitive cycle.
+    const trustedAction=mintedAction && mintedAction.action===input.action ? mintedAction : null;
+    const externalCandidate=isExternalCandidate(trustedAction,input.postcondition);
     const externalObserved=Boolean(trustedAction && trustedAction.status==='executed' && trustedAction.source==='android-termux');
     const observation=Boolean(input.action && OBSERVATION_ACTIONS.has(input.action));
     const actuation=Boolean(input.action && ACTUATION_ACTIONS.has(input.action));
@@ -185,17 +189,19 @@ export class RealityGroundingController {
     let evidence01=.18;
     let consequence01=.18;
     let reason=r && !trustedAction
-      ? 'untrusted-embodied-action-result;simulation-remains-primary'
-      : 'simulation-shadow-outcome-used-as-primary';
+      ? 'untrusted-or-action-mismatched-embodied-result;simulation-remains-primary'
+      : trustedAction && trustedAction.source==='android-termux' && !externalCandidate
+        ? 'external-outcome-lacks-admitted-postcondition;simulation-remains-primary'
+        : 'simulation-shadow-outcome-used-as-primary';
 
     if(this.state.mode!=='simulation-only' && externalCandidate){
       const trusted=trustedAction!;
+      const proof=input.postcondition!;
       source='external';
-      verified01=clamp(trusted.consequenceVerification.verified?1:0);
-      independent01=clamp(trusted.consequenceVerification.independent?1:0);
-      consequence01=clamp(trusted.consequenceVerification.changed01);
-      const effectConfidence=clamp(.65*trusted.effect01+.35*consequence01);
-      evidence01=clamp(.34+verified01*.28+independent01*.22+(trusted.consequenceVerification.sourceStable ? .10 : 0)+effectConfidence*.06);
+      verified01=clamp(proof.verified01);
+      independent01=clamp(proof.independent01);
+      consequence01=clamp(proof.consequence01);
+      evidence01=clamp(proof.evidence01);
       reward01=rewardFromExternal(trusted,verified01,independent01,consequence01);
       surprise01=surpriseFromExternal(input.expectedReward01,consequence01,input.simulatedSurprise01,verified01);
       success01=clamp(.45+.22*(trusted.status==='executed'?1:0)+.18*verified01+.10*independent01+.05*consequence01);
