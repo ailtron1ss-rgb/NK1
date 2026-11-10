@@ -1,4 +1,4 @@
-import type { EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
+import { isTrustedEmbodiedActionResult, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
@@ -31,14 +31,32 @@ export class ExternalPostconditionVerifier {
   registerAction(action:string,contract:{observation?:boolean;actuation?:boolean;minIndependent01?:number}){this.matrix[action]={observation:Boolean(contract.observation),actuation:Boolean(contract.actuation),minIndependent01:clamp(contract.minIndependent01??.7)};}
   actionContract(action:string){return {...(this.matrix[action]??{observation:false,actuation:false,minIndependent01:.75})};}
   assess(result:EmbodiedActionResult):PostconditionAssessment {
+    if (!isTrustedEmbodiedActionResult(result)) {
+      return {
+        action:'unknown',status:'untrusted',source:'untrusted',proofClass:'none',
+        verified01:0,independent01:0,evidence01:0,consequence01:0,effect01:0,
+        reason:'untrusted-embodied-action-result',
+      };
+    }
+
     const cv=result.consequenceVerification;
     const contract=this.actionContract(result.action);
-    const observation=contract.observation||result.realityClass==='device-observation'||cv.verificationMode==='independent-observation';
+    // Observation proof requires all three independent signals to agree:
+    // the action contract, the executor's reality class, and its verification mode.
+    // A device-actuation receipt can never become an observation by setting a flag.
+    const observation=contract.observation &&
+      result.realityClass==='device-observation' &&
+      cv.verificationMode==='independent-observation';
     const actuation=contract.actuation||result.realityClass==='device-actuation';
     const sourceIsDevice=result.source==='android-termux';
     const executed=result.status==='executed';
-    const fresh=Boolean(cv.freshBefore01>.8 && cv.freshAfter01>.8 && cv.sourceStable);
-    const independent=Boolean(cv.independent && fresh && sourceIsDevice && (cv.independent ? 1 : 0)>=contract.minIndependent01);
+    const freshness01=Math.min(clamp(cv.freshBefore01),clamp(cv.freshAfter01));
+    // Keep the existing conservative 0.8 floor; action-specific thresholds may only raise it.
+    const fresh=Boolean(freshness01>Math.max(.8,contract.minIndependent01) && cv.sourceStable);
+    const independent=Boolean(
+      observation && cv.verified===true && cv.independent===true &&
+      fresh && sourceIsDevice
+    );
 
     let proofClass:PostconditionProofClass='none';
     if(executed && observation && independent) proofClass='independent-observation';
