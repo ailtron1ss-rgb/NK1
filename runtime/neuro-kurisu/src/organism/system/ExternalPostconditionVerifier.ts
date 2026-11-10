@@ -25,7 +25,7 @@ function bindingFor(result:EmbodiedActionResult):ExpectedDecisionOutcomeBinding|
   const executionId=typeof result.executionId==='string'?result.executionId.trim():'';
   const decisionId=typeof result.decisionId==='string'?result.decisionId.trim():'';
   if(!/^exec-[a-z0-9-]{8,80}$/i.test(executionId)) return null;
-  if(!decisionId || decisionId.length>180 || /[\\u0000-\\u001f\\u007f-\\u009f]/.test(decisionId)) return null;
+  if(!decisionId || decisionId.length>180 || /[\u0000-\u001f\u007f-\u009f]/.test(decisionId)) return null;
   return {
     toolId:EMBODIED_ACTION_TOOL_ID,
     input:{
