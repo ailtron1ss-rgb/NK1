@@ -5,16 +5,11 @@ import { RealityGroundingController } from '../src/organism/system/RealityGround
 import { NeuralCausalTraceLedger } from '../src/organism/system/NeuralCausalTraceLedger.ts';
 import { P2820SelfKnowledgeCoresetBridge } from '../src/organism/cognition/P2820SelfKnowledgeCoresetBridge.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { createTrustedEmbodiedActionFixture } from './helpers/trusted-embodied-action-fixture.mjs';
 
 const clamp=v=>Math.max(0,Math.min(1,Number(v)||0));
 
-const fakeEmbodied={
-  version:1, action:'explore', status:'executed', realityClass:'device-observation', source:'android-termux', at:Date.now(),
-  before:{battery01:.9,thermal01:.1,cognitiveCapacity01:.9,awake:true,source:'android-termux'},
-  after:{battery01:.9,thermal01:.1,cognitiveCapacity01:.9,awake:true,source:'android-termux'},
-  stateDelta:{battery01:0,thermal01:0,cognitiveCapacity01:0,awakeChanged:false},
-  effect01:.7, reason:'test', capability:'android.sensors', consequenceVerification:{attempted:true,independent:true,verified:true,sourceStable:true,freshBefore01:1,freshAfter01:1,changed01:.35,reason:'test-independent',verificationMode:'independent-observation'}
-};
+const fakeEmbodied=await createTrustedEmbodiedActionFixture('explore');
 
 const controller=new RealityGroundingController();
 controller.setMode('external-first');
