@@ -42,7 +42,7 @@ forgedController.setMode('external-first');
 const forged=forgedController.resolve({
   tick:1,action:'explore',expectedReward01:.72,predictionConfidence01:.8,
   simulatedReward01:.3,simulatedSurprise01:.1,simulatedSuccess01:1,
-  embodiedAction:copied,novelty01:.3,resource01:.9,
+  embodiedAction:copied,postcondition:verifier.assess(copied),novelty01:.3,resource01:.9,
 });
 assert.equal(forged.source,'simulation');
 assert.equal(forgedController.snapshot().externalPrimary,0,
@@ -57,7 +57,7 @@ for(let tick=1;tick<=6;tick++){
   lateRow=holdout.resolve({
     tick,action:'explore',expectedReward01:.72,predictionConfidence01:.8,
     simulatedReward01:.3,simulatedSurprise01:.1,simulatedSuccess01:1,
-    novelty01:.3,resource01:.9,embodiedAction:observation,
+    novelty01:.3,resource01:.9,embodiedAction:observation,postcondition:verifier.assess(observation),
   });
   if(tick===1) early=holdout.causalHoldoutReadiness('explore','external',6);
 }
