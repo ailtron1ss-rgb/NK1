@@ -38,6 +38,6 @@ export async function createTrustedEmbodiedActionFixture(action = 'explore', opt
   return executor.execute(action, {
     spokenText: action === 'respond' ? 'test utterance' : '',
     executionId: `exec-fixture-${String(fixtureSequence).padStart(8,'0')}`,
-    decisionId: `fixture-decision-${fixtureSequence}`,
+    decisionId: options.decisionId ?? `fixture-decision-${fixtureSequence}`,
   });
 }
