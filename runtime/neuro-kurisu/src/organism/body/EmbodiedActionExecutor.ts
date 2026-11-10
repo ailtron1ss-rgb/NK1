@@ -66,7 +66,7 @@ export class EmbodiedActionExecutor {
     const suppliedExecutionId=typeof input.executionId==='string'?input.executionId.trim():'';
     const executionId=/^exec-[a-z0-9-]{8,80}$/i.test(suppliedExecutionId)?suppliedExecutionId:`exec-${randomUUID()}`;
     const suppliedDecisionId=typeof input.decisionId==='string'?input.decisionId.normalize('NFKC').trim():'';
-    const decisionId=suppliedDecisionId && suppliedDecisionId.length<=180 && !/[\\u0000-\\u001f\\u007f-\\u009f]/.test(suppliedDecisionId)?suppliedDecisionId:undefined;
+    const decisionId=suppliedDecisionId && suppliedDecisionId.length<=180 && !/[\u0000-\u001f\u007f-\u009f]/.test(suppliedDecisionId)?suppliedDecisionId:undefined;
     const base={battery01:before.telemetry.battery01,thermal01:before.thermalStrain01,cognitiveCapacity01:before.cognitiveCapacity01,awake:before.awake,source:before.telemetry.source};
     let status:EmbodiedExecutionStatus='skipped';
     let reason='action-has-no-direct-device-effect';
