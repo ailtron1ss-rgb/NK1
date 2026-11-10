@@ -1,37 +1,81 @@
 import assert from 'node:assert/strict';
 import { ExternalPostconditionVerifier } from '../src/organism/system/ExternalPostconditionVerifier.ts';
+import { RealityGroundingController } from '../src/organism/system/RealityGroundingController.ts';
+import { isTrustedEmbodiedActionResult } from '../src/organism/body/EmbodiedActionExecutor.ts';
 import { GroundedWorldState } from '../src/organism/world/GroundedWorldState.ts';
+import { createTrustedEmbodiedActionFixture } from './helpers/trusted-embodied-action-fixture.mjs';
 
 const verifier=new ExternalPostconditionVerifier();
-const strong={version:1,action:'explore',status:'executed',realityClass:'device-observation',source:'android-termux',at:100,before:{battery01:.8,thermal01:.2,cognitiveCapacity01:.9,awake:true,source:'android-termux'},after:{battery01:.79,thermal01:.21,cognitiveCapacity01:.9,awake:true,source:'android-termux'},stateDelta:{battery01:-.01,thermal01:.01,cognitiveCapacity01:0,awakeChanged:false},effect01:.7,reason:'live-android-telemetry-observation',capability:'android.sensors',consequenceVerification:{attempted:true,independent:true,verified:true,sourceStable:true,freshBefore01:1,freshAfter01:1,changed01:.6,reason:'independent-live-device-post-action-measurement',verificationMode:'independent-observation'}};
-const weak={...strong,action:'respond',realityClass:'device-actuation',effect01:.1,consequenceVerification:{...strong.consequenceVerification,independent:true,verified:false,verificationMode:'actuation-receipt-only',reason:'receipt-only'}};
+const strong=await createTrustedEmbodiedActionFixture('explore');
+const weak=await createTrustedEmbodiedActionFixture('respond');
+assert.equal(isTrustedEmbodiedActionResult(strong),true);
+assert.equal(Object.isFrozen(strong),true);
+assert.equal(Object.isFrozen(strong.consequenceVerification),true);
+
 const a=verifier.assess(strong);
 const b=verifier.assess(weak);
 assert.equal(a.proofClass,'independent-observation');
 assert.equal(a.verified01,1);
+assert.equal(a.independent01,1);
 assert.ok(a.evidence01>b.evidence01);
 assert.equal(b.proofClass,'stable-device-receipt');
 assert.equal(b.verified01,0);
+assert.equal(b.independent01,0,
+  'a command receipt cannot be upgraded to independent observation merely because the executor sampled again');
 
-const { RealityGroundingController }=await import('../src/organism/system/RealityGroundingController.ts');
+// The executor can observe a newer sample while the pre-action sample is stale.
+// This is a genuine executor-minted result, but it is not a verified observation.
+const stale=await createTrustedEmbodiedActionFixture('explore',{staleFirstSample:true});
+assert.equal(isTrustedEmbodiedActionResult(stale),true);
+assert.equal(stale.consequenceVerification.independent,true);
+assert.equal(stale.consequenceVerification.verified,false);
+assert.equal(stale.realityClass,'derived');
+assert.equal(verifier.assess(stale).proofClass,'none',
+  'fresh-after alone cannot replace a fresh pre-action observation');
+
+// Copies and JSON-like caller objects lose the in-process receipt capability.
+const copied=structuredClone(strong);
+assert.equal(isTrustedEmbodiedActionResult(copied),false);
+assert.equal(verifier.assess(copied).reason,'untrusted-embodied-action-result');
+const forgedController=new RealityGroundingController();
+forgedController.setMode('external-first');
+const forged=forgedController.resolve({
+  tick:1,action:'explore',expectedReward01:.72,predictionConfidence01:.8,
+  simulatedReward01:.3,simulatedSurprise01:.1,simulatedSuccess01:1,
+  embodiedAction:copied,novelty01:.3,resource01:.9,
+});
+assert.equal(forged.source,'simulation');
+assert.equal(forgedController.snapshot().externalPrimary,0,
+  'a copied receipt must not enter the external-primary lane');
+
+// Readiness requires six actual, executor-minted external observations.
 const holdout=new RealityGroundingController();
-const action='explore';
-holdout.resolve({tick:1,action,expectedReward01:.72,predictionConfidence01:.8,simulatedReward01:.3,simulatedSurprise01:.1,simulatedSuccess01:1,novelty01:.3,resource01:.9,embodiedAction:{...strong,at:200,action,realityClass:'device-observation',consequenceVerification:{...strong.consequenceVerification,verified:true,independent:true},effect01:.72}});
-const early=holdout.causalHoldoutReadiness(action,'external',6);
-assert.ok(early>.1 && early<.3);
-for(let i=1;i<5;i++){
-  holdout.resolve({tick:i+1,action,expectedReward01:.72,predictionConfidence01:.8,simulatedReward01:.3,simulatedSurprise01:.1,simulatedSuccess01:1,novelty01:.3,resource01:.9,embodiedAction:{...strong,at:200+i,action,realityClass:'device-observation',consequenceVerification:{...strong.consequenceVerification,verified:true,independent:true},effect01:.72}});
+let early=0;
+let lateRow=null;
+for(let tick=1;tick<=6;tick++){
+  const observation=tick===1?strong:await createTrustedEmbodiedActionFixture('explore');
+  lateRow=holdout.resolve({
+    tick,action:'explore',expectedReward01:.72,predictionConfidence01:.8,
+    simulatedReward01:.3,simulatedSurprise01:.1,simulatedSuccess01:1,
+    novelty01:.3,resource01:.9,embodiedAction:observation,
+  });
+  if(tick===1) early=holdout.causalHoldoutReadiness('explore','external',6);
 }
-const lateRow=holdout.resolve({tick:6,action,expectedReward01:.72,predictionConfidence01:.8,simulatedReward01:.3,simulatedSurprise01:.1,simulatedSuccess01:1,novelty01:.3,resource01:.9,embodiedAction:{...strong,at:206,action,realityClass:'device-observation',consequenceVerification:{...strong.consequenceVerification,verified:true,independent:true},effect01:.72}});
-const ready=holdout.causalHoldoutReadiness(action,'external',6);
+const ready=holdout.causalHoldoutReadiness('explore','external',6);
+assert.ok(early>.1 && early<.3);
 assert.ok(ready>.9 && ready>early);
+assert.equal(lateRow?.source,'external');
 
 const world=new GroundedWorldState();
 const before=world.snapshot();
-const row=world.integrateExternalOutcome({at:100,action:'explore',status:'executed',proofClass:a.proofClass,verified01:a.verified01,independent01:a.independent01,evidence01:a.evidence01,consequence01:a.consequence01,claim:a.reason,provenanceId:'outcome:1:100',divergence01:.42});
+const row=world.integrateExternalOutcome({
+  at:strong.at,action:'explore',status:'executed',proofClass:a.proofClass,
+  verified01:a.verified01,independent01:a.independent01,evidence01:a.evidence01,
+  consequence01:a.consequence01,claim:a.reason,provenanceId:`outcome:1:${strong.at}`,divergence01:.42,
+});
 const after=world.snapshot();
 assert.equal(row.verified01,1);
 assert.equal(after.revision,before.revision+1);
 assert.ok(after.facts.some(x=>x.startsWith('external-observed:explore')));
 assert.ok(after.events.some(x=>x.id===row.eventId));
-console.log(JSON.stringify({ok:true,strong:a,weak:b,holdout:{early,ready},world:{revision:after.revision,lastHash:after.lastHash,facts:after.facts.slice(-2)}}));
+console.log(JSON.stringify({ok:true,strong:a,weak:b,stale:verifier.assess(stale),holdout:{early,ready},world:{revision:after.revision,lastHash:after.lastHash,facts:after.facts.slice(-2)}}));
