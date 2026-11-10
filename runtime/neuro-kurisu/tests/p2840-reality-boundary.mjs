@@ -6,6 +6,7 @@ import path from 'node:path';
 import { WorldEnvironment } from '../src/organism/world/WorldEnvironment.ts';
 import { RealityLearningGate } from '../src/organism/system/RealityLearningGate.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { createTrustedEmbodiedActionFixture } from './helpers/trusted-embodied-action-fixture.mjs';
 
 const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'neuro-p2840-'));
 const stateFile = path.join(tmp, 'organism.json');
@@ -34,13 +35,8 @@ assert(receiptOnly.identityUpdateScale01 < .4, 'unverified actuation must strong
 const runtime = new OrganismRuntime({stateFile,enableLanguage:false,autoRun:false,realityMode:'external-first',performanceProfile:'mobile'});
 await runtime.init();
 const originalExecute = runtime.embodiedActions.execute.bind(runtime.embodiedActions);
-runtime.embodiedActions.execute = async () => ({
-  version:1, action:'respond', status:'executed', realityClass:'device-actuation', source:'android-termux', at:Date.now(),
-  before:{battery01:.8,thermal01:.2,cognitiveCapacity01:.8,awake:true,source:'android-termux'},
-  after:{battery01:.799,thermal01:.201,cognitiveCapacity01:.8,awake:true,source:'android-termux'},
-  stateDelta:{battery01:-.001,thermal01:.001,cognitiveCapacity01:0,awakeChanged:false}, effect01:.02, reason:'p2840-test-external-action', capability:'android.tts',
-  consequenceVerification:{attempted:true,independent:true,verified:true,sourceStable:true,freshBefore01:1,freshAfter01:1,changed01:.62,reason:'test-independent-receipt',verificationMode:'independent-observation'}
-});
+runtime.embodiedActions.execute = async () => createTrustedEmbodiedActionFixture('respond');
+
 const tickBeforeExternal = runtime.environment.snapshot().tick;
 const externalStep = await runtime.autonomousStep();
 const tickAfterExternal = runtime.environment.snapshot().tick;
