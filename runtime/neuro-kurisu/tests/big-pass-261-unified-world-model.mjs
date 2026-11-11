@@ -6,6 +6,7 @@ const v=(phase,i)=>Array.from({length:24},(_,j)=>Math.tanh(Math.sin((i+1)*(j+1)*
 
 function train(runReplay){
   const m=new B261UnifiedWorldModel();
+  const initialBaseline=m.snapshot();
   const hold=[];
   for(let i=0;i<80;i++){
     const before=v(1,i), action=actions[i%actions.length], after=v(2,i+(i%3===0?1:0));
@@ -13,9 +14,10 @@ function train(runReplay){
     m.train(before,action,after,Math.max(.05,Math.min(.95,reward)),i,'online');
     if(i%5===0) hold.push({before:v(1,100+i),action,after:v(2,100+i),reward01:reward});
   }
-  const before=m.holdout(hold);
+  const before=m.holdout(hold,initialBaseline);
+  const replayBaseline=m.snapshot();
   if(runReplay) m.replay(12,100);
-  const after=m.holdout(hold);
+  const after=m.holdout(hold,runReplay?replayBaseline:initialBaseline);
   const lesion=m.lesion(true);
   return {m,before,after,lesion,diag:m.diagnostics()};
 }
@@ -26,6 +28,14 @@ assert.equal(replay.diag.trainingUpdates>80,true);
 assert.ok(replay.diag.replayGain01>=0);
 assert.ok(Number.isFinite(replay.after.after01));
 assert.ok(replay.after.samples>0);
+assert.equal(online.after.baselineAvailable,true);
+assert.equal(replay.after.baselineAvailable,true);
+assert.ok(Math.abs(replay.after.before01-replay.before.after01)<1e-12,'replay baseline must equal the pre-replay candidate error');
+assert.ok(Math.abs(replay.after.delta01-(replay.after.before01-replay.after.after01))<1e-12);
+assert.equal(replay.diag.holdoutBaselineAvailable,true);
+const unpaired=new B261UnifiedWorldModel().holdout([{before:v(1,999),action:'verify',after:v(2,999),reward01:0.5}]);
+assert.equal(unpaired.baselineAvailable,false);
+assert.equal(unpaired.delta01,null,'a baseline-free holdout must not report a fabricated uplift');
 const actionsOut=replay.m.compareActions(v(3,2));
 const replayDiag=replay.m.diagnostics();
 assert.equal(actionsOut.length,7);
