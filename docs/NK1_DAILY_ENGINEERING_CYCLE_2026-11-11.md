@@ -44,7 +44,7 @@
 | #853 Inspect/ACP compatibility | 2bae2883286bfd783c5adcf7b8148b8d70e795f4 | Ready | 5 checks SUCCESS; push and PR runs each 18/18 steps | Human review; no merge by this cycle |
 | #852 executor-minted external grounding receipts | 44833e2006caa5a10c5d9fde17bf055d3a865e19 | Draft | 16/17 SUCCESS; only independent-evidence-evaluation failed | Failure is evaluator dependency startup; #853 contains the fix. Re-run #852 only after authorized integration/rebase |
 | #860 trusted memory holdout manifest | 6d6113c88f64cb1392e9c973889b30547047507f | Draft, stacked on #853 | 1/1 trust-manifest evaluation check SUCCESS | Do not retarget/merge automatically; source-group independence in #770 remains separate |
-| #854 daily engineering handoff | 8edeb802c0a8cc5af2421aa8e149acf0a99683dc before this update | Open documentation PR | 3/3 docs-related checks SUCCESS on prior head | This cycle updates the same PR branch; exact new head must be checked after push |
+| #854 daily engineering handoff | 7b68eb1b1863f188e3df0dcb6524e3b8c730d61a | Open documentation PR | 7/7 exact-head checks SUCCESS | 3 commits ahead / 0 behind base; not merged |
 
 No PR was merged, closed or deleted. No branch was deleted or force-pushed.
 
@@ -58,7 +58,7 @@ No PR was merged, closed or deleted. No branch was deleted or force-pushed.
 | partially_completed | 3 | Tasks 02, 09, 18 have useful PR/CI progress but unresolved integration or release gates |
 | blocked | 3 | Tasks 04 (independent holdout), 05 (power-loss hardware/filesystem test), 16 (real Android/Termux soak) |
 | deferred | 9 | No new independent defect or safe non-duplicating change was established in this run |
-| verified | 2 | Task 11 source explicit-forget check and task 14 PR #838 exact-head checks; task 01 awaits checks on this documentation PR head |
+| verified | 3 | Task 01 checkpoint/backlog synchronization on PR #854 (7/7 exact-head checks on 7b68eb1...), task 11 source explicit-forget check, and task 14 PR #838 exact-head checks |
 
 ## 5. Eighteen-direction backlog
 
@@ -66,7 +66,7 @@ Status vocabulary here is cycle-local: done, partial, blocked, deferred/no-new-w
 
 | ID | Domain / concrete result | Priority | Dependencies | Risk / reversibility | Acceptance criterion | Status and evidence |
 |---|---|---:|---|---|---|---|
-| NK1-D20261111-01 | Core / OrganismBus / OrganismState: refresh live source SHA, parent, exact-SHA CI and entrypoint checkpoint; keep main as release metadata | P0 | GitHub live refs and current handoff | Low; documentation-only | HEAD/parent and 7 source checks match API; root checkpoint points to current observation | done; root checkpoint and 75-aspect metadata updated on PR #854 branch; exact new-head CI pending |
+| NK1-D20261111-01 | Core / OrganismBus / OrganismState: refresh live source SHA, parent, exact-SHA CI and entrypoint checkpoint; keep main as release metadata | P0 | GitHub live refs and current handoff | Low; documentation-only | HEAD/parent and 7 source checks match API; root checkpoint points to current observation | done and verified; root checkpoint and 75-aspect metadata updated on PR #854 branch; exact head 7b68eb1b1863f188e3df0dcb6524e3b8c730d61a passed 7/7 checks |
 | NK1-D20261111-02 | Perception / world model: continue executor-minted action-result and exact postcondition binding without duplicating #852 | P0 | #852; evaluator dependency fix #853 | High; isolated PR change | copied, replayed, cross-run or caller-constructed results rejected; all downstream consumers covered | partial; #852 is 16/17, #853 has 5/5 checks but is unmerged |
 | NK1-D20261111-03 | Memory ingest / admission: retain existing canonical evidence-admission owner; do not create another admission ledger | P1 | MemoryOS2 and existing provenance contracts | Low; no schema change | only evidence with canonical provenance is admitted; no second source of truth | deferred/no-new-work; no distinct unowned defect found in current source/PR inventory |
 | NK1-D20261111-04 | Retrieval / recall: prove RU/EN uplift on immutable independent holdout with source-group separation and trusted manifest | P0 | Independent licensed dataset, reviewer receipt, #770 and #860 reconciliation | High; dataset/manifest governance | recallDelta > 0 on RU and EN, at least five paired seeds, no source leakage | blocked; #860's synthetic trust-manifest check passes, but no independently approved dataset or measured uplift is established |
