@@ -107,15 +107,96 @@ def make_record(source_ref: str = "https://datasets.example.org/nk1-memory-v1") 
 
 
 class MemoryHoldoutScoringTests(unittest.TestCase):
-    def test_independent_scorer_recomputes_bilingual_recall_mrr_and_abstention(self):
-        result = score_memory_holdout(make_record())
+    def test_independent_scorer_recomputes_quality_but_rejects_self_asserted_provenance(self):
+        result = score_memory_holdout(make_record(), expected_manifest_sha256="")
         self.assertTrue(result["valid"], result)
-        self.assertTrue(result["promotionEligible"], result)
+        self.assertFalse(result["promotionEligible"], result)
+        self.assertFalse(result["gates"]["trustedImmutableHoldoutManifest"])
+        self.assertEqual(result["evaluationClass"], "untrusted-provenance")
         self.assertEqual(result["languages"]["en"]["baseline"]["recallAtK01"], 0.0)
         self.assertEqual(result["languages"]["en"]["candidate"]["recallAtK01"], 1.0)
         self.assertEqual(result["languages"]["ru"]["candidate"]["mrr01"], 1.0)
         self.assertEqual(result["languages"]["en"]["candidate"]["unsupportedRetrievalRate01"], 0.0)
         self.assertTrue(result["gates"]["englishAndRussianHoldoutEligible"])
+
+
+    def test_exact_out_of_band_pinned_manifest_is_required_for_promotion(self):
+        record = make_record()
+        provenance = record["dataset"]["provenance"]
+        manifest = {
+            "schemaVersion": 1,
+            "policy": "fail-closed",
+            "approvedDatasets": [{
+                "datasetFingerprint": record["dataset"]["fingerprint"],
+                "datasetId": provenance["datasetId"],
+                "datasetVersion": provenance["datasetVersion"],
+                "sourceRef": provenance["sourceRef"],
+                "labelingProtocol": provenance["labelingProtocol"],
+                "licenseId": provenance["licenseId"],
+                "contentSha256": provenance["contentSha256"],
+                "review": {
+                    "reviewedAt": "2026-11-11T10:00:00Z",
+                    "reviewedBy": "NK1 test fixture reviewer",
+                    "approvalRef": "https://reviews.example.org/nk1/fixture-approval",
+                },
+            }],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trusted-holdouts.json"
+            raw = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            path.write_bytes(raw)
+            result = score_memory_holdout(
+                record,
+                trusted_manifest_path=path,
+                expected_manifest_sha256=hashlib.sha256(raw).hexdigest(),
+            )
+        self.assertTrue(result["valid"], result)
+        self.assertTrue(result["promotionEligible"], result)
+        self.assertTrue(result["gates"]["trustedImmutableHoldoutManifest"])
+        self.assertEqual(result["evaluationClass"], "external-labelled-holdout")
+        self.assertEqual(result["trustedManifest"]["reason"], "approved-manifest-match")
+
+    def test_manifest_digest_mismatch_and_unlisted_dataset_fail_closed(self):
+        record = make_record()
+        provenance = record["dataset"]["provenance"]
+        manifest = {
+            "schemaVersion": 1,
+            "policy": "fail-closed",
+            "approvedDatasets": [{
+                "datasetFingerprint": digest("different-dataset"),
+                "datasetId": provenance["datasetId"],
+                "datasetVersion": provenance["datasetVersion"],
+                "sourceRef": provenance["sourceRef"],
+                "labelingProtocol": provenance["labelingProtocol"],
+                "licenseId": provenance["licenseId"],
+                "contentSha256": provenance["contentSha256"],
+                "review": {
+                    "reviewedAt": "2026-11-11T10:00:00Z",
+                    "reviewedBy": "NK1 test fixture reviewer",
+                    "approvalRef": "https://reviews.example.org/nk1/fixture-approval",
+                },
+            }],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trusted-holdouts.json"
+            raw = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            path.write_bytes(raw + b"\\n")
+            mismatch = score_memory_holdout(
+                record,
+                trusted_manifest_path=path,
+                expected_manifest_sha256=hashlib.sha256(raw).hexdigest(),
+            )
+            self.assertFalse(mismatch["promotionEligible"])
+            self.assertEqual(mismatch["trustedManifest"]["reason"], "trusted-manifest-digest-mismatch")
+            path.write_bytes(raw)
+            unlisted = score_memory_holdout(
+                record,
+                trusted_manifest_path=path,
+                expected_manifest_sha256=hashlib.sha256(raw).hexdigest(),
+            )
+        self.assertFalse(unlisted["promotionEligible"])
+        self.assertFalse(unlisted["gates"]["trustedImmutableHoldoutManifest"])
+        self.assertEqual(unlisted["trustedManifest"]["reason"], "dataset-not-in-trusted-manifest")
 
     def test_synthetic_fixture_is_valid_for_ci_but_never_promotion_evidence(self):
         result = score_memory_holdout(make_record("synthetic://ci-fixture"))

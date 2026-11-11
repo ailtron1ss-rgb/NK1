@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from nk1_evidence import canonical_json
+from nk1_memory_trust import verify_trusted_memory_holdout
 
 DIGEST_RE = re.compile(r"^[a-f0-9]{64}$")
 LANGUAGES = ("en", "ru")
@@ -123,8 +124,13 @@ def _rank_metrics(rows: list[dict[str, Any]], arm_key: str, corpus_ids: set[str]
     }
 
 
-def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
-    """Independently re-score the bilingual, hashed, paired-query holdout."""
+def score_memory_holdout(
+    record: dict[str, Any],
+    *,
+    trusted_manifest_path: str | Path | None = None,
+    expected_manifest_sha256: str | None = None,
+) -> dict[str, Any]:
+    """Re-score quality and require an out-of-band-pinned manifest for promotion."""
     if not isinstance(record, dict) or record.get("kind") != "memory-holdout-bilingual":
         return {"valid": False, "promotionEligible": False, "reason": "memory-sample-kind-invalid"}
     dataset = record.get("dataset")
@@ -166,6 +172,11 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         "fixture", "synthetic", "test-only", "hand-authored", "ci-generated",
     ))
     provenance_valid = provenance_complete and content_hash_valid and not synthetic_source
+    trusted_manifest = verify_trusted_memory_holdout(
+        dataset,
+        manifest_path=trusted_manifest_path,
+        expected_manifest_sha256=expected_manifest_sha256,
+    )
 
     threshold = experiment.get("thresholds") if isinstance(experiment.get("thresholds"), dict) else {}
     min_train = int(threshold.get("minimumTrainQueriesPerLanguage", DEFAULT_MIN_TRAIN))
@@ -410,6 +421,7 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         "retrievalMetricsDeterministicAcrossSeeds": deterministic,
         "datasetCorpusAndRetrievalConfigurationFingerprintsStableAcrossSeeds": fingerprints_stable,
         "englishAndRussianHoldoutEligible": all_single_run_eligible and all_language_structural,
+        "trustedImmutableHoldoutManifest": trusted_manifest["approved"] is True,
     }
     valid = (
         malformed == 0
@@ -421,8 +433,9 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
     return {
         "valid": valid,
         "promotionEligible": promotion_eligible,
-        "evaluationClass": "synthetic-test-only" if synthetic_source else "external-labelled-holdout",
-        "reason": "all-independent-memory-quality-gates-passed" if promotion_eligible else "independent-memory-quality-gates-not-met",
+        "evaluationClass": "synthetic-test-only" if synthetic_source else ("external-labelled-holdout" if trusted_manifest["approved"] else "untrusted-provenance"),
+        "reason": "all-independent-memory-quality-gates-passed" if promotion_eligible else ("trusted-immutable-holdout-manifest-not-verified" if not trusted_manifest["approved"] else "independent-memory-quality-gates-not-met"),
+        "trustedManifest": trusted_manifest,
         "languages": language_reports,
         "aggregate": {
             "answerableHoldoutQueries": answerable_total,

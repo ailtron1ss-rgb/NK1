@@ -74,6 +74,7 @@ jobs:
       - name: Run bilingual memory holdout Inspect task without external model calls
         env:
           NK1_MEMORY_INSPECT_SAMPLES: evaluation/inspect_ai/memory-samples.ci.jsonl
+          NK1_TRUSTED_HOLDOUT_MANIFEST_SHA256: ${{ vars.NK1_TRUSTED_HOLDOUT_MANIFEST_SHA256 }}
         run: inspect eval evaluation/inspect_ai/nk1_memory_inspect_task.py --model mockllm/model
 
       - name: Check runtime evidence route contract
