@@ -1,10 +1,10 @@
 # NK1 / NeuroCore — 75 аспектов: исполняемый backlog и учёт прогресса
 
-**Версия:** 06.11.2026 · **Рабочая ветка:** `workpass70-source`
+**Версия:** 11.11.2026 · **Рабочая ветка:** `workpass70-source`
 
-**Наблюдаемый source HEAD на момент составления:** `bcd48b1fd408a1539ac537813730669c35cfb3a2`
+**Наблюдаемый live source HEAD:** `189643ede8f3904dd670f0109a28b7536e894c00`
 
-> Observed on 2026-11-06 before the daily engineering PR; exact-SHA checks on that source head were 18/18 successful. Snapshot only; refresh the live branch before future writes.
+> Observed on 2026-11-11 from the live GitHub branch; exact-SHA push checks were 7/7 SUCCESS. Snapshot only: refresh the live branch before future writes. This metadata refresh does not promote any aspect status or claim Release ZIP parity.
 
 Машиночитаемый источник истины этого плана — [`engineering-os/aspects.v1.json`](../engineering-os/aspects.v1.json). Документ ниже — его человекочитаемая проекция; при расхождении верен JSON. Проверка и отчёты выполняются через `npm run aspects:validate`, `npm run aspects`, `npm run aspects:report`, `npm run aspects:next`.
 
