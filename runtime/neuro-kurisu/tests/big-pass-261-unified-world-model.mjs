@@ -14,7 +14,9 @@ function train(runReplay){
     m.train(before,action,after,Math.max(.05,Math.min(.95,reward)),i,'online');
     if(i%5===0) hold.push({before:v(1,100+i),action,after:v(2,100+i),reward01:reward});
   }
+  const stepsBeforeHoldout=m.diagnostics().steps;
   const before=m.holdout(hold,initialBaseline);
+  assert.equal(m.diagnostics().steps,stepsBeforeHoldout,'holdout evaluation must not mutate prediction step counters');
   const replayBaseline=m.snapshot();
   if(runReplay) m.replay(12,100);
   const after=m.holdout(hold,runReplay?replayBaseline:initialBaseline);
@@ -36,6 +38,8 @@ assert.equal(replay.diag.holdoutBaselineAvailable,true);
 const unpaired=new B261UnifiedWorldModel().holdout([{before:v(1,999),action:'verify',after:v(2,999),reward01:0.5}]);
 assert.equal(unpaired.baselineAvailable,false);
 assert.equal(unpaired.delta01,null,'a baseline-free holdout must not report a fabricated uplift');
+const invalidBaseline={...defaultB261UnifiedWorldModel(),version:2};
+assert.throws(()=>new B261UnifiedWorldModel().holdout([{before:v(1,999),action:'verify',after:v(2,999),reward01:0.5}],invalidBaseline),/holdout-baseline-snapshot-version-mismatch/);
 const actionsOut=replay.m.compareActions(v(3,2));
 const replayDiag=replay.m.diagnostics();
 assert.equal(actionsOut.length,7);

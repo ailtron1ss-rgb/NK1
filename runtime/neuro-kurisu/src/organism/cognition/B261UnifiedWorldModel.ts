@@ -54,7 +54,7 @@ export class B261UnifiedWorldModel {
       holdoutAfter01:clamp01(Number(r.holdoutAfter01??d.holdoutAfter01)),
       holdoutDelta01:r.holdoutBaselineAvailable===true?clamp(Number(r.holdoutDelta01??0)):0,
       holdoutBaselineAvailable:r.holdoutBaselineAvailable===true,
-      holdoutSamples:Math.max(0,Math.min(256,Math.floor(Number(r.holdoutSamples??0)))),
+      holdoutSamples:Math.max(0,Math.min(256,Math.floor(Number.isFinite(Number(r.holdoutSamples))?Number(r.holdoutSamples):0))),
       episodes:Array.isArray(r.episodes)?r.episodes.slice(-MAX_H):d.episodes};
   }
   snapshot(){return structuredClone(this.state);}
@@ -114,6 +114,7 @@ export class B261UnifiedWorldModel {
     baselineSnapshot?:B261UnifiedWorldModelState,
   ){
     const rows=samples.slice(0,256);
+    if(rows.some(sample=>!Array.isArray(sample.before)||sample.before.length!==DIM||!sample.before.every(Number.isFinite)||!Array.isArray(sample.after)||sample.after.length!==DIM||!sample.after.every(Number.isFinite)||!ACTIONS.includes(sample.action)||!Number.isFinite(sample.reward01)||sample.reward01<0||sample.reward01>1))throw new TypeError('invalid-world-model-holdout-sample');
     if(!rows.length){
       this.state.holdoutBaselineAvailable=false;this.state.holdoutDelta01=0;this.state.holdoutSamples=0;
       return {baselineAvailable:false,before01:null,after01:this.state.holdoutAfter01,delta01:null,samples:0,reason:'empty-holdout'};
