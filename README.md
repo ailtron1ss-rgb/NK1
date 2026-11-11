@@ -1,4 +1,31 @@
-## Актуальный инженерный checkpoint — 1 ноября 2026
+## Актуальный инженерный checkpoint — 11 ноября 2026
+
+**Каноническая рабочая ветка:** workpass70-source  
+**Live source HEAD:** 189643ede8f3904dd670f0109a28b7536e894c00 (parent 26e2c823284d4238199c80cd1eb8363c5d5c8456; последний source commit от 2026-11-07).  
+**Exact-SHA source CI:** 7/7 push check runs SUCCESS на указанном HEAD.  
+**main:** release/metadata; source changes продолжают идти через feature branches и PR в workpass70-source.
+
+### Текущие PR и ограничения
+- [#838](https://github.com/ailtron1ss-rgb/NK1/pull/838) — remote VRM/GLB import memory reduction; exact-head 5/5 SUCCESS, ready for review, не merged. Peak-RSS на реальном устройстве не измерен.
+- [#853](https://github.com/ailtron1ss-rgb/NK1/pull/853) — Inspect/ACP dependency pin + import smoke; exact-head push/PR checks SUCCESS, ready for review, не merged.
+- [#852](https://github.com/ailtron1ss-rgb/NK1/pull/852) — executor-minted external-grounding receipts; exact-head 16/17 SUCCESS. Единственный failure — evaluator dependency startup, для которого подготовлен #853; после его отдельной интеграции требуется повторная проверка #852.
+- [#860](https://github.com/ailtron1ss-rgb/NK1/pull/860) — trusted memory holdout manifest; Draft, stacked on #853, one exact-head evaluation check SUCCESS. Independent source-group semantics from #770 remain a separate gate.
+- [#854](https://github.com/ailtron1ss-rgb/NK1/pull/854) — this documentation handoff; open, not merged.
+
+### Release: факты и границы
+- Latest published artifact including prerelease: tag workpass70-hotfix1-2026-10-19; Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip; 136,354,713 bytes; metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
+- Stable tag Neuro asset: 135,290,615 bytes; metadata SHA-256 c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286.
+- ZIP binary was not downloaded or inspected in this cycle. CRC/member inventory/source parity remain UNKNOWN. The hotfix tag commit has no common ancestor with current source HEAD; commit comparison alone cannot establish artifact parity.
+- Prior checkpoint records redistributionApproved=false. No Release was assembled or published; no license approval is inferred.
+
+### Readiness constraints
+No global readiness increase: independent bilingual RU/EN holdout with at least five paired seeds is still unproven; real Android/Termux soak and browser/device avatar evidence are still missing; license and ZIP parity gates remain open. Keep implemented / connected / tested / released separate.
+
+Подробный пакет из 18 направлений, счётчики, проверки и handoff: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-11.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-11.md).
+
+---
+
+## Архивный checkpoint — 1 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
 **Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  

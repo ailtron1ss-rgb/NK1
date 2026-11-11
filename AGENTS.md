@@ -1,14 +1,15 @@
 # NeuroCore — repository working rules
 
-> **Current continuation checkpoint — 2026-11-01:** start with [README.md](README.md) and [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions. The source baseline at this checkpoint is `735b83d525c0d53c91e2e5a6587fb3529a08d13b`; never assume this SHA remains current. `main` is release/metadata and is not the direct source merge target. The historical WorkPass126/127 and PR #11/#12 notes formerly below were stale and have been removed from the active entry point; older WorkPass records later in the repository remain archival.
+> **Current continuation checkpoint — 2026-11-11 (live observed):** canonical source branch workpass70-source is at 189643ede8f3904dd670f0109a28b7536e894c00 (parent 26e2c823284d4238199c80cd1eb8363c5d5c8456; signed source commit dated 2026-11-07). This supersedes the 2026-11-01 snapshot; refresh live refs and exact-SHA Actions before every write. main remains release/metadata, not the direct source target.
 
-## Current checkpoint
+## Current checkpoint — 2026-11-11
 
-- PR #594 merged: missing/corrupt-primary recovery, unchanged restore recreation and backup preservation; 11/11 exact-head checks.
-- PR #603 merged: terminal/unknown speech lifecycle clears stale mouth channels; 9/9 exact-head checks.
-- PR #607 merged: backup temp + fsync + atomic rename, with SIGKILL-before-rename regression; 11/11 exact-head checks.
-- UserModel v2 durable forgetting is already integrated at `efb7693`; motor-frame integrity is integrated at `c039f84`.
-- Latest published Release ZIP is still the 2026-10-19 WorkPass70 Hotfix prerelease. November source commits are not in the ZIP; license review and exact-SHA release gate remain blocking.
+- Live source HEAD 189643ede8f3904dd670f0109a28b7536e894c00: 7/7 exact-SHA push check runs completed SUCCESS (GLB/VRM preflight, explicit-forget, targeted/regression, browser affect, contract, source-lineage, local-language resilience).
+- Latest published artifact including prerelease remains tag workpass70-hotfix1-2026-10-19, asset Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes, metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb. The ZIP binary has not been downloaded or inspected; do not claim source/ZIP parity. The release tag commit has no common ancestor with the current source HEAD, so a commit-only comparison is insufficient.
+- Open code PRs observed: #838 (ready for review, exact head cc27cd02a06d90d0578102306e0456f6e0ab743c, 5/5 checks SUCCESS); #853 (ready for review, exact head 2bae2883286bfd783c5adcf7b8148b8d70e795f4, 5 checks SUCCESS); #852 (Draft, exact head 44833e2006caa5a10c5d9fde17bf055d3a865e19, 16/17 checks SUCCESS; evaluator failure is the ACP dependency defect addressed separately by #853); #860 (Draft, stacked on #853, exact head 6d6113c88f64cb1392e9c973889b30547047507f, one trust-manifest evaluation check SUCCESS). These PRs remain unmerged; do not duplicate their files/contracts.
+- Existing daily handoff PR #854 is the isolated documentation branch for the 2026-11-10/11 cycle. No PR was merged and no Release was published in this cycle.
+- README and the machine-readable 75-aspect registry are being refreshed to this observed source SHA; aspect capability statuses are not promoted merely because the snapshot metadata changed.
+- Human release gate remains unresolved: prior README checkpoint records redistributionApproved=false. Do not publish or claim redistribution permission without explicit human review.
 
 ## Non-negotiable engineering workflow
 

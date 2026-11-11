@@ -1,4 +1,34 @@
-# CURRENT HANDOFF — 2026-11-01
+# CURRENT HANDOFF — 2026-11-11
+
+> Begin with this live snapshot, then re-read GitHub branch/PR/check-run state before any write. The 2026-11-01 section below is archival.
+
+**Canonical source:** workpass70-source  
+**Live HEAD:** 189643ede8f3904dd670f0109a28b7536e894c00  
+**Parent:** 26e2c823284d4238199c80cd1eb8363c5d5c8456  
+**Exact-SHA source checks:** 7/7 SUCCESS.
+
+## Active PR continuation
+- #838 — remote avatar import memory improvement; exact-head 5/5 SUCCESS; ready, not merged.
+- #853 — Inspect/ACP dependency fix; exact-head checks SUCCESS; ready, not merged.
+- #852 — external grounding receipts; 16/17 exact-head checks, only evaluator dependency startup failed; wait for #853 integration, then re-run exact head.
+- #860 — trusted holdout manifest; Draft and stacked on #853; do not duplicate source-group holdout work from #770.
+- #854 — current daily engineering documentation PR; continue this branch without force-push.
+
+## Release gate
+Latest published including prerelease is the 2026-10-19 WorkPass70 Hotfix ZIP (136,354,713 bytes; metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb). The binary was not downloaded/inspected in this cycle; member/CRC/source parity is UNKNOWN. The release tag commit has no common ancestor with current source HEAD. Prior README checkpoint records redistributionApproved=false; human license review remains required.
+
+## Next actions
+1. Human review of #853; do not merge automatically.
+2. After #853 is integrated by an authorized human, rerun exact-head checks on #852 and reconcile downstream receipt consumers.
+3. Review #838 and obtain browser/device peak-RSS evidence; do not infer a real-device memory gain from CI alone.
+4. Obtain an immutable, licensed RU/EN holdout with independent source-group provenance and at least five paired seeds.
+5. Obtain a supported way to download/inspect the release ZIP, then perform CRC/member/source parity and complete the human license review before any publication.
+
+Detailed 18-direction task table and evidence: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-11.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-11.md).
+
+---
+
+# ARCHIVED HANDOFF — 2026-11-01
 
 > **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
 
