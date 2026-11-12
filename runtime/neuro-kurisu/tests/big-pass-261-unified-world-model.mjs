@@ -39,7 +39,10 @@ const unpaired=new B261UnifiedWorldModel().holdout([{before:v(1,999),action:'ver
 assert.equal(unpaired.baselineAvailable,false);
 assert.equal(unpaired.delta01,null,'a baseline-free holdout must not report a fabricated uplift');
 const invalidBaseline={...defaultB261UnifiedWorldModel(),version:2};
-assert.throws(()=>new B261UnifiedWorldModel().holdout([{before:v(1,999),action:'verify',after:v(2,999),reward01:0.5}],invalidBaseline),/holdout-baseline-snapshot-version-mismatch/);
+const invalidBaselineModel=new B261UnifiedWorldModel();
+const beforeInvalidBaseline=invalidBaselineModel.snapshot();
+assert.throws(()=>invalidBaselineModel.holdout([{before:v(1,999),action:'verify',after:v(2,999),reward01:0.5}],invalidBaseline),/holdout-baseline-snapshot-version-mismatch/);
+assert.deepEqual(invalidBaselineModel.snapshot(),beforeInvalidBaseline,'an invalid baseline must not mutate candidate diagnostics or state');
 const actionsOut=replay.m.compareActions(v(3,2));
 const replayDiag=replay.m.diagnostics();
 assert.equal(actionsOut.length,7);
