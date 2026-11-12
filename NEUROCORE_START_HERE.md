@@ -1,31 +1,44 @@
-# CURRENT HANDOFF — 2026-11-11
+# CURRENT HANDOFF — 2026-11-12
 
-> Begin with this live snapshot, then re-read GitHub branch/PR/check-run state before any write. The 2026-11-01 section below is archival.
+> Start here. Refresh live GitHub refs and exact-SHA Actions before each write. Older WorkPass and checkpoint sections below the first divider are archival.
 
-**Canonical source:** workpass70-source  
-**Live HEAD:** 189643ede8f3904dd670f0109a28b7536e894c00  
-**Parent:** 26e2c823284d4238199c80cd1eb8363c5d5c8456  
-**Exact-SHA source checks:** 7/7 SUCCESS.
+**Canonical source branch:** `workpass70-source`  
+**Live source HEAD:** `189643ede8f3904dd670f0109a28b7536e894c00`  
+**Parent:** `26e2c823284d4238199c80cd1eb8363c5d5c8456`  
+**Exact-SHA source push checks:** 7/7 SUCCESS.
+
+## This cycle — 2026-11-12
+
+- PR #861 was extended on `aspect/b261-matched-holdout-baseline-20261111`; current head `b4f431c06831817fe459efe37271bbbdee6b9507`.
+- The B261 holdout path now validates a supplied baseline before mutating diagnostics and commits candidate/baseline metrics only after both computations complete. A regression asserts invalid baseline rejection leaves the full model snapshot unchanged.
+- **Not tested on the new head:** all seven PR workflows failed before any step, with no runner name or step records. One retry of the dedicated B261 workflow had the same no-step result. Treat as a likely GitHub runner/setup acquisition issue, but the precise cause is unknown. Do not transfer the previous head's 7/7 success to this SHA.
+- Daily report with 18 task rows, counters, exact SHAs and handoff: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-12.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-12.md).
 
 ## Active PR continuation
-- #838 — remote avatar import memory improvement; exact-head 5/5 SUCCESS; ready, not merged.
-- #853 — Inspect/ACP dependency fix; exact-head checks SUCCESS; ready, not merged.
-- #852 — external grounding receipts; 16/17 exact-head checks, only evaluator dependency startup failed; wait for #853 integration, then re-run exact head.
-- #860 — trusted holdout manifest; Draft and stacked on #853; do not duplicate source-group holdout work from #770.
-- #854 — current daily engineering documentation PR; continue this branch without force-push.
 
-## Release gate
-Latest published including prerelease is the 2026-10-19 WorkPass70 Hotfix ZIP (136,354,713 bytes; metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb). The binary was not downloaded/inspected in this cycle; member/CRC/source parity is UNKNOWN. The release tag commit has no common ancestor with current source HEAD. Prior README checkpoint records redistributionApproved=false; human license review remains required.
+- #861 — B261 matched-baseline + failure-atomic invalid-baseline rejection; Draft, current head `b4f431c…`; exact-head CI blocked before steps.
+- #838 — remote avatar import avoids a second full-size model copy; exact-head 5/5 SUCCESS; ready, not merged; device peak-RSS still unmeasured.
+- #853 — Inspect/ACP compatibility pin and import smoke; exact-head checks SUCCESS; ready, not merged.
+- #852 — executor-minted external-grounding receipts; earlier exact-head 16/17, with evaluator dependency startup failure; after authorized integration of #853, rerun #852 exact head.
+- #854 — documentation/handoff PR; continue this branch without force-push. It now includes cycles for 2026-11-10, 2026-11-11 and 2026-11-12.
+- #745 — broad restore-integrity sweep remains open/Draft on a stale base and touches B261; reconcile ancestry/files before any overlapping work.
+
+## Release and legal gate
+
+- Latest published ZIP including prerelease: `workpass70-hotfix1-2026-10-19`, `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, GitHub metadata digest `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- Stable `Neuro` ZIP: 135,290,615 bytes, metadata digest `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- ZIP bytes were not downloaded/inspected. Metadata is known; archive members, CRC, internal manifest, SHA recomputation and source parity remain UNKNOWN.
+- Human license review remains pending; redistribution approval remains false. No release publication is authorized.
 
 ## Next actions
-1. Human review of #853; do not merge automatically.
-2. After #853 is integrated by an authorized human, rerun exact-head checks on #852 and reconcile downstream receipt consumers.
-3. Review #838 and obtain browser/device peak-RSS evidence; do not infer a real-device memory gain from CI alone.
-4. Obtain an immutable, licensed RU/EN holdout with independent source-group provenance and at least five paired seeds.
-5. Obtain a supported way to download/inspect the release ZIP, then perform CRC/member/source parity and complete the human license review before any publication.
 
-Detailed 18-direction task table and evidence: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-11.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-11.md).
+1. Restore actionable Actions runner execution; rerun all seven workflows on PR #861 exact head `b4f431c06831817fe459efe37271bbbdee6b9507`.
+2. Obtain human review for #853; after authorized integration, rerun #852 and downstream receipt consumers.
+3. Obtain an authorized way to download and inspect the latest prerelease ZIP; then run member/CRC/hash/source parity checks.
+4. Complete human license review before any redistribution or Release.
+5. Obtain independent immutable RU/EN holdout (>=5 paired seeds), plus real browser/Android/Termux avatar and speech soak.
 
+**Progress rule:** keep implemented / connected / tested / released distinct. No global readiness increase from this cycle. Do not merge, close PRs, delete branches, force-push, change production, provision databases/secrets or publish Release without separate explicit authorization.
 ---
 
 # ARCHIVED HANDOFF — 2026-11-01
