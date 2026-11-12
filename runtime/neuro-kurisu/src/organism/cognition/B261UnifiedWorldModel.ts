@@ -115,6 +115,7 @@ export class B261UnifiedWorldModel {
   ){
     const rows=samples.slice(0,256);
     if(rows.some(sample=>!Array.isArray(sample.before)||sample.before.length!==DIM||!sample.before.every(Number.isFinite)||!Array.isArray(sample.after)||sample.after.length!==DIM||!sample.after.every(Number.isFinite)||!ACTIONS.includes(sample.action)||!Number.isFinite(sample.reward01)||sample.reward01<0||sample.reward01>1))throw new TypeError('invalid-world-model-holdout-sample');
+    if(baselineSnapshot&&(baselineSnapshot.version!==3||baselineSnapshot.dimension!==DIM))throw new RangeError('holdout-baseline-snapshot-version-mismatch');
     if(!rows.length){
       this.state.holdoutBaselineAvailable=false;this.state.holdoutDelta01=0;this.state.holdoutSamples=0;
       return {baselineAvailable:false,before01:null,after01:this.state.holdoutAfter01,delta01:null,samples:0,reason:'empty-holdout'};
@@ -128,14 +129,15 @@ export class B261UnifiedWorldModel {
       return errors.reduce((sum,value)=>sum+value,0)/errors.length;
     };
     const after=errorFor(this);
-    this.state.holdoutAfter01=after;this.state.holdoutSamples=rows.length;
     if(!baselineSnapshot){
+      this.state.holdoutAfter01=after;this.state.holdoutSamples=rows.length;
       this.state.holdoutBefore01=0;this.state.holdoutBaselineAvailable=false;this.state.holdoutDelta01=0;
       return {baselineAvailable:false,before01:null,after01:after,delta01:null,samples:rows.length,reason:'baseline-snapshot-required'};
     }
-    if(baselineSnapshot.version!==3||baselineSnapshot.dimension!==DIM)throw new RangeError('holdout-baseline-snapshot-version-mismatch');
+    // Compute both sides before mutating diagnostics: a malformed baseline must leave the candidate untouched.
     const baseline=new B261UnifiedWorldModel();baseline.restore(baselineSnapshot);
     const before=errorFor(baseline),delta=before-after;
+    this.state.holdoutAfter01=after;this.state.holdoutSamples=rows.length;
     this.state.holdoutBefore01=before;this.state.holdoutBaselineAvailable=true;this.state.holdoutDelta01=delta;
     this.state.transferGain01=clamp01(this.state.transferGain01*.85+Math.max(0,delta)*.15);
     return {baselineAvailable:true,before01:before,after01:after,delta01:delta,samples:rows.length,reason:'matched-baseline-comparison'};
