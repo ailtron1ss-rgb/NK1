@@ -34,12 +34,12 @@ test('runtime wiring, test pass and release evidence must follow the gate order'
   const c=clone(); c.sources[0].implementation.releaseVerified=true;
   assert.ok(validateSourceRegistry(c).errors.some(e=>e.includes('release requires test pass')));
 });
-test('six pre-existing adapters remain distinct from the new llama.cpp adaptation', () => {
+test('six adapters existed at intake and two sources now have new verified adaptations', () => {
   const s=summarizeSourceRegistry(doc);
   assert.equal(s.adapters,6);
-  assert.equal(s.adapted,1);
-  assert.equal(s.wired,1);
-  assert.equal(s.tested,1,'the evidence overlay records a passing exact CI run');
+  assert.equal(s.adapted,2);
+  assert.equal(s.wired,2);
+  assert.equal(s.tested,2,'the evidence overlay records exact successful CI runs for both adaptations');
   assert.equal(s.released,0);
   assert.match(renderSourceReport(doc),/not an overall readiness score/);
 });
@@ -52,6 +52,18 @@ test('llama.cpp JSON Schema is adapted, P23-wired and marked tested with CI evid
   assert.ok(llama.implementation.testEvidence.some(e=>e.includes('43393334664')));
   assert.ok(llama.implementation.runtimeEvidence.some(e=>e.includes('generateAndStageReflectiveSkillRevisionWithLocalModel')));
   assert.ok(llama.review.sourceEvidence.some(e=>e.includes('server-common.cpp:1306-1318')));
+});
+
+test('DSPy GEPA sidecar is adapted, P23-wired and backed by exact successful CI evidence', () => {
+  const dspy=doc.sources.find(s=>s.id==='dspy');
+  assert.equal(dspy.implementation.codeCopied,false,'no donor code was copied into NK1');
+  assert.equal(dspy.implementation.adapted,true);
+  assert.equal(dspy.implementation.runtimeWired,true);
+  assert.equal(dspy.implementation.testsPassed,true);
+  assert.equal(dspy.implementation.releaseVerified,false);
+  assert.ok(dspy.implementation.runtimeEvidence.some(e=>e.includes('GepaReflectiveCandidateGenerator.ts')));
+  assert.ok(dspy.implementation.runtimeEvidence.some(e=>e.includes('server.mjs')));
+  assert.ok(dspy.implementation.testEvidence.some(e=>e.includes('43417587842')));
 });
 
 test('stage overrides accept only known stage fields and append unique evidence', () => {
