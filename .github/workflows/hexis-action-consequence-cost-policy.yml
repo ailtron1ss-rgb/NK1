@@ -51,3 +51,9 @@ jobs:
       - name: Preserve existing action-cost unification regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/action-cost-unification-workpass36.mjs
+      - name: Preserve ActionGateway idempotency and recovery contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/action-gateway-idempotency-workpass37.mjs
+      - name: Preserve ActionGateway durable approval and redaction boundary
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass53-action-approval-boundary.mjs
