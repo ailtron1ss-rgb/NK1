@@ -134,6 +134,19 @@ function projectTarget(raw: unknown, taskIds: Set<string>, trialIds: Set<string>
     directive: SAFE_DIRECTIVES[raw.dimension as keyof typeof SAFE_DIRECTIVES],
   };
 }
+function assertSourcePayloadShape(source: unknown, candidate: unknown): unknown {
+  if (source === null || candidate === null ||
+      typeof source !== typeof candidate ||
+      Array.isArray(source) !== Array.isArray(candidate)) {
+    throw new Error('gepa-candidate-schema-mismatch');
+  }
+  if (isRecord(source)) {
+    if (!isRecord(candidate)) throw new Error('gepa-candidate-schema-mismatch');
+    const missing = Object.keys(source).filter(key => !Object.hasOwn(candidate, key));
+    if (missing.length) throw new Error('gepa-candidate-dropped-source-field');
+  }
+  return candidate;
+}
 async function readBoundedText(response: Response, maxBytes: number): Promise<string> {
   const declared = Number(response.headers.get('content-length') ?? 0);
   if (Number.isFinite(declared) && declared > maxBytes) {
@@ -334,13 +347,14 @@ export class GepaReflectiveCandidateGenerator {
       } catch {
         throw new Error('gepa-candidate-data-boundary-rejected');
       }
-      const encoded = JSON.stringify(candidate);
+      const preserved = assertSourcePayloadShape(request.sourcePayload, candidate);
+      const encoded = JSON.stringify(preserved);
       if (typeof encoded !== 'string' || Buffer.byteLength(encoded, 'utf8') > MAX_SOURCE_BYTES) {
         throw new Error('gepa-candidate-payload-too-large');
       }
       this.lastStatus = 'ok';
       // Discard sidecar score, confidence, pass/fail, traces and activation claims.
-      return candidate;
+      return preserved;
     } catch (error) {
       this.failures++;
       this.lastStatus = controller.signal.aborted
