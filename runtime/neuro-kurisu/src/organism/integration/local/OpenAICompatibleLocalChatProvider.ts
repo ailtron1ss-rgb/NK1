@@ -34,9 +34,9 @@ const MAX_RESPONSE_SCHEMA_DEPTH = 16;
 const MAX_RESPONSE_SCHEMA_NODES = 2048;
 
 /** Clone bounded JSON data without invoking getters, accepting proxies, or retaining mutable caller references. */
-function cloneJsonData(value: unknown, state: { seen: Set<object>; nodes: number; depth: number }): unknown {
-  state.nodes += 1;
-  if (state.nodes > MAX_RESPONSE_SCHEMA_NODES || state.depth > MAX_RESPONSE_SCHEMA_DEPTH) throw new Error('llama.cpp-response-schema-too-complex');
+function cloneJsonData(value: unknown, state: { seen: Set<object>; budget: { nodes: number }; depth: number }): unknown {
+  state.budget.nodes += 1;
+  if (state.budget.nodes > MAX_RESPONSE_SCHEMA_NODES || state.depth > MAX_RESPONSE_SCHEMA_DEPTH) throw new Error('llama.cpp-response-schema-too-complex');
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw new Error('llama.cpp-response-schema-not-json');
@@ -58,8 +58,7 @@ function cloneJsonData(value: unknown, state: { seen: Set<object>; nodes: number
       for (let i = 0; i < length; i += 1) {
         const descriptor = descriptors[String(i)];
         if (!descriptor || !('value' in descriptor) || descriptor.enumerable !== true) throw new Error('llama.cpp-response-schema-not-plain-data');
-        result.push(cloneJsonData(descriptor.value, { seen: state.seen, nodes: state.nodes, depth: state.depth + 1 }));
-        state.nodes = countNodes(result, state.nodes);
+        result.push(cloneJsonData(descriptor.value, { seen: state.seen, budget: state.budget, depth: state.depth + 1 }));
       }
       return result;
     }
@@ -72,10 +71,9 @@ function cloneJsonData(value: unknown, state: { seen: Set<object>; nodes: number
       const descriptor = descriptors[key];
       if (!descriptor || !('value' in descriptor) || descriptor.enumerable !== true) throw new Error('llama.cpp-response-schema-accessor-rejected');
       Object.defineProperty(result, key, {
-        value: cloneJsonData(descriptor.value, { seen: state.seen, nodes: state.nodes, depth: state.depth + 1 }),
+        value: cloneJsonData(descriptor.value, { seen: state.seen, budget: state.budget, depth: state.depth + 1 }),
         enumerable: true, configurable: true, writable: true,
       });
-      state.nodes = countNodes(result, state.nodes);
     }
     return result;
   } finally {
@@ -83,16 +81,11 @@ function cloneJsonData(value: unknown, state: { seen: Set<object>; nodes: number
   }
 }
 
-function countNodes(value: unknown, current: number): number {
-  // Recursive cloning already increments the shared state; this identity function
-  // keeps the call sites explicit without walking and re-counting cloned data.
-  return current;
-}
 
 function normalizeResponseFormat(raw: LocalChatResponseFormat | undefined): LocalChatResponseFormat | undefined {
   if (raw === undefined) return undefined;
   let cloned: unknown;
-  try { cloned = cloneJsonData(raw, { seen: new Set<object>(), nodes: 0, depth: 0 }); }
+  try { cloned = cloneJsonData(raw, { seen: new Set<object>(), budget: { nodes: 0 }, depth: 0 }); }
   catch (error) { throw error instanceof Error ? error : new Error('llama.cpp-response-schema-invalid'); }
   if (!cloned || typeof cloned !== 'object' || Array.isArray(cloned)) throw new Error('llama.cpp-response-format-invalid');
   const format = cloned as Record<string, unknown>;
