@@ -448,7 +448,7 @@ These are separate workstream measures, not a weighted global “digital-person 
 | Наличие конкретных NK1 adapter paths | 6/21 (28,6%) | Hexis, Will, Mem0, Letta, Lumina и Hermes; наличие пути не доказывает паритет функций |
 | Адаптации механизмов без копирования донорского кода | 1/21 (4,8%) | Для llama.cpp добавлено NK1-native преобразование JSON Schema к точному формату llama-server |
 | Подключение к NK1 runtime pipeline | 1/21 (4,8%) | P23 local skill revision оборачивает генератор и передаёт candidate в существующий staging/promotion flow; live server ещё не проверен |
-| Тесты новых donor-механизмов | 0/21 | Для их внедрений тесты ещё не запускались |
+| Контрактные тесты адаптированного llama.cpp/P23 пути | 1/21 (4,8%) | Точный HTTP wire-shape, P23 generator и integration tests прошли профильный source-assimilation workflow; live model endpoint не тестировался |
 | Проверка включения в Release ZIP | 0/21 | Выпущенная интеграция не заявляется |
 
 Не сводить эти строки к одному «проценту готовности»: у них разные знаменатели и разные доказательства. В частности, 100% инвентаризации не означает 100% ассимиляции.
@@ -547,7 +547,7 @@ GitHub Compare также не нашёл общего предка между `
 Текущий учёт llama.cpp:
 - адаптация — 1/21; новое NK1-native поведение, без копирования donor кода;
 - runtime wiring — 1/21; через P23 reflective skill revision entrypoint и canonical candidate staging;
-- тесты — пока 0/21 до завершения повторного CI;
+- тесты — 1/21: после исправления тестового контракта прошёл source-assimilation workflow run `43392667976` на SHA `873d0dc05c463ebe26fff12b147a12c50915f0c3`; отдельный P23 repair regression run `43392667985` также завершился success;
 - release — 0/21; asset не загружен и live llama-server на реальном устройстве не проверен.
 
 Ограничение: это проверка server wire protocol и P23 provider integration; она не доказывает доступность конкретной модели, качество генерации, скорость токенов, память на телефоне или безопасную автономную работу всего организма.
