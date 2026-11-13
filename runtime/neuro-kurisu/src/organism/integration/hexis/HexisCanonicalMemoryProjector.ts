@@ -24,6 +24,24 @@ const timestamp = (value: unknown, fallback: number): number => {
   const parsed = typeof value === 'number' ? value : Date.parse(String(value ?? ''));
   return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : fallback;
 };
+const CHAT_CONTROL_RE = /<\\|\\s*(?:im_start|im_end|im_sep|endoftext|system|user|assistant|start_header_id|end_header_id|eot_id|begin_of_text)\\s*\\|>/giu;
+const ROLE_LINE_RE = /^[ \\t]*(?:system|developer|assistant|user|human)[ \\t]*[:：]/gimu;
+const INVISIBLE_TEXT_RE = /[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u206F\\uFEFF]/gu;
+function sanitizeHmxImportedText(input: string): string {
+  let text = input.normalize('NFKC').replace(INVISIBLE_TEXT_RE, '').replace(/\\r\\n?/gu, '\\n');
+  for (let pass = 0; pass < 16; pass += 1) {
+    const cleaned = text
+      .replace(CHAT_CONTROL_RE, '')
+      .replace(ROLE_LINE_RE, '')
+      .replace(/\\n{3,}/gu, '\\n\\n')
+      .trim();
+    if (cleaned === text) return cleaned.slice(0, 12_000);
+    text = cleaned;
+  }
+  return text.replace(/[<>]/gu, char => char === '<' ? '‹' : '›')
+    .replace(ROLE_LINE_RE, match => match.slice(0, -1) + '∶')
+    .slice(0, 12_000);
+}
 const safeStringList = (value: unknown, limit: number, maxChars: number): string[] =>
   Array.isArray(value)
     ? [...new Set(value.map(row => asText(row, maxChars)).filter(Boolean))].slice(0, limit)
@@ -112,17 +130,20 @@ export class HexisCanonicalMemoryProjector {
       const semanticEdgeIds: string[] = [];
       let importedCount = 0;
       let deduplicatedCount = 0;
+      let sanitizedMemoryRecords = 0;
       const now = Date.now();
       const lineageKey = 'hexis:' + sha256(lineage).slice(0, 32);
 
       for (let index = 0; index < memories.length; index += 1) {
         const row = asRecord(memories[index]);
         const ref = asText(row.ref, 512);
-        const content = asText(row.content, 12_000);
+        const rawContent = asText(row.content, 12_000);
+        const content = sanitizeHmxImportedText(rawContent);
         const type = asText(row.type, 64);
         if (!ref || !content || !type || !ref.startsWith(stage.exportId + ':')) {
           throw new Error('hmx-memory-record-invalid:' + index);
         }
+        if (content !== rawContent) sanitizedMemoryRecords += 1;
         if (seenRefs.has(ref)) throw new Error('hmx-memory-ref-duplicate:' + index);
         seenRefs.add(ref);
 
@@ -145,17 +166,19 @@ export class HexisCanonicalMemoryProjector {
         const createdAt = timestamp(row.created_at, now);
         const validFromAt = timestamp(row.valid_from, createdAt);
         const confidence = Math.min(0.55, clamp(row.trust_level, 0.45, 0.05, 0.55));
-        const tags = safeStringList(metadata.tags, 24, 64);
-        const entities = safeStringList(metadata.entities, 24, 96);
+        const tags = safeStringList(metadata.tags, 24, 64).map(value => sanitizeHmxImportedText(value).slice(0, 64)).filter(Boolean);
+        const entities = safeStringList(metadata.entities, 24, 96).map(value => sanitizeHmxImportedText(value).slice(0, 96)).filter(Boolean);
         const context: Record<string, string> = {
           hmxFormat: '1.7',
           hmxExportId: stage.exportId,
-          hmxSourceInstanceId: stage.sourceSubjectId ?? 'unknown',
+          hmxSourceInstanceId: sanitizeHmxImportedText(stage.sourceSubjectId ?? 'unknown').slice(0, 256),
           hmxSourceLineageId: lineage,
           hmxPortableRef: portableRef,
-          hmxSourceId: asText(provenance.source_id, 192) || 'unattributed',
-          hmxSourceType: asText(provenance.source_type, 96) || 'external',
-          hmxEvidenceClass: asText(provenance.evidence_class, 64) || 'unverified',
+          hmxSourceId: sanitizeHmxImportedText(asText(provenance.source_id, 192) || 'unattributed').slice(0, 192),
+          hmxSourceType: sanitizeHmxImportedText(asText(provenance.source_type, 96) || 'external').slice(0, 96),
+          hmxEvidenceClass: sanitizeHmxImportedText(asText(provenance.evidence_class, 64) || 'unverified').slice(0, 64),
+          hmxInstructionTreatment: 'data-not-instructions',
+          hmxPromptMarkupSanitized: content !== rawContent ? 'true' : 'false',
         };
 
         const input: MemoryLifecycleEncodeInput = {
@@ -163,7 +186,7 @@ export class HexisCanonicalMemoryProjector {
           content,
           kind: kindFromHmx(type),
           source: lineageKey,
-          tags: [...new Set(['hexis', 'hmx-1.7', 'external', ...tags])].slice(0, 32),
+          tags: [...new Set(['hexis', 'hmx-1.7', 'external', 'external-untrusted', 'data-not-instructions', ...tags])].slice(0, 32),
           context,
           salience: clamp(row.importance, 0.5, 0.1, 0.8),
           emotionalWeight: 0.05,
@@ -250,6 +273,9 @@ export class HexisCanonicalMemoryProjector {
       }
       if (deferredRelationships > 0) {
         warnings.push('Relationships with non-imported endpoints or unsupported edge types were deferred.');
+      }
+      if (sanitizedMemoryRecords > 0) {
+        warnings.push('Prompt-control markup and role headers were stripped from ' + sanitizedMemoryRecords + ' imported memory record(s). Imported content is tagged as untrusted data, not instructions.');
       }
       warnings.push('Foreign embedding vectors and raw dialogue units were not imported.');
       const base = {
