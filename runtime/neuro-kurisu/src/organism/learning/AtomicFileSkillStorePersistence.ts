@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isValidP23ValidationCandidateMetrics } from './P23ValidationCandidateParetoArchive.ts';
 import {
   closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync,
   unlinkSync, writeFileSync,
@@ -112,6 +113,7 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !isFingerprint(value.revisionProvenance.planFingerprint) ||
       !isFingerprint(value.revisionProvenance.datasetFingerprint) ||
       (value.revisionProvenance.sourceEvidenceFingerprint !== undefined && !isFingerprint(value.revisionProvenance.sourceEvidenceFingerprint)) ||
+      (value.revisionProvenance.validationMetrics !== undefined && !isValidP23ValidationCandidateMetrics(value.revisionProvenance.validationMetrics)) ||
       !Array.isArray(value.revisionProvenance.dimensions) || value.revisionProvenance.dimensions.length === 0 ||
       !value.revisionProvenance.dimensions.every((dimension: unknown) =>
         ['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'].includes(String(dimension))) ||
