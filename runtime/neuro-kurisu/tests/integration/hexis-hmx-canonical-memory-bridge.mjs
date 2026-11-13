@@ -10,9 +10,22 @@ class MemoryFabricFake {
   encode(input, { commandId }) {
     const prior = this.commands.get(commandId);
     if (prior) return this.rows.get(prior);
-    const row = { ...input };
+    // Mirror MemoryOS2: encode recomputes links and does not apply imported graph edges.
+    const row = { ...input, semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [] };
     this.rows.set(input.id, row);
     this.commands.set(commandId, input.id);
+    return row;
+  }
+  addLinks(id, patch, { commandId }) {
+    const prior = this.commands.get(commandId);
+    if (prior) return this.rows.get(prior);
+    const row = this.rows.get(id);
+    if (!row) return null;
+    for (const field of ['semanticLinks', 'temporalLinks', 'causalLinks', 'contradictionLinks']) {
+      const incoming = (patch[field] ?? []).filter(target => target !== id && this.rows.has(target));
+      row[field] = [...new Set([...(row[field] ?? []), ...incoming])].slice(0, 24);
+    }
+    this.commands.set(commandId, id);
     return row;
   }
 }
@@ -64,6 +77,7 @@ assert.equal(committed.inserted, 4);
 assert.equal(committed.replayed, 0);
 assert.equal(committed.relationshipsApplied, 4);
 assert.equal(committed.clustersApplied, 1);
+assert.equal(committed.linksApplied, 4);
 assert.equal(Object.keys(committed.refMap).length, 4);
 const alpha = memory.getCanonicalMemory(committed.refMap['memory:alpha']);
 assert.equal(alpha.content, 'The donor observed a red bicycle.');
@@ -99,6 +113,7 @@ assert.equal(replay.inserted, 0);
 assert.equal(replay.replayed, 4);
 assert.equal(replay.relationshipsApplied, 4);
 assert.equal(replay.clustersApplied, 1);
+assert.equal(replay.linksApplied, 4);
 assert.deepEqual(replay.refMap, committed.refMap);
 assert.equal(memory.rows.size, 4, 'replaying the same accepted stage must not create duplicate canonical memories');
 
@@ -119,6 +134,7 @@ assert.equal(orphanCluster.clusterCount, 2, 'stage reports named cluster candida
 const orphanCommit = bridge.commit(orphanCluster.stagingId);
 assert.equal(orphanCommit.ok, true);
 assert.equal(orphanCommit.clustersApplied, 0, 'cluster without imported members must not create a ghost anchor');
+assert.equal(orphanCommit.linksApplied, 0);
 assert.ok(orphanCommit.warnings.some(w => w.code === 'cluster-member-not-imported'));
 assert.ok(orphanCommit.warnings.some(w => w.code === 'cluster-without-members'));
 assert.equal(orphanCommit.refMap['cluster:orphan'], undefined);
@@ -135,6 +151,7 @@ assert.equal(dangling.ok, true);
 const danglingCommit = bridge.commit(dangling.stagingId);
 assert.equal(danglingCommit.ok, true);
 assert.equal(danglingCommit.relationshipsApplied, 0);
+assert.equal(danglingCommit.linksApplied, 0);
 assert.ok(danglingCommit.warnings.some(w => w.code === 'relationship-endpoint-not-imported'));
 const known = memory.getCanonicalMemory(danglingCommit.refMap['memory:known']);
 assert.equal(known.semanticLinks.length, 0, 'dangling relationship must not create a ghost link');
