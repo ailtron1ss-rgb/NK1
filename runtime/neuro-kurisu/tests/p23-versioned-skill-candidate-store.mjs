@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { AtomicFileSkillStorePersistence } from '../src/organism/learning/AtomicFileSkillStorePersistence.ts';
 import { VersionedSkillCandidateStore, InMemorySkillStorePersistence } from '../src/organism/learning/VersionedSkillCandidateStore.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
+import { buildP23ValidationCandidateMetrics } from '../src/organism/learning/P23ValidationCandidateParetoArchive.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
 import { createAuthenticatedSkillPromotionApprovalVerifier, canonicalSkillPromotionApprovalPayload, createSkillPromotionApprovalPayload } from '../src/organism/learning/AuthenticatedSkillPromotionApproval.ts';
@@ -195,6 +196,45 @@ try {
     'atomic file adapter restores candidate state across store reconstruction');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
+
+  const durableParetoFile = join(tempRoot, 'state', 'pareto.json');
+  const durableParetoStore = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(durableParetoFile));
+  const durableParetoProposal = proposal('durable-pareto');
+  const durableParetoSkill = 'durable-validation-pareto';
+  const durableBase = durableParetoStore.stageCandidate(durableParetoProposal, durableParetoSkill, {
+    name: 'durable-source', steps: ['open'],
+  });
+  const durableValidationReports = [
+    { taskId: 'durable-task-1', trialId: 'durable-trial-1', taskFamily: 'memory',
+      taskSuccess: { passed: true, passRate: 1 },
+      skillQuality: { functionalCoverage: .8, executability: .8, safety: 1, aggregate: .866667, safetyViolationCount: 0 },
+      trajectoryQuality: { keyPointRecall: .8, executionOrder: .8, completeness: .8, aggregate: .8 } },
+    { taskId: 'durable-task-2', trialId: 'durable-trial-2', taskFamily: 'tools',
+      taskSuccess: { passed: false, passRate: 0 },
+      skillQuality: { functionalCoverage: .7, executability: .7, safety: 1, aggregate: .8, safetyViolationCount: 0 },
+      trajectoryQuality: { keyPointRecall: .9, executionOrder: .9, completeness: .9, aggregate: .9 } },
+  ];
+  const durableMetrics = buildP23ValidationCandidateMetrics(durableValidationReports);
+  const durableRevision = durableParetoStore.stageCandidate(
+    durableParetoProposal, durableParetoSkill, { name: 'durable-revision', steps: ['open','verify'] }, {
+      schemaVersion: 1,
+      evaluationFingerprint: 'a'.repeat(64),
+      sourceCandidateId: durableBase.candidateId,
+      planFingerprint: 'b'.repeat(64),
+      datasetFingerprint: durableParetoProposal.datasetFingerprint,
+      validationMetrics: durableMetrics,
+      dimensions: ['trajectory'],
+      createdAt: Date.now(),
+    },
+  );
+  const durableParetoRestored = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(durableParetoFile));
+  assert.deepEqual(durableParetoRestored.snapshot().candidates.find(item => item.candidateId === durableRevision.candidateId)
+    .revisionProvenance.validationMetrics, durableMetrics,
+    'per-task validation objectives survive durable versioned-store reconstruction');
+  assert.deepEqual(durableParetoRestored.validationParetoFront(
+    durableParetoSkill, durableParetoProposal.datasetFingerprint, durableBase.candidateId,
+  ).map(item => item.candidateId), [durableRevision.candidateId],
+  'the read-only Pareto query is reproducible after restore');
 } finally {
   rmSync(tempRoot, { recursive: true, force: true });
 }
@@ -272,4 +312,59 @@ assert.equal(acceptedAfterRestart.version, shadowCandidate.version,
   'receipt is revalidated and accepted after restart only with matching trusted context');
 rmSync(shadowTempRoot, { recursive: true, force: true });
 
+
+const makeParetoReport = (taskId, trialId, success, trajectory, skill) => ({
+  taskId, trialId, taskFamily: 'family-' + taskId,
+  taskSuccess: { passed: success, passRate: success ? 1 : 0 },
+  skillQuality: {
+    functionalCoverage: skill, executability: skill, safety: 1,
+    aggregate: Number(((skill + skill + 1) / 3).toFixed(6)), safetyViolationCount: 0,
+  },
+  trajectoryQuality: {
+    keyPointRecall: trajectory, executionOrder: trajectory, completeness: trajectory, aggregate: trajectory,
+  },
+});
+const paretoStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
+const paretoProposal = proposal('pareto-candidate-archive');
+const paretoSkillId = 'p23-validation-pareto-skill';
+const paretoSource = paretoStore.stageCandidate(paretoProposal, paretoSkillId, { name: 'source', steps: ['open'] });
+const candidateReports = {
+  A: [
+    makeParetoReport('task-01','a-trial-1',true,.6,.8),
+    makeParetoReport('task-02','a-trial-2',false,.9,.8),
+  ],
+  B: [
+    makeParetoReport('task-01','b-trial-1',false,.9,.8),
+    makeParetoReport('task-02','b-trial-2',true,.6,.8),
+  ],
+  C: [
+    makeParetoReport('task-01','c-trial-1',false,.4,.4),
+    makeParetoReport('task-02','c-trial-2',false,.4,.4),
+  ],
+};
+const stagedParetoCandidates = {};
+for (const label of ['A','B','C']) {
+  stagedParetoCandidates[label] = paretoStore.stageCandidate(
+    paretoProposal,
+    paretoSkillId,
+    { name: 'candidate-' + label, steps: ['open','revision-' + label] },
+    {
+      schemaVersion: 1,
+      evaluationFingerprint: (label.charCodeAt(0).toString(16).padStart(2,'0')).repeat(32),
+      sourceCandidateId: paretoSource.candidateId,
+      planFingerprint: 'c'.repeat(64),
+      datasetFingerprint: paretoProposal.datasetFingerprint,
+      validationMetrics: buildP23ValidationCandidateMetrics(candidateReports[label]),
+      dimensions: ['trajectory'],
+      createdAt: Date.now(),
+    },
+  );
+}
+const paretoFront = paretoStore.validationParetoFront(paretoSkillId, paretoProposal.datasetFingerprint, paretoSource.candidateId);
+assert.deepEqual(paretoFront.map(candidate => candidate.payload.name), ['candidate-A','candidate-B'],
+  'versioned store preserves complementary validation strengths and excludes the dominated candidate');
+assert.equal(paretoFront.every(candidate => candidate.status === 'staged'), true,
+  'Pareto archive is read-only and does not activate a candidate');
+assert.throws(() => paretoStore.validationParetoFront(paretoSkillId, 'not-a-fingerprint', paretoSource.candidateId),
+  /query-invalid/);
 console.log('P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS');
