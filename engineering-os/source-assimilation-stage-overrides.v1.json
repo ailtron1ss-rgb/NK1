@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "llama-cpp": {
+      "testsPassed": true,
+      "testEvidence": [
+        "GitHub Actions run 43392930739 (commit 8d3bb5bb220fb0a8a2a777ecb61c75980f3d774a): local-chat-provider-workpass40.mjs, p23-local-model-skill-revision-generator.mjs, p23-local-model-skill-revision-integration.mjs all PASS; source assimilation static audit 28/28; integration contracts for Hexis, Letta, Lumina, Will and Mem0 PASS."
+      ]
+    }
+  }
+}
