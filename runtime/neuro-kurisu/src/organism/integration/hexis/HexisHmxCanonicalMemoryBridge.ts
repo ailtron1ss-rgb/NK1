@@ -17,6 +17,7 @@ export interface HmxBridgeStageResult {
   memoryCount: number;
   episodeCount: number;
   relationshipCount: number;
+  clusterCount: number;
   deferredSections: string[];
   warnings: HmxBridgeWarning[];
   conflicts: Array<{ path: string; kind: string; detail: string }>;
@@ -29,6 +30,7 @@ export interface HmxBridgeCommitResult {
   inserted: number;
   replayed: number;
   relationshipsApplied: number;
+  clustersApplied: number;
   refMap: Record<string, string>;
   warnings: HmxBridgeWarning[];
   error?: string;
@@ -47,7 +49,7 @@ const SUPPORTED_SECTIONS = new Set([
   'in_flight_work', 'audit_records', 'raw_units', 'config',
 ]);
 const DEFERRED_SECTIONS = new Set([
-  'clusters', 'in_flight_work',
+  'in_flight_work',
   'audit_records', 'raw_units', 'config',
 ]);
 
@@ -116,7 +118,7 @@ export class HexisHmxCanonicalMemoryBridge {
       doc = detached;
       serialized = JSON.stringify(doc);
     } catch {
-      return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0,
+      return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0, clusterCount: 0,
         deferredSections: [], warnings, conflicts: [{ path: '$', kind: 'serialization', detail: 'HMX document must be bounded inert plain data' }] };
     }
 
@@ -141,7 +143,7 @@ export class HexisHmxCanonicalMemoryBridge {
     if (!isRecord(doc.sections)) {
       conflicts.push({ path: 'sections', kind: 'schema', detail: 'sections must be an object' });
     }
-    if (conflicts.length) return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0,
+    if (conflicts.length) return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0, clusterCount: 0,
       deferredSections: [], warnings, conflicts };
 
     const sections = doc.sections as Record<string, unknown>;
@@ -197,6 +199,22 @@ export class HexisHmxCanonicalMemoryBridge {
       });
     }
 
+    const clusters = sections.clusters ?? [];
+    if (!Array.isArray(clusters) || clusters.length > MAX_MEMORY_RECORDS) {
+      conflicts.push({ path: 'sections.clusters', kind: 'record-limit', detail: 'clusters must be an array of at most 64 records' });
+    } else {
+      clusters.forEach((record, index) => {
+        if (!isRecord(record) || !safeText(record.ref, 512) || !SAFE_REF.test(record.ref) ||
+            !Array.isArray(record.member_refs) || record.member_refs.length > MAX_MEMORY_RECORDS ||
+            record.member_refs.some(ref => !safeText(ref, 512) || !SAFE_REF.test(ref)) ||
+            (record.name !== undefined && record.name !== null && !safeText(record.name, 256)) ||
+            (record.cluster_type !== undefined && record.cluster_type !== null && !safeText(record.cluster_type, 128))) {
+          conflicts.push({ path: 'sections.clusters[' + index + ']', kind: 'schema',
+            detail: 'Each cluster requires a safe ref, bounded member_refs and optional bounded name/type' });
+        }
+      });
+    }
+
     const relationships = sections.relationships ?? [];
     if (!Array.isArray(relationships) || relationships.length > MAX_MEMORY_RECORDS) {
       conflicts.push({ path: 'sections.relationships', kind: 'record-limit', detail: 'relationships must be an array of at most 64 records' });
@@ -210,12 +228,13 @@ export class HexisHmxCanonicalMemoryBridge {
         }
       });
     }
-    if (conflicts.length) return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0,
+    if (conflicts.length) return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0, clusterCount: 0,
       deferredSections: [], warnings, conflicts };
 
     const memoryRecords = Array.isArray(memories) ? memories : [];
     const episodeRecords = Array.isArray(episodes) ? episodes : [];
     const relationshipRecords = Array.isArray(relationships) ? relationships : [];
+    const clusterRecords = Array.isArray(clusters) ? clusters : [];
     for (const episode of episodeRecords) {
       if (!safeText((episode as Record<string, unknown>).summary, MAX_CONTENT_LENGTH)) {
         warnings.push({ code: 'episode-summary-missing', section: 'episodes',
@@ -232,7 +251,7 @@ export class HexisHmxCanonicalMemoryBridge {
     const intent = doc.export_intent as HexisHmxIntent;
     const stage = this.adaptation.stageHmx({ document: doc, intent, strategy: 'additive' });
     if (stage.conflicts.length) {
-      return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0,
+      return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0, clusterCount: 0,
         deferredSections: [], warnings, conflicts: stage.conflicts };
     }
     return {
@@ -242,6 +261,7 @@ export class HexisHmxCanonicalMemoryBridge {
       memoryCount: memoryRecords.length,
       episodeCount: episodeRecords.filter(record => isRecord(record) && safeText(record.summary, MAX_CONTENT_LENGTH)).length,
       relationshipCount: relationshipRecords.length,
+      clusterCount: clusterRecords.filter(record => isRecord(record) && safeText(record.name, 256) && Array.isArray(record.member_refs) && record.member_refs.length > 0).length,
       deferredSections: names.filter(name => DEFERRED_SECTIONS.has(name)),
       warnings,
       conflicts: [],
@@ -251,22 +271,24 @@ export class HexisHmxCanonicalMemoryBridge {
   commit(stagingId: string): HmxBridgeCommitResult {
     const stage = this.adaptation.getHmxStage(stagingId);
     if (!stage) {
-      return { ok: false, stagingId, exportId: '', inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings: [], error: 'stage-not-found' };
+      return { ok: false, stagingId, exportId: '', inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, refMap: {}, warnings: [], error: 'stage-not-found' };
     }
     if (stage.strategy !== 'additive' || stage.intent === 'analysis') {
-      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings: [], error: 'unsupported-import-strategy' };
+      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, refMap: {}, warnings: [], error: 'unsupported-import-strategy' };
     }
     if (stage.status === 'rejected') {
-      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings: [], error: 'stage-rejected' };
+      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, refMap: {}, warnings: [], error: 'stage-rejected' };
     }
 
     const rawMemories = stage.stagedSections.memories ?? [];
     const rawEpisodes = stage.stagedSections.episodes ?? [];
     const rawRelationships = stage.stagedSections.relationships ?? [];
+    const rawClusters = stage.stagedSections.clusters ?? [];
     if (!Array.isArray(rawMemories) || rawMemories.length > MAX_MEMORY_RECORDS ||
         !Array.isArray(rawEpisodes) || rawEpisodes.length > MAX_MEMORY_RECORDS ||
-        !Array.isArray(rawRelationships) || rawRelationships.length > MAX_MEMORY_RECORDS) {
-      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings: [], error: 'staged-section-invalid' };
+        !Array.isArray(rawRelationships) || rawRelationships.length > MAX_MEMORY_RECORDS ||
+        !Array.isArray(rawClusters) || rawClusters.length > MAX_MEMORY_RECORDS) {
+      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, refMap: {}, warnings: [], error: 'staged-section-invalid' };
     }
 
     const warnings: HmxBridgeWarning[] = [];
@@ -283,15 +305,15 @@ export class HexisHmxCanonicalMemoryBridge {
     for (const raw of rawMemories) {
       if (!isRecord(raw) || !safeText(raw.ref, 512) || !SAFE_REF.test(raw.ref) ||
           !safeText(raw.content, MAX_CONTENT_LENGTH) || !safeText(raw.type, 128)) {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings, error: 'staged-memory-record-invalid' };
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, refMap: {}, warnings, error: 'staged-memory-record-invalid' };
       }
       if (!addRef(raw.ref, stableId(stage.exportId, raw.ref))) {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings, error: 'duplicate-external-ref' };
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, refMap: {}, warnings, error: 'duplicate-external-ref' };
       }
     }
     for (const raw of rawEpisodes) {
       if (!isRecord(raw) || !safeText(raw.ref, 512) || !SAFE_REF.test(raw.ref)) {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings, error: 'staged-episode-record-invalid' };
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, refMap: {}, warnings, error: 'staged-episode-record-invalid' };
       }
       if (!safeText(raw.summary, MAX_CONTENT_LENGTH)) {
         warnings.push({ code: 'episode-summary-missing', section: 'episodes', ref: raw.ref,
@@ -299,7 +321,19 @@ export class HexisHmxCanonicalMemoryBridge {
         continue;
       }
       if (!addRef(raw.ref, stableId(stage.exportId, 'episode:' + raw.ref))) {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings, error: 'duplicate-external-ref' };
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, refMap: {}, warnings, error: 'duplicate-external-ref' };
+      }
+    }
+
+    for (const raw of rawClusters) {
+      if (!isRecord(raw) || !safeText(raw.ref, 512) || !SAFE_REF.test(raw.ref) ||
+          !safeText(raw.name, 256) || !Array.isArray(raw.member_refs)) {
+        warnings.push({ code: 'cluster-not-imported', section: 'clusters',
+          detail: 'Cluster without a safe name and member_refs is staged but not projected' });
+        continue;
+      }
+      if (!addRef(raw.ref, stableId(stage.exportId, 'cluster:' + raw.ref))) {
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, refMap: {}, warnings, error: 'duplicate-external-ref' };
       }
     }
 
@@ -415,6 +449,77 @@ export class HexisHmxCanonicalMemoryBridge {
       prepared.push({ ref, input: memoryInput, commandId });
     }
 
+    let clustersApplied = 0;
+    const portableMemberRefs = new Set<string>([
+      ...rawMemories.filter((raw): raw is Record<string, unknown> => isRecord(raw) && safeText(raw.ref, 512)).map(raw => raw.ref as string),
+      ...rawEpisodes.filter((raw): raw is Record<string, unknown> => isRecord(raw) && safeText(raw.ref, 512) && safeText(raw.summary, MAX_CONTENT_LENGTH)).map(raw => raw.ref as string),
+    ]);
+    for (const raw of rawClusters) {
+      if (!isRecord(raw) || !safeText(raw.ref, 512) || !SAFE_REF.test(raw.ref) ||
+          !safeText(raw.name, 256) || !Array.isArray(raw.member_refs)) continue;
+      const ref = raw.ref;
+      const relation = links.get(ref);
+      if (!relation) continue;
+      const memberRefs = raw.member_refs.filter((value): value is string => safeText(value, 512) && SAFE_REF.test(value));
+      let linkedMembers = 0;
+      for (const memberRef of memberRefs) {
+        const memberId = portableMemberRefs.has(memberRef) ? refToId.get(memberRef) : undefined;
+        const memberLinks = portableMemberRefs.has(memberRef) ? links.get(memberRef) : undefined;
+        if (!memberId || !memberLinks) {
+          warnings.push({ code: 'cluster-member-not-imported', section: 'clusters', ref: memberRef,
+            detail: 'Cluster member ref is outside the imported portable record set' });
+          continue;
+        }
+        if (!relation.semantic.includes(memberId)) relation.semantic.push(memberId);
+        const clusterId = refToId.get(ref)!;
+        if (!memberLinks.semantic.includes(clusterId)) memberLinks.semantic.push(clusterId);
+        linkedMembers++;
+      }
+      if (linkedMembers === 0) {
+        refToId.delete(ref);
+        links.delete(ref);
+        warnings.push({ code: 'cluster-without-members', section: 'clusters', ref,
+          detail: 'Cluster was not imported because none of its members were available in the portable record set' });
+        continue;
+      }
+      const sourceInstance = stage.sourceSubjectId || 'external-unknown';
+      const clusterInput: MemoryLifecycleEncodeInput = {
+        id: refToId.get(ref)!,
+        content: raw.name as string,
+        kind: 'semantic',
+        salience: 0.4,
+        emotionalWeight: 0,
+        identityRelevance: 0,
+        goalRelevance: 0,
+        socialRelevance: 0,
+        predictionError: 0,
+        confidence: 0.25,
+        epistemicStatus: 'hypothesis',
+        source: 'hmx:' + sourceInstance,
+        entities: [],
+        semanticLinks: relation.semantic,
+        temporalLinks: [],
+        causalLinks: [],
+        contradictionLinks: [],
+        provenanceClass: 'external',
+        sourceAuthority01: 0.2,
+        independenceKey: 'hmx:' + sourceInstance,
+        evidenceFreshnessAt: stage.createdAt,
+        tags: ['external-import', 'hmx-1x', 'unverified-source', 'cluster'],
+        context: {
+          hmxExportId: stage.exportId,
+          hmxSourceInstance: sourceInstance,
+          hmxSourceRef: ref,
+          hmxSection: 'clusters',
+          hmxClusterType: safeText(raw.cluster_type, 128) ? raw.cluster_type : 'unspecified',
+          hmxAcquisition: 'staged-explicit-acceptance',
+        },
+      };
+      const commandId = 'hmx-import:' + stage.exportId + ':cluster:' +
+        createHash('sha256').update(ref).digest('hex').slice(0, 24);
+      prepared.push({ ref, input: clusterInput, commandId });
+    }
+
     let relationshipsApplied = 0;
     for (const raw of rawRelationships) {
       if (!isRecord(raw) || !safeText(raw.source_ref, 512) || !safeText(raw.target_ref, 512) || !safeText(raw.edge_type, 128)) continue;
@@ -463,7 +568,7 @@ export class HexisHmxCanonicalMemoryBridge {
     if (stage.status === 'staged') {
       const accepted = this.adaptation.decideHmx(stagingId, 'accept');
       if (!accepted || accepted.status !== 'accepted') {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings, error: 'stage-acceptance-failed' };
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, refMap: {}, warnings, error: 'stage-acceptance-failed' };
       }
     }
 
@@ -476,6 +581,7 @@ export class HexisHmxCanonicalMemoryBridge {
         const item = this.memory.encode(record.input, { commandId: record.commandId, emitEvent: true, forceDistinct: true });
         if (!item) throw new Error('canonical-memory-write-returned-empty');
         refMap[record.ref] = item.id;
+        if (record.input.context?.hmxSection === 'clusters') clustersApplied++;
         if (prior) replayed++; else inserted++;
       }
     } catch (error) {
@@ -483,9 +589,9 @@ export class HexisHmxCanonicalMemoryBridge {
         code: 'partial-commit-retryable',
         detail: error instanceof Error ? error.message.slice(0, 240) : 'unknown-commit-error',
       });
-      return { ok: false, stagingId, exportId: stage.exportId, inserted, replayed, relationshipsApplied, refMap, warnings, error: 'partial-commit-retryable' };
+      return { ok: false, stagingId, exportId: stage.exportId, inserted, replayed, relationshipsApplied, clustersApplied, refMap, warnings, error: 'partial-commit-retryable' };
     }
-    return { ok: true, stagingId, exportId: stage.exportId, inserted, replayed, relationshipsApplied, refMap, warnings };
+    return { ok: true, stagingId, exportId: stage.exportId, inserted, replayed, relationshipsApplied, clustersApplied, refMap, warnings };
   }
 
 }
