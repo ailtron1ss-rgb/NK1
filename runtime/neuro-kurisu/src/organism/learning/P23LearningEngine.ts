@@ -1022,7 +1022,6 @@ export class P23LearningEngine {
       throw new Error('reflective revision candidate failed the independent validation/holdout gate');
     }
     if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
-    const validationMetrics=buildP23ValidationCandidateMetrics(candidateEvaluation.validation);
     const rawGeneratedPayload=await generate({
       sourcePayload:snapshotPlainData(source.payload),
       datasetFingerprint:proposal.datasetFingerprint,
@@ -1112,7 +1111,13 @@ export class P23LearningEngine {
     const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
     const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
     if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
+    // The exact freshly generated payload must pass the independent paired
+    // validation/holdout gate before any durable candidate version is written.
+    if(fitness.eligible !== true) {
+      throw new Error('reflective revision candidate failed the independent validation/holdout gate');
+    }
     if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
+    const validationMetrics=buildP23ValidationCandidateMetrics(candidateEvaluation.validation);
     const current=this.verifiedSkillStore.snapshot();
     const source=current.candidates.find(item=>item.candidateId===sourceCandidateId);
     if(!source || source.skillId!==skillId || source.status==='rolled-back') {
