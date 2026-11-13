@@ -40,8 +40,8 @@ function assertPreconditions() {
       throw new Error(`Dependencies are missing at ${workspace}/node_modules. Run npm run quickstart (or npm run install:all), then retry.`);
     }
   }
-  if (!existsSync(path.join(ROOT, 'app/dist/index.html'))) {
-    throw new Error('Production UI bundle app/dist/index.html is missing. Run npm run quickstart or npm run build before npm run start:prebuilt.');
+  if (!existsSync(path.join(ROOT, 'app/.vercel/output/nitro.json'))) {
+    throw new Error('Production Nitro output app/.vercel/output/nitro.json is missing. Run npm run quickstart or npm run build before npm run start:prebuilt.');
   }
   for (const relative of [
     'runtime/neuro-kurisu/src/server/server.mjs',
