@@ -222,7 +222,7 @@ Exact-head GitHub Actions run `43389637471` на `d3e29cc0ee2b912e3dc3ecd2b6f616
 
 Вывод: проблема существовала до Hexis policy; она заведена отдельно как [NK1 issue #865](https://github.com/ailtron1ss-rgb/NK1/issues/865). Это не закрывает дефект, но отделяет его от текущего изменения. ActionGateway approval/redaction boundary прошёл на baseline run `43390659519` и feature head run `43390671129`. В feature CI idempotency test изолирован от этого policy workflow, а approval regression остаётся в нём.
 
-После этого workflow обновлён ещё раз; текущий head PR #864 — `72ab4bc76d6fc45fe3888fe74223ecdf127e12a9`, его exact-head Actions run нужно считать финальным для данного среза. PR остаётся Draft, merge/release не делались.
+После дополнительного сохранения прежнего reason-контракта (`no-autonomous-permitted-tool`) broad Action Gateway governance также прошёл. На runtime-code head `21dfd56100c92d8ff189aab7289938c663d266b1` успешны: Hexis-specific CI run `43391372605`, Action Gateway governance `43391372537`, Unified organism runtime `43391372628`, WorkPass79 cognitive regression `43391372683`, UserModel explicit-forget `43391372617` и 2D asset contract `43391372562`. Core regression validation `43391372691` был cancelled, не засчитывается. Позже изменён только CI trigger для документационных правок, branch head стал `b59b22e8af82c640269149702b03442e7931f37f`; новый Actions matrix на этом HEAD запускается повторно. PR #864 остаётся Draft, merge/release не делались.
 
 ### Текущие границы и следующий проход
 
@@ -477,3 +477,36 @@ GitHub Compare также не нашёл общего предка между `
 5. **Каждый допущенный перенос:** exact upstream revision → file-level license → red/green contract test → адаптация к canonical NK1 owner → wiring → ablation/holdout → device/soak where relevant → release provenance → exact asset SHA reconciliation.
 
 Целевой механизм саморазвития NK1 должен сохранять один непрерывный state owner, генерировать гипотезы/учебные задачи из наблюдаемых расхождений, проверять их независимыми outcome receipts, обновлять память/модель себя только на допустимом evidence и восстанавливаться после рестарта. Никакая из этих инженерных проверок сама по себе не доказывает субъективное сознание.
+
+## 18. Итоговый checkpoint runtime assimilation (2026-11-13)
+
+### Подтверждённая реализация
+
+- 1 новый NK1-native runtime mechanism адаптирован по Hexis Energy Model: consequence-cost policy, встроенный в существующий `AutonomousResourceToolLifeController`.
+- 5 consequence classes; 5 dimensions; отдельная шкала от hardware/resource cost; unknown/mutation/social/destructive fail closed; `reconcile` отнесён к mutation.
+- `ActionGateway` не заменён и остаётся единственным исполнителем и permission/approval/idempotency/outcome authority.
+- Новые зависимости — 0; весь донорский runtime не импортировался.
+- Исправлен контракт reason string после фактического падения общего governance test; исходный consumer contract сохранён.
+
+### Проценты именно этой линии работы
+
+| Направление | Выполнение | Что именно означает |
+|---|---:|---|
+| Архивный intake | 100% | 4/4 containers, 22 nested ZIPs, 21 unique donor |
+| Первичный source/owner routing | 100% | 21/21 донор внесён в карту; root license screen предварительный |
+| License filename inventory | 100% | 172 LICENSE/NOTICE/COPYING filenames посчитаны; тексты и scope всех файлов не подтверждены |
+| Targeted source review | 71% | 15/21 по последнему расширенному pass; 6 требуют дальнейшего чтения |
+| Новый runtime mechanism implementation | 100% | выбранный Hexis mechanism реализован и связан с NK1 controller |
+| Targeted exact-head verification | 100% на runtime-code head `21dfd56` | typecheck, policy, BIG_PASS_223, ActionCostPolicy, ActionGateway approval, general gateway governance, Unified organism, WorkPass79 — success |
+| Полный registry audit | 25% | выборочная проверка 4 реальных tool registrations; все `id/capability` не перечислены |
+| Merge/release reconciliation | 0% | PR #864 открыт Draft; ни main, ни release ZIP не изменены |
+
+**Обобщённый прогресс этой итерации по источникам: около 75% подготовительной работы и 5% новых runtime promotions (1 из 21 донора).** Эти проценты не являются общей готовностью NK1, не равны сознанию и не доказывают device/production readiness. Проверенный PR slice уже работает в CI; следующий проектный этап — registry-wide validation и следующие донорские candidate experiments.
+
+### Остаток
+
+1. Завершить Actions matrix на текущем workflow-only head `b59b22e8af82c640269149702b03442e7931f37f`.
+2. Проверить все tool registrations по `id/capability`, отдельно аудировать локальные drafts/shadow, microphone/camera/speech, project changes, network and file mutations.
+3. Исправить отдельный temporal-credit baseline defect [#865](https://github.com/ailtron1ss-rgb/NK1/issues/865): idempotency integration test 12/13 с одинаковым failing assert на чистой базе и feature ветке.
+4. Пройти оставшиеся 6 donor projects; path-level licenses/notices, model weights и assets review до любого файлового копирования.
+5. После review и сравнения с актуальным base — решить PR #864; затем отдельно сверить merged source с содержимым Release ZIP и SHA-256. До этого изменения не считать выпущенными.
