@@ -26,7 +26,7 @@ Hexis разделяет вычислительную стоимость и це
 - `AutonomousResourceToolLifeController.plan()` использует новый классификатор для сужения множества кандидатов и ранжирования только разрешённых read-only действий.
 - Существующий `cost01` остаётся стоимостью вычислительного/ресурсного конверта. Новое `consequenceCost01` возвращается отдельно, поэтому две величины не подменяют друг друга.
 - `ActionGateway` остаётся единственным исполнителем и авторитетом разрешений, одобрений, idempotency receipts и outcome verification. Новый фильтр не вызывает инструменты и не выдаёт разрешения.
-- `AutonomousResourceToolLifeState` сохраняет счётчик отклонённых consequential-кандидатов и последний профиль; каждый tool receipt содержит повторно вычисленные `consequenceCost01`/`consequenceClass`. Старые snapshots совместимы: новые поля имеют безопасные defaults, старые receipt rows остаются читаемыми.
+- `AutonomousResourceToolLifeState` сохраняет счётчик отклонённых consequential-кандидатов и последний профиль; controller outcome record сохраняет повторно вычисленные `consequenceCost01`/`consequenceClass`; каноническая схема receipt внутри `ActionGateway` не меняется. Старые snapshots совместимы: новые поля имеют безопасные defaults, старые receipt rows остаются читаемыми.
 - Внутренняя мотивация, память и автономное планирование не заменяются донорским runtime; не создаётся второе состояние и не добавляются зависимости.
 
 ## Польза
@@ -39,18 +39,26 @@ Hexis разделяет вычислительную стоимость и це
 ## Проверки
 
 - TDD red до создания модуля: ожидаемый missing-module import failure.
-- Новый policy regression — PASS на локальном прогоне и exact-head Actions.
-- Exact-head Actions run [#43390755183](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43390755183), SHA `72ab4bc76d6fc45fe3888fe74223ecdf127e12a9`: **SUCCESS**.
+- Policy regression проверяет пять consequence-классов, precedence, approval flag, read-only selection, social-only block, раздельные resource/consequence cost, snapshot round-trip и fail-closed для reconciliation.
+- Финальный exact-head Actions run [#43391123521](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43391123521), SHA `6d17f888ece72b643c84ebae5ba1fbc123f7eae8`: **SUCCESS**.
 - Внутри run успешно: Node 24, `npm ci --ignore-scripts`, полный `npm run typecheck`, `hexis-action-consequence-cost-policy.mjs`, `big-pass-223-autonomous-resource-tool-life.mjs`, `action-cost-unification-workpass36.mjs`, `workpass53-action-approval-boundary.mjs`.
+- Отдельная idempotency suite: 12/13 subtests PASS, один failure по temporal reafference. Тот же failure воспроизведён на чистом baseline `workpass70-source@1a0315595302f3154df0ae53e5d9188875311467`; заведен самостоятельный [issue #865](https://github.com/ailtron1ss-rgb/NK1/issues/865). Он не относится к изменённому policy/controller path и не замаскирован под PASS.
+
+### Выборочная сверка registry
+
+- `organism.project.device` / `project.device.read` и `organism.project.world` / `project.world.read` распознаются как read-only.
+- `android.listen` / `android.stt` остаётся `unknown` и не допускается фоновым policy — это консервативно для микрофона.
+- `organism.device.speak` распознаётся как social и блокируется в ambient lane.
+- Это выборочные регистрации из `OrganismRuntime`, а не полный инвентарный аудит всех tools; следующий проход должен пройти каждый зарегистрированный `id/capability`.
 - Отдельная idempotency suite: 12/13 subtests PASS, один failure по temporal reafference. Тот же failure воспроизведён на чистом baseline `workpass70-source@1a0315595302f3154df0ae53e5d9188875311467`; заведён самостоятельный [issue #865](https://github.com/ailtron1ss-rgb/NK1/issues/865). Он не относится к изменённому policy/controller path и не замаскирован под PASS.
 
 ## Риски и следующий проход
 
-- Строковая классификация по зарегистрированным `id/capability` намеренно консервативна; перед расширением read-only allowlist следует сверить фактический registry tool-by-tool.
+- Строковая классификация по зарегистрированным `id/capability` намеренно консервативна; reconciliation отнесён к mutation, поскольку может менять durable state. Полный registry audit ещё не завершён.
 - Пока не разрешены локальные draft/create инструменты; потребуется различить безопасные shadow drafts, реальные filesystem mutations и self-modification по registry/rollback/idempotency.
 - Последующие Hexis ideas: контекстные множители first-use/high-error/repeated-action и outcome-backed cost calibration; hard floors должны быть неизменяемы для модели и опираться только на verified receipts.
 - Перед merge: актуальный compare с базой, точный review, relevant CI; потом отдельный release ZIP reconciliation.
 - Не изменены `main`, теги, релизный ZIP или сторонние зависимости. PR остаётся Draft; SUCCESS этого workflow означает проверку данного slice, а не production readiness проекта или сознание.
 
 
-Additional hardening: `reconcile` is classified as mutation rather than read-only because reconciling an execution can change durable state.
+
