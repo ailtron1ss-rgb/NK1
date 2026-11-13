@@ -21,7 +21,7 @@ const oldAfter=m.get(old.id); const newAfter=m.get(newer.id);
 assert.equal(oldAfter?.supersededById,newer.id);
 assert.equal(oldAfter?.validUntilAt,base+10_000);
 assert.equal(newAfter?.supersedesId,old.id);
-const current=m.retrieve('where does Alice live?',4).map(x=>x.id);
+const current=m.retrieve('Alice lives Paris',4).map(x=>x.id);
 assert.ok(current.includes(newer.id));
 assert.ok(!current.includes(old.id));
 const d=m.implicitConflictDiagnostics();
