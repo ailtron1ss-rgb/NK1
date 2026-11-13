@@ -291,6 +291,12 @@ assert.ok(gc.semanticLinks.includes(g1.id) && gc.semanticLinks.includes(g2.id),
   'real MemoryOS2 must retain cluster membership links');
 assert.ok(g1.semanticLinks.includes(gc.id) && g2.semanticLinks.includes(gc.id),
   'real MemoryOS2 must retain reverse cluster membership links');
+const ghostLinkAttempt = systems.memory.fabric.addLinks(g1.id, { semanticLinks: ['hmx_missing_target'] }, {
+  commandId: 'test:hmx-missing-link',
+});
+assert.ok(ghostLinkAttempt);
+assert.equal(ghostLinkAttempt.semanticLinks.includes('hmx_missing_target'), false,
+  'canonical MemoryOS2 must reject unknown graph-link targets');
 const graphReplay = systems.memory.hexisHmxCanonicalMemoryBridge.commit(graphStage.stagingId);
 assert.equal(graphReplay.ok, true);
 assert.equal(graphReplay.inserted, 0);
