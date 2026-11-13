@@ -2,6 +2,7 @@
 
 - Prevent text-only polarity and identifier heuristics from silently closing the temporal validity of HMX-imported external beliefs; explicit review or grounded evidence reconciliation owns that transition.
 - Add a regression for HMX-versus-local polarity conflicts while retaining local-to-local supersession and cross-lineage HMX isolation coverage.
+- Prevent canonical HMX rows projected into MultiTimescaleMemory from being re-imported as duplicate compatibility beliefs during restart.
 
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
