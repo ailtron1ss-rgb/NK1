@@ -279,6 +279,7 @@ export class MemoryFabric {
           // Explicit forgetting must cover every derived recall surface, not only the canonical owner.
           // MultiTimescaleMemory is a read-only projection; remove the matching row before any later recall.
           this.multiTimescale.removeCanonicalProjection(command.id);
+          this.p62.forgetMemory(command.id);
           this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));
           eventPayload={action,memoryId:command.id,reason:String(command.reason??'memory-knockout').slice(0,240),commandId:commandId||undefined};
         }
