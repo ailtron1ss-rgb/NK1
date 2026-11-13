@@ -86,6 +86,35 @@ function memoryRecord(id, summary, overrides = {}) {
   assert.ok(memory.retrieve('ordinary', 10_000).length <= 32);
 }
 
+
+// Canonicalized identity must be applied before replacement, and the cache
+// fingerprint must invalidate in-place mutations from clone=false projections.
+{
+  const memory = new MultiTimescaleMemory();
+  memory.add(memoryRecord('identity-row', 'legacy duplicate marker'));
+  memory.add(memoryRecord('  identity-row  ', 'normalized replacement marker'));
+  assert.equal(
+    memory.snapshot().filter(row => row.id === 'identity-row').length,
+    1,
+    'whitespace-normalized identifiers must replace, not duplicate, the previous row',
+  );
+
+  const liveRow = memoryRecord('live-projection', 'retired heliosphere keyword');
+  memory.add(liveRow, false);
+  assert.equal(memory.retrieve('heliosphere', 1)[0]?.id, 'live-projection');
+  liveRow.summary = 'current photosynthesis keyword';
+  assert.deepEqual(
+    memory.retrieve('heliosphere', 4).map(row => row.id),
+    [],
+    'in-place summary mutation must invalidate the prior lexical cache entry',
+  );
+  assert.equal(
+    memory.retrieve('photosynthesis', 1)[0]?.id,
+    'live-projection',
+    'in-place summary mutation must be searchable immediately',
+  );
+}
+
 console.log('MULTITIMESCALE_MEMORY_RETRIEVAL_INTEGRITY=PASS');
 
 // Semantic graph restoration is a trust boundary: invalid records, duplicate IDs,
