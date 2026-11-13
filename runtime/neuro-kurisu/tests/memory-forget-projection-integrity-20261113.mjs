@@ -333,3 +333,81 @@ console.log('PROTECTED_MEMORY_FORGET_BOUNDARY=PASS');
 }
 
 console.log('CANONICAL_MEMORY_TO_SEMANTIC_GRAPH_PROJECTION=PASS');
+
+
+// Canonical revisions and quarantines must update every derived recall surface.
+// Superseded text remains in canonical lineage for audit, but must not survive
+// as an active compatibility or semantic-graph recall candidate.
+{
+  const revisionOS = new MemoryOS2({ embeddingProvider: null });
+  const revisionMulti = new MultiTimescaleMemory();
+  const revisionGraph = new SemanticMemoryGraph();
+  const revisionFabric = new MemoryFabric(
+    revisionOS,
+    new EventLog(),
+    revisionMulti,
+    new MemorySubstrateCoordinator(),
+    new UnifiedMemorySystem(),
+    new P62MemoryFabric(),
+    revisionGraph,
+  );
+  const revisionInput = (id, content, kind = 'episodic') => ({
+    id,
+    content,
+    kind,
+    source: 'canonical-revision-projection-regression',
+    tags: ['revision-test'],
+    context: {},
+    salience: 0.9,
+    emotionalWeight: 0.1,
+    identityRelevance: 0.1,
+    goalRelevance: 0.1,
+    socialRelevance: 0,
+    predictionError: 0.1,
+    confidence: 0.9,
+    epistemicStatus: 'fact',
+    entities: [],
+    semanticLinks: [],
+    temporalLinks: [],
+    causalLinks: [],
+    contradictionLinks: [],
+    validFromAt: Date.now() - 2_000,
+    observedAt: Date.now() - 1_000,
+  });
+
+  revisionFabric.encode(revisionInput('revision-parent', 'obsolete asteroid expedition notebook'));
+  revisionFabric.projectCompatibility(32);
+  assert.ok(revisionMulti.snapshot().some(row => row.id === 'revision-parent'));
+  assert.ok(revisionGraph.snapshot().nodes.some(node => node.canonicalProjection?.itemId === 'revision-parent'));
+
+  const replacement = revisionFabric.reviseContent(
+    'revision-parent',
+    'current photosynthesis observation journal',
+    { reason: 'explicit-correction' },
+  );
+  assert.ok(replacement?.id && replacement.id !== 'revision-parent');
+  const projectedRows = revisionMulti.snapshot();
+  assert.equal(projectedRows.some(row => row.id === 'revision-parent'), false,
+    'superseded parent must leave the active compatibility read-model');
+  assert.ok(projectedRows.some(row => row.id === replacement.id),
+    'new canonical revision must be projected immediately');
+  assert.ok(revisionMulti.retrieve('photosynthesis observation', 16).some(row => row.id === replacement.id),
+    'new revision text must become retrievable without waiting for maintenance');
+  assert.equal(revisionMulti.retrieve('asteroid expedition', 16).some(row => row.id === 'revision-parent'), false,
+    'old revision must not survive as a compatibility recall candidate');
+  const graphAfterRevision = revisionGraph.snapshot();
+  assert.equal(graphAfterRevision.nodes.some(node => node.canonicalProjection?.itemId === 'revision-parent'), false);
+  assert.ok(graphAfterRevision.nodes.some(node => node.canonicalProjection?.itemId === replacement.id));
+
+  revisionFabric.encode(revisionInput('quarantine-target', 'quarantined memory must not be recalled', 'semantic'));
+  revisionFabric.projectCompatibility(32);
+  assert.ok(revisionMulti.snapshot().some(row => row.id === 'quarantine-target'));
+  assert.ok(revisionGraph.snapshot().nodes.some(node => node.canonicalProjection?.itemId === 'quarantine-target'));
+  revisionFabric.revise('quarantine-target', 'quarantined', 'integrity-review');
+  assert.equal(revisionMulti.snapshot().some(row => row.id === 'quarantine-target'), false,
+    'quarantine must remove the compatibility projection');
+  assert.equal(revisionGraph.snapshot().nodes.some(node => node.canonicalProjection?.itemId === 'quarantine-target'), false,
+    'quarantine must remove the semantic graph projection');
+}
+
+console.log('CANONICAL_REVISION_PROJECTION_SYNC=PASS');
