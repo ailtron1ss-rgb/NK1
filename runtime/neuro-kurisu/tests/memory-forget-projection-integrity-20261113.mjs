@@ -170,3 +170,73 @@ console.log('MEMORY_FORGET_PROJECTION_INTEGRITY=PASS');
 }
 
 console.log('SEMANTIC_MEMORY_SOURCE_NAMESPACE=PASS');
+
+
+// A protected canonical identity is not forgotten merely because a stale derived
+// projection or recall frame exists. The graph/cache purge must never report a
+// successful forget while the canonical owner still retains the protected row.
+{
+  const protectedMemoryOS = new MemoryOS2({ embeddingProvider: null });
+  const protectedProjection = new MultiTimescaleMemory();
+  const protectedSubstrate = new MemorySubstrateCoordinator();
+  const protectedP62 = new P62MemoryFabric();
+  const protectedGraph = new SemanticMemoryGraph();
+  const protectedFabric = new MemoryFabric(
+    protectedMemoryOS,
+    new EventLog(),
+    protectedProjection,
+    protectedSubstrate,
+    new UnifiedMemorySystem(),
+    protectedP62,
+    protectedGraph,
+  );
+
+  const protectedId = 'protected-identity-anchor';
+  protectedFabric.encode({
+    id: protectedId,
+    content: 'private identity anchor and stable autobiographical profile',
+    kind: 'identity',
+    source: 'explicit-forget-protection-regression',
+    tags: ['identity'],
+    context: {},
+    salience: 0.98,
+    emotionalWeight: 0.2,
+    identityRelevance: 0.99,
+    goalRelevance: 0.1,
+    socialRelevance: 0.1,
+    predictionError: 0.05,
+    confidence: 0.99,
+    epistemicStatus: 'fact',
+    entities: ['identity'],
+    semanticLinks: [],
+    temporalLinks: [],
+    causalLinks: [],
+    contradictionLinks: [],
+  });
+  protectedFabric.projectCompatibility(32);
+  const protectedFrame = protectedFabric.recall('private identity anchor', 8);
+  assert.ok(protectedFrame.hits.some(hit => hit.id === protectedId),
+    'the protected item should be present in the recall cache before the forget request');
+  assert.ok(protectedProjection.snapshot().some(row => row.id === protectedId),
+    'the protected item should have a derived compatibility projection before the forget request');
+
+  assert.equal(
+    protectedFabric.forgetById(protectedId, 'explicit-user-forget'),
+    false,
+    'a refusal from canonical MemoryOS2 must not be reported as a successful forget',
+  );
+  assert.ok(
+    protectedMemoryOS.snapshot().items.some(row => row.id === protectedId),
+    'the protected canonical identity record must remain present',
+  );
+  assert.ok(
+    protectedProjection.snapshot().some(row => row.id === protectedId),
+    'derived projection must not be deleted while the canonical owner retains the record',
+  );
+  assert.ok(
+    protectedP62.snapshot().history.some(frame => frame.hits.some(hit => hit.id === protectedId)),
+    'recall frames must remain consistent with a protected canonical record',
+  );
+}
+
+console.log('PROTECTED_MEMORY_FORGET_BOUNDARY=PASS');
