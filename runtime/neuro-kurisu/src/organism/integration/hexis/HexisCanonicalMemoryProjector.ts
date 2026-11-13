@@ -48,6 +48,7 @@ const EDGE_TYPES: Record<string, SemanticEdge['relation']> = {
   about: 'about',
   located: 'located',
 };
+const MAX_CANONICAL_MEMORY_ITEMS = 1600;
 
 /**
  * Projects a reviewed HMX 1.7 memory slice into NK1's one canonical MemoryOS2
@@ -88,6 +89,19 @@ export class HexisCanonicalMemoryProjector {
     const eventsBefore = this.memory.events.list();
     const semanticGraphBefore = this.memory.semanticMemory.snapshot();
     const hexisBefore = this.hexis.snapshot();
+
+    const existingIds = new Set(memoryOSBefore.items.map(item => item.id));
+    const plannedIds = new Set<string>();
+    for (const raw of memories) {
+      const row = asRecord(raw);
+      const ref = asText(row.ref, 512);
+      if (!ref || !ref.startsWith(stage.exportId + ':')) throw new Error('hmx-memory-record-invalid');
+      plannedIds.add(stableMemoryId(lineage, ref.slice(stage.exportId.length + 1)));
+    }
+    const newRequiredSlots = [...plannedIds].filter(id => !existingIds.has(id)).length;
+    if (memoryOSBefore.items.length + newRequiredSlots > MAX_CANONICAL_MEMORY_ITEMS) {
+      throw new Error('hmx-canonical-memory-capacity-exceeded');
+    }
 
     try {
       const refToNode = new Map<string, string>();
