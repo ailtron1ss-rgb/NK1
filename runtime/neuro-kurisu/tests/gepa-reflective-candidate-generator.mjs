@@ -221,11 +221,20 @@ test('real loopback HTTP roundtrip reaches the P23 callback and drops optimizer 
 test('server composition exposes GEPA only when explicitly enabled and retains local fallback', async () => {
   const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const server = await readFile(path.join(runtimeRoot, 'src/server/server.mjs'), 'utf8');
-  assert.match(server, /GepaReflectiveCandidateGenerator\.fromEnvironment\(\)/);
-  assert.match(server, /NK1_GEPA_ENABLED/);
-  assert.match(server, /asP23RevisionGenerator\(\)/);
-  assert.match(server, /generateLocalSkillRevision\(LLAMA_CPP_PROVIDER, request\)/);
+  const adapter = await readFile(path.join(runtimeRoot, 'src/organism/learning/GepaReflectiveCandidateGenerator.ts'), 'utf8');
+  assert.match(server, /GepaReflectiveCandidateGenerator\\.fromEnvironment\\(\\)/);
+  assert.match(adapter, /NK1_GEPA_ENABLED === '1'/);
+  assert.match(server, /asP23RevisionGenerator\\(\\)/);
+  assert.match(server, /generateLocalSkillRevision\\(LLAMA_CPP_PROVIDER, request\\)/);
   assert.match(server, /compound repair revision provider module/);
+});
+
+test('candidate payload cannot drop source fields before P23 receives it', async () => {
+  const adapter = new GepaReflectiveCandidateGenerator({
+    enabled: true, endpoint: 'https://optimizer.example.test/revise', apiKey: 'secret',
+    fetchImpl: async () => respond({ schemaVersion: 1, candidatePayload: { name: 'missing-steps-field' } }),
+  });
+  await assert.rejects(adapter.generate(request), /gepa-candidate-dropped-source-field/);
 });
 
 console.log('GEPA_REFLECTIVE_CANDIDATE_GENERATOR=PASS');
