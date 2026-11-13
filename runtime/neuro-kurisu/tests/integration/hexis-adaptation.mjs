@@ -73,12 +73,52 @@ const review = fabric.createLearningReview({periodStart:0,periodEnd:1,summary:'t
 const decided = fabric.decideLearningReview(review.id,review.items[0].id,'approve');
 assert.equal(decided?.status,'approved');
 
-const stage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e1',sections:{memories:[{id:'m'}],goals:[{id:'g'}]}},intent:'port',strategy:'additive'});
-assert.equal(stage.status,'staged');
-assert.equal(fabric.decideHmx(stage.stagingId,'accept')?.status,'accepted');
+const makeHmxDocument = (exportId, exportIntent, sections) => ({
+  hmx_version: '1.7',
+  export_id: exportId,
+  export_intent: exportIntent,
+  exported_at: new Date(1_800_000_000_000).toISOString(),
+  source: {
+    instance_id: 'hexis-test-donor',
+    schema_version: '1.7',
+    embedding_model: 'donor-test-no-vector-import',
+    embedding_dimension: 384,
+    hexis_lineage_id: 'hexis-test-lineage',
+  },
+  capabilities: {
+    formats: ['json'],
+    sections: Object.keys(sections),
+    hash_algorithms: ['sha256'],
+    relationship_edge_types: ['supports', 'contradicts'],
+    optional_features: [],
+  },
+  privacy: {
+    redaction_policy: 'strict',
+    contains_sensitive_content: false,
+    consent_scope: 'migration',
+  },
+  sections,
+});
+const stageId = 'exp_0000000000000001';
+const stage = fabric.stageHmx({
+  document: makeHmxDocument(stageId, 'port', {
+    memories: [{ ref: stageId + ':memory-m', type: 'semantic', content: 'validated donor memory' }],
+    goals: [{ id: 'g' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(stage.status, 'staged');
+assert.deepEqual(stage.conflicts, []);
+assert.equal(fabric.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
 
-const protectedStage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e2',sections:{identity:[{id:'self'}]}},intent:'telepathy',strategy:'analysis_only'});
-assert.equal(fabric.decideHmx(protectedStage.stagingId,'accept')?.status,'staged');
+const protectedId = 'exp_0000000000000002';
+const protectedStage = fabric.stageHmx({
+  document: makeHmxDocument(protectedId, 'telepathy', { identity: [{ id: 'self' }] }),
+  intent: 'telepathy',
+  strategy: 'analysis_only',
+});
+assert.equal(fabric.decideHmx(protectedStage.stagingId, 'accept')?.status, 'staged');
 
 const out = fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'x',meta:{b:2,a:1}}});
 assert.equal(fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{meta:{a:1,b:2},text:'x'}}).id,out.id);
