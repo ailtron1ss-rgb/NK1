@@ -72,6 +72,14 @@
 
 The regression exercises the existing feature branch's explicit stage → accept (review-only) → apply boundary, sanitization, lineage dedupe/isolation, rollback and restart/replay. The test correction does not itself change the runtime import policy.
 
+## Latest research intake — DSPy GEPA / Agent0
+
+- The 2026-11-13 source-assimilation register explicitly describes itself as initial inventory and architectural routing. No donor code was copied and no donor dependencies were installed in that intake pass; NK1 source archive bytes were not available locally and the package registry was unavailable.
+- Four supplied 7z containers contain 22 nested ZIPs and 21 unique donor projects (Letta is duplicated). The 172 LICENSE/NOTICE/COPYING-like filenames are an inventory, not legal clearance. Human legal clearance remains 0/21.
+- The DSPy/GEPA note identifies a useful potential gap: NK1 already has outcome reflection, a P23 single-candidate generator, verified outcome receipts and an independent holdout promotion gate. Existing Pareto ranking applies to learning targets, not to a per-example population of candidate skill versions. A full GEPA-style candidate population/archive was not confirmed in the reviewed P23 paths; this remains a preliminary finding pending a repository-wide branch search.
+- The adapter in PR #863 is an optional protocol sidecar, not a bundled or locally installed DSPy/GEPA optimizer. It is disabled by default, receives validation-only evidence, and cannot receive holdout scores or activation authority. Do not add the Python GEPA runtime dependency to the TypeScript/Android runtime.
+- Candidate next step, not yet implemented: search all canonical owners/branches for an equivalent candidate archive; only if absent, design an NK1-native bounded multi-candidate archive with parent lineage, immutable payload/dataset fingerprints, per-task validation scores, deduplication and explicit metric-call/token/time/cardinality budgets. Independent holdout remains outside the generator; compare against single-candidate P23 using a frozen manifest, paired seeds and ablations before any promotion.
+
 ## Release metadata and binary boundary
 
 - Latest published artifact including prerelease: tag workpass70-hotfix1-2026-10-19, published 2026-10-19; asset Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes; GitHub metadata digest sha256:9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
@@ -91,7 +99,7 @@ Status meanings: done = acceptance verified; partial = some gates verified but f
 | NK1-D2026-11-13-04 Retrieval / RU-EN holdout | P0; depends on immutable licensed bilingual corpus and independent source-group provenance. High risk; accept only with recallDelta > 0 on at least 5 paired seeds and no train/holdout leakage. | **blocked** — no independent confirmatory RU/EN result. |
 | NK1-D2026-11-13-05 Consolidation / MemFS / restore | P1; depends on snapshot/restore owner. Medium risk; accept with deterministic restore and replay idempotency under interruption. | **deferred / no-new-work** — the #866 HMX regression already exercises restart/restore/replay; no separate new persistence defect was isolated. |
 | NK1-D2026-11-13-06 Motivation / drives / initiative | P1; depends on long-duration runtime/device soak. Medium risk; accept with explainable initiative >=1/hour and correct interrupt/sleep-wake behavior. | **blocked** — no new soak evidence. |
-| NK1-D2026-11-13-07 Planning / selector / forward model | P2; depends on independent planning utility and action-gateway constraints. Medium risk; accept only after matched holdout and rollback checks. | **deferred / no-new-work** — no planner defect reproduced; do not promote experimental selector behavior without holdout. |
+| NK1-D2026-11-13-07 Planning / selector / forward model | P2; depends on a repository-wide search for an existing candidate archive and immutable validation/holdout separation. Medium risk; accept only if no canonical owner already exists and a bounded candidate archive has paired-seed/holdout evidence. | **deferred / no-new-work** — GEPA note identifies a preliminary multi-candidate archive gap; no full branch search or implementation was performed this cycle. |
 | NK1-D2026-11-13-08 ActionGateway / Hermes / permissions | P1; depends on canonical ActionGateway. Medium risk; accept only with read-only ambient policy and fail-closed mutation/approval tests. | **deferred / no-new-work** — PR #864 already owns consequence-cost policy and has 8/8 SUCCESS; avoid a duplicate gateway change. |
 | NK1-D2026-11-13-09 Reflection / outcome / reafference | P1; depends on verified outcome → temporal-credit assignment. High evidence risk; accept when the exact pending decision receives grounded reafference after restore/replay. | **blocked** — #865 remains open. Separate #866 evaluator startup failure is mapped to existing #853 ACP dependency, not the #865 behavior defect. |
 | NK1-D2026-11-13-10 SelfModel / personality / continuity | P2; depends on SelfModel and episodic-memory owner. Medium risk; accept with autobiographical continuity and calibrated self-claim regressions. | **deferred / no-new-work** — no new self-model defect isolated in this cycle. |
@@ -117,8 +125,8 @@ Status meanings: done = acceptance verified; partial = some gates verified but f
 
 1. Human review and separately authorized integration of #853; then rerun #866's independent-evidence-evaluation check without duplicating the ACP pin.
 2. Investigate #865 from exact decisionId propagation through OutcomeVerificationService to CanonicalTemporalCredit; add a restore/replay regression.
-3. Obtain a supported binary-download path for the prerelease ZIP; recompute SHA-256, inspect central-directory/member CRCs and compare embedded source provenance.
-4. Complete path-level license/NOTICE plus separate model, voice and avatar asset review before any redistribution.
+3. Search all source branches for an existing GEPA-like candidate population/archive; only if absent, design an NK1-native bounded P23 candidate archive and validate it against single-candidate P23 with paired seeds and holdout isolation.
+4. Obtain a supported binary-download path for the prerelease ZIP; recompute SHA-256, inspect central-directory/member CRCs and compare embedded source provenance; complete human license/NOTICE and separate model, voice and avatar asset review before redistribution.
 5. Acquire immutable licensed RU/EN holdout with independent source groups (>=5 paired seeds), then run Android/Termux, browser avatar and speech timing soak.
 
 ## Handoff invariants
