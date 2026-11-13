@@ -374,6 +374,7 @@ export class MemoryFabric {
     if(!key)return false;
     const rows=this.activeSemanticProjectionItems();
     const availableIds=new Set(rows.map(row=>row.id));
+    this.semanticMemory.retainCanonicalProjection(availableIds);
     const item=rows.find(row=>row.id===key);
     if(!item){
       this.semanticMemory.removeCanonicalProjection(key);
