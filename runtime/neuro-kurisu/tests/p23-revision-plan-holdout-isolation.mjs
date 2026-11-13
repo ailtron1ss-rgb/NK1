@@ -1,49 +1,96 @@
 import assert from 'node:assert/strict';
 import { planSkillRevision } from '../src/organism/learning/SkillRevisionPlan.ts';
 
-const report = (taskId, trialId, safetyViolationCount) => ({
+const report = (taskId, trialId, {
+  success = true,
+  safetyViolationCount = 0,
+  trajectory = 1,
+  coverage = 1,
+} = {}) => ({
   taskId, trialId,
-  taskSuccess: { passed: true, passRate: 1 },
+  taskSuccess: { passed: success, passRate: success ? 1 : 0 },
   skillQuality: {
-    functionalCoverage: 1, executability: 1, safety: safetyViolationCount ? 0 : 1,
-    aggregate: safetyViolationCount ? 0.8 : 1,
+    functionalCoverage: coverage, executability: 1,
+    safety: safetyViolationCount ? 0 : 1,
+    aggregate: safetyViolationCount ? 0.8 : coverage,
     missingCapabilityIds: [], safetyViolationCount,
   },
   trajectoryQuality: {
-    keyPointRecall: 1, executionOrder: 1, completeness: 1, aggregate: 1,
-    missingStepIds: [], unexpectedStepIds: [],
+    keyPointRecall: trajectory, executionOrder: trajectory, completeness: trajectory, aggregate: trajectory,
+    missingStepIds: trajectory < 1 ? ['verify-result'] : [],
+    unexpectedStepIds: [],
   },
 });
 
-const validation = [report('validation-task-safe', 'validation-trial-safe', 0)];
-const holdout = [report('SECRET_HOLDOUT_TASK', 'SECRET_HOLDOUT_TRIAL', 1)];
-const plan = planSkillRevision(validation, holdout, {
-  eligible: false, reasons: ['candidate-safety-violations-present'], feedback: [], holdoutDelta01: 0,
-});
-assert.equal(plan.blockedBySafety, true, 'holdout safety failure still blocks revision');
-const generatorFacing = JSON.stringify({ targets: plan.targets, optimizerInstruction: plan.optimizerInstruction, rationale: plan.rationale });
-assert.ok(!generatorFacing.includes('SECRET_HOLDOUT_TASK'), 'holdout task ID must not reach generator-facing plan');
-assert.ok(!generatorFacing.includes('SECRET_HOLDOUT_TRIAL'), 'holdout trial ID must not reach generator-facing plan');
-assert.ok(generatorFacing.includes('validation-task-safe'), 'validation evidence remains available for bounded repair');
-// A non-safety holdout regression may influence only the aggregate signal;
- // its individual task/trial identity must remain absent from generator-facing content.
-const validationWeak = [report('validation-task-weak', 'validation-trial-weak', 0)];
-validationWeak[0].taskSuccess = { passed: false, passRate: 0.5 };
-const holdoutRegression = [report('SECRET_HOLDOUT_TASK_2', 'SECRET_HOLDOUT_TRIAL_2', 0)];
-const generalizationPlan = planSkillRevision(validationWeak, holdoutRegression, {
+const validation = [
+  report('validation-task-weak', 'validation-trial-weak', { success: false, trajectory: 0.5, coverage: 0.75 }),
+  report('validation-task-coverage', 'validation-trial-coverage', { success: true, trajectory: 0.75, coverage: 0.6 }),
+];
+const holdoutRegressed = [
+  report('SECRET_HOLDOUT_REGRESSION_TASK', 'SECRET_HOLDOUT_REGRESSION_TRIAL', { success: false, trajectory: 0.25, coverage: 0.2 }),
+];
+const holdoutImproved = [
+  report('SECRET_HOLDOUT_IMPROVEMENT_TASK', 'SECRET_HOLDOUT_IMPROVEMENT_TRIAL'),
+];
+
+const regressedFitness = {
   eligible: false,
   reasons: ['holdout-regression-exceeds-tolerance'],
-  feedback: ['Aggregate holdout evaluation indicates regression; revise generality without inspecting holdout examples, then request a fresh independent evaluation.'],
-  holdoutDelta01: -0.1,
+  feedback: [
+    'Aggregate holdout evaluation indicates regression; revise generality without inspecting holdout examples.',
+    'Holdout task success regressed beyond tolerance.',
+  ],
+  holdoutDelta01: -0.2,
+  holdoutTaskSuccessDelta01: -0.3,
+  holdoutTrajectoryDelta01: -0.4,
+  holdoutSkillQualityDelta01: -0.5,
+};
+const improvedFitness = {
+  eligible: true,
+  reasons: [],
+  feedback: [],
+  holdoutDelta01: 0.2,
+  holdoutTaskSuccessDelta01: 0.3,
+  holdoutTrajectoryDelta01: 0.4,
+  holdoutSkillQualityDelta01: 0.5,
+};
+const regressedPlan = planSkillRevision(validation, holdoutRegressed, regressedFitness);
+const improvedPlan = planSkillRevision(validation, holdoutImproved, improvedFitness);
+
+assert.equal(regressedPlan.candidateEligible, false, 'the independent evaluator still owns the final holdout gate');
+assert.equal(improvedPlan.candidateEligible, true);
+assert.equal(regressedPlan.blockedBySafety, false);
+assert.equal(improvedPlan.blockedBySafety, false);
+
+const generatorFacing = plan => JSON.stringify({
+  targets: plan.targets,
+  preserve: plan.preserve,
+  rationale: plan.rationale,
+  optimizerInstruction: plan.optimizerInstruction,
 });
-const generalizationFacing = JSON.stringify({
-  targets: generalizationPlan.targets,
-  optimizerInstruction: generalizationPlan.optimizerInstruction,
-  rationale: generalizationPlan.rationale,
+assert.equal(
+  generatorFacing(regressedPlan),
+  generatorFacing(improvedPlan),
+  'changing only holdout outcomes, scores, reasons and feedback must not change any generator-facing content',
+);
+assert.ok(!generatorFacing(regressedPlan).includes('SECRET_HOLDOUT'));
+assert.ok(!generatorFacing(regressedPlan).includes('holdout-generalization'));
+assert.ok(!generatorFacing(regressedPlan).includes('Aggregate holdout evaluation'));
+assert.ok(!generatorFacing(regressedPlan).includes('holdoutDelta'));
+assert.ok(!generatorFacing(regressedPlan).includes('regressed beyond tolerance'));
+assert.ok(generatorFacing(regressedPlan).includes('validation-task-weak'));
+assert.ok(generatorFacing(regressedPlan).includes('validation-trial-weak'));
+
+const safetyHoldout = [report('SECRET_HOLDOUT_SAFETY_TASK', 'SECRET_HOLDOUT_SAFETY_TRIAL', { safetyViolationCount: 1 })];
+const safetyPlan = planSkillRevision(validation, safetyHoldout, {
+  eligible: false,
+  reasons: ['candidate-safety-violations-present'],
+  feedback: ['Resolve every safety violation; safety is a hard gate.'],
+  holdoutDelta01: 0,
 });
-assert.ok(!generalizationFacing.includes('SECRET_HOLDOUT_TASK_2'), 'holdout task ID must not reach generalization prompt');
-assert.ok(!generalizationFacing.includes('SECRET_HOLDOUT_TRIAL_2'), 'holdout trial ID must not reach generalization prompt');
-assert.ok(!generalizationFacing.includes('task-specific failures'), 'generator must not be instructed to inspect holdout cases');
-assert.ok(generalizationFacing.includes('Aggregate evaluation indicates a generalization gap'), 'only aggregate generalization signal should reach generator');
+assert.equal(safetyPlan.blockedBySafety, true, 'holdout safety failures still block all revision generation');
+assert.ok(!generatorFacing(safetyPlan).includes('SECRET_HOLDOUT'));
+assert.ok(generatorFacing(safetyPlan).includes('validation-task-weak'),
+  'the block plan may reference validation evidence but cannot identify holdout failures');
 
 console.log('P23_REVISION_PLAN_HOLDOUT_ISOLATION=PASS');
