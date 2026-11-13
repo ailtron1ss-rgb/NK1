@@ -11,6 +11,8 @@ export interface LocalChatCompletionResponse {
   backend: string;
   model: string;
   latencyMs: number;
+  /** Token counts reported by the local inference server; absent when the server omits usage. */
+  usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
 }
 export interface LocalChatProviderOptions {
   baseUrl?: string;
@@ -21,6 +23,10 @@ export interface LocalChatProviderOptions {
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+function tokenCount(value: unknown): number | undefined {
+  const count = Number(value);
+  return Number.isSafeInteger(count) && count >= 0 ? count : undefined;
+}
 function canonicalBaseUrl(raw: string | undefined): string | null {
   const value = String(raw ?? '').trim();
   if (!value) return null;
@@ -148,11 +154,30 @@ export class OpenAICompatibleLocalChatProvider {
       if (deadlineSignal.aborted) throw new Error('llama.cpp-timeout');
       throw error;
     }
-    let payload: { choices?: Array<{ message?: { content?: unknown } }>; model?: unknown; error?: unknown };
+    let payload: {
+      choices?: Array<{ message?: { content?: unknown } }>;
+      model?: unknown;
+      error?: unknown;
+      usage?: { prompt_tokens?: unknown; completion_tokens?: unknown; total_tokens?: unknown };
+    };
     try { payload = JSON.parse(rawPayload) as typeof payload; } catch { throw new Error('llama.cpp-invalid-json'); }
     const text = extractText(payload?.choices?.[0]?.message?.content);
     if (!text) throw new Error('llama.cpp-empty-response');
     const model = String(payload?.model ?? this.model).slice(0, 160);
-    return { text, backend: `llama.cpp:${model}`, model, latencyMs: Math.max(0, Date.now() - startedAt) };
+    const promptTokens = tokenCount(payload?.usage?.prompt_tokens);
+    const completionTokens = tokenCount(payload?.usage?.completion_tokens);
+    const totalTokens = tokenCount(payload?.usage?.total_tokens);
+    const usage = promptTokens !== undefined || completionTokens !== undefined || totalTokens !== undefined
+      ? {
+          ...(promptTokens !== undefined ? { promptTokens } : {}),
+          ...(completionTokens !== undefined ? { completionTokens } : {}),
+          ...(totalTokens !== undefined ? { totalTokens } : {}),
+        }
+      : undefined;
+    return {
+      text, backend: `llama.cpp:${model}`, model,
+      latencyMs: Math.max(0, Date.now() - startedAt),
+      ...(usage ? { usage } : {}),
+    };
   }
 }
