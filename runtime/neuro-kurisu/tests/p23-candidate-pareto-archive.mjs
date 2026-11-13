@@ -10,3 +10,9 @@ assert.equal(
 );
 
 console.log('P23_CANDIDATE_PARETO_ARCHIVE=PASS');
+
+assert.equal(
+  typeof learning.P23CandidateParetoArchive.prototype.add,
+  'function',
+  'the Pareto archive must admit and classify validation-only candidate records',
+);
