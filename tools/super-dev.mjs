@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createRuntimeLaunchSpec } from './lib/super-startup.mjs';
 
 const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const stateDir = resolve(ROOT, '.super-state');
