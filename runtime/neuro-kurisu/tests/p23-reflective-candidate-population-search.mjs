@@ -76,13 +76,13 @@ function makeInput(overrides = {}) {
         async evaluate({ payload, payloadFingerprint, signal }) {
           evaluations.push({ payload, payloadFingerprint, signalAborted: signal?.aborted ?? false });
           const name = payload.name;
-          const value = name.endsWith('minimal')
+          const value = name.includes('minimal')
             ? reports({ pass: [1, 1], skill: .6, trajectory: .6 })
-            : name.endsWith('structure')
+            : name.includes('structure')
               ? reports({ pass: [1, 0], skill: .95, trajectory: .75 })
-              : name.endsWith('edge')
+              : name.includes('edge')
                 ? reports({ pass: [1, 1], skill: .5, trajectory: .9 })
-                : name.endsWith('unsafe')
+                : name.includes('unsafe')
                   ? reports({ pass: [1, 1], skill: 1, trajectory: 1, safety: 1 })
                   : reports({ pass: [0, 0], skill: .4, trajectory: .4 });
           return {
@@ -144,7 +144,7 @@ assert.equal(duplicateResult.diagnostics.duplicateCandidates, 2);
 const unsafe = makeInput({
   async generateCandidate(request) {
     unsafe.requests.push(request);
-    return { name: 'candidate-unsafe', steps: ['unsafe'] };
+    return { name: `candidate-unsafe-${request.variation.id}`, steps: ['unsafe'] };
   },
 });
 const unsafeResult = await population.runP23ReflectiveCandidatePopulationSearch(unsafe.input);
