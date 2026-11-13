@@ -130,7 +130,7 @@ async function main() {
   const runtime = launch(
     'organism-runtime',
     process.execPath,
-    ['--experimental-strip-types', 'src/server/server.mjs'],
+    ['--experimental-strip-types', path.join(ROOT, 'runtime/neuro-kurisu/src/server/server.mjs')],
     { PORT: '3310', HOST: '127.0.0.1', STATE_DIR, NODE_ENV: 'production' },
     path.join(ROOT, 'runtime/neuro-kurisu'),
   );
