@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { MemorySubstrateCoordinator } from '../src/organism/developmental/MemorySubstrateCoordinator.ts';
 import { MemoryFabric } from '../src/organism/memory/MemoryFabric.ts';
@@ -432,3 +433,71 @@ console.log('CANONICAL_MEMORY_TO_SEMANTIC_GRAPH_PROJECTION=PASS');
 }
 
 console.log('CANONICAL_REVISION_PROJECTION_SYNC=PASS');
+
+
+// The real memory subsystem restore path must reconcile the persisted graph
+// from MemoryOS2. It must rebuild missing canonical nodes and purge stale
+// canonical graph rows while retaining independent source-namespaced knowledge.
+{
+  const sourceRuntime = new MemorySubsystemRuntime();
+  const canonicalInput = {
+    id: 'runtime-restore-canonical-memory',
+    content: 'The runtime restores canonical memory into its semantic graph',
+    kind: 'semantic',
+    source: 'runtime-restore-graph-regression',
+    tags: ['restore-test'],
+    context: {},
+    salience: 0.88,
+    emotionalWeight: 0.1,
+    identityRelevance: 0.1,
+    goalRelevance: 0.2,
+    socialRelevance: 0.05,
+    predictionError: 0.1,
+    confidence: 0.96,
+    epistemicStatus: 'fact',
+    entities: ['NeuroCore', 'MemoryOS2'],
+    semanticLinks: [],
+    temporalLinks: [],
+    causalLinks: [],
+    contradictionLinks: [],
+  };
+  sourceRuntime.fabric.encode(canonicalInput);
+  const externalNode = sourceRuntime.semanticMemory.upsertNode(
+    'Imported external research concept',
+    'concept',
+    0.74,
+    'hexis:external-research',
+  );
+  const persisted = sourceRuntime.snapshot();
+
+  const rebuildRuntime = new MemorySubsystemRuntime();
+  rebuildRuntime.restoreFromPersisted({
+    memory: { semanticGraph: { nodes: [], edges: [], updates: 0 } },
+    advanced: { memoryOS: persisted.memoryOS, memoryFabric: persisted.fabric },
+  });
+  const rebuiltGraph = rebuildRuntime.semanticMemory.snapshot();
+  assert.ok(rebuiltGraph.nodes.some(node =>
+    node.canonicalProjection?.owner === 'memoryOS2'
+    && node.canonicalProjection.itemId === canonicalInput.id),
+  'runtime restore must rebuild canonical graph nodes from restored MemoryOS2');
+  assert.ok(rebuiltGraph.nodes.some(node => node.id === externalNode.id) === false,
+    'an empty persisted graph does not invent external nodes that were not persisted');
+
+  const canonicalStateWithoutItem = structuredClone(persisted.memoryOS);
+  canonicalStateWithoutItem.items = canonicalStateWithoutItem.items
+    .filter(item => item.id !== canonicalInput.id);
+  const staleProjectionRuntime = new MemorySubsystemRuntime();
+  staleProjectionRuntime.restoreFromPersisted({
+    memory: { semanticGraph: persisted.semanticGraph },
+    advanced: { memoryOS: canonicalStateWithoutItem },
+  });
+  const reconciledGraph = staleProjectionRuntime.semanticMemory.snapshot();
+  assert.equal(reconciledGraph.nodes.some(node =>
+    node.canonicalProjection?.owner === 'memoryOS2'
+    && node.canonicalProjection.itemId === canonicalInput.id), false,
+  'runtime restore must purge stale canonical nodes that no longer exist in MemoryOS2');
+  assert.ok(reconciledGraph.nodes.some(node => node.id === externalNode.id),
+    'runtime restore must retain independent source-namespaced graph knowledge');
+}
+
+console.log('RUNTIME_RESTORE_RECONCILES_CANONICAL_SEMANTIC_GRAPH=PASS');
