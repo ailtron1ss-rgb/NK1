@@ -8,6 +8,7 @@ on:
     paths:
       - '.github/workflows/source-assimilation-audit.yml'
       - 'engineering-os/source-assimilation.v1.json.gz'
+      - 'engineering-os/source-assimilation-stage-overrides.v1.json'
       - 'tools/source-assimilation-audit.*'
       - 'package.json'
       - 'docs/SOURCE_ASSIMILATION_REGISTER_2026-11-13_RU.md'
@@ -33,6 +34,7 @@ on:
     paths:
       - '.github/workflows/source-assimilation-audit.yml'
       - 'engineering-os/source-assimilation.v1.json.gz'
+      - 'engineering-os/source-assimilation-stage-overrides.v1.json'
       - 'tools/source-assimilation-audit.*'
       - 'package.json'
       - 'docs/SOURCE_ASSIMILATION_REGISTER_2026-11-13_RU.md'
