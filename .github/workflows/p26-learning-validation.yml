@@ -107,7 +107,7 @@ jobs:
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
-      # Run the P23 archive, validation-only evaluator and population search contracts immediately after compilation.
+      # Run the P23 archive, validation-only evaluator and population search contracts immediately after compilation; all three are required before the full learning suite.
       - name: Verify P23 deterministic candidate Pareto archive contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-candidate-pareto-archive.mjs
