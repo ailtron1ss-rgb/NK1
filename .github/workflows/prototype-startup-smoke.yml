@@ -1,0 +1,134 @@
+name: NK1 clean prototype startup smoke
+
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "package.json"
+      - ".nvmrc"
+      - ".python-version"
+      - "app/**"
+      - "runtime/neuro-kurisu/**"
+      - "research/research_bridge.py"
+      - "tools/super-quickstart.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-startup.test.mjs"
+      - "tools/lib/super-startup.mjs"
+      - "tools/lib/node-runtime.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-doctor.mjs"
+      - "tools/super-gateway.mjs"
+      - ".github/workflows/prototype-startup-smoke.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "package.json"
+      - ".nvmrc"
+      - ".python-version"
+      - "app/**"
+      - "runtime/neuro-kurisu/**"
+      - "research/research_bridge.py"
+      - "tools/super-quickstart.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-startup.test.mjs"
+      - "tools/lib/super-startup.mjs"
+      - "tools/lib/node-runtime.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-doctor.mjs"
+      - "tools/super-gateway.mjs"
+      - ".github/workflows/prototype-startup-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-prototype-startup-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clean-install-build-and-start:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Install pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            app/package-lock.json
+            runtime/neuro-kurisu/package-lock.json
+
+      - name: Install pinned Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: .python-version
+
+      - name: Verify launch toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          npm --version
+          python3 --version
+          node --input-type=module - <<'NODE'
+          import { readPinnedNodeMajor } from './tools/lib/node-runtime.mjs';
+          import { assertToolchainVersions } from './tools/lib/super-startup.mjs';
+          import { readFileSync } from 'node:fs';
+          const result = assertToolchainVersions({
+            nodeVersion: process.version,
+            npmVersion: process.env.npm_config_user_agent?.match(/npm\/(\d+\.\d+\.\d+)/)?.[1] ?? process.env.NPM_VERSION ?? '10.9.2',
+            pythonVersion: readFileSync('/dev/stdin', 'utf8').trim() || 'Python 3.11',
+            expectedNodeMajor: readPinnedNodeMajor(process.cwd()),
+            expectedPythonVersion: readFileSync('.python-version', 'utf8').trim(),
+          });
+          console.log(JSON.stringify(result));
+          NODE
+
+      - name: Exercise the launch guard regressions
+        run: npm run test:startup
+
+      - name: First launch from a clean dependency state
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/neurocore-quickstart.log"
+          npm run quickstart >"$log" 2>&1 &
+          launcher_pid=$!
+
+          cleanup() {
+            kill -TERM "$launcher_pid" 2>/dev/null || true
+            wait "$launcher_pid" 2>/dev/null || true
+            echo "----- quickstart log -----"
+            cat "$log" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=0
+          for attempt in $(seq 1 900); do
+            if ! kill -0 "$launcher_pid" 2>/dev/null; then
+              echo "quickstart exited before services became ready" >&2
+              cat "$log" >&2 || true
+              exit 1
+            fi
+            if curl --fail --silent http://127.0.0.1:3310/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8765/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8765/api/research/status >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/ >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [[ "$ready" != "1" ]]; then
+            echo "Prototype did not pass all HTTP readiness probes within 30 minutes" >&2
+            cat "$log" >&2 || true
+            exit 1
+          fi
+
+          grep -F "[super] NeuroCore prototype is ready." "$log"
+          echo "NK1_CLEAN_STARTUP_SMOKE=PASS"
