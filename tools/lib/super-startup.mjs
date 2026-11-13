@@ -3,7 +3,7 @@ import net from 'node:net';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function parseVersion(value, label) {
-  const match = String(value ?? '').trim().match(/(?:^|[^0-9])v?(\d+)\\.(\d+)(?:\\.(\d+))?/);
+  const match = String(value ?? '').trim().match(/(?:^|[^0-9])v?(\d+)\.(\d+)(?:\.(\d+))?/);
   if (!match) throw new Error(`${label} version could not be read: ${JSON.stringify(value)}`);
   return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3] ?? 0) };
 }
@@ -18,7 +18,7 @@ export function assertToolchainVersions({
   const node = parseVersion(nodeVersion, 'Node.js');
   const npm = parseVersion(npmVersion, 'npm');
   const python = parseVersion(pythonVersion, 'Python');
-  const expectedPython = String(expectedPythonVersion ?? '').trim().match(/^(\d+)\\.(\d+)/);
+  const expectedPython = String(expectedPythonVersion ?? '').trim().match(/^(\d+)\.(\d+)/);
 
   if (!Number.isInteger(expectedNodeMajor) || expectedNodeMajor < 1) {
     throw new Error(`Invalid Node.js major pin: ${expectedNodeMajor}`);
