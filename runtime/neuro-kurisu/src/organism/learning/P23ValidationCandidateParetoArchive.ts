@@ -136,7 +136,12 @@ export function buildP23ValidationCandidateMetrics(
     const group = groups.get(taskId) ?? {
       family, trialIds: new Set<string>(), taskSuccess: [], trajectory: [], skill: [], safety: [],
     };
-    if (group.family !== family) throw new Error('p23-validation-metrics-task-family-conflict');
+    if (family !== null && group.family !== null && group.family !== family) {
+      throw new Error('p23-validation-metrics-task-family-conflict');
+    }
+    // Legacy validation rows may omit family provenance. Preserve a known family
+    // when another row supplies it; never let an absent label erase provenance.
+    if (group.family === null && family !== null) group.family = family;
     if (group.trialIds.has(trialId)) throw new Error('p23-validation-metrics-duplicate-trial');
     group.trialIds.add(trialId);
     group.taskSuccess.push(Number(raw.taskSuccess.passRate));
