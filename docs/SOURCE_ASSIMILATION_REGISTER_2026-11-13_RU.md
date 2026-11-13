@@ -496,11 +496,12 @@ GitHub Compare также не нашёл общего предка между `
 | Архивный intake | 100% | 4/4 containers, 22 nested ZIPs, 21 unique donor |
 | Первичный source/owner routing | 100% | 21/21 донор внесён в карту; root license screen предварительный |
 | License filename inventory | 100% | 172 LICENSE/NOTICE/COPYING filenames посчитаны; тексты и scope всех файлов не подтверждены |
+| Machine evidence stages | 4.8% tested | `llama-cpp` получает `testsPassed=true` только через evidence overlay с конкретным successful GitHub Actions run; releaseVerified остаётся false |
 | Targeted source review | 71% | 15/21 по последнему расширенному pass; 6 требуют дальнейшего чтения |
 | Новый runtime mechanism implementation | 100% | выбранный Hexis mechanism реализован и связан с NK1 controller |
 | Targeted exact-head verification | 100% на feature head `c960463` | focused Hexis CI, full Action Gateway governance, Unified organism runtime, WorkPass79, NeuroCore core regression, UserModel explicit-forget и 2D asset contract — SUCCESS |
 | Полный registry audit | не завершён | проверены 4 выборочные регистрации; общее число инструментов и denominator пока не установлены, поэтому процент не приписывается |
-| Merge/release reconciliation | 0% | PR #864 открыт Draft; ни main, ни release ZIP не изменены |
+| Merge/release reconciliation | 0% | PR #863/#864 остаются Draft; ни main, ни release ZIP не изменены |
 
 **Обобщённый прогресс этой итерации по источникам: около 75% подготовительной работы (инвентаризация/лицензионный filename screen/targeted review) и 5% новых runtime promotions (1 из 21 донора).** Эти проценты не являются общей готовностью NK1, не равны сознанию и не доказывают device/production readiness. Проверенный PR slice уже работает в CI; следующий проектный этап — registry-wide validation и следующие донорские candidate experiments.
 
@@ -551,3 +552,17 @@ GitHub Compare также не нашёл общего предка между `
 - release — 0/21; asset не загружен и live llama-server на реальном устройстве не проверен.
 
 Ограничение: это проверка server wire protocol и P23 provider integration; она не доказывает доступность конкретной модели, качество генерации, скорость токенов, память на телефоне или безопасную автономную работу всего организма.
+
+## 20. Evidence-backed source stage overlay (2026-11-13)
+
+Чтобы не править binary gzip вручную и не терять точные ссылки на доказательства, добавлен текстовый sidecar `engineering-os/source-assimilation-stage-overrides.v1.json`.
+
+- Базовый архивный реестр `source-assimilation.v1.json.gz` по-прежнему хранит source identity, archive hashes, legal scope, source review и target mappings.
+- Sidecar разрешает менять только белый список stage booleans (`codeCopied`, `adapted`, `runtimeWired`, `testsPassed`, `releaseVerified`) и массивы evidence (`runtimeEvidence`, `testEvidence`, `releaseEvidence`).
+- Неизвестные source IDs/поля, некорректные типы и пустые доказательства отклоняются.
+- После применения overlay выполняется полная `validateSourceRegistry`, чтобы нельзя было перепрыгнуть между стадиями: tests требуют runtime wiring + evidence; release требует passing tests + release evidence; code copy требует legal clearance.
+- Базовый объект клонируется (`structuredClone`), входной архивный registry не мутируется.
+- `llama-cpp.testsPassed=true` подкреплено GitHub Actions run `43392930739` на commit `8d3bb5bb220fb0a8a2a777ecb61c75980f3d774a`: provider regression, P23 generator и integration tests PASS, static source audit 28/28, Hexis/Letta/Lumina/Will/Mem0 contracts PASS.
+- `releaseVerified` остаётся `false`; CI testing не означает release inclusion.
+
+Validation run после появления overlay и strict gate-order tests должен оставаться последним evidence record; при изменении кода запись `testsPassed` нужно сбрасывать до следующего exact-head green run.
