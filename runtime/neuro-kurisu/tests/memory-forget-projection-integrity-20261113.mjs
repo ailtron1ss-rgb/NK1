@@ -13,13 +13,14 @@ const memoryOS = new MemoryOS2({ embeddingProvider: null });
 const multiTimescale = new MultiTimescaleMemory();
 const substrate = new MemorySubstrateCoordinator();
 const semanticGraph = new SemanticMemoryGraph();
+const p62 = new P62MemoryFabric();
 const fabric = new MemoryFabric(
   memoryOS,
   new EventLog(),
   multiTimescale,
   substrate,
   new UnifiedMemorySystem(),
-  new P62MemoryFabric(),
+  p62,
   semanticGraph,
 );
 
@@ -61,6 +62,10 @@ assert.ok(
 );
 
 // Canonical projections must never be interpreted as importable legacy source rows.
+const beforeForgetFrame = fabric.recall('quasar archive', 8);
+assert.ok(beforeForgetFrame.hits.some(hit => hit.id === 'canonical-forget-target'));
+assert.ok(p62.snapshot().history.some(frame => frame.hits.some(hit => hit.id === 'canonical-forget-target')),
+  'P62 must have a cached recall frame before the forgetting operation');
 assert.deepEqual(
   substrate.compatibilityInputs(multiTimescale.snapshot()).map(row => row.context?.originalId),
   [],
@@ -92,6 +97,12 @@ assert.deepEqual(
   [],
   'forgotten content must not be recalled through the secondary projection',
 );
+const p62AfterForget = p62.snapshot();
+assert.equal(p62AfterForget.lastFrame, null, 'P62 must clear a last frame containing forgotten memory');
+assert.equal(p62AfterForget.history.some(frame => frame.hits.some(hit => hit.id === 'canonical-forget-target')), false,
+  'P62 history must not retain a hit for explicitly forgotten memory');
+assert.equal(JSON.stringify(p62AfterForget).includes('quasar archive navigation memory'), false,
+  'P62 persisted state must not retain forgotten memory content');
 assert.equal(
   fabric.recall('quasar archive', 8).hits.some(hit => hit.id === 'canonical-forget-target'),
   false,
