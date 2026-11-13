@@ -11,6 +11,7 @@ const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: 
 const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], {
   cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'],
 });
+let restartedChild = null;
 let output = '';
 child.stdout.on('data', chunk => { output += chunk; });
 child.stderr.on('data', chunk => { output += chunk; });
@@ -300,13 +301,13 @@ try {
     child.once('exit', resolve);
     child.kill('SIGTERM');
   });
-  const restartedChild = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], {
+  restartedChild = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], {
     cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'],
   });
   let restartedOutput = '';
   restartedChild.stdout.on('data', chunk => { restartedOutput += chunk; });
   restartedChild.stderr.on('data', chunk => { restartedOutput += chunk; });
-  try {
+  {
     let restartedReady = false;
     for (let attempt = 0; attempt < 180; attempt += 1) {
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -356,9 +357,6 @@ try {
       'post-restart replay must retain exactly one HMX copy per donor lineage for the first memory');
     assert.equal(hmxAfterRestartReplay.filter(row => row.summary.includes('HMX canonical imported procedure B')).length, 2,
       'post-restart replay must retain exactly one HMX copy per donor lineage for the second memory');
-  } finally {
-    if (restartedChild.exitCode === null && restartedChild.signalCode === null) restartedChild.kill('SIGTERM');
-    await new Promise(resolve => setTimeout(resolve, 250));
   }
 
   const malformedDecision = await post('/api/organism/integration/hexis/hmx/decide', {
@@ -391,7 +389,15 @@ try {
 
   console.log('HEXIS_HMX_CANONICAL_APPLY=PASS');
 } finally {
-  if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
-  await new Promise(resolve => setTimeout(resolve, 300));
+  const stopChild = async processChild => {
+    if (!processChild || processChild.exitCode !== null || processChild.signalCode !== null) return;
+    await new Promise(resolve => {
+      const timeout = setTimeout(resolve, 3500);
+      processChild.once('exit', () => { clearTimeout(timeout); resolve(); });
+      processChild.kill('SIGTERM');
+    });
+  };
+  await stopChild(child);
+  await stopChild(restartedChild);
   await rm(stateDir, { recursive: true, force: true });
 }
