@@ -218,8 +218,13 @@ try {
   const otherApplied = await otherApplyResponse.json();
   assert.equal(otherApplied.stage.application.importedCount, 2);
   const expectedCanonicalCount = countAfterApply + 2;
-  assert.equal((await memoryIndex()).length, expectedCanonicalCount,
+  const beforeRestartMemoryRows = await memoryIndex();
+  assert.equal(beforeRestartMemoryRows.length, expectedCanonicalCount,
     'same-text records from a separate donor lineage remain source-isolated');
+  const beforeRestartA = beforeRestartMemoryRows.filter(row => row.summary.includes('HMX canonical imported memory A'));
+  assert.equal(beforeRestartA.length, 2, 'both donor lineages must be present before restart');
+  assert.equal(new Set(beforeRestartA.map(row => row.id)).size, 2,
+    `different donor lineages must receive different canonical IDs: ${JSON.stringify(beforeRestartA.map(row => ({ id: row.id, source: row.source }))) }`);
 
   // Force a late canonical identity conflict after the first record has already
   // been projected. The transaction must restore MemoryOS2, MemoryFabric,
@@ -310,7 +315,7 @@ try {
     const restoredMemories = await memoryIndex();
     const restoredA = restoredMemories.filter(row => row.summary.includes('HMX canonical imported memory A'));
     const restoredB = restoredMemories.filter(row => row.summary.includes('HMX canonical imported procedure B'));
-    assert.equal(restoredA.length, 2, 'the same content from two distinct donor lineages must survive restart as two source-isolated memories');
+    assert.equal(restoredA.length, 2, `the same content from two distinct donor lineages must survive restart as two source-isolated memories: before=${JSON.stringify(beforeRestartA.map(row => ({ id: row.id, source: row.source })))} after=${JSON.stringify(restoredA.map(row => ({ id: row.id, source: row.source })))}`);
     assert.equal(restoredB.length, 2, 'the second memory from two distinct donor lineages must survive restart as two source-isolated memories');
     const countBeforeRestartReplay = restoredMemories.length;
     const stageSnapshot = await (await fetch(base + '/api/organism/integration/hexis')).json();
