@@ -86,7 +86,7 @@ const engine = {
     });
     return {
       candidate: { candidateId: 'population-staged', status: 'staged' },
-      populationSearch: { status: 'selected', diagnostics: { generationCalls: 2, evaluationCalls: 2, validationOnly: true } },
+      populationSearch: { status: 'selected', diagnostics: { generationCalls: 2, evaluationCalls: 2, validationOnly: true }, archive: [{ candidateFingerprint: 'b'.repeat(64), split: 'validation', perTask: [] }] },
     };
   },
 };
@@ -141,4 +141,44 @@ assert.equal(legacyCalls, 1);
 assert.equal(populationCalls, 0);
 assert.equal(fallback.candidate.candidateId, 'legacy-candidate');
 
-console.log('P23_POPULATION_RUNTIME_WIRING=PASS');
+
+const failedArchive = [{
+  candidateFingerprint: 'c'.repeat(64),
+  sourceFingerprint: 'd'.repeat(64),
+  split: 'validation',
+  perTask: [],
+}];
+const failingEngine = {
+  generateAndStageReflectiveSkillRevision: async () => {
+    throw new Error('legacy-path-must-not-run');
+  },
+  generateAndStageReflectiveSkillRevisionWithPopulationGenerator: async () => {
+    const error = new Error('p23-population-timeout');
+    Object.assign(error, {
+      populationSearchDiagnostics: { generationCalls: 1, evaluationCalls: 1, timedOut: true, validationOnly: true },
+      populationSearchArchive: failedArchive,
+    });
+    throw error;
+  },
+};
+await assert.rejects(
+  OrganismRuntime.prototype.generateCompoundSkillRevision.call(runtime, {
+    engine: failingEngine,
+    proposal: { proposalId: 'proposal' },
+    skillId: 'skill-demo',
+    sourceCandidateId: 'source-candidate',
+    baseline: { validation: [], holdout: [] },
+    candidateEvaluation: { validation: [], holdout: [] },
+    generate: async () => ({ name: 'unused' }),
+    evaluateRevisedCandidate: async () => ({}),
+    evaluateValidationCandidate: evaluator,
+    sourceEvidenceFingerprint: digest(JSON.stringify(repairEvidence)),
+  }),
+  /p23-population-timeout/,
+);
+const failureEvent = journalEvents.find(row => row[1] === 'runtime.p23.compound-repair-revision.population-search-failed');
+assert.ok(failureEvent, 'failed/no-gain population search must leave a durable operational journal event');
+assert.equal(failureEvent[0], 'warn');
+assert.equal(failureEvent[2].populationSearch.timedOut, true);
+assert.equal(failureEvent[2].populationSearchArchive[0].split, 'validation');
+\nconsole.log('P23_POPULATION_RUNTIME_WIRING=PASS');
