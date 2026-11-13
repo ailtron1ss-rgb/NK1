@@ -181,7 +181,9 @@ export function buildP23ValidationCandidateMetrics(
 
 function sameTaskCohort(a: P23ValidationCandidateMetrics, b: P23ValidationCandidateMetrics): boolean {
   return a.taskCount === b.taskCount && a.tasks.every((task, index) =>
-    task.taskId === b.tasks[index].taskId && task.taskFamily === b.tasks[index].taskFamily);
+    task.taskId === b.tasks[index].taskId &&
+    task.taskFamily === b.tasks[index].taskFamily &&
+    task.trialCount === b.tasks[index].trialCount);
 }
 
 /** Strict per-example Pareto dominance across success, trajectory, skill quality and safety. */
