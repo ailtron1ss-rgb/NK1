@@ -32,7 +32,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 const normalize = (value: string) => String(value ?? '')
   .normalize('NFKC')
-  .toLocaleLowerCase()
+  .toLowerCase()
   .replace(/[^\p{L}\p{N}\s_-]+/gu, ' ')
   .trim()
   .replace(/\s+/gu, ' ')
