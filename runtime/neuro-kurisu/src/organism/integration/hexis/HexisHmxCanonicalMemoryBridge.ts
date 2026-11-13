@@ -72,6 +72,14 @@ function stableId(exportId: string, ref: string): string {
   return 'hmx_' + createHash('sha256').update(exportId).update('\0').update(ref).digest('hex').slice(0, 40);
 }
 
+function relationshipChannel(edgeType: string): 'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks' {
+  const edge = edgeType.toUpperCase();
+  if (['CAUSES','CAUSED_BY','CAUSE','EFFECT','LEADS_TO','RESULTS_IN','PREVENTS'].includes(edge)) return 'causalLinks';
+  if (['BEFORE','AFTER','PRECEDES','FOLLOWS','DURING','CONTAINS','TEMPORAL','NEXT'].includes(edge)) return 'temporalLinks';
+  if (['CONTRADICTS','CONTRADICTED_BY','CONFLICTS_WITH'].includes(edge)) return 'contradictionLinks';
+  return 'semanticLinks';
+}
+
 /**
  * Narrow HMX 1.x adapter. Only portable memory records enter the existing
  * MemoryFabric -> MemoryOS2 mutation path. Other supported sections remain in
