@@ -41,11 +41,11 @@ function input(fingerprint, values, extra = {}) {
   return {
     split: 'validation',
     candidateFingerprint: digest(fingerprint),
-    sourceFingerprint: digest('s'),
+    sourceFingerprint: digest('e'),
     variationId: `variation-${fingerprint}`,
     seed: 17,
-    validationManifestFingerprint: digest('m'),
-    validationPlanFingerprint: digest('p'),
+    validationManifestFingerprint: digest('f'),
+    validationPlanFingerprint: digest('d'),
     reports: reports(values, extra),
   };
 }
@@ -79,7 +79,7 @@ assert.equal(archive.snapshot().some(row => row.candidateFingerprint === digest(
 
 // A candidate from another validation plan cannot be compared to this cohort.
 assert.throws(
-  () => archive.add({ ...input('x', { skill: .9, trajectory: .9 }), validationPlanFingerprint: digest('q') }),
+  () => archive.add({ ...input('5', { skill: .9, trajectory: .9 }), validationPlanFingerprint: digest('1') }),
   /validation-cohort-mismatch/,
 );
 
@@ -96,11 +96,11 @@ assert.throws(
   /archive-budget-invalid/,
 );
 assert.throws(
-  () => archive.add({ ...input('h', { skill: .8, trajectory: .8 }), split: 'holdout' }),
+  () => archive.add({ ...input('2', { skill: .8, trajectory: .8 }), split: 'holdout' }),
   /validation-only-input-required/,
 );
 assert.throws(
-  () => archive.add({ ...input('n', { skill: Number.NaN, trajectory: .8 }) }),
+  () => archive.add({ ...input('4', { skill: Number.NaN, trajectory: .8 }) }),
   /validation-report-invalid/,
 );
 
