@@ -104,24 +104,6 @@
       if(core&&typeof core.addParameterValueById==='function')core.addParameterValueById(id,clamp(offset,min,max),1);
     }catch{}
   }
-  function applyModelParameterOverrides(){
-    const core=model?.internalModel?.coreModel;
-    if(!core)return;
-    // Authored motion and physics run first; small NK1 offsets are composited after them.
-    addCoreOffset('ParamAngleX',clamp(bodySignal.gazeX,-.4,.4)*7,-30,30);
-    addCoreOffset('ParamAngleY',clamp(bodySignal.gazeY,-.4,.4)*5,-30,30);
-    addCoreOffset('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35,-30,30);
-    const set=(key,value)=>{try{core.setParameterValueById(key,value,1)}catch{}};
-    const gazeX=bodySignal.gazeDriven?clamp(bodySignal.gazeX,-.4,.4):0;
-    const gazeY=bodySignal.gazeDriven?clamp(bodySignal.gazeY,-.4,.4):0;
-    set('ParamEyeBallX',clamp(gazeX+eyeX*.35,-1,1));
-    set('ParamEyeBallY',clamp(gazeY+eyeY*.35,-1,1));
-    set('ParamEyeLOpen',1-blinkT);set('ParamEyeROpen',1-blinkT);
-    set('ParamMouthOpenY',clamp(lipCurrent,0,1));
-    if(bodySignal.speaking)set('ParamMouthForm',clamp(lipFormCurrent,-1,1));
-    // Readback confirms finite Cubism parameter values, not a presented GPU frame.
-    flushIntentParameterReadback(core);
-  }
   function flushIntentParameterReadback(core){
     const pending=pendingIntentReadback;
     if(!pending||pending.stateVersion!==lastIntentStateVersion||pending.readback||!core)return;
@@ -144,6 +126,25 @@
     };
     maybeEmitIntentAck(pending);
   }
+  function applyModelParameterOverrides(){
+    const core=model?.internalModel?.coreModel;
+    if(!core)return;
+    // Authored motion and physics run first; small NK1 offsets are composited after them.
+    addCoreOffset('ParamAngleX',clamp(bodySignal.gazeX,-.4,.4)*7,-30,30);
+    addCoreOffset('ParamAngleY',clamp(bodySignal.gazeY,-.4,.4)*5,-30,30);
+    addCoreOffset('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35,-30,30);
+    const set=(key,value)=>{try{core.setParameterValueById(key,value,1)}catch{}};
+    const gazeX=bodySignal.gazeDriven?clamp(bodySignal.gazeX,-.4,.4):0;
+    const gazeY=bodySignal.gazeDriven?clamp(bodySignal.gazeY,-.4,.4):0;
+    set('ParamEyeBallX',clamp(gazeX+eyeX*.35,-1,1));
+    set('ParamEyeBallY',clamp(gazeY+eyeY*.35,-1,1));
+    set('ParamEyeLOpen',1-blinkT);set('ParamEyeROpen',1-blinkT);
+    set('ParamMouthOpenY',clamp(lipCurrent,0,1));
+    if(bodySignal.speaking)set('ParamMouthForm',clamp(lipFormCurrent,-1,1));
+    // Readback confirms finite Cubism parameter values, not a presented GPU frame.
+    flushIntentParameterReadback(core);
+  }
+
   function applyExpression(expr,revision=null){
     const expressionName=EXPR_MAP[expr]||EXPR_MAP.neutral;
     if(!model||typeof model.expression!=='function')return Promise.resolve(false);
