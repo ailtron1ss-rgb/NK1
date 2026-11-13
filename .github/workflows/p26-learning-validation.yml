@@ -105,6 +105,12 @@ jobs:
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
+      - name: Verify P23 deterministic candidate Pareto archive contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-candidate-pareto-archive.mjs
+      - name: Verify validation-only P23 candidate evaluator isolation
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-validation-only-candidate-evaluator.mjs
       - name: Verify bounded P23 background revision and fail-closed staging
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass293:p23-revision
@@ -162,9 +168,3 @@ jobs:
       - name: Run P23 independent learning, promotion governance, lifecycle recovery and P36 evidence suite
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:learning
-      - name: Verify P23 deterministic candidate Pareto archive contract
-        working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-candidate-pareto-archive.mjs
-      - name: Verify validation-only P23 candidate evaluator isolation
-        working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-validation-only-candidate-evaluator.mjs
