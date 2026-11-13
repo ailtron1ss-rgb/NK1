@@ -1361,11 +1361,15 @@ export class OrganismRuntime {
     const populationDiagnostics='populationSearch' in result
       ? result.populationSearch.diagnostics
       : undefined;
+    const populationArchive='populationSearch' in result
+      ? result.populationSearch.archive
+      : undefined;
     await this.journal.write('info','runtime.p23.compound-repair-revision.staged',{
       skillId:input.skillId,sourceCandidateId:input.sourceCandidateId,candidateId:result.candidate.candidateId,
       repairEvidenceCount:repairEvidence.length,repairFingerprints:repairEvidence.map(row=>row.failureFingerprint),
       sourceEvidenceFingerprint:computedEvidenceFingerprint,
       ...(populationDiagnostics ? { populationSearch:populationDiagnostics } : {}),
+      ...(populationArchive ? { populationSearchArchive:populationArchive } : {}),
       note:'staged candidate only; independent shadow evidence and explicit promotion approval remain required',
     }).catch(()=>{});
     return {...result,repairEvidenceCount:repairEvidence.length};
