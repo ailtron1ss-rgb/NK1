@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
+import { computeP23ValidationParetoFront, isValidP23ValidationCandidateMetrics, type P23ValidationCandidateMetrics } from './P23ValidationCandidateParetoArchive.ts';
 
 export type SkillCandidateStatus = 'staged' | 'shadow' | 'active' | 'superseded' | 'rolled-back';
 
@@ -117,6 +118,8 @@ export interface SkillRevisionProvenance {
   datasetFingerprint: string;
   /** Digest of the exact eligible repair evidence that triggered background revision; lineage only, never approval. */
   sourceEvidenceFingerprint?: string;
+  /** Per-task validation-only objective vectors for candidate Pareto comparison; never promotion authority. */
+  validationMetrics?: P23ValidationCandidateMetrics;
   dimensions: string[];
   createdAt: number;
 }
@@ -241,6 +244,49 @@ export class VersionedSkillCandidateStore {
 
   snapshot(): VersionedSkillStoreSnapshot { return clone(this.readTrustedSnapshot()); }
 
+  /**
+   * Read-only per-example Pareto frontier over already staged versioned candidates.
+   * This index cannot stage, approve or activate anything; P23 remains the lifecycle owner.
+   */
+  validationParetoFront(
+    skillId: string,
+    datasetFingerprint: string,
+    sourceCandidateId: string,
+  ): Array<{
+    candidateId: string;
+    version: number;
+    payloadFingerprint: string;
+    status: SkillCandidateStatus;
+    validationMetrics: P23ValidationCandidateMetrics;
+  }> {
+    if (!skillId?.trim() || !/^[a-f0-9]{64}$/.test(datasetFingerprint) ||
+        !/^[a-f0-9]{64}$/.test(sourceCandidateId)) {
+      throw new Error('p23-validation-pareto-query-invalid');
+    }
+    const candidates = this.readTrustedSnapshot().candidates.filter(candidate =>
+      candidate.skillId === skillId &&
+      candidate.status !== 'rolled-back' &&
+      candidate.revisionProvenance?.sourceCandidateId === sourceCandidateId &&
+      candidate.revisionProvenance.datasetFingerprint === datasetFingerprint &&
+      candidate.revisionProvenance.validationMetrics !== undefined,
+    );
+    const comparable = candidates.map(candidate => ({
+      candidateId: candidate.candidateId,
+      validationMetrics: candidate.revisionProvenance!.validationMetrics!,
+    }));
+    const front = computeP23ValidationParetoFront(comparable);
+    const frontIds = new Set(front.map(entry => entry.candidateId));
+    return candidates.filter(candidate => frontIds.has(candidate.candidateId))
+      .map(candidate => ({
+        candidateId: candidate.candidateId,
+        version: candidate.version,
+        payloadFingerprint: candidate.payloadFingerprint,
+        status: candidate.status,
+        validationMetrics: clone(candidate.revisionProvenance!.validationMetrics!),
+      }))
+      .sort((a, b) => a.candidateId.localeCompare(b.candidateId));
+  }
+
   private readTrustedSnapshot(): VersionedSkillStoreSnapshot {
     const current = this.persistence.read();
     this.assertTrustedActiveState(current);
@@ -352,6 +398,8 @@ export class VersionedSkillCandidateStore {
       !/^[a-f0-9]{64}$/.test(revisionProvenance.datasetFingerprint) ||
       (revisionProvenance.sourceEvidenceFingerprint !== undefined &&
         !/^[a-f0-9]{64}$/.test(revisionProvenance.sourceEvidenceFingerprint)) ||
+      (revisionProvenance.validationMetrics !== undefined &&
+        !isValidP23ValidationCandidateMetrics(revisionProvenance.validationMetrics)) ||
       !Array.isArray(revisionProvenance.dimensions) || revisionProvenance.dimensions.length === 0 ||
       revisionProvenance.dimensions.some(d => !['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'].includes(d)) ||
       new Set(revisionProvenance.dimensions).size !== revisionProvenance.dimensions.length ||
