@@ -445,10 +445,10 @@ These are separate workstream measures, not a weighted global “digital-person 
 | Первичный просмотр лицензионного scope | 21/21 (100%) | Не равнозначно legal clearance |
 | Юридическое разрешение на перенос | 0/21 | Копирование исходного кода пока не одобрено |
 | Подробный file-level diff donor → NK1 | 1/21 (4,8%) | Один узкий wire-contract llama.cpp проверен по upstream README и server implementation; остальные 20 источников требуют отдельного diff |
-| Наличие конкретных NK1 adapter paths | 6/21 (28,6%) | Hexis, Will, Mem0, Letta, Lumina и Hermes; наличие пути не доказывает паритет функций |
-| Адаптации механизмов без копирования донорского кода | 1/21 (4,8%) | Для llama.cpp добавлено NK1-native преобразование JSON Schema к точному формату llama-server |
-| Подключение к NK1 runtime pipeline | 1/21 (4,8%) | P23 local skill revision оборачивает генератор и передаёт candidate в существующий staging/promotion flow; live server ещё не проверен |
-| Контрактные тесты адаптированного llama.cpp/P23 пути | 1/21 (4,8%) | Точный HTTP wire-shape, P23 generator и integration tests прошли профильный source-assimilation workflow; live model endpoint не тестировался |
+| Уже существовавшие NK1 adapter paths на момент intake | 6/21 (28,6%) | Hexis, Will, Mem0, Letta, Lumina и Hermes; новые адаптации учитываются отдельно |
+| Адаптации механизмов без копирования донорского кода | 2/21 (9,5%) | llama.cpp JSON Schema wire fix + validation-only DSPy/GEPA candidate sidecar; донорский runtime код не копировался |
+| Подключение к NK1 runtime pipeline | 2/21 (9,5%) | llama.cpp через P23 local revision generator; GEPA sidecar — только pluggable candidate generator за trusted P23 composition root, выключен по умолчанию |
+| Контрактно протестированные адаптации | 2/21 (9,5%) | llama.cpp wire contract + GEPA validation-only adapter + P23 holdout isolation прошли source-assimilation workflow; live optimizer не тестировался |
 | Проверка включения в Release ZIP | 0/21 | Выпущенная интеграция не заявляется |
 
 Не сводить эти строки к одному «проценту готовности»: у них разные знаменатели и разные доказательства. В частности, 100% инвентаризации не означает 100% ассимиляции.
@@ -580,3 +580,66 @@ Detailed source comparison is recorded in [DSPy GEPA + Agent0 → NK1 P23 parity
 The evidence overlay was tested as part of the workflow itself. Run `43393578282` at `ab6dbeb7d6c72be1260b00b4170d5abeaa107353` completed SUCCESS, including overlay validation and the llama.cpp/P23 contract suite. The test file and sidecar have since been advanced to preserve that exact run as evidence; the resulting newer HEAD must pass its own CI before it is treated as verified. The current overlay tracks three exact successful source-assimilation runs (`43392930739`, `43393334664`, `43393578282`); none constitutes release verification.
 
 Updated gates remain: metadata 21/21; preliminary license scope 21/21; legal clearance 0/21; machine file-level diff 1/21; existing adapter paths 6/21; new adaptations 1/21; P23 wiring 1/21; contract-tested sources 1/21; release-verified sources 0/21.
+
+
+### 12.7 P23 holdout firewall: закрытие канала утечки из gate в генератор
+
+При повторной проверке исторической GEPA-линии обнаружено, что `SkillRevisionPlan.ts` включал агрегированный `holdoutDelta01` в revision target `holdout-generalization`, а также копировал `fitness.reasons` и `fitness.feedback` в rationale. В этих полях могла присутствовать информация о знаке/направлении holdout-регрессии. Это позволяло бы итеративно подгонять генератор под независимый тестовый набор.
+
+Исправлено:
+- planner больше не читает holdout rows и агрегированные holdout deltas при построении generator-facing plan;
+- rationale создаётся только из validation success, trajectory, coverage, executability и validation task/family regressions;
+- holdout по-прежнему остаётся у независимого evaluator и может блокировать promotion;
+- safety veto остаётся fail-closed, но конкретные holdout task/trial IDs и результаты не передаются генератору;
+- старый `holdout-generalization` target удалён;
+- тест сравнивает противоположные holdout outcomes при неизменной validation-выборке и требует идентичный generator-facing план.
+
+Профильный тест: `P23_REVISION_PLAN_HOLDOUT_ISOLATION=PASS` в source-assimilation run `43417587842` (commit `e2fa5545aaac365123dfb65a05e8e66980500bf8`).
+
+### 12.8 DSPy/GEPA candidate sidecar: адаптация и подключение
+
+Исторический NK1 GEPA adapter от 28.10.2026 был найден в ветках `fix/gepa-p23-revision-generator-wiring-2026-10-28` и `fix/workpass600-gepa-server-wiring-contract-2026-10-28`. Он передавал aggregate holdout generalization `gap01`, что несовместимо с новым P23 holdout firewall. Старый код не был скопирован вслепую.
+
+Создан NK1-native `GepaReflectiveCandidateGenerator.ts`:
+- transport sidecar включён только при `NK1_GEPA_ENABLED=1`;
+- разрешены HTTPS и loopback HTTP, запрещены удалённый cleartext, redirects, URL credentials и query/fragment;
+- обязательны endpoint, server-side API key и существующий trusted P23 compound repair provider module;
+- payload/response/timeout bounded; request schema закрытая, поля проверяются через detached plain-data boundary;
+- в sidecar уходят только validation reports и fixed allowlisted directives; свободный planner text и holdout policy/data не сериализуются;
+- task/trial IDs target должны входить в validation evidence;
+- response обязан вернуть candidate payload с сохранением обязательных верхнеуровневых source fields; score, fitness, pass/fail, trace и `promote` игнорируются;
+- P23 остаётся единственным owner независимой оценки, authenticated receipts, candidate staging, shadow, approval, promotion и rollback;
+- при отключённом GEPA сохраняется текущий local llama.cpp path; при явном opt-in ошибки sidecar возвращаются как ошибка генерации, без скрытого fallback.
+
+Профильный workflow `43417587842` на точном SHA `e2fa5545aaac365123dfb65a05e8e66980500bf8` завершился SUCCESS:
+- source-to-runtime static audit: 7/7 adapters, 33/33 checks;
+- source register + stage overlay tests: 10/10;
+- P23 llama.cpp provider/generator/integration contracts: PASS;
+- P23 holdout isolation: PASS;
+- GEPA candidate sidecar tests: PASS (включая real loopback HTTP roundtrip, no-holdout projection, bounds, candidate-only response и source-field preservation);
+- Hexis/Letta/Lumina/Will/Mem0 contracts: PASS.
+
+Что это **не** означает:
+- полноценный DSPy/GEPA optimizer не установлен и не упакован в NK1;
+- sidecar service ещё не развёрнут и не прошёл live contract на реальном endpoint;
+- population search, per-example Pareto archive, candidate lineage and budgeted multi-candidate evolution ещё не реализованы внутри NK1;
+- нет экспериментально подтверждённого uplift на frozen paired benchmark;
+- тесты не означают включение в Release ZIP.
+
+Отдельный операционный документ: `runtime/neuro-kurisu/docs/GEPA_DSPY_CANDIDATE_ADAPTER.md`.
+
+### 12.9 Обновлённые этапы intake
+
+| Этап | Значение после P23/GEPA прохода | Примечание |
+|---|---:|---|
+| Архивы / уникальные источники | 4/4; 22 ZIP; 21 проект | Инвентаризация полная |
+| Первичный license scope screen | 21/21 | Не legal clearance |
+| Human legal clearance | 0/21 | Код/weights/assets пока не разрешены к копированию |
+| Подробный file-level diff donor → NK1 | 1/21 | Один узкий llama.cpp wire-contract; полное сравнение DSPy/GEPA остаётся открытым |
+| Уже существовавшие adapter paths | 6/21 | До новых работ |
+| Новые NK1-native adaptations | 2/21 | llama.cpp + GEPA candidate adapter |
+| Runtime wiring | 2/21 | Через P23 canonical owner |
+| Contract-tested | 2/21 | Exact CI receipt для llama.cpp и GEPA/P23 slice |
+| Release ZIP verified | 0/21 | Release asset bytes/source parity всё ещё не проверены |
+
+Не считать 2/21 доказательством готовности всего learning subsystem: live provider, device soak, candidate population optimizer и ablation ещё открыты.
