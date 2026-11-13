@@ -1,0 +1,73 @@
+name: NK1 Memory Projection Retrieval Integrity
+
+on:
+  push:
+    branches:
+      - aspect/memory-projection-retrieval-integrity-20261113
+    paths:
+      - '.github/workflows/nk1-memory-projection-retrieval-integrity.yml'
+      - 'runtime/neuro-kurisu/src/organism/memory/MultiTimescaleMemory.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemorySubstrateCoordinator.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/memory-projection-retrieval-integrity-20261113.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-forget-projection-integrity-20261113.mjs'
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - '.github/workflows/nk1-memory-projection-retrieval-integrity.yml'
+      - 'runtime/neuro-kurisu/src/organism/memory/MultiTimescaleMemory.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemorySubstrateCoordinator.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/memory-projection-retrieval-integrity-20261113.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-forget-projection-integrity-20261113.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  memory-projection-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Multi-timescale and semantic graph regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/memory-projection-retrieval-integrity-20261113.mjs
+      - name: Explicit forget and source-isolated projection integrity
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/memory-forget-projection-integrity-20261113.mjs
+      - name: MemoryOS2 semantic vector integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-semantic-vector-integrity
+      - name: MemoryFabric retrieval accounting
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-fabric-semantic-retrieval
+      - name: MemoryOS2 metadata retrieval
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memoryos2-metadata-retrieval
+      - name: Memory subsystem state roundtrip
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-subsystem-state-roundtrip
+      - name: Bilingual retrieval bridge
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-retrieval-cross-lingual-bridge
+      - name: Restore integrity and duplicate identity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-restore-integrity
+      - name: Candidate coverage regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-retrieval-candidate-coverage
+      - name: Runtime TypeScript check
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

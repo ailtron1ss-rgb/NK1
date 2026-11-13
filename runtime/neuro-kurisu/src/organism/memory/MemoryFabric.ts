@@ -274,9 +274,41 @@ export class MemoryFabric {
       }
       case 'forget': {
         const forgotten=this.memoryOS.forgetById(command.id,command.reason??'memory-knockout');
-        result=forgotten; booleanValue=forgotten;memoryId=command.id;outcome=forgotten?'applied':'noop';
-        if(forgotten){this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));eventPayload={action,memoryId:command.id,reason:String(command.reason??'memory-knockout').slice(0,240),commandId:commandId||undefined};}
+        // MemoryOS2 may deliberately refuse deletion for protected identity,
+        // autobiographical, or quarantined rows. Never turn that refusal into a
+        // partial forget by deleting their read-model projections or recall frames.
+        // Derived cleanup is allowed only after canonical deletion, or when the
+        // canonical row was already absent (partial restore/recovery).
+        const canonicalRemains=this.findCanonical(command.id)!==null;
+        let projectionRemoved=false;
+        let recallFramesRemoved=0;
+        if(forgotten||!canonicalRemains){
+          projectionRemoved=this.multiTimescale.removeCanonicalProjection(command.id);
+          this.semanticMemory.removeCanonicalProjection(command.id);
+          recallFramesRemoved=this.p62.forgetMemory(command.id);
+        }
+        const applied=Boolean(forgotten||(!canonicalRemains&&(projectionRemoved||recallFramesRemoved>0)));
+        result=applied; booleanValue=applied;memoryId=command.id;outcome=applied?'applied':'noop';
+        if(applied)this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));
+        if(applied){
+          eventPayload={action,memoryId:command.id,reason:String(command.reason??'memory-knockout').slice(0,240),commandId:commandId||undefined};
+        }
         break;
+      }
+    }
+
+    if(outcome==='applied'&&action==='encode'&&memoryId){
+      this.syncSemanticGraphProjection(memoryId);
+    }
+    if(outcome==='applied'&&action!=='encode'&&action!=='forget'){
+      if(action==='revise-content'){
+        const sourceId=(command as Extract<MemoryLifecycleCommand,{action:'revise-content'}>).id;
+        this.syncCompatibilityProjection(sourceId);
+        this.syncSemanticGraphProjection(sourceId);
+      }
+      if(memoryId){
+        this.syncCompatibilityProjection(memoryId);
+        this.syncSemanticGraphProjection(memoryId);
       }
     }
 
@@ -297,6 +329,65 @@ export class MemoryFabric {
       }
     }
     return result;
+  }
+
+  /** Keep the bounded secondary read model aligned with the current canonical revision. */
+  private syncCompatibilityProjection(id:string):boolean {
+    const key=String(id??'').trim().slice(0,160);
+    if(!key)return false;
+    const snapshot=this.memoryOS.snapshot({clone:false});
+    const item=snapshot.items.find(row=>row.id===key);
+    if(!item){this.multiTimescale.removeCanonicalProjection(key);return false;}
+    const projected=this.substrate.projectCompatibilityRecords({...snapshot,items:[item]},1)[0];
+    if(!projected){this.multiTimescale.removeCanonicalProjection(key);return false;}
+    this.multiTimescale.add(projected,false);
+    return true;
+  }
+
+  private activeSemanticProjectionItems() {
+    const now=Date.now();
+    return this.memoryOS.snapshot({clone:false}).items
+      .filter(item=>{
+        const validFromAt=item.validFromAt??item.createdAt;
+        const validUntilAt=item.validUntilAt;
+        return !item.dormant && item.epistemicStatus!=='quarantined' &&
+          Number.isFinite(validFromAt) && validFromAt<=now &&
+          (validUntilAt==null || (Number.isFinite(validUntilAt) && validUntilAt>now));
+      })
+      .slice()
+      .sort((left,right)=>
+        (right.salience+right.identityRelevance+right.goalRelevance)-
+        (left.salience+left.identityRelevance+left.goalRelevance))
+      .slice(0,1_000);
+  }
+
+  /** Rebuild the semantic graph read-model exclusively from active canonical rows. */
+  reconcileSemanticGraph():number {
+    const rows=this.activeSemanticProjectionItems();
+    this.semanticMemory.reconcileCanonicalProjection(rows);
+    return this.semanticMemory.snapshot().nodes.filter(node=>node.canonicalProjection?.owner==='memoryOS2').length;
+  }
+
+  /** Incrementally synchronize one row and any canonical rows that link to it. */
+  private syncSemanticGraphProjection(id:string):boolean {
+    const key=String(id??'').trim().slice(0,160);
+    if(!key)return false;
+    const rows=this.activeSemanticProjectionItems();
+    const availableIds=new Set(rows.map(row=>row.id));
+    this.semanticMemory.retainCanonicalProjection(availableIds);
+    const item=rows.find(row=>row.id===key);
+    if(!item){
+      this.semanticMemory.removeCanonicalProjection(key);
+      return false;
+    }
+    this.semanticMemory.syncCanonicalProjection(item,availableIds);
+    // A newly created target can resolve links which were previously pending.
+    for(const candidate of rows){
+      if(candidate.id===key)continue;
+      const linked=[...(candidate.semanticLinks??[]),...(candidate.temporalLinks??[]),...(candidate.causalLinks??[]),...(candidate.contradictionLinks??[])];
+      if(linked.includes(key))this.semanticMemory.syncCanonicalProjection(candidate,availableIds);
+    }
+    return true;
   }
 
   /** Read-only canonical lookup for idempotent adapters; never mutates retrieval or policy state. */
@@ -454,6 +545,10 @@ export class MemoryFabric {
   maintain(options:{pressure01?:number;maxItems?:number;tick?:number;force?:boolean;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number;byteBudget?:number;protectedIds?:string[]}={}) {
     const tick=Number.isFinite(options.tick)?Number(options.tick):-1;
     if(!options.force && tick>=0 && tick===this.lastMaintenanceTick)return {skipped:true,changed:0};
+    // Snapshot the bounded canonical graph membership before maintenance.
+    // MemoryOS2 may dormancy-mark or evict rows without going through an explicit
+    // MemoryFabric command; the graph must not keep those rows available for recall.
+    const beforeSemanticIds=new Set(this.activeSemanticProjectionItems().map(item=>item.id));
     const before=this.memoryOS.size();
     this.memoryOS.maintain({pressure01:options.pressure01,maxItems:options.maxItems});
     const byteBudget=Math.max(262144,Math.min(1048576,Math.floor(options.byteBudget??Math.max(262144,Math.min(1048576,Math.floor((options.maxItems??768)*720))))));
@@ -464,6 +559,19 @@ export class MemoryFabric {
     this.scheduleSemanticIndexMaintenance();
     const changed=Math.max(0,before-this.memoryOS.size());
     const totalChanged=changed;
+    const activeSemanticItems=this.activeSemanticProjectionItems();
+    const activeSemanticIds=new Set(activeSemanticItems.map(item=>item.id));
+    const membershipChanged=beforeSemanticIds.size!==activeSemanticIds.size
+      || activeSemanticItems.some(item=>!beforeSemanticIds.has(item.id));
+    if(membershipChanged){
+      // Remove dormant/evicted/quarantined rows and their incident graph edges.
+      // If maintenance reactivates a row, materialize it through the same canonical
+      // writer and resolve any edges that had been waiting for this target.
+      this.semanticMemory.retainCanonicalProjection(activeSemanticIds);
+      for(const item of activeSemanticItems){
+        if(!beforeSemanticIds.has(item.id))this.syncSemanticGraphProjection(item.id);
+      }
+    }
     if(totalChanged||options.force)this.events.append(makeEvent('memory-lifecycle',tick,{source:'memory-fabric',before,after:this.memoryOS.size(),changed:totalChanged,capacityChanged:changed,byteBudget,byteBudgetEvictions:byteBudgetResult.evicted.length,estimatedBytes:byteBudgetResult.usedBytes,pressure01:options.pressure01??0} as Record<string,unknown>));
     return {skipped:false,changed:totalChanged,byteBudget:byteBudgetResult};
   }

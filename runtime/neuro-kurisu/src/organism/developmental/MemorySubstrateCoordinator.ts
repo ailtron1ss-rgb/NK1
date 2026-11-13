@@ -12,7 +12,7 @@ export interface MemorySubstrateInspection {
   recommendation:'consolidate-reads'|'compatibility-projection'|'healthy';
 }
 
-const normalize=(s:string)=>String(s).normalize('NFKC').toLocaleLowerCase().replace(/\s+/g,' ').trim().slice(0,240);
+const normalize=(s:string)=>String(s).normalize('NFKC').toLowerCase().replace(/\s+/g,' ').trim().slice(0,240);
 const tokens=(s:string)=>new Set(normalize(s).split(/[^\p{L}\p{N}_-]+/u).filter(x=>x.length>2).slice(0,48));
 const similarityFromTokens=(a:Set<string>,b:Set<string>)=>{
   if(!a.size||!b.size)return 0;
@@ -82,6 +82,10 @@ export class MemorySubstrateCoordinator{
     const seen=new Set<string>();
     const inputs:Array<Parameters<MemoryOS2['encode']>[0]>=[];
     for(const row of rows.slice(0,Math.max(0,Math.min(64,Math.floor(limit))))){
+      const evidence=Array.isArray(row.evidence)?row.evidence.map(String):[];
+      // Canonical rows are projections, not donor input; converting them back into
+      // MemoryOS2 would create a second belief with weaker/duplicated provenance.
+      if(row.canonicalProjection?.owner==='memoryOS2'||String(row.id??'').startsWith('hexis-')||evidence.some(source=>source.startsWith('hexis:')))continue;
       const key=`${row.kind}|${row.summary}|${row.evidence.slice(-2).join('|')}`;
       if(seen.has(key))continue;
       seen.add(key);
@@ -104,7 +108,13 @@ export class MemorySubstrateCoordinator{
     const max = Math.max(1, Math.min(96, Math.floor(limit)));
     const now = Date.now();
     return memoryOS.items
-      .filter(item => !item.dormant && item.epistemicStatus !== 'quarantined')
+      .filter(item => {
+        const validFromAt=item.validFromAt??item.createdAt;
+        const validUntilAt=item.validUntilAt;
+        return !item.dormant && item.epistemicStatus !== 'quarantined' &&
+          Number.isFinite(validFromAt) && validFromAt <= now &&
+          (validUntilAt == null || (Number.isFinite(validUntilAt) && validUntilAt > now));
+      })
       .slice()
       .sort((a,b) => (b.salience + b.identityRelevance + b.goalRelevance) - (a.salience + a.identityRelevance + a.goalRelevance))
       .slice(0, max)
@@ -113,7 +123,8 @@ export class MemorySubstrateCoordinator{
         kind: item.kind === 'episodic' ? 'episode' : item.kind === 'identity' || item.kind === 'autobiographical' ? 'self-model' : item.kind === 'procedural' ? 'goal-learning' : 'pattern',
         summary: item.content.slice(0, 360),
         salience: item.salience,
-        evidence: [item.source],
+        evidence: [...new Set([item.source,...(item.evidenceSources??[]).map(source=>source.source)])].slice(-64),
+        canonicalProjection:{owner:'memoryOS2',itemId:item.id,schemaVersion:1},
         createdAt: item.createdAt || now,
         timescale: item.kind === 'semantic' ? 'semantic' : item.kind === 'identity' || item.kind === 'autobiographical' ? 'autobiographical' : item.kind === 'working' ? 'working' : 'episodic',
         retrievalCount: item.retrievalCount,
