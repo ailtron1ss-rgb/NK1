@@ -78,8 +78,11 @@ test('stage overrides reject unknown source IDs, fields and empty evidence', () 
     schemaVersion: 1, sources: { 'not-a-real-source': { testsPassed: true } },
   }), /unknown source/);
   assert.throws(() => applySourceStageOverrides(doc, {
+    schemaVersion: 1, sources: { 'llama-cpp': { mysteryStage: true } },
+  }), /unsupported source stage override field/);
+  assert.throws(() => applySourceStageOverrides(doc, {
     schemaVersion: 1, sources: { 'llama-cpp': { releaseVerified: true } },
-  }), /releaseVerified/);
+  }), /release requires test pass/);
   assert.throws(() => applySourceStageOverrides(doc, {
     schemaVersion: 1, sources: { 'llama-cpp': { testEvidence: [] } },
   }), /non-empty evidence/);
