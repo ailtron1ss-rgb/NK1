@@ -108,17 +108,21 @@ const orphanCluster = bridge.stage({ document: document({
   export_id: 'exp_orphan_cluster',
   sections: {
     memories: [{ ref: 'memory:orphan-base', type: 'semantic', content: 'An isolated imported item.' }],
-    clusters: [{ ref: 'cluster:orphan', name: 'Unavailable cluster', member_refs: ['memory:not-imported'] }],
+    clusters: [
+      { ref: 'cluster:orphan', name: 'Unavailable cluster', member_refs: ['memory:not-imported'] },
+      { ref: 'cluster:nested', name: 'Nested cluster', member_refs: ['cluster:orphan'] },
+    ],
   },
 }) });
 assert.equal(orphanCluster.ok, true);
-assert.equal(orphanCluster.clusterCount, 1, 'stage reports a named cluster candidate');
+assert.equal(orphanCluster.clusterCount, 2, 'stage reports named cluster candidates');
 const orphanCommit = bridge.commit(orphanCluster.stagingId);
 assert.equal(orphanCommit.ok, true);
 assert.equal(orphanCommit.clustersApplied, 0, 'cluster without imported members must not create a ghost anchor');
 assert.ok(orphanCommit.warnings.some(w => w.code === 'cluster-member-not-imported'));
 assert.ok(orphanCommit.warnings.some(w => w.code === 'cluster-without-members'));
 assert.equal(orphanCommit.refMap['cluster:orphan'], undefined);
+assert.equal(orphanCommit.refMap['cluster:nested'], undefined, 'nested cluster refs are not treated as canonical member records');
 
 const dangling = bridge.stage({ document: document({
   export_id: 'exp_dangling_relationship',
