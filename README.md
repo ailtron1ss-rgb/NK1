@@ -1,7 +1,7 @@
 ## Актуальный инженерный checkpoint — 13 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Source HEAD до этого README checkpoint:** `744bffeeea2d72fb98ac7b00d56653686241a5ff` (следующий HEAD после этого commit следует брать из live branch).  
+**Source HEAD до этого README checkpoint:** `e6bab97d014c9911cddc3746725b39c635018f43` (следующий HEAD после этого commit следует брать из live branch).  
 **`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
 
 > **WorkPass71 (2026-11-03, ветка `workpass71-body-systems`):** добавлены версионированный capability manifest с fail-closed реестром, renderer-neutral motion library и арбитр движений с bounded cross-fade; 3D VRM и Original 2D тела теперь управляются одними и теми же каналами. См. [docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md](docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md). Это IMPLEMENTED/OBSERVED на синтетических тестах; device E2E, soak и visual verification ещё не проведены.
@@ -12,6 +12,7 @@
 |---|---|---|
 | [#838](https://github.com/ailtron1ss-rgb/NK1/pull/838) | Снижение пиковых аллокаций при remote VRM/GLB import: bounded Blob chunks без второго полноразмерного Uint8Array | 5/5 exact-head checks до merge; device RSS/WebGL soak ещё не измерен |
 | [#869](https://github.com/ailtron1ss-rgb/NK1/pull/869) | Hexis HMX 1.x portable-memory bridge: explicit staged accept → canonical MemoryFabric/MemoryOS2, low-trust hypotheses, deterministic replay, protected-section rejection | HMX, Hexis lineage, memory integrity, unified organism, core и WorkPass79 checks PASS |
+| [#878](https://github.com/ailtron1ss-rgb/NK1/pull/878) | HMX episode summaries → episodic memories; direction-aware semantic/temporal/causal/contradiction relationships; dangling refs skipped with warnings; stable forceDistinct refs | 10/10 exact-head workflows PASS |
 | [#871](https://github.com/ailtron1ss-rgb/NK1/pull/871) | Pin `agent-client-protocol<1.0.0` для Inspect AI 0.3.286; smoke check `acp.helpers` | 4/4 exact-head workflows; cognitive + bilingual memory Inspect tasks PASS |
 | [#874](https://github.com/ailtron1ss-rgb/NK1/pull/874) | Will voluntary attention effort встроен в существующий CognitiveResourceEconomy; action intent, vitals veto, per-tick homeostasis, backward-compatible restore | 44/44 exact-head workflows PASS; измерение качества/energy cost ещё открыто |
 
@@ -50,7 +51,7 @@
 - Независимый лицензированный bilingual RU/EN retrieval uplift на immutable holdout, минимум 5 paired seeds; критерий `recallDelta > 0` ещё не закрыт. LongMemEval-S не заменяет RU/EN gate.
 - Подтверждённая автономная инициатива из внутреннего состояния, а не только scripted/background scheduler. Субъективное сознание не заявляется как доказанный факт.
 - Human license decisions и безопасный exact-SHA Release publisher gate.
-- Полный HMX 1.7 импорт episodes/relationships/clusters и остальные non-memory секции; текущий мост применяет только portable memories.
+- Полная HMX 1.7 schema/import parity и projection clusters/in-flight work/audit records/raw units/config; текущий мост применяет memories, episode summaries и typed relationships.
 - Sustained-focus energy cost, ablation и target-device calibration для Will voluntary attention effort.
 
 ### Следующие P0
