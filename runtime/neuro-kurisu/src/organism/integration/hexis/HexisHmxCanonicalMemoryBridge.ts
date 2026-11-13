@@ -175,6 +175,7 @@ export class HexisHmxCanonicalMemoryBridge {
       }
     }
 
+    const memoryRecords = Array.isArray(memories) ? memories : [];
     const intent = doc.export_intent as HexisHmxIntent;
     const stage = this.adaptation.stageHmx({ document: doc, intent, strategy: 'additive' });
     if (stage.conflicts.length) {
@@ -184,7 +185,7 @@ export class HexisHmxCanonicalMemoryBridge {
       ok: true,
       stagingId: stage.stagingId,
       exportId: stage.exportId,
-      memoryCount: memories.length,
+      memoryCount: memoryRecords.length,
       deferredSections: names.filter(name => DEFERRED_SECTIONS.has(name)),
       warnings,
       conflicts: [],
