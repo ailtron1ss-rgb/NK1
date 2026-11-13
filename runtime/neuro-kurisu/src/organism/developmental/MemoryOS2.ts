@@ -1491,6 +1491,37 @@ export class MemoryOS2{
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    return structuredClone(m.context??{});
  }
+ /**
+  * Merge explicitly validated graph links through the canonical MemoryOS2 owner.
+  * Unknown targets are rejected so imports cannot leave dangling graph references.
+  */
+ addLinks(id:string, patch:Partial<Pick<MemoryItem2,'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'>>, reason='relationship-import'):MemoryItem2|null {
+  const item=this.itemIndex.get(String(id));if(!item)return null;
+  const before=estimateMemoryBytes(item);
+  const now=Date.now();
+  let added=0;
+  const merge=(field:'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks')=>{
+   const current=Array.isArray(item[field])?[...item[field] as string[]]:[];
+   const values=patch[field];
+   const incoming=Array.isArray(values)?values.filter((target):target is string=>typeof target==='string'&&target.length>0&&target.length<=160&&target.trim()===target&&target!==item.id&&this.itemIndex.has(target)).slice(0,24):[];
+   const next=[...new Set([...current,...incoming])].slice(0,24);
+   added+=Math.max(0,next.length-current.length);
+   item[field]=next as never;
+  };
+  merge('semanticLinks');
+  merge('temporalLinks');
+  merge('causalLinks');
+  merge('contradictionLinks');
+  if(added){
+   this.recordRevision(item,{at:now,from:item.epistemicStatus,to:item.epistemicStatus,reason:String(reason||'relationship-import').slice(0,240)});
+   this.state.linkUpdates+=added;
+   this.state.reconsolidations++;
+   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(item));
+   this.linkSupportCache=null;
+  }
+  return structuredClone(item);
+ }
+
  /** Merge one independently attributed evidence source through the canonical MemoryOS2 owner. */
  attachEvidenceSource(id:string, source:MemoryEvidenceSource, reason='evidence-lineage'):MemoryItem2|null {
    const item=this.state.items.find(x=>x.id===id);if(!item)return null;
