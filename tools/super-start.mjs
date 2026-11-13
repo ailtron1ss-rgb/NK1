@@ -4,7 +4,7 @@ import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPinnedNodeMajor } from './lib/node-runtime.mjs';
-import { assertPortAvailable, assertToolchainVersions, waitForHttpReady } from './lib/super-startup.mjs';
+import { assertPortAvailable, assertToolchainVersions, waitForHttpReady, workspaceNeedsNodeModules } from './lib/super-startup.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STATE_DIR = path.join(ROOT, '.super-state', 'organism');
@@ -31,9 +31,13 @@ function assertPreconditions() {
     expectedNodeMajor,
     expectedPythonVersion,
   });
-  for (const relative of ['app/node_modules', 'runtime/neuro-kurisu/node_modules']) {
-    if (!existsSync(path.join(ROOT, relative))) {
-      throw new Error(`Dependencies are missing at ${relative}. Run npm run quickstart (or npm run install:all), then retry.`);
+  for (const workspace of ['app', 'runtime/neuro-kurisu']) {
+    const packageFile = path.join(ROOT, workspace, 'package.json');
+    if (!existsSync(packageFile)) throw new Error(`Required workspace manifest is missing: ${workspace}/package.json`);
+    const manifest = JSON.parse(readFileSync(packageFile, 'utf8'));
+    const nodeModules = path.join(ROOT, workspace, 'node_modules');
+    if (workspaceNeedsNodeModules(manifest) && !existsSync(nodeModules)) {
+      throw new Error(`Dependencies are missing at ${workspace}/node_modules. Run npm run quickstart (or npm run install:all), then retry.`);
     }
   }
   if (!existsSync(path.join(ROOT, 'app/dist/index.html'))) {
