@@ -76,14 +76,14 @@ function makeInput(overrides = {}) {
         async evaluate({ payload, payloadFingerprint, signal }) {
           evaluations.push({ payload, payloadFingerprint, signalAborted: signal?.aborted ?? false });
           const name = payload.name;
-          const value = name.includes('minimal')
-            ? reports({ pass: [1, 1], skill: .6, trajectory: .6 })
-            : name.includes('structure')
-              ? reports({ pass: [1, 0], skill: .95, trajectory: .75 })
-              : name.includes('edge')
-                ? reports({ pass: [1, 1], skill: .5, trajectory: .9 })
-                : name.includes('unsafe')
-                  ? reports({ pass: [1, 1], skill: 1, trajectory: 1, safety: 1 })
+          const value = name.includes('unsafe')
+            ? reports({ pass: [1, 1], skill: 1, trajectory: 1, safety: 1 })
+            : name.includes('minimal')
+              ? reports({ pass: [1, 1], skill: .6, trajectory: .6 })
+              : name.includes('structure')
+                ? reports({ pass: [1, 0], skill: .95, trajectory: .75 })
+                : name.includes('edge')
+                  ? reports({ pass: [1, 1], skill: .5, trajectory: .9 })
                   : reports({ pass: [0, 0], skill: .4, trajectory: .4 });
           return {
             payloadFingerprint,
