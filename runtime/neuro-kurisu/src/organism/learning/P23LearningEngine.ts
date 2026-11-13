@@ -1191,7 +1191,7 @@ export class P23LearningEngine {
         populationSearchState.result=result;
         if(result.status!=='selected'||result.selectedPayload===null) {
           const error=new Error('p23-population-no-improving-candidate');
-          Object.assign(error,{populationSearchDiagnostics:result.diagnostics});
+          Object.assign(error,{populationSearchDiagnostics:result.diagnostics,populationSearchArchive:result.archive});
           throw error;
         }
         return result.selectedPayload;
