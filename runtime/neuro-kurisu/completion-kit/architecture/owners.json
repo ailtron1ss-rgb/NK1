@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "identity": "NeuroCore",
+  "sourceBranch": "workpass70-source",
+  "compositionRoot": "src/organism/core/OrganismSystemFabric.ts",
+  "runtimeEntrypoint": "src/organism/core/OrganismRuntime.ts",
+  "cognitiveOwner": "src/organism/core/OrganismCore.ts",
+  "subsystemRegistry": "src/organism/core/CognitiveSubsystemRegistry.ts",
+  "singleOwnerRule": "Exactly one physical owner per canonical subsystem; adapters may project or evaluate but cannot own a second writable copy.",
+  "owners": [
+    { "name": "self", "ownerFile": "src/organism/core/SelfSubsystemRuntime.ts", "authority": ["identity", "self-model", "continuity", "personal-values"] },
+    { "name": "governance", "ownerFile": "src/organism/core/GovernanceSubsystemRuntime.ts", "authority": ["capabilities", "permissions", "risk", "identity-guardian", "resilience"] },
+    { "name": "memory", "ownerFile": "src/organism/core/MemorySubsystemRuntime.ts", "recordOwner": "src/organism/developmental/MemoryOS2.ts", "lifecycleBoundary": "src/organism/memory/MemoryFabric.ts", "authority": ["canonical-memory-records", "memory-lifecycle", "memory-persistence"] },
+    { "name": "world", "ownerFile": "src/organism/core/WorldSubsystemRuntime.ts", "authority": ["world-state", "world-model", "environment", "causal-grounding"] },
+    { "name": "embodiment", "ownerFile": "src/organism/core/EmbodimentSubsystemRuntime.ts", "authority": ["body-state", "perception", "motor-intent", "voice", "renderer-bridges"] },
+    { "name": "agency", "ownerFile": "src/organism/core/AgencySubsystemRuntime.ts", "authority": ["goals", "planning", "action-selection", "resource-budgets"] },
+    { "name": "research", "ownerFile": "src/organism/core/EvidenceResearchSubsystemRuntime.ts", "authority": ["evidence-intake", "experiments", "benchmarking", "scientific-method"] }
+  ],
+  "crossCuttingCanonicalComponents": [
+    { "name": "cef", "path": "src/organism/system/CognitiveEventFabric.ts", "role": "causal event ledger; not a second memory store" },
+    { "name": "cyclePolicy", "path": "src/organism/system/CycleCompletenessPolicy.ts", "role": "strict 11-stage completeness policy" },
+    { "name": "unifiedCycle", "path": "src/organism/system/UnifiedCognitiveCycle.ts", "role": "cycle accounting and strict full-complete state" },
+    { "name": "learning", "path": "src/organism/learning/P23LearningEngine.ts", "role": "canonical P23 policy/skill learning orchestration" },
+    { "name": "proceduralSkills", "path": "src/organism/learning/ProceduralSkillLibrary.ts", "role": "skill library; no parallel copy" }
+  ]
+}

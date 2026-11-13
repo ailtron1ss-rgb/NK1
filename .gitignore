@@ -37,3 +37,6 @@ npm-debug.log*
 # Build output from `npm run build` (Vercel/nitro)
 /app/.vercel/
 /app/.output/
+
+# Local NeuroK Engineering OS claims and exact-SHA evidence receipts.
+.neurok-os/

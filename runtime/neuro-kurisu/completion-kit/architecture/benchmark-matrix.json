@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "rule": "Run baseline and candidate on the same task manifest, model route, prompt policy, environment and seeds. Never compare unpaired or hand-picked wins.",
+  "suites": [
+    { "id": "memory-longmemeval", "domain": "memory", "source": "https://github.com/xiaowu0162/LongMemEval", "primaryMetrics": ["exact_match", "token_f1", "temporal_accuracy", "multi_session_recall"], "mustReport": ["abstention_accuracy", "latency_ms", "tokens", "memory_bytes"], "status": "INTAKE_REQUIRED" },
+    { "id": "memory-locomo", "domain": "memory", "source": "https://github.com/snap-research/locomo", "primaryMetrics": ["token_f1", "judge_score"], "mustReport": ["factual", "temporal", "multi_hop", "inferential", "adversarial", "token_cost"], "status": "INTAKE_REQUIRED" },
+    { "id": "memory-agentbench", "domain": "memory", "source": "https://github.com/ai-hyz/MemoryAgentBench", "primaryMetrics": ["task_success", "retrieval_quality", "memory_operation_accuracy"], "mustReport": ["split", "seed", "source_fingerprint", "latency_ms", "memory_bytes"], "status": "INTAKE_REQUIRED" },
+    { "id": "continual-skill-learning", "domain": "learning", "source": "existing NK1 SkillLearnBench/P23 adapters", "primaryMetrics": ["task_success", "transfer_success"], "mustReport": ["forgetting", "catastrophe_rate", "rollback_success", "latency_ms", "peak_ram_mb"], "status": "EXISTS_WITH_OPEN_HOLDOUT_GATES" },
+    { "id": "cef-full-cycle", "domain": "cognition", "source": "NK1 CognitiveEventFabric + CycleCompletenessPolicy", "primaryMetrics": ["full_cycle_rate", "edge_integrity", "dangling_parent_rate"], "mustReport": ["full_stage_coverage", "duplicate_id_rate", "restart_replay_integrity"], "status": "EXISTS" },
+    { "id": "self-initiated-agency", "domain": "agency", "source": "NK1 runtime task environment + independently scored tasks", "primaryMetrics": ["useful_goal_rate", "goal_completion", "regret"], "mustReport": ["prompted_vs_unprompted", "user_policy_violations", "resource_cost", "false_action_rate"], "status": "GAP" },
+    { "id": "embodiment-device", "domain": "embodiment", "source": "Real browser + Android target devices", "primaryMetrics": ["render_success", "speech_sync_error_ms", "gesture_completion"], "mustReport": ["fps", "gpu_memory", "ram", "battery", "thermal", "soak_duration"], "status": "GAP" },
+    { "id": "local-model-route", "domain": "model", "source": "OpenAI-compatible local provider + fixed task set", "primaryMetrics": ["task_success", "latency_ms"], "mustReport": ["peak_vram_mb", "peak_ram_mb", "tokens_per_second", "cold_start", "quality_delta"], "status": "PARTIAL" }
+  ]
+}

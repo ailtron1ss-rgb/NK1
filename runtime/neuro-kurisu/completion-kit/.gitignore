@@ -1,0 +1,6 @@
+node_modules/
+reports/generated-source-tree.json
+reports/generated-source-tree.md
+reports/latest-static-evidence.json
+reports/latest-static-evidence.md
+reports/gate-*.json

@@ -1,0 +1,22 @@
+{
+  "name": "nk1-completion-kit",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Evidence-first runtime audit and exact-SHA gates for NeuroCore / NK1",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "audit": "node scripts/audit-architecture.mjs",
+    "imports": "node scripts/audit-import-graph.mjs",
+    "test-surface": "node scripts/check-test-surface.mjs",
+    "report": "node scripts/build-evidence-report.mjs",
+    "tree": "node scripts/generate-architecture-tree.mjs",
+    "gate": "node scripts/run-gate.mjs",
+    "record-evidence": "node scripts/record-gate-evidence.mjs",
+    "verify": "npm test && npm run audit && npm run imports && npm run test-surface",
+    "promotion": "node --experimental-strip-types scripts/evaluate-promotion.mjs",
+    "dataset-check": "node scripts/verify-dataset-manifest.mjs",
+    "cef-check": "node scripts/verify-cef-snapshot.mjs"
+  }
+}
