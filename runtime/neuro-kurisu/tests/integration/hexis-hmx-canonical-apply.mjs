@@ -325,10 +325,14 @@ try {
     assert.equal(afterRestartDiagnostics.memoryPersistence.live.hexisVisibleCurrentCount, 4,
       `restored HMX rows must satisfy the same current/visible filter as the memory API: ${JSON.stringify(afterRestartDiagnostics.memoryPersistence)}`);
     const restoredMemories = await memoryIndex();
-    const restoredA = restoredMemories.filter(row => row.summary.includes('HMX canonical imported memory A'));
-    const restoredB = restoredMemories.filter(row => row.summary.includes('HMX canonical imported procedure B'));
+    const restoredA = restoredMemories.filter(row => row.summary.includes('HMX canonical imported memory A') && String(row.source).startsWith('hexis:'));
+    const restoredB = restoredMemories.filter(row => row.summary.includes('HMX canonical imported procedure B') && String(row.source).startsWith('hexis:'));
+    const restoredCompatibilityA = restoredMemories.filter(row => row.summary.includes('HMX canonical imported memory A') && row.source === 'multi-timescale-compatibility');
+    const restoredCompatibilityB = restoredMemories.filter(row => row.summary.includes('HMX canonical imported procedure B') && row.source === 'multi-timescale-compatibility');
     assert.equal(restoredA.length, 2, `the same content from two distinct donor lineages must survive restart as two source-isolated memories: before=${JSON.stringify(beforeRestartA.map(row => ({ id: row.id, source: row.source })))} after=${JSON.stringify(restoredA.map(row => ({ id: row.id, source: row.source })))}`);
     assert.equal(restoredB.length, 2, 'the second memory from two distinct donor lineages must survive restart as two source-isolated memories');
+    assert.equal(restoredCompatibilityA.length, 0, 'canonical HMX read projections must not be re-ingested as compatibility beliefs after restart');
+    assert.equal(restoredCompatibilityB.length, 0, 'canonical HMX read projections must not create a second compatibility copy after restart');
     const countBeforeRestartReplay = restoredMemories.length;
     const stageSnapshot = await (await fetch(base + '/api/organism/integration/hexis')).json();
     assert.equal(stageSnapshot.ok, true);
