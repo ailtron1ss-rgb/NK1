@@ -72,7 +72,9 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - "runtime/neuro-kurisu/src/organism/learning/P23CandidateParetoArchive.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ValidationOnlySkillCandidateEvaluator.ts"
       - "runtime/neuro-kurisu/tests/p23-candidate-pareto-archive.mjs"
+      - "runtime/neuro-kurisu/tests/p23-validation-only-candidate-evaluator.mjs"
       - ".github/workflows/p23-candidate-population.yml"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
@@ -163,3 +165,6 @@ jobs:
       - name: Verify P23 deterministic candidate Pareto archive contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-candidate-pareto-archive.mjs
+      - name: Verify validation-only P23 candidate evaluator isolation
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-validation-only-candidate-evaluator.mjs
