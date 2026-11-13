@@ -143,7 +143,7 @@ export class HexisHmxCanonicalMemoryBridge {
     if (!isRecord(doc.sections)) {
       conflicts.push({ path: 'sections', kind: 'schema', detail: 'sections must be an object' });
     }
-    if (conflicts.length) return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0,
+    if (conflicts.length) return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0, clusterCount: 0,
       deferredSections: [], warnings, conflicts };
 
     const sections = doc.sections as Record<string, unknown>;
@@ -228,7 +228,7 @@ export class HexisHmxCanonicalMemoryBridge {
         }
       });
     }
-    if (conflicts.length) return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0,
+    if (conflicts.length) return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0, clusterCount: 0,
       deferredSections: [], warnings, conflicts };
 
     const memoryRecords = Array.isArray(memories) ? memories : [];
