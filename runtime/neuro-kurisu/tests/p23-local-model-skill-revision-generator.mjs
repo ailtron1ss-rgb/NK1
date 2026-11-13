@@ -31,6 +31,14 @@ assert.ok(!calls[0].user.includes('holdout-task-secret'), 'holdout case identifi
 assert.equal(calls[0].temperature, 0.2);
 assert.equal(calls[0].maxTokens, 4096);
 
+assert.equal(calls[0].responseFormat.type, 'json_schema', 'P23 asks llama.cpp for server-side constrained JSON decoding');
+assert.deepEqual(calls[0].responseFormat.schema, {
+  type: 'object',
+  properties: { name: { type: 'string' }, steps: { type: 'array', items: { type: 'string' } } },
+  required: ['name', 'steps'],
+  additionalProperties: false,
+}, 'the generated schema preserves the exact source payload shape while allowing values to improve');
+
 await assert.rejects(
   () => generateLocalSkillRevision({ ...provider, configured: () => false }, request),
   /p23-revision-local-model-not-configured/,
