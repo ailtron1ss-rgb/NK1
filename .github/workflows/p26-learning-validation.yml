@@ -77,6 +77,7 @@ on:
       - "runtime/neuro-kurisu/tests/p23-validation-only-candidate-evaluator.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/P23ReflectiveCandidatePopulationSearch.ts"
       - "runtime/neuro-kurisu/tests/p23-reflective-candidate-population-search.mjs"
+      - "runtime/neuro-kurisu/tests/p23-population-p23-integration.mjs"
       - ".github/workflows/p23-candidate-population.yml"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
@@ -107,7 +108,7 @@ jobs:
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
-      # Run the P23 archive, validation-only evaluator and population search contracts immediately after compilation; all three are required before the full learning suite.
+      # Run P23 archive, validation-only evaluator, population search and canonical handoff contracts immediately after compilation.
       - name: Verify P23 deterministic candidate Pareto archive contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-candidate-pareto-archive.mjs
@@ -117,6 +118,9 @@ jobs:
       - name: Verify bounded P23 reflective candidate population search
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-reflective-candidate-population-search.mjs
+      - name: Verify population search canonical P23 handoff and no-improvement boundary
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-population-p23-integration.mjs
       - name: Verify bounded P23 background revision and fail-closed staging
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass293:p23-revision
