@@ -3092,13 +3092,13 @@ export class OrganismCore {
             },
             capabilities: {
                 formats: ['json'],
-                sections: ['memories', 'relationships'],
+                sections: ['memories', 'relationships', 'episodes', 'clusters'],
                 hash_algorithms: ['sha256'],
                 relationship_edge_types: ['supports', 'contradicts', 'causes', 'associated', 'about', 'located'],
                 optional_features: [],
             },
             privacy: {
-                redaction_policy: 'source-defined',
+                redaction_policy: 'strict',
                 contains_sensitive_content: false,
                 consent_scope: 'migration',
             },
