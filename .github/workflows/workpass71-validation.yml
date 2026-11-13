@@ -73,7 +73,7 @@ jobs:
       - name: Validate grapheme timeline
         run: npm --prefix app run test:embodiment-timeline
       - name: Live2D canonical model and local runtime asset integrity
-        run: node runtime/neuro-kurisu/tests/live2d-integrity.mjs
+        run: npm --prefix runtime/neuro-kurisu run test:live2d
       - name: Frontend Live2D expression transition cache
         run: npm --prefix app run test:live2d-expression-cache
       - name: Native speech provider event UI regression
