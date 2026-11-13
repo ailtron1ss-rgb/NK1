@@ -32,10 +32,17 @@ const schemaProvider = new OpenAICompatibleLocalChatProvider({
 });
 const responseSchema = { type: 'object', properties: { accepted: { type: 'boolean' } }, required: ['accepted'], additionalProperties: false };
 await schemaProvider.generate({ system: 'Return JSON.', user: 'Verify.', responseFormat: { type: 'json_schema', schema: responseSchema } });
-assert.deepEqual(schemaCall[0].body.response_format, { type: 'json_schema', schema: responseSchema },
-  'JSON Schema is forwarded to llama-server using its documented response_format contract');
+assert.deepEqual(schemaCall[0].body.response_format, {
+  type: 'json_schema',
+  json_schema: { schema: responseSchema },
+}, 'llama-server requires response_format.json_schema.schema for type=json_schema');
+assert.deepEqual(schemaCall[0].body.response_format.json_schema.schema, responseSchema);
+assert.equal(schemaCall[0].body.response_format.schema, undefined, 'a sibling schema field is not read for type=json_schema');
 await schemaProvider.generate({ system: '', user: 'Return any JSON.', responseFormat: { type: 'json_object' } });
 assert.deepEqual(schemaCall[1].body.response_format, { type: 'json_object' });
+await schemaProvider.generate({ system: '', user: 'Return JSON matching this schema.', responseFormat: { type: 'json_object', schema: responseSchema } });
+assert.deepEqual(schemaCall[2].body.response_format, { type: 'json_object', schema: responseSchema },
+  'llama-server reads the sibling schema field for type=json_object');
 await assert.rejects(() => schemaProvider.generate({ system: '', user: 'x', responseFormat: { type: 'json_schema' } }),
   /response-schema-required/);
 await assert.rejects(() => schemaProvider.generate({ system: '', user: 'x', responseFormat: { type: 'xml' } }),
