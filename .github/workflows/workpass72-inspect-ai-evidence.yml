@@ -63,8 +63,10 @@ jobs:
 
       - name: Test independent cognitive and memory scorers
         run: python -m unittest discover -s evaluation/inspect_ai/tests -v
-      - name: Install pinned Inspect AI
+      - name: Install pinned Inspect AI and ACP
         run: python -m pip install --disable-pip-version-check --no-input -r evaluation/inspect_ai/requirements.txt
+      - name: Verify pinned Inspect/ACP import contract
+        run: python -c "import acp.helpers; import inspect_ai; print('Inspect AI / ACP helper imports OK')"
       - name: Run cognitive evidence Inspect task without external model calls
         env:
           NK1_INSPECT_SAMPLES: evaluation/inspect_ai/samples.ci.jsonl

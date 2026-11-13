@@ -1,2 +1,4 @@
-# Pinned to the source archive reviewed for NK1 WorkPass72.
+# Inspect AI 0.3.286 uses the ACP helpers API. Keep the evaluator's
+# runtime dependency pair reproducible; upgrade these together with a smoke test.
 inspect-ai==0.3.286
+agent-client-protocol==0.12.1
