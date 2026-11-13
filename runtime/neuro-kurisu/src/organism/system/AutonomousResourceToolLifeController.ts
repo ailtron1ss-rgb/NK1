@@ -4,6 +4,7 @@
  * resource envelope, verification requirement, cooldowns, and self-stop rule.
  * This is an engineering autonomy layer, not a claim of consciousness or legal personhood.
  */
+import { assessActionConsequence, type ActionConsequenceClass } from '../core/ActionConsequenceCostPolicy.ts';
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export interface AutonomousToolCandidate {id:string;capability:string;destructive:boolean;projectAllowed:boolean;requiresApproval?:boolean;requiresIdempotencyKey?:boolean;}
 export interface AutonomousToolLifeState {
@@ -19,26 +20,27 @@ export class AutonomousResourceToolLifeController {
   private cooldownUntil=0;
   restore(raw?:Partial<AutonomousToolLifeState>|null){const d=defaultAutonomousResourceToolLife(),r=raw??{};this.state={...d,...r,recent:Array.isArray(r.recent)?structuredClone(r.recent).slice(0,64):[],version:1};}
   snapshot(){return structuredClone(this.state);}
-  plan(input:{tick:number;at:number;energy01:number;thermal01:number;ramPressure01:number;externalInteractionBudget01:number;initiative01:number;uncertainty01:number;goalPressure01:number;homeostaticPressure01:number;tools:AutonomousToolCandidate[]}):{allowed:boolean;tool:AutonomousToolCandidate|null;reason:string;cost01:number;stopPressure01:number} {
+  plan(input:{tick:number;at:number;energy01:number;thermal01:number;ramPressure01:number;externalInteractionBudget01:number;initiative01:number;uncertainty01:number;goalPressure01:number;homeostaticPressure01:number;tools:AutonomousToolCandidate[]}):{allowed:boolean;tool:AutonomousToolCandidate|null;reason:string;cost01:number;stopPressure01:number;consequenceCost01:number;consequenceClass:ActionConsequenceClass|null} {
     this.state.ticks++; this.state.lastAt=input.at; this.state.initiative01=clamp(input.initiative01);
     const scarcity=clamp((1-input.energy01)*.30+input.thermal01*.24+input.ramPressure01*.18+(1-input.externalInteractionBudget01)*.28);
     const stopPressure=clamp(scarcity*.42+input.homeostaticPressure01*.28+(input.energy01<.18?.18:0)+(input.thermal01>.86?.20:0));
     this.state.stopPressure01=stopPressure;
-    if(stopPressure>.82){this.state.selfStops++;return {allowed:false,tool:null,reason:'self-stop-resource-or-homeostasis-pressure',cost01:0,stopPressure01:stopPressure};}
-    if(input.at<this.cooldownUntil){this.state.cooldownBlocks++;return {allowed:false,tool:null,reason:'tool-cooldown',cost01:0,stopPressure01:stopPressure};}
-    if(input.externalInteractionBudget01<.34 || input.energy01<.22){this.state.budgetBlocked++;return {allowed:false,tool:null,reason:'resource-budget-block',cost01:0,stopPressure01:stopPressure};}
+    if(stopPressure>.82){this.state.selfStops++;return {allowed:false,tool:null,reason:'self-stop-resource-or-homeostasis-pressure',cost01:0,stopPressure01:stopPressure,consequenceCost01:0,consequenceClass:null};}
+    if(input.at<this.cooldownUntil){this.state.cooldownBlocks++;return {allowed:false,tool:null,reason:'tool-cooldown',cost01:0,stopPressure01:stopPressure,consequenceCost01:0,consequenceClass:null};}
+    if(input.externalInteractionBudget01<.34 || input.energy01<.22){this.state.budgetBlocked++;return {allowed:false,tool:null,reason:'resource-budget-block',cost01:0,stopPressure01:stopPressure,consequenceCost01:0,consequenceClass:null};}
     const nonDestructive=input.tools.filter(t=>!t.destructive);
     // Autonomy may choose and propose a protected operation, but it must not launch
     // one that requires owner consent as though a background planner had consented.
     // The registered ActionGateway permission class is the source of this signal.
-    const safe=nonDestructive.filter(t=>t.requiresApproval!==true);
+    const safe=nonDestructive.filter(t=>t.requiresApproval!==true && assessActionConsequence(t).autonomousAllowed);
     if(!safe.length){
-      if(nonDestructive.length){this.state.permissionBlocked++;return {allowed:false,tool:null,reason:'no-autonomous-permitted-tool',cost01:0,stopPressure01:stopPressure};}
-      this.state.blockedDestructive++;return {allowed:false,tool:null,reason:'no-safe-nondestructive-tool',cost01:0,stopPressure01:stopPressure};
+      if(nonDestructive.length){this.state.permissionBlocked++;return {allowed:false,tool:null,reason:'no-low-consequence-autonomous-tool',cost01:0,stopPressure01:stopPressure,consequenceCost01:0,consequenceClass:null};}
+      this.state.blockedDestructive++;return {allowed:false,tool:null,reason:'no-safe-nondestructive-tool',cost01:0,stopPressure01:stopPressure,consequenceCost01:0,consequenceClass:null};
     }
     const scored=safe.map(t=>{
       const c=String(t.capability||'');
-      let score=.15;
+      const consequence=assessActionConsequence(t);
+      let score=.15-consequence.cost01*.5;
       if(/read|inspect|status|evidence|research|context/.test(c)) score+=.34;
       if(t.id==='organism.inspect') score+=.45;
       if(t.id==='organism.device.status') score+=.16;
@@ -47,13 +49,14 @@ export class AutonomousResourceToolLifeController {
       if(input.goalPressure01>.62 && /project|context|evidence/.test(c)) score+=.10;
       if(input.initiative01>.58) score+=.06;
       if(/device\./.test(t.id)) score+=.02;
-      return {t,score};
+      return {t,score,consequence};
     }).sort((a,b)=>b.score-a.score);
-    const chosen=scored[0]?.t??null; if(!chosen)return {allowed:false,tool:null,reason:'no-ranked-tool',cost01:0,stopPressure01:stopPressure};
+    const selected=scored[0]??null; const chosen=selected?.t??null;
+    if(!chosen)return {allowed:false,tool:null,reason:'no-ranked-tool',cost01:0,stopPressure01:stopPressure,consequenceCost01:0,consequenceClass:null};
     const cost=clamp(.10+scarcity*.16+(input.uncertainty01>.7?.06:0));
-    if(input.externalInteractionBudget01<cost+.28){this.state.budgetBlocked++;return {allowed:false,tool:null,reason:'insufficient-tool-envelope',cost01:cost,stopPressure01:stopPressure};}
+    if(input.externalInteractionBudget01<cost+.28){this.state.budgetBlocked++;return {allowed:false,tool:null,reason:'insufficient-tool-envelope',cost01:cost,stopPressure01:stopPressure,consequenceCost01:selected?.consequence.cost01??0,consequenceClass:selected?.consequence.classification??null};}
     this.state.toolPlans++;
-    return {allowed:true,tool:chosen,reason:`autonomous-capability-selection;scarcity=${scarcity.toFixed(3)}`,cost01:cost,stopPressure01:stopPressure};
+    return {allowed:true,tool:chosen,reason:`autonomous-capability-selection;scarcity=${scarcity.toFixed(3)};consequence=${selected!.consequence.classification}`,cost01:cost,stopPressure01:stopPressure,consequenceCost01:selected!.consequence.cost01,consequenceClass:selected!.consequence.classification};
   }
   record(input:{tick:number;at:number;tool:AutonomousToolCandidate;ok:boolean;verified:boolean;cost01:number;reason:string;executionId?:string}):boolean{
     const executionId=String(input.executionId??'').trim().slice(0,180);
