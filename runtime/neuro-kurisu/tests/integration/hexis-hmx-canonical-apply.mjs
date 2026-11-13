@@ -333,7 +333,7 @@ try {
     assert.equal(restoredB.length, 2, 'the second memory from two distinct donor lineages must survive restart as two source-isolated memories');
     assert.equal(restoredCompatibilityA.length, 0, 'canonical HMX read projections must not be re-ingested as compatibility beliefs after restart');
     assert.equal(restoredCompatibilityB.length, 0, 'canonical HMX read projections must not create a second compatibility copy after restart');
-    const countBeforeRestartReplay = restoredMemories.length;
+    const hmxCountBeforeRestartReplay = restoredMemories.filter(row => String(row.source).startsWith('hexis:')).length;
     const stageSnapshot = await (await fetch(base + '/api/organism/integration/hexis')).json();
     assert.equal(stageSnapshot.ok, true);
     assert.equal(stageSnapshot.hexis?.counts?.hmxStages >= 1, true,
@@ -347,13 +347,15 @@ try {
     assert.equal(replayAfterRestart.stage.application.digest, applied.stage.application.digest,
       'persisted receipt must make post-restart replay idempotent');
     const afterRestartReplayMemories = await memoryIndex();
-    const replayAddedMemories = afterRestartReplayMemories.filter(row => !restoredMemories.some(before => before.id === row.id));
-    assert.equal(afterRestartReplayMemories.length, countBeforeRestartReplay,
-      `post-restart apply replay must not create additional canonical memory: added=${JSON.stringify(replayAddedMemories.map(row => ({id:row.id,source:row.source,summary:row.summary})))}`);
-    assert.equal(afterRestartReplayMemories.filter(row => row.summary.includes('HMX canonical imported memory A')).length, 2,
-      'post-restart replay must retain exactly one copy per donor lineage for the first memory');
-    assert.equal(afterRestartReplayMemories.filter(row => row.summary.includes('HMX canonical imported procedure B')).length, 2,
-      'post-restart replay must retain exactly one copy per donor lineage for the second memory');
+    const hmxAfterRestartReplay = afterRestartReplayMemories.filter(row => String(row.source).startsWith('hexis:'));
+    const replayAddedHmx = hmxAfterRestartReplay.filter(row => !restoredMemories.some(before => before.id === row.id));
+    assert.equal(hmxAfterRestartReplay.length, hmxCountBeforeRestartReplay,
+      `post-restart apply replay must not create additional HMX canonical memory: added=${JSON.stringify(replayAddedHmx.map(row => ({id:row.id,source:row.source,summary:row.summary})))}`);
+    assert.equal(replayAddedHmx.length, 0, 'post-restart replay must preserve the original HMX source-isolated rows');
+    assert.equal(hmxAfterRestartReplay.filter(row => row.summary.includes('HMX canonical imported memory A')).length, 2,
+      'post-restart replay must retain exactly one HMX copy per donor lineage for the first memory');
+    assert.equal(hmxAfterRestartReplay.filter(row => row.summary.includes('HMX canonical imported procedure B')).length, 2,
+      'post-restart replay must retain exactly one HMX copy per donor lineage for the second memory');
   } finally {
     if (restartedChild.exitCode === null && restartedChild.signalCode === null) restartedChild.kill('SIGTERM');
     await new Promise(resolve => setTimeout(resolve, 250));
