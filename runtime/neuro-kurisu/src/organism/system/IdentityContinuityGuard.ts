@@ -1,5 +1,11 @@
 /** BIG PASS 228 — identity continuity and autonomous boundary guard. */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finiteOr=(value:unknown,fallback:number):number=>{
+  const numeric=typeof value==='number'?value:typeof value==='string'&&value.trim().length?Number(value):NaN;
+  return Number.isFinite(numeric)?numeric:(Number.isFinite(fallback)?fallback:0);
+};
+const countOr=(value:unknown,fallback:number):number=>Math.max(0,Math.floor(finiteOr(value,fallback)));
+const textOr=(value:unknown,fallback:string):string=>typeof value==='string'&&value.trim().length?value.trim().slice(0,240):fallback;
 export interface IdentityContinuityState{
   version:1; checks:number; stable:number; rejected:number; revisionWindows:number;
   meanContinuity01:number; meanBoundarySafety01:number; lastReason:string; lastAt:number;
@@ -10,7 +16,29 @@ export const defaultIdentityContinuityGuard=():IdentityContinuityState=>({
 });
 export class IdentityContinuityGuard {
   private state=defaultIdentityContinuityGuard();
-  restore(raw?:Partial<IdentityContinuityState>|null){this.state={...defaultIdentityContinuityGuard(),...(raw??{}),version:1};}
+  /**
+   * Restore from a persisted snapshot without trusting it. A bare merge would let
+   * NaN/Infinity into `meanContinuity01` and permanently poison the continuity EMA
+   * (NaN survives `NaN*.93+stability*.07`), let negative counts corrupt the summary,
+   * and let a hostile accessor on the snapshot throw. Each field is sanitized from
+   * an own-data read and falls back to the default when invalid.
+   */
+  restore(raw?:Partial<IdentityContinuityState>|null){
+    const d=defaultIdentityContinuityGuard();
+    const source=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};
+    const read=(key:string):unknown=>{try{return (source as Record<string,unknown>)[key];}catch{return undefined;}};
+    this.state={
+      version:1,
+      checks:countOr(read('checks'),d.checks),
+      stable:countOr(read('stable'),d.stable),
+      rejected:countOr(read('rejected'),d.rejected),
+      revisionWindows:countOr(read('revisionWindows'),d.revisionWindows),
+      meanContinuity01:clamp(finiteOr(read('meanContinuity01'),d.meanContinuity01)),
+      meanBoundarySafety01:clamp(finiteOr(read('meanBoundarySafety01'),d.meanBoundarySafety01)),
+      lastReason:textOr(read('lastReason'),d.lastReason),
+      lastAt:Math.max(0,finiteOr(read('lastAt'),d.lastAt)),
+    };
+  }
   snapshot(){return structuredClone(this.state);}
   evaluate(input:{
     at:number;identity01:number;valueStability01:number;narrative01:number;projectContinuity01:number;

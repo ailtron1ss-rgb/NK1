@@ -9,6 +9,12 @@
 import type { ActionKind, OrganismGoal, OrganismNeeds, OrganismState } from '../core/types.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,cap=240):string=>typeof v==='string'?v.slice(0,cap):'';
+const sanTraj=(x:unknown):P52TrajectorySample|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const gid=r.goalId;return {tick:cnt(r.tick,0),action:ACTIONS.includes(r.action as ActionKind)?r.action as ActionKind:'wait',predictedUtility01:clamp(finN(r.predictedUtility01,0)),actualUtility01:clamp(finN(r.actualUtility01,0)),predictionError01:clamp(finN(r.predictionError01,0)),selfPredictionError01:clamp(finN(r.selfPredictionError01,0)),goalId:typeof gid==='string'&&gid?gid.slice(0,160):undefined,at:cnt(r.at,0)};};
+const sanCf=(x:unknown):P52CounterfactualHypothesis|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const oc=r.observedChosen01;return {id:r.id.slice(0,160),tick:cnt(r.tick,0),chosen:ACTIONS.includes(r.chosen as ActionKind)?r.chosen as ActionKind:'wait',alternative:ACTIONS.includes(r.alternative as ActionKind)?r.alternative as ActionKind:'wait',predictedChosen01:clamp(finN(r.predictedChosen01,0)),predictedAlternative01:clamp(finN(r.predictedAlternative01,0)),observedChosen01:oc===null||oc===undefined?null:clamp(finN(oc,0)),confidence01:clamp(finN(r.confidence01,0)),unresolved:r.unresolved===true,at:cnt(r.at,0)};};
 
 export interface P52TrajectorySample {
   tick:number;
@@ -66,11 +72,10 @@ function utilityFromOutcome(success:number,reward:number,surprise:number){
 export class P52CounterfactualDevelopmentMind {
   private state=defaultP52();
   restore(raw?:Partial<P52DevelopmentalState>|null){
-    const d=defaultP52(), r=raw??{};
-    this.state={...d,...r,
-      trajectory:Array.isArray(r.trajectory)?r.trajectory.slice(-160):[],
-      counterfactuals:Array.isArray(r.counterfactuals)?r.counterfactuals.slice(-128):[]
-    };
+    const d=defaultP52();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const la=read('lastAction');
+    const trajectory=Array.isArray(read('trajectory'))?(read('trajectory') as unknown[]).slice(-160).map(sanTraj).filter((x):x is P52TrajectorySample=>x!==null):[];
+    const counterfactuals=Array.isArray(read('counterfactuals'))?(read('counterfactuals') as unknown[]).slice(-128).map(sanCf).filter((x):x is P52CounterfactualHypothesis=>x!==null):[];
+    this.state={version:1,samples:cnt(read('samples'),d.samples),resolvedCounterfactuals:cnt(read('resolvedCounterfactuals'),d.resolvedCounterfactuals),openCounterfactuals:cnt(read('openCounterfactuals'),d.openCounterfactuals),causalAttribution01:clamp(finN(read('causalAttribution01'),d.causalAttribution01)),counterfactualCalibration01:clamp(finN(read('counterfactualCalibration01'),d.counterfactualCalibration01)),selfPredictionCalibration01:clamp(finN(read('selfPredictionCalibration01'),d.selfPredictionCalibration01)),developmentalReadiness01:clamp(finN(read('developmentalReadiness01'),d.developmentalReadiness01)),modelRevisionPressure01:clamp(finN(read('modelRevisionPressure01'),d.modelRevisionPressure01)),trajectoryError01:clamp(finN(read('trajectoryError01'),d.trajectoryError01)),lastAction:(typeof la==='string'&&(la==='none'||ACTIONS.includes(la as ActionKind)))?la as ActionKind|'none':'none',lastGoalId:str(read('lastGoalId'),160),lastQuestion:str(read('lastQuestion'),400),trajectory,counterfactuals};
     this.state.openCounterfactuals=this.state.counterfactuals.filter(x=>x.unresolved).length;
   }
   snapshot(){return structuredClone(this.state);}

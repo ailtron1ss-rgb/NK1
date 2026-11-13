@@ -1,9 +1,11 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
 export interface DualTimescaleMemoryState{version:1;cycles:number;fast01:number;slow01:number;transfer01:number;stability01:number;interference01:number;consolidations:number;}
 export const defaultDualTimescaleMemory=():DualTimescaleMemoryState=>({version:1,cycles:0,fast01:.4,slow01:.4,transfer01:0,stability01:.6,interference01:.2,consolidations:0});
 export class DualTimescaleMemoryBridge{
  private state=defaultDualTimescaleMemory();
- restore(raw?:Partial<DualTimescaleMemoryState>|null){const d=defaultDualTimescaleMemory(),r=raw??{};this.state={...d,...r,version:1};}
+ restore(raw?:Partial<DualTimescaleMemoryState>|null){const d=defaultDualTimescaleMemory();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};this.state={version:1,cycles:cnt(read('cycles'),d.cycles),fast01:clamp(finN(read('fast01'),d.fast01)),slow01:clamp(finN(read('slow01'),d.slow01)),transfer01:clamp(finN(read('transfer01'),d.transfer01)),stability01:clamp(finN(read('stability01'),d.stability01)),interference01:clamp(finN(read('interference01'),d.interference01)),consolidations:cnt(read('consolidations'),d.consolidations)};}
  snapshot(){return structuredClone(this.state);}
  update(input:{novelty01:number;predictionError01:number;repeat01:number;reliability01:number;energy01:number}){
   const s=this.state,n=clamp(input.novelty01),e=clamp(input.predictionError01),r=clamp(input.repeat01),q=clamp(input.reliability01),energy=clamp(input.energy01);

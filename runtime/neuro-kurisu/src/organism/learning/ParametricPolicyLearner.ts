@@ -2,6 +2,8 @@ import type { ActionKind, OrganismState } from '../core/types.ts';
 import { actionCost } from '../core/ActionCostPolicy.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
+const num01=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)&&n>=0&&n<=1?n:f;};
+const numNN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)&&n>=0?n:f;};
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const tanh=(x:number)=>Math.tanh(Number.isFinite(x)?x:0);
 const now=()=>Date.now();
@@ -118,28 +120,33 @@ export class ParametricPolicyLearner{
 
   restore(raw?:Partial<ParametricPolicyState>|null){
     const d=defaultParametricPolicy();
-    const savedNames=Array.isArray(raw?.featureNames)?raw!.featureNames:[];
-    this.state={...d,...(raw??{}),featureNames:[...featureNames],weights:{...d.weights,...(raw?.weights??{})},bias:{...d.bias,...(raw?.bias??{})}};
-    this.state.version=1;
-    this.state.updates=typeof raw?.updates==='number'&&Number.isSafeInteger(raw.updates)&&raw.updates>=0?raw.updates:d.updates;
-    this.state.tdAbsMean01=typeof raw?.tdAbsMean01==='number'&&Number.isFinite(raw.tdAbsMean01)&&raw.tdAbsMean01>=0&&raw.tdAbsMean01<=1?raw.tdAbsMean01:d.tdAbsMean01;
-    this.state.trainRewardMean01=typeof raw?.trainRewardMean01==='number'&&Number.isFinite(raw.trainRewardMean01)&&raw.trainRewardMean01>=0&&raw.trainRewardMean01<=1?raw.trainRewardMean01:d.trainRewardMean01;
-    this.state.explorationRate01=typeof raw?.explorationRate01==='number'&&Number.isFinite(raw.explorationRate01)&&raw.explorationRate01>=0&&raw.explorationRate01<=1?raw.explorationRate01:d.explorationRate01;
-    this.state.lastLoss01=typeof raw?.lastLoss01==='number'&&Number.isFinite(raw.lastLoss01)&&raw.lastLoss01>=0&&raw.lastLoss01<=1?raw.lastLoss01:d.lastLoss01;
-    this.state.lastTrainedAt=typeof raw?.lastTrainedAt==='number'&&Number.isFinite(raw.lastTrainedAt)&&raw.lastTrainedAt>=0?raw.lastTrainedAt:d.lastTrainedAt;
-    this.state.frozen=raw?.frozen===true;
+    const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};
+    const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const savedNames=Array.isArray(read('featureNames'))?(read('featureNames') as unknown[]).filter((x):x is string=>typeof x==='string'):[];
+    const wRaw=read('weights');const wObj=(wRaw&&typeof wRaw==='object')?wRaw as Record<string,unknown>:{};
+    const bRaw=read('bias');const bObj=(bRaw&&typeof bRaw==='object')?bRaw as Record<string,unknown>:{};
+    const weights={} as Record<ActionKind,number[]>;
+    const bias={} as Record<ActionKind,number>;
     for(const a of ACTIONS){
-      const savedWeights=Array.isArray(raw?.weights?.[a])?raw!.weights![a]:[];
-      this.state.weights[a]=featureNames.map((name,index)=>{
+      const savedWeights=Array.isArray(wObj[a])?wObj[a] as unknown[]:[];
+      weights[a]=featureNames.map((name,index)=>{
         // Migrate older snapshots by semantic name: actionCost remains actionCost,
         // never silently becoming an interaction weight when the feature set grows.
         const oldIndex=savedNames.length?savedNames.indexOf(name):(name==='actionCost'?14:index<14?index:-1);
         const value=oldIndex>=0?Number(savedWeights[oldIndex]??0):0;
         return Math.max(-4,Math.min(4,Number.isFinite(value)?value:0));
       });
-      const bias=Number(this.state.bias[a]??0);
-      this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
+      const b=Number(bObj[a]??0);
+      bias[a]=Number.isFinite(b)?Math.max(-4,Math.min(4,b)):0;
     }
+    this.state={version:1,featureNames:[...featureNames],weights,bias,
+      updates:typeof read('updates')==='number'&&Number.isSafeInteger(read('updates'))&&(read('updates') as number)>=0?read('updates') as number:d.updates,
+      tdAbsMean01:num01(read('tdAbsMean01'),d.tdAbsMean01),
+      trainRewardMean01:num01(read('trainRewardMean01'),d.trainRewardMean01),
+      explorationRate01:num01(read('explorationRate01'),d.explorationRate01),
+      lastLoss01:num01(read('lastLoss01'),d.lastLoss01),
+      lastTrainedAt:numNN(read('lastTrainedAt'),d.lastTrainedAt),
+      frozen:read('frozen')===true};
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}

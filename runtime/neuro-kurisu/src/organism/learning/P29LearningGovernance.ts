@@ -2,6 +2,7 @@ import type { ActionKind } from '../core/types.ts';
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const clampSigned=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
+const fin=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:typeof v==='string'&&v.trim().length?Number(v):NaN;return Number.isFinite(n)?n:(Number.isFinite(f)?f:0);};
 const now=()=>Date.now();
 
 export interface LearningContribution {
@@ -58,7 +59,34 @@ export class P29LearningGovernanceEngine {
 
   restore(raw?:Partial<LearningGovernanceState>|null){
     const d=defaultP29Governance();
-    this.state={...d,...(raw??{}),resourceBudget:{...d.resourceBudget,...(raw?.resourceBudget??{})},rollback:{...d.rollback,...(raw?.rollback??{})},lastByAction:{...d.lastByAction,...(raw?.lastByAction??{})},continual:{...d.continual,...(raw?.continual??{}),tasks:{...d.continual.tasks,...(raw?.continual?.tasks??{})}},trustBySource:{...d.trustBySource,...(raw?.trustBySource??{})},sourceSuccess:{...d.sourceSuccess,...(raw?.sourceSuccess??{})},provenance:Array.isArray(raw?.provenance)?raw!.provenance.slice(-256):[]};
+    const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};
+    const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const obj=(v:unknown):Record<string,unknown>=>(v&&typeof v==='object')?v as Record<string,unknown>:{};
+    const budget=obj(read('resourceBudget'));
+    const rollback=obj(read('rollback'));
+    const continual=obj(read('continual'));
+    const trustBySource:Record<string,number>={};
+    for(const [k,v] of Object.entries(obj(read('trustBySource'))))trustBySource[k.slice(0,64)]=clamp01(fin(v,.5));
+    const sourceSuccess:LearningGovernanceState['sourceSuccess']={};
+    for(const [k,v] of Object.entries(obj(read('sourceSuccess')))){const e=obj(v);sourceSuccess[k.slice(0,64)]={samples:Math.max(0,Math.floor(fin(e.samples,0))),meanReward01:clamp01(fin(e.meanReward01,.5)),meanDelta01:fin(e.meanDelta01,0)};}
+    const tasks:LearningGovernanceState['continual']['tasks']={};
+    for(const [k,v] of Object.entries(obj(continual.tasks))){const e=obj(v);tasks[k.slice(0,64)]={samples:Math.max(0,Math.floor(fin(e.samples,0))),best01:clamp01(fin(e.best01,.5)),last01:clamp01(fin(e.last01,.5)),at:Math.max(0,fin(e.at,0))};}
+    this.state={
+      version:1,
+      cycles:Math.max(0,Math.floor(fin(read('cycles'),d.cycles))),
+      acceptedUpdates:Math.max(0,Math.floor(fin(read('acceptedUpdates'),d.acceptedUpdates))),
+      rejectedUpdates:Math.max(0,Math.floor(fin(read('rejectedUpdates'),d.rejectedUpdates))),
+      conflictEvents:Math.max(0,Math.floor(fin(read('conflictEvents'),d.conflictEvents))),
+      trustBySource:{...d.trustBySource,...trustBySource},
+      sourceSuccess,
+      resourceBudget:{limit01:clamp01(fin(budget.limit01,d.resourceBudget.limit01)),spent01:clamp01(fin(budget.spent01,d.resourceBudget.spent01)),lastCost01:clamp01(fin(budget.lastCost01,d.resourceBudget.lastCost01)),lastAt:Math.max(0,fin(budget.lastAt,d.resourceBudget.lastAt))},
+      lastArbitration:(read('lastArbitration')&&typeof read('lastArbitration')==='object')?read('lastArbitration') as LearningGovernanceState['lastArbitration']:null,
+      lastByAction:(read('lastByAction')&&typeof read('lastByAction')==='object')?read('lastByAction') as LearningGovernanceState['lastByAction']:{},
+      lastAction:(read('lastAction')??null) as LearningGovernanceState['lastAction'],
+      provenance:Array.isArray(read('provenance'))?(read('provenance') as unknown[]).filter((p):p is LearningGovernanceState['provenance'][number]=>Boolean(p&&typeof p==='object'&&typeof (p as Record<string,unknown>).id==='string')).slice(-256):[],
+      continual:{tasks,forgetting01:clamp01(fin(continual.forgetting01,d.continual.forgetting01)),retention01:clamp01(fin(continual.retention01,d.continual.retention01)),lastTask:typeof continual.lastTask==='string'?continual.lastTask.slice(0,120):null},
+      rollback:{generation:Math.max(0,Math.floor(fin(rollback.generation,d.rollback.generation))),available:Boolean(rollback.available),capturedAt:Math.max(0,fin(rollback.capturedAt,0)),previousCapturedAt:Math.max(0,fin(rollback.previousCapturedAt,0)),lastReason:typeof rollback.lastReason==='string'?rollback.lastReason.slice(0,160):''},
+    };
   }
 
   snapshot():LearningGovernanceState{return structuredClone(this.state);}

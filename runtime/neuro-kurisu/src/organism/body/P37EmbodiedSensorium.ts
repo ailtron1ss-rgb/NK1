@@ -2,6 +2,22 @@ import { createHash } from 'node:crypto';
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 const now = () => Date.now();
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const MODALITIES:readonly P37Modality[]=['text','vision','audio','sensor','world'];
+const KINDS:readonly P37SemanticKind[]=['person','object','place','event','concept','body','unknown'];
+const mod=(v:unknown):P37Modality=>MODALITIES.includes(v as P37Modality)?v as P37Modality:'world';
+const kind=(v:unknown):P37SemanticKind=>KINDS.includes(v as P37SemanticKind)?v as P37SemanticKind:'unknown';
+const s=(v:unknown,cap=200):string=>typeof v==='string'?v.slice(0,cap):'';
+const modArr=(v:unknown,cap:number):P37Modality[]=>Array.isArray(v)?v.filter((x):x is P37Modality=>MODALITIES.includes(x as P37Modality)).slice(0,cap):[];
+const sanClaim=(x:unknown):P37ObservationClaim|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,180),modality:mod(r.modality),label:s(r.label),kind:kind(r.kind),confidence01:clamp(finN(r.confidence01,0)),salience01:clamp(finN(r.salience01,0)),at:Math.max(0,finN(r.at,0)),source:r.source==='derived'?'derived':'structured'};};
+const sanEntity=(x:unknown):P37EntityTrack|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const opt=(v:unknown):number|null=>v==null?null:finN(v,0);return {id:r.id.slice(0,180),label:s(r.label),kind:kind(r.kind),confidence01:clamp(finN(r.confidence01,0)),salience01:clamp(finN(r.salience01,0)),firstSeenAt:Math.max(0,finN(r.firstSeenAt,0)),lastSeenAt:Math.max(0,finN(r.lastSeenAt,0)),seenCount:Math.max(1,cnt(r.seenCount,1)),present01:clamp(finN(r.present01,0)),x:opt(r.x),y:opt(r.y),z:opt(r.z),modalities:modArr(r.modalities,5),presenceStatus:['visible','fading','unknown'].includes(r.presenceStatus as string)?r.presenceStatus as P37EntityTrack['presenceStatus']:'unknown',persistence01:clamp(finN(r.persistence01,0)),absenceEvidence01:clamp(finN(r.absenceEvidence01,0))};};
+const sanEvent=(x:unknown):P37EventTrack|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,180),label:s(r.label),confidence01:clamp(finN(r.confidence01,0)),at:Math.max(0,finN(r.at,0)),persistence01:clamp(finN(r.persistence01,0)),sources:modArr(r.sources,5)};};
+const sanEdge=(x:unknown):P37SemanticWorldState['relationEdges'][number]|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.from!=='string'||!r.from||typeof r.to!=='string'||!r.to)return null;return {from:r.from.slice(0,180),relation:s(r.relation,64),to:r.to.slice(0,180),confidence01:clamp(finN(r.confidence01,0)),at:Math.max(0,finN(r.at,0))};};
+const sanActive=(x:unknown):P37ActivePerceptionRequest|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {modality:mod(r.modality),reason:s(r.reason,240),expectedInformationGain01:clamp(finN(r.expectedInformationGain01,0)),estimatedCost01:clamp(finN(r.estimatedCost01,0)),priority01:clamp(finN(r.priority01,0)),createdAt:Math.max(0,finN(r.createdAt,0))};};
+const sanSensors=(v:unknown,d:Record<P37Modality,P37SensorHealth>):Record<P37Modality,P37SensorHealth>=>{const out={...d};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const m of MODALITIES){const x=r[m];if(x&&typeof x==='object'){const e=x as Record<string,unknown>;out[m]={reliability01:clamp(finN(e.reliability01,d[m].reliability01)),freshness01:clamp(finN(e.freshness01,d[m].freshness01)),conflict01:clamp(finN(e.conflict01,d[m].conflict01)),samples:cnt(e.samples,d[m].samples)};}}return out;};
+const sanAffordance=(v:unknown,d:P37SemanticWorldState['affordance']):P37SemanticWorldState['affordance']=>{const out={...d};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const k of Object.keys(d) as (keyof typeof d)[])if(k in r)out[k]=clamp(finN(r[k],d[k]));return out;};
+const mapBounded=<T,>(v:unknown,cap:number,fn:(x:unknown)=>T|null):T[]=>{if(!Array.isArray(v))return [];const out:T[]=[];for(const x of v.slice(0,cap)){try{const r=fn(x);if(r!==null)out.push(r);}catch{/* drop malformed row */}}return out;};
 
 export type P37Modality = 'text'|'vision'|'audio'|'sensor'|'world';
 export type P37SemanticKind = 'person'|'object'|'place'|'event'|'concept'|'body'|'unknown';
@@ -108,19 +124,33 @@ export class P37EmbodiedSensoriumEngine {
 
   restore(raw?:P37SemanticWorldState|null){
     const d=defaultP37EmbodiedSensorium();
+    const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const sc=(read('scene')&&typeof read('scene')==='object')?read('scene') as Record<string,unknown>:{};
+    const ss=(read('spatialSelf')&&typeof read('spatialSelf')==='object')?read('spatialSelf') as Record<string,unknown>:{};
+    const bd=(read('body')&&typeof read('body')==='object')?read('body') as Record<string,unknown>:{};
     this.state={
-      ...d, ...(raw??{}),
-      claims:Array.isArray(raw?.claims)?raw!.claims.slice(-384):[],
-      entities:Array.isArray(raw?.entities)?raw!.entities.slice(-192).map((e:any)=>({
-        ...e, presenceStatus:['visible','fading','unknown'].includes(e?.presenceStatus)?e.presenceStatus:'unknown',
-        persistence01:clamp(Number(e?.persistence01??0)), absenceEvidence01:clamp(Number(e?.absenceEvidence01??0)),
-        seenCount:Math.max(1,Math.floor(Number(e?.seenCount??1))),
-      })):[],
-      events:Array.isArray(raw?.events)?raw!.events.slice(-128):[],
-      relationEdges:Array.isArray(raw?.relationEdges)?raw!.relationEdges.slice(-384):[],
-      activePerception:Array.isArray(raw?.activePerception)?raw!.activePerception.slice(-16):[],
-      scene:{...d.scene,...(raw?.scene??{})}, spatialSelf:{...d.spatialSelf,...(raw?.spatialSelf??{})},
-      body:{...d.body,...(raw?.body??{})}, sensors:{...d.sensors,...(raw?.sensors??{})}, affordance:{...d.affordance,...(raw?.affordance??{})},
+      version:1,
+      tick:cnt(read('tick'),d.tick),
+      scene:{label:typeof sc.label==='string'?sc.label.slice(0,200):d.scene.label,confidence01:clamp(finN(sc.confidence01,d.scene.confidence01)),stability01:clamp(finN(sc.stability01,d.scene.stability01)),at:Math.max(0,finN(sc.at,d.scene.at))},
+      claims:mapBounded(read('claims'),384,sanClaim),
+      entities:mapBounded(read('entities'),192,sanEntity),
+      events:mapBounded(read('events'),128,sanEvent),
+      relationEdges:mapBounded(read('relationEdges'),384,sanEdge),
+      spatialSelf:{location:typeof ss.location==='string'?ss.location.slice(0,200):d.spatialSelf.location,x:finN(ss.x,d.spatialSelf.x),y:finN(ss.y,d.spatialSelf.y),z:finN(ss.z,d.spatialSelf.z),orientationDeg:finN(ss.orientationDeg,d.spatialSelf.orientationDeg),confidence01:clamp(finN(ss.confidence01,d.spatialSelf.confidence01)),at:Math.max(0,finN(ss.at,d.spatialSelf.at))},
+      body:{energy01:clamp(finN(bd.energy01,d.body.energy01)),thermal01:clamp(finN(bd.thermal01,d.body.thermal01)),capacity01:clamp(finN(bd.capacity01,d.body.capacity01)),awake:bd.awake===true,motion01:clamp(finN(bd.motion01,d.body.motion01)),sensoryFreshness01:clamp(finN(bd.sensoryFreshness01,d.body.sensoryFreshness01)),at:Math.max(0,finN(bd.at,d.body.at))},
+      sensors:sanSensors(read('sensors'),d.sensors),
+      activePerception:mapBounded(read('activePerception'),16,sanActive),
+      affordance:sanAffordance(read('affordance'),d.affordance),
+      semanticMemoryBudget01:clamp(finN(read('semanticMemoryBudget01'),d.semanticMemoryBudget01)),
+      worldTransitionError01:clamp(finN(read('worldTransitionError01'),d.worldTransitionError01)),
+      crossModalAgreement01:clamp(finN(read('crossModalAgreement01'),d.crossModalAgreement01)),
+      objectPermanence01:clamp(finN(read('objectPermanence01'),d.objectPermanence01)),
+      selfLocationConfidence01:clamp(finN(read('selfLocationConfidence01'),d.selfLocationConfidence01)),
+      bodyWorldCoherence01:clamp(finN(read('bodyWorldCoherence01'),d.bodyWorldCoherence01)),
+      episodeKey:typeof read('episodeKey')==='string'?String(read('episodeKey')).slice(0,200):d.episodeKey,
+      episodeBoundary01:clamp(finN(read('episodeBoundary01'),d.episodeBoundary01)),
+      crossModalEntityBinding01:clamp(finN(read('crossModalEntityBinding01'),d.crossModalEntityBinding01)),
+      lastHash:typeof read('lastHash')==='string'?String(read('lastHash')).slice(0,128):'',
     };
   }
 

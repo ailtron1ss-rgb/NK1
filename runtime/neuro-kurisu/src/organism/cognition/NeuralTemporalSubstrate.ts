@@ -19,6 +19,9 @@ export interface NeuralTemporalSubstrateState {
   meanWeightAbs01:number;
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
 const matrix=(rows:number,cols:number,seed:number,scale:number)=>Array.from({length:rows},(_,r)=>Array.from({length:cols},(_,c)=>((prand(seed+r*97+c*31)*2)-1)*scale));
 export const defaultNeuralTemporalSubstrate=():NeuralTemporalSubstrateState=>{
   const neurons=32,inputDim=64,fanIn=6;
@@ -39,17 +42,19 @@ export const defaultNeuralTemporalSubstrate=():NeuralTemporalSubstrateState=>{
 export class NeuralTemporalSubstrate {
   private state=defaultNeuralTemporalSubstrate();
   restore(raw?:Partial<NeuralTemporalSubstrateState>|null){
-    const d=defaultNeuralTemporalSubstrate(),r:any=raw??{};
-    const arr=(v:any,n:number,f=0)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-v.length)).fill(f)).slice(0,n):new Array(n).fill(f);
-    const mat=(v:any,rows:number,cols:number,f=0)=>Array.isArray(v)?Array.from({length:rows},(_,i)=>arr(v[i],cols,f)):Array.from({length:rows},()=>new Array(cols).fill(f));
-    this.state={...d,...r,version:1,neurons:d.neurons,inputDim:d.inputDim,fanIn:d.fanIn,
-      membrane:arr(r.membrane,d.neurons),spikes:arr(r.spikes,d.neurons),thresholds:arr(r.thresholds,d.neurons,.30),adaptation:arr(r.adaptation,d.neurons),
-      recurrentTargets:mat(r.recurrentTargets,d.neurons,d.fanIn),recurrentWeights:mat(r.recurrentWeights,d.neurons,d.fanIn),inputWeights:mat(r.inputWeights,d.neurons,d.inputDim),
-      eligibility:mat(r.eligibility,d.neurons,d.fanIn),preTrace:arr(r.preTrace,d.neurons),postTrace:arr(r.postTrace,d.neurons),slowTrace:arr(r.slowTrace,d.neurons),
-      predictionReadout:arr(r.predictionReadout,d.neurons,.08),plasticity01:clamp(Number(r.plasticity01??d.plasticity01)),
-      stability01:clamp(Number(r.stability01??d.stability01)),sparsity01:clamp(Number(r.sparsity01??d.sparsity01)),
-      prediction01:clamp(Number(r.prediction01??d.prediction01)),predictionError01:clamp(Number(r.predictionError01??d.predictionError01))};
+    const d=defaultNeuralTemporalSubstrate();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const arr=(v:unknown,n:number,f=0):number[]=>Array.isArray(v)?Array.from({length:n},(_,i)=>finN((v as unknown[])[i],f)):new Array(n).fill(f);
+    const mat=(v:unknown,rows:number,cols:number,f=0):number[][]=>Array.isArray(v)?Array.from({length:rows},(_,i)=>arr((v as unknown[])[i],cols,f)):Array.from({length:rows},()=>new Array(cols).fill(f));
+    this.state={version:1,tick:cnt(read('tick'),d.tick),neurons:d.neurons,inputDim:d.inputDim,fanIn:d.fanIn,
+      membrane:arr(read('membrane'),d.neurons),spikes:arr(read('spikes'),d.neurons),thresholds:arr(read('thresholds'),d.neurons,.30),adaptation:arr(read('adaptation'),d.neurons),
+      recurrentTargets:mat(read('recurrentTargets'),d.neurons,d.fanIn),recurrentWeights:mat(read('recurrentWeights'),d.neurons,d.fanIn),inputWeights:mat(read('inputWeights'),d.neurons,d.inputDim),
+      eligibility:mat(read('eligibility'),d.neurons,d.fanIn),preTrace:arr(read('preTrace'),d.neurons),postTrace:arr(read('postTrace'),d.neurons),slowTrace:arr(read('slowTrace'),d.neurons),
+      predictionReadout:arr(read('predictionReadout'),d.neurons,.08),plasticity01:C01(read('plasticity01'),d.plasticity01),
+      stability01:C01(read('stability01'),d.stability01),sparsity01:C01(read('sparsity01'),d.sparsity01),
+      prediction01:C01(read('prediction01'),d.prediction01),predictionError01:C01(read('predictionError01'),d.predictionError01),
+      learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),spikeCount:cnt(read('spikeCount'),d.spikeCount),lastReward01:C01(read('lastReward01'),d.lastReward01),meanWeightAbs01:C01(read('meanWeightAbs01'),d.meanWeightAbs01)};
   }
+
   snapshot(){return structuredClone(this.state);}
   step(input:number[],tick:number){
     const s=this.state,n=s.neurons,prev=s.membrane.slice(),sp=new Array(n).fill(0); let active=0;

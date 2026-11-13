@@ -37,6 +37,9 @@ export interface DevelopmentalPortfolioState {
 }
 
 const domains:PortfolioDomain[]=['self','world','social','skills','research','embodiment'];
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const c01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
 export const defaultDevelopmentalPortfolio=():DevelopmentalPortfolioState=>({
   version:1,cycles:0,threads:domains.map(domain=>({domain,pressure01:.24,uncertainty01:.3,progress01:.2,stability01:.55,socialImportance01:.2,identityFit01:.45,novelty01:.2,evidence01:.3,resourceCost01:.35,opportunity01:.3,priority01:.24,observations:0,lastAt:0})),selectedDomain:'none',selectedGoalId:null,allocation01:.3,competition01:.18,coherence01:.42,historyDriven01:.2,socialDriven01:.2,embodimentDriven01:.15,lastReason:'initial',lastAt:0
 });
@@ -44,14 +47,15 @@ export const defaultDevelopmentalPortfolio=():DevelopmentalPortfolioState=>({
 export class DevelopmentalPortfolioEngine {
   private state=defaultDevelopmentalPortfolio();
   restore(raw?:Partial<DevelopmentalPortfolioState>|null){
-    const d=defaultDevelopmentalPortfolio(),r=raw??{};
-    const incoming=Array.isArray(r.threads)?r.threads:[];
-    const by=new Map(incoming.map((x:any)=>[x.domain,x]));
-    this.state={...d,...r,version:1,
-      threads:domains.map(domain=>{const x=by.get(domain)??{};return {...d.threads.find(t=>t.domain===domain)!,...x,domain,observations:Math.max(0,Number(x.observations??0)),priority01:clamp(Number(x.priority01??.24))};}),
-      selectedDomain:domains.includes(r.selectedDomain as PortfolioDomain)?r.selectedDomain as PortfolioDomain:'none'
-    };
+    const d=defaultDevelopmentalPortfolio();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const threadsRaw=read('threads');
+    const by=new Map<string,Record<string,unknown>>();
+    if(Array.isArray(threadsRaw))for(const x of threadsRaw as unknown[]){if(x&&typeof x==='object'){const dom=(x as Record<string,unknown>).domain;if(typeof dom==='string')by.set(dom,x as Record<string,unknown>);}}
+    const threads=domains.map(domain=>{const x=by.get(domain)??{};const base=d.threads.find(t=>t.domain===domain)!;return {domain,pressure01:c01(x.pressure01,base.pressure01),uncertainty01:c01(x.uncertainty01,base.uncertainty01),progress01:c01(x.progress01,base.progress01),stability01:c01(x.stability01,base.stability01),socialImportance01:c01(x.socialImportance01,base.socialImportance01),identityFit01:c01(x.identityFit01,base.identityFit01),novelty01:c01(x.novelty01,base.novelty01),evidence01:c01(x.evidence01,base.evidence01),resourceCost01:c01(x.resourceCost01,base.resourceCost01),opportunity01:c01(x.opportunity01,base.opportunity01),priority01:c01(x.priority01,base.priority01),observations:cnt(x.observations,base.observations),lastAt:cnt(x.lastAt,base.lastAt)};});
+    const sel=read('selectedDomain');
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),threads,selectedDomain:domains.includes(sel as PortfolioDomain)?sel as PortfolioDomain:'none',selectedGoalId:typeof read('selectedGoalId')==='string'&&(read('selectedGoalId') as string).length?(read('selectedGoalId') as string).slice(0,160):null,allocation01:c01(read('allocation01'),d.allocation01),competition01:c01(read('competition01'),d.competition01),coherence01:c01(read('coherence01'),d.coherence01),historyDriven01:c01(read('historyDriven01'),d.historyDriven01),socialDriven01:c01(read('socialDriven01'),d.socialDriven01),embodimentDriven01:c01(read('embodimentDriven01'),d.embodimentDriven01),lastReason:typeof read('lastReason')==='string'?(read('lastReason') as string).slice(0,240):d.lastReason,lastAt:cnt(read('lastAt'),d.lastAt)};
   }
+
   snapshot(){return structuredClone(this.state);}
   beginCycle(){
     this.state.cycles++;

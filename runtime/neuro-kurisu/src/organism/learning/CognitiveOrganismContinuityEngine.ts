@@ -3,6 +3,17 @@ import type { ActionKind, OrganismGoal, OrganismState } from '../core/types.ts';
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const mean=(xs:number[],fallback=.5)=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:fallback;
 const clean=(x:unknown,n=120)=>String(x??'').trim().replace(/\s+/g,' ').slice(0,n);
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const c01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const obj=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'?v as Record<string,unknown>:{};
+const rec=(objIn:unknown,keys:readonly string[],fallback:Record<string,number>)=>Object.fromEntries(keys.map(k=>[k,c01(obj(objIn)[k],fallback[k]??.5)]));
+const clampRecord=(objIn:unknown,keys:readonly string[],fallback:Record<string,number>={})=>Object.fromEntries(keys.map(k=>[k,c01(obj(objIn)[k],fallback[k]??.5)]));
+const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const HORIZONS:ContinuityHorizon[]=['immediate','near','long','identity'];
+const sanPath=(x:unknown):FuturePath|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const h=r.horizon;if(!HORIZONS.includes(h as ContinuityHorizon))return null;return {horizon:h as ContinuityHorizon,value01:c01(r.value01,0),risk01:c01(r.risk01,0),coherence01:c01(r.coherence01,0),agency01:c01(r.agency01,0),learning01:c01(r.learning01,0),social01:c01(r.social01,0),identity01:c01(r.identity01,0),counterfactualGap01:c01(r.counterfactualGap01,0)};};
+const sanProjection=(x:unknown):ContinuityProjection|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const a=r.action,h=r.horizon,p=r.phase;if(!ACTIONS.includes(a as ActionKind)||!HORIZONS.includes(h as ContinuityHorizon)||!phases.includes(p as ContinuityPhase))return null;return {phase:p as ContinuityPhase,action:a as ActionKind,horizon:h as ContinuityHorizon,score01:c01(r.score01,0),evidence01:c01(r.evidence01,0),confidence01:c01(r.confidence01,0),uncertainty01:c01(r.uncertainty01,0),rationale:clean(r.rationale,240)};};
+const sanOutcome=(x:unknown):ContinuityOutcome|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(!ACTIONS.includes(r.action as ActionKind))return null;return {action:r.action as ActionKind,predicted01:c01(r.predicted01,0),actual01:c01(r.actual01,0),surprise01:c01(r.surprise01,0),verified01:c01(r.verified01,0),causal01:c01(r.causal01,0),transfer01:c01(r.transfer01,0),identityImpact01:c01(r.identityImpact01,0),socialImpact01:c01(r.socialImpact01,0),learning01:c01(r.learning01,0),at:cnt(r.at,0)};};
 
 export type ContinuityHorizon='immediate'|'near'|'long'|'identity';
 export type ContinuityDomain='self'|'world'|'social'|'skills'|'research'|'embodiment';
@@ -223,16 +234,21 @@ export class CognitiveOrganismContinuityEngine {
   private state=defaultCognitiveOrganismContinuity();
 
   restore(raw?:Partial<CognitiveOrganismContinuityState>|null){
-    const d=defaultCognitiveOrganismContinuity(),r:any=raw??{};
-    const clampRecord=(obj:any,keys:string[],fallback:any={})=>Object.fromEntries(keys.map(k=>[k,clamp(Number(obj?.[k]??fallback[k]??.5))]));
-    this.state={...d,...r,version:1,
-      phaseIndex:Math.max(0,Math.min(phases.length-1,Math.floor(Number(r.phaseIndex??0)))),
-      activePhase:phases.includes(r.activePhase)?r.activePhase:phases[Math.max(0,Math.min(phases.length-1,Math.floor(Number(r.phaseIndex??0))))],
-      domains:{...d.domains,...clampRecord(r.domains,Object.keys(d.domains),d.domains)},
-      agency:{...d.agency,...r.agency,commitments:Math.max(0,Math.floor(Number(r.agency?.commitments??0))),unfinishedIntentions:Math.max(0,Math.floor(Number(r.agency?.unfinishedIntentions??0)))},
-      self:{...d.self,...r.self},relational:{...d.relational,...r.relational},learning:{...d.learning,...r.learning},motivation:{...d.motivation,...r.motivation},embodiment:{...d.embodiment,...r.embodiment},research:{...d.research,...r.research},
-      futurePaths:Array.isArray(r.futurePaths)?r.futurePaths.slice(-12):[], projections:Array.isArray(r.projections)?r.projections.slice(-64):[], outcomes:Array.isArray(r.outcomes)?r.outcomes.slice(-128):[], lastAblation:r.lastAblation&&typeof r.lastAblation==='object'?r.lastAblation:undefined
-    };
+    const d=defaultCognitiveOrganismContinuity();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const phaseIndex=Math.max(0,Math.min(phases.length-1,Math.floor(finN(read('phaseIndex'),0))));
+    const ap=read('activePhase');
+    const lastAblation=read('lastAblation');
+    const fpRaw=read('futurePaths'),prRaw=read('projections'),ocRaw=read('outcomes');
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),lastAt:cnt(read('lastAt'),d.lastAt),phaseIndex,phaseProgress01:c01(read('phaseProgress01'),d.phaseProgress01),activePhase:phases.includes(ap as ContinuityPhase)?ap as ContinuityPhase:phases[phaseIndex],domains:rec(read('domains'),Object.keys(d.domains),d.domains) as Record<ContinuityDomain,number>,
+      agency:{...d.agency,...clampRecord(read('agency'),Object.keys(d.agency)),commitments:cnt(obj(read('agency')).commitments,0),unfinishedIntentions:cnt(obj(read('agency')).unfinishedIntentions,0)},
+      self:clampRecord(read('self'),Object.keys(d.self)) as unknown as SelfState,
+      relational:clampRecord(read('relational'),Object.keys(d.relational)) as unknown as RelationalState,
+      learning:clampRecord(read('learning'),Object.keys(d.learning)) as unknown as LearningState,
+      motivation:clampRecord(read('motivation'),Object.keys(d.motivation)) as unknown as MotivationState,
+      embodiment:clampRecord(read('embodiment'),Object.keys(d.embodiment)) as unknown as EmbodimentState,
+      research:clampRecord(read('research'),Object.keys(d.research)) as unknown as ResearchState,
+      futurePaths:Array.isArray(fpRaw)?fpRaw.slice(-12).map(sanPath).filter((x):x is FuturePath=>x!==null):[], projections:Array.isArray(prRaw)?prRaw.slice(-64).map(sanProjection).filter((x):x is ContinuityProjection=>x!==null):[], outcomes:Array.isArray(ocRaw)?ocRaw.slice(-128).map(sanOutcome).filter((x):x is ContinuityOutcome=>x!==null):[], ...(lastAblation&&typeof lastAblation==='object'&&!Array.isArray(lastAblation)?{lastAblation:Object.fromEntries(Object.entries(lastAblation as Record<string,unknown>).slice(0,64).map(([k,v])=>[String(k).slice(0,80),c01(v,0)]))}:{}),
+      unresolvedConflicts:cnt(read('unresolvedConflicts'),d.unresolvedConflicts),worldModelUncertainty01:c01(read('worldModelUncertainty01'),d.worldModelUncertainty01),activePerceptionNeed01:c01(read('activePerceptionNeed01'),d.activePerceptionNeed01),interactionReadiness01:c01(read('interactionReadiness01'),d.interactionReadiness01),workspaceBroadcast01:c01(read('workspaceBroadcast01'),d.workspaceBroadcast01),simulationReadiness01:c01(read('simulationReadiness01'),d.simulationReadiness01),autonomousLife01:c01(read('autonomousLife01'),d.autonomousLife01),integratedCoherence01:c01(read('integratedCoherence01'),d.integratedCoherence01),longitudinalScore01:c01(read('longitudinalScore01'),d.longitudinalScore01),selfAuditScore01:c01(read('selfAuditScore01'),d.selfAuditScore01),recoveryReadiness01:c01(read('recoveryReadiness01'),d.recoveryReadiness01),architectureHealth01:c01(read('architectureHealth01'),d.architectureHealth01),verificationScore01:c01(read('verificationScore01'),d.verificationScore01),lastReason:(typeof read('lastReason')==='string'?clean(read('lastReason'),240):'')||d.lastReason};
   }
 
   snapshot(){return structuredClone(this.state);}

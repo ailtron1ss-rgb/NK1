@@ -67,6 +67,10 @@ export interface AdaptiveReplayPlan {
   diagnostics:{pressure01:number;energy01:number;memoryPressure01:number;mobile:boolean;halfLifeDays:number};
 }
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const LANES=['fast','medium','slow','none'] as const;
 const DEFAULT_WEIGHTS:Record<FeatureKey,number>={surprise:.22,decay:.20,transfer:.18,identity:.12,goal:.10,novelty:.08,stability:.10};
 const MIN_WEIGHTS:Record<FeatureKey,number>={surprise:.04,decay:.05,transfer:.05,identity:.06,goal:.05,novelty:.04,stability:.08};
 const NORMALIZE=(w:Record<FeatureKey,number>)=>{
@@ -96,11 +100,11 @@ export class AdaptiveReplayGovernor {
   private readonly decisionById=new Map<string,AdaptiveReplayDecision>();
 
   restore(raw?:Partial<AdaptiveReplayGovernorState>|null){
-    const d=defaultAdaptiveReplayGovernorState(),r=raw??{};
-    const weights=NORMALIZE({...d.policyWeights,...(r.policyWeights??{})});
-    this.state={...d,...r,version:1,policyWeights:weights,
-      laneCounts:{...d.laneCounts,...(r.laneCounts??{})},
-      recent:Array.isArray(r.recent)?r.recent.slice(-96).map(x=>this.cleanDecision(x)):[]};
+    const d=defaultAdaptiveReplayGovernorState();
+    const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const pw=read('policyWeights');const weights=NORMALIZE({...d.policyWeights,...((pw&&typeof pw==='object')?pw as Record<string,number>:{})});
+    const lcv=read('laneCounts');const lc=(lcv&&typeof lcv==='object')?lcv as Record<string,unknown>:{};
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),schedules:cnt(read('schedules'),d.schedules),selected:cnt(read('selected'),d.selected),suppressed:cnt(read('suppressed'),d.suppressed),cooldownSuppressed:cnt(read('cooldownSuppressed'),d.cooldownSuppressed),interferenceAvoided:cnt(read('interferenceAvoided'),d.interferenceAvoided),redundancyAvoided:cnt(read('redundancyAvoided'),d.redundancyAvoided),feedbackUpdates:cnt(read('feedbackUpdates'),d.feedbackUpdates),meanPriority01:C01(read('meanPriority01'),d.meanPriority01),meanLearningOpportunity01:C01(read('meanLearningOpportunity01'),d.meanLearningOpportunity01),meanInterferenceRisk01:C01(read('meanInterferenceRisk01'),d.meanInterferenceRisk01),policyWeights:weights,laneCounts:{fast:cnt(lc.fast,d.laneCounts.fast),medium:cnt(lc.medium,d.laneCounts.medium),slow:cnt(lc.slow,d.laneCounts.slow)},recent:Array.isArray(read('recent'))?(read('recent') as unknown[]).slice(-96).filter(x=>x&&typeof x==='object').map(x=>this.cleanDecision(x)):[],lastTick:cnt(read('lastTick'),d.lastTick),lastLane:(LANES as readonly string[]).includes(read('lastLane') as string)?read('lastLane') as 'fast'|'medium'|'slow'|'none':d.lastLane,lastBudget:cnt(read('lastBudget'),d.lastBudget)};
     this.rebuildDecisionIndex();
   }
 

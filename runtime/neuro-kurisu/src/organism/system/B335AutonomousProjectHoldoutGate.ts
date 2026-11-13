@@ -30,13 +30,20 @@ const distribution=(rows:B335ActionStat[])=>{
   const total=Math.max(1,rows.reduce((s,r)=>s+r.count,0));
   return new Map(rows.map(r=>[r.action,r.count/total] as const));
 };
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=180):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=180):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const numOrNull=(v:unknown):number|null=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:null;};
+const PHASES:B335Phase[]=['baseline','training','holdout','closed'];
+const sanStat=(x:unknown):B335ActionStat|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {action:str(r.action,'unknown'),count:cnt(r.count,0)};};
 export const defaultB335State=():B335State=>({version:1,phase:'baseline',cycles:0,baselineCycles:0,trainingCycles:0,holdoutCycles:0,projectObservations:0,trainingVerifiedOutcomes:0,holdoutVerifiedOutcomes:0,holdoutActionDivergence01:0,strategyRetention01:0,projectContinuity01:0,eligible:false,reason:'phase-not-complete',projectId:null,baselineActions:[],holdoutActions:[]});
 
 export class B335AutonomousProjectHoldoutGate {
   private state=defaultB335State();
   restore(raw?:Partial<B335State>|null){
-    const d=defaultB335State(),r=raw??{};
-    this.state={...d,...r,version:1,baselineActions:Array.isArray(r.baselineActions)?structuredClone(r.baselineActions).slice(0,32):[],holdoutActions:Array.isArray(r.holdoutActions)?structuredClone(r.holdoutActions).slice(0,32):[]};
+    const d=defaultB335State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const ba=read('baselineActions'),ha=read('holdoutActions');
+    this.state={version:1,phase:PHASES.includes(read('phase') as B335Phase)?read('phase') as B335Phase:d.phase,cycles:cnt(read('cycles'),d.cycles),baselineCycles:cnt(read('baselineCycles'),d.baselineCycles),trainingCycles:cnt(read('trainingCycles'),d.trainingCycles),holdoutCycles:cnt(read('holdoutCycles'),d.holdoutCycles),projectObservations:cnt(read('projectObservations'),d.projectObservations),trainingVerifiedOutcomes:cnt(read('trainingVerifiedOutcomes'),d.trainingVerifiedOutcomes),holdoutVerifiedOutcomes:cnt(read('holdoutVerifiedOutcomes'),d.holdoutVerifiedOutcomes),holdoutActionDivergence01:clamp(finN(read('holdoutActionDivergence01'),d.holdoutActionDivergence01)),strategyRetention01:clamp(finN(read('strategyRetention01'),d.strategyRetention01)),projectContinuity01:clamp(finN(read('projectContinuity01'),d.projectContinuity01)),eligible:read('eligible')===true,reason:str(read('reason'),d.reason),projectId:strOrNull(read('projectId')),baselineActions:Array.isArray(ba)?(ba as unknown[]).slice(0,32).map(sanStat).filter((x):x is B335ActionStat=>x!==null):[],holdoutActions:Array.isArray(ha)?(ha as unknown[]).slice(0,32).map(sanStat).filter((x):x is B335ActionStat=>x!==null):[]};
   }
   snapshot(){return structuredClone(this.state);}
   setPhase(phase:B335Phase){this.state.phase=phase;this.state.eligible=false;this.state.reason='phase-not-complete';}

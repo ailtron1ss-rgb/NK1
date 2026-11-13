@@ -2,10 +2,21 @@ import { createHash } from 'node:crypto';
 export interface MemoryCapsule{ id:string; startedAt:number; endedAt:number; eventCount:number; highlights:string[]; dominantActions:string[]; predictionError01:number; confidence01:number; sourceTraceIds:string[]; tier:'daily'|'weekly'|'monthly'; provenanceClasses:string[]; correctionCount:number; correctedTraceIds:string[]; correctionLinks:Array<{id:string;corrects:string}>; evidenceHashes:string[]; sourceDiversity01:number; }
 export interface TemporalMemoryCompressionState{version:3;inputEvents:number;capsulesCreated:number;rawCompactions:number;lastCompactionAt:number;hotWindowSize:number;capsules:MemoryCapsule[];}
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const fin=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:typeof v==='string'&&v.trim().length?Number(v):NaN;return Number.isFinite(n)?n:(Number.isFinite(f)?f:0);};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(fin(v,f)));
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string').map(x=>x.slice(0,320)).slice(-cap):[];
+const TIERS:readonly MemoryCapsule['tier'][]=['daily','weekly','monthly'];
+const sanitizeCapsule=(v:unknown):MemoryCapsule|null=>{
+  if(!v||typeof v!=='object')return null;
+  const r=v as Record<string,unknown>;
+  if(typeof r.id!=='string'||!r.id)return null;
+  const links=Array.isArray(r.correctionLinks)?r.correctionLinks.filter((l):l is Record<string,unknown>=>Boolean(l&&typeof l==='object'&&typeof (l as Record<string,unknown>).id==='string'&&typeof (l as Record<string,unknown>).corrects==='string')).map(l=>({id:(l.id as string).slice(0,80),corrects:(l.corrects as string).slice(0,80)})).slice(-32):[];
+  return {id:r.id.slice(0,80),startedAt:Math.max(0,fin(r.startedAt,0)),endedAt:Math.max(0,fin(r.endedAt,0)),eventCount:cnt(r.eventCount,0),highlights:strArr(r.highlights,8),dominantActions:strArr(r.dominantActions,8),predictionError01:c(fin(r.predictionError01,0)),confidence01:c(fin(r.confidence01,0)),sourceTraceIds:strArr(r.sourceTraceIds,32),tier:TIERS.includes(r.tier as MemoryCapsule['tier'])?r.tier as MemoryCapsule['tier']:'daily',provenanceClasses:strArr(r.provenanceClasses,8),correctionCount:cnt(r.correctionCount,0),correctedTraceIds:strArr(r.correctedTraceIds,32),correctionLinks:links,evidenceHashes:strArr(r.evidenceHashes,32),sourceDiversity01:c(fin(r.sourceDiversity01,0))};
+};
 export const defaultTemporalMemoryCompression=():TemporalMemoryCompressionState=>({version:3,inputEvents:0,capsulesCreated:0,rawCompactions:0,lastCompactionAt:0,hotWindowSize:160,capsules:[]});
 export class TemporalMemoryCompressor{
  private state=defaultTemporalMemoryCompression();
- restore(s:TemporalMemoryCompressionState|undefined){const d=defaultTemporalMemoryCompression();this.state={...d,...(s??{}),version:3,capsules:Array.isArray(s?.capsules)?s!.capsules.slice(0,180).map((x:any)=>({...x,provenanceClasses:Array.isArray(x?.provenanceClasses)?x.provenanceClasses.slice(0,8):[],correctionCount:Math.max(0,Number(x?.correctionCount??0)),correctedTraceIds:Array.isArray(x?.correctedTraceIds)?x.correctedTraceIds.slice(-32):[],correctionLinks:Array.isArray(x?.correctionLinks)?x.correctionLinks.slice(-32):[],evidenceHashes:Array.isArray(x?.evidenceHashes)?x.evidenceHashes.slice(-32):[],sourceDiversity01:c(Number(x?.sourceDiversity01??0))})):[]};}
+ restore(s:TemporalMemoryCompressionState|undefined){const d=defaultTemporalMemoryCompression();const src:Record<string,unknown>=(s&&typeof s==='object')?s as unknown as Record<string,unknown>:{};let capsules:MemoryCapsule[]=[];try{const raw=src.capsules;if(Array.isArray(raw))capsules=raw.map(sanitizeCapsule).filter((x):x is MemoryCapsule=>x!==null).slice(0,180);}catch{capsules=[];}this.state={version:3,inputEvents:cnt(src.inputEvents,d.inputEvents),capsulesCreated:cnt(src.capsulesCreated,d.capsulesCreated),rawCompactions:cnt(src.rawCompactions,d.rawCompactions),lastCompactionAt:Math.max(0,fin(src.lastCompactionAt,d.lastCompactionAt)),hotWindowSize:Math.max(1,Math.floor(fin(src.hotWindowSize,d.hotWindowSize))),capsules};}
  snapshot(){return structuredClone(this.state);}
  compress(events:Array<{at:number;action?:string;summary:string;predictionError?:number;id?:string;provenanceClass?:string;correctionOfId?:string|null;evidenceHash?:string;epistemicStatus?:string}>,tier:'daily'|'weekly'|'monthly'='daily'){
    const valid=events.filter(Boolean); if(!valid.length)return null; this.state.inputEvents+=valid.length;

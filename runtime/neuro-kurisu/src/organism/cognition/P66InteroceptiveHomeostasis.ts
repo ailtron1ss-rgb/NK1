@@ -13,10 +13,20 @@ export interface P66State {
   setpoints:{energy01:number;thermal01:number;capacity01:number;load01:number;awake01:number};
   history:Array<{at:number;tick:number;error01:number;stress01:number;mode:P66Mode;energy01:number;thermal01:number;capacity01:number}>;
 }
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const MODES:P66Mode[]=['recover','protect','balance','engage','explore'];
 export const defaultP66=():P66State=>({version:1,cycles:0,modeCounts:{recover:0,protect:0,balance:0,engage:0,explore:0},meanError01:.3,meanStress01:.25,meanCapacity01:.7,lastCapacity01:.7,lastError01:.3,lastStress01:.25,lastPressure01:.3,recoveryDebt01:.18,stableCycles:0,lastMode:'balance',lastAt:0,setpoints:{energy01:.68,thermal01:.25,capacity01:.72,load01:.38,awake01:1},history:[]});
 export class P66InteroceptiveHomeostasis {
  private state=defaultP66();
- restore(raw?:Partial<P66State>|null){const d=defaultP66(),r=raw??{};this.state={...d,...r,modeCounts:{...d.modeCounts,...(r.modeCounts??{})},setpoints:{...d.setpoints,...(r.setpoints??{})},history:Array.isArray(r.history)?r.history.slice(-128):[],lastPressure01:Number((r as any).lastPressure01??d.lastPressure01),recoveryDebt01:clamp(Number((r as any).recoveryDebt01??d.recoveryDebt01)),stableCycles:Math.max(0,Number((r as any).stableCycles??d.stableCycles))};}
+ restore(raw?:Partial<P66State>|null){const d=defaultP66();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+const mc=(read('modeCounts')&&typeof read('modeCounts')==='object')?read('modeCounts') as Record<string,unknown>:{};
+const sp=(read('setpoints')&&typeof read('setpoints')==='object')?read('setpoints') as Record<string,unknown>:{};
+const hRaw=read('history');
+this.state={version:1,cycles:cnt(read('cycles'),d.cycles),modeCounts:Object.fromEntries(MODES.map(m=>[m,cnt(mc[m],d.modeCounts[m])])) as Record<P66Mode,number>,meanError01:clamp(finN(read('meanError01'),d.meanError01)),meanStress01:clamp(finN(read('meanStress01'),d.meanStress01)),meanCapacity01:clamp(finN(read('meanCapacity01'),d.meanCapacity01)),lastCapacity01:clamp(finN(read('lastCapacity01'),d.lastCapacity01)),lastError01:clamp(finN(read('lastError01'),d.lastError01)),lastStress01:clamp(finN(read('lastStress01'),d.lastStress01)),lastPressure01:clamp(finN(read('lastPressure01'),d.lastPressure01)),recoveryDebt01:clamp(finN(read('recoveryDebt01'),d.recoveryDebt01)),stableCycles:cnt(read('stableCycles'),d.stableCycles),lastMode:MODES.includes(read('lastMode') as P66Mode)?read('lastMode') as P66Mode:d.lastMode,lastAt:finN(read('lastAt'),d.lastAt),
+setpoints:{energy01:clamp(finN(sp.energy01,d.setpoints.energy01)),thermal01:clamp(finN(sp.thermal01,d.setpoints.thermal01)),capacity01:clamp(finN(sp.capacity01,d.setpoints.capacity01)),load01:clamp(finN(sp.load01,d.setpoints.load01)),awake01:clamp(finN(sp.awake01,d.setpoints.awake01))},
+history:Array.isArray(hRaw)?(hRaw as unknown[]).slice(-128).filter(v=>v&&typeof v==='object').map(v=>{const r=v as Record<string,unknown>;return {at:finN(r.at,0),tick:cnt(r.tick,0),error01:clamp(finN(r.error01,0)),stress01:clamp(finN(r.stress01,0)),mode:MODES.includes(r.mode as P66Mode)?r.mode as P66Mode:d.lastMode,energy01:clamp(finN(r.energy01,0)),thermal01:clamp(finN(r.thermal01,0)),capacity01:clamp(finN(r.capacity01,0))};}):[]};
+}
  snapshot(){return structuredClone(this.state);}
  persistenceSnapshot(){
   return {...this.state,modeCounts:{...this.state.modeCounts},setpoints:{...this.state.setpoints},history:this.state.history.slice(0,64).map(row=>({...row}))};

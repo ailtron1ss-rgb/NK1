@@ -6,6 +6,13 @@ type StrategyKind = typeof STRATEGIES[number];
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
 const deep=<T>(x:T):T=>structuredClone(x);
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const vec=(v:unknown,n:number):number[]=>Array.isArray(v)?Array.from({length:n},(_,i)=>finN((v as unknown[])[i],0)):[];
+const actOrNull=(v:unknown):ActionKind|null=>ACTIONS.includes(v as ActionKind)?v as ActionKind:null;
+const sanRecord=(x:unknown):AutobiographicalMemoryRecord|null=>{if(!x||typeof x!=='object')return null;const m=x as Record<string,unknown>;const tick=cnt(m.tick,0);const id=typeof m.id==='string'&&m.id?m.id.slice(0,160):`memory:${tick}`;return {id,tick,context:vec(m.context,24),identityVector:vec(m.identityVector,24),goalPressure01:C01(m.goalPressure01,.5),identityGap01:C01(m.identityGap01,.5),novelty01:C01(m.novelty01,.2),uncertainty01:C01(m.uncertainty01,.3),reward01:C01(m.reward01,.5),predictionError01:C01(m.predictionError01,.5),verified01:C01(m.verified01,0),action:actOrNull(m.action),causalImportance01:C01(m.causalImportance01,.5),reliability01:C01(m.reliability01,.5),utility01:C01(m.utility01,.5),retrievals:cnt(m.retrievals,0),writes:Math.max(1,cnt(m.writes,1)),ageTicks:cnt(m.ageTicks,0),retention01:C01(m.retention01,.7),lastUsedTick:cnt(m.lastUsedTick,0),contradiction01:C01(m.contradiction01,0)};};
+
 const cosine01=(a:number[],b:number[])=>clamp((cosine(a,b)+1)*.5);
 const mean=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:.5;
 
@@ -103,16 +110,18 @@ export class SelfOptimizingAutobiographicalMemory{
 
   snapshot(){return deep(this.state);}
   restore(raw?:Partial<SelfOptimizingAutobiographicalMemoryState>|null){
-    const d=defaultState(),r:any=raw??{};
-    const counts=Array.isArray(r.armCounts)?r.armCounts.slice(0,STRATEGIES.length):d.armCounts;
-    const values=Array.isArray(r.armValues)?r.armValues.slice(0,STRATEGIES.length):d.armValues;
-    while(counts.length<STRATEGIES.length)counts.push(0); while(values.length<STRATEGIES.length)values.push(.5);
-    const memories=Array.isArray(r.memories)?r.memories.slice(-this.maxMemories):[];
-    this.state={...d,...deep(r),version:1,armCounts:counts.map((x:any)=>Math.max(0,Math.floor(Number(x)||0))),armValues:values.map((x:any)=>clamp(Number(x))),memories:memories.map((m:any)=>({
-      id:String(m.id??`memory:${Math.floor(Number(m.tick)||0)}`),tick:Math.max(0,Math.floor(Number(m.tick)||0)),context:Array.isArray(m.context)?m.context.slice(0,24):[],identityVector:Array.isArray(m.identityVector)?m.identityVector.slice(0,24):[],
-      goalPressure01:clamp(Number(m.goalPressure01??.5)),identityGap01:clamp(Number(m.identityGap01??.5)),novelty01:clamp(Number(m.novelty01??.2)),uncertainty01:clamp(Number(m.uncertainty01??.3)),reward01:clamp(Number(m.reward01??.5)),predictionError01:clamp(Number(m.predictionError01??.5)),verified01:clamp(Number(m.verified01??0)),action:ACTIONS.includes(m.action)?m.action:null,
-      causalImportance01:clamp(Number(m.causalImportance01??.5)),reliability01:clamp(Number(m.reliability01??.5)),utility01:clamp(Number(m.utility01??.5)),retrievals:Math.max(0,Math.floor(Number(m.retrievals??0))),writes:Math.max(0,Math.floor(Number(m.writes??1))),ageTicks:Math.max(0,Math.floor(Number(m.ageTicks??0))),retention01:clamp(Number(m.retention01??.7)),lastUsedTick:Math.max(0,Math.floor(Number(m.lastUsedTick??0))),contradiction01:clamp(Number(m.contradiction01??0))
-    }))};
+    const d=defaultState();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const acRaw=read('armCounts'),avRaw=read('armValues');
+    const armCounts=Array.from({length:STRATEGIES.length},(_,i)=>cnt(Array.isArray(acRaw)?(acRaw as unknown[])[i]:d.armCounts[i],0));
+    const armValues=Array.from({length:STRATEGIES.length},(_,i)=>C01(Array.isArray(avRaw)?(avRaw as unknown[])[i]:d.armValues[i],.5));
+    const memRaw=read('memories');
+    const memories=Array.isArray(memRaw)?memRaw.slice(-this.maxMemories).map(sanRecord).filter((x):x is AutobiographicalMemoryRecord=>x!==null):[];
+    const strat=read('selectedStrategy');
+    const selId=read('selectedMemoryId');
+    this.state={version:1,tick:cnt(read('tick'),d.tick),decisions:cnt(read('decisions'),d.decisions),writes:cnt(read('writes'),d.writes),recalls:cnt(read('recalls'),d.recalls),consolidations:cnt(read('consolidations'),d.consolidations),forgets:cnt(read('forgets'),d.forgets),contradictions:cnt(read('contradictions'),d.contradictions),strategyUpdates:cnt(read('strategyUpdates'),d.strategyUpdates),liveRedirects:cnt(read('liveRedirects'),d.liveRedirects),holdoutEvaluations:cnt(read('holdoutEvaluations'),d.holdoutEvaluations),holdoutSuccesses:cnt(read('holdoutSuccesses'),d.holdoutSuccesses),
+      memoryUtility01:C01(read('memoryUtility01'),d.memoryUtility01),retrievalQuality01:C01(read('retrievalQuality01'),d.retrievalQuality01),retention01:C01(read('retention01'),d.retention01),identityWeightedRecall01:C01(read('identityWeightedRecall01'),d.identityWeightedRecall01),autobiographicalContinuity01:C01(read('autobiographicalContinuity01'),d.autobiographicalContinuity01),strategyLearning01:C01(read('strategyLearning01'),d.strategyLearning01),liveImprovement01:C01(read('liveImprovement01'),d.liveImprovement01),contradictionControl01:C01(read('contradictionControl01'),d.contradictionControl01),writeSelectivity01:C01(read('writeSelectivity01'),d.writeSelectivity01),
+      selectedStrategy:STRATEGIES.includes(strat as StrategyKind)?strat as StrategyKind:d.selectedStrategy,selectedMemoryId:typeof selId==='string'&&selId?selId.slice(0,160):null,selectedMemoryUtility01:C01(read('selectedMemoryUtility01'),d.selectedMemoryUtility01),selectedRecallConfidence01:C01(read('selectedRecallConfidence01'),d.selectedRecallConfidence01),selectedWriteGate01:C01(read('selectedWriteGate01'),d.selectedWriteGate01),selectedRedirect:actOrNull(read('selectedRedirect')),
+      armCounts,armValues,memories};
   }
 
   private strategyIndex(s:StrategyKind){return STRATEGIES.indexOf(s);}

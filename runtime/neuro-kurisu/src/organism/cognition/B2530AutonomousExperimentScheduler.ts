@@ -2,6 +2,8 @@ import type { ActionKind } from '../core/types.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:.5));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
 
 export interface B2530State{
   version:1; enabled:boolean; tick:number; proposals:number; executed:number; useful:number;
@@ -18,7 +20,7 @@ export class B2530AutonomousExperimentScheduler{
   private state=defaultB2530State();
   readonly systemName='cognition:b2530-autonomous-experiment-scheduler' as const;
   snapshot(){return structuredClone(this.state)}
-  restore(raw?:Partial<B2530State>|null){const d=defaultB2530State(),r:any=raw??{};this.state={...d,...structuredClone(r),version:1}}
+  restore(raw?:Partial<B2530State>|null){const d=defaultB2530State();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const sel=read('selectedAction');const lr=read('lastReason');this.state={version:1,enabled:read('enabled')!==false,tick:cnt(read('tick'),d.tick),proposals:cnt(read('proposals'),d.proposals),executed:cnt(read('executed'),d.executed),useful:cnt(read('useful'),d.useful),value01:clamp(finN(read('value01'),d.value01)),novelty01:clamp(finN(read('novelty01'),d.novelty01)),uncertainty01:clamp(finN(read('uncertainty01'),d.uncertainty01)),computeEfficiency01:clamp(finN(read('computeEfficiency01'),d.computeEfficiency01)),thermalGate01:clamp(finN(read('thermalGate01'),d.thermalGate01)),selectedAction:ACTIONS.includes(sel as ActionKind)?sel as ActionKind:null,lastReason:typeof lr==='string'&&lr?lr.slice(0,160):d.lastReason,lesionFraction01:clamp(finN(read('lesionFraction01'),d.lesionFraction01))};}
   setEnabled(v:boolean){this.state.enabled=!!v}
   setLesion(v:number){this.state.lesionFraction01=clamp(v)}
   beforeDecision(i:{tick:number;uncertainty01:number;novelty01:number;predictionError01:number;computeBudget01:number;thermalStrain01?:number;battery01?:number;baseUtilities:Record<ActionKind,number>;policyExperiment01:number;regimeShift01:number}){

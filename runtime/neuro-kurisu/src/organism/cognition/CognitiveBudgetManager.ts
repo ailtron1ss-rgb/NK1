@@ -3,12 +3,29 @@ export type CognitiveOperation='sensor'|'memory'|'reflection'|'planning'|'simula
 export interface CognitiveBudgetState{mode:CognitiveMode;available01:number;estimatedCost01:number;expectedInformationGain01:number;rationale:string;updatedAt:number;spent01:number;remaining01:number;operationCount:number;informationGainRealized01:number;lastOperation?:CognitiveOperation;}
 export interface CognitiveBudgetLedgerEntry{at:number;tick:number;operation:CognitiveOperation;estimatedCost01:number;spent01:number;informationGain01:number;accepted:boolean;mode:CognitiveMode;reason:string;}
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const fin=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:typeof v==='string'&&v.trim().length?Number(v):NaN;return Number.isFinite(n)?n:(Number.isFinite(f)?f:0);};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(fin(v,f)));
+const MODES:readonly CognitiveMode[]=['reflex','shallow','retrieve','deep','simulate','defer','sleep'];
+const OPERATIONS:readonly CognitiveOperation[]=['sensor','memory','reflection','planning','simulation','llm-fast','llm-deep','research','persistence','other'];
+const sanitizeLedger=(v:unknown):CognitiveBudgetLedgerEntry|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;return {at:Math.max(0,fin(r.at,0)),tick:cnt(r.tick,0),operation:OPERATIONS.includes(r.operation as CognitiveOperation)?r.operation as CognitiveOperation:'other',estimatedCost01:clamp(fin(r.estimatedCost01,0)),spent01:clamp(fin(r.spent01,0)),informationGain01:clamp(fin(r.informationGain01,0)),accepted:Boolean(r.accepted),mode:MODES.includes(r.mode as CognitiveMode)?r.mode as CognitiveMode:'shallow',reason:typeof r.reason==='string'?r.reason.slice(0,240):''};};
 export const defaultCognitiveBudget=():CognitiveBudgetState=>({mode:'shallow',available01:.78,estimatedCost01:.2,expectedInformationGain01:.2,rationale:'default',updatedAt:0,spent01:0,remaining01:.78,operationCount:0,informationGainRealized01:0});
 
 export class CognitiveBudgetManager{
  private state=defaultCognitiveBudget();
  private ledger:CognitiveBudgetLedgerEntry[]=[];
- restore(s:(CognitiveBudgetState&{ledger?:CognitiveBudgetLedgerEntry[]})|undefined){this.state={...defaultCognitiveBudget(),...(s??{})}; this.state.remaining01=clamp(this.state.remaining01 ?? (this.state.available01-this.state.spent01)); this.ledger=Array.isArray(s?.ledger)?s!.ledger.slice(-128):[];}
+ restore(s:(CognitiveBudgetState&{ledger?:CognitiveBudgetLedgerEntry[]})|undefined){
+  const d=defaultCognitiveBudget();
+  const src:Record<string,unknown>=(s&&typeof s==='object')?s as unknown as Record<string,unknown>:{};
+  const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+  const available01=clamp(fin(read('available01'),d.available01));
+  const spent01=clamp(fin(read('spent01'),d.spent01));
+  this.state={mode:MODES.includes(read('mode') as CognitiveMode)?read('mode') as CognitiveMode:d.mode,available01,estimatedCost01:clamp(fin(read('estimatedCost01'),d.estimatedCost01)),expectedInformationGain01:clamp(fin(read('expectedInformationGain01'),d.expectedInformationGain01)),rationale:typeof read('rationale')==='string'?(read('rationale') as string).slice(0,240):d.rationale,updatedAt:Math.max(0,fin(read('updatedAt'),d.updatedAt)),spent01,remaining01:clamp(fin(read('remaining01'),available01-spent01)),operationCount:cnt(read('operationCount'),d.operationCount),informationGainRealized01:clamp(fin(read('informationGainRealized01'),d.informationGainRealized01))};
+  const lo=read('lastOperation');
+  if(OPERATIONS.includes(lo as CognitiveOperation))this.state.lastOperation=lo as CognitiveOperation;
+  let ledger:CognitiveBudgetLedgerEntry[]=[];
+  try{const raw=read('ledger');if(Array.isArray(raw))ledger=raw.map(sanitizeLedger).filter((x):x is CognitiveBudgetLedgerEntry=>x!==null).slice(-128);}catch{ledger=[];}
+  this.ledger=ledger;
+ }
  decide(input:{battery01:number;thermal01:number;ramPressure01:number;cpuLoad01:number;attention01:number;expectedInformationGain01:number;complexity01:number;sleepPressure01:number}):CognitiveBudgetState{
   const available=clamp(input.battery01*.35+input.attention01*.25+(1-input.thermal01)*.18+(1-input.ramPressure01)*.12+(1-input.cpuLoad01)*.10);
   const cost=clamp(input.complexity01*.55+input.expectedInformationGain01*.18+input.thermal01*.14+input.ramPressure01*.13);

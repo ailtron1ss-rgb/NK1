@@ -13,12 +13,18 @@ export interface P57State {
   capabilityEvidence01:number;complexityProxy01:number;stability01:number;
   lastAnchorId:string|null;anchors:P57Anchor[];recentOutcomes:number[];lastAt:number;
 }
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const numOrNull=(v:unknown):number|null=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:null;};
+const SOURCES:P57Source[]=['external-feedback','device-observation','user-observation','oracle','unknown'];
+const sanAnchor=(x:unknown):P57Anchor|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {id:str(r.id,'p57:0'),tick:cnt(r.tick,0),at:finN(r.at,0),source:SOURCES.includes(r.source as P57Source)?r.source as P57Source:'unknown',predicted01:numOrNull(r.predicted01),actual01:clamp(finN(r.actual01,0)),gap01:clamp(finN(r.gap01,0)),confidence01:clamp(finN(r.confidence01,0)),note:str(r.note,'')};};
 export const defaultP57=():P57State=>({version:1,observations:0,anchorsAccepted:0,anchorsRejected:0,meanRealityGap01:.5,meanAnchorConfidence01:.5,trend01:0,capabilityEvidence01:0,complexityProxy01:0,stability01:.8,lastAnchorId:null,anchors:[],recentOutcomes:[],lastAt:0});
 function stableId(tick:number,at:number,source:string,actual:number){let h=2166136261>>>0;for(const c of `${tick}|${at}|${source}|${actual.toFixed(6)}`)h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;return `p57:${tick}:${h.toString(16)}`;}
 export class P57RealityFirstObservatory {
   private state=defaultP57();
-  restore(raw?:Partial<P57State>|null){const d=defaultP57(),r=raw??{};this.state={...d,...r,anchors:Array.isArray(r.anchors)?r.anchors.slice(-128):[],recentOutcomes:Array.isArray(r.recentOutcomes)?r.recentOutcomes.slice(-64):[]};}
-  snapshot(){return structuredClone(this.state);}
+  restore(raw?:Partial<P57State>|null){const d=defaultP57();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const aRaw=read('anchors'),roRaw=read('recentOutcomes');this.state={version:1,observations:cnt(read('observations'),d.observations),anchorsAccepted:cnt(read('anchorsAccepted'),d.anchorsAccepted),anchorsRejected:cnt(read('anchorsRejected'),d.anchorsRejected),meanRealityGap01:clamp(finN(read('meanRealityGap01'),d.meanRealityGap01)),meanAnchorConfidence01:clamp(finN(read('meanAnchorConfidence01'),d.meanAnchorConfidence01)),trend01:clamp(finN(read('trend01'),d.trend01)),capabilityEvidence01:clamp(finN(read('capabilityEvidence01'),d.capabilityEvidence01)),complexityProxy01:clamp(finN(read('complexityProxy01'),d.complexityProxy01)),stability01:clamp(finN(read('stability01'),d.stability01)),lastAnchorId:typeof read('lastAnchorId')==='string'&&read('lastAnchorId')?(read('lastAnchorId') as string).slice(0,160):null,anchors:Array.isArray(aRaw)?(aRaw as unknown[]).slice(-128).map(sanAnchor).filter((x):x is P57Anchor=>x!==null):[],recentOutcomes:Array.isArray(roRaw)?(roRaw as unknown[]).slice(-64).map(v=>clamp(finN(v,0))):[],lastAt:finN(read('lastAt'),d.lastAt)};}
+ snapshot(){return structuredClone(this.state);}
   observe(input:{tick:number;at:number;source:P57Source;predicted01?:number|null;actual01?:number;confidence01?:number;note?:string;capabilityScore01?:number;complexityProxy01?:number}){
     this.state.observations++;
     const actual=input.actual01;

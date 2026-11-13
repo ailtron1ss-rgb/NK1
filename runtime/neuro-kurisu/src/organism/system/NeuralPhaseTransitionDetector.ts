@@ -1,9 +1,12 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export interface NeuralPhaseTransitionState{version:1;cycles:number;regime01:number;instability01:number;stableTicks:number;transitions:number;freeze01:number;lastRegime:string;}
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
 export const defaultNeuralPhaseTransition=():NeuralPhaseTransitionState=>({version:1,cycles:0,regime01:.5,instability01:.2,stableTicks:0,transitions:0,freeze01:0,lastRegime:'balanced'});
 export class NeuralPhaseTransitionDetector{
  private state=defaultNeuralPhaseTransition();
- restore(raw?:Partial<NeuralPhaseTransitionState>|null){const d=defaultNeuralPhaseTransition(),r=raw??{};this.state={...d,...r,version:1};}
+ restore(raw?:Partial<NeuralPhaseTransitionState>|null){const d=defaultNeuralPhaseTransition();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};this.state={version:1,cycles:cnt(read('cycles'),d.cycles),regime01:clamp(finN(read('regime01'),d.regime01)),instability01:clamp(finN(read('instability01'),d.instability01)),stableTicks:cnt(read('stableTicks'),d.stableTicks),transitions:cnt(read('transitions'),d.transitions),freeze01:clamp(finN(read('freeze01'),d.freeze01)),lastRegime:str(read('lastRegime'),d.lastRegime)};}
  snapshot(){return structuredClone(this.state);}
  observe(input:{predictionError01:number;coherence01:number;plasticity01:number;stability01:number;energy01:number}){
   const s=this.state,e=clamp(input.predictionError01),c=clamp(input.coherence01),p=clamp(input.plasticity01),st=clamp(input.stability01),en=clamp(input.energy01);

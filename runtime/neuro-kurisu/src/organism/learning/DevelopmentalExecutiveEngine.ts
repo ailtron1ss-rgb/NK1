@@ -92,21 +92,29 @@ export const defaultDevelopmentalExecutive=():DevelopmentalExecutiveState=>({
   strategicCoherence01:.3,autonomousPlanning01:.22,longHorizonProgress01:.18,lastDecision:'idle',lastAt:0,
 });
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const PHASES:readonly DevelopmentExecutivePhase[]=['orient','investigate','practice','integrate','transfer','consolidate','repair','complete'];
+const STATUSES:readonly DevelopmentExecutiveStatus[]=['active','completed','paused','failed'];
+const STEP_STATUS=['pending','active','completed','blocked'] as const;
+const PURPOSES=['reduce-uncertainty','test-model','practice','integrate','transfer','retain','repair'] as const;
+const str=(v:unknown,f:string,n=200):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const sanStep=(x:unknown):DevelopmentPlanStep|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {id:str(r.id,'',120),action:ACTIONS.includes(r.action as ActionKind)?r.action as ActionKind:'reflect',purpose:(PURPOSES as readonly string[]).includes(r.purpose as string)?r.purpose as DevelopmentPlanStep['purpose']:'reduce-uncertainty',requiredEvidence01:C01(r.requiredEvidence01,0),expectedGain01:C01(r.expectedGain01,0),completedTrials:cnt(r.completedTrials,0),successfulTrials:cnt(r.successfulTrials,0),verifiedTrials:cnt(r.verifiedTrials,0),contexts:cnt(r.contexts,0),lastOutcome01:C01(r.lastOutcome01,0),status:(STEP_STATUS as readonly string[]).includes(r.status as string)?r.status as DevelopmentPlanStep['status']:'pending'};};
+const sanProject=(x:unknown):DevelopmentExecutiveProject|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',120);if(!id)return null;const steps=Array.isArray(r.steps)?r.steps.slice(0,12).map(sanStep).filter((s):s is DevelopmentPlanStep=>s!==null):[];return {id,goalId:str(r.goalId,'',120),objective:str(r.objective,'',240),origin:str(r.origin,'',120),phase:PHASES.includes(r.phase as DevelopmentExecutivePhase)?r.phase as DevelopmentExecutivePhase:'orient',status:STATUSES.includes(r.status as DevelopmentExecutiveStatus)?r.status as DevelopmentExecutiveStatus:'active',priority01:C01(r.priority01,0),confidence01:C01(r.confidence01,0),expectedGain01:C01(r.expectedGain01,0),progress01:C01(r.progress01,0),retention01:C01(r.retention01,0),transfer01:C01(r.transfer01,0),evidence01:C01(r.evidence01,0),revisionPressure01:C01(r.revisionPressure01,0),autonomyFit01:C01(r.autonomyFit01,0),steps,selectedStepId:strOrNull(r.selectedStepId),contexts:Array.isArray(r.contexts)?Array.from(new Set(r.contexts.filter((c):c is string=>typeof c==='string').map(c=>c.slice(0,180)))).slice(0,24):[],successfulContexts:cnt(r.successfulContexts,0),failedTrials:cnt(r.failedTrials,0),totalTrials:cnt(r.totalTrials,0),lastAction:ACTIONS.includes(r.lastAction as ActionKind)?r.lastAction as ActionKind:'none',lastOutcome01:C01(r.lastOutcome01,0),createdAt:cnt(r.createdAt,0),lastAt:cnt(r.lastAt,0)};};
+const sanDecision=(x:unknown):DevelopmentExecutiveDecision|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),goalId:strOrNull(r.goalId),projectId:strOrNull(r.projectId),stepId:strOrNull(r.stepId),chosenAction:ACTIONS.includes(r.chosenAction as ActionKind)?r.chosenAction as ActionKind:'reflect',phase:PHASES.includes(r.phase as DevelopmentExecutivePhase)?r.phase as DevelopmentExecutivePhase:'orient',score01:C01(r.score01,0),confidence01:C01(r.confidence01,0),reasons:Array.isArray(r.reasons)?r.reasons.filter((x):x is string=>typeof x==='string').slice(0,16):[],at:cnt(r.at,0)};};
 export class DevelopmentalExecutiveEngine {
   private state=defaultDevelopmentalExecutive();
 
   restore(raw?:Partial<DevelopmentalExecutiveState>|null){
-    const d=defaultDevelopmentalExecutive(),r=raw??{};
-    this.state={...d,...r,version:1,
-      projects:Array.isArray(r.projects)?r.projects.slice(-32).map((p:any)=>({...p,
-        status:['active','completed','paused','failed'].includes(p.status)?p.status:'active',
-        phase:['orient','investigate','practice','integrate','transfer','consolidate','repair','complete'].includes(p.phase)?p.phase:'orient',
-        steps:Array.isArray(p.steps)?p.steps.slice(0,12).map((s:any)=>({...s,status:['pending','active','completed','blocked'].includes(s.status)?s.status:'pending'})):[],
-        contexts:Array.isArray(p.contexts)?Array.from(new Set(p.contexts.map((x:any)=>String(x).slice(0,180)))).slice(0,24):[],
-      })):[],
-      decisions:Array.isArray(r.decisions)?r.decisions.slice(-256):[],
-    };
+    const d=defaultDevelopmentalExecutive();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const pRaw=read('projects'),dRaw=read('decisions');
+    const projects=Array.isArray(pRaw)?pRaw.slice(-32).map(sanProject).filter((x):x is DevelopmentExecutiveProject=>x!==null):[];
+    const decisions=Array.isArray(dRaw)?dRaw.slice(-256).map(sanDecision).filter((x):x is DevelopmentExecutiveDecision=>x!==null):[];
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),projects,decisions,activeProjectId:strOrNull(read('activeProjectId')),completedProjects:cnt(read('completedProjects'),d.completedProjects),failedProjects:cnt(read('failedProjects'),d.failedProjects),pausedProjects:cnt(read('pausedProjects'),d.pausedProjects),successfulExecutions:cnt(read('successfulExecutions'),d.successfulExecutions),verifiedExecutions:cnt(read('verifiedExecutions'),d.verifiedExecutions),transferWins:cnt(read('transferWins'),d.transferWins),retentionWins:cnt(read('retentionWins'),d.retentionWins),regressions:cnt(read('regressions'),d.regressions),revisionPressure01:C01(read('revisionPressure01'),d.revisionPressure01),strategicCoherence01:C01(read('strategicCoherence01'),d.strategicCoherence01),autonomousPlanning01:C01(read('autonomousPlanning01'),d.autonomousPlanning01),longHorizonProgress01:C01(read('longHorizonProgress01'),d.longHorizonProgress01),lastDecision:str(read('lastDecision'),d.lastDecision),lastAt:cnt(read('lastAt'),d.lastAt)};
   }
+
   snapshot(){return structuredClone(this.state);}
 
   beginCycle(){

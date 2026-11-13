@@ -1,10 +1,12 @@
 export interface P82Outcome { tick:number; capability01:number; complexity01:number; externalEvidence:boolean; identity01:number; continuity01:number; }
 export interface P82State { version:1; observations:number; evidenceCount:number; capability01:number; complexity01:number; evidenceQuality01:number; complexityAdjustedProgress01:number; realityGap01:number; progressTrend01:number; lastExternalTick:number; recentProgress:number[]; }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
 export const defaultP82=():P82State=>({version:1,observations:0,evidenceCount:0,capability01:0,complexity01:0,evidenceQuality01:0,complexityAdjustedProgress01:0,realityGap01:1,progressTrend01:.5,lastExternalTick:0,recentProgress:[]});
 export class P82RealityProgressController {
  private state=defaultP82();
- restore(raw:Partial<P82State>|undefined){if(!raw)return;const d=defaultP82();this.state={...d,...raw,recentProgress:Array.isArray(raw.recentProgress)?raw.recentProgress.slice(-32):[]};}
+ restore(raw:Partial<P82State>|undefined){if(!raw)return;const d=defaultP82();const src:Record<string,unknown>=raw as unknown as Record<string,unknown>;const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const rp=read('recentProgress');this.state={version:1,observations:cnt(read('observations'),d.observations),evidenceCount:cnt(read('evidenceCount'),d.evidenceCount),capability01:clamp(finN(read('capability01'),d.capability01)),complexity01:clamp(finN(read('complexity01'),d.complexity01)),evidenceQuality01:clamp(finN(read('evidenceQuality01'),d.evidenceQuality01)),complexityAdjustedProgress01:clamp(finN(read('complexityAdjustedProgress01'),d.complexityAdjustedProgress01)),realityGap01:clamp(finN(read('realityGap01'),d.realityGap01)),progressTrend01:clamp(finN(read('progressTrend01'),d.progressTrend01)),lastExternalTick:cnt(read('lastExternalTick'),d.lastExternalTick),recentProgress:Array.isArray(rp)?rp.slice(-32).map(x=>clamp(finN(x,0))):[]};}
  snapshot(){return JSON.parse(JSON.stringify(this.state)) as P82State;}
  observe(o:P82Outcome){
   this.state.observations++;

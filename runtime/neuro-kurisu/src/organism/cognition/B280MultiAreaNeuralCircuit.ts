@@ -60,6 +60,13 @@ const newArea=(name:AreaName,seed:number):B280AreaState=>({
   dendriticGate:new Array(8).fill(0).map((_,i)=>.55+rand(seed+100+i,.12)),spikes:new Array(12).fill(0),firingRate01:.08,inhibition01:.18,plasticity01:.5
 });
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const vecN=(v:unknown,len:number,lo:number,hi:number,fill:number):number[]=>Array.isArray(v)?Array.from({length:len},(_,i)=>{const x=(v as unknown[])[i];const n=typeof x==='number'?x:Number(x);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fill;}):new Array(len).fill(fill);
+const sanArea=(x:unknown,fallback:B280AreaState):B280AreaState=>{if(!x||typeof x!=='object')return fallback;const r=x as Record<string,unknown>;return {name:fallback.name,excitatoryCount:8,inhibitoryCount:4,membrane:vecN(r.membrane,12,-1,1,0),adaptation:vecN(r.adaptation,12,-1,1,0),inhibitoryTrace:vecN(r.inhibitoryTrace,4,-1,1,.08),excitatoryTrace:vecN(r.excitatoryTrace,8,-1,1,.08),dendriticGate:vecN(r.dendriticGate,8,0,1,.55),spikes:vecN(r.spikes,12,0,1,0),firingRate01:clamp01(finN(r.firingRate01,fallback.firingRate01)),inhibition01:clamp01(finN(r.inhibition01,fallback.inhibition01)),plasticity01:clamp01(finN(r.plasticity01,fallback.plasticity01))};};
+const sanMatrix=(x:unknown,rows:number,cols:number,fallback:number[][],lo=-1,hi=1):number[][]=>{if(!Array.isArray(x))return fallback.map(r=>r.slice());return Array.from({length:rows},(_,i)=>{const row=(x as unknown[])[i];return Array.from({length:cols},(_,j)=>{const c=Array.isArray(row)?(row as unknown[])[j]:undefined;const n=typeof c==='number'?c:Number(c);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):0;});});};
+const sanWeightMap=(x:unknown,keys:readonly string[],rows:number,cols:number,fallback:Record<string,number[][]>):Record<string,number[][]>=>{const out:Record<string,number[][]>={};const src=(x&&typeof x==='object')?x as Record<string,unknown>:{};for(const k of keys){const fb=fallback[k]??Array.from({length:rows},()=>new Array(cols).fill(0));let cell:unknown;try{cell=src[k];}catch{cell=undefined;}out[k]=sanMatrix(cell,rows,cols,fb);}return out;};
+const sanHistory=(x:unknown):Array<{tick:number;action:ActionKind|null;reward01:number;coherence01:number;spikes:number}>=>Array.isArray(x)?(x as unknown[]).slice(-160).filter(v=>v&&typeof v==='object').map(v=>{const r=v as Record<string,unknown>;return {tick:cnt(r.tick,0),action:ACTIONS.includes(r.action as ActionKind)?r.action as ActionKind:null,reward01:clamp11(finN(r.reward01,0)),coherence01:clamp01(finN(r.coherence01,0)),spikes:cnt(r.spikes,0)};}):[];
 export function defaultB280State():B280State{
   const recurrent={} as Record<AreaName,number[][]>;
   const inhibitory={} as Record<AreaName,number[][]>;
@@ -87,11 +94,16 @@ export class B280MultiAreaNeuralCircuit{
   static create(){return defaultB280State();}
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<B280State>|null){
-    const d=defaultB280State(),r=raw??{};
-    this.state={...d,...r,version:1,tick:Number(r.tick??0),cycles:Number(r.cycles??0),learningUpdates:Number(r.learningUpdates??0),consolidationCount:Number(r.consolidationCount??0),
-      areas:{...d.areas,...(r.areas??{})} as Record<AreaName,B280AreaState>, recurrentWeights:{...d.recurrentWeights,...(r.recurrentWeights??{})}, inhibitoryWeights:{...d.inhibitoryWeights,...(r.inhibitoryWeights??{})}, crossAreaWeights:{...d.crossAreaWeights,...(r.crossAreaWeights??{})}, crossSynapticAvailability:{...d.crossSynapticAvailability,...(r.crossSynapticAvailability??{})}, actionReadout:Array.isArray(r.actionReadout)?r.actionReadout.slice(0,ACTIONS.length):d.actionReadout,
-      lastContext:Array.isArray(r.lastContext)?r.lastContext.slice(0,16):d.lastContext,lastSpikes:Array.isArray(r.lastSpikes)?r.lastSpikes.slice(0,48):d.lastSpikes,lastAction:r.lastAction??null,history:Array.isArray(r.history)?r.history.slice(-160):[]};
-    for(const area of AREAS){ const a=this.state.areas[area]??d.areas[area]!; a.excitatoryCount=8;a.inhibitoryCount=4;a.membrane=Array.isArray(a.membrane)?a.membrane.slice(0,12):d.areas[area]!.membrane; a.adaptation=Array.isArray(a.adaptation)?a.adaptation.slice(0,12):d.areas[area]!.adaptation;a.inhibitoryTrace=Array.isArray(a.inhibitoryTrace)?a.inhibitoryTrace.slice(0,4):new Array(4).fill(.08);a.excitatoryTrace=Array.isArray(a.excitatoryTrace)?a.excitatoryTrace.slice(0,8):new Array(8).fill(.08);a.dendriticGate=Array.isArray(a.dendriticGate)?a.dendriticGate.slice(0,8):new Array(8).fill(.55);a.spikes=Array.isArray(a.spikes)?a.spikes.slice(0,12):new Array(12).fill(0); }
+    const d=defaultB280State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const areasRaw=(read('areas')&&typeof read('areas')==='object')?read('areas') as Record<string,unknown>:{};
+    const areas={} as Record<AreaName,B280AreaState>;
+    for(const a of AREAS)areas[a]=sanArea(areasRaw[a],d.areas[a]!);
+    const crossKeys=Object.keys(d.crossAreaWeights);
+    this.state={version:1,tick:cnt(read('tick'),d.tick),cycles:cnt(read('cycles'),d.cycles),learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),consolidationCount:cnt(read('consolidationCount'),d.consolidationCount),
+      areas,recurrentWeights:sanWeightMap(read('recurrentWeights'),AREAS,12,12,d.recurrentWeights),inhibitoryWeights:sanWeightMap(read('inhibitoryWeights'),AREAS,12,4,d.inhibitoryWeights),crossAreaWeights:sanWeightMap(read('crossAreaWeights'),crossKeys,12,12,d.crossAreaWeights),crossSynapticAvailability:sanWeightMap(read('crossSynapticAvailability'),crossKeys,12,12,d.crossSynapticAvailability),
+      actionReadout:sanMatrix(read('actionReadout'),ACTIONS.length,48,d.actionReadout),
+      neuromodulation01:clamp01(finN(read('neuromodulation01'),d.neuromodulation01)),shortTermPlasticity01:clamp01(finN(read('shortTermPlasticity01'),d.shortTermPlasticity01)),crossAreaCoherence01:clamp01(finN(read('crossAreaCoherence01'),d.crossAreaCoherence01)),excitationInhibitionBalance01:clamp01(finN(read('excitationInhibitionBalance01'),d.excitationInhibitionBalance01)),sparseActivity01:clamp01(finN(read('sparseActivity01'),d.sparseActivity01)),dendriticContext01:clamp01(finN(read('dendriticContext01'),d.dendriticContext01)),assemblyStability01:clamp01(finN(read('assemblyStability01'),d.assemblyStability01)),causalLesionDrop01:clamp01(finN(read('causalLesionDrop01'),d.causalLesionDrop01)),crossAreaCausalDrop01:clamp01(finN(read('crossAreaCausalDrop01'),d.crossAreaCausalDrop01)),
+      lastContext:vecN(read('lastContext'),16,-1,1,0),lastSpikes:vecN(read('lastSpikes'),48,0,1,0),lastAction:ACTIONS.includes(read('lastAction') as ActionKind)?read('lastAction') as ActionKind:null,history:sanHistory(read('history'))};
   }
   private context(input:B280StepInput){
     const out=new Array(16).fill(0);const pools=[input.vector,input.selfLatent??[],input.worldLatent??[],input.goalVector??[]];

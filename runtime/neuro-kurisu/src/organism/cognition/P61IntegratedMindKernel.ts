@@ -8,6 +8,14 @@
  * bounded action envelope.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const P61_MODES:readonly P61Mode[]=['orient','experience','reflect','learn','develop','rest','social'];
+const strList=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,160)).slice(0,cap):[];
+const biasMap=(v:unknown):Record<string,number>=>{const out:Record<string,number>={};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const k of Object.keys(r))out[k]=clamp(finN(r[k],0));return out;};
+const modeCounts=(v:unknown,d:Record<P61Mode,number>):Record<P61Mode,number>=>{const out={...d};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const m of P61_MODES)if(m in r)out[m]=cnt(r[m],d[m]);return out;};
+const sanFrame=(x:unknown):P61Frame|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {tick:cnt(r.tick,0),at:Math.max(0,finN(r.at,0)),mode:P61_MODES.includes(r.mode as P61Mode)?r.mode as P61Mode:'orient',ignited:r.ignited===true,ignition01:clamp(finN(r.ignition01,0)),competition01:clamp(finN(r.competition01,0)),coalition:strList(r.coalition,12),broadcastToken:typeof r.broadcastToken==='string'?r.broadcastToken.slice(0,160):'',confidence01:clamp(finN(r.confidence01,0)),integration01:clamp(finN(r.integration01,0)),stability01:clamp(finN(r.stability01,0)),realityGap01:clamp(finN(r.realityGap01,0)),developmentalPressure01:clamp(finN(r.developmentalPressure01,0)),memoryPressure01:clamp(finN(r.memoryPressure01,0)),actionBias:biasMap(r.actionBias),reasons:strList(r.reasons,12),externalInput:r.externalInput===true};};
+const mapFrames=(v:unknown):P61Frame[]=>{if(!Array.isArray(v))return [];const out:P61Frame[]=[];for(const x of v.slice(-96)){try{const f=sanFrame(x);if(f)out.push(f);}catch{/* drop malformed frame */}}return out;};
 
 export type P61Mode='orient'|'experience'|'reflect'|'learn'|'develop'|'rest'|'social';
 export interface P61Candidate {action:string;score:number;salience01?:number;confidence01?:number;source?:string;}
@@ -39,7 +47,7 @@ export const defaultP61=():P61State=>({
 
 export class P61IntegratedMindKernel{
   private state=defaultP61();
-  restore(raw?:Partial<P61State>|null){const d=defaultP61(),r=raw??{};this.state={...d,...r,modeCounts:{...d.modeCounts,...(r.modeCounts??{})},frames:Array.isArray(r.frames)?r.frames.slice(-96):[]};}
+  restore(raw?:Partial<P61State>|null){const d=defaultP61();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let lastFrame:P61Frame|null=null;try{lastFrame=sanFrame(read('lastFrame'));}catch{lastFrame=null;}this.state={version:1,cycles:cnt(read('cycles'),d.cycles),ignitions:cnt(read('ignitions'),d.ignitions),modeCounts:modeCounts(read('modeCounts'),d.modeCounts),meanIntegration01:clamp(finN(read('meanIntegration01'),d.meanIntegration01)),meanStability01:clamp(finN(read('meanStability01'),d.meanStability01)),meanIgnition01:clamp(finN(read('meanIgnition01'),d.meanIgnition01)),meanRealityGap01:clamp(finN(read('meanRealityGap01'),d.meanRealityGap01)),lastFrame,frames:mapFrames(read('frames'))};}
   snapshot(){return structuredClone(this.state);}
   /** Durable projection keeps the recent cognitive trajectory while leaving the larger working frame window live-only. */
   persistenceSnapshot(){

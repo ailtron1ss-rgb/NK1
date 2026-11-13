@@ -25,6 +25,23 @@ export interface PreviewDecisionInput {
 
 const DEFAULT_ACTIONS = ['respond','explore','verify','rest','reflect','wait','defer'] as const;
 
+const fin=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(fin(v,f)));
+const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+type WorldPrediction=ReturnType<WorldModel2['predict']>;
+const sanitizeWorldPreview=(v:unknown):Record<string,WorldPrediction>|null=>{
+  if(!v||typeof v!=='object')return null;
+  const out:Record<string,WorldPrediction>={};
+  try{for(const [k,p] of Object.entries(v as Record<string,unknown>)){if(!p||typeof p!=='object')continue;const r=p as Record<string,unknown>;out[k.slice(0,40)]={...r,reward:clamp01(fin(r.reward,0)),confidence:clamp01(fin(r.confidence,0)),uncertainty:clamp01(fin(r.uncertainty,0))} as WorldPrediction;}}catch{return null;}
+  return out;
+};
+const sanitizeFuturePreview=(v:unknown):DerivedWorldPreviewCacheState['futurePreview']=>{
+  if(!v||typeof v!=='object')return null;
+  const r=v as Record<string,unknown>;
+  const path=Array.isArray(r.path)?r.path.filter((s):s is Record<string,unknown>=>Boolean(s&&typeof s==='object')).map(s=>({action:typeof s.action==='string'?s.action.slice(0,40):'',reward:fin(s.reward,0),uncertainty:clamp01(fin(s.uncertainty,0)),confidence:clamp01(fin(s.confidence,0))})).slice(0,16):[];
+  return {path,expectedReward:fin(r.expectedReward,0),uncertainty:clamp01(fin(r.uncertainty,0)),horizon:cnt(r.horizon,path.length)};
+};
+
 export const defaultDerivedWorldPreviewCache = (): DerivedWorldPreviewCacheState => ({
   version: 1,
   lastTick: -1,
@@ -49,11 +66,20 @@ export class DerivedWorldPreviewCache {
 
   restore(raw?: Partial<DerivedWorldPreviewCacheState> | null) {
     const d = defaultDerivedWorldPreviewCache();
+    const src: Record<string, unknown> = (raw && typeof raw === 'object') ? raw as unknown as Record<string, unknown> : {};
+    const read = (k: string): unknown => { try { return src[k]; } catch { return undefined; } };
     this.state = {
-      ...d,
-      ...(raw ?? {}),
-      worldPreview: raw?.worldPreview ?? null,
-      futurePreview: raw?.futurePreview ?? null,
+      version: 1,
+      lastTick: fin(read('lastTick'), d.lastTick),
+      lastWorldContextVersion: fin(read('lastWorldContextVersion'), d.lastWorldContextVersion),
+      lastUncertainty01: fin(read('lastUncertainty01'), d.lastUncertainty01),
+      refreshes: cnt(read('refreshes'), d.refreshes),
+      hits: cnt(read('hits'), d.hits),
+      misses: cnt(read('misses'), d.misses),
+      lastFutureAt: Math.max(0, fin(read('lastFutureAt'), d.lastFutureAt)),
+      lastWorldAt: Math.max(0, fin(read('lastWorldAt'), d.lastWorldAt)),
+      worldPreview: sanitizeWorldPreview(read('worldPreview')),
+      futurePreview: sanitizeFuturePreview(read('futurePreview')),
     };
   }
 

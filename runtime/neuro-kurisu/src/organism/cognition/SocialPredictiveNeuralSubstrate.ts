@@ -77,21 +77,21 @@ function finiteVector(values:number[]|undefined,n:number){
 function activation(x:number){return Math.tanh(x);}
 function derivative(x:number){return 1-x*x;}
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const matN=(v:unknown,rows:number,cols:number,scale:number):number[][]|null=>Array.isArray(v)?Array.from({length:rows},(_,i)=>{const row=Array.isArray((v as unknown[])[i])?(v as unknown[])[i] as unknown[]:[];return Array.from({length:cols},(_,j)=>finN(row[j],seeded(i,j,scale)));}):null;
 export class SocialPredictiveNeuralSubstrate{
   private state=defaults();
 
   restore(raw?:Partial<SocialPredictiveState>|null){
-    const d=defaults(); const r=raw??{};
-    this.state={...d,...r,
-      inputWeights:Array.isArray(r.inputWeights)?r.inputWeights.map(row=>Array.isArray(row)?row.slice(0,d.inputDim):[]).slice(0,d.hiddenDim):d.inputWeights,
-      recurrentWeights:Array.isArray(r.recurrentWeights)?r.recurrentWeights.map(row=>Array.isArray(row)?row.slice(0,d.hiddenDim):[]).slice(0,d.hiddenDim):d.recurrentWeights,
-      outputWeights:Array.isArray(r.outputWeights)?r.outputWeights.map(row=>Array.isArray(row)?row.slice(0,d.hiddenDim):[]).slice(0,d.outputDim):d.outputWeights,
-      bias:finiteVector(r.bias,d.hiddenDim),hidden:finiteVector(r.hidden,d.hiddenDim),lastPrediction:finiteVector(r.lastPrediction,d.outputDim),previousInput:finiteVector(r.previousInput,d.inputDim),
-      sampleCount:Math.max(0,Math.floor(Number(r.sampleCount??0))),learningSteps:Math.max(0,Math.floor(Number(r.learningSteps??0))),learningRate:Math.max(.001,Math.min(.05,Number(r.learningRate??d.learningRate))),
-      meanPredictionError01:unit(r.meanPredictionError01??d.meanPredictionError01),meanUncertainty01:unit(r.meanUncertainty01??d.meanUncertainty01),higherOrderBelief01:unit(r.higherOrderBelief01??d.higherOrderBelief01),lastAt:Number(r.lastAt??0),validated:Boolean(r.validated)
-    };
+    const d=defaults();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const iw=matN(read('inputWeights'),d.hiddenDim,d.inputDim,.08),rw=matN(read('recurrentWeights'),d.hiddenDim,d.hiddenDim,.08),ow=matN(read('outputWeights'),d.outputDim,d.hiddenDim,.08);
+    this.state={version:1,inputDim:d.inputDim,hiddenDim:d.hiddenDim,outputDim:d.outputDim,
+      inputWeights:iw??d.inputWeights,recurrentWeights:rw??d.recurrentWeights,outputWeights:ow??d.outputWeights,
+      bias:finiteVector(read('bias') as number[]|undefined,d.hiddenDim),hidden:finiteVector(read('hidden') as number[]|undefined,d.hiddenDim),lastPrediction:finiteVector(read('lastPrediction') as number[]|undefined,d.outputDim),previousInput:finiteVector(read('previousInput') as number[]|undefined,d.inputDim),
+      sampleCount:cnt(read('sampleCount'),d.sampleCount),learningSteps:cnt(read('learningSteps'),d.learningSteps),learningRate:Math.max(.001,Math.min(.05,finN(read('learningRate'),d.learningRate))),
+      meanPredictionError01:unit(finN(read('meanPredictionError01'),d.meanPredictionError01)),meanUncertainty01:unit(finN(read('meanUncertainty01'),d.meanUncertainty01)),higherOrderBelief01:unit(finN(read('higherOrderBelief01'),d.higherOrderBelief01)),lastAt:finN(read('lastAt'),d.lastAt),validated:read('validated')===true};
   }
-
   snapshot(){return structuredClone(this.state);}
 
   private pack(input:SocialPredictiveInput){

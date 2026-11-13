@@ -1,9 +1,11 @@
 export interface AdaptiveValueWeights { curiosity:number; truth:number; autonomy:number; evidence:number; care:number; responsibility:number; social:number; updatedAt:number; plasticityBudget:number; }
 export interface ValueRevision { id:string; value:keyof Pick<AdaptiveValueWeights,'curiosity'|'truth'|'autonomy'|'evidence'|'care'|'responsibility'|'social'>; before:number; after:number; delta:number; success:number; surprise:number; at:number; }
 export const DEFAULT_ADAPTIVE_VALUES:AdaptiveValueWeights={ curiosity:0.90, truth:0.98, autonomy:0.94, evidence:0.95, care:0.78, responsibility:0.90, social:0.60, updatedAt:Date.now(), plasticityBudget:0.08 };
+const VALUE_KEYS:readonly (keyof AdaptiveValueWeights)[]=['curiosity','truth','autonomy','evidence','care','responsibility','social','updatedAt','plasticityBudget'];
+const clamp=(x:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,Number.isFinite(x)?x:lo));
 export class ValuePlasticity {
   private weights={...DEFAULT_ADAPTIVE_VALUES};
-  restore(v:Partial<AdaptiveValueWeights>|undefined){this.weights={...DEFAULT_ADAPTIVE_VALUES,...(v||{})};}
+  restore(v:Partial<AdaptiveValueWeights>|undefined){const src:Record<string,unknown>=(v&&typeof v==='object')?v as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const out={...DEFAULT_ADAPTIVE_VALUES};for(const k of VALUE_KEYS){const raw=read(k as string);if(raw===undefined)continue;const n=Number(raw);if(!Number.isFinite(n))continue;if(k==='updatedAt')out.updatedAt=Math.max(0,n);else if(k==='plasticityBudget')out.plasticityBudget=clamp(n,0,1);else (out as any)[k]=clamp(n,0.1,1);}this.weights=out;}
   snapshot(){return {...this.weights};}
   update(signal:{value:keyof AdaptiveValueWeights; success:number; surprise:number}):ValueRevision|null{
     const k=signal.value; if(!(k in this.weights) || k==='updatedAt'||k==='plasticityBudget') return null;

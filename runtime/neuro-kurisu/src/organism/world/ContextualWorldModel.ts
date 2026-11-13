@@ -4,6 +4,12 @@ import { actionCost } from '../core/ActionCostPolicy.ts';
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const now=()=>Date.now();
+const finiteOr=(value:unknown,fallback:number):number=>{
+  const numeric=typeof value==='number'?value:typeof value==='string'&&value.trim().length?Number(value):NaN;
+  return Number.isFinite(numeric)?numeric:(Number.isFinite(fallback)?fallback:0);
+};
+const countOr=(value:unknown,fallback:number):number=>Math.max(0,Math.floor(finiteOr(value,fallback)));
+const bounded=(value:unknown,fallback:number,lo:number,hi:number):number=>Math.max(lo,Math.min(hi,finiteOr(value,fallback)));
 
 export interface ContextualWorldState{version:1;samples:number;updates:number;models:Record<ActionKind,{weights:number[];bias:number;loss01:number;mean01:number;variance01:number;lastAt:number;samples:number}>;featureNames:string[];calibrationError01:number;}
 export interface WorldPrediction{action:ActionKind;reward01:number;nextEnergy01:number;nextLoad01:number;nextUncertainty01:number;nextNovelty01:number;confidence01:number;samples:number;}
@@ -15,7 +21,45 @@ export const defaultContextualWorld=():ContextualWorldState=>({version:1,samples
 
 export class ContextualWorldModel{
  private state=defaultContextualWorld();
- restore(raw?:Partial<ContextualWorldState>|null){const d=defaultContextualWorld();this.state={...d,...(raw??{}),models:{...d.models,...(raw?.models??{})},featureNames:[...FEATURES]}; for(const a of ACTIONS){this.state.models[a]={...defaultModel(),...(raw?.models?.[a]??{}),weights:Array.isArray(raw?.models?.[a]?.weights)?raw!.models![a]!.weights!.slice(0,FEATURES.length):defaultModel().weights};}}
+ /**
+  * Restore without trusting the snapshot. Each action model is rebuilt field by
+  * field: weights must be a finite numeric array (padded/truncated to the fixed
+  * feature width), bias/mean/variance are finite and range-bounded, and counts are
+  * non-negative. A NaN weight or bias previously produced degenerate (0) reward
+  * predictions; unknown model keys are dropped so the model map stays canonical.
+  */
+ restore(raw?:Partial<ContextualWorldState>|null){
+  const d=defaultContextualWorld();
+  const source=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};
+  const read=(key:string):unknown=>{try{return (source as Record<string,unknown>)[key];}catch{return undefined;}};
+  const modelsRaw=read('models');
+  const models=Object.fromEntries(ACTIONS.map(a=>{
+   const dm=defaultModel();
+   let rawModel:unknown;
+   try{ rawModel=(modelsRaw&&typeof modelsRaw==='object')?(modelsRaw as Record<string,unknown>)[a]:undefined; }catch{ rawModel=undefined; }
+   const rm=(rawModel&&typeof rawModel==='object')?rawModel as Record<string,unknown>:{};
+   const readM=(key:string):unknown=>{try{return (rm as Record<string,unknown>)[key];}catch{return undefined;}};
+   const weightsRaw=readM('weights');
+   const weights=Array.from({length:FEATURES.length},(_,i)=>Array.isArray(weightsRaw)?bounded(weightsRaw[i],0,-3,3):dm.weights[i]!);
+   return [a,{
+    weights,
+    bias:bounded(readM('bias'),dm.bias,-3,3),
+    loss01:clamp(finiteOr(readM('loss01'),dm.loss01)),
+    mean01:clamp(finiteOr(readM('mean01'),dm.mean01)),
+    variance01:clamp(finiteOr(readM('variance01'),dm.variance01)),
+    lastAt:Math.max(0,finiteOr(readM('lastAt'),dm.lastAt)),
+    samples:countOr(readM('samples'),dm.samples),
+   }];
+  })) as ContextualWorldState['models'];
+  this.state={
+   version:1,
+   samples:countOr(read('samples'),d.samples),
+   updates:countOr(read('updates'),d.updates),
+   models,
+   featureNames:[...FEATURES],
+   calibrationError01:clamp(finiteOr(read('calibrationError01'),d.calibrationError01)),
+  };
+ }
  snapshot(){return structuredClone(this.state);}
  predict(s:OrganismState,a:ActionKind):WorldPrediction{
   const m=this.state.models[a]??defaultModel();const x=features(s,a);const z=m.bias+x.reduce((sum,v,i)=>sum+v*(m.weights[i]??0),0);const reward=clamp(z);

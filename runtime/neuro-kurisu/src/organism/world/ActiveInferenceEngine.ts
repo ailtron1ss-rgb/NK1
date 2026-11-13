@@ -5,12 +5,14 @@ import { WorldModel, type InternalWorldState, type PredictedOutcome } from './Wo
 export interface ActiveInferenceScore { action:ActionKind; expectedFreeEnergy:number; pragmaticValue:number; epistemicValue:number; risk:number; actionCost:number; confidence:number; reasons:string[]; }
 export interface ActiveInferenceState { version:1; lastAction:ActionKind|'none'; lastScore:number; epistemicWeight:number; pragmaticWeight:number; updatedAt:number; }
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const ACTIONS:readonly string[]=['respond','explore','verify','rest','reflect','wait','defer'];
 export function defaultActiveInferenceState():ActiveInferenceState{return{version:1,lastAction:'none',lastScore:0,epistemicWeight:0.52,pragmaticWeight:0.48,updatedAt:Date.now()};}
 
 export class ActiveInferenceEngine {
   private state=defaultActiveInferenceState();
   snapshot(){return structuredClone(this.state);}
-  restore(v:ActiveInferenceState|undefined){this.state={...defaultActiveInferenceState(),...(v||{})};}
+  restore(v:ActiveInferenceState|undefined){const d=defaultActiveInferenceState();const src:Record<string,unknown>=(v&&typeof v==='object')?v as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const la=read('lastAction');this.state={version:1,lastAction:(typeof la==='string'&&(la==='none'||ACTIONS.includes(la)))?la as ActionKind|'none':'none',lastScore:clamp(finN(read('lastScore'),d.lastScore)),epistemicWeight:clamp(finN(read('epistemicWeight'),d.epistemicWeight)),pragmaticWeight:clamp(finN(read('pragmaticWeight'),d.pragmaticWeight)),updatedAt:Math.max(0,finN(read('updatedAt'),d.updatedAt))};}
   score(world:WorldModel,state:InternalWorldState,needs:OrganismNeeds,actions:ActionKind[]):Map<ActionKind,ActiveInferenceScore>{
     const out=new Map<ActionKind,ActiveInferenceScore>();
     for(const action of actions){

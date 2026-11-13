@@ -3,6 +3,11 @@ import type { ActionKind, IntentCandidate, OrganismState } from '../core/types.t
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const mean=(v:number[])=>v.length?v.reduce((a,b)=>a+b,0)/v.length:0;
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const numVec=(v:unknown,cap=16):number[]=>Array.isArray(v)?v.slice(0,cap).map(x=>clamp01(finN(x,0))):[];
+const sanitizeStep=(v:unknown):B265TrajectoryStep|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;if(!ACTIONS.includes(r.action as ActionKind))return null;return {step:cnt(r.step,0),action:r.action as ActionKind,context:numVec(r.context),reward01:clamp01(finN(r.reward01,0)),state:numVec(r.state),nextState:numVec(r.nextState)};};
+const sanitizeEpisode=(v:unknown):B265Episode|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;if(typeof r.taskId!=='string'||!r.taskId)return null;let steps:B265TrajectoryStep[]=[];if(Array.isArray(r.steps))steps=r.steps.map(sanitizeStep).filter((x):x is B265TrajectoryStep=>x!==null).slice(-128);return {taskId:r.taskId.slice(0,120),steps,policyReturn01:clamp01(finN(r.policyReturn01,0)),baselineReturn01:clamp01(finN(r.baselineReturn01,0)),randomReturn01:clamp01(finN(r.randomReturn01,0)),regret01:clamp01(finN(r.regret01,0)),evaluatorScore01:clamp01(finN(r.evaluatorScore01,0))};};
 
 export interface B265TrajectoryStep { step:number; action:ActionKind; context:number[]; reward01:number; state:number[]; nextState:number[]; }
 export interface B265Episode { taskId:string; steps:B265TrajectoryStep[]; policyReturn01:number; baselineReturn01:number; randomReturn01:number; regret01:number; evaluatorScore01:number; }
@@ -21,7 +26,7 @@ export function defaultB265IndependentPolicyEvaluator():B265IndependentPolicyEva
 
 export class B265IndependentPolicyEvaluator {
   private state=defaultB265IndependentPolicyEvaluator();
-  restore(raw?:Partial<B265IndependentPolicyEvaluatorState>|null){ const d=defaultB265IndependentPolicyEvaluator(); this.state={...d,...raw,episodes:Array.isArray(raw?.episodes)?raw!.episodes.slice(-128):[]}; }
+  restore(raw?:Partial<B265IndependentPolicyEvaluatorState>|null){const d=defaultB265IndependentPolicyEvaluator();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let episodes:B265Episode[]=[];try{const e=read('episodes');if(Array.isArray(e))episodes=e.map(sanitizeEpisode).filter((x):x is B265Episode=>x!==null).slice(-128);}catch{episodes=[];}const lt=read('lastTaskId');this.state={version:1,episodes,evaluations:cnt(read('evaluations'),d.evaluations),steps:cnt(read('steps'),d.steps),heldoutEpisodes:cnt(read('heldoutEpisodes'),d.heldoutEpisodes),policyReturn01:clamp01(finN(read('policyReturn01'),d.policyReturn01)),baselineReturn01:clamp01(finN(read('baselineReturn01'),d.baselineReturn01)),randomReturn01:clamp01(finN(read('randomReturn01'),d.randomReturn01)),advantage01:clamp01(finN(read('advantage01'),d.advantage01)),heldoutAdvantage01:clamp01(finN(read('heldoutAdvantage01'),d.heldoutAdvantage01)),longHorizonGain01:clamp01(finN(read('longHorizonGain01'),d.longHorizonGain01)),evaluatorAgreement01:clamp01(finN(read('evaluatorAgreement01'),d.evaluatorAgreement01)),counterfactualGain01:clamp01(finN(read('counterfactualGain01'),d.counterfactualGain01)),calibration01:clamp01(finN(read('calibration01'),d.calibration01)),lastTaskId:typeof lt==='string'?lt.slice(0,120):null,lastTick:cnt(read('lastTick'),d.lastTick)};}
   snapshot(){ return structuredClone(this.state); }
   diagnostics(){ return structuredClone({...this.state,episodes:this.state.episodes.length}); }
 

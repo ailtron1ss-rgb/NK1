@@ -11,6 +11,14 @@
  * stable but adds no capability is not developmental progress either.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const KNOBS:P55Knob[]=['exploration','verification','reflection','attention','prediction'];
+const STYLES:P55Style[]=['conservative','balanced','exploratory','radical'];
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,cap=240):string=>typeof v==='string'?v.slice(0,cap):'';
+const clamp11=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
+const sanDeltas=(v:unknown):Record<P55Knob,number>=>{const r=(v&&typeof v==='object')?v as Record<string,unknown>:{};const out={} as Record<P55Knob,number>;for(const k of KNOBS)out[k]=clamp11(finN(r[k],0));return out;};
+const sanFork=(x:unknown):P55Fork|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const st=r.style,status=r.status;const oc=r.outcomeObserved01;return {id:r.id.slice(0,160),createdAt:cnt(r.createdAt,0),generation:cnt(r.generation,0),parentId:typeof r.parentId==='string'&&r.parentId?r.parentId.slice(0,160):null,style:STYLES.includes(st as P55Style)?st as P55Style:'balanced',deltas:sanDeltas(r.deltas),reason:str(r.reason,400),projectedPredictionError01:clamp(finN(r.projectedPredictionError01,0)),projectedSelfPredictionError01:clamp(finN(r.projectedSelfPredictionError01,0)),projectedIdentity01:clamp(finN(r.projectedIdentity01,0)),projectedGrounding01:clamp(finN(r.projectedGrounding01,0)),projectedAgency01:clamp(finN(r.projectedAgency01,0)),novelty01:clamp(finN(r.novelty01,0)),stability01:clamp(finN(r.stability01,0)),developmentalValue01:clamp(finN(r.developmentalValue01,0)),risk01:clamp(finN(r.risk01,0)),generalization01:clamp(finN(r.generalization01,0)),status:status==='candidate'||status==='simulated'||status==='promotable'||status==='rejected'||status==='replaced'?status as P55Fork['status']:'candidate',outcomeObserved01:oc===null||oc===undefined?null:clamp(finN(oc,0))};};
 
 export type P55Knob='exploration'|'verification'|'reflection'|'attention'|'prediction';
 export type P55Style='conservative'|'balanced'|'exploratory'|'radical';
@@ -74,7 +82,7 @@ function stableHash(s:string){let h=2166136261>>>0;for(let i=0;i<s.length;i++)h=
 
 export class P55DevelopmentalForkUniverse {
   private state=defaultP55();
-  restore(raw?:Partial<P55State>|null){const d=defaultP55(),r=raw??{};this.state={...d,...r,version:2,forks:Array.isArray(r.forks)?r.forks.slice(-96):[],actionBiases:{...(r.actionBiases??{})},appliedCount:Math.max(0,Math.floor(Number(r.appliedCount??0))),calibration01:clamp(Number(r.calibration01??d.calibration01))};this.refresh();}
+  restore(raw?:Partial<P55State>|null){const d=defaultP55();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const lw=read('lastWinnerId');const la=read('lastAppliedForkId');const ab=read('actionBiases');const abObj=(ab&&typeof ab==='object')?ab as Record<string,unknown>:{};const actionBiases={} as Record<string,number>;for(const [k,v] of Object.entries(abObj).slice(0,64))actionBiases[k.slice(0,64)]=clamp11(finN(v,0));this.state={version:2,generations:cnt(read('generations'),d.generations),simulated:cnt(read('simulated'),d.simulated),promoted:cnt(read('promoted'),d.promoted),rejected:cnt(read('rejected'),d.rejected),replaced:cnt(read('replaced'),d.replaced),unresolvedForks:cnt(read('unresolvedForks'),d.unresolvedForks),meanDevelopmentalValue01:clamp(finN(read('meanDevelopmentalValue01'),d.meanDevelopmentalValue01)),branchDiversity01:clamp(finN(read('branchDiversity01'),d.branchDiversity01)),futureCoverage01:clamp(finN(read('futureCoverage01'),d.futureCoverage01)),lastWinnerId:typeof lw==='string'&&lw?lw.slice(0,160):null,lastAppliedForkId:typeof la==='string'&&la?la.slice(0,160):null,appliedCount:cnt(read('appliedCount'),d.appliedCount),calibration01:clamp(finN(read('calibration01'),d.calibration01)),actionBiases,forks:Array.isArray(read('forks'))?(read('forks') as unknown[]).slice(-96).map(sanFork).filter((x):x is P55Fork=>x!==null):[]};this.refresh();}
   snapshot(){return structuredClone(this.state);}
 
   generate(input:{at:number;tick:number;identity01:number;predictionError01:number;selfPredictionError01:number;grounding01:number;agency01:number;novelty01:number;activeProfile:Record<P55Knob,number>;reason?:string}):P55Fork[]{

@@ -1,11 +1,15 @@
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const sanItem=(x:unknown,key:string):B2514MemoryItem|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {key:typeof r.key==='string'&&r.key?r.key.slice(0,180):key,salience01:clamp(finN(r.salience01,.2)),surprise01:clamp(finN(r.surprise01,.2)),novelty01:clamp(finN(r.novelty01,.2)),goalRelevance01:clamp(finN(r.goalRelevance01,.2)),identityRelevance01:clamp(finN(r.identityRelevance01,.2)),predictionError01:clamp(finN(r.predictionError01,.2)),verified01:clamp(finN(r.verified01,0)),lastTick:Math.max(0,finN(r.lastTick,0)),need01:clamp(finN(r.need01,.2)),accesses:cnt(r.accesses,0)};};
+const sanItems=(v:unknown):Record<string,B2514MemoryItem>=>{const out:Record<string,B2514MemoryItem>={};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const k of Object.keys(r)){try{const it=sanItem(r[k],k);if(it)out[k.slice(0,180)]=it;}catch{/* drop malformed item */}}return out;};
 export interface B2514MemoryItem{key:string;salience01:number;surprise01:number;novelty01:number;goalRelevance01:number;identityRelevance01:number;predictionError01:number;verified01:number;lastTick:number;need01:number;accesses:number;}
 export interface B2514State{version:1;enabled:boolean;tick:number;cycles:number;ranked:number;replaySelections:number;semanticSelections:number;meanNeed01:number;coverage01:number;memoryItems:Record<string,B2514MemoryItem>;budget01:number;}
 export const defaultB2514State=():B2514State=>({version:1,enabled:true,tick:0,cycles:0,ranked:0,replaySelections:0,semanticSelections:0,meanNeed01:0,coverage01:0,memoryItems:{},budget01:.5});
 export class B2514MemoryNeedPrioritizer{
   readonly systemName='cognition:b2514-memory-need-prioritizer' as const;
   private state=defaultB2514State();
-  snapshot(){return structuredClone(this.state);} restore(raw?:Partial<B2514State>|null){const d=defaultB2514State(),r:any=raw??{};this.state={...d,...structuredClone(r),version:1,memoryItems:{...d.memoryItems,...(r.memoryItems??{})}};}
+  snapshot(){return structuredClone(this.state);} restore(raw?:Partial<B2514State>|null){const d=defaultB2514State();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};this.state={version:1,enabled:read('enabled')!==false,tick:cnt(read('tick'),d.tick),cycles:cnt(read('cycles'),d.cycles),ranked:cnt(read('ranked'),d.ranked),replaySelections:cnt(read('replaySelections'),d.replaySelections),semanticSelections:cnt(read('semanticSelections'),d.semanticSelections),meanNeed01:clamp(finN(read('meanNeed01'),d.meanNeed01)),coverage01:clamp(finN(read('coverage01'),d.coverage01)),memoryItems:sanItems(read('memoryItems')),budget01:clamp(finN(read('budget01'),d.budget01))};}
   setEnabled(x:boolean){this.state.enabled=!!x;}
   observe(i:{tick:number;key:string;salience01:number;surprise01:number;novelty01:number;goalRelevance01:number;identityRelevance01:number;predictionError01:number;verified01:number}){
     if(!this.state.enabled)return;

@@ -1,5 +1,9 @@
 import { cosineSimilarity as cosine } from '../core/NumericPrimitives.ts';
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const numVec=(v:unknown,n:number):number[]=>Array.isArray(v)?v.slice(0,n).map(x=>Math.max(-1,Math.min(1,finN(x,0)))):[];
+const sanTrace=(x:unknown):HippocampalFormationTrace|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {memoryId:typeof r.memoryId==='string'?r.memoryId.slice(0,160):'',dg:numVec(r.dg,64),ca3:numVec(r.ca3,64),ca1:numVec(r.ca1,64),subiculum:numVec(r.subiculum,64),tick:cnt(r.tick,0),replayCount:cnt(r.replayCount,0),uncertainty01:clamp01(finN(r.uncertainty01,0))};};
 function norm(v:number[]){const n=Math.sqrt(v.reduce((s,x)=>s+x*x,0))||1;return v.map(x=>x/n);}
 function sparse(v:number[],keep=12){const idx=v.map((x,i)=>[Math.abs(x),i] as const).sort((a,b)=>b[0]-a[0]).slice(0,Math.max(1,Math.min(v.length,keep)));const out=new Array(v.length).fill(0);for(const [,i] of idx)out[i]=v[i]??0;return norm(out);}
 
@@ -17,7 +21,7 @@ export class HippocampalFormationCircuit {
   private state=defaults();
   private readonly maxTraces:number;
   constructor(maxTraces=192){this.maxTraces=maxTraces;}
-  restore(raw?:Partial<HippocampalFormationState>|null){const d=defaults(),r=raw??{};this.state={...d,...r,regions:{...d.regions,...(r.regions??{})},traces:Array.isArray(r.traces)?r.traces.slice(-this.maxTraces).map((x:any)=>({...x,dg:Array.isArray(x?.dg)?x.dg.slice(0,64):[],ca3:Array.isArray(x?.ca3)?x.ca3.slice(0,64):[],ca1:Array.isArray(x?.ca1)?x.ca1.slice(0,64):[],subiculum:Array.isArray(x?.subiculum)?x.subiculum.slice(0,64):[]})):[],lastRecall:{...d.lastRecall,...(r.lastRecall??{})}};}
+  restore(raw?:Partial<HippocampalFormationState>|null){const d=defaults();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let traces:HippocampalFormationTrace[]=[];try{const t=read('traces');if(Array.isArray(t))traces=t.slice(-this.maxTraces).map(sanTrace).filter((x):x is HippocampalFormationTrace=>x!==null);}catch{traces=[];}const reg=read('regions');const regions={...d.regions};if(reg&&typeof reg==='object'){const rr=reg as Record<string,unknown>;for(const k of ['dg','ca3','ca1','subiculum'] as const)if(k in rr)regions[k]=rr[k]!==false;}const lr=read('lastRecall');const lrObj=(lr&&typeof lr==='object')?lr as Record<string,unknown>:{};const mid=lrObj.memoryId;this.state={version:1,encodingCount:cnt(read('encodingCount'),d.encodingCount),recalls:cnt(read('recalls'),d.recalls),replayRuns:cnt(read('replayRuns'),d.replayRuns),separated01:clamp01(finN(read('separated01'),d.separated01)),completed01:clamp01(finN(read('completed01'),d.completed01)),predictionError01:clamp01(finN(read('predictionError01'),d.predictionError01)),regions,traces,lastRecall:{memoryId:typeof mid==='string'&&mid?mid.slice(0,160):null,separation01:clamp01(finN(lrObj.separation01,d.lastRecall.separation01)),completion01:clamp01(finN(lrObj.completion01,d.lastRecall.completion01)),predictionError01:clamp01(finN(lrObj.predictionError01,d.lastRecall.predictionError01)),uncertainty01:clamp01(finN(lrObj.uncertainty01,d.lastRecall.uncertainty01))}};}
   snapshot(){return structuredClone(this.state);}
   setRegionEnabled(region:'dg'|'ca3'|'ca1'|'subiculum',enabled:boolean){this.state.regions[region]=Boolean(enabled);}
   encode(memoryId:string,vector:number[],tick=0,uncertainty01=0){

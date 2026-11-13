@@ -1,4 +1,6 @@
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const fin=(value:unknown,fallback:number):number=>{const n=typeof value==='number'?value:typeof value==='string'&&value.trim().length?Number(value):NaN;return Number.isFinite(n)?n:(Number.isFinite(fallback)?fallback:0);};
+const cnt=(value:unknown,fallback:number):number=>Math.max(0,Math.floor(fin(value,fallback)));
 
 export interface MetaMemoryState{version:1;
 cycles:number;
@@ -12,7 +14,8 @@ forgettingRisk01:number;
 const d=():MetaMemoryState=>({version:1,cycles:0,retrievals:0,replays:0,compressions:0,meanPrecision01:.5,semanticCompression01:.3,forgettingRisk01:.2});
 
 export class MetaMemoryController{private s=d();
-restore(r?:Partial<MetaMemoryState>|null){this.s={...d(),...(r??{}),version:1};
+/** Restore without trusting the snapshot: precision/compression feed EMAs, so NaN poisons memory precision forever; counts must be non-negative. */
+restore(r?:Partial<MetaMemoryState>|null){const base=d();const src:Record<string,unknown>=(r&&typeof r==='object')?r:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};this.s={version:1,cycles:cnt(read('cycles'),base.cycles),retrievals:cnt(read('retrievals'),base.retrievals),replays:cnt(read('replays'),base.replays),compressions:cnt(read('compressions'),base.compressions),meanPrecision01:c(fin(read('meanPrecision01'),base.meanPrecision01)),semanticCompression01:c(fin(read('semanticCompression01'),base.semanticCompression01)),forgettingRisk01:c(fin(read('forgettingRisk01'),base.forgettingRisk01))};
 }snapshot(){return structuredClone(this.s);
 }step(i:{salience01:number;
 repeat01:number;

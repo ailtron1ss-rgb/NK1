@@ -8,6 +8,9 @@ const sq=(x:number)=>x*x;
 const hash=(x:number)=>{x|=0;x=Math.imul(x^(x>>>16),0x21f0aaad);x=Math.imul(x^(x>>>15),0x735a2d97);return (x^(x>>>13))>>>0;};
 const rand=(seed:number,scale=.04)=>((hash(seed)/0xffffffff)*2-1)*scale;
 const TARGETS=[.68,.32,.74,.72,.62,.30,.28,1,.45,.42,.30,.58];
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const actOrNull=(v:unknown):ActionKind|null=>ACTIONS.includes(v as ActionKind)?v as ActionKind:null;
 
 export interface B2509EmbodiedState{
   version:1; enabled:boolean; tick:number; cycles:number; learningUpdates:number;
@@ -44,18 +47,24 @@ export class B2509EmbodiedHomeostaticActionField{
   private state=defaultB2509State();
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<B2509EmbodiedState>|null){
-    const d=defaultB2509State(),r:any=raw??{};
-    const arr=(v:any,n:number,fill=0)=>Array.from({length:n},(_,i)=>Number.isFinite(Number(v?.[i]))?Number(v[i]):fill);
-    const rows=Array.isArray(r.weights)?r.weights:[];
-    this.state={...d,...structuredClone(r),version:1,
-      weights:ACTIONS.map((_,a)=>arr(rows[a],D).map((x,k)=>clamp(x,-.8,.8)===0 && !Number.isFinite(Number(rows[a]?.[k]))?d.weights[a]![k]!:clamp(x,-.8,.8))),
-      actionBiasWeights:arr(r.actionBiasWeights,ACTIONS.length).map((x,a)=>Number.isFinite(Number(r.actionBiasWeights?.[a]))?clamp(x,-.5,.5):d.actionBiasWeights[a]!),
-      actionUtility:arr(r.actionUtility,ACTIONS.length,.5).map(x=>clamp(x)),actionBias:arr(r.actionBias,ACTIONS.length).map(x=>clamp(x,-.18,.18)),actionUncertainty:arr(r.actionUncertainty,ACTIONS.length,.6).map(x=>clamp(x)),
-      lastBody:arr(r.lastBody,D,.5).map(x=>clamp(x)),lastPredictedBody:arr(r.lastPredictedBody,D,.5).map(x=>clamp(x)),
-      lesionFraction01:clamp(r.lesionFraction01??0),predictionError01:clamp(r.predictionError01??.48),homeostaticError01:clamp(r.homeostaticError01??.42),sensorReliability01:clamp(r.sensorReliability01??.62),
-      causalEffect01:clamp(r.causalEffect01??0),proactiveRegulation01:clamp(r.proactiveRegulation01??0),energyEfficiency01:clamp(r.energyEfficiency01??.5),verifiedSamples:Math.max(0,Math.floor(Number(r.verifiedSamples??0))),
-    };
+    const d=defaultB2509State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const arr=(v:unknown,n:number,fill=0):number[]=>Array.from({length:n},(_,i)=>finN(Array.isArray(v)?(v as unknown[])[i]:fill,fill));
+    const rows=Array.isArray(read('weights'))?read('weights') as unknown[]:[];
+    const wRow=(a:number):number[]=>Array.from({length:D},(_,k)=>{const raw=Array.isArray(rows[a])?(rows[a] as unknown[])[k]:undefined;return Number.isFinite(Number(raw))?Math.max(-.8,Math.min(.8,Number(raw))):d.weights[a]![k]!;});
+    this.state={version:1,enabled:read('enabled')!==false,tick:cnt(read('tick'),d.tick),cycles:cnt(read('cycles'),d.cycles),learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),
+      predictionError01:Math.max(0,Math.min(1,finN(read('predictionError01'),d.predictionError01))),homeostaticError01:Math.max(0,Math.min(1,finN(read('homeostaticError01'),d.homeostaticError01))),sensorReliability01:Math.max(0,Math.min(1,finN(read('sensorReliability01'),d.sensorReliability01))),
+      causalEffect01:Math.max(0,Math.min(1,finN(read('causalEffect01'),d.causalEffect01))),proactiveRegulation01:Math.max(0,Math.min(1,finN(read('proactiveRegulation01'),d.proactiveRegulation01))),energyEfficiency01:Math.max(0,Math.min(1,finN(read('energyEfficiency01'),d.energyEfficiency01))),
+      actionUtility:ACTIONS.map((_,a)=>Math.max(0,Math.min(1,finN(Array.isArray(read('actionUtility'))?(read('actionUtility') as unknown[])[a]:.5,.5)))),
+      actionBias:ACTIONS.map((_,a)=>Math.max(-.18,Math.min(.18,finN(Array.isArray(read('actionBias'))?(read('actionBias') as unknown[])[a]:0,0)))),
+      actionUncertainty:ACTIONS.map((_,a)=>Math.max(0,Math.min(1,finN(Array.isArray(read('actionUncertainty'))?(read('actionUncertainty') as unknown[])[a]:.6,.6)))),
+      lastBody:Array.from({length:D},(_,k)=>Math.max(0,Math.min(1,finN(Array.isArray(read('lastBody'))?(read('lastBody') as unknown[])[k]:d.lastBody[k],d.lastBody[k]!)))),
+      lastPredictedBody:Array.from({length:D},(_,k)=>Math.max(0,Math.min(1,finN(Array.isArray(read('lastPredictedBody'))?(read('lastPredictedBody') as unknown[])[k]:d.lastPredictedBody[k],d.lastPredictedBody[k]!)))),
+      lastAction:actOrNull(read('lastAction')),
+      weights:ACTIONS.map((_,a)=>wRow(a)),
+      actionBiasWeights:ACTIONS.map((_,a)=>Number.isFinite(Number(Array.isArray(read('actionBiasWeights'))?(read('actionBiasWeights') as unknown[])[a]:undefined))?Math.max(-.5,Math.min(.5,Number((read('actionBiasWeights') as unknown[])[a]))):d.actionBiasWeights[a]!),
+      lesionFraction01:Math.max(0,Math.min(1,finN(read('lesionFraction01'),0))),verifiedSamples:cnt(read('verifiedSamples'),d.verifiedSamples)};
   }
+
   setEnabled(x:boolean){this.state.enabled=!!x;}
   private body(i:B2509Input){
     const e=i.embodiment;

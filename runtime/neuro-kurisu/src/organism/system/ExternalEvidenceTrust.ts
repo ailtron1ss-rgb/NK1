@@ -32,6 +32,11 @@ export interface ExternalEvidenceTrustState {
   meanTrust01:number;
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const SOURCE_CLASSES:readonly EvidenceSourceClass[]=['os','device','user','external-api','world','organism','simulator','unknown'];
+const STATUSES:readonly EvidenceStatus[]=['candidate','corroborated','contested','expired'];
+const strIds=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.trim().length>0&&x.length<=180).map(x=>x.slice(0,180)).slice(-cap):[];
 const baseTrust=(s:EvidenceSourceClass)=>({os:.90,device:.78,user:.68,'external-api':.84,world:.55,organism:.28,simulator:.18,unknown:.40}[s]);
 function sourceClassOf(value:string):EvidenceSourceClass{
   const s=String(value||'unknown').toLowerCase();
@@ -45,10 +50,11 @@ function sourceClassOf(value:string):EvidenceSourceClass{
   return 'unknown';
 }
 function stableId(claimKey:string,source:string,at:number){return `evidence:${sha256Stable({claimKey:String(claimKey).slice(0,180),source:String(source).slice(0,120),minuteBucket:Math.floor(at/60000)})}`;}
+const sanitizeEvidenceRecord=(v:unknown):ExternalEvidenceRecord|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const source=typeof r.source==='string'?r.source.slice(0,120):'unknown';const firstSeenAt=Math.max(0,finN(r.firstSeenAt,0));return {id:r.id.slice(0,180),claimKey:typeof r.claimKey==='string'?r.claimKey.slice(0,180):'',source,sourceClass:SOURCE_CLASSES.includes(r.sourceClass as EvidenceSourceClass)?r.sourceClass as EvidenceSourceClass:'unknown',independenceKey:typeof r.independenceKey==='string'?r.independenceKey.slice(0,120):'',confidence01:clamp(finN(r.confidence01,.5)),trust01:clamp(finN(r.trust01,baseTrust(sourceClassOf(source)))),corroborations:cnt(r.corroborations,0),independentSources:cnt(r.independentSources,0),contradictions:cnt(r.contradictions,0),status:STATUSES.includes(r.status as EvidenceStatus)?r.status as EvidenceStatus:'candidate',firstSeenAt,lastSeenAt:Math.max(firstSeenAt,finN(r.lastSeenAt,firstSeenAt)),evidenceIds:strIds(r.evidenceIds,64)};};
 export const defaultExternalEvidenceTrust=():ExternalEvidenceTrustState=>({version:1,records:[],acceptedCount:0,contestedCount:0,expiredCount:0,meanTrust01:.5});
 export class ExternalEvidenceTrustEngine{
  private state=defaultExternalEvidenceTrust();
- restore(raw?:Partial<ExternalEvidenceTrustState>|null){const d=defaultExternalEvidenceTrust();this.state={...d,...(raw??{}),records:Array.isArray(raw?.records)?raw!.records.slice(-256).map((record:any)=>({...record,...(Array.isArray(record?.evidenceIds)?{evidenceIds:record.evidenceIds.filter((id:any)=>typeof id==='string'&&id.trim()&&id.length<=180).slice(-64)}:{})})):[]};this.recompute();}
+ restore(raw?:Partial<ExternalEvidenceTrustState>|null){const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let records:ExternalEvidenceRecord[]=[];try{const r=read('records');if(Array.isArray(r))records=r.map(sanitizeEvidenceRecord).filter((x):x is ExternalEvidenceRecord=>x!==null).slice(-256);}catch{records=[];}this.state={version:1,records,acceptedCount:cnt(read('acceptedCount'),0),contestedCount:cnt(read('contestedCount'),0),expiredCount:cnt(read('expiredCount'),0),meanTrust01:clamp(finN(read('meanTrust01'),.5))};this.recompute();}
  snapshot(){return structuredClone(this.state);}
  observe(input:{claimKey:string;source:string;independenceKey?:string;confidence01?:number;contradiction01?:number;at?:number;evidenceId?:string}):ExternalEvidenceRecord{
    const at=Number.isFinite(input.at)?Number(input.at):Date.now();

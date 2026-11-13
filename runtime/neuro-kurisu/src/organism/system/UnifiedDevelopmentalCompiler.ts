@@ -1,9 +1,14 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export interface UnifiedDevelopmentalState{version:1;cycles:number;developmentIndex01:number;nextOperation:string;confidence01:number;evidenceScore01:number;rejectedOperations:number;acceptedOperations:number;}
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
 export const defaultUnifiedDevelopmental=():UnifiedDevelopmentalState=>({version:1,cycles:0,developmentIndex01:.4,nextOperation:'observe',confidence01:.45,evidenceScore01:0,rejectedOperations:0,acceptedOperations:0});
 export class UnifiedDevelopmentalCompiler{
  private state=defaultUnifiedDevelopmental();
- restore(raw?:Partial<UnifiedDevelopmentalState>|null){const d=defaultUnifiedDevelopmental(),r=raw??{};this.state={...d,...r,version:1};}
+ restore(raw?:Partial<UnifiedDevelopmentalState>|null){const d=defaultUnifiedDevelopmental();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+this.state={version:1,cycles:cnt(read('cycles'),d.cycles),developmentIndex01:clamp(finN(read('developmentIndex01'),d.developmentIndex01)),nextOperation:str(read('nextOperation'),d.nextOperation),confidence01:clamp(finN(read('confidence01'),d.confidence01)),evidenceScore01:clamp(finN(read('evidenceScore01'),d.evidenceScore01)),rejectedOperations:cnt(read('rejectedOperations'),d.rejectedOperations),acceptedOperations:cnt(read('acceptedOperations'),d.acceptedOperations)};
+}
  snapshot(){return structuredClone(this.state);}
  decide(input:{gap01:number;uncertainty01:number;phaseFreeze01:number;counterfactualSupport01:number;coadaptation01:number;resourceDebt01:number;causalConfidence01:number}){
   const s=this.state,g=clamp(input.gap01),u=clamp(input.uncertainty01),freeze=clamp(input.phaseFreeze01),cf=clamp(input.counterfactualSupport01),co=clamp(input.coadaptation01),debt=clamp(input.resourceDebt01),ca=clamp(input.causalConfidence01);

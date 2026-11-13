@@ -28,7 +28,11 @@ export interface CognitiveSpineDecision {
 }
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
+const fin=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:typeof v==='string'&&v.trim().length?Number(v):NaN;return Number.isFinite(n)?n:(Number.isFinite(f)?f:0);};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(fin(v,f)));
 const DEFAULT_CADENCE:Record<SpineOperation,number> = { research:4, 'world-rollout':3, shadow:2, project:2 };
+const SPINE_MODES:readonly SpineMode[]=['reflex','balanced','deep','protect'];
+const OPERATIONS:readonly SpineOperation[]=['research','world-rollout','shadow','project'];
 
 export const defaultCognitiveSpineSchedule = ():CognitiveSpineScheduleState => ({
   version:1,
@@ -47,12 +51,19 @@ export class CognitiveSpineScheduler {
 
   restore(raw?:Partial<CognitiveSpineScheduleState>|null){
     const d=defaultCognitiveSpineSchedule();
+    const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};
+    const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const row=(v:unknown):Record<SpineOperation,number>=>{const o=(v&&typeof v==='object')?v as Record<string,unknown>:{};const r={} as Record<SpineOperation,number>;for(const op of OPERATIONS)r[op]=cnt(o[op],0);return r;};
     this.state={
-      ...d,
-      ...(raw??{}),
-      runs:{...d.runs,...(raw?.runs??{})},
-      skips:{...d.skips,...(raw?.skips??{})},
-      opportunities:{...d.opportunities,...(raw?.opportunities??{})},
+      version:1,
+      mode:SPINE_MODES.includes(read('mode') as SpineMode)?read('mode') as SpineMode:d.mode,
+      lastTick:Math.max(0,fin(read('lastTick'),d.lastTick)),
+      lastDecisionAt:Math.max(0,fin(read('lastDecisionAt'),d.lastDecisionAt)),
+      runs:row(read('runs')),
+      skips:row(read('skips')),
+      opportunities:row(read('opportunities')),
+      savings01:clamp(fin(read('savings01'),d.savings01)),
+      lastReason:typeof read('lastReason')==='string'?(read('lastReason') as string).slice(0,240):d.lastReason,
     };
   }
 

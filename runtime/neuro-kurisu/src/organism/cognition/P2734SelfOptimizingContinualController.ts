@@ -29,6 +29,10 @@ export interface P2734MetaState{
 const freshCalibration=():P2734ActionCalibration=>({samples:0,prediction01:.5,absError01:.25,signedError01:0,uncertainty01:.35,confidence01:.12,regret01:.2});
 const freshCapsule=():P2734SkillCapsule=>({visits:0,success01:.5,confidence01:.1,centroid:new Array(8).fill(0),fastDelta:new Array(8).fill(0),slowDelta:new Array(8).fill(0),predictionError01:.35,consolidation01:.05,lastTick:0});
 const freshArm=():P2734ReplayArmState=>({pulls:0,meanUtility01:.5,uncertainty01:.35,weight01:.25,lastUtility01:.5});
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const SGN=(v:unknown,f:number):number=>Math.max(-1,Math.min(1,finN(v,f)));
 
 export const defaultP2734SelfOptimizingContinual=(contexts=6):P2734MetaState=>({
   version:1,enabled:true,tick:0,outcomes:0,activeContextId:0,previousContextId:0,
@@ -50,18 +54,32 @@ export class P2734SelfOptimizingContinualController{
   snapshot(){return structuredClone(this.state);}
   setEnabled(v:boolean){this.state.enabled=!!v;}
   restore(raw?:Partial<P2734MetaState>|null){
-    const d=defaultP2734SelfOptimizingContinual(this.contexts),r:any=raw??{};
-    const arr=(v:any,n:number,fill=0)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-v.length)).fill(fill)).slice(0,n):new Array(n).fill(fill);
-    const matrix=(v:any,rows:number,cols:number,fill=0)=>Array.isArray(v)?Array.from({length:rows},(_,i)=>arr(v[i],cols,fill)):Array.from({length:rows},()=>new Array(cols).fill(fill));
-    const calibrations=Array.from({length:ACTIONS.length},(_,a)=>({...d.actionCalibration[a]!,...(r.actionCalibration?.[a]??{})}));
-    const capsules=Array.from({length:this.contexts},(_,c)=>ACTIONS.map((_,a)=>{const x:any=r.skillCapsules?.[c]?.[a]??{};return {...d.skillCapsules[c]![a]!,...x,centroid:arr(x.centroid,8),fastDelta:arr(x.fastDelta,8),slowDelta:arr(x.slowDelta,8)};}));
-    const arms=ARMS.map((_,i)=>({...d.replayArms[i]!,...(r.replayArms?.[i]??{})}));
-    const mix=normalize(Array.isArray(r.replayMix01)?r.replayMix01:d.replayMix01);
-    this.state={...d,...structuredClone(r),version:1,
-      contextPrototype:matrix(r.contextPrototype,this.contexts,16),contextVisits:arr(r.contextVisits,this.contexts),lastContextVector:arr(r.lastContextVector,16),
-      actionCalibration:calibrations,skillCapsules:capsules,counterfactualRegret01:arr(r.counterfactualRegret01,ACTIONS.length,.2),
-      replayArms:arms,replayMix01:mix,replayEntropy01:entropy01(mix),consolidationQueue:Array.isArray(r.consolidationQueue)?r.consolidationQueue.slice(-64):[]
-    };
+    const d=defaultP2734SelfOptimizingContinual(this.contexts);const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const arr=(v:unknown,n:number,fill=0):number[]=>Array.isArray(v)?Array.from({length:n},(_,i)=>finN((v as unknown[])[i],fill)):new Array(n).fill(fill);
+    const matrix=(v:unknown,rows:number,cols:number,fill=0):number[][]=>Array.isArray(v)?Array.from({length:rows},(_,i)=>arr((v as unknown[])[i],cols,fill)):Array.from({length:rows},()=>new Array(cols).fill(fill));
+    const cRaw=Array.isArray(read('actionCalibration'))?read('actionCalibration') as unknown[]:[];
+    const calibrations=ACTIONS.map((_,a)=>{const x=(cRaw[a]&&typeof cRaw[a]==='object')?cRaw[a] as Record<string,unknown>:{};const base=d.actionCalibration[a]!;return {samples:cnt(x.samples,base.samples),prediction01:C01(x.prediction01,base.prediction01),absError01:C01(x.absError01,base.absError01),signedError01:SGN(x.signedError01,base.signedError01),uncertainty01:C01(x.uncertainty01,base.uncertainty01),confidence01:C01(x.confidence01,base.confidence01),regret01:C01(x.regret01,base.regret01)};});
+    const sRaw=Array.isArray(read('skillCapsules'))?read('skillCapsules') as unknown[]:[];
+    const capsules=Array.from({length:this.contexts},(_,c)=>{const row=Array.isArray(sRaw[c])?sRaw[c] as unknown[]:[];return ACTIONS.map((_,a)=>{const x=(row[a]&&typeof row[a]==='object')?row[a] as Record<string,unknown>:{};const base=d.skillCapsules[c]![a]!;return {visits:cnt(x.visits,base.visits),success01:C01(x.success01,base.success01),confidence01:C01(x.confidence01,base.confidence01),centroid:arr(x.centroid,8),fastDelta:arr(x.fastDelta,8),slowDelta:arr(x.slowDelta,8),predictionError01:C01(x.predictionError01,base.predictionError01),consolidation01:C01(x.consolidation01,base.consolidation01),lastTick:cnt(x.lastTick,base.lastTick)};});});
+    const aRaw=Array.isArray(read('replayArms'))?read('replayArms') as unknown[]:[];
+    const arms=ARMS.map((_,i)=>{const x=(aRaw[i]&&typeof aRaw[i]==='object')?aRaw[i] as Record<string,unknown>:{};const base=d.replayArms[i]!;return {pulls:cnt(x.pulls,base.pulls),meanUtility01:C01(x.meanUtility01,base.meanUtility01),uncertainty01:C01(x.uncertainty01,base.uncertainty01),weight01:C01(x.weight01,base.weight01),lastUtility01:C01(x.lastUtility01,base.lastUtility01)};});
+    const mixRaw=read('replayMix01');
+    const mix=normalize(Array.isArray(mixRaw)?arr(mixRaw,ARMS.length,0):d.replayMix01);
+    const cqRaw=read('consolidationQueue');
+    const selRaw=read('selectedReplayArm');
+    const activeCtx=Math.max(0,Math.min(this.contexts-1,cnt(read('activeContextId'),d.activeContextId)));
+    const prevCtx=Math.max(0,Math.min(this.contexts-1,cnt(read('previousContextId'),d.previousContextId)));
+    this.state={version:1,enabled:read('enabled')!==false,tick:cnt(read('tick'),d.tick),outcomes:cnt(read('outcomes'),d.outcomes),activeContextId:activeCtx,previousContextId:prevCtx,
+      fastLearning01:C01(read('fastLearning01'),d.fastLearning01),metaLearning01:C01(read('metaLearning01'),d.metaLearning01),metaWarmup01:C01(read('metaWarmup01'),d.metaWarmup01),adaptationPressure01:C01(read('adaptationPressure01'),d.adaptationPressure01),stabilityPressure01:C01(read('stabilityPressure01'),d.stabilityPressure01),
+      contextPrototype:matrix(read('contextPrototype'),this.contexts,16),contextVisits:arr(read('contextVisits'),this.contexts).map(v=>Math.max(0,Math.floor(v))),contextSwitches:cnt(read('contextSwitches'),d.contextSwitches),boundaryEvidence01:C01(read('boundaryEvidence01'),d.boundaryEvidence01),lastContextVector:arr(read('lastContextVector'),16),
+      actionCalibration:calibrations,skillCapsules:capsules,
+      ensembleDisagreement01:C01(read('ensembleDisagreement01'),d.ensembleDisagreement01),transitionUncertainty01:C01(read('transitionUncertainty01'),d.transitionUncertainty01),informationValue01:C01(read('informationValue01'),d.informationValue01),modelCalibration01:C01(read('modelCalibration01'),d.modelCalibration01),
+      counterfactualRegret01:arr(read('counterfactualRegret01'),ACTIONS.length,.2),counterfactualGap01:C01(read('counterfactualGap01'),d.counterfactualGap01),repetitionPenalty01:C01(read('repetitionPenalty01'),d.repetitionPenalty01),
+      replayArms:arms,replayMix01:mix,replayEntropy01:entropy01(mix),selectedReplayArm:Number.isSafeInteger(selRaw)&&(selRaw as number)>=0&&(selRaw as number)<ARMS.length?selRaw as number:d.selectedReplayArm,pendingReplayCredit01:C01(read('pendingReplayCredit01'),d.pendingReplayCredit01),
+      consolidationQueue:Array.isArray(cqRaw)?(cqRaw as unknown[]).slice(-64).map(v=>cnt(v,0)):[],
+      consolidationGain01:C01(read('consolidationGain01'),d.consolidationGain01),consolidations:cnt(read('consolidations'),d.consolidations),replayFeedbackCount:cnt(read('replayFeedbackCount'),d.replayFeedbackCount),
+      resourceBudget01:C01(read('resourceBudget01'),d.resourceBudget01),hotState01:C01(read('hotState01'),d.hotState01),coldCompression01:C01(read('coldCompression01'),d.coldCompression01),computeSaved01:C01(read('computeSaved01'),d.computeSaved01),skippedWork:cnt(read('skippedWork'),d.skippedWork),
+      taskTransfer01:C01(read('taskTransfer01'),d.taskTransfer01),antiForgetting01:C01(read('antiForgetting01'),d.antiForgetting01),lastReason:typeof read('lastReason')==='string'?(read('lastReason') as string).slice(0,240):d.lastReason};
   }
   private context(vector:number[],novelty01:number,predictionError01:number):{id:number;shift:number;novelty:number}{
     let best=0,bestD=Infinity;

@@ -46,6 +46,14 @@ const norm=(x:unknown)=>String(x??'').trim().toLowerCase().replace(/\s+/g,' ').s
 const hash=(s:string)=>{let h=2166136261>>>0;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return (h>>>0).toString(16).padStart(8,'0');};
 const stableClaim=(claim:string)=>`reality:${hash(norm(claim))}`;
 const asList = <T>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
+const STATUSES:RealityBeliefStatus[]=['anchored','supported','disputed','unknown'];
+const CONT_KINDS:RealityContinuityEvent['kind'][]=['world-change','confidence-shift','dispute','anchor','recovery'];
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,cap=240):string=>typeof v==='string'?v.slice(0,cap):'';
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,200)).slice(-cap):[];
+const sanBelief=(x:unknown):RealityBelief|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.claimKey!=='string'||!r.claimKey)return null;const st=r.status;return {claimKey:r.claimKey.slice(0,200),status:STATUSES.includes(st as RealityBeliefStatus)?st as RealityBeliefStatus:'unknown',confidence01:clamp(finN(r.confidence01,0)),firstSeenAt:cnt(r.firstSeenAt,0),lastSeenAt:cnt(r.lastSeenAt,0),support01:clamp(finN(r.support01,0)),contradiction01:clamp(finN(r.contradiction01,0)),independentSources:cnt(r.independentSources,0),provenanceIds:strArr(r.provenanceIds,12),predictionIds:strArr(r.predictionIds,12)};};
+const sanCont=(x:unknown):RealityContinuityEvent|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const kd=r.kind;return {id:r.id.slice(0,160),at:cnt(r.at,0),kind:CONT_KINDS.includes(kd as RealityContinuityEvent['kind'])?kd as RealityContinuityEvent['kind']:'world-change',fromHash:str(r.fromHash,64),toHash:str(r.toHash,64),magnitude01:clamp(finN(r.magnitude01,0)),reason:str(r.reason,400)};};
 
 export const defaultP83PersistentRealityModel=():PersistentRealityModelState=>({version:1,revision:0,lastAt:0,currentHash:'',previousHash:'',location:'unknown',confidence01:0,uncertainty01:1,beliefCount:0,anchoredCount:0,disputedCount:0,unknownCount:0,transitions:0,continuityBreaks:0,beliefs:[],continuity:[]});
 
@@ -70,12 +78,8 @@ export class P83PersistentRealityModel {
   }
 
   restore(raw?:Partial<PersistentRealityModelState>|null){
-    const d=defaultP83PersistentRealityModel(),r=raw??{};
-    this.state={...d,...r,
-      beliefs:Array.isArray(r.beliefs)?r.beliefs.slice(-this.maxBeliefs).map(b=>({...b,provenanceIds:[...(b.provenanceIds??[])].slice(-12),predictionIds:[...(b.predictionIds??[])].slice(-12)})):[],
-      continuity:Array.isArray(r.continuity)?r.continuity.slice(-this.maxContinuity):[],
-      version:1,
-    };
+    const d=defaultP83PersistentRealityModel();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    this.state={version:1,revision:cnt(read('revision'),d.revision),lastAt:cnt(read('lastAt'),d.lastAt),currentHash:str(read('currentHash'),64),previousHash:str(read('previousHash'),64),location:str(read('location'),180)||d.location,confidence01:clamp(finN(read('confidence01'),d.confidence01)),uncertainty01:clamp(finN(read('uncertainty01'),d.uncertainty01)),beliefCount:cnt(read('beliefCount'),d.beliefCount),anchoredCount:cnt(read('anchoredCount'),d.anchoredCount),disputedCount:cnt(read('disputedCount'),d.disputedCount),unknownCount:cnt(read('unknownCount'),d.unknownCount),transitions:cnt(read('transitions'),d.transitions),continuityBreaks:cnt(read('continuityBreaks'),d.continuityBreaks),beliefs:Array.isArray(read('beliefs'))?(read('beliefs') as unknown[]).slice(-this.maxBeliefs).map(sanBelief).filter((x):x is RealityBelief=>x!==null):[],continuity:Array.isArray(read('continuity'))?(read('continuity') as unknown[]).slice(-this.maxContinuity).map(sanCont).filter((x):x is RealityContinuityEvent=>x!==null):[]};
     this.refreshCounts();
   }
 

@@ -19,11 +19,16 @@ export interface P74State {
 }
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const P74_MODES:readonly P74Mode[]=['observe','engage','protect','consolidate','explore','reflect','rest'];
+const sanitizeModeCounts=(v:unknown):Record<P74Mode,number>=>{const base:Record<P74Mode,number>={observe:0,engage:0,protect:0,consolidate:0,explore:0,reflect:0,rest:0};if(!v||typeof v!=='object')return base;const r=v as Record<string,unknown>;for(const m of P74_MODES)base[m]=cnt(r[m],0);return base;};
+const strList=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string').map(x=>x.slice(0,240)).slice(-cap):[];
 export const defaultP74=():P74State=>({version:1,ticks:0,mode:'observe',modeStreak:0,lastMode:null,integration01:0,selfWorld01:.7,epistemic01:.5,developmental01:.3,attentionBudget01:.8,modeCounts:{observe:0,engage:0,protect:0,consolidate:0,explore:0,reflect:0,rest:0},recentModes:[],recentActions:[],lastReasons:[],lastAt:0});
 
 export class P74IntegratedOrganismKernel {
   private state=P74StateClone(defaultP74());
-  restore(raw:Partial<P74State>|undefined){ if(!raw) return; const d=defaultP74(); this.state={...d,...raw,modeCounts:{...d.modeCounts,...(raw.modeCounts??{})},recentModes:Array.isArray(raw.recentModes)?raw.recentModes.slice(-32):[],recentActions:Array.isArray(raw.recentActions)?raw.recentActions.slice(-32):[],lastReasons:Array.isArray(raw.lastReasons)?raw.lastReasons.slice(-8):[]}; }
+  restore(raw:Partial<P74State>|undefined){ if(!raw) return; const d=defaultP74(); const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{}; const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}}; const mode=read('mode'); const lastMode=read('lastMode'); const rms=read('recentModes'); const recentModes: P74Mode[] = Array.isArray(rms)?(rms as unknown[]).filter((x):x is P74Mode=>P74_MODES.includes(x as P74Mode)).slice(-32):[]; this.state={version:1,ticks:cnt(read('ticks'),d.ticks),mode:P74_MODES.includes(mode as P74Mode)?mode as P74Mode:d.mode,modeStreak:cnt(read('modeStreak'),d.modeStreak),lastMode:P74_MODES.includes(lastMode as P74Mode)?lastMode as P74Mode:null,integration01:clamp(finN(read('integration01'),d.integration01)),selfWorld01:clamp(finN(read('selfWorld01'),d.selfWorld01)),epistemic01:clamp(finN(read('epistemic01'),d.epistemic01)),developmental01:clamp(finN(read('developmental01'),d.developmental01)),attentionBudget01:clamp(finN(read('attentionBudget01'),d.attentionBudget01)),modeCounts:sanitizeModeCounts(read('modeCounts')),recentModes,recentActions:strList(read('recentActions'),32),lastReasons:strList(read('lastReasons'),8),lastAt:Math.max(0,finN(read('lastAt'),d.lastAt))}; }
   snapshot(){ return P74StateClone(this.state); }
   evaluate(i:P74Input){
     const selfWorld=clamp((i.identity01*.24+i.grounding01*.18+i.causal01*.22+i.predictionAccuracy01*.16+(1-i.realityGap01)*.20));

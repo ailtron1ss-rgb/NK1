@@ -4,10 +4,13 @@ import type { SelfProject } from './SelfProjectEngine.ts';
 export interface NarrativeChapter { id:string; title:string; evidenceIds:string[]; createdAt:number; lastUpdatedAt:number; salience:number; }
 export interface AutobiographicalNarrativeState { version:2; chapters:NarrativeChapter[]; continuity:number; lastUpdatedAt:number; lastEvidenceKey:string; }
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,120)).slice(0,cap):[];
+const sanitizeChapter=(v:unknown):NarrativeChapter|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,120),title:typeof r.title==='string'?r.title.slice(0,240):'',evidenceIds:strArr(r.evidenceIds,32),createdAt:Math.max(0,finN(r.createdAt,0)),lastUpdatedAt:Math.max(0,finN(r.lastUpdatedAt,0)),salience:clamp(finN(r.salience,0))};};
 export function defaultNarrative():AutobiographicalNarrativeState{return{version:2,chapters:[],continuity:0.5,lastUpdatedAt:0,lastEvidenceKey:''};}
 export class AutobiographicalNarrativeEngine{
   private state=defaultNarrative();
-  restore(v:AutobiographicalNarrativeState|undefined){this.state={...defaultNarrative(),...(v||{}),version:2,chapters:[...(v?.chapters||[])],lastEvidenceKey:String(v?.lastEvidenceKey??'')};}
+  restore(v:AutobiographicalNarrativeState|undefined){const d=defaultNarrative();const src:Record<string,unknown>=(v&&typeof v==='object')?v as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let chapters:NarrativeChapter[]=[];try{const c=read('chapters');if(Array.isArray(c))chapters=c.map(sanitizeChapter).filter((x):x is NarrativeChapter=>x!==null).slice(0,64);}catch{chapters=[];}this.state={version:2,chapters,continuity:clamp(finN(read('continuity'),d.continuity)),lastUpdatedAt:Math.max(0,finN(read('lastUpdatedAt'),d.lastUpdatedAt)),lastEvidenceKey:typeof read('lastEvidenceKey')==='string'?(read('lastEvidenceKey') as string).slice(0,240):d.lastEvidenceKey};}
   snapshot(){return structuredClone(this.state);}
   summary(){return{version:2,chapterCount:this.state.chapters.length,continuity:this.state.continuity,salience01:this.state.chapters[0]?.salience??0,lastUpdatedAt:this.state.lastUpdatedAt};}
   update(input:{events:OrganismEvent[]; activeProjects:SelfProject[]; identityContinuity:number; revisionCount:number}){

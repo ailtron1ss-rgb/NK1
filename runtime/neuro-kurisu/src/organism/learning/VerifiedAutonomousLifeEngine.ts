@@ -2,6 +2,20 @@ import { createHash } from 'node:crypto';
 import type { ActionKind, OrganismState } from '../core/types.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const ACTIONS:readonly ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const BASES:readonly VerificationBasis[]=['tool-contract','external-postcondition','internal-transition','simulation','none'];
+const s=(v:unknown,cap=180):string=>typeof v==='string'?v.slice(0,cap):'';
+const sanDecision=(x:unknown):VerifiedDecision|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,180),cycle:cnt(r.cycle,0),action:(ACTIONS.includes(r.action as ActionKind)?r.action:'wait') as ActionKind,predicted01:clamp(finN(r.predicted01,0)),confidence01:clamp(finN(r.confidence01,0)),contextKey:s(r.contextKey,96),at:Math.max(0,finN(r.at,0)),resolved:r.resolved===true};};
+const sanOutcome=(x:unknown):VerifiedOutcome|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.decisionId!=='string'||!r.decisionId)return null;return {decisionId:r.decisionId.slice(0,180),actual01:clamp(finN(r.actual01,0)),error01:clamp(finN(r.error01,0)),reward01:clamp(finN(r.reward01,0)),verified01:clamp(finN(r.verified01,0)),causal01:clamp(finN(r.causal01,0)),basis:(BASES.includes(r.basis as VerificationBasis)?r.basis:'none') as VerificationBasis,at:Math.max(0,finN(r.at,0)),stateAfterDigest:s(r.stateAfterDigest,128)};};
+const sanPerception=(x:unknown):PerceptionObservation|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,180),cycle:cnt(r.cycle,0),mode:s(r.mode,64),expectedGain01:clamp(finN(r.expectedGain01,0)),observedGain01:clamp(finN(r.observedGain01,0)),verified01:clamp(finN(r.verified01,0)),at:Math.max(0,finN(r.at,0))};};
+const sanCausal=(x:unknown):CausalLink|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.decisionId!=='string'||!r.decisionId||typeof r.outcomeId!=='string'||!r.outcomeId)return null;return {decisionId:r.decisionId.slice(0,180),outcomeId:r.outcomeId.slice(0,180),action:(ACTIONS.includes(r.action as ActionKind)?r.action:'wait') as ActionKind,effect01:clamp(finN(r.effect01,0)),confidence01:clamp(finN(r.confidence01,0)),evidence01:clamp(finN(r.evidence01,0)),at:Math.max(0,finN(r.at,0))};};
+const sanCheckpoint=(x:unknown):IntegrityCheckpoint|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {cycle:cnt(r.cycle,0),digest:s(r.digest,128),decisions:cnt(r.decisions,0),outcomes:cnt(r.outcomes,0),at:Math.max(0,finN(r.at,0))};};
+const sanLongitudinal=(x:unknown):VerifiedLongitudinalPoint|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {cycle:cnt(r.cycle,0),overall01:clamp(finN(r.overall01,0)),loop01:clamp(finN(r.loop01,0)),agency01:clamp(finN(r.agency01,0)),prediction01:clamp(finN(r.prediction01,0)),verification01:clamp(finN(r.verification01,0)),recovery01:clamp(finN(r.recovery01,0)),at:Math.max(0,finN(r.at,0))};};
+const METRIC_KEYS:readonly (keyof VerifiedAutonomousLifeState['metrics'])[]=['closedLoop01','decisionOutcomeMatch01','predictionCalibration01','verification01','causalAccountability01','activePerception01','recovery01','longHorizon01','interaction01','integrity01'];
+const sanMetrics=(v:unknown,d:VerifiedAutonomousLifeState['metrics']):VerifiedAutonomousLifeState['metrics']=>{const out={...d};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const k of METRIC_KEYS)if(k in r)out[k]=clamp(finN(r[k],d[k]));return out;};
+const mapBounded=<T,>(v:unknown,cap:number,fn:(x:unknown)=>T|null):T[]=>{if(!Array.isArray(v))return [];const out:T[]=[];for(const x of v.slice(0,cap)){try{const r=fn(x);if(r!==null)out.push(r);}catch{/* drop malformed row */}}return out;};
 const mean=(xs:number[],fallback=.5)=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:fallback;
 const now=()=>Date.now();
 
@@ -54,15 +68,21 @@ export const defaultVerifiedAutonomousLife=():VerifiedAutonomousLifeState=>({
 export class VerifiedAutonomousLifeEngine {
   private state=defaultVerifiedAutonomousLife();
   restore(raw?:Partial<VerifiedAutonomousLifeState>|null){
-    const d=defaultVerifiedAutonomousLife(),r:any=raw??{};
-    this.state={...d,...r,version:1,
-      decisions:Array.isArray(r.decisions)?r.decisions.slice(-256):[],
-      outcomes:Array.isArray(r.outcomes)?r.outcomes.slice(-256):[],
-      perceptions:Array.isArray(r.perceptions)?r.perceptions.slice(-256):[],
-      causalLinks:Array.isArray(r.causalLinks)?r.causalLinks.slice(-256):[],
-      checkpoints:Array.isArray(r.checkpoints)?r.checkpoints.slice(-64):[],
-      longitudinal:Array.isArray(r.longitudinal)?r.longitudinal.slice(-256):[],
-      metrics:{...d.metrics,...(r.metrics??{})}
+    const d=defaultVerifiedAutonomousLife();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const lastDecisionId=read('lastDecisionId');
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),lastAt:Math.max(0,finN(read('lastAt'),d.lastAt)),nextId:cnt(read('nextId'),d.nextId),
+      decisions:mapBounded(read('decisions'),256,sanDecision),
+      outcomes:mapBounded(read('outcomes'),256,sanOutcome),
+      perceptions:mapBounded(read('perceptions'),256,sanPerception),
+      causalLinks:mapBounded(read('causalLinks'),256,sanCausal),
+      checkpoints:mapBounded(read('checkpoints'),64,sanCheckpoint),
+      longitudinal:mapBounded(read('longitudinal'),256,sanLongitudinal),
+      metrics:sanMetrics(read('metrics'),d.metrics),
+      recoveryCount:cnt(read('recoveryCount'),d.recoveryCount),
+      unresolvedDecisions:0,
+      lastDecisionId:(typeof lastDecisionId==='string'&&lastDecisionId)?lastDecisionId.slice(0,180):null,
+      lastOutcomeAt:Math.max(0,finN(read('lastOutcomeAt'),d.lastOutcomeAt)),
+      lastDigest:s(read('lastDigest'),128)
     };
     this.state.unresolvedDecisions=this.state.decisions.filter(x=>!x.resolved).length;
   }

@@ -62,6 +62,11 @@ export interface P48State {
 }
 
 const clamp=(v:number)=>Math.max(0,Math.min(1,Number.isFinite(v)?v:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,f:string,n=160):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const DOMAINS:P48IndicatorDomain[]=['global-workspace','higher-order-modeling','interoception','predictive-processing','recurrent-processing','attention','embodiment','continuity','agency','causal-integration'];
 const ema=(prev:number,next:number,a:number)=>clamp(prev*(1-a)+next*a);
 const dist=(a:number,b:number)=>Math.abs(clamp(a)-clamp(b));
 
@@ -75,13 +80,16 @@ export function defaultP48State():P48State{return{
 
 export class P48FunctionalAwarenessCore {
   private state=defaultP48State();
-  restore(raw:P48State|undefined){
-    const base=defaultP48State();
-    this.state={...base,...(raw??{}),
-      higherOrder:{...base.higherOrder,...(raw?.higherOrder??{})},
-      interoception:{...base.interoception,...(raw?.interoception??{})},
-      indicators:Array.isArray(raw?.indicators)?raw!.indicators.slice(0,16):[]
-    };
+  restore(raw:unknown){
+    const base=defaultP48State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const ho=(read('higherOrder')&&typeof read('higherOrder')==='object')?read('higherOrder') as Record<string,unknown>:{};
+    const ic=(read('interoception')&&typeof read('interoception')==='object')?read('interoception') as Record<string,unknown>:{};
+    const indRaw=read('indicators');
+    this.state={version:1,cycles:cnt(read('cycles'),base.cycles),ignitionCount:cnt(read('ignitionCount'),base.ignitionCount),broadcastCount:cnt(read('broadcastCount'),base.broadcastCount),ignitionRate01:clamp(finN(read('ignitionRate01'),base.ignitionRate01)),workspaceCapacity:Math.max(1,Math.min(16,Math.floor(finN(read('workspaceCapacity'),base.workspaceCapacity)))),meanWorkspaceOccupancy01:clamp(finN(read('meanWorkspaceOccupancy01'),base.meanWorkspaceOccupancy01)),recurrence01:clamp(finN(read('recurrence01'),base.recurrence01)),lastIgnitionStrength01:clamp(finN(read('lastIgnitionStrength01'),base.lastIgnitionStrength01)),lastBroadcastAt:finN(read('lastBroadcastAt'),base.lastBroadcastAt),lastWinnerId:strOrNull(read('lastWinnerId')),
+      higherOrder:{selfRepresentation01:clamp(finN(ho.selfRepresentation01,base.higherOrder.selfRepresentation01)),metacognitiveCalibration01:clamp(finN(ho.metacognitiveCalibration01,base.higherOrder.metacognitiveCalibration01)),confidenceOfConfidence01:clamp(finN(ho.confidenceOfConfidence01,base.higherOrder.confidenceOfConfidence01)),revisionReadiness01:clamp(finN(ho.revisionReadiness01,base.higherOrder.revisionReadiness01)),monitoringLag01:clamp(finN(ho.monitoringLag01,base.higherOrder.monitoringLag01))},
+      interoception:{bodyEnergy01:clamp(finN(ic.bodyEnergy01,base.interoception.bodyEnergy01)),thermalStrain01:clamp(finN(ic.thermalStrain01,base.interoception.thermalStrain01)),cognitiveCapacity01:clamp(finN(ic.cognitiveCapacity01,base.interoception.cognitiveCapacity01)),sensoryFreshness01:clamp(finN(ic.sensoryFreshness01,base.interoception.sensoryFreshness01)),sleepPressure01:clamp(finN(ic.sleepPressure01,base.interoception.sleepPressure01)),homeostaticError01:clamp(finN(ic.homeostaticError01,base.interoception.homeostaticError01)),freeEnergyProxy01:clamp(finN(ic.freeEnergyProxy01,base.interoception.freeEnergyProxy01)),regulationNeed01:clamp(finN(ic.regulationNeed01,base.interoception.regulationNeed01))},
+      indicators:Array.isArray(indRaw)?(indRaw as unknown[]).slice(0,16).filter(v=>v&&typeof v==='object').map(v=>{const r=v as Record<string,unknown>;return {domain:DOMAINS.includes(r.domain as P48IndicatorDomain)?r.domain as P48IndicatorDomain:'global-workspace',functionalEvidence01:clamp(finN(r.functionalEvidence01,0)),causalEvidence01:clamp(finN(r.causalEvidence01,0)),longitudinalEvidence01:clamp(finN(r.longitudinalEvidence01,0)),observations:cnt(r.observations,0),stability01:clamp(finN(r.stability01,0)),updatedAt:finN(r.updatedAt,0)};}):[],
+      lastAt:finN(read('lastAt'),base.lastAt)};
   }
   snapshot(){return structuredClone(this.state);}
 
