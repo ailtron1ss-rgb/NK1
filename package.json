@@ -5,7 +5,7 @@
   "scripts": {
     "test:rebuild-recovered": "npm --prefix runtime/neuro-kurisu run test:rebuild-recovered && npm --prefix app run test:avatar-storage && npm --prefix app run test:live2d-expression-cache && npm run test:release-license-readiness && npm run test:avatar-motor-intent",
     "dev": "node tools/super-dev.mjs",
-    "start": "node tools/super-start.mjs",
+    "start": "node tools/super-quickstart.mjs",
     "build": "npm --prefix app run build",
     "typecheck": "npm --prefix app run typecheck && npm --prefix runtime/neuro-kurisu run typecheck",
     "test:ui": "npm --prefix app test",
@@ -203,7 +203,10 @@
     "aspects:validate": "node tools/neurok-aspects.mjs validate",
     "aspects:report": "node tools/neurok-aspects.mjs report",
     "aspects:next": "node tools/neurok-aspects.mjs next",
-    "aspects:test": "node --test tools/neurok-aspects.test.mjs"
+    "aspects:test": "node --test tools/neurok-aspects.test.mjs",
+    "quickstart": "node tools/super-quickstart.mjs",
+    "start:prebuilt": "node tools/super-start.mjs",
+    "test:startup": "node --test tools/super-startup.test.mjs"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
