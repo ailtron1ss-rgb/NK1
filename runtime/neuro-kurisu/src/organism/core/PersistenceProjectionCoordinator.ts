@@ -50,6 +50,11 @@ export class PersistenceProjectionCoordinator {
     if (ctx.autonomousScientificBrain) target.facets.learning.autonomousScientificBrain=this.snapshotOnce('snap:autonomousScientificBrain', ctx.autonomousScientificBrain);
     target.facets.cognition.p27=this.snapshotOnce('snap:worldSubsystem.p27NeuralWorld', ctx.worldSubsystem.p27NeuralWorld);
     if(includeAdvanced){
+    // MemoryOS2 is the canonical durable memory owner. Project its complete
+    // bounded snapshot on every full checkpoint; compatibility records above
+    // are a lossy read-compatibility view and are never a recovery substitute.
+    target.facets.advanced.memoryOS=this.snapshotOnce('snap:memorySubsystem.memoryOS', ctx.memorySubsystem.memoryOS);
+    target.facets.advanced.memoryFabric=this.snapshotOnce('snap:memorySubsystem.memoryFabric', ctx.memorySubsystem.fabric);
     const advancedGroups: ProjectionGroup[] = ['critical','memory','identity','reality','developmental','slow'];
     const projectionPressure = clamp(1 - target.state.needs.energy + target.state.needs.cognitiveLoad * .35);
     const materialize = new Set<ProjectionGroup>(advancedGroups.filter(group => forceAllAdvanced || (ctx.revisionGraph.changed(group) && ctx.advancedProjectionScheduler.shouldMaterialize(group, target.state.tick, false, projectionPressure))));
