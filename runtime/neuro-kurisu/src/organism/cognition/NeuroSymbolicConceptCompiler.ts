@@ -7,7 +7,7 @@ const safeLabel = (value: unknown): string => {
   const normalized = raw.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 96);
   return normalized || 'unknown';
 };
-const quoteMeTTa = (value: string): string => \`"\${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"\`;
+const quoteMeTTa = (value: string): string => '"' + value.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
 const numberAtom = (value: unknown): string => clamp(typeof value === 'number' ? value : 0).toFixed(4);
 
 export interface ConceptPrototype {
@@ -88,11 +88,11 @@ export class NeuroSymbolicConceptCompiler {
     for (const concept of concepts) {
       const label = quoteMeTTa(safeLabel(concept.label));
       const uses = Number.isSafeInteger(concept.uses) && concept.uses >= 0 ? concept.uses : 0;
-      facts.push(\`(NK1Concept \${label} \${numberAtom(concept.confidence01)} \${uses} \${numberAtom(concept.success01)})\`);
+      facts.push('(NK1Concept ' + label + ' ' + numberAtom(concept.confidence01) + ' ' + uses + ' ' + numberAtom(concept.success01) + ')');
       const vector = concept.centroid.slice(0, 16).map(numberAtom);
-      facts.push(\`(NK1ConceptEmbedding \${label} (Vector\${vector.length ? \` \${vector.join(' ')}\` : ''}))\`);
+      facts.push('(NK1ConceptEmbedding ' + label + ' (Vector' + (vector.length ? ' ' + vector.join(' ') : '') + '))');
     }
-    return { format: 'metta', conceptCount: concepts.length, facts, text: facts.join('\\n') };
+    return { format: 'metta', conceptCount: concepts.length, facts, text: facts.join('\n') };
   }
 
   summary() {
