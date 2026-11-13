@@ -45,6 +45,15 @@ assert.equal(plan.consequenceClass, 'read-only');
 assert.ok(plan.consequenceCost01 < .1);
 assert.ok(plan.cost01 >= .1 && plan.cost01 < .3, 'resource cost must remain separate from consequence cost');
 
+const projectDenied = controller.plan({
+  tick: 3, at: 20000, energy01: .85, thermal01: .15, ramPressure01: .18,
+  externalInteractionBudget01: .85, initiative01: .7, uncertainty01: .2,
+  goalPressure01: .4, homeostaticPressure01: .1,
+  tools: [{ id: 'organism.inspect', capability: 'core.read', destructive: false, projectAllowed: false }],
+});
+assert.equal(projectDenied.allowed, false, 'a read-only tool outside the current project authorization must not enter the ambient lane');
+assert.equal(projectDenied.tool, null);
+
 const onlySocial = controller.plan({
   tick: 2, at: 10000, energy01: .85, thermal01: .15, ramPressure01: .18,
   externalInteractionBudget01: .85, initiative01: .7, uncertainty01: .2,
