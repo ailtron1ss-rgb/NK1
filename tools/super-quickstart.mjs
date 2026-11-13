@@ -37,7 +37,7 @@ function run(label, command, args) {
       stdio: 'inherit',
       detached: process.platform !== 'win32',
       windowsHide: true,
-      shell: process.platform === 'win32' && /\\.cmd$/i.test(command),
+      shell: process.platform === 'win32' && /\.cmd$/i.test(command),
     });
     activeChild = child;
     child.once('error', (error) => {
