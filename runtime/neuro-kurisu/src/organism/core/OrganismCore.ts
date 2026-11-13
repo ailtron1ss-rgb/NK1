@@ -2831,6 +2831,19 @@ export class OrganismCore {
             .sort((a, b) => Number(b.observedAt ?? b.createdAt) - Number(a.observedAt ?? a.createdAt) || a.id.localeCompare(b.id));
         return current.slice(0, Math.max(1, Math.min(128, Math.floor(limit)))).map((m) => ({ id: m.id, kind: m.kind, summary: m.content.slice(0, 360), confidence: m.confidence, salience: m.salience, source: m.source, createdAt: m.createdAt, dormant: m.dormant, epistemicStatus: m.epistemicStatus }));
     }
+    hexisMemoryPersistenceDiagnostics() {
+        const live = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+        const durable = this.persisted.facets.advanced.memoryOS;
+        const hexisRows = (items: any[]) => items
+            .filter(item => typeof item?.source === 'string' && item.source.startsWith('hexis:'))
+            .slice(0, 64)
+            .map(item => ({ id: String(item.id), source: String(item.source), status: String(item.epistemicStatus ?? 'unknown') }));
+        return {
+            live: { itemCount: live.items.length, hexisItemCount: live.items.filter(item => String(item.source ?? '').startsWith('hexis:')).length, hexisRows: hexisRows(live.items) },
+            persistedProjection: { present: Boolean(durable), itemCount: Array.isArray(durable?.items) ? durable.items.length : 0, hexisItemCount: Array.isArray(durable?.items) ? durable.items.filter(item => String(item.source ?? '').startsWith('hexis:')).length : 0, hexisRows: Array.isArray(durable?.items) ? hexisRows(durable.items) : [] },
+            checkpoint: { fullCount: this.persistence.persistenceFullCheckpointCount, partialCount: this.persistence.persistencePartialCheckpointCount, dirty: this.persistence.persistenceDirty, dirtyCycles: this.persistence.dirtyCycles },
+        };
+    }
     /** Synchronize a bounded audit projection; canonical time queries always read MemoryOS2. */
     hexisSyncMemoryProjection(limit = 96) {
         const allItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
