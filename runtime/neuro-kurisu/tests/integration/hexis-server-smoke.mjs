@@ -195,5 +195,6 @@ try {
   await rm(stateDir, { recursive: true, force: true });
 }
 
-// WorkPass HMX canonical apply regression: run the real-server acceptance/apply boundary on an isolated state directory.
+// HMX export redaction unit contract and the real-server acceptance/apply boundary.
+await import('./hexis-hmx-export-redactor.mjs');
 await import('./hexis-hmx-canonical-apply.mjs');
