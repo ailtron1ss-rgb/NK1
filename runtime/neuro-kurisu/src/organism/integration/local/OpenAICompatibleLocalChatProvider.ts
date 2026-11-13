@@ -82,7 +82,16 @@ function cloneJsonData(value: unknown, state: { seen: Set<object>; budget: { nod
 }
 
 
-function normalizeResponseFormat(raw: LocalChatResponseFormat | undefined): LocalChatResponseFormat | undefined {
+type NormalizedLocalChatResponseFormat =
+  | { type: 'json_object'; schema?: Record<string, unknown> }
+  | { type: 'json_schema'; json_schema: { schema: Record<string, unknown> } };
+
+/**
+ * Normalize NK1's ergonomic input shape to llama.cpp's actual server wire contract.
+ * llama-server reads response_format.json_schema.schema for type=json_schema;
+ * a sibling response_format.schema is only read for type=json_object.
+ */
+function normalizeResponseFormat(raw: LocalChatResponseFormat | undefined): NormalizedLocalChatResponseFormat | undefined {
   if (raw === undefined) return undefined;
   let cloned: unknown;
   try { cloned = cloneJsonData(raw, { seen: new Set<object>(), budget: { nodes: 0 }, depth: 0 }); }
@@ -97,7 +106,10 @@ function normalizeResponseFormat(raw: LocalChatResponseFormat | undefined): Loca
   if (format.type === 'json_schema' && format.schema === undefined) throw new Error('llama.cpp-response-schema-required');
   const encoded = JSON.stringify(format);
   if (new TextEncoder().encode(encoded).byteLength > MAX_RESPONSE_SCHEMA_BYTES) throw new Error('llama.cpp-response-schema-too-large');
-  return format as unknown as LocalChatResponseFormat;
+  if (format.type === 'json_schema') {
+    return { type: 'json_schema', json_schema: { schema: format.schema as Record<string, unknown> } };
+  }
+  return { type: 'json_object', ...(format.schema === undefined ? {} : { schema: format.schema as Record<string, unknown> }) };
 }
 function canonicalBaseUrl(raw: string | undefined): string | null {
   const value = String(raw ?? '').trim();
