@@ -105,7 +105,7 @@ jobs:
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
-      # Keep new validation-only P23 learning contracts close to the compiler gate.
+      # Run new validation-only P23 contracts immediately after compilation so trust-boundary regressions fail fast.
       - name: Verify P23 deterministic candidate Pareto archive contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-candidate-pareto-archive.mjs
