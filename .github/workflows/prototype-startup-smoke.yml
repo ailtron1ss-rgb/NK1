@@ -97,11 +97,20 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/neurocore-quickstart.log"
-          npm run quickstart >"$log" 2>&1 &
+          setsid npm run quickstart >"$log" 2>&1 &
           launcher_pid=$!
 
           cleanup() {
-            kill -TERM "$launcher_pid" 2>/dev/null || true
+            kill -INT -- "-$launcher_pid" 2>/dev/null || true
+            for attempt in $(seq 1 30); do
+              if ! curl --fail --silent http://127.0.0.1:8080/ >/dev/null \
+                && ! curl --fail --silent http://127.0.0.1:8081/ >/dev/null \
+                && ! curl --fail --silent http://127.0.0.1:3310/health >/dev/null \
+                && ! curl --fail --silent http://127.0.0.1:8765/health >/dev/null; then
+                break
+              fi
+              sleep 1
+            done
             wait "$launcher_pid" 2>/dev/null || true
             echo "----- quickstart log -----"
             cat "$log" 2>/dev/null || true
