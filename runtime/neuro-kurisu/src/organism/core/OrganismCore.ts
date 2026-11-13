@@ -9,7 +9,7 @@ import { buildKnownEntityDossiers, projectKnownEntityPromptContext } from '../sy
 import { buildGradedTraitSalience } from '../language/GradedTraitSalience.ts';
 import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, type MemoryRetrievalBenchmarkOptions } from '../memory/MemoryRetrievalBenchmark.ts';
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
-import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisHmxStage, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
 import { normalizeEvidenceLineageProvenance } from '../memory/EvidenceLineageProvenance.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
@@ -3058,7 +3058,7 @@ export class OrganismCore {
             .sort((a, b) => Number(a.observedAt ?? a.createdAt) - Number(b.observedAt ?? b.createdAt))
             .slice(-96);
         const memories = currentMemories.map(memory => ({
-            ref: exportId + ':memory-' + String(memory.id).replace(/[^A-Za-z0-9._:-]/gu, '-').slice(0, 180),
+            ref: exportId + ':memory-' + createHash('sha256').update(String(memory.id)).digest('hex').slice(0, 32),
             type: memory.kind === 'identity' ? 'semantic' : memory.kind,
             status: 'active',
             content: String(memory.content).slice(0, 12_000),
@@ -3091,7 +3091,7 @@ export class OrganismCore {
                 hexis_lineage_id: 'nk1-subject:' + (subjectId || 'local'),
             },
             capabilities: {
-                formats: ['application/json'],
+                formats: ['json'],
                 sections: ['memories', 'relationships'],
                 hash_algorithms: ['sha256'],
                 relationship_edge_types: ['supports', 'contradicts', 'causes', 'associated', 'about', 'located'],
@@ -3100,23 +3100,13 @@ export class OrganismCore {
             privacy: {
                 redaction_policy: 'source-defined',
                 contains_sensitive_content: false,
-                consent_scope: 'explicit-export',
+                consent_scope: 'migration',
             },
             sections: {
                 memories,
                 relationships: empty([]),
-                identity: empty([]),
-                worldview: empty([]),
-                goals: empty([]),
-                drives: empty([]),
-                emotional_triggers: empty([]),
-                narrative: empty([]),
                 episodes: empty([]),
                 clusters: empty([]),
-                in_flight_work: empty([]),
-                audit_records: empty([]),
-                raw_units: empty([]),
-                config: empty([]),
             },
         };
     }
