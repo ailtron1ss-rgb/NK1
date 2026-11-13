@@ -60,6 +60,7 @@ const committed = bridge.commit(staged.stagingId);
 assert.equal(committed.ok, true);
 assert.equal(committed.inserted, 3);
 assert.equal(committed.replayed, 0);
+assert.equal(committed.relationshipsApplied, 2);
 assert.equal(Object.keys(committed.refMap).length, 3);
 const alpha = memory.getCanonicalMemory(committed.refMap['memory:alpha']);
 assert.equal(alpha.content, 'The donor observed a red bicycle.');
@@ -83,6 +84,7 @@ const replay = bridge.commit(staged.stagingId);
 assert.equal(replay.ok, true);
 assert.equal(replay.inserted, 0);
 assert.equal(replay.replayed, 3);
+assert.equal(replay.relationshipsApplied, 2);
 assert.deepEqual(replay.refMap, committed.refMap);
 assert.equal(memory.rows.size, 3, 'replaying the same accepted stage must not create duplicate canonical memories');
 
@@ -97,6 +99,7 @@ const dangling = bridge.stage({ document: document({
 assert.equal(dangling.ok, true);
 const danglingCommit = bridge.commit(dangling.stagingId);
 assert.equal(danglingCommit.ok, true);
+assert.equal(danglingCommit.relationshipsApplied, 0);
 assert.ok(danglingCommit.warnings.some(w => w.code === 'relationship-endpoint-not-imported'));
 const known = memory.getCanonicalMemory(danglingCommit.refMap['memory:known']);
 assert.equal(known.semanticLinks.length, 0, 'dangling relationship must not create a ghost link');
