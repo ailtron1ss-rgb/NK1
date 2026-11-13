@@ -234,3 +234,72 @@ NK1 уже имеет собственные автономные циклы, ho
 - Добавлены source assimilation static audit, fixture test, npm scripts и включение в `audit-all`.
 - Прямой код из 21 архива в этой подитерации не копировался; новые runtime dependencies не добавлялись.
 - Открытый PR #863 остаётся Draft/Ready согласно текущему состоянию GitHub; merge и релиз не выполнялись.
+
+
+## 14. Повторная проверка фактических артефактов и PR (2026-11-13, продолжение)
+
+### Контейнеры и release boundary
+
+Повторный локальный SHA-256 проход четырёх смонтированных пользовательских контейнеров совпал с ранее сохранённым provenance manifest:
+
+| Контейнер | SHA-256 | Проверка |
+|---|---|---|
+| one.7z | `2aa144432afd7a234b4aa3139cfa6019a97bab453dd235f623ccac2c00b83b41` | MATCH |
+| two.7z | `f6bce0f421c727c98c978328efe0dcb2bfa93ef77f8a7fcc1686c24b24958366` | MATCH |
+| three.7z | `598c8e11e176994214d2cdfcf9ec0bfe4b65e19e10e54c0190e4f5b859293f97` | MATCH |
+| four.7z | `e15b12e9617882026ab8077f7698c6a6c47df5f1e4690607d3dbcac2df4952a0` | MATCH |
+
+22 embedded ZIP artifacts resolve to 21 unique project snapshots; the Letta artifact is an exact duplicate. The four outer archive bytes were rehashed locally. The user-described `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` is still not mounted in this session, so its internal file list, source parity and package contents remain UNKNOWN. Release metadata/checksum is not a substitute for unpacking and inspecting the asset.
+
+### Live source advancement and actual code change
+
+- `workpass70-source` was advanced by merged PR [#838](https://github.com/ailtron1ss-rgb/NK1/pull/838) to `1a0315595302f3154df0ae53e5d9188875311467`.
+- The change reduces peak allocations in remote VRM/GLB ingestion by retaining bounded Blob chunks rather than materializing a second full-size byte array. It preserves URL/size/time/abort checks and adds chunk-order, offset-view and SharedArrayBuffer regressions.
+- Exact PR-head Actions: 5/5 successful before squash merge. Device RSS and browser/WebGL soak were not measured.
+- This is an NK1 implementation improvement, **not a code import from the 21 donor archives**. Donor-source production code copied in this pass: 0. No runtime dependencies were installed.
+
+### HMX: distinguish existing staging from canonical apply
+
+Current source inspection of `HexisAdaptationFabric.ts` confirms `stageHmx()` and `decideHmx(..., 'accept'|'reject')`, with version-prefix/section checks, bounded staged arrays and digest. The live composition does not currently expose a proven canonical HMX 1.7 apply projector into `MemoryFabric/MemoryOS2`. `HexisCanonicalEvidenceBridge` is a separate one-way provenance bridge from `SourceMonitor/P65EpistemicLedger` into an existing canonical memory item; it is not the HMX section importer.
+
+Historical open PRs #221, #232, #233, #235, #239, #247, #248, #284 and #285 contain candidate apply/projector/replay/rollback work, but they have historical base branches and/or multi-commit unrelated changes. Their presence or a connector `mergeable` flag is not proof that they were merged or are safe to merge onto the current HEAD. Do not merge them wholesale. The right next action is a small, current-base design and source-to-current-owner comparison, followed by behavior tests; obtain approval for the architecture before implementing a new HMX behavior.
+
+### Audit-tool evidence semantics
+
+The new `audit-source-assimilation.mjs` in PR #863 is deliberately a **static string/presence audit**. It checks configured text needles in selected files and checks that test files contain configured text. Its self-test generates fixture files from those same needles. Therefore:
+- `WIRED_STATICALLY` means only that configured text patterns were found.
+- It does not prove TypeScript import reachability, dynamic construction, runtime call flow, test execution, upstream code provenance or measured behavior.
+- Synthetic fixture PASS is a test of scanner logic, not validation of the live runtime integration.
+- It must never be used as a donor-integration percentage or as evidence that donor code is fully adapted.
+
+Recommended evidence ladder for future reports: `DISCOVERED` → `ADAPTED_IN_CODE` → `CONNECTED_AT_RUNTIME` → `BEHAVIOR_TESTED` → `EXACT_HEAD_CI_VERIFIED` → `RELEASED_AND_PARITY_CHECKED`. Every status must link to its own artifact/test/run and must not be inferred from the previous level.
+
+### PR #863 verification on its exact current head
+
+For head `16a6bdb1c8b8b94be7678cdbead3e3afa12cf3dc`, the returned Actions page contained 42 runs: 39 SUCCESS, 1 FAILURE and 2 CANCELLED. The failed job reached the “Run cognitive evidence Inspect task without external model calls” step; the memory task, route-contract check and runtime typecheck were skipped after failure. The available job summary does not expose the exception text, so no more specific root cause is asserted here. The PR remains Draft; no merge or release is claimed. PR #863 should not be merged as a green integration gate on this evidence.
+
+### Progress recalculation — archive assimilation stream only
+
+| Stage | Progress | Evidence and exact limitation |
+|---|---:|---|
+| Outer archive provenance | 100% (4/4) | Four locally computed SHA-256 values match the stored manifest |
+| Embedded archive inventory | 100% (22/22 artifacts) | 21 unique projects; one exact duplicate |
+| Initial source/owner/license triage | 100% (21/21) | Preliminary only; not legal clearance or full per-path SBOM |
+| Deep mechanism/code comparison | 29% (6/21) | Detailed pass on Hexis, Will, Mem0, Agent0, DSPy and PocketFlow; all other sources need focused code-level inspection |
+| Existing NK1 donor-inspired adapters | 5 major lines statically mapped | Hexis, Letta, Lumina, Will, Mem0; static presence must not be represented as full upstream import |
+| New donor production code imported in this pass | 0% | Deliberate: no third-party license/contract-approved code selected for promotion yet |
+| NK1 code improvement | 1 merged change | PR #838; exact PR-head checks passed 5/5; target-device performance remains unmeasured |
+| HMX v1.7 canonical import | Partial / not release-ready | Current staging and evidence bridge exist; complete canonical import/apply/recovery remains unverified |
+| Release ZIP parity | UNKNOWN | ZIP bytes not available in the mounted runtime |
+
+These are separate workstream measures, not a weighted global “digital-person readiness” score. No increase to project consciousness/autonomy or release-readiness percentages is justified by this pass.
+
+### Next execution order
+
+1. Resolve HMX architecture and review the smallest compatible subset of historical projector work; do not introduce a second memory store or automatically overwrite identity/goals/worldview.
+2. Extend assimilation audit from static needles to real module import graph/call-edge checks and selected process-level behavior probes; label it as static/dynamic/e2e separately.
+3. Complete deep donor reviews for the remaining 15 unique sources, including path-level license, notices, assets, model weights, dependency graph and exact revision.
+4. Evaluate DSPy/GEPA and Agent0 only as isolated offline candidate-optimization/evaluation harnesses against frozen task sets and independent holdouts; never allow direct production-policy promotion.
+5. Measure Mem0 opt-in request behavior, Will channel effectiveness, Hexis correction/forgetting outcomes, and local llama.cpp inference on target hardware.
+6. Acquire the exact Release ZIP bytes, unpack, compare file hashes and generate an exact-source parity report before any release claim.
+
