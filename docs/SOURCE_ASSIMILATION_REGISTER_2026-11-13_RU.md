@@ -309,3 +309,48 @@ These are separate workstream measures, not a weighted global “digital-person 
 5. Measure Mem0 opt-in request behavior, Will channel effectiveness, Hexis correction/forgetting outcomes, and local llama.cpp inference on target hardware.
 6. Acquire the exact Release ZIP bytes, unpack, compare file hashes and generate an exact-source parity report before any release claim.
 
+
+
+## 15. Дополнительный source-to-owner проход — оставшиеся механизмы (2026-11-13)
+
+Второй технический проход расширил targeted code review с 6 до **15 из 21** уникального донора. Это число означает чтение выбранных ключевых файлов/контрактов и сопоставление с владельцами NK1; оно **не** означает исчерпывающее построчное ревью каждого проекта, всех зависимостей или разрешение на копирование.
+
+| Донор | Проверенный механизм | Сопоставление с NK1 | Решение |
+|---|---|---|---|
+| Microsoft Agent Framework | `WorkflowCheckpoint`: graph-signature hash, versioned checkpoint, predecessor lineage, committed state и pending request events; storage protocol отдельно от runtime | `FileStateStore` уже даёт temp-file → fsync → rename, backup recovery; `CognitiveEventFabric` и planner/ActionGateway держат causal events и in-flight receipts. В NK1 можно точечно сравнить совместимость checkpoint с изменившимся cognitive-plan graph | ADAPT/REFERENCE: только проверку checkpoint compatibility, если тест выявит реальный unsafe-resume путь; не переносить MAF workflow runtime |
+| OpenAI Agents SDK | `_await_mutation` ждёт завершения async persistence side effect даже при repeated cancellation, затем повторно выбрасывает cancellation; используется в SQLite/conversation mutations | FileStateStore NK1 синхронно сохраняет атомарно, а ActionGateway записывает keyed pending receipt/reconcile для внешних операций. Дополнительная защита нужна только на реальном async mutation boundary, где отмена может оставить неизвестный исход | REFERENCE: не добавлять обобщённый cancellation wrapper без воспроизводимого failure-теста |
+| AutoGen | Typed message envelope: message ID, sender, recipient, cancellation token, metadata; single-thread runtime and queue lifecycle | NK1 уже имеет CognitiveEventFabric и ActionGateway с execution IDs, receipts, idempotency и source/evidence chain. AutoGen runtime использует обычную unbounded asyncio queue; это не подходящее основание для нового event bus. Сам AutoGen помечен в собственном README как maintenance mode с рекомендацией MAF для новых проектов | REFERENCE ONLY; не переносить runtime |
+| Hermes Agent | Background curator: snapshots до/после, diff/classification, skill merge/prune, backup, write-origin provenance, pinned/read-before-write guards, idle scheduling | NK1 уже содержит `ProceduralSkillLibrary`, `VersionedSkillCandidateStore`, `P23CompoundRepairRevisionCoordinator`, `IndependentSkillCandidateEvaluator` и `HermesVerifiedEvidenceBinding`. Candidate revision связана с dataset/plan/payload fingerprints и независимыми signed run receipts; promotion остаётся отдельным gate | CONCEPTS ALREADY ADAPTED. Сохранять P23 как одного владельца; не добавлять второй curator/skill store |
+| OpenClaw | Session store пересматривает exact current owner/row после async operation, не должен воскрешать удалённую session; gateway/plugin/channel ownership и run leases | NK1 ActionGateway имеет durable idempotency ledger/reconciliation, CognitiveEventFabric хранит связанный causal trace, N.E.K.O. gateway разделяет plugin ingress/runtime ownership | REFERENCE: перенести только конкретную race regression при наличии совпадающего NK1 defect |
+| Langroid | Typed `ToolMessage`, class-declared handler routing, recipient validation и task/subtask routing; защита от LLM-controlled handler override | NK1 ActionGateway использует declarative tool input contracts, permissions, idempotency и explicit approval; plugin gateway имеет ownership/manifest policy | REFERENCE ONLY; общий tool routing в NK1 уже покрыт действующими владельцами |
+| Chroma | Collection API для query/get/upsert/update/delete, metadata filters и collection-level embeddings contract | NK1 MemoryOS2/MemoryFabric, native vector semantic retrieval, HNSW integration и retrieval lineage уже существуют | DO NOT ADD AS SECOND VECTOR STORE; использовать только как внешний benchmark/compatibility reference |
+| FAISS | Native C++ index contract: add/add-with-IDs/search/range-search/remove/merge; flat/IVF variants | NK1 использует native TypeScript-side vector/HNSW substrate и integrity tests. FAISS добавит C++ build/ABI/Android packaging и отдельный index owner | RESEARCH/BENCHMARK ONLY; не добавлять C++ dependency без измеренного выигрышного результата |
+| Hyperon | MeTTa runner сохраняет parser/runtime state и выполняет expression steps в grounded space; symbolic layer separate from LLM | В NK1 есть cognitive contracts, symbolic/causal evidence и typed planning. MeTTa может дать дополнительную гипотезу для constraints/relations, но требует отдельного runtime и безопасной resource sandbox | RESEARCH ONLY; не подключать к production cycle сейчас |
+
+### Уточнение про self-improvement и агентность
+
+Сопоставление Hermes/Agent0/DSPy с текущим NK1 показывает, что значительная часть идей уже есть в P23:
+- версии кандидатов и атомарное изменение активного навыка через expected revision/CAS;
+- кандидат отделён от активной версии; есть supersede/rollback;
+- independent evaluator исполняет точный fingerprinted payload в изолированном executor;
+- validation и holdout имеют раздельные планы/манифесты, отдельные authorities и leakage guards;
+- подписанный shadow receipt подтверждает identity/outcome/run binding, но не подменяет независимую оценку качества;
+- reflective revision проходит через P23 coordinator и explicit promotion gate.
+
+Это сильнее простого «агент сам переписал себе навык». Узкое место — не отсутствие ещё одного self-improving agent framework, а полное эксплуатационное доказательство изоляции evaluator authority, реального holdout uplift, повторяемости и длительного runtime/device soak. Не повышать readiness только по наличию этих модулей.
+
+### Пересчитанная карта прохождения
+
+| Измерение | Сейчас | Как читать |
+|---|---:|---|
+| Archive inventory/provenance | 100% (4/4 контейнера, 22/22 ZIP) | Хеши совпали, один дубликат Letta |
+| Первичная маршрутизация доноров | 100% (21/21) | Все известны и отнесены к capability/owner; license screen предварительный |
+| Targeted source-code review | 71% (15/21) | Выбранные ключевые модули/контракты прочитаны; оставшиеся 6 требуют такого же targeted pass |
+| Existing NK1 owner comparison | 100% для рассмотренных 15 | Это сравнение границ/механизмов, не тестовое доказательство |
+| Runtime integration tests newly executed in this pass | 0% | GitHub exact-head evidence для PR #863 имеет failure/cancellations; локальный NK1 runtime test suite не запускался |
+| New donor runtime code promoted in this pass | 0% | Осознанный выбор: обнаружены повторения существующих владельцев или не закрыты требования лицензии/измерения |
+| NK1 code change integrated in this pass | 1 PR | #838 merged; exact PR-head checks 5/5; mobile/WebGL soak pending |
+| Release artifact parity | UNKNOWN | ZIP bytes отсутствуют в локальной среде |
+
+Следующие шесть источников для targeted pass: AutoGPT, Letta snapshot, llama.cpp server, Lumina, CAMEL OWL и Superpowers. Для них первыми проверить path-level license/NOTICE, зрелость и конкретные missing seams. Не считать наличие архива доказательством необходимости runtime import.
+
