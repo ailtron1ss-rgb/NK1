@@ -145,6 +145,7 @@ assert.equal(holdoutCalls, 0);
 let mismatchExecutions = 0;
 const mismatchEvaluator = validationOnly.createValidationOnlySkillCandidateEvaluator({
   ...config,
+  tasks: makeTasks(),
   executor: { async execute() { mismatchExecutions++; throw new Error('must not execute'); } },
 });
 await assert.rejects(
@@ -156,6 +157,7 @@ assert.equal(mismatchExecutions, 0);
 // An unbound verifier result cannot become a successful report.
 const unboundEvaluator = validationOnly.createValidationOnlySkillCandidateEvaluator({
   ...config,
+  tasks: makeTasks(),
   verifier: { async verify() {
     return { bindingVerified: false, passed: true, coveredCapabilityIds: ['cap-memory-read'] };
   } },
@@ -169,6 +171,7 @@ assert.equal(unbound.reports.every(report => !report.taskSuccess.passed), true);
 // The service deadline aborts the executor signal and rejects the whole evaluation.
 const timeoutEvaluator = validationOnly.createValidationOnlySkillCandidateEvaluator({
   ...config,
+  tasks: makeTasks(),
   serviceTimeoutMs: 10,
   executor: {
     execute({ signal }) {
