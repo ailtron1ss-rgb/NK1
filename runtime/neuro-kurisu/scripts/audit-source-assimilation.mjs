@@ -184,6 +184,29 @@ export const SOURCE_ASSIMILATION_ADAPTERS = [
         'holdoutResultsIncluded', 'holdoutResultsIncluded', 'candidate payload cannot drop source fields',
         'real loopback HTTP roundtrip reaches the P23 callback', 'GEPA_REFLECTIVE_CANDIDATE_GENERATOR=PASS',
       ], 'Проверяет HTTPS/loopback, bounds, no holdout leakage, candidate-only response и реальный loopback P23 handoff.'),
+      group('validation-metric-builder', 'src/organism/learning/P23ValidationCandidateParetoArchive.ts', [
+        'buildP23ValidationCandidateMetrics', 'MAX_VALIDATION_TRIALS', 'safetyCompliance01',
+        'p23-validation-metrics-duplicate-trial', 'isValidP23ValidationCandidateMetrics',
+      ], 'Сохраняет детерминированные task-level validation vectors без holdout полей и с provenance по task/trial.'),
+      group('per-example-pareto-dominance', 'src/organism/learning/P23ValidationCandidateParetoArchive.ts', [
+        'dominatesP23ValidationCandidate', 'computeP23ValidationParetoFront', 'sameTaskCohort',
+        'p23-validation-pareto-task-cohort-mismatch',
+      ], 'Pareto dominance сравнивает все objective × task пары; несопоставимые task cohorts не ранжируются.'),
+      group('versioned-store-pareto-index', 'src/organism/learning/VersionedSkillCandidateStore.ts', [
+        'validationParetoFront(', 'computeP23ValidationParetoFront(comparable)', 'revisionProvenance.validationMetrics',
+      ], 'Pareto front вычисляется read-only из единственного versioned candidate owner, без второй skill library.'),
+      group('durable-validation-vector-guard', 'src/organism/learning/AtomicFileSkillStorePersistence.ts', [
+        'isValidP23ValidationCandidateMetrics', 'revisionProvenance.validationMetrics', 'persisted versioned skill store snapshot',
+      ], 'Durable restore/CAS отвергает некорректные или подменённые validation vectors.' ),
+      group('p23-fresh-candidate-quality-gate', 'src/organism/learning/P23LearningEngine.ts', [
+        'fitness.eligible !== true', 'buildP23ValidationCandidateMetrics(candidateEvaluation.validation)',
+        'reflectiveCandidateValidationParetoFront(', 'independent validation/holdout gate',
+      ], 'Только свежий кандидат, прошедший собственный независимый gate, может попасть в versioned store; archive получает validation only.'),
+      group('pareto-lifecycle-regression-contract', 'tests/p23-validation-candidate-pareto-archive.mjs', [
+        'P23_VALIDATION_CANDIDATE_PARETO_ARCHIVE=PASS',
+        'freshly generated candidates that fail the independent paired gate must not be staged',
+        'only validation reports are persisted in versioned candidate provenance',
+      ], 'Проверяет complementarity, dominance, gate-before-stage, holdout exclusion и durable metrics linkage.'),
     ],
   },
 ];
