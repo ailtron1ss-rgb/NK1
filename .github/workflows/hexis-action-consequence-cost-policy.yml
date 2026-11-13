@@ -7,7 +7,6 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/ActionConsequenceCostPolicy.ts"
       - "runtime/neuro-kurisu/src/organism/system/AutonomousResourceToolLifeController.ts"
       - "runtime/neuro-kurisu/tests/hexis-action-consequence-cost-policy.mjs"
-      - "docs/WORKPASS_HEXIS_ACTION_CONSEQUENCE_COST_2026-11-13_RU.md"
       - ".github/workflows/hexis-action-consequence-cost-policy.yml"
   push:
     branches:
