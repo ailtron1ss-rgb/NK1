@@ -67,6 +67,27 @@ test('waits for a service to return a successful HTTP response', async () => {
   assert.equal(calls, 3);
 });
 
+test('waits for an organism runtime to report ready=true, not only HTTP 200', async () => {
+  let polls = 0;
+  const result = await waitForHttpReady({
+    url: 'http://runtime.test/health',
+    serviceName: 'organism-runtime',
+    timeoutMs: 100,
+    pollIntervalMs: 1,
+    fetchImpl: async () => {
+      polls += 1;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ready: polls >= 3 }),
+      };
+    },
+    isReady: async (response) => (await response.json()).ready === true,
+  });
+  assert.equal(result.status, 200);
+  assert.equal(polls, 3);
+});
+
 test('fails promptly when the service process exits before readiness', async () => {
   await assert.rejects(waitForHttpReady({
     url: 'http://service.test/health',
