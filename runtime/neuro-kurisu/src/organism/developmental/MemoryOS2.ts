@@ -1502,7 +1502,8 @@ export class MemoryOS2{
   let added=0;
   const merge=(field:'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks')=>{
    const current=Array.isArray(item[field])?[...item[field] as string[]]:[];
-   const incoming=boundedStrings(patch[field],24,160).filter(target=>target!==item.id&&this.itemIndex.has(target));
+   const values=patch[field];
+   const incoming=Array.isArray(values)?values.filter((target):target is string=>typeof target==='string'&&target.length>0&&target.length<=160&&target.trim()===target&&target!==item.id&&this.itemIndex.has(target)).slice(0,24):[];
    const next=[...new Set([...current,...incoming])].slice(0,24);
    added+=Math.max(0,next.length-current.length);
    item[field]=next as never;
