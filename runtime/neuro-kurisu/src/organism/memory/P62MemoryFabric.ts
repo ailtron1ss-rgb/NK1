@@ -43,15 +43,17 @@ export class P62MemoryFabric{
   if(!id)return 0;
   const contains=(frame:P62Frame|null)=>Boolean(frame?.hits.some(hit=>hit.id===id));
   let removed=0;
+  const lastFrame=this.state.lastFrame;
+  const lastFrameInHistory=Boolean(lastFrame&&this.state.history.includes(lastFrame));
   const retained=this.state.history.filter(frame=>{
    if(!contains(frame))return true;
    removed++;
    return false;
   });
   this.state.history=retained;
-  if(contains(this.state.lastFrame)){
+  if(contains(lastFrame)){
    this.state.lastFrame=null;
-   removed++;
+   if(!lastFrameInHistory)removed++;
   }
   return removed;
  }
