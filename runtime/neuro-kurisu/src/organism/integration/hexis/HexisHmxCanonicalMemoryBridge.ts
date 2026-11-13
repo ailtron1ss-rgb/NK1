@@ -244,8 +244,7 @@ export class HexisHmxCanonicalMemoryBridge {
     let replayed = 0;
     try {
       for (const record of prepared) {
-        const prior = this.memory.previewRetrieve(record.input.content, 32)
-          .find(item => item.id === record.input.id);
+        const prior = this.memory.getCanonicalMemory(record.input.id!);
         const item = this.memory.encode(record.input, { commandId: record.commandId, emitEvent: true });
         if (!item) throw new Error('canonical-memory-write-returned-empty');
         refMap[record.ref] = item.id;
