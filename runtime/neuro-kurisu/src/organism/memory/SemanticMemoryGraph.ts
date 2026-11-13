@@ -194,14 +194,16 @@ export class SemanticMemoryGraph {
     if (queryTokens.length === 0 || !Number.isFinite(limit) || limit < 1) return [];
     const safeLimit = Math.max(1, Math.min(MAX_RETRIEVAL_RESULTS, Math.floor(limit)));
     const q = normalize(query);
-    const ranked = this.state.nodes.map(node => {
+    const ranked = this.state.nodes.flatMap(node => {
       const labelTokens = new Set(tokenize(node.label));
       let overlap = 0;
       for (const token of queryTokens) if (labelTokens.has(token)) overlap++;
-      const coverage = overlap / queryTokens.length;
       const exactPhrase = q.length > 0 && node.label.includes(q) ? 1 : 0;
+      // Salience may order grounded matches; it must not manufacture a match.
+      if (overlap === 0 && exactPhrase === 0) return [];
+      const coverage = overlap / queryTokens.length;
       const score = exactPhrase * 0.72 + coverage * 0.22 + node.salience * 0.06;
-      return { node, score };
+      return [{ node, score }];
     });
     ranked.sort((left, right) =>
       right.score - left.score || right.node.lastSeen - left.node.lastSeen || left.node.id.localeCompare(right.node.id));
