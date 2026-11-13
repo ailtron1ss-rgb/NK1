@@ -126,7 +126,7 @@ const VARIATIONS: readonly Omit<P23PopulationSearchVariation, 'index'|'seed'>[] 
     instruction: 'Make the smallest local change that directly addresses the evidence-backed targets. Preserve all unrelated fields and contracts.',
   },
   {
-    id: 'trajectory-restructuring',
+    id: 'trajectory-structure-revision',
     instruction: 'Explore an alternative ordering or structure for the evidenced trajectory while preserving the same capabilities and safety constraints.',
   },
   {
