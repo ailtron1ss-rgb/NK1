@@ -30,6 +30,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+          package-manager-cache: false
       - name: Multi-timescale and semantic graph regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/memory-projection-retrieval-integrity-20261113.mjs
