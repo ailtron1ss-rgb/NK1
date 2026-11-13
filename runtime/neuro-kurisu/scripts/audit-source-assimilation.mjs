@@ -135,8 +135,6 @@ export const SOURCE_ASSIMILATION_ADAPTERS = [
       ], 'Проверяет отдельный OSS режим и его provenance.'),
     ],
   },
-];
-
   {
     id: 'llama.cpp',
     name: 'llama.cpp',
@@ -158,6 +156,8 @@ export const SOURCE_ASSIMILATION_ADAPTERS = [
       ], 'Проверяет, что generator передаёт schema, не раскрывает holdout и не меняет promotion authority.'),
     ],
   },
+];
+
 export const REQUIRED_ARCHIVE_SOURCES = [
   'Agent0', 'AutoGPT', 'Microsoft Agent Framework', 'AutoGen', 'Chroma', 'DSPy', 'FAISS',
   'Hermes Agent', 'Hyperon', 'Langroid', 'Letta', 'llama.cpp', 'Mem0', 'OpenAI Agents Python',
