@@ -49,11 +49,13 @@ export function planSkillRevision(
   if(!Array.isArray(validation)||validation.length===0) throw new Error('revision-validation-reports-required');
   if(!Array.isArray(holdout)||holdout.length===0) throw new Error('revision-holdout-reports-required');
   if(!fitness||!Array.isArray(fitness.reasons)||!Array.isArray(fitness.feedback)) throw new Error('revision-fitness-report-invalid');
-  // Holdout can block a revision, but its task/trial identifiers and per-case
-  // outcomes must never enter generator-facing targets or optimizer instructions.
+  // The separate gate report may veto a revision using holdout, but the planner
+  // must not read holdout rows, scores, direction, reasons, or feedback. Even an
+  // aggregate hint can be iteratively optimized and contaminate the test set.
+  // The only allowed holdout-derived influence is the opaque hard safety veto.
+  void holdout;
   const validationSafetyRows=validation.filter(r=>r.skillQuality.safetyViolationCount>0);
-  const holdoutSafetyPresent=holdout.some(r=>r.skillQuality.safetyViolationCount>0);
-  const blockedBySafety=validationSafetyRows.length>0||holdoutSafetyPresent||fitness.reasons.includes('candidate-safety-violations-present');
+  const blockedBySafety=validationSafetyRows.length>0||fitness.reasons.includes('candidate-safety-violations-present');
   const mean=(rows:readonly SkillLearnBenchTrialReport[], pick:(r:SkillLearnBenchTrialReport)=>number)=>rows.length?rows.reduce((s,r)=>s+pick(r),0)/rows.length:0;
   const targets:SkillRevisionTarget[]=[];
   const add=(dimension:SkillRevisionDimension,priority:number,rows:SkillLearnBenchTrialReport[],directive:string)=>{
@@ -74,7 +76,6 @@ export function planSkillRevision(
   const trajectory=mean(validation,r=>r.trajectoryQuality.aggregate);
   const coverage=mean(validation,r=>r.skillQuality.functionalCoverage);
   const executable=mean(validation,r=>r.skillQuality.executability);
-  const holdoutDelta=fitness.holdoutDelta01;
   add('task-success',1-success,validation.filter(r=>!r.taskSuccess.passed),
     'Improve the procedure at the first independently observed failure point. State the required preconditions, expected postconditions, and recovery path; do not infer success from the skill output itself.');
   add('trajectory',1-trajectory,validation.filter(r=>r.trajectoryQuality.aggregate<0.8),
@@ -83,27 +84,24 @@ export function planSkillRevision(
     'Add only the missing required capabilities evidenced by these trials. Make each capability explicit in the instructions and avoid unrelated prompt growth.');
   add('executability',1-executable,validation.filter(r=>r.skillQuality.executability<1),
     'Repair the concrete parsing or runtime preflight failure while preserving the existing skill contract; do not replace a failed executable artifact with descriptive text alone.');
-  if(holdoutDelta<0) {
-    // Holdout is evaluation-only: expose only an aggregate signal, never raw
-    // holdout task IDs, trial IDs, or per-example failure details to the generator.
-    const priority=Number(clamp(Math.min(1,Math.abs(holdoutDelta)*5)).toFixed(6));
-    targets.push({
-      dimension:'holdout-generalization',
-      priority01:priority,
-      affectedTaskIds:[],
-      evidenceCount:0,
-      evidenceIds:[],
-      directive:'Aggregate evaluation indicates a generalization gap. Improve the generality of the procedure without seeing or tuning to holdout examples; request a fresh independent holdout after revision.',
-    });
-  }
   const dimensionScore=0.5*success+0.3*trajectory+0.2*mean(validation,r=>r.skillQuality.aggregate);
+  // Build all generator-facing prose exclusively from validation observations.
+  // Do not copy fitness.reasons/feedback: those arrays may include holdout outcomes.
+  const rationale:string[]=[];
+  if(success<0.8)rationale.push('Validation evidence shows task success below the target; repair the observed validation failure path.');
+  if(trajectory<0.8)rationale.push('Validation evidence shows trajectory gaps; repair the observed ordering and verification steps.');
+  if(coverage<0.8)rationale.push('Validation evidence shows required-capability coverage gaps; address only the evidenced capabilities.');
+  if(executable<1)rationale.push('Validation preflight evidence shows an executability defect; repair parsing/runtime constraints.');
+  if(fitness.validationTaskRegressions>0)rationale.push('A paired validation task regressed beyond tolerance; diagnose validation-only trade-offs.');
+  if(fitness.validationFamilyRegressions>0)rationale.push('A sufficiently sampled validation family regressed beyond tolerance; diagnose validation-only trade-offs.');
+  if(rationale.length===0)rationale.push('Use only the supplied validation evidence and targets; preserve all unrelated behavior.');
   const plan:SkillRevisionPlan = {
     candidateEligible:fitness.eligible,
     blockedBySafety:false,
     overallFitness01:Number(clamp(dimensionScore).toFixed(6)),
     targets:targets.sort((a,b)=>b.priority01-a.priority01||a.dimension.localeCompare(b.dimension)).slice(0,5),
     preserve:['Existing safety constraints','Verified task preconditions and postconditions','Unchanged behavior outside the evidenced failure scope'],
-    rationale:[...fitness.reasons,...fitness.feedback].filter((x,i,a)=>a.indexOf(x)===i),
+    rationale,
     optimizerInstruction:'',
   };
   plan.optimizerInstruction=renderSkillRevisionInstruction(plan);
