@@ -276,7 +276,7 @@ Recommended evidence ladder for future reports: `DISCOVERED` → `ADAPTED_IN_COD
 
 ### PR #863 verification on its exact current head
 
-For head `16a6bdb1c8b8b94be7678cdbead3e3afa12cf3dc`, the returned Actions page contained 42 runs: 39 SUCCESS, 1 FAILURE and 2 CANCELLED. The failed job reached the “Run cognitive evidence Inspect task without external model calls” step; the memory task, route-contract check and runtime typecheck were skipped after failure. The available job summary does not expose the exception text, so no more specific root cause is asserted here. The PR remains Draft; no merge or release is claimed. PR #863 should not be merged as a green integration gate on this evidence.
+For the code-bearing PR head inspected before the documentation-only checkpoint commit (`16a6bdb1c8b8b94be7678cdbead3e3afa12cf3dc`), the returned Actions page contained 42 runs: 39 SUCCESS, 1 FAILURE and 2 CANCELLED. The later commit `fb67464cce69c3e84f8290838664037782d7276a` only updates this research register; no new exact-head Actions evidence was returned for that documentation commit. The failed job reached the “Run cognitive evidence Inspect task without external model calls” step; the memory task, route-contract check and runtime typecheck were skipped after failure. The available job summary does not expose the exception text, so no more specific root cause is asserted here. The PR remains Draft; no merge or release is claimed. PR #863 should not be merged as a green integration gate on this evidence.
 
 ### Progress recalculation — archive assimilation stream only
 
