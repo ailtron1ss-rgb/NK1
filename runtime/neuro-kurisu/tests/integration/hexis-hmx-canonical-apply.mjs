@@ -273,6 +273,7 @@ try {
 
   const analysisId = 'exp_fedcba9876543210';
   const analysisDocument = makeDocument(analysisId, 'analysis-only');
+  analysisDocument.export_intent = 'analysis';
   delete analysisDocument.sections.identity;
   delete analysisDocument.sections.goals;
   const analysisStageResponse = await post('/api/organism/integration/hexis/hmx/stage', {
