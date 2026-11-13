@@ -17,7 +17,7 @@ const asText = (value: unknown, max: number): string => {
   return normalized.length > 0 && normalized.length <= max && !/[\u0000-\u001f\u007f-\u009f]/u.test(normalized)
     ? normalized : '';
 };
-const sha256 = (value: string): string => createHash('sha256').update(value, 'utf8').digest('hex');
+const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
 const stableMemoryId = (lineage: string, portableRef: string): string =>
   'hexis-' + sha256(lineage + '\u0000' + portableRef).slice(0, 40);
 const timestamp = (value: unknown, fallback: number): number => {
@@ -55,10 +55,13 @@ const EDGE_TYPES: Record<string, SemanticEdge['relation']> = {
  * never become canonical state through this adapter.
  */
 export class HexisCanonicalMemoryProjector {
-  constructor(
-    private readonly memory: MemorySubsystemRuntime,
-    private readonly hexis: HexisAdaptationFabric,
-  ) {}
+  private readonly memory: MemorySubsystemRuntime;
+  private readonly hexis: HexisAdaptationFabric;
+
+  constructor(memory: MemorySubsystemRuntime, hexis: HexisAdaptationFabric) {
+    this.memory = memory;
+    this.hexis = hexis;
+  }
 
   apply(stage: HexisHmxStage, tick = 0): HexisHmxApplyReceipt {
     if (stage.status !== 'accepted') throw new Error('hmx-stage-not-accepted');
@@ -251,7 +254,7 @@ export class HexisCanonicalMemoryProjector {
         deferredSections,
         warnings,
       };
-      return { ...base, digest: sha256Stable(base, 'hexis-hmx-apply-v1') };
+      return { ...base, digest: sha256Stable(base, 'json') };
     } catch (error) {
       this.memory.memoryOS.restore(memoryOSBefore);
       this.memory.fabric.restore(memoryFabricBefore);
