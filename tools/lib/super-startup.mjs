@@ -69,6 +69,7 @@ export async function waitForHttpReady({
   pollIntervalMs = 300,
   fetchImpl = globalThis.fetch,
   isAlive = () => true,
+  isReady = (response) => response?.ok === true,
 }) {
   if (typeof fetchImpl !== 'function') throw new Error('HTTP readiness check requires fetch().');
   if (!Number.isFinite(timeoutMs) || timeoutMs < 1) throw new Error(`Invalid readiness timeout: ${timeoutMs}`);
@@ -82,8 +83,10 @@ export async function waitForHttpReady({
       const response = await fetchImpl(url, {
         signal: AbortSignal.timeout(Math.min(2000, Math.max(250, timeoutMs))),
       });
-      if (response?.ok) return response;
-      lastFailure = `HTTP ${response?.status ?? 'unknown'}`;
+      if (response?.ok && await isReady(response)) return response;
+      lastFailure = response?.ok
+        ? 'HTTP response received but service readiness predicate returned false'
+        : `HTTP ${response?.status ?? 'unknown'}`;
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error);
     }
