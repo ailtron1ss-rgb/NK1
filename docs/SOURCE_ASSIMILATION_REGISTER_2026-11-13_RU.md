@@ -118,3 +118,28 @@
 Сравнение `workpass70-source` с merge commit `9a789ee1af8fdaa3826dbc734d18e2fc00cde5bf` завершилось GitHub API ответом `No common ancestor`. Следовательно, найденный merge #862 нельзя считать доказанно включённым в каноническую `workpass70-source` ветку; это отдельная линия истории/база. Перед переносом UserModel v2, skeletal kinematics и UnifiedBrainSystem изменений требуется определить корректную родительскую ветку PR #862, проверить полный diff и выполнить трёхстороннее сопоставление с текущим `workpass70-source`. Не cherry-pick вслепую: вероятны пересечения с уже существующими motor/IK/UserModel контрактами.
 
 Также `get_commit_combined_status` для исходного commit `6202661ad1dcfa37d314765b45e6d63852053e2d` вернул пустой список statuses. Это не эквивалентно CI success. Поэтому интеграция #862 остаётся `OBSERVED_ON_OTHER_LINE / NOT_RECONCILED`, а не `VERIFIED_IN_CANONICAL_SOURCE`.
+
+
+## 11. Дополнительный file-level разбор выбранных исходников
+
+После первичной инвентаризации прочитаны отдельные архитектурные документы из вложенных ZIP:
+
+### Hexis — что действительно стоит сопоставить
+- Memory architecture описывает пять слоёв: working, episodic, semantic, procedural, strategic; отношения TEMPORAL_NEXT / CAUSES / CONTRADICTS / SUPPORTS; precomputed associative neighborhoods; lexical fallback; confidence revision с audit trail и защитой от double-counting источников.
+- Heartbeat описывает Observe → Orient → Decide → Act → Record → Wait, state-driven cadence, energy budget, receipt-backed outcomes и stateless worker, который восстанавливается после падения.
+- Это не повод внедрять Postgres/Apache AGE поверх NK1: наиболее полезны контракты и инварианты. Проверить, что эквиваленты есть в NK1: typed memory-kind projection; causal/temporal edge semantics; belief revision audit; energy/attention budget; receipt-based outcome accounting; crash-safe resume. Если эквивалент уже есть, нужен differential test, а не второй модуль.
+
+### Lumina — полезная инженерная гипотеза
+README позиционирует local-first assistant с hardware-bounded inference, backend abstraction, multi-tier memory/dreaming, local TTS/voice, swappable personas и explicit remote access. Для NK1 это полезно как checklist: offline boot, low-VRAM profiles, provider fallback, memory pressure, voice pipeline degradation. Не переносить целиком 13k-line Python application в TypeScript runtime; сначала сравнить с существующим llama.cpp routing, speech stack и mobile budgets.
+
+### OWL / CAMEL — корректная трактовка
+README указывает multi-agent task automation и paper arXiv:2505.23885, но отсутствие root LICENSE в архиве означает license clearance pending, несмотря на badge в README. Допустимо изучать опубликованные идеи/бумагу и ссылаться на неё; копирование исходного кода/ресурсов заблокировано до определения применимой лицензии и условий всех вложенных пакетов.
+
+### Что дополнительно извлечь из оставшихся исходников
+- Hermes: agent loop, memory-provider plugin, state DB recovery, subagent lifecycle — точные документы уже найдены в архиве, следующий шаг: сопоставить с NK1 ActionGateway, memory owner и recovery receipts.
+- OpenClaw: `docs/agent-runtime-architecture.md` и gateway/channel lifecycle — следующий шаг: diff с OrganismBus и существующим transport layer; не импортировать плагины пачкой.
+- Will: исходник содержит отдельные концептуальные документы по attention budget, faculty channels, identity guardrails, action-conditioned prediction, agency pipeline и awareness scoping. Это набор исследовательских гипотез; для каждого механизма нужен операциональный тест и falsifiable outcome.
+- OpenAI Agents Python: сравнить run-item lifecycle, session ownership, handoffs, tool output schemas и tracing с текущим NK1 cognitive cycle и ActionGateway.
+
+### Вывод после углубления
+Наиболее перспективная ассимиляция сейчас — не новая LLM-обвязка и не замена памяти, а усиление **непрерывности личности и проверяемого автономного цикла**: belief/evidence lineage + memory lifecycle + goal/energy cadence + crash recovery + causal outcome receipts. Это должно быть оформлено как единая система поверх уже существующих NK1 владельцев состояния. Прямое внедрение дополнительных баз, агентных framework или параллельных heartbeat loops увеличит фрагментацию и противоречит цели проекта.
