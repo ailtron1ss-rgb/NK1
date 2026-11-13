@@ -296,6 +296,11 @@ export class MemoryFabric {
       }
     }
 
+    if(outcome==='applied'&&action!=='encode'&&action!=='forget'){
+      if(action==='revise-content')this.syncCompatibilityProjection((command as Extract<MemoryLifecycleCommand,{action:'revise-content'}>).id);
+      if(memoryId)this.syncCompatibilityProjection(memoryId);
+    }
+
     if(eventPayload){
       if(action==='encode')this.events.append(makeEvent('memory-created',tick,eventPayload));
       else this.events.append(makeEvent('memory-lifecycle',tick,eventPayload));
@@ -313,6 +318,19 @@ export class MemoryFabric {
       }
     }
     return result;
+  }
+
+  /** Keep the bounded secondary read model aligned with the current canonical revision. */
+  private syncCompatibilityProjection(id:string):boolean {
+    const key=String(id??'').trim().slice(0,160);
+    if(!key)return false;
+    const snapshot=this.memoryOS.snapshot({clone:false});
+    const item=snapshot.items.find(row=>row.id===key);
+    if(!item){this.multiTimescale.removeCanonicalProjection(key);return false;}
+    const projected=this.substrate.projectCompatibilityRecords({...snapshot,items:[item]},1)[0];
+    if(!projected){this.multiTimescale.removeCanonicalProjection(key);return false;}
+    this.multiTimescale.add(projected,false);
+    return true;
   }
 
   /** Read-only canonical lookup for idempotent adapters; never mutates retrieval or policy state. */
