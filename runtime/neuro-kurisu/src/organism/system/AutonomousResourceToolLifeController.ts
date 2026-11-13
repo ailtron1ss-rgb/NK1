@@ -34,7 +34,7 @@ export class AutonomousResourceToolLifeController {
     // Autonomy may choose and propose a protected operation, but it must not launch
     // one that requires owner consent as though a background planner had consented.
     // The registered ActionGateway permission class is the source of this signal.
-    const safe=assessed.filter(row=>row.tool.requiresApproval!==true && row.consequence.autonomousAllowed);
+    const safe=assessed.filter(row=>row.tool.projectAllowed===true && row.tool.requiresApproval!==true && row.consequence.autonomousAllowed);
     if(!safe.length){
       if(nonDestructive.length){this.state.permissionBlocked++;return {allowed:false,tool:null,reason:'no-autonomous-permitted-tool',cost01:0,stopPressure01:stopPressure,consequenceCost01:0,consequenceClass:null};}
       this.state.blockedDestructive++;return {allowed:false,tool:null,reason:'no-safe-nondestructive-tool',cost01:0,stopPressure01:stopPressure,consequenceCost01:0,consequenceClass:null};
