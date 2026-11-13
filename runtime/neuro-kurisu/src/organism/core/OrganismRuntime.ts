@@ -48,6 +48,9 @@ import { configureLearningJournals, createDefaultLearningJournals } from '../lea
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
+import type { ValidationOnlyCandidateEvaluationConfig, ValidationOnlyCandidateEvaluator } from '../learning/ValidationOnlySkillCandidateEvaluator.ts';
+import type { P23PopulationSearchBudget, P23PopulationCandidateGenerator } from '../learning/P23ReflectiveCandidatePopulationSearch.ts';
+import type { CompoundRepairRevisionGenerator } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
@@ -107,6 +110,10 @@ export interface RuntimeConfig extends OrganismConfig {
     provideInputs: CompoundRepairRevisionInputProvider;
     /** When supplied, replaces provider-supplied candidate evaluation with exact-payload independent execution. */
     independentEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => IndependentCandidateEvaluationConfig;
+    /** Optional host-owned validation-only plan for bounded candidate population search. */
+    validationOnlyEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => ValidationOnlyCandidateEvaluationConfig;
+    /** Hard-capped search budget; omitted capability preserves the legacy single-candidate path. */
+    populationSearchBudget?: P23PopulationSearchBudget;
     /** Optional background repair-to-P23 loop. Opt-in and independently evaluated; never auto-activates candidates. */
     backgroundRevision?: { enabled: boolean; initialDelayMs?: number; intervalMs?: number };
   };
@@ -309,10 +316,16 @@ export class OrganismRuntime {
       if (!config.compoundRepairRevision.engine.verifiedSkillCandidateSnapshot()) {
         throw new Error('compound-repair-revision requires a configured verified P23 candidate store');
       }
+      if (config.compoundRepairRevision.validationOnlyEvaluationConfigForRepair &&
+          !config.compoundRepairRevision.independentEvaluationConfigForRepair) {
+        throw new Error('validation-only-population-search-requires-independent-final-evaluation-authority');
+      }
       const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
         ? withIndependentCandidateEvaluation(
             config.compoundRepairRevision.provideInputs,
             config.compoundRepairRevision.independentEvaluationConfigForRepair,
+            config.compoundRepairRevision.validationOnlyEvaluationConfigForRepair,
+            config.compoundRepairRevision.populationSearchBudget,
           )
         : config.compoundRepairRevision.provideInputs;
       configureLearningJournals(config.compoundRepairRevision.engine, learningJournals);
