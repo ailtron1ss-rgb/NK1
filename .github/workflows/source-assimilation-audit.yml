@@ -7,6 +7,9 @@ on:
       - research/source-assimilation-20261113
     paths:
       - '.github/workflows/source-assimilation-audit.yml'
+      - 'engineering-os/source-assimilation.v1.json.gz'
+      - 'tools/source-assimilation-audit.*'
+      - 'package.json'
       - 'docs/SOURCE_ASSIMILATION_REGISTER_2026-11-13_RU.md'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/scripts/audit-source-assimilation.mjs'
@@ -23,6 +26,9 @@ on:
       - workpass70-source
     paths:
       - '.github/workflows/source-assimilation-audit.yml'
+      - 'engineering-os/source-assimilation.v1.json.gz'
+      - 'tools/source-assimilation-audit.*'
+      - 'package.json'
       - 'docs/SOURCE_ASSIMILATION_REGISTER_2026-11-13_RU.md'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/scripts/audit-source-assimilation.mjs'
@@ -49,6 +55,11 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Validate the evidence-tracked external source register
+        run: |
+          npm run sources:validate
+          npm run sources:report
+          npm run test:sources:registry
       - name: Run static source-to-runtime assimilation audit
         working-directory: runtime/neuro-kurisu
         run: node scripts/audit-source-assimilation.mjs
