@@ -1,40 +1,37 @@
-# CURRENT HANDOFF — 2026-11-01
+# CURRENT HANDOFF — 2026-11-08
 
-> **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
+> **Current entry point:** read README.md, this checkpoint and the daily engineering cycle, then refresh live GitHub refs, PR heads and exact-SHA Actions. Historical WorkPass sections below this block are archival, not live truth.
 
-**Canonical source branch:** `workpass70-source`  
-**Source HEAD at this checkpoint:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b`  
-**Branch policy:** `workpass70-source` is the canonical working tree. `main` remains release/metadata; do not merge source work directly into `main`.
+**Canonical source branch:** workpass70-source  
+**Last verified live source HEAD:** 189643ede8f3904dd670f0109a28b7536e894c00  
+**Branch policy:** source changes target workpass70-source or isolated aspect branches; main remains release/metadata.
 
-## Latest verified integrations — 2026-11-01
+## Latest observed source and PR state
 
-| PR | Merged SHA | Change | Exact PR-head checks |
-|---|---|---|---:|
-| [#594](https://github.com/ailtron1ss-rgb/NK1/pull/594) | `619ec5dc22f4559cb915281c46de23d1c369bf50` | FileStateStore missing/corrupt-primary recovery; primary recreation; verified-backup preservation | 11/11 |
-| [#603](https://github.com/ailtron1ss-rgb/NK1/pull/603) | `9b36efb3793730550b6d7fb6d2f028472651d3b4` | Speech lifecycle resets semantic mouth channels outside active speaking; missing sensor samples normalized | 9/9 |
-| [#607](https://github.com/ailtron1ss-rgb/NK1/pull/607) | `735b83d525c0d53c91e2e5a6587fb3529a08d13b` | Atomic backup rotation via temp + fsync + rename; deterministic SIGKILL regression | 11/11 |
-
-**Already present in the source baseline:** [`efb7693`](https://github.com/ailtron1ss-rgb/NK1/commit/efb7693df564512ed653f8bafc772d97e2c36e32) upgrades UserModel to v2 durable forgetting with tombstones, strict fail-closed restore, source-event replay protection and v1 migration. The motor-frame integrity guard from `c039f84` is also integrated.
+- Source SHA 189643e adds bounded HTTPS VRM/GLB remote import. Exact-SHA source push Actions: 7/7 success.
+- Its parent 26e2c823284d4238199c80cd1eb8363c5d5c8456 is the external merge commit for PR #830; this cycle only observed the merge and verified ancestry.
+- PR #838 is open/draft at cc27cd02a06d90d0578102306e0456f6e0ab743c; exact-head Actions 5/5 success. It is not merged/released and peak-RSS is not measured.
+- PR #831 is the existing documentation workstream. Before this update it was at d5485bea74a06366cc227b073c4cf5a545df983d, with 5/5 exact-head Actions; this cycle continues that branch. Keep it open/draft and re-read its new head/Actions.
+- PR #842 and other master-plan updates target main; they are not runtime source integrations.
 
 ## Release and external services
 
-- Latest published ZIP including prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Stable `Neuro` ZIP is older; neither contains the November 1 integrations.
-- No new Release ZIP has been assembled, inspected internally or published. Do not claim release parity from source-branch CI.
-- License review remains pending; redistribution approval is false. Do not publish until human license review and exact-SHA publisher gate pass.
-- MongoDB Atlas read-only inspection: Project 0 / Cluster0 is reachable, but only `sample_mflix` exists; no NK1 database or runtime adapter.
-- Supabase currently has zero projects. Redis Agent Memory SDK guidance exists, but no connected RAM data plane or `AGENT_MEMORY_*` secrets. Replit search found no NK1 app. No external database/schema/secret was created.
+- Latest published ZIP including prerelease: Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes, SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
+- Binary ZIP download was unavailable in this cycle; fresh CRC/member inspection and source parity remain unverified.
+- License review remains pending and redistribution approval false. Do not publish a Release.
+- ProductOS project available here is management-only control plane, bound to a separate ProductOS repository; it is not NK1 runtime source and has no database configured. Do not treat it as runtime infrastructure.
 
-## Remaining P0 gates
+## Remaining P0/P1 gates
 
-1. Complete human license review and exact-SHA release publisher gate.
-2. Run browser/WebGL E2E for VRM/GLB replacement, reload, reset, GPU/resource counters and soak.
-3. Run real Android/Termux audio interruption, viseme/audio drift and background/foreground soak.
-4. Prove bilingual RU/EN retrieval uplift on immutable, source-clustered holdout pairs with at least five paired seeds; no promotion on synthetic fixtures alone.
-5. Complete 2.5D depth-rig and acquire a separately licensed Kurisu-compatible 3D asset.
-6. Validate self-initiated Perceive → Appraise → Plan → Act → Reflect → Consolidate behavior over soak with explainable internal causes; do not claim consciousness as a measured result.
-7. Continue persistence hardening with filesystem/power-loss testing beyond deterministic process SIGKILL tests.
+1. Frozen, licensed bilingual RU/EN holdout with source-group independence and ≥5 paired seeds; no recall uplift claim.
+2. Real Android/Termux soak, including 10k ticks, phone-tick latency, audio interruption and lip-sync drift.
+3. Browser/WebGL E2E and peak-memory/soak for remote avatar import.
+4. Human license/redistribution review and exact-SHA release gate.
+5. Measured self-initiated Perceive → Appraise → Plan → Act → Reflect → Consolidate behavior with explainable internal causes; no consciousness claim.
 
-**Progress rule:** keep implemented / connected / tested / released distinct. Do not raise global readiness from unit tests or exact PR CI alone. Refresh this handoff when the live branch advances.
+**Next actions:** continue existing perception/memory/consent/voice PRs after re-reading their live heads; obtain immutable RU/EN holdout; inspect the actual Release ZIP through a binary-capable path; run browser and phone hardware tests when available.
+
+---
 
 ---
 
