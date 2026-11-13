@@ -9,6 +9,8 @@ export interface MemoryRecord extends ConsolidatedMemory {
   embedding?: number[];
   consolidationScore01?: number;
   associationIds?: string[];
+  /** Read-only projection of a canonical MemoryOS2 row; never re-ingest on restore. */
+  canonicalProjection?: { owner:'memoryOS2'; itemId:string; schemaVersion:1 };
 }
 
 export class MultiTimescaleMemory {

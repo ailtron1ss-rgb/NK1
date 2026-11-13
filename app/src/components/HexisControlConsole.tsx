@@ -45,6 +45,12 @@ export function HexisControlConsole() {
   const [hmxIntent, setHmxIntent] = useState<"port" | "duplicate" | "telepathy" | "analysis">("port");
   const [hmxStrategy, setHmxStrategy] = useState<"additive" | "authoritative" | "deliberative" | "analysis_only">("additive");
   const [hmxConfirmed, setHmxConfirmed] = useState(false);
+  const [hmxApplyConfirmed, setHmxApplyConfirmed] = useState(false);
+  const [hmxImportDocument, setHmxImportDocument] = useState<Record<string, unknown> | null>(null);
+  const [hmxImportFileName, setHmxImportFileName] = useState("");
+  const [hmxAccepted, setHmxAccepted] = useState(false);
+  const [stagedIntent, setStagedIntent] = useState<typeof hmxIntent>('analysis');
+  const [stagedStrategy, setStagedStrategy] = useState<typeof hmxStrategy>('analysis_only');
   const [placement, setPlacement] = useState("local");
   const [executionAction, setExecutionAction] = useState("tool.execute");
   const [risk, setRisk] = useState("0.4");
@@ -79,22 +85,79 @@ export function HexisControlConsole() {
   };
 
   const exportHmx = async () => {
-    const result = await run("Export HMX", () => neuroApi.hexisHmxExport());
-    const document = (result as any)?.document;
-    if (!document) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
-    const anchor = document.createElement("a");
+    const result = await run("Export HMX", () => neuroApi.hexisHmxExport(hmxIntent));
+    const hmxDocument = (result as any)?.document;
+    if (!hmxDocument) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(hmxDocument, null, 2)], { type: "application/json" }));
+    const anchor = window.document.createElement("a");
     anchor.href = url;
     anchor.download = "neuro-kurisu-hexis-hmx.json";
     anchor.click();
     URL.revokeObjectURL(url);
   };
 
+  const loadHmxFile = async (file?: File) => {
+    if (!file) return;
+    if (file.size <= 0 || file.size > 4 * 1024 * 1024) {
+      setHmxImportDocument(null);
+      setHmxImportFileName("");
+      setMessage("HMX file rejected: expected a non-empty JSON file no larger than 4 MiB.");
+      return;
+    }
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("HMX document must be a JSON object.");
+      }
+      const document = parsed as Record<string, unknown>;
+      if (document.hmx_version !== "1.7") {
+        throw new Error("Only HMX 1.7 documents are supported by this import path.");
+      }
+      const intent = document.export_intent;
+      if (!["port", "duplicate", "telepathy", "analysis"].includes(String(intent))) {
+        throw new Error("The HMX document has an unsupported or missing export_intent.");
+      }
+      setHmxImportDocument(document);
+      setHmxImportFileName(file.name);
+      setHmxIntent(intent as typeof hmxIntent);
+      setStageId("");
+      setHmxConfirmed(false);
+      setHmxApplyConfirmed(false);
+      setHmxAccepted(false);
+      setMessage(`Loaded ${file.name}; server-side schema, provenance and consent validation is still required.`);
+    } catch (error) {
+      setHmxImportDocument(null);
+      setHmxImportFileName("");
+      setMessage(`HMX file rejected: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const finishHmxStage = (staged: unknown, intent: typeof hmxIntent, strategy: typeof hmxStrategy) => {
+    const stage = (staged as any)?.stage;
+    if (stage?.stagingId) {
+      setStageId(String(stage.stagingId));
+      setStagedIntent(intent);
+      setStagedStrategy(strategy);
+      setHmxConfirmed(false);
+      setHmxApplyConfirmed(false);
+      setHmxAccepted(false);
+    }
+  };
+
   const stageCurrentHmx = async () => {
-    const exported = await neuroApi.hexisHmxExport();
-    const staged = await run("Stage HMX", () => neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy }));
-    const nextId = (staged as any)?.stage?.stagingId;
-    if (nextId) setStageId(String(nextId));
+    const exported = await neuroApi.hexisHmxExport(hmxIntent);
+    const staged = await run("Stage current HMX", () => neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy }));
+    finishHmxStage(staged, hmxIntent, hmxStrategy);
+  };
+
+  const stageImportedHmx = async () => {
+    if (!hmxImportDocument) return;
+    const staged = await run("Stage imported HMX", () => neuroApi.hexisHmxStage({
+      document: hmxImportDocument,
+      intent: hmxIntent,
+      strategy: hmxStrategy,
+    }));
+    finishHmxStage(staged, hmxIntent, hmxStrategy);
   };
 
   const approveFirstReview = async () => {
@@ -189,14 +252,42 @@ export function HexisControlConsole() {
             <select value={hmxIntent} onChange={e => setHmxIntent(e.target.value as typeof hmxIntent)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="port">port</option><option value="duplicate">duplicate</option><option value="telepathy">telepathy</option><option value="analysis">analysis</option></select>
             <select value={hmxStrategy} onChange={e => setHmxStrategy(e.target.value as typeof hmxStrategy)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="additive">additive</option><option value="authoritative">authoritative</option><option value="deliberative">deliberative</option><option value="analysis_only">analysis_only</option></select>
           </div>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <Button disabled={busy} onClick={() => void exportHmx()}>Export HMX</Button>
             <Button variant="outline" disabled={busy} onClick={() => void stageCurrentHmx()}>Stage current HMX</Button>
-            <input value={stageId} onChange={e => setStageId(e.target.value)} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
-            <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void run("Accept HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"))}>Accept staged</Button>
-            <Button variant="outline" disabled={busy || !stageId} onClick={() => void run("Reject HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"))}>Reject</Button>
+            <label className="flex min-w-0 flex-col gap-1 text-[11px] text-muted">
+              <span>External HMX 1.7 JSON (max 4 MiB)</span>
+              <input type="file" accept=".json,application/json" disabled={busy} onChange={e => void loadHmxFile(e.target.files?.[0])} className="min-w-0 text-xs file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-fg" />
+            </label>
+            <Button variant="outline" disabled={busy || !hmxImportDocument} onClick={() => void stageImportedHmx()}>Stage imported HMX</Button>
+            {hmxImportFileName ? <span className="self-center truncate text-[11px] text-muted">Selected: {hmxImportFileName}</span> : null}
           </div>
-          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX import.</label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <input value={stageId} onChange={e => setStageId(e.target.value)} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
+            <Button disabled={busy || !stageId || !hmxConfirmed} onClick={async () => {
+              const result = await run("Accept HMX for review", () => neuroApi.hexisHmxDecide(stageId, "accept"));
+              setHmxAccepted((result as any)?.stage?.status === "accepted");
+            }}>Accept staged</Button>
+            <Button variant="outline" disabled={busy || !stageId} onClick={async () => {
+              const result = await run("Reject HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"));
+              if ((result as any)?.stage?.status === "rejected") {
+                setHmxAccepted(false);
+                setHmxApplyConfirmed(false);
+              }
+            }}>Reject</Button>
+          </div>
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I reviewed this stage and approve the transition to accepted. This does not write canonical memory.</label>
+          <label className="mt-2 flex items-start gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxApplyConfirmed} onChange={e => setHmxApplyConfirmed(e.target.checked)} /> I separately authorize importing only the reviewed memory subset into canonical MemoryOS2. Donor identity, worldview, goals, drives, narrative, embeddings and raw dialogue remain deferred.</label>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Button disabled={busy || !stageId || !hmxAccepted || !hmxApplyConfirmed || stagedIntent !== "port" || stagedStrategy !== "additive"} onClick={async () => {
+              const result = await run("Apply HMX memory subset", () => neuroApi.hexisHmxDecide(stageId, "apply"));
+              if ((result as any)?.stage?.status === "applied") {
+                setHmxAccepted(false);
+                setHmxConfirmed(false);
+              }
+            }}>Apply to canonical memory</Button>
+            <span className="text-[11px] text-muted">{hmxAccepted ? "Accepted; canonical writes still require the separate Apply action." : "Not accepted. Apply remains disabled."}</span>
+          </div>
         </Panel>
 
         <Panel title="Transactional outbox" icon={<Send className="size-4" />}>

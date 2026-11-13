@@ -82,6 +82,11 @@ export class MemorySubstrateCoordinator{
     const seen=new Set<string>();
     const inputs:Array<Parameters<MemoryOS2['encode']>[0]>=[];
     for(const row of rows.slice(0,Math.max(0,Math.min(64,Math.floor(limit))))){
+      const evidence=Array.isArray(row.evidence)?row.evidence.map(String):[];
+      // HMX rows already have a canonical MemoryOS2 owner. Their MultiTimescaleMemory
+      // entries are read-only projections; re-importing them on restart creates a
+      // second "multi-timescale-compatibility" belief for the same source memory.
+      if(row.canonicalProjection?.owner==='memoryOS2'||String(row.id??'').startsWith('hexis-')||evidence.some(source=>source.startsWith('hexis:')))continue;
       const key=`${row.kind}|${row.summary}|${row.evidence.slice(-2).join('|')}`;
       if(seen.has(key))continue;
       seen.add(key);
@@ -114,6 +119,7 @@ export class MemorySubstrateCoordinator{
         summary: item.content.slice(0, 360),
         salience: item.salience,
         evidence: [item.source],
+        canonicalProjection:{owner:'memoryOS2',itemId:item.id,schemaVersion:1},
         createdAt: item.createdAt || now,
         timescale: item.kind === 'semantic' ? 'semantic' : item.kind === 'identity' || item.kind === 'autobiographical' ? 'autobiographical' : item.kind === 'working' ? 'working' : 'episodic',
         retrievalCount: item.retrievalCount,

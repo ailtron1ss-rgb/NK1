@@ -9,6 +9,7 @@ import { organismSystemContract, organismSystemContracts, type OrganismSystemCon
 import { WillIntegrationBridge } from '../integration/will/WillIntegrationBridge.ts';
 import { LuminaAdaptationFabric } from '../integration/lumina/LuminaAdaptationFabric.ts';
 import { HexisAdaptationFabric } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { HexisCanonicalMemoryProjector } from '../integration/hexis/HexisCanonicalMemoryProjector.ts';
 import { LettaGovernanceAdaptationFabric } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import { buildCognitiveArchitectureSnapshot } from './CognitiveArchitectureMap.ts';
@@ -47,6 +48,8 @@ export class OrganismSystemFabric {
   readonly luminaAdaptation: LuminaAdaptationFabric;
   /** Hexis-derived epistemic, temporal-memory, review, HMX, outbox and connector governance adapter. */
   readonly hexisAdaptation: HexisAdaptationFabric;
+  /** Explicit HMX 1.7 application bridge into the sole canonical MemoryOS2 owner. */
+  readonly hexisCanonicalMemoryProjector: HexisCanonicalMemoryProjector;
   /** Letta-derived source-boundary, telemetry and artifact-review governance adapter. */
   readonly lettaGovernanceAdaptation: LettaGovernanceAdaptationFabric;
   /** Conscio-derived retrieval, federated-skill, liaison, calibration and metabolic adapters. */
@@ -77,6 +80,8 @@ export class OrganismSystemFabric {
     this.willIntegration=input.willIntegration ?? new WillIntegrationBridge();
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
     this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
+    this.hexisCanonicalMemoryProjector = new HexisCanonicalMemoryProjector(this.memory, this.hexisAdaptation);
+    this.hexisAdaptation.bindCanonicalMemoryApply((stage, tick) => this.hexisCanonicalMemoryProjector.apply(stage, tick));
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
     this.conscioAdaptation=input.conscioAdaptation ?? new ConscioAdaptationFabric();
     this.resolvedContracts = organismSystemContracts().map(contract => {

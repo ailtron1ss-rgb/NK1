@@ -1,0 +1,46 @@
+name: NK1 Hexis canonical HMX import
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - ".github/workflows/nk1-hexis-hmx-canonical-apply.yml"
+      - "runtime/neuro-kurisu/src/organism/integration/hexis/**"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemorySubstrateCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MultiTimescaleMemory.ts"
+      - "runtime/neuro-kurisu/tests/p2887-implicit-stale-conflict-closure.mjs"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/integration/hexis-hmx-canonical-apply.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+permissions:
+  contents: read
+concurrency:
+  group: nk1-hexis-hmx-canonical-apply-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  canonical-hmx-apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install pinned runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Verify HMX export secret redaction
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/integration/hexis-hmx-export-redactor.mjs
+      - name: Verify HMX lineage is excluded from semantic contradiction
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2887-implicit-stale-conflict-closure.mjs
+      - name: Run real server HMX canonical apply integration
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/integration/hexis-hmx-canonical-apply.mjs

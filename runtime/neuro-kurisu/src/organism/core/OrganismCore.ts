@@ -9,7 +9,8 @@ import { buildKnownEntityDossiers, projectKnownEntityPromptContext } from '../sy
 import { buildGradedTraitSalience } from '../language/GradedTraitSalience.ts';
 import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, type MemoryRetrievalBenchmarkOptions } from '../memory/MemoryRetrievalBenchmark.ts';
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
-import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisHmxStage, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { HMX_EXPORT_EXCLUDED_SECRET_PATTERNS, redactHmxExportText } from '../integration/hexis/HmxExportRedactor.ts';
 import { normalizeEvidenceLineageProvenance } from '../memory/EvidenceLineageProvenance.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
@@ -2830,6 +2831,24 @@ export class OrganismCore {
             .sort((a, b) => Number(b.observedAt ?? b.createdAt) - Number(a.observedAt ?? a.createdAt) || a.id.localeCompare(b.id));
         return current.slice(0, Math.max(1, Math.min(128, Math.floor(limit)))).map((m) => ({ id: m.id, kind: m.kind, summary: m.content.slice(0, 360), confidence: m.confidence, salience: m.salience, source: m.source, createdAt: m.createdAt, dormant: m.dormant, epistemicStatus: m.epistemicStatus }));
     }
+    hexisMemoryPersistenceDiagnostics() {
+        const live = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+        const durable = this.persisted.facets.advanced.memoryOS;
+        const now = Date.now();
+        const hexisRows = (items: any[]) => items
+            .filter(item => typeof item?.source === 'string' && item.source.startsWith('hexis:'))
+            .slice(0, 64)
+            .map(item => ({ id: String(item.id), source: String(item.source), status: String(item.epistemicStatus ?? 'unknown'), dormant: item.dormant === true, validFromAt: Number(item.validFromAt ?? item.createdAt), validUntilAt: item.validUntilAt == null ? null : Number(item.validUntilAt), createdAt: Number(item.createdAt) }));
+        const visibleCurrent = (items: any[]) => items.filter(item =>
+            Number(item.validFromAt ?? item.createdAt) <= now &&
+            now < (item.validUntilAt == null ? Number.POSITIVE_INFINITY : Number(item.validUntilAt)) &&
+            !item.dormant && item.epistemicStatus !== 'quarantined');
+        return {
+            live: { itemCount: live.items.length, hexisItemCount: live.items.filter(item => String(item.source ?? '').startsWith('hexis:')).length, hexisVisibleCurrentCount: visibleCurrent(live.items).filter(item => String(item.source ?? '').startsWith('hexis:')).length, hexisRows: hexisRows(live.items) },
+            persistedProjection: { present: Boolean(durable), itemCount: Array.isArray(durable?.items) ? durable.items.length : 0, hexisItemCount: Array.isArray(durable?.items) ? durable.items.filter(item => String(item.source ?? '').startsWith('hexis:')).length : 0, hexisVisibleCurrentCount: Array.isArray(durable?.items) ? visibleCurrent(durable.items).filter(item => String(item.source ?? '').startsWith('hexis:')).length : 0, hexisRows: Array.isArray(durable?.items) ? hexisRows(durable.items) : [] },
+            checkpoint: { fullCount: this.persistence.persistenceFullCheckpointCount, partialCount: this.persistence.persistencePartialCheckpointCount, dirty: this.persistence.persistenceDirty, dirtyCycles: this.persistence.dirtyCycles },
+        };
+    }
     /** Synchronize a bounded audit projection; canonical time queries always read MemoryOS2. */
     hexisSyncMemoryProjection(limit = 96) {
         const allItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
@@ -3047,71 +3066,91 @@ export class OrganismCore {
         this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
         return { ok: true, proposal: updated ?? proposal, receipt };
     }
-    hexisExportHmx() {
-        const pma = this.exportWillPma();
+    hexisExportHmx(intent: HexisHmxIntent = 'port') {
+        if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(intent)) throw new Error('hmx-export-intent-invalid');
         const state = this.persisted;
-        const memorySummary = Array.isArray(pma.memorySummary) ? pma.memorySummary : [];
-        const knownEntities = Array.isArray(pma.knownEntities) ? pma.knownEntities : [];
-        const competence = Array.isArray(pma.competence) ? pma.competence : [];
-        const conversationAims = Array.isArray(pma.conversationAims) ? pma.conversationAims : [];
-        const goals = Array.isArray(pma.goals) ? pma.goals : [];
-        return { hmx_version: '1.7', record_type: 'document', export_id: randomUUID(), source_subject_id: String(state.system.subjectIdentity?.subjectId ?? ''), created_at: new Date().toISOString(), intent: 'port', strategy: 'additive', sections: { identity: [pma.identity], goals: goals.slice(0, 32), memories: memorySummary.slice(-96), relationships: knownEntities.slice(0, 32), skills: competence.slice(0, 48), in_flight_work: conversationAims.slice(0, 48), audit_records: this.hexisAdaptation.snapshot().beliefAudit.slice(-64) } };
+        const subjectId = String(state.system.subjectIdentity?.subjectId ?? 'nk1-local').normalize('NFKC').slice(0, 180);
+        const exportId = 'exp_' + createHash('sha256').update(randomUUID() + String(Date.now())).digest('hex').slice(0, 16);
+        const now = Date.now();
+        const currentMemories = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items
+            .filter(memory => !memory.dormant && memory.epistemicStatus !== 'quarantined')
+            .sort((a, b) => Number(a.observedAt ?? a.createdAt) - Number(b.observedAt ?? b.createdAt))
+            .slice(-96);
+        const subjectFingerprint = createHash('sha256').update(subjectId || 'local').digest('hex').slice(0, 24);
+        const memories = currentMemories.map(memory => ({
+            ref: exportId + ':memory-' + createHash('sha256').update(String(memory.id)).digest('hex').slice(0, 32),
+            type: memory.kind === 'identity' ? 'semantic' : memory.kind,
+            status: 'active',
+            content: redactHmxExportText(memory.content),
+            importance: Math.max(0, Math.min(1, Number(memory.salience) || 0)),
+            trust_level: Math.max(0, Math.min(1, Number(memory.confidence) || 0)),
+            created_at: new Date(Number(memory.createdAt) || now).toISOString(),
+            valid_from: new Date(Number(memory.validFromAt ?? memory.createdAt) || now).toISOString(),
+            metadata: {
+                tags: Array.isArray(memory.tags) ? memory.tags.slice(0, 24).map(tag => redactHmxExportText(tag, 64)) : [],
+                entities: Array.isArray(memory.entities) ? memory.entities.slice(0, 24).map(entity => redactHmxExportText(entity, 96)) : [],
+            },
+            provenance: {
+                source_id: 'nk1:' + createHash('sha256').update(String(memory.id)).digest('hex').slice(0, 32),
+                source_type: redactHmxExportText(memory.source || 'canonical-memory', 96),
+                evidence_class: 'unverified',
+            },
+        }));
+        const empty = (values: unknown[]) => values;
+        return {
+            hmx_version: '1.7',
+            record_type: 'document',
+            export_id: exportId,
+            export_intent: intent,
+            exported_at: new Date(now).toISOString(),
+            source: {
+                instance_id: 'nk1-' + subjectFingerprint,
+                schema_version: '1.7',
+                embedding_model: 'none',
+                embedding_dimension: 1,
+                hexis_lineage_id: 'nk1-subject:' + subjectFingerprint,
+            },
+            capabilities: {
+                formats: ['json'],
+                sections: ['memories', 'relationships', 'episodes', 'clusters'],
+                hash_algorithms: ['sha256'],
+                relationship_edge_types: ['supports', 'contradicts', 'causes', 'associated', 'about', 'located'],
+                optional_features: [],
+            },
+            privacy: {
+                redaction_policy: 'strict',
+                contains_sensitive_content: false,
+                consent_scope: 'migration',
+                excluded_secret_patterns: HMX_EXPORT_EXCLUDED_SECRET_PATTERNS,
+            },
+            sections: {
+                memories,
+                relationships: empty([]),
+                episodes: empty([]),
+                clusters: empty([]),
+            },
+        };
     }
-    hexisStageHmx(document: unknown, intent: HexisHmxIntent, strategy: HexisHmxStrategy) { const stage = this.hexisAdaptation.stageHmx({ document, intent, strategy }); this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot(); return stage; }
-    hexisDecideHmx(stagingId: string, decision: 'accept' | 'reject') {
-        const stage = this.hexisAdaptation.decideHmx(stagingId, decision);
-        if (stage?.status === 'accepted' && stage.intent === 'port' && stage.strategy !== 'analysis_only') {
-            const memories = Array.isArray(stage.stagedSections?.memories) ? stage.stagedSections.memories : [];
-            let created = 0, reused = 0;
-            const beforeItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
-            const beforeKeys = new Set(beforeItems.map((m) => `${m.kind}|${m.content}`));
-            for (const row of memories.slice(0, 96)) {
-                const record = row && typeof row === 'object' ? row as Record<string, unknown> : {};
-                const content = String(record.content ?? record.summary ?? '').trim().slice(0, 12000);
-                if (!content)
-                    continue;
-                const requestedKind = String(record.kind);
-                const safeKind = (['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream'].includes(requestedKind) ? requestedKind : 'semantic') as any;
-                const key = `${safeKind}|${content}`;
-                const wasPresent = beforeKeys.has(key);
-                const importedMemory = {
-                    content,
-                    kind: safeKind,
-                    source: 'hexis-hmx-import',
-                    tags: Array.isArray(record.tags)
-                        ? record.tags.map(String).slice(0, 24)
-                        : ['hexis', 'hmx'],
-                    context: record.context && typeof record.context === 'object'
-                        ? Object.fromEntries(Object.entries(record.context).slice(0, 12).map(([k, v]) => [String(k), String(v)]))
-                        : undefined,
-                    salience: Number(record.salience ?? 0.55),
-                    emotionalWeight: Number(record.emotionalWeight ?? 0.1),
-                    identityRelevance: 0,
-                    goalRelevance: Number(record.goalRelevance ?? 0),
-                    socialRelevance: Number(record.socialRelevance ?? 0),
-                    predictionError: Number(record.predictionError ?? 0),
-                    confidence: Number(record.confidence ?? 0.55),
-                    epistemicStatus: 'belief' as const,
-                    entities: Array.isArray(record.entities) ? record.entities.map(String).slice(0, 12) : [],
-                    semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
-                    provenanceClass: 'external' as const,
-                    sourceAuthority01: 0.55,
-                    independenceKey: `hexis:${stage.sourceSubjectId ?? stage.exportId}`,
-                    evidenceFreshnessAt: Date.now(),
-                    dormant: false,
-                    retrievalCount: 0,
-                    semanticVector: [],
-                };
-                this.memorySubsystem.fabric.encode(importedMemory, { tick: this.persisted.state.tick });
-                if (wasPresent)
-                    reused += 1;
-                else {
-                    created += 1;
-                    beforeKeys.add(key);
-                }
-            }
+    hexisStageHmx(document: unknown, intent: HexisHmxIntent, strategy: HexisHmxStrategy) {
+        const stage = this.hexisAdaptation.stageHmx({ document, intent, strategy });
+        this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+        return stage;
+    }
+    hexisDecideHmx(stagingId: string, decision: 'accept' | 'reject' | 'apply') {
+        let stage: HexisHmxStage | null = null;
+        try {
+            stage = this.hexisAdaptation.decideHmx(stagingId, decision, { tick: this.persisted.state.tick });
+        } catch (error) {
+            // Persist the failed-attempt count and keep the reviewed stage available
+            // for diagnostics/retry. The projector rolls canonical memory owners back.
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            throw error;
+        }
+        if (stage?.status === 'applied') {
             this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
-            (stage as any).importResult = { created, reused };
+            this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
+            this.persisted.facets.memory.eventLog = this.memorySubsystem.events.list();
+            this.persisted.facets.memory.semanticGraph = this.memorySubsystem.semanticMemory.snapshot();
         }
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return stage;

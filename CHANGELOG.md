@@ -1,3 +1,11 @@
+## [NK1][Memory] Preserve unverified HMX beliefs across heuristic conflict scans (2026-11-13)
+
+- Prevent text-only polarity and identifier heuristics from silently closing the temporal validity of HMX-imported external beliefs; explicit review or grounded evidence reconciliation owns that transition.
+- Add a regression for HMX-versus-local polarity conflicts while retaining local-to-local supersession and cross-lineage HMX isolation coverage.
+- Prevent canonical HMX rows projected into MultiTimescaleMemory from being re-imported as duplicate compatibility beliefs during restart.
+- Tag all MemoryOS2-to-MultiTimescaleMemory projections and exclude those read models from legacy restore ingestion, preventing recursive compatibility duplication.
+- Allow analysis-only HMX stages to be accepted as review data while keeping canonical apply restricted to port/additive stages; scope replay idempotency assertions to HMX-owned rows so independent metacognitive ticks remain valid.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.

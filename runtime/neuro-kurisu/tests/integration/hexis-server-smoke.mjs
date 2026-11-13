@@ -194,3 +194,7 @@ try {
   await new Promise(r => setTimeout(r, 400));
   await rm(stateDir, { recursive: true, force: true });
 }
+
+// HMX export redaction unit contract and the real-server acceptance/apply boundary.
+await import('./hexis-hmx-export-redactor.mjs');
+await import('./hexis-hmx-canonical-apply.mjs');
