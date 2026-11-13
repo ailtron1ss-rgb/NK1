@@ -26,8 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Multi-timescale and semantic graph regression
@@ -45,6 +45,15 @@ jobs:
       - name: Memory subsystem state roundtrip
         working-directory: runtime/neuro-kurisu
         run: npm run test:memory-subsystem-state-roundtrip
+      - name: Bilingual retrieval bridge
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-retrieval-cross-lingual-bridge
+      - name: Restore integrity and duplicate identity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-restore-integrity
+      - name: Candidate coverage regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-retrieval-candidate-coverage
       - name: Runtime TypeScript check
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
