@@ -444,10 +444,10 @@ These are separate workstream measures, not a weighted global “digital-person 
 | Уникальные источники | 21/21 (100%) | Инвентаризация идентичности завершена |
 | Первичный просмотр лицензионного scope | 21/21 (100%) | Не равнозначно legal clearance |
 | Юридическое разрешение на перенос | 0/21 | Копирование исходного кода пока не одобрено |
-| Подробный file-level diff donor → NK1 | 0/21 | Полного сравнения реализации каждого источника ещё нет |
+| Подробный file-level diff donor → NK1 | 1/21 (4,8%) | Один узкий wire-contract llama.cpp проверен по upstream README и server implementation; остальные 20 источников требуют отдельного diff |
 | Наличие конкретных NK1 adapter paths | 6/21 (28,6%) | Hexis, Will, Mem0, Letta, Lumina и Hermes; наличие пути не доказывает паритет функций |
-| Новые реализации из доноров в этом проходе | 0/21 | Добавлена только NK1-native оснастка учёта |
-| Новые runtime wiring | 0/21 | Новые donor-механизмы не подключались |
+| Адаптации механизмов без копирования донорского кода | 1/21 (4,8%) | Для llama.cpp добавлено NK1-native преобразование JSON Schema к точному формату llama-server |
+| Подключение к NK1 runtime pipeline | 1/21 (4,8%) | P23 local skill revision оборачивает генератор и передаёт candidate в существующий staging/promotion flow; live server ещё не проверен |
 | Тесты новых donor-механизмов | 0/21 | Для их внедрений тесты ещё не запускались |
 | Проверка включения в Release ZIP | 0/21 | Выпущенная интеграция не заявляется |
 
@@ -465,7 +465,7 @@ GitHub Compare также не нашёл общего предка между `
 - Добавлен CLI, который отдельно показывает инвентаризацию, лицензионную проверку, file-level diff, наличие адаптеров, адаптацию, wiring, тесты и подтверждение релиза.
 - Добавлены регрессионные тесты для количества исходников, Letta duplicate, повреждённых digest/контейнеров, mixed-scope AutoGPT, последовательности гейтов и различения adapter presence от фактической интеграции.
 - Изменения оснастки не требуют новых production dependencies; в cognitive runtime ничего не подключалось.
-- В локальной рабочей копии валидатора были выполнены `node --check` и `node --test`: 8 тестов прошли. Это локальные тесты инструмента, не полный CI проекта и не тесты интеграции внешних runtime-модулей. Результат CI должен быть привязан к точному HEAD PR после завершения workflow.
+- В локальной рабочей копии валидатора после обновления счётчиков выполнены `node --check` и `node --test`: 9 тестов прошли. Это локальные тесты инженерной оснастки, не полный CI проекта и не live-тесты локальной модели.
 - Не выполнены: полный donor file-level diff всех 21 проектов; legal approval; копирование кода; установка донорских зависимостей; runtime wiring; тестирование на устройстве; проверка релизного ZIP.
 
 ### 12.5 Следующие проходы
@@ -526,3 +526,28 @@ GitHub Compare также не нашёл общего предка между `
 Ограничение: прикреплённый пользователем ZIP `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` отсутствовал по ожидаемому локальному пути `/mnt/data/`, а попытка получить байты release asset через текущий runtime не удалась. Следовательно, ZIP contents, archive integrity, source-vs-release diff и совпадение digest с локальными байтами **не проверены**. Digest выше — значение из GitHub Release metadata, а не самостоятельно пересчитанный SHA-256.
 
 В текущей итерации PR #864 меняет только Draft ветку от `workpass70-source`; он не меняет `main`, release tag `Neuro` или published ZIP. Release reconciliation остаётся 0% до получения/скачивания asset и проверки extracted tree, manifests, runtime tests и actual SHA-256. Не объявлять изменения выпущенными.
+
+### 12.6 Второй проход: точная интеграция JSON Schema llama.cpp
+
+Проверен исходный донорский код:
+- `llama.cpp/grammars/README.md` документирует JSON Schema для chat completions через `response_format`;
+- `llama.cpp/tools/server/server-common.cpp:1306-1318` различает два формата: для `type=json_object` читает соседнее `response_format.schema`, а для `type=json_schema` читает вложенное `response_format.json_schema.schema`.
+
+Первый вариант NK1-провайдера сериализовал `{type:'json_schema', schema: ...}`; моки прежнего теста проверяли только отправку того же объекта и пропустили реальный контракт upstream. Это означало, что llama-server мог получить пустую схему и фактически не ограничивать форму генерации.
+
+Исправлено в текущем Draft PR:
+- NK1 оставляет удобный внутренний вызов `{type:'json_schema', schema}`;
+- `OpenAICompatibleLocalChatProvider` преобразует его в `{type:'json_schema', json_schema:{schema}}`, который фактически читает сервер;
+- `json_object` сохраняет поддерживаемый upstream вариант `{type:'json_object', schema}`;
+- тест проверяет точный сериализованный HTTP body, наличие вложенного `json_schema.schema` и отсутствие ошибочного sibling-поля;
+- runtime audit требует наличие этой нормализации.
+
+Промежуточный Actions run `43391867890` выявил два дефекта: разорванную границу массива в source audit (llama.cpp entry стоял вне массива) и недостаточный тест wire-shape. Синтаксис массива исправлен; затем добавлен тест по точному server contract. Повторный Actions run на новом HEAD должен подтвердить весь контур, включая provider/P23 tests. До этого `testsPassed` в реестре для llama.cpp остаётся `false`.
+
+Текущий учёт llama.cpp:
+- адаптация — 1/21; новое NK1-native поведение, без копирования donor кода;
+- runtime wiring — 1/21; через P23 reflective skill revision entrypoint и canonical candidate staging;
+- тесты — пока 0/21 до завершения повторного CI;
+- release — 0/21; asset не загружен и live llama-server на реальном устройстве не проверен.
+
+Ограничение: это проверка server wire protocol и P23 provider integration; она не доказывает доступность конкретной модели, качество генерации, скорость токенов, память на телефоне или безопасную автономную работу всего организма.
