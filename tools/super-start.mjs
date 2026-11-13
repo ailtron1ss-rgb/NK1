@@ -83,9 +83,9 @@ function stopAll(reason, exitCode = 1) {
   forceTimer.unref();
 }
 
-function launch(label, command, args, env = {}) {
+function launch(label, command, args, env = {}, cwd = ROOT) {
   const child = spawn(command, args, {
-    cwd: ROOT,
+    cwd,
     env: { ...process.env, ...env },
     stdio: 'inherit',
     detached: process.platform !== 'win32',
@@ -132,6 +132,7 @@ async function main() {
     process.execPath,
     ['--experimental-strip-types', 'src/server/server.mjs'],
     { PORT: '3310', HOST: '127.0.0.1', STATE_DIR, NODE_ENV: 'production' },
+    path.join(ROOT, 'runtime/neuro-kurisu'),
   );
   await waitReady(runtime, 'http://127.0.0.1:3310/health');
 
