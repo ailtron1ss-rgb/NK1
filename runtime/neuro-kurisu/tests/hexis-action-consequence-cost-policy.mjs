@@ -50,6 +50,14 @@ const onlySocial = controller.plan({
 });
 assert.equal(onlySocial.allowed, false, 'social action cannot be selected by ambient autonomy');
 assert.match(onlySocial.reason, /consequence|autonomous/i);
+assert.ok(controller.summary().consequenceBlocked >= 1, 'blocked consequence-bearing candidates must be observable');
+controller.record({ tick: 1, at: 1000, tool: plan.tool, ok: true, verified: true, cost01: plan.cost01, reason: plan.reason });
+const snapshot = controller.snapshot();
+assert.equal(snapshot.lastConsequenceClass, 'read-only');
+assert.ok(snapshot.recent[0].consequenceCost01 < .1, 'consequence score must be retained with the execution receipt');
+const restored = new AutonomousResourceToolLifeController();
+restored.restore(snapshot);
+assert.equal(restored.snapshot().lastConsequenceClass, 'read-only', 'consequence telemetry must survive restore');
 
 console.log(JSON.stringify({
   pass: 'HEXIS_ACTION_CONSEQUENCE_COST_POLICY',
