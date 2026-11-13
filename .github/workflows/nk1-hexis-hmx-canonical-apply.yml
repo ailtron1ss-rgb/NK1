@@ -35,6 +35,9 @@ jobs:
       - name: Verify HMX export secret redaction
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/integration/hexis-hmx-export-redactor.mjs
+      - name: Verify HMX lineage is excluded from semantic contradiction
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2887-implicit-stale-conflict-closure.mjs
       - name: Run real server HMX canonical apply integration
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/integration/hexis-hmx-canonical-apply.mjs
