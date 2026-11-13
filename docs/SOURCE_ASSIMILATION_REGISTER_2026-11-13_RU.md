@@ -13,7 +13,7 @@
 
 ## 2. Инвентаризация предоставленных архивов
 
-Доступны 4 контейнера 7z: `one.7z`, `two.7z`, `three.7z`, `four.7z`. Внутри обнаружены 22 ZIP-вложений, из них 21 уникальный исходный проект (Letta присутствует дважды). По индексам ZIP — около 1.8 GB распакованного содержимого суммарно. SHA-256 контейнеров:
+Доступны 4 контейнера 7z: `one.7z`, `two.7z`, `three.7z`, `four.7z`. Внутри обнаружены 22 ZIP-вложений, из них 21 уникальный исходный проект (Letta присутствует дважды). По индексам ZIP — около 1.6 GB распакованного содержимого суммарно. SHA-256 контейнеров:
 
 | Архив | SHA-256 |
 |---|---|
@@ -97,9 +97,9 @@
 | Инвентаризация вложенных ZIP | 100% | 22 ZIP, 21 уникальный проект, Letta duplicate обнаружен |
 | Первичный license screen | 80% | Root LICENSE проверен у большинства; OWL root license missing; nested assets/dependencies не очищены |
 | Архитектурная маршрутизация | 55% | Сформированы области применения и приоритеты; точные source file-level diff ещё нужны |
-| Проверка существующих NK1 механизмов | 45% | README/package scripts и merge #862 изучены частично; полное дерево runtime не доступно |
-| Реальное внедрение кода | 0% | Код внешних источников не переносился в этой итерации |
-| Верификация на полном проекте | 0% | Полный release ZIP/source tree отсутствует в доступном runtime; CI результатов по #862 не получено |
+| Проверка выбранных NK1 адаптеров | 100% статически для 5 линий | Hexis, Letta governance, Mem0, Lumina и Will сопоставлены с реализацией, composition/persistence и тестовыми контрактами; тесты этой итерации ещё не запускались |
+| Прямой перенос upstream-кода в этой итерации | 0% | В текущем проходе добавлен NK1-native аудит интеграций; wholesale-код доноров не копировался |
+| Выполнение новых проверок | 0% на момент записи | Проверки и новый audit test зарегистрированы в общем audit; результат CI нужно подтвердить по SHA нового commit |
 
 **Сводный прогресс именно этой итерации: 42%** (инвентаризация и первичная маршрутизация, не интеграционная готовность). Общую готовность NK1 этим числом не заменять.
 
@@ -143,3 +143,57 @@ README указывает multi-agent task automation и paper arXiv:2505.23885,
 
 ### Вывод после углубления
 Наиболее перспективная ассимиляция сейчас — не новая LLM-обвязка и не замена памяти, а усиление **непрерывности личности и проверяемого автономного цикла**: belief/evidence lineage + memory lifecycle + goal/energy cadence + crash recovery + causal outcome receipts. Это должно быть оформлено как единая система поверх уже существующих NK1 владельцев состояния. Прямое внедрение дополнительных баз, агентных framework или параллельных heartbeat loops увеличит фрагментацию и противоречит цели проекта.
+
+
+## 12. Повторная runtime-сверка и автоматическая карта адаптеров
+
+Проверка дерева `workpass70-source` на SHA `189643ede8f3904dd670f0109a28b7536e894c00` показала, что несколько донорских направлений уже представлены в NK1-native адаптерах. Это **не означает**, что исходные проекты целиком импортированы или что файлы адаптеров являются копией upstream-кода: для доказательства происхождения нужен отдельный file-level diff с точными revision/NOTICE каждого донора.
+
+| Линия | Фактически найдено в NK1 | Связи и владельцы | Польза / статус |
+|---|---|---|---|
+| Hexis | `HexisAdaptationFabric`, `HexisCanonicalEvidenceBridge` | `OrganismSystemFabric` создаёт адаптер и сохраняет/восстанавливает его; `MemorySubsystemRuntime` создаёт provenance bridge над `MemoryFabric`, `SourceMonitor` и `P65EpistemicLedger`; `OrganismCore.hexisIngestEvidenceLineage` проверяет source, fingerprint и provenance перед вызовом bridge | Фактическая связка belief revision + evidence lineage + temporal/review. MemoryOS2/MemoryFabric остаются единственным каноническим владельцем памяти. Есть два специализированных integration test |
+| Letta | `LettaGovernanceAdaptationFabric` | Включён в `OrganismSystemFabric`, snapshot/restore; persisted state типизирован в `OrganismCore` | **Только governance/reference adapter** (source boundary, telemetry, artifact review); сам Letta runtime и его память не импортированы. Это не полная интеграция Letta |
+| Mem0 | `Mem0PlatformAdapter` | В `OrganismRuntime`: отдельный флаг `mem0CognitiveRecall === true`, выключено без opt-in, поиск ограничен 3 кандидатами, внешняя ошибка не должна блокировать local-first response | Внешний recall как недоверенный контекст, а не второй memory owner. Есть runtime wiring, Platform и OSS contract tests |
+| Lumina | `LuminaAdaptationFabric` | Composition root + snapshot/restore; типизированное persisted state | Capability policy, подтверждение опасного действия, target validation, exact search и idempotency. Наличие адаптера не доказывает перенос avatar/voice assets или всего Lumina UI |
+| Will | `WillIntegrationBridge` | Composition root + snapshot/restore; типизированное persisted state | Deterministic candidate ranking, vector retrieval, transport/replay, hash chain и attribution. Тесты отдельно блокируют повышение competence от неподтверждённого успеха |
+| Conscio | `ConscioAdaptationFabric` | Есть в текущем NK1 composition root | Не найден среди 21 присланного архива; поэтому учитывать как отдельную существующую линию, а не приписывать одному из этих доноров |
+
+### Добавленный инструмент контроля
+
+В ветку добавлены:
+- `runtime/neuro-kurisu/scripts/audit-source-assimilation.mjs` — статически проверяет 5 адаптерных линий, composition root, persistence/restore, provenance/canonical boundary, наличие контрактных тестов и полноту 21-источникового реестра с лицензионными стоп-факторами.
+- `runtime/neuro-kurisu/tests/source-assimilation-audit.mjs` — тестирует как успешный fixture, так и искусственный разрыв wiring и отсутствующую запись источника.
+- Команды `audit:source-assimilation` и `test:source-assimilation-audit` добавлены в package scripts и включены в `scripts/audit-all.mjs`.
+
+Этот audit — статический контроль связей и наличия тестовых файлов. Он **не запускает** integration tests, не подтверждает upstream provenance, не заменяет license review и не сертифицирует release. Отдельная важная классификация: Letta остаётся governance-reference adapter; Mem0 — opt-in external recall; Hexis provenance bridge — отдельный путь происхождения evidence, а не новый memory store.
+
+### Текущий прогресс (только ветка ассимиляции, не общая готовность NK1)
+
+| Этап | Прогресс | Подтверждение / остаток |
+|---|---:|---|
+| Контейнеры исходников | 100% | 4/4 архива прочитаны; 22 вложенных ZIP, 21 уникальный источник |
+| Реестр и первичный license screen | 80% | 21 источник учтён; остаются nested licenses, model weights, assets и NOTICE для каждого кандидата |
+| Статическая карта существующих адаптеров | 100% для 5 линий | Проверены implementation/composition/persistence/test seams; это source inspection, не runtime execution |
+| Source-to-source diff и происхождение файлов | 25% | Нужны точные upstream revisions, файл-к-файлу сравнение и attribution |
+| Перенос новых upstream-механизмов в runtime в этой итерации | 0% | Изменён инженерный audit-инструмент; новый когнитивный/агентный механизм из доноров ещё не promoted |
+| Исполнение новых тестов и benchmark | 0% до подтверждения CI | Наличие файлов/команд не считается успехом; нужен результат Actions именно нового head SHA |
+| Сверка с Release ZIP и публикация | 0% | Релизный ZIP не смонтирован; release checksum и содержимое не сопоставлены |
+
+Не вычислять из этих строк процент готовности цифровой личности: это отдельная метрика и потребует воспроизводимой функциональной оценки, реальных phone soak и независимых holdout-наборов.
+
+### Следующие проходы
+
+1. Запустить новый static audit, его fixture test и восемь уже существующих focused integration tests; получить результаты Actions на точном SHA и исправить найденные несоответствия.
+2. Сделать source-to-source diff Hexis/Mem0/Will/Lumina/Letta: pinned upstream commit, лицензии, NOTICE, отличия контрактов и перечень адаптированных функций. Подтвердить, что существующий код заимствует именно идеи/контракты, а не ошибочно атрибутирован.
+3. Следующий runtime-кандидат выбирать по воспроизводимому выигрышу: Hermes/OpenAI Agents для tool/session/trace lifecycle; PocketFlow для bounded DAG; FAISS/Chroma для vector retrieval; DSPy для offline-only optimization с frozen holdout; llama.cpp — для измерения существующего local route. Hyperon и Agent0 оставить экспериментами до sandbox и baseline.
+4. Для каждого кандидата выполнить isolated reproduction → 5 paired seeds (для стохастики) → latency/recall/resource comparison → ablation → только потом подключение через OrganismBus/ActionGateway/MemoryOS2.
+5. Отдельно reconciliate `workpass70-source`, `main` и Release ZIP: между `workpass70-source` и merge #862 ранее обнаружен `No common ancestor`; не переносить изменения между ними вслепую.
+
+## 13. Change log — продолжение (2026-11-13)
+
+- Повторно подтверждено runtime wiring Hexis: system composition, canonical provenance bridge, core ingress checks и dedicated tests.
+- Уточнён статус Letta: governance-only reference adapter, не Letta runtime.
+- Подтверждены границы Mem0 opt-in/3-result/local-first и системная композиция Lumina/Will.
+- Добавлены source assimilation static audit, fixture test, npm scripts и включение в `audit-all`.
+- Прямой код из 21 архива в этой подитерации не копировался; новые runtime dependencies не добавлялись.
+- Открытый PR #863 остаётся Draft/Ready согласно текущему состоянию GitHub; merge и релиз не выполнялись.
