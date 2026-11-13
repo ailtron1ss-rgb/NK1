@@ -99,21 +99,27 @@ function memoryRecord(id, summary, overrides = {}) {
     'whitespace-normalized identifiers must replace, not duplicate, the previous row',
   );
 
+  const liveMemory = new MultiTimescaleMemory();
   const liveRow = memoryRecord('live-projection', 'retired heliosphere keyword');
-  memory.add(liveRow, false);
-  const liveStored = memory.snapshot({ clone: false }).find(row => row.id === 'live-projection');
-  assert.ok(liveStored);
-  assert.equal(memory.retrieve('heliosphere', 1)[0]?.id, 'live-projection');
+  const liveDistractor = memoryRecord('live-distractor', 'unrelated diary entry');
+  liveMemory.add(liveRow, false);
+  liveMemory.add(liveDistractor, false);
+  const liveStored = liveMemory.snapshot({ clone: false }).find(row => row.id === 'live-projection');
+  const distractorStored = liveMemory.snapshot({ clone: false }).find(row => row.id === 'live-distractor');
+  assert.ok(liveStored && distractorStored);
+  assert.equal(liveMemory.retrieve('heliosphere', 1)[0]?.id, 'live-projection');
   liveStored.summary = 'current photosynthesis keyword';
-  assert.deepEqual(
-    memory.retrieve('heliosphere', 4).map(row => row.id),
-    [],
-    'in-place summary mutation must invalidate the prior lexical cache entry',
+  // Equalize the retrieval-count tie breaker after the first query.
+  distractorStored.retrievalCount = liveStored.retrievalCount;
+  assert.equal(
+    liveMemory.retrieve('heliosphere', 1)[0]?.id,
+    'live-distractor',
+    'in-place summary mutation must remove the old lexical advantage',
   );
   assert.equal(
-    memory.retrieve('photosynthesis', 1)[0]?.id,
+    liveMemory.retrieve('photosynthesis', 1)[0]?.id,
     'live-projection',
-    'in-place summary mutation must be searchable immediately',
+    'in-place summary mutation must make the new lexical content searchable immediately',
   );
 }
 
