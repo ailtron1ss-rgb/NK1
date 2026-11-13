@@ -81,7 +81,7 @@ export class OrganismSystemFabric {
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
     this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
     this.hexisCanonicalMemoryProjector = new HexisCanonicalMemoryProjector(this.memory, this.hexisAdaptation);
-    this.hexisAdaptation.bindCanonicalMemoryApply(stage => this.hexisCanonicalMemoryProjector.apply(stage));
+    this.hexisAdaptation.bindCanonicalMemoryApply((stage, tick) => this.hexisCanonicalMemoryProjector.apply(stage, tick));
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
     this.conscioAdaptation=input.conscioAdaptation ?? new ConscioAdaptationFabric();
     this.resolvedContracts = organismSystemContracts().map(contract => {
