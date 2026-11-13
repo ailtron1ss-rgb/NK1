@@ -3,7 +3,8 @@ import { NeuroSymbolicConceptCompiler } from '../src/organism/cognition/NeuroSym
 
 const compiler = new NeuroSymbolicConceptCompiler();
 compiler.compile({ label: 'zeta', latent: [0.2, 0.4, 0.8], outcome01: 0.9, novelty01: 0.3 });
-compiler.compile({ label: 'alpha "quoted" \\ path\nnext', latent: [0.1, 0.3, 0.5], outcome01: 0.7, novelty01: 0.2 });
+// Different vector dimensionality deliberately forces a second concept prototype.
+compiler.compile({ label: 'alpha "quoted" \\ path\nnext', latent: [0.1, 0.3], outcome01: 0.7, novelty01: 0.2 });
 
 const before = JSON.stringify(compiler.snapshot());
 const exported = compiler.exportMeTTaFacts();
