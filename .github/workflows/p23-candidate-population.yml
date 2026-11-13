@@ -1,0 +1,30 @@
+name: P23 Reflective Candidate Population
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - '.github/workflows/p23-candidate-population.yml'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23CandidateParetoArchive.ts'
+      - 'runtime/neuro-kurisu/tests/p23-candidate-pareto-archive.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-validation-only-candidate-evaluator.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-reflective-candidate-population-search.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-population-revision-coordinator.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate-population:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Enforce runtime version
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Run deterministic candidate Pareto archive contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-candidate-pareto-archive.mjs
