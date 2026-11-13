@@ -190,4 +190,17 @@ assert.equal(integratedReplay.inserted, 0);
 assert.equal(integratedReplay.replayed, 1);
 assert.equal(systems.memory.memoryOS.size(), 1, 'real MemoryOS2 storage must remain idempotent across HMX retries');
 
+const sameContentDifferentExport = systems.memory.hexisHmxCanonicalMemoryBridge.stage({
+  document: document({
+    export_id: 'exp_runtime_wiring_2',
+    sections: { memories: [{ ref: 'memory:runtime-copy', type: 'semantic', content: 'Canonical runtime wiring test memory.' }] },
+  }),
+});
+assert.equal(sameContentDifferentExport.ok, true);
+const secondImport = systems.memory.hexisHmxCanonicalMemoryBridge.commit(sameContentDifferentExport.stagingId);
+assert.equal(secondImport.ok, true);
+assert.notEqual(secondImport.refMap['memory:runtime-copy'], canonicalId,
+  'a distinct HMX export must preserve its own deterministic provenance reference even when content is identical');
+assert.equal(systems.memory.memoryOS.size(), 2, 'forceDistinct must preserve distinct donor export references in the canonical owner');
+
 console.log('HEXIS_HMX_CANONICAL_MEMORY_BRIDGE_PASS');
