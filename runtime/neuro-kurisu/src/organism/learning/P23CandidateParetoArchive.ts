@@ -80,6 +80,15 @@ const isSafeIdentity = (value: unknown, max = 256): value is string =>
     return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
   });
 
+interface TaskAccumulator {
+  trialIds: string[];
+  taskSuccess: number[];
+  skillQuality: number[];
+  trajectoryQuality: number[];
+  safetyViolationCount: number;
+  taskFamily?: string;
+}
+
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
@@ -187,14 +196,7 @@ function buildCandidateRecord(
     throw new Error('p23-population-validation-report-count-invalid');
   }
 
-  const tasks = new Map<string, {
-    trialIds: string[];
-    taskSuccess: number[];
-    skillQuality: number[];
-    trajectoryQuality: number[];
-    safetyViolationCount: number;
-    taskFamily?: string;
-  }>();
+  const tasks = new Map<string, TaskAccumulator>();
   const seenTrialIds = new Set<string>();
 
   for (const report of input.reports) {
@@ -216,7 +218,7 @@ function buildCandidateRecord(
     }
     seenTrialIds.add(report.trialId);
 
-    const existing = tasks.get(report.taskId) ?? {
+    const existing: TaskAccumulator = tasks.get(report.taskId) ?? {
       trialIds: [],
       taskSuccess: [],
       skillQuality: [],
