@@ -69,14 +69,15 @@ export class OrganismSystemFabric {
   }> = {}) {
     this.self=input.self ?? new SelfSubsystemRuntime();
     this.governance=input.governance ?? new GovernanceSubsystemRuntime();
-    this.memory=input.memory ?? new MemorySubsystemRuntime();
+    this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
+    this.memory=input.memory ?? new MemorySubsystemRuntime(this.hexisAdaptation);
+    if (input.memory) this.memory.connectHexisAdaptation(this.hexisAdaptation);
     this.world=input.world ?? new WorldSubsystemRuntime();
     this.embodiment=input.embodiment ?? new EmbodimentSubsystemRuntime();
     this.agency=input.agency ?? new AgencySubsystemRuntime();
     this.research=input.research ?? new EvidenceResearchSubsystemRuntime();
     this.willIntegration=input.willIntegration ?? new WillIntegrationBridge();
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
-    this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
     this.conscioAdaptation=input.conscioAdaptation ?? new ConscioAdaptationFabric();
     this.resolvedContracts = organismSystemContracts().map(contract => {

@@ -16,6 +16,8 @@ import { P62MemoryFabric } from '../memory/P62MemoryFabric.ts';
 import { P65EpistemicLedger } from '../memory/P65EpistemicLedger.ts';
 import { SourceMonitor } from '../memory/SourceMonitor.ts';
 import { HexisCanonicalEvidenceBridge } from '../integration/hexis/HexisCanonicalEvidenceBridge.ts';
+import { HexisAdaptationFabric } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { HexisHmxCanonicalMemoryBridge } from '../integration/hexis/HexisHmxCanonicalMemoryBridge.ts';
 import { P70MemoryLifecycleGovernor } from '../developmental/P70MemoryLifecycleGovernor.ts';
 import { P75MemoryContinuumOS } from '../developmental/P75MemoryContinuumOS.ts';
 import { MemoryFabric } from '../memory/MemoryFabric.ts';
@@ -60,6 +62,9 @@ export class MemorySubsystemRuntime {
   readonly nekoKnowledgePackImporter = new NekoKnowledgePackImporter(this.fabric);
   /** One-way OMEGA/Hexis provenance bridge; MemoryFabric remains the canonical write boundary. */
   readonly hexisCanonicalEvidenceBridge = new HexisCanonicalEvidenceBridge(this.fabric, this.sourceMonitor, this.p65EpistemicLedger);
+  /** Explicitly accepted HMX portable memories enter only the canonical MemoryFabric owner. */
+  hexisHmxCanonicalMemoryBridge: HexisHmxCanonicalMemoryBridge;
+  private hexisAdaptation: HexisAdaptationFabric;
   readonly experienceContinuum = new ExperienceContinuumFabric();
   readonly hippocampal = new HippocampalMemorySubstrate();
   readonly hippocampalFormation = new HippocampalFormationCircuit();
@@ -75,6 +80,16 @@ export class MemorySubsystemRuntime {
   readonly causalLifeGraph = new CausalLifeGraph();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly memoryWorldCausalBridge = new MemoryWorldCausalBridge(96);
+
+  constructor(hexisAdaptation: HexisAdaptationFabric = new HexisAdaptationFabric()) {
+    this.hexisAdaptation = hexisAdaptation;
+    this.hexisHmxCanonicalMemoryBridge = new HexisHmxCanonicalMemoryBridge(this.hexisAdaptation, this.fabric);
+  }
+
+  connectHexisAdaptation(adaptation: HexisAdaptationFabric): void {
+    this.hexisAdaptation = adaptation;
+    this.hexisHmxCanonicalMemoryBridge = new HexisHmxCanonicalMemoryBridge(adaptation, this.fabric);
+  }
   restoreFromPersisted(input: { memory?: any; advanced?: any }) {
     const memory=input.memory ?? {}; const advanced=input.advanced ?? {};
     this.events.restore(memory.eventLog);
