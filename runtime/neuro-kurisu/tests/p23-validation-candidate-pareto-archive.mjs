@@ -88,6 +88,9 @@ assert.throws(() => buildP23ValidationCandidateMetrics([
 const sourceCandidateId = '1'.repeat(64);
 const fakeStore = {
   snapshot: () => ({
+    schemaVersion: 1,
+    revision: 1,
+    active: [],
     candidates: [{
       candidateId: sourceCandidateId, skillId: 'p23-gate-test', status: 'staged',
       payload: { name: 'source-skill', steps: ['open'] },
