@@ -1159,6 +1159,30 @@ function activeGoalVectorFromState(goals: any[], state: any): number[] {
     const v = Array.isArray(active?.vector) ? active.vector : Array.isArray(active?.features) ? active.features : [];
     return Array.from({ length: 16 }, (_, i) => clamp(Number(v[i] ?? (i === 0 ? state.needs.goalPressure : 0))));
 }
+const HMX_EXPORT_REDACTION_PATTERNS: Array<[string, RegExp]> = [
+    ['private-key', /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\\s\\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/gi],
+    ['credential-url', /https?:\\/\\/[^\\s/:@]+:[^\\s/@]+@[^\\s]+/gi],
+    ['bearer-token', /\\bBearer\\s+[A-Za-z0-9._~+\\/-]+=*/gi],
+    ['github-token', /\\b(?:github_pat_[A-Za-z0-9_]{16,}|gh[pousr]_[A-Za-z0-9]{16,})\\b/gi],
+    ['provider-token', /\\b(?:sk|rk|pk|api|token)[_-][A-Za-z0-9_-]{16,}\\b/gi],
+    ['aws-access-key', /\\bAKIA[0-9A-Z]{16}\\b/g],
+    ['jwt', /\\beyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\b/g],
+    ['secret-assignment', /((?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret)\\s*[:=]\\s*)(?:"[^"]*"|'[^']*'|[^\\s,;]+)/gi],
+    ['email-address', /\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/gi],
+    ['phone-number', /\\b\\+?\\d[\\d .()\\/-]{8,}\\d\\b/g],
+];
+const HMX_EXPORT_EXCLUDED_SECRET_PATTERNS = HMX_EXPORT_REDACTION_PATTERNS.map(([name]) => name);
+function redactHmxExportText(value: unknown, maxLength = 12_000): string {
+    let text = String(value ?? '').normalize('NFKC');
+    for (const [name, pattern] of HMX_EXPORT_REDACTION_PATTERNS) {
+        pattern.lastIndex = 0;
+        if (!pattern.test(text)) continue;
+        pattern.lastIndex = 0;
+        text = text.replace(pattern, (_match, prefix?: string) =>
+            prefix ? prefix + '[redacted:' + name + ']' : '[redacted:' + name + ']');
+    }
+    return text.slice(0, maxLength);
+}
 export class OrganismCore {
     private readonly config: Required<OrganismConfig>;
     private readonly store: JsonStateStore<PersistedOrganism>;
@@ -3057,22 +3081,23 @@ export class OrganismCore {
             .filter(memory => !memory.dormant && memory.epistemicStatus !== 'quarantined')
             .sort((a, b) => Number(a.observedAt ?? a.createdAt) - Number(b.observedAt ?? b.createdAt))
             .slice(-96);
+        const subjectFingerprint = createHash('sha256').update(subjectId || 'local').digest('hex').slice(0, 24);
         const memories = currentMemories.map(memory => ({
             ref: exportId + ':memory-' + createHash('sha256').update(String(memory.id)).digest('hex').slice(0, 32),
             type: memory.kind === 'identity' ? 'semantic' : memory.kind,
             status: 'active',
-            content: String(memory.content).slice(0, 12_000),
+            content: redactHmxExportText(memory.content),
             importance: Math.max(0, Math.min(1, Number(memory.salience) || 0)),
             trust_level: Math.max(0, Math.min(1, Number(memory.confidence) || 0)),
             created_at: new Date(Number(memory.createdAt) || now).toISOString(),
             valid_from: new Date(Number(memory.validFromAt ?? memory.createdAt) || now).toISOString(),
             metadata: {
-                tags: Array.isArray(memory.tags) ? memory.tags.slice(0, 24) : [],
-                entities: Array.isArray(memory.entities) ? memory.entities.slice(0, 24) : [],
+                tags: Array.isArray(memory.tags) ? memory.tags.slice(0, 24).map(tag => redactHmxExportText(tag, 64)) : [],
+                entities: Array.isArray(memory.entities) ? memory.entities.slice(0, 24).map(entity => redactHmxExportText(entity, 96)) : [],
             },
             provenance: {
-                source_id: 'nk1:' + String(memory.id).slice(0, 192),
-                source_type: String(memory.source || 'canonical-memory').slice(0, 96),
+                source_id: 'nk1:' + createHash('sha256').update(String(memory.id)).digest('hex').slice(0, 32),
+                source_type: redactHmxExportText(memory.source || 'canonical-memory', 96),
                 evidence_class: 'unverified',
             },
         }));
@@ -3084,11 +3109,11 @@ export class OrganismCore {
             export_intent: intent,
             exported_at: new Date(now).toISOString(),
             source: {
-                instance_id: subjectId || 'nk1-local',
+                instance_id: 'nk1-' + subjectFingerprint,
                 schema_version: '1.7',
                 embedding_model: 'none',
                 embedding_dimension: 1,
-                hexis_lineage_id: 'nk1-subject:' + (subjectId || 'local'),
+                hexis_lineage_id: 'nk1-subject:' + subjectFingerprint,
             },
             capabilities: {
                 formats: ['json'],
@@ -3101,6 +3126,7 @@ export class OrganismCore {
                 redaction_policy: 'strict',
                 contains_sensitive_content: false,
                 consent_scope: 'migration',
+                excluded_secret_patterns: HMX_EXPORT_EXCLUDED_SECRET_PATTERNS,
             },
             sections: {
                 memories,
