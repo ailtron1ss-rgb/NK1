@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { HexisAdaptationFabric } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 import { HexisHmxCanonicalMemoryBridge } from '../../src/organism/integration/hexis/HexisHmxCanonicalMemoryBridge.ts';
+import { OrganismSystemFabric } from '../../src/organism/core/OrganismSystemFabric.ts';
 
 class MemoryFabricFake {
   rows = new Map();
@@ -100,5 +101,30 @@ assert.ok(malformed.conflicts.some(c => c.kind === 'schema'));
 const rejected = bridge.stage({ document: document({ export_id: 'exp_rejected' }) });
 assert.equal(adaptation.decideHmx(rejected.stagingId, 'reject')?.status, 'rejected');
 assert.equal(bridge.commit(rejected.stagingId).error, 'stage-rejected');
+
+
+const systems = new OrganismSystemFabric();
+assert.equal(systems.memory.hexisHmxCanonicalMemoryBridge !== undefined, true,
+  'OrganismSystemFabric must connect the HMX bridge to the memory subsystem');
+const integratedStage = systems.memory.hexisHmxCanonicalMemoryBridge.stage({
+  document: document({ export_id: 'exp_runtime_wiring', sections: {
+    memories: [{ ref: 'memory:runtime', type: 'semantic', content: 'Canonical runtime wiring test memory.' }],
+  } }),
+});
+assert.equal(integratedStage.ok, true);
+assert.equal(systems.hexisAdaptation.getHmxStage(integratedStage.stagingId).sourceSubjectId, 'donor-instance-1',
+  'the staged record must preserve the donor instance identity');
+const integratedCommit = systems.memory.hexisHmxCanonicalMemoryBridge.commit(integratedStage.stagingId);
+assert.equal(integratedCommit.ok, true);
+const canonicalId = integratedCommit.refMap['memory:runtime'];
+const canonical = systems.memory.fabric.getCanonicalMemory(canonicalId);
+assert.equal(canonical?.content, 'Canonical runtime wiring test memory.');
+assert.equal(canonical?.epistemicStatus, 'hypothesis');
+assert.equal(canonical?.provenanceClass, 'external');
+const integratedReplay = systems.memory.hexisHmxCanonicalMemoryBridge.commit(integratedStage.stagingId);
+assert.equal(integratedReplay.ok, true);
+assert.equal(integratedReplay.inserted, 0);
+assert.equal(integratedReplay.replayed, 1);
+assert.equal(systems.memory.memoryOS.size(), 1, 'real MemoryOS2 storage must remain idempotent across HMX retries');
 
 console.log('HEXIS_HMX_CANONICAL_MEMORY_BRIDGE_PASS');
