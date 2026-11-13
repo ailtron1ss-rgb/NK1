@@ -55,5 +55,6 @@ jobs:
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/action-gateway-idempotency-workpass37.mjs
       - name: Preserve ActionGateway durable approval and redaction boundary
+        if: always()
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass53-action-approval-boundary.mjs
