@@ -12,13 +12,23 @@ type CandidateEvaluation = RevisionArgs[4];
 type Generator = RevisionArgs[5];
 type Evaluator = RevisionArgs[6];
 type Options = RevisionArgs[7];
+type BaseGeneratorRequest = Parameters<Generator>[0];
+
+/** Trusted repair generator. Population metadata and cancellation are optional so legacy providers remain compatible. */
+export type CompoundRepairRevisionGenerator = (
+  request: BaseGeneratorRequest & {
+    repairEvidence: ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>;
+    variation?: import('./P23ReflectiveCandidatePopulationSearch.ts').P23PopulationSearchVariation;
+    signal?: AbortSignal;
+  },
+) => Promise<unknown> | unknown;
 
 export interface CompoundRepairRevisionInputs {
   proposal: Proposal;
   sourceCandidateId: string;
   baseline: Baseline;
   candidateEvaluation: CandidateEvaluation;
-  generate: Generator;
+  generate: CompoundRepairRevisionGenerator;
   evaluateRevisedCandidate: Evaluator;
   /** Optional independent validation-only capability for bounded multi-candidate search. */
   evaluateValidationCandidate?: ValidationOnlyCandidateEvaluator['evaluate'];
