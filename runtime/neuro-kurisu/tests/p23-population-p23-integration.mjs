@@ -182,6 +182,7 @@ await assert.rejects(
   /p23-population-no-improving-candidate/,
 );
 assert.equal(noGainState.canonicalCalls, 1, 'the canonical P23 method owns the generator seam exactly once');
-assert.equal(noGainState.fullEvaluationCalls, 0);\nassert.equal(noGainState.stagedPayload, null);
+assert.equal(noGainState.fullEvaluationCalls, 0);
+assert.equal(noGainState.stagedPayload, null);
 
 console.log('P23_POPULATION_CANONICAL_HANDOFF=PASS');
