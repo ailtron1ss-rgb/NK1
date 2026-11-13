@@ -977,8 +977,14 @@ export class MemoryOS2{
     const ov=String(oldCtx[key]??'').trim().toLocaleLowerCase();
     if(nv&&ov&&nv!==ov){contextConflict=true;break;}
    }
-  const polarityConflict=sharedEntityCount(newer.entities,older.entities)>=2&&hasNegationPolarityDifference(newer.content,older.content);
-  const identifierShift=identifierLike(newer.content)!==identifierLike(older.content)&&entityOverlap>=.18;
+  // HMX imports are unverified external beliefs. Text-only polarity or identifier
+  // heuristics must not silently close their validity interval against local memory;
+  // explicit review or grounded evidence reconciliation owns that transition.
+  const hmxBoundary=[newer,older].some(item=>
+   String(item.source??'').startsWith('hexis:')||
+   (typeof item.context?.hmxSourceLineageId==='string'&&Boolean(item.context.hmxSourceLineageId.trim())));
+  const polarityConflict=!hmxBoundary&&sharedEntityCount(newer.entities,older.entities)>=2&&hasNegationPolarityDifference(newer.content,older.content);
+  const identifierShift=!hmxBoundary&&identifierLike(newer.content)!==identifierLike(older.content)&&entityOverlap>=.18;
   const score=Math.max(contextConflict&&semantic>=.55?.90:0,polarityConflict&&semantic>=.64?.82:0,identifierShift&&semantic>=.70?.76:0);
   return {score,contextConflict,polarityConflict,entityOverlap,semantic};
  }
