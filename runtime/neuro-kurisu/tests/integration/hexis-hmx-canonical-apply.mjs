@@ -322,6 +322,8 @@ try {
       `restored MemoryOS2 must contain all four donor memories: ${JSON.stringify(afterRestartDiagnostics.memoryPersistence)}`);
     assert.equal(afterRestartDiagnostics.memoryPersistence.persistedProjection.hexisItemCount, 4,
       `restored durable projection must contain all four donor memories: ${JSON.stringify(afterRestartDiagnostics.memoryPersistence)}`);
+    assert.equal(afterRestartDiagnostics.memoryPersistence.live.hexisVisibleCurrentCount, 4,
+      `restored HMX rows must satisfy the same current/visible filter as the memory API: ${JSON.stringify(afterRestartDiagnostics.memoryPersistence)}`);
     const restoredMemories = await memoryIndex();
     const restoredA = restoredMemories.filter(row => row.summary.includes('HMX canonical imported memory A'));
     const restoredB = restoredMemories.filter(row => row.summary.includes('HMX canonical imported procedure B'));
