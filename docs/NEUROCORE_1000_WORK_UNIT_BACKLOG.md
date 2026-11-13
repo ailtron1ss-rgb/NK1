@@ -7,6 +7,8 @@
 **Canonical rules:** [NEUROCORE_START_HERE.md](../NEUROCORE_START_HERE.md), [AGENTS.md](../AGENTS.md)  
 **Status semantics:** all rows below start as **PLANNED / UNVERIFIED** until the corresponding code/tests/evidence are linked in a future update.
 
+**Verified execution progress — 2026-11-13:** 5 / 1,000 work units PASS (**0.5%**); 995 remain PLANNED / UNVERIFIED. The five PASS units cover only the HMX portable-memory source-provenance slice, not five entire domains or a global readiness claim. Evidence and deferred scope are recorded immediately before the execution table.
+
 ## How to use this backlog
 
 - This matrix expands **20 engineering domains × 10 subsystems × 5 lifecycle gates = 1000 distinct work units**.
