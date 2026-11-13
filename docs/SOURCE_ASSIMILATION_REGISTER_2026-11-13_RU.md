@@ -377,3 +377,39 @@ These are separate workstream measures, not a weighted global “digital-person 
 
 **Следующий лучший технический кандидат:** не добавлять новый framework, а провести runtime proof of the existing `llama.cpp` path (process detection, configured URL, health/slot telemetry, JSON-schema output contract, cancellation/timeout, CPU/RAM/token latency on the intended device). После подтверждения endpoint можно встроить только недостающие server capabilities через существующий provider boundary. Параллельный HMX candidate требует отдельного архитектурного approval и не должен одновременно менять memory ownership.
 
+
+
+## 17. Nested license/NOTICE file inventory (2026-11-13)
+
+Повторный проход по извлечённым каталогам считает пути, чьи имена начинаются с `LICENSE`, `LICENCE`, `NOTICE` или `COPYING`. Это **инвентаризация файлов**, а не чтение/разрешение каждого лицензионного текста и не SBOM.
+
+**Результат:** 172 license/notice-пути в 22 распакованных корнях; 21 уникальный источник; два root-каталога относятся к повторному Letta archive.
+
+| Source | Найдено файлов |
+|---|---:|
+| Agent0 | 4 |
+| AutoGPT | 11 |
+| Microsoft Agent Framework | 45 |
+| AutoGen | 14 |
+| Chroma | 3 |
+| DSPy | 2 |
+| FAISS | 1 |
+| Hermes Agent | 23 |
+| Hyperon / MeTTa | 1 |
+| Langroid | 1 |
+| LeTTA | 2 (1 + duplicate snapshot) |
+| llama.cpp | 11 |
+| Mem0 | 26 |
+| OpenAI Agents SDK | 1 |
+| OpenClaw | 18 |
+| Hexis | 1 |
+| PocketFlow | 1 |
+| Lumina | 1 |
+| CAMEL OWL | 3 |
+| Superpowers | 1 |
+| Will | 2 |
+| **Итого** | **172** |
+
+Высокая плотность nested license files у Microsoft Agent Framework, AutoGen, Hermes, Mem0, OpenClaw, llama.cpp и AutoGPT означает, что нельзя копировать весь репозиторий под одним root license. Следующий legal/code pass должен связывать каждый выбранный файл с его package/subtree license и NOTICE, включая frontend/vendor/skills/assets. Для AutoGPT Platform сохраняется Polyform Shield stop; для OWL root-level license remains unresolved; для AutoGen требуется attribution; для моделей/весов/voice/avatar assets нужны отдельные terms. Пока не выполнен path-level mapping, из этих деревьев переносить исполняемый код нельзя.
+
+Эта инвентаризация не меняет ранжирование кандидатов и не утверждает, что 172 файла прочитаны вручную. Она уточняет объём дальнейшей проверки и снижает риск случайного копирования vendored/skill-кода.
