@@ -29,4 +29,5 @@ test("Live2D viewer wires visibility, page lifecycle and a bounded 30 FPS ticker
   assert.match(viewer, /document\.addEventListener\('visibilitychange',syncRendererVisibility/);
   assert.match(viewer, /window\.addEventListener\('pagehide',\(\)=>app\?\.ticker\?\.stop\(\)/);
   assert.match(viewer, /window\.addEventListener\('pageshow',syncRendererVisibility/);
+  assert.match(viewer, /window\.addEventListener\('pageshow',syncRendererVisibility,\{passive:true\}\);\s*syncRendererVisibility\(\);/);
 });

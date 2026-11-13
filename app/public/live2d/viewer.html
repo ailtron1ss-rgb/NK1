@@ -193,6 +193,7 @@
       document.addEventListener('visibilitychange',syncRendererVisibility,{passive:true});
       window.addEventListener('pagehide',()=>app?.ticker?.stop(),{passive:true});
       window.addEventListener('pageshow',syncRendererVisibility,{passive:true});
+      syncRendererVisibility();
       const {Live2DModel}=PIXI.live2d;
       model=await Live2DModel.from(modelPath,{autoInteract:false});
       if(!model?.width)throw new Error('модель без размера');
