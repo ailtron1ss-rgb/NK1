@@ -181,7 +181,7 @@ export const SOURCE_ASSIMILATION_ADAPTERS = [
         'SECRET_HOLDOUT', 'P23_REVISION_PLAN_HOLDOUT_ISOLATION=PASS',
       ], 'Противоположные holdout результаты при одинаковой validation выборке должны давать идентичный план генерации.'),
       group('sidecar-transport-contract', 'tests/gepa-reflective-candidate-generator.mjs', [
-        'validation-only evidence', 'holdoutResultsIncluded', 'candidate payload cannot drop source fields',
+        'holdoutResultsIncluded', 'holdoutResultsIncluded', 'candidate payload cannot drop source fields',
         'real loopback HTTP roundtrip reaches the P23 callback', 'GEPA_REFLECTIVE_CANDIDATE_GENERATOR=PASS',
       ], 'Проверяет HTTPS/loopback, bounds, no holdout leakage, candidate-only response и реальный loopback P23 handoff.'),
     ],
