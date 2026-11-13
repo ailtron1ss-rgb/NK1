@@ -26,6 +26,7 @@ on:
       - "runtime/neuro-kurisu/tests/p23-local-model-skill-revision-integration.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23IndependentEvaluationProvider.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
       - "runtime/neuro-kurisu/src/organism/learning/CorrectionRuleMemory.ts"
       - "runtime/neuro-kurisu/src/organism/learning/PairedSeedConfidence.ts"
@@ -78,6 +79,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/P23ReflectiveCandidatePopulationSearch.ts"
       - "runtime/neuro-kurisu/tests/p23-reflective-candidate-population-search.mjs"
       - "runtime/neuro-kurisu/tests/p23-population-p23-integration.mjs"
+      - "runtime/neuro-kurisu/tests/p23-population-runtime-wiring.mjs"
       - ".github/workflows/p23-candidate-population.yml"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
@@ -121,6 +123,9 @@ jobs:
       - name: Verify population search canonical P23 handoff and no-improvement boundary
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-population-p23-integration.mjs
+      - name: Verify opt-in repair coordinator population wiring and single-candidate fallback
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-population-runtime-wiring.mjs
       - name: Verify bounded P23 background revision and fail-closed staging
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass293:p23-revision
