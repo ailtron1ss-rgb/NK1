@@ -22,9 +22,10 @@ const calls = [];
 const context = {
   EXPR_MAP: vm.runInNewContext(`(${mapMatch[1]})`),
   lastAppliedExpression: null,
+  lastIntentStateVersion: 1,
   model: { expression: (name) => { calls.push(name); return true; } },
 };
-vm.runInNewContext(`function applyExpression(expr){${fnMatch[1]}\n}`, context);
+vm.runInNewContext(`function applyExpression(expr,revision=null){${fnMatch[1]}\n}`, context);
 
 await context.applyExpression("happy");
 await context.applyExpression("happy");
@@ -34,4 +35,17 @@ await context.applyExpression("sad");
 await context.applyExpression("sad");
 assert.deepEqual(calls, ["Stanby Smile", "Stanby Sad"], "only expression transitions should invoke the model");
 
-console.log("NK1_LIVE2D_EXPRESSION_CACHE=PASS transitions=2 duplicateResets=0");
+const failedCalls = [];
+const retryContext = {
+  EXPR_MAP: vm.runInNewContext(`(${mapMatch[1]})`),
+  lastAppliedExpression: null,
+  lastIntentStateVersion: 1,
+  model: { expression: (name) => { failedCalls.push(name); return false; } },
+};
+vm.runInNewContext(`function applyExpression(expr,revision=null){${fnMatch[1]}\n}`, retryContext);
+await retryContext.applyExpression("happy");
+await retryContext.applyExpression("happy");
+assert.deepEqual(failedCalls, ["Stanby Smile", "Stanby Smile"], "a failed expression start must remain retryable");
+assert.equal(retryContext.lastAppliedExpression, null, "failed expression start must not poison the success cache");
+
+console.log("NK1_LIVE2D_EXPRESSION_CACHE=PASS transitions=2 duplicateResets=0 failedStartRetries=1");
