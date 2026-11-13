@@ -23,6 +23,10 @@ export interface CognitiveResourceEconomyState {
   performancePressure01: number;
   lastAt: number;
   lastTick: number;
+  /** Voluntary engagement factor over the vitals-permitted attention ceiling. */
+  attentionEffort01: number;
+  attentionEffortTarget01: number;
+  attentionEffortIntent: 'engage'|'rest'|'homeostatic';
 }
 
 export interface CognitiveResourceAllocation {
@@ -36,6 +40,9 @@ export interface CognitiveResourceAllocation {
   scarcity01: number;
   maxCounterfactualBranches: number;
   permitExpensiveLanguage: boolean;
+  attentionEffort01: number;
+  attentionEffortTarget01: number;
+  attentionEffortIntent: 'engage'|'rest'|'homeostatic';
 }
 
 const clamp01 = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -44,12 +51,20 @@ const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafe
 const safeTick=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=-1?value:-1;
 const safeTimestamp=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:0;
 const safeUnit=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):fallback;
+const safeEffort=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isFinite(value)?Math.max(.4,Math.min(1,value)):fallback;
+export type CognitiveAttentionIntent = 'engage'|'rest';
+export function cognitiveAttentionIntentFromAction(action: string | null | undefined): CognitiveAttentionIntent | undefined {
+  if (action === 'explore' || action === 'verify' || action === 'reflect') return 'engage';
+  if (action === 'rest' || action === 'wait') return 'rest';
+  return undefined;
+}
 
 export const defaultCognitiveResourceEconomy = (): CognitiveResourceEconomyState => ({
   version: 1, cycles: 0,
   totalBudget01: .82, attentionBudget01: .82, simulationBudget01: .55,
   learningBudget01: .50, memoryBudget01: .70, externalInteractionBudget01: .55,
   predictionDebt01: 0, scarcity01: .18, lastMode: 'abundant', performancePressure01: 0, lastAt: 0, lastTick: -1,
+  attentionEffort01: .7, attentionEffortTarget01: .7, attentionEffortIntent: 'homeostatic',
 });
 
 export class CognitiveResourceEconomy {
@@ -74,10 +89,13 @@ export class CognitiveResourceEconomy {
       performancePressure01:safeUnit(source.performancePressure01,base.performancePressure01),
       lastAt:safeTimestamp(source.lastAt),
       lastTick:safeTick(source.lastTick),
+      attentionEffort01:safeEffort(source.attentionEffort01,.7),
+      attentionEffortTarget01:safeEffort(source.attentionEffortTarget01,.7),
+      attentionEffortIntent:['engage','rest','homeostatic'].includes(String(source.attentionEffortIntent))?source.attentionEffortIntent as CognitiveResourceEconomyState['attentionEffortIntent']:'homeostatic',
     };
   }
 
-  allocate(input:{tick:number;at?:number;energy01?:number;cognitiveLoad01?:number;uncertainty01?:number;novelty01?:number;predictionDebt01?:number;thermalStrain01?:number;ramPressure01?:number;performancePressure01?:number;awake?:boolean}):CognitiveResourceAllocation {
+  allocate(input:{tick:number;at?:number;energy01?:number;cognitiveLoad01?:number;uncertainty01?:number;novelty01?:number;predictionDebt01?:number;thermalStrain01?:number;ramPressure01?:number;performancePressure01?:number;awake?:boolean;attentionIntent?:CognitiveAttentionIntent}):CognitiveResourceAllocation {
     const energy = clamp01(input.energy01 ?? .8);
     const load = clamp01(input.cognitiveLoad01 ?? .2);
     const uncertainty = clamp01(input.uncertainty01 ?? .35);
@@ -94,7 +112,13 @@ export class CognitiveResourceEconomy {
       (1-energy)*.30 + load*.22 + thermal*.18 + ram*.14 + (awake ? 0 : .08) + debt*.08
     );
     const total = clamp01(.92 - scarcity*.70);
-    const attention = clamp01(total * (.55 + uncertainty*.30 + novelty*.15));
+    const attentionEffortIntent: CognitiveResourceEconomyState['attentionEffortIntent'] = input.attentionIntent ?? 'homeostatic';
+    const attentionEffortTarget01 = input.attentionIntent === 'engage' ? 1 : input.attentionIntent === 'rest' ? .4 : .7;
+    const canEngage = energy > .15 && awake && thermal < .85;
+    const boundedTarget = input.attentionIntent === 'engage' && !canEngage ? .7 : attentionEffortTarget01;
+    const priorEffort = safeEffort(this.state.attentionEffort01,.7);
+    const attentionEffort01 = input.attentionIntent ? boundedTarget : priorEffort + Math.sign(.7-priorEffort)*Math.min(.12,Math.abs(.7-priorEffort));
+    const attention = clamp01(total * (.55 + uncertainty*.30 + novelty*.15) * attentionEffort01);
     const simulation = clamp01(total * (.28 + uncertainty*.48 + debt*.24));
     const learning = clamp01(total * (.25 + novelty*.35 + uncertainty*.40));
     const memory = clamp01(total * (.62 + debt*.28 + novelty*.10));
@@ -118,11 +142,14 @@ export class CognitiveResourceEconomy {
       scarcity01: scarcity,
       // Diagnostic-only: preserved for observability/backward-compatible state.
       performancePressure01: performancePressure,
+      attentionEffort01,
+      attentionEffortTarget01: boundedTarget,
+      attentionEffortIntent,
       lastMode: mode,
       lastAt: at,
       lastTick: tick,
     };
-    return { mode, totalBudget01:total, attention01:attention, simulation01:simulation, learning01:learning, memory01:memory, externalInteraction01:external, scarcity01:scarcity, maxCounterfactualBranches, permitExpensiveLanguage };
+    return { mode, totalBudget01:total, attention01:attention, simulation01:simulation, learning01:learning, memory01:memory, externalInteraction01:external, scarcity01:scarcity, maxCounterfactualBranches, permitExpensiveLanguage, attentionEffort01, attentionEffortTarget01:boundedTarget, attentionEffortIntent };
   }
 
   snapshot():CognitiveResourceEconomyState { return structuredClone(this.state); }
