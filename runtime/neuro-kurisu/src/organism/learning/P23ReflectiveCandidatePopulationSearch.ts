@@ -38,7 +38,7 @@ export interface P23PopulationCandidateGenerationRequest {
   sourcePayload: unknown;
   datasetFingerprint: string;
   optimizerInstruction: string;
-  validationEvidence: unknown[];
+  validationEvidence: SkillLearnBenchTrialReport[];
   targets: SkillRevisionTarget[];
   holdoutPolicy: {
     resultsWithheld: true;
@@ -56,7 +56,7 @@ export interface P23PopulationSearchInput {
   sourcePayload: unknown;
   datasetFingerprint: string;
   optimizerInstruction: string;
-  validationEvidence: unknown[];
+  validationEvidence: SkillLearnBenchTrialReport[];
   targets: SkillRevisionTarget[];
   holdoutPolicy: {
     resultsWithheld: true;
@@ -285,7 +285,7 @@ function readInput(raw: P23PopulationSearchInput): FrozenSearchInput {
   }
   const value = (key: string): unknown => descriptors[key]?.value;
   const sourcePayload = snapshotPlainData(value('sourcePayload'));
-  const validationEvidence = snapshotPlainData(value('validationEvidence')) as unknown[];
+  const validationEvidence = snapshotPlainData(value('validationEvidence')) as SkillLearnBenchTrialReport[];
   const targets = snapshotPlainData(value('targets')) as SkillRevisionTarget[];
   const sourceValidationReports = snapshotPlainData(value('sourceValidationReports')) as SkillLearnBenchTrialReport[];
   const datasetFingerprint = value('datasetFingerprint');
@@ -508,7 +508,7 @@ export async function runP23ReflectiveCandidatePopulationSearch(
             sourcePayload: snapshotPlainData(input.sourcePayload),
             datasetFingerprint: input.datasetFingerprint,
             optimizerInstruction: input.optimizerInstruction,
-            validationEvidence: snapshotPlainData(input.validationEvidence) as unknown[],
+            validationEvidence: snapshotPlainData(input.validationEvidence) as SkillLearnBenchTrialReport[],
             targets: snapshotPlainData(input.targets) as SkillRevisionTarget[],
             holdoutPolicy: input.holdoutPolicy,
             variation,
