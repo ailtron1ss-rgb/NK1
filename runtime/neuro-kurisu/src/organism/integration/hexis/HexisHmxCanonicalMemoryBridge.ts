@@ -28,6 +28,7 @@ export interface HmxBridgeCommitResult {
   exportId: string;
   inserted: number;
   replayed: number;
+  relationshipsApplied: number;
   refMap: Record<string, string>;
   warnings: HmxBridgeWarning[];
   error?: string;
@@ -243,13 +244,13 @@ export class HexisHmxCanonicalMemoryBridge {
   commit(stagingId: string): HmxBridgeCommitResult {
     const stage = this.adaptation.getHmxStage(stagingId);
     if (!stage) {
-      return { ok: false, stagingId, exportId: '', inserted: 0, replayed: 0, refMap: {}, warnings: [], error: 'stage-not-found' };
+      return { ok: false, stagingId, exportId: '', inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings: [], error: 'stage-not-found' };
     }
     if (stage.strategy !== 'additive' || stage.intent === 'analysis') {
-      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, refMap: {}, warnings: [], error: 'unsupported-import-strategy' };
+      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings: [], error: 'unsupported-import-strategy' };
     }
     if (stage.status === 'rejected') {
-      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, refMap: {}, warnings: [], error: 'stage-rejected' };
+      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings: [], error: 'stage-rejected' };
     }
 
     const rawMemories = stage.stagedSections.memories ?? [];
@@ -258,7 +259,7 @@ export class HexisHmxCanonicalMemoryBridge {
     if (!Array.isArray(rawMemories) || rawMemories.length > MAX_MEMORY_RECORDS ||
         !Array.isArray(rawEpisodes) || rawEpisodes.length > MAX_MEMORY_RECORDS ||
         !Array.isArray(rawRelationships) || rawRelationships.length > MAX_MEMORY_RECORDS) {
-      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, refMap: {}, warnings: [], error: 'staged-section-invalid' };
+      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings: [], error: 'staged-section-invalid' };
     }
 
     const warnings: HmxBridgeWarning[] = [];
@@ -275,15 +276,15 @@ export class HexisHmxCanonicalMemoryBridge {
     for (const raw of rawMemories) {
       if (!isRecord(raw) || !safeText(raw.ref, 512) || !SAFE_REF.test(raw.ref) ||
           !safeText(raw.content, MAX_CONTENT_LENGTH) || !safeText(raw.type, 128)) {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, refMap: {}, warnings, error: 'staged-memory-record-invalid' };
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings, error: 'staged-memory-record-invalid' };
       }
       if (!addRef(raw.ref, stableId(stage.exportId, raw.ref))) {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, refMap: {}, warnings, error: 'duplicate-external-ref' };
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings, error: 'duplicate-external-ref' };
       }
     }
     for (const raw of rawEpisodes) {
       if (!isRecord(raw) || !safeText(raw.ref, 512) || !SAFE_REF.test(raw.ref)) {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, refMap: {}, warnings, error: 'staged-episode-record-invalid' };
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings, error: 'staged-episode-record-invalid' };
       }
       if (!safeText(raw.summary, MAX_CONTENT_LENGTH)) {
         warnings.push({ code: 'episode-summary-missing', section: 'episodes', ref: raw.ref,
@@ -291,7 +292,7 @@ export class HexisHmxCanonicalMemoryBridge {
         continue;
       }
       if (!addRef(raw.ref, stableId(stage.exportId, 'episode:' + raw.ref))) {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, refMap: {}, warnings, error: 'duplicate-external-ref' };
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings, error: 'duplicate-external-ref' };
       }
     }
 
@@ -446,7 +447,7 @@ export class HexisHmxCanonicalMemoryBridge {
     if (stage.status === 'staged') {
       const accepted = this.adaptation.decideHmx(stagingId, 'accept');
       if (!accepted || accepted.status !== 'accepted') {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, refMap: {}, warnings, error: 'stage-acceptance-failed' };
+        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, refMap: {}, warnings, error: 'stage-acceptance-failed' };
       }
     }
 
@@ -466,9 +467,9 @@ export class HexisHmxCanonicalMemoryBridge {
         code: 'partial-commit-retryable',
         detail: error instanceof Error ? error.message.slice(0, 240) : 'unknown-commit-error',
       });
-      return { ok: false, stagingId, exportId: stage.exportId, inserted, replayed, refMap, warnings, error: 'partial-commit-retryable' };
+      return { ok: false, stagingId, exportId: stage.exportId, inserted, replayed, relationshipsApplied, refMap, warnings, error: 'partial-commit-retryable' };
     }
-    return { ok: true, stagingId, exportId: stage.exportId, inserted, replayed, refMap, warnings };
+    return { ok: true, stagingId, exportId: stage.exportId, inserted, replayed, relationshipsApplied, refMap, warnings };
   }
 
 }
