@@ -22,6 +22,7 @@ export interface P23PopulationSearchBudget {
   timeoutMs?: number;
   maxPayloadBytes?: number;
   maxArchiveEntries?: number;
+  maxTaskRowsPerCandidate?: number;
   minimumValidationGain01?: number;
   seed?: number;
 }
@@ -98,6 +99,7 @@ interface NormalizedBudget {
   timeoutMs: number;
   maxPayloadBytes: number;
   maxArchiveEntries: number;
+  maxTaskRowsPerCandidate: number;
   minimumValidationGain01: number;
   seed: number;
 }
@@ -195,7 +197,7 @@ function readBudget(raw: unknown): NormalizedBudget {
     if (!isPlainRecord(budget)) throw new Error('p23-population-budget-invalid');
     const allowed = new Set([
       'maxCandidates','maxGenerationCalls','maxEvaluationCalls','timeoutMs','maxPayloadBytes',
-      'maxArchiveEntries','minimumValidationGain01','seed',
+      'maxArchiveEntries','maxTaskRowsPerCandidate','minimumValidationGain01','seed',
     ]);
     if (Object.keys(budget).some(key => !allowed.has(key))) throw new Error('p23-population-budget-extra-field');
   }
@@ -224,6 +226,8 @@ function readBudget(raw: unknown): NormalizedBudget {
   const timeoutMs = integer(budget.timeoutMs, DEFAULT_TIMEOUT_MS, 10, 300_000, 'timeout');
   const maxPayloadBytes = integer(budget.maxPayloadBytes, DEFAULT_MAX_PAYLOAD_BYTES, 256, 256 * 1024, 'payload-bytes');
   const maxArchiveEntries = integer(budget.maxArchiveEntries, 16, 1, 64, 'archive-entries');
+  // The runtime journal is a bounded 2 MiB rolling JSONL log; keep one search card set below that ceiling.
+  const maxTaskRowsPerCandidate = integer(budget.maxTaskRowsPerCandidate, 1024, 1, 1024, 'task-rows-per-candidate');
   const minimumGain = budget.minimumValidationGain01 === undefined
     ? DEFAULT_MINIMUM_GAIN
     : budget.minimumValidationGain01;
@@ -237,6 +241,7 @@ function readBudget(raw: unknown): NormalizedBudget {
     timeoutMs,
     maxPayloadBytes,
     maxArchiveEntries,
+    maxTaskRowsPerCandidate,
     minimumValidationGain01: minimumGain,
     seed: integer(budget.seed, 17, 0, 0x7fffffff, 'seed'),
   };
@@ -485,7 +490,7 @@ export async function runP23ReflectiveCandidatePopulationSearch(
   const diagnostics = emptyDiagnostics();
   const archive = new P23CandidateParetoArchive({
     maxEntries: input.budget.maxArchiveEntries,
-    maxTaskRows: 4096,
+    maxTaskRows: input.budget.maxTaskRowsPerCandidate,
   });
   const payloadByFingerprint = new Map<string, unknown>();
   const baselineObjective = macroObjective(input.sourceValidationReports);
