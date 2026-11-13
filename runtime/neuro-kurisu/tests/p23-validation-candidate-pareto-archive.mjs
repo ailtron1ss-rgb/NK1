@@ -74,6 +74,16 @@ assert.throws(() => computeP23ValidationParetoFront([
 ]), /task-cohort-mismatch/,
 'candidates from different task sets are not compared as if they had matched evidence');
 
+const unevenCoverage = buildP23ValidationCandidateMetrics([
+  ...validationA,
+  report('task-01', 'trial-01-extra', { success: true, trajectory: 0.6, skill: 0.8 }),
+]);
+assert.throws(() => computeP23ValidationParetoFront([
+  { candidateId: 'a'.repeat(64), validationMetrics: a },
+  { candidateId: 'e'.repeat(64), validationMetrics: unevenCoverage },
+]), /task-cohort-mismatch/,
+'Pareto comparison requires the same number of validation trials for each task');
+
 assert.throws(() => buildP23ValidationCandidateMetrics([
   validationA[0], validationA[0],
 ]), /duplicate-trial/);
