@@ -26,7 +26,7 @@ const TIMESCALES = new Set<Timescale>(['working', 'episodic', 'semantic', 'autob
 function tokenize(text: string): string[] {
   return String(text ?? '')
     .normalize('NFKC')
-    .toLocaleLowerCase()
+    .toLowerCase()
     .match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 
@@ -166,7 +166,7 @@ export class MultiTimescaleMemory {
 
   private embed(text: string): number[] {
     const vector = new Array<number>(EMBEDDING_DIMENSIONS).fill(0);
-    const normalized = String(text ?? '').normalize('NFKC').toLocaleLowerCase();
+    const normalized = String(text ?? '').normalize('NFKC').toLowerCase();
     for (let index = 0; index < normalized.length; index++) {
       const code = normalized.charCodeAt(index);
       vector[(code + index * 7) % EMBEDDING_DIMENSIONS] += ((code % 17) - 8) / 120;
