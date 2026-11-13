@@ -766,8 +766,11 @@ export class HexisAdaptationFabric {
             const ref = isRecord(row) ? row.ref : undefined;
             const content = isRecord(row) ? row.content : undefined;
             const type = isRecord(row) ? row.type : undefined;
+            const safeMemoryContent = typeof content === 'string' &&
+                content.trim().length > 0 && content.length <= 12_000 &&
+                !/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]/u.test(content);
             if (!safeText(ref, 512) || !String(ref).startsWith(exportId + ':') ||
-                !safeText(content, 12_000) || !safeText(type, 64)) {
+                !safeMemoryContent || !safeText(type, 64)) {
                 conflicts.push({ path: 'sections.memories[' + index + ']', kind: 'memory-record', detail: 'Each memory needs a source-scoped ref, type and non-empty bounded content' });
                 continue;
             }
