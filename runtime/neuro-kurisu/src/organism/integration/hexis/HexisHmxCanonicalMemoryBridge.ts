@@ -450,6 +450,10 @@ export class HexisHmxCanonicalMemoryBridge {
     }
 
     let clustersApplied = 0;
+    const portableMemberRefs = new Set<string>([
+      ...rawMemories.filter((raw): raw is Record<string, unknown> => isRecord(raw) && safeText(raw.ref, 512)).map(raw => raw.ref as string),
+      ...rawEpisodes.filter((raw): raw is Record<string, unknown> => isRecord(raw) && safeText(raw.ref, 512) && safeText(raw.summary, MAX_CONTENT_LENGTH)).map(raw => raw.ref as string),
+    ]);
     for (const raw of rawClusters) {
       if (!isRecord(raw) || !safeText(raw.ref, 512) || !SAFE_REF.test(raw.ref) ||
           !safeText(raw.name, 256) || !Array.isArray(raw.member_refs)) continue;
@@ -459,8 +463,8 @@ export class HexisHmxCanonicalMemoryBridge {
       const memberRefs = raw.member_refs.filter((value): value is string => safeText(value, 512) && SAFE_REF.test(value));
       let linkedMembers = 0;
       for (const memberRef of memberRefs) {
-        const memberId = refToId.get(memberRef);
-        const memberLinks = links.get(memberRef);
+        const memberId = portableMemberRefs.has(memberRef) ? refToId.get(memberRef) : undefined;
+        const memberLinks = portableMemberRefs.has(memberRef) ? links.get(memberRef) : undefined;
         if (!memberId || !memberLinks) {
           warnings.push({ code: 'cluster-member-not-imported', section: 'clusters', ref: memberRef,
             detail: 'Cluster member ref is outside the imported portable record set' });
@@ -514,7 +518,6 @@ export class HexisHmxCanonicalMemoryBridge {
       const commandId = 'hmx-import:' + stage.exportId + ':cluster:' +
         createHash('sha256').update(ref).digest('hex').slice(0, 24);
       prepared.push({ ref, input: clusterInput, commandId });
-      clustersApplied++;
     }
 
     let relationshipsApplied = 0;
@@ -578,6 +581,7 @@ export class HexisHmxCanonicalMemoryBridge {
         const item = this.memory.encode(record.input, { commandId: record.commandId, emitEvent: true, forceDistinct: true });
         if (!item) throw new Error('canonical-memory-write-returned-empty');
         refMap[record.ref] = item.id;
+        if (record.input.context?.hmxSection === 'clusters') clustersApplied++;
         if (prior) replayed++; else inserted++;
       }
     } catch (error) {
