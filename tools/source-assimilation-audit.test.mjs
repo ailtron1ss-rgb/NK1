@@ -34,12 +34,12 @@ test('runtime wiring, test pass and release evidence must follow the gate order'
   const c=clone(); c.sources[0].implementation.releaseVerified=true;
   assert.ok(validateSourceRegistry(c).errors.some(e=>e.includes('release requires test pass')));
 });
-test('six adapters existed at intake and two sources now have new verified adaptations', () => {
+test('six adapters existed at intake and three sources now have new verified adaptations', () => {
   const s=summarizeSourceRegistry(doc);
   assert.equal(s.adapters,6);
-  assert.equal(s.adapted,2);
-  assert.equal(s.wired,2);
-  assert.equal(s.tested,2,'the evidence overlay records exact successful CI runs for both adaptations');
+  assert.equal(s.adapted,3);
+  assert.equal(s.wired,3);
+  assert.equal(s.tested,3,'the evidence overlay records exact successful CI runs for all three adaptations');
   assert.equal(s.released,0);
   assert.match(renderSourceReport(doc),/not an overall readiness score/);
 });
@@ -52,6 +52,17 @@ test('llama.cpp JSON Schema is adapted, P23-wired and marked tested with CI evid
   assert.ok(llama.implementation.testEvidence.some(e=>e.includes('43393334664')));
   assert.ok(llama.implementation.runtimeEvidence.some(e=>e.includes('generateAndStageReflectiveSkillRevisionWithLocalModel')));
   assert.ok(llama.review.sourceEvidence.some(e=>e.includes('server-common.cpp:1306-1318')));
+});
+
+test('Hyperon MeTTa bridge is adapted, wired and backed by exact successful CI evidence', () => {
+  const hyperon=doc.sources.find(s=>s.id==='hyperon');
+  assert.equal(hyperon.implementation.codeCopied,false,'no donor code was copied into NK1');
+  assert.equal(hyperon.implementation.adapted,true);
+  assert.equal(hyperon.implementation.runtimeWired,true);
+  assert.equal(hyperon.implementation.testsPassed,true);
+  assert.equal(hyperon.implementation.releaseVerified,false);
+  assert.ok(hyperon.implementation.runtimeEvidence.some(e=>e.includes('exportMeTTaFacts')));
+  assert.ok(hyperon.implementation.testEvidence.some(e=>e.includes('43446798698')));
 });
 
 test('DSPy GEPA sidecar is adapted, P23-wired and backed by exact successful CI evidence', () => {
