@@ -182,3 +182,51 @@ This is the safe integration seam, not the completed evolutionary optimizer. The
 6. Limit archive size, candidate count, calls, tokens, wall time and concurrency; log each evaluation receipt.
 7. Select one candidate from validation-only archive; send that exact payload through existing independent holdout evaluation, then signed shadow and P23 promotion/rollback.
 8. Run fixed-manifest paired-seed experiment and ablation against single-candidate P23; do not default-enable until a reproducible benefit appears without safety/generalization regressions.
+
+
+## 10. Implemented P23 validation Pareto archive (2026-11-13)
+
+The next P23 pass adds a read-only per-example Pareto index to the existing versioned candidate lifecycle rather than creating another skill store.
+
+### Data model
+
+`P23ValidationCandidateMetrics` records:
+- dataset-bound task cohort and optional task-family identity;
+- equal, unique validation trial coverage per task;
+- per-task task success, trajectory quality, aggregate skill quality and safety compliance;
+- bounded counts and deterministic six-decimal aggregates.
+
+No holdout scores, IDs, directions, case-level rows or promotion feedback are stored. Metrics are generated only from the exact post-generation `candidateEvaluation.validation` returned by the independent evaluator.
+
+### Lifecycle integration
+
+- `VersionedSkillCandidateStore` stores the vector under `revisionProvenance.validationMetrics`, so the vector is versioned, fingerprint-bound and follows the existing candidate lineage.
+- `AtomicFileSkillStorePersistence` validates the optional vector when restoring snapshots; older candidate snapshots without it remain supported.
+- `validationParetoFront(skillId,datasetFingerprint,sourceCandidateId)` is read-only. It compares only exact task/family/trial cohorts from one skill/source/dataset. It does not activate candidates or change lifecycle status.
+- The initial candidate's failed holdout result may trigger repair generation; the gate was deliberately moved to the **fresh generated payload's** independent evaluation immediately before staging. Thus P23 can repair a failing version but cannot store a new version that fails the fresh paired validation/holdout gate.
+- Only validation vectors are attached to the new version. Existing authentication, shadow, approval, promotion and rollback gates remain canonical.
+
+### Verified result
+
+GitHub Actions run `43419885994` on commit `71241362317fa6108a5e9aeec9c3e6ba8ef4dda4` — SUCCESS:
+- source registry 11/11;
+- static audit 7/7 adapter groups and 39/39 checks;
+- P23 validation Pareto tests PASS, including per-task dominance, complementary candidates, different task-set rejection, unequal trial-coverage rejection, failed-fresh-candidate staging rejection and holdout exclusion;
+- versioned skill store tests PASS, including actual read-only frontier query and durable JSON restore;
+- skill-store failure-boundary tests PASS;
+- previous GEPA/holdout/llama.cpp and Hexis/Letta/Lumina/Will/Mem0 contracts PASS.
+
+### Current gap — do not overstate
+
+This is a persistent validation Pareto archive/index, **not yet a full multi-candidate GEPA population optimizer**. The current sidecar still returns one candidate per request. P23 can now compare multiple already-staged candidate versions from the same source/dataset, but no bounded K-proposal batch, per-instance mutation schedule or active Pareto-driven selection loop has been deployed. The archive is queryable but is not yet wired as a policy that automatically selects the next candidate. No quality uplift has been measured.
+
+### Next algorithmic pass
+
+1. Extend the optional GEPA sidecar response from one payload to a strictly bounded proposal batch (e.g. K≤4) with deterministic candidate IDs and parent lineage.
+2. Validate/deduplicate every payload fingerprint before spending a sandbox evaluation budget.
+3. Run all candidates through the same independent validation evaluator and attach only validation metrics.
+4. Let the existing read-only Pareto front prune dominated candidates in the exact fixed cohort.
+5. Select one candidate deterministically under per-task objectives and resource budget; record selection reason using validation evidence only.
+6. Run the existing fresh independent holdout gate once on the selected exact payload; never return holdout feedback to the generator.
+7. Preserve signed shadow, approval, promotion, rollback and checkpoint restore gates unchanged.
+8. Compare against single-candidate P23 on a frozen benchmark with paired seeds, task-family coverage and ablations; keep feature opt-in until a measurable benefit without safety/generalization regressions is established.
