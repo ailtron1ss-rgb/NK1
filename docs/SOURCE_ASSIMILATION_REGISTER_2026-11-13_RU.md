@@ -487,6 +487,7 @@ GitHub Compare также не нашёл общего предка между `
 - `ActionGateway` не заменён и остаётся единственным исполнителем и permission/approval/idempotency/outcome authority.
 - Новые зависимости — 0; весь донорский runtime не импортировался.
 - Исправлен контракт reason string после фактического падения общего governance test; исходный consumer contract сохранён.
+- На exact HEAD `c9604639099b38cc1e426aa38c3e02285b6247ae` весь scoped CI и полный Gateway governance завершились SUCCESS; ссылка на полный gateway run: https://github.com/ailtron1ss-rgb/NK1/actions/runs/43391732001.
 
 ### Проценты именно этой линии работы
 
@@ -497,15 +498,15 @@ GitHub Compare также не нашёл общего предка между `
 | License filename inventory | 100% | 172 LICENSE/NOTICE/COPYING filenames посчитаны; тексты и scope всех файлов не подтверждены |
 | Targeted source review | 71% | 15/21 по последнему расширенному pass; 6 требуют дальнейшего чтения |
 | Новый runtime mechanism implementation | 100% | выбранный Hexis mechanism реализован и связан с NK1 controller |
-| Targeted exact-head verification | 100% на runtime-code head `21dfd56` | typecheck, policy, BIG_PASS_223, ActionCostPolicy, ActionGateway approval, general gateway governance, Unified organism, WorkPass79 — success |
-| Полный registry audit | 25% | выборочная проверка 4 реальных tool registrations; все `id/capability` не перечислены |
+| Targeted exact-head verification | 100% на feature head `c960463` | focused Hexis CI, full Action Gateway governance, Unified organism runtime, WorkPass79, NeuroCore core regression, UserModel explicit-forget и 2D asset contract — SUCCESS |
+| Полный registry audit | не завершён | проверены 4 выборочные регистрации; общее число инструментов и denominator пока не установлены, поэтому процент не приписывается |
 | Merge/release reconciliation | 0% | PR #864 открыт Draft; ни main, ни release ZIP не изменены |
 
-**Обобщённый прогресс этой итерации по источникам: около 75% подготовительной работы и 5% новых runtime promotions (1 из 21 донора).** Эти проценты не являются общей готовностью NK1, не равны сознанию и не доказывают device/production readiness. Проверенный PR slice уже работает в CI; следующий проектный этап — registry-wide validation и следующие донорские candidate experiments.
+**Обобщённый прогресс этой итерации по источникам: около 75% подготовительной работы (инвентаризация/лицензионный filename screen/targeted review) и 5% новых runtime promotions (1 из 21 донора).** Эти проценты не являются общей готовностью NK1, не равны сознанию и не доказывают device/production readiness. Проверенный PR slice уже работает в CI; следующий проектный этап — registry-wide validation и следующие донорские candidate experiments.
 
 ### Остаток
 
-1. Получить финальный результат Action Gateway governance run `43391732001` на exact HEAD `c9604639099b38cc1e426aa38c3e02285b6247ae`.
+1. Сохранить полный registry inventory (`id/capability`/owner/permissions) как исходную точку для следующего policy hardening pass.
 2. Проверить все tool registrations по `id/capability`, отдельно аудировать локальные drafts/shadow, microphone/camera/speech, project changes, network and file mutations.
 3. Исправить отдельный temporal-credit baseline defect [#865](https://github.com/ailtron1ss-rgb/NK1/issues/865): idempotency integration test 12/13 с одинаковым failing assert на чистой базе и feature ветке.
 4. Пройти оставшиеся 6 donor projects; path-level licenses/notices, model weights и assets review до любого файлового копирования.
