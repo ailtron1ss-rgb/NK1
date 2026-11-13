@@ -361,8 +361,11 @@ for (const label of ['A','B','C']) {
   );
 }
 const paretoFront = paretoStore.validationParetoFront(paretoSkillId, paretoProposal.datasetFingerprint, paretoSource.candidateId);
-assert.deepEqual(paretoFront.map(candidate => candidate.payload.name), ['candidate-A','candidate-B'],
+assert.deepEqual(paretoFront.map(candidate => candidate.candidateId),
+  [stagedParetoCandidates.A.candidateId, stagedParetoCandidates.B.candidateId].sort(),
   'versioned store preserves complementary validation strengths and excludes the dominated candidate');
+assert.equal(paretoFront.every(candidate => candidate.validationMetrics && !JSON.stringify(candidate.validationMetrics).includes('holdout')), true,
+  'the candidate Pareto query exposes validation vectors only');
 assert.equal(paretoFront.every(candidate => candidate.status === 'staged'), true,
   'Pareto archive is read-only and does not activate a candidate');
 assert.throws(() => paretoStore.validationParetoFront(paretoSkillId, 'not-a-fingerprint', paretoSource.candidateId),
