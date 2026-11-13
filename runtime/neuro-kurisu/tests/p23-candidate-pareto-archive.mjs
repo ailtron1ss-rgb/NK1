@@ -100,7 +100,7 @@ assert.throws(
   /validation-only-input-required/,
 );
 assert.throws(
-  () => archive.add({ ...input('4', { skill: Number.NaN, trajectory: .8 }) }),
+  () => archive.add({ ...input('4', { skill: 1.1, trajectory: .8 }) }),
   /validation-report-invalid/,
 );
 
