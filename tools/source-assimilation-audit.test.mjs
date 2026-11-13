@@ -34,11 +34,22 @@ test('runtime wiring, test pass and release evidence must follow the gate order'
   const c=clone(); c.sources[0].implementation.releaseVerified=true;
   assert.ok(validateSourceRegistry(c).errors.some(e=>e.includes('release requires test pass')));
 });
-test('six existing adapter discoveries are not counted as adaptations or releases', () => {
+test('six pre-existing adapters remain distinct from the new llama.cpp adaptation', () => {
   const s=summarizeSourceRegistry(doc);
-  assert.equal(s.adapters,6); assert.equal(s.adapted,0);
-  assert.equal(s.wired,0); assert.equal(s.tested,0); assert.equal(s.released,0);
+  assert.equal(s.adapters,6);
+  assert.equal(s.adapted,1);
+  assert.equal(s.wired,1);
+  assert.equal(s.tested,0,'the corrected upstream wire contract awaits CI verification');
+  assert.equal(s.released,0);
   assert.match(renderSourceReport(doc),/not an overall readiness score/);
+});
+test('llama.cpp JSON Schema is adapted and P23-wired but is not marked tested before CI evidence', () => {
+  const llama=doc.sources.find(s=>s.id==='llama-cpp');
+  assert.equal(llama.implementation.adapted,true);
+  assert.equal(llama.implementation.runtimeWired,true);
+  assert.equal(llama.implementation.testsPassed,false);
+  assert.ok(llama.implementation.runtimeEvidence.some(e=>e.includes('generateAndStageReflectiveSkillRevisionWithLocalModel')));
+  assert.ok(llama.review.sourceEvidence.some(e=>e.includes('server-common.cpp:1306-1318')));
 });
 test('all source records have one target and a concrete next action', () => {
   assert.equal(doc.sources.length,21);
