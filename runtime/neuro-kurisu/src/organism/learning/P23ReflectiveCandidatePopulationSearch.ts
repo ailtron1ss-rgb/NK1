@@ -207,13 +207,13 @@ function readBudget(raw: unknown): NormalizedBudget {
     return Number(normalized);
   };
   const maxCandidatesRequested = integer(
-    budget.maxCandidates, DEFAULT_MAX_CANDIDATES, 1, 64, 'max-candidates',
+    budget.maxCandidates, DEFAULT_MAX_CANDIDATES, 1, 1000, 'max-candidates',
   );
   const maxGenerationRequested = integer(
-    budget.maxGenerationCalls, maxCandidatesRequested, 1, 64, 'max-generation-calls',
+    budget.maxGenerationCalls, maxCandidatesRequested, 1, 1000, 'max-generation-calls',
   );
   const maxEvaluationRequested = integer(
-    budget.maxEvaluationCalls, maxCandidatesRequested, 1, 64, 'max-evaluation-calls',
+    budget.maxEvaluationCalls, maxCandidatesRequested, 1, 1000, 'max-evaluation-calls',
   );
   const maximum = Math.min(
     HARD_MAX_CANDIDATES,
