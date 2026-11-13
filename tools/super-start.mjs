@@ -112,12 +112,13 @@ function launch(label, command, args, env = {}, cwd = ROOT) {
   return service;
 }
 
-async function waitReady(service, url) {
+async function waitReady(service, url, isReady) {
   await waitForHttpReady({
     url,
     serviceName: service.label,
     timeoutMs: STARTUP_TIMEOUT_MS,
     isAlive: () => !service.exited && !stopping,
+    ...(isReady ? { isReady } : {}),
   });
   console.log(`[super] ready: ${service.label} (${url})`);
 }
@@ -134,7 +135,10 @@ async function main() {
     { PORT: '3310', HOST: '127.0.0.1', STATE_DIR, NODE_ENV: 'production' },
     path.join(ROOT, 'runtime/neuro-kurisu'),
   );
-  await waitReady(runtime, 'http://127.0.0.1:3310/health');
+  await waitReady(runtime, 'http://127.0.0.1:3310/health', async (response) => {
+    const health = await response.clone().json();
+    return health?.ready === true;
+  });
 
   const research = launch('research-bridge', 'python3', ['research/research_bridge.py'], { RESEARCH_PORT: '8765' });
   await waitReady(research, 'http://127.0.0.1:8765/health');
