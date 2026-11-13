@@ -1,0 +1,34 @@
+name: NK1 MemoryOS2 spatial observation refresh
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memoryos2-spatial-observation-refresh.mjs"
+      - ".github/workflows/memoryos2-spatial-observation-refresh.yml"
+  push:
+    branches:
+      - "aspect/grounded-spatial-memory-source-20261103"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memoryos2-spatial-observation-refresh.mjs"
+permissions:
+  contents: read
+jobs:
+  spatial-observation-refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts
+        working-directory: runtime/neuro-kurisu
+      - name: Run spatial observation refresh regression
+        run: node --experimental-strip-types tests/memoryos2-spatial-observation-refresh.mjs
+        working-directory: runtime/neuro-kurisu
+      - name: Typecheck runtime
+        run: npm run typecheck
+        working-directory: runtime/neuro-kurisu
