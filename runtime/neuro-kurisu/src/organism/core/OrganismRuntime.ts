@@ -1327,36 +1327,55 @@ export class OrganismRuntime {
       | Awaited<ReturnType<P23LearningEngine['generateAndStageReflectiveSkillRevision']>> & { repairEvidenceCount?: number }
       | Awaited<ReturnType<P23LearningEngine['generateAndStageReflectiveSkillRevisionWithPopulationGenerator']>>;
 
-    if (input.evaluateValidationCandidate) {
-      const validationEvaluator:ValidationOnlyCandidateEvaluator={
-        evaluate:input.evaluateValidationCandidate,
-      };
-      const generateCandidate:P23PopulationCandidateGenerator=searchRequest =>
-        input.generate({
-          ...searchRequest,
-          repairEvidence:structuredClone(repairEvidence),
-        });
-      result=await input.engine.generateAndStageReflectiveSkillRevisionWithPopulationGenerator(
-        validationEvaluator,
-        input.proposal,
-        input.skillId,
-        input.sourceCandidateId,
-        input.baseline,
-        input.candidateEvaluation,
-        generateCandidate,
-        input.evaluateRevisedCandidate,
-        input.options,
-        computedEvidenceFingerprint,
-        input.populationSearchBudget,
-      );
-    } else {
-      // Compatibility path: without the host-owned validation-only evaluator,
-      // preserve the existing single-candidate reflective revision lifecycle.
-      result=await input.engine.generateAndStageReflectiveSkillRevision(
-        input.proposal,input.skillId,input.sourceCandidateId,input.baseline,input.candidateEvaluation,
-        request=>input.generate({...request,repairEvidence:structuredClone(repairEvidence)}),
-        input.evaluateRevisedCandidate,input.options,computedEvidenceFingerprint,
-      );
+    try {
+      if (input.evaluateValidationCandidate) {
+        const validationEvaluator:ValidationOnlyCandidateEvaluator={
+          evaluate:input.evaluateValidationCandidate,
+        };
+        const generateCandidate:P23PopulationCandidateGenerator=searchRequest =>
+          input.generate({
+            ...searchRequest,
+            repairEvidence:structuredClone(repairEvidence),
+          });
+        result=await input.engine.generateAndStageReflectiveSkillRevisionWithPopulationGenerator(
+          validationEvaluator,
+          input.proposal,
+          input.skillId,
+          input.sourceCandidateId,
+          input.baseline,
+          input.candidateEvaluation,
+          generateCandidate,
+          input.evaluateRevisedCandidate,
+          input.options,
+          computedEvidenceFingerprint,
+          input.populationSearchBudget,
+        );
+      } else {
+        // Compatibility path: without the host-owned validation-only evaluator,
+        // preserve the existing single-candidate reflective revision lifecycle.
+        result=await input.engine.generateAndStageReflectiveSkillRevision(
+          input.proposal,input.skillId,input.sourceCandidateId,input.baseline,input.candidateEvaluation,
+          request=>input.generate({...request,repairEvidence:structuredClone(repairEvidence)}),
+          input.evaluateRevisedCandidate,input.options,computedEvidenceFingerprint,
+        );
+      }
+    } catch (error) {
+      const failure=error&&typeof error==='object'?error as Record<string,unknown>:{};
+      if(failure.populationSearchDiagnostics&&typeof failure.populationSearchDiagnostics==='object') {
+        await this.journal.write('warn','runtime.p23.compound-repair-revision.population-search-failed',{
+          skillId:input.skillId,
+          sourceCandidateId:input.sourceCandidateId,
+          repairEvidenceCount:repairEvidence.length,
+          sourceEvidenceFingerprint:computedEvidenceFingerprint,
+          populationSearch:failure.populationSearchDiagnostics,
+          ...(Array.isArray(failure.populationSearchArchive)
+            ? { populationSearchArchive:failure.populationSearchArchive }
+            : {}),
+          error:error instanceof Error?error.message:'population-search-failed',
+          note:'validation-only search failed or found no improvement; no candidate was staged',
+        }).catch(()=>{});
+      }
+      throw error;
     }
     const populationDiagnostics='populationSearch' in result
       ? result.populationSearch.diagnostics
