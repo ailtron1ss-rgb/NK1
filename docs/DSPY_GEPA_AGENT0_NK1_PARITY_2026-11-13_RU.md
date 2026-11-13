@@ -130,3 +130,55 @@ GEPA использует внешний Python package `gepa` как optimizati
 - Для DSPy и Agent0 в этой итерации донорский код в NK1 не копировался.
 - Лицензии/зависимости/модельные веса/датасеты нуждаются в отдельной проверке до переноса.
 - Результаты исследования не доказывают автономность или субъективное сознание; они формируют конкретный, измеримый механизм улучшения learning pipeline.
+
+
+## 8. Реализованный P23-compatible GEPA sidecar adapter (2026-11-13)
+
+После аудита исторической ветки добавлен новый `runtime/neuro-kurisu/src/organism/learning/GepaReflectiveCandidateGenerator.ts`. Это не перенос полного DSPy/GEPA optimizer и не Python dependency. Это ограниченный transport/projection adapter, позволяющий подключить внешний экспериментальный candidate proposer через уже существующую P23 composition.
+
+Что восстановлено/переработано из прежней GEPA линии:
+- candidate-only response contract;
+- bounded HTTP transport, endpoint policy, timeout, secret separation;
+- P23 revision generator function adapter;
+- diagnostics и явный opt-in;
+- sidecar отдаёт untrusted candidate, но не получает право его оценивать/активировать.
+
+Что изменено для текущего NK1:
+- убран старый aggregate holdout `gap01` request field;
+- planner не копирует `fitness.reasons/feedback` в генератор;
+- sidecar получает validation-only reports, fixed dimension directives и validation-bound task/trial IDs;
+- response score/fitness/pass/fail/promotion claims полностью игнорируются;
+- candidate обязан сохранить все верхнеуровневые поля исходного skill payload;
+- GEPA включается только при `NK1_GEPA_ENABLED=1`, valid HTTPS/loopback endpoint, API key и уже настроенном trusted P23 compound-repair provider;
+- выключенное состояние не меняет локальный llama.cpp path; включённый sidecar не маскирует ошибки незаметным fallback.
+
+**Проверено:** GitHub Actions run `43417587842`, exact code commit `e2fa5545aaac365123dfb65a05e8e66980500bf8`, SUCCESS. В том же run: `SOURCE_ASSIMILATION_AUDIT=PASS`, adapters `7/7`, static checks `33/33`, source audit unit tests `10/10`, P23 local model provider/generator/integration, holdout isolation, GEPA sidecar, Hexis/Letta/Lumina/Will/Mem0 contracts all PASS.
+
+### Updated status by dimension
+
+| Dimension | Status |
+|---|---|
+| Reflection hypotheses from outcome failures | Existing P23 implementation |
+| Pareto ranking of learning targets | Existing P23 implementation |
+| One-candidate local reflective revision | Existing P23 implementation |
+| GEPA validation-only sidecar transport | Implemented and contract-tested |
+| Server composition and local fallback | Wired behind explicit opt-in |
+| P23 independent evaluator / authenticated promotion | Existing canonical owner; unchanged |
+| Multi-candidate population and per-example Pareto archive | Not implemented yet |
+| Actual deployed GEPA service | Not configured/deployed |
+| Paired-seed ablation and independent uplift evidence | Not run |
+| Target-device memory/latency/soak | Not run |
+| Release ZIP inclusion | Not verified |
+
+This is the safe integration seam, not the completed evolutionary optimizer. The next algorithmic feature should be a bounded candidate-population archive owned by P23, not a second skill library or a second promotion system. Its objective vector should remain validation-only until the existing independent holdout evaluator is invoked after selection.
+
+## 9. Updated next-pass plan
+
+1. Search all active/archived branches and the latest P23 store for existing candidate population metadata before creating any archive.
+2. Propose the minimum data model: candidate fingerprint, parent IDs, generator/model identity, mutation budget, per-validation-task scores and objective vectors; keep records immutable and bounded.
+3. Connect the archive to the existing VersionedSkillCandidateStore or a non-authoritative proposal cache; never create a second writable skill owner.
+4. Deduplicate candidates by canonical payload fingerprint before expensive evaluation.
+5. Use deterministic Pareto dominance with explicit objectives: verified validation success, policy compliance, postcondition correctness, latency/resource cost and stability.
+6. Limit archive size, candidate count, calls, tokens, wall time and concurrency; log each evaluation receipt.
+7. Select one candidate from validation-only archive; send that exact payload through existing independent holdout evaluation, then signed shadow and P23 promotion/rollback.
+8. Run fixed-manifest paired-seed experiment and ablation against single-candidate P23; do not default-enable until a reproducible benefit appears without safety/generalization regressions.
