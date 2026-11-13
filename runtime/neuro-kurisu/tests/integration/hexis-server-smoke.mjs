@@ -194,3 +194,6 @@ try {
   await new Promise(r => setTimeout(r, 400));
   await rm(stateDir, { recursive: true, force: true });
 }
+
+// WorkPass HMX canonical apply regression: run the real-server acceptance/apply boundary on an isolated state directory.
+await import('./hexis-hmx-canonical-apply.mjs');
