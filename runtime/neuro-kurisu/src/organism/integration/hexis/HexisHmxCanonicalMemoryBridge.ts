@@ -210,6 +210,7 @@ export class HexisHmxCanonicalMemoryBridge {
     }
 
     const prepared: Array<{ ref: string; input: MemoryLifecycleEncodeInput; commandId: string }> = [];
+    const warnings: HmxBridgeWarning[] = [];
     for (const raw of (memories ?? []) as unknown[]) {
       if (!isRecord(raw) || !safeText(raw.ref, 512) || !SAFE_REF.test(raw.ref) ||
           !safeText(raw.content, MAX_CONTENT_LENGTH) || !safeText(raw.type, 128)) {
@@ -219,9 +220,16 @@ export class HexisHmxCanonicalMemoryBridge {
       const ref = raw.ref;
       const hmxType = raw.type.toLowerCase();
       const kind = hmxType === 'episodic' ? 'episodic' : hmxType === 'social' ? 'social' : 'semantic';
+      if (!['episodic', 'social', 'semantic'].includes(hmxType)) {
+        warnings.push({ code: 'memory-kind-normalized', ref, detail: 'Unmapped HMX memory type was retained as semantic with original type in provenance context' });
+      }
       const sourceInstance = stage.sourceSubjectId || 'external-unknown';
       const memoryId = stableId(stage.exportId, ref);
-      const observedAt = safeTime(raw.created_at) ?? safeTime(raw.updated_at);
+      const sourceTime = safeTime(raw.created_at) ?? safeTime(raw.updated_at);
+      const observedAt = sourceTime !== undefined && sourceTime <= stage.createdAt ? sourceTime : undefined;
+      if (sourceTime !== undefined && sourceTime > stage.createdAt) {
+        warnings.push({ code: 'future-source-time-ignored', ref, detail: 'Future donor timestamp was ignored to prevent freshness inflation' });
+      }
       const memoryInput: MemoryLifecycleEncodeInput = {
         id: memoryId,
         content: raw.content,
@@ -266,7 +274,6 @@ export class HexisHmxCanonicalMemoryBridge {
       }
     }
 
-    const warnings: HmxBridgeWarning[] = [];
     const refMap: Record<string, string> = {};
     let inserted = 0;
     let replayed = 0;
