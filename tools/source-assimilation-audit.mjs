@@ -38,6 +38,8 @@ export function applySourceStageOverrides(doc, overlay) {
       }
     }
   }
+  const validation = validateSourceRegistry(merged);
+  if (!validation.ok) throw new Error(`invalid source stage override: ${validation.errors.join('; ')}`);
   return merged;
 }
 
