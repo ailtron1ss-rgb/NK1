@@ -99,6 +99,24 @@ assert.equal(malformed.ok, false);
 assert.ok(malformed.conflicts.some(c => c.kind === 'schema'));
 
 
+
+const normalizedStage = bridge.stage({ document: document({
+  export_id: 'exp_normalized_metadata',
+  sections: { memories: [{
+    ref: 'memory:procedural', type: 'procedural', content: 'A donor procedural item is not executable.',
+    created_at: '2999-01-01T00:00:00Z',
+  }] },
+}) });
+assert.equal(normalizedStage.ok, true);
+const normalizedCommit = bridge.commit(normalizedStage.stagingId);
+assert.equal(normalizedCommit.ok, true);
+assert.ok(normalizedCommit.warnings.some(w => w.code === 'memory-kind-normalized'));
+assert.ok(normalizedCommit.warnings.some(w => w.code === 'future-source-time-ignored'));
+const normalized = memory.getCanonicalMemory(normalizedCommit.refMap['memory:procedural']);
+assert.equal(normalized.kind, 'semantic');
+assert.equal(normalized.context.hmxOriginalType, 'procedural');
+assert.equal(normalized.observedAt, undefined, 'future donor timestamps must not inflate canonical freshness');
+
 const analysisOnly = bridge.stage({ document: document({
   export_id: 'exp_analysis_only', export_intent: 'analysis',
 }) });
