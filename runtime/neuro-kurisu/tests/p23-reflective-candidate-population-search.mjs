@@ -219,4 +219,12 @@ await assert.rejects(
   /timeout/,
 );
 
+const oversizedArchiveBudget = makeInput({
+  budget: { maxTaskRowsPerCandidate: 1025 },
+});
+await assert.rejects(
+  population.runP23ReflectiveCandidatePopulationSearch(oversizedArchiveBudget.input),
+  /task-rows-per-candidate-invalid/,
+);
+
 console.log('P23_REFLECTIVE_CANDIDATE_POPULATION_SEARCH=PASS');
