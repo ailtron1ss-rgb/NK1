@@ -5,12 +5,32 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export type LifeDomain='survival'|'learning'|'creation'|'exploration'|'relationship'|'reflection'|'maintenance';
 export interface LifeCommitment{id:string;domain:LifeDomain;title:string;priority01:number;commitment01:number;progress01:number;createdAt:number;updatedAt:number;status:'active'|'completed'|'paused'|'abandoned';source:'intrinsic'|'learned'|'relational'|'homeostatic';revisions:number;}
-export interface SelfDirectedLifeState{version:1;cycles:number;initiatives:number;completed:number;abandoned:number;paused:number;revisions:number;meanAgency01:number;meanSelfEfficacy01:number;meanCoherence01:number;meanBalance01:number;lastDomain:LifeDomain;lastReason:string;lastAt:number;commitments:LifeCommitment[];history:Array<{at:number;domain:LifeDomain;reason:string;autonomous:boolean;score01:number}>;}
-export const defaultSelfDirectedLife=():SelfDirectedLifeState=>({version:1,cycles:0,initiatives:0,completed:0,abandoned:0,paused:0,revisions:0,meanAgency01:.38,meanSelfEfficacy01:.46,meanCoherence01:.72,meanBalance01:.58,lastDomain:'maintenance',lastReason:'initial',lastAt:0,commitments:[],history:[]});
+export interface SelfDirectedLifePendingDecision{tick:number;action:string;commitmentId:string;at:number;}
+export interface SelfDirectedLifeState{version:1;cycles:number;initiatives:number;completed:number;abandoned:number;paused:number;revisions:number;meanAgency01:number;meanSelfEfficacy01:number;meanCoherence01:number;meanBalance01:number;lastDomain:LifeDomain;lastReason:string;lastAt:number;commitments:LifeCommitment[];history:Array<{at:number;domain:LifeDomain;reason:string;autonomous:boolean;score01:number}>;pendingDecisions:SelfDirectedLifePendingDecision[];outcomeReceipts:string[];lastOutcomeTick:number;}
+export const defaultSelfDirectedLife=():SelfDirectedLifeState=>({version:1,cycles:0,initiatives:0,completed:0,abandoned:0,paused:0,revisions:0,meanAgency01:.38,meanSelfEfficacy01:.46,meanCoherence01:.72,meanBalance01:.58,lastDomain:'maintenance',lastReason:'initial',lastAt:0,commitments:[],history:[],pendingDecisions:[],outcomeReceipts:[],lastOutcomeTick:-1});
 const id=(tick:number,domain:string)=>`sdl:${tick}:${domain}:${Math.abs(((tick*2654435761)>>>0)).toString(16)}`;
 export class SelfDirectedLifeOrchestrator{
  private state=defaultSelfDirectedLife();
- restore(raw?:Partial<SelfDirectedLifeState>|null){const d=defaultSelfDirectedLife(),r=raw??{};this.state={...d,...r,commitments:Array.isArray(r.commitments)?structuredClone(r.commitments).slice(0,24):[],history:Array.isArray(r.history)?structuredClone(r.history).slice(0,96):[],version:1};}
+ restore(raw?:Partial<SelfDirectedLifeState>|null){
+  const d=defaultSelfDirectedLife(),r=raw??{};
+  const pendingDecisions=Array.isArray(r.pendingDecisions)
+    ? r.pendingDecisions.filter((entry):entry is SelfDirectedLifePendingDecision=>Boolean(entry)
+      && Number.isSafeInteger(entry.tick)&&entry.tick>=0
+      && typeof entry.action==='string'&&entry.action.length>0&&entry.action.length<=64
+      && typeof entry.commitmentId==='string'&&entry.commitmentId.length>0&&entry.commitmentId.length<=160
+      && typeof entry.at==='number'&&Number.isFinite(entry.at)&&entry.at>=0)
+      .slice(-16).map(entry=>({...entry}))
+    : [];
+  const outcomeReceipts=Array.isArray(r.outcomeReceipts)
+    ? r.outcomeReceipts.filter((entry):entry is string=>typeof entry==='string'&&entry.length>0&&entry.length<=240).slice(-64)
+    : [];
+  this.state={...d,...r,
+    commitments:Array.isArray(r.commitments)?structuredClone(r.commitments).slice(0,24):[],
+    history:Array.isArray(r.history)?structuredClone(r.history).slice(0,96):[],
+    pendingDecisions,outcomeReceipts,
+    lastOutcomeTick:Number.isSafeInteger(r.lastOutcomeTick)&&Number(r.lastOutcomeTick)>=-1?Number(r.lastOutcomeTick):-1,
+    version:1};
+}
  snapshot(){return structuredClone(this.state);}
  cycle(input:{tick:number;at:number;externalInput:boolean;energy01:number;thermal01:number;uncertainty01:number;novelty01:number;goalPressure01:number;homeostaticPressure01:number;identity01:number;activeGoalCount:number;activeProject:boolean;projectProgress01:number;learningPressure01:number;socialNeed01:number;maintenanceDue01:number;resourcePressure01:number}):{shouldInitiate:boolean;domain:LifeDomain;reason:string;score01:number;commitment:LifeCommitment|null;balance01:number}{
   const survival=clamp((1-input.energy01)*.45+input.homeostaticPressure01*.35+input.resourcePressure01*.2); const learning=clamp(input.learningPressure01*.5+input.uncertainty01*.25); const exploration=clamp(input.novelty01*.55+input.uncertainty01*.2+(input.externalInput ? 0 : .1)); const creation=clamp(input.activeProject?(.5+(1-input.projectProgress01)*.4):input.goalPressure01*.35+input.identity01*.2); const relationship=clamp(input.socialNeed01*.7+(input.externalInput?.3:0)); const reflection=clamp(input.uncertainty01*.28+input.identity01*.25+input.goalPressure01*.18); const maintenance=clamp(input.maintenanceDue01*.7+input.resourcePressure01*.2+(1-input.energy01)*.1);
@@ -22,7 +42,28 @@ export class SelfDirectedLifeOrchestrator{
   const balance=clamp(1-Math.abs(survival-(learning+exploration+creation+relationship+reflection+maintenance)/6));
   this.state.cycles++;this.state.lastDomain=domain;this.state.lastReason=reason;this.state.lastAt=input.at;this.state.meanAgency01=clamp(this.state.meanAgency01*.94+(autonomous?score:.25)*.06);this.state.meanSelfEfficacy01=clamp(this.state.meanSelfEfficacy01*.95+(commitment?.commitment01??.4)*.05);this.state.meanCoherence01=clamp(this.state.meanCoherence01*.96+input.identity01*.04);this.state.meanBalance01=clamp(this.state.meanBalance01*.94+balance*.06);this.state.history=[{at:input.at,domain,reason,autonomous,score01:score},...this.state.history].slice(0,96);
   return{shouldInitiate,domain,reason,score01:score,commitment:commitment?structuredClone(commitment):null,balance01:balance}; }
+  registerDecision(input:{tick:number;action:string;commitmentId:string;at:number}):boolean{
+    if(!Number.isSafeInteger(input.tick)||input.tick<0||typeof input.action!=='string'||input.action.trim().length===0||input.action.length>64||typeof input.commitmentId!=='string'||input.commitmentId.length===0||input.commitmentId.length>160||typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0)return false;
+    const commitment=this.state.commitments.find(item=>item.id===input.commitmentId&&item.status==='active');
+    if(!commitment)return false;
+    const key=`${input.tick}:${input.action}:${input.commitmentId}`;
+    if(this.state.outcomeReceipts.includes(key)||input.tick<=this.state.lastOutcomeTick)return false;
+    this.state.pendingDecisions=[...this.state.pendingDecisions.filter(item=>item.tick!==input.tick||item.commitmentId!==input.commitmentId),{tick:input.tick,action:input.action,commitmentId:input.commitmentId,at:input.at}].slice(-16);
+    return true;
+  }
+  observeVerifiedOutcome(input:{tick:number;action:string;success01:number;at:number;verified:boolean}):boolean{
+    if(input.verified!==true||!Number.isSafeInteger(input.tick)||input.tick<0||typeof input.action!=='string'||input.action.length===0||input.action.length>64||typeof input.success01!=='number'||!Number.isFinite(input.success01)||input.success01<0||input.success01>1||typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0)return false;
+    const pending=this.state.pendingDecisions.find(item=>item.tick===input.tick&&item.action===input.action);
+    if(!pending)return false;
+    const key=`${pending.tick}:${pending.action}:${pending.commitmentId}`;
+    if(input.tick<=this.state.lastOutcomeTick||this.state.outcomeReceipts.includes(key))return false;
+    this.state.pendingDecisions=this.state.pendingDecisions.filter(item=>item!==pending);
+    this.state.outcomeReceipts=[...this.state.outcomeReceipts,key].slice(-64);
+    this.state.lastOutcomeTick=input.tick;
+    this.observe({commitmentId:pending.commitmentId,success01:input.success01,at:input.at,revise:input.success01<.38});
+    return true;
+  }
   observe(input:{commitmentId?:string;success01:number;at:number;revise?:boolean;pause?:boolean}){const c=input.commitmentId?this.state.commitments.find(x=>x.id===input.commitmentId):this.state.commitments.find(x=>x.status==='active');if(!c)return;const q=clamp(input.success01);c.updatedAt=input.at;if(input.pause){c.status='paused';this.state.paused++;return;}if(input.revise){c.revisions++;this.state.revisions++;c.priority01=clamp(c.priority01+(0.5-q)*.04);c.commitment01=clamp(c.commitment01+(q-.5)*.05);return;}c.progress01=clamp(c.progress01+(q>=.65?.08:-.025));if(c.progress01>=.92){c.progress01=1;c.status='completed';this.state.completed++;}else if(q<.12){c.status='abandoned';this.state.abandoned++;}}
   resumePaused(identity01:number){if(identity01<.62)return 0;let n=0;for(const c of this.state.commitments){if(c.status==='paused'){c.status='active';n++;}}return n;}
-  summary(){return{cycles:this.state.cycles,initiatives:this.state.initiatives,completed:this.state.completed,abandoned:this.state.abandoned,paused:this.state.paused,revisions:this.state.revisions,meanAgency01:this.state.meanAgency01,meanSelfEfficacy01:this.state.meanSelfEfficacy01,meanCoherence01:this.state.meanCoherence01,meanBalance01:this.state.meanBalance01,lastDomain:this.state.lastDomain,lastReason:this.state.lastReason,activeCommitments:this.state.commitments.filter(c=>c.status==='active').length};}
+  summary(){return{cycles:this.state.cycles,initiatives:this.state.initiatives,completed:this.state.completed,abandoned:this.state.abandoned,paused:this.state.paused,revisions:this.state.revisions,meanAgency01:this.state.meanAgency01,meanSelfEfficacy01:this.state.meanSelfEfficacy01,meanCoherence01:this.state.meanCoherence01,meanBalance01:this.state.meanBalance01,lastDomain:this.state.lastDomain,lastReason:this.state.lastReason,lastOutcomeTick:this.state.lastOutcomeTick,pendingVerifiedDecisions:this.state.pendingDecisions.length,activeCommitments:this.state.commitments.filter(c=>c.status==='active').length};}
 }

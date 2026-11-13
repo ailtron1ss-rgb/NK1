@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { AutonomousPersonhoodKernel } from '../src/organism/system/AutonomousPersonhoodKernel.ts';
+import { SelfDirectedLifeOrchestrator, defaultSelfDirectedLife } from '../src/organism/system/SelfDirectedLifeOrchestrator.ts';
 
 function createLearningMission(tick = 1) {
   const kernel = new AutonomousPersonhoodKernel();
@@ -92,6 +93,47 @@ function createLearningMission(tick = 1) {
   assert.equal(kernel.summary().consequenceUpdates, 0);
 }
 
+// Self-directed commitments are registered at decision time but advance only after verified feedback.
+{
+  const seed = defaultSelfDirectedLife();
+  seed.commitments = [{
+    id: 'sdl:5:learning', domain: 'learning', title: 'close an unresolved question',
+    priority01: 0.7, commitment01: 0.7, progress01: 0.9,
+    createdAt: 100, updatedAt: 100, status: 'active', source: 'intrinsic', revisions: 0,
+  }];
+  const life = new SelfDirectedLifeOrchestrator();
+  life.restore(seed);
+  assert.equal(life.registerDecision({tick: 5, action: 'verify', commitmentId: 'sdl:5:learning', at: 500}), true);
+  assert.equal(life.snapshot().commitments[0].progress01, 0.9, 'registering an intention must not increase progress');
+  assert.equal(life.observeVerifiedOutcome({tick: 5, action: 'verify', success01: 0.99, at: 550, verified: false}), false);
+  assert.equal(life.snapshot().commitments[0].progress01, 0.9);
+  assert.equal(life.observeVerifiedOutcome({tick: 5, action: 'explore', success01: 0.99, at: 560, verified: true}), false);
+  assert.equal(life.snapshot().commitments[0].progress01, 0.9);
+  assert.equal(life.observeVerifiedOutcome({tick: 5, action: 'verify', success01: 0.99, at: 570, verified: true}), true);
+  assert.equal(life.snapshot().commitments[0].progress01, 1);
+  assert.equal(life.snapshot().commitments[0].status, 'completed');
+  const restored = new SelfDirectedLifeOrchestrator();
+  restored.restore(life.snapshot());
+  assert.equal(restored.observeVerifiedOutcome({tick: 5, action: 'verify', success01: 1, at: 580, verified: true}), false);
+  assert.equal(restored.summary().completed, 1);
+}
+
+// A weak verified outcome revises the matching commitment rather than recording unearned progress.
+{
+  const seed = defaultSelfDirectedLife();
+  seed.commitments = [{
+    id: 'sdl:8:learning', domain: 'learning', title: 'verify a hypothesis',
+    priority01: 0.7, commitment01: 0.7, progress01: 0.4,
+    createdAt: 100, updatedAt: 100, status: 'active', source: 'intrinsic', revisions: 0,
+  }];
+  const life = new SelfDirectedLifeOrchestrator();
+  life.restore(seed);
+  assert.equal(life.registerDecision({tick: 8, action: 'verify', commitmentId: 'sdl:8:learning', at: 800}), true);
+  assert.equal(life.observeVerifiedOutcome({tick: 8, action: 'verify', success01: 0.2, at: 850, verified: true}), true);
+  assert.equal(life.snapshot().commitments[0].revisions, 1);
+  assert.equal(life.snapshot().commitments[0].progress01, 0.4);
+}
+
 console.log('AUTONOMOUS_PERSONHOOD_VERIFIED_OUTCOME=PASS');
 
 
@@ -120,12 +162,18 @@ import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.t
     await core.autonomousHeartbeat(200000 + i * 12000);
     const before = core.systemSnapshot().autonomousPersonhood;
     const pending = before.pendingDecisions?.at(-1);
-    if (!pending) continue;
+    const beforeLife = core.systemSnapshot().selfDirectedLife;
+    const pendingLife = beforeLife?.pendingDecisions?.at(-1);
+    if (!pending || !pendingLife) continue;
     await core.feedback({ success: 0.9, evidenceSource: 'device', notes: 'authoritative device postcondition fixture' });
     const after = core.systemSnapshot().autonomousPersonhood;
     if (after.lastOutcomeTick === pending.tick && after.lastOutcomeAction === pending.action) {
       assert.equal(after.consequenceUpdates, before.consequenceUpdates + 1,
         'a verified self-authored action must update the personhood outcome ledger');
+      const afterLife = core.systemSnapshot().selfDirectedLife;
+      const lifeReceipt = `${pendingLife.tick}:${pendingLife.action}:${pendingLife.commitmentId}`;
+      assert.ok(afterLife.outcomeReceipts.includes(lifeReceipt),
+        'verified Core feedback must close the matching self-directed commitment receipt');
       const replayProbe = new AutonomousPersonhoodKernel();
       replayProbe.restore(after);
       assert.equal(replayProbe.recordVerifiedOutcome({
@@ -144,6 +192,10 @@ import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.t
   assert.equal(restoredState.consequenceUpdates, persisted.consequenceUpdates,
     'verified personhood outcome receipts must survive runtime restore');
   assert.equal(restoredState.lastOutcomeTick, persisted.lastOutcomeTick);
+  const persistedLife = core.systemSnapshot().selfDirectedLife;
+  const restoredLife = restored.systemSnapshot().selfDirectedLife;
+  assert.deepEqual(restoredLife.outcomeReceipts, persistedLife.outcomeReceipts,
+    'self-directed verified outcome receipts must survive runtime restore');
 }
 
 console.log('AUTONOMOUS_PERSONHOOD_CORE_FEEDBACK_INTEGRATION=PASS');
