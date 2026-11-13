@@ -163,7 +163,7 @@ assert.ok(!JSON.stringify(providerRequests).includes('holdout-secret-task'));
 assert.ok(providerRequests.every(request => request.user.includes('HOLDOUT_RESULTS_WITHHELD:')));
 assert.equal(result.populationSearch.diagnostics.validationOnly, true);
 
-// No validation improvement means no call to the canonical staging lifecycle.
+// No validation improvement aborts inside the canonical generator seam before full evaluation or staging.
 const { engine: noGainEngine, state: noGainState } = makeEngine();
 await assert.rejects(
   noGainEngine.generateAndStageReflectiveSkillRevisionWithPopulation(
@@ -181,7 +181,7 @@ await assert.rejects(
   ),
   /p23-population-no-improving-candidate/,
 );
-assert.equal(noGainState.canonicalCalls, 0);
-assert.equal(noGainState.fullEvaluationCalls, 0);
+assert.equal(noGainState.canonicalCalls, 1, 'the canonical P23 method owns the generator seam exactly once');
+assert.equal(noGainState.fullEvaluationCalls, 0);\nassert.equal(noGainState.stagedPayload, null);
 
 console.log('P23_POPULATION_CANONICAL_HANDOFF=PASS');
