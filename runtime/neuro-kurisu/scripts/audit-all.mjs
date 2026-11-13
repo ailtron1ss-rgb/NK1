@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 
 const checks = [
+  ['audit:source-assimilation','node scripts/audit-source-assimilation.mjs'],
+  ['test:source-assimilation-audit','node tests/source-assimilation-audit.mjs'],
   ['verify:release-source','node --experimental-strip-types scripts/verify-release-source.mjs'],
   ['doctor','node scripts/project-doctor.mjs'],
   ['audit:syntax','node scripts/audit-executable-syntax.mjs'],
