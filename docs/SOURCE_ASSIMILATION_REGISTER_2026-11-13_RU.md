@@ -566,3 +566,17 @@ GitHub Compare также не нашёл общего предка между `
 - `releaseVerified` остаётся `false`; CI testing не означает release inclusion.
 
 Validation run после появления overlay и strict gate-order tests должен оставаться последним evidence record; при изменении кода запись `testsPassed` нужно сбрасывать до следующего exact-head green run.
+
+## 21. DSPy/Agent0 parity review and latest exact-head receipt
+
+Detailed source comparison is recorded in [DSPy GEPA + Agent0 → NK1 P23 parity](DSPY_GEPA_AGENT0_NK1_PARITY_2026-11-13_RU.md). This separates the useful algorithmic transfer from importing entire donor frameworks.
+
+- DSPy GEPA's per-example candidate Pareto archive, candidate lineage, reflection budget and merge accounting are useful. NK1 already has outcome reflection, target-level Pareto ranking, bounded local revision generation, paired seed/family evaluation and strict independent promotion. The remaining likely gap is an isolated, bounded multi-candidate search archive with per-task validation scores; a repository-wide duplicate search is required before implementation.
+- Agent0 contributes a possible curriculum-diversity/near-duplicate metric, but its inspected example uses O(n²) BLEU clustering, hard-coded localhost worker endpoints, temporary-file writes and a questionable `min(score, 1-score)` reward transform. No Agent0 trainer/reward code was copied.
+- No DSPy or Agent0 runtime dependency has been installed. These remain algorithmic research inputs until a controlled NK1 ablation demonstrates benefit.
+
+### Latest evidence checkpoint
+
+The evidence overlay was tested as part of the workflow itself. Run `43393578282` at `ab6dbeb7d6c72be1260b00b4170d5abeaa107353` completed SUCCESS, including overlay validation and the llama.cpp/P23 contract suite. The test file and sidecar have since been advanced to preserve that exact run as evidence; the resulting newer HEAD must pass its own CI before it is treated as verified. The current overlay tracks three exact successful source-assimilation runs (`43392930739`, `43393334664`, `43393578282`); none constitutes release verification.
+
+Updated gates remain: metadata 21/21; preliminary license scope 21/21; legal clearance 0/21; machine file-level diff 1/21; existing adapter paths 6/21; new adaptations 1/21; P23 wiring 1/21; contract-tested sources 1/21; release-verified sources 0/21.
