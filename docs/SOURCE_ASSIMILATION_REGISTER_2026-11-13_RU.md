@@ -687,3 +687,13 @@ GitHub Actions run `43419885994` на exact commit `71241362317fa6108a5e9aeec9c3
 Это уже рабочий validation archive/index на версиях, проходящих существующий P23 staging gate. Но полноценного GEPA population optimizer всё ещё нет: sidecar возвращает один candidate payload за вызов; NK1 пока не порождает K вариантов и не выбирает Pareto-best из целой популяции до holdout. Следующий этап — ограниченный multi-candidate proposal batch и validation-only selection, затем одна независимая holdout-проверка выбранного точного payload. Не ослаблять правило, что holdout не раскрывается оптимизатору.
 
 Прогресс по источникам не увеличивается выше 2/21: новый Pareto механизм относится к той же DSPy/GEPA ассимиляции и реализован на NK1-native P23 lifecycle. Legal clearance остаётся 0/21; release verification — 0/21.
+
+
+## 8. Новая реализация после первичной инвентаризации — Hyperon / MeTTa
+
+- Связанный Draft PR: https://github.com/ailtron1ss-rgb/NK1/pull/868.
+- Точка интеграции: `runtime/neuro-kurisu/src/organism/cognition/NeuroSymbolicConceptCompiler.ts` — добавлен ограниченный `exportMeTTaFacts()` для передачи существующих концептов в MeTTa-совместимый формат.
+- Контракт: метаданные концепта + embedding; нормализация/экранирование строк; лимит 128 концептов и 16 измерений; malformed numeric values clamp; сериализация не изменяет canonical compiler state.
+- Exact-head Actions run 43446798698, commit `40177c77abec5881f480ebd0385a084804afcb80`: Node 24 install PASS, runtime typecheck PASS, focused regression PASS.
+- Ассимиляция отмечена как adapted/runtimeWired/testsPassed в stage overlay. `codeCopied=false`, legal clearance остаётся pending: реализован собственный протокольный адаптер, не копирование кода Hyperon.
+- Ограничение: это сериализационный seam, а не подключённый Hyperon runtime. Следующий этап — sandboxed worker, typed request/response, provenance, resource budget и independent evidence gate.
