@@ -32,8 +32,12 @@ function document(overrides = {}) {
         { ref: 'memory:beta', type: 'episodic', content: 'A meeting happened near the station.',
           importance: 0.6 },
       ],
-      episodes: [{ ref: 'episode:1', summary: 'Deferred episode record' }],
-      relationships: [{ source_ref: 'memory:alpha', target_ref: 'memory:beta', edge_type: 'RELATED' }],
+      episodes: [{ ref: 'episode:1', summary: 'An imported episode summary.', memory_refs: ['memory:alpha', 'memory:beta'] }],
+      relationships: [
+        { source_ref: 'memory:alpha', target_ref: 'memory:beta', edge_type: 'RELATED' },
+        { source_ref: 'memory:beta', target_ref: 'episode:1', edge_type: 'CAUSES' },
+      ],
+      clusters: [{ ref: 'cluster:1', member_refs: ['memory:alpha', 'memory:beta'] }],
     },
     ...overrides,
   };
@@ -46,15 +50,17 @@ const bridge = new HexisHmxCanonicalMemoryBridge(adaptation, memory);
 const staged = bridge.stage({ document: document() });
 assert.equal(staged.ok, true);
 assert.equal(staged.memoryCount, 2);
-assert.deepEqual(staged.deferredSections.sort(), ['episodes', 'relationships']);
+assert.equal(staged.episodeCount, 1);
+assert.equal(staged.relationshipCount, 2);
+assert.deepEqual(staged.deferredSections.sort(), ['clusters']);
 assert.ok(staged.warnings.some(w => w.code === 'section-deferred'));
 assert.ok(staged.stagingId);
 
 const committed = bridge.commit(staged.stagingId);
 assert.equal(committed.ok, true);
-assert.equal(committed.inserted, 2);
+assert.equal(committed.inserted, 3);
 assert.equal(committed.replayed, 0);
-assert.equal(Object.keys(committed.refMap).length, 2);
+assert.equal(Object.keys(committed.refMap).length, 3);
 const alpha = memory.getCanonicalMemory(committed.refMap['memory:alpha']);
 assert.equal(alpha.content, 'The donor observed a red bicycle.');
 assert.equal(alpha.kind, 'semantic');
@@ -64,13 +70,36 @@ assert.equal(alpha.sourceAuthority01, 0.2);
 assert.equal(alpha.provenanceClass, 'external');
 assert.equal(alpha.semanticVector, undefined, 'donor embeddings must not be imported');
 assert.equal(alpha.context.hmxSourceInstance, 'donor-instance-1');
+assert.ok(alpha.semanticLinks.includes(committed.refMap['memory:beta']), 'HMX semantic relationship must become a canonical semantic link');
+const beta = memory.getCanonicalMemory(committed.refMap['memory:beta']);
+assert.ok(beta.causalLinks.includes(committed.refMap['episode:1']), 'HMX causal relationship must become a canonical causal link');
+const episode = memory.getCanonicalMemory(committed.refMap['episode:1']);
+assert.equal(episode.kind, 'episodic');
+assert.equal(episode.content, 'An imported episode summary.');
+assert.ok(episode.temporalLinks.includes(committed.refMap['memory:alpha']));
+assert.ok(episode.temporalLinks.includes(committed.refMap['memory:beta']));
 
 const replay = bridge.commit(staged.stagingId);
 assert.equal(replay.ok, true);
 assert.equal(replay.inserted, 0);
-assert.equal(replay.replayed, 2);
+assert.equal(replay.replayed, 3);
 assert.deepEqual(replay.refMap, committed.refMap);
-assert.equal(memory.rows.size, 2, 'replaying the same accepted stage must not create duplicate canonical memories');
+assert.equal(memory.rows.size, 3, 'replaying the same accepted stage must not create duplicate canonical memories');
+
+
+const dangling = bridge.stage({ document: document({
+  export_id: 'exp_dangling_relationship',
+  sections: {
+    memories: [{ ref: 'memory:known', type: 'semantic', content: 'Known endpoint.' }],
+    relationships: [{ source_ref: 'memory:known', target_ref: 'memory:not-imported', edge_type: 'RELATED' }],
+  },
+}) });
+assert.equal(dangling.ok, true);
+const danglingCommit = bridge.commit(dangling.stagingId);
+assert.equal(danglingCommit.ok, true);
+assert.ok(danglingCommit.warnings.some(w => w.code === 'relationship-endpoint-not-imported'));
+const known = memory.getCanonicalMemory(danglingCommit.refMap['memory:known']);
+assert.equal(known.semanticLinks.length, 0, 'dangling relationship must not create a ghost link');
 
 const protectedStage = bridge.stage({ document: document({
   export_id: 'exp_protected_001',
