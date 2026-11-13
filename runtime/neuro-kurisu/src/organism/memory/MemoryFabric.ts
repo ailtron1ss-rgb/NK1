@@ -296,9 +296,19 @@ export class MemoryFabric {
       }
     }
 
+    if(outcome==='applied'&&action==='encode'&&memoryId){
+      this.syncSemanticGraphProjection(memoryId);
+    }
     if(outcome==='applied'&&action!=='encode'&&action!=='forget'){
-      if(action==='revise-content')this.syncCompatibilityProjection((command as Extract<MemoryLifecycleCommand,{action:'revise-content'}>).id);
-      if(memoryId)this.syncCompatibilityProjection(memoryId);
+      if(action==='revise-content'){
+        const sourceId=(command as Extract<MemoryLifecycleCommand,{action:'revise-content'}>).id;
+        this.syncCompatibilityProjection(sourceId);
+        this.syncSemanticGraphProjection(sourceId);
+      }
+      if(memoryId){
+        this.syncCompatibilityProjection(memoryId);
+        this.syncSemanticGraphProjection(memoryId);
+      }
     }
 
     if(eventPayload){
@@ -330,6 +340,51 @@ export class MemoryFabric {
     const projected=this.substrate.projectCompatibilityRecords({...snapshot,items:[item]},1)[0];
     if(!projected){this.multiTimescale.removeCanonicalProjection(key);return false;}
     this.multiTimescale.add(projected,false);
+    return true;
+  }
+
+  private activeSemanticProjectionItems() {
+    const now=Date.now();
+    return this.memoryOS.snapshot({clone:false}).items
+      .filter(item=>{
+        const validFromAt=item.validFromAt??item.createdAt;
+        const validUntilAt=item.validUntilAt;
+        return !item.dormant && item.epistemicStatus!=='quarantined' &&
+          Number.isFinite(validFromAt) && validFromAt<=now &&
+          (validUntilAt==null || (Number.isFinite(validUntilAt) && validUntilAt>now));
+      })
+      .slice()
+      .sort((left,right)=>
+        (right.salience+right.identityRelevance+right.goalRelevance)-
+        (left.salience+left.identityRelevance+left.goalRelevance))
+      .slice(0,1_000);
+  }
+
+  /** Rebuild the semantic graph read-model exclusively from active canonical rows. */
+  reconcileSemanticGraph():number {
+    const rows=this.activeSemanticProjectionItems();
+    this.semanticMemory.reconcileCanonicalProjection(rows);
+    return this.semanticMemory.snapshot().nodes.filter(node=>node.canonicalProjection?.owner==='memoryOS2').length;
+  }
+
+  /** Incrementally synchronize one row and any canonical rows that link to it. */
+  private syncSemanticGraphProjection(id:string):boolean {
+    const key=String(id??'').trim().slice(0,160);
+    if(!key)return false;
+    const rows=this.activeSemanticProjectionItems();
+    const availableIds=new Set(rows.map(row=>row.id));
+    const item=rows.find(row=>row.id===key);
+    if(!item){
+      this.semanticMemory.removeCanonicalProjection(key);
+      return false;
+    }
+    this.semanticMemory.syncCanonicalProjection(item,availableIds);
+    // A newly created target can resolve links which were previously pending.
+    for(const candidate of rows){
+      if(candidate.id===key)continue;
+      const linked=[...(candidate.semanticLinks??[]),...(candidate.temporalLinks??[]),...(candidate.causalLinks??[]),...(candidate.contradictionLinks??[])];
+      if(linked.includes(key))this.semanticMemory.syncCanonicalProjection(candidate,availableIds);
+    }
     return true;
   }
 
