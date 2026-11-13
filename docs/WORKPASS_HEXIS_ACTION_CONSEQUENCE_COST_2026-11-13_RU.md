@@ -38,13 +38,16 @@ Hexis разделяет вычислительную стоимость и це
 
 ## Проверки
 
-- `node --experimental-strip-types tests/hexis-action-consequence-cost-policy.mjs` — локально PASS (профили 5 классов, precedence, approval flag, read-only selection, social-only block, persisted telemetry round-trip).
-- Ожидаемый TDD red до создания модуля: импорт не найден.
-- Полный `npm run typecheck`, интеграционный тест `big-pass-223-autonomous-resource-tool-life`, ActionGateway regressions и GitHub Actions на точном SHA пока не запускались в этом окружении. CI workflow добавлен для PR.
+- TDD red до создания модуля: ожидаемый missing-module import failure.
+- Новый policy regression — PASS на локальном прогоне и exact-head Actions.
+- Exact-head Actions run [#43390755183](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43390755183), SHA `72ab4bc76d6fc45fe3888fe74223ecdf127e12a9`: **SUCCESS**.
+- Внутри run успешно: Node 24, `npm ci --ignore-scripts`, полный `npm run typecheck`, `hexis-action-consequence-cost-policy.mjs`, `big-pass-223-autonomous-resource-tool-life.mjs`, `action-cost-unification-workpass36.mjs`, `workpass53-action-approval-boundary.mjs`.
+- Отдельная idempotency suite: 12/13 subtests PASS, один failure по temporal reafference. Тот же failure воспроизведён на чистом baseline `workpass70-source@1a0315595302f3154df0ae53e5d9188875311467`; заведён самостоятельный [issue #865](https://github.com/ailtron1ss-rgb/NK1/issues/865). Он не относится к изменённому policy/controller path и не замаскирован под PASS.
 
 ## Риски и следующий проход
 
 - Строковая классификация по зарегистрированным `id/capability` намеренно консервативна; перед расширением read-only allowlist следует сверить фактический registry tool-by-tool.
-- Необходимо проверить, что реальный runtime tool registry содержит корректные семантические имена и не блокирует полезные inspect/status/evidence операции.
-- Следующий этап — CI exact-head, полный runtime typecheck, прежний BIG_PASS_223 тест, ActionGateway approval/idempotency regressions и просмотр решения человеком.
-- Не изменены `main`, теги, релизный ZIP или сторонние зависимости. Это не заявка на production readiness и не свидетельство сознания.
+- Пока не разрешены локальные draft/create инструменты; потребуется различить безопасные shadow drafts, реальные filesystem mutations и self-modification по registry/rollback/idempotency.
+- Последующие Hexis ideas: контекстные множители first-use/high-error/repeated-action и outcome-backed cost calibration; hard floors должны быть неизменяемы для модели и опираться только на verified receipts.
+- Перед merge: актуальный compare с базой, точный review, relevant CI; потом отдельный release ZIP reconciliation.
+- Не изменены `main`, теги, релизный ZIP или сторонние зависимости. PR остаётся Draft; SUCCESS этого workflow означает проверку данного slice, а не production readiness проекта или сознание.
