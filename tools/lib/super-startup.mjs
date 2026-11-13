@@ -37,6 +37,13 @@ export function assertToolchainVersions({
   return { node, npm, python };
 }
 
+export function workspaceNeedsNodeModules(manifest) {
+  return ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'].some((section) => {
+    const value = manifest?.[section];
+    return value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0;
+  });
+}
+
 export async function assertPortAvailable(port, host = '127.0.0.1') {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(`Invalid TCP port: ${port}`);
