@@ -222,7 +222,7 @@ test('server composition exposes GEPA only when explicitly enabled and retains l
   const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const server = await readFile(path.join(runtimeRoot, 'src/server/server.mjs'), 'utf8');
   const adapter = await readFile(path.join(runtimeRoot, 'src/organism/learning/GepaReflectiveCandidateGenerator.ts'), 'utf8');
-  assert.match(server, /GepaReflectiveCandidateGenerator\\.fromEnvironment\\(\\)/);
+  assert.match(server, /GepaReflectiveCandidateGenerator\.fromEnvironment\(\)/);
   assert.match(adapter, /NK1_GEPA_ENABLED === '1'/);
   assert.match(server, /asP23RevisionGenerator\\(\\)/);
   assert.match(server, /generateLocalSkillRevision\\(LLAMA_CPP_PROVIDER, request\\)/);
