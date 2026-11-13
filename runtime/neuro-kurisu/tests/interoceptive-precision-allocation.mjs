@@ -113,4 +113,37 @@ test('fails closed when hostile proxy reflection throws', () => {
   assert.ok(Object.values(frame.allocation01).every(value => value === 0));
 });
 
+test('estimator never executes accessor-backed body-state fields', () => {
+  const estimator = new InteroceptiveStateEstimator();
+  const previousEnergy = estimator.snapshot().prediction.energy01;
+  let getterCalls = 0;
+  const observation = {
+    thermal01: 0.2, cognitiveLoad01: 0.3, sleepPressure01: 0.4,
+    capacity01: 0.75, sensoryFreshness01: 0.8, attentionBudget01: 0.5,
+    get energy01() { getterCalls += 1; return 0.02; },
+  };
+  const frame = estimator.observe(observation);
+  assert.equal(getterCalls, 0);
+  assert.equal(frame.latent.energy01, previousEnergy,
+    'missing own-data energy must use the last prediction, not execute a getter');
+  assert.ok(frame.reason.includes('interoceptive-input-partial'));
+});
+
+test('estimator fails closed on hostile Proxy reflection and does not invent body readings', () => {
+  const estimator = new InteroceptiveStateEstimator();
+  const before = estimator.snapshot().prediction;
+  const hostile = new Proxy({}, {
+    getPrototypeOf() { throw new Error('blocked interoceptive prototype trap'); },
+  });
+  assert.doesNotThrow(() => estimator.observe(hostile));
+  const frame = estimator.snapshot().lastFrame;
+  assert.equal(frame.latent.energy01, before.energy01);
+  assert.equal(frame.latent.thermal01, before.thermal01);
+  assert.equal(frame.latent.load01, before.load01);
+  assert.equal(frame.latent.capacity01, before.capacity01);
+  assert.equal(frame.precisionAllocation01.budget01, 0);
+  assert.equal(frame.precisionAllocation01.dominantChannel, 'none');
+  assert.ok(frame.reason.includes('interoceptive-input-untrusted'));
+});
+
 console.log('WORKPASS_INTEROCEPTIVE_PRECISION_ALLOCATION=PASS');

@@ -1,0 +1,35 @@
+name: NK1 interoceptive estimator input integrity
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/InteroceptiveStateEstimator.ts"
+      - "runtime/neuro-kurisu/tests/interoceptive-precision-allocation.mjs"
+      - ".github/workflows/interoceptive-estimator-input-integrity.yml"
+  push:
+    branches:
+      - "aspect/interoceptive-estimator-input-boundary-20261103"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/InteroceptiveStateEstimator.ts"
+      - "runtime/neuro-kurisu/tests/interoceptive-precision-allocation.mjs"
+      - ".github/workflows/interoceptive-estimator-input-integrity.yml"
+permissions:
+  contents: read
+jobs:
+  estimator-input-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts
+        working-directory: runtime/neuro-kurisu
+      - name: Run interoceptive estimator input regressions
+        run: node --experimental-strip-types tests/interoceptive-precision-allocation.mjs
+        working-directory: runtime/neuro-kurisu
+      - name: Typecheck runtime
+        run: npm run typecheck
+        working-directory: runtime/neuro-kurisu
