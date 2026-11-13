@@ -9,7 +9,6 @@ on:
       - '.github/workflows/source-assimilation-audit.yml'
       - 'engineering-os/source-assimilation.v1.json.gz'
       - 'engineering-os/source-assimilation-stage-overrides.v1.json'
-      - 'engineering-os/source-assimilation-stage-overrides.v1.json'
       - 'tools/source-assimilation-audit.*'
       - 'package.json'
       - 'docs/SOURCE_ASSIMILATION_REGISTER_2026-11-13_RU.md'
@@ -18,6 +17,10 @@ on:
       - 'runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LocalModelSkillRevisionGenerator.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillRevisionPlan.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/GepaReflectiveCandidateGenerator.ts'
+      - 'runtime/neuro-kurisu/tests/p23-revision-plan-holdout-isolation.mjs'
+      - 'runtime/neuro-kurisu/tests/gepa-reflective-candidate-generator.mjs'
       - 'runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs'
       - 'runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs'
       - 'runtime/neuro-kurisu/tests/p23-local-model-skill-revision-integration.mjs'
@@ -45,6 +48,10 @@ on:
       - 'runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LocalModelSkillRevisionGenerator.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillRevisionPlan.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/GepaReflectiveCandidateGenerator.ts'
+      - 'runtime/neuro-kurisu/tests/p23-revision-plan-holdout-isolation.mjs'
+      - 'runtime/neuro-kurisu/tests/gepa-reflective-candidate-generator.mjs'
       - 'runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs'
       - 'runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs'
       - 'runtime/neuro-kurisu/tests/p23-local-model-skill-revision-integration.mjs'
@@ -88,6 +95,11 @@ jobs:
           node --experimental-strip-types tests/local-chat-provider-workpass40.mjs
           node --experimental-strip-types tests/p23-local-model-skill-revision-generator.mjs
           node --experimental-strip-types tests/p23-local-model-skill-revision-integration.mjs
+      - name: Run holdout-isolation and optional GEPA adapter contracts
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --experimental-strip-types tests/p23-revision-plan-holdout-isolation.mjs
+          node --experimental-strip-types tests/gepa-reflective-candidate-generator.mjs
       - name: Run Hexis belief and canonical provenance contracts
         working-directory: runtime/neuro-kurisu
         run: |
