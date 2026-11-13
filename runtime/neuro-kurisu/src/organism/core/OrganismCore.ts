@@ -2834,13 +2834,18 @@ export class OrganismCore {
     hexisMemoryPersistenceDiagnostics() {
         const live = this.memorySubsystem.memoryOS.snapshot({ clone: false });
         const durable = this.persisted.facets.advanced.memoryOS;
+        const now = Date.now();
         const hexisRows = (items: any[]) => items
             .filter(item => typeof item?.source === 'string' && item.source.startsWith('hexis:'))
             .slice(0, 64)
-            .map(item => ({ id: String(item.id), source: String(item.source), status: String(item.epistemicStatus ?? 'unknown') }));
+            .map(item => ({ id: String(item.id), source: String(item.source), status: String(item.epistemicStatus ?? 'unknown'), dormant: item.dormant === true, validFromAt: Number(item.validFromAt ?? item.createdAt), validUntilAt: item.validUntilAt == null ? null : Number(item.validUntilAt), createdAt: Number(item.createdAt) }));
+        const visibleCurrent = (items: any[]) => items.filter(item =>
+            Number(item.validFromAt ?? item.createdAt) <= now &&
+            now < (item.validUntilAt == null ? Number.POSITIVE_INFINITY : Number(item.validUntilAt)) &&
+            !item.dormant && item.epistemicStatus !== 'quarantined');
         return {
-            live: { itemCount: live.items.length, hexisItemCount: live.items.filter(item => String(item.source ?? '').startsWith('hexis:')).length, hexisRows: hexisRows(live.items) },
-            persistedProjection: { present: Boolean(durable), itemCount: Array.isArray(durable?.items) ? durable.items.length : 0, hexisItemCount: Array.isArray(durable?.items) ? durable.items.filter(item => String(item.source ?? '').startsWith('hexis:')).length : 0, hexisRows: Array.isArray(durable?.items) ? hexisRows(durable.items) : [] },
+            live: { itemCount: live.items.length, hexisItemCount: live.items.filter(item => String(item.source ?? '').startsWith('hexis:')).length, hexisVisibleCurrentCount: visibleCurrent(live.items).filter(item => String(item.source ?? '').startsWith('hexis:')).length, hexisRows: hexisRows(live.items) },
+            persistedProjection: { present: Boolean(durable), itemCount: Array.isArray(durable?.items) ? durable.items.length : 0, hexisItemCount: Array.isArray(durable?.items) ? durable.items.filter(item => String(item.source ?? '').startsWith('hexis:')).length : 0, hexisVisibleCurrentCount: Array.isArray(durable?.items) ? visibleCurrent(durable.items).filter(item => String(item.source ?? '').startsWith('hexis:')).length : 0, hexisRows: Array.isArray(durable?.items) ? hexisRows(durable.items) : [] },
             checkpoint: { fullCount: this.persistence.persistenceFullCheckpointCount, partialCount: this.persistence.persistencePartialCheckpointCount, dirty: this.persistence.persistenceDirty, dirtyCycles: this.persistence.dirtyCycles },
         };
     }
