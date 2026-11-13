@@ -109,6 +109,45 @@ assert.equal(
   'the unified recall packet must not resurrect the explicitly forgotten record',
 );
 
+// A stale compatibility or P62-only copy must still be removed when the canonical
+// row has already disappeared (for example, after a partial or older restore).
+{
+  const orphanId = 'already-absent-canonical-row';
+  multiTimescale.add({
+    ...projected,
+    id: 'orphaned-projection-alias',
+    summary: 'orphaned supernova evidence that must also be forgotten',
+    canonicalProjection: { owner: 'memoryOS2', itemId: orphanId, schemaVersion: 1 },
+  });
+  p62.recall({
+    query: 'orphaned supernova evidence',
+    memoryOS: [],
+    multiTimescale: [{
+      id: orphanId,
+      content: 'orphaned supernova evidence that must also be forgotten',
+      kind: 'episode',
+      confidence01: 0.9,
+      salience01: 0.9,
+      source: 'compatibility-projection',
+    }],
+    semanticNodes: [],
+    beliefs: [],
+  });
+  assert.equal(memoryOS.snapshot().items.some(row => row.id === orphanId), false);
+  assert.equal(
+    fabric.applyLifecycleCommand({ action: 'forget', id: orphanId, reason: 'stale-cache-reconciliation' }),
+    true,
+    'forget should report success when it purges a derived-only orphan',
+  );
+  assert.equal(multiTimescale.snapshot().some(row => row.id === 'orphaned-projection-alias'), false);
+  assert.equal(p62.snapshot().history.some(frame => frame.hits.some(hit => hit.id === orphanId)), false);
+  assert.equal(
+    fabric.applyLifecycleCommand({ action: 'forget', id: orphanId, reason: 'stale-cache-reconciliation' }),
+    false,
+    'a repeated forget with no canonical or derived copy should be a no-op',
+  );
+}
+
 console.log('MEMORY_FORGET_PROJECTION_INTEGRITY=PASS');
 
 // Distinct source namespaces may describe the same concept without collapsing
