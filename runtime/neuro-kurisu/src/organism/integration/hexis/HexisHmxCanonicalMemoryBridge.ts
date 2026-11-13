@@ -243,7 +243,7 @@ export class HexisHmxCanonicalMemoryBridge {
         provenanceClass: 'external',
         sourceAuthority01: 0.2,
         independenceKey: 'hmx:' + sourceInstance,
-        evidenceFreshnessAt: observedAt ?? Date.now(),
+        evidenceFreshnessAt: observedAt ?? stage.createdAt,
         ...(observedAt === undefined ? {} : { observedAt, validFromAt: observedAt }),
         tags: ['external-import', 'hmx-1x', 'unverified-source'],
         context: {
