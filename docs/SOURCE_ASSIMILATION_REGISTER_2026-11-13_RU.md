@@ -611,13 +611,14 @@ Updated gates remain: metadata 21/21; preliminary license scope 21/21; legal cle
 - P23 остаётся единственным owner независимой оценки, authenticated receipts, candidate staging, shadow, approval, promotion и rollback;
 - при отключённом GEPA сохраняется текущий local llama.cpp path; при явном opt-in ошибки sidecar возвращаются как ошибка генерации, без скрытого fallback.
 
-Профильный workflow `43417587842` на точном SHA `e2fa5545aaac365123dfb65a05e8e66980500bf8` завершился SUCCESS:
+Профильный workflow `43417587842` на точном SHA `e2fa5545aaac365123dfb65a05e8e66980500bf8` завершился SUCCESS. После обновления реестра точный повторный workflow `43417925336` на SHA `18748be1399533b42ec708dd11e77b2bec3cb66b` также завершился SUCCESS:
 - source-to-runtime static audit: 7/7 adapters, 33/33 checks;
-- source register + stage overlay tests: 10/10;
+- source register + stage overlay tests: 11/11;
 - P23 llama.cpp provider/generator/integration contracts: PASS;
 - P23 holdout isolation: PASS;
 - GEPA candidate sidecar tests: PASS (включая real loopback HTTP roundtrip, no-holdout projection, bounds, candidate-only response и source-field preservation);
 - Hexis/Letta/Lumina/Will/Mem0 contracts: PASS.
+Последний exact-head receipt хранится в `engineering-os/source-assimilation-stage-overrides.v1.json`; это тесты контракта и локального fixture sidecar, не live optimizer.
 
 Что это **не** означает:
 - полноценный DSPy/GEPA optimizer не установлен и не упакован в NK1;
