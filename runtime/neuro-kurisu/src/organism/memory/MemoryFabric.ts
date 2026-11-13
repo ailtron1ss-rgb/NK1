@@ -274,13 +274,21 @@ export class MemoryFabric {
       }
       case 'forget': {
         const forgotten=this.memoryOS.forgetById(command.id,command.reason??'memory-knockout');
-        // Purge derived caches even when the canonical row is already absent: a
-        // prior partial restore may have left a compatibility or recall-only copy.
-        const projectionRemoved=this.multiTimescale.removeCanonicalProjection(command.id);
-        const recallFramesRemoved=this.p62.forgetMemory(command.id);
-        const applied=Boolean(forgotten||projectionRemoved||recallFramesRemoved>0);
+        // MemoryOS2 may deliberately refuse deletion for protected identity,
+        // autobiographical, or quarantined rows. Never turn that refusal into a
+        // partial forget by deleting their read-model projections or recall frames.
+        // Derived cleanup is allowed only after canonical deletion, or when the
+        // canonical row was already absent (partial restore/recovery).
+        const canonicalRemains=this.findCanonical(command.id)!==null;
+        let projectionRemoved=false;
+        let recallFramesRemoved=0;
+        if(forgotten||!canonicalRemains){
+          projectionRemoved=this.multiTimescale.removeCanonicalProjection(command.id);
+          recallFramesRemoved=this.p62.forgetMemory(command.id);
+        }
+        const applied=Boolean(forgotten||(!canonicalRemains&&(projectionRemoved||recallFramesRemoved>0)));
         result=applied; booleanValue=applied;memoryId=command.id;outcome=applied?'applied':'noop';
-        this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));
+        if(applied)this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));
         if(applied){
           eventPayload={action,memoryId:command.id,reason:String(command.reason??'memory-knockout').slice(0,240),commandId:commandId||undefined};
         }
