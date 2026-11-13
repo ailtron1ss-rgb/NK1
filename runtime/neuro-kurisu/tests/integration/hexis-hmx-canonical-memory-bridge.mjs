@@ -131,7 +131,7 @@ assert.equal(integratedStage.ok, true);
 assert.equal(systems.hexisAdaptation.getHmxStage(integratedStage.stagingId).sourceSubjectId, 'donor-instance-1',
   'the staged record must preserve the donor instance identity');
 const integratedCommit = systems.memory.hexisHmxCanonicalMemoryBridge.commit(integratedStage.stagingId);
-assert.equal(integratedCommit.ok, true);
+assert.equal(integratedCommit.ok, true, JSON.stringify(integratedCommit));
 const canonicalId = integratedCommit.refMap['memory:runtime'];
 const canonical = systems.memory.fabric.getCanonicalMemory(canonicalId);
 assert.equal(canonical?.content, 'Canonical runtime wiring test memory.');
