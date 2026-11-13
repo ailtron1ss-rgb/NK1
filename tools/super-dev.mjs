@@ -7,9 +7,9 @@ const stateDir = resolve(ROOT, '.super-state');
 mkdirSync(stateDir, { recursive: true });
 
 const children = [];
-function launch(label, command, args, env = {}) {
+function launch(label, command, args, env = {}, cwd = ROOT) {
   const child = spawn(command, args, {
-    cwd: ROOT,
+    cwd,
     env: { ...process.env, ...env },
     stdio: 'inherit',
   });
@@ -22,12 +22,11 @@ function launch(label, command, args, env = {}) {
 }
 
 if (!existsSync(resolve(ROOT, 'app/package.json'))) throw new Error('app/package.json missing');
-launch('neuro-kurisu', 'node', ['--experimental-strip-types', 'src/server/server.mjs'], {
-  PORT: '3310',
-  HOST: '127.0.0.1',
-  STATE_DIR: resolve(stateDir, 'organism'),
-  NODE_ENV: 'development',
+const runtimeSpec = createRuntimeLaunchSpec(ROOT, resolve(stateDir, 'organism'), {
+  nodeExecutable: 'node',
+  nodeEnv: 'development',
 });
+launch('neuro-kurisu', runtimeSpec.command, runtimeSpec.args, runtimeSpec.env, runtimeSpec.cwd);
 launch('research-bridge', 'python3', ['research/research_bridge.py'], {
   RESEARCH_PORT: '8765',
 });
