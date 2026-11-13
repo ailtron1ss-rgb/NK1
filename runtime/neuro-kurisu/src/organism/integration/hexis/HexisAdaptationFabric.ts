@@ -97,12 +97,36 @@ export interface HexisRetentionProposal {
     status: 'proposed' | 'accepted' | 'rejected';
     createdAt: number;
 }
+export interface HexisHmxApplyReceipt {
+    version: 1;
+    exportId: string;
+    sourceLineageId: string;
+    stageId: string;
+    stageDigest: string;
+    appliedAt: number;
+    status: 'applied' | 'partial' | 'noop';
+    complete: boolean;
+    candidateMemoryRecords: number;
+    uniqueMemoryRecords: number;
+    importedCount: number;
+    deduplicatedCount: number;
+    projectedRelationships: number;
+    deferredRelationships: number;
+    semanticEdgeIds: string[];
+    memoryIds: string[];
+    createdMemoryIds: string[];
+    deferredSections: Record<string, number>;
+    warnings: string[];
+    digest: string;
+}
 export interface HexisHmxStage {
     stagingId: string;
     exportId: string;
     intent: HexisHmxIntent;
     strategy: HexisHmxStrategy;
     sourceSubjectId?: string;
+    sourceLineageId?: string;
+    sourceSchemaVersion?: string;
     sectionCounts: Record<string, number>;
     protectedSections: string[];
     conflicts: Array<{
@@ -110,10 +134,12 @@ export interface HexisHmxStage {
         kind: string;
         detail: string;
     }>;
-    status: 'staged' | 'accepted' | 'rejected';
+    status: 'staged' | 'accepted' | 'rejected' | 'applied';
     createdAt: number;
     digest: string;
     stagedSections: Record<string, unknown>;
+    applicationAttempts?: number;
+    application?: HexisHmxApplyReceipt;
 }
 export interface HexisOutboxEntry {
     id: string;
@@ -181,6 +207,7 @@ export interface HexisAdaptationState {
         retentionProposals: number;
         hmxStaged: number;
         hmxAccepted: number;
+        hmxApplied: number;
         outboxQueued: number;
         outboxPublished: number;
         outboxIdempotencyConflicts: number;
@@ -389,17 +416,37 @@ function isHexisHmxConflict(value: unknown): boolean {
     return isHexisSafeText(value.path, 512) && isHexisSafeText(value.kind, 128) &&
         isHexisSafeText(value.detail, 2_000, true);
 }
+function isHexisHmxApplyReceipt(value: unknown): value is HexisHmxApplyReceipt {
+    if (!isHexisPolicyRecord(value)) return false;
+    return value.version === 1 && isHexisSafeText(value.exportId, 128) &&
+        isHexisSafeText(value.sourceLineageId, 256) && isHexisSafeText(value.stageId, 128) &&
+        isHexisDigest(value.stageDigest) && isHexisTime(value.appliedAt) &&
+        ['applied', 'partial', 'noop'].includes(String(value.status)) &&
+        typeof value.complete === 'boolean' &&
+        ['candidateMemoryRecords', 'uniqueMemoryRecords', 'importedCount', 'deduplicatedCount', 'projectedRelationships', 'deferredRelationships'].every(key =>
+            Number.isSafeInteger(value[key]) && Number(value[key]) >= 0) &&
+        isHexisStringList(value.semanticEdgeIds, 512, 128) &&
+        isHexisStringList(value.memoryIds, 512, 128) &&
+        isHexisStringList(value.createdMemoryIds, 512, 128) &&
+        isHexisRecordOfCounts(value.deferredSections) &&
+        isHexisStringList(value.warnings, 64, 512) && isHexisDigest(value.digest);
+}
 function isHexisHmxStage(value: unknown): value is HexisHmxStage {
     if (!isHexisPolicyRecord(value)) return false;
-    return isHexisSafeText(value.stagingId, 128) && isHexisSafeText(value.exportId, 256) &&
+    return isHexisSafeText(value.stagingId, 128) && isHexisSafeText(value.exportId, 128) &&
         ['port', 'duplicate', 'telepathy', 'analysis'].includes(String(value.intent)) &&
         ['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(String(value.strategy)) &&
         (value.sourceSubjectId === undefined || isHexisSafeText(value.sourceSubjectId, 256)) &&
+        (value.sourceLineageId === undefined || isHexisSafeText(value.sourceLineageId, 256)) &&
+        (value.sourceSchemaVersion === undefined || isHexisSafeText(value.sourceSchemaVersion, 64)) &&
+        (value.applicationAttempts === undefined || (Number.isSafeInteger(value.applicationAttempts) && Number(value.applicationAttempts) >= 0 && Number(value.applicationAttempts) <= 1000)) &&
+        (value.application === undefined || isHexisHmxApplyReceipt(value.application)) &&
+        (value.status !== 'applied' || isHexisHmxApplyReceipt(value.application)) &&
         isHexisRecordOfCounts(value.sectionCounts) &&
         isHexisStringList(value.protectedSections, 128, 128) &&
         Array.isArray(value.conflicts) && value.conflicts.length <= 256 &&
         value.conflicts.every(isHexisHmxConflict) &&
-        ['staged', 'accepted', 'rejected'].includes(String(value.status)) &&
+        ['staged', 'accepted', 'rejected', 'applied'].includes(String(value.status)) &&
         isHexisTime(value.createdAt) && isHexisDigest(value.digest) &&
         isHexisPolicyRecord(value.stagedSections);
 }
@@ -439,10 +486,15 @@ function normalizeHexisRows<T>(
 
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
 export function defaultHexisAdaptationState(): HexisAdaptationState {
-    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
+    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, hmxApplied: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
+    private canonicalMemoryApply?: (stage: HexisHmxStage) => HexisHmxApplyReceipt;
+
+    bindCanonicalMemoryApply(handler: (stage: HexisHmxStage) => HexisHmxApplyReceipt): void {
+        this.canonicalMemoryApply = handler;
+    }
     restore(raw?: Partial<HexisAdaptationState> | null): void {
         const defaults = defaultHexisAdaptationState();
         let value: Record<string, unknown>;
@@ -601,17 +653,172 @@ export class HexisAdaptationFabric {
         document: unknown;
         intent: HexisHmxIntent;
         strategy: HexisHmxStrategy;
-    }): HexisHmxStage { const document = input.document && typeof input.document === 'object' ? input.document as Record<string, unknown> : {}; const sections = document.sections && typeof document.sections === 'object' && !Array.isArray(document.sections) ? document.sections as Record<string, unknown> : {}; const conflicts: HexisHmxStage['conflicts'] = []; if (document.hmx_version && !String(document.hmx_version).startsWith('1.'))
-        conflicts.push({ path: 'hmx_version', kind: 'unsupported-major', detail: `Hexis adapter accepts HMX 1.x, got ${String(document.hmx_version)}` }); if (!Object.keys(sections).length)
-        conflicts.push({ path: 'sections', kind: 'schema', detail: 'sections must be a non-empty object' }); const names = Object.keys(sections); const blocked = (input.intent === 'telepathy' || input.intent === 'analysis') ? names.filter((name) => protectedSections.has(name)) : []; if (blocked.length)
-        conflicts.push({ path: 'sections', kind: 'protected-by-intent', detail: `protected sections require explicit replacement protocol: ${blocked.join(', ')}` }); const sectionCounts: Record<string, number> = {}; const stagedSections: Record<string, unknown> = {}; for (const [name, records] of Object.entries(sections)) {
-        sectionCounts[name] = Array.isArray(records) ? records.length : 1;
-        stagedSections[name] = Array.isArray(records) ? structuredClone(records.slice(0, 64)) : structuredClone(records);
-    } const base = { exportId: String(document.export_id ?? randomUUID()), intent: input.intent, strategy: input.strategy, sourceSubjectId: document.source_subject_id ? String(document.source_subject_id) : undefined, sectionCounts, protectedSections: names.filter((name) => protectedSections.has(name)), conflicts, stagedSections }; const stage: HexisHmxStage = { ...base, stagingId: randomUUID(), status: 'staged', createdAt: nowMs(), digest: digest(base) }; this.state.hmxStages.push(stage); this.state.hmxStages = this.state.hmxStages.slice(-32); this.state.metrics.hmxStaged += 1; return structuredClone(stage); }
-    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length))
-        return stage ? structuredClone(stage) : null; stage.status = decision === 'accept' ? 'accepted' : 'rejected'; if (decision === 'accept')
-        this.state.metrics.hmxAccepted += 1; return structuredClone(stage); }
-    getHmxStage(stagingId: string) { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); return stage ? structuredClone(stage) : null; }
+    }): HexisHmxStage {
+        const conflicts: HexisHmxStage['conflicts'] = [];
+        let document: Record<string, unknown> = Object.create(null);
+        try {
+            document = snapshotPlainData(input.document, { maxStringUnits: 4 * 1024 * 1024 }) as Record<string, unknown>;
+        } catch (error) {
+            conflicts.push({ path: 'document', kind: 'plain-data', detail: String((error as any)?.message ?? error).slice(0, 500) });
+        }
+        const isRecord = (value: unknown): value is Record<string, unknown> =>
+            value !== null && typeof value === 'object' && !Array.isArray(value);
+        const safeText = (value: unknown, max: number) =>
+            typeof value === 'string' && value.trim().length > 0 && value.length <= max &&
+            !HEXIS_SAFE_TEXT_CONTROL.test(value);
+        const exportId = safeText(document.export_id, 64) ? String(document.export_id) : '';
+        if (!/^exp_[0-9a-f]{16}$/.test(exportId)) {
+            conflicts.push({ path: 'export_id', kind: 'schema', detail: 'HMX 1.7 export_id must match exp_ plus 16 lowercase hexadecimal characters' });
+        }
+        if (document.hmx_version !== '1.7') {
+            conflicts.push({ path: 'hmx_version', kind: 'unsupported-version', detail: 'Only HMX 1.7 is accepted for canonical staging' });
+        }
+        if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(String(input.intent)) ||
+            !['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(String(input.strategy))) {
+            conflicts.push({ path: 'intent', kind: 'policy', detail: 'HMX intent or import strategy is unsupported' });
+        }
+        if (document.export_intent !== input.intent) {
+            conflicts.push({ path: 'export_intent', kind: 'intent-mismatch', detail: 'The requested intent must match the signed-in-document export_intent field' });
+        }
+        if (!safeText(document.exported_at, 64) || !Number.isFinite(Date.parse(String(document.exported_at)))) {
+            conflicts.push({ path: 'exported_at', kind: 'schema', detail: 'HMX exported_at must be an ISO date-time' });
+        }
+        const source = isRecord(document.source) ? document.source : {};
+        if (!safeText(source.instance_id, 256) || !safeText(source.schema_version, 64) ||
+            !safeText(source.embedding_model, 256) ||
+            !Number.isSafeInteger(source.embedding_dimension) || Number(source.embedding_dimension) < 1 ||
+            !safeText(source.hexis_lineage_id, 256)) {
+            conflicts.push({ path: 'source', kind: 'schema', detail: 'HMX source must include instance_id, schema_version, embedding_model, positive embedding_dimension and hexis_lineage_id' });
+        }
+        const sections = isRecord(document.sections) ? document.sections : {};
+        if (!Object.keys(sections).length) {
+            conflicts.push({ path: 'sections', kind: 'schema', detail: 'HMX sections must be a non-empty object' });
+        }
+        const sectionCounts: Record<string, number> = {};
+        const stagedSections: Record<string, unknown> = {};
+        const names = Object.keys(sections);
+        const supportedSections = new Set(['memories', 'episodes', 'relationships', 'narrative', 'identity', 'worldview', 'goals', 'drives', 'emotional_triggers', 'clusters', 'in_flight_work', 'audit_records', 'raw_units', 'config']);
+        for (const [name, value] of Object.entries(sections)) {
+            if (!supportedSections.has(name)) {
+                conflicts.push({ path: 'sections.' + name, kind: 'unknown-section', detail: 'Unknown HMX 1.7 section cannot be interpreted safely' });
+                continue;
+            }
+            if (!Array.isArray(value)) {
+                conflicts.push({ path: 'sections.' + name, kind: 'schema', detail: 'HMX section values must be arrays' });
+                continue;
+            }
+            const max = name === 'memories' ? 256 : name === 'relationships' ? 512 : 256;
+            sectionCounts[name] = value.length;
+            if (value.length > max) {
+                conflicts.push({ path: 'sections.' + name, kind: 'section-limit', detail: 'Section exceeds the bounded staging limit of ' + max + ' records' });
+                continue;
+            }
+            stagedSections[name] = structuredClone(value);
+        }
+        const memories = Array.isArray(sections.memories) ? sections.memories : [];
+        const refs = new Set<string>();
+        for (let index = 0; index < memories.length && index < 257; index++) {
+            const row = memories[index];
+            const ref = isRecord(row) ? row.ref : undefined;
+            const content = isRecord(row) ? row.content : undefined;
+            const type = isRecord(row) ? row.type : undefined;
+            if (!safeText(ref, 512) || !String(ref).startsWith(exportId + ':') ||
+                !safeText(content, 12_000) || !safeText(type, 64)) {
+                conflicts.push({ path: 'sections.memories[' + index + ']', kind: 'memory-record', detail: 'Each memory needs a source-scoped ref, type and non-empty bounded content' });
+                continue;
+            }
+            if (refs.has(String(ref))) conflicts.push({ path: 'sections.memories[' + index + '].ref', kind: 'duplicate-ref', detail: 'Memory refs must be unique within an export' });
+            refs.add(String(ref));
+        }
+        const relationships = Array.isArray(sections.relationships) ? sections.relationships : [];
+        if (relationships.length > 512) {
+            conflicts.push({ path: 'sections.relationships', kind: 'section-limit', detail: 'Relationships exceed 512 records' });
+        }
+        for (let index = 0; index < relationships.length && index < 513; index++) {
+            const row = relationships[index];
+            if (!isRecord(row) || !safeText(row.source_ref, 512) || !safeText(row.target_ref, 512) || !safeText(row.edge_type, 64)) {
+                conflicts.push({ path: 'sections.relationships[' + index + ']', kind: 'relationship-record', detail: 'Each relationship needs source_ref, target_ref and edge_type' });
+            }
+        }
+        const blocked = (input.intent === 'telepathy' || input.intent === 'analysis') ? names.filter(name => protectedSections.has(name)) : [];
+        if (blocked.length) {
+            conflicts.push({ path: 'sections', kind: 'protected-by-intent', detail: 'Protected sections are not allowed for ' + input.intent + ': ' + blocked.join(', ') });
+        }
+        const base = {
+            exportId: exportId || 'invalid-export',
+            intent: input.intent,
+            strategy: input.strategy,
+            sourceSubjectId: safeText(source.instance_id, 256) ? String(source.instance_id) : undefined,
+            sourceLineageId: safeText(source.hexis_lineage_id, 256) ? String(source.hexis_lineage_id) : undefined,
+            sourceSchemaVersion: safeText(source.schema_version, 64) ? String(source.schema_version) : undefined,
+            sectionCounts,
+            protectedSections: names.filter(name => protectedSections.has(name)),
+            conflicts: conflicts.slice(0, 256),
+            stagedSections,
+        };
+        const stage: HexisHmxStage = {
+            ...base,
+            stagingId: randomUUID(),
+            status: 'staged',
+            createdAt: nowMs(),
+            digest: digest(base),
+            applicationAttempts: 0,
+        };
+        this.state.hmxStages.push(stage);
+        this.state.hmxStages = this.state.hmxStages.slice(-32);
+        this.state.metrics.hmxStaged += 1;
+        return structuredClone(stage);
+    }
+
+    decideHmx(stagingId: string, decision: 'accept' | 'reject' | 'apply'): HexisHmxStage | null {
+        const stage = this.state.hmxStages.find(row => row.stagingId === stagingId);
+        if (!stage) return null;
+        if (decision === 'accept') {
+            if (stage.status !== 'staged' || stage.conflicts.length > 0) return structuredClone(stage);
+            stage.status = 'accepted';
+            this.state.metrics.hmxAccepted += 1;
+            return structuredClone(stage);
+        }
+        if (decision === 'reject') {
+            if (stage.status !== 'staged') return structuredClone(stage);
+            stage.status = 'rejected';
+            return structuredClone(stage);
+        }
+        if (decision !== 'apply') throw new Error('hmx-decision-invalid');
+        if (stage.status === 'applied' && stage.application) return structuredClone(stage);
+        if (stage.status !== 'accepted') throw new Error('hmx-accept-required-before-apply');
+        if (stage.intent !== 'port' || stage.strategy !== 'additive') {
+            throw new Error('hmx-canonical-apply-requires-port-additive');
+        }
+        if (stage.conflicts.length > 0 || !stage.sourceLineageId) {
+            throw new Error('hmx-stage-not-canonically-applicable');
+        }
+        const base = {
+            exportId: stage.exportId,
+            intent: stage.intent,
+            strategy: stage.strategy,
+            sourceSubjectId: stage.sourceSubjectId,
+            sourceLineageId: stage.sourceLineageId,
+            sourceSchemaVersion: stage.sourceSchemaVersion,
+            sectionCounts: stage.sectionCounts,
+            protectedSections: stage.protectedSections,
+            conflicts: stage.conflicts,
+            stagedSections: stage.stagedSections,
+        };
+        if (digest(base) !== stage.digest) throw new Error('hmx-stage-digest-mismatch');
+        if (!this.canonicalMemoryApply) throw new Error('hmx-canonical-memory-projector-unavailable');
+        stage.applicationAttempts = Math.min(1000, Number(stage.applicationAttempts ?? 0) + 1);
+        const receipt = this.canonicalMemoryApply(structuredClone(stage));
+        if (!isHexisHmxApplyReceipt(receipt)) throw new Error('hmx-apply-receipt-invalid');
+        stage.application = structuredClone(receipt);
+        stage.status = 'applied';
+        this.state.metrics.hmxApplied += 1;
+        return structuredClone(stage);
+    }
+    getHmxStage(stagingId: string) {
+        const stage = this.state.hmxStages.find(row => row.stagingId === stagingId);
+        return stage ? structuredClone(stage) : null;
+    }
     enqueueOutbox(input: {
         idempotencyKey: string;
         kind: string;
