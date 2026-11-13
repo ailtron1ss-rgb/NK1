@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPinnedNodeMajor } from './lib/node-runtime.mjs';
-import { assertToolchainVersions } from './lib/super-startup.mjs';
+import { assertToolchainVersions, workspaceNeedsNodeModules } from './lib/super-startup.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
@@ -73,7 +73,12 @@ async function main() {
   console.log(`[quickstart] Node ${versions.node.major}, npm ${versions.npm.major}.${versions.npm.minor}, Python ${versions.python.major}.${versions.python.minor}: OK`);
 
   const workspaces = ['app', 'runtime/neuro-kurisu'];
-  const missing = workspaces.filter((workspace) => !existsSync(path.join(ROOT, workspace, 'node_modules')));
+  const missing = workspaces.filter((workspace) => {
+    const manifestPath = path.join(ROOT, workspace, 'package.json');
+    if (!existsSync(manifestPath)) throw new Error(`Workspace package manifest is missing: ${workspace}/package.json`);
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    return workspaceNeedsNodeModules(manifest) && !existsSync(path.join(ROOT, workspace, 'node_modules'));
+  });
   if (missing.length > 0) {
     console.log(`[quickstart] installing dependencies for: ${missing.join(', ')}`);
     await run('npm run install:all', npm, ['run', 'install:all']);
