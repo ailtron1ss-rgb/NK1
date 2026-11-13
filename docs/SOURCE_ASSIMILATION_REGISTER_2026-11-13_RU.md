@@ -222,7 +222,7 @@ Exact-head GitHub Actions run `43389637471` на `d3e29cc0ee2b912e3dc3ecd2b6f616
 
 Вывод: проблема существовала до Hexis policy; она заведена отдельно как [NK1 issue #865](https://github.com/ailtron1ss-rgb/NK1/issues/865). Это не закрывает дефект, но отделяет его от текущего изменения. ActionGateway approval/redaction boundary прошёл на baseline run `43390659519` и feature head run `43390671129`. В feature CI idempotency test изолирован от этого policy workflow, а approval regression остаётся в нём.
 
-После дополнительного сохранения прежнего reason-контракта (`no-autonomous-permitted-tool`) broad Action Gateway governance также прошёл. На runtime-code head `21dfd56100c92d8ff189aab7289938c663d266b1` успешны: Hexis-specific CI run `43391372605`, Action Gateway governance `43391372537`, Unified organism runtime `43391372628`, WorkPass79 cognitive regression `43391372683`, UserModel explicit-forget `43391372617` и 2D asset contract `43391372562`. Core regression validation `43391372691` был cancelled, не засчитывается. Позже изменён только CI trigger для документационных правок, branch head стал `b59b22e8af82c640269149702b03442e7931f37f`; новый Actions matrix на этом HEAD запускается повторно. PR #864 остаётся Draft, merge/release не делались.
+После дополнительного сохранения прежнего reason-контракта (`no-autonomous-permitted-tool`) broad Action Gateway governance также прошёл. На runtime-code head `21dfd56100c92d8ff189aab7289938c663d266b1` успешны: Hexis-specific CI run `43391372605`, Action Gateway governance `43391372537`, Unified organism runtime `43391372628`, WorkPass79 cognitive regression `43391372683`, UserModel explicit-forget `43391372617` и 2D asset contract `43391372562`. Core regression validation `43391372691` был cancelled, не засчитывается. После оптимизации CI triggers и актуализации отчёта feature branch head стал `c9604639099b38cc1e426aa38c3e02285b6247ae`; на exact HEAD focused Hexis CI `43391732083` завершился SUCCESS, WorkPass71 core regression `43391732006` — SUCCESS (46/46), UserModel explicit-forget `43391731884` — SUCCESS (10/10), Unified organism `43391731898` — SUCCESS (17/17), WorkPass79 `43391732225` — SUCCESS (27/27), 2D asset contract `43391731976` — SUCCESS. Action Gateway governance `43391732001` ещё выполнялся на момент этой записи. PR #864 остаётся Draft, merge/release не делались.
 
 ### Текущие границы и следующий проход
 
@@ -505,7 +505,7 @@ GitHub Compare также не нашёл общего предка между `
 
 ### Остаток
 
-1. Завершить Actions matrix на текущем workflow-only head `b59b22e8af82c640269149702b03442e7931f37f`.
+1. Получить финальный результат Action Gateway governance run `43391732001` на exact HEAD `c9604639099b38cc1e426aa38c3e02285b6247ae`.
 2. Проверить все tool registrations по `id/capability`, отдельно аудировать локальные drafts/shadow, microphone/camera/speech, project changes, network and file mutations.
 3. Исправить отдельный temporal-credit baseline defect [#865](https://github.com/ailtron1ss-rgb/NK1/issues/865): idempotency integration test 12/13 с одинаковым failing assert на чистой базе и feature ветке.
 4. Пройти оставшиеся 6 donor projects; path-level licenses/notices, model weights и assets review до любого файлового копирования.
