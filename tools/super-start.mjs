@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { spawn, execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, mkdirSync } from 'node:fs';
-import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPinnedNodeMajor } from './lib/node-runtime.mjs';
@@ -87,7 +86,7 @@ function launch(label, command, args, env = {}) {
     stdio: 'inherit',
     detached: process.platform !== 'win32',
     windowsHide: true,
-    shell: process.platform === 'win32' && /\\.cmd$/i.test(command),
+    shell: process.platform === 'win32' && /\.cmd$/i.test(command),
   });
   const service = { label, child, exited: false, failure: null, exitCode: null, signal: null };
   children.push(service);
