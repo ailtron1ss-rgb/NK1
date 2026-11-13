@@ -10,6 +10,7 @@ import { buildGradedTraitSalience } from '../language/GradedTraitSalience.ts';
 import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, type MemoryRetrievalBenchmarkOptions } from '../memory/MemoryRetrievalBenchmark.ts';
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
 import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisHmxStage, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { HMX_EXPORT_EXCLUDED_SECRET_PATTERNS, redactHmxExportText } from '../integration/hexis/HmxExportRedactor.ts';
 import { normalizeEvidenceLineageProvenance } from '../memory/EvidenceLineageProvenance.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
@@ -1158,30 +1159,6 @@ function activeGoalVectorFromState(goals: any[], state: any): number[] {
     const active = goals.filter((g: any) => g?.status === 'candidate' || g?.status === 'active').sort((a: any, b: any) => Number(b.priority ?? 0) - Number(a.priority ?? 0))[0];
     const v = Array.isArray(active?.vector) ? active.vector : Array.isArray(active?.features) ? active.features : [];
     return Array.from({ length: 16 }, (_, i) => clamp(Number(v[i] ?? (i === 0 ? state.needs.goalPressure : 0))));
-}
-const HMX_EXPORT_REDACTION_PATTERNS: Array<[string, RegExp]> = [
-    ['private-key', /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\\s\\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/gi],
-    ['credential-url', /https?:\\/\\/[^\\s/:@]+:[^\\s/@]+@[^\\s]+/gi],
-    ['bearer-token', /\\bBearer\\s+[A-Za-z0-9._~+\\/-]+=*/gi],
-    ['github-token', /\\b(?:github_pat_[A-Za-z0-9_]{16,}|gh[pousr]_[A-Za-z0-9]{16,})\\b/gi],
-    ['provider-token', /\\b(?:sk|rk|pk|api|token)[_-][A-Za-z0-9_-]{16,}\\b/gi],
-    ['aws-access-key', /\\bAKIA[0-9A-Z]{16}\\b/g],
-    ['jwt', /\\beyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\b/g],
-    ['secret-assignment', /((?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret)\\s*[:=]\\s*)(?:"[^"]*"|'[^']*'|[^\\s,;]+)/gi],
-    ['email-address', /\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/gi],
-    ['phone-number', /\\b\\+?\\d[\\d .()\\/-]{8,}\\d\\b/g],
-];
-const HMX_EXPORT_EXCLUDED_SECRET_PATTERNS = HMX_EXPORT_REDACTION_PATTERNS.map(([name]) => name);
-function redactHmxExportText(value: unknown, maxLength = 12_000): string {
-    let text = String(value ?? '').normalize('NFKC');
-    for (const [name, pattern] of HMX_EXPORT_REDACTION_PATTERNS) {
-        pattern.lastIndex = 0;
-        if (!pattern.test(text)) continue;
-        pattern.lastIndex = 0;
-        text = text.replace(pattern, (_match, prefix?: string) =>
-            prefix ? prefix + '[redacted:' + name + ']' : '[redacted:' + name + ']');
-    }
-    return text.slice(0, maxLength);
 }
 export class OrganismCore {
     private readonly config: Required<OrganismConfig>;
