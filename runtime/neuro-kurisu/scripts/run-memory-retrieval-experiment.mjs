@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runMemoryOS2RetrievalExperiment } from '../src/organism/memory/MemoryRetrievalExperiment.ts';
+import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
+import { previewNekoHybridMemoryRanking } from '../../../integrations/neko-memory-shadow/src/memoryos2-preview.mjs';
 
 const MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024;
 const MAX_LABEL_BYTES = 4 * 1024 * 1024;
@@ -13,7 +15,7 @@ const MAX_EXAMPLES = 512;
 function usage() {
   return [
     'Usage:',
-    '  node --experimental-strip-types scripts/run-memory-retrieval-experiment.mjs --snapshot <MemoryOSState2.json> --labels <labels.jsonl> --provenance <dataset-provenance.json> --out <report.json> [--seeds 11,29,47,71,101] [--k 5] [--now <unix-ms>] [--inspect-evidence true] [--min-train-per-language 4] [--min-answerable-per-language 20] [--min-unanswerable-per-language 8]',
+    '  node --experimental-strip-types scripts/run-memory-retrieval-experiment.mjs --snapshot <MemoryOSState2.json> --labels <labels.jsonl> --provenance <dataset-provenance.json> --out <report.json> [--seeds 11,29,47,71,101] [--k 5] [--now <unix-ms>] [--inspect-evidence true] [--min-train-per-language 4] [--min-answerable-per-language 20] [--min-unanswerable-per-language 8] [--candidate-strategy memoryos2-canonical|neko-shadow-rrf] [--candidate-rrf-profile equal|memoryos2] [--shadow-vector true|false]',
     '',
     'The label file is JSONL; optional explicit language labels are "en", "ru", or "other".',
     'A tagged benchmark requires all rows tagged and both en and ru for promotion; per-language holdout gates run separately.',
@@ -22,6 +24,7 @@ function usage() {
     'The Inspect export contains only per-query HMAC digests and bounded ranked-memory flags; the ephemeral key is never written to the report.',
     'The default bilingual evidence minimums are 4 train, 20 answerable holdout, and 8 unanswerable holdout queries per language.',
     'This runs offline on a clone; it does not alter live memory or automatically promote a candidate.',
+    'For --candidate-strategy neko-shadow-rrf, the existing Inspect holdout scorer evaluates the shadow arm; --shadow-vector true explicitly enables the configured semantic provider.',
   ].join('\n');
 }
 function parseArgs(argv) {
@@ -140,6 +143,82 @@ async function main() {
   if (!Number.isInteger(k) || k < 1 || k > 10) throw new Error('k-must-be-integer-1-to-10');
   const now = args.now === undefined ? Date.now() : Number(args.now);
   if (!Number.isSafeInteger(now) || now < 0) throw new Error('now-must-be-nonnegative-unix-milliseconds');
+  const candidateStrategy=args['candidate-strategy']??'memoryos2-canonical';
+  if(!['memoryos2-canonical','neko-shadow-rrf'].includes(candidateStrategy))throw new Error('--candidate-strategy-invalid');
+  const candidateRrfProfile=args['candidate-rrf-profile']??'equal';
+  if(!['equal','memoryos2'].includes(candidateRrfProfile))throw new Error('--candidate-rrf-profile-invalid');
+  if(args['shadow-vector']!==undefined&&!['true','false'].includes(args['shadow-vector']))throw new Error('--shadow-vector-must-be-true-or-false');
+  const shadowVectorRequested=args['shadow-vector']==='true';
+  if(candidateStrategy!=='neko-shadow-rrf'&&(shadowVectorRequested||args['candidate-rrf-profile']!==undefined))throw new Error('--shadow-options-require-neko-shadow-rrf');
+  let candidateRetriever;
+  let shadowRrfDiagnostics=null;
+  let candidateVectorEnabled=false;
+  if(candidateStrategy==='neko-shadow-rrf'){
+    const boundedShadowItems=snapshot.items.slice(0,1600).filter(item=>item&&typeof item.id==='string'&&item.id.trim()&&typeof item.content==='string');
+    const shadowSnapshot={...structuredClone(snapshot),items:structuredClone(boundedShadowItems)};
+    const shadowMemory=new MemoryOS2({embeddingProvider:shadowVectorRequested?undefined:null});
+    shadowMemory.restore(shadowSnapshot);
+    const itemById=new Map(boundedShadowItems.map(item=>[item.id,item]));
+    const shadowByQuery=new Map();
+    const previewLatencies=[];
+    const semanticProviders=new Set();
+    const fallbackReasons={};
+    let vectorEnabledQueries=0;
+    let exploratorySemanticCandidateCount=0;
+    let unmappedShadowCandidateIds=0;
+    let shadowCandidateIds=0;
+    let vectorCoverageSum=0;
+    for(const query of new Set(examples.map(example=>example.query))){
+      const started=performance.now();
+      const preview=await previewNekoHybridMemoryRanking(shadowMemory,query,{
+        limit:k,
+        maxPerChannel:64,
+        includeSemanticEmbeddingChannel:shadowVectorRequested,
+        useCanonicalWeights:candidateRrfProfile==='memoryos2',
+        temporalOptions:{temporalMode:'at',asOfAt:now},
+      });
+      const latencyMs=Math.max(0,performance.now()-started);
+      previewLatencies.push(latencyMs);
+      if(preview.semantic.enabled){
+        vectorEnabledQueries++;
+        semanticProviders.add(preview.semantic.provider);
+        vectorCoverageSum+=preview.semantic.coverage01;
+      }
+      if(preview.semantic.fallbackReason){
+        fallbackReasons[preview.semantic.fallbackReason]=(fallbackReasons[preview.semantic.fallbackReason]??0)+1;
+      }
+      exploratorySemanticCandidateCount+=preview.exploratorySemanticIds.length;
+      shadowCandidateIds+=preview.shadowIds.length;
+      const items=preview.shadowIds.map(id=>itemById.get(id)).filter(Boolean);
+      unmappedShadowCandidateIds+=preview.shadowIds.length-items.length;
+      shadowByQuery.set(query,{items,latencyMs,isolationSetupMs:0});
+    }
+    const sortedLatencies=[...previewLatencies].sort((a,b)=>a-b);
+    const percentile=(values,p)=>values.length?Number(values[Math.min(values.length-1,Math.ceil(values.length*p)-1)].toFixed(3)):0;
+    candidateVectorEnabled=vectorEnabledQueries>0;
+    candidateRetriever=(query,limit)=>{
+      const cached=shadowByQuery.get(query);
+      return cached?{...cached,items:cached.items.slice(0,limit)}:{items:[],latencyMs:0,isolationSetupMs:0};
+    };
+    shadowRrfDiagnostics={
+      mode:'offline-shadow-only',
+      rrfProfile:candidateRrfProfile,
+      vectorRequested:shadowVectorRequested,
+      vectorEnabled:candidateVectorEnabled,
+      vectorEnabledQueries,
+      semanticProviders:[...semanticProviders].sort(),
+      semanticFallbackReasons:fallbackReasons,
+      meanVectorCoverage01:vectorEnabledQueries?Number((vectorCoverageSum/vectorEnabledQueries).toFixed(4)):0,
+      uniqueQueries:previewLatencies.length,
+      shadowCandidateIds,
+      exploratorySemanticCandidateIds:exploratorySemanticCandidateCount,
+      unmappedShadowCandidateIds,
+      previewLatencyP50Ms:percentile(sortedLatencies,.5),
+      previewLatencyP95Ms:percentile(sortedLatencies,.95),
+      userFacingEligible:false,
+      promotionEligible:false,
+    };
+  }
   const report = runMemoryOS2RetrievalExperiment(snapshot, examples, {
     now, k, seeds, maxExamples: MAX_EXAMPLES,
     includeQueryEvidence,
@@ -149,6 +228,10 @@ async function main() {
     minLanguageAnswerableHoldoutQueries: minAnswerablePerLanguage,
     minLanguageUnanswerableHoldoutQueries: minUnanswerablePerLanguage,
     datasetProvenance: provenance,
+    candidateStrategy,
+    candidateRrfProfile,
+    candidateVectorEnabled,
+    ...(candidateRetriever?{candidateRetriever}:{}),
   });
   report.input = {
     snapshotFile: path.basename(snapshotFile.absolute),
@@ -157,11 +240,14 @@ async function main() {
     labelRowsParsed: examples.length,
     note: 'Absolute local paths are deliberately omitted from the report; use sourceRef in provenance for durable lineage.',
   };
+  if(shadowRrfDiagnostics)report.shadowRrf=shadowRrfDiagnostics;
   const outputPath = path.resolve(args.out);
   await publishReportExclusive(outputPath, `${JSON.stringify(report, null, 2)}\n`);
   const holdoutMetrics = report.runs[0]?.candidateHoldout;
   console.log(JSON.stringify({
     output: outputPath,
+    candidateStrategy: report.candidateStrategy,
+    shadowRrf: report.shadowRrf??null,
     datasetFingerprint: report.datasetFingerprint,
     corpusFingerprint: report.corpusFingerprint,
     seedCount: report.seedCount,
