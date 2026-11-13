@@ -67,9 +67,6 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - name: Emit the current registry document for deterministic maintenance
-        run: |
-          node --input-type=module -e "import{readFileSync}from'node:fs';import{gunzipSync}from'node:zlib';console.log('SOURCE_REGISTRY_JSON_START');console.log(gunzipSync(readFileSync('engineering-os/source-assimilation.v1.json.gz')).toString('utf8'));console.log('SOURCE_REGISTRY_JSON_END')"
       - name: Validate the evidence-tracked external source register
         run: |
           npm run sources:validate
