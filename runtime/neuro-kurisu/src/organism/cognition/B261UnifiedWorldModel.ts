@@ -23,7 +23,7 @@ export interface B261UnifiedWorldModelState {
   actionEmbeddings:number[][]; transitionWeights:number[][]; transitionBias:number[];
   rewardWeights:number[]; rewardBias:number; rewardActionWeights:number[][]; rewardActionBias:number[]; uncertainty01:number;
   onlineTransitionError01:number; onlineRewardError01:number;
-  holdoutBefore01:number; holdoutAfter01:number; holdoutDelta01:number;
+  holdoutBefore01:number; holdoutAfter01:number; holdoutDelta01:number; holdoutBaselineAvailable:boolean; holdoutSamples:number;
   lesionTransitionDrop01:number; lesionRewardDrop01:number;
   replayGain01:number; transferGain01:number; actionSensitivity01:number; sequencePlans:number; sequenceBenchmarks:number; sequenceRegret01:number; counterfactualActionGap01:number;
   episodes:B261WorldModelEpisode[];
@@ -36,7 +36,7 @@ export function defaultB261UnifiedWorldModel():B261UnifiedWorldModelState {
     actionEmbeddings:ACTIONS.map(a=>Array.from({length:DIM},(_,i)=>seed(`a:${a}:${i}`))),
     transitionWeights:Array.from({length:DIM},(_,i)=>Array.from({length:DIM},(_,j)=>seed(`t:${i}:${j}`))),
     transitionBias:new Array(DIM).fill(0),rewardWeights:Array.from({length:DIM},(_,i)=>seed(`r:${i}`)),rewardBias:0,rewardActionWeights:ACTIONS.map(a=>Array.from({length:DIM},(_,i)=>seed(`ra:${a}:${i}`))),rewardActionBias:ACTIONS.map(a=>seed(`rab:${a}`)),uncertainty01:.75,
-    onlineTransitionError01:.5,onlineRewardError01:.5,holdoutBefore01:.5,holdoutAfter01:.5,holdoutDelta01:0,
+    onlineTransitionError01:.5,onlineRewardError01:.5,holdoutBefore01:0,holdoutAfter01:.5,holdoutDelta01:0,holdoutBaselineAvailable:false,holdoutSamples:0,
     lesionTransitionDrop01:0,lesionRewardDrop01:0,replayGain01:0,transferGain01:0,actionSensitivity01:0,sequencePlans:0,sequenceBenchmarks:0,sequenceRegret01:0,counterfactualActionGap01:0,episodes:[]};
 }
 
@@ -50,6 +50,11 @@ export class B261UnifiedWorldModel {
       transitionWeights:mats(r.transitionWeights,DIM,DIM,'t'),transitionBias:resize(r.transitionBias,DIM,'tb'),rewardWeights:resize(r.rewardWeights,DIM,'r'),
       rewardActionWeights:ACTIONS.map((a,ai)=>resize(r.rewardActionWeights?.[ai],DIM,`ra:${a}`)),
       rewardActionBias:ACTIONS.map((a,ai)=>clamp(Number(r.rewardActionBias?.[ai]??seed(`rab:${a}`)))),
+      holdoutBefore01:r.holdoutBaselineAvailable===true?clamp01(Number(r.holdoutBefore01??d.holdoutBefore01)):0,
+      holdoutAfter01:clamp01(Number(r.holdoutAfter01??d.holdoutAfter01)),
+      holdoutDelta01:r.holdoutBaselineAvailable===true?clamp(Number(r.holdoutDelta01??0)):0,
+      holdoutBaselineAvailable:r.holdoutBaselineAvailable===true,
+      holdoutSamples:Math.max(0,Math.min(256,Math.floor(Number.isFinite(Number(r.holdoutSamples))?Number(r.holdoutSamples):0))),
       episodes:Array.isArray(r.episodes)?r.episodes.slice(-MAX_H):d.episodes};
   }
   snapshot(){return structuredClone(this.state);}
@@ -104,12 +109,38 @@ export class B261UnifiedWorldModel {
     for(const e of rows){ before+=e.transitionError01+e.rewardError01; this.learnInternal(e.before,e.action,e.actualAfter,e.actualReward01,tick,'replay',false); const latest=this.state.episodes.find(x=>x.tick===e.tick&&x.action===e.action); e.replayCount++; const p=this.predictTransition(e.before,e.action); const t=mse(p.after,e.actualAfter),r=Math.abs(p.reward01-e.actualReward01); e.predictedAfter=p.after;e.predictedReward01=p.reward01;e.transitionError01=t;e.rewardError01=r;after+=t+r; }
     const gain=rows.length?clamp01((before-after)/Math.max(1,rows.length)):0; this.state.replayGain01=clamp01(this.state.replayGain01*.85+gain*.15); return {episodes:rows.length,gain01:gain};
   }
-  holdout(samples:Array<{before:number[];action:ActionKind;after:number[];reward01:number}>){
-    if(!samples.length)return {before01:this.state.holdoutBefore01,after01:this.state.holdoutAfter01,delta01:0,samples:0};
-    const errs=samples.map(s=>{const p=this.predictTransition(s.before,s.action);return (mse(p.after,s.after)+Math.abs(p.reward01-s.reward01))*.5;});
-    const after=errs.reduce((a,b)=>a+b,0)/errs.length, before=this.state.holdoutBefore01;
-    this.state.holdoutAfter01=after;this.state.holdoutDelta01=before-after; this.state.transferGain01=clamp01(this.state.transferGain01*.85+Math.max(0,before-after)*.15);
-    return {before01:before,after01:after,delta01:before-after,samples:samples.length};
+  holdout(
+    samples:Array<{before:number[];action:ActionKind;after:number[];reward01:number}>,
+    baselineSnapshot?:B261UnifiedWorldModelState,
+  ){
+    const rows=samples.slice(0,256);
+    if(rows.some(sample=>!Array.isArray(sample.before)||sample.before.length!==DIM||!sample.before.every(Number.isFinite)||!Array.isArray(sample.after)||sample.after.length!==DIM||!sample.after.every(Number.isFinite)||!ACTIONS.includes(sample.action)||!Number.isFinite(sample.reward01)||sample.reward01<0||sample.reward01>1))throw new TypeError('invalid-world-model-holdout-sample');
+    if(baselineSnapshot&&(baselineSnapshot.version!==3||baselineSnapshot.dimension!==DIM))throw new RangeError('holdout-baseline-snapshot-version-mismatch');
+    if(!rows.length){
+      this.state.holdoutBaselineAvailable=false;this.state.holdoutDelta01=0;this.state.holdoutSamples=0;
+      return {baselineAvailable:false,before01:null,after01:this.state.holdoutAfter01,delta01:null,samples:0,reason:'empty-holdout'};
+    }
+    const errorFor=(model:B261UnifiedWorldModel)=>{
+      const errors=rows.map(sample=>{
+        const p=model.predictTransition(sample.before,sample.action);
+        const reward=clamp01(Number.isFinite(sample.reward01)?sample.reward01:.5);
+        return (mse(p.after,sample.after)+Math.abs(p.reward01-reward))*.5;
+      });
+      return errors.reduce((sum,value)=>sum+value,0)/errors.length;
+    };
+    const after=errorFor(this);
+    if(!baselineSnapshot){
+      this.state.holdoutAfter01=after;this.state.holdoutSamples=rows.length;
+      this.state.holdoutBefore01=0;this.state.holdoutBaselineAvailable=false;this.state.holdoutDelta01=0;
+      return {baselineAvailable:false,before01:null,after01:after,delta01:null,samples:rows.length,reason:'baseline-snapshot-required'};
+    }
+    // Compute both sides before mutating diagnostics: a malformed baseline must leave the candidate untouched.
+    const baseline=new B261UnifiedWorldModel();baseline.restore(baselineSnapshot);
+    const before=errorFor(baseline),delta=before-after;
+    this.state.holdoutAfter01=after;this.state.holdoutSamples=rows.length;
+    this.state.holdoutBefore01=before;this.state.holdoutBaselineAvailable=true;this.state.holdoutDelta01=delta;
+    this.state.transferGain01=clamp01(this.state.transferGain01*.85+Math.max(0,delta)*.15);
+    return {baselineAvailable:true,before01:before,after01:after,delta01:delta,samples:rows.length,reason:'matched-baseline-comparison'};
   }
   compareActions(before:number[]){
     const preds=ACTIONS.map(action=>({action, ...(()=>{ const p=this.predict(before,action); return {predictedAfter:p.predictedAfter,predictedReward01:p.predictedReward01,confidence01:p.confidence01,uncertainty01:p.uncertainty01}; })()})); const rewards=preds.map(x=>x.predictedReward01); const spread=Math.max(...rewards)-Math.min(...rewards); this.state.actionSensitivity01=clamp01(this.state.actionSensitivity01*.9+spread*.1); return preds;
@@ -184,5 +215,5 @@ export class B261UnifiedWorldModel {
     return {samples:n,modelRegret01,baselineRegret01,actionHitRate01:clamp01(hits/n),uplift01,meanCounterfactualGap01};
   }
 
-  diagnostics(){return {steps:this.state.steps,updates:this.state.updates,trainingUpdates:this.state.trainingUpdates,onlineTransitionError01:this.state.onlineTransitionError01,onlineRewardError01:this.state.onlineRewardError01,holdoutDelta01:this.state.holdoutDelta01,lesionTransitionDrop01:this.state.lesionTransitionDrop01,lesionRewardDrop01:this.state.lesionRewardDrop01,replayGain01:this.state.replayGain01,transferGain01:this.state.transferGain01,actionSensitivity01:this.state.actionSensitivity01,sequencePlans:this.state.sequencePlans,sequenceBenchmarks:this.state.sequenceBenchmarks,sequenceRegret01:this.state.sequenceRegret01,counterfactualActionGap01:this.state.counterfactualActionGap01,uncertainty01:this.state.uncertainty01,episodeCount:this.state.episodes.length};}
+  diagnostics(){return {steps:this.state.steps,updates:this.state.updates,trainingUpdates:this.state.trainingUpdates,onlineTransitionError01:this.state.onlineTransitionError01,onlineRewardError01:this.state.onlineRewardError01,holdoutBaselineAvailable:this.state.holdoutBaselineAvailable,holdoutSamples:this.state.holdoutSamples,holdoutDelta01:this.state.holdoutDelta01,lesionTransitionDrop01:this.state.lesionTransitionDrop01,lesionRewardDrop01:this.state.lesionRewardDrop01,replayGain01:this.state.replayGain01,transferGain01:this.state.transferGain01,actionSensitivity01:this.state.actionSensitivity01,sequencePlans:this.state.sequencePlans,sequenceBenchmarks:this.state.sequenceBenchmarks,sequenceRegret01:this.state.sequenceRegret01,counterfactualActionGap01:this.state.counterfactualActionGap01,uncertainty01:this.state.uncertainty01,episodeCount:this.state.episodes.length};}
 }
