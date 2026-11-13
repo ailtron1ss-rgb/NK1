@@ -490,9 +490,9 @@ export function defaultHexisAdaptationState(): HexisAdaptationState {
 }
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
-    private canonicalMemoryApply?: (stage: HexisHmxStage) => HexisHmxApplyReceipt;
+    private canonicalMemoryApply?: (stage: HexisHmxStage, tick: number) => HexisHmxApplyReceipt;
 
-    bindCanonicalMemoryApply(handler: (stage: HexisHmxStage) => HexisHmxApplyReceipt): void {
+    bindCanonicalMemoryApply(handler: (stage: HexisHmxStage, tick: number) => HexisHmxApplyReceipt): void {
         this.canonicalMemoryApply = handler;
     }
     restore(raw?: Partial<HexisAdaptationState> | null): void {
@@ -770,7 +770,7 @@ export class HexisAdaptationFabric {
         return structuredClone(stage);
     }
 
-    decideHmx(stagingId: string, decision: 'accept' | 'reject' | 'apply'): HexisHmxStage | null {
+    decideHmx(stagingId: string, decision: 'accept' | 'reject' | 'apply', context: { tick?: number } = {}): HexisHmxStage | null {
         const stage = this.state.hmxStages.find(row => row.stagingId === stagingId);
         if (!stage) return null;
         if (decision === 'accept') {
@@ -808,7 +808,7 @@ export class HexisAdaptationFabric {
         if (digest(base) !== stage.digest) throw new Error('hmx-stage-digest-mismatch');
         if (!this.canonicalMemoryApply) throw new Error('hmx-canonical-memory-projector-unavailable');
         stage.applicationAttempts = Math.min(1000, Number(stage.applicationAttempts ?? 0) + 1);
-        const receipt = this.canonicalMemoryApply(structuredClone(stage));
+        const receipt = this.canonicalMemoryApply(structuredClone(stage), Math.max(0, Math.floor(Number(context.tick) || 0)));
         if (!isHexisHmxApplyReceipt(receipt)) throw new Error('hmx-apply-receipt-invalid');
         stage.application = structuredClone(receipt);
         stage.status = 'applied';
