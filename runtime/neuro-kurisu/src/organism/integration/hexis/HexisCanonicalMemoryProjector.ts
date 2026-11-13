@@ -68,6 +68,11 @@ export class HexisCanonicalMemoryProjector {
     if (stage.intent !== 'port' || stage.strategy !== 'additive') {
       throw new Error('hmx-canonical-apply-requires-port-additive');
     }
+    if (!stage.privacy || stage.privacy.redactionPolicy !== 'strict' ||
+        stage.privacy.containsSensitiveContent !== false || stage.privacy.consentScope !== 'migration' ||
+        !stage.capabilitiesDigest) {
+      throw new Error('hmx-canonical-import-consent-required');
+    }
     if (!stage.sourceLineageId) throw new Error('hmx-source-lineage-required');
     const lineage = asText(stage.sourceLineageId, 256);
     if (!lineage) throw new Error('hmx-source-lineage-invalid');
