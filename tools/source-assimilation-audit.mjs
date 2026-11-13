@@ -72,7 +72,7 @@ export function validateSourceRegistry(doc) {
   }
   for (const [sha, owners] of digestOwners) if (owners.size > 1) errors.push(`archive digest reused by distinct source IDs: ${sha}`);
   const declared = [...containers.values()].reduce((n, c) => n + c.embeddedZipCount, 0);
-  if (containers.size !== doc.expectedContainerCount) errors.push(`expected ${doc.expectedContainerCount} containers, found ${containers.size}`);
+  if (containers.size !== 4) errors.push(`expected 4 containers, found ${containers.size}`);
   if (artifacts !== doc.expectedArchiveArtifacts || artifacts !== declared) errors.push(`archive artifact/container count mismatch: artifacts=${artifacts}, container count=${declared}`);
   if (ids.size !== doc.expectedUniqueSources) errors.push(`expected ${doc.expectedUniqueSources} unique sources, found ${ids.size}`);
   return { ok: errors.length === 0, errors, metrics: { containers: containers.size, artifacts, sources: ids.size, metadata, licenseScreened, cleared, diffs, adapters, adapted, wired, tested, released } };
