@@ -225,6 +225,11 @@ try {
   assert.equal(beforeRestartA.length, 2, 'both donor lineages must be present before restart');
   assert.equal(new Set(beforeRestartA.map(row => row.id)).size, 2,
     `different donor lineages must receive different canonical IDs: ${JSON.stringify(beforeRestartA.map(row => ({ id: row.id, source: row.source }))) }`);
+  const beforeRestartDiagnostics = await (await fetch(base + '/api/organism/integration/hexis')).json();
+  assert.equal(beforeRestartDiagnostics.memoryPersistence.live.hexisItemCount, 4,
+    `live MemoryOS2 should own all four donor memories before restart: ${JSON.stringify(beforeRestartDiagnostics.memoryPersistence)}`);
+  assert.equal(beforeRestartDiagnostics.memoryPersistence.persistedProjection.hexisItemCount, 4,
+    `durable projection must include all four donor memories before restart: ${JSON.stringify(beforeRestartDiagnostics.memoryPersistence)}`);
 
   // Force a late canonical identity conflict after the first record has already
   // been projected. The transaction must restore MemoryOS2, MemoryFabric,
@@ -312,6 +317,11 @@ try {
       } catch {}
     }
     assert.equal(restartedReady, true, 'server must restart using the same durable state directory: ' + restartedOutput.slice(-800));
+    const afterRestartDiagnostics = await (await fetch(base + '/api/organism/integration/hexis')).json();
+    assert.equal(afterRestartDiagnostics.memoryPersistence.live.hexisItemCount, 4,
+      `restored MemoryOS2 must contain all four donor memories: ${JSON.stringify(afterRestartDiagnostics.memoryPersistence)}`);
+    assert.equal(afterRestartDiagnostics.memoryPersistence.persistedProjection.hexisItemCount, 4,
+      `restored durable projection must contain all four donor memories: ${JSON.stringify(afterRestartDiagnostics.memoryPersistence)}`);
     const restoredMemories = await memoryIndex();
     const restoredA = restoredMemories.filter(row => row.summary.includes('HMX canonical imported memory A'));
     const restoredB = restoredMemories.filter(row => row.summary.includes('HMX canonical imported procedure B'));
