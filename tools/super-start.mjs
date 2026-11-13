@@ -4,7 +4,7 @@ import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPinnedNodeMajor } from './lib/node-runtime.mjs';
-import { assertPortAvailable, assertToolchainVersions, waitForHttpReady, workspaceNeedsNodeModules } from './lib/super-startup.mjs';
+import { assertPortAvailable, assertToolchainVersions, createRuntimeLaunchSpec, waitForHttpReady, workspaceNeedsNodeModules } from './lib/super-startup.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STATE_DIR = path.join(ROOT, '.super-state', 'organism');
@@ -128,12 +128,16 @@ async function main() {
   mkdirSync(STATE_DIR, { recursive: true });
   for (const port of PORTS) await assertPortAvailable(port);
 
+  const runtimeSpec = createRuntimeLaunchSpec(ROOT, STATE_DIR, {
+    nodeExecutable: process.execPath,
+    nodeEnv: 'production',
+  });
   const runtime = launch(
     'organism-runtime',
-    process.execPath,
-    ['--experimental-strip-types', path.join(ROOT, 'runtime/neuro-kurisu/src/server/server.mjs')],
-    { PORT: '3310', HOST: '127.0.0.1', STATE_DIR, NODE_ENV: 'production' },
-    path.join(ROOT, 'runtime/neuro-kurisu'),
+    runtimeSpec.command,
+    runtimeSpec.args,
+    runtimeSpec.env,
+    runtimeSpec.cwd,
   );
   await waitReady(runtime, 'http://127.0.0.1:3310/health', async (response) => {
     const health = await response.clone().json();
