@@ -161,13 +161,62 @@ try {
     'structural identity and goal sections stay outside the canonical memory import');
 
   const countAfterApply = afterApply.length;
+
+  // A fresh export ID from the same source lineage must map to the same
+  // canonical record IDs, while using a new receipt command key.
+  const reExportId = 'exp_1111111111111111';
+  const reStageResponse = await post('/api/organism/integration/hexis/hmx/stage', {
+    document: makeDocument(reExportId),
+    intent: 'port', strategy: 'additive',
+  });
+  assert.equal(reStageResponse.status, 200);
+  const reStage = await reStageResponse.json();
+  assert.equal(reStage.stage.conflicts.length, 0);
+  assert.equal((await post('/api/organism/integration/hexis/hmx/decide', {
+    stagingId: reStage.stage.stagingId, decision: 'accept',
+  })).status, 200);
+  const reApplyResponse = await post('/api/organism/integration/hexis/hmx/decide', {
+    stagingId: reStage.stage.stagingId, decision: 'apply',
+  });
+  assert.equal(reApplyResponse.status, 200);
+  const reApplied = await reApplyResponse.json();
+  assert.equal(reApplied.stage.application.importedCount, 0);
+  assert.equal(reApplied.stage.application.deduplicatedCount, 2);
+  assert.equal((await memoryIndex()).length, countAfterApply,
+    'a re-export from the same source lineage must deduplicate by stable portable reference');
+
+  // The same portable refs and contents from a different source lineage are
+  // distinct memories; donor identity boundaries must not collapse together.
+  const otherLineageId = 'exp_2222222222222222';
+  const otherLineageDocument = makeDocument(otherLineageId);
+  otherLineageDocument.source.hexis_lineage_id = 'lineage-independent-donor-002';
+  const otherStageResponse = await post('/api/organism/integration/hexis/hmx/stage', {
+    document: otherLineageDocument,
+    intent: 'port', strategy: 'additive',
+  });
+  assert.equal(otherStageResponse.status, 200);
+  const otherStage = await otherStageResponse.json();
+  assert.equal(otherStage.stage.conflicts.length, 0);
+  assert.equal((await post('/api/organism/integration/hexis/hmx/decide', {
+    stagingId: otherStage.stage.stagingId, decision: 'accept',
+  })).status, 200);
+  const otherApplyResponse = await post('/api/organism/integration/hexis/hmx/decide', {
+    stagingId: otherStage.stage.stagingId, decision: 'apply',
+  });
+  assert.equal(otherApplyResponse.status, 200);
+  const otherApplied = await otherApplyResponse.json();
+  assert.equal(otherApplied.stage.application.importedCount, 2);
+  const expectedCanonicalCount = countAfterApply + 2;
+  assert.equal((await memoryIndex()).length, expectedCanonicalCount,
+    'same-text records from a separate donor lineage remain source-isolated');
+
   const replayResponse = await post('/api/organism/integration/hexis/hmx/decide', {
     stagingId: staged.stage.stagingId, decision: 'apply',
   });
   assert.equal(replayResponse.status, 200);
   const replay = await replayResponse.json();
   assert.equal(replay.stage.application.digest, applied.stage.application.digest);
-  assert.equal((await memoryIndex()).length, countAfterApply,
+  assert.equal((await memoryIndex()).length, expectedCanonicalCount,
     'replaying the same apply request cannot duplicate imported memory');
 
   // Restart the real server with the same state directory and verify that both
@@ -209,7 +258,7 @@ try {
     assert.equal(replayAfterRestart.stage.status, 'applied');
     assert.equal(replayAfterRestart.stage.application.digest, applied.stage.application.digest,
       'persisted receipt must make post-restart replay idempotent');
-    assert.equal((await memoryIndex()).length, countAfterApply,
+    assert.equal((await memoryIndex()).length, expectedCanonicalCount,
       'post-restart apply replay must not create duplicate canonical memory');
   } finally {
     if (restartedChild.exitCode === null && restartedChild.signalCode === null) restartedChild.kill('SIGTERM');
