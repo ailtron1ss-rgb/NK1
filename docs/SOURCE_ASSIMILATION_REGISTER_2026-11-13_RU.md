@@ -756,7 +756,7 @@ Hexis теперь учитывается как отдельный источн
 
 ### 13.5 Актуальная граница release и donor assimilation
 
-- Canonical source branch after PR #871: `workpass70-source`, HEAD `d358975c937883223dc47010397cc1708382a2ae`.
+- Canonical source branch after PR #874 and the documentation checkpoint updates: `workpass70-source`, HEAD before this register update `591a7e033afde1ae0cc92e9160d744473949db84` (the latest live SHA must be read from the branch before each subsequent pass).
 - PR #874 остаётся отдельной aspect branch и не включён в source до exact-head verification.
 - 21 уникальный донор остаётся инвентаризированным; detailed mechanism review 6/21 (Hexis, Will, Mem0, Agent0, DSPy, PocketFlow), но полноценный file-level donor diff, legal clearance и release verification не следует считать завершёнными.
 - Никакие донорские secrets не копируются и не записываются в реестр.
@@ -767,3 +767,11 @@ Hexis теперь учитывается как отдельный источн
 
 PR #874 объединён в `workpass70-source` (merge `33544f7b4ced9518e36c3532f9bccb8161baa022`). Изменение является NK1-native адаптацией Will attention-effort controller внутри существующего resource economy. Оно не создаёт второй scheduler, не меняет физический energy-decay law и не доказывает рост качества когнитивных решений. Exact-head CI 44/44 passed; ablation и target-device energy/performance measurements остаются открытыми.
 
+
+
+### 13.7 README and progress tracking
+
+- `README.md` updated to the 13 November checkpoint, listing PR #838, #869, #871 and #874 with exact verification boundaries.
+- The README explicitly preserves release boundary: 19 October ZIP assets are unchanged; no 13 November Release ZIP is claimed.
+- `docs/NEUROCORE_1000_WORK_UNIT_BACKLOG.md` records 5/1,000 PASS (0.5%) for the five HMX provenance work units. PR #838/#871/#874 are called out as merged capability work not yet mapped to those pre-defined units, so the count is not inflated.
+- The Will attention adaptation is now merged; 44/44 exact-head workflows passed. It remains a behaviorally verified controller adaptation, not a measured improvement in cognition or proof of subjective awareness.
