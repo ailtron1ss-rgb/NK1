@@ -22,6 +22,34 @@ assert.equal(calls[0].body.stream, false);
 assert.equal(calls[0].body.max_tokens, 128);
 assert.equal(calls[0].init.redirect, 'error', 'a loopback endpoint must not redirect requests to another host');
 
+const schemaCall = [];
+const schemaProvider = new OpenAICompatibleLocalChatProvider({
+  baseUrl: 'http://127.0.0.1:8080/v1',
+  fetchImpl: async (url, init) => {
+    schemaCall.push({ url: String(url), body: JSON.parse(String(init.body)) });
+    return { ok: true, headers: { get: () => null }, text: async () => JSON.stringify({ choices: [{ message: { content: '{"accepted":true}' } }] }) };
+  },
+});
+const responseSchema = { type: 'object', properties: { accepted: { type: 'boolean' } }, required: ['accepted'], additionalProperties: false };
+await schemaProvider.generate({ system: 'Return JSON.', user: 'Verify.', responseFormat: { type: 'json_schema', schema: responseSchema } });
+assert.deepEqual(schemaCall[0].body.response_format, { type: 'json_schema', schema: responseSchema },
+  'JSON Schema is forwarded to llama-server using its documented response_format contract');
+await schemaProvider.generate({ system: '', user: 'Return any JSON.', responseFormat: { type: 'json_object' } });
+assert.deepEqual(schemaCall[1].body.response_format, { type: 'json_object' });
+await assert.rejects(() => schemaProvider.generate({ system: '', user: 'x', responseFormat: { type: 'json_schema' } }),
+  /response-schema-required/);
+await assert.rejects(() => schemaProvider.generate({ system: '', user: 'x', responseFormat: { type: 'xml' } }),
+  /response-format-type-invalid/);
+const cyclicSchema = {}; cyclicSchema.self = cyclicSchema;
+await assert.rejects(() => schemaProvider.generate({ system: '', user: 'x', responseFormat: { type: 'json_schema', schema: cyclicSchema } }),
+  /response-schema-circular/);
+let schemaGetterCalled = false;
+const accessorSchema = {};
+Object.defineProperty(accessorSchema, 'type', { enumerable: true, get() { schemaGetterCalled = true; return 'object'; } });
+await assert.rejects(() => schemaProvider.generate({ system: '', user: 'x', responseFormat: { type: 'json_schema', schema: accessorSchema } }),
+  /response-schema-accessor-rejected/);
+assert.equal(schemaGetterCalled, false, 'schema validation must reject accessors without invoking them');
+
 const structured = new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://localhost:8080/v1', fetchImpl: async () => ({ ok: true, headers: { get: () => null }, text: async () => JSON.stringify({ choices: [{ message: { content: [{ type: 'text', text: 'Part A. ' }, { type: 'text', text: 'Part B.' }] } }] }) }) });
 assert.equal((await structured.generate({ system: '', user: 'x' })).text, 'Part A. Part B.');
 
