@@ -26,7 +26,7 @@ Hexis разделяет вычислительную стоимость и це
 - `AutonomousResourceToolLifeController.plan()` использует новый классификатор для сужения множества кандидатов и ранжирования только разрешённых read-only действий.
 - Существующий `cost01` остаётся стоимостью вычислительного/ресурсного конверта. Новое `consequenceCost01` возвращается отдельно, поэтому две величины не подменяют друг друга.
 - `ActionGateway` остаётся единственным исполнителем и авторитетом разрешений, одобрений, idempotency receipts и outcome verification. Новый фильтр не вызывает инструменты и не выдаёт разрешения.
-- `AutonomousResourceToolLifeState` сохраняет счётчик отклонённых consequential-кандидатов и последний профиль; controller outcome record сохраняет повторно вычисленные `consequenceCost01`/`consequenceClass`; каноническая схема receipt внутри `ActionGateway` не меняется. Старые snapshots совместимы: новые поля имеют безопасные defaults, старые receipt rows остаются читаемыми.
+- `AutonomousResourceToolLifeState` сохраняет счётчик отклонённых consequential-кандидатов и последний профиль; controller outcome record сохраняет повторно вычисленные `consequenceCost01`/`consequenceClass`; каноническая схема receipt внутри `ActionGateway` не меняется. `reconcile` относится к mutation-классу. Старые snapshots совместимы: новые поля имеют безопасные defaults, старые receipt rows остаются читаемыми.
 - Внутренняя мотивация, память и автономное планирование не заменяются донорским runtime; не создаётся второе состояние и не добавляются зависимости.
 
 ## Польза
@@ -43,6 +43,7 @@ Hexis разделяет вычислительную стоимость и це
 - Финальный exact-head Actions run [#43391372605](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43391372605), SHA `21dfd56100c92d8ff189aab7289938c663d266b1`: **SUCCESS**.
 - Внутри run успешно: Node 24, `npm ci --ignore-scripts`, полный `npm run typecheck`, `hexis-action-consequence-cost-policy.mjs`, `big-pass-223-autonomous-resource-tool-life.mjs`, `action-cost-unification-workpass36.mjs`, `workpass53-action-approval-boundary.mjs`.
 - Широкий `NK1 Action Gateway governance` run [#43391372537](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43391372537) также SUCCESS после восстановления неизменяемого reason-контракта `no-autonomous-permitted-tool`.
+- На следующем exact branch head `b59b22e8af82c640269149702b03442e7931f37f` изменён только workflow trigger: documentation-only edits больше не запускают дорогой runtime matrix. На этом SHA идут/ожидаются новые full checks; финальные результаты нужно брать только по `b59b22...`.
 - Отдельная idempotency suite: 12/13 subtests PASS, один failure по temporal reafference. Тот же failure воспроизведён на чистом baseline `workpass70-source@1a0315595302f3154df0ae53e5d9188875311467`; заведен самостоятельный [issue #865](https://github.com/ailtron1ss-rgb/NK1/issues/865). Он не относится к изменённому policy/controller path и не замаскирован под PASS.
 
 ### Выборочная сверка registry
