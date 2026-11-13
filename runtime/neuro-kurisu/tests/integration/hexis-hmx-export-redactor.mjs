@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   HMX_EXPORT_EXCLUDED_SECRET_PATTERNS,
   redactHmxExportText,
-} from '../src/organism/integration/hexis/HmxExportRedactor.ts';
+} from '../../src/organism/integration/hexis/HmxExportRedactor.ts';
 
 const privateKey = '-----BEGIN PRIVATE KEY-----\\nfixture-private-key-material\\n-----END PRIVATE KEY-----';
 const source = [
