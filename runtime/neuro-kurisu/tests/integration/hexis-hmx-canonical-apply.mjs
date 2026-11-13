@@ -347,8 +347,9 @@ try {
     assert.equal(replayAfterRestart.stage.application.digest, applied.stage.application.digest,
       'persisted receipt must make post-restart replay idempotent');
     const afterRestartReplayMemories = await memoryIndex();
+    const replayAddedMemories = afterRestartReplayMemories.filter(row => !restoredMemories.some(before => before.id === row.id));
     assert.equal(afterRestartReplayMemories.length, countBeforeRestartReplay,
-      'post-restart apply replay must not create additional canonical memory');
+      `post-restart apply replay must not create additional canonical memory: added=${JSON.stringify(replayAddedMemories.map(row => ({id:row.id,source:row.source,summary:row.summary})))}`);
     assert.equal(afterRestartReplayMemories.filter(row => row.summary.includes('HMX canonical imported memory A')).length, 2,
       'post-restart replay must retain exactly one copy per donor lineage for the first memory');
     assert.equal(afterRestartReplayMemories.filter(row => row.summary.includes('HMX canonical imported procedure B')).length, 2,
