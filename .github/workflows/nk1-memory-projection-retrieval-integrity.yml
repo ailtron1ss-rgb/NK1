@@ -20,7 +20,11 @@ on:
       - '.github/workflows/nk1-memory-projection-retrieval-integrity.yml'
       - 'runtime/neuro-kurisu/src/organism/memory/MultiTimescaleMemory.ts'
       - 'runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemorySubstrateCoordinator.ts'
       - 'runtime/neuro-kurisu/tests/memory-projection-retrieval-integrity-20261113.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-forget-projection-integrity-20261113.mjs'
 
 permissions:
   contents: read
