@@ -15,11 +15,16 @@
       "testsPassed": true,
       "runtimeEvidence": [
         "runtime/neuro-kurisu/src/organism/learning/GepaReflectiveCandidateGenerator.ts: opt-in candidate-only sidecar adapter; strict request allowlist; validation-only report projection; fixed directive mapping; bounded request/response; source payload field preservation; holdout fields rejected; optimizer score/promotion claims discarded.",
-        "runtime/neuro-kurisu/src/server/server.mjs: explicit NK1_GEPA_ENABLED gate; requires configured endpoint/key and the trusted P23 compound-repair provider; only candidate generation is delegated; disabled mode preserves local llama.cpp; sidecar failure does not silently fallback."
+        "runtime/neuro-kurisu/src/server/server.mjs: explicit NK1_GEPA_ENABLED gate; requires configured endpoint/key and the trusted P23 compound-repair provider; only candidate generation is delegated; disabled mode preserves local llama.cpp; sidecar failure does not silently fallback.",
+        "runtime/neuro-kurisu/src/organism/learning/P23ValidationCandidateParetoArchive.ts: builds bounded, deterministic per-task validation vectors with task/trial/family provenance; holdout fields are not part of the persisted schema.",
+        "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts: persists optional validationMetrics with revisionProvenance and exposes a read-only Pareto front for the same skill/sourceCandidate/dataset cohort; no second skill store or activation authority.",
+        "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts: validates persisted validation metrics on durable read/restore while allowing legacy candidates without the optional field.",
+        "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts: computes metrics only from the fresh independently evaluated candidateEvaluation.validation; staging fails closed unless that exact new candidate passes fitness.eligible; failed source candidates can still enter repair generation, but rejected generated payloads cannot be staged."
       ],
       "testEvidence": [
         "GitHub Actions run 43417587842 at exact commit e2fa5545aaac365123dfb65a05e8e66980500bf8: source-assimilation workflow SUCCESS; SOURCE_ASSIMILATION_AUDIT PASS; adapter/static coverage 7/7 and 33/33; source audit regression PASS; P23 provider/generator/integration PASS; P23_REVISION_PLAN_HOLDOUT_ISOLATION PASS; GEPA_REFLECTIVE_CANDIDATE_GENERATOR PASS; Hexis, Letta, Lumina, Will and Mem0 contracts PASS.",
-        "GitHub Actions run 43417925336 at exact commit 18748be1399533b42ec708dd11e77b2bec3cb66b: source-assimilation workflow SUCCESS; source register tests 11/11; static assimilation audit 7/7 adapters and 33/33 checks; llama.cpp/P23, holdout isolation, GEPA adapter transport, Hexis, Letta, Lumina, Will and Mem0 contracts PASS."
+        "GitHub Actions run 43417925336 at exact commit 18748be1399533b42ec708dd11e77b2bec3cb66b: source-assimilation workflow SUCCESS; source register tests 11/11; static assimilation audit 7/7 adapters and 33/33 checks; llama.cpp/P23, holdout isolation, GEPA adapter transport, Hexis, Letta, Lumina, Will and Mem0 contracts PASS.",
+        "GitHub Actions run 43419885994 at exact commit 71241362317fa6108a5e9aeec9c3e6ba8ef4dda4: source assimilation workflow SUCCESS; source registry 11/11; static audit 7/7 adapters and 39/39 checks; llama.cpp/P23 provider integration PASS; P23 holdout isolation PASS; GEPA adapter 9/9; P23 validation candidate Pareto PASS including unequal per-task trial coverage rejection; versioned candidate store/durable Pareto query PASS; skill store failure-boundary tests PASS; Hexis, Letta, Lumina, Will and Mem0 contracts PASS."
       ]
     }
   }
