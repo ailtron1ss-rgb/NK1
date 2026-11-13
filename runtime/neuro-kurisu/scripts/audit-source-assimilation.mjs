@@ -142,7 +142,7 @@ export const SOURCE_ASSIMILATION_ADAPTERS = [
     benefit: 'Использует поддерживаемый llama-server response_format/json_schema в уже существующем loopback-провайдере; P23 получает структурно ограниченный candidate, но не может обойти независимую оценку и promotion gate.',
     groups: [
       group('provider-schema-boundary', 'src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts', [
-        'export interface LocalChatResponseFormat', "type: 'json_object' | 'json_schema'", 'function normalizeResponseFormat(', 'MAX_RESPONSE_SCHEMA_BYTES', 'response_format: responseFormat',
+        'export interface LocalChatResponseFormat', "type: 'json_object' | 'json_schema'", 'function normalizeResponseFormat(', 'MAX_RESPONSE_SCHEMA_BYTES', 'json_schema: { schema: format.schema }', 'response_format: responseFormat',
       ], 'Добавляет ограниченное server-side JSON/JSON Schema decoding без новой зависимости или нового provider owner.'),
       group('p23-source-shape-constraint', 'src/organism/learning/P23LocalModelSkillRevisionGenerator.ts', [
         'function buildPayloadJsonSchema(', 'MAX_JSON_SCHEMA_DEPTH', 'additionalProperties: false',
