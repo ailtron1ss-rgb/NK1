@@ -75,4 +75,75 @@ assert.equal(m.get(donorB.id)?.supersededById, null);
 assert.ok(m.retrieve('Kurisu laboratory scientific work', 16).some(row => row.id === donorA.id));
 assert.ok(m.retrieve('Kurisu laboratory scientific work', 16).some(row => row.id === donorB.id));
 
+const hmxBoundary = new MemoryOS2();
+const hmxOlder = hmxBoundary.encode({
+  content: 'Kurisu laboratory is open',
+  kind: 'semantic',
+  source: 'hexis:lineage-a',
+  tags: ['hexis', 'external-untrusted', 'data-not-instructions'],
+  context: {
+    hmxFormat: '1.7',
+    hmxSourceLineageId: 'lineage-a',
+    hmxPortableRef: 'lab-status',
+  },
+  salience: .55,
+  emotionalWeight: .05,
+  identityRelevance: 0,
+  goalRelevance: 0,
+  socialRelevance: 0,
+  predictionError: 0,
+  confidence: .5,
+  epistemicStatus: 'belief',
+  entities: ['kurisu', 'laboratory'],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  provenanceClass: 'external',
+  sourceAuthority01: .5,
+  independenceKey: 'hexis:lineage-a',
+  observedAt: base + 40_000,
+  evidenceFreshnessAt: base + 40_000,
+  validFromAt: base + 40_000,
+  validUntilAt: null,
+}, { forceDistinct: true });
+const localContradiction = hmxBoundary.encode({
+  content: 'Kurisu laboratory is not open',
+  kind: 'semantic',
+  source: 'device:lab-status',
+  tags: [],
+  context: { subject: 'kurisu', topic: 'laboratory-status' },
+  salience: .8,
+  emotionalWeight: 0,
+  identityRelevance: 0,
+  goalRelevance: 0,
+  socialRelevance: 0,
+  predictionError: 0,
+  confidence: .95,
+  epistemicStatus: 'belief',
+  entities: ['kurisu', 'laboratory'],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  provenanceClass: 'device',
+  sourceAuthority01: .95,
+  independenceKey: 'device:lab-1',
+  observedAt: base + 50_000,
+  evidenceFreshnessAt: base + 50_000,
+  validFromAt: base + 50_000,
+  validUntilAt: null,
+}, { forceDistinct: true });
+const hmxBoundaryConflict = hmxBoundary.adjudicateImplicitConflicts({
+  at: base + 50_001,
+  limit: 16,
+  pairBudget: 64,
+});
+assert.equal(hmxBoundaryConflict.resolved, 0,
+  'text-only polarity heuristics must not silently supersede an unverified HMX belief with a local memory');
+assert.equal(hmxBoundary.get(hmxOlder.id)?.validUntilAt, null,
+  'unverified HMX validity remains open until explicit review or grounded evidence reconciliation');
+assert.equal(hmxBoundary.get(hmxOlder.id)?.supersededById, null);
+assert.equal(hmxBoundary.get(localContradiction.id)?.supersedesId, null);
+
 console.log(JSON.stringify({ok:true,resolved:d.resolved,staleRetrievalsAvoided:d.staleRetrievalsAvoided,current}));
