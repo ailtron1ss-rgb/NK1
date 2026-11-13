@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import test from 'node:test';
+import * as startupApi from './lib/super-startup.mjs';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   assertPortAvailable,
   assertToolchainVersions,
@@ -129,4 +133,32 @@ test('accepts an unused port and rejects a port already bound by another process
   assert.ok(address && typeof address === 'object');
   await assert.rejects(assertPortAvailable(address.port), /already in use/);
   await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+});
+
+
+test('provides one canonical runtime launch spec for dev and prebuilt modes', () => {
+  assert.equal(
+    typeof startupApi.createRuntimeLaunchSpec,
+    'function',
+    'both launchers must share a tested runtime entrypoint and working directory',
+  );
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const stateDir = path.join(root, '.super-state', 'organism');
+  const spec = startupApi.createRuntimeLaunchSpec(root, stateDir, {
+    nodeExecutable: '/usr/bin/node',
+    nodeEnv: 'development',
+  });
+  const runtimeRoot = path.join(root, 'runtime', 'neuro-kurisu');
+  const runtimeEntry = path.join(runtimeRoot, 'src', 'server', 'server.mjs');
+
+  assert.equal(spec.command, '/usr/bin/node');
+  assert.deepEqual(spec.args, ['--experimental-strip-types', runtimeEntry]);
+  assert.equal(spec.cwd, runtimeRoot);
+  assert.deepEqual(spec.env, {
+    PORT: '3310',
+    HOST: '127.0.0.1',
+    STATE_DIR: stateDir,
+    NODE_ENV: 'development',
+  });
+  assert.ok(existsSync(spec.args[1]), 'the configured runtime entrypoint must exist in the repository');
 });
