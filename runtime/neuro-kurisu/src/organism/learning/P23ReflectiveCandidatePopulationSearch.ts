@@ -619,6 +619,18 @@ export async function runP23ReflectiveCandidatePopulationSearch(
       archive: archive.snapshot(),
       diagnostics: { ...diagnostics },
     };
+  } catch (error) {
+    const failure = new Error(error instanceof Error ? error.message : 'p23-population-search-failed');
+    if (error instanceof Error) failure.name = error.name;
+    Object.assign(failure, {
+      populationSearchDiagnostics: {
+        ...diagnostics,
+        timedOut:combinedSignal.aborted,
+      },
+      populationSearchArchive:archive.snapshot(),
+      originalError:error,
+    });
+    throw failure;
   } finally {
     clearTimeout(timer);
   }
