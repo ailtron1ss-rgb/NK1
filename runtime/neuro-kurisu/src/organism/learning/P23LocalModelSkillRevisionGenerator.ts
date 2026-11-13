@@ -20,6 +20,43 @@ export interface SkillRevisionChatProvider {
 const MAX_SOURCE_JSON_CHARS = 48_000;
 const MAX_VALIDATION_JSON_CHARS = 32_000;
 const MAX_GENERATED_CHARS = 64_000;
+const MAX_JSON_SCHEMA_DEPTH = 12;
+const MAX_JSON_SCHEMA_NODES = 512;
+
+/** Derive a bounded shape-only JSON Schema from a trusted source payload; never copies source values into the constraint. */
+function buildPayloadJsonSchema(value: unknown): Record<string, unknown> {
+  const state = { nodes: 0 };
+  const visit = (item: unknown, depth: number): Record<string, unknown> => {
+    state.nodes += 1;
+    if (state.nodes > MAX_JSON_SCHEMA_NODES || depth > MAX_JSON_SCHEMA_DEPTH) throw new Error('p23-revision-json-schema-too-complex');
+    if (item === null) return { type: 'null' };
+    if (typeof item === 'string') return { type: 'string' };
+    if (typeof item === 'boolean') return { type: 'boolean' };
+    if (typeof item === 'number') return { type: Number.isInteger(item) ? 'integer' : 'number' };
+    if (Array.isArray(item)) {
+      const variants = new Map<string, Record<string, unknown>>();
+      for (const sample of item.slice(0, 8)) {
+        const schema = visit(sample, depth + 1);
+        variants.set(JSON.stringify(schema), schema);
+      }
+      const schemas = [...variants.values()];
+      return { type: 'array', ...(schemas.length === 1 ? { items: schemas[0] } : schemas.length > 1 ? { items: { anyOf: schemas } } : {}) };
+    }
+    if (typeof item === 'object') {
+      const record = item as Record<string, unknown>;
+      const keys = Object.keys(record);
+      if (keys.length > 64) throw new Error('p23-revision-json-schema-object-too-wide');
+      const properties = Object.fromEntries(keys.map(key => [key, visit(record[key], depth + 1)]));
+      return { type: 'object', properties, required: keys, additionalProperties: false };
+    }
+    throw new Error('p23-revision-json-schema-source-type-unsupported');
+  };
+  const result = visit(value, 0);
+  if (result.type !== 'object' && result.type !== 'array' && result.type !== 'string') {
+    throw new Error('p23-revision-json-schema-root-type-unsupported');
+  }
+  return result;
+}
 
 /** Read a host-owned method capability without invoking an accessor getter. */
 function bindProviderMethod(target: unknown, key: 'configured'|'generate'): (...args:any[])=>any {
@@ -148,6 +185,7 @@ export async function generateLocalSkillRevision(
     ].join('\n\n'),
     maxTokens: 4096,
     temperature: 0.2,
+    responseFormat: { type: 'json_schema', schema: buildPayloadJsonSchema(request.sourcePayload) },
   });
   let response: LocalChatCompletionResponse;
   try {
