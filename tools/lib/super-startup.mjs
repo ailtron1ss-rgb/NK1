@@ -1,6 +1,40 @@
 import net from 'node:net';
+import path from 'node:path';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function createRuntimeLaunchSpec(root, stateDir, {
+  nodeExecutable = process.execPath,
+  nodeEnv = 'production',
+  port = 3310,
+  host = '127.0.0.1',
+} = {}) {
+  const projectRoot = path.resolve(root);
+  const runtimeRoot = path.join(projectRoot, 'runtime', 'neuro-kurisu');
+  const runtimeEntry = path.join(runtimeRoot, 'src', 'server', 'server.mjs');
+
+  if (typeof nodeExecutable !== 'string' || nodeExecutable.trim() === '') {
+    throw new Error('Runtime launch requires a non-empty Node.js executable.');
+  }
+  if (!Number.isInteger(Number(port)) || Number(port) < 1 || Number(port) > 65535) {
+    throw new Error(`Runtime launch port is invalid: ${port}`);
+  }
+  if (typeof host !== 'string' || host.trim() === '') {
+    throw new Error('Runtime launch host must be a non-empty string.');
+  }
+
+  return {
+    command: nodeExecutable,
+    args: ['--experimental-strip-types', runtimeEntry],
+    cwd: runtimeRoot,
+    env: {
+      PORT: String(port),
+      HOST: host,
+      STATE_DIR: path.resolve(stateDir),
+      NODE_ENV: String(nodeEnv),
+    },
+  };
+}
 
 function parseVersion(value, label) {
   const match = String(value ?? '').trim().match(/(?:^|[^0-9])v?(\d+)\.(\d+)(?:\.(\d+))?/);
