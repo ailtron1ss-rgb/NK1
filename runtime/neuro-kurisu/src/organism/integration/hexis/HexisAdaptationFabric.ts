@@ -787,7 +787,8 @@ export class HexisAdaptationFabric {
                 conflicts.push({ path: 'sections.relationships[' + index + ']', kind: 'relationship-record', detail: 'Each relationship needs source_ref, target_ref and edge_type' });
             }
         }
-        const blocked = (input.intent === 'telepathy' || input.intent === 'analysis') ? names.filter(name => protectedSections.has(name)) : [];
+        // Analysis-only stages are reviewable, but their protected sections remain inert and can never pass the canonical apply gate.
+        const blocked = input.intent === 'telepathy' ? names.filter(name => protectedSections.has(name)) : [];
         if (blocked.length) {
             conflicts.push({ path: 'sections', kind: 'protected-by-intent', detail: 'Protected sections are not allowed for ' + input.intent + ': ' + blocked.join(', ') });
         }
