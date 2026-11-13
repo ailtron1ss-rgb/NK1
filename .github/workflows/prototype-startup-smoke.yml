@@ -143,3 +143,57 @@ jobs:
 
           grep -F "[super] NeuroCore prototype is ready." "$log"
           echo "NK1_CLEAN_STARTUP_SMOKE=PASS"
+
+      - name: Development mode starts the same canonical runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/neurocore-dev.log"
+          setsid npm run dev >"$log" 2>&1 &
+          launcher_pid=$!
+
+          cleanup() {
+            kill -INT -- "-$launcher_pid" 2>/dev/null || true
+            for attempt in $(seq 1 30); do
+              if ! curl --fail --silent http://127.0.0.1:8080/ >/dev/null \
+                && ! curl --fail --silent http://127.0.0.1:3310/health >/dev/null \
+                && ! curl --fail --silent http://127.0.0.1:8765/health >/dev/null; then
+                break
+              fi
+              sleep 1
+            done
+            wait "$launcher_pid" 2>/dev/null || true
+            echo "----- development log -----"
+            cat "$log" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=0
+          for attempt in $(seq 1 180); do
+            if ! kill -0 "$launcher_pid" 2>/dev/null; then
+              echo "development supervisor exited before services became ready" >&2
+              cat "$log" >&2 || true
+              exit 1
+            fi
+            runtime_ready=0
+            if curl --fail --silent http://127.0.0.1:3310/health \
+              | node --input-type=module -e 'let body=""; for await (const chunk of process.stdin) body += chunk; process.exit(JSON.parse(body).ready === true ? 0 : 1)'; then
+              runtime_ready=1
+            fi
+            if [[ "$runtime_ready" == "1" ]] \
+              && curl --fail --silent http://127.0.0.1:8765/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/ >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [[ "$ready" != "1" ]]; then
+            echo "Development prototype did not pass all readiness probes within 6 minutes" >&2
+            cat "$log" >&2 || true
+            exit 1
+          fi
+
+          grep -F "[super-dev] NeuroCore development prototype is ready." "$log"
+          echo "NK1_DEV_STARTUP_SMOKE=PASS"

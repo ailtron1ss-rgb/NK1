@@ -57,7 +57,7 @@ function assertPreconditions() {
 }
 
 function signalService(service, signal) {
-  if (service.exited || !service.child.pid) return;
+  if (!service.child.pid) return;
   try {
     if (process.platform !== 'win32') process.kill(-service.child.pid, signal);
     else service.child.kill(signal);

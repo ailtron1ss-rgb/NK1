@@ -30,6 +30,24 @@ npm run quickstart
 
 При последующих запусках уже существующие `node_modules` сохраняются: зависимости не переустанавливаются автоматически, но UI пересобирается для актуальности исходников.
 
+## Development mode
+
+Для разработки без production-сборки:
+
+```bash
+npm run dev
+```
+
+Development supervisor использует тот же проверяемый runtime entrypoint, что и production supervisor. Он проверяет закреплённые версии инструментов, наличие зависимостей, свободные порты и затем последовательно запускает organism runtime, research bridge и Vite dev server. Перед выводом сообщения о готовности он ждёт `ready: true` от организма и успешные HTTP-ответы от остальных компонентов. Vite напрямую проксирует `/api/organism` и `/api/research`, поэтому отдельный gateway в development-режиме не нужен.
+
+После сообщения `NeuroCore development prototype is ready`:
+
+- UI: `http://127.0.0.1:8080/`
+- Runtime health: `http://127.0.0.1:3310/health`
+- Research status: `http://127.0.0.1:8765/api/research/status`
+
+Остановить все процессы: **Ctrl+C** в том же терминале. При неожиданном завершении одного сервиса supervisor останавливает остальные.
+
 ## Адреса
 
 После появления сообщения `NeuroCore prototype is ready`:
