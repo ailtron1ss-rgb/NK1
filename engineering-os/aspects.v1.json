@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "name": "NK1 / NeuroCore 75-aspect execution registry",
   "version": "1.0.0",
-  "date": "2026-11-06",
+  "date": "2026-11-11",
   "baseBranch": "workpass70-source",
-  "observedSourceHead": "bcd48b1fd408a1539ac537813730669c35cfb3a2",
-  "observedSourceHeadNote": "Observed on 2026-11-06 before the daily engineering PR; workpass70-source exact-SHA check runs were 18/18 successful. Snapshot only: refresh the live head before future writes.",
+  "observedSourceHead": "189643ede8f3904dd670f0109a28b7536e894c00",
+  "observedSourceHeadNote": "Observed on 2026-11-11 from the live GitHub workpass70-source branch. Exact-SHA push checks: 7/7 SUCCESS. Snapshot only: refresh the live head before future writes. The latest published ZIP binary was not inspected, and no aspect status is promoted by this metadata refresh.",
   "purpose": "Executable, machine-readable backlog for the 75 development aspects, grouped in 10 domains and 6 waves, with explicit owners, dependencies, exit evidence and fail-closed progress accounting. It plans work; it does not claim capability.",
   "evidenceVocabulary": [
     "PROVEN",

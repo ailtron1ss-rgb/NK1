@@ -1,4 +1,51 @@
-# CURRENT HANDOFF — 2026-11-01
+# CURRENT HANDOFF — 2026-11-13
+
+> Start here. Refresh live GitHub refs and exact-SHA Actions before every write. Older WorkPass and checkpoint sections below the first divider are archival.
+
+**Canonical source branch:** workpass70-source  
+**Live source HEAD:** 1a0315595302f3154df0ae53e5d9188875311467  
+**Parent:** 189643ede8f3904dd670f0109a28b7536e894c00  
+**Exact-SHA source checks:** 6/6 SUCCESS.
+
+## This cycle — 2026-11-13
+
+- One verified test-harness correction was committed to the existing PR #866 branch: 928b85b981e887f595d7fb2cb6a1cec5611f7c40. The HMX integration test previously stopped the restarted server in a nested finally block before its remaining malformed-decision and analysis-only assertions; cleanup now occurs in the outer finally after all post-restart assertions.
+- On exact PR head 928b85b981e887f595d7fb2cb6a1cec5611f7c40, the canonical-hmx-apply and source-lineage-contract checks pass. Total PR Actions: 29/30 SUCCESS; independent-evidence-evaluation fails because the runner cannot import acp.helpers.
+- Existing PR #853 already contains the compatible agent-client-protocol pin and import smoke test; its exact head 2bae2883286bfd783c5adcf7b8148b8d70e795f4 has 5/5 SUCCESS but is not merged. Do not copy the same fix into #866.
+- PR #863 head f4feaceb221cbf74a4913b7bb4af113c19c2ae1c has 44/44 SUCCESS; PR #864 head 21d979476c107d577119d07039fef2762583a4af has 8/8 SUCCESS. Both remain Draft and unmerged.
+- Issue #865 remains open as a separate temporal-credit/reafference baseline defect.
+- Daily report with all 18 direction IDs, counters, evidence and next actions: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md).
+
+## Active PR continuation
+
+- #863 — source-assimilation register; Draft, exact head f4feace… 44/44 SUCCESS. 21 unique donors catalogued, but human legal clearance 0/21, detailed code-diff coverage 1/21, test verification 1/21 and release verification 0/21. The intake pass copied no donor code and installed no dependencies. Its DSPy/GEPA adapter is optional validation-only protocol glue, not a running optimizer; a multi-candidate Pareto archive is only a preliminary gap hypothesis pending a full branch search. Base snapshot is 189643e…; live source is 1a031… . Do not infer donor integration from the register.
+- #864 — consequence-cost policy; Draft, exact head 21d979… 8/8 SUCCESS. Tool registry review and heuristic weight review remain open.
+- #866 — HMX 1.7 canonical apply; Draft, exact head 928b85… 29/30 SUCCESS. HMX apply and source-lineage checks pass; evaluator check awaits the existing ACP compatibility fix in #853.
+- #853 — Inspect ACP compatibility; open, exact head 2bae288… 5/5 SUCCESS, not merged.
+- #854 — isolated documentation branch; this cycle adds the 2026-11-13 report and refreshes the top handoff/checkpoints only.
+- #865 — exact pending decision / grounded reafference baseline defect; investigate independently from ACP startup.
+- No PR was merged, closed or deleted; no branch was deleted or force-pushed.
+
+## Release and legal gate
+
+- Latest published ZIP including prerelease: workpass70-hotfix1-2026-10-19, Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes, metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
+- Stable Neuro ZIP: 135,290,615 bytes, metadata SHA-256 c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286.
+- ZIP bytes are not available in this execution environment. Archive members, CRC, recomputed hash and source parity remain UNKNOWN.
+- Human legal clearance remains 0/21; redistribution and Release publication are not authorized.
+
+## Next actions
+
+1. Human review and separately authorized integration of #853; then rerun #866's independent-evidence-evaluation check without duplicating the ACP pin.
+2. Investigate #865 from exact decisionId propagation through OutcomeVerificationService to CanonicalTemporalCredit; add a restore/replay regression.
+3. Obtain a supported binary-download path for the prerelease ZIP; recompute SHA-256, inspect archive members/CRC and compare internal manifest/source provenance.
+4. Complete human path-level license/NOTICE and model/voice/avatar asset review before redistribution.
+5. Acquire immutable licensed RU/EN holdout with independent source groups (at least 5 paired seeds), then run Android/Termux, browser avatar and audio-lip soak tests.
+
+**Progress rule:** keep implemented / connected / tested / released distinct. No global readiness increase from this cycle. Do not merge, close PRs, delete branches, force-push, change production, provision databases/secrets or publish Release without separate explicit authorization.
+
+---
+
+# ARCHIVED HANDOFF — 2026-11-01
 
 > **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
 

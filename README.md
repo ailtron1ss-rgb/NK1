@@ -1,4 +1,37 @@
-## Актуальный инженерный checkpoint — 1 ноября 2026
+## Актуальный инженерный checkpoint — 13 ноября 2026
+
+**Каноническая рабочая ветка:** workpass70-source  
+**Live source HEAD:** 1a0315595302f3154df0ae53e5d9188875311467 (parent 189643ede8f3904dd670f0109a28b7536e894c00; commit от 2026-11-13).  
+**Exact-SHA source checks:** 6/6 SUCCESS.  
+**main:** release/metadata; source changes продолжаются через отдельные feature branches и PR в workpass70-source.
+
+### Текущие PR и дефекты
+
+- [#863](https://github.com/ailtron1ss-rgb/NK1/pull/863) — source-assimilation register / roadmap; Draft, head f4feaceb221cbf74a4913b7bb4af113c19c2ae1c, 44/44 checks SUCCESS. 21 unique donors catalogued; human legal clearance 0/21, detailed code diffs 1/21, tests verified 1/21, release verified 0/21. Base snapshot is one source commit behind live HEAD.
+- [#864](https://github.com/ailtron1ss-rgb/NK1/pull/864) — Hexis-derived consequence-cost gate; Draft, head 21d979476c107d577119d07039fef2762583a4af, 8/8 checks SUCCESS. ActionGateway remains canonical executor; human registry/heuristic review remains open.
+- [#866](https://github.com/ailtron1ss-rgb/NK1/pull/866) — Hexis HMX 1.7 explicit canonical apply; Draft, head 928b85b981e887f595d7fb2cb6a1cec5611f7c40. A test lifecycle bug is fixed; canonical HMX apply and source-lineage checks pass. Overall 29/30 checks SUCCESS; independent-evidence-evaluation fails on missing acp.helpers.
+- [#853](https://github.com/ailtron1ss-rgb/NK1/pull/853) — existing ACP compatibility fix, head 2bae2883286bfd783c5adcf7b8148b8d70e795f4, 5/5 checks SUCCESS; remains open/unmerged. Do not duplicate its dependency pin.
+- [#854](https://github.com/ailtron1ss-rgb/NK1/pull/854) — isolated documentation/handoff branch; includes cycles 2026-11-10 through 2026-11-13.
+- [#865](https://github.com/ailtron1ss-rgb/NK1/issues/865) — separate baseline defect: exact pending decision fails to receive grounded reafference/temporal credit. Still open.
+
+### Release и лицензирование
+
+- Latest published ZIP including prerelease: tag workpass70-hotfix1-2026-10-19; asset Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip; 136,354,713 bytes; metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
+- Stable tag Neuro: asset Neuro_Kurisu_WORKPASS70_2026-10-19.zip; 135,290,615 bytes; metadata SHA-256 c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286.
+- ZIP binary bytes were not downloaded/inspected. Archive members, CRC, recomputed hash and source parity remain UNKNOWN. Source CI is not release verification.
+- Human license clearance remains 0/21 in the source-assimilation register; redistribution is not authorized.
+
+### Readiness and handoff
+
+The DSPy/GEPA adapter in #863 is optional validation-only protocol glue, not a bundled optimizer. A multi-candidate Pareto archive is a preliminary gap hypothesis only; perform a full branch search before designing any NK1-native extension, and preserve the holdout firewall.
+
+No global readiness increase. The 75-aspect registry remains 62 IMPLEMENTED / 1 TESTED / 11 PLANNED / 1 BLOCKED; these are status labels, not proof of integrated behavior. Independent RU/EN holdout (at least 5 paired seeds), real Android/Termux soak, browser/device avatar E2E, speech timing, legal clearance and Release ZIP inspection remain open.
+
+Подробный пакет из 18 направлений, счётчики, точные SHA/CI и handoff: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md).
+
+---
+
+## Архивный checkpoint — 1 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
 **Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  

@@ -1,15 +1,17 @@
-# NeuroCore — repository working rules
+> **Current continuation checkpoint — 2026-11-13 (live observed):** canonical source branch workpass70-source is at 1a0315595302f3154df0ae53e5d9188875311467 (parent 189643ede8f3904dd670f0109a28b7536e894c00; commit “[NK1][Avatar] Reduce remote model import peak memory”, 2026-11-13). Exact-SHA source checks: 6/6 SUCCESS. Refresh live refs and exact-SHA Actions before every write; main remains release/metadata, not the direct source target.
 
-> **Current continuation checkpoint — 2026-11-01:** start with [README.md](README.md) and [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions. The source baseline at this checkpoint is `735b83d525c0d53c91e2e5a6587fb3529a08d13b`; never assume this SHA remains current. `main` is release/metadata and is not the direct source merge target. The historical WorkPass126/127 and PR #11/#12 notes formerly below were stale and have been removed from the active entry point; older WorkPass records later in the repository remain archival.
+## Current checkpoint — 2026-11-13
 
-## Current checkpoint
+- Live source HEAD 1a0315595302f3154df0ae53e5d9188875311467: 6/6 exact-SHA checks SUCCESS (GLB/VRM preflight, explicit-forget, browser-affect, local-language resilience, source-lineage, targeted/regression).
+- PR #863 source-assimilation register: Draft, head f4feaceb221cbf74a4913b7bb4af113c19c2ae1c, 44/44 checks SUCCESS. It records 4 supplied containers, 22 nested archives, 21 unique donors; human legal clearance is 0/21, detailed code-diff coverage 1/21, tests verified 1/21 and release verified 0/21. Its base snapshot is 189643ede8f3904dd670f0109a28b7536e894c00, one source commit behind the live branch; do not force-push or claim all donor work integrated.
+- PR #864 Hexis-derived consequence-cost policy: Draft, head 21d979476c107d577119d07039fef2762583a4af, 8/8 exact-head checks SUCCESS. It preserves ActionGateway as the only executor; heuristic weights still require human/tool-registry review.
+- PR #866 HMX 1.7 canonical apply: Draft, head 928b85b981e887f595d7fb2cb6a1cec5611f7c40. The HMX canonical-apply and source-lineage checks now pass after a test-lifecycle fix. Overall exact-head Actions: 29/30 SUCCESS; the sole failure is independent-evidence-evaluation because inspect-ai cannot import acp.helpers. Existing PR #853 contains the ACP pin/import smoke fix (head 2bae2883286bfd783c5adcf7b8148b8d70e795f4, 5/5 SUCCESS) but remains unmerged; do not duplicate its change.
+- Issue #865 remains open: exact pending decision does not receive grounded reafference / temporal credit. This is a separate baseline defect, not the ACP startup failure.
+- PR #854 is the isolated documentation/handoff branch; this cycle adds the 2026-11-13 report and refreshes the top checkpoints only. No PR is merged or closed.
+- The 75-aspect registry remains a status inventory: 62 IMPLEMENTED, 1 TESTED, 11 PLANNED, 1 BLOCKED. No aspect status or global readiness is promoted by this metadata refresh.
+- Latest published ZIP including prerelease remains tag workpass70-hotfix1-2026-10-19, asset Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes, metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb. Binary bytes are not available in this execution environment; member list, CRC, recomputed hash and source parity remain UNKNOWN. Human license clearance is still pending.
 
-- PR #594 merged: missing/corrupt-primary recovery, unchanged restore recreation and backup preservation; 11/11 exact-head checks.
-- PR #603 merged: terminal/unknown speech lifecycle clears stale mouth channels; 9/9 exact-head checks.
-- PR #607 merged: backup temp + fsync + atomic rename, with SIGKILL-before-rename regression; 11/11 exact-head checks.
-- UserModel v2 durable forgetting is already integrated at `efb7693`; motor-frame integrity is integrated at `c039f84`.
-- Latest published Release ZIP is still the 2026-10-19 WorkPass70 Hotfix prerelease. November source commits are not in the ZIP; license review and exact-SHA release gate remain blocking.
-
+## Non-negotiable engineering workflow
 ## Non-negotiable engineering workflow
 
 1. Read the current README, handoff, owning implementation and narrowest relevant tests.
@@ -30,7 +32,8 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 ## Canonical navigation
 
 - `README.md`: current repository status and release gates.
-- `docs/WORKPASS93_CHECKPOINT_2026-10-20.md`: latest continuation snapshot, CI evidence and prioritized unresolved queue.
+- docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md: latest dated execution log; NEUROCORE_START_HERE.md is the current handoff.
+- docs/WORKPASS93_CHECKPOINT_2026-10-20.md: historical archive, not the current checkpoint.
 - `docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` plus its JSON manifest: exact content-duplicate audit; candidates are not deletion instructions.
 - `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: repository inventory, audit findings and open-work register.
 - `runtime/neuro-kurisu/`: canonical organism/runtime implementation.
