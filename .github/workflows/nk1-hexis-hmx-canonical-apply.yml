@@ -32,6 +32,9 @@ jobs:
       - name: Install pinned runtime dependencies
         working-directory: runtime/neuro-kurisu
         run: npm ci --no-audit --no-fund
+      - name: Verify HMX export secret redaction
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/integration/hexis-hmx-export-redactor.mjs
       - name: Run real server HMX canonical apply integration
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/integration/hexis-hmx-canonical-apply.mjs
