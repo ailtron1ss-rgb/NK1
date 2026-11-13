@@ -109,4 +109,16 @@ assert.deepEqual(holdoutOnlyPlan.targets, [], 'holdout-only regression must not 
 assert.equal(holdoutOnlyPlan.overallFitness01, 1, 'the plan score must describe validation evidence only');
 assert.ok(!JSON.stringify(holdoutOnlyPlan).includes('SECRET_HOLDOUT_ONLY'));
 
+// A hostile gate report proves the planner never reads holdout-derived accessors.
+const hostileFitness = Object.defineProperties({}, {
+  eligible: { enumerable: true, get() { throw new Error('holdout-eligible-read'); } },
+  reasons: { enumerable: true, get() { throw new Error('holdout-reasons-read'); } },
+  feedback: { enumerable: true, get() { throw new Error('holdout-feedback-read'); } },
+  holdoutDelta01: { enumerable: true, get() { throw new Error('holdout-delta-read'); } },
+});
+assert.doesNotThrow(
+  () => planSkillRevision(validationWeak, holdoutRegression, hostileFitness),
+  'the planner must not read gate-report fields that may encode holdout results',
+);
+
 console.log('P23_REVISION_PLAN_HOLDOUT_ISOLATION=PASS');
