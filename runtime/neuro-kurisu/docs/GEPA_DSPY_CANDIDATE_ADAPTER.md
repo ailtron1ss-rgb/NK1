@@ -70,7 +70,7 @@ Integrated:
 - CI path filters and focused regression tests.
 
 Not yet done:
-- a deployed or bundled DDSPy/GEPA optimizer service;
+- a deployed or bundled DSPy/GEPA optimizer service;
 - multi-candidate population search and per-example Pareto archive inside NK1;
 - ablation against single-candidate P23 on a frozen benchmark with paired seeds and independent holdout;
 - live-device memory/latency and restart/soak tests;
