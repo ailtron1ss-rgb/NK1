@@ -65,7 +65,7 @@ jobs:
       - name: Install pinned Python
         uses: actions/setup-python@v6
         with:
-          python-version: .python-version
+          python-version-file: .python-version
 
       - name: Verify launch toolchain
         shell: bash
@@ -75,13 +75,14 @@ jobs:
           npm --version
           python3 --version
           node --input-type=module - <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { readFileSync } from 'node:fs';
           import { readPinnedNodeMajor } from './tools/lib/node-runtime.mjs';
           import { assertToolchainVersions } from './tools/lib/super-startup.mjs';
-          import { readFileSync } from 'node:fs';
           const result = assertToolchainVersions({
             nodeVersion: process.version,
-            npmVersion: process.env.npm_config_user_agent?.match(/npm\/(\d+\.\d+\.\d+)/)?.[1] ?? process.env.NPM_VERSION ?? '10.9.2',
-            pythonVersion: readFileSync('/dev/stdin', 'utf8').trim() || 'Python 3.11',
+            npmVersion: execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim(),
+            pythonVersion: execFileSync('python3', ['--version'], { encoding: 'utf8' }).trim(),
             expectedNodeMajor: readPinnedNodeMajor(process.cwd()),
             expectedPythonVersion: readFileSync('.python-version', 'utf8').trim(),
           });
