@@ -210,6 +210,59 @@ try {
   assert.equal((await memoryIndex()).length, expectedCanonicalCount,
     'same-text records from a separate donor lineage remain source-isolated');
 
+  // Force a late canonical identity conflict after the first record has already
+  // been projected. The transaction must restore MemoryOS2, MemoryFabric,
+  // EventLog, semantic graph and Hexis temporal state as one unit.
+  const rollbackId = 'exp_3333333333333333';
+  const rollbackDocument = makeDocument(rollbackId, 'rollback');
+  rollbackDocument.sections.memories = [
+    {
+      ref: rollbackId + ':memory-new-before-conflict',
+      type: 'semantic',
+      status: 'active',
+      content: 'TEMPORARY HMX WRITE MUST BE ROLLED BACK',
+      importance: 0.7,
+      trust_level: 0.5,
+      created_at: '2026-11-12T10:00:00.000Z',
+      valid_from: '2026-11-12T10:00:00.000Z',
+      metadata: { tags: ['rollback-probe'] },
+      provenance: { source_id: 'rollback-probe', source_type: 'test' },
+    },
+    {
+      ref: rollbackId + ':memory-a',
+      type: 'semantic',
+      status: 'active',
+      content: 'TAMPERED CONTENT FOR AN EXISTING PORTABLE REFERENCE',
+      importance: 0.7,
+      trust_level: 0.5,
+      created_at: '2026-11-12T10:00:00.000Z',
+      valid_from: '2026-11-12T10:00:00.000Z',
+      metadata: { tags: ['rollback-probe'] },
+      provenance: { source_id: 'rollback-probe', source_type: 'test' },
+    },
+  ];
+  rollbackDocument.sections.relationships = [];
+  const beforeRollbackCount = (await memoryIndex()).length;
+  const rollbackStageResponse = await post('/api/organism/integration/hexis/hmx/stage', {
+    document: rollbackDocument, intent: 'port', strategy: 'additive',
+  });
+  assert.equal(rollbackStageResponse.status, 200);
+  const rollbackStage = await rollbackStageResponse.json();
+  assert.equal(rollbackStage.stage.conflicts.length, 0);
+  assert.equal((await post('/api/organism/integration/hexis/hmx/decide', {
+    stagingId: rollbackStage.stage.stagingId, decision: 'accept',
+  })).status, 200);
+  const failedApply = await post('/api/organism/integration/hexis/hmx/decide', {
+    stagingId: rollbackStage.stage.stagingId, decision: 'apply',
+  });
+  assert.equal(failedApply.status, 400);
+  assert.match((await failedApply.json()).error, /hmx-memory-identity-conflict/);
+  const afterRollback = await memoryIndex();
+  assert.equal(afterRollback.length, beforeRollbackCount,
+    'a late import conflict must not leave earlier writes committed');
+  assert.equal(afterRollback.some(row => row.summary.includes('TEMPORARY HMX WRITE MUST BE ROLLED BACK')), false,
+    'the earlier successful record in a failed batch must be removed by rollback');
+
   const replayResponse = await post('/api/organism/integration/hexis/hmx/decide', {
     stagingId: staged.stage.stagingId, decision: 'apply',
   });
