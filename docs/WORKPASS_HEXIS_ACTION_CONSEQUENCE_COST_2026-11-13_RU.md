@@ -26,6 +26,7 @@ Hexis разделяет вычислительную стоимость и це
 - `AutonomousResourceToolLifeController.plan()` использует новый классификатор для сужения множества кандидатов и ранжирования только разрешённых read-only действий.
 - Существующий `cost01` остаётся стоимостью вычислительного/ресурсного конверта. Новое `consequenceCost01` возвращается отдельно, поэтому две величины не подменяют друг друга.
 - `ActionGateway` остаётся единственным исполнителем и авторитетом разрешений, одобрений, idempotency receipts и outcome verification. Новый фильтр не вызывает инструменты и не выдаёт разрешения.
+- `AutonomousResourceToolLifeState` сохраняет счётчик отклонённых consequential-кандидатов и последний профиль; каждый tool receipt содержит повторно вычисленные `consequenceCost01`/`consequenceClass`. Старые snapshots совместимы: новые поля имеют безопасные defaults, старые receipt rows остаются читаемыми.
 - Внутренняя мотивация, память и автономное планирование не заменяются донорским runtime; не создаётся второе состояние и не добавляются зависимости.
 
 ## Польза
@@ -37,7 +38,7 @@ Hexis разделяет вычислительную стоимость и це
 
 ## Проверки
 
-- `node --experimental-strip-types tests/hexis-action-consequence-cost-policy.mjs` — локально PASS (профили 5 классов, precedence, approval flag, read-only selection, social-only block).
+- `node --experimental-strip-types tests/hexis-action-consequence-cost-policy.mjs` — локально PASS (профили 5 классов, precedence, approval flag, read-only selection, social-only block, persisted telemetry round-trip).
 - Ожидаемый TDD red до создания модуля: импорт не найден.
 - Полный `npm run typecheck`, интеграционный тест `big-pass-223-autonomous-resource-tool-life`, ActionGateway regressions и GitHub Actions на точном SHA пока не запускались в этом окружении. CI workflow добавлен для PR.
 
