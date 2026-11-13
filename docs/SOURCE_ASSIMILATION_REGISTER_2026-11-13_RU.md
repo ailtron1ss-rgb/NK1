@@ -354,3 +354,26 @@ These are separate workstream measures, not a weighted global “digital-person 
 
 Следующие шесть источников для targeted pass: AutoGPT, Letta snapshot, llama.cpp server, Lumina, CAMEL OWL и Superpowers. Для них первыми проверить path-level license/NOTICE, зрелость и конкретные missing seams. Не считать наличие архива доказательством необходимости runtime import.
 
+
+
+## 16. Последние шесть доноров: первичный code/license triage (2026-11-13)
+
+| Донор | Факт из извлечённого архива | Решение для NK1 |
+|---|---|---|
+| AutoGPT | Корневой LICENSE прямо разделяет репозиторий: `autogpt_platform/**` — Polyform Shield 1.0.0, остальная часть — MIT. Поддерево platform нельзя переносить как будто весь репозиторий MIT | Не импортировать Platform. Classic MIT-код всё равно сравнить с NK1 только по конкретной отсутствующей функции; сейчас второй автономный runtime не нужен |
+| Letta | Архив содержит Apache-2.0 README/docs snapshot, который указывает, что актуальный harness/runtime находится в отдельном `letta-ai/letta-code`; данный архив не является полным кодовым снимком текущего Agent Runtime | Reference only для memory-block governance/agent state; не делать вывод, что Letta runtime уже импортирован |
+| llama.cpp | MIT C/C++ runtime; server описывает JSON-schema-constrained output, grammar, slots, parallel request capacity, continuous batching, KV-slot save/restore и metrics | Высокоприоритетная проверка уже существующего NK1 local route: сначала подтвердить реальный process/endpoint/config на target device, затем сравнить constrained output и slot telemetry. Не встраивать C++ как новую runtime dependency до измерения |
+| Lumina | Apache-2.0 local-first Python harness, core modules включают dreaming, skills, idempotency, persistence и backend switching | Сильный conceptual donor, но NK1 уже имеет Lumina adaptation fabric плюс собственные MemoryOS2/skill lifecycle/local-backend policy. Полный Python harness создал бы второй lifecycle и memory owner |
+| CAMEL OWL | В архиве найден вложенный `licenses/LICENSE`, но отдельный корневой LICENSE не обнаружен на уровне проекта; пакетный/asset/license scope требует раздельной проверки | Research-only для task decomposition. Никакой code/assets import до path-level license and dependency/NOTICE audit |
+| Superpowers | MIT agent-development methodology, composable skills и workflow instructions | Полезен для разработки NK1, но не является runtime когнитивным механизмом. Не копировать весь dev harness в продукт; использовать только совместимые engineering workflow ideas |
+
+### Итоговое покрытие всех доноров
+
+- 21/21: source inventory, owner/capability routing и initial license stop-screen completed.
+- 15/21: targeted key-file/code review completed.
+- 6/21: preliminary code/README/license triage completed; exhaustive targeted pass remains.
+- 0/21: new donor production runtime code promoted in this pass.
+- 1 NK1 code change merged: PR #838, independent of the 21 donor imports.
+
+**Следующий лучший технический кандидат:** не добавлять новый framework, а провести runtime proof of the existing `llama.cpp` path (process detection, configured URL, health/slot telemetry, JSON-schema output contract, cancellation/timeout, CPU/RAM/token latency on the intended device). После подтверждения endpoint можно встроить только недостающие server capabilities через существующий provider boundary. Параллельный HMX candidate требует отдельного архитектурного approval и не должен одновременно менять memory ownership.
+
