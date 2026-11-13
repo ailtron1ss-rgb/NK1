@@ -511,3 +511,18 @@ GitHub Compare также не нашёл общего предка между `
 3. Исправить отдельный temporal-credit baseline defect [#865](https://github.com/ailtron1ss-rgb/NK1/issues/865): idempotency integration test 12/13 с одинаковым failing assert на чистой базе и feature ветке.
 4. Пройти оставшиеся 6 donor projects; path-level licenses/notices, model weights и assets review до любого файлового копирования.
 5. После review и сравнения с актуальным base — решить PR #864; затем отдельно сверить merged source с содержимым Release ZIP и SHA-256. До этого изменения не считать выпущенными.
+## 19. Release artifact boundary verification (2026-11-13)
+
+Проверена GitHub Releases API metadata (не байты самого ZIP):
+
+- Tag: `Neuro`.
+- Release name: `NeuroKurisu0.1`.
+- Published: `2026-10-19T14:21:35Z`.
+- Asset: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`.
+- Size: `135,290,615` bytes.
+- GitHub asset digest: `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- Release target branch metadata: `main`.
+
+Ограничение: прикреплённый пользователем ZIP `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` отсутствовал по ожидаемому локальному пути `/mnt/data/`, а попытка получить байты release asset через текущий runtime не удалась. Следовательно, ZIP contents, archive integrity, source-vs-release diff и совпадение digest с локальными байтами **не проверены**. Digest выше — значение из GitHub Release metadata, а не самостоятельно пересчитанный SHA-256.
+
+В текущей итерации PR #864 меняет только Draft ветку от `workpass70-source`; он не меняет `main`, release tag `Neuro` или published ZIP. Release reconciliation остаётся 0% до получения/скачивания asset и проверки extracted tree, manifests, runtime tests и actual SHA-256. Не объявлять изменения выпущенными.
