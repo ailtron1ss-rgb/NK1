@@ -24,16 +24,16 @@ const timestamp = (value: unknown, fallback: number): number => {
   const parsed = typeof value === 'number' ? value : Date.parse(String(value ?? ''));
   return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : fallback;
 };
-const CHAT_CONTROL_RE = /<\\|\\s*(?:im_start|im_end|im_sep|endoftext|system|user|assistant|start_header_id|end_header_id|eot_id|begin_of_text)\\s*\\|>/giu;
-const ROLE_LINE_RE = /^[ \\t]*(?:system|developer|assistant|user|human)[ \\t]*[:：]/gimu;
-const INVISIBLE_TEXT_RE = /[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u206F\\uFEFF]/gu;
+const CHAT_CONTROL_RE = /<\|\s*(?:im_start|im_end|im_sep|endoftext|system|user|assistant|start_header_id|end_header_id|eot_id|begin_of_text)\s*\|>/giu;
+const ROLE_LINE_RE = /^[ \t]*(?:system|developer|assistant|user|human)[ \t]*[:：]/gimu;
+const INVISIBLE_TEXT_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/gu;
 function sanitizeHmxImportedText(input: string): string {
-  let text = input.normalize('NFKC').replace(INVISIBLE_TEXT_RE, '').replace(/\\r\\n?/gu, '\\n');
+  let text = input.normalize('NFKC').replace(INVISIBLE_TEXT_RE, '').replace(/\r\n?/gu, '\n');
   for (let pass = 0; pass < 16; pass += 1) {
     const cleaned = text
       .replace(CHAT_CONTROL_RE, '')
       .replace(ROLE_LINE_RE, '')
-      .replace(/\\n{3,}/gu, '\\n\\n')
+      .replace(/\n{3,}/gu, '\n\n')
       .trim();
     if (cleaned === text) return cleaned.slice(0, 12_000);
     text = cleaned;
