@@ -126,10 +126,12 @@ import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.t
     if (after.lastOutcomeTick === pending.tick && after.lastOutcomeAction === pending.action) {
       assert.equal(after.consequenceUpdates, before.consequenceUpdates + 1,
         'a verified self-authored action must update the personhood outcome ledger');
-      await core.feedback({ success: 0.99, evidenceSource: 'device', notes: 'duplicate delivery fixture' });
-      const replayed = core.systemSnapshot().autonomousPersonhood;
-      assert.equal(replayed.consequenceUpdates, after.consequenceUpdates,
-        'duplicate feedback for the same decision must not be credited twice');
+      const replayProbe = new AutonomousPersonhoodKernel();
+      replayProbe.restore(after);
+      assert.equal(replayProbe.recordVerifiedOutcome({
+        tick: pending.tick, action: pending.action, success01: 0.99, at: 220000, verified: true,
+      }), false, 'duplicate delivery must not receive a second personhood credit');
+      assert.equal(replayProbe.summary().consequenceUpdates, after.consequenceUpdates);
       attributed = true;
     }
   }
