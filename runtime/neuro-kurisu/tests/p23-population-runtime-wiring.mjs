@@ -10,7 +10,7 @@ const providerSource = readFileSync(resolve(root, 'src/organism/learning/P23Inde
 const coordinatorSource = readFileSync(resolve(root, 'src/organism/learning/P23CompoundRepairRevisionCoordinator.ts'), 'utf8');
 
 assert.match(runtimeSource, /validationOnlyEvaluationConfigForRepair\?:/);
-assert.match(runtimeSource, /populationSearchBudget\?:/);
+assert.match(runtimeSource, /populationSearchBudget\?:/);\nassert.match(runtimeSource, /populationSearchArchive:populationArchive/);\nassert.match(runtimeSource, /population-search-failed/);
 assert.match(runtimeSource, /withIndependentCandidateEvaluation\([\s\S]*?validationOnlyEvaluationConfigForRepair[\s\S]*?populationSearchBudget/);
 assert.match(runtimeSource, /validation-only-population-search-requires-independent-final-evaluation-authority/);
 assert.match(providerSource, /createValidationOnlySkillCandidateEvaluator\(validationOnlyConfig\)/);
@@ -181,4 +181,5 @@ assert.ok(failureEvent, 'failed/no-gain population search must leave a durable o
 assert.equal(failureEvent[0], 'warn');
 assert.equal(failureEvent[2].populationSearch.timedOut, true);
 assert.equal(failureEvent[2].populationSearchArchive[0].split, 'validation');
-\nconsole.log('P23_POPULATION_RUNTIME_WIRING=PASS');
+
+console.log('P23_POPULATION_RUNTIME_WIRING=PASS');
