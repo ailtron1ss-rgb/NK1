@@ -44,10 +44,10 @@ const PROFILES: Readonly<Record<ActionConsequenceClass, Readonly<ActionConsequen
   unknown: Object.freeze({ irreversibility01: .65, socialExposure01: .35, commitment01: .55, userAttention01: .40, identityImpact01: .55 }),
 });
 
-const READ_TOKENS = new Set(['read', 'inspect', 'status', 'health', 'evidence', 'research', 'context', 'list', 'search', 'lookup', 'fetch', 'query', 'observe', 'reconcile', 'snapshot', 'metadata', 'capabilities']);
+const READ_TOKENS = new Set(['read', 'inspect', 'status', 'health', 'evidence', 'research', 'context', 'list', 'search', 'lookup', 'fetch', 'query', 'observe', 'snapshot', 'metadata', 'capabilities']);
 const SOCIAL_TOKENS = new Set(['send', 'post', 'message', 'contact', 'reach', 'email', 'sms', 'dm', 'notify', 'speak', 'publish', 'share']);
 const DESTRUCTIVE_TOKENS = new Set(['delete', 'remove', 'destroy', 'shutdown', 'restart', 'terminate', 'wipe', 'drop', 'reset', 'revoke', 'purge']);
-const MUTATION_TOKENS = new Set(['write', 'create', 'update', 'patch', 'edit', 'modify', 'execute', 'exec', 'shell', 'install', 'commit', 'save', 'upload', 'move', 'rename', 'apply', 'mutate', 'trigger', 'invoke', 'launch', 'transfer', 'purchase', 'submit', 'capture', 'record']);
+const MUTATION_TOKENS = new Set(['write', 'create', 'update', 'patch', 'edit', 'modify', 'execute', 'exec', 'shell', 'install', 'commit', 'save', 'upload', 'move', 'rename', 'apply', 'mutate', 'reconcile', 'trigger', 'invoke', 'launch', 'transfer', 'purchase', 'submit', 'capture', 'record']);
 
 function tokens(value: string): string[] {
   return String(value ?? '').normalize('NFKC').toLocaleLowerCase('en-US').split(/[^a-z0-9]+/).filter(Boolean);
