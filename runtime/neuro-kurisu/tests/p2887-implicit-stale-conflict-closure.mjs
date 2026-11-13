@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
+import { MemorySubstrateCoordinator } from '../src/organism/developmental/MemorySubstrateCoordinator.ts';
+import { MultiTimescaleMemory } from '../src/organism/memory/MultiTimescaleMemory.ts';
 
 const m = new MemoryOS2();
 const base = 1_000_000;
@@ -145,5 +147,25 @@ assert.equal(hmxBoundary.get(hmxOlder.id)?.validUntilAt, null,
   'unverified HMX validity remains open until explicit review or grounded evidence reconciliation');
 assert.equal(hmxBoundary.get(hmxOlder.id)?.supersededById, null);
 assert.equal(hmxBoundary.get(localContradiction.id)?.supersedesId, null);
+
+const substrate = new MemorySubstrateCoordinator();
+const canonicalProjectionRows = substrate.projectCompatibilityRecords(m.snapshot({ clone: false }), 32);
+assert.ok(canonicalProjectionRows.length > 0);
+assert.ok(canonicalProjectionRows.every(row => row.canonicalProjection?.owner === 'memoryOS2'));
+const compatibilityMemory = new MultiTimescaleMemory();
+compatibilityMemory.restore(canonicalProjectionRows);
+assert.equal(substrate.compatibilityInputs(compatibilityMemory.snapshot({ clone: false }), 32).length, 0,
+  'canonical MemoryOS2 read projections must remain read-only after MultiTimescaleMemory snapshot/restore');
+const legacyOnlyRow = {
+  ...canonicalProjectionRows[0],
+  id: 'legacy-only-compatibility-row',
+  summary: 'legacy-only compatibility row',
+  evidence: ['legacy-source'],
+  canonicalProjection: undefined,
+};
+compatibilityMemory.add(legacyOnlyRow);
+const legacyInputs = substrate.compatibilityInputs(compatibilityMemory.snapshot({ clone: false }), 32);
+assert.equal(legacyInputs.length, 1, 'genuine legacy rows without the canonical projection marker must still migrate');
+assert.equal(legacyInputs[0].source, 'multi-timescale-compatibility');
 
 console.log(JSON.stringify({ok:true,resolved:d.resolved,staleRetrievalsAvoided:d.staleRetrievalsAvoided,current}));
