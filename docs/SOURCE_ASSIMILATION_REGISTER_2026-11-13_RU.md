@@ -487,7 +487,7 @@ GitHub Compare также не нашёл общего предка между `
 - `ActionGateway` не заменён и остаётся единственным исполнителем и permission/approval/idempotency/outcome authority.
 - Новые зависимости — 0; весь донорский runtime не импортировался.
 - Исправлен контракт reason string после фактического падения общего governance test; исходный consumer contract сохранён.
-- На exact HEAD `c9604639099b38cc1e426aa38c3e02285b6247ae` весь scoped CI и полный Gateway governance завершились SUCCESS; ссылка на полный gateway run: https://github.com/ailtron1ss-rgb/NK1/actions/runs/43391732001.
+- На exact HEAD `c9604639099b38cc1e426aa38c3e02285b6247ae` весь scoped CI и полный Gateway governance завершились SUCCESS; ссылка на полный gateway run: https://github.com/ailtron1ss-rgb/NK1/actions/runs/43391732001. Текущий source-assimilation PR #863 HEAD `3196d0a6c92061a57c7520865ae82a05e3d7920c` также имеет exact-head SUCCESS: https://github.com/ailtron1ss-rgb/NK1/actions/runs/43393220269.
 
 ### Проценты именно этой линии работы
 
@@ -562,7 +562,7 @@ GitHub Compare также не нашёл общего предка между `
 - Неизвестные source IDs/поля, некорректные типы и пустые доказательства отклоняются.
 - После применения overlay выполняется полная `validateSourceRegistry`, чтобы нельзя было перепрыгнуть между стадиями: tests требуют runtime wiring + evidence; release требует passing tests + release evidence; code copy требует legal clearance.
 - Базовый объект клонируется (`structuredClone`), входной архивный registry не мутируется.
-- `llama-cpp.testsPassed=true` подкреплено GitHub Actions run `43392930739` на commit `8d3bb5bb220fb0a8a2a777ecb61c75980f3d774a`: provider regression, P23 generator и integration tests PASS, static source audit 28/28, Hexis/Letta/Lumina/Will/Mem0 contracts PASS.
+- `llama-cpp.testsPassed=true` подкреплено GitHub Actions run `43393220269` на exact source-audit HEAD `3196d0a6c92061a57c7520865ae82a05e3d7920c` повторно подтвердил: provider regression, P23 generator/integration tests PASS, static source audit 28/28, source-audit unit tests (10 tests) PASS, Hexis/Letta/Lumina/Will/Mem0 contracts PASS. Отчёт показывает tests verified 1/21 (4.8%), release verified 0/21.
 - `releaseVerified` остаётся `false`; CI testing не означает release inclusion.
 
 Validation run после появления overlay и strict gate-order tests должен оставаться последним evidence record; при изменении кода запись `testsPassed` нужно сбрасывать до следующего exact-head green run.
