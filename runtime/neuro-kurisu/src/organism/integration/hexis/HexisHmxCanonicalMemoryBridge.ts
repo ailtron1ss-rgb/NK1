@@ -73,12 +73,19 @@ function stableId(exportId: string, ref: string): string {
   return 'hmx_' + createHash('sha256').update(exportId).update('\0').update(ref).digest('hex').slice(0, 40);
 }
 
-function relationshipChannel(edgeType: string): 'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks' {
+type HmxRelationshipMapping = {
+  channel: 'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks';
+  direction: 'forward'|'reverse'|'both';
+};
+
+function relationshipChannel(edgeType: string): HmxRelationshipMapping {
   const edge = edgeType.toUpperCase();
-  if (['CAUSES','CAUSED_BY','CAUSE','EFFECT','LEADS_TO','RESULTS_IN','PREVENTS'].includes(edge)) return 'causalLinks';
-  if (['BEFORE','AFTER','PRECEDES','FOLLOWS','DURING','CONTAINS','TEMPORAL','NEXT'].includes(edge)) return 'temporalLinks';
-  if (['CONTRADICTS','CONTRADICTED_BY','CONFLICTS_WITH'].includes(edge)) return 'contradictionLinks';
-  return 'semanticLinks';
+  if (['CAUSES','CAUSE','LEADS_TO','RESULTS_IN','PREVENTS'].includes(edge)) return { channel: 'causalLinks', direction: 'forward' };
+  if (edge === 'CAUSED_BY') return { channel: 'causalLinks', direction: 'reverse' };
+  if (['BEFORE','PRECEDES','DURING','CONTAINS','TEMPORAL','NEXT'].includes(edge)) return { channel: 'temporalLinks', direction: 'forward' };
+  if (['AFTER','FOLLOWS'].includes(edge)) return { channel: 'temporalLinks', direction: 'reverse' };
+  if (['CONTRADICTS','CONTRADICTED_BY','CONFLICTS_WITH'].includes(edge)) return { channel: 'contradictionLinks', direction: 'both' };
+  return { channel: 'semanticLinks', direction: 'forward' };
 }
 
 /**
@@ -411,18 +418,27 @@ export class HexisHmxCanonicalMemoryBridge {
     let relationshipsApplied = 0;
     for (const raw of rawRelationships) {
       if (!isRecord(raw) || !safeText(raw.source_ref, 512) || !safeText(raw.target_ref, 512) || !safeText(raw.edge_type, 128)) continue;
-      const source = links.get(raw.source_ref);
-      const targetId = refToId.get(raw.target_ref);
-      if (!source || !targetId) {
+      if (!links.has(raw.source_ref) || !refToId.has(raw.target_ref)) {
         warnings.push({ code: 'relationship-endpoint-not-imported', section: 'relationships', ref: raw.source_ref,
           detail: 'Relationship endpoint is outside the imported portable record set' });
         continue;
       }
-      const channel = relationshipChannel(raw.edge_type);
-      const key = channel === 'semanticLinks' ? 'semantic' : channel === 'temporalLinks' ? 'temporal' :
-        channel === 'causalLinks' ? 'causal' : 'contradiction';
-      if (!source[key].includes(targetId)) source[key].push(targetId);
-      source.edges.push(JSON.stringify({ target: raw.target_ref, edgeType: raw.edge_type }));
+      const mapping = relationshipChannel(raw.edge_type);
+      const key = mapping.channel === 'semanticLinks' ? 'semantic' : mapping.channel === 'temporalLinks' ? 'temporal' :
+        mapping.channel === 'causalLinks' ? 'causal' : 'contradiction';
+      const addLink = (fromRef: string, toRef: string, direction: string): void => {
+        const source = links.get(fromRef);
+        const targetId = refToId.get(toRef);
+        if (!source || !targetId) return;
+        if (!source[key].includes(targetId)) source[key].push(targetId);
+        source.edges.push(JSON.stringify({ target: toRef, edgeType: raw.edge_type, direction }));
+      };
+      if (mapping.direction === 'forward') addLink(raw.source_ref, raw.target_ref, 'forward');
+      else if (mapping.direction === 'reverse') addLink(raw.target_ref, raw.source_ref, 'reverse');
+      else {
+        addLink(raw.source_ref, raw.target_ref, 'both');
+        addLink(raw.target_ref, raw.source_ref, 'both');
+      }
       relationshipsApplied++;
       if (isRecord(raw.properties) && Object.keys(raw.properties).length) {
         warnings.push({ code: 'relationship-properties-ignored', section: 'relationships', ref: raw.source_ref,
