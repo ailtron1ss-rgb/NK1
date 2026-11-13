@@ -27,7 +27,7 @@ export interface P23PopulationSearchBudget {
 }
 
 export interface P23PopulationSearchVariation {
-  id: 'minimal-targeted-repair' | 'trajectory-restructuring' |
+  id: 'minimal-targeted-repair' | 'trajectory-structure-revision' |
       'edge-case-reinforcement' | 'simplify-with-contract-preservation';
   instruction: string;
   index: number;
