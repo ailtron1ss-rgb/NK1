@@ -34,12 +34,12 @@ test('runtime wiring, test pass and release evidence must follow the gate order'
   const c=clone(); c.sources[0].implementation.releaseVerified=true;
   assert.ok(validateSourceRegistry(c).errors.some(e=>e.includes('release requires test pass')));
 });
-test('six adapters existed at intake and three sources now have new verified adaptations', () => {
+test('six adapters existed at intake and four sources now have new verified adaptations', () => {
   const s=summarizeSourceRegistry(doc);
   assert.equal(s.adapters,6);
-  assert.equal(s.adapted,3);
-  assert.equal(s.wired,3);
-  assert.equal(s.tested,3,'the evidence overlay records exact successful CI runs for all three adaptations');
+  assert.equal(s.adapted,4);
+  assert.equal(s.wired,4);
+  assert.equal(s.tested,4,'the evidence overlay records exact successful CI runs for all four adaptations');
   assert.equal(s.released,0);
   assert.match(renderSourceReport(doc),/not an overall readiness score/);
 });
@@ -52,6 +52,18 @@ test('llama.cpp JSON Schema is adapted, P23-wired and marked tested with CI evid
   assert.ok(llama.implementation.testEvidence.some(e=>e.includes('43393334664')));
   assert.ok(llama.implementation.runtimeEvidence.some(e=>e.includes('generateAndStageReflectiveSkillRevisionWithLocalModel')));
   assert.ok(llama.review.sourceEvidence.some(e=>e.includes('server-common.cpp:1306-1318')));
+});
+
+test('Hexis action consequence and HMX adapters are backed by exact focused CI evidence', () => {
+  const hexis=doc.sources.find(s=>s.id==='hexis');
+  assert.equal(hexis.implementation.adapted,true);
+  assert.equal(hexis.implementation.runtimeWired,true);
+  assert.equal(hexis.implementation.testsPassed,true);
+  assert.equal(hexis.implementation.releaseVerified,false);
+  assert.ok(hexis.implementation.runtimeEvidence.some(e=>e.includes('ActionConsequenceCostPolicy')));
+  assert.ok(hexis.implementation.runtimeEvidence.some(e=>e.includes('MemoryOS2')));
+  assert.ok(hexis.implementation.testEvidence.some(e=>e.includes('43391732083')));
+  assert.ok(hexis.implementation.testEvidence.some(e=>e.includes('43432034201')));
 });
 
 test('Hyperon MeTTa bridge is adapted, wired and backed by exact successful CI evidence', () => {
