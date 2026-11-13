@@ -684,11 +684,33 @@ export class HexisAdaptationFabric {
             conflicts.push({ path: 'exported_at', kind: 'schema', detail: 'HMX exported_at must be an ISO date-time' });
         }
         const source = isRecord(document.source) ? document.source : {};
-        if (!safeText(source.instance_id, 256) || !safeText(source.schema_version, 64) ||
+        if (!safeText(source.instance_id, 256) || source.schema_version !== '1.7' ||
             !safeText(source.embedding_model, 256) ||
             !Number.isSafeInteger(source.embedding_dimension) || Number(source.embedding_dimension) < 1 ||
             !safeText(source.hexis_lineage_id, 256)) {
-            conflicts.push({ path: 'source', kind: 'schema', detail: 'HMX source must include instance_id, schema_version, embedding_model, positive embedding_dimension and hexis_lineage_id' });
+            conflicts.push({ path: 'source', kind: 'schema', detail: 'HMX source must include instance_id, schema_version 1.7, embedding_model, positive embedding_dimension and hexis_lineage_id' });
+        }
+        const capabilities = isRecord(document.capabilities) ? document.capabilities : null;
+        if (!capabilities ||
+            !Array.isArray(capabilities.formats) || !capabilities.formats.includes('json') ||
+            !Array.isArray(capabilities.sections) || !Array.isArray(capabilities.hash_algorithms) ||
+            !capabilities.hash_algorithms.includes('sha256') ||
+            !Array.isArray(capabilities.relationship_edge_types) || !Array.isArray(capabilities.optional_features) ||
+            capabilities.formats.length > 32 || capabilities.sections.length > 64 ||
+            capabilities.hash_algorithms.length > 16 || capabilities.relationship_edge_types.length > 64 ||
+            capabilities.optional_features.length > 64) {
+            conflicts.push({ path: 'capabilities', kind: 'schema', detail: 'HMX 1.7 capabilities must declare bounded JSON, SHA-256, sections, relationship types and optional features' });
+        }
+        const privacy = isRecord(document.privacy) ? document.privacy : null;
+        if (!privacy || !['none', 'basic', 'strict', 'custom'].includes(String(privacy.redaction_policy)) ||
+            typeof privacy.contains_sensitive_content !== 'boolean' ||
+            !['backup', 'migration', 'third_party_transfer', 'unspecified'].includes(String(privacy.consent_scope))) {
+            conflicts.push({ path: 'privacy', kind: 'schema', detail: 'HMX privacy must declare redaction policy, sensitive-content flag and consent scope' });
+        }
+        if (input.intent === 'port' && input.strategy === 'additive' &&
+            (!privacy || privacy.redaction_policy !== 'strict' ||
+             privacy.contains_sensitive_content !== false || privacy.consent_scope !== 'migration')) {
+            conflicts.push({ path: 'privacy', kind: 'canonical-import-consent', detail: 'Canonical memory import requires strict redaction, no unredacted sensitive content and explicit migration consent' });
         }
         const sections = isRecord(document.sections) ? document.sections : {};
         if (!Object.keys(sections).length) {
@@ -700,20 +722,29 @@ export class HexisAdaptationFabric {
         const supportedSections = new Set(['memories', 'episodes', 'relationships', 'narrative', 'identity', 'worldview', 'goals', 'drives', 'emotional_triggers', 'clusters', 'in_flight_work', 'audit_records', 'raw_units', 'config']);
         for (const [name, value] of Object.entries(sections)) {
             if (!supportedSections.has(name)) {
-                conflicts.push({ path: 'sections.' + name, kind: 'unknown-section', detail: 'Unknown HMX 1.7 section cannot be interpreted safely' });
+                conflicts.push({ path: 'sections.' + name, kind: 'unknown-section', detail: 'Unknown HMX section is retained only as inert deferred data' });
+            }
+            if (Array.isArray(value)) {
+                const max = name === 'memories' ? 256 : name === 'relationships' ? 512 : 256;
+                sectionCounts[name] = value.length;
+                if (value.length > max) {
+                    conflicts.push({ path: 'sections.' + name, kind: 'section-limit', detail: 'Section exceeds the bounded staging limit of ' + max + ' records' });
+                    continue;
+                }
+                stagedSections[name] = structuredClone(value);
                 continue;
             }
-            if (!Array.isArray(value)) {
-                conflicts.push({ path: 'sections.' + name, kind: 'schema', detail: 'HMX section values must be arrays' });
+            if (isRecord(value)) {
+                const keys = Object.keys(value);
+                sectionCounts[name] = keys.length;
+                if (keys.length > 128) {
+                    conflicts.push({ path: 'sections.' + name, kind: 'section-limit', detail: 'Object section exceeds the bounded staging limit of 128 keys' });
+                    continue;
+                }
+                stagedSections[name] = structuredClone(value);
                 continue;
             }
-            const max = name === 'memories' ? 256 : name === 'relationships' ? 512 : 256;
-            sectionCounts[name] = value.length;
-            if (value.length > max) {
-                conflicts.push({ path: 'sections.' + name, kind: 'section-limit', detail: 'Section exceeds the bounded staging limit of ' + max + ' records' });
-                continue;
-            }
-            stagedSections[name] = structuredClone(value);
+            conflicts.push({ path: 'sections.' + name, kind: 'schema', detail: 'HMX section must be an array or plain object' });
         }
         const memories = Array.isArray(sections.memories) ? sections.memories : [];
         const refs = new Set<string>();
