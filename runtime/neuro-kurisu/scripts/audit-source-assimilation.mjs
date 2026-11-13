@@ -142,14 +142,14 @@ export const SOURCE_ASSIMILATION_ADAPTERS = [
     benefit: 'Использует поддерживаемый llama-server response_format/json_schema в уже существующем loopback-провайдере; P23 получает структурно ограниченный candidate, но не может обойти независимую оценку и promotion gate.',
     groups: [
       group('provider-schema-boundary', 'src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts', [
-        'export interface LocalChatResponseFormat', "type: 'json_object' | 'json_schema'", 'function normalizeResponseFormat(', 'MAX_RESPONSE_SCHEMA_BYTES', 'json_schema: { schema: format.schema }', 'response_format: responseFormat',
+        'export interface LocalChatResponseFormat', "type: 'json_object' | 'json_schema'", 'function normalizeResponseFormat(', 'MAX_RESPONSE_SCHEMA_BYTES', 'json_schema: { schema: format.schema as Record<string, unknown> }', 'response_format: responseFormat',
       ], 'Добавляет ограниченное server-side JSON/JSON Schema decoding без новой зависимости или нового provider owner.'),
       group('p23-source-shape-constraint', 'src/organism/learning/P23LocalModelSkillRevisionGenerator.ts', [
         'function buildPayloadJsonSchema(', 'MAX_JSON_SCHEMA_DEPTH', 'additionalProperties: false',
         "responseFormat: { type: 'json_schema', schema: buildPayloadJsonSchema(request.sourcePayload) }",
       ], 'Выводит shape-only schema из подтверждённого исходного payload; поля сохраняются, значения могут изменяться.'),
       group('provider-contract-tests', 'tests/local-chat-provider-workpass40.mjs', [
-        'JSON Schema is forwarded to llama-server', 'llama.cpp-response-schema-circular', 'llama.cpp-response-schema-accessor-rejected',
+        'llama-server requires response_format.json_schema.schema', '/response-schema-circular/', '/response-schema-accessor-rejected/',
       ], 'Проверяет формат запроса, цикл и отказ без вызова getter.'),
       group('p23-generator-contract-tests', 'tests/p23-local-model-skill-revision-generator.mjs', [
         'server-side constrained JSON decoding', 'exact source payload shape',
