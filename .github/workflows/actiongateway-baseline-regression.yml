@@ -1,0 +1,26 @@
+name: Temporary ActionGateway baseline regression
+
+on:
+  push:
+    branches: [experiment/gateway-regression-baseline-20261113]
+    paths:
+      - ".github/workflows/actiongateway-baseline-regression.yml"
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Baseline ActionGateway idempotency regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/action-gateway-idempotency-workpass37.mjs
+      - name: Baseline ActionGateway approval boundary
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass53-action-approval-boundary.mjs
