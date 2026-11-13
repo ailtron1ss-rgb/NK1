@@ -64,6 +64,7 @@ export const defaultCognitiveResourceEconomy = (): CognitiveResourceEconomyState
   totalBudget01: .82, attentionBudget01: .82, simulationBudget01: .55,
   learningBudget01: .50, memoryBudget01: .70, externalInteractionBudget01: .55,
   predictionDebt01: 0, scarcity01: .18, lastMode: 'abundant', performancePressure01: 0, lastAt: 0, lastTick: -1,
+  attentionEffort01: .7, attentionEffortTarget01: .7, attentionEffortIntent: 'homeostatic',
 });
 
 export class CognitiveResourceEconomy {
