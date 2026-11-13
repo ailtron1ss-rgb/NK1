@@ -59,8 +59,8 @@ function parseEndpoint(raw: string | undefined): URL | null {
     return null;
   }
 }
-function projectStringIds(value: unknown, field: string, max = 128): string[] {
-  if (!Array.isArray(value) || value.length === 0 || value.length > max ||
+function projectStringIds(value: unknown, field: string, max = 128, allowEmpty = false): string[] {
+  if (!Array.isArray(value) || (!allowEmpty && value.length === 0) || value.length > max ||
       value.some(item => !isText(item, 160)) || new Set(value).size !== value.length) {
     throw new Error('gepa-invalid-' + field);
   }
@@ -82,11 +82,11 @@ function projectValidationReport(raw: unknown): Record<string, unknown> {
     throw new Error('gepa-invalid-validation-report');
   }
   const missingCapabilityIds = raw.skillQuality.missingCapabilityIds === undefined
-    ? [] : projectStringIds(raw.skillQuality.missingCapabilityIds, 'missing-capabilities');
+    ? [] : projectStringIds(raw.skillQuality.missingCapabilityIds, 'missing-capabilities', 128, true);
   const missingStepIds = raw.trajectoryQuality.missingStepIds === undefined
-    ? [] : projectStringIds(raw.trajectoryQuality.missingStepIds, 'missing-steps');
+    ? [] : projectStringIds(raw.trajectoryQuality.missingStepIds, 'missing-steps', 128, true);
   const unexpectedStepIds = raw.trajectoryQuality.unexpectedStepIds === undefined
-    ? [] : projectStringIds(raw.trajectoryQuality.unexpectedStepIds, 'unexpected-steps');
+    ? [] : projectStringIds(raw.trajectoryQuality.unexpectedStepIds, 'unexpected-steps', 128, true);
   return {
     taskId: raw.taskId,
     trialId: raw.trialId,
