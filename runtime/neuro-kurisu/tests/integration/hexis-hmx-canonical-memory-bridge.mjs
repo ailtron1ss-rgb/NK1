@@ -10,9 +10,22 @@ class MemoryFabricFake {
   encode(input, { commandId }) {
     const prior = this.commands.get(commandId);
     if (prior) return this.rows.get(prior);
-    const row = { ...input };
+    // Mirror MemoryOS2: encode recomputes links and does not apply imported graph edges.
+    const row = { ...input, semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [] };
     this.rows.set(input.id, row);
     this.commands.set(commandId, input.id);
+    return row;
+  }
+  addLinks(id, patch, { commandId }) {
+    const prior = this.commands.get(commandId);
+    if (prior) return this.rows.get(prior);
+    const row = this.rows.get(id);
+    if (!row) return null;
+    for (const field of ['semanticLinks', 'temporalLinks', 'causalLinks', 'contradictionLinks']) {
+      const incoming = (patch[field] ?? []).filter(target => target !== id && this.rows.has(target));
+      row[field] = [...new Set([...(row[field] ?? []), ...incoming])].slice(0, 24);
+    }
+    this.commands.set(commandId, id);
     return row;
   }
 }
@@ -39,7 +52,7 @@ function document(overrides = {}) {
         { source_ref: 'episode:1', target_ref: 'memory:alpha', edge_type: 'CAUSED_BY' },
         { source_ref: 'memory:alpha', target_ref: 'memory:beta', edge_type: 'CONTRADICTS' },
       ],
-      clusters: [{ ref: 'cluster:1', member_refs: ['memory:alpha', 'memory:beta'] }],
+      clusters: [{ ref: 'cluster:1', name: 'Transit planning', cluster_type: 'topic', member_refs: ['memory:alpha', 'memory:beta'] }],
     },
     ...overrides,
   };
@@ -54,16 +67,18 @@ assert.equal(staged.ok, true);
 assert.equal(staged.memoryCount, 2);
 assert.equal(staged.episodeCount, 1);
 assert.equal(staged.relationshipCount, 4);
-assert.deepEqual(staged.deferredSections.sort(), ['clusters']);
-assert.ok(staged.warnings.some(w => w.code === 'section-deferred'));
+assert.equal(staged.clusterCount, 1);
+assert.deepEqual(staged.deferredSections, []);
 assert.ok(staged.stagingId);
 
 const committed = bridge.commit(staged.stagingId);
 assert.equal(committed.ok, true);
-assert.equal(committed.inserted, 3);
+assert.equal(committed.inserted, 4);
 assert.equal(committed.replayed, 0);
 assert.equal(committed.relationshipsApplied, 4);
-assert.equal(Object.keys(committed.refMap).length, 3);
+assert.equal(committed.clustersApplied, 1);
+assert.equal(committed.linksApplied, 4);
+assert.equal(Object.keys(committed.refMap).length, 4);
 const alpha = memory.getCanonicalMemory(committed.refMap['memory:alpha']);
 assert.equal(alpha.content, 'The donor observed a red bicycle.');
 assert.equal(alpha.kind, 'semantic');
@@ -79,6 +94,13 @@ assert.ok(alpha.contradictionLinks.includes(committed.refMap['memory:beta']), 'C
 const beta = memory.getCanonicalMemory(committed.refMap['memory:beta']);
 assert.ok(beta.causalLinks.includes(committed.refMap['episode:1']), 'HMX causal relationship must become a canonical causal link');
 assert.ok(beta.contradictionLinks.includes(committed.refMap['memory:alpha']), 'symmetric contradiction must be visible from both endpoints');
+assert.ok(alpha.semanticLinks.includes(committed.refMap['cluster:1']), 'cluster membership must link the member to the cluster anchor');
+assert.ok(beta.semanticLinks.includes(committed.refMap['cluster:1']), 'cluster membership must be bidirectional');
+const cluster = memory.getCanonicalMemory(committed.refMap['cluster:1']);
+assert.equal(cluster.content, 'Transit planning');
+assert.equal(cluster.context.hmxSection, 'clusters');
+assert.ok(cluster.semanticLinks.includes(committed.refMap['memory:alpha']));
+assert.ok(cluster.semanticLinks.includes(committed.refMap['memory:beta']));
 const episode = memory.getCanonicalMemory(committed.refMap['episode:1']);
 assert.equal(episode.kind, 'episodic');
 assert.equal(episode.content, 'An imported episode summary.');
@@ -88,11 +110,35 @@ assert.ok(episode.temporalLinks.includes(committed.refMap['memory:beta']));
 const replay = bridge.commit(staged.stagingId);
 assert.equal(replay.ok, true);
 assert.equal(replay.inserted, 0);
-assert.equal(replay.replayed, 3);
+assert.equal(replay.replayed, 4);
 assert.equal(replay.relationshipsApplied, 4);
+assert.equal(replay.clustersApplied, 1);
+assert.equal(replay.linksApplied, 4);
 assert.deepEqual(replay.refMap, committed.refMap);
-assert.equal(memory.rows.size, 3, 'replaying the same accepted stage must not create duplicate canonical memories');
+assert.equal(memory.rows.size, 4, 'replaying the same accepted stage must not create duplicate canonical memories');
 
+
+
+const orphanCluster = bridge.stage({ document: document({
+  export_id: 'exp_orphan_cluster',
+  sections: {
+    memories: [{ ref: 'memory:orphan-base', type: 'semantic', content: 'An isolated imported item.' }],
+    clusters: [
+      { ref: 'cluster:orphan', name: 'Unavailable cluster', member_refs: ['memory:not-imported'] },
+      { ref: 'cluster:nested', name: 'Nested cluster', member_refs: ['cluster:orphan'] },
+    ],
+  },
+}) });
+assert.equal(orphanCluster.ok, true);
+assert.equal(orphanCluster.clusterCount, 2, 'stage reports named cluster candidates');
+const orphanCommit = bridge.commit(orphanCluster.stagingId);
+assert.equal(orphanCommit.ok, true);
+assert.equal(orphanCommit.clustersApplied, 0, 'cluster without imported members must not create a ghost anchor');
+assert.equal(orphanCommit.linksApplied, 0);
+assert.ok(orphanCommit.warnings.some(w => w.code === 'cluster-member-not-imported'));
+assert.ok(orphanCommit.warnings.some(w => w.code === 'cluster-without-members'));
+assert.equal(orphanCommit.refMap['cluster:orphan'], undefined);
+assert.equal(orphanCommit.refMap['cluster:nested'], undefined, 'nested cluster refs are not treated as canonical member records');
 
 const dangling = bridge.stage({ document: document({
   export_id: 'exp_dangling_relationship',
@@ -105,6 +151,7 @@ assert.equal(dangling.ok, true);
 const danglingCommit = bridge.commit(dangling.stagingId);
 assert.equal(danglingCommit.ok, true);
 assert.equal(danglingCommit.relationshipsApplied, 0);
+assert.equal(danglingCommit.linksApplied, 0);
 assert.ok(danglingCommit.warnings.some(w => w.code === 'relationship-endpoint-not-imported'));
 const known = memory.getCanonicalMemory(danglingCommit.refMap['memory:known']);
 assert.equal(known.semanticLinks.length, 0, 'dangling relationship must not create a ghost link');
@@ -210,5 +257,50 @@ assert.equal(secondImport.ok, true);
 assert.notEqual(secondImport.refMap['memory:runtime-copy'], canonicalId,
   'a distinct HMX export must preserve its own deterministic provenance reference even when content is identical');
 assert.equal(systems.memory.memoryOS.size(), 2, 'forceDistinct must preserve distinct donor export references in the canonical owner');
+
+const graphStage = systems.memory.hexisHmxCanonicalMemoryBridge.stage({
+  document: document({
+    export_id: 'exp_runtime_graph',
+    sections: {
+      memories: [
+        { ref: 'memory:g1', type: 'semantic', content: 'Graph memory one.' },
+        { ref: 'memory:g2', type: 'semantic', content: 'Graph memory two.' },
+      ],
+      episodes: [{ ref: 'episode:g1', summary: 'Graph episode summary.', memory_refs: ['memory:g1', 'memory:g2'] }],
+      relationships: [
+        { source_ref: 'memory:g1', target_ref: 'memory:g2', edge_type: 'RELATED' },
+        { source_ref: 'episode:g1', target_ref: 'memory:g1', edge_type: 'CAUSED_BY' },
+      ],
+      clusters: [{ ref: 'cluster:g1', name: 'Graph cluster', cluster_type: 'topic', member_refs: ['memory:g1', 'memory:g2'] }],
+    },
+  }),
+});
+assert.equal(graphStage.ok, true);
+const graphCommit = systems.memory.hexisHmxCanonicalMemoryBridge.commit(graphStage.stagingId);
+assert.equal(graphCommit.ok, true, JSON.stringify(graphCommit));
+assert.equal(graphCommit.linksApplied, 4);
+const g1 = systems.memory.fabric.getCanonicalMemory(graphCommit.refMap['memory:g1']);
+const g2 = systems.memory.fabric.getCanonicalMemory(graphCommit.refMap['memory:g2']);
+const ge = systems.memory.fabric.getCanonicalMemory(graphCommit.refMap['episode:g1']);
+const gc = systems.memory.fabric.getCanonicalMemory(graphCommit.refMap['cluster:g1']);
+assert.ok(g1.semanticLinks.includes(g2.id), 'real MemoryOS2 must retain imported semantic links after encode');
+assert.ok(g1.causalLinks.includes(ge.id), 'real MemoryOS2 must retain direction-aware causal links');
+assert.ok(ge.temporalLinks.includes(g1.id) && ge.temporalLinks.includes(g2.id),
+  'real MemoryOS2 must retain episode membership links');
+assert.ok(gc.semanticLinks.includes(g1.id) && gc.semanticLinks.includes(g2.id),
+  'real MemoryOS2 must retain cluster membership links');
+assert.ok(g1.semanticLinks.includes(gc.id) && g2.semanticLinks.includes(gc.id),
+  'real MemoryOS2 must retain reverse cluster membership links');
+const ghostLinkAttempt = systems.memory.fabric.addLinks(g1.id, { semanticLinks: ['hmx_missing_target'] }, {
+  commandId: 'test:hmx-missing-link',
+});
+assert.ok(ghostLinkAttempt);
+assert.equal(ghostLinkAttempt.semanticLinks.includes('hmx_missing_target'), false,
+  'canonical MemoryOS2 must reject unknown graph-link targets');
+const graphReplay = systems.memory.hexisHmxCanonicalMemoryBridge.commit(graphStage.stagingId);
+assert.equal(graphReplay.ok, true);
+assert.equal(graphReplay.inserted, 0);
+assert.equal(graphReplay.replayed, 4);
+assert.equal(systems.memory.memoryOS.size(), 6, 'real canonical graph replay must remain idempotent');
 
 console.log('HEXIS_HMX_CANONICAL_MEMORY_BRIDGE_PASS');

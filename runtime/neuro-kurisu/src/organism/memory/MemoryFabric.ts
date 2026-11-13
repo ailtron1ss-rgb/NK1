@@ -12,9 +12,10 @@ import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type Memor
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
 
-export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'attach-evidence'|'forget';
+export type MemoryLifecycleAction = 'encode'|'link'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'attach-evidence'|'forget';
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean; forceDistinct?:boolean }
+  | { action:'link'; id:string; patch:Parameters<MemoryOS2['addLinks']>[1]; reason?:string; commandId?:string; tick?:number }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
@@ -223,6 +224,20 @@ export class MemoryFabric {
         if(command.emitEvent===false)eventPayload=undefined;
         break;
       }
+      case 'link': {
+        const before=this.findCanonical(command.id);
+        if(!before){result=null;break;}
+        const item=this.memoryOS.addLinks(command.id,command.patch,command.reason??'relationship-import');
+        if(!item){result=null;break;}
+        const fields = (['semanticLinks','temporalLinks','causalLinks','contradictionLinks'] as const)
+          .filter(key => JSON.stringify(before[key]??[]) !== JSON.stringify(item[key]??[]));
+        result=item; memoryId=item.id; outcome=fields.length?'applied':'noop';
+        if(fields.length){
+          this.touchHot(item.id);
+          eventPayload={action,memoryId:item.id,fields,reason:String(command.reason??'relationship-import').slice(0,240),commandId:commandId||undefined};
+        }
+        break;
+      }
       case 'revise-status': {
         const before=this.findCanonical(command.id);
         if(before&&before.epistemicStatus!==command.to){
@@ -319,6 +334,10 @@ export class MemoryFabric {
 
   encode(input:EncodeInput, context:{tick?:number;emitEvent?:boolean;syncCompatibility?:boolean;commandId?:string;forceDistinct?:boolean}={}) {
     return this.applyLifecycleCommand({action:'encode',input,...context}) as MemoryItem2;
+  }
+
+  addLinks(id:string, patch:Parameters<MemoryOS2['addLinks']>[1], context:{tick?:number;commandId?:string;reason?:string}={}):MemoryItem2|null {
+    return this.applyLifecycleCommand({action:'link',id,patch,...context}) as MemoryItem2|null;
   }
 
   /** Non-mutating search for inspectors and diagnostics; it must not train policy or heat live memories. */
