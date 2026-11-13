@@ -12,7 +12,7 @@ export interface MemorySubstrateInspection {
   recommendation:'consolidate-reads'|'compatibility-projection'|'healthy';
 }
 
-const normalize=(s:string)=>String(s).normalize('NFKC').toLocaleLowerCase().replace(/\s+/g,' ').trim().slice(0,240);
+const normalize=(s:string)=>String(s).normalize('NFKC').toLowerCase().replace(/\s+/g,' ').trim().slice(0,240);
 const tokens=(s:string)=>new Set(normalize(s).split(/[^\p{L}\p{N}_-]+/u).filter(x=>x.length>2).slice(0,48));
 const similarityFromTokens=(a:Set<string>,b:Set<string>)=>{
   if(!a.size||!b.size)return 0;
@@ -82,6 +82,10 @@ export class MemorySubstrateCoordinator{
     const seen=new Set<string>();
     const inputs:Array<Parameters<MemoryOS2['encode']>[0]>=[];
     for(const row of rows.slice(0,Math.max(0,Math.min(64,Math.floor(limit))))){
+      const evidence=Array.isArray(row.evidence)?row.evidence.map(String):[];
+      // Canonical rows are projections, not donor input; converting them back into
+      // MemoryOS2 would create a second belief with weaker/duplicated provenance.
+      if(row.canonicalProjection?.owner==='memoryOS2'||String(row.id??'').startsWith('hexis-')||evidence.some(source=>source.startsWith('hexis:')))continue;
       const key=`${row.kind}|${row.summary}|${row.evidence.slice(-2).join('|')}`;
       if(seen.has(key))continue;
       seen.add(key);
@@ -114,6 +118,7 @@ export class MemorySubstrateCoordinator{
         summary: item.content.slice(0, 360),
         salience: item.salience,
         evidence: [item.source],
+        canonicalProjection:{owner:'memoryOS2',itemId:item.id,schemaVersion:1},
         createdAt: item.createdAt || now,
         timescale: item.kind === 'semantic' ? 'semantic' : item.kind === 'identity' || item.kind === 'autobiographical' ? 'autobiographical' : item.kind === 'working' ? 'working' : 'episodic',
         retrievalCount: item.retrievalCount,
