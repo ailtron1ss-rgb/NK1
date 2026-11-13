@@ -9,7 +9,7 @@
 
 **Verified execution progress — 2026-11-13:** 5 / 1,000 work units PASS (**0.5%**); 995 remain PLANNED / UNVERIFIED. The five PASS units cover only the HMX portable-memory source-provenance slice, not five entire domains or a global readiness claim. Evidence and deferred scope are recorded immediately before the execution table.
 
-**Additional merged capability work not yet mapped to these pre-defined units:** PR #838 (VRM/GLB allocation optimization), PR #871 (Inspect AI ACP compatibility), PR #874 (Will voluntary attention effort). These are real merged code changes with exact-head CI, but they are not silently counted toward the 1,000 until dedicated work-unit rows and exit criteria are mapped.
+**Additional merged capability work not yet mapped to these pre-defined units:** PR #838 (VRM/GLB allocation optimization), PR #871 (Inspect AI ACP compatibility), PR #874 (Will voluntary attention effort), PR #878 (HMX episode/relationship projection). These are real merged code changes with exact-head CI, but they are not silently counted toward the 1,000 until dedicated work-unit rows and exit criteria are mapped.
 
 
 ## How to use this backlog
