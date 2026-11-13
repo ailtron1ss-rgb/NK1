@@ -9,6 +9,7 @@ import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
+import { GepaReflectiveCandidateGenerator } from '../organism/learning/GepaReflectiveCandidateGenerator.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
 import { createSkillPromotionApprovalPayload, createSkillRollbackApprovalPayload, parseTrustedSkillPromotionApprovalKeys } from '../organism/learning/AuthenticatedSkillPromotionApproval.ts';
@@ -37,6 +38,8 @@ const PORT = Number(process.env.PORT || 3000);
 const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').replace(/\/$/, '');
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
+// GEPA is an optional candidate-only sidecar. P23 remains the evaluator and activation authority.
+const GEPA_CANDIDATE_GENERATOR = GepaReflectiveCandidateGenerator.fromEnvironment();
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 // Optional provider: configuration is server-only and disabled unless NK_MEM0_ENABLED=1.
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
@@ -46,6 +49,13 @@ const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
 const COMPOUND_REPAIR_REVISION_PROVIDER_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE || '').trim();
+const GEPA_CANDIDATE_STATUS = GEPA_CANDIDATE_GENERATOR.diagnostics();
+if (GEPA_CANDIDATE_STATUS.enabled && !GEPA_CANDIDATE_STATUS.configured) {
+    throw new Error('GEPA sidecar opt-in requires a valid HTTPS/loopback endpoint and API key');
+}
+if (GEPA_CANDIDATE_STATUS.enabled && !COMPOUND_REPAIR_REVISION_PROVIDER_MODULE) {
+    throw new Error('GEPA sidecar opt-in requires the trusted P23 compound repair revision provider module');
+}
 async function configureCompoundRepairRevision() {
     if (!COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
         return undefined;
@@ -73,9 +83,13 @@ async function configureCompoundRepairRevision() {
         candidateStore: lifecycle.store,
         trustedRunRegistry: lifecycle.registry,
         stateDirectory: STATE,
-        // Real llama.cpp-compatible local generator. The provider module still owns
-        // authentic proposal construction and independent baseline/candidate evaluation.
-        generateSkillRevision: (request) => generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request),
+        // Candidate generation is the only pluggable role. The optional GEPA
+        // sidecar receives validation-only projections; it cannot score, evaluate,
+        // approve or activate. When disabled, P23 continues using local llama.cpp.
+        // A configured sidecar failure is surfaced to P23; it never silently falls back.
+        generateSkillRevision: GEPA_CANDIDATE_STATUS.enabled
+            ? GEPA_CANDIDATE_GENERATOR.asP23RevisionGenerator()
+            : (request) => generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request),
     });
     if (typeof provideInputs !== 'function') {
         throw new Error('compound repair revision provider factory must return an input-provider function');
