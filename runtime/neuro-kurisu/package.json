@@ -1861,6 +1861,8 @@
     "test:neko-social-anti-repeat": "node --experimental-strip-types tests/social-repetition-policy.mjs && node --experimental-strip-types tests/autonomous-social-anti-repeat-bm25.mjs",
     "test:neko-plugin-voice-transcript-bridge": "node --experimental-strip-types tests/neko-plugin-voice-transcript-bridge.mjs",
     "test:neko-plugin-voice-runtime-wiring": "node --experimental-strip-types tests/neko-plugin-voice-runtime-wiring.mjs",
-    "test:neko-plugin-manifest-policy": "node --experimental-strip-types tests/neko-plugin-manifest-policy.mjs"
+    "test:neko-plugin-manifest-policy": "node --experimental-strip-types tests/neko-plugin-manifest-policy.mjs",
+    "audit:source-assimilation": "node scripts/audit-source-assimilation.mjs",
+    "test:source-assimilation-audit": "node tests/source-assimilation-audit.mjs"
   }
 }
