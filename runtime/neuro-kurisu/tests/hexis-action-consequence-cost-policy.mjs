@@ -9,6 +9,7 @@ const unknown = assessActionConsequence({ id: 'plugin.mystery', capability: 'cus
 const destructive = assessActionConsequence({ id: 'system.delete-record', capability: 'database.delete', destructive: true });
 const mixed = assessActionConsequence({ id: 'read-and-send', capability: 'core.read', destructive: false });
 const approvalRequiredRead = assessActionConsequence({ id: 'organism.inspect', capability: 'core.read', destructive: false, requiresApproval: true });
+const reconcile = assessActionConsequence({ id: 'execution.reconcile-receipt', capability: 'core.reconcile', destructive: false });
 
 assert.equal(read.classification, 'read-only');
 assert.equal(read.autonomousAllowed, true);
@@ -23,6 +24,8 @@ assert.equal(destructive.classification, 'destructive');
 assert.equal(destructive.autonomousAllowed, false);
 assert.equal(mixed.classification, 'social', 'social consequence must win over a read-like identifier');
 assert.equal(approvalRequiredRead.autonomousAllowed, false, 'the existing approval flag remains authoritative');
+assert.equal(reconcile.classification, 'mutation', 'reconciliation can alter durable state and must not masquerade as a pure read');
+assert.equal(reconcile.autonomousAllowed, false);
 
 const controller = new AutonomousResourceToolLifeController();
 const plan = controller.plan({
