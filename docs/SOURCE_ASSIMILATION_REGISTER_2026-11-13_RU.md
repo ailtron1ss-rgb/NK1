@@ -111,3 +111,10 @@
 
 - 2026-11-13: обнаружены четыре контейнера; проиндексированы 22 ZIP; выявлен дубль Letta; рассчитаны SHA-256 контейнеров; просмотрены README/manifests отдельных источников; выполнен root license screen; проверены NK1 README/package scripts и merge #862; создан отдельный исследовательский branch для дальнейшего source mapping.
 - Не сделано: импорт кода, установка runtime dependencies, изменения когнитивного runtime, запуск NK1 test suite, merge или публикация Release ZIP.
+
+
+## 10. Дополнительная проверка Git-графа (2026-11-13)
+
+Сравнение `workpass70-source` с merge commit `9a789ee1af8fdaa3826dbc734d18e2fc00cde5bf` завершилось GitHub API ответом `No common ancestor`. Следовательно, найденный merge #862 нельзя считать доказанно включённым в каноническую `workpass70-source` ветку; это отдельная линия истории/база. Перед переносом UserModel v2, skeletal kinematics и UnifiedBrainSystem изменений требуется определить корректную родительскую ветку PR #862, проверить полный diff и выполнить трёхстороннее сопоставление с текущим `workpass70-source`. Не cherry-pick вслепую: вероятны пересечения с уже существующими motor/IK/UserModel контрактами.
+
+Также `get_commit_combined_status` для исходного commit `6202661ad1dcfa37d314765b45e6d63852053e2d` вернул пустой список statuses. Это не эквивалентно CI success. Поэтому интеграция #862 остаётся `OBSERVED_ON_OTHER_LINE / NOT_RECONCILED`, а не `VERIFIED_IN_CANONICAL_SOURCE`.
