@@ -1,3 +1,10 @@
+## [NK1][Learning] Keep P23 holdout results outside revision prompts (2026-11-13)
+
+- Build revision targets, rationale and fitness summaries exclusively from validation reports; the holdout contributes only the hard safety stop.
+- Remove holdout-derived aggregate direction, task/trial identities, gate reasons, evaluator feedback and eligibility from the revision plan; a safety-blocked plan emits no optimizer instruction.
+- Add an adversarial regression proving that holdout sentinels and holdout-only regressions cannot influence generator-facing content, and run it in the verified-learning workflow.
+- This is an evaluation-integrity correction, not a measured learning or retrieval uplift. Fresh independent holdout evaluation remains mandatory.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
