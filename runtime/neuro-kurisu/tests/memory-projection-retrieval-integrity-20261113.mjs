@@ -181,6 +181,11 @@ console.log('MULTITIMESCALE_MEMORY_RETRIEVAL_INTEGRITY=PASS');
   const graph = new SemanticMemoryGraph();
   graph.upsertNode('memory retrieval', 'concept', 0.9);
   assert.deepEqual(graph.retrieve('   !!!   '), []);
+  assert.deepEqual(
+    graph.retrieve('unrelated quasar telescope'),
+    [],
+    'salience must not return semantic nodes without lexical grounding',
+  );
 }
 
 console.log('SEMANTIC_MEMORY_GRAPH_INTEGRITY=PASS');
