@@ -190,7 +190,7 @@ README указывает multi-agent task automation и paper arXiv:2505.23885,
 5. Отдельно reconciliate `workpass70-source`, `main` и Release ZIP: между `workpass70-source` и merge #862 ранее обнаружен `No common ancestor`; не переносить изменения между ними вслепую.
 
 
-## 14. Runtime assimilation slice — Hexis action consequence policy (2026-11-13)
+## 12.1 Runtime assimilation slice — Hexis action consequence policy (2026-11-13)
 
 ### Донорский механизм и отличие от NK1
 
@@ -214,17 +214,23 @@ NK1 уже имеет собственные автономные циклы, ho
 
 Отдельный Draft PR: [#864 — Hexis-derived action consequence gate](https://github.com/ailtron1ss-rgb/NK1/pull/864). Ветка: `aspect/hexis-consequence-cost-policy-20261113`.
 
-Первый exact-head Actions run `43389637471` на `d3e29cc0ee2b912e3dc3ecd2b6f6165d86e70179 ` (уточнить SHA в PR) показал SUCCESS: locked dependency installation, Node 24, full runtime typecheck, новый policy regression, BIG_PASS_223 autonomous resource/tool lifecycle + persistence, ActionCostPolicy unification. После добавления соседних ActionGateway idempotency/approval suites новый head `83d712b38c7e90a7292c10dfcc71550556adc2bf` показал 12/13 idempotency subtests PASS и один failure: exact pending decision не получил grounded reafference; approval step не стартовал из-за stop-on-failure. Сейчас выполняется отдельная baseline ветка от чистого `workpass70-source` SHA `1a0315595302f3154df0ae53e5d9188875311467`, чтобы установить, является ли это старой проблемой.
+Exact-head GitHub Actions run `43389637471` на `d3e29cc0ee2b912e3dc3ecd2b6f6165d86e70179` завершился SUCCESS: locked dependency installation, Node 24, полный runtime typecheck, policy regression, BIG_PASS_223 autonomy/resource lifecycle + persistence и ActionCostPolicy unification.
 
-До baseline result feature нельзя считать полностью закрытым, а PR остаётся Draft. Успешный исходный test run не отменяет более позднюю обнаруженную проблему; status не маскируется как PASS.
+При расширении проверки был добавлен ActionGateway idempotency suite. Он показал 12/13 PASS, один известный fail: `the exact pending decision must receive grounded reafference` (тест `action-gateway-idempotency-workpass37.mjs:182`). Это сравнили на чистой базе, а не стали автоматически приписывать новой интеграции:
+- feature head `83d712b38c7e90a7292c10dfcc71550556adc2bf`: 12/13, тот же fail;
+- чистый baseline `workpass70-source` @ `1a0315595302f3154df0ae53e5d9188875311467`: тот же 12/13 и тот же assert, run `43390523344`.
+
+Вывод: проблема существовала до Hexis policy; она заведена отдельно как [NK1 issue #865](https://github.com/ailtron1ss-rgb/NK1/issues/865). Это не закрывает дефект, но отделяет его от текущего изменения. ActionGateway approval/redaction boundary прошёл на baseline run `43390659519` и feature head run `43390671129`. В feature CI idempotency test изолирован от этого policy workflow, а approval regression остаётся в нём.
+
+После этого workflow обновлён ещё раз; текущий head PR #864 — `72ab4bc76d6fc45fe3888fe74223ecdf127e12a9`, его exact-head Actions run нужно считать финальным для данного среза. PR остаётся Draft, merge/release не делались.
 
 ### Текущие границы и следующий проход
 
-1. Сравнить failing gateway test на baseline и feature head. При baseline PASS — локализовать влияние нового controller selection; при baseline FAIL — завести отдельный baseline defect record, но оставить gateway test в CI как известный blocker до решения.
-2. Выполнить ActionGateway approval boundary test независимо и сохранить его результат.
-3. Инспектировать фактический runtime tool registry по каждому id/capability. Уточнить, какие локальные операции являются drafts/shadow runs и могут безопасно получить отдельный средний-consequence класс без реальной мутации.
-4. Оценить контекстные множители Hexis (first-use uncertainty, high error rate, repeated action, timing) и outcome-backed cost adjustment как следующий отдельный срез; не давать модели изменять hard floors.
-5. После regression closure — rebase/compare base, human review и только затем merge; публикация в Release ZIP — отдельная проверка.
+1. Отдельно исправить #865: трассировать точный decisionId через `OrganismCore.observe()` → `ActionGateway` → verified postcondition → external observer → temporal credit; сохранить atomic persistence и no-duplicate replay.
+2. После прохождения latest exact-head feature CI инспектировать runtime tool registry по каждому id/capability: сверить read-only names, найти реальные draft/shadow операции, которые могут получить отдельный средний consequence tier только при rollback/idempotency guard.
+3. Следующим Hexis pass оценить first-use uncertainty, повторные действия, tool reliability и outcome-backed cost adjustment; использовать только receipt/independent evidence и запретить модели менять hard floors.
+4. Для каждого следующего донора выполнять isolated reproduction → paired seeds/latency/recall/resource measurements → ablation → adaptation через OrganismBus/ActionGateway/MemoryOS2.
+5. Перед merge: latest base compare, review, full relevant regressions; публикация Release ZIP — отдельный процесс.
 
 ## 13. Change log — продолжение (2026-11-13)
 
