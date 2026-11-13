@@ -10,7 +10,7 @@ NK1 уже имеет `CognitiveResourceEconomy`, который владеет 
 
 - `explore`, `verify`, `reflect` → voluntary intent `engage`, effort target 1.0.
 - `rest`, `wait` → intent `rest`, effort target 0.4.
-- Остальные действия → постепенное расслабление к baseline 0.7.
+- Остальные действия → постепенное расслабление к baseline 0.7, максимум один шаг relaxation на новый cognitive tick (повторные embodiment/resource samples в том же tick не ускоряют decay).
 - `engage` запрещён при energy ≤ 0.15, `awake=false` или thermal strain ≥ 0.85. В этом случае target возвращается к 0.7, а общий ресурсный потолок всё равно остаётся ограничен исходной физиологической оценкой.
 - Итоговый attention allocation = прежний resource ceiling × effort; effort никогда не повышает общий budget и не может выйти за [0.4, 1.0].
 - Effort/target/intent сохраняются в snapshot; старые version-1 snapshots восстанавливаются с baseline 0.7.
