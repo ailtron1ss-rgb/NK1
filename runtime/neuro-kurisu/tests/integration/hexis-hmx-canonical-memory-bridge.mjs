@@ -258,4 +258,43 @@ assert.notEqual(secondImport.refMap['memory:runtime-copy'], canonicalId,
   'a distinct HMX export must preserve its own deterministic provenance reference even when content is identical');
 assert.equal(systems.memory.memoryOS.size(), 2, 'forceDistinct must preserve distinct donor export references in the canonical owner');
 
+const graphStage = systems.memory.hexisHmxCanonicalMemoryBridge.stage({
+  document: document({
+    export_id: 'exp_runtime_graph',
+    sections: {
+      memories: [
+        { ref: 'memory:g1', type: 'semantic', content: 'Graph memory one.' },
+        { ref: 'memory:g2', type: 'semantic', content: 'Graph memory two.' },
+      ],
+      episodes: [{ ref: 'episode:g1', summary: 'Graph episode summary.', memory_refs: ['memory:g1', 'memory:g2'] }],
+      relationships: [
+        { source_ref: 'memory:g1', target_ref: 'memory:g2', edge_type: 'RELATED' },
+        { source_ref: 'episode:g1', target_ref: 'memory:g1', edge_type: 'CAUSED_BY' },
+      ],
+      clusters: [{ ref: 'cluster:g1', name: 'Graph cluster', cluster_type: 'topic', member_refs: ['memory:g1', 'memory:g2'] }],
+    },
+  }),
+});
+assert.equal(graphStage.ok, true);
+const graphCommit = systems.memory.hexisHmxCanonicalMemoryBridge.commit(graphStage.stagingId);
+assert.equal(graphCommit.ok, true, JSON.stringify(graphCommit));
+assert.equal(graphCommit.linksApplied, 4);
+const g1 = systems.memory.fabric.getCanonicalMemory(graphCommit.refMap['memory:g1']);
+const g2 = systems.memory.fabric.getCanonicalMemory(graphCommit.refMap['memory:g2']);
+const ge = systems.memory.fabric.getCanonicalMemory(graphCommit.refMap['episode:g1']);
+const gc = systems.memory.fabric.getCanonicalMemory(graphCommit.refMap['cluster:g1']);
+assert.ok(g1.semanticLinks.includes(g2.id), 'real MemoryOS2 must retain imported semantic links after encode');
+assert.ok(g1.causalLinks.includes(ge.id), 'real MemoryOS2 must retain direction-aware causal links');
+assert.ok(ge.temporalLinks.includes(g1.id) && ge.temporalLinks.includes(g2.id),
+  'real MemoryOS2 must retain episode membership links');
+assert.ok(gc.semanticLinks.includes(g1.id) && gc.semanticLinks.includes(g2.id),
+  'real MemoryOS2 must retain cluster membership links');
+assert.ok(g1.semanticLinks.includes(gc.id) && g2.semanticLinks.includes(gc.id),
+  'real MemoryOS2 must retain reverse cluster membership links');
+const graphReplay = systems.memory.hexisHmxCanonicalMemoryBridge.commit(graphStage.stagingId);
+assert.equal(graphReplay.ok, true);
+assert.equal(graphReplay.inserted, 0);
+assert.equal(graphReplay.replayed, 4);
+assert.equal(systems.memory.memoryOS.size(), 6, 'real canonical graph replay must remain idempotent');
+
 console.log('HEXIS_HMX_CANONICAL_MEMORY_BRIDGE_PASS');
