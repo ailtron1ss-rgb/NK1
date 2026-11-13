@@ -378,6 +378,17 @@ function macroObjective(reports: readonly SkillLearnBenchTrialReport[]): number 
     trajectory: number[];
   }>();
   for (const report of reports) {
+    const unit = (value: unknown): value is number =>
+      typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+    if (!report || !isSafeText(report.taskId, 256) || !isSafeText(report.trialId, 256) ||
+        typeof report.taskSuccess?.passed !== 'boolean' ||
+        !unit(report.taskSuccess?.passRate) ||
+        report.taskSuccess.passRate !== (report.taskSuccess.passed ? 1 : 0) ||
+        !unit(report.skillQuality?.aggregate) || !unit(report.trajectoryQuality?.aggregate) ||
+        !Number.isSafeInteger(report.skillQuality?.safetyViolationCount) ||
+        report.skillQuality.safetyViolationCount < 0) {
+      throw new Error('p23-population-source-validation-report-invalid');
+    }
     const row = byTask.get(report.taskId) ?? { success: [], skill: [], trajectory: [] };
     row.success.push(report.taskSuccess.passRate);
     row.skill.push(report.skillQuality.aggregate);
@@ -391,6 +402,45 @@ function macroObjective(reports: readonly SkillLearnBenchTrialReport[]): number 
   }));
   if (!taskRows.length) throw new Error('p23-population-objective-empty');
   return taskRows.reduce((sum,row)=>sum + .5*row.success + .2*row.skill + .3*row.trajectory,0)/taskRows.length;
+}
+
+async function raceWithAbort<T>(
+  operation: Promise<T>,
+  signal: AbortSignal,
+  label: string,
+): Promise<T> {
+  if (signal.aborted) throw new Error(label);
+  let rejectAbort: ((error: Error) => void) | undefined;
+  const aborted = new Promise<never>((_, reject) => {
+    rejectAbort = reject;
+  });
+  const listener = () => rejectAbort?.(new Error(label));
+  signal.addEventListener('abort', listener, { once: true });
+  try {
+    return await Promise.race([operation, aborted]);
+  } finally {
+    signal.removeEventListener('abort', listener);
+  }
+}
+
+function assertValidationEvaluationShape(raw: unknown): ValidationOnlyCandidateEvaluation {
+  if (!isPlainRecord(raw)) throw new Error('p23-population-validation-evaluation-invalid');
+  const allowed = new Set([
+    'payloadFingerprint','validationManifestFingerprint','validationPlanFingerprint',
+    'environmentFingerprint','reports',
+  ]);
+  if (Object.keys(raw).some(key => !allowed.has(key))) {
+    throw new Error('p23-population-validation-evaluation-extra-field');
+  }
+  const evaluation = raw as unknown as ValidationOnlyCandidateEvaluation;
+  if (typeof evaluation.payloadFingerprint !== 'string' ||
+      typeof evaluation.validationManifestFingerprint !== 'string' ||
+      typeof evaluation.validationPlanFingerprint !== 'string' ||
+      typeof evaluation.environmentFingerprint !== 'string' ||
+      !Array.isArray(evaluation.reports)) {
+    throw new Error('p23-population-validation-evaluation-invalid');
+  }
+  return evaluation;
 }
 
 function emptyDiagnostics(): P23PopulationSearchDiagnostics {
@@ -453,7 +503,7 @@ export async function runP23ReflectiveCandidatePopulationSearch(
       diagnostics.generationCalls++;
       let rawCandidate: unknown;
       try {
-        rawCandidate = await Promise.race([
+        rawCandidate = await raceWithAbort(
           Promise.resolve(input.generateCandidate({
             sourcePayload: snapshotPlainData(input.sourcePayload),
             datasetFingerprint: input.datasetFingerprint,
@@ -464,11 +514,9 @@ export async function runP23ReflectiveCandidatePopulationSearch(
             variation,
             signal: combinedSignal,
           })),
-          new Promise<never>((_, reject) => {
-            if (combinedSignal.aborted) reject(new Error('p23-population-timeout'));
-            else combinedSignal.addEventListener('abort', () => reject(new Error('p23-population-timeout')), { once: true });
-          }),
-        ]);
+          combinedSignal,
+          'p23-population-timeout',
+        );
       } catch (error) {
         if (combinedSignal.aborted) throw new Error('p23-population-timeout');
         throw error;
@@ -511,19 +559,17 @@ export async function runP23ReflectiveCandidatePopulationSearch(
       payloadByFingerprint.set(candidateFingerprint, snapshotPlainData(candidatePayload));
 
       diagnostics.evaluationCalls++;
-      const rawEvaluation: ValidationOnlyCandidateEvaluation = await Promise.race([
+      const rawEvaluation = await raceWithAbort(
         Promise.resolve(input.evaluateValidation({
           payload: snapshotPlainData(candidatePayload),
           payloadFingerprint: candidateFingerprint,
           signal: combinedSignal,
         })),
-        new Promise<never>((_, reject) => {
-          if (combinedSignal.aborted) reject(new Error('p23-population-timeout'));
-          else combinedSignal.addEventListener('abort', () => reject(new Error('p23-population-timeout')), { once: true });
-        }),
-      ]);
+        combinedSignal,
+        'p23-population-timeout',
+      );
       if (combinedSignal.aborted) throw new Error('p23-population-timeout');
-      const evaluation = snapshotPlainData(rawEvaluation) as ValidationOnlyCandidateEvaluation;
+      const evaluation = assertValidationEvaluationShape(snapshotPlainData(rawEvaluation));
       if (!evaluation || evaluation.payloadFingerprint !== candidateFingerprint) {
         throw new Error('p23-population-payload-fingerprint-mismatch');
       }
