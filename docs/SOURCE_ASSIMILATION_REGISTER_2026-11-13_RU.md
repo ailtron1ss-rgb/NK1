@@ -644,3 +644,46 @@ Updated gates remain: metadata 21/21; preliminary license scope 21/21; legal cle
 | Release ZIP verified | 0/21 | Release asset bytes/source parity всё ещё не проверены |
 
 Не считать 2/21 доказательством готовности всего learning subsystem: live provider, device soak, candidate population optimizer и ablation ещё открыты.
+
+
+### 12.10 Validation-only Pareto archive в P23 и quality gate до staging
+
+В текущем проходе GEPA/P23-путь расширен из candidate-only sidecar в долговременное сравнение версий навыка по отдельным validation-задачам. Это NK1-native реализация, а не перенос Python DSPy/GEPA runtime.
+
+#### Что изменено
+
+1. `P23ValidationCandidateParetoArchive.ts` строит bounded per-task vector по четырём validation-целям:
+   - task success;
+   - trajectory quality;
+   - skill quality;
+   - safety compliance.
+
+   Отчёты группируются по task ID; trial IDs должны быть уникальны, family provenance — согласованной. Вектор не содержит holdout scores, holdout IDs, feedback или split-derived gate reasons.
+
+2. Dominance проверяется по каждой паре task × objective. Aggregate-only winner не может скрыть регрессию на отдельной задаче. Кандидаты сравниваются только при точном совпадении task set, family labels и количества trials на каждой задаче. Разные cohorts или unequal trial coverage отвергаются.
+
+3. В существующий `VersionedSkillCandidateStore` добавлено необязательное `revisionProvenance.validationMetrics`. Pareto view вычисляется read-only из уже существующих versioned candidate records в пределах одного `skillId + sourceCandidateId + datasetFingerprint`. Новая writable skill library, отдельная база или второй promotion owner не создаются.
+
+4. `AtomicFileSkillStorePersistence` валидирует эти векторы при durable restore/CAS. Legacy snapshots, в которых optional metrics отсутствуют, продолжают читаться; некорректные новые metrics отклоняются.
+
+5. Ужесточён lifecycle gate: первоначально провалившаяся версия может быть отправной точкой для repair generation, иначе P23 не смог бы исправлять ошибки обобщения. Но после генерации точный новый payload проходит независимую paired validation/holdout evaluation; только `fitness.eligible === true` позволяет записать его как новую versioned candidate. Только validation reports попадают в Pareto provenance. Не прошедший gate candidate не staging-ится.
+
+6. Pareto query не меняет статус кандидата. Любая активация по-прежнему требует существующих authenticated outcome receipts, подписанного shadow evidence, approval, expected-version check и rollback semantics.
+
+#### Тесты
+
+GitHub Actions run `43419885994` на exact commit `71241362317fa6108a5e9aeec9c3e6ba8ef4dda4` завершился SUCCESS. В этом workflow:
+- source registry tests: 11/11;
+- static source-to-runtime audit: 7/7 adapters, 39/39 checks;
+- GEPA sidecar tests: 9/9;
+- P23 holdout isolation: PASS;
+- `P23_VALIDATION_CANDIDATE_PARETO_ARCHIVE=PASS`, включая equal-task-cohort/equal-trial coverage;
+- `P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS`, включая durable JSON restore и read-only Pareto query;
+- `P23_SKILL_STORE_FAILURE_BOUNDARIES=PASS`;
+- llama.cpp, Hexis, Letta, Lumina, Will и Mem0 contracts: PASS.
+
+#### Граница реализации
+
+Это уже рабочий validation archive/index на версиях, проходящих существующий P23 staging gate. Но полноценного GEPA population optimizer всё ещё нет: sidecar возвращает один candidate payload за вызов; NK1 пока не порождает K вариантов и не выбирает Pareto-best из целой популяции до holdout. Следующий этап — ограниченный multi-candidate proposal batch и validation-only selection, затем одна независимая holdout-проверка выбранного точного payload. Не ослаблять правило, что holdout не раскрывается оптимизатору.
+
+Прогресс по источникам не увеличивается выше 2/21: новый Pareto механизм относится к той же DSPy/GEPA ассимиляции и реализован на NK1-native P23 lifecycle. Legal clearance остаётся 0/21; release verification — 0/21.
