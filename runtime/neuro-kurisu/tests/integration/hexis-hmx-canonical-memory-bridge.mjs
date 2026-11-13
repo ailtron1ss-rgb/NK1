@@ -98,6 +98,22 @@ const malformed = bridge.stage({ document: document({
 assert.equal(malformed.ok, false);
 assert.ok(malformed.conflicts.some(c => c.kind === 'schema'));
 
+
+const analysisOnly = bridge.stage({ document: document({
+  export_id: 'exp_analysis_only', export_intent: 'analysis',
+}) });
+assert.equal(analysisOnly.ok, false, 'analysis-only exports must never enter canonical memory');
+
+let getterCalls = 0;
+const hostileDocument = document({ export_id: 'exp_hostile' });
+Object.defineProperty(hostileDocument, 'export_id', {
+  enumerable: true,
+  get() { getterCalls++; throw new Error('untrusted HMX getter executed'); },
+});
+const hostileStage = bridge.stage({ document: hostileDocument });
+assert.equal(hostileStage.ok, false);
+assert.equal(getterCalls, 0, 'HMX staging must detach inert plain data without invoking accessors');
+
 const rejected = bridge.stage({ document: document({ export_id: 'exp_rejected' }) });
 assert.equal(adaptation.decideHmx(rejected.stagingId, 'reject')?.status, 'rejected');
 assert.equal(bridge.commit(rejected.stagingId).error, 'stage-rejected');
