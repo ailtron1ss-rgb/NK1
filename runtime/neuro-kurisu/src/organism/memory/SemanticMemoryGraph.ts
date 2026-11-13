@@ -338,9 +338,9 @@ export class SemanticMemoryGraph {
     this.state.edges = this.state.edges.filter(edge => edge.canonicalProjection?.owner !== CANONICAL_GRAPH_SOURCE);
     const active = Array.isArray(items) ? items.slice(0,MAX_NODES) : [];
     const ids = new Set(active.map(item => String(item?.id ?? '').trim().slice(0,160)).filter(Boolean));
-    // First materialize every canonical node without outgoing links; then a
-    // second pass resolves all relations independent of snapshot ordering.
-    for (const item of active) this.syncCanonicalProjection(item, new Set());
+    // First pass materializes nodes and any links whose targets appeared earlier;
+    // the second pass resolves the remaining edges independent of snapshot order.
+    for (const item of active) this.syncCanonicalProjection(item, ids);
     for (const item of active) this.syncCanonicalProjection(item, ids);
   }
 
