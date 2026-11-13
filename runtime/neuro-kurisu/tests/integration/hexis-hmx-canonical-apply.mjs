@@ -87,6 +87,10 @@ const makeDocument = (exportId, contentSuffix = '') => ({
     ],
     identity: [{ key: 'core-name', content: 'MUST REMAIN DEFERRED: donor identity' }],
     goals: [{ ref: `${exportId}:goal-a`, title: 'MUST REMAIN DEFERRED: donor goal' }],
+    narrative: { summary: 'MUST REMAIN DEFERRED: donor narrative' },
+    in_flight_work: { tasks: [{ title: 'MUST REMAIN DEFERRED: donor task' }] },
+    audit_records: { entries: [{ id: 'donor-audit-1' }] },
+    config: { importMode: 'must-remain-deferred' },
   },
 });
 
@@ -139,6 +143,11 @@ try {
   assert.equal(applied.stage.application.deferredRelationships, 1);
   assert.ok(applied.stage.application.deferredSections.identity >= 1);
   assert.ok(applied.stage.application.deferredSections.goals >= 1);
+  assert.ok(applied.stage.application.deferredSections.narrative >= 1,
+    'object-shaped HMX narrative sections must be preserved as deferred rather than rejected');
+  assert.ok(applied.stage.application.deferredSections.in_flight_work >= 1);
+  assert.ok(applied.stage.application.deferredSections.audit_records >= 1);
+  assert.ok(applied.stage.application.deferredSections.config >= 1);
 
   const afterApply = await memoryIndex();
   const importedA = afterApply.find(row => row.summary.includes('HMX canonical imported memory A'));
@@ -161,6 +170,52 @@ try {
   assert.equal((await memoryIndex()).length, countAfterApply,
     'replaying the same apply request cannot duplicate imported memory');
 
+  // Restart the real server with the same state directory and verify that both
+  // canonical imported memories and the applied-stage receipt survive restore.
+  await new Promise(resolve => {
+    if (child.exitCode !== null || child.signalCode !== null) return resolve();
+    child.once('exit', resolve);
+    child.kill('SIGTERM');
+  });
+  const restartedChild = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], {
+    cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let restartedOutput = '';
+  restartedChild.stdout.on('data', chunk => { restartedOutput += chunk; });
+  restartedChild.stderr.on('data', chunk => { restartedOutput += chunk; });
+  try {
+    let restartedReady = false;
+    for (let attempt = 0; attempt < 180; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      try {
+        const response = await fetch(base + '/api/health');
+        const health = await response.json();
+        if (response.ok && health.ready === true) { restartedReady = true; break; }
+      } catch {}
+    }
+    assert.equal(restartedReady, true, 'server must restart using the same durable state directory: ' + restartedOutput.slice(-800));
+    const restoredMemories = await memoryIndex();
+    assert.ok(restoredMemories.some(row => row.summary.includes('HMX canonical imported memory A')));
+    assert.ok(restoredMemories.some(row => row.summary.includes('HMX canonical imported procedure B')));
+    const stageSnapshot = await (await fetch(base + '/api/organism/integration/hexis')).json();
+    assert.equal(stageSnapshot.ok, true);
+    assert.equal(stageSnapshot.hexis?.counts?.hmxStages >= 1, true,
+      'applied HMX stage receipt must survive server restart');
+    const afterRestartReplay = await post('/api/organism/integration/hexis/hmx/decide', {
+      stagingId: staged.stage.stagingId, decision: 'apply',
+    });
+    const replayAfterRestart = await afterRestartReplay.json();
+    assert.equal(afterRestartReplay.status, 200);
+    assert.equal(replayAfterRestart.stage.status, 'applied');
+    assert.equal(replayAfterRestart.stage.application.digest, applied.stage.application.digest,
+      'persisted receipt must make post-restart replay idempotent');
+    assert.equal((await memoryIndex()).length, countAfterApply,
+      'post-restart apply replay must not create duplicate canonical memory');
+  } finally {
+    if (restartedChild.exitCode === null && restartedChild.signalCode === null) restartedChild.kill('SIGTERM');
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+
   const malformedDecision = await post('/api/organism/integration/hexis/hmx/decide', {
     stagingId: staged.stage.stagingId, decision: 'apply-all',
   });
@@ -168,8 +223,11 @@ try {
     'unknown decisions must fail closed rather than silently becoming reject');
 
   const analysisId = 'exp_fedcba9876543210';
+  const analysisDocument = makeDocument(analysisId, 'analysis-only');
+  delete analysisDocument.sections.identity;
+  delete analysisDocument.sections.goals;
   const analysisStageResponse = await post('/api/organism/integration/hexis/hmx/stage', {
-    document: makeDocument(analysisId, 'analysis-only'),
+    document: analysisDocument,
     intent: 'analysis', strategy: 'analysis_only',
   });
   assert.equal(analysisStageResponse.status, 200);
