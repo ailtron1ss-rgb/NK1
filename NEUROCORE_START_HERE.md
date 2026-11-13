@@ -18,7 +18,7 @@
 
 ## Active PR continuation
 
-- #863 — source-assimilation register; Draft, exact head f4feace… 44/44 SUCCESS. 21 unique donors catalogued, but human legal clearance 0/21, detailed code-diff coverage 1/21, test verification 1/21 and release verification 0/21. Base snapshot is 189643e…; live source is 1a031… . Do not infer donor integration from the register.
+- #863 — source-assimilation register; Draft, exact head f4feace… 44/44 SUCCESS. 21 unique donors catalogued, but human legal clearance 0/21, detailed code-diff coverage 1/21, test verification 1/21 and release verification 0/21. The intake pass copied no donor code and installed no dependencies. Its DSPy/GEPA adapter is optional validation-only protocol glue, not a running optimizer; a multi-candidate Pareto archive is only a preliminary gap hypothesis pending a full branch search. Base snapshot is 189643e…; live source is 1a031… . Do not infer donor integration from the register.
 - #864 — consequence-cost policy; Draft, exact head 21d979… 8/8 SUCCESS. Tool registry review and heuristic weight review remain open.
 - #866 — HMX 1.7 canonical apply; Draft, exact head 928b85… 29/30 SUCCESS. HMX apply and source-lineage checks pass; evaluator check awaits the existing ACP compatibility fix in #853.
 - #853 — Inspect ACP compatibility; open, exact head 2bae288… 5/5 SUCCESS, not merged.
