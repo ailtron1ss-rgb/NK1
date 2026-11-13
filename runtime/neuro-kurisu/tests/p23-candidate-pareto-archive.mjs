@@ -73,9 +73,9 @@ assert.equal(duplicate.status, 'duplicate');
 assert.equal(archive.snapshot().length, 2);
 
 // Safety is a hard veto, not a score that can be compensated by other objectives.
-const unsafe = archive.add(input('u', { taskSuccess: [1, 1], skill: 1, trajectory: 1 }, { safety: 1 }));
+const unsafe = archive.add(input('6', { taskSuccess: [1, 1], skill: 1, trajectory: 1 }, { safety: 1 }));
 assert.equal(unsafe.status, 'safety-rejected');
-assert.equal(archive.snapshot().some(row => row.candidateFingerprint === digest('u')), false);
+assert.equal(archive.snapshot().some(row => row.candidateFingerprint === digest('6')), false);
 
 // A candidate from another validation plan cannot be compared to this cohort.
 assert.throws(
