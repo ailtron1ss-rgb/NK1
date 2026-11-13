@@ -18,6 +18,13 @@ const asText = (value: unknown, max: number): string => {
   return normalized.length > 0 && normalized.length <= max && !/[\u0000-\u001f\u007f-\u009f]/u.test(normalized)
     ? normalized : '';
 };
+const asMultilineText = (value: unknown, max: number): string => {
+  if (typeof value !== 'string') return '';
+  const normalized = value.normalize('NFKC').replace(/\r\n?/gu, '\n').trim();
+  return normalized.length > 0 && normalized.length <= max &&
+    !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/u.test(normalized)
+    ? normalized : '';
+};
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
 const stableMemoryId = (lineage: string, portableRef: string): string =>
   'hexis-' + sha256(lineage + '\u0000' + portableRef).slice(0, 40);
@@ -139,7 +146,7 @@ export class HexisCanonicalMemoryProjector {
       for (let index = 0; index < memories.length; index += 1) {
         const row = asRecord(memories[index]);
         const ref = asText(row.ref, 512);
-        const rawContent = asText(row.content, 12_000);
+        const rawContent = asMultilineText(row.content, 12_000);
         const redactedContent = redactHmxExportText(rawContent, 12_000);
         const content = sanitizeHmxImportedText(redactedContent);
         if (redactedContent !== rawContent) redactedMemoryRecords += 1;
