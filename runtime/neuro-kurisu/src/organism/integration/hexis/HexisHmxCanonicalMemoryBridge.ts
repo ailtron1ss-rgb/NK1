@@ -34,7 +34,7 @@ export interface HmxBridgeCommitResult {
 const MAX_DOCUMENT_BYTES = 2 * 1024 * 1024;
 const MAX_MEMORY_RECORDS = 64;
 const MAX_CONTENT_LENGTH = 16_000;
-const SAFE_REF = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$/u;
+const SAFE_REF = /^[A-Za-z0-9][A-Za-z0-9._:/_-]{0,511}$/u;
 const PROTECTED_SECTIONS = new Set([
   'identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals',
 ]);
@@ -129,7 +129,7 @@ export class HexisHmxCanonicalMemoryBridge {
       conflicts.push({ path: 'sections', kind: 'protected-section-review-required',
         detail: 'Constitutional sections cannot be imported by the canonical memory bridge: ' + protectedNames.join(', ') });
     }
-    const unknown = names.filter(name => !SUPPORTED_SECTIONS.has(name));
+    for (const name of names) {\n      const value = sections[name];\n      if (Array.isArray(value) && value.length > MAX_MEMORY_RECORDS) {\n        conflicts.push({ path: 'sections.' + name, kind: 'record-limit', detail: 'Each staged section is limited to 64 records' });\n      }\n    }\n    const unknown = names.filter(name => !SUPPORTED_SECTIONS.has(name));
     if (unknown.length) {
       conflicts.push({ path: 'sections', kind: 'unknown-section', detail: 'Unknown HMX sections are not silently accepted: ' + unknown.join(', ') });
     }
