@@ -117,7 +117,10 @@ export class CognitiveResourceEconomy {
     const canEngage = energy > .15 && awake && thermal < .85;
     const boundedTarget = input.attentionIntent === 'engage' && !canEngage ? .7 : attentionEffortTarget01;
     const priorEffort = safeEffort(this.state.attentionEffort01,.7);
-    const attentionEffort01 = input.attentionIntent ? boundedTarget : priorEffort + Math.sign(.7-priorEffort)*Math.min(.12,Math.abs(.7-priorEffort));
+    const effortTickAdvanced = tick > this.state.lastTick;
+    const attentionEffort01 = input.attentionIntent ? boundedTarget : effortTickAdvanced
+      ? priorEffort + Math.sign(.7-priorEffort)*Math.min(.12,Math.abs(.7-priorEffort))
+      : priorEffort;
     const attention = clamp01(total * (.55 + uncertainty*.30 + novelty*.15) * attentionEffort01);
     const simulation = clamp01(total * (.28 + uncertainty*.48 + debt*.24));
     const learning = clamp01(total * (.25 + novelty*.35 + uncertainty*.40));
