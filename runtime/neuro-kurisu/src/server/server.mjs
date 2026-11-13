@@ -995,7 +995,11 @@ async function route(req, res) {
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/hmx/export') {
             try {
-                const document = runtime.core.hexisExportHmx();
+                const intent = String(url.searchParams.get('intent') || 'port');
+                if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(intent)) {
+                    return json(res, 400, { ok: false, error: 'hmx-export-intent-invalid' });
+                }
+                const document = runtime.core.hexisExportHmx(intent);
                 return json(res, 200, { ok: true, document });
             }
             catch (error) {
@@ -1015,10 +1019,34 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/decide') {
             const input = await body(req);
-            const decision = input.decision === 'accept' ? 'accept' : 'reject';
-            const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
-            await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), stage: result });
+            const decision = String(input.decision ?? '');
+            if (!['accept', 'reject', 'apply'].includes(decision)) {
+                return json(res, 400, { ok: false, error: 'hmx-decision-invalid' });
+            }
+            try {
+                const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
+                await runtime.core.flush();
+                if (!result) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
+                if (decision === 'accept' && result.status !== 'accepted') {
+                    return json(res, 409, { ok: false, error: 'hmx-stage-not-acceptable', stage: result });
+                }
+                if (decision === 'reject' && result.status !== 'rejected') {
+                    return json(res, 409, { ok: false, error: 'hmx-stage-not-rejectable', stage: result });
+                }
+                if (decision === 'apply' && result.status !== 'applied') {
+                    return json(res, 409, { ok: false, error: 'hmx-stage-not-applied', stage: result });
+                }
+                return json(res, 200, { ok: true, stage: result });
+            }
+            catch (error) {
+                await runtime.core.flush().catch(() => undefined);
+                const code = String(error?.message ?? error);
+                const status = code.includes('required-before-apply') ||
+                    code.includes('requires-port-additive') ||
+                    code.includes('not-canonically-applicable') ||
+                    code.includes('projector-unavailable') ? 409 : 400;
+                return json(res, status, { ok: false, error: code });
+            }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
