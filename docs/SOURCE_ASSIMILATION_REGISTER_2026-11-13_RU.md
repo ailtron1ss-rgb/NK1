@@ -737,14 +737,14 @@ Hexis теперь учитывается как отдельный источн
 
 ### 13.3 Will Dynamic Attention Budget — текущий Draft
 
-- Draft PR #874: https://github.com/ailtron1ss-rgb/NK1/pull/874.
+- **PR #874 объединён**: https://github.com/ailtron1ss-rgb/NK1/pull/874. Merge commit: `33544f7b4ced9518e36c3532f9bccb8161baa022`.
 - Адаптируется двухслойная идея Will: voluntary effort поверх физиологически ограниченного attention ceiling.
 - В существующий `CognitiveResourceEconomy` добавлены persistable `attentionEffort01`, target и intent. NK1 actions map: `explore/verify/reflect → engage`, `rest/wait → rest`; без сигнала effort возвращается к baseline 0.7.
 - Engagement запрещается при energy ≤0.15, asleep или thermal strain ≥0.85; attention остаётся в пределах общего resource budget.
 - Оба allocation path в `OrganismRuntime` передают action intent; resource evidence payload публикует effort/intent.
 - Homeostatic decay выполняется не более одного раза за новый cognitive tick; повторные embodiment samples в том же tick не ускоряют расслабление.
 - Legacy version-1 snapshots восстанавливаются с baseline 0.7.
-- Exact-head CI для финального rebased SHA `3f80442d1a03c783564d8999d8d9e4f2691540b0` запущен; до завершения Unified organism/typecheck/behavior tests PR не продвигать и не считать интеграцию доказанной.
+- Exact-head CI для финального rebased SHA `3f80442d1a03c783564d8999d8d9e4f2691540b0`: **44/44 workflow SUCCESS**. Unified organism run `43450328061` подтвердил runtime typecheck, старый WorkPass322 restore regression, `WILL_VOLUNTARY_ATTENTION_BUDGET_PASS`, cognitive-cycle, motivation, world-perception, planner, continuity и organism smoke. Дополнительно прошли HMX bridge `43450328070`, cognitive contracts `43450328685`, WorkPass79 `43450328548`, Inspect AI bilingual/cognitive evaluation `43450328492` и core regression `43450328153`.
 - Не добавляется отдельный Will runtime или второй attention allocator. Физический energy-decay law не изменяется; sustained-focus energy cost остаётся отдельной задачей.
 
 ### 13.4 Состояние 1000 work-unit backlog
@@ -761,3 +761,9 @@ Hexis теперь учитывается как отдельный источн
 - 21 уникальный донор остаётся инвентаризированным; detailed mechanism review 6/21 (Hexis, Will, Mem0, Agent0, DSPy, PocketFlow), но полноценный file-level donor diff, legal clearance и release verification не следует считать завершёнными.
 - Никакие донорские secrets не копируются и не записываются в реестр.
 - Пользовательский Release ZIP WorkPass70 не был доступен как mounted bytes в этом проходе; release member/source parity остаётся UNKNOWN.
+
+
+### 13.6 Финальный статус Will attention — 13 ноября
+
+PR #874 объединён в `workpass70-source` (merge `33544f7b4ced9518e36c3532f9bccb8161baa022`). Изменение является NK1-native адаптацией Will attention-effort controller внутри существующего resource economy. Оно не создаёт второй scheduler, не меняет физический energy-decay law и не доказывает рост качества когнитивных решений. Exact-head CI 44/44 passed; ablation и target-device energy/performance measurements остаются открытыми.
+
