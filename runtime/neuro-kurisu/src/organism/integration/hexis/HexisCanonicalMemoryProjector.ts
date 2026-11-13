@@ -165,7 +165,7 @@ export class HexisCanonicalMemoryProjector {
         };
         const item = this.memory.fabric.encode(input, {
           tick: Math.max(0, Math.floor(Number(tick) || 0)),
-          commandId: 'hexis-hmx-import:' + sha256(lineage + '\u0000' + portableRef),
+          commandId: 'hexis-hmx-import:' + sha256(lineage + '\u0000' + portableRef + '\u0000' + stage.exportId),
           forceDistinct: true,
           syncCompatibility: false,
         });
@@ -219,7 +219,7 @@ export class HexisCanonicalMemoryProjector {
       const deferredSections: Record<string, number> = {};
       for (const [name, value] of Object.entries(stage.stagedSections)) {
         if (name === 'memories' || name === 'relationships') continue;
-        const count = Array.isArray(value) ? value.length : 0;
+        const count = Array.isArray(value) ? value.length : (value && typeof value === 'object' ? Object.keys(value).length : 0);
         if (count > 0) deferredSections[name] = count;
       }
       const warnings: string[] = [];
