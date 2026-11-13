@@ -72,11 +72,13 @@ export class MultiTimescaleMemory {
   }
 
   add(row: MemoryRecord, clone = true) {
-    if (!row || typeof row !== 'object' || typeof row.id !== 'string' || !row.id.trim()) {
+    if (!row || typeof row !== 'object' || typeof row.id !== 'string') {
       throw new Error('multi-timescale-memory-id-invalid');
     }
+    const normalizedId = row.id.trim().slice(0, 160);
+    if (!normalizedId) throw new Error('multi-timescale-memory-id-invalid');
 
-    this.remove(row.id);
+    this.remove(normalizedId);
     const summary = String(row.summary ?? '').slice(0, 24_000);
     const evidence = Array.isArray(row.evidence)
       ? row.evidence.filter((value): value is string => typeof value === 'string').slice(-64).map(value => value.slice(0, 4_000))
@@ -88,7 +90,7 @@ export class MultiTimescaleMemory {
     const consolidationScore01 = clamp01(finite(row.consolidationScore01, salience * 0.45 + confidence * 0.35));
     const enriched: MemoryRecord = {
       ...row,
-      id: row.id.trim().slice(0, 160),
+      id: normalizedId,
       kind: row.kind,
       summary,
       evidence,
