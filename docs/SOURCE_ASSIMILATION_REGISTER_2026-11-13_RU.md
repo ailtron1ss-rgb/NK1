@@ -721,8 +721,10 @@ Hexis теперь учитывается как отдельный источн
 - Import проходит через inert `snapshotPlainData`, проверку HMX 1.x envelope, ограничение 2 MiB/64 records, безопасные refs/content и fail-closed protected-section checks.
 - Imported items остаются `epistemicStatus=hypothesis`, `provenanceClass=external`, confidence 0.25/source authority 0.2. Донорские trust scores, embeddings, permissions, goals и executable work не переносятся.
 - Deterministic memory IDs и lifecycle command IDs дают retry-safe application. Future timestamps игнорируются, неизвестные memory types нормализуются в semantic с предупреждением.
-- Episodes, relationships, clusters, config и прочие разрешённые non-memory sections пока staged/deferred; это не полный HMX 1.7 importer и не полная JSON Schema conformance.
-- Exact-head workflow `43448674523`: SUCCESS (runtime typecheck + HMX behavior regression + Hexis adaptation regression).
+- PR #878 дополнительно объединил episode summaries в `episodic` items и typed/directional relationships в canonical semantic/temporal/causal/contradiction links; `CAUSED_BY`/`AFTER` reverse, contradictions symmetric. `forceDistinct` сохраняет детерминированные внешние refs между разными exports.
+- Clusters, in-flight work, audit records, raw units и config остаются staged/deferred; это не полный HMX 1.7 importer и не полная JSON Schema conformance.
+- Exact-head workflow `43448674523` для PR #869: SUCCESS (runtime typecheck + HMX behavior regression + Hexis adaptation regression).
+- PR #878 merged commit `e6bab97d014c9911cddc3746725b39c635018f43`; exact-head SHA `68673918f90d9cc5fb8b9204332bfc32d51694b2`, 10/10 workflows SUCCESS. HMX bridge log explicitly reports `TYPECHECK=PASS`, `HEXIS_HMX_CANONICAL_MEMORY_BRIDGE_PASS`, `HEXIS_ADAPTATION_PASS`.
 - Cross-cutting exact-head checks: source lineage `43448675180`, memory integrity `43448674884`, unified organism `43448675062`, core regression `43448674555`, WorkPass79 `43448675081` — SUCCESS.
 - Отдельный unrelated Inspect AI dependency issue был найден и исправлен через PR #871.
 
@@ -756,7 +758,7 @@ Hexis теперь учитывается как отдельный источн
 
 ### 13.5 Актуальная граница release и donor assimilation
 
-- Canonical source branch after PR #874 and the documentation checkpoint updates: `workpass70-source`, HEAD before this register update `591a7e033afde1ae0cc92e9160d744473949db84` (the latest live SHA must be read from the branch before each subsequent pass).
+- Canonical source branch after PR #878 and the documentation checkpoint updates: `workpass70-source`, HEAD before this register update `dc9176b1cf4eb9bae7e9bcf14d79befbf3561422` (the latest live SHA must be read from the branch before each subsequent pass).
 - PR #874 остаётся отдельной aspect branch и не включён в source до exact-head verification.
 - 21 уникальный донор остаётся инвентаризированным; detailed mechanism review 6/21 (Hexis, Will, Mem0, Agent0, DSPy, PocketFlow), но полноценный file-level donor diff, legal clearance и release verification не следует считать завершёнными.
 - Никакие донорские secrets не копируются и не записываются в реестр.
@@ -775,3 +777,14 @@ PR #874 объединён в `workpass70-source` (merge `33544f7b4ced9518e36c35
 - The README explicitly preserves release boundary: 19 October ZIP assets are unchanged; no 13 November Release ZIP is claimed.
 - `docs/NEUROCORE_1000_WORK_UNIT_BACKLOG.md` records 5/1,000 PASS (0.5%) for the five HMX provenance work units. PR #838/#871/#874 are called out as merged capability work not yet mapped to those pre-defined units, so the count is not inflated.
 - The Will attention adaptation is now merged; 44/44 exact-head workflows passed. It remains a behaviorally verified controller adaptation, not a measured improvement in cognition or proof of subjective awareness.
+
+
+### 13.8 HMX graph extension — 13 ноября
+
+PR #878 adds the next safe HMX projection slice:
+- Episodes with summaries become canonical episodic memories; memory_refs are linked through temporalLinks.
+- Relationships are resolved only when both endpoints are in the imported memory/episode set. Missing endpoints are skipped with an explicit warning.
+- CAUSES/LEADS_TO/RESULTS_IN map forward to causal links; CAUSED_BY reverses endpoints; AFTER/FOLLOWS reverse temporal endpoints; contradiction/conflict relations are symmetric.
+- Unknown relationship types default to semantic links; donor properties/weights are ignored and reported.
+- MemoryFabric encode with forceDistinct preserves export-scoped deterministic IDs when two exports contain identical content, while command receipts preserve retry idempotency.
+- Exact-head 10/10 workflows passed. Full HMX schema conformance and deferred sections remain open.
