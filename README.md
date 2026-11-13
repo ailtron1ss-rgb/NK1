@@ -1,10 +1,24 @@
-## Актуальный инженерный checkpoint — 1 ноября 2026
+## Актуальный инженерный checkpoint — 13 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  
+**Source HEAD до этого README checkpoint:** `744bffeeea2d72fb98ac7b00d56653686241a5ff` (следующий HEAD после этого commit следует брать из live branch).  
 **`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
 
 > **WorkPass71 (2026-11-03, ветка `workpass71-body-systems`):** добавлены версионированный capability manifest с fail-closed реестром, renderer-neutral motion library и арбитр движений с bounded cross-fade; 3D VRM и Original 2D тела теперь управляются одними и теми же каналами. См. [docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md](docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md). Это IMPLEMENTED/OBSERVED на синтетических тестах; device E2E, soak и visual verification ещё не проведены.
+
+### Интеграции и исправления 13 ноября 2026
+
+| PR | Реальное изменение | Проверка |
+|---|---|---|
+| [#838](https://github.com/ailtron1ss-rgb/NK1/pull/838) | Снижение пиковых аллокаций при remote VRM/GLB import: bounded Blob chunks без второго полноразмерного Uint8Array | 5/5 exact-head checks до merge; device RSS/WebGL soak ещё не измерен |
+| [#869](https://github.com/ailtron1ss-rgb/NK1/pull/869) | Hexis HMX 1.x portable-memory bridge: explicit staged accept → canonical MemoryFabric/MemoryOS2, low-trust hypotheses, deterministic replay, protected-section rejection | HMX, Hexis lineage, memory integrity, unified organism, core и WorkPass79 checks PASS |
+| [#871](https://github.com/ailtron1ss-rgb/NK1/pull/871) | Pin `agent-client-protocol<1.0.0` для Inspect AI 0.3.286; smoke check `acp.helpers` | 4/4 exact-head workflows; cognitive + bilingual memory Inspect tasks PASS |
+| [#874](https://github.com/ailtron1ss-rgb/NK1/pull/874) | Will voluntary attention effort встроен в существующий CognitiveResourceEconomy; action intent, vitals veto, per-tick homeostasis, backward-compatible restore | 44/44 exact-head workflows PASS; измерение качества/energy cost ещё открыто |
+
+- **1000 work-unit backlog:** 5/1,000 PASS (0.5%), 995 PLANNED/UNVERIFIED. Пять PASS относятся только к HMX portable-memory provenance slice; merged PR count не подменяет work-unit evidence.
+- **External source assimilation:** 21 уникальный донор инвентаризирован; глубокое сравнение механизмов 6/21; human legal clearance 0/21; Release ZIP parity 0/21.
+- Полный HMX importer пока не заявляется: episodes/relationships/clusters остаются deferred. Donor trust/embeddings/permissions/identity/goals не применяются.
+- Ни одна из этих интеграций не доказывает субъективное сознание. Целевой критерий остаётся измеряемая agency, coherent memory, самостоятельная инициатива и проверяемая адаптация.
 
 ### Реально интегрировано и проверено
 
@@ -25,7 +39,7 @@
 
 - **Последний stable Release:** tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 - **Последний опубликованный ZIP с учётом prerelease — рабочий артефакт по правилу проекта:** tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- **Новый Release ZIP на 1 ноября не собран и не опубликован.** Ни один из этих ZIP не содержит интеграции от 1 ноября.
+- **Новый Release ZIP на 13 ноября не собран и не опубликован.** Ни один из ZIP от 19 октября не содержит интеграции 1–13 ноября.
 - `RELEASE_LICENSE_REVIEW.json` остаётся `pending`: root project — `NOASSERTION`, runtime — `LicenseRef-NK1-Private-All-Rights-Reserved`, redistributionApproved=false. На review gate: 477 locked npm components, 8 source archives, 11 repository LICENSE/NOTICE records. Наличие лицензии у отдельного пакета не является разрешением на перераспространение всего проекта.
 
 ### Что всё ещё НЕ доказано
@@ -36,6 +50,8 @@
 - Независимый лицензированный bilingual RU/EN retrieval uplift на immutable holdout, минимум 5 paired seeds; критерий `recallDelta > 0` ещё не закрыт. LongMemEval-S не заменяет RU/EN gate.
 - Подтверждённая автономная инициатива из внутреннего состояния, а не только scripted/background scheduler. Субъективное сознание не заявляется как доказанный факт.
 - Human license decisions и безопасный exact-SHA Release publisher gate.
+- Полный HMX 1.7 импорт episodes/relationships/clusters и остальные non-memory секции; текущий мост применяет только portable memories.
+- Sustained-focus energy cost, ablation и target-device calibration для Will voluntary attention effort.
 
 ### Следующие P0
 
