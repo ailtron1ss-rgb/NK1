@@ -29,6 +29,7 @@ on:
       - "tools/lib/super-startup.mjs"
       - "tools/super-startup.test.mjs"
       - "tools/super-start.mjs"
+      - "tools/super-dev.mjs"
       - "tools/super-quickstart.mjs"
       - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
       - "docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md"
@@ -65,7 +66,7 @@ jobs:
             *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version $actual does not match .nvmrc pin $expected" >&2; exit 1 ;; esac ;;
           esac
       - name: Startup orchestration tests and syntax
-        run: npm run test:startup && node --check tools/super-start.mjs && node --check tools/super-quickstart.mjs && node --check tools/lib/super-startup.mjs
+        run: npm run test:startup && node --check tools/super-start.mjs && node --check tools/super-dev.mjs && node --check tools/super-quickstart.mjs && node --check tools/lib/super-startup.mjs
       - name: Audit CI Action/runtime compatibility contract
         run: npm run audit:ci-reliability
       - name: Test CI reliability audit regressions
