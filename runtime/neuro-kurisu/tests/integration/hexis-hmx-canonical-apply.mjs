@@ -246,8 +246,8 @@ try {
     const restoredMemories = await memoryIndex();
     const restoredA = restoredMemories.filter(row => row.summary.includes('HMX canonical imported memory A'));
     const restoredB = restoredMemories.filter(row => row.summary.includes('HMX canonical imported procedure B'));
-    assert.equal(restoredA.length, 1, 'the first donor memory must survive restart exactly once');
-    assert.equal(restoredB.length, 1, 'the second donor memory must survive restart exactly once');
+    assert.equal(restoredA.length, 2, 'the same content from two distinct donor lineages must survive restart as two source-isolated memories');
+    assert.equal(restoredB.length, 2, 'the second memory from two distinct donor lineages must survive restart as two source-isolated memories');
     const countBeforeRestartReplay = restoredMemories.length;
     const stageSnapshot = await (await fetch(base + '/api/organism/integration/hexis')).json();
     assert.equal(stageSnapshot.ok, true);
@@ -264,10 +264,10 @@ try {
     const afterRestartReplayMemories = await memoryIndex();
     assert.equal(afterRestartReplayMemories.length, countBeforeRestartReplay,
       'post-restart apply replay must not create additional canonical memory');
-    assert.equal(afterRestartReplayMemories.filter(row => row.summary.includes('HMX canonical imported memory A')).length, 1,
-      'post-restart replay must retain exactly one copy of the first imported memory');
-    assert.equal(afterRestartReplayMemories.filter(row => row.summary.includes('HMX canonical imported procedure B')).length, 1,
-      'post-restart replay must retain exactly one copy of the second imported memory');
+    assert.equal(afterRestartReplayMemories.filter(row => row.summary.includes('HMX canonical imported memory A')).length, 2,
+      'post-restart replay must retain exactly one copy per donor lineage for the first memory');
+    assert.equal(afterRestartReplayMemories.filter(row => row.summary.includes('HMX canonical imported procedure B')).length, 2,
+      'post-restart replay must retain exactly one copy per donor lineage for the second memory');
   } finally {
     if (restartedChild.exitCode === null && restartedChild.signalCode === null) restartedChild.kill('SIGTERM');
     await new Promise(resolve => setTimeout(resolve, 250));
