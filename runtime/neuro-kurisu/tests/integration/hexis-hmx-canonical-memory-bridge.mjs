@@ -39,7 +39,7 @@ function document(overrides = {}) {
         { source_ref: 'episode:1', target_ref: 'memory:alpha', edge_type: 'CAUSED_BY' },
         { source_ref: 'memory:alpha', target_ref: 'memory:beta', edge_type: 'CONTRADICTS' },
       ],
-      clusters: [{ ref: 'cluster:1', member_refs: ['memory:alpha', 'memory:beta'] }],
+      clusters: [{ ref: 'cluster:1', name: 'Transit planning', cluster_type: 'topic', member_refs: ['memory:alpha', 'memory:beta'] }],
     },
     ...overrides,
   };
@@ -54,16 +54,17 @@ assert.equal(staged.ok, true);
 assert.equal(staged.memoryCount, 2);
 assert.equal(staged.episodeCount, 1);
 assert.equal(staged.relationshipCount, 4);
-assert.deepEqual(staged.deferredSections.sort(), ['clusters']);
-assert.ok(staged.warnings.some(w => w.code === 'section-deferred'));
+assert.equal(staged.clusterCount, 1);
+assert.deepEqual(staged.deferredSections, []);
 assert.ok(staged.stagingId);
 
 const committed = bridge.commit(staged.stagingId);
 assert.equal(committed.ok, true);
-assert.equal(committed.inserted, 3);
+assert.equal(committed.inserted, 4);
 assert.equal(committed.replayed, 0);
 assert.equal(committed.relationshipsApplied, 4);
-assert.equal(Object.keys(committed.refMap).length, 3);
+assert.equal(committed.clustersApplied, 1);
+assert.equal(Object.keys(committed.refMap).length, 4);
 const alpha = memory.getCanonicalMemory(committed.refMap['memory:alpha']);
 assert.equal(alpha.content, 'The donor observed a red bicycle.');
 assert.equal(alpha.kind, 'semantic');
@@ -79,6 +80,13 @@ assert.ok(alpha.contradictionLinks.includes(committed.refMap['memory:beta']), 'C
 const beta = memory.getCanonicalMemory(committed.refMap['memory:beta']);
 assert.ok(beta.causalLinks.includes(committed.refMap['episode:1']), 'HMX causal relationship must become a canonical causal link');
 assert.ok(beta.contradictionLinks.includes(committed.refMap['memory:alpha']), 'symmetric contradiction must be visible from both endpoints');
+assert.ok(alpha.semanticLinks.includes(committed.refMap['cluster:1']), 'cluster membership must link the member to the cluster anchor');
+assert.ok(beta.semanticLinks.includes(committed.refMap['cluster:1']), 'cluster membership must be bidirectional');
+const cluster = memory.getCanonicalMemory(committed.refMap['cluster:1']);
+assert.equal(cluster.content, 'Transit planning');
+assert.equal(cluster.context.hmxSection, 'clusters');
+assert.ok(cluster.semanticLinks.includes(committed.refMap['memory:alpha']));
+assert.ok(cluster.semanticLinks.includes(committed.refMap['memory:beta']));
 const episode = memory.getCanonicalMemory(committed.refMap['episode:1']);
 assert.equal(episode.kind, 'episodic');
 assert.equal(episode.content, 'An imported episode summary.');
@@ -88,10 +96,11 @@ assert.ok(episode.temporalLinks.includes(committed.refMap['memory:beta']));
 const replay = bridge.commit(staged.stagingId);
 assert.equal(replay.ok, true);
 assert.equal(replay.inserted, 0);
-assert.equal(replay.replayed, 3);
+assert.equal(replay.replayed, 4);
 assert.equal(replay.relationshipsApplied, 4);
+assert.equal(replay.clustersApplied, 1);
 assert.deepEqual(replay.refMap, committed.refMap);
-assert.equal(memory.rows.size, 3, 'replaying the same accepted stage must not create duplicate canonical memories');
+assert.equal(memory.rows.size, 4, 'replaying the same accepted stage must not create duplicate canonical memories');
 
 
 const dangling = bridge.stage({ document: document({
