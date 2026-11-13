@@ -18,7 +18,8 @@
         "runtime/neuro-kurisu/src/server/server.mjs: explicit NK1_GEPA_ENABLED gate; requires configured endpoint/key and the trusted P23 compound-repair provider; only candidate generation is delegated; disabled mode preserves local llama.cpp; sidecar failure does not silently fallback."
       ],
       "testEvidence": [
-        "GitHub Actions run 43417587842 at exact commit e2fa5545aaac365123dfb65a05e8e66980500bf8: source-assimilation workflow SUCCESS; SOURCE_ASSIMILATION_AUDIT PASS; adapter/static coverage 7/7 and 33/33; source audit regression PASS; P23 provider/generator/integration PASS; P23_REVISION_PLAN_HOLDOUT_ISOLATION PASS; GEPA_REFLECTIVE_CANDIDATE_GENERATOR PASS; Hexis, Letta, Lumina, Will and Mem0 contracts PASS."
+        "GitHub Actions run 43417587842 at exact commit e2fa5545aaac365123dfb65a05e8e66980500bf8: source-assimilation workflow SUCCESS; SOURCE_ASSIMILATION_AUDIT PASS; adapter/static coverage 7/7 and 33/33; source audit regression PASS; P23 provider/generator/integration PASS; P23_REVISION_PLAN_HOLDOUT_ISOLATION PASS; GEPA_REFLECTIVE_CANDIDATE_GENERATOR PASS; Hexis, Letta, Lumina, Will and Mem0 contracts PASS.",
+        "GitHub Actions run 43417925336 at exact commit 18748be1399533b42ec708dd11e77b2bec3cb66b: source-assimilation workflow SUCCESS; source register tests 11/11; static assimilation audit 7/7 adapters and 33/33 checks; llama.cpp/P23, holdout isolation, GEPA adapter transport, Hexis, Letta, Lumina, Will and Mem0 contracts PASS."
       ]
     }
   }
