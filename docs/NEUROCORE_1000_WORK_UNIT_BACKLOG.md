@@ -17,6 +17,9 @@
 - Priority is assigned at scheduling time: P0 blocks release or risks truth/safety/privacy; P1 blocks major advertised capability; P2 improves quality/efficiency; P3 speculative research.
 - A row's test/evidence requirement can be refined after inspecting source. Never invent a path or claim a subsystem exists before the live inventory confirms it.
 
+**Execution checkpoint — 2026-11-13:** `NC-03-04-OBSERVE/SPEC/FIX/TEST/PROVE` are **PASS for the HMX portable-memory provenance slice only**. Evidence: [PR #869](https://github.com/ailtron1ss-rgb/NK1/pull/869), [implementation contract](integration/hexis/HMX_CANONICAL_MEMORY_BRIDGE_2026-11-13_RU.md), [exact HMX workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43448674523), [source-lineage workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43448675180), [memory integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43448674884), [unified organism regression](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43448675062). Full HMX 1.7 schema/import parity and non-memory sections remain partial/deferred; this checkpoint does not mark the whole Memory correctness domain complete.
+
+
 ## Execution table
 
 | Work unit | Domain | Subsystem | Stage | Required action | Exit evidence | Status |
