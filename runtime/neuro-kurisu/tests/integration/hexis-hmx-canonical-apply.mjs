@@ -244,8 +244,11 @@ try {
     }
     assert.equal(restartedReady, true, 'server must restart using the same durable state directory: ' + restartedOutput.slice(-800));
     const restoredMemories = await memoryIndex();
-    assert.ok(restoredMemories.some(row => row.summary.includes('HMX canonical imported memory A')));
-    assert.ok(restoredMemories.some(row => row.summary.includes('HMX canonical imported procedure B')));
+    const restoredA = restoredMemories.filter(row => row.summary.includes('HMX canonical imported memory A'));
+    const restoredB = restoredMemories.filter(row => row.summary.includes('HMX canonical imported procedure B'));
+    assert.equal(restoredA.length, 1, 'the first donor memory must survive restart exactly once');
+    assert.equal(restoredB.length, 1, 'the second donor memory must survive restart exactly once');
+    const countBeforeRestartReplay = restoredMemories.length;
     const stageSnapshot = await (await fetch(base + '/api/organism/integration/hexis')).json();
     assert.equal(stageSnapshot.ok, true);
     assert.equal(stageSnapshot.hexis?.counts?.hmxStages >= 1, true,
@@ -258,8 +261,13 @@ try {
     assert.equal(replayAfterRestart.stage.status, 'applied');
     assert.equal(replayAfterRestart.stage.application.digest, applied.stage.application.digest,
       'persisted receipt must make post-restart replay idempotent');
-    assert.equal((await memoryIndex()).length, expectedCanonicalCount,
-      'post-restart apply replay must not create duplicate canonical memory');
+    const afterRestartReplayMemories = await memoryIndex();
+    assert.equal(afterRestartReplayMemories.length, countBeforeRestartReplay,
+      'post-restart apply replay must not create additional canonical memory');
+    assert.equal(afterRestartReplayMemories.filter(row => row.summary.includes('HMX canonical imported memory A')).length, 1,
+      'post-restart replay must retain exactly one copy of the first imported memory');
+    assert.equal(afterRestartReplayMemories.filter(row => row.summary.includes('HMX canonical imported procedure B')).length, 1,
+      'post-restart replay must retain exactly one copy of the second imported memory');
   } finally {
     if (restartedChild.exitCode === null && restartedChild.signalCode === null) restartedChild.kill('SIGTERM');
     await new Promise(resolve => setTimeout(resolve, 250));
