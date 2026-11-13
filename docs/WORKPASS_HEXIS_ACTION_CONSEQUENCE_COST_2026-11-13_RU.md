@@ -40,8 +40,9 @@ Hexis разделяет вычислительную стоимость и це
 
 - TDD red до создания модуля: ожидаемый missing-module import failure.
 - Policy regression проверяет пять consequence-классов, precedence, approval flag, read-only selection, social-only block, раздельные resource/consequence cost, snapshot round-trip и fail-closed для reconciliation.
-- Финальный exact-head Actions run [#43391123521](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43391123521), SHA `6d17f888ece72b643c84ebae5ba1fbc123f7eae8`: **SUCCESS**.
+- Финальный exact-head Actions run [#43391372605](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43391372605), SHA `21dfd56100c92d8ff189aab7289938c663d266b1`: **SUCCESS**.
 - Внутри run успешно: Node 24, `npm ci --ignore-scripts`, полный `npm run typecheck`, `hexis-action-consequence-cost-policy.mjs`, `big-pass-223-autonomous-resource-tool-life.mjs`, `action-cost-unification-workpass36.mjs`, `workpass53-action-approval-boundary.mjs`.
+- Широкий `NK1 Action Gateway governance` run [#43391372537](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43391372537) также SUCCESS после восстановления неизменяемого reason-контракта `no-autonomous-permitted-tool`.
 - Отдельная idempotency suite: 12/13 subtests PASS, один failure по temporal reafference. Тот же failure воспроизведён на чистом baseline `workpass70-source@1a0315595302f3154df0ae53e5d9188875311467`; заведен самостоятельный [issue #865](https://github.com/ailtron1ss-rgb/NK1/issues/865). Он не относится к изменённому policy/controller path и не замаскирован под PASS.
 
 ### Выборочная сверка registry
