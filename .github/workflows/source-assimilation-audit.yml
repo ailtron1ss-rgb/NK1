@@ -13,6 +13,12 @@ on:
       - 'docs/SOURCE_ASSIMILATION_REGISTER_2026-11-13_RU.md'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/scripts/audit-source-assimilation.mjs'
+      - 'runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LocalModelSkillRevisionGenerator.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-local-model-skill-revision-integration.mjs'
       - 'runtime/neuro-kurisu/tests/source-assimilation-audit.mjs'
       - 'runtime/neuro-kurisu/src/organism/integration/**'
       - 'runtime/neuro-kurisu/tests/integration/**'
@@ -32,6 +38,12 @@ on:
       - 'docs/SOURCE_ASSIMILATION_REGISTER_2026-11-13_RU.md'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/scripts/audit-source-assimilation.mjs'
+      - 'runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LocalModelSkillRevisionGenerator.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-local-model-skill-revision-integration.mjs'
       - 'runtime/neuro-kurisu/tests/source-assimilation-audit.mjs'
       - 'runtime/neuro-kurisu/src/organism/integration/**'
       - 'runtime/neuro-kurisu/tests/integration/**'
@@ -66,6 +78,12 @@ jobs:
       - name: Test the audit detects disconnected adapters and incomplete source registers
         working-directory: runtime/neuro-kurisu
         run: node tests/source-assimilation-audit.mjs
+      - name: Run llama.cpp provider and P23 constrained-revision contracts
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --experimental-strip-types tests/local-chat-provider-workpass40.mjs
+          node --experimental-strip-types tests/p23-local-model-skill-revision-generator.mjs
+          node --experimental-strip-types tests/p23-local-model-skill-revision-integration.mjs
       - name: Run Hexis belief and canonical provenance contracts
         working-directory: runtime/neuro-kurisu
         run: |
