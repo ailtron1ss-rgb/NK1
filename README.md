@@ -23,6 +23,8 @@
 
 ### Readiness and handoff
 
+The DSPy/GEPA adapter in #863 is optional validation-only protocol glue, not a bundled optimizer. A multi-candidate Pareto archive is a preliminary gap hypothesis only; perform a full branch search before designing any NK1-native extension, and preserve the holdout firewall.
+
 No global readiness increase. The 75-aspect registry remains 62 IMPLEMENTED / 1 TESTED / 11 PLANNED / 1 BLOCKED; these are status labels, not proof of integrated behavior. Independent RU/EN holdout (at least 5 paired seeds), real Android/Termux soak, browser/device avatar E2E, speech timing, legal clearance and Release ZIP inspection remain open.
 
 Подробный пакет из 18 направлений, счётчики, точные SHA/CI и handoff: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md).
