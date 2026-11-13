@@ -51,3 +51,6 @@ Hexis разделяет вычислительную стоимость и це
 - Последующие Hexis ideas: контекстные множители first-use/high-error/repeated-action и outcome-backed cost calibration; hard floors должны быть неизменяемы для модели и опираться только на verified receipts.
 - Перед merge: актуальный compare с базой, точный review, relevant CI; потом отдельный release ZIP reconciliation.
 - Не изменены `main`, теги, релизный ZIP или сторонние зависимости. PR остаётся Draft; SUCCESS этого workflow означает проверку данного slice, а не production readiness проекта или сознание.
+
+
+Additional hardening: `reconcile` is classified as mutation rather than read-only because reconciling an execution can change durable state.
