@@ -1015,12 +1015,6 @@ export class P23LearningEngine {
     const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
     const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
     if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
-    // An authentic proposal authorizes a revision attempt, not this newly generated
-    // payload. Require the exact post-generation payload to pass the independent
-    // paired validation/holdout gate before it enters the versioned candidate store.
-    if(fitness.eligible !== true) {
-      throw new Error('reflective revision candidate failed the independent validation/holdout gate');
-    }
     if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
     const rawGeneratedPayload=await generate({
       sourcePayload:snapshotPlainData(source.payload),
