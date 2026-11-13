@@ -1118,7 +1118,7 @@ export class P23LearningEngine {
           'POPULATION_VARIATION_ID: '+searchRequest.variation.id,
           'POPULATION_VARIATION_INSTRUCTION: '+searchRequest.variation.instruction,
           'POPULATION_VARIATION_SEED: '+searchRequest.variation.seed,
-        ].join('\\n\\n'),
+        ].join('\n\n'),
         validationEvidence:searchRequest.validationEvidence,
         targets:searchRequest.targets,
         holdoutPolicy:searchRequest.holdoutPolicy,
