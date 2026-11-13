@@ -93,3 +93,55 @@ function createLearningMission(tick = 1) {
 }
 
 console.log('AUTONOMOUS_PERSONHOOD_VERIFIED_OUTCOME=PASS');
+
+
+// The real core must create an autonomous decision receipt and close it only at the
+// canonical feedback boundary, where a verified postcondition is available.
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+
+{
+  const store = new MemoryStateStore();
+  const config = {
+    enableLanguage: false,
+    checkpointMinIntervalMs: 0,
+    checkpointMaxDirtyCycles: 1,
+    cycleResultMode: 'operational',
+    performanceProfile: 'mobile',
+    enableWorldModel: true,
+    enableSelfProjects: true,
+    enableAgencyModel: true,
+    enableLifelongLearning: true,
+  };
+  const core = new OrganismCore(store, config);
+  await core.init();
+  let attributed = false;
+  for (let i = 0; i < 16 && !attributed; i += 1) {
+    await core.autonomousHeartbeat(200000 + i * 12000);
+    const before = core.systemSnapshot().autonomousPersonhood;
+    const pending = before.pendingDecisions?.at(-1);
+    if (!pending) continue;
+    await core.feedback({ success: 0.9, evidenceSource: 'device', notes: 'authoritative device postcondition fixture' });
+    const after = core.systemSnapshot().autonomousPersonhood;
+    if (after.lastOutcomeTick === pending.tick && after.lastOutcomeAction === pending.action) {
+      assert.equal(after.consequenceUpdates, before.consequenceUpdates + 1,
+        'a verified self-authored action must update the personhood outcome ledger');
+      await core.feedback({ success: 0.99, evidenceSource: 'device', notes: 'duplicate delivery fixture' });
+      const replayed = core.systemSnapshot().autonomousPersonhood;
+      assert.equal(replayed.consequenceUpdates, after.consequenceUpdates,
+        'duplicate feedback for the same decision must not be credited twice');
+      attributed = true;
+    }
+  }
+  assert.ok(attributed, 'the unified OrganismCore must route at least one autonomous action outcome to personhood');
+  await core.flush();
+  const persisted = core.systemSnapshot().autonomousPersonhood;
+  const restored = new OrganismCore(store, config);
+  await restored.init();
+  const restoredState = restored.systemSnapshot().autonomousPersonhood;
+  assert.equal(restoredState.consequenceUpdates, persisted.consequenceUpdates,
+    'verified personhood outcome receipts must survive runtime restore');
+  assert.equal(restoredState.lastOutcomeTick, persisted.lastOutcomeTick);
+}
+
+console.log('AUTONOMOUS_PERSONHOOD_CORE_FEEDBACK_INTEGRATION=PASS');
