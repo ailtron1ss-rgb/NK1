@@ -1,8 +1,16 @@
+export interface LocalChatResponseFormat {
+  /** llama-server accepts plain JSON mode or JSON Schema constrained decoding. */
+  type: 'json_object' | 'json_schema';
+  /** Optional schema supported by llama.cpp for both response-format types. */
+  schema?: Record<string, unknown>;
+}
 export interface LocalChatCompletionRequest {
   system: string;
   user: string;
   maxTokens?: number;
   temperature?: number;
+  /** Optional server-side constrained decoding; omitted for ordinary text generation. */
+  responseFormat?: LocalChatResponseFormat;
   /** Caller cancellation must reach the actual local HTTP transport. */
   signal?: AbortSignal;
 }
@@ -21,6 +29,83 @@ export interface LocalChatProviderOptions {
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_RESPONSE_SCHEMA_BYTES = 32 * 1024;
+const MAX_RESPONSE_SCHEMA_DEPTH = 16;
+const MAX_RESPONSE_SCHEMA_NODES = 2048;
+
+/** Clone bounded JSON data without invoking getters, accepting proxies, or retaining mutable caller references. */
+function cloneJsonData(value: unknown, state: { seen: Set<object>; nodes: number; depth: number }): unknown {
+  state.nodes += 1;
+  if (state.nodes > MAX_RESPONSE_SCHEMA_NODES || state.depth > MAX_RESPONSE_SCHEMA_DEPTH) throw new Error('llama.cpp-response-schema-too-complex');
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error('llama.cpp-response-schema-not-json');
+    return value;
+  }
+  if (typeof value !== 'object') throw new Error('llama.cpp-response-schema-not-json');
+  const object = value as object;
+  if (state.seen.has(object)) throw new Error('llama.cpp-response-schema-circular');
+  state.seen.add(object);
+  try {
+    const prototype = Object.getPrototypeOf(object);
+    const descriptors = Object.getOwnPropertyDescriptors(object);
+    if (Array.isArray(object)) {
+      if (prototype !== Array.prototype) throw new Error('llama.cpp-response-schema-not-plain-data');
+      const lengthDescriptor = descriptors.length;
+      const length = Number(lengthDescriptor?.value);
+      if (!Number.isSafeInteger(length) || length < 0 || length > 512) throw new Error('llama.cpp-response-schema-array-too-large');
+      const result: unknown[] = [];
+      for (let i = 0; i < length; i += 1) {
+        const descriptor = descriptors[String(i)];
+        if (!descriptor || !('value' in descriptor) || descriptor.enumerable !== true) throw new Error('llama.cpp-response-schema-not-plain-data');
+        result.push(cloneJsonData(descriptor.value, { seen: state.seen, nodes: state.nodes, depth: state.depth + 1 }));
+        state.nodes = countNodes(result, state.nodes);
+      }
+      return result;
+    }
+    if (prototype !== Object.prototype && prototype !== null) throw new Error('llama.cpp-response-schema-not-plain-data');
+    const keys = Reflect.ownKeys(object);
+    if (keys.some(key => typeof key !== 'string')) throw new Error('llama.cpp-response-schema-not-plain-data');
+    if (keys.length > 256) throw new Error('llama.cpp-response-schema-too-many-keys');
+    const result: Record<string, unknown> = Object.create(null);
+    for (const key of keys as string[]) {
+      const descriptor = descriptors[key];
+      if (!descriptor || !('value' in descriptor) || descriptor.enumerable !== true) throw new Error('llama.cpp-response-schema-accessor-rejected');
+      Object.defineProperty(result, key, {
+        value: cloneJsonData(descriptor.value, { seen: state.seen, nodes: state.nodes, depth: state.depth + 1 }),
+        enumerable: true, configurable: true, writable: true,
+      });
+      state.nodes = countNodes(result, state.nodes);
+    }
+    return result;
+  } finally {
+    state.seen.delete(object);
+  }
+}
+
+function countNodes(value: unknown, current: number): number {
+  // Recursive cloning already increments the shared state; this identity function
+  // keeps the call sites explicit without walking and re-counting cloned data.
+  return current;
+}
+
+function normalizeResponseFormat(raw: LocalChatResponseFormat | undefined): LocalChatResponseFormat | undefined {
+  if (raw === undefined) return undefined;
+  let cloned: unknown;
+  try { cloned = cloneJsonData(raw, { seen: new Set<object>(), nodes: 0, depth: 0 }); }
+  catch (error) { throw error instanceof Error ? error : new Error('llama.cpp-response-schema-invalid'); }
+  if (!cloned || typeof cloned !== 'object' || Array.isArray(cloned)) throw new Error('llama.cpp-response-format-invalid');
+  const format = cloned as Record<string, unknown>;
+  if (format.type !== 'json_object' && format.type !== 'json_schema') throw new Error('llama.cpp-response-format-type-invalid');
+  if (Object.keys(format).some(key => key !== 'type' && key !== 'schema')) throw new Error('llama.cpp-response-format-unsupported-field');
+  if (format.schema !== undefined && (!format.schema || typeof format.schema !== 'object' || Array.isArray(format.schema))) {
+    throw new Error('llama.cpp-response-schema-invalid');
+  }
+  if (format.type === 'json_schema' && format.schema === undefined) throw new Error('llama.cpp-response-schema-required');
+  const encoded = JSON.stringify(format);
+  if (new TextEncoder().encode(encoded).byteLength > MAX_RESPONSE_SCHEMA_BYTES) throw new Error('llama.cpp-response-schema-too-large');
+  return format as unknown as LocalChatResponseFormat;
+}
 function canonicalBaseUrl(raw: string | undefined): string | null {
   const value = String(raw ?? '').trim();
   if (!value) return null;
@@ -105,6 +190,7 @@ export class OpenAICompatibleLocalChatProvider {
     const startedAt = Date.now();
     const maxTokens = Math.max(1, Math.min(8192, Math.floor(Number(request.maxTokens ?? 512) || 512)));
     const temperature = Math.max(0, Math.min(2, Number.isFinite(Number(request.temperature)) ? Number(request.temperature) : 0.7));
+    const responseFormat = normalizeResponseFormat(request.responseFormat);
     if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     const deadlineSignal = AbortSignal.timeout(this.timeoutMs);
     const transportSignal = request.signal
@@ -126,6 +212,7 @@ export class OpenAICompatibleLocalChatProvider {
         max_tokens: maxTokens,
         temperature,
         stream: false,
+        ...(responseFormat ? { response_format: responseFormat } : {}),
       }),
       });
     } catch (error) {
