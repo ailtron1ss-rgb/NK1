@@ -299,7 +299,12 @@ export class MemoryFabric {
     return result;
   }
 
-  /** Read-only canonical lookup for idempotent adapters; never mutates retrieval or policy state. */\n  getCanonicalMemory(id:string):MemoryItem2|null {\n    return this.findCanonical(id);\n  }\n\n  private findCanonical(id:string):MemoryItem2|null {
+  /** Read-only canonical lookup for idempotent adapters; never mutates retrieval or policy state. */
+  getCanonicalMemory(id:string):MemoryItem2|null {
+    return this.findCanonical(id);
+  }
+
+  private findCanonical(id:string):MemoryItem2|null {
     const item=this.memoryOS.snapshot({clone:false}).items.find(row=>row.id===String(id));
     return item?structuredClone(item):null;
   }
