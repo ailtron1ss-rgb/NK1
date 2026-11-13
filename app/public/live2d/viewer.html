@@ -182,6 +182,17 @@
       if(!PIXI?.live2d)throw new Error('Live2D runtime не найден');
       const resolution=Math.max(1,Math.min(2,Number(window.devicePixelRatio)||1));
        app=new PIXI.Application({view:document.getElementById('canvas'),autoStart:true,backgroundAlpha:0,resizeTo:window,antialias:true,resolution,autoDensity:true,powerPreference:'low-power'});
+      // Cap background work on mobile while preserving smooth active motion.
+      if(typeof app.ticker?.maxFPS==='number')app.ticker.maxFPS=30;
+      function syncRendererVisibility(){
+        const ticker=app?.ticker;
+        if(!ticker)return;
+        if(document.visibilityState==='hidden')ticker.stop();
+        else ticker.start();
+      }
+      document.addEventListener('visibilitychange',syncRendererVisibility,{passive:true});
+      window.addEventListener('pagehide',()=>app?.ticker?.stop(),{passive:true});
+      window.addEventListener('pageshow',syncRendererVisibility,{passive:true});
       const {Live2DModel}=PIXI.live2d;
       model=await Live2DModel.from(modelPath,{autoInteract:false});
       if(!model?.width)throw new Error('модель без размера');
