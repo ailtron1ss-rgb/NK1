@@ -7,13 +7,50 @@ import { gunzipSync } from 'node:zlib';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REGISTRY = path.join(ROOT, 'engineering-os', 'source-assimilation.v1.json.gz');
+const STAGE_OVERRIDES = path.join(ROOT, 'engineering-os', 'source-assimilation-stage-overrides.v1.json');
 const HASH = /^[a-f0-9]{64}$/i;
 const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const text = v => typeof v === 'string' && v.trim().length > 0;
+const BOOLEAN_STAGE_KEYS = new Set(['codeCopied', 'adapted', 'runtimeWired', 'testsPassed', 'releaseVerified']);
+const EVIDENCE_STAGE_KEYS = new Set(['runtimeEvidence', 'testEvidence', 'releaseEvidence']);
+
+export function applySourceStageOverrides(doc, overlay) {
+  if (!object(overlay) || overlay.schemaVersion !== 1 || !object(overlay.sources)) {
+    throw new Error('invalid source stage override schema');
+  }
+  const merged = structuredClone(doc);
+  const byId = new Map((merged.sources ?? []).map(source => [source.id, source]));
+  for (const [sourceId, patch] of Object.entries(overlay.sources)) {
+    const source = byId.get(sourceId);
+    if (!source) throw new Error(`stage override references unknown source: ${sourceId}`);
+    if (!object(patch)) throw new Error(`stage override must be an object: ${sourceId}`);
+    for (const [key, value] of Object.entries(patch)) {
+      if (BOOLEAN_STAGE_KEYS.has(key)) {
+        if (typeof value !== 'boolean') throw new Error(`stage override ${sourceId}.${key} must be boolean`);
+        source.implementation[key] = value;
+      } else if (EVIDENCE_STAGE_KEYS.has(key)) {
+        if (!Array.isArray(value) || !value.length || value.some(item => !text(item))) {
+          throw new Error(`stage override ${sourceId}.${key} must contain non-empty evidence strings`);
+        }
+        source.implementation[key] = [...new Set([...(source.implementation[key] ?? []), ...value])];
+      } else {
+        throw new Error(`unsupported source stage override field: ${sourceId}.${key}`);
+      }
+    }
+  }
+  return merged;
+}
 
 export async function loadSourceRegistry() {
   const bytes = await readFile(REGISTRY);
-  return JSON.parse(gunzipSync(bytes).toString('utf8'));
+  const doc = JSON.parse(gunzipSync(bytes).toString('utf8'));
+  try {
+    const overlay = JSON.parse(await readFile(STAGE_OVERRIDES, 'utf8'));
+    return applySourceStageOverrides(doc, overlay);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return doc;
+    throw error;
+  }
 }
 
 export function validateSourceRegistry(doc) {
