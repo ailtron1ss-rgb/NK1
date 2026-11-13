@@ -119,6 +119,11 @@ export interface HexisHmxApplyReceipt {
     warnings: string[];
     digest: string;
 }
+export interface HexisHmxPrivacy {
+    redactionPolicy: 'none' | 'basic' | 'strict' | 'custom';
+    containsSensitiveContent: boolean;
+    consentScope: 'backup' | 'migration' | 'third_party_transfer' | 'unspecified';
+}
 export interface HexisHmxStage {
     stagingId: string;
     exportId: string;
@@ -127,6 +132,8 @@ export interface HexisHmxStage {
     sourceSubjectId?: string;
     sourceLineageId?: string;
     sourceSchemaVersion?: string;
+    privacy?: HexisHmxPrivacy;
+    capabilitiesDigest?: string;
     sectionCounts: Record<string, number>;
     protectedSections: string[];
     conflicts: Array<{
@@ -429,7 +436,8 @@ function isHexisHmxApplyReceipt(value: unknown): value is HexisHmxApplyReceipt {
         isHexisStringList(value.memoryIds, 512, 128) &&
         isHexisStringList(value.createdMemoryIds, 512, 128) &&
         isHexisRecordOfCounts(value.deferredSections) &&
-        isHexisStringList(value.warnings, 64, 512) && isHexisDigest(value.digest);
+        isHexisStringList(value.warnings, 64, 512) && isHexisDigest(value.digest) &&
+        sha256Stable(Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'digest')), 'json') === value.digest;
 }
 function isHexisHmxStage(value: unknown): value is HexisHmxStage {
     if (!isHexisPolicyRecord(value)) return false;
@@ -439,6 +447,11 @@ function isHexisHmxStage(value: unknown): value is HexisHmxStage {
         (value.sourceSubjectId === undefined || isHexisSafeText(value.sourceSubjectId, 256)) &&
         (value.sourceLineageId === undefined || isHexisSafeText(value.sourceLineageId, 256)) &&
         (value.sourceSchemaVersion === undefined || isHexisSafeText(value.sourceSchemaVersion, 64)) &&
+        (value.privacy === undefined || (isHexisPolicyRecord(value.privacy) &&
+            ['none', 'basic', 'strict', 'custom'].includes(String(value.privacy.redactionPolicy)) &&
+            typeof value.privacy.containsSensitiveContent === 'boolean' &&
+            ['backup', 'migration', 'third_party_transfer', 'unspecified'].includes(String(value.privacy.consentScope)))) &&
+        (value.capabilitiesDigest === undefined || isHexisDigest(value.capabilitiesDigest)) &&
         (value.applicationAttempts === undefined || (Number.isSafeInteger(value.applicationAttempts) && Number(value.applicationAttempts) >= 0 && Number(value.applicationAttempts) <= 1000)) &&
         (value.application === undefined || isHexisHmxApplyReceipt(value.application)) &&
         (value.status !== 'applied' || isHexisHmxApplyReceipt(value.application)) &&
@@ -782,6 +795,12 @@ export class HexisAdaptationFabric {
             sourceSubjectId: safeText(source.instance_id, 256) ? String(source.instance_id) : undefined,
             sourceLineageId: safeText(source.hexis_lineage_id, 256) ? String(source.hexis_lineage_id) : undefined,
             sourceSchemaVersion: safeText(source.schema_version, 64) ? String(source.schema_version) : undefined,
+            privacy: privacy ? {
+                redactionPolicy: privacy.redaction_policy as HexisHmxPrivacy['redactionPolicy'],
+                containsSensitiveContent: privacy.contains_sensitive_content as boolean,
+                consentScope: privacy.consent_scope as HexisHmxPrivacy['consentScope'],
+            } : undefined,
+            capabilitiesDigest: capabilities ? digest(capabilities) : undefined,
             sectionCounts,
             protectedSections: names.filter(name => protectedSections.has(name)),
             conflicts: conflicts.slice(0, 256),
@@ -824,6 +843,11 @@ export class HexisAdaptationFabric {
         if (stage.conflicts.length > 0 || !stage.sourceLineageId) {
             throw new Error('hmx-stage-not-canonically-applicable');
         }
+        if (!stage.privacy || stage.privacy.redactionPolicy !== 'strict' ||
+            stage.privacy.containsSensitiveContent !== false || stage.privacy.consentScope !== 'migration' ||
+            !stage.capabilitiesDigest) {
+            throw new Error('hmx-canonical-import-consent-required');
+        }
         const base = {
             exportId: stage.exportId,
             intent: stage.intent,
@@ -831,6 +855,8 @@ export class HexisAdaptationFabric {
             sourceSubjectId: stage.sourceSubjectId,
             sourceLineageId: stage.sourceLineageId,
             sourceSchemaVersion: stage.sourceSchemaVersion,
+            privacy: stage.privacy,
+            capabilitiesDigest: stage.capabilitiesDigest,
             sectionCounts: stage.sectionCounts,
             protectedSections: stage.protectedSections,
             conflicts: stage.conflicts,
@@ -840,7 +866,12 @@ export class HexisAdaptationFabric {
         if (!this.canonicalMemoryApply) throw new Error('hmx-canonical-memory-projector-unavailable');
         stage.applicationAttempts = Math.min(1000, Number(stage.applicationAttempts ?? 0) + 1);
         const receipt = this.canonicalMemoryApply(structuredClone(stage), Math.max(0, Math.floor(Number(context.tick) || 0)));
-        if (!isHexisHmxApplyReceipt(receipt)) throw new Error('hmx-apply-receipt-invalid');
+        if (!isHexisHmxApplyReceipt(receipt) || receipt.exportId !== stage.exportId ||
+            receipt.sourceLineageId !== stage.sourceLineageId || receipt.stageId !== stage.stagingId ||
+            receipt.stageDigest !== stage.digest ||
+            receipt.importedCount + receipt.deduplicatedCount !== receipt.uniqueMemoryRecords) {
+            throw new Error('hmx-apply-receipt-invalid');
+        }
         stage.application = structuredClone(receipt);
         stage.status = 'applied';
         this.state.metrics.hmxApplied += 1;
