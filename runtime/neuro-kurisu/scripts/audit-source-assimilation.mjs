@@ -156,6 +156,36 @@ export const SOURCE_ASSIMILATION_ADAPTERS = [
       ], 'Проверяет, что generator передаёт schema, не раскрывает holdout и не меняет promotion authority.'),
     ],
   },
+  {
+    id: 'dspy-gepa',
+    name: 'DSPy / GEPA',
+    mode: 'optional-validation-only-candidate-sidecar',
+    benefit: 'Возвращает один изменённый skill payload, сохраняя независимую P23 evaluation, candidate staging, signed shadow evidence и promotion authority; sidecar выключен по умолчанию.',
+    groups: [
+      group('candidate-adapter', 'src/organism/learning/GepaReflectiveCandidateGenerator.ts', [
+        'export class GepaReflectiveCandidateGenerator', "NK1_GEPA_ENABLED === '1'",
+        'holdoutResultsIncluded: false', 'holdoutCaseIdentifiersIncluded: false',
+        "activationAuthority: 'NK1-P23'", 'SAFE_DIRECTIVES', 'assertSourcePayloadShape',
+      ], 'Проецирует только validation rows, allowlists evidence IDs, заменяет caller directives на фиксированные инструкции, ограничивает transport и возвращает только candidatePayload.'),
+      group('server-composition', 'src/server/server.mjs', [
+        'GepaReflectiveCandidateGenerator.fromEnvironment()', 'GEPA_CANDIDATE_STATUS.enabled',
+        'asP23RevisionGenerator()', 'generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request)',
+        'GEPA sidecar opt-in requires the trusted P23 compound repair revision provider module',
+      ], 'Включается только вместе с доверенной P23 composition; при выключении остаётся локальный llama.cpp generator.'),
+      group('holdout-firewall', 'src/organism/learning/SkillRevisionPlan.ts', [
+        'void holdout', 'Build all generator-facing prose exclusively from validation observations.',
+        'Do not copy fitness.reasons/feedback', 'fitness.validationTaskRegressions',
+      ], 'Holdout продолжает блокировать promotion/safety, но его значения и направление не попадают в generator-facing targets или rationale.'),
+      group('holdout-firewall-regression', 'tests/p23-revision-plan-holdout-isolation.mjs', [
+        'changing only holdout outcomes, scores, reasons and feedback must not change any generator-facing content',
+        'SECRET_HOLDOUT', 'P23_REVISION_PLAN_HOLDOUT_ISOLATION=PASS',
+      ], 'Противоположные holdout результаты при одинаковой validation выборке должны давать идентичный план генерации.'),
+      group('sidecar-transport-contract', 'tests/gepa-reflective-candidate-generator.mjs', [
+        'validation-only evidence', 'holdoutResultsIncluded', 'candidate payload cannot drop source fields',
+        'real loopback HTTP roundtrip reaches the P23 callback', 'GEPA_REFLECTIVE_CANDIDATE_GENERATOR=PASS',
+      ], 'Проверяет HTTPS/loopback, bounds, no holdout leakage, candidate-only response и реальный loopback P23 handoff.'),
+    ],
+  },
 ];
 
 export const REQUIRED_ARCHIVE_SOURCES = [
