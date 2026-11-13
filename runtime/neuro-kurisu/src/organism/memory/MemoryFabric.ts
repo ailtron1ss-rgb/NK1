@@ -274,13 +274,14 @@ export class MemoryFabric {
       }
       case 'forget': {
         const forgotten=this.memoryOS.forgetById(command.id,command.reason??'memory-knockout');
-        result=forgotten; booleanValue=forgotten;memoryId=command.id;outcome=forgotten?'applied':'noop';
-        if(forgotten){
-          // Explicit forgetting must cover every derived recall surface, not only the canonical owner.
-          // MultiTimescaleMemory is a read-only projection; remove the matching row before any later recall.
-          this.multiTimescale.removeCanonicalProjection(command.id);
-          this.p62.forgetMemory(command.id);
-          this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));
+        // Purge derived caches even when the canonical row is already absent: a
+        // prior partial restore may have left a compatibility or recall-only copy.
+        const projectionRemoved=this.multiTimescale.removeCanonicalProjection(command.id);
+        const recallFramesRemoved=this.p62.forgetMemory(command.id);
+        const applied=Boolean(forgotten||projectionRemoved||recallFramesRemoved>0);
+        result=applied; booleanValue=applied;memoryId=command.id;outcome=applied?'applied':'noop';
+        this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));
+        if(applied){
           eventPayload={action,memoryId:command.id,reason:String(command.reason??'memory-knockout').slice(0,240),commandId:commandId||undefined};
         }
         break;
