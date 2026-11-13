@@ -19,7 +19,7 @@ import type { LearningLifecycleEventEntry, LearningLifecycleJournalDiagnostics, 
 import type { LearningRobustMetricSummary } from './LearningRobustMetrics.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import { generateLocalSkillRevision, type SkillRevisionChatProvider } from './P23LocalModelSkillRevisionGenerator.ts';
-import { runP23ReflectiveCandidatePopulationSearch, type P23PopulationSearchBudget, type P23PopulationSearchResult } from './P23ReflectiveCandidatePopulationSearch.ts';
+import { runP23ReflectiveCandidatePopulationSearch, type P23PopulationCandidateGenerator, type P23PopulationSearchBudget, type P23PopulationSearchResult } from './P23ReflectiveCandidatePopulationSearch.ts';
 import type { ValidationOnlyCandidateEvaluator } from './ValidationOnlySkillCandidateEvaluator.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
@@ -1089,8 +1089,55 @@ export class P23LearningEngine {
     proposal:VerifiedSkillPromotionProposal,
     skillId:string,
     sourceCandidateId:string,
+    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    evaluateRevisedCandidate:RevisedCandidateEvaluator,
+    options:SkillLearnBenchCandidateGateOptions={},
+    sourceEvidenceFingerprint?:string,
+    populationBudget:P23PopulationSearchBudget={},
+  ):Promise<{
+    candidate:VersionedSkillCandidate;
+    fitness:SkillLearnBenchCandidateGateReport;
+    plan:SkillRevisionPlan;
+    populationSearch:P23PopulationSearchResult;
+  }> {
+    if(!provider) throw new Error('p23-population-local-provider-required');
+    const generateCandidate:P23PopulationCandidateGenerator=searchRequest=>{
+      const scopedProvider:SkillRevisionChatProvider={
+        configured:()=>provider.configured(),
+        generate:localRequest=>provider.generate({
+          ...localRequest,
+          signal:searchRequest.signal,
+        }),
+      };
+      return generateLocalSkillRevision(scopedProvider,{
+        sourcePayload:searchRequest.sourcePayload,
+        datasetFingerprint:searchRequest.datasetFingerprint,
+        optimizerInstruction:[
+          searchRequest.optimizerInstruction,
+          'POPULATION_VARIATION_ID: '+searchRequest.variation.id,
+          'POPULATION_VARIATION_INSTRUCTION: '+searchRequest.variation.instruction,
+          'POPULATION_VARIATION_SEED: '+searchRequest.variation.seed,
+        ].join('\\n\\n'),
+        validationEvidence:searchRequest.validationEvidence,
+        targets:searchRequest.targets,
+        holdoutPolicy:searchRequest.holdoutPolicy,
+      });
+    };
+    return this.generateAndStageReflectiveSkillRevisionWithPopulationGenerator(
+      validationEvaluator,proposal,skillId,sourceCandidateId,baseline,candidateEvaluation,
+      generateCandidate,evaluateRevisedCandidate,options,sourceEvidenceFingerprint,populationBudget,
+    );
+  }
+
+  async generateAndStageReflectiveSkillRevisionWithPopulationGenerator(
+    validationEvaluator:ValidationOnlyCandidateEvaluator,
+    proposal:VerifiedSkillPromotionProposal,
+    skillId:string,
+    sourceCandidateId:string,
     rawBaseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
     rawCandidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    generateCandidate:P23PopulationCandidateGenerator,
     evaluateRevisedCandidate:RevisedCandidateEvaluator,
     options:SkillLearnBenchCandidateGateOptions={},
     sourceEvidenceFingerprint?:string,
@@ -1101,8 +1148,8 @@ export class P23LearningEngine {
     plan:SkillRevisionPlan;
     populationSearch:P23PopulationSearchResult;
   }> {
-    if(!provider || !validationEvaluator) {
-      throw new Error('p23-population-local-provider-and-validation-evaluator-required');
+    if(typeof generateCandidate!=='function' || !validationEvaluator) {
+      throw new Error('p23-population-generator-and-validation-evaluator-required');
     }
     let baseline:typeof rawBaseline;
     let candidateEvaluation:typeof rawCandidateEvaluation;
@@ -1139,28 +1186,7 @@ export class P23LearningEngine {
           sourceValidationReports,
           validationEvaluator,
           budget,
-          generateCandidate:searchRequest=>{
-            const scopedProvider:SkillRevisionChatProvider={
-              configured:()=>provider.configured(),
-              generate:localRequest=>provider.generate({
-                ...localRequest,
-                signal:searchRequest.signal,
-              }),
-            };
-            return generateLocalSkillRevision(scopedProvider,{
-              sourcePayload:searchRequest.sourcePayload,
-              datasetFingerprint:searchRequest.datasetFingerprint,
-              optimizerInstruction:[
-                searchRequest.optimizerInstruction,
-                'POPULATION_VARIATION_ID: '+searchRequest.variation.id,
-                'POPULATION_VARIATION_INSTRUCTION: '+searchRequest.variation.instruction,
-                'POPULATION_VARIATION_SEED: '+searchRequest.variation.seed,
-              ].join('\n\n'),
-              validationEvidence:searchRequest.validationEvidence,
-              targets:searchRequest.targets,
-              holdoutPolicy:searchRequest.holdoutPolicy,
-            });
-          },
+          generateCandidate,
         });
         populationSearchState.result=result;
         if(result.status!=='selected'||result.selectedPayload===null) {
