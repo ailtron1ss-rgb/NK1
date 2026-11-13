@@ -71,6 +71,8 @@ on:
       - "runtime/neuro-kurisu/research/vendor/CleanRL/**"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/src/organism/learning/P23CandidateParetoArchive.ts"
+      - "runtime/neuro-kurisu/tests/p23-candidate-pareto-archive.mjs"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
 
@@ -157,3 +159,6 @@ jobs:
       - name: Run P23 independent learning, promotion governance, lifecycle recovery and P36 evidence suite
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:learning
+      - name: Verify P23 deterministic candidate Pareto archive contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-candidate-pareto-archive.mjs
