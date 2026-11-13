@@ -9,6 +9,8 @@ export interface MemoryRecord extends ConsolidatedMemory {
   embedding?: number[];
   consolidationScore01?: number;
   associationIds?: string[];
+  /** Read-only projection of a canonical MemoryOS2 row; never re-ingest on restore. */
+  canonicalProjection?: { owner:'memoryOS2'; itemId:string; schemaVersion:1 };
 }
 
 const EMBEDDING_DIMENSIONS = 24;
@@ -244,13 +246,41 @@ export class MultiTimescaleMemory {
     return options.clone === false ? compacted : compacted.map(row => structuredClone(row));
   }
 
-  private remove(id: string) {
+  /** Remove every timescale copy of an ID and invalidate its lexical cache. */
+  remove(id: string): boolean {
+    let removed = false;
     for (const rows of [this.working, this.episodic, this.semantic, this.autobiographical]) {
       for (let index = rows.length - 1; index >= 0; index--) {
-        if (rows[index]!.id === id) rows.splice(index, 1);
+        if (rows[index]!.id === id) {
+          rows.splice(index, 1);
+          removed = true;
+        }
       }
     }
     this.invalidateTokenCache(id);
+    return removed;
+  }
+
+  /**
+   * Remove a canonical MemoryOS2 row from its derived read-model projection.
+   * The ID fallback also covers snapshots written before canonicalProjection was introduced.
+   */
+  removeCanonicalProjection(itemId: string): boolean {
+    const canonicalId = String(itemId ?? '').trim().slice(0, 160);
+    if (!canonicalId) return false;
+    let removed = false;
+    for (const rows of [this.working, this.episodic, this.semantic, this.autobiographical]) {
+      for (let index = rows.length - 1; index >= 0; index--) {
+        const row = rows[index]!;
+        if (row.id === canonicalId || (row.canonicalProjection?.owner === 'memoryOS2' && row.canonicalProjection.itemId === canonicalId)) {
+          rows.splice(index, 1);
+          this.invalidateTokenCache(row.id);
+          removed = true;
+        }
+      }
+    }
+    this.invalidateTokenCache(canonicalId);
+    return removed;
   }
 
   private score(memory: MemoryRecord, queryTokens: string[], now = Date.now()) {
