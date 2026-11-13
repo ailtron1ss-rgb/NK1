@@ -101,8 +101,10 @@ function memoryRecord(id, summary, overrides = {}) {
 
   const liveRow = memoryRecord('live-projection', 'retired heliosphere keyword');
   memory.add(liveRow, false);
+  const liveStored = memory.snapshot({ clone: false }).find(row => row.id === 'live-projection');
+  assert.ok(liveStored);
   assert.equal(memory.retrieve('heliosphere', 1)[0]?.id, 'live-projection');
-  liveRow.summary = 'current photosynthesis keyword';
+  liveStored.summary = 'current photosynthesis keyword';
   assert.deepEqual(
     memory.retrieve('heliosphere', 4).map(row => row.id),
     [],
