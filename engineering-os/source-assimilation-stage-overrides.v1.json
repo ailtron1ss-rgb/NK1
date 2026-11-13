@@ -5,7 +5,8 @@
       "testsPassed": true,
       "testEvidence": [
         "GitHub Actions run 43392930739 (commit 8d3bb5bb220fb0a8a2a777ecb61c75980f3d774a): local-chat-provider-workpass40.mjs, p23-local-model-skill-revision-generator.mjs, p23-local-model-skill-revision-integration.mjs all PASS; source assimilation static audit 28/28; integration contracts for Hexis, Letta, Lumina, Will and Mem0 PASS.",
-        "GitHub Actions run 43393334664 (commit 362ef27cbb61fba31c7eed2df054ea834a8d0b89): source-assimilation workflow revalidated the stage overlay, registry and exact llama.cpp provider/P23 contracts; all steps completed success."
+        "GitHub Actions run 43393334664 (commit 362ef27cbb61fba31c7eed2df054ea834a8d0b89): source-assimilation workflow revalidated the stage overlay, registry and exact llama.cpp provider/P23 contracts; all steps completed success.",
+        "GitHub Actions run 43393578282 (commit ab6dbeb7d6c72be1260b00b4170d5abeaa107353): evidence-overlay update itself triggered the source-assimilation workflow; registry validation, overlay gate checks, llama.cpp provider/P23 tests and existing adapter contracts all completed success."
       ]
     }
   }
