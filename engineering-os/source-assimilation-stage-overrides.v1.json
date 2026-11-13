@@ -8,6 +8,18 @@
         "GitHub Actions run 43393334664 (commit 362ef27cbb61fba31c7eed2df054ea834a8d0b89): source-assimilation workflow revalidated the stage overlay, registry and exact llama.cpp provider/P23 contracts; all steps completed success.",
         "GitHub Actions run 43393578282 (commit ab6dbeb7d6c72be1260b00b4170d5abeaa107353): evidence-overlay update itself triggered the source-assimilation workflow; registry validation, overlay gate checks, llama.cpp provider/P23 tests and existing adapter contracts all completed success."
       ]
+    },
+    "dspy": {
+      "adapted": true,
+      "runtimeWired": true,
+      "testsPassed": true,
+      "runtimeEvidence": [
+        "runtime/neuro-kurisu/src/organism/learning/GepaReflectiveCandidateGenerator.ts: opt-in candidate-only sidecar adapter; strict request allowlist; validation-only report projection; fixed directive mapping; bounded request/response; source payload field preservation; holdout fields rejected; optimizer score/promotion claims discarded.",
+        "runtime/neuro-kurisu/src/server/server.mjs: explicit NK1_GEPA_ENABLED gate; requires configured endpoint/key and the trusted P23 compound-repair provider; only candidate generation is delegated; disabled mode preserves local llama.cpp; sidecar failure does not silently fallback."
+      ],
+      "testEvidence": [
+        "GitHub Actions run 43417587842 at exact commit e2fa5545aaac365123dfb65a05e8e66980500bf8: source-assimilation workflow SUCCESS; SOURCE_ASSIMILATION_AUDIT PASS; adapter/static coverage 7/7 and 33/33; source audit regression PASS; P23 provider/generator/integration PASS; P23_REVISION_PLAN_HOLDOUT_ISOLATION PASS; GEPA_REFLECTIVE_CANDIDATE_GENERATOR PASS; Hexis, Letta, Lumina, Will and Mem0 contracts PASS."
+      ]
     }
   }
 }
