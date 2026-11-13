@@ -49,6 +49,7 @@ test('llama.cpp JSON Schema is adapted, P23-wired and marked tested with CI evid
   assert.equal(llama.implementation.runtimeWired,true);
   assert.equal(llama.implementation.testsPassed,true);
   assert.ok(llama.implementation.testEvidence.some(e=>e.includes('43392930739')));
+  assert.ok(llama.implementation.testEvidence.some(e=>e.includes('43393334664')));
   assert.ok(llama.implementation.runtimeEvidence.some(e=>e.includes('generateAndStageReflectiveSkillRevisionWithLocalModel')));
   assert.ok(llama.review.sourceEvidence.some(e=>e.includes('server-common.cpp:1306-1318')));
 });
