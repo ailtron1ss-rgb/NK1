@@ -92,10 +92,6 @@ export class HexisHmxCanonicalMemoryBridge {
   stage(input: { document: unknown; intent?: HexisHmxIntent }): HmxBridgeStageResult {
     const warnings: HmxBridgeWarning[] = [];
     const conflicts: HmxBridgeStageResult['conflicts'] = [];
-    if (!isRecord(input.document)) {
-      return { ok: false, memoryCount: 0, deferredSections: [], warnings,
-        conflicts: [{ path: '$', kind: 'schema', detail: 'HMX document must be an object' }] };
-    }
     let doc: Record<string, unknown>;
     let serialized: string;
     try {
@@ -105,10 +101,11 @@ export class HexisHmxCanonicalMemoryBridge {
       serialized = JSON.stringify(doc);
     } catch {
       return { ok: false, memoryCount: 0, deferredSections: [], warnings,
-        conflicts: [{ path: '
+        conflicts: [{ path: '$', kind: 'serialization', detail: 'HMX document must be bounded inert plain data' }] };
+    }
+    if (Buffer.byteLength(serialized, 'utf8') > MAX_DOCUMENT_BYTES) {
       conflicts.push({ path: '$', kind: 'size-limit', detail: 'HMX document exceeds 2 MiB bridge limit' });
     }
-    const doc = input.document;
     if (typeof doc.hmx_version !== 'string' || !/^1\.[0-9]+$/u.test(doc.hmx_version)) {
       conflicts.push({ path: 'hmx_version', kind: 'unsupported-version', detail: 'Only explicit HMX 1.x versions are accepted' });
     }
@@ -121,7 +118,10 @@ export class HexisHmxCanonicalMemoryBridge {
     if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(String(doc.export_intent))) {
       conflicts.push({ path: 'export_intent', kind: 'schema', detail: 'Unsupported HMX export intent' });
     }
-    if (doc.export_intent === 'analysis') {\n      conflicts.push({ path: 'export_intent', kind: 'analysis-only', detail: 'Analysis-only exports are never admitted to canonical memory' });\n    }\n    if (!isRecord(doc.sections)) {
+    if (doc.export_intent === 'analysis') {
+      conflicts.push({ path: 'export_intent', kind: 'analysis-only', detail: 'Analysis-only exports are never admitted to canonical memory' });
+    }
+    if (!isRecord(doc.sections)) {
       conflicts.push({ path: 'sections', kind: 'schema', detail: 'sections must be an object' });
     }
     if (conflicts.length) return { ok: false, memoryCount: 0, deferredSections: [], warnings, conflicts };
@@ -133,7 +133,13 @@ export class HexisHmxCanonicalMemoryBridge {
       conflicts.push({ path: 'sections', kind: 'protected-section-review-required',
         detail: 'Constitutional sections cannot be imported by the canonical memory bridge: ' + protectedNames.join(', ') });
     }
-    for (const name of names) {\n      const value = sections[name];\n      if (Array.isArray(value) && value.length > MAX_MEMORY_RECORDS) {\n        conflicts.push({ path: 'sections.' + name, kind: 'record-limit', detail: 'Each staged section is limited to 64 records' });\n      }\n    }\n    const unknown = names.filter(name => !SUPPORTED_SECTIONS.has(name));
+    for (const name of names) {
+      const value = sections[name];
+      if (Array.isArray(value) && value.length > MAX_MEMORY_RECORDS) {
+        conflicts.push({ path: 'sections.' + name, kind: 'record-limit', detail: 'Each staged section is limited to 64 records' });
+      }
+    }
+    const unknown = names.filter(name => !SUPPORTED_SECTIONS.has(name));
     if (unknown.length) {
       conflicts.push({ path: 'sections', kind: 'unknown-section', detail: 'Unknown HMX sections are not silently accepted: ' + unknown.join(', ') });
     }
@@ -164,7 +170,7 @@ export class HexisHmxCanonicalMemoryBridge {
     }
     return {
       ok: true, stagingId: stage.stagingId, exportId: stage.exportId,
-      memoryCount: (memories as unknown[]).length,
+      memoryCount: memories.length,
       deferredSections: names.filter(name => DEFERRED_SECTIONS.has(name)),
       warnings, conflicts: [],
     };
