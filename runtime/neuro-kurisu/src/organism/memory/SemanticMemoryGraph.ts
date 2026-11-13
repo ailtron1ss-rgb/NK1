@@ -6,6 +6,8 @@ export interface SemanticNode {
   type: 'concept' | 'episode' | 'goal' | 'self' | 'person' | 'place';
   salience: number;
   lastSeen: number;
+  /** Source-isolated namespace for externally derived nodes. */
+  sourceKey?: string;
 }
 export interface SemanticEdge {
   id: string;
@@ -46,7 +48,8 @@ function normalizeNode(value: unknown): SemanticNode | null {
   const type = value.type as SemanticNode['type'];
   if (!id || !label || !NODE_TYPES.has(type) || !finite(value.salience) || !finite(value.lastSeen)) return null;
   if (value.lastSeen < 0) return null;
-  return { id, label, type, salience: clamp(value.salience), lastSeen: Math.floor(value.lastSeen) };
+  const sourceKey = typeof value.sourceKey === 'string' ? value.sourceKey.trim().slice(0, 160) : '';
+  return { id, label, type, salience: clamp(value.salience), lastSeen: Math.floor(value.lastSeen), ...(sourceKey ? { sourceKey } : {}) };
 }
 
 function normalizeEdge(value: unknown, nodeIds: Set<string>): SemanticEdge | null {
@@ -95,14 +98,15 @@ export class SemanticMemoryGraph {
     };
   }
 
-  upsertNode(label: string, type: SemanticNode['type'], salience: number): SemanticNode {
+  upsertNode(label: string, type: SemanticNode['type'], salience: number, sourceKey = ''): SemanticNode {
     const clean = normalize(label);
     if (!clean) throw new Error('semantic-node-empty');
     if (!NODE_TYPES.has(type)) throw new Error('semantic-node-type-invalid');
     if (!Number.isFinite(salience)) throw new Error('semantic-node-salience-invalid');
 
     const normalizedSalience = clamp(salience);
-    const existing = this.state.nodes.find(node => node.label === clean && node.type === type);
+    const namespace = String(sourceKey ?? '').trim().slice(0, 160);
+    const existing = this.state.nodes.find(node => node.label === clean && node.type === type && String(node.sourceKey ?? '') === namespace);
     const now = Date.now();
     if (existing) {
       existing.salience = clamp(existing.salience * 0.82 + normalizedSalience * 0.18);
@@ -116,6 +120,7 @@ export class SemanticMemoryGraph {
       type,
       salience: normalizedSalience,
       lastSeen: now,
+      ...(namespace ? { sourceKey: namespace } : {}),
     };
     this.state.nodes.push(node);
 
