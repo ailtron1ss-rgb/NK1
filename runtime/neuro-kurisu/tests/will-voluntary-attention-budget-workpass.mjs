@@ -29,6 +29,9 @@ const recovering = economy.allocate({ ...input, tick: 4 });
 assert.equal(recovering.attentionEffortIntent, 'homeostatic');
 assert.ok(recovering.attentionEffort01 > .4 && recovering.attentionEffort01 < .7,
   'effort must relax gradually toward its homeostatic baseline');
+const sameTick = economy.allocate({ ...input, tick: 4 });
+assert.equal(sameTick.attentionEffort01, recovering.attentionEffort01,
+  'multiple resource samples in one cognitive tick must not accelerate homeostatic relaxation');
 
 const exhausted = economy.allocate({ ...input, tick: 5, energy01: .1, attentionIntent: 'engage' });
 assert.equal(exhausted.attentionEffort01, .7, 'low energy must veto voluntary engagement');
