@@ -1121,7 +1121,7 @@ export class P23LearningEngine {
       throw new Error('p23-population-p23-input-data-boundary-rejected');
     }
     const sourceValidationReports=snapshotPlainData(candidateEvaluation.validation) as SkillLearnBenchCandidateEvaluation['reports'];
-    let populationSearch:P23PopulationSearchResult|null=null;
+    const populationSearchState:{result:P23PopulationSearchResult|null}={result:null};
     const staged=await this.generateAndStageReflectiveSkillRevision(
       proposal,
       skillId,
@@ -1162,7 +1162,7 @@ export class P23LearningEngine {
             });
           },
         });
-        populationSearch=result;
+        populationSearchState.result=result;
         if(result.status!=='selected'||result.selectedPayload===null) {
           const error=new Error('p23-population-no-improving-candidate');
           Object.assign(error,{populationSearchDiagnostics:result.diagnostics});
@@ -1174,10 +1174,11 @@ export class P23LearningEngine {
       options,
       sourceEvidenceFingerprint,
     );
-    if(!populationSearch||populationSearch.status!=='selected') {
+    const completedPopulationSearch=populationSearchState.result as P23PopulationSearchResult|null;
+    if(!completedPopulationSearch||completedPopulationSearch.status!=='selected') {
       throw new Error('p23-population-selected-result-missing-after-canonical-stage');
     }
-    return {...staged,populationSearch};
+    return {...staged,populationSearch:completedPopulationSearch};
   }
 
   /**
