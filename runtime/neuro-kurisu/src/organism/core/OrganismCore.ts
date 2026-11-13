@@ -7699,7 +7699,7 @@ export class OrganismCore {
                 this.governanceSubsystem.resilience.evaluateFork(decisionForResilience, alternative.action, alternative.predictedUtility);
         }
         const autonomousDecisionEpisode = autonomyPlan.autonomousAllowed && !autonomousExternalIntent && Boolean(selectedIntent) && (Boolean(autonomyPlan.agendaItem) || Boolean(this.organismSystems.self.autonomousPersonhood.summary().activeAgenda) || ['explore', 'verify', 'reflect', 'rest', 'wait'].includes(selectedIntent?.action ?? ''));
-        this.organismSystems.self.autonomousPersonhood.recordDecision(autonomousDecisionEpisode, clamp((this.persisted.facets.consciousness.identityContinuity.continuity * .45) + (1 - state.predictionError) * .35 + (selectedIntent?.confidence ?? .5) * .20));
+        this.organismSystems.self.autonomousPersonhood.recordDecision(autonomousDecisionEpisode, clamp((this.persisted.facets.consciousness.identityContinuity.continuity * .45) + (1 - state.predictionError) * .35 + (selectedIntent?.confidence ?? .5) * .20), { tick: state.tick, at: state.at, action: selectedIntent?.action ?? null });
         this.persisted.system.autonomousPersonhood = this.organismSystems.self.autonomousPersonhood.snapshot();
         this.persisted.system.b306AutonomousInitiativeVerification = this.organismSystems.agency.b306AutonomousInitiativeVerification.snapshot();
         this.persisted.system.b333AutonomousGoalGenesis = this.organismSystems.agency.b333AutonomousGoalGenesis.snapshot();
@@ -7710,10 +7710,17 @@ export class OrganismCore {
             this.organismSystems.agency.longHorizonAutonomy.observeExecution({ action: selectedIntent.action, success01: q, predictionError01: state.predictionError, at: state.at });
             this.persisted.system.longHorizonAutonomy = this.organismSystems.agency.longHorizonAutonomy.snapshot();
             this.persisted.system.autonomousResourceToolLife = this.organismSystems.agency.autonomousResourceToolLife.snapshot();
-            this.organismSystems.agency.selfDirectedLife.observe({ commitmentId: selfDirectedLifeFrame.commitment?.id, success01: q, at: state.at, revise: q < .38 });
+            if (autonomousDecisionEpisode && selectedIntent && selfDirectedLifeFrame.commitment) {
+                this.organismSystems.agency.selfDirectedLife.registerDecision({
+                    tick: state.tick,
+                    action: selectedIntent.action,
+                    commitmentId: selfDirectedLifeFrame.commitment.id,
+                    at: state.at,
+                });
+            }
             this.persisted.system.selfDirectedLife = this.organismSystems.agency.selfDirectedLife.snapshot();
-            this.organismSystems.agency.b334AutonomousProjectLifecycle.observeCycle({ tick: state.tick, at: state.at, externalInput: Boolean(observation.text), autonomous: autonomousDecisionEpisode, commitments: this.organismSystems.agency.selfDirectedLife.snapshot().commitments.map(c => ({ id: c.id, domain: c.domain, source: c.source, createdAt: c.createdAt, updatedAt: c.updatedAt, status: c.status, progress01: c.progress01, revisions: c.revisions })), selectedAction: selectedIntent?.action ?? null, outcome01: q, verifiedOutcome: Boolean(state.lastActionSuccess != null || success != null) });
-            this.organismSystems.agency.b335AutonomousProjectHoldout.observe({ projectId: selfDirectedLifeFrame.commitment?.id ?? null, projectActive: Boolean(selfDirectedLifeFrame.commitment), contextKey: `${selfDirectedLifeFrame.domain}:${Math.round(state.needs.novelty * 4)}:${Math.round(state.needs.uncertainty * 4)}`, selectedAction: selectedIntent?.action ?? null, outcome01: q, verifiedOutcome: Boolean(state.lastActionSuccess != null || success != null) });
+            this.organismSystems.agency.b334AutonomousProjectLifecycle.observeCycle({ tick: state.tick, at: state.at, externalInput: Boolean(observation.text), autonomous: autonomousDecisionEpisode, commitments: this.organismSystems.agency.selfDirectedLife.snapshot().commitments.map(c => ({ id: c.id, domain: c.domain, source: c.source, createdAt: c.createdAt, updatedAt: c.updatedAt, status: c.status, progress01: c.progress01, revisions: c.revisions })), selectedAction: selectedIntent?.action ?? null });
+            this.organismSystems.agency.b335AutonomousProjectHoldout.observe({ tick: state.tick, at: state.at, projectId: selfDirectedLifeFrame.commitment?.id ?? null, projectActive: Boolean(selfDirectedLifeFrame.commitment), externalInput: Boolean(observation.text), autonomous: autonomousDecisionEpisode, contextKey: `${selfDirectedLifeFrame.domain}:${Math.round(state.needs.novelty * 4)}:${Math.round(state.needs.uncertainty * 4)}`, selectedAction: selectedIntent?.action ?? null });
             this.persisted.system.b334AutonomousProjectLifecycle = this.organismSystems.agency.b334AutonomousProjectLifecycle.snapshot();
             this.persisted.system.b335AutonomousProjectHoldout = this.organismSystems.agency.b335AutonomousProjectHoldout.snapshot();
             this.persisted.system.b336ProjectCausalOwnership = this.organismSystems.agency.b336ProjectCausalOwnership.snapshot();
@@ -8615,6 +8622,41 @@ export class OrganismCore {
         const externalEvidenceSources = ['os', 'device', 'user', 'external-api'];
         const projectEvidenceExternal = externalEvidenceSources.includes(String(outcome.evidenceSource ?? '').toLowerCase());
         const verifiedPolicyOutcome = Boolean(outcome.worldTransition) || projectEvidenceExternal;
+        const projectHoldoutOutcomeCredited = this.organismSystems.agency.b335AutonomousProjectHoldout.recordVerifiedOutcome({
+            tick: trace?.tick ?? -1,
+            action: trace?.selected?.action ?? '',
+            success01: success,
+            verified: verifiedPolicyOutcome,
+        });
+        if (projectHoldoutOutcomeCredited)
+            this.persisted.system.b335AutonomousProjectHoldout = this.organismSystems.agency.b335AutonomousProjectHoldout.snapshot();
+        const autonomousProjectOutcomeCredited = this.organismSystems.agency.b334AutonomousProjectLifecycle.recordVerifiedOutcome({
+            tick: trace?.tick ?? -1,
+            action: trace?.selected?.action ?? '',
+            success01: success,
+            at: Number.isFinite(outcome.worldTransition?.at) ? Number(outcome.worldTransition?.at) : state.at,
+            verified: verifiedPolicyOutcome,
+        });
+        if (autonomousProjectOutcomeCredited)
+            this.persisted.system.b334AutonomousProjectLifecycle = this.organismSystems.agency.b334AutonomousProjectLifecycle.snapshot();
+        const selfDirectedOutcomeCredited = this.organismSystems.agency.selfDirectedLife.observeVerifiedOutcome({
+            tick: trace?.tick ?? -1,
+            action: trace?.selected?.action ?? '',
+            success01: success,
+            at: Number.isFinite(outcome.worldTransition?.at) ? Number(outcome.worldTransition?.at) : state.at,
+            verified: verifiedPolicyOutcome,
+        });
+        if (selfDirectedOutcomeCredited)
+            this.persisted.system.selfDirectedLife = this.organismSystems.agency.selfDirectedLife.snapshot();
+        const personhoodOutcomeCredited = this.organismSystems.self.autonomousPersonhood.recordVerifiedOutcome({
+            tick: trace?.tick ?? -1,
+            action: trace?.selected?.action ?? '',
+            success01: success,
+            at: Number.isFinite(outcome.worldTransition?.at) ? Number(outcome.worldTransition?.at) : state.at,
+            verified: verifiedPolicyOutcome,
+        });
+        if (personhoodOutcomeCredited)
+            this.persisted.system.autonomousPersonhood = this.organismSystems.self.autonomousPersonhood.snapshot();
         const feedbackMemoryIds = [...(this.persisted.facets.memory.lastRetrievedMemoryIds ?? []), ...(this.persisted.system.lastEncodedMemoryIds ?? [])].filter((id, index, arr) => arr.indexOf(id) === index).slice(0, 12);
         for (const memoryId of feedbackMemoryIds) {
             const causalBefore = this.organismSystems.memory.memoryCausalEconomy.assessMemory(memoryId);
