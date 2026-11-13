@@ -501,3 +501,59 @@ console.log('CANONICAL_REVISION_PROJECTION_SYNC=PASS');
 }
 
 console.log('RUNTIME_RESTORE_RECONCILES_CANONICAL_SEMANTIC_GRAPH=PASS');
+
+
+// Lifecycle maintenance can dormancy-mark a canonical row without deleting it.
+// The graph read-model must stop recalling that row immediately, while MemoryOS2
+// retains the canonical history and identity.
+{
+  const maintenanceOS = new MemoryOS2({ embeddingProvider: null });
+  const maintenanceGraph = new SemanticMemoryGraph();
+  const maintenanceFabric = new MemoryFabric(
+    maintenanceOS,
+    new EventLog(),
+    new MultiTimescaleMemory(),
+    new MemorySubstrateCoordinator(),
+    new UnifiedMemorySystem(),
+    new P62MemoryFabric(),
+    maintenanceGraph,
+  );
+  const aged = maintenanceFabric.encode({
+    id: 'maintenance-dormancy-graph-projection',
+    content: 'old low-value episodic note that should become dormant',
+    kind: 'episodic',
+    source: 'maintenance-dormancy-graph-regression',
+    tags: ['maintenance'],
+    context: {},
+    salience: 0.05,
+    emotionalWeight: 0,
+    identityRelevance: 0,
+    goalRelevance: 0,
+    socialRelevance: 0,
+    predictionError: 0,
+    confidence: 0.05,
+    epistemicStatus: 'fact',
+    entities: [],
+    semanticLinks: [],
+    temporalLinks: [],
+    causalLinks: [],
+    contradictionLinks: [],
+  });
+  const oldAt = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  aged.createdAt = oldAt;
+  aged.lastAccessAt = oldAt;
+  assert.ok(maintenanceGraph.snapshot().nodes.some(node =>
+    node.canonicalProjection?.itemId === aged.id),
+  'active canonical rows must enter the graph before maintenance');
+
+  maintenanceFabric.maintain({ tick: 9901, pressure01: 0 });
+  assert.equal(maintenanceOS.snapshot().items.some(item => item.id === aged.id), true,
+    'dormancy is not deletion; canonical history must remain in MemoryOS2');
+  assert.equal(maintenanceOS.snapshot().items.find(item => item.id === aged.id)?.dormant, true,
+    'low-durability aged memory should be marked dormant by canonical maintenance');
+  assert.equal(maintenanceGraph.snapshot().nodes.some(node =>
+    node.canonicalProjection?.itemId === aged.id), false,
+  'dormant canonical rows must no longer appear in semantic graph recall');
+}
+
+console.log('CANONICAL_MAINTENANCE_DORMANCY_PROJECTION_SYNC=PASS');
