@@ -56,6 +56,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:autonomous-personhood-outcome
       - name: Verified autonomous project execution lifecycle
         run: npm --prefix runtime/neuro-kurisu run test:big-pass-334-autonomous-project-lifecycle
+      - name: Verified autonomous project holdout evidence
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-335 && npm --prefix runtime/neuro-kurisu run test:big-pass-335-core
       - name: N.E.K.O. BM25 anti-repeat for proactive initiative selection
         run: npm --prefix runtime/neuro-kurisu run test:neko-social-anti-repeat
       - name: Endogenous motivation and goal genesis

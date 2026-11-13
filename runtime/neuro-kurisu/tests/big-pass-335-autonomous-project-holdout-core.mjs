@@ -7,12 +7,13 @@ const core=new OrganismCore(new MemoryStateStore(),{performanceProfile:'mobile',
 core.b335AutonomousProjectHoldoutSetPhase('baseline');
 for(let i=0;i<4;i){ await core.observe({text:'',novelty:.45+(i%3)*.05,surprise:.28+(i%2)*.05,embodiment},'operational'); await core.feedback({success:.65,reward:.62,surprise:.22,evidenceSource:'internal'}); }
 core.b335AutonomousProjectHoldoutSetPhase('training');
-for(let i=0;i<4;i){ await core.observe({text:'',novelty:.53+(i%2)*.05,surprise:.31+(i%3)*.04,embodiment},'operational'); await core.feedback({success:.68,reward:.64,surprise:.22,evidenceSource:'internal'}); }
+for(let i=0;i<4;i){ await core.observe({text:'',novelty:.53+(i%2)*.05,surprise:.31+(i%3)*.04,embodiment},'operational'); await core.feedback({success:.68,reward:.64,surprise:.22,evidenceSource:'device'}); }
 const training=core.b335AutonomousProjectHoldoutDiagnostics();
+assert.ok(training.trainingVerifiedOutcomes>=3,'training count requires verified device feedback receipts');
 core.b335AutonomousProjectHoldoutSetPhase('holdout');
-for(let i=0;i<4;i){ await core.observe({text:'',novelty:.72-(i%2)*.04,surprise:.42-(i%3)*.03,embodiment},'operational'); await core.feedback({success:.71,reward:.67,surprise:.24,evidenceSource:'internal'}); }
+for(let i=0;i<4;i){ await core.observe({text:'',novelty:.72-(i%2)*.04,surprise:.42-(i%3)*.03,embodiment},'operational'); await core.feedback({success:.71,reward:.67,surprise:.24,evidenceSource:'device'}); }
 const live=core.b335AutonomousProjectHoldoutDiagnostics();
-assert.ok(live.cycles>=12); assert.ok(live.holdoutCycles>=4); assert.ok(live.trainingVerifiedOutcomes>=3);
+assert.ok(live.cycles>=12); assert.ok(live.holdoutCycles>=4); assert.ok(live.trainingVerifiedOutcomes>=3); assert.ok(live.holdoutVerifiedOutcomes>=2,'holdout count requires verified device feedback receipts');
 const snap=core.snapshot(); const core2=new OrganismCore(new MemoryStateStore({initial:snap}),{performanceProfile:'mobile',cycleResultMode:'operational'}); await core2.init();
 const restored=core2.b335AutonomousProjectHoldoutDiagnostics(); assert.deepEqual(restored,live);
 console.log(JSON.stringify({pass:true,training,live,restored},null,2));
