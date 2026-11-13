@@ -175,7 +175,7 @@ README указывает multi-agent task automation и paper arXiv:2505.23885,
 | Реестр и первичный license screen | 80% | 21 источник учтён; остаются nested licenses, model weights, assets и NOTICE для каждого кандидата |
 | Статическая карта существующих адаптеров | 100% для 5 линий | Проверены implementation/composition/persistence/test seams; это source inspection, не runtime execution |
 | Source-to-source diff и происхождение файлов | 25% | Нужны точные upstream revisions, файл-к-файлу сравнение и attribution |
-| Перенос новых upstream-механизмов в runtime в этой итерации | 0% | Изменён инженерный audit-инструмент; новый когнитивный/агентный механизм из доноров ещё не promoted |
+| Перенос новых upstream-механизмов в runtime в этой итерации | 5% | Один узкий Hexis-derived policy slice реализован NK1-native в отдельном Draft PR #864; точный head получил успешный typecheck и три исходных focused tests, дополнительная gateway regression выявила baseline-кандидат на дефект и проходит сравнительную проверку; merge/release нет |
 | Исполнение новых тестов и benchmark | 0% до подтверждения CI | Наличие файлов/команд не считается успехом; нужен результат Actions именно нового head SHA |
 | Сверка с Release ZIP и публикация | 0% | Релизный ZIP не смонтирован; release checksum и содержимое не сопоставлены |
 
@@ -188,6 +188,43 @@ README указывает multi-agent task automation и paper arXiv:2505.23885,
 3. Следующий runtime-кандидат выбирать по воспроизводимому выигрышу: Hermes/OpenAI Agents для tool/session/trace lifecycle; PocketFlow для bounded DAG; FAISS/Chroma для vector retrieval; DSPy для offline-only optimization с frozen holdout; llama.cpp — для измерения существующего local route. Hyperon и Agent0 оставить экспериментами до sandbox и baseline.
 4. Для каждого кандидата выполнить isolated reproduction → 5 paired seeds (для стохастики) → latency/recall/resource comparison → ablation → только потом подключение через OrganismBus/ActionGateway/MemoryOS2.
 5. Отдельно reconciliate `workpass70-source`, `main` и Release ZIP: между `workpass70-source` и merge #862 ранее обнаружен `No common ancestor`; не переносить изменения между ними вслепую.
+
+
+## 14. Runtime assimilation slice — Hexis action consequence policy (2026-11-13)
+
+### Донорский механизм и отличие от NK1
+
+Проверены непосредственно распакованные документы Hexis:
+- `docs/reference/energy-model.md`
+- `docs/concepts/heartbeat-system.md`
+
+В доноре ситуационная цена действия намеренно отделена от compute cost, API pricing и системных ресурсов. Базовые измерения: необратимость, социальная экспозиция, обязательство, требуемое внимание пользователя и влияние на идентичность. Документ также задаёт разные intent classes и более строгие правила для фоновой heartbeat-автономии: read/search дешевле; локальные draft/create допускаются дороже; update — контекстно; private/public send и delete/destroy не разрешаются по умолчанию. Стоимость контролируется системой, а не переписывается моделью.
+
+NK1 уже имеет собственные автономные циклы, homeostasis/interoception, cognitive resource budget и ActionCostPolicy. Поэтому полный Hexis heartbeat или вторую систему памяти не переносили. Добавлен отдельный NK1-native pre-selection policy, не копирующий донорский runtime/SQL:
+
+- `ActionConsequenceCostPolicy.ts` — классификатор read-only / mutation / social / destructive / unknown; пять независимых consequence dimensions и фиксированные профили.
+- `AutonomousResourceToolLifeController.plan()` — фильтрует фоновые возможности до явного read-only allowlist. Unknown/mutation/social/destructive fail closed. Это намеренно консервативнее Hexis: локальные draft/write пока не допускаются, пока отдельный ActionGateway approval/idempotency/rollback path не будет проверен.
+- consequence cost возвращается отдельно от старого hardware/resource `cost01`; model-supplied cost не принимается.
+- `AutonomousResourceToolLifeState` хранит счётчик блокировок, последний класс/цену и receipt-level recomputed assessment; legacy snapshots получают defaults.
+- `ActionGateway` остаётся единственным исполнителем, approval authority, idempotency ledger и outcome verifier.
+
+Веса профилей (0.28/0.24/0.18/0.14/0.16) и численные уровни — **наши начальные эвристики**, а не цифры из Hexis и не результат научной калибровки. Они требуют реальных NK1 action logs, независимой оценки рисков и review пользователем.
+
+### Код, тесты и статус
+
+Отдельный Draft PR: [#864 — Hexis-derived action consequence gate](https://github.com/ailtron1ss-rgb/NK1/pull/864). Ветка: `aspect/hexis-consequence-cost-policy-20261113`.
+
+Первый exact-head Actions run `43389637471` на `d3e29cc0ee2b91262? ` (уточнить SHA в PR) показал SUCCESS: locked dependency installation, Node 24, full runtime typecheck, новый policy regression, BIG_PASS_223 autonomous resource/tool lifecycle + persistence, ActionCostPolicy unification. После добавления соседних ActionGateway idempotency/approval suites новый head `83d712b38c7e90a7292c10dfcc71550556adc2bf` показал 12/13 idempotency subtests PASS и один failure: exact pending decision не получил grounded reafference; approval step не стартовал из-за stop-on-failure. Сейчас выполняется отдельная baseline ветка от чистого `workpass70-source` SHA `1a0315595302f3154df0ae53e5d9188875311467`, чтобы установить, является ли это старой проблемой.
+
+До baseline result feature нельзя считать полностью закрытым, а PR остаётся Draft. Успешный исходный test run не отменяет более позднюю обнаруженную проблему; status не маскируется как PASS.
+
+### Текущие границы и следующий проход
+
+1. Сравнить failing gateway test на baseline и feature head. При baseline PASS — локализовать влияние нового controller selection; при baseline FAIL — завести отдельный baseline defect record, но оставить gateway test в CI как известный blocker до решения.
+2. Выполнить ActionGateway approval boundary test независимо и сохранить его результат.
+3. Инспектировать фактический runtime tool registry по каждому id/capability. Уточнить, какие локальные операции являются drafts/shadow runs и могут безопасно получить отдельный средний-consequence класс без реальной мутации.
+4. Оценить контекстные множители Hexis (first-use uncertainty, high error rate, repeated action, timing) и outcome-backed cost adjustment как следующий отдельный срез; не давать модели изменять hard floors.
+5. После regression closure — rebase/compare base, human review и только затем merge; публикация в Release ZIP — отдельная проверка.
 
 ## 13. Change log — продолжение (2026-11-13)
 
