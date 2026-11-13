@@ -344,6 +344,17 @@ export class SemanticMemoryGraph {
     for (const item of active) this.syncCanonicalProjection(item, ids);
   }
 
+  /** Remove canonical graph rows no longer in the bounded active projection window. */
+  retainCanonicalProjection(itemIds: ReadonlySet<string>): number {
+    const staleIds = [...new Set(this.state.nodes
+      .filter(node => node.canonicalProjection?.owner === CANONICAL_GRAPH_SOURCE)
+      .map(node => node.canonicalProjection!.itemId)
+      .filter(id => !itemIds.has(id)))];
+    let removed = 0;
+    for (const id of staleIds) if (this.removeCanonicalProjection(id)) removed++;
+    return removed;
+  }
+
   /** Remove a canonical memory node and all projected/local edges touching it. */
   removeCanonicalProjection(itemId: string): boolean {
     const key = String(itemId ?? '').trim().slice(0,160);
