@@ -12,6 +12,7 @@ on:
       - "research/research_bridge.py"
       - "tools/super-quickstart.mjs"
       - "tools/super-start.mjs"
+      - "tools/super-dev.mjs"
       - "tools/super-startup.test.mjs"
       - "tools/lib/super-startup.mjs"
       - "tools/lib/node-runtime.mjs"
