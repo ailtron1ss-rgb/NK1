@@ -16,6 +16,7 @@ import type { LearningFitnessJournalDiagnostics, LearningFitnessJournalSink } fr
 import type { LearningLifecycleEventEntry, LearningLifecycleJournalDiagnostics, LearningLifecycleJournalSink } from './LearningLifecycleJournal.ts';
 import type { LearningRobustMetricSummary } from './LearningRobustMetrics.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
+import { buildP23ValidationCandidateMetrics } from './P23ValidationCandidateParetoArchive.ts';
 import { generateLocalSkillRevision, type SkillRevisionChatProvider } from './P23LocalModelSkillRevisionGenerator.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
@@ -919,6 +920,15 @@ export class P23LearningEngine {
   }
 
   /**
+   * Read-only validation Pareto view across versions derived from one source candidate
+   * and one fixed dataset. It never grants activation authority or reads holdout metrics.
+   */
+  reflectiveCandidateValidationParetoFront(skillId:string,datasetFingerprint:string,sourceCandidateId:string) {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    return this.verifiedSkillStore.validationParetoFront(skillId,datasetFingerprint,sourceCandidateId);
+  }
+
+  /**
    * Run the Hermes-inspired multi-axis candidate assessment from the canonical
    * learning engine. This is deliberately diagnostic-only: trial reports are not
    * signed outcome artifacts, so this method cannot stage, approve, or activate
@@ -1005,7 +1015,14 @@ export class P23LearningEngine {
     const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
     const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
     if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
+    // An authentic proposal authorizes a revision attempt, not this newly generated
+    // payload. Require the exact post-generation payload to pass the independent
+    // paired validation/holdout gate before it enters the versioned candidate store.
+    if(fitness.eligible !== true) {
+      throw new Error('reflective revision candidate failed the independent validation/holdout gate');
+    }
     if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
+    const validationMetrics=buildP23ValidationCandidateMetrics(candidateEvaluation.validation);
     const rawGeneratedPayload=await generate({
       sourcePayload:snapshotPlainData(source.payload),
       datasetFingerprint:proposal.datasetFingerprint,
@@ -1114,6 +1131,7 @@ export class P23LearningEngine {
       planFingerprint:createHash('sha256').update(canonicalize(plan)).digest('hex'),
       datasetFingerprint:proposal.datasetFingerprint,
       ...(sourceEvidenceFingerprint ? { sourceEvidenceFingerprint } : {}),
+      validationMetrics,
       dimensions:plan.targets.map(target=>target.dimension),
       createdAt:now(),
     };
