@@ -37,6 +37,19 @@
       "testEvidence": [
         "GitHub Actions run 43446798698 at exact PR #868 head 40177c77abec5881f480ebd0385a084804afcb80: Node 24 dependency install PASS; runtime typecheck PASS; hyperon-metta-concept-bridge regression PASS. A prior red run 43446621366 exposed a test fixture that unintentionally clustered both vectors into one concept; fixture was corrected to use distinct vector dimensions before this green run."
       ]
+    },
+    "hexis": {
+      "adapted": true,
+      "runtimeWired": true,
+      "testsPassed": true,
+      "runtimeEvidence": [
+        "Draft PR #864: ActionConsequenceCostPolicy is connected to AutonomousResourceToolLifeController as a preselection policy; compute/resource cost remains separate; ActionGateway remains the sole executor and permission authority.",
+        "Draft PR #866: Hexis HMX 1.7 import is staged separately from canonical MemoryOS2 writes; only explicit replay-safe apply routes approved additive/port data through MemoryFabric/MemoryOS2."
+      ],
+      "testEvidence": [
+        "PR #864 focused action consequence policy workflow run 43391732083 and full Action Gateway governance run 43391732001 passed on the tested runtime code snapshot c9604639099b38cc1e426aa38c3e02285b6247ae; subsequent changes were docs/workflow-path only.",
+        "PR #866 exact-head canonical-hmx-apply run 43432034201 and source-lineage-contract run 43432034417 passed at head 928b85b981e887f595d7fb2cb6a1cec5611f7c40; separate independent-evidence-evaluation remains blocked by ACP import dependency and is not claimed as passing."
+      ]
     }
   }
 }
