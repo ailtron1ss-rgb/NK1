@@ -310,6 +310,9 @@ export class GepaReflectiveCandidateGenerator {
       throw new Error('gepa-adapter-unconfigured');
     }
     const body = this.prepareRequest(raw);
+    // Compare the returned candidate against the exact detached source payload
+    // that passed the request allowlist and was serialized to the sidecar.
+    const wireSourcePayload = (JSON.parse(body) as { sourcePayload: unknown }).sourcePayload;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     this.requests++;
@@ -347,7 +350,7 @@ export class GepaReflectiveCandidateGenerator {
       } catch {
         throw new Error('gepa-candidate-data-boundary-rejected');
       }
-      const preserved = assertSourcePayloadShape(request.sourcePayload, candidate);
+      const preserved = assertSourcePayloadShape(wireSourcePayload, candidate);
       const encoded = JSON.stringify(preserved);
       if (typeof encoded !== 'string' || Buffer.byteLength(encoded, 'utf8') > MAX_SOURCE_BYTES) {
         throw new Error('gepa-candidate-payload-too-large');
