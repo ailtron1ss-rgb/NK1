@@ -103,6 +103,23 @@ assert.deepEqual(replay.refMap, committed.refMap);
 assert.equal(memory.rows.size, 4, 'replaying the same accepted stage must not create duplicate canonical memories');
 
 
+
+const orphanCluster = bridge.stage({ document: document({
+  export_id: 'exp_orphan_cluster',
+  sections: {
+    memories: [{ ref: 'memory:orphan-base', type: 'semantic', content: 'An isolated imported item.' }],
+    clusters: [{ ref: 'cluster:orphan', name: 'Unavailable cluster', member_refs: ['memory:not-imported'] }],
+  },
+}) });
+assert.equal(orphanCluster.ok, true);
+assert.equal(orphanCluster.clusterCount, 1, 'stage reports a named cluster candidate');
+const orphanCommit = bridge.commit(orphanCluster.stagingId);
+assert.equal(orphanCommit.ok, true);
+assert.equal(orphanCommit.clustersApplied, 0, 'cluster without imported members must not create a ghost anchor');
+assert.ok(orphanCommit.warnings.some(w => w.code === 'cluster-member-not-imported'));
+assert.ok(orphanCommit.warnings.some(w => w.code === 'cluster-without-members'));
+assert.equal(orphanCommit.refMap['cluster:orphan'], undefined);
+
 const dangling = bridge.stage({ document: document({
   export_id: 'exp_dangling_relationship',
   sections: {
