@@ -545,6 +545,10 @@ export class MemoryFabric {
   maintain(options:{pressure01?:number;maxItems?:number;tick?:number;force?:boolean;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number;byteBudget?:number;protectedIds?:string[]}={}) {
     const tick=Number.isFinite(options.tick)?Number(options.tick):-1;
     if(!options.force && tick>=0 && tick===this.lastMaintenanceTick)return {skipped:true,changed:0};
+    // Snapshot the bounded canonical graph membership before maintenance.
+    // MemoryOS2 may dormancy-mark or evict rows without going through an explicit
+    // MemoryFabric command; the graph must not keep those rows available for recall.
+    const beforeSemanticIds=new Set(this.activeSemanticProjectionItems().map(item=>item.id));
     const before=this.memoryOS.size();
     this.memoryOS.maintain({pressure01:options.pressure01,maxItems:options.maxItems});
     const byteBudget=Math.max(262144,Math.min(1048576,Math.floor(options.byteBudget??Math.max(262144,Math.min(1048576,Math.floor((options.maxItems??768)*720))))));
@@ -555,6 +559,19 @@ export class MemoryFabric {
     this.scheduleSemanticIndexMaintenance();
     const changed=Math.max(0,before-this.memoryOS.size());
     const totalChanged=changed;
+    const activeSemanticItems=this.activeSemanticProjectionItems();
+    const activeSemanticIds=new Set(activeSemanticItems.map(item=>item.id));
+    const membershipChanged=beforeSemanticIds.size!==activeSemanticIds.size
+      || activeSemanticItems.some(item=>!beforeSemanticIds.has(item.id));
+    if(membershipChanged){
+      // Remove dormant/evicted/quarantined rows and their incident graph edges.
+      // If maintenance reactivates a row, materialize it through the same canonical
+      // writer and resolve any edges that had been waiting for this target.
+      this.semanticMemory.retainCanonicalProjection(activeSemanticIds);
+      for(const item of activeSemanticItems){
+        if(!beforeSemanticIds.has(item.id))this.syncSemanticGraphProjection(item.id);
+      }
+    }
     if(totalChanged||options.force)this.events.append(makeEvent('memory-lifecycle',tick,{source:'memory-fabric',before,after:this.memoryOS.size(),changed:totalChanged,capacityChanged:changed,byteBudget,byteBudgetEvictions:byteBudgetResult.evicted.length,estimatedBytes:byteBudgetResult.usedBytes,pressure01:options.pressure01??0} as Record<string,unknown>));
     return {skipped:false,changed:totalChanged,byteBudget:byteBudgetResult};
   }
