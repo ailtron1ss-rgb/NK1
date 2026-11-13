@@ -5,6 +5,16 @@ import { defaultBodyState, synthesizeBody, type OrganismBodyEvent, type Organism
 import type { OrganismState } from '../core/types.ts';
 import type { AndroidSamplingPlan } from './AndroidEmbodimentBridge.ts';
 import { nativeSpeechEventChannel, type NativeSpeechProviderEventV1 } from './NativeSpeechEventChannel.ts';
+import { NekoAsrTranscriptAdapter, type NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
+
+export interface VoiceInputResult {
+  readonly text: string;
+  readonly providerId: string;
+  readonly confidence01?: number;
+  readonly language?: string;
+  readonly eventId?: string;
+  readonly turnId?: string;
+}
 
 type OrganismNeedsLike = { energy:number; cognitiveLoad:number; uncertainty:number; socialNeed:number; novelty:number; identityCoherence:number; goalPressure:number; };
 export interface VoiceCognitiveContextOverrides {
@@ -39,6 +49,11 @@ export class EmbodimentRuntime {
   private speechGatewayDispatcher:SpeechGatewayDispatcher|null=null;
   private speechInterruptGatewayDispatcher:SpeechInterruptGatewayDispatcher|null=null;
   private activeSpeechEventId:string|null=null;
+  private nekoAsrAdapter:NekoAsrTranscriptAdapter|null=null;
+
+  /** Inject a host-owned N.E.K.O./local ASR provider; null preserves the Termux STT fallback. */
+  setNekoAsrProvider(provider:NekoAsrProviderPort|null):void { this.nekoAsrAdapter=provider?new NekoAsrTranscriptAdapter(provider):null; }
+  get speechInputProviderId():string { return this.nekoAsrAdapter?.providerId ?? 'termux-speech-to-text'; }
 
   /** The only permitted routes to physical TTS and interruption are ActionGateway-backed dispatchers. */
   setSpeechGatewayDispatcher(dispatcher:SpeechGatewayDispatcher|null):void { this.speechGatewayDispatcher=dispatcher; }
@@ -48,9 +63,10 @@ export class EmbodimentRuntime {
     this.body = persisted?.schemaVersion === 1 ? structuredClone(persisted) : defaultBodyState();
     this.capabilities = await detectTermuxCapabilities();
     this.body.ttsAvailable = this.capabilities.tts;
-    this.body.sttAvailable = this.capabilities.stt;
+    const externalAsrAvailable=this.nekoAsrAdapter?await this.nekoAsrAdapter.isAvailable():false;
+    this.body.sttAvailable = this.nekoAsrAdapter?externalAsrAvailable:this.capabilities.stt;
     this.body.cameraAvailable = this.capabilities.camera;
-    this.body.microphoneAvailable = this.capabilities.stt;
+    this.body.microphoneAvailable = this.nekoAsrAdapter?externalAsrAvailable:this.capabilities.stt;
     await this.sample();
   }
 
@@ -215,19 +231,57 @@ export class EmbodimentRuntime {
       return false;
     }
   }
-  async listen(): Promise<string | null> {
+  async listenDetailed(): Promise<VoiceInputResult | null> {
     if(!this.body.sttAvailable) { this.voice.lastError='stt-unavailable'; this.voice.lastAt=Date.now(); return null; }
     this.voice.listening=true; this.voice.listenCount+=1; this.voice.lastAt=Date.now(); this.voice.lastError=null;
-    const text=await synthesizeSpeechInput();
-    this.voice.listening=false; this.voice.lastAt=Date.now(); if(!text) this.voice.lastError='stt-empty-or-failed';
-    return text;
+    try {
+      if(this.nekoAsrAdapter){
+        const result=await this.nekoAsrAdapter.captureFinal();
+        if(result.status==='accepted') {
+          return {
+            text: result.transcript,
+            providerId: result.provider,
+            ...(result.confidence01 !== undefined ? { confidence01: result.confidence01 } : {}),
+            ...(result.language ? { language: result.language } : {}),
+            eventId: result.eventId,
+            turnId: result.turnId,
+          };
+        }
+        this.voice.lastError=result.status==='rejected'?`asr-${result.reason}`:result.status==='replayed'?'asr-replayed-final':result.status==='error'?`asr-provider-error:${result.reason}`:'asr-capture-cancelled';
+        return null;
+      }
+      const text=await synthesizeSpeechInput();
+      if(!text) {
+        this.voice.lastError='stt-empty-or-failed';
+        return null;
+      }
+      return { text, providerId: 'termux-speech-to-text' };
+    } catch(error) {
+      this.voice.lastError=`stt-failed:${String((error as Error)?.message??error).replace(/[\\r\\n\\t]+/g,' ').slice(0,100)}`;
+      return null;
+    } finally {
+      this.voice.listening=false; this.voice.lastAt=Date.now();
+    }
+  }
+
+  /** Backward-compatible transcript-only API; detailed consumers use listenDetailed(). */
+  async listen(): Promise<string | null> {
+    const result = await this.listenDetailed();
+    return result?.text ?? null;
   }
 
   async markVoiceInterruption(reason='manual'): Promise<boolean> {
     const speechEventId=this.activeSpeechEventId;
     if(!speechEventId){
       if(!this.voice.listening) return false;
-      // STT has no durable cancel adapter yet; do not claim it was stopped.
+      if(this.nekoAsrAdapter?.isListening){
+        const result=await this.nekoAsrAdapter.interrupt(reason);
+        this.voice.lastAt=Date.now();
+        if(result.status==='verified'){this.voice.interruptionCount+=1;this.voice.lastError='asr-interruption-verified';return true;}
+        this.voice.lastError=result.status==='unverified'?`asr-interruption-unverified:${result.reason}`:`asr-interruption-unavailable:${result.reason}`;
+        return false;
+      }
+      // Legacy Termux STT has no durable cancellation adapter; do not claim it stopped.
       this.voice.lastError='speech-listening-interruption-unavailable';this.voice.lastAt=Date.now();return false;
     }
     const dispatcher=this.speechInterruptGatewayDispatcher;
