@@ -5,6 +5,7 @@ import {
   assertPortAvailable,
   assertToolchainVersions,
   waitForHttpReady,
+  workspaceNeedsNodeModules,
 } from './lib/super-startup.mjs';
 
 test('accepts the pinned Node/npm/Python toolchain', () => {
@@ -84,6 +85,17 @@ test('reports the final HTTP status when readiness times out', async () => {
     pollIntervalMs: 1,
     fetchImpl: async () => ({ ok: false, status: 503 }),
   }), /did not become ready.*HTTP 503/);
+});
+
+test('does not require node_modules for a dependency-free workspace', () => {
+  assert.equal(workspaceNeedsNodeModules({ name: 'zero-dependency-runtime' }), false);
+  assert.equal(workspaceNeedsNodeModules({ name: 'zero-dependency-runtime', dependencies: {} }), false);
+});
+
+test('requires node_modules when a workspace declares external dependencies', () => {
+  assert.equal(workspaceNeedsNodeModules({ dependencies: { zod: '^4.0.0' } }), true);
+  assert.equal(workspaceNeedsNodeModules({ devDependencies: { typescript: '^5.0.0' } }), true);
+  assert.equal(workspaceNeedsNodeModules({ peerDependencies: { react: '^19.0.0' } }), true);
 });
 
 test('accepts an unused port and rejects a port already bound by another process', async () => {
