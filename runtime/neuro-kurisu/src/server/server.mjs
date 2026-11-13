@@ -886,7 +886,7 @@ async function route(req, res) {
             return json(res, 200, { ok: true, result, promotion });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis') {
-            return json(res, 200, { ok: true, hexis: runtime.core.hexisDiagnostics(), memoryIndex: runtime.core.hexisMemoryIndex(64), reviews: runtime.core.hexisListLearningReviews(), outbox: runtime.core.hexisOutbox() });
+            return json(res, 200, { ok: true, hexis: runtime.core.hexisDiagnostics(), memoryIndex: runtime.core.hexisMemoryIndex(64), memoryPersistence: runtime.core.hexisMemoryPersistenceDiagnostics(), reviews: runtime.core.hexisListLearningReviews(), outbox: runtime.core.hexisOutbox() });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/memories') {
             const limit = Math.max(1, Math.min(128, Number(url.searchParams.get('limit') || 64)));
