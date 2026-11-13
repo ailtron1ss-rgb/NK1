@@ -73,6 +73,7 @@ on:
       - "runtime/neuro-kurisu/package-lock.json"
       - "runtime/neuro-kurisu/src/organism/learning/P23CandidateParetoArchive.ts"
       - "runtime/neuro-kurisu/tests/p23-candidate-pareto-archive.mjs"
+      - ".github/workflows/p23-candidate-population.yml"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
 
