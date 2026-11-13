@@ -251,7 +251,7 @@ export class HexisHmxCanonicalMemoryBridge {
     const intent = doc.export_intent as HexisHmxIntent;
     const stage = this.adaptation.stageHmx({ document: doc, intent, strategy: 'additive' });
     if (stage.conflicts.length) {
-      return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0,
+      return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0, clusterCount: 0,
         deferredSections: [], warnings, conflicts: stage.conflicts };
     }
     return {
