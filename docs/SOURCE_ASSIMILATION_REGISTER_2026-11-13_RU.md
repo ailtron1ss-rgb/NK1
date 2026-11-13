@@ -697,3 +697,13 @@ GitHub Actions run `43419885994` на exact commit `71241362317fa6108a5e9aeec9c3
 - Exact-head Actions run 43446798698, commit `40177c77abec5881f480ebd0385a084804afcb80`: Node 24 install PASS, runtime typecheck PASS, focused regression PASS.
 - Ассимиляция отмечена как adapted/runtimeWired/testsPassed в stage overlay. `codeCopied=false`, legal clearance остаётся pending: реализован собственный протокольный адаптер, не копирование кода Hyperon.
 - Ограничение: это сериализационный seam, а не подключённый Hyperon runtime. Следующий этап — sandboxed worker, typed request/response, provenance, resource budget и independent evidence gate.
+
+
+## 9. Уточнение прогресса Hexis — 2026-11-13
+
+Hexis теперь учитывается как отдельный источник с двумя проверенными адаптационными направлениями, но оба остаются в Draft PR и не считаются выпущенными:
+
+1. **Цена последствий автономного действия** — PR #864: отдельная consequence-cost dimension, read-only ambient selection, fail-closed для mutation/social/destructive/unknown; ActionGateway остаётся единственным executor и approval authority. Проверены focused policy + Gateway workflow на runtime snapshot `c9604639099b38cc1e426aa38c3e02285b6247ae`.
+2. **HMX canonical apply** — PR #866: staging/acceptance отделены от canonical MemoryOS2 write; отдельный replay-safe apply, безопасное сопоставление relationship endpoints и отложенное применение защищённых identity/goals. Canonical apply и source-lineage тесты прошли на head `928b85b981e887f595d7fb2cb6a1cec5611f7c40`; независимая evidence workflow имеет отдельную ACP dependency failure и не объявляется успешной.
+
+Оба направления отражены в stage overlay как adapted/runtimeWired/testsPassed, но `codeCopied=false`, `releaseVerified=false`. Проверка всей лицензии/NOTICE и legal clearance по Hexis и вложенным компонентам остаётся открытой.
