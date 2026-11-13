@@ -134,8 +134,9 @@ try {
   const applyResponse = await post('/api/organism/integration/hexis/hmx/decide', {
     stagingId: staged.stage.stagingId, decision: 'apply',
   });
-  assert.equal(applyResponse.status, 200);
-  const applied = await applyResponse.json();
+  const applyPayload = await applyResponse.json();
+  assert.equal(applyResponse.status, 200, `canonical apply failed: ${JSON.stringify(applyPayload)}`);
+  const applied = applyPayload;
   assert.equal(applied.ok, true);
   assert.equal(applied.stage.status, 'applied');
   assert.equal(applied.stage.application.importedCount, 2);
