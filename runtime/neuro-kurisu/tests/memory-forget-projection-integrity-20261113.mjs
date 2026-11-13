@@ -287,6 +287,11 @@ console.log('PROTECTED_MEMORY_FORGET_BOUNDARY=PASS');
     'NeuroCore retrieves episodic memory and stable context',
     0.9,
   ));
+  const third = fabric.encode(input(
+    'semantic-graph-canonical-c',
+    'NeuroCore reconsolidates episodic memory and stable context',
+    0.99,
+  ));
 
   assert.ok(second.semanticLinks.includes(first.id),
     'the canonical MemoryOS2 owner should record the shared-entity semantic link');
@@ -297,10 +302,20 @@ console.log('PROTECTED_MEMORY_FORGET_BOUNDARY=PASS');
     node.canonicalProjection?.owner === 'memoryOS2' && node.canonicalProjection.itemId === second.id);
   assert.ok(firstNode && secondNode,
     'MemoryFabric writes must materialize canonical MemoryOS2 rows into the semantic graph read projection');
+  const thirdNode = state.nodes.find(node =>
+    node.canonicalProjection?.owner === 'memoryOS2' && node.canonicalProjection.itemId === third.id);
+  assert.ok(third.semanticLinks.includes(second.id),
+    'the highest-salience canonical row should also link to an older lower-salience row');
+  assert.ok(firstNode && secondNode && thirdNode,
+    'all active canonical records must be represented in the semantic graph');
   assert.ok(state.edges.some(edge =>
     edge.from === secondNode.id && edge.to === firstNode.id && edge.relation === 'associated'
     && edge.canonicalProjection?.owner === 'memoryOS2'),
   'MemoryOS2 semanticLinks must become provenance-marked graph edges');
+  assert.ok(state.edges.some(edge =>
+    edge.from === thirdNode.id && edge.to === secondNode.id && edge.relation === 'associated'
+    && edge.canonicalProjection?.owner === 'memoryOS2'),
+  'newly materialized nodes must resolve inbound links regardless of salience/order');
 
   assert.equal(fabric.forgetById(first.id, 'semantic-graph-forget'), true);
   state = graph.snapshot();
@@ -330,6 +345,12 @@ console.log('PROTECTED_MEMORY_FORGET_BOUNDARY=PASS');
     'graph read model must rebuild from canonical MemoryOS2 after restart');
   assert.equal(restoredState.nodes.some(node => node.canonicalProjection?.itemId === first.id), false,
     'rebuild must not resurrect a forgotten canonical memory');
+  const restoredSecondNode = restoredState.nodes.find(node => node.canonicalProjection?.itemId === second.id);
+  const restoredThirdNode = restoredState.nodes.find(node => node.canonicalProjection?.itemId === third.id);
+  assert.ok(restoredSecondNode && restoredThirdNode);
+  assert.ok(restoredState.edges.some(edge =>
+    edge.from === restoredThirdNode.id && edge.to === restoredSecondNode.id && edge.relation === 'associated'),
+  'restore reconciliation must resolve links independent of canonical snapshot order');
 }
 
 console.log('CANONICAL_MEMORY_TO_SEMANTIC_GRAPH_PROJECTION=PASS');
