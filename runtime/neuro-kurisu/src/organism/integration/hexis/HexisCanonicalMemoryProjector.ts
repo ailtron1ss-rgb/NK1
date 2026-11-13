@@ -4,6 +4,7 @@ import type { MemorySubsystemRuntime } from '../../core/MemorySubsystemRuntime.t
 import type { MemoryLifecycleEncodeInput } from '../../memory/MemoryFabric.ts';
 import type { SemanticEdge } from '../../memory/SemanticMemoryGraph.ts';
 import type { HexisAdaptationFabric, HexisHmxApplyReceipt, HexisHmxStage } from './HexisAdaptationFabric.ts';
+import { redactHmxExportText } from './HmxExportRedactor.ts';
 
 const clamp = (value: unknown, fallback: number, min = 0, max = 1): number => {
   const n = Number(value);
@@ -131,6 +132,7 @@ export class HexisCanonicalMemoryProjector {
       let importedCount = 0;
       let deduplicatedCount = 0;
       let sanitizedMemoryRecords = 0;
+      let redactedMemoryRecords = 0;
       const now = Date.now();
       const lineageKey = 'hexis:' + sha256(lineage).slice(0, 32);
 
@@ -138,7 +140,9 @@ export class HexisCanonicalMemoryProjector {
         const row = asRecord(memories[index]);
         const ref = asText(row.ref, 512);
         const rawContent = asText(row.content, 12_000);
-        const content = sanitizeHmxImportedText(rawContent);
+        const redactedContent = redactHmxExportText(rawContent, 12_000);
+        const content = sanitizeHmxImportedText(redactedContent);
+        if (redactedContent !== rawContent) redactedMemoryRecords += 1;
         const type = asText(row.type, 64);
         if (!ref || !content || !type || !ref.startsWith(stage.exportId + ':')) {
           throw new Error('hmx-memory-record-invalid:' + index);
@@ -166,19 +170,20 @@ export class HexisCanonicalMemoryProjector {
         const createdAt = timestamp(row.created_at, now);
         const validFromAt = timestamp(row.valid_from, createdAt);
         const confidence = Math.min(0.55, clamp(row.trust_level, 0.45, 0.05, 0.55));
-        const tags = safeStringList(metadata.tags, 24, 64).map(value => sanitizeHmxImportedText(value).slice(0, 64)).filter(Boolean);
-        const entities = safeStringList(metadata.entities, 24, 96).map(value => sanitizeHmxImportedText(value).slice(0, 96)).filter(Boolean);
+        const tags = safeStringList(metadata.tags, 24, 64).map(value => sanitizeHmxImportedText(redactHmxExportText(value, 64)).slice(0, 64)).filter(Boolean);
+        const entities = safeStringList(metadata.entities, 24, 96).map(value => sanitizeHmxImportedText(redactHmxExportText(value, 96)).slice(0, 96)).filter(Boolean);
         const context: Record<string, string> = {
           hmxFormat: '1.7',
           hmxExportId: stage.exportId,
           hmxSourceInstanceId: sanitizeHmxImportedText(stage.sourceSubjectId ?? 'unknown').slice(0, 256),
           hmxSourceLineageId: lineage,
           hmxPortableRef: portableRef,
-          hmxSourceId: sanitizeHmxImportedText(asText(provenance.source_id, 192) || 'unattributed').slice(0, 192),
-          hmxSourceType: sanitizeHmxImportedText(asText(provenance.source_type, 96) || 'external').slice(0, 96),
+          hmxSourceId: sanitizeHmxImportedText(redactHmxExportText(asText(provenance.source_id, 192) || 'unattributed', 192)).slice(0, 192),
+          hmxSourceType: sanitizeHmxImportedText(redactHmxExportText(asText(provenance.source_type, 96) || 'external', 96)).slice(0, 96),
           hmxEvidenceClass: sanitizeHmxImportedText(asText(provenance.evidence_class, 64) || 'unverified').slice(0, 64),
           hmxInstructionTreatment: 'data-not-instructions',
-          hmxPromptMarkupSanitized: content !== rawContent ? 'true' : 'false',
+          hmxPromptMarkupSanitized: content !== redactedContent ? 'true' : 'false',
+          hmxSecretPatternRedacted: redactedContent !== rawContent ? 'true' : 'false',
         };
 
         const input: MemoryLifecycleEncodeInput = {
@@ -276,6 +281,9 @@ export class HexisCanonicalMemoryProjector {
       }
       if (sanitizedMemoryRecords > 0) {
         warnings.push('Prompt-control markup and role headers were stripped from ' + sanitizedMemoryRecords + ' imported memory record(s). Imported content is tagged as untrusted data, not instructions.');
+      }
+      if (redactedMemoryRecords > 0) {
+        warnings.push('Known credential/PII patterns were redacted from ' + redactedMemoryRecords + ' imported memory record(s); the pattern screen is not a universal PII detector.');
       }
       warnings.push('Foreign embedding vectors and raw dialogue units were not imported.');
       const base = {
