@@ -240,3 +240,96 @@ console.log('SEMANTIC_MEMORY_SOURCE_NAMESPACE=PASS');
 }
 
 console.log('PROTECTED_MEMORY_FORGET_BOUNDARY=PASS');
+
+
+// Canonical MemoryOS2 links must be projected into the SemanticMemoryGraph read
+// model through MemoryFabric, then removed/rebuilt from the same canonical owner.
+{
+  const input = (id, content, salience) => ({
+    id,
+    content,
+    kind: 'semantic',
+    source: 'semantic-graph-projection-regression',
+    tags: ['semantic-graph'],
+    context: {},
+    salience,
+    emotionalWeight: 0.1,
+    identityRelevance: 0.2,
+    goalRelevance: 0.1,
+    socialRelevance: 0.05,
+    predictionError: 0.05,
+    confidence: 0.95,
+    epistemicStatus: 'fact',
+    entities: ['NeuroCore', 'MemoryOS2'],
+    semanticLinks: [],
+    temporalLinks: [],
+    causalLinks: [],
+    contradictionLinks: [],
+  });
+  const memoryOS = new MemoryOS2({ embeddingProvider: null });
+  const graph = new SemanticMemoryGraph();
+  const fabric = new MemoryFabric(
+    memoryOS,
+    new EventLog(),
+    new MultiTimescaleMemory(),
+    new MemorySubstrateCoordinator(),
+    new UnifiedMemorySystem(),
+    new P62MemoryFabric(),
+    graph,
+  );
+  const first = fabric.encode(input(
+    'semantic-graph-canonical-a',
+    'NeuroCore stores episodic memory and stable context',
+    0.8,
+  ));
+  const second = fabric.encode(input(
+    'semantic-graph-canonical-b',
+    'NeuroCore retrieves episodic memory and stable context',
+    0.9,
+  ));
+
+  assert.ok(second.semanticLinks.includes(first.id),
+    'the canonical MemoryOS2 owner should record the shared-entity semantic link');
+  let state = graph.snapshot();
+  const firstNode = state.nodes.find(node =>
+    node.canonicalProjection?.owner === 'memoryOS2' && node.canonicalProjection.itemId === first.id);
+  const secondNode = state.nodes.find(node =>
+    node.canonicalProjection?.owner === 'memoryOS2' && node.canonicalProjection.itemId === second.id);
+  assert.ok(firstNode && secondNode,
+    'MemoryFabric writes must materialize canonical MemoryOS2 rows into the semantic graph read projection');
+  assert.ok(state.edges.some(edge =>
+    edge.from === secondNode.id && edge.to === firstNode.id && edge.relation === 'associated'
+    && edge.canonicalProjection?.owner === 'memoryOS2'),
+  'MemoryOS2 semanticLinks must become provenance-marked graph edges');
+
+  assert.equal(fabric.forgetById(first.id, 'semantic-graph-forget'), true);
+  state = graph.snapshot();
+  assert.equal(state.nodes.some(node => node.canonicalProjection?.itemId === first.id), false,
+    'forget must remove the canonical memory node from the graph');
+  assert.equal(state.edges.some(edge =>
+    edge.canonicalProjection?.fromItemId === second.id && edge.canonicalProjection?.toItemId === first.id), false,
+  'forget must remove projected graph edges that reference the deleted canonical row');
+
+  const restoredMemoryOS = new MemoryOS2({ embeddingProvider: null });
+  restoredMemoryOS.restore(memoryOS.snapshot());
+  const restoredGraph = new SemanticMemoryGraph();
+  const restoredFabric = new MemoryFabric(
+    restoredMemoryOS,
+    new EventLog(),
+    new MultiTimescaleMemory(),
+    new MemorySubstrateCoordinator(),
+    new UnifiedMemorySystem(),
+    new P62MemoryFabric(),
+    restoredGraph,
+  );
+  assert.equal(typeof restoredFabric.reconcileSemanticGraph, 'function',
+    'MemoryFabric must expose canonical graph reconciliation for runtime restore');
+  restoredFabric.reconcileSemanticGraph();
+  const restoredState = restoredGraph.snapshot();
+  assert.ok(restoredState.nodes.some(node => node.canonicalProjection?.itemId === second.id),
+    'graph read model must rebuild from canonical MemoryOS2 after restart');
+  assert.equal(restoredState.nodes.some(node => node.canonicalProjection?.itemId === first.id), false,
+    'rebuild must not resurrect a forgotten canonical memory');
+}
+
+console.log('CANONICAL_MEMORY_TO_SEMANTIC_GRAPH_PROJECTION=PASS');
