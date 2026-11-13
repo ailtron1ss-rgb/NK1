@@ -1,5 +1,6 @@
 import type { OrganismBodyState, OrganismBodyEvent } from '../body/EmbodiedBody.ts';
 import { RELEASE_CONTRACT } from '../system/ReleaseContract.ts';
+import type { CognitiveCycleStageEvidence } from '../system/CognitiveStageReceipt.ts';
 
 export type GoalSource = 'intrinsic' | 'external' | 'learned' | 'homeostatic';
 export type OrganismGoalStatus = 'candidate' | 'active' | 'paused' | 'completed' | 'abandoned';
@@ -452,6 +453,8 @@ export interface OrganismCycleResult {
   subjectIntegration?: import('../cognition/SubjectContinuityFabric.ts').SubjectContinuityFrame;
   multimodal?: import('../body/MultimodalPerception.ts').MultimodalState;
   cognitiveProposal?: CognitiveProposal | null;
+  /** Owner outputs for this exact cycle; absent on reduced spine-only cycles. */
+  stageEvidence?: CognitiveCycleStageEvidence;
   state: OrganismState;
   goals: OrganismGoal[];
   memories: ConsolidatedMemory[];
