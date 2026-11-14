@@ -13,11 +13,11 @@
 |---|---:|---|
 | generated | 18 | Сформированы 18 разных направлений с проверяемыми критериями |
 | attempted | 11 | Live sync, release/PR/CI inspection, P23 test-fix, issue #865 trace, rerun отменённого B335 шага |
-| completed | 3 | Live source verification; SelfModel restore PR #889 checks; first-launch PR #883 checks |
-| partially_completed | 4 | P23 syntax fix ожидает exact-head CI; B335 rerun идёт; #865 root cause найден, patch ожидает безопасного окна; ZIP metadata проверена, bytes недоступны |
+| completed | 4 | Live source verification; SelfModel restore PR #889; first-launch PR #883; P23 workflow path correction #886 |
+| partially_completed | 3 | B335 rerun идёт; #865 root cause найден, patch ожидает безопасного окна; ZIP metadata проверена, bytes недоступны |
 | blocked | 4 | RU/EN independent holdout, human legal clearance, licensed 3D asset, Android device soak |
 | deferred | 7 | Нет нового дефекта либо уже есть отдельный owner/PR; дублирование не создавалось |
-| verified | 3 | Задачи 01, 10 и 17 прошли свои точные критерии; остальные CI-группы перечислены ниже отдельно |
+| verified | 4 | Задачи 01, 07, 10 и 17 прошли свои точные критерии; остальные CI-группы перечислены ниже отдельно |
 
 **Global readiness и оценки областей не повышены.** Один исправленный тестовый файл и зелёные PR checks не доказывают измеренный retrieval uplift, автономную инициативу на устройстве, полную интеграцию или Release parity.
 
@@ -94,7 +94,7 @@ Status meanings: done = acceptance verified; partial = concrete progress exists 
 | NK1-D2026-11-14-04 Retrieval / RU-EN holdout | P0; depends on immutable licensed bilingual corpus and independent source-group split; high evidence risk. Accept with recallDelta > 0 on at least 5 paired seeds and no leakage. | **blocked** — independent RU/EN corpus/holdout is not available or licensed. |
 | NK1-D2026-11-14-05 Consolidation / MemFS / restore | P1; depends on MemoryFabric and snapshot owner; medium risk. Accept with deterministic restore and idempotent replay under interruption. | **deferred / no-new-work** — #889 restore hardening 7/7; #882 memory projection 13/13; no separate regression isolated. |
 | NK1-D2026-11-14-06 Motivation / drives / initiative | P1; depends on verified outcome and autonomous cadence; medium risk. Accept with exact B335 pass plus long-duration initiative/interrupt soak. | **partial** — #885 B335 job 132462375551 rerun started after cancellation; still in progress, no PASS claimed. |
-| NK1-D2026-11-14-07 Planning / selector / candidate search | P1; depends on P23 candidate archive; low/reversible risk. Accept when syntax regression and all 21 exact-head checks pass. | **partial** — fixed malformed line breaks in #886 test; commit 4acd1ecb; CI pending. |
+| NK1-D2026-11-14-07 Planning / selector / candidate search | P1; depends on P23 candidate archive; low/reversible risk. Accept when workflow filters target the owning test and all 22 exact-head checks pass. | **done / verified** — #886 commit 5ea8b87…; exact-head matrix 22/22 SUCCESS. |
 | NK1-D2026-11-14-08 ActionGateway / Hermes / permissions | P1; depends on canonical ActionGateway; medium risk. Accept with fail-closed approval, idempotency and consequence-cost tests. | **deferred / no-new-work** — #888 7/7 already owns the current consequence-cost slice. |
 | NK1-D2026-11-14-09 Reflection / outcome / reafference | P1; depends on exact decisionId propagation through verified external observation; high risk. Accept when the exact pending decision resolves after restore/replay without duplicate credit. | **partial** — issue #865 root cause isolated; patch waits for the active #885 Core run to finish. |
 | NK1-D2026-11-14-10 SelfModel / personality / continuity | P1; depends on six canonical self/identity restore owners; medium risk. Accept with exact-head restore regression and all checks green. | **done / verified** — #889 exact head 818752ff… 7/7 SUCCESS. |
@@ -118,9 +118,9 @@ Status meanings: done = acceptance verified; partial = concrete progress exists 
 
 ## Next 5 actions
 
-1. Wait for PR #886 exact-head Actions on 4acd1ecb; verify the previously failing validate job and full suite before marking the test fix verified.
+1. Keep PR #886 Draft; its current exact-head matrix is 22/22 SUCCESS. Do not merge without a separate explicit PR-specific instruction.
 2. Wait for PR #885 B335 rerun job 132462375551 to finish; then patch the missing decision-link propagation in the existing branch and run action-gateway-idempotency-workpass37 plus unified organism regression.
-3. Refresh PR #885/#886 exact heads and update their bodies with the final test outcomes; leave both Draft/unmerged pending human review.
+3. Refresh PR #885 exact head and its B335 result; update its body with the terminal outcome, then leave it Draft/unmerged pending review.
 4. Obtain immutable licensed RU/EN holdout and human path-level source/model/voice/avatar license decisions; run at least 5 paired seeds.
 5. Obtain supported access to ZIP bytes and a real Android/Termux device; inspect archive CRC/source provenance and run phone/audio/avatar soak.
 
