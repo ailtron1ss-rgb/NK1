@@ -1,3 +1,4 @@
+import { readRestorablePlainRecord, restoredCounter, restoredMetric, restoredText } from '../core/RestorableState.ts';
 export type P80Mode = 'respond'|'explore'|'verify'|'reflect'|'rest'|'wait'|'defer';
 export interface P80Input {
   tick:number; mode:P80Mode; identity01:number; memoryContinuity01:number; realityGap01:number;
@@ -14,8 +15,33 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export const defaultP80=():P80State=>({version:1,cycles:0,continuity01:.9,coherence01:.8,agency01:.5,realityAlignment01:.5,currentMode:'wait',recentModes:[],recentActions:[],modeStreak:0,noveltyPressure01:.2,lastTick:0,lastAction:'wait',lastReason:''});
 export class P80UnifiedSelfState {
   private state=defaultP80();
-  restore(raw:Partial<P80State>|undefined){if(!raw)return;const d=defaultP80();this.state={...d,...raw,recentModes:Array.isArray(raw.recentModes)?raw.recentModes.slice(-32) as P80Mode[]:[],recentActions:Array.isArray(raw.recentActions)?raw.recentActions.slice(-32):[]};}
-  snapshot(){return JSON.parse(JSON.stringify(this.state)) as P80State;}
+  restore(raw:Partial<P80State>|undefined){
+  const r=readRestorablePlainRecord(raw);
+  if(!r||(r.version!==undefined&&r.version!==1)){this.state=defaultP80();return;}
+  const modes:P80Mode[]=['respond','explore','verify','reflect','rest','wait','defer'];
+  const currentMode=restoredText(r.currentMode,'wait',16) as P80Mode;
+  const recentModes=Array.isArray(r.recentModes)?r.recentModes.slice(-32).filter((mode):mode is P80Mode=>typeof mode==='string'&&modes.includes(mode as P80Mode)):[];
+  const recentActions=Array.isArray(r.recentActions)?r.recentActions.slice(-32).flatMap(action=>{
+    if(typeof action!=='string'||action.length>64)return [];
+    const safe=restoredText(action,'',64);return safe?[safe]:[];
+  }):[];
+  this.state={
+    version:1,
+    cycles:restoredCounter(r.cycles),
+    continuity01:restoredMetric(r.continuity01,.9),
+    coherence01:restoredMetric(r.coherence01,.8),
+    agency01:restoredMetric(r.agency01,.5),
+    realityAlignment01:restoredMetric(r.realityAlignment01,.5),
+    currentMode:modes.includes(currentMode)?currentMode:'wait',
+    recentModes,
+    recentActions,
+    modeStreak:restoredCounter(r.modeStreak),
+    noveltyPressure01:restoredMetric(r.noveltyPressure01,.2),
+    lastTick:restoredCounter(r.lastTick),
+    lastAction:typeof r.lastAction==='string'&&r.lastAction.length<=64?restoredText(r.lastAction,'wait',64):'wait',
+    lastReason:restoredText(r.lastReason,'',160),
+  };
+ } snapshot(){return JSON.parse(JSON.stringify(this.state)) as P80State;}
   summary(){return{version:1,cycles:this.state.cycles,continuity01:this.state.continuity01,coherence01:this.state.coherence01,agency01:this.state.agency01,realityAlignment01:this.state.realityAlignment01,currentMode:this.state.currentMode,noveltyPressure01:this.state.noveltyPressure01,lastTick:this.state.lastTick,lastAction:this.state.lastAction};}
   update(i:P80Input){
     const modeStreak=i.mode===this.state.currentMode?this.state.modeStreak+1:1;
