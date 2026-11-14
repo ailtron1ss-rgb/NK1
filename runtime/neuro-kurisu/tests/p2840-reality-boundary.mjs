@@ -24,24 +24,26 @@ const afterCommit = world.snapshot();
 world.commit(shadow);
 assert.deepEqual(world.snapshot(), afterCommit, 'commit() must be idempotent for the same transition');
 
-// 2) Verified external outcome must suppress cross-reality identity/world promotion.
+// 2) Telemetry is useful for device state, but cannot authorize external world learning.
 const gate = new RealityLearningGate();
 const verifier = new ExternalPostconditionVerifier();
-const verifiedAction = await createTrustedEmbodiedActionFixture('explore');
-const verifiedPostcondition = await verifier.assess(verifiedAction);
-assert.equal(isTrustedEmbodiedOutcomeVerification(verifiedPostcondition,verifiedAction),true);
-const verified = gate.decide({source:'external',evidence01:.96,verified01:1,independent01:1,consequence01:.8,predictionError01:.7,surprise01:.8,reward01:.95,success01:1,actuation:false,resource01:.8,embodiedAction:verifiedAction,postconditionVerification:verifiedPostcondition});
+const telemetryAction = await createTrustedEmbodiedActionFixture('explore');
+const telemetryPostcondition = await verifier.assess(telemetryAction);
+assert.equal(telemetryAction.realityClass,'device-telemetry');
+assert.equal(telemetryAction.consequenceVerification.verified,false);
+assert.equal(isTrustedEmbodiedOutcomeVerification(telemetryPostcondition,telemetryAction),false);
+const telemetryOnly = gate.decide({source:'external',evidence01:.96,verified01:1,independent01:1,consequence01:.8,predictionError01:.7,surprise01:.8,reward01:.95,success01:1,actuation:false,resource01:.8,embodiedAction:telemetryAction,postconditionVerification:telemetryPostcondition});
 const receiptAction = await createTrustedEmbodiedActionFixture('respond');
 const receiptPostcondition = await verifier.assess(receiptAction);
 assert.equal(isTrustedEmbodiedOutcomeVerification(receiptPostcondition,receiptAction),false);
 const receiptOnly = gate.decide({source:'external',evidence01:.46,verified01:0,independent01:0,consequence01:.12,predictionError01:.7,surprise01:.8,reward01:.95,success01:1,actuation:true,resource01:.8,embodiedAction:receiptAction,postconditionVerification:receiptPostcondition});
-assert(verified.learningScale01 > receiptOnly.learningScale01, 'only a matching OutcomeVerificationService token may authorize external learning');
-assert(verified.identityUpdateScale01 > receiptOnly.identityUpdateScale01, 'verified evidence must promote identity more strongly');
-assert.equal(receiptOnly.learningScale01,0, 'receipt-only actions must not enter replay/policy learning');
-assert.equal(receiptOnly.memoryPromotionScale01,0);
-assert.equal(receiptOnly.identityUpdateScale01,0);
-assert.equal(receiptOnly.reward01,.5);
-assert.equal(receiptOnly.surprise01,0);
+for (const decision of [telemetryOnly,receiptOnly]) {
+  assert.equal(decision.learningScale01,0);
+  assert.equal(decision.memoryPromotionScale01,0);
+  assert.equal(decision.identityUpdateScale01,0);
+  assert.equal(decision.reward01,.5);
+  assert.equal(decision.surprise01,0);
+}
 
 // 3) Integrated runtime: an external outcome must NOT advance the predictive shadow world.
 const runtime = new OrganismRuntime({stateFile,enableLanguage:false,autoRun:false,realityMode:'external-first',performanceProfile:'mobile'});
@@ -86,9 +88,9 @@ console.log(JSON.stringify({
   ok:true,
   externalWorldTickStable:tickAfterExternal===tickBeforeExternal,
   simulationCommitted:simulationAfter===simulationBefore+1,
-  learningScaleVerified:verified.learningScale01,
+  learningScaleVerified:telemetryOnly.learningScale01,
   learningScaleReceiptOnly:receiptOnly.learningScale01,
-  identityScaleVerified:verified.identityUpdateScale01,
+  identityScaleVerified:telemetryOnly.identityUpdateScale01,
   identityScaleReceiptOnly:receiptOnly.identityUpdateScale01,
   realityShadow:runtime.realityShadowBridgeSnapshot(),
   learningGate:runtime.realityLearningGateSnapshot(),

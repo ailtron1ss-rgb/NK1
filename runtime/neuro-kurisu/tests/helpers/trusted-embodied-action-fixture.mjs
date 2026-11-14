@@ -18,7 +18,7 @@ export async function createTrustedEmbodiedActionFixture(action = 'explore', opt
     thermalStrain01: 0.2,
     cognitiveCapacity01: 0.9,
     awake: true,
-    cameraAvailable: false,
+    cameraAvailable: options.cameraAvailable === true,
     ttsAvailable: true,
   };
   const snapshot = () => structuredClone(body);
@@ -37,7 +37,9 @@ export async function createTrustedEmbodiedActionFixture(action = 'explore', opt
   const executor = new EmbodiedActionExecutor(embodiment);
   return executor.execute(action, {
     spokenText: action === 'respond' ? 'test utterance' : '',
-    executionId: `exec-fixture-${String(fixtureSequence).padStart(8,'0')}`,
+    executionId: options.executionId ?? `exec-fixture-${String(fixtureSequence).padStart(8,'0')}`,
     decisionId: options.decisionId ?? `fixture-decision-${fixtureSequence}`,
+    allowCamera: options.cameraAvailable === true,
+    captureCamera: options.cameraAvailable === true ? async () => ({ ok:true, path:'/tmp/nk1-fixture-camera.jpg', size:4, hash:'a'.repeat(64), executionId:`exec-camera-${fixtureSequence}`, providerReceiptId:`fixture-camera-${fixtureSequence}` }) : undefined,
   });
 }

@@ -78,6 +78,8 @@ export class ExternalPostconditionVerifier {
 
   async assess(result:EmbodiedActionResult):Promise<OutcomeVerification> {
     if(!isTrustedEmbodiedActionResult(result)) return noVerification('untrusted-embodied-action-result');
+    if(result.realityClass==='device-telemetry') return noVerification('device-telemetry-is-not-world-observation');
+    if(result.realityClass==='camera-artifact') return noVerification('camera-artifact-requires-semantic-world-observation-receipt');
     const binding=bindingFor(result);
     if(!binding) return noVerification('missing-host-owned-execution-or-decision-binding');
 

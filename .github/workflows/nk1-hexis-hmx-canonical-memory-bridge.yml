@@ -1,0 +1,57 @@
+name: NK1 Hexis HMX canonical memory bridge
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - ".github/workflows/nk1-hexis-hmx-canonical-memory-bridge.yml"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisHmxCanonicalMemoryBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/tests/integration/hexis-hmx-canonical-memory-bridge.mjs"
+  push:
+    branches:
+      - workpass70-source
+      - "aspect/**"
+    paths:
+      - ".github/workflows/nk1-hexis-hmx-canonical-memory-bridge.yml"
+      - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisHmxCanonicalMemoryBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/tests/integration/hexis-hmx-canonical-memory-bridge.mjs"
+      - "runtime/neuro-kurisu/package.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hexis-hmx-canonical-memory-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  canonical-hmx-memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Verify HMX staging, protection and idempotent canonical apply
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:hexis:hmx-canonical-memory-bridge
+      - name: Preserve existing Hexis adaptation contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:hexis-adaptation

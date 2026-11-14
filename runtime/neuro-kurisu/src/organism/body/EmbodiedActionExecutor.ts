@@ -3,7 +3,7 @@ import type { EnvironmentAction } from '../world/WorldEnvironment.ts';
 import type { EmbodimentRuntime } from './EmbodimentRuntime.ts';
 
 export type EmbodiedExecutionStatus = 'executed'|'unavailable'|'skipped'|'failed'|'ambiguous';
-export type EmbodiedRealityClass = 'device-observation'|'device-actuation'|'external-observation'|'derived';
+export type EmbodiedRealityClass = 'device-telemetry'|'camera-artifact'|'device-observation'|'device-actuation'|'external-observation'|'derived';
 
 export interface EmbodiedActionResult {
   version:1;
@@ -48,7 +48,6 @@ export function isTrustedEmbodiedActionResult(value: unknown): value is Embodied
   return Boolean(value && typeof value === 'object' && trustedEmbodiedActionResults.has(value as object));
 }
 
-const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 
 /**
  * B365: the organism's chosen internal action gets an explicit embodiment gate.
@@ -59,12 +58,12 @@ export class EmbodiedActionExecutor {
   private readonly embodiment: EmbodimentRuntime;
   constructor(embodiment: EmbodimentRuntime) { this.embodiment = embodiment; }
 
-  async execute(action:string, input:{spokenText?:string;speechEventId?:string;allowCamera?:boolean;decisionId?:string;executionId?:string;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>}={}):Promise<EmbodiedActionResult>{
+  async execute(action:string, input:{spokenText?:string;speechEventId?:string;allowCamera?:boolean;decisionId?:string;/** @deprecated ignored: execution identity is always executor-minted. */executionId?:string;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>}={}):Promise<EmbodiedActionResult>{
     const preSample=await this.embodiment.sample({force:true,requestedSensors:['battery','thermal','network']});
     const before=this.embodiment.snapshot();
     const at=Date.now();
-    const suppliedExecutionId=typeof input.executionId==='string'?input.executionId.trim():'';
-    const executionId=/^exec-[a-z0-9-]{8,80}$/i.test(suppliedExecutionId)?suppliedExecutionId:`exec-${randomUUID()}`;
+    // Never accept caller-selected receipt keys: this identity is minted at the executor boundary.
+    const executionId=`exec-${randomUUID()}`;
     const suppliedDecisionId=typeof input.decisionId==='string'?input.decisionId.normalize('NFKC').trim():'';
     const decisionId=suppliedDecisionId && suppliedDecisionId.length<=180 && !/[\u0000-\u001f\u007f-\u009f]/.test(suppliedDecisionId)?suppliedDecisionId:undefined;
     const base={battery01:before.telemetry.battery01,thermal01:before.thermalStrain01,cognitiveCapacity01:before.cognitiveCapacity01,awake:before.awake,source:before.telemetry.source};
@@ -152,20 +151,38 @@ export class EmbodiedActionExecutor {
     const beforeFresh=preSample.telemetry.source==='android-termux' && preSample.telemetry.staleMs===0 ? 1 : 0;
     const afterFresh=after.telemetry.source==='android-termux' && after.telemetry.staleMs===0 ? 1 : 0;
     const sourceStable=before.telemetry.source===after.telemetry.source;
-    const independent=after.telemetry.sampledAt>before.telemetry.sampledAt;
+    const telemetryFresh=before.telemetry.source==='android-termux' && after.telemetry.source==='android-termux' && before.telemetry.staleMs===0 && after.telemetry.staleMs===0 && sourceStable && after.telemetry.sampledAt>before.telemetry.sampledAt;
     const delta={battery01:afterBody.telemetry.battery01-before.telemetry.battery01,thermal01:afterBody.thermalStrain01-before.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01-before.cognitiveCapacity01,awakeChanged:afterBody.awake!==before.awake};
     const changed01=clamp(Math.abs(delta.battery01)*.25+Math.abs(delta.thermal01)*.35+Math.abs(delta.cognitiveCapacity01)*.25+(delta.awakeChanged?.15:0));
-    const deviceFresh=beforeFresh===1 && afterFresh===1 && sourceStable && independent;
     const observationAction=['explore','verify','wait','inspect'].includes(action);
     const actuationAction=['respond'].includes(action);
-    // A fresh sensor sample is an independently observed outcome for observation actions.
-    // It is NOT evidence that an actuator such as TTS had an external effect.
-    const verified=Boolean(deviceFresh && status==='executed' && observationAction);
+    // Fresh Android telemetry proves only device state. It is not a semantic observation of the external world.
+    const telemetryObservation=Boolean(telemetryFresh && status==='executed' && observationAction);
+    const independent=false;
+    const verified=false;
     const verificationMode:EmbodiedActionResult['consequenceVerification']['verificationMode']=
-      verified ? 'independent-observation' : (actuationAction && status==='executed' ? 'actuation-receipt-only' : (action==='rest' ? 'derived-state-transition' : (status==='executed' ? 'none' : 'none')));
-    const consequenceReason=verified?'independent-live-device-post-action-measurement':(actuationAction&&status==='executed'?'device-command-acknowledged-without-independent-effect-verification':(status==='ambiguous'?'tts-result-unknown-do-not-retry-or-credit':(status==='executed'?'action-executed-without-independent-device-proof':'no-independent-device-consequence-proof')));
-    const effect01=clamp(changed01*(verified?.9:.15));
-    const realityClass:EmbodiedRealityClass=verified?'device-observation':(actuationAction&&(status==='executed'||status==='ambiguous')&&afterBody.telemetry.source==='android-termux'?'device-actuation':'derived');
+      actuationAction && status==='executed' ? 'actuation-receipt-only' : (action==='rest' ? 'derived-state-transition' : 'none');
+    const consequenceReason=artifact?.kind==='camera-capture' && status==='executed'
+      ? 'camera-artifact-requires-semantic-world-observation-receipt'
+      : telemetryObservation
+        ? 'fresh-device-telemetry-is-not-world-observation'
+        : actuationAction && status==='executed'
+          ? 'device-command-acknowledged-without-independent-effect-verification'
+          : status==='ambiguous'
+            ? 'tts-result-unknown-do-not-retry-or-credit'
+            : status==='executed'
+              ? 'action-executed-without-independent-device-proof'
+              : 'no-independent-device-consequence-proof';
+    // No world-effect score is inferred from battery/thermal telemetry or a camera file receipt.
+    const changed01=0;
+    const effect01=0;
+    const realityClass:EmbodiedRealityClass=actuationAction&&(status==='executed'||status==='ambiguous')&&afterBody.telemetry.source==='android-termux'
+      ? 'device-actuation'
+      : artifact?.kind==='camera-capture' && status==='executed'
+        ? 'camera-artifact'
+        : telemetryObservation
+          ? 'device-telemetry'
+          : 'derived';
     const result: EmbodiedActionResult = {
       version:1,action,status,realityClass,source:afterBody.telemetry.source,at,executionId,...(decisionId?{decisionId}:{}),before:base,
       after:{battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source},

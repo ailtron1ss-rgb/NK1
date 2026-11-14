@@ -54,3 +54,6 @@ jobs:
       - name: Test Hexis belief, trust and adaptation contracts
         working-directory: runtime/neuro-kurisu
         run: npm run test:hexis-adaptation
+      - name: Test staged HMX canonical memory bridge
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:hexis:hmx-canonical-memory-bridge

@@ -1796,7 +1796,7 @@
     "test:mem0-runtime-wiring": "node --experimental-strip-types tests/mem0-runtime-wiring.mjs",
     "test:mem0-live-contract-check": "node --experimental-strip-types tests/mem0-live-contract-check.mjs",
     "audit:mem0-platform-adapter-workpass1": "npm run typecheck && npm run test:mem0-platform-adapter-workpass1 && npm run test:mem0-oss-adapter-workpass2 && npm run test:mem0-runtime-wiring && npm run test:mem0-live-contract-check && node --experimental-strip-types tests/server-language-http-fake-provider.mjs",
-    "audit:nk1-integration-closure": "npm run test:hexis-evidence-lineage && npm run test:hexis-server-smoke && npm run test:longmemeval-adapter && npm run test:memory-retrieval-experiment && npm run test:memory-fabric-semantic-retrieval && npm run test:memoryos2-metadata-retrieval && npm run test:memory-semantic-vector-integrity && npm run test:memory-retrieval-annotation-pack && npm run test:mem0-platform-adapter-workpass1 && npm run test:mem0-oss-adapter-workpass2 && npm run test:mem0-runtime-wiring && npm run test:mem0-live-contract-check && node --experimental-strip-types tests/server-language-http-fake-provider.mjs && npm run test:workpass73:memory-inspect-evidence && npm run test:workpass76:memory-lineage-integrity && npm run test:workpass77:memory-cluster-bootstrap",
+    "audit:nk1-integration-closure": "npm run test:hexis-evidence-lineage && npm run test:hexis-server-smoke && npm run test:longmemeval-adapter && npm run test:memory-retrieval-experiment && npm run test:memory-fabric-semantic-retrieval && npm run test:memoryos2-metadata-retrieval && npm run test:memory-semantic-vector-integrity && npm run test:memory-retrieval-annotation-pack && npm run test:mem0-platform-adapter-workpass1 && npm run test:mem0-oss-adapter-workpass2 && npm run test:mem0-runtime-wiring && npm run test:mem0-live-contract-check && node --experimental-strip-types tests/server-language-http-fake-provider.mjs && npm run test:workpass73:memory-inspect-evidence && npm run test:workpass76:memory-lineage-integrity && npm run test:workpass77:memory-cluster-bootstrap && npm run test:hexis:hmx-canonical-memory-bridge",
     "test:memory-retrieval-annotation-pack": "node --experimental-strip-types tests/memory-retrieval-annotation-pack.mjs",
     "test:memory-subsystem-state-roundtrip": "node --experimental-strip-types tests/memory-subsystem-state-roundtrip-workpass570.mjs",
     "test:memory-query-context-workpass573": "node --experimental-strip-types tests/memory-query-context-stability-workpass573.mjs",
@@ -1861,6 +1861,9 @@
     "test:neko-social-anti-repeat": "node --experimental-strip-types tests/social-repetition-policy.mjs && node --experimental-strip-types tests/autonomous-social-anti-repeat-bm25.mjs",
     "test:neko-plugin-voice-transcript-bridge": "node --experimental-strip-types tests/neko-plugin-voice-transcript-bridge.mjs",
     "test:neko-plugin-voice-runtime-wiring": "node --experimental-strip-types tests/neko-plugin-voice-runtime-wiring.mjs",
-    "test:neko-plugin-manifest-policy": "node --experimental-strip-types tests/neko-plugin-manifest-policy.mjs"
+    "test:neko-plugin-manifest-policy": "node --experimental-strip-types tests/neko-plugin-manifest-policy.mjs",
+    "test:hexis:hmx-canonical-memory-bridge": "node --experimental-strip-types tests/integration/hexis-hmx-canonical-memory-bridge.mjs",
+    "test:cognitive-resource-economy": "node --experimental-strip-types tests/cognitive-resource-economy-workpass322.mjs",
+    "test:will:voluntary-attention-budget": "node --experimental-strip-types tests/will-voluntary-attention-budget-workpass.mjs"
   }
 }

@@ -196,9 +196,13 @@ export class RealityGroundingController {
     let consequence01=.18;
     let reason=r && !trustedAction
       ? 'untrusted-or-action-mismatched-embodied-result;simulation-remains-primary'
-      : trustedAction && trustedAction.source==='android-termux' && trustedAction.realityClass==='device-observation' && !independentPostcondition
-        ? 'device-observation-lacks-outcome-verification-service-proof;simulation-remains-primary'
-        : trustedAction && trustedAction.realityClass==='device-actuation'
+      : trustedAction && trustedAction.realityClass==='device-telemetry'
+        ? 'device-telemetry-is-not-world-observation;simulation-remains-primary'
+        : trustedAction && trustedAction.realityClass==='camera-artifact'
+          ? 'camera-artifact-requires-semantic-world-observation-receipt;simulation-remains-primary'
+          : trustedAction && trustedAction.source==='android-termux' && trustedAction.realityClass==='device-observation' && !independentPostcondition
+            ? 'device-observation-lacks-outcome-verification-service-proof;simulation-remains-primary'
+            : trustedAction && trustedAction.realityClass==='device-actuation'
           ? 'device-actuation-receipt-only;no-independent-postcondition-proof'
           : 'simulation-shadow-outcome-used-as-primary';
 
