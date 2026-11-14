@@ -155,11 +155,14 @@ export class P84AutobiographicalContinuityFabric {
         const profile=record(value),safeKey=restoredText(key,'',96);
         if(!profile||!safeKey)continue;
         const samples=restoredCounter(profile.samples);
-        result[safeKey]={
-          samples,verifiedSamples:Math.min(samples,restoredCounter(profile.verifiedSamples)),
-          success01:restoredMetric(profile.success01,.5),confidence01:restoredMetric(profile.confidence01,0),
-          lastAt:restoredTimestamp(profile.lastAt),lastEvidence01:restoredMetric(profile.lastEvidence01,0),
-        };
+        Object.defineProperty(result,safeKey,{
+          value:{
+            samples,verifiedSamples:Math.min(samples,restoredCounter(profile.verifiedSamples)),
+            success01:restoredMetric(profile.success01,.5),confidence01:restoredMetric(profile.confidence01,0),
+            lastAt:restoredTimestamp(profile.lastAt),lastEvidence01:restoredMetric(profile.lastEvidence01,0),
+          },
+          enumerable:true,configurable:true,writable:true,
+        });
       }
       return result;
     };

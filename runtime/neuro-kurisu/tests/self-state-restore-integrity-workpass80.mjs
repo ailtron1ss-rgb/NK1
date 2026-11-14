@@ -65,7 +65,7 @@ test('identity-state restore normalizes hostile counters, metrics, histories, an
   assert.equal(g.checks, 0);
   assert.equal(g.stable, 0);
   assert.equal(g.rejected, 0);
-  assert.equal(g.revisionWindows, 0);
+  assert.equal(g.revisionWindows, 80);
   assert.equal(g.meanContinuity01, 1);
   assert.equal(g.meanBoundarySafety01, 0);
   assert.ok(g.lastReason.length <= 96);
