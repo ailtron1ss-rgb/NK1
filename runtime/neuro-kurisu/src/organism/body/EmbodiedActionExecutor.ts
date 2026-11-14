@@ -153,7 +153,6 @@ export class EmbodiedActionExecutor {
     const sourceStable=before.telemetry.source===after.telemetry.source;
     const telemetryFresh=before.telemetry.source==='android-termux' && after.telemetry.source==='android-termux' && before.telemetry.staleMs===0 && after.telemetry.staleMs===0 && sourceStable && after.telemetry.sampledAt>before.telemetry.sampledAt;
     const delta={battery01:afterBody.telemetry.battery01-before.telemetry.battery01,thermal01:afterBody.thermalStrain01-before.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01-before.cognitiveCapacity01,awakeChanged:afterBody.awake!==before.awake};
-    const changed01=clamp(Math.abs(delta.battery01)*.25+Math.abs(delta.thermal01)*.35+Math.abs(delta.cognitiveCapacity01)*.25+(delta.awakeChanged?.15:0));
     const observationAction=['explore','verify','wait','inspect'].includes(action);
     const actuationAction=['respond'].includes(action);
     // Fresh Android telemetry proves only device state. It is not a semantic observation of the external world.
