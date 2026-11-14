@@ -1,3 +1,4 @@
+import { readRestorablePlainRecord, restoredCounter, restoredMetric, restoredTimestamp, restoredText } from '../core/RestorableState.ts';
 export interface P84AutobiographicalMoment {
   id:string;
   tick:number;
@@ -108,42 +109,98 @@ export class P84AutobiographicalContinuityFabric {
   private readonly maxMoments:number;
   constructor(maxMoments=96){this.maxMoments=Math.max(24,Math.floor(maxMoments));}
   restore(raw?:Partial<P84State>|null){
-    const d=defaultP84(), r=raw??{};
-    const profiles=(r.actionOutcomeProfiles??{}) as Record<string,P84ActionOutcomeProfile>;
-    const contextualProfiles=(r.contextualOutcomeProfiles??{}) as Record<string,P84ActionOutcomeProfile>;
-    const developmentalConsequences=Array.isArray((r as any).developmentalConsequences)
-      ? (r as any).developmentalConsequences.slice(-96).map((x:any)=>({
-          id:clean(x?.id,96)||`dev:${Date.now()}:${Math.random().toString(16).slice(2)}`,
-          at:Number(x?.at??0), tick:Math.max(0,Math.floor(Number(x?.tick??0))), action:clean(x?.action,64)||'none',
-          socialSignal01:clamp(Number(x?.socialSignal01??0)), identityPressure01:clamp(Number(x?.identityPressure01??0)),
-          selfChange01:clamp(Number(x?.selfChange01??0)), causalSignal01:clamp(Number(x?.causalSignal01??0)),
-          evidenceQuality01:clamp(Number(x?.evidenceQuality01??0)), futureSelfDelta01:Number.isFinite(x?.futureSelfDelta01)?Number(x.futureSelfDelta01):0,
-          verified01:Boolean(x?.verified01), sourceMomentId:x?.sourceMomentId?clean(x.sourceMomentId,96):null, summary:clean(x?.summary,220)||'developmental-consequence'
-        })) : [];
-    const moments=Array.isArray(r.moments)
-      ? r.moments.slice(-Math.max(24,this.maxMoments)).map(m=>({
-          ...m,
-          predictionIds:uniq(m.predictionIds??[]), observationIds:uniq(m.observationIds??[]),
-          memoryIds:uniq(m.memoryIds??[]), evidenceIds:uniq(m.evidenceIds??[]),
-          activeGoalIds:uniq(m.activeGoalIds??[]), beliefIds:uniq(m.beliefIds??[]), personIds:uniq(m.personIds??[]), sourceEventIds:uniq(m.sourceEventIds??[])
-        }))
-      : [];
-    const normalizeProfiles=(source:Record<string,P84ActionOutcomeProfile>,limit:number)=>Object.fromEntries(
-      Object.entries(source).slice(-limit).map(([k,v])=>[clean(k,96),{
-        samples:Math.max(0,Math.floor(Number(v?.samples??0))),
-        verifiedSamples:Math.max(0,Math.floor(Number(v?.verifiedSamples??0))),
-        success01:clamp(Number(v?.success01??.5)),
-        confidence01:clamp(Number(v?.confidence01??0)),
-        lastAt:Number(v?.lastAt??0),
-        lastEvidence01:clamp(Number(v?.lastEvidence01??0))
-      }])
-    );
-    const actionOutcomeProfiles=normalizeProfiles(profiles,16);
-    const contextualOutcomeProfiles=normalizeProfiles(contextualProfiles,64);
-    this.state={...d,...r,moments,actionOutcomeProfiles,contextualOutcomeProfiles,developmentalConsequences,
-      processedIngestKeys:Array.isArray((r as any).processedIngestKeys)?(r as any).processedIngestKeys.filter((id:any)=>typeof id==='string'&&id.trim()&&id.length<=180).slice(-256):[],
-      processedOutcomeEvidenceIds:Array.isArray((r as any).processedOutcomeEvidenceIds)?(r as any).processedOutcomeEvidenceIds.filter((id:any)=>typeof id==='string'&&id.trim()&&id.length<=180).slice(-256):[],
-      version:5,beliefContinuity01:clamp(Number(r.beliefContinuity01??d.beliefContinuity01)),socialBinding01:clamp(Number(r.socialBinding01??d.socialBinding01)),carryoverRevision:Math.max(0,Math.floor(Number(r.carryoverRevision??0)))};
+    const d=defaultP84();
+    const r=readRestorablePlainRecord(raw);
+    if(!r||(r.version!==undefined&&r.version!==5)){this.state=d;return;}
+    const record=(value:unknown):Record<string,unknown>|null=>{
+      return value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:null;
+    };
+    const ids=(value:unknown,limit=12):string[]=>{
+      if(!Array.isArray(value))return [];
+      return value.slice(-limit).flatMap(item=>{
+        const id=restoredText(item,'',96);
+        return id?[id]:[];
+      });
+    };
+    const moments=Array.isArray(r.moments)?r.moments.slice(-Math.max(24,this.maxMoments)).flatMap(value=>{
+      const m=record(value);
+      if(!m||typeof m.id!=='string'||!m.id.trim()||!Number.isSafeInteger(m.tick)||Number(m.tick)<0||
+        typeof m.action!=='string'||!m.action.trim())return [];
+      const outcome=m.outcome01===null?null:(typeof m.outcome01==='number'&&Number.isFinite(m.outcome01)?restoredMetric(m.outcome01,.5):null);
+      const id=restoredText(m.id,'',96), action=restoredText(m.action,'none',64);
+      if(!id||!action)return [];
+      return [{
+        id,tick:restoredCounter(m.tick),at:restoredTimestamp(m.at),action,outcome01:outcome,
+        realityHash:restoredText(m.realityHash,'',40),realityRevision:restoredCounter(m.realityRevision),
+        decisionId:typeof m.decisionId==='string'?restoredText(m.decisionId,'',96)||null:null,
+        predictionIds:ids(m.predictionIds),observationIds:ids(m.observationIds),memoryIds:ids(m.memoryIds),
+        evidenceIds:ids(m.evidenceIds),activeGoalIds:ids(m.activeGoalIds),beliefIds:ids(m.beliefIds),
+        personIds:ids(m.personIds),identity01:restoredMetric(m.identity01,.5),
+        authorship01:restoredMetric(m.authorship01,.5),realityConfidence01:restoredMetric(m.realityConfidence01,.5),
+        significance01:restoredMetric(m.significance01,.5),continuity01:restoredMetric(m.continuity01,.5),
+        transition:m.transition===true,changeSummary:restoredText(m.changeSummary,'autobiographical-state-update',220),
+        identityDelta01:restoredMetric(m.identityDelta01,0),memoryBinding01:restoredMetric(m.memoryBinding01,0),
+        realityDelta01:restoredMetric(m.realityDelta01,0),learningSignal01:restoredMetric(m.learningSignal01,0),
+        evidenceQuality01:restoredMetric(m.evidenceQuality01,0),counterEvidence01:restoredMetric(m.counterEvidence01,0),
+        boundary01:restoredMetric(m.boundary01,0),identityChangeReasons:ids(m.identityChangeReasons,8),
+        sourceEventIds:ids(m.sourceEventIds),
+      }];
+    }):[];
+    const normalizeProfiles=(value:unknown,limit:number):Record<string,P84ActionOutcomeProfile>=>{
+      const source=record(value);
+      if(!source)return {};
+      const entries=Object.entries(source).slice(-limit);
+      const result:Record<string,P84ActionOutcomeProfile>={};
+      for(const [key,value] of entries){
+        const profile=record(value),safeKey=restoredText(key,'',96);
+        if(!profile||!safeKey)continue;
+        const samples=restoredCounter(profile.samples);
+        result[safeKey]={
+          samples,verifiedSamples:Math.min(samples,restoredCounter(profile.verifiedSamples)),
+          success01:restoredMetric(profile.success01,.5),confidence01:restoredMetric(profile.confidence01,0),
+          lastAt:restoredTimestamp(profile.lastAt),lastEvidence01:restoredMetric(profile.lastEvidence01,0),
+        };
+      }
+      return result;
+    };
+    const developmentalConsequences=Array.isArray(r.developmentalConsequences)?r.developmentalConsequences.slice(-96).flatMap(value=>{
+      const row=record(value);
+      if(!row||typeof row.id!=='string'||!row.id.trim()||typeof row.action!=='string'||!row.action.trim()||
+        !Number.isSafeInteger(row.tick)||Number(row.tick)<0)return [];
+      const id=restoredText(row.id,'',96),action=restoredText(row.action,'none',64);
+      if(!id||!action)return [];
+      const futureDelta=typeof row.futureSelfDelta01==='number'&&Number.isFinite(row.futureSelfDelta01)
+        ?Math.max(-1,Math.min(1,row.futureSelfDelta01)):0;
+      return [{
+        id,at:restoredTimestamp(row.at),tick:restoredCounter(row.tick),action,
+        socialSignal01:restoredMetric(row.socialSignal01,0),identityPressure01:restoredMetric(row.identityPressure01,0),
+        selfChange01:restoredMetric(row.selfChange01,0),causalSignal01:restoredMetric(row.causalSignal01,0),
+        evidenceQuality01:restoredMetric(row.evidenceQuality01,0),futureSelfDelta01:futureDelta,
+        verified01:row.verified01===true,
+        sourceMomentId:typeof row.sourceMomentId==='string'?restoredText(row.sourceMomentId,'',96)||null:null,
+        summary:restoredText(row.summary,'developmental-consequence',220),
+      }];
+    }):[];
+    const processed=(value:unknown):string[]=>Array.isArray(value)?value.flatMap(item=>{
+      const id=restoredText(item,'',180);return id?[id]:[];
+    }).slice(-256):[];
+    this.state={
+      version:5,revision:restoredCounter(r.revision),moments,
+      lifeContinuity01:restoredMetric(r.lifeContinuity01,d.lifeContinuity01),
+      causalContinuity01:restoredMetric(r.causalContinuity01,d.causalContinuity01),
+      autobiographicalIntegrity01:restoredMetric(r.autobiographicalIntegrity01,d.autobiographicalIntegrity01),
+      lastTick:restoredCounter(r.lastTick),lastRealityHash:restoredText(r.lastRealityHash,'',40),
+      lastMomentId:restoredText(r.lastMomentId,'',96),transitionCount:restoredCounter(r.transitionCount),
+      identityChangeCount:restoredCounter(r.identityChangeCount),selfChangeLoad01:restoredMetric(r.selfChangeLoad01,d.selfChangeLoad01),
+      memoryBinding01:restoredMetric(r.memoryBinding01,d.memoryBinding01),
+      actionOutcomeProfiles:normalizeProfiles(r.actionOutcomeProfiles,16),
+      beliefContinuity01:restoredMetric(r.beliefContinuity01,d.beliefContinuity01),
+      socialBinding01:restoredMetric(r.socialBinding01,d.socialBinding01),
+      contextualOutcomeProfiles:normalizeProfiles(r.contextualOutcomeProfiles,64),
+      carryoverRevision:restoredCounter(r.carryoverRevision),developmentalConsequences,
+      processedIngestKeys:processed(r.processedIngestKeys),
+      processedOutcomeEvidenceIds:processed(r.processedOutcomeEvidenceIds),
+    };
   }
   snapshot(){return structuredClone(this.state);}
 

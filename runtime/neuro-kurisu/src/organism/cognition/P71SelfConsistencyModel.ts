@@ -1,3 +1,4 @@
+import { readRestorablePlainRecord, restoredCounter, restoredMetric, restoredText } from '../core/RestorableState.ts';
 /**
  * P71 — Self Consistency Model.
  *
@@ -10,7 +11,31 @@ export interface P71State {version:1;cycles:number;meanConsistency01:number;iden
 export const defaultP71=():P71State=>({version:1,cycles:0,meanConsistency01:.82,identityDrift01:0,goalConflict01:.1,valueConflict01:0,actionMismatch01:0,repairPressure01:.18,lastReason:'bootstrap',history:[]});
 export class P71SelfConsistencyModel {
  private state=defaultP71();
- summary(){return{version:1,cycles:this.state.cycles,consistency01:this.state.meanConsistency01,identityDrift01:this.state.identityDrift01,goalConflict01:this.state.goalConflict01,valueConflict01:this.state.valueConflict01,actionMismatch01:this.state.actionMismatch01,repairPressure01:this.state.repairPressure01,lastReason:this.state.lastReason};} restore(raw?:Partial<P71State>|null){const d=defaultP71(),r=raw??{};this.state={...d,...r,history:Array.isArray(r.history)?r.history.slice(-96):[]};} snapshot(){return structuredClone(this.state);}
+ summary(){return{version:1,cycles:this.state.cycles,consistency01:this.state.meanConsistency01,identityDrift01:this.state.identityDrift01,goalConflict01:this.state.goalConflict01,valueConflict01:this.state.valueConflict01,actionMismatch01:this.state.actionMismatch01,repairPressure01:this.state.repairPressure01,lastReason:this.state.lastReason};} restore(raw?:Partial<P71State>|null){
+  const r=readRestorablePlainRecord(raw);
+  if(!r||(r.version!==undefined&&r.version!==1)){this.state=defaultP71();return;}
+  const reasons=['bootstrap','self-consistent','identity-drift','goal-conflict','value-conflict','action-self-mismatch','reality-misalignment'];
+  const history=Array.isArray(r.history)?r.history.slice(-96).flatMap((entry)=>{
+    const row=readRestorablePlainRecord(entry);
+    if(!row||!Number.isSafeInteger(row.tick)||Number(row.tick)<0)return [];
+    const reason=restoredText(row.reason,'',64);
+    if(!reasons.includes(reason))return [];
+    return [{tick:restoredCounter(row.tick),consistency01:restoredMetric(row.consistency01,.82),repairPressure01:restoredMetric(row.repairPressure01,.18),reason}];
+  }):[];
+  const lastReason=restoredText(r.lastReason,'bootstrap',64);
+  this.state={
+    version:1,
+    cycles:restoredCounter(r.cycles),
+    meanConsistency01:restoredMetric(r.meanConsistency01,.82),
+    identityDrift01:restoredMetric(r.identityDrift01,0),
+    goalConflict01:restoredMetric(r.goalConflict01,.1),
+    valueConflict01:restoredMetric(r.valueConflict01,0),
+    actionMismatch01:restoredMetric(r.actionMismatch01,0),
+    repairPressure01:restoredMetric(r.repairPressure01,.18),
+    lastReason:reasons.includes(lastReason)?lastReason:'bootstrap',
+    history,
+  };
+ } snapshot(){return structuredClone(this.state);}
  evaluate(input:{tick:number;identity01:number;identityDrift01:number;goalConflict01:number;valueConflict01:number;chosenAction:string;mode:string;goalPressure01:number;realityGap01:number}):{consistency01:number;repairPressure01:number;reason:string}{
    const id=clamp(input.identity01),dr=clamp(input.identityDrift01),gc=clamp(input.goalConflict01),vc=clamp(input.valueConflict01),gp=clamp(input.goalPressure01),rg=clamp(input.realityGap01);
    const actionMismatch=clamp((input.mode==='rest'&&['explore','respond'].includes(input.chosenAction))?0.7:(input.mode==='protect'&&input.chosenAction==='explore')?.8:0);
