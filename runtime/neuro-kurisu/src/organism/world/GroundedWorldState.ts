@@ -113,20 +113,24 @@ export class GroundedWorldState {
     const evidence=clamp(input.evidence01);
     const verified=clamp(input.verified01);
     const independent=clamp(input.independent01);
-    const confidence=clamp(.48*evidence+.30*verified+.22*independent);
+    // A command receipt proves that the device accepted/executed a command, not
+    // that the intended world effect occurred. Only the canonical, independently
+    // verified postcondition may change grounded facts or world confidence.
+    const verifiedWorldEffect=input.proofClass==='independent-observation' && verified>=.8 && independent>=.8;
+    const confidence=verifiedWorldEffect?clamp(.48*evidence+.30*verified+.22*independent):0;
     const eventId=`gw-external-${stableHash(`${at}:${input.action}:${input.provenanceId}`)}`;
-    const eventLabel=norm(`external:${input.action}:${input.status}:${input.proofClass}`);
-    const fact=norm(`external-observed:${input.action}:${input.claim}`);
-    const divergenceFact=norm(`shadow-divergence:${input.action}:${input.divergence01.toFixed(3)}`);
+    const eventLabel=norm(`${verifiedWorldEffect?'external-observed':'external-receipt'}:${input.action}:${input.status}:${input.proofClass}`);
+    const fact=verifiedWorldEffect?norm(`external-observed:${input.action}:${input.claim}`):'';
+    const divergenceFact=verifiedWorldEffect?norm(`shadow-divergence:${input.action}:${input.divergence01.toFixed(3)}`):'';
     const events=new Map(this.state.events.map(x=>[x.id,{...x}]));
     events.set(eventId,{
       id:eventId,label:eventLabel,confidence01:confidence,lastAt:at,
-      persistence01:clamp(.12+.28*confidence+.18*input.consequence01),
+      persistence01:verifiedWorldEffect?clamp(.12+.28*confidence+.18*input.consequence01):0,
     });
     const facts=[...this.state.facts,fact,divergenceFact].filter(Boolean);
     const provenance=[input.provenanceId,...this.state.provenanceIds].filter(Boolean);
     const eventRows=[...events.values()].sort((a,b)=>b.lastAt-a.lastAt).slice(0,96);
-    const nextConfidence=clamp(this.state.confidence01*.82+confidence*.18);
+    const nextConfidence=verifiedWorldEffect?clamp(this.state.confidence01*.82+confidence*.18):this.state.confidence01;
     this.state={...this.state,revision:this.state.revision+1,lastAt:at,confidence01:nextConfidence,uncertainty01:clamp(1-nextConfidence),events:eventRows,facts:[...new Set(facts)].slice(-192),provenanceIds:[...new Set(provenance)].slice(0,128)};
     const digest=`${this.state.location}|${this.state.revision}|${this.state.facts.slice(-24).join('|')}|${this.state.events.slice(0,8).map(x=>x.id).join('|')}`;
     this.state.lastHash=stableHash(digest);

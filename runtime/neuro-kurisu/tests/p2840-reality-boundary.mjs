@@ -5,7 +5,9 @@ import path from 'node:path';
 
 import { WorldEnvironment } from '../src/organism/world/WorldEnvironment.ts';
 import { RealityLearningGate } from '../src/organism/system/RealityLearningGate.ts';
+import { ExternalPostconditionVerifier, isTrustedEmbodiedOutcomeVerification } from '../src/organism/system/ExternalPostconditionVerifier.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { createTrustedEmbodiedActionFixture } from './helpers/trusted-embodied-action-fixture.mjs';
 
 const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'neuro-p2840-'));
 const stateFile = path.join(tmp, 'organism.json');
@@ -22,31 +24,51 @@ const afterCommit = world.snapshot();
 world.commit(shadow);
 assert.deepEqual(world.snapshot(), afterCommit, 'commit() must be idempotent for the same transition');
 
-// 2) Verified external outcome must suppress cross-reality identity/world promotion.
+// 2) Telemetry is useful for device state, but cannot authorize external world learning.
 const gate = new RealityLearningGate();
-const verified = gate.decide({source:'external',evidence01:.96,verified01:1,independent01:1,consequence01:.8,predictionError01:.7,surprise01:.8,reward01:.95,success01:1,actuation:false,resource01:.8});
-const receiptOnly = gate.decide({source:'external',evidence01:.46,verified01:0,independent01:1,consequence01:.12,predictionError01:.7,surprise01:.8,reward01:.95,success01:1,actuation:true,resource01:.8});
-assert(verified.learningScale01 > receiptOnly.learningScale01, 'verified evidence must learn more strongly than receipt-only evidence');
-assert(verified.identityUpdateScale01 > receiptOnly.identityUpdateScale01, 'verified evidence must promote identity more strongly');
-assert(receiptOnly.identityUpdateScale01 < .4, 'unverified actuation must strongly attenuate identity promotion');
+const verifier = new ExternalPostconditionVerifier();
+const telemetryAction = await createTrustedEmbodiedActionFixture('explore');
+const telemetryPostcondition = await verifier.assess(telemetryAction);
+assert.equal(telemetryAction.realityClass,'device-telemetry');
+assert.equal(telemetryAction.consequenceVerification.verified,false);
+assert.equal(isTrustedEmbodiedOutcomeVerification(telemetryPostcondition,telemetryAction),false);
+const telemetryOnly = gate.decide({source:'external',evidence01:.96,verified01:1,independent01:1,consequence01:.8,predictionError01:.7,surprise01:.8,reward01:.95,success01:1,actuation:false,resource01:.8,embodiedAction:telemetryAction,postconditionVerification:telemetryPostcondition});
+const receiptAction = await createTrustedEmbodiedActionFixture('respond');
+const receiptPostcondition = await verifier.assess(receiptAction);
+assert.equal(isTrustedEmbodiedOutcomeVerification(receiptPostcondition,receiptAction),false);
+const receiptOnly = gate.decide({source:'external',evidence01:.46,verified01:0,independent01:0,consequence01:.12,predictionError01:.7,surprise01:.8,reward01:.95,success01:1,actuation:true,resource01:.8,embodiedAction:receiptAction,postconditionVerification:receiptPostcondition});
+for (const decision of [telemetryOnly,receiptOnly]) {
+  assert.equal(decision.learningScale01,0);
+  assert.equal(decision.memoryPromotionScale01,0);
+  assert.equal(decision.identityUpdateScale01,0);
+  assert.equal(decision.reward01,.5);
+  assert.equal(decision.surprise01,0);
+}
 
 // 3) Integrated runtime: an external outcome must NOT advance the predictive shadow world.
 const runtime = new OrganismRuntime({stateFile,enableLanguage:false,autoRun:false,realityMode:'external-first',performanceProfile:'mobile'});
 await runtime.init();
 const originalExecute = runtime.embodiedActions.execute.bind(runtime.embodiedActions);
-runtime.embodiedActions.execute = async () => ({
-  version:1, action:'respond', status:'executed', realityClass:'device-actuation', source:'android-termux', at:Date.now(),
-  before:{battery01:.8,thermal01:.2,cognitiveCapacity01:.8,awake:true,source:'android-termux'},
-  after:{battery01:.799,thermal01:.201,cognitiveCapacity01:.8,awake:true,source:'android-termux'},
-  stateDelta:{battery01:-.001,thermal01:.001,cognitiveCapacity01:0,awakeChanged:false}, effect01:.02, reason:'p2840-test-external-action', capability:'android.tts',
-  consequenceVerification:{attempted:true,independent:true,verified:true,sourceStable:true,freshBefore01:1,freshAfter01:1,changed01:.62,reason:'test-independent-receipt',verificationMode:'independent-observation'}
-});
+runtime.embodiedActions.execute = async (_action,input={}) => createTrustedEmbodiedActionFixture('respond',{decisionId:input.decisionId});
+
 const tickBeforeExternal = runtime.environment.snapshot().tick;
+const groundedWorldBefore = runtime.core.groundedWorldSnapshot();
 const externalStep = await runtime.autonomousStep();
 const tickAfterExternal = runtime.environment.snapshot().tick;
+const groundedWorldAfter = runtime.core.groundedWorldSnapshot();
 assert.equal(tickAfterExternal, tickBeforeExternal, 'external-primary cycle must not commit shadow world state');
 assert((runtime.realityShadowBridgeSnapshot()?.externalHolds ?? 0) >= 1, 'external shadow hold must be recorded');
 assert((runtime.realityLearningGateSnapshot()?.externalDecisions ?? 0) >= 1, 'external learning gate decision must persist');
+const lastGrounding=runtime.realityGroundingSnapshot()?.last;
+assert.equal(lastGrounding?.proofClass,'stable-device-receipt');
+assert.equal(lastGrounding?.verified01,0);
+assert.equal(lastGrounding?.independent01,0);
+const lastLearning=runtime.realityLearningGateSnapshot()?.last;
+assert.equal(lastLearning?.learningScale01,0,'unverified device receipt must not update replay/policy learning');
+assert.equal(lastLearning?.identityUpdateScale01,0);
+assert.deepEqual(groundedWorldAfter.facts,groundedWorldBefore.facts,'a command receipt must not create grounded world facts');
+assert.equal(groundedWorldAfter.confidence01,groundedWorldBefore.confidence01,'a command receipt must not increase grounded world confidence');
+assert.ok(groundedWorldAfter.events.some(x=>x.label.startsWith('external-receipt:respond:executed:stable-device-receipt')));
 const perceptual = runtime.core.perceptualEvidenceSummary();
 assert(perceptual.evidence.some(x => String(x.claim).startsWith('external-outcome:respond')), 'external outcome must return to next-cycle perceptual evidence');
 assert(externalStep.embodiedAction?.status === 'executed');
@@ -66,9 +88,9 @@ console.log(JSON.stringify({
   ok:true,
   externalWorldTickStable:tickAfterExternal===tickBeforeExternal,
   simulationCommitted:simulationAfter===simulationBefore+1,
-  learningScaleVerified:verified.learningScale01,
+  learningScaleVerified:telemetryOnly.learningScale01,
   learningScaleReceiptOnly:receiptOnly.learningScale01,
-  identityScaleVerified:verified.identityUpdateScale01,
+  identityScaleVerified:telemetryOnly.identityUpdateScale01,
   identityScaleReceiptOnly:receiptOnly.identityUpdateScale01,
   realityShadow:runtime.realityShadowBridgeSnapshot(),
   learningGate:runtime.realityLearningGateSnapshot(),
