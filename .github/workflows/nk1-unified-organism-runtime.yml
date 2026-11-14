@@ -62,6 +62,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:workpass611:cognitive-planner-restore-integrity && npm --prefix runtime/neuro-kurisu run test:workpass610:brain-fusion-strip-only && npm --prefix runtime/neuro-kurisu run test:cognitive-runtime-planner-execution-gate
       - name: Cognitive spine, world feedback and project-tool boundary
         run: npm --prefix runtime/neuro-kurisu run test:big-pass-39
+      - name: Self-model and identity-state restore integrity
+        run: node --experimental-strip-types --test runtime/neuro-kurisu/tests/self-state-restore-integrity-workpass80.mjs
       - name: Continuity and organism integration
         run: npm --prefix runtime/neuro-kurisu run test:b1701-b2200:continuity && npm --prefix runtime/neuro-kurisu run test:p29:core-integration && npm --prefix runtime/neuro-kurisu run test:pcontinuity:integration
       - name: Organism runtime smoke
