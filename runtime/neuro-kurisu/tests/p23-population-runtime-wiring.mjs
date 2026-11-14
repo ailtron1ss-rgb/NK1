@@ -10,7 +10,9 @@ const providerSource = readFileSync(resolve(root, 'src/organism/learning/P23Inde
 const coordinatorSource = readFileSync(resolve(root, 'src/organism/learning/P23CompoundRepairRevisionCoordinator.ts'), 'utf8');
 
 assert.match(runtimeSource, /validationOnlyEvaluationConfigForRepair\?:/);
-assert.match(runtimeSource, /populationSearchBudget\?:/);\nassert.match(runtimeSource, /populationSearchArchive:populationArchive/);\nassert.match(runtimeSource, /population-search-failed/);
+assert.match(runtimeSource, /populationSearchBudget\?:/);
+assert.match(runtimeSource, /populationSearchArchive:populationArchive/);
+assert.match(runtimeSource, /population-search-failed/);
 assert.match(runtimeSource, /withIndependentCandidateEvaluation\([\s\S]*?validationOnlyEvaluationConfigForRepair[\s\S]*?populationSearchBudget/);
 assert.match(runtimeSource, /validation-only-population-search-requires-independent-final-evaluation-authority/);
 assert.match(providerSource, /createValidationOnlySkillCandidateEvaluator\(validationOnlyConfig\)/);
