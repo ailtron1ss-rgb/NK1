@@ -149,7 +149,7 @@ Status meanings: done = acceptance verified; partial = concrete progress exists 
 - File: `.github/workflows/p23-candidate-population.yml`.
 - Corrected a literal escaped-newline path entry and duplicate path, and narrowed the focused workflow trigger to the archive implementation/test it actually executes.
 - Exact-head focused workflow `P23 Reflective Candidate Population`: **SUCCESS** ([run 43601705130](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43601705130)).
-- At the last check, 22 check-runs were attached to this head: 18 completed SUCCESS, 4 still IN_PROGRESS (core regression, unified organism, local-language resilience and independent evidence evaluation). Therefore the change is implemented and its focused workflow tested; the complete PR matrix is not yet fully verified.
+- Final exact-head check-run matrix on this commit: **22/22 SUCCESS**, including the focused population workflow, core regression, unified organism, local-language resilience and independent evidence evaluation. The workflow correction is implemented and the full current PR matrix is verified; real learning uplift and holdout generalization remain unproven.
 
 ### Issue #865 / PR #885 coordination
 
