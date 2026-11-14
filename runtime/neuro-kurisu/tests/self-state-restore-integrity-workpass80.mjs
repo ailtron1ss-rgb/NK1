@@ -215,3 +215,14 @@ test('valid identity snapshots survive the normal snapshot and restore round tri
   p84Copy.restore(p84.snapshot());
   assert.deepEqual(p84Copy.snapshot(), p84.snapshot());
 });
+
+test('P84 profile restore preserves the object prototype for special property names', () => {
+  const profiles = JSON.parse('{"__proto__":{"samples":3,"verifiedSamples":2,"success01":1,"confidence01":1,"lastAt":1,"lastEvidence01":1},"constructor":{"samples":1,"verifiedSamples":1,"success01":1,"confidence01":1,"lastAt":1,"lastEvidence01":1}}');
+  const model = new P84AutobiographicalContinuityFabric();
+  model.restore({ version: 5, actionOutcomeProfiles: profiles });
+  const restored = model.snapshot().actionOutcomeProfiles;
+  assert.equal(Object.getPrototypeOf(restored), Object.prototype);
+  assert.equal(Object.hasOwn(restored, '__proto__'), true);
+  assert.equal(Object.hasOwn(restored, 'constructor'), true);
+  assert.equal(({}).samples, undefined);
+});
