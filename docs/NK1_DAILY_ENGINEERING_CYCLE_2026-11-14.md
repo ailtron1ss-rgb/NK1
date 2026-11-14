@@ -130,3 +130,50 @@ Status meanings: done = acceptance verified; partial = concrete progress exists 
 - Continue existing PRs; do not create a duplicate PR for the #865 OrganismCore decision-link contract or the #886 P23 test syntax correction.
 - The current source branch is 1e83a011… at report time. Refresh it before the next write; this SHA is a snapshot, not a future baseline.
 - The next cycle must read this report and live GitHub state before doing any new work.
+
+
+---
+
+## Дополнение — автономный проход 2026-11-14, 18:45 Asia/Almaty
+
+### Live state and execution delta
+
+- `workpass70-source` remained at `1e83a011fc677ff20f2348570322bd562181d9ff` (parent `dc9176b1cf4eb9bae7e9bcf14d79befbf3561422`). The five exact-SHA source workflows previously observed remain the source baseline; no direct source-branch write was made.
+- The latest published release metadata still identifies stable tag `Neuro` and asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` (135,290,615 bytes; GitHub metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`). The binary ZIP still could not be materialized, so member list, CRC, recomputed digest and source parity remain UNKNOWN.
+- The current 18-direction backlog above was reused; no duplicate task IDs or PRs were created.
+
+### Implemented change — existing PR #886
+
+- Updated existing branch `aspect/self-improvement-population-engine-20261113`; no new PR.
+- Commit: `5ea8b87bc75b44d8aea35cc66c1336e33fa496c2`.
+- File: `.github/workflows/p23-candidate-population.yml`.
+- Corrected a literal escaped-newline path entry and duplicate path, and narrowed the focused workflow trigger to the archive implementation/test it actually executes.
+- Exact-head focused workflow `P23 Reflective Candidate Population`: **SUCCESS** ([run 43601705130](https://github.com/ailtron1ss-rgb/NK1/actions/runs/43601705130)).
+- At the last check, 22 check-runs were attached to this head: 18 completed SUCCESS, 4 still IN_PROGRESS (core regression, unified organism, local-language resilience and independent evidence evaluation). Therefore the change is implemented and its focused workflow tested; the complete PR matrix is not yet fully verified.
+
+### Issue #865 / PR #885 coordination
+
+- The ordinary completion path in `OrganismCore.finalizeToolOutcome` still calls `integrateVerifiedToolObservation(id, result, options, false)`, while the authoritative-receipt path forwards the already computed `decisionLinkedExternalPostcondition`.
+- The exact existing regression in `tests/action-gateway-idempotency-workpass37.mjs` asserts that the matching pending decision is resolved and persisted after restore/replay.
+- PR #885's exact-head unified-organism job 132462375551 was still IN_PROGRESS at the last read; step 11 (B335 holdout evidence) was running. No edit to `OrganismCore.ts` was made while that job was active. The narrow fix remains queued for the first safe window after that job terminates; do not infer completion from the other green jobs.
+- Workflow job log download returned 404 while the job was active; step summaries remain available.
+
+### Delta counters for this continuation
+
+| Counter | Value |
+|---|---:|
+| generated | 18 (reused the existing 18 IDs; no duplicate backlog rows) |
+| attempted | 7 |
+| completed | 1 |
+| partially_completed | 1 |
+| blocked | 1 |
+| deferred | 15 |
+| verified | 1 |
+
+The verified task is the P23 focused workflow path correction. The partial task is issue #865 root-cause isolation; its code change is intentionally blocked by the active #885 Core workflow. No global readiness or aspect score was raised. No merge, PR close, branch deletion, release publication, production mutation, secret change or paid action occurred.
+
+### Handoff — next 3 actions
+
+1. Poll PR #885 job 132462375551 until it reaches a terminal state; then re-read the branch head and all changed files before editing.
+2. If the #885 branch remains the safe owner, forward `decisionLinkedExternalPostcondition` through the ordinary completion call, retain the existing exact-decision regression, run `test:action-gateway-idempotency-workpass37` plus the unified-organism workflow, and update PR #885 without merging. If the branch has moved or another writer is active, leave it untouched.
+3. Poll all four in-progress exact-head checks on PR #886 commit `5ea8b87bc75b44d8aea35cc66c1336e33fa496c2`; keep PR #886 Draft until every required check is terminal and green.
