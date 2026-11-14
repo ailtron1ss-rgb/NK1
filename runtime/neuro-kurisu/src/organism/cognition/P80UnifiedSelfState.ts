@@ -22,6 +22,7 @@ export class P80UnifiedSelfState {
   const currentMode=restoredText(r.currentMode,'wait',16) as P80Mode;
   const recentModes=Array.isArray(r.recentModes)?r.recentModes.slice(-32).filter((mode):mode is P80Mode=>typeof mode==='string'&&modes.includes(mode as P80Mode)):[];
   const recentActions=Array.isArray(r.recentActions)?r.recentActions.slice(-32).flatMap(action=>{
+    if(typeof action!=='string'||action.length>64)return [];
     const safe=restoredText(action,'',64);return safe?[safe]:[];
   }):[];
   this.state={
