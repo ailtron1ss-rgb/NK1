@@ -58,7 +58,7 @@ test('identity-state restore rejects revoked proxies without leaving partially r
 test('identity-state restore normalizes hostile counters, metrics, histories, and enum values', () => {
   const guard = new IdentityContinuityGuard();
   guard.restore({
-    version: 1, checks: -4, stable: 900, rejected: -1, revisionWindows: 80,
+    version: 1, checks: -4, stable: -1, rejected: -1, revisionWindows: 80,
     meanContinuity01: 4, meanBoundarySafety01: -3, lastReason: 'x'.repeat(500), lastAt: -1,
   });
   const g = guard.snapshot();
