@@ -115,24 +115,27 @@ export class P84AutobiographicalContinuityFabric {
     const record=(value:unknown):Record<string,unknown>|null=>{
       return value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:null;
     };
+    const safeId=(value:unknown,maximum:number):string=>{
+      return typeof value==='string'&&value.length<=maximum?restoredText(value,'',maximum):'';
+    };
     const ids=(value:unknown,limit=12):string[]=>{
       if(!Array.isArray(value))return [];
       return value.slice(-limit).flatMap(item=>{
-        const id=restoredText(item,'',96);
+        const id=safeId(item,96);
         return id?[id]:[];
       });
     };
     const moments=Array.isArray(r.moments)?r.moments.slice(-Math.max(24,this.maxMoments)).flatMap(value=>{
       const m=record(value);
-      if(!m||typeof m.id!=='string'||!m.id.trim()||!Number.isSafeInteger(m.tick)||Number(m.tick)<0||
-        typeof m.action!=='string'||!m.action.trim())return [];
+      if(!m||typeof m.id!=='string'||!m.id.trim()||m.id.length>96||!Number.isSafeInteger(m.tick)||Number(m.tick)<0||
+        typeof m.action!=='string'||!m.action.trim()||m.action.length>64)return [];
       const outcome=m.outcome01===null?null:(typeof m.outcome01==='number'&&Number.isFinite(m.outcome01)?restoredMetric(m.outcome01,.5):null);
-      const id=restoredText(m.id,'',96), action=restoredText(m.action,'none',64);
+      const id=safeId(m.id,96), action=safeId(m.action,64);
       if(!id||!action)return [];
       return [{
         id,tick:restoredCounter(m.tick),at:restoredTimestamp(m.at),action,outcome01:outcome,
-        realityHash:restoredText(m.realityHash,'',40),realityRevision:restoredCounter(m.realityRevision),
-        decisionId:typeof m.decisionId==='string'?restoredText(m.decisionId,'',96)||null:null,
+        realityHash:safeId(m.realityHash,40),realityRevision:restoredCounter(m.realityRevision),
+        decisionId:typeof m.decisionId==='string'?safeId(m.decisionId,96)||null:null,
         predictionIds:ids(m.predictionIds),observationIds:ids(m.observationIds),memoryIds:ids(m.memoryIds),
         evidenceIds:ids(m.evidenceIds),activeGoalIds:ids(m.activeGoalIds),beliefIds:ids(m.beliefIds),
         personIds:ids(m.personIds),identity01:restoredMetric(m.identity01,.5),
@@ -152,7 +155,7 @@ export class P84AutobiographicalContinuityFabric {
       const entries=Object.entries(source).slice(-limit);
       const result:Record<string,P84ActionOutcomeProfile>={};
       for(const [key,value] of entries){
-        const profile=record(value),safeKey=restoredText(key,'',96);
+        const profile=record(value),safeKey=safeId(key,96);
         if(!profile||!safeKey)continue;
         const samples=restoredCounter(profile.samples);
         Object.defineProperty(result,safeKey,{
@@ -168,9 +171,9 @@ export class P84AutobiographicalContinuityFabric {
     };
     const developmentalConsequences=Array.isArray(r.developmentalConsequences)?r.developmentalConsequences.slice(-96).flatMap(value=>{
       const row=record(value);
-      if(!row||typeof row.id!=='string'||!row.id.trim()||typeof row.action!=='string'||!row.action.trim()||
+      if(!row||typeof row.id!=='string'||!row.id.trim()||row.id.length>96||typeof row.action!=='string'||!row.action.trim()||row.action.length>64||
         !Number.isSafeInteger(row.tick)||Number(row.tick)<0)return [];
-      const id=restoredText(row.id,'',96),action=restoredText(row.action,'none',64);
+      const id=safeId(row.id,96),action=safeId(row.action,64);
       if(!id||!action)return [];
       const futureDelta=typeof row.futureSelfDelta01==='number'&&Number.isFinite(row.futureSelfDelta01)
         ?Math.max(-1,Math.min(1,row.futureSelfDelta01)):0;
@@ -185,15 +188,15 @@ export class P84AutobiographicalContinuityFabric {
       }];
     }):[];
     const processed=(value:unknown):string[]=>Array.isArray(value)?value.flatMap(item=>{
-      const id=restoredText(item,'',180);return id?[id]:[];
+      const id=safeId(item,180);return id?[id]:[];
     }).slice(-256):[];
     this.state={
       version:5,revision:restoredCounter(r.revision),moments,
       lifeContinuity01:restoredMetric(r.lifeContinuity01,d.lifeContinuity01),
       causalContinuity01:restoredMetric(r.causalContinuity01,d.causalContinuity01),
       autobiographicalIntegrity01:restoredMetric(r.autobiographicalIntegrity01,d.autobiographicalIntegrity01),
-      lastTick:restoredCounter(r.lastTick),lastRealityHash:restoredText(r.lastRealityHash,'',40),
-      lastMomentId:restoredText(r.lastMomentId,'',96),transitionCount:restoredCounter(r.transitionCount),
+      lastTick:restoredCounter(r.lastTick),lastRealityHash:safeId(r.lastRealityHash,40),
+      lastMomentId:safeId(r.lastMomentId,96),transitionCount:restoredCounter(r.transitionCount),
       identityChangeCount:restoredCounter(r.identityChangeCount),selfChangeLoad01:restoredMetric(r.selfChangeLoad01,d.selfChangeLoad01),
       memoryBinding01:restoredMetric(r.memoryBinding01,d.memoryBinding01),
       actionOutcomeProfiles:normalizeProfiles(r.actionOutcomeProfiles,16),

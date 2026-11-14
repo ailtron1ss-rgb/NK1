@@ -38,7 +38,7 @@ export class P80UnifiedSelfState {
     modeStreak:restoredCounter(r.modeStreak),
     noveltyPressure01:restoredMetric(r.noveltyPressure01,.2),
     lastTick:restoredCounter(r.lastTick),
-    lastAction:restoredText(r.lastAction,'wait',64),
+    lastAction:typeof r.lastAction==='string'&&r.lastAction.length<=64?restoredText(r.lastAction,'wait',64):'wait',
     lastReason:restoredText(r.lastReason,'',160),
   };
  } snapshot(){return JSON.parse(JSON.stringify(this.state)) as P80State;}

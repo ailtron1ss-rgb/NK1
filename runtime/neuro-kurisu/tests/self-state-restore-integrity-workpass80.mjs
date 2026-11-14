@@ -137,7 +137,7 @@ test('identity-state restore normalizes hostile counters, metrics, histories, an
   assert.equal(p80State.modeStreak, 0);
   assert.equal(p80State.noveltyPressure01, 1);
   assert.equal(p80State.lastTick, 0);
-  assert.equal(p80State.lastAction.length, 64);
+  assert.equal(p80State.lastAction, 'wait');
   assert.ok(p80State.lastReason.length <= 160);
 
   const p84 = new P84AutobiographicalContinuityFabric();
