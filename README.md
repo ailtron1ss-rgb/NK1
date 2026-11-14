@@ -1,34 +1,39 @@
-## Актуальный инженерный checkpoint — 13 ноября 2026
+## Актуальный инженерный checkpoint — 14 ноября 2026
 
 **Каноническая рабочая ветка:** workpass70-source  
-**Live source HEAD:** 1a0315595302f3154df0ae53e5d9188875311467 (parent 189643ede8f3904dd670f0109a28b7536e894c00; commit от 2026-11-13).  
-**Exact-SHA source checks:** 6/6 SUCCESS.  
+**Live source HEAD:** 1e83a011fc677ff20f2348570322bd562181d9ff (parent dc9176b1cf4eb9bae7e9bcf14d79befbf3561422).  
+**Exact-SHA source checks:** 5/5 SUCCESS.  
 **main:** release/metadata; source changes продолжаются через отдельные feature branches и PR в workpass70-source.
 
 ### Текущие PR и дефекты
 
-- [#863](https://github.com/ailtron1ss-rgb/NK1/pull/863) — source-assimilation register / roadmap; Draft, head f4feaceb221cbf74a4913b7bb4af113c19c2ae1c, 44/44 checks SUCCESS. 21 unique donors catalogued; human legal clearance 0/21, detailed code diffs 1/21, tests verified 1/21, release verified 0/21. Base snapshot is one source commit behind live HEAD.
-- [#864](https://github.com/ailtron1ss-rgb/NK1/pull/864) — Hexis-derived consequence-cost gate; Draft, head 21d979476c107d577119d07039fef2762583a4af, 8/8 checks SUCCESS. ActionGateway remains canonical executor; human registry/heuristic review remains open.
-- [#866](https://github.com/ailtron1ss-rgb/NK1/pull/866) — Hexis HMX 1.7 explicit canonical apply; Draft, head 928b85b981e887f595d7fb2cb6a1cec5611f7c40. A test lifecycle bug is fixed; canonical HMX apply and source-lineage checks pass. Overall 29/30 checks SUCCESS; independent-evidence-evaluation fails on missing acp.helpers.
-- [#853](https://github.com/ailtron1ss-rgb/NK1/pull/853) — existing ACP compatibility fix, head 2bae2883286bfd783c5adcf7b8148b8d70e795f4, 5/5 checks SUCCESS; remains open/unmerged. Do not duplicate its dependency pin.
-- [#854](https://github.com/ailtron1ss-rgb/NK1/pull/854) — isolated documentation/handoff branch; includes cycles 2026-11-10 through 2026-11-13.
-- [#865](https://github.com/ailtron1ss-rgb/NK1/issues/865) — separate baseline defect: exact pending decision fails to receive grounded reafference/temporal credit. Still open.
+- [#886](https://github.com/ailtron1ss-rgb/NK1/pull/886) — P23 bounded reflective candidate population; test syntax fix committed as 4acd1ecb48f866c784a1c36d4e95185172e31064; 21 exact-head checks running.
+- [#885](https://github.com/ailtron1ss-rgb/NK1/pull/885) — verified self-authored agenda/outcome attribution; B335 exact-head rerun job 132462375551 is in progress after cancellation.
+- [#889](https://github.com/ailtron1ss-rgb/NK1/pull/889) — SelfModel/identity restore hardening; 7/7 SUCCESS.
+- [#883](https://github.com/ailtron1ss-rgb/NK1/pull/883) — first-launch local prototype health gate; 5/5 SUCCESS, not production deployment.
+- [#881](https://github.com/ailtron1ss-rgb/NK1/pull/881) — HMX graph links through MemoryOS2; 17/17 SUCCESS.
+- [#882](https://github.com/ailtron1ss-rgb/NK1/pull/882) — canonical memory projections and forget-resurrection guard; 13/13 SUCCESS.
+- [#884](https://github.com/ailtron1ss-rgb/NK1/pull/884) — Live2D frontend viewer acknowledgements; 7/7 SUCCESS.
+- [#887](https://github.com/ailtron1ss-rgb/NK1/pull/887) — P23 holdout firewall; 7/7 SUCCESS.
+- [#888](https://github.com/ailtron1ss-rgb/NK1/pull/888) — consequence-cost policy; 7/7 SUCCESS.
+- [#852](https://github.com/ailtron1ss-rgb/NK1/pull/852) — external action grounding and telemetry proof boundary; 19/19 SUCCESS.
+- [#865](https://github.com/ailtron1ss-rgb/NK1/issues/865) — exact decisionId is dropped in the ordinary external-observation finalization path; root cause isolated, fix pending on the existing outcome branch.
+- [#854](https://github.com/ailtron1ss-rgb/NK1/pull/854) — existing documentation/handoff PR, extended with the 14 November cycle report.
 
 ### Release и лицензирование
 
 - Latest published ZIP including prerelease: tag workpass70-hotfix1-2026-10-19; asset Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip; 136,354,713 bytes; metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
 - Stable tag Neuro: asset Neuro_Kurisu_WORKPASS70_2026-10-19.zip; 135,290,615 bytes; metadata SHA-256 c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286.
-- ZIP binary bytes were not downloaded/inspected. Archive members, CRC, recomputed hash and source parity remain UNKNOWN. Source CI is not release verification.
-- Human license clearance remains 0/21 in the source-assimilation register; redistribution is not authorized.
+- ZIP bytes were not downloaded/inspected. Archive members, CRC, recomputed hash and source parity remain UNKNOWN. Source CI is not release verification.
+- Human legal clearance remains 0/21; redistribution is not authorized.
 
 ### Readiness and handoff
 
-The DSPy/GEPA adapter in #863 is optional validation-only protocol glue, not a bundled optimizer. A multi-candidate Pareto archive is a preliminary gap hypothesis only; perform a full branch search before designing any NK1-native extension, and preserve the holdout firewall.
+No global readiness increase. The 75-aspect registry remains 62 IMPLEMENTED / 1 TESTED / 11 PLANNED / 1 BLOCKED; these are status labels, not proof of integrated behavior. The 1,000-work-unit backlog remains 5/1,000 PASS (0.5%) for the HMX provenance slice only. Independent RU/EN holdout, real Android/Termux soak, licensed Kurisu 3D assets, browser/device avatar E2E, speech timing, legal clearance and Release ZIP inspection remain open.
 
-No global readiness increase. The 75-aspect registry remains 62 IMPLEMENTED / 1 TESTED / 11 PLANNED / 1 BLOCKED; these are status labels, not proof of integrated behavior. Independent RU/EN holdout (at least 5 paired seeds), real Android/Termux soak, browser/device avatar E2E, speech timing, legal clearance and Release ZIP inspection remain open.
+Подробный пакет из 18 направлений, счётчики, точные SHA/CI и handoff: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-14.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-14.md).
 
-Подробный пакет из 18 направлений, счётчики, точные SHA/CI и handoff: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md).
-
+## Archived checkpoint — 13 November 2026
 ---
 
 ## Архивный checkpoint — 1 ноября 2026

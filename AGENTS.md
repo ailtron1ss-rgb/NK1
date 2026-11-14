@@ -1,15 +1,25 @@
-> **Current continuation checkpoint — 2026-11-13 (live observed):** canonical source branch workpass70-source is at 1a0315595302f3154df0ae53e5d9188875311467 (parent 189643ede8f3904dd670f0109a28b7536e894c00; commit “[NK1][Avatar] Reduce remote model import peak memory”, 2026-11-13). Exact-SHA source checks: 6/6 SUCCESS. Refresh live refs and exact-SHA Actions before every write; main remains release/metadata, not the direct source target.
+> **Current continuation checkpoint — 2026-11-14 (live observed):** canonical source branch workpass70-source is at 1e83a011fc677ff20f2348570322bd562181d9ff (parent dc9176b1cf4eb9bae7e9bcf14d79befbf3561422). Exact-SHA source checks: 5/5 SUCCESS. Refresh live refs and exact-SHA Actions before every write; main remains release/metadata, not the direct source target.
 
-## Current checkpoint — 2026-11-13
+## Current checkpoint — 2026-11-14
 
-- Live source HEAD 1a0315595302f3154df0ae53e5d9188875311467: 6/6 exact-SHA checks SUCCESS (GLB/VRM preflight, explicit-forget, browser-affect, local-language resilience, source-lineage, targeted/regression).
-- PR #863 source-assimilation register: Draft, head f4feaceb221cbf74a4913b7bb4af113c19c2ae1c, 44/44 checks SUCCESS. It records 4 supplied containers, 22 nested archives, 21 unique donors; human legal clearance is 0/21, detailed code-diff coverage 1/21, tests verified 1/21 and release verified 0/21. Its base snapshot is 189643ede8f3904dd670f0109a28b7536e894c00, one source commit behind the live branch; do not force-push or claim all donor work integrated.
-- PR #864 Hexis-derived consequence-cost policy: Draft, head 21d979476c107d577119d07039fef2762583a4af, 8/8 exact-head checks SUCCESS. It preserves ActionGateway as the only executor; heuristic weights still require human/tool-registry review.
-- PR #866 HMX 1.7 canonical apply: Draft, head 928b85b981e887f595d7fb2cb6a1cec5611f7c40. The HMX canonical-apply and source-lineage checks now pass after a test-lifecycle fix. Overall exact-head Actions: 29/30 SUCCESS; the sole failure is independent-evidence-evaluation because inspect-ai cannot import acp.helpers. Existing PR #853 contains the ACP pin/import smoke fix (head 2bae2883286bfd783c5adcf7b8148b8d70e795f4, 5/5 SUCCESS) but remains unmerged; do not duplicate its change.
-- Issue #865 remains open: exact pending decision does not receive grounded reafference / temporal credit. This is a separate baseline defect, not the ACP startup failure.
-- PR #854 is the isolated documentation/handoff branch; this cycle adds the 2026-11-13 report and refreshes the top checkpoints only. No PR is merged or closed.
-- The 75-aspect registry remains a status inventory: 62 IMPLEMENTED, 1 TESTED, 11 PLANNED, 1 BLOCKED. No aspect status or global readiness is promoted by this metadata refresh.
-- Latest published ZIP including prerelease remains tag workpass70-hotfix1-2026-10-19, asset Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes, metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb. Binary bytes are not available in this execution environment; member list, CRC, recomputed hash and source parity remain UNKNOWN. Human license clearance is still pending.
+- Live source HEAD 1e83a011fc677ff20f2348570322bd562181d9ff; exact-SHA source checks 5/5 SUCCESS (core regression, source lineage, UserModel explicit-forget, browser affect snapshot coherence, WorkPass79).
+- Merged work observed, not performed by this cycle: PR #874 → 33544f7b4ced9518e36c3532f9bccb8161baa022; PR #878 → e6bab97d014c9911cddc3746725b39c635018f43.
+- PR #889 SelfModel restore: Draft, head 818752ff4baafee79f450e78612beee0d0736a00, 7/7 SUCCESS.
+- PR #883 first-launch prototype: Draft, head 6f2a424503ce1f0f24e9f084fd449a9ddd23c5a8, 5/5 SUCCESS; local prototype checks only, not production deployment.
+- PR #881 HMX graph lifecycle 17/17, #882 memory projection 13/13, #884 Live2D frontend acknowledgements 7/7, #887 P23 holdout firewall 7/7, #888 consequence-cost policy 7/7, #852 external action grounding 19/19.
+- PR #886: corrected malformed literal newline sequences in tests/p23-population-runtime-wiring.mjs, commit 4acd1ecb48f866c784a1c36d4e95185172e31064; 21 exact-head checks are running. Do not claim post-fix PASS yet.
+- PR #885: unified-organism B335 step was cancelled on its earlier attempt; rerun job 132462375551 is in progress. Do not edit OrganismCore on that branch until the run finishes.
+- Issue #865: source inspection found the ordinary finalizeToolOutcome path drops decisionLinkedExternalPostcondition when calling integrateVerifiedToolObservation; the authoritative-receipt revision path forwards it. This prevents exact decisionId from reaching temporal reafference. Fix remains uncommitted pending the active #885 Core run.
+- PR #854 is the documentation/handoff branch; latest cycle report is docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-14.md. No PR was merged or closed.
+
+## Release and license boundary
+
+- Latest published ZIP including prerelease: tag workpass70-hotfix1-2026-10-19, asset Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes, metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
+- Stable Neuro ZIP: 135,290,615 bytes, metadata SHA-256 c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286.
+- Binary ZIP bytes could not be materialized; archive members, CRC, recomputed SHA-256 and source parity remain UNKNOWN. Human legal clearance remains 0/21; redistribution is not authorized.
+- 75-aspect registry remains a status inventory (62 IMPLEMENTED / 1 TESTED / 11 PLANNED / 1 BLOCKED). The 1,000-work-unit backlog remains 5/1,000 PASS (0.5%) for the HMX provenance slice only. No global readiness increase.
+
+## Non-negotiable engineering workflow
 
 ## Non-negotiable engineering workflow
 ## Non-negotiable engineering workflow

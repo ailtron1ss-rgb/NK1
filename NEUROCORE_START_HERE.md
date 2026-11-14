@@ -1,30 +1,34 @@
-# CURRENT HANDOFF — 2026-11-13
+# CURRENT HANDOFF — 2026-11-14
 
 > Start here. Refresh live GitHub refs and exact-SHA Actions before every write. Older WorkPass and checkpoint sections below the first divider are archival.
 
 **Canonical source branch:** workpass70-source  
-**Live source HEAD:** 1a0315595302f3154df0ae53e5d9188875311467  
-**Parent:** 189643ede8f3904dd670f0109a28b7536e894c00  
-**Exact-SHA source checks:** 6/6 SUCCESS.
+**Live source HEAD:** 1e83a011fc677ff20f2348570322bd562181d9ff  
+**Parent:** dc9176b1cf4eb9bae7e9bcf14d79befbf3561422  
+**Exact-SHA source checks:** 5/5 SUCCESS.
 
-## This cycle — 2026-11-13
+## This cycle — 2026-11-14
 
-- One verified test-harness correction was committed to the existing PR #866 branch: 928b85b981e887f595d7fb2cb6a1cec5611f7c40. The HMX integration test previously stopped the restarted server in a nested finally block before its remaining malformed-decision and analysis-only assertions; cleanup now occurs in the outer finally after all post-restart assertions.
-- On exact PR head 928b85b981e887f595d7fb2cb6a1cec5611f7c40, the canonical-hmx-apply and source-lineage-contract checks pass. Total PR Actions: 29/30 SUCCESS; independent-evidence-evaluation fails because the runner cannot import acp.helpers.
-- Existing PR #853 already contains the compatible agent-client-protocol pin and import smoke test; its exact head 2bae2883286bfd783c5adcf7b8148b8d70e795f4 has 5/5 SUCCESS but is not merged. Do not copy the same fix into #866.
-- PR #863 head f4feaceb221cbf74a4913b7bb4af113c19c2ae1c has 44/44 SUCCESS; PR #864 head 21d979476c107d577119d07039fef2762583a4af has 8/8 SUCCESS. Both remain Draft and unmerged.
-- Issue #865 remains open as a separate temporal-credit/reafference baseline defect.
-- Daily report with all 18 direction IDs, counters, evidence and next actions: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-13.md).
+- Fixed a malformed newline sequence in the existing P23 population wiring regression on PR #886: commit 4acd1ecb48f866c784a1c36d4e95185172e31064. The exact-head 21-check suite is running; no post-fix PASS is claimed.
+- PR #885 B335 holdout step was cancelled in its earlier attempt. Rerun job 132462375551 is in progress; do not change the same OrganismCore branch/file until it finishes.
+- Issue #865 root cause is isolated: ordinary finalizeToolOutcome drops the already-computed decisionLinkedExternalPostcondition flag when calling integrateVerifiedToolObservation; the authoritative-receipt revision path forwards it. The exact decisionId therefore does not reach CanonicalTemporalCredit in the ordinary path. Fix remains pending.
+- Source exact-SHA checks are 5/5 SUCCESS. PR #889 SelfModel restore is 7/7; PR #883 first-launch local prototype is 5/5.
+- PR #881 is 17/17; #882 is 13/13; #884, #887 and #888 are each 7/7; #852 is 19/19. These are separate open PRs, not merged/released capabilities.
+- PR #874 and #878 are observed as externally merged, with merge commits 33544f7b4ced9518e36c3532f9bccb8161baa022 and e6bab97d014c9911cddc3746725b39c635018f43.
+- Full 18-direction report, counters, acceptance gates and next actions: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-14.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-14.md).
 
 ## Active PR continuation
 
-- #863 — source-assimilation register; Draft, exact head f4feace… 44/44 SUCCESS. 21 unique donors catalogued, but human legal clearance 0/21, detailed code-diff coverage 1/21, test verification 1/21 and release verification 0/21. The intake pass copied no donor code and installed no dependencies. Its DSPy/GEPA adapter is optional validation-only protocol glue, not a running optimizer; a multi-candidate Pareto archive is only a preliminary gap hypothesis pending a full branch search. Base snapshot is 189643e…; live source is 1a031… . Do not infer donor integration from the register.
-- #864 — consequence-cost policy; Draft, exact head 21d979… 8/8 SUCCESS. Tool registry review and heuristic weight review remain open.
-- #866 — HMX 1.7 canonical apply; Draft, exact head 928b85… 29/30 SUCCESS. HMX apply and source-lineage checks pass; evaluator check awaits the existing ACP compatibility fix in #853.
-- #853 — Inspect ACP compatibility; open, exact head 2bae288… 5/5 SUCCESS, not merged.
-- #854 — isolated documentation branch; this cycle adds the 2026-11-13 report and refreshes the top handoff/checkpoints only.
-- #865 — exact pending decision / grounded reafference baseline defect; investigate independently from ACP startup.
-- No PR was merged, closed or deleted; no branch was deleted or force-pushed.
+- #886 — P23 candidate population search; Draft, head 4acd1ecb48f866c784a1c36d4e95185172e31064. The test syntax fix is committed; verify all 21 exact-head checks.
+- #885 — verified self-authored agenda/outcome attribution; Draft, head fb7c3cf79f4a8467781ea6073c232fc5e0aa0a60. B335 exact-head rerun is in progress.
+- #889 — SelfModel/identity restore hardening; Draft, 7/7 SUCCESS.
+- #883 — first-launch health-gated prototype; Draft, 5/5 SUCCESS.
+- #881/#882 — HMX and canonical memory projection; Draft, 17/17 and 13/13 SUCCESS.
+- #884 — Live2D frontend readback acknowledgements; open, 7/7 SUCCESS.
+- #887 — P23 holdout firewall; Draft, 7/7 SUCCESS.
+- #888 — consequence-cost policy; Draft, 7/7 SUCCESS.
+- #852 — external action grounding/proof boundary; open, 19/19 SUCCESS.
+- #854 — isolated documentation/handoff PR. No PR is merged or closed by this cycle.
 
 ## Release and legal gate
 
@@ -35,14 +39,13 @@
 
 ## Next actions
 
-1. Human review and separately authorized integration of #853; then rerun #866's independent-evidence-evaluation check without duplicating the ACP pin.
-2. Investigate #865 from exact decisionId propagation through OutcomeVerificationService to CanonicalTemporalCredit; add a restore/replay regression.
-3. Obtain a supported binary-download path for the prerelease ZIP; recompute SHA-256, inspect archive members/CRC and compare internal manifest/source provenance.
-4. Complete human path-level license/NOTICE and model/voice/avatar asset review before redistribution.
-5. Acquire immutable licensed RU/EN holdout with independent source groups (at least 5 paired seeds), then run Android/Termux, browser avatar and audio-lip soak tests.
+1. Verify exact-head CI for #886 after commit 4acd1ecb and keep it Draft.
+2. Wait for #885 B335 rerun; then implement the one-argument propagation fix for #865 in the existing branch and run the existing action-gateway-idempotency-workpass37 regression plus Core checks.
+3. Refresh exact PR heads, checks and branch ancestry; do not duplicate overlapping contracts.
+4. Obtain immutable licensed RU/EN holdout (at least five paired seeds) and human path-level license review.
+5. Obtain supported ZIP-byte access and a real Android/Termux device for archive, performance, speech and avatar soak.
 
-**Progress rule:** keep implemented / connected / tested / released distinct. No global readiness increase from this cycle. Do not merge, close PRs, delete branches, force-push, change production, provision databases/secrets or publish Release without separate explicit authorization.
-
+**Progress rule:** keep implemented / connected / tested / released distinct. No global readiness increase. Do not merge, close PRs, delete branches, force-push, change production, provision databases/secrets or publish Release without separate explicit authorization.
 ---
 
 # ARCHIVED HANDOFF — 2026-11-01
