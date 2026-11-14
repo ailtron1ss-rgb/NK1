@@ -4,12 +4,8 @@ on:
     branches: [workpass70-source]
     paths:
       - '.github/workflows/p23-candidate-population.yml'
-      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23CandidateParetoArchive.ts'
-      - 'runtime/neuro-kurisu/tests/p23-candidate-pareto-archive.mjs'\n      - 'runtime/neuro-kurisu/tests/p23-validation-only-candidate-evaluator.mjs'
-      - 'runtime/neuro-kurisu/tests/p23-validation-only-candidate-evaluator.mjs'
-      - 'runtime/neuro-kurisu/tests/p23-reflective-candidate-population-search.mjs'
-      - 'runtime/neuro-kurisu/tests/p23-population-revision-coordinator.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-candidate-pareto-archive.mjs'
   workflow_dispatch:
 permissions:
   contents: read
