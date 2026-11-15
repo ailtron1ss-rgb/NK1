@@ -381,8 +381,10 @@ export class MemoryFabric {
     // lexical recall stays available while a bounded maintenance batch warms the index.
     if(this.cognitionSemanticInFlight||this.semanticMaintenanceInFlight) return finish(fallback);
     const providerTimeout=Math.max(500,Math.min(20000,Number(process.env.NK_EMBEDDINGS_TIMEOUT_MS??5000)||5000));
+    const configuredSimilarity=Number(process.env.NK_EMBEDDINGS_MIN_SIMILARITY01??0.72);
+    const minSimilarity01=Number.isFinite(configuredSimilarity)?Math.max(0.60,Math.min(0.95,configuredSimilarity)):0.72;
     const work=this.memoryOS.previewRetrieveWithEmbeddings(query,safeLimit,goalRelevance,identityRelevance,
-      temporalContext,{maxIndexItems:12,maxLexicalPool:24,providerTimeoutMs:providerTimeout});
+      temporalContext,{maxIndexItems:12,maxLexicalPool:24,providerTimeoutMs:providerTimeout,minSimilarity01});
     const tracked=work.finally(()=>{if(this.cognitionSemanticInFlight===tracked)this.cognitionSemanticInFlight=null;});
     this.cognitionSemanticInFlight=tracked;
     let timer:ReturnType<typeof setTimeout>|undefined;

@@ -454,8 +454,8 @@ type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLi
 const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; spatial?:MemorySpatialQuery; }
-export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
-export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; providerTimeoutMs?:number; }
+export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number;minSimilarity01?:number;topSimilarity01?:number;abstained?:boolean}; }
+export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; providerTimeoutMs?:number; minSimilarity01?:number; }
 export interface SemanticIndexMaintenanceResult {
  enabled:boolean; provider:string; model:string; considered:number; indexed:number; failed:number; staleSkipped:number;
  indexedItems:number; corpusItems:number; remaining:number; waitingForRetry:number; nextRetryAt:number|null;
@@ -738,6 +738,11 @@ export class MemoryOS2{
  async previewRetrieveWithEmbeddings(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},performanceOptions:SemanticRetrievalPerformanceOptions={}):Promise<SemanticMemoryPreview>{
    const safeLimit=Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8)));
    const fallbackItems=this.previewRetrieve(query,safeLimit,goalRelevance,identityRelevance,temporalOptions);
+   // Embedding similarity is not itself proof that a memory answers the query. Use a
+   // conservative bounded floor and fall back to grounded lexical retrieval when no
+   // semantic candidate clears it. The threshold remains explicit in diagnostics.
+   const requestedMinimum=Number(performanceOptions.minSimilarity01??0.72);
+   const minSimilarity01=Number.isFinite(requestedMinimum)?Math.max(0.60,Math.min(0.95,requestedMinimum)):0.72;
    const provider=this.embeddingProvider;
    const providerDiag=provider?.diagnostics();
    if(!provider||!String(query??'').trim()){
@@ -814,9 +819,15 @@ export class MemoryOS2{
        const diag=provider.diagnostics();
        return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:'no-valid-semantic-candidates',cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
      }
-     const items=semanticRows.slice(0,safeLimit).map(row=>structuredClone(row.item));
+     const topSimilarity01=semanticRows[0]?.similarity??0;
+     const qualifiedRows=semanticRows.filter(row=>row.similarity>=minSimilarity01);
+     if(!qualifiedRows.length){
+       const diag=provider.diagnostics();
+       return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:'semantic-similarity-below-grounding-threshold',cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs,minSimilarity01,topSimilarity01,abstained:true}};
+     }
+     const items=qualifiedRows.slice(0,safeLimit).map(row=>structuredClone(row.item));
      const diag=provider.diagnostics();
-     return {items,semantic:{enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
+     return {items,semantic:{enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs,minSimilarity01,topSimilarity01,abstained:false}};
    }catch(error){
      const diag=provider.diagnostics();
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
