@@ -46,6 +46,7 @@ function input(fingerprint, values, extra = {}) {
     seed: 17,
     validationManifestFingerprint: digest('f'),
     validationPlanFingerprint: digest('d'),
+    environmentFingerprint: digest('g'),
     reports: reports(values, extra),
   };
 }
@@ -80,6 +81,12 @@ assert.equal(archive.snapshot().some(row => row.candidateFingerprint === digest(
 // A candidate from another validation plan cannot be compared to this cohort.
 assert.throws(
   () => archive.add({ ...input('5', { skill: .9, trajectory: .9 }), validationPlanFingerprint: digest('1') }),
+  /validation-cohort-mismatch/,
+);
+
+// Candidates from a different execution environment cannot share the Pareto cohort.
+assert.throws(
+  () => archive.add({ ...input('7', { skill: .9, trajectory: .9 }), environmentFingerprint: digest('h') }),
   /validation-cohort-mismatch/,
 );
 

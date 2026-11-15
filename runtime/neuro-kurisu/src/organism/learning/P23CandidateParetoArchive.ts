@@ -35,6 +35,7 @@ export interface PopulationCandidateRecord {
   split: 'validation';
   validationManifestFingerprint: string;
   validationPlanFingerprint: string;
+  environmentFingerprint: string;
   coverageFingerprint: string;
   objectives: ValidationObjectiveVector;
   perTask: PopulationCandidateTaskRecord[];
@@ -52,6 +53,8 @@ export interface PopulationCandidateInput {
   seed: number;
   validationManifestFingerprint: string;
   validationPlanFingerprint: string;
+  /** Execution environment identity; candidates from different environments are incomparable. */
+  environmentFingerprint: string;
   reports: readonly SkillLearnBenchTrialReport[];
 }
 
@@ -129,6 +132,7 @@ function sameValidationCohort(a: Readonly<PopulationCandidateRecord>, b: Readonl
   return a.sourceFingerprint === b.sourceFingerprint &&
     a.validationManifestFingerprint === b.validationManifestFingerprint &&
     a.validationPlanFingerprint === b.validationPlanFingerprint &&
+    a.environmentFingerprint === b.environmentFingerprint &&
     a.coverageFingerprint === b.coverageFingerprint;
 }
 
@@ -187,6 +191,7 @@ function buildCandidateRecord(
   }
   if (!DIGEST.test(input.candidateFingerprint) || !DIGEST.test(input.sourceFingerprint) ||
       !DIGEST.test(input.validationManifestFingerprint) || !DIGEST.test(input.validationPlanFingerprint) ||
+      !DIGEST.test(input.environmentFingerprint) ||
       !isSafeIdentity(input.variationId, 96) ||
       !Number.isSafeInteger(input.seed) || input.seed < 0) {
     throw new Error('p23-population-candidate-identity-invalid');
@@ -268,6 +273,7 @@ function buildCandidateRecord(
     split: 'validation',
     validationManifestFingerprint: input.validationManifestFingerprint,
     validationPlanFingerprint: input.validationPlanFingerprint,
+    environmentFingerprint: input.environmentFingerprint,
     coverageFingerprint,
     objectives: {
       // Macro-average task means so tasks with many repeated trials cannot dominate.
@@ -290,7 +296,7 @@ export class P23CandidateParetoArchive {
   private readonly maxTaskRows: number;
   private records: PopulationCandidateRecord[] = [];
   private cohort: Pick<PopulationCandidateRecord,
-    'sourceFingerprint'|'validationManifestFingerprint'|'validationPlanFingerprint'|'coverageFingerprint'> | null = null;
+    'sourceFingerprint'|'validationManifestFingerprint'|'validationPlanFingerprint'|'environmentFingerprint'|'coverageFingerprint'> | null = null;
   private readonly seenFingerprints = new Set<string>();
 
   constructor(options: P23CandidateParetoArchiveOptions = {}) {
@@ -308,6 +314,7 @@ export class P23CandidateParetoArchive {
         (this.cohort.sourceFingerprint !== record.sourceFingerprint ||
          this.cohort.validationManifestFingerprint !== record.validationManifestFingerprint ||
          this.cohort.validationPlanFingerprint !== record.validationPlanFingerprint ||
+         this.cohort.environmentFingerprint !== record.environmentFingerprint ||
          this.cohort.coverageFingerprint !== record.coverageFingerprint)) {
       throw new Error('p23-population-validation-cohort-mismatch');
     }
@@ -316,6 +323,7 @@ export class P23CandidateParetoArchive {
         sourceFingerprint: record.sourceFingerprint,
         validationManifestFingerprint: record.validationManifestFingerprint,
         validationPlanFingerprint: record.validationPlanFingerprint,
+        environmentFingerprint: record.environmentFingerprint,
         coverageFingerprint: record.coverageFingerprint,
       };
     }

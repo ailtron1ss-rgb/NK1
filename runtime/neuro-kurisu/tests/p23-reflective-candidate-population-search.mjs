@@ -204,6 +204,26 @@ await assert.rejects(
   /validation-coverage-mismatch/,
 );
 
+// A population cannot compare candidates evaluated under different runtime environments.
+const environmentDrift = makeInput({
+  validationEvaluator: {
+    async evaluate(input) {
+      environmentDrift.evaluations.push(input);
+      return {
+        payloadFingerprint: input.payloadFingerprint,
+        validationManifestFingerprint: manifestFingerprint,
+        validationPlanFingerprint: planFingerprint,
+        environmentFingerprint: digest(environmentDrift.evaluations.length === 1 ? 'environment-a' : 'environment-b'),
+        reports: reports({ pass: [1, 1], skill: .9, trajectory: .9 }),
+      };
+    },
+  },
+});
+await assert.rejects(
+  population.runP23ReflectiveCandidatePopulationSearch(environmentDrift.input),
+  /validation-cohort-mismatch/,
+);
+
 // Timeout aborts in-flight generation and returns no winner.
 const timedOut = makeInput({
   async generateCandidate(request) {

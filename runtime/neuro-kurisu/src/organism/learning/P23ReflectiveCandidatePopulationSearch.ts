@@ -592,6 +592,7 @@ export async function runP23ReflectiveCandidatePopulationSearch(
         seed: variation.seed,
         validationManifestFingerprint: evaluation.validationManifestFingerprint,
         validationPlanFingerprint: evaluation.validationPlanFingerprint,
+        environmentFingerprint: evaluation.environmentFingerprint,
         reports: evaluation.reports,
       });
       if (admitted.status === 'safety-rejected') diagnostics.safetyRejected++;
@@ -600,9 +601,7 @@ export async function runP23ReflectiveCandidatePopulationSearch(
     if (combinedSignal.aborted) throw new Error('p23-population-timeout');
     const winner = archive.winner();
     if (!winner) return noImprovement(archive, diagnostics);
-    const winnerObjective = macroObjective(
-      input.sourceValidationReports.map(report => report),
-    );
+    const winnerObjective = baselineObjective;
     const selectedObjective = .5 * winner.objectives.taskSuccess01 +
       .2 * winner.objectives.skillQuality01 +
       .3 * winner.objectives.trajectoryQuality01;
