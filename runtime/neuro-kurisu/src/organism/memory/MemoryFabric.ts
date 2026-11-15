@@ -8,6 +8,7 @@ import { UnifiedMemorySystem, type MemoryDevelopmentState } from '../development
 import { P62MemoryFabric, type P62Frame } from './P62MemoryFabric.ts';
 import { SemanticMemoryGraph } from './SemanticMemoryGraph.ts';
 import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type MemoryPolicyDelayedOutcome } from '../system/MemoryPolicyOutcomeLedger.ts';
+import { MemoryTaskConditionedUtilityLedger, type MemoryTaskConditionedUtilityProbeInput, type MemoryTaskConditionedUtilityResolutionInput, type MemoryTaskConditionedUtilityLookupInput } from '../system/MemoryTaskConditionedUtilityLedger.ts';
 
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
@@ -72,6 +73,8 @@ export interface MemoryFabricSnapshot {
   hotIds: string[];
   residency?: { counts:{hot:number;warm:number;cold:number}; targetItems:number; materializedVectors:number };
   policyOutcomeLedger?: ReturnType<MemoryPolicyOutcomeLedger['snapshot']>;
+  /** Paired task-conditioned utility evidence; audit-only and never a retrieval/retention command. */
+  taskConditionedUtility?: ReturnType<MemoryTaskConditionedUtilityLedger['snapshot']>;
   /** Persisted command receipts prevent the same external mutation from replaying after restore. */
   mutationReceipts?: MemoryLifecycleReceipt[];
 }
@@ -83,6 +86,8 @@ export interface MemoryFabricRestore {
   stats?: Partial<MemoryFabricSnapshot['stats']>;
   hotIds?: string[];
   policyOutcomeLedger?: ReturnType<MemoryPolicyOutcomeLedger['snapshot']>;
+  /** Paired task-conditioned utility evidence; audit-only and never a retrieval/retention command. */
+  taskConditionedUtility?: ReturnType<MemoryTaskConditionedUtilityLedger['snapshot']>;
   /** Persisted command receipts prevent the same external mutation from replaying after restore. */
   mutationReceipts?: MemoryLifecycleReceipt[];
 }
@@ -134,6 +139,7 @@ export class MemoryFabric {
   private readonly semanticMemory:SemanticMemoryGraph;
   private lastMaintenanceTick=-1;
   private readonly policyOutcomeLedger=defaultMemoryPolicyOutcomeLedger();
+  private readonly taskConditionedUtilityLedger=new MemoryTaskConditionedUtilityLedger();
   private readonly mutationReceipts=new Map<string,MemoryLifecycleReceipt>();
   private retiredMutationReceiptBloom=new Uint8Array(RETIRED_RECEIPT_BLOOM_BYTES);
   private retiredMutationReceiptCount=0;
@@ -548,7 +554,7 @@ export class MemoryFabric {
   snapshot():MemoryFabricSnapshot {
     return {
       version:2,stats:{...this.statsData},hotIds:[...this.hotIds],residency:this.memoryOS.residencyDiagnostics(),
-      policyOutcomeLedger:this.policyOutcomeLedger.snapshot(),mutationReceipts:[...this.mutationReceipts.values()].slice(-this.maxMutationReceipts).map(row=>({...row})),
+      policyOutcomeLedger:this.policyOutcomeLedger.snapshot(),taskConditionedUtility:this.taskConditionedUtilityLedger.snapshot(),mutationReceipts:[...this.mutationReceipts.values()].slice(-this.maxMutationReceipts).map(row=>({...row})),
       ...(this.retiredMutationReceiptCount?{retiredMutationReceiptBloom:encodeBase64Bytes(this.retiredMutationReceiptBloom),retiredMutationReceiptCount:this.retiredMutationReceiptCount}:{}),
       ...(this.retiredMutationReceiptBloomCorrupt?{retiredMutationReceiptBloomCorrupt:true}:{}),
     };
@@ -559,6 +565,7 @@ export class MemoryFabric {
     Object.assign(this.statsData,{...this.statsData,...raw.stats});
     this.hotIds.length=0;this.hotIds.push(...(raw.hotIds??[]).slice(0,this.config.maxHotItems));
     this.policyOutcomeLedger.restore(raw.policyOutcomeLedger);
+    this.taskConditionedUtilityLedger.restore(raw.taskConditionedUtility);
     this.mutationReceipts.clear();
     this.retiredMutationReceiptBloom=new Uint8Array(RETIRED_RECEIPT_BLOOM_BYTES);
     this.retiredMutationReceiptCount=Math.max(0,Math.floor(Number(raw.retiredMutationReceiptCount??0)));
@@ -590,6 +597,10 @@ export class MemoryFabric {
   }
   adaptivePolicyOutcomeDiagnostics(){return {...this.policyOutcomeLedger.diagnostics(),lastPolicyDecisionId:this.lastPolicyDecisionId};}
   lastAdaptivePolicyDecisionId(){return this.lastPolicyDecisionId??null;}
+  registerTaskConditionedUtilityProbe(input:MemoryTaskConditionedUtilityProbeInput){return this.taskConditionedUtilityLedger.register(input);}
+  resolveTaskConditionedUtilityProbe(input:MemoryTaskConditionedUtilityResolutionInput){return this.taskConditionedUtilityLedger.resolve(input);}
+  taskConditionedUtilityEvidence(input:MemoryTaskConditionedUtilityLookupInput){return this.taskConditionedUtilityLedger.lookup(input);}
+  taskConditionedUtilityDiagnostics(){return this.taskConditionedUtilityLedger.diagnostics();}
   retrieveWithPolicyDecision(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean}={}){
     const rows=this.retrieve(query,limit,goalRelevance,identityRelevance,context);
     return {decisionId:this.lastPolicyDecisionId??null,rows};
@@ -636,6 +647,7 @@ export class MemoryFabric {
       hotItems:this.hotIds.length,
       stats:{...this.statsData},
       retrievalAccounting:{...this.lastRetrievalOutcome},
+      taskConditionedUtility:this.taskConditionedUtilityLedger.diagnostics(),
       eventWindow:this.compactRecentEvents(),
       mutationReceiptJournal:{count:this.mutationReceipts.size,capacity:this.maxMutationReceipts,retiredCount:this.retiredMutationReceiptCount,tombstoneBytes:this.retiredMutationReceiptCount?RETIRED_RECEIPT_BLOOM_BYTES:0,corrupt:this.retiredMutationReceiptBloomCorrupt},
     };
