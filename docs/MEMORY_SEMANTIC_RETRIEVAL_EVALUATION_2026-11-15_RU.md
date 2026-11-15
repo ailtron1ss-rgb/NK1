@@ -12,6 +12,27 @@
 
 До оценки запросов семантический индекс целиком строится на изолированном клоне bounded corpus. Если индексация неполная или provider падает, эксперимент возвращает skipped и не сравнивает частично заполненный индекс. На holdout рассчитываются Recall@K, MRR, Precision@K, false abstention и unsupported retrieval; paired bootstrap пересэмплирует целые independence groups.
 
+## Запуск с реальным локальным embedding provider
+
+После подготовки snapshot, ручной разметки и финализации пакета WorkPass512:
+
+```bash
+NK_EMBEDDINGS_ENABLED=1 \
+NK_EMBEDDINGS_PROVIDER=ollama \
+NK_EMBEDDINGS_BASE_URL=http://127.0.0.1:11434 \
+NK_EMBEDDINGS_MODEL=embeddinggemma \
+npm --prefix runtime/neuro-kurisu run run:memory-semantic-retrieval-benchmark -- \
+  --snapshot /private/path/MemoryOSState2.json \
+  --labels /private/path/nk1-validated-dataset/labels.jsonl \
+  --provenance /private/path/nk1-validated-dataset/dataset-provenance.json \
+  --out /private/path/nk1-semantic-report.json \
+  --seed 31 --bootstrap-samples 1000 --min-similarity 0.72
+```
+
+Команда по умолчанию обращается только к loopback Ollama. Для локального OpenAI-compatible сервера используй `NK_EMBEDDINGS_PROVIDER=openai-compatible`, `NK_EMBEDDINGS_BASE_URL=http://127.0.0.1:8080/v1` и реальное имя embedding-модели. Удалённый provider запрещён по умолчанию; для явно доверенного endpoint требуются одновременно `NK_EMBEDDINGS_ALLOW_REMOTE=1` и HTTPS.
+
+Отчёт создаётся атомарно с правами владельца и не перезаписывает существующий файл. В него не попадают raw query и memory ID; absolute local paths также исключены. `--inspect-evidence true` включает только одноразово HMAC-обезличенные digest-строки. При ошибке provider или неполном индексе результат получает `skipped`; частичное сравнение не выполняется.
+
 ## Ограничения
 
 Тесты используют синтетического fixture-provider только для проверки маршрута и честности отчёта. Они не оценивают настоящий embedding model и не подтверждают retrieval uplift.
