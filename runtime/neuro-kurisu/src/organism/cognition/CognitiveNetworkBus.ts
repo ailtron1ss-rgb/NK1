@@ -36,13 +36,23 @@ const names: SpecialistName[] = ['salience','affect','executive','default','sens
 const validNames = new Set<string>(names);
 const defaultWeights:Record<SpecialistName,number> = { salience:1, affect:0.92, executive:1, default:0.9, sensorimotor:1, memory:0.95, social:0.8, language:0.75 };
 const asRecord=(value:unknown):Record<string,unknown> => value && typeof value==='object' && !Array.isArray(value) ? value as Record<string,unknown> : {};
-const finiteInt=(value:unknown,fallback=0)=>Number.isFinite(Number(value))?Math.floor(Number(value)):fallback;
+
+/** Coerce untrusted plugin/restore values without allowing Symbol or hostile valueOf inputs to crash the bus. */
+const toFiniteNumber=(value:unknown,fallback=0):number=>{
+  try {
+    const parsed=Number(value);
+    return Number.isFinite(parsed)?parsed:fallback;
+  } catch {
+    return fallback;
+  }
+};
+const finiteInt=(value:unknown,fallback=0)=>Math.floor(toFiniteNumber(value,fallback));
 function normalizeSignal(value:unknown):SpecialistSignal|null {
   const raw=asRecord(value);
   const specialist=String(raw.specialist??'');
   if(!validNames.has(specialist)) return null;
   const evidence=Array.isArray(raw.evidence)?raw.evidence.filter((item):item is string=>typeof item==='string').slice(0,12).map(item=>item.slice(0,240)):[];
-  return { specialist:specialist as SpecialistName, score:clamp(Number(raw.score)), confidence:clamp(raw.confidence == null ? 0.5 : Number(raw.confidence)), target:typeof raw.target==='string'?raw.target.trim().slice(0,180):'', evidence, energyCost:clamp(Number(raw.energyCost)) };
+  return { specialist:specialist as SpecialistName, score:clamp(toFiniteNumber(raw.score)), confidence:clamp(raw.confidence == null ? 0.5 : toFiniteNumber(raw.confidence)), target:typeof raw.target==='string'?raw.target.trim().slice(0,180):'', evidence, energyCost:clamp(toFiniteNumber(raw.energyCost)) };
 }
 function signalUtility(signal:SpecialistSignal):number {
   // Confidence should influence attention without becoming a hard veto; energy is a modest homeostatic cost.
@@ -71,7 +81,7 @@ export function affectWorkspaceActionBias(
 }
 function normalizeWeights(value:unknown):Record<SpecialistName,number> {
   const raw=asRecord(value);
-  return Object.fromEntries(names.map(name=>[name,clamp(Number(raw[name]??defaultWeights[name]))])) as Record<SpecialistName,number>;
+  return Object.fromEntries(names.map(name=>[name,clamp(toFiniteNumber(raw[name]??defaultWeights[name]))])) as Record<SpecialistName,number>;
 }
 function normalizeBroadcast(value:unknown):NetworkBroadcast|null {
   if(!value || typeof value!=='object' || Array.isArray(value)) return null;
@@ -91,7 +101,7 @@ function normalizeBroadcast(value:unknown):NetworkBroadcast|null {
   const winner=validNames.has(persistedWinner)&&selected.some(signal=>signal.specialist===persistedWinner)?persistedWinner as SpecialistName:(selected[0]?.specialist??'default');
   const inhibited=Array.isArray(raw.inhibited)?[...new Set(raw.inhibited.map(String).filter(name=>validNames.has(name)))].slice(0,names.length) as SpecialistName[]:names.filter(name=>!selected.some(signal=>signal.specialist===name));
   const rationale=Array.isArray(raw.rationale)?raw.rationale.filter((item):item is string=>typeof item==='string').slice(0,16).map(item=>item.slice(0,240)):[];
-  return { id:typeof raw.id==='string'?raw.id.slice(0,120):'restored-broadcast', tick:Math.max(0,finiteInt(raw.tick)), winner, selected, inhibited, broadcastGain:clamp(Number(raw.broadcastGain)), recurrentCycles:Math.max(1,Math.min(4,Math.floor(Number(raw.recurrentCycles)||1))), weights:normalizeWeights(raw.weights), rationale };
+  return { id:typeof raw.id==='string'?raw.id.slice(0,120):'restored-broadcast', tick:Math.max(0,finiteInt(raw.tick)), winner, selected, inhibited, broadcastGain:clamp(toFiniteNumber(raw.broadcastGain)), recurrentCycles:Math.max(1,Math.min(4,finiteInt(raw.recurrentCycles,1)||1)), weights:normalizeWeights(raw.weights), rationale };
 }
 
 export class CognitiveNetworkBus {
@@ -145,6 +155,9 @@ export class CognitiveNetworkBus {
   }
 
   broadcast(): NetworkBroadcast | null { return this.state.lastBroadcast ? structuredClone(this.state.lastBroadcast) : null; }
-  updateCapacity(capacity:number): void { this.state.capacity = Math.max(1, Math.min(5, Math.round(capacity))); }
+  updateCapacity(capacity:number): void {
+    const next=toFiniteNumber(capacity,this.state.capacity);
+    this.state.capacity = Math.max(1, Math.min(5, Math.round(next)));
+  }
   snapshot(): CognitiveNetworkState { return structuredClone(this.state); }
 }
