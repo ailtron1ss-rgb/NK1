@@ -554,7 +554,8 @@ export class MemoryTaskConditionedUtilityLedger {
         typeof row.retrievalLatencyDeltaMs !== 'number' || !Number.isFinite(row.retrievalLatencyDeltaMs) ||
         Math.abs(row.retrievalLatencyDeltaMs) > MAX_LATENCY_MS || row.independentVerified !== true ||
         !finiteInteger(row.at, Number.MAX_SAFE_INTEGER)) return null;
-    return structuredClone(row as unknown as MemoryTaskConditionedUtilityOutcome);
+    const outcome = row as unknown as MemoryTaskConditionedUtilityOutcome;
+    return canonicalProbeId(outcome) === outcome.probeId ? structuredClone(outcome) : null;
   }
 
   private cleanAggregate(raw: unknown): MemoryTaskConditionedUtilityAggregate | null {
