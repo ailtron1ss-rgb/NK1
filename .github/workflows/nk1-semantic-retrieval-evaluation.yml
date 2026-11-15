@@ -8,6 +8,8 @@ on:
       - '.github/workflows/nk1-semantic-retrieval-evaluation.yml'
       - 'runtime/neuro-kurisu/src/organism/memory/MemorySemanticRetrievalBenchmark.ts'
       - 'runtime/neuro-kurisu/tests/memory-semantic-retrieval-benchmark-workpass1.mjs'
+      - 'runtime/neuro-kurisu/scripts/run-memory-semantic-retrieval-benchmark.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-semantic-retrieval-cli-workpass1.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/package-lock.json'
   pull_request:
@@ -17,6 +19,8 @@ on:
       - '.github/workflows/nk1-semantic-retrieval-evaluation.yml'
       - 'runtime/neuro-kurisu/src/organism/memory/MemorySemanticRetrievalBenchmark.ts'
       - 'runtime/neuro-kurisu/tests/memory-semantic-retrieval-benchmark-workpass1.mjs'
+      - 'runtime/neuro-kurisu/scripts/run-memory-semantic-retrieval-benchmark.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-semantic-retrieval-cli-workpass1.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/package-lock.json'
 
