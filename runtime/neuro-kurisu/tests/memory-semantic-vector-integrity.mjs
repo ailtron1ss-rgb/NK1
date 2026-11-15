@@ -56,7 +56,7 @@ for(const invalidQueryVector of [[Number.NaN,0],[Number.POSITIVE_INFINITY,1],[0,
 {
   const provider=makeProvider(texts=>[
     [1,0],
-    ...texts.slice(1).map(text=>text.includes('poisoned')?[Number.NaN,0]:[0,1]),
+    ...texts.slice(1).map(text=>text.includes('poisoned')?[Number.NaN,0]:[1,0]),
   ]);
   const memory=createMemory(provider);
   const response=await memory.previewRetrieveWithEmbeddings(query,2,0,0,temporal,perf);
