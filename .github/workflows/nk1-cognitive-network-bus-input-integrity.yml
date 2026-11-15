@@ -24,5 +24,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: ".nvmrc"
+          package-manager-cache: false
       - name: Validate cognitive bus hostile input normalization
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-network-bus-boundary.mjs
