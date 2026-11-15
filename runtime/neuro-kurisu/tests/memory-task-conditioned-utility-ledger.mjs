@@ -35,6 +35,7 @@ assert.ok(Math.abs(unverified.outcome.delta01 - .3) < 1e-12);
 assert.equal(unverified.aggregate, null);
 assert.equal(ledger.diagnostics().pending, 1);
 assert.equal(ledger.diagnostics().resolved, 0);
+assert.equal(ledger.snapshot().outcomes.length, 0, 'unverified pair outcomes must not be persisted');
 
 const verified = ledger.resolve({
   probeId: first.probe.id, withMemoryScore01: .8, withoutMemoryScore01: .5,
@@ -46,6 +47,7 @@ const verified = ledger.resolve({
 assert.equal(verified.accepted, true);
 assert.ok(Math.abs(verified.outcome.delta01 - .3) < 1e-12);
 assert.equal(verified.aggregate.samples, 1);
+assert.equal(ledger.snapshot().outcomes.length, 1, 'verified pair outcomes must be retained for audit');
 assert.equal(verified.aggregate.meanInputTokenDelta, 60);
 assert.equal(verified.aggregate.meanRetrievalLatencyDeltaMs, 4);
 
@@ -63,6 +65,7 @@ const lookupInput = {
   memoryId: base.memoryId, taskKeyHash: base.taskKeyHash, holdoutFingerprint: base.holdoutFingerprint,
   contextFingerprint: base.contextFingerprint, readerFingerprint: base.readerFingerprint,
   scorerFingerprint: base.scorerFingerprint, fillerFingerprint: base.fillerFingerprint,
+  insertionPosition: base.insertionPosition,
 };
 const lookup = ledger.lookup(lookupInput);
 assert.equal(lookup.samples, 2);
@@ -74,6 +77,7 @@ assert.equal(lookup.meanFormationCostTokens, 44.5);
 assert.equal(lookup.meanStorageBytes, 320.5);
 assert.equal(ledger.lookup({ ...lookupInput, taskKeyHash: fingerprint('task-2') }), null);
 assert.equal(ledger.lookup({ ...lookupInput, holdoutFingerprint: fingerprint('different-holdout') }), null);
+assert.equal(ledger.lookup({ ...lookupInput, insertionPosition: 1024 }), null, 'different insertion positions must not be pooled');
 
 const differentTask = ledger.register({ ...base, taskKeyHash: fingerprint('task-2'), seed: 7, at: 3_000 });
 assert.equal(differentTask.accepted, true);
@@ -90,6 +94,7 @@ const snapshot = ledger.snapshot();
 const restored = new MemoryTaskConditionedUtilityLedger();
 restored.restore(snapshot);
 assert.deepEqual(restored.snapshot(), snapshot);
+assert.equal(restored.snapshot().outcomes.length, 2);
 assert.deepEqual(restored.lookup(lookupInput), lookup);
 
 let getterCalled = false;
