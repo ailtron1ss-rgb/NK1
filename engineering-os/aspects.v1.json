@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "name": "NK1 / NeuroCore 75-aspect execution registry",
   "version": "1.0.0",
-  "date": "2026-11-11",
+  "date": "2026-11-15",
   "baseBranch": "workpass70-source",
-  "observedSourceHead": "189643ede8f3904dd670f0109a28b7536e894c00",
-  "observedSourceHeadNote": "Observed on 2026-11-11 from the live GitHub workpass70-source branch. Exact-SHA push checks: 7/7 SUCCESS. Snapshot only: refresh the live head before future writes. The latest published ZIP binary was not inspected, and no aspect status is promoted by this metadata refresh.",
+  "observedSourceHead": "1e83a011fc677ff20f2348570322bd562181d9ff",
+  "observedSourceHeadNote": "Live GitHub workpass70-source head re-read on 2026-11-15. Exact-SHA push checks: 5/5 SUCCESS. PR #896 adds exception-safe CognitiveNetworkBus numeric normalization; exact PR-head Actions: 7/7 SUCCESS. This does not promote the OrganismBus integration aspect: full routing/synchronization and Release ZIP parity remain unverified. No aspect status is promoted by this checkpoint.",
   "purpose": "Executable, machine-readable backlog for the 75 development aspects, grouped in 10 domains and 6 waves, with explicit owners, dependencies, exit evidence and fail-closed progress accounting. It plans work; it does not claim capability.",
   "evidenceVocabulary": [
     "PROVEN",
@@ -320,7 +320,7 @@
       "verificationGate": "integration",
       "status": "IMPLEMENTED",
       "evidence": null,
-      "notes": "Event bus exists; full routing and synchronisation contract is not independently verified."
+      "notes": "Event bus exists and is the canonical owner. PR #896 adds exception-safe numeric normalization for hostile plugin/restore values; focused and cross-cutting exact-head Actions passed on the Draft branch. Full routing and synchronization contract is still not independently verified; status remains IMPLEMENTED."
     },
     {
       "n": 3,
