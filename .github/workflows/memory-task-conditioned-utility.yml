@@ -1,0 +1,41 @@
+name: Memory Task-Conditioned Utility
+
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryTaskConditionedUtilityLedger.ts"
+      - "runtime/neuro-kurisu/tests/memory-task-conditioned-utility-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/memory-task-conditioned-utility.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryTaskConditionedUtilityLedger.ts"
+      - "runtime/neuro-kurisu/tests/memory-task-conditioned-utility-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/memory-task-conditioned-utility.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paired-memory-utility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci
+        working-directory: runtime/neuro-kurisu
+      - run: npm run typecheck
+        working-directory: runtime/neuro-kurisu
+      - run: npm run test:memory-task-conditioned-utility
+        working-directory: runtime/neuro-kurisu
