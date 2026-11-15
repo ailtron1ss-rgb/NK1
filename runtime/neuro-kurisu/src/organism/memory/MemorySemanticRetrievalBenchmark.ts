@@ -164,7 +164,7 @@ const languageGatesForDisplay=(gates:Record<string,boolean>,_language:string)=>g
     const unanswerableGroups=new Set(unanswerableRows.map(row=>row.independenceGroupId??row.id)).size;
     const languageRecallDelta=languageSemantic.metrics.recallAtK01-languageBaseline.metrics.recallAtK01;
     const languageMrrDelta=languageSemantic.metrics.mrr01-languageBaseline.metrics.mrr01;
-    const languageGates={
+    const languageGateResults={
       sufficientAnswerableQueries:answerableRows.length>=Math.max(8,minAnswerable),
       sufficientUnanswerableQueries:unanswerableRows.length>=Math.max(2,minimumUnanswerablePerLanguage(options)),
       sufficientIndependentAnswerableGroups:answerableGroups>=Math.max(8,minAnswerable),
@@ -174,7 +174,7 @@ const languageGatesForDisplay=(gates:Record<string,boolean>,_language:string)=>g
       mrrNonInferioritySupported:languageMrrConfidence.lowerBound01>=-mrrTolerance,
       unsupportedRetrievalNonInferioritySupported:languageUnsupportedConfidence.upperBound01<=unsupportedTolerance,
     };
-    languageGates[language]=Object.values(languageGates).every(Boolean);
+    languageGates[language]=Object.values(languageGateResults).every(Boolean);
     languageSlices[language]={
       trainQueries:train.filter(row=>row.language===language).length,
       holdoutQueries:languageRows.length,
@@ -185,7 +185,7 @@ const languageGatesForDisplay=(gates:Record<string,boolean>,_language:string)=>g
       metrics:{baseline:languageBaseline.metrics,semantic:languageSemantic.metrics},
       deltas:{recallAtK01:Number(languageRecallDelta.toFixed(4)),mrr01:Number(languageMrrDelta.toFixed(4))},
       confidence:{recallAtK01:languageRecallConfidence,mrr01:languageMrrConfidence,unsupportedRetrievalRate01:languageUnsupportedConfidence},
-      gates:languageGatesForDisplay(languageGates,language),
+      gates:languageGateResults,
     };
   }
   const bilingual=reference.languageStratification?.enabled===true&&reference.languageStratification?.annotationsComplete===true&&
