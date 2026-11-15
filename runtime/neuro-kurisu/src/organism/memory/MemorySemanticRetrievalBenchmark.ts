@@ -1,8 +1,9 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { MemoryOSState2, MemoryItem2 } from '../developmental/MemoryOS2.ts';
 import { MemoryOS2 } from '../developmental/MemoryOS2.ts';
 import type { TextEmbeddingProvider } from '../developmental/LocalEmbeddingProvider.ts';
 import {
+  hmacSha256Hex,
   runMemoryOS2RetrievalBenchmark,
   type MemoryRetrievalBenchmarkExample,
   type MemoryRetrievalBenchmarkOptions,
@@ -144,8 +145,51 @@ export async function runMemoryOS2SemanticRetrievalBenchmark(
   const unanswerableHoldout=holdout.filter(row=>row.answerable===false).length;
   const minAnswerable=Math.max(8,Math.floor(Number(options.minHoldoutQueries??8)));
   const minUnanswerable=Math.max(4,Math.floor(Number(options.minUnanswerableHoldoutQueries??4)));
+const minimumUnanswerablePerLanguage=(options:MemorySemanticRetrievalBenchmarkOptions)=>Math.max(2,Math.floor(Number(options.minLanguageUnanswerableHoldoutQueries??2)));
+const languageGatesForDisplay=(gates:Record<string,boolean>,_language:string)=>gates;
+  const languageSlices:Record<string,unknown>={};
+  const languageGates:Record<string,boolean>={};
+  for(const language of ['en','ru'] as const){
+    const languageRows=holdout.filter(row=>row.language===language);
+    if(!languageRows.length)continue;
+    const languageBaseline=evaluate(languageRows,retrieve(baselineMap),k,now);
+    const languageSemantic=evaluate(languageRows,retrieve(semanticMap),k,now);
+    const languageSeed=((seed^(language==='en'?0x13579bdf:0x2468ace0))>>>0)||1;
+    const languageRecallConfidence=pairedBootstrap(languageBaseline.outcomes,languageSemantic.outcomes,'recallAtK01',bootstrapSamples,languageSeed);
+    const languageMrrConfidence=pairedBootstrap(languageBaseline.outcomes,languageSemantic.outcomes,'mrr01',bootstrapSamples,languageSeed^0x9e3779b9);
+    const languageUnsupportedConfidence=valueBootstrap(languageBaseline.unsupportedRetrievalOutcomes,languageSemantic.unsupportedRetrievalOutcomes,bootstrapSamples,languageSeed^0x85ebca6b);
+    const answerableRows=languageRows.filter(row=>row.answerable!==false);
+    const unanswerableRows=languageRows.filter(row=>row.answerable===false);
+    const answerableGroups=new Set(answerableRows.map(row=>row.independenceGroupId??row.id)).size;
+    const unanswerableGroups=new Set(unanswerableRows.map(row=>row.independenceGroupId??row.id)).size;
+    const languageRecallDelta=languageSemantic.metrics.recallAtK01-languageBaseline.metrics.recallAtK01;
+    const languageMrrDelta=languageSemantic.metrics.mrr01-languageBaseline.metrics.mrr01;
+    const languageGates={
+      sufficientAnswerableQueries:answerableRows.length>=Math.max(8,minAnswerable),
+      sufficientUnanswerableQueries:unanswerableRows.length>=Math.max(2,minimumUnanswerablePerLanguage(options)),
+      sufficientIndependentAnswerableGroups:answerableGroups>=Math.max(8,minAnswerable),
+      sufficientIndependentUnanswerableGroups:unanswerableGroups>=Math.max(2,minimumUnanswerablePerLanguage(options)),
+      minimumRecallUplift:languageRecallDelta>=minUplift,
+      recallConfidenceSupported:languageRecallConfidence.lowerBound01>0,
+      mrrNonInferioritySupported:languageMrrConfidence.lowerBound01>=-mrrTolerance,
+      unsupportedRetrievalNonInferioritySupported:languageUnsupportedConfidence.upperBound01<=unsupportedTolerance,
+    };
+    languageGates[language]=Object.values(languageGates).every(Boolean);
+    languageSlices[language]={
+      trainQueries:train.filter(row=>row.language===language).length,
+      holdoutQueries:languageRows.length,
+      answerableHoldoutQueries:answerableRows.length,
+      unanswerableHoldoutQueries:unanswerableRows.length,
+      independentAnswerableHoldoutGroups:answerableGroups,
+      independentUnanswerableHoldoutGroups:unanswerableGroups,
+      metrics:{baseline:languageBaseline.metrics,semantic:languageSemantic.metrics},
+      deltas:{recallAtK01:Number(languageRecallDelta.toFixed(4)),mrr01:Number(languageMrrDelta.toFixed(4))},
+      confidence:{recallAtK01:languageRecallConfidence,mrr01:languageMrrConfidence,unsupportedRetrievalRate01:languageUnsupportedConfidence},
+      gates:languageGatesForDisplay(languageGates,language),
+    };
+  }
   const bilingual=reference.languageStratification?.enabled===true&&reference.languageStratification?.annotationsComplete===true&&
-    reference.languageStratification?.slices?.en?.holdoutQueries>=minAnswerable&&reference.languageStratification?.slices?.ru?.holdoutQueries>=minAnswerable;
+    Boolean(languageSlices.en)&&Boolean(languageSlices.ru)&&languageGates.en===true&&languageGates.ru===true;
   const noUnsafe=semanticHoldout.metrics.quarantinedResultCount===0&&semanticHoldout.metrics.staleResultCount===0&&semanticHoldout.metrics.futureResultCount===0&&
     semanticHoldout.metrics.dormantResultCount===0&&semanticHoldout.metrics.invalidEpistemicStatusResultCount===0&&semanticHoldout.metrics.invalidResultRate01<=baselineHoldout.metrics.invalidResultRate01;
   const gates={
@@ -166,15 +210,20 @@ export async function runMemoryOS2SemanticRetrievalBenchmark(
   const abstainedQueries=[...semanticFlags.values()].filter(flag=>flag.abstained).length;
   const fallbackReasons:Record<string,number>={};
   for(const flag of semanticFlags.values())if(flag.fallbackReason)fallbackReasons[flag.fallbackReason]=(fallbackReasons[flag.fallbackReason]??0)+1;
-  const queryEvidence=options.includeQueryEvidence===true?rows.map(row=>({
-    exampleIdDigest:createHash('sha256').update(row.id).digest('hex'),
-    queryDigest:createHash('sha256').update(normalizeQuery(row.query)).digest('hex'),
-    groupDigest:createHash('sha256').update(row.independenceGroupId??row.id).digest('hex'),
-    split:row.split,language:row.language??'other',answerable:row.answerable!==false,
-    relevantIdDigests:row.relevantIds.map(id=>createHash('sha256').update(id).digest('hex')).sort(),
-    baselineRankedIdDigests:(baselineMap.get(row.query)?.items??[]).map(item=>createHash('sha256').update(item.id).digest('hex')),
-    semanticRankedIdDigests:(semanticMap.get(row.query)?.items??[]).map(item=>createHash('sha256').update(item.id).digest('hex')),
-  })):undefined;
+  const queryEvidence=options.includeQueryEvidence===true?(()=>{
+    // Query-level evidence is opt-in and HMAC-keyed with a one-run secret. Raw queries,
+    // memory IDs and the ephemeral key are never written to the output.
+    const ephemeralSalt=randomUUID().replace(/-/g,'')+randomUUID().replace(/-/g,'');
+    return rows.map(row=>({
+      exampleIdDigest:hmacSha256Hex(ephemeralSalt,row.id),
+      queryDigest:hmacSha256Hex(ephemeralSalt,normalizeQuery(row.query)),
+      groupDigest:hmacSha256Hex(ephemeralSalt,row.independenceGroupId??row.id),
+      split:row.split,language:row.language??'other',answerable:row.answerable!==false,
+      relevantIdDigests:row.relevantIds.map(id=>hmacSha256Hex(ephemeralSalt,id)).sort(),
+      baselineRankedIdDigests:(baselineMap.get(row.query)?.items??[]).map(item=>hmacSha256Hex(ephemeralSalt,item.id)),
+      semanticRankedIdDigests:(semanticMap.get(row.query)?.items??[]).map(item=>hmacSha256Hex(ephemeralSalt,item.id)),
+    }));
+  })():undefined;
   const configFingerprint=createHash('sha256').update(JSON.stringify({
     baseline:'MemoryOS2.previewRetrieve',
     semantic:'MemoryOS2.previewRetrieveWithEmbeddings',
@@ -191,6 +240,7 @@ export async function runMemoryOS2SemanticRetrievalBenchmark(
     metrics:{baseline:baselineHoldout.metrics,semantic:semanticHoldout.metrics,train:{baseline:baselineTrain.metrics,semantic:semanticTrain.metrics},
       deltas:{recallAtK01:Number(recallDelta.toFixed(4)),mrr01:Number(mrrDelta.toFixed(4)),unsupportedRetrievalRate01:Number((semanticHoldout.metrics.unsupportedRetrievalRate01-baselineHoldout.metrics.unsupportedRetrievalRate01).toFixed(4))}},
     confidence:{recallAtK01:recallConfidence,mrr01:mrrConfidence,unsupportedRetrievalRate01:unsupportedConfidence},
+    languageSlices,
     evaluationGates:gates,...(queryEvidence?{queryEvidence}:{}),
     retrievalConfigurationFingerprint:configFingerprint,
     promotion:{allowed:false,status:gatesPass?'candidate-eligible-for-independent-review':'not-promoted',
