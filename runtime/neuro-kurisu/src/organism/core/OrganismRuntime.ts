@@ -1529,14 +1529,18 @@ export class OrganismRuntime {
   private voiceEmotionContext(): {label:string;valence01:number;arousal01:number;dominance01:number} {
     const snapshot=this.core.snapshot() as any;
     const field=snapshot?.facets?.cognition?.cognitiveField;
+    const appraisal=this.core.emotionAppraisalSnapshot();
+    const episode=appraisal.history?.[0];
     const finite=(value:unknown,fallback:number)=>Number.isFinite(Number(value))?Number(value):fallback;
+    const unit=(value:number)=>Math.max(0,Math.min(1,value));
     const known=new Set(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective']);
-    const rawLabel=String(field?.dominantEmotion??'calm').toLocaleLowerCase();
+    const rawLabel=String(episode?.label??appraisal.lastLabel??'calm').toLocaleLowerCase();
     return {
       label:known.has(rawLabel)?rawLabel:'calm',
-      valence01:Math.max(0,Math.min(1,finite(field?.valence01,.5))),
-      arousal01:Math.max(0,Math.min(1,finite(field?.arousal01,.22))),
-      dominance01:Math.max(0,Math.min(1,finite(field?.coherence01,.5))),
+      valence01:unit(finite(episode?.valence01,finite(appraisal.meanValence01,finite(field?.valence01,.5)))),
+      arousal01:unit(finite(episode?.arousal01,finite(appraisal.meanArousal01,finite(field?.arousal01,.22)))),
+      // Coherence is not emotional dominance. Use the episode's appraisal or a neutral fallback.
+      dominance01:unit(finite(episode?.dominance01,.5)),
     };
   }
 

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { EmbodimentRuntime } from '../src/organism/body/EmbodimentRuntime.ts';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 
 const runtime = new EmbodimentRuntime();
 const state = {
@@ -51,6 +52,43 @@ const defaultPlan = runtime.previewVoicePlan('Краткий ответ');
 assert.equal(defaultPlan.tone, livePlan.tone === 'focused' ? 'focused' : defaultPlan.tone);
 assert.ok(defaultPlan.prosody.rate >= 0.72 && defaultPlan.prosody.rate <= 1.25);
 assert.ok(defaultPlan.prosody.pitch >= 0.72 && defaultPlan.prosody.pitch <= 1.28);
+
+const appraisalEpisode = {
+  id: 'emo:9:9009:9', tick: 9, at: 9009, label: 'curiosity',
+  valence01: .91, arousal01: .78, dominance01: .84,
+};
+const resolveRuntimeEmotion = OrganismRuntime.prototype['voiceEmotionContext'];
+const mappedEmotion = resolveRuntimeEmotion.call({
+  core: {
+    snapshot: () => ({ facets: { cognition: { cognitiveField: {
+      dominantEmotion: 'calm', valence01: .12, arousal01: .18, coherence01: .31,
+    } } } }),
+    emotionAppraisalSnapshot: () => ({
+      history: [appraisalEpisode], lastLabel: 'calm', meanValence01: .5, meanArousal01: .2,
+    }),
+  },
+});
+assert.deepEqual(mappedEmotion, {
+  label: 'curiosity', valence01: .91, arousal01: .78, dominance01: .84,
+}, 'speech must use the latest canonical emotion episode rather than unrelated cognitive-field coherence');
+
+const fallbackEmotion = resolveRuntimeEmotion.call({
+  core: {
+    snapshot: () => ({ facets: { cognition: { cognitiveField: { valence01: .2, arousal01: .3 } } } }),
+    emotionAppraisalSnapshot: () => ({
+      history: [], lastLabel: 'sadness', meanValence01: .24, meanArousal01: .39,
+    }),
+  },
+});
+assert.deepEqual(fallbackEmotion, {
+  label: 'sadness', valence01: .24, arousal01: .39, dominance01: .5,
+}, 'restored aggregate appraisal must remain usable when no episode is available');
+
+runtime.applyToState(state, { emotion: mappedEmotion });
+const appraisalDrivenPlan = runtime.previewVoicePlan('Это интересно, проверим', { action: 'explore' });
+assert.ok(appraisalDrivenPlan.reason.includes('affect-curiosity'),
+  'canonical emotion appraisal must reach the speech prosody planner');
+
 console.log('EMBODIMENT_VOICE_COGNITIVE_CONTEXT=PASS', JSON.stringify({
   liveReasons: livePlan.reason,
   liveRate: livePlan.prosody.rate,
