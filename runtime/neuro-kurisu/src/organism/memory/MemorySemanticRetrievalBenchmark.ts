@@ -19,6 +19,69 @@ type ArmResult={items:MemoryItem2[];latencyMs:number;isolationSetupMs:number};
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const isCurrent=(item:MemoryItem2,now:number)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&Number.isFinite(Number(item.validFromAt??item.createdAt))&&Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||Number(item.validUntilAt)>now);
 
+const normalizeQuery=(value:string)=>String(value).normalize('NFKC').toLowerCase().replace(/[\\p{P}\\p{S}]+/gu,' ').replace(/\\s+/g,' ').trim();
+const p95=(values:number[])=>{if(!values.length)return 0;const sorted=[...values].sort((a,b)=>a-b);return sorted[Math.min(sorted.length-1,Math.ceil(sorted.length*.95)-1)]??0;};
+function evaluateArm(examples:MemoryRetrievalBenchmarkExample[],retrieve:(query:string)=>ArmResult,k:number,now:number){
+  let answerableQueries=0,unanswerableQueries=0,unsupportedRetrievalCount=0,falseAbstentionCount=0;
+  let recall=0,mrr=0,precision=0,covered=0,quarantinedResultCount=0,staleResultCount=0;
+  let futureResultCount=0,dormantResultCount=0,invalidEpistemicStatusResultCount=0,duplicateResultCount=0;
+  const latency:number[]=[],setupLatency:number[]=[];
+  const outcomes:Array<{groupId:string;recallAtK01:number;mrr01:number}>=[];
+  const unsupportedRetrievalOutcomes:Array<{groupId:string;value:number}>=[];
+  for(const example of examples){
+    const response=retrieve(example.query);
+    const items=response?.items??[];
+    const groupId=String(example.independenceGroupId??example.id);
+    latency.push(Math.max(0,Number(response?.latencyMs??0)));
+    setupLatency.push(Math.max(0,Number(response?.isolationSetupMs??0)));
+    const ids=new Set<string>();
+    for(const item of items){
+      if(!item?.id)continue;
+      if(ids.has(item.id))duplicateResultCount++;
+      ids.add(item.id);
+      if(item.epistemicStatus==='quarantined')quarantinedResultCount++;
+      if((item.validUntilAt!=null&&Number(item.validUntilAt)<=now)||(item.supersededById!=null&&item.validUntilAt==null))staleResultCount++;
+      if(item.validFromAt!=null&&Number(item.validFromAt)>now)futureResultCount++;
+      if(item.dormant)dormantResultCount++;
+      if(!['fact','belief','hypothesis','unknown','quarantined'].includes(String(item.epistemicStatus)))invalidEpistemicStatusResultCount++;
+    }
+    if(items.length)covered++;
+    if(example.answerable===false){
+      unanswerableQueries++;
+      const unsupported=items.length?1:0;
+      if(unsupported)unsupportedRetrievalCount++;
+      unsupportedRetrievalOutcomes.push({groupId,value:unsupported});
+      continue;
+    }
+    answerableQueries++;
+    const relevant=new Set(example.relevantIds);
+    const hits=new Set(items.filter(item=>relevant.has(item.id)).map(item=>item.id));
+    const queryRecall=relevant.size?hits.size/relevant.size:0;
+    const first=items.findIndex(item=>relevant.has(item.id));
+    const queryMrr=first>=0?1/(first+1):0;
+    recall+=queryRecall;mrr+=queryMrr;precision+=hits.size/k;
+    if(!items.length)falseAbstentionCount++;
+    outcomes.push({groupId,recallAtK01:queryRecall,mrr01:queryMrr});
+  }
+  const answerableDenominator=Math.max(1,answerableQueries);
+  const invalid=quarantinedResultCount+staleResultCount+futureResultCount+dormantResultCount+invalidEpistemicStatusResultCount+duplicateResultCount;
+  return {
+    metrics:{
+      queries:examples.length,answerableQueries,unanswerableQueries,unsupportedRetrievalCount,
+      unsupportedRetrievalRate01:unanswerableQueries?clamp(unsupportedRetrievalCount/unanswerableQueries):0,
+      correctAbstentionRate01:unanswerableQueries?clamp(1-unsupportedRetrievalCount/unanswerableQueries):0,
+      falseAbstentionCount,falseAbstentionRate01:clamp(falseAbstentionCount/answerableDenominator),
+      recallAtK01:clamp(recall/answerableDenominator),mrr01:clamp(mrr/answerableDenominator),
+      precisionAtK01:clamp(precision/answerableDenominator),queryCoverage01:clamp(covered/Math.max(1,examples.length)),
+      quarantinedResultCount,staleResultCount,futureResultCount,dormantResultCount,invalidEpistemicStatusResultCount,
+      duplicateResultCount,invalidResultRate01:clamp(invalid/Math.max(1,examples.length*k)),
+      latencyP95Ms:Number(p95(latency).toFixed(3)),isolationSetupP95Ms:Number(p95(setupLatency).toFixed(3)),
+    },
+    outcomes,unsupportedRetrievalOutcomes,
+  };
+}
+
+
 function pairedBootstrap(
   baseline:Array<{groupId:string;recallAtK01:number;mrr01:number}>,
   semantic:Array<{groupId:string;recallAtK01:number;mrr01:number}>,
@@ -129,10 +192,10 @@ export async function runMemoryOS2SemanticRetrievalBenchmark(
   }
   const retrieve=(map:Map<string,ArmResult>)=>(query:string):ArmResult=>map.get(query)??{items:[],latencyMs:0,isolationSetupMs:0};
   const holdout=rows.filter(row=>row.split==='holdout'),train=rows.filter(row=>row.split==='train');
-  const baselineHoldout=evaluate(holdout,retrieve(baselineMap),k,now);
-  const semanticHoldout=evaluate(holdout,retrieve(semanticMap),k,now);
-  const baselineTrain=evaluate(train,retrieve(baselineMap),k,now);
-  const semanticTrain=evaluate(train,retrieve(semanticMap),k,now);
+  const baselineHoldout=evaluateArm(holdout,retrieve(baselineMap),k,now);
+  const semanticHoldout=evaluateArm(holdout,retrieve(semanticMap),k,now);
+  const baselineTrain=evaluateArm(train,retrieve(baselineMap),k,now);
+  const semanticTrain=evaluateArm(train,retrieve(semanticMap),k,now);
   const recallDelta=semanticHoldout.metrics.recallAtK01-baselineHoldout.metrics.recallAtK01;
   const mrrDelta=semanticHoldout.metrics.mrr01-baselineHoldout.metrics.mrr01;
   const recallConfidence=pairedBootstrap(baselineHoldout.outcomes,semanticHoldout.outcomes,'recallAtK01',bootstrapSamples,seed);
@@ -151,8 +214,8 @@ const minimumUnanswerablePerLanguage=(options:MemorySemanticRetrievalBenchmarkOp
   for(const language of ['en','ru'] as const){
     const languageRows=holdout.filter(row=>row.language===language);
     if(!languageRows.length)continue;
-    const languageBaseline=evaluate(languageRows,retrieve(baselineMap),k,now);
-    const languageSemantic=evaluate(languageRows,retrieve(semanticMap),k,now);
+    const languageBaseline=evaluateArm(languageRows,retrieve(baselineMap),k,now);
+    const languageSemantic=evaluateArm(languageRows,retrieve(semanticMap),k,now);
     const languageSeed=((seed^(language==='en'?0x13579bdf:0x2468ace0))>>>0)||1;
     const languageRecallConfidence=pairedBootstrap(languageBaseline.outcomes,languageSemantic.outcomes,'recallAtK01',bootstrapSamples,languageSeed);
     const languageMrrConfidence=pairedBootstrap(languageBaseline.outcomes,languageSemantic.outcomes,'mrr01',bootstrapSamples,languageSeed^0x9e3779b9);
@@ -187,8 +250,7 @@ const minimumUnanswerablePerLanguage=(options:MemorySemanticRetrievalBenchmarkOp
       gates:languageGateResults,
     };
   }
-  const bilingual=reference.languageStratification?.enabled===true&&reference.languageStratification?.annotationsComplete===true&&
-    Boolean(languageSlices.en)&&Boolean(languageSlices.ru)&&languageGates.en===true&&languageGates.ru===true;
+  const bilingual=rows.every(row=>row.language!==undefined)&&Boolean(languageSlices.en)&&Boolean(languageSlices.ru)&&languageGates.en===true&&languageGates.ru===true;
   const noUnsafe=semanticHoldout.metrics.quarantinedResultCount===0&&semanticHoldout.metrics.staleResultCount===0&&semanticHoldout.metrics.futureResultCount===0&&
     semanticHoldout.metrics.dormantResultCount===0&&semanticHoldout.metrics.invalidEpistemicStatusResultCount===0&&semanticHoldout.metrics.invalidResultRate01<=baselineHoldout.metrics.invalidResultRate01;
   const gates={
