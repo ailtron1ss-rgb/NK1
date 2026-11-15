@@ -60,12 +60,14 @@ assert.equal(fabric.inspect().taskConditionedUtility.resolved, 1);
 
 const snapshot = fabric.snapshot();
 assert.equal(snapshot.taskConditionedUtility.resolved, 1);
+assert.equal(snapshot.taskConditionedUtility.outcomes.length, 1);
 const restored = createFabric();
 restored.restore(snapshot);
 const query = {
   memoryId: base.memoryId, taskKeyHash: base.taskKeyHash, holdoutFingerprint: base.holdoutFingerprint,
   contextFingerprint: base.contextFingerprint, readerFingerprint: base.readerFingerprint,
   scorerFingerprint: base.scorerFingerprint, fillerFingerprint: base.fillerFingerprint,
+  insertionPosition: base.insertionPosition,
 };
 assert.deepEqual(restored.taskConditionedUtilityEvidence(query), fabric.taskConditionedUtilityEvidence(query));
 assert.equal(restored.taskConditionedUtilityDiagnostics().resolved, 1);
