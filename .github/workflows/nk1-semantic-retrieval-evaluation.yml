@@ -1,0 +1,41 @@
+name: NK1 semantic retrieval path evaluation
+
+on:
+  push:
+    branches:
+      - aspect/semantic-embedding-abstention-20261115
+    paths:
+      - '.github/workflows/nk1-semantic-retrieval-evaluation.yml'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemorySemanticRetrievalBenchmark.ts'
+      - 'runtime/neuro-kurisu/tests/memory-semantic-retrieval-benchmark-workpass1.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - '.github/workflows/nk1-semantic-retrieval-evaluation.yml'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemorySemanticRetrievalBenchmark.ts'
+      - 'runtime/neuro-kurisu/tests/memory-semantic-retrieval-benchmark-workpass1.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-retrieval-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Exercise real semantic retrieval path on isolated snapshot
+        run: npm --prefix runtime/neuro-kurisu run test:memory-semantic-retrieval-benchmark-workpass1
