@@ -13,7 +13,7 @@
 1. Входной объект отсоединяется через `snapshotPlainData`: getters/accessors не должны исполняться.
 2. Проверяются версия HMX 1.x, export ID, источник, intent, структура sections, объём документа (2 MiB), максимум 64 записи на секцию и bounded ref/type/content.
 3. Секции identity, worldview, drives, emotional_triggers, narrative и goals блокируются целиком. Неизвестные секции отклоняются.
-4. Episode summaries become low-trust `episodic` canonical items; `memory_refs` become temporal links. HMX relationships resolve refs across imported memories/episodes and map edge types to semantic/temporal/causal/contradiction links. Direction is preserved: `CAUSED_BY` and `AFTER/FOLLOWS` reverse endpoints; contradiction/conflict edges are symmetric. Direction is preserved: `CAUSED_BY` and `AFTER/FOLLOWS` reverse endpoints; contradiction/conflict edges are symmetric. Clusters, in_flight_work, audit_records, raw_units and config remain staged/deferred.
+4. Episode summaries become low-trust `episodic` canonical items; `memory_refs` become temporal links. HMX relationships resolve refs across imported memories/episodes/clusters and map edge types to semantic/temporal/causal/contradiction links. Direction is preserved: `CAUSED_BY` and `AFTER/FOLLOWS` reverse endpoints; contradiction/conflict edges are symmetric. Named clusters become semantic anchor items with bidirectional member links. Direction is preserved: `CAUSED_BY` and `AFTER/FOLLOWS` reverse endpoints; contradiction/conflict edges are symmetric. in_flight_work, audit_records, raw_units and config remain staged/deferred. Clusters without a safe name or without any imported members are skipped with warnings. Cluster members must resolve to imported memory/episode records; nested cluster-to-cluster membership is deferred to avoid ghost graph references.
 5. Только после явного `commit(stagingId)` stage принимается и portable memories проходят через `MemoryFabric.encode`.
 6. Идентификатор памяти детерминирован от export ID + foreign ref; episode refs have a separate namespace. `forceDistinct` in MemoryFabric preserves distinct donor refs across exports even when content is identical. Lifecycle command ID детерминирован для безопасного повтора через существующий receipt ledger.
 7. Импортированная запись всегда получает `epistemicStatus=hypothesis`, `provenanceClass=external`, низкий source authority/confidence. Donor trust scores, donor embeddings, permissions, skills, goals и executable work не импортируются.
@@ -41,7 +41,7 @@ Runtime entrypoint: `MemorySubsystemRuntime.hexisHmxCanonicalMemoryBridge`.
 
 ## Проверки
 
-Тест: `npm run test:hexis:hmx-canonical-memory-bridge` — memory + episode import, typed/directional/symmetric relationship projection, dangling-endpoint handling, stable refs, retry idempotency, future-time clamp and analysis/protected-section rejection.
+Тест: `npm run test:hexis:hmx-canonical-memory-bridge` — memory + episode + named-cluster import, typed/directional/symmetric relationship projection, dangling-endpoint handling, stable refs, retry idempotency, future-time clamp and analysis/protected-section rejection.
 
 Отдельный workflow: `.github/workflows/nk1-hexis-hmx-canonical-memory-bridge.yml` выполняет `npm ci`, runtime typecheck, bridge regression и существующий Hexis adaptation regression.
 
