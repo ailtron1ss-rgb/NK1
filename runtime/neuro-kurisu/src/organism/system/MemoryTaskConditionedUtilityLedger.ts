@@ -4,6 +4,7 @@ const DIGEST = /^[a-f0-9]{64}$/;
 const MAX_PENDING = 128;
 const MAX_AGGREGATES = 512;
 const MAX_RECENT_IDS = 512;
+const MAX_OUTCOMES = 512;
 const MAX_PENDING_AGE_MS = 7 * 86_400_000;
 const MAX_TOKENS = 10_000_000;
 const MAX_BYTES = 10_000_000;
@@ -35,6 +36,7 @@ export interface MemoryTaskConditionedUtilityAggregate {
   readerFingerprint: string;
   scorerFingerprint: string;
   fillerFingerprint: string;
+  insertionPosition: number;
   samples: number;
   meanDelta01: number;
   m2Delta01: number;
@@ -55,6 +57,7 @@ export interface MemoryTaskConditionedUtilityLedgerState {
   dropped: number;
   unverifiedAttempts: number;
   pending: MemoryTaskConditionedUtilityProbe[];
+  outcomes: MemoryTaskConditionedUtilityOutcome[];
   aggregates: MemoryTaskConditionedUtilityAggregate[];
   recentProbeIds: string[];
 }
@@ -95,6 +98,14 @@ export interface MemoryTaskConditionedUtilityOutcome {
   taskKeyHash: string;
   seed: number;
   replicate: number;
+  holdoutFingerprint: string;
+  contextFingerprint: string;
+  readerFingerprint: string;
+  scorerFingerprint: string;
+  fillerFingerprint: string;
+  insertionPosition: number;
+  formationCostTokens: number;
+  storageBytes: number;
   withMemoryScore01: number;
   withoutMemoryScore01: number;
   delta01: number;
@@ -113,6 +124,7 @@ export interface MemoryTaskConditionedUtilityLookupInput {
   readerFingerprint: string;
   scorerFingerprint: string;
   fillerFingerprint: string;
+  insertionPosition: number;
 }
 
 export interface MemoryTaskConditionedUtilityEstimate {
@@ -140,7 +152,7 @@ export type MemoryTaskConditionedUtilityResolveResult =
 
 const blank = (): MemoryTaskConditionedUtilityLedgerState => ({
   version: 1, registered: 0, resolved: 0, dropped: 0, unverifiedAttempts: 0,
-  pending: [], aggregates: [], recentProbeIds: [],
+  pending: [], outcomes: [], aggregates: [], recentProbeIds: [],
 });
 
 function sha256(value: string): string {
@@ -224,10 +236,10 @@ function canonicalProbeId(probe: Pick<MemoryTaskConditionedUtilityProbe,
 
 function aggregateKey(probe: Pick<MemoryTaskConditionedUtilityProbe,
   'memoryKeyHash' | 'taskKeyHash' | 'holdoutFingerprint' | 'contextFingerprint' | 'readerFingerprint' |
-  'scorerFingerprint' | 'fillerFingerprint'>): string {
+  'scorerFingerprint' | 'fillerFingerprint' | 'insertionPosition'>): string {
   return sha256(JSON.stringify([
     probe.memoryKeyHash, probe.taskKeyHash, probe.holdoutFingerprint, probe.contextFingerprint,
-    probe.readerFingerprint, probe.scorerFingerprint, probe.fillerFingerprint,
+    probe.readerFingerprint, probe.scorerFingerprint, probe.fillerFingerprint, probe.insertionPosition,
   ]));
 }
 
@@ -274,12 +286,13 @@ export class MemoryTaskConditionedUtilityLedger {
 
   restore(raw?: Partial<MemoryTaskConditionedUtilityLedgerState> | null): void {
     const row = readDataEnvelope(raw, [
-      'version', 'registered', 'resolved', 'dropped', 'unverifiedAttempts', 'pending', 'aggregates', 'recentProbeIds',
+      'version', 'registered', 'resolved', 'dropped', 'unverifiedAttempts', 'pending', 'outcomes', 'aggregates', 'recentProbeIds',
     ]);
     const rawPending = strictOwnArray(row?.pending, this.maxPending);
+    const rawOutcomes = strictOwnArray(row?.outcomes, MAX_OUTCOMES);
     const rawAggregates = strictOwnArray(row?.aggregates, this.maxAggregates);
     const rawRecentProbeIds = strictOwnArray(row?.recentProbeIds, this.maxRecentIds);
-    if (!row || row.version !== 1 || !rawPending || !rawAggregates || !rawRecentProbeIds ||
+    if (!row || row.version !== 1 || !rawPending || !rawOutcomes || !rawAggregates || !rawRecentProbeIds ||
         !finiteInteger(row.registered, Number.MAX_SAFE_INTEGER) ||
         !finiteInteger(row.resolved, Number.MAX_SAFE_INTEGER) ||
         !finiteInteger(row.dropped, Number.MAX_SAFE_INTEGER) ||
@@ -289,20 +302,24 @@ export class MemoryTaskConditionedUtilityLedger {
     }
 
     const pending = rawPending.map(item => this.cleanProbe(item));
+    const outcomes = rawOutcomes.map(item => this.cleanOutcome(item));
     const aggregates = rawAggregates.map(item => this.cleanAggregate(item));
     const recentProbeIds = rawRecentProbeIds.filter((id): id is string =>
       typeof id === 'string' && /^mtu:[a-f0-9]{64}$/.test(id));
-    if (pending.some(item => item === null) || aggregates.some(item => item === null) ||
+    if (pending.some(item => item === null) || outcomes.some(item => item === null) || aggregates.some(item => item === null) ||
         recentProbeIds.length !== rawRecentProbeIds.length) {
       this.state = blank();
       return;
     }
 
     const validPending = pending as MemoryTaskConditionedUtilityProbe[];
+    const validOutcomes = outcomes as MemoryTaskConditionedUtilityOutcome[];
     const validAggregates = aggregates as MemoryTaskConditionedUtilityAggregate[];
     if (new Set(validPending.map(item => item.id)).size !== validPending.length ||
         new Set(validAggregates.map(item => item.key)).size !== validAggregates.length ||
-        validPending.some(item => recentProbeIds.includes(item.id))) {
+        new Set(validOutcomes.map(item => item.probeId)).size !== validOutcomes.length ||
+        validPending.some(item => recentProbeIds.includes(item.id)) ||
+        validOutcomes.some(item => !recentProbeIds.includes(item.probeId))) {
       this.state = blank();
       return;
     }
@@ -314,6 +331,7 @@ export class MemoryTaskConditionedUtilityLedger {
       dropped: row.dropped as number,
       unverifiedAttempts: row.unverifiedAttempts as number,
       pending: validPending,
+      outcomes: validOutcomes,
       aggregates: validAggregates,
       recentProbeIds: recentProbeIds.slice(-this.maxRecentIds),
     };
@@ -399,6 +417,10 @@ export class MemoryTaskConditionedUtilityLedger {
     const outcome: MemoryTaskConditionedUtilityOutcome = {
       probeId: probe.id, memoryKeyHash: probe.memoryKeyHash, taskKeyHash: probe.taskKeyHash,
       seed: probe.seed, replicate: probe.replicate,
+      holdoutFingerprint: probe.holdoutFingerprint, contextFingerprint: probe.contextFingerprint,
+      readerFingerprint: probe.readerFingerprint, scorerFingerprint: probe.scorerFingerprint,
+      fillerFingerprint: probe.fillerFingerprint, insertionPosition: probe.insertionPosition,
+      formationCostTokens: probe.formationCostTokens, storageBytes: probe.storageBytes,
       withMemoryScore01: input.withMemoryScore01 as number,
       withoutMemoryScore01: input.withoutMemoryScore01 as number,
       delta01: (input.withMemoryScore01 as number) - (input.withoutMemoryScore01 as number),
@@ -415,6 +437,7 @@ export class MemoryTaskConditionedUtilityLedger {
     }
 
     this.state.pending.splice(index, 1);
+    this.state.outcomes = [...this.state.outcomes, outcome].slice(-MAX_OUTCOMES);
     this.state.recentProbeIds = [...this.state.recentProbeIds, probe.id].slice(-this.maxRecentIds);
     this.state.resolved++;
     const key = aggregateKey(probe);
@@ -425,6 +448,7 @@ export class MemoryTaskConditionedUtilityLedger {
         holdoutFingerprint: probe.holdoutFingerprint, contextFingerprint: probe.contextFingerprint,
         readerFingerprint: probe.readerFingerprint, scorerFingerprint: probe.scorerFingerprint,
         fillerFingerprint: probe.fillerFingerprint,
+        insertionPosition: probe.insertionPosition,
         samples: 0, meanDelta01: 0, m2Delta01: 0, positiveCount: 0, negativeCount: 0,
         meanFormationCostTokens: 0, meanStorageBytes: 0, meanInputTokenDelta: 0,
         meanOutputTokenDelta: 0, meanRetrievalLatencyDeltaMs: 0, lastVerifiedAt: validationAt,
@@ -455,11 +479,11 @@ export class MemoryTaskConditionedUtilityLedger {
 
   lookup(raw: MemoryTaskConditionedUtilityLookupInput): MemoryTaskConditionedUtilityEstimate | null {
     const input = readDataEnvelope(raw, [
-      'memoryId', 'taskKeyHash', 'holdoutFingerprint', 'contextFingerprint', 'readerFingerprint', 'scorerFingerprint', 'fillerFingerprint',
+      'memoryId', 'taskKeyHash', 'holdoutFingerprint', 'contextFingerprint', 'readerFingerprint', 'scorerFingerprint', 'fillerFingerprint', 'insertionPosition',
     ]);
     if (!input || !safeIdentity(input.memoryId) || !digest(input.taskKeyHash) || !digest(input.holdoutFingerprint) ||
         !digest(input.contextFingerprint) || !digest(input.readerFingerprint) || !digest(input.scorerFingerprint) ||
-        !digest(input.fillerFingerprint)) return null;
+        !digest(input.fillerFingerprint) || !finiteInteger(input.insertionPosition, MAX_TOKENS)) return null;
     const probe = {
       memoryKeyHash: sha256('nk1-memory-task-utility-v1\0' + input.memoryId),
       taskKeyHash: (input.taskKeyHash as string).toLowerCase(),
@@ -468,6 +492,7 @@ export class MemoryTaskConditionedUtilityLedger {
       readerFingerprint: (input.readerFingerprint as string).toLowerCase(),
       scorerFingerprint: (input.scorerFingerprint as string).toLowerCase(),
       fillerFingerprint: (input.fillerFingerprint as string).toLowerCase(),
+      insertionPosition: input.insertionPosition as number,
     };
     const aggregate = this.state.aggregates.find(item => item.key === aggregateKey(probe as MemoryTaskConditionedUtilityProbe));
     return aggregate ? estimate(aggregate) : null;
@@ -477,7 +502,7 @@ export class MemoryTaskConditionedUtilityLedger {
     return {
       version: 1, registered: this.state.registered, resolved: this.state.resolved,
       dropped: this.state.dropped, unverifiedAttempts: this.state.unverifiedAttempts,
-      pending: this.state.pending.length, aggregates: this.state.aggregates.length,
+      pending: this.state.pending.length, outcomes: this.state.outcomes.length, aggregates: this.state.aggregates.length,
       evidenceScope: 'paired-task-conditioned-counterfactual' as const,
       decisionAuthority: 'audit-only-no-retrieval-or-retention-mutation' as const,
     };
@@ -507,16 +532,41 @@ export class MemoryTaskConditionedUtilityLedger {
     return canonicalProbeId(probe) === probe.id ? structuredClone(probe) : null;
   }
 
+  private cleanOutcome(raw: unknown): MemoryTaskConditionedUtilityOutcome | null {
+    const row = readDataEnvelope(raw, [
+      'probeId', 'memoryKeyHash', 'taskKeyHash', 'seed', 'replicate', 'holdoutFingerprint',
+      'contextFingerprint', 'readerFingerprint', 'scorerFingerprint', 'fillerFingerprint',
+      'insertionPosition', 'formationCostTokens', 'storageBytes', 'withMemoryScore01',
+      'withoutMemoryScore01', 'delta01', 'inputTokenDelta', 'outputTokenDelta',
+      'retrievalLatencyDeltaMs', 'independentVerified', 'at',
+    ]);
+    if (!row || typeof row.probeId !== 'string' || !/^mtu:[a-f0-9]{64}$/.test(row.probeId) ||
+        !digest(row.memoryKeyHash) || !digest(row.taskKeyHash) || !digest(row.holdoutFingerprint) ||
+        !digest(row.contextFingerprint) || !digest(row.readerFingerprint) || !digest(row.scorerFingerprint) ||
+        !digest(row.fillerFingerprint) || !finiteInteger(row.seed, 2_147_483_647) ||
+        !finiteInteger(row.replicate, 10_000) || !finiteInteger(row.insertionPosition, MAX_TOKENS) ||
+        !finiteInteger(row.formationCostTokens, MAX_TOKENS) || !finiteInteger(row.storageBytes, MAX_BYTES) ||
+        !score01(row.withMemoryScore01) || !score01(row.withoutMemoryScore01) ||
+        typeof row.delta01 !== 'number' || !Number.isFinite(row.delta01) ||
+        Math.abs(row.delta01 - ((row.withMemoryScore01 as number) - (row.withoutMemoryScore01 as number))) > 1e-9 ||
+        !Number.isSafeInteger(row.inputTokenDelta) || Math.abs(row.inputTokenDelta as number) > MAX_TOKENS ||
+        !Number.isSafeInteger(row.outputTokenDelta) || Math.abs(row.outputTokenDelta as number) > MAX_TOKENS ||
+        typeof row.retrievalLatencyDeltaMs !== 'number' || !Number.isFinite(row.retrievalLatencyDeltaMs) ||
+        Math.abs(row.retrievalLatencyDeltaMs) > MAX_LATENCY_MS || row.independentVerified !== true ||
+        !finiteInteger(row.at, Number.MAX_SAFE_INTEGER)) return null;
+    return structuredClone(row as unknown as MemoryTaskConditionedUtilityOutcome);
+  }
+
   private cleanAggregate(raw: unknown): MemoryTaskConditionedUtilityAggregate | null {
     const row = readDataEnvelope(raw, [
       'key', 'memoryKeyHash', 'taskKeyHash', 'holdoutFingerprint', 'contextFingerprint', 'readerFingerprint',
-      'scorerFingerprint', 'fillerFingerprint', 'samples', 'meanDelta01', 'm2Delta01',
+      'scorerFingerprint', 'fillerFingerprint', 'insertionPosition', 'samples', 'meanDelta01', 'm2Delta01',
       'positiveCount', 'negativeCount', 'meanFormationCostTokens', 'meanStorageBytes',
       'meanInputTokenDelta', 'meanOutputTokenDelta', 'meanRetrievalLatencyDeltaMs', 'lastVerifiedAt',
     ]);
     if (!row || !digest(row.key) || !digest(row.memoryKeyHash) || !digest(row.taskKeyHash) ||
         !digest(row.holdoutFingerprint) || !digest(row.contextFingerprint) || !digest(row.readerFingerprint) ||
-        !digest(row.scorerFingerprint) || !digest(row.fillerFingerprint) ||
+        !digest(row.scorerFingerprint) || !digest(row.fillerFingerprint) || !finiteInteger(row.insertionPosition, MAX_TOKENS) ||
         !finiteInteger(row.samples, Number.MAX_SAFE_INTEGER) || row.samples < 1 ||
         typeof row.meanDelta01 !== 'number' || !Number.isFinite(row.meanDelta01) || row.meanDelta01 < -1 || row.meanDelta01 > 1 ||
         !Number.isFinite(row.m2Delta01) || (row.m2Delta01 as number) < 0 ||
