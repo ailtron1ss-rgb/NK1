@@ -39,3 +39,5 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Exercise real semantic retrieval path on isolated snapshot
         run: npm --prefix runtime/neuro-kurisu run test:memory-semantic-retrieval-benchmark-workpass1
+      - name: Verify local-provider CLI contract with loopback fixture
+        run: npm --prefix runtime/neuro-kurisu run test:memory-semantic-retrieval-cli-workpass1
