@@ -146,7 +146,6 @@ export async function runMemoryOS2SemanticRetrievalBenchmark(
   const minAnswerable=Math.max(8,Math.floor(Number(options.minHoldoutQueries??8)));
   const minUnanswerable=Math.max(4,Math.floor(Number(options.minUnanswerableHoldoutQueries??4)));
 const minimumUnanswerablePerLanguage=(options:MemorySemanticRetrievalBenchmarkOptions)=>Math.max(2,Math.floor(Number(options.minLanguageUnanswerableHoldoutQueries??2)));
-const languageGatesForDisplay=(gates:Record<string,boolean>,_language:string)=>gates;
   const languageSlices:Record<string,unknown>={};
   const languageGates:Record<string,boolean>={};
   for(const language of ['en','ru'] as const){
