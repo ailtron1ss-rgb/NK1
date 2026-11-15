@@ -1,51 +1,37 @@
-# CURRENT HANDOFF — 2026-11-14
+# CURRENT HANDOFF — 2026-11-15
 
-> Start here. Refresh live GitHub refs and exact-SHA Actions before every write. Older WorkPass and checkpoint sections below the first divider are archival.
+> Start here. Refresh live GitHub refs, open PR heads and exact-SHA Actions before every write. Sections below the first divider are historical archives.
 
-**Canonical source branch:** workpass70-source  
-**Live source HEAD:** 1e83a011fc677ff20f2348570322bd562181d9ff  
-**Parent:** dc9176b1cf4eb9bae7e9bcf14d79befbf3561422  
+**Canonical source branch:** `workpass70-source`  
+**Live source HEAD:** `1e83a011fc677ff20f2348570322bd562181d9ff`  
+**Parent:** `dc9176b1cf4eb9bae7e9bcf14d79befbf3561422`  
 **Exact-SHA source checks:** 5/5 SUCCESS.
 
-## This cycle — 2026-11-14
+## This cycle — 2026-11-15
 
-- Fixed a malformed newline sequence in the existing P23 population wiring regression on PR #886: commit 4acd1ecb48f866c784a1c36d4e95185172e31064. The exact-head 21-check suite is running; no post-fix PASS is claimed.
-- PR #885 B335 holdout step was cancelled in its earlier attempt. Rerun job 132462375551 is in progress; do not change the same OrganismCore branch/file until it finishes.
-- Issue #865 root cause is isolated: ordinary finalizeToolOutcome drops the already-computed decisionLinkedExternalPostcondition flag when calling integrateVerifiedToolObservation; the authoritative-receipt revision path forwards it. The exact decisionId therefore does not reach CanonicalTemporalCredit in the ordinary path. Fix remains pending.
-- Source exact-SHA checks are 5/5 SUCCESS. PR #889 SelfModel restore is 7/7; PR #883 first-launch local prototype is 5/5.
-- PR #881 is 17/17; #882 is 13/13; #884, #887 and #888 are each 7/7; #852 is 19/19. These are separate open PRs, not merged/released capabilities.
-- PR #874 and #878 are observed as externally merged, with merge commits 33544f7b4ced9518e36c3532f9bccb8161baa022 and e6bab97d014c9911cddc3746725b39c635018f43.
-- Full 18-direction report, counters, acceptance gates and next actions: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-14.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-14.md).
-
-## Active PR continuation
-
-- #886 — P23 candidate population search; Draft, head 4acd1ecb48f866c784a1c36d4e95185172e31064. The test syntax fix is committed; verify all 21 exact-head checks.
-- #885 — verified self-authored agenda/outcome attribution; Draft, head fb7c3cf79f4a8467781ea6073c232fc5e0aa0a60. B335 exact-head rerun is in progress.
-- #889 — SelfModel/identity restore hardening; Draft, 7/7 SUCCESS.
-- #883 — first-launch health-gated prototype; Draft, 5/5 SUCCESS.
-- #881/#882 — HMX and canonical memory projection; Draft, 17/17 and 13/13 SUCCESS.
-- #884 — Live2D frontend readback acknowledgements; open, 7/7 SUCCESS.
-- #887 — P23 holdout firewall; Draft, 7/7 SUCCESS.
-- #888 — consequence-cost policy; Draft, 7/7 SUCCESS.
-- #852 — external action grounding/proof boundary; open, 19/19 SUCCESS.
-- #854 — isolated documentation/handoff PR. No PR is merged or closed by this cycle.
+- Hardened `CognitiveNetworkBus` numeric normalization for hostile plugin signals, restored broadcasts/weights/counters and capacity. Draft PR #896 head `bae3579cf8f1dcf36a9fcb3f70d92378cea3d01d`; exact-head Actions 7/7 SUCCESS. The new change is tested but not connected to canonical source until a separately authorized merge.
+- The first focused workflow attempt failed only because setup-node auto-cache searched for a root lockfile; the workflow disables unused cache detection now. Corrected focused run 43715753946 PASS; core regression 43715753926, WorkPass79 43715754083, unified organism 43715753892 and the remaining three exact-head checks also SUCCESS.
+- PR #885 B335 unified-organism run 43477787599 remains in progress. Issue #865 remains open; do not modify its `OrganismCore` path until the current run ends and the branch is re-read.
+- PR #895 voice appraisal/prosody remains Draft; PRs #894/#893/#892/#891/#890/#889/#888/#887/#886/#885/#884/#883 are separate aspect workstreams. Read their live heads and changed files before touching overlapping contracts.
+- PR #854 documentation/handoff branch now contains the 2026-11-15 daily report and refreshed 75-aspect registry/projection. It is diverged from live source and mergeable=false due README changes after its merge base. Keep it open; do not merge, rebase or force-push.
+- Full 18-direction report and counters: [NK1_DAILY_ENGINEERING_CYCLE_2026-11-15.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-15.md).
 
 ## Release and legal gate
 
-- Latest published ZIP including prerelease: workpass70-hotfix1-2026-10-19, Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes, metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
-- Stable Neuro ZIP: 135,290,615 bytes, metadata SHA-256 c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286.
+- Latest published ZIP including prerelease: `workpass70-hotfix1-2026-10-19`, `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, GitHub metadata SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- Stable `Neuro` ZIP: 135,290,615 bytes, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 - ZIP bytes are not available in this execution environment. Archive members, CRC, recomputed hash and source parity remain UNKNOWN.
-- Human legal clearance remains 0/21; redistribution and Release publication are not authorized.
+- Human legal clearance remains 0/21; root license is NOASSERTION, runtime license is private/all-rights-reserved, and redistribution is not authorized.
 
 ## Next actions
 
-1. Verify exact-head CI for #886 after commit 4acd1ecb and keep it Draft.
-2. Wait for #885 B335 rerun; then implement the one-argument propagation fix for #865 in the existing branch and run the existing action-gateway-idempotency-workpass37 regression plus Core checks.
-3. Refresh exact PR heads, checks and branch ancestry; do not duplicate overlapping contracts.
-4. Obtain immutable licensed RU/EN holdout (at least five paired seeds) and human path-level license review.
-5. Obtain supported ZIP-byte access and a real Android/Termux device for archive, performance, speech and avatar soak.
+1. Wait for PR #885 B335 to terminate; then verify whether issue #865 remains reproducible and patch only the exact decisionId propagation gap on a fresh branch/head.
+2. Continue the independent RU/EN memory holdout: immutable source-cluster split, at least five paired seeds, recallDelta > 0 and latency ≤30 ms/10k; keep holdout evaluation-only.
+3. Inspect the actual prerelease ZIP bytes and verify members/CRC/SHA/source parity; obtain human license/redistribution approval before any release.
+4. Obtain a real Android/Termux device for 10k ticks, ≤50 ms phone tick, offline/background soak, voice interruption and lip-sync timing.
+5. Preserve PR boundaries: no merge, close, branch deletion, force-push, production change or Release publication without explicit authorization.
 
-**Progress rule:** keep implemented / connected / tested / released distinct. No global readiness increase. Do not merge, close PRs, delete branches, force-push, change production, provision databases/secrets or publish Release without separate explicit authorization.
+**Progress rule:** keep implemented / connected / tested / released distinct. No global readiness increase.
 ---
 
 # ARCHIVED HANDOFF — 2026-11-01
