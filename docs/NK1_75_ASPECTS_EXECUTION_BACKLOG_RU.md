@@ -2,11 +2,13 @@
 
 **Версия:** 13.11.2026 · **Рабочая ветка:** workpass70-source
 
-**Наблюдаемый live source HEAD:** 1a0315595302f3154df0ae53e5d9188875311467  
-**Parent:** 189643ede8f3904dd670f0109a28b7536e894c00  
-**Exact-SHA source checks:** 6/6 SUCCESS.
+**Наблюдаемый live source HEAD:** 1e83a011fc677ff20f2348570322bd562181d9ff  
+**Parent:** dc9176b1cf4eb9bae7e9bcf14d79befbf3561422  
+**Exact-SHA source checks:** 5/5 SUCCESS.
 
-> Observed on 2026-11-13 from the live GitHub branch. Snapshot metadata only: refresh live refs before future writes. No aspect status is promoted by this update, and Release ZIP binary/source parity remains UNKNOWN.
+> Observed on 2026-11-15 from the live GitHub branch. PR #896 adds exception-safe CognitiveNetworkBus numeric normalization and passes 7/7 exact-head Actions. No aspect status is promoted by this update; full bus integration and Release ZIP binary/source parity remain UNKNOWN.
+
+**Daily engineering record:** [2026-11-15 cycle](NK1_DAILY_ENGINEERING_CYCLE_2026-11-15.md).
 
 Машиночитаемый источник истины этого плана — [`engineering-os/aspects.v1.json`](../engineering-os/aspects.v1.json). Документ ниже — его человекочитаемая проекция; при расхождении верен JSON. Проверка и отчёты выполняются через `npm run aspects:validate`, `npm run aspects`, `npm run aspects:report`, `npm run aspects:next`.
 
