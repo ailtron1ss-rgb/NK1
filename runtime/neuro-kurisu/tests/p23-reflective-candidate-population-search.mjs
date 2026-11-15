@@ -223,6 +223,8 @@ await assert.rejects(
   population.runP23ReflectiveCandidatePopulationSearch(environmentDrift.input),
   /validation-cohort-mismatch/,
 );
+assert.equal(environmentDrift.evaluations.length, 2,
+  'population search must stop immediately after the first cross-environment cohort mismatch');
 
 // Timeout aborts in-flight generation and returns no winner.
 const timedOut = makeInput({
