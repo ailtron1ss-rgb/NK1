@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readdir, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { analyzeNeuroForge, renderNeuroForgeProposal, renderNeuroForgeSummary } from '../src/organism/research/neuroforge/NeuroForgeEngine.ts';
 import { scanNeuroForgeProject } from '../src/organism/research/neuroforge/NeuroForgeScanner.ts';
@@ -17,17 +17,40 @@ function parseArgs(argv) {
   return result;
 }
 
-async function exists(path) {
-  try { await readFile(path); return true; } catch { return false; }
+async function isFile(path) {
+  try { return (await lstat(path)).isFile(); } catch { return false; }
+}
+
+async function isDirectory(path) {
+  try { return (await lstat(path)).isDirectory(); } catch { return false; }
 }
 
 async function discoverDonorRoots(root) {
-  const markers = ['package.json', 'pyproject.toml', 'Cargo.toml', 'go.mod', 'README.md', 'LICENSE', 'requirements.txt'];
-  for (const marker of markers) if (await exists(resolve(root, marker))) return [resolve(root)];
-  const entries = await readdir(root, { withFileTypes: true });
-  const roots = entries.filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
-    .map(entry => resolve(root, entry.name)).sort();
-  return roots.length ? roots : [resolve(root)];
+  const absoluteRoot = resolve(root);
+  const manifestMarkers = [
+    'package.json', 'pyproject.toml', 'Cargo.toml', 'go.mod', 'requirements.txt',
+    'setup.py', 'setup.cfg', 'composer.json', 'Gemfile', 'pom.xml', 'build.gradle',
+    'CMakeLists.txt', 'mix.exs',
+  ];
+  for (const marker of manifestMarkers) {
+    if (await isFile(resolve(absoluteRoot, marker))) return [absoluteRoot];
+  }
+
+  // README/LICENSE files also occur in collection roots. A repository is treated
+  // as one donor only when there is a project manifest, a Git directory, or a
+  // conventional source root; otherwise direct child directories are separate donors.
+  if (await isDirectory(resolve(absoluteRoot, '.git'))) return [absoluteRoot];
+  const sourceRoots = ['src', 'app', 'lib', 'core', 'runtime', 'packages', 'cmd', 'internal'];
+  for (const directory of sourceRoots) {
+    if (await isDirectory(resolve(absoluteRoot, directory))) return [absoluteRoot];
+  }
+
+  const entries = await readdir(absoluteRoot, { withFileTypes: true });
+  const roots = entries
+    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+    .map(entry => resolve(absoluteRoot, entry.name))
+    .sort();
+  return roots.length ? roots : [absoluteRoot];
 }
 
 function usage() {

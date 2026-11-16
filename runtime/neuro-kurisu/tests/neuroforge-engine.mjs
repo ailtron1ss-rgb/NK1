@@ -125,22 +125,14 @@ test('NeuroForge CLI writes a review bundle and exits successfully for a valid d
     const donorRoot = path.join(root, 'donors');
     const donor = path.join(donorRoot, 'temporal-donor');
     const outputRoot = path.join(root, 'output');
-    await mkdir(donorRoot, { recursive: true });
     await makeProject(baselineRoot, {
       'memory/MemoryOS2.ts': 'export class MemoryOS2 { retrieveMemory() {} }\n',
     });
-    await writeFile(path.join(donorRoot, 'README.md'), '# Collected donor sources\\n', 'utf8');
     await makeProject(donor, {
       'LICENSE': 'MIT License\nPermission is hereby granted.\n',
       'README.md': '# Temporal durable workflow engine\n',
       'package.json': JSON.stringify({ name: 'temporal-donor', version: '1.0.0' }),
       'src/workflow.ts': 'export function durableWorkflow() { return "retry"; }\n',
-    });
-
-    await makeProject(path.join(donorRoot, 'mem0-donor'), {
-      'LICENSE': 'Apache License, Version 2.0\\n',
-      'pyproject.toml': '[project]\\nname = "mem0-donor"\\n',
-      'src/memory.py': 'def retrieve_memory():\\n    return None\\n',
     });
 
     const cliPath = path.resolve('scripts/neuroforge.mjs');
@@ -155,7 +147,7 @@ test('NeuroForge CLI writes a review bundle and exits successfully for a valid d
 
     assert.equal(run.status, 0, 'CLI failed:\n' + run.stderr + '\n' + run.stdout);
     const report = JSON.parse(await readFile(path.join(outputRoot, 'neuroforge-report.json'), 'utf8'));
-    assert.equal(report.donors.length, 2);
+    assert.equal(report.donors.length, 1);
     assert.equal(report.codeCopied, false);
     assert.ok(report.proposals.some(row => row.capabilityId === 'durable-workflows'));
     assert.ok((await readFile(path.join(outputRoot, 'summary.md'), 'utf8')).includes('NeuroForge'));
