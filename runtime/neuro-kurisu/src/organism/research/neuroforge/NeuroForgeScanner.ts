@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
-import { basename, extname, join, relative, resolve } from 'node:path';
+import { lstat, readdir, readFile } from 'node:fs/promises';
+import { basename, join, relative, resolve } from 'node:path';
 
 export type NeuroForgeFileRole = 'source' | 'test' | 'documentation' | 'configuration' | 'license' | 'asset' | 'other';
 export type NeuroForgeCapabilityId =
@@ -119,13 +119,19 @@ function digest(value: string | Buffer): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
+function extensionOf(value: string): string {
+  const name = basename(value);
+  const dot = name.lastIndexOf('.');
+  return dot <= 0 ? '' : name.slice(dot).toLowerCase();
+}
+
 function normalizedPath(value: string): string {
   return value.split('\\').join('/');
 }
 
 function fileRole(relativePath: string): NeuroForgeFileRole {
   const base = basename(relativePath).toLowerCase();
-  const extension = extname(base);
+  const extension = extensionOf(base);
   if (/^(license|licence|copying)(\.|$)/i.test(base)) return 'license';
   if (/^notice(\.|$)/i.test(base)) return 'other';
   if (/(^|\/)(__tests__|tests?|specs?)(\/|$)|\.(test|spec)\./i.test(relativePath)) return 'test';
@@ -217,7 +223,7 @@ function parseDependencies(relativePath: string, text: string, target: Set<strin
 }
 
 function extractImports(relativePath: string, text: string, target: Set<string>): void {
-  const extension = extname(relativePath).toLowerCase();
+  const extension = extensionOf(relativePath);
   if (['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'].includes(extension)) {
     const patterns = [
       /\bfrom\s*['"]([^'"]+)['"]/g,
@@ -284,25 +290,32 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
     if (stop || depth > maxDepth) return;
     let entries;
     try {
-      entries = await readdir(directory, { withFileTypes: true });
+      entries = await readdir(directory);
     } catch {
       warnings.push('directory-read-failed:' + normalizedPath(relative(absoluteRoot, directory)));
       return;
     }
-    entries.sort((a, b) => a.name.localeCompare(b.name));
-    for (const entry of entries) {
+    entries.sort((a, b) => a.localeCompare(b));
+    for (const name of entries) {
       if (stop) return;
-      if (entry.isSymbolicLink()) {
-        warnings.push('symlink-skipped:' + normalizedPath(relative(absoluteRoot, join(directory, entry.name))));
+      const absolutePath = join(directory, name);
+      let metadata: any;
+      try {
+        metadata = await lstat(absolutePath);
+      } catch {
+        skipped.push({ path: normalizedPath(relative(absoluteRoot, absolutePath)), sizeBytes: 0, reason: 'stat-failed' });
         continue;
       }
-      if (entry.isDirectory()) {
-        if (IGNORE_DIRS.has(entry.name.toLowerCase())) continue;
-        await walk(join(directory, entry.name), depth + 1);
+      if (metadata.isSymbolicLink()) {
+        warnings.push('symlink-skipped:' + normalizedPath(relative(absoluteRoot, absolutePath)));
         continue;
       }
-      if (!entry.isFile()) continue;
-      const absolutePath = join(directory, entry.name);
+      if (metadata.isDirectory()) {
+        if (IGNORE_DIRS.has(name.toLowerCase())) continue;
+        await walk(absolutePath, depth + 1);
+        continue;
+      }
+      if (!metadata.isFile()) continue;
       const relativePath = normalizedPath(relative(absoluteRoot, absolutePath));
       let data: Buffer;
       try {
@@ -342,7 +355,7 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
       const isCredential = isCredentialPath(relativePath);
       if (isCredential) securityFindings.push({ path: relativePath, kind: 'credential-file' });
 
-      const shouldReadText = !isCredential && !ASSET_EXTENSIONS.has(extname(base)) && sizeBytes > 0;
+      const shouldReadText = !isCredential && !ASSET_EXTENSIONS.has(extensionOf(base)) && sizeBytes > 0;
       const text = shouldReadText ? data.subarray(0, maxTextBytes).toString('utf8') : '';
       if (isLicense) {
         licenseFiles.push({ path: relativePath, scope: isRoot ? 'root' : 'nested', spdxId: detectSpdx(text), sha256 });
