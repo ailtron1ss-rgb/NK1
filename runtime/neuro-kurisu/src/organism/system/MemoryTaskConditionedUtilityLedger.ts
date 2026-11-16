@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isTrustedExternalPostconditionVerification, type OutcomeVerification } from './OutcomeVerificationService.ts';
 
 const DIGEST = /^[a-f0-9]{64}$/;
 const MAX_PENDING = 128;
@@ -88,7 +89,8 @@ export interface MemoryTaskConditionedUtilityResolutionInput {
   withoutMemoryOutputTokens: number;
   withMemoryRetrievalLatencyMs: number;
   withoutMemoryRetrievalLatencyMs: number;
-  independentVerified: boolean;
+  /** Exact process-local receipt minted by OutcomeVerificationService for this probe and metric tuple. */
+  verification: OutcomeVerification;
   validationAt?: number;
 }
 
@@ -147,8 +149,8 @@ export type MemoryTaskConditionedUtilityRegisterResult =
   | { accepted: false; reason: 'invalid-input' | 'duplicate-probe' | 'pending-capacity-exhausted' };
 
 export type MemoryTaskConditionedUtilityResolveResult =
-  | { accepted: true; outcome: MemoryTaskConditionedUtilityOutcome; aggregate: MemoryTaskConditionedUtilityEstimate | null }
-  | { accepted: false; reason: 'invalid-input' | 'probe-not-found' | 'validation-before-registration' };
+  | { accepted: true; outcome: MemoryTaskConditionedUtilityOutcome; aggregate: MemoryTaskConditionedUtilityEstimate }
+  | { accepted: false; reason: 'invalid-input' | 'probe-not-found' | 'validation-before-registration' | 'untrusted-verification' };
 
 const blank = (): MemoryTaskConditionedUtilityLedgerState => ({
   version: 1, registered: 0, resolved: 0, dropped: 0, unverifiedAttempts: 0,
@@ -250,6 +252,43 @@ function tCritical95(degreesOfFreedom: number): number {
   return smallSample[degreesOfFreedom] ?? 1.96;
 }
 
+export type MemoryTaskConditionedUtilityResolutionMetrics = Pick<MemoryTaskConditionedUtilityResolutionInput,
+  'withMemoryScore01' | 'withoutMemoryScore01' | 'withMemoryInputTokens' | 'withoutMemoryInputTokens' |
+  'withMemoryOutputTokens' | 'withoutMemoryOutputTokens' | 'withMemoryRetrievalLatencyMs' | 'withoutMemoryRetrievalLatencyMs'>;
+
+/**
+ * Canonical input tuple that an independent verifier must bind into its
+ * OutcomeVerificationService context. It contains hashes and measurements,
+ * never raw task, prompt, filler or memory text.
+ */
+export function memoryTaskConditionedUtilityVerificationInput(
+  probe: MemoryTaskConditionedUtilityProbe,
+  metrics: MemoryTaskConditionedUtilityResolutionMetrics,
+): Record<string, unknown> {
+  return {
+    schema: 'nk1.memory-task-conditioned-utility.v1',
+    probeId: probe.id,
+    memoryKeyHash: probe.memoryKeyHash,
+    taskKeyHash: probe.taskKeyHash,
+    holdoutFingerprint: probe.holdoutFingerprint,
+    contextFingerprint: probe.contextFingerprint,
+    readerFingerprint: probe.readerFingerprint,
+    scorerFingerprint: probe.scorerFingerprint,
+    fillerFingerprint: probe.fillerFingerprint,
+    insertionPosition: probe.insertionPosition,
+    seed: probe.seed,
+    replicate: probe.replicate,
+    withMemoryScore01: metrics.withMemoryScore01,
+    withoutMemoryScore01: metrics.withoutMemoryScore01,
+    withMemoryInputTokens: metrics.withMemoryInputTokens,
+    withoutMemoryInputTokens: metrics.withoutMemoryInputTokens,
+    withMemoryOutputTokens: metrics.withMemoryOutputTokens,
+    withoutMemoryOutputTokens: metrics.withoutMemoryOutputTokens,
+    withMemoryRetrievalLatencyMs: metrics.withMemoryRetrievalLatencyMs,
+    withoutMemoryRetrievalLatencyMs: metrics.withoutMemoryRetrievalLatencyMs,
+  };
+}
+
 function estimate(aggregate: MemoryTaskConditionedUtilityAggregate): MemoryTaskConditionedUtilityEstimate {
   const n = aggregate.samples;
   const standardError01 = n > 1 ? Math.sqrt(Math.max(0, aggregate.m2Delta01 / (n - 1)) / n) : null;
@@ -332,7 +371,10 @@ export class MemoryTaskConditionedUtilityLedger {
       unverifiedAttempts: row.unverifiedAttempts as number,
       pending: validPending,
       outcomes: validOutcomes,
-      aggregates: validAggregates,
+      // OutcomeVerificationService receipts are WeakMap-bound to the live object and
+      // cannot be reconstructed from copied JSON. Keep restored outcomes for audit,
+      // but never hydrate them as current-session promotion evidence.
+      aggregates: [],
       recentProbeIds: recentProbeIds.slice(-this.maxRecentIds),
     };
   }
@@ -392,7 +434,7 @@ export class MemoryTaskConditionedUtilityLedger {
     const input = readDataEnvelope(raw, [
       'probeId', 'withMemoryScore01', 'withoutMemoryScore01', 'withMemoryInputTokens', 'withoutMemoryInputTokens',
       'withMemoryOutputTokens', 'withoutMemoryOutputTokens', 'withMemoryRetrievalLatencyMs',
-      'withoutMemoryRetrievalLatencyMs', 'independentVerified', 'validationAt',
+      'withoutMemoryRetrievalLatencyMs', 'verification', 'validationAt',
     ]);
     if (!input || typeof input.probeId !== 'string' || !/^mtu:[a-f0-9]{64}$/.test(input.probeId) ||
         !score01(input.withMemoryScore01) || !score01(input.withoutMemoryScore01) ||
@@ -402,7 +444,6 @@ export class MemoryTaskConditionedUtilityLedger {
         input.withMemoryRetrievalLatencyMs < 0 || input.withMemoryRetrievalLatencyMs > MAX_LATENCY_MS ||
         typeof input.withoutMemoryRetrievalLatencyMs !== 'number' || !Number.isFinite(input.withoutMemoryRetrievalLatencyMs) ||
         input.withoutMemoryRetrievalLatencyMs < 0 || input.withoutMemoryRetrievalLatencyMs > MAX_LATENCY_MS ||
-        typeof input.independentVerified !== 'boolean' ||
         (input.validationAt !== undefined && !finiteInteger(input.validationAt, Number.MAX_SAFE_INTEGER))) {
       return { accepted: false, reason: 'invalid-input' };
     }
@@ -414,6 +455,22 @@ export class MemoryTaskConditionedUtilityLedger {
     const probe = this.state.pending[index]!;
     if (validationAt < probe.at) return { accepted: false, reason: 'validation-before-registration' };
 
+    const metrics: MemoryTaskConditionedUtilityResolutionMetrics = {
+      withMemoryScore01: input.withMemoryScore01 as number,
+      withoutMemoryScore01: input.withoutMemoryScore01 as number,
+      withMemoryInputTokens: input.withMemoryInputTokens as number,
+      withoutMemoryInputTokens: input.withoutMemoryInputTokens as number,
+      withMemoryOutputTokens: input.withMemoryOutputTokens as number,
+      withoutMemoryOutputTokens: input.withoutMemoryOutputTokens as number,
+      withMemoryRetrievalLatencyMs: input.withMemoryRetrievalLatencyMs as number,
+      withoutMemoryRetrievalLatencyMs: input.withoutMemoryRetrievalLatencyMs as number,
+    };
+    const expectedVerificationInput = memoryTaskConditionedUtilityVerificationInput(probe, metrics);
+    if (!isTrustedExternalPostconditionVerification(input.verification, expectedVerificationInput)) {
+      this.state.unverifiedAttempts++;
+      return { accepted: false, reason: 'untrusted-verification' };
+    }
+
     const outcome: MemoryTaskConditionedUtilityOutcome = {
       probeId: probe.id, memoryKeyHash: probe.memoryKeyHash, taskKeyHash: probe.taskKeyHash,
       seed: probe.seed, replicate: probe.replicate,
@@ -421,20 +478,15 @@ export class MemoryTaskConditionedUtilityLedger {
       readerFingerprint: probe.readerFingerprint, scorerFingerprint: probe.scorerFingerprint,
       fillerFingerprint: probe.fillerFingerprint, insertionPosition: probe.insertionPosition,
       formationCostTokens: probe.formationCostTokens, storageBytes: probe.storageBytes,
-      withMemoryScore01: input.withMemoryScore01 as number,
-      withoutMemoryScore01: input.withoutMemoryScore01 as number,
-      delta01: (input.withMemoryScore01 as number) - (input.withoutMemoryScore01 as number),
-      inputTokenDelta: (input.withMemoryInputTokens as number) - (input.withoutMemoryInputTokens as number),
-      outputTokenDelta: (input.withMemoryOutputTokens as number) - (input.withoutMemoryOutputTokens as number),
-      retrievalLatencyDeltaMs: (input.withMemoryRetrievalLatencyMs as number) - (input.withoutMemoryRetrievalLatencyMs as number),
-      independentVerified: input.independentVerified as boolean,
+      withMemoryScore01: metrics.withMemoryScore01,
+      withoutMemoryScore01: metrics.withoutMemoryScore01,
+      delta01: metrics.withMemoryScore01 - metrics.withoutMemoryScore01,
+      inputTokenDelta: metrics.withMemoryInputTokens - metrics.withoutMemoryInputTokens,
+      outputTokenDelta: metrics.withMemoryOutputTokens - metrics.withoutMemoryOutputTokens,
+      retrievalLatencyDeltaMs: metrics.withMemoryRetrievalLatencyMs - metrics.withoutMemoryRetrievalLatencyMs,
+      independentVerified: true,
       at: validationAt,
     };
-
-    if (!outcome.independentVerified) {
-      this.state.unverifiedAttempts++;
-      return { accepted: true, outcome, aggregate: null };
-    }
 
     this.state.pending.splice(index, 1);
     this.state.outcomes = [...this.state.outcomes, outcome].slice(-MAX_OUTCOMES);
