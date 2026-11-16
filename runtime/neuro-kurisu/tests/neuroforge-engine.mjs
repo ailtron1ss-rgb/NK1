@@ -125,6 +125,7 @@ test('NeuroForge CLI writes a review bundle and exits successfully for a valid d
     const donorRoot = path.join(root, 'donors');
     const donor = path.join(donorRoot, 'temporal-donor');
     const outputRoot = path.join(root, 'output');
+    await mkdir(donorRoot, { recursive: true });
     await makeProject(baselineRoot, {
       'memory/MemoryOS2.ts': 'export class MemoryOS2 { retrieveMemory() {} }\n',
     });
