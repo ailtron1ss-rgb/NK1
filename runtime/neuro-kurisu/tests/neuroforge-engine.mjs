@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -87,6 +87,35 @@ test('NeuroForge identifies a donor capability gap but never authorizes code reu
     assert.ok(proposal.evidence.donorFiles.some(file => file === 'src/workflow.ts'));
     assert.equal(report.codeCopied, false);
     assert.equal(report.donorCodeExecuted, false);
+  });
+});
+
+test('scanner rejects a missing source root instead of returning an empty successful inventory', async () => {
+  await withTempRoot(async root => {
+    await assert.rejects(
+      () => scanNeuroForgeProject(path.join(root, 'missing-source-root')),
+      /source-root-must-be-a-real-directory/,
+    );
+  });
+});
+
+test('scanner records symlink omissions and detects unquoted secret assignments without exposing values', async () => {
+  await withTempRoot(async root => {
+    const donorRoot = path.join(root, 'donor');
+    await makeProject(donorRoot, {
+      'src/config.ts': 'export const API_TOKEN = abcdef1234567890_SECRET_VALUE;\\n',
+    });
+    const outside = path.join(root, 'outside.ts');
+    await writeFile(outside, 'export const external = true;\\n', 'utf8');
+    await symlink(outside, path.join(donorRoot, 'src', 'external.ts'));
+
+    const manifest = await scanNeuroForgeProject(donorRoot, { projectId: 'donor' });
+
+    assert.ok(manifest.stats.skippedFiles >= 1);
+    assert.ok(manifest.warnings.some(value => value.includes('symlink-skipped')));
+    const secret = manifest.securityFindings.find(row => row.kind === 'possible-secret-assignment');
+    assert.ok(secret);
+    assert.equal(JSON.stringify(manifest).includes('abcdef1234567890_SECRET_VALUE'), false);
   });
 });
 
