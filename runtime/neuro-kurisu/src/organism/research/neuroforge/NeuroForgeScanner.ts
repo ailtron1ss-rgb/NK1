@@ -268,6 +268,10 @@ function inferCapabilitySignals(rows: Array<{ path: string; role: NeuroForgeFile
 
 export async function scanNeuroForgeProject(root: string, options: NeuroForgeScanOptions = {}): Promise<NeuroForgeProjectManifest> {
   const absoluteRoot = resolve(root);
+  const rootMetadata = await lstat(absoluteRoot).catch(() => null);
+  if (!rootMetadata || !rootMetadata.isDirectory() || rootMetadata.isSymbolicLink()) {
+    throw new Error('source-root-must-be-a-real-directory');
+  }
   const maxFiles = Math.max(1, Math.min(50000, Math.floor(options.maxFiles ?? 20000)));
   const maxFileBytes = Math.max(1024, Math.min(8 * 1024 * 1024, Math.floor(options.maxFileBytes ?? 2 * 1024 * 1024)));
   const maxTotalBytes = Math.max(maxFileBytes, Math.min(1024 * 1024 * 1024, Math.floor(options.maxTotalBytes ?? 256 * 1024 * 1024)));
@@ -307,7 +311,9 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
         continue;
       }
       if (metadata.isSymbolicLink()) {
-        warnings.push('symlink-skipped:' + normalizedPath(relative(absoluteRoot, absolutePath)));
+        const symlinkPath = normalizedPath(relative(absoluteRoot, absolutePath));
+        skipped.push({ path: symlinkPath, sizeBytes: 0, reason: 'symlink-skipped' });
+        warnings.push('symlink-skipped:' + symlinkPath);
         continue;
       }
       if (metadata.isDirectory()) {
@@ -364,7 +370,7 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
         const lines = text.split(/\r?\n/);
         for (let index = 0; index < lines.length; index += 1) {
           const line = lines[index]!;
-          if (/(?:api[_-]?key|secret|token|password|private[_-]?key)\s*[:=]\s*['"][^'"]{8,}/i.test(line) &&
+          if (/(?:api[_-]?key|secret|token|password|private[_-]?key)\s*[:=]\s*['\"]?[A-Za-z0-9_./+=-]{12,}/i.test(line) &&
               !/(example|sample|placeholder|changeme|dummy|your[_ -])/i.test(line)) {
             securityFindings.push({ path: relativePath, kind: 'possible-secret-assignment', line: index + 1 });
           }
