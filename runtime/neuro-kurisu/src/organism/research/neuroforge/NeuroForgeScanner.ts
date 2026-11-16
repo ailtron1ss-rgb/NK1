@@ -146,7 +146,7 @@ function languageFor(relativePath: string): string {
   const base = basename(relativePath).toLowerCase();
   if (base === 'dockerfile') return 'docker';
   if (base === 'makefile') return 'make';
-  const extension = extname(base);
+  const extension = extensionOf(base);
   const map: Record<string, string> = {
     '.ts': 'typescript', '.tsx': 'typescript', '.js': 'javascript', '.jsx': 'javascript',
     '.mjs': 'javascript', '.cjs': 'javascript', '.py': 'python', '.pyi': 'python',
