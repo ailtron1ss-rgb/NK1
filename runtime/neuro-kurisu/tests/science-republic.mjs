@@ -5,6 +5,8 @@ import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeL
 import { canonicalOutcomePayload } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { inventionProtocolFingerprint } from '../src/organism/research/TheInventionLoop.ts';
 import { OrganismSystemFabric } from '../src/organism/core/OrganismSystemFabric.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
 const digest = value => createHash('sha256').update(String(value)).digest('hex');
 const canonical = value => {
@@ -289,6 +291,57 @@ const holdoutManifest = {
 };
 rememberArtifactBytes(manifest, 'science-validation-manifest');
 rememberArtifactBytes(holdoutManifest, 'science-sealed-holdout-manifest');
+
+// Exercise the real OrganismCore constructor/config path, not only direct
+// Fabric construction. All three host trust adapters must reach the single
+// canonical EvidenceResearchSubsystemRuntime owned by the organism.
+const coreWithHostResolvers = new OrganismCore(new MemoryStateStore(), {
+  inventionVerifierKeyResolver: resolveKey,
+  scienceRoleIdentityResolver: resolveScienceRoleIdentity,
+  scienceEvaluatorIdentityResolver: resolveScienceEvaluatorIdentity,
+  scienceArtifactBytesVerifier: verifyScienceArtifactBytes,
+});
+const coreResearch = coreWithHostResolvers['organismSystems'].research;
+assert.equal(coreResearch.scienceRepublic.inventionLoop, coreResearch.inventionLoop);
+const coreCase = coreResearch.scienceRepublic.discover({
+  title: 'OrganismCore host trust composition',
+  domain: 'composition root',
+  observation: 'OrganismConfig delivers all host trust adapters to the canonical research owner.',
+  evidence: {
+    reference: 'artifact://science/organism-core-discovery.json',
+    sha256: digest('organism-core-discovery'),
+  },
+  actors,
+});
+assert.equal(coreCase.trust.roleIdentity, 'host-attested');
+const coreTheory = coreResearch.scienceRepublic.theorize(coreCase.id, {
+  actorId: actors.theorist,
+  mechanism: 'The Core composition root preserves host-owned evaluator identity bindings.',
+  predictions: ['primary and holdout evaluator principals remain separate'],
+  falsifiers: ['the primary and holdout evaluators resolve to one subject'],
+  alternatives: ['the supplied host resolver is not connected to the research owner'],
+  evidence: {
+    reference: 'artifact://science/organism-core-theory.json',
+    sha256: digest('organism-core-theory'),
+  },
+});
+const coreRegistered = coreResearch.registerScienceRepublicExperiment(coreCase.id, {
+  actorId: actors.experimentalist,
+  evaluation,
+  manifest: {
+    reference: 'artifact://science/organism-core-manifest.json',
+    sha256: evaluation.testFingerprint,
+  },
+  holdoutManifest: {
+    reference: 'artifact://science/organism-core-holdout-manifest.json',
+    sha256: evaluation.holdoutTestFingerprint,
+  },
+});
+assert.equal(coreRegistered.trust.evaluatorIdentity, 'host-attested');
+assert.deepEqual(coreRegistered.trust.evaluatorSubjects, {
+  primary: 'principal:' + evaluation.verifierPlan.primary,
+  holdout: 'principal:' + evaluation.verifierPlan.holdout,
+});
 
 const duplicateRunnerEvaluation = {
   ...evaluation,
