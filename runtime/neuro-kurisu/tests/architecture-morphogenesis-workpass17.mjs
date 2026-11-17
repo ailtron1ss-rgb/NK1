@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 
-// Use an explicit test source identity outside GitHub Actions.
-process.env.NK1_SOURCE_COMMIT ??= 'a'.repeat(40);
+// Keep the behavioral suite runnable outside GitHub Actions without
+// overriding the exact checkout SHA supplied by GitHub Actions.
+if (!/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA ?? '')) {
+  process.env.NK1_SOURCE_COMMIT ??= 'a'.repeat(40);
+}
 
 let engineImportError;
 const engine = await import('../src/organism/system/ArchitectureMorphogenesisEngine.ts').catch(error => {
