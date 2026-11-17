@@ -9,11 +9,19 @@ assert.match(autonomousBlock, /wasToolExecutorEntered\(toolResult\.outcomeClass\
   'autonomous learning must share the gateway executor-entry classification instead of maintaining a divergent outcome list');
 assert.doesNotMatch(autonomousBlock, /const executionActuallyAttempted = \[/,
   'autonomous learning must not duplicate ActionGateway outcome semantics');
-const callAt = source.indexOf('const toolResult = await this.executeTool(autoToolPlan.tool.id', planAt);
-assert.notEqual(callAt, -1, 'autonomous planner must delegate through OrganismCore.executeTool');
+const approvalAt = source.indexOf('approveFromTrustedPlanner(', planAt);
+assert.notEqual(approvalAt, -1, 'autonomous planner must obtain a distinct trusted planner approval, not impersonate user confirmation');
+const dispatchAt = source.indexOf('this.executeIntent(approvedAutonomousIntent', planAt);
+assert.notEqual(dispatchAt, -1, 'autonomous planner must pass the approved contract through the Core intent gate');
+assert.match(autonomousBlock, /intentExecutionRuntime\.getContract\(autonomousIntentDraft\.id\)/,
+  'deterministic planner retries must reuse the same restored HMAC-attested intent contract');
+assert.match(autonomousBlock, /cognitiveEventFabric\.append\(/,
+  'internal approval must be anchored to the actual CEF plan event');
+assert.match(autonomousBlock, /refuseToolExecution\(/,
+  'unverified or high-risk planner intents must create an audited refusal before executor entry');
 const directCallAt = source.indexOf('this.cognitiveRuntime.actionGateway.executeTool(', planAt);
-assert.ok(directCallAt === -1 || directCallAt > callAt,
-  'autonomous planner must not bypass the canonical core execution wrapper before its planned action');
+assert.ok(directCallAt === -1 || directCallAt > dispatchAt,
+  'autonomous planner must not bypass the canonical Core execution wrapper before its planned action');
 const wrapperAt = source.indexOf('async executeTool(id: string');
 assert.notEqual(wrapperAt, -1, 'canonical core execution wrapper must exist');
 const wrapperEnd = source.indexOf('\n    /**', wrapperAt);
