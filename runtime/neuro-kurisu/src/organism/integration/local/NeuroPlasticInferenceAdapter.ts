@@ -43,11 +43,19 @@ function isCallerCancellation(error: unknown, request: LocalChatCompletionReques
  * retries the same request through the unchanged base model.
  */
 export class NeuroPlasticInferenceAdapter {
+  private readonly registry: NeuroPlasticAdapterRegistry;
+  private readonly ecology: P40ModelEcologyEngine;
+  private readonly provider: OpenAICompatibleLocalChatProvider;
+
   constructor(
-    private readonly registry: NeuroPlasticAdapterRegistry,
-    private readonly ecology: P40ModelEcologyEngine,
-    private readonly provider: OpenAICompatibleLocalChatProvider,
-  ) {}
+    registry: NeuroPlasticAdapterRegistry,
+    ecology: P40ModelEcologyEngine,
+    provider: OpenAICompatibleLocalChatProvider,
+  ) {
+    this.registry = registry;
+    this.ecology = ecology;
+    this.provider = provider;
+  }
 
   async generate(
     request: LocalChatCompletionRequest,
