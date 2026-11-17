@@ -50,8 +50,8 @@ Introduce a reproducible, versioned architecture manifest that explains how the 
 - Inheritable fields in v1: finite estimatedCost01 in [0,1]; integer cadenceCycles in [1,64].
 - Invariant manifest: sourced from InvariantEngine; a candidate cannot add, remove, weaken, or re-own rules.
 - Runtime compatibility: pinned to RELEASE_CONTRACT, including current state schema and the existing migration owner/path.
-- Lineage: generation, parent SHA-256 digest, and explicit old/new values for each permitted trait change.
-- Digest: SHA-256 over canonical JSON, excluding only the digest field itself; timestamps are not used as identity.
+- Lineage: generation, parent SHA-256 digest, and explicit old/new values for each permitted trait change. Generations above one require a caller-supplied ancestor chain ordered from the direct parent's parent back to generation zero; incomplete chains return NEEDS_REVIEW and broken links block.
+- Digest: SHA-256 over canonical JSON, excluding only the digest field itself; timestamps are not used as identity. This is content integrity/addressing, not a digital signature or proof of authorship.
 - Approval means structurally compatible and eligible for human review only. Every candidate reports activation: NOT_APPLIED; runtime contracts remain unchanged.
 
 ## Failure handling
@@ -60,4 +60,4 @@ Malformed records, invalid values, unsupported schema versions, dependency error
 
 ## Verification
 
-Behavioral tests cover the baseline generated from live contracts, deterministic digest, graph order and cycles, bounded inheritance, immutable-field attacks, altered invariants, forged digests, missing/incorrect lineage, serialization, and the runtime-fabric snapshot. The focused workflow also runs the runtime typecheck and architecture audit. Passing these checks proves the control-plane contract only; it does not prove that a candidate improves cognition or has been activated.
+Behavioral tests cover the baseline generated from live contracts, deterministic digest, graph order and cycles, bounded inheritance, immutable-field attacks (including snapshot weight and execution rank), altered invariants, forged digests, complete multi-generation lineage, hostile/cyclic candidate objects, migration-owner binding, serialization, and the runtime-fabric snapshot. The focused workflow also runs the runtime typecheck and architecture audit. Passing these checks proves the control-plane contract only; it does not prove that a candidate improves cognition or has been activated.
