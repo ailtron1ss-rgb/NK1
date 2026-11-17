@@ -77,3 +77,10 @@ export * from './cognition/BoundedRecurrentStateSubstrate.ts';
 export * from './memory/MemoryBudgetCausalHarness.ts';
 
 export * from './integration/mem0/index.ts';
+
+// OmeStro: coordinated cognitive, developmental and neural-adaptation contracts.
+export * from './system/OmeStroConceptRegistry.ts';
+export * from './system/OmeStroCognitiveGovernance.ts';
+export * from './system/OmeStroDevelopmentProtocol.ts';
+export * from './system/OmeStroNeuralAdaptation.ts';
+export * from './system/OmeStroIntegrationKernel.ts';
