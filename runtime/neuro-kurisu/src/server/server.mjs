@@ -23,12 +23,14 @@ import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { NeuralProsthesisChatProvider } from '../organism/integration/local/NeuralProsthesisChatProvider.ts';
+import { NeuralProsthesisSidecarSupervisor } from '../organism/integration/local/NeuralProsthesisSidecarSupervisor.mjs';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
 import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
+const PROJECT_ROOT = path.resolve(ROOT, '../..');
 const PUBLIC = path.join(ROOT, 'public');
 const STATE = path.resolve(process.env.STATE_DIR || path.join(ROOT, 'state'));
 const stateFile = path.join(STATE, 'organism-core.json');
@@ -40,6 +42,23 @@ const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
 const NEURAL_PROSTHESIS_PROVIDER = new NeuralProsthesisChatProvider({ baseUrl: process.env.NEURO_NP_URL, model: process.env.NEURO_NP_MODEL || process.env.NEURO_NP_MODEL_ID || 'local-transformer', adapterId: process.env.NEURO_NP_ADAPTER_ID, apiToken: process.env.NEURO_NP_API_TOKEN, timeoutMs: LLM_TIMEOUT_MS });
 const NEURAL_PROSTHESIS_PREFER = process.env.NEURO_NP_PREFER === '1';
+const NEURAL_PROSTHESIS_AUTOSTART = process.env.NEURO_NP_AUTOSTART === '1';
+const NEURAL_PROSTHESIS_PYTHON = String(
+  process.env.NEURO_NP_PYTHON || (process.platform === 'win32' ? 'python' : 'python3'),
+).trim();
+const NEURAL_PROSTHESIS_PACKAGE_PATH = path.join(PROJECT_ROOT, 'research', 'neural-prosthesis');
+const NEURAL_PROSTHESIS_SIDECAR = new NeuralProsthesisSidecarSupervisor({
+  enabled: NEURAL_PROSTHESIS_AUTOSTART,
+  command: NEURAL_PROSTHESIS_PYTHON,
+  args: ['-m', 'neural_prosthesis.service'],
+  cwd: PROJECT_ROOT,
+  env: {
+    ...process.env,
+    PYTHONPATH: [NEURAL_PROSTHESIS_PACKAGE_PATH, process.env.PYTHONPATH || ''].filter(Boolean).join(path.delimiter),
+  },
+  baseUrl: NEURAL_PROSTHESIS_PROVIDER.baseUrl,
+  startupTimeoutMs: Number(process.env.NEURO_NP_AUTOSTART_TIMEOUT_MS || 120000),
+});
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 // Optional provider: configuration is server-only and disabled unless NK_MEM0_ENABLED=1.
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
@@ -1828,6 +1847,7 @@ async function route(req, res) {
                 model: NEURAL_PROSTHESIS_PROVIDER.model,
                 adapterId: NEURAL_PROSTHESIS_PROVIDER.adapterId,
                 preferredByHost: NEURAL_PROSTHESIS_PREFER,
+                sidecarSupervisor: NEURAL_PROSTHESIS_SIDECAR.snapshot(),
                 modelEcology: runtime.core.p40ModelEcologySnapshot(),
                 note: 'Optional loopback-only Transformers residual backend. Adapter artifacts remain inactive unless the host allowlists the exact manifest digest.',
             });
@@ -2426,6 +2446,7 @@ async function shutdown() {
         await runtime.core.endTemporalSession('shutdown', true).catch(() => { });
     await runtime.flush().catch(() => { });
     runtime.stop();
+    await NEURAL_PROSTHESIS_SIDECAR.stop().catch(() => false);
     await lock.release().catch(() => { });
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 3000).unref();
@@ -2433,6 +2454,22 @@ async function shutdown() {
 process.on('SIGINT', () => void shutdown());
 process.on('SIGTERM', () => void shutdown());
 try {
+    if (NEURAL_PROSTHESIS_AUTOSTART) {
+        try {
+            const sidecar = await NEURAL_PROSTHESIS_SIDECAR.start();
+            console.log(
+                '[Neuro-Kurisu Neural Prosthesis] sidecar ready',
+                sidecar.reusedExisting ? '(reused existing local process)' : '(managed child process)',
+            );
+        }
+        catch (error) {
+            // The backend is optional; an unavailable sidecar must not prevent NK1 boot.
+            console.warn(
+                '[Neuro-Kurisu Neural Prosthesis] auto-start failed; provider fallbacks remain active:',
+                String(error?.message || error),
+            );
+        }
+    }
     await runtime.init();
     await runtime.core.p40ConfigureModelBackend('llama.cpp', LLAMA_CPP_PROVIDER.configured());
     await runtime.core.p40ConfigureModelBackend('neural-prosthesis', NEURAL_PROSTHESIS_PROVIDER.configured());

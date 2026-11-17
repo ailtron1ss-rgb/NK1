@@ -143,13 +143,30 @@ The service refuses to use an adapter whose manifest digest is absent from the
 host allowlist. A quarantined adapter remains loaded for diagnostics only; it cannot
 be selected by a request.
 
-In another shell, configure NK1 before starting its Node server:
+Configure NK1 before starting its Node server:
 
     export NEURO_NP_URL=http://127.0.0.1:8091/v1
     export NEURO_NP_MODEL="$NEURO_NP_MODEL_ID"
     export NEURO_NP_ADAPTER_ID=kurisu-reasoning-v1
     export NEURO_NP_API_TOKEN="<same-sidecar-token>"
     export NEURO_NP_PREFER=1
+
+By default the sidecar is a separately managed local process, as shown above.
+For an optional single-command lifecycle, set the Python interpreter to the
+environment where the research requirements are installed and enable managed
+startup before launching NK1:
+
+    export NEURO_NP_PYTHON="$PWD/.venv-neural-prosthesis/bin/python"
+    export NEURO_NP_AUTOSTART=1
+    export NEURO_NP_AUTOSTART_TIMEOUT_MS=180000
+
+NK1 then starts `python -m neural_prosthesis.service` from the repository root,
+adds the research package to `PYTHONPATH`, waits for a loopback health-check and
+stops only the child process it created during graceful shutdown. If a healthy
+sidecar is already running, NK1 reuses it and does not claim ownership. Startup
+failure is non-fatal: llama.cpp/Kobold/Gemini remain available as fallbacks. The
+autostart flag is disabled by default and never downloads a model or installs
+Python packages. `NEURO_NP_AUTOSTART_TIMEOUT_MS` is bounded to 1–600 seconds.
 
 NK1 registers the optional neural-prosthesis profile with P40 Model Ecology.
 The new profile starts with neutral quality/reliability priors rather than assuming an
@@ -160,8 +177,9 @@ adapter is quarantined, the request continues to the normal local/cloud fallback
 Nothing changes the llama.cpp model files.
 
 Read-only liveness at GET /health and GET /api/health is intentionally minimal.
-The detailed status reports the effective max_context_tokens limit; token usage is
-returned on each completion so the host can observe prompt/output budgets.
+The detailed status reports the effective max_context_tokens limit and the
+sidecar supervisor's enabled/managed/ready state; token usage is returned on each
+completion so the host can observe prompt/output budgets.
 Detailed GET /neural-prosthesis/status and inference POST requests require the same
 optional 32–512 character printable ASCII bearer token when NEURO_NP_API_TOKEN is set.
 Host headers outside localhost/127.0.0.1 are rejected even though the service binds

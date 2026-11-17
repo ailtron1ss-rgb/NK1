@@ -160,6 +160,38 @@ await assert.rejects(
   fetch(new URL('/health', supervisorBaseUrl), { signal: AbortSignal.timeout(500) }),
 );
 
+const timeoutPort = await reserveLoopbackPort();
+const timeoutBaseUrl = `http://127.0.0.1:${timeoutPort}/v1`;
+const timeoutSupervisor = new NeuralProsthesisSidecarSupervisor({
+  enabled: true,
+  command: process.execPath,
+  args: ['-e', 'setInterval(() => {}, 1000)'],
+  cwd: process.cwd(),
+  baseUrl: timeoutBaseUrl,
+  startupTimeoutMs: 1000,
+  stopTimeoutMs: 1500,
+});
+await assert.rejects(timeoutSupervisor.start(), /sidecar-startup-timeout/);
+assert.equal(timeoutSupervisor.snapshot().managed, false);
+assert.equal(timeoutSupervisor.snapshot().ready, false);
+assert.equal(timeoutSupervisor.snapshot().pid, null);
+
+const timeoutPort = await reserveLoopbackPort();
+const timeoutBaseUrl = `http://127.0.0.1:${timeoutPort}/v1`;
+const timeoutSupervisor = new NeuralProsthesisSidecarSupervisor({
+  enabled: true,
+  command: process.execPath,
+  args: ['-e', 'setInterval(() => {}, 1000)'],
+  cwd: process.cwd(),
+  baseUrl: timeoutBaseUrl,
+  startupTimeoutMs: 1000,
+  stopTimeoutMs: 1500,
+});
+await assert.rejects(timeoutSupervisor.start(), /sidecar-startup-timeout/);
+assert.equal(timeoutSupervisor.snapshot().managed, false);
+assert.equal(timeoutSupervisor.snapshot().ready, false);
+assert.equal(timeoutSupervisor.snapshot().pid, null);
+
 const externalServer = createServer((_req, res) => {
   res.writeHead(200, { 'content-type': 'application/json' });
   res.end(JSON.stringify({ ready: true, backend: 'neural-prosthesis' }));
@@ -184,8 +216,9 @@ try {
   const stillHealthy = await fetch(new URL('/health', externalBaseUrl));
   assert.equal(stillHealthy.ok, true, 'stopping NK1 must not terminate a manually-managed sidecar');
 } finally {
+  const closed = once(externalServer, 'close');
   externalServer.close();
-  await once(externalServer, 'close');
+  await closed;
 }
 
 const disabledSupervisor = new NeuralProsthesisSidecarSupervisor({ enabled: false });

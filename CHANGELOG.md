@@ -16,6 +16,13 @@
 - Return prompt/completion token usage and a length finish reason for measurable inference budgets.
 - Add regression coverage for model/host context intersections and invalid host limits; no model-specific latency or memory claim is implied.
 
+## [NK1][OmeStro #28] Neural Prosthesis — opt-in sidecar lifecycle (2026-11-17)
+
+- Add an opt-in NK1 sidecar supervisor that starts the configured local Python interpreter without a shell, injects the research package into PYTHONPATH, and waits for an authenticated-boundary-safe loopback liveness response.
+- Reuse an already healthy manually-started sidecar without taking ownership; stop only the child process NK1 itself launched.
+- Bound startup and shutdown, terminate a child that fails to become healthy, keep failures non-fatal so existing language-provider fallbacks remain available, and expose supervisor status in NK1 diagnostics.
+- Keep automatic startup disabled by default; no model downloads or dependency installation are performed by NK1.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
