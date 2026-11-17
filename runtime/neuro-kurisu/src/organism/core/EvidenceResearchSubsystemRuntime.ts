@@ -48,6 +48,7 @@ export interface CapturedInventionCandidate {
   candidateFingerprint: string;
   status: 'awaiting-preregistration' | 'preregistered';
   inventionId?: string;
+  preregistrationError?: string;
 }
 export interface DreamInventionInput extends InventionEvaluationPlan {
   association: Parameters<IntrinsicExperimentGenerator['fromDreamAssociation']>[0];
@@ -194,6 +195,13 @@ export class EvidenceResearchSubsystemRuntime {
     this.capturedCandidates = this.capturedCandidates.map(item =>
       item.id === candidate.id ? candidate : item);
     return record;
+  }
+
+  markCapturePreregistrationFailure(candidateId: string, error: unknown): void {
+    const candidate = this.capturedCandidates.find(item => item.id === candidateId);
+    if (!candidate || candidate.status !== 'awaiting-preregistration') return;
+    candidate.preregistrationError = String((error as any)?.message ?? error)
+      .normalize('NFKC').trim().slice(0, 240);
   }
 
   capturedInventionsSnapshot(): CapturedInventionCandidate[] {
