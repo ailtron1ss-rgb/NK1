@@ -638,10 +638,13 @@ export class OrganismRuntime {
     const cognitiveLoad01 = clamp01(Number(needs.cognitiveLoad ?? 1));
     const uncertainty01 = clamp01(Number(needs.uncertainty ?? 1));
     const resourceRisk01 = clamp01((1 - energy01) * 0.45 + cognitiveLoad01 * 0.35 + uncertainty01 * 0.20);
-    const contextTokens = Math.max(0,
-      Math.ceil((String(request.system ?? '').length + String(request.user ?? '').length) / 4)
-        + Math.max(0, Math.floor(Number(request.maxTokens ?? 0) || 0)),
-    );
+    const promptChars = String(request.system ?? '').length + String(request.user ?? '').length;
+    const characterTokenEstimate = Math.ceil(promptChars / 4);
+    const ledgerTokenEstimate = Number(request.contextLedger?.estimatedRenderedTokens);
+    const promptTokenEstimate = Number.isFinite(ledgerTokenEstimate) && ledgerTokenEstimate >= 0
+      ? Math.max(characterTokenEstimate, Math.ceil(ledgerTokenEstimate))
+      : characterTokenEstimate;
+    const contextTokens = promptTokenEstimate + Math.max(0, Math.floor(Number(request.maxTokens ?? 0) || 0));
     const selection = this.synapticMatrix.select({
       task,
       baseModelId: this.config.synapticBaseModelId,
