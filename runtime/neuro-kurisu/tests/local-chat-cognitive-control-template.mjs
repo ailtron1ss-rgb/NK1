@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
-import { CognitiveToNeuralBridge } from '../src/organism/cognition/CognitiveToNeuralBridge.ts';
+import { CognitiveToNeuralBridge, isValidCognitiveNeuralControlProfile } from '../src/organism/cognition/CognitiveToNeuralBridge.ts';
 
 const profile = new CognitiveToNeuralBridge().project({
   tick: 24,
@@ -38,6 +38,9 @@ const fetchImpl = async (_url, init) => {
     choices: [{ message: { content: 'local provider response' } }],
   }), { status:200, headers:{'content-type':'application/json'} });
 };
+
+assert.equal(isValidCognitiveNeuralControlProfile(profile), true,
+  'the complete B365-aware profile must satisfy the canonical hand-off validator');
 
 const baseRequest = {
   system:'system prompt',
@@ -89,6 +92,27 @@ assert.deepEqual(enabledResponse.providerControlReceipt,{
 assert.equal(payloads[1].temperature,profile.temperature);
 assert.equal(payloads[1].max_tokens,profile.maxTokens);
 
+// A missing/invalid B365 snapshot must be explicit and still produce a valid,
+// conservative hand-off instead of failing the whole local language request.
+const unavailableProfile = new CognitiveToNeuralBridge().project({
+  tick:25, action:'reflect', mode:'shallow', motivation01:.4,
+});
+assert.equal(unavailableProfile.neuralSnapshotAvailable,false);
+assert.equal(unavailableProfile.neuralSnapshotVersion,null);
+assert.equal(unavailableProfile.neuralSnapshotTick,null);
+assert.equal(unavailableProfile.neuralSnapshotAgeTicks,null);
+assert.ok(unavailableProfile.featureVector01.slice(12,35).every(value=>value===.5));
+assert.equal(isValidCognitiveNeuralControlProfile(unavailableProfile),true);
+const unavailableResponse = await enabledProvider.generate({
+  ...baseRequest, cognitiveControl:unavailableProfile,
+});
+const unavailableKwargs = payloads[2].chat_template_kwargs;
+assert.equal(unavailableResponse.text,'local provider response');
+assert.equal(unavailableKwargs.nk1_neural_snapshot_available,false);
+assert.equal(unavailableKwargs.nk1_neural_snapshot_version,null);
+assert.equal(unavailableKwargs.nk1_neural_snapshot_freshness01,0);
+assert.ok(unavailableKwargs.nk1_feature_vector01.slice(12,35).every(value=>value===.5));
+
 const invalidProfiles = [
   { ...profile, featureKeys: [] },
   { ...profile, action: 'untrusted-action' },
@@ -102,8 +126,12 @@ const invalidProfiles = [
   { ...profile, adapterHint: 'fast' },
   { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index===0?1:index===2?0:value) },
   { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index===39?0:index===38?1:value) },
-  { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index===35?.5:value) },
+  { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index === 35 ? 0.5 : value) },
   { ...profile, neuralSnapshotAgeTicks: 2 },
+  { ...profile, neuralSnapshotVersion: null },
+  { ...profile, neuralSource: 'unavailable' },
+  { ...profile, maxTokens: 97 },
+  { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index === 22 ? -0.1 : value) },
 
 ];
 for (const invalidProfile of invalidProfiles) {
