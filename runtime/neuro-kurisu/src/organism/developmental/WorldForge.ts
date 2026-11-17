@@ -11,7 +11,7 @@ export type WorldForgeSplit = 'train' | 'validation' | 'holdout';
 export type WorldForgeDomain = 'resource-allocation' | 'route-planning' | 'investigation';
 export type WorldForgeAction = 'observe' | 'inspect' | 'move' | 'collect' | 'wait' | 'reroute' | 'prioritize' | 'verify';
 export interface WorldForgeConstraints { maxSteps:number; resourceBudget:number; riskTolerance01:number; requiredEvidence:number; }
-export interface WorldForgeDisturbance { atStep:number; kind:'resource-shock'|'route-block'|'signal-noise'|'deadline-shift'; magnitude01:number; }
+interface WorldForgeDisturbance { atStep:number; kind:'resource-shock'|'route-block'|'signal-noise'|'deadline-shift'; magnitude01:number; }
 export interface WorldForgeCase {
   id:string; split:WorldForgeSplit; domain:WorldForgeDomain; difficulty01:number; task:string;
   observations:string[]; goalOptions:string[]; availableActions:WorldForgeAction[]; constraints:WorldForgeConstraints;
