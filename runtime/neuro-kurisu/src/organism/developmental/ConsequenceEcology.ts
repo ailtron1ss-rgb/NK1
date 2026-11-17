@@ -341,7 +341,7 @@ function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalys
         !boundedInteger(option.excludedBeyondHorizon, 0, MAX_PATHS) ||
         !boundedInteger(option.unreachableNodeCount, 0, MAX_NODES) ||
         !boundedInteger(option.exploredPathCount, 0, MAX_PATHS) || typeof option.truncated !== 'boolean' ||
-        !Array.isArray(option.nodes) || option.nodes.length < 1 || option.nodes.length > MAX_NODES ||
+        !Array.isArray(option.nodes) || option.nodes.length > MAX_NODES ||
         !Array.isArray(option.stakeholders) || option.stakeholders.length > MAX_NODES ||
         !isRecord(option.temporalEffects) || !Array.isArray(option.criticalPaths) || option.criticalPaths.length > 8 ||
         !Array.isArray(option.feedbackLoops) || option.feedbackLoops.length > 16 ||
