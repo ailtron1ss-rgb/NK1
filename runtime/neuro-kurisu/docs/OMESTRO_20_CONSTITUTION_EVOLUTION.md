@@ -34,7 +34,7 @@ ActionGateway persists approval tickets, binds them to exact payload/decision id
 
 ## Bounds and failure behaviour
 
-Revision history is bounded to 64, proposals to 128 and audit events to 512 (with an anchor digest across compaction). A stale proposal cannot activate against a changed base. Failed signature, missing host key or corrupted persistence returns the engine to the compiled baseline rather than accepting partially trusted state.
+Revision history is bounded to 32, proposals to 64, mutable rules to 128, reviewers per proposal to 4, evidence references per review to 12, and audit events to 256 (with an anchor digest across compaction). The signed checkpoint projection is memoized until the governance ledger changes, avoiding repeat full-state cloning and HMAC work on unchanged hot cycles. A stale proposal cannot activate against a changed base. Failed signature, missing host key or corrupted persistence returns the engine to the compiled baseline rather than accepting partially trusted state.
 
 ## Validation
 
