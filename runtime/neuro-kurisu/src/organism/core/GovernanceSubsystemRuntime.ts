@@ -13,13 +13,23 @@ import { SelfModelValidationEngine, defaultSelfModelValidation } from '../system
 import { FailureRecoveryCertification, defaultFailureRecoveryCertification } from '../system/FailureRecoveryCertification.ts';
 import { CognitiveDomainClosure, type CognitiveDomainMarkSet, type CognitiveDomain } from '../system/CognitiveDomainClosure.ts';
 import { CausalDomainClosureLedger, defaultCausalDomainClosureLedger, type CausalDomainClosureSnapshot } from '../system/CausalDomainClosureLedger.ts';
-import { CognitiveParliament, type ParliamentTrustPort } from '../system/CognitiveParliament.ts';
+import { CognitiveParliament, type ParliamentTrustPort, type ParliamentEvidenceReference, type ParliamentRisk } from '../system/CognitiveParliament.ts';
+import { CognitiveParliamentDispatcher, type ParliamentDispatchResult, type ParliamentRoleExecutorMap } from '../system/CognitiveParliamentDispatcher.ts';
+import type { P69Input } from '../cognition/P69ConstitutionalArbiter.ts';
 
 /** BIG PASS 51: physical owner for capability, integrity, resilience and constitutional governance. */
 export class GovernanceSubsystemRuntime {
   readonly cognitiveParliament: CognitiveParliament;
-  constructor(input: { parliamentTrustPort?: ParliamentTrustPort } = {}) {
+  readonly cognitiveParliamentDispatcher: CognitiveParliamentDispatcher;
+  constructor(input: {
+    parliamentTrustPort?: ParliamentTrustPort;
+    parliamentRoleExecutors?: ParliamentRoleExecutorMap;
+  } = {}) {
     this.cognitiveParliament = new CognitiveParliament(input.parliamentTrustPort);
+    this.cognitiveParliamentDispatcher = new CognitiveParliamentDispatcher(
+      this.cognitiveParliament,
+      input.parliamentRoleExecutors,
+    );
   }
   readonly systemName='governance' as const;
   readonly dependencies=['self'] as const;
@@ -48,6 +58,50 @@ export class GovernanceSubsystemRuntime {
   readonly cognitiveDomainClosure = new CognitiveDomainClosure(16);
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly causalDomainClosureLedger = new CausalDomainClosureLedger(32);
+  /**
+   * Runs the specialist parliament for one exact candidate, then passes only an
+   * approved candidate through P69. This method selects an action; it does not
+   * execute it. ActionGateway remains the only side-effect boundary.
+   */
+  async deliberateAndArbitrate(input: {
+    candidateId: string;
+    risk: ParliamentRisk;
+    task: string;
+    evidenceReferences?: ParliamentEvidenceReference[];
+    p69Input: P69Input;
+    timeoutMs?: number;
+    maxConcurrent?: number;
+    maxTotalTokens?: number;
+  }): Promise<{
+    status: 'parliament-not-approved' | 'candidate-not-in-p69-set' | 'p69-selected' | 'p69-diverted';
+    parliament: ParliamentDispatchResult;
+    arbitration: ReturnType<P69ConstitutionalArbiter['arbitrate']> | null;
+  }> {
+    const parliament = await this.cognitiveParliamentDispatcher.dispatch({
+      candidateId: input.candidateId,
+      risk: input.risk,
+      task: input.task,
+      evidenceReferences: input.evidenceReferences,
+      timeoutMs: input.timeoutMs,
+      maxConcurrent: input.maxConcurrent,
+      maxTotalTokens: input.maxTotalTokens,
+    });
+    if (parliament.decision.status !== 'approved') {
+      return { status: 'parliament-not-approved', parliament, arbitration: null };
+    }
+    const candidateExists = Array.isArray(input.p69Input?.candidates) &&
+      input.p69Input.candidates.some(candidate => candidate && candidate.id === input.candidateId);
+    if (!candidateExists) {
+      return { status: 'candidate-not-in-p69-set', parliament, arbitration: null };
+    }
+    const arbitration = this.p69ConstitutionalArbiter.arbitrate(input.p69Input);
+    return {
+      status: arbitration.chosen?.id === input.candidateId ? 'p69-selected' : 'p69-diverted',
+      parliament,
+      arbitration,
+    };
+  }
+
   restoreFromPersisted(input: { advanced?: any }) {
     const advanced=input.advanced ?? {};
     this.resilience.restore(advanced.advancedResilience);
