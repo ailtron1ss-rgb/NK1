@@ -20,8 +20,10 @@ import {
 } from '../learning/LearningExperimentPlan.ts';
 import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
 import { VerifiedOutcomeLedger, type TaskManifestEntry } from '../learning/VerifiedOutcomeLedger.ts';
+import type { P55State } from './P55DevelopmentalForkUniverse.ts';
 import type { SkillLearnBenchTrialReport } from '../learning/SkillLearnBenchAdapter.ts';
 import {
+  createDevelopmentalMultiverseSessionFromP55,
   DevelopmentalMultiverse,
   type DevelopmentalMultiverseFinalResult,
   type DevelopmentalMultiverseObservationInput,
@@ -279,6 +281,26 @@ export class DevelopmentalMultiverseIndependentRunner {
     const runner = new DevelopmentalMultiverseIndependentRunner(universe, options);
     await options.checkpointStore.save(universe.snapshot()!);
     return runner;
+  }
+
+  /** Create directly from a P55 snapshot while retaining host-supplied P23 services. */
+  static async createFromP55Snapshot(
+    input: Omit<DevelopmentalMultiverseSessionInput, 'variants'>,
+    p55Snapshot: Pick<P55State, 'forks'>,
+    options: DevelopmentalMultiverseIndependentRunnerOptions,
+  ): Promise<DevelopmentalMultiverseIndependentRunner> {
+    const session = createDevelopmentalMultiverseSessionFromP55(input, p55Snapshot);
+    return this.create(session, options);
+  }
+
+  /** Production composition: P55 snapshot → data-only arms → host-owned P23 authorities. */
+  static async createWithHostCommandsFromP55(
+    input: Omit<DevelopmentalMultiverseSessionInput, 'variants'>,
+    p55Snapshot: Pick<P55State, 'forks'>,
+    options: DevelopmentalMultiverseHostCommandRunnerOptions,
+  ): Promise<DevelopmentalMultiverseIndependentRunner> {
+    const session = createDevelopmentalMultiverseSessionFromP55(input, p55Snapshot);
+    return this.createWithHostCommands(session, options);
   }
 
   /** Turnkey composition with the same host-owned OS/container authority adapter used by P23. */

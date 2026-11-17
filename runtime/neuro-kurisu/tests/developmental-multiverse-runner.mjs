@@ -106,6 +106,22 @@ try {
     environmentFingerprint: 'c'.repeat(64),
   }), /validation-and-holdout-required/);
 
+  const p55BackedRunner = await DevelopmentalMultiverseIndependentRunner.createFromP55Snapshot(
+    { ...input, runId: 'dm19-p55-runner-facade' },
+    {
+      forks: [
+        { id: 'p55-facade-active', style: 'balanced', status: 'candidate', deltas: { exploration: 0.03, verification: 0.03, reflection: 0.03, attention: 0, prediction: 0.03 } },
+        { id: 'p55-facade-rejected', style: 'radical', status: 'rejected', deltas: { exploration: 0.12, verification: -0.04, reflection: 0.08, attention: -0.06, prediction: 0.09 } },
+      ],
+    },
+    {
+      ...options,
+      checkpointStore: new AtomicFileDevelopmentalMultiverseCheckpointStore(join(root, 'p55-facade.json')),
+    },
+  );
+  assert.deepEqual(p55BackedRunner.snapshot().session.variants.map(variant => variant.id), ['p55-facade-active'],
+    'the runner facade must directly convert a P55 snapshot and exclude rejected forks');
+
   const runner = await DevelopmentalMultiverseIndependentRunner.create(input, options);
   assert.equal(runner.snapshot().status, 'validating');
   const selection = await runner.runValidation();
