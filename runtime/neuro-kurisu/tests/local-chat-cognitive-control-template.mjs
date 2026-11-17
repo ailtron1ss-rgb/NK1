@@ -12,6 +12,7 @@ const profile = new CognitiveToNeuralBridge().project({
   budgetRemaining01: .7,
   attention01: .75,
   neural: {
+    version: 14,
     tick: 23,
     predictionError01: .2,
     plasticity01: .4,
@@ -76,6 +77,7 @@ assert.equal(kwargs.nk1_motivation01,.8);
 assert.equal(kwargs.nk1_uncertainty01,.35);
 assert.equal(kwargs.nk1_budget_remaining01,.7);
 assert.equal(kwargs.nk1_neural_snapshot_available,true);
+assert.equal(kwargs.nk1_neural_snapshot_version,14);
 assert.ok(kwargs.nk1_neural_snapshot_freshness01>=0 && kwargs.nk1_neural_snapshot_freshness01<=1);
 assert.ok(kwargs.nk1_steering_caution01>=0 && kwargs.nk1_steering_caution01<=.15);
 assert.ok(Object.values(kwargs).every(value => typeof value !== 'number' || Number.isFinite(value)));
