@@ -336,6 +336,43 @@ assert.ok(scientificProject);
 assert.ok(scientificProject.evidence.some(evidence => evidence.includes('invention-holdout:')));
 assert.ok(scientificProject.experiments.includes(generated.id));
 
+// Restore preserves verified scientific state while rechecking every signed artifact.
+const runtimeSnapshot = runtime.snapshot();
+const restoredRuntime = new EvidenceResearchSubsystemRuntime(resolveKey);
+restoredRuntime.restore(runtimeSnapshot);
+assert.equal(restoredRuntime.inventionLoop.metrics().accepted, 1);
+assert.equal(restoredRuntime.scientificBrain.diagnostics().acceptedUpdates, trainedAfterReplication);
+assert.ok(restoredRuntime.scientificMethod.snapshot().projects.some(project => project.id === scientificProjectId));
+
+// Dream associations become explicit verification hypotheses, not promoted memories.
+const dreamGenerated = runtime.proposeDreamInvention({
+  association: {
+    id: 'dream-link-01',
+    question: 'Do these two episodes share a causal context?',
+    confidence: 0.72,
+    at: now++,
+    sourceMemoryIds: ['memory-episode-a', 'memory-episode-b'],
+    sharedTerms: ['location', 'unexpected event'],
+    kind: 'association',
+    validationStatus: 'candidate',
+  },
+  goals: [],
+  successCriteria: 'Independent observations must corroborate the proposed association.',
+  testFingerprint: digest('dream-association-manifest'),
+  baseline: 0,
+  metricScale: 1,
+  minEffect: 0.1,
+  expectedEffect01: 0.25,
+  minSuccessRate: 0.8,
+  primarySeed: 74,
+  replicationSeeds: [75, 76, 77, 78, 79],
+  holdoutSeeds: [80, 81, 82, 83, 84],
+  verifierPlan: protocol.verifierPlan,
+});
+assert.ok(dreamGenerated);
+assert.equal(dreamGenerated.protocol.provenance.source, 'dream-association');
+assert.equal(dreamGenerated.stage, 'proposed');
+
 // The canonical seven-system composition root forwards host key authority to research.
 const fabric = new OrganismSystemFabric({ inventionVerifierKeyResolver: resolveKey });
 const fabricRecord = startInvention(fabric.research.inventionLoop, {
