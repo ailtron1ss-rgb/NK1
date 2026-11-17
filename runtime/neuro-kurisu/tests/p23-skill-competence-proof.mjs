@@ -241,6 +241,18 @@ assert.throws(() => new VersionedSkillCandidateStore(
   createSkillCompetenceProofVerifier(trustedAttestorKeys),
 ), /competence proof failed signature\/context verification/);
 
+const expiredOnRestoreVerifier = createSkillCompetenceProofVerifier(
+  trustedAttestorKeys,
+  () => Date.now() + 2 * 60 * 60_000,
+);
+assert.throws(() => new VersionedSkillCandidateStore(
+  skillStorePersistence,
+  () => true,
+  (observation, restoredCandidate) => verifySignedSkillShadowObservation(observation, restoredCandidate, shadowVerifierKeys),
+  () => false,
+  expiredOnRestoreVerifier,
+), /competence proof failed signature\/context verification/);
+
 const expiredIssuedAt = Date.now() - 10_000;
 const expiredPayload = store.createCompetenceProofPayload(
   candidate.candidateId, proposal, contract, 'skill-attestor-v1',
@@ -251,7 +263,7 @@ const expiredProof = signSkillCompetenceProofForTest(expiredPayload, attestorPri
 function buildGateway(options = {}) {
   const gateway = new ActionGateway();
   gateway.configureSkillCompetenceProofVerifier({
-    skillCompetenceVerifierKeys: trustedAttestorKeys,
+    skillCompetenceVerifierKeys: options.trustedAttestorKeys ?? trustedAttestorKeys,
     currentSkillCompetenceRuntimeFingerprint: () => options.runtimeFingerprint === undefined ? runtimeFingerprint : options.runtimeFingerprint,
     currentSkillCompetenceEnvironmentFingerprint: () => options.environmentFingerprint === undefined ? environmentFingerprint : options.environmentFingerprint,
     resolveActiveSkillCompetenceSubject: () => options.activeSubject ?? store.resolveActiveSkillCompetenceSubject(skillId),
@@ -264,11 +276,12 @@ function buildGateway(options = {}) {
   gateway.registerTool({
     id: options.toolId ?? skillId,
     capability: options.capability ?? contract.capability,
+    permissionClass: options.permissionClass,
     destructive: false,
     requiresSkillCompetenceProof: true,
     skillCompetenceProof: options.proof ?? activeProof,
     inputContract: options.inputContract ?? inputContract,
-    outputContract,
+    outputContract: options.outputContract ?? outputContract,
     execute: async () => {
       executorCalls += 1;
       return { ok: true };
@@ -285,6 +298,9 @@ assert.equal(valid.executorCalls(), 1, 'only a correctly attested in-scope proof
 const deniedCases = [
   ['autonomous-mode', { autonomous: true }],
   ['wrong-capability', { capability: 'different-capability' }],
+  ['wrong-permission-class', { permissionClass: 'device' }],
+  ['wrong-output-contract', { outputContract: { ...outputContract, properties: { ok: { type: 'string' } } } }],
+  ['untrusted-attestor', { trustedAttestorKeys: new Map() }],
   ['wrong-tool-id', { toolId: 'skill.proof.other' }],
   ['missing-runtime-identity', { runtimeFingerprint: null }],
   ['missing-environment-identity', { environmentFingerprint: null }],
@@ -292,6 +308,10 @@ const deniedCases = [
   ['wrong-environment', { environmentFingerprint: 'f'.repeat(64) }],
   ['wrong-active-version', { activeSubject: {
     candidateId: candidate.candidateId, version: candidate.version + 1,
+    payloadFingerprint: candidate.payloadFingerprint,
+  } }],
+  ['wrong-active-candidate', { activeSubject: {
+    candidateId: 'a'.repeat(64), version: candidate.version,
     payloadFingerprint: candidate.payloadFingerprint,
   } }],
   ['wrong-input-contract', { inputContract: {
