@@ -23,7 +23,7 @@ import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
-import { NeuroPlasticAdapterRegistry, verifyNeuroPlasticApprovalSignature } from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { NeuroPlasticAdapterRegistry, verifyNeuroPlasticApprovalSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
@@ -133,12 +133,16 @@ if (registryRelativePath === '..' || registryRelativePath.startsWith('..' + path
     throw new Error('neuro-plastic-registry-file-must-remain-under-state-dir');
 }
 const NEURO_PLASTIC_APPROVAL_SECRET = String(process.env.NEURO_PLASTIC_APPROVAL_SECRET || '');
+const NEURO_PLASTIC_EVALUATOR_SECRET = String(process.env.NEURO_PLASTIC_EVALUATOR_SECRET || '');
 try {
     const registrySnapshot = JSON.parse(await readFile(NEURO_PLASTIC_REGISTRY_PATH, 'utf8'));
     NEURO_PLASTIC_REGISTRY.restore(
         registrySnapshot,
         (approval, context) => verifyNeuroPlasticApprovalSignature(
             approval, context, NEURO_PLASTIC_APPROVAL_SECRET,
+        ),
+        (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(
+            context.adapterId, receipt, NEURO_PLASTIC_EVALUATOR_SECRET,
         ),
     );
 }
