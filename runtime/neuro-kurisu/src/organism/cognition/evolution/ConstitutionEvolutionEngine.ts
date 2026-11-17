@@ -2,7 +2,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto
 import type { ActionGateway } from '../../system/ActionGateway.ts';
 
 export const CONSTITUTION_EVOLUTION_SCHEMA = 1 as const;
-export const MUTABLE_CONSTITUTION_DOMAINS = ['workflow', 'quality', 'performance', 'resource', 'operations'] as const;
+export const MUTABLE_CONSTITUTION_DOMAINS = Object.freeze(['workflow', 'quality', 'performance', 'resource', 'operations'] as const);
 export type MutableConstitutionDomain = typeof MUTABLE_CONSTITUTION_DOMAINS[number];
 export type ConstitutionRisk = 'low' | 'medium' | 'high' | 'critical';
 export type ConstitutionChange = 'add' | 'amend' | 'retire';
@@ -114,13 +114,17 @@ const defaults = (): ConstitutionEvolutionState => {
 };
 const isRecord = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
 const validRevision = (v: unknown): v is ConstitutionRevision => {
-  if (!isRecord(v) || !Array.isArray(v.rules) || !/^1\.\d+\.0$/.test(String(v.version)) || !Number.isInteger(v.revision) || !Number.isFinite(v.createdAt)) return false;
+  const versionMatch = isRecord(v) ? String(v.version).match(/^1\.(\d+)\.0$/) : null;
+  if (!isRecord(v) || !Array.isArray(v.rules) || !versionMatch || Number(versionMatch[1]) !== v.revision
+    || !Number.isInteger(v.revision) || !Number.isFinite(v.createdAt) || v.createdAt < 0) return false;
   try {
     if (v.rules.length > MAX_RULES || new Set(v.rules.map((r: ConstitutionRule) => r.id)).size !== v.rules.length) return false;
     for (const r of v.rules) {
       const normalized = ruleInput(r);
-      if (normalized.id !== r.id || typeof r.enabled !== 'boolean' || !Number.isFinite(r.createdAt) || !Number.isFinite(r.updatedAt)
-        || !(r.retiredAt === null || Number.isFinite(r.retiredAt))) return false;
+      if (normalized.id !== r.id || typeof r.enabled !== 'boolean' || !Number.isFinite(r.createdAt) || r.createdAt < 0
+        || !Number.isFinite(r.updatedAt) || r.updatedAt < r.createdAt
+        || !(r.retiredAt === null || (Number.isFinite(r.retiredAt) && r.retiredAt >= r.updatedAt))
+        || (r.enabled && r.retiredAt !== null) || (!r.enabled && r.retiredAt === null)) return false;
     }
     const core = { version:v.version, revision:v.revision, createdAt:v.createdAt, parentVersion:v.parentVersion, rollbackOf:v.rollbackOf, rules:v.rules };
     return v.digest === revisionDigest(core);
@@ -365,16 +369,26 @@ export class ConstitutionEvolutionEngine {
       if (!validRevision(raw.active) || !Array.isArray(raw.revisions) || raw.revisions.length<1 || raw.revisions.length>MAX_REVISIONS
         || !raw.revisions.every(validRevision)) return fail('revision integrity validation failed');
       const revisions=raw.revisions as ConstitutionRevision[];
-      if (!revisions.some(r=>r.version===raw.active.version && r.digest===raw.active.digest)) return fail('active revision is not anchored in history');
+      for (let index=1;index<revisions.length;index++) {
+        const prior=revisions[index-1], current=revisions[index];
+        if (current.parentVersion!==prior.version || current.revision!==prior.revision+1) return fail('revision parent lineage is inconsistent');
+      }
+      const lastRevision=revisions.at(-1);
+      if (!lastRevision || lastRevision.version!==raw.active.version || lastRevision.digest!==raw.active.digest) return fail('active revision is not the history tip');
       if (!Array.isArray(raw.proposals) || raw.proposals.length>MAX_PROPOSALS || !Array.isArray(raw.auditEvents) || raw.auditEvents.length>MAX_AUDIT_EVENTS) return fail('snapshot bounds invalid');
       for (const p of raw.proposals as ConstitutionProposal[]) {
         if (!isRecord(p) || typeof p.id!=='string' || typeof p.authorId!=='string' || !Array.isArray(p.reviews)
+          || p.reviews.length>MAX_REVIEWS_PER_PROPOSAL || !Array.isArray(p.testPlan) || p.testPlan.length<1 || p.testPlan.length>20
+          || !p.riskAssessment || !Array.isArray(p.riskAssessment.mitigations) || p.riskAssessment.mitigations.length<1
+          || p.riskAssessment.mitigations.length>12
           || !['pending-review','awaiting-ratification','ratified','applied','rejected','stale'].includes(p.status)
           || p.candidateDigest!==proposalDigest(proposalCore(p))) return fail('proposal integrity validation failed');
         if (['ratified','applied'].includes(p.status) && !p.approval) return fail('ratified proposal has no approval receipt');
         if (p.status==='applied' && (typeof p.appliedVersion!=='string' || !/^1\\.\\d+\\.0$/.test(p.appliedVersion))) return fail('applied proposal version is invalid');
         for (const review of p.reviews) {
-          if (!isRecord(review) || review.attestationMac!==this.mac(reviewCore(p.id,p.candidateDigest,review))) return fail('review attestation failed');
+          if (!isRecord(review) || !Array.isArray(review.evidenceRefs) || review.evidenceRefs.length<1
+            || review.evidenceRefs.length>MAX_EVIDENCE_REFS_PER_REVIEW
+            || review.attestationMac!==this.mac(reviewCore(p.id,p.candidateDigest,review))) return fail('review attestation failed');
         }
         if (p.approval && (!isRecord(p.approval) || p.approval.signature!==this.mac(approvalCore(p.id,{
           approverId:p.approval.approverId,approvalRef:p.approval.approvalRef,candidateDigest:p.approval.candidateDigest,at:p.approval.at,
