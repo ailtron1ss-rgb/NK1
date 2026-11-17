@@ -386,7 +386,7 @@ export class OpenLoopRadar {
       const overdueMs = record.dueAt !== null ? Math.max(0, now - record.dueAt) : 0;
       const dueSoon = record.dueAt !== null && record.dueAt > now && record.dueAt - now <= dueSoonMs;
       const dependencyUnblocked = record.unblockedAt > 0 && record.unblockedAt > record.lastSurfacedAt;
-      const surfaceReason = effectiveStatus === 'expired' ? 'expired'
+      const surfaceReason: OpenLoopCandidate['surfaceReason'] = effectiveStatus === 'expired' ? 'expired'
         : blockedBy.length > 0 ? null
           : dependencyUnblocked ? 'dependency-unblocked'
             : overdueMs > 0 ? 'overdue'
