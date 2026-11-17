@@ -20,10 +20,10 @@ jobs:
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
-      - name: Run Shared Future scenario and consent regressions
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/shared-future-scenarios.mjs
       - name: Run Shared Future verified-action integration regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/shared-future-action-outcome-integration.mjs
+      - name: Run Shared Future scenario and consent regressions
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/shared-future-scenarios.mjs
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: node scripts/typecheck-runtime.mjs
