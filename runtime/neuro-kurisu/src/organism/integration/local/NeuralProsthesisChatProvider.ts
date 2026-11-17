@@ -20,7 +20,7 @@ export interface NeuralProsthesisProviderOptions {
   fetchImpl?: typeof fetch;
 }
 
-const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 function canonicalBaseUrl(raw: string | undefined): string | null {
