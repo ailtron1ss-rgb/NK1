@@ -22,7 +22,7 @@ The donor path may point to one project or a folder containing one folder per do
 ## Outputs
 
 - `baseline.manifest.json`: deterministic inventory fingerprint and source signals for the selected NK1 baseline.
-- `donors/*.manifest.json`: donor files, hashes, languages, dependencies, imports, license evidence, notices, possible credential paths, and capability signals.
+- `donors/*.manifest.json`: donor files, hashes, languages, dependencies, imports, Git origin/commit provenance when available, license evidence, notices, possible credential paths, and capability signals.
 - `neuroforge-report.json`: donor-versus-baseline gap analysis and blocked proposals.
 - `proposals/*.md`: review packet per donor.
 - `summary.md`: concise analysis summary.
@@ -32,7 +32,8 @@ The donor path may point to one project or a folder containing one folder per do
 - Source files are hashed and sampled locally; their contents are not copied to the report.
 - Credential-like files are reported by path and finding kind only; detected values are never emitted.
 - Symlinks and common generated/dependency directories are skipped.
-- File-count, file-size, total-size, depth, and text-sample limits are enforced. Skipped files are recorded and block promotion.
+- File-count, file-size, total-size, depth, and text-sample limits are enforced before and during bounded reads. Symlinks are recorded as skipped, and incomplete inventories block promotion.
+- Git provenance is read locally from a real `.git` directory (including a bounded ancestor lookup); the exact HEAD commit and sanitized `origin` URL are recorded. No Git command, network request, credential-bearing URL, or arbitrary worktree pointer is followed. Missing, invalid, or external-worktree metadata remains explicitly unpinned.
 - The SPDX guess from a LICENSE file is evidence only. It does not establish legal permission for the whole repository, nested projects, dependencies, models, or assets.
 - No donor source is executed, installed, copied, or promoted.
 - All proposals remain blocked pending exact upstream revision, human legal clearance, dependency/license review, security review, isolated reproduction, behavioral benchmark, independent holdout, exact-head CI, and release parity.

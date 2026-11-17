@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
-import { lstat, readdir, readFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { lstat, open, readdir } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
+import { readNeuroForgeGitProvenance, type NeuroForgeGitProvenance } from './NeuroForgeGitProvenance.ts';
 
 export type NeuroForgeFileRole = 'source' | 'test' | 'documentation' | 'configuration' | 'license' | 'asset' | 'other';
 export type NeuroForgeCapabilityId =
@@ -50,6 +52,7 @@ export interface NeuroForgeProjectManifest {
   scannedAt: number;
   projectVersion: string | null;
   upstreamRevision: string | null;
+  sourceProvenance: NeuroForgeGitProvenance;
   snapshotSha256: string;
   stats: {
     files: number;
@@ -117,6 +120,38 @@ const CAPABILITY_RULES: Array<{ id: NeuroForgeCapabilityId; pattern: RegExp }> =
 
 function digest(value: string | Buffer): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+async function readBoundedFile(path: string, maxBytes: number): Promise<{
+  data: Buffer | null;
+  reason: 'read-failed' | 'file-size-limit' | 'not-regular-file' | null;
+}> {
+  const noFollow = typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0;
+  const handle = await open(path, constants.O_RDONLY | noFollow).catch(() => null);
+  if (!handle) return { data: null, reason: 'read-failed' };
+
+  try {
+    const current = await handle.stat();
+    if (!current.isFile()) return { data: null, reason: 'not-regular-file' };
+    if (current.size > maxBytes) return { data: null, reason: 'file-size-limit' };
+
+    const chunks: Buffer[] = [];
+    let total = 0;
+    while (total <= maxBytes) {
+      const capacity = Math.min(64 * 1024, maxBytes + 1 - total);
+      const chunk = Buffer.allocUnsafe(capacity);
+      const { bytesRead } = await handle.read(chunk, 0, capacity, null);
+      if (bytesRead === 0) return { data: Buffer.concat(chunks, total), reason: null };
+      total += bytesRead;
+      if (total > maxBytes) return { data: null, reason: 'file-size-limit' };
+      chunks.push(chunk.subarray(0, bytesRead));
+    }
+    return { data: null, reason: 'file-size-limit' };
+  } catch {
+    return { data: null, reason: 'read-failed' };
+  } finally {
+    await handle.close().catch(() => undefined);
+  }
 }
 
 function extensionOf(value: string): string {
@@ -268,6 +303,11 @@ function inferCapabilitySignals(rows: Array<{ path: string; role: NeuroForgeFile
 
 export async function scanNeuroForgeProject(root: string, options: NeuroForgeScanOptions = {}): Promise<NeuroForgeProjectManifest> {
   const absoluteRoot = resolve(root);
+  const rootMetadata = await lstat(absoluteRoot).catch(() => null);
+  if (!rootMetadata || !rootMetadata.isDirectory() || rootMetadata.isSymbolicLink()) {
+    throw new Error('source-root-must-be-a-real-directory');
+  }
+  const sourceProvenance = await readNeuroForgeGitProvenance(absoluteRoot);
   const maxFiles = Math.max(1, Math.min(50000, Math.floor(options.maxFiles ?? 20000)));
   const maxFileBytes = Math.max(1024, Math.min(8 * 1024 * 1024, Math.floor(options.maxFileBytes ?? 2 * 1024 * 1024)));
   const maxTotalBytes = Math.max(maxFileBytes, Math.min(1024 * 1024 * 1024, Math.floor(options.maxTotalBytes ?? 256 * 1024 * 1024)));
@@ -307,7 +347,9 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
         continue;
       }
       if (metadata.isSymbolicLink()) {
-        warnings.push('symlink-skipped:' + normalizedPath(relative(absoluteRoot, absolutePath)));
+        const symlinkPath = normalizedPath(relative(absoluteRoot, absolutePath));
+        skipped.push({ path: symlinkPath, sizeBytes: 0, reason: 'symlink-skipped' });
+        warnings.push('symlink-skipped:' + symlinkPath);
         continue;
       }
       if (metadata.isDirectory()) {
@@ -317,24 +359,35 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
       }
       if (!metadata.isFile()) continue;
       const relativePath = normalizedPath(relative(absoluteRoot, absolutePath));
-      let data: Buffer;
-      try {
-        data = await readFile(absolutePath);
-      } catch {
-        skipped.push({ path: relativePath, sizeBytes: 0, reason: 'read-failed' });
-        continue;
-      }
-      const sizeBytes = data.byteLength;
+      const declaredSizeBytes = Number(metadata.size ?? 0);
       if (files.length >= maxFiles) {
-        skipped.push({ path: relativePath, sizeBytes, reason: 'file-count-limit' });
+        skipped.push({ path: relativePath, sizeBytes: declaredSizeBytes, reason: 'file-count-limit' });
         stop = true;
         warnings.push('file-count-limit-reached');
         continue;
       }
-      if (sizeBytes > maxFileBytes) {
-        skipped.push({ path: relativePath, sizeBytes, reason: 'file-size-limit' });
+      if (declaredSizeBytes > maxFileBytes) {
+        skipped.push({ path: relativePath, sizeBytes: declaredSizeBytes, reason: 'file-size-limit' });
         continue;
       }
+      if (totalBytes + declaredSizeBytes > maxTotalBytes) {
+        skipped.push({ path: relativePath, sizeBytes: declaredSizeBytes, reason: 'total-size-limit' });
+        stop = true;
+        warnings.push('total-size-limit-reached');
+        continue;
+      }
+
+      const bounded = await readBoundedFile(absolutePath, maxFileBytes);
+      if (!bounded.data) {
+        skipped.push({
+          path: relativePath,
+          sizeBytes: declaredSizeBytes,
+          reason: bounded.reason ?? 'read-failed',
+        });
+        continue;
+      }
+      const data = bounded.data;
+      const sizeBytes = data.byteLength;
       if (totalBytes + sizeBytes > maxTotalBytes) {
         skipped.push({ path: relativePath, sizeBytes, reason: 'total-size-limit' });
         stop = true;
@@ -412,7 +465,8 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
     rootPath: absoluteRoot,
     scannedAt: Date.now(),
     projectVersion,
-    upstreamRevision: null,
+    upstreamRevision: sourceProvenance.revision,
+    sourceProvenance,
     snapshotSha256: digest(snapshotMaterial),
     stats: {
       files: files.length, sourceFiles, testFiles, documentationFiles,

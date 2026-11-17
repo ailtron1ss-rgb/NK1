@@ -13,15 +13,21 @@ export interface NeuroForgeProposal {
   copyAllowed: false;
   promotionStatus: 'blocked';
   blockingReasons: string[];
-  evidence: { donorFiles: string[]; baselineFiles: string[]; donorSnapshotSha256: string; baselineSnapshotSha256: string };
+  evidence: {
+    donorFiles: string[];
+    baselineFiles: string[];
+    donorSnapshotSha256: string;
+    baselineSnapshotSha256: string;
+    donorProvenance: NeuroForgeProjectManifest['sourceProvenance'];
+  };
 }
 
 export interface NeuroForgeAnalysisReport {
   schemaVersion: 1;
   generatedAt: number;
   mode: 'offline-donor-analysis';
-  baseline: { projectId: string; snapshotSha256: string; files: number; sourceFiles: number };
-  donors: Array<{ projectId: string; snapshotSha256: string; files: number; sourceFiles: number; licenseSpdx: string | null; securityFindings: number }>;
+  baseline: { projectId: string; snapshotSha256: string; files: number; sourceFiles: number; sourceProvenance: NeuroForgeProjectManifest['sourceProvenance'] };
+  donors: Array<{ projectId: string; snapshotSha256: string; files: number; sourceFiles: number; licenseSpdx: string | null; securityFindings: number; sourceProvenance: NeuroForgeProjectManifest['sourceProvenance'] }>;
   proposals: NeuroForgeProposal[];
   codeCopied: false;
   donorCodeExecuted: false;
@@ -141,6 +147,7 @@ export function analyzeNeuroForge(input: {
           baselineFiles: baselineSignal?.evidenceFiles ?? [],
           donorSnapshotSha256: donor.snapshotSha256,
           baselineSnapshotSha256: input.baseline.snapshotSha256,
+          donorProvenance: donor.sourceProvenance,
         },
       });
     }
@@ -162,6 +169,7 @@ export function analyzeNeuroForge(input: {
       snapshotSha256: input.baseline.snapshotSha256,
       files: input.baseline.stats.files,
       sourceFiles: input.baseline.stats.sourceFiles,
+      sourceProvenance: input.baseline.sourceProvenance,
     },
     donors: input.donors.map(donor => ({
       projectId: donor.projectId,
@@ -170,6 +178,7 @@ export function analyzeNeuroForge(input: {
       sourceFiles: donor.stats.sourceFiles,
       licenseSpdx: donor.rootLicense.spdxId,
       securityFindings: donor.securityFindings.length,
+      sourceProvenance: donor.sourceProvenance,
     })),
     proposals,
     codeCopied: false,
@@ -188,6 +197,7 @@ export function renderNeuroForgeSummary(report: NeuroForgeAnalysisReport): strin
     '- Capability proposals: ' + report.proposals.length,
     '- Code copied: no',
     '- Donor code executed: no',
+    '- Git-pinned donors: ' + report.donors.filter(row => row.sourceProvenance.status === 'pinned').length + '/' + report.donors.length,
     '',
     '| Donor | Capability | Gap | Priority | Recommendation |',
     '|---|---|---|---:|---|',
@@ -210,6 +220,13 @@ export function renderNeuroForgeProposal(proposal: NeuroForgeProposal): string {
     '- Priority heuristic: ' + proposal.priorityScore + '/100',
     '- Promotion: blocked',
     '- Code reuse allowed: no',
+    '',
+    '## Donor source provenance',
+    '',
+    '- Repository: ' + (proposal.evidence.donorProvenance.repositoryUrl ?? 'not-available'),
+    '- Commit: ' + (proposal.evidence.donorProvenance.revision ?? 'not-pinned'),
+    '- Ref: ' + (proposal.evidence.donorProvenance.ref ?? 'detached-or-unavailable'),
+    '- Provenance status: ' + proposal.evidence.donorProvenance.status,
     '',
     '## Donor evidence',
     '',
