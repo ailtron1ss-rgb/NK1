@@ -14,10 +14,11 @@ import {
   verifySkillCompetenceProofForTool,
 } from '../src/organism/learning/SkillCompetenceProof.ts';
 import { InMemorySkillStorePersistence, VersionedSkillCandidateStore } from '../src/organism/learning/VersionedSkillCandidateStore.ts';
+import { InMemoryTrustedSkillShadowRunRegistry } from '../src/organism/learning/TrustedSkillShadowRunRegistry.ts';
 import {
   signSkillShadowArtifactForFixture,
   skillShadowPayloadFingerprint,
-  verifySignedSkillShadowObservation,
+  createContextBoundSkillShadowEvidenceVerifier,
 } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 
 const holdoutKeys = generateKeyPairSync('ed25519');
@@ -153,17 +154,22 @@ const candidatePayload = {
 };
 const skillId = 'skill.proof.read';
 const skillStorePersistence = new InMemorySkillStorePersistence();
+const shadowRunRegistry = new InMemoryTrustedSkillShadowRunRegistry();
+const verifyShadowEvidence = createContextBoundSkillShadowEvidenceVerifier(
+  shadowVerifierKeys,
+  (observation, candidate) => shadowRunRegistry.resolve(observation, candidate),
+);
 const store = new VersionedSkillCandidateStore(
   skillStorePersistence,
   () => true,
-  (observation, candidate) => verifySignedSkillShadowObservation(observation, candidate, shadowVerifierKeys),
+  verifyShadowEvidence,
   () => false,
   createSkillCompetenceProofVerifier(trustedAttestorKeys),
 );
 const candidate = store.stageCandidate(proposal, skillId, candidatePayload);
 assert.equal(candidate.status, 'staged');
 
-function signedShadowObservation(candidateRecord, index) {
+function signedShadowObservation(candidateRecord, index, signedEnvironmentFingerprint = environmentFingerprint) {
   const observedAt = Date.now() + index;
   const payload = {
     schemaVersion: 1,
@@ -178,11 +184,19 @@ function signedShadowObservation(candidateRecord, index) {
     manifestFingerprint: proposal.manifestFingerprint,
     seed: index,
     runtimeVersion,
-    environmentFingerprint,
+    environmentFingerprint: signedEnvironmentFingerprint,
     passed: true,
     observedAt,
     verifierId: 'shadow-verifier-v1',
   };
+  shadowRunRegistry.register({
+    runId: payload.runId,
+    taskId: payload.taskId,
+    seed: payload.seed,
+    manifestFingerprint: payload.manifestFingerprint,
+    runtimeVersion: payload.runtimeVersion,
+    environmentFingerprint,
+  });
   const artifact = signSkillShadowArtifactForFixture(payload, shadowPrivatePem);
   return {
     runId: payload.runId,
@@ -195,6 +209,10 @@ function signedShadowObservation(candidateRecord, index) {
 for (let index = 1; index <= 3; index++) {
   store.recordShadowObservation(candidate.candidateId, signedShadowObservation(candidate, index));
 }
+assert.throws(() => store.recordShadowObservation(
+  candidate.candidateId,
+  signedShadowObservation(candidate, 99, 'f'.repeat(64)),
+), /shadow evidence failed authentication/);
 const initialIssuedAt = Date.now();
 const firstPayload = store.createCompetenceProofPayload(
   candidate.candidateId, proposal, contract, 'skill-attestor-v1', initialIssuedAt, initialIssuedAt + 60 * 60_000,
@@ -238,7 +256,7 @@ assert.deepEqual(store.resolveActiveSkillCompetenceSubject(skillId), {
 const restoredStore = new VersionedSkillCandidateStore(
   skillStorePersistence,
   () => true,
-  (observation, restoredCandidate) => verifySignedSkillShadowObservation(observation, restoredCandidate, shadowVerifierKeys),
+  verifyShadowEvidence,
   () => false,
   createSkillCompetenceProofVerifier(trustedAttestorKeys),
 );
