@@ -94,8 +94,6 @@ assert.equal(primary.outcomes[0].passed, true);
 assert.equal(primary.outcomes[0].authority, 'independent-verifier');
 assert.equal(primary.outcomes[0].seed, 17);
 assert.equal(primary.outcomes[0].attempt, 1);
-assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, runId: 'run-primary-001' }), /duplicate-run/);
-assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, evidenceSha256: 'not-a-sha256' }), /invalid-outcome/);
 assert.throws(() => loop.critique(p.id, { reviewerId: 'unregistered-reviewer', reviewRef: 'review://primary', reviewSha256: sha('e') }), /reviewer-plan-mismatch/);
 loop.critique(p.id, {
   reviewerId: protocol.verifierPlan.critique,
@@ -105,6 +103,18 @@ loop.critique(p.id, {
   limitations: ['Initial sample is deliberately small'],
 });
 assert.equal(loop.snapshot().records[0].stage, 'critiqued');
+assert.throws(() => loop.recordOutcome(p.id, {
+  ...replicationInput,
+  runId: 'run-primary-001',
+  environmentId: 'environment-replay',
+  evidenceRef: 'artifact://replication/reused-run.json',
+}), /duplicate-run/);
+assert.throws(() => loop.recordOutcome(p.id, {
+  ...replicationInput,
+  runId: 'run-invalid-digest',
+  evidenceRef: 'artifact://replication/invalid-digest.json',
+  evidenceSha256: 'not-a-sha256',
+}), /invalid-outcome/);
 assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, verifierId: 'verifier-primary' }), /verifier-plan-mismatch/);
 const replicationRuns = [
   [18, 97], [19, 97], [20, 101], [21, 97], [22, 96],
