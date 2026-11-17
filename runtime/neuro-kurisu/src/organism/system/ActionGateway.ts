@@ -238,7 +238,7 @@ export interface ActionUndoFirstPlan extends ActionUndoFirstPreparation {
 }
 export interface ActionUndoFirstPreparationContext extends ToolExecutionContext { requestHash:string; }
 export interface ActionUndoFirstDefinition {
-  /** Must be read-only: capture the baseline and describe a safe compensating path before execution. */
+  /** Must not mutate the primary target; it may create a bounded recovery artifact with provider-managed expiry. */
   prepare:(input:Record<string,unknown>,context:ActionUndoFirstPreparationContext)=>Promise<ActionUndoFirstPreparation>|ActionUndoFirstPreparation;
 }
 export interface ActionUndoExecutionOptions {
