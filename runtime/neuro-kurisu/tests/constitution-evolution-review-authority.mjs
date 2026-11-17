@@ -18,7 +18,10 @@ assert.throws(() => parseTrustedConstitutionReviewKeys(JSON.stringify({
 })), /same.*public key/i);
 assert.throws(() => parseTrustedConstitutionReviewKeys(JSON.stringify({ reviewer: 'not-a-public-key' })), /Ed25519/);
 assert.throws(() => parseTrustedConstitutionReviewKeys(JSON.stringify(Object.fromEntries(
-  Array.from({ length: 17 }, (_, i) => ['reviewer-' + i, publicPem])
+  Array.from({ length: 17 }, (_, i) => {
+    const pair = generateKeyPairSync('ed25519');
+    return ['reviewer-' + i, pair.publicKey.export({ type: 'spki', format: 'pem' }).toString()];
+  })
 ))), /16-key limit/);
 
 const expected = {
