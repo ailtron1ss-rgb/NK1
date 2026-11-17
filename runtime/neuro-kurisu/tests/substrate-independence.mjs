@@ -36,6 +36,10 @@ const payload = {
 
 const engine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
 engine.setInitialBackend(source.backendId);
+const observed = engine.observeBackend('kobold');
+assert.equal(observed.state.activeBackendId, source.backendId,
+  'an uncalibrated observed provider must not replace the active substrate');
+
 
 const transfer = engine.createTransferPackage({
   sourceBackendId: source.backendId,
@@ -67,6 +71,9 @@ const incompatible = { ...target, embeddingSpaceId: 'other-embedding-space' };
 const compatibility = engine.assessCompatibility(transfer, incompatible);
 assert.equal(compatibility.compatible, false);
 assert.ok(compatibility.reasons.includes('embedding-reindex-required'));
+const privacyGate = engine.assessCompatibility(transfer, target);
+assert.equal(privacyGate.compatible, false);
+assert.ok(privacyGate.reasons.includes('remote-backend-requires-explicit-consent'));
 
 const trials = [
   ['memory-recall', 'task-1'], ['memory-recall', 'task-2'],
@@ -129,6 +136,18 @@ const duplicate = await engine.evaluateMigration({
 });
 assert.equal(duplicate.accepted, false);
 assert.ok(duplicate.reasons.includes('calibration-independence-collision'));
+
+const staleTrials = trials.map((trial, index) => ({ ...trial, trialId: `stale-${index}`, transferDigest: '0'.repeat(64) }));
+const stale = await engine.evaluateMigration({
+  transfer, targetBackendId: target.backendId, trials: staleTrials,
+  verifyTrial: async () => true, allowExternalBackend: true,
+});
+assert.equal(stale.accepted, false);
+assert.ok(stale.reasons.includes('calibration-transfer-lineage-mismatch'));
+
+const rolledBack = engine.rollbackBackend();
+assert.equal(rolledBack.activeBackendId, source.backendId);
+assert.equal(engine.preferredRoute(), 'llama.cpp');
 
 
 
