@@ -28,6 +28,51 @@ const malformedActionId = compiler.compile({
 });
 assert.ok(malformedActionId.missingInformation.includes('malformed-action-id'), 'tool IDs must match ActionGateway identifier rules');
 assert.equal(compiler.gate(malformedActionId, 'notes search').allowed, false);
+const malformedAssumption = compiler.compile({
+  text: 'Summarize the project status.',
+  extraction: {
+    expectedOutcome: 'A status report',
+    acceptanceCriteria: ['State the current revision'],
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop if the revision cannot be verified'],
+    assumptions: [{ statement: 'The target branch is correct', impact: 'unexpected-severity', confidence01: 0.4 }],
+  },
+});
+assert.equal(malformedAssumption.assumptions[0].impact, 'high',
+  'an unknown assumption severity must be escalated, never defaulted to low');
+assert.ok(malformedAssumption.missingInformation.includes('invalid-assumption-impact'),
+  'malformed assumption metadata must block approval rather than disappear');
+assert.throws(() => compiler.approve(malformedAssumption, {
+  contractId: malformedAssumption.id, userConfirmed: true, allowedActions: ['organism.inspect'],
+  at: now, evidenceRef: 'malformed-assumption-test',
+}), /incomplete/);
+
+const truncatedPermissionList = compiler.compile({
+  text: 'Inspect the project.',
+  extraction: {
+    expectedOutcome: 'A project status',
+    acceptanceCriteria: ['Return a grounded status'],
+    permissions: { allowedActions: Array.from({ length: 33 }, (_, index) => `organism.inspect.${index}`) },
+    stopConditions: ['Stop if repository state is unknown'],
+  },
+});
+assert.ok(truncatedPermissionList.missingInformation.includes('permission-list-truncated'),
+  'truncated action allow-lists must be marked incomplete');
+assert.equal(compiler.gate(truncatedPermissionList, 'organism.inspect.0').allowed, false,
+  'a partial permission list must not authorize a subset of an unreviewed scope');
+
+const malformedDenyList = compiler.compile({
+  text: 'Inspect the project.',
+  extraction: {
+    expectedOutcome: 'A project status',
+    acceptanceCriteria: ['Return a grounded status'],
+    permissions: { allowedActions: ['organism.inspect'], deniedActions: ['bad tool identifier'] },
+    stopConditions: ['Stop if repository state is unknown'],
+  },
+});
+assert.ok(malformedDenyList.missingInformation.includes('malformed-action-id'),
+  'deny-list identifiers must be validated using the same strict grammar as allow-list identifiers');
+assert.equal(compiler.gate(malformedDenyList, 'organism.inspect').allowed, false);
 
 const processScopedCompiler = new IntentCompiler({ clock: () => now });
 const processScopedContract = processScopedCompiler.compile({
