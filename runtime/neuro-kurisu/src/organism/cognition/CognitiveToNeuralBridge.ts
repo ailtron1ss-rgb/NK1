@@ -78,10 +78,10 @@ export class CognitiveToNeuralBridge {
       motivation01,uncertainty01,urgency01,budgetRemaining01,attention01,
       ...modeFeatures,
     ];
-    const temperature=clamp(
+    const temperature=Number(clamp(
       TEMPERATURE_BY_MODE[mode]+motivation01*.08-uncertainty01*.16+urgency01*.02,
       .2,.85,
-    );
+    ).toFixed(3));
     const steeringIntent01={
       curiosity01:clamp(motivation01*(1-uncertainty01)*.15,0,.15),
       caution01:clamp(uncertainty01*.15,0,.15),
