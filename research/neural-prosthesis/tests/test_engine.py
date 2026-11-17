@@ -146,6 +146,32 @@ class NeuralProsthesisEngineTests(unittest.TestCase):
             finally:
                 mismatched.close()
 
+    def test_training_provenance_is_bound_into_the_signed_artifact_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "adapter"
+            training = {
+                "dataset_sha256": "b" * 64,
+                "example_count": 12,
+                "epochs": 2,
+                "seed": 42,
+            }
+            manifest = self.bank.save_adapter(
+                "kurisu-reasoning-v1",
+                artifact,
+                training_evidence=training,
+            )
+            self.assertEqual(manifest["training_evidence"], training)
+            second = NeuralProsthesisBank(
+                TinyModel(),
+                model_id="nk1/tiny-test",
+                model_revision="a" * 40,
+                layer_path="layers",
+            )
+            try:
+                self.assertEqual(second.load_adapter(artifact), "kurisu-reasoning-v1")
+            finally:
+                second.close()
+
     def test_candidate_export_requires_immutable_base_model_revision(self):
         unpinned = NeuralProsthesisBank(
             TinyModel(),
