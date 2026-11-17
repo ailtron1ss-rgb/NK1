@@ -73,7 +73,9 @@ export interface SubstrateMigrationEvaluation {
   evaluationId: string;
   accepted: boolean;
   sourceBackendId: string;
+  sourceProfileDigest: string;
   targetBackendId: string;
+  targetProfileDigest: string;
   transferDigest: string;
   evaluatedAt: number;
   trialCount: number;
@@ -94,6 +96,7 @@ export interface SubstrateMigrationEvaluation {
 export interface SubstrateIndependenceState {
   version: 1;
   activeBackendId: string | null;
+  activeProfileDigest: string | null;
   activeProvenance: 'bootstrap' | 'calibrated' | 'unknown';
   observedBackendId: string | null;
   pendingTransfer: {
@@ -106,7 +109,9 @@ export interface SubstrateIndependenceState {
   history: Array<{
     at: number;
     fromBackendId: string | null;
+    fromProfileDigest: string | null;
     toBackendId: string;
+    toProfileDigest: string;
     transferDigest: string;
     evaluationId: string;
     reason: 'calibrated-promotion' | 'rollback';
@@ -424,6 +429,7 @@ function defaultState(): SubstrateIndependenceState {
   return {
     version: 1,
     activeBackendId: null,
+    activeProfileDigest: null,
     activeProvenance: 'unknown',
     observedBackendId: null,
     pendingTransfer: null,
@@ -435,11 +441,15 @@ function defaultState(): SubstrateIndependenceState {
 function normalizeEvaluation(value: unknown): SubstrateMigrationEvaluation | null {
   try {
     const row = ownDataRecord(value, [
-      'evaluationId', 'accepted', 'sourceBackendId', 'targetBackendId', 'transferDigest',
-      'evaluatedAt', 'trialCount', 'taskFamilyCount', 'receipts', 'metrics', 'reasons',
+      'evaluationId', 'accepted', 'sourceBackendId', 'sourceProfileDigest', 'targetBackendId',
+      'targetProfileDigest', 'transferDigest', 'evaluatedAt', 'trialCount', 'taskFamilyCount',
+      'receipts', 'metrics', 'reasons',
     ]);
     if (!isSafeId(row.evaluationId) || typeof row.accepted !== 'boolean'
-        || !isSafeId(row.sourceBackendId) || !isSafeId(row.targetBackendId)
+        || !isSafeId(row.sourceBackendId) || typeof row.sourceProfileDigest !== 'string'
+        || !/^[a-f0-9]{64}$/u.test(row.sourceProfileDigest)
+        || !isSafeId(row.targetBackendId) || typeof row.targetProfileDigest !== 'string'
+        || !/^[a-f0-9]{64}$/u.test(row.targetProfileDigest)
         || typeof row.transferDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(row.transferDigest)
         || !Number.isFinite(row.evaluatedAt) || !Number.isSafeInteger(row.trialCount) || !Number.isSafeInteger(row.taskFamilyCount)
         || !Array.isArray(row.receipts) || row.receipts.length > 100 || row.receipts.length !== row.trialCount
@@ -457,7 +467,9 @@ function normalizeEvaluation(value: unknown): SubstrateMigrationEvaluation | nul
       evaluationId: row.evaluationId,
       accepted: row.accepted,
       sourceBackendId: row.sourceBackendId,
+      sourceProfileDigest: row.sourceProfileDigest,
       targetBackendId: row.targetBackendId,
+      targetProfileDigest: row.targetProfileDigest,
       transferDigest: row.transferDigest,
       evaluatedAt: Number(row.evaluatedAt),
       trialCount: Number(row.trialCount),
@@ -577,11 +589,14 @@ export class SubstrateIndependenceEngine {
     }
     try {
       const row = ownDataRecord(raw, [
-        'version', 'activeBackendId', 'activeProvenance', 'observedBackendId',
+        'version', 'activeBackendId', 'activeProfileDigest', 'activeProvenance', 'observedBackendId',
         'pendingTransfer', 'lastEvaluation', 'history',
       ]);
       if (row.version !== 1) throw new Error('unsupported-schema');
       const activeBackendId = row.activeBackendId === null ? null : (isSafeId(row.activeBackendId) ? row.activeBackendId : fail('invalid-active-backend'));
+      const activeProfileDigest = row.activeProfileDigest === null
+        ? null
+        : (typeof row.activeProfileDigest === 'string' && /^[a-f0-9]{64}$/u.test(row.activeProfileDigest) ? row.activeProfileDigest : fail('invalid-active-profile-digest'));
       const observedBackendId = row.observedBackendId === null ? null : (isSafeId(row.observedBackendId) ? row.observedBackendId : fail('invalid-observed-backend'));
       if (!['bootstrap', 'calibrated', 'unknown'].includes(String(row.activeProvenance))) throw new Error('invalid-active-provenance');
       let pendingTransfer: SubstrateIndependenceState['pendingTransfer'] = null;
@@ -598,20 +613,25 @@ export class SubstrateIndependenceEngine {
         };
       }
       const history = Array.isArray(row.history) ? row.history.slice(-64).flatMap((entry: unknown) => {
-        const item = ownDataRecord(entry, ['at', 'fromBackendId', 'toBackendId', 'transferDigest', 'evaluationId', 'reason']);
+        const item = ownDataRecord(entry, ['at', 'fromBackendId', 'fromProfileDigest', 'toBackendId', 'toProfileDigest', 'transferDigest', 'evaluationId', 'reason']);
         if (!Number.isFinite(item.at) || !(item.fromBackendId === null || isSafeId(item.fromBackendId))
-            || !isSafeId(item.toBackendId) || typeof item.transferDigest !== 'string'
+            || !(item.fromProfileDigest === null || (typeof item.fromProfileDigest === 'string' && /^[a-f0-9]{64}$/u.test(item.fromProfileDigest)))
+            || !isSafeId(item.toBackendId) || typeof item.toProfileDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(item.toProfileDigest)
+            || typeof item.transferDigest !== 'string'
             || !/^[a-f0-9]{64}$/u.test(item.transferDigest) || !isSafeId(item.evaluationId)
             || !['calibrated-promotion', 'rollback'].includes(String(item.reason))) throw new Error('invalid-history');
         return [{
           at: Number(item.at), fromBackendId: item.fromBackendId as string | null,
-          toBackendId: item.toBackendId as string, transferDigest: item.transferDigest,
+          fromProfileDigest: item.fromProfileDigest as string | null,
+          toBackendId: item.toBackendId as string, toProfileDigest: item.toProfileDigest as string,
+          transferDigest: item.transferDigest,
           evaluationId: item.evaluationId as string, reason: item.reason as 'calibrated-promotion' | 'rollback',
         }];
       }) : [];
       this.state = {
         version: 1,
         activeBackendId,
+        activeProfileDigest,
         activeProvenance: row.activeProvenance as SubstrateIndependenceState['activeProvenance'],
         observedBackendId,
         pendingTransfer,
