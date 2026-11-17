@@ -37,6 +37,7 @@ type FastAdaptationContext = {
   lastAdaptedTick:number;
   updates:number;
   pendingDecisionTicks:number[];
+  pendingDecisionActions:{tick:number;action:ActionKind}[];
   lastConsumedOutcomeTick:number;
 };
 
@@ -132,6 +133,7 @@ export class EmbodiedCausalWorldBridge {
   private fastExpiredContexts=0;
   private fastEvictedContexts=0;
   private fastUnmatchedOutcomes=0;
+  private fastActionMismatchOutcomes=0;
   private fastDecayedContexts=0;
   private fastBacktrackedUpdates=0;
   private fastNoGainRejections=0;
@@ -224,6 +226,7 @@ export class EmbodiedCausalWorldBridge {
       const previous=this.fastContexts.get(this.activeFastContextKey);
       if(previous){
         previous.pendingDecisionTicks=previous.pendingDecisionTicks.filter(value=>value!==tick);
+        previous.pendingDecisionActions=previous.pendingDecisionActions.filter(value=>value.tick!==tick);
       }
     }
     let context=this.fastContexts.get(key);
@@ -239,14 +242,46 @@ export class EmbodiedCausalWorldBridge {
       context={
         actionOffsets:Array.from({length:ACTIONS.length},()=>new Array(LATENT).fill(0)),
         createdAtMs:now,lastTouchedAtMs:now,createdTick:tick,lastTouchedTick:tick,lastAdaptedAtMs:now,lastAdaptedTick:tick,updates:0,
-        pendingDecisionTicks:[],lastConsumedOutcomeTick:-1,
+        pendingDecisionTicks:[],pendingDecisionActions:[],lastConsumedOutcomeTick:-1,
       };
     }
     this.decayFastContext(context,tick,now);
+    // Re-opening the same tick supersedes any prior action binding for that tick.
+    context.pendingDecisionActions=context.pendingDecisionActions.filter(entry=>entry.tick!==tick);
     if(!context.pendingDecisionTicks.includes(tick))context.pendingDecisionTicks.push(tick);
     if(context.pendingDecisionTicks.length>16)context.pendingDecisionTicks.splice(0,context.pendingDecisionTicks.length-16);
+    const pendingTicks=new Set(context.pendingDecisionTicks);
+    context.pendingDecisionActions=context.pendingDecisionActions.filter(entry=>pendingTicks.has(entry.tick));
     this.touchFastContext(key,context,tick,now);
     return context;
+  }
+
+  commitAction(contextId:number|string|undefined,tick:number,action:ActionKind):boolean{
+    if(!Number.isSafeInteger(tick)||tick<0||!ACTIONS.includes(action))return false;
+    const key=this.fastContextKey(contextId);
+    const context=key?this.fastContexts.get(key):undefined;
+    if(!key||!context||!context.pendingDecisionTicks.includes(tick))return false;
+    context.pendingDecisionActions=context.pendingDecisionActions.filter(entry=>entry.tick!==tick);
+    context.pendingDecisionActions.push({tick,action});
+    if(context.pendingDecisionActions.length>16)context.pendingDecisionActions.splice(0,context.pendingDecisionActions.length-16);
+    this.touchFastContext(key,context,tick);
+    return true;
+  }
+
+  private pendingFastAction(contextId:number|string|undefined,tick:number):ActionKind|undefined{
+    if(!Number.isSafeInteger(tick)||tick<0)return undefined;
+    const key=this.fastContextKey(contextId);
+    const context=key?this.fastContexts.get(key):undefined;
+    return context?.pendingDecisionActions.find(entry=>entry.tick===tick)?.action;
+  }
+
+  assertCommittedAction(contextId:number|string|undefined,tick:number,action:ActionKind):boolean{
+    const expected=this.pendingFastAction(contextId,tick);
+    if(expected!==undefined&&expected!==action){
+      this.fastActionMismatchOutcomes++;
+      throw new Error('P27 outcome committed action mismatch');
+    }
+    return expected===undefined||expected===action;
   }
 
   private consumeFastDecision(contextId:number|string|undefined,tick:number):FastAdaptationContext|null{
@@ -256,12 +291,16 @@ export class EmbodiedCausalWorldBridge {
     const key=this.fastContextKey(contextId);
     const context=key?this.fastContexts.get(key):undefined;
     if(!key||!context||!context.pendingDecisionTicks.includes(tick)||tick<=context.lastConsumedOutcomeTick){
-      if(context&&key&&context.pendingDecisionTicks.includes(tick))context.pendingDecisionTicks=context.pendingDecisionTicks.filter(value=>value!==tick);
+      if(context&&key&&context.pendingDecisionTicks.includes(tick)){
+        context.pendingDecisionTicks=context.pendingDecisionTicks.filter(value=>value!==tick);
+        context.pendingDecisionActions=context.pendingDecisionActions.filter(entry=>entry.tick!==tick);
+      }
       this.activeFastContextKey=null;
       this.fastUnmatchedOutcomes++;
       return null;
     }
     context.pendingDecisionTicks=context.pendingDecisionTicks.filter(value=>value!==tick);
+    context.pendingDecisionActions=context.pendingDecisionActions.filter(entry=>entry.tick!==tick);
     context.lastConsumedOutcomeTick=tick;
     this.touchFastContext(key,context,tick,now);
     return context;
@@ -402,7 +441,9 @@ export class EmbodiedCausalWorldBridge {
     if(!ACTIONS.includes(args.action))throw new TypeError('P27 outcome requires a known action');
     if(!this.finiteFeatureVector(args.nextFeatures))throw new TypeError('P27 requires a finite next feature vector with 1-64 numeric values');
     if(![args.reward01,args.verified01,args.predictionError01].every(Number.isFinite))throw new TypeError('P27 requires finite outcome metrics');
-    const fastContext=this.consumeFastDecision(args.contextId??this.activeFastContextKey??undefined,args.tick);
+    const outcomeContextId=args.contextId??this.activeFastContextKey??undefined;
+    this.assertCommittedAction(outcomeContextId,args.tick,args.action);
+    const fastContext=this.consumeFastDecision(outcomeContextId,args.tick);
     const ai=ACTIONS.indexOf(args.action);const from=this.state.latent.slice();const observed=this.encode(args.nextFeatures);const pred=this.predict(from,args.action,1);const nextError=clamp(mse(pred.next,observed));const rewardErr=clamp(Math.abs(pred.reward-args.reward01));
     const verified=clamp(args.verified01);const lr=.012+verified*.018;
     // P27 fast adaptation is accepted only when a bounded backtracking search
@@ -525,7 +566,7 @@ export class EmbodiedCausalWorldBridge {
       horizonErrors:this.state.horizonErrors.slice(),
       horizonCounts:this.state.horizonCounts.slice(),
       horizonConfidence01:this.state.horizonConfidence01.slice(),onlineAdaptation01:this.state.onlineAdaptation01,calibrationError01:this.state.calibrationError01,modelDrift01:this.state.modelDrift01,adaptationUpdates:this.state.adaptationUpdates,failureEvents:this.state.failureEvents,recoveryGain01:this.state.recoveryGain01,
-      fastContextCount:this.fastContexts.size,fastAdapterNorm:this.fastContextNorm(this.activeFastContextKey?this.fastContexts.get(this.activeFastContextKey):undefined),fastAcceptedUpdates:this.fastAcceptedUpdates,fastRejectedUpdates:this.fastRejectedUpdates,fastExpiredContexts:this.fastExpiredContexts,fastEvictedContexts:this.fastEvictedContexts,fastUnmatchedOutcomes:this.fastUnmatchedOutcomes,fastDecayedContexts:this.fastDecayedContexts,fastBacktrackedUpdates:this.fastBacktrackedUpdates,fastNoGainRejections:this.fastNoGainRejections,fastLastPredictionErrorBefore01:this.fastLastPredictionErrorBefore01,fastLastPredictionErrorAfter01:this.fastLastPredictionErrorAfter01,
+      fastContextCount:this.fastContexts.size,fastAdapterNorm:this.fastContextNorm(this.activeFastContextKey?this.fastContexts.get(this.activeFastContextKey):undefined),fastAcceptedUpdates:this.fastAcceptedUpdates,fastRejectedUpdates:this.fastRejectedUpdates,fastExpiredContexts:this.fastExpiredContexts,fastEvictedContexts:this.fastEvictedContexts,fastUnmatchedOutcomes:this.fastUnmatchedOutcomes,fastActionMismatchOutcomes:this.fastActionMismatchOutcomes,fastDecayedContexts:this.fastDecayedContexts,fastBacktrackedUpdates:this.fastBacktrackedUpdates,fastNoGainRejections:this.fastNoGainRejections,fastLastPredictionErrorBefore01:this.fastLastPredictionErrorBefore01,fastLastPredictionErrorAfter01:this.fastLastPredictionErrorAfter01,
       observations:this.state.observations,
       transitions:this.state.transitions,
       interventionComparisons:this.state.interventionComparisons,
