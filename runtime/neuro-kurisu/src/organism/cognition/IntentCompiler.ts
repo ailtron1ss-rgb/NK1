@@ -128,7 +128,7 @@ export class IntentCompiler {
     const assumptions: IntentAssumption[] = (Array.isArray(extraction.assumptions) ? extraction.assumptions : [])
       .slice(0, MAX_LIST)
       .map(item => {
-        const impact = item?.impact === 'high' || item?.impact === 'medium' ? item.impact : 'low';
+        const impact: IntentAssumption['impact'] = item?.impact === 'high' || item?.impact === 'medium' ? item.impact : 'low';
         const confidence01 = clamp01(item?.confidence01);
         return {
           statement: cleanText(item?.statement),

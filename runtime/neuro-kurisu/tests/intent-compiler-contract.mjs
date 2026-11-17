@@ -21,6 +21,8 @@ assert.equal(ambiguous.goal.text, 'Please delete old project data and prepare a 
 assert.equal(ambiguous.risk.level, 'high', 'destructive language must raise risk without granting permission');
 const riskCannotBeDowngraded = compiler.compile({ text: 'Delete the production database', extraction: { risk: 'low' } });
 assert.equal(riskCannotBeDowngraded.risk.level, 'high', 'an extraction must not downgrade risk implied by the request');
+const russianDestructiveIntent = compiler.compile({ text: 'Удалить старые данные проекта и уничтожить резервную копию.' });
+assert.equal(russianDestructiveIntent.risk.level, 'high', 'Russian destructive intent must be classified as high risk');
 assert.throws(() => compiler.approve(ambiguous, { contractId: ambiguous.id, userConfirmed: true, allowedActions: [], at: 1_800_000_000_001, evidenceRef: 'incomplete-contract' }), /incomplete/);
 assert.deepEqual(ambiguous.permissions.allowedActions, [], 'free text must never become an execution allow-list');
 assert.equal(ambiguous.approval.status, 'not-approved');
@@ -55,11 +57,14 @@ const approved = compiler.approve(contract, {
   evidenceRef: 'user-confirmation:intent:test:bounded',
 });
 assert.equal(compiler.gate(approved, 'organism.inspect').allowed, true);
+const forgedApproved = { ...approved, approval: { ...approved.approval, status: 'approved', allowedActions: ['organism.inspect'] } };
+assert.equal(compiler.gate(forgedApproved, 'organism.inspect').allowed, false, 'a structurally forged contract must not be accepted as compiler-issued');
+assert.equal(new IntentCompiler().gate(approved, 'organism.inspect').allowed, false, 'contracts must not cross compiler trust boundaries without a trusted restore mechanism');
 assert.equal(compiler.gate(approved, 'filesystem.write').reason, 'action-not-explicitly-allowed');
 assert.equal(compiler.gate(approved, 'deploy').reason, 'action-explicitly-denied');
 assert.throws(() => compiler.approve(contract, {
   contractId: contract.id,
-  contractId: contract.id, userConfirmed: true, allowedActions: ['deploy'], at: 1_800_000_000_001, evidenceRef: 'forged-expansion',
+  userConfirmed: true, allowedActions: ['deploy'], at: 1_800_000_000_001, evidenceRef: 'forged-expansion',
 }), /not explicitly allowed/);
 assert.throws(() => compiler.approve(contract, {
   contractId: 'another-intent', userConfirmed: true, allowedActions: ['organism.inspect'],
