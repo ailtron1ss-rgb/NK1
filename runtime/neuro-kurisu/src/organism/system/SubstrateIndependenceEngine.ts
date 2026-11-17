@@ -106,6 +106,7 @@ export interface SubstrateIndependenceState {
     importedAt: number;
   } | null;
   lastEvaluation: SubstrateMigrationEvaluation | null;
+  calibrationEvidenceLedger: { receiptIds: string[]; taskIds: string[]; independenceKeys: string[] };
   history: Array<{
     at: number;
     fromBackendId: string | null;
@@ -132,7 +133,9 @@ const MAX_STRING_LENGTH = 1_000_000;
 const MAX_ARRAY_LENGTH = 500_000;
 const MAX_OBJECT_KEYS = 100_000;
 const MAX_JSON_DEPTH = 48;
+const MAX_CONSUMED_CALIBRATION_EVIDENCE = 4096;
 const DEFAULT_MAX_TRANSFER_BYTES = 64 * 1024 * 1024;
+const BUFFER_PROTOTYPE = Object.getPrototypeOf(Buffer.from([]));
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 
 function fail(message: string): never { throw new Error(message); }
@@ -192,28 +195,30 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
   if (nodeUtilTypes.isProxy(value)) return fail('portable-proxy-rejected');
   if (seen.has(value)) return fail('portable-state-cycle-rejected');
 
-  if (nodeUtilTypes.isDate(value)) {
+  if (value instanceof Date) {
     if (Object.getPrototypeOf(value) !== Date.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-date-instance-invalid');
     const time = Date.prototype.getTime.call(value);
     if (!Number.isFinite(time)) return fail('portable-invalid-date-rejected');
     return { $nk1Type: 'Date', value: new Date(time).toISOString() };
   }
   if (Buffer.isBuffer(value)) {
-    if (Object.getPrototypeOf(value) !== Buffer.prototype) return fail('portable-buffer-subclass-rejected');
-    return { $nk1Type: 'Buffer', base64: Buffer.prototype.toString.call(value, 'base64') };
+    if (Object.getPrototypeOf(value) !== BUFFER_PROTOTYPE) return fail('portable-buffer-subclass-rejected');
+    return { $nk1Type: 'Buffer', base64: Buffer.from(value).toString('base64') };
   }
-  if (nodeUtilTypes.isMap(value)) {
+  if (value instanceof Map) {
     if (Object.getPrototypeOf(value) !== Map.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-map-subclass-or-extra-fields-rejected');
     seen.add(value);
     try {
-      const entries = [...Map.prototype.entries.call(value)].map(([key, entry]) => [
-        normalizePortableValue(key, seen, depth + 1, counter),
-        normalizePortableValue(entry, seen, depth + 1, counter),
-      ]);
+      const entries: Array<[PortableJson, PortableJson]> = [...Map.prototype.entries.call(value)].map(
+        ([key, entry]): [PortableJson, PortableJson] => [
+          normalizePortableValue(key, seen, depth + 1, counter),
+          normalizePortableValue(entry, seen, depth + 1, counter),
+        ],
+      );
       return { $nk1Type: 'Map', entries };
     } finally { seen.delete(value); }
   }
-  if (nodeUtilTypes.isSet(value)) {
+  if (value instanceof Set) {
     if (Object.getPrototypeOf(value) !== Set.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-set-subclass-or-extra-fields-rejected');
     seen.add(value);
     try {
@@ -221,19 +226,20 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
         normalizePortableValue(entry, seen, depth + 1, counter)) };
     } finally { seen.delete(value); }
   }
-  if (nodeUtilTypes.isArrayBuffer(value)) {
+  if (value instanceof ArrayBuffer) {
     if (Object.getPrototypeOf(value) !== ArrayBuffer.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-arraybuffer-instance-invalid');
-    return { $nk1Type: 'ArrayBuffer', base64: Buffer.from(value).toString('base64') };
+    return { $nk1Type: 'ArrayBuffer', base64: Buffer.from(new Uint8Array(value)).toString('base64') };
   }
   if (ArrayBuffer.isView(value)) {
-    if (nodeUtilTypes.isDataView(value)) {
+    if (value instanceof DataView) {
       if (Object.getPrototypeOf(value) !== DataView.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-dataview-instance-invalid');
       const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
       return { $nk1Type: 'DataView', base64: Buffer.from(bytes).toString('base64') };
     }
     const type = typedArrayKind(Object.getPrototypeOf(value));
-    if (!type || Reflect.ownKeys(value).length !== value.length) return fail('portable-typed-array-instance-invalid');
-    const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    const typedArray = value as ArrayBufferView & { readonly length: number };
+    if (!type || Reflect.ownKeys(value).length !== typedArray.length) return fail('portable-typed-array-instance-invalid');
+    const bytes = new Uint8Array(typedArray.buffer, typedArray.byteOffset, typedArray.byteLength);
     return { $nk1Type: type, base64: Buffer.from(bytes).toString('base64') };
   }
 
@@ -302,7 +308,7 @@ function canonicalJson(value: PortableJson | PlainRecord): string {
 }
 
 function sha256(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
+  return createHash('sha256').update(value).digest('hex');
 }
 
 
@@ -352,11 +358,11 @@ export function hydratePortableState(value: PortableJson): unknown {
     }
     if (type === 'Map') {
       if (Object.keys(row).sort().join(',') !== '$nk1Type,entries' || !Array.isArray(row.entries)) return fail('portable-map-tag-invalid');
-      const entries = row.entries.map((entry) => {
+      const entries: Array<[unknown, unknown]> = row.entries.map((entry): [unknown, unknown] => {
         if (!Array.isArray(entry) || entry.length !== 2) return fail('portable-map-entry-invalid');
         return [hydratePortableState(entry[0]), hydratePortableState(entry[1])];
       });
-      return new Map(entries);
+      return new Map<unknown, unknown>(entries);
     }
     if (type === 'Set') {
       if (Object.keys(row).sort().join(',') !== '$nk1Type,values' || !Array.isArray(row.values)) return fail('portable-set-tag-invalid');
@@ -439,8 +445,35 @@ function defaultState(): SubstrateIndependenceState {
     observedBackendId: null,
     pendingTransfer: null,
     lastEvaluation: null,
+    calibrationEvidenceLedger: { receiptIds: [], taskIds: [], independenceKeys: [] },
     history: [],
   };
+}
+
+function normalizeEvidenceIdLedger(value: unknown, label: string): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || nodeUtilTypes.isProxy(value)
+      || Object.getPrototypeOf(value) !== Array.prototype
+      || value.length > MAX_CONSUMED_CALIBRATION_EVIDENCE) {
+    return fail('substrate-evidence-ledger-invalid:' + label);
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(descriptors);
+  if (keys.length !== value.length + 1 || !descriptors.length
+      || !Object.prototype.hasOwnProperty.call(descriptors.length, 'value')) {
+    return fail('substrate-evidence-ledger-shape-invalid:' + label);
+  }
+  const ids: string[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+        || descriptor.enumerable !== true || !isSafeId(descriptor.value)) {
+      return fail('substrate-evidence-ledger-entry-invalid:' + label);
+    }
+    ids.push(descriptor.value);
+  }
+  if (new Set(ids).size !== ids.length) return fail('substrate-evidence-ledger-duplicate:' + label);
+  return ids;
 }
 
 function normalizeEvaluation(value: unknown): SubstrateMigrationEvaluation | null {
@@ -595,7 +628,7 @@ export class SubstrateIndependenceEngine {
     try {
       const row = ownDataRecord(raw, [
         'version', 'activeBackendId', 'activeProfileDigest', 'activeProvenance', 'observedBackendId',
-        'pendingTransfer', 'lastEvaluation', 'history',
+        'pendingTransfer', 'lastEvaluation', 'calibrationEvidenceLedger', 'history',
       ]);
       if (row.version !== 1) throw new Error('unsupported-schema');
       const activeBackendId = row.activeBackendId === null ? null : (isSafeId(row.activeBackendId) ? row.activeBackendId : fail('invalid-active-backend'));
@@ -634,6 +667,14 @@ export class SubstrateIndependenceEngine {
           evaluationId: item.evaluationId as string, reason: item.reason as 'calibrated-promotion' | 'rollback',
         }];
       }) : [];
+      const evidenceLedgerRaw = row.calibrationEvidenceLedger === undefined
+        ? Object.create(null) as PlainRecord
+        : ownDataRecord(row.calibrationEvidenceLedger, ['receiptIds', 'taskIds', 'independenceKeys']);
+      const calibrationEvidenceLedger = {
+        receiptIds: normalizeEvidenceIdLedger(evidenceLedgerRaw.receiptIds, 'receiptIds'),
+        taskIds: normalizeEvidenceIdLedger(evidenceLedgerRaw.taskIds, 'taskIds'),
+        independenceKeys: normalizeEvidenceIdLedger(evidenceLedgerRaw.independenceKeys, 'independenceKeys'),
+      };
       this.state = {
         version: 1,
         activeBackendId,
@@ -642,6 +683,7 @@ export class SubstrateIndependenceEngine {
         observedBackendId,
         pendingTransfer,
         lastEvaluation: normalizeEvaluation(row.lastEvaluation),
+        calibrationEvidenceLedger,
         history,
       };
       const activeProfile = activeBackendId ? this.profiles.get(activeBackendId) : undefined;
@@ -834,7 +876,8 @@ export class SubstrateIndependenceEngine {
         reasons.push('source-profile-unavailable-or-changed');
       } else if (source.modelRevision === 'host-configured') {
         reasons.push('source-model-revision-unpinned');
-      } else if (source.embeddingSpaceId && target.embeddingSpaceId && source.embeddingSpaceId !== target.embeddingSpaceId) {
+      } else if ((source.embeddingSpaceId ?? null) !== (target.embeddingSpaceId ?? null)) {
+        // Unknown is not equivalent to compatible: require a verified reindex.
         reindexRequired = true;
         reasons.push('embedding-reindex-required');
       }
@@ -874,6 +917,9 @@ export class SubstrateIndependenceEngine {
     const taskIds = new Set<string>();
     const receiptIds = new Set<string>();
     const taskFamilies = new Set<string>();
+    const consumedReceipts = new Set(this.state.calibrationEvidenceLedger.receiptIds);
+    const consumedTasks = new Set(this.state.calibrationEvidenceLedger.taskIds);
+    const consumedIndependenceKeys = new Set(this.state.calibrationEvidenceLedger.independenceKeys);
     for (const trial of trials) {
       if (trial.transferDigest !== integrity.digest) reasons.push('calibration-transfer-lineage-mismatch');
       if (trial.sourceBackendId !== sourceBackendId || trial.targetBackendId !== input.targetBackendId) {
@@ -882,6 +928,11 @@ export class SubstrateIndependenceEngine {
       if (trialIds.has(trial.trialId) || independenceKeys.has(trial.independenceKey)
           || taskIds.has(trial.taskId) || receiptIds.has(trial.evaluatorReceiptId)) {
         reasons.push('calibration-independence-collision');
+      }
+      if (consumedReceipts.has(trial.evaluatorReceiptId)
+          || consumedTasks.has(trial.taskId)
+          || consumedIndependenceKeys.has(trial.independenceKey)) {
+        reasons.push('calibration-evidence-replay-rejected');
       }
       trialIds.add(trial.trialId);
       independenceKeys.add(trial.independenceKey);
@@ -1048,6 +1099,20 @@ export class SubstrateIndependenceEngine {
     const evaluation = this.state.lastEvaluation;
     if (!this.verifiedEvaluationIds.has(evaluationId) || !evaluation || !evaluation.accepted || evaluation.evaluationId !== evaluationId
         || evaluation.targetBackendId !== targetBackendId) fail('substrate-promotion-evidence-required');
+    const ledger = this.state.calibrationEvidenceLedger;
+    const receiptIds = evaluation.receipts.map((trial) => trial.evaluatorReceiptId);
+    const taskIds = evaluation.receipts.map((trial) => trial.taskId);
+    const independenceKeys = evaluation.receipts.map((trial) => trial.independenceKey);
+    if (receiptIds.some((id) => ledger.receiptIds.includes(id))
+        || taskIds.some((id) => ledger.taskIds.includes(id))
+        || independenceKeys.some((id) => ledger.independenceKeys.includes(id))) {
+      fail('calibration-evidence-replay-rejected');
+    }
+    if (ledger.receiptIds.length + receiptIds.length > MAX_CONSUMED_CALIBRATION_EVIDENCE
+        || ledger.taskIds.length + taskIds.length > MAX_CONSUMED_CALIBRATION_EVIDENCE
+        || ledger.independenceKeys.length + independenceKeys.length > MAX_CONSUMED_CALIBRATION_EVIDENCE) {
+      fail('substrate-evidence-ledger-capacity-exceeded');
+    }
     const pending = this.state.pendingTransfer;
     const matchingPending = pending !== null
       && pending.targetBackendId === targetBackendId
@@ -1066,6 +1131,11 @@ export class SubstrateIndependenceEngine {
     const fromProfileDigest = this.state.activeBackendId
       ? this.state.activeProfileDigest
       : evaluation.sourceProfileDigest;
+    this.state.calibrationEvidenceLedger = {
+      receiptIds: [...ledger.receiptIds, ...receiptIds],
+      taskIds: [...ledger.taskIds, ...taskIds],
+      independenceKeys: [...ledger.independenceKeys, ...independenceKeys],
+    };
     this.state.activeBackendId = targetBackendId;
     this.state.activeProfileDigest = evaluation.targetProfileDigest;
     this.state.activeProvenance = 'calibrated';
@@ -1079,7 +1149,7 @@ export class SubstrateIndependenceEngine {
       toProfileDigest: evaluation.targetProfileDigest,
       transferDigest: evaluation.transferDigest,
       evaluationId: evaluation.evaluationId,
-      reason: 'calibrated-promotion',
+      reason: 'calibrated-promotion' as const,
     }].slice(-64);
     return this.snapshot();
   }
@@ -1123,7 +1193,7 @@ export class SubstrateIndependenceEngine {
       toProfileDigest: last.fromProfileDigest,
       transferDigest: last.transferDigest,
       evaluationId: last.evaluationId,
-      reason: 'rollback',
+      reason: 'rollback' as const,
     }].slice(-64);
     return this.snapshot();
   }
