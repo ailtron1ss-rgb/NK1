@@ -16,7 +16,9 @@ import {
 } from '../learning/HostOwnedIndependentEvaluationServices.ts';
 import {
   createLearningExperimentPlan,
+  validateLearningExperimentPlan,
   validateResearchGradeLearningExperimentPlan,
+  type LearningExperimentPlan,
 } from '../learning/LearningExperimentPlan.ts';
 import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
 import { VerifiedOutcomeLedger, type TaskManifestEntry } from '../learning/VerifiedOutcomeLedger.ts';
@@ -101,15 +103,46 @@ export interface DevelopmentalMultiverseScenarioTask {
 export type DevelopmentalMultiverseScenarioTaskFactory =
   (scenario: Readonly<DevelopmentalScenarioSeed>) => DevelopmentalMultiverseScenarioTask;
 
+export interface DevelopmentalMultiverseScenarioCorpusRow {
+  phase: DevelopmentalMultiversePhase;
+  scenario: DevelopmentalScenarioSeed;
+  task: IndependentCandidateTask;
+}
+
+export interface DevelopmentalMultiverseScenarioCorpusSnapshot {
+  schemaVersion: 1;
+  rows: DevelopmentalMultiverseScenarioCorpusRow[];
+  manifest: TaskManifestEntry[];
+  ledgerSnapshot: ReturnType<VerifiedOutcomeLedger['snapshot']>;
+  validationPlan: LearningExperimentPlan;
+  holdoutPlan: LearningExperimentPlan;
+}
+
+export interface DevelopmentalMultiverseRunnerCheckpoint {
+  schemaVersion: 1;
+  universe: DevelopmentalMultiverseSnapshot;
+  bindings: {
+    environmentFingerprint: string;
+    verifierId: string;
+    authorityIdentity: {
+      executorExecutable: string;
+      verifierExecutable: string;
+      safetyScannerExecutable: string;
+    };
+  };
+  corpus: DevelopmentalMultiverseScenarioCorpusSnapshot;
+}
+
 export interface DevelopmentalMultiverseCheckpointStore {
-  save(snapshot: DevelopmentalMultiverseSnapshot): Promise<void>;
-  load(): Promise<DevelopmentalMultiverseSnapshot | null>;
+  save(checkpoint: DevelopmentalMultiverseRunnerCheckpoint): Promise<void>;
+  load(): Promise<DevelopmentalMultiverseRunnerCheckpoint | null>;
 }
 
 /**
- * Atomic single-writer checkpoint adapter. SHA-256 detects truncation or accidental
- * corruption; it is not a signature, anti-rollback control, encryption or a
- * cross-process lock. Keep this store host-owned and grant one runner write access.
+ * Atomic checkpoint adapter. It freezes the complete scenario corpus, both P23
+ * plans and the canonical outcome ledger so a restart cannot regenerate a
+ * different holdout. SHA-256 detects accidental corruption; it is not a
+ * signature, anti-rollback protection or encryption.
  */
 export class AtomicFileDevelopmentalMultiverseCheckpointStore implements DevelopmentalMultiverseCheckpointStore {
   private readonly filePath: string;
@@ -123,14 +156,13 @@ export class AtomicFileDevelopmentalMultiverseCheckpointStore implements Develop
     this.maxBytes = maxBytes;
   }
 
-  async save(snapshot: DevelopmentalMultiverseSnapshot): Promise<void> {
-    const verifier = new DevelopmentalMultiverse();
-    verifier.restore(snapshot);
-    const payload = canonical(snapshot);
+  async save(rawCheckpoint: DevelopmentalMultiverseRunnerCheckpoint): Promise<void> {
+    const checkpoint = validateRunnerCheckpoint(rawCheckpoint);
+    const payload = canonical(checkpoint);
     const envelope = JSON.stringify({
       schemaVersion: 1,
       snapshotFingerprint: sha256(payload),
-      snapshot,
+      snapshot: checkpoint,
     }) + '\n';
     if (new TextEncoder().encode(envelope).byteLength > this.maxBytes) {
       throw new Error('developmental-multiverse-checkpoint-size-limit');
@@ -159,7 +191,7 @@ export class AtomicFileDevelopmentalMultiverseCheckpointStore implements Develop
     }
   }
 
-  async load(): Promise<DevelopmentalMultiverseSnapshot | null> {
+  async load(): Promise<DevelopmentalMultiverseRunnerCheckpoint | null> {
     let raw: string;
     try {
       const metadata = await stat(this.filePath);
@@ -185,9 +217,8 @@ export class AtomicFileDevelopmentalMultiverseCheckpointStore implements Develop
         sha256(canonical(record.snapshot)) !== record.snapshotFingerprint) {
       throw new Error('developmental-multiverse-checkpoint-fingerprint-mismatch');
     }
-    const verifier = new DevelopmentalMultiverse();
-    verifier.restore(record.snapshot);
-    return structuredClone(record.snapshot) as DevelopmentalMultiverseSnapshot;
+    const checkpoint = validateRunnerCheckpoint(record.snapshot);
+    return structuredClone(checkpoint);
   }
 }
 
@@ -207,18 +238,207 @@ export interface DevelopmentalMultiverseIndependentRunnerOptions {
   serviceTimeoutMs?: number;
 }
 
-interface ScenarioCorpusRow {
-  phase: DevelopmentalMultiversePhase;
-  scenario: DevelopmentalMultiverseScenarioSeed;
-  task: IndependentCandidateTask;
-}
 interface ScenarioCorpus {
+  rows: DevelopmentalMultiverseScenarioCorpusRow[];
   manifest: TaskManifestEntry[];
   ledger: VerifiedOutcomeLedger;
-  validationPlan: ReturnType<typeof createLearningExperimentPlan>;
-  holdoutPlan: ReturnType<typeof createLearningExperimentPlan>;
-  byKey: Map<string, ScenarioCorpusRow>;
+  validationPlan: LearningExperimentPlan;
+  holdoutPlan: LearningExperimentPlan;
+  byKey: Map<string, DevelopmentalMultiverseScenarioCorpusRow>;
 }
+
+function plainRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) &&
+    (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+}
+
+function restoreScenarioCorpus(
+  raw: unknown,
+  universeSnapshot: DevelopmentalMultiverseSnapshot,
+  verifierId: string,
+): ScenarioCorpus {
+  let detached: unknown;
+  try { detached = snapshotPlainData(raw); }
+  catch { throw new Error('developmental-multiverse-checkpoint-corpus-data-invalid'); }
+  if (!plainRecord(detached) || detached.schemaVersion !== 1 ||
+      !Array.isArray(detached.rows) || !Array.isArray(detached.manifest) ||
+      detached.rows.length < 1 || detached.rows.length > MAX_SCENARIOS_PER_SPLIT * 2 ||
+      detached.rows.length !== detached.manifest.length ||
+      !plainRecord(detached.validationPlan) || !plainRecord(detached.holdoutPlan)) {
+    throw new Error('developmental-multiverse-checkpoint-corpus-invalid');
+  }
+
+  const manifest = detached.manifest as TaskManifestEntry[];
+  const ledger = VerifiedOutcomeLedger.restoreSnapshot(detached.ledgerSnapshot);
+  const validationPlan = detached.validationPlan as unknown as LearningExperimentPlan;
+  const holdoutPlan = detached.holdoutPlan as unknown as LearningExperimentPlan;
+  const manifestFingerprint = ledger.manifestFingerprint();
+  if (manifest.some(entry => entry.verifierId !== verifierId) ||
+      manifestFingerprint !== validationPlan.manifestFingerprint ||
+      manifestFingerprint !== holdoutPlan.manifestFingerprint) {
+    throw new Error('developmental-multiverse-checkpoint-manifest-mismatch');
+  }
+  validateLearningExperimentPlan(validationPlan, manifest);
+  validateResearchGradeLearningExperimentPlan(holdoutPlan, manifest);
+  if (validationPlan.split !== 'validation' || holdoutPlan.split !== 'holdout') {
+    throw new Error('developmental-multiverse-checkpoint-plan-split-mismatch');
+  }
+
+  const session = universeSnapshot.session;
+  const expected = new Map<string, DevelopmentalMultiversePhase>();
+  for (const scenario of session.validationScenarios) {
+    expected.set(JSON.stringify(['validation', scenario.id, scenario.seed]), 'validation');
+  }
+  for (const scenario of session.holdoutScenarios) {
+    expected.set(JSON.stringify(['holdout', scenario.id, scenario.seed]), 'holdout');
+  }
+  if (expected.size !== detached.rows.length) {
+    throw new Error('developmental-multiverse-checkpoint-corpus-cardinality-mismatch');
+  }
+
+  const manifestByTask = new Map(manifest.map(entry => [entry.taskId, entry] as const));
+  if (manifestByTask.size !== manifest.length) {
+    throw new Error('developmental-multiverse-checkpoint-manifest-duplicate');
+  }
+  const byKey = new Map<string, DevelopmentalMultiverseScenarioCorpusRow>();
+  const rows: DevelopmentalMultiverseScenarioCorpusRow[] = [];
+  const seenTaskIds = new Set<string>();
+  let nonce: string | null = null;
+  for (const rawRow of detached.rows) {
+    if (!plainRecord(rawRow) || !['validation', 'holdout'].includes(String(rawRow.phase)) ||
+        !plainRecord(rawRow.scenario) || !plainRecord(rawRow.task)) {
+      throw new Error('developmental-multiverse-checkpoint-corpus-row-invalid');
+    }
+    const phase = rawRow.phase as DevelopmentalMultiversePhase;
+    const scenario = rawRow.scenario as unknown as DevelopmentalScenarioSeed;
+    const task = rawRow.task as unknown as IndependentCandidateTask;
+    const key = JSON.stringify([phase, scenario.id, scenario.seed]);
+    if (!expected.has(key) || expected.get(key) !== phase || byKey.has(key) ||
+        !nonEmpty(scenario.id) || scenario.id.length > 96 ||
+        !Number.isSafeInteger(scenario.seed) || scenario.seed < 0 ||
+        task.split !== phase || task.seed !== scenario.seed ||
+        !nonEmpty(task.taskId) || !nonEmpty(task.trialId) || seenTaskIds.has(task.taskId) ||
+        !plainRecord(task.input) || typeof task.input.prompt !== 'string' ||
+        !task.input.prompt.trim() || task.input.prompt.length > 8192 ||
+        !Array.isArray(task.requiredCapabilityIds) || task.requiredCapabilityIds.length < 1 ||
+        task.requiredCapabilityIds.length > 128 ||
+        !Array.isArray(task.expectedStepIds) || task.expectedStepIds.length < 1 ||
+        task.expectedStepIds.length > 512) {
+      throw new Error('developmental-multiverse-checkpoint-task-binding-invalid');
+    }
+
+    const metadata = task.input.developmentalMultiverse;
+    if (!plainRecord(metadata) || metadata.schemaVersion !== 1 ||
+        metadata.runId !== session.runId || metadata.phase !== phase ||
+        metadata.scenarioId !== scenario.id || metadata.seed !== scenario.seed ||
+        metadata.sourceRevision !== session.sourceRevision ||
+        metadata.environmentFingerprint !== session.environmentFingerprint ||
+        metadata.initialStateFingerprint !== universeSnapshot.initialStateFingerprint ||
+        !nonEmpty(metadata.evaluationNonce)) {
+      throw new Error('developmental-multiverse-checkpoint-task-metadata-invalid');
+    }
+    const evaluationNonce = metadata.evaluationNonce as string;
+    if (nonce !== null && nonce !== evaluationNonce) {
+      throw new Error('developmental-multiverse-checkpoint-corpus-nonce-mismatch');
+    }
+    nonce = evaluationNonce;
+
+    const expectedTaskId = scenario.id + ':' + String(scenario.seed) + ':' + evaluationNonce;
+    const expectedTrialId = digest({
+      runId: session.runId, phase, scenarioId: scenario.id, seed: scenario.seed,
+    });
+    const expectedPairFingerprint = digest({
+      runId: session.runId,
+      phase,
+      scenarioId: scenario.id,
+      seed: scenario.seed,
+      sourceRevision: session.sourceRevision,
+      environmentFingerprint: session.environmentFingerprint,
+      initialStateFingerprint: universeSnapshot.initialStateFingerprint,
+    });
+    if (task.taskId !== expectedTaskId || task.trialId !== expectedTrialId ||
+        metadata.pairFingerprint !== expectedPairFingerprint ||
+        task.requiredCapabilityIds.some(id => !nonEmpty(id) || id.length > 256) ||
+        task.expectedStepIds.some(id => !nonEmpty(id) || id.length > 256) ||
+        new Set(task.requiredCapabilityIds).size !== task.requiredCapabilityIds.length ||
+        new Set(task.expectedStepIds).size !== task.expectedStepIds.length) {
+      throw new Error('developmental-multiverse-checkpoint-task-identity-mismatch');
+    }
+    inspectScenarioData(task.input);
+    if (new TextEncoder().encode(canonical(task.input)).byteLength > MAX_SCENARIO_INPUT_BYTES + 2048) {
+      throw new Error('developmental-multiverse-checkpoint-task-size-limit');
+    }
+    const manifestEntry = manifestByTask.get(task.taskId);
+    const family = task.taskFamily ?? 'developmental-multiverse';
+    if (!manifestEntry || manifestEntry.split !== phase ||
+        manifestEntry.family !== family ||
+        manifestEntry.version !== 'dm19-independent-run-v1' ||
+        manifestEntry.verifierId !== verifierId ||
+        manifestEntry.promptFingerprint !== VerifiedOutcomeLedger.fingerprintPrompt(task.input.prompt)) {
+      throw new Error('developmental-multiverse-checkpoint-task-manifest-mismatch');
+    }
+
+    const row: DevelopmentalMultiverseScenarioCorpusRow = {
+      phase,
+      scenario: structuredClone(scenario),
+      task: structuredClone(task),
+    };
+    seenTaskIds.add(task.taskId);
+    rows.push(row);
+    byKey.set(key, row);
+  }
+  if (byKey.size !== expected.size || manifest.some(entry => !seenTaskIds.has(entry.taskId))) {
+    throw new Error('developmental-multiverse-checkpoint-corpus-coverage-incomplete');
+  }
+
+  const validationSeeds = [...new Set(session.validationScenarios.map(item => item.seed))].sort((a, b) => a - b);
+  const holdoutSeeds = [...new Set(session.holdoutScenarios.map(item => item.seed))].sort((a, b) => a - b);
+  if (JSON.stringify(validationPlan.seedIds) !== JSON.stringify(validationSeeds) ||
+      JSON.stringify(holdoutPlan.seedIds) !== JSON.stringify(holdoutSeeds)) {
+    throw new Error('developmental-multiverse-checkpoint-plan-seed-mismatch');
+  }
+  return { rows, manifest: structuredClone(manifest), ledger, validationPlan, holdoutPlan, byKey };
+}
+
+function validateRunnerCheckpoint(raw: unknown): DevelopmentalMultiverseRunnerCheckpoint {
+  let detached: unknown;
+  try { detached = snapshotPlainData(raw); }
+  catch { throw new Error('developmental-multiverse-checkpoint-data-invalid'); }
+  if (!plainRecord(detached) || detached.schemaVersion !== 1 ||
+      !plainRecord(detached.universe) || !plainRecord(detached.bindings) ||
+      !plainRecord(detached.bindings.authorityIdentity)) {
+    throw new Error('developmental-multiverse-checkpoint-invalid');
+  }
+  const universe = new DevelopmentalMultiverse();
+  universe.restore(detached.universe);
+  const snapshot = universe.snapshot();
+  const authority = detached.bindings.authorityIdentity;
+  if (!snapshot ||
+      detached.bindings.environmentFingerprint !== snapshot.session.environmentFingerprint ||
+      !isDigest(detached.bindings.environmentFingerprint) ||
+      !nonEmpty(detached.bindings.verifierId) ||
+      !nonEmpty(authority.executorExecutable) ||
+      !nonEmpty(authority.verifierExecutable) ||
+      !nonEmpty(authority.safetyScannerExecutable) ||
+      new Set([authority.executorExecutable, authority.verifierExecutable, authority.safetyScannerExecutable]).size !== 3) {
+    throw new Error('developmental-multiverse-checkpoint-authority-binding-invalid');
+  }
+  const corpus = restoreScenarioCorpus(detached.corpus, snapshot, detached.bindings.verifierId as string);
+  return {
+    schemaVersion: 1,
+    universe: snapshot,
+    bindings: structuredClone(detached.bindings) as DevelopmentalMultiverseRunnerCheckpoint['bindings'],
+    corpus: {
+      schemaVersion: 1,
+      rows: corpus.rows,
+      manifest: corpus.manifest,
+      ledgerSnapshot: corpus.ledger.snapshot(),
+      validationPlan: corpus.validationPlan,
+      holdoutPlan: corpus.holdoutPlan,
+    },
+  };
+}
+
 interface EvaluatorEnvelope {
   payloadFingerprint: string;
   evaluationFingerprint: string;
@@ -261,6 +481,7 @@ interface EvaluatorEnvelope {
  */
 export class DevelopmentalMultiverseIndependentRunner {
   private busy = false;
+  private corpus: ScenarioCorpus | null = null;
 
   private constructor(
     private readonly universe: DevelopmentalMultiverse,
@@ -279,7 +500,8 @@ export class DevelopmentalMultiverseIndependentRunner {
     const universe = new DevelopmentalMultiverse();
     universe.createSession(input);
     const runner = new DevelopmentalMultiverseIndependentRunner(universe, options);
-    await options.checkpointStore.save(universe.snapshot()!);
+    runner.corpus = runner.buildCorpus(randomUUID());
+    await options.checkpointStore.save(runner.createCheckpoint());
     return runner;
   }
 
@@ -324,14 +546,23 @@ export class DevelopmentalMultiverseIndependentRunner {
   static async restore(
     options: DevelopmentalMultiverseIndependentRunnerOptions,
   ): Promise<DevelopmentalMultiverseIndependentRunner> {
-    const snapshot = await options.checkpointStore.load();
-    if (!snapshot) throw new Error('developmental-multiverse-runner-checkpoint-not-found');
+    const checkpoint = await options.checkpointStore.load();
+    if (!checkpoint) throw new Error('developmental-multiverse-runner-checkpoint-not-found');
     const universe = new DevelopmentalMultiverse();
-    universe.restore(snapshot);
-    if (universe.snapshot()?.session.environmentFingerprint !== options.environmentFingerprint) {
-      throw new Error('developmental-multiverse-runner-environment-mismatch');
+    universe.restore(checkpoint.universe);
+    const snapshot = universe.snapshot();
+    const identity = options.services.authorityIdentity;
+    if (snapshot?.session.environmentFingerprint !== options.environmentFingerprint ||
+        checkpoint.bindings.environmentFingerprint !== options.environmentFingerprint ||
+        checkpoint.bindings.verifierId !== options.verifierId ||
+        checkpoint.bindings.authorityIdentity.executorExecutable !== identity.executorExecutable ||
+        checkpoint.bindings.authorityIdentity.verifierExecutable !== identity.verifierExecutable ||
+        checkpoint.bindings.authorityIdentity.safetyScannerExecutable !== identity.safetyScannerExecutable) {
+      throw new Error('developmental-multiverse-runner-restore-authority-mismatch');
     }
-    return new DevelopmentalMultiverseIndependentRunner(universe, options);
+    const runner = new DevelopmentalMultiverseIndependentRunner(universe, options);
+    runner.corpus = restoreScenarioCorpus(checkpoint.corpus, snapshot!, options.verifierId);
+    return runner;
   }
 
   private validateOptions(): void {
@@ -371,6 +602,34 @@ export class DevelopmentalMultiverseIndependentRunner {
     return this.universe.snapshot();
   }
 
+  private requireCorpus(): ScenarioCorpus {
+    if (!this.corpus) throw new Error('developmental-multiverse-runner-corpus-not-created');
+    return this.corpus;
+  }
+
+  private createCheckpoint(): DevelopmentalMultiverseRunnerCheckpoint {
+    const universe = this.universe.snapshot();
+    const corpus = this.requireCorpus();
+    if (!universe) throw new Error('developmental-multiverse-session-not-created');
+    return {
+      schemaVersion: 1,
+      universe,
+      bindings: {
+        environmentFingerprint: this.options.environmentFingerprint,
+        verifierId: this.options.verifierId,
+        authorityIdentity: { ...this.options.services.authorityIdentity },
+      },
+      corpus: {
+        schemaVersion: 1,
+        rows: structuredClone(corpus.rows),
+        manifest: structuredClone(corpus.manifest),
+        ledgerSnapshot: corpus.ledger.snapshot(),
+        validationPlan: structuredClone(corpus.validationPlan),
+        holdoutPlan: structuredClone(corpus.holdoutPlan),
+      },
+    };
+  }
+
   async runValidation(): Promise<DevelopmentalMultiverseSelection> {
     return this.exclusive(async () => {
       const current = this.universe.snapshot();
@@ -380,29 +639,30 @@ export class DevelopmentalMultiverseIndependentRunner {
         throw new Error('developmental-multiverse-validation-not-ready');
       }
       const before = current;
-      const workPlan = this.universe.validationWorkPlan();
-      const variantIds = ['baseline', ...current.session.variants.map(item => item.id)];
-      const nonce = randomUUID();
-      const corpus = this.buildCorpus(nonce);
-      const allObservations: DevelopmentalMultiverseObservationInput[] = [];
-      let sharedPlanFingerprint: string | null = null;
-      for (const variantId of variantIds) {
-        const items = workPlan.filter(item => item.variantId === variantId);
-        const method = this.methodForVariant(variantId, current.session.variants.map(item => item.id));
-        const evaluated = await this.evaluateArm('validation', variantId, method, items, corpus);
-        if (sharedPlanFingerprint && evaluated.planFingerprint !== sharedPlanFingerprint) {
-          throw new Error('developmental-multiverse-runner-validation-plan-diverged');
-        }
-        sharedPlanFingerprint = evaluated.planFingerprint;
-        allObservations.push(...evaluated.observations);
-      }
+      const corpus = this.requireCorpus();
+      const ledgerBefore = corpus.ledger.snapshot();
       try {
+        const workPlan = this.universe.validationWorkPlan();
+        const variantIds = ['baseline', ...current.session.variants.map(item => item.id)];
+        const allObservations: DevelopmentalMultiverseObservationInput[] = [];
+        let sharedPlanFingerprint: string | null = null;
+        for (const variantId of variantIds) {
+          const items = workPlan.filter(item => item.variantId === variantId);
+          const method = this.methodForVariant(variantId, current.session.variants.map(item => item.id));
+          const evaluated = await this.evaluateArm('validation', variantId, method, items, corpus);
+          if (sharedPlanFingerprint && evaluated.planFingerprint !== sharedPlanFingerprint) {
+            throw new Error('developmental-multiverse-runner-validation-plan-diverged');
+          }
+          sharedPlanFingerprint = evaluated.planFingerprint;
+          allObservations.push(...evaluated.observations);
+        }
         this.universe.recordValidationObservations(allObservations);
         const selection = this.universe.selectValidationFinalist();
-        await this.options.checkpointStore.save(this.universe.snapshot()!);
+        await this.options.checkpointStore.save(this.createCheckpoint());
         return selection;
       } catch (error) {
         this.universe.restore(before);
+        corpus.ledger = VerifiedOutcomeLedger.restoreSnapshot(ledgerBefore);
         throw error;
       }
     });
@@ -419,29 +679,30 @@ export class DevelopmentalMultiverseIndependentRunner {
         throw new Error('developmental-multiverse-holdout-not-ready');
       }
       const before = current;
-      const workPlan = this.universe.holdoutWorkPlan();
-      const nonce = randomUUID();
-      const corpus = this.buildCorpus(nonce);
-      const variantIds = ['baseline', current.selectedVariantId];
-      const allObservations: DevelopmentalMultiverseObservationInput[] = [];
-      let sharedPlanFingerprint: string | null = null;
-      for (const variantId of variantIds) {
-        const items = workPlan.filter(item => item.variantId === variantId);
-        const method = this.methodForVariant(variantId, current.session.variants.map(item => item.id));
-        const evaluated = await this.evaluateArm('holdout', variantId, method, items, corpus);
-        if (sharedPlanFingerprint && evaluated.planFingerprint !== sharedPlanFingerprint) {
-          throw new Error('developmental-multiverse-runner-holdout-plan-diverged');
-        }
-        sharedPlanFingerprint = evaluated.planFingerprint;
-        allObservations.push(...evaluated.observations);
-      }
+      const corpus = this.requireCorpus();
+      const ledgerBefore = corpus.ledger.snapshot();
       try {
+        const workPlan = this.universe.holdoutWorkPlan();
+        const variantIds = ['baseline', current.selectedVariantId];
+        const allObservations: DevelopmentalMultiverseObservationInput[] = [];
+        let sharedPlanFingerprint: string | null = null;
+        for (const variantId of variantIds) {
+          const items = workPlan.filter(item => item.variantId === variantId);
+          const method = this.methodForVariant(variantId, current.session.variants.map(item => item.id));
+          const evaluated = await this.evaluateArm('holdout', variantId, method, items, corpus);
+          if (sharedPlanFingerprint && evaluated.planFingerprint !== sharedPlanFingerprint) {
+            throw new Error('developmental-multiverse-runner-holdout-plan-diverged');
+          }
+          sharedPlanFingerprint = evaluated.planFingerprint;
+          allObservations.push(...evaluated.observations);
+        }
         this.universe.recordHoldoutObservations(allObservations);
         const result = this.universe.finalize();
-        await this.options.checkpointStore.save(this.universe.snapshot()!);
+        await this.options.checkpointStore.save(this.createCheckpoint());
         return result;
       } catch (error) {
         this.universe.restore(before);
+        corpus.ledger = VerifiedOutcomeLedger.restoreSnapshot(ledgerBefore);
         throw error;
       }
     });
@@ -470,7 +731,8 @@ export class DevelopmentalMultiverseIndependentRunner {
       ...session.holdoutScenarios.map(scenario => ({ phase: 'holdout' as const, scenario })),
     ];
     const manifest: TaskManifestEntry[] = [];
-    const byKey = new Map<string, ScenarioCorpusRow>();
+    const rows: DevelopmentalMultiverseScenarioCorpusRow[] = [];
+    const byKey = new Map<string, DevelopmentalMultiverseScenarioCorpusRow>();
     for (const definition of definitions) {
       let raw: DevelopmentalMultiverseScenarioTask;
       try {
@@ -550,9 +812,11 @@ export class DevelopmentalMultiverseIndependentRunner {
         verifierId: this.options.verifierId,
         version: 'dm19-independent-run-v1',
       });
-      byKey.set(JSON.stringify([definition.phase, definition.scenario.id, definition.scenario.seed]), {
+      const row: DevelopmentalMultiverseScenarioCorpusRow = {
         phase: definition.phase, scenario: structuredClone(definition.scenario), task,
-      });
+      };
+      rows.push(row);
+      byKey.set(JSON.stringify([definition.phase, definition.scenario.id, definition.scenario.seed]), row);
     }
     const ledger = new VerifiedOutcomeLedger(manifest);
     const makePlan = (split: 'validation' | 'holdout') => {
@@ -574,7 +838,7 @@ export class DevelopmentalMultiverseIndependentRunner {
     const holdoutPlan = makePlan('holdout');
     // Require P23's research-grade holdout contract before any finalist is evaluated.
     validateResearchGradeLearningExperimentPlan(holdoutPlan, manifest);
-    return { manifest, ledger, validationPlan, holdoutPlan, byKey };
+    return { rows, manifest, ledger, validationPlan, holdoutPlan, byKey };
   }
 
   private async evaluateArm(
@@ -587,7 +851,9 @@ export class DevelopmentalMultiverseIndependentRunner {
     if (workItems.length < 1) throw new Error('developmental-multiverse-runner-arm-empty');
     const tasks = workItems.map(item => {
       const row = corpus.byKey.get(JSON.stringify([phase, item.scenarioId, item.seed]));
-      if (!row || row.task.phase !== phase) throw new Error('developmental-multiverse-runner-task-binding-missing');
+      if (!row || row.phase !== phase || row.task.split !== phase) {
+        throw new Error('developmental-multiverse-runner-task-binding-missing');
+      }
       return structuredClone(row.task);
     });
     const authority = {
