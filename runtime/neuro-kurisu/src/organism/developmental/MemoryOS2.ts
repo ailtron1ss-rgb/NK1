@@ -404,12 +404,12 @@ function normalizeBitemporalHistory(value:unknown):MemoryBitemporalInterval[]{
      if(!row||typeof row!=='object'||Array.isArray(row))return [];
      const rowSource=typeof row.source==='string'&&row.source.trim()?row.source.trim().slice(0,240):'unknown';
      const rowClass=provenanceKinds.has(row.provenanceClass)?row.provenanceClass as MemoryProvenanceClass:'unknown';
-     const observedAt=finite(row.observedAt,recordedFromAt);
+     const observedAt=typeof row.observedAt==='number'&&Number.isFinite(row.observedAt)?row.observedAt:recordedFromAt;
      return [{
       source:rowSource,provenanceClass:rowClass,
       sourceAuthority01:typeof row.sourceAuthority01==='number'&&Number.isFinite(row.sourceAuthority01)?Math.max(0,Math.min(1,row.sourceAuthority01)):.5,
       independenceKey:typeof row.independenceKey==='string'?row.independenceKey.trim().slice(0,96)||undefined:undefined,
-      observedAt,evidenceFreshnessAt:finite(row.evidenceFreshnessAt,observedAt),
+      observedAt,evidenceFreshnessAt:typeof row.evidenceFreshnessAt==='number'&&Number.isFinite(row.evidenceFreshnessAt)?row.evidenceFreshnessAt:observedAt,
      }];
     })
    :undefined;
