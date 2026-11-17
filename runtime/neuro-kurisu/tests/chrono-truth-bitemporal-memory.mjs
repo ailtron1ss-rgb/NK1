@@ -165,6 +165,57 @@ assert.equal(
   'the new classification must begin at transaction time',
 );
 
+const contextFact = encode('NeuroCore runtime workspace is the north campus.', {
+  context: { project: 'NeuroCore', campus: 'North' },
+  tags: ['initial-context'],
+  validFromAt: 300,
+  observedAt: 300,
+  recordedFromAt: 320,
+});
+memoryOS.updateContext(contextFact.id, { campus: 'South', environment: 'production' });
+const contextRecordedAt = contextFact.recordedFromAt;
+assert.equal(
+  memoryOS.temporalBitemporalAt(contextFact.id, 350, contextRecordedAt - 1)?.context?.campus,
+  'North',
+  'historical context must not be overwritten by a later updateContext mutation',
+);
+assert.equal(
+  memoryOS.temporalBitemporalAt(contextFact.id, 350, contextRecordedAt)?.context?.campus,
+  'South',
+  'the new context must begin at the transaction-time boundary',
+);
+assert.deepEqual(
+  memoryOS.temporalBitemporalAt(contextFact.id, 350, contextRecordedAt - 1)?.tags,
+  ['initial-context'],
+  'historical tags must be retained with the same knowledge snapshot',
+);
+
+const lateLearnedFact = encode('The archive was stored in the east facility.', {
+  validFromAt: 500,
+  observedAt: 500,
+  recordedFromAt: 600,
+});
+const retroactiveCorrection = memoryOS.reviseContent(
+  lateLearnedFact.id,
+  'The archive was stored in the west facility.',
+  { validAt: 450, recordedAt: 700, reason: 'retroactive-effective-date-before-first-known-date' },
+);
+assert.equal(
+  retroactiveCorrection?.validFromAt,
+  450,
+  'a correction may become valid before the first recorded valid-time start',
+);
+assert.equal(
+  memoryOS.temporalBitemporalAt(lateLearnedFact.id, 475, 750)?.content,
+  'The archive was stored in the west facility.',
+  'the corrected fact must cover an earlier world-time period after NK1 learns it',
+);
+assert.equal(
+  memoryOS.temporalBitemporalAt(lateLearnedFact.id, 475, 650),
+  null,
+  'before the correction was recorded, NK1 must not claim a fact for a period it did not previously know',
+);
+
 const restored = new MemoryOS2({ signalFusionProfile: 'balanced' });
 restored.restore(memoryOS.snapshot());
 assert.equal(
