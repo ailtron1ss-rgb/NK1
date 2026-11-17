@@ -48,7 +48,7 @@ assert.equal(record.decisionId, context.decisionId);
 assert.equal(record.chosen, 'respond');
 assert.equal(record.chosenExpectedOutcome01, 0.84);
 assert.equal(record.chosenActualOutcome01, 0.52);
-assert.equal(record.outcomeShortfall01, 0.32);
+assert.ok(Math.abs(record.outcomeShortfall01 - 0.32) < 1e-9);
 assert.equal(record.reviewStatus, 'review-eligible', 'large outcome shortfall should reopen review, not auto-select an alternative');
 assert.deepEqual(record.alternatives.map(row => row.action), ['explore', 'verify']);
 assert.equal(record.alternatives[0].rejectionReason, alternatives[0].rejectionReason);
@@ -57,6 +57,8 @@ assert.equal(record.alternatives[0].reviewEligible, true);
 assert.equal(engine.negativeSpaceReviewQueue().length, 2);
 assert.equal(engine.negativeSpaceDiagnostics().reviewEligible, 2);
 assert.ok(record.outcomeEvidence.includes('postcondition:verified'));
+engine.observe('respond', 0.52, alternatives, context);
+assert.equal(engine.snapshot().negativeSpace.records.length, 1, 'replayed decision IDs must not duplicate the ledger row');
 
 assert.equal(engine.markNegativeSpaceAlternativeReopened(context.decisionId, 'explore', 'new evidence supports a retry', 250), true);
 assert.equal(engine.markNegativeSpaceAlternativeReopened(context.decisionId, 'explore', 'duplicate retry', 260), false);
