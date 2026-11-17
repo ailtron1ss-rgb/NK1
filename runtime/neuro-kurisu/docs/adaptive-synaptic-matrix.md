@@ -27,7 +27,7 @@ to the already configured base-model identity.
 
 A candidate records its artifact reference and SHA-256, format/rank, exact base
 model identity/revision, task capabilities, competence scores, conflict group,
-resource/context limits, training dataset reference, and owner.
+resource/context limits, maximum uncertainty, training dataset reference, and owner.
 
 Activation requires a signed offline validation manifest. The matrix checks:
 - the manifest matches the registered candidate and its artifact digest;
@@ -46,13 +46,21 @@ always returns true is not a production verifier.
 
 Only one adapter is selected per request. Eligibility requires an exact match
 for base model ID and revision, task support, request context limit, minimum
-confidence, maximum resource risk, a validated active state, and an available
+confidence, maximum uncertainty, maximum resource risk, a validated active
+state, and an available
 adapter executor. Near-equal profiles in the same conflict group are treated
 as ambiguous and route to the base model. The router does not stack adapters.
 
-Two consecutive executor failures apply a bounded cooldown. An adapter exception
-or malformed adapter response is recorded and the unchanged base invoker is
-called. An aborted request is not retried after cancellation.
+Two consecutive executor failures apply an escalating bounded cooldown. Six
+consecutive failures quarantine the profile until an operator submits a newly
+verified activation manifest. A successful adapter call resets the consecutive-
+failure counter. An adapter exception or malformed adapter response is recorded
+and the unchanged base invoker is called. An aborted request is not retried after
+cancellation.
+
+The real-runtime integration suite covers base fallback, signed activation,
+specialized execution, adapter-error recovery, persistence across restart, and
+explicit disablement.
 
 Online response completion is recorded only as executor availability/latency;
 it does not update task competence. Competence changes require a new offline
