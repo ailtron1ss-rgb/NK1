@@ -322,6 +322,7 @@ export class EvidenceResearchSubsystemRuntime {
       modelOlympics:system?.modelOlympics, predictionDebt:system?.predictionDebt, shadowOrganism:system?.shadowOrganism,
       identityCausality:system?.identityCausality, longHorizonPrediction:system?.longHorizonPrediction,
       p38Research:learning?.p38, p53DevelopmentalSelfModification:advanced?.p53DevelopmentalSelfModification, externalObserver:system?.externalObserver,
+      scientificMethod:system?.scientificMethod, scientificBrain:system?.scientificBrain,
       inventionLoop:system?.inventionLoop,
     });
   }
