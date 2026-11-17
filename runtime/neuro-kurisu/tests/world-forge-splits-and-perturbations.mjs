@@ -3,7 +3,7 @@ import { WorldForge } from '../src/organism/developmental/WorldForge.ts';
 const forge=new WorldForge();
 const cases=forge.generate({split:'validation',seed:20261117,count:64,difficulty01:.8});
 assert.equal(cases.length,64);
-assert.ok(cases.every(c=>c.disturbances.length>=1&&c.disturbances.every(d=>d.magnitude01>=0&&d.magnitude01<=1)));
+assert.ok(cases.every(c=>!('disturbances' in c)&&!('seedFingerprint' in c)),'public validation tasks must not expose hidden perturbation schedules or seed fingerprints');
 assert.ok(cases.every(c=>c.constraints.maxSteps>=4&&c.constraints.maxSteps<=16));
 assert.ok(new Set(cases.map(c=>c.domain)).size>=2);
 for(const c of cases){
