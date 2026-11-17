@@ -43,6 +43,7 @@ import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
+import { SynapticCommons, parseSynapticPublicKeyMap, type SynapticCommonsState, type SynapticCompatibilityTarget } from '../learning/SynapticCommons.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
@@ -236,6 +237,8 @@ export class OrganismRuntime {
   };
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
+  private readonly synapticCommons: SynapticCommons;
+  private readonly synapticCommonsStore: JsonStateStore<SynapticCommonsState>;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -342,6 +345,11 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
+    this.synapticCommons = new SynapticCommons({
+      trustedPublisherKeys: parseSynapticPublicKeyMap(process.env.NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON),
+      trustedAttestorKeys: parseSynapticPublicKeyMap(process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON),
+    });
+    this.synapticCommonsStore = new FileStateStore<SynapticCommonsState>(`${config.stateFile}.synaptic-commons.json`);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -391,6 +399,9 @@ export class OrganismRuntime {
       }
       await this.compoundRepairRevisionCoordinator?.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
+      const restoredSynapticCommonsState = await this.synapticCommonsStore.load();
+      this.synapticCommons.restore(restoredSynapticCommonsState ?? undefined);
+      if (!restoredSynapticCommonsState) await this.synapticCommonsStore.save(this.synapticCommons.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -1904,6 +1915,55 @@ export class OrganismRuntime {
   }
 
 
+  /**
+   * Persist every Synaptic Commons mutation before exposing the result. A failed
+   * sidecar write restores the prior snapshot so callers never observe an
+   * uncommitted catalogue transition.
+   */
+  private async persistSynapticCommonsMutation<T>(mutation: () => T): Promise<T> {
+    const previous = this.synapticCommons.snapshot();
+    try {
+      const result = mutation();
+      await this.synapticCommonsStore.save(this.synapticCommons.snapshot());
+      return result;
+    } catch (error) {
+      this.synapticCommons.restore(previous);
+      throw error;
+    }
+  }
+
+  importSynapticArtifact(artifact: unknown) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.importArtifact(artifact)));
+  }
+
+  evaluateSynapticSkillCompatibility(fingerprint: string, target: SynapticCompatibilityTarget) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.evaluateCompatibility(fingerprint, target)));
+  }
+
+  attestSynapticSkill(fingerprint: string, attestation: unknown) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.attachAttestation(fingerprint, attestation)));
+  }
+
+  rejectSynapticSkill(fingerprint: string, reason: string) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.reject(fingerprint, reason)));
+  }
+
+  exportSynapticArtifact(fingerprint: string) {
+    return this.enqueue(async () => this.synapticCommons.exportArtifact(fingerprint));
+  }
+
+  synapticCommonsSnapshot() {
+    return this.enqueue(async () => this.synapticCommons.snapshot());
+  }
+
+  synapticCommonsDiagnostics() {
+    return this.enqueue(async () => this.synapticCommons.diagnostics());
+  }
+
   /** Record only caller-confirmed low-risk preferences through the canonical evidence owner. */
   async recordExplicitUserPreference(input: Parameters<OrganismCore['recordExplicitUserModelEvidence']>[0]) {
     return this.enqueue(() => this.core.recordExplicitUserModelEvidence(input));
@@ -1948,6 +2008,7 @@ export class OrganismRuntime {
   async flush(): Promise<void> {
     return this.enqueue(async () => {
       await this.core.flush();
+      await this.synapticCommonsStore.save(this.synapticCommons.snapshot());
       const view = this.core.runtimeClosureOperationalSnapshot();
       this.runtimeClosure.durable({ at: Date.now(), tick: view.tick, stateTick: view.tick, replaySignature: view.replaySignature, continuousTick: view.continuous?.tick, continuityProcessed: view.continuous?.processed, memoryCount: view.memoryCount });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
