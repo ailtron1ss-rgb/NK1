@@ -44,7 +44,12 @@ const graph = (modules, edges = [], contracts = []) => ({
 });
 const sha = '1'.repeat(40);
 const migration = (changed = []) => ({
-  checkpoint: { id: 'checkpoint-1', baselineCommit: sha, reference: 'artifact://checkpoint/base' },
+  checkpoint: {
+    id: 'checkpoint-1',
+    baselineCommit: sha,
+    reference: 'artifact://checkpoint/base',
+    description: 'Restorable baseline snapshot for candidate comparison',
+  },
   steps: [{ id: 'migrate-1', description: 'Apply the staged structural migration', verify: 'Run the focused contract suite' }],
   rollbackSteps: [{ id: 'rollback-1', description: 'Restore the captured baseline', verify: 'Re-run baseline contract and architecture audits' }],
   affectedContractIds: changed,
