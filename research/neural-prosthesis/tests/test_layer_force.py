@@ -249,6 +249,14 @@ class LayerForceTests(unittest.TestCase):
         with self.assertRaisesRegex(LayerForceError, "profile-symlink-not-allowed"):
             self.bank.load_profile(link, [valid_digest])
 
+        parent_link = self.root / "profile-directory-link"
+        try:
+            parent_link.symlink_to(self.root, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest("directory symlinks are unavailable on this platform")
+        with self.assertRaisesRegex(LayerForceError, "profile-symlink-not-allowed"):
+            self.bank.load_profile(parent_link / valid_path.name, [valid_digest])
+
     def test_snapshot_redacts_activation_directions(self):
         path, digest, _ = self.write_profile()
         self.bank.load_profile(path, [digest])
