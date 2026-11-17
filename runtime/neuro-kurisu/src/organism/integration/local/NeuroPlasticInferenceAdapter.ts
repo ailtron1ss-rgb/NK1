@@ -45,15 +45,18 @@ export class NeuroPlasticInferenceAdapter {
   private readonly registry: NeuroPlasticAdapterRegistry;
   private readonly backendReady: (backendId: string) => boolean;
   private readonly provider: OpenAICompatibleLocalChatProvider;
+  private readonly onRegistryChanged: (() => Promise<void> | void) | null;
 
   constructor(
     registry: NeuroPlasticAdapterRegistry,
     backendReady: (backendId: string) => boolean,
     provider: OpenAICompatibleLocalChatProvider,
+    onRegistryChanged?: () => Promise<void> | void,
   ) {
     this.registry = registry;
     this.backendReady = backendReady;
     this.provider = provider;
+    this.onRegistryChanged = onRegistryChanged ?? null;
   }
 
   async generate(
@@ -89,6 +92,7 @@ export class NeuroPlasticInferenceAdapter {
     } catch (error) {
       if (isCallerCancellation(error, request)) throw error;
       this.registry.recordRuntimeFailure(selection.adapterId, 'adapter-runtime-failure');
+      try { await this.onRegistryChanged?.(); } catch { /* Persist failure must not suppress base-model recovery. */ }
       const response = await this.provider.generate({ ...request, model: baseModelAlias });
       return {
         ...response,
