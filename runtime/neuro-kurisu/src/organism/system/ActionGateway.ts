@@ -846,7 +846,7 @@ export class ActionGateway {
       if(!preparation || typeof preparation!=='object') return undefined;
       const descriptor=Object.getOwnPropertyDescriptor(preparation,'recoveryArtifactRef');
       const candidate=descriptor && 'value' in descriptor ? descriptor.value : undefined;
-      return typeof candidate==='string' && candidate.trim() && candidate.length<=1024 && !/[\\u0000-\\u001f\\u007f]/.test(candidate) ? candidate : undefined;
+      return typeof candidate==='string' && candidate.trim() && candidate.length<=1024 && !/[\u0000-\u001f\u007f]/.test(candidate) ? candidate : undefined;
     } catch { return undefined; }
   }
 
@@ -862,7 +862,7 @@ export class ActionGateway {
       await discard(recoveryArtifactRef,structuredClone(context));
       return {disposition:'released'};
     } catch(error) {
-      return {disposition:'release-failed',error:String((error as Error)?.message??'artifact-cleanup-failed').replace(/[\\r\\n\\t]+/g,' ').slice(0,160)};
+      return {disposition:'release-failed',error:String((error as Error)?.message??'artifact-cleanup-failed').replace(/[\r\n\t]+/g,' ').slice(0,160)};
     }
   }
 
