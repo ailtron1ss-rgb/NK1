@@ -58,6 +58,10 @@ assert.equal(changedSourceRevision.preferredRoute(), null,
 changedSourceRevision.observeBackend(source.backendId);
 assert.equal(changedSourceRevision.preferredRoute(), null,
   'observing the old backend identifier cannot silently rebootstrap a different model revision');
+assert.throws(() => changedSourceRevision.createTransferPackage({
+  sourceBackendId: source.backendId, capturedAt: 1_800_000_000_050, ...payload,
+}), /transfer-source-profile-drift/,
+  'export must not relabel state from a previous model revision with a new profile digest');
 
 const fallbackBoot = new SubstrateIndependenceEngine({ profiles: [source] });
 fallbackBoot.observeBackend('deterministic-policy-fallback');
