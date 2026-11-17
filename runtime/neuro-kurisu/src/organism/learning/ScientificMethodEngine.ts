@@ -1,6 +1,26 @@
 import { randomUUID } from 'node:crypto';
 export interface ScientificHypothesis{id:string;text:string;confidence:number;status:'open'|'supported'|'rejected';evidenceIds:string[];}
-export interface ScientificVerificationContract { protocol:'paired-holdout-v1'; minPairedSeeds:5; baselineRequired:true; independentHoldoutRequired:true; maxVariantsPerRun:1; rollbackRequired:true; autoApply:false; }\nexport interface ScientificProject{ id:string; question:string; hypotheses:ScientificHypothesis[]; predictions:string[]; experiments:string[]; evidence:string[]; contradictions:string[]; beliefRevisions:string[]; uncertainty:number; status:'open'|'testing'|'concluded'; provenance:string[]; verificationContract?:ScientificVerificationContract; createdAt:number; updatedAt:number; }
+export interface ScientificVerificationContract { protocol:'paired-holdout-v1'; minPairedSeeds:5; baselineRequired:true; independentHoldoutRequired:true; maxVariantsPerRun:1; rollbackRequired:true; autoApply:false; }
+export interface ScientificProject{ id:string; question:string; hypotheses:ScientificHypothesis[]; predictions:string[]; experiments:string[]; evidence:string[]; contradictions:string[]; beliefRevisions:string[]; uncertainty:number; status:'open'|'testing'|'concluded'; provenance:string[]; verificationContract?:ScientificVerificationContract; createdAt:number; updatedAt:number; }
+export interface ScientificVerificationPair {
+ seedId:string;
+ baselineEvidenceId:string;
+ variantEvidenceId:string;
+ baselineScore:number;
+ variantScore:number;
+}
+export interface ScientificVerificationReceipt {
+ protocol:'paired-holdout-v1';
+ runId:string;
+ evidenceId:string;
+ pairedRuns:ScientificVerificationPair[];
+ holdoutRuns:ScientificVerificationPair[];
+ independentHoldout:true;
+ variantCount:1;
+ rollbackAvailable:true;
+ autoApplied:false;
+ safetyRegression:false;
+}
 export interface ScientificMethodState{projects:ScientificProject[];completed:number;revisionCount:number;}
 export const defaultScientificMethod=():ScientificMethodState=>({projects:[],completed:0,revisionCount:0});
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -11,6 +31,33 @@ const normalizeVerificationContract=(value:unknown):ScientificVerificationContra
     v.independentHoldoutRequired!==true||v.maxVariantsPerRun!==1||v.rollbackRequired!==true||v.autoApply!==false)return undefined;
  return{protocol:'paired-holdout-v1',minPairedSeeds:5,baselineRequired:true,independentHoldoutRequired:true,maxVariantsPerRun:1,rollbackRequired:true,autoApply:false};
 };
+const validPair=(value:unknown):value is ScientificVerificationPair=>{
+ if(!value||typeof value!=='object')return false;
+ const pair=value as Record<string,unknown>;
+ const ids=['seedId','baselineEvidenceId','variantEvidenceId'].map(key=>typeof pair[key]==='string'?(pair[key] as string).trim():'');
+ return ids.every(Boolean)&&new Set(ids).size===3&&
+  typeof pair.baselineScore==='number'&&Number.isFinite(pair.baselineScore)&&pair.baselineScore>=0&&pair.baselineScore<=1&&
+  typeof pair.variantScore==='number'&&Number.isFinite(pair.variantScore)&&pair.variantScore>=0&&pair.variantScore<=1;
+};
+const validMechanismReceipt=(contract:ScientificVerificationContract,receipt:unknown,evidence:string,success:unknown):receipt is ScientificVerificationReceipt=>{
+ if(!receipt||typeof receipt!=='object')return false;
+ const r=receipt as Record<string,unknown>;
+ if(r.protocol!==contract.protocol||typeof r.runId!=='string'||!r.runId.trim()||r.evidenceId!==evidence||
+    r.independentHoldout!==true||r.variantCount!==contract.maxVariantsPerRun||r.rollbackAvailable!==true||
+    r.autoApplied!==false||r.safetyRegression!==false||!Array.isArray(r.pairedRuns)||!Array.isArray(r.holdoutRuns))return false;
+ const paired=r.pairedRuns,holdout=r.holdoutRuns;
+ if(paired.length<contract.minPairedSeeds||paired.length>64||holdout.length<1||holdout.length>32)return false;
+ if(!paired.every(validPair)||!holdout.every(validPair))return false;
+ const trainSeeds=new Set(paired.map(pair=>(pair as ScientificVerificationPair).seedId.trim()));
+ const holdoutSeeds=holdout.map(pair=>(pair as ScientificVerificationPair).seedId.trim());
+ if(trainSeeds.size!==paired.length||new Set(holdoutSeeds).size!==holdout.length||holdoutSeeds.some(seed=>trainSeeds.has(seed)))return false;
+ const evidenceIds=[...paired,...holdout].flatMap(pair=>[(pair as ScientificVerificationPair).baselineEvidenceId.trim(),(pair as ScientificVerificationPair).variantEvidenceId.trim()]);
+ if(new Set(evidenceIds).size!==evidenceIds.length)return false;
+ const holdoutGain=holdout.reduce((sum,pair)=>sum+(pair as ScientificVerificationPair).variantScore-(pair as ScientificVerificationPair).baselineScore,0)/holdout.length;
+ const expectedSuccess=clamp(.5+holdoutGain*5);
+ return typeof success==='number'&&Number.isFinite(success)&&Math.abs(success-expectedSuccess)<=.001;
+};
+
 export class ScientificMethodEngine{
  private state=defaultScientificMethod();
  restore(s:ScientificMethodState|undefined){
@@ -35,7 +82,7 @@ export class ScientificMethodEngine{
   this.state.projects=[p,...this.state.projects].slice(0,64);
   return structuredClone(p);
  }
- observe(projectId:string,input:{experiment?:string;evidence?:string;success?:number;contradiction?:string;conclusion?:string;verified?:boolean}){
+ observe(projectId:string,input:{experiment?:string;evidence?:string;success?:number;contradiction?:string;conclusion?:string;verified?:boolean;verificationReceipt?:ScientificVerificationReceipt}){
   const p=this.state.projects.find(x=>x.id===projectId);
   if(!p||p.status==='concluded'||input.verified!==true)return;
   // Outcome credit needs one stable, unique evidence identity; malformed or repeated
@@ -43,6 +90,7 @@ export class ScientificMethodEngine{
   const evidence=typeof input.evidence==='string'?input.evidence.normalize('NFKC').replace(/[\r\n\t]+/gu,' ').trim().slice(0,320):'';
   if(!evidence||p.evidence.includes(evidence))return;
   if(input.success!==undefined&&(!Number.isFinite(input.success)||input.success<0||input.success>1))return;
+  if(p.verificationContract&&!validMechanismReceipt(p.verificationContract,input.verificationReceipt,evidence,input.success))return;
   p.status='testing';
   if(input.experiment)p.experiments=[input.experiment,...p.experiments].slice(0,32);
   p.evidence=[evidence,...p.evidence].slice(0,64);

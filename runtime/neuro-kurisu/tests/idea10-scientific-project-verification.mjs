@@ -120,4 +120,37 @@ assert.ok(gatedAfter);
 assert.equal(gatedAfter.evidence.length, 1,
   'holdout seeds overlapping training seeds must be rejected');
 
+const autoAppliedReceipt = { ...validReceipt, evidenceId: 'receipt-auto-apply', autoApplied: true };
+gatedEngine.observe(gatedProject.id, {
+  evidence: autoAppliedReceipt.evidenceId,
+  success: .6,
+  verified: true,
+  verificationReceipt: autoAppliedReceipt,
+});
+const safetyRegressionReceipt = { ...validReceipt, evidenceId: 'receipt-safety-regression', safetyRegression: true };
+gatedEngine.observe(gatedProject.id, {
+  evidence: safetyRegressionReceipt.evidenceId,
+  success: .6,
+  verified: true,
+  verificationReceipt: safetyRegressionReceipt,
+});
+gatedEngine.observe(gatedProject.id, {
+  evidence: 'receipt-mismatched-success',
+  success: 1,
+  verified: true,
+  verificationReceipt: { ...validReceipt, evidenceId: 'receipt-mismatched-success' },
+});
+gatedAfter = gatedEngine.snapshot().projects.find(row => row.id === gatedProject.id);
+assert.ok(gatedAfter);
+assert.equal(gatedAfter.evidence.length, 1,
+  'auto-applied, safety-regressing or score-mismatched receipts must not enter scientific evidence');
+
+const tamperedSnapshot = gatedEngine.snapshot();
+tamperedSnapshot.projects.find(row => row.id === gatedProject.id).verificationContract.autoApply = true;
+const hardenedRestore = new ScientificMethodEngine();
+hardenedRestore.restore(tamperedSnapshot);
+assert.equal(hardenedRestore.snapshot().projects.find(row => row.id === gatedProject.id).verificationContract, undefined,
+  'restore must discard a persisted verification contract if its safety requirements were weakened');
+
+
 console.log('IDEA10_SCIENTIFIC_PROJECT_VERIFICATION=PASS');
