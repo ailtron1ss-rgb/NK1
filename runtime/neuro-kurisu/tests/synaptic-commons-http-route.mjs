@@ -40,6 +40,7 @@ const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server
     NEURO_REQUEST_TIMEOUT_MS: '20000',
     NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON: JSON.stringify({ 'http-publisher': publicPem(publisher) }),
     NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON: JSON.stringify({ 'http-evaluator': publicPem(attestor) }),
+    NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON: JSON.stringify(['b'.repeat(64)]),
     NEURO_SYNAPTIC_COMMONS_RUNTIME_VERSION: '1.2.0',
     NEURO_SYNAPTIC_COMMONS_ENVIRONMENT_FINGERPRINT: environmentFingerprint,
     NEURO_SYNAPTIC_COMMONS_SUPPORTED_CAPABILITIES_JSON: JSON.stringify(['documents.read', 'documents.summarize']),
