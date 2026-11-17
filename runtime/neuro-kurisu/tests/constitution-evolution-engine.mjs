@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
-import { ConstitutionEvolutionEngine, PROTECTED_CONSTITUTIONAL_INVARIANTS } from '../src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts';
+import { ConstitutionEvolutionEngine, MUTABLE_CONSTITUTION_DOMAINS, PROTECTED_CONSTITUTIONAL_INVARIANTS } from '../src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts';
 
 const TEST_KEY = 'omestro-20-test-signing-key-32-bytes-minimum';
 process.env.NEURO_CONSTITUTION_HMAC_KEY = TEST_KEY;
@@ -28,6 +28,8 @@ assert.equal(engine.activeConstitution().version,'1.0.0');
 assert.equal(engine.protectedInvariants().length,10);
 assert.equal(Object.isFrozen(PROTECTED_CONSTITUTIONAL_INVARIANTS),true);
 assert.equal(Object.isFrozen(PROTECTED_CONSTITUTIONAL_INVARIANTS[0]),true);
+assert.equal(Object.isFrozen(MUTABLE_CONSTITUTION_DOMAINS),true);
+assert.throws(()=>{ MUTABLE_CONSTITUTION_DOMAINS.push('security'); },TypeError);
 assert.throws(()=>{ PROTECTED_CONSTITUTIONAL_INVARIANTS[0].statement='mutable'; },TypeError);
 assert.throws(()=>new ConstitutionEvolutionEngine({ signingKey: '' }).propose({authorId:'no-key',baseVersion:'1.0.0',change:'add',
   proposedRule:{id:'workflow.no-key',title:'No key',statement:'Must not mutate without a host key.',domain:'workflow',scope:'tests'},
