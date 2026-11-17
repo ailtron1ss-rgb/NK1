@@ -120,6 +120,7 @@ assert.equal(fabricKnowsNow[0]?.id, corrected.id, 'MemoryFabric must select the 
 
 const statusFact = encode('NK1 confidence is currently classified as a fact.');
 const originalConfidence = statusFact.confidence;
+const lineageKeysBeforeAttachment = statusFact.evidenceLineageKeys?.length ?? 0;
 memoryOS.updateSignals(statusFact.id, { confidence: .4 }, 'confidence-calibration');
 const confidenceRecordedAt = statusFact.recordedFromAt;
 assert.equal(
@@ -143,12 +144,12 @@ memoryOS.attachEvidenceSource(statusFact.id, {
 const evidenceRecordedAt = statusFact.recordedFromAt;
 assert.equal(
   memoryOS.temporalBitemporalAt(statusFact.id, 150, evidenceRecordedAt - 1)?.evidenceLineageKeys?.length ?? 0,
-  0,
+  lineageKeysBeforeAttachment,
   'prior knowledge must not contain evidence sources learned later',
 );
 assert.equal(
   memoryOS.temporalBitemporalAt(statusFact.id, 150, evidenceRecordedAt)?.evidenceLineageKeys?.length,
-  1,
+  lineageKeysBeforeAttachment + 1,
   'new evidence provenance must begin at transaction time',
 );
 memoryOS.revise(statusFact.id, 'belief', 'status-reconciliation');
