@@ -475,6 +475,17 @@ export interface OrganismConfig {
     predictivePlanningMode?: 'on' | 'off' | 'sham';
     /** Brick 5: number of imagined steps used by the predictive planner. B363 raises the default to 5. */
     predictivePlanningHorizon?: 3 | 5;
+    /** Enable evidence-backed parliamentary approval on scheduled full cognitive cycles. */
+    enableCognitiveParliament?: boolean;
+    /** Review interval for autonomous cycles; explicit user input also triggers review. */
+    cognitiveParliamentEveryCycles?: number;
+    cognitiveParliamentTimeoutMs?: number;
+    cognitiveParliamentMaxConcurrent?: number;
+    cognitiveParliamentMaxTotalTokens?: number;
+    /** Host-injected role-specific execution providers and trusted model identity. */
+    parliamentRoleExecutors?: import('../system/CognitiveParliamentDispatcher.ts').ParliamentRoleExecutorMap;
+    parliamentModelAttestor?: import('../system/CognitiveParliamentTrust.ts').ParliamentModelAttestor;
+    parliamentModelAttestationRegistry?: import('../system/CognitiveParliamentLocalAdapter.ts').ParliamentModelAttestationRegistry;
 }
 export interface OrganismFacets {
     memory: import('./types.ts').MemoryFacet;
@@ -532,6 +543,15 @@ export interface OrganismSystemState {
     projectResearchSession?: import('../system/ProjectResearchSession.ts').ResearchSessionState;
     /** Bounded idempotency receipts for caller-keyed tool side effects; pending rows fail closed after recovery. */
     actionExecutionLedger?: import('../system/ActionGateway.ts').ActionExecutionLedgerSnapshot;
+    /** Sanitized durable receipt for the latest evidence-backed Cognitive Parliament cycle gate. */
+    cognitiveParliamentLastDecision?: {
+        version:1; tick:number; at:number; candidateId:string; risk:'low'|'medium'|'high';
+        gateStatus:'p69-selected'|'p69-safe-fallback'|'parliament-blocked'|'candidate-not-in-p69-set';
+        dispatchStatus:string; decisionStatus:string; score01:number;
+        verifiedEvidenceCount:number; unverifiedEvidenceCount:number;
+        roleResults:Array<{role:string;status:string;latencyMs:number}>;
+        p69ChosenCandidateId:string|null; selectedCandidateId:string|null; reasons:string[];
+    };
     outcomeVerification?: {
         version: 1;
         records: Array<{
@@ -1164,7 +1184,7 @@ export class OrganismCore {
     private readonly store: JsonStateStore<PersistedOrganism>;
     private readonly actionExecutionLedgerArchive?: FileActionExecutionLedgerArchive;
     /** BIG PASS 56: physical owner/composition root for the seven organism systems. */
-    private readonly organismSystems = new OrganismSystemFabric();
+    private readonly organismSystems: OrganismSystemFabric;
     /** Owns the extracted developmental/neural execution modules; Core only orchestrates them. */
     private readonly developmentalNeural = new DevelopmentalNeuralRuntime();
     /** Durable trust context for signed shadow evidence; only trusted supervisor code may register runs. */
@@ -1173,7 +1193,7 @@ export class OrganismCore {
     private readonly adaptiveMemoryStrategyReadout = new AdaptiveMemoryStrategyReadout();
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
     /** Owns general cognitive/runtime services; Core remains the orchestration spine. */
-    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272 });
+    private readonly cognitiveRuntime: CognitiveRuntimeCluster;
     /** Owns mutable persistence/continuity machinery; Core supplies orchestration decisions. */
     private readonly persistence = new PersistenceRuntime();
     /** Selected WILL contracts are owned by the composition fabric; Core only orchestrates them. */
@@ -1251,6 +1271,19 @@ export class OrganismCore {
     private ready = false;
     constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
         this.store = store;
+        // Inject specialist providers at the composition root; model identity remains
+        // host-attested and no provider is inferred from model-produced text.
+        this.organismSystems = new OrganismSystemFabric({
+            parliamentRoleExecutors: config.parliamentRoleExecutors,
+            parliamentModelAttestor: config.parliamentModelAttestor,
+            parliamentModelAttestationRegistry: config.parliamentModelAttestationRegistry,
+        });
+        this.cognitiveRuntime = new CognitiveRuntimeCluster({
+            organismSystems: this.organismSystems,
+            p61IntegratedMind: this.organismSystems.self.p61IntegratedMind,
+            p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics,
+            endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272,
+        });
         const candidateStorePath = store instanceof FileStateStore
             ? store.siblingPath('verified-skill-candidates.json')
             : (process.env.NEURO_SKILL_CANDIDATE_STORE_PATH || 'state/verified-skill-candidates.json');
@@ -1339,6 +1372,11 @@ export class OrganismCore {
             enableB2522AdaptiveWorldModelMixtureRouter: config.enableB2522AdaptiveWorldModelMixtureRouter ?? true,
             enableB2523MultiHorizonCounterfactualVerifier: config.enableB2523MultiHorizonCounterfactualVerifier ?? true,
             ...config,
+            enableCognitiveParliament: config.enableCognitiveParliament === true,
+            cognitiveParliamentEveryCycles: Math.max(1, Math.min(256, Math.floor(Number(config.cognitiveParliamentEveryCycles ?? 8) || 8))),
+            cognitiveParliamentTimeoutMs: Math.max(25, Math.min(120000, Math.floor(Number(config.cognitiveParliamentTimeoutMs ?? 25000) || 25000))),
+            cognitiveParliamentMaxConcurrent: Math.max(1, Math.min(6, Math.floor(Number(config.cognitiveParliamentMaxConcurrent ?? 3) || 3))),
+            cognitiveParliamentMaxTotalTokens: Math.max(384, Math.min(12288, Math.floor(Number(config.cognitiveParliamentMaxTotalTokens ?? 4096) || 4096))),
         } as Required<OrganismConfig>;
         this.cognitiveSubsystemFacadeB297 = new CognitiveSubsystemFacade(this as any);
         this.persistence.configure(this.config.checkpointMinIntervalMs, this.config.checkpointMaxDirtyCycles);
@@ -4118,6 +4156,30 @@ export class OrganismCore {
             trace.outcome = { success, reward: outcome.reward, surprise, notes: outcome.notes, at: Date.now() };
         this.markPersistenceDirty();
     }
+    /**
+     * Build Parliament references only from the active promoted ProjectResearchSession
+     * and its exact canonical Firewall observations. No user text, arbitrary URLs or
+     * unpromoted memory fragments are converted into evidence references here.
+     */
+    private cognitiveParliamentEvidenceReferences(): import('../system/CognitiveParliament.ts').ParliamentEvidenceReference[] {
+        try {
+            const session = this.evidenceResearchSubsystem.projectResearchSession.snapshot();
+            if (!session?.claimKey || session.firewallStatus !== 'promoted' || session.promoted !== true) return [];
+            const sessionRows = new Set((session.results ?? [])
+                .filter(row => row?.ok === true && Boolean(row.contentHash) && Boolean(row.sourceKey) && Boolean(row.sourceLineageKey))
+                .map(row => [row.sourceKey, row.sourceLineageKey, row.contentHash].join('\u0000')));
+            if (!sessionRows.size) return [];
+            const observations = this.evidenceResearchSubsystem.evidenceFirewall.snapshot().observations
+                .filter(row => row.claimKey === session.claimKey && row.sourceClass === 'external-api' &&
+                    Boolean(row.contentHash) && sessionRows.has([row.sourceKey, row.sourceLineageKey, row.contentHash].join('\u0000')))
+                .sort((a, b) => b.observedAt - a.observedAt)
+                .slice(0, 48);
+            return observations.map(row => ({ id: row.id, claimKey: row.claimKey }));
+        } catch {
+            return [];
+        }
+    }
+
     private expectedClosureDomains(observation: OrganismObservation, normalizedObservation: OrganismObservation): CognitiveDomain[] {
         const expected: CognitiveDomain[] = ['memory', 'self', 'learning'];
         if (normalizedObservation.worldContext || observation.vision || observation.audio || observation.worldEvent)
@@ -7502,16 +7564,73 @@ export class OrganismCore {
         this.persisted.system.luminaAdaptation = this.luminaAdaptation.snapshot();
         this.persisted.system.lettaGovernanceAdaptation = this.lettaGovernanceAdaptation.snapshot();
         this.persisted.system.conscioAdaptation = this.conscioAdaptation.snapshot();
-        const p69Decision = this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate({
+        const p69Input = {
             tick: state.tick, energy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, capacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad),
             identity01: identityContinuity.continuity, realityGap01: p57RealitySummaryNow.meanRealityGap01,
             uncertainty01: n.uncertainty, novelty01: n.novelty, socialNeed01: n.socialNeed, attention01: state.attentionBudget, homeostaticPressure01: p66Homeostasis.pressure01,
             candidates: governedCandidates, requestedAction: userRequestedAction, userPresent: Boolean(observation.text), upstreamMode: p64Frame.mode,
-        });
+        };
+        const parliamentReviewDue = this.config.enableCognitiveParliament &&
+            (Boolean(observation.text) || state.tick % this.config.cognitiveParliamentEveryCycles === 0);
+        let parliamentGateAttempted = false;
+        let parliamentaryApprovedCandidateId: string | null = null;
+        let p69Decision: ReturnType<typeof this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate>;
+        let selected: typeof governedCandidates[number] | null = null;
+        if (parliamentReviewDue && governedCandidates.length) {
+            parliamentGateAttempted = true;
+            const primaryCandidate = [...governedCandidates].sort((a, b) => b.score - a.score)[0];
+            const riskSignal = clamp(
+                n.uncertainty * .38 + n.cognitiveLoad * .18 +
+                clamp(primaryCandidate.predictedCost ?? .5) * .22 +
+                clamp(p57RealitySummaryNow.meanRealityGap01) * .22,
+            );
+            const parliamentRisk = riskSignal >= .66 ? 'high' : riskSignal >= .34 ? 'medium' : 'low';
+            const evidenceReferences = this.cognitiveParliamentEvidenceReferences();
+            const review = await this.governanceSubsystem.deliberateCycleCandidate({
+                candidateId: primaryCandidate.id,
+                risk: parliamentRisk,
+                task: [
+                    'Evaluate this exact NK1 intent candidate. Do not propose or select a different high-impact candidate.',
+                    `Candidate action: ${primaryCandidate.action}; score: ${primaryCandidate.score.toFixed(4)}; utility: ${primaryCandidate.predictedUtility.toFixed(4)}; confidence: ${Number(primaryCandidate.confidence ?? .5).toFixed(4)}; estimated cost: ${Number(primaryCandidate.predictedCost ?? .5).toFixed(4)}.`,
+                    `Active goal: ${String(active?.title ?? 'none').slice(0, 240)}.`,
+                    `User request: ${String(observation.text ?? 'internal autonomous cycle').slice(0, 1200)}.`,
+                    'Assess evidence relevance, feasibility, counterexamples and safety. Return only the role contract requested by your specialist instructions.',
+                ].join('\n'),
+                evidenceReferences,
+                p69Input: { ...p69Input, candidates: governedCandidates.map(candidate => ({ ...candidate })) },
+                timeoutMs: this.config.cognitiveParliamentTimeoutMs,
+                maxConcurrent: this.config.cognitiveParliamentMaxConcurrent,
+                maxTotalTokens: this.config.cognitiveParliamentMaxTotalTokens,
+            });
+            p69Decision = review.arbitration ?? this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate({
+                ...p69Input, candidates: [], requestedAction: null,
+            });
+            selected = review.selectedCandidate
+                ? governedCandidates.find(candidate => candidate.id === review.selectedCandidate!.id) ?? null
+                : null;
+            if (review.status === 'p69-selected') parliamentaryApprovedCandidateId = primaryCandidate.id;
+            this.persisted.system.cognitiveParliamentLastDecision = {
+                version: 1, tick: state.tick, at: Date.now(), candidateId: primaryCandidate.id,
+                risk: parliamentRisk, gateStatus: review.status, dispatchStatus: review.parliament.status,
+                decisionStatus: review.parliament.decision.status, score01: review.parliament.decision.score01,
+                verifiedEvidenceCount: review.parliament.verifiedEvidenceCount,
+                unverifiedEvidenceCount: review.parliament.unverifiedEvidenceCount,
+                roleResults: review.parliament.roleResults.map(row => ({
+                    role: row.role, status: row.status, latencyMs: row.latencyMs,
+                })),
+                p69ChosenCandidateId: p69Decision.chosen?.id ?? null,
+                selectedCandidateId: selected?.id ?? null,
+                reasons: review.parliament.decision.reasons.slice(0, 16),
+            };
+        } else {
+            p69Decision = this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate(p69Input);
+        }
         const constitutionalSelected = p69Decision.chosen ? governedCandidates.find(c => c.id === p69Decision.chosen!.id) ?? null : null;
-        let selected = constitutionalSelected ?? this.selectIntent(governedCandidates, userRequestedAction, Boolean(observation.text), n);
-        const b276ProgramCanCommit = this.config.enableCompositionalExecution !== false && Boolean(b276NextProgramPrimitive) && !Boolean(p69Decision.vetoed) && !Boolean(userRequestedAction) && !Boolean(observation.text || observation.worldEvent);
+        if (!parliamentGateAttempted) selected = constitutionalSelected ?? this.selectIntent(governedCandidates, userRequestedAction, Boolean(observation.text), n);
         const b276ProgramCandidate = b276NextProgramPrimitive ? governedCandidates.find(c => c.action === b276NextProgramPrimitive.primitive) : null;
+        const b276ProgramCanCommit = this.config.enableCompositionalExecution !== false && Boolean(b276NextProgramPrimitive) &&
+            !Boolean(p69Decision.vetoed) && !Boolean(userRequestedAction) && !Boolean(observation.text || observation.worldEvent) &&
+            (!parliamentGateAttempted || (b276ProgramCandidate?.id === parliamentaryApprovedCandidateId && parliamentaryApprovedCandidateId !== null));
         const b276Execution = (b276ProgramCanCommit && b276ProgramCandidate) ? this.developmentalNeural.latentActionProgramSynthesizerB276.nextExecutablePrimitive() : null;
         if (b276Execution && b276ProgramCandidate)
             selected = b276ProgramCandidate;
@@ -7553,15 +7672,17 @@ export class OrganismCore {
         const developmentalSelected = diversityRecommendation && selected && diversityRecommendation.score >= selected.score - (this.adaptiveDevelopmentSnapshot().diversityPressure01 > 0.65 ? 0.18 : 0.09) ? diversityRecommendation : selected;
         if (diversityRecommendation && developmentalSelected === diversityRecommendation && diversityRecommendation.action !== selected?.action)
             this.cognitiveRuntime.adaptiveDevelopment.noteIntervention(diversityRecommendation.action, 'behavioral-diversity-regulator', diversityRecommendation.score);
-        const finalizedByP64 = spineOnly ? selected : (this.cognitiveRuntime.cognitiveKernelCoordinator.finalize(governedCandidates, userRequestedAction, p64Frame) ?? developmentalSelected);
-        let selectedIntent = spineOnly ? selected : (constitutionalSelected ?? finalizedByP64);
+        const finalizedByP64 = spineOnly ? selected : parliamentGateAttempted ? selected :
+            (this.cognitiveRuntime.cognitiveKernelCoordinator.finalize(governedCandidates, userRequestedAction, p64Frame) ?? developmentalSelected);
+        let selectedIntent = spineOnly ? selected : parliamentGateAttempted ? selected :
+            (constitutionalSelected ?? finalizedByP64);
         const p71Consistency = this.selfSubsystem.p71SelfConsistency.evaluate({ tick: state.tick, identity01: identityContinuity.continuity, identityDrift01: identityContinuity.drift, goalConflict01: p68Goals.conflictPressure01, valueConflict01: this.persisted.facets.evolution.valueEvolution.revisions.length ? 0.08 : 0, chosenAction: selectedIntent?.action ?? 'wait', mode: p69Decision.mode, goalPressure01: effectiveGoalPressure, realityGap01: p69Decision.constraints01 < .35 ? 1 - p69Decision.constraints01 : p57RealitySummaryNow.meanRealityGap01 });
         const p69Quorum = this.agencySubsystem.quorum.evaluate({ action: selectedIntent?.action ?? 'wait', constitutional01: clamp(p69Decision.constraints01), worldConfidence01: clamp(predictions.get(selectedIntent?.action ?? 'wait')?.confidence ?? .35), memorySupport01: clamp(.45 + retrieved.length * .06), epistemic01: clamp(1 - p57RealitySummaryNow.meanRealityGap01), budget01: this.persisted.facets.cognition.budget.remaining01, identity01: identityContinuity.continuity, urgency01: active?.urgency ?? .35 });
         if (selectedIntent) {
             const alt = governedCandidates.find(c => c.action !== selectedIntent!.action && c.action !== userRequestedAction) ?? null;
             this.organismSystems.world.worldAgencyLearningCausalBridge.observeCycle({ tick: state.tick, at: state.at, action: selectedIntent.action, worldConfidence01: predictions.get(selectedIntent.action)?.confidence ?? .35, selectedUtility01: selectedIntent.predictedUtility, alternativeAction: alt?.action ?? null, alternativeUtility01: alt?.predictedUtility ?? .5 });
         }
-        if (!spineOnly && !p69Quorum.accepted && selectedIntent && !['rest', 'wait', 'defer'].includes(selectedIntent.action)) {
+        if (!spineOnly && !parliamentGateAttempted && !p69Quorum.accepted && selectedIntent && !['rest', 'wait', 'defer'].includes(selectedIntent.action)) {
             const safer = governedCandidates.find(c => c.action === 'verify') ?? governedCandidates.find(c => c.action === 'reflect') ?? governedCandidates.find(c => c.action === 'rest');
             if (safer)
                 selectedIntent = safer;
@@ -7596,7 +7717,7 @@ export class OrganismCore {
         });
         this.organismSystems.research.p77RealityExperimentOS.record(state.tick, { capabilityId: 'organism-outcome', before01: clamp(selectedIntent?.predictedUtility ?? p73Capability.capability01), after01: clamp(observation.success ?? observation.reward ?? 0), evidence: observation.success != null || observation.reward != null ? 'external-outcome' : 'none', context: `mode=${p74Frame.mode};memory=${p75Plan.retrievalFocus};action=${selectedIntent?.action ?? 'none'}` });
         this.organismSystems.research.p77RealityExperimentOS.noteComplexity(clamp((this.persisted.traces.length / 320) * .25 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / 1600) * .25 + (p74RecentModesNow / 32) * .25));
-        if (!spineOnly && p71Consistency.repairPressure01 > .62 && selectedIntent && !['rest', 'verify', 'reflect'].includes(selectedIntent.action)) {
+        if (!spineOnly && !parliamentGateAttempted && p71Consistency.repairPressure01 > .62 && selectedIntent && !['rest', 'verify', 'reflect'].includes(selectedIntent.action)) {
             const repairCandidate = governedCandidates.find(c => c.action === 'verify') ?? governedCandidates.find(c => c.action === 'reflect') ?? null;
             if (repairCandidate && repairCandidate.score >= selectedIntent.score - .16) {
                 governedCandidates.splice(0, 0, repairCandidate);
@@ -7622,14 +7743,14 @@ export class OrganismCore {
             externalInput: Boolean(observation.text || observation.audio || observation.vision), userRequestedAction, constitutionalBlocked: Boolean(constitutionalSelected && constitutionalSelected.action !== b312PolicyAction),
             quorumAccepted: p69Quorum.accepted && Boolean(b312PolicyQuorum.accepted || b312PolicyAction === selectedIntent?.action), repairPressure01: p71Consistency.repairPressure01, identity01: identityContinuity.continuity, realityGap01: p57RealitySummaryNow.meanRealityGap01,
         });
-        if (!spineOnly && b312Handoff.promotedAction && b312Handoff.promotedAction !== selectedIntent?.action) {
+        if (!spineOnly && !parliamentGateAttempted && b312Handoff.promotedAction && b312Handoff.promotedAction !== selectedIntent?.action) {
             const promoted = governedCandidates.find(c => c.action === b312Handoff.promotedAction);
             if (promoted)
                 selectedIntent = promoted;
         }
         // Brick 4 commitment survives ordinary policy overlays but never bypasses
         // constitutional veto, external user intent, or high self-repair pressure.
-        if (!spineOnly && b276Execution && b276ProgramCandidate && !p69Decision.vetoed && !userRequestedAction && !Boolean(observation.text || observation.worldEvent) &&
+        if (!spineOnly && !parliamentGateAttempted && b276Execution && b276ProgramCandidate && !p69Decision.vetoed && !userRequestedAction && !Boolean(observation.text || observation.worldEvent) &&
             p71Consistency.repairPressure01 <= .62 && p69Quorum.accepted) {
             selectedIntent = b276ProgramCandidate;
         }
