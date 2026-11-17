@@ -386,4 +386,41 @@ const oversizedStringReport = validateArchitectureMorphogenesisGraph(oversizedSt
 assert.equal(oversizedStringReport.ok, false);
 assert.ok(oversizedStringReport.issues.some(item => item.code === 'graph-untrusted-data'));
 
+
+
+// Regression: schema-v1 graph payloads must reject unknown executable metadata.
+const unknownGraphField = graph([alpha]);
+unknownGraphField.activationHook = 'auto-apply';
+const unknownGraphFieldReport = validateArchitectureMorphogenesisGraph(unknownGraphField);
+assert.equal(unknownGraphFieldReport.ok, false);
+assert.ok(unknownGraphFieldReport.issues.some(item => item.code === 'graph-field-unknown'));
+
+const unknownModuleField = graph([{ ...alpha, activationTarget: 'main' }]);
+const unknownModuleFieldReport = validateArchitectureMorphogenesisGraph(unknownModuleField);
+assert.equal(unknownModuleFieldReport.ok, false);
+assert.ok(unknownModuleFieldReport.issues.some(item => item.code === 'module-field-unknown'));
+
+const unknownEdgeField = graph(
+  [alpha, beta],
+  [{ from: 'alpha', to: 'beta', kind: 'import', when: 'startup' }],
+);
+const unknownEdgeFieldReport = validateArchitectureMorphogenesisGraph(unknownEdgeField);
+assert.equal(unknownEdgeFieldReport.ok, false);
+assert.ok(unknownEdgeFieldReport.issues.some(item => item.code === 'edge-field-unknown'));
+
+const unknownContractField = graph(
+  [alpha, beta],
+  [{ from: 'alpha', to: 'beta', kind: 'contract' }],
+  [{
+    id: 'contract-1',
+    ownerModuleId: 'alpha',
+    consumerModuleIds: ['beta'],
+    authority: 'single-owner',
+    autoPromote: true,
+  }],
+);
+const unknownContractFieldReport = validateArchitectureMorphogenesisGraph(unknownContractField);
+assert.equal(unknownContractFieldReport.ok, false);
+assert.ok(unknownContractFieldReport.issues.some(item => item.code === 'contract-field-unknown'));
+
 console.log('ARCHITECTURE_MORPHOGENESIS_WORKPASS17=PASS live-graph+contracts+merge-split-move-replace+rollback+promotion-gate');
