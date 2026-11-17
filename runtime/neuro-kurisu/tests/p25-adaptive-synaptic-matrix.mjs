@@ -236,6 +236,16 @@ const request = (overrides = {}) => ({
   assert.throws(() => restoredQuarantine.activateValidated(manifest(), () => true),
     /revalidation/i,
     'the last accepted holdout digest must survive restart to prevent stale-report replay');
+
+  const administrativelyDisabledQuarantine = new AdaptiveSynapticMatrixEngine();
+  administrativelyDisabledQuarantine.restore(repeatedFailure.snapshot(), () => true);
+  assert.equal(administrativelyDisabledQuarantine.disable('physics-lora-v1')?.status, 'disabled');
+  const restoredDisabledQuarantine = new AdaptiveSynapticMatrixEngine();
+  restoredDisabledQuarantine.restore(administrativelyDisabledQuarantine.snapshot(), () => true);
+  assert.equal(restoredDisabledQuarantine.snapshot().adapters[0].status, 'disabled');
+  assert.throws(() => restoredDisabledQuarantine.activateValidated(manifest(), () => true),
+    /revalidation/i,
+    'manual disable and another restart must not clear quarantine anti-replay protection');
   assert.equal(restoredQuarantine.activateValidated(freshManifest, () => true).status, 'active',
     'a fresh signed holdout report may reactivate the quarantined adapter after restart');
   assert.equal(repeatedFailure.activateValidated(freshManifest, () => true).status, 'active',
