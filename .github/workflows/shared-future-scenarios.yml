@@ -7,6 +7,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/tests/shared-future-scenarios.mjs"
+      - "runtime/neuro-kurisu/tests/shared-future-action-outcome-integration.mjs"
       - ".github/workflows/shared-future-scenarios.yml"
 permissions:
   contents: read
@@ -21,6 +22,8 @@ jobs:
           package-manager-cache: false
       - name: Run Shared Future scenario and consent regressions
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/shared-future-scenarios.mjs
+      - name: Run Shared Future verified-action integration regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/shared-future-action-outcome-integration.mjs
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: node scripts/typecheck-runtime.mjs
