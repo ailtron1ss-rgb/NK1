@@ -497,6 +497,14 @@ export interface OrganismFacets {
     cognition: import('./types.ts').DevelopmentalCognitionFacet;
     advanced: import('./types.ts').AdvancedDevelopmentFacet;
 }
+export interface CognitiveParliamentCycleReceipt {
+    version:1; tick:number; at:number; candidateId:string; risk:'low'|'medium'|'high';
+    gateStatus:'p69-selected'|'p69-safe-fallback'|'parliament-blocked'|'candidate-not-in-p69-set';
+    dispatchStatus:string; decisionStatus:string; score01:number;
+    verifiedEvidenceCount:number; unverifiedEvidenceCount:number;
+    roleResults:Array<{role:string;status:string;latencyMs:number}>;
+    p69ChosenCandidateId:string|null; selectedCandidateId:string|null; reasons:string[];
+}
 export interface OrganismSystemState {
     release: string;
     organismCore: string;
@@ -544,15 +552,9 @@ export interface OrganismSystemState {
     projectResearchSession?: import('../system/ProjectResearchSession.ts').ResearchSessionState;
     /** Bounded idempotency receipts for caller-keyed tool side effects; pending rows fail closed after recovery. */
     actionExecutionLedger?: import('../system/ActionGateway.ts').ActionExecutionLedgerSnapshot;
-    /** Sanitized durable receipt for the latest evidence-backed Cognitive Parliament cycle gate. */
-    cognitiveParliamentLastDecision?: {
-        version:1; tick:number; at:number; candidateId:string; risk:'low'|'medium'|'high';
-        gateStatus:'p69-selected'|'p69-safe-fallback'|'parliament-blocked'|'candidate-not-in-p69-set';
-        dispatchStatus:string; decisionStatus:string; score01:number;
-        verifiedEvidenceCount:number; unverifiedEvidenceCount:number;
-        roleResults:Array<{role:string;status:string;latencyMs:number}>;
-        p69ChosenCandidateId:string|null; selectedCandidateId:string|null; reasons:string[];
-    };
+    /** Sanitized durable receipt and a bounded replayable decision history (latest 64 cycles). */
+    cognitiveParliamentLastDecision?: CognitiveParliamentCycleReceipt;
+    cognitiveParliamentDecisionHistory?: CognitiveParliamentCycleReceipt[];
     outcomeVerification?: {
         version: 1;
         records: Array<{
@@ -7617,7 +7619,7 @@ export class OrganismCore {
                 ? governedCandidates.find(candidate => candidate.id === review.selectedCandidate!.id) ?? null
                 : null;
             if (review.status === 'p69-selected') parliamentaryApprovedCandidateId = primaryCandidate.id;
-            this.persisted.system.cognitiveParliamentLastDecision = {
+            const parliamentReceipt:CognitiveParliamentCycleReceipt = {
                 version: 1, tick: state.tick, at: Date.now(), candidateId: primaryCandidate.id,
                 risk: parliamentRisk, gateStatus: review.status, dispatchStatus: review.parliament.status,
                 decisionStatus: review.parliament.decision.status, score01: review.parliament.decision.score01,
@@ -7630,6 +7632,16 @@ export class OrganismCore {
                 selectedCandidateId: selected?.id ?? null,
                 reasons: review.parliament.decision.reasons.slice(0, 16),
             };
+            this.persisted.system.cognitiveParliamentLastDecision = parliamentReceipt;
+            const previousParliamentHistory = Array.isArray(this.persisted.system.cognitiveParliamentDecisionHistory)
+                ? this.persisted.system.cognitiveParliamentDecisionHistory
+                    .filter(row => row && Number.isSafeInteger(row.tick) && typeof row.candidateId === 'string')
+                    .slice(-63)
+                : [];
+            this.persisted.system.cognitiveParliamentDecisionHistory = [
+                ...previousParliamentHistory.filter(row => row.tick !== parliamentReceipt.tick),
+                parliamentReceipt,
+            ].slice(-64);
         } else {
             p69Decision = this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate(p69Input);
         }
