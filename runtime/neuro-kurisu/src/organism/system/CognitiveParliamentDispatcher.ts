@@ -25,7 +25,7 @@ export interface ParliamentDispatchResult {
   candidateId:string; decision:ParliamentDecision; roleResults:ParliamentRoleRunResult[];
   startedAt:number; completedAt:number; elapsedMs:number;
   requestedTokenBudget:number; perRoleTokenBudget:number; concurrencyLimit:number;
-  inputCharacterBudget:number; inputCharactersPerRole:number; truncatedMaterialCount:number;
+  inputCharacterBudget:number; inputCharactersPerRole:number; systemPromptCharacterCeiling:number; truncatedMaterialCount:number;
   verifiedEvidenceCount:number; unverifiedEvidenceCount:number;
 }
 const ROLES:ParliamentRole[]=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
@@ -161,6 +161,7 @@ export class CognitiveParliamentDispatcher {
     let verifiedEvidenceMap=new Map<string,string>();
     let unverifiedEvidenceCount=0;
     let inputCharactersPerRole=0;
+    let systemPromptCharacterCeiling=0;
     let truncatedMaterialCount=0;
     let sharedUserPayload='';
     const finish=(status:ParliamentDispatchResult['status']):ParliamentDispatchResult=>{
@@ -171,7 +172,7 @@ export class CognitiveParliamentDispatcher {
         decision:this.parliament.deliberate({candidateId,risk:(risk==='low'||risk==='medium'||risk==='high')?risk:'high',reports:stableReports,maxReports:6}),
         roleResults:roleResults.map(row=>({...row})),startedAt,completedAt,
         elapsedMs:Math.max(0,completedAt-startedAt),requestedTokenBudget,perRoleTokenBudget,concurrencyLimit,
-        inputCharacterBudget,inputCharactersPerRole,truncatedMaterialCount,
+        inputCharacterBudget,inputCharactersPerRole,systemPromptCharacterCeiling,truncatedMaterialCount,
         verifiedEvidenceCount:verifiedEvidence.length,unverifiedEvidenceCount,
       };
     };
@@ -189,6 +190,7 @@ export class CognitiveParliamentDispatcher {
       facts:'string[]',assumptions:'string[]',objections:'string[]',evidence:'allowed {id,claimKey} only',
     };
     const basePayload={candidateId,task,outputContract};
+    systemPromptCharacterCeiling=Math.max(...ROLES.map(role=>makeRoleSystem(role).length));
     const evidenceShells=verifiedEvidence.map(row=>({
       id:row.id,claimKey:row.claimKey,sourceIdentity:row.sourceIdentity,
       sourceFamily:row.sourceFamily,sourceClass:row.sourceClass,
@@ -198,9 +200,10 @@ export class CognitiveParliamentDispatcher {
     const minimumPayload=JSON.stringify({...basePayload,allowedEvidence:evidenceShells});
     // Provenance IDs/metadata are indivisible: when they do not fit, do not silently
     // drop references or expose a partial evidence set to the six specialist roles.
-    if(minimumPayload.length>inputCharacterBudget)return finish('input-budget-exceeded');
+    if(minimumPayload.length+systemPromptCharacterCeiling>inputCharacterBudget)
+      return finish('input-budget-exceeded');
     const materialBudget=Math.min(
-      Math.max(0,inputCharacterBudget-minimumPayload.length),
+      Math.max(0,inputCharacterBudget-minimumPayload.length-systemPromptCharacterCeiling),
       Math.floor(inputCharacterBudget*.30),
     );
     const perEvidenceMaterialBudget=verifiedEvidence.length
@@ -224,7 +227,9 @@ export class CognitiveParliamentDispatcher {
       sharedUserPayload=minimumPayload;
       truncatedMaterialCount=verifiedEvidence.filter(row=>Boolean(row.material)).length;
     }
-    inputCharactersPerRole=sharedUserPayload.length;
+    // Bound the total model input (fixed system instruction + untrusted user context),
+    // not just the evidence payload. Use the longest specialist instruction as a safe ceiling.
+    inputCharactersPerRole=sharedUserPayload.length+systemPromptCharacterCeiling;
     if(inputCharactersPerRole>inputCharacterBudget)return finish('input-budget-exceeded');
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
     let nextIndex=0;
