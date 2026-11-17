@@ -43,6 +43,7 @@ import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
+import { NeuralJitEngine, type NeuralJitActivationCaptureVerifier, type NeuralJitPersistedSnapshot, type NeuralJitTraceInput } from '../learning/NeuralJitEngine.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
@@ -122,6 +123,8 @@ export interface RuntimeConfig extends OrganismConfig {
   voiceTranscriptCharacterName?: string;
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
+  /** Optional host-owned verifier for exact local-model activation captures; no capture authority is installed by default. */
+  neuralJitActivationCaptureVerifier?: NeuralJitActivationCaptureVerifier;
 }
 
 export interface RuntimeStepOptions {
@@ -236,6 +239,8 @@ export class OrganismRuntime {
   };
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
+  private readonly neuralJitEngine: NeuralJitEngine;
+  private readonly neuralJitStore: JsonStateStore<NeuralJitPersistedSnapshot>;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -342,6 +347,8 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
+    this.neuralJitEngine = new NeuralJitEngine({ activationCaptureVerifier: config.neuralJitActivationCaptureVerifier });
+    this.neuralJitStore = new FileStateStore<NeuralJitPersistedSnapshot>(`${config.stateFile}.neural-jit.json`);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -391,6 +398,7 @@ export class OrganismRuntime {
       }
       await this.compoundRepairRevisionCoordinator?.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
+      this.neuralJitEngine.restore(await this.neuralJitStore.load());
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -1192,6 +1200,42 @@ export class OrganismRuntime {
   neuralCausalTraceSnapshot(){ return this.neuralCausalTrace.snapshot(); }
   realityLearningGateSnapshot(){ return this.realityLearningGate.snapshot(); }
   realityShadowBridgeSnapshot(){ return this.realityShadowBridge.snapshot(); }
+
+  /**
+   * Admit a Neural JIT sample only when both the exact ActionGateway postcondition
+   * receipt and the host-owned local-model activation capture are authenticated.
+   * Raw prompts and tool inputs are hashed for binding and are never persisted.
+   */
+  async recordNeuralJitTrace(input: NeuralJitTraceInput) {
+    return this.enqueue(async()=>{
+      if(!this.initialized) throw new Error('organism-runtime-not-initialized');
+      const result=await this.neuralJitEngine.recordVerifiedTrace(input);
+      if(result.accepted) await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
+      return result;
+    });
+  }
+
+  /** Compile a rank-1 residual candidate from train-partition captures; it remains shadow-only. */
+  async compileNeuralJitCandidate(input:{taskFamily:string;modelFingerprint:string}) {
+    return this.enqueue(async()=>{
+      if(!this.initialized) throw new Error('organism-runtime-not-initialized');
+      const candidate=this.neuralJitEngine.compileCandidate(input);
+      if(candidate) await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
+      return candidate;
+    });
+  }
+
+  /** Evaluate a candidate on a task-fingerprint-disjoint holdout partition. */
+  async evaluateNeuralJitCandidate(id:string) {
+    return this.enqueue(async()=>{
+      if(!this.initialized) throw new Error('organism-runtime-not-initialized');
+      const result=this.neuralJitEngine.evaluateCandidate(id);
+      await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
+      return result;
+    });
+  }
+
+  neuralJitDiagnostics(){ return this.neuralJitEngine.diagnostics(); }
 
   /** Compile a bounded procedural skill into the runtime-owned library and persist it before returning. */
   async compileCompoundSkill(input:Parameters<ProceduralSkillLibrary['compileCompoundSkill']>[0]) {
