@@ -1671,13 +1671,15 @@ export class MemoryOS2{
    if(!selected||typeof selected.id!=='string'||typeof selected.content!=='string'||seen.has(selected.id))continue;
    seen.add(selected.id);
    const item=this.state.items.find(candidate=>candidate.id===selected.id);
-   if(!item||item.content!==selected.content||item.dormant||item.epistemicStatus==='quarantined')continue;
-   if(requestedKnowledgeAt!==undefined&&temporalMode!=='all'){
-    if(!this.bitemporalVersionAt(item,now,requestedKnowledgeAt)){
-     this.state.staleRetrievalsAvoided++;
-     continue;
-    }
-   }else{
+   if(!item||item.content!==selected.content)continue;
+   const historicalVersion=requestedKnowledgeAt!==undefined&&temporalMode!=='all'?this.bitemporalVersionAt(item,now,requestedKnowledgeAt):null;
+   if(requestedKnowledgeAt!==undefined&&temporalMode!=='all'&&!historicalVersion){
+    this.state.staleRetrievalsAvoided++;
+    continue;
+   }
+   const historicalView=historicalVersion?this.materializeBitemporalView(item,historicalVersion):item;
+   if(historicalView.dormant||historicalView.epistemicStatus==='quarantined')continue;
+   if(requestedKnowledgeAt===undefined||temporalMode==='all'){
     if(temporalMode!=='all'&&((item.validUntilAt!=null&&Number(item.validUntilAt)<=now)||(item.supersededById!=null&&item.validUntilAt==null))){
      this.state.staleRetrievalsAvoided++;
      continue;
@@ -1687,10 +1689,12 @@ export class MemoryOS2{
      continue;
     }
    }
-   item.lastAccessAt=now;
+   item.lastAccessAt=wallClockNow;
    item.retrievalCount++;
-   item.temperature01=memoryTemperature(item,now);
-   rows.push(structuredClone(item));
+   item.temperature01=memoryTemperature(item,wallClockNow);
+   rows.push(historicalVersion
+    ?structuredClone({...historicalView,lastAccessAt:wallClockNow,retrievalCount:item.retrievalCount})
+    :structuredClone(item));
   }
   this.state.adaptiveMemoryPolicy=this.adaptivePolicy.snapshot();
   return rows;
