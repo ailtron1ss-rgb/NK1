@@ -12,6 +12,8 @@ export interface DevelopmentalGenomeModule {
   contractVersion: number;
   purpose: string;
   phase: OrganismSystemContract['phase'];
+  snapshotWeight01: number;
+  executionRank?: number;
   estimatedCost01: number;
   cadenceCycles: number;
   dependencies: DevelopmentalGenomeModuleName[];
@@ -103,6 +105,8 @@ function moduleFromContract(contract: OrganismSystemContract): DevelopmentalGeno
     contractVersion: contract.version,
     purpose: contract.purpose,
     phase: contract.phase,
+    snapshotWeight01: contract.snapshotWeight01,
+    executionRank: contract.executionRank,
     estimatedCost01: contract.estimatedCost01,
     cadenceCycles: contract.cadenceCycles,
     dependencies: [...contract.dependencies].sort(),
@@ -203,6 +207,12 @@ export function buildDevelopmentalGenome(
     throw new Error('Developmental Genome requires the complete canonical system set');
   }
   for (const module of modules) {
+    if (typeof module.snapshotWeight01 !== 'number' || !Number.isFinite(module.snapshotWeight01) || module.snapshotWeight01 < 0 || module.snapshotWeight01 > 1) {
+      throw new Error('Invalid canonical snapshotWeight01 for module: ' + module.name);
+    }
+    if (module.executionRank !== undefined && (!Number.isInteger(module.executionRank) || module.executionRank < 0)) {
+      throw new Error('Invalid canonical executionRank for module: ' + module.name);
+    }
     if (typeof module.estimatedCost01 !== 'number' || !Number.isFinite(module.estimatedCost01) || module.estimatedCost01 < 0 || module.estimatedCost01 > 1) {
       throw new Error('Invalid canonical estimatedCost01 for module: ' + module.name);
     }
@@ -232,6 +242,8 @@ function immutableModuleShape(module: DevelopmentalGenomeModule): unknown {
     contractVersion: module.contractVersion,
     purpose: module.purpose,
     phase: module.phase,
+    snapshotWeight01: module.snapshotWeight01,
+    executionRank: module.executionRank,
     dependencies: module.dependencies,
     capabilityNames: module.capabilityNames,
   };
@@ -298,6 +310,12 @@ export function evaluateDevelopmentalGenome(
       }
       if (stableJson(immutableModuleShape(module)) !== stableJson(immutableModuleShape(moduleFromContract(contract)))) {
         addIssue(violations, 'immutable-module-change', 'modules.' + module.name, 'Canonical module identity, purpose, phase, dependencies and capabilities are immutable');
+      }
+      if (typeof module.snapshotWeight01 !== 'number' || !Number.isFinite(module.snapshotWeight01) || module.snapshotWeight01 < 0 || module.snapshotWeight01 > 1) {
+        addIssue(violations, 'trait-out-of-range', 'modules.' + module.name + '.snapshotWeight01', 'snapshotWeight01 must be finite and within [0,1]');
+      }
+      if (module.executionRank !== undefined && (!Number.isInteger(module.executionRank) || module.executionRank < 0)) {
+        addIssue(violations, 'trait-out-of-range', 'modules.' + module.name + '.executionRank', 'executionRank must be a non-negative integer when present');
       }
       if (typeof module.estimatedCost01 !== 'number' || !Number.isFinite(module.estimatedCost01) || module.estimatedCost01 < 0 || module.estimatedCost01 > 1) {
         addIssue(violations, 'trait-out-of-range', 'modules.' + module.name + '.estimatedCost01', 'estimatedCost01 must be finite and within [0,1]');
