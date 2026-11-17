@@ -1188,8 +1188,8 @@ export class P23LearningEngine {
         proposal.authenticatedEvidenceRows < 1 ||
         proposal.unauthenticatedEvidenceRows !== 0 ||
         proposal.uniquePairedTasks < 8 ||
-        proposal.completePairedSeeds < 3 ||
-        proposal.pairedTaskSeedN < 3 ||
+        proposal.completePairedSeeds < 5 ||
+        proposal.pairedTaskSeedN < 5 ||
         !/^[a-f0-9]{64}$/.test(proposal.datasetFingerprint) ||
         !/^[a-f0-9]{64}$/.test(proposal.proposalId) ||
         !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {

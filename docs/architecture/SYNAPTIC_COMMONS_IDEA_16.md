@@ -60,6 +60,7 @@ All trust roots and compatibility manifests are server-owned environment setting
 - NEURO_SYNAPTIC_COMMONS_ENVIRONMENT_FINGERPRINT: exact 64-character lowercase SHA-256 environment fingerprint.
 - NEURO_SYNAPTIC_COMMONS_SUPPORTED_CAPABILITIES_JSON: JSON array of locally supported capability IDs.
 - NEURO_SYNAPTIC_COMMONS_PERMITTED_TOOLS_JSON: JSON array of locally permitted tool IDs.
+- For the optional local P23 bridge, configure existing `NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON` (Ed25519 outcome/shadow verifier public keys) and `NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON` (Ed25519 approval-authority public keys). The bridge provider is not initialized without at least one trusted key in each set.
 
 Only public keys may be stored in the two trust-key settings. Private signing keys remain in a separate signing service or offline custody and must never enter NK1 runtime configuration, source files, artifacts, logs, or diagnostics. An absent or invalid compatibility manifest blocks the HTTP compatibility transition.
 

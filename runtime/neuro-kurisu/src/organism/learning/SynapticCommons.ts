@@ -127,8 +127,10 @@ export function isAuthenticSynapticP23AdmissionBundle(value: unknown): value is 
   if (!value || typeof value !== 'object') return false;
   const expected = authenticP23AdmissionBundles.get(value as object);
   if (!expected) return false;
-  try { return admissionBundleDigest(value as SynapticP23AdmissionBundle) === expected; }
-  catch { return false; }
+  try {
+    const safe = cloneSafeJson(value) as SynapticP23AdmissionBundle;
+    return admissionBundleDigest(safe) === expected;
+  } catch { return false; }
 }
 
 const MAX_RECORDS = 256;

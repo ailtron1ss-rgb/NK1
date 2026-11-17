@@ -45,6 +45,7 @@ const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server
     NEURO_SYNAPTIC_COMMONS_ENVIRONMENT_FINGERPRINT: environmentFingerprint,
     NEURO_SYNAPTIC_COMMONS_SUPPORTED_CAPABILITIES_JSON: JSON.stringify(['documents.read', 'documents.summarize']),
     NEURO_SYNAPTIC_COMMONS_PERMITTED_TOOLS_JSON: JSON.stringify(['documents.fetch']),
+    NEURO_SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE: '',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
