@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import {
   SynapticCommons,
+  parseSynapticPublicKeyMap,
   synapticArtifactFingerprint,
   synapticAttestationSigningPayload,
 } from '../src/organism/learning/SynapticCommons.ts';
@@ -16,7 +17,13 @@ const attestorPublic = attestor.publicKey.export({ type: 'spki', format: 'pem' }
 const attestorPrivate = attestor.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 const untrustedPublic = untrustedPublisher.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const untrustedPrivate = untrustedPublisher.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const rsaPublisher = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const rsaPublic = rsaPublisher.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const envFingerprint = 'e'.repeat(64);
+assert.throws(() => parseSynapticPublicKeyMap(JSON.stringify({ rsa: rsaPublic })), /requires-ed25519/,
+  'the host trust store accepts Ed25519 public keys only');
+assert.throws(() => parseSynapticPublicKeyMap(JSON.stringify({ publisher: publisherPrivate })), /public-keys-only/,
+  'private signing keys must never be accepted in runtime trust configuration');
 const trust = {
   trustedPublisherKeys: new Map([['publisher-1', publisherPublic]]),
   trustedAttestorKeys: new Map([['evaluator-1', attestorPublic]]),
@@ -167,6 +174,13 @@ const poisoned = makeArtifact({
 });
 assert.throws(() => commons.importArtifact(poisoned), /private-field-rejected/,
   'private episodic and dialogue data are rejected before persistence');
+
+const malformedArray = makeArtifact({ skill: { skillId: 'array-extension' } });
+Object.defineProperty(malformedArray.definition.payload.steps, 'unexpected', {
+  enumerable: true, value: 'extra array properties are not JSON data',
+});
+assert.throws(() => commons.importArtifact(malformedArray), /array-shape-invalid/,
+  'arrays with custom properties are not silently canonicalized into signed JSON');
 
 const executable = makeArtifact({
   skill: { skillId: 'executable-skill' },

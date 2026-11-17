@@ -261,7 +261,7 @@ function versionAtLeast(actual: string, minimum: string): boolean {
     const av = ap![i], bv = bp![i];
     if (av === bv) continue;
     const an = /^\d+$/.test(av), bn = /^\d+$/.test(bv);
-    if (an && bn) return Number(av) > Number(bv);
+    if (an && bn) return av.length === bv.length ? av > bv : av.length > bv.length;
     if (an !== bn) return !an;
     return av > bv;
   }
@@ -293,9 +293,10 @@ function normalizeArtifact(raw: unknown): SynapticCommonsArtifact {
 
   const text = (value: unknown, max: number, label: string): string => {
     if (typeof value !== 'string') throw new Error(label + '-field-invalid');
+    if (value.length > max) throw new Error(label + '-field-too-long');
     const normalized = value.trim();
     if (!normalized) throw new Error(label + '-field-empty');
-    if (normalized.length > max) throw new Error(label + '-field-too-long');
+    if (normalized !== value) throw new Error(label + '-field-whitespace-invalid');
     return normalized;
   };
   const skillId = text(skill.skillId, 96, 'skill-id');
@@ -319,7 +320,7 @@ function normalizeArtifact(raw: unknown): SynapticCommonsArtifact {
       !['read-only', 'assisted', 'destructive'].includes(String(contract.permissionClass)))
     throw new Error('synaptic-contract-invalid');
   const cleanCapabilities = requiredCapabilities.map(value => text(value, 96, 'contract-requirement'));
-  const cleanTools = requiredTools.map(value => text(value, 96));
+  const cleanTools = requiredTools.map(value => text(value, 96, 'contract-requirement'));
   if ([...cleanCapabilities, ...cleanTools].some(value => !SAFE_ID.test(value)) ||
       new Set(cleanCapabilities).size !== cleanCapabilities.length || new Set(cleanTools).size !== cleanTools.length)
     throw new Error('synaptic-contract-requirement-invalid');
