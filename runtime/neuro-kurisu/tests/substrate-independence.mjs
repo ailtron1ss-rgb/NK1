@@ -122,6 +122,29 @@ const privacyGate = engine.assessCompatibility(transfer, target);
 assert.equal(privacyGate.compatible, false);
 assert.ok(privacyGate.reasons.includes('remote-backend-requires-explicit-consent'));
 
+const unpinnedTarget = { ...target, modelRevision: 'host-configured' };
+const unpinnedTargetEngine = new SubstrateIndependenceEngine({ profiles: [source, unpinnedTarget] });
+unpinnedTargetEngine.setInitialBackend(unpinnedTarget.backendId);
+assert.equal(unpinnedTargetEngine.preferredRoute(), null,
+  'an unpinned model revision cannot become a persistent substrate preference');
+const unpinnedTargetCompatibility = unpinnedTargetEngine.assessCompatibility(
+  transfer, unpinnedTarget, { allowExternalBackend: true },
+);
+assert.equal(unpinnedTargetCompatibility.compatible, false);
+assert.ok(unpinnedTargetCompatibility.reasons.includes('target-model-revision-unpinned'));
+
+const unpinnedSource = { ...source, modelRevision: 'host-configured' };
+const unpinnedSourceEngine = new SubstrateIndependenceEngine({ profiles: [unpinnedSource, target] });
+unpinnedSourceEngine.setInitialBackend(unpinnedSource.backendId);
+const unpinnedTransfer = unpinnedSourceEngine.createTransferPackage({
+  sourceBackendId: unpinnedSource.backendId, capturedAt: 1_800_000_000_100, ...payload,
+});
+const unpinnedSourceCompatibility = unpinnedSourceEngine.assessCompatibility(
+  unpinnedTransfer, target, { allowExternalBackend: true },
+);
+assert.equal(unpinnedSourceCompatibility.compatible, false);
+assert.ok(unpinnedSourceCompatibility.reasons.includes('source-model-revision-unpinned'));
+
 const unsignedTrials = [
   ['memory-recall', 'task-1'], ['memory-recall', 'task-2'],
   ['goal-continuity', 'task-3'], ['goal-continuity', 'task-4'],
