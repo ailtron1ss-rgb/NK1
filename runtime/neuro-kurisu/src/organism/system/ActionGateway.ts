@@ -316,9 +316,9 @@ export class ActionGateway {
   private skillCompetenceVerifierKeys: ReadonlyMap<string, string>;
   private currentSkillCompetenceRuntimeFingerprint?: () => string | null;
   private currentSkillCompetenceEnvironmentFingerprint?: () => string | null;
-  private readonly resolveActiveSkillCompetenceSubject?: (skillId: string) => SkillCompetenceActiveSubject | null;
-  private readonly evaluateSkillCompetenceCondition?: (conditionId: string, input: Record<string, unknown>, context: SkillCompetenceConditionContext) => boolean;
-  private readonly skillCompetenceNow: () => number;
+  private resolveActiveSkillCompetenceSubject?: (skillId: string) => SkillCompetenceActiveSubject | null;
+  private evaluateSkillCompetenceCondition?: (conditionId: string, input: Record<string, unknown>, context: SkillCompetenceConditionContext) => boolean;
+  private skillCompetenceNow: () => number;
   private readonly executionLedger=new Map<string,ActionExecutionLedgerEntry>();
   private permissionState:ActionToolPermissionSnapshot=defaultActionToolPermissions();
   private permissionAdmissionTail:Promise<void>=Promise.resolve();

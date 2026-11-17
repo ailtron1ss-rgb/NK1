@@ -209,6 +209,7 @@ import { AdvancedResilienceEngine, defaultAdvancedResilience } from '../learning
 import { P23LearningEngine, defaultP23Learning, type PolicySkillRecord } from '../learning/P23LearningEngine.ts';
 import type { VerifiedSkillPromotionProposal } from '../learning/VerifiedSkillPromotion.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../learning/VerifiedSkillLifecycleBootstrap.ts';
+import { skillCompetenceRuntimeFingerprint } from '../learning/SkillCompetenceProof.ts';
 import { runTrustedShadowLearningProcess as executeTrustedShadowLearningProcess, type TrustedShadowLearningRunInput } from '../learning/TrustedShadowLearningRunCoordinator.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from '../learning/TrustedSkillShadowRunRegistry.ts';
 import type { TrustedShadowExecutionContext } from '../learning/VerifiedSkillShadowEvidence.ts';
@@ -418,6 +419,16 @@ export interface OrganismConfig {
     enableSocialDevelopment?: boolean;
     enablePerception?: boolean;
     enableLifelongLearning?: boolean;
+    /** Immutable build/runtime identity, e.g. NK1 git SHA plus runtime version. */
+    skillCompetenceRuntimeVersion?: string;
+    /** SHA-256 fingerprint of deployment configuration / privilege boundary. */
+    skillCompetenceEnvironmentFingerprint?: string;
+    /** Trusted host evaluator for stable condition IDs included in a signed skill contract. */
+    skillCompetenceConditionEvaluator?: (
+        conditionId: string,
+        input: Record<string, unknown>,
+        context: { toolId: string; kind: 'precondition' | 'constraint' },
+    ) => boolean;
     checkpointMinIntervalMs?: number;
     checkpointMaxDirtyCycles?: number;
     includeAdvancedCycleSnapshot?: boolean;
@@ -1260,6 +1271,26 @@ export class OrganismCore {
         const verifiedSkillLifecycle = createVerifiedSkillLifecycleBootstrap(candidateStorePath, trustedRunRegistryPath);
         this.developmentalNeural.p23Learning.configureVerifiedSkillLifecycle(verifiedSkillLifecycle.store);
         this.verifiedSkillShadowRunRegistry = verifiedSkillLifecycle.registry;
+        const competenceRuntimeVersion = String(
+            config.skillCompetenceRuntimeVersion ?? process.env.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION ?? '',
+        ).trim();
+        const competenceEnvironmentFingerprint = String(
+            config.skillCompetenceEnvironmentFingerprint ??
+            process.env.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT ?? '',
+        ).trim().toLowerCase();
+        this.cognitiveRuntime.actionGateway.configureSkillCompetenceProofVerifier({
+            skillCompetenceVerifierKeys: verifiedSkillLifecycle.trustedCompetenceAttestorKeys,
+            currentSkillCompetenceRuntimeFingerprint: () => {
+                if (!competenceRuntimeVersion || competenceRuntimeVersion.length > 240) return null;
+                try { return skillCompetenceRuntimeFingerprint(competenceRuntimeVersion); }
+                catch { return null; }
+            },
+            currentSkillCompetenceEnvironmentFingerprint: () =>
+                /^[a-f0-9]{64}$/.test(competenceEnvironmentFingerprint) ? competenceEnvironmentFingerprint : null,
+            resolveActiveSkillCompetenceSubject: skillId =>
+                verifiedSkillLifecycle.store.resolveActiveSkillCompetenceSubject(skillId),
+            evaluateSkillCompetenceCondition: config.skillCompetenceConditionEvaluator,
+        });
         if (store instanceof FileStateStore) {
             this.actionExecutionLedgerArchive = new FileActionExecutionLedgerArchive(store.siblingPath('action-ledger.jsonl'));
             this.cognitiveRuntime.actionGateway.setExecutionLedgerArchive(this.actionExecutionLedgerArchive);
