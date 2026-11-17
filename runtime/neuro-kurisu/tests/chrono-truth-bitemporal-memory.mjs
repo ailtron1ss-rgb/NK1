@@ -117,6 +117,20 @@ const fabricKnowsNow = fabric.retrieve('Project location Campus', 8, 0, 0, {
   knowledgeAtAt: 270,
 });
 assert.equal(fabricKnowsNow[0]?.id, corrected.id, 'MemoryFabric must select the corrected revision for later knowledge time');
+assert.equal(
+  fabric.temporalBitemporalAt(firstId, 150, 250)?.content,
+  'Project location is East Campus.',
+  'MemoryFabric must expose canonical bitemporal point-in-time lookup',
+);
+assert.ok(
+  fabric.temporalBitemporalHistory(firstId).length >= 2,
+  'MemoryFabric must expose the canonical bitemporal revision history',
+);
+assert.equal(
+  fabric.temporalBitemporalDiff(firstId, 150, 250, 270).changed,
+  true,
+  'MemoryFabric must expose a knowledge-time diff across a retroactive correction',
+);
 
 const statusFact = encode('NK1 confidence is currently classified as a fact.');
 const originalConfidence = statusFact.confidence;
