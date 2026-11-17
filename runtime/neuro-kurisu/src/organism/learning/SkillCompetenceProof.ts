@@ -120,6 +120,7 @@ function rejectProxyGraph(value: unknown, ancestors = new Set<object>(), budget 
   ancestors.add(value);
   try {
     for (const key of Reflect.ownKeys(value)) {
+      if (Array.isArray(value) && key === 'length') continue;
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set) {
         throw new Error('skill-competence-proof-accessor-rejected');
@@ -475,10 +476,8 @@ export function createSkillCompetenceProofVerifier(
         payload.shadowRunCount !== candidate.shadowObservations.length) return false;
     try { assertCandidateOwnsContract(candidate, payload.contract); }
     catch { return false; }
-    if (purpose !== 'persisted-active') {
-      const current = now();
-      if (!Number.isFinite(current) || payload.issuedAt > current + MAX_CLOCK_SKEW_MS || payload.expiresAt <= current) return false;
-    }
+    const current = now();
+    if (!Number.isFinite(current) || payload.issuedAt > current + MAX_CLOCK_SKEW_MS || payload.expiresAt <= current) return false;
     return true;
   };
 }

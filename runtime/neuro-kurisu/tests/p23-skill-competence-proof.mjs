@@ -223,7 +223,7 @@ function buildGateway(options = {}) {
   });
   let executorCalls = 0;
   gateway.registerTool({
-    id: skillId,
+    id: options.toolId ?? skillId,
     capability: options.capability ?? contract.capability,
     destructive: false,
     requiresSkillCompetenceProof: true,
@@ -246,6 +246,9 @@ assert.equal(valid.executorCalls(), 1, 'only a correctly attested in-scope proof
 const deniedCases = [
   ['autonomous-mode', { autonomous: true }],
   ['wrong-capability', { capability: 'different-capability' }],
+  ['wrong-tool-id', { toolId: 'skill.proof.other' }],
+  ['missing-runtime-identity', { runtimeFingerprint: null }],
+  ['missing-environment-identity', { environmentFingerprint: null }],
   ['wrong-runtime', { runtimeFingerprint: skillCompetenceRuntimeFingerprint('different-runtime') }],
   ['wrong-environment', { environmentFingerprint: 'f'.repeat(64) }],
   ['wrong-active-version', { activeSubject: {
@@ -270,6 +273,28 @@ for (const pair of deniedCases) {
   assert.equal(result.outcomeClass, 'competence-insufficient', name + ' must fail closed');
   assert.equal(denied.executorCalls(), 0, name + ' must refuse before executor entry');
 }
+
+// Registration snapshots and freezes the proof so a caller cannot mutate the signed
+// payload after the gateway has accepted the tool definition.
+const mutableProof = structuredClone(activeProof);
+const immutableGateway = new ActionGateway();
+immutableGateway.configureSkillCompetenceProofVerifier({
+  skillCompetenceVerifierKeys: trustedAttestorKeys,
+  currentSkillCompetenceRuntimeFingerprint: () => runtimeFingerprint,
+  currentSkillCompetenceEnvironmentFingerprint: () => environmentFingerprint,
+  resolveActiveSkillCompetenceSubject: () => store.resolveActiveSkillCompetenceSubject(skillId),
+  evaluateSkillCompetenceCondition: () => true,
+});
+immutableGateway.registerTool({
+  id: skillId, capability: contract.capability, destructive: false,
+  requiresSkillCompetenceProof: true, skillCompetenceProof: mutableProof,
+  inputContract, outputContract,
+  execute: async () => ({ ok: true }),
+});
+mutableProof.payload.contract.toolId = 'skill.proof.other';
+const immutableResult = await immutableGateway.executeTool(skillId, { query: 'memory' }, 'proof-registration-snapshot');
+assert.equal(immutableResult.outcomeClass, 'executed-unverified',
+  'mutating a caller-owned proof after registration must not alter the gateway snapshot');
 
 const noProof = new ActionGateway();
 let noProofExecutorCalls = 0;
