@@ -27,6 +27,16 @@ export interface MemoryEvidenceSource {
  observedAt:number;
  evidenceFreshnessAt:number;
 }
+export type MemoryTemporalKind='fact'|'assessment'|'prediction';
+/** One half-open valid-time / transaction-time rectangle from NK1's knowledge history. */
+export interface MemoryBitemporalInterval {
+ validFromAt:number; validUntilAt:number|null;
+ recordedFromAt:number; recordedUntilAt:number|null;
+ confidence:number; epistemicStatus:EpistemicStatus; source:string;
+ provenanceClass?:MemoryProvenanceClass; sourceAuthority01?:number;
+ evidenceFreshnessAt?:number; freshnessUntilAt?:number|null;
+ temporalKind:MemoryTemporalKind;
+}
 export interface MemoryItem2 { id:string;
 content:string;
 /** Restore-time integrity findings retained for the read-only memory doctor. */
@@ -65,6 +75,14 @@ provenanceClass?: MemoryProvenanceClass;
 sourceAuthority01?: number;
 independenceKey?: string;
 evidenceFreshnessAt?: number;
+/** Transaction-time interval: when NK1 held this state as its current knowledge. */
+recordedFromAt?:number;
+recordedUntilAt?:number|null;
+/** Freshness deadline; expiry alone is not proof that a fact became false. */
+freshnessUntilAt?:number|null;
+temporalKind?:MemoryTemporalKind;
+/** Bounded previous bitemporal states retained for retroactive corrections. */
+bitemporalHistory?:MemoryBitemporalInterval[];
 /** Bounded independent provenance trail; canonical MemoryOS2 remains the sole writable owner. */
 evidenceSources?:MemoryEvidenceSource[];
 /** Compact replay guard for lineages trimmed from the visible eight-source trail. */
@@ -337,6 +355,36 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
   return [{at,from:row.from as EpistemicStatus,to:row.to as EpistemicStatus,reason:String(row.reason??'').slice(0,240)}];
  });
 }
+const MAX_BITEMPORAL_HISTORY=32;
+const MEMORY_TEMPORAL_KINDS=new Set<MemoryTemporalKind>(['fact','assessment','prediction']);
+function normalizeBitemporalHistory(value:unknown):MemoryBitemporalInterval[]{
+ if(!Array.isArray(value))return [];
+ const finite=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?v:Number.NaN;
+ const provenanceKinds=new Set<MemoryProvenanceClass>(['device','external','user','agent','derived','simulation','unknown']);
+ return value.slice(-MAX_BITEMPORAL_HISTORY).flatMap((candidate:any)=>{
+  if(!candidate||typeof candidate!=='object'||Array.isArray(candidate))return [];
+  const validFromAt=finite(candidate.validFromAt),recordedFromAt=finite(candidate.recordedFromAt);
+  const validUntilAt=candidate.validUntilAt==null?null:finite(candidate.validUntilAt);
+  const recordedUntilAt=candidate.recordedUntilAt==null?null:finite(candidate.recordedUntilAt);
+  if(!Number.isFinite(validFromAt)||!Number.isFinite(recordedFromAt)||
+    (validUntilAt!==null&&(!Number.isFinite(validUntilAt)||validUntilAt<=validFromAt))||
+    (recordedUntilAt!==null&&(!Number.isFinite(recordedUntilAt)||recordedUntilAt<=recordedFromAt)))return [];
+  const status=EPISTEMIC_STATUSES.has(candidate.epistemicStatus)?candidate.epistemicStatus as EpistemicStatus:'unknown';
+  const source=typeof candidate.source==='string'&&candidate.source.trim()?candidate.source.trim().slice(0,240):'unknown';
+  const temporalKind=MEMORY_TEMPORAL_KINDS.has(candidate.temporalKind)?candidate.temporalKind as MemoryTemporalKind:(status==='fact'?'fact':'assessment');
+  const freshnessValue=candidate.freshnessUntilAt==null?null:finite(candidate.freshnessUntilAt);
+  return [{
+   validFromAt,validUntilAt,recordedFromAt,recordedUntilAt,
+   confidence:typeof candidate.confidence==='number'&&Number.isFinite(candidate.confidence)?Math.max(0,Math.min(1,candidate.confidence)):.5,
+   epistemicStatus:status,source,
+   provenanceClass:provenanceKinds.has(candidate.provenanceClass)?candidate.provenanceClass as MemoryProvenanceClass:undefined,
+   sourceAuthority01:typeof candidate.sourceAuthority01==='number'&&Number.isFinite(candidate.sourceAuthority01)?Math.max(0,Math.min(1,candidate.sourceAuthority01)):.5,
+   evidenceFreshnessAt:finite(candidate.evidenceFreshnessAt),
+   freshnessUntilAt:freshnessValue===null||Number.isFinite(freshnessValue)?freshnessValue:recordedFromAt,
+   temporalKind,
+  }];
+ });
+}
 
 /**
  * Restore-time revision graph reconciliation.
@@ -450,10 +498,17 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:strin
  }
  return unique;
 }
-type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'>>;
-const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
+type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'|'bitemporalHistory'|'recordedFromAt'|'recordedUntilAt'|'freshnessUntilAt'|'temporalKind'>>;
+const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory),bh:m.bitemporalHistory,rf:m.recordedFromAt,ru:m.recordedUntilAt,fu:m.freshnessUntilAt,tk:m.temporalKind})).byteLength);
 export type MemoryTemporalMode='current'|'at'|'all';
-export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; spatial?:MemorySpatialQuery; }
+export interface MemoryTemporalQueryOptions {
+ temporalMode?:MemoryTemporalMode;
+ /** World-time coordinate used by temporalMode='at'. */
+ asOfAt?:number;
+ /** What NK1 had recorded/known at this transaction-time coordinate. */
+ knowledgeAtAt?:number;
+ spatial?:MemorySpatialQuery;
+}
 export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
 export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; providerTimeoutMs?:number; }
 export interface SemanticIndexMaintenanceResult {
@@ -523,6 +578,16 @@ export class MemoryOS2{
    // A malformed expiry must never turn an expiring memory into a timeless fact.
    const validUntilAt=validUntilProvided&&!Number.isFinite(validUntilCandidate)?validFromAt:validUntilCandidate;
    if(validUntilProvided&&!Number.isFinite(validUntilCandidate))this.incrementRestoreDiagnostic('invalidExpiriesClosed');
+   const recordedFromAt=finite(row.recordedFromAt,createdAt);
+   const recordedUntilProvided=row.recordedUntilAt!=null;
+   const recordedUntilCandidate=recordedUntilProvided?finite(row.recordedUntilAt,Number.NaN):null;
+   const recordedUntilAt=recordedUntilProvided&&(!Number.isFinite(recordedUntilCandidate)||Number(recordedUntilCandidate)<=recordedFromAt)?recordedFromAt:recordedUntilCandidate;
+   if(recordedUntilProvided&&recordedUntilAt===recordedFromAt)this.incrementRestoreDiagnostic('invalidExpiriesClosed');
+   const freshnessCandidate=row.freshnessUntilAt==null?null:finite(row.freshnessUntilAt,Number.NaN);
+   const freshnessUntilAt=freshnessCandidate===null||Number.isFinite(freshnessCandidate)?freshnessCandidate:recordedFromAt;
+   if(row.freshnessUntilAt!=null&&!Number.isFinite(freshnessCandidate))this.incrementRestoreDiagnostic('invalidExpiriesClosed');
+   const temporalKind=MEMORY_TEMPORAL_KINDS.has(row.temporalKind)?row.temporalKind as MemoryTemporalKind:(row.epistemicStatus==='fact'?'fact':'assessment');
+   const bitemporalHistory=normalizeBitemporalHistory(row.bitemporalHistory);
    const provenanceClasses=new Set(['device','external','user','agent','derived','simulation','unknown']);
    const explicitProvenance=provenanceClasses.has(String(row.provenanceClass))?row.provenanceClass as MemoryProvenanceClass:undefined;
    const sourceIsValid=typeof row.source==='string'&&Boolean(row.source.trim());
@@ -588,6 +653,11 @@ export class MemoryOS2{
     validFromAt,
     validUntilAt:Number.isFinite(validUntilAt)?validUntilAt:null,
     observedAt,
+    recordedFromAt,
+    recordedUntilAt,
+    freshnessUntilAt,
+    temporalKind,
+    bitemporalHistory,
     supersedesId:typeof row.supersedesId==='string'?row.supersedesId.slice(0,160):null,
     supersededById:typeof row.supersededById==='string'?row.supersededById.slice(0,160):null,
     revisionGroupId:typeof row.revisionGroupId==='string'&&row.revisionGroupId.trim()?row.revisionGroupId.trim().slice(0,160):id,
@@ -606,6 +676,36 @@ export class MemoryOS2{
   }
 
  private validAt(item:MemoryItem2,at:number){const from=Number(item.validFromAt??item.createdAt),until=item.validUntilAt==null?Number.POSITIVE_INFINITY:Number(item.validUntilAt);return Number.isFinite(from)&&from<=at&&at<until;}
+ private bitemporalVersionAt(item:MemoryItem2,validAt:number,knowledgeAtAt:number):MemoryBitemporalInterval|null{
+  if(!Number.isFinite(validAt)||!Number.isFinite(knowledgeAtAt))return null;
+  const current:MemoryBitemporalInterval={
+   validFromAt:Number(item.validFromAt??item.createdAt),validUntilAt:item.validUntilAt??null,
+   recordedFromAt:Number(item.recordedFromAt??item.createdAt),recordedUntilAt:item.recordedUntilAt??null,
+   confidence:item.confidence,epistemicStatus:item.epistemicStatus,source:item.source,
+   provenanceClass:item.provenanceClass,sourceAuthority01:item.sourceAuthority01,
+   evidenceFreshnessAt:item.evidenceFreshnessAt,freshnessUntilAt:item.freshnessUntilAt??null,
+   temporalKind:item.temporalKind??(item.epistemicStatus==='fact'?'fact':'assessment'),
+  };
+  const versions=[...(item.bitemporalHistory??[]),current];
+  const matches=versions.filter(version=>
+   version.validFromAt<=validAt&&validAt<(version.validUntilAt??Number.POSITIVE_INFINITY)&&
+   version.recordedFromAt<=knowledgeAtAt&&knowledgeAtAt<(version.recordedUntilAt??Number.POSITIVE_INFINITY));
+  matches.sort((a,b)=>b.recordedFromAt-a.recordedFromAt);
+  return matches[0]??null;
+ }
+ private beginBitemporalRevision(item:MemoryItem2,recordedAt:number):void{
+  const previous:MemoryBitemporalInterval={
+   validFromAt:Number(item.validFromAt??item.createdAt),validUntilAt:item.validUntilAt??null,
+   recordedFromAt:Number(item.recordedFromAt??item.createdAt),recordedUntilAt:recordedAt,
+   confidence:item.confidence,epistemicStatus:item.epistemicStatus,source:item.source,
+   provenanceClass:item.provenanceClass,sourceAuthority01:item.sourceAuthority01,
+   evidenceFreshnessAt:item.evidenceFreshnessAt,freshnessUntilAt:item.freshnessUntilAt??null,
+   temporalKind:item.temporalKind??(item.epistemicStatus==='fact'?'fact':'assessment'),
+  };
+  item.bitemporalHistory=normalizeBitemporalHistory([...(item.bitemporalHistory??[]),previous]);
+  item.recordedFromAt=recordedAt;
+  item.recordedUntilAt=null;
+ }
  private preferIndexRecord(candidate:MemoryItem2,incumbent:MemoryItem2,at:number){
   const currentDelta=Number(this.validAt(candidate,at))-Number(this.validAt(incumbent,at));if(currentDelta)return currentDelta>0;
   const trustDelta=Number(candidate.epistemicStatus!=='quarantined'&&!candidate.dormant)-Number(incumbent.epistemicStatus!=='quarantined'&&!incumbent.dormant);if(trustDelta)return trustDelta>0;
@@ -743,9 +843,12 @@ export class MemoryOS2{
    if(!provider||!String(query??'').trim()){
      return {items:fallbackItems,semantic:{enabled:false,provider:providerDiag?.provider??'none',model:providerDiag?.model??'',indexedItems:0,corpusItems:this.state.items.length,coverage01:0,newlyIndexed:0,fallbackReason:!provider?'embedding-provider-disabled':'empty-query',cacheEntries:providerDiag?.cacheEntries??0,requests:providerDiag?.requests??0,failures:providerDiag?.failures??0,lastLatencyMs:providerDiag?.lastLatencyMs??0}};
    }
-   const now=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:Date.now();
+   const requestedAsOf=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:undefined;
+   const requestedKnowledgeAt=typeof temporalOptions.knowledgeAtAt==='number'&&Number.isFinite(temporalOptions.knowledgeAtAt)?temporalOptions.knowledgeAtAt:undefined;
    const temporalMode=temporalOptions.temporalMode??'current';
-   const eligible=(item:MemoryItem2)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&(temporalMode==='all'||(Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt))));
+   const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:Date.now();
+   const eligible=(item:MemoryItem2)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&(temporalMode==='all'||
+    (requestedKnowledgeAt!==undefined?this.bitemporalVersionAt(item,now,requestedKnowledgeAt)!==null:this.validAt(item,now)));
    const corpus=this.state.items.filter(eligible);
    const corpusById=new Map(corpus.map(item=>[item.id,item]));
    for(const [id,row] of this.semanticEmbeddingIndex){
@@ -1005,6 +1108,11 @@ export class MemoryOS2{
     validFromAt:Number.isFinite(Number(input.validFromAt))?Number(input.validFromAt):now,
     validUntilAt:input.validUntilAt==null?null:(Number.isFinite(Number(input.validUntilAt))?Number(input.validUntilAt):null),
     observedAt:Number.isFinite(Number(input.observedAt))?Number(input.observedAt):now,
+    recordedFromAt:Number.isFinite(Number(input.recordedFromAt))?Number(input.recordedFromAt):now,
+    recordedUntilAt:input.recordedUntilAt==null?null:(Number.isFinite(Number(input.recordedUntilAt))?Number(input.recordedUntilAt):now),
+    freshnessUntilAt:input.freshnessUntilAt==null?null:(Number.isFinite(Number(input.freshnessUntilAt))?Number(input.freshnessUntilAt):null),
+    temporalKind:MEMORY_TEMPORAL_KINDS.has(input.temporalKind)?input.temporalKind:(input.epistemicStatus==='fact'?'fact':'assessment'),
+    bitemporalHistory:normalizeBitemporalHistory(input.bitemporalHistory),
     supersedesId:input.supersedesId??null,supersededById:input.supersededById??null,
     revisionGroupId:String(input.revisionGroupId??(input.id??identity.stableId)),
     revisionSequence:Math.max(1,Math.floor(Number(input.revisionSequence??1))),
@@ -1095,6 +1203,7 @@ export class MemoryOS2{
    this.state.semanticQueries++;
    const wallClockNow=Date.now();
    const requestedAsOf=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:undefined;
+   const requestedKnowledgeAt=typeof temporalOptions.knowledgeAtAt==='number'&&Number.isFinite(temporalOptions.knowledgeAtAt)?temporalOptions.knowledgeAtAt:undefined;
    const temporalMode:MemoryTemporalMode=temporalOptions.temporalMode??'current';
    // A point-in-time hint must not rewind ordinary/current retrieval. Only the
    // explicit `at` mode opts into historical time; `all` remains an archive view.
@@ -1235,9 +1344,13 @@ export class MemoryOS2{
      if(!m||m.dormant||m.epistemicStatus==='quarantined')continue;
      // `all` is the archival view: expired revisions must remain inspectable.
      // Current/point-in-time recall still excludes them and tracks stale suppression.
-     if(temporalMode!=='all'&&((m.validUntilAt!=null&&Number(m.validUntilAt)<=now)||(m.supersededById!=null&&m.validUntilAt==null))){this.state.staleRetrievalsAvoided++;continue;}
-     const temporalValid=temporalMode==='all'?true:isValidAt(m,now);
-     if(!temporalValid)continue;
+     if(requestedKnowledgeAt!==undefined&&temporalMode!=='all'){
+      if(!this.bitemporalVersionAt(m,now,requestedKnowledgeAt)){this.state.staleRetrievalsAvoided++;continue;}
+     }else{
+      if(temporalMode!=='all'&&((m.validUntilAt!=null&&Number(m.validUntilAt)<=now)||(m.supersededById!=null&&m.validUntilAt==null))){this.state.staleRetrievalsAvoided++;continue;}
+      if(temporalMode!=='all'&&!isValidAt(m,now))continue;
+     }
+     const temporalValid=temporalMode==='all'||requestedKnowledgeAt!==undefined?true:isValidAt(m,now);
      m.temperature01=memoryTemperature(m,now);
      const lexicalTokens=this.tokensFor(m.content);
      const metadataTokens=this.metadataRecallEnabled?this.metadataTokens(m):new Set<string>();
@@ -1387,6 +1500,7 @@ export class MemoryOS2{
  ):MemoryItem2[]{
   const wallClockNow=Date.now();
   const requestedAsOf=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:undefined;
+  const requestedKnowledgeAt=typeof temporalOptions.knowledgeAtAt==='number'&&Number.isFinite(temporalOptions.knowledgeAtAt)?temporalOptions.knowledgeAtAt:undefined;
   const temporalMode:MemoryTemporalMode=temporalOptions.temporalMode??'current';
   const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:wallClockNow;
   const queryIntentMode=detectMemoryQueryIntent(query);
@@ -1412,13 +1526,20 @@ export class MemoryOS2{
    seen.add(selected.id);
    const item=this.state.items.find(candidate=>candidate.id===selected.id);
    if(!item||item.content!==selected.content||item.dormant||item.epistemicStatus==='quarantined')continue;
-   if(temporalMode!=='all'&&((item.validUntilAt!=null&&Number(item.validUntilAt)<=now)||(item.supersededById!=null&&item.validUntilAt==null))){
-    this.state.staleRetrievalsAvoided++;
-    continue;
-   }
-   if(temporalMode!=='all'&&!validAt(item,now)){
-    this.state.staleRetrievalsAvoided++;
-    continue;
+   if(requestedKnowledgeAt!==undefined&&temporalMode!=='all'){
+    if(!this.bitemporalVersionAt(item,now,requestedKnowledgeAt)){
+     this.state.staleRetrievalsAvoided++;
+     continue;
+    }
+   }else{
+    if(temporalMode!=='all'&&((item.validUntilAt!=null&&Number(item.validUntilAt)<=now)||(item.supersededById!=null&&item.validUntilAt==null))){
+     this.state.staleRetrievalsAvoided++;
+     continue;
+    }
+    if(temporalMode!=='all'&&!validAt(item,now)){
+     this.state.staleRetrievalsAvoided++;
+     continue;
+    }
    }
    item.lastAccessAt=now;
    item.retrievalCount++;
@@ -1449,7 +1570,7 @@ export class MemoryOS2{
   if(tracked)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
  }
  revise(id:string,to:EpistemicStatus,reason:string){const m=this.state.items.find(x=>x.id===id);if(!m||m.epistemicStatus===to)return;const from=m.epistemicStatus;this.recordRevision(m,{at:Date.now(),from,to,reason});m.epistemicStatus=to;m.lastAccessAt=Date.now();this.state.reconsolidations++;if(to==='quarantined')this.state.quarantined++;}
- reviseContent(id:string,newContent:string,options:{reason?:string;validAt?:number;source?:string;epistemicStatus?:EpistemicStatus;salience?:number;confidence?:number}={}){
+ reviseContent(id:string,newContent:string,options:{reason?:string;validAt?:number;recordedAt?:number;source?:string;epistemicStatus?:EpistemicStatus;salience?:number;confidence?:number;freshnessUntilAt?:number|null;temporalKind?:MemoryTemporalKind}={}){
    const requested=this.itemIndex.get(id); if(!requested||!String(newContent).trim())return null;
    const group=requested.revisionGroupId??requested.id;
    // A correction against a historical ID revises the current tip of that same
@@ -1460,6 +1581,8 @@ export class MemoryOS2{
    if(canonicalizeMemoryContent(parent.content)===canonicalContent)return structuredClone(parent);
    const requestedAt=Number.isFinite(Number(options.validAt))?Number(options.validAt):Date.now();
    const at=Math.max(requestedAt,Number(parent.validFromAt??parent.createdAt)+1);
+   const requestedRecordedAt=Number.isFinite(Number(options.recordedAt))?Number(options.recordedAt):Date.now();
+   const recordedAt=Math.max(requestedRecordedAt,Number(parent.recordedFromAt??parent.createdAt)+1);
    const nextSeq=Math.max(0,...chain.map(x=>Number(x.revisionSequence??1)))+1;
    const source=String(options.source??parent.source);
    // Memo content-addressed identity is still the canonical content hash, while
@@ -1468,13 +1591,17 @@ export class MemoryOS2{
    const revisionId=stableMemoryId(`${canonicalContent}\0revision:${group}\0${nextSeq}\0${parent.id}`,parent.kind,source);
    const already=this.itemIndex.get(revisionId);
    if(already&&canonicalizeMemoryContent(already.content)===canonicalContent&&(already.revisionGroupId??already.id)===group)return structuredClone(already);
+   this.beginBitemporalRevision(parent,recordedAt);
    const replacement=this.encode({
      id:revisionId,content:canonicalContent,kind:parent.kind,source,tags:parent.tags,context:parent.context,
      salience:options.salience??parent.salience,emotionalWeight:parent.emotionalWeight,identityRelevance:parent.identityRelevance,goalRelevance:parent.goalRelevance,socialRelevance:parent.socialRelevance,predictionError:parent.predictionError,confidence:options.confidence??parent.confidence,epistemicStatus:options.epistemicStatus??parent.epistemicStatus,entities:parent.entities,semanticLinks:[],temporalLinks:[],causalLinks:[],contradictionLinks:[],
-     validFromAt:at,validUntilAt:null,observedAt:at,supersedesId:parent.id,supersededById:null,revisionGroupId:group,revisionSequence:nextSeq
+     validFromAt:at,validUntilAt:null,observedAt:at,recordedFromAt:recordedAt,recordedUntilAt:null,
+     freshnessUntilAt:options.freshnessUntilAt??parent.freshnessUntilAt??null,
+     temporalKind:options.temporalKind??parent.temporalKind??(parent.epistemicStatus==='fact'?'fact':'assessment'),
+     bitemporalHistory:[],supersedesId:parent.id,supersededById:null,revisionGroupId:group,revisionSequence:nextSeq
    },{clone:false,forceDistinct:true});
-   parent.validUntilAt=at;parent.supersededById=replacement.id;parent.lastAccessAt=at;
-   this.recordRevision(parent,{at,from:parent.epistemicStatus,to:parent.epistemicStatus,reason:String(options.reason??'content-revision').slice(0,240)});
+   parent.validUntilAt=at;parent.supersededById=replacement.id;parent.lastAccessAt=Math.max(parent.lastAccessAt,Date.now());
+   this.recordRevision(parent,{at:recordedAt,from:parent.epistemicStatus,to:parent.epistemicStatus,reason:String(options.reason??'content-revision').slice(0,240)});
    replacement.supersedesId=parent.id;replacement.supersededById=null;replacement.revisionGroupId=group;replacement.revisionSequence=nextSeq;
    replacement.temporalLinks=[...new Set([...(replacement.temporalLinks??[]),parent.id])].slice(0,6);
    let revisions=this.revisionGroupIndex.get(group);if(!revisions){revisions=new Set<string>();this.revisionGroupIndex.set(group,revisions);}revisions.add(parent.id);revisions.add(replacement.id);
@@ -1710,7 +1837,36 @@ export class MemoryOS2{
    candidates.sort((a,b)=>Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)||a.id.localeCompare(b.id));
    return candidates[0]?structuredClone(candidates[0]):null;
  }
- temporalDiff(id:string,fromAt:number,toAt:number){
+  /** Query a revision chain at independent world-time and system-knowledge coordinates. */
+  temporalBitemporalAt(id:string,validAt:number,knowledgeAtAt:number):MemoryItem2|null{
+   const seed=this.itemIndex.get(String(id));
+   if(!seed||!Number.isFinite(validAt)||!Number.isFinite(knowledgeAtAt))return null;
+   const group=seed.revisionGroupId??seed.id;
+   const ids=this.revisionGroupIndex.get(group)??new Set([seed.id]);
+   const candidates=[...ids].map(itemId=>{
+    const item=this.itemIndex.get(itemId);
+    if(!item)return null;
+    const interval=this.bitemporalVersionAt(item,validAt,knowledgeAtAt);
+    return interval?{item,interval}:null;
+   }).filter((row):row is {item:MemoryItem2;interval:MemoryBitemporalInterval}=>row!==null);
+   candidates.sort((a,b)=>Number(b.item.revisionSequence??1)-Number(a.item.revisionSequence??1)||
+    b.interval.recordedFromAt-a.interval.recordedFromAt||
+    Number(b.item.observedAt??b.item.createdAt)-Number(a.item.observedAt??a.item.createdAt)||
+    a.item.id.localeCompare(b.item.id));
+   const selected=candidates[0];
+   if(!selected)return null;
+   return structuredClone({
+    ...selected.item,
+    validFromAt:selected.interval.validFromAt,validUntilAt:selected.interval.validUntilAt,
+    recordedFromAt:selected.interval.recordedFromAt,recordedUntilAt:selected.interval.recordedUntilAt,
+    confidence:selected.interval.confidence,epistemicStatus:selected.interval.epistemicStatus,
+    source:selected.interval.source,provenanceClass:selected.interval.provenanceClass??selected.item.provenanceClass,
+    sourceAuthority01:selected.interval.sourceAuthority01??selected.item.sourceAuthority01,
+    evidenceFreshnessAt:selected.interval.evidenceFreshnessAt??selected.item.evidenceFreshnessAt,
+    freshnessUntilAt:selected.interval.freshnessUntilAt,temporalKind:selected.interval.temporalKind,
+   });
+  }
+  temporalDiff(id:string,fromAt:number,toAt:number){
    const from=this.temporalAt(id,fromAt),to=this.temporalAt(id,toAt);
    return {memoryId:String(id),from,to,changed:(from?.contentHash??from?.content??null)!==(to?.contentHash??to?.content??null)};
  }

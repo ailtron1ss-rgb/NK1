@@ -322,12 +322,12 @@ export class MemoryFabric {
   }
 
   /** Non-mutating search for inspectors and diagnostics; it must not train policy or heat live memories. */
-  previewRetrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
-    return this.memoryOS.previewRetrieve(query,Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt});
+  previewRetrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}) {
+    return this.memoryOS.previewRetrieve(query,Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt});
   }
 
   /** Read-only semantic inspector path; serialize it with cognitive retrieval and background indexing. */
-  async previewRetrieveWithEmbeddings(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
+  async previewRetrieveWithEmbeddings(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}) {
     // Inspector requests are explicit and may do more work than live cognition, but they
     // must still use the same local embedding provider serially. Wait for already-running
     // work, then claim the shared foreground slot before yielding to another operation.
@@ -341,7 +341,7 @@ export class MemoryFabric {
       Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8))),
       goalRelevance,
       identityRelevance,
-      {temporalMode:context.temporalMode,asOfAt:context.asOfAt},
+      {temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt},
     );
     const tracked=work.finally(()=>{if(this.cognitionSemanticInFlight===tracked)this.cognitionSemanticInFlight=null;});
     this.cognitionSemanticInFlight=tracked;
