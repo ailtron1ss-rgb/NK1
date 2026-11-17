@@ -12,6 +12,7 @@ import {
   canonicalTeacherDistillationPayload,
 } from '../src/organism/learning/TeacherStudentDistillation.ts';
 import { TeacherStudentDistillationGate } from '../src/organism/learning/TeacherStudentDistillationGate.ts';
+import { TeacherStudentDistillationGateFileStore } from '../src/organism/learning/TeacherStudentDistillationGateFileStore.ts';
 import { runTeacherStudentDistillationTraining } from '../src/organism/learning/TeacherStudentDistillationTrainer.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import {
@@ -599,5 +600,68 @@ assert.equal(regressionReport.status, 'rejected');
 assert.ok(regressionReport.reasonCodes.includes('holdout-family-regression'));
 assert.ok(regressionReport.reasonCodes.includes('holdout-gain-below-threshold'));
 assert.equal(regressionReport.automaticActivation, false);
+
+// Durable reservations are written before holdout inspection and survive a fresh process.
+const gateStoreRoot = await mkdtemp(path.join(os.tmpdir(), 'nk1-distillation-gate-store-'));
+try {
+  const gateStorePath = path.join(gateStoreRoot, 'holdout-consumption.json');
+  const gateStore = new TeacherStudentDistillationGateFileStore(gateStorePath);
+  const durableGate = new TeacherStudentDistillationGate(await gateStore.load());
+  const durableReport = await durableGate.evaluateOncePersisted({
+    ledger,
+    candidateFingerprint: 'd'.repeat(64),
+    baselineMethod: 'baseline',
+    studentMethod: 'student-candidate',
+  }, gateStore);
+  assert.equal(durableReport.status, 'eligible-for-manual-review');
+  assert.equal(durableReport.holdout.pairedSeedCount, 5,
+    'the immutable ledger clone retains independently authenticated evidence');
+  const persistedGateState = await gateStore.load();
+  assert.ok(persistedGateState.consumedCandidateFingerprints.includes('d'.repeat(64)));
+
+  const restoredDurableGate = new TeacherStudentDistillationGate(persistedGateState);
+  let duplicateReservationCalls = 0;
+  const duplicateDurableReport = await restoredDurableGate.evaluateOncePersisted({
+    ledger,
+    candidateFingerprint: 'd'.repeat(64),
+    baselineMethod: 'baseline',
+    studentMethod: 'student-candidate',
+  }, {
+    async reserveCandidate(fingerprint) {
+      duplicateReservationCalls++;
+      return gateStore.reserveCandidate(fingerprint);
+    },
+  });
+  assert.equal(duplicateDurableReport.status, 'already-consumed');
+  assert.equal(duplicateReservationCalls, 0,
+    'a restored in-memory ledger blocks duplicate candidates before asking the store');
+
+  // Simulate a crash after durable reservation and before analysis.
+  assert.equal(await gateStore.reserveCandidate('e'.repeat(64)), true);
+  const afterCrashGate = new TeacherStudentDistillationGate(await gateStore.load());
+  const afterCrashReport = await afterCrashGate.evaluateOncePersisted({
+    ledger,
+    candidateFingerprint: 'e'.repeat(64),
+    baselineMethod: 'baseline',
+    studentMethod: 'student-candidate',
+  }, gateStore);
+  assert.equal(afterCrashReport.status, 'already-consumed');
+
+  // Tampered/corrupt durable state must become saturated, never reset to empty.
+  await writeFile(gateStorePath, '{"tampered":true}\n', 'utf8');
+  const corruptGateState = await gateStore.load();
+  assert.equal(corruptGateState.saturated, true);
+  const corruptGate = new TeacherStudentDistillationGate(corruptGateState);
+  const corruptReport = await corruptGate.evaluateOncePersisted({
+    ledger,
+    candidateFingerprint: 'f'.repeat(64),
+    baselineMethod: 'baseline',
+    studentMethod: 'student-candidate',
+  }, gateStore);
+  assert.equal(corruptReport.status, 'already-consumed');
+  assert.ok(corruptReport.reasonCodes.includes('holdout-ledger-invalid-or-saturated'));
+} finally {
+  await rm(gateStoreRoot, { recursive: true, force: true });
+}
 
 console.log('TEACHER_STUDENT_DISTILLATION=PASS');
