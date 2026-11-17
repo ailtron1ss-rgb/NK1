@@ -1752,6 +1752,12 @@ export class MemoryOS2{
    const replacement=this.encode({
      id:revisionId,content:canonicalContent,kind:parent.kind,source,tags:parent.tags,context:parent.context,
      salience:options.salience??parent.salience,emotionalWeight:parent.emotionalWeight,identityRelevance:parent.identityRelevance,goalRelevance:parent.goalRelevance,socialRelevance:parent.socialRelevance,predictionError:parent.predictionError,confidence:options.confidence??parent.confidence,epistemicStatus:options.epistemicStatus??parent.epistemicStatus,entities:parent.entities,semanticLinks:[],temporalLinks:[],causalLinks:[],contradictionLinks:[],
+     // Content changes must never reset the evidence base. The new version inherits
+     // the complete bounded independent-source trail and its compact replay ledger.
+     provenanceClass:parent.provenanceClass,sourceAuthority01:parent.sourceAuthority01,
+     independenceKey:parent.independenceKey,evidenceFreshnessAt:parent.evidenceFreshnessAt,
+     evidenceSources:parent.evidenceSources?.map(row=>({...row})),
+     evidenceLineageKeys:[...(parent.evidenceLineageKeys??[])],
      validFromAt:at,validUntilAt:null,observedAt:at,recordedFromAt:recordedAt,recordedUntilAt:null,
      freshnessUntilAt:options.freshnessUntilAt??parent.freshnessUntilAt??null,
      temporalKind:options.temporalKind??parent.temporalKind??(parent.epistemicStatus==='fact'?'fact':'assessment'),
