@@ -151,10 +151,6 @@ assert.equal(primary.outcomes[0].passed, true);
 assert.equal(primary.outcomes[0].signedArtifact.signature, validPrimary.signature);
 assert.match(primary.outcomes[0].attestationFingerprint, /^[a-f0-9]{64}$/);
 assert.throws(
-  () => loop.recordOutcome(p.id, signedArtifact(p, 'replication', 18, { verifierId: 'verifier-primary' })),
-  /verifier-plan-mismatch/,
-);
-assert.throws(
   () => loop.critique(p.id, signedArtifact(p, 'critique', 0, { verifierId: 'verifier-primary' })),
   /reviewer-plan-mismatch/,
 );
@@ -173,6 +169,10 @@ const critiqued = loop.critique(p.id, critique);
 assert.equal(critiqued.stage, 'critiqued');
 assert.equal(critiqued.critique.reviewerId, 'reviewer-independent');
 assert.equal(critiqued.critique.signedArtifact.signature, critique.signature);
+assert.throws(
+  () => loop.recordOutcome(p.id, signedArtifact(p, 'replication', 18, { verifierId: 'verifier-primary' })),
+  /verifier-plan-mismatch/,
+);
 
 // Replayed run IDs are rejected after signature verification.
 assert.throws(
