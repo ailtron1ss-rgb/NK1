@@ -165,7 +165,7 @@ try {
     && lastProviderPayload.chat_template_kwargs.nk1_neural_snapshot_freshness01 <= 1);
 
   const bridgeDiagnosticsResponse = await fetch(
-    `http://127.0.0.1:${appPort}/api/organism/cognition/neural-bridge/diagnostics',
+    `http://127.0.0.1:${appPort}/api/organism/cognition/neural-bridge/diagnostics`,
     { headers: authHeaders },
   );
   const bridgeDiagnosticsBody = await bridgeDiagnosticsResponse.json();
