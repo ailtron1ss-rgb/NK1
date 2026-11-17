@@ -997,6 +997,21 @@ export class SubstrateIndependenceEngine {
     return this.snapshot();
   }
 
+  revokeUnverifiedPromotion(): SubstrateIndependenceState {
+    if (this.state.activeProvenance !== 'calibrated') return this.snapshot();
+    const last = this.state.history.at(-1);
+    if (last?.reason === 'calibrated-promotion' &&
+        last.toBackendId === this.state.activeBackendId &&
+        last.fromBackendId) {
+      return this.rollbackBackend();
+    }
+    this.state.activeBackendId = null;
+    this.state.activeProvenance = 'unknown';
+    this.state.observedBackendId = null;
+    this.state.pendingTransfer = null;
+    return this.snapshot();
+  }
+
   rollbackBackend(): SubstrateIndependenceState {
     const last = this.state.history.at(-1);
     if (!last || last.reason !== 'calibrated-promotion' || last.toBackendId !== this.state.activeBackendId || !last.fromBackendId) {
