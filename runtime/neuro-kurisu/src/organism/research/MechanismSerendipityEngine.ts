@@ -69,27 +69,111 @@ function correspond(a:MechanismDescription,b:MechanismDescription):MechanismCorr
  return out.slice(0,32);
 }
 function findBreakpoints(a:MechanismDescription,b:MechanismDescription):MechanismBreakpoint[]{
- const out:MechanismBreakpoint[]=[];const targetRoles=new Set(b.actors.map(x=>x.role));
- for(const role of new Set(a.actors.map(x=>x.role)))if(!targetRoles.has(role))out.push({kind:'missing-reference-role',problemFeature:role,referenceFeature:'absent',consequence:'У эталонного механизма нет этой роли; её нельзя переносить без отдельной реализации.',severity01:.55});
+ const out:MechanismBreakpoint[]=[];
+ const rolesA=new Set(a.actors.map(x=>x.role)),rolesB=new Set(b.actors.map(x=>x.role));
+ for(const role of rolesA)if(!rolesB.has(role))out.push({
+  kind:'missing-reference-role',problemFeature:role,referenceFeature:'absent',
+  consequence:'У эталонного механизма нет этой роли; её нельзя переносить без отдельной реализации.',severity01:.55,
+ });
+ for(const role of rolesB)if(!rolesA.has(role))out.push({
+  kind:'reference-only-role',problemFeature:'absent',referenceFeature:role,
+  consequence:'В эталоне есть дополнительная роль; перенос всей схемы добавит непроверенную функциональность.',severity01:.42,
+ });
+
  for(const flow of a.flows){
-  const exact=b.flows.some(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole&&x.kind===flow.kind);if(exact)continue;
+  const exact=b.flows.some(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole&&x.kind===flow.kind);
+  if(exact)continue;
   const reverse=b.flows.filter(x=>x.fromRole===flow.toRole&&x.toRole===flow.fromRole);
   const direct=b.flows.filter(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole);
-  if(reverse.length)out.push({kind:'flow-direction-reversal',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:reverse.map(x=>x.kind).join(','),consequence:'Направление потока обращено; прямой перенос может развернуть причинное воздействие.',severity01:.92});
-  else if(direct.length)out.push({kind:'flow-kind-mismatch',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:direct.map(x=>x.kind).join(','),consequence:'Поток связывает те же роли, но переносит другой тип воздействия.',severity01:.68});
-  else out.push({kind:'missing-reference-flow',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:'absent',consequence:'В эталоне отсутствует этот причинный переход; соответствие неполно.',severity01:.52});
+  if(reverse.length)out.push({
+   kind:'flow-direction-reversal',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
+   referenceFeature:reverse.map(x=>x.kind).join(','),
+   consequence:'Направление потока обращено; прямой перенос может развернуть причинное воздействие.',severity01:.92,
+  });
+  else if(direct.length)out.push({
+   kind:'flow-kind-mismatch',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
+   referenceFeature:direct.map(x=>x.kind).join(','),
+   consequence:'Поток связывает те же роли, но переносит другой тип воздействия.',severity01:.68,
+  });
+  else out.push({
+   kind:'missing-reference-flow',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:'absent',
+   consequence:'В эталоне отсутствует этот причинный переход; соответствие неполно.',severity01:.52,
+  });
  }
- for(const c of a.constraints){const same=b.constraints.filter(x=>x.onRole===c.onRole);if(!same.some(x=>x.kind===c.kind))out.push({kind:'constraint-kind-mismatch',problemFeature:c.kind+'@'+c.onRole,referenceFeature:same.map(x=>x.kind).join(',')||'no-constraint-on-role',consequence:'Ограничение целевой системы отличается; пороги нельзя переносить напрямую.',severity01:.72});}
+ // Compare source-only transitions as well. Extra source mechanics can be as
+ // important as missing target mechanics when deciding whether a transfer is safe.
+ for(const flow of b.flows){
+  const exact=a.flows.some(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole&&x.kind===flow.kind);
+  const sameOrReverseEndpoints=a.flows.some(x=>
+   (x.fromRole===flow.fromRole&&x.toRole===flow.toRole)||
+   (x.fromRole===flow.toRole&&x.toRole===flow.fromRole)
+  );
+  if(!exact&&!sameOrReverseEndpoints)out.push({
+   kind:'reference-only-flow',problemFeature:'absent',
+   referenceFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
+   consequence:'Исходный механизм содержит дополнительный переход, которого нет в целевой схеме; его нельзя переносить без отдельного обоснования.',
+   severity01:.44,
+  });
+ }
+
+ for(const c of a.constraints){
+  const same=b.constraints.filter(x=>x.onRole===c.onRole);
+  if(!same.some(x=>x.kind===c.kind))out.push({
+   kind:'constraint-kind-mismatch',problemFeature:c.kind+'@'+c.onRole,
+   referenceFeature:same.map(x=>x.kind).join(',')||'no-constraint-on-role',
+   consequence:'Ограничение целевой системы отличается; пороги нельзя переносить напрямую.',severity01:.72,
+  });
+ }
+ for(const c of b.constraints)if(!a.constraints.some(x=>x.kind===c.kind&&x.onRole===c.onRole))out.push({
+  kind:'reference-only-constraint',problemFeature:'absent',referenceFeature:c.kind+'@'+c.onRole,
+  consequence:'Эталон предполагает дополнительное ограничение, не описанное в целевой схеме; условия применимости неполны.',severity01:.40,
+ });
+
  for(const loop of a.feedbackLoops){
   const same=b.feedbackLoops.filter(x=>x.sourceRole===loop.sourceRole&&x.targetRole===loop.targetRole);
-  if(same.length&&!same.some(x=>x.polarity===loop.polarity))out.push({kind:'feedback-polarity-mismatch',problemFeature:loop.sourceRole+'>'+loop.targetRole+':'+loop.polarity,referenceFeature:same.map(x=>x.polarity).join(','),consequence:'Обратная связь может усилить ошибку вместо её подавления.',severity01:.94});
-  else if(!same.length)out.push({kind:'missing-feedback-path',problemFeature:loop.sourceRole+'>'+loop.targetRole,referenceFeature:'absent',consequence:'Контур обратной связи не подтверждён в эталоне; динамику нельзя считать эквивалентной.',severity01:.66});
+  if(same.length&&!same.some(x=>x.polarity===loop.polarity))out.push({
+   kind:'feedback-polarity-mismatch',problemFeature:loop.sourceRole+'>'+loop.targetRole+':'+loop.polarity,
+   referenceFeature:same.map(x=>x.polarity).join(','),
+   consequence:'Обратная связь может усилить ошибку вместо её подавления.',severity01:.94,
+  });
+  else if(!same.length)out.push({
+   kind:'missing-feedback-path',problemFeature:loop.sourceRole+'>'+loop.targetRole,referenceFeature:'absent',
+   consequence:'Контур обратной связи не подтверждён в эталоне; динамику нельзя считать эквивалентной.',severity01:.66,
+  });
  }
- const referenceResources=new Set(b.resources.map(x=>x.kind));
- for(const resource of a.resources)if(!referenceResources.has(resource.kind))out.push({kind:'resource-kind-mismatch',problemFeature:resource.kind,referenceFeature:[...referenceResources].join(',')||'none',consequence:'Ресурсные ограничения различаются; бюджет и стоимость переноса требуют самостоятельной оценки.',severity01:.56});
- for(const regime of a.dynamics.regimes)if(b.dynamics.regimes.length&&!b.dynamics.regimes.includes(regime))out.push({kind:'dynamic-regime-mismatch',problemFeature:regime,referenceFeature:b.dynamics.regimes.join(','),consequence:'Требуется отдельная проверка устойчивости целевого динамического режима.',severity01:.65});
- if(a.dynamics.timescale!=='mixed'&&b.dynamics.timescale!=='mixed'&&a.dynamics.timescale!==b.dynamics.timescale)out.push({kind:'timescale-mismatch',problemFeature:a.dynamics.timescale,referenceFeature:b.dynamics.timescale,consequence:'Разница временных масштабов может сделать обратную связь нестабильной.',severity01:.5});
- return out.slice(0,16);
+ for(const loop of b.feedbackLoops){
+  const samePair=a.feedbackLoops.some(x=>x.sourceRole===loop.sourceRole&&x.targetRole===loop.targetRole);
+  if(!samePair)out.push({
+   kind:'reference-only-feedback-path',problemFeature:'absent',
+   referenceFeature:loop.sourceRole+'>'+loop.targetRole+':'+loop.polarity,
+   consequence:'Эталон использует дополнительную обратную связь; её устойчивость в целевой системе не проверена.',severity01:.56,
+  });
+ }
+
+ const resourcesA=new Set(a.resources.map(x=>x.kind)),resourcesB=new Set(b.resources.map(x=>x.kind));
+ for(const kind of resourcesA)if(!resourcesB.has(kind))out.push({
+  kind:'resource-kind-mismatch',problemFeature:kind,referenceFeature:[...resourcesB].join(',')||'none',
+  consequence:'Ограничения ресурсов целевой системы отличаются; бюджет и стоимость переноса требуют самостоятельной оценки.',severity01:.56,
+ });
+ for(const kind of resourcesB)if(!resourcesA.has(kind))out.push({
+  kind:'reference-only-resource',problemFeature:'absent',referenceFeature:kind,
+  consequence:'Эталон требует дополнительный тип ресурса, доступность которого в целевой системе не подтверждена.',severity01:.40,
+ });
+
+ const regimesA=new Set(a.dynamics.regimes),regimesB=new Set(b.dynamics.regimes);
+ for(const regime of regimesA)if(regimesB.size&&!regimesB.has(regime))out.push({
+  kind:'dynamic-regime-mismatch',problemFeature:regime,referenceFeature:[...regimesB].join(','),
+  consequence:'Требуется отдельная проверка устойчивости целевого динамического режима.',severity01:.65,
+ });
+ for(const regime of regimesB)if(!regimesA.has(regime))out.push({
+  kind:'reference-only-dynamic-regime',problemFeature:'absent',referenceFeature:regime,
+  consequence:'Эталон работает в дополнительном динамическом режиме; его поведение в целевой системе не установлено.',severity01:.38,
+ });
+ if(a.dynamics.timescale!=='mixed'&&b.dynamics.timescale!=='mixed'&&a.dynamics.timescale!==b.dynamics.timescale)out.push({
+  kind:'timescale-mismatch',problemFeature:a.dynamics.timescale,referenceFeature:b.dynamics.timescale,
+  consequence:'Разница временных масштабов может сделать обратную связь нестабильной.',severity01:.5,
+ });
+ return out.sort((x,y)=>y.severity01-x.severity01||x.kind.localeCompare(y.kind)).slice(0,16);
 }
 const actor=(id:string,role:ActorRole):MechanismActor=>({id,role});
 const flow=(id:string,fromRole:ActorRole,toRole:ActorRole,kind:FlowKind):MechanismFlow=>({id,fromRole,toRole,kind});
