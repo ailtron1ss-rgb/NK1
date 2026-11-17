@@ -6,6 +6,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveSynapticMatrix.ts"
       - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs"
+      - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix-runtime.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/p25-adaptive-synaptic-matrix.yml"
   pull_request:
