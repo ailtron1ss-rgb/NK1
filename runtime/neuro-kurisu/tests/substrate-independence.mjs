@@ -44,7 +44,10 @@ const transfer = engine.createTransferPackage({
 });
 assert.equal(transfer.schema, 'nk1.portable-cognitive-state');
 assert.equal(engine.verifyTransferPackage(transfer).valid, true);
-assert.equal(transfer.payload.world.tick, payload.world.tick, 'portable package must preserve canonical world state');\nconst hydratedOrganism = hydratePortableState(transfer.payload.organism);\nassert.deepEqual([...hydratedOrganism.modelCache], [1.5, 2.5]);\nassert.equal(hydratedOrganism.recentByKey.get('m1').score, 0.9);
+assert.equal(transfer.payload.world.tick, payload.world.tick, 'portable package must preserve canonical world state');
+const hydratedOrganism = hydratePortableState(transfer.payload.organism);
+assert.deepEqual([...hydratedOrganism.modelCache], [1.5, 2.5]);
+assert.equal(hydratedOrganism.recentByKey.get('m1').score, 0.9);
 assert.equal(engine.verifyTransferPackage({ ...transfer, payload: { ...transfer.payload, world: { tick: 0 } } }).valid, false,
   'a changed payload must fail its integrity check');
 
@@ -70,7 +73,8 @@ const trials = [
   ['goal-continuity', 'task-3'], ['goal-continuity', 'task-4'],
   ['tool-contract', 'task-5'], ['tool-contract', 'task-6'],
 ].map(([taskFamily, taskId], index) => ({
-  trialId: `trial-${index + 1}`,\n  transferDigest: transfer.integrity.digest,
+  trialId: `trial-${index + 1}`,
+  transferDigest: transfer.integrity.digest,
   sourceBackendId: source.backendId,
   targetBackendId: target.backendId,
   taskId,
