@@ -134,6 +134,11 @@ export interface ConsequenceOptionResult {
   lostBenefit01: number;
   netAttributableValue01: number;
   correlatedPathMerges: number;
+  worstStakeholderHarm01: number;
+  topStakeholderHarmShare01: number;
+  benefitBurdenSeparation01: number;
+  mostExposedStakeholder: { actor: string; system: string; harm01: number } | null;
+  mainBeneficiary: { actor: string; system: string; benefit01: number } | null;
   feedbackLoopCount: number;
   excludedBeyondHorizon: number;
   unreachableNodeCount: number;
@@ -298,6 +303,11 @@ function migrateRestoredAnalysis(value: ConsequenceEcologyAnalysis): Consequence
     option.lostBenefit01 ??= 0;
     option.netAttributableValue01 ??= 0;
     option.correlatedPathMerges ??= 0;
+    option.worstStakeholderHarm01 ??= 0;
+    option.topStakeholderHarmShare01 ??= 0;
+    option.benefitBurdenSeparation01 ??= 0;
+    option.mostExposedStakeholder ??= null;
+    option.mainBeneficiary ??= null;
     for (const node of option.nodes) {
       if (node.description === undefined) node.description = '';
       if (node.baselineProbability01 === undefined) node.baselineProbability01 = null;
@@ -337,6 +347,15 @@ function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalys
         !(option.lostBenefit01 === undefined || boundedNumber(option.lostBenefit01, 0, 1)) ||
         !(option.netAttributableValue01 === undefined || boundedNumber(option.netAttributableValue01, -1, 1)) ||
         !(option.correlatedPathMerges === undefined || boundedInteger(option.correlatedPathMerges, 0, MAX_PATHS * MAX_NODES)) ||
+        !(option.worstStakeholderHarm01 === undefined || boundedNumber(option.worstStakeholderHarm01, 0, 1)) ||
+        !(option.topStakeholderHarmShare01 === undefined || boundedNumber(option.topStakeholderHarmShare01, 0, 1)) ||
+        !(option.benefitBurdenSeparation01 === undefined || boundedNumber(option.benefitBurdenSeparation01, 0, 1)) ||
+        !(option.mostExposedStakeholder === undefined || option.mostExposedStakeholder === null ||
+          (isRecord(option.mostExposedStakeholder) && boundedString(option.mostExposedStakeholder.actor, 96, false) &&
+            boundedString(option.mostExposedStakeholder.system, 96, false) && boundedNumber(option.mostExposedStakeholder.harm01, 0, 1))) ||
+        !(option.mainBeneficiary === undefined || option.mainBeneficiary === null ||
+          (isRecord(option.mainBeneficiary) && boundedString(option.mainBeneficiary.actor, 96, false) &&
+            boundedString(option.mainBeneficiary.system, 96, false) && boundedNumber(option.mainBeneficiary.benefit01, 0, 1))) ||
         !boundedInteger(option.feedbackLoopCount, 0, MAX_PATHS) ||
         !boundedInteger(option.excludedBeyondHorizon, 0, MAX_PATHS) ||
         !boundedInteger(option.unreachableNodeCount, 0, MAX_NODES) ||
@@ -693,10 +712,6 @@ function analyzeOption(
   const confidence01 = 1 - uncertainty01;
   const netExpectedValue01 = totalBenefit01 - totalHarm01;
   const riskAdjustedValue01 = clamp(netExpectedValue01 - uncertainty01 * 0.25 - irreversibleExposure01 * 0.15, -1, 1);
-  const attention: ConsequenceOptionResult['attention'] =
-    (irreversibleExposure01 >= 0.25 || totalHarm01 >= 0.7) ? 'mandatory-review'
-    : (uncertainty01 >= 0.45 || graphCoverage01 < 0.6 || totalHarm01 >= 0.4) ? 'enhanced-review'
-    : 'routine-review';
   const stakeholders: ConsequenceStakeholderResult[] = Array.from(stakeholderBuckets.values())
     .map(bucket => ({
       actor: bucket.actor,
@@ -708,6 +723,22 @@ function analyzeOption(
       consequenceCount: bucket.count,
     }))
     .sort((a, b) => b.harm01 - a.harm01 || a.actor.localeCompare(b.actor) || a.system.localeCompare(b.system));
+  const harmBearingStakeholders = stakeholders.filter(row => row.harm01 > 0);
+  const benefitBearingStakeholders = stakeholders.filter(row => row.benefit01 > 0)
+    .sort((a, b) => b.benefit01 - a.benefit01 || a.actor.localeCompare(b.actor) || a.system.localeCompare(b.system));
+  const mostExposed = harmBearingStakeholders[0] ?? null;
+  const mainBeneficiary = benefitBearingStakeholders[0] ?? null;
+  const stakeholderHarmMass = harmBearingStakeholders.reduce((sum, row) => sum + row.harm01, 0);
+  const worstStakeholderHarm01 = mostExposed?.harm01 ?? 0;
+  const topStakeholderHarmShare01 = stakeholderHarmMass > 0 ? clamp(worstStakeholderHarm01 / stakeholderHarmMass) : 0;
+  const benefitBurdenSeparation01 = mostExposed && mainBeneficiary &&
+    (mostExposed.actor !== mainBeneficiary.actor || mostExposed.system !== mainBeneficiary.system)
+    ? Math.min(mostExposed.harm01, mainBeneficiary.benefit01) : 0;
+  // Distributional exposure is surfaced independently from net value: benefits do not cancel a concentrated burden borne by another stakeholder.
+  const attention: ConsequenceOptionResult['attention'] =
+    (irreversibleExposure01 >= 0.25 || totalHarm01 >= 0.7 || worstStakeholderHarm01 >= 0.6) ? 'mandatory-review'
+    : (uncertainty01 >= 0.45 || graphCoverage01 < 0.6 || totalHarm01 >= 0.4 || worstStakeholderHarm01 >= 0.35) ? 'enhanced-review'
+    : 'routine-review';
 
   criticalPaths.sort((a, b) => b.expectedHarm01 - a.expectedHarm01 || a.delayDays - b.delayDays || a.nodeIds.join('/').localeCompare(b.nodeIds.join('/')));
   const limitations = [
@@ -723,6 +754,8 @@ function analyzeOption(
   if (counterfactualCoverage01 < 1) limitations.push(counterfactualCoverage01 === 0
     ? 'No comparable baseline probabilities were supplied; action-attributable effects remain unknown.'
     : 'Counterfactual coverage is partial; aggregate attributable effects omit nodes without a baseline.');
+  if (benefitBurdenSeparation01 >= 0.25) limitations.push('A material share of benefits and harms falls on different stakeholder groups; net value must not be read as consent or fairness.');
+  if (topStakeholderHarmShare01 >= 0.75 && worstStakeholderHarm01 >= 0.2) limitations.push('Harm is concentrated in one stakeholder group; review distributional effects separately from aggregate totals.');
   if (!rows.length) limitations.push('No consequence node was reachable from the proposed action.');
   return {
     id: clean(option.id, 96),
@@ -753,6 +786,11 @@ function analyzeOption(
       noisyOr(attributableBenefit) + noisyOr(avoidedHarm) - noisyOr(attributableHarm) - noisyOr(lostBenefit), -1, 1,
     ),
     correlatedPathMerges: reachable.reduce((sum, [, exposure]) => sum + exposure.correlatedPathMerges, 0),
+    worstStakeholderHarm01,
+    topStakeholderHarmShare01,
+    benefitBurdenSeparation01,
+    mostExposedStakeholder: mostExposed ? { actor: mostExposed.actor, system: mostExposed.system, harm01: mostExposed.harm01 } : null,
+    mainBeneficiary: mainBeneficiary ? { actor: mainBeneficiary.actor, system: mainBeneficiary.system, benefit01: mainBeneficiary.benefit01 } : null,
     feedbackLoopCount: feedbackLoops.length,
     excludedBeyondHorizon,
     unreachableNodeCount: nodes.size - rows.length,
