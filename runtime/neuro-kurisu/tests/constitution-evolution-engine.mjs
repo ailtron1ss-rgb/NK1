@@ -59,7 +59,7 @@ assert.equal(reviewed.status,'awaiting-ratification');
 
 // Caller-supplied booleans are no longer an approval authority.
 await assert.rejects(()=>engine.ratify(proposal.id,{explicitHumanApproval:true,approverId:'forged',
-  candidateDigest:proposal.candidateDigest,approvalRef:'approval://fake',rationale:'forged approval'},gateway),/approval ticket/i);
+  candidateDigest:proposal.candidateDigest,approvalRef:'approval://fake',rationale:'forged approval'},gateway),/approvalId|ticket/i);
 
 // A real ActionGateway ticket is required and is bound to this proposal digest.
 const ratification = await engine.requestRatification(proposal.id,gateway);
