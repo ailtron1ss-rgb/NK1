@@ -79,11 +79,13 @@ export class IntentExecutionRuntime {
   private readonly approved = new Map<string, IntentContract>();
   private executions: IntentExecutionLink[] = [];
   private readonly clock: () => number;
+  private readonly actionGateway: ActionGateway;
 
   constructor(
-    private readonly actionGateway: ActionGateway,
+    actionGateway: ActionGateway,
     options: IntentExecutionRuntimeOptions = {},
   ) {
+    this.actionGateway = actionGateway;
     this.clock = options.clock ?? Date.now;
     this.compiler = new IntentCompiler({
       ...options,
@@ -226,6 +228,9 @@ export class IntentExecutionRuntime {
     action: IntentBoundAction,
     gateway: IntentGatewayPort,
   ): Promise<IntentBridgeResult> {
+    if (!contract || this.approved.get(contract.id) !== contract) {
+      return { executed: false, contractId: null, reason: 'intent-contract-not-owned-or-restored-by-this-core' };
+    }
     const result = await this.bridge.execute(contract, action, gateway);
     if (result.executed) this.record(contract, action, 'execute', result.result);
     return result;
@@ -236,6 +241,9 @@ export class IntentExecutionRuntime {
     action: IntentBoundAction,
     gateway: IntentGatewayPort,
   ): Promise<IntentBridgeReconciliationResult> {
+    if (!contract || this.approved.get(contract.id) !== contract) {
+      return { reconciled: false, contractId: null, reason: 'intent-contract-not-owned-or-restored-by-this-core' };
+    }
     const result = await this.bridge.reconcile(contract, action, gateway);
     if (result.reconciled) this.record(contract, action, 'reconcile', result.result);
     return result;

@@ -74,6 +74,12 @@ assert.equal(restored.approval.status, 'approved');
 
 const recoveryCalls = [];
 const gateway = restarted.cognitiveRuntime.actionGateway;
+let executeDuringReconciliation = 0;
+const originalExecute = gateway.executeTool.bind(gateway);
+gateway.executeTool = async (...args) => {
+  executeDuringReconciliation += 1;
+  return originalExecute(...args);
+};
 const originalReconcile = gateway.reconcileToolExecution.bind(gateway);
 gateway.reconcileToolExecution = async (id, input, reason, options) => {
   recoveryCalls.push({ id, input: structuredClone(input), reason, options: structuredClone(options) });
@@ -89,11 +95,13 @@ const reconciled = await restarted.reconcileIntentExecution(restored, {
   toolId: 'organism.inspect', input: { scope: 'status' }, reason: 'intent-restart-reconciliation',
   options: { idempotencyKey: 'intent:recovery:01', decisionId: 'decision:core-recovery' },
 });
-assert.equal(reconciled.executed, true);
+assert.equal(reconciled.reconciled, true, 'receipt lookup must not be reported as a new execution');
 assert.equal(recoveryCalls.length, 1, 'intent reconciliation must be forwarded exactly once');
 assert.equal(recoveryCalls[0].id, 'organism.inspect');
 assert.equal(recoveryCalls[0].options.decisionId, 'decision:core-recovery',
   'intent integration must preserve canonical cognitive decision identity');
+assert.equal(executeDuringReconciliation, 0, 'read-only reconciliation must never enter the side-effect executor');
+gateway.executeTool = originalExecute;
 gateway.reconcileToolExecution = originalReconcile;
 
 const replayDraft = restarted.compileIntent({
