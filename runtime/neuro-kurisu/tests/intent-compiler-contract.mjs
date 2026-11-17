@@ -147,6 +147,18 @@ assert.equal(new IntentCompiler({ clock: () => now }).gate(processScopedApproved
   'default ephemeral attestation key must be shared by compiler instances within one process');
 assert.equal(new IntentCompiler({ clock: () => now, approvalKey: 'a-different-managed-key-with-at-least-32-bytes' }).gate(processScopedApproved, 'organism.inspect').allowed, false,
   'a different key must not validate the approval');
+const byteKey = new TextEncoder().encode('test-only-byte-approval-key-material-32-bytes');
+const byteKeyCompiler = new IntentCompiler({ clock: () => now, approvalKey: byteKey });
+const byteKeyContract = byteKeyCompiler.compile({
+  text: 'Read system status',
+  extraction: { expectedOutcome: 'Status', acceptanceCriteria: ['Show status'], permissions: { allowedActions: ['organism.inspect'] }, stopConditions: ['Stop on missing status'] },
+});
+const byteKeyApproved = byteKeyCompiler.approve(byteKeyContract, {
+  contractId: byteKeyContract.id, userConfirmed: true, allowedActions: ['organism.inspect'],
+  at: now, evidenceRef: 'byte-key-confirmation',
+});
+assert.equal(byteKeyCompiler.gate(byteKeyApproved, 'organism.inspect').allowed, true,
+  'a byte-backed secret-manager key must support the same HMAC attestation path');
 
 const ambiguous = compiler.compile({
   requestId: 'intent:test:ambiguous',
