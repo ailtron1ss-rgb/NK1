@@ -236,6 +236,46 @@ assert.equal(residualMass({ residualAdapter: branchDiagnostics.embodiedBridge.re
 branch.resetTestTimeAdaptation();
 assert.equal(branch.diagnostics().testTimeNeuroplasticity.contextCount, 0);
 
+
+// Hardened input boundary: malformed inference data must fail before mutating state.
+const guarded = new EmbodiedCausalWorldBridge();
+assert.throws(
+  () => decision(guarded, 1, 'guarded', [0.2, Number.NaN]),
+  /finite feature vector/,
+);
+assert.equal(guarded.metrics().observations, 0, 'invalid decision input mutated bridge state');
+
+decision(guarded, 2, 'guarded');
+assert.throws(
+  () => guarded.afterOutcome({
+    tick: 2, contextId: 'guarded', action: 'unknown-action',
+    nextFeatures: featuresB, reward01: 0.8, verified01: 1, predictionError01: 0.2,
+  }),
+  /known action/,
+);
+assert.equal(guarded.metrics().transitions, 0, 'invalid outcome mutated durable transition state');
+outcome(guarded, 2, 'guarded', 1);
+assert.equal(guarded.metrics().fastAcceptedUpdates, 1, 'valid retry was lost after malformed outcome');
+
+// A successfully accepted update must demonstrably reduce the one-step prediction error.
+const stabilityGate = new EmbodiedCausalWorldBridge();
+decision(stabilityGate, 1, 'stability');
+outcome(stabilityGate, 1, 'stability', 1);
+const stabilityMetrics = stabilityGate.metrics();
+assert.ok(stabilityMetrics.fastLastPredictionErrorAfter01 < stabilityMetrics.fastLastPredictionErrorBefore01,
+  'fast adaptation was accepted without improving the observed one-step prediction');
+
+// Fast offsets decay with elapsed cognitive ticks rather than remaining frozen until TTL expiry.
+const decaying = new EmbodiedCausalWorldBridge();
+decision(decaying, 1, 'decay');
+outcome(decaying, 1, 'decay', 1);
+const normAtUpdate = decaying.metrics().fastAdapterNorm;
+decision(decaying, 25, 'decay');
+const normAfterDecay = decaying.metrics().fastAdapterNorm;
+assert.ok(normAtUpdate > 0, 'decay fixture did not create an adaptation');
+assert.ok(normAfterDecay > 0 && normAfterDecay < normAtUpdate,
+  'fast adapter did not gradually relax toward the durable baseline');
+
 console.log('P27_TEST_TIME_NEUROPLASTICITY=PASS', JSON.stringify({
   acceptedUpdates: bridge.metrics().fastAcceptedUpdates,
   rejectedUpdates: bridge.metrics().fastRejectedUpdates,
