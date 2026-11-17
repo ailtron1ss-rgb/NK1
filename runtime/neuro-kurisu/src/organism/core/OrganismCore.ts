@@ -11821,6 +11821,10 @@ export class OrganismCore {
         return {
             diagnostics:engine.diagnostics(),
             active:engine.activeConstitution(),
+            revisions:engine.snapshot().revisions.map(revision=>({
+                version:revision.version, revision:revision.revision, createdAt:revision.createdAt,
+                parentVersion:revision.parentVersion, rollbackOf:revision.rollbackOf, digest:revision.digest,
+            })),
             protectedInvariants:engine.protectedInvariants(),
             proposals:engine.listProposals(64),
             auditEvents:engine.listAuditEvents(256),
