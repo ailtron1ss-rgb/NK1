@@ -331,6 +331,43 @@ assert.equal(
   'the preview-then-commit cognitive path must return the same historical metadata view',
 );
 
+const accountingOS = new MemoryOS2({ signalFusionProfile: 'balanced' });
+const accountingFact = accountingOS.encode({
+  content: 'Memory accounting remains stable after a contextual revision.',
+  kind: 'semantic',
+  source: 'chrono-truth-accounting-regression',
+  tags: ['accounting'],
+  context: { area: 'memory', location: 'North' },
+  salience: .7,
+  emotionalWeight: .1,
+  identityRelevance: .1,
+  goalRelevance: .1,
+  socialRelevance: .1,
+  predictionError: .1,
+  confidence: .9,
+  epistemicStatus: 'fact',
+  entities: ['memory'],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  validFromAt: 300,
+  observedAt: 300,
+  recordedFromAt: 320,
+}, { clone: false });
+accountingOS.updateContext(accountingFact.id, { location: 'South' });
+assert.equal(
+  accountingOS.memoryAccountingDiagnostics().driftBytes,
+  0,
+  'context versioning and its revision audit must account memory bytes exactly once',
+);
+accountingOS.updateSignals(accountingFact.id, { confidence: .75 }, 'confidence-calibration');
+assert.equal(
+  accountingOS.memoryAccountingDiagnostics().driftBytes,
+  0,
+  'confidence versioning and its revision audit must keep exact memory accounting',
+);
+
 const semanticHistoryProvider = {
   providerId: 'chrono-truth-deterministic-semantic',
   modelId: 'chrono-truth-test-v1',
