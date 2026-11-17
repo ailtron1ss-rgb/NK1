@@ -8,7 +8,9 @@ Branch: `aspect/cognitive-to-neural-bridge-20261117`
 
 - Add `src/organism/cognition/CognitiveToNeuralBridge.ts`.
 - Export the action/mode types, 43-feature B365-aware projection, versioned profile, provider request adapter and explicit emergency-bypass helper.
-- Normalize missing/non-finite values, reject future/stale B365 snapshots, expose feature keys/provenance, bound steering intent to 0.15, and scale temperature/token budgets using mode, reserve and allostatic preservation.
+- Normalize organism inputs; accept only complete B365 snapshots with positive integer state version/tick and all 23 normalized signals; reject partial, future and stale (>8 tick) snapshots as a whole.
+- Expose feature keys and exact B365 version/tick provenance, use an explicit neutral unavailable-state encoding, bound steering intent to 0.15, and scale temperature/token budgets using mode, reserve and allostatic preservation.
+- Validate one-hot/action/mode consistency, adapter hint mapping, snapshot version/age/freshness arithmetic and all provider control bounds again at the llama.cpp hand-off.
 - Test B365 diagnostics projection, exact 43-channel order, freshness rejection, immutability, malformed input, caps and request pass-through.
 
 Expected focused command:
