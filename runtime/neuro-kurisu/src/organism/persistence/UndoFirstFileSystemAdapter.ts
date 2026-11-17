@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { constants } from 'node:fs';
 import { mkdir, open, link, unlink, readFile, lstat, realpath, rename } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, join } from 'node:path';
 import {
@@ -262,21 +263,30 @@ export class UndoFirstFileSystemAdapter {
 
   private async readState(relativePath: string): Promise<FileState> {
     const { target } = await this.resolveTarget(relativePath);
-    let info;
-    try { info = await lstat(target); }
-    catch (error) {
+    if (!constants.O_NOFOLLOW) throw new Error('filesystem-no-follow-open-unavailable');
+    let handle;
+    try {
+      handle = await open(target, constants.O_RDONLY | constants.O_NOFOLLOW);
+    } catch (error) {
       if (isNotFound(error)) return { exists: false, stateHash: MISSING_STATE_HASH, size: 0 };
       throw error;
     }
-    if (info.isSymbolicLink() || !info.isFile()) throw new Error('filesystem-target-is-not-a-regular-file');
-    const bytes = await readFile(target);
-    const contentHash = rawContentHash(bytes);
-    return {
-      exists: true,
-      stateHash: stateHashForContent(contentHash, bytes.byteLength),
-      contentHash,
-      size: bytes.byteLength,
-    };
+    try {
+      const info = await handle.stat();
+      if (!info.isFile()) throw new Error('filesystem-target-is-not-a-regular-file');
+      if (info.size > MAX_FILE_BYTES) throw new Error('filesystem-target-exceeds-managed-file-size');
+      const bytes = await handle.readFile();
+      if (bytes.byteLength > MAX_FILE_BYTES) throw new Error('filesystem-target-exceeds-managed-file-size');
+      const contentHash = rawContentHash(bytes);
+      return {
+        exists: true,
+        stateHash: stateHashForContent(contentHash, bytes.byteLength),
+        contentHash,
+        size: bytes.byteLength,
+      };
+    } finally {
+      await handle.close();
+    }
   }
 
   private async recoveryDirectory(): Promise<{ prepared: string }> {
