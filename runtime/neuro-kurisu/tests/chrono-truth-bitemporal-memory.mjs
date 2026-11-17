@@ -165,6 +165,55 @@ assert.equal(
   'the new classification must begin at transaction time',
 );
 
+const provenanceFact = encode('The active deployment strategy is blue-green.', {
+  source: 'chrono-truth-user-source',
+  provenanceClass: 'user',
+  sourceAuthority01: .94,
+  independenceKey: 'chrono-truth-user-source',
+  validFromAt: 250,
+  observedAt: 250,
+  recordedFromAt: 260,
+});
+memoryOS.attachEvidenceSource(provenanceFact.id, {
+  source: 'chrono-truth-signed-audit',
+  provenanceClass: 'external',
+  sourceAuthority01: .98,
+  independenceKey: 'chrono-truth-signed-audit',
+  observedAt: 270,
+  evidenceFreshnessAt: 270,
+}, 'signed-independent-audit');
+const beforeContentCorrectionAt = provenanceFact.recordedFromAt;
+const provenanceCorrection = memoryOS.reviseContent(
+  provenanceFact.id,
+  'The active deployment strategy is canary.',
+  { validAt: 250, recordedAt: 280, reason: 'deployment-strategy-correction' },
+);
+assert.ok(provenanceCorrection, 'a provenance-bearing fact must accept a content correction');
+assert.deepEqual(
+  new Set((provenanceCorrection.evidenceSources ?? []).map(row => row.independenceKey)),
+  new Set(['chrono-truth-user-source', 'chrono-truth-signed-audit']),
+  'a content revision must carry every independently attributed evidence source forward',
+);
+assert.ok(
+  provenanceCorrection.evidenceLineageKeys?.includes('lineage:chrono-truth-signed-audit'),
+  'a content revision must preserve compact evidence lineage keys',
+);
+assert.equal(
+  provenanceCorrection.provenanceClass,
+  'user',
+  'a content correction must retain its primary provenance class',
+);
+assert.equal(
+  memoryOS.temporalBitemporalAt(provenanceFact.id, 260, beforeContentCorrectionAt)?.evidenceSources?.length,
+  2,
+  'the previous content must remain associated with the complete evidence set NK1 knew then',
+);
+assert.equal(
+  memoryOS.temporalBitemporalAt(provenanceFact.id, 260, 290)?.evidenceSources?.length,
+  2,
+  'the corrected content must retain the same evidence set after the correction',
+);
+
 const contextFact = encode('NeuroCore runtime workspace is the north campus.', {
   context: { project: 'NeuroCore', campus: 'North' },
   tags: ['initial-context'],
