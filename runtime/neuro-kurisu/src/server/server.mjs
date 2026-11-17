@@ -94,29 +94,8 @@ const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
 const SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE = String(process.env.NEURO_SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE || '').trim();
 const SYNAPTIC_P23_OUTCOME_BUNDLE_PATH = String(process.env.NEURO_SYNAPTIC_P23_OUTCOME_BUNDLE_PATH || '').trim();
 
-async function configureSynapticP23Admission(compoundRepairRevision) {
+async function configureSynapticP23Admission() {
     if (!SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE && !SYNAPTIC_P23_OUTCOME_BUNDLE_PATH) return undefined;
-    let engine;
-    let candidateStore;
-    let trustedRunRegistry;
-    let trustedVerifierCount;
-    let trustedApprovalCount;
-    if (compoundRepairRevision) {
-        ({ engine, candidateStore, trustedRunRegistry, trustedVerifierCount, trustedApprovalCount } = compoundRepairRevision);
-    } else {
-        const lifecycle = createVerifiedSkillLifecycleBootstrap(
-            path.join(STATE, 'p23-verified-skill-candidates.json'),
-            path.join(STATE, 'p23-trusted-shadow-runs.json'),
-        );
-        ({ store: candidateStore, registry: trustedRunRegistry, trustedVerifierCount, trustedApprovalCount } = lifecycle);
-        engine = new P23LearningEngine();
-        engine.configureVerifiedSkillLifecycle(candidateStore);
-    }
-    if (!engine || !candidateStore || !trustedRunRegistry ||
-        trustedVerifierCount < 1 || trustedApprovalCount < 1) {
-        throw new Error('Synaptic Commons P23 admission requires trusted local outcome verifiers and promotion approval authorities');
-    }
-
     let createLocalPromotionProposal;
     if (SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE) {
         const providerPath = path.isAbsolute(SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE)
@@ -128,7 +107,7 @@ async function configureSynapticP23Admission(compoundRepairRevision) {
             throw new Error('Synaptic P23 admission provider must export createSynapticP23AdmissionProvider() or a default factory');
         }
         createLocalPromotionProposal = await factory({
-            engine, candidateStore, trustedRunRegistry, stateDirectory: STATE,
+            stateDirectory: STATE,
             currentHostCompatibilityTarget: synapticCommonsHostCompatibilityTarget,
         });
     } else {
@@ -143,9 +122,9 @@ async function configureSynapticP23Admission(compoundRepairRevision) {
     if (typeof createLocalPromotionProposal !== 'function') {
         throw new Error('Synaptic P23 admission provider factory must return a local proposal function');
     }
-    return { engine, currentHostCompatibilityTarget: synapticCommonsHostCompatibilityTarget, createLocalPromotionProposal };
+    return { currentHostCompatibilityTarget: synapticCommonsHostCompatibilityTarget, createLocalPromotionProposal };
 }
-const SYNAPTIC_P23_ADMISSION = await configureSynapticP23Admission(COMPOUND_REPAIR_REVISION);
+const SYNAPTIC_P23_ADMISSION = await configureSynapticP23Admission();
 const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
 const PHONE_MODE = PHONE_POLICY.mode !== 'research';
 const INTERVAL_MS = PHONE_POLICY.baseIntervalMs;

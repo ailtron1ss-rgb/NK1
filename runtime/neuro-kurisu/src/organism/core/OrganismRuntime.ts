@@ -126,7 +126,6 @@ export interface RuntimeConfig extends OrganismConfig {
    * It is never exposed as a client-supplied JSON proposal.
    */
   synapticP23Admission?: {
-    engine: P23LearningEngine;
     currentHostCompatibilityTarget: () => SynapticCompatibilityTarget;
     createLocalPromotionProposal: (input: {
       artifactFingerprint: string;
@@ -380,7 +379,7 @@ export class OrganismRuntime {
     if (this.synapticP23Admission) {
       if (typeof this.synapticP23Admission.currentHostCompatibilityTarget !== 'function' ||
           typeof this.synapticP23Admission.createLocalPromotionProposal !== 'function' ||
-          !this.synapticP23Admission.engine?.verifiedSkillCandidateSnapshot()) {
+          !this.core.verifiedSkillCandidateSnapshot()) {
         throw new Error('synaptic-p23-admission-provider-requires-configured-local-verified-skill-lifecycle');
       }
     }
@@ -2030,7 +2029,7 @@ export class OrganismRuntime {
       // This rechecks attestation expiry, publisher/attestor trust, licence review
       // and compatibility against the live host after the potentially long local run.
       const finalBundle = this.synapticCommons.prepareP23Admission(fingerprint, latestHost);
-      const candidate = admission.engine.stageSynapticCommonsCandidate(proposal, finalBundle);
+      const candidate = this.core.stageSynapticCommonsCandidate(proposal, finalBundle);
       return {
         status: candidate.status,
         candidateId: candidate.candidateId,

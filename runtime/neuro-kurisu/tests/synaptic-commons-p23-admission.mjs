@@ -4,10 +4,9 @@ import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
-import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
 import { createSignedSynapticArtifact, synapticArtifactFingerprint, synapticAttestationSigningPayload } from '../src/organism/learning/SynapticCommons.ts';
-import { AtomicFileSkillStorePersistence } from '../src/organism/learning/AtomicFileSkillStorePersistence.ts';
-import { VersionedSkillCandidateStore } from '../src/organism/learning/VersionedSkillCandidateStore.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
@@ -156,16 +155,6 @@ function buildLocalProposal(candidateMethod) {
   });
 }
 
-const candidateStorePath = path.join(root, 'p23-candidates.json');
-const candidateStore = new VersionedSkillCandidateStore(
-  new AtomicFileSkillStorePersistence(candidateStorePath),
-  () => true,
-  () => true,
-  () => true,
-);
-const engine = new P23LearningEngine();
-engine.configureVerifiedSkillLifecycle(candidateStore);
-
 const outcomeBundlePath = path.join(root, 'synaptic-p23-outcomes.json');
 await writeFile(outcomeBundlePath, JSON.stringify(buildSignedOutcomeBundle('synaptic-commons:' + fingerprint)));
 const builtInProposalProvider = createSynapticP23AdmissionProvider({
@@ -211,7 +200,6 @@ const runtime = new OrganismRuntime({
   autoRun: false,
   enableLanguage: false,
   synapticP23Admission: {
-    engine,
     currentHostCompatibilityTarget: () => hostDrift
       ? { ...host, permittedTools: [] }
       : { ...host },
@@ -274,7 +262,7 @@ try {
     'Synaptic admission must stage into OrganismCore canonical P23 store, not a detached engine store',
   );
 
-  const snapshot = engine.verifiedSkillCandidateSnapshot();
+  const snapshot = runtime.core.verifiedSkillCandidateSnapshot();
   assert.deepEqual(snapshot.active, [], 'Synaptic import must never activate a local P23 skill');
   const candidate = snapshot.candidates.find(item => item.candidateId === staged.candidateId);
   assert.equal(candidate.status, 'staged');
@@ -283,14 +271,14 @@ try {
   assert.equal(candidate.payload.activation.canActivateAutomatically, false);
   assert.equal(candidate.payload.localEvidence.candidateMethod, 'synaptic-commons:' + fingerprint);
 
-  assert.throws(() => candidateStore.recordShadowObservation(staged.candidateId, {
+  assert.throws(() => runtime.core.recordVerifiedSkillShadow(staged.candidateId, {
     runId: 'synaptic-blocked-shadow',
     evidenceFingerprint: '1'.repeat(64),
     passed: true,
     observedAt: Date.now(),
   }), /synaptic-candidate-requires-native-adapter/,
   'the generic P23 shadow runner cannot execute a portable review envelope');
-  assert.throws(() => candidateStore.approveAndPromote(staged.candidateId, {
+  assert.throws(() => runtime.core.approveVerifiedSkillCandidate(staged.candidateId, {
     approvedBy: 'test-authority',
     approvedAt: Date.now() + 1000,
     expectedActiveVersion: null,
@@ -298,11 +286,8 @@ try {
   assert.deepEqual(candidateStore.snapshot().active, [],
     'a portable review envelope cannot enter shadow execution or promotion');
 
-  const restartedStore = new VersionedSkillCandidateStore(
-    new AtomicFileSkillStorePersistence(candidateStorePath),
-    () => true, () => true, () => true,
-  );
-  const restored = restartedStore.snapshot();
+  const restartedCore = new OrganismCore(new FileStateStore(path.join(root, 'organism.json')));
+  const restored = restartedCore.verifiedSkillCandidateSnapshot();
   assert.equal(restored.candidates[0].status, 'staged');
   assert.deepEqual(restored.active, []);
   assert.equal((await runtime.synapticCommonsDiagnostics()).executableCount, 0);
