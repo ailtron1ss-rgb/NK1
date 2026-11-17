@@ -370,6 +370,22 @@ assert.equal(damagedGraph.diagnostics().scenarios, 2, 'restore must reject dupli
 assert.equal(damagedGraph.getScenario('cycle-a')?.parentId, null, 'restore must break a parent cycle instead of preserving a cyclic scenario graph');
 assert.equal(damagedGraph.getScenario('cycle-b')?.parentId, 'cycle-a');
 
+const legacyReviewTime = new SharedFutureEngine();
+legacyReviewTime.restore({
+  version: 1,
+  scenarios: [{ id: 'legacy-review-time', title: 'Older snapshot omitted nextReviewAt', owner: 'system', status: 'draft' }],
+});
+assert.equal(legacyReviewTime.getScenario('legacy-review-time')?.nextReviewAt, null, 'older snapshots without nextReviewAt must not turn into an immediately-due review');
+
+assert.throws(() => hardening.createScenario({
+  id: 'duplicate-assumption-ids',
+  title: 'Duplicate nested assumptions are rejected',
+  assumptions: [
+    { id: 'same-assumption', statement: 'First assumption' },
+    { id: 'same-assumption', statement: 'Second assumption' },
+  ],
+}), /assumption-id-duplicate/);
+
 for (const toolId of [
   'organism.future.scenarios.create',
   'organism.future.decisions.propose',

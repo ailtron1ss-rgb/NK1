@@ -300,7 +300,7 @@ export class SharedFutureEngine {
       scenarios.push(this.restoreScenario({ ...row, id }, index));
     }
     const scenarioIds = new Set(scenarios.map((row) => row.id));
-    const scenarioById = new Map(scenarios.map((row) => [row.id, row]));
+    const scenarioById = new Map<string, SharedFutureScenario>(scenarios.map((row) => [row.id, row] as const));
     for (const row of scenarios) {
       const visited = new Set<string>([row.id]);
       let cursor: SharedFutureScenario | undefined = row;
@@ -370,7 +370,7 @@ export class SharedFutureEngine {
   private restoreScenario(row: Record<string, unknown>, index = 0): SharedFutureScenario {
     const owner = ownerField(row.owner, 'system');
     const assumptions: SharedFutureAssumption[] = Array.isArray(row.assumptions) ? (row.assumptions as unknown[]).slice(0, MAX_ASSUMPTIONS).filter(isRecord).map((item, index): SharedFutureAssumption => ({
-      id: restoredText(item.id, 'assumption-' + index, 96),
+      id: restoredId(item.id, 'assumption-' + index),
       statement: restoredText(item.statement, '', MAX_TEXT),
       source: restoredText(item.source, 'unknown', 160),
       confidence01: finite(item.confidence01, 0.25, 0, 1),
@@ -379,12 +379,12 @@ export class SharedFutureEngine {
       expiresAt: item.expiresAt === null || item.expiresAt === undefined ? null : timestamp(item.expiresAt, 0),
     })) : [];
     const goalLinks: SharedFutureGoalLink[] = Array.isArray(row.goalLinks) ? (row.goalLinks as unknown[]).slice(0, MAX_GOAL_LINKS).filter(isRecord).map((item): SharedFutureGoalLink => ({
-      id: restoredText(item.id, '', 96),
+      id: restoredId(item.id, ''),
       owner: ownerField(item.owner, owner),
       relationship: item.relationship === 'blocks' || item.relationship === 'depends-on' ? item.relationship : 'supports',
     })).filter((item) => item.id) : [];
     const consequences = Array.isArray(row.consequences) ? row.consequences.slice(0, MAX_CONSEQUENCES).filter(isRecord).map((item, index) => ({
-      id: restoredText(item.id, 'consequence-' + index, 96),
+      id: restoredId(item.id, 'consequence-' + index),
       description: restoredText(item.description, '', MAX_TEXT),
       probability01: finite(item.probability01, 0.5, 0, 1),
       impact01: finite(item.impact01, 0.5, 0, 1),
@@ -392,14 +392,14 @@ export class SharedFutureEngine {
       reversible: item.reversible !== false,
     })) : [];
     const pointsOfNoReturn = Array.isArray(row.pointsOfNoReturn) ? row.pointsOfNoReturn.slice(0, MAX_POINTS_OF_NO_RETURN).filter(isRecord).map((item, index) => ({
-      id: restoredText(item.id, 'ponr-' + index, 96),
+      id: restoredId(item.id, 'ponr-' + index),
       description: restoredText(item.description, '', MAX_TEXT),
       mitigationPlan: restoredText(item.mitigationPlan, '', MAX_TEXT),
       compensationPlan: restoredText(item.compensationPlan, '', MAX_TEXT),
       requiresExplicitConfirmation: item.requiresExplicitConfirmation !== false,
     })) : [];
     const revisionSignals: SharedFutureRevisionSignal[] = Array.isArray(row.revisionSignals) ? (row.revisionSignals as unknown[]).slice(0, MAX_REVISION_SIGNALS).filter(isRecord).map((item, index): SharedFutureRevisionSignal => ({
-      id: restoredText(item.id, 'signal-' + index, 96),
+      id: restoredId(item.id, 'signal-' + index),
       kind: item.kind === 'metric-below' || item.kind === 'metric-above' || item.kind === 'date' ? item.kind : 'manual',
       description: restoredText(item.description, '', MAX_TEXT),
       ...(typeof item.metricKey === 'string' ? { metricKey: item.metricKey.slice(0, 100) } : {}),
@@ -440,7 +440,7 @@ export class SharedFutureEngine {
       createdAt: timestamp(row.createdAt, 0),
       updatedAt: timestamp(row.updatedAt, 0),
       lastReviewedAt: timestamp(row.lastReviewedAt, 0),
-      nextReviewAt: row.nextReviewAt === null ? null : timestamp(row.nextReviewAt, 0),
+      nextReviewAt: row.nextReviewAt === null || row.nextReviewAt === undefined ? null : timestamp(row.nextReviewAt, 0),
       reviewRequired: row.reviewRequired === true,
       reviewReasons: Array.isArray(row.reviewReasons) ? row.reviewReasons.filter((v): v is string => typeof v === 'string').slice(0, 12).map((v) => v.slice(0, 180)) : [],
       assumptions,
@@ -858,6 +858,7 @@ export class SharedFutureEngine {
         scenario.status = 'invalidated';
         scenario.reviewRequired = false;
         scenario.reviewReasons = [];
+        scenario.nextReviewAt = null;
         scenario.lastReviewedAt = at;
         scenario.updatedAt = at;
       } else if (input.action === 'revise') {
@@ -872,6 +873,7 @@ export class SharedFutureEngine {
         scenario.status = 'superseded';
         scenario.reviewRequired = false;
         scenario.reviewReasons = [];
+        scenario.nextReviewAt = null;
         scenario.lastReviewedAt = at;
         scenario.updatedAt = at;
         successor.status = 'active';
