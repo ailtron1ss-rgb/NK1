@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { CognitiveParliament } from '../src/organism/system/CognitiveParliament.ts';
+import { GovernanceSubsystemRuntime } from '../src/organism/core/GovernanceSubsystemRuntime.ts';
 
-const parliament = new CognitiveParliament();
+const governance = new GovernanceSubsystemRuntime();
+assert.ok(governance.cognitiveParliament instanceof CognitiveParliament);
+assert.ok(governance.p69ConstitutionalArbiter, 'P69 remains the separate final constitutional gate');
+const parliament = governance.cognitiveParliament;
 const roles = ['researcher','planner','skeptic','executor','safety-guardian','auditor'];
 const report = (role, overrides = {}) => ({
   role, stance: 'support', recommendation: 'proceed', facts: ['measured result'],
@@ -39,7 +43,7 @@ assert.equal(unaudited.status, 'needs-evidence');
 const duplicated = parliament.deliberate({candidateId:'duplicate',risk:'low',
   reports: reports.map(r => ({...r, evidence: Array.from({length:20},(_,i)=>({...r.evidence[0],id:`${r.role}-${i}`,sourceFamily:'same-source'}))}))});
 assert.equal(duplicated.independentSourceCount, 1);
-assert.ok(duplicated.reasons.includes('insufficient-independent-source-families') === false);
+assert.equal(duplicated.evidenceQuality01, .95 * .95 * (0.5 + 0.5 * .9));
 
 // High-risk decisions require independent source families and model substrates.
 const correlated = parliament.deliberate({candidateId:'correlated',risk:'high',
@@ -61,6 +65,7 @@ assert.equal(hypothetical.status, 'needs-evidence');
 assert.equal(hypothetical.evidenceQuality01, 0);
 
 console.log(JSON.stringify({
+  runtimeWiring: 'governance-subsystem',
   approved: approved.status, blocked: blocked.status,
   missingRoleGate: incomplete.status, correlatedModelGate: correlated.status,
   unresolvedDissentGate: dissent.status, hypothesisGate: hypothetical.status,
