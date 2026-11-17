@@ -473,6 +473,10 @@ export async function runTeacherStudentDistillationTraining(
   if (!pathIsWithin(workspace, unresolvedConfig) || unresolvedConfig === workspace) {
     throw new Error('teacher-distillation-config-path-outside-workspace');
   }
+  const configStat = await lstat(unresolvedConfig);
+  if (configStat.isSymbolicLink() || !configStat.isFile()) {
+    throw new Error('teacher-distillation-config-must-be-regular-file');
+  }
   const config = await realpath(unresolvedConfig);
   if (!pathIsWithin(workspace, config)) {
     throw new Error('teacher-distillation-config-path-outside-workspace');
