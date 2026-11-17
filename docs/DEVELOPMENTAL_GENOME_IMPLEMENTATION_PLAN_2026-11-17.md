@@ -17,7 +17,7 @@
 - Runtime requires Node >=22.12.0 and npm >=10.8.0; runtime dependencies remain zero.
 - State schema remains the existing RELEASE_CONTRACT.stateSchema; no migration or release-version change is introduced.
 - Only estimatedCost01 and cadenceCycles are mutable genome traits in v1.
-- Runtime code, system membership, dependency edges, identity, safety/invariant authority, evaluation, rollback, release and state-migration contracts are immutable.
+- Runtime code, system membership, dependency edges, identity, snapshot weights, execution ranks, safety/invariant authority, evaluation, rollback, release and state-migration contracts are immutable.
 - APPROVED means eligible for human review, not active; every candidate remains NOT_APPLIED.
 - Never claim Release ZIP parity or Release inclusion from a source-branch commit.
 
@@ -78,7 +78,7 @@
 - [ ] **Step 1: Add inheritance and attack-case assertions**
   - Build a child changing only a valid module's cost/cadence; assert generation, parent digest, exact change receipt and stable digest.
   - Assert the gate approves a valid child only when its parent is supplied and matches.
-  - Assert the gate blocks changes to system set, purpose, phase, dependencies, capabilities, invariant rules, release/state schema, migration owner, digest, and lineage.
+  - Assert the gate blocks changes to system set, purpose, phase, snapshot weight, execution rank, dependencies, capabilities, invariant rules, release/state schema, migration owner, digest, and lineage.
   - Assert unknown/duplicate module patches, NaN, infinities, costs outside [0,1], and cadence outside integer [1,64] throw or block without normalization.
 - [ ] **Step 2: Run the focused test and verify RED**
   - Run: node --experimental-strip-types runtime/neuro-kurisu/tests/developmental-genome.mjs
