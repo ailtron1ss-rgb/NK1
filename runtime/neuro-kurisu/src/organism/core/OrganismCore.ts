@@ -7614,7 +7614,6 @@ export class OrganismCore {
         const parliamentReviewDue = this.config.enableCognitiveParliament &&
             (Boolean(observation.text) || state.tick % this.config.cognitiveParliamentEveryCycles === 0);
         let parliamentGateAttempted = false;
-        let parliamentaryApprovedCandidateId: string | null = null;
         let p69Decision: ReturnType<typeof this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate>;
         let selected: typeof governedCandidates[number] | null = null;
         if (parliamentReviewDue && governedCandidates.length) {
@@ -7650,7 +7649,6 @@ export class OrganismCore {
             selected = review.selectedCandidate
                 ? governedCandidates.find(candidate => candidate.id === review.selectedCandidate!.id) ?? null
                 : null;
-            if (review.status === 'p69-selected') parliamentaryApprovedCandidateId = primaryCandidate.id;
             const parliamentReceipt:CognitiveParliamentCycleReceipt = {
                 version: 1, tick: state.tick, at: Date.now(), candidateId: primaryCandidate.id,
                 risk: parliamentRisk, gateStatus: review.status, dispatchStatus: review.parliament.status,
@@ -7680,9 +7678,9 @@ export class OrganismCore {
         const constitutionalSelected = p69Decision.chosen ? governedCandidates.find(c => c.id === p69Decision.chosen!.id) ?? null : null;
         if (!parliamentGateAttempted) selected = constitutionalSelected ?? this.selectIntent(governedCandidates, userRequestedAction, Boolean(observation.text), n);
         const b276ProgramCandidate = b276NextProgramPrimitive ? governedCandidates.find(c => c.action === b276NextProgramPrimitive.primitive) : null;
-        const b276ProgramCanCommit = this.config.enableCompositionalExecution !== false && Boolean(b276NextProgramPrimitive) &&
-            !Boolean(p69Decision.vetoed) && !Boolean(userRequestedAction) && !Boolean(observation.text || observation.worldEvent) &&
-            (!parliamentGateAttempted || (b276ProgramCandidate?.id === parliamentaryApprovedCandidateId && parliamentaryApprovedCandidateId !== null));
+        const b276ProgramCanCommit = !parliamentGateAttempted &&
+            this.config.enableCompositionalExecution !== false && Boolean(b276NextProgramPrimitive) &&
+            !Boolean(p69Decision.vetoed) && !Boolean(userRequestedAction) && !Boolean(observation.text || observation.worldEvent);
         const b276Execution = (b276ProgramCanCommit && b276ProgramCandidate) ? this.developmentalNeural.latentActionProgramSynthesizerB276.nextExecutablePrimitive() : null;
         if (b276Execution && b276ProgramCandidate)
             selected = b276ProgramCandidate;
