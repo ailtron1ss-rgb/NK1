@@ -90,7 +90,8 @@ export class ScientificMethodEngine{
   const evidence=typeof input.evidence==='string'?input.evidence.normalize('NFKC').replace(/[\r\n\t]+/gu,' ').trim().slice(0,320):'';
   if(!evidence||p.evidence.includes(evidence))return;
   if(input.success!==undefined&&(!Number.isFinite(input.success)||input.success<0||input.success>1))return;
-  if(p.verificationContract&&!validMechanismReceipt(p.verificationContract,input.verificationReceipt,evidence,input.success))return;
+  const requiresMechanismReceipt=Boolean(p.verificationContract)||p.provenance.includes('mechanism-serendipity');
+  if(requiresMechanismReceipt&&(!p.verificationContract||!validMechanismReceipt(p.verificationContract,input.verificationReceipt,evidence,input.success)))return;
   p.status='testing';
   if(input.experiment)p.experiments=[input.experiment,...p.experiments].slice(0,32);
   p.evidence=[evidence,...p.evidence].slice(0,64);
