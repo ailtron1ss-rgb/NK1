@@ -2134,7 +2134,8 @@ async function route(req, res) {
                 });
                 if (!review) return json(res, 403, { ok:false, error:'constitution-review-attestation-invalid' });
                 try {
-                    const updated=await runtime.core.constitutionEvolutionReview(proposalId,review);
+                    // The engine independently verifies the detached signature too; Core never receives an unsigned review DTO.
+                    const updated=await runtime.core.constitutionEvolutionReview(proposalId,input?.artifact);
                     return json(res, 200, { ok:true, proposal:updated });
                 } catch (error) {
                     const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
