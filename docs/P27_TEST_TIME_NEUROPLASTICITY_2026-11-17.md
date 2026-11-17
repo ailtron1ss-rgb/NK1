@@ -36,6 +36,9 @@ The same private opaque context key is held in a branch-private pending field fr
 - Expiry: 30 minutes wall-clock time or more than 256 runtime ticks without activity.
 - Per-component residual bound: `[-0.025, 0.025]`.
 - Total overlay L2 norm: at most `0.08`.
+- Stability gate: a four-step backtracking search (`1.0 / 0.5 / 0.25 / 0.125)) evaluates candidate offsets against the same pre-update one-step latent prediction; an update is accepted only when finite prediction error strictly decreases. A failed search restores the exact prior offsets and increments a no-gain rejection counter.
+- Reversible drift: accepted offsets relax toward the durable baseline by `0.992^tickDelta` and an additional 10-minute wall-clock half-life. The original 30-minute/256-tick idle expiry remains a hard upper bound.
+- Input boundary: decision/outcome ticks, actions, scalar metrics, complete action-utility records and 1–64 element feature vectors are validated before pending-outcome consumption or state mutation. Sparse, accessor-backed and non-finite feature arrays fail closed.
 - Reset and restore: explicit reset clears one session or every overlay; Core process start, restore and runtime stop clear ephemeral contexts.
 - Snapshot boundary: `snapshot()` contains only durable bridge/neural state; opaque session scopes, pending outcome keys and temporary residuals are never serialized.
 - Candidate export: `exportTestTimeAdaptationCandidate()` returns an isolated copy marked `requires-independent-validation`. There is no automatic promotion or consolidation path.
@@ -44,7 +47,7 @@ The current persistent world model still follows its pre-existing training behav
 
 ## Diagnostics
 
-`EmbodiedCausalWorldBridge.metrics()` reports context count, active overlay norm, accepted/rejected updates, expirations and LRU evictions. `NeuralExperienceBranch.diagnostics()` exposes these as `testTimeNeuroplasticity`, including unmatched outcomes. These are runtime counters, not a claim of improved task performance.
+`EmbodiedCausalWorldBridge.metrics()` reports context count, active overlay norm, accepted/rejected updates, expirations, LRU evictions, decay events, backtracked updates, no-gain rejections and before/after prediction-error values for the most recent fast-adaptation attempt. `NeuralExperienceBranch.diagnostics()` exposes these as `testTimeNeuroplasticity`, including unmatched outcomes. These are runtime counters, not a claim of improved task performance.
 
 ## Verification record
 
