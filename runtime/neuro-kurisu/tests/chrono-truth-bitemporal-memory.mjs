@@ -385,3 +385,5 @@ console.log('CHRONOTRUTH_BITEMPORAL_MEMORY=PASS', JSON.stringify({
   validTimeAndKnowledgeTimeIndependent: true,
   restoreRoundTrip: true,
 }));
+
+// Keep bounded-history and hostile-restore cases in the exact-head regression gate.
