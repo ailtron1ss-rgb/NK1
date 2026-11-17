@@ -1,0 +1,37 @@
+name: NK1 World Forge
+on:
+  pull_request:
+    branches:
+      - workpass70-source
+      - aspect/shared-future-scenario-space-20261117
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/developmental/WorldForge.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/WorldForgeTools.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts'
+      - 'runtime/neuro-kurisu/tests/world-forge-*.mjs'
+      - '.github/workflows/nk1-world-forge.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  world-forge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      - name: Run World Forge regressions
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --experimental-strip-types tests/world-forge-evaluator-isolation.mjs
+          node --experimental-strip-types tests/world-forge-perturbation-opacity.mjs
+          node --experimental-strip-types tests/world-forge-action-integrity.mjs
+          node --experimental-strip-types tests/world-forge-dynamic-transitions.mjs
+          node --experimental-strip-types tests/world-forge-ttl-bounds.mjs
+          node --experimental-strip-types tests/world-forge-synthetic-lab.mjs
+          node --experimental-strip-types tests/world-forge-splits-and-perturbations.mjs
+          node --experimental-strip-types tests/world-forge-future-simulator-integration.mjs
+          node --experimental-strip-types tests/world-forge-runtime-tools.mjs
+          npm run typecheck
