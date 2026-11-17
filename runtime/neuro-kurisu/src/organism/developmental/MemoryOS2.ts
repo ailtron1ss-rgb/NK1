@@ -374,8 +374,13 @@ function normalizeBitemporalHistory(value:unknown):MemoryBitemporalInterval[]{
   const source=typeof candidate.source==='string'&&candidate.source.trim()?candidate.source.trim().slice(0,240):'unknown';
   const temporalKind=MEMORY_TEMPORAL_KINDS.has(candidate.temporalKind)?candidate.temporalKind as MemoryTemporalKind:(status==='fact'?'fact':'assessment');
   const freshnessValue=candidate.freshnessUntilAt==null?null:finite(candidate.freshnessUntilAt);
-  const evidenceLineageKeys=Array.isArray(candidate.evidenceLineageKeys)
-   ?[...new Set(candidate.evidenceLineageKeys.filter((key:unknown):key is string=>typeof key==='string'&&key.trim().length>0).map((key:string)=>key.slice(0,256)))].slice(-32)
+  const evidenceLineageKeys:string[]|undefined=Array.isArray(candidate.evidenceLineageKeys)
+   ?(candidate.evidenceLineageKeys as unknown[]).reduce<string[]>((keys,key)=>{
+     if(typeof key!=='string'||key.trim().length===0)return keys;
+     const normalized=key.slice(0,256);
+     if(!keys.includes(normalized))keys.push(normalized);
+     return keys;
+    },[]).slice(-32)
    :undefined;
   return [{
    validFromAt,validUntilAt,recordedFromAt,recordedUntilAt,
