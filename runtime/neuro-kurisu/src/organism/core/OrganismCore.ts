@@ -11835,7 +11835,103 @@ export class OrganismCore {
     externalObserverSnapshot() { return this.evidenceResearchSubsystem.externalObserver.snapshot(); }
     externalObserverSummary() { return this.evidenceResearchSubsystem.externalObserver.summary(); }
     reconcileExternalClaim(claimKey: string, expectedPostcondition?: string) { return structuredClone(this.evidenceResearchSubsystem.externalObserver.reconcileClaim(claimKey, expectedPostcondition)); }
-    private validateSharedFutureOutcomeEvidence(
+        private recordSharedFutureActionExecutionBinding(input: {
+        executionId: string;
+        toolId: string;
+        actionDecisionId: string;
+        sharedFutureDecisionId: string;
+        scenarioId: string;
+        consequenceId: string;
+        expectedPostcondition: string;
+        inputHash: string;
+        outcomeClass: string;
+        autonomous: boolean;
+        recordedAt: number;
+    }): void {
+        const system = this.persisted.system as any;
+        const prior = system.sharedFutureActionBindings;
+        const records: any[] = Array.isArray(prior?.records) && prior.records.length <= 512
+            ? prior.records.filter((row: any) => row && typeof row === 'object' && typeof row.executionId === 'string')
+            : [];
+        if (Array.isArray(prior?.records) && prior.records.length > 512) {
+            // Corrupt/oversized correlation state fails closed; do not trim evidence
+            // and accidentally keep a later claimant while losing an earlier link.
+            system.sharedFutureActionBindings = {
+                version: 1,
+                records: [],
+                overflow: Math.max(0, Math.floor(Number(prior?.overflow) || 0)) + 1,
+                quarantined: true,
+            };
+            return;
+        }
+        const existing = records.filter((row) => row.executionId === input.executionId);
+        if (existing.length) {
+            // Replays are idempotent. A second decision/tool may never rebind the same
+            // execution receipt; conflicting rows make lookup fail closed.
+            return;
+        }
+        if (records.length >= 512) {
+            system.sharedFutureActionBindings = {
+                version: 1,
+                records,
+                overflow: Math.max(0, Math.floor(Number(prior?.overflow) || 0)) + 1,
+            };
+            return;
+        }
+        const row = {
+            ...input,
+            id: 'sf-action-link:' + sha256Stable({
+                executionId: input.executionId,
+                toolId: input.toolId,
+                actionDecisionId: input.actionDecisionId,
+                sharedFutureDecisionId: input.sharedFutureDecisionId,
+            }).slice(0, 48),
+        };
+        system.sharedFutureActionBindings = {
+            version: 1,
+            records: [...records, row],
+            overflow: Math.max(0, Math.floor(Number(prior?.overflow) || 0)),
+        };
+    }
+
+    private findSharedFutureActionExecutionBinding(
+        executionId: string,
+        toolId: string,
+        actionDecisionId: string,
+    ): {
+        sharedFutureDecisionId: string;
+        scenarioId: string;
+        consequenceId: string;
+        expectedPostcondition: string;
+        inputHash: string;
+        outcomeClass: string;
+        autonomous: boolean;
+    } | null {
+        const state = (this.persisted.system as any)?.sharedFutureActionBindings;
+        if (state?.quarantined === true || !Array.isArray(state?.records) || state.records.length > 512) return null;
+        const rows = state.records.filter((row: any) =>
+            row && typeof row === 'object' &&
+            row.executionId === executionId && row.toolId === toolId &&
+            row.actionDecisionId === actionDecisionId
+        );
+        if (rows.length !== 1) return null;
+        const row = rows[0];
+        if (!row.sharedFutureDecisionId || !row.scenarioId || !row.consequenceId ||
+            !row.expectedPostcondition || !/^[a-f0-9]{64}$/i.test(String(row.inputHash ?? '')) ||
+            !['execution-failed', 'executed-unverified', 'executed-verified', 'executed-contradicted', 'executed-partial'].includes(String(row.outcomeClass)) ||
+            typeof row.autonomous !== 'boolean') return null;
+        return {
+            sharedFutureDecisionId: row.sharedFutureDecisionId,
+            scenarioId: row.scenarioId,
+            consequenceId: row.consequenceId,
+            expectedPostcondition: row.expectedPostcondition,
+            inputHash: row.inputHash,
+            outcomeClass: row.outcomeClass,
+            autonomous: row.autonomous,
+        };
+    }
+
+private validateSharedFutureOutcomeEvidence(
          outcome: import('../developmental/SharedFutureEngine.ts').SharedFutureOutcomeRecord,
      ): boolean {
          try {
@@ -11850,6 +11946,10 @@ export class OrganismCore {
              if (!actionDecisionId || !toolId || !executionId || !observationId || !expectedPostcondition || !observedPostcondition) return false;
              if (direction !== 'confirmed' && direction !== 'contradicted') return false;
              if (outcome.evidenceRef !== 'external-observation:' + observationId) return false;
+             const actionLink = this.findSharedFutureActionExecutionBinding(executionId, toolId, actionDecisionId);
+             if (!actionLink || actionLink.sharedFutureDecisionId !== outcome.sharedFutureDecisionId ||
+                 actionLink.scenarioId !== outcome.scenarioId || actionLink.consequenceId !== outcome.consequenceId ||
+                 actionLink.expectedPostcondition !== expectedPostcondition) return false;
 
              const normalize = (value: unknown) => String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
              const savedFuture = (this.persisted.facets.advanced.futureSimulator as any)?.sharedFuture;
@@ -11971,7 +12071,9 @@ export class OrganismCore {
                 autonomous: input.autonomous,
             });
             temporalReafference = { eligible: signal.eligible, reason: signal.reason, ...(signal.direction ? { direction: signal.direction } : {}), ...(signal.decisionId ? { decisionId: signal.decisionId } : {}) };
-            if (signal.eligible && signal.decisionId && signal.direction && this.persisted.traces.some((trace) => trace.id === signal.decisionId && Boolean(trace.selected))) {
+            if (signal.eligible && signal.decisionId && signal.direction &&
+                 this.findSharedFutureActionExecutionBinding(String(input.actionRef), input.tool ?? 'external-observation', signal.decisionId) &&
+                 this.persisted.traces.some((trace) => trace.id === signal.decisionId && Boolean(trace.selected))) {
                 const actionToolId = input.tool ?? 'external-observation';
                 const actionProjection = this.cognitiveRuntime.outcomeCognition.snapshot().records.find(
                     (row) => row.executionId === input.actionRef && row.tool === actionToolId,
@@ -12222,6 +12324,27 @@ export class OrganismCore {
         if (!wasToolExecutorEntered(result.outcomeClass) && result.outcomeClass !== 'reconciled-not-executed') {
             this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
             return;
+        }
+        // Record the canonical action/decision relation only at the trusted
+        // ActionGateway finalization boundary, never from external-observation input.
+        if (wasToolExecutorEntered(result.outcomeClass) && suppliedDecisionId && matchingDecisionTrace &&
+            result.executionId && result.tool === id) {
+            const sharedBinding = this.cognitiveRuntime.futureSimulator.sharedFuture.findActionBindingForCanonicalDecision(suppliedDecisionId);
+            if (sharedBinding) {
+                this.recordSharedFutureActionExecutionBinding({
+                    executionId: result.executionId,
+                    toolId: id,
+                    actionDecisionId: suppliedDecisionId,
+                    sharedFutureDecisionId: sharedBinding.sharedFutureDecisionId,
+                    scenarioId: sharedBinding.scenarioId,
+                    consequenceId: sharedBinding.binding.consequenceId,
+                    expectedPostcondition: sharedBinding.binding.expectedPostcondition,
+                    inputHash: sha256Stable(input),
+                    outcomeClass: result.outcomeClass,
+                    autonomous: options.autonomous === true,
+                    recordedAt: result.audit.at,
+                });
+            }
         }
         // A provider-authoritative receipt can prove that a pending command never
         // crossed the provider's acceptance boundary. Record that reconciliation,
