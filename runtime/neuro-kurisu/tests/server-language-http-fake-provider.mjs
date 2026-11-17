@@ -178,6 +178,8 @@ try {
   assert.equal(bridgeDiagnosticsBody.diagnostics?.lastFeatureDimensions, 43);
   assert.ok(bridgeDiagnosticsBody.diagnostics?.llamaCppTemplateKwargsSent > 0,
     'the runtime must preserve the provider receipt and count the real local-template hand-off');
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.templateConsumptionVerified, false,
+    'sending kwargs does not prove the selected Jinja template consumed them');
   assert.equal(bridgeDiagnosticsBody.diagnostics?.activationSteeringApplied, 0);
   assert.equal(bridgeDiagnosticsBody.diagnostics?.residualBlockApplied, 0);
 
