@@ -180,8 +180,8 @@ assert.ok(exported.files['train-provenance.jsonl'].includes('teacher-train-1'));
 assert.ok(exported.files['validation-provenance.jsonl'].includes('teacher-validation-1'));
 assert.ok(!exported.files['train-provenance.jsonl'].includes('holdout-1'));
 assert.ok(!exported.files['validation-provenance.jsonl'].includes('holdout-1'));
-const trainProvenanceRows = exported.files['train-provenance.jsonl'].trim().split('\\n').map(JSON.parse);
-const validationProvenanceRows = exported.files['validation-provenance.jsonl'].trim().split('\\n').map(JSON.parse);
+const trainProvenanceRows = exported.files['train-provenance.jsonl'].trim().split('\n').map(JSON.parse);
+const validationProvenanceRows = exported.files['validation-provenance.jsonl'].trim().split('\n').map(JSON.parse);
 assert.equal(trainProvenanceRows.length, 1);
 assert.equal(validationProvenanceRows.length, 1);
 for (const row of [...trainProvenanceRows, ...validationProvenanceRows]) {
