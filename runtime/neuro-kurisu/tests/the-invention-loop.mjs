@@ -1,19 +1,13 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign, createHash } from 'node:crypto';
-import { TheInventionLoop } from '../src/organism/research/TheInventionLoop.ts';
+import { TheInventionLoop, buildInventionVerifierManifest, inventionProtocolFingerprint } from '../src/organism/research/TheInventionLoop.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { canonicalOutcomePayload } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { EvidenceResearchSubsystemRuntime } from '../src/organism/core/EvidenceResearchSubsystemRuntime.ts';
 import { OrganismSystemFabric } from '../src/organism/core/OrganismSystemFabric.ts';
 
 const digest = (value) => createHash('sha256').update(String(value)).digest('hex');
-function canonical(value) {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
-  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
-  return '{' + Object.keys(value).filter(key => value[key] !== undefined).sort()
-    .map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
-}
-const protocolFingerprint = protocol => digest(canonical(protocol));
+const protocolFingerprint = inventionProtocolFingerprint;
 let now = 1_800_000_000_000;
 let sequence = 0;
 const nextTime = () => now++;
@@ -49,18 +43,7 @@ const protocol = {
 };
 
 function manifestFor(record, phase, seed) {
-  const verifierId = record.protocol.verifierPlan[phase];
-  const taskId = phase === 'critique'
-    ? record.id + ':critique'
-    : record.id + ':' + phase + ':' + seed;
-  return [{
-    taskId,
-    family: 'invention-loop',
-    split: phase === 'holdout' ? 'holdout' : 'validation',
-    promptFingerprint: record.protocol.testFingerprint,
-    verifierId,
-    version: '1',
-  }];
+  return buildInventionVerifierManifest(record.id, record.protocol, phase, seed);
 }
 function signedArtifact(record, phase, seed, options = {}) {
   const isCritique = phase === 'critique';
