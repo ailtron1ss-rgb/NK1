@@ -91,6 +91,19 @@ const malformedCriteria = compiler.compile({
 assert.ok(malformedCriteria.missingInformation.includes('acceptance-criteria-invalid'),
   'non-string acceptance criteria must not be silently discarded');
 assert.equal(compiler.gate(malformedCriteria, 'organism.inspect').allowed, false);
+const malformedRisk = compiler.compile({
+  text: 'Inspect project',
+  extraction: {
+    expectedOutcome: 'Status',
+    acceptanceCriteria: ['Return status'],
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop if status is unavailable'],
+    risk: 'trust-me',
+  },
+});
+assert.ok(malformedRisk.missingInformation.includes('invalid-risk-level'),
+  'unknown risk labels must not be silently interpreted as low risk');
+assert.equal(compiler.gate(malformedRisk, 'organism.inspect').allowed, false);
 
 const processScopedCompiler = new IntentCompiler({ clock: () => now });
 const processScopedContract = processScopedCompiler.compile({
