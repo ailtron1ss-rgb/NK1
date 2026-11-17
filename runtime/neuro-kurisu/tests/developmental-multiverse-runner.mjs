@@ -132,7 +132,7 @@ try {
   assert.equal(result.evidence.verifiedObservationCount, 22,
     'verified evidence count must include 12 validation and 10 finalist-only holdout observations');
   assert.ok(/^[a-f0-9]{64}$/.test(result.evidence.verifiedEvidenceFingerprint));
-  assert.ok(runner.snapshot().holdoutObservations.every(row =>
+  assert.ok(restoredBeforeHoldout.snapshot().holdoutObservations.every(row
     /^[a-f0-9]{64}$/.test(row.verifiedEvidence?.outcomeLedgerFingerprint ?? '') &&
     row.verifiedEvidence?.outcomeCount >= 5),
     'holdout receipts must be tied to P23 ledger commits for baseline and finalist only');
@@ -142,6 +142,31 @@ try {
   assert.equal(holdoutCalls.length, 10, 'only baseline and validation finalist may execute on the five holdout scenarios');
   assert.ok(holdoutCalls.every(row => ['baseline', 'verification-plus'].includes(row.variantId)));
   assert.ok(holdoutCalls.every(row => !row.scenarioId.includes('validation-')));
+
+  let getterCalls = 0;
+  const accessorStore = new AtomicFileDevelopmentalMultiverseCheckpointStore(join(root, 'accessor-checkpoint.json'));
+  const accessorRunner = await DevelopmentalMultiverseIndependentRunner.create(
+    { ...input, runId: 'dm19-accessor-boundary' },
+    {
+      ...options,
+      checkpointStore: accessorStore,
+      buildScenarioTask: () => {
+        const task = {
+          requiredCapabilityIds: ['cap-core'],
+          expectedStepIds: ['step-core'],
+          taskFamily: 'dm19-regression-family',
+        };
+        Object.defineProperty(task, 'input', {
+          enumerable: true,
+          get() { getterCalls += 1; return { prompt: 'this getter must never run' }; },
+        });
+        return task;
+      },
+    },
+  );
+  await assert.rejects(() => accessorRunner.runValidation(), /scenario-task-data-invalid/,
+    'scenario task accessors must be rejected without executing user code');
+  assert.equal(getterCalls, 0, 'scenario input trust-boundary snapshot must not invoke getters');
 
   const restoredAfterHoldout = await DevelopmentalMultiverseIndependentRunner.restore(options);
   assert.deepEqual(restoredAfterHoldout.snapshot().finalResult, result,

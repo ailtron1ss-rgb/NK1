@@ -57,7 +57,7 @@ const validationResult = await run('validation', makeTasks('validation', 100));
 assert.equal(validationResult.evaluation.holdout.length, 0, 'validation-only report must contain no holdout rows');
 assert.throws(
   () => recordIndependentEvaluationOutcomes(validationResult, {
-    ...authority, evaluationScope: 'validation-only', allowPartialSchedule: true,
+    ...authority, evaluationScope: 'validation-only',
   }),
   /plan-coverage-incomplete/,
   'strict P23 ledger commits must continue to require the complete scheduled method plan',
