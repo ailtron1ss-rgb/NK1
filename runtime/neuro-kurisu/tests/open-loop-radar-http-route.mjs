@@ -67,14 +67,24 @@ try {
   assert.equal(unconfirmed.response.status, 400);
   assert.equal(unconfirmed.body.error, 'explicit-open-loop-confirmation-required');
 
-  const parentCreated = await request('/api/organism/open-loops', 'POST', {
+  const parentRequest = {
     confirmed: true, title: 'Wait for external response', kind: 'waiting', owner: 'system',
-    dueAt: Date.now() + 60_000, priority: 0.8,
-  });
+    dueAt: Date.now() + 60_000, priority: 0.8, idempotencyKey: 'http-create-parent-retry-001',
+  };
+  const parentCreated = await request('/api/organism/open-loops', 'POST', parentRequest);
   assert.equal(parentCreated.response.status, 201, JSON.stringify(parentCreated.body));
   const parent = parentCreated.body.record;
   assert.equal(parent.accepted, true);
   assert.equal(parent.source, 'http-api:explicit-user-confirmation');
+  const parentRetry = await request('/api/organism/open-loops', 'POST', parentRequest);
+  assert.equal(parentRetry.response.status, 201);
+  assert.equal(parentRetry.body.record.id, parent.id,
+    'same idempotency key and same request must return the existing obligation');
+  const conflictingRetry = await request('/api/organism/open-loops', 'POST', {
+    ...parentRequest, title: 'Different payload with reused key',
+  });
+  assert.equal(conflictingRetry.response.status, 409);
+  assert.match(conflictingRetry.body.error, /open-loop-idempotency-conflict/);
 
   const dependentCreated = await request('/api/organism/open-loops', 'POST', {
     confirmed: true, title: 'Complete follow-up', kind: 'project_step', owner: 'system',

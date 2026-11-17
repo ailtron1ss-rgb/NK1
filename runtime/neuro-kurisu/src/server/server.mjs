@@ -546,6 +546,12 @@ async function route(req, res) {
             const dueAt = parseTimestamp(input.dueAt);
             const expiresAt = parseTimestamp(input.expiresAt);
             const priority = input.priority === undefined ? 0.5 : input.priority;
+            const idempotencyKey = input.idempotencyKey === undefined
+                ? null
+                : typeof input.idempotencyKey === 'string' && input.idempotencyKey.trim().length > 0 && input.idempotencyKey.trim().length <= 128
+                    ? input.idempotencyKey.trim() : '';
+            if (input.idempotencyKey !== undefined && !idempotencyKey)
+                return json(res, 400, { ok: false, error: 'invalid-open-loop-idempotency-key' });
             if (Number.isNaN(dueAt) || Number.isNaN(expiresAt) ||
                 typeof priority !== 'number' || !Number.isFinite(priority) || priority < 0 || priority > 1)
                 return json(res, 400, { ok: false, error: 'invalid-open-loop-temporal-or-priority-field' });
@@ -553,12 +559,12 @@ async function route(req, res) {
                 const record = await runtime.registerOpenLoop({
                     title, description, kind, owner, accepted: true,
                     source: 'http-api:explicit-user-confirmation',
-                    dueAt, expiresAt, dependencies: input.dependencies || [], priority,
+                    dueAt, expiresAt, dependencies: input.dependencies || [], priority, idempotencyKey,
                 });
                 return json(res, 201, { ok: true, record, accepted: true });
             } catch (error) {
                 const message = String(error?.message || error).slice(0, 180);
-                const status = /capacity|unknown-dependency|sequence-exhausted/.test(message) ? 409 : 400;
+                const status = /capacity|unknown-dependency|sequence-exhausted|idempotency-conflict/.test(message) ? 409 : 400;
                 return json(res, status, { ok: false, error: message });
             }
         }

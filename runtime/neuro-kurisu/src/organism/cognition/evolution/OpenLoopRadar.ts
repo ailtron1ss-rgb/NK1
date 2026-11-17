@@ -21,6 +21,7 @@ export interface OpenLoopRecord {
   dependencies: string[];
   priority: number;
   source: string;
+  idempotencyKey: string | null;
   accepted: true;
   closureEvidence: OpenLoopClosureEvidence | null;
   cancellationReason: string | null;
@@ -44,6 +45,7 @@ const MAX_RECORDS = 512;
 const MAX_RESTORE_RECORDS = MAX_RECORDS * 4;
 const MAX_DEPENDENCIES = 32;
 const MAX_TEXT = 500;
+const IDEMPOTENCY_RETENTION_MS = 24 * 60 * 60 * 1000;
 const TERMINAL = new Set<OpenLoopStatus>(['fulfilled', 'cancelled']);
 
 const text = (value: unknown, max = MAX_TEXT): string =>
@@ -115,6 +117,13 @@ function normalizeRecord(value: unknown): OpenLoopRecord | null {
   if (status !== 'fulfilled' && rawClosureEvidence != null) return null;
   const cancellationReason = text(ownData(value, 'cancellationReason'), 240) || null;
   if (status === 'cancelled' && !cancellationReason) return null;
+  const rawIdempotencyKey = ownData(value, 'idempotencyKey');
+  const idempotencyKey = rawIdempotencyKey == null
+    ? null
+    : typeof rawIdempotencyKey === 'string' && rawIdempotencyKey.trim().length > 0 && rawIdempotencyKey.trim().length <= 128
+      ? rawIdempotencyKey.trim()
+      : undefined;
+  if (rawIdempotencyKey != null && idempotencyKey === undefined) return null;
   if (status !== 'cancelled' && cancellationReason !== null) return null;
   if (updatedAt < createdAt) return null;
   const lastSurfacedRaw = ownData(value, 'lastSurfacedAt');
@@ -130,7 +139,8 @@ function normalizeRecord(value: unknown): OpenLoopRecord | null {
     createdAt, updatedAt, dueAt, expiresAt, dependencies,
     priority: clamp01(ownData(value, 'priority')),
     source: text(ownData(value, 'source'), 120) || 'unknown',
-    accepted: true, closureEvidence, cancellationReason, lastSurfacedAt, unblockedAt,
+    accepted: true, closureEvidence, cancellationReason, idempotencyKey: idempotencyKey ?? null,
+    lastSurfacedAt, unblockedAt,
   };
 }
 export function defaultOpenLoopRadarState(): OpenLoopRadarState {
@@ -159,9 +169,15 @@ export class OpenLoopRadar {
     }
 
     const byId = new Map<string, OpenLoopRecord>();
+    const idempotencyKeys = new Set<string>();
     for (const raw of rawRecords) {
       const record = normalizeRecord(raw);
-      if (record && !byId.has(record.id)) byId.set(record.id, record);
+      if (!record || byId.has(record.id)) continue;
+      if (record.idempotencyKey !== null && idempotencyKeys.has(record.idempotencyKey)) {
+        throw new Error('open-loop-idempotency-key-conflict');
+      }
+      if (record.idempotencyKey !== null) idempotencyKeys.add(record.idempotencyKey);
+      byId.set(record.id, record);
     }
 
     const cyclicIds = this.findCyclicRecords(byId);
@@ -209,6 +225,7 @@ export class OpenLoopRadar {
     expiresAt?: number | null;
     dependencies?: string[];
     priority?: number;
+    idempotencyKey?: string | null;
   }): OpenLoopRecord {
     if (!isObject(input)) throw new TypeError('open-loop-input-must-be-object');
     const title = text(ownData(input, 'title'), 180);
@@ -219,6 +236,15 @@ export class OpenLoopRadar {
     const description = text(ownData(input, 'description'));
     const source = text(ownData(input, 'source'), 120) || 'unspecified';
     const priority = clamp01(ownData(input, 'priority'));
+    const rawIdempotencyKey = ownData(input, 'idempotencyKey');
+    const idempotencyKey = rawIdempotencyKey == null
+      ? null
+      : typeof rawIdempotencyKey === 'string' && rawIdempotencyKey.trim().length > 0 && rawIdempotencyKey.trim().length <= 128
+        ? rawIdempotencyKey.trim()
+        : undefined;
+    if (rawIdempotencyKey != null && idempotencyKey === undefined) {
+      throw new TypeError('idempotencyKey must be a non-empty string of at most 128 characters');
+    }
     if (accepted !== true) throw new Error('explicit-acceptance-required');
     if (owner !== 'user' && owner !== 'system') throw new TypeError('owner is invalid');
     if (kind !== 'promise' && kind !== 'task' && kind !== 'waiting' &&
@@ -242,14 +268,34 @@ export class OpenLoopRadar {
       if (typeof value !== 'string' || !value.trim()) throw new TypeError('dependency ids must be non-empty strings');
       return value.trim().slice(0, 128);
     }))];
+    const protectedTerminalIds = new Set(
+      this.state.records.filter(record => !TERMINAL.has(record.status)).flatMap(record => record.dependencies),
+    );
+    if (idempotencyKey) {
+      const existing = this.state.records.find(record => record.idempotencyKey === idempotencyKey);
+      if (existing) {
+        const ageMs = now - existing.updatedAt;
+        const keyStillRetained = !TERMINAL.has(existing.status) || ageMs < IDEMPOTENCY_RETENTION_MS ||
+          protectedTerminalIds.has(existing.id);
+        if (keyStillRetained) {
+          const sameRequest = existing.title === title && existing.description === description &&
+            existing.kind === kind && existing.owner === owner && existing.dueAt === dueAt &&
+            existing.expiresAt === expiresAt && existing.priority === priority && existing.source === source &&
+            existing.dependencies.length === dependencies.length &&
+            existing.dependencies.every((dependency, index) => dependency === dependencies[index]);
+          if (!sameRequest) throw new Error('open-loop-idempotency-conflict');
+          return structuredClone(existing);
+        }
+      }
+    }
     for (const dependency of dependencies) {
       if (!this.state.records.some(record => record.id === dependency)) throw new Error('unknown-dependency:' + dependency);
     }
 
-    const protectedTerminalIds = new Set(
-      this.state.records.filter(record => !TERMINAL.has(record.status)).flatMap(record => record.dependencies),
+    const retained = this.state.records.filter(record =>
+      !TERMINAL.has(record.status) || protectedTerminalIds.has(record.id) ||
+      (record.idempotencyKey !== null && now - record.updatedAt < IDEMPOTENCY_RETENTION_MS),
     );
-    const retained = this.state.records.filter(record => !TERMINAL.has(record.status) || protectedTerminalIds.has(record.id));
     if (retained.length >= MAX_RECORDS) throw new Error('open-loop-capacity-exhausted');
 
     const nextSequence = this.state.sequence + 1;
@@ -268,6 +314,7 @@ export class OpenLoopRadar {
       dependencies,
       priority,
       source,
+      idempotencyKey: idempotencyKey ?? null,
       accepted: true,
       closureEvidence: null,
       cancellationReason: null,

@@ -122,6 +122,20 @@ rejectBadClosure.restore({ version: 1, sequence: 0, records: [malformedFulfillme
 assert.equal(rejectBadClosure.snapshot().records.length, 0,
   'restored completion evidence must not predate the obligation');
 
+const idempotentRadar = new OpenLoopRadar(() => now);
+const idempotentInput = {
+  title: 'Retry-safe obligation', kind: 'task', owner: 'system', accepted: true,
+  source: 'api-contract-test', idempotencyKey: 'request:retry:001',
+};
+const firstAccepted = idempotentRadar.register(idempotentInput);
+const retried = idempotentRadar.register({ ...idempotentInput });
+assert.equal(retried.id, firstAccepted.id);
+assert.equal(idempotentRadar.snapshot().records.length, 1,
+  'a retried create request with the same key must not create duplicate obligations');
+assert.throws(() => idempotentRadar.register({
+  ...idempotentInput, title: 'Different task, same idempotency key',
+}), /open-loop-idempotency-conflict/);
+
 const capacityRadar = new OpenLoopRadar(() => now);
 for (let index = 0; index < 512; index++) {
   capacityRadar.register({ title: 'Active item ' + index, kind: 'task', owner: 'system', accepted: true, source: 'capacity-test' });

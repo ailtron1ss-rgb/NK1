@@ -8,7 +8,7 @@ The runtime persists state in `<stateFile>.open-loops.json` using the existing F
 An invalid or unsupported outer snapshot fails closed; it is not silently replaced with an empty registry. Restore reads only own data properties, rejects accessor-backed or malformed records, rejects oversized arrays, removes cyclic dependency components and their downstream dependants, and refuses over-capacity states.
 
 ## Obligation contract
-- Only explicitly accepted records are registered. Memory entries and inferred intentions are not commitments.
+- Only explicitly accepted records are registered. Memory entries and inferred intentions are not commitments. Optional client idempotency keys suppress duplicate create retries for 24 hours while their record is retained; reusing a key for different content is a conflict.
 - Each record tracks owner, type, source, due/expiry timestamps, bounded dependencies, priority, lifecycle status and surfacing history.
 - A dependency is satisfied only by a fulfilled record with timestamped closure evidence.
 - Blocked tasks remain visible in diagnostics but are not surfaced as actionable overdue reminders and cannot be marked fulfilled.
@@ -23,7 +23,7 @@ Runtime methods: `registerOpenLoop`, `fulfillOpenLoop`, `cancelOpenLoop`, `reope
 
 Authenticated HTTP routes:
 - `GET /api/organism/open-loops` — read-only diagnostics, records and ranked candidates.
-- `POST /api/organism/open-loops` — create only after `confirmed: true`; source and acceptance provenance are server-owned.
+- `POST /api/organism/open-loops` — create only after `confirmed: true`; source and acceptance provenance are server-owned. Optional `idempotencyKey` makes retried create requests safe.
 - `POST /api/organism/open-loops/:id/complete` — requires `confirmed: true`; client evidence is ignored and the server records only user-confirmation evidence.
 - `POST /api/organism/open-loops/:id/cancel` and `/reopen` — require explicit confirmation and a reason.
 - `POST /api/organism/open-loops/:id/surface` — accepts only `displayed: true`, then persists cooldown.
