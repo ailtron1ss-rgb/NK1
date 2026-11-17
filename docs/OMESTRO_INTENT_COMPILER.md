@@ -2,46 +2,57 @@
 
 **Concept:** OmeStro idea 12 (Intent Compiler).
 
-## Runtime components
+## Core implementation
 
 - `runtime/neuro-kurisu/src/organism/cognition/IntentCompiler.ts`
-  - Builds an immutable, versioned contract from the verbatim request and an optional upstream semantic extraction.
-  - Hash-binds the complete interpretation, constraints, risk, stop conditions and explicit permissions into a stable contract identity.
-  - Requires expected outcome, acceptance criteria, an explicit tool allow-list and stop conditions before approval.
-  - Tracks incomplete/truncated requests, extractor failures/timeouts, conflicting permissions, malformed assumptions and malformed/wildcard action identifiers; bounded lists are never silently accepted after truncation.
-  - Bounds semantic extraction latency (default 10 seconds, maximum 60 seconds) and aborts stalled providers where supported.
-  - Uses multilingual deterministic risk escalators for destructive, mutating and credential-exfiltration intent; upstream metadata cannot downgrade detected risk.
-  - Requires explicit acknowledgement of material assumptions and separate acknowledgement for high/critical intent; unknown assumption severity is escalated rather than defaulted to low.
-  - Requires a trusted host/UI approval verifier before minting approval; a bare `userConfirmed` boolean or caller-chosen evidence string is insufficient.
-  - HMAC-attests verified approval to the exact contract and permission subset; approvals expire after a bounded TTL.
+  - Immutable, source-digest-bound intent contract with semantic extraction separated from the original request.
+  - Conservative English/Russian risk escalators, including critical secret/token exfiltration patterns.
+  - Fail-closed validation of malformed assumptions, nested extraction, risk labels, action identifiers, allow/deny collisions and truncated lists.
+  - HMAC-attested contracts with bounded 15-minute approval lifetime and read-only-only expiry reconciliation.
+  - Explicit approval authority: `human` is distinct from `autonomous-planner`.
+- `runtime/neuro-kurisu/src/organism/system/IntentExecutionRuntime.ts`
+  - Core-owned compilation, exact-scope host ticket consumption, contract lifecycle, bounded restore and execution lineage.
+  - Human approval uses the canonical ActionGateway one-shot approval centre.
+  - Autonomous planner approval is minted only when a Core-provided verifier validates a real CEF plan receipt; it cannot self-approve high/critical risk or material assumptions.
 - `runtime/neuro-kurisu/src/organism/system/IntentActionGatewayBridge.ts`
-  - Refuses incomplete, expired, altered, unapproved and out-of-scope requests.
-  - Forwards one approved action through canonical `ActionGateway.executeTool` and preserves any caller-supplied canonical `decisionId` unchanged. It returns the `contractId` separately rather than misusing intent identity as a decision ID.
+  - Separate execute and read-only reconciliation routes; preserves canonical decision identity.
+- `runtime/neuro-kurisu/src/organism/core/OrganismCore.ts`
+  - Exposes compile, compileWith, request/resolve/approve/reject, execute and reconcile APIs.
+  - Persists approved contracts in `OrganismSystemState.intentContracts` and restores only valid HMAC attestations.
+  - The autonomous resource/tool/life planner now compiles and approves its exact CEF-bound intent before dispatching through `executeIntent`.
+- `runtime/neuro-kurisu/src/organism/system/ActionGateway.ts`
+  - Adds a canonical audited pre-execution refusal result; ActionGateway remains the authority for permissions, one-shot tickets, input contracts, idempotency, finalization and receipt reconciliation.
 
-## Safety and trust boundaries
+## Human approval lifecycle
 
-Semantic extraction is untrusted proposal data. The compiler does not claim to parse arbitrary natural language itself and never derives tool permissions from free text.
+The user-facing path creates a one-shot `system.intent.approve` ticket in ActionGateway. Core resolves and consumes that exact ticket before creating the signed intent approval. A boolean or caller-provided evidence string alone cannot authorize execution, and a consumed ticket cannot be replayed for another contract.
 
-A contract is initially `not-approved`. `approve()` fails closed unless a host/UI `approvalVerifier` is injected and validates the real confirmation evidence; a boolean alone is not proof of user consent. Approval is exact-contract-bound and can only narrow the declared allow-list. Denials win over allows. Assumptions remain assumptions until acknowledged. A source request that exceeds the bounded input size is marked truncated and cannot be executed.
+## Autonomous approval lifecycle
 
-The approval HMAC key is generated per process by default. Production persistence must inject a stable key from a secret store; the key must never be written to the contract, repository, logs or Release ZIP. Without the same configured key after restart, persisted approval correctly fails closed. The contract ID also binds a digest of the complete source request, including content omitted by the visible text-size cap.
+The integrated `autonomous-resource-tool-life` planner receives a distinct `autonomous-planner` signature after Core checks the canonical CEF plan event ID, tick, planner identity, selected tool, alias normalization and deterministic intent hash. Only low/medium-risk, assumption-free, single-action contracts are eligible. High/critical or assumption-bearing intent requires human approval. The signed contract is checkpointed before any external side effect.
 
-The bridge is not a replacement for `ActionGateway`. Passing the intent gate does not bypass its independent permission checks, one-shot approvals, input contracts, durable idempotency, verification or reconciliation. Intent-contract identity and canonical decision identity remain separate; callers correlate the bridge result's `contractId` with their own task/decision record.
+## Execution and recovery
 
-## Deliberate limits
+- New dispatch goes through Intent Gate → IntentActionGatewayBridge → OrganismCore.executeTool → ActionGateway.
+- The canonical host `decisionId` is preserved; intent ID is separately returned as `contractId`.
+- Expired approvals cannot start new work. The distinct reconciliation path can perform read-only provider receipt lookup against the original idempotency receipt; it never calls the side-effect executor.
+- Keyed receipts, finalizer semantics and reconciliation remain owned by ActionGateway.
 
-- No implicit permission expansion or wildcard tool scope.
-- No execution from an incomplete, unapproved, modified or expired contract.
-- No assumption silently promoted to a user-confirmed fact.
-- Legacy callers that invoke ActionGateway directly are not automatically intercepted by this first slice; selected OrganismCore planner/execution entry points still need explicit bridge integration.
-- No auto-merge or Release ZIP publication.
-- Extractor accuracy and risk coverage require independent holdout and adversarial evaluation before production promotion.
+## Boundaries
+
+Project-execution and compound-skill routes still use the canonical Core `executeTool()` wrapper and ActionGateway safeguards, but not every legacy tool call has a separately persisted Intent Contract yet. Universal interception is a follow-up migration; it must retain ActionGateway policy, decision IDs, idempotency and finalizer/recovery semantics.
+
+Production restore across restart requires `OrganismConfig.intentApprovalKey` or `NEURO_INTENT_APPROVAL_KEY` backed by a stable secret store. The key is never persisted in the contract or repository. Without that key, contracts fail closed after restart.
 
 ## Verification
 
-Run from `runtime/neuro-kurisu`:
+From `runtime/neuro-kurisu`:
 
 ```sh
 npm run test:intent-compiler
+npm run test:intent-core-integration
 npm run typecheck
+npm run test:workpass97:planner-route
 ```
+
+A clean focused test validates the implemented boundary; it does not establish semantic extraction accuracy or release readiness. The PR remains Draft until fresh governance CI and independent review pass.
