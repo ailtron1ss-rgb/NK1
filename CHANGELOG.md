@@ -5,6 +5,8 @@
 - Relax accepted fast residuals continuously with tick-based decay (0.992 per tick) and a 10-minute wall-clock half-life, while retaining the existing 30-minute/256-tick hard idle expiry.
 - Expose decay, backtracking, no-gain rejection and before/after prediction-error telemetry through the existing neural-branch diagnostics; no persistent residual promotion or LLM weight mutation is added.
 - Extend P27 regressions for fail-closed malformed inputs, retry-safe outcome matching, measured prediction-error reduction and reversible decay.
+- Bind each P27 update to an explicitly committed action for the exact pending context and tick; wire both the spine-only commit path and full OrganismCore outcome path. Missing bindings disable the fast overlay; action mismatches fail before branch-level outcome learning.
+- Prevent outcomes from implicitly inheriting the globally active fast context, and expose action-mismatch counts in diagnostics.
 
 ## Unreleased — [NK1][Runtime] Optional conversation-scoped P27 adaptation (2026-11-17)
 
