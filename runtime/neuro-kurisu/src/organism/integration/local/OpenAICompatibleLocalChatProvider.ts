@@ -3,6 +3,8 @@ export interface LocalChatCompletionRequest {
   user: string;
   maxTokens?: number;
   temperature?: number;
+  /** Explicit server-side model alias, used only for locally preloaded adapters. */
+  model?: string;
   /** Caller cancellation must reach the actual local HTTP transport. */
   signal?: AbortSignal;
 }
@@ -103,6 +105,10 @@ export class OpenAICompatibleLocalChatProvider {
     const endpoint = this.endpoint();
     if (!endpoint) throw new Error('llama.cpp-not-configured');
     const startedAt = Date.now();
+    const requestedModel = request.model === undefined ? this.model : String(request.model).trim();
+    if (!requestedModel || requestedModel.length > 160 || /[\\u0000-\\u001f\\u007f-\\u009f]/.test(requestedModel)) {
+      throw new Error('llama.cpp-invalid-model-alias');
+    }
     const maxTokens = Math.max(1, Math.min(8192, Math.floor(Number(request.maxTokens ?? 512) || 512)));
     const temperature = Math.max(0, Math.min(2, Number.isFinite(Number(request.temperature)) ? Number(request.temperature) : 0.7));
     if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
@@ -118,7 +124,7 @@ export class OpenAICompatibleLocalChatProvider {
       signal: transportSignal,
       redirect: 'error',
       body: JSON.stringify({
-        model: this.model,
+        model: requestedModel,
         messages: [
           { role: 'system', content: String(request.system ?? '').slice(0, 64_000) },
           { role: 'user', content: String(request.user ?? '').slice(0, 64_000) },
@@ -152,7 +158,7 @@ export class OpenAICompatibleLocalChatProvider {
     try { payload = JSON.parse(rawPayload) as typeof payload; } catch { throw new Error('llama.cpp-invalid-json'); }
     const text = extractText(payload?.choices?.[0]?.message?.content);
     if (!text) throw new Error('llama.cpp-empty-response');
-    const model = String(payload?.model ?? this.model).slice(0, 160);
+    const model = String(payload?.model ?? requestedModel).slice(0, 160);
     return { text, backend: `llama.cpp:${model}`, model, latencyMs: Math.max(0, Date.now() - startedAt) };
   }
 }
