@@ -74,3 +74,8 @@ Runner не применяет предложенный профиль к live P
 ### Независимость статистических выборок
 
 Входной контракт теперь требует не только минимум 3 validation и 5 holdout пар, но и столько же различных seed в каждой фазе. Перед запуском runner дополнительно вызывает P23 `validateResearchGradeLearningExperimentPlan()` для holdout: минимум пять независимых seed и полное покрытие всех holdout task families. Повтор одного seed на разных сценариях больше не увеличивает искусственно размер выборки для confidence interval.
+
+
+### P55 snapshot adapter
+
+`createDevelopmentalMultiverseSessionFromP55()` consumes the public `P55State.forks` snapshot field and maps only active fork `id/style/status/deltas` into experiment variants. Rejected/replaced forks are ignored. It intentionally does **not** import P55 `actionBiases`, counters, last winner/applied IDs or any other runtime state. The baseline five-knob profile remains an explicit input, never inferred from historical action bias.

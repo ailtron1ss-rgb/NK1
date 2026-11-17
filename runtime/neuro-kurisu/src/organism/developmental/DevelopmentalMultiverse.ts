@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { P55Fork, P55Knob } from './P55DevelopmentalForkUniverse.ts';
+import type { P55Fork, P55Knob, P55State } from './P55DevelopmentalForkUniverse.ts';
 
 /**
  * Developmental Multiverse — bounded, data-only parallel development trials.
@@ -779,4 +779,26 @@ export function variantsFromP55Forks(
     .filter(fork => fork && ['candidate', 'simulated', 'promotable'].includes(fork.status))
     .slice(0, MAX_VARIANTS)
     .map(fork => ({ id: fork.id, label: `P55 ${fork.style}`, deltas: { ...fork.deltas } }));
+}
+
+
+/**
+ * Build an experiment session from the public P55 snapshot contract.
+ *
+ * Only the fork id/style/status/five knob deltas cross this boundary. P55 action
+ * biases, counters, last-winner/applied state and all other runtime state remain
+ * owned by P55. The baseline profile is always supplied separately by the caller.
+ */
+export function createDevelopmentalMultiverseSessionFromP55(
+  input: Omit<DevelopmentalMultiverseSessionInput, 'variants'>,
+  p55Snapshot: Pick<P55State, 'forks'>,
+): DevelopmentalMultiverseSessionInput {
+  if (!p55Snapshot || !Array.isArray(p55Snapshot.forks)) {
+    throw new TypeError('developmental-multiverse-p55-snapshot-invalid');
+  }
+  const variants = variantsFromP55Forks(p55Snapshot.forks);
+  if (variants.length === 0) {
+    throw new Error('developmental-multiverse-p55-snapshot-has-no-active-forks');
+  }
+  return { ...input, variants };
 }
