@@ -294,6 +294,62 @@ assert.equal(
   'before the correction was recorded, NK1 must not claim a fact for a period it did not previously know',
 );
 
+const boundedHistoryOS = new MemoryOS2({ signalFusionProfile: 'balanced' });
+const boundedFact = boundedHistoryOS.encode({
+  content: 'The long-lived workspace location changes over time.',
+  kind: 'semantic',
+  source: 'chrono-truth-history-bound-regression',
+  tags: ['workspace'],
+  context: { location: 'Site 0' },
+  salience: .7,
+  emotionalWeight: .1,
+  identityRelevance: .1,
+  goalRelevance: .1,
+  socialRelevance: .1,
+  predictionError: .1,
+  confidence: .9,
+  epistemicStatus: 'fact',
+  entities: ['workspace'],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  validFromAt: 800,
+  observedAt: 800,
+  recordedFromAt: 820,
+}, { clone: false });
+for (let i = 1; i <= 40; i++) {
+  boundedHistoryOS.updateContext(boundedFact.id, { location: `Site ${i}` });
+}
+assert.equal(
+  boundedFact.bitemporalHistory?.length,
+  32,
+  'per-item bitemporal history must stay within its hard retention bound',
+);
+const corruptBitemporalSnapshot = boundedHistoryOS.snapshot();
+const corruptBitemporalRow = corruptBitemporalSnapshot.items.find(row => row.id === boundedFact.id);
+assert.ok(corruptBitemporalRow, 'snapshot must contain the bounded temporal fact');
+corruptBitemporalRow.bitemporalHistory.push({
+  validFromAt: 'not-a-time',
+  validUntilAt: null,
+  recordedFromAt: 999999,
+  recordedUntilAt: null,
+  confidence: 1,
+  epistemicStatus: 'fact',
+  source: 'corrupted-import',
+  temporalKind: 'fact',
+});
+const hardenedRestore = new MemoryOS2({ signalFusionProfile: 'balanced' });
+hardenedRestore.restore(corruptBitemporalSnapshot);
+const hardenedFact = hardenedRestore.get(boundedFact.id);
+assert.ok(
+  hardenedFact.bitemporalHistory.length <= 32 &&
+  hardenedFact.bitemporalHistory.every(row =>
+    Number.isFinite(row.validFromAt) && Number.isFinite(row.recordedFromAt)
+  ),
+  'restore must drop malformed intervals and keep the temporal retention bound',
+);
+
 const restored = new MemoryOS2({ signalFusionProfile: 'balanced' });
 restored.restore(memoryOS.snapshot());
 assert.equal(
