@@ -27,3 +27,4 @@ jobs:
           node --experimental-strip-types tests/world-forge-synthetic-lab.mjs
           node --experimental-strip-types tests/world-forge-splits-and-perturbations.mjs
           node --experimental-strip-types tests/world-forge-future-simulator-integration.mjs
+          npm run typecheck
