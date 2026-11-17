@@ -82,7 +82,7 @@ export class OrganismSystemFabric {
         ? input.parliamentModelAttestationRegistry.attest.bind(input.parliamentModelAttestationRegistry)
         : undefined);
     this.governance=input.governance ?? new GovernanceSubsystemRuntime({
-      parliamentTrustPort:new EvidenceFirewallParliamentTrustPort(this.research.evidenceFirewall,parliamentModelAttestor),
+      parliamentTrustPort:new EvidenceFirewallParliamentTrustPort(this.research.evidenceFirewall,parliamentModelAttestor,this.research.projectResearchSession),
       parliamentRoleExecutors:input.parliamentRoleExecutors,
     });
     this.memory=input.memory ?? new MemorySubsystemRuntime(this.hexisAdaptation);

@@ -20,6 +20,7 @@ export interface ParliamentVerifiedEvidence extends ParliamentEvidenceReference 
   trust01:number;
   promotionScore01:number;
   observedAt:number;
+  material?:{title:string;excerpt:string;sourceUrl:string;contentHash:string};
 }
 export interface ParliamentModelAttestation {
   executionId:string;
@@ -80,7 +81,7 @@ export interface ParliamentDecision {
   evidence:Array<{
     id:string;claimKey:string;sourceIdentity:string;sourceFamily:string;
     sourceClass:ParliamentVerifiedEvidence['sourceClass'];evidenceQuality01:number;
-    observedAt:number;
+    observedAt:number;title?:string;sourceUrl?:string;contentHash?:string;
   }>;
 }
 export interface ParliamentInput { candidateId:string;risk:ParliamentRisk;reports:ParliamentRoleReport[];maxReports?:number; }
@@ -111,7 +112,11 @@ const validVerifiedEvidence=(value:ParliamentVerifiedEvidence|null,reference:Par
     [value.confidence01,value.trust01,value.promotionScore01,value.observedAt].every(Number.isFinite) &&
     value.confidence01>=0&&value.confidence01<=1&&value.trust01>=0&&value.trust01<=1&&
     value.promotionScore01>=0&&value.promotionScore01<=1&&value.observedAt>0&&
-    value.observedAt<=Date.now()+5*60*1000);
+    value.observedAt<=Date.now()+5*60*1000&&
+    (value.material===undefined||(typeof value.material.title==='string'&&value.material.title.length<=240&&
+      typeof value.material.excerpt==='string'&&value.material.excerpt.length<=1200&&
+      typeof value.material.sourceUrl==='string'&&value.material.sourceUrl.length<=1000&&
+      typeof value.material.contentHash==='string'&&value.material.contentHash.length<=96)));
 };
 const validModelAttestation=(value:ParliamentModelAttestation|null,executionId:string):value is ParliamentModelAttestation=>{
   return Boolean(value && value.executionId===executionId && text(value.providerId)&&text(value.modelId)&&
@@ -322,6 +327,7 @@ export class CognitiveParliament {
         id:e.id,claimKey:e.claimKey,sourceIdentity:e.sourceIdentity,sourceFamily:e.sourceFamily,
         sourceClass:e.sourceClass,evidenceQuality01:clamp(.45*e.confidence01+.30*e.trust01+.25*e.promotionScore01),
         observedAt:e.observedAt,
+        ...(e.material?{title:e.material.title,sourceUrl:e.material.sourceUrl,contentHash:e.material.contentHash}:{}),
       })),
     };
   }

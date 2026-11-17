@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { CognitiveParliament } from '../src/organism/system/CognitiveParliament.ts';
 import { CognitiveParliamentDispatcher } from '../src/organism/system/CognitiveParliamentDispatcher.ts';
 import { EvidenceFirewallEngine } from '../src/organism/system/EvidenceFirewall.ts';
+import { ProjectResearchSession } from '../src/organism/system/ProjectResearchSession.ts';
 import { EvidenceFirewallParliamentTrustPort } from '../src/organism/system/CognitiveParliamentTrust.ts';
 import {
   OpenAICompatibleLocalParliamentRoleExecutor,
@@ -12,10 +13,20 @@ import { GovernanceSubsystemRuntime } from '../src/organism/core/GovernanceSubsy
 const roles=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
 const firewall=new EvidenceFirewallEngine();
 const claimKey='nk1:parliament-dispatcher:verified-claim';
-for(const [i,sourceKey] of ['source-a.example','source-b.example','source-c.example'].entries()){
-  firewall.observe({claimKey,sourceClass:'external-api',sourceKey,
-    sourceLineageKey:`independent-lineage-${i}`,contentHash:`independent-content-${i}`,
-    confidence01:.99,trust01:.99});
+const researchSession=new ProjectResearchSession(firewall);
+researchSession.begin('parliament-dispatcher-test',claimKey);
+const researchRows=[
+  {url:'https://source-a.example/a',finalUrl:'https://source-a.example/a',sourceHost:'source-a.example',title:'Thermal observatory record',snippet:'The high-altitude thermal observatory measured a stable basalt temperature gradient across the northern ridge.',contentHash:'independent-content-a'},
+  {url:'https://source-b.example/b',finalUrl:'https://source-b.example/b',sourceHost:'source-b.example',title:'Orbital telemetry log',snippet:'The orbital telemetry station independently recorded a change in the satellite inclination after station keeping.',contentHash:'independent-content-b'},
+  {url:'https://source-c.example/c',finalUrl:'https://source-c.example/c',sourceHost:'source-c.example',title:'Deep-ocean instrument bulletin',snippet:'A deep ocean pressure instrument reported a separate current anomaly near the eastern seamount.',contentHash:'independent-content-c'},
+];
+for(const [i,row] of researchRows.entries()){
+  researchSession.ingest({
+    ok:true,verified:true,externalEvidence:true,url:row.url,finalUrl:row.finalUrl,status:200,
+    contentType:'text/html',title:row.title,contentHash:row.contentHash,bytes:512,
+    snippet:row.snippet,fetchedAt:Date.now()+i,trust01:.99,independenceKey:row.sourceHost,
+    sourceHost:row.sourceHost,queryHash:'fixture-query-hash',relevance01:1,claim:'The evidence supports the tested proposition.',
+  });
 }
 assert.equal(firewall.claim(claimKey).status,'promoted');
 const evidence=firewall.snapshot().observations.filter(row=>row.claimKey===claimKey)
@@ -23,7 +34,7 @@ const evidence=firewall.snapshot().observations.filter(row=>row.claimKey===claim
 const trust=new EvidenceFirewallParliamentTrustPort(firewall,executionId=>({
   executionId,providerId:`provider-${executionId}`,modelId:`model-${executionId}`,
   independenceGroup:`family-${executionId}`,verifiedAt:Date.now(),
-}));
+}),researchSession);
 const responseFor=role=>JSON.stringify({
   stance:'support',recommendation:`bounded ${role} recommendation',
   facts:['canonical firewall fact'],assumptions:[],objections:[],uncertainty01:.05,
@@ -66,6 +77,8 @@ assert.equal(dispatched.verifiedEvidenceCount,3);
 assert.equal(dispatched.unverifiedEvidenceCount,0);
 assert.equal(capturedPayload.verifiedEvidence[0].sourceFamily.length>0,true,
   'role prompts must include host-verified provenance, not just model-provided source labels');
+assert.ok(capturedPayload.verifiedEvidence[0].material?.excerpt?.length>20,
+  'role prompts receive the exact excerpt matched to the promoted firewall observation');
 assert.ok(dispatched.elapsedMs>=0);
 
 const forgedReference=await dispatcher.dispatch({

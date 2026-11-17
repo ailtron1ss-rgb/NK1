@@ -6,6 +6,15 @@ import type {
 
 export type ParliamentModelAttestor=(executionId:string)=>ParliamentModelAttestation|null;
 
+export interface ParliamentResearchSessionPort {
+  snapshot():{
+    results?:Array<{
+      url?:string;sourceKey?:string;sourceLineageKey?:string;contentHash?:string;
+      title?:string;snippet?:string;ok?:boolean;
+    }>;
+  };
+}
+
 /**
  * Host-side trust adapter. Evidence is accepted only when the exact canonical
  * firewall observation belongs to a promoted claim, is still fresh, and (for
@@ -17,12 +26,18 @@ export class EvidenceFirewallParliamentTrustPort implements ParliamentTrustPort 
   constructor(
     private readonly firewall:EvidenceFirewallEngine,
     private readonly modelAttestor?:ParliamentModelAttestor,
+    private readonly researchSession?:ParliamentResearchSessionPort,
   ) {}
 
   openSession():ParliamentTrustSession {
     const snapshot=this.firewall.snapshot();
     const observations=new Map(snapshot.observations.map(row=>[row.id,row] as const));
     const claims=new Map(snapshot.claims.map(row=>[row.claimKey,row] as const));
+    let researchRows:NonNullable<ReturnType<ParliamentResearchSessionPort['snapshot']>['results']>=[];
+    try {
+      const rows=this.researchSession?.snapshot()?.results;
+      if(Array.isArray(rows))researchRows=rows.slice(0,24);
+    } catch { researchRows=[]; }
     // Rebuild the same conservative source↔lineage connected components used by
     // EvidenceFirewall. Different publisher domains tied to one story/document/hash
     // must not become separate independent sources for a parliament decision.
@@ -73,6 +88,15 @@ export class EvidenceFirewallParliamentTrustPort implements ParliamentTrustPort 
           :sourceIdentity;
         if(!sourceIdentity||!sourceFamily||!Number.isFinite(observation.confidence01)||
           !Number.isFinite(observation.trust01))return null;
+        const researchMaterial=observation.sourceClass==='external-api'
+          ?researchRows.find(row=>row&&row.ok===true&&row.contentHash===observation.contentHash&&
+            row.sourceKey===observation.sourceKey&&row.sourceLineageKey===observation.sourceLineageKey)
+          :undefined;
+        const title=typeof researchMaterial?.title==='string'?researchMaterial.title.trim().slice(0,240):'';
+        const excerpt=typeof researchMaterial?.snippet==='string'?researchMaterial.snippet.trim().slice(0,1200):'';
+        const sourceUrl=typeof researchMaterial?.url==='string'?researchMaterial.url.trim().slice(0,1000):'';
+        const material=researchMaterial&&observation.contentHash&&title&&excerpt&&sourceUrl
+          ?{title,excerpt,sourceUrl,contentHash:observation.contentHash}:undefined;
         return {
           id:observation.id,claimKey:observation.claimKey,sourceIdentity,sourceFamily,
           sourceClass:observation.sourceClass as ParliamentVerifiedEvidence['sourceClass'],
@@ -80,6 +104,7 @@ export class EvidenceFirewallParliamentTrustPort implements ParliamentTrustPort 
           trust01:Math.max(0,Math.min(1,observation.trust01)),
           promotionScore01:Math.max(0,Math.min(1,claim.promotionScore01)),
           observedAt:observation.observedAt,
+          ...(material?{material}:{}),
         };
       },
       verifyModelExecution:(executionId:string):ParliamentModelAttestation|null=>{
