@@ -1,0 +1,30 @@
+name: developmental-genome
+
+on:
+  push:
+    branches:
+      - aspect/developmental-genome-20261117
+    paths:
+      - '.github/workflows/developmental-genome.yml'
+      - 'runtime/neuro-kurisu/**'
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - '.github/workflows/developmental-genome.yml'
+      - 'runtime/neuro-kurisu/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  genome-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Run Developmental Genome contract test
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/developmental-genome.mjs
