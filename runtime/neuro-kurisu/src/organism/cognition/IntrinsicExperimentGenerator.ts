@@ -13,6 +13,7 @@ export interface IntrinsicExperiment {
   sourceMemoryIds?:string[];
   sharedTerms?:string[];
   mechanismDiscoveryId?:string;
+  mechanismFlowEvidenceClass?:'observed-causal'|'declared-dependency'|'inferred';
   mechanismSourceDomain?:string;
   mechanismTargetDomain?:string;
   mechanismCorrespondences?:string[];
@@ -31,6 +32,7 @@ export interface IntrinsicExperiment {
 /** Narrow dependency-free bridge contract from MechanismSerendipityEngine. */
 export interface MechanismDiscoveryExperimentInput {
   id:string; title:string; sourceDomain:string; targetDomain:string;
+  flowEvidenceClass:'observed-causal'|'declared-dependency'|'inferred';
   confidence01:number; transferability01:number; status:'candidate'; epistemicStatus:'hypothesis';
   hypothesis:string; verificationPlan:string; correspondences:string[]; breakpoints:string[];
 }
@@ -118,6 +120,8 @@ export class IntrinsicExperimentGenerator {
     const id=cleanText(input?.id,120),title=cleanText(input?.title,160);
     const sourceDomain=cleanText(input?.sourceDomain,80),targetDomain=cleanText(input?.targetDomain,80);
     const confidence=unit(input?.confidence01),transferability=unit(input?.transferability01);
+    const flowEvidenceClass=input?.flowEvidenceClass;
+    if(!['observed-causal','declared-dependency','inferred'].includes(String(flowEvidenceClass)))return null;
     const correspondences=cleanUnique(input?.correspondences,12),breakpoints=cleanUnique(input?.breakpoints,12);
     const hypothesis=cleanText(input?.hypothesis,640),verificationPlan=cleanText(input?.verificationPlan,640);
     if(!id||!title||!sourceDomain||!targetDomain||sourceDomain.toLowerCase()===targetDomain.toLowerCase())return null;
@@ -133,7 +137,7 @@ export class IntrinsicExperimentGenerator {
       action:'verify',
       expectedInformationGain:Number(Math.min(.9,.55*confidence+.35*transferability).toFixed(3)),
       linkedGoal:goal?.id,createdAt,source:'mechanism-serendipity',
-      mechanismDiscoveryId:id,mechanismSourceDomain:sourceDomain,mechanismTargetDomain:targetDomain,
+      mechanismDiscoveryId:id,mechanismFlowEvidenceClass:flowEvidenceClass,mechanismSourceDomain:sourceDomain,mechanismTargetDomain:targetDomain,
       mechanismCorrespondences:correspondences,mechanismBreakpoints:breakpoints,verificationPlan,
       epistemicStatus:'hypothesis',status:'candidate',verificationRequired:true,
     };

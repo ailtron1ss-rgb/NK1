@@ -4,15 +4,16 @@ export type FlowKind = 'signal'|'resource'|'control'|'material'|'credit'|'reques
 export type ConstraintKind = 'capacity'|'latency'|'noise'|'trust'|'scarcity'|'dependency'|'safety'|'cost'|'irreversibility'|'bandwidth';
 export type ResourceKind = 'compute'|'memory'|'energy'|'time'|'attention'|'trust'|'material'|'bandwidth';
 export type DynamicRegime = 'saturation'|'oscillation'|'cascade'|'equilibrium'|'adaptation'|'recovery'|'growth'|'decay'|'competition'|'delayed-response';
+export type MechanismFlowEvidenceClass = 'observed-causal'|'declared-dependency'|'inferred';
 export interface MechanismActor { id:string; role:ActorRole; label?:string }
 export interface MechanismFlow { id:string; fromRole:ActorRole; toRole:ActorRole; kind:FlowKind }
 export interface MechanismConstraint { id:string; kind:ConstraintKind; onRole:ActorRole; severity01?:number }
 export interface MechanismFeedbackLoop { id:string; sourceRole:ActorRole; targetRole:ActorRole; polarity:'positive'|'negative'; delay01?:number }
 export interface MechanismResource { id:string; kind:ResourceKind }
-export interface MechanismDescription { id:string; title:string; domain:string; actors:MechanismActor[]; flows:MechanismFlow[]; constraints:MechanismConstraint[]; feedbackLoops:MechanismFeedbackLoop[]; resources:MechanismResource[]; dynamics:{regimes:DynamicRegime[];timescale:'fast'|'slow'|'mixed'} }
+export interface MechanismDescription { id:string; title:string; domain:string; flowEvidenceClass?:MechanismFlowEvidenceClass; actors:MechanismActor[]; flows:MechanismFlow[]; constraints:MechanismConstraint[]; feedbackLoops:MechanismFeedbackLoop[]; resources:MechanismResource[]; dynamics:{regimes:DynamicRegime[];timescale:'fast'|'slow'|'mixed'} }
 export interface MechanismCorrespondence { aspect:'actor'|'flow'|'constraint'|'feedback'|'resource'|'dynamic'; problemElementId:string; referenceElementId:string; structuralFeature:string; confidence01:number; explanation:string }
 export interface MechanismBreakpoint { kind:string; problemFeature:string; referenceFeature:string; consequence:string; severity01:number }
-export interface MechanismDiscovery { id:string; problemId:string; referenceMechanismId:string; problemTitle:string; referenceTitle:string; sourceDomain:string; targetDomain:string; similarity01:number; confidence01:number; transferability01:number; novelty01:number; coverage01:number; correspondences:MechanismCorrespondence[]; breakpoints:MechanismBreakpoint[]; hypothesis:string; verificationPlan:string; falsifier:string; status:'candidate'; epistemicStatus:'hypothesis' }
+export interface MechanismDiscovery { id:string; problemId:string; referenceMechanismId:string; flowEvidenceClass:MechanismFlowEvidenceClass; problemTitle:string; referenceTitle:string; sourceDomain:string; targetDomain:string; similarity01:number; confidence01:number; transferability01:number; novelty01:number; coverage01:number; correspondences:MechanismCorrespondence[]; breakpoints:MechanismBreakpoint[]; hypothesis:string; verificationPlan:string; falsifier:string; status:'candidate'; epistemicStatus:'hypothesis' }
 export interface MechanismSerendipityResult { problemId:string; status:'matched'|'no-match'|'insufficient-structure'; evaluatedN:number; emittedN:number; rejectedN:number; discoveries:MechanismDiscovery[]; reasons:string[] }
 export interface MechanismSerendipityOptions { minSimilarity?:number; maxResults?:number }
 
@@ -41,7 +42,8 @@ function normalize(raw:unknown):MechanismDescription|null{
  const d=x.dynamics&&typeof x.dynamics==='object'?x.dynamics as Record<string,unknown>:{};
  const ds=unique((Array.isArray(d.regimes)?d.regimes:[]).slice(0,10).filter((v):v is DynamicRegime=>typeof v==='string'&&regimes.has(v as DynamicRegime)));
  const timescale=['fast','slow','mixed'].includes(String(d.timescale))?d.timescale as 'fast'|'slow'|'mixed':'mixed';
- return actors.length>=2&&fs.length?{id,title,domain,actors,flows:fs,constraints:cs,feedbackLoops:bs,resources:rs,dynamics:{regimes:ds,timescale}}:null;
+ const flowEvidenceClass=['observed-causal','declared-dependency','inferred'].includes(String(x.flowEvidenceClass))?x.flowEvidenceClass as MechanismFlowEvidenceClass:'observed-causal';
+ return actors.length>=2&&fs.length?{id,title,domain,flowEvidenceClass,actors,flows:fs,constraints:cs,feedbackLoops:bs,resources:rs,dynamics:{regimes:ds,timescale}}:null;
 }
 function dice(a:readonly string[],b:readonly string[]):number{
  if(!a.length&&!b.length)return 1;if(!a.length||!b.length)return 0;const counts=new Map<string,number>();for(const v of a)counts.set(v,(counts.get(v)||0)+1);
@@ -49,19 +51,31 @@ function dice(a:readonly string[],b:readonly string[]):number{
 }
 const weights={actors:.24,flows:.24,constraints:.16,feedback:.16,resources:.10,dynamics:.10} as const;
 function signature(m:MechanismDescription){return{
- actors:m.actors.map(x=>x.role),flows:m.flows.map(x=>x.fromRole+'>'+x.toRole+':'+x.kind),
+ actors:m.actors.map(x=>x.role),flows:m.flows.map(x=>x.fromRole+'>'+x.toRole),
  constraints:m.constraints.map(x=>x.kind+'@'+x.onRole),feedback:m.feedbackLoops.map(x=>x.sourceRole+'>'+x.targetRole+':'+x.polarity),
  resources:m.resources.map(x=>x.kind),dynamics:m.dynamics.regimes,
 };}
 function hash(s:string){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0).toString(16).padStart(8,'0');}
 function correspond(a:MechanismDescription,b:MechanismDescription):MechanismCorrespondence[]{
  const out:MechanismCorrespondence[]=[];
- const add=(aspect:MechanismCorrespondence['aspect'],p:string,r:string,feature:string)=>out.push({aspect,problemElementId:p,referenceElementId:r,structuralFeature:feature,confidence01:.82,explanation:'Точно совпадает типизированный структурный признак; это не доказывает причинную эквивалентность.'});
+ const add=(aspect:MechanismCorrespondence['aspect'],p:string,r:string,feature:string,confidence01=.82,explanation='Структурная роль совпадает; причинная эквивалентность не доказана.')=>out.push({aspect,problemElementId:p,referenceElementId:r,structuralFeature:feature,confidence01,explanation});
  const match=<T extends {id:string}>(aspect:MechanismCorrespondence['aspect'],left:T[],right:T[],key:(x:T)=>string)=>{
   const used=new Set<string>();for(const x of left){const k=key(x),y=right.find(z=>key(z)===k&&!used.has(z.id));if(y){used.add(y.id);add(aspect,x.id,y.id,k);}}
  };
  match('actor',a.actors,b.actors,x=>x.role);
- match('flow',a.flows,b.flows,x=>x.fromRole+'>'+x.toRole+':'+x.kind);
+ {
+  const used=new Set<string>();
+  for(const x of a.flows){
+   const y=b.flows.find(z=>z.fromRole===x.fromRole&&z.toRole===x.toRole&&!used.has(z.id));
+   if(!y)continue;
+   used.add(y.id);
+   const kindsMatch=x.kind===y.kind;
+   const declared=a.flowEvidenceClass==='declared-dependency'||b.flowEvidenceClass==='declared-dependency';
+   add('flow',x.id,y.id,x.fromRole+'>'+x.toRole,
+    declared?.56:kindsMatch?.82:.58,
+    declared?'Совпадает направление объявленной архитектурной зависимости; это не измеренное причинное влияние.':kindsMatch?'Совпадают направление и тип потока; причинную связь всё равно требуется проверять.':'Совпадает направление потока, но тип воздействия различается.');
+  }
+ }
  match('constraint',a.constraints,b.constraints,x=>x.kind+'@'+x.onRole);
  match('feedback',a.feedbackLoops,b.feedbackLoops,x=>x.sourceRole+'>'+x.targetRole+':'+x.polarity);
  match('resource',a.resources,b.resources,x=>x.kind);
@@ -71,119 +85,40 @@ function correspond(a:MechanismDescription,b:MechanismDescription):MechanismCorr
 function findBreakpoints(a:MechanismDescription,b:MechanismDescription):MechanismBreakpoint[]{
  const out:MechanismBreakpoint[]=[];
  const rolesA=new Set(a.actors.map(x=>x.role)),rolesB=new Set(b.actors.map(x=>x.role));
- for(const role of rolesA)if(!rolesB.has(role))out.push({
-  kind:'missing-reference-role',problemFeature:role,referenceFeature:'absent',
-  consequence:'У эталонного механизма нет этой роли; её нельзя переносить без отдельной реализации.',severity01:.55,
- });
- for(const role of rolesB)if(!rolesA.has(role))out.push({
-  kind:'reference-only-role',problemFeature:'absent',referenceFeature:role,
-  consequence:'В эталоне есть дополнительная роль; перенос всей схемы добавит непроверенную функциональность.',severity01:.42,
- });
+ const topologyOnly=a.flowEvidenceClass==='declared-dependency'||a.flowEvidenceClass==='inferred';
+ for(const role of rolesA)if(!rolesB.has(role))out.push({kind:'missing-reference-role',problemFeature:role,referenceFeature:'absent',consequence:'У эталонного механизма нет этой роли; её нельзя переносить без отдельной реализации.',severity01:.55});
+ for(const role of rolesB)if(!rolesA.has(role))out.push({kind:'reference-only-role',problemFeature:'absent',referenceFeature:role,consequence:'В эталоне есть дополнительная роль; перенос всей схемы добавит непроверенную функциональность.',severity01:.42});
 
  for(const flow of a.flows){
-  const exact=b.flows.some(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole&&x.kind===flow.kind);
+  const exact=b.flows.some(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole&&(!topologyOnly&&x.kind===flow.kind||topologyOnly));
   if(exact)continue;
   const reverse=b.flows.filter(x=>x.fromRole===flow.toRole&&x.toRole===flow.fromRole);
   const direct=b.flows.filter(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole);
-  if(reverse.length)out.push({
-   kind:'flow-direction-reversal',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
-   referenceFeature:reverse.map(x=>x.kind).join(','),
-   consequence:'Направление потока обращено; прямой перенос может развернуть причинное воздействие.',severity01:.92,
-  });
-  else if(direct.length)out.push({
-   kind:'flow-kind-mismatch',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
-   referenceFeature:direct.map(x=>x.kind).join(','),
-   consequence:'Поток связывает те же роли, но переносит другой тип воздействия.',severity01:.68,
-  });
-  else out.push({
-   kind:'missing-reference-flow',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:'absent',
-   consequence:'В эталоне отсутствует этот причинный переход; соответствие неполно.',severity01:.52,
-  });
+  if(reverse.length)out.push({kind:'flow-direction-reversal',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:reverse.map(x=>x.kind).join(','),consequence:topologyOnly?'Объявленная зависимость направлена иначе, чем в эталоне; это топологическое расхождение, а не измеренный причинный эффект.':'Направление потока обращено; прямой перенос может развернуть причинное воздействие.',severity01:.92});
+  else if(direct.length&&!topologyOnly)out.push({kind:'flow-kind-mismatch',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:direct.map(x=>x.kind).join(','),consequence:'Поток связывает те же роли, но переносит другой тип воздействия.',severity01:.68});
+  else if(!direct.length)out.push({kind:'missing-reference-flow',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:'absent',consequence:topologyOnly?'В эталоне нет соответствующей объявленной зависимости; архитектурное соответствие неполно.':'В эталоне отсутствует этот причинный переход; соответствие неполно.',severity01:.52});
  }
- // Compare source-only transitions as well. Extra source mechanics can be as
- // important as missing target mechanics when deciding whether a transfer is safe.
  for(const flow of b.flows){
-  const exact=a.flows.some(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole&&x.kind===flow.kind);
+  const exact=a.flows.some(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole&&(!topologyOnly||true)&&(!topologyOnly&&x.kind===flow.kind||topologyOnly));
   if(exact)continue;
   const reversed=a.flows.filter(x=>x.fromRole===flow.toRole&&x.toRole===flow.fromRole);
   const sameEndpoints=a.flows.filter(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole);
-  if(reversed.length)out.push({
-   kind:'reference-flow-direction-reversal',problemFeature:'absent',
-   referenceFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
-   consequence:'Эталон содержит дополнительный поток в направлении, обратном целевой схеме; перенос может инвертировать причинное воздействие.',
-   severity01:.92,
-  });
-  else if(sameEndpoints.length)out.push({
-   kind:'reference-only-flow-kind',problemFeature:'absent',
-   referenceFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
-   consequence:'Эталон использует дополнительный тип воздействия на том же переходе; семантика переноса не подтверждена.',
-   severity01:.68,
-  });
-  else out.push({
-   kind:'reference-only-flow',problemFeature:'absent',
-   referenceFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
-   consequence:'Исходный механизм содержит дополнительный переход, которого нет в целевой схеме; его нельзя переносить без отдельного обоснования.',
-   severity01:.44,
-  });
+  if(reversed.length)out.push({kind:'reference-flow-direction-reversal',problemFeature:'absent',referenceFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,consequence:topologyOnly?'Эталонная схема содержит обратную объявленную зависимость, которой нет в графе NK1.':'Эталон содержит дополнительный поток в обратном направлении; перенос может инвертировать причинное воздействие.',severity01:.92});
+  else if(sameEndpoints.length&&!topologyOnly)out.push({kind:'reference-only-flow-kind',problemFeature:'absent',referenceFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,consequence:'Эталон использует дополнительный тип воздействия на том же переходе; семантика переноса не подтверждена.',severity01:.68});
+  else if(!sameEndpoints.length)out.push({kind:'reference-only-flow',problemFeature:'absent',referenceFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,consequence:topologyOnly?'Эталон содержит дополнительную объявленную зависимость, отсутствующую в графе NK1.':'Исходный механизм содержит дополнительный переход, которого нет в целевой схеме; его нельзя переносить без отдельного обоснования.',severity01:.44});
  }
-
- for(const c of a.constraints){
-  const same=b.constraints.filter(x=>x.onRole===c.onRole);
-  if(!same.some(x=>x.kind===c.kind))out.push({
-   kind:'constraint-kind-mismatch',problemFeature:c.kind+'@'+c.onRole,
-   referenceFeature:same.map(x=>x.kind).join(',')||'no-constraint-on-role',
-   consequence:'Ограничение целевой системы отличается; пороги нельзя переносить напрямую.',severity01:.72,
-  });
- }
- for(const c of b.constraints)if(!a.constraints.some(x=>x.kind===c.kind&&x.onRole===c.onRole))out.push({
-  kind:'reference-only-constraint',problemFeature:'absent',referenceFeature:c.kind+'@'+c.onRole,
-  consequence:'Эталон предполагает дополнительное ограничение, не описанное в целевой схеме; условия применимости неполны.',severity01:.40,
- });
-
- for(const loop of a.feedbackLoops){
-  const same=b.feedbackLoops.filter(x=>x.sourceRole===loop.sourceRole&&x.targetRole===loop.targetRole);
-  if(same.length&&!same.some(x=>x.polarity===loop.polarity))out.push({
-   kind:'feedback-polarity-mismatch',problemFeature:loop.sourceRole+'>'+loop.targetRole+':'+loop.polarity,
-   referenceFeature:same.map(x=>x.polarity).join(','),
-   consequence:'Обратная связь может усилить ошибку вместо её подавления.',severity01:.94,
-  });
-  else if(!same.length)out.push({
-   kind:'missing-feedback-path',problemFeature:loop.sourceRole+'>'+loop.targetRole,referenceFeature:'absent',
-   consequence:'Контур обратной связи не подтверждён в эталоне; динамику нельзя считать эквивалентной.',severity01:.66,
-  });
- }
- for(const loop of b.feedbackLoops){
-  const samePair=a.feedbackLoops.some(x=>x.sourceRole===loop.sourceRole&&x.targetRole===loop.targetRole);
-  if(!samePair)out.push({
-   kind:'reference-only-feedback-path',problemFeature:'absent',
-   referenceFeature:loop.sourceRole+'>'+loop.targetRole+':'+loop.polarity,
-   consequence:'Эталон использует дополнительную обратную связь; её устойчивость в целевой системе не проверена.',severity01:.56,
-  });
- }
-
+ for(const c of a.constraints){const same=b.constraints.filter(x=>x.onRole===c.onRole);if(!same.some(x=>x.kind===c.kind))out.push({kind:'constraint-kind-mismatch',problemFeature:c.kind+'@'+c.onRole,referenceFeature:same.map(x=>x.kind).join(',')||'no-constraint-on-role',consequence:'Ограничение целевой системы отличается; пороги нельзя переносить напрямую.',severity01:.72});}
+ for(const c of b.constraints)if(!a.constraints.some(x=>x.kind===c.kind&&x.onRole===c.onRole))out.push({kind:'reference-only-constraint',problemFeature:'absent',referenceFeature:c.kind+'@'+c.onRole,consequence:'Эталон предполагает дополнительное ограничение, не описанное в целевой схеме; условия применимости неполны.',severity01:.40});
+ for(const loop of a.feedbackLoops){const same=b.feedbackLoops.filter(x=>x.sourceRole===loop.sourceRole&&x.targetRole===loop.targetRole);if(same.length&&!same.some(x=>x.polarity===loop.polarity))out.push({kind:'feedback-polarity-mismatch',problemFeature:loop.sourceRole+'>'+loop.targetRole+':'+loop.polarity,referenceFeature:same.map(x=>x.polarity).join(','),consequence:'Обратная связь может усилить ошибку вместо её подавления.',severity01:.94});else if(!same.length)out.push({kind:'missing-feedback-path',problemFeature:loop.sourceRole+'>'+loop.targetRole,referenceFeature:'absent',consequence:'Контур обратной связи не подтверждён в эталоне; динамику нельзя считать эквивалентной.',severity01:.66});}
+ for(const loop of b.feedbackLoops)if(!a.feedbackLoops.some(x=>x.sourceRole===loop.sourceRole&&x.targetRole===loop.targetRole))out.push({kind:'reference-only-feedback-path',problemFeature:'absent',referenceFeature:loop.sourceRole+'>'+loop.targetRole+':'+loop.polarity,consequence:'Эталон использует дополнительную обратную связь; её устойчивость в целевой системе не проверена.',severity01:.56});
  const resourcesA=new Set(a.resources.map(x=>x.kind)),resourcesB=new Set(b.resources.map(x=>x.kind));
- for(const kind of resourcesA)if(!resourcesB.has(kind))out.push({
-  kind:'resource-kind-mismatch',problemFeature:kind,referenceFeature:[...resourcesB].join(',')||'none',
-  consequence:'Ограничения ресурсов целевой системы отличаются; бюджет и стоимость переноса требуют самостоятельной оценки.',severity01:.56,
- });
- for(const kind of resourcesB)if(!resourcesA.has(kind))out.push({
-  kind:'reference-only-resource',problemFeature:'absent',referenceFeature:kind,
-  consequence:'Эталон требует дополнительный тип ресурса, доступность которого в целевой системе не подтверждена.',severity01:.40,
- });
-
+ for(const kind of resourcesA)if(!resourcesB.has(kind))out.push({kind:'resource-kind-mismatch',problemFeature:kind,referenceFeature:[...resourcesB].join(',')||'none',consequence:'Ограничения ресурсов целевой системы отличаются; бюджет и стоимость переноса требуют самостоятельной оценки.',severity01:.56});
+ for(const kind of resourcesB)if(!resourcesA.has(kind))out.push({kind:'reference-only-resource',problemFeature:'absent',referenceFeature:kind,consequence:'Эталон требует дополнительный тип ресурса, доступность которого в целевой системе не подтверждена.',severity01:.40});
  const regimesA=new Set(a.dynamics.regimes),regimesB=new Set(b.dynamics.regimes);
- for(const regime of regimesA)if(regimesB.size&&!regimesB.has(regime))out.push({
-  kind:'dynamic-regime-mismatch',problemFeature:regime,referenceFeature:[...regimesB].join(','),
-  consequence:'Требуется отдельная проверка устойчивости целевого динамического режима.',severity01:.65,
- });
- for(const regime of regimesB)if(!regimesA.has(regime))out.push({
-  kind:'reference-only-dynamic-regime',problemFeature:'absent',referenceFeature:regime,
-  consequence:'Эталон работает в дополнительном динамическом режиме; его поведение в целевой системе не установлено.',severity01:.38,
- });
- if(a.dynamics.timescale!=='mixed'&&b.dynamics.timescale!=='mixed'&&a.dynamics.timescale!==b.dynamics.timescale)out.push({
-  kind:'timescale-mismatch',problemFeature:a.dynamics.timescale,referenceFeature:b.dynamics.timescale,
-  consequence:'Разница временных масштабов может сделать обратную связь нестабильной.',severity01:.5,
- });
+ for(const regime of regimesA)if(regimesB.size&&!regimesB.has(regime))out.push({kind:'dynamic-regime-mismatch',problemFeature:regime,referenceFeature:[...regimesB].join(','),consequence:'Требуется отдельная проверка устойчивости целевого динамического режима.',severity01:.65});
+ for(const regime of regimesB)if(!regimesA.has(regime))out.push({kind:'reference-only-dynamic-regime',problemFeature:'absent',referenceFeature:regime,consequence:'Эталон работает в дополнительном динамическом режиме; его поведение в целевой системе не установлено.',severity01:.38});
+ if(a.dynamics.timescale!=='mixed'&&b.dynamics.timescale!=='mixed'&&a.dynamics.timescale!==b.dynamics.timescale)out.push({kind:'timescale-mismatch',problemFeature:a.dynamics.timescale,referenceFeature:b.dynamics.timescale,consequence:'Разница временных масштабов может сделать обратную связь нестабильной.',severity01:.5});
+ if(a.flowEvidenceClass!==b.flowEvidenceClass)out.push({kind:'flow-evidence-class-mismatch',problemFeature:a.flowEvidenceClass??'observed-causal',referenceFeature:b.flowEvidenceClass??'observed-causal',consequence:'Тип подтверждения потоков различается; совпадение графов нельзя интерпретировать как причинную эквивалентность.',severity01:.34});
  return out.sort((x,y)=>y.severity01-x.severity01||x.kind.localeCompare(y.kind)).slice(0,16);
 }
 const actor=(id:string,role:ActorRole):MechanismActor=>({id,role});
@@ -235,12 +170,15 @@ export class MechanismSerendipityEngine {
    if(links.length<3||!aspects.has('flow')||aspects.size<3){rejectedN++;continue;}
    const transferPenalty=breaks.reduce((sum,x)=>sum+x.severity01*(x.kind.includes('direction')?.20:x.kind.includes('feedback')?.16:x.kind.includes('constraint')?.12:.07),0);
    const transfer=clamp(similarity*(1-Math.min(.75,transferPenalty)));
-   const confidence=clamp(similarity*coverage*(.9+Math.min(.1,links.length/100)));
+   const flowEvidenceClass=a.flowEvidenceClass??'observed-causal';
+   const evidenceFactor=flowEvidenceClass==='declared-dependency'?.62:flowEvidenceClass==='inferred'?.76:1;
+   const confidence=clamp(similarity*coverage*(.9+Math.min(.1,links.length/100))*evidenceFactor);
    const metric=a.constraints[0]?.kind||a.flows[0]?.kind||'system-outcome';
-   const hypothesis='Unverified cross-domain mechanism hypothesis only: принцип «'+b.title+'» из области «'+b.domain+'» может помочь в задаче «'+a.title+'» ('+a.domain+'), поскольку совпадают структурные слои '+[...aspects].join(', ')+'. Причинная эквивалентность не доказана.';
-   const verificationPlan='Сравнить baseline и одну изолированную модификацию на независимых holdout-наборах; измерить '+metric+', побочные эффекты, безопасность и стоимость; сохранить rollback.';
+   const epistemicBoundary=flowEvidenceClass==='declared-dependency'?' Целевые рёбра описывают объявленные архитектурные зависимости NK1, а не измеренные причинные эффекты; это гипотеза по топологии, не доказательство причинности.':flowEvidenceClass==='inferred'?' Часть потоков выведена по типам ролей и не наблюдалась непосредственно.':'';
+   const hypothesis='Unverified cross-domain mechanism hypothesis only: принцип «'+b.title+'» из области «'+b.domain+'» может помочь в задаче «'+a.title+'» ('+a.domain+'), поскольку совпадают структурные слои '+[...aspects].join(', ')+'. Причинная эквивалентность не доказана.'+epistemicBoundary;
+   const verificationPlan=(flowEvidenceClass==='declared-dependency'?'Сначала сформулировать измеримый причинный прогноз; топология зависимостей служит только поисковым сигналом. Затем сравнить baseline и одну изолированную интервенцию на независимых holdout-наборах; ':'Сравнить baseline и одну изолированную модификацию на независимых holdout-наборах; ')+'измерить '+metric+', побочные эффекты, безопасность и стоимость; сохранить rollback.';
    const falsifier='Отвергнуть перенос, если holdout-повторы не превосходят baseline по '+metric+' или нарушаются ограничения безопасности/ресурсов.';
-   found.push({id:'mechanism-'+hash(a.id+'|'+b.id+'|'+similarity.toFixed(4)),problemId:a.id,referenceMechanismId:b.id,problemTitle:a.title,referenceTitle:b.title,sourceDomain:b.domain,targetDomain:a.domain,similarity01:Number(similarity.toFixed(4)),confidence01:Number(confidence.toFixed(4)),transferability01:Number(transfer.toFixed(4)),novelty01:Number(clamp(.5+.5*(1-similarity)).toFixed(4)),coverage01:Number(coverage.toFixed(4)),correspondences:links,breakpoints:breaks,hypothesis,verificationPlan,falsifier,status:'candidate',epistemicStatus:'hypothesis'});
+   found.push({id:'mechanism-'+hash(a.id+'|'+b.id+'|'+similarity.toFixed(4)),problemId:a.id,referenceMechanismId:b.id,flowEvidenceClass,problemTitle:a.title,referenceTitle:b.title,sourceDomain:b.domain,targetDomain:a.domain,similarity01:Number(similarity.toFixed(4)),confidence01:Number(confidence.toFixed(4)),transferability01:Number(transfer.toFixed(4)),novelty01:Number(clamp(.5+.5*(1-similarity)).toFixed(4)),coverage01:Number(coverage.toFixed(4)),correspondences:links,breakpoints:breaks,hypothesis,verificationPlan,falsifier,status:'candidate',epistemicStatus:'hypothesis'});
   }
   found.sort((x,y)=>y.transferability01-x.transferability01||y.confidence01-x.confidence01||x.referenceMechanismId.localeCompare(y.referenceMechanismId));
   const discoveries=found.slice(0,limit);

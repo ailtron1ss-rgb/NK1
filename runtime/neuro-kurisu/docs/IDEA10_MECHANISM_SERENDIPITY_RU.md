@@ -22,6 +22,9 @@ IntrinsicExperimentGenerator.fromMechanismDiscovery переводит приг�
 - `OrganismCore.organismMechanismDiscoveries() выставляет read-only путь наружу; в селектор решений и ActionGateway новая управляющая связь не добавлена.
 - `MechanismProblemAdapter` извлекает типизированные роли, dependency-потоки, давление памяти и бюджета, prediction error, health failures, ресурсы и динамический режим. Содержимое воспоминаний и пользовательский текст не копируются.
 - `MechanismSerendipityRuntime` переводит найденные структуры в `verify`-задачи, ограничивает журнал повторов 256 ID и сохраняет компактную статистику; повторный scan не создаёт одинаковую задачу.
+- Происхождение рёбер обязательно размечается как `observed-causal`, `declared-dependency` или `inferred`. Живой граф `OrganismSystemFabric` — только `declared-dependency`: его рёбра описывают архитектурную связь, а не измеренные причинные эффекты.
+- Для `declared-dependency` confidence ограничивается 0,65 до дополнительной проверки; гипотеза и verify-задача сохраняют provenance class, а тексты прямо запрещают интерпретировать совпадение топологии как причинное доказательство.
+- Сопоставление потоков для такого графа использует прежде всего направление и наличие зависимости; эвристически выведенный тип потока не подменяет наблюдаемую семантику.
 - Направление и тип потока, обратная связь, ресурсы, ограничения и временной масштаб дают явные breakpoints. Сильные несовпадения снижают transferability.
 
 - Для живого intake `OrganismSystemFabric` читает только bounded-агрегаты владельцев (ограниченный memory sample до 160 записей, ошибка предсказания, остаток бюджета, evidence debt) и owner-binding probes; полный memory/world snapshot и health snapshot не клонируются ради поиска.

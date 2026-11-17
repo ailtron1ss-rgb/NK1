@@ -42,6 +42,7 @@ export class MechanismSerendipityRuntime {
   for(const discovery of result.discoveries){
    const input:MechanismDiscoveryExperimentInput={
     id:discovery.id,title:discovery.referenceTitle,sourceDomain:discovery.sourceDomain,targetDomain:discovery.targetDomain,
+    flowEvidenceClass:discovery.flowEvidenceClass,
     confidence01:Math.min(discovery.confidence01,projection.evidenceConfidence01),transferability01:discovery.transferability01,
     status:discovery.status,epistemicStatus:discovery.epistemicStatus,hypothesis:discovery.hypothesis,verificationPlan:discovery.verificationPlan,
     correspondences:discovery.correspondences.map(x=>x.aspect+':'+x.structuralFeature),breakpoints:discovery.breakpoints.map(x=>x.kind+':'+x.consequence),

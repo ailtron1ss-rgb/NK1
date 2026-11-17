@@ -50,6 +50,7 @@ assert.equal(engine.analyze({id:'bad',title:'Invalid',domain:'test',actors:[],fl
 let now=1800000000123;const generator=new IntrinsicExperimentGenerator(()=>now,()=>'idea10');
 const experiment=generator.fromMechanismDiscovery({
  id:best.id,title:best.referenceTitle,sourceDomain:best.sourceDomain,targetDomain:best.targetDomain,
+ flowEvidenceClass:best.flowEvidenceClass,
  confidence01:best.confidence01,transferability01:best.transferability01,status:best.status,epistemicStatus:best.epistemicStatus,
  hypothesis:best.hypothesis,verificationPlan:best.verificationPlan,
  correspondences:best.correspondences.map(x=>x.aspect+':'+x.structuralFeature),
@@ -62,9 +63,10 @@ assert.equal(experiment.status,'candidate');
 assert.equal(experiment.epistemicStatus,'hypothesis');
 assert.equal(experiment.verificationRequired,true);
 assert.equal(experiment.mechanismDiscoveryId,best.id);
+assert.equal(experiment.mechanismFlowEvidenceClass,best.flowEvidenceClass);
 assert.equal(experiment.createdAt,now);
 assert.ok(experiment.verificationPlan.includes('holdout'));
 assert.ok(experiment.hypothesis.includes('Unverified cross-domain mechanism hypothesis only'));
-assert.equal(generator.fromMechanismDiscovery({id:best.id,title:best.referenceTitle,sourceDomain:best.sourceDomain,targetDomain:best.targetDomain,confidence01:.1,transferability01:.2,status:'candidate',epistemicStatus:'hypothesis',hypothesis:'weak',verificationPlan:'test',correspondences:['one','two'],breakpoints:[]},[]),null);
-assert.equal(generator.fromMechanismDiscovery({id:best.id,title:best.referenceTitle,sourceDomain:best.sourceDomain,targetDomain:best.sourceDomain,confidence01:.9,transferability01:.9,status:'candidate',epistemicStatus:'hypothesis',hypothesis:'same domain',verificationPlan:'test',correspondences:['one','two'],breakpoints:[]},[]),null);
+assert.equal(generator.fromMechanismDiscovery({id:best.id,title:best.referenceTitle,sourceDomain:best.sourceDomain,targetDomain:best.targetDomain,flowEvidenceClass:best.flowEvidenceClass,confidence01:.1,transferability01:.2,status:'candidate',epistemicStatus:'hypothesis',hypothesis:'weak',verificationPlan:'test',correspondences:['one','two'],breakpoints:[]},[]),null);
+assert.equal(generator.fromMechanismDiscovery({id:best.id,title:best.referenceTitle,sourceDomain:best.sourceDomain,targetDomain:best.sourceDomain,flowEvidenceClass:best.flowEvidenceClass,confidence01:.9,transferability01:.9,status:'candidate',epistemicStatus:'hypothesis',hypothesis:'same domain',verificationPlan:'test',correspondences:['one','two'],breakpoints:[]},[]),null);
 console.log('IDEA10_MECHANISM_SERENDIPITY=PASS',JSON.stringify({evaluated:result.evaluatedN,emitted:result.emittedN,best:best.referenceMechanismId,similarity01:best.similarity01,transferability01:best.transferability01,correspondences:best.correspondences.length,breakpoints:best.breakpoints.length,experiment:experiment.id}));
