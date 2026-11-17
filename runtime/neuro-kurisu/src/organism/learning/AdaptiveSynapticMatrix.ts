@@ -63,6 +63,8 @@ export interface SynapticAdapterRecord {
   failures: number;
   averageLatencyMs: number;
   lastErrorAt: number;
+  /** Last accepted report digest captured when the profile entered quarantine. */
+  quarantineReportSha256?: string;
 }
 
 export interface SynapticMatrixDecision {
@@ -275,8 +277,9 @@ export class AdaptiveSynapticMatrixEngine {
     const manifest = normalizeManifest(raw);
     const record = this.state.adapters.find(entry => entry.candidate.id === manifest.id);
     if (!record || !sameCandidate(record.candidate, manifest)) throw new Error('synaptic-adapter-candidate-manifest-mismatch');
+    const quarantinedReportSha256 = record.quarantineReportSha256 ?? record.manifest?.validation.reportSha256;
     if (record.status === 'quarantined'
-      && record.manifest?.validation.reportSha256 === manifest.validation.reportSha256) {
+      && quarantinedReportSha256 === manifest.validation.reportSha256) {
       throw new Error('synaptic-adapter-revalidation-required-after-quarantine');
     }
     if (typeof verify !== 'function') throw new Error('synaptic-adapter-manifest-verifier-required');
@@ -289,6 +292,7 @@ export class AdaptiveSynapticMatrixEngine {
     if (!verified) throw new Error('synaptic-adapter-manifest-signature-verification-failed');
     record.status = 'active';
     record.manifest = structuredClone(manifest);
+    delete record.quarantineReportSha256;
     record.cooldownUntil = 0;
     record.consecutiveFailures = 0;
     return structuredClone(record);
@@ -394,6 +398,7 @@ export class AdaptiveSynapticMatrixEngine {
     if (record.consecutiveFailures >= 6) {
       // Repeated failure across escalating cooldowns requires an explicit, newly
       // verified activation instead of silently returning to inference.
+      record.quarantineReportSha256 = record.manifest?.validation.reportSha256;
       record.status = 'quarantined';
       record.cooldownUntil = 0;
       return;
@@ -420,7 +425,23 @@ export class AdaptiveSynapticMatrixEngine {
           failures: Number.isSafeInteger(item.failures) ? Math.max(0, item.failures) : 0,
           averageLatencyMs: Number.isFinite(Number(item.averageLatencyMs)) ? Math.max(0, Number(item.averageLatencyMs)) : 0,
           lastErrorAt: Number.isFinite(Number(item.lastErrorAt)) ? Math.max(0, Number(item.lastErrorAt)) : 0,
+          ...(typeof item.quarantineReportSha256 === 'string' && HASH_PATTERN.test(item.quarantineReportSha256)
+            ? { quarantineReportSha256: item.quarantineReportSha256.toLowerCase() }
+            : {}),
         };
+        if (item.status === 'quarantined' && !restored.quarantineReportSha256) {
+          // Backward compatibility: older snapshots kept the accepted manifest
+          // but had no dedicated anti-replay field. Recover only its digest;
+          // it is deny-only evidence and can never authorize activation.
+          try {
+            const priorManifest = normalizeManifest(item.manifest as SynapticAdapterActivationManifest);
+            if (sameCandidate(candidate, priorManifest)) {
+              restored.quarantineReportSha256 = priorManifest.validation.reportSha256;
+            }
+          } catch {
+            // Keep the adapter quarantined; lack of legacy evidence never activates it.
+          }
+        }
         if (item.status === 'active') {
           try {
             const manifest = normalizeManifest(item.manifest as SynapticAdapterActivationManifest);
