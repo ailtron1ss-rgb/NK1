@@ -92,7 +92,7 @@ export class NeuralProsthesisChatProvider {
     this.timeoutMs = Math.max(250, Math.min(120_000, Math.floor(options.timeoutMs ?? 30_000)));
     const apiToken = String(options.apiToken ?? '');
     if (apiToken && (
-      apiToken.length < 32 || apiToken.length > 512 || !/^[\\x21-\\x7e]+$/.test(apiToken)
+      apiToken.length < 32 || apiToken.length > 512 || !/^[!-~]+$/.test(apiToken)
     )) throw new Error('neural-prosthesis-api-token-invalid');
     this.apiToken = apiToken || null;
     this.fetchImpl = options.fetchImpl ?? fetch;
