@@ -12,6 +12,9 @@ assert.equal(ambiguous.risk.level, 'high', 'destructive language must raise risk
 assert.deepEqual(ambiguous.permissions.allowedActions, [], 'free text must never become an execution allow-list');
 assert.equal(ambiguous.approval.status, 'not-approved');
 assert.equal(compiler.gate(ambiguous, 'filesystem.delete').allowed, false);
+assert.throws(() => compiler.approve(ambiguous, { userConfirmed: true, allowedActions: [], at: 1_800_000_000_001, evidenceRef: 'incomplete' }), /incomplete/);
+const riskCannotBeDowngraded = compiler.compile({ text: 'Delete the production database', extraction: { risk: 'low' } });
+assert.equal(riskCannotBeDowngraded.risk.level, 'high', 'semantic extraction must not downgrade deterministic high-risk signals');
 
 const contract = compiler.compile({
   requestId: 'intent:test:bounded',
