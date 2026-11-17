@@ -77,7 +77,7 @@ assert.equal(dispatched.verifiedEvidenceCount,3);
 assert.equal(dispatched.unverifiedEvidenceCount,0);
 assert.equal(capturedPayload.allowedEvidence[0].sourceFamily.length>0,true,
   'role prompts must include host-verified provenance, not just model-provided source labels');
-assert.ok(capturedPayload.verifiedEvidence[0].material?.excerpt?.length>20,
+assert.ok(capturedPayload.allowedEvidence[0].material?.excerpt?.length>20,
   'role prompts receive the exact excerpt matched to the promoted firewall observation');
 assert.ok(dispatched.elapsedMs>=0);
 

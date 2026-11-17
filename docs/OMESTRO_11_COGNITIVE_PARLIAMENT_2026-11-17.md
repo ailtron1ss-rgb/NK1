@@ -54,7 +54,7 @@ node --experimental-strip-types tests/cognitive-parliament-dispatcher.mjs
 node scripts/typecheck-runtime.mjs
 ```
 
-The focused regression covers firewall promotion, forged/unpromoted evidence, model-family correlation, safety veto, risk gates, role coverage, dissent, malformed batches and default fail-closed behavior.
+The focused regressions cover promoted Firewall evidence and source lineage, source-excerpt matching, rejection of mixed valid/forged evidence before any model call, concurrency and token budgets, deadlines, malformed role output, late-canceled host attestations, safety vetoes, role coverage, P69 selection and fail-closed defaults.
 
 ## Not yet claimed
 
