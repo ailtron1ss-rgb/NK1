@@ -45,7 +45,8 @@ export type ArchitectureMorphogenesisOperation =
   | { kind: 'merge'; sourceModuleIds: string[]; targetModuleId: string; rationale: string }
   | { kind: 'split'; sourceModuleId: string; targetModuleIds: string[]; rationale: string }
   | { kind: 'move'; moduleId: string; fromPath: string; toPath: string; rationale: string }
-  | { kind: 'replace'; moduleId: string; rationale: string };
+  | { kind: 'replace'; moduleId: string; rationale: string }
+  | { kind: 'rewire'; addedEdges: ArchitectureMorphogenesisEdge[]; removedEdges: ArchitectureMorphogenesisEdge[]; rationale: string };
 
 export interface ArchitectureMigrationStep {
   id: string;
@@ -86,6 +87,8 @@ export interface ArchitectureMorphogenesisPlan {
     removedModuleIds: string[];
     movedModuleIds: string[];
     replacedModuleIds: string[];
+    addedEdges: string[];
+    removedEdges: string[];
     changedContractIds: string[];
   };
   issues: ArchitectureMorphogenesisIssue[];
@@ -121,6 +124,7 @@ const MAX_CONTRACTS = 1000;
 const MAX_EDGES = 100000;
 const MAX_SOURCE_PATHS_PER_MODULE = 64;
 const MAX_STEPS = 50;
+const MAX_REPORTED_CYCLES = 64;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -178,7 +182,7 @@ function stableJson(value: unknown): string {
   return JSON.stringify(stableValue(value));
 }
 
-function sha256(value: string): string {
+function sha256(value: string | Uint8Array): string {
   return 'sha256:' + createHash('sha256').update(value).digest('hex');
 }
 
@@ -197,31 +201,47 @@ function isCanonicalSourcePath(value: unknown): value is string {
 }
 
 function structuralCycles(edges: ArchitectureMorphogenesisEdge[], known: Set<string>): string[][] {
+  // Iterative DFS stays safe at the full 10k-module validation bound.
   const adjacency = new Map<string, string[]>();
   for (const id of known) adjacency.set(id, []);
   for (const edge of edges) {
     if (edge.kind === 'data-flow') continue;
     adjacency.get(edge.from)?.push(edge.to);
   }
-  const visiting = new Set<string>();
-  const visited = new Set<string>();
+  const state = new Map<string, 0 | 1 | 2>();
+  const frames: Array<{ id: string; nextIndex: number }> = [];
+  const path: string[] = [];
   const cycles: string[][] = [];
-  const stack: string[] = [];
-  const visit = (id: string) => {
-    if (visiting.has(id)) {
-      const start = stack.indexOf(id);
-      cycles.push(stack.slice(start).concat(id));
-      return;
+  for (const start of known) {
+    if (state.get(start) !== undefined) continue;
+    state.set(start, 1);
+    path.push(start);
+    frames.push({ id: start, nextIndex: 0 });
+    while (frames.length) {
+      const frame = frames[frames.length - 1];
+      const targets = adjacency.get(frame.id) ?? [];
+      if (frame.nextIndex >= targets.length) {
+        state.set(frame.id, 2);
+        frames.pop();
+        path.pop();
+        continue;
+      }
+      const target = targets[frame.nextIndex++];
+      const targetState = state.get(target) ?? 0;
+      if (targetState === 1) {
+        if (cycles.length < MAX_REPORTED_CYCLES) {
+          const cycleStart = path.lastIndexOf(target);
+          cycles.push(path.slice(cycleStart < 0 ? 0 : cycleStart).concat(target));
+        }
+        continue;
+      }
+      if (targetState === 0) {
+        state.set(target, 1);
+        path.push(target);
+        frames.push({ id: target, nextIndex: 0 });
+      }
     }
-    if (visited.has(id)) return;
-    visiting.add(id);
-    stack.push(id);
-    for (const target of adjacency.get(id) ?? []) visit(target);
-    stack.pop();
-    visiting.delete(id);
-    visited.add(id);
-  };
-  for (const id of known) visit(id);
+  }
   return cycles;
 }
 
@@ -303,15 +323,19 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
   }
 
   const contractIds = new Set<string>();
+  const validContracts: ArchitectureMorphogenesisContract[] = [];
   for (const [index, contract] of contracts.entries()) {
     const path = 'contracts[' + index + ']';
     if (!isRecord(contract) || typeof contract.id !== 'string' || !CONTRACT_ID.test(contract.id)) {
-      add('contract-id-invalid', path + '.id', 'Contract id must be a bounded identifier');
+      add('contract-id-invalid', path + '.id', 'Contract must be a plain record with a bounded identifier');
       continue;
     }
     if (contractIds.has(contract.id)) add('contract-id-duplicate', path + '.id', 'Contract ids must be unique');
     contractIds.add(contract.id);
-    if (!ids.has(contract.ownerModuleId)) add('contract-owner-missing', path + '.ownerModuleId', 'Contract owner must reference a known module');
+    validContracts.push(contract as unknown as ArchitectureMorphogenesisContract);
+    if (typeof contract.ownerModuleId !== 'string' || !ids.has(contract.ownerModuleId)) {
+      add('contract-owner-missing', path + '.ownerModuleId', 'Contract owner must reference a known module');
+    }
     if (contract.authority !== 'single-owner' && contract.authority !== 'shared') {
       add('contract-authority-invalid', path + '.authority', 'Contract authority must be single-owner or shared');
     }
@@ -321,7 +345,10 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
     }
     const consumers = new Set<string>();
     for (const consumer of contract.consumerModuleIds) {
-      if (typeof consumer !== 'string' || !ids.has(consumer)) add('contract-consumer-missing', path + '.consumerModuleIds', 'Every contract consumer must reference a known module');
+      if (typeof consumer !== 'string' || !ids.has(consumer)) {
+        add('contract-consumer-missing', path + '.consumerModuleIds', 'Every contract consumer must reference a known module');
+        continue;
+      }
       if (consumers.has(consumer)) add('contract-consumer-duplicate', path + '.consumerModuleIds', 'Contract consumers must be unique');
       consumers.add(consumer);
       if (consumer === contract.ownerModuleId) add('contract-self-consumption', path + '.consumerModuleIds', 'A contract owner cannot consume its own authority contract');
@@ -329,36 +356,56 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
   }
 
   const edgeKeys = new Set<string>();
+  const validEdges: ArchitectureMorphogenesisEdge[] = [];
   for (const [index, edge] of edges.entries()) {
     const path = 'edges[' + index + ']';
-    if (!isRecord(edge) || !ids.has(edge.from) || !ids.has(edge.to)) {
+    if (!isRecord(edge)) {
+      add('edge-record-invalid', path, 'Every edge must be a plain record');
+      continue;
+    }
+    if (typeof edge.from !== 'string' || typeof edge.to !== 'string' || !ids.has(edge.from) || !ids.has(edge.to)) {
       add('edge-endpoint-missing', path, 'Every edge endpoint must reference a known module');
       continue;
     }
-    if (!['import', 'contract', 'data-flow'].includes(edge.kind)) {
+    if (typeof edge.kind !== 'string' || !['import', 'contract', 'data-flow'].includes(edge.kind)) {
       add('edge-kind-invalid', path + '.kind', 'Edge kind must be import, contract or data-flow');
       continue;
     }
+    const typed = edge as unknown as ArchitectureMorphogenesisEdge;
     const key = edge.from + '|' + edge.to + '|' + edge.kind;
     if (edgeKeys.has(key)) add('edge-duplicate', path, 'Duplicate graph edges are not accepted');
     edgeKeys.add(key);
+    validEdges.push(typed);
   }
 
-  const contractEdges = new Set(edges.filter(edge => edge.kind === 'contract').map(edge => edge.from + '|' + edge.to));
-  for (const contract of contracts) {
-    for (const consumer of contract.consumerModuleIds ?? []) {
-      if (!contractEdges.has(contract.ownerModuleId + '|' + consumer)) {
+  const declaredContractPairs = new Set<string>();
+  for (const contract of validContracts) {
+    if (typeof contract.ownerModuleId !== 'string' || !ids.has(contract.ownerModuleId)
+      || !Array.isArray(contract.consumerModuleIds)) continue;
+    for (const consumer of contract.consumerModuleIds) {
+      if (typeof consumer === 'string' && ids.has(consumer)) {
+        declaredContractPairs.add(contract.ownerModuleId + '|' + consumer);
+      }
+    }
+  }
+  const contractEdges = new Set(validEdges
+    .filter(edge => edge.kind === 'contract')
+    .map(edge => edge.from + '|' + edge.to));
+  for (const contract of validContracts) {
+    if (!Array.isArray(contract.consumerModuleIds) || typeof contract.ownerModuleId !== 'string') continue;
+    for (const consumer of contract.consumerModuleIds) {
+      if (typeof consumer === 'string' && !contractEdges.has(contract.ownerModuleId + '|' + consumer)) {
         add('contract-edge-missing', 'contracts.' + contract.id, 'Every declared contract consumer needs a matching owner-to-consumer edge');
       }
     }
   }
-  for (const edge of edges) {
-    if (edge.kind === 'contract' && !contracts.some(contract => contract.ownerModuleId === edge.from && contract.consumerModuleIds.includes(edge.to))) {
+  for (const edge of validEdges) {
+    if (edge.kind === 'contract' && !declaredContractPairs.has(edge.from + '|' + edge.to)) {
       add('contract-edge-unowned', 'edges', 'Every contract edge must be declared by an owner contract');
     }
   }
 
-  const cycles = structuralCycles(edges, ids);
+  const cycles = structuralCycles(validEdges, ids);
   for (const cycle of cycles) {
     add('structural-cycle', 'edges', 'Import/contract cycle: ' + cycle.join(' -> '));
   }
@@ -375,10 +422,8 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
 export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogenesisGraph {
   const architecture = buildCognitiveArchitectureSnapshot();
   const genome = buildDevelopmentalGenome();
-  const configuredSourceCommit = process.env.GITHUB_SHA ?? process.env.NK1_SOURCE_COMMIT ?? null;
-  const sourceCommit = typeof configuredSourceCommit === 'string' && COMMIT_SHA.test(configuredSourceCommit)
-    ? configuredSourceCommit
-    : null;
+  const sourceCommit = [process.env.GITHUB_SHA, process.env.NK1_SOURCE_COMMIT]
+    .find((candidate): candidate is string => typeof candidate === 'string' && COMMIT_SHA.test(candidate)) ?? null;
   const usedPrimaryPaths = new Set<string>();
   const modules = architecture.subsystems.map(subsystem => {
     const sourcePaths = [...new Set(subsystem.components
@@ -389,7 +434,7 @@ export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogen
     usedPrimaryPaths.add(primaryPath);
     const fileRevisions = sourcePaths.map(sourcePath => ({
       path: sourcePath,
-      digest: sha256(readFileSync(resolve(process.cwd(), sourcePath), 'utf8')),
+      digest: sha256(readFileSync(resolve(process.cwd(), sourcePath))),
     }));
     return {
       id: subsystem.id,
@@ -453,6 +498,14 @@ function issue(code: string, path: string, message: string): ArchitectureMorphog
 
 function sortedUnique(values: string[]): string[] {
   return [...new Set(values)].sort();
+}
+
+function morphogenesisEdgeKey(edge: ArchitectureMorphogenesisEdge): string {
+  return edge.from + '|' + edge.to + '|' + edge.kind;
+}
+
+function morphogenesisEdgeLabel(edge: ArchitectureMorphogenesisEdge): string {
+  return edge.kind + ':' + edge.from + '->' + edge.to;
 }
 
 function operationModuleIds(operation: any): string[] {
@@ -519,7 +572,7 @@ export function createArchitectureMorphogenesisPlan(input: {
         checkpoint: { id: '', baselineCommit: '', reference: '', description: '' },
         steps: [], rollbackSteps: [], affectedContractIds: [],
       },
-      diff: { addedModuleIds: [], removedModuleIds: [], movedModuleIds: [], replacedModuleIds: [], changedContractIds: [] },
+      diff: { addedModuleIds: [], removedModuleIds: [], movedModuleIds: [], replacedModuleIds: [], addedEdges: [], removedEdges: [], changedContractIds: [] },
       issues,
     };
     return { ...payload, planDigest: sha256(stableJson(payload)) };
@@ -564,13 +617,28 @@ export function createArchitectureMorphogenesisPlan(input: {
     }).map(module => module.id));
     const replaced = sortedUnique(baseline.modules.filter(module => {
       const next = nextById.get(module.id);
-      return Boolean(next && next.path === module.path && (next.revisionSha256 !== module.revisionSha256 || next.owner !== module.owner));
+      const sourceFootprintChanged = Boolean(next
+        && stableJson(sortedUnique(next.sourcePaths)) !== stableJson(sortedUnique(module.sourcePaths)));
+      return Boolean(next && next.path === module.path
+        && (next.revisionSha256 !== module.revisionSha256 || next.owner !== module.owner || sourceFootprintChanged));
     }).map(module => module.id));
+
+    const baselineEdgesByKey = new Map(baseline.edges.map(edge => [morphogenesisEdgeKey(edge), edge]));
+    const candidateEdgesByKey = new Map(candidate.edges.map(edge => [morphogenesisEdgeKey(edge), edge]));
+    const addedEdges = sortedUnique(candidate.edges
+      .filter(edge => !baselineEdgesByKey.has(morphogenesisEdgeKey(edge)))
+      .map(morphogenesisEdgeLabel));
+    const removedEdges = sortedUnique(baseline.edges
+      .filter(edge => !candidateEdgesByKey.has(morphogenesisEdgeKey(edge)))
+      .map(morphogenesisEdgeLabel));
 
     const removedCoverage = new Set<string>();
     const addedCoverage = new Set<string>();
     const movedCoverage = new Set<string>();
     const replacedCoverage = new Set<string>();
+    const addedEdgeCoverage = new Set<string>();
+    const removedEdgeCoverage = new Set<string>();
+    const operationEdgeKeys = new Set<string>();
     const operationKeys = new Set<string>();
 
     if (Array.isArray(input.operations)) for (const [index, operation] of input.operations.entries()) {
@@ -621,13 +689,52 @@ export function createArchitectureMorphogenesisPlan(input: {
         const op = operation as Extract<ArchitectureMorphogenesisOperation, { kind: 'replace' }>;
         const before = baseById.get(op.moduleId);
         const after = nextById.get(op.moduleId);
-        if (!before || !after || before.path !== after.path || (before.revisionSha256 === after.revisionSha256 && before.owner === after.owner)) {
-          issues.push(issue('replace-mismatch', path, 'Replace must preserve module identity/path and change its content revision or owner'));
+        const sourceFootprintChanged = Boolean(before && after
+          && stableJson(sortedUnique(before.sourcePaths)) !== stableJson(sortedUnique(after.sourcePaths)));
+        if (!before || !after || before.path !== after.path
+          || (before.revisionSha256 === after.revisionSha256 && before.owner === after.owner && !sourceFootprintChanged)) {
+          issues.push(issue('replace-mismatch', path, 'Replace must preserve module identity/path and change its revision, owner or source footprint'));
           continue;
         }
         replacedCoverage.add(op.moduleId);
+      } else if (operation.kind === 'rewire') {
+        const op = operation as Extract<ArchitectureMorphogenesisOperation, { kind: 'rewire' }>;
+        if (!Array.isArray(op.addedEdges) || !Array.isArray(op.removedEdges)
+          || op.addedEdges.length + op.removedEdges.length === 0
+          || op.addedEdges.length > MAX_EDGES || op.removedEdges.length > MAX_EDGES) {
+          issues.push(issue('rewire-shape-invalid', path, 'Rewire requires bounded addedEdges/removedEdges and at least one edge change'));
+          continue;
+        }
+        const verifyReferences = (
+          references: ArchitectureMorphogenesisEdge[],
+          expected: Map<string, ArchitectureMorphogenesisEdge>,
+          coverage: Set<string>,
+          direction: 'added' | 'removed',
+        ) => {
+          for (const [edgeIndex, reference] of references.entries()) {
+            if (!isRecord(reference) || typeof reference.from !== 'string' || typeof reference.to !== 'string'
+              || typeof reference.kind !== 'string' || !['import', 'contract', 'data-flow'].includes(reference.kind)) {
+              issues.push(issue('rewire-edge-invalid', path + '.' + direction + 'Edges[' + edgeIndex + ']', 'Every rewired edge must identify a typed from/to pair'));
+              continue;
+            }
+            const typed = reference as unknown as ArchitectureMorphogenesisEdge;
+            const key = morphogenesisEdgeKey(typed);
+            if (operationEdgeKeys.has(key)) {
+              issues.push(issue('rewire-edge-duplicate', path + '.' + direction + 'Edges[' + edgeIndex + ']', 'An edge can be accounted for only once'));
+              continue;
+            }
+            operationEdgeKeys.add(key);
+            if (!expected.has(key)) {
+              issues.push(issue('rewire-edge-mismatch', path + '.' + direction + 'Edges[' + edgeIndex + ']', 'Rewire references must match the exact graph edge difference'));
+              continue;
+            }
+            coverage.add(key);
+          }
+        };
+        verifyReferences(op.addedEdges, candidateEdgesByKey, addedEdgeCoverage, 'added');
+        verifyReferences(op.removedEdges, baselineEdgesByKey, removedEdgeCoverage, 'removed');
       } else {
-        issues.push(issue('operation-kind-unsupported', path + '.kind', 'Only merge, split, move and replace operations are supported'));
+        issues.push(issue('operation-kind-unsupported', path + '.kind', 'Only merge, split, move, replace and rewire operations are supported'));
       }
     }
 
@@ -635,6 +742,16 @@ export function createArchitectureMorphogenesisPlan(input: {
     for (const id of added) if (!addedCoverage.has(id)) issues.push(issue('added-module-unaccounted', 'diff.addedModuleIds', 'Added module lacks a merge/split operation: ' + id));
     for (const id of moved) if (!movedCoverage.has(id)) issues.push(issue('moved-module-unaccounted', 'diff.movedModuleIds', 'Moved module lacks an explicit move operation: ' + id));
     for (const id of replaced) if (!replacedCoverage.has(id)) issues.push(issue('replaced-module-unaccounted', 'diff.replacedModuleIds', 'Changed module lacks an explicit replace operation: ' + id));
+    for (const [key, edge] of baselineEdgesByKey) {
+      if (!candidateEdgesByKey.has(key) && !removedEdgeCoverage.has(key)) {
+        issues.push(issue('edge-change-unaccounted', 'diff.removedEdges', 'Removed graph edge lacks an explicit rewire operation: ' + morphogenesisEdgeLabel(edge)));
+      }
+    }
+    for (const [key, edge] of candidateEdgesByKey) {
+      if (!baselineEdgesByKey.has(key) && !addedEdgeCoverage.has(key)) {
+        issues.push(issue('edge-change-unaccounted', 'diff.addedEdges', 'Added graph edge lacks an explicit rewire operation: ' + morphogenesisEdgeLabel(edge)));
+      }
+    }
 
     const baseContracts = new Map(baseline.contracts.map(contract => [contract.id, contract]));
     const nextContracts = new Map(candidate.contracts.map(contract => [contract.id, contract]));
@@ -679,6 +796,8 @@ export function createArchitectureMorphogenesisPlan(input: {
         removedModuleIds: removed,
         movedModuleIds: moved,
         replacedModuleIds: replaced,
+        addedEdges,
+        removedEdges,
         changedContractIds,
       },
       issues,
@@ -696,7 +815,7 @@ export function createArchitectureMorphogenesisPlan(input: {
     candidateGraph: emptyGraph,
     operations: [],
     migrationPlan: { checkpoint: { id: '', baselineCommit: '', reference: '', description: '' }, steps: [], rollbackSteps: [], affectedContractIds: [] },
-    diff: { addedModuleIds: [], removedModuleIds: [], movedModuleIds: [], replacedModuleIds: [], changedContractIds: [] },
+    diff: { addedModuleIds: [], removedModuleIds: [], movedModuleIds: [], replacedModuleIds: [], addedEdges: [], removedEdges: [], changedContractIds: [] },
     issues,
   };
   return { ...payload, planDigest: sha256(stableJson(payload)) };
@@ -718,6 +837,22 @@ export function evaluateArchitectureMorphogenesisPlan(
   const planPayload = planDigestPayload(plan);
   if (typeof plan.planDigest !== 'string' || plan.planDigest !== sha256(stableJson(planPayload))) {
     fail('plan-digest-mismatch', 'planDigest', 'Plan content no longer matches its sealed digest');
+  }
+  try {
+    const rebuilt = createArchitectureMorphogenesisPlan({
+      baselineCommit: plan.baselineCommit,
+      candidateBranch: plan.candidateBranch,
+      baselineGraph: plan.baselineGraph,
+      candidateGraph: plan.candidateGraph,
+      operations: plan.operations,
+      migrationPlan: plan.migrationPlan,
+    });
+    if (rebuilt.status !== 'READY_FOR_REVIEW'
+      || stableJson(planDigestPayload(rebuilt)) !== stableJson(planPayload)) {
+      fail('plan-semantics-invalid', 'plan', 'Sealed plan does not reproduce from its baseline/candidate graphs, operations and migration plan');
+    }
+  } catch {
+    fail('plan-semantics-invalid', 'plan', 'Plan structure could not be independently revalidated');
   }
   if (plan.status !== 'READY_FOR_REVIEW') {
     fail('plan-not-ready', 'status', 'A blocked or unvalidated plan cannot enter the evidence gate');

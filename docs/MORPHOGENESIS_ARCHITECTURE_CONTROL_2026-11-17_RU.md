@@ -37,14 +37,15 @@ Architecture Morphogenesis превращает перестройку исхо�
 - Запрещены пути с traversal, абсолютные пути, legacy/legacy-original, research и state.
 - Входы должны быть ограниченными plain-data структурами: getter/accessor, циклы объектов, нестандартные прототипы и malformed payload закрываются fail-closed.
 
-Живой снимок v1 строится из текущего `CognitiveArchitectureMap` и digest `DevelopmentalGenome`. Каждый узел покрывает все канонические файлы, перечисленные для подсистемы; revision digest рассчитывается из SHA-256 реальных файлов, а не только описательных метаданных. Реальный source import graph проверяется отдельным `audit:architecture`; концептуальную карту потоков нельзя выдавать за доказательство полного графа импортов.
+Живой снимок v1 строится из текущего `CognitiveArchitectureMap` и digest `DevelopmentalGenome`. Каждый узел покрывает все канонические файлы, перечисленные для подсистемы; revision digest рассчитывается из SHA-256 бинарных файловых буферов и путей, а не только описательных метаданных. Реальный source import graph проверяется отдельным `audit:architecture`; концептуальную карту потоков нельзя выдавать за доказательство полного графа импортов.
 
 ## Операции
 
 - **merge**: две или более baseline-модуля выводятся из candidate и заменяются одним явно указанным target.
 - **split**: один baseline-модуль выводится из candidate и заменяется минимум двумя новыми модулями.
 - **move**: сохраняется module id и фиксируется точная пара old/new path.
-- **replace**: сохраняются id и path, но меняется revision/owner.
+- **replace**: сохраняются id и path, но меняется revision/owner/source footprint.
+- **rewire**: точный набор добавленных и удалённых typed edges фиксируется отдельно; изменения import/contract/data-flow не могут «раствориться» внутри merge/split/move/replace.
 
 Любая структурная разница должна быть покрыта соответствующей операцией. Неописанные добавления/удаления, перемещения и замены блокируются. При изменении contract graph migration plan обязан перечислить все изменённые contract IDs — ни один и только они.
 
@@ -59,6 +60,13 @@ Architecture Morphogenesis превращает перестройку исхо�
 7. digest всего плана.
 
 Кандидат не может быть изменён после построения плана без нарушения plan digest.
+
+Дополнительные гарантии v2:
+
+- Structural import/contract cycle detection использует iterative DFS и выдерживает верхнюю границу 10 000 модулей без переполнения JS call stack.
+- Каждый добавленный/удалённый typed edge требует точный `rewire` receipt; изменения `sourcePaths` учитываются в module diff.
+- Перед оценкой evidence gate заново строит план из baseline/candidate graph, операций и migration plan. Одного повторного хеширования изменённого `diff` недостаточно.
+- Malformed элементы массивов контрактов и связей дают структурированные validation issues, а не выбрасывают исключение.
 
 ## Evidence gate
 

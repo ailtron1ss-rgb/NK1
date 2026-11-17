@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 // Keep the behavioral suite runnable outside GitHub Actions without
 // overriding the exact checkout SHA supplied by GitHub Actions.
@@ -101,6 +102,14 @@ const mergeCandidate = graph(
 const mergePlan = proposal(mergeBase, mergeCandidate, [{
   kind: 'merge', sourceModuleIds: ['alpha', 'beta'], targetModuleId: 'merged',
   rationale: 'Collapse duplicated responsibilities behind one explicit owner',
+}, {
+  kind: 'rewire',
+  removedEdges: [
+    { from: 'alpha', to: 'beta', kind: 'contract' },
+    { from: 'alpha', to: 'consumer', kind: 'contract' },
+  ],
+  addedEdges: [{ from: 'merged', to: 'consumer', kind: 'contract' }],
+  rationale: 'Rebind the contract edge to the merged authority owner',
 }], ['shared-contract']);
 assert.equal(mergePlan.status, 'READY_FOR_REVIEW', JSON.stringify(mergePlan.issues));
 assert.equal(mergePlan.activation, 'NOT_APPLIED');
@@ -310,3 +319,20 @@ const tamperedGate = evaluateArchitectureMorphogenesisPlan(tamperedPlan, {
 });
 assert.equal(tamperedGate.status, 'BLOCKED');
 assert.ok(tamperedGate.issues.some(item => item.code === 'plan-semantics-invalid'));
+
+const edgeWithRewire = proposal(
+  edgeBase,
+  edgeCandidate,
+  [
+    { kind: 'replace', moduleId: 'alpha', rationale: 'Update alpha implementation' },
+    {
+      kind: 'rewire',
+      removedEdges: [],
+      addedEdges: [{ from: 'alpha', to: 'beta', kind: 'import' }],
+      rationale: 'Record the new explicit dependency edge',
+    },
+  ],
+);
+assert.equal(edgeWithRewire.status, 'READY_FOR_REVIEW', JSON.stringify(edgeWithRewire.issues));
+assert.deepEqual(edgeWithRewire.diff.addedEdges, ['import:alpha->beta']);
+assert.deepEqual(edgeWithRewire.diff.removedEdges, []);
