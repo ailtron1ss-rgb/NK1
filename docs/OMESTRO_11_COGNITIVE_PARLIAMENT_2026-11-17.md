@@ -1,29 +1,49 @@
 # OmeStro #11 — Cognitive Parliament
 
-**Status:** deterministic deliberation primitive added and owned by `GovernanceSubsystemRuntime`; automatic task-pipeline invocation and live multi-provider orchestration remain pending.
+**Status:** evidence-led deliberation engine integrated into `GovernanceSubsystemRuntime` and the `OrganismSystemFabric` composition root. Live model orchestration remains adapter-driven; without a trusted model attestor the parliament fails closed.
 
-## Contract
+## Six required roles
 
-Six required roles submit structured reports: researcher, planner, skeptic, executor, safety guardian and auditor. Each report separates facts, assumptions, objections, uncertainty, recommendation, evidence and model/provider provenance.
+- Researcher — supplies candidate facts and source references.
+- Planner — proposes a bounded course of action.
+- Skeptic — reviews every evidence reference and identifies counterexamples.
+- Executor — assesses practical feasibility.
+- Safety Guardian — must return an explicit `clear`, `uncertain` or `block` safety verdict.
+- Auditor — must attest that every evidence reference used by the decision was reviewed.
 
-The governance subsystem exposes a stateless `cognitiveParliament` coordinator. The parliament does not call models itself: a caller must collect role reports through bounded adapters and pass them to `CognitiveParliament.deliberate()`. Provider selection, latency and token budgets remain outside the deterministic decision core.
+## Trust boundary
 
-## Decision protocol
+Role reports cannot certify themselves. They provide only immutable evidence IDs, claim keys and host-generated inference execution IDs. The trust port resolves those IDs against the host-owned Evidence Firewall and model-execution attestor.
 
-- No majority-vote shortcut: evidence quality and risk-adjusted thresholds determine approval.
-- Evidence must be observed and carry source ID, source family, claim and bounded confidence/relevance/falsifiability values.
-- Only the strongest evidence item from each source family contributes to the evidence-quality mean; repeated citations cannot manufacture confidence.
-- Conflicting mappings of one source ID to multiple source families fail closed.
-- High-risk actions require at least two source families and two distinct model fingerprints.
-- Missing required roles, malformed input, incomplete provenance, unresolved skeptic objections or auditor objections produce `needs-evidence`.
-- A safety-guardian block or declared safety violation produces an unconditional `blocked` result.
-- Shared model substrates are reported explicitly; role labels do not imply independent intelligence.
-- This component proposes a decision only. Existing P69 constitutional arbitration and ActionGateway remain authoritative execution boundaries.
+The Evidence Firewall adapter accepts evidence only if the exact observation exists, belongs to the exact claim, the claim is promoted, the promotion receipt is valid, and the source is an eligible non-simulator source. Source identity and source-family grouping are derived from the canonical observation, not supplied by the model.
+
+Model provider, model identity and independence group come only from the host attestor. If no attestor is connected, model reports are unverified and the result is `needs-evidence`. Merely naming six roles or six model strings never establishes six independent minds.
+
+## Deliberation protocol
+
+- The output score is derived from canonical promoted evidence quality, reduced by mean declared uncertainty. Role vote counts do not increase score.
+- Repeated citations are deduplicated by immutable evidence ID; one source family contributes only its strongest record.
+- Risk gates are progressive: low risk needs 1 evidence family and 1 model family; medium needs 2 of each; high needs 3 of each.
+- Skeptic review and auditor coverage must include every evidence reference used by the decision.
+- Unresolved dissent, malformed reports, duplicate inference execution IDs, incomplete coverage, stale/unverified attestations and unpromoted evidence fail closed.
+- Safety Guardian block is unconditional. An uncertain safety verdict cannot approve.
+- This component only returns a deliberation result. It does not execute tools, grant permissions or bypass P69 Constitutional Arbiter / ActionGateway.
+
+## Runtime wiring
+
+The composition root connects `GovernanceSubsystemRuntime.cognitiveParliament` to the research subsystem's `EvidenceFirewallEngine`. A host-owned `ParliamentModelAttestor` must additionally be supplied when real model execution metadata is available. Without this adapter, the engine remains safely non-authorizing.
 
 ## Verification
 
-Run `node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-parliament.mjs`. Regression cases cover governance ownership, approval, safety veto, missing roles, provenance failure, correlated models, unresolved dissent, unobserved hypotheses, source-ID spoofing and malformed input.
+Run from `runtime/neuro-kurisu`:
+
+```sh
+node --experimental-strip-types tests/cognitive-parliament.mjs
+node scripts/typecheck-runtime.mjs
+```
+
+The focused regression covers firewall promotion, forged/unpromoted evidence, model-family correlation, safety veto, risk gates, role coverage, dissent, malformed batches and default fail-closed behavior.
 
 ## Not yet claimed
 
-Automatic invocation from the autonomous task/action path, live provider/model independence, performance uplift, production soak or Release ZIP inclusion are not claimed by this slice.
+No autonomous role dispatch, real multi-provider execution, model-attestation implementation for a live provider, decision persistence, production soak, measured decision-quality uplift or Release ZIP inclusion is claimed by this slice.

@@ -1,151 +1,282 @@
 /**
  * OmeStro #11 — Cognitive Parliament.
  *
- * Evidence-led coordination of specialist cognitive roles. This module does not
- * call models: adapters collect role reports under an external compute budget,
- * then this deterministic coordinator checks provenance, independence and
- * constitutional safety before returning a decision.
+ * Deterministic, evidence-led deliberation. Model-generated reports are never
+ * allowed to attest their own evidence or model identity: both are resolved
+ * through a host-owned trust port before they influence a decision.
  */
-export type ParliamentRole =
-  | 'researcher' | 'planner' | 'skeptic' | 'executor'
-  | 'safety-guardian' | 'auditor';
-export type ParliamentStance = 'support' | 'oppose' | 'abstain' | 'block';
-export type ParliamentRisk = 'low' | 'medium' | 'high';
-export interface ParliamentEvidence {
-  id: string; sourceId: string; sourceFamily: string; claim: string;
-  confidence01: number; relevance01: number; falsifiability01: number; observed: boolean;
+export type ParliamentRole = 'researcher'|'planner'|'skeptic'|'executor'|'safety-guardian'|'auditor';
+export type ParliamentStance = 'support'|'oppose'|'abstain'|'block';
+export type ParliamentRisk = 'low'|'medium'|'high';
+export type ParliamentSafetyVerdict = 'clear'|'block'|'uncertain';
+
+export interface ParliamentEvidenceReference { id:string; claimKey:string; }
+export interface ParliamentVerifiedEvidence extends ParliamentEvidenceReference {
+  sourceIdentity:string;
+  sourceFamily:string;
+  sourceClass:'os'|'device'|'user'|'external-api'|'world';
+  confidence01:number;
+  trust01:number;
+  promotionScore01:number;
+  observedAt:number;
 }
+export interface ParliamentModelAttestation {
+  executionId:string;
+  providerId:string;
+  modelId:string;
+  independenceGroup:string;
+  verifiedAt:number;
+}
+export interface ParliamentTrustSession {
+  verifyEvidence(reference:ParliamentEvidenceReference):ParliamentVerifiedEvidence|null;
+  verifyModelExecution(executionId:string):ParliamentModelAttestation|null;
+}
+export interface ParliamentTrustPort { openSession():ParliamentTrustSession; }
+
 export interface ParliamentRoleReport {
-  role: ParliamentRole; stance: ParliamentStance; recommendation: string;
-  facts: string[]; assumptions: string[]; objections: string[]; uncertainty01: number;
-  modelFingerprint: string; provider: string; evidence: ParliamentEvidence[];
-  safetyViolations?: string[]; provenanceComplete: boolean;
+  role:ParliamentRole;
+  stance:ParliamentStance;
+  recommendation:string;
+  facts:string[];
+  assumptions:string[];
+  objections:string[];
+  uncertainty01:number;
+  /** Host-generated inference execution identifier, never a model-supplied name. */
+  modelExecutionId:string;
+  evidence:ParliamentEvidenceReference[];
+  /** Skeptic must explicitly review every evidence reference used by the decision. */
+  reviewedEvidenceIds?:string[];
+  /** Auditor must explicitly audit every evidence reference used by the decision. */
+  auditedEvidenceIds?:string[];
+  /** Required only for safety-guardian. */
+  safetyVerdict?:ParliamentSafetyVerdict;
+  safetyViolations?:string[];
 }
 export interface ParliamentDecision {
-  version: 1; status: 'approved' | 'rejected' | 'needs-evidence' | 'blocked';
-  candidateId: string; score01: number; threshold01: number; evidenceQuality01: number;
-  independentSourceCount: number; independentModelCount: number;
-  coveredRoles: ParliamentRole[]; missingRoles: ParliamentRole[];
-  sharedModelWarning: boolean; reasons: string[];
-  dissent: Array<{ role: ParliamentRole; stance: ParliamentStance; objections: string[] }>;
-  reports: ParliamentRoleReport[];
+  version:1;
+  status:'approved'|'rejected'|'needs-evidence'|'blocked';
+  candidateId:string;
+  score01:number;
+  threshold01:number;
+  evidenceQuality01:number;
+  meanUncertainty01:number;
+  independentSourceCount:number;
+  independentModelCount:number;
+  coveredRoles:ParliamentRole[];
+  missingRoles:ParliamentRole[];
+  sharedModelWarning:boolean;
+  reasons:string[];
+  dissent:Array<{role:ParliamentRole;stance:ParliamentStance;objections:string[]}>;
+  reports:Array<{
+    role:ParliamentRole;stance:ParliamentStance;recommendation:string;
+    facts:string[];assumptions:string[];objections:string[];uncertainty01:number;
+    model:{executionId:string;providerId:string;modelId:string;independenceGroup:string};
+    evidenceIds:string[];
+  }>;
+  evidence:Array<{
+    id:string;claimKey:string;sourceIdentity:string;sourceFamily:string;
+    sourceClass:ParliamentVerifiedEvidence['sourceClass'];evidenceQuality01:number;
+    observedAt:number;
+  }>;
 }
-const ROLES: ParliamentRole[] = ['researcher','planner','skeptic','executor','safety-guardian','auditor'];
-const STANCES: ParliamentStance[] = ['support','oppose','abstain','block'];
-const RISKS: ParliamentRisk[] = ['low','medium','high'];
-const clamp = (n:number):number => Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
-const text = (v:unknown):v is string => typeof v==='string' && v.trim().length>0;
-const uniq = <T>(items:T[]):T[] => [...new Set(items)];
-const quality = (e:ParliamentEvidence):number =>
-  e.observed ? clamp(e.confidence01)*clamp(e.relevance01)*(0.5+0.5*clamp(e.falsifiability01)) : 0;
+export interface ParliamentInput { candidateId:string;risk:ParliamentRisk;reports:ParliamentRoleReport[];maxReports?:number; }
 
-export interface ParliamentInput {
-  candidateId:string; risk:ParliamentRisk; reports:ParliamentRoleReport[]; maxReports?:number;
-}
+const ROLES:ParliamentRole[]=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
+const STANCES:ParliamentStance[]=['support','oppose','abstain','block'];
+const RISKS:ParliamentRisk[]=['low','medium','high'];
+const SAFETY:ParliamentSafetyVerdict[]=['clear','block','uncertain'];
+const EXTERNAL_CLASSES=new Set(['os','device','user','external-api','world']);
+const clamp=(n:number):number=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const text=(v:unknown):v is string=>typeof v==='string'&&v.trim().length>0;
+const boundedText=(v:unknown,max=500):string=>text(v)?v.trim().slice(0,max):'';
+const uniq=<T>(items:T[]):T[]=>[...new Set(items)];
+const stringArray=(v:unknown,maxItems=24,maxChars=500):string[]|null=>{
+  if(!Array.isArray(v)||v.length>maxItems||v.some(x=>!text(x)))return null;
+  return v.map(x=>(x as string).trim().slice(0,maxChars));
+};
+const failClosedTrustPort:ParliamentTrustPort={
+  openSession:()=>({verifyEvidence:()=>null,verifyModelExecution:()=>null}),
+};
+const riskPolicy=(risk:ParliamentRisk)=>{
+  if(risk==='high')return {threshold:.78,minSources:3,minModels:3};
+  if(risk==='medium')return {threshold:.68,minSources:2,minModels:2};
+  return {threshold:.56,minSources:1,minModels:1};
+};
+const validVerifiedEvidence=(value:ParliamentVerifiedEvidence|null,reference:ParliamentEvidenceReference):value is ParliamentVerifiedEvidence=>{
+  return Boolean(value && value.id===reference.id && value.claimKey===reference.claimKey &&
+    text(value.sourceIdentity)&&text(value.sourceFamily)&&EXTERNAL_CLASSES.has(value.sourceClass) &&
+    [value.confidence01,value.trust01,value.promotionScore01,value.observedAt].every(Number.isFinite) &&
+    value.confidence01>=0&&value.confidence01<=1&&value.trust01>=0&&value.trust01<=1&&
+    value.promotionScore01>=0&&value.promotionScore01<=1&&value.observedAt>0&&
+    value.observedAt<=Date.now()+5*60*1000);
+};
+const validModelAttestation=(value:ParliamentModelAttestation|null,executionId:string):value is ParliamentModelAttestation=>{
+  return Boolean(value && value.executionId===executionId && text(value.providerId)&&text(value.modelId)&&
+    text(value.independenceGroup)&&Number.isFinite(value.verifiedAt)&&
+    value.verifiedAt>=Date.now()-30*60*1000&&value.verifiedAt<=Date.now()+5*60*1000);
+};
+const safeDecision=(candidateId:string,reasons:string[],risk:ParliamentRisk='high'):ParliamentDecision=>{
+  const policy=riskPolicy(risk);
+  return {version:1,status:'needs-evidence',candidateId,score01:0,threshold01:policy.threshold,
+    evidenceQuality01:0,meanUncertainty01:1,independentSourceCount:0,independentModelCount:0,
+    coveredRoles:[],missingRoles:[...ROLES],sharedModelWarning:true,reasons:uniq(reasons),
+    dissent:[],reports:[],evidence:[]};
+};
+
 export class CognitiveParliament {
-  deliberate(input:ParliamentInput):ParliamentDecision {
+  private readonly trustPort:ParliamentTrustPort;
+  constructor(trustPort:ParliamentTrustPort=failClosedTrustPort){this.trustPort=trustPort;}
+
+  deliberate(input:ParliamentInput):ParliamentDecision{
     const reasons:string[]=[];
-    const inputValid=Boolean(input && text(input.candidateId) && input.risk && RISKS.includes(input.risk) && Array.isArray(input.reports));
-    if(!inputValid) reasons.push('invalid-parliament-input');
-    const candidateId=text(input?.candidateId)?input.candidateId:'invalid-candidate';
-    const risk:ParliamentRisk=input && RISKS.includes(input.risk)?input.risk:'high';
-    const maxReports=Math.max(1,Math.min(12,Math.floor(input?.maxReports??6)));
-    const reports=Array.isArray(input?.reports)?input.reports.slice(0,maxReports):[];
+    const inputValid=Boolean(input&&text(input.candidateId)&&input.candidateId.length<=160&&
+      input.risk&&RISKS.includes(input.risk)&&Array.isArray(input.reports));
+    if(!inputValid)return safeDecision(text(input?.candidateId)?input.candidateId.slice(0,160):'invalid-candidate',['invalid-parliament-input']);
+    const candidateId=input.candidateId.trim();
+    const risk=input.risk;
+    const policy=riskPolicy(risk);
+    const maxReports=Number.isSafeInteger(input.maxReports)?Math.max(1,Math.min(6,Number(input.maxReports))):6;
+    const overflow=input.reports.length>maxReports||input.reports.length>6;
+    if(overflow)reasons.push('report-budget-exceeded');
+    const rawReports=input.reports.slice(0,6);
+    let session:ParliamentTrustSession;
+    try{session=this.trustPort.openSession();}
+    catch{return safeDecision(candidateId,['trust-session-unavailable'],risk);}
+    if(!session||typeof session.verifyEvidence!=='function'||typeof session.verifyModelExecution!=='function')
+      return safeDecision(candidateId,['trust-session-invalid'],risk);
+
     const seenRoles=new Set<ParliamentRole>();
-    const valid:ParliamentRoleReport[]=[];
-    for(const report of reports){
-      if(!report || !ROLES.includes(report.role) || seenRoles.has(report.role)){
-        reasons.push('invalid-or-duplicate-role-report'); continue;
+    const executionIds=new Set<string>();
+    const normalized:Array<{
+      role:ParliamentRole;stance:ParliamentStance;recommendation:string;facts:string[];
+      assumptions:string[];objections:string[];uncertainty01:number;model:ParliamentModelAttestation;
+      evidence:ParliamentEvidenceReference[];reviewedEvidenceIds:string[];auditedEvidenceIds:string[];
+      safetyVerdict?:ParliamentSafetyVerdict;safetyViolations:string[];
+    }>=[];
+    let invalidReport=false;
+    const modelCache=new Map<string,ParliamentModelAttestation|null>();
+    for(const raw of rawReports){
+      if(!raw||!ROLES.includes(raw.role)||seenRoles.has(raw.role)){
+        invalidReport=true;reasons.push('invalid-or-duplicate-role-report');continue;
       }
-      seenRoles.add(report.role);
-      if(!STANCES.includes(report.stance) || !text(report.modelFingerprint) ||
-        !text(report.provider) || !Array.isArray(report.evidence)){
-        reasons.push(`invalid-role-report:${report.role}`); continue;
+      seenRoles.add(raw.role);
+      const facts=stringArray(raw.facts),assumptions=stringArray(raw.assumptions),objections=stringArray(raw.objections);
+      const evidence=Array.isArray(raw.evidence)&&raw.evidence.length<=48&&raw.evidence.every(e=>
+        e&&text(e.id)&&e.id.length<=256&&text(e.claimKey)&&e.claimKey.length<=256
+      )?raw.evidence.map(e=>({id:e.id.trim(),claimKey:e.claimKey.trim()})):null;
+      const reviewed=raw.reviewedEvidenceIds===undefined?[]:stringArray(raw.reviewedEvidenceIds,48,256);
+      const audited=raw.auditedEvidenceIds===undefined?[]:stringArray(raw.auditedEvidenceIds,48,256);
+      const safetyViolations=raw.safetyViolations===undefined?[]:stringArray(raw.safetyViolations,24,500);
+      const safetyVerdict=raw.safetyVerdict;
+      const baseValid=STANCES.includes(raw.stance)&&text(raw.recommendation)&&raw.recommendation.length<=1000&&
+        Number.isFinite(raw.uncertainty01)&&raw.uncertainty01>=0&&raw.uncertainty01<=1&&
+        text(raw.modelExecutionId)&&raw.modelExecutionId.length<=256&&facts!==null&&assumptions!==null&&
+        objections!==null&&evidence!==null&&reviewed!==null&&audited!==null&&safetyViolations!==null&&
+        (raw.role!=='safety-guardian'||(safetyVerdict!==undefined&&SAFETY.includes(safetyVerdict)));
+      if(!baseValid){invalidReport=true;reasons.push(`malformed-role-report:${raw.role}`);continue;}
+      if(executionIds.has(raw.modelExecutionId)){invalidReport=true;reasons.push('duplicate-model-execution-reuse');continue;}
+      executionIds.add(raw.modelExecutionId);
+      if(!modelCache.has(raw.modelExecutionId)){
+        try{modelCache.set(raw.modelExecutionId,session.verifyModelExecution(raw.modelExecutionId));}
+        catch{modelCache.set(raw.modelExecutionId,null);}
       }
-      if(report.provenanceComplete!==true) reasons.push(`unverified-provenance:${report.role}`);
-      valid.push({
-        ...report,
-        facts:Array.isArray(report.facts)?report.facts.filter(text).slice(0,24):[],
-        assumptions:Array.isArray(report.assumptions)?report.assumptions.filter(text).slice(0,24):[],
-        objections:Array.isArray(report.objections)?report.objections.filter(text).slice(0,24):[],
-        safetyViolations:Array.isArray(report.safetyViolations)?report.safetyViolations.filter(text).slice(0,24):[],
-        evidence:report.evidence.slice(0,48).filter(e=>
-          e && text(e.id) && text(e.sourceId) && text(e.sourceFamily) && text(e.claim) &&
-          typeof e.observed==='boolean' &&
-          [e.confidence01,e.relevance01,e.falsifiability01].every(Number.isFinite)
-        ).map(e=>({...e,confidence01:clamp(e.confidence01),relevance01:clamp(e.relevance01),falsifiability01:clamp(e.falsifiability01)})),
+      const model=modelCache.get(raw.modelExecutionId)??null;
+      if(!validModelAttestation(model,raw.modelExecutionId)){
+        invalidReport=true;reasons.push(`unverified-model-execution:${raw.role}`);continue;
+      }
+      normalized.push({
+        role:raw.role,stance:raw.stance,recommendation:raw.recommendation.trim().slice(0,1000),
+        facts,assumptions,objections,uncertainty01:clamp(raw.uncertainty01),model,
+        evidence,reviewedEvidenceIds:reviewed,auditedEvidenceIds:audited,
+        ...(raw.role==='safety-guardian'?{safetyVerdict}:{}),safetyViolations,
       });
     }
-    const coveredRoles=valid.map(r=>r.role);
+
+    const coveredRoles=normalized.map(r=>r.role);
     const missingRoles=ROLES.filter(role=>!coveredRoles.includes(role));
-    const safety=valid.find(r=>r.role==='safety-guardian');
-    const auditor=valid.find(r=>r.role==='auditor');
-    const safetyBlocks=Boolean(safety && (safety.stance==='block' || (safety.safetyViolations?.length??0)>0));
-    const provenanceFailed=!auditor || auditor.provenanceComplete!==true ||
-      valid.some(r=>r.provenanceComplete!==true);
-    if(missingRoles.length) reasons.push(`missing-required-roles:${missingRoles.join(',')}`);
-    if(safetyBlocks) reasons.push('safety-guardian-veto');
-    if(provenanceFailed) reasons.push('audit-provenance-gate-failed');
-
-    const allEvidence=valid.flatMap(r=>r.evidence.map(e=>({...e,modelFingerprint:r.modelFingerprint})));
-    const ids=new Set<string>();
-    const uniqueEvidence=allEvidence.filter(e=>{
-      if(ids.has(e.id)){reasons.push('duplicate-evidence-id');return false;}
-      ids.add(e.id);return true;
-    });
-    const sourceIdentityFamilies=new Map<string,string>();
-    let sourceIdentityConflict=false;
-    for(const e of uniqueEvidence){
-      const known=sourceIdentityFamilies.get(e.sourceId);
-      if(known && known!==e.sourceFamily) sourceIdentityConflict=true;
-      else sourceIdentityFamilies.set(e.sourceId,e.sourceFamily);
+    if(missingRoles.length)reasons.push(`missing-required-roles:${missingRoles.join(',')}`);
+    const referenceMap=new Map<string,ParliamentEvidenceReference>();
+    let evidenceConflict=false;
+    for(const report of normalized)for(const reference of report.evidence){
+      const previous=referenceMap.get(reference.id);
+      if(previous&&previous.claimKey!==reference.claimKey)evidenceConflict=true;
+      else referenceMap.set(reference.id,reference);
     }
-    if(sourceIdentityConflict) reasons.push('source-id-family-conflict');
-    const sourceFamilies=uniq(uniqueEvidence.filter(e=>e.observed).map(e=>e.sourceFamily));
-    const models=uniq(valid.map(r=>r.modelFingerprint));
-    const sharedModelWarning=models.length<Math.min(3,valid.length);
-    if(sharedModelWarning) reasons.push('roles-share-model-substrate; independence-not-assumed');
+    if(evidenceConflict)reasons.push('evidence-reference-claim-conflict');
 
-    // One source family contributes only its strongest item; repeated citations
-    // cannot inflate confidence by volume.
-    const bestBySource=new Map<string,number>();
-    for(const evidence of uniqueEvidence){
-      const q=quality(evidence);
-      bestBySource.set(evidence.sourceFamily,Math.max(bestBySource.get(evidence.sourceFamily)??0,q));
+    const verifiedMap=new Map<string,ParliamentVerifiedEvidence>();
+    let unverifiedEvidence=false;
+    for(const reference of referenceMap.values()){
+      let verified:ParliamentVerifiedEvidence|null=null;
+      try{verified=session.verifyEvidence(reference);}catch{verified=null;}
+      if(!validVerifiedEvidence(verified,reference)){unverifiedEvidence=true;continue;}
+      verifiedMap.set(reference.id,verified);
     }
-    const sourceScores=[...bestBySource.values()];
-    const evidenceQuality01=sourceScores.length
-      ? clamp(sourceScores.reduce((sum,n)=>sum+n,0)/sourceScores.length):0;
-    const support=valid.filter(r=>r.stance==='support').length;
-    const oppose=valid.filter(r=>r.stance==='oppose').length;
-    const stanceBalance=(support+oppose)?support/(support+oppose):0;
-    const score01=clamp(evidenceQuality01*.78+stanceBalance*.22);
-    const threshold01=risk==='high'?.78:risk==='medium'?.64:.5;
-    const minSources=risk==='high'?2:1;
-    const minModels=risk==='high'?2:1;
-    const skeptic=valid.find(r=>r.role==='skeptic');
-    const skepticUnresolved=Boolean(skeptic && skeptic.stance==='oppose' && skeptic.objections.length);
-    const auditorHasObjection=Boolean(auditor?.objections.length);
-    if(sourceFamilies.length<minSources) reasons.push('insufficient-independent-source-families');
-    if(models.length<minModels) reasons.push('insufficient-model-diversity-for-risk');
-    if(skepticUnresolved) reasons.push('unresolved-skeptic-objection');
-    if(auditorHasObjection) reasons.push('auditor-raised-unresolved-objection');
+    if(unverifiedEvidence)reasons.push('unverified-or-unpromoted-evidence');
+    if(verifiedMap.size===0)reasons.push('no-verified-evidence');
+
+    const skeptic=normalized.find(r=>r.role==='skeptic');
+    const auditor=normalized.find(r=>r.role==='auditor');
+    const evidenceIds=[...verifiedMap.keys()];
+    const reviewed=new Set(skeptic?.reviewedEvidenceIds??[]);
+    const audited=new Set(auditor?.auditedEvidenceIds??[]);
+    const skepticCoverage=evidenceIds.every(id=>reviewed.has(id));
+    const auditorCoverage=evidenceIds.every(id=>audited.has(id));
+    if(!skepticCoverage)reasons.push('skeptic-review-coverage-incomplete');
+    if(!auditorCoverage)reasons.push('auditor-evidence-coverage-incomplete');
+
+    const safety=normalized.find(r=>r.role==='safety-guardian');
+    const safetyBlocks=Boolean(safety&&(safety.safetyVerdict==='block'||safety.stance==='block'||safety.safetyViolations.length>0));
+    const safetyUncertain=Boolean(safety&&safety.safetyVerdict!=='clear');
+    if(safetyBlocks)reasons.push('safety-guardian-veto');
+    else if(safetyUncertain)reasons.push('safety-assessment-uncertain');
+
+    const sourceFamilies=uniq([...verifiedMap.values()].map(e=>e.sourceFamily));
+    const modelFamilies=uniq(normalized.map(r=>r.model.independenceGroup));
+    const sharedModelWarning=modelFamilies.length<Math.min(3,normalized.length);
+    if(sharedModelWarning)reasons.push('model-substrates-correlated-or-insufficiently-diverse');
+    if(sourceFamilies.length<policy.minSources)reasons.push('insufficient-independent-evidence-families');
+    if(modelFamilies.length<policy.minModels)reasons.push('insufficient-independent-model-families');
+
+    const evidenceBestByFamily=new Map<string,number>();
+    for(const evidence of verifiedMap.values()){
+      const score=clamp(.45*evidence.confidence01+.30*evidence.trust01+.25*evidence.promotionScore01);
+      evidenceBestByFamily.set(evidence.sourceFamily,Math.max(evidenceBestByFamily.get(evidence.sourceFamily)??0,score));
+    }
+    const values=[...evidenceBestByFamily.values()];
+    const evidenceQuality01=values.length?clamp(values.reduce((sum,n)=>sum+n,0)/values.length):0;
+    const meanUncertainty01=normalized.length?clamp(normalized.reduce((sum,r)=>sum+r.uncertainty01,0)/normalized.length):1;
+    // Stances never add points. They can only surface dissent and hold a disputed decision.
+    const score01=clamp(evidenceQuality01*(1-.25*meanUncertainty01));
+    const dissent=normalized.filter(r=>r.stance!=='support'||r.objections.length>0)
+      .map(r=>({role:r.role,stance:r.stance,objections:r.objections}));
+    if(dissent.length)reasons.push('unresolved-role-dissent-or-objections');
 
     let status:ParliamentDecision['status'];
-    if(safetyBlocks) status='blocked';
-    else if(!inputValid || missingRoles.length || provenanceFailed || sourceIdentityConflict ||
-      sourceFamilies.length<minSources || models.length<minModels || uniqueEvidence.length===0 ||
-      skepticUnresolved || auditorHasObjection) status='needs-evidence';
-    else if(score01>=threshold01) status='approved';
+    if(safetyBlocks)status='blocked';
+    else if(overflow||invalidReport||missingRoles.length||evidenceConflict||unverifiedEvidence||
+      verifiedMap.size===0||!skepticCoverage||!auditorCoverage||safetyUncertain||
+      sourceFamilies.length<policy.minSources||modelFamilies.length<policy.minModels||dissent.length)
+      status='needs-evidence';
+    else if(score01>=policy.threshold)status='approved';
     else status='rejected';
-    if(status==='rejected') reasons.push('evidence-score-below-risk-threshold');
+    if(status==='rejected')reasons.push('verified-evidence-score-below-risk-threshold');
+
     return {
-      version:1,status,candidateId,score01,threshold01,evidenceQuality01,
-      independentSourceCount:sourceFamilies.length,independentModelCount:models.length,
+      version:1,status,candidateId,score01,threshold01:policy.threshold,evidenceQuality01,meanUncertainty01,
+      independentSourceCount:sourceFamilies.length,independentModelCount:modelFamilies.length,
       coveredRoles,missingRoles,sharedModelWarning,reasons:uniq(reasons),
-      dissent:valid.filter(r=>r.stance==='oppose'||r.stance==='block')
-        .map(r=>({role:r.role,stance:r.stance,objections:r.objections})),
-      reports:valid,
+      dissent,reports:normalized.map(r=>({
+        role:r.role,stance:r.stance,recommendation:r.recommendation,facts:r.facts,assumptions:r.assumptions,
+        objections:r.objections,uncertainty01:r.uncertainty01,
+        model:{executionId:r.model.executionId,providerId:r.model.providerId,modelId:r.model.modelId,independenceGroup:r.model.independenceGroup},
+        evidenceIds:r.evidence.map(e=>e.id),
+      })),
+      evidence:[...verifiedMap.values()].map(e=>({
+        id:e.id,claimKey:e.claimKey,sourceIdentity:e.sourceIdentity,sourceFamily:e.sourceFamily,
+        sourceClass:e.sourceClass,evidenceQuality01:clamp(.45*e.confidence01+.30*e.trust01+.25*e.promotionScore01),
+        observedAt:e.observedAt,
+      })),
     };
   }
 }

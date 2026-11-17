@@ -5,6 +5,7 @@ import { WorldSubsystemRuntime } from './WorldSubsystemRuntime.ts';
 import { EmbodimentSubsystemRuntime } from './EmbodimentSubsystemRuntime.ts';
 import { AgencySubsystemRuntime } from './AgencySubsystemRuntime.ts';
 import { EvidenceResearchSubsystemRuntime } from './EvidenceResearchSubsystemRuntime.ts';
+import { EvidenceFirewallParliamentTrustPort, type ParliamentModelAttestor } from '../system/CognitiveParliamentTrust.ts';
 import { organismSystemContract, organismSystemContracts, type OrganismSystemContract, type ResolvedOrganismSystemContract, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
 import { WillIntegrationBridge } from '../integration/will/WillIntegrationBridge.ts';
 import { LuminaAdaptationFabric } from '../integration/lumina/LuminaAdaptationFabric.ts';
@@ -61,6 +62,7 @@ export class OrganismSystemFabric {
     embodiment: EmbodimentSubsystemRuntime;
     agency: AgencySubsystemRuntime;
     research: EvidenceResearchSubsystemRuntime;
+    parliamentModelAttestor: ParliamentModelAttestor;
     willIntegration: WillIntegrationBridge;
     luminaAdaptation: LuminaAdaptationFabric;
     hexisAdaptation: HexisAdaptationFabric;
@@ -68,14 +70,17 @@ export class OrganismSystemFabric {
     conscioAdaptation: ConscioAdaptationFabric;
   }> = {}) {
     this.self=input.self ?? new SelfSubsystemRuntime();
-    this.governance=input.governance ?? new GovernanceSubsystemRuntime();
     this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
+    // Research is initialized first so governance receives the canonical firewall trust boundary.
+    this.research=input.research ?? new EvidenceResearchSubsystemRuntime();
+    this.governance=input.governance ?? new GovernanceSubsystemRuntime({
+      parliamentTrustPort:new EvidenceFirewallParliamentTrustPort(this.research.evidenceFirewall,input.parliamentModelAttestor),
+    });
     this.memory=input.memory ?? new MemorySubsystemRuntime(this.hexisAdaptation);
     if (input.memory) this.memory.connectHexisAdaptation(this.hexisAdaptation);
     this.world=input.world ?? new WorldSubsystemRuntime();
     this.embodiment=input.embodiment ?? new EmbodimentSubsystemRuntime();
     this.agency=input.agency ?? new AgencySubsystemRuntime();
-    this.research=input.research ?? new EvidenceResearchSubsystemRuntime();
     this.willIntegration=input.willIntegration ?? new WillIntegrationBridge();
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();

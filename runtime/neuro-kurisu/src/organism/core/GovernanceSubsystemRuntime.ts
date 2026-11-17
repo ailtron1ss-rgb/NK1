@@ -13,10 +13,15 @@ import { SelfModelValidationEngine, defaultSelfModelValidation } from '../system
 import { FailureRecoveryCertification, defaultFailureRecoveryCertification } from '../system/FailureRecoveryCertification.ts';
 import { CognitiveDomainClosure, type CognitiveDomainMarkSet, type CognitiveDomain } from '../system/CognitiveDomainClosure.ts';
 import { CausalDomainClosureLedger, defaultCausalDomainClosureLedger, type CausalDomainClosureSnapshot } from '../system/CausalDomainClosureLedger.ts';
+import { CognitiveParliament, type ParliamentTrustPort } from '../system/CognitiveParliament.ts';
 import { CognitiveParliament } from '../system/CognitiveParliament.ts';
 
 /** BIG PASS 51: physical owner for capability, integrity, resilience and constitutional governance. */
 export class GovernanceSubsystemRuntime {
+  readonly cognitiveParliament: CognitiveParliament;
+  constructor(input: { parliamentTrustPort?: ParliamentTrustPort } = {}) {
+    this.cognitiveParliament = new CognitiveParliament(input.parliamentTrustPort);
+  }
   readonly systemName='governance' as const;
   readonly dependencies=['self'] as const;
   readonly systemCapabilities=['governance', 'persistence'] as const;
@@ -27,8 +32,6 @@ export class GovernanceSubsystemRuntime {
   readonly replay = new ReplayEngine();
   readonly resilience = new AdvancedResilienceEngine();
   readonly p69ConstitutionalArbiter = new P69ConstitutionalArbiter();
-  /** Evidence-led multi-role deliberation; P69 remains the final constitutional gate. */
-  readonly cognitiveParliament = new CognitiveParliament();
   readonly p72LifeCycle = new P72LifeCycleOrchestrator();
   readonly p73CapabilityLedger = new P73CapabilityEvolutionLedger();
   readonly selfGovernance = new SelfGovernanceEngine();
