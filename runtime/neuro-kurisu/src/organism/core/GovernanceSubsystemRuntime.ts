@@ -77,6 +77,20 @@ export class GovernanceSubsystemRuntime {
     parliament: ParliamentDispatchResult;
     arbitration: ReturnType<P69ConstitutionalArbiter['arbitrate']> | null;
   }> {
+    // Capture the exact constitutional candidate set before asynchronous role execution.
+    // The caller may continue its cognitive cycle while the six specialists are running;
+    // P69 must arbitrate the same immutable candidate data the request was bound to.
+    let p69InputSnapshot:P69Input;
+    try {
+      p69InputSnapshot=structuredClone(input.p69Input);
+    } catch {
+      throw new Error('cognitive-parliament-p69-candidate-snapshot-invalid');
+    }
+    const p69Candidates=Array.isArray(p69InputSnapshot?.candidates)?p69InputSnapshot.candidates:[];
+    const candidateIds=p69Candidates.map(candidate=>candidate?.id);
+    const candidateIdsUnique=candidateIds.every(id=>typeof id==='string'&&id.trim().length>0)&&
+      new Set(candidateIds).size===candidateIds.length;
+    const matchingCandidateCount=p69Candidates.filter(candidate=>candidate?.id===input.candidateId).length;
     const parliament = await this.cognitiveParliamentDispatcher.dispatch({
       candidateId: input.candidateId,
       risk: input.risk,
@@ -89,12 +103,11 @@ export class GovernanceSubsystemRuntime {
     if (parliament.decision.status !== 'approved') {
       return { status: 'parliament-not-approved', parliament, arbitration: null };
     }
-    const candidateExists = Array.isArray(input.p69Input?.candidates) &&
-      input.p69Input.candidates.some(candidate => candidate && candidate.id === input.candidateId);
+    const candidateExists = candidateIdsUnique && matchingCandidateCount===1;
     if (!candidateExists) {
       return { status: 'candidate-not-in-p69-set', parliament, arbitration: null };
     }
-    const arbitration = this.p69ConstitutionalArbiter.arbitrate(input.p69Input);
+    const arbitration = this.p69ConstitutionalArbiter.arbitrate(p69InputSnapshot);
     return {
       status: arbitration.chosen?.id === input.candidateId ? 'p69-selected' : 'p69-diverted',
       parliament,
