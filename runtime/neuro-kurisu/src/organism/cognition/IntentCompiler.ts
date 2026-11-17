@@ -85,12 +85,14 @@ function freezeDeep<T>(value: T): T {
   return value;
 }
 function stableId(requestId: string, text: string): string {
-  return createHash('sha256').update(requestId || text).digest('hex').slice(0, 24);
+  return createHash('sha256').update(requestId + '\\u0000' + text).digest('hex').slice(0, 24);
 }
 function inferRisk(text: string, explicit?: IntentRiskLevel): { level: IntentRiskLevel; reasons: string[] } {
-  if (explicit) return { level: explicit, reasons: ['risk-level-explicitly-supplied'] };
   const reasons = RISK_PATTERNS.filter(([pattern]) => pattern.test(text)).map(([, reason]) => reason);
-  return { level: reasons.some(reason => reason === 'destructive-operation-language') ? 'high' : reasons.length ? 'medium' : 'low', reasons };
+  const inferred: IntentRiskLevel = reasons.some(reason => reason === 'destructive-operation-language') ? 'high' : reasons.length ? 'medium' : 'low';
+  const rank: Record<IntentRiskLevel, number> = { low: 0, medium: 1, high: 2, critical: 3 };
+  const level = explicit && rank[explicit] > rank[inferred] ? explicit : inferred;
+  return { level, reasons: [...reasons, ...(explicit ? ['risk-level-explicitly-supplied'] : [])] };
 }
 function isIntentContract(value: IntentContract): boolean {
   return !!value && value.schema === 'nk1.intent-contract' && value.version === 1 &&
@@ -163,6 +165,7 @@ export class IntentCompiler {
   approve(contract: IntentContract, approval: IntentApproval): IntentContract {
     if (!isIntentContract(contract)) throw new TypeError('invalid intent contract');
     if (approval?.userConfirmed !== true) throw new Error('explicit user confirmation is required');
+    if (contract.missingInformation.length) throw new Error('intent contract is incomplete: ' + contract.missingInformation.join(', '));
     if (!Number.isSafeInteger(approval.at) || approval.at < 0) throw new TypeError('approval timestamp is invalid');
     const evidenceRef = cleanText(approval.evidenceRef, 180);
     if (!evidenceRef) throw new TypeError('approval evidence reference is required');
