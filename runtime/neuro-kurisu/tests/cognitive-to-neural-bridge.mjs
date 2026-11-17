@@ -26,6 +26,7 @@ assert.equal(profile.adapterHint, 'deep');
 assert.equal(profile.neuralSnapshotAvailable, true);
 assert.equal(profile.neuralSnapshotTick, 16);
 assert.equal(profile.neuralSnapshotAgeTicks, 1);
+assert.equal(profile.featureKeys.length, 43);
 assert.equal(profile.featureVector01.length, 43);
 assert.deepEqual(profile.featureVector01, [
   0,0,1,0,0,0,0,
