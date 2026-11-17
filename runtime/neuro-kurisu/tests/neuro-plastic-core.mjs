@@ -1,10 +1,19 @@
 import assert from 'node:assert/strict';
-import { NeuroPlasticAdapterRegistry } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 
 const hash = (char) => char.repeat(64);
+const approvalSecret = 'neuro-plastic-test-approval-secret-32-bytes-minimum';
+function signedApproval(adapterId, reportId, approvalId) {
+  const unsigned = { approvalId, actorId: 'operator', approvedAt: 1_800_000_000_200 };
+  const context = { adapterId, reportId, baseModelFingerprint: hash('a') };
+  return { ...unsigned, signature: createNeuroPlasticApprovalSignature(unsigned, context, approvalSecret) };
+}
+function verifyApproval(approval, context) {
+  return verifyNeuroPlasticApprovalSignature(approval, context, approvalSecret);
+}
 const manifest = (adapterId = 'kurisu-reasoning-v1') => ({
   schemaVersion: 1,
   adapterId,
@@ -71,15 +80,18 @@ assert.equal(report.pairedN, 7);
 assert.equal(report.eligible, true);
 assert.ok(report.qualityCi95[0] > 0, 'promotion evidence must have a positive lower confidence bound');
 assert.equal(registry.snapshot().adapters[0].status, 'eligible', 'holdout success must not activate weights');
+const approval = signedApproval('kurisu-reasoning-v1', report.reportId, 'approval-1');
+assert.equal(verifyApproval(approval, { adapterId: 'kurisu-reasoning-v1', reportId: report.reportId, baseModelFingerprint: hash('a') }), true);
+assert.equal(verifyNeuroPlasticApprovalSignature(approval, { adapterId: 'kurisu-reasoning-v1', reportId: report.reportId, baseModelFingerprint: hash('a') }, 'wrong-secret'), false);
 await assert.rejects(
-  registry.activate('kurisu-reasoning-v1', { approvalId: 'approval-1', actorId: 'operator', approvedAt: 1_800_000_000_200, signature: hash('8') }, async () => false),
+  registry.activate('kurisu-reasoning-v1', approval, async () => false),
   /approval/,
   'the registry must require a host-verified human approval',
 );
 await registry.activate(
   'kurisu-reasoning-v1',
-  { approvalId: 'approval-1', actorId: 'operator', approvedAt: 1_800_000_000_200, signature: hash('8') },
-  async (approval, context) => approval.actorId === 'operator' && context.adapterId === 'kurisu-reasoning-v1',
+  approval,
+  verifyApproval,
 );
 assert.equal(registry.snapshot().adapters[0].status, 'active');
 
@@ -226,10 +238,11 @@ inferenceRegistry.evaluateCandidate('kurisu-runtime-v1', {
   candidate: observations(0.82),
   evaluatedAt: 1_800_000_000_100,
 });
+const inferenceReport = inferenceRegistry.snapshot().adapters[0].evaluation;
 await inferenceRegistry.activate(
   'kurisu-runtime-v1',
-  { approvalId: 'approval-runtime', actorId: 'operator', approvedAt: 1_800_000_000_200, signature: hash('8') },
-  async () => true,
+  signedApproval('kurisu-runtime-v1', inferenceReport.reportId, 'approval-runtime'),
+  verifyApproval,
 );
 const inferenceCalls = [];
 const provider = new OpenAICompatibleLocalChatProvider({
@@ -266,10 +279,11 @@ failedRegistry.evaluateCandidate('kurisu-runtime-fallback-v1', {
   candidate: observations(0.82),
   evaluatedAt: 1_800_000_000_100,
 });
+const failedReport = failedRegistry.snapshot().adapters[0].evaluation;
 await failedRegistry.activate(
   'kurisu-runtime-fallback-v1',
-  { approvalId: 'approval-fallback', actorId: 'operator', approvedAt: 1_800_000_000_200, signature: hash('8') },
-  async () => true,
+  signedApproval('kurisu-runtime-fallback-v1', failedReport.reportId, 'approval-fallback'),
+  verifyApproval,
 );
 const fallbackCalls = [];
 const fallbackProvider = new OpenAICompatibleLocalChatProvider({
@@ -287,7 +301,8 @@ const fallbackProvider = new OpenAICompatibleLocalChatProvider({
     }), { status: 200, headers: { 'content-type': 'application/json' } });
   },
 });
-const fallback = await new NeuroPlasticInferenceAdapter(failedRegistry, (backendId) => backendId === 'llama.cpp', fallbackProvider).generate(
+let registryPersistCalls = 0;
+const fallback = await new NeuroPlasticInferenceAdapter(failedRegistry, (backendId) => backendId === 'llama.cpp', fallbackProvider, () => { registryPersistCalls++; }).generate(
   { system: 'system', user: 'prompt' },
   {
     domain: 'reasoning',
@@ -304,6 +319,7 @@ assert.equal(fallback.adapter.fallbackReason, 'adapter-runtime-failure');
 assert.equal(fallback.model, 'kurisu-base');
 assert.deepEqual(fallbackCalls, ['kurisu-reasoning-lora', 'kurisu-base']);
 assert.equal(failedRegistry.snapshot().adapters[0].status, 'disabled', 'runtime adapter faults must disable the adapter');
+assert.equal(registryPersistCalls, 1, 'runtime adapter faults must persist the disable transition');
 
 const activeSnapshot = inferenceRegistry.snapshot();
 const restoredRegistry = new NeuroPlasticAdapterRegistry();
@@ -315,7 +331,17 @@ assert.equal(restoredRegistry.select({
   backendSupportsModelAliases: true,
   confidence01: 0.9,
   risk01: 0.1,
-}).useAdapter, false, 'restart restore must never silently reactivate an adapter without fresh approval');
+}).useAdapter, false, 'restart restore without an approval verifier must fail closed');
+const signedRestoreRegistry = new NeuroPlasticAdapterRegistry();
+signedRestoreRegistry.restore(activeSnapshot, verifyApproval);
+assert.equal(signedRestoreRegistry.select({
+  domain: 'reasoning',
+  backendId: 'llama.cpp',
+  baseModelFingerprint: hash('a'),
+  backendSupportsModelAliases: true,
+  confidence01: 0.9,
+  risk01: 0.1,
+}).useAdapter, true, 'restart restore must preserve an active adapter only with a valid signed approval');
 await inferenceRegistry.rollback('kurisu-runtime-v1', 'operator requested rollback');
 assert.equal(inferenceRegistry.snapshot().adapters[0].status, 'disabled');
 
