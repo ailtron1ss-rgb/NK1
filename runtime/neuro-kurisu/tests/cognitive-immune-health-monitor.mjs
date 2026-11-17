@@ -223,7 +223,7 @@ assert.equal(observedHealth.healthStatus,'healthy',
 // Prediction health uses the recent resolved-prediction cohort, rather than
 // an all-time average that can hide recent calibration collapse.
 const predictionCohort = [
-  ...Array.from({length:8},(_,i)=>({
+  ...Array.from({length:16},(_,i)=>({
     id:`recent-prediction-${i}`,kind:'prediction',resolved:true,status:'resolved',error01:.92
   })),
   ...Array.from({length:8},(_,i)=>({
