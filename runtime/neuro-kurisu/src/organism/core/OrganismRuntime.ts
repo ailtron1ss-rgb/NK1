@@ -108,6 +108,8 @@ export interface RuntimeConfig extends OrganismConfig {
   synapticBaseModelRevisionSha256?: string;
   /** Trusted host verifies signed offline holdout reports; absent means candidate-only. */
   synapticAdapterManifestVerifier?: SynapticAdapterManifestVerifier;
+  /** Hard wall-clock bound for specialist inference before falling back to the base model. */
+  synapticAdapterTimeoutMs?: number;
   /** Host-owned inference port that actually loads/applies the selected adapter. */
   synapticAdapterInvoker?: (request: Parameters<LanguageInvoker>[0], adapter: SynapticAdapterCandidate) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
@@ -205,6 +207,7 @@ export class OrganismRuntime {
   private initialized = false;
   private readonly synapticMatrix = new AdaptiveSynapticMatrixEngine();
   private readonly synapticMatrixStore: JsonStateStore<AdaptiveSynapticMatrixState>;
+  private readonly synapticAdapterTimeoutMs: number;
   private lastContextBudgetLedger: ContextBudgetLedgerReport | null = null;
   contextBudgetDiagnostics() {
     return this.lastContextBudgetLedger ? structuredClone(this.lastContextBudgetLedger) : {
@@ -360,6 +363,10 @@ export class OrganismRuntime {
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.synapticMatrixStore = new FileStateStore<AdaptiveSynapticMatrixState>(`${config.stateFile}.synaptic-matrix.json`);
+    this.synapticAdapterTimeoutMs = Number(config.synapticAdapterTimeoutMs ?? 15_000);
+    if (!Number.isSafeInteger(this.synapticAdapterTimeoutMs) || this.synapticAdapterTimeoutMs < 100 || this.synapticAdapterTimeoutMs > 120_000) {
+      throw new Error('synaptic-adapter-timeout-invalid');
+    }
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -657,8 +664,34 @@ export class OrganismRuntime {
     });
     if (selection.mode === 'adapter' && this.config.synapticAdapterInvoker) {
       const startedAt = Date.now();
+      const adapterController = new AbortController();
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      let onParentAbort: (() => void) | undefined;
       try {
-        const response = await this.config.synapticAdapterInvoker(request, selection.adapter);
+        if (request.signal?.aborted) throw request.signal.reason ?? new Error('synaptic-adapter-request-aborted');
+        const adapterRequest = { ...request, signal: adapterController.signal };
+        const timeoutPromise = new Promise<never>((_resolve, reject) => {
+          timeoutHandle = setTimeout(() => {
+            const timeoutError = new Error('synaptic-adapter-timeout');
+            adapterController.abort(timeoutError);
+            reject(timeoutError);
+          }, this.synapticAdapterTimeoutMs);
+        });
+        const parentAbortPromise = request.signal
+          ? new Promise<never>((_resolve, reject) => {
+              onParentAbort = () => {
+                const reason = request.signal?.reason ?? new Error('synaptic-adapter-request-aborted');
+                adapterController.abort(reason);
+                reject(reason);
+              };
+              request.signal?.addEventListener('abort', onParentAbort, { once: true });
+            })
+          : new Promise<never>(() => {});
+        const response = await Promise.race([
+          this.config.synapticAdapterInvoker(adapterRequest, selection.adapter),
+          timeoutPromise,
+          parentAbortPromise,
+        ]);
         if (!response || typeof response.text !== 'string' || !response.text.trim()
           || typeof response.backend !== 'string' || !response.backend.trim()
           || !Number.isFinite(response.latencyMs)) {
@@ -690,6 +723,9 @@ export class OrganismRuntime {
         await this.journal.write('warn', 'runtime.synaptic-adapter.base-fallback', {
           adapterId: selection.adapterId, task, reason: String((error as any)?.message ?? error).slice(0, 180),
         }).catch(() => {});
+      } finally {
+        if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+        if (onParentAbort && request.signal) request.signal.removeEventListener('abort', onParentAbort);
       }
     }
     return baseInvoker(request);
