@@ -11,8 +11,8 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 
 ## Goals
 
-- Produce a deterministic 19-value feature vector: seven action indicators, five scalar organism features, and seven cognitive-mode indicators.
-- Normalize malformed/non-finite values and clamp every numeric channel to [0, 1].
+- Produce a deterministic 43-value feature vector: seven action indicators, five organism-state scalars, 23 read-only B365 neural/allostatic/self-model/goal-authorship signals, one neural-snapshot freshness channel, and seven cognitive-mode indicators.
+- Normalize malformed/non-finite values, reject future or more-than-eight-tick-old neural snapshots, mark unavailable neural state explicitly, and clamp every numeric channel to [0, 1].
 - Apply bounded sampling controls (`temperature`, `maxTokens`) and attach the structured profile to `LanguageRequest`.
 - Route both cognitive-proposal generation and user/autonomous language generation through the same bridge.
 - Expose explicit adapter/steering intentions and record telemetry distinguishing hints from controls actually applied.
@@ -35,18 +35,18 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 
 - Actions: `respond | explore | verify | rest | reflect | wait | defer`.
 - Modes: `reflex | shallow | retrieve | deep | simulate | defer | sleep`.
-- Feature vector order: action one-hot (7), then motivation, uncertainty, urgency, remaining budget, attention (5), then mode one-hot (7).
-- The output includes a mode-derived adapter hint, bounded sampling parameters, and steering intent channels capped at 0.15.
+- Feature vector order: action one-hot (7), organism motivation/uncertainty/urgency/budget/attention (5), B365 prediction/plasticity/neuromodulation/sparsity/coherence/confidence/agreement/counterfactual/goal/entropy (10), B365 allostatic drive/arousal/exploration/preservation/reflection/social approach (6), B365 self agency/continuity/growth/identity conflict (4), B365 goal ownership/commitment/revision pressure (3), neural freshness (1), then cognitive mode one-hot (7). Total: 43.
+- The output includes a stable feature-key schema, B365 snapshot provenance/age, a mode-derived adapter hint, budget- and preservation-scaled sampling parameters, and steering intent channels capped at 0.15.
 - `controlsApplied` records that sampling parameters are applied while adapter switching, activation steering and residual-block execution remain false.
 - Bridge defaults enabled; `RuntimeConfig.cognitiveToNeuralBridge.enabled=false` is the emergency bypass.
 
 ## Integration points
 
 - Existing `OrganismState` and `OrganismGoal` from `core/types.ts`.
-- Existing `CognitiveBudgetManager` snapshot exposed by `OrganismCore`.
+- Existing `CognitiveBudgetManager` snapshot and the already-computed `b365UnifiedNeuroCausalDiagnostics()` read-only signal snapshot exposed by `OrganismCore`; Runtime reuses its per-cycle B365 snapshot rather than running B365 a second time.
 - Existing `LanguageRequest` / `LanguageInvoker` boundary.
 - Existing `OrganismRuntime` proposal and response generation paths.
 
 ## Success evidence
 
-Focused unit tests cover normalization, vector order, determinism, caps, kill switch/request preservation and malformed inputs. Runtime integration tests ensure both LanguageInvoker call paths attach the profile. Node 24 runtime typecheck and focused regressions must pass on the exact PR head. This first slice is not evidence of improved model quality; future activation steering requires a compatible provider contract, calibration, ablation and independent outcome measurements.
+Focused unit tests cover normalization, vector order, determinism, caps, kill switch/request preservation and malformed inputs. Runtime integration tests ensure both LanguageInvoker call paths attach the profile. Node 24 runtime typecheck and focused regressions must pass on the exact PR head. This bridge does not execute B365 updates or provider-specific activation changes. This is not evidence of improved model quality; real activation steering still requires a compatible provider adapter, capability negotiation, calibration, ablation and independent outcome measurements.
