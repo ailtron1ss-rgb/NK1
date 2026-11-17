@@ -23,7 +23,7 @@ MAX_TARGET_LAYERS = 8
 MAX_BOTTLENECK_SIZE = 512
 MAX_MANIFEST_BYTES = 64 * 1024
 MAX_WEIGHTS_BYTES = 512 * 1024 * 1024
-ADAPTER_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
+ADAPTER_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
