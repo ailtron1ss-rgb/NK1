@@ -63,6 +63,8 @@ Architecture Morphogenesis превращает перестройку исхо�
 
 Дополнительные гарантии v2:
 
+- Plain-data preflight ограничивает массивы 100 000 элементами, объекты — 64 собственными ключами, строки — 16 384 кодовыми единицами и весь обход — 1 250 000 значениями на один входной payload. Проверка accessors использует property descriptors и не исполняет getters. Числовые свойства массива вне фактической длины запрещены.
+
 - Structural import/contract cycle detection использует iterative DFS и выдерживает верхнюю границу 10 000 модулей без переполнения JS call stack.
 - Каждый добавленный/удалённый typed edge требует точный `rewire` receipt; неизменившиеся связи и повторные receipts отклоняются; изменения `sourcePaths` учитываются в module diff.
 - Перед оценкой evidence gate заново строит план из baseline/candidate graph, операций и migration plan. Одного повторного хеширования изменённого `diff` недостаточно.

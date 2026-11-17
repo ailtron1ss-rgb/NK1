@@ -125,40 +125,64 @@ const MAX_EDGES = 100000;
 const MAX_SOURCE_PATHS_PER_MODULE = 64;
 const MAX_STEPS = 50;
 const MAX_REPORTED_CYCLES = 64;
+const MAX_PLAIN_ARRAY_LENGTH = MAX_EDGES;
+const MAX_PLAIN_OBJECT_KEYS = 64;
+const MAX_PLAIN_STRING_LENGTH = 16_384;
+const MAX_PLAIN_DATA_NODES = 1_250_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Reject accessors, prototypes, cycles and non-JSON values before inspecting candidate data. */
-function isPlainData(value: unknown, seen = new Set<object>(), depth = 0): boolean {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+interface PlainDataBudget {
+  nodes: number;
+}
+
+/** Reject oversized, accessor-backed, cyclic, non-plain and non-JSON data before traversal. */
+function isPlainData(
+  value: unknown,
+  seen = new Set<object>(),
+  depth = 0,
+  budget: PlainDataBudget = { nodes: 0 },
+): boolean {
+  budget.nodes += 1;
+  if (budget.nodes > MAX_PLAIN_DATA_NODES || depth > 32) return false;
+  if (typeof value === 'string') return value.length <= MAX_PLAIN_STRING_LENGTH;
+  if (value === null || typeof value === 'boolean') return true;
   if (typeof value === 'number') return Number.isFinite(value);
-  if (typeof value !== 'object' || depth > 32 || seen.has(value)) return false;
+  if (typeof value !== 'object' || seen.has(value)) return false;
+
   seen.add(value);
   try {
     const prototype = Object.getPrototypeOf(value);
     if (Array.isArray(value)) {
-      if (prototype !== Array.prototype) return false;
+      if (prototype !== Array.prototype || value.length > MAX_PLAIN_ARRAY_LENGTH) return false;
+      const keys = Reflect.ownKeys(value);
+      if (keys.length > MAX_PLAIN_ARRAY_LENGTH + 1) return false;
       const descriptors = Object.getOwnPropertyDescriptors(value);
       for (let index = 0; index < value.length; index += 1) {
         const descriptor = descriptors[String(index)];
         if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return false;
-        if (!isPlainData(descriptor.value, seen, depth + 1)) return false;
+        if (!isPlainData(descriptor.value, seen, depth + 1, budget)) return false;
       }
-      for (const key of Reflect.ownKeys(descriptors)) {
-        if (key === 'length' || (typeof key === 'string' && /^(0|[1-9][0-9]*)$/.test(key))) continue;
-        return false;
+      for (const key of keys) {
+        if (key === 'length') continue;
+        if (typeof key !== 'string' || !/^(0|[1-9][0-9]*)$/.test(key)) return false;
+        const index = Number(key);
+        if (!Number.isSafeInteger(index) || index < 0 || index >= value.length) return false;
       }
       return true;
     }
+
     if (prototype !== Object.prototype && prototype !== null) return false;
+    const keys = Reflect.ownKeys(value);
+    if (keys.length > MAX_PLAIN_OBJECT_KEYS) return false;
     const descriptors = Object.getOwnPropertyDescriptors(value);
-    for (const key of Reflect.ownKeys(descriptors)) {
+    for (const key of keys) {
       if (typeof key !== 'string' || key === '__proto__' || key === 'prototype' || key === 'constructor') return false;
       const descriptor = descriptors[key];
-      if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) return false;
-      if (!isPlainData(descriptor.value, seen, depth + 1)) return false;
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return false;
+      if (!isPlainData(descriptor.value, seen, depth + 1, budget)) return false;
     }
     return true;
   } catch {

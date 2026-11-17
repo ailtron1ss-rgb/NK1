@@ -249,7 +249,7 @@ const cyclicObject = graph([alpha]);
 cyclicObject.extra = cyclicObject;
 assert.equal(validateArchitectureMorphogenesisGraph(cyclicObject).ok, false);
 
-console.log('ARCHITECTURE_MORPHOGENESIS_WORKPASS17=PASS live-graph+contracts+merge-split-move-replace+rollback+promotion-gate');
+
 
 
 // Regression: malformed plain-data array members must fail closed, not throw.
@@ -385,3 +385,5 @@ oversizedStringGraph.extension = 'x'.repeat(16385);
 const oversizedStringReport = validateArchitectureMorphogenesisGraph(oversizedStringGraph);
 assert.equal(oversizedStringReport.ok, false);
 assert.ok(oversizedStringReport.issues.some(item => item.code === 'graph-untrusted-data'));
+
+console.log('ARCHITECTURE_MORPHOGENESIS_WORKPASS17=PASS live-graph+contracts+merge-split-move-replace+rollback+promotion-gate');
