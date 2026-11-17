@@ -352,7 +352,13 @@ export class NeuroPlasticAdapterRegistry {
     return structuredClone(this.state);
   }
 
-  restore(raw?: unknown): void {
+  restore(
+    raw?: unknown,
+    verifyRestoredApproval?: (
+      approval: NeuroPlasticApproval,
+      context: { adapterId: string; reportId: string; baseModelFingerprint: string },
+    ) => boolean,
+  ): void {
     this.state = { schemaVersion: 1, adapters: [] };
     if (!raw) return;
     let input: Record<string, unknown>;
@@ -373,18 +379,35 @@ export class NeuroPlasticAdapterRegistry {
           evaluation.automaticActivation === false && typeof evaluation.eligible === 'boolean' &&
           Array.isArray(evaluation.reasons));
         const storedStatus = row.status;
-        // A persisted "active" bit is not an authority. Re-approval is required after restart.
+        let activationApproval: NeuroPlasticApproval | null = null;
+        let restoredApprovalTrusted = false;
+        if (storedStatus === 'active' && validReport && evaluation!.eligible &&
+            row.activationApproval && verifyRestoredApproval) {
+          try {
+            activationApproval = normalizeApproval(row.activationApproval);
+            restoredApprovalTrusted = verifyRestoredApproval(activationApproval, {
+              adapterId: manifest.adapterId,
+              reportId: evaluation!.reportId,
+              baseModelFingerprint: manifest.baseModel.fingerprint,
+            }) === true;
+          } catch {
+            restoredApprovalTrusted = false;
+            activationApproval = null;
+          }
+        }
         const status: NeuroPlasticAdapterStatus = storedStatus === 'disabled' ? 'disabled'
           : storedStatus === 'rejected' ? 'rejected'
-            : validReport && evaluation!.eligible ? 'eligible'
-              : 'staged';
+            : restoredApprovalTrusted ? 'active'
+              : validReport && evaluation!.eligible ? 'eligible'
+                : 'staged';
         restored.push({
           manifest,
           status,
           stagedAt: safeCounter(row.stagedAt, 'restored-staged-at'),
           updatedAt: safeCounter(row.updatedAt, 'restored-updated-at'),
           evaluation: validReport ? structuredClone(evaluation!) : null,
-          activationApprovalId: null,
+          activationApprovalId: status === 'active' ? activationApproval!.approvalId : null,
+          activationApproval: status === 'active' ? activationApproval : null,
           disabledReason: status === 'disabled' ? 'restored-disabled' : null,
         });
       } catch {
@@ -393,7 +416,6 @@ export class NeuroPlasticAdapterRegistry {
     }
     this.state.adapters = restored;
   }
-
   stage(rawManifest: unknown): NeuroPlasticAdapterRecord {
     if (this.state.adapters.length >= MAX_ADAPTERS) throw new Error('neuro-plastic-registry-capacity-reached');
     const manifest = normalizeManifest(rawManifest);
