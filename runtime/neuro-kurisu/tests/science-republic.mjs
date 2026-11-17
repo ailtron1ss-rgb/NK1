@@ -477,9 +477,15 @@ assert.throws(() => runtime.scienceRepublic.audit(science.id, {
   checkedArtifacts: checkedArtifacts.slice(1),
 }), /science-audit-manifest-incomplete-or-mismatched/);
 
+for (const artifact of checkedArtifacts) {
+  const bytes = artifactBytes.get(artifact.reference);
+  assert.equal(typeof bytes, 'string', 'missing stored audit bytes for ' + artifact.reference);
+  assert.equal(digest(bytes), artifact.sha256, 'stored byte digest mismatch for ' + artifact.reference);
+}
 const auditRef = 'audit://science-republic/' + science.id;
 const auditSha256 = digest('audit-' + science.id);
 rememberArtifactBytes({ reference: auditRef, sha256: auditSha256 }, 'audit-' + science.id);
+assert.equal(digest(artifactBytes.get(auditRef)), auditSha256, 'audit report byte digest mismatch');
 const audited = runtime.scienceRepublic.audit(science.id, {
   actorId: actors.auditor,
   auditRef,
