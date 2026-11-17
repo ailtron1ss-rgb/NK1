@@ -43,7 +43,7 @@ import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
-import { SubstrateIndependenceEngine, type PortableCognitiveTransferV1, type SubstrateBackendProfile, type SubstrateCalibrationTrial, type SubstrateIndependenceState } from '../system/SubstrateIndependenceEngine.ts';
+import { SubstrateIndependenceEngine, hydratePortableState, type PortableCognitiveTransferV1, type SubstrateBackendProfile, type SubstrateCalibrationTrial, type SubstrateIndependenceState } from '../system/SubstrateIndependenceEngine.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
@@ -482,9 +482,9 @@ export class OrganismRuntime {
       await this.substrateImportBackupStore.save(backup);
       await this.substrateImportJournalStore.save(journal);
       try {
-        await this.organismStore.save(transfer.payload.organism as unknown as PersistedOrganism);
-        await this.worldStore.save(transfer.payload.world as unknown as PersistedWorld);
-        await this.proceduralSkillStore.save(transfer.payload.proceduralSkills as unknown as SkillLibraryState);
+        await this.organismStore.save(hydratePortableState(transfer.payload.organism) as PersistedOrganism);
+        await this.worldStore.save(hydratePortableState(transfer.payload.world) as PersistedWorld);
+        await this.proceduralSkillStore.save(hydratePortableState(transfer.payload.proceduralSkills) as SkillLibraryState);
         this.substrateIndependence.recordImportedTransfer(transfer, targetBackendId);
         await this.substrateStateStore.save(this.substrateIndependence.snapshot());
         await this.substrateImportJournalStore.save({ ...journal, phase: 'committed', updatedAt: Date.now() });
