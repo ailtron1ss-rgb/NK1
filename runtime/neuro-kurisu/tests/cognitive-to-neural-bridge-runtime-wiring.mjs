@@ -38,7 +38,7 @@ async function runRuntime(enabled) {
       assert.equal(request.cognitiveControl.controlsApplied.activationSteering, false);
       const diagnostics = runtime.cognitiveToNeuralBridgeDiagnostics();
       assert.ok(diagnostics.projected > 0);
-      assert.ok(diagnostics.samplingControlsApplied > 0);
+      assert.ok(diagnostics.samplingControlsConfigured > 0);
       assert.ok(diagnostics.neuralSnapshotsAvailable > 0);
       assert.equal(diagnostics.lastFeatureDimensions, 43);
       assert.equal(diagnostics.activationSteeringApplied, 0);
