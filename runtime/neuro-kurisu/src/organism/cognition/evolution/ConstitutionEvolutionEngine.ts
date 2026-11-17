@@ -339,40 +339,49 @@ export class ConstitutionEvolutionEngine {
 
   restore(raw:unknown):boolean {
     const fail=(reason:string) => { this.state=defaults(); this.restoreState={ok:false,reason,checkedAt:Date.now()}; return false; };
-    if (raw===null || raw===undefined) { this.state=defaults(); this.restoreState={ok:true,reason:'compiled-baseline-loaded',checkedAt:Date.now()}; return true; }
-    if (!isRecord(raw) || raw.schemaVersion!==1 || raw.protectedInvariantDigest!==hash(PROTECTED_CONSTITUTIONAL_INVARIANTS)
-      || typeof raw.auditAnchorDigest!=='string' || !/^[a-f0-9]{64}$/.test(raw.auditAnchorDigest)) return fail('schema or protected invariant digest mismatch');
-    const { integrityMac:_integrityMac, ...body }=raw;
-    if (!this.signingKey) {
-      const baseline=defaults();
-      if (raw.integrityMac!==null || raw.active?.digest!==baseline.active.digest || raw.revisions?.length!==1
-        || raw.proposals?.length!==0 || raw.auditEvents?.length!==0 || raw.auditAnchorDigest!==ZERO_DIGEST) return fail('host signing key unavailable for non-baseline state');
-    } else if (!verifyHexMac(raw.integrityMac,this.mac(body))) return fail('host HMAC snapshot authentication failed');
-    if (!validRevision(raw.active) || !Array.isArray(raw.revisions) || raw.revisions.length<1 || raw.revisions.length>MAX_REVISIONS
-      || !raw.revisions.every(validRevision)) return fail('revision integrity validation failed');
-    const revisions=raw.revisions as ConstitutionRevision[];
-    if (!revisions.some(r=>r.version===raw.active.version && r.digest===raw.active.digest)) return fail('active revision is not anchored in history');
-    if (!Array.isArray(raw.proposals) || raw.proposals.length>MAX_PROPOSALS || !Array.isArray(raw.auditEvents) || raw.auditEvents.length>MAX_AUDIT_EVENTS) return fail('snapshot bounds invalid');
-    for (const p of raw.proposals as ConstitutionProposal[]) {
-      if (!isRecord(p) || typeof p.id!=='string' || typeof p.authorId!=='string' || !Array.isArray(p.reviews)
-        || !['pending-review','awaiting-ratification','ratified','applied','rejected','stale'].includes(p.status)
-        || p.candidateDigest!==proposalDigest(proposalCore(p))) return fail('proposal integrity validation failed');
-      for (const review of p.reviews) {
-        if (!review || review.attestationMac!==this.mac(reviewCore(p.id,p.candidateDigest,review))) return fail('review attestation failed');
+    try {
+      if (raw===null || raw===undefined) { this.state=defaults(); this.restoreState={ok:true,reason:'compiled-baseline-loaded',checkedAt:Date.now()}; return true; }
+      if (!isRecord(raw) || raw.schemaVersion!==1 || raw.protectedInvariantDigest!==hash(PROTECTED_CONSTITUTIONAL_INVARIANTS)
+        || typeof raw.auditAnchorDigest!=='string' || !/^[a-f0-9]{64}$/.test(raw.auditAnchorDigest)) return fail('schema or protected invariant digest mismatch');
+      const { integrityMac:_integrityMac, ...body }=raw;
+      if (!this.signingKey) {
+        const baseline=defaults();
+        if (raw.integrityMac!==null || raw.active?.digest!==baseline.active.digest || raw.revisions?.length!==1
+          || raw.proposals?.length!==0 || raw.auditEvents?.length!==0 || raw.auditAnchorDigest!==ZERO_DIGEST) return fail('host signing key unavailable for non-baseline state');
+      } else if (!verifyHexMac(raw.integrityMac,this.mac(body))) return fail('host HMAC snapshot authentication failed');
+      if (!validRevision(raw.active) || !Array.isArray(raw.revisions) || raw.revisions.length<1 || raw.revisions.length>MAX_REVISIONS
+        || !raw.revisions.every(validRevision)) return fail('revision integrity validation failed');
+      const revisions=raw.revisions as ConstitutionRevision[];
+      if (!revisions.some(r=>r.version===raw.active.version && r.digest===raw.active.digest)) return fail('active revision is not anchored in history');
+      if (!Array.isArray(raw.proposals) || raw.proposals.length>MAX_PROPOSALS || !Array.isArray(raw.auditEvents) || raw.auditEvents.length>MAX_AUDIT_EVENTS) return fail('snapshot bounds invalid');
+      for (const p of raw.proposals as ConstitutionProposal[]) {
+        if (!isRecord(p) || typeof p.id!=='string' || typeof p.authorId!=='string' || !Array.isArray(p.reviews)
+          || !['pending-review','awaiting-ratification','ratified','applied','rejected','stale'].includes(p.status)
+          || p.candidateDigest!==proposalDigest(proposalCore(p))) return fail('proposal integrity validation failed');
+        if (['awaiting-ratification','ratified','applied'].includes(p.status) && !p.approvalRequestId && !p.approval) return fail('proposal approval lifecycle is incomplete');
+        if (['ratified','applied'].includes(p.status) && !p.approval) return fail('ratified proposal has no approval receipt');
+        if (p.status==='applied' && (typeof p.appliedVersion!=='string' || !revisions.some(revision=>revision.version===p.appliedVersion))) return fail('applied proposal revision is missing');
+        for (const review of p.reviews) {
+          if (!isRecord(review) || review.attestationMac!==this.mac(reviewCore(p.id,p.candidateDigest,review))) return fail('review attestation failed');
+        }
+        if (p.approval && (!isRecord(p.approval) || p.approval.signature!==this.mac(approvalCore(p.id,{
+          approverId:p.approval.approverId,approvalRef:p.approval.approvalRef,candidateDigest:p.approval.candidateDigest,at:p.approval.at,
+        })))) return fail('ratification attestation failed');
       }
-      if (p.approval && p.approval.signature!==this.mac(approvalCore(p.id,{approverId:p.approval.approverId,approvalRef:p.approval.approvalRef,candidateDigest:p.approval.candidateDigest,at:p.approval.at}))) return fail('ratification attestation failed');
+      let previous=raw.auditAnchorDigest as string;
+      for (const event of raw.auditEvents as ConstitutionAuditEvent[]) {
+        if (!isRecord(event) || typeof event.id!=='string' || typeof event.actorId!=='string' || !Number.isFinite(event.at)
+          || event.previousDigest!==previous || event.digest!==this.mac(auditCore(event))) return fail('append-only audit chain validation failed');
+        previous=event.digest;
+      }
+      this.state={schemaVersion:1,protectedInvariantDigest:hash(PROTECTED_CONSTITUTIONAL_INVARIANTS),auditAnchorDigest:raw.auditAnchorDigest,
+        active:clone(raw.active as ConstitutionRevision),revisions:clone(revisions),proposals:clone(raw.proposals as ConstitutionProposal[]),
+        auditEvents:clone(raw.auditEvents as ConstitutionAuditEvent[])};
+      this.restoreState={ok:true,reason:this.signingKey?'host-HMAC-and-audit-chain-verified':'compiled-baseline-verified',checkedAt:Date.now()};
+      return true;
+    } catch {
+      return fail('snapshot validation raised an exception');
     }
-    let previous=raw.auditAnchorDigest as string;
-    for (const event of raw.auditEvents as ConstitutionAuditEvent[]) {
-      if (!isRecord(event) || typeof event.id!=='string' || typeof event.actorId!=='string' || !Number.isFinite(event.at)
-        || event.previousDigest!==previous || event.digest!==this.mac(auditCore(event))) return fail('append-only audit chain validation failed');
-      previous=event.digest;
-    }
-    this.state={schemaVersion:1,protectedInvariantDigest:hash(PROTECTED_CONSTITUTIONAL_INVARIANTS),auditAnchorDigest:raw.auditAnchorDigest,
-      active:clone(raw.active as ConstitutionRevision),revisions:clone(revisions),proposals:clone(raw.proposals as ConstitutionProposal[]),
-      auditEvents:clone(raw.auditEvents as ConstitutionAuditEvent[])};
-    this.restoreState={ok:true,reason:this.signingKey?'host-HMAC-and-audit-chain-verified':'compiled-baseline-verified',checkedAt:Date.now()};
-    return true;
   }
 
   private requireProposal(id:string):ConstitutionProposal {
