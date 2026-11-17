@@ -2110,6 +2110,7 @@ export class B365UnifiedNeuroCausalCore {
     const forecastConfidence = ACTIONS.reduce((sum, action) => sum + this.state.actionForecasts[action]!.confidence01, 0) / ACTIONS.length;
     return {
       version: this.state.version,
+      tick: this.state.tick,
       neuronCount: N,
       cycles: this.state.cycles,
       learningUpdates: this.state.learningUpdates,
