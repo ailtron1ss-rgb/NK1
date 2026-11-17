@@ -523,9 +523,9 @@ export class TheInventionLoop {
       }
     }
     if (safe.kind === 'holdout') {
-      if (record.outcomes.some(outcome =>
-        outcome.verifierId === verifierId || outcome.environmentId === environmentId ||
-        outcome.runId === runId)) {
+      const priorNonHoldout = record.outcomes.filter(outcome => outcome.kind !== 'holdout');
+      if (priorNonHoldout.some(outcome => outcome.verifierId === verifierId) ||
+          record.outcomes.some(outcome => outcome.environmentId === environmentId || outcome.runId === runId)) {
         throw new Error('holdout-must-be-independent');
       }
     }
