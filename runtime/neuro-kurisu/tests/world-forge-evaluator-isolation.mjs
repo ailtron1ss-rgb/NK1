@@ -4,6 +4,8 @@ import { WorldForge } from '../src/organism/developmental/WorldForge.ts';
 const forge=new WorldForge();
 const scenario=forge.generate({split:'train',seed:117,count:1})[0];
 assert.ok(scenario);
+assert.equal(typeof forge.evaluate,'undefined','raw caller-supplied action traces must not be scoreable through a public engine method');
+assert.equal(typeof forge.evaluateSession,'function','evaluation must be bound to a canonical engine-owned session');
 
 // Evaluator-only answer keys must not be reachable through enumerable or
 // ordinary property access on the runtime object.
