@@ -12465,7 +12465,11 @@ export class OrganismCore {
     async executeIntent(contract: IntentContract, action: IntentBoundAction): Promise<IntentBridgeResult> {
         if (!this.ready) throw new Error('organism-not-initialized');
         const normalizedAction = { ...action, toolId: this.canonicalActionToolId(action.toolId) };
-        const result = await this.intentExecutionRuntime.execute(contract, normalizedAction, this);
+        const persistPreparedIntent = async () => {
+            this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+            await this.checkpoint(true);
+        };
+        const result = await this.intentExecutionRuntime.execute(contract, normalizedAction, this, persistPreparedIntent);
         this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
         await this.checkpoint(true);
         return result;
@@ -12474,7 +12478,11 @@ export class OrganismCore {
     async reconcileIntentExecution(contract: IntentContract, action: IntentBoundAction): Promise<IntentBridgeReconciliationResult> {
         if (!this.ready) throw new Error('organism-not-initialized');
         const normalizedAction = { ...action, toolId: this.canonicalActionToolId(action.toolId) };
-        const result = await this.intentExecutionRuntime.reconcile(contract, normalizedAction, this);
+        const persistReconciliationAttempt = async () => {
+            this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+            await this.checkpoint(true);
+        };
+        const result = await this.intentExecutionRuntime.reconcile(contract, normalizedAction, this, persistReconciliationAttempt);
         this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
         await this.checkpoint(true);
         return result;
