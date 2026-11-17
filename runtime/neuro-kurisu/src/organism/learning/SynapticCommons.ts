@@ -286,8 +286,9 @@ export function createSignedSynapticArtifact(
   if (typeof keyId !== 'string' || !SAFE_ID.test(keyId))
     throw new TypeError('synaptic-publisher-key-id-invalid');
   const placeholder = 'A'.repeat(86) + '==';
+  const safeUnsignedArtifact = cloneSafeJson(unsignedArtifact) as Record<string, unknown>;
   const draft = normalizeArtifact({
-    ...unsignedArtifact,
+    ...safeUnsignedArtifact,
     signature: { keyId, algorithm: 'Ed25519', value: placeholder },
   });
   const fingerprint = synapticArtifactFingerprint(draft);
