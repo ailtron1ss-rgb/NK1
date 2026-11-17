@@ -186,7 +186,42 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
   if (nodeUtilTypes.isDate(value)) {
     const time = value.getTime();
     if (!Number.isFinite(time)) return fail('portable-invalid-date-rejected');
-    return value.toISOString();
+    return { $nk1Type: 'Date', value: value.toISOString() };
+  }
+  if (Buffer.isBuffer(value)) {
+    return { $nk1Type: 'Buffer', base64: value.toString('base64') };
+  }
+  if (nodeUtilTypes.isMap(value)) {
+    seen.add(value);
+    try {
+      const entries = [...value.entries()].map(([key, entry]) => [
+        normalizePortableValue(key, seen, depth + 1, counter),
+        normalizePortableValue(entry, seen, depth + 1, counter),
+      ]);
+      return { $nk1Type: 'Map', entries };
+    } finally { seen.delete(value); }
+  }
+  if (nodeUtilTypes.isSet(value)) {
+    seen.add(value);
+    try {
+      return { $nk1Type: 'Set', values: [...value.values()].map((entry) =>
+        normalizePortableValue(entry, seen, depth + 1, counter)) };
+    } finally { seen.delete(value); }
+  }
+  if (nodeUtilTypes.isArrayBuffer(value)) {
+    return { $nk1Type: 'ArrayBuffer', base64: Buffer.from(value).toString('base64') };
+  }
+  if (ArrayBuffer.isView(value)) {
+    if (nodeUtilTypes.isDataView(value)) {
+      return { $nk1Type: 'DataView', base64: Buffer.from(value.buffer, value.byteOffset, value.byteLength).toString('base64') };
+    }
+    const type = Object.getPrototypeOf(value)?.constructor?.name;
+    const supported = new Set([
+      'Int8Array', 'Uint8Array', 'Uint8ClampedArray', 'Int16Array', 'Uint16Array',
+      'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'BigInt64Array', 'BigUint64Array',
+    ]);
+    if (!supported.has(type)) return fail('portable-typed-array-rejected');
+    return { $nk1Type: type, base64: Buffer.from(value.buffer, value.byteOffset, value.byteLength).toString('base64') };
   }
 
   seen.add(value);
@@ -217,7 +252,7 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
     const descriptors = Object.getOwnPropertyDescriptors(value);
     const keys = Reflect.ownKeys(descriptors);
     if (keys.length > MAX_OBJECT_KEYS) return fail('portable-object-key-limit');
-    const result: Record<string, PortableJson> = Object.create(null);
+    const result: Record<string, PortableJson> = {};
     for (const key of keys) {
       if (typeof key !== 'string') return fail('portable-symbol-key-rejected');
       if (key === '__proto__' || key === 'prototype' || key === 'constructor') return fail('portable-dangerous-key-rejected');
@@ -226,7 +261,10 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
         return fail('portable-accessor-rejected');
       }
       if (descriptor.enumerable !== true || descriptor.value === undefined) continue;
-      result[key] = normalizePortableValue(descriptor.value, seen, depth + 1, counter);
+      Object.defineProperty(result, key, {
+        value: normalizePortableValue(descriptor.value, seen, depth + 1, counter),
+        enumerable: true, writable: true, configurable: true,
+      });
     }
     return result;
   } finally {
@@ -250,6 +288,81 @@ function canonicalJson(value: PortableJson | PlainRecord): string {
 
 function sha256(value: string): string {
   return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+
+const TYPED_ARRAY_CONSTRUCTORS: Record<string, any> = {
+  Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array,
+  Int32Array, Uint32Array, Float32Array, Float64Array,
+  ...(typeof BigInt64Array === 'undefined' ? {} : { BigInt64Array }),
+  ...(typeof BigUint64Array === 'undefined' ? {} : { BigUint64Array }),
+};
+
+function decodeBase64(value: unknown): Buffer {
+  if (typeof value !== 'string' || value.length > DEFAULT_MAX_TRANSFER_BYTES * 2
+      || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value)) {
+    return fail('portable-binary-encoding-invalid');
+  }
+  const decoded = Buffer.from(value, 'base64');
+  if (decoded.toString('base64') !== value) return fail('portable-binary-noncanonical-base64');
+  return decoded;
+}
+
+/** Rehydrate the explicitly tagged binary/container values after the portable JSON envelope is verified. */
+export function hydratePortableState(value: PortableJson): unknown {
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map((entry) => hydratePortableState(entry));
+  const row = value as Record<string, PortableJson>;
+  const type = row.$nk1Type;
+  if (typeof type === 'string') {
+    if (type === 'Date') {
+      if (Object.keys(row).sort().join(',') !== '$nk1Type,value' || typeof row.value !== 'string') return fail('portable-date-tag-invalid');
+      const date = new Date(row.value);
+      if (!Number.isFinite(date.getTime()) || date.toISOString() !== row.value) return fail('portable-date-tag-invalid');
+      return date;
+    }
+    if (type === 'Map') {
+      if (Object.keys(row).sort().join(',') !== '$nk1Type,entries' || !Array.isArray(row.entries)) return fail('portable-map-tag-invalid');
+      const entries = row.entries.map((entry) => {
+        if (!Array.isArray(entry) || entry.length !== 2) return fail('portable-map-entry-invalid');
+        return [hydratePortableState(entry[0]), hydratePortableState(entry[1])];
+      });
+      return new Map(entries);
+    }
+    if (type === 'Set') {
+      if (Object.keys(row).sort().join(',') !== '$nk1Type,values' || !Array.isArray(row.values)) return fail('portable-set-tag-invalid');
+      return new Set(row.values.map((entry) => hydratePortableState(entry)));
+    }
+    if (type === 'Buffer') {
+      if (Object.keys(row).sort().join(',') !== '$nk1Type,base64') return fail('portable-buffer-tag-invalid');
+      return decodeBase64(row.base64);
+    }
+    if (type === 'ArrayBuffer' || type === 'DataView') {
+      if (Object.keys(row).sort().join(',') !== '$nk1Type,base64') return fail('portable-arraybuffer-tag-invalid');
+      const bytes = decodeBase64(row.base64);
+      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      return type === 'ArrayBuffer' ? buffer : new DataView(buffer);
+    }
+    const Constructor = TYPED_ARRAY_CONSTRUCTORS[type];
+    if (Constructor) {
+      if (Object.keys(row).sort().join(',') !== '$nk1Type,base64') return fail('portable-typed-array-tag-invalid');
+      const bytes = decodeBase64(row.base64);
+      if (bytes.byteLength % Constructor.BYTES_PER_ELEMENT !== 0) return fail('portable-typed-array-byte-length-invalid');
+      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      return new Constructor(buffer);
+    }
+    return fail('portable-unknown-type-tag');
+  }
+  const result: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(row)) {
+    if (key === '__proto__' || key === 'prototype' || key === 'constructor' || key === '$nk1Type') {
+      return fail('portable-reserved-key-rejected');
+    }
+    Object.defineProperty(result, key, {
+      value: hydratePortableState(entry), enumerable: true, writable: true, configurable: true,
+    });
+  }
+  return result;
 }
 
 function profileSnapshot(input: unknown): SubstrateBackendProfile {
@@ -577,6 +690,9 @@ export class SubstrateIndependenceEngine {
         source: { backendId: source.backendId as string | null, profileDigest: source.profileDigest as string | null },
         payload: normalized,
       };
+      hydratePortableState((normalized as Record<string, PortableJson>).organism);
+      hydratePortableState((normalized as Record<string, PortableJson>).world);
+      hydratePortableState((normalized as Record<string, PortableJson>).proceduralSkills);
       const encoded = canonicalJson(unsigned as unknown as PortableJson);
       const bytes = Buffer.byteLength(encoded, 'utf8');
       const digest = sha256(encoded);
