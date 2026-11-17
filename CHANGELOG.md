@@ -5,7 +5,8 @@
 - Persist through the canonical self subsystem and critical persistence projection; expose checkpointed Core and serialized Runtime operations.
 - Add the bearer-authenticated /api/organism/dyadic-collaboration host endpoint with redacted reads and server-owned actor, evidence, tick and sensitivity metadata.
 - Feed a bounded, data-labelled shared context into existing cognitive prompt paths without creating a second memory or project executor.
-- Add behavioral and HTTP tests for consent, provenance, persistence, redaction, secret rejection and task-state boundaries. Final exact-head endpoint CI remains pending; no merge or release is claimed.
+- Add behavioral and HTTP tests for consent, provenance, persistence, redaction, secret rejection and task-state boundaries. WorkPass79 and Unified Organism Runtime passed at exact HEAD ca2af1eb; no merge or release is claimed.
+- Make HTTP writes idempotent: exact retries return the prior item, same-key/different-payload requests conflict, and concurrent identical/conflicting requests are covered by live-server regressions.
 
 ## [NK1][Dyadic Mind] Introduce evidence-bound shared collaboration workspace (2026-11-17)
 

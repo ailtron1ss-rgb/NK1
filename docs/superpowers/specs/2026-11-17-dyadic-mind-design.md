@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-17  
 **Source:** OmeStro, idea 02 — Dyadic Mind / Совместный интеллект человека и NK1  
-**Status:** Runtime + authenticated host API implementation; exact-head CI pending.
+**Status:** Implemented, connected and verified on exact HEAD \`ca2af1eb\`.
 
 ## Intent
 
@@ -14,54 +14,43 @@ Give a person and NK1 a persistent, inspectable shared view of their work withou
 - Distinguish human-authored accepted context from system-authored proposals.
 - Require explicit human confirmation before a system proposal becomes shared agreement.
 - Keep task progress, authorship, evidence references and corrections auditable.
-- Expose a small, labelled collaboration projection to the cognitive prompt without treating it as instructions.
+- Expose a small, labelled collaboration projection to cognitive prompts without treating it as instructions.
 - Reuse the canonical self subsystem, checkpoint/restore pipeline and host authentication.
-- Make the collaboration state accessible to an authenticated app client.
-
-## Non-goals
-
-- No second memory store, planner, autonomous executor, database or external service.
-- No merge of the human's personal state with NK1's self state.
-- No automatic agreement, external action or implicit tool consent.
-- No client-controlled author, sensitivity label, timestamp or evidence reference.
-- No claim of a human-like shared consciousness; this is a software coordination record.
-
-## Approaches considered
-
-1. Extend UserModelEvidenceModel. Rejected: that owner is intentionally limited to explicit low-risk personal preferences and forgetting semantics.
-2. Add another MemoryOS2 collection. Rejected: collaboration state has authorization transitions and provenance requirements, not memory retrieval/lifecycle semantics.
-3. Add a bounded DyadicCollaborationWorkspace under SelfSubsystemRuntime. Chosen: separate domain model, same canonical persistence owner, existing checkpoint/restore and serialized runtime command queue.
-4. Add a new database or collaboration backend. Rejected: unnecessary duplication and new operational secrets.
+- Make the collaboration state accessible through an authenticated app/client API.
 
 ## Data and authorization model
 
 - Artifact types: goal, task, agreement, question, success-criteria and decision.
 - Author: human or system. Lifecycle: proposed, accepted, rejected.
-- Human-authored records are accepted because the write itself is an explicit human act. System-authored records always start proposed.
+- Human-authored records are accepted because the write is an explicit human act. System-authored records always start proposed.
 - Only a human may accept/reject a proposal, correct a shared item, or mark a task completed.
-- Every mutation requires a non-empty evidence reference and a valid non-negative safe-integer tick.
-- Duplicate evidence, stale transitions, sensitive/unclassified inputs and capacity overflow fail closed.
-- The HTTP host derives actor=human, source/evidence IDs, tick and low-risk classification; client-supplied provenance fields are ignored.
-- HTTP writes require confirmed=true for every mutation.
-- HTTP responses expose a redacted item projection only; internal evidence references and event records are not returned.
-- Restore reads own data properties only; malformed/accessor-backed snapshots reset safely.
+- Every mutation has a non-empty source/evidence reference and a non-negative safe-integer tick.
+- Duplicate evidence, stale transitions, sensitive/unclassified content and capacity overflow fail closed.
+- HTTP host owns actor, evidence IDs, tick and sensitivity classification; client-provided metadata is ignored.
+- HTTP mutations require \`confirmed=true\`.
+- HTTP responses expose a redacted item projection; internal evidence references and event records are not returned.
+- An optional Idempotency-Key is hashed with the canonical request. Exact retries are replayed; key reuse with a different payload conflicts. Regression tests cover concurrent identical and conflicting requests.
 
-## Integration boundaries
+## Persistence and runtime integration
 
 - SelfSubsystemRuntime owns the workspace and snapshot/restore lifecycle.
-- AdvancedDevelopmentFacet carries the optional typed snapshot.
-- PersistenceProjectionCoordinator writes the snapshot in the existing critical projection group.
-- OrganismCore checkpoints writes and joins the collaboration projection with existing user prompt context.
-- OrganismRuntime serializes mutation and read operations through its existing queue.
-- Existing cognitive language prompt paths receive accepted context and explicitly labelled unconfirmed proposals.
-- The authenticated server endpoint is /api/organism/dyadic-collaboration and uses the existing authorizeApiRequest policy, rate limit and bearer token.
-- MemoryOS2 remains the sole canonical memory owner. Existing project planning/execution remains authoritative; Dyadic Mind records coordination and does not execute actions.
+- AdvancedDevelopmentFacet carries the typed snapshot.
+- PersistenceProjectionCoordinator writes it in the existing critical persistence group.
+- OrganismCore checkpoints writes and includes the collaboration projection in the existing prompt context.
+- OrganismRuntime serializes mutation and read operations through the existing queue.
+- MemoryOS2 remains the sole canonical memory owner. Existing project planning/execution and approval gates remain authoritative; Dyadic Mind records coordination but does not execute external actions.
 
-## HTTP contract
+## Authenticated host API
 
-- GET returns a redacted summary and current items.
-- POST action=record creates a human-authored item.
-- POST action=confirm or action=reject resolves a pending system proposal.
-- POST action=correct edits an accepted item with a new human evidence event.
-- POST action=progress updates an accepted task; completed requires the human's explicit confirmation.
-- All POST actions require confirmed=true. The server never trusts client-supplied actor, tick, sensitivity, sourceRef or evidenceRef.
+- \`GET /api/organism/dyadic-collaboration\` returns a redacted summary and current items.
+- \`POST\` actions: record, confirm, reject, progress and correct.
+- The endpoint reuses the existing API bearer authorization and rate limit.
+- Idempotency uses the existing bounded evidence/event ledger, not a second datastore.
+
+## Verification
+
+- WorkPass79 exact HEAD \`ca2af1eb\`: SUCCESS; live host API, concurrent idempotency, workspace, UserModel and restore regressions passed.
+- Dyadic workspace tests: 9/9.
+- Unified Organism Runtime exact HEAD \`ca2af1eb\`: SUCCESS; TypeScript typecheck, cognitive cycle, cadence, planner restore, continuity and runtime smoke passed.
+
+This is a software collaboration record and workflow boundary, not a claim of shared consciousness or merged personal identity.

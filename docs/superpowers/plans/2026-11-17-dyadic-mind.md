@@ -1,9 +1,9 @@
 # Dyadic Mind Implementation Plan
 
-**Status:** Implementation and host integration committed to feature branch; final exact-head CI verification pending.  
-**Branch:** aspect/dyadic-mind-collaboration-layer-20261117  
-**Base:** workpass70-source  
-**PR:** #898 (Draft)
+**Status:** Implemented, connected and verified on exact HEAD \`ca2af1eb9d84a6c17679df5b299be4edf64ee5b3\`.  
+**Branch:** \`aspect/dyadic-mind-collaboration-layer-20261117\`  
+**Base:** \`workpass70-source\`  
+**PR:** [#898 — Draft](https://github.com/ailtron1ss-rgb/NK1/pull/898)
 
 **Goal:** Add persistent, evidence-bound collaboration for human + NK1 while preserving separate personal states and explicit human authority.
 
@@ -11,19 +11,19 @@
 
 ## Guardrails
 
-- One canonical memory owner: MemoryOS2.
-- One canonical self-subsystem persistence owner: SelfSubsystemRuntime.
-- System proposals never become accepted without human confirmation.
-- System cannot mark a shared task completed.
-- Client cannot author as system or choose evidence, source, sensitivity or tick metadata.
-- No external database, public unauthenticated route, new secret or release.
-- No actions/tools are executed merely because an item becomes accepted.
+- [x] One canonical memory owner: MemoryOS2.
+- [x] One canonical self-subsystem persistence owner: SelfSubsystemRuntime.
+- [x] System proposals never become accepted without human confirmation.
+- [x] System cannot mark a shared task completed.
+- [x] Client cannot author as system or choose evidence, source, sensitivity or tick metadata.
+- [x] No external database, public unauthenticated route, new secret or release.
+- [x] No actions/tools execute merely because an item becomes accepted.
 
 ## Task 1 — Behavioral contract and red phase
 
 - [x] Add workspace behavior tests before production integration.
-- [x] Observe missing-owner RED in WorkPass79 at commit 0cbfa202; exact missing SelfSubsystemRuntime owner assertion.
-- [x] Wire test into the existing WorkPass79 workflow.
+- [x] Observe missing-owner RED in WorkPass79 at \`0cbfa202\`.
+- [x] Wire the test into the existing WorkPass79 workflow.
 
 ## Task 2 — Bounded collaboration domain
 
@@ -40,23 +40,27 @@
 - [x] Include it in the existing critical persistence projection.
 - [x] Add checkpointed OrganismCore operations.
 - [x] Add serialized OrganismRuntime operations and snapshot read.
-- [x] Include collaboration context in existing prompt context without replacing personal UserModel context.
+- [x] Include collaboration context in existing cognitive prompt paths without replacing personal UserModel context.
+- [x] Verify restart persistence with OrganismRuntime.
 
 ## Task 4 — Authenticated host adapter
 
-- [x] Add GET /api/organism/dyadic-collaboration.
+- [x] Add GET \`/api/organism/dyadic-collaboration\`.
 - [x] Add POST record / confirm / reject / progress / correct actions.
 - [x] Reuse existing bearer authentication and API rate limiting.
 - [x] Derive actor, tick and evidence refs server-side; redact internal provenance from responses.
-- [x] Add live HTTP tests for auth, explicit confirmation, human authorship, create, correction, progress, secret rejection and readback.
-- [ ] Confirm the same HTTP test passes on the exact current HEAD in GitHub Actions.
+- [x] Require explicit \`confirmed=true\` for all mutations.
+- [x] Add live HTTP tests for auth, explicit confirmation, human authorship, create, correction, progress, readback, redaction and secret rejection.
+- [x] Add idempotent retries: identical key+payload replays; changed payload with same key conflicts.
+- [x] Add concurrent same-key identical/conflicting request tests.
 
 ## Task 5 — Verification and delivery
 
-- [x] Observe RED for workspace owner and for missing HTTP route.
-- [x] Fix the two initial runtime type errors and the API-token classification hole.
-- [x] Inspect compare diff against the source base.
-- [ ] Confirm focused workspace test and live HTTP route test pass on current HEAD.
-- [ ] Confirm runtime typecheck and Unified Organism Runtime pass on current HEAD.
-- [ ] Refresh implementation report with exact run IDs and outcomes.
-- [ ] Keep PR Draft; do not merge or publish without a separate user decision.
+- [x] Observe RED for missing workspace owner, missing HTTP route and missing idempotency.
+- [x] Fix runtime type errors and the credential-classification gap.
+- [x] Inspect the compare diff against the source base.
+- [x] WorkPass79 exact HEAD \`ca2af1eb\`: SUCCESS; all steps passed.
+- [x] Dyadic workspace tests: 9/9.
+- [x] Unified Organism Runtime exact HEAD \`ca2af1eb\`: SUCCESS; typecheck and full runtime integration passed.
+- [x] Update the implementation report and changelog with evidence and release boundaries.
+- [x] Keep PR #898 Draft; no merge or Release ZIP publication.
