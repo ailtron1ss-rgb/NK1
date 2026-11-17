@@ -282,7 +282,7 @@ export class NegativeSpaceMemory {
       const decisionId = cleanText(raw.decisionId, 128);
       const chosen = cleanText(raw.chosen, 96);
       if (!decisionId || !chosen || !Array.isArray(raw.alternatives)) continue;
-        const alternatives: NegativeSpaceAlternative[] = [];
+      const alternatives: NegativeSpaceAlternative[] = [];
       for (const sourceValue of raw.alternatives.slice(0, MAX_ALTERNATIVES)) {
         const source = sourceValue && typeof sourceValue === 'object' ? sourceValue as Record<string, any> : null;
         if (!source) continue;

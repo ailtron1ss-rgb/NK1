@@ -60,7 +60,9 @@ assert.equal(engine.markNegativeSpaceAlternativeReopened(context.decisionId, 'ex
 assert.equal(engine.markNegativeSpaceAlternativeReopened(context.decisionId, 'explore', 'duplicate retry', 260), false);
 snapshot = engine.snapshot();
 record = snapshot.negativeSpace.records[0];
-assert.equal(record.reviewStatus, 'reopened');
+assert.equal(record.reviewStatus, 'review-eligible', 'the other alternative remains queued for review');
+assert.equal(record.alternatives[0].reviewEligible, false);
+assert.equal(record.alternatives[1].reviewEligible, true);
 assert.equal(record.alternatives[0].reopenReason, 'new evidence supports a retry');
 
 // Small decisions must not create a permanent counterfactual-memory trail.
@@ -78,6 +80,17 @@ const legacy = new RegretEngine();
 legacy.restore({ records: [], meanRegret: 0, lastAt: 0, version: 1 });
 assert.equal(legacy.snapshot().negativeSpace.records.length, 0);
 
+// A decision retains only the four strongest distinct alternatives.
+const capped = new RegretEngine();
+capped.observe('choose', 0.3, Array.from({ length: 8 }, (_, index) => ({
+  action: `option-${index}`,
+  expectedOutcome01: 0.9 - index * 0.05,
+})), {
+  decisionId: 'decision-negative-space-option-cap',
+  significance: { cost01: 0.9, risk01: 0.1, futureImportance01: 0.1 },
+});
+assert.equal(capped.snapshot().negativeSpace.records[0].alternatives.length, 4);
+
 // The ledger is bounded even under a sustained stream of consequential decisions.
 for (let i = 0; i < 140; i++) {
   engine.observe('respond', 0.4, [{ action: 'verify', estimated: 0.8 }], {
@@ -86,6 +99,7 @@ for (let i = 0; i < 140; i++) {
   });
 }
 assert.ok(engine.snapshot().negativeSpace.records.length <= 128, 'negative-space history must stay bounded');
+assert.ok(engine.snapshot().negativeSpace.pruned > 0, 'pruning should be accounted for');
 
 console.log(JSON.stringify({
   pass: true,
