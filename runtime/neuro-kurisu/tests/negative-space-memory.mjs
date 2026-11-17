@@ -1,0 +1,93 @@
+import assert from 'node:assert/strict';
+import { RegretEngine } from '../src/organism/developmental/RegretEngine.ts';
+
+const engine = new RegretEngine();
+const context = {
+  decisionId: 'decision-negative-space-001',
+  decisionAt: 100,
+  outcomeAt: 200,
+  chosenExpectedOutcome01: 0.84,
+  significance: { cost01: 0.82, risk01: 0.15, futureImportance01: 0.2 },
+  outcomeEvidence: ['grounded-outcome:device', 'postcondition:verified'],
+};
+const alternatives = [
+  {
+    action: 'explore',
+    estimated: 0.92,
+    confidence01: 0.81,
+    rejectionReason: 'ranked below respond under current resource budget',
+    constraints: ['energy-before01:0.31', 'selection-margin01:0.08'],
+    expectedConsequences: ['energy-after01:0.18', 'novelty-after01:0.78'],
+    reopenWhen: [
+      { signal: 'outcome.shortfall01', operator: 'gte', value: 0.2 },
+      { signal: 'outcome.alternativeAdvantage01', operator: 'gte', value: 0.15 },
+    ],
+  },
+  {
+    action: 'verify',
+    estimated: 0.76,
+    confidence01: 0.68,
+    rejectionReason: 'lower expected utility',
+    constraints: ['selection-margin01:0.12'],
+    expectedConsequences: ['uncertainty-after01:0.22'],
+  },
+];
+
+const regret = engine.observe('respond', 0.52, alternatives, context);
+assert.ok(regret, 'the pre-existing regret path must remain operational');
+
+let snapshot = engine.snapshot();
+assert.equal(snapshot.negativeSpace?.version, 1, 'RegretEngine snapshot must persist the Negative Space Memory schema');
+assert.equal(snapshot.negativeSpace.records.length, 1, 'a high-cost decision must retain its rejected alternatives');
+
+let record = snapshot.negativeSpace.records[0];
+assert.equal(record.decisionId, context.decisionId);
+assert.equal(record.chosen, 'respond');
+assert.equal(record.chosenExpectedOutcome01, 0.84);
+assert.equal(record.chosenActualOutcome01, 0.52);
+assert.equal(record.outcomeShortfall01, 0.32);
+assert.equal(record.reviewStatus, 'review-eligible', 'large outcome shortfall should reopen review, not auto-select an alternative');
+assert.deepEqual(record.alternatives.map(row => row.action), ['explore', 'verify']);
+assert.equal(record.alternatives[0].rejectionReason, alternatives[0].rejectionReason);
+assert.deepEqual(record.alternatives[0].constraints, alternatives[0].constraints);
+assert.equal(record.alternatives[0].reviewEligible, true);
+assert.ok(record.outcomeEvidence.includes('postcondition:verified'));
+
+assert.equal(engine.markNegativeSpaceAlternativeReopened(context.decisionId, 'explore', 'new evidence supports a retry', 250), true);
+assert.equal(engine.markNegativeSpaceAlternativeReopened(context.decisionId, 'explore', 'duplicate retry', 260), false);
+snapshot = engine.snapshot();
+record = snapshot.negativeSpace.records[0];
+assert.equal(record.reviewStatus, 'reopened');
+assert.equal(record.alternatives[0].reopenReason, 'new evidence supports a retry');
+
+// Small decisions must not create a permanent counterfactual-memory trail.
+engine.observe('wait', 0.6, [{ action: 'rest', estimated: 0.7 }], {
+  decisionId: 'decision-negative-space-small',
+  significance: { cost01: 0.1, risk01: 0.1, futureImportance01: 0.1 },
+});
+assert.equal(engine.snapshot().negativeSpace.records.length, 1);
+
+// Restarts retain the ledger. Pre-feature saves without this optional field remain valid.
+const restored = new RegretEngine();
+restored.restore(snapshot);
+assert.deepEqual(restored.snapshot().negativeSpace, snapshot.negativeSpace);
+const legacy = new RegretEngine();
+legacy.restore({ records: [], meanRegret: 0, lastAt: 0, version: 1 });
+assert.equal(legacy.snapshot().negativeSpace.records.length, 0);
+
+// The ledger is bounded even under a sustained stream of consequential decisions.
+for (let i = 0; i < 140; i++) {
+  engine.observe('respond', 0.4, [{ action: 'verify', estimated: 0.8 }], {
+    decisionId: `decision-bounded-${i}`,
+    significance: { cost01: 0.8, risk01: 0.1, futureImportance01: 0.1 },
+  });
+}
+assert.ok(engine.snapshot().negativeSpace.records.length <= 128, 'negative-space history must stay bounded');
+
+console.log(JSON.stringify({
+  pass: true,
+  retainedAlternatives: record.alternatives.length,
+  reviewStatus: record.reviewStatus,
+  boundedRecords: engine.snapshot().negativeSpace.records.length,
+  legacyRestore: true,
+}));
