@@ -29,8 +29,7 @@ export class FutureSimulator {
   readonly #worldForge = new WorldForge();
 
   generateWorldForgeScenarios(input: { split: 'train' | 'validation'; seed: number; count?: number; difficulty01?: number }): WorldForgeCase[] {
-    if (!input || (input.split !== 'train' && input.split !== 'validation')) return [];
-    return this.#worldForge.generate(input);
+    return this.#worldForge.generateRuntimeScenarios(input);
   }
 
   startWorldForgeScenario(scenario: WorldForgeCase): WorldForgeState | null {
