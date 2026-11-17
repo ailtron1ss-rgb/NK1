@@ -12,9 +12,15 @@ assert.equal(forgedCost.reason,'invalid_action');
 assert.equal(forgedCost.state.resourcesRemaining,initial.resourcesRemaining,'rejected cost tampering must not mutate resources');
 
 let state=forge.startScenario(scenario);
+const baselineForge=new WorldForge();
+const baselineScenario=baselineForge.generate({split:'train',seed:81273,count:1})[0];
+let baselineState=baselineForge.startScenario(baselineScenario);
+assert.ok(baselineState);
+const baselineWait=baselineForge.step(baselineState,{action:'wait'});
+assert.equal(baselineWait.accepted,true);
 const collect=forge.step(state,{action:'collect'});
 assert.equal(collect.accepted,true);
-assert.equal(collect.state.resourcesRemaining,scenario.constraints.resourceBudget-1,'resource collection must consume a fixed evaluator-owned cost');
+assert.equal(collect.state.resourcesRemaining,baselineWait.state.resourcesRemaining-1,'resource collection must consume exactly one evaluator-owned unit in addition to the same hidden environment events');
 state=collect.state;
 
 const firstTarget=scenario.goalOptions[0];
