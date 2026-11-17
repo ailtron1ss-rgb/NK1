@@ -17,5 +17,5 @@ const expired=timed.step(state,{action:'wait'});
 assert.equal(expired.accepted,false);
 assert.equal(expired.reason,'session_expired','expired simulation sessions must fail closed');
 assert.equal(timed.startScenario(scenario),null,'expired scenarios cannot start new sessions');
-assert.equal(timed.evaluate(scenario,[]).success,false,'expired evaluator keys cannot score traces');
+assert.equal(timed.evaluateSession(scenario,state).success,false,'expired evaluator sessions cannot score traces');
 console.log('World Forge TTL and bounded registry regressions passed');
