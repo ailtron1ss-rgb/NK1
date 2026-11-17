@@ -19,7 +19,11 @@ const provider = new NeuralProsthesisChatProvider({
       headers: { get: () => null },
       text: async () => JSON.stringify({
         model: 'kurisu-transformer-local',
-        choices: [{ message: { content: 'Я проверю гипотезу, не изменяя базовую модель.' } }],
+        choices: [{
+          message: { content: 'Я проверю гипотезу, не изменяя базовую модель.' },
+          finish_reason: 'length',
+        }],
+        usage: { prompt_tokens: 73, completion_tokens: 160, total_tokens: 233 },
       }),
     };
   },
@@ -35,6 +39,8 @@ const answer = await provider.generate({
 });
 assert.match(answer.backend, /^neural-prosthesis:/);
 assert.equal(answer.text, 'Я проверю гипотезу, не изменяя базовую модель.');
+assert.deepEqual(answer.usage, { promptTokens: 73, completionTokens: 160, totalTokens: 233 });
+assert.equal(answer.finishReason, 'length');
 assert.equal(calls.length, 1);
 assert.equal(calls[0].body.model, 'kurisu-transformer-local');
 assert.equal(calls[0].body.adapter_id, 'kurisu-reasoning-v1');
