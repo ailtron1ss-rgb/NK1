@@ -1,21 +1,32 @@
 import { createHash } from 'node:crypto';
-import { VerifiedOutcomeLedger, type OutcomeAuthority, type EvaluationSplit } from '../learning/VerifiedOutcomeLedger.ts';
+import {
+  VerifiedOutcomeLedger,
+  type EvaluationSplit,
+  type TaskManifestEntry,
+} from '../learning/VerifiedOutcomeLedger.ts';
 import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
+import {
+  hasAuthenticatedOutcomeEvidence,
+  ingestSignedOutcomeArtifact,
+  outcomePayloadFingerprint,
+  type SignedOutcomeArtifact,
+  type SignedOutcomeMeasurement,
+} from '../learning/VerifiedOutcomeArtifact.ts';
 
 /**
- * The Invention Loop — evidence-gated lifecycle for converting hypotheses
- * into reproducible engineering improvements. It coordinates evidence; it
- * never executes arbitrary code, merges branches, publishes releases or
- * promotes model weights.
+ * The Invention Loop coordinates preregistration, blinded verification,
+ * independent critique, multi-seed replication and holdout admission.
+ * It records evidence; it never executes code, merges branches or publishes releases.
  */
 export type InventionStage =
-  | 'proposed' | 'designed' | 'prototyped' | 'tested'
-  | 'critiqued' | 'replicating' | 'replicated' | 'holdingout'
-  | 'accepted' | 'rejected';
+  | 'proposed' | 'designed' | 'prototyped' | 'tested' | 'critiqued'
+  | 'replicating' | 'replicated' | 'holdingout' | 'accepted' | 'rejected';
 export type OutcomeKind = 'primary' | 'replication' | 'holdout';
+export type InventionVerifierPhase = OutcomeKind | 'critique';
 export type InventionAuditAction =
   | 'proposed' | 'designed' | 'prototyped' | 'outcome-recorded'
   | 'critiqued' | 'accepted' | 'rejected';
+export type InventionVerifierKeyResolver = (verifierId: string) => string | undefined;
 
 export interface InventionVerifierPlan {
   primary: string;
@@ -27,7 +38,7 @@ export interface InventionProtocol {
   question: string;
   hypothesis: string;
   successCriteria: string;
-  /** SHA-256 identity of the frozen test manifest and evaluation implementation. */
+  /** SHA-256 identity of the frozen task manifest and evaluation implementation. */
   testFingerprint: string;
   /** Measured baseline, captured before prototype evaluation. */
   baseline: number;
@@ -37,37 +48,36 @@ export interface InventionProtocol {
   minEffect: number;
   /** Minimum fraction of individual runs meeting minEffect. */
   minSuccessRate: number;
-  /** One screening seed and fixed independent seed cohorts for later phases. */
+  /** One primary screening seed and fixed, disjoint phase cohorts. */
   primarySeed: number;
   replicationSeeds: number[];
   holdoutSeeds: number[];
   lowerIsBetter?: boolean;
-  /** Reviewer identities are frozen before any candidate evaluation. */
+  /** Verifier and reviewer identities are frozen before candidate evaluation. */
   verifierPlan: InventionVerifierPlan;
 }
 export interface InventionPrototype {
   reference: string;
   sha256: string;
 }
-export interface InventionOutcomeInput {
-  id?: string;
+export interface InventionOutcome {
+  id: string;
   kind: OutcomeKind;
-  authority: OutcomeAuthority;
+  authority: 'independent-verifier';
   seed: number;
-  /** One-shot preregistered evaluation; retries require a new invention record. */
-  attempt: number;
+  attempt: 1;
   runId: string;
+  artifactId: string;
   verifierId: string;
   environmentId: string;
   testFingerprint: string;
   evidenceRef: string;
   evidenceSha256: string;
   observed: number;
-}
-export interface InventionOutcome extends InventionOutcomeInput {
-  id: string;
   effect01: number;
   passed: boolean;
+  attestationFingerprint: string;
+  signedArtifact: SignedOutcomeArtifact;
   recordedAt: number;
 }
 export interface InventionPhaseSummary {
@@ -80,17 +90,13 @@ export interface InventionPhaseSummary {
   minimumEffect01: number;
   passed: boolean;
 }
-export interface InventionCritiqueInput {
-  reviewerId: string;
-  reviewRef: string;
-  reviewSha256: string;
-  blockers?: string[];
-  limitations?: string[];
-}
 export interface InventionCritique {
   reviewerId: string;
   reviewRef: string;
   reviewSha256: string;
+  artifactId: string;
+  attestationFingerprint: string;
+  signedArtifact: SignedOutcomeArtifact;
   blockers: string[];
   limitations: string[];
   reviewedAt: number;
@@ -120,11 +126,18 @@ export interface InventionRecord extends InventionRecordCore {
   auditTrail: InventionAuditEvent[];
 }
 export interface InventionLoopState {
-  version: 3;
+  version: 4;
   records: InventionRecord[];
   accepted: number;
   rejected: number;
   quarantinedRecords: number;
+}
+export interface VerifiedInventionArtifact {
+  artifactId: string;
+  runId: string;
+  verifierId: string;
+  evidenceRef: string;
+  attestationFingerprint: string;
 }
 
 const GENESIS_HASH = '0'.repeat(64);
@@ -132,7 +145,7 @@ const SHA256_RE = /^[a-f0-9]{64}$/iu;
 const MAX_RECORDS = 256;
 const MAX_AUDIT_EVENTS = 32;
 const MIN_INDEPENDENT_SEEDS = 5;
-const MAX_PHASE_SEEDS = 32;
+const MAX_PHASE_SEEDS = 12;
 const MAX_TEXT = 1000;
 const STAGES: InventionStage[] = [
   'proposed', 'designed', 'prototyped', 'tested', 'critiqued',
@@ -167,6 +180,29 @@ function canonical(value: unknown): string {
 }
 function sha256(value: unknown): string {
   return createHash('sha256').update(canonical(value)).digest('hex');
+}
+export function inventionProtocolFingerprint(protocol: InventionProtocol): string {
+  return sha256(protocol);
+}
+export function buildInventionVerifierManifest(
+  inventionId: string,
+  protocol: InventionProtocol,
+  phase: InventionVerifierPhase,
+  seed: number,
+): TaskManifestEntry[] {
+  const verifierId = protocol.verifierPlan[phase];
+  const taskId = phase === 'critique'
+    ? inventionId + ':critique'
+    : inventionId + ':' + phase + ':' + seed;
+  const split: EvaluationSplit = phase === 'holdout' ? 'holdout' : 'validation';
+  return [{
+    taskId,
+    family: 'invention-loop',
+    split,
+    promptFingerprint: protocol.testFingerprint,
+    verifierId,
+    version: '1',
+  }];
 }
 function coreOf(record: InventionRecord): InventionRecordCore {
   const { auditTrail: _auditTrail, ...core } = record;
@@ -215,19 +251,40 @@ function isPhaseSummary(value: unknown): value is InventionPhaseSummary {
     finite(value.minimumEffect01) && value.minimumEffect01 >= 0 && value.minimumEffect01 <= 1 &&
     typeof value.passed === 'boolean';
 }
+function isSignedArtifact(value: unknown, contextType: SignedOutcomeMeasurement['contextType']): value is SignedOutcomeArtifact {
+  if (!isObject(value) || typeof value.signature !== 'string' || !value.signature.trim() ||
+      !isObject(value.payload)) return false;
+  return value.payload.schemaVersion === 1 &&
+    typeof value.payload.artifactId === 'string' && typeof value.payload.runId === 'string' &&
+    value.payload.measurement?.contextType === contextType;
+}
 function isOutcome(value: unknown): value is InventionOutcome {
   if (!isObject(value)) return false;
   return typeof value.id === 'string' && typeof value.runId === 'string' &&
     (value.kind === 'primary' || value.kind === 'replication' || value.kind === 'holdout') &&
-    (value.authority === 'independent-verifier' || value.authority === 'human-review') &&
+    value.authority === 'independent-verifier' &&
     Number.isSafeInteger(value.seed) && Number(value.seed) >= 0 &&
     Number(value.attempt) === 1 &&
-    typeof value.verifierId === 'string' && typeof value.environmentId === 'string' &&
+    typeof value.artifactId === 'string' && typeof value.verifierId === 'string' &&
+    typeof value.environmentId === 'string' &&
     typeof value.testFingerprint === 'string' && SHA256_RE.test(value.testFingerprint) &&
     typeof value.evidenceRef === 'string' && typeof value.evidenceSha256 === 'string' &&
     SHA256_RE.test(value.evidenceSha256) && finite(value.observed) &&
     finite(value.effect01) && value.effect01 >= 0 && value.effect01 <= 1 &&
-    typeof value.passed === 'boolean' && finite(value.recordedAt);
+    typeof value.passed === 'boolean' &&
+    typeof value.attestationFingerprint === 'string' && SHA256_RE.test(value.attestationFingerprint) &&
+    isSignedArtifact(value.signedArtifact, 'invention-outcome') && finite(value.recordedAt);
+}
+function isCritique(value: unknown): value is InventionCritique {
+  if (!isObject(value)) return false;
+  return typeof value.reviewerId === 'string' && typeof value.reviewRef === 'string' &&
+    typeof value.reviewSha256 === 'string' && SHA256_RE.test(value.reviewSha256) &&
+    typeof value.artifactId === 'string' &&
+    typeof value.attestationFingerprint === 'string' && SHA256_RE.test(value.attestationFingerprint) &&
+    isSignedArtifact(value.signedArtifact, 'invention-critique') &&
+    Array.isArray(value.blockers) && value.blockers.every(item => typeof item === 'string') &&
+    Array.isArray(value.limitations) && value.limitations.every(item => typeof item === 'string') &&
+    finite(value.reviewedAt);
 }
 function isCore(value: unknown): value is InventionRecordCore {
   if (!isObject(value)) return false;
@@ -241,6 +298,7 @@ function isCore(value: unknown): value is InventionRecordCore {
     (summaries === undefined || (isObject(summaries) &&
       (summaries.replication === undefined || isPhaseSummary(summaries.replication)) &&
       (summaries.holdout === undefined || isPhaseSummary(summaries.holdout)))) &&
+    (value.critique === undefined || isCritique(value.critique)) &&
     (value.decisionReason === undefined || typeof value.decisionReason === 'string');
 }
 function auditHash(event: Omit<InventionAuditEvent, 'hash'>): string {
@@ -267,6 +325,8 @@ function verifyRecordAudit(record: unknown): record is InventionRecord {
         typeof event.hash !== 'string' || !SHA256_RE.test(event.hash) ||
         !isCore(event.snapshot) || event.snapshot.id !== record.id ||
         event.snapshot.updatedAt !== event.at) return false;
+    const expectedStage = index === 0 ? 'proposed' : undefined;
+    if (expectedStage && event.snapshot.stage !== expectedStage) return false;
     const payload = {
       sequence: event.sequence,
       action: event.action as InventionAuditAction,
@@ -283,27 +343,39 @@ function verifyRecordAudit(record: unknown): record is InventionRecord {
 
 export class TheInventionLoop {
   private state: InventionLoopState = {
-    version: 3, records: [], accepted: 0, rejected: 0, quarantinedRecords: 0,
+    version: 4, records: [], accepted: 0, rejected: 0, quarantinedRecords: 0,
   };
 
   constructor(
     private readonly now: () => number = () => Date.now(),
     private readonly id: () => string = () =>
       globalThis.crypto?.randomUUID?.() ?? 'inv-' + Date.now() + '-' + Math.random().toString(16).slice(2),
+    private readonly resolveVerifierKey: InventionVerifierKeyResolver = () => undefined,
   ) {}
 
   snapshot(): InventionLoopState {
     return structuredClone(this.state);
   }
 
-  /** Restore only records with a valid per-record audit chain. */
+  verifierManifest(id: string, phase: InventionVerifierPhase, seed: number): TaskManifestEntry[] {
+    const record = this.state.records.find(item => item.id === id);
+    if (!record) throw new Error('invention-not-found');
+    if (phase === 'critique' && seed !== 0) throw new Error('invalid-critique-seed');
+    const expected = phase === 'primary' ? [record.protocol.primarySeed] :
+      phase === 'replication' ? record.protocol.replicationSeeds :
+        phase === 'holdout' ? record.protocol.holdoutSeeds : [0];
+    if (!expected.includes(seed)) throw new Error('seed-not-preregistered');
+    return buildInventionVerifierManifest(id, record.protocol, phase, seed);
+  }
+
+  /** Restore only records whose audit chain and every signed artifact verify. */
   restore(raw?: Partial<InventionLoopState> | null): void {
     if (!raw) return;
     const detached = detach<Partial<InventionLoopState>>(raw, 'invalid-invention-state');
     const incoming = Array.isArray(detached.records) ? detached.records : [];
-    if (detached.version !== 3) {
+    if (detached.version !== 4) {
       this.state = {
-        version: 3, records: [], accepted: 0, rejected: 0,
+        version: 4, records: [], accepted: 0, rejected: 0,
         quarantinedRecords: incoming.length,
       };
       return;
@@ -312,7 +384,7 @@ export class TheInventionLoop {
     let quarantinedRecords = 0;
     const seen = new Set<string>();
     for (const item of incoming.slice(0, MAX_RECORDS * 2)) {
-      if (!verifyRecordAudit(item) || seen.has(item.id)) {
+      if (!verifyRecordAudit(item) || seen.has(item.id) || !this.verifyRecordAttestations(item)) {
         quarantinedRecords += 1;
         continue;
       }
@@ -320,7 +392,7 @@ export class TheInventionLoop {
       records.push(structuredClone(item));
     }
     this.state = {
-      version: 3,
+      version: 4,
       records: records.slice(0, MAX_RECORDS),
       accepted: records.filter(record => record.stage === 'accepted').length,
       rejected: records.filter(record => record.stage === 'rejected').length,
@@ -385,6 +457,125 @@ export class TheInventionLoop {
       passed: complete && meanEffect01 >= record.protocol.minEffect &&
         successRate01 >= record.protocol.minSuccessRate,
     };
+  }
+
+  private verifySignedArtifact(
+    record: InventionRecord,
+    rawArtifact: SignedOutcomeArtifact,
+    phase: InventionVerifierPhase,
+    seed: number,
+  ): VerifiedInventionArtifact {
+    const artifact = rawArtifact;
+    const payload = artifact?.payload;
+    if (!payload || typeof payload !== 'object') throw new Error('invalid-signed-artifact');
+    const verifierId = record.protocol.verifierPlan[phase];
+    if (payload.verifierId !== verifierId) {
+      throw new Error(phase === 'critique' ? 'reviewer-plan-mismatch' : 'verifier-plan-mismatch');
+    }
+    const publicKey = this.resolveVerifierKey(verifierId);
+    if (!publicKey) throw new Error('untrusted-verifier-key');
+
+    const manifest = buildInventionVerifierManifest(record.id, record.protocol, phase, seed);
+    const expectedTask = manifest[0]!;
+    if (payload.taskId !== expectedTask.taskId || payload.method !== phase ||
+        payload.taskVersion !== '1' || payload.seed !== seed || payload.attempt !== 1) {
+      throw new Error('signed-artifact-context-mismatch');
+    }
+    const context = payload.measurement as SignedOutcomeMeasurement | undefined;
+    if (!context) throw new Error('signed-measurement-required');
+    const fingerprint = inventionProtocolFingerprint(record.protocol);
+    if (context.experimentId !== record.id ||
+        context.protocolFingerprint !== fingerprint ||
+        context.prototypeSha256 !== record.prototypeSha256 ||
+        context.testFingerprint !== record.protocol.testFingerprint) {
+      throw new Error('attestation-context-mismatch');
+    }
+    if (phase === 'critique') {
+      if (context.contextType !== 'invention-critique') throw new Error('signed-critique-required');
+    } else if (context.contextType !== 'invention-outcome' || context.phase !== phase) {
+      throw new Error('signed-outcome-required');
+    }
+
+    const ledger = new VerifiedOutcomeLedger(manifest);
+    const ingested = ingestSignedOutcomeArtifact(ledger, manifest, artifact, new Map([[verifierId, publicKey]]));
+    if (!ingested.accepted) throw new Error(ingested.rejection ?? 'signed-evidence-rejected');
+    const row = ledger.snapshot().outcomes[0];
+    const evidenceRef = row?.evidenceRef;
+    if (!evidenceRef || !hasAuthenticatedOutcomeEvidence(ledger, evidenceRef)) {
+      throw new Error('signed-evidence-trust-receipt-missing');
+    }
+    return {
+      artifactId: payload.artifactId,
+      runId: payload.runId,
+      verifierId,
+      evidenceRef,
+      attestationFingerprint: ingested.artifactFingerprint,
+    };
+  }
+
+  private verifyOutcomeContents(
+    record: InventionRecord,
+    artifact: SignedOutcomeArtifact,
+    kind: OutcomeKind,
+    expectedSeed: number,
+  ): { verified: VerifiedInventionArtifact; context: Extract<SignedOutcomeMeasurement, { contextType: 'invention-outcome' }>; observed: number; effect01: number; passed: boolean } {
+    const verified = this.verifySignedArtifact(record, artifact, kind, expectedSeed);
+    const context = artifact.payload.measurement;
+    if (!context || context.contextType !== 'invention-outcome' || context.phase !== kind ||
+        !finite(context.observed) || !SHA256_RE.test(context.evidenceSha256) ||
+        !clampText(context.environmentId, 180)) throw new Error('invalid-signed-measurement');
+    const direction = record.protocol.lowerIsBetter ? -1 : 1;
+    const effect01 = clamp01(((context.observed - record.protocol.baseline) * direction) /
+      record.protocol.metricScale);
+    const passed = effect01 >= record.protocol.minEffect;
+    if (artifact.payload.passed !== passed) throw new Error('signed-outcome-result-mismatch');
+    return { verified, context, observed: context.observed, effect01, passed };
+  }
+
+  private verifyCritiqueContents(
+    record: InventionRecord,
+    artifact: SignedOutcomeArtifact,
+  ): { verified: VerifiedInventionArtifact; context: Extract<SignedOutcomeMeasurement, { contextType: 'invention-critique' }> } {
+    const verified = this.verifySignedArtifact(record, artifact, 'critique', 0);
+    const context = artifact.payload.measurement;
+    if (!context || context.contextType !== 'invention-critique' ||
+        !clampText(context.reviewRef, 512) || !SHA256_RE.test(context.reviewSha256) ||
+        !Array.isArray(context.blockers) || !Array.isArray(context.limitations)) {
+      throw new Error('invalid-signed-critique');
+    }
+    if (artifact.payload.passed !== (context.blockers.length === 0)) {
+      throw new Error('signed-critique-result-mismatch');
+    }
+    return { verified, context };
+  }
+
+  private verifyRecordAttestations(record: InventionRecord): boolean {
+    try {
+      for (const outcome of record.outcomes) {
+        const checked = this.verifyOutcomeContents(record, outcome.signedArtifact, outcome.kind, outcome.seed);
+        if (checked.verified.artifactId !== outcome.artifactId ||
+            checked.verified.runId !== outcome.runId ||
+            checked.verified.evidenceRef !== outcome.evidenceRef ||
+            checked.verified.attestationFingerprint !== outcome.attestationFingerprint ||
+            checked.context.environmentId !== outcome.environmentId ||
+            checked.context.evidenceSha256 !== outcome.evidenceSha256 ||
+            checked.observed !== outcome.observed || checked.effect01 !== outcome.effect01 ||
+            checked.passed !== outcome.passed || checked.verified.verifierId !== outcome.verifierId) return false;
+      }
+      if (record.critique) {
+        const checked = this.verifyCritiqueContents(record, record.critique.signedArtifact);
+        if (checked.verified.artifactId !== record.critique.artifactId ||
+            checked.verified.attestationFingerprint !== record.critique.attestationFingerprint ||
+            checked.context.reviewRef !== record.critique.reviewRef ||
+            checked.context.reviewSha256 !== record.critique.reviewSha256 ||
+            canonical(checked.context.blockers) !== canonical(record.critique.blockers) ||
+            canonical(checked.context.limitations) !== canonical(record.critique.limitations) ||
+            checked.verified.verifierId !== record.critique.reviewerId) return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   propose(input: InventionProtocol): InventionRecord {
@@ -466,116 +657,87 @@ export class TheInventionLoop {
     return this.commit(record, 'prototyped');
   }
 
-  recordOutcome(id: string, input: InventionOutcomeInput): InventionRecord {
-    const safe = detach<InventionOutcomeInput>(input, 'invalid-outcome-payload');
-    if (!isObject(safe)) throw new Error('invalid-outcome-payload');
+  recordOutcome(id: string, input: SignedOutcomeArtifact): InventionRecord {
+    const artifact = detach<SignedOutcomeArtifact>(input, 'invalid-outcome-payload');
+    if (!isSignedArtifact(artifact, 'invention-outcome')) throw new Error('invalid-signed-artifact');
     const record = this.find(id);
+    const phase = artifact.payload.measurement?.contextType === 'invention-outcome'
+      ? artifact.payload.measurement.phase : undefined;
     let expectedKind: OutcomeKind | null = null;
     if (record.stage === 'prototyped') expectedKind = 'primary';
     else if (record.stage === 'critiqued' || record.stage === 'replicating') expectedKind = 'replication';
     else if (record.stage === 'replicated' || record.stage === 'holdingout') expectedKind = 'holdout';
-    if (expectedKind === null || safe.kind !== expectedKind) {
-      throw new Error('outcome-kind-not-allowed-at-stage');
-    }
+    if (expectedKind === null || phase !== expectedKind) throw new Error('outcome-kind-not-allowed-at-stage');
 
-    const runId = clampText(safe.runId, 160);
-    const verifierId = clampText(safe.verifierId, 120);
-    const environmentId = clampText(safe.environmentId, 120);
-    const fingerprint = clampText(safe.testFingerprint, 64).toLowerCase();
-    const evidenceRef = clampText(safe.evidenceRef, 512);
-    const evidenceSha256 = clampText(safe.evidenceSha256, 64).toLowerCase();
-    if (!runId || !verifierId || !environmentId || !evidenceRef ||
-        !SHA256_RE.test(evidenceSha256) || fingerprint !== record.protocol.testFingerprint ||
-        !finite(safe.observed)) {
-      throw new Error('invalid-outcome');
-    }
-    const expectedVerifier = record.protocol.verifierPlan[safe.kind];
-    if (verifierId !== expectedVerifier) throw new Error('verifier-plan-mismatch');
-    if (safe.authority !== 'independent-verifier' && safe.authority !== 'human-review') {
-      throw new Error('outcome-not-authoritative:self-report-not-authoritative');
-    }
-    if (!Number.isSafeInteger(safe.seed) || safe.seed < 0 ||
-        !Number.isSafeInteger(safe.attempt) || safe.attempt !== 1) {
-      throw new Error('attempt-must-be-one-and-seed-valid');
-    }
-    const expectedSeeds = safe.kind === 'primary' ? [record.protocol.primarySeed] :
-      safe.kind === 'replication' ? record.protocol.replicationSeeds : record.protocol.holdoutSeeds;
-    if (!expectedSeeds.includes(safe.seed)) throw new Error('seed-not-preregistered');
-    const outcomeId = clampText(safe.id, 160) || id + ':' + safe.kind + ':' + safe.seed;
-    if (this.state.records.some(candidate => candidate.outcomes.some(outcome =>
-      outcome.id === outcomeId || outcome.runId === runId || outcome.evidenceRef === evidenceRef))) {
-      throw new Error('duplicate-run-or-evidence-across-inventions');
-    }
-    if (record.outcomes.some(outcome => outcome.kind === safe.kind && outcome.seed === safe.seed)) {
-      throw new Error('duplicate-seed');
-    }
-    if (record.outcomes.some(outcome => outcome.id === outcomeId ||
-        outcome.runId === runId ||
-        (outcome.verifierId === verifierId && outcome.environmentId === environmentId))) {
+    const seed = artifact.payload.seed;
+    const expectedSeeds = expectedKind === 'primary' ? [record.protocol.primarySeed] :
+      expectedKind === 'replication' ? record.protocol.replicationSeeds : record.protocol.holdoutSeeds;
+    if (!Number.isSafeInteger(seed) || !expectedSeeds.includes(seed)) throw new Error('seed-not-preregistered');
+    if (artifact.payload.attempt !== 1) throw new Error('attempt-must-be-one');
+
+    const { verified, context, observed, effect01, passed } =
+      this.verifyOutcomeContents(record, artifact, expectedKind, seed);
+    const existingArtifacts = this.state.records.some(candidate =>
+      candidate.outcomes.some(outcome => outcome.artifactId === verified.artifactId ||
+        outcome.runId === verified.runId || outcome.evidenceRef === verified.evidenceRef) ||
+      candidate.critique?.artifactId === verified.artifactId ||
+      candidate.critique?.signedArtifact.payload.runId === verified.runId ||
+      candidate.critique?.signedArtifact.payload.artifactId === verified.artifactId);
+    if (existingArtifacts) throw new Error('duplicate-run-or-evidence-across-inventions');
+
+    if (record.outcomes.some(outcome =>
+      outcome.kind === expectedKind && outcome.seed === seed)) throw new Error('duplicate-seed');
+    if (record.outcomes.some(outcome => outcome.runId === verified.runId ||
+        outcome.evidenceRef === verified.evidenceRef ||
+        (outcome.verifierId === verified.verifierId && outcome.environmentId === context.environmentId))) {
       throw new Error('duplicate-run-outcome-or-seed');
     }
 
-    if (safe.kind === 'replication') {
+    if (expectedKind === 'replication') {
       const primary = record.outcomes.find(outcome => outcome.kind === 'primary');
-      if (!primary || primary.verifierId === verifierId || primary.environmentId === environmentId ||
-          record.outcomes.some(outcome => outcome.kind === 'replication' && outcome.environmentId === environmentId)) {
+      if (!primary || primary.verifierId === verified.verifierId ||
+          primary.environmentId === context.environmentId ||
+          record.outcomes.some(outcome => outcome.kind === 'replication' &&
+            outcome.environmentId === context.environmentId)) {
         throw new Error('replication-not-independent');
       }
     }
-    if (safe.kind === 'holdout') {
+    if (expectedKind === 'holdout') {
       const priorNonHoldout = record.outcomes.filter(outcome => outcome.kind !== 'holdout');
-      if (priorNonHoldout.some(outcome => outcome.verifierId === verifierId) ||
-          record.outcomes.some(outcome => outcome.environmentId === environmentId || outcome.runId === runId)) {
+      if (priorNonHoldout.some(outcome => outcome.verifierId === verified.verifierId) ||
+          record.outcomes.some(outcome => outcome.environmentId === context.environmentId ||
+            outcome.runId === verified.runId)) {
         throw new Error('holdout-must-be-independent');
       }
     }
 
-    const direction = record.protocol.lowerIsBetter ? -1 : 1;
-    const normalizedDelta = ((safe.observed - record.protocol.baseline) * direction) /
-      record.protocol.metricScale;
-    const effect01 = clamp01(normalizedDelta);
-    const passed = effect01 >= record.protocol.minEffect;
-    const taskId = id + ':' + safe.kind + ':' + safe.seed;
-    const split: EvaluationSplit = safe.kind === 'holdout' ? 'holdout' : 'validation';
-    const verifierLedger = new VerifiedOutcomeLedger([{
-      taskId, family: 'invention-loop', split,
-      promptFingerprint: record.protocol.testFingerprint,
-      verifierId, version: '1',
-    }]);
-    const verified = verifierLedger.record({
-      taskId, taskVersion: '1', method: safe.kind,
-      seed: safe.seed, attempt: safe.attempt, passed,
-      authority: safe.authority, verifierId, evidenceRef,
-      observedAt: this.timestamp(),
-    });
-    if (!verified.accepted) {
-      throw new Error('outcome-not-authoritative:' + (verified.rejection?.code ?? 'unknown'));
-    }
-
     const outcome: InventionOutcome = {
-      id: outcomeId,
-      kind: safe.kind,
-      authority: safe.authority,
-      seed: safe.seed,
-      attempt: safe.attempt,
-      runId,
-      verifierId,
-      environmentId,
-      testFingerprint: fingerprint,
-      evidenceRef,
-      evidenceSha256,
-      observed: safe.observed,
+      id: id + ':' + expectedKind + ':' + seed,
+      kind: expectedKind,
+      authority: 'independent-verifier',
+      seed,
+      attempt: 1,
+      runId: verified.runId,
+      artifactId: verified.artifactId,
+      verifierId: verified.verifierId,
+      environmentId: context.environmentId,
+      testFingerprint: context.testFingerprint,
+      evidenceRef: verified.evidenceRef,
+      evidenceSha256: context.evidenceSha256,
+      observed,
       effect01,
       passed,
+      attestationFingerprint: verified.attestationFingerprint,
+      signedArtifact: artifact,
       recordedAt: this.timestamp(),
     };
     record.outcomes.push(outcome);
-    if (!passed && safe.kind === 'primary') {
+    if (!passed && expectedKind === 'primary') {
       record.stage = 'rejected';
       record.decisionReason = 'primary-failed-preregistered-threshold';
-    } else if (safe.kind === 'primary') {
+    } else if (expectedKind === 'primary') {
       record.stage = 'tested';
-    } else if (safe.kind === 'replication') {
+    } else if (expectedKind === 'replication') {
       const summary = this.summarizePhase(record, 'replication');
       record.phaseSummaries = { ...(record.phaseSummaries ?? {}), replication: summary };
       if (summary.sampleCount < summary.requiredSamples) {
@@ -600,37 +762,42 @@ export class TheInventionLoop {
       }
     }
     this.touch(record);
-    return this.commit(record,
-      record.stage === 'accepted' ? 'accepted' :
-        record.stage === 'rejected' ? 'rejected' : 'outcome-recorded');
+    return this.commit(record, record.stage === 'accepted' ? 'accepted' :
+      record.stage === 'rejected' ? 'rejected' : 'outcome-recorded');
   }
 
-  critique(id: string, input: InventionCritiqueInput): InventionRecord {
-    const safe = detach<InventionCritiqueInput>(input, 'invalid-critique-payload');
-    if (!isObject(safe)) throw new Error('invalid-critique-payload');
+  critique(id: string, input: SignedOutcomeArtifact): InventionRecord {
+    const artifact = detach<SignedOutcomeArtifact>(input, 'invalid-critique-payload');
+    if (!isSignedArtifact(artifact, 'invention-critique')) throw new Error('invalid-critique-payload');
     const record = this.find(id);
     if (record.stage !== 'tested') throw new Error('critique-requires-tested-prototype');
-    const reviewerId = clampText(safe.reviewerId, 120);
-    const reviewRef = clampText(safe.reviewRef, 512);
-    const reviewSha256 = clampText(safe.reviewSha256, 64).toLowerCase();
-    if (!reviewerId || !reviewRef || !SHA256_RE.test(reviewSha256)) throw new Error('invalid-critique');
-    if (reviewerId !== record.protocol.verifierPlan.critique) throw new Error('reviewer-plan-mismatch');
-    if (record.outcomes.some(outcome => outcome.verifierId === reviewerId)) {
-      throw new Error('reviewer-must-be-independent');
-    }
-    const blockers = Array.isArray(safe.blockers) ?
-      safe.blockers.map(value => clampText(value, 300)).filter(Boolean).slice(0, 32) : [];
-    const limitations = Array.isArray(safe.limitations) ?
-      safe.limitations.map(value => clampText(value, 300)).filter(Boolean).slice(0, 32) : [];
-    record.critique = { reviewerId, reviewRef, reviewSha256, blockers, limitations, reviewedAt: this.timestamp() };
-    if (blockers.length) {
+    const { verified, context } = this.verifyCritiqueContents(record, artifact);
+    const reused = this.state.records.some(candidate =>
+      candidate.outcomes.some(outcome => outcome.artifactId === verified.artifactId ||
+        outcome.runId === verified.runId || outcome.evidenceRef === verified.evidenceRef) ||
+      candidate.critique?.artifactId === verified.artifactId ||
+      candidate.critique?.signedArtifact.payload.runId === verified.runId);
+    if (reused) throw new Error('duplicate-review-artifact');
+
+    record.critique = {
+      reviewerId: verified.verifierId,
+      reviewRef: context.reviewRef,
+      reviewSha256: context.reviewSha256,
+      artifactId: verified.artifactId,
+      attestationFingerprint: verified.attestationFingerprint,
+      signedArtifact: artifact,
+      blockers: structuredClone(context.blockers),
+      limitations: structuredClone(context.limitations),
+      reviewedAt: this.timestamp(),
+    };
+    if (context.blockers.length) {
       record.stage = 'rejected';
       record.decisionReason = 'independent-critique-blockers';
     } else {
       record.stage = 'critiqued';
     }
     this.touch(record);
-    return this.commit(record, blockers.length ? 'rejected' : 'critiqued');
+    return this.commit(record, context.blockers.length ? 'rejected' : 'critiqued');
   }
 
   reject(id: string, reason: string): InventionRecord {
@@ -651,6 +818,7 @@ export class TheInventionLoop {
       accepted: this.state.accepted,
       rejected: this.state.rejected,
       auditVerifiedRecords: records.filter(verifyRecordAudit).length,
+      attestationVerifiedRecords: records.filter(record => this.verifyRecordAttestations(record)).length,
       quarantinedRecords: this.state.quarantinedRecords,
       replicationRate: records.filter(record =>
         record.outcomes.some(outcome => outcome.kind === 'replication')).length /
