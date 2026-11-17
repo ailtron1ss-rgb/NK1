@@ -271,6 +271,41 @@ function versionAtLeast(actual: string, minimum: string): boolean {
   return true;
 }
 
+/**
+ * Builds a canonical publisher package while keeping private-key custody outside the runtime.
+ * The callback receives only the content fingerprint and returns an Ed25519 base64 signature.
+ */
+export function createSignedSynapticArtifact(
+  unsignedArtifact: Omit<SynapticCommonsArtifact, 'signature'>,
+  keyId: string,
+  signFingerprint: (fingerprint: string) => string,
+): SynapticCommonsArtifact {
+  if (!isRecord(unsignedArtifact) || Object.prototype.hasOwnProperty.call(unsignedArtifact, 'signature'))
+    throw new TypeError('synaptic-publisher-input-must-be-unsigned-artifact');
+  if (typeof signFingerprint !== 'function') throw new TypeError('synaptic-publisher-signer-required');
+  if (typeof keyId !== 'string' || !SAFE_ID.test(keyId))
+    throw new TypeError('synaptic-publisher-key-id-invalid');
+  const placeholder = 'A'.repeat(86) + '==';
+  const draft = normalizeArtifact({
+    ...unsignedArtifact,
+    signature: { keyId, algorithm: 'Ed25519', value: placeholder },
+  });
+  const fingerprint = synapticArtifactFingerprint(draft);
+  const signature = signFingerprint(fingerprint);
+  if (typeof signature !== 'string' || !/^[A-Za-z0-9+/]{86}==$/.test(signature))
+    throw new Error('synaptic-publisher-signature-format-invalid');
+  const signatureBytes = Buffer.from(signature, 'base64');
+  if (signatureBytes.length !== 64 || signatureBytes.toString('base64') !== signature)
+    throw new Error('synaptic-publisher-signature-format-invalid');
+  const signed = normalizeArtifact({
+    ...draft,
+    signature: { keyId, algorithm: 'Ed25519', value: signature },
+  });
+  if (synapticArtifactFingerprint(signed) !== fingerprint)
+    throw new Error('synaptic-publisher-fingerprint-changed-after-signing');
+  return signed;
+}
+
 function normalizeArtifact(raw: unknown): SynapticCommonsArtifact {
   if (!isRecord(raw)) throw new TypeError('synaptic-artifact-must-be-object');
   const copied = cloneSafeJson(raw) as Record<string, unknown>;

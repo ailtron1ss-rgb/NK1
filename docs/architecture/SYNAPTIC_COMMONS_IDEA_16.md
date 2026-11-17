@@ -6,6 +6,18 @@ Synaptic Commons distributes small, portable skill manifests between isolated Ne
 
 The current implementation deliberately transfers declarative JSON skill descriptions only. It rejects executable source fields and obvious personal identifiers, secrets, dialogue, transcript, and memory-shaped fields. No episodic memories, conversations, UserModel claims, identity state, credentials, or raw runtime snapshots are part of the artifact format.
 
+## Offline publisher workflow
+
+The publisher utility is deliberately separate from the runtime and never persists private keys in NK1 configuration or state.
+
+From `runtime/neuro-kurisu`:
+
+```bash
+npm run synaptic:sign-artifact -- <unsigned-artifact.json> <publisher-private-key.pem> <publisher-key-id> <output-package.json>
+```
+
+The input must be schema-v1 unsigned artifact JSON without a `signature` field. The signer requires an Ed25519 private-key PEM in a dedicated file with owner-only permissions (`0600` on POSIX), validates the artifact schema and privacy bounds before signing, signs only its canonical SHA-256 fingerprint, writes output with exclusive-create semantics and mode `0600`, and prints only the artifact fingerprint. The receiving NK1 instance stores only the corresponding public key in its publisher trust map. Publishing does not confer receiving-host compatibility or attestation; imported packages still start quarantined.
+
 ## Runtime ownership and persistence
 
 - The domain engine is runtime/neuro-kurisu/src/organism/learning/SynapticCommons.ts.
