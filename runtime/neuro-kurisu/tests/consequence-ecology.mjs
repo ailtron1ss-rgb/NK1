@@ -115,6 +115,40 @@ assert.equal(horizonResult.analysis.options[0].excludedBeyondHorizon, 1);
 assert.equal(horizonResult.analysis.options[0].unreachableNodeCount, 1);
 assert.ok(horizonResult.analysis.options[0].graphCoverage01 < 1);
 
+const mitigatedResult = simulator.analyzeConsequences({
+  id: 'consequence-analysis-mitigation',
+  horizonDays: 50,
+  options: [option('shielded', 'apply a tested mitigation', [
+    node('mitigation-control', 'benefit', 0.95, 0.9, 0.95),
+    node('residual-loss', 'harm', 0.9, 0.9, 0.88),
+  ], [
+    edge('action-control', '__action__', 'mitigation-control'),
+    edge('control-mitigates-loss', 'mitigation-control', 'residual-loss', {
+      relation: 'mitigates',
+      polarity: 'decrease',
+      strength01: 0.92,
+      confidence01: 0.9,
+    }),
+  ])],
+});
+assert.ok(mitigatedResult.analysis.options[0].mitigationCredit01 > 0, 'mitigating edges must create explicit mitigation credit');
+assert.ok(mitigatedResult.analysis.options[0].totalHarm01 < 0.2, 'a strong mitigation edge must attenuate risk along that path');
+
+const meshNodes = Array.from({ length: 9 }, (_, i) => node('mesh-' + i, 'harm', 0.95, 0.2, 0.9));
+const meshEdges = Array.from({ length: 9 }, (_, i) => edge('mesh-root-' + i, '__action__', 'mesh-' + i));
+for (let from = 0; from < 9; from++) {
+  for (let to = 0; to < 9; to++) {
+    if (from !== to) meshEdges.push(edge('mesh-' + from + '-' + to, 'mesh-' + from, 'mesh-' + to, { relation: 'feedback' }));
+  }
+}
+const boundedResult = simulator.analyzeConsequences({
+  id: 'consequence-analysis-path-budget',
+  horizonDays: 365,
+  options: [option('dense-feedback-mesh', 'evaluate a dense feedback network', meshNodes, meshEdges)],
+});
+assert.equal(boundedResult.analysis.status, 'bounded-partial');
+assert.equal(boundedResult.analysis.options[0].truncated, true, 'path explosion must stop at the fixed traversal budget');
+
 const scenario = simulator.sharedFuture.createScenario({
   id: 'consequence-project-scenario',
   title: 'Project scenario with linked assumptions',
@@ -157,6 +191,10 @@ const assumptionNode = scenarioOption.nodes.find(row => row.id === 'budget-depen
 assert.ok(assumptionNode.confidence01 < 0.5, 'unknown assumptions must reduce confidence');
 assert.deepEqual(assumptionNode.missingAssumptionRefs, ['missing-assumption']);
 assert.ok(scenarioOption.irreversibleExposure01 > 0);
+assert.ok(
+  scenarioResult.analysis.limitations.some(text => text.includes('no explicit harm/benefit polarity')),
+  'legacy Shared Future consequence polarity assumption must be disclosed',
+);
 
 assert.throws(() => simulator.analyzeConsequences({
   id: 'consequence-analysis-missing-scenario',
