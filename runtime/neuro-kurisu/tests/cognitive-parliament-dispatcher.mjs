@@ -401,6 +401,13 @@ assert.equal(coreReceipt.verifiedEvidenceCount,3);
 assert.equal(coreReceipt.unverifiedEvidenceCount,0);
 assert.equal(coreReceipt.roleResults.length,6);
 assert.ok(coreReceipt.roleResults.every(row=>row.status==='completed'));
+const coreDiagnostics=core.cognitiveParliamentDiagnostics();
+assert.equal(coreDiagnostics.enabled,true);
+assert.equal(coreDiagnostics.configuredRoleCount,6);
+assert.equal(coreDiagnostics.trustedModelAttestorConfigured,true);
+assert.equal(coreDiagnostics.historyCount,1);
+assert.equal(coreDiagnostics.lastDecision.candidateId,coreReceipt.candidateId);
+assert.equal(coreDiagnostics.recentDecisions.length,1);
 const coreHistory=core.snapshot().system.cognitiveParliamentDecisionHistory;
 assert.ok(Array.isArray(coreHistory));
 assert.equal(coreHistory.length,1);
@@ -442,6 +449,8 @@ assert.deepEqual(restoredCore.snapshot().system.cognitiveParliamentLastDecision,
 assert.deepEqual(restoredCore.snapshot().system.cognitiveParliamentDecisionHistory,
   core.snapshot().system.cognitiveParliamentDecisionHistory,
   'bounded parliamentary decision history must survive restart exactly');
+assert.equal(restoredCore.cognitiveParliamentDiagnostics().historyCount,
+  core.cognitiveParliamentDiagnostics().historyCount);
 
 // With all six roles configured but no promoted evidence, Core must not allow
 // an ordinary risky candidate to escape through a later selector.
