@@ -46,7 +46,8 @@ export interface ScienceCandidateProvenance {
   createdAt: number;
   createdTick: number;
   candidateFingerprint: string;
-  status: 'awaiting-preregistration';
+  status: 'awaiting-preregistration' | 'preregistered';
+  inventionId?: string;
 }
 
 export interface ScienceDiscoveryInput {
@@ -268,11 +269,15 @@ function normalizeCandidate(value: unknown): ScienceCandidateProvenance {
     createdTick: value.createdTick as number,
     candidateFingerprint: hashText(value.candidateFingerprint),
     status: value.status as ScienceCandidateProvenance['status'],
+    ...(value.inventionId === undefined ? {} : { inventionId: clean(value.inventionId, 180) }),
   };
   if (!candidate.id || !candidate.experimentId ||
       !['intrinsic', 'dream-association'].includes(candidate.source) ||
       !candidate.question || !candidate.hypothesis || !candidate.prediction ||
-      !candidate.scientificProjectId || candidate.status !== 'awaiting-preregistration' ||
+      !candidate.scientificProjectId ||
+      !['awaiting-preregistration', 'preregistered'].includes(candidate.status) ||
+      (candidate.status === 'preregistered' && !candidate.inventionId) ||
+      (candidate.status === 'awaiting-preregistration' && candidate.inventionId !== undefined) ||
       !finite(candidate.createdAt) || candidate.createdAt < 0 ||
       !Number.isSafeInteger(candidate.createdTick) || candidate.createdTick < 0 ||
       !validHash(candidate.candidateFingerprint)) {
@@ -378,7 +383,7 @@ function verifyRecord(value: unknown): value is ScienceRepublicRecord {
     previousHash = event.hash;
   }
   const finalEvent = value.auditTrail[value.auditTrail.length - 1] as ScienceAuditEvent;
-  return canonical(finalEvent.snapshot) === canonical(coreOf(value as ScienceRepublicRecord));
+  return canonical(finalEvent.snapshot) === canonical(coreOf(value as unknown as ScienceRepublicRecord));
 }
 
 function stageForInvention(stage: InventionStage): ScienceStage {
@@ -502,6 +507,14 @@ export class ScienceRepublic {
     return record;
   }
 
+  private requireCanonicalInvention(record: InventionRecord): InventionRecord {
+    const canonicalRecord = this.inventionLoop.snapshot().records.find(item => item.id === record.id);
+    if (!canonicalRecord || canonical(canonicalRecord) !== canonical(record)) {
+      throw new Error('science-delegate-returned-noncanonical-invention');
+    }
+    return canonicalRecord;
+  }
+
   private inventionFor(record: ScienceRepublicRecord): InventionRecord {
     if (!record.inventionId) throw new Error('science-experiment-not-linked');
     const invention = this.inventionLoop.snapshot().records.find(row => row.id === record.inventionId);
@@ -581,6 +594,9 @@ export class ScienceRepublic {
     const safe = detach<typeof input>(input, 'invalid-science-captured-candidate');
     if (!isObject(safe)) throw new Error('invalid-science-captured-candidate');
     const candidate = normalizeCandidate(safe.candidate);
+    if (candidate.status !== 'awaiting-preregistration') {
+      throw new Error('science-captured-candidate-already-preregistered');
+    }
     return this.discover({
       title: candidate.question,
       domain: safe.domain,
@@ -614,7 +630,7 @@ export class ScienceRepublic {
     return this.commit(record, 'theorized');
   }
 
-  private validateExperimentPlan(
+  private validateExperimentPlanCore(
     record: ScienceRepublicRecord,
     actorId: string,
     protocol: InventionProtocol,
@@ -669,7 +685,7 @@ export class ScienceRepublic {
     const safe = detach<typeof input>(input, 'invalid-science-experiment-plan');
     if (!isObject(safe)) throw new Error('invalid-science-experiment-plan');
     const record = this.find(id);
-    return this.validateExperimentPlan(
+    return this.validateExperimentPlanCore(
       record,
       safe.actorId,
       safe.protocol,
@@ -687,11 +703,15 @@ export class ScienceRepublic {
     const holdoutManifest = normalizeArtifact(safe.holdoutManifest, 'science-holdout-manifest');
     const invention = this.inventionLoop.snapshot().records.find(row => row.id === inventionId);
     if (!invention) throw new Error('science-invention-not-found');
-    this.validateExperimentPlan(record, safe.actorId, invention.protocol, manifest, holdoutManifest);
+    this.validateExperimentPlanCore(record, safe.actorId, invention.protocol, manifest, holdoutManifest);
     if (invention.stage !== 'proposed') throw new Error('science-invention-must-be-newly-preregistered');
     const designed = this.inventionLoop.design(inventionId);
     record.manifest = manifest;
     record.holdoutManifest = holdoutManifest;
+    if (record.candidate) {
+      record.candidate.status = 'preregistered';
+      record.candidate.inventionId = designed.id;
+    }
     record.inventionId = designed.id;
     record.inventionStage = designed.stage;
     record.stage = 'registered';
@@ -737,7 +757,9 @@ export class ScienceRepublic {
         safe.payload.verifierId === record.actors.auditor) {
       throw new Error('science-auditor-cannot-run-holdout');
     }
-    const invention = this.recordOutcomeDelegate(record.inventionId, safe);
+    const invention = this.requireCanonicalInvention(
+      this.recordOutcomeDelegate(record.inventionId, safe),
+    );
     record.inventionStage = invention.stage;
     record.stage = stageForInvention(invention.stage);
     record.trust.signedEvidence = 'canonical-invention-loop-verified';
@@ -756,7 +778,9 @@ export class ScienceRepublic {
         safe.artifact.payload.verifierId !== record.actors.skeptic) {
       throw new Error('science-skeptic-role-mismatch');
     }
-    const invention = this.critiqueDelegate(record.inventionId, safe.artifact);
+    const invention = this.requireCanonicalInvention(
+      this.critiqueDelegate(record.inventionId, safe.artifact),
+    );
     record.inventionStage = invention.stage;
     record.stage = stageForInvention(invention.stage);
     record.trust.signedEvidence = 'canonical-invention-loop-verified';
@@ -849,6 +873,73 @@ export class ScienceRepublic {
     return this.commit(record, 'audit-completed');
   }
 
+  private validateLinkedRecord(
+    record: ScienceRepublicRecord,
+    invention: InventionRecord,
+  ): boolean {
+    if (!record.inventionId || record.inventionId !== invention.id ||
+        record.inventionStage !== invention.stage || !record.theory ||
+        !record.manifest || !record.holdoutManifest || !record.prototype ||
+        invention.protocol.question !== record.title ||
+        invention.protocol.hypothesis !== record.theory.mechanism ||
+        invention.protocol.testFingerprint !== record.manifest.sha256 ||
+        invention.protocol.holdoutTestFingerprint !== record.holdoutManifest.sha256 ||
+        invention.prototypeRef !== record.prototype.reference ||
+        invention.prototypeSha256 !== record.prototype.sha256) return false;
+
+    const roles = Object.values(record.actors);
+    const plan = invention.protocol.verifierPlan;
+    if (plan.critique !== record.actors.skeptic ||
+        plan.replication !== record.actors.replicator ||
+        roles.includes(plan.primary) || roles.includes(plan.holdout) ||
+        plan.primary === plan.holdout) return false;
+
+    const provenance = invention.protocol.provenance;
+    if (!provenance) return false;
+    if (record.candidate) {
+      if (provenance.source !== record.candidate.source ||
+          provenance.experimentId !== record.candidate.experimentId ||
+          provenance.scientificProjectId !== record.candidate.scientificProjectId ||
+          provenance.linkedGoal !== record.candidate.linkedGoal) return false;
+    } else if (provenance.source !== 'manual' || provenance.experimentId !== record.id) {
+      return false;
+    }
+
+    const signedEvidencePresent = invention.outcomes.length > 0 || Boolean(invention.critique);
+    if (record.trust.signedEvidence !== (signedEvidencePresent
+      ? 'canonical-invention-loop-verified' : 'none')) return false;
+
+    if (!record.audit) return record.stage === stageForInvention(invention.stage);
+    if (invention.stage !== 'accepted' && invention.stage !== 'rejected') return false;
+    if (record.audit.actorId !== record.actors.auditor ||
+        record.audit.signedEvidenceCount !== invention.outcomes.length + (invention.critique ? 1 : 0)) {
+      return false;
+    }
+    let required: ScienceArtifact[];
+    try {
+      required = this.requiredAuditArtifacts(record, invention);
+    } catch {
+      return false;
+    }
+    const checked = new Map<string, string>();
+    for (const item of record.audit.checkedArtifacts) {
+      if (checked.has(item.reference)) return false;
+      checked.set(item.reference, item.sha256);
+    }
+    if (checked.size !== required.length ||
+        required.some(item => checked.get(item.reference) !== item.sha256) ||
+        required.some(item => item.reference === record.audit?.auditRef)) return false;
+
+    if (invention.stage === 'accepted' && record.audit.result === 'reference-complete') {
+      return record.stage === 'audit-complete' && record.audit.blockers.length === 0;
+    }
+    if (invention.stage === 'accepted' && record.audit.result === 'blocked') {
+      return record.stage === 'audit-blocked' && record.audit.blockers.length > 0;
+    }
+    return invention.stage === 'rejected' &&
+      record.stage === 'rejected' && record.audit.result === 'blocked';
+  }
+
   restore(raw?: Partial<ScienceRepublicState> | null): void {
     if (!raw) return;
     const detached = detach<Partial<ScienceRepublicState>>(raw, 'invalid-science-state');
@@ -872,25 +963,7 @@ export class ScienceRepublic {
       }
       if (item.inventionId) {
         const linked = linkedInventions.get(item.inventionId);
-        if (!linked || linked.stage !== item.inventionStage) {
-          quarantined += 1;
-          continue;
-        }
-        if (item.stage === 'audit-complete' &&
-            (linked.stage !== 'accepted' || item.audit?.result !== 'reference-complete')) {
-          quarantined += 1;
-          continue;
-        }
-        if (item.stage === 'audit-blocked' && linked.stage !== 'accepted') {
-          quarantined += 1;
-          continue;
-        }
-        if (item.stage === 'rejected' && linked.stage !== 'rejected') {
-          quarantined += 1;
-          continue;
-        }
-        if (!['audit-complete', 'audit-blocked', 'rejected'].includes(item.stage) &&
-            stageForInvention(linked.stage) !== item.stage) {
+        if (!linked || !this.validateLinkedRecord(item, linked)) {
           quarantined += 1;
           continue;
         }

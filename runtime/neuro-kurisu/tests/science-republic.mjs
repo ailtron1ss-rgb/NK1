@@ -6,6 +6,12 @@ import { canonicalOutcomePayload } from '../src/organism/learning/VerifiedOutcom
 import { inventionProtocolFingerprint } from '../src/organism/research/TheInventionLoop.ts';
 
 const digest = value => createHash('sha256').update(String(value)).digest('hex');
+const canonical = value => {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+  return '{' + Object.keys(value).filter(key => value[key] !== undefined).sort()
+    .map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
+};
 let now = 1_800_000_000_000;
 const nextTime = () => now++;
 const actors = {
@@ -340,12 +346,31 @@ assert.equal(restored.scienceRepublic.get(science.id).stage, 'audit-complete');
 assert.equal(restored.scienceRepublic.metrics().quarantinedRecords, 0);
 assert.equal(restored.scientificBrain.diagnostics().acceptedUpdates, afterReplication);
 
-const tamperedSnapshot = runtime.snapshot();
-tamperedSnapshot.scienceRepublic.records[0].title = 'changed after the recorded audit';
+// Recompute the unkeyed local event chain after forging the projection's audit
+// manifest. Restore must still reject it because the canonical signed Invention
+// record does not match the forged reference/hash list.
+const rehashedSnapshot = runtime.snapshot();
+const projectedRecord = rehashedSnapshot.scienceRepublic.records[0];
+projectedRecord.audit.checkedArtifacts[0].sha256 = digest('forged-audit-reference-hash');
+const { auditTrail: projectedTrail, ...projectedCore } = projectedRecord;
+projectedTrail[projectedTrail.length - 1].snapshot = structuredClone(projectedCore);
+let previousHash = '0'.repeat(64);
+for (const event of projectedTrail) {
+  event.previousHash = previousHash;
+  event.hash = digest(canonical({
+    sequence: event.sequence,
+    action: event.action,
+    at: event.at,
+    previousHash,
+    snapshot: event.snapshot,
+  }));
+  previousHash = event.hash;
+}
 const quarantined = new EvidenceResearchSubsystemRuntime(resolveKey);
-quarantined.restore(tamperedSnapshot);
+quarantined.restore(rehashedSnapshot);
 assert.equal(quarantined.scienceRepublic.metrics().total, 0);
-assert.equal(quarantined.scienceRepublic.metrics().quarantinedRecords, 1);
+assert.equal(quarantined.scienceRepublic.metrics().quarantinedRecords, 1,
+  'a recomputed local hash chain cannot override canonical signed evidence references');
 assert.equal(quarantined.inventionLoop.metrics().accepted, 1,
   'a corrupt Science Republic projection must not delete the canonical signed invention');
 
