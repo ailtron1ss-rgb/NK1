@@ -315,6 +315,7 @@ export class TeacherStudentDistillationDataset {
   private readonly examples = new Map<string, TeacherDistillationExample>();
   private readonly artifactIds = new Set<string>();
   private readonly sampleIdentities = new Map<string, string>();
+  private readonly variantCounts = new Map<string, number>();
   private readonly dedupeKeys = new Set<string>();
   private readonly rejections = new Map<string, number>();
   private readonly familySplits = new Map<string, TeacherDistillationSplit>();
@@ -438,7 +439,11 @@ export class TeacherStudentDistillationDataset {
     const publicKey = trustedVerifierKeys.get(String(payload.verifierId));
     if (!publicKey) return this.reject('untrusted-verifier', record.taskId);
     const signature = record.artifact.signature;
-    if (typeof signature !== 'string' || signature.length < 40 || signature.length > 4096) {
+    if (typeof signature !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/u.test(signature)) {
+      return this.reject('signature-invalid', record.taskId);
+    }
+    const signatureBytes = Buffer.from(signature, 'base64');
+    if (signatureBytes.length !== 64 || signatureBytes.toString('base64') !== signature) {
       return this.reject('signature-invalid', record.taskId);
     }
     let signatureValid = false;
@@ -447,7 +452,7 @@ export class TeacherStudentDistillationDataset {
         null,
         Buffer.from(canonicalTeacherDistillationPayload(payload as SignedTeacherDistillationPayload), 'utf8'),
         publicKey,
-        Buffer.from(signature, 'base64'),
+        signatureBytes,
       );
     } catch {
       signatureValid = false;
@@ -467,8 +472,10 @@ export class TeacherStudentDistillationDataset {
       record.teacherRevision, textFingerprint(record.completion),
     ]);
     if (this.dedupeKeys.has(dedupeKey)) return this.reject('duplicate-content', record.taskId);
-    const variantPrefix = JSON.stringify([record.taskId, record.teacherId, record.teacherModel, record.teacherRevision]).slice(0, -1) + ',';
-    const variants = [...this.sampleIdentities.keys()].filter(key => key.startsWith(variantPrefix)).length;
+    const variantIdentity = JSON.stringify([
+      record.taskId, record.teacherId, record.teacherModel, record.teacherRevision,
+    ]);
+    const variants = this.variantCounts.get(variantIdentity) ?? 0;
     if (variants >= MAX_VARIANTS_PER_TASK_TEACHER) return this.reject('per-task-variant-limit', record.taskId);
 
     const exampleId = sha256(JSON.stringify([artifactFingerprint, task.taskId, record.teacherId]));
@@ -495,6 +502,7 @@ export class TeacherStudentDistillationDataset {
     });
     this.artifactIds.add(String(payload.artifactId));
     this.sampleIdentities.set(sampleIdentity, artifactFingerprint);
+    this.variantCounts.set(variantIdentity, variants + 1);
     this.dedupeKeys.add(dedupeKey);
     this.examples.set(exampleId, example);
     return { accepted: true, exampleId, split: task.split as TeacherDistillationSplit };
