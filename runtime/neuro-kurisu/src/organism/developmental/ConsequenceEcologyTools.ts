@@ -100,7 +100,7 @@ export class ConsequenceEcologyToolAdapter {
           options: { type: 'array', items: optionContract, minItems: 1, maxItems: 8 },
           at: { type: 'number', minimum: 0 },
         },
-        required: ['id', 'scenarioId', 'horizonDays', 'options'],
+        required: ['id', 'horizonDays', 'options'],
         additionalProperties: false,
         maxProperties: 5,
         maxSerializedBytes: 65_536,
