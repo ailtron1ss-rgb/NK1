@@ -102,7 +102,7 @@ const ASSET_EXTENSIONS = new Set([
 
 const CAPABILITY_RULES: Array<{ id: NeuroForgeCapabilityId; pattern: RegExp }> = [
   { id: 'memory-retrieval', pattern: /\b(memory|mem0|letta|retriev|recall|episodic|semantic)\b/i },
-  { id: 'durable-workflows', pattern: /\b(temporal|durable[\s_-]?workflow|workflow[\s_-]?(engine|orchestrat)|checkpoint[\s_-]?workflow)\b/i },
+  { id: 'durable-workflows', pattern: /\b(temporal|durable[\s_-]?workflow(?:[\s_-]?(?:engine|orchestrat))?|workflow[\s_-]?(engine|orchestrat)|checkpoint[\s_-]?workflow)\b/i },
   { id: 'agent-tools', pattern: /\b(browser[\s_-]?use|openhands|swe[\s_-]?agent|mcp|tool[\s_-]?call|tool[\s_-]?executor)\b/i },
   { id: 'model-serving', pattern: /\b(vllm|llama[\s._-]?cpp|inference|model[\s_-]?serving|quantiz)\b/i },
   { id: 'voice', pattern: /\b(whisper|asr|tts|piper|speech|audio|voice)\b/i },
