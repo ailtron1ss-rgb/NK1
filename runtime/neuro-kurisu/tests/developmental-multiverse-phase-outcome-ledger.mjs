@@ -55,7 +55,16 @@ const makeTasks = (split, suffix) => [
 
 const validationResult = await run('validation', makeTasks('validation', 100));
 assert.equal(validationResult.evaluation.holdout.length, 0, 'validation-only report must contain no holdout rows');
-assert.equal(recordIndependentEvaluationOutcomes(validationResult, { ...authority, evaluationScope: 'validation-only' }).accepted, 2,
+assert.throws(
+  () => recordIndependentEvaluationOutcomes(validationResult, {
+    ...authority, evaluationScope: 'validation-only', allowPartialSchedule: true,
+  }),
+  /plan-coverage-incomplete/,
+  'strict P23 ledger commits must continue to require the complete scheduled method plan',
+);
+assert.equal(recordIndependentEvaluationOutcomes(validationResult, {
+  ...authority, evaluationScope: 'validation-only', allowPartialSchedule: true,
+}).accepted, 2,
   'only planned validation runs should be committed to the canonical P23 ledger');
 assert.deepEqual(ledger.snapshot().outcomes.map(row => row.taskId).sort(), ['validation-a', 'validation-b']);
 assert.throws(
@@ -66,7 +75,9 @@ assert.throws(
 
 const holdoutResult = await run('holdout', makeTasks('holdout', 200));
 assert.equal(holdoutResult.evaluation.validation.length, 0, 'holdout-only report must contain no validation rows');
-assert.equal(recordIndependentEvaluationOutcomes(holdoutResult, { ...authority, evaluationScope: 'holdout-only' }).accepted, 2,
+assert.equal(recordIndependentEvaluationOutcomes(holdoutResult, {
+  ...authority, evaluationScope: 'holdout-only', allowPartialSchedule: true,
+}).accepted, 2,
   'only planned holdout runs should be committed to the canonical P23 ledger');
 assert.deepEqual(
   ledger.snapshot().outcomes.map(row => row.taskId).sort(),
