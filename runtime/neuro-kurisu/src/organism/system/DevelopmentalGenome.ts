@@ -419,7 +419,7 @@ export function inheritDevelopmentalGenome(
     }
     if (Object.prototype.hasOwnProperty.call(patch, 'cadenceCycles')) {
       const next = patch.cadenceCycles;
-      if (!Number.isInteger(next) || next < 1 || next > 64) {
+      if (typeof next !== 'number' || !Number.isInteger(next) || next < 1 || next > 64) {
         throw new Error('cadenceCycles must be an integer within [1,64]');
       }
       if (next === module.cadenceCycles) throw new Error('No-op trait patches are not accepted');
