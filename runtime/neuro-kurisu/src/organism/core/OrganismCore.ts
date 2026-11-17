@@ -11808,6 +11808,66 @@ export class OrganismCore {
     async consumeDirectActionApproval(toolId:string,input:Record<string,unknown>,approvalId:string|undefined,options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}) {
         return this.cognitiveRuntime.actionGateway.consumeDirectActionApproval(toolId,input,approvalId,options,'direct');
     }
+    private constitutionApprovalGateway() {
+        return {
+            requestToolApproval: (toolId:string,input:Record<string,unknown>,reason:string,options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions,operation:import('../system/ActionGateway.ts').ActionToolApprovalOperation) =>
+                this.requestActionToolApproval(toolId,input,reason,options,operation),
+            consumeDirectActionApproval: (toolId:string,input:Record<string,unknown>,approvalId:string|undefined,options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions,operation:import('../system/ActionGateway.ts').ActionToolApprovalOperation) =>
+                this.cognitiveRuntime.actionGateway.consumeDirectActionApproval(toolId,input,approvalId,options,operation),
+        };
+    }
+    constitutionEvolutionSnapshot() {
+        const engine=this.governanceSubsystem.constitutionEvolution;
+        return {
+            diagnostics:engine.diagnostics(),
+            active:engine.activeConstitution(),
+            protectedInvariants:engine.protectedInvariants(),
+            proposals:engine.listProposals(64),
+            auditEvents:engine.listAuditEvents(256),
+        };
+    }
+    constitutionEvolutionProposal(id:string) {
+        return this.governanceSubsystem.constitutionEvolution.listProposals(64).find(item=>item.id===id) ?? null;
+    }
+    private async persistConstitutionEvolution():Promise<void> {
+        this.persisted.facets.advanced.constitutionEvolution=this.governanceSubsystem.constitutionEvolution.snapshot();
+        await this.checkpoint(true);
+    }
+    async constitutionEvolutionPropose(input:import('../cognition/evolution/ConstitutionEvolutionEngine.ts').ConstitutionProposalInput) {
+        const proposal=this.governanceSubsystem.constitutionEvolution.propose(input);
+        await this.persistConstitutionEvolution();
+        return proposal;
+    }
+    async constitutionEvolutionReview(id:string,input:import('../cognition/evolution/ConstitutionEvolutionEngine.ts').ConstitutionReviewInput) {
+        const proposal=this.governanceSubsystem.constitutionEvolution.review(id,input);
+        await this.persistConstitutionEvolution();
+        return proposal;
+    }
+    async constitutionEvolutionRequestRatification(id:string) {
+        const request=await this.governanceSubsystem.constitutionEvolution.requestRatification(id,this.constitutionApprovalGateway());
+        await this.persistConstitutionEvolution();
+        return request;
+    }
+    async constitutionEvolutionRatify(id:string,approvalId:string) {
+        const proposal=await this.governanceSubsystem.constitutionEvolution.ratify(id,{approvalId},this.constitutionApprovalGateway());
+        await this.persistConstitutionEvolution();
+        return proposal;
+    }
+    async constitutionEvolutionActivate(id:string) {
+        const revision=this.governanceSubsystem.constitutionEvolution.activate(id);
+        await this.persistConstitutionEvolution();
+        return revision;
+    }
+    async constitutionEvolutionRequestRollback(targetVersion:string,reason:string) {
+        const request=await this.governanceSubsystem.constitutionEvolution.requestRollbackApproval(targetVersion,reason,this.constitutionApprovalGateway());
+        await this.persistConstitutionEvolution();
+        return request;
+    }
+    async constitutionEvolutionRollback(targetVersion:string,reason:string,approvalId:string) {
+        const revision=await this.governanceSubsystem.constitutionEvolution.rollbackWithApproval({targetVersion,reason,approvalId},this.constitutionApprovalGateway());
+        await this.persistConstitutionEvolution();
+        return revision;
+    }
     activeProjectSnapshot() { return this.agencySubsystem.selfProjects.activeProject(); }
     autonomousProjectLifeSnapshot() { const s = this.agencySubsystem.selfProjects.snapshot(); const project = this.agencySubsystem.selfProjects.activeProject(); return { project, projects: s.projects, completedProjects: s.completedProjects, abandonedProjects: s.abandonedProjects, projectEvents: s.projectEvents, ownProjectContinuity: s.ownProjectContinuity, authorshipScore: s.authorshipScore, executor: this.agencySubsystem.projectExecutor.planHealth(), linkedGoal: project?.linkedGoalId ? this.persisted.goals.find(g => g.id === project.linkedGoalId) ?? null : null }; }
     actionAuditSnapshot() { return this.cognitiveRuntime.actionGateway.snapshot(); }
