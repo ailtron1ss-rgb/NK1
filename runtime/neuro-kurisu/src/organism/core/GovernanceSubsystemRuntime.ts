@@ -14,7 +14,6 @@ import { FailureRecoveryCertification, defaultFailureRecoveryCertification } fro
 import { CognitiveDomainClosure, type CognitiveDomainMarkSet, type CognitiveDomain } from '../system/CognitiveDomainClosure.ts';
 import { CausalDomainClosureLedger, defaultCausalDomainClosureLedger, type CausalDomainClosureSnapshot } from '../system/CausalDomainClosureLedger.ts';
 import { CognitiveParliament, type ParliamentTrustPort } from '../system/CognitiveParliament.ts';
-import { CognitiveParliament } from '../system/CognitiveParliament.ts';
 
 /** BIG PASS 51: physical owner for capability, integrity, resilience and constitutional governance. */
 export class GovernanceSubsystemRuntime {
