@@ -409,7 +409,7 @@ function verifyRecordAudit(record: unknown): record is InventionRecord {
     previousSnapshot = snapshot;
   }
   const finalEvent = trail[trail.length - 1] as InventionAuditEvent;
-  return canonical(finalEvent.snapshot) === canonical(coreOf(record as InventionRecord));
+  return canonical(finalEvent.snapshot) === canonical(coreOf(candidate as unknown as InventionRecord));
 }
 
 export class TheInventionLoop {
@@ -417,12 +417,20 @@ export class TheInventionLoop {
     version: 4, records: [], accepted: 0, rejected: 0, quarantinedRecords: 0,
   };
 
+  private readonly now: () => number;
+  private readonly id: () => string;
+  private resolveVerifierKey: InventionVerifierKeyResolver;
+
   constructor(
-    private readonly now: () => number = () => Date.now(),
-    private readonly id: () => string = () =>
+    now: () => number = () => Date.now(),
+    id: () => string = () =>
       globalThis.crypto?.randomUUID?.() ?? 'inv-' + Date.now() + '-' + Math.random().toString(16).slice(2),
-    private resolveVerifierKey: InventionVerifierKeyResolver = () => undefined,
-  ) {}
+    resolveVerifierKey: InventionVerifierKeyResolver = () => undefined,
+  ) {
+    this.now = now;
+    this.id = id;
+    this.resolveVerifierKey = resolveVerifierKey;
+  }
 
   /** Host-only trust configuration; resolver functions are never serialized. */
   configureVerifierKeyResolver(resolveVerifierKey: InventionVerifierKeyResolver): void {
