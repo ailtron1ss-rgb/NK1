@@ -276,11 +276,11 @@ export class NegativeSpaceMemory {
       }
     }
 
-    record.outcomeEvidence = cleanList(
-      [...new Set([...record.outcomeEvidence, ...cleanList(input.evidence, 8, 180)])],
-      8,
-      180,
-    );
+    const mergedEvidence = [...new Set([
+      ...record.outcomeEvidence,
+      ...cleanList(input.evidence, 8, 180),
+    ])];
+    record.outcomeEvidence = mergedEvidence.slice(-8);
     this.evaluateReviewConditions(decisionId, {
       ...input.signals,
       'outcome.actual01': record.chosenActualOutcome01!,
@@ -412,7 +412,9 @@ export class NegativeSpaceMemory {
     }
     const newestByDecisionId = new Map<string, NegativeSpaceRecord>();
     for (const record of restored) newestByDecisionId.set(record.decisionId, record);
-    const deduplicated = [...newestByDecisionId.values()].slice(-MAX_RECORDS);
+    const deduplicated = [...newestByDecisionId.values()]
+      .sort((a, b) => a.at - b.at || a.decisionId.localeCompare(b.decisionId))
+      .slice(-MAX_RECORDS);
     const duplicateCount = Math.max(0, restored.length - deduplicated.length);
     this.state = {
       version: 1,

@@ -15,6 +15,8 @@ Keep a bounded record of consequential alternatives that the canonical decision 
 - Review eligibility requires a stored condition match and verified outcome quality of at least 0.5. The default alternative-advantage test discounts uncertain predictions toward a neutral 0.5 rather than treating raw optimistic estimates as reliable counterfactuals. Predicted or unverified outcomes stay out of the review queue, including after restore. It does not auto-select, execute, or silently promote the rejected option.
 - An eligible item is marked reopened only through an explicit review call with a reason.
 - Late evidence may upgrade verification only when it corroborates the already recorded outcome within 0.02; conflicting reports cannot silently overwrite canonical outcome history. This path is exposed through `OrganismCore.negativeSpaceMemoryRecordOutcome()`.
+- The Core mutation APIs are asynchronous durability boundaries: they refresh `facets.advanced.regret` and force a durable checkpoint before resolving. They reject calls made inside an active persistence batch so the caller can retry at a stable boundary.
+- Evidence retention is capped at eight entries while always retaining the newest corroborating evidence; restored unique records are sorted chronologically after duplicate collapse.
 - `OrganismCore` exposes snapshot, diagnostics, review-queue, explicit reopen, and context-retrieval methods for upper-level inspection/review.
 - The ledger is nested inside the existing `RegretState` under `facets.advanced.regret`; it does not create a second canonical memory store.
 - The field is optional on restore. Pre-feature saves without `negativeSpace` remain valid.

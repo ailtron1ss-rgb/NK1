@@ -268,6 +268,34 @@ const detached = outcomeMetrics.snapshot();
 detached.negativeSpace.records[0].alternatives[0].action = 'tampered';
 assert.equal(outcomeMetrics.snapshot().negativeSpace.records[0].alternatives[0].action, 'defer');
 
+// New corroborating evidence displaces the oldest item rather than being silently dropped at capacity.
+const evidenceRetention = new RegretEngine();
+evidenceRetention.observe('respond', 0.2, [{
+  action: 'explore',
+  expectedOutcome01: 0.95,
+  confidence01: 1,
+}], {
+  decisionId: 'decision-evidence-retention',
+  chosenExpectedOutcome01: 0.9,
+  significance: { cost01: 0.8, risk01: 0.1, futureImportance01: 0.1 },
+  outcomeVerified01: 0,
+  outcomeSource: 'internal',
+  outcomeEvidence: Array.from({ length: 8 }, (_, index) => `old-evidence-${index}`),
+});
+const retainedEvidence = evidenceRetention.recordNegativeSpaceOutcome({
+  decisionId: 'decision-evidence-retention',
+  actualOutcome01: 0.2,
+  verified01: 1,
+  independent01: 1,
+  source: 'external-evidence',
+  evidence: ['new-independent-corroboration'],
+  at: 410,
+});
+assert.equal(retainedEvidence?.outcomeEvidence.length, 8);
+assert.ok(retainedEvidence?.outcomeEvidence.includes('new-independent-corroboration'));
+assert.ok(!retainedEvidence?.outcomeEvidence.includes('old-evidence-0'));
+
+// The restored unique history is chronological even when the newest duplicate replaces an earlier row.
 // A corrupted restore with repeated decision IDs keeps only the newest canonical row.
 const duplicatedRestore = new RegretEngine();
 duplicatedRestore.restore({
@@ -307,7 +335,28 @@ duplicatedRestore.restore({
 assert.equal(duplicatedRestore.snapshot().negativeSpace.records.length, 1);
 assert.equal(duplicatedRestore.snapshot().negativeSpace.records[0].chosen, 'verify');
 assert.equal(duplicatedRestore.snapshot().negativeSpace.records[0].alternatives[0].action, 'plan');
+assert.equal(duplicatedRestore.snapshot().negativeSpace.records[0].alternatives[0].action, 'plan');
 assert.equal(duplicatedRestore.snapshot().negativeSpace.pruned, 1);
+const chronological = new RegretEngine();
+chronological.restore({
+  records: [],
+  meanRegret: 0,
+  lastAt: 0,
+  version: 1,
+  negativeSpace: {
+    version: 1,
+    totalRecorded: 3,
+    pruned: 0,
+    lastAt: 30,
+    records: [
+      { decisionId: 'old-row', chosen: 'respond', at: 10, alternatives: [{ action: 'verify', expectedOutcome01: 0.6 }] },
+      { decisionId: 'middle-row', chosen: 'wait', at: 15, alternatives: [{ action: 'rest', expectedOutcome01: 0.55 }] },
+      { decisionId: 'old-row', chosen: 'explore', at: 30, alternatives: [{ action: 'plan', expectedOutcome01: 0.9 }] },
+    ],
+  },
+});
+assert.deepEqual(chronological.snapshot().negativeSpace.records.map(row => row.decisionId), ['middle-row', 'old-row']);
+assert.equal(chronological.snapshot().negativeSpace.records[1].chosen, 'explore');
 
 // Invalid and inconsistent persisted records are ignored or normalized rather than trusted.
 const malformed = new RegretEngine();
