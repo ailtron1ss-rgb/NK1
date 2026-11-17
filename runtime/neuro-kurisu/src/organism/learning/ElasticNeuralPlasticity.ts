@@ -123,8 +123,8 @@ export class ElasticNeuralPlasticityController {
       lastUpdatedParameterNames:Array.isArray(raw?.lastUpdatedParameterNames)
         ?raw!.lastUpdatedParameterNames.filter((name):name is string=>this.parameterNames.includes(name)).slice(0,this.parameterNames.length):[],
       lastReason:typeof raw?.lastReason==='string'?raw.lastReason.slice(0,96):d.lastReason,
-      lastTargetLossImprovement01:clamp01(Number(raw?.lastTargetLossImprovement01??0)),
-      lastRetentionLossIncrease01:Math.max(-1,Math.min(1,Number.isFinite(Number(raw?.lastRetentionLossIncrease01))?Number(raw?.lastRetentionLossIncrease01):0)),
+      lastTargetLossImprovement01:typeof raw?.lastTargetLossImprovement01==='number'&&Number.isFinite(raw.lastTargetLossImprovement01)?clamp01(raw.lastTargetLossImprovement01):0,
+      lastRetentionLossIncrease01:typeof raw?.lastRetentionLossIncrease01==='number'&&Number.isFinite(raw.lastRetentionLossIncrease01)?Math.max(-1,Math.min(1,raw.lastRetentionLossIncrease01)):0,
       lastUpdatedAt:typeof raw?.lastUpdatedAt==='number'&&Number.isFinite(raw.lastUpdatedAt)&&raw.lastUpdatedAt>=0?raw.lastUpdatedAt:0,
     };
   }
@@ -159,6 +159,8 @@ export class ElasticNeuralPlasticityController {
       typeof input.step!=='number'||!Number.isFinite(input.step))throw new TypeError('plasticity-gradient-invalid');
     if(!validId(input.sampleId))throw new TypeError('plasticity-training-sample-id-invalid');
     if(!options||typeof options!=='object'||Array.isArray(options))throw new TypeError('plasticity-options-invalid');
+    if(!validId(options.trainingSampleId)||options.trainingSampleId!==input.sampleId)
+      throw new TypeError('plasticity-training-sample-id-mismatch');
 
     const allowlist=options.allowedParameterNames;
     if(!Array.isArray(allowlist)||allowlist.length<1||allowlist.length>this.parameterNames.length||

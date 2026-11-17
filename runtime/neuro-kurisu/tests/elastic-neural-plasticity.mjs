@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { ParametricPolicyLearner } from '../src/organism/learning/ParametricPolicyLearner.ts';
+import { P26TrueLearningEngine } from '../src/organism/learning/P26TrueLearningEngine.ts';
 
 const DIM = 18;
 const vector = (index, value = 1) => {
@@ -79,6 +80,8 @@ assert.equal(rejected.reason, 'retention-regression');
 assert.deepEqual(guarded.snapshot().weights, guardedBefore.weights, 'rejected update must not mutate any policy weight');
 assert.deepEqual(guarded.snapshot().bias, guardedBefore.bias);
 assert.equal(guarded.snapshot().elasticNeuralPlasticity.rejectedUpdates, 1);
+assert.ok(guarded.snapshot().elasticNeuralPlasticity.importanceByAction.respond[0] > 0,
+  'ablation-derived importance must record the retained energy dependency');
 
 // Safety-critical coordinates cannot be made trainable by the caller's allowlist.
 const hardProtected = new ParametricPolicyLearner();
@@ -98,6 +101,19 @@ const protectedResult = hardProtected.trainFeaturesElastic({
 assert.equal(protectedResult.accepted, false);
 assert.equal(protectedResult.reason, 'no-eligible-parameters');
 assert.deepEqual(hardProtected.snapshot().weights, protectedBefore.weights);
+
+// The train sample identity must be the same identity bound to the candidate's holdout envelope.
+const identityBefore = hardProtected.snapshot();
+assert.throws(() => hardProtected.trainFeaturesElastic({
+  sampleId: 'actual-training-sample',
+  features: vector(0),
+  action: 'respond',
+  target01: 1,
+  learningRate01: .25,
+}, options({
+  trainingSampleId: 'different-training-sample',
+})), /plasticity-training-sample-id-mismatch/);
+assert.deepEqual(hardProtected.snapshot(), identityBefore);
 
 // Train/holdout overlap is a hard input error and must be rejected before state changes.
 const leakageBefore = hardProtected.snapshot();
@@ -135,7 +151,6 @@ assert.equal(frozenResult.accepted, false);
 assert.equal(frozenResult.reason, 'policy-frozen');
 assert.deepEqual(frozen.snapshot().weights, frozenBefore.weights);
 
-import { P26TrueLearningEngine } from '../src/organism/learning/P26TrueLearningEngine.ts';
 const p26 = new P26TrueLearningEngine();
 const p26Result = p26.trainFeaturesElastic({
   sampleId: 'p26-elastic-train-001',
