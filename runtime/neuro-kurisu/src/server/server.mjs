@@ -102,7 +102,7 @@ let lastLanguageFailure = '';
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
 const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
 const rateBuckets = new Map();
-function synapticCommonsHostCompatibilityTarget(): SynapticCompatibilityTarget {
+function synapticCommonsHostCompatibilityTarget() {
     const runtimeVersion = String(process.env.NEURO_SYNAPTIC_COMMONS_RUNTIME_VERSION || '').trim();
     const environmentFingerprint = String(process.env.NEURO_SYNAPTIC_COMMONS_ENVIRONMENT_FINGERPRINT || '').trim();
     const readList = name => {
