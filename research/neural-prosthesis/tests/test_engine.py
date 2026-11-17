@@ -146,6 +146,21 @@ class NeuralProsthesisEngineTests(unittest.TestCase):
             finally:
                 mismatched.close()
 
+    def test_candidate_export_requires_immutable_base_model_revision(self):
+        unpinned = NeuralProsthesisBank(
+            TinyModel(),
+            model_id="nk1/tiny-test",
+            model_revision="main",
+            layer_path="layers",
+        )
+        try:
+            unpinned.add_adapter("unpinned", layer_indices=[0], bottleneck_size=4)
+            with tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaises(ArtifactError):
+                    unpinned.save_adapter("unpinned", Path(tmp) / "adapter")
+        finally:
+            unpinned.close()
+
     def test_corrupt_weights_and_invalid_layer_targets_fail_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
             artifact = Path(tmp) / "adapter"
