@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { ConstitutionEvolutionEngine } from '../src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts';
+import { ConstitutionEvolutionEngine, PROTECTED_CONSTITUTIONAL_INVARIANTS } from '../src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts';
 
 const engine = new ConstitutionEvolutionEngine();
 const tests = { planned:2, executed:2, passed:2, failed:0, holdoutCases:2, holdoutPassed:true };
@@ -7,6 +7,9 @@ const evidenceRefs = ['ci://constitution-evolution/unit/green','holdout://consti
 
 assert.equal(engine.activeConstitution().version,'1.0.0');
 assert.equal(engine.protectedInvariants().length,10);
+assert.equal(Object.isFrozen(PROTECTED_CONSTITUTIONAL_INVARIANTS),true);
+assert.equal(Object.isFrozen(PROTECTED_CONSTITUTIONAL_INVARIANTS[0]),true);
+assert.throws(()=>{ PROTECTED_CONSTITUTIONAL_INVARIANTS[0].statement='mutable'; },TypeError);
 assert.throws(()=>engine.propose({authorId:'author',baseVersion:'1.0.0',change:'add',
   proposedRule:{id:'core.safety',title:'Replace safety',statement:'Safety',domain:'workflow',scope:'host'},
   motivation:'test',scope:'test',counterexample:'test',riskAssessment:{level:'high',summary:'test',mitigations:['reject']},testPlan:['a']}),/non-core|protected/);
