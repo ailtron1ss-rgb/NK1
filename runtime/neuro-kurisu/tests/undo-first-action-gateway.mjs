@@ -341,6 +341,7 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
   assert.equal(result.outcomeClass, 'idempotency-ledger-full');
   assert.equal(counts.mutation, 0);
   assert.equal(counts.cleanup, 1);
+  assert.equal(result.result.recoveryArtifactDisposition, 'released');
   assert.ok(events.includes('discard-prepared'));
   assert.equal(events.includes('pending-persist'), false);
 }
