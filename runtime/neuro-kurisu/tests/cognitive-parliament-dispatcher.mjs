@@ -36,7 +36,7 @@ const trust=new EvidenceFirewallParliamentTrustPort(firewall,executionId=>({
   independenceGroup:`family-${executionId}`,verifiedAt:Date.now(),
 }),researchSession);
 const responseFor=role=>JSON.stringify({
-  stance:'support',recommendation:`bounded ${role} recommendation',
+  stance:'support',recommendation:`bounded ${role} recommendation`,
   facts:['canonical firewall fact'],assumptions:[],objections:[],uncertainty01:.05,
   evidence,
   ...(role==='skeptic'?{reviewedEvidenceIds:evidence.map(row=>row.id)}:{}),
@@ -75,7 +75,7 @@ assert.equal(seenTokens.length,6);
 assert.ok(seenTokens.every(value=>value===400),'the total requested token budget must be partitioned across six roles');
 assert.equal(dispatched.verifiedEvidenceCount,3);
 assert.equal(dispatched.unverifiedEvidenceCount,0);
-assert.equal(capturedPayload.verifiedEvidence[0].sourceFamily.length>0,true,
+assert.equal(capturedPayload.allowedEvidence[0].sourceFamily.length>0,true,
   'role prompts must include host-verified provenance, not just model-provided source labels');
 assert.ok(capturedPayload.verifiedEvidence[0].material?.excerpt?.length>20,
   'role prompts receive the exact excerpt matched to the promoted firewall observation');
@@ -85,9 +85,22 @@ const forgedReference=await dispatcher.dispatch({
   candidateId:'forged-context',risk:'low',task:'Do not let an unverified reference enter model context.',
   evidenceReferences:[{id:'forged-evidence-id',claimKey}],
 });
+assert.equal(forgedReference.status,'evidence-rejected');
+assert.equal(forgedReference.roleResults.filter(row=>row.status==='unavailable').length,6);
 assert.equal(forgedReference.verifiedEvidenceCount,0);
 assert.equal(forgedReference.unverifiedEvidenceCount,1);
 assert.equal(forgedReference.decision.status,'needs-evidence');
+
+// A mixed valid+forged set is rejected before any role model is called.
+let mixedCalls=0;
+const mixedExecutors=makeExecutors(()=>{mixedCalls++;});
+const mixed=await new CognitiveParliamentDispatcher(parliament,mixedExecutors).dispatch({
+  candidateId:'mixed-tainted-set',risk:'low',task:'Reject the whole evidence set.',
+  evidenceReferences:[...evidence,{id:'forged-mixed-reference',claimKey}],
+});
+assert.equal(mixed.status,'evidence-rejected');
+assert.equal(mixedCalls,0,'models must not be called on a partially tainted reference set');
+assert.equal(mixed.unverifiedEvidenceCount,1);
 
 
 // Missing providers never synthesize role reports or an approval.
@@ -136,6 +149,23 @@ assert.equal(localAttestation.providerId,'host-configured-provider');
 assert.equal(localAttestation.modelId,'configured-host-model');
 assert.equal(localAttestation.independenceGroup,'host-configured-family');
 assert.ok(!localAttestation.modelId.includes('lied'));
+
+let lateRegistrationCount=0;
+const lateAttestations=new ParliamentModelAttestationRegistry();
+const originalRegister=lateAttestations.register.bind(lateAttestations);
+lateAttestations.register=value=>{lateRegistrationCount++;originalRegister(value);};
+const lateProvider={
+  configured:()=>true,model:'configured-host-model',
+  async generate(){await new Promise(resolve=>setTimeout(resolve,10));return {text:responseFor('planner')};},
+};
+const lateExecutor=new OpenAICompatibleLocalParliamentRoleExecutor(lateProvider,
+  {providerId:'host-configured-provider',modelId:'configured-host-model',independenceGroup:'host-configured-family'},
+  lateAttestations);
+const lateController=new AbortController();
+const lateRequest=lateExecutor.execute({role:'planner',system:'system',user:'user',maxTokens:100,temperature:0,signal:lateController.signal});
+lateController.abort();
+await assert.rejects(lateRequest,/aborted/);
+assert.equal(lateRegistrationCount,0,'late canceled response must not create a trusted model attestation');
 
 // The governance entry point may forward only an approved parliamentary candidate to P69.
 // P69 remains the final action selector; a parliamentary pass does not execute the action.

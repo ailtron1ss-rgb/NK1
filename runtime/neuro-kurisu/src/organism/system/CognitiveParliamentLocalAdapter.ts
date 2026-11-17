@@ -57,6 +57,7 @@ export class OpenAICompatibleLocalParliamentRoleExecutor implements ParliamentRo
       system:request.system,user:request.user,maxTokens:request.maxTokens,
       temperature:request.temperature,signal:request.signal,
     });
+    if(request.signal.aborted)throw new Error('parliament-local-execution-aborted');
     if(!response||typeof response.text!=='string'||!response.text.trim()||response.text.length>65_536)
       throw new Error('parliament-local-model-response-invalid');
     this.registry.register({

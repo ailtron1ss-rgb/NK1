@@ -34,6 +34,7 @@ Model provider, model identity and independence group come only from the host at
 The composition root connects `GovernanceSubsystemRuntime.cognitiveParliament` to the research subsystem's canonical `EvidenceFirewallEngine` and `ProjectResearchSession`. The adapter attaches a title, bounded excerpt and source URL only when source key, lineage and content hash match the exact firewall observation. Arbitrary or unmatched page text is not sent to roles. It also exposes `cognitiveParliamentDispatcher` and accepts a role→executor registry through `OrganismSystemFabric`.
 
 The dispatcher:
+- rejects the entire evidence-reference set before any model call if even one supplied reference is unverified;
 - fans out to exactly six role slots with a configurable hard concurrency cap (default 3), a global deadline (default 25 seconds), and a requested token budget divided equally across role calls (default 4096 total);
 - propagates cancellation to adapters and still returns on deadline if an adapter ignores AbortSignal;
 - accepts only bounded JSON role reports, rejects extra fields and invented evidence references, and never accepts model-supplied model/provider/execution identity;
@@ -57,4 +58,4 @@ The focused regression covers firewall promotion, forged/unpromoted evidence, mo
 
 ## Not yet claimed
 
-No autonomous role dispatch, real multi-provider execution, model-attestation implementation for a live provider, decision persistence, production soak, measured decision-quality uplift or Release ZIP inclusion is claimed by this slice.
+The bounded role-dispatch mechanism and the Governance→P69 selection seam are implemented, but no live NK1 provider profiles have been configured and the dispatcher is not yet invoked automatically on every cognitive cycle. Production-grade multi-provider operation, durable deliberation persistence, production soak, measured decision-quality uplift and Release ZIP inclusion are not claimed by this slice.

@@ -21,7 +21,7 @@ export interface ParliamentDispatchInput {
   maxConcurrent?:number; maxTotalTokens?:number;
 }
 export interface ParliamentDispatchResult {
-  version:1; status:'completed'|'partial'|'timed-out'|'unavailable'|'invalid-input';
+  version:1; status:'completed'|'partial'|'timed-out'|'unavailable'|'invalid-input'|'evidence-rejected';
   candidateId:string; decision:ParliamentDecision; roleResults:ParliamentRoleRunResult[];
   startedAt:number; completedAt:number; elapsedMs:number;
   requestedTokenBudget:number; perRoleTokenBudget:number; concurrencyLimit:number;
@@ -155,9 +155,9 @@ export class CognitiveParliamentDispatcher {
     const timeoutMs=Number.isSafeInteger(input?.timeoutMs)?Math.max(25,Math.min(120_000,Number(input.timeoutMs))):25_000;
     const roleResults:ParliamentRoleRunResult[]=ROLES.map(role=>({role,status:'unavailable',latencyMs:0,requestedMaxTokens:perRoleTokenBudget}));
     const reports:ParliamentRoleReport[]=[];
-    const verifiedEvidence=this.parliament.resolveEvidenceReferences([...evidenceMap].map(([id,claimKey])=>({id,claimKey})));
-    const verifiedEvidenceMap=new Map(verifiedEvidence.map(row=>[row.id,row.claimKey]));
-    const unverifiedEvidenceCount=Math.max(0,evidenceMap.size-verifiedEvidenceMap.size);
+    let verifiedEvidence:ParliamentVerifiedEvidence[]=[];
+    let verifiedEvidenceMap=new Map<string,string>();
+    let unverifiedEvidenceCount=0;
     const finish=(status:ParliamentDispatchResult['status']):ParliamentDispatchResult=>{
       const completedAt=Date.now();
       const stableReports=reports.slice().sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role));
@@ -170,6 +170,11 @@ export class CognitiveParliamentDispatcher {
       };
     };
     if(!validInput)return finish('invalid-input');
+    verifiedEvidence=this.parliament.resolveEvidenceReferences([...evidenceMap].map(([id,claimKey])=>({id,claimKey})));
+    verifiedEvidenceMap=new Map(verifiedEvidence.map(row=>[row.id,row.claimKey]));
+    unverifiedEvidenceCount=Math.max(0,evidenceMap.size-verifiedEvidenceMap.size);
+    // Do not ask the models to reason over a partial/tainted user-supplied evidence set.
+    if(unverifiedEvidenceCount>0)return finish('evidence-rejected');
     const configuredCount=ROLES.filter(role=>Boolean(this.executors[role])).length;
     if(configuredCount===0)return finish('unavailable');
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
