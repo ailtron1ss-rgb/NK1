@@ -6,28 +6,23 @@
 
 Six required roles submit structured reports: researcher, planner, skeptic, executor, safety guardian and auditor. Each report separates facts, assumptions, objections, uncertainty, recommendation, evidence and model/provider provenance.
 
-The governance subsystem exposes a stateless `cognitiveParliament` coordinator. The parliament does not call models itself: a caller must collect role reports through bounded adapters and pass them to `CognitiveParliament.deliberate()`. This keeps provider selection, latency and token budgets outside the deterministic decision core.
+The governance subsystem exposes a stateless `cognitiveParliament` coordinator. The parliament does not call models itself: a caller must collect role reports through bounded adapters and pass them to `CognitiveParliament.deliberate()`. Provider selection, latency and token budgets remain outside the deterministic decision core.
 
 ## Decision protocol
 
 - No majority-vote shortcut: evidence quality and risk-adjusted thresholds determine approval.
 - Evidence must be observed and carry source ID, source family, claim and bounded confidence/relevance/falsifiability values.
 - Only the strongest evidence item from each source family contributes to the evidence-quality mean; repeated citations cannot manufacture confidence.
+- Conflicting mappings of one source ID to multiple source families fail closed.
 - High-risk actions require at least two source families and two distinct model fingerprints.
-- Missing required roles, incomplete provenance, unresolved skeptic objections or auditor objections produce `needs-evidence`.
+- Missing required roles, malformed input, incomplete provenance, unresolved skeptic objections or auditor objections produce `needs-evidence`.
 - A safety-guardian block or declared safety violation produces an unconditional `blocked` result.
 - Shared model substrates are reported explicitly; role labels do not imply independent intelligence.
 - This component proposes a decision only. Existing P69 constitutional arbitration and ActionGateway remain authoritative execution boundaries.
 
 ## Verification
 
-Run:
-
-```sh
-node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-parliament.mjs
-```
-
-The regression covers governance ownership, approval, safety veto, missing roles, provenance failure, correlated models, unresolved dissent and unobserved hypotheses.
+Run `node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-parliament.mjs`. Regression cases cover governance ownership, approval, safety veto, missing roles, provenance failure, correlated models, unresolved dissent, unobserved hypotheses, source-ID spoofing and malformed input.
 
 ## Not yet claimed
 
