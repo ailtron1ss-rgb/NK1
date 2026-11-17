@@ -278,8 +278,7 @@ export class AdaptiveSynapticMatrixEngine {
     const record = this.state.adapters.find(entry => entry.candidate.id === manifest.id);
     if (!record || !sameCandidate(record.candidate, manifest)) throw new Error('synaptic-adapter-candidate-manifest-mismatch');
     const quarantinedReportSha256 = record.quarantineReportSha256 ?? record.manifest?.validation.reportSha256;
-    if (record.status === 'quarantined'
-      && quarantinedReportSha256 === manifest.validation.reportSha256) {
+    if (quarantinedReportSha256 === manifest.validation.reportSha256) {
       throw new Error('synaptic-adapter-revalidation-required-after-quarantine');
     }
     if (typeof verify !== 'function') throw new Error('synaptic-adapter-manifest-verifier-required');
