@@ -391,7 +391,7 @@ export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogen
   const usedPrimaryPaths = new Set<string>();
   const modules = architecture.subsystems.map(subsystem => {
     const sourcePaths = [...new Set(subsystem.components
-      .map(component => component.replace(/^runtime\\/neuro-kurisu\\//, ''))
+      .map(component => component.replace(/^runtime\/neuro-kurisu\//, ''))
       .filter(path => isCanonicalSourcePath(path)))].sort();
     if (!sourcePaths.length) throw new Error('No canonical source components found for architecture subsystem: ' + subsystem.id);
     const primaryPath = sourcePaths.find(sourcePath => !usedPrimaryPaths.has(sourcePath)) ?? sourcePaths[0];
