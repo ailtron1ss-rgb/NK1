@@ -237,7 +237,7 @@ export function createSparsePlasticityMask(input: {
   const requested = available.filter(id => allowed.has(id));
   if (!available.length || !allowed.size) blockers.push('explicit-parameter-allowlist-required');
   if (requested.some(id => protectedIds.has(id))) blockers.push('protected-parameter-requested');
-  const limit = Math.max(1, Math.floor(available.length * maximumFraction));
+  const limit = Math.floor(available.length * maximumFraction);
   const selectedParameterIds = requested.filter(id => !protectedIds.has(id)).slice(0, limit);
   if (!selectedParameterIds.length) blockers.push('empty-sparse-update-mask');
   return { accepted: blockers.length === 0, selectedParameterIds, blockers: [...new Set(blockers)] };
