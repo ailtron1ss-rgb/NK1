@@ -483,7 +483,8 @@ function analyzeOption(
       basis,
       evidenceRefs: Array.isArray(raw.evidenceRefs) ? raw.evidenceRefs.map(x => clean(x, 180)).filter(Boolean).slice(0, 8) : [],
       assumptionRefs: Array.isArray(raw.assumptionRefs) ? raw.assumptionRefs.map(x => clean(x, 128)).filter(Boolean).slice(0, 8) : [],
-      baselineProbability01: boundedNumber(raw.baselineProbability01, 0, 1) ? raw.baselineProbability01 : null,
+      baselineProbability01: typeof raw.baselineProbability01 === 'number' && Number.isFinite(raw.baselineProbability01)
+        ? clamp(raw.baselineProbability01) : null,
     };
     const confidence = assumptionConfidence(node, assumptions);
     nodes.set(id, { ...node, effectiveConfidence01: confidence.confidence01, missingAssumptionRefs: confidence.missing });
