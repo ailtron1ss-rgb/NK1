@@ -380,8 +380,9 @@ export class OpenLoopRadar {
     return this.state.records.flatMap(record => {
       if (TERMINAL.has(record.status)) return [];
       const blockedBy = record.dependencies.filter(id => !this.isSatisfied(id));
-      const effectiveStatus = record.expiresAt !== null && record.expiresAt <= now
-        ? 'expired' : blockedBy.length ? 'blocked' : 'open';
+      const effectiveStatus: OpenLoopCandidate['effectiveStatus'] =
+        record.expiresAt !== null && record.expiresAt <= now
+          ? 'expired' : blockedBy.length ? 'blocked' : 'open';
       const overdueMs = record.dueAt !== null ? Math.max(0, now - record.dueAt) : 0;
       const dueSoon = record.dueAt !== null && record.dueAt > now && record.dueAt - now <= dueSoonMs;
       const dependencyUnblocked = record.unblockedAt > 0 && record.unblockedAt > record.lastSurfacedAt;
