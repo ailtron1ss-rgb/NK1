@@ -1,6 +1,6 @@
 import type { ActionGateway, ToolDefinition } from '../system/ActionGateway.ts';
 import type { FutureSimulator } from './FutureSimulator.ts';
-import type { ConsequenceEcologyRequest } from './ConsequenceEcology.ts';
+import type { ConsequenceEcologyRequest, ConsequenceGoalContext, ConsequenceNegativeSpaceContext } from './ConsequenceEcology.ts';
 
 export interface ConsequenceEcologyContextProviders {
   goalEcology?: () => unknown;
@@ -107,8 +107,8 @@ export class ConsequenceEcologyToolAdapter {
       execute: async input => {
         const request = input as unknown as ConsequenceEcologyRequest;
         const result = this.#simulator.analyzeConsequences(request, {
-          goalEcology: safeRead(this.#providers.goalEcology),
-          negativeSpace: safeRead(this.#providers.negativeSpace),
+          goalEcology: safeRead(this.#providers.goalEcology) as ConsequenceGoalContext | null,
+          negativeSpace: safeRead(this.#providers.negativeSpace) as ConsequenceNegativeSpaceContext | null,
         });
         return resultEnvelope({
           replayed: result.replayed,
