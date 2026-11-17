@@ -174,7 +174,7 @@ Title: ${safeOpenLoopTitle}
 Kind: ${safeOpenLoopKind}
 Surfacing reason: ${safeOpenLoopReason}
 ${safeOpenLoopOverdueDays > 0 ? `It is overdue by approximately ${safeOpenLoopOverdueDays} day(s).\n` : ''}
-Mention it naturally only if it fits the conversation. Ask whether the user still wants to revisit or continue it. Do not imply that it is complete, do not pressure the user, and do not execute it. A reminder is not authorization to take action.`,
+Mention it naturally only if it fits the conversation. Ask whether the user still wants to revisit or continue it. Never claim it is complete, do not pressure the user, and do not execute it. A reminder is not authorization to take action.`,
     }] : []),
     {
       id: 'chosen-inner-topic', slot: 'user', priority: 'critical', required: true,

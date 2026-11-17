@@ -357,6 +357,8 @@ export class OpenLoopRadar {
     if (normalized.verifiedAt < record.createdAt) throw new RangeError('closure-evidence-predates-obligation');
     record.status = 'fulfilled';
     record.closureEvidence = normalized;
+    record.pendingSurfacingInitiativeId = null;
+    record.pendingSurfacingLeaseUntil = 0;
     record.updatedAt = now;
     this.reconcileDependencies();
     return structuredClone(record);
@@ -368,6 +370,8 @@ export class OpenLoopRadar {
     if (!cancellationReason) throw new TypeError('cancellation-reason-required');
     record.status = 'cancelled';
     record.cancellationReason = cancellationReason;
+    record.pendingSurfacingInitiativeId = null;
+    record.pendingSurfacingLeaseUntil = 0;
     record.updatedAt = this.safeNow();
     this.reconcileDependencies();
     return structuredClone(record);
@@ -381,6 +385,8 @@ export class OpenLoopRadar {
     record.status = record.dependencies.some(dependency => !this.isSatisfied(dependency)) ? 'blocked' : 'open';
     record.closureEvidence = null;
     record.cancellationReason = null;
+    record.pendingSurfacingInitiativeId = null;
+    record.pendingSurfacingLeaseUntil = 0;
     record.updatedAt = this.safeNow();
     record.unblockedAt = 0;
     record.description = [record.description, `Reopened: ${note}`].filter(Boolean).join('\n').slice(0, MAX_TEXT);

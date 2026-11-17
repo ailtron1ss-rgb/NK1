@@ -168,9 +168,33 @@ assert.equal(restoredInitiativeRadar.acknowledgeInitiative(secondInitiativeId), 
 assert.equal(restoredInitiativeRadar.acknowledgeInitiative(secondInitiativeId), false,
   'delivered initiative acknowledgement must be idempotent');
 assert.equal(restoredInitiativeRadar.snapshot().records[0].lastSurfacedAt, now);
-assert.equal(restoredInitiativeRadar.scan({ now, reminderCooldownMs: 0 })
+assert.equal(restoredInitiativeRadar.scan({ now, reminderCooldownMs: 60_000 })
   .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, false,
-  'delivered proactive reminder must respect the reminder cooldown');
+  'delivered proactive reminder must respect a positive reminder cooldown');
+
+const terminalLeaseRadar = new OpenLoopRadar(() => now);
+const terminalFulfilled = terminalLeaseRadar.register({
+  title: 'Finish accepted review', kind: 'task', owner: 'user', accepted: true,
+  source: 'terminal-lease-test', dueAt: now - 1,
+});
+terminalLeaseRadar.reserveForInitiative(terminalFulfilled.id, 'soc:open-loop:terminal:fulfilled');
+terminalLeaseRadar.fulfill(terminalFulfilled.id, {
+  kind: 'user-confirmation', reference: 'terminal-fulfillment', verifiedAt: now,
+});
+assert.equal(terminalLeaseRadar.snapshot().records[0].pendingSurfacingInitiativeId, null,
+  'fulfillment must release the autonomous dialogue reservation');
+const terminalCancelled = terminalLeaseRadar.register({
+  title: 'Cancel accepted review', kind: 'task', owner: 'user', accepted: true,
+  source: 'terminal-lease-test', dueAt: now - 1,
+});
+terminalLeaseRadar.reserveForInitiative(terminalCancelled.id, 'soc:open-loop:terminal:cancelled');
+terminalLeaseRadar.cancel(terminalCancelled.id, 'No longer required');
+assert.equal(terminalLeaseRadar.snapshot().records.find(row => row.id === terminalCancelled.id)?.pendingSurfacingInitiativeId, null,
+  'cancellation must release the autonomous dialogue reservation');
+const terminalRestored = new OpenLoopRadar(() => now);
+terminalRestored.restore(terminalLeaseRadar.snapshot());
+assert.equal(terminalRestored.snapshot().records.length, 2,
+  'terminal obligations must remain restorable after their active reservation is cleared');
 
 const leaseRadar = new OpenLoopRadar(() => now);
 const leaseItem = leaseRadar.register({
