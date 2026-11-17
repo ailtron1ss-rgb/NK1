@@ -1817,6 +1817,17 @@ async function route(req, res) {
             if (status === 428) result.note = 'Supply a stable Idempotency-Key for the whole logical skill invocation. Reuse it for approval continuation and retries; no skill step was executed.';
             return json(res, status, result);
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/neural-prosthesis') {
+            return json(res, 200, {
+                ok: true,
+                configured: NEURAL_PROSTHESIS_PROVIDER.configured(),
+                endpoint: NEURAL_PROSTHESIS_PROVIDER.endpoint(),
+                model: NEURAL_PROSTHESIS_PROVIDER.model,
+                adapterId: NEURAL_PROSTHESIS_PROVIDER.adapterId,
+                modelEcology: runtime.core.p40ModelEcologySnapshot(),
+                note: 'Optional loopback-only Transformers residual backend. Adapter artifacts remain inactive unless the host allowlists the exact manifest digest.',
+            });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/semantic-intelligence') {
             return json(res, 200, { ok: true, semanticIntelligence: runtime.core.p40SemanticSnapshot(), summary: runtime.core.p40SemanticSummary(), note: 'P40 semantic intelligence state and summary; not evidence of subjective consciousness.' });
         }
