@@ -62,6 +62,12 @@ export interface LanguageResponse {
   text: string;
   backend: string;
   latencyMs: number;
+  /** Receipt that a compatible adapter sent NK1 hints to its template engine; not proof that the template used them. */
+  providerControlReceipt?: {
+    provider:'llama.cpp';
+    templateKwargsSent:true;
+    featureSchema:string;
+  };
 }
 
 export type LanguageInvoker = (request: LanguageRequest) => Promise<LanguageResponse>;
