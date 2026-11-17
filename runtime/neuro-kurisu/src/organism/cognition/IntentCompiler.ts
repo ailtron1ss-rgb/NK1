@@ -97,6 +97,11 @@ const RISK_PATTERNS: ReadonlyArray<[RegExp, string, IntentRiskLevel]> = [
     'external-or-mutating-operation-language', 'medium'],
 ];
 
+function preserveSourceText(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  try { return value.replace(/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/g, ' ').trim(); }
+  catch { return ''; }
+}
 function cleanText(value: unknown, max = MAX_TEXT): string {
   return typeof value === 'string'
     ? value.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max)
