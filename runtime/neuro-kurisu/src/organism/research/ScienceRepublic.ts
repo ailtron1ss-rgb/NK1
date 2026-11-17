@@ -209,6 +209,8 @@ export interface ScienceRepublicCallbacks {
   critique?: (id: string, artifact: SignedOutcomeArtifact) => InventionRecord;
   resolveRoleIdentity?: ScienceRoleIdentityResolver;
   verifyArtifactBytes?: ScienceArtifactBytesVerifier;
+  /** Verifies candidate provenance against the runtime's current capture owner. */
+  verifyCapturedCandidate?: (candidate: ScienceCandidateProvenance) => boolean;
   now?: () => number;
   id?: () => string;
 }
@@ -488,6 +490,7 @@ export class ScienceRepublic {
   private readonly critiqueDelegate: (id: string, artifact: SignedOutcomeArtifact) => InventionRecord;
   private resolveRoleIdentity?: ScienceRoleIdentityResolver;
   private verifyArtifactBytes?: ScienceArtifactBytesVerifier;
+  private verifyCapturedCandidate?: (candidate: ScienceCandidateProvenance) => boolean;
   readonly inventionLoop: TheInventionLoop;
 
   constructor(
@@ -501,6 +504,7 @@ export class ScienceRepublic {
       globalThis.crypto?.randomUUID?.() ?? 'science-' + Date.now() + '-' + Math.random().toString(16).slice(2));
     this.resolveRoleIdentity = callbacks.resolveRoleIdentity;
     this.verifyArtifactBytes = callbacks.verifyArtifactBytes;
+    this.verifyCapturedCandidate = callbacks.verifyCapturedCandidate;
     this.recordOutcomeDelegate = callbacks.recordOutcome ??
       ((recordId, artifact) => this.inventionLoop.recordOutcome(recordId, artifact));
     this.critiqueDelegate = callbacks.critique ??
@@ -646,6 +650,15 @@ export class ScienceRepublic {
     }
   }
 
+  private isHostOwnedCapturedCandidate(candidate: ScienceCandidateProvenance): boolean {
+    if (!this.verifyCapturedCandidate) return false;
+    try {
+      return this.verifyCapturedCandidate(structuredClone(candidate)) === true;
+    } catch {
+      return false;
+    }
+  }
+
   private touch(record: ScienceRepublicRecord): void {
     record.updatedAt = Math.max(record.updatedAt + 1, this.timestamp());
   }
@@ -723,6 +736,9 @@ export class ScienceRepublic {
     const actors = normalizeActors(safe.actors);
     const candidate = safe.candidate === undefined ? undefined : normalizeCandidate(safe.candidate);
     if (!title || !domain || !observation) throw new Error('science-discovery-fields-required');
+    if (candidate && !this.isHostOwnedCapturedCandidate(candidate)) {
+      throw new Error('science-captured-candidate-not-host-owned');
+    }
     if (candidate && this.state.records.some(row => row.candidate?.experimentId === candidate.experimentId)) {
       throw new Error('science-candidate-already-admitted');
     }
@@ -1156,7 +1172,9 @@ export class ScienceRepublic {
     const seenCandidateIds = new Set<string>();
     let quarantined = 0;
     for (const item of incoming.slice(0, MAX_RESTORE_RECORDS)) {
-      if (!verifyRecord(item) || !this.roleBindingsValid(item) || seenIds.has(item.id) ||
+      if (!verifyRecord(item) || !this.roleBindingsValid(item) ||
+          (item.candidate && !this.isHostOwnedCapturedCandidate(item.candidate)) ||
+          seenIds.has(item.id) ||
           (item.candidate && seenCandidateIds.has(item.candidate.experimentId))) {
         quarantined += 1;
         continue;

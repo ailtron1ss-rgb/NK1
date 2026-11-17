@@ -138,6 +138,15 @@ assert.equal(Object.keys(science.trust.roleSubjects).length, 6);
 assert.equal(science.candidate.experimentId, generated.id);
 assert.equal(runtime.scientificMethod.snapshot().projects.length, 1,
   'Science Republic must reuse the existing ScientificMethod project');
+assert.throws(() => runtime.scienceRepublic.discover({
+  title: captured.question,
+  domain: 'memory retrieval',
+  observation: 'Attempt to inject a fabricated candidate through the lower-level discovery API.',
+  evidence: { reference: 'artifact://science/forged-candidate.json', sha256: digest('forged-candidate') },
+  actors,
+  candidate: { ...captured, candidateFingerprint: digest('forged-candidate-fingerprint') },
+}), /science-captured-candidate-not-host-owned/,
+'a candidate must be verified against the runtime capture owner even through direct discover()');
 assert.throws(() => runtime.openScienceCaseFromCapturedCandidate({
   candidateId: captured.id,
   domain: 'memory retrieval',
@@ -500,4 +509,34 @@ assert.equal(quarantined.scienceRepublic.metrics().quarantinedRecords, 1,
 assert.equal(quarantined.inventionLoop.metrics().accepted, 1,
   'a corrupt Science Republic projection must not delete the canonical signed invention');
 
-console.log('SCIENCE_REPUBLIC=PASS roles+captured-candidate+signed-outcomes+replication+holdout+audit+restore');
+// Even after recomputing the local hash chain, a forged captured-candidate
+// fingerprint cannot be restored unless it matches the runtime-owned capture
+// and its still-existing ScientificMethod project.
+const forgedCandidateSnapshot = runtime.snapshot();
+const forgedCandidateRecord = forgedCandidateSnapshot.scienceRepublic.records[0];
+forgedCandidateRecord.candidate.candidateFingerprint = digest('forged-runtime-capture-fingerprint');
+const { auditTrail: candidateTrail, ...candidateCore } = forgedCandidateRecord;
+candidateTrail[candidateTrail.length - 1].snapshot = structuredClone(candidateCore);
+previousHash = '0'.repeat(64);
+for (const event of candidateTrail) {
+  event.previousHash = previousHash;
+  event.hash = digest(canonical({
+    sequence: event.sequence,
+    action: event.action,
+    at: event.at,
+    previousHash,
+    snapshot: event.snapshot,
+  }));
+  previousHash = event.hash;
+}
+const candidateQuarantine = new EvidenceResearchSubsystemRuntime(
+  resolveKey,
+  resolveScienceRoleIdentity,
+  verifyScienceArtifactBytes,
+);
+candidateQuarantine.restore(forgedCandidateSnapshot);
+assert.equal(candidateQuarantine.scienceRepublic.metrics().total, 0);
+assert.equal(candidateQuarantine.scienceRepublic.metrics().quarantinedRecords, 1,
+  'the host capture registry must reauthenticate restored candidate provenance');
+
+console.log('SCIENCE_REPUBLIC=PASS roles+host-captured-candidate+signed-outcomes+replication+holdout+audit+restore');

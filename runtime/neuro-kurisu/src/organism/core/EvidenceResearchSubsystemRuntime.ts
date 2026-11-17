@@ -29,6 +29,7 @@ import {
   ScienceRepublic,
   type ScienceArtifact,
   type ScienceActors,
+  type ScienceCandidateProvenance,
   type ScienceRoleIdentityResolver,
   type ScienceArtifactBytesVerifier,
 } from '../research/ScienceRepublic.ts';
@@ -116,6 +117,7 @@ export class EvidenceResearchSubsystemRuntime {
       critique: (id, artifact) => this.recordInventionCritique(id, artifact),
       resolveRoleIdentity: resolveScienceRoleIdentity,
       verifyArtifactBytes: verifyScienceArtifactBytes,
+      verifyCapturedCandidate: candidate => this.isCapturedCandidateCurrent(candidate),
     });
   }
 
@@ -142,6 +144,38 @@ export class EvidenceResearchSubsystemRuntime {
   /** The host may supply its trusted key registry after OrganismCore is constructed. */
   configureInventionVerifierKeyResolver(resolveKey: InventionVerifierKeyResolver): void {
     this.inventionLoop.configureVerifierKeyResolver(resolveKey);
+  }
+
+  private isCapturedCandidateCurrent(candidate: ScienceCandidateProvenance): boolean {
+    const captured = this.capturedCandidates.find(item => item.id === candidate.id);
+    if (!captured ||
+        captured.experimentId !== candidate.experimentId ||
+        captured.source !== candidate.source ||
+        captured.question !== candidate.question ||
+        captured.hypothesis !== candidate.hypothesis ||
+        captured.prediction !== candidate.prediction ||
+        captured.scientificProjectId !== candidate.scientificProjectId ||
+        captured.linkedGoal !== candidate.linkedGoal ||
+        captured.createdAt !== candidate.createdAt ||
+        captured.createdTick !== candidate.createdTick ||
+        captured.candidateFingerprint !== candidate.candidateFingerprint ||
+        captured.status !== candidate.status ||
+        captured.inventionId !== candidate.inventionId) return false;
+
+    const project = this.scientificMethod.snapshot().projects.find(
+      item => item.id === captured.scientificProjectId,
+    );
+    if (!project ||
+        project.question !== captured.question ||
+        !project.hypotheses.some(item => item.text === captured.hypothesis) ||
+        !project.predictions.includes(captured.prediction) ||
+        !project.provenance.includes('experiment:' + captured.experimentId)) return false;
+
+    const sourceMarker = project.provenance.find(value => value.startsWith('source:'));
+    if (sourceMarker && sourceMarker !== 'source:' + captured.source) return false;
+    const goalMarker = project.provenance.find(value => value.startsWith('goal:'));
+    if (goalMarker && goalMarker !== 'goal:' + (captured.linkedGoal ?? '')) return false;
+    return true;
   }
 
   private capturedCandidateFingerprint(experiment: IntrinsicExperiment): string {
