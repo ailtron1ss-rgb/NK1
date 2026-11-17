@@ -1,6 +1,12 @@
 import type { WorldModel2 } from './WorldModel2.ts';
 import { SharedFutureEngine, defaultSharedFutureState, type SharedFutureState, type SharedFutureOutcomeRecord } from './SharedFutureEngine.ts';
 import { WorldForge, type WorldForgeCase, type WorldForgeEvaluation, type WorldForgeState, type WorldForgeStepResult } from './WorldForge.ts';
+import {
+  ConsequenceEcologyEngine,
+  type ConsequenceEcologyContext,
+  type ConsequenceEcologyRequest,
+  type ConsequenceEcologyState,
+} from './ConsequenceEcology.ts';
 
 export interface FutureSimulationResult {
   path: Array<{ action: string; reward: number; uncertainty: number; confidence: number }>;
@@ -14,17 +20,30 @@ export interface FutureSimulatorState {
   version: number;
   /** Optional for backward compatibility with pre-Shared-Future snapshots. */
   sharedFuture?: SharedFutureState;
+  /** Optional for backward compatibility with snapshots written before Consequence Ecology. */
+  consequenceEcology?: ConsequenceEcologyState;
 }
 export const defaultFutureSimulator = (): FutureSimulatorState => ({
   runs: 0,
   last: [],
   version: 1,
   sharedFuture: defaultSharedFutureState(),
+  consequenceEcology: {
+    version: 1,
+    analyses: [],
+    totalAnalyses: 0,
+    rejectedAnalyses: 0,
+    feedbackLoopsObserved: 0,
+    truncatedAnalyses: 0,
+    lastAt: 0,
+  },
 });
 
 export class FutureSimulator {
   private state = defaultFutureSimulator();
   readonly sharedFuture = new SharedFutureEngine();
+  /** Consequence Ecology is an analysis/evidence ledger, never an action executor. */
+  readonly consequenceEcology = new ConsequenceEcologyEngine();
   /** Ephemeral synthetic laboratory; evaluator state is never persisted. */
   readonly #worldForge = new WorldForge();
 
@@ -48,6 +67,16 @@ export class FutureSimulator {
     this.#worldForge.releaseEvaluator(scenarioId);
   }
 
+  analyzeConsequences(
+    request: ConsequenceEcologyRequest,
+    context: Omit<ConsequenceEcologyContext, 'scenario'> = {},
+  ) {
+    const scenarioId = typeof request?.scenarioId === 'string' ? request.scenarioId.trim() : '';
+    const scenario = scenarioId ? this.sharedFuture.getScenario(scenarioId) : null;
+    if (scenarioId && !scenario) throw new Error('consequence-scenario-not-found');
+    return this.consequenceEcology.analyze(request, { ...context, scenario });
+  }
+
   restore(
     s: FutureSimulatorState | undefined,
     options: { validateIndependentlyVerifiedOutcome?: (outcome: SharedFutureOutcomeRecord) => boolean } = {},
@@ -59,6 +88,7 @@ export class FutureSimulator {
     };
     // Older snapshots do not have this field; restore() deliberately keeps them valid.
     this.sharedFuture.restore(s?.sharedFuture, options.validateIndependentlyVerifiedOutcome);
+    this.consequenceEcology.restore(s?.consequenceEcology);
   }
 
   simulate(model: WorldModel2, actions: string[], baseReward: number): FutureSimulationResult {
@@ -84,6 +114,7 @@ export class FutureSimulator {
     return {
       ...structuredClone(this.state),
       sharedFuture: this.sharedFuture.snapshot(),
+      consequenceEcology: this.consequenceEcology.snapshot(),
     };
   }
 }
