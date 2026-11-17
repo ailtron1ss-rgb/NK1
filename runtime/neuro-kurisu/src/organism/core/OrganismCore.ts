@@ -4940,13 +4940,20 @@ export class OrganismCore {
             contradictions: this.cognitiveRuntime.contradictions.snapshot(),
             skills: this.cognitiveRuntime.skillLibrary.snapshot(),
         });
-        for (const signal of cognitiveHealth.newSignals) {
+        for (const signal of cognitiveHealth.activeSignals) {
             this.cognitiveRuntime.cognitiveField.addPressure(
                 'contradiction',
                 `cognitive health ${signal.metric}: ${signal.reason}`,
                 signal.severity === 'critical' ? .08 : .035,
+                [signal.id],
             );
         }
+        const pauseSkillPromotion = cognitiveHealth.recommendedAction === 'pause-risky-learning';
+        this.cognitiveRuntime.skillLibrary.setPromotionPaused(
+            pauseSkillPromotion,
+            pauseSkillPromotion ? 'cognitive-immune:critical-health-signal' : '',
+        );
+        this.persisted.facets.cognition.skills = this.cognitiveRuntime.skillLibrary.snapshot();
         this.persisted.facets.cognition.immune = this.cognitiveRuntime.cognitiveImmune.snapshot();
         this.persisted.facets.advanced.p65EpistemicLedger = this.memorySubsystem.p65EpistemicLedger.snapshot();
         const p36SelfDevelopmentDue = cognitiveSpinePlan.run.research || (!hasExternalSignal && state.tick % 8 === 0);
