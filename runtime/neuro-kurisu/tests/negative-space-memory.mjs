@@ -232,7 +232,8 @@ malformed.restore({
 });
 const malformedState = malformed.snapshot().negativeSpace;
 assert.equal(malformedState.records.length, 1);
-assert.equal(malformedState.records[0].reviewStatus, 'review-eligible');
+assert.equal(malformedState.records[0].reviewStatus, 'reopened');
+assert.equal(malformed.negativeSpaceReviewQueue().length, 0, 'unverified restored snapshots must not restore review authority');
 assert.deepEqual(malformedState.records[0].alternatives.map(row => row.action), ['explore', 'verify']);
 assert.equal(malformedState.records[0].alternatives[0].expectedOutcome01, 1);
 assert.equal(malformedState.records[0].alternatives[0].reopenedAt, undefined);

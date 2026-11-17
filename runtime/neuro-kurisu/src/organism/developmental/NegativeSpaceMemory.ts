@@ -96,6 +96,7 @@ const MAX_RECORDS = 128;
 const MAX_ALTERNATIVES = 4;
 const MAX_CONTEXT_RESULTS = 24;
 const SIGNIFICANCE_THRESHOLD01 = 0.72;
+const MIN_REVIEW_VERIFICATION01 = 0.5;
 const DEFAULT_REOPEN_CONDITION: NegativeSpaceReopenCondition = {
   signal: 'outcome.shortfall01',
   operator: 'gte',
@@ -143,6 +144,10 @@ function normalizeAlternative(input: NegativeSpaceAlternativeInput, chosen: stri
     reopenWhen: suppliedConditions.length ? suppliedConditions : [{ ...DEFAULT_REOPEN_CONDITION }],
     reviewEligible: false,
   };
+}
+
+function hasVerifiedOutcome(record: NegativeSpaceRecord): boolean {
+  return (record.outcomeVerified01 ?? 0) >= MIN_REVIEW_VERIFICATION01;
 }
 
 function conditionMatches(condition: NegativeSpaceReopenCondition, signals: Record<string, number>): boolean {
@@ -257,6 +262,15 @@ export class NegativeSpaceMemory {
   evaluateReviewConditions(decisionId: string, signals: Record<string, number>, at = Date.now()): string[] {
     const record = this.state.records.find(candidate => candidate.decisionId === decisionId);
     if (!record || record.chosenActualOutcome01 === null) return [];
+    if (!hasVerifiedOutcome(record)) {
+      for (const alternative of record.alternatives) {
+        if (alternative.reopenedAt === undefined) alternative.reviewEligible = false;
+      }
+      record.reviewStatus = record.alternatives.some(alternative => alternative.reopenedAt !== undefined)
+        ? 'reopened' : 'retained';
+      this.state.lastAt = Math.max(this.state.lastAt, finite(at, Date.now()));
+      return [];
+    }
     const eligible: string[] = [];
     for (const alternative of record.alternatives) {
       if (alternative.reopenedAt !== undefined) continue;
@@ -279,7 +293,7 @@ export class NegativeSpaceMemory {
     const record = this.state.records.find(candidate => candidate.decisionId === decisionId);
     const alternative = record?.alternatives.find(candidate => candidate.action === action);
     const normalizedReason = cleanText(reason);
-    if (!record || !alternative || !alternative.reviewEligible || !normalizedReason) return false;
+    if (!record || !hasVerifiedOutcome(record) || !alternative || !alternative.reviewEligible || !normalizedReason) return false;
     alternative.reviewEligible = false;
     alternative.reopenedAt = finite(at, Date.now());
     alternative.reopenReason = normalizedReason;
@@ -289,14 +303,14 @@ export class NegativeSpaceMemory {
   }
 
   reviewQueue(): Array<{ decisionId: string; chosen: string; alternative: NegativeSpaceAlternative; outcomeShortfall01: number }> {
-    return this.state.records.flatMap(record => record.alternatives
+    return this.state.records.flatMap(record => hasVerifiedOutcome(record) ? record.alternatives
       .filter(alternative => alternative.reviewEligible)
       .map(alternative => ({
         decisionId: record.decisionId,
         chosen: record.chosen,
         alternative: structuredClone(alternative),
         outcomeShortfall01: record.outcomeShortfall01 ?? 0,
-      })));
+      })) : []);
   }
 
   restore(snapshot?: Partial<NegativeSpaceMemoryState> | null): void {
@@ -311,6 +325,8 @@ export class NegativeSpaceMemory {
       if (!decisionId || !chosen || !Array.isArray(raw.alternatives)) continue;
       const actual = raw.chosenActualOutcome01 === null || raw.chosenActualOutcome01 === undefined
         ? null : clamp01(raw.chosenActualOutcome01);
+      const verifiedOutcome01 = raw.outcomeVerified01 === null || raw.outcomeVerified01 === undefined
+        ? null : clamp01(raw.outcomeVerified01);
       const alternatives: NegativeSpaceAlternative[] = [];
       for (const sourceValue of raw.alternatives.slice(0, MAX_ALTERNATIVES)) {
         const source = sourceValue && typeof sourceValue === 'object' ? sourceValue as Record<string, any> : null;
@@ -323,7 +339,8 @@ export class NegativeSpaceMemory {
         const reopened = reopenAtIsValid && Boolean(reopenReason);
         alternatives.push({
           ...normalized,
-          reviewEligible: actual !== null && source.reviewEligible === true && !reopened,
+          reviewEligible: actual !== null && (verifiedOutcome01 ?? 0) >= MIN_REVIEW_VERIFICATION01
+            && source.reviewEligible === true && !reopened,
           ...(reopened ? { reopenedAt: finite(source.reopenedAt), reopenReason } : {}),
         });
       }
@@ -346,7 +363,7 @@ export class NegativeSpaceMemory {
         outcomeShortfall01: raw.outcomeShortfall01 === null || raw.outcomeShortfall01 === undefined ? null : clamp01(raw.outcomeShortfall01),
         chosenActualReward01: raw.chosenActualReward01 === null || raw.chosenActualReward01 === undefined ? null : clamp01(raw.chosenActualReward01),
         chosenSurprise01: raw.chosenSurprise01 === null || raw.chosenSurprise01 === undefined ? null : clamp01(raw.chosenSurprise01),
-        outcomeVerified01: raw.outcomeVerified01 === null || raw.outcomeVerified01 === undefined ? null : clamp01(raw.outcomeVerified01),
+        outcomeVerified01: verifiedOutcome01,
         outcomeIndependent01: raw.outcomeIndependent01 === null || raw.outcomeIndependent01 === undefined ? null : clamp01(raw.outcomeIndependent01),
         outcomeSource: ['external-evidence', 'world-transition', 'internal', 'unknown'].includes(raw.outcomeSource) ? raw.outcomeSource : 'unknown',
         significance: {

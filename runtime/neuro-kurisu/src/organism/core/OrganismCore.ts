@@ -9545,7 +9545,7 @@ export class OrganismCore {
                 ],
                 outcomeReward01: gatedReward01,
                 outcomeSurprise01: gatedSurprise01,
-                outcomeVerified01: clamp(learning.verified01 ?? (verifiedPolicyOutcome ? 1 : 0)),
+                outcomeVerified01: verifiedPolicyOutcome ? 1 : clamp(learning.verified01),
                 outcomeIndependent01: clamp(learning.independent01 ?? 0),
                 outcomeSource: projectEvidenceExternal ? 'external-evidence' : outcome.worldTransition ? 'world-transition' : 'internal',
             });
