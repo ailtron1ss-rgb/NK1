@@ -2102,10 +2102,12 @@ async function route(req, res) {
             return json(res, 200, { ok:true, recovery:runtime.core.actionRecoveryQueueSnapshot(limit), note:'Read-only, redacted queue of durable actions whose external outcome needs reconciliation. This endpoint does not execute or retry actions.' });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/constitution') {
+            if (!runtimeReady) return json(res, 503, { ok:false, error:'organism-runtime-not-ready' });
             const snapshot = runtime.core.constitutionEvolutionSnapshot();
             return json(res, 200, { ok:true, ...snapshot, reviewAuthority:constitutionReviewAuthoritySnapshot(TRUSTED_CONSTITUTION_REVIEW_KEYS) });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/constitution/proposals') {
+            if (!runtimeReady) return json(res, 503, { ok:false, error:'organism-runtime-not-ready' });
             const input = await body(req);
             if (!input || typeof input !== 'object' || Array.isArray(input)) return json(res, 400, { ok:false, error:'constitution-proposal-object-required' });
             // The author identity is derived from the server's authenticated API mode, never from request JSON.
@@ -2120,6 +2122,7 @@ async function route(req, res) {
         }
         const constitutionProposalMatch = url.pathname.match(/^\/api\/organism\/constitution\/proposals\/([A-Za-z0-9._:-]{3,120})\/(review|ratify|activate)$/);
         if (req.method === 'POST' && constitutionProposalMatch) {
+            if (!runtimeReady) return json(res, 503, { ok:false, error:'organism-runtime-not-ready' });
             const proposalId=constitutionProposalMatch[1], action=constitutionProposalMatch[2];
             const proposal=runtime.core.constitutionEvolutionProposal(proposalId);
             if (!proposal) return json(res, 404, { ok:false, error:'constitution-proposal-not-found' });
@@ -2167,6 +2170,7 @@ async function route(req, res) {
             }
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/constitution/rollback') {
+            if (!runtimeReady) return json(res, 503, { ok:false, error:'organism-runtime-not-ready' });
             const input=await body(req);
             const targetVersion=String(input?.targetVersion||'').trim().slice(0,40);
             const reason=String(input?.reason||'').trim().slice(0,1200);
