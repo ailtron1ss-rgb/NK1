@@ -53,6 +53,9 @@ const proposal=engine.propose({id:'omestro20-workflow',authorId:'engineer-1',bas
     mitigations:['Bound evidence retention by size and time.','Never store credentials or personal data in evidence artifacts.']},
   testPlan:['Validate provenance fields.','Reject a workflow with missing holdout evidence.'],submittedAt:1800000000000});
 assert.equal(proposal.status,'pending-review');
+assert.throws(()=>engine.propose({id:'../path-traversal',authorId:'engineer-3',baseVersion:'1.0.0',change:'add',
+  proposedRule:{id:'workflow.invalid-path-id',title:'Invalid path id',statement:'This proposal ID must be rejected before route generation.',domain:'workflow',scope:'Tests.'},
+  motivation:'Reject route-unsafe IDs.',scope:'Tests only.',counterexample:'A proposal ID contains path traversal.',riskAssessment:{level:'low',summary:'No change.',mitigations:['Reject unsafe identifiers.']},testPlan:['Reject the ID before storage.']}),/URL-safe/);
 assert.throws(()=>engine.review(proposal.id,{reviewerId:'engineer-1',candidateDigest:proposal.candidateDigest,decision:'approve',
   invariantsPassed:true,tests:testEvidence,evidenceRefs,rationale:'self review'}),/cannot review their own/);
 const reviewed=engine.review(proposal.id,{reviewerId:'reviewer-1',candidateDigest:proposal.candidateDigest,decision:'approve',
