@@ -1,8 +1,16 @@
 import assert from 'node:assert/strict';
+import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 import { GovernanceSubsystemRuntime } from '../src/organism/core/GovernanceSubsystemRuntime.ts';
+
+const HOST_KEY = 'omestro-20-runtime-signing-key-32-bytes-minimum';
+process.env.NEURO_CONSTITUTION_HMAC_KEY = HOST_KEY;
 
 const first = new GovernanceSubsystemRuntime();
 const engine = first.constitutionEvolution;
+const gateway = new ActionGateway({ live: false });
+let gatewayLedger;
+gateway.setExecutionLedgerPersister(async snapshot => { gatewayLedger = structuredClone(snapshot); });
+
 const proposal = engine.propose({
   id: 'runtime-persistence-rule',
   authorId: 'runtime-test-author',
@@ -34,19 +42,20 @@ engine.review(proposal.id, {
   evidenceRefs: ['ci://omestro20/runtime-persistence'],
   rationale: 'Runtime integration test evidence.'
 });
-engine.ratify(proposal.id, {
-  approverId: 'runtime-test-owner',
-  explicitHumanApproval: true,
-  candidateDigest: proposal.candidateDigest,
-  approvalRef: 'test-approval://omestro20/runtime-persistence',
-  rationale: 'Explicit test fixture approval.'
-});
-engine.activate(proposal.id, 1800000000200);
+
+const ratification = await engine.requestRatification(proposal.id, gateway);
+assert.equal(gatewayLedger.permissions.requests.at(-1).id, ratification.approvalRequestId);
+assert.equal((await gateway.resolveToolApproval(ratification.approvalRequestId, true, 'runtime-test-host-owner')).ok, true);
+const ratified = await engine.ratify(proposal.id, { approvalId: ratification.approvalRequestId }, gateway);
+assert.equal(ratified.approval.approverId, 'runtime-test-host-owner');
+const active = engine.activate(proposal.id, 1800000000200);
+assert.equal(active.version, '1.1.0');
 
 const snapshot = first.snapshot();
 assert.equal(snapshot.constitutionEvolution.schemaVersion, 1);
 assert.equal(snapshot.constitutionEvolution.active.version, '1.1.0');
 assert.equal(snapshot.constitutionEvolution.active.rules.length, 1);
+assert.ok(/^[a-f0-9]{64}$/.test(snapshot.constitutionEvolution.integrityMac));
 assert.ok(Array.isArray(snapshot.constitutionEvolution.auditEvents));
 
 const restored = new GovernanceSubsystemRuntime();
@@ -56,7 +65,7 @@ assert.equal(restored.constitutionEvolution.activeConstitution().digest, snapsho
 assert.equal(restored.constitutionEvolution.activeConstitution().rules[0].id, 'workflow.runtime-provenance');
 
 const tampered = structuredClone(snapshot);
-tampered.constitutionEvolution.protectedInvariantDigest = 'f'.repeat(64);
+tampered.constitutionEvolution.proposals[0].reviews[0].reviewerId = 'tampered-reviewer';
 const failClosed = new GovernanceSubsystemRuntime();
 failClosed.restoreFromPersisted({ advanced: tampered });
 assert.equal(failClosed.constitutionEvolution.activeConstitution().version, '1.0.0');
