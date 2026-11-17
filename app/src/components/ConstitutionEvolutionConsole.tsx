@@ -74,11 +74,25 @@ export function ConstitutionEvolutionConsole() {
     if (change !== "retire" && (!title.trim() || !statement.trim() || (change === "add" && !ruleId.trim()))) {
       setError("Rule ID, title, and statement are required for add/amend."); return;
     }
-    const proposedRule = change === "retire" ? undefined : {
-      id: change === "add" ? ruleId.trim() : selectedRule.id,
-      title: title.trim(), statement: statement.trim(),
-      domain: change === "add" ? domain : selectedRule.domain, scope: scope.trim(),
-    };
+    let proposedRule: AnyRecord | undefined;
+    if (change === "add") {
+      proposedRule = {
+        id: ruleId.trim(), title: title.trim(), statement: statement.trim(),
+        domain, scope: scope.trim(),
+      };
+    } else if (change === "amend") {
+      // Re-resolve at submit time so a stale/removed selection can never be
+      // dereferenced or turned into an amendment against an unknown rule.
+      const target = rules.find(rule => rule.id === targetRuleId && rule.enabled);
+      if (!target) {
+        setError("The selected mutable rule is no longer active. Refresh and select an active rule.");
+        return;
+      }
+      proposedRule = {
+        id: target.id, title: title.trim(), statement: statement.trim(),
+        domain: target.domain, scope: scope.trim(),
+      };
+    }
     const payload = {
       baseVersion: state?.active?.version, change,
       ...(change !== "add" ? { targetRuleId } : {}), ...(proposedRule ? { proposedRule } : {}),
