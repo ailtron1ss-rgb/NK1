@@ -54,6 +54,8 @@ assert.deepEqual(record.alternatives.map(row => row.action), ['explore', 'verify
 assert.equal(record.alternatives[0].rejectionReason, alternatives[0].rejectionReason);
 assert.deepEqual(record.alternatives[0].constraints, alternatives[0].constraints);
 assert.equal(record.alternatives[0].reviewEligible, true);
+assert.equal(engine.negativeSpaceReviewQueue().length, 2);
+assert.equal(engine.negativeSpaceDiagnostics().reviewEligible, 2);
 assert.ok(record.outcomeEvidence.includes('postcondition:verified'));
 
 assert.equal(engine.markNegativeSpaceAlternativeReopened(context.decisionId, 'explore', 'new evidence supports a retry', 250), true);
@@ -63,6 +65,7 @@ record = snapshot.negativeSpace.records[0];
 assert.equal(record.reviewStatus, 'review-eligible', 'the other alternative remains queued for review');
 assert.equal(record.alternatives[0].reviewEligible, false);
 assert.equal(record.alternatives[1].reviewEligible, true);
+assert.equal(engine.negativeSpaceReviewQueue().length, 1);
 assert.equal(record.alternatives[0].reopenReason, 'new evidence supports a retry');
 
 // Small decisions must not create a permanent counterfactual-memory trail.

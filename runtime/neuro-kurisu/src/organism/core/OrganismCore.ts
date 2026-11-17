@@ -11267,6 +11267,12 @@ export class OrganismCore {
         };
     }
     cognitiveOrganismContinuityDiagnostics() { return this.developmentalNeural.cognitiveOrganismContinuity.diagnostics(); }
+    negativeSpaceMemorySnapshot() { return this.cognitiveRuntime.regretEngine.snapshot().negativeSpace; }
+    negativeSpaceMemoryDiagnostics() { return this.cognitiveRuntime.regretEngine.negativeSpaceDiagnostics(); }
+    negativeSpaceMemoryReviewQueue() { return this.cognitiveRuntime.regretEngine.negativeSpaceReviewQueue(); }
+    negativeSpaceMemoryMarkReopened(decisionId: string, action: string, reason: string, at?: number) {
+        return this.cognitiveRuntime.regretEngine.markNegativeSpaceAlternativeReopened(decisionId, action, reason, at);
+    }
     cognitiveOrganismContinuitySnapshot() { return this.developmentalNeural.cognitiveOrganismContinuity.snapshot(); }
     cognitiveOrganismContinuityBenchmark() { return this.developmentalNeural.cognitiveOrganismContinuity.benchmark(); }
     cognitiveOrganismContinuitySelfAudit() { return this.developmentalNeural.cognitiveOrganismContinuity.selfAudit(); }
