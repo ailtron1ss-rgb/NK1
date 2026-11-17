@@ -574,18 +574,26 @@ function isValidEvaluationReport(
 ): value is NeuroPlasticEvaluationReport {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const report = value as NeuroPlasticEvaluationReport;
-  const { reportId, ...summary } = report;
+  const { reportId, reportFingerprint: signedEvidenceFingerprint, evaluatorSignature, ...evidence } = report;
   if (report.adapterId !== adapterId ||
       report.holdoutFingerprint !== holdoutFingerprint ||
       report.automaticActivation !== false ||
       typeof report.eligible !== 'boolean' ||
       !Array.isArray(report.reasons) ||
       !HASH.test(String(report.evaluationFingerprint || '')) ||
-      !HASH.test(String(report.evaluatorSignature || '')) ||
+      !HASH.test(String(signedEvidenceFingerprint || '')) ||
+      !HASH.test(String(evaluatorSignature || '')) ||
       !report.evaluationId || !report.evaluatorId ||
       !HASH.test(String(reportId || ''))) return false;
   try {
-    return reportFingerprint(summary) === reportId;
+    const decisionEvidence = evidence as NeuroPlasticEvaluationEvidence;
+    const completeSummary = {
+      ...decisionEvidence,
+      reportFingerprint: signedEvidenceFingerprint,
+      evaluatorSignature,
+    };
+    return evaluationEvidenceFingerprint(decisionEvidence) === signedEvidenceFingerprint &&
+      reportFingerprint(completeSummary) === reportId;
   } catch {
     return false;
   }
@@ -701,6 +709,7 @@ export class NeuroPlasticAdapterRegistry {
           evaluatorId: evaluation.evaluatorId,
           evaluatedAt: evaluation.evaluatedAt,
           evaluationFingerprint: evaluation.evaluationFingerprint,
+          reportFingerprint: evaluation.reportFingerprint,
           signature: evaluation.evaluatorSignature,
         } : null;
         const validReport = isValidEvaluationReport(
