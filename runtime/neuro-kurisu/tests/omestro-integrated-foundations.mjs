@@ -187,6 +187,7 @@ const restoredKernel = new OmeStroIntegrationKernel();
 restoredKernel.restore(kernelSnapshot);
 assert.equal(restoredKernel.plasticity.snapshot().trustedObservations, 1);
 assert.equal(restoredKernel.scientificDevelopment.snapshot().controlledExperiments.length, 1);
+assert.equal(restoredKernel.cognitiveImmune.healthSnapshot().inspections, 1);
 
 const baseGenome = {
   version: 1, modules: [{ id: 'core', dependsOn: [], contractRef: 'contract:core' }],
