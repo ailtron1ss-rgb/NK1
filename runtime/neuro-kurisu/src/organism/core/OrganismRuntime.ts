@@ -37,6 +37,7 @@ import { TemporalObjectTracker } from '../body/TemporalObjectTracker.ts';
 import { RealityGroundingController, type RealityGroundingMode } from '../system/RealityGroundingController.ts';
 import { NeuralCausalTraceLedger } from '../system/NeuralCausalTraceLedger.ts';
 import { OpenLoopRadar, type OpenLoopRadarState, type OpenLoopScanOptions } from '../cognition/evolution/OpenLoopRadar.ts';
+import { sanitizeAutonomousTopicText } from '../system/AutonomousSocialInitiativeEngine.ts';
 import { RealityLearningGate } from '../system/RealityLearningGate.ts';
 import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
 import { ExternalPostconditionVerifier } from '../system/ExternalPostconditionVerifier.ts';
@@ -833,7 +834,8 @@ export class OrganismRuntime {
         const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
         let openLoopPromptContext: import('../language/LanguageOrgan.ts').AutonomousOpenLoopPromptContext | undefined;
         if (!externalText && autonomousAgenda) {
-          const dueCandidate = this.openLoopRadar.scan({ reminderCooldownMs: 0 }).find(item => item.shouldSurface);
+          const dueCandidate = this.openLoopRadar.scan({ reminderCooldownMs: 0 }).find(item =>
+            item.shouldSurface && sanitizeAutonomousTopicText(item.record.title, 180) !== null);
           if (dueCandidate) {
             const reserved = await this.persistOpenLoopMutation(() =>
               this.openLoopRadar.reserveForInitiative(dueCandidate.record.id, autonomousAgenda.id));
