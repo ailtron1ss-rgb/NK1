@@ -93,12 +93,14 @@ export class IntentExecutionRuntime {
   private executions: IntentExecutionLink[] = [];
   private readonly clock: () => number;
   private readonly actionGateway: ActionGateway;
+  private readonly options: IntentExecutionRuntimeOptions;
 
   constructor(
     actionGateway: ActionGateway,
     options: IntentExecutionRuntimeOptions = {},
   ) {
     this.actionGateway = actionGateway;
+    this.options = options;
     this.clock = options.clock ?? Date.now;
     this.compiler = new IntentCompiler({
       ...options,

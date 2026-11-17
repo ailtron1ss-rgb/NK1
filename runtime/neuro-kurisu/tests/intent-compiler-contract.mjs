@@ -535,6 +535,25 @@ const autonomousDispatch = await autonomousRuntime.execute(autonomousApproved, {
 assert.equal(autonomousDispatch.executed, true,
   'an internally verified, low-risk CEF decision may pass the exact bounded action through the gateway');
 
+const noVerifierRuntime = new IntentExecutionRuntime(new ActionGateway(), {
+  clock: () => now,
+  approvalKey: 'test-no-autonomous-verifier-key-32bytes',
+});
+const noVerifierDraft = noVerifierRuntime.compile({
+  requestId: 'autonomous-resource-tool-life:no-verifier',
+  text: 'Inspect current state',
+  extraction: {
+    expectedOutcome: 'State summary',
+    acceptanceCriteria: ['Return state'],
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop if unavailable'],
+  },
+});
+assert.throws(() => noVerifierRuntime.approveFromTrustedPlanner(noVerifierDraft, {
+  allowedActions: ['organism.inspect'], acknowledgedAssumptions: [], riskAcknowledged: false,
+}, autonomousReceipt), /trusted autonomous planner decision receipt was not verified/,
+'autonomous planner approvals must fail closed without a host-injected verifier');
+
 const untrustedAutonomousRuntime = new IntentExecutionRuntime(new ActionGateway(), {
   clock: () => now,
   approvalKey: 'test-untrusted-planner-approval-key-32b',
