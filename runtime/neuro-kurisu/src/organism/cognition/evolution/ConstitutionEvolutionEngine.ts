@@ -217,7 +217,7 @@ export class ConstitutionEvolutionEngine {
     if (this.state.proposals.filter(p=>p.authorId===authorId && ['pending-review','awaiting-ratification','ratified'].includes(p.status)).length>=8) throw new Error('author proposal limit reached');
     if (this.state.proposals.length>=MAX_PROPOSALS) {
       const i=this.state.proposals.findIndex(p=>['applied','rejected','stale'].includes(p.status));
-      if (i<0) throw new Error('proposal ledger full'); this.state.proposals.splice(i,1);
+      if (i<0) throw new Error('proposal ledger full'); this.state.proposals.splice(i,1); this.invalidateSnapshot();
     }
     const core: ProposalCore = { authorId,baseVersion:input.baseVersion,change:input.change,targetRuleId,proposedRule,motivation,scope,counterexample,riskAssessment,testPlan };
     const p: ConstitutionProposal = { id:input.id ? required(input.id,'proposal id',120) : 'constitution-'+randomUUID(), ...core,
