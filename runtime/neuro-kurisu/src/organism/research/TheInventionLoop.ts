@@ -33,6 +33,12 @@ export interface InventionVerifierPlan {
   replication: string;
   holdout: string;
 }
+export interface InventionProtocolProvenance {
+  source: 'intrinsic' | 'dream-association' | 'manual';
+  experimentId: string;
+  scientificProjectId: string;
+  linkedGoal?: string;
+}
 export interface InventionProtocol {
   question: string;
   hypothesis: string;
@@ -45,6 +51,10 @@ export interface InventionProtocol {
   metricScale: number;
   /** Required normalized mean effect in [0, 1]. */
   minEffect: number;
+  /** Expected normalized effect recorded before evaluation; defaults to minEffect. */
+  expectedEffect01?: number;
+  /** Link back to the generator and scientific project that proposed this experiment. */
+  provenance?: InventionProtocolProvenance;
   /** Minimum fraction of individual runs meeting minEffect. */
   minSuccessRate: number;
   /** One primary screening seed and fixed, disjoint phase cohorts. */
@@ -232,6 +242,15 @@ function isProtocol(value: unknown): value is InventionProtocol {
     typeof value.testFingerprint === 'string' && SHA256_RE.test(value.testFingerprint) &&
     finite(value.baseline) && finite(value.metricScale) && value.metricScale > 0 &&
     finite(value.minEffect) && value.minEffect >= 0 && value.minEffect <= 1 &&
+    (value.expectedEffect01 === undefined ||
+      (finite(value.expectedEffect01) && value.expectedEffect01 >= 0 && value.expectedEffect01 <= 1)) &&
+    (value.provenance === undefined || (
+      isObject(value.provenance) &&
+      ['intrinsic', 'dream-association', 'manual'].includes(String(value.provenance.source)) &&
+      clampText(value.provenance.experimentId, 160).length > 0 &&
+      clampText(value.provenance.scientificProjectId, 160).length > 0 &&
+      (value.provenance.linkedGoal === undefined || clampText(value.provenance.linkedGoal, 160).length > 0)
+    )) &&
     finite(value.minSuccessRate) && value.minSuccessRate >= 0.6 && value.minSuccessRate <= 1 &&
     Number.isSafeInteger(value.primarySeed) && Number(value.primarySeed) >= 0 &&
     isSeedArray(value.replicationSeeds) && isSeedArray(value.holdoutSeeds) &&
@@ -692,10 +711,11 @@ export class TheInventionLoop {
     }
   }
 
-  propose(input: InventionProtocol): InventionRecord {
+  private prepareProtocol(input: InventionProtocol): InventionProtocol {
     const safe = detach<InventionProtocol>(input, 'invalid-preregistration-payload');
     if (!isObject(safe) || !isVerifierPlan(safe.verifierPlan) ||
-        !Array.isArray(safe.replicationSeeds) || !Array.isArray(safe.holdoutSeeds)) {
+        !Array.isArray(safe.replicationSeeds) || !Array.isArray(safe.holdoutSeeds) ||
+        (safe.provenance !== undefined && !isObject(safe.provenance))) {
       throw new Error('invalid-preregistration-payload');
     }
     const protocol: InventionProtocol = {
@@ -706,6 +726,7 @@ export class TheInventionLoop {
       baseline: safe.baseline,
       metricScale: safe.metricScale,
       minEffect: safe.minEffect,
+      expectedEffect01: finite(safe.expectedEffect01) ? safe.expectedEffect01 : safe.minEffect,
       minSuccessRate: safe.minSuccessRate,
       primarySeed: safe.primarySeed,
       replicationSeeds: [...safe.replicationSeeds],
@@ -717,6 +738,13 @@ export class TheInventionLoop {
         replication: clampText(safe.verifierPlan.replication, 120),
         holdout: clampText(safe.verifierPlan.holdout, 120),
       },
+      provenance: safe.provenance ? {
+        source: safe.provenance.source,
+        experimentId: clampText(safe.provenance.experimentId, 160),
+        scientificProjectId: clampText(safe.provenance.scientificProjectId, 160),
+        linkedGoal: safe.provenance.linkedGoal === undefined
+          ? undefined : clampText(safe.provenance.linkedGoal, 160),
+      } : undefined,
     };
     const seedSet = new Set([
       protocol.primarySeed, ...protocol.replicationSeeds, ...protocol.holdoutSeeds,
@@ -725,14 +753,28 @@ export class TheInventionLoop {
         !SHA256_RE.test(protocol.testFingerprint) || !finite(protocol.baseline) ||
         !finite(protocol.metricScale) || protocol.metricScale <= 0 ||
         !finite(protocol.minEffect) || protocol.minEffect < 0 || protocol.minEffect > 1 ||
+        !finite(protocol.expectedEffect01) || protocol.expectedEffect01 < 0 || protocol.expectedEffect01 > 1 ||
         !finite(protocol.minSuccessRate) || protocol.minSuccessRate < 0.6 || protocol.minSuccessRate > 1 ||
         !Number.isSafeInteger(protocol.primarySeed) || protocol.primarySeed < 0 ||
         !isSeedArray(protocol.replicationSeeds) || !isSeedArray(protocol.holdoutSeeds) ||
         seedSet.size !== 1 + protocol.replicationSeeds.length + protocol.holdoutSeeds.length ||
         new Set(Object.values(protocol.verifierPlan)).size !== 4 ||
-        Object.values(protocol.verifierPlan).some(value => !value)) {
+        Object.values(protocol.verifierPlan).some(value => !value) ||
+        (protocol.provenance !== undefined &&
+          (!protocol.provenance.experimentId || !protocol.provenance.scientificProjectId ||
+            !['intrinsic', 'dream-association', 'manual'].includes(protocol.provenance.source) ||
+            (protocol.provenance.linkedGoal !== undefined && !protocol.provenance.linkedGoal)))) {
       throw new Error('invalid-preregistration');
     }
+    return protocol;
+  }
+
+  validateProtocol(input: InventionProtocol): InventionProtocol {
+    return structuredClone(this.prepareProtocol(input));
+  }
+
+  propose(input: InventionProtocol): InventionRecord {
+    const protocol = this.prepareProtocol(input);
     const at = this.timestamp();
     const record: InventionRecord = {
       id: clampText(this.id(), 120) || 'invention-' + at,
@@ -747,7 +789,6 @@ export class TheInventionLoop {
     this.state.records = [record, ...this.state.records].slice(0, MAX_RECORDS);
     return this.commit(record, 'proposed');
   }
-
   design(id: string): InventionRecord {
     const record = this.find(id);
     if (record.stage !== 'proposed') throw new Error('invalid-stage-transition');
