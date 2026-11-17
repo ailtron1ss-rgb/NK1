@@ -128,6 +128,15 @@ function listWasTruncated(value: unknown, maxItems = MAX_LIST, maxText = MAX_TEX
     return true;
   }
 }
+function hasMalformedTextList(value: unknown, maxItems = MAX_LIST, maxText = MAX_TEXT): boolean {
+  if (value === undefined || value === null) return false;
+  if (!Array.isArray(value) || value.length > maxItems) return true;
+  try {
+    return value.some(item => typeof item !== 'string' || !cleanText(item) || item.length > maxText);
+  } catch {
+    return true;
+  }
+}
 function hasMalformedActionIds(value: unknown): boolean {
   if (value === undefined || value === null) return false;
   if (!Array.isArray(value)) return true;
@@ -356,6 +365,12 @@ export class IntentCompiler {
     if (allowedActions.some(action => !/^[a-z0-9][a-z0-9._-]{1,63}$/i.test(action))) missingInformation.push('malformed-action-id');
     if (hasMalformedActionIds(deniedActions)) missingInformation.push('malformed-action-id');
     if (invalidAssumptionMetadata) missingInformation.push('invalid-assumption-impact');
+    if (hasMalformedTextList(extraction.context)) missingInformation.push('context-invalid');
+    if (hasMalformedTextList(extraction.priorities)) missingInformation.push('priorities-invalid');
+    if (hasMalformedTextList(extraction.acceptanceCriteria)) missingInformation.push('acceptance-criteria-invalid');
+    if (hasMalformedTextList(extraction.stopConditions)) missingInformation.push('stop-conditions-invalid');
+    if (hasMalformedTextList(extraction.constraints?.must) || hasMalformedTextList(extraction.constraints?.mustNot)) missingInformation.push('constraints-invalid');
+
     if (listWasTruncated(extraction.context)) missingInformation.push('context-truncated');
     if (listWasTruncated(extraction.priorities)) missingInformation.push('priorities-truncated');
     if (listWasTruncated(extraction.acceptanceCriteria)) missingInformation.push('acceptance-criteria-truncated');
@@ -433,6 +448,11 @@ export class IntentCompiler {
     if (expiresAt <= now) throw new Error('approval is already expired');
     const evidenceRef = cleanText(approval.evidenceRef, 180);
     if (!evidenceRef) throw new TypeError('approval evidence reference is required');
+    if (hasMalformedActionIds(approval.allowedActions) ||
+        listWasTruncated(approval.allowedActions, MAX_LIST, MAX_ACTION) ||
+        !Array.isArray(approval.allowedActions) || approval.allowedActions.length === 0) {
+      throw new TypeError('approval must contain a non-empty, bounded explicit action list');
+    }
     const requested = cleanList(approval.allowedActions, MAX_LIST, MAX_ACTION);
     if (requested.some(action => action.includes('*'))) throw new Error('wildcard actions cannot be approved');
     const declared = new Set(contract.permissions.allowedActions);
@@ -442,6 +462,9 @@ export class IntentCompiler {
     const denied = new Set(contract.permissions.deniedActions);
     if (requested.some(action => denied.has(action))) throw new Error('an explicitly denied action cannot be approved');
     const requiredAssumptions = contract.assumptions.filter(item => item.requiresConfirmation).map(item => item.statement);
+    if (listWasTruncated(approval.acknowledgedAssumptions) || hasMalformedTextList(approval.acknowledgedAssumptions)) {
+      throw new TypeError('assumption acknowledgements must be a bounded list of non-empty strings');
+    }
     const acknowledgedAssumptions = cleanList(approval.acknowledgedAssumptions, MAX_LIST, MAX_TEXT);
     if (requiredAssumptions.some(statement => !acknowledgedAssumptions.includes(statement))) {
       throw new Error('assumption acknowledgement is required');
