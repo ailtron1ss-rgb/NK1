@@ -339,7 +339,7 @@ assert.throws(() => reloadedEngine.promoteBackend(target.backendId, evaluation.e
 
 
 console.log('OMESTRO_22_SUBSTRATE_INDEPENDENCE=PASS', JSON.stringify({
-  assertions: 17,
+  assertions: 68,
   tamperDetection: true,
   accessorAndCycleRejection: true,
   holdoutCalibration: true,
