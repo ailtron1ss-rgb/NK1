@@ -1,5 +1,6 @@
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import { ParametricPolicyLearner, defaultParametricPolicy, type ParametricPolicyState } from './ParametricPolicyLearner.ts';
+import type { ElasticNeuralPlasticityOptions, ElasticNeuralPlasticityResult } from './ElasticNeuralPlasticity.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
@@ -123,6 +124,30 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
+
+  /**
+   * Explicit P26 entry point for sparse, holdout-gated adaptation. The paired
+   * local holdouts are not counted as independently authenticated generalization
+   * evidence; that metric remains owned by the verified-outcome admission path.
+   */
+  trainFeaturesElastic(
+    input:{sampleId:string;features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number},
+    options:ElasticNeuralPlasticityOptions,
+  ):ElasticNeuralPlasticityResult & {predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    const result=this.learner.trainFeaturesElastic(input,options);
+    if(result.accepted){
+      this.state.metrics.outcomeSamples++;
+      this.state.metrics.onlineUpdates++;
+      this.state.metrics.learningDelta01=clamp(this.state.metrics.learningDelta01*.97+
+        (result.predictionAfter-result.predictionBefore)*.03+Math.abs(result.tdError01)*.02);
+      this.state.metrics.recentLoss01=clamp(result.loss01);
+      this.refreshTrainingExposure();
+      this.state.metrics.lastUpdatedAt=Date.now();
+    }
+    this.sync();
+    return result;
+  }
+
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
     if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};

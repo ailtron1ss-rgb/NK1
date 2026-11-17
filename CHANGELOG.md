@@ -1,3 +1,9 @@
+## [NK1][OmeStro #30] Elastic Neural Plasticity (2026-11-17)
+
+- Add an opt-in sparse-update path to the canonical P26 parametric policy learner, with explicit parameter allowlists, hard-protected coordinates, bounded update count/L2 norm and ablation-derived retention importance.
+- Gate each candidate on disjoint target/retention holdouts before mutating policy weights; keep standard SGD behavior unchanged and persist plasticity diagnostics through the existing policy snapshot.
+- Add P26-facing API, focused regression and learning-validation workflow coverage. No arbitrary LLM tensor fine-tuning, production auto-activation, release promotion or generalization claim is made.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.

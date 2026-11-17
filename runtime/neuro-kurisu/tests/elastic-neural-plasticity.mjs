@@ -135,4 +135,22 @@ assert.equal(frozenResult.accepted, false);
 assert.equal(frozenResult.reason, 'policy-frozen');
 assert.deepEqual(frozen.snapshot().weights, frozenBefore.weights);
 
+import { P26TrueLearningEngine } from '../src/organism/learning/P26TrueLearningEngine.ts';
+const p26 = new P26TrueLearningEngine();
+const p26Result = p26.trainFeaturesElastic({
+  sampleId: 'p26-elastic-train-001',
+  features: vector(0),
+  action: 'respond',
+  target01: 1,
+  learningRate01: .25,
+}, options({
+  trainingSampleId: 'p26-elastic-train-001',
+}));
+assert.equal(p26Result.accepted, true, 'P26 must expose the same selective update path');
+const p26State = p26.snapshot();
+assert.equal(p26State.metrics.onlineUpdates, 1);
+assert.equal(p26State.metrics.independentHoldoutSamples, 0, 'local holdout pairs must not forge independent evidence');
+assert.notEqual(p26State.policy.weights.respond[0], 0);
+assert.equal(p26State.policy.elasticNeuralPlasticity.acceptedUpdates, 1);
+
 console.log('ELASTIC_NEURAL_PLASTICITY=PASS sparse=1 protected=3 retentionGate=PASS leakageGate=PASS persistence=PASS frozen=PASS');

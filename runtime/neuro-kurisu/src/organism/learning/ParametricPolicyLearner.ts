@@ -1,5 +1,6 @@
 import type { ActionKind, OrganismState } from '../core/types.ts';
 import { actionCost } from '../core/ActionCostPolicy.ts';
+import { ElasticNeuralPlasticityController, defaultElasticNeuralPlasticityState, type ElasticNeuralPlasticityOptions, type ElasticNeuralPlasticityResult, type ElasticNeuralPlasticityState } from './ElasticNeuralPlasticity.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -27,6 +28,7 @@ export interface ParametricPolicyState {
   lastLoss01:number;
   lastTrainedAt:number;
   frozen:boolean;
+  elasticNeuralPlasticity:ElasticNeuralPlasticityState;
 }
 
 export interface ParametricPrediction { action:ActionKind; value:number; uncertainty01:number; }
@@ -84,7 +86,7 @@ export function defaultParametricPolicy():ParametricPolicyState{
     weights[a].fill(0);
     bias[a]=0;
   }
-  return {version:1,featureNames:[...featureNames],weights,bias,updates:0,tdAbsMean01:0,trainRewardMean01:.5,explorationRate01:.16,lastLoss01:0,lastTrainedAt:0,frozen:false};
+  return {version:1,featureNames:[...featureNames],weights,bias,updates:0,tdAbsMean01:0,trainRewardMean01:.5,explorationRate01:.16,lastLoss01:0,lastTrainedAt:0,frozen:false,elasticNeuralPlasticity:defaultElasticNeuralPlasticityState(featureNames.length)};
 }
 
 
@@ -115,6 +117,7 @@ function featureVector(state:OrganismState, extras?:{external01?:number;boredom0
 
 export class ParametricPolicyLearner{
   private state=defaultParametricPolicy();
+  private readonly elasticPlasticity=new ElasticNeuralPlasticityController(featureNames);
 
   restore(raw?:Partial<ParametricPolicyState>|null){
     const d=defaultParametricPolicy();
@@ -128,6 +131,8 @@ export class ParametricPolicyLearner{
     this.state.lastLoss01=typeof raw?.lastLoss01==='number'&&Number.isFinite(raw.lastLoss01)&&raw.lastLoss01>=0&&raw.lastLoss01<=1?raw.lastLoss01:d.lastLoss01;
     this.state.lastTrainedAt=typeof raw?.lastTrainedAt==='number'&&Number.isFinite(raw.lastTrainedAt)&&raw.lastTrainedAt>=0?raw.lastTrainedAt:d.lastTrainedAt;
     this.state.frozen=raw?.frozen===true;
+    this.elasticPlasticity.restore(raw?.elasticNeuralPlasticity);
+    this.state.elasticNeuralPlasticity=this.elasticPlasticity.snapshot();
     for(const a of ACTIONS){
       const savedWeights=Array.isArray(raw?.weights?.[a])?raw!.weights![a]:[];
       this.state.weights[a]=featureNames.map((name,index)=>{
@@ -142,7 +147,10 @@ export class ParametricPolicyLearner{
     }
   }
 
-  snapshot():ParametricPolicyState{return structuredClone(this.state);}
+  snapshot():ParametricPolicyState{
+    this.state.elasticNeuralPlasticity=this.elasticPlasticity.snapshot();
+    return structuredClone(this.state);
+  }
 
   features(state:OrganismState, extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}, action?:ActionKind){
     const f=featureVector(state,extras);
@@ -209,6 +217,44 @@ export class ParametricPolicyLearner{
     this.state.tdAbsMean01=clamp(this.state.tdAbsMean01*.97+Math.abs(error)*.03); this.state.trainRewardMean01=clamp(this.state.trainRewardMean01*.98+target*.02);
     this.state.explorationRate01=clamp(.16-Math.min(.12,this.state.updates/2500*.12)+Math.min(.05,this.state.tdAbsMean01*.05)); this.state.lastLoss01=clamp(error*error); this.state.lastTrainedAt=now();
     return {predictionBefore:before,predictionAfter:after,loss01:clamp(error*error),tdError01:clamp(Math.abs(error))};
+  }
+
+
+  /**
+   * Evidence-gated alternative to dense SGD. Only explicitly allowlisted
+   * coordinates of the selected action can move; target and retention holdouts
+   * are evaluated before the current policy weights are mutated.
+   */
+  trainFeaturesElastic(input:{sampleId:string;features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number},options:ElasticNeuralPlasticityOptions):ElasticNeuralPlasticityResult & {predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    assertFeatureTrainingInput(input);
+    if(input.features.length!==featureNames.length)throw new RangeError('feature-vector-dimension-mismatch');
+    const x=input.features.map(clamp);
+    const before=this.predictFromFeatures(x,input.action);
+    if(this.state.frozen){
+      const blocked=this.elasticPlasticity.blocked('policy-frozen');
+      return {...blocked,predictionBefore:before,predictionAfter:before,loss01:0,tdError01:0};
+    }
+    const target=clamp(input.target01);
+    const error=target-before;
+    const requestedRate=Math.max(.002,Math.min(.25,input.learningRate01))*Math.max(.05,Math.min(1,input.sampleWeight01??1));
+    const derivative=Math.max(.05,2*before*(1-before));
+    const norm=.25+x.reduce((sum,value)=>sum+value*value,0);
+    const step=requestedRate*error*derivative/norm;
+    const weights=this.state.weights[input.action];
+    const result=this.elasticPlasticity.consider({
+      action:input.action,weights,bias:this.state.bias[input.action],features:x,step,sampleId:input.sampleId,
+    },options);
+    const after=result.accepted?this.predictFromFeatures(x,input.action):before;
+    if(result.accepted){
+      this.state.updates++;
+      this.state.tdAbsMean01=clamp(this.state.tdAbsMean01*.97+Math.abs(error)*.03);
+      this.state.trainRewardMean01=clamp(this.state.trainRewardMean01*.98+target*.02);
+      this.state.explorationRate01=clamp(.16-Math.min(.12,this.state.updates/2500*.12)+Math.min(.05,this.state.tdAbsMean01*.05));
+      this.state.lastLoss01=clamp(error*error);
+      this.state.lastTrainedAt=now();
+    }
+    this.state.elasticNeuralPlasticity=this.elasticPlasticity.snapshot();
+    return {...result,predictionBefore:before,predictionAfter:after,loss01:clamp(error*error),tdError01:clamp(Math.abs(error))};
   }
 
   predictFromFeatures(features:number[],action:ActionKind):number{

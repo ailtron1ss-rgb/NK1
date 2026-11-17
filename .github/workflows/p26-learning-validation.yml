@@ -152,6 +152,9 @@ jobs:
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
+      - name: Verify sparse elastic neural plasticity and anti-forgetting gate
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:elastic-neural-plasticity
       - name: Validate research-grade matched holdout experiment plan (five paired seeds)
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:learning-experiment-plan
