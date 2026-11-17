@@ -1,3 +1,12 @@
+## [NK1][OmeStro #28] Neural Prosthesis — draft implementation (2026-11-17)
+
+- Add an optional PyTorch/Transformers residual-bottleneck backend with selected decoder-layer hooks, zero-start identity, request-scoped adapter activation and bounded per-token residual norm.
+- Keep the base model frozen; train only separate adapter parameters and export safetensors artifacts bound to an immutable model revision, model-config digest and exact layer layout.
+- Keep new artifacts quarantined until the host allowlists their exact manifest SHA-256; local holdout evaluation cannot self-promote.
+- Integrate the optional loopback sidecar through the existing local language provider boundary and P40 Model Ecology; preserve llama.cpp/Kobold/Gemini fallback.
+- Add isolated train/evaluate/service commands, focused Node/Python regressions and a dedicated GitHub Actions workflow.
+- **Draft PR #925 only.** Exact-head Node/Python CI remains pending; no real host model, device latency/memory or independent quality uplift has yet been measured. No merge or Release ZIP change is claimed.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
