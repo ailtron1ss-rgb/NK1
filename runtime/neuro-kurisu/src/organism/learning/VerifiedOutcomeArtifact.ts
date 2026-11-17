@@ -43,6 +43,23 @@ export function outcomePayloadFingerprint(payload: SignedOutcomePayload): string
 // not inherit trust: its signed artifacts must be re-ingested and re-verified.
 const authenticatedEvidence = new WeakMap<VerifiedOutcomeLedger, Map<string, string>>();
 
+/**
+ * Take a stable evaluation snapshot while preserving the verifier evidence attached
+ * to accepted ledger rows. The returned ledger can be safely held across async
+ * durable-reservation I/O without observing later mutations to the caller's ledger.
+ */
+export function cloneVerifiedOutcomeLedgerWithAuthenticatedEvidence(
+  ledger: VerifiedOutcomeLedger,
+): VerifiedOutcomeLedger {
+  if (!(ledger instanceof VerifiedOutcomeLedger)) {
+    throw new Error('verified-outcome-ledger-instance-required');
+  }
+  const clone = VerifiedOutcomeLedger.restoreSnapshot(ledger.snapshot());
+  const evidence = authenticatedEvidence.get(ledger);
+  if (evidence) authenticatedEvidence.set(clone, new Map(evidence));
+  return clone;
+}
+
 export function hasAuthenticatedOutcomeEvidence(ledger: VerifiedOutcomeLedger, evidenceRef: string): boolean {
   return authenticatedEvidence.get(ledger)?.has(evidenceRef) ?? false;
 }
