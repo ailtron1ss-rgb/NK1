@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { neuroApi } from "./api.ts";
 
+/** @type {import("./api.ts").DyadicCollaborationMutation} */
 const payload = {
   action: "record",
   kind: "task",
@@ -17,6 +18,7 @@ const response = (status, body) => new Response(JSON.stringify(body), {
 test("Dyadic API retries a dropped response once with the exact same idempotency key and body", async (t) => {
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; });
+  /** @type {Array<{ url: string; init: RequestInit }>} */
   const calls = [];
   globalThis.fetch = async (url, init = {}) => {
     calls.push({ url: String(url), init });
@@ -54,6 +56,7 @@ test("Dyadic API retries a dropped response once with the exact same idempotency
 test("Dyadic API does not retry deterministic 409 idempotency conflicts", async (t) => {
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; });
+  /** @type {RequestInit[]} */
   const calls = [];
   globalThis.fetch = async (_url, init = {}) => {
     calls.push(init);
@@ -62,7 +65,7 @@ test("Dyadic API does not retry deterministic 409 idempotency conflicts", async 
 
   await assert.rejects(
     () => neuroApi.dyadicCollaborationMutation(payload, "retry-key-conflict"),
-    error => error.status === 409 && error.message === "idempotency-key-conflict",
+    error => error instanceof Error && "status" in error && (/** @type {Error & { status?: number }} */ (error)).status === 409 && error.message === "idempotency-key-conflict",
   );
   assert.equal(calls.length, 1);
 });
