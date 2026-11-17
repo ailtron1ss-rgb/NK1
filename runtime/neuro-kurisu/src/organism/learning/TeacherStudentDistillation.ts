@@ -124,6 +124,7 @@ export interface TeacherDistillationExample {
   authority: TeacherVerificationAuthority;
   evidenceRefDigest: string;
   artifactFingerprint: string;
+  signedArtifact: SignedTeacherDistillationArtifact;
   verifiedAt: number;
 }
 
@@ -146,6 +147,8 @@ export interface TeacherDistillationExport {
     'train.jsonl': string;
     'validation.jsonl': string;
     'dataset_info.json': string;
+    'train-provenance.jsonl': string;
+    'validation-provenance.jsonl': string;
     'manifest.json': string;
   };
 }
@@ -470,6 +473,7 @@ export class TeacherStudentDistillationDataset {
       authority: payload.authority as TeacherVerificationAuthority,
       evidenceRefDigest: sha256(record.evidenceRef),
       artifactFingerprint,
+      signedArtifact: record.artifact,
       verifiedAt: Number(payload.verifiedAt),
     });
     this.artifactIds.add(String(payload.artifactId));
@@ -603,9 +607,10 @@ export class TeacherStudentDistillationDataset {
       training,
       validation,
     };
-    const datasetFingerprint = sha256(canonical(datasetIdentity));
+    const detachedIdentity = snapshotPlainData(datasetIdentity) as typeof datasetIdentity;
+    const datasetFingerprint = sha256(canonical(detachedIdentity));
     return {
-      ...datasetIdentity,
+      ...detachedIdentity,
       datasetFingerprint,
       withheldHoldoutExampleCount: holdoutCount,
       rejectionCounts: Object.fromEntries([...this.rejections.entries()].sort(([a], [b]) => a.localeCompare(b))),
@@ -628,6 +633,23 @@ export class TeacherStudentDistillationDataset {
     }).join('\n') + '\n';
     const train = toJsonl(snapshot.training);
     const validation = toJsonl(snapshot.validation);
+    const toProvenanceJsonl = (rows: TeacherDistillationExample[]) => rows.map(row => JSON.stringify({
+      exampleId: row.exampleId,
+      taskId: row.taskId,
+      taskVersion: row.taskVersion,
+      family: row.family,
+      teacherId: row.teacherId,
+      teacherModel: row.teacherModel,
+      teacherRevision: row.teacherRevision,
+      seed: row.seed,
+      verifierId: row.verifierId,
+      authority: row.authority,
+      evidenceRefDigest: row.evidenceRefDigest,
+      artifactFingerprint: row.artifactFingerprint,
+      signedArtifact: row.signedArtifact,
+    })).join('\\n') + '\\n';
+    const trainProvenance = toProvenanceJsonl(snapshot.training);
+    const validationProvenance = toProvenanceJsonl(snapshot.validation);
     const datasetInfo = {
       nk1_teacher_student_train: {
         file_name: 'train.jsonl',
@@ -661,6 +683,8 @@ export class TeacherStudentDistillationDataset {
       holdoutExported: false,
       trainSha256: sha256(train),
       validationSha256: sha256(validation),
+      trainProvenanceSha256: sha256(trainProvenance),
+      validationProvenanceSha256: sha256(validationProvenance),
       datasetInfoSha256: sha256(JSON.stringify(datasetInfo)),
       teacherModels: [...new Set([...snapshot.training, ...snapshot.validation]
         .map(row => row.teacherModel + '@' + row.teacherRevision))].sort(),
@@ -673,6 +697,8 @@ export class TeacherStudentDistillationDataset {
         'train.jsonl': train,
         'validation.jsonl': validation,
         'dataset_info.json': JSON.stringify(datasetInfo, null, 2) + '\n',
+        'train-provenance.jsonl': trainProvenance,
+        'validation-provenance.jsonl': validationProvenance,
         'manifest.json': JSON.stringify(manifest, null, 2) + '\n',
       },
     };
