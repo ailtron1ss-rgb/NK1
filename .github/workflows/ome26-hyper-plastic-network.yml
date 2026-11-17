@@ -7,6 +7,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/research/HyperPlasticNetwork.ts"
       - "runtime/neuro-kurisu/tests/ome26-hyper-plastic-network.mjs"
       - "runtime/neuro-kurisu/tests/ome26-signed-outcome-metrics.mjs"
+      - "runtime/neuro-kurisu/tests/ome26-signed-promotion.mjs"
+      - "runtime/neuro-kurisu/src/organism/research/HyperPlasticOutcomeEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts"
       - "runtime/neuro-kurisu/package.json"
@@ -42,6 +44,9 @@ jobs:
       - name: Verify signed outcomes preserve bounded execution metrics
         working-directory: runtime/neuro-kurisu
         run: npm run test:ome26:signed-outcome-metrics
+      - name: Evaluate signed OME26 validation and holdout evidence
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:ome26:signed-promotion
       - name: Run Hyper-Plastic Network contract and bounded low-rank experiment
         working-directory: runtime/neuro-kurisu
         run: npm run test:ome26:hyper-plastic-network
