@@ -2043,6 +2043,56 @@ export class OrganismRuntime {
     });
   }
 
+  /** Confirmed native-policy materialization; the only supported adapter is P23 preference bias. */
+  stageSynapticNativePolicySkillCandidate(fingerprint: string, confirmed: boolean) {
+    return this.enqueue(async () => {
+      if (confirmed !== true) return { status: 'confirmation-required' as const, artifactFingerprint: fingerprint };
+      const admission = this.synapticP23Admission;
+      if (!admission) throw new Error('synaptic-p23-admission-not-configured');
+      const host = admission.currentHostCompatibilityTarget();
+      const hostSignature = (target: SynapticCompatibilityTarget) => JSON.stringify([
+        target.runtimeVersion,
+        target.environmentFingerprint,
+        [...target.supportedCapabilities].sort(),
+        [...target.permittedTools].sort(),
+      ]);
+      const initialHostSignature = hostSignature(host);
+      const bundle = this.synapticCommons.prepareP23Admission(fingerprint, host);
+      const candidateMethod = 'synaptic-commons:' + fingerprint;
+      const proposal = await admission.createLocalPromotionProposal({
+        artifactFingerprint: fingerprint,
+        candidateMethod,
+        skillId: bundle.artifact.skill.skillId,
+        admissionBundle: bundle,
+      });
+      if (!isAuthenticSynapticP23AdmissionBundle(bundle)) {
+        throw new Error('synaptic-p23-admission-bundle-mutated-by-provider');
+      }
+      if (!isAuthenticVerifiedSkillPromotionProposal(proposal)) {
+        throw new Error('synaptic-p23-authentic-accepted-proposal-required');
+      }
+      const latestHost = admission.currentHostCompatibilityTarget();
+      if (hostSignature(latestHost) !== initialHostSignature) {
+        throw new Error('synaptic-p23-admission-host-manifest-changed-during-evaluation');
+      }
+      const finalBundle = this.synapticCommons.prepareP23Admission(fingerprint, latestHost);
+      const currentTick = this.core.operationalStatusSnapshot().tick;
+      const candidate = this.core.stageSynapticCommonsNativePolicyCandidate(proposal, finalBundle, currentTick);
+      return {
+        status: candidate.status,
+        candidateId: candidate.candidateId,
+        skillId: candidate.skillId,
+        candidateVersion: candidate.version,
+        proposalId: candidate.proposalId,
+        artifactFingerprint: fingerprint,
+        nativePolicy: true as const,
+        canActivateAutomatically: false as const,
+        executable: false as const,
+        promotionBlockedUntilShadowAndApproval: true as const,
+      };
+    });
+  }
+
   synapticCommonsSnapshot() {
     return this.enqueue(async () => this.synapticCommons.snapshot());
   }

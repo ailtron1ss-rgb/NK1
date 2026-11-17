@@ -620,7 +620,7 @@ async function route(req, res) {
             }
         }
 
-        const synapticAction = /^\/api\/organism\/synaptic-commons\/([a-f0-9]{64})\/(compatibility|attestation|reject|revoke|p23-stage|export)$/.exec(url.pathname);
+        const synapticAction = /^\/api\/organism\/synaptic-commons\/([a-f0-9]{64})\/(compatibility|attestation|reject|revoke|p23-stage|p23-adapt|export)$/.exec(url.pathname);
         if (synapticAction && req.method === 'POST' && synapticAction[2] !== 'export') {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
@@ -645,6 +645,10 @@ async function route(req, res) {
                 }
                 if (action === 'p23-stage') {
                     const result = await runtime.stageSynapticSkillCandidate(fingerprint, true);
+                    return json(res, 201, { ok: true, ...result, executable: false });
+                }
+                if (action === 'p23-adapt') {
+                    const result = await runtime.stageSynapticNativePolicySkillCandidate(fingerprint, true);
                     return json(res, 201, { ok: true, ...result, executable: false });
                 }
                 if (action === 'attestation') {

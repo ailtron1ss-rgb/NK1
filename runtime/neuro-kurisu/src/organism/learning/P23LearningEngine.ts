@@ -1415,7 +1415,8 @@ export class P23LearningEngine {
       Number.isFinite(skill.createdAt) && skill.createdAt > 0 &&
       Number.isFinite(skill.updatedAt) && skill.updatedAt >= skill.createdAt &&
       safeCount(skill.validationWindowStartTick) && safeCount(skill.validationWindowEndTick) &&
-      skill.validationWindowEndTick >= skill.validationWindowStartTick;
+      skill.validationWindowEndTick >= skill.validationWindowStartTick &&
+      (skill.synapticCommonsProvenance === undefined || isValidSynapticCommonsPolicyProvenance(skill.synapticCommonsProvenance));
     if (!validSkill) throw new Error('candidate policy skill record is malformed or outside canonical P23 bounds');
     return this.verifiedSkillStore.stageCandidate(proposal,skill.id,skill);
   }

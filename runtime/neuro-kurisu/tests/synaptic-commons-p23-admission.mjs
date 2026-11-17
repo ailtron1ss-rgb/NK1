@@ -264,7 +264,7 @@ const runtime = new OrganismRuntime({
       ? { ...host, permittedTools: [] }
       : { ...host },
     createLocalPromotionProposal: async ({ candidateMethod }) => {
-      if (candidateMethod === 'synaptic-commons:' + nativeFingerprint) {
+      if (candidateMethod !== 'synaptic-commons:' + fingerprint) {
         await writeFile(outcomeBundlePath, JSON.stringify(buildSignedOutcomeBundle(candidateMethod)));
         return builtInProposalProvider({ candidateMethod });
       }
@@ -393,7 +393,6 @@ try {
 
   const invalidNativeUnsigned = JSON.parse(JSON.stringify(nativeUnsignedArtifact));
   invalidNativeUnsigned.definition.payload.steps = [{ operation: 'invoke-capability', capability: 'documents.fetch' }];
-  invalidNativeUnsigned.definition.payload.tool = 'documents.fetch';
   const invalidNativeArtifact = createSignedSynapticArtifact(invalidNativeUnsigned, 'publisher-1', artifactFingerprint =>
     sign(null, Buffer.from(artifactFingerprint, 'utf8'), publisher.privateKey).toString('base64'));
   const invalidNativeFingerprint = synapticArtifactFingerprint(invalidNativeArtifact);
