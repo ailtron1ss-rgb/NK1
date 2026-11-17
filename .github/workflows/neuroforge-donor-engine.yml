@@ -9,6 +9,8 @@ on:
       - "runtime/neuro-kurisu/scripts/neuroforge.mjs"
       - "runtime/neuro-kurisu/tests/neuroforge-engine.mjs"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/docs/NEUROFORGE_DONOR_INTAKE_RU.md"
+      - "runtime/neuro-kurisu/docs/NEUROFORGE_COLLECTION_REVIEW_2026-11-17_RU.md"
   push:
     branches:
       - workpass70-source
@@ -19,6 +21,8 @@ on:
       - "runtime/neuro-kurisu/scripts/neuroforge.mjs"
       - "runtime/neuro-kurisu/tests/neuroforge-engine.mjs"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/docs/NEUROFORGE_DONOR_INTAKE_RU.md"
+      - "runtime/neuro-kurisu/docs/NEUROFORGE_COLLECTION_REVIEW_2026-11-17_RU.md"
 
 permissions:
   contents: read
