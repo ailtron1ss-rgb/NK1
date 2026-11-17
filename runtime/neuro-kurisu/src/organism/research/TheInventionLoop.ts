@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { VerifiedOutcomeLedger, type OutcomeAuthority, type EvaluationSplit } from '../learning/VerifiedOutcomeLedger.ts';
+import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
 
 /**
  * The Invention Loop — evidence-gated lifecycle for converting hypotheses
@@ -9,7 +10,8 @@ import { VerifiedOutcomeLedger, type OutcomeAuthority, type EvaluationSplit } fr
  */
 export type InventionStage =
   | 'proposed' | 'designed' | 'prototyped' | 'tested'
-  | 'critiqued' | 'replicated' | 'accepted' | 'rejected';
+  | 'critiqued' | 'replicating' | 'replicated' | 'holdingout'
+  | 'accepted' | 'rejected';
 export type OutcomeKind = 'primary' | 'replication' | 'holdout';
 export type InventionAuditAction =
   | 'proposed' | 'designed' | 'prototyped' | 'outcome-recorded'
@@ -25,16 +27,22 @@ export interface InventionProtocol {
   question: string;
   hypothesis: string;
   successCriteria: string;
-  /** Immutable identity of the test manifest and evaluation implementation. */
+  /** SHA-256 identity of the frozen test manifest and evaluation implementation. */
   testFingerprint: string;
   /** Measured baseline, captured before prototype evaluation. */
   baseline: number;
   /** Absolute metric delta corresponding to 1.0 normalized effect. */
   metricScale: number;
-  /** Required normalized effect in [0, 1]. */
+  /** Required normalized mean effect in [0, 1]. */
   minEffect: number;
+  /** Minimum fraction of individual runs meeting minEffect. */
+  minSuccessRate: number;
+  /** One screening seed and fixed independent seed cohorts for later phases. */
+  primarySeed: number;
+  replicationSeeds: number[];
+  holdoutSeeds: number[];
   lowerIsBetter?: boolean;
-  /** All reviewer identities are fixed before the candidate is evaluated. */
+  /** Reviewer identities are frozen before any candidate evaluation. */
   verifierPlan: InventionVerifierPlan;
 }
 export interface InventionPrototype {
@@ -46,6 +54,7 @@ export interface InventionOutcomeInput {
   kind: OutcomeKind;
   authority: OutcomeAuthority;
   seed: number;
+  /** One-shot preregistered evaluation; retries require a new invention record. */
   attempt: number;
   runId: string;
   verifierId: string;
@@ -60,6 +69,16 @@ export interface InventionOutcome extends InventionOutcomeInput {
   effect01: number;
   passed: boolean;
   recordedAt: number;
+}
+export interface InventionPhaseSummary {
+  kind: 'replication' | 'holdout';
+  sampleCount: number;
+  requiredSamples: number;
+  successfulRuns: number;
+  successRate01: number;
+  meanEffect01: number;
+  minimumEffect01: number;
+  passed: boolean;
 }
 export interface InventionCritiqueInput {
   reviewerId: string;
@@ -76,7 +95,6 @@ export interface InventionCritique {
   limitations: string[];
   reviewedAt: number;
 }
-
 export interface InventionRecordCore {
   id: string;
   stage: InventionStage;
@@ -86,6 +104,7 @@ export interface InventionRecordCore {
   prototypeRef?: string;
   prototypeSha256?: string;
   outcomes: InventionOutcome[];
+  phaseSummaries?: Partial<Record<'replication' | 'holdout', InventionPhaseSummary>>;
   critique?: InventionCritique;
   decisionReason?: string;
 }
@@ -95,16 +114,14 @@ export interface InventionAuditEvent {
   at: number;
   previousHash: string;
   hash: string;
-  /** Full state after this transition, excluding auditTrail itself. */
   snapshot: InventionRecordCore;
 }
 export interface InventionRecord extends InventionRecordCore {
   auditTrail: InventionAuditEvent[];
 }
 export interface InventionLoopState {
-  version: 2;
+  version: 3;
   records: InventionRecord[];
-  /** Derived counters. Restore never trusts serialized counter values. */
   accepted: number;
   rejected: number;
   quarantinedRecords: number;
@@ -113,10 +130,13 @@ export interface InventionLoopState {
 const GENESIS_HASH = '0'.repeat(64);
 const SHA256_RE = /^[a-f0-9]{64}$/iu;
 const MAX_RECORDS = 256;
+const MAX_AUDIT_EVENTS = 32;
+const MIN_INDEPENDENT_SEEDS = 5;
+const MAX_PHASE_SEEDS = 32;
 const MAX_TEXT = 1000;
 const STAGES: InventionStage[] = [
-  'proposed', 'designed', 'prototyped', 'tested',
-  'critiqued', 'replicated', 'accepted', 'rejected',
+  'proposed', 'designed', 'prototyped', 'tested', 'critiqued',
+  'replicating', 'replicated', 'holdingout', 'accepted', 'rejected',
 ];
 const AUDIT_ACTIONS: InventionAuditAction[] = [
   'proposed', 'designed', 'prototyped', 'outcome-recorded',
@@ -131,12 +151,19 @@ const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
 const isObject = (value: unknown): value is Record<string, unknown> =>
   Boolean(value && typeof value === 'object' && !Array.isArray(value));
 
+function detach<T>(value: unknown, errorCode: string): T {
+  try {
+    return snapshotPlainData(value) as T;
+  } catch {
+    throw new Error(errorCode);
+  }
+}
 function canonical(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
   const object = value as Record<string, unknown>;
-  return `{${Object.keys(object).filter(key => object[key] !== undefined).sort()
-    .map(key => `${JSON.stringify(key)}:${canonical(object[key])}`).join(',')}}`;
+  return '{' + Object.keys(object).filter(key => object[key] !== undefined).sort()
+    .map(key => JSON.stringify(key) + ':' + canonical(object[key])).join(',') + '}';
 }
 function sha256(value: unknown): string {
   return createHash('sha256').update(canonical(value)).digest('hex');
@@ -145,20 +172,48 @@ function coreOf(record: InventionRecord): InventionRecordCore {
   const { auditTrail: _auditTrail, ...core } = record;
   return structuredClone(core);
 }
-function isProtocol(value: unknown): value is InventionProtocol {
+function isSeedArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.length >= MIN_INDEPENDENT_SEEDS &&
+    value.length <= MAX_PHASE_SEEDS &&
+    value.every(seed => Number.isSafeInteger(seed) && Number(seed) >= 0) &&
+    new Set(value).size === value.length;
+}
+function isVerifierPlan(value: unknown): value is InventionVerifierPlan {
   if (!isObject(value)) return false;
-  const verifierPlan = value.verifierPlan;
-  if (!isObject(verifierPlan)) return false;
-  const verifierIds = [verifierPlan.primary, verifierPlan.critique, verifierPlan.replication, verifierPlan.holdout];
+  const ids = [value.primary, value.critique, value.replication, value.holdout];
+  return ids.every(id => typeof id === 'string' && clampText(id, 120).length > 0) &&
+    new Set(ids.map(id => clampText(id, 120))).size === 4;
+}
+function isProtocol(value: unknown): value is InventionProtocol {
+  if (!isObject(value) || !isVerifierPlan(value.verifierPlan)) return false;
+  const allSeeds = [
+    value.primarySeed,
+    ...(Array.isArray(value.replicationSeeds) ? value.replicationSeeds : []),
+    ...(Array.isArray(value.holdoutSeeds) ? value.holdoutSeeds : []),
+  ];
   return typeof value.question === 'string' &&
     typeof value.hypothesis === 'string' &&
     typeof value.successCriteria === 'string' &&
     typeof value.testFingerprint === 'string' && SHA256_RE.test(value.testFingerprint) &&
     finite(value.baseline) && finite(value.metricScale) && value.metricScale > 0 &&
     finite(value.minEffect) && value.minEffect >= 0 && value.minEffect <= 1 &&
+    finite(value.minSuccessRate) && value.minSuccessRate >= 0.6 && value.minSuccessRate <= 1 &&
+    Number.isSafeInteger(value.primarySeed) && Number(value.primarySeed) >= 0 &&
+    isSeedArray(value.replicationSeeds) && isSeedArray(value.holdoutSeeds) &&
     (value.lowerIsBetter === undefined || typeof value.lowerIsBetter === 'boolean') &&
-    verifierIds.every(id => typeof id === 'string' && clampText(id, 120).length > 0) &&
-    new Set(verifierIds.map(id => clampText(id, 120))).size === 4;
+    new Set(allSeeds).size === allSeeds.length;
+}
+function isPhaseSummary(value: unknown): value is InventionPhaseSummary {
+  if (!isObject(value)) return false;
+  return (value.kind === 'replication' || value.kind === 'holdout') &&
+    Number.isSafeInteger(value.sampleCount) && Number(value.sampleCount) >= 0 &&
+    Number.isSafeInteger(value.requiredSamples) && Number(value.requiredSamples) >= MIN_INDEPENDENT_SEEDS &&
+    Number.isSafeInteger(value.successfulRuns) && Number(value.successfulRuns) >= 0 &&
+    Number(value.successfulRuns) <= Number(value.sampleCount) &&
+    finite(value.successRate01) && value.successRate01 >= 0 && value.successRate01 <= 1 &&
+    finite(value.meanEffect01) && value.meanEffect01 >= 0 && value.meanEffect01 <= 1 &&
+    finite(value.minimumEffect01) && value.minimumEffect01 >= 0 && value.minimumEffect01 <= 1 &&
+    typeof value.passed === 'boolean';
 }
 function isOutcome(value: unknown): value is InventionOutcome {
   if (!isObject(value)) return false;
@@ -166,24 +221,28 @@ function isOutcome(value: unknown): value is InventionOutcome {
     (value.kind === 'primary' || value.kind === 'replication' || value.kind === 'holdout') &&
     (value.authority === 'independent-verifier' || value.authority === 'human-review') &&
     Number.isSafeInteger(value.seed) && Number(value.seed) >= 0 &&
-    Number.isSafeInteger(value.attempt) && Number(value.attempt) >= 1 &&
+    Number(value.attempt) === 1 &&
     typeof value.verifierId === 'string' && typeof value.environmentId === 'string' &&
-    typeof value.testFingerprint === 'string' && typeof value.evidenceRef === 'string' &&
-    typeof value.evidenceSha256 === 'string' && SHA256_RE.test(value.evidenceSha256) &&
-    finite(value.observed) && finite(value.effect01) && value.effect01 >= 0 && value.effect01 <= 1 &&
+    typeof value.testFingerprint === 'string' && SHA256_RE.test(value.testFingerprint) &&
+    typeof value.evidenceRef === 'string' && typeof value.evidenceSha256 === 'string' &&
+    SHA256_RE.test(value.evidenceSha256) && finite(value.observed) &&
+    finite(value.effect01) && value.effect01 >= 0 && value.effect01 <= 1 &&
     typeof value.passed === 'boolean' && finite(value.recordedAt);
 }
 function isCore(value: unknown): value is InventionRecordCore {
   if (!isObject(value)) return false;
+  const summaries = value.phaseSummaries;
   return typeof value.id === 'string' && STAGES.includes(value.stage as InventionStage) &&
     isProtocol(value.protocol) && finite(value.createdAt) && finite(value.updatedAt) &&
     Array.isArray(value.outcomes) && value.outcomes.every(isOutcome) &&
     (value.prototypeRef === undefined || typeof value.prototypeRef === 'string') &&
     (value.prototypeSha256 === undefined ||
       (typeof value.prototypeSha256 === 'string' && SHA256_RE.test(value.prototypeSha256))) &&
+    (summaries === undefined || (isObject(summaries) &&
+      (summaries.replication === undefined || isPhaseSummary(summaries.replication)) &&
+      (summaries.holdout === undefined || isPhaseSummary(summaries.holdout)))) &&
     (value.decisionReason === undefined || typeof value.decisionReason === 'string');
 }
-
 function auditHash(event: Omit<InventionAuditEvent, 'hash'>): string {
   return sha256({
     sequence: event.sequence,
@@ -197,7 +256,8 @@ function verifyRecordAudit(record: unknown): record is InventionRecord {
   if (!isObject(record)) return false;
   const candidate = record as Record<string, unknown>;
   const trail = candidate.auditTrail;
-  if (!isCore(candidate) || !Array.isArray(trail) || trail.length < 1 || trail.length > 8) return false;
+  if (!isCore(candidate) || !Array.isArray(trail) ||
+      trail.length < 1 || trail.length > MAX_AUDIT_EVENTS) return false;
   let previousHash = GENESIS_HASH;
   for (let index = 0; index < trail.length; index += 1) {
     const event = trail[index];
@@ -214,8 +274,7 @@ function verifyRecordAudit(record: unknown): record is InventionRecord {
       previousHash,
       snapshot: event.snapshot,
     };
-    const expectedHash = auditHash(payload);
-    if (event.hash !== expectedHash) return false;
+    if (event.hash !== auditHash(payload)) return false;
     previousHash = event.hash;
   }
   const finalEvent = trail[trail.length - 1] as InventionAuditEvent;
@@ -224,28 +283,27 @@ function verifyRecordAudit(record: unknown): record is InventionRecord {
 
 export class TheInventionLoop {
   private state: InventionLoopState = {
-    version: 2, records: [], accepted: 0, rejected: 0, quarantinedRecords: 0,
+    version: 3, records: [], accepted: 0, rejected: 0, quarantinedRecords: 0,
   };
 
   constructor(
     private readonly now: () => number = () => Date.now(),
     private readonly id: () => string = () =>
-      globalThis.crypto?.randomUUID?.() ?? `inv-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      globalThis.crypto?.randomUUID?.() ?? 'inv-' + Date.now() + '-' + Math.random().toString(16).slice(2),
   ) {}
 
   snapshot(): InventionLoopState {
     return structuredClone(this.state);
   }
 
-  /**
-   * Restores only records whose per-record hash chain validates. Version-1
-   * records had no audit receipts and are quarantined rather than promoted.
-   */
+  /** Restore only records with a valid per-record audit chain. */
   restore(raw?: Partial<InventionLoopState> | null): void {
-    const incoming = Array.isArray(raw?.records) ? raw!.records : [];
-    if (raw?.version !== 2) {
+    if (!raw) return;
+    const detached = detach<Partial<InventionLoopState>>(raw, 'invalid-invention-state');
+    const incoming = Array.isArray(detached.records) ? detached.records : [];
+    if (detached.version !== 3) {
       this.state = {
-        version: 2, records: [], accepted: 0, rejected: 0,
+        version: 3, records: [], accepted: 0, rejected: 0,
         quarantinedRecords: incoming.length,
       };
       return;
@@ -253,16 +311,16 @@ export class TheInventionLoop {
     const records: InventionRecord[] = [];
     let quarantinedRecords = 0;
     const seen = new Set<string>();
-    for (const candidate of incoming.slice(0, MAX_RECORDS * 2)) {
-      if (!verifyRecordAudit(candidate) || seen.has(candidate.id)) {
+    for (const item of incoming.slice(0, MAX_RECORDS * 2)) {
+      if (!verifyRecordAudit(item) || seen.has(item.id)) {
         quarantinedRecords += 1;
         continue;
       }
-      seen.add(candidate.id);
-      records.push(structuredClone(candidate));
+      seen.add(item.id);
+      records.push(structuredClone(item));
     }
     this.state = {
-      version: 2,
+      version: 3,
       records: records.slice(0, MAX_RECORDS),
       accepted: records.filter(record => record.stage === 'accepted').length,
       rejected: records.filter(record => record.stage === 'rejected').length,
@@ -304,36 +362,71 @@ export class TheInventionLoop {
     if (record.stage === 'accepted' || record.stage === 'rejected') throw new Error('invention-closed');
     return record;
   }
+  private summarizePhase(record: InventionRecord, kind: 'replication' | 'holdout'): InventionPhaseSummary {
+    const expected = kind === 'replication' ?
+      record.protocol.replicationSeeds : record.protocol.holdoutSeeds;
+    const outcomes = record.outcomes.filter(outcome => outcome.kind === kind);
+    const successfulRuns = outcomes.filter(outcome => outcome.passed).length;
+    const meanEffect01 = outcomes.length ?
+      outcomes.reduce((sum, outcome) => sum + outcome.effect01, 0) / outcomes.length : 0;
+    const successRate01 = outcomes.length ? successfulRuns / outcomes.length : 0;
+    const minimumEffect01 = outcomes.length ?
+      Math.min(...outcomes.map(outcome => outcome.effect01)) : 0;
+    const complete = outcomes.length === expected.length &&
+      expected.every(seed => outcomes.some(outcome => outcome.seed === seed));
+    return {
+      kind,
+      sampleCount: outcomes.length,
+      requiredSamples: expected.length,
+      successfulRuns,
+      successRate01,
+      meanEffect01,
+      minimumEffect01,
+      passed: complete && meanEffect01 >= record.protocol.minEffect &&
+        successRate01 >= record.protocol.minSuccessRate,
+    };
+  }
 
   propose(input: InventionProtocol): InventionRecord {
+    const safe = detach<InventionProtocol>(input, 'invalid-preregistration-payload');
     const protocol: InventionProtocol = {
-      question: clampText(input?.question, 500),
-      hypothesis: clampText(input?.hypothesis, MAX_TEXT),
-      successCriteria: clampText(input?.successCriteria, MAX_TEXT),
-      testFingerprint: clampText(input?.testFingerprint, 160),
-      baseline: input?.baseline,
-      metricScale: input?.metricScale,
-      minEffect: input?.minEffect,
-      lowerIsBetter: input?.lowerIsBetter === true,
+      question: clampText(safe.question, 500),
+      hypothesis: clampText(safe.hypothesis, MAX_TEXT),
+      successCriteria: clampText(safe.successCriteria, MAX_TEXT),
+      testFingerprint: clampText(safe.testFingerprint, 64).toLowerCase(),
+      baseline: safe.baseline,
+      metricScale: safe.metricScale,
+      minEffect: safe.minEffect,
+      minSuccessRate: safe.minSuccessRate,
+      primarySeed: safe.primarySeed,
+      replicationSeeds: [...safe.replicationSeeds],
+      holdoutSeeds: [...safe.holdoutSeeds],
+      lowerIsBetter: safe.lowerIsBetter === true,
       verifierPlan: {
-        primary: clampText(input?.verifierPlan?.primary, 120),
-        critique: clampText(input?.verifierPlan?.critique, 120),
-        replication: clampText(input?.verifierPlan?.replication, 120),
-        holdout: clampText(input?.verifierPlan?.holdout, 120),
+        primary: clampText(safe.verifierPlan.primary, 120),
+        critique: clampText(safe.verifierPlan.critique, 120),
+        replication: clampText(safe.verifierPlan.replication, 120),
+        holdout: clampText(safe.verifierPlan.holdout, 120),
       },
     };
+    const seedSet = new Set([
+      protocol.primarySeed, ...protocol.replicationSeeds, ...protocol.holdoutSeeds,
+    ]);
     if (!protocol.question || !protocol.hypothesis || !protocol.successCriteria ||
-        !protocol.testFingerprint || !finite(protocol.baseline) ||
+        !SHA256_RE.test(protocol.testFingerprint) || !finite(protocol.baseline) ||
         !finite(protocol.metricScale) || protocol.metricScale <= 0 ||
         !finite(protocol.minEffect) || protocol.minEffect < 0 || protocol.minEffect > 1 ||
-        !SHA256_RE.test(protocol.testFingerprint) ||
+        !finite(protocol.minSuccessRate) || protocol.minSuccessRate < 0.6 || protocol.minSuccessRate > 1 ||
+        !Number.isSafeInteger(protocol.primarySeed) || protocol.primarySeed < 0 ||
+        !isSeedArray(protocol.replicationSeeds) || !isSeedArray(protocol.holdoutSeeds) ||
+        seedSet.size !== 1 + protocol.replicationSeeds.length + protocol.holdoutSeeds.length ||
         new Set(Object.values(protocol.verifierPlan)).size !== 4 ||
         Object.values(protocol.verifierPlan).some(value => !value)) {
       throw new Error('invalid-preregistration');
     }
     const at = this.timestamp();
     const record: InventionRecord = {
-      id: clampText(this.id(), 120) || `invention-${at}`,
+      id: clampText(this.id(), 120) || 'invention-' + at,
       stage: 'proposed',
       protocol,
       createdAt: at,
@@ -355,10 +448,11 @@ export class TheInventionLoop {
   }
 
   prototype(id: string, input: InventionPrototype): InventionRecord {
+    const safe = detach<InventionPrototype>(input, 'invalid-prototype-payload');
     const record = this.find(id);
     if (record.stage !== 'designed') throw new Error('invalid-stage-transition');
-    const reference = clampText(input?.reference, 300);
-    const digest = clampText(input?.sha256, 64).toLowerCase();
+    const reference = clampText(safe.reference, 300);
+    const digest = clampText(safe.sha256, 64).toLowerCase();
     if (!reference || !SHA256_RE.test(digest)) throw new Error('invalid-prototype');
     record.prototypeRef = reference;
     record.prototypeSha256 = digest;
@@ -368,52 +462,59 @@ export class TheInventionLoop {
   }
 
   recordOutcome(id: string, input: InventionOutcomeInput): InventionRecord {
+    const safe = detach<InventionOutcomeInput>(input, 'invalid-outcome-payload');
     const record = this.find(id);
     let expectedKind: OutcomeKind | null = null;
     if (record.stage === 'prototyped') expectedKind = 'primary';
-    else if (record.stage === 'critiqued') expectedKind = 'replication';
-    else if (record.stage === 'replicated') expectedKind = 'holdout';
-    if (expectedKind === null || input?.kind !== expectedKind) {
+    else if (record.stage === 'critiqued' || record.stage === 'replicating') expectedKind = 'replication';
+    else if (record.stage === 'replicated' || record.stage === 'holdingout') expectedKind = 'holdout';
+    if (expectedKind === null || safe.kind !== expectedKind) {
       throw new Error('outcome-kind-not-allowed-at-stage');
     }
 
-    const runId = clampText(input.runId, 160);
-    const verifierId = clampText(input.verifierId, 120);
-    const environmentId = clampText(input.environmentId, 120);
-    const fingerprint = clampText(input.testFingerprint, 160);
-    const evidenceRef = clampText(input.evidenceRef, 512);
-    const evidenceSha256 = clampText(input.evidenceSha256, 64).toLowerCase();
+    const runId = clampText(safe.runId, 160);
+    const verifierId = clampText(safe.verifierId, 120);
+    const environmentId = clampText(safe.environmentId, 120);
+    const fingerprint = clampText(safe.testFingerprint, 64).toLowerCase();
+    const evidenceRef = clampText(safe.evidenceRef, 512);
+    const evidenceSha256 = clampText(safe.evidenceSha256, 64).toLowerCase();
     if (!runId || !verifierId || !environmentId || !evidenceRef ||
         !SHA256_RE.test(evidenceSha256) || fingerprint !== record.protocol.testFingerprint ||
-        !finite(input.observed)) {
+        !finite(safe.observed)) {
       throw new Error('invalid-outcome');
     }
-    const expectedVerifier = record.protocol.verifierPlan[input.kind];
+    const expectedVerifier = record.protocol.verifierPlan[safe.kind];
     if (verifierId !== expectedVerifier) throw new Error('verifier-plan-mismatch');
-    if (input.authority !== 'independent-verifier' && input.authority !== 'human-review') {
+    if (safe.authority !== 'independent-verifier' && safe.authority !== 'human-review') {
       throw new Error('outcome-not-authoritative:self-report-not-authoritative');
     }
-    if (!Number.isSafeInteger(input.seed) || input.seed < 0 ||
-        !Number.isSafeInteger(input.attempt) || input.attempt < 1) {
-      throw new Error('invalid-outcome-identity');
+    if (!Number.isSafeInteger(safe.seed) || safe.seed < 0 ||
+        !Number.isSafeInteger(safe.attempt) || safe.attempt !== 1) {
+      throw new Error('attempt-must-be-one-and-seed-valid');
     }
-    const outcomeId = clampText(input.id, 160) || `${id}:${input.kind}:${record.outcomes.length}`;
+    const expectedSeeds = safe.kind === 'primary' ? [record.protocol.primarySeed] :
+      safe.kind === 'replication' ? record.protocol.replicationSeeds : record.protocol.holdoutSeeds;
+    if (!expectedSeeds.includes(safe.seed)) throw new Error('seed-not-preregistered');
+    const outcomeId = clampText(safe.id, 160) || id + ':' + safe.kind + ':' + safe.seed;
     if (this.state.records.some(candidate => candidate.outcomes.some(outcome =>
       outcome.id === outcomeId || outcome.runId === runId || outcome.evidenceRef === evidenceRef))) {
       throw new Error('duplicate-run-or-evidence-across-inventions');
     }
-    if (record.outcomes.some(outcome => outcome.id === outcomeId || outcome.runId === runId ||
+    if (record.outcomes.some(outcome => outcome.id === outcomeId ||
+        (outcome.kind === safe.kind && outcome.seed === safe.seed) ||
+        outcome.runId === runId ||
         (outcome.verifierId === verifierId && outcome.environmentId === environmentId))) {
-      throw new Error('duplicate-run-or-outcome');
+      throw new Error('duplicate-run-outcome-or-seed');
     }
 
-    if (input.kind === 'replication') {
+    if (safe.kind === 'replication') {
       const primary = record.outcomes.find(outcome => outcome.kind === 'primary');
-      if (!primary || primary.verifierId === verifierId || primary.environmentId === environmentId) {
+      if (!primary || primary.verifierId === verifierId || primary.environmentId === environmentId ||
+          record.outcomes.some(outcome => outcome.kind === 'replication' && outcome.environmentId === environmentId)) {
         throw new Error('replication-not-independent');
       }
     }
-    if (input.kind === 'holdout') {
+    if (safe.kind === 'holdout') {
       if (record.outcomes.some(outcome =>
         outcome.verifierId === verifierId || outcome.environmentId === environmentId ||
         outcome.runId === runId)) {
@@ -422,73 +523,96 @@ export class TheInventionLoop {
     }
 
     const direction = record.protocol.lowerIsBetter ? -1 : 1;
-    const normalizedDelta = ((input.observed - record.protocol.baseline) * direction) /
+    const normalizedDelta = ((safe.observed - record.protocol.baseline) * direction) /
       record.protocol.metricScale;
     const effect01 = clamp01(normalizedDelta);
     const passed = effect01 >= record.protocol.minEffect;
-    const taskId = `${record.id}:${input.kind}`;
-    const split: EvaluationSplit = input.kind === 'holdout' ? 'holdout' : 'validation';
+    const taskId = id + ':' + safe.kind + ':' + safe.seed;
+    const split: EvaluationSplit = safe.kind === 'holdout' ? 'holdout' : 'validation';
     const verifierLedger = new VerifiedOutcomeLedger([{
       taskId, family: 'invention-loop', split,
       promptFingerprint: record.protocol.testFingerprint,
       verifierId, version: '1',
     }]);
     const verified = verifierLedger.record({
-      taskId, taskVersion: '1', method: input.kind,
-      seed: input.seed, attempt: input.attempt, passed,
-      authority: input.authority, verifierId, evidenceRef,
+      taskId, taskVersion: '1', method: safe.kind,
+      seed: safe.seed, attempt: safe.attempt, passed,
+      authority: safe.authority, verifierId, evidenceRef,
       observedAt: this.timestamp(),
     });
-    if (!verified.accepted) throw new Error(`outcome-not-authoritative:${verified.rejection?.code ?? 'unknown'}`);
+    if (!verified.accepted) {
+      throw new Error('outcome-not-authoritative:' + (verified.rejection?.code ?? 'unknown'));
+    }
+
     const outcome: InventionOutcome = {
       id: outcomeId,
-      kind: input.kind,
-      authority: input.authority,
-      seed: input.seed,
-      attempt: input.attempt,
+      kind: safe.kind,
+      authority: safe.authority,
+      seed: safe.seed,
+      attempt: safe.attempt,
       runId,
       verifierId,
       environmentId,
       testFingerprint: fingerprint,
       evidenceRef,
       evidenceSha256,
-      observed: input.observed,
+      observed: safe.observed,
       effect01,
       passed,
       recordedAt: this.timestamp(),
     };
     record.outcomes.push(outcome);
-    if (!passed) {
+    if (!passed && safe.kind === 'primary') {
       record.stage = 'rejected';
-      record.decisionReason = `${input.kind}-failed-preregistered-threshold`;
-    } else if (input.kind === 'primary') {
+      record.decisionReason = 'primary-failed-preregistered-threshold';
+    } else if (safe.kind === 'primary') {
       record.stage = 'tested';
-    } else if (input.kind === 'replication') {
-      record.stage = 'replicated';
+    } else if (safe.kind === 'replication') {
+      const summary = this.summarizePhase(record, 'replication');
+      record.phaseSummaries = { ...(record.phaseSummaries ?? {}), replication: summary };
+      if (summary.sampleCount < summary.requiredSamples) {
+        record.stage = 'replicating';
+      } else if (summary.passed) {
+        record.stage = 'replicated';
+      } else {
+        record.stage = 'rejected';
+        record.decisionReason = 'replication-cohort-failed-preregistered-gate';
+      }
     } else {
-      record.stage = 'accepted';
-      record.decisionReason = 'primary-replication-and-holdout-passed';
+      const summary = this.summarizePhase(record, 'holdout');
+      record.phaseSummaries = { ...(record.phaseSummaries ?? {}), holdout: summary };
+      if (summary.sampleCount < summary.requiredSamples) {
+        record.stage = 'holdingout';
+      } else if (summary.passed) {
+        record.stage = 'accepted';
+        record.decisionReason = 'replication-and-holdout-cohorts-passed';
+      } else {
+        record.stage = 'rejected';
+        record.decisionReason = 'holdout-cohort-failed-preregistered-gate';
+      }
     }
     this.touch(record);
-    return this.commit(record, input.kind === 'holdout' && passed ? 'accepted' :
-      !passed ? 'rejected' : 'outcome-recorded');
+    return this.commit(record,
+      record.stage === 'accepted' ? 'accepted' :
+        record.stage === 'rejected' ? 'rejected' : 'outcome-recorded');
   }
 
   critique(id: string, input: InventionCritiqueInput): InventionRecord {
+    const safe = detach<InventionCritiqueInput>(input, 'invalid-critique-payload');
     const record = this.find(id);
     if (record.stage !== 'tested') throw new Error('critique-requires-tested-prototype');
-    const reviewerId = clampText(input?.reviewerId, 120);
-    const reviewRef = clampText(input?.reviewRef, 512);
-    const reviewSha256 = clampText(input?.reviewSha256, 64).toLowerCase();
+    const reviewerId = clampText(safe.reviewerId, 120);
+    const reviewRef = clampText(safe.reviewRef, 512);
+    const reviewSha256 = clampText(safe.reviewSha256, 64).toLowerCase();
     if (!reviewerId || !reviewRef || !SHA256_RE.test(reviewSha256)) throw new Error('invalid-critique');
     if (reviewerId !== record.protocol.verifierPlan.critique) throw new Error('reviewer-plan-mismatch');
     if (record.outcomes.some(outcome => outcome.verifierId === reviewerId)) {
       throw new Error('reviewer-must-be-independent');
     }
-    const blockers = Array.isArray(input.blockers) ?
-      input.blockers.map(value => clampText(value, 300)).filter(Boolean).slice(0, 32) : [];
-    const limitations = Array.isArray(input.limitations) ?
-      input.limitations.map(value => clampText(value, 300)).filter(Boolean).slice(0, 32) : [];
+    const blockers = Array.isArray(safe.blockers) ?
+      safe.blockers.map(value => clampText(value, 300)).filter(Boolean).slice(0, 32) : [];
+    const limitations = Array.isArray(safe.limitations) ?
+      safe.limitations.map(value => clampText(value, 300)).filter(Boolean).slice(0, 32) : [];
     record.critique = { reviewerId, reviewRef, reviewSha256, blockers, limitations, reviewedAt: this.timestamp() };
     if (blockers.length) {
       record.stage = 'rejected';
