@@ -23,7 +23,7 @@ export interface ConstitutionReviewExpected {
   authorId: string;
   testPlanCount: number;
 }
-export type ConstitutionReviewVerifier = (artifact: unknown, expected: ConstitutionReviewExpected) => ConstitutionReviewInput | null;
+export type ConstitutionReviewVerifier = (artifact: unknown, expected: ConstitutionReviewExpected) => (ConstitutionReviewInput & { at: number }) | null;
 export interface ConstitutionReviewAuthorityOptions {
   maxAgeMs?: number;
   allowedClockSkewMs?: number;
