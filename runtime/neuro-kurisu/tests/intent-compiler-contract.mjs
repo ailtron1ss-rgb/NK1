@@ -257,20 +257,36 @@ assert.equal(compiler.gate(approved, 'filesystem.write').reason, 'action-explici
 const tamperedApproval = { ...approved, approval: { ...approved.approval, allowedActions: ['organism.inspect', 'filesystem.write'] } };
 assert.equal(compiler.gate(tamperedApproval, 'filesystem.write').allowed, false, 'approval allow-list tampering must invalidate its attestation');
 assert.equal(compiler.gate(approved, 'deploy').reason, 'action-explicitly-denied');
-assert.throws(() => compiler.approve(contract, {
-  contractId: contract.id,
+const freshApprovalDraft = () => compiler.compile({
+  requestId: 'intent:test:bounded-negative-approval',
+  text: 'Inspect the project status and summarize the result.',
+  extraction: {
+    goal: 'Inspect project status and summarize it.',
+    expectedOutcome: 'A concise status report',
+    acceptanceCriteria: ['Report branch and commit'],
+    permissions: { allowedActions: ['organism.inspect'], deniedActions: ['filesystem.write', 'deploy'] },
+    assumptions: [{ statement: 'The current branch is the intended inspection target', impact: 'medium', confidence01: 0.6 }],
+    stopConditions: ['Stop if the source branch cannot be identified'],
+  },
+});
+const expansionDraft = freshApprovalDraft();
+assert.throws(() => compiler.approve(expansionDraft, {
+  contractId: expansionDraft.id,
   userConfirmed: true, allowedActions: ['deploy'], at: 1_800_000_000_001, evidenceRef: 'test-host-attested:forged-expansion',
 }), /not explicitly allowed/);
-assert.throws(() => compiler.approve(contract, {
-  contractId: contract.id, userConfirmed: true,
+const oversizedDraft = freshApprovalDraft();
+assert.throws(() => compiler.approve(oversizedDraft, {
+  contractId: oversizedDraft.id, userConfirmed: true,
   allowedActions: Array.from({ length: 33 }, () => 'organism.inspect'),
   at: 1_800_000_000_001, evidenceRef: 'test-host-attested:oversized-approval-scope',
 }), /bounded explicit action list/);
-assert.throws(() => compiler.approve(contract, {
-  contractId: contract.id, userConfirmed: true, allowedActions: ['organism.inspect'],
+const missingAckDraft = freshApprovalDraft();
+assert.throws(() => compiler.approve(missingAckDraft, {
+  contractId: missingAckDraft.id, userConfirmed: true, allowedActions: ['organism.inspect'],
   at: 1_800_000_000_001, evidenceRef: 'test-host-attested:missing-assumption-ack',
 }), /assumption/);
-assert.throws(() => compiler.approve(contract, {
+const wrongContractDraft = freshApprovalDraft();
+assert.throws(() => compiler.approve(wrongContractDraft, {
   contractId: 'another-intent', userConfirmed: true, allowedActions: ['organism.inspect'],
   at: 1_800_000_000_001, evidenceRef: 'test-host-attested:wrong-contract',
 }), /exact intent contract/);
