@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ipaddress
 import json
 import math
 import os
@@ -307,12 +306,8 @@ def create_handler(runtime: TransformersRuntime):
 
 def main() -> None:
     host = str(os.environ.get("NEURO_NP_HOST", "127.0.0.1")).strip().lower()
-    if host not in ("127.0.0.1", "localhost", "::1"):
-        try:
-            if not ipaddress.ip_address(host).is_loopback:
-                raise RuntimeError("Neural Prosthesis HTTP service must bind to a loopback address")
-        except ValueError as error:
-            raise RuntimeError("Neural Prosthesis HTTP service must bind to a loopback address") from error
+    if host not in ("127.0.0.1", "localhost"):
+        raise RuntimeError("Neural Prosthesis HTTP service must bind to 127.0.0.1 or localhost")
     port = int(os.environ.get("NEURO_NP_PORT", "8091"))
     if not 1 <= port <= 65535:
         raise RuntimeError("NEURO_NP_PORT-out-of-range")
