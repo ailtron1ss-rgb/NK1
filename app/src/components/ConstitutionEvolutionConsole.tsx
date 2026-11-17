@@ -52,6 +52,7 @@ export function ConstitutionEvolutionConsole() {
   const rules: AnyRecord[] = useMemo(() => Array.isArray(state?.active?.rules) ? state!.active.rules.filter((r: AnyRecord) => r.enabled) : [], [state]);
   const selectedRule = rules.find(r => r.id === targetRuleId) ?? null;
   const proposals: AnyRecord[] = Array.isArray(state?.proposals) ? state!.proposals : [];
+  const auditEvents: AnyRecord[] = Array.isArray(state?.auditEvents) ? state!.auditEvents : [];
   const invariants: AnyRecord[] = Array.isArray(state?.protectedInvariants) ? state!.protectedInvariants : [];
   const authority = state?.reviewAuthority ?? {};
   const diagnostics = state?.diagnostics ?? {};
@@ -156,6 +157,16 @@ export function ConstitutionEvolutionConsole() {
           <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-sm font-medium text-fg">{p.proposedRule?.title ?? p.targetRuleId ?? p.change}</p><p className="mt-1 font-mono text-[10px] text-subtle">{p.id}</p></div><div className="flex gap-2 text-[10px]"><span className="rounded border border-border px-2 py-1">{p.status}</span><span className="rounded border border-border px-2 py-1">{p.riskAssessment?.level} risk</span></div></div>
           <p className="mt-2 text-xs text-muted">{p.motivation}</p><p className="mt-2 break-all font-mono text-[10px] text-subtle">candidate digest · {p.candidateDigest}</p>
           <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted"><span>{p.reviews?.length ?? 0} review(s)</span><span>{p.testPlan?.length ?? 0} planned test(s)</span>{p.appliedVersion ? <span>applied {p.appliedVersion}</span> : null}{p.rejectionReason ? <span className="text-rose-300">{p.rejectionReason}</span> : null}</div>
+          {Array.isArray(p.reviews) && p.reviews.length > 0 ? <div className="mt-3 rounded-md border border-border p-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-subtle">Verified reviewer evidence</p>
+            <ul className="mt-2 space-y-2">{p.reviews.map((review: AnyRecord, index: number) => <li key={review.reviewerId + ":" + index} className="text-[11px]">
+              <div className="flex flex-wrap gap-2"><span className="font-medium text-fg">{review.reviewerId}</span><span className="text-muted">{review.decision}</span><span className="text-muted">tests {review.tests?.passed ?? 0}/{review.tests?.planned ?? 0}</span><span className="text-muted">holdout {review.tests?.holdoutCases ?? 0} · {review.tests?.holdoutPassed ? "passed" : "not passed"}</span></div>
+              <p className="mt-1 text-muted">{review.rationale}</p>
+              <p className="mt-1 break-all font-mono text-[9px] text-subtle">evidence: {(review.evidenceRefs ?? []).join(" · ")}</p>
+              {review.attestationMac ? <p className="mt-1 break-all font-mono text-[9px] text-subtle">host attestation · {review.attestationMac}</p> : null}
+            </li>)}</ul>
+          </div> : null}
+          {p.approval ? <p className="mt-2 break-all text-[10px] text-muted">Ratified by {p.approval.approverId} · ticket {p.approval.approvalRef}</p> : null}
           {p.status === "pending-review" && authority.trustedReviewerCount > 0 ? <div className="mt-3">
             <label className={label}>Signed reviewer artifact · paste external JSON<textarea className={field + " min-h-32 font-mono text-[11px]"} value={reviewText[p.id] ?? reviewTemplate(p)} onChange={e => setReviewText(current => ({ ...current, [p.id]: e.target.value }))} /></label>
             <p className="mt-1 text-[10px] text-muted">Trusted reviewer IDs: {(authority.reviewerIds ?? []).join(", ")}</p>
@@ -166,6 +177,16 @@ export function ConstitutionEvolutionConsole() {
         </article>)}
         {proposals.length === 0 ? <p className="text-xs text-muted">No constitutional proposals yet.</p> : null}
       </div>
+    </div>
+
+    <div className="mt-5 rounded-lg border border-border bg-bg p-3">
+      <div className="flex items-start justify-between gap-3"><div><h3 className="text-sm font-semibold text-fg">Constitutional audit trail</h3><p className="mt-1 text-[11px] text-muted">Newest first · {auditEvents.length} retained signed events</p></div><span className="font-mono text-[10px] text-subtle">bounded ledger</span></div>
+      <div className="mt-3 space-y-2">{auditEvents.slice(0,32).map(event => <article key={event.id} className="rounded border border-border p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-mono text-[10px] text-fg">{event.type}</span><time className="text-[10px] text-muted">{new Date(event.at).toLocaleString()}</time></div>
+        <p className="mt-1 text-[11px] text-muted">{event.summary}</p>
+        <div className="mt-1 flex flex-wrap gap-2 font-mono text-[9px] text-subtle"><span>actor · {event.actorId}</span><span>{event.fromVersion} → {event.toVersion ?? "pending"}</span></div>
+        <p className="mt-1 break-all font-mono text-[9px] text-subtle">event digest · {event.digest}</p>
+      </article>)}{auditEvents.length === 0 ? <p className="text-xs text-muted">No constitutional events recorded yet.</p> : null}</div>
     </div>
 
     <div className="mt-5 rounded-lg border border-border bg-bg p-3"><h3 className="text-sm font-semibold text-fg">Audited rollback</h3>
