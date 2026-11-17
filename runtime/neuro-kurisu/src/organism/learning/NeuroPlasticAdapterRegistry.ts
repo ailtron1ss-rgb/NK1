@@ -442,6 +442,30 @@ function reportFingerprint(value: Omit<NeuroPlasticEvaluationReport, 'reportId'>
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
+function isValidEvaluationReport(
+  value: unknown,
+  adapterId: string,
+  holdoutFingerprint: string,
+): value is NeuroPlasticEvaluationReport {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const report = value as NeuroPlasticEvaluationReport;
+  const { reportId, ...summary } = report;
+  if (report.adapterId !== adapterId ||
+      report.holdoutFingerprint !== holdoutFingerprint ||
+      report.automaticActivation !== false ||
+      typeof report.eligible !== 'boolean' ||
+      !Array.isArray(report.reasons) ||
+      !HASH.test(String(report.evaluationFingerprint || '')) ||
+      !HASH.test(String(report.evaluatorSignature || '')) ||
+      !report.evaluationId || !report.evaluatorId ||
+      !HASH.test(String(reportId || ''))) return false;
+  try {
+    return reportFingerprint(summary) === reportId;
+  } catch {
+    return false;
+  }
+}
+
 
 function normalizeApproval(raw: unknown): NeuroPlasticApproval {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('neuro-plastic-approval-invalid');
@@ -542,10 +566,11 @@ export class NeuroPlasticAdapterRegistry {
         const row = item as Record<string, unknown>;
         const manifest = normalizeManifest(row.manifest);
         const evaluation = row.evaluation as NeuroPlasticEvaluationReport | null;
-        const validReport = Boolean(evaluation && evaluation.adapterId === manifest.adapterId &&
-          evaluation.holdoutFingerprint === manifest.holdoutPlanFingerprint &&
-          evaluation.automaticActivation === false && typeof evaluation.eligible === 'boolean' &&
-          Array.isArray(evaluation.reasons));
+        const validReport = isValidEvaluationReport(
+          evaluation,
+          manifest.adapterId,
+          manifest.holdoutPlanFingerprint,
+        );
         const storedStatus = row.status;
         let activationApproval: NeuroPlasticApproval | null = null;
         let restoredApprovalTrusted = false;
