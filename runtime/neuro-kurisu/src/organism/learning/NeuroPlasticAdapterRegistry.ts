@@ -402,6 +402,28 @@ export function createNeuroPlasticEvaluationReceipt(
   };
 }
 
+export function verifyNeuroPlasticEvaluationReceiptSignature(
+  adapterId: string,
+  receipt: NeuroPlasticEvaluationReceipt,
+  secret: string,
+): boolean {
+  try {
+    const normalized = {
+      evaluationId: safeText(receipt?.evaluationId, 'evaluation-id', 160),
+      evaluatorId: safeText(receipt?.evaluatorId, 'evaluator-id', 160),
+      evaluatedAt: safeCounter(receipt?.evaluatedAt, 'evaluation-receipt-time', 1),
+      evaluationFingerprint: safeHash(receipt?.evaluationFingerprint, 'evaluation-fingerprint'),
+    };
+    const expected = hmacSha256(evaluationReceiptPayload(
+      safeText(adapterId, 'evaluation-adapter-id', 80),
+      normalized,
+    ), secret);
+    return constantTimeHexEqual(receipt.signature, expected);
+  } catch {
+    return false;
+  }
+}
+
 export function verifyNeuroPlasticEvaluationSignature(
   adapterId: string,
   input: NeuroPlasticEvaluationPayload,
@@ -418,8 +440,7 @@ export function verifyNeuroPlasticEvaluationSignature(
     };
     if (normalizedReceipt.evaluatedAt !== normalized.evaluatedAt ||
         normalizedReceipt.evaluationFingerprint !== normalized.evaluationFingerprint) return false;
-    const expected = hmacSha256(evaluationReceiptPayload(normalized.adapterId, normalizedReceipt), secret);
-    return constantTimeHexEqual(receipt.signature, expected);
+    return verifyNeuroPlasticEvaluationReceiptSignature(normalized.adapterId, receipt, secret);
   } catch {
     return false;
   }
@@ -550,6 +571,10 @@ export class NeuroPlasticAdapterRegistry {
       approval: NeuroPlasticApproval,
       context: { adapterId: string; reportId: string; baseModelFingerprint: string },
     ) => boolean,
+    verifyRestoredEvaluation?: (
+      receipt: NeuroPlasticEvaluationReceipt,
+      context: { adapterId: string; holdoutFingerprint: string },
+    ) => boolean,
   ): void {
     this.state = { schemaVersion: 1, adapters: [] };
     if (!raw) return;
@@ -566,11 +591,21 @@ export class NeuroPlasticAdapterRegistry {
         const row = item as Record<string, unknown>;
         const manifest = normalizeManifest(row.manifest);
         const evaluation = row.evaluation as NeuroPlasticEvaluationReport | null;
+        const persistedReceipt: NeuroPlasticEvaluationReceipt | null = evaluation ? {
+          evaluationId: evaluation.evaluationId,
+          evaluatorId: evaluation.evaluatorId,
+          evaluatedAt: evaluation.evaluatedAt,
+          evaluationFingerprint: evaluation.evaluationFingerprint,
+          signature: evaluation.evaluatorSignature,
+        } : null;
         const validReport = isValidEvaluationReport(
           evaluation,
           manifest.adapterId,
           manifest.holdoutPlanFingerprint,
-        );
+        ) && Boolean(persistedReceipt && verifyRestoredEvaluation?.(persistedReceipt, {
+          adapterId: manifest.adapterId,
+          holdoutFingerprint: manifest.holdoutPlanFingerprint,
+        }) === true);
         const storedStatus = row.status;
         let activationApproval: NeuroPlasticApproval | null = null;
         let restoredApprovalTrusted = false;
