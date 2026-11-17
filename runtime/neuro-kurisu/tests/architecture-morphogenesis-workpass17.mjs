@@ -185,6 +185,13 @@ const malformedMerge = proposal(graph([alpha]), graph([alpha]), [{
 assert.equal(malformedMerge.status, 'BLOCKED');
 assert.equal(evaluateArchitectureMorphogenesisPlan(mergePlan, {
   candidateBranch: 'aspect/morphogenesis-architecture-20261117',
+  candidateCommit: '3'.repeat(40),
+  baselineCommit: sha,
+  testsPassed: true, typecheckPassed: true, architectureAuditPassed: true,
+  contractChecksPassed: true, rollbackVerified: true, reviewApproved: true,
+}).status, 'BLOCKED');
+assert.equal(evaluateArchitectureMorphogenesisPlan(mergePlan, {
+  candidateBranch: 'aspect/morphogenesis-architecture-20261117',
   candidateCommit: '2'.repeat(40),
   baselineCommit: sha,
   testsPassed: false, typecheckPassed: true, architectureAuditPassed: true,
