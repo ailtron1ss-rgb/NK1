@@ -283,6 +283,8 @@ export class NeuralJitEngine {
     try { trusted = await this.activationCaptureVerifier.verifyCapture(rawCapture, expected); }
     catch { return this.reject('activation-capture-verification-failed'); }
     if (!trusted) return this.reject('untrusted-activation-capture');
+    // Host verification may be asynchronous; do not admit a capture whose trust window expired while awaiting it.
+    if (Date.now() - capture.capturedAt > MAX_CAPTURE_AGE_MS) return this.reject('activation-capture-expired');
     if (capture.toolId !== binding.toolId || capture.executionId !== binding.executionId ||
         capture.decisionId !== binding.decisionId || capture.inputFingerprint !== inputFingerprint) {
       return this.reject('activation-capture-binding-mismatch');
