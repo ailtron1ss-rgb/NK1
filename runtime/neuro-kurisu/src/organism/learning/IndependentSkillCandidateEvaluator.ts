@@ -275,9 +275,9 @@ export function createIndependentSkillCandidateEvaluator(
     throw new Error('independent-candidate-evaluator-task-input-invalid');
   }
   validateConfig(config, tasks);
-  // Capture validated environment identity rather than reading it from the mutable
-  // caller-owned config on every run. Otherwise post-construction mutation can relabel
-  // an evaluation with a different runtime/tool-policy fingerprint.
+  // Capture every identity-bearing policy value at construction. Mutating the
+  // caller-owned config later must never relabel the validation/holdout evidence.
+  const evaluationScope: IndependentCandidateEvaluationScope = config.evaluationScope ?? 'paired';
   const environmentFingerprint = config.environmentFingerprint;
   const serviceTimeoutMs = config.serviceTimeoutMs ?? 30_000;
   // Capture trusted service entry points too: replacing a method on the caller-owned
@@ -455,7 +455,7 @@ export function createIndependentSkillCandidateEvaluator(
           holdoutPlanFingerprint: authority.holdoutPlan.planFingerprint,
           method: authority.method,
           attempt: authority.attempt ?? 1,
-          evaluationScope: config.evaluationScope ?? 'paired',
+          evaluationScope,
         } : null,
         runBindings,
       },

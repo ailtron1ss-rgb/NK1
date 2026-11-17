@@ -79,3 +79,10 @@ Runner не применяет предложенный профиль к live P
 ### P55 snapshot adapter
 
 `createDevelopmentalMultiverseSessionFromP55()` consumes the public `P55State.forks` snapshot field and maps only active fork `id/style/status/deltas` into experiment variants. Rejected/replaced forks are ignored. It intentionally does **not** import P55 `actionBiases`, counters, last winner/applied IDs or any other runtime state. The baseline five-knob profile remains an explicit input, never inferred from historical action bias.
+
+
+### Checkpoint continuity fix
+
+После рестарта runner использует не повторно сгенерированные задачи, а сохранённый корпус: immutable scenario-task inputs, manifest, validation/holdout plans и полный snapshot P23 `VerifiedOutcomeLedger`. Checkpoint также привязывает environment, verifier и три host authority executable identities. Restore перепроверяет task IDs/trial IDs, split, seeds, fingerprints, prompt manifest, оба плана и ledger. Если конфигурация или authority не совпадают — запуск отклоняется. Это устраняет дрейф holdout prompts при рестарте.
+
+P23 evaluator также фиксирует `evaluationScope` в момент создания. Последующая мутация исходного config не может переписать phase label уже выполненного evaluation.
