@@ -17,8 +17,9 @@ untrusted proposal data.
 - `IntentCompiler`: compiles and validates the contract, risk, incompleteness,
   approval freshness and approval attestation.
 - `IntentExtractionProvider`: optional local or remote semantic extractor.
-  Provider failure produces an incomplete fail-closed contract; it does not
-  silently fall back to executable intent.
+  Extraction is bounded by a 10-second default deadline (maximum 60 seconds)
+  and receives an `AbortSignal`; timeout/provider failure produces an incomplete
+  fail-closed contract rather than silently falling back to executable intent.
 - `IntentActionGatewayBridge`: validates the approved contract and delegates
   the action through the canonical `ActionGateway.executeTool` API.
 - `tests/intent-compiler-contract.mjs`: tests intent integrity, risk escalation,
@@ -38,7 +39,7 @@ untrusted proposal data.
    explicitly reported as missing/incomplete rather than silently shortened.
 5. Assumptions with material impact or confidence below 0.8 must be explicitly
    acknowledged at approval time. Unknown severity is conservatively elevated to
-   high and malformed assumption records block approval; assumptions are never
+   high and malformed assumption severity/confidence metadata block approval; assumptions are never
    silently promoted to user-confirmed facts.
 6. Risk classification is conservative. Deterministic destructive, external
    mutation and credential-exfiltration signals can raise risk; a semantic
