@@ -397,7 +397,7 @@ export class ConstitutionEvolutionEngine {
           || !['pending-review','awaiting-ratification','ratified','applied','rejected','stale'].includes(p.status)
           || p.candidateDigest!==proposalDigest(proposalCore(p))) return fail('proposal integrity validation failed');
         if (['ratified','applied'].includes(p.status) && !p.approval) return fail('ratified proposal has no approval receipt');
-        if (p.status==='applied' && (typeof p.appliedVersion!=='string' || !/^1\\.\\d+\\.0$/.test(p.appliedVersion))) return fail('applied proposal version is invalid');
+        if (p.status==='applied' && (typeof p.appliedVersion!=='string' || !/^1\.\d+\.0$/.test(p.appliedVersion))) return fail('applied proposal version is invalid');
         for (const review of p.reviews) {
           if (!isRecord(review) || !Array.isArray(review.evidenceRefs) || review.evidenceRefs.length<1
             || review.evidenceRefs.length>MAX_EVIDENCE_REFS_PER_REVIEW
