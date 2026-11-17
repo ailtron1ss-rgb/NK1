@@ -375,7 +375,7 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
 export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogenesisGraph {
   const architecture = buildCognitiveArchitectureSnapshot();
   const genome = buildDevelopmentalGenome();
-  const configuredSourceCommit = process.env.NK1_SOURCE_COMMIT ?? process.env.GITHUB_SHA ?? null;
+  const configuredSourceCommit = process.env.GITHUB_SHA ?? process.env.NK1_SOURCE_COMMIT ?? null;
   const sourceCommit = typeof configuredSourceCommit === 'string' && COMMIT_SHA.test(configuredSourceCommit)
     ? configuredSourceCommit
     : null;
