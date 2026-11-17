@@ -200,6 +200,50 @@ const missingCandidate=await governance.deliberateAndArbitrate({
 assert.equal(missingCandidate.status,'candidate-not-in-p69-set');
 assert.equal(missingCandidate.arbitration,null);
 
+// P69 receives an immutable snapshot captured before asynchronous specialist runs.
+// Mutating the caller's input during deliberation cannot replace/remove the approved candidate.
+let releaseCandidateGate;
+const candidateGate=new Promise(resolve=>{releaseCandidateGate=resolve;});
+let roleStartedResolve;
+const roleStarted=new Promise(resolve=>{roleStartedResolve=resolve;});
+const gatedExecutors=makeExecutors(()=>roleStartedResolve());
+for(const role of roles){
+  const execute=gatedExecutors[role].execute;
+  gatedExecutors[role].execute=async request=>{const result=await execute(request);await candidateGate;return result;};
+}
+const snapshotGovernance=new GovernanceSubsystemRuntime({parliamentTrustPort:trust,parliamentRoleExecutors:gatedExecutors});
+const mutableP69Input={
+  ...p69Input,
+  candidates:[{id:'candidate-snapshot',action:'respond',score:.95,confidence:.95,predictedUtility:.95}],
+};
+const snapshotRun=snapshotGovernance.deliberateAndArbitrate({
+  candidateId:'candidate-snapshot',risk:'high',task:'Bind arbitration to an immutable candidate snapshot.',
+  evidenceReferences:evidence,p69Input:mutableP69Input,
+});
+await roleStarted;
+mutableP69Input.candidates.splice(0,1,{id:'replacement-candidate',action:'explore',score:.99,confidence:.99,predictedUtility:.99});
+releaseCandidateGate();
+const snapshotResult=await snapshotRun;
+assert.equal(snapshotResult.status,'p69-selected');
+assert.equal(snapshotResult.arbitration?.chosen?.id,'candidate-snapshot');
+assert.equal(snapshotResult.arbitration?.chosen?.action,'respond',
+  'P69 must arbitrate the captured candidate, not a caller mutation made during role execution');
+
+// Duplicate candidate identities make the P69 candidate set ambiguous and must fail closed.
+const duplicateCandidateInput={
+  ...p69Input,
+  candidates:[
+    {id:'candidate-duplicate',action:'respond',score:.95,confidence:.95,predictedUtility:.95},
+    {id:'candidate-duplicate',action:'explore',score:.99,confidence:.99,predictedUtility:.99},
+  ],
+};
+const duplicateCandidate=await governance.deliberateAndArbitrate({
+  candidateId:'candidate-duplicate',risk:'high',task:'Reject ambiguous candidate identifiers.',
+  evidenceReferences:evidence,p69Input:duplicateCandidateInput,
+});
+assert.equal(duplicateCandidate.status,'candidate-not-in-p69-set');
+assert.equal(duplicateCandidate.arbitration,null);
+
 console.log(JSON.stringify({
   dispatch:dispatched.decision.status,roleCount:dispatched.roleResults.length,
   maxConcurrency:maxActive,tokenBudget:seenTokens.reduce((sum,n)=>sum+n,0),
