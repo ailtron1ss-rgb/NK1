@@ -52,4 +52,5 @@ jobs:
       - name: Python trainer syntax
         run: python3 -m py_compile runtime/neuro-kurisu/scripts/neuro_plastic_train.py
       - name: Offline trainer manifest and integrity contracts
-        run: python3 -m unittest runtime/neuro-kurisu/tests/test_neuro_plastic_train.py -v
+        working-directory: runtime/neuro-kurisu
+        run: python3 -m unittest discover -s tests -p 'test_neuro_plastic_train.py' -v
