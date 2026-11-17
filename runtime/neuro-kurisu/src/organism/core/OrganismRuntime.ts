@@ -43,7 +43,7 @@ import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
-import { SynapticCommons, parseSynapticPublicKeyMap, type SynapticCommonsState, type SynapticCompatibilityTarget } from '../learning/SynapticCommons.ts';
+import { SynapticCommons, parseSynapticPublicKeyMap, parseSynapticLicenseReviewAllowlist, type SynapticCommonsState, type SynapticCompatibilityTarget } from '../learning/SynapticCommons.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
@@ -348,6 +348,7 @@ export class OrganismRuntime {
     this.synapticCommons = new SynapticCommons({
       trustedPublisherKeys: parseSynapticPublicKeyMap(process.env.NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON),
       trustedAttestorKeys: parseSynapticPublicKeyMap(process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON),
+      trustedLicenseReviewFingerprints: parseSynapticLicenseReviewAllowlist(process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON),
     });
     this.synapticCommonsStore = new FileStateStore<SynapticCommonsState>(`${config.stateFile}.synaptic-commons.json`);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
