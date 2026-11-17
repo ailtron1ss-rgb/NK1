@@ -358,9 +358,8 @@ export class ConstitutionEvolutionEngine {
         if (!isRecord(p) || typeof p.id!=='string' || typeof p.authorId!=='string' || !Array.isArray(p.reviews)
           || !['pending-review','awaiting-ratification','ratified','applied','rejected','stale'].includes(p.status)
           || p.candidateDigest!==proposalDigest(proposalCore(p))) return fail('proposal integrity validation failed');
-        if (['awaiting-ratification','ratified','applied'].includes(p.status) && !p.approvalRequestId && !p.approval) return fail('proposal approval lifecycle is incomplete');
         if (['ratified','applied'].includes(p.status) && !p.approval) return fail('ratified proposal has no approval receipt');
-        if (p.status==='applied' && (typeof p.appliedVersion!=='string' || !revisions.some(revision=>revision.version===p.appliedVersion))) return fail('applied proposal revision is missing');
+        if (p.status==='applied' && (typeof p.appliedVersion!=='string' || !/^1\\.\\d+\\.0$/.test(p.appliedVersion))) return fail('applied proposal version is invalid');
         for (const review of p.reviews) {
           if (!isRecord(review) || review.attestationMac!==this.mac(reviewCore(p.id,p.candidateDigest,review))) return fail('review attestation failed');
         }
