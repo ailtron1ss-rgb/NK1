@@ -36,7 +36,35 @@ for (const verifierId of verifierIds) {
   trustedKeys.set(verifierId, pair.publicKey.export({ type: 'spki', format: 'pem' }).toString());
 }
 const resolveKey = verifierId => trustedKeys.get(verifierId);
-const runtime = new EvidenceResearchSubsystemRuntime(resolveKey);
+const artifactBytes = new Map();
+const resolveScienceRoleIdentity = (_role, actorId) => 'principal:' + actorId;
+const verifyScienceArtifactBytes = artifact =>
+  artifactBytes.get(artifact.reference) === artifact.sha256;
+const rememberArtifactBytes = artifact =>
+  artifactBytes.set(artifact.reference, artifact.sha256);
+const rememberSignedEvidence = artifact => {
+  const fingerprint = createHash('sha256')
+    .update(canonicalOutcomePayload(artifact.payload))
+    .digest('hex');
+  const measurement = artifact.payload.measurement;
+  if (measurement?.contextType === 'invention-critique') {
+    rememberArtifactBytes({ reference: measurement.reviewRef, sha256: measurement.reviewSha256 });
+    rememberArtifactBytes({
+      reference: 'signed-critique:' + artifact.payload.artifactId,
+      sha256: fingerprint,
+    });
+  } else if (measurement?.contextType === 'invention-outcome') {
+    rememberArtifactBytes({
+      reference: 'signed-artifact:' + artifact.payload.artifactId + ':sha256:' + fingerprint,
+      sha256: fingerprint,
+    });
+  }
+};
+const runtime = new EvidenceResearchSubsystemRuntime(
+  resolveKey,
+  resolveScienceRoleIdentity,
+  verifyScienceArtifactBytes,
+);
 
 assert.ok(runtime.scienceRepublic, 'EvidenceResearchSubsystemRuntime owns the Science Republic');
 assert.equal(runtime.scienceRepublic.inventionLoop, runtime.inventionLoop,
@@ -66,7 +94,11 @@ const science = runtime.openScienceCaseFromCapturedCandidate({
   evidence: { reference: 'artifact://science/discovery.json', sha256: digest('discovery') },
   actors,
 });
+rememberArtifactBytes(science.discoveryEvidence);
 assert.equal(science.stage, 'discovered');
+assert.equal(science.trust.roleIdentity, 'host-attested');
+assert.equal(science.trust.artifactBytesVerified, false);
+assert.equal(Object.keys(science.trust.roleSubjects).length, 6);
 assert.equal(science.candidate.experimentId, generated.id);
 assert.equal(runtime.scientificMethod.snapshot().projects.length, 1,
   'Science Republic must reuse the existing ScientificMethod project');
@@ -85,6 +117,17 @@ assert.throws(() => runtime.scienceRepublic.discover({
   evidence: { reference: 'artifact://science/role-collision.json', sha256: digest('collision') },
   actors: { ...actors, auditor: actors.discoverer },
 }), /science-roles-must-have-distinct-actors/);
+const duplicatePrincipalRuntime = new EvidenceResearchSubsystemRuntime(
+  resolveKey,
+  () => 'one-shared-principal',
+);
+assert.throws(() => duplicatePrincipalRuntime.scienceRepublic.discover({
+  title: 'Attested identity collision',
+  domain: 'systems',
+  observation: 'Host identity resolver maps all role IDs to one principal.',
+  evidence: { reference: 'artifact://science/identity-collision.json', sha256: digest('identity-collision') },
+  actors,
+}), /science-role-identities-must-be-distinct/);
 
 const theory = runtime.scienceRepublic.theorize(science.id, {
   actorId: actors.theorist,
@@ -94,6 +137,7 @@ const theory = runtime.scienceRepublic.theorize(science.id, {
   alternatives: ['cache warm-up accounts for the observed change'],
   evidence: { reference: 'artifact://science/theory.json', sha256: digest('theory') },
 });
+rememberArtifactBytes(theory.theory.evidence);
 assert.equal(theory.stage, 'theorized');
 
 const replicationSeeds = Array.from({ length: 12 }, (_, index) => 11 + index);
@@ -126,6 +170,8 @@ const holdoutManifest = {
   reference: 'artifact://science/holdout-manifest.json',
   sha256: evaluation.holdoutTestFingerprint,
 };
+rememberArtifactBytes(manifest);
+rememberArtifactBytes(holdoutManifest);
 
 const duplicateRunnerEvaluation = {
   ...evaluation,
@@ -181,6 +227,7 @@ const prototype = runtime.scienceRepublic.attachPrototype(science.id, {
   reference: 'artifact://science/prototype.bin',
   sha256: digest('science-prototype'),
 });
+rememberArtifactBytes(prototype.prototype);
 assert.equal(prototype.stage, 'prototyped');
 
 function signedArtifact(invention, phase, seed, options = {}) {
@@ -265,6 +312,7 @@ const critiqueArtifact = signedArtifact(invention, 'critique', 0, {
   blockers: [],
   limitations: ['The full device soak is a separate follow-up evaluation.'],
 });
+rememberSignedEvidence(critiqueArtifact);
 const critiqued = runtime.scienceRepublic.critique(science.id, {
   actorId: actors.skeptic,
   artifact: critiqueArtifact,
@@ -274,6 +322,7 @@ assert.equal(critiqued.stage, 'critiqued');
 const replicationBefore = runtime.scientificBrain.diagnostics().acceptedUpdates;
 for (const seed of replicationSeeds) {
   const artifact = signedArtifact(invention, 'replication', seed);
+  rememberSignedEvidence(artifact);
   const result = runtime.scienceRepublic.recordOutcome(science.id, artifact);
   assert.ok(['replicating', 'replicated'].includes(result.stage));
 }
@@ -284,6 +333,7 @@ assert.equal(runtime.scienceRepublic.get(science.id).stage, 'replicated');
 
 for (const seed of holdoutSeeds) {
   const artifact = signedArtifact(invention, 'holdout', seed);
+  rememberSignedEvidence(artifact);
   const result = runtime.scienceRepublic.recordOutcome(science.id, artifact);
   assert.ok(['holdingout', 'awaiting-audit'].includes(result.stage));
 }
@@ -319,32 +369,47 @@ assert.throws(() => runtime.scienceRepublic.audit(science.id, {
   checkedArtifacts: checkedArtifacts.slice(1),
 }), /science-audit-manifest-incomplete-or-mismatched/);
 
+const auditRef = 'audit://science-republic/' + science.id;
+const auditSha256 = digest('audit-' + science.id);
+rememberArtifactBytes({ reference: auditRef, sha256: auditSha256 });
 const audited = runtime.scienceRepublic.audit(science.id, {
   actorId: actors.auditor,
-  auditRef: 'audit://science-republic/' + science.id,
-  auditSha256: digest('audit-' + science.id),
+  auditRef,
+  auditSha256,
   checkedArtifacts,
   blockers: [],
   limitations: ['Actor identities remain declared rather than host-attested.'],
 });
 assert.equal(audited.stage, 'audit-complete');
-assert.equal(audited.audit.result, 'reference-complete');
+assert.equal(audited.audit.result, 'byte-verified');
+assert.equal(audited.audit.artifactBytesVerified, true);
 assert.equal(audited.audit.signedEvidenceCount, 26);
-assert.equal(audited.trust.roleIdentity, 'declared-only');
+assert.equal(audited.trust.roleIdentity, 'host-attested');
 assert.equal(audited.trust.signedEvidence, 'canonical-invention-loop-verified');
-assert.equal(audited.trust.artifactBytesVerified, false);
+assert.equal(audited.trust.artifactBytesVerified, true);
+assert.equal(runtime.scienceRepublic.metrics().hostAttestedRecords, 1);
+assert.equal(runtime.scienceRepublic.metrics().byteVerifiedAudits, 1);
 assert.equal(audited.trust.independentlyVerified, false);
 assert.equal(audited.trust.promotionEligible, false);
 assert.equal(audited.auditTrail.length, 31,
   'the maximum 12+12 preregistered cohorts fit within the bounded role-protocol audit history');
 
 const snapshot = runtime.snapshot();
-const restored = new EvidenceResearchSubsystemRuntime(resolveKey);
+const restored = new EvidenceResearchSubsystemRuntime(
+  resolveKey,
+  resolveScienceRoleIdentity,
+  verifyScienceArtifactBytes,
+);
 restored.restore(snapshot);
 assert.equal(restored.inventionLoop.metrics().accepted, 1);
 assert.equal(restored.scienceRepublic.get(science.id).stage, 'audit-complete');
 assert.equal(restored.scienceRepublic.metrics().quarantinedRecords, 0);
 assert.equal(restored.scientificBrain.diagnostics().acceptedUpdates, afterReplication);
+const restoreWithoutIdentityAuthority = new EvidenceResearchSubsystemRuntime(resolveKey);
+restoreWithoutIdentityAuthority.restore(snapshot);
+assert.equal(restoreWithoutIdentityAuthority.scienceRepublic.metrics().total, 0);
+assert.equal(restoreWithoutIdentityAuthority.scienceRepublic.metrics().quarantinedRecords, 1,
+  'a snapshot declaring host-attested role identities must be reauthenticated by the host on restore');
 
 // Recompute the unkeyed local event chain after forging the projection's audit
 // manifest. Restore must still reject it because the canonical signed Invention
@@ -366,7 +431,11 @@ for (const event of projectedTrail) {
   }));
   previousHash = event.hash;
 }
-const quarantined = new EvidenceResearchSubsystemRuntime(resolveKey);
+const quarantined = new EvidenceResearchSubsystemRuntime(
+  resolveKey,
+  resolveScienceRoleIdentity,
+  verifyScienceArtifactBytes,
+);
 quarantined.restore(rehashedSnapshot);
 assert.equal(quarantined.scienceRepublic.metrics().total, 0);
 assert.equal(quarantined.scienceRepublic.metrics().quarantinedRecords, 1,

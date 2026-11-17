@@ -25,7 +25,13 @@ import { AutonomousScientificBrainSubstrate } from '../learning/AutonomousScient
 import type { OrganismGoal } from './types.ts';
 import type { SignedOutcomeArtifact } from '../learning/VerifiedOutcomeArtifact.ts';
 import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
-import { ScienceRepublic, type ScienceArtifact, type ScienceActors } from '../research/ScienceRepublic.ts';
+import {
+  ScienceRepublic,
+  type ScienceArtifact,
+  type ScienceActors,
+  type ScienceRoleIdentityResolver,
+  type ScienceArtifactBytesVerifier,
+} from '../research/ScienceRepublic.ts';
 
 export type InventionEvaluationPlan = Omit<InventionProtocol, 'question' | 'hypothesis' | 'provenance'>;
 export interface IntrinsicInventionInput extends InventionEvaluationPlan {
@@ -99,12 +105,28 @@ export class EvidenceResearchSubsystemRuntime {
   /** Scientific Republic is a role/provenance layer over this exact canonical loop. */
   readonly scienceRepublic: ScienceRepublic;
 
-  constructor(resolveInventionVerifierKey: InventionVerifierKeyResolver = () => undefined) {
+  constructor(
+    resolveInventionVerifierKey: InventionVerifierKeyResolver = () => undefined,
+    resolveScienceRoleIdentity?: ScienceRoleIdentityResolver,
+    verifyScienceArtifactBytes?: ScienceArtifactBytesVerifier,
+  ) {
     this.inventionLoop = new TheInventionLoop(undefined, undefined, resolveInventionVerifierKey);
     this.scienceRepublic = new ScienceRepublic(this.inventionLoop, {
       recordOutcome: (id, artifact) => this.recordInventionOutcome(id, artifact),
       critique: (id, artifact) => this.recordInventionCritique(id, artifact),
+      resolveRoleIdentity: resolveScienceRoleIdentity,
+      verifyArtifactBytes: verifyScienceArtifactBytes,
     });
+  }
+
+  /** Configure host-owned role identity authority; resolver functions are never serialized. */
+  configureScienceRoleIdentityResolver(resolve?: ScienceRoleIdentityResolver): void {
+    this.scienceRepublic.configureRoleIdentityResolver(resolve);
+  }
+
+  /** Configure host-owned artifact storage verification; resolver functions are never serialized. */
+  configureScienceArtifactBytesVerifier(verify?: ScienceArtifactBytesVerifier): void {
+    this.scienceRepublic.configureArtifactBytesVerifier(verify);
   }
 
   /** Bind canonical cognitive owners from OrganismCore; avoid shadow ScientificMethod/brain instances. */
