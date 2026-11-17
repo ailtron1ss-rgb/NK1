@@ -301,6 +301,7 @@ export class OpenLoopRadar {
       const dependency = recordsById.get(dependencyId);
       if (dependency) dependencyQueue.push(...dependency.dependencies);
     }
+    let expiredIdempotencyRecord: OpenLoopRecord | null = null;
     if (idempotencyKey) {
       const existing = this.state.records.find(record => record.idempotencyKey === idempotencyKey);
       if (existing) {
@@ -316,21 +317,19 @@ export class OpenLoopRadar {
           if (!sameRequest) throw new Error('open-loop-idempotency-conflict');
           return structuredClone(existing);
         }
+        // The retry window expired. Retain the terminal record as history, but
+        // release its idempotency key only after the new request is validated and
+        // capacity admission succeeds.
+        expiredIdempotencyRecord = existing;
       }
     }
     for (const dependency of dependencies) {
       if (!this.state.records.some(record => record.id === dependency)) throw new Error('unknown-dependency:' + dependency);
     }
 
-    // Keep terminal history while there is room. Expired idempotency receipts are
-    // no longer needed for retry de-duplication, but are otherwise pruned only
-    // when admission would exceed the bounded record capacity.
-    let retained = this.state.records.filter(record =>
-      !TERMINAL.has(record.status) ||
-      protectedDependencyIds.has(record.id) ||
-      record.idempotencyKey === null ||
-      now - record.updatedAt < IDEMPOTENCY_RETENTION_MS,
-    );
+    // Keep terminal history while there is room. Under capacity pressure, prune
+    // only unreferenced terminal records whose retry key is absent or expired.
+    let retained = this.state.records;
     if (retained.length >= MAX_RECORDS) {
       const evictable = retained
         .filter(record =>
@@ -355,6 +354,10 @@ export class OpenLoopRadar {
       }
     }
     if (retained.length >= MAX_RECORDS) throw new Error('open-loop-capacity-exhausted');
+
+    if (expiredIdempotencyRecord && retained.includes(expiredIdempotencyRecord)) {
+      expiredIdempotencyRecord.idempotencyKey = null;
+    }
 
     const nextSequence = this.state.sequence + 1;
     if (!Number.isSafeInteger(nextSequence)) throw new RangeError('open-loop-sequence-exhausted');
