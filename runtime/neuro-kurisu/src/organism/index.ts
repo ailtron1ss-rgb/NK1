@@ -26,6 +26,7 @@ export * from './language/KurisuCanonProfile.ts';
 export * from './persistence/FileStateStore.ts';
 export * from './persistence/StateMigrations.ts';
 export * from './learning/AdvancedResilienceEngine.ts';
+export * from './learning/AdaptiveSynapticMatrix.ts';
 
 export * from './cognition/P41NativePerception.ts';
 export * from './cognition/P41TemporalPerceptionModel.ts';
