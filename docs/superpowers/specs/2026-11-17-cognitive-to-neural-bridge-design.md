@@ -37,7 +37,7 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 - Modes: `reflex | shallow | retrieve | deep | simulate | defer | sleep`.
 - Feature vector order: action one-hot (7), organism motivation/uncertainty/urgency/budget/attention (5), B365 prediction/plasticity/neuromodulation/sparsity/coherence/confidence/agreement/counterfactual/goal/entropy (10), B365 allostatic drive/arousal/exploration/preservation/reflection/social approach (6), B365 self agency/continuity/growth/identity conflict (4), B365 goal ownership/commitment/revision pressure (3), neural freshness (1), then cognitive mode one-hot (7). Total: 43.
 - The output includes a stable feature-key schema, B365 snapshot provenance/age, a mode-derived adapter hint, budget- and preservation-scaled sampling parameters, and steering intent channels capped at 0.15.
-- `controlsApplied` records that sampling parameters are applied while adapter switching, activation steering and residual-block execution remain false.
+- `controlsConfigured` records that sampling parameters are configured on the request while adapter switching, activation steering and residual-block execution remain false.
 - Bridge defaults enabled; `RuntimeConfig.cognitiveToNeuralBridge.enabled=false` is the emergency bypass.
 
 ## Integration points
