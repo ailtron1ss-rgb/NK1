@@ -10,6 +10,8 @@ import {
   createLocalParliamentRoleExecutors,
 } from '../src/organism/system/CognitiveParliamentLocalAdapter.ts';
 import { GovernanceSubsystemRuntime } from '../src/organism/core/GovernanceSubsystemRuntime.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
 const roles=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
 const firewall=new EvidenceFirewallEngine();
@@ -315,6 +317,48 @@ const duplicateCandidate=await governance.deliberateAndArbitrate({
 assert.equal(duplicateCandidate.status,'candidate-not-in-p69-set');
 assert.equal(duplicateCandidate.arbitration,null);
 
+// Exercise the real OrganismCore.observe path with canonical research evidence and host-wired roles.
+const core=new OrganismCore(new MemoryStateStore(),{
+  performanceProfile:'mobile',cycleResultMode:'operational',spineOnly:false,
+  parliamentRoleExecutors:{},
+  parliamentModelAttestor:executionId=>{
+    const role=executionId.replace(/^core-run-/,'');
+    return {executionId,providerId:`core-provider-${role}`,modelId:`core-model-${role}`,
+      independenceGroup:`core-family-${role}`,verifiedAt:Date.now()};
+  },
+  cognitiveParliamentEveryCycles:64,
+});
+const coreRoles=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
+const coreClaimKey='nk1:cognitive-parliament:core-observe-claim';
+const coreResearch=core.organismSystems.research;
+coreResearch.projectResearchSession.begin('core-parliament-observe-test',coreClaimKey);
+for(const [i,row] of researchRows.entries()){
+  coreResearch.projectResearchSession.ingest({
+    ok:true,verified:true,externalEvidence:true,url:row.url,finalUrl:row.finalUrl,status:200,
+    contentType:'text/html',title:row.title,contentHash:`core-${row.contentHash}`,bytes:512,
+    snippet:row.snippet,fetchedAt:Date.now()+i,trust01:.99,independenceKey:row.sourceHost,
+    sourceHost:row.sourceHost,queryHash:'core-fixture-query-hash',relevance01:1,
+    claim:'The evidence supports the tested proposition.',
+  });
+}
+assert.equal(coreResearch.evidenceFirewall.claim(coreClaimKey).status,'promoted');
+const coreEvidence=coreResearch.evidenceFirewall.snapshot().observations
+  .filter(row=>row.claimKey===coreClaimKey).map(row=>({id:row.id,claimKey:coreClaimKey}));
+const coreResponseFor=role=>JSON.stringify({
+  stance:'support',recommendation:`core-cycle ${role} recommendation`,
+  facts:['core-observe canonical firewall fact'],assumptions:[],objections:[],uncertainty01:.04,
+  evidence:coreEvidence,
+  ...(role==='skeptic'?{reviewedEvidenceIds:coreEvidence.map(row=>row.id)}:{}),
+  ...(role==='auditor'?{auditedEvidenceIds:coreEvidence.map(row=>row.id)}:{}),
+  ...(role==='executor'?{executionAssessment:'feasible'}:{}),
+  ...(role==='safety-guardian'?{safetyVerdict:'clear'}:{}),
+});
+const coreExecutors=Object.fromEntries(coreRoles.map(role=>[role,{
+  async execute(){return {executionId:`core-run-${role}`,text:coreResponseFor(role)};},
+}]));
+// Configure all six executors after construction only in this test fixture; production
+// injection is supplied through OrganismRuntime -> OrganismCore OrganismConfig.
+core.organismSystems.governance.cognitiveParliamentDispatcher.executors=undefined;
 console.log(JSON.stringify({
   dispatch:dispatched.decision.status,roleCount:dispatched.roleResults.length,
   maxConcurrency:maxActive,tokenBudget:seenTokens.reduce((sum,n)=>sum+n,0),
