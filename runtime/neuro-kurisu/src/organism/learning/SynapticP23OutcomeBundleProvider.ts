@@ -1,5 +1,4 @@
 import { createPublicKey } from 'node:crypto';
-import { constants as fsConstants } from 'node:fs';
 import { lstat, open } from 'node:fs/promises';
 import path from 'node:path';
 import type { VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
@@ -69,15 +68,18 @@ async function readRegularBundle(filePath: string): Promise<unknown> {
   if (entry.isSymbolicLink() || !entry.isFile()) {
     throw new Error('synaptic-p23-outcome-bundle-symlink-or-non-regular-file-rejected');
   }
-  const noFollow = process.platform === 'win32' ? 0 : (fsConstants.O_NOFOLLOW ?? 0);
-  const handle = await open(absolute, fsConstants.O_RDONLY | noFollow);
+  // Re-check the opened descriptor against the lstat identity. This closes the
+  // lstat/open replacement window even on platforms without O_NOFOLLOW typings.
+  const handle = await open(absolute, 'r');
   try {
     const info = await handle.stat();
-    if (!info.isFile() || info.size < 2 || info.size > MAX_BUNDLE_BYTES)
+    if (!info.isFile() || info.dev !== entry.dev || info.ino !== entry.ino ||
+        info.size !== entry.size || info.mtimeMs !== entry.mtimeMs ||
+        info.size < 2 || info.size > MAX_BUNDLE_BYTES)
       throw new Error('synaptic-p23-outcome-bundle-must-be-regular-file-under-10mib');
     const encoded = await handle.readFile({ encoding: 'utf8' });
     const after = await handle.stat();
-    if (after.ino !== info.ino || after.size !== info.size || after.mtimeMs !== info.mtimeMs)
+    if (after.dev !== info.dev || after.ino !== info.ino || after.size !== info.size || after.mtimeMs !== info.mtimeMs)
       throw new Error('synaptic-p23-outcome-bundle-changed-while-reading');
     let parsed: unknown;
     try { parsed = JSON.parse(encoded); }
