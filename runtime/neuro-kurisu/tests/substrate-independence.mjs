@@ -262,6 +262,15 @@ assert.equal(duplicateLedgerEngine.restore({
     independenceKeys: [],
   },
 }).restored, false, 'tampered evidence ledgers with duplicate IDs must fail closed');
+const incompleteLedgerEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
+assert.equal(incompleteLedgerEngine.restore({
+  ...promoted,
+  calibrationEvidenceLedger: {
+    receiptIds: promoted.calibrationEvidenceLedger.receiptIds,
+    taskIds: promoted.calibrationEvidenceLedger.taskIds,
+  },
+}).restored, false,
+  'a present but incomplete anti-replay ledger must not default missing evidence classes to empty');
 
 const replayEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
 assert.equal(replayEngine.restore(promoted).restored, true,
@@ -374,7 +383,7 @@ assert.equal(capacityEngine.snapshot().calibrationEvidenceLedger.receiptIds.leng
   'a full evidence ledger must remain intact after a refused promotion');
 
 console.log('OMESTRO_22_SUBSTRATE_INDEPENDENCE=PASS', JSON.stringify({
-  assertions: 75,
+  assertions: 76,
   tamperDetection: true,
   accessorAndCycleRejection: true,
   holdoutCalibration: true,
