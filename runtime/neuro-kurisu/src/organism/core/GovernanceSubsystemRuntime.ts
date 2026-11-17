@@ -91,6 +91,16 @@ export class GovernanceSubsystemRuntime {
     const candidateIdsUnique=candidateIds.every(id=>typeof id==='string'&&id.trim().length>0)&&
       new Set(candidateIds).size===candidateIds.length;
     const matchingCandidateCount=p69Candidates.filter(candidate=>candidate?.id===input.candidateId).length;
+    const candidateExists = candidateIdsUnique && matchingCandidateCount===1;
+    if (!candidateExists) {
+      // Produce a bounded invalid-input receipt without spending model calls on a
+      // candidate that cannot be represented unambiguously in the P69 candidate set.
+      const parliament=await this.cognitiveParliamentDispatcher.dispatch({
+        candidateId:'',risk:input.risk,task:input.task,evidenceReferences:[],
+        timeoutMs:input.timeoutMs,maxConcurrent:input.maxConcurrent,maxTotalTokens:input.maxTotalTokens,
+      });
+      return { status: 'candidate-not-in-p69-set', parliament, arbitration: null };
+    }
     const parliament = await this.cognitiveParliamentDispatcher.dispatch({
       candidateId: input.candidateId,
       risk: input.risk,
@@ -102,10 +112,6 @@ export class GovernanceSubsystemRuntime {
     });
     if (parliament.decision.status !== 'approved') {
       return { status: 'parliament-not-approved', parliament, arbitration: null };
-    }
-    const candidateExists = candidateIdsUnique && matchingCandidateCount===1;
-    if (!candidateExists) {
-      return { status: 'candidate-not-in-p69-set', parliament, arbitration: null };
     }
     // A positive Parliament verdict authorizes only its exact candidate plus the
     // constitutional low-risk escape actions. Other model-proposed candidates
