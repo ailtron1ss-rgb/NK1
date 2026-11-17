@@ -234,6 +234,7 @@ export class WorldForgeToolAdapter {
             availableActions: [...s.availableActions],
             constraints: { ...s.constraints },
             strategyFamilies: [...s.strategyFamilies],
+            syntheticOnly: true,
           })),
           count: scenarios.length,
           note: 'Perturbations are hidden. Their effects become observable only as the synthetic environment changes.',
