@@ -36,9 +36,19 @@ async function runRuntime(enabled) {
       assert.equal(request.cognitiveControl.neuralSnapshotAvailable, true);
       assert.equal(request.cognitiveControl.controlsApplied.samplingParameters, true);
       assert.equal(request.cognitiveControl.controlsApplied.activationSteering, false);
+      const diagnostics = runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.ok(diagnostics.projected > 0);
+      assert.ok(diagnostics.samplingControlsApplied > 0);
+      assert.ok(diagnostics.neuralSnapshotsAvailable > 0);
+      assert.equal(diagnostics.lastFeatureDimensions, 43);
+      assert.equal(diagnostics.activationSteeringApplied, 0);
+      assert.equal(diagnostics.residualBlockApplied, 0);
     } else {
       assert.ok(requests.every(value => value.cognitiveControl === undefined),
         'emergency bypass must pass requests to the provider without mutation');
+      const diagnostics = runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.equal(diagnostics.projected, 0);
+      assert.ok(diagnostics.bypassed > 0);
     }
   } finally {
     await runtime.stop();
