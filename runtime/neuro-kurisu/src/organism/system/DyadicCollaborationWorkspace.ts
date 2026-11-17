@@ -88,7 +88,7 @@ const strictOwnArray = (value: unknown, max: number): unknown[] | null => {
 };
 const containsCredentialLikeText = (value: string): boolean => {
   const patterns = [
-    /\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|client[_ -]?secret|private[_ -]?key)\s*[:=]\s*\S+/i,
+    /\b(?:api[_ -]?(?:key|token)|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|client[_ -]?secret|private[_ -]?key)\s*[:=]\s*\S+/i,
     /\bsk-[A-Za-z0-9_-]{16,}\b/,
     /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/,
     /\bxox[baprs]-[A-Za-z0-9-]{16,}\b/,
