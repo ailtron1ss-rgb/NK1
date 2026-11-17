@@ -231,7 +231,7 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
       const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
       return { $nk1Type: 'DataView', base64: Buffer.from(bytes).toString('base64') };
     }
-    const type = TYPED_ARRAY_KIND_BY_PROTOTYPE.get(Object.getPrototypeOf(value));
+    const type = typedArrayKind(Object.getPrototypeOf(value));
     if (!type || Reflect.ownKeys(value).length !== value.length) return fail('portable-typed-array-instance-invalid');
     const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     return { $nk1Type: type, base64: Buffer.from(bytes).toString('base64') };
@@ -312,15 +312,20 @@ const TYPED_ARRAY_CONSTRUCTORS: Record<string, any> = {
   ...(typeof BigInt64Array === 'undefined' ? {} : { BigInt64Array }),
   ...(typeof BigUint64Array === 'undefined' ? {} : { BigUint64Array }),
 };
-const TYPED_ARRAY_KIND_BY_PROTOTYPE = new Map<object, string>([
-  [Int8Array.prototype, 'Int8Array'], [Uint8Array.prototype, 'Uint8Array'],
-  [Uint8ClampedArray.prototype, 'Uint8ClampedArray'], [Int16Array.prototype, 'Int16Array'],
-  [Uint16Array.prototype, 'Uint16Array'], [Int32Array.prototype, 'Int32Array'],
-  [Uint32Array.prototype, 'Uint32Array'], [Float32Array.prototype, 'Float32Array'],
-  [Float64Array.prototype, 'Float64Array'],
-  ...(typeof BigInt64Array === 'undefined' ? [] : [[BigInt64Array.prototype, 'BigInt64Array'] as [object, string]]),
-  ...(typeof BigUint64Array === 'undefined' ? [] : [[BigUint64Array.prototype, 'BigUint64Array'] as [object, string]]),
-]);
+function typedArrayKind(prototype: object): string | null {
+  if (prototype === Int8Array.prototype) return 'Int8Array';
+  if (prototype === Uint8Array.prototype) return 'Uint8Array';
+  if (prototype === Uint8ClampedArray.prototype) return 'Uint8ClampedArray';
+  if (prototype === Int16Array.prototype) return 'Int16Array';
+  if (prototype === Uint16Array.prototype) return 'Uint16Array';
+  if (prototype === Int32Array.prototype) return 'Int32Array';
+  if (prototype === Uint32Array.prototype) return 'Uint32Array';
+  if (prototype === Float32Array.prototype) return 'Float32Array';
+  if (prototype === Float64Array.prototype) return 'Float64Array';
+  if (typeof BigInt64Array !== 'undefined' && prototype === BigInt64Array.prototype) return 'BigInt64Array';
+  if (typeof BigUint64Array !== 'undefined' && prototype === BigUint64Array.prototype) return 'BigUint64Array';
+  return null;
+}
 
 function decodeBase64(value: unknown): Buffer {
   if (typeof value !== 'string' || value.length > DEFAULT_MAX_TRANSFER_BYTES * 2
