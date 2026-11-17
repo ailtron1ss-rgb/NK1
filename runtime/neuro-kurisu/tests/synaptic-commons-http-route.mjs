@@ -165,6 +165,14 @@ try {
   assert.equal(imported.body.status, 'quarantined');
   assert.equal(imported.body.artifactFingerprint, fingerprint);
 
+  const p23AdmissionUnavailable = await request(
+    '/api/organism/synaptic-commons/' + fingerprint + '/p23-stage',
+    'POST', { confirmed: true },
+  );
+  assert.equal(p23AdmissionUnavailable.response.status, 503,
+    'P23 admission must fail closed until a trusted local proposal provider is configured');
+  assert.match(p23AdmissionUnavailable.body.error, /synaptic-p23-admission-not-configured/);
+
   const duplicate = await request('/api/organism/synaptic-commons/import', 'POST', {
     confirmed: true, artifact,
   });

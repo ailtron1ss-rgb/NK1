@@ -53,6 +53,9 @@ jobs:
       - name: Synaptic Commons authenticated HTTP routes
         working-directory: runtime/neuro-kurisu
         run: node tests/synaptic-commons-http-route.mjs
+      - name: Synaptic Commons to local P23 admission
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:synaptic-commons-p23-admission
       - name: Full runtime typecheck
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
