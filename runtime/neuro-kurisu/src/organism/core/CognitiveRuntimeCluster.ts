@@ -71,6 +71,7 @@ import { RelationshipSelf, defaultRelationshipSelf } from '../developmental/Rela
 import { MultiHypothesisPersonality, defaultMultiHypothesisPersonality } from '../developmental/MultiHypothesisPersonality.ts';
 import { FutureSimulator, defaultFutureSimulator } from '../developmental/FutureSimulator.ts';
 import { registerSharedFutureTools } from '../developmental/SharedFutureEngine.ts';
+import { registerWorldForgeTools } from '../developmental/WorldForgeTools.ts';
 import { LongTermSocialMind, defaultLongTermSocialMind } from '../developmental/LongTermSocialMind.ts';
 import { FutureSelfModel, defaultFutureSelf } from '../cognition/evolution/FutureSelfModel.ts';
 import { SocialDevelopmentSystem, defaultSocialDevelopment } from '../developmental/SocialDevelopmentSystem.ts';
@@ -190,5 +191,6 @@ export class CognitiveRuntimeCluster {
     this.cognitiveKernelCoordinator = new CognitiveKernelCoordinator(input.p61IntegratedMind, input.p64IntegratedOrganismDynamics);
     this.cognitiveSubsystemRegistry = new CognitiveSubsystemRegistry(input.organismSystems);
     registerSharedFutureTools(this.actionGateway, this.futureSimulator, input.resolveCanonicalGoal);
+    registerWorldForgeTools(this.actionGateway, this.futureSimulator);
   }
 }
