@@ -28,7 +28,7 @@ try {
   assert.equal(writer.hasOutcomeVerifier, true);
   assert.equal(writer.hasReceiptReconciliation, true);
 
-  const input = { path: 'notes/undo-first-integration.txt', content: 'NK1 filesystem Undo-First integration\n' };
+  const input = { path: 'undo-first-integration.txt', content: 'NK1 filesystem Undo-First integration\n' };
   const idempotencyKey = 'filesystem-undo-first:integration-create-01';
   const options = { idempotencyKey, autonomous: false, decisionId: 'filesystem-integration-test' };
   const approval = await core.requestActionToolApproval(
