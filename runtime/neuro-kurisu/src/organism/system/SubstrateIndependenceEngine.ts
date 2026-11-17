@@ -624,7 +624,7 @@ export class SubstrateIndependenceEngine {
         return [{
           at: Number(item.at), fromBackendId: item.fromBackendId as string | null,
           fromProfileDigest: item.fromProfileDigest as string | null,
-          toBackendId: item.toBackendId as string, toProfileDigest: item.toProfileDigest as string,
+          toBackendId: item.toBackendId as string, toProfileDigest: item.toProfileDigest as string | null,
           transferDigest: item.transferDigest,
           evaluationId: item.evaluationId as string, reason: item.reason as 'calibrated-promotion' | 'rollback',
         }];
