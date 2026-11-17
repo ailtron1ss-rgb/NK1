@@ -69,13 +69,13 @@ const mergeBase = graph(
     { from: 'alpha', to: 'beta', kind: 'contract' },
     { from: 'alpha', to: 'consumer', kind: 'contract' },
   ],
-  [{ id: 'shared-contract', ownerModuleId: 'alpha', consumers: ['beta', 'consumer'], authority: 'single-owner' }],
+  [{ id: 'shared-contract', ownerModuleId: 'alpha', consumerModuleIds: ['beta', 'consumer'], authority: 'single-owner' }],
 );
 const merged = moduleRecord('merged', 'src/organism/system/Merged.ts', 'd');
 const mergeCandidate = graph(
   [merged, consumer],
   [{ from: 'merged', to: 'consumer', kind: 'contract' }],
-  [{ id: 'shared-contract', ownerModuleId: 'merged', consumers: ['consumer'], authority: 'single-owner' }],
+  [{ id: 'shared-contract', ownerModuleId: 'merged', consumerModuleIds: ['consumer'], authority: 'single-owner' }],
 );
 const mergePlan = proposal(mergeBase, mergeCandidate, [{
   kind: 'merge', sourceModuleIds: ['alpha', 'beta'], targetModuleId: 'merged',
@@ -169,7 +169,6 @@ assert.equal(evaluateArchitectureMorphogenesisPlan(mergePlan, {
   baselineCommit: sha,
   testsPassed: false, typecheckPassed: true, architectureAuditPassed: true,
   contractChecksPassed: true, rollbackVerified: true, reviewApproved: true,
-  candidateCommit: '2'.repeat(40), baselineCommit: sha,
 }).status, 'BLOCKED');
 
 const eligible = evaluateArchitectureMorphogenesisPlan(mergePlan, {
@@ -178,7 +177,6 @@ const eligible = evaluateArchitectureMorphogenesisPlan(mergePlan, {
   baselineCommit: sha,
   testsPassed: true, typecheckPassed: true, architectureAuditPassed: true,
   contractChecksPassed: true, rollbackVerified: true, reviewApproved: true,
-  candidateCommit: '2'.repeat(40), baselineCommit: sha,
 });
 assert.equal(eligible.status, 'ELIGIBLE_FOR_MANUAL_INTEGRATION');
 assert.equal(eligible.activation, 'NOT_APPLIED');
