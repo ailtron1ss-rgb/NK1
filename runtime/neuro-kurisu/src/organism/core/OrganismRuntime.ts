@@ -37,6 +37,7 @@ import { TemporalObjectTracker } from '../body/TemporalObjectTracker.ts';
 import { RealityGroundingController, type RealityGroundingMode } from '../system/RealityGroundingController.ts';
 import { NeuralCausalTraceLedger } from '../system/NeuralCausalTraceLedger.ts';
 import { OpenLoopRadar, type OpenLoopRadarState, type OpenLoopScanOptions } from '../cognition/evolution/OpenLoopRadar.ts';
+import { SynapticCommons, parseSynapticPublicKeyMap, type SynapticCommonsState, type SynapticCommonsArtifact, type SynapticCommonsAttestation, type SynapticCompatibilityTarget } from '../learning/SynapticCommons.ts';
 import { sanitizeAutonomousTopicText } from '../system/AutonomousSocialInitiativeEngine.ts';
 import { RealityLearningGate } from '../system/RealityLearningGate.ts';
 import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
@@ -203,6 +204,8 @@ export class OrganismRuntime {
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
   private readonly openLoopRadar = new OpenLoopRadar();
+  private readonly synapticCommons: SynapticCommons;
+  private readonly synapticCommonsStore: JsonStateStore<SynapticCommonsState>;
   private readonly resourceEconomy = new CognitiveResourceEconomy();
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
@@ -347,6 +350,11 @@ export class OrganismRuntime {
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.openLoopStore = new FileStateStore<OpenLoopRadarState>(`${config.stateFile}.open-loops.json`);
+    this.synapticCommons = new SynapticCommons({
+      trustedPublisherKeys: parseSynapticPublicKeyMap(process.env.NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON),
+      trustedAttestorKeys: parseSynapticPublicKeyMap(process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON),
+    });
+    this.synapticCommonsStore = new FileStateStore<SynapticCommonsState>(`${config.stateFile}.synaptic-commons.json`);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -399,6 +407,9 @@ export class OrganismRuntime {
       const restoredOpenLoopState = await this.openLoopStore.load();
       this.openLoopRadar.restore(restoredOpenLoopState ?? undefined);
       if (!restoredOpenLoopState) await this.openLoopStore.save(this.openLoopRadar.snapshot());
+      const restoredSynapticCommonsState = await this.synapticCommonsStore.load();
+      this.synapticCommons.restore(restoredSynapticCommonsState ?? undefined);
+      if (!restoredSynapticCommonsState) await this.synapticCommonsStore.save(this.synapticCommons.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -2024,6 +2035,55 @@ export class OrganismRuntime {
     });
   }
 
+  /**
+   * Persist every Synaptic Commons mutation before exposing its result. A failed
+   * sidecar write restores the exact in-memory state, preventing uncommitted
+   * catalog transitions from being observed by API callers.
+   */
+  private async persistSynapticCommonsMutation<T>(mutation: () => T): Promise<T> {
+    const previous = this.synapticCommons.snapshot();
+    try {
+      const result = mutation();
+      await this.synapticCommonsStore.save(this.synapticCommons.snapshot());
+      return result;
+    } catch (error) {
+      this.synapticCommons.restore(previous);
+      throw error;
+    }
+  }
+
+  importSynapticArtifact(artifact: unknown) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.importArtifact(artifact)));
+  }
+
+  evaluateSynapticSkillCompatibility(fingerprint: string, target: SynapticCompatibilityTarget) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.evaluateCompatibility(fingerprint, target)));
+  }
+
+  attestSynapticSkill(fingerprint: string, attestation: unknown) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.attachAttestation(fingerprint, attestation)));
+  }
+
+  rejectSynapticSkill(fingerprint: string, reason: string) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.reject(fingerprint, reason)));
+  }
+
+  exportSynapticArtifact(fingerprint: string) {
+    return this.enqueue(async () => this.synapticCommons.exportArtifact(fingerprint));
+  }
+
+  synapticCommonsSnapshot() {
+    return this.enqueue(async () => this.synapticCommons.snapshot());
+  }
+
+  synapticCommonsDiagnostics() {
+    return this.enqueue(async () => this.synapticCommons.diagnostics());
+  }
+
   /** Record only caller-confirmed low-risk preferences through the canonical evidence owner. */
   async recordExplicitUserPreference(input: Parameters<OrganismCore['recordExplicitUserModelEvidence']>[0]) {
     return this.enqueue(() => this.core.recordExplicitUserModelEvidence(input));
@@ -2072,6 +2132,7 @@ export class OrganismRuntime {
     return this.enqueue(async () => {
       await this.core.flush();
       await this.openLoopStore.save(this.openLoopRadar.snapshot());
+      await this.synapticCommonsStore.save(this.synapticCommons.snapshot());
       const view = this.core.runtimeClosureOperationalSnapshot();
       this.runtimeClosure.durable({ at: Date.now(), tick: view.tick, stateTick: view.tick, replaySignature: view.replaySignature, continuousTick: view.continuous?.tick, continuityProcessed: view.continuous?.processed, memoryCount: view.memoryCount });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
