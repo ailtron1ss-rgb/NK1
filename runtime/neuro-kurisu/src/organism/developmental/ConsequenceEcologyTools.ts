@@ -63,7 +63,7 @@ const optionContract = {
     title: { type: 'string' as const, minLength: 1, maxLength: 180 },
     action: { type: 'string' as const, minLength: 1, maxLength: 180 },
     nodes: { type: 'array' as const, items: nodeContract, minItems: 1, maxItems: 64 },
-    edges: { type: 'array' as const, items: edgeContract, maxItems: 128 },
+    edges: { type: 'array' as const, items: edgeContract, maxItems: 100 },
   },
   required: ['id', 'title', 'action', 'nodes', 'edges'],
   additionalProperties: false,
