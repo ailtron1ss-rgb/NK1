@@ -92,7 +92,7 @@ loop.recordOutcome(p.id, replicationInput);
 assert.equal(loop.snapshot().records[0].stage, 'replicated');
 assert.throws(() => loop.recordOutcome(p.id, {
   ...holdoutInput,
-  verifierId: 'verifier-replication',
+  environmentId: replicationInput.environmentId,
   runId: 'run-holdout-bad',
 }), /holdout-must-be-independent/);
 loop.recordOutcome(p.id, holdoutInput);
@@ -102,13 +102,13 @@ assert.equal(loop.metrics().auditVerifiedRecords, 1);
 assert.throws(() => loop.reject(p.id, 'late-reject'), /invention-closed/);
 
 // A worse result must be rejected even if an untrusted caller tries to claim effect01=1.
-const worse = loop.propose({ ...protocol, testFingerprint: 'sha256:worse-result-manifest-v1' });
+const worse = loop.propose({ ...protocol, testFingerprint: sha('8') });
 loop.design(worse.id);
 loop.prototype(worse.id, { reference: 'candidate://worse', sha256: sha('f') });
 const rejected = loop.recordOutcome(worse.id, {
   ...primaryInput,
   runId: 'run-worse-001',
-  testFingerprint: 'sha256:worse-result-manifest-v1',
+  testFingerprint: sha('8'),
   evidenceRef: 'artifact://worse/result.json',
   evidenceSha256: sha('1'),
   observed: 105,
@@ -117,6 +117,17 @@ const rejected = loop.recordOutcome(worse.id, {
 assert.equal(rejected.stage, 'rejected');
 assert.equal(rejected.outcomes[0].effect01, 0);
 assert.equal(rejected.outcomes[0].passed, false);
+
+// A receipt cannot be recycled by a different invention, even under a new run ID.
+const reuse = loop.propose(protocol);
+loop.design(reuse.id);
+loop.prototype(reuse.id, { reference: 'candidate://reused-receipt', sha256: sha('2') });
+assert.throws(() => loop.recordOutcome(reuse.id, {
+  ...primaryInput,
+  runId: 'run-reused-evidence-001',
+  environmentId: 'environment-reused',
+}), /duplicate-run-or-evidence-across-inventions/);
+assert.equal(loop.snapshot().records.find(record => record.id === reuse.id).outcomes.length, 0);
 
 // Restoring altered records must quarantine them instead of trusting the mutable cache.
 const tampered = loop.snapshot();
