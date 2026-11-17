@@ -397,7 +397,7 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
         "seed": manifest["seed"],
         "data_seed": manifest["seed"],
         "remove_unused_columns": False,
-        "fp16": bool(torch.cuda.is_available() and not torch.cuda.is_bf16_supported() and method == "lora"),
+        "fp16": bool(torch.cuda.is_available() and not torch.cuda.is_bf16_supported()),
         "bf16": bool(torch.cuda.is_available() and torch.cuda.is_bf16_supported()),
     }
     kwargs[evaluation_key] = "epoch"
