@@ -37,6 +37,10 @@ The donor path may point to one project or a folder containing one folder per do
 - The SPDX guess from a LICENSE file is evidence only. It does not establish legal permission for the whole repository, nested projects, dependencies, models, or assets.
 - No donor source is executed, installed, copied, or promoted.
 - All proposals remain blocked pending exact upstream revision, human legal clearance, dependency/license review, security review, isolated reproduction, behavioral benchmark, independent holdout, exact-head CI, and release parity.
+- Capability signals now carry an explicit evidence level: implementation, content-only, example/test, or configuration-only. Only path-anchored implementation evidence can produce integration proposals.
+- Model-serving is distinct from model-provider adapters; an Ollama/OpenAI-compatible client is not an inference server.
+- Tests are retained as path-only supporting evidence; their bodies are not retained in the capability corpus. Source samples are bounded to 8 KiB by default.
+- Manifest and analysis report schema version is 2. Security findings carry a severity and never emit secret values.
 - Capability matches are deterministic heuristics, not semantic proof that a capability works or is better than NK1.
 
 ## Current scope

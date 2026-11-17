@@ -23,7 +23,7 @@ export interface NeuroForgeProposal {
 }
 
 export interface NeuroForgeAnalysisReport {
-  schemaVersion: 1;
+  schemaVersion: 2;
   generatedAt: number;
   mode: 'offline-donor-analysis';
   baseline: { projectId: string; snapshotSha256: string; files: number; sourceFiles: number; sourceProvenance: NeuroForgeProjectManifest['sourceProvenance'] };
@@ -79,7 +79,7 @@ function stableProposalId(snapshot: string, capabilityId: string): string {
 }
 
 function capabilityMap(rows: NeuroForgeCapabilitySignal[]): Map<string, NeuroForgeCapabilitySignal> {
-  return new Map(rows.map(row => [row.capabilityId, row]));
+  return new Map(rows.filter(row => row.evidenceLevel === 'implementation').map(row => [row.capabilityId, row]));
 }
 
 function blockingReasons(donor: NeuroForgeProjectManifest): string[] {
@@ -109,7 +109,7 @@ export function analyzeNeuroForge(input: {
 
   for (const donor of input.donors) {
     for (const donorSignal of donor.capabilitySignals) {
-      if (donorSignal.confidence01 < 0.18) continue;
+      if (donorSignal.evidenceLevel !== 'implementation' || donorSignal.confidence01 < 0.18) continue;
       const baselineSignal = baselineCapabilities.get(donorSignal.capabilityId);
       const baselineConfidence01 = baselineSignal?.confidence01 ?? 0;
       let gapClass: NeuroForgeProposal['gapClass'];
@@ -161,7 +161,7 @@ export function analyzeNeuroForge(input: {
   );
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: Date.now(),
     mode: 'offline-donor-analysis',
     baseline: {

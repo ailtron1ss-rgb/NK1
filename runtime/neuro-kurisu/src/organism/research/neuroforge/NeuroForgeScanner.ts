@@ -9,6 +9,7 @@ export type NeuroForgeCapabilityId =
   | 'durable-workflows'
   | 'agent-tools'
   | 'model-serving'
+  | 'model-provider-adapters'
   | 'voice'
   | 'embodied-interaction'
   | 'evaluation'
@@ -40,11 +41,12 @@ export interface NeuroForgeFileRecord {
 export interface NeuroForgeCapabilitySignal {
   capabilityId: NeuroForgeCapabilityId;
   confidence01: number;
+  evidenceLevel: 'implementation' | 'content-only' | 'example-or-test' | 'configuration-only';
   evidenceFiles: string[];
 }
 
 export interface NeuroForgeProjectManifest {
-  schemaVersion: 1;
+  schemaVersion: 2;
   projectId: string;
   rootName: string;
   rootPath: string;
@@ -73,7 +75,7 @@ export interface NeuroForgeProjectManifest {
   noticeFiles: string[];
   dependencies: string[];
   externalImports: string[];
-  securityFindings: Array<{ path: string; kind: 'credential-file' | 'possible-secret-assignment'; line?: number }>;
+  securityFindings: Array<{ path: string; kind: 'credential-file' | 'possible-secret-assignment'; severity: 'high' | 'review'; line?: number }>;
   capabilitySignals: NeuroForgeCapabilitySignal[];
   warnings: string[];
   files: NeuroForgeFileRecord[];
@@ -101,21 +103,43 @@ const ASSET_EXTENSIONS = new Set([
 ]);
 
 const CAPABILITY_RULES: Array<{ id: NeuroForgeCapabilityId; pattern: RegExp }> = [
-  { id: 'memory-retrieval', pattern: /\b(memory|mem0|letta|retriev|recall|episodic|semantic)\b/i },
+  { id: 'memory-retrieval', pattern: /\b(memory(?:os|store|graph|retrieval)?|mem0|letta|retriev(?:al|er)|recall|episodic|semantic(?:memory|search)?)\b/i },
   { id: 'durable-workflows', pattern: /\b(temporal|durable[\s_-]?workflow(?:[\s_-]?(?:engine|orchestrat))?|workflow[\s_-]?(engine|orchestrat)|checkpoint[\s_-]?workflow)\b/i },
-  { id: 'agent-tools', pattern: /\b(browser[\s_-]?use|openhands|swe[\s_-]?agent|mcp|tool[\s_-]?call|tool[\s_-]?executor)\b/i },
-  { id: 'model-serving', pattern: /\b(vllm|llama[\s._-]?cpp|inference|model[\s_-]?serving|quantiz)\b/i },
-  { id: 'voice', pattern: /\b(whisper|asr|tts|piper|speech|audio|voice)\b/i },
-  { id: 'embodied-interaction', pattern: /\b(avatar|live2d|robot|motor|lerobot|kinematic|vrm)\b/i },
-  { id: 'evaluation', pattern: /\b(inspect[\s_-]?ai|evaluation|benchmark|holdout|scorer)\b/i },
-  { id: 'observability', pattern: /\b(telemetry|opentelemetry|trace|metrics|logging|flight[\s_-]?recorder)\b/i },
-  { id: 'sandbox-security', pattern: /\b(sandbox|firecracker|opa|policy[\s_-]?engine|permission|security[\s_-]?gate)\b/i },
-  { id: 'simulation-rl', pattern: /\b(gymnasium|cleanrl|genesis|simulator|simulation|reinforcement[\s_-]?learning)\b/i },
-  { id: 'symbolic-reasoning', pattern: /\b(hyperon|metta|open? nars|soar|symbolic[\s_-]?reason)\b/i },
-  { id: 'reproducible-builds', pattern: /\b(nix|lockfile|reproducible[\s_-]?build|docker|flake\.nix)\b/i },
-  { id: 'vector-retrieval', pattern: /\b(faiss|chroma|vector[\s_-]?search|embedding|ann[\s_-]?index)\b/i },
-  { id: 'coding-agents', pattern: /\b(openhands|swe[\s_-]?agent|repository[\s_-]?agent|coding[\s_-]?agent)\b/i },
+  { id: 'agent-tools', pattern: /\b(browser[\s_-]?use|openhands|swe[\s_-]?agent|model[\s_-]?context[\s_-]?protocol|mcp[\s_-]?(?:server|client)|tool[\s_-]?(?:call|executor|registry|gateway|contract)|action[\s_-]?gateway|plugin[\s_-]?gateway|external[\s_-]?project[\s_-]?research)\b/i },
+  { id: 'model-serving', pattern: /\b(vllm|llama[\s._-]?cpp[\s_-]?(?:server|runtime)|tgi|text[\s_-]?generation[\s_-]?inference|inference[\s_-]?server|model[\s_-]?serving|local[\s_-]?inference[\s_-]?runtime|ollama[\s_-]?(?:serve|server)|sglang|triton[\s_-]?inference)\b/i },
+  { id: 'model-provider-adapters', pattern: /\b(ollama|openai[\s_-]?(?:compatible|chat)|litellm|llm[\s_-]?provider|model[\s_-]?provider|provider[\s_-]?(?:adapter|registry)|chat[\s_-]?client|embedding[\s_-]?(?:function|provider|client)|local[\s_-]?embedding[\s_-]?provider)\b/i },
+  { id: 'voice', pattern: /\b(whisper|asr|tts|piper|speech|audio|voice|phoneme|transcription)\b/i },
+  { id: 'embodied-interaction', pattern: /\b(avatar|live2d|robotics?|lerobot|kinematic|vrm|embodiment|sensorimotor)\b/i },
+  { id: 'evaluation', pattern: /\b(inspect[\s_-]?ai|evaluation[\s_-]?(?:harness|suite|runner|framework)|benchmark[\s_-]?(?:runner|suite|harness)|holdout|scorer|paired[\s_-]?evaluation)\b/i },
+  { id: 'observability', pattern: /\b(telemetry|opentelemetry|distributed[\s_-]?tracing|trace[\s_-]?ledger|metrics[\s_-]?(?:collector|exporter)|flight[\s_-]?recorder|structured[\s_-]?logging)\b/i },
+  { id: 'sandbox-security', pattern: /\b(sandbox(?:ing)?|firecracker|opa[\s_-]?(?:policy|rego)|policy[\s_-]?engine|security[\s_-]?(?:gate|boundary|scanner)|secret[\s_-]?scanner|credential[\s_-]?scanner)\b/i },
+  { id: 'simulation-rl', pattern: /\b(gymnasium|cleanrl|genesis[\s_-]?sim|simulator|reinforcement[\s_-]?learning|policy[\s_-]?gradient|environment[\s_-]?rollout)\b/i },
+  { id: 'symbolic-reasoning', pattern: /\b(hyperon|metta|open[\s_-]?nars|soar|symbolic[\s_-]?reason(?:ing)?|atomspace|neuro[\s_-]?symbolic|concept[\s_-]?compiler)\b/i },
+  { id: 'reproducible-builds', pattern: /\b(nix|lockfile|package[\s_-]?lock|pnpm[\s_-]?lock|yarn[\s_-]?lock|cargo[\s_-]?lock|poetry[\s_-]?lock|uv[\s_-]?lock|reproducible[\s_-]?build|dockerfile|flake\.nix|build[\s_-]?provenance|software[\s_-]?bill[\s_-]?of[\s_-]?materials)\b/i },
+  { id: 'vector-retrieval', pattern: /\b(faiss|chroma|vector[\s_-]?(?:search|index|store)|embedding(?:s)?|ann[\s_-]?index|hnsw)\b/i },
+  { id: 'coding-agents', pattern: /\b(openhands|swe[\s_-]?agent|mini[\s_-]?swe|repository[\s_-]?(?:agent|editor)|coding[\s_-]?(?:agent|context)|code[\s_-]?agent|patch[\s_-]?appl(?:ier|y)|computer[\s_-]?use[\s_-]?agent)\b/i },
 ];
+
+const CAPABILITY_CONTENT_RULES: Record<NeuroForgeCapabilityId, RegExp> = {
+  'memory-retrieval': /\b(mem0|letta|episodic[\s_-]?memory|semantic[\s_-]?memory|memory[\s_-]?(?:retrieval|store|consolidation|index)|memoryos)\b/i,
+  'durable-workflows': /\b(temporal[\s_-]?(?:workflow|sdk)|durable[\s_-]?workflow|workflow[\s_-]?engine|checkpoint[\s_-]?workflow)\b/i,
+  'agent-tools': /\b(model[\s_-]?context[\s_-]?protocol|mcp[\s_-]?(?:server|client)|tool[\s_-]?(?:executor|registry|gateway|contract)|action[\s_-]?gateway|plugin[\s_-]?gateway|external[\s_-]?project[\s_-]?research|browser[\s_-]?use|openhands|swe[\s_-]?agent)\b/i,
+  'model-serving': /\b(vllm|llama[\s._-]?cpp[\s_-]?(?:server|runtime)|text[\s_-]?generation[\s_-]?inference|inference[\s_-]?server|model[\s_-]?serving|local[\s_-]?inference[\s_-]?runtime|ollama[\s_-]?(?:serve|server)|sglang|triton[\s_-]?inference)\b/i,
+  'model-provider-adapters': /\b(ollama|openai[\s_-]?(?:compatible|chat)|litellm|llm[\s_-]?provider|model[\s_-]?provider|provider[\s_-]?(?:adapter|registry)|chat[\s_-]?client|embedding[\s_-]?(?:function|provider|client)|local[\s_-]?embedding[\s_-]?provider)\b/i,
+  'voice': /\b(whisper|asr|tts|piper|speech[\s_-]?to[\s_-]?text|text[\s_-]?to[\s_-]?speech|voice[\s_-]?synthesis)\b/i,
+  'embodied-interaction': /\b(live2d|vrm|lerobot|sensorimotor|embodiment|kinematic[\s_-]?control)\b/i,
+  'evaluation': /\b(inspect[\s_-]?ai|evaluation[\s_-]?(?:harness|suite|runner)|benchmark[\s_-]?(?:runner|suite|harness)|holdout|scorer|paired[\s_-]?evaluation)\b/i,
+  'observability': /\b(telemetry|opentelemetry|distributed[\s_-]?tracing|trace[\s_-]?ledger|metrics[\s_-]?(?:collector|exporter)|flight[\s_-]?recorder|structured[\s_-]?logging)\b/i,
+  'sandbox-security': /\b(sandbox(?:ing)?|firecracker|opa[\s_-]?(?:policy|rego)|rego[\s_-]?policy|policy[\s_-]?engine|security[\s_-]?(?:gate|boundary|scanner)|secret[\s_-]?scanner|credential[\s_-]?scanner)\b/i,
+  'simulation-rl': /\b(gymnasium|cleanrl|genesis[\s_-]?sim|reinforcement[\s_-]?learning|policy[\s_-]?gradient|environment[\s_-]?rollout)\b/i,
+  'symbolic-reasoning': /\b(hyperon|metta|open[\s_-]?nars|soar|symbolic[\s_-]?reason(?:ing)?|atomspace|neuro[\s_-]?symbolic|concept[\s_-]?compiler)\b/i,
+  'reproducible-builds': /\b(reproducible[\s_-]?build|hermetic[\s_-]?build|build[\s_-]?provenance|software[\s_-]?bill[\s_-]?of[\s_-]?materials|sbom|lockfile[\s_-]?integrity|dependency[\s_-]?lockfile[\s_-]?verification)\b/i,
+  'vector-retrieval': /\b(faiss|chroma|vector[\s_-]?(?:search|index|store)|embedding[\s_-]?(?:model|index|provider)|ann[\s_-]?index|hnsw)\b/i,
+  'coding-agents': /\b(openhands|swe[\s_-]?agent|mini[\s_-]?swe|repository[\s_-]?(?:agent|editor)|coding[\s_-]?(?:agent|context)|code[\s_-]?agent|patch[\s_-]?appl(?:ier|y)|computer[\s_-]?use[\s_-]?agent)\b/i,
+};
+
+const BUILD_CONFIG_EVIDENCE_PATH = /(^|\/)(dockerfile|docker-compose(?:\.[^/]*)?\.ya?ml|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|cargo\.lock|poetry\.lock|uv\.lock|flake\.nix|flake\.lock|nix\.conf)$/i;
+const isDependencyManifest = (base: string): boolean => base === 'package.json' || base === 'go.mod' || base === 'cargo.toml' || /^requirements(?:[-_.].*)?\.txt$/.test(base);
 
 function digest(value: string | Buffer): string {
   return createHash('sha256').update(value).digest('hex');
@@ -171,9 +195,9 @@ function fileRole(relativePath: string): NeuroForgeFileRole {
   const extension = extensionOf(base);
   if (/^(license|licence|copying)(\.|$)/i.test(base)) return 'license';
   if (/^notice(\.|$)/i.test(base)) return 'other';
-  if (/(^|\/)(__tests__|tests?|specs?)(\/|$)|\.(test|spec)\./i.test(relativePath)) return 'test';
+  if (/(^|\/)(__tests__|tests?)(\/|$)|(?:^|[_-])tests?\.[^.]+$|^test[_-].+\.[^.]+$|\.(test|spec)\./i.test(relativePath)) return 'test';
+  if (CONFIG_NAMES.has(base) || isDependencyManifest(base) || BUILD_CONFIG_EVIDENCE_PATH.test(relativePath) || /(^|\/)(\.github|\.devcontainer)(\/|$)/i.test(relativePath) || extension === '.yml' || extension === '.yaml' || extension === '.toml') return 'configuration';
   if (DOC_EXTENSIONS.has(extension)) return 'documentation';
-  if (CONFIG_NAMES.has(base) || /(^|\/)(\.github|\.devcontainer)(\/|$)/i.test(relativePath) || extension === '.yml' || extension === '.yaml' || extension === '.toml') return 'configuration';
   if (SOURCE_EXTENSIONS.has(extension)) return 'source';
   if (ASSET_EXTENSIONS.has(extension)) return 'asset';
   return 'other';
@@ -199,13 +223,13 @@ function languageFor(relativePath: string): string {
 
 function isCredentialPath(relativePath: string): boolean {
   const base = basename(relativePath).toLowerCase();
-  if (/^\.env(?:$|\.)/.test(base) && !/\.(example|sample|template)$/.test(base)) return true;
+  if (/^\.env(?:$|\.)/.test(base) && !/\.(example|sample|template|default|defaults|dist)(?:\.|$)/.test(base)) return true;
   return /(id_rsa|id_ed25519|credentials?\.(json|ya?ml)|secrets?\.(json|ya?ml)|\.(pem|p12|pfx|key))$/i.test(base);
 }
 
 function detectSpdx(text: string): string | null {
   if (/MIT License|Permission is hereby granted, free of charge/i.test(text)) return 'MIT';
-  if (/Apache License, Version 2\.0|Apache-2\.0/i.test(text)) return 'Apache-2.0';
+  if (/Apache License(?:,\s*|\s+)Version 2\.0|Apache-2\.0/i.test(text)) return 'Apache-2.0';
   if (/GNU AFFERO GENERAL PUBLIC LICENSE.*Version 3|AGPL-3\.0/i.test(text)) return 'AGPL-3.0-or-later';
   if (/GNU GENERAL PUBLIC LICENSE.*Version 3|GPL-3\.0/i.test(text)) return 'GPL-3.0-or-later';
   if (/GNU LESSER GENERAL PUBLIC LICENSE.*Version 3|LGPL-3\.0/i.test(text)) return 'LGPL-3.0-or-later';
@@ -213,6 +237,9 @@ function detectSpdx(text: string): string | null {
   if (/BSD 3-Clause|Redistribution and use in source and binary forms, with or without modification/i.test(text)) return 'BSD-3-Clause';
   if (/BSD 2-Clause/i.test(text)) return 'BSD-2-Clause';
   if (/ISC License/i.test(text)) return 'ISC';
+  if (/Creative Commons Attribution[- ]4\.0(?: International)?|Attribution 4\.0 International|CC[ -]?BY[ -]?4\.0|CC-BY-4\.0/i.test(text)) return 'CC-BY-4.0';
+  if (/Creative Commons Attribution-ShareAlike 4\.0|CC[ -]?BY[ -]?SA[ -]?4\.0/i.test(text)) return 'CC-BY-SA-4.0';
+  if (/Creative Commons Zero v1\.0 Universal|CC0-1\.0/i.test(text)) return 'CC0-1.0';
   if (/The Unlicense/i.test(text)) return 'Unlicense';
   return null;
 }
@@ -282,25 +309,77 @@ function extractImports(relativePath: string, text: string, target: Set<string>)
   }
 }
 
+function expandCamelCase(value: string): string {
+  return value.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z])([A-Z][a-z])/g, '$1 $2')
+    .replace(/([A-Za-z])([0-9])/g, '$1 $2').replace(/([0-9])([A-Za-z])/g, '$1 $2').replace(/[_-]+/g, ' ');
+}
+function isAuxiliaryCapabilityPath(relativePath: string): boolean {
+  return /(^|\/)(docs?|examples?|samples?|demos?|benchs?|benchmarks?|evals?|i18n|locales?)(\/|$)/i.test(relativePath) ||
+    /(^|\/)eng\/verify-samples(\/|$)/i.test(relativePath) || relativePath.replace(/\\/g, '/').toLowerCase().startsWith('.github/');
+}
 function inferCapabilitySignals(rows: Array<{ path: string; role: NeuroForgeFileRole; text: string }>): NeuroForgeCapabilitySignal[] {
   const output: NeuroForgeCapabilitySignal[] = [];
+  const evidenceRows = rows.filter(row => row.role === 'source' || row.role === 'test' || row.role === 'configuration')
+    .map(row => ({ path: row.path, role: row.role, auxiliary: isAuxiliaryCapabilityPath(row.path), normalizedPath: expandCamelCase(row.path), normalizedText: row.role === 'configuration' ? '' : expandCamelCase(row.text) }));
   for (const rule of CAPABILITY_RULES) {
-    const matches: Array<{ path: string; weight: number }> = [];
-    for (const row of rows) {
-      if (!rule.pattern.test(row.path + '\n' + row.text)) continue;
-      const weight = row.role === 'source' ? 1 : row.role === 'test' ? 0.65 : row.role === 'configuration' ? 0.45 : row.role === 'documentation' ? 0.3 : 0.2;
-      matches.push({ path: row.path, weight });
+    const implementationMatches: Array<{ path: string; weight: number }> = [];
+    const contentOnlyMatches: Array<{ path: string; weight: number }> = [];
+    const supportingMatches: Array<{ path: string; weight: number }> = [];
+    const configMatches: Array<{ path: string; weight: number }> = [];
+    for (const row of evidenceRows) {
+      if (row.role === 'configuration') {
+        if (rule.id === 'reproducible-builds' && BUILD_CONFIG_EVIDENCE_PATH.test(row.path) && rule.pattern.test(row.normalizedPath)) configMatches.push({ path: row.path, weight: 0.30 });
+        continue;
+      }
+      const pathMatch = rule.pattern.test(row.normalizedPath);
+      const contentMatch = !pathMatch && CAPABILITY_CONTENT_RULES[rule.id].test(row.normalizedText);
+      if (!pathMatch && !contentMatch) continue;
+      const pathWeight = pathMatch ? 1 : 0.55;
+      if (row.role === 'source' && !row.auxiliary && pathMatch) implementationMatches.push({ path: row.path, weight: pathWeight });
+      else if (row.role === 'source' && !row.auxiliary && contentMatch) contentOnlyMatches.push({ path: row.path, weight: 0.30 * pathWeight });
+      else supportingMatches.push({ path: row.path, weight: (row.role === 'test' ? 0.40 : 0.35) * pathWeight });
     }
+    const evidenceLevel: NeuroForgeCapabilitySignal['evidenceLevel'] =
+      implementationMatches.length ? 'implementation' : supportingMatches.length ? 'example-or-test' : contentOnlyMatches.length ? 'content-only' : 'configuration-only';
+    const matches = [...implementationMatches, ...supportingMatches, ...contentOnlyMatches, ...configMatches];
     if (!matches.length) continue;
     const weighted = matches.reduce((sum, row) => sum + row.weight, 0);
     const confidence01 = Math.max(0, Math.min(0.95, 1 - Math.exp(-weighted / 2.4)));
-    output.push({
-      capabilityId: rule.id,
-      confidence01: Number(confidence01.toFixed(4)),
-      evidenceFiles: matches.slice(0, 12).map(row => row.path),
-    });
+    output.push({ capabilityId: rule.id, confidence01: Number(confidence01.toFixed(4)), evidenceLevel, evidenceFiles: matches.slice(0, 12).map(row => row.path) });
   }
   return output.sort((a, b) => a.capabilityId.localeCompare(b.capabilityId));
+}
+function isExampleOrDocumentationPath(relativePath: string): boolean {
+  const normalized = relativePath.replace(/\\/g, '/').toLowerCase();
+  const base = basename(normalized);
+  return DOC_EXTENSIONS.has(extensionOf(base)) || /(^|\/)(docs?|examples?|fixtures?|samples?|testdata|tests?|__tests__|i18n|locales?)(\/|$)/.test(normalized) ||
+    normalized.startsWith('.github/') || /^\.env\.(?:example|sample|template|default|defaults|dist)(?:\.|$)/.test(base) || /\.(example|sample|template)(\.|$)/.test(base);
+}
+function shannonEntropy(value: string): number {
+  if (!value.length) return 0;
+  const counts = new Map<string, number>(); for (const char of value) counts.set(char, (counts.get(char) ?? 0) + 1);
+  let entropy = 0; for (const count of counts.values()) { const probability = count / value.length; entropy -= probability * Math.log2(probability); }
+  return entropy;
+}
+function findHighConfidenceSecretAssignment(line: string): boolean {
+  const keyPattern = /(?:^|[({,;]\s*)(?:(?:export\s+(?:default\s+)?)?(?:const|let|var|final|static|private|public|readonly|local)\s+)?(?:[A-Za-z_$][\w$]*\.)*[A-Za-z_$]*(?:api[_-]?(?:key|token)|client[_-]?secret|secret[_-]?key|private[_-]?key|access[_-]?token|refresh[_-]?token|auth[_-]?token|password)\b\s*[:=]\s*/i;
+  const assignment = keyPattern.exec(line); if (!assignment) return false;
+  const tail = line.slice(assignment.index + assignment[0].length).trimStart();
+  let value = ''; let remainder = '';
+  const quote = tail[0]; const quotedValue = quote === '"' || quote === "'";
+  if (quotedValue) {
+    const close = tail.indexOf(quote, 1); if (close < 0) return false;
+    value = tail.slice(1, close); remainder = tail.slice(close + 1).trimStart();
+  } else {
+    const bare = /^[A-Za-z0-9_./+=:-]+/.exec(tail); if (!bare) return false;
+    value = bare[0]; remainder = tail.slice(value.length).trimStart();
+    if (remainder.startsWith('(') || remainder.startsWith('.') || remainder.startsWith('[')) return false;
+  }
+  if (remainder && !/^(?:[,;)}\]]|#|\/\/|\/\*|$)/.test(remainder)) return false;
+  if (!value || /(?:example|sample|placeholder|changeme|dummy|your[_ -]|replace[_ -]?me|default|fake|mock|test[_ -]?key|todo|none|null|process\.env|os\.environ|secret[_ -]?ref|<[^>]+>)/i.test(value)) return false;
+  const recognizedPrefix = /^(?:sk-(?:proj-|live-|test-)?|gh[pousr]_|github_pat_|AKIA|ASIA|xox[baprs]-|eyJ)/i.test(value);
+  const literalCredentialShape = quotedValue || (/\d/.test(value) && /[A-Z]/.test(value) && /[a-z]/.test(value) && /[-_+=/:.]/.test(value));
+  return value.length >= 24 && (recognizedPrefix || (literalCredentialShape && shannonEntropy(value) >= 3.2));
 }
 
 export async function scanNeuroForgeProject(root: string, options: NeuroForgeScanOptions = {}): Promise<NeuroForgeProjectManifest> {
@@ -314,7 +393,7 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
   const maxFileBytes = Math.max(1024, Math.min(8 * 1024 * 1024, Math.floor(options.maxFileBytes ?? 2 * 1024 * 1024)));
   const maxTotalBytes = Math.max(maxFileBytes, Math.min(1024 * 1024 * 1024, Math.floor(options.maxTotalBytes ?? 256 * 1024 * 1024)));
   const maxDepth = Math.max(1, Math.min(32, Math.floor(options.maxDepth ?? 16)));
-  const maxTextBytes = Math.max(1024, Math.min(256 * 1024, Math.floor(options.maxTextBytes ?? 64 * 1024)));
+  const maxTextBytes = Math.max(1024, Math.min(256 * 1024, Math.floor(options.maxTextBytes ?? 8 * 1024)));
   const files: NeuroForgeFileRecord[] = [];
   const samples: Array<{ path: string; role: NeuroForgeFileRole; text: string }> = [];
   const licenseFiles: NeuroForgeProjectManifest['licenseFiles'] = [];
@@ -326,6 +405,7 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
   const languageCounts: Record<string, number> = {};
   const skipped: Array<{ path: string; sizeBytes: number; reason: string }> = [];
   let totalBytes = 0;
+  let rootPackageVersion: string | null = null;
   let stop = false;
 
   async function walk(directory: string, depth: number): Promise<void> {
@@ -410,24 +490,32 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
       const isCredential = isCredentialPath(relativePath);
       if (isCredential) securityFindings.push({ path: relativePath, kind: 'credential-file' });
 
-      const shouldReadText = !isCredential && !ASSET_EXTENSIONS.has(extensionOf(base)) && sizeBytes > 0;
-      const text = shouldReadText ? data.subarray(0, maxTextBytes).toString('utf8') : '';
-      if (isLicense) {
-        licenseFiles.push({ path: relativePath, scope: isRoot ? 'root' : 'nested', spdxId: detectSpdx(text), sha256 });
+      // Keep text only for source, license and dependency manifests.
+      // Tests/configs retain path-only evidence to avoid memory inflation and false proposals.
+      const isDependencyConfig = role === 'configuration' && isDependencyManifest(base);
+      const needsText = !isCredential && !ASSET_EXTENSIONS.has(extensionOf(base)) && sizeBytes > 0 &&
+        (isLicense || role === 'source' || isDependencyConfig);
+      const text = needsText ? data.subarray(0, maxTextBytes).toString('utf8') : '';
+      if (isLicense) licenseFiles.push({ path: relativePath, scope: isRoot ? 'root' : 'nested', spdxId: detectSpdx(text), sha256 });
+      if (isRoot && base === 'package.json' && text) {
+        try {
+          const parsed = JSON.parse(text) as { version?: unknown };
+          if (typeof parsed.version === 'string' && parsed.version.trim()) rootPackageVersion = parsed.version.trim();
+        } catch { /* malformed root package metadata is evidence only */ }
       }
-      if (shouldReadText) {
-        const lines = text.split(/\r?\n/);
-        for (let index = 0; index < lines.length; index += 1) {
-          const line = lines[index]!;
-          if (/(?:api[_-]?key|secret|token|password|private[_-]?key)\s*[:=]\s*(?:['"][^'"]{8,}['"]?|[^\s,;]{8,})/i.test(line) &&
-              !/(example|sample|placeholder|changeme|dummy|your[_ -])/i.test(line)) {
-            securityFindings.push({ path: relativePath, kind: 'possible-secret-assignment', line: index + 1 });
+      if (needsText && (role === 'source' || isDependencyConfig)) {
+        if (!isCredential && !isExampleOrDocumentationPath(relativePath)) {
+          const lines = text.split(/\r?\n/);
+          for (let index = 0; index < lines.length; index += 1) {
+            if (!/pragma:\s*allowlist\s+secret/i.test(lines[index]!) && findHighConfidenceSecretAssignment(lines[index]!)) {
+              securityFindings.push({ path: relativePath, kind: 'possible-secret-assignment', severity: 'high', line: index + 1 });
+            }
           }
         }
-        parseDependencies(relativePath, text, dependencies);
-        extractImports(relativePath, text, externalImports);
-        samples.push({ path: relativePath, role, text });
-      }
+        if (isDependencyConfig) parseDependencies(relativePath, text, dependencies);
+        if (role === 'source') extractImports(relativePath, text, externalImports);
+        samples.push({ path: relativePath, role, text: role === 'configuration' ? '' : text });
+      } else if (role === 'test' || role === 'configuration') samples.push({ path: relativePath, role, text: '' });
     }
   }
 
@@ -437,14 +525,7 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
   licenseFiles.sort((a, b) => a.path.localeCompare(b.path));
   noticeFiles.sort();
 
-  let projectVersion: string | null = null;
-  const rootPackage = samples.find(row => row.path === 'package.json');
-  if (rootPackage) {
-    try {
-      const parsed = JSON.parse(rootPackage.text) as { version?: unknown };
-      if (typeof parsed.version === 'string' && parsed.version.trim()) projectVersion = parsed.version.trim();
-    } catch { /* package metadata remains an inventory signal, not trusted configuration */ }
-  }
+  const projectVersion = rootPackageVersion;
 
   const rootLicenseFile = licenseFiles.find(row => row.scope === 'root');
   const rootLicense = rootLicenseFile
@@ -461,7 +542,7 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
   const assetFiles = files.filter(row => row.role === 'asset').length;
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     projectId: options.projectId?.trim() || basename(absoluteRoot),
     rootName: basename(absoluteRoot),
     rootPath: absoluteRoot,

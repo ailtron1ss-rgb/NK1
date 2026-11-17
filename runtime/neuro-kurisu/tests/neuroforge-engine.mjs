@@ -70,7 +70,7 @@ test('NeuroForge identifies a donor capability gap but never authorizes code reu
       'LICENSE': 'MIT License\nPermission is hereby granted.\n',
       'README.md': '# Temporal durable workflow orchestration\n',
       'package.json': JSON.stringify({ name: 'temporal-donor', dependencies: { '@temporalio/client': '^1.10.0' } }),
-      'src/workflow.ts': 'export async function durableWorkflow() { return "checkpoint retry"; }\n',
+      'src/durable_workflow_engine.ts': 'export async function durableWorkflow() { return "checkpoint retry"; }\n',
       'tests/workflow.test.ts': 'export const testWorkflow = true;\n',
     });
 
@@ -135,7 +135,7 @@ test('scanner records a pinned Git origin while removing credentials from its UR
         '\tfetch = +refs/heads/*:refs/remotes/origin/*',
         '',
       ].join('\n'),
-      'src/workflow.ts': 'export async function durableWorkflowEngine() { return true; }\n',
+      'src/durable_workflow_engine.ts': 'export async function durableWorkflowEngine() { return true; }\n',
     });
 
     const manifest = await scanNeuroForgeProject(donorRoot, { projectId: 'git-donor' });
@@ -179,7 +179,7 @@ test('NeuroForge CLI writes a review bundle and exits successfully for a valid d
       'LICENSE': 'MIT License\nPermission is hereby granted.\n',
       'README.md': '# Temporal durable workflow engine\n',
       'package.json': JSON.stringify({ name: 'temporal-donor', version: '1.0.0' }),
-      'src/workflow.ts': 'export function durableWorkflow() { return "retry"; }\n',
+      'src/durable_workflow_engine.ts': 'export function durableWorkflow() { return "retry"; }\n',
     });
 
     const cliPath = path.resolve('scripts/neuroforge.mjs');
@@ -198,5 +198,100 @@ test('NeuroForge CLI writes a review bundle and exits successfully for a valid d
     assert.equal(report.codeCopied, false);
     assert.ok(report.proposals.some(row => row.capabilityId === 'durable-workflows'));
     assert.ok((await readFile(path.join(outputRoot, 'summary.md'), 'utf8')).includes('NeuroForge'));
+  });
+});
+
+
+test('NeuroForge schema v2 only proposes path-anchored implementation evidence', async () => {
+  await withTempRoot(async root => {
+    const baselineRoot = path.join(root, 'baseline');
+    const donorRoot = path.join(root, 'donor');
+    await makeProject(baselineRoot, { 'src/core/ActionGateway.ts': 'export class ActionGateway {}\\n' });
+    await makeProject(donorRoot, {
+      'README.md': '# vLLM inference server and model serving',
+      'src/ordinary.ts': 'export const description = "vLLM inference server and model serving";\\n',
+      'src/vllm_server.py': 'class VLLMServer: pass\\n',
+      'tests/test_vllm_server.py': 'def test_server(): pass\\n',
+    });
+    const baseline = await scanNeuroForgeProject(baselineRoot);
+    const donor = await scanNeuroForgeProject(donorRoot);
+    const report = analyzeNeuroForge({ baseline, donors: [donor] });
+    assert.equal(donor.schemaVersion, 2);
+    assert.equal(report.schemaVersion, 2);
+    assert.equal(donor.capabilitySignals.find(row => row.capabilityId === 'model-serving')?.evidenceLevel, 'implementation');
+    assert.ok(report.proposals.some(row => row.capabilityId === 'model-serving'));
+  });
+});
+
+test('model-provider adapters are distinct from inference servers', async () => {
+  await withTempRoot(async root => {
+    const donorRoot = path.join(root, 'ollama-client');
+    await makeProject(donorRoot, { 'src/ollama_embedding_client.py': 'class OllamaEmbeddingClient: pass\\n' });
+    const manifest = await scanNeuroForgeProject(donorRoot);
+    assert.equal(manifest.capabilitySignals.find(row => row.capabilityId === 'model-provider-adapters')?.evidenceLevel, 'implementation');
+    assert.equal(manifest.capabilitySignals.some(row => row.capabilityId === 'model-serving'), false);
+  });
+});
+
+test('docs-only and content-only descriptions do not become implementation proposals', async () => {
+  await withTempRoot(async root => {
+    const baselineRoot = path.join(root, 'baseline');
+    const donorRoot = path.join(root, 'docs-donor');
+    await makeProject(baselineRoot, { 'src/empty.ts': 'export const baseline = true;\\n' });
+    await makeProject(donorRoot, {
+      'docs/specs/agent_tools.md': 'Specification for model context protocol and tool gateway',
+      'src/ordinary.ts': 'export const note = "model context protocol tool gateway";\\n',
+    });
+    const baseline = await scanNeuroForgeProject(baselineRoot);
+    const donor = await scanNeuroForgeProject(donorRoot);
+    assert.equal(donor.stats.testFiles, 0);
+    assert.ok(donor.capabilitySignals.every(row => row.evidenceLevel !== 'implementation'));
+    assert.equal(analyzeNeuroForge({ baseline, donors: [donor] }).proposals.length, 0);
+  });
+});
+
+test('Apache and Creative Commons root license identifiers are recognized', async () => {
+  await withTempRoot(async root => {
+    const apacheRoot = path.join(root, 'apache');
+    const ccRoot = path.join(root, 'cc');
+    await makeProject(apacheRoot, { 'LICENSE': 'Apache License Version 2.0, January 2004\\n' });
+    await makeProject(ccRoot, { 'LICENSE': 'Creative Commons Attribution 4.0 International' });
+    assert.equal((await scanNeuroForgeProject(apacheRoot)).rootLicense.spdxId, 'Apache-2.0');
+    assert.equal((await scanNeuroForgeProject(ccRoot)).rootLicense.spdxId, 'CC-BY-4.0');
+  });
+});
+
+test('test bodies are not treated as implementation evidence', async () => {
+  await withTempRoot(async root => {
+    const donorRoot = path.join(root, 'tests-only');
+    await makeProject(donorRoot, { 'tests/vllm_server_test.py': 'class VLLMServer: pass\\n' });
+    const manifest = await scanNeuroForgeProject(donorRoot);
+    assert.equal(manifest.stats.testFiles, 1);
+    assert.equal(manifest.capabilitySignals.find(row => row.capabilityId === 'model-serving')?.evidenceLevel, 'example-or-test');
+  });
+});
+
+test('project version comes only from the root package manifest', async () => {
+  await withTempRoot(async root => {
+    const donorRoot = path.join(root, 'monorepo');
+    await makeProject(donorRoot, { 'packages/demo/package.json': JSON.stringify({ name: 'demo', version: '9.9.9' }) });
+    assert.equal((await scanNeuroForgeProject(donorRoot)).projectVersion, null);
+  });
+});
+
+test('secret scanner ignores generic tokens and runtime getters while catching a literal credential', async () => {
+  await withTempRoot(async root => {
+    const donorRoot = path.join(root, 'safe-config');
+    await makeProject(donorRoot, {
+      'src/config.ts': [
+        'export const REPLICATE_API_TOKEN = "replace-me";',
+        'export const access_token = get_secret("access_token");',
+        'const authToken = process.env.AUTH_TOKEN;',
+        'export const apiKey = "sk-live-123456789012345678901234567890";',
+      ].join('\\n'),
+    });
+    const manifest = await scanNeuroForgeProject(donorRoot);
+    assert.equal(manifest.securityFindings.filter(row => row.kind === 'possible-secret-assignment').length, 1);
+    assert.equal(JSON.stringify(manifest).includes('sk-live-123456789012345678901234567890'), false);
   });
 });
