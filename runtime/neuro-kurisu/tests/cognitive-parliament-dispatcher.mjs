@@ -213,7 +213,11 @@ let languageInvokerCalls=0;
 const languageInvoker=async request=>{
   languageInvokerCalls++;
   assert.ok(request.system.includes('specialist'));
-  return {text:responseFor('planner'),backend:'local-qwen-backend',latencyMs:2};
+  return {
+    text:responseFor('planner'),
+    backend:languageInvokerCalls%2?'local-qwen-backend-a':'local-qwen-backend-b',
+    latencyMs:2,
+  };
 };
 const languageRoleExecutors=createLanguageInvokerParliamentRoleExecutors(languageInvoker,languageRegistry);
 const languageResearch=await languageRoleExecutors.researcher.execute({
@@ -225,9 +229,12 @@ const languageAuditor=await languageRoleExecutors.auditor.execute({
   signal:new AbortController().signal,
 });
 assert.equal(languageInvokerCalls,2);
+assert.notEqual(languageRegistry.attest(languageResearch.executionId)?.modelId,
+  languageRegistry.attest(languageAuditor.executionId)?.modelId,
+  'the fake host invoker intentionally varies its backend label across calls');
 assert.equal(languageRegistry.attest(languageResearch.executionId)?.independenceGroup,
   languageRegistry.attest(languageAuditor.executionId)?.independenceGroup,
-  'the default language-invoker adapter must never manufacture model diversity');
+  'the default language-invoker adapter must never manufacture model diversity from changing backend labels');
 
 // Runtime automatically composes this adapter only when language is enabled,
 // no explicit specialist providers/attestor override it, and Parliament is not disabled.
