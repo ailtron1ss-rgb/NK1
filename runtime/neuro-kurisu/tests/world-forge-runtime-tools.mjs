@@ -9,11 +9,15 @@ registerWorldForgeTools(gateway,simulator);
 const tools=gateway.listTools().map(tool=>tool.id);
 for(const id of [
  'organism.worldforge.scenarios.generate',
- 'organism.worldforge.sessions.start',
+ 'organism.worldforge.sessions.begin',
  'organism.worldforge.sessions.step',
  'organism.worldforge.sessions.evaluate',
  'organism.worldforge.scenarios.release',
 ])assert.ok(tools.includes(id),`runtime must register ${id}`);
+const registered=new Map(gateway.listTools().map(tool=>[tool.id,tool]));
+for(const id of tools.filter(id=>id.startsWith('organism.worldforge.'))){
+  assert.equal(registered.get(id)?.requiresIdempotencyKey,false,`${id} mutates only the bounded synthetic sandbox, not an external side effect`);
+}
 
 const generated=await gateway.executeTool('organism.worldforge.scenarios.generate',{
  split:'train',count:2,difficulty01:.65,
@@ -30,7 +34,7 @@ const holdout=await gateway.executeTool('organism.worldforge.scenarios.generate'
 },'worldforge-holdout-attempt');
 assert.equal(holdout.ok,false,'runtime tool contract must reject holdout generation');
 
-const started=await gateway.executeTool('organism.worldforge.sessions.start',{
+const started=await gateway.executeTool('organism.worldforge.sessions.begin',{
  scenarioId:scenario.id,
 },'worldforge-start');
 assert.equal(started.ok,true,JSON.stringify(started.result));
@@ -42,7 +46,7 @@ const forgedCost=await gateway.executeTool('organism.worldforge.sessions.step',{
 assert.equal(forgedCost.ok,false,'ActionGateway schema must reject caller-provided cost');
 assert.equal(forgedCost.result.error,'tool-input-invalid');
 
-const baselineStarted=await gateway.executeTool('organism.worldforge.sessions.start',{
+const baselineStarted=await gateway.executeTool('organism.worldforge.sessions.begin',{
  scenarioId:scenario.id,
 },'worldforge-baseline-start');
 assert.equal(baselineStarted.ok,true);
