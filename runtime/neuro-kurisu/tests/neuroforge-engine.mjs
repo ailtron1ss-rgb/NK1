@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 import { scanNeuroForgeProject } from '../src/organism/research/neuroforge/NeuroForgeScanner.ts';
-import { analyzeNeuroForge } from '../src/organism/research/neuroforge/NeuroForgeEngine.ts';
+import { analyzeNeuroForge, renderNeuroForgeProposal } from '../src/organism/research/neuroforge/NeuroForgeEngine.ts';
 
 async function makeProject(root, files) {
   for (const [relativePath, content] of Object.entries(files)) {
@@ -135,7 +135,7 @@ test('scanner records a pinned Git origin while removing credentials from its UR
         '\tfetch = +refs/heads/*:refs/remotes/origin/*',
         '',
       ].join('\n'),
-      'src/index.ts': 'export const donor = true;\n',
+      'src/workflow.ts': 'export async function durableWorkflowEngine() { return true; }\n',
     });
 
     const manifest = await scanNeuroForgeProject(donorRoot, { projectId: 'git-donor' });
@@ -149,6 +149,20 @@ test('scanner records a pinned Git origin while removing credentials from its UR
     });
     assert.equal(JSON.stringify(manifest).includes('scanner-user'), false);
     assert.equal(JSON.stringify(manifest).includes('scanner-password'), false);
+
+    const baselineRoot = path.join(root, 'nk1-baseline');
+    await makeProject(baselineRoot, {
+      'memory/MemoryOS2.ts': 'export class MemoryOS2 { retrieveMemory() {} }\n',
+    });
+    const baseline = await scanNeuroForgeProject(baselineRoot, { projectId: 'nk1-baseline' });
+    const report = analyzeNeuroForge({ baseline, donors: [manifest] });
+    const proposal = report.proposals.find(row => row.capabilityId === 'durable-workflows');
+
+    assert.ok(proposal, 'expected an integration proposal for the durable workflow donor');
+    assert.equal(report.donors[0]?.sourceProvenance.revision, revision);
+    assert.equal(proposal.evidence.donorProvenance.repositoryUrl, 'https://github.com/example/donor.git');
+    assert.equal(proposal.evidence.donorProvenance.revision, revision);
+    assert.ok(renderNeuroForgeProposal(proposal).includes('Commit: ' + revision));
   });
 });
 
