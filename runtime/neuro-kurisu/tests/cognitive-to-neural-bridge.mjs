@@ -85,4 +85,14 @@ const stale = bridge.project({ tick: 99, mode:'shallow', neural });
 assert.equal(stale.neuralSnapshotAvailable, false, 'future neural snapshot must be rejected');
 assert.equal(stale.neuralSnapshotAgeTicks, null);
 
+const incompleteNeural = {
+  ...neural,
+  allostatic: { ...neural.allostatic, arousal01: undefined },
+};
+const incompleteSnapshot = bridge.project({ tick: 17, neural: incompleteNeural });
+assert.equal(incompleteSnapshot.neuralSnapshotAvailable, false,
+  'a partially malformed B365 snapshot must be rejected as a whole, not filled with neutral-looking values');
+assert.equal(incompleteSnapshot.neuralSource, 'unavailable');
+assert.ok(incompleteSnapshot.featureVector01.slice(12, 35).every(value => value === .5));
+
 console.log('COGNITIVE_TO_NEURAL_BRIDGE_V2_PASS');
