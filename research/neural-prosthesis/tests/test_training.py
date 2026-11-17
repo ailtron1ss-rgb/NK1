@@ -5,6 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from neural_prosthesis.training import (  # noqa: E402
+    MAX_DATASET_BYTES,
+    dataset_fingerprint,
     ensure_holdout_is_distinct,
     paired_bootstrap_mean_interval,
     read_jsonl,
@@ -38,6 +40,24 @@ class NeuralProsthesisTrainingUtilityTests(unittest.TestCase):
             seed=17,
         )
         self.assertGreater(regressing["lower"], 0)
+
+    def test_dataset_fingerprint_rejects_oversized_sources_before_hashing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "oversized.jsonl"
+            with source.open("wb") as handle:
+                handle.truncate(MAX_DATASET_BYTES + 1)
+            with self.assertRaisesRegex(ValueError, "dataset-missing-or-too-large"):
+                dataset_fingerprint(source)
+
+    def test_jsonl_loader_rejects_duplicate_object_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "duplicate.jsonl"
+            source.write_text(
+                '{"prompt":"original","prompt":"overridden","completion":"answer"}\\n',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "dataset-json-duplicate-key"):
+                read_jsonl(source)
 
     def test_jsonl_loader_enforces_a_caller_supplied_example_cap(self):
         with tempfile.TemporaryDirectory() as tmp:
