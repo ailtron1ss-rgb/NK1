@@ -54,5 +54,7 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:workpass64:archived-receipt-reconciliation && npm --prefix runtime/neuro-kurisu run test:workpass95:receipt-integrity && npm --prefix runtime/neuro-kurisu run test:workpass96:finalizer-boundary
       - name: Core planner and project routing
         run: npm --prefix runtime/neuro-kurisu run test:workpass97:planner-route && npm --prefix runtime/neuro-kurisu run test:workpass98:project-reconciliation-route
+      - name: Intent contract compiler and ActionGateway bridge
+        run: npm --prefix runtime/neuro-kurisu run test:intent-compiler
       - name: Decision-linked external postconditions
         run: npm --prefix runtime/neuro-kurisu run test:workpass294:correlated-postcondition
