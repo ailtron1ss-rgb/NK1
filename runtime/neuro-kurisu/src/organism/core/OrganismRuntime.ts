@@ -9,8 +9,9 @@ import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '.
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
-import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
+import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageRequest, type LanguageResponse } from '../language/LanguageOrgan.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
+import { CognitiveToNeuralBridge, applyCognitiveNeuralControl, type CognitiveNeuralControlProfile } from '../cognition/CognitiveToNeuralBridge.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
@@ -95,6 +96,8 @@ export interface RuntimeConfig extends OrganismConfig {
   sensorIntervalMs?: number;
   phonePolicy?: Partial<PhonePolicyConfig>;
   languageInvoker?: LanguageInvoker;
+  /** Default-on bounded organism-to-language controls; false is the immediate emergency bypass. */
+  cognitiveToNeuralBridge?: { enabled?: boolean };
   stateStore?: JsonStateStore<PersistedOrganism>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
@@ -171,6 +174,7 @@ export class OrganismRuntime {
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
+  private readonly cognitiveToNeuralBridge = new CognitiveToNeuralBridge();
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
@@ -600,13 +604,54 @@ export class OrganismRuntime {
     }
   }
 
+  private applyCognitiveToNeuralControl(request: LanguageRequest, cycle: OrganismCycleResult): LanguageRequest {
+    if (this.config.cognitiveToNeuralBridge?.enabled === false) return request;
+    const budget = this.core.cognitiveBudgetOperationalSnapshot();
+    const selected = cycle.decision.selected;
+    const selectedGoal = cycle.goals.find(goal => goal.id === selected?.goalId);
+    const needs = cycle.state.needs;
+    const profile = this.cognitiveToNeuralBridge.project({
+      tick: cycle.state.tick,
+      action: selected?.action ?? cycle.state.lastAction,
+      mode: budget?.mode ?? 'shallow',
+      motivation01: needs.goalPressure * .50 + needs.novelty * .25 + needs.socialNeed * .15 + cycle.state.autonomyScore * .10,
+      uncertainty01: needs.uncertainty * .55 + cycle.state.predictionError * .30 + cycle.state.selfPredictionError * .15,
+      urgency01: selectedGoal ? Math.max(selectedGoal.urgency, selectedGoal.importance * .5) : 0,
+      budgetRemaining01: budget?.remaining01 ?? budget?.available01 ?? .5,
+      attention01: cycle.state.attentionBudget,
+    });
+    const controlled = applyCognitiveNeuralControl(request, profile);
+    this.evidenceBus.publish({
+      tick: profile.tick,
+      kind: 'resource',
+      source: 'cognitive-to-neural-bridge',
+      confidence01: .99,
+      payload: {
+        version: profile.version,
+        mode: profile.mode,
+        action: profile.action,
+        adapterHint: profile.adapterHint,
+        temperature: profile.temperature,
+        maxTokens: profile.maxTokens,
+        featureDimensions: profile.featureVector01.length,
+        steeringIntent01: profile.steeringIntent01,
+        samplingParametersApplied: true,
+        adapterSelectionApplied: false,
+        activationSteeringApplied: false,
+        residualBlockApplied: false,
+      },
+    });
+    return controlled;
+  }
+
   private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
     if (!this.config.enableLanguage || !this.config.languageInvoker) return null;
     const current = this.core.operationalStatusSnapshot();
     const budgetSnapshot = this.core.cognitiveBudgetOperationalSnapshot();
     const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
     if (!shouldAsk) return null;
-    const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.userModelPromptContext());
+    let request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.userModelPromptContext());
+    request = this.applyCognitiveToNeuralControl(request, cycle);
     if(signal) request.signal=signal;
     this.lastContextBudgetLedger = request.contextLedger ?? null;
     const budgetMode = budgetSnapshot?.mode ?? 'shallow';
@@ -825,6 +870,7 @@ export class OrganismRuntime {
       const request = externalText
         ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
         : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext());
+      request = this.applyCognitiveToNeuralControl(request, cycle);
       if(options.signal) request.signal=options.signal;
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
