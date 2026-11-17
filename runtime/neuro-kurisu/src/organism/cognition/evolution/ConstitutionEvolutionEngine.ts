@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { ActionGateway } from '../../system/ActionGateway.ts';
 
 export const CONSTITUTION_EVOLUTION_SCHEMA = 1 as const;
@@ -134,7 +134,7 @@ const proposalCore = (p: ConstitutionProposal): ProposalCore => ({
   authorId:p.authorId, baseVersion:p.baseVersion, change:p.change, targetRuleId:p.targetRuleId, proposedRule:p.proposedRule,
   motivation:p.motivation, scope:p.scope, counterexample:p.counterexample, riskAssessment:p.riskAssessment, testPlan:p.testPlan,
 });
-const reviewCore = (proposalId: string, candidateDigest: string, review: ConstitutionProposal['reviews'][number]) => ({
+const reviewCore = (proposalId: string, candidateDigest: string, review: ConstitutionReviewInput & { at: number }) => ({
   kind:'constitution.review.v1', proposalId, candidateDigest, reviewerId:review.reviewerId, decision:review.decision,
   invariantsPassed:review.invariantsPassed, tests:review.tests, evidenceRefs:review.evidenceRefs, rationale:review.rationale, at:review.at,
 });
@@ -147,9 +147,10 @@ const auditCore = (event: ConstitutionAuditEvent) => {
   return core;
 };
 const verifyHexMac = (actual: unknown, expected: string): boolean => {
-  if (typeof actual !== 'string' || !/^[a-f0-9]{64}$/i.test(actual)) return false;
-  const a = Buffer.from(actual,'hex'), e = Buffer.from(expected,'hex');
-  return a.length === e.length && timingSafeEqual(a,e);
+  if (typeof actual !== 'string' || !/^[a-f0-9]{64}$/i.test(actual) || !/^[a-f0-9]{64}$/i.test(expected)) return false;
+  let mismatch = 0;
+  for (let index=0;index<64;index++) mismatch |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
+  return mismatch === 0;
 };
 type ApprovalTicketGateway = Pick<ActionGateway,'requestToolApproval'|'consumeDirectActionApproval'>;
 
@@ -171,7 +172,17 @@ export class ConstitutionEvolutionEngine {
   }
   private mac(value: unknown): string {
     this.requireSigningKey();
-    return createHmac('sha256',this.signingKey!).update(stable(value)).digest('hex');
+    const keyBytes = typeof this.signingKey === 'string' ? Buffer.from(this.signingKey,'utf8') : Buffer.from(this.signingKey!);
+    const normalizedKey = keyBytes.length > 64 ? createHash('sha256').update(keyBytes).digest() : keyBytes;
+    const innerPad = new Uint8Array(64), outerPad = new Uint8Array(64);
+    for (let index=0;index<64;index++) {
+      const byte=normalizedKey[index] ?? 0;
+      innerPad[index]=byte ^ 0x36;
+      outerPad[index]=byte ^ 0x5c;
+    }
+    const message=stable(value);
+    const inner=createHash('sha256').update(innerPad).update(message).digest();
+    return createHash('sha256').update(outerPad).update(inner).digest('hex');
   }
   private approvalOptions(decisionId: string) { return { decisionId, autonomous:false }; }
 
@@ -272,7 +283,7 @@ export class ConstitutionEvolutionEngine {
     const input={proposalId:p.id,candidateDigest:p.candidateDigest};
     const request=await gateway.requestToolApproval(CONSTITUTION_RATIFICATION_TOOL,input,'Ratify constitutional revision '+p.id,this.approvalOptions(decisionId),'direct');
     const ticket=request?.request;
-    if (!ticket?.id || ticket.status!=='pending' || !Number.isFinite(ticket.expiresAt)) throw new Error(request?.error??'ActionGateway did not create a ratification ticket');
+    if (!ticket?.id || ticket.status!=='pending' || !Number.isFinite(ticket.expiresAt)) throw new Error('ActionGateway did not create a ratification ticket');
     p.approvalRequestId=ticket.id;
     this.event('proposal.ratification-requested',p.authorId,p.id,p.baseVersion,null,'one-shot ratification requested',[ticket.id],Date.now());
     return { proposalId:p.id,candidateDigest:p.candidateDigest,approvalRequestId:ticket.id,expiresAt:ticket.expiresAt,toolId:CONSTITUTION_RATIFICATION_TOOL };
@@ -332,7 +343,7 @@ export class ConstitutionEvolutionEngine {
     const payload={fromVersion,targetVersion,reason};
     const request=await gateway.requestToolApproval(CONSTITUTION_ROLLBACK_TOOL,payload,'Rollback constitutional revision '+fromVersion+' to '+targetVersion,this.approvalOptions(decisionId),'direct');
     const ticket=request?.request;
-    if (!ticket?.id || ticket.status!=='pending' || !Number.isFinite(ticket.expiresAt)) throw new Error(request?.error??'ActionGateway did not create a rollback ticket');
+    if (!ticket?.id || ticket.status!=='pending' || !Number.isFinite(ticket.expiresAt)) throw new Error('ActionGateway did not create a rollback ticket');
     this.event('constitution.rollback-requested','host-requester',null,fromVersion,null,'one-shot rollback requested',[ticket.id],Date.now());
     return {fromVersion,targetVersion,reason,approvalRequestId:ticket.id,expiresAt:ticket.expiresAt,toolId:CONSTITUTION_ROLLBACK_TOOL};
   }
