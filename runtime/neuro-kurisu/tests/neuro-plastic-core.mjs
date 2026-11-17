@@ -398,6 +398,51 @@ assert.equal(signedRestoreRegistry.select({
   confidence01: 0.9,
   risk01: 0.1,
 }).useAdapter, true, 'restart restore must preserve an active adapter only with a valid signed approval');
+
+const duplicatedSnapshot = structuredClone(activeSnapshot);
+duplicatedSnapshot.adapters.push(structuredClone(duplicatedSnapshot.adapters[0]));
+const duplicateRestoreRegistry = new NeuroPlasticAdapterRegistry();
+duplicateRestoreRegistry.restore(
+  duplicatedSnapshot,
+  verifyApproval,
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+);
+assert.equal(duplicateRestoreRegistry.snapshot().adapters.length, 1,
+  'duplicate persisted adapter IDs must be collapsed during restore');
+
+const conflictRegistry = new NeuroPlasticAdapterRegistry();
+conflictRegistry.stage(manifest('kurisu-reasoning-v2'));
+signedEvaluate(conflictRegistry, 'kurisu-reasoning-v2', evaluationPayload);
+const conflictReport = conflictRegistry.snapshot().adapters[0].evaluation;
+await conflictRegistry.activate(
+  'kurisu-reasoning-v2',
+  signedApproval('kurisu-reasoning-v2', conflictReport.reportId, 'approval-conflict'),
+  verifyApproval,
+);
+const conflictSnapshot = {
+  schemaVersion: 1,
+  adapters: [
+    ...structuredClone(activeSnapshot.adapters),
+    ...structuredClone(conflictRegistry.snapshot().adapters),
+  ],
+};
+const conflictRestoreRegistry = new NeuroPlasticAdapterRegistry();
+conflictRestoreRegistry.restore(
+  conflictSnapshot,
+  verifyApproval,
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+);
+assert.ok(conflictRestoreRegistry.snapshot().adapters.every(adapter => adapter.status === 'eligible'),
+  'multiple active adapters for the same domain and base model must be demoted');
+assert.equal(conflictRestoreRegistry.select({
+  domain: 'reasoning',
+  backendId: 'llama.cpp',
+  baseModelFingerprint: hash('a'),
+  backendSupportsModelAliases: true,
+  confidence01: 0.9,
+  risk01: 0.1,
+}).useAdapter, false, 'conflicting restored adapters must never be selected');
+
 await inferenceRegistry.rollback('kurisu-runtime-v1', 'operator requested rollback');
 assert.equal(inferenceRegistry.snapshot().adapters[0].status, 'disabled');
 
