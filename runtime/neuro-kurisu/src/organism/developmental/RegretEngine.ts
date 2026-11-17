@@ -4,6 +4,7 @@ import {
   type NegativeSpaceAlternativeInput,
   type NegativeSpaceMemoryState,
   type NegativeSpaceSignificance,
+  type NegativeSpaceOutcomeInput,
 } from './NegativeSpaceMemory.ts';
 
 export interface RegretRecord {
