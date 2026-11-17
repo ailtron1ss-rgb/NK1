@@ -66,8 +66,8 @@ const consumer = moduleRecord('consumer', 'src/organism/core/Consumer.ts', 'c');
 const mergeBase = graph(
   [alpha, beta, consumer],
   [
+    { from: 'alpha', to: 'beta', kind: 'contract' },
     { from: 'alpha', to: 'consumer', kind: 'contract' },
-    { from: 'beta', to: 'consumer', kind: 'contract' },
   ],
   [{ id: 'shared-contract', ownerModuleId: 'alpha', consumers: ['beta', 'consumer'], authority: 'single-owner' }],
 );
@@ -121,7 +121,20 @@ const cyclic = graph(
     { from: 'beta', to: 'alpha', kind: 'import' },
   ],
 );
+
 assert.ok(validateArchitectureMorphogenesisGraph(cyclic).issues.some(issue => issue.code === 'structural-cycle'));
+const contractCycle = graph(
+  [alpha, beta],
+  [
+    { from: 'alpha', to: 'beta', kind: 'contract' },
+    { from: 'beta', to: 'alpha', kind: 'contract' },
+  ],
+  [
+    { id: 'a-contract', ownerModuleId: 'alpha', consumerModuleIds: ['beta'], authority: 'single-owner' },
+    { id: 'b-contract', ownerModuleId: 'beta', consumerModuleIds: ['alpha'], authority: 'single-owner' },
+  ],
+);
+assert.ok(validateArchitectureMorphogenesisGraph(contractCycle).issues.some(issue => issue.code === 'structural-cycle'));
 const recurrentFlow = graph(
   [alpha, beta],
   [
@@ -146,6 +159,10 @@ assert.equal(protectedBranch.status, 'BLOCKED');
 
 // Missing evidence cannot be treated as a pass; a false gate blocks.
 assert.equal(evaluateArchitectureMorphogenesisPlan(mergePlan, {}).status, 'NEEDS_REVIEW');
+const malformedMerge = proposal(graph([alpha]), graph([alpha]), [{
+  kind: 'merge', rationale: 'malformed operation must fail closed',
+}]);
+assert.equal(malformedMerge.status, 'BLOCKED');
 assert.equal(evaluateArchitectureMorphogenesisPlan(mergePlan, {
   testsPassed: false, typecheckPassed: true, architectureAuditPassed: true,
   contractChecksPassed: true, rollbackVerified: true, reviewApproved: true,
