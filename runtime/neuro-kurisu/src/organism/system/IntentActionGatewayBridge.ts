@@ -24,7 +24,11 @@ export type IntentBridgeResult =
  * ActionGateway. It never invokes the executor when the contract gate refuses.
  */
 export class IntentActionGatewayBridge {
-  constructor(private readonly compiler: IntentCompiler) {}
+  private readonly compiler: IntentCompiler;
+
+  constructor(compiler: IntentCompiler) {
+    this.compiler = compiler;
+  }
 
   async execute(
     contract: IntentContract,
@@ -40,6 +44,9 @@ export class IntentActionGatewayBridge {
     }
     if (typeof action.reason !== 'string' || !action.reason.trim()) {
       return { executed: false, contractId: gate.contractId, reason: 'execution-reason-required' };
+    }
+    if (!gateway || typeof gateway.executeTool !== 'function') {
+      return { executed: false, contractId: gate.contractId, reason: 'action-gateway-unavailable' };
     }
     const result = await gateway.executeTool(
       gate.action,
