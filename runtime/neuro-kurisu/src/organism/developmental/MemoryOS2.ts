@@ -2050,11 +2050,8 @@ export class MemoryOS2{
    const from=this.temporalBitemporalAt(id,validAt,fromKnowledgeAt);
    const to=this.temporalBitemporalAt(id,validAt,toKnowledgeAt);
    const signature=(row:MemoryItem2|null)=>row?stableMemoryJson({
-    id:row.id,contentHash:row.contentHash,content:row.content,confidence:row.confidence,
-    epistemicStatus:row.epistemicStatus,source:row.source,provenanceClass:row.provenanceClass,
-    sourceAuthority01:row.sourceAuthority01,evidenceFreshnessAt:row.evidenceFreshnessAt,
-    evidenceLineageKeys:row.evidenceLineageKeys,evidenceSources:row.evidenceSources,
-    tags:row.tags,context:row.context,entities:row.entities,salience:row.salience,temporalKind:row.temporalKind,
+    id:row.id,contentHash:row.contentHash,content:row.content,
+    ...this.bitemporalIntervalFor(row),
    }):'null';
    return {memoryId:String(id),validAt,fromKnowledgeAt,toKnowledgeAt,from,to,changed:signature(from)!==signature(to)};
   }
