@@ -43,6 +43,12 @@ const resolveScienceRoleIdentity = (_role, actorId) =>
   revokeTheoristIdentity && actorId === actors.theorist
     ? 'revoked-principal:' + actorId
     : 'principal:' + actorId;
+let evaluatorIdentityMode = 'normal';
+const resolveScienceEvaluatorIdentity = (_phase, actorId) => {
+  if (evaluatorIdentityMode === 'shared') return 'principal:shared-evaluator';
+  if (evaluatorIdentityMode === 'role-collision') return 'principal:' + actors.discoverer;
+  return 'principal:' + actorId;
+};
 const auditByteChecks = [];
 const verifyScienceArtifactBytes = (artifact, context) => {
   if (context.purpose === 'audit') auditByteChecks.push(context);
@@ -83,6 +89,7 @@ const runtime = new EvidenceResearchSubsystemRuntime(
   resolveKey,
   resolveScienceRoleIdentity,
   verifyScienceArtifactBytes,
+  resolveScienceEvaluatorIdentity,
 );
 
 // Verify the actual organism composition root can inject the host trust
@@ -91,6 +98,7 @@ const fabric = new OrganismSystemFabric({
   inventionVerifierKeyResolver: resolveKey,
   scienceRoleIdentityResolver: resolveScienceRoleIdentity,
   scienceArtifactBytesVerifier: verifyScienceArtifactBytes,
+  scienceEvaluatorIdentityResolver: resolveScienceEvaluatorIdentity,
 });
 assert.ok(fabric.research.scienceRepublic);
 const fabricCase = fabric.research.scienceRepublic.discover({
@@ -104,6 +112,7 @@ assert.equal(fabricCase.trust.roleIdentity, 'host-attested');
 const lateConfiguredFabric = new OrganismSystemFabric();
 lateConfiguredFabric.configureScienceRoleIdentityResolver(resolveScienceRoleIdentity);
 lateConfiguredFabric.configureScienceArtifactBytesVerifier(verifyScienceArtifactBytes);
+lateConfiguredFabric.configureScienceEvaluatorIdentityResolver(resolveScienceEvaluatorIdentity);
 const lateConfiguredCase = lateConfiguredFabric.research.scienceRepublic.discover({
   title: 'Late-bound fabric trust',
   domain: 'composition root',
@@ -320,6 +329,11 @@ const registered = runtime.registerScienceRepublicExperiment(science.id, {
 });
 assert.equal(registered.stage, 'registered');
 assert.equal(registered.inventionStage, 'designed');
+assert.equal(registered.trust.evaluatorIdentity, 'host-attested');
+assert.deepEqual(registered.trust.evaluatorSubjects, {
+  primary: 'principal:' + evaluation.verifierPlan.primary,
+  holdout: 'principal:' + evaluation.verifierPlan.holdout,
+});
 assert.equal(runtime.inventionLoop.snapshot().records.length, 1);
 assert.equal(runtime.inventionLoop.snapshot().records[0].protocol.provenance.experimentId, generated.id);
 assert.equal(runtime.inventionLoop.snapshot().records[0].protocol.provenance.scientificProjectId, project.id);
