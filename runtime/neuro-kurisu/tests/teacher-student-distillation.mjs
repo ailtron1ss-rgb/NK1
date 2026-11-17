@@ -180,6 +180,29 @@ assert.equal(collected.snapshot().training.length, 1);
 assert.equal(collected.snapshot().validation.length, 1);
 assert.equal(collected.snapshot().withheldHoldoutExampleCount, 0);
 
+// A provider that ignores its deadline is aborted and cannot stall the collection loop.
+const timedDataset = new TeacherStudentDistillationDataset(tasks);
+let teacherAbortObserved = false;
+const timedReport = await timedDataset.collectTeacherExamples({
+  taskIds: ['train-1'],
+  seeds: [9],
+  teacher: {
+    async generate(request) {
+      return await new Promise((resolve, reject) => {
+        request.signal.addEventListener('abort', () => {
+          teacherAbortObserved = true;
+          reject(new Error('provider-aborted'));
+        }, { once: true });
+      });
+    },
+  },
+  verifier: independentVerifier,
+  trustedVerifierKeys: trustedKeys,
+  providerTimeoutMs: 20,
+});
+assert.equal(timedReport.rejectionCounts['teacher-generation-timeout'], 1);
+assert.equal(teacherAbortObserved, true);
+
 
 const snapshot = dataset.snapshot();
 assert.equal(snapshot.training.length, 1);
