@@ -119,6 +119,38 @@ const fabricKnowsNow = fabric.retrieve('Project location Campus', 8, 0, 0, {
 assert.equal(fabricKnowsNow[0]?.id, corrected.id, 'MemoryFabric must select the corrected revision for later knowledge time');
 
 const statusFact = encode('NK1 confidence is currently classified as a fact.');
+const originalConfidence = statusFact.confidence;
+memoryOS.updateSignals(statusFact.id, { confidence: .4 }, 'confidence-calibration');
+const confidenceRecordedAt = statusFact.recordedFromAt;
+assert.equal(
+  memoryOS.temporalBitemporalAt(statusFact.id, 150, confidenceRecordedAt - 1)?.confidence,
+  originalConfidence,
+  'confidence history must preserve the value NK1 held before calibration',
+);
+assert.equal(
+  memoryOS.temporalBitemporalAt(statusFact.id, 150, confidenceRecordedAt)?.confidence,
+  .4,
+  'confidence calibration must begin at transaction time',
+);
+memoryOS.attachEvidenceSource(statusFact.id, {
+  source: 'chrono-truth-secondary-audit',
+  provenanceClass: 'external',
+  sourceAuthority01: .85,
+  independenceKey: 'chrono-truth-secondary-audit',
+  observedAt: 300,
+  evidenceFreshnessAt: 300,
+}, 'evidence-lineage');
+const evidenceRecordedAt = statusFact.recordedFromAt;
+assert.equal(
+  memoryOS.temporalBitemporalAt(statusFact.id, 150, evidenceRecordedAt - 1)?.evidenceLineageKeys?.length ?? 0,
+  0,
+  'prior knowledge must not contain evidence sources learned later',
+);
+assert.equal(
+  memoryOS.temporalBitemporalAt(statusFact.id, 150, evidenceRecordedAt)?.evidenceLineageKeys?.length,
+  1,
+  'new evidence provenance must begin at transaction time',
+);
 memoryOS.revise(statusFact.id, 'belief', 'status-reconciliation');
 const statusRecordedAt = statusFact.recordedFromAt;
 assert.equal(

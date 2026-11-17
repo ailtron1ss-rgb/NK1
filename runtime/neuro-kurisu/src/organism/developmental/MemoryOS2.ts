@@ -36,6 +36,7 @@ export interface MemoryBitemporalInterval {
  confidence:number; epistemicStatus:EpistemicStatus; source:string;
  provenanceClass?:MemoryProvenanceClass; sourceAuthority01?:number;
  evidenceFreshnessAt?:number; freshnessUntilAt?:number|null;
+ evidenceLineageKeys?:string[];
  temporalKind:MemoryTemporalKind;
 }
 export interface MemoryItem2 { id:string;
@@ -374,6 +375,9 @@ function normalizeBitemporalHistory(value:unknown):MemoryBitemporalInterval[]{
   const source=typeof candidate.source==='string'&&candidate.source.trim()?candidate.source.trim().slice(0,240):'unknown';
   const temporalKind=MEMORY_TEMPORAL_KINDS.has(candidate.temporalKind)?candidate.temporalKind as MemoryTemporalKind:(status==='fact'?'fact':'assessment');
   const freshnessValue=candidate.freshnessUntilAt==null?null:finite(candidate.freshnessUntilAt);
+  const evidenceLineageKeys=Array.isArray(candidate.evidenceLineageKeys)
+   ?[...new Set(candidate.evidenceLineageKeys.filter((key:unknown):key is string=>typeof key==='string'&&key.trim()).map((key:string)=>key.slice(0,256)))].slice(-32)
+   :undefined;
   return [{
    validFromAt,validUntilAt,recordedFromAt,recordedUntilAt,
    confidence:typeof candidate.confidence==='number'&&Number.isFinite(candidate.confidence)?Math.max(0,Math.min(1,candidate.confidence)):.5,
@@ -382,6 +386,7 @@ function normalizeBitemporalHistory(value:unknown):MemoryBitemporalInterval[]{
    sourceAuthority01:typeof candidate.sourceAuthority01==='number'&&Number.isFinite(candidate.sourceAuthority01)?Math.max(0,Math.min(1,candidate.sourceAuthority01)):.5,
    evidenceFreshnessAt:finite(candidate.evidenceFreshnessAt),
    freshnessUntilAt:freshnessValue===null||Number.isFinite(freshnessValue)?freshnessValue:recordedFromAt,
+   evidenceLineageKeys,
    temporalKind,
   }];
  });
@@ -694,20 +699,25 @@ export class MemoryOS2{
   matches.sort((a,b)=>b.recordedFromAt-a.recordedFromAt);
   return matches[0]??null;
  }
- private beginBitemporalRevision(item:MemoryItem2,recordedAt:number):void{
-  const beforeBytes=estimateMemoryBytes(item);
-  const previous:MemoryBitemporalInterval={
+ private bitemporalIntervalFor(item:MemoryItem2):MemoryBitemporalInterval{
+  return {
    validFromAt:Number(item.validFromAt??item.createdAt),validUntilAt:item.validUntilAt??null,
-   recordedFromAt:Number(item.recordedFromAt??item.createdAt),recordedUntilAt:recordedAt,
+   recordedFromAt:Number(item.recordedFromAt??item.createdAt),recordedUntilAt:item.recordedUntilAt??null,
    confidence:item.confidence,epistemicStatus:item.epistemicStatus,source:item.source,
    provenanceClass:item.provenanceClass,sourceAuthority01:item.sourceAuthority01,
    evidenceFreshnessAt:item.evidenceFreshnessAt,freshnessUntilAt:item.freshnessUntilAt??null,
+   evidenceLineageKeys:[...(item.evidenceLineageKeys??[])],
    temporalKind:item.temporalKind??(item.epistemicStatus==='fact'?'fact':'assessment'),
   };
-  item.bitemporalHistory=normalizeBitemporalHistory([...(item.bitemporalHistory??[]),previous]);
+ }
+ private beginBitemporalRevision(item:MemoryItem2,recordedAt:number,previousState?:MemoryBitemporalInterval,adjustBytes=true):void{
+  const beforeBytes=adjustBytes?estimateMemoryBytes(item):0;
+  const previous=previousState??this.bitemporalIntervalFor(item);
+  const closedPrevious={...previous,recordedUntilAt:recordedAt};
+  item.bitemporalHistory=normalizeBitemporalHistory([...(item.bitemporalHistory??[]),closedPrevious]);
   item.recordedFromAt=recordedAt;
   item.recordedUntilAt=null;
-  this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeBytes+estimateMemoryBytes(item));
+  if(adjustBytes)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeBytes+estimateMemoryBytes(item));
  }
  private preferIndexRecord(candidate:MemoryItem2,incumbent:MemoryItem2,at:number){
   const currentDelta=Number(this.validAt(candidate,at))-Number(this.validAt(incumbent,at));if(currentDelta)return currentDelta>0;
@@ -1147,6 +1157,7 @@ export class MemoryOS2{
    const existing=indexedCandidates.filter(m=>this.validAt(m,now)&&m.epistemicStatus!=='quarantined'&&!m.dormant).sort((a,b)=>this.preferIndexRecord(a,b,now)?-1:this.preferIndexRecord(b,a,now)?1:0)[0];
    if(existing){
     const priorBytes=estimateMemoryBytes(existing);
+    const previousBitemporal=this.bitemporalIntervalFor(existing);
     const evidenceMerge=this.mergeIncomingEvidence(existing,input,now);
     existing.lastAccessAt=now;
     existing.salience=clamp(existing.salience*.8+input.salience*.2);
@@ -1163,7 +1174,17 @@ export class MemoryOS2{
     this.spatialIndex.remove(existing.id);
     existing.context=mergeMemoContext(existing.context,input.context);
     this.spatialIndex.upsert(existing.id,existing.context);
+    const bitemporalChanged=previousBitemporal.confidence!==existing.confidence||
+      previousBitemporal.source!==existing.source||previousBitemporal.provenanceClass!==existing.provenanceClass||
+      previousBitemporal.sourceAuthority01!==existing.sourceAuthority01||
+      previousBitemporal.evidenceFreshnessAt!==existing.evidenceFreshnessAt||
+      previousBitemporal.freshnessUntilAt!==(existing.freshnessUntilAt??null)||
+      previousBitemporal.temporalKind!==(existing.temporalKind??(existing.epistemicStatus==='fact'?'fact':'assessment'))||
+      JSON.stringify(previousBitemporal.evidenceLineageKeys??[])!==JSON.stringify(existing.evidenceLineageKeys??[]);
+    const recordedAt=bitemporalChanged?Math.max(now,Number(existing.recordedFromAt??existing.createdAt)+1):now;
+    if(bitemporalChanged)this.beginBitemporalRevision(existing,recordedAt,previousBitemporal,false);
     this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-priorBytes+estimateMemoryBytes(existing));
+    if(bitemporalChanged)this.recordRevision(existing,{at:recordedAt,from:existing.epistemicStatus,to:existing.epistemicStatus,reason:'independent-evidence-reconsolidation'});
     this.state.reconsolidations++;
     this.exactIndex.set(`${existing.kind}|${existing.source}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
     this.contentIndex.set(`${existing.kind}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
@@ -1638,6 +1659,7 @@ export class MemoryOS2{
  attachEvidenceSource(id:string, source:MemoryEvidenceSource, reason='evidence-lineage'):MemoryItem2|null {
    const item=this.state.items.find(x=>x.id===id);if(!item)return null;
    const beforeBytes=estimateMemoryBytes(item);
+   const previousBitemporal=this.bitemporalIntervalFor(item);
    const beforeSources=JSON.stringify(item.evidenceSources??[]);
    const beforeKeys=JSON.stringify(item.evidenceLineageKeys??[]);
    const now=Date.now();
@@ -1654,17 +1676,20 @@ export class MemoryOS2{
    this.mergeIncomingEvidence(item,input,now);
    const changed=beforeSources!==JSON.stringify(item.evidenceSources??[])||beforeKeys!==JSON.stringify(item.evidenceLineageKeys??[]);
    if(!changed)return structuredClone(item);
+   const recordedAt=Math.max(now,Number(item.recordedFromAt??item.createdAt)+1);
+   this.beginBitemporalRevision(item,recordedAt,previousBitemporal,false);
    item.lastAccessAt=now;
    item.temperature01=memoryTemperature(item);
-   this.recordRevision(item,{at:now,from:item.epistemicStatus,to:item.epistemicStatus,reason:String(reason||'evidence-lineage').slice(0,240)});
-   this.state.reconsolidations++;
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeBytes+estimateMemoryBytes(item));
+   this.recordRevision(item,{at:recordedAt,from:item.epistemicStatus,to:item.epistemicStatus,reason:String(reason||'evidence-lineage').slice(0,240)});
+   this.state.reconsolidations++;
    return structuredClone(item);
  }
 
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'>>, reason='reconsolidation') {
    const m=this.state.items.find(x=>x.id===id); if(!m) return null;
    const fromStatus=m.epistemicStatus;
+   const previousBitemporal=this.bitemporalIntervalFor(m);
    const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
    if(patch.salience!==undefined)m.salience=c(patch.salience);
    if(patch.emotionalWeight!==undefined)m.emotionalWeight=c(patch.emotionalWeight);
@@ -1674,9 +1699,13 @@ export class MemoryOS2{
    if(patch.predictionError!==undefined)m.predictionError=c(patch.predictionError);
    if(patch.confidence!==undefined)m.confidence=c(patch.confidence);
    if(patch.dormant!==undefined)m.dormant=Boolean(patch.dormant);
-   m.lastAccessAt=Date.now();
+   const now=Date.now();
+   const confidenceChanged=patch.confidence!==undefined&&previousBitemporal.confidence!==m.confidence;
+   const recordedAt=confidenceChanged?Math.max(now,Number(m.recordedFromAt??m.createdAt)+1):now;
+   if(confidenceChanged)this.beginBitemporalRevision(m,recordedAt,previousBitemporal);
+   m.lastAccessAt=now;
    m.temperature01=memoryTemperature(m);
-   if(reason){this.recordRevision(m,{at:m.lastAccessAt,from:fromStatus,to:fromStatus,reason});}
+   if(reason){this.recordRevision(m,{at:confidenceChanged?recordedAt:now,from:fromStatus,to:fromStatus,reason});}
    this.state.reconsolidations++;
    return structuredClone(m);
  }
@@ -1879,7 +1908,9 @@ export class MemoryOS2{
     source:selected.interval.source,provenanceClass:selected.interval.provenanceClass??selected.item.provenanceClass,
     sourceAuthority01:selected.interval.sourceAuthority01??selected.item.sourceAuthority01,
     evidenceFreshnessAt:selected.interval.evidenceFreshnessAt??selected.item.evidenceFreshnessAt,
-    freshnessUntilAt:selected.interval.freshnessUntilAt,temporalKind:selected.interval.temporalKind,
+    freshnessUntilAt:selected.interval.freshnessUntilAt,
+    evidenceLineageKeys:selected.interval.evidenceLineageKeys??selected.item.evidenceLineageKeys,
+    temporalKind:selected.interval.temporalKind,
    });
   }
   temporalDiff(id:string,fromAt:number,toAt:number){
