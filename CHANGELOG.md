@@ -1,3 +1,11 @@
+## Unreleased — [NK1][Cognition] P27 predictive-gain-gated reversible adaptation (2026-11-17)
+
+- Validate P27 decision/outcome inputs before mutating state or consuming a pending decision; reject sparse/accessor-backed/non-finite feature vectors, invalid ticks/actions and malformed scalar/action-utility data.
+- Add bounded backtracking across four candidate step scales; accept a temporary fast residual only when the same pre-update one-step latent prediction error strictly decreases, otherwise restore the exact previous overlay.
+- Relax accepted fast residuals continuously with tick-based decay (0.992 per tick) and a 10-minute wall-clock half-life, while retaining the existing 30-minute/256-tick hard idle expiry.
+- Expose decay, backtracking, no-gain rejection and before/after prediction-error telemetry through the existing neural-branch diagnostics; no persistent residual promotion or LLM weight mutation is added.
+- Extend P27 regressions for fail-closed malformed inputs, retry-safe outcome matching, measured prediction-error reduction and reversible decay.
+
 ## Unreleased — [NK1][Runtime] Optional conversation-scoped P27 adaptation (2026-11-17)
 
 - Add optional `RuntimeStepOptions.conversationId`; normalize and SHA-256 hash it before passing an opaque scope into OrganismCore.
