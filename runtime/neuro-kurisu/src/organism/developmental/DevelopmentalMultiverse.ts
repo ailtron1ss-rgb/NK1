@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { P55Fork, P55Knob, P55State } from './P55DevelopmentalForkUniverse.ts';
+import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
 
 /**
  * Developmental Multiverse — bounded, data-only parallel development trials.
@@ -287,7 +288,11 @@ function normalizeVariants(value: unknown, baseline: DevelopmentalPolicyProfile)
 }
 
 function normalizeSession(input: DevelopmentalMultiverseSessionInput): DevelopmentalMultiverseSessionInput {
-  if (!isRecord(input)) throw new TypeError('developmental-multiverse-session-invalid');
+  let detached: unknown;
+  try { detached = snapshotPlainData(input); }
+  catch { throw new TypeError('developmental-multiverse-session-data-invalid'); }
+  if (!isRecord(detached)) throw new TypeError('developmental-multiverse-session-invalid');
+  input = detached as unknown as DevelopmentalMultiverseSessionInput;
   const runId = boundedId(input.runId, 'run-id');
   if (!Number.isSafeInteger(input.createdAt) || input.createdAt < 0) throw new RangeError('developmental-multiverse-created-at-invalid');
   if (typeof input.sourceRevision !== 'string' || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(input.sourceRevision)) {
@@ -490,6 +495,11 @@ export class DevelopmentalMultiverse {
     phase: DevelopmentalMultiversePhase,
     inputs: DevelopmentalMultiverseObservationInput[],
   ): DevelopmentalMultiverseObservation[] {
+    let detached: unknown;
+    try { detached = snapshotPlainData(inputs); }
+    catch { throw new TypeError('developmental-multiverse-observation-batch-data-invalid'); }
+    if (!Array.isArray(detached)) throw new TypeError('developmental-multiverse-observation-batch-invalid');
+    inputs = detached as DevelopmentalMultiverseObservationInput[];
     if (!Array.isArray(inputs) || inputs.length === 0) {
       throw new Error('developmental-multiverse-observation-batch-empty');
     }
@@ -564,6 +574,10 @@ export class DevelopmentalMultiverse {
    */
   restore(raw: unknown): void {
     if (raw === null || raw === undefined) { this.state = null; return; }
+    let detached: unknown;
+    try { detached = snapshotPlainData(raw); }
+    catch { throw new TypeError('developmental-multiverse-snapshot-data-invalid'); }
+    raw = detached;
     if (!isRecord(raw) || raw.version !== DEVELOPMENTAL_MULTIVERSE_VERSION ||
         !isRecord(raw.session) || !Array.isArray(raw.validationObservations) || !Array.isArray(raw.holdoutObservations) ||
         raw.validationObservations.length > MAX_OBSERVATIONS || raw.holdoutObservations.length > MAX_OBSERVATIONS) {
@@ -646,7 +660,11 @@ export class DevelopmentalMultiverse {
     const state = this.requireState();
     const expectedStatus = phase === 'validation' ? 'validating' : 'holding-out';
     if (state.status !== expectedStatus) throw new Error(`developmental-multiverse-session-not-accepting-${phase}`);
-    if (!isRecord(raw)) throw new TypeError('developmental-multiverse-observation-invalid');
+    let detached: unknown;
+    try { detached = snapshotPlainData(raw); }
+    catch { throw new TypeError('developmental-multiverse-observation-data-invalid'); }
+    if (!isRecord(detached)) throw new TypeError('developmental-multiverse-observation-invalid');
+    raw = detached as unknown as DevelopmentalMultiverseObservationInput;
     const measurementId = boundedId(raw.measurementId, 'measurement-id', 160);
     const expectedPlan = phase === 'validation' ? this.buildWorkPlan('validation', [null, ...state.session.variants]) : this.holdoutWorkPlan();
     const expected = expectedPlan.find(item => observationKey(item) === observationKey(raw as DevelopmentalMultiverseWorkItem));
@@ -774,7 +792,11 @@ export class DevelopmentalMultiverse {
 export function variantsFromP55Forks(
   forks: readonly Pick<P55Fork, 'id' | 'style' | 'status' | 'deltas'>[],
 ): DevelopmentalMultiverseVariantInput[] {
-  if (!Array.isArray(forks)) throw new TypeError('developmental-multiverse-p55-forks-invalid');
+  let detached: unknown;
+  try { detached = snapshotPlainData(forks); }
+  catch { throw new TypeError('developmental-multiverse-p55-forks-data-invalid'); }
+  if (!Array.isArray(detached)) throw new TypeError('developmental-multiverse-p55-forks-invalid');
+  forks = detached as typeof forks;
   return forks
     .filter(fork => fork && ['candidate', 'simulated', 'promotable'].includes(fork.status))
     .slice(0, MAX_VARIANTS)
@@ -793,12 +815,18 @@ export function createDevelopmentalMultiverseSessionFromP55(
   input: Omit<DevelopmentalMultiverseSessionInput, 'variants'>,
   p55Snapshot: Pick<P55State, 'forks'>,
 ): DevelopmentalMultiverseSessionInput {
-  if (!p55Snapshot || !Array.isArray(p55Snapshot.forks)) {
+  let detachedInput: unknown;
+  try { detachedInput = snapshotPlainData(input); }
+  catch { throw new TypeError('developmental-multiverse-session-data-invalid'); }
+  let detachedSnapshot: unknown;
+  try { detachedSnapshot = snapshotPlainData(p55Snapshot); }
+  catch { throw new TypeError('developmental-multiverse-p55-snapshot-data-invalid'); }
+  if (!isRecord(detachedInput) || !isRecord(detachedSnapshot) || !Array.isArray(detachedSnapshot.forks)) {
     throw new TypeError('developmental-multiverse-p55-snapshot-invalid');
   }
-  const variants = variantsFromP55Forks(p55Snapshot.forks);
+  const variants = variantsFromP55Forks(detachedSnapshot.forks as P55Fork[]);
   if (variants.length === 0) {
     throw new Error('developmental-multiverse-p55-snapshot-has-no-active-forks');
   }
-  return { ...input, variants };
+  return { ...(detachedInput as unknown as Omit<DevelopmentalMultiverseSessionInput, 'variants'>), variants };
 }
