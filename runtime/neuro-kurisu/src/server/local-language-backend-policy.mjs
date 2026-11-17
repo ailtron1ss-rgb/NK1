@@ -17,7 +17,7 @@ export class LocalLanguageBackendPolicy {
     availableBackends = {},
     now = Date.now(),
   }) {
-    const allowedRoutes = new Set(['llama.cpp', 'kobold', 'gemini', 'deterministic-policy-fallback']);
+    const allowedRoutes = new Set(['llama.cpp', 'kobold', 'gemini']);
     if (allowedRoutes.has(substratePreferredBackend) && availableBackends[substratePreferredBackend] === true) {
       if (substratePreferredBackend !== 'llama.cpp' ||
           (localLlamaConfigured === true && now >= this.cooldownUntil)) {
