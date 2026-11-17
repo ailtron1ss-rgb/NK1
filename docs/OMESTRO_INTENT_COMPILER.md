@@ -35,7 +35,7 @@ The integrated `autonomous-resource-tool-life` planner receives a distinct `auto
 
 - New dispatch goes through Intent Gate → IntentActionGatewayBridge → OrganismCore.executeTool → ActionGateway.
 - The canonical host `decisionId` is preserved; intent ID is separately returned as `contractId`.
-- Expired approvals cannot start new work. The distinct reconciliation path can perform read-only provider receipt lookup against the original idempotency receipt; it never calls the side-effect executor.
+- Expired approvals cannot start new work. The distinct reconciliation path performs only a read-only lookup against the original idempotency receipt and never calls the side-effect executor. Its result reports that lookup was attempted; an unknown or missing receipt is not reported as resolved and does not authorize a retry.
 - Keyed receipts, finalizer semantics and reconciliation remain owned by ActionGateway.
 
 ## Boundaries
