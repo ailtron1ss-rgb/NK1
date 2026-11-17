@@ -247,6 +247,23 @@ try {
   await languageRuntime.stop();
 }
 
+// Explicit disable always wins over LanguageInvoker auto-wiring.
+const disabledLanguageRuntime=new OrganismRuntime({
+  stateFile:'/tmp/nk-parliament-language-disabled.json',
+  worldStateFile:'/tmp/nk-parliament-language-disabled-world.json',
+  stateStore:new MemoryStateStore(),worldStateStore:new MemoryStateStore(),
+  languageInvoker,enableLanguage:true,enableCognitiveParliament:false,autoRun:false,
+  performanceProfile:'mobile',
+});
+try {
+  await disabledLanguageRuntime.init();
+  const disabledDiagnostics=disabledLanguageRuntime.core.cognitiveParliamentDiagnostics();
+  assert.equal(disabledDiagnostics.enabled,false);
+  assert.equal(disabledDiagnostics.configuredRoleCount,0);
+} finally {
+  await disabledLanguageRuntime.stop();
+}
+
 let lateRegistrationCount=0;
 const lateAttestations=new ParliamentModelAttestationRegistry();
 const originalRegister=lateAttestations.register.bind(lateAttestations);
