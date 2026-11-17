@@ -339,8 +339,8 @@ function hmacSha256(message: string, secret: string): string {
   const normalizedKey = keyBytes.length > blockSize
     ? Buffer.from(createHash('sha256').update(keyBytes).digest())
     : keyBytes;
-  const keyBlock = Buffer.alloc(blockSize, 0);
-  normalizedKey.copy(keyBlock);
+  const keyBlock = Buffer.alloc(blockSize);
+  for (let index = 0; index < normalizedKey.length; index++) keyBlock[index] = normalizedKey[index];
   const innerPad = Buffer.alloc(blockSize);
   const outerPad = Buffer.alloc(blockSize);
   for (let index = 0; index < blockSize; index++) {
@@ -503,8 +503,8 @@ export function createNeuroPlasticApprovalSignature(
   const normalizedKey = keyBytes.length > blockSize
     ? Buffer.from(createHash('sha256').update(keyBytes).digest())
     : keyBytes;
-  const keyBlock = Buffer.alloc(blockSize, 0);
-  normalizedKey.copy(keyBlock);
+  const keyBlock = Buffer.alloc(blockSize);
+  for (let index = 0; index < normalizedKey.length; index++) keyBlock[index] = normalizedKey[index];
   const innerPad = Buffer.alloc(blockSize);
   const outerPad = Buffer.alloc(blockSize);
   for (let index = 0; index < blockSize; index++) {
