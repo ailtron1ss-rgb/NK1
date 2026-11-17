@@ -16,7 +16,12 @@ const count=(x:unknown)=>typeof x==='number'&&Number.isSafeInteger(x)&&x>=0?x:0;
 const ids=(x:unknown)=>Array.isArray(x)?[...new Set(x.filter((v):v is string=>typeof v==='string'&&v.length>0))].slice(-256):[];
 export class MechanismSerendipityRuntime {
  private state=defaults();
- constructor(private readonly adapter=new MechanismProblemAdapter(),private readonly engine=new MechanismSerendipityEngine(),private readonly experiments=new IntrinsicExperimentGenerator()){}
+ private readonly adapter:MechanismProblemAdapter;
+ private readonly engine:MechanismSerendipityEngine;
+ private readonly experiments:IntrinsicExperimentGenerator;
+ constructor(adapter=new MechanismProblemAdapter(),engine=new MechanismSerendipityEngine(),experiments=new IntrinsicExperimentGenerator()){
+  this.adapter=adapter;this.engine=engine;this.experiments=experiments;
+ }
  snapshot(){return structuredClone(this.state);}
  restore(raw?:Partial<MechanismSerendipityRuntimeState>|null){
   const x=raw??{},allowed=['matched','no-match','insufficient-structure','invalid-input'];
