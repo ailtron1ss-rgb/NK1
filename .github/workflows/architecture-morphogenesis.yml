@@ -1,0 +1,58 @@
+name: architecture-morphogenesis-workpass17
+
+on:
+  push:
+    branches:
+      - aspect/morphogenesis-architecture-20261117
+    paths:
+      - '.github/workflows/architecture-morphogenesis.yml'
+      - 'runtime/neuro-kurisu/src/organism/system/ArchitectureMorphogenesisEngine.ts'
+      - 'runtime/neuro-kurisu/tests/architecture-morphogenesis-workpass17.mjs'
+      - 'runtime/neuro-kurisu/scripts/architecture-morphogenesis.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+  pull_request:
+    branches:
+      - aspect/developmental-genome-20261117
+    paths:
+      - '.github/workflows/architecture-morphogenesis.yml'
+      - 'runtime/neuro-kurisu/src/organism/system/ArchitectureMorphogenesisEngine.ts'
+      - 'runtime/neuro-kurisu/tests/architecture-morphogenesis-workpass17.mjs'
+      - 'runtime/neuro-kurisu/scripts/architecture-morphogenesis.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: architecture-morphogenesis-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  architecture-morphogenesis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Exercise Morphogenesis contracts and four structural operations
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/architecture-morphogenesis-workpass17.mjs
+      - name: Inspect the live canonical architecture graph
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types scripts/architecture-morphogenesis.mjs
+      - name: Recheck Developmental Genome dependency contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:developmental-genome
+      - name: Runtime TypeScript check
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Real source-import graph, cycle and boundary audit
+        working-directory: runtime/neuro-kurisu
+        run: npm run audit:architecture
