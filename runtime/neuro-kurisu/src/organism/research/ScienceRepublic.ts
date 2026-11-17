@@ -49,6 +49,20 @@ export type ScienceRoleIdentityResolver = (
   scienceRecordId: string,
 ) => string | undefined;
 
+export type ScienceEvaluatorPhase = 'primary' | 'holdout';
+
+export interface ScienceEvaluatorSubjects {
+  primary: string;
+  holdout: string;
+}
+
+/** Host principal lookup for the frozen primary and holdout evaluator slots. */
+export type ScienceEvaluatorIdentityResolver = (
+  phase: ScienceEvaluatorPhase,
+  actorId: string,
+  scienceRecordId: string,
+) => string | undefined;
+
 export interface ScienceArtifactBytesVerificationContext {
   scienceRecordId: string;
   purpose: 'evidence' | 'audit';
@@ -153,6 +167,8 @@ export interface ScienceAudit {
 export interface ScienceTrustBoundary {
   roleIdentity: 'declared-only' | 'host-attested';
   roleSubjects: ScienceRoleSubjects | null;
+  evaluatorIdentity: 'declared-only' | 'host-attested';
+  evaluatorSubjects: ScienceEvaluatorSubjects | null;
   signedEvidence: 'canonical-invention-loop-verified' | 'none';
   artifactBytesVerified: boolean;
   independentlyVerified: false;
@@ -208,6 +224,7 @@ export interface ScienceRepublicCallbacks {
   recordOutcome?: (id: string, artifact: SignedOutcomeArtifact) => InventionRecord;
   critique?: (id: string, artifact: SignedOutcomeArtifact) => InventionRecord;
   resolveRoleIdentity?: ScienceRoleIdentityResolver;
+  resolveEvaluatorIdentity?: ScienceEvaluatorIdentityResolver;
   verifyArtifactBytes?: ScienceArtifactBytesVerifier;
   /** Verifies candidate provenance against the runtime's current capture owner. */
   verifyCapturedCandidate?: (candidate: ScienceCandidateProvenance) => boolean;
@@ -353,6 +370,13 @@ function isRoleSubjects(value: unknown): value is ScienceRoleSubjects {
     new Set(subjects).size === subjects.length;
 }
 
+function isEvaluatorSubjects(value: unknown): value is ScienceEvaluatorSubjects {
+  return isObject(value) &&
+    typeof value.primary === 'string' && value.primary.length > 0 &&
+    typeof value.holdout === 'string' && value.holdout.length > 0 &&
+    value.primary !== value.holdout;
+}
+
 function isActors(value: unknown): value is ScienceActors {
   if (!isObject(value)) return false;
   const keys: ScienceRole[] = [
@@ -407,6 +431,14 @@ function isScienceCore(value: unknown): value is ScienceRepublicRecordCore {
       !['declared-only', 'host-attested'].includes(String(trust.roleIdentity)) ||
       (trust.roleIdentity === 'host-attested' && !isRoleSubjects(trust.roleSubjects)) ||
       (trust.roleIdentity === 'declared-only' && trust.roleSubjects !== null) ||
+      !['declared-only', 'host-attested'].includes(String(trust.evaluatorIdentity)) ||
+      (trust.evaluatorIdentity === 'host-attested' &&
+        (trust.roleIdentity !== 'host-attested' ||
+          !isEvaluatorSubjects(trust.evaluatorSubjects) ||
+          !isRoleSubjects(trust.roleSubjects) ||
+          new Set([...Object.values(trust.roleSubjects), trust.evaluatorSubjects.primary,
+            trust.evaluatorSubjects.holdout]).size !== 8)) ||
+      (trust.evaluatorIdentity === 'declared-only' && trust.evaluatorSubjects !== null) ||
       (trust.signedEvidence !== 'canonical-invention-loop-verified' && trust.signedEvidence !== 'none') ||
       typeof trust.artifactBytesVerified !== 'boolean' ||
       trust.independentlyVerified !== false || trust.promotionEligible !== false) return false;
@@ -491,6 +523,7 @@ export class ScienceRepublic {
   private readonly recordOutcomeDelegate: (id: string, artifact: SignedOutcomeArtifact) => InventionRecord;
   private readonly critiqueDelegate: (id: string, artifact: SignedOutcomeArtifact) => InventionRecord;
   private resolveRoleIdentity?: ScienceRoleIdentityResolver;
+  private resolveEvaluatorIdentity?: ScienceEvaluatorIdentityResolver;
   private verifyArtifactBytes?: ScienceArtifactBytesVerifier;
   private verifyCapturedCandidate?: (candidate: ScienceCandidateProvenance) => boolean;
   readonly inventionLoop: TheInventionLoop;
@@ -505,6 +538,7 @@ export class ScienceRepublic {
     this.id = callbacks.id ?? (() =>
       globalThis.crypto?.randomUUID?.() ?? 'science-' + Date.now() + '-' + Math.random().toString(16).slice(2));
     this.resolveRoleIdentity = callbacks.resolveRoleIdentity;
+    this.resolveEvaluatorIdentity = callbacks.resolveEvaluatorIdentity;
     this.verifyArtifactBytes = callbacks.verifyArtifactBytes;
     this.verifyCapturedCandidate = callbacks.verifyCapturedCandidate;
     this.recordOutcomeDelegate = callbacks.recordOutcome ??
@@ -518,6 +552,13 @@ export class ScienceRepublic {
       throw new Error('invalid-science-role-identity-resolver');
     }
     this.resolveRoleIdentity = resolve;
+  }
+
+  configureEvaluatorIdentityResolver(resolve?: ScienceEvaluatorIdentityResolver): void {
+    if (resolve !== undefined && typeof resolve !== 'function') {
+      throw new Error('invalid-science-evaluator-identity-resolver');
+    }
+    this.resolveEvaluatorIdentity = resolve;
   }
 
   configureArtifactBytesVerifier(verify?: ScienceArtifactBytesVerifier): void {
@@ -551,6 +592,10 @@ export class ScienceRepublic {
         record.trust.roleIdentity === 'host-attested').length,
       declaredIdentityRecords: this.state.records.filter(record =>
         record.trust.roleIdentity === 'declared-only').length,
+      hostAttestedEvaluatorRecords: this.state.records.filter(record =>
+        record.trust.evaluatorIdentity === 'host-attested').length,
+      declaredEvaluatorRecords: this.state.records.filter(record =>
+        record.trust.evaluatorIdentity === 'declared-only').length,
       byteVerifiedAudits: this.state.records.filter(record =>
         record.audit?.result === 'byte-verified').length,
       artifactByteVerifiedAudits: this.state.records.filter(record =>
@@ -603,6 +648,75 @@ export class ScienceRepublic {
       return Boolean(current && canonical(current) === canonical(record.trust.roleSubjects));
     } catch {
       return false;
+    }
+  }
+
+  private resolveEvaluatorSubjects(
+    record: ScienceRepublicRecord,
+    protocol: InventionProtocol,
+  ): ScienceEvaluatorSubjects | null {
+    if (!this.resolveEvaluatorIdentity) return null;
+    if (record.trust.roleIdentity !== 'host-attested' ||
+        !record.trust.roleSubjects || !this.resolveRoleIdentity) {
+      throw new Error('science-evaluator-attestation-requires-host-attested-roles');
+    }
+    const currentRoles = this.resolveRoleSubjects(record.id, record.actors);
+    if (!currentRoles || canonical(currentRoles) !== canonical(record.trust.roleSubjects)) {
+      throw new Error('science-role-identity-binding-changed');
+    }
+    const phases: ScienceEvaluatorPhase[] = ['primary', 'holdout'];
+    let subjects: string[];
+    try {
+      subjects = phases.map(phase => clean(
+        this.resolveEvaluatorIdentity!(phase, protocol.verifierPlan[phase], record.id),
+        180,
+      ));
+    } catch {
+      throw new Error('science-evaluator-identity-attestation-failed');
+    }
+    const allSubjects = [...Object.values(currentRoles), ...subjects];
+    if (subjects.some(subject => !subject) || new Set(allSubjects).size !== 8) {
+      throw new Error('science-evaluator-identities-must-be-independent');
+    }
+    return { primary: subjects[0], holdout: subjects[1] };
+  }
+
+  private evaluatorBindingsValid(
+    record: ScienceRepublicRecord,
+    protocol: InventionProtocol,
+  ): boolean {
+    if (record.trust.evaluatorIdentity === 'declared-only') {
+      return record.trust.evaluatorSubjects === null;
+    }
+    if (!record.trust.evaluatorSubjects || !this.resolveEvaluatorIdentity) return false;
+    try {
+      const current = this.resolveEvaluatorSubjects(record, protocol);
+      return Boolean(current && canonical(current) === canonical(record.trust.evaluatorSubjects));
+    } catch {
+      return false;
+    }
+  }
+
+  private assertEvaluatorActor(
+    record: ScienceRepublicRecord,
+    phase: ScienceEvaluatorPhase,
+    actorId: string,
+    protocol: InventionProtocol,
+  ): void {
+    const normalizedActor = clean(actorId, 120);
+    if (!normalizedActor || normalizedActor !== protocol.verifierPlan[phase]) {
+      throw new Error('science-' + phase + '-evaluator-role-mismatch');
+    }
+    if (record.trust.evaluatorIdentity === 'host-attested' &&
+        !this.evaluatorBindingsValid(record, protocol)) {
+      throw new Error('science-evaluator-identity-binding-changed');
+    }
+  }
+
+  private assertEvaluatorBindings(record: ScienceRepublicRecord, protocol: InventionProtocol): void {
+    if (record.trust.evaluatorIdentity === 'host-attested' &&
+        !this.evaluatorBindingsValid(record, protocol)) {
+      throw new Error('science-evaluator-identity-binding-changed');
     }
   }
 
@@ -769,6 +883,8 @@ export class ScienceRepublic {
       trust: {
         roleIdentity: roleSubjects ? 'host-attested' : 'declared-only',
         roleSubjects,
+        evaluatorIdentity: 'declared-only',
+        evaluatorSubjects: null,
         signedEvidence: 'none',
         artifactBytesVerified: false,
         independentlyVerified: false,
@@ -847,6 +963,7 @@ export class ScienceRepublic {
     if (roleIds.includes(plan.primary) || roleIds.includes(plan.holdout) || plan.primary === plan.holdout) {
       throw new Error('science-evaluators-must-be-distinct-from-roles-and-each-other');
     }
+    this.resolveEvaluatorSubjects(record, normalized);
     if (normalized.question !== record.title ||
         normalized.hypothesis !== record.theory.mechanism) {
       throw new Error('science-preregistration-must-match-theory');
@@ -900,7 +1017,10 @@ export class ScienceRepublic {
     if (!invention) throw new Error('science-invention-not-found');
     this.validateExperimentPlanCore(record, safe.actorId, invention.protocol, manifest, holdoutManifest);
     if (invention.stage !== 'proposed') throw new Error('science-invention-must-be-newly-preregistered');
+    const evaluatorSubjects = this.resolveEvaluatorSubjects(record, invention.protocol);
     const designed = this.inventionLoop.design(inventionId);
+    record.trust.evaluatorIdentity = evaluatorSubjects ? 'host-attested' : 'declared-only';
+    record.trust.evaluatorSubjects = evaluatorSubjects;
     record.manifest = manifest;
     record.holdoutManifest = holdoutManifest;
     if (record.candidate) {
@@ -942,6 +1062,11 @@ export class ScienceRepublic {
     if (!record.prototype || !record.inventionId) throw new Error('science-prototype-required');
     const measurement = safe.payload.measurement;
     if (measurement.contextType !== 'invention-outcome') throw new Error('science-outcome-measurement-required');
+    const currentInvention = this.inventionFor(record);
+    this.assertEvaluatorBindings(record, currentInvention.protocol);
+    if (measurement.phase === 'primary' || measurement.phase === 'holdout') {
+      this.assertEvaluatorActor(record, measurement.phase, safe.payload.verifierId, currentInvention.protocol);
+    }
     if (measurement.phase === 'replication') {
       this.assertRoleActor(record, 'replicator', safe.payload.verifierId);
     }
@@ -1015,6 +1140,7 @@ export class ScienceRepublic {
     }
     this.assertRoleActor(record, 'auditor', safe.actorId);
     const invention = this.inventionFor(record);
+    this.assertEvaluatorBindings(record, invention.protocol);
     if (invention.stage !== 'accepted' && invention.stage !== 'rejected') {
       throw new Error('science-audit-requires-terminal-invention');
     }
@@ -1108,7 +1234,8 @@ export class ScienceRepublic {
     const signedEvidencePresent = invention.outcomes.length > 0 || Boolean(invention.critique);
     if (record.trust.signedEvidence !== (signedEvidencePresent
       ? 'canonical-invention-loop-verified' : 'none') ||
-        !this.roleBindingsValid(record)) return false;
+        !this.roleBindingsValid(record) ||
+        !this.evaluatorBindingsValid(record, invention.protocol)) return false;
 
     if (!record.audit) {
       return record.trust.artifactBytesVerified === false &&

@@ -8,6 +8,7 @@ import { EvidenceResearchSubsystemRuntime } from './EvidenceResearchSubsystemRun
 import type { InventionVerifierKeyResolver } from '../research/TheInventionLoop.ts';
 import type {
   ScienceRoleIdentityResolver,
+  ScienceEvaluatorIdentityResolver,
   ScienceArtifactBytesVerifier,
 } from '../research/ScienceRepublic.ts';
 import { organismSystemContract, organismSystemContracts, type OrganismSystemContract, type ResolvedOrganismSystemContract, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
@@ -68,6 +69,7 @@ export class OrganismSystemFabric {
     research: EvidenceResearchSubsystemRuntime;
     inventionVerifierKeyResolver: InventionVerifierKeyResolver;
     scienceRoleIdentityResolver: ScienceRoleIdentityResolver;
+    scienceEvaluatorIdentityResolver: ScienceEvaluatorIdentityResolver;
     scienceArtifactBytesVerifier: ScienceArtifactBytesVerifier;
     willIntegration: WillIntegrationBridge;
     luminaAdaptation: LuminaAdaptationFabric;
@@ -87,6 +89,7 @@ export class OrganismSystemFabric {
       input.inventionVerifierKeyResolver,
       input.scienceRoleIdentityResolver,
       input.scienceArtifactBytesVerifier,
+      input.scienceEvaluatorIdentityResolver,
     );
     if (input.research && input.inventionVerifierKeyResolver) {
       this.research.configureInventionVerifierKeyResolver(input.inventionVerifierKeyResolver);
@@ -96,6 +99,9 @@ export class OrganismSystemFabric {
     }
     if (input.research && input.scienceArtifactBytesVerifier) {
       this.research.configureScienceArtifactBytesVerifier(input.scienceArtifactBytesVerifier);
+    }
+    if (input.research && input.scienceEvaluatorIdentityResolver) {
+      this.research.configureScienceEvaluatorIdentityResolver(input.scienceEvaluatorIdentityResolver);
     }
     this.willIntegration=input.willIntegration ?? new WillIntegrationBridge();
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
@@ -119,6 +125,11 @@ export class OrganismSystemFabric {
   /** Late-bind the six role identities through the host principal registry. */
   configureScienceRoleIdentityResolver(resolveRole: ScienceRoleIdentityResolver): void {
     this.research.configureScienceRoleIdentityResolver(resolveRole);
+  }
+
+  /** Late-bind host-owned primary/holdout evaluator principal lookup. */
+  configureScienceEvaluatorIdentityResolver(resolveEvaluator: ScienceEvaluatorIdentityResolver): void {
+    this.research.configureScienceEvaluatorIdentityResolver(resolveEvaluator);
   }
 
   /** Late-bind actual artifact-store byte verification through the host. */

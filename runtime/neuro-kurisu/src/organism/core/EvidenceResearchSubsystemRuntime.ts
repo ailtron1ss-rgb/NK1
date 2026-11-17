@@ -31,6 +31,7 @@ import {
   type ScienceActors,
   type ScienceCandidateProvenance,
   type ScienceRoleIdentityResolver,
+  type ScienceEvaluatorIdentityResolver,
   type ScienceArtifactBytesVerifier,
 } from '../research/ScienceRepublic.ts';
 
@@ -110,12 +111,14 @@ export class EvidenceResearchSubsystemRuntime {
     resolveInventionVerifierKey: InventionVerifierKeyResolver = () => undefined,
     resolveScienceRoleIdentity?: ScienceRoleIdentityResolver,
     verifyScienceArtifactBytes?: ScienceArtifactBytesVerifier,
+    resolveScienceEvaluatorIdentity?: ScienceEvaluatorIdentityResolver,
   ) {
     this.inventionLoop = new TheInventionLoop(undefined, undefined, resolveInventionVerifierKey);
     this.scienceRepublic = new ScienceRepublic(this.inventionLoop, {
       recordOutcome: (id, artifact) => this.recordInventionOutcome(id, artifact),
       critique: (id, artifact) => this.recordInventionCritique(id, artifact),
       resolveRoleIdentity: resolveScienceRoleIdentity,
+      resolveEvaluatorIdentity: resolveScienceEvaluatorIdentity,
       verifyArtifactBytes: verifyScienceArtifactBytes,
       verifyCapturedCandidate: candidate => this.isCapturedCandidateCurrent(candidate),
     });
@@ -124,6 +127,11 @@ export class EvidenceResearchSubsystemRuntime {
   /** Configure host-owned role identity authority; resolver functions are never serialized. */
   configureScienceRoleIdentityResolver(resolve?: ScienceRoleIdentityResolver): void {
     this.scienceRepublic.configureRoleIdentityResolver(resolve);
+  }
+
+  /** Configure host-owned evaluator principal lookup for primary/holdout slots. */
+  configureScienceEvaluatorIdentityResolver(resolve?: ScienceEvaluatorIdentityResolver): void {
+    this.scienceRepublic.configureEvaluatorIdentityResolver(resolve);
   }
 
   /** Configure host-owned artifact storage verification; resolver functions are never serialized. */

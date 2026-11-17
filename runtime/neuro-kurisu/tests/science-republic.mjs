@@ -321,6 +321,18 @@ assert.throws(() => runtime.registerScienceRepublicExperiment(science.id, {
 assert.equal(runtime.inventionLoop.snapshot().records.length, 0,
   'manifest mismatch must fail before preregistration');
 
+for (const collisionMode of ['shared', 'role-collision']) {
+  evaluatorIdentityMode = collisionMode;
+  assert.throws(() => runtime.registerScienceRepublicExperiment(science.id, {
+    actorId: actors.experimentalist,
+    evaluation,
+    manifest,
+    holdoutManifest,
+  }), /science-evaluator-identities-must-be-independent/);
+  assert.equal(runtime.inventionLoop.snapshot().records.length, 0,
+    'colliding host evaluator principals must be rejected before canonical preregistration');
+}
+evaluatorIdentityMode = 'normal';
 const registered = runtime.registerScienceRepublicExperiment(science.id, {
   actorId: actors.experimentalist,
   evaluation,
@@ -334,6 +346,7 @@ assert.deepEqual(registered.trust.evaluatorSubjects, {
   primary: 'principal:' + evaluation.verifierPlan.primary,
   holdout: 'principal:' + evaluation.verifierPlan.holdout,
 });
+assert.equal(runtime.scienceRepublic.metrics().hostAttestedEvaluatorRecords, 1);
 assert.equal(runtime.inventionLoop.snapshot().records.length, 1);
 assert.equal(runtime.inventionLoop.snapshot().records[0].protocol.provenance.experimentId, generated.id);
 assert.equal(runtime.inventionLoop.snapshot().records[0].protocol.provenance.scientificProjectId, project.id);
@@ -421,6 +434,16 @@ tamperedPrimary.payload.measurement.observed = 99;
 assert.throws(() => runtime.scienceRepublic.recordOutcome(science.id, tamperedPrimary), /invalid-signature/);
 assert.equal(runtime.inventionLoop.snapshot().records[0].outcomes.length, 0);
 
+// A primary evaluator principal revoked after preregistration cannot submit
+// an otherwise valid signed artifact under the old verifier actor ID.
+evaluatorIdentityMode = 'shared';
+assert.throws(
+  () => runtime.scienceRepublic.recordOutcome(science.id, primaryArtifact),
+  /science-evaluator-identity-binding-changed/,
+);
+assert.equal(runtime.inventionLoop.snapshot().records[0].outcomes.length, 0);
+evaluatorIdentityMode = 'normal';
+
 // The external byte store must retain the exact signed primary envelope too.
 rememberSignedEvidence(primaryArtifact);
 const primary = runtime.scienceRepublic.recordOutcome(science.id, primaryArtifact);
@@ -457,6 +480,15 @@ assert.equal(runtime.scienceRepublic.get(science.id).stage, 'replicated');
 
 for (const seed of holdoutSeeds) {
   const artifact = signedArtifact(invention, 'holdout', seed);
+  if (seed === holdoutSeeds[0]) {
+    evaluatorIdentityMode = 'role-collision';
+    assert.throws(
+      () => runtime.scienceRepublic.recordOutcome(science.id, artifact),
+      /science-evaluator-identity-binding-changed/,
+      'holdout principal collision after preregistration must block the signed evaluation',
+    );
+    evaluatorIdentityMode = 'normal';
+  }
   rememberSignedEvidence(artifact);
   const result = runtime.scienceRepublic.recordOutcome(science.id, artifact);
   assert.ok(['holdingout', 'awaiting-audit'].includes(result.stage));
@@ -633,6 +665,7 @@ assert.equal(rejectedAudited.trust.artifactBytesVerified, true);
 assert.equal(rejectedAudited.trust.independentlyVerified, false);
 assert.equal(rejectedAudited.trust.promotionEligible, false);
 assert.equal(runtime.scienceRepublic.metrics().artifactByteVerifiedAudits, 2);
+assert.equal(runtime.scienceRepublic.metrics().hostAttestedEvaluatorRecords, 2);
 assert.equal(runtime.scienceRepublic.metrics().blockedAudits, 1);
 assert.equal(runtime.scienceRepublic.metrics().promotionEligible, 0);
 
@@ -641,6 +674,7 @@ const restored = new EvidenceResearchSubsystemRuntime(
   resolveKey,
   resolveScienceRoleIdentity,
   verifyScienceArtifactBytes,
+  resolveScienceEvaluatorIdentity,
 );
 restored.restore(snapshot);
 assert.equal(restored.inventionLoop.metrics().accepted, 1);
@@ -665,6 +699,17 @@ assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().total, 1);
 assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().quarantinedRecords, 2);
 assert.equal(restoreWithoutByteVerifier.scienceRepublic.get(dreamScience.id).stage, 'discovered',
   'an un-audited draft does not claim byte verification and remains restorable without an artifact-store verifier');
+
+const restoreWithoutEvaluatorAuthority = new EvidenceResearchSubsystemRuntime(
+  resolveKey,
+  resolveScienceRoleIdentity,
+  verifyScienceArtifactBytes,
+);
+restoreWithoutEvaluatorAuthority.restore(snapshot);
+assert.equal(restoreWithoutEvaluatorAuthority.scienceRepublic.metrics().total, 1);
+assert.equal(restoreWithoutEvaluatorAuthority.scienceRepublic.metrics().quarantinedRecords, 2,
+  'host-attested primary/holdout mappings must be reauthenticated during restore');
+assert.equal(restoreWithoutEvaluatorAuthority.scienceRepublic.get(dreamScience.id).stage, 'discovered');
 
 // Recompute the unkeyed local event chain after forging the projection's audit
 // manifest. Restore must still reject it because the canonical signed Invention
@@ -692,6 +737,7 @@ const quarantined = new EvidenceResearchSubsystemRuntime(
   resolveKey,
   resolveScienceRoleIdentity,
   verifyScienceArtifactBytes,
+  resolveScienceEvaluatorIdentity,
 );
 quarantined.restore(rehashedSnapshot);
 assert.equal(quarantined.scienceRepublic.metrics().total, 2);
@@ -734,6 +780,7 @@ const candidateQuarantine = new EvidenceResearchSubsystemRuntime(
   resolveKey,
   resolveScienceRoleIdentity,
   verifyScienceArtifactBytes,
+  resolveScienceEvaluatorIdentity,
 );
 candidateQuarantine.restore(forgedCandidateSnapshot);
 assert.equal(candidateQuarantine.scienceRepublic.metrics().total, 2);
