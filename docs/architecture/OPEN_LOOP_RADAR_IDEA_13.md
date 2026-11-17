@@ -1,20 +1,37 @@
-# Open Loop Radar — implementation notes
+# Open Loop Radar — OmeStro idea 13
 
-OmeStro idea 13: radar for unfinished obligations.
+## Runtime ownership
+OpenLoopRadar is a deterministic domain engine owned by OrganismRuntime. It does not create inferred commitments, issue notifications, schedule an additional loop, or execute user actions.
 
-## Contract
-- Only explicitly accepted records enter the registry; memories and inferred intentions are not commitments.
-- Records have an owner, kind, source, optional due/expiry timestamps, bounded dependencies, priority, and lifecycle status.
-- A dependency is satisfied only by a fulfilled record with explicit closure evidence.
-- Fulfillment requires timestamped user confirmation, execution receipt, or external confirmation. A stored note alone is not closure.
-- Cancellation requires a reason; reopening requires a reason and clears previous closure evidence.
-- Scan is side-effect-free. It returns risk-ranked candidates; the host decides whether and how to surface them.
-- Quiet-until and reminder cooldown suppress surfacing without deleting or mutating obligations.
-- Persistence is an explicit versioned snapshot; restore validates records and recomputes dependency status.
+The runtime stores its state in the sidecar file `<stateFile>.open-loops.json` using the existing FileStateStore atomic-write and backup semantics. The state is loaded during `OrganismRuntime.init()`, persisted after every accepted mutation, and included in the runtime flush boundary. Mutations are serialized through the existing OrganismRuntime queue. If a mutation cannot be saved, the in-memory snapshot is restored before the error is returned.
 
-## Integration boundary
-OpenLoopRadar is a deterministic domain engine. It intentionally does not send notifications, schedule jobs, make network calls, or create commitments on behalf of a user. The host runtime should persist snapshot() alongside organism state and call scan() at a bounded cadence. The first integration pass establishes the stable engine contract; wiring into the canonical cognitive-cycle owner must use that owner's existing persistence and cadence boundaries rather than creating a second scheduler.
+## Obligation contract
+- Only explicitly accepted records are registered. Memory entries and inferred intentions are not commitments.
+- Each record tracks owner, type, source, due/expiry timestamps, bounded dependencies, priority, lifecycle status and surfacing history.
+- A dependency is satisfied only by a fulfilled record with timestamped closure evidence.
+- Blocked tasks are visible in diagnostics but are not surfaced as actionable overdue reminders.
+- When a prerequisite is fulfilled, dependants transition from blocked to open and get a distinct `dependency-unblocked` surfacing reason.
+- Completion, cancellation and reopening are explicit operations. Completion requires evidence; cancellation and reopening require a reason.
+- Scans are side-effect-free. The host acknowledges a displayed item separately, persisting its reminder cooldown.
+- Quiet-until and reminder cooldown suppress surfacing without deleting obligations.
+- Restore reads only own data properties, rejects accessor-backed records, removes cyclic dependency components and downstream dependants, and fails on over-capacity states.
+- At capacity, only unreferenced terminal history may be pruned. Active obligations and terminal prerequisites still referenced by active records are never silently evicted.
+
+## Runtime surface
+- `registerOpenLoop(input)`
+- `fulfillOpenLoop(id, evidence)`
+- `cancelOpenLoop(id, reason)`
+- `reopenOpenLoop(id, reason)`
+- `scanOpenLoops(options)`
+- `acknowledgeOpenLoopSurfaced(id)`
+- `openLoopSnapshot()`
+- `openLoopDiagnostics()`
+
+Cadence and UI delivery remain host-owned; no parallel scheduler is introduced.
 
 ## Verification
-Run from repository root:
-node --experimental-strip-types runtime/neuro-kurisu/tests/open-loop-radar-contract.mjs
+From the repository root:
+`npm --prefix runtime/neuro-kurisu run test:open-loop-radar`
+`npm --prefix runtime/neuro-kurisu run test:open-loop-radar-runtime`
+
+Both gates are included in the existing `NK1 Unified organism runtime` smoke path.
