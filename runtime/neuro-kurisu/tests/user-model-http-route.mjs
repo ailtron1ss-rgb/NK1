@@ -170,6 +170,31 @@ try {
   assert.equal(dyadicIdempotencyConflict.response.status, 409);
   assert.equal(dyadicIdempotencyConflict.body.error, 'idempotency-key-conflict');
 
+  const concurrentPayload = {
+    action: 'record', kind: 'goal', title: 'One concurrent shared goal only',
+    confirmed: true,
+  };
+  const concurrentKey = 'dyadic-http-concurrent-retry-1';
+  const concurrentResults = await Promise.all([
+    dyadicRequest('POST', concurrentPayload, true, concurrentKey),
+    dyadicRequest('POST', concurrentPayload, true, concurrentKey),
+  ]);
+  assert.deepEqual(concurrentResults.map(result => result.response.status).sort(), [200, 201]);
+  assert.equal(concurrentResults.filter(result => result.body.replayed === true).length, 1);
+  assert.equal(concurrentResults[0].body.item.id, concurrentResults[1].body.item.id);
+
+  const conflictingKey = 'dyadic-http-concurrent-conflict-1';
+  const conflictingResults = await Promise.all([
+    dyadicRequest('POST', {
+      action: 'record', kind: 'goal', title: 'First concurrent payload wins', confirmed: true,
+    }, true, conflictingKey),
+    dyadicRequest('POST', {
+      action: 'record', kind: 'goal', title: 'Second concurrent payload conflicts', confirmed: true,
+    }, true, conflictingKey),
+  ]);
+  assert.deepEqual(conflictingResults.map(result => result.response.status).sort(), [201, 409]);
+  assert.equal(conflictingResults.filter(result => result.body.error === 'idempotency-key-conflict').length, 1);
+
   const dyadicCorrected = await dyadicRequest('POST', {
     action: 'correct', itemId: dyadicItemId,
     title: 'Coordinate the agreed shared release plan',
