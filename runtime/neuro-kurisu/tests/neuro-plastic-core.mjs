@@ -1,11 +1,19 @@
 import assert from 'node:assert/strict';
-import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 
 const hash = (char) => char.repeat(64);
 const approvalSecret = 'neuro-plastic-test-approval-secret-32-bytes-minimum';
+const evaluatorSecret = 'neuro-plastic-test-evaluator-secret-held-outside-the-runtime';
+function signedEvaluate(registry, adapterId, payload) {
+  const receipt = createNeuroPlasticEvaluationReceipt(
+    adapterId, payload, 'independent-evaluator-v1', 'evaluation-' + adapterId, evaluatorSecret,
+  );
+  return registry.evaluateCandidate(adapterId, { ...payload, receipt }, (verifiedReceipt) =>
+    verifyNeuroPlasticEvaluationSignature(adapterId, payload, verifiedReceipt, evaluatorSecret));
+}
 function signedApproval(adapterId, reportId, approvalId) {
   const unsigned = { approvalId, actorId: 'operator', approvedAt: 1_800_000_000_200 };
   const context = { adapterId, reportId, baseModelFingerprint: hash('a') };
@@ -70,12 +78,21 @@ function observations(quality01, overrides = {}) {
 
 const registry = new NeuroPlasticAdapterRegistry();
 registry.stage(manifest());
-const report = registry.evaluateCandidate('kurisu-reasoning-v1', {
+const evaluationPayload = {
   holdoutFingerprint: hash('d'),
   baseline: observations(0.62),
   candidate: observations(0.82),
   evaluatedAt: 1_800_000_000_100,
-});
+};
+const evaluationReceipt = createNeuroPlasticEvaluationReceipt(
+  'kurisu-reasoning-v1', evaluationPayload, 'independent-evaluator-v1', 'evaluation-main', evaluatorSecret,
+);
+const tamperedEvaluation = { ...evaluationPayload, candidate: observations(0.91) };
+assert.throws(() => registry.evaluateCandidate(
+  'kurisu-reasoning-v1', { ...tamperedEvaluation, receipt: evaluationReceipt },
+  (receipt) => verifyNeuroPlasticEvaluationSignature('kurisu-reasoning-v1', tamperedEvaluation, receipt, evaluatorSecret),
+), /fingerprint|signature|receipt/i, 'changing holdout outcomes after evaluator signing must be rejected');
+const report = signedEvaluate(registry, 'kurisu-reasoning-v1', evaluationPayload);
 assert.equal(report.pairedN, 7);
 assert.equal(report.eligible, true);
 assert.ok(report.qualityCi95[0] > 0, 'promotion evidence must have a positive lower confidence bound');
@@ -134,7 +151,7 @@ assert.equal(registry.select({
 
 const unsafeRegistry = new NeuroPlasticAdapterRegistry();
 unsafeRegistry.stage(manifest('kurisu-unsafe-v1'));
-const unsafeReport = unsafeRegistry.evaluateCandidate('kurisu-unsafe-v1', {
+const unsafeReport = signedEvaluate(unsafeRegistry, 'kurisu-unsafe-v1', {
   holdoutFingerprint: hash('d'),
   baseline: observations(0.62),
   candidate: observations(0.9, { safety01: 0.7 }),
@@ -145,7 +162,7 @@ assert.ok(unsafeReport.reasons.includes('safety-regression'));
 
 const malformedRegistry = new NeuroPlasticAdapterRegistry();
 malformedRegistry.stage(manifest('kurisu-pairing-v1'));
-assert.throws(() => malformedRegistry.evaluateCandidate('kurisu-pairing-v1', {
+assert.throws(() => signedEvaluate(malformedRegistry, 'kurisu-pairing-v1', {
   holdoutFingerprint: hash('d'),
   baseline: observations(0.62),
   candidate: observations(0.82).slice(1),
@@ -232,7 +249,7 @@ assert.throws(() => buildVerifiedNeuroPlasticCorpus(
 
 const inferenceRegistry = new NeuroPlasticAdapterRegistry();
 inferenceRegistry.stage(manifest('kurisu-runtime-v1'));
-inferenceRegistry.evaluateCandidate('kurisu-runtime-v1', {
+signedEvaluate(inferenceRegistry, 'kurisu-runtime-v1', {
   holdoutFingerprint: hash('d'),
   baseline: observations(0.62),
   candidate: observations(0.82),
@@ -273,7 +290,7 @@ assert.deepEqual(inferenceCalls, ['kurisu-reasoning-lora']);
 
 const failedRegistry = new NeuroPlasticAdapterRegistry();
 failedRegistry.stage(manifest('kurisu-runtime-fallback-v1'));
-failedRegistry.evaluateCandidate('kurisu-runtime-fallback-v1', {
+signedEvaluate(failedRegistry, 'kurisu-runtime-fallback-v1', {
   holdoutFingerprint: hash('d'),
   baseline: observations(0.62),
   candidate: observations(0.82),
