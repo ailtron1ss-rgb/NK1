@@ -64,7 +64,7 @@ function opaqueConversationScope(conversationId?:string):string|undefined {
   if(typeof conversationId!=='string')throw new TypeError('invalid-runtime-conversation-id');
   const normalized=conversationId.normalize('NFKC').trim();
   if(!normalized||normalized.length>256)throw new Error('invalid-runtime-conversation-id');
-  return createHash('sha256').update(normalized,'utf8').digest('hex');
+  return createHash('sha256').update(normalized).digest('hex');
 }
 
 function environmentToWorldContext(snapshot: ReturnType<WorldEnvironment['snapshot']>): WorldContext {
