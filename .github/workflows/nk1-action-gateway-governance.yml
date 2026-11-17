@@ -48,6 +48,8 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Intent contract compiler and ActionGateway bridge
         run: npm --prefix runtime/neuro-kurisu run test:intent-compiler
+      - name: Intent compiler and Core execution integration
+        run: npm --prefix runtime/neuro-kurisu run test:intent-compiler && npm --prefix runtime/neuro-kurisu run test:intent-core-integration
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Action runtime architecture audit
