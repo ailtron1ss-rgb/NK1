@@ -110,6 +110,35 @@ unknownEvidence.observe('act', 0.1, [{ action: 'verify', estimated: 0.9 }], {
 });
 assert.equal(unknownEvidence.negativeSpaceReviewQueue().length, 0);
 
+// Review uses confidence-adjusted counterfactual advantage, not raw optimism or chosen-action shortfall alone.
+const confidenceGate = new RegretEngine();
+confidenceGate.observe('wait', 0.45, [
+  {
+    action: 'weak-high-estimate',
+    expectedOutcome01: 0.8,
+    confidence01: 0.25,
+    reopenWhen: [{ signal: 'outcome.confidenceAdjustedAlternativeAdvantage01', operator: 'gte', value: 0.15 }],
+  },
+  {
+    action: 'strong-high-estimate',
+    expectedOutcome01: 0.8,
+    confidence01: 0.9,
+    reopenWhen: [{ signal: 'outcome.confidenceAdjustedAlternativeAdvantage01', operator: 'gte', value: 0.15 }],
+  },
+], {
+  decisionId: 'decision-confidence-adjusted-review',
+  chosenExpectedOutcome01: 0.8,
+  significance: { cost01: 0.8, risk01: 0.1, futureImportance01: 0.1 },
+  outcomeVerified01: 1,
+  outcomeIndependent01: 1,
+  outcomeSource: 'world-transition',
+});
+assert.deepEqual(
+  confidenceGate.negativeSpaceReviewQueue().map(row => row.alternative.action),
+  ['strong-high-estimate'],
+  'a weakly supported alternative must not reopen just because the selected action underperformed',
+);
+
 // A late verified report may upgrade the same outcome, but may not rewrite it.
 const delayedVerification = new RegretEngine();
 delayedVerification.observe('act', 0.2, [{ action: 'explore', estimated: 0.95 }], {
