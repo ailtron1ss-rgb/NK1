@@ -1,6 +1,7 @@
 name: NK1 Neural Prosthesis
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [workpass70-source]
     paths:
@@ -10,6 +11,7 @@ on:
       - "runtime/neuro-kurisu/tests/neural-prosthesis-integration.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "research/neural-prosthesis/**"
+      - "CHANGELOG.md"
       - ".github/workflows/neural-prosthesis.yml"
   push:
     branches: [aspect/neural-prosthesis-transformer-residual-20261117]
@@ -20,6 +22,7 @@ on:
       - "runtime/neuro-kurisu/tests/neural-prosthesis-integration.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "research/neural-prosthesis/**"
+      - "CHANGELOG.md"
       - ".github/workflows/neural-prosthesis.yml"
 
 permissions:
