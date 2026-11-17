@@ -4933,6 +4933,28 @@ export class OrganismCore {
             this.recordIdentityLineage({ tick: state.tick, fromKind: 'observation', fromLabel: `${claimId}:${content.slice(0, 84)}`, strength01: .24, evidence01: confidence, reason: 'vision-observation-bound-to-self-life-context', relation: 'about', source: 'p65' });
         }
         this.memorySubsystem.p65EpistemicLedger.expireBeliefs(state.at);
+        const cognitiveHealth = this.cognitiveRuntime.cognitiveImmune.inspectHealth({
+            tick: state.tick,
+            at: state.at,
+            epistemic: this.memorySubsystem.p65EpistemicLedger.snapshot(),
+            contradictions: this.cognitiveRuntime.contradictions.snapshot(),
+            skills: this.cognitiveRuntime.skillLibrary.snapshot(),
+        });
+        for (const signal of cognitiveHealth.activeSignals) {
+            this.cognitiveRuntime.cognitiveField.addPressure(
+                'contradiction',
+                `cognitive health ${signal.metric}: ${signal.reason}`,
+                signal.severity === 'critical' ? .08 : .035,
+                [signal.id],
+            );
+        }
+        const pauseSkillPromotion = cognitiveHealth.recommendedAction === 'pause-risky-learning';
+        this.cognitiveRuntime.skillLibrary.setPromotionPaused(
+            pauseSkillPromotion,
+            pauseSkillPromotion ? 'cognitive-immune:critical-health-signal' : '',
+        );
+        this.persisted.facets.cognition.skills = this.cognitiveRuntime.skillLibrary.snapshot();
+        this.persisted.facets.cognition.immune = this.cognitiveRuntime.cognitiveImmune.snapshot();
         this.persisted.facets.advanced.p65EpistemicLedger = this.memorySubsystem.p65EpistemicLedger.snapshot();
         const p36SelfDevelopmentDue = cognitiveSpinePlan.run.research || (!hasExternalSignal && state.tick % 8 === 0);
         const p36Investment = p36SelfDevelopmentDue && !hasExternalSignal ? this.developmentalNeural.p36SelfDevelopment.decideLearningInvestment(state, {
