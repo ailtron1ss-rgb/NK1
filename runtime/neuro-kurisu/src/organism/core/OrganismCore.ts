@@ -9486,8 +9486,55 @@ export class OrganismCore {
         }
         if (trace?.selected) {
             this.cognitiveRuntime.neuromodulatoryPlasticity.learnFromOutcome(gatedSuccess01, clamp((gatedSuccess01 - .5) - gatedSurprise01 * .15));
-            const alternatives = trace.predictedOutcomes.map(p => ({ action: p.action, estimated: p.utility }));
-            this.cognitiveRuntime.regretEngine.observe(trace.selected.action, gatedSuccess01, alternatives);
+            const chosenGoalForNegativeSpace = trace.selected.goalId
+                ? this.persisted.goals.find(goal => goal.id === trace.selected?.goalId) ?? null
+                : null;
+            const alternatives = trace.predictedOutcomes.map(prediction => {
+                const candidate = trace.candidates.find(item => item.action === prediction.action) ?? null;
+                const rankingMargin01 = clamp(trace.selected!.score - (candidate?.score ?? 0));
+                return {
+                    action: prediction.action,
+                    expectedOutcome01: prediction.utility,
+                    confidence01: prediction.confidence,
+                    rejectionReason: [
+                        ...(prediction.reasons ?? []).slice(0, 3),
+                        `ranking-margin01:${rankingMargin01.toFixed(3)}`,
+                    ].join('; ') || 'ranked-below-selected-action',
+                    constraints: [
+                        `ranking-margin01:${rankingMargin01.toFixed(3)}`,
+                        `available-energy01:${clamp(trace.stateBefore.needs.energy).toFixed(3)}`,
+                        `predicted-cost01:${clamp(candidate?.predictedCost ?? 0).toFixed(3)}`,
+                        `cognitive-load01:${clamp(trace.stateBefore.needs.cognitiveLoad).toFixed(3)}`,
+                    ],
+                    expectedConsequences: [
+                        `utility01:${clamp(prediction.utility).toFixed(3)}`,
+                        `confidence01:${clamp(prediction.confidence).toFixed(3)}`,
+                        `energy-after01:${clamp(prediction.nextState.energy).toFixed(3)}`,
+                        `cognitive-load-after01:${clamp(prediction.nextState.cognitiveLoad).toFixed(3)}`,
+                        `uncertainty-after01:${clamp(prediction.nextState.uncertainty).toFixed(3)}`,
+                        `novelty-after01:${clamp(prediction.nextState.novelty).toFixed(3)}`,
+                    ],
+                    reopenWhen: [
+                        { signal: 'outcome.shortfall01', operator: 'gte' as const, value: 0.20 },
+                        { signal: 'outcome.alternativeAdvantage01', operator: 'gte' as const, value: 0.15 },
+                    ],
+                };
+            });
+            this.cognitiveRuntime.regretEngine.observe(trace.selected.action, gatedSuccess01, alternatives, {
+                decisionId: trace.id,
+                decisionAt: trace.createdAt,
+                outcomeAt: state.at,
+                chosenExpectedOutcome01: trace.selected.predictedUtility,
+                significance: {
+                    cost01: clamp(trace.selected.predictedCost),
+                    risk01: 1 - clamp(trace.selected.confidence),
+                    futureImportance01: clamp(chosenGoalForNegativeSpace?.importance ?? 0),
+                },
+                outcomeEvidence: [
+                    `gated-success01:${clamp(gatedSuccess01).toFixed(3)}`,
+                    `gated-surprise01:${clamp(gatedSurprise01).toFixed(3)}`,
+                ],
+            });
             const provenanceAttribution = this.cognitiveRuntime.valueEvolution.attributeExperience({
                 action: trace.selected.action,
                 goalTitle: selectedGoalTitle,
