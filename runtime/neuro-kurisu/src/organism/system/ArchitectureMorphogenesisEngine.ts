@@ -85,6 +85,7 @@ export interface ArchitectureMorphogenesisPlan {
 }
 
 export interface ArchitectureMorphogenesisEvidence {
+  candidateBranch: string;
   candidateCommit: string;
   baselineCommit: string;
   testsPassed: boolean;
@@ -707,10 +708,10 @@ export function evaluateArchitectureMorphogenesisPlan(
       issues,
     };
   }
-  if (evidence.baselineCommit === undefined || evidence.candidateCommit === undefined) {
-    fail('evidence-commit-missing', 'evidence', 'Evidence must bind the exact baseline and a full candidate commit SHA');
-  } else if (evidence.baselineCommit !== plan.baselineCommit || typeof evidence.candidateCommit !== 'string' || !COMMIT_SHA.test(evidence.candidateCommit)) {
-    fail('evidence-commit-mismatch', 'evidence', 'Evidence must bind the exact baseline and a full candidate commit SHA');
+  if (evidence.baselineCommit === undefined || evidence.candidateCommit === undefined || evidence.candidateBranch === undefined) {
+    fail('evidence-commit-missing', 'evidence', 'Evidence must bind the exact baseline, candidate branch and full candidate commit SHA');
+  } else if (evidence.baselineCommit !== plan.baselineCommit || evidence.candidateBranch !== plan.candidateBranch || typeof evidence.candidateCommit !== 'string' || !COMMIT_SHA.test(evidence.candidateCommit)) {
+    fail('evidence-commit-mismatch', 'evidence', 'Evidence must identify the exact baseline, planned branch and a full candidate commit SHA');
   }
   const required: Array<keyof ArchitectureMorphogenesisEvidence> = [
     'testsPassed', 'typecheckPassed', 'architectureAuditPassed', 'contractChecksPassed', 'rollbackVerified',
