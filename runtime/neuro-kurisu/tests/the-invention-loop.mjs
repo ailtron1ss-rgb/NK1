@@ -18,7 +18,7 @@ assert.equal(loop.snapshot().records[0].stage, 'critiqued');
 assert.throws(() => loop.recordOutcome(p.id, { kind: 'replication', verifierId: 'v1', environmentId: 'e1', testFingerprint: protocol.testFingerprint, observed: .7, effect01: .2 }), /replication-not-independent/);
 loop.recordOutcome(p.id, { kind: 'replication', verifierId: 'v2', environmentId: 'e2', testFingerprint: protocol.testFingerprint, observed: .68, effect01: .18 });
 assert.equal(loop.snapshot().records[0].stage, 'replicated');
-loop.recordOutcome(p.id, { kind: 'holdout', verifierId: 'v3', environmentId: 'e3', testFingerprint: protocol.testFingerprint, observed: .66, effect01: .16 });
+assert.throws(() => loop.recordOutcome(p.id, { kind: 'holdout', verifierId: 'v2', environmentId: 'e3', testFingerprint: protocol.testFingerprint, observed: .66, effect01: .16 }), /holdout-must-be-independent/);\nloop.recordOutcome(p.id, { kind: 'holdout', verifierId: 'v3', environmentId: 'e3', testFingerprint: protocol.testFingerprint, observed: .66, effect01: .16 });
 assert.equal(loop.snapshot().records[0].stage, 'accepted');
 assert.equal(loop.metrics().accepted, 1);
 assert.throws(() => loop.reject(p.id, 'late-reject'), /invention-closed/);
