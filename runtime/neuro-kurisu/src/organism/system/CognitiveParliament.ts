@@ -9,6 +9,7 @@ export type ParliamentRole = 'researcher'|'planner'|'skeptic'|'executor'|'safety
 export type ParliamentStance = 'support'|'oppose'|'abstain'|'block';
 export type ParliamentRisk = 'low'|'medium'|'high';
 export type ParliamentSafetyVerdict = 'clear'|'block'|'uncertain';
+export type ParliamentExecutionAssessment = 'feasible'|'infeasible'|'unknown';
 
 export interface ParliamentEvidenceReference { id:string; claimKey:string; }
 export interface ParliamentVerifiedEvidence extends ParliamentEvidenceReference {
@@ -48,6 +49,8 @@ export interface ParliamentRoleReport {
   reviewedEvidenceIds?:string[];
   /** Auditor must explicitly audit every evidence reference used by the decision. */
   auditedEvidenceIds?:string[];
+  /** Required only for executor. */
+  executionAssessment?:ParliamentExecutionAssessment;
   /** Required only for safety-guardian. */
   safetyVerdict?:ParliamentSafetyVerdict;
   safetyViolations?:string[];
@@ -70,6 +73,7 @@ export interface ParliamentDecision {
   reports:Array<{
     role:ParliamentRole;stance:ParliamentStance;recommendation:string;
     facts:string[];assumptions:string[];objections:string[];uncertainty01:number;
+    executionAssessment?:ParliamentExecutionAssessment;
     model:{executionId:string;providerId:string;modelId:string;independenceGroup:string};
     evidenceIds:string[];
   }>;
@@ -151,7 +155,7 @@ export class CognitiveParliament {
       role:ParliamentRole;stance:ParliamentStance;recommendation:string;facts:string[];
       assumptions:string[];objections:string[];uncertainty01:number;model:ParliamentModelAttestation;
       evidence:ParliamentEvidenceReference[];reviewedEvidenceIds:string[];auditedEvidenceIds:string[];
-      safetyVerdict?:ParliamentSafetyVerdict;safetyViolations:string[];
+      safetyVerdict?:ParliamentSafetyVerdict;executionAssessment?:ParliamentExecutionAssessment;safetyViolations:string[];
     }>=[];
     let invalidReport=false;
     const modelCache=new Map<string,ParliamentModelAttestation|null>();
@@ -168,11 +172,14 @@ export class CognitiveParliament {
       const audited=raw.auditedEvidenceIds===undefined?[]:stringArray(raw.auditedEvidenceIds,48,256);
       const safetyViolations=raw.safetyViolations===undefined?[]:stringArray(raw.safetyViolations,24,500);
       const safetyVerdict=raw.safetyVerdict;
+      const executionAssessment=raw.executionAssessment;
       if(!STANCES.includes(raw.stance)||!text(raw.recommendation)||raw.recommendation.length>1000||
         !Number.isFinite(raw.uncertainty01)||raw.uncertainty01<0||raw.uncertainty01>1||
         !text(raw.modelExecutionId)||raw.modelExecutionId.length>256||facts===null||assumptions===null||
         objections===null||evidence===null||reviewed===null||audited===null||safetyViolations===null||
-        (raw.role==='safety-guardian'&&(safetyVerdict===undefined||!SAFETY.includes(safetyVerdict)))){
+        (raw.role==='safety-guardian'&&(safetyVerdict===undefined||!SAFETY.includes(safetyVerdict)))||
+        (raw.role==='executor'&&(executionAssessment!=='feasible'&&executionAssessment!=='infeasible'&&executionAssessment!=='unknown'))||
+        (raw.role==='researcher'&&evidence.length===0)) {
         invalidReport=true;reasons.push(`malformed-role-report:${raw.role}`);continue;
       }
       if(executionIds.has(raw.modelExecutionId)){invalidReport=true;reasons.push('duplicate-model-execution-reuse');continue;}
@@ -189,7 +196,8 @@ export class CognitiveParliament {
         role:raw.role,stance:raw.stance,recommendation:raw.recommendation.trim().slice(0,1000),
         facts,assumptions,objections,uncertainty01:clamp(raw.uncertainty01),model,
         evidence,reviewedEvidenceIds:reviewed,auditedEvidenceIds:audited,
-        ...(raw.role==='safety-guardian'?{safetyVerdict}:{}),safetyViolations,
+        ...(raw.role==='safety-guardian'?{safetyVerdict}:{}),
+        ...(raw.role==='executor'?{executionAssessment}:{}),safetyViolations,
       });
     }
 
@@ -227,6 +235,11 @@ export class CognitiveParliament {
     if(!auditorCoverage)reasons.push('auditor-evidence-coverage-incomplete');
 
     const safety=normalized.find(r=>r.role==='safety-guardian');
+    const executor=normalized.find(r=>r.role==='executor');
+    const executionUnknown=executor?.executionAssessment==='unknown';
+    const executionInfeasible=executor?.executionAssessment==='infeasible';
+    if(executionUnknown)reasons.push('executor-feasibility-unknown');
+    if(executionInfeasible)reasons.push('executor-reports-infeasible-action');
     const safetyBlocks=Boolean(safety&&(safety.safetyVerdict==='block'||safety.stance==='block'||safety.safetyViolations.length>0));
     const safetyUncertain=Boolean(safety&&safety.safetyVerdict!=='clear');
     if(safetyBlocks)reasons.push('safety-guardian-veto');
@@ -256,9 +269,10 @@ export class CognitiveParliament {
     let status:ParliamentDecision['status'];
     if(safetyBlocks)status='blocked';
     else if(overflow||invalidReport||missingRoles.length||evidenceConflict||unverifiedEvidence||
-      verifiedMap.size===0||!skepticCoverage||!auditorCoverage||safetyUncertain||
+      verifiedMap.size===0||!skepticCoverage||!auditorCoverage||safetyUncertain||executionUnknown||
       sourceFamilies.length<policy.minSources||modelFamilies.length<policy.minModels||dissent.length)
       status='needs-evidence';
+    else if(executionInfeasible)status='rejected';
     else if(score01>=policy.threshold)status='approved';
     else status='rejected';
     if(status==='rejected')reasons.push('verified-evidence-score-below-risk-threshold');
@@ -270,6 +284,7 @@ export class CognitiveParliament {
       dissent,reports:normalized.map(r=>({
         role:r.role,stance:r.stance,recommendation:r.recommendation,facts:r.facts,assumptions:r.assumptions,
         objections:r.objections,uncertainty01:r.uncertainty01,
+        ...(r.executionAssessment?{executionAssessment:r.executionAssessment}:{}),
         model:{executionId:r.model.executionId,providerId:r.model.providerId,modelId:r.model.modelId,independenceGroup:r.model.independenceGroup},
         evidenceIds:r.evidence.map(e=>e.id),
       })),

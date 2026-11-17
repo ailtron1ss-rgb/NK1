@@ -7,7 +7,7 @@
 - Researcher — supplies candidate facts and source references.
 - Planner — proposes a bounded course of action.
 - Skeptic — reviews every evidence reference and identifies counterexamples.
-- Executor — assesses practical feasibility.
+- Executor — returns a separate `feasible`, `infeasible` or `unknown` execution assessment; infeasibility rejects the candidate and unknown feasibility blocks approval.
 - Safety Guardian — must return an explicit `clear`, `uncertain` or `block` safety verdict.
 - Auditor — must attest that every evidence reference used by the decision was reviewed.
 

@@ -28,6 +28,7 @@ assert.equal(governance.cognitiveParliament.deliberate({candidateId:'no-trust',r
 const roles=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
 const reports=roles.map((role,i)=>({
   role,stance:'support',recommendation:'proceed with bounded change',facts:['observed firewall claim'],
+  ...(role==='executor'?{executionAssessment:'feasible'}:{}),
   assumptions:[],objections:[],uncertainty01:.08,modelExecutionId:`run-${i}`,evidence,
   ...(role==='skeptic'?{reviewedEvidenceIds:evidence.map(e=>e.id)}:{}),
   ...(role==='auditor'?{auditedEvidenceIds:evidence.map(e=>e.id)}:{}),
@@ -67,9 +68,10 @@ const unreviewed=parliament.deliberate({candidateId:'unreviewed',risk:'low',
 assert.ok(unreviewed.reasons.includes('skeptic-review-coverage-incomplete'));
 
 // Provider/model identity is host-attested; shared model families cannot satisfy high-risk diversity.
-const correlated=parliament.deliberate({candidateId:'correlated',risk:'high',
-  reports:reports.map(r=>({...r,modelExecutionId:r.modelExecutionId}))});
-assert.equal(correlated.independentModelCount,3);
+const noModelAttestor=new CognitiveParliament(new EvidenceFirewallParliamentTrustPort(firewall));
+const unattestedModel=noModelAttestor.deliberate({candidateId:'unattested-model',risk:'low',reports});
+assert.equal(unattestedModel.status,'needs-evidence');
+assert.ok(unattestedModel.reasons.includes('unverified-model-execution:researcher'));
 const sharedPort=new EvidenceFirewallParliamentTrustPort(firewall,id=>({
   executionId:id,providerId:'one-provider',modelId:'one-model',independenceGroup:'one-family',verifiedAt:Date.now()
 }));
@@ -98,6 +100,17 @@ assert.equal(conflict.status,'needs-evidence');
 const repeatedRun=parliament.deliberate({candidateId:'reused-run',risk:'low',
   reports:reports.map(r=>({...r,modelExecutionId:'same-run'}))});
 assert.equal(repeatedRun.status,'needs-evidence');
+
+// Executor feasibility is a separate role contract, not inferred from other votes.
+const infeasible=parliament.deliberate({candidateId:'infeasible',risk:'low',
+  reports:reports.map(r=>r.role==='executor'?{...r,executionAssessment:'infeasible'}:r)});
+assert.equal(infeasible.status,'rejected');
+const unknownExecution=parliament.deliberate({candidateId:'unknown-execution',risk:'low',
+  reports:reports.map(r=>r.role==='executor'?{...r,executionAssessment:'unknown'}:r)});
+assert.equal(unknownExecution.status,'needs-evidence');
+const missingExecution=parliament.deliberate({candidateId:'missing-execution',risk:'low',
+  reports:reports.map(r=>r.role==='executor'?(({executionAssessment,...rest})=>rest)(r):r)});
+assert.equal(missingExecution.status,'needs-evidence');
 
 // Malformed contracts and oversized report batches do not result in approval.
 assert.equal(parliament.deliberate({candidateId:'bad-risk',risk:'invalid',reports}).status,'needs-evidence');

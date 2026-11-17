@@ -19,8 +19,8 @@ export class EvidenceFirewallParliamentTrustPort implements ParliamentTrustPort 
 
   openSession():ParliamentTrustSession {
     const snapshot=this.firewall.snapshot();
-    const observations=new Map(snapshot.observations.map(row=>[row.id,row]));
-    const claims=new Map(snapshot.claims.map(row=>[row.claimKey,row]));
+    const observations=new Map(snapshot.observations.map(row=>[row.id,row] as const));
+    const claims=new Map(snapshot.claims.map(row=>[row.claimKey,row] as const));
     const modelCache=new Map<string,ParliamentModelAttestation|null>();
     return {
       verifyEvidence:(reference:ParliamentEvidenceReference):ParliamentVerifiedEvidence|null=>{
