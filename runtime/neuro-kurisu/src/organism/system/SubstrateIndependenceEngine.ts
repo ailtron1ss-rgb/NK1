@@ -964,12 +964,17 @@ export class SubstrateIndependenceEngine {
         evaluation.receipts.length !== evaluation.trialCount || evaluation.receipts.length < this.minIndependentTrials) {
       return false;
     }
+    const sourceProfile = this.profiles.get(evaluation.sourceBackendId);
+    const targetProfile = this.profiles.get(evaluation.targetBackendId);
+    const profilesTrusted = Boolean(sourceProfile && targetProfile
+      && profileDigest(sourceProfile) === evaluation.sourceProfileDigest
+      && profileDigest(targetProfile) === evaluation.targetProfileDigest);
     const taskIds = new Set<string>();
     const trialIds = new Set<string>();
     const receiptIds = new Set<string>();
     const independenceKeys = new Set<string>();
     const families = new Set<string>();
-    let trusted = true;
+    let trusted = profilesTrusted;
     for (const trial of evaluation.receipts) {
       if (trial.transferDigest !== evaluation.transferDigest ||
           trial.sourceBackendId !== evaluation.sourceBackendId ||
@@ -1033,14 +1038,20 @@ export class SubstrateIndependenceEngine {
     if (pending && !matchingPending) fail('substrate-promotion-transfer-mismatch');
     this.verifiedEvaluationIds.delete(evaluationId);
     const fromBackendId = this.state.activeBackendId ?? evaluation.sourceBackendId;
+    const fromProfileDigest = this.state.activeBackendId
+      ? this.state.activeProfileDigest
+      : evaluation.sourceProfileDigest;
     this.state.activeBackendId = targetBackendId;
+    this.state.activeProfileDigest = evaluation.targetProfileDigest;
     this.state.activeProvenance = 'calibrated';
     this.state.pendingTransfer = null;
     this.state.observedBackendId = targetBackendId;
     this.state.history = [...this.state.history, {
       at: Date.now(),
       fromBackendId,
+      fromProfileDigest,
       toBackendId: targetBackendId,
+      toProfileDigest: evaluation.targetProfileDigest,
       transferDigest: evaluation.transferDigest,
       evaluationId: evaluation.evaluationId,
       reason: 'calibrated-promotion',
@@ -1057,6 +1068,7 @@ export class SubstrateIndependenceEngine {
       return this.rollbackBackend();
     }
     this.state.activeBackendId = null;
+    this.state.activeProfileDigest = null;
     this.state.activeProvenance = 'unknown';
     this.state.observedBackendId = null;
     this.state.pendingTransfer = null;
@@ -1072,14 +1084,18 @@ export class SubstrateIndependenceEngine {
     }
     this.verifiedEvaluationIds.delete(last.evaluationId);
     this.state.activeBackendId = last.fromBackendId;
-    this.state.activeProvenance = this.profiles.has(last.fromBackendId) ? 'bootstrap' : 'unknown';
+    this.state.activeProfileDigest = last.fromProfileDigest;
+    const sourceProfile = this.profiles.get(last.fromBackendId);
+    this.state.activeProvenance = sourceProfile && profileDigest(sourceProfile) === last.fromProfileDigest ? 'bootstrap' : 'unknown';
     this.state.observedBackendId = last.fromBackendId;
     this.state.lastEvaluation = null;
     this.verifiedEvaluationIds.clear();
     this.state.history = [...this.state.history, {
       at: Date.now(),
       fromBackendId: last.toBackendId,
+      fromProfileDigest: last.toProfileDigest,
       toBackendId: last.fromBackendId,
+      toProfileDigest: last.fromProfileDigest ?? '0'.repeat(64),
       transferDigest: last.transferDigest,
       evaluationId: last.evaluationId,
       reason: 'rollback',
