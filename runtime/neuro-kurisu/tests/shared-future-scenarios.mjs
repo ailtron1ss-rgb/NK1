@@ -399,6 +399,101 @@ for (const toolId of [
 }
 assert.ok(gateway.listTools().some((row) => row.id === 'organism.future.reviews.list'), 'review queue must be exposed as a read-only organism tool');
 
+
+const outcomeCalibration = new SharedFutureEngine();
+outcomeCalibration.createScenario({
+  id: 'calibration-scenario',
+  title: 'A scenario whose predicted consequences will be measured',
+  consequences: [
+    { id: 'likely-success', description: 'The launch reaches its target.', probability01: 0.8, impact01: 0.9 },
+    { id: 'unlikely-success', description: 'The secondary path reaches its target.', probability01: 0.2, impact01: 0.4 },
+  ],
+});
+const firstOutcome = outcomeCalibration.recordOutcome({
+  id: 'outcome-likely-success',
+  scenarioId: 'calibration-scenario',
+  consequenceId: 'likely-success',
+  occurred: true,
+  evidenceRef: 'telemetry:release-2026-11-17',
+  at: 6000,
+}, 'system');
+assert.equal(firstOutcome.forecastProbability01, 0.8);
+assert.equal(firstOutcome.occurred, true);
+assert.equal(firstOutcome.brierScore01, 0.04);
+assert.equal(firstOutcome.evidenceRef, 'telemetry:release-2026-11-17');
+assert.equal(firstOutcome.reportedBy, 'system');
+assert.equal(firstOutcome.independentlyVerified, false, 'a recorded observation must never promote itself to independent verification');
+const secondOutcome = outcomeCalibration.recordOutcome({
+  id: 'outcome-unlikely-success',
+  scenarioId: 'calibration-scenario',
+  consequenceId: 'unlikely-success',
+  occurred: true,
+  evidenceRef: 'report:post-launch-review',
+  at: 6001,
+}, 'user');
+assert.equal(secondOutcome.brierScore01, 0.64);
+assert.equal(outcomeCalibration.listOutcomes('calibration-scenario').length, 2);
+assert.equal(outcomeCalibration.diagnostics().observedOutcomes, 2);
+assert.equal(outcomeCalibration.diagnostics().meanBrierScore01, 0.34);
+assert.throws(() => outcomeCalibration.recordOutcome({
+  id: 'duplicate-consequence-observation',
+  scenarioId: 'calibration-scenario',
+  consequenceId: 'likely-success',
+  occurred: false,
+  evidenceRef: 'telemetry:duplicate',
+  at: 6002,
+}, 'system'), /outcome-already-recorded/);
+assert.throws(() => outcomeCalibration.recordOutcome({
+  id: 'missing-evidence-outcome',
+  scenarioId: 'calibration-scenario',
+  consequenceId: 'unlikely-success',
+  occurred: false,
+  evidenceRef: '   ',
+  at: 6002,
+}, 'system'), /outcome-evidence-ref-required/);
+const outcomeRoundTrip = new SharedFutureEngine();
+outcomeRoundTrip.restore(outcomeCalibration.snapshot());
+assert.deepEqual(outcomeRoundTrip.listOutcomes('calibration-scenario'), outcomeCalibration.listOutcomes('calibration-scenario'));
+
+const userOwnedOutcomeScenario = outcomeCalibration.createScenario({
+  id: 'user-owned-outcome-scenario',
+  title: 'A human-owned consequence',
+  owner: 'user',
+  confirmUserOwned: true,
+  consequences: [{ id: 'user-result', description: 'User-owned result.', probability01: 0.5 }],
+}, 'user');
+assert.equal(userOwnedOutcomeScenario.owner, 'user');
+assert.throws(() => outcomeCalibration.recordOutcome({
+  id: 'system-overwrites-user-result',
+  scenarioId: 'user-owned-outcome-scenario',
+  consequenceId: 'user-result',
+  occurred: true,
+  evidenceRef: 'telemetry:unapproved',
+  at: 6003,
+}, 'system'), /human-outcome-report-required/);
+
+assert.equal(
+  gateway.listTools().find((row) => row.id === 'organism.future.outcomes.record')?.requiresIdempotencyKey,
+  true,
+  'outcome writes must use ActionGateway idempotency',
+);
+assert.ok(gateway.listTools().some((row) => row.id === 'organism.future.outcomes.list'), 'calibration observations must be readable through the organism tool surface');
+const toolOutcomeScenario = future.sharedFuture.createScenario({
+  id: 'gateway-outcome-scenario',
+  title: 'Outcome recorded through the organism gateway',
+  consequences: [{ id: 'gateway-result', description: 'Gateway-recorded result.', probability01: 0.75 }],
+});
+const toolOutcome = await gateway.executeTool('organism.future.outcomes.record', {
+  id: 'gateway-outcome-record',
+  scenarioId: toolOutcomeScenario.id,
+  consequenceId: 'gateway-result',
+  occurred: false,
+  evidenceRef: 'metric:release-health',
+  at: 7000,
+}, 'shared-future-test', { autonomous: false, idempotencyKey: 'shared-future-outcome-gateway-1' });
+assert.equal(toolOutcome.ok, true, JSON.stringify(toolOutcome));
+assert.equal(future.sharedFuture.listOutcomes('gateway-outcome-scenario')[0]?.reportedBy, 'user');
+
 console.log(JSON.stringify({
   pass: true,
   scenarios: future.sharedFuture.diagnostics(),
