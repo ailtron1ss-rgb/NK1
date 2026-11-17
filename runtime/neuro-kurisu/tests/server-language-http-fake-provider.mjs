@@ -1,13 +1,29 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const stateDir = await mkdtemp(path.join(tmpdir(), 'neurocore-language-http-'));
+const captureAdapterPath = path.join(runtimeRoot, 'tests', `.tmp-neural-jit-capture-adapter-${process.pid}.mjs`);
+await writeFile(captureAdapterPath, `export async function createNeuralJitLocalCaptureAdapter({ provider, model, stateDirectory }) {
+  if (!provider.configured() || !model || !stateDirectory) throw new Error('fixture-local-provider-not-ready');
+  let captureCalls = 0;
+  return {
+    captureLocalInference: async ({ traceContext, response, evaluateCandidateShadow }) => {
+      captureCalls += 1;
+      if (typeof evaluateCandidateShadow !== 'function' || evaluateCandidateShadow('0'.repeat(64), []) !== null) throw new Error('shadow-branch-hook-not-fail-closed');
+      if (captureCalls === 2) throw new Error('fixture-instrumentation-temporary-failure');
+      return { captureHandle: 'opaque-fixture-capture', decisionId: traceContext.decisionId, backend: response.backend };
+    },
+    bindVerifiedOutcome: async () => null,
+    verifyCapture: () => false,
+  };
+}
+`);
 const deadlineAt = Date.now() + 120_000;
 let providerRequests = 0;
 let lastProviderPayload = null;
@@ -59,6 +75,7 @@ const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server
     NK_MEM0_COGNITIVE_RECALL: '1',
     NK_MEM0_USER_ID: 'mem0-http-smoke-user',
     LLAMA_CPP_MODEL: 'neurocore-http-smoke-model',
+    NEURO_NEURAL_JIT_CAPTURE_ADAPTER_MODULE: path.relative(runtimeRoot, captureAdapterPath),
     LLM_TIMEOUT_MS: '5000',
     NEURO_REQUEST_TIMEOUT_MS: '20000',
   },
@@ -130,6 +147,15 @@ try {
   assert.equal(JSON.stringify(mem0Search).includes('MEM0_API_KEY'), false);
   assert.equal(providerRequests, 0, 'disabled Mem0 search must not call the language provider');
 
+  const unauthNeuralJit = await fetch(`http://127.0.0.1:${appPort}/api/organism/learning/neural-jit`);
+  assert.equal(unauthNeuralJit.status, 401, 'Neural JIT diagnostics must use the common API bearer-auth policy');
+  const neuralJitBeforeResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/learning/neural-jit`, { headers: authHeaders });
+  const neuralJitBefore = await neuralJitBeforeResponse.json();
+  assert.equal(neuralJitBeforeResponse.status, 200);
+  assert.equal(neuralJitBefore.neuralJit?.localCaptureAdapterConfigured, true);
+  assert.equal(neuralJitBefore.neuralJit?.activationCaptureAuthorityConfigured, true);
+  assert.equal(neuralJitBefore.neuralJit?.liveInferenceEnabled, false);
+
   const response = await fetch(`http://127.0.0.1:${appPort}/api/organism/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: 'Bearer mem0-http-smoke-only-token' },
@@ -147,6 +173,38 @@ try {
   assert.equal(lastProviderPayload?.model, 'neurocore-http-smoke-model', 'configured model identity must reach the provider');
   assert.ok(Array.isArray(lastProviderPayload?.messages) && lastProviderPayload.messages.some(message => message.role === 'user' && message.content.includes('configured local model')), 'user prompt must reach the local provider');
   assert.equal(lastProviderPayload?.stream, false, 'smoke provider request should use the bounded non-streaming response path');
+  assert.equal(Object.prototype.hasOwnProperty.call(body.language ?? {}, 'neuralJitCapture'), false,
+    'opaque activation handles must never escape through the user-facing language response');
+  const neuralJitAfterResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/learning/neural-jit`, { headers: authHeaders });
+  const neuralJitAfter = await neuralJitAfterResponse.json();
+  assert.equal(neuralJitAfterResponse.status, 200);
+  assert.equal(neuralJitAfter.neuralJit?.localCaptureAdapterConfigured, true);
+  assert.equal(neuralJitAfter.neuralJit?.pendingCaptureCount, 1,
+    'the opted-in local model adapter must capture an opaque pending activation handle from the actual llama.cpp response');
+  assert.equal(neuralJitAfter.neuralJit?.acceptedTraces, 0,
+    'capture alone must not create a learning trace before a verified ActionGateway outcome');
+  const compileResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/learning/neural-jit/compile`, {
+    method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders },
+    body: JSON.stringify({ taskFamily: 'language-response', modelFingerprint: 'a'.repeat(64) }),
+  });
+  const compileResult = await compileResponse.json();
+  assert.equal(compileResponse.status, 409, 'a pending capture without a verified outcome must not compile into a candidate');
+  assert.equal(compileResult.candidate, null);
+  const secondChatResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/chat`, {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer mem0-http-smoke-only-token' },
+    body: JSON.stringify({ message: 'A transient local activation instrumentation error must not degrade ordinary inference.' }),
+    signal: AbortSignal.timeout(Math.max(1000, deadlineAt - Date.now())),
+  });
+  const secondChat = await secondChatResponse.json();
+  assert.equal(secondChatResponse.status, 200);
+  assert.equal(secondChat.language?.text, 'FAKE_LOCAL_PROVIDER_OK');
+  assert.equal(secondChat.language?.preferredBackend, 'llama.cpp',
+    'a shadow capture failure must not count as an inference failure or open the local backend circuit breaker');
+  assert.equal(providerRequests, 2);
+  const afterCaptureFailureResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/learning/neural-jit`, { headers: authHeaders });
+  const afterCaptureFailure = await afterCaptureFailureResponse.json();
+  assert.equal(afterCaptureFailure.neuralJit?.pendingCaptureCount, 1,
+    'a failed capture attempt must not create a synthetic activation token');
   console.log('SERVER_LANGUAGE_HTTP_FAKE_PROVIDER=PASS', JSON.stringify({
     status: response.status,
     backend: body.language.backend,
@@ -164,4 +222,5 @@ try {
   if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
   await new Promise(resolve => fakeProvider.close(resolve));
   await rm(stateDir, { recursive: true, force: true });
+  await rm(captureAdapterPath, { force: true });
 }

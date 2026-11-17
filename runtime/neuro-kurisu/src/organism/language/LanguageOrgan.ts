@@ -4,6 +4,7 @@ import { buildBudgetedLanguageContext, type ContextBudgetLedgerReport, type Cont
 import type { OrganismDecisionTrace, OrganismCycleResult, CognitiveProposal } from '../core/types.ts';
 import type { KnownEntityPromptContext } from '../system/KnownEntityDossier.ts';
 import { sanitizeAutonomousTopicText, type SocialInitiative } from '../system/AutonomousSocialInitiativeEngine.ts';
+import type { NeuralJitInferenceTraceContext } from '../learning/NeuralJitLocalCaptureAdapter.ts';
 
 /** Recalled provider context is treated as data: unsafe or malformed statements are omitted, never partially redacted into a new claim. */
 function safeRecalledSummaries(values: Array<{ summary?: unknown }> | undefined, count: number, maxLength = 280): string[] {
@@ -53,12 +54,16 @@ export interface LanguageRequest {
   /** Optional host cancellation signal for bounded inference. */
   signal?: AbortSignal;
   contextLedger?: ContextBudgetLedgerReport;
+  /** Exact selected decision identity for an optional local-only activation capture. */
+  neuralJitTraceContext?: NeuralJitInferenceTraceContext;
 }
 
 export interface LanguageResponse {
   text: string;
   backend: string;
   latencyMs: number;
+  /** Opaque local model-host capture handle; stripped before the response leaves Runtime. */
+  neuralJitCapture?: unknown;
 }
 
 export type LanguageInvoker = (request: LanguageRequest) => Promise<LanguageResponse>;

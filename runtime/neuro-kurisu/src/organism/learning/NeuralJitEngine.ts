@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import {
   isTrustedDecisionLinkedExternalPostcondition,
   type ExpectedDecisionOutcomeBinding,
@@ -72,11 +72,22 @@ const MIN_TRAIN_TRACES = 12;
 const MIN_HOLDOUT_TRACES = 8;
 const MIN_HOLDOUT_TASKS = 8;
 const MIN_HOLDOUT_SEEDS = 5;
+const MAX_RESIDUAL_COEFFICIENT = 64;
 const HEX_256 = /^[a-f0-9]{64}$/;
 const SAFE_ID = /^[a-z0-9][a-z0-9._:-]{1,119}$/i;
 const SAFE_FAMILY = /^[a-z0-9][a-z0-9._:-]{1,79}$/i;
 const clamp = (value: number) => Math.max(-8, Math.min(8, value));
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+
+/** Stable, complete request identity shared by the runtime capture adapter and the JIT gate. */
+export function neuralJitInputFingerprint(binding: ExpectedDecisionOutcomeBinding): string {
+  return sha256Stable({
+    toolId: binding.toolId,
+    input: binding.input,
+    executionId: binding.executionId,
+    decisionId: binding.decisionId,
+  });
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   try {
@@ -114,7 +125,7 @@ function mse(a: number[], b: number[]): number {
 function restoreCandidate(raw: unknown): NeuralJitCandidate | null {
   if (!isRecord(raw)) return null;
   const meanInput = vector(raw.meanInput, 256), inputBasis = vector(raw.inputBasis, 256);
-  const meanOutput = vector(raw.meanOutput, 128), outputDirection = vector(raw.outputDirection, 128, 1_000_000);
+  const meanOutput = vector(raw.meanOutput, 128), outputDirection = vector(raw.outputDirection, 128, MAX_RESIDUAL_COEFFICIENT);
   const fingerprints = Array.isArray(raw.trainingTaskFingerprints)
     ? raw.trainingTaskFingerprints.filter((x): x is string => typeof x === 'string' && HEX_256.test(x)).slice(0, MAX_TRACE_COUNT)
     : [];
@@ -161,12 +172,8 @@ export class NeuralJitEngine {
     }
     const verification = input.verification as OutcomeVerification;
     let inputFingerprint = '';
-    try {
-      inputFingerprint = sha256Stable({
-        toolId: binding.toolId, input: binding.input,
-        executionId: binding.executionId, decisionId: binding.decisionId,
-      });
-    } catch { return this.reject('invalid-outcome-binding'); }
+    try { inputFingerprint = neuralJitInputFingerprint(binding); }
+    catch { return this.reject('invalid-outcome-binding'); }
 
     const capture = input.capture as unknown as NeuralJitActivationCapture;
     const expected = {
@@ -260,14 +267,20 @@ export class NeuralJitEngine {
     }
     if (energy < 1e-9) return null;
     const outputDirection = numerator.map(value => value / energy);
+    if(outputDirection.some(value => !Number.isFinite(value) || Math.abs(value)>MAX_RESIDUAL_COEFFICIENT)) {
+      this.lastDecision = 'compile-blocked:residual-coefficient-out-of-range';
+      this.lastDecisionAt = Date.now();
+      return null;
+    }
     const trainingTaskFingerprints = Array.from(new Set(train.map(trace => trace.taskFingerprint))).sort();
+    const candidateId = digest(['neural-jit-rank1-v1', modelFingerprint, taskFamily, trainingEvidenceFingerprint].join('|'));
     const candidate: NeuralJitCandidate = {
-      id: digest(modelFingerprint + '|' + taskFamily + '|' + trainingEvidenceFingerprint + '|' + randomUUID()),
+      id: candidateId,
       status: 'shadow', taskFamily, modelFingerprint, rank: 1, inputDimension, outputDimension,
       meanInput, inputBasis, meanOutput, outputDirection, trainTraceCount: train.length,
       trainingTaskFingerprints, trainingEvidenceFingerprint, evaluation: null, createdAt: Date.now(),
     };
-    this.candidates = [...this.candidates.filter(row => row.status !== 'rejected'), candidate].slice(-MAX_CANDIDATES);
+    this.candidates = [...this.candidates.filter(row => row.id !== candidateId && row.status !== 'rejected'), candidate].slice(-MAX_CANDIDATES);
     this.lastDecision = 'candidate-compiled:shadow';
     this.lastDecisionAt = Date.now();
     return structuredClone(candidate);
@@ -326,6 +339,28 @@ export class NeuralJitEngine {
     this.lastDecision = eligible ? 'candidate-eligible:shadow-only' : 'candidate-rejected:holdout-regression';
     this.lastDecisionAt = Date.now();
     return structuredClone(result);
+  }
+
+  /**
+   * Project a trained rank-1 residual for a model-host-owned detached shadow branch.
+   * The result is advisory data only: it is never applied to the primary inference path.
+   */
+  projectShadowResidual(candidateId: string, rawInputFeatures: unknown) {
+    const candidate=this.candidates.find(row=>row.id===candidateId && row.status==='eligible');
+    if(!candidate) return null;
+    const inputFeatures=vector(rawInputFeatures,256);
+    if(!inputFeatures || inputFeatures.length!==candidate.inputDimension) return null;
+    const projection=dot(inputFeatures.map((value,index)=>value-candidate.meanInput[index]),candidate.inputBasis);
+    const residual=candidate.meanOutput.map((value,index)=>clamp(value+candidate.outputDirection[index]*projection));
+    return {
+      candidateId:candidate.id,
+      rank:1 as const,
+      residual,
+      inputFingerprint:sha256Stable(inputFeatures),
+      mode:'shadow' as const,
+      appliedToInference:false as const,
+      fallback:'base-inference-path' as const,
+    };
   }
 
   persistenceSnapshot(): NeuralJitPersistedSnapshot {

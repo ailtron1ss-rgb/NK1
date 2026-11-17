@@ -128,6 +128,11 @@ const candidate = engine.compileCandidate({
 assert.ok(candidate);
 assert.equal(candidate.status, 'shadow');
 assert.equal(candidate.rank, 1);
+const compiledAgain = engine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint });
+assert.equal(compiledAgain.id, candidate.id,
+  'identical evidence must compile to the same deterministic candidate identity');
+assert.equal(engine.diagnostics().candidates.length, 1,
+  'recompiling unchanged evidence must replace, not duplicate, its candidate');
 assert.ok(candidate.trainTraceCount >= 12);
 assert.ok(candidate.trainingTaskFingerprints.length >= 12);
 assert.ok(candidate.trainingTaskFingerprints.every(x => /^[a-f0-9]{64}$/.test(x)));
@@ -147,6 +152,15 @@ assert.equal(
 assert.equal(engine.diagnostics().liveInferenceEnabled, false,
   'an eligible shadow adapter must not activate without a real local-inference hook');
 assert.equal(engine.diagnostics().activeCandidates, 0);
+const shadowProjection = engine.projectShadowResidual(candidate.id, candidate.meanInput);
+assert.ok(shadowProjection);
+assert.equal(shadowProjection.mode, 'shadow');
+assert.equal(shadowProjection.appliedToInference, false);
+assert.equal(shadowProjection.fallback, 'base-inference-path');
+assert.equal(shadowProjection.residual.length, candidate.outputDimension);
+assert.ok(shadowProjection.residual.every(Number.isFinite));
+assert.equal(engine.projectShadowResidual(candidate.id, [0.1]), null,
+  'host branch must fail closed on activation dimension mismatch');
 
 const stored = engine.persistenceSnapshot();
 assert.equal(stored.traces, undefined, 'raw activation traces must not be persisted as trusted evidence');
@@ -158,12 +172,14 @@ assert.equal(restored.diagnostics().candidates[0].status, 'quarantined',
   'persisted weights must not retain trust after process restart');
 assert.equal(restored.diagnostics().liveInferenceEnabled, false);
 assert.equal(restored.diagnostics().activeCandidates, 0);
+assert.equal(restored.projectShadowResidual(candidate.id,candidate.meanInput), null,
+  'restored candidates remain quarantined and cannot feed a local inference shadow branch');
 const wideWeights = structuredClone(stored);
 wideWeights.candidates[0].outputDirection[0] = 128;
 const restoredWideWeights = new NeuralJitEngine({ activationCaptureVerifier: verifier });
 restoredWideWeights.restore(wideWeights);
-assert.equal(restoredWideWeights.persistenceSnapshot().candidates[0].outputDirection[0], 128,
-  'quarantined persisted residual coefficients must not be silently clamped during restore');
+assert.equal(restoredWideWeights.persistenceSnapshot().candidates.length, 0,
+  'persisted candidates with out-of-range residual coefficients must be rejected rather than clamped or quarantined');
 
 const antiCorrelatedEngine = new NeuralJitEngine({ activationCaptureVerifier: verifier });
 for (let i = 0; i < 120; i += 1) {
@@ -180,6 +196,20 @@ assert.ok(antiCorrelatedCandidate,
   'rank-1 compilation must not fail when the covariance principal axis is orthogonal to an all-ones seed vector');
 assert.equal(antiCorrelatedEngine.evaluateCandidate(antiCorrelatedCandidate.id).eligible, true,
   'anti-correlated holdout samples must be evaluated by the same rank-1 candidate');
+
+const unstableCoefficientEngine = new NeuralJitEngine({ activationCaptureVerifier: verifier });
+for (let i = 0; i < 120; i += 1) {
+  const input = 0.0001 + i * 0.0000015;
+  const target = -3.5 + i * 0.055;
+  const trace = await makeTrace(4_000 + i, {
+    inputFeatures: [input, input * 2],
+    targetResidual: [target, -target],
+  });
+  const admittedTrace = await unstableCoefficientEngine.recordVerifiedTrace(trace);
+  assert.equal(admittedTrace.accepted, true);
+}
+assert.equal(unstableCoefficientEngine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint }), null,
+  'rank-1 compilation must reject unstable residual coefficients instead of persisting unbounded adapters');
 
 const malformedTrace = await makeTrace(999);
 malformedTrace.capture.inputFeatures = Array(257).fill(0.1);

@@ -43,7 +43,9 @@ import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
-import { NeuralJitEngine, type NeuralJitActivationCaptureVerifier, type NeuralJitPersistedSnapshot, type NeuralJitTraceInput } from '../learning/NeuralJitEngine.ts';
+import { NeuralJitEngine, neuralJitInputFingerprint, type NeuralJitActivationCaptureVerifier, type NeuralJitPersistedSnapshot, type NeuralJitTraceInput } from '../learning/NeuralJitEngine.ts';
+import type { NeuralJitLocalCaptureAdapter, NeuralJitInferenceTraceContext } from '../learning/NeuralJitLocalCaptureAdapter.ts';
+import { OutcomeVerificationService, isTrustedDecisionLinkedExternalPostcondition } from '../system/OutcomeVerificationService.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
@@ -125,6 +127,8 @@ export interface RuntimeConfig extends OrganismConfig {
   realityMode?: RealityGroundingMode;
   /** Optional host-owned verifier for exact local-model activation captures; no capture authority is installed by default. */
   neuralJitActivationCaptureVerifier?: NeuralJitActivationCaptureVerifier;
+  /** Optional, explicit local inference-host adapter that can capture and bind real internal activations. */
+  neuralJitCaptureAdapter?: NeuralJitLocalCaptureAdapter;
 }
 
 export interface RuntimeStepOptions {
@@ -241,6 +245,10 @@ export class OrganismRuntime {
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
   private readonly neuralJitEngine: NeuralJitEngine;
   private readonly neuralJitStore: JsonStateStore<NeuralJitPersistedSnapshot>;
+  private readonly neuralJitOutcomeVerification = new OutcomeVerificationService();
+  private readonly neuralJitPendingCaptures = new Map<string, { capture: unknown; traceContext: NeuralJitInferenceTraceContext; capturedAt: number }>();
+  private neuralJitCaptureDrops = 0;
+  private neuralJitMutationTail: Promise<void> = Promise.resolve();
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -347,8 +355,11 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
-    this.neuralJitEngine = new NeuralJitEngine({ activationCaptureVerifier: config.neuralJitActivationCaptureVerifier });
+    this.neuralJitEngine = new NeuralJitEngine({
+      activationCaptureVerifier: config.neuralJitCaptureAdapter ?? config.neuralJitActivationCaptureVerifier,
+    });
     this.neuralJitStore = new FileStateStore<NeuralJitPersistedSnapshot>(`${config.stateFile}.neural-jit.json`);
+    this.installNeuralJitOutcomeObserver();
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -833,10 +844,18 @@ export class OrganismRuntime {
       const request = externalText
         ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
         : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext());
+      request.neuralJitTraceContext = {
+        decisionId: cycle.decision.id,
+        tick: cycle.state.tick,
+        taskFamily: 'language-response',
+      };
       if(options.signal) request.signal=options.signal;
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
-        language = await languageInvoker(request);
+        const generated = await languageInvoker(request);
+        this.rememberNeuralJitCapture(generated, request.neuralJitTraceContext);
+        language = { ...generated };
+        delete language.neuralJitCapture;
         if (!externalText && autonomousAgenda && !this.core.stageAutonomousSocialInitiativeMessage(autonomousAgenda.id, language?.text ?? '', Date.now())) {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
         }
@@ -1201,6 +1220,143 @@ export class OrganismRuntime {
   realityLearningGateSnapshot(){ return this.realityLearningGate.snapshot(); }
   realityShadowBridgeSnapshot(){ return this.realityShadowBridge.snapshot(); }
 
+  private rememberNeuralJitCapture(response: LanguageResponse, traceContext?: NeuralJitInferenceTraceContext): void {
+    const adapter=this.config.neuralJitCaptureAdapter;
+    const capture=response?.neuralJitCapture;
+    if(!adapter || !traceContext || capture===undefined || capture===null) return;
+    const decisionId=String(traceContext.decisionId??'').trim();
+    if(!decisionId || decisionId.length>180 || !Number.isSafeInteger(traceContext.tick) || traceContext.tick<0) {
+      this.neuralJitCaptureDrops++;
+      return;
+    }
+    // Pending model-host handles are opaque and process-local. Keep them bounded,
+    // never serialize them, and require an object/string token from trusted host code.
+    if(typeof capture!=='string' && (typeof capture!=='object' || Array.isArray(capture))) {
+      this.neuralJitCaptureDrops++;
+      return;
+    }
+    try {
+      const bytes=new TextEncoder().encode(JSON.stringify(capture)).length;
+      if(bytes>16*1024) { this.neuralJitCaptureDrops++; return; }
+    } catch { this.neuralJitCaptureDrops++; return; }
+    const now=Date.now();
+    for(const [key,row] of this.neuralJitPendingCaptures) {
+      if(now-row.capturedAt>10*60_000) this.neuralJitPendingCaptures.delete(key);
+    }
+    if(this.neuralJitPendingCaptures.size>=128 && !this.neuralJitPendingCaptures.has(decisionId)) {
+      const oldest=[...this.neuralJitPendingCaptures.entries()].sort((a,b)=>a[1].capturedAt-b[1].capturedAt)[0];
+      if(oldest) this.neuralJitPendingCaptures.delete(oldest[0]);
+      this.neuralJitCaptureDrops++;
+    }
+    this.neuralJitPendingCaptures.set(decisionId,{capture,traceContext:{...traceContext},capturedAt:now});
+  }
+
+  /** Serialize JIT state transitions separately from the runtime queue to avoid finalizer re-entrancy deadlocks. */
+  private withNeuralJitMutation<T>(work:()=>Promise<T>|T):Promise<T> {
+    const run=this.neuralJitMutationTail.then(work,work);
+    this.neuralJitMutationTail=run.then(()=>undefined,()=>undefined);
+    return run;
+  }
+
+  /**
+   * Decorate the single Core-owned outcome finalizer instead of adding a JIT
+   * dependency to Core. The original finalizer always runs first; then this adapter
+   * repeats its selected-trace identity predicate and process-local verifier binding
+   * before it consumes a pending local activation capture.
+   */
+  private installNeuralJitOutcomeObserver(): void {
+    type FinalizerArgs = [
+      toolId:string,
+      input:Record<string,unknown>,
+      reason:string,
+      result:ToolExecution,
+      options:ActionGatewayExecutionOptions,
+      inputKeys?:string[],
+      decisionLinkedExternalPostcondition?:boolean,
+    ];
+    const host=this.core as unknown as { finalizeToolOutcome?: (...args:FinalizerArgs)=>Promise<void> };
+    if(typeof host.finalizeToolOutcome!=='function') {
+      this.neuralJitCaptureDrops++;
+      return;
+    }
+    const original=host.finalizeToolOutcome.bind(this.core);
+    host.finalizeToolOutcome=async(...args:FinalizerArgs)=>{
+      await original(...args);
+      const [toolId,input,,result,options,,gatewayDecisionLinked]=args;
+      const decisionId=String(options?.decisionId??'').trim();
+      // The pending capture was created from a real Runtime-selected decision.
+      // Require that exact persisted selected trace and a verifier binding. For
+      // keyed Gateway executions Core supplies an internal attestation after its
+      // original WeakMap check; those receipts may have been cloned for the durable
+      // ledger, so re-mint a JIT-only receipt in this Runtime-owned verifier.
+      if(!decisionId || !this.neuralJitPendingCaptures.has(decisionId) ||
+          result?.outcomeClass!=='executed-verified' || result.ok!==true || result.verified!==true) return;
+      let selectedTrace=false;
+      try {
+        selectedTrace=this.core.consolidationInputSnapshot().traces.some(trace =>
+          trace.id===decisionId && trace.selected!==null &&
+          (trace.tick===trace.stateBefore.tick || trace.tick===trace.stateBefore.tick+1));
+      } catch { return; }
+      if(!selectedTrace) return;
+      const binding={toolId,input,executionId:result.executionId,decisionId};
+      let neuralJitResult=result;
+      if(!isTrustedDecisionLinkedExternalPostcondition(result.verification,binding)) {
+        if(gatewayDecisionLinked!==true) return;
+        const originalVerification=result.verification;
+        const recertified=await this.neuralJitOutcomeVerification.verify({
+          toolId,input,result:result.result,executionId:result.executionId,decisionId,
+        }, async()=>({
+          verified:originalVerification.verified,
+          basis:originalVerification.basis,
+          confidence01:originalVerification.confidence01,
+          externalObservation:originalVerification.externalObservation,
+          observationId:originalVerification.observationId,
+          expectedPostcondition:originalVerification.expectedPostcondition,
+          observedPostcondition:originalVerification.observedPostcondition,
+        }));
+        if(!isTrustedDecisionLinkedExternalPostcondition(recertified,binding)) return;
+        neuralJitResult={...result,verification:recertified};
+      }
+      try {
+        await this.consumeNeuralJitOutcome({toolId,input,result:neuralJitResult,options,decisionId});
+      } catch {
+        // Shadow learning can never invalidate a canonical, already-finalized action.
+        this.neuralJitCaptureDrops++;
+      }
+    };
+  }
+
+  private async consumeNeuralJitOutcome(context:{
+    toolId:string; input:Record<string,unknown>; result:ToolExecution;
+    options:ActionGatewayExecutionOptions; decisionId:string;
+  }):Promise<void> {
+    return this.withNeuralJitMutation(async()=>{
+    const adapter=this.config.neuralJitCaptureAdapter;
+    const pending=this.neuralJitPendingCaptures.get(context.decisionId);
+    if(!adapter || !pending) return;
+    this.neuralJitPendingCaptures.delete(context.decisionId);
+    if(Date.now()-pending.capturedAt>10*60_000) { this.neuralJitCaptureDrops++; return; }
+    if(pending.traceContext.decisionId!==context.decisionId) { this.neuralJitCaptureDrops++; return; }
+    const binding={toolId:context.toolId,input:context.input,executionId:context.result.executionId,decisionId:context.decisionId};
+    if(!isTrustedDecisionLinkedExternalPostcondition(context.result.verification,binding)) return;
+    let inputFingerprint:string;
+    try { inputFingerprint=neuralJitInputFingerprint(binding); }
+    catch { this.neuralJitCaptureDrops++; return; }
+    let boundCapture;
+    try {
+      boundCapture=await adapter.bindVerifiedOutcome(pending.capture,{
+        binding,inputFingerprint,taskFamily:pending.traceContext.taskFamily,tick:pending.traceContext.tick,
+        verification:context.result.verification,
+        outcome:{ok:context.result.ok,outcomeClass:context.result.outcomeClass,confidence01:context.result.verification.confidence01},
+      });
+    } catch { this.neuralJitCaptureDrops++; return; }
+    if(!boundCapture) { this.neuralJitCaptureDrops++; return; }
+    const admitted=await this.neuralJitEngine.recordVerifiedTrace({capture:boundCapture,verification:context.result.verification,binding});
+    if(admitted.accepted) await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
+    else this.neuralJitCaptureDrops++;
+    });
+  }
+
   /**
    * Admit a Neural JIT sample only when both the exact ActionGateway postcondition
    * receipt and the host-owned local-model activation capture are authenticated.
@@ -1209,9 +1365,11 @@ export class OrganismRuntime {
   async recordNeuralJitTrace(input: NeuralJitTraceInput) {
     return this.enqueue(async()=>{
       if(!this.initialized) throw new Error('organism-runtime-not-initialized');
-      const result=await this.neuralJitEngine.recordVerifiedTrace(input);
-      if(result.accepted) await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
-      return result;
+      return this.withNeuralJitMutation(async()=>{
+        const result=await this.neuralJitEngine.recordVerifiedTrace(input);
+        if(result.accepted) await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
+        return result;
+      });
     });
   }
 
@@ -1219,9 +1377,11 @@ export class OrganismRuntime {
   async compileNeuralJitCandidate(input:{taskFamily:string;modelFingerprint:string}) {
     return this.enqueue(async()=>{
       if(!this.initialized) throw new Error('organism-runtime-not-initialized');
-      const candidate=this.neuralJitEngine.compileCandidate(input);
-      if(candidate) await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
-      return candidate;
+      return this.withNeuralJitMutation(async()=>{
+        const candidate=this.neuralJitEngine.compileCandidate(input);
+        if(candidate) await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
+        return candidate;
+      });
     });
   }
 
@@ -1229,13 +1389,16 @@ export class OrganismRuntime {
   async evaluateNeuralJitCandidate(id:string) {
     return this.enqueue(async()=>{
       if(!this.initialized) throw new Error('organism-runtime-not-initialized');
-      const result=this.neuralJitEngine.evaluateCandidate(id);
-      await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
-      return result;
+      return this.withNeuralJitMutation(async()=>{
+        const result=this.neuralJitEngine.evaluateCandidate(id);
+        await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
+        return result;
+      });
     });
   }
 
-  neuralJitDiagnostics(){ return this.neuralJitEngine.diagnostics(); }
+  neuralJitDiagnostics(){ return { ...this.neuralJitEngine.diagnostics(), localCaptureAdapterConfigured:Boolean(this.config.neuralJitCaptureAdapter), pendingCaptureCount:this.neuralJitPendingCaptures.size, captureDrops:this.neuralJitCaptureDrops }; }
+  projectNeuralJitShadowResidual(candidateId:string,inputFeatures:number[]){ return this.neuralJitEngine.projectShadowResidual(candidateId,inputFeatures); }
 
   /** Compile a bounded procedural skill into the runtime-owned library and persist it before returning. */
   async compileCompoundSkill(input:Parameters<ProceduralSkillLibrary['compileCompoundSkill']>[0]) {
