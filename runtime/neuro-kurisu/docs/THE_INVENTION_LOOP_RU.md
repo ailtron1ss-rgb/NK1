@@ -19,7 +19,7 @@ Any failed preregistered threshold or independent critique blocker ends in `reje
 - The coordinator records evidence and decisions; it does not execute arbitrary code, merge branches, publish releases or promote model weights.
 
 ## Integration boundary
-This module is designed to coordinate existing NK1 research foundations such as `IntrinsicExperimentGenerator`, `ScientificMethodEngine`, `AutonomousScientificBrainSubstrate` and `P53DevelopmentalSelfModificationLab`. It intentionally does not duplicate their hypothesis generation, scientific state or candidate mutation logic. Runtime wiring is a subsequent integration step after contract tests and dependency mapping.
+This module is designed to coordinate existing NK1 research foundations such as `IntrinsicExperimentGenerator`, `ScientificMethodEngine`, `AutonomousScientificBrainSubstrate` and `P53DevelopmentalSelfModificationLab`. It intentionally does not duplicate their hypothesis generation, scientific state or candidate mutation logic. The coordinator is wired into `EvidenceResearchSubsystemRuntime` snapshot/restore and exported from the organism entry point. Automatic experiment execution and candidate promotion remain intentionally out of scope.
 
 ## Verification
 Run from `runtime/neuro-kurisu`:
