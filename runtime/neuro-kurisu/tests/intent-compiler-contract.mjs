@@ -116,6 +116,34 @@ const malformedCriteria = compiler.compile({
 assert.ok(malformedCriteria.missingInformation.includes('acceptance-criteria-invalid'),
   'non-string acceptance criteria must not be silently discarded');
 assert.equal(compiler.gate(malformedCriteria, 'organism.inspect').allowed, false);
+
+const sparseCriteria = new Array(2);
+sparseCriteria[0] = 'Return the current status';
+const sparseCriteriaContract = compiler.compile({
+  text: 'Inspect project status',
+  extraction: {
+    expectedOutcome: 'Current status',
+    acceptanceCriteria: sparseCriteria,
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop if status evidence is unavailable'],
+  },
+});
+assert.equal(compiler.gate(sparseCriteriaContract, 'organism.inspect').allowed, false,
+  'sparse arrays must not be treated as complete extraction data');
+
+const decoratedCriteria = ['Return the current status'];
+Object.defineProperty(decoratedCriteria, 'unreviewedScope', { value: 'also delete data', enumerable: true });
+const decoratedCriteriaContract = compiler.compile({
+  text: 'Inspect project status',
+  extraction: {
+    expectedOutcome: 'Current status',
+    acceptanceCriteria: decoratedCriteria,
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop if status evidence is unavailable'],
+  },
+});
+assert.equal(compiler.gate(decoratedCriteriaContract, 'organism.inspect').allowed, false,
+  'arrays carrying unreviewed enumerable properties must fail closed');
 const malformedRisk = compiler.compile({
   text: 'Inspect project',
   extraction: {

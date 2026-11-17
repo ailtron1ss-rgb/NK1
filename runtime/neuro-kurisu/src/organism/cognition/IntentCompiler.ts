@@ -96,7 +96,7 @@ const MIN_APPROVAL_KEY_BYTES = 32;
 const PROCESS_APPROVAL_KEY = randomBytes(32).toString('hex');
 
 const RISK_PATTERNS: ReadonlyArray<[RegExp, string, IntentRiskLevel]> = [
-  [/(?:\b(?:token|api[ _-]?key|secret|password|credential|private[ _-]?key)\b.{0,120}\b(?:send|post|upload|transfer|exfiltrat\w*|leak)\b.{0,100}\b(?:external|remote|third[ -]?party|public)\b|\b(?:exfiltrat\w*|steal\s+(?:the\s+)?(?:credentials?|passwords?|secrets?|tokens?)|dump\s+(?:credentials?|passwords?|secrets?|tokens?))\b|(?:токен|ключ|секрет|парол|уч[её]тн\p{L}*\s+данн).{0,120}(?:отправ|переда|слить|выгруз|эксфильтр).{0,100}(?:внешн|публичн|удал[её]нн|чуж)|(?:отправ|переда|слить|выгруз).{0,100}(?:токен|ключ|секрет|парол).{0,100}(?:внешн|публичн|удал[её]нн|чуж)/iu,
+  [/(?:\b(?:token|api[ _-]?key|secret|password|credential|private[ _-]?key)\b.{0,120}\b(?:send|post|upload|transfer|exfiltrat\w*|leak)\b.{0,100}\b(?:external|remote|third[ -]?party|public)\b|\b(?:exfiltrat\w*|steal\s+(?:the\s+)?(?:credentials?|passwords?|secrets?|tokens?)|dump\s+(?:credentials?|passwords?|secrets?|tokens?))\b|(?:токен|ключ|секрет|парол|уч[её]тн\p{L}*\s+данн).{0,120}(?:отправ|переда|слить|выгруз|эксфильтр).{0,100}(?:внешн|публичн|удал[её]нн|чуж)|(?:отправ|переда|слить|выгруз).{0,100}(?:токен|ключ|секрет|парол).{0,100}(?:внешн|публичн|удал[её]нн|чуж))/iu,
     'credential-or-secret-exfiltration-language', 'critical'],
   [/\b(delete|erase|drop|destroy|remove|wipe|format)\b|удал\p{L}*|стер\p{L}*|уничтож\p{L}*|очист\p{L}*|сброс\p{L}*|форматир\p{L}*/iu,
     'destructive-operation-language', 'high'],
@@ -185,7 +185,7 @@ function isPlainDataTree(value: unknown, active = new Set<object>()): boolean {
     if (Array.isArray(value)) {
       if (Object.getPrototypeOf(value) !== Array.prototype) return false;
       const descriptors = Object.getOwnPropertyDescriptors(value);
-      const length = descriptors.length?.value;
+      const length = Object.getOwnPropertyDescriptor(value, 'length')?.value;
       if (!Number.isSafeInteger(length) || length !== value.length) return false;
       for (let i = 0; i < length; i += 1) {
         const descriptor = descriptors[String(i)];
@@ -257,8 +257,12 @@ function isIntentContract(value: unknown): value is IntentContract {
 }
 
 export class IntentCompiler {
+  private readonly options: { clock?: () => number; approvalKey?: string | Uint8Array; approvalVerifier?: IntentApprovalVerifier; extractionTimeoutMs?: number };
   private readonly provenance = new WeakMap<object, 'draft' | 'approved' | 'rejected' | 'superseded'>();
-  constructor(private readonly options: { clock?: () => number; approvalKey?: string | Uint8Array; approvalVerifier?: IntentApprovalVerifier; extractionTimeoutMs?: number } = {}) {}
+
+  constructor(options: { clock?: () => number; approvalKey?: string | Uint8Array; approvalVerifier?: IntentApprovalVerifier; extractionTimeoutMs?: number } = {}) {
+    this.options = options;
+  }
 
   private now(): number {
     const value = this.options.clock?.() ?? Date.now();
@@ -543,7 +547,7 @@ export class IntentCompiler {
     const rejected = freezeDeep({
       ...contract,
       approval: {
-        status: 'rejected',
+        status: 'rejected' as const,
         allowedActions: [],
         acknowledgedAssumptions: [],
         riskAcknowledged: false,
