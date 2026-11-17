@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-17-layer-force-activation-steering-design.md`
 
+**Current status (2026-11-17):** controller, sidecar integration, focused tests, CI, operator documentation and changelog are implemented in Draft PR #931, stacked on #925. Exact-head verification on `9d70ef1ba54319cea4e350eba9ba1d6fe0d1e9d5`: push and pull-request workflows both passed their Python and Node jobs; related cadence and metrics workflows also passed. No base-model weights are modified. Real-model task quality, direction calibration, latency, memory, safety and target-device soak are not measured; do not promote or release on the synthetic fixture result alone.
+
 ## Global Constraints
 
 - Use the existing Neural Prosthesis sidecar and P40 provider boundary; do not create a second runtime or provider.
@@ -76,11 +78,11 @@
 - Modify: `research/neural-prosthesis/README.md`
 - Modify: `CHANGELOG.md`
 
-- [ ] **Step 1: Add a workflow** for the Layer Force branch and stacked PR base; run Python sidecar tests, runtime typecheck and Neural Prosthesis integration/P40 regressions.
-- [ ] **Step 2: Document profile schema and operator opt-in** with a minimal example, model binding, digest calculation, allowlist and disable procedure.
-- [ ] **Step 3: Record the implementation status** as Draft/IMPLEMENTED, with real model evaluation, quality, latency, memory, safety and device soak explicitly unresolved.
-- [ ] **Step 4: Run the full applicable Python tests, Node runtime typecheck and existing integration tests locally where dependencies are available.**
-- [ ] **Step 5: Inspect the exact diff, create a Draft PR targeting the #925 branch, and report exact head SHA plus workflow outcomes.**
+- [x] **Step 1: Add a workflow** for the Layer Force branch and stacked PR base; run Python sidecar tests, runtime typecheck and Neural Prosthesis integration/P40 regressions.
+- [x] **Step 2: Document profile schema and operator opt-in** with model binding, raw-file digest calculation, allowlist and disable procedure.
+- [x] **Step 3: Record the implementation status** as Draft/IMPLEMENTED and explicitly leave real-model evaluation, quality, latency, memory, safety and device soak unresolved.
+- [x] **Step 4: Run the full applicable Python suite and Node runtime typecheck/integration/P40 tests in exact-head CI.** Local execution is not claimed.
+- [x] **Step 5: Inspect the exact diff and maintain Draft PR #931 targeting the #925 branch; verified head: `9d70ef1ba54319cea4e350eba9ba1d6fe0d1e9d5`.**
 
 ## Verification Commands
 
