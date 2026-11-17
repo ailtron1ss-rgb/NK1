@@ -993,6 +993,15 @@ export class ConsequenceEcologyEngine {
         ? options.reduce((sum, option) => sum + option.counterfactualCoverage01, 0) / options.length
         : 0,
       correlatedPathMerges: options.reduce((sum, option) => sum + option.correlatedPathMerges, 0),
+      meanWorstStakeholderHarm01: options.length
+        ? options.reduce((sum, option) => sum + option.worstStakeholderHarm01, 0) / options.length
+        : 0,
+      meanBenefitBurdenSeparation01: options.length
+        ? options.reduce((sum, option) => sum + option.benefitBurdenSeparation01, 0) / options.length
+        : 0,
+      highConcentrationOptions: options.filter(option =>
+        option.topStakeholderHarmShare01 >= 0.75 && option.worstStakeholderHarm01 >= 0.2).length,
+      mandatoryDistributionReviewOptions: options.filter(option => option.worstStakeholderHarm01 >= 0.6).length,
       bounded: analyses.length <= MAX_ANALYSES && options.every(option =>
         option.nodes.length <= MAX_NODES && option.feedbackLoops.length <= 16),
       decisionAuthority: 'none' as const,
