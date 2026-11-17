@@ -56,6 +56,8 @@ export interface SubstrateCalibrationTrial {
   taskFamily: string;
   independenceKey: string;
   evaluatorReceiptId: string;
+  evaluatorKeyId?: string;
+  evaluatorSignatureBase64?: string;
   holdout: true;
   taskSuccess01: number;
   memoryRecall01: number;
@@ -462,13 +464,19 @@ function normalizeEvaluation(value: unknown): SubstrateMigrationEvaluation | nul
 function normalizeTrial(value: unknown): SubstrateCalibrationTrial {
   const row = ownDataRecord(value, [
     'trialId', 'transferDigest', 'sourceBackendId', 'targetBackendId', 'taskId', 'taskFamily', 'independenceKey',
-    'evaluatorReceiptId', 'holdout', 'taskSuccess01', 'memoryRecall01', 'goalFidelity01',
+    'evaluatorReceiptId', 'evaluatorKeyId', 'evaluatorSignatureBase64', 'holdout', 'taskSuccess01', 'memoryRecall01', 'goalFidelity01',
     'constraintFidelity01', 'identityContinuity01', 'toolContract01', 'sourceLatencyMs', 'targetLatencyMs',
   ]);
   for (const key of [
     'trialId', 'sourceBackendId', 'targetBackendId', 'taskId', 'taskFamily',
     'independenceKey', 'evaluatorReceiptId',
   ] as const) if (!isSafeId(row[key], 180)) return fail('calibration-trial-invalid:' + key);
+  if (row.evaluatorKeyId !== undefined && !isSafeId(row.evaluatorKeyId, 120)) return fail('calibration-evaluator-key-id-invalid');
+  if (row.evaluatorSignatureBase64 !== undefined) {
+    if (typeof row.evaluatorSignatureBase64 !== 'string') return fail('calibration-evaluator-signature-invalid');
+    const decoded = Buffer.from(row.evaluatorSignatureBase64, 'base64');
+    if (decoded.length !== 64 || decoded.toString('base64') !== row.evaluatorSignatureBase64) return fail('calibration-evaluator-signature-invalid');
+  }
   if (row.holdout !== true) return fail('calibration-trial-not-holdout');
   for (const key of [
     'taskSuccess01', 'memoryRecall01', 'goalFidelity01', 'constraintFidelity01',
@@ -492,6 +500,8 @@ function normalizeTrial(value: unknown): SubstrateCalibrationTrial {
     taskFamily: row.taskFamily as string,
     independenceKey: row.independenceKey as string,
     evaluatorReceiptId: row.evaluatorReceiptId as string,
+    ...(row.evaluatorKeyId === undefined ? {} : { evaluatorKeyId: row.evaluatorKeyId as string }),
+    ...(row.evaluatorSignatureBase64 === undefined ? {} : { evaluatorSignatureBase64: row.evaluatorSignatureBase64 as string }),
     holdout: true,
     taskSuccess01: Number(row.taskSuccess01),
     memoryRecall01: Number(row.memoryRecall01),
@@ -502,6 +512,17 @@ function normalizeTrial(value: unknown): SubstrateCalibrationTrial {
     sourceLatencyMs: Number(row.sourceLatencyMs),
     targetLatencyMs: Number(row.targetLatencyMs),
   };
+}
+
+/** Canonical Ed25519 signing payload for host-owned calibration receipts. The signature itself is excluded. */
+export function substrateCalibrationSigningPayload(input: SubstrateCalibrationTrial): string {
+  const trial = normalizeTrial(input);
+  const signed: Record<string, PortableJson> = {};
+  for (const [key, value] of Object.entries(trial)) {
+    if (key === 'evaluatorSignatureBase64') continue;
+    Object.defineProperty(signed, key, { value: normalizePortable(value, 64 * 1024), enumerable: true, writable: true, configurable: true });
+  }
+  return canonicalJson(signed);
 }
 
 export class SubstrateIndependenceEngine {
