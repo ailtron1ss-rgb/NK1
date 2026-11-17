@@ -65,6 +65,14 @@ const holdoutInput = {
   observed: 92,
 };
 
+let accessorTouched = false;
+const accessorProtocol = Object.defineProperty({}, 'question', {
+  enumerable: true,
+  get() { accessorTouched = true; return 'should-not-be-read'; },
+});
+assert.throws(() => loop.propose(accessorProtocol), /invalid-preregistration-payload/);
+assert.equal(accessorTouched, false);
+
 const p = loop.propose(protocol);
 assert.equal(p.stage, 'proposed');
 assert.throws(() => loop.propose({ ...protocol, verifierPlan: { ...protocol.verifierPlan, holdout: 'verifier-primary' } }), /invalid-preregistration/);
@@ -138,6 +146,9 @@ for (let index = 0; index < holdoutRuns.length; index += 1) {
 }
 assert.equal(loop.metrics().accepted, 1);
 assert.equal(loop.metrics().auditVerifiedRecords, 1);
+assert.equal(primary.phaseSummaries, undefined);
+assert.equal(loop.snapshot().records[0].phaseSummaries.replication.successRate01, 0.8);
+assert.equal(loop.snapshot().records[0].phaseSummaries.holdout.successRate01, 0.8);
 assert.throws(() => loop.reject(p.id, 'late-reject'), /invention-closed/);
 
 // A worse result must be rejected even if an untrusted caller tries to claim effect01=1.
@@ -213,12 +224,12 @@ assert.equal(weakResult.phaseSummaries.replication.passed, false);
 
 // Restoring altered records must quarantine them instead of trusting the mutable cache.
 const tampered = loop.snapshot();
-tampered.records[2].protocol.baseline = 50;
+tampered.records[3].protocol.baseline = 50;
 tampered.accepted = 999;
 const restored = new TheInventionLoop(() => now++, () => 'unused');
 restored.restore(tampered);
 assert.equal(restored.metrics().accepted, 0);
 assert.equal(restored.metrics().quarantinedRecords, 1);
-assert.equal(restored.metrics().auditVerifiedRecords, 2);
+assert.equal(restored.metrics().auditVerifiedRecords, 3);
 
 console.log('THE_INVENTION_LOOP_LIFECYCLE=PASS preregistered-seeds+verified-ledger+audit-chain');
