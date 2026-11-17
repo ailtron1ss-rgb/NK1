@@ -1507,6 +1507,9 @@ export class OrganismCore {
         this.cognitiveRuntime.futureSimulator.restore(this.persisted.facets.advanced.futureSimulator, {
              validateIndependentlyVerifiedOutcome: (outcome) => this.validateSharedFutureOutcomeEvidence(outcome),
          });
+        // Persist the sanitized/downgraded Shared Future snapshot, never keep a stale
+        // independentlyVerified claim that failed revalidation during restore.
+        this.persisted.facets.advanced.futureSimulator = this.cognitiveRuntime.futureSimulator.snapshot();
         this.cognitiveRuntime.longTermSocialMind.restore(this.persisted.facets.advanced.longTermSocialMind);
         this.cognitiveRuntime.futureSelf.restore(this.persisted.facets.advanced.futureSelf);
         this.cognitiveRuntime.socialDevelopment.restore(this.persisted.facets.advanced.socialDevelopment);
