@@ -474,6 +474,47 @@ assert.ok(distributionDiagnostics.meanBenefitBurdenSeparation01 > 0);
 assert.ok(distributionDiagnostics.highConcentrationOptions >= 1);
 
 
+
+assert.throws(() => simulator.analyzeConsequences({
+  id: 'consequence-invalid-node-probability',
+  horizonDays: 30,
+  options: [option('invalid-probability', 'reject an out-of-range event probability', [
+    node('bad-probability', 'harm', 1.2, 0.8, 0.9),
+  ], [edge('bad-probability-edge', '__action__', 'bad-probability')])],
+}), /consequence-node-probability-invalid/,
+'out-of-range probability must be rejected instead of clamped to a misleading certainty');
+
+assert.throws(() => simulator.analyzeConsequences({
+  id: 'consequence-invalid-node-impact',
+  horizonDays: 30,
+  options: [option('invalid-impact', 'reject a non-finite impact', [
+    node('bad-impact', 'harm', 0.5, Number.NaN, 0.9),
+  ], [edge('bad-impact-edge', '__action__', 'bad-impact')])],
+}), /consequence-node-impact-invalid/);
+
+assert.throws(() => simulator.analyzeConsequences({
+  id: 'consequence-invalid-baseline',
+  horizonDays: 30,
+  options: [option('invalid-baseline', 'reject an out-of-range counterfactual probability', [
+    node('bad-baseline', 'harm', 0.5, 0.8, 0.9, { baselineProbability01: -0.1 }),
+  ], [edge('bad-baseline-edge', '__action__', 'bad-baseline')])],
+}), /consequence-node-baseline-probability-invalid/);
+
+assert.throws(() => simulator.analyzeConsequences({
+  id: 'consequence-invalid-edge-strength',
+  horizonDays: 30,
+  options: [option('invalid-edge', 'reject an invalid causal transfer', [
+    node('edge-target', 'harm', 0.5, 0.8, 0.9),
+  ], [edge('invalid-strength', '__action__', 'edge-target', { strength01: 1.01 })])],
+}), /consequence-edge-strength-invalid/);
+
+assert.throws(() => simulator.analyzeConsequences({
+  id: 'consequence-invalid-horizon',
+  horizonDays: 2.5,
+  options: [safe],
+}), /consequence-horizon-invalid/,
+'fractional horizons must not be silently rounded to another analysis window');
+
 console.log('CONSEQUENCE_ECOLOGY=PASS', JSON.stringify({
   analysisCount: simulator.consequenceEcology.diagnostics().retainedAnalyses,
   modelTopRankedOptionId: first.analysis.modelTopRankedOptionId,
