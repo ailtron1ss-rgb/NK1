@@ -25,6 +25,26 @@ assert.throws(() => seedConcentration.createSession({
 }), /holdout-seed-diversity-invalid/,
 'five scenario IDs must not be mistaken for five independent holdout seeds');
 
+let sessionGetterCalls = 0;
+const accessorSession = { ...input };
+Object.defineProperty(accessorSession, 'runId', {
+  enumerable: true,
+  get() { sessionGetterCalls += 1; return 'getter-must-not-run'; },
+});
+assert.throws(() => new DevelopmentalMultiverse().createSession(accessorSession), /session-data-invalid/,
+  'session accessors must be rejected before untrusted values are read');
+assert.equal(sessionGetterCalls, 0, 'session snapshotting must not execute getters');
+
+let restoreGetterCalls = 0;
+const accessorRestore = {};
+Object.defineProperty(accessorRestore, 'version', {
+  enumerable: true,
+  get() { restoreGetterCalls += 1; return 1; },
+});
+assert.throws(() => new DevelopmentalMultiverse().restore(accessorRestore), /snapshot-data-invalid/,
+  'restore accessors must be rejected before state validation');
+assert.equal(restoreGetterCalls, 0, 'restore validation must not execute getters');
+
 const baselineMetrics = { quality01: 0.7, cost01: 0.5, safety01: 0.95, stability01: 0.82 };
 const validationMetrics = {
   baseline: baselineMetrics,
