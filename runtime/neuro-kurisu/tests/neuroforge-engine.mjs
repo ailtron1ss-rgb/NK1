@@ -119,6 +119,39 @@ test('scanner records symlink omissions and detects unquoted secret assignments 
   });
 });
 
+
+test('scanner records a pinned Git origin while removing credentials from its URL', async () => {
+  await withTempRoot(async root => {
+    const donorRoot = path.join(root, 'git-donor');
+    const revision = 'a'.repeat(40);
+    await makeProject(donorRoot, {
+      '.git/HEAD': 'ref: refs/heads/main\n',
+      '.git/refs/heads/main': revision + '\n',
+      '.git/config': [
+        '[core]',
+        '\trepositoryformatversion = 0',
+        '[remote "origin"]',
+        '\turl = https://scanner-user:scanner-password@github.com/example/donor.git',
+        '\tfetch = +refs/heads/*:refs/remotes/origin/*',
+        '',
+      ].join('\n'),
+      'src/index.ts': 'export const donor = true;\n',
+    });
+
+    const manifest = await scanNeuroForgeProject(donorRoot, { projectId: 'git-donor' });
+
+    assert.equal(manifest.upstreamRevision, revision);
+    assert.deepEqual(manifest.sourceProvenance, {
+      repositoryUrl: 'https://github.com/example/donor.git',
+      revision,
+      ref: 'refs/heads/main',
+      status: 'pinned',
+    });
+    assert.equal(JSON.stringify(manifest).includes('scanner-user'), false);
+    assert.equal(JSON.stringify(manifest).includes('scanner-password'), false);
+  });
+});
+
 test('NeuroForge CLI writes a review bundle and exits successfully for a valid donor root', async () => {
   await withTempRoot(async root => {
     const baselineRoot = path.join(root, 'nk1-runtime');
