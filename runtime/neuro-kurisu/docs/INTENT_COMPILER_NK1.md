@@ -108,8 +108,13 @@ but approved contracts will not be restorable after process restart. Restore
 drops contracts that fail HMAC verification. This is fail-closed by design.
 
 The bounded approved-contract/lineage snapshot is stored in
-`OrganismSystemState.intentContracts`. The canonical ActionGateway execution
-ledger remains separate and authoritative for real-world side effects.
+`OrganismSystemState.intentContracts`. Before dispatch, Core checkpoints an
+intent execution link containing the contract ID, canonical tool, decision ID
+and SHA-256 digest of the original idempotency key. The raw key is never copied
+into this snapshot. On restart, read-only receipt lookup is permitted only when
+the same contract/tool/key digest matches a pending intent execution. The
+canonical ActionGateway execution ledger remains separate and authoritative
+for real-world side effects.
 
 ## Core API
 
