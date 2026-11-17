@@ -62,6 +62,7 @@ export function parseTrustedConstitutionReviewKeys(raw: string | undefined): Rea
   catch { throw new Error('NEURO_CONSTITUTION_REVIEW_KEYS_JSON must be valid JSON'); }
   if (!isRecord(parsed)) throw new Error('constitution review keys must be an object keyed by reviewer ID');
   const keys = new Map<string, string>();
+  const publicKeyFingerprints = new Set<string>();
   for (const [reviewerId, pem] of Object.entries(parsed)) {
     if (!nonEmpty(reviewerId) || !/^[A-Za-z0-9][A-Za-z0-9._:@-]*$/.test(reviewerId) || typeof pem !== 'string') {
       throw new Error('constitution review key entries must map valid reviewer IDs to PEM public keys');
@@ -71,6 +72,13 @@ export function parseTrustedConstitutionReviewKeys(raw: string | undefined): Rea
     try { key = createPublicKey(pem); }
     catch { throw new Error('constitution review keys must be valid Ed25519 public keys'); }
     if (key.asymmetricKeyType !== 'ed25519') throw new Error('constitution review keys must be valid Ed25519 public keys');
+    // Reviewer identity is a public-key identity, not merely a configurable label.
+    // Key aliases must never let one private key satisfy a multi-reviewer quorum.
+    const fingerprint = createHash('sha256').update(key.export({ type: 'spki', format: 'der' })).digest('hex');
+    if (publicKeyFingerprints.has(fingerprint)) {
+      throw new Error('distinct constitution reviewer IDs must not share the same Ed25519 public key');
+    }
+    publicKeyFingerprints.add(fingerprint);
     keys.set(reviewerId, pem);
   }
   return keys;
