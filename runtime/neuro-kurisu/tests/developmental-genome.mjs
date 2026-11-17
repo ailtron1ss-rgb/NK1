@@ -116,6 +116,18 @@ test('gate rejects a re-hashed candidate that changes immutable module ownership
   assert.ok(report.violations.some(item => item.code === 'immutable-module-change'));
 });
 
+test('gate protects snapshot weights and execution ranks as immutable module contracts', () => {
+  const parent = buildDevelopmentalGenome();
+  const candidate = inheritDevelopmentalGenome(parent, [{ module: 'world', cadenceCycles: 2 }]);
+  const world = candidate.modules.find(module => module.name === 'world');
+  world.snapshotWeight01 = 0.99;
+  world.executionRank = 99;
+  candidate.digest = computeDevelopmentalGenomeDigest(candidate);
+  const report = evaluateDevelopmentalGenome(candidate, parent);
+  assert.equal(report.status, 'BLOCKED');
+  assert.ok(report.violations.some(item => item.code === 'immutable-module-change'));
+});
+
 test('gate rejects altered invariant, release-schema, and migration-owner contracts', () => {
   const parent = buildDevelopmentalGenome();
   const candidate = inheritDevelopmentalGenome(parent, [{ module: 'world', cadenceCycles: 2 }]);
