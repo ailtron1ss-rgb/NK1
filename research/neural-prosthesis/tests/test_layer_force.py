@@ -12,8 +12,8 @@ import torch
 from torch import nn
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from neural_prosthesis.engine import ArtifactError  # noqa: E402
-from neural_prosthesis.layer_force import LayerForceBank  # noqa: E402
+from neural_prosthesis.engine import _canonical_json  # noqa: E402
+from neural_prosthesis.layer_force import LayerForceBank, LayerForceError  # noqa: E402
 
 
 class IdentityLayer(nn.Module):
@@ -69,31 +69,35 @@ class LayerForceTests(unittest.TestCase):
         self.bank.close()
         self.tmp.cleanup()
 
-    def write_profile(self, **overrides):
+    def write_profile(self, *, bank=None, path=None, **overrides):
+        bank = bank or self.bank
         profile = {
             "schema_version": 1,
             "profile_id": "kurisu-reasoning-v1",
-            "model": {
-                "model_id": "nk1/tiny-test",
-                "model_revision": "a" * 40,
-                "config_sha256": self.bank.config_sha256,
-                "layer_path": "layers",
-                "hidden_size": 8,
-            },
-            "layers": [
-                {
-                    "index": 1,
-                    "direction": [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    "strength": 1.0,
-                }
-            ],
+            "base_model_id": bank.model_id,
+            "base_model_revision": bank.model_revision,
+            "config_sha256": bank.config_sha256,
+            "layer_path": bank.layer_path,
+            "hidden_size": bank.hidden_size,
             "max_delta_ratio": 0.10,
+            "layer_directions": {
+                "1": [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            },
         }
         profile.update(overrides)
-        path = self.root / "profile.json"
-        path.write_text(json.dumps(profile, separators=(",", ":")), encoding="utf-8")
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        return path, digest, profile
+        return self.store_signed_profile(profile, path=path)
+
+    def store_signed_profile(self, unsigned_profile, *, path=None):
+        path = path or self.root / "profile.json"
+        unsigned = dict(unsigned_profile)
+        unsigned.pop("profile_sha256", None)
+        digest = hashlib.sha256(_canonical_json(unsigned)).hexdigest()
+        signed = {**unsigned, "profile_sha256": digest}
+        path.write_text(
+            json.dumps(signed, sort_keys=True, separators=(",", ":"), allow_nan=True),
+            encoding="utf-8",
+        )
+        return path, digest, signed
 
     def test_selected_layer_is_steered_with_a_hard_per_token_norm_bound(self):
         path, digest, _ = self.write_profile()
@@ -139,10 +143,7 @@ class LayerForceTests(unittest.TestCase):
             layer_path="layers",
         )
         try:
-            list_path = self.root / "list-profile.json"
-            list_profile = self.write_profile()[2]
-            list_path.write_text(json.dumps(list_profile), encoding="utf-8")
-            list_digest = hashlib.sha256(list_path.read_bytes()).hexdigest()
+            list_path, list_digest, _ = self.write_profile(bank=list_bank, path=self.root / "list-profile.json")
             list_id = list_bank.load_profile(list_path, [list_digest])
             with list_bank.activate(list_id):
                 output, aux = list_model(sample)
@@ -175,55 +176,63 @@ class LayerForceTests(unittest.TestCase):
         self.assertTrue(torch.equal(outer, restored_outer))
 
     def test_unapproved_or_tampered_profile_is_rejected_before_registration(self):
-        path, digest, _ = self.write_profile()
-        with self.assertRaisesRegex(ArtifactError, "not-host-approved"):
+        path, digest, profile = self.write_profile()
+        with self.assertRaisesRegex(LayerForceError, "profile-not-host-allowlisted"):
             self.bank.load_profile(path, ["0" * 64])
         self.assertEqual(self.bank.snapshot()["loaded_profiles"], [])
 
-        path.write_text(path.read_text(encoding="utf-8") + " ", encoding="utf-8")
-        with self.assertRaisesRegex(ArtifactError, "not-host-approved"):
+        profile["max_delta_ratio"] = 0.08
+        path.write_text(json.dumps(profile, sort_keys=True, separators=(",", ":")), encoding="utf-8")
+        with self.assertRaisesRegex(LayerForceError, "profile-digest-mismatch"):
             self.bank.load_profile(path, [digest])
+        self.assertEqual(self.bank.snapshot()["loaded_profiles"], [])
 
     def test_model_revision_and_hidden_width_must_match(self):
         path, _, profile = self.write_profile()
-        profile["model"]["model_revision"] = "b" * 40
-        path.write_text(json.dumps(profile), encoding="utf-8")
-        mismatch_digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        with self.assertRaisesRegex(ArtifactError, "model-binding-mismatch"):
-            self.bank.load_profile(path, [mismatch_digest])
+        profile["base_model_revision"] = "b" * 40
+        path, digest, _ = self.store_signed_profile(profile, path=path)
+        with self.assertRaisesRegex(LayerForceError, "profile-base-model-binding-mismatch"):
+            self.bank.load_profile(path, [digest])
 
-        profile["model"]["model_revision"] = "a" * 40
-        profile["model"]["hidden_size"] = 7
-        path.write_text(json.dumps(profile), encoding="utf-8")
-        wrong_width_digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        with self.assertRaisesRegex(ArtifactError, "model-binding-mismatch"):
-            self.bank.load_profile(path, [wrong_width_digest])
+        profile["base_model_revision"] = "a" * 40
+        profile["hidden_size"] = 7
+        path, digest, _ = self.store_signed_profile(profile, path=path)
+        with self.assertRaisesRegex(LayerForceError, "profile-model-config-mismatch"):
+            self.bank.load_profile(path, [digest])
 
     def test_zero_nonfinite_wrong_width_and_excess_layers_are_rejected(self):
         path, _, profile = self.write_profile()
-        profile["layers"][0]["direction"] = [0.0] * 8
-        path.write_text(json.dumps(profile), encoding="utf-8")
-        with self.assertRaisesRegex(ArtifactError, "direction"):
-            self.bank.load_profile(path, [hashlib.sha256(path.read_bytes()).hexdigest()])
+        profile["layer_directions"]["1"] = [0.0] * 8
+        path, digest, _ = self.store_signed_profile(profile, path=path)
+        with self.assertRaisesRegex(LayerForceError, "profile-direction-zero-or-nonfinite"):
+            self.bank.load_profile(path, [digest])
 
-        profile["layers"][0]["direction"] = [float("nan")] + [0.0] * 7
-        path.write_text(json.dumps(profile), encoding="utf-8")
-        with self.assertRaisesRegex(ArtifactError, "direction"):
-            self.bank.load_profile(path, [hashlib.sha256(path.read_bytes()).hexdigest()])
+        profile["layer_directions"]["1"] = [float("nan")] + [0.0] * 7
+        path.write_text(
+            json.dumps({**profile, "profile_sha256": "0" * 64}, sort_keys=True, separators=(",", ":"), allow_nan=True),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(LayerForceError, "profile-nonfinite-json-number"):
+            self.bank.load_profile(path, ["0" * 64])
 
-        profile["layers"] = [
-            {"index": index, "direction": [1.0] + [0.0] * 7, "strength": 0.5}
+        profile["layer_directions"]["1"] = [1.0] + [0.0] * 5
+        path, digest, _ = self.store_signed_profile(profile, path=path)
+        with self.assertRaisesRegex(LayerForceError, "profile-direction-width-mismatch"):
+            self.bank.load_profile(path, [digest])
+
+        profile["layer_directions"] = {
+            str(index): [1.0] + [0.0] * 7
             for index in range(9)
-        ]
-        path.write_text(json.dumps(profile), encoding="utf-8")
-        with self.assertRaisesRegex(ArtifactError, "layer-count"):
-            self.bank.load_profile(path, [hashlib.sha256(path.read_bytes()).hexdigest()])
+        }
+        path, digest, _ = self.store_signed_profile(profile, path=path)
+        with self.assertRaisesRegex(LayerForceError, "profile-layer-count-out-of-range"):
+            self.bank.load_profile(path, [digest])
 
     def test_duplicate_json_keys_and_symlink_paths_fail_closed(self):
         path, _, _ = self.write_profile()
         path.write_text('{"schema_version":1,"schema_version":1}', encoding="utf-8")
-        with self.assertRaisesRegex(ArtifactError, "duplicate"):
-            self.bank.load_profile(path, [hashlib.sha256(path.read_bytes()).hexdigest()])
+        with self.assertRaisesRegex(LayerForceError, "duplicate-profile-key"):
+            self.bank.load_profile(path, ["0" * 64])
 
         valid_path, valid_digest, _ = self.write_profile()
         link = self.root / "profile-link.json"
@@ -231,7 +240,7 @@ class LayerForceTests(unittest.TestCase):
             link.symlink_to(valid_path)
         except (OSError, NotImplementedError):
             self.skipTest("file symlinks are unavailable on this platform")
-        with self.assertRaisesRegex(ArtifactError, "symlink"):
+        with self.assertRaisesRegex(LayerForceError, "profile-path-invalid"):
             self.bank.load_profile(link, [valid_digest])
 
     def test_snapshot_redacts_activation_directions(self):
