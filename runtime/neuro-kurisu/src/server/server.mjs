@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
+import { createSynapticP23AdmissionProvider } from '../organism/learning/SynapticP23OutcomeBundleProvider.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
@@ -91,9 +92,10 @@ async function configureCompoundRepairRevision() {
 }
 const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
 const SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE = String(process.env.NEURO_SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE || '').trim();
+const SYNAPTIC_P23_OUTCOME_BUNDLE_PATH = String(process.env.NEURO_SYNAPTIC_P23_OUTCOME_BUNDLE_PATH || '').trim();
 
 async function configureSynapticP23Admission(compoundRepairRevision) {
-    if (!SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE) return undefined;
+    if (!SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE && !SYNAPTIC_P23_OUTCOME_BUNDLE_PATH) return undefined;
     let engine;
     let candidateStore;
     let trustedRunRegistry;
@@ -114,21 +116,30 @@ async function configureSynapticP23Admission(compoundRepairRevision) {
         trustedVerifierCount < 1 || trustedApprovalCount < 1) {
         throw new Error('Synaptic Commons P23 admission requires trusted local outcome verifiers and promotion approval authorities');
     }
-    const providerPath = path.isAbsolute(SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE)
-        ? SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE
-        : path.resolve(ROOT, SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE);
-    const providerModule = await import(pathToFileURL(providerPath).href);
-    const factory = providerModule.createSynapticP23AdmissionProvider ?? providerModule.default;
-    if (typeof factory !== 'function') {
-        throw new Error('Synaptic P23 admission provider must export createSynapticP23AdmissionProvider() or a default factory');
+
+    let createLocalPromotionProposal;
+    if (SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE) {
+        const providerPath = path.isAbsolute(SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE)
+            ? SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE
+            : path.resolve(ROOT, SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE);
+        const providerModule = await import(pathToFileURL(providerPath).href);
+        const factory = providerModule.createSynapticP23AdmissionProvider ?? providerModule.default;
+        if (typeof factory !== 'function') {
+            throw new Error('Synaptic P23 admission provider must export createSynapticP23AdmissionProvider() or a default factory');
+        }
+        createLocalPromotionProposal = await factory({
+            engine, candidateStore, trustedRunRegistry, stateDirectory: STATE,
+            currentHostCompatibilityTarget: synapticCommonsHostCompatibilityTarget,
+        });
+    } else {
+        const bundlePath = path.isAbsolute(SYNAPTIC_P23_OUTCOME_BUNDLE_PATH)
+            ? SYNAPTIC_P23_OUTCOME_BUNDLE_PATH
+            : path.resolve(ROOT, SYNAPTIC_P23_OUTCOME_BUNDLE_PATH);
+        createLocalPromotionProposal = createSynapticP23AdmissionProvider({
+            bundlePath,
+            rawVerifierKeys: process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
+        });
     }
-    const createLocalPromotionProposal = await factory({
-        engine,
-        candidateStore,
-        trustedRunRegistry,
-        stateDirectory: STATE,
-        currentHostCompatibilityTarget: synapticCommonsHostCompatibilityTarget,
-    });
     if (typeof createLocalPromotionProposal !== 'function') {
         throw new Error('Synaptic P23 admission provider factory must return a local proposal function');
     }
