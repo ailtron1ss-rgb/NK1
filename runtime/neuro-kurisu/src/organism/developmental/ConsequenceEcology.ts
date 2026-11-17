@@ -239,7 +239,8 @@ function normalizeNegativeSpaceContext(value: unknown): ConsequenceNegativeSpace
 function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalysis {
   if (!isRecord(value) || !clean(value.id, 96) || value.decisionAuthority !== 'none' ||
       value.independentlyVerified !== false || (value.status !== 'analysed' && value.status !== 'bounded-partial') ||
-      !Number.isFinite(value.createdAt) || !Number.isInteger(value.horizonDays) ||
+      typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt) ||
+      typeof value.horizonDays !== 'number' || !Number.isInteger(value.horizonDays) ||
       finite(value.horizonDays, 0) < 1 || finite(value.horizonDays, MAX_HORIZON_DAYS + 1) > MAX_HORIZON_DAYS ||
       !(value.scenarioId === null || (typeof value.scenarioId === 'string' && value.scenarioId.length <= 160)) ||
       !(value.modelTopRankedOptionId === null || (typeof value.modelTopRankedOptionId === 'string' && value.modelTopRankedOptionId.length <= 96)) ||
