@@ -139,6 +139,10 @@ const forged = signedArtifact(p, 'primary', 17);
 forged.payload.measurement.observed = 99;
 assert.throws(() => loop.recordOutcome(p.id, forged), /invalid-signature/);
 assert.equal(loop.snapshot().records[0].outcomes.length, 0);
+assert.throws(
+  () => loop.recordOutcome(p.id, signedArtifact(p, 'primary', 17, { attempt: 2 })),
+  /attempt-must-be-one/,
+);
 const validPrimary = signedArtifact(p, 'primary', 17, { observed: 96 });
 const primary = loop.recordOutcome(p.id, validPrimary);
 assert.equal(primary.stage, 'tested');
@@ -146,10 +150,6 @@ assert.equal(primary.outcomes[0].effect01, 0.2);
 assert.equal(primary.outcomes[0].passed, true);
 assert.equal(primary.outcomes[0].signedArtifact.signature, validPrimary.signature);
 assert.match(primary.outcomes[0].attestationFingerprint, /^[a-f0-9]{64}$/);
-assert.throws(
-  () => loop.recordOutcome(p.id, signedArtifact(p, 'primary', 17, { attempt: 2 })),
-  /attempt-must-be-one/,
-);
 assert.throws(
   () => loop.recordOutcome(p.id, signedArtifact(p, 'replication', 18, { verifierId: 'verifier-primary' })),
   /verifier-plan-mismatch/,
