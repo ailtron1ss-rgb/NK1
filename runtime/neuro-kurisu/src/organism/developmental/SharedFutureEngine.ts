@@ -125,12 +125,35 @@ export interface SharedFutureSignalRecord {
   reason: string;
 }
 
+export interface SharedFutureOutcomeRecord {
+  id: string;
+  scenarioId: string;
+  consequenceId: string;
+  observedAt: number;
+  forecastProbability01: number;
+  occurred: boolean;
+  brierScore01: number;
+  evidenceRef: string;
+  reportedBy: 'user' | 'system';
+  independentlyVerified: false;
+}
+
+export interface SharedFutureOutcomeInput {
+  id: string;
+  scenarioId: string;
+  consequenceId: string;
+  occurred: boolean;
+  evidenceRef: string;
+  at?: number;
+}
+
 export interface SharedFutureState {
   version: 1;
   scenarios: SharedFutureScenario[];
   decisions: SharedFutureDecision[];
   reviewHistory: SharedFutureReviewRecord[];
   signalHistory: SharedFutureSignalRecord[];
+  outcomes: SharedFutureOutcomeRecord[];
   forecastUpdates: number;
   rejectedMutations: number;
 }
@@ -176,6 +199,7 @@ const MAX_SCENARIOS = 48;
 const MAX_DECISIONS = 128;
 const MAX_REVIEW_HISTORY = 128;
 const MAX_SIGNAL_HISTORY = 192;
+const MAX_OUTCOMES = 256;
 const MAX_ASSUMPTIONS = 12;
 const MAX_GOAL_LINKS = 16;
 const MAX_CONSEQUENCES = 16;
@@ -259,6 +283,7 @@ export const defaultSharedFutureState = (): SharedFutureState => ({
   decisions: [],
   reviewHistory: [],
   signalHistory: [],
+  outcomes: [],
   forecastUpdates: 0,
   rejectedMutations: 0,
 });
@@ -356,12 +381,46 @@ export class SharedFutureEngine {
           reason: restoredText(row.reason, '', 500),
         })).filter((row) => scenarioIds.has(row.scenarioId))
       : [];
+    const outcomeRows = Array.isArray(source.outcomes)
+      ? (source.outcomes as unknown[]).slice(0, MAX_OUTCOMES).filter(isRecord)
+      : [];
+    const seenOutcomeIds = new Set<string>();
+    const seenOutcomeConsequences = new Set<string>();
+    const outcomes: SharedFutureOutcomeRecord[] = [];
+    for (const [index, row] of outcomeRows.entries()) {
+      const id = restoredId(row.id, 'restored-outcome-' + index);
+      const scenarioId = restoredText(row.scenarioId, '', 96);
+      const consequenceId = restoredId(row.consequenceId, '');
+      const scenario = scenarioById.get(scenarioId);
+      const consequence = scenario?.consequences.find((item) => item.id === consequenceId);
+      const evidenceRef = restoredText(row.evidenceRef, '', 500);
+      if (!scenario || !consequence || !evidenceRef || typeof row.occurred !== 'boolean') continue;
+      const targetKey = scenarioId + '\\u0000' + consequenceId;
+      if (seenOutcomeIds.has(id) || seenOutcomeConsequences.has(targetKey)) continue;
+      seenOutcomeIds.add(id);
+      seenOutcomeConsequences.add(targetKey);
+      const forecastProbability01 = finite(row.forecastProbability01, consequence.probability01, 0, 1);
+      const target = row.occurred ? 1 : 0;
+      outcomes.push({
+        id,
+        scenarioId,
+        consequenceId,
+        observedAt: timestamp(row.observedAt, 0),
+        forecastProbability01,
+        occurred: row.occurred,
+        brierScore01: Math.round(((forecastProbability01 - target) ** 2) * 1e12) / 1e12,
+        evidenceRef,
+        reportedBy: row.reportedBy === 'user' ? 'user' : 'system',
+        independentlyVerified: false,
+      });
+    }
     this.state = {
       ...base,
       scenarios,
       decisions,
       reviewHistory,
       signalHistory,
+      outcomes,
       forecastUpdates: timestamp(source.forecastUpdates, 0),
       rejectedMutations: timestamp(source.rejectedMutations, 0),
     };
@@ -867,8 +926,8 @@ export class SharedFutureEngine {
         if (successor.parentId !== scenario.id || successor.owner !== scenario.owner) {
           throw new Error('revision-successor-must-be-owned-child-scenario');
         }
-        if (successor.status === 'invalidated' || successor.status === 'superseded') {
-          throw new Error('revision-successor-not-usable');
+        if (successor.status !== 'draft' && successor.status !== 'contingency') {
+          throw new Error('revision-successor-not-promotable');
         }
         scenario.status = 'superseded';
         scenario.reviewRequired = false;
@@ -898,6 +957,51 @@ export class SharedFutureEngine {
       this.state.rejectedMutations++;
       throw error;
     }
+  }
+
+  recordOutcome(input: SharedFutureOutcomeInput, actor: 'user' | 'system' = 'system'): SharedFutureOutcomeRecord {
+    try {
+      const id = idField(input.id, 'outcome-id');
+      if (this.state.outcomes.some((row) => row.id === id)) throw new Error('outcome-id-conflict');
+      if (this.state.outcomes.length >= MAX_OUTCOMES) throw new Error('outcome-capacity-reached');
+      const scenarioId = idField(input.scenarioId, 'outcome-scenario-id');
+      const scenario = this.requireScenario(scenarioId);
+      const consequenceId = idField(input.consequenceId, 'outcome-consequence-id');
+      const consequence = scenario.consequences.find((row) => row.id === consequenceId);
+      if (!consequence) throw new Error('outcome-consequence-not-found');
+      if (typeof input.occurred !== 'boolean') throw new Error('outcome-result-must-be-boolean');
+      if (scenario.owner !== 'system' && actor !== 'user') throw new Error('human-outcome-report-required');
+      if (this.state.outcomes.some((row) => row.scenarioId === scenarioId && row.consequenceId === consequenceId)) {
+        throw new Error('outcome-already-recorded');
+      }
+      const evidenceRef = textField(input.evidenceRef, 'outcome-evidence-ref', 500);
+      const forecastProbability01 = finite(consequence.probability01, 0.5, 0, 1);
+      const target = input.occurred ? 1 : 0;
+      const outcome: SharedFutureOutcomeRecord = {
+        id,
+        scenarioId,
+        consequenceId,
+        observedAt: timestamp(input.at, Date.now()),
+        forecastProbability01,
+        occurred: input.occurred,
+        brierScore01: Math.round(((forecastProbability01 - target) ** 2) * 1e12) / 1e12,
+        evidenceRef,
+        reportedBy: actor,
+        // A source reference is retained for audit; it is not independently verified here.
+        independentlyVerified: false,
+      };
+      this.state.outcomes = [...this.state.outcomes, outcome];
+      return structuredClone(outcome);
+    } catch (error) {
+      this.state.rejectedMutations++;
+      throw error;
+    }
+  }
+
+  listOutcomes(scenarioId?: string): SharedFutureOutcomeRecord[] {
+    return this.state.outcomes
+      .filter((row) => !scenarioId || row.scenarioId === scenarioId)
+      .map((row) => structuredClone(row));
   }
 
   recordRuntimeForecast(input: {
@@ -993,8 +1097,13 @@ export class SharedFutureEngine {
     armedRevisionSignals: number;
     sharedScenarios: number;
     forecasts: number;
+    observedOutcomes: number;
+    meanBrierScore01: number;
     rejectedMutations: number;
   } {
+    const meanBrierScore01 = this.state.outcomes.length
+      ? Math.round((this.state.outcomes.reduce((sum, row) => sum + row.brierScore01, 0) / this.state.outcomes.length) * 1e12) / 1e12
+      : 0;
     return {
       scenarios: this.state.scenarios.length,
       activeScenarios: this.state.scenarios.filter((row) => row.status === 'active').length,
@@ -1005,6 +1114,8 @@ export class SharedFutureEngine {
       armedRevisionSignals: this.state.scenarios.reduce((sum, row) => sum + row.revisionSignals.filter((signal) => signal.armed).length, 0),
       sharedScenarios: this.state.scenarios.filter((row) => row.owner === 'shared').length,
       forecasts: this.state.scenarios.filter((row) => row.forecast !== null).length,
+      observedOutcomes: this.state.outcomes.length,
+      meanBrierScore01,
       rejectedMutations: this.state.rejectedMutations,
     };
   }
@@ -1172,4 +1283,35 @@ export function registerSharedFutureTools(
       }, actor) };
     }),
   });
+
+  register({
+    id: 'organism.future.outcomes.list',
+    capability: 'planning.future.read',
+    destructive: false,
+    projectAllowed: true,
+    execute: async (input) => executeSafely(() => ({
+      outcomes: future.listOutcomes(typeof input.scenarioId === 'string' ? input.scenarioId : undefined),
+      diagnostics: future.diagnostics(),
+    })),
+  });
+
+  register({
+    id: 'organism.future.outcomes.record',
+    capability: 'planning.future.write',
+    destructive: false,
+    requiresIdempotencyKey: true,
+    projectAllowed: true,
+    execute: async (input, context) => executeSafely(() => ({
+      outcome: future.recordOutcome({
+        id: String(input.id ?? ''),
+        scenarioId: String(input.scenarioId ?? ''),
+        consequenceId: String(input.consequenceId ?? ''),
+        occurred: input.occurred as boolean,
+        evidenceRef: typeof input.evidenceRef === 'string' ? input.evidenceRef : '',
+        at: typeof input.at === 'number' ? input.at : undefined,
+      }, isHumanContext(context) ? 'user' : 'system'),
+      note: 'The evidence reference is retained for audit; this record is not independent verification.',
+    })),
+  });
+
 }
