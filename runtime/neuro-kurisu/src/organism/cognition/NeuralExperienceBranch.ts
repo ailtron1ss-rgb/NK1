@@ -294,6 +294,7 @@ export class NeuralExperienceBranch {
   private state=defaultNeuralExperienceBranch();
   private readonly sessionAdaptationScopes=new Map<string,string>();
   private pendingAdaptationContextId:string|undefined;
+  private pendingAdaptationTick:number|undefined;
   private readonly offlineConsolidation=new P2852OfflineConsolidationController();
   private readonly slowMemoryConsolidation=new P2853SlowMemoryConsolidationController();
   private readonly hierarchicalSlowMemory=new P2854HierarchicalSlowMemoryController();
@@ -404,6 +405,7 @@ export class NeuralExperienceBranch {
   restore(raw?:Partial<NeuralExperienceBranchState>|null){
     this.sessionAdaptationScopes.clear();
     this.pendingAdaptationContextId=undefined;
+    this.pendingAdaptationTick=undefined;
     this.embodiedBridge.resetTestTimeAdaptation();
     const d=defaultNeuralExperienceBranch(),r:any=raw??{};
     const n=Math.max(32,Math.min(160,Math.floor(Number(r.neurons??d.neurons))));
@@ -798,6 +800,7 @@ export class NeuralExperienceBranch {
     const sessionScope=this.sessionAdaptationScope(i.sessionId);
     const adaptationContextId=`session:${sessionScope}:world:${activeWorldContext}:slow:${slowContextId}`;
     this.pendingAdaptationContextId=adaptationContextId;
+    this.pendingAdaptationTick=i.tick;
     this.selectiveSlowMemory(input,pressure,slowContextId,computeBudgetHint);
     const continuity=this.continuity.beforeDecision(input,this.state.state.slice(0,8),{novelty01:i.novelty01,uncertainty01:i.uncertainty01,predictionError01:i.predictionError01,goalPressure01:i.goalPressure01,homeostasis01:i.homeostasis01,identityGap01:i.identityGap01,reward01:i.reward01??.5},null);
     const device=this.deviceScheduler.beforeDecision({tick:i.tick,continuityBudget01:continuity.computeBudget01,thermalStrain01:i.embodied?.thermalStrain01,battery01:i.embodied?.battery01,cpuLoad01:i.embodied?.cpuLoad01,ramPressure01:i.embodied?.ramPressure01,sensorFreshness01:i.embodied?.sensorFreshness01,predictionError01:i.predictionError01,novelty01:i.novelty01});
@@ -1167,12 +1170,32 @@ export class NeuralExperienceBranch {
     return {enabled:true,learningScale01:outcome.learningScale01,prediction01:prediction,phase:deepDecision.phase,plasticUpdates,protectedMass01:deepMetrics.protectedMass01,delayConsensus01:deepMetrics.delayConsensus01};
   }
 
-  commitAction(action:ActionKind,utilities:Record<ActionKind,number>){this.continuity.commitAction(action);if(this.state.lastExperience){this.state.lastExperience.action=action;this.state.lastExperience.actionUtilities={...utilities};}}
+  bindPendingAdaptationAction(action:ActionKind,tick?:number){
+    const contextId=this.pendingAdaptationContextId;
+    const pendingTick=this.pendingAdaptationTick;
+    if(contextId===undefined||pendingTick===undefined)return false;
+    if(tick!==undefined&&tick!==pendingTick)return false;
+    return this.embodiedBridge.commitAction(contextId,pendingTick,action);
+  }
+
+  commitAction(action:ActionKind,utilities:Record<ActionKind,number>){
+    this.bindPendingAdaptationAction(action);
+    this.continuity.commitAction(action);
+    if(this.state.lastExperience){this.state.lastExperience.action=action;this.state.lastExperience.actionUtilities={...utilities};}
+  }
 
   afterOutcome(i:{tick:number;action:ActionKind;reward01:number;predictionError01:number;verified01:number;nextInput:number[];holdout01?:number;identityGap01?:number;goalPressure01?:number;identityVector?:number[];embodied?:{nextFeatures?:number[];sensorFreshness01?:number;sensors?:Record<string,{tick:number;values:number[];freshness01:number;confidence01:number;ageTicks:number;source:string}>}}){
-    if(!this.state.enabled){this.pendingAdaptationContextId=undefined;return;}const token=this.state.lastExperience;if(!token){this.pendingAdaptationContextId=undefined;return;}
-    const adaptationContextId=this.pendingAdaptationContextId;
+    if(!this.state.enabled){this.pendingAdaptationContextId=undefined;this.pendingAdaptationTick=undefined;return;}const token=this.state.lastExperience;if(!token){this.pendingAdaptationContextId=undefined;this.pendingAdaptationTick=undefined;return;}
+    let adaptationContextId=this.pendingAdaptationContextId;
+    const adaptationTick=this.pendingAdaptationTick;
+    if(adaptationContextId!==undefined&&adaptationTick===i.tick){
+      // Validate the executed action before any outcome learner mutates state.
+      this.embodiedBridge.assertCommittedAction(adaptationContextId,i.tick,i.action);
+    }else{
+      adaptationContextId=undefined;
+    }
     this.pendingAdaptationContextId=undefined;
+    this.pendingAdaptationTick=undefined;
     const error=clamp(i.predictionError01),reward=clamp(i.reward01),verified=clamp(i.verified01),surprise=clamp(Math.abs(reward-token.prediction01)*.7+error*.3);
     const syntheticPromotions=this.verifiedSyntheticTrajectoryGate.observeOutcome({tick:i.tick,action:i.action,reward01:reward,nextLatent:i.nextInput,verified01:verified,holdout01:clamp(i.holdout01??0),contextId:Number(token.contextId??0)});
     for(const promotion of syntheticPromotions){
@@ -1859,7 +1882,7 @@ export class NeuralExperienceBranch {
   mobileRetentionDiagnostics(){return {replayBufferLength:this.state.replayBuffer.length,embodiedTransitionsLogLength:this.state.embodiedBridge.transitionsLog.length};}
   causalPlannerDiagnostics(){return this.causalPlanner.diagnostics();}
   resetTestTimeAdaptation(sessionId?:string){
-    if(sessionId===undefined){this.embodiedBridge.resetTestTimeAdaptation();this.sessionAdaptationScopes.clear();this.pendingAdaptationContextId=undefined;return;}
+    if(sessionId===undefined){this.embodiedBridge.resetTestTimeAdaptation();this.sessionAdaptationScopes.clear();this.pendingAdaptationContextId=undefined;this.pendingAdaptationTick=undefined;return;}
     const rawId=String(sessionId).trim();
     if(!rawId||rawId.length>128)return;
     const id=rawId;
@@ -1867,7 +1890,7 @@ export class NeuralExperienceBranch {
     if(!scope)return;
     this.embodiedBridge.resetTestTimeAdaptationPrefix(`session:${scope}:`);
     this.sessionAdaptationScopes.delete(id);
-    if(this.pendingAdaptationContextId?.startsWith(`session:${scope}:`))this.pendingAdaptationContextId=undefined;
+    if(this.pendingAdaptationContextId?.startsWith(`session:${scope}:`)){this.pendingAdaptationContextId=undefined;this.pendingAdaptationTick=undefined;}
   }
 
   diagnostics(){
