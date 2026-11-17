@@ -27,10 +27,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: '22.16.0'
+          node-version-file: .nvmrc
       - name: Run Developmental Genome behavioral tests
         run: npm --prefix runtime/neuro-kurisu run test:developmental-genome
       - name: Runtime TypeScript check
