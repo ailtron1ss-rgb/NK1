@@ -1,5 +1,15 @@
 name: NK1 World Forge
 on:
+  push:
+    branches:
+      - aspect/world-forge-integrated-20261117
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/developmental/WorldForge.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/WorldForgeTools.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts'
+      - 'runtime/neuro-kurisu/tests/world-forge-*.mjs'
+      - '.github/workflows/nk1-world-forge.yml'
   pull_request:
     branches:
       - workpass70-source
