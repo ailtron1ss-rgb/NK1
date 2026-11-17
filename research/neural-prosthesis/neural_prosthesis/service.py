@@ -214,12 +214,18 @@ class TransformersRuntime:
             manifest = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
             self._adapter_manifest_digests[adapter_id] = str(manifest["manifest_sha256"])
         self.bank.eval()
-        self.layer_force, self.default_layer_force_profile = _load_layer_force_bank(
-            self.model,
-            model_id=model_id,
-            model_revision=revision,
-            layer_path=self.layer_path,
-        )
+        try:
+            self.layer_force, self.default_layer_force_profile = _load_layer_force_bank(
+                self.model,
+                model_id=model_id,
+                model_revision=revision,
+                layer_path=self.layer_path,
+            )
+        except Exception:
+            # The residual bank already owns forward hooks on this model. Do not
+            # leave those hooks alive when an opt-in steering profile fails closed.
+            self.bank.close()
+            raise
 
         self.default_adapter = str(os.environ.get("NEURO_NP_DEFAULT_ADAPTER", "")).strip() or None
         if self.default_adapter is not None and not self._is_approved(self.default_adapter):
