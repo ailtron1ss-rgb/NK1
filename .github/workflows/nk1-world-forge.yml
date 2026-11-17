@@ -19,11 +19,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.12.0'
+          node-version-file: '.nvmrc'
       - name: Run World Forge regressions
         working-directory: runtime/neuro-kurisu
         run: |
           node --experimental-strip-types tests/world-forge-evaluator-isolation.mjs
+          node --experimental-strip-types tests/world-forge-perturbation-opacity.mjs
           node --experimental-strip-types tests/world-forge-dynamic-transitions.mjs
           node --experimental-strip-types tests/world-forge-ttl-bounds.mjs
           node --experimental-strip-types tests/world-forge-synthetic-lab.mjs
