@@ -260,6 +260,11 @@ function boundedNumber(value: unknown, min: number, max: number): boolean {
   return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 }
 
+function requiredBoundedNumber(value: unknown, min: number, max: number, code: string): number {
+  if (!boundedNumber(value, min, max)) throw new Error(code);
+  return value;
+}
+
 function boundedInteger(value: unknown, min: number, max: number): boolean {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
 }
@@ -489,23 +494,27 @@ function analyzeOption(
     if (basis !== 'measured' && basis !== 'external-research' && basis !== 'user-assumption' &&
         basis !== 'simulation' && basis !== 'internal-model') throw new Error('consequence-basis-invalid');
     if (typeof raw.reversible !== 'boolean') throw new Error('consequence-reversibility-invalid');
+    const probability01 = requiredBoundedNumber(raw.probability01, 0, 1, 'consequence-node-probability-invalid');
+    const impact01 = requiredBoundedNumber(raw.impact01, 0, 1, 'consequence-node-impact-invalid');
+    const confidence01 = requiredBoundedNumber(raw.confidence01, 0, 1, 'consequence-node-confidence-invalid');
+    const delayDays = requiredBoundedNumber(raw.delayDays, 0, MAX_HORIZON_DAYS, 'consequence-node-delay-invalid');
+    const baselineProbability01 = raw.baselineProbability01 === undefined ? null
+      : requiredBoundedNumber(raw.baselineProbability01, 0, 1, 'consequence-node-baseline-probability-invalid');
     const node: ConsequenceNodeInput = {
       id,
       description: clean(raw.description, 320),
       effect,
       actor: clean(raw.actor, 96) || 'unspecified',
       system: clean(raw.system, 96) || 'unspecified',
-      probability01: clamp(finite(raw.probability01)),
-      impact01: clamp(finite(raw.impact01)),
-      confidence01: clamp(finite(raw.confidence01)),
-      delayDays: clamp(finite(raw.delayDays), 0, MAX_HORIZON_DAYS),
+      probability01,
+      impact01,
+      confidence01,
+      delayDays,
       reversible: raw.reversible,
       basis,
       evidenceRefs: Array.isArray(raw.evidenceRefs) ? raw.evidenceRefs.map(x => clean(x, 180)).filter(Boolean).slice(0, 8) : [],
       assumptionRefs: Array.isArray(raw.assumptionRefs) ? raw.assumptionRefs.map(x => clean(x, 128)).filter(Boolean).slice(0, 8) : [],
     };
-    const baselineProbability01 = typeof raw.baselineProbability01 === 'number' && Number.isFinite(raw.baselineProbability01)
-      ? clamp(raw.baselineProbability01) : null;
     const confidence = assumptionConfidence(node, assumptions);
     nodes.set(id, {
       ...node,
@@ -527,14 +536,17 @@ function analyzeOption(
         raw.relation !== 'depends-on' && raw.relation !== 'feedback') throw new Error('consequence-edge-relation-invalid');
     if (raw.polarity !== 'increase' && raw.polarity !== 'decrease') throw new Error('consequence-edge-polarity-invalid');
     if (raw.relation === 'mitigates' && raw.polarity !== 'decrease') throw new Error('consequence-mitigation-must-reduce');
+    const strength01 = requiredBoundedNumber(raw.strength01, 0, 1, 'consequence-edge-strength-invalid');
+    const confidence01 = requiredBoundedNumber(raw.confidence01, 0, 1, 'consequence-edge-confidence-invalid');
+    const delayDays = requiredBoundedNumber(raw.delayDays, 0, MAX_HORIZON_DAYS, 'consequence-edge-delay-invalid');
     edgeIds.add(id);
     edges.push({
       id, from, to,
       relation: raw.relation,
       polarity: raw.polarity,
-      strength01: clamp(finite(raw.strength01)),
-      confidence01: clamp(finite(raw.confidence01)),
-      delayDays: clamp(finite(raw.delayDays), 0, MAX_HORIZON_DAYS),
+      strength01,
+      confidence01,
+      delayDays,
       ...(clean(raw.independenceGroup, 96) ? { independenceGroup: clean(raw.independenceGroup, 96) } : {}),
     });
   }
@@ -857,7 +869,11 @@ export class ConsequenceEcologyEngine {
       if (!Array.isArray(request.options) || request.options.length < 1 || request.options.length > MAX_OPTIONS) {
         throw new Error('consequence-option-count-invalid');
       }
-      const horizonDays = Math.floor(clamp(finite(request.horizonDays), 1, MAX_HORIZON_DAYS));
+      if (!boundedInteger(request.horizonDays, 1, MAX_HORIZON_DAYS)) throw new Error('consequence-horizon-invalid');
+      if (request.at !== undefined && !boundedNumber(request.at, 0, Number.MAX_SAFE_INTEGER)) {
+        throw new Error('consequence-analysis-timestamp-invalid');
+      }
+      const horizonDays = request.horizonDays;
       if (scenarioId && (!context.scenario || context.scenario.id !== scenarioId)) {
         throw new Error('consequence-scenario-not-found');
       }
