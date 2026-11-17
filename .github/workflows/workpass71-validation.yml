@@ -2,7 +2,7 @@ name: NeuroCore core regression validation
 
 on:
   push:
-    branches: [workpass70-source, nk1-integration-workspace-2026-10-22, "aspect/negative-space-memory-20261117"]
+    branches: [workpass70-source, nk1-integration-workspace-2026-10-22]
   pull_request:
     branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22, rebuild]
     paths:
@@ -84,6 +84,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Negative Space Memory regression
         run: npm --prefix runtime/neuro-kurisu run test:negative-space-memory
+      - name: Negative Space Memory core persistence integration
+        run: npm --prefix runtime/neuro-kurisu run test:negative-space-memory-core
       - name: Hexis evidence lineage and server restart persistence
         run: npm --prefix runtime/neuro-kurisu run test:hexis-evidence-lineage && npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
       - name: Memory retrieval experiment including unanswerable holdout
