@@ -100,6 +100,8 @@ export interface SynapticCommonsState {
 export interface SynapticCommonsConfig {
   trustedPublisherKeys?: ReadonlyMap<string, string>;
   trustedAttestorKeys?: ReadonlyMap<string, string>;
+  /** Exact licence-review fingerprints approved by the receiving host, not publisher self-assertions. */
+  trustedLicenseReviewFingerprints?: ReadonlySet<string>;
   now?: () => number;
 }
 
@@ -393,11 +395,13 @@ export class SynapticCommons {
   private state: SynapticCommonsState = defaultSynapticCommonsState();
   private readonly publisherKeys: ReadonlyMap<string, string>;
   private readonly attestorKeys: ReadonlyMap<string, string>;
+  private readonly licenseReviewAllowlist: ReadonlySet<string>;
   private readonly now: () => number;
 
   constructor(config: SynapticCommonsConfig = {}) {
     this.publisherKeys = new Map(config.trustedPublisherKeys ?? []);
     this.attestorKeys = new Map(config.trustedAttestorKeys ?? []);
+    this.licenseReviewAllowlist = new Set(config.trustedLicenseReviewFingerprints ?? []);
     this.now = config.now ?? Date.now;
   }
 
@@ -423,6 +427,7 @@ export class SynapticCommons {
       const fingerprint = synapticArtifactFingerprint(artifact);
       if (own(raw, 'artifactFingerprint') !== fingerprint || fingerprints.has(fingerprint))
         throw new Error('synaptic-commons-record-fingerprint-invalid');
+      this.assertLicenseReviewTrusted(artifact);
       const slot = artifact.skill.skillId + '@' + artifact.skill.version;
       if (slots.has(slot)) throw new Error('synaptic-commons-version-conflict');
       const publisherKey = this.publisherKeys.get(artifact.signature.keyId);
@@ -470,6 +475,7 @@ export class SynapticCommons {
 
   importArtifact(raw: unknown): { record: SynapticCommonsRecord; duplicate: boolean } {
     const artifact = normalizeArtifact(raw);
+    this.assertLicenseReviewTrusted(artifact);
     const fingerprint = synapticArtifactFingerprint(artifact);
     const key = this.publisherKeys.get(artifact.signature.keyId);
     if (!key || !verifyEd25519(fingerprint, artifact.signature.value, key))
@@ -610,6 +616,12 @@ export class SynapticCommons {
     };
   }
 
+  private assertLicenseReviewTrusted(artifact: SynapticCommonsArtifact): void {
+    const fingerprint = artifact.license.reviewFingerprint;
+    if (!this.licenseReviewAllowlist.has(fingerprint))
+      throw new Error('synaptic-license-review-not-trusted-by-host');
+  }
+
   private verifyAttestation(
     artifact: SynapticCommonsArtifact,
     fingerprint: string,
@@ -642,6 +654,18 @@ export class SynapticCommons {
     const value = this.now();
     return Number.isSafeInteger(value) && value > 0 ? value : 1;
   }
+}
+
+/** Parse exact host-approved licence review fingerprints. An absent value grants no redistribution trust. */
+export function parseSynapticLicenseReviewAllowlist(raw: string | undefined): Set<string> {
+  if (!raw) return new Set();
+  let value: unknown;
+  try { value = JSON.parse(raw); } catch { throw new Error('synaptic-license-review-config-invalid-json'); }
+  if (!Array.isArray(value) || value.length > MAX_RECORDS ||
+      value.some(item => typeof item !== 'string' || !HEX_64.test(item)) ||
+      new Set(value).size !== value.length)
+    throw new Error('synaptic-license-review-config-invalid');
+  return new Set(value as string[]);
 }
 
 /** Parse public trust roots from server-owned environment configuration. Private keys are rejected. */
