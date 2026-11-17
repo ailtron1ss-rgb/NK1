@@ -22,6 +22,10 @@ to the already configured base-model identity.
   restored active entries are quarantined.
 - The host adapter invoker receives a single validated profile and a language
   request. It alone owns loading/applying the actual LoRA/QLoRA weights.
+- Every adapter response must attest `modelId`, `modelRevisionSha256`, and
+  `appliedAdapterSha256`. The runtime compares these to the configured base
+  identity and registered artifact digest; a mismatch is treated as an execution
+  failure and the unchanged base invoker is called.
 
 ## Candidate and activation gates
 
@@ -47,8 +51,7 @@ always returns true is not a production verifier.
 Only one adapter is selected per request. Eligibility requires an exact match
 for base model ID and revision, task support, request context limit, minimum
 confidence, maximum uncertainty, maximum resource risk, a validated active
-state, and an available
-adapter executor. Near-equal profiles in the same conflict group are treated
+state, and an available adapter executor. Near-equal profiles in the same conflict group are treated
 as ambiguous and route to the base model. The router does not stack adapters.
 
 Two consecutive executor failures apply an escalating bounded cooldown. Six
@@ -59,8 +62,9 @@ and the unchanged base invoker is called. An aborted request is not retried afte
 cancellation.
 
 The real-runtime integration suite covers base fallback, signed activation,
-specialized execution, adapter-error recovery, persistence across restart, and
-explicit disablement.
+specialized execution, wrong-base and wrong-weight attestation rejection,
+adapter-error recovery, persistence across restart, explicit disablement, and
+operator-authorized reactivation.
 
 Online response completion is recorded only as executor availability/latency;
 it does not update task competence. Competence changes require a new offline
