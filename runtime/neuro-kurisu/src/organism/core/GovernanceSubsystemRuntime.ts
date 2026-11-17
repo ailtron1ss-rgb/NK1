@@ -71,7 +71,8 @@ export class GovernanceSubsystemRuntime {
     p69Input: P69Input;
     timeoutMs?: number;
     maxConcurrent?: number;
-    maxTotalTokens?: number;
+    maxTotalTokens?:number;
+    maxInputChars?:number;
   }): Promise<{
     status: 'parliament-not-approved' | 'candidate-not-in-p69-set' | 'p69-selected' | 'p69-safe-fallback' | 'p69-diverted';
     parliament: ParliamentDispatchResult;
@@ -98,6 +99,7 @@ export class GovernanceSubsystemRuntime {
       const parliament=await this.cognitiveParliamentDispatcher.dispatch({
         candidateId:'',risk:input.risk,task:input.task,evidenceReferences:[],
         timeoutMs:input.timeoutMs,maxConcurrent:input.maxConcurrent,maxTotalTokens:input.maxTotalTokens,
+        maxInputChars:input.maxInputChars,
       });
       return { status: 'candidate-not-in-p69-set', parliament, arbitration: null };
     }
@@ -109,6 +111,7 @@ export class GovernanceSubsystemRuntime {
       timeoutMs: input.timeoutMs,
       maxConcurrent: input.maxConcurrent,
       maxTotalTokens: input.maxTotalTokens,
+      maxInputChars: input.maxInputChars,
     });
     if (parliament.decision.status !== 'approved') {
       return { status: 'parliament-not-approved', parliament, arbitration: null };
@@ -148,6 +151,7 @@ export class GovernanceSubsystemRuntime {
     timeoutMs?:number;
     maxConcurrent?:number;
     maxTotalTokens?:number;
+    maxInputChars?:number;
   }): Promise<{
     status:'p69-selected'|'p69-safe-fallback'|'parliament-blocked'|'candidate-not-in-p69-set';
     parliament:ParliamentDispatchResult;
