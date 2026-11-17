@@ -66,6 +66,7 @@ export const defaultP40ModelEcology = ():P40ModelEcologyState => ({
     profile({id:'local-fallback',kind:'deterministic',tasks:['language','reasoning','planning','local-fallback'],local:true,quality01:.42,latency01:.12,reliability01:.92}),
     profile({id:'kobold',kind:'local-llm',tasks:['language','reasoning','planning'],local:true,quality01:.72,latency01:.68,cost01:.18,reliability01:.62}),
     profile({id:'llama.cpp',kind:'openai-compatible-local',tasks:['language','reasoning','planning'],local:true,quality01:.7,latency01:.52,cost01:.06,reliability01:.68,configured:false,available:false}),
+    profile({id:'neural-prosthesis',kind:'transformer-residual-local',tasks:['language','reasoning','planning'],local:true,quality01:.84,latency01:.42,cost01:.12,reliability01:.82,continuity01:1,configured:false,available:false}),
     profile({id:'gemini',kind:'cloud-llm',tasks:['language','reasoning','planning','vision','audio'],local:false,quality01:.88,latency01:.52,cost01:.64,reliability01:.78}),
   ],
   decisions:[],
