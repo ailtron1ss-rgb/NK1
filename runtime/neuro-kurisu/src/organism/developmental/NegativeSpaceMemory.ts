@@ -410,11 +410,15 @@ export class NegativeSpaceMemory {
         reviewStatus: status,
       });
     }
+    const newestByDecisionId = new Map<string, NegativeSpaceRecord>();
+    for (const record of restored) newestByDecisionId.set(record.decisionId, record);
+    const deduplicated = [...newestByDecisionId.values()].slice(-MAX_RECORDS);
+    const duplicateCount = Math.max(0, restored.length - deduplicated.length);
     this.state = {
       version: 1,
-      records: restored,
-      totalRecorded: Math.max(restored.length, Math.floor(finite(input.totalRecorded, restored.length))),
-      pruned: Math.max(0, Math.floor(finite(input.pruned))),
+      records: deduplicated,
+      totalRecorded: Math.max(deduplicated.length, Math.floor(finite(input.totalRecorded, deduplicated.length))),
+      pruned: Math.max(0, Math.floor(finite(input.pruned))) + duplicateCount,
       lastAt: finite(input.lastAt),
     };
   }
