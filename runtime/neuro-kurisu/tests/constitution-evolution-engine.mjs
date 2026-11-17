@@ -86,6 +86,9 @@ assert.equal(engine.snapshot().active.rules[0].title,'Reproducible workflow evid
 
 // Host HMAC authenticates all reviews, approvals, audit events, and the active revision.
 const snapshot=engine.snapshot();
+const { integrityMac, ...snapshotBody } = snapshot;
+const expectedMac=createHmac('sha256',TEST_KEY).update(stable(snapshotBody)).digest('hex');
+assert.equal(integrityMac,expectedMac,'runtime HMAC implementation must match standard HMAC-SHA256');
 const restored=new ConstitutionEvolutionEngine({signingKey:TEST_KEY});
 assert.equal(restored.restore(snapshot),true);
 assert.equal(restored.activeConstitution().digest,revision.digest);
