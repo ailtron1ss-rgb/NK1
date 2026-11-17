@@ -450,7 +450,7 @@ export class TeacherStudentDistillationDataset {
       record.teacherRevision, textFingerprint(record.completion),
     ]);
     if (this.dedupeKeys.has(dedupeKey)) return this.reject('duplicate-content', record.taskId);
-    const variantPrefix = JSON.stringify([record.taskId, record.teacherModel, record.teacherRevision]).slice(0, -1) + ',';
+    const variantPrefix = JSON.stringify([record.taskId, record.teacherId, record.teacherModel, record.teacherRevision]).slice(0, -1) + ',';
     const variants = [...this.sampleIdentities.keys()].filter(key => key.startsWith(variantPrefix)).length;
     if (variants >= MAX_VARIANTS_PER_TASK_TEACHER) return this.reject('per-task-variant-limit', record.taskId);
 
