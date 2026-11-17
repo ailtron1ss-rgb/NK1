@@ -64,3 +64,8 @@ Utility is a transparent comparison aid: 0.45 × quality + 0.25 × safety + 0.20
 ### Остаточные границы
 
 Runner не применяет предложенный профиль к live P55 и не включает autonomous promotion. Host должен предоставить реальные OS/container isolation и независимо развёрнутые authority executables; сам TypeScript-адаптер не является sandbox. Показатель cost — измеренное среднее wall-time на scenario, нормированное на заданный host budget. Stability здесь — bounded single-run proxy из executability/ordered trajectory, а не долгосрочная дисперсия повторных запусков. Результат остаётся review artifact и требует отдельного promotion gate, independent review и rollback path.
+
+
+### Канонический P23 outcome ledger
+
+Каждый arm теперь после проверки evaluation digest и run bindings отдельно коммитит свои validation-only либо holdout-only outcomes через `recordIndependentEvaluationOutcomes()` в `VerifiedOutcomeLedger`. Этот метод повторно сверяет план/manifest/trial/run ID, отклоняет повторную запись ячейки и принимает batch атомарно. Для observation фиксируются fingerprint snapshot ledger и число принятых outcome rows. Ledger в этой реализации ограничен текущей фазой/процессом; в checkpoint сохраняется fingerprint его snapshot, а не сам ledger. Это provenance trace, а не подписанный verifier certificate и не замена host-controlled signed evidence/anti-rollback storage.

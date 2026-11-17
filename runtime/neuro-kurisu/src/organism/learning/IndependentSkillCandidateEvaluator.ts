@@ -61,12 +61,8 @@ export interface IndependentCandidateSafetyScanner {
     violationCount: number;
   }>;
 }
-export type IndependentCandidateEvaluationScope = 'paired' | 'validation-only' | 'holdout-only';
-
 export interface IndependentCandidateEvaluationConfig {
   tasks: IndependentCandidateTask[];
-  /** Controls which split is executed; paired remains the backwards-compatible default. */
-  evaluationScope?: IndependentCandidateEvaluationScope;
   executor: CandidateSandboxExecutor;
   verifier: IndependentTaskVerifier;
   safetyScanner: IndependentCandidateSafetyScanner;
@@ -203,18 +199,8 @@ function validateConfig(config: IndependentCandidateEvaluationConfig, tasks: Ind
     trialIds.add(task.trialId);
     splitTasks[task.split].add(task.taskId);
   }
-  const evaluationScope = config.evaluationScope ?? 'paired';
-  if (!['paired', 'validation-only', 'holdout-only'].includes(evaluationScope)) {
-    throw new Error('independent-candidate-evaluator-scope-invalid');
-  }
-  if (evaluationScope === 'paired' && (!splitTasks.validation.size || !splitTasks.holdout.size)) {
+  if (!splitTasks.validation.size || !splitTasks.holdout.size) {
     throw new Error('independent-candidate-evaluator-validation-and-holdout-required');
-  }
-  if (evaluationScope === 'validation-only' && (!splitTasks.validation.size || splitTasks.holdout.size)) {
-    throw new Error('independent-candidate-evaluator-validation-only-scope-mismatch');
-  }
-  if (evaluationScope === 'holdout-only' && (!splitTasks.holdout.size || splitTasks.validation.size)) {
-    throw new Error('independent-candidate-evaluator-holdout-only-scope-mismatch');
   }
   for (const taskId of splitTasks.validation) {
     if (splitTasks.holdout.has(taskId)) throw new Error('independent-candidate-evaluator-task-leakage');
@@ -455,6 +441,7 @@ export function createIndependentSkillCandidateEvaluator(
           holdoutPlanFingerprint: authority.holdoutPlan.planFingerprint,
           method: authority.method,
           attempt: authority.attempt ?? 1,
+          evaluationScope: config.evaluationScope ?? 'paired',
         } : null,
         runBindings,
       },
@@ -485,6 +472,7 @@ export function recordIndependentEvaluationOutcomes(
           holdoutPlanFingerprint: string;
           method: string;
           attempt: number;
+          evaluationScope?: IndependentCandidateEvaluationScope;
         } | null;
         runBindings: Array<{
           taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
@@ -500,6 +488,7 @@ export function recordIndependentEvaluationOutcomes(
     holdoutPlan: LearningExperimentPlan;
     method: string;
     attempt?: number;
+    evaluationScope?: IndependentCandidateEvaluationScope;
   },
   observedAt = Date.now(),
 ): { accepted: number } {
@@ -522,7 +511,10 @@ export function recordIndependentEvaluationOutcomes(
   }
   const attempt = authority.attempt ?? 1;
   const recordedAuthority = evaluation.provenance.experimentAuthority;
+  const evaluationScope = recordedAuthority?.evaluationScope ?? 'paired';
   if (!recordedAuthority ||
+      !['paired', 'validation-only', 'holdout-only'].includes(evaluationScope) ||
+      (authority.evaluationScope !== undefined && authority.evaluationScope !== evaluationScope) ||
       recordedAuthority.manifestFingerprint !== authority.ledger.manifestFingerprint() ||
       recordedAuthority.validationPlanFingerprint !== authority.validationPlan.planFingerprint ||
       recordedAuthority.holdoutPlanFingerprint !== authority.holdoutPlan.planFingerprint ||
@@ -560,9 +552,13 @@ export function recordIndependentEvaluationOutcomes(
     reportSplitByTrial.set(report.trialId, 'holdout');
   }
   const expectedRuns = [
-    ...authority.validationPlan.runs.filter(run => run.method === authority.method),
-    ...authority.holdoutPlan.runs.filter(run => run.method === authority.method),
+    ...(evaluationScope === 'holdout-only' ? [] : authority.validationPlan.runs.filter(run => run.method === authority.method)),
+    ...(evaluationScope === 'validation-only' ? [] : authority.holdoutPlan.runs.filter(run => run.method === authority.method)),
   ];
+  if ((evaluationScope === 'validation-only' && evaluation.holdout.length !== 0) ||
+      (evaluationScope === 'holdout-only' && evaluation.validation.length !== 0)) {
+    throw new Error('independent-evaluation-ledger-split-scope-mismatch');
+  }
   if (expectedRuns.length !== bindings.length ||
       new Set(expectedRuns.map(run => run.runId)).size !== expectedRuns.length) {
     throw new Error('independent-evaluation-ledger-plan-coverage-incomplete');

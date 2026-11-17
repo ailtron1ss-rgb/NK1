@@ -115,6 +115,10 @@ try {
   assert.equal(runner.snapshot().validationObservations.length, 12,
     'baseline and both candidate arms should each have four independently bound validation observations');
   assert.ok(runner.snapshot().validationObservations.every(row => row.verifiedEvidence?.runId === row.verifiedEvidence?.plannedRunId));
+  assert.ok(runner.snapshot().validationObservations.every(row =>
+    /^[a-f0-9]{64}$/.test(row.verifiedEvidence?.outcomeLedgerFingerprint ?? '') &&
+    row.verifiedEvidence?.outcomeCount >= 4),
+    'each arm receipt must include the canonical P23 outcome ledger fingerprint and accepted row count');
 
   const validationOnlyHoldoutCalls = observations.filter(row => row.split === 'holdout');
   assert.equal(validationOnlyHoldoutCalls.length, 0, 'validation must never dispatch holdout tasks to any candidate');
@@ -128,6 +132,10 @@ try {
   assert.equal(result.evidence.verifiedObservationCount, 22,
     'verified evidence count must include 12 validation and 10 finalist-only holdout observations');
   assert.ok(/^[a-f0-9]{64}$/.test(result.evidence.verifiedEvidenceFingerprint));
+  assert.ok(runner.snapshot().holdoutObservations.every(row =>
+    /^[a-f0-9]{64}$/.test(row.verifiedEvidence?.outcomeLedgerFingerprint ?? '') &&
+    row.verifiedEvidence?.outcomeCount >= 5),
+    'holdout receipts must be tied to P23 ledger commits for baseline and finalist only');
   assert.equal(result.evidence.verifiedPlanCount, 2,
     'validation and holdout must be separate evaluator plans');
   const holdoutCalls = observations.filter(row => row.split === 'holdout');

@@ -87,6 +87,10 @@ export interface DevelopmentalMultiverseVerifiedEvidence {
   verifierId: string;
   runId: string;
   plannedRunId: string;
+  /** Fingerprint of the canonical P23 outcome ledger immediately after this arm commit. */
+  outcomeLedgerFingerprint: string;
+  /** Accepted canonical outcome rows present in that ledger snapshot. */
+  outcomeCount: number;
 }
 
 export interface DevelopmentalMultiverseObservationInput extends DevelopmentalMultiverseWorkItem {
@@ -662,6 +666,8 @@ export class DevelopmentalMultiverse {
           !/^[a-f0-9]{64}$/i.test(String(evidence.manifestFingerprint)) ||
           !/^[a-f0-9]{64}$/i.test(String(evidence.validationPlanFingerprint)) ||
           !/^[a-f0-9]{64}$/i.test(String(evidence.holdoutPlanFingerprint)) ||
+          !/^[a-f0-9]{64}$/i.test(String(evidence.outcomeLedgerFingerprint)) ||
+          !Number.isSafeInteger(evidence.outcomeCount) || (evidence.outcomeCount as number) < 1 ||
           !boundedEvidenceIdentity(evidence.method) || !boundedEvidenceIdentity(evidence.verifierId) ||
           !boundedEvidenceIdentity(evidence.runId) || !boundedEvidenceIdentity(evidence.plannedRunId) ||
           evidence.runId !== evidence.plannedRunId) {
@@ -678,6 +684,8 @@ export class DevelopmentalMultiverse {
         verifierId: evidence.verifierId as string,
         runId: evidence.runId as string,
         plannedRunId: evidence.plannedRunId as string,
+        outcomeLedgerFingerprint: String(evidence.outcomeLedgerFingerprint).toLowerCase(),
+        outcomeCount: evidence.outcomeCount as number,
       };
     }
     const observation: DevelopmentalMultiverseObservation = {
@@ -723,6 +731,8 @@ export class DevelopmentalMultiverse {
           method: item.method,
           verifierId: item.verifierId,
           runId: item.runId,
+          outcomeLedgerFingerprint: item.outcomeLedgerFingerprint,
+          outcomeCount: item.outcomeCount,
         })).sort((a, b) => a.evaluationFingerprint.localeCompare(b.evaluationFingerprint)))
       : null;
     const verifiedPlanCount = new Set(verifiedRows.map(item => item.planFingerprint)).size;

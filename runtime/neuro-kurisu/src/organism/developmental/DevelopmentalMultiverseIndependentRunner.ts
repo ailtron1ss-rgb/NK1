@@ -4,6 +4,8 @@ import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import {
   createIndependentSkillCandidateEvaluator,
+  recordIndependentEvaluationOutcomes,
+  type IndependentCandidateEvaluationScope,
   type IndependentCandidateTask,
 } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import {
@@ -227,6 +229,7 @@ interface EvaluatorEnvelope {
         holdoutPlanFingerprint: string;
         method: string;
         attempt: number;
+        evaluationScope?: IndependentCandidateEvaluationScope;
       } | null;
       runBindings: Array<{
         taskId: string;
@@ -593,6 +596,8 @@ export class DevelopmentalMultiverseIndependentRunner {
     const provenance = result?.evaluation?.provenance;
     const expectedSplitPlan = phase === 'validation' ? corpus.validationPlan : corpus.holdoutPlan;
     const recordedAuthority = provenance?.experimentAuthority;
+    const evaluationScope: IndependentCandidateEvaluationScope =
+      phase === 'validation' ? 'validation-only' : 'holdout-only';
     if (!result || result.payloadFingerprint !== payloadFingerprint ||
         !isDigest(result.evaluationFingerprint) ||
         result.evaluationFingerprint !== digest(result.evaluation) ||
@@ -603,7 +608,8 @@ export class DevelopmentalMultiverseIndependentRunner {
         recordedAuthority.manifestFingerprint !== corpus.ledger.manifestFingerprint() ||
         recordedAuthority.validationPlanFingerprint !== corpus.validationPlan.planFingerprint ||
         recordedAuthority.holdoutPlanFingerprint !== corpus.holdoutPlan.planFingerprint ||
-        recordedAuthority.method !== method || recordedAuthority.attempt !== 1) {
+        recordedAuthority.method !== method || recordedAuthority.attempt !== 1 ||
+        recordedAuthority.evaluationScope !== evaluationScope) {
       throw new Error('developmental-multiverse-runner-evaluator-provenance-invalid');
     }
     const reports = phase === 'validation' ? result.evaluation.validation : result.evaluation.holdout;
@@ -616,6 +622,26 @@ export class DevelopmentalMultiverseIndependentRunner {
     const bindingByTrial = new Map(bindings.map(binding => [binding.trialId, binding] as const));
     if (reportByTrial.size !== tasks.length || bindingByTrial.size !== tasks.length) {
       throw new Error('developmental-multiverse-runner-evaluator-trial-duplicate');
+    }
+    const ledgerCommit = recordIndependentEvaluationOutcomes(result, {
+      ...{
+        manifest: corpus.manifest,
+        ledger: corpus.ledger,
+        validationPlan: corpus.validationPlan,
+        holdoutPlan: corpus.holdoutPlan,
+        method,
+        attempt: 1,
+        evaluationScope,
+      },
+    });
+    if (ledgerCommit.accepted !== tasks.length) {
+      throw new Error('developmental-multiverse-runner-outcome-ledger-coverage-mismatch');
+    }
+    const outcomeLedgerSnapshot = corpus.ledger.snapshot();
+    const outcomeLedgerFingerprint = digest(outcomeLedgerSnapshot);
+    const outcomeCount = outcomeLedgerSnapshot.acceptedOutcomes;
+    if (!isDigest(outcomeLedgerFingerprint) || outcomeCount < tasks.length) {
+      throw new Error('developmental-multiverse-runner-outcome-ledger-invalid');
     }
     const cost01 = clamp01((elapsedMs / tasks.length) /
       (this.options.costBudgetMsPerScenario ?? 30_000));
@@ -665,6 +691,8 @@ export class DevelopmentalMultiverseIndependentRunner {
           verifierId: this.options.verifierId,
           runId: binding.runId,
           plannedRunId: binding.plannedRunId,
+          outcomeLedgerFingerprint,
+          outcomeCount,
         },
       });
     }
