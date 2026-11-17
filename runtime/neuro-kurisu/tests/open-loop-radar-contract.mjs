@@ -396,7 +396,11 @@ const activeDependent = dependencyRadar.register({
 dependencyRadar.cancel(cancelledPrerequisite.id, 'Provider path was retired');
 assert.equal(dependencyRadar.snapshot().records.find(row => row.id === activeDependent.id)?.status, 'blocked');
 assert.throws(() => dependencyRadar.updateDependencies(activeDependent.id, [], '  '), /dependency-change-reason-required/);
+const dependencyInitiative = 'soc:open-loop:dependency-edit:001';
+dependencyRadar.reserveForInitiative(activeDependent.id, dependencyInitiative);
 dependencyRadar.updateDependencies(activeDependent.id, [], 'Use the replacement provider path');
+assert.equal(dependencyRadar.snapshot().records.find(row => row.id === activeDependent.id)?.pendingSurfacingInitiativeId, null,
+  'changing dependency semantics must release any in-flight initiative built from the old dependency graph');
 assert.equal(dependencyRadar.snapshot().records.find(row => row.id === activeDependent.id)?.status, 'open',
   'removing an obsolete cancelled prerequisite must unblock the dependent task');
 

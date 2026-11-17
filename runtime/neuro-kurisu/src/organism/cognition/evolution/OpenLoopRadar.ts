@@ -566,6 +566,8 @@ export class OpenLoopRadar {
     } else {
       record.status = 'open';
     }
+    record.pendingSurfacingInitiativeId = null;
+    record.pendingSurfacingLeaseUntil = 0;
     record.updatedAt = now;
     this.reconcileDependencies();
     return structuredClone(record);
