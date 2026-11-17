@@ -358,10 +358,13 @@ export class AdaptiveSynapticMatrixEngine {
     if (scored.length === 0) return fallback('no-compatible-validated-adapter');
     const winner = scored[0];
     if (winner.score01 < 0.68) return fallback('specialist-confidence-below-route-threshold');
-    const runnerUp = scored[1];
-    if (runnerUp
-      && runnerUp.entry.candidate.conflictGroup === winner.entry.candidate.conflictGroup
-      && winner.score01 - runnerUp.score01 < 0.05) {
+    // Compare against the strongest competitor in the winner's conflict group,
+    // not merely the global runner-up: another group may sit between two
+    // semantically conflicting specialists in the sorted score list.
+    const sameGroupRunnerUp = scored.slice(1).find(
+      item => item.entry.candidate.conflictGroup === winner.entry.candidate.conflictGroup,
+    );
+    if (sameGroupRunnerUp && winner.score01 - sameGroupRunnerUp.score01 < 0.05) {
       return fallback('ambiguous-adapter-competition');
     }
 
