@@ -45,3 +45,20 @@ $env:LLAMA_CPP_NK1_TEMPLATE_CONTROLS = "1"
 Unset or set the variable to any other value to keep the feature off. With the opt-in enabled, the server sends the 43-value profile plus named action/mode, motivation, uncertainty, budget, freshness and bounded steering-intent fields. The actual chat template must explicitly consume those variables; the default template may ignore them. The receipt exposed by NK1 means only that `chat_template_kwargs` was sent to the local endpoint, not that the template used it or that model activations were steered.
 
 This flag does not enable changes to model weights, hidden states, or residual activations. Keep the default off unless the selected template has been adapted and tested with the NK1 variables.
+
+### Illustrative Jinja insertion
+
+Do not replace a model's whole chat template with this fragment. Insert it inside the **existing system-message branch** of a tested template, before rendering that system message's content:
+
+```jinja
+{%- if nk1_control_version | default(0) == 2 %}
+{{- '\\n[NEUROCORE CONTROL]' -}}
+{{- '\\nmode=' ~ (nk1_mode | default('shallow')) -}}
+{{- '\\naction=' ~ (nk1_action | default('none')) -}}
+{{- '\\nuncertainty=' ~ (nk1_uncertainty01 | default(0.5)) -}}
+{{- '\\nbudget=' ~ (nk1_budget_remaining01 | default(0.5)) -}}
+{{- '\\nneural_freshness=' ~ (nk1_neural_snapshot_freshness01 | default(0)) -}}
+{%- endif %}
+```
+
+This example renders a small text summary into the model's system context. It is **not** neural activation steering: it gives the model structured context through its prompt template. Keep the control values out of untrusted user input and test the exact model template before enabling the server flag.
