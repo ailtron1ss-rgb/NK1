@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from neural_prosthesis.service import RequestError, _context_window, create_handler
+from neural_prosthesis.service import RequestError, _context_window, _output_token_limit, create_handler
 
 
 class FakeRuntime:
@@ -41,6 +41,14 @@ class NeuralProsthesisHttpTests(unittest.TestCase):
         self.assertEqual(_context_window({"max_position_embeddings": 1_000_000}, 100_000), 65_536)
         with self.assertRaisesRegex(RuntimeError, "must-be-an-integer"):
             _context_window(object(), "many")
+
+    def test_generation_budget_is_clamped_inside_the_model_context(self):
+        self.assertEqual(_output_token_limit(2048, 512), 511)
+        self.assertEqual(_output_token_limit(120, 1024), 120)
+        self.assertEqual(_output_token_limit(1, 2), 1)
+        with self.assertRaises(RequestError) as invalid:
+            _output_token_limit(True, 4096)
+        self.assertEqual(invalid.exception.status, 400)
 
     def setUp(self):
         self.runtime = FakeRuntime()
