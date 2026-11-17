@@ -6,6 +6,7 @@ on:
       - "runtime/neuro-kurisu/src/server/local-language-backend-policy.mjs"
       - "runtime/neuro-kurisu/src/organism/research/HyperPlasticNetwork.ts"
       - "runtime/neuro-kurisu/tests/ome26-hyper-plastic-network.mjs"
+      - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/ome26-hyper-plastic-network.yml"
   workflow_dispatch:
 
@@ -19,7 +20,7 @@ concurrency:
 jobs:
   research-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -27,5 +28,14 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - name: Verify Hyper-Plastic Network research contract
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/ome26-hyper-plastic-network.mjs
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Run Hyper-Plastic Network contract and bounded low-rank experiment
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:ome26:hyper-plastic-network
