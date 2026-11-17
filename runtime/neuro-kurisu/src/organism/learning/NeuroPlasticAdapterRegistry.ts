@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
 
 export type NeuroPlasticMethod = 'lora' | 'qlora';
@@ -327,7 +327,24 @@ export function createNeuroPlasticApprovalSignature(
   secret: string,
 ): string {
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('neuro-plastic-approval-secret-too-short');
-  return createHmac('sha256', secret).update(approvalPayload(approval, context)).digest('hex');
+  const blockSize = 64;
+  const keyBytes = Buffer.from(secret, 'utf8');
+  const normalizedKey = keyBytes.length > blockSize
+    ? Buffer.from(createHash('sha256').update(keyBytes).digest())
+    : keyBytes;
+  const keyBlock = Buffer.alloc(blockSize, 0);
+  normalizedKey.copy(keyBlock);
+  const innerPad = Buffer.alloc(blockSize);
+  const outerPad = Buffer.alloc(blockSize);
+  for (let index = 0; index < blockSize; index++) {
+    innerPad[index] = keyBlock[index] ^ 0x36;
+    outerPad[index] = keyBlock[index] ^ 0x5c;
+  }
+  const innerDigest = createHash('sha256')
+    .update(innerPad)
+    .update(approvalPayload(approval, context), 'utf8')
+    .digest();
+  return createHash('sha256').update(outerPad).update(innerDigest).digest('hex');
 }
 
 export function verifyNeuroPlasticApprovalSignature(
@@ -337,9 +354,13 @@ export function verifyNeuroPlasticApprovalSignature(
 ): boolean {
   try {
     const expected = createNeuroPlasticApprovalSignature(approval, context, secret);
-    const actual = Buffer.from(safeHash(approval.signature, 'approval-signature'), 'hex');
-    const wanted = Buffer.from(expected, 'hex');
-    return actual.length === wanted.length && timingSafeEqual(actual, wanted);
+    const actual = safeHash(approval.signature, 'approval-signature');
+    if (actual.length !== expected.length) return false;
+    let difference = 0;
+    for (let index = 0; index < expected.length; index++) {
+      difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
+    }
+    return difference === 0;
   } catch {
     return false;
   }
