@@ -369,7 +369,6 @@ export class WorldForge {
     if(next.remainingSteps===0)next.status='exhausted';
     next.events=next.events.slice(-64);
     session.trace.push({...action,accepted});
-    session.trace=session.trace.slice(-this.maxTraceSteps);
     session.state=next;
     return{accepted,state:structuredClone(next),reward01:Number(reward01.toFixed(3)),appliedDisturbances:applied,reason,syntheticOnly:true};
   }
