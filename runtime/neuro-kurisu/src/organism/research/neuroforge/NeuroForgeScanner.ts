@@ -419,7 +419,7 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
         const lines = text.split(/\r?\n/);
         for (let index = 0; index < lines.length; index += 1) {
           const line = lines[index]!;
-          if (/(?:api[_-]?key|secret|token|password|private[_-]?key)\s*[:=]\s*['"][^'"]{8,}/i.test(line) &&
+          if (/(?:api[_-]?key|secret|token|password|private[_-]?key)\s*[:=]\s*(?:['"][^'"]{8,}['"]?|[^\s,;]{8,})/i.test(line) &&
               !/(example|sample|placeholder|changeme|dummy|your[_ -])/i.test(line)) {
             securityFindings.push({ path: relativePath, kind: 'possible-secret-assignment', line: index + 1 });
           }
