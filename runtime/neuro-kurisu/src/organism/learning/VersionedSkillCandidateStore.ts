@@ -406,6 +406,9 @@ export class VersionedSkillCandidateStore {
     const current = this.readTrustedSnapshot();
     const candidate = current.candidates.find(item => item.candidateId === candidateId);
     if (!candidate || !['staged', 'shadow'].includes(candidate.status)) throw new Error('candidate is not eligible for shadow evaluation');
+    if (isSynapticCommonsReviewPayload(candidate.payload)) {
+      throw new Error('synaptic-candidate-requires-native-adapter');
+    }
     let evidenceAuthorized = false;
     try { evidenceAuthorized = this.verifyShadowEvidence(clone(observation), clone(candidate)); } catch { evidenceAuthorized = false; }
     if (evidenceAuthorized !== true) throw new Error('shadow observation is not authenticated by the configured evidence verifier');
@@ -439,10 +442,10 @@ export class VersionedSkillCandidateStore {
     }
     const current = this.readTrustedSnapshot();
     const candidate = current.candidates.find(item => item.candidateId === candidateId);
-    if (!candidate || candidate.status !== 'shadow') throw new Error('candidate must complete shadow staging before promotion');
-    if (isSynapticCommonsReviewPayload(candidate.payload)) {
+    if (candidate && isSynapticCommonsReviewPayload(candidate.payload)) {
       throw new Error('synaptic-candidate-requires-native-adapter');
     }
+    if (!candidate || candidate.status !== 'shadow') throw new Error('candidate must complete shadow staging before promotion');
     const active = activeFor(current, candidate.skillId);
     const activeVersion = active?.version ?? null;
     if (approval.expectedActiveVersion !== activeVersion || candidate.baseVersion !== activeVersion) {

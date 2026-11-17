@@ -228,28 +228,27 @@ try {
   assert.equal(candidate.payload.activation.canActivateAutomatically, false);
   assert.equal(candidate.payload.localEvidence.candidateMethod, 'synaptic-commons:' + fingerprint);
 
-  for (let index = 0; index < 3; index += 1) {
-    candidateStore.recordShadowObservation(staged.candidateId, {
-      runId: 'synaptic-blocked-shadow-' + index,
-      evidenceFingerprint: String(index + 1).repeat(64),
-      passed: true,
-      observedAt: Date.now(),
-    });
-  }
+  assert.throws(() => candidateStore.recordShadowObservation(staged.candidateId, {
+    runId: 'synaptic-blocked-shadow',
+    evidenceFingerprint: '1'.repeat(64),
+    passed: true,
+    observedAt: Date.now(),
+  }), /synaptic-candidate-requires-native-adapter/,
+  'the generic P23 shadow runner cannot execute a portable review envelope');
   assert.throws(() => candidateStore.approveAndPromote(staged.candidateId, {
     approvedBy: 'test-authority',
     approvedAt: Date.now() + 1000,
     expectedActiveVersion: null,
   }, 3), /synaptic-candidate-requires-native-adapter/);
   assert.deepEqual(candidateStore.snapshot().active, [],
-    'even shadow evidence and a positive approval verifier cannot activate an unadapted imported package');
+    'a portable review envelope cannot enter shadow execution or promotion');
 
   const restartedStore = new VersionedSkillCandidateStore(
     new AtomicFileSkillStorePersistence(candidateStorePath),
     () => true, () => true, () => true,
   );
   const restored = restartedStore.snapshot();
-  assert.equal(restored.candidates[0].status, 'shadow');
+  assert.equal(restored.candidates[0].status, 'staged');
   assert.deepEqual(restored.active, []);
   assert.equal((await runtime.synapticCommonsDiagnostics()).executableCount, 0);
   console.log('SYNAPTIC_COMMONS_P23_ADMISSION=PASS authenticated-local-proposal exact-artifact-binding durable-stage shadow-only promotion-block');
