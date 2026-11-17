@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
@@ -32,6 +32,14 @@ const target = new OrganismRuntime({
   autoRun: false,
   substrateBackendProfiles: [profile],
 });
+const recoveryState = path.join(directory, 'recovery-organism.json');
+const recovery = new OrganismRuntime({
+  stateFile: recoveryState,
+  worldStateFile: path.join(directory, 'recovery-world.json'),
+  enableLanguage: false,
+  autoRun: false,
+  substrateBackendProfiles: [profile],
+});
 
 try {
   await source.init();
@@ -58,11 +66,46 @@ try {
 
   const journal = JSON.parse(await readFile(targetState + '.substrate-import-journal.json', 'utf8'));
   assert.equal(journal.phase, 'committed');
+
+  await recovery.importPortableSubstrateTransferPackage(transfer, profile.backendId);
+  const blankBackup = {
+    version: 1,
+    organism: null,
+    world: null,
+    proceduralSkills: null,
+    substrate: {
+      version: 1,
+      activeBackendId: null,
+      activeProvenance: 'unknown',
+      observedBackendId: null,
+      pendingTransfer: null,
+      lastEvaluation: null,
+      history: [],
+    },
+  };
+  await writeFile(recoveryState + '.substrate-import-backup.json', JSON.stringify(blankBackup));
+  await writeFile(recoveryState + '.substrate-import-journal.json', JSON.stringify({
+    version: 1,
+    importId: 'simulated-interrupted-import',
+    phase: 'prepared',
+    transferDigest: transfer.integrity.digest,
+    targetBackendId: profile.backendId,
+    updatedAt: Date.now(),
+  }));
+  await recovery.init();
+  const recovered = recovery.core.snapshot();
+  assert.equal(recovered.facets.advanced.modelSwitch.currentBackend, 'local-fallback',
+    'startup must restore the pre-import snapshot after an interrupted multi-store write');
+  assert.equal(recovery.substrateDiagnostics().pendingTransfer, null);
+  const recoveredJournal = JSON.parse(await readFile(recoveryState + '.substrate-import-journal.json', 'utf8'));
+  assert.equal(recoveredJournal.phase, 'rolled-back');
+
   console.log('OMESTRO_22_RUNTIME_PORTABLE_TRANSFER=PASS', JSON.stringify({
     organismStateRestored: true,
     worldStateRestored: true,
     calibrationStillRequired: true,
     importJournal: journal.phase,
+    interruptedImportRecovered: recoveredJournal.phase,
   }));
 } finally {
   await target.stop().catch(() => {});
