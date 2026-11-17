@@ -384,6 +384,7 @@ const semanticHistoryFact = semanticHistoryOS.encode({
 }, { clone: false });
 const semanticKnowledgeAt = semanticHistoryFact.recordedFromAt;
 semanticHistoryOS.updateContext(semanticHistoryFact.id, { location: 'South Campus' });
+semanticHistoryOS.revise(semanticHistoryFact.id, 'quarantined', 'later-independent-review');
 const semanticHistoricalPreview = await semanticHistoryOS.previewRetrieveWithEmbeddings(
   'North Campus',
   8,
@@ -397,6 +398,11 @@ assert.equal(
   semanticHistoricalPreview.items[0]?.context?.location,
   'North Campus',
   'semantic preview must return the bitemporal metadata snapshot, not today\'s canonical metadata',
+);
+assert.equal(
+  semanticHistoricalPreview.items[0]?.epistemicStatus,
+  'fact',
+  'semantic preview must use the historical epistemic status before a later quarantine',
 );
 
 const lateLearnedFact = encode('The archive was stored in the east facility.', {
