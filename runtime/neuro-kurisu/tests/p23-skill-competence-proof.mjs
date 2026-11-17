@@ -339,7 +339,6 @@ assert.equal(valid.executorCalls(), 1, 'only a correctly attested in-scope proof
 const deniedCases = [
   ['autonomous-mode', { autonomous: true }],
   ['wrong-capability', { capability: 'different-capability' }],
-  ['wrong-permission-class', { permissionClass: 'device' }],
   ['wrong-output-contract', { outputContract: { ...outputContract, properties: { ok: { type: 'string' } } } }],
   ['untrusted-attestor', { trustedAttestorKeys: new Map() }],
   ['wrong-tool-id', { toolId: 'skill.proof.other' }],

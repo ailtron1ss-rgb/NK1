@@ -256,7 +256,7 @@ export class VersionedSkillCandidateStore {
   snapshot(): VersionedSkillStoreSnapshot { return clone(this.readTrustedSnapshot()); }
 
   /** Resolve only the current, unexpired, signed active P23 candidate. */
-  resolveActiveSkillCompetenceSubject(skillId: string): { candidateId: string; version: number; payloadFingerprint: string } | null {
+  resolveActiveSkillCompetenceSubject(skillId: string): { candidateId: string; version: number; payloadFingerprint: string; proofId: string } | null {
     const current = this.readTrustedSnapshot();
     const active = current.candidates.find(item => item.skillId === skillId && item.status === 'active');
     if (!active?.competenceProof) return null;
