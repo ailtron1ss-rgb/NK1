@@ -111,7 +111,7 @@ export interface SubstrateIndependenceState {
     fromBackendId: string | null;
     fromProfileDigest: string | null;
     toBackendId: string;
-    toProfileDigest: string;
+    toProfileDigest: string | null;
     transferDigest: string;
     evaluationId: string;
     reason: 'calibrated-promotion' | 'rollback';
@@ -616,7 +616,8 @@ export class SubstrateIndependenceEngine {
         const item = ownDataRecord(entry, ['at', 'fromBackendId', 'fromProfileDigest', 'toBackendId', 'toProfileDigest', 'transferDigest', 'evaluationId', 'reason']);
         if (!Number.isFinite(item.at) || !(item.fromBackendId === null || isSafeId(item.fromBackendId))
             || !(item.fromProfileDigest === null || (typeof item.fromProfileDigest === 'string' && /^[a-f0-9]{64}$/u.test(item.fromProfileDigest)))
-            || !isSafeId(item.toBackendId) || typeof item.toProfileDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(item.toProfileDigest)
+            || !isSafeId(item.toBackendId)
+            || !(item.toProfileDigest === null || (typeof item.toProfileDigest === 'string' && /^[a-f0-9]{64}$/u.test(item.toProfileDigest)))
             || typeof item.transferDigest !== 'string'
             || !/^[a-f0-9]{64}$/u.test(item.transferDigest) || !isSafeId(item.evaluationId)
             || !['calibrated-promotion', 'rollback'].includes(String(item.reason))) throw new Error('invalid-history');
@@ -639,7 +640,9 @@ export class SubstrateIndependenceEngine {
         history,
       };
       const activeProfile = activeBackendId ? this.profiles.get(activeBackendId) : undefined;
-      if (activeProfile && activeProfileDigest !== profileDigest(activeProfile)) this.state.activeProvenance = 'unknown';
+      if (activeProfile && activeProfileDigest !== profileDigest(activeProfile) && this.state.activeProvenance !== 'calibrated') {
+        this.state.activeProvenance = 'unknown';
+      }
       return { restored: true, reason: activeProfile && activeProfileDigest !== profileDigest(activeProfile) ? 'active-profile-drift' : 'ok' };
     } catch {
       this.state = defaultState();
@@ -1035,6 +1038,10 @@ export class SubstrateIndependenceEngine {
     if (!matchingPending && this.state.activeBackendId !== evaluation.sourceBackendId) {
       fail('substrate-promotion-source-no-longer-active');
     }
+    if (this.state.activeBackendId === evaluation.sourceBackendId &&
+        this.state.activeProfileDigest !== evaluation.sourceProfileDigest) {
+      fail('substrate-promotion-source-profile-drift');
+    }
     if (pending && !matchingPending) fail('substrate-promotion-transfer-mismatch');
     this.verifiedEvaluationIds.delete(evaluationId);
     const fromBackendId = this.state.activeBackendId ?? evaluation.sourceBackendId;
@@ -1095,7 +1102,7 @@ export class SubstrateIndependenceEngine {
       fromBackendId: last.toBackendId,
       fromProfileDigest: last.toProfileDigest,
       toBackendId: last.fromBackendId,
-      toProfileDigest: last.fromProfileDigest ?? '0'.repeat(64),
+      toProfileDigest: last.fromProfileDigest,
       transferDigest: last.transferDigest,
       evaluationId: last.evaluationId,
       reason: 'rollback',
