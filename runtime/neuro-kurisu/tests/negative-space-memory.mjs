@@ -110,6 +110,45 @@ unknownEvidence.observe('act', 0.1, [{ action: 'verify', estimated: 0.9 }], {
 });
 assert.equal(unknownEvidence.negativeSpaceReviewQueue().length, 0);
 
+// A late verified report may upgrade the same outcome, but may not rewrite it.
+const delayedVerification = new RegretEngine();
+delayedVerification.observe('act', 0.2, [{ action: 'explore', estimated: 0.95 }], {
+  decisionId: 'decision-delayed-verification',
+  chosenExpectedOutcome01: 0.9,
+  significance: { cost01: 0.2, risk01: 0.95, futureImportance01: 0.1 },
+  outcomeVerified01: 0,
+  outcomeIndependent01: 0,
+  outcomeSource: 'internal',
+  outcomeEvidence: ['initial-unverified-report'],
+});
+assert.equal(delayedVerification.negativeSpaceReviewQueue().length, 0);
+const corroborated = delayedVerification.recordNegativeSpaceOutcome({
+  decisionId: 'decision-delayed-verification',
+  actualOutcome01: 0.2,
+  verified01: 1,
+  independent01: 1,
+  source: 'external-evidence',
+  evidence: ['independent-postcondition-confirmation'],
+  at: 400,
+});
+assert.equal(corroborated?.outcomeVerified01, 1);
+assert.equal(corroborated?.outcomeIndependent01, 1);
+assert.equal(corroborated?.outcomeSource, 'external-evidence');
+assert.ok(corroborated?.outcomeEvidence.includes('initial-unverified-report'));
+assert.ok(corroborated?.outcomeEvidence.includes('independent-postcondition-confirmation'));
+assert.equal(delayedVerification.negativeSpaceReviewQueue().length, 1);
+const conflicting = delayedVerification.recordNegativeSpaceOutcome({
+  decisionId: 'decision-delayed-verification',
+  actualOutcome01: 0.95,
+  verified01: 1,
+  independent01: 1,
+  source: 'external-evidence',
+  evidence: ['conflicting-outcome-must-not-replace-canonical'],
+  at: 500,
+});
+assert.equal(conflicting?.chosenActualOutcome01, 0.2, 'later evidence must not silently rewrite a conflicting canonical outcome');
+assert.ok(!conflicting?.outcomeEvidence.includes('conflicting-outcome-must-not-replace-canonical'));
+
 // Small decisions must not create a permanent counterfactual-memory trail.
 engine.observe('wait', 0.6, [{ action: 'rest', estimated: 0.7 }], {
   decisionId: 'decision-negative-space-small',
