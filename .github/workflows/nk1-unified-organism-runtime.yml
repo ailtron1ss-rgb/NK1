@@ -8,6 +8,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/**"
       - "runtime/neuro-kurisu/src/organism/cognition/**"
       - "runtime/neuro-kurisu/src/organism/world/**"
+      - "runtime/neuro-kurisu/src/organism/research/**"
       - "runtime/neuro-kurisu/tests/**"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
@@ -19,6 +20,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/**"
       - "runtime/neuro-kurisu/src/organism/cognition/**"
       - "runtime/neuro-kurisu/src/organism/world/**"
+      - "runtime/neuro-kurisu/src/organism/research/**"
       - "runtime/neuro-kurisu/tests/**"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
@@ -46,6 +48,8 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: OmeStro idea 10 — structural discovery, provenance and holdout gate
+        run: npm --prefix runtime/neuro-kurisu run test:idea10:mechanism-serendipity && npm --prefix runtime/neuro-kurisu run test:idea10:mechanism-intake && npm --prefix runtime/neuro-kurisu run test:idea10:mechanism-symmetry && npm --prefix runtime/neuro-kurisu run test:idea10:scientific-project
       - name: Unified cognitive cycle and boundary
         run: npm --prefix runtime/neuro-kurisu run test:workpass287:cognitive-cycle && npm --prefix runtime/neuro-kurisu run test:cognitive-cycle-boundary-runtime-wiring
       - name: Cognitive resource economy and Will voluntary attention

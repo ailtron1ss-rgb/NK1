@@ -1,3 +1,4 @@
+import type { MechanismSerendipityOptions } from '../research/MechanismSerendipityEngine.ts';
 import { SelfSubsystemRuntime } from './SelfSubsystemRuntime.ts';
 import { GovernanceSubsystemRuntime } from './GovernanceSubsystemRuntime.ts';
 import { MemorySubsystemRuntime } from './MemorySubsystemRuntime.ts';
@@ -181,6 +182,32 @@ export class OrganismSystemFabric {
 
   systemGraph(){
     return { order:this.executionOrder(), dependencyCycles:this.dependencyCycles(), nodes:this.contracts().map(c=>({name:c.name,phase:c.phase,cost01:c.estimatedCost01,cadence:c.cadenceCycles,executionRank:c.executionRank ?? 99})), edges:this.contracts().flatMap(c=>c.dependencies.map(dep=>({from:dep,to:c.name}))), cognitiveArchitecture:buildCognitiveArchitectureSnapshot() };
+  }
+
+  /** Build a live read-only problem graph from all seven owned subsystem snapshots and dependency edges. */
+  discoverMechanisms(options:MechanismSerendipityOptions={}){
+    // Read scalar summaries directly from subsystem owners. Do not clone the full
+    // memory/world state merely to construct a discovery query.
+    const memoryEntries=this.memory.memories.snapshot({clone:false}).length;
+    const worldStats=this.world.worldLearningSnapshot().stats;
+    const predictionError01=Math.max(0,Math.min(1,Math.max(worldStats.lastActionError01,worldStats.lastPassiveError01)));
+    const budgetRemaining01=this.agency.budget.snapshot().remaining01;
+    const evidenceDebt01=this.research.predictionDebt.priority();
+    return this.research.mechanismSerendipity.analyze({
+      graph:this.systemGraph(),
+      // Owner-binding probes avoid snapshot() cloning of large subsystem state.
+      health:this.names().map(name=>{
+        const owner=this.get(name);
+        const available=Boolean(owner&&typeof owner.snapshot==='function'&&typeof owner.health==='function');
+        return{systemName:name,available,probeKind:'owner-binding' as const,snapshotKeys:0,snapshotMs:0,checkedAt:Date.now(),...(available?{}:{error:'subsystem-owner-unavailable'})};
+      }),
+      systems:{
+        memory:{memoryEntries},
+        world:{predictionError01},
+        agency:{remaining01:budgetRemaining01},
+        research:{evidenceDebt01},
+      },
+    },options);
   }
 
   /** Full brain-like system map for the UI; read-only over canonical owners. */

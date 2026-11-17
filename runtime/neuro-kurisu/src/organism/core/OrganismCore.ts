@@ -530,6 +530,8 @@ export interface OrganismSystemState {
     skillAcquisitionBenchmark?: import('../system/SkillAcquisitionBenchmark.ts').SkillAcquisitionState;
     evidenceFirewall?: import('../system/EvidenceFirewall.ts').EvidenceFirewallState;
     projectResearchSession?: import('../system/ProjectResearchSession.ts').ResearchSessionState;
+    /** OmeStro idea #10: bounded live cross-domain discovery queue and deduplication ledger. */
+    mechanismSerendipity?: import('../research/MechanismSerendipityRuntime.ts').MechanismSerendipityRuntimeState;
     /** Bounded idempotency receipts for caller-keyed tool side effects; pending rows fail closed after recovery. */
     actionExecutionLedger?: import('../system/ActionGateway.ts').ActionExecutionLedgerSnapshot;
     outcomeVerification?: {
@@ -2300,6 +2302,16 @@ export class OrganismCore {
     }
     organismSystemExecutionOrder() { return this.organismSystems.executionOrder(); }
     organismSystemHealth() { return this.organismSystems.health(); }
+    /** Read-only on-demand mechanism discovery from the live physical subsystem graph. */
+    organismMechanismDiscoveries(options: import('../research/MechanismSerendipityEngine.ts').MechanismSerendipityOptions = {}) { return this.organismSystems.discoverMechanisms(options); }
+    /** Read-only bounded view of pending mechanism-transfer hypotheses in the ordinary experiment queue. */
+    organismMechanismExperimentQueue(limit = 16): Array<import('../cognition/IntrinsicExperimentGenerator.ts').IntrinsicExperiment> {
+        const safeLimit = Math.max(1, Math.min(40, Number.isSafeInteger(limit) ? limit : 16));
+        return (this.persisted.facets.memory.experiments as any[])
+            .filter((row: any) => row?.source === 'mechanism-serendipity' && row?.status === 'candidate')
+            .slice(0, safeLimit)
+            .map((row: any) => structuredClone(row));
+    }
     selfSubsystemSnapshot() { return this.selfSubsystem.snapshot(); }
     governanceSubsystemSnapshot() { return this.governanceSubsystem.snapshot(); }
     cognitiveSubsystemHealth() { return this.cognitiveRuntime.cognitiveSubsystemRegistry.health(); }
@@ -5419,20 +5431,57 @@ export class OrganismCore {
         if (this.config.enableHomeostasis)
             this.ensureHomeostaticGoal('restore-load', 'Снизить когнитивную нагрузку', n.cognitiveLoad, n.cognitiveLoad > 0.78);
         let experiment = this.cognitiveRuntime.experimentGenerator.generate({ uncertainty: n.uncertainty, predictionError: state.predictionError, novelty: n.novelty, goals: this.persisted.goals });
+        const experimentQueue = this.persisted.facets.memory.experiments as any[];
+        const queuedExperimentIds = new Set(experimentQueue.map((row: any) => String(row?.id ?? '')).filter(Boolean));
         // A dream association may enter the ordinary verification queue, but it remains an explicitly unverified hypothesis.
         // Existing high-pressure intrinsic experiments win unless a dream has a materially stronger information-gain estimate.
-        const queuedDreamIds = new Set((this.persisted.facets.memory.experiments as any[]).map((row: any) => String(row?.dreamId ?? '')).filter(Boolean));
+        const queuedDreamIds = new Set(experimentQueue.map((row: any) => String(row?.dreamId ?? '')).filter(Boolean));
         const queuedDream = this.cognitiveRuntime.microDreams.snapshot().dreams.find(dream => dream.kind === 'association' && dream.validationStatus === 'candidate' && dream.confidence >= .45 && Array.isArray(dream.sourceMemoryIds) && dream.sourceMemoryIds.length === 2 && !queuedDreamIds.has(dream.id));
         const dreamExperiment = queuedDream ? this.cognitiveRuntime.experimentGenerator.fromDreamAssociation(queuedDream, this.persisted.goals) : null;
         const urgentIntrinsicQuestion = n.uncertainty > .72 || state.predictionError > .7 || n.novelty > .82;
         if (dreamExperiment && (!experiment || (!urgentIntrinsicQuestion && dreamExperiment.expectedInformationGain >= experiment.expectedInformationGain + .12))) experiment = dreamExperiment;
-        if (experiment) {
-            this.persisted.facets.memory.experiments = [experiment, ...this.persisted.facets.memory.experiments].slice(0, 40);
-            this.memorySubsystem.events.append(makeEvent('experiment', state.tick, experiment as any));
+
+        // Cross-domain mechanism discovery is a cold research task (8-tick cadence).
+        // It runs read-only over subsystem owners and persists only verify-only candidates.
+        const mechanismDiscoveryDue = this.config.enableScientificMethod && state.tick > 0 && state.tick % 8 === 0;
+        const mechanismDiscoveries = mechanismDiscoveryDue
+            ? this.organismSystems.discoverMechanisms({ maxResults: 3 }).experiments
+            : [];
+        for (const candidate of mechanismDiscoveries) {
+            if (queuedExperimentIds.has(candidate.id)) continue;
+            experimentQueue.unshift(candidate);
+            queuedExperimentIds.add(candidate.id);
+            this.memorySubsystem.events.append(makeEvent('experiment', state.tick, candidate as any));
         }
-        if (this.config.enableScientificMethod && experiment) {
-            const experimentSources = ['intrinsic-experiment', `tick:${state.tick}`, `experiment:${experiment.id}`, ...(experiment.source === 'dream-association' ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)] : [])];
-            const project = this.cognitiveRuntime.scientificMethod.create(experiment.question, experiment.hypothesis, experiment.action, experimentSources);
+        if (mechanismDiscoveries.length) {
+            this.persisted.facets.memory.experiments = experimentQueue.slice(0, 40);
+        }
+        const queuedMechanismExperiment = (this.persisted.facets.memory.experiments as any[]).find((row: any) =>
+            row?.source === 'mechanism-serendipity' &&
+            row?.status === 'candidate' &&
+            row?.verificationRequired === true &&
+            !row?.scientificProjectId
+        ) ?? null;
+        if (queuedMechanismExperiment &&
+            (!experiment || (!urgentIntrinsicQuestion && queuedMechanismExperiment.expectedInformationGain >= experiment.expectedInformationGain + .12))) {
+            experiment = queuedMechanismExperiment as any;
+        }
+        if (experiment) {
+            const existingIndex = (this.persisted.facets.memory.experiments as any[]).findIndex((row: any) => row?.id === experiment?.id);
+            if (existingIndex >= 0) {
+                const existing = (this.persisted.facets.memory.experiments as any[])[existingIndex];
+                if (existing?.scientificProjectId) {
+                    experiment = { ...experiment, scientificProjectId: existing.scientificProjectId, createdTick: existing.createdTick };
+                }
+            }
+            else {
+                this.persisted.facets.memory.experiments = [experiment, ...this.persisted.facets.memory.experiments].slice(0, 40);
+                this.memorySubsystem.events.append(makeEvent('experiment', state.tick, experiment as any));
+            }
+        }
+        if (this.config.enableScientificMethod && experiment && !experiment.scientificProjectId) {
+            const experimentSources = ['intrinsic-experiment', `tick:${state.tick}`, `experiment:${experiment.id}`, ...(experiment.source === 'dream-association' ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)] : []), ...(experiment.source === 'mechanism-serendipity' ? ['mechanism-serendipity', `mechanism:${experiment.mechanismDiscoveryId ?? experiment.id}`, `source-domain:${experiment.mechanismSourceDomain ?? 'unknown'}`, `target-domain:${experiment.mechanismTargetDomain ?? 'unknown'}`, `flow-evidence-class:${experiment.mechanismFlowEvidenceClass ?? 'unknown'}`, `verification-protocol:${experiment.mechanismVerification?.protocol ?? 'missing'}`, ...(experiment.mechanismCorrespondences ?? []).slice(0, 6).map(value => `mechanism-correspondence:${value}`)] : [])];
+            const project = this.cognitiveRuntime.scientificMethod.create(experiment.question, experiment.hypothesis, experiment.action, experimentSources, experiment.source === 'mechanism-serendipity' ? experiment.mechanismVerification : undefined);
             this.persisted.facets.memory.experiments = this.persisted.facets.memory.experiments.map((row: any) => row?.id === experiment.id ? { ...row, scientificProjectId: project.id, createdTick: state.tick } : row);
             this.persisted.facets.cognition.scientific = this.cognitiveRuntime.scientificMethod.snapshot();
             if (project.uncertainty > 0.6)
@@ -5444,7 +5493,7 @@ export class OrganismCore {
             this.agencySubsystem.selfProjects.linkGoal(proposedProject.id, projectGoal.id);
             this.memorySubsystem.events.append(makeEvent('self-project', state.tick, { ...proposedProject, linkedGoalId: projectGoal.id } as any));
         }
-        let activeProject: ReturnType<typeof this.agencySubsystem.selfProjects.activeProject> = null;
+        let activeProject: import('../cognition/evolution/SelfProjectEngine.ts').SelfProject | null = null;
         if (this.config.enableSelfProjects) {
             const projectContext = this.agencySubsystem.budget.snapshot();
             const projects = this.agencySubsystem.selfProjects.activeProjects({ clone: false });
@@ -12962,3 +13011,5 @@ function b391ContextFromWorld(world: any): number[] {
         clamp((loc % 17) / 17),
     ];
 }
+
+// OmeStro idea #10 live discovery and verify-only experiment queue are exercised by the unified runtime workflow.

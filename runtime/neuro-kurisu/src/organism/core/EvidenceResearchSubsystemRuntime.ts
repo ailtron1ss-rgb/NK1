@@ -17,6 +17,7 @@ import { P53DevelopmentalSelfModificationLab } from '../developmental/P53Develop
 import { ExternalObserverFabric } from '../system/ExternalObserverFabric.ts';
 import { P77RealityExperimentOS, defaultP77 } from '../system/P77RealityExperimentOS.ts';
 import { P82RealityProgressController, defaultP82 } from '../system/P82RealityProgressController.ts';
+import { MechanismSerendipityRuntime } from '../research/MechanismSerendipityRuntime.ts';
 
 /**
  * BIG PASS 49: physical ownership boundary for evidence, prediction and research.
@@ -45,6 +46,8 @@ export class EvidenceResearchSubsystemRuntime {
   readonly p38Research = new P38AutonomousCausalResearchEngine();
   readonly p53DevelopmentalSelfModification = new P53DevelopmentalSelfModificationLab();
   readonly externalObserver = new ExternalObserverFabric();
+  /** Read-only cross-domain mechanism discovery; candidate experiments never execute here. */
+  readonly mechanismSerendipity = new MechanismSerendipityRuntime();
 
   snapshot() {
     return {
@@ -64,6 +67,7 @@ export class EvidenceResearchSubsystemRuntime {
       p38Research: this.p38Research.snapshot(),
       p53DevelopmentalSelfModification: this.p53DevelopmentalSelfModification.snapshot(),
       externalObserver: this.externalObserver.snapshot(),
+      mechanismSerendipity: this.mechanismSerendipity.snapshot(),
     };
   }
 
@@ -79,7 +83,7 @@ export class EvidenceResearchSubsystemRuntime {
       skillAcquisitionBenchmark:system?.skillAcquisitionBenchmark, selfPredictionBenchmark:system?.selfPredictionBenchmark,
       modelOlympics:system?.modelOlympics, predictionDebt:system?.predictionDebt, shadowOrganism:system?.shadowOrganism,
       identityCausality:system?.identityCausality, longHorizonPrediction:system?.longHorizonPrediction,
-      p38Research:learning?.p38, p53DevelopmentalSelfModification:advanced?.p53DevelopmentalSelfModification, externalObserver:system?.externalObserver,
+      p38Research:learning?.p38, p53DevelopmentalSelfModification:advanced?.p53DevelopmentalSelfModification, externalObserver:system?.externalObserver, mechanismSerendipity:system?.mechanismSerendipity,
     });
   }
 
@@ -99,5 +103,6 @@ export class EvidenceResearchSubsystemRuntime {
     this.p38Research.restore((raw as any).p38Research);
     this.p53DevelopmentalSelfModification.restore((raw as any).p53DevelopmentalSelfModification);
     this.externalObserver.restore((raw as any).externalObserver);
+    this.mechanismSerendipity.restore((raw as any).mechanismSerendipity);
   }
 }
