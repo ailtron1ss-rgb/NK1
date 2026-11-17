@@ -43,13 +43,13 @@ untrusted proposal data.
    extractor cannot downgrade them. English and Russian high-risk terms are
    covered by lexical safeguards, but these are not a substitute for policy
    analysis.
-7. High/critical intent requires a distinct risk acknowledgement in addition
-   to ordinary confirmation.
+7. High/critical intent, including detected credential-exfiltration language,
+   requires a distinct risk acknowledgement in addition to ordinary confirmation.
 8. Approval is bound to the exact contract ID and immutable content hash,
    action subset, assumption acknowledgements, risk acknowledgement, timestamp
    and evidence reference. A runtime HMAC attestation detects approval edits.
-9. Approval expires after the configured TTL (default 15 minutes; bounded to
-   1–60 minutes). A stale or future-dated approval cannot pass the gate.
+9. Approval expires after the configured TTL (default 15 minutes, maximum
+   15 minutes). A stale or future-dated approval cannot pass the gate.
 10. The bridge does not invoke ActionGateway when the intent gate refuses.
     ActionGateway remains responsible for its independent permission checks,
     one-shot tool approvals, input contracts, idempotency receipts, result
@@ -62,7 +62,8 @@ a single runtime lifetime but intentionally makes approvals unverifiable after
 restart. Production persistence must inject a stable, secret-managed key through
 `IntentCompiler({ approvalKey, clock })` and must never place that key in the
 contract, logs, repository, or Release ZIP. Rotating the key invalidates prior
-approval attestations. The HMAC is an integrity/authenticity check within this
+approval attestations. The complete source request is bound through a SHA-256
+digest even when the visible contract text is truncated. The HMAC is an integrity/authenticity check within this
 runtime trust model; it does not replace authentication of the user-confirmation
 event or durable evidence storage.
 

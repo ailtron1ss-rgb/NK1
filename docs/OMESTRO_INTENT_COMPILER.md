@@ -22,7 +22,7 @@ Semantic extraction is untrusted proposal data. The compiler does not claim to p
 
 A contract is initially `not-approved`. Approval is exact-contract-bound and can only narrow the declared allow-list. Denials win over allows. Assumptions remain assumptions until acknowledged. A source request that exceeds the bounded input size is marked truncated and cannot be executed.
 
-The approval HMAC key is generated per process by default. Production persistence must inject a stable key from a secret store; the key must never be written to the contract, repository, logs or Release ZIP. Without the same configured key after restart, persisted approval correctly fails closed.
+The approval HMAC key is generated per process by default. Production persistence must inject a stable key from a secret store; the key must never be written to the contract, repository, logs or Release ZIP. Without the same configured key after restart, persisted approval correctly fails closed. The contract ID also binds a digest of the complete source request, including content omitted by the visible text-size cap.
 
 The bridge is not a replacement for `ActionGateway`. Passing the intent gate does not bypass its independent permission checks, one-shot approvals, input contracts, durable idempotency, verification or reconciliation.
 

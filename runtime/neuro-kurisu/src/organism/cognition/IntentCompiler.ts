@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { types as nodeUtilTypes } from 'node:util';
 
 export type IntentRiskLevel = 'low' | 'medium' | 'high' | 'critical';
@@ -37,6 +37,7 @@ export interface IntentContract {
   readonly id: string;
   readonly createdAt: number;
   readonly sourceText: string;
+  readonly sourceTextDigest: string;
   readonly sourceTextTruncated: boolean;
   readonly extractionStatus: IntentExtractionStatus;
   readonly goal: { readonly text: string; readonly source: 'structured-extraction' | 'verbatim-request' };
@@ -99,8 +100,7 @@ const RISK_PATTERNS: ReadonlyArray<[RegExp, string, IntentRiskLevel]> = [
 
 function preserveSourceText(value: unknown): string {
   if (typeof value !== 'string') return '';
-  try { return value.replace(/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/g, ' ').trim(); }
-  catch { return ''; }
+  return value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
 }
 function cleanText(value: unknown, max = MAX_TEXT): string {
   return typeof value === 'string'
@@ -177,7 +177,9 @@ function stableSerialize(value: unknown): string {
   }
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw new TypeError('non-finite number in intent payload');
-    return JSON.stringify(value);
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) throw new TypeError('unsupported number in intent payload');
+    return encoded;
   }
   if (Array.isArray(value)) return '[' + value.map(stableSerialize).join(',') + ']';
   if (!isPlainDataObject(value)) throw new TypeError('intent payload must contain inert plain data');
@@ -218,6 +220,7 @@ function isIntentContract(value: unknown): value is IntentContract {
 
 export class IntentCompiler {
   private readonly provenance = new WeakMap<object, 'draft' | 'approved' | 'rejected' | 'superseded'>();
+  private readonly processApprovalKey = randomBytes(32).toString('hex');
 
   constructor(private readonly options: { clock?: () => number; approvalKey?: string } = {}) {}
 
@@ -228,6 +231,7 @@ export class IntentCompiler {
 
   private approvalKey(): string | null {
     const key = this.options.approvalKey;
+    if (key === undefined) return this.processApprovalKey;
     return typeof key === 'string' && Buffer.byteLength(key, 'utf8') >= MIN_APPROVAL_KEY_BYTES ? key : null;
   }
 
@@ -272,8 +276,11 @@ export class IntentCompiler {
   private build(input: IntentContractInput, extractionStatus: IntentExtractionStatus): IntentContract {
     const rawSource = typeof input?.text === 'string' ? input.text : '';
     const sourceTextTruncated = rawSource.length > MAX_TEXT;
-    const sourceText = cleanText(rawSource);
-    const extraction = input?.extraction ?? {};
+    const sourceTextDigest = createHash('sha256').update(rawSource).digest('hex');
+    const sourceText = cleanText(preserveSourceText(rawSource.slice(0, MAX_TEXT + 1)));
+    const rawExtraction = input?.extraction ?? {};
+    const extractionValid = isPlainDataObject(rawExtraction) && isPlainDataTree(rawExtraction);
+    const extraction = extractionValid ? rawExtraction as IntentExtraction : {};
     const structuredGoal = cleanText(extraction.goal);
     const goalText = structuredGoal || sourceText;
     const risk = inferRisk(sourceText, extraction.risk);
@@ -302,6 +309,7 @@ export class IntentCompiler {
     if (!sourceText) missingInformation.push('request-text');
     if (sourceTextTruncated) missingInformation.push('request-text-truncated');
     if (extractionStatus === 'provider-failed') missingInformation.push('semantic-extraction-failed');
+    if (!extractionValid && input?.extraction != null) missingInformation.push('semantic-extraction-invalid');
     if (!expectedOutcome) missingInformation.push('expected-outcome');
     if (!acceptanceCriteria.length) missingInformation.push('acceptance-criteria');
     if (!allowedActions.length) missingInformation.push('explicit-action-allow-list');
@@ -313,6 +321,7 @@ export class IntentCompiler {
     const identity: Record<string, unknown> = {
       requestId,
       sourceText,
+      sourceTextDigest,
       sourceTextTruncated,
       extractionStatus,
       goal: { text: goalText, source: structuredGoal ? 'structured-extraction' : 'verbatim-request' },
@@ -332,6 +341,7 @@ export class IntentCompiler {
       id: stableId(requestId, identity),
       createdAt: this.now(),
       sourceText,
+      sourceTextDigest,
       sourceTextTruncated,
       extractionStatus,
       goal: identity.goal as IntentContract['goal'],
@@ -443,9 +453,7 @@ export class IntentCompiler {
   }
 
   gate(contract: IntentContract, action: string): IntentGateResult {
-    if (!isIntentContract(contract) || this.provenance.get(contract as object) !== 'approved') {
-      return { allowed: false, reason: 'invalid-contract' };
-    }
+    if (!isIntentContract(contract)) return { allowed: false, reason: 'invalid-contract' };
     const normalizedAction = cleanText(action, MAX_ACTION);
     if (!normalizedAction) return { allowed: false, reason: 'action-not-explicitly-allowed' };
     if (contract.missingInformation.length > 0) return { allowed: false, reason: 'contract-incomplete' };
