@@ -86,6 +86,15 @@ assert.equal(dataset.ingestSignedExample(holdoutRecord, trustedKeys).rejection.c
 assert.equal(dataset.ingestSignedExample(trainRecord, trustedKeys).rejection.code, 'duplicate-artifact');
 const conflicting = teacherRecord(dataset, tasks[0], 1, 'A conflicting answer.', 'teacher-train-conflict');
 assert.equal(dataset.ingestSignedExample(conflicting, trustedKeys).rejection.code, 'conflicting-sample');
+const variantDataset = new TeacherStudentDistillationDataset(tasks);
+for (let seed = 1; seed <= 8; seed++) {
+  const variant = teacherRecord(variantDataset, tasks[0], seed, 'Teacher answer variant ' + seed, 'teacher-variant-' + seed);
+  assert.equal(variantDataset.ingestSignedExample(variant, trustedKeys).accepted, true);
+}
+const ninthVariant = teacherRecord(variantDataset, tasks[0], 9, 'Teacher answer variant 9', 'teacher-variant-9');
+assert.equal(variantDataset.ingestSignedExample(ninthVariant, trustedKeys).rejection.code, 'per-task-variant-limit',
+  'a task/teacher/model revision may contribute no more than eight verified variants');
+
 
 // Untrusted keys and mismatched prompt content cannot enter the dataset.
 const untrusted = new TeacherStudentDistillationDataset(tasks);
