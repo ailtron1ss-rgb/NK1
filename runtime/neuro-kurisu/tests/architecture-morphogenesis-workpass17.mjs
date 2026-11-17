@@ -475,4 +475,89 @@ const mismatchedSharedReport = validateArchitectureMorphogenesisGraph(mismatched
 assert.equal(mismatchedSharedReport.ok, false);
 assert.ok(mismatchedSharedReport.issues.some(item => item.code === 'shared-source-path-owners-mismatch'));
 
+
+
+// The migration DSL must reject unknown fields and overlapping module operations.
+const unknownOperationPlan = proposal(
+  graph([alpha]),
+  graph([replaced]),
+  [{
+    kind: 'replace',
+    moduleId: 'alpha',
+    rationale: 'Replace alpha under its existing identity',
+    automaticMerge: true,
+  }],
+);
+assert.equal(unknownOperationPlan.status, 'BLOCKED');
+assert.ok(unknownOperationPlan.issues.some(item => item.code === 'operation-field-unknown'));
+
+const migrationWithUnknownField = {
+  ...migration(),
+  activateAfterReview: true,
+};
+const unknownMigrationPlan = createArchitectureMorphogenesisPlan({
+  baselineCommit: sha,
+  candidateBranch: 'aspect/morphogenesis-architecture-20261117',
+  baselineGraph: graph([alpha]),
+  candidateGraph: graph([replaced]),
+  operations: [{ kind: 'replace', moduleId: 'alpha', rationale: 'Replace alpha implementation' }],
+  migrationPlan: migrationWithUnknownField,
+});
+assert.equal(unknownMigrationPlan.status, 'BLOCKED');
+assert.ok(unknownMigrationPlan.issues.some(item => item.code === 'migration-plan-field-unknown'));
+
+const checkpointWithUnknownField = {
+  ...migration(),
+  checkpoint: { ...migration().checkpoint, deleteOldBaseline: true },
+};
+const unknownCheckpointPlan = createArchitectureMorphogenesisPlan({
+  baselineCommit: sha,
+  candidateBranch: 'aspect/morphogenesis-architecture-20261117',
+  baselineGraph: graph([alpha]),
+  candidateGraph: graph([replaced]),
+  operations: [{ kind: 'replace', moduleId: 'alpha', rationale: 'Replace alpha implementation' }],
+  migrationPlan: checkpointWithUnknownField,
+});
+assert.equal(unknownCheckpointPlan.status, 'BLOCKED');
+assert.ok(unknownCheckpointPlan.issues.some(item => item.code === 'checkpoint-field-unknown'));
+
+const mergeTarget = moduleRecord('merged-alpha-beta', 'src/organism/system/Merged.ts', 'd');
+const splitLeft = moduleRecord('alpha-left', 'src/organism/system/AlphaLeft.ts', 'e');
+const splitRight = moduleRecord('alpha-right', 'src/organism/system/AlphaRight.ts', 'f');
+const overlappingOperationsPlan = proposal(
+  graph([alpha, beta]),
+  graph([mergeTarget, splitLeft, splitRight]),
+  [
+    {
+      kind: 'merge',
+      sourceModuleIds: ['alpha', 'beta'],
+      targetModuleId: 'merged-alpha-beta',
+      rationale: 'Combine alpha and beta behind one owner',
+    },
+    {
+      kind: 'split',
+      sourceModuleId: 'alpha',
+      targetModuleIds: ['alpha-left', 'alpha-right'],
+      rationale: 'Separate alpha into two responsibilities',
+    },
+  ],
+);
+assert.equal(overlappingOperationsPlan.status, 'BLOCKED');
+assert.ok(overlappingOperationsPlan.issues.some(item => item.code === 'operation-module-overlap'));
+
+const evidenceWithUnknownField = evaluateArchitectureMorphogenesisPlan(mergePlan, {
+  candidateBranch: 'aspect/morphogenesis-architecture-20261117',
+  candidateCommit: '2'.repeat(40),
+  baselineCommit: sha,
+  testsPassed: true,
+  typecheckPassed: true,
+  architectureAuditPassed: true,
+  contractChecksPassed: true,
+  rollbackVerified: true,
+  reviewApproved: true,
+  allowAutomaticMerge: true,
+});
+assert.equal(evidenceWithUnknownField.status, 'BLOCKED');
+assert.ok(evidenceWithUnknownField.issues.some(item => item.code === 'evidence-field-unknown'));
+
 console.log('ARCHITECTURE_MORPHOGENESIS_WORKPASS17=PASS live-graph+contracts+merge-split-move-replace+rollback+promotion-gate');
