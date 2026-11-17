@@ -92,6 +92,11 @@ export class OrganismSystemFabric {
 
   get(name: OrganismSystemName) { return this[name]; }
 
+  /** Late-bind trusted evaluator keys supplied by the host after Core construction. */
+  configureInventionVerifierKeyResolver(resolveKey: InventionVerifierKeyResolver): void {
+    this.research.configureInventionVerifierKeyResolver(resolveKey);
+  }
+
   snapshot(): OrganismSystemFabricSnapshot {
     return {
       version:1,
