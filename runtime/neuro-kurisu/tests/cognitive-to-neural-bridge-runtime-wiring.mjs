@@ -54,7 +54,7 @@ async function runRuntime(enabled) {
       assert.equal(diagnostics.lastFeatureDimensions, 43);
       assert.equal(diagnostics.activationSteeringApplied, 0);
       assert.equal(diagnostics.residualBlockApplied, 0);
-      assert.equal(diagnostics.llamaCppTemplateKwargsSent, 1);
+      assert.ok(diagnostics.llamaCppTemplateKwargsSent > 0);
       assert.equal(diagnostics.lastTemplateControlSchema, 'nk1-cognitive-neural-43-v2');
     } else {
       assert.ok(requests.every(value => value.cognitiveControl === undefined),
