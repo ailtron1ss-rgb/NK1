@@ -55,6 +55,19 @@ const makeTasks = (split, suffix) => [
 
 const validationResult = await run('validation', makeTasks('validation', 100));
 assert.equal(validationResult.evaluation.holdout.length, 0, 'validation-only report must contain no holdout rows');
+const detachedResult = structuredClone(validationResult);
+detachedResult.evaluation.provenance.runBindings[0].runId = 'detached-runtime-run';
+detachedResult.evaluationFingerprint = digest(detachedResult.evaluation);
+const detachedLedger = new VerifiedOutcomeLedger(manifest);
+assert.throws(
+  () => recordIndependentEvaluationOutcomes(detachedResult, {
+    ...authority, ledger: detachedLedger, evaluationScope: 'validation-only', allowPartialSchedule: true,
+  }),
+  /run-not-scheduled/,
+  'the canonical ledger must reject an execution receipt detached from its planned run ID',
+);
+assert.equal(detachedLedger.snapshot().acceptedOutcomes, 0,
+  'a detached execution must not write any canonical outcome rows');
 assert.throws(
   () => recordIndependentEvaluationOutcomes(validationResult, {
     ...authority, evaluationScope: 'validation-only',
