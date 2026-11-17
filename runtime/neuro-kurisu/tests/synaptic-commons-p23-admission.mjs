@@ -283,7 +283,7 @@ try {
     approvedAt: Date.now() + 1000,
     expectedActiveVersion: null,
   }, 3), /synaptic-candidate-requires-native-adapter/);
-  assert.deepEqual(candidateStore.snapshot().active, [],
+  assert.deepEqual(snapshot.active, [],
     'a portable review envelope cannot enter shadow execution or promotion');
 
   const restartedCore = new OrganismCore(new FileStateStore(path.join(root, 'organism.json')));
