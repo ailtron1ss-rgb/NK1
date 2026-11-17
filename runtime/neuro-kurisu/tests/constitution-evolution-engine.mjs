@@ -1,10 +1,29 @@
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
+import { createHmac, generateKeyPairSync, sign } from 'node:crypto';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 import { ConstitutionEvolutionEngine, MUTABLE_CONSTITUTION_DOMAINS, PROTECTED_CONSTITUTIONAL_INVARIANTS } from '../src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts';
+import { canonicalConstitutionReviewPayload } from '../src/organism/cognition/evolution/ConstitutionReviewAuthority.ts';
 
 const TEST_KEY = 'omestro-20-test-signing-key-32-bytes-minimum';
 process.env.NEURO_CONSTITUTION_HMAC_KEY = TEST_KEY;
+const reviewerPairs = Object.fromEntries(['engineer-1','engineer-2','reviewer-1','reviewer-2','reviewer-3'].map(id=>{
+  const pair=generateKeyPairSync('ed25519');
+  return [id,{
+    publicKey:pair.publicKey.export({type:'spki',format:'pem'}).toString(),
+    privateKey:pair.privateKey.export({type:'pkcs8',format:'pem'}).toString(),
+  }];
+}));
+process.env.NEURO_CONSTITUTION_REVIEW_KEYS_JSON = JSON.stringify(Object.fromEntries(
+  Object.entries(reviewerPairs).map(([id,pair])=>[id,pair.publicKey])
+));
+const signedReview = (proposal, reviewerId, overrides={}) => {
+  const payload = {
+    schemaVersion:1, proposalId:proposal.id, candidateDigest:proposal.candidateDigest, reviewerId,
+    decision:'approve', invariantsPassed:true, tests:structuredClone(testEvidence), evidenceRefs,
+    rationale:'Independent review and holdout evidence passed.', at:Date.now(), ...overrides,
+  };
+  return { payload, signature:sign(null,Buffer.from(canonicalConstitutionReviewPayload(payload),'utf8'),reviewerPairs[reviewerId].privateKey).toString('base64') };
+};
 
 const gateway = new ActionGateway({ live: false });
 let actionSnapshot;
@@ -56,10 +75,10 @@ assert.equal(proposal.status,'pending-review');
 assert.throws(()=>engine.propose({id:'../path-traversal',authorId:'engineer-3',baseVersion:'1.0.0',change:'add',
   proposedRule:{id:'workflow.invalid-path-id',title:'Invalid path id',statement:'This proposal ID must be rejected before route generation.',domain:'workflow',scope:'Tests.'},
   motivation:'Reject route-unsafe IDs.',scope:'Tests only.',counterexample:'A proposal ID contains path traversal.',riskAssessment:{level:'low',summary:'No change.',mitigations:['Reject unsafe identifiers.']},testPlan:['Reject the ID before storage.']}),/URL-safe/);
-assert.throws(()=>engine.review(proposal.id,{reviewerId:'engineer-1',candidateDigest:proposal.candidateDigest,decision:'approve',
-  invariantsPassed:true,tests:testEvidence,evidenceRefs,rationale:'self review'}),/cannot review their own/);
-const reviewed=engine.review(proposal.id,{reviewerId:'reviewer-1',candidateDigest:proposal.candidateDigest,decision:'approve',
-  invariantsPassed:true,tests:testEvidence,evidenceRefs,rationale:'independent tests and holdout passed'});
+assert.throws(()=>engine.review(proposal.id,{reviewerId:'reviewer-1',candidateDigest:proposal.candidateDigest,decision:'approve',
+  invariantsPassed:true,tests:testEvidence,evidenceRefs,rationale:'unsigned raw DTO'}),/trusted Ed25519 signature/);
+assert.throws(()=>engine.review(proposal.id,signedReview(proposal,'engineer-1')),/trusted Ed25519 signature/);
+const reviewed=engine.review(proposal.id,signedReview(proposal,'reviewer-1'));
 assert.equal(reviewed.status,'awaiting-ratification');
 
 // Caller-supplied booleans are no longer an approval authority.
@@ -129,8 +148,7 @@ const highRisk=engine.propose({authorId:'engineer-2',baseVersion:'1.2.0',change:
   motivation:'Increase assurance for high-risk changes.',scope:'Quality governance only.',counterexample:'One person approves a high-risk change.',
   riskAssessment:{level:'high',summary:'Review time may increase.',mitigations:['Use bounded escalation.','Do not silently waive the quorum.']},
   testPlan:['First reviewer leaves proposal pending.','Second reviewer satisfies quorum.']});
-const reviewHigh=(reviewerId)=>engine.review(highRisk.id,{reviewerId,candidateDigest:highRisk.candidateDigest,decision:'approve',
-  invariantsPassed:true,tests:testEvidence,evidenceRefs,rationale:'independent review passed'});
+const reviewHigh=(reviewerId)=>engine.review(highRisk.id,signedReview(highRisk,reviewerId));
 assert.equal(reviewHigh('reviewer-2').status,'pending-review');
 assert.equal(reviewHigh('reviewer-3').status,'awaiting-ratification');
 const awaitingSnapshot=engine.snapshot();
