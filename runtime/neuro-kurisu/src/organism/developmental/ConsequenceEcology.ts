@@ -348,9 +348,10 @@ function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalys
         !boundedStringArray(option.missingAssumptionRefs, MAX_NODES * 8, 128) ||
         !boundedStringArray(option.limitations, 12, 320)) return false;
 
-    if (!option.temporalEffects ||
+    const temporalEffects = option.temporalEffects;
+    if (!isRecord(temporalEffects) ||
         !['immediateHarm01', 'shortTermHarm01', 'longTermHarm01', 'immediateBenefit01', 'shortTermBenefit01', 'longTermBenefit01']
-          .every(key => boundedNumber(option.temporalEffects[key], 0, 1))) return false;
+          .every(key => boundedNumber(temporalEffects[key], 0, 1))) return false;
 
     if (!option.nodes.every(node => isRecord(node) &&
         boundedString(node.id, 96, false) && (node.description === undefined || boundedString(node.description, 320)) && boundedString(node.actor, 96, false) &&
@@ -483,11 +484,16 @@ function analyzeOption(
       basis,
       evidenceRefs: Array.isArray(raw.evidenceRefs) ? raw.evidenceRefs.map(x => clean(x, 180)).filter(Boolean).slice(0, 8) : [],
       assumptionRefs: Array.isArray(raw.assumptionRefs) ? raw.assumptionRefs.map(x => clean(x, 128)).filter(Boolean).slice(0, 8) : [],
-      baselineProbability01: typeof raw.baselineProbability01 === 'number' && Number.isFinite(raw.baselineProbability01)
-        ? clamp(raw.baselineProbability01) : null,
     };
+    const baselineProbability01 = typeof raw.baselineProbability01 === 'number' && Number.isFinite(raw.baselineProbability01)
+      ? clamp(raw.baselineProbability01) : null;
     const confidence = assumptionConfidence(node, assumptions);
-    nodes.set(id, { ...node, effectiveConfidence01: confidence.confidence01, missingAssumptionRefs: confidence.missing });
+    nodes.set(id, {
+      ...node,
+      baselineProbability01,
+      effectiveConfidence01: confidence.confidence01,
+      missingAssumptionRefs: confidence.missing,
+    });
   }
 
   const edges: ConsequenceEdgeInput[] = [];
