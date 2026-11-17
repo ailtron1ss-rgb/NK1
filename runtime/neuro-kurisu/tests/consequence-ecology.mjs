@@ -237,6 +237,35 @@ legacy.restore({ version: 1, runs: 4, last: [{ action: 'verify', reward: 0.5 }] 
 assert.equal(legacy.snapshot().runs, 4, 'legacy FutureSimulator state remains loadable');
 assert.equal(legacy.consequenceEcology.diagnostics().retainedAnalyses, 0, 'legacy snapshot without Consequence Ecology restores empty state');
 
+const firstStored = persisted.consequenceEcology.analyses[0].analysis;
+const corruptAnalysis = structuredClone(firstStored);
+corruptAnalysis.id = 'restored-over-capacity-graph';
+corruptAnalysis.options = [{
+  ...structuredClone(corruptAnalysis.options[0]),
+  nodes: Array.from({ length: 65 }, (_, index) => ({
+    ...structuredClone(corruptAnalysis.options[0].nodes[0]),
+    id: 'restored-node-' + index,
+  })),
+}];
+const boundedRestore = new FutureSimulator();
+boundedRestore.restore({
+  ...persisted,
+  consequenceEcology: {
+    version: 1,
+    analyses: [{ digest: 'a'.repeat(64), analysis: corruptAnalysis }],
+    totalAnalyses: 1,
+    rejectedAnalyses: 0,
+    feedbackLoopsObserved: 0,
+    truncatedAnalyses: 0,
+    lastAt: 1,
+  },
+});
+assert.equal(
+  boundedRestore.consequenceEcology.diagnostics().retainedAnalyses,
+  0,
+  'restore must reject an analysis whose persisted graph exceeds the live node bound',
+);
+
 const gatewaySimulator = new FutureSimulator();
 gatewaySimulator.sharedFuture.createScenario({
   id: 'tool-scenario',
