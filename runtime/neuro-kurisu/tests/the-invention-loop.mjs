@@ -76,9 +76,12 @@ const primary = loop.recordOutcome(p.id, { ...primaryInput, effect01: 1 });
 assert.equal(primary.stage, 'tested');
 assert.equal(primary.outcomes[0].effect01, 0.2);
 assert.equal(primary.outcomes[0].passed, true);
+assert.equal(primary.outcomes[0].authority, 'independent-verifier');
+assert.equal(primary.outcomes[0].seed, 17);
+assert.equal(primary.outcomes[0].attempt, 1);
 assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, runId: 'run-primary-001' }), /duplicate-run/);
 assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, evidenceSha256: 'not-a-sha256' }), /invalid-outcome/);
-assert.throws(() => loop.critique(p.id, { reviewerId: 'verifier-primary', reviewRef: 'review://primary', reviewSha256: sha('e') }), /reviewer-must-be-independent/);
+assert.throws(() => loop.critique(p.id, { reviewerId: 'unregistered-reviewer', reviewRef: 'review://primary', reviewSha256: sha('e') }), /reviewer-plan-mismatch/);
 loop.critique(p.id, {
   reviewerId: protocol.verifierPlan.critique,
   reviewRef: 'review://independent-review',
@@ -131,7 +134,7 @@ assert.equal(loop.snapshot().records.find(record => record.id === reuse.id).outc
 
 // Restoring altered records must quarantine them instead of trusting the mutable cache.
 const tampered = loop.snapshot();
-tampered.records[1].protocol.baseline = 50;
+tampered.records[2].protocol.baseline = 50;
 tampered.accepted = 999;
 const restored = new TheInventionLoop(() => now++, () => 'unused');
 restored.restore(tampered);
@@ -139,4 +142,4 @@ assert.equal(restored.metrics().accepted, 0);
 assert.equal(restored.metrics().quarantinedRecords, 1);
 assert.equal(restored.metrics().auditVerifiedRecords, 1);
 
-console.log('THE_INVENTION_LOOP_LIFECYCLE=PASS authoritative-evidence=required');
+console.log('THE_INVENTION_LOOP_LIFECYCLE=PASS verifier-plan+verified-ledger+audit-chain');
