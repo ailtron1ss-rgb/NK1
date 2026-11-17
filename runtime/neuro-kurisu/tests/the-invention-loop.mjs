@@ -25,7 +25,8 @@ const protocol = {
   question: 'Does the candidate reduce retrieval latency?',
   hypothesis: 'The candidate reduces p95 latency without reducing recall.',
   successCriteria: 'At least 10% improvement against the preregistered baseline.',
-  testFingerprint: digest('evaluation-manifest-v1'),
+  testFingerprint: digest('validation-evaluation-manifest-v1'),
+  holdoutTestFingerprint: digest('sealed-holdout-evaluation-manifest-v1'),
   baseline: 100,
   metricScale: 20,
   minEffect: 0.1,
@@ -41,6 +42,10 @@ const protocol = {
     holdout: 'verifier-holdout',
   },
 };
+assert.throws(
+  () => loop.validateProtocol({ ...protocol, holdoutTestFingerprint: protocol.testFingerprint }),
+  /invalid-preregistration/,
+);
 assert.throws(
   () => loop.validateProtocol({ ...protocol, expectedEffect01: Number.NaN }),
   /invalid-preregistration/,
@@ -61,6 +66,8 @@ function signedArtifact(record, phase, seed, options = {}) {
   const blockers = options.blockers ?? [];
   const limitations = options.limitations ?? [];
   const evidenceSha256 = options.evidenceSha256 ?? digest('evidence-' + seed);
+  const phaseTestFingerprint = phase === 'holdout'
+    ? record.protocol.holdoutTestFingerprint : record.protocol.testFingerprint;
   const measurement = isCritique ? {
     contextType: 'invention-critique',
     experimentId: record.id,
@@ -77,7 +84,7 @@ function signedArtifact(record, phase, seed, options = {}) {
     phase,
     protocolFingerprint: protocolFingerprint(record.protocol),
     prototypeSha256: record.prototypeSha256,
-    testFingerprint: record.protocol.testFingerprint,
+    testFingerprint: phaseTestFingerprint,
     environmentId: options.environmentId ?? 'environment-' + phase + '-' + seed,
     observed,
     evidenceSha256,
@@ -362,7 +369,8 @@ const dreamGenerated = runtime.proposeDreamInvention({
   },
   goals: [],
   successCriteria: 'Independent observations must corroborate the proposed association.',
-  testFingerprint: digest('dream-association-manifest'),
+  testFingerprint: digest('dream-association-validation-manifest'),
+  holdoutTestFingerprint: digest('dream-association-holdout-manifest'),
   baseline: 0,
   metricScale: 1,
   minEffect: 0.1,
