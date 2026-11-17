@@ -74,7 +74,8 @@ export function parseTrustedConstitutionReviewKeys(raw: string | undefined): Rea
     if (key.asymmetricKeyType !== 'ed25519') throw new Error('constitution review keys must be valid Ed25519 public keys');
     // Reviewer identity is a public-key identity, not merely a configurable label.
     // Key aliases must never let one private key satisfy a multi-reviewer quorum.
-    const fingerprint = createHash('sha256').update(key.export({ type: 'spki', format: 'der' })).digest('hex');
+    const publicKeyDer = (key as unknown as { export(options: { type: 'spki'; format: 'der' }): Uint8Array }).export({ type: 'spki', format: 'der' });
+    const fingerprint = createHash('sha256').update(publicKeyDer).digest('hex');
     if (publicKeyFingerprints.has(fingerprint)) {
       throw new Error('distinct constitution reviewer IDs must not share the same Ed25519 public key');
     }
