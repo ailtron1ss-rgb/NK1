@@ -57,6 +57,16 @@ const EXTERNAL_REPAIR_HINT_TTL_MS=7*24*60*60*1000;
 const EXTERNAL_REPAIR_HINT_MAX_FUTURE_SKEW_MS=5*60*1000;
 function stableSpeechEventId(channel:string,tick:number,text:string):string { return `speech-${channel}-${Math.max(0,Math.floor(Number(tick)||0))}-${createHash('sha256').update(String(text??'')).digest('hex').slice(0,24)}`; }
 
+// Hash the host-provided thread identity before it crosses into OrganismCore.
+// The raw identifier remains local to this boundary and is never placed in an observation.
+function opaqueConversationScope(conversationId?:string):string|undefined {
+  if(conversationId===undefined)return undefined;
+  if(typeof conversationId!=='string')throw new TypeError('invalid-runtime-conversation-id');
+  const normalized=conversationId.normalize('NFKC').trim();
+  if(!normalized||normalized.length>256)throw new Error('invalid-runtime-conversation-id');
+  return createHash('sha256').update(normalized,'utf8').digest('hex');
+}
+
 function environmentToWorldContext(snapshot: ReturnType<WorldEnvironment['snapshot']>): WorldContext {
   return {
     tick: Number(snapshot.tick),
@@ -125,6 +135,8 @@ export interface RuntimeConfig extends OrganismConfig {
 }
 
 export interface RuntimeStepOptions {
+  /** Stable host thread key; normalized and hashed before entering OrganismCore. */
+  conversationId?: string;
   deliberate?: boolean;
   spontaneous?: boolean;
   signal?: AbortSignal;
@@ -630,6 +642,7 @@ export class OrganismRuntime {
 
   private async stepInternal(externalText?: string, options: RuntimeStepOptions = {}): Promise<RuntimeStep> {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+    const neuralConversationScope=opaqueConversationScope(options.conversationId);
     if (externalText) this.embodiment.userActivity();
     const externalPluginSource = normalizeRuntimeExternalPluginSource(options.externalSource);
     let body = await this.embodiment.sample();
@@ -701,7 +714,7 @@ export class OrganismRuntime {
       text: externalText,
       externalGoal: externalGoalForRuntimeInput(externalText, options.externalGoalPolicy),
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
-    });
+    }, undefined, neuralConversationScope);
     const perceptionAfter = this.core.perceptionSnapshot();
     const canonicalPerceptionEvent = perceptionAfter.eventCount > perceptionBefore.eventCount
       ? perceptionAfter.lastEvent
@@ -1572,7 +1585,7 @@ export class OrganismRuntime {
   async voiceStatus(){ return this.enqueue(async ()=>({voice:this.embodiment.voiceSnapshot(),body:this.embodiment.snapshot(),multimodal:this.core.multimodalSnapshot()})); }
   /** Interrupts physical speech through a durable ActionGateway operation; never kills Termux directly. */
   async interruptVoice(reason='manual'): Promise<boolean> { return this.embodiment.markVoiceInterruption(reason); }
-  async voiceTurn(options:{deliberate?:boolean;speak?:boolean}={}){
+  async voiceTurn(options:{deliberate?:boolean;speak?:boolean;conversationId?:string}={}){
     return this.enqueue(async ()=>{
       const text=await this.embodiment.listen();
       if(!text) return {text:null,step:null,spoken:false,voice:this.embodiment.voiceSnapshot()};
@@ -1582,7 +1595,7 @@ export class OrganismRuntime {
       this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.74,evidence:['termux-speech-to-text','voice-turn'],content:clean});
       await this.core.beginBatch();
       try {
-        const step=await this.stepInternal(clean,{deliberate:Boolean(options.deliberate)});
+        const step=await this.stepInternal(clean,{deliberate:Boolean(options.deliberate),conversationId:options.conversationId});
         await this.journal.write('info','runtime.voice-turn',{tick:step.cycle.state.tick,action:step.worldAction,speakRequested:Boolean(options.speak)});
         await this.continuityLedger.record({
           at:Date.now(),tick:step.cycle.state.tick,stage:this.core.runtimeMetadataSnapshot().stage,action:step.worldAction,
