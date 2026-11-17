@@ -366,7 +366,13 @@ class NeuralProsthesisBank(nn.Module):
         return manifest
 
     def load_adapter(self, artifact_dir: str | Path) -> str:
-        directory = Path(artifact_dir).expanduser().resolve()
+        raw_directory = Path(artifact_dir).expanduser()
+        if raw_directory.is_symlink():
+            raise ArtifactError("adapter-artifact-path-invalid")
+        try:
+            directory = raw_directory.resolve(strict=True)
+        except OSError as error:
+            raise ArtifactError("adapter-artifact-path-invalid") from error
         manifest_path = directory / "manifest.json"
         weights_path = directory / "adapter.safetensors"
         if not directory.is_dir() or manifest_path.is_symlink() or weights_path.is_symlink():
@@ -387,8 +393,6 @@ class NeuralProsthesisBank(nn.Module):
             "manifest_sha256", "training_evidence",
         }
         if not isinstance(manifest, dict) or set(manifest) != required:
-            raise ArtifactError("adapter-manifest-schema-mismatch")
-        if not isinstance(manifest, dict):
             raise ArtifactError("adapter-manifest-schema-mismatch")
         supplied_hash = manifest.get("manifest_sha256")
         unsigned = {key: value for key, value in manifest.items() if key != "manifest_sha256"}
