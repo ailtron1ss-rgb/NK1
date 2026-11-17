@@ -87,6 +87,13 @@ function bodyActionCost(body: ReturnType<EmbodimentRuntime['snapshot']>, action:
   return Math.max(0, Math.min(1, base + (1-body.cognitiveCapacity01)*0.25 + body.thermalStrain01*0.15));
 }
 
+export type SynapticAdapterLanguageResponse = LanguageResponse & {
+  /** Executor attests the exact base model and adapter digest used for this response. */
+  modelId: string;
+  modelRevisionSha256: string;
+  appliedAdapterSha256: string;
+};
+
 export interface RuntimeConfig extends OrganismConfig {
   stateFile: string;
   worldStateFile?: string;
@@ -102,7 +109,7 @@ export interface RuntimeConfig extends OrganismConfig {
   /** Trusted host verifies signed offline holdout reports; absent means candidate-only. */
   synapticAdapterManifestVerifier?: SynapticAdapterManifestVerifier;
   /** Host-owned inference port that actually loads/applies the selected adapter. */
-  synapticAdapterInvoker?: (request: Parameters<LanguageInvoker>[0], adapter: SynapticAdapterCandidate) => Promise<LanguageResponse>;
+  synapticAdapterInvoker?: (request: Parameters<LanguageInvoker>[0], adapter: SynapticAdapterCandidate) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
@@ -654,12 +661,21 @@ export class OrganismRuntime {
           || !Number.isFinite(response.latencyMs)) {
           throw new Error('synaptic-adapter-response-invalid');
         }
+        if (response.modelId !== this.config.synapticBaseModelId
+          || response.modelRevisionSha256 !== this.config.synapticBaseModelRevisionSha256) {
+          throw new Error('synaptic-adapter-base-model-attestation-mismatch');
+        }
+        if (response.appliedAdapterSha256 !== selection.adapter.artifactSha256) {
+          throw new Error('synaptic-adapter-weight-attestation-mismatch');
+        }
         this.synapticMatrix.observe(selection.adapterId, true, Date.now() - startedAt);
         await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
         await this.journal.write('info', 'runtime.synaptic-adapter.selected', {
           adapterId: selection.adapterId, task, score01: selection.score01,
           baseModelId: this.config.synapticBaseModelId,
+          baseModelRevisionSha256: response.modelRevisionSha256,
           artifactSha256: selection.adapter.artifactSha256,
+          appliedAdapterSha256: response.appliedAdapterSha256,
         }).catch(() => {});
         return response;
       } catch (error) {
