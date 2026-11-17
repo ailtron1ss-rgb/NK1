@@ -427,6 +427,65 @@ function contextKey(state:Pick<OrganismState,'needs'>):string {
   return p23PolicyContextKeyFromNeeds(state.needs);
 }
 
+function hasExactOwnKeys(value: unknown, expected: readonly string[]): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const keys = Reflect.ownKeys(value);
+  return keys.length === expected.length &&
+    keys.every(key => typeof key === 'string' && expected.includes(key));
+}
+
+function assertSynapticCommonsP23Admission(
+  proposal: VerifiedSkillPromotionProposal,
+  admissionBundle: SynapticP23AdmissionBundle,
+): void {
+  if (!isAuthenticSynapticP23AdmissionBundle(admissionBundle) ||
+      admissionBundle.schemaVersion !== 1 ||
+      !/^[a-f0-9]{64}$/.test(admissionBundle.artifactFingerprint) ||
+      synapticArtifactFingerprint(admissionBundle.artifact) !== admissionBundle.artifactFingerprint ||
+      admissionBundle.attestation.artifactFingerprint !== admissionBundle.artifactFingerprint ||
+      admissionBundle.compatibility.compatible !== true ||
+      admissionBundle.compatibility.reasons.length !== 0 ||
+      admissionBundle.attestation.runtimeVersion !== admissionBundle.compatibility.runtimeVersion ||
+      admissionBundle.attestation.environmentFingerprint !== admissionBundle.compatibility.environmentFingerprint) {
+    throw new Error('synaptic-p23-authentic-attested-admission-bundle-required');
+  }
+  const checkedAt = Date.now();
+  const clustered = proposal?.seedClusteredEvaluation;
+  if (!isAuthenticVerifiedSkillPromotionProposal(proposal) ||
+      proposal.schemaVersion !== 1 ||
+      proposal.gate?.accepted !== true ||
+      proposal.canActivateAutomatically !== false ||
+      proposal.authenticatedEvidenceRows < 1 ||
+      proposal.unauthenticatedEvidenceRows !== 0 ||
+      !Number.isSafeInteger(proposal.authenticatedEvidenceRows) ||
+      !Number.isSafeInteger(proposal.uniquePairedTasks) ||
+      proposal.uniquePairedTasks < 8 ||
+      !Number.isSafeInteger(proposal.completePairedSeeds) ||
+      proposal.completePairedSeeds < 5 ||
+      !Number.isSafeInteger(proposal.pairedTaskSeedN) ||
+      proposal.pairedTaskSeedN < 5 ||
+      !Number.isSafeInteger(proposal.evaluatedAt) ||
+      proposal.evaluatedAt > checkedAt + 30_000 ||
+      checkedAt - proposal.evaluatedAt > 15 * 60_000 ||
+      !/^[a-f0-9]{64}$/.test(proposal.manifestFingerprint) ||
+      !/^[a-f0-9]{64}$/.test(proposal.datasetFingerprint) ||
+      !/^[a-f0-9]{64}$/.test(proposal.proposalId) ||
+      !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint) ||
+      !clustered || clustered.pairedN < 5 ||
+      !Number.isFinite(clustered.candidatePassRate) ||
+      clustered.candidatePassRate < 0 || clustered.candidatePassRate > 1 ||
+      !clustered.approximate95CI || clustered.approximate95CI[0] <= 0 ||
+      !clustered.bootstrap95CI || clustered.bootstrap95CI[0] <= 0 ||
+      !Array.isArray(proposal.familyEvaluation) || proposal.familyEvaluation.length < 2) {
+    throw new Error('synaptic-p23-authentic-accepted-proposal-required');
+  }
+  const expectedMethod = 'synaptic-commons:' + admissionBundle.artifactFingerprint;
+  if (proposal.candidateMethod !== expectedMethod) {
+    throw new Error('synaptic-p23-candidate-method-binding-mismatch');
+  }
+}
+
+
 /** Conservative nearest-context matching: transfer is allowed only when at least five of six normalized context buckets match. */
 function contextSimilarity(a:string,b:string):number {
   const left=a.split('|'), right=b.split('|');
@@ -1210,48 +1269,16 @@ export class P23LearningEngine {
    * effectiveSkills() or ActionGateway until a future native adapter creates a new
    * locally evaluated PolicySkillRecord candidate.
    */
+  /**
+   * Stage a portable Commons package for local P23 review only. It is not a
+   * PolicySkillRecord and cannot enter the live resolver or generic shadow runner.
+   */
   stageSynapticCommonsCandidate(
     proposal: VerifiedSkillPromotionProposal,
     admissionBundle: SynapticP23AdmissionBundle,
   ): VersionedSkillCandidate {
     if (!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
-    if (!isAuthenticSynapticP23AdmissionBundle(admissionBundle) ||
-        admissionBundle.schemaVersion !== 1 ||
-        !/^[a-f0-9]{64}$/.test(admissionBundle.artifactFingerprint) ||
-        synapticArtifactFingerprint(admissionBundle.artifact) !== admissionBundle.artifactFingerprint ||
-        admissionBundle.attestation.artifactFingerprint !== admissionBundle.artifactFingerprint ||
-        admissionBundle.compatibility.compatible !== true ||
-        admissionBundle.compatibility.reasons.length !== 0 ||
-        admissionBundle.attestation.runtimeVersion !== admissionBundle.compatibility.runtimeVersion ||
-        admissionBundle.attestation.environmentFingerprint !== admissionBundle.compatibility.environmentFingerprint) {
-      throw new Error('synaptic-p23-authentic-attested-admission-bundle-required');
-    }
-    if (!isAuthenticVerifiedSkillPromotionProposal(proposal) ||
-        proposal.schemaVersion !== 1 ||
-        proposal.gate?.accepted !== true ||
-        proposal.canActivateAutomatically !== false ||
-        proposal.authenticatedEvidenceRows < 1 ||
-        proposal.unauthenticatedEvidenceRows !== 0 ||
-        !Number.isSafeInteger(proposal.authenticatedEvidenceRows) ||
-        !Number.isSafeInteger(proposal.uniquePairedTasks) ||
-        proposal.uniquePairedTasks < 8 ||
-        !Number.isSafeInteger(proposal.completePairedSeeds) ||
-        proposal.completePairedSeeds < 5 ||
-        !Number.isSafeInteger(proposal.pairedTaskSeedN) ||
-        proposal.pairedTaskSeedN < 5 ||
-        !Number.isSafeInteger(proposal.evaluatedAt) ||
-        proposal.evaluatedAt > Date.now() + 30_000 ||
-        Date.now() - proposal.evaluatedAt > 15 * 60_000 ||
-        !/^[a-f0-9]{64}$/.test(proposal.manifestFingerprint) ||
-        !/^[a-f0-9]{64}$/.test(proposal.datasetFingerprint) ||
-        !/^[a-f0-9]{64}$/.test(proposal.proposalId) ||
-        !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {
-      throw new Error('synaptic-p23-authentic-accepted-proposal-required');
-    }
-    const expectedMethod = 'synaptic-commons:' + admissionBundle.artifactFingerprint;
-    if (proposal.candidateMethod !== expectedMethod) {
-      throw new Error('synaptic-p23-candidate-method-binding-mismatch');
-    }
+    assertSynapticCommonsP23Admission(proposal, admissionBundle);
     const skillId = 'synaptic-commons:' + admissionBundle.artifact.skill.skillId + '@' + admissionBundle.artifact.skill.version;
     const payload = {
       schemaVersion: 1,
@@ -1280,6 +1307,97 @@ export class P23LearningEngine {
       },
     };
     return this.verifiedSkillStore.stageCandidate(proposal, skillId, payload);
+  }
+
+  /**
+   * Materialize only the allowlisted NK1 policy-bias DSL. This is not a procedure
+   * or tool adapter: it creates a PolicySkillRecord consumed by P23's existing
+   * context matcher after normal signed shadow evidence and promotion approval.
+   */
+  stageSynapticCommonsNativePolicyCandidate(
+    proposal: VerifiedSkillPromotionProposal,
+    admissionBundle: SynapticP23AdmissionBundle,
+    currentTick: number,
+  ): VersionedSkillCandidate {
+    if (!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    assertSynapticCommonsP23Admission(proposal, admissionBundle);
+    if (!Number.isSafeInteger(currentTick) || currentTick < 0) {
+      throw new Error('synaptic-native-policy-current-tick-invalid');
+    }
+
+    const artifact = admissionBundle.artifact;
+    const contract = artifact.contract;
+    const payload = artifact.definition?.payload;
+    if (artifact.skill.kind !== 'abstraction' ||
+        contract.capability !== 'neurocore.policy.preference' ||
+        contract.permissionClass !== 'read-only' ||
+        !Array.isArray(contract.requiredCapabilities) ||
+        contract.requiredCapabilities.length !== 1 ||
+        contract.requiredCapabilities[0] !== 'neurocore.policy.preference' ||
+        !Array.isArray(contract.requiredTools) || contract.requiredTools.length !== 0 ||
+        !Array.isArray(contract.allowedModes) ||
+        contract.allowedModes.length !== 1 || contract.allowedModes[0] !== 'assisted' ||
+        artifact.definition.format !== 'declarative-json-v1' ||
+        !hasExactOwnKeys(payload, ['schemaVersion', 'schema', 'action', 'contextNeeds']) ||
+        payload.schemaVersion !== 1 ||
+        payload.schema !== 'nk1-policy-bias-v1' ||
+        !ACTIONS.includes(payload.action as ActionKind) ||
+        !hasExactOwnKeys(payload.contextNeeds, [
+          'energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed',
+        ])) {
+      throw new Error('synaptic-native-policy-schema-or-capability-invalid');
+    }
+
+    const contextNeeds = payload.contextNeeds as unknown as P23PolicyContextNeeds;
+    const contextValues = [
+      contextNeeds.energy, contextNeeds.cognitiveLoad, contextNeeds.uncertainty,
+      contextNeeds.novelty, contextNeeds.goalPressure, contextNeeds.socialNeed,
+    ];
+    if (contextValues.some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1)) {
+      throw new Error('synaptic-native-policy-context-needs-invalid');
+    }
+
+    const validationUses = proposal.uniquePairedTasks * proposal.completePairedSeeds;
+    const validationSuccess01 = proposal.seedClusteredEvaluation.candidatePassRate;
+    if (!Number.isSafeInteger(validationUses) || validationUses < 40 || validationUses > 1_000_000 ||
+        !Number.isFinite(validationSuccess01) || validationSuccess01 < 0 || validationSuccess01 > 1) {
+      throw new Error('synaptic-native-policy-local-validation-evidence-invalid');
+    }
+    const importedAt = Date.now();
+    const artifactFingerprint = admissionBundle.artifactFingerprint;
+    const confidence01 = wilsonLowerBound(Math.round(validationSuccess01 * validationUses), validationUses);
+    const skill: PolicySkillRecord = {
+      id: 'synaptic-commons:' + artifact.skill.skillId,
+      contextKey: p23PolicyContextKeyFromNeeds(contextNeeds),
+      action: payload.action as ActionKind,
+      totalUses: validationUses,
+      trainUses: 0,
+      validationUses,
+      trainSuccess01: 0,
+      validationSuccess01,
+      confidence01,
+      status: 'candidate',
+      createdAt: importedAt,
+      updatedAt: importedAt,
+      validationWindowStartTick: currentTick,
+      validationWindowEndTick: currentTick,
+      synapticCommonsProvenance: {
+        schemaVersion: 1,
+        artifactFingerprint,
+        publisherKeyId: artifact.signature.keyId,
+        attestorId: admissionBundle.attestation.attestorId,
+        licenseReviewFingerprint: artifact.license.reviewFingerprint,
+        sourceInstanceId: artifact.provenance.sourceInstanceId,
+        sourceSkillId: artifact.skill.skillId,
+        sourceSkillVersion: artifact.skill.version,
+        localProposalId: proposal.proposalId,
+        localManifestFingerprint: proposal.manifestFingerprint,
+        localOutcomeFingerprint: proposal.outcomeFingerprint,
+        localDatasetFingerprint: proposal.datasetFingerprint,
+        importedAt,
+      },
+    };
+    return this.stageVerifiedSkillCandidate(proposal, skill);
   }
 
   stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {
