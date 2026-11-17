@@ -353,9 +353,15 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
         "query_key_value", "c_attn",
     }
     available_modules = {name.rsplit(".", 1)[-1] for name, _module in model.named_modules()}
-    target_modules = sorted(target_candidates.intersection(available_modules))
-    if not target_modules:
-        raise RuntimeError("no-supported-lora-target-modules-found")
+    if method == "qlora":
+        # QLoRA targets every linear layer; PEFT resolves this architecture-independently.
+        target_modules = "all-linear"
+    else:
+        target_modules = sorted(target_candidates.intersection(available_modules))
+        if not target_modules:
+            raise RuntimeError("no-supported-lora-target-modules-found")
+    if getattr(model, "config", None) is not None:
+        model.config.use_cache = False
     lora = manifest["lora"]
     model = get_peft_model(model, LoraConfig(
         r=lora["rank"],
