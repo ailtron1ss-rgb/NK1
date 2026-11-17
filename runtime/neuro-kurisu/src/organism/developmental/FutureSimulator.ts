@@ -40,8 +40,8 @@ export class FutureSimulator {
     return this.#worldForge.step(state, action);
   }
 
-  evaluateWorldForgeScenario(scenario: WorldForgeCase, trace: unknown): WorldForgeEvaluation {
-    return this.#worldForge.evaluate(scenario, trace);
+  evaluateWorldForgeSession(scenario: WorldForgeCase, state: unknown): WorldForgeEvaluation {
+    return this.#worldForge.evaluateSession(scenario, state);
   }
 
   releaseWorldForgeScenario(scenarioId: string): void {
