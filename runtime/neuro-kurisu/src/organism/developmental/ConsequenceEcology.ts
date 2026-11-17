@@ -311,7 +311,7 @@ function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalys
           .every(key => boundedNumber(option.temporalEffects[key], 0, 1))) return false;
 
     if (!option.nodes.every(node => isRecord(node) &&
-        boundedString(node.id, 96, false) && boundedString(node.actor, 96, false) &&
+        boundedString(node.id, 96, false) && boundedString(node.description, 320) && boundedString(node.actor, 96, false) &&
         boundedString(node.system, 96, false) &&
         (node.effect === 'harm' || node.effect === 'benefit' || node.effect === 'neutral') &&
         (node.order === 'direct' || node.order === 'secondary' || node.order === 'tertiary') &&
