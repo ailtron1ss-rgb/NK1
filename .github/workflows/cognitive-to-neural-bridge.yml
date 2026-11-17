@@ -1,0 +1,27 @@
+name: Cognitive-to-Neural Bridge
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - '.github/workflows/cognitive-to-neural-bridge.yml'
+      - 'runtime/neuro-kurisu/src/organism/cognition/CognitiveToNeuralBridge.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/language/LanguageOrgan.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-to-neural-bridge*.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Runtime TypeScript syntax/typecheck gate
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Bounded cognitive control projection
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-to-neural-bridge.mjs
+      - name: Runtime integration wiring
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-to-neural-bridge-runtime-wiring.mjs
