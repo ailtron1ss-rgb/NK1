@@ -363,7 +363,7 @@ export class OrganismRuntime {
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.synapticMatrixStore = new FileStateStore<AdaptiveSynapticMatrixState>(`${config.stateFile}.synaptic-matrix.json`);
-    this.synapticAdapterTimeoutMs = Number(config.synapticAdapterTimeoutMs ?? 15_000);
+    this.synapticAdapterTimeoutMs = config.synapticAdapterTimeoutMs ?? 15_000;
     if (!Number.isSafeInteger(this.synapticAdapterTimeoutMs) || this.synapticAdapterTimeoutMs < 100 || this.synapticAdapterTimeoutMs > 120_000) {
       throw new Error('synaptic-adapter-timeout-invalid');
     }
@@ -694,7 +694,7 @@ export class OrganismRuntime {
         ]);
         if (!response || typeof response.text !== 'string' || !response.text.trim()
           || typeof response.backend !== 'string' || !response.backend.trim()
-          || !Number.isFinite(response.latencyMs)) {
+          || !Number.isFinite(response.latencyMs) || response.latencyMs < 0 || response.latencyMs > 300_000) {
           throw new Error('synaptic-adapter-response-invalid');
         }
         if (response.modelId !== this.config.synapticBaseModelId
