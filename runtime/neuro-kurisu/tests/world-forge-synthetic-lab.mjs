@@ -13,6 +13,8 @@ assert.ok(holdout.every(x=>!('hiddenVariables'in x)&&!('answerKey'in x)&&!('requ
 assert.equal(forge.generate({split:'holdout',seed:-1,count:1}).length,0);
 assert.equal(forge.generate({split:'holdout',seed:1,count:1000}).length,8);
 const scenario=train[0];
+assert.ok(Array.isArray(scenario.strategyFamilies)&&scenario.strategyFamilies.length>=2,'scenario should publish alternative strategy choices without an evaluator verdict field');
+assert.equal('acceptedStrategyFamilies' in scenario,false,'public task metadata must not label hidden evaluator verdicts as accepted strategies');
 const alteredSplit=forge.evaluate({...scenario,split:'holdout'},[]);
 assert.equal(alteredSplit.success,false,'caller must not relabel a training scenario as holdout');
 const overBudget=forge.evaluate(scenario,Array.from({length:scenario.constraints.maxSteps+1},()=>({action:'observe',cost:.1,risk01:0})));
