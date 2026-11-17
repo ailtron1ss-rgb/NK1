@@ -24,7 +24,7 @@ Backend profiles are supplied by trusted host configuration, not by an LLM respo
 
 Do not leave the revision at the server default `host-configured` for an actual transferable model. Set an immutable revision identifier or artifact digest in `LLAMA_CPP_MODEL_REVISION`, `KOBOLD_MODEL_REVISION` and `GEMINI_MODEL_REVISION`. A `host-configured` revision may still serve as a normal backend, but it cannot become a substrate-preferred route or pass migration compatibility. Keep old and target backend identities distinguishable when preparing a real migration.
 
-A transfer is refused when a required capability is missing, the source profile cannot be verified, either profile revision is unpinned, the embedding space differs (reindex required), or a remote/external backend has not received explicit consent. The deterministic text fallback is deliberately not treated as a model substrate and cannot permanently take over model routing.
+A transfer is refused when a required capability is missing, the source profile cannot be verified, either profile revision is unpinned, the embedding space differs or is unknown on only one side (reindex required), or a remote/external backend has not received explicit consent. Unknown embedding identity is not assumed compatible. The deterministic text fallback is deliberately not treated as a model substrate and cannot permanently take over model routing.
 
 The server recognises configured `llama.cpp`, `kobold`, `gemini` and deterministic fallback routes. A registered substrate preference is considered only when the provider is configured/available; the existing local-language policy and provider fallback remain in place.
 
@@ -39,6 +39,8 @@ Importing state does not promote a target model. Promotion requires independent 
 - p95 target/source latency ratio no greater than 2.0 by default.
 
 The signed claims include the exact transfer digest, source and target backend IDs, task family/ID, evidence independence identifiers, metrics and latency measurements. Use `substrateCalibrationSigningPayload(trial)` to obtain the canonical UTF-8 string before adding `evaluatorSignatureBase64`. Sign it with an Ed25519 private key held by the independent evaluator outside NK1. The private key must not be stored in the repository or on the model provider.
+
+Successful promotion also consumes the evaluator receipt IDs, task IDs and independence keys into a persisted anti-replay ledger. The ledger survives process restart and rollback; a later migration cannot reuse a previously consumed proof. Each ledger is bounded at 4,096 identifiers. When full, new promotion is refused rather than evicting old evidence. Existing schema-v1 sidecars without this additive ledger field restore with an empty ledger for backwards compatibility.
 
 The NK1 server accepts a host-owned public-key registry through:
 
