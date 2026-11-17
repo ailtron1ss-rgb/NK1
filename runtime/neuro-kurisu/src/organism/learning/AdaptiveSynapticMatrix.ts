@@ -133,12 +133,12 @@ function canonicalJson(value: unknown): string {
 
 function normalizeCandidate(raw: SynapticAdapterCandidate): SynapticAdapterCandidate {
   if (!raw || typeof raw !== 'object') throw new Error('synaptic-adapter-candidate-invalid');
-  const id = String(raw.id ?? '').trim();
-  const artifactRef = String(raw.artifactRef ?? '').trim();
-  const baseModelId = String(raw.baseModelId ?? '').trim();
-  const conflictGroup = String(raw.conflictGroup ?? '').trim();
-  const trainingDatasetRef = String(raw.trainingDatasetRef ?? '').trim();
-  const owner = String(raw.owner ?? '').trim();
+  const id = typeof raw.id === 'string' ? raw.id.trim() : '';
+  const artifactRef = typeof raw.artifactRef === 'string' ? raw.artifactRef.trim() : '';
+  const baseModelId = typeof raw.baseModelId === 'string' ? raw.baseModelId.trim() : '';
+  const conflictGroup = typeof raw.conflictGroup === 'string' ? raw.conflictGroup.trim() : '';
+  const trainingDatasetRef = typeof raw.trainingDatasetRef === 'string' ? raw.trainingDatasetRef.trim() : '';
+  const owner = typeof raw.owner === 'string' ? raw.owner.trim() : '';
   const tasks = Array.isArray(raw.tasks)
     ? [...new Set(raw.tasks)].filter((task): task is SynapticAdapterTask =>
         (SYNAPTIC_ADAPTER_TASKS as readonly string[]).includes(task)).sort()
@@ -146,22 +146,22 @@ function normalizeCandidate(raw: SynapticAdapterCandidate): SynapticAdapterCandi
   if (!Array.isArray(raw.tasks) || tasks.length !== raw.tasks.length) throw new Error('synaptic-adapter-tasks-invalid');
   if (!/^[a-z0-9][a-z0-9._:-]{1,79}$/i.test(id)) throw new Error('synaptic-adapter-id-invalid');
   if (!/^(file|https?|oci|s3):[^\s]{1,500}$/i.test(artifactRef) || /(^|[\\/])\.\.([\\/]|$)/.test(artifactRef)) throw new Error('synaptic-adapter-artifact-ref-invalid');
-  if (!HASH_PATTERN.test(String(raw.artifactSha256 ?? ''))) throw new Error('synaptic-adapter-artifact-sha256-invalid');
+  if (typeof raw.artifactSha256 !== 'string' || !HASH_PATTERN.test(raw.artifactSha256)) throw new Error('synaptic-adapter-artifact-sha256-invalid');
   if (raw.adapterFormat !== 'lora' && raw.adapterFormat !== 'qlora') throw new Error('synaptic-adapter-format-invalid');
   if (!Number.isSafeInteger(raw.rank) || raw.rank < 1 || raw.rank > 256) throw new Error('synaptic-adapter-rank-invalid');
   if (!baseModelId || baseModelId.length > 160) throw new Error('synaptic-adapter-base-model-invalid');
-  if (!HASH_PATTERN.test(String(raw.baseModelRevisionSha256 ?? ''))) throw new Error('synaptic-adapter-base-model-sha256-invalid');
+  if (typeof raw.baseModelRevisionSha256 !== 'string' || !HASH_PATTERN.test(raw.baseModelRevisionSha256)) throw new Error('synaptic-adapter-base-model-sha256-invalid');
   if (tasks.length === 0 || tasks.length > SYNAPTIC_ADAPTER_TASKS.length) throw new Error('synaptic-adapter-tasks-invalid');
   if (!conflictGroup || conflictGroup.length > 120) throw new Error('synaptic-adapter-conflict-group-invalid');
   if (!trainingDatasetRef || trainingDatasetRef.length > 240) throw new Error('synaptic-adapter-training-dataset-ref-invalid');
   if (!owner || owner.length > 120) throw new Error('synaptic-adapter-owner-invalid');
-  const maximumContextTokens = Number(raw.maximumContextTokens);
+  const maximumContextTokens = raw.maximumContextTokens;
   if (!Number.isSafeInteger(maximumContextTokens) || maximumContextTokens < 128 || maximumContextTokens > 1_000_000) {
     throw new Error('synaptic-adapter-context-limit-invalid');
   }
-  const minimumConfidence01 = Number(raw.minimumConfidence01);
-  const maximumResourceRisk01 = Number(raw.maximumResourceRisk01);
-  const maximumUncertainty01 = Number(raw.maximumUncertainty01);
+  const minimumConfidence01 = raw.minimumConfidence01;
+  const maximumResourceRisk01 = raw.maximumResourceRisk01;
+  const maximumUncertainty01 = raw.maximumUncertainty01;
   if (!Number.isFinite(minimumConfidence01) || minimumConfidence01 < 0 || minimumConfidence01 > 1) {
     throw new Error('synaptic-adapter-minimum-confidence-invalid');
   }
@@ -188,30 +188,30 @@ function normalizeCandidate(raw: SynapticAdapterCandidate): SynapticAdapterCandi
 
 function normalizeValidation(raw: SynapticAdapterValidationEvidence, trainingDatasetRef: string): SynapticAdapterValidationEvidence {
   if (!raw || typeof raw !== 'object') throw new Error('synaptic-adapter-validation-evidence-required');
-  const reportId = String(raw.reportId ?? '').trim();
-  const reportSha256 = String(raw.reportSha256 ?? '').toLowerCase();
-  const holdoutDatasetRef = String(raw.holdoutDatasetRef ?? '').trim();
-  const pairedSeeds = Number(raw.pairedSeeds);
-  const baselineScore01 = Number(raw.baselineScore01);
-  const adapterScore01 = Number(raw.adapterScore01);
-  const lower95Delta01 = Number(raw.lower95Delta01);
-  const guardrailRegressionCount = Number(raw.guardrailRegressionCount);
+  const reportId = typeof raw.reportId === 'string' ? raw.reportId.trim() : '';
+  const reportSha256 = typeof raw.reportSha256 === 'string' ? raw.reportSha256.toLowerCase() : '';
+  const holdoutDatasetRef = typeof raw.holdoutDatasetRef === 'string' ? raw.holdoutDatasetRef.trim() : '';
+  const pairedSeeds = raw.pairedSeeds;
+  const baselineScore01 = raw.baselineScore01;
+  const adapterScore01 = raw.adapterScore01;
+  const lower95Delta01 = raw.lower95Delta01;
+  const guardrailRegressionCount = raw.guardrailRegressionCount;
   if (!reportId || reportId.length > 160 || !HASH_PATTERN.test(reportSha256)) {
     throw new Error('synaptic-adapter-validation-report-invalid');
   }
   if (!holdoutDatasetRef || holdoutDatasetRef.length > 240 || holdoutDatasetRef === trainingDatasetRef) {
     throw new Error('synaptic-adapter-training-and-holdout-must-be-disjoint');
   }
-  if (!Number.isSafeInteger(pairedSeeds) || pairedSeeds < 5) throw new Error('synaptic-adapter-paired-seed-evidence-insufficient');
-  if (!Number.isFinite(baselineScore01) || baselineScore01 < 0 || baselineScore01 > 1
-    || !Number.isFinite(adapterScore01) || adapterScore01 < 0 || adapterScore01 > 1
-    || !Number.isFinite(lower95Delta01) || lower95Delta01 < -1 || lower95Delta01 > 1) {
+  if (typeof pairedSeeds !== 'number' || !Number.isSafeInteger(pairedSeeds) || pairedSeeds < 5) throw new Error('synaptic-adapter-paired-seed-evidence-insufficient');
+  if (typeof baselineScore01 !== 'number' || !Number.isFinite(baselineScore01) || baselineScore01 < 0 || baselineScore01 > 1
+    || typeof adapterScore01 !== 'number' || !Number.isFinite(adapterScore01) || adapterScore01 < 0 || adapterScore01 > 1
+    || typeof lower95Delta01 !== 'number' || !Number.isFinite(lower95Delta01) || lower95Delta01 < -1 || lower95Delta01 > 1) {
     throw new Error('synaptic-adapter-validation-score-invalid');
   }
   if (adapterScore01 <= baselineScore01 || lower95Delta01 <= 0) {
     throw new Error('synaptic-adapter-holdout-improvement-not-established');
   }
-  if (!Number.isSafeInteger(guardrailRegressionCount) || guardrailRegressionCount !== 0) {
+  if (typeof guardrailRegressionCount !== 'number' || !Number.isSafeInteger(guardrailRegressionCount) || guardrailRegressionCount !== 0) {
     throw new Error('synaptic-adapter-guardrail-regression-detected');
   }
   return { reportId, reportSha256, holdoutDatasetRef, pairedSeeds, baselineScore01, adapterScore01, lower95Delta01, guardrailRegressionCount };
@@ -220,8 +220,8 @@ function normalizeValidation(raw: SynapticAdapterValidationEvidence, trainingDat
 function normalizeManifest(raw: SynapticAdapterActivationManifest): SynapticAdapterActivationManifest {
   const candidate = normalizeCandidate(raw);
   const validation = normalizeValidation(raw.validation, candidate.trainingDatasetRef);
-  const signerKeyId = String(raw.signerKeyId ?? '').trim();
-  const signature = String(raw.signature ?? '').trim();
+  const signerKeyId = typeof raw.signerKeyId === 'string' ? raw.signerKeyId.trim() : '';
+  const signature = typeof raw.signature === 'string' ? raw.signature.trim() : '';
   if (!signerKeyId || signerKeyId.length > 160 || !signature || signature.length > 4096) {
     throw new Error('synaptic-adapter-manifest-signature-required');
   }
