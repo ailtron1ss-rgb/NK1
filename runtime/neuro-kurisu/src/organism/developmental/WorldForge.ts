@@ -14,7 +14,7 @@ export interface WorldForgeDisturbance { atStep:number; kind:'resource-shock'|'r
 export interface WorldForgeCase {
   id:string; split:WorldForgeSplit; domain:WorldForgeDomain; difficulty01:number; task:string;
   observations:string[]; goalOptions:string[]; availableActions:WorldForgeAction[]; constraints:WorldForgeConstraints;
-  disturbances:WorldForgeDisturbance[]; acceptedStrategyFamilies:string[]; seedFingerprint:string; syntheticOnly:true;
+  disturbances:WorldForgeDisturbance[]; strategyFamilies:string[]; seedFingerprint:string; syntheticOnly:true;
 }
 export interface WorldForgeActionStep { action:WorldForgeAction; target?:string; evidence?:string; cost?:number; risk01?:number; accepted?:boolean; }
 export interface WorldForgeEvaluation {
@@ -236,7 +236,7 @@ export class WorldForge {
       const scenario:WorldForgeCase={id,split:request.split,domain,difficulty01:Number(difficulty01.toFixed(3)),
         task:domain==='resource-allocation'?'Allocate scarce resources while preserving a safety reserve and adapting to a late demand shock.':domain==='route-planning'?'Reach the destination while respecting a changing route and risk budget.':'Identify the reliable explanation from noisy signals and verify it before concluding.',
         observations,goalOptions:[...targets],availableActions:[...ACTIONS],constraints:{maxSteps:Math.max(4,Math.min(16,Math.round(5+difficulty01*8))),resourceBudget:Math.max(3,Math.round(10-difficulty01*3)),riskTolerance01:Number((.75-difficulty01*.35).toFixed(3)),requiredEvidence:domain==='investigation'?2:1},
-        disturbances,acceptedStrategyFamilies:families,seedFingerprint:fingerprint(seed+'|'+request.split),syntheticOnly:true};
+        disturbances,strategyFamilies:families,seedFingerprint:fingerprint(seed+'|'+request.split),syntheticOnly:true};
       const createdAt=this.currentTime();
       this.#answers.set(id,{split:request.split,domain,requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],goalOptions:[...targets],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbances:disturbances.map(d=>({...d})),disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,resourceBudget:scenario.constraints.resourceBudget,maxSteps:scenario.constraints.maxSteps,riskTolerance01:scenario.constraints.riskTolerance01,seed,createdAt});
       this.pruneExpired(createdAt);
