@@ -47,7 +47,7 @@ export interface TeacherStudentDistillationGateReport {
   evaluatedAt: number;
 }
 
-const sha256 = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
+const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const isDigest = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
 const safeIdentity = (value: unknown, max = 180): value is string =>
@@ -264,7 +264,7 @@ export class TeacherStudentDistillationGate {
       };
     }
 
-        const manifest = ledger.snapshot().manifest as TaskManifestEntry[];
+    const manifest = ledger.snapshot().manifest as TaskManifestEntry[];
     const holdoutFamilies = [...new Set(manifest
       .filter(task => task.split === 'holdout')
       .map(task => task.family))].sort();
