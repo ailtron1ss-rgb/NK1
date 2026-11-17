@@ -45,7 +45,7 @@ import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleCo
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import { NeuralJitEngine, neuralJitInputFingerprint, type NeuralJitActivationCaptureVerifier, type NeuralJitPersistedSnapshot, type NeuralJitTraceInput } from '../learning/NeuralJitEngine.ts';
 import type { NeuralJitLocalCaptureAdapter, NeuralJitInferenceTraceContext } from '../learning/NeuralJitLocalCaptureAdapter.ts';
-import { OutcomeVerificationService, isTrustedDecisionLinkedExternalPostcondition } from '../system/OutcomeVerificationService.ts';
+import { OutcomeVerificationService, isTrustedDecisionLinkedExternalPostcondition, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
@@ -1300,9 +1300,10 @@ export class OrganismRuntime {
       if(!selectedTrace) return;
       const binding={toolId,input,executionId:result.executionId,decisionId};
       let neuralJitResult=result;
-      if(!isTrustedDecisionLinkedExternalPostcondition(result.verification,binding)) {
-        if(gatewayDecisionLinked!==true) return;
-        const originalVerification=result.verification;
+      const resultVerification:unknown=result.verification;
+      if(!isTrustedDecisionLinkedExternalPostcondition(resultVerification,binding)) {
+        if(gatewayDecisionLinked!==true || !resultVerification || typeof resultVerification!=='object') return;
+        const originalVerification=resultVerification as OutcomeVerification;
         const recertified=await this.neuralJitOutcomeVerification.verify({
           toolId,input,result:result.result,executionId:result.executionId,decisionId,
         }, async()=>({

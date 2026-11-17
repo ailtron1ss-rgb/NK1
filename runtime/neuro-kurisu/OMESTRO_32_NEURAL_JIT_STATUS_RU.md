@@ -21,6 +21,8 @@
 - Gate требует минимум 12 уникальных train-задач, 8 независимых holdout-задач, 8 holdout-трасс и 5 seed; не менее 5% relative MSE gain и улучшение не менее 80% holdout-примеров.
 - Persisted кандидаты после рестарта остаются `quarantined`; повреждённые fingerprints, ID, размерности, train provenance и коэффициенты отклоняются. Opaque capture handles и raw prompts в JIT sidecar не записываются.
 - JIT изменения сериализованы отдельной очередью; проверены параллельные keyed и unkeyed ActionGateway execution receipts. Ошибки shadow capture/обучения не могут отменить уже подтверждённое внешнее действие.
+- Перед асинхронным host-verifier Engine снимает изолированный snapshot точного action binding и всех полей activation capture; после await обучение использует только этот immutable snapshot. Это закрывает TOCTOU-гонку, при которой mutable capture или вложенный tool input могли измениться после проверки.
+- Векторы активаций принимаются только как плотные plain numeric arrays с data descriptors; sparse arrays, getters/accessors, символы и дополнительные свойства отклоняются без чтения getter.
 
 ## Host adapter contract
 
@@ -41,10 +43,11 @@ Runtime и сервер теперь имеют реальный интегра�
 ## Проверки
 
 - `node --experimental-strip-types tests/neural-jit-engine.mjs`
+  Проверяет также асинхронную TOCTOU-гонку для capture и binding, отказ от getter/accessor и sparse vectors.
 - `node --experimental-strip-types tests/neural-jit-runtime-wiring.mjs`
 - `node --experimental-strip-types tests/neural-jit-runtime-bridge.mjs`
 - `node --experimental-strip-types tests/server-language-http-fake-provider.mjs`
 - P23 learning execution evidence, signed shadow evidence, Hermes verified evidence binding, verified outcome ledger и verified promotion gate.
 - `npm run typecheck` использует Node strip-only fallback (672+ файлов); семантический `tsc --noEmit` недоступен в текущем образе.
 
-Синтетические unit fixtures подтверждают алгоритм и связки, но не являются измерением производительности реальной LLM. PR остаётся Draft; Release ZIP не менялся.
+Синтетические unit fixtures подтверждают алгоритм и связки, но не являются измерением производительности реальной LLM. Semantic npm run typecheck на текущем toolchain остаётся красным по 9 существующим Buffer<ArrayBufferLike> / Uint8Array<ArrayBuffer> конфликтам в AuthenticatedSkillPromotionApproval.ts, LearningProcessSupervisor.ts, VerifiedOutcomeArtifact.ts, VerifiedSkillShadowEvidence.ts и ExternalProjectResearchTool.ts; на точном base commit c1d0970 воспроизводятся те же 9 ошибки плюс 7 прежних narrowing-ошибок JIT finalizer, устранённых этой доработкой. PR остаётся Draft; Release ZIP не менялся.

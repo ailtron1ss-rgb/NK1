@@ -8,6 +8,7 @@ assert.ok(moduleUnderTest, 'NeuralJitEngine must exist and accept evidence-bound
 
 const { NeuralJitEngine } = moduleUnderTest;
 const trustedCaptures = new WeakSet();
+const trustedCaptureDigests = new WeakMap();
 const verifier = {
   verifyCapture(capture, expected) {
     return Boolean(capture && typeof capture === 'object' &&
@@ -70,6 +71,7 @@ async function makeTrace(index, overrides = {}) {
     ...overrides,
   };
   trustedCaptures.add(capture);
+  trustedCaptureDigests.set(capture, digest(JSON.stringify({ inputFeatures: capture.inputFeatures, targetResidual: capture.targetResidual })));
   return { capture, verification: execution.verification, binding };
 }
 
@@ -216,6 +218,92 @@ malformedTrace.capture.inputFeatures = Array(257).fill(0.1);
 const malformed = await engine.recordVerifiedTrace(malformedTrace);
 assert.equal(malformed.accepted, false);
 assert.equal(malformed.reason, 'invalid-activation-vector');
+
+
+// Regression: a host verifier may be asynchronous. Mutating its original capture
+// while verification is pending must not change the values eventually learned.
+let releaseCaptureVerification;
+let notifyCaptureVerificationStarted;
+const captureVerificationStarted = new Promise(resolve => { notifyCaptureVerificationStarted = resolve; });
+const captureVerificationGate = new Promise(resolve => { releaseCaptureVerification = resolve; });
+const raceEngine = new NeuralJitEngine({
+  activationCaptureVerifier: {
+    async verifyCapture(capture, expected) {
+      // Mimic a valid host signature check performed before an asynchronous
+      // confirmation completes; later mutation of the same object must not alter
+      // the already-verified payload admitted by the engine.
+      const verifiedPayloadDigest = digest(JSON.stringify({
+        inputFeatures: capture.inputFeatures,
+        targetResidual: capture.targetResidual,
+      }));
+      if (capture.captureId === 'capture-9000') {
+        notifyCaptureVerificationStarted();
+        await captureVerificationGate;
+      }
+      return trustedCaptures.has(capture) &&
+        verifiedPayloadDigest === trustedCaptureDigests.get(capture) &&
+        capture.modelFingerprint === expected.modelFingerprint &&
+        capture.taskFingerprint === expected.taskFingerprint &&
+        capture.seed === expected.seed;
+    },
+  },
+});
+const racedTrace = await makeTrace(9_000, {
+  inputFeatures: [0.25, 0.5],
+  targetResidual: [0.05, -0.02],
+});
+const racedAdmission = raceEngine.recordVerifiedTrace(racedTrace);
+await captureVerificationStarted;
+racedTrace.capture.inputFeatures[0] = 7;
+racedTrace.capture.targetResidual[0] = 7;
+racedTrace.binding.input.executionPayload = 'mutated-after-verifier-start';
+releaseCaptureVerification();
+const firstRacedResult = await racedAdmission;
+assert.equal(firstRacedResult.accepted, true);
+const expectedTrainInputs = [];
+if (firstRacedResult.split === 'train') expectedTrainInputs.push(0.25);
+for (let i = 0; i < 119; i += 1) {
+  const input = 0.2 + i / 1_000;
+  const trace = await makeTrace(9_001 + i, {
+    inputFeatures: [input, input * 2],
+    targetResidual: [0.05, -0.02],
+  });
+  const result = await raceEngine.recordVerifiedTrace(trace);
+  assert.equal(result.accepted, true);
+  if (result.split === 'train') expectedTrainInputs.push(input);
+}
+const raceCandidate = raceEngine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint });
+assert.ok(raceCandidate);
+const handCheckedTrainMean = expectedTrainInputs.reduce((sum, value) => sum + value, 0) / expectedTrainInputs.length;
+assert.ok(Math.abs(raceCandidate.meanInput[0] - handCheckedTrainMean) < 1e-10,
+  'the compiled candidate must use the capture values snapshotted before asynchronous host verification');
+assert.ok(Math.abs(raceCandidate.meanOutput[0] - 0.05) < 1e-10,
+  'an asynchronous verifier race must not replace the target residual after verification began');
+
+// Regression: activation vectors with accessors or holes must be rejected without
+// executing caller-controlled getters.
+const accessorTrace = await makeTrace(9_500);
+let activationGetterExecuted = false;
+Object.defineProperty(accessorTrace.capture.inputFeatures, '0', {
+  configurable: true,
+  enumerable: true,
+  get() {
+    activationGetterExecuted = true;
+    return 0.25;
+  },
+});
+const accessorResult = await engine.recordVerifiedTrace(accessorTrace);
+assert.equal(accessorResult.accepted, false);
+assert.equal(accessorResult.reason, 'invalid-activation-vector');
+assert.equal(activationGetterExecuted, false,
+  'validation must inspect array descriptors instead of executing accessors');
+
+const sparseTrace = await makeTrace(9_501);
+delete sparseTrace.capture.inputFeatures[0];
+const sparseResult = await engine.recordVerifiedTrace(sparseTrace);
+assert.equal(sparseResult.accepted, false);
+assert.equal(sparseResult.reason, 'invalid-activation-vector',
+  'sparse activation vectors must be rejected rather than silently training on missing values');
 
 console.log('NEURAL_JIT_ENGINE=PASS');
 console.log(JSON.stringify({

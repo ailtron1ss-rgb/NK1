@@ -98,13 +98,53 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   } catch { return false; }
 }
 function vector(value: unknown, max: number, maxAbs = 8): number[] | null {
-  if (!Array.isArray(value) || value.length < 1 || value.length > max) return null;
-  const result: number[] = [];
-  for (const item of value) {
-    if (typeof item !== 'number' || !Number.isFinite(item) || Math.abs(item) > maxAbs) return null;
-    result.push(item);
+  try {
+    if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+    const length = Object.getOwnPropertyDescriptor(value, 'length');
+    if (!length || !('value' in length) || !Number.isSafeInteger(length.value) ||
+        Number(length.value) < 1 || Number(length.value) > max) return null;
+    const size = Number(length.value);
+    const keys = Reflect.ownKeys(value);
+    // Dense, plain numeric arrays only. Reject holes, accessors, symbols and
+    // custom properties rather than invoking caller-controlled array getters.
+    if (keys.length !== size + 1 || !keys.includes('length')) return null;
+    const result: number[] = [];
+    for (let index = 0; index < size; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !('value' in descriptor) || descriptor.enumerable !== true) return null;
+      const item = descriptor.value;
+      if (typeof item !== 'number' || !Number.isFinite(item) || Math.abs(item) > maxAbs) return null;
+      result.push(item);
+    }
+    return result;
+  } catch {
+    return null;
   }
-  return result;
+}
+
+function dataField(record: Record<string, unknown>, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(record, key);
+  return descriptor && 'value' in descriptor && descriptor.enumerable === true
+    ? descriptor.value
+    : undefined;
+}
+
+function snapshotOutcomeBinding(raw: unknown): ExpectedDecisionOutcomeBinding | null {
+  if (!isRecord(raw)) return null;
+  try {
+    const toolId = dataField(raw, 'toolId');
+    const input = dataField(raw, 'input');
+    const executionId = dataField(raw, 'executionId');
+    const decisionId = dataField(raw, 'decisionId');
+    if (typeof toolId !== 'string' || !toolId.trim() || toolId.length > 180 ||
+        !isRecord(input) || typeof executionId !== 'string' ||
+        typeof decisionId !== 'string' || !decisionId.trim() || decisionId.length > 180) return null;
+    const isolatedInput = structuredClone(input);
+    if (!isRecord(isolatedInput)) return null;
+    return Object.freeze({ toolId, input: isolatedInput, executionId, decisionId });
+  } catch {
+    return null;
+  }
 }
 function dot(a: number[], b: number[]): number {
   let sum = 0; for (let i = 0; i < a.length; i += 1) sum += a[i] * b[i]; return sum;
@@ -165,40 +205,65 @@ export class NeuralJitEngine {
     { accepted: true; traceId: string; split: TraceSplit } | { accepted: false; reason: string }
   > {
     if (!this.activationCaptureVerifier) return this.reject('activation-capture-authority-unavailable');
-    if (!isRecord(input) || !isRecord(input.binding) || !isRecord(input.capture)) return this.reject('invalid-trace-envelope');
-    const binding = input.binding as unknown as ExpectedDecisionOutcomeBinding;
-    if (!isTrustedDecisionLinkedExternalPostcondition(input.verification, binding)) {
+    if (!isRecord(input)) return this.reject('invalid-trace-envelope');
+    const binding = snapshotOutcomeBinding(dataField(input, 'binding'));
+    const rawCapture = dataField(input, 'capture');
+    if (!binding || !isRecord(rawCapture)) return this.reject('invalid-trace-envelope');
+    const verificationValue = dataField(input, 'verification');
+    if (!isTrustedDecisionLinkedExternalPostcondition(verificationValue, binding)) {
       return this.reject('untrusted-outcome-verification');
     }
-    const verification = input.verification as OutcomeVerification;
+    const verification = verificationValue as OutcomeVerification;
     let inputFingerprint = '';
     try { inputFingerprint = neuralJitInputFingerprint(binding); }
     catch { return this.reject('invalid-outcome-binding'); }
 
-    const capture = input.capture as unknown as NeuralJitActivationCapture;
+    // Snapshot every value before crossing the asynchronous host-verifier boundary.
+    // The verifier receives the original object to preserve host WeakSet/WeakMap
+    // provenance, but no mutable reference from it is read again after the await.
+    const captureId = dataField(rawCapture, 'captureId');
+    const taskFamily = dataField(rawCapture, 'taskFamily');
+    const taskFingerprint = dataField(rawCapture, 'taskFingerprint');
+    const modelFingerprint = dataField(rawCapture, 'modelFingerprint');
+    const toolId = dataField(rawCapture, 'toolId');
+    const executionId = dataField(rawCapture, 'executionId');
+    const decisionId = dataField(rawCapture, 'decisionId');
+    const captureInputFingerprint = dataField(rawCapture, 'inputFingerprint');
+    const seed = dataField(rawCapture, 'seed');
+    const capturedAt = dataField(rawCapture, 'capturedAt');
+    if (typeof captureId !== 'string' || !SAFE_ID.test(captureId) ||
+        typeof taskFamily !== 'string' || !SAFE_FAMILY.test(taskFamily) ||
+        typeof taskFingerprint !== 'string' || !HEX_256.test(taskFingerprint) ||
+        typeof modelFingerprint !== 'string' || !HEX_256.test(modelFingerprint) ||
+        !Number.isSafeInteger(seed) || Number(seed) < 0 || Number(seed) > 1_000_000_000 ||
+        !Number.isSafeInteger(capturedAt) || Number(capturedAt) <= 0 ||
+        Number(capturedAt) > Date.now() + 300_000) return this.reject('invalid-activation-capture-metadata');
+    const inputFeatures = vector(dataField(rawCapture, 'inputFeatures'), 256);
+    const targetResidual = vector(dataField(rawCapture, 'targetResidual'), 128);
+    if (!inputFeatures || !targetResidual) return this.reject('invalid-activation-vector');
+    const capture: NeuralJitActivationCapture = Object.freeze({
+      captureId, taskFamily, taskFingerprint, modelFingerprint,
+      toolId: typeof toolId === 'string' ? toolId : '',
+      executionId: typeof executionId === 'string' ? executionId : '',
+      decisionId: typeof decisionId === 'string' ? decisionId : '',
+      inputFingerprint: typeof captureInputFingerprint === 'string' ? captureInputFingerprint : '',
+      seed: Number(seed), capturedAt: Number(capturedAt),
+      inputFeatures: Object.freeze(inputFeatures) as unknown as number[],
+      targetResidual: Object.freeze(targetResidual) as unknown as number[],
+    });
     const expected = {
-      taskFamily: String(capture.taskFamily ?? ''),
-      taskFingerprint: String(capture.taskFingerprint ?? ''),
-      modelFingerprint: String(capture.modelFingerprint ?? ''),
+      taskFamily, taskFingerprint, modelFingerprint,
       toolId: binding.toolId, executionId: binding.executionId, decisionId: binding.decisionId,
-      inputFingerprint, seed: Number(capture.seed),
+      inputFingerprint, seed: Number(seed),
     };
     let trusted = false;
-    try { trusted = await this.activationCaptureVerifier.verifyCapture(capture, expected); }
+    try { trusted = await this.activationCaptureVerifier.verifyCapture(rawCapture, expected); }
     catch { return this.reject('activation-capture-verification-failed'); }
     if (!trusted) return this.reject('untrusted-activation-capture');
     if (capture.toolId !== binding.toolId || capture.executionId !== binding.executionId ||
         capture.decisionId !== binding.decisionId || capture.inputFingerprint !== inputFingerprint) {
       return this.reject('activation-capture-binding-mismatch');
     }
-    if (!SAFE_ID.test(capture.captureId) || !SAFE_FAMILY.test(capture.taskFamily) ||
-        !HEX_256.test(capture.taskFingerprint) || !HEX_256.test(capture.modelFingerprint) ||
-        !Number.isSafeInteger(capture.seed) || capture.seed < 0 || capture.seed > 1_000_000_000 ||
-        !Number.isSafeInteger(capture.capturedAt) || capture.capturedAt <= 0 ||
-        capture.capturedAt > Date.now() + 300_000) return this.reject('invalid-activation-capture-metadata');
-    const inputFeatures = vector(capture.inputFeatures, 256);
-    const targetResidual = vector(capture.targetResidual, 128);
-    if (!inputFeatures || !targetResidual) return this.reject('invalid-activation-vector');
 
     const observationId = String(verification.observationId ?? '').trim();
     if (!observationId || observationId.length > 180) return this.reject('missing-observation-id');
