@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { FutureSimulator } from '../src/organism/developmental/FutureSimulator.ts';
+const simulator=new FutureSimulator();
+const scenarios=simulator.generateWorldForgeScenarios({split:'train',seed:77,count:3});
+assert.equal(scenarios.length,3);
+const before=simulator.snapshot();
+const result=simulator.evaluateWorldForgeScenario(scenarios[0],[{action:'observe',target:'signal-a',evidence:'signal-a'}]);
+assert.equal(result.syntheticOnly,true);
+assert.equal(result.independentlyVerified,false);
+assert.deepEqual(simulator.snapshot(),before,'World Forge evaluation must not mutate FutureSimulator forecast state');
+simulator.releaseWorldForgeScenario(scenarios[0].id);
+assert.equal(simulator.evaluateWorldForgeScenario(scenarios[0],[]).success,false);
+console.log('World Forge / FutureSimulator integration passed');
