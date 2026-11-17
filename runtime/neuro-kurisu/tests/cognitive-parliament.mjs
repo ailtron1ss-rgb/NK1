@@ -162,6 +162,16 @@ const sharedPort=new EvidenceFirewallParliamentTrustPort(firewall,id=>({
 const shared=new CognitiveParliament(sharedPort).deliberate({candidateId:'shared',risk:'high',reports});
 assert.equal(shared.status,'needs-evidence');
 assert.ok(shared.reasons.includes('insufficient-independent-model-families'));
+const oversizedAttestor=new CognitiveParliament(new EvidenceFirewallParliamentTrustPort(firewall,id=>({
+  executionId:id,providerId:'provider',modelId:'m'.repeat(201),
+  independenceGroup:'family',verifiedAt:Date.now(),
+})));
+const oversizedAttestation=oversizedAttestor.deliberate({
+  candidateId:'oversized-attestation',risk:'low',reports,
+});
+assert.equal(oversizedAttestation.status,'needs-evidence');
+assert.ok(oversizedAttestation.reasons.includes('unverified-model-execution:researcher'),
+  'custom host attestors cannot inject unbounded model identity metadata');
 
 // Model-supplied evidence IDs cannot pass when absent from the canonical promoted firewall.
 const forged=parliament.deliberate({candidateId:'forged',risk:'low',
