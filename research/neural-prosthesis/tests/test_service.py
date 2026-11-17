@@ -343,6 +343,7 @@ class LayerForceSidecarConfigurationTests(unittest.TestCase):
         runtime.device = torch.device("cpu")
         runtime.model_id = self.model_id
         runtime.model_revision = self.revision
+        runtime.layer_path = self.layer_path
         runtime.default_adapter = None
         runtime._adapter_manifest_digests = {}
         runtime._approved_manifest_digests = set()
