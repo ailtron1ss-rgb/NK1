@@ -73,7 +73,7 @@ export class GovernanceSubsystemRuntime {
     maxConcurrent?: number;
     maxTotalTokens?: number;
   }): Promise<{
-    status: 'parliament-not-approved' | 'candidate-not-in-p69-set' | 'p69-selected' | 'p69-diverted';
+    status: 'parliament-not-approved' | 'candidate-not-in-p69-set' | 'p69-selected' | 'p69-safe-fallback' | 'p69-diverted';
     parliament: ParliamentDispatchResult;
     arbitration: ReturnType<P69ConstitutionalArbiter['arbitrate']> | null;
   }> {
@@ -107,12 +107,68 @@ export class GovernanceSubsystemRuntime {
     if (!candidateExists) {
       return { status: 'candidate-not-in-p69-set', parliament, arbitration: null };
     }
-    const arbitration = this.p69ConstitutionalArbiter.arbitrate(p69InputSnapshot);
+    // A positive Parliament verdict authorizes only its exact candidate plus the
+    // constitutional low-risk escape actions. Other model-proposed candidates
+    // are never silently promoted into the approved set.
+    const safeActions=new Set(['rest','wait','defer']);
+    const allowedCandidates=p69Candidates.filter(candidate=>
+      candidate.id===input.candidateId||safeActions.has(candidate.action));
+    const allowedIds=new Set(allowedCandidates.map(candidate=>candidate.id));
+    const arbitration = this.p69ConstitutionalArbiter.arbitrate({
+      ...p69InputSnapshot,
+      candidates:allowedCandidates,
+    });
+    const chosenId=arbitration.chosen?.id??null;
     return {
-      status: arbitration.chosen?.id === input.candidateId ? 'p69-selected' : 'p69-diverted',
+      status:chosenId===input.candidateId?'p69-selected':
+        chosenId&&allowedIds.has(chosenId)&&safeActions.has(allowedCandidates.find(candidate=>candidate.id===chosenId)?.action??'')
+          ?'p69-safe-fallback':'p69-diverted',
       parliament,
       arbitration,
     };
+  }
+
+  /**
+   * Cycle-facing gate. If Parliament does not approve, P69 may still choose only
+   * a bounded protective fallback; an unreviewed candidate cannot become the
+   * selected intent through an older argmax/fallback path.
+   */
+  async deliberateCycleCandidate(input: {
+    candidateId:string;
+    risk:ParliamentRisk;
+    task:string;
+    evidenceReferences?:ParliamentEvidenceReference[];
+    p69Input:P69Input;
+    timeoutMs?:number;
+    maxConcurrent?:number;
+    maxTotalTokens?:number;
+  }): Promise<{
+    status:'p69-selected'|'p69-safe-fallback'|'parliament-blocked'|'candidate-not-in-p69-set';
+    parliament:ParliamentDispatchResult;
+    arbitration:ReturnType<P69ConstitutionalArbiter['arbitrate']>|null;
+    selectedCandidate:P69Input['candidates'][number]|null;
+  }> {
+    const snapshot=structuredClone(input.p69Input);
+    const attempted=await this.deliberateAndArbitrate(input);
+    let arbitration=attempted.arbitration;
+    if(!arbitration){
+      const safeCandidates=snapshot.candidates.filter(candidate=>
+        ['rest','wait','defer'].includes(candidate.action));
+      if(safeCandidates.length){
+        arbitration=this.p69ConstitutionalArbiter.arbitrate({
+          ...snapshot,candidates:safeCandidates,requestedAction:null,
+        });
+      }
+    }
+    const chosenId=arbitration?.chosen?.id??null;
+    const chosen=snapshot.candidates.find(candidate=>candidate.id===chosenId)??null;
+    const safeChosen=Boolean(chosen&&['rest','wait','defer'].includes(chosen.action));
+    const approvedChosen=Boolean(chosen&&chosen.id===input.candidateId&&attempted.status==='p69-selected');
+    const selectedCandidate=approvedChosen||safeChosen?structuredClone(chosen):null;
+    const status: 'p69-selected'|'p69-safe-fallback'|'parliament-blocked'|'candidate-not-in-p69-set' =
+      attempted.status==='candidate-not-in-p69-set'?'candidate-not-in-p69-set':
+      approvedChosen?'p69-selected':safeChosen?'p69-safe-fallback':'parliament-blocked';
+    return {status,parliament:attempted.parliament,arbitration,selectedCandidate};
   }
 
   restoreFromPersisted(input: { advanced?: any }) {
