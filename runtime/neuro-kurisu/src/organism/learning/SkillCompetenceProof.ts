@@ -75,6 +75,8 @@ export interface SkillCompetenceActiveSubject {
   candidateId: string;
   version: number;
   payloadFingerprint: string;
+  /** Exact proof already attached to this active P23 candidate, preventing certificate substitution. */
+  proofId: string;
 }
 
 export interface SkillCompetenceConditionContext {
@@ -484,7 +486,8 @@ export function verifySkillCompetenceProofForTool(
   const currentMode: SkillCompetenceExecutionMode = context.autonomous ? 'autonomous' : 'assisted';
   if (!active || active.candidateId !== payload.candidateId ||
       active.version !== payload.candidateVersion ||
-      active.payloadFingerprint !== payload.payloadFingerprint) {
+      active.payloadFingerprint !== payload.payloadFingerprint ||
+      active.proofId !== payload.proofId) {
     return { ok: false, reason: 'skill-competence-proof-not-current-active-version' };
   }
   if (!Number.isFinite(context.now) || payload.expiresAt <= context.now || payload.issuedAt > context.now + MAX_CLOCK_SKEW_MS) {

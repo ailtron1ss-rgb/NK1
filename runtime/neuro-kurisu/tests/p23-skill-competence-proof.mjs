@@ -10,6 +10,7 @@ import {
   parseTrustedSkillCompetenceAttestorKeys,
   canonicalSkillCompetenceProofPayload,
   skillCompetenceRuntimeFingerprint,
+  verifySkillCompetenceProofForTool,
 } from '../src/organism/learning/SkillCompetenceProof.ts';
 import { InMemorySkillStorePersistence, VersionedSkillCandidateStore } from '../src/organism/learning/VersionedSkillCandidateStore.ts';
 import {
@@ -212,6 +213,7 @@ assert.deepEqual(store.resolveActiveSkillCompetenceSubject(skillId), {
   candidateId: candidate.candidateId,
   version: candidate.version,
   payloadFingerprint: candidate.payloadFingerprint,
+  proofId: activeProof.payload.proofId,
 });
 
 // Restart reconstruction must re-authenticate the persisted proof and its candidate/evidence binding.
@@ -226,6 +228,7 @@ assert.deepEqual(restoredStore.resolveActiveSkillCompetenceSubject(skillId), {
   candidateId: candidate.candidateId,
   version: candidate.version,
   payloadFingerprint: candidate.payloadFingerprint,
+  proofId: activeProof.payload.proofId,
 });
 const tamperedSnapshot = skillStorePersistence.read();
 tamperedSnapshot.revision = 1;
@@ -252,6 +255,44 @@ assert.throws(() => new VersionedSkillCandidateStore(
   () => false,
   expiredOnRestoreVerifier,
 ), /competence proof failed signature\/context verification/);
+
+const permissionScopeCheck = verifySkillCompetenceProofForTool(activeProof, {
+  trustedAttestorKeys,
+  toolId: skillId,
+  capability: contract.capability,
+  permissionClass: 'device',
+  inputContractFingerprint: sha256Stable(inputContract),
+  outputContractFingerprint: sha256Stable(outputContract),
+  runtimeFingerprint,
+  environmentFingerprint,
+  autonomous: false,
+  now: Date.now(),
+  activeSubject: store.resolveActiveSkillCompetenceSubject(skillId),
+  input: { query: 'memory' },
+  evaluateCondition: () => true,
+});
+assert.deepEqual(permissionScopeCheck, {
+  ok: false,
+  reason: 'skill-competence-proof-tool-scope-mismatch',
+});
+
+// A valid signature for the same candidate is not enough if it is not the exact
+// certificate attached during promotion. This blocks silent scope/mode expansion.
+const substitutedPayload = structuredClone(activeProof.payload);
+substitutedPayload.contract.allowedModes = ['assisted', 'autonomous'];
+substitutedPayload.proofId = sha256Stable({
+  candidateId: substitutedPayload.candidateId,
+  candidateVersion: substitutedPayload.candidateVersion,
+  payloadFingerprint: substitutedPayload.payloadFingerprint,
+  proposalId: substitutedPayload.proposalId,
+  contract: substitutedPayload.contract,
+  holdout: substitutedPayload.holdout,
+  shadowEvidenceFingerprint: substitutedPayload.shadowEvidenceFingerprint,
+  attestorId: substitutedPayload.attestorId,
+  issuedAt: substitutedPayload.issuedAt,
+  expiresAt: substitutedPayload.expiresAt,
+});
+const substitutedProof = signSkillCompetenceProofForTest(substitutedPayload, attestorPrivatePem);
 
 const expiredIssuedAt = Date.now() - 10_000;
 const expiredPayload = store.createCompetenceProofPayload(
@@ -321,6 +362,7 @@ const deniedCases = [
     ...activeProof, signature: activeProof.signature.slice(0, -4) + 'AAAA',
   } }],
   ['expired-proof', { proof: expiredProof }],
+  ['substituted-proof-widened-mode', { proof: substitutedProof, autonomous: true }],
   ['failed-condition', { rejectCondition: true }],
 ];
 for (const pair of deniedCases) {

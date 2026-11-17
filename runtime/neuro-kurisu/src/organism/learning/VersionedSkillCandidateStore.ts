@@ -264,7 +264,8 @@ export class VersionedSkillCandidateStore {
     try { verified = this.verifyCompetenceProof(clone(active.competenceProof), clone(active), 'promotion'); }
     catch { verified = false; }
     if (verified !== true) return null;
-    return { candidateId: active.candidateId, version: active.version, payloadFingerprint: active.payloadFingerprint };
+    return { candidateId: active.candidateId, version: active.version, payloadFingerprint: active.payloadFingerprint,
+      proofId: active.competenceProof.payload.proofId };
   }
 
   private readTrustedSnapshot(): VersionedSkillStoreSnapshot {
