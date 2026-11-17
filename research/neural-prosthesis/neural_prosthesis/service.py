@@ -48,6 +48,14 @@ class RequestError(ValueError):
         self.code = code
 
 
+def _output_token_limit(requested: Any, context_window: int) -> int:
+    if not isinstance(requested, int) or isinstance(requested, bool) or not 1 <= requested <= 2048:
+        raise RequestError(400, "max-tokens-out-of-range")
+    if type(context_window) is not int or context_window < 2:
+        raise RuntimeError("model-context-window-invalid")
+    return min(requested, context_window - 1)
+
+
 def _json_list(env_name: str, *, maximum: int) -> list[str]:
     raw = os.environ.get(env_name, "[]")
     try:
@@ -227,10 +235,7 @@ class TransformersRuntime:
                 raise RequestError(403, "adapter-quarantined")
         max_tokens = request.get("max_tokens", 512)
         temperature = request.get("temperature", 0.7)
-        if not isinstance(max_tokens, int) or isinstance(max_tokens, bool) or not 1 <= max_tokens <= 2048:
-            raise RequestError(400, "max-tokens-out-of-range")
-        # Reserve at least one prompt token and never exceed the model's own window.
-        max_tokens = min(max_tokens, 2048, self.max_context_tokens - 1)
+        max_tokens = _output_token_limit(max_tokens, self.max_context_tokens)
         if isinstance(temperature, bool) or not isinstance(temperature, (int, float)) or not math.isfinite(float(temperature)) or not 0 <= float(temperature) <= 2:
             raise RequestError(400, "temperature-out-of-range")
         stream = request.get("stream", False)
