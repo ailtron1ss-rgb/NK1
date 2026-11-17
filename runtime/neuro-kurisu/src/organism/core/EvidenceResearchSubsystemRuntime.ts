@@ -131,8 +131,10 @@ export class EvidenceResearchSubsystemRuntime {
   findCapturedExperiment(experiment: IntrinsicExperiment): CapturedInventionCandidate | null {
     const fingerprint = this.capturedCandidateFingerprint(experiment);
     const now = Date.now();
+    const projects = new Set(this.scientificMethod.snapshot().projects.map(project => project.id));
     for (const candidate of this.capturedCandidates) {
-      if (candidate.candidateFingerprint !== fingerprint) continue;
+      if (candidate.candidateFingerprint !== fingerprint ||
+          !projects.has(candidate.scientificProjectId)) continue;
       if (candidate.status === 'awaiting-preregistration' || now - candidate.createdAt < 24 * 60 * 60 * 1000) {
         return structuredClone(candidate);
       }
@@ -168,9 +170,11 @@ export class EvidenceResearchSubsystemRuntime {
     if (!projectExists) throw new Error('scientific-project-not-found');
     const source = item.source === 'dream-association' ? 'dream-association' : 'intrinsic';
     const candidateFingerprint = this.capturedCandidateFingerprint(item);
-    const existing = this.findCapturedExperiment(item) ??
-      this.capturedCandidates.find(candidate => candidate.experimentId === item.id);
+    const existing = this.findCapturedExperiment(item);
     if (existing) return structuredClone(existing);
+    if (this.capturedCandidates.some(candidate => candidate.experimentId === item.id)) {
+      throw new Error('captured-invention-link-corrupt');
+    }
     const candidate: CapturedInventionCandidate = {
       id: 'captured-' + item.id,
       experimentId: item.id,
