@@ -15,7 +15,7 @@ export interface WorldForgeDisturbance { atStep:number; kind:'resource-shock'|'r
 export interface WorldForgeCase {
   id:string; split:WorldForgeSplit; domain:WorldForgeDomain; difficulty01:number; task:string;
   observations:string[]; goalOptions:string[]; availableActions:WorldForgeAction[]; constraints:WorldForgeConstraints;
-  disturbances:WorldForgeDisturbance[]; strategyFamilies:string[]; seedFingerprint:string; syntheticOnly:true;
+  strategyFamilies:string[]; syntheticOnly:true;
 }
 export interface WorldForgeActionStep { action:WorldForgeAction; target?:string; evidence?:string; cost?:number; risk01?:number; accepted?:boolean; }
 export interface WorldForgeEvaluation {
@@ -33,7 +33,7 @@ export interface WorldForgeState {
 }
 export interface WorldForgeStepResult {
   accepted:boolean; state:WorldForgeState|null; reward01:number;
-  appliedDisturbances:WorldForgeDisturbance['kind'][]; reason?:string; syntheticOnly:true;
+  eventsApplied:number; reason?:string; syntheticOnly:true;
 }
 export interface WorldForgeOptions {
   maxCasesPerBatch?:number; maxTraceSteps?:number; maxActiveScenarios?:number;
@@ -84,6 +84,35 @@ function normalizeActionStep(value:unknown):WorldForgeActionStep|null {
     if(acceptedDescriptor){
       if(typeof acceptedDescriptor.value!=='boolean')return null;
       out.accepted=acceptedDescriptor.value;
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeActionCommand(value:unknown):Pick<WorldForgeActionStep,'action'|'target'|'evidence'>|null {
+  try {
+    if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    const keys=Reflect.ownKeys(descriptors);
+    const allowed=new Set(['action','target','evidence']);
+    if(keys.length>allowed.size||keys.some(k=>typeof k!=='string'||!allowed.has(k)))return null;
+    for(const key of keys as string[]){
+      const descriptor=descriptors[key];
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true)return null;
+    }
+    const action=descriptors.action?.value;
+    if(!ACTIONS.includes(action as WorldForgeAction))return null;
+    const out:Pick<WorldForgeActionStep,'action'|'target'|'evidence'>={action:action as WorldForgeAction};
+    for(const key of ['target','evidence'] as const){
+      const descriptor=descriptors[key];
+      if(!descriptor)continue;
+      const value=descriptor.value;
+      if(typeof value!=='string'||!value||safeText(value,120)!==value)return null;
+      out[key]=value;
     }
     return out;
   } catch {
@@ -237,9 +266,9 @@ export class WorldForge {
       const scenario:WorldForgeCase={id,split:request.split,domain,difficulty01:Number(difficulty01.toFixed(3)),
         task:domain==='resource-allocation'?'Allocate scarce resources while preserving a safety reserve and adapting to a late demand shock.':domain==='route-planning'?'Reach the destination while respecting a changing route and risk budget.':'Identify the reliable explanation from noisy signals and verify it before concluding.',
         observations,goalOptions:[...targets],availableActions:[...ACTIONS],constraints:{maxSteps:Math.max(4,Math.min(16,Math.round(5+difficulty01*8))),resourceBudget:Math.max(3,Math.round(10-difficulty01*3)),riskTolerance01:Number((.75-difficulty01*.35).toFixed(3)),requiredEvidence:domain==='investigation'?2:1},
-        disturbances,strategyFamilies:families,seedFingerprint:fingerprint(seed+'|'+request.split+'|'+domain+'|'+difficulty01.toFixed(3)),syntheticOnly:true};
+        strategyFamilies:families,syntheticOnly:true};
       const createdAt=this.currentTime();
-      this.#answers.set(id,{split:request.split,domain,requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],goalOptions:[...targets],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbances:disturbances.map(d=>({...d})),disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,resourceBudget:scenario.constraints.resourceBudget,maxSteps:scenario.constraints.maxSteps,riskTolerance01:scenario.constraints.riskTolerance01,seed,createdAt});
+      this.#answers.set(id,{split:request.split,domain,requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],goalOptions:[...targets],acceptedFamilies:families,criticalEvidence:targets.slice(0,2),disturbances:disturbances.map(d=>({...d})),disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,resourceBudget:scenario.constraints.resourceBudget,maxSteps:scenario.constraints.maxSteps,riskTolerance01:scenario.constraints.riskTolerance01,seed,createdAt});
       this.pruneExpired(createdAt);
       out.push(scenario);
     }
@@ -259,7 +288,7 @@ export class WorldForge {
     const risk=valid.reduce((sum,s)=>sum+(s.risk01??0),0)/Math.max(1,valid.length);
     const violations=normalized.violations+normalized.overflow+failedActions+Number(valid.length>key.maxSteps)+Number(cost>key.resourceBudget)+Number(risk>key.riskTolerance01);
     const targets=new Set(valid.map(s=>s.target).filter((v):v is string=>Boolean(v)));
-    const evidence=new Set(valid.map(s=>s.evidence).filter((v):v is string=>Boolean(v)));
+    const evidence=new Set(valid.filter(s=>s.action==='verify').map(s=>s.evidence??s.target).filter((v):v is string=>Boolean(v)));
     const family=this.inferFamily(key.domain,valid);
     const targetCoverage=key.requiredTargets.filter(t=>targets.has(t)).length/Math.max(1,key.requiredTargets.length);
     const evidenceCoverage=key.criticalEvidence.filter(e=>evidence.has(e)||targets.has(e)).length/Math.max(1,key.criticalEvidence.length);
@@ -301,7 +330,7 @@ export class WorldForge {
 
   step(stateInput:unknown,actionInput:unknown):WorldForgeStepResult {
     const identity=sessionIdentity(stateInput);
-    const empty:WorldForgeStepResult={accepted:false,state:null,reward01:0,appliedDisturbances:[],reason:'invalid_or_unknown_session',syntheticOnly:true};
+    const empty:WorldForgeStepResult={accepted:false,state:null,reward01:0,eventsApplied:0,reason:'invalid_or_unknown_session',syntheticOnly:true};
     if(!identity)return empty;
     const session=this.#sessions.get(identity.sessionId);
     if(!session)return empty;
@@ -309,10 +338,10 @@ export class WorldForge {
     if(now-session.createdAt>this.scenarioTtlMs){this.#sessions.delete(identity.sessionId);return{...empty,reason:'session_expired'};}
     const canonical=session.state;
     if(identity.scenarioId!==session.scenarioId||identity.tick!==canonical.tick||canonical.status!=='active'){
-      return{accepted:false,state:structuredClone(canonical),reward01:0,appliedDisturbances:[],reason:'stale_or_exhausted_state',syntheticOnly:true};
+      return{accepted:false,state:structuredClone(canonical),reward01:0,eventsApplied:0,reason:'stale_or_exhausted_state',syntheticOnly:true};
     }
-    const action=normalizeActionStep(actionInput);
-    if(!action)return{accepted:false,state:structuredClone(canonical),reward01:0,appliedDisturbances:[],reason:'invalid_action',syntheticOnly:true};
+    const action=normalizeActionCommand(actionInput);
+    if(!action)return{accepted:false,state:structuredClone(canonical),reward01:0,eventsApplied:0,reason:'invalid_action',syntheticOnly:true};
     const key=this.#answers.get(session.scenarioId);
     if(!key)return{...empty,reason:'scenario_expired'};
     const next=structuredClone(canonical);
@@ -321,10 +350,10 @@ export class WorldForge {
     let reward01=0;
     let accepted=true;
     let reason:string|undefined;
-    const applied:WorldForgeDisturbance['kind'][]=[];
+    let eventsApplied=0;
     for(const disturbance of key.disturbances.filter(d=>d.atStep===next.tick)){
-      applied.push(disturbance.kind);
-      next.events.push(disturbance.kind+':'+disturbance.magnitude01.toFixed(3));
+      eventsApplied++;
+      next.events.push('environment-shift:'+next.tick);
       if(disturbance.kind==='resource-shock'){
         next.resourcesRemaining=Math.max(0,next.resourcesRemaining-Math.max(1,Math.ceil(key.resourceBudget*disturbance.magnitude01*.35)));
       }else if(disturbance.kind==='route-block'){
@@ -337,41 +366,47 @@ export class WorldForge {
         next.remainingSteps=Math.max(0,next.remainingSteps-Math.max(1,Math.ceil(disturbance.magnitude01*2)));
       }
     }
+    let actionCost=0;
+    let actionRisk=0;
     if(action.action==='observe'){
+      actionCost=.05; actionRisk=.01+next.noise01*.2;
       next.knownSignals.push('observation-'+next.tick);
-      next.knownSignals=next.knownSignals.slice(-32);
-      reward01=.02;
+      next.knownSignals=next.knownSignals.slice(-32); reward01=.02;
     }else if(action.action==='inspect'){
+      actionCost=.1; actionRisk=.015+next.noise01*.15;
       if(action.target&&key.goalOptions.includes(action.target)){
         if(!next.knownTargets.includes(action.target))next.knownTargets.push(action.target);
         reward01=.04;
       }else{accepted=false;reason='unknown_inspection_target';}
     }else if(action.action==='move'){
+      actionCost=.5; actionRisk=.12+next.noise01*.3;
       if(!action.target){accepted=false;reason='missing_route_target';}
       else if(next.blockedTargets.includes(action.target)){accepted=false;reason='route_blocked';reward01=-.05;}
       else{next.position=action.target;reward01=.02;}
     }else if(action.action==='collect'){
-      const cost=action.cost??1;
-      if(cost>next.resourcesRemaining){accepted=false;reason='insufficient_resources';reward01=-.05;}
-      else{next.resourcesRemaining-=cost;reward01=.03;}
+      actionCost=1; actionRisk=.05+(next.resourcesRemaining<=2?.15:0);
+      if(actionCost>next.resourcesRemaining){accepted=false;reason='insufficient_resources';reward01=-.05;}
+      else{next.resourcesRemaining-=actionCost;reward01=.03;}
     }else if(action.action==='reroute'){
-      next.blockedTargets=[];
-      reward01=.01;
+      actionCost=.25; actionRisk=.08+next.noise01*.1; next.blockedTargets=[]; reward01=.01;
     }else if(action.action==='prioritize'){
+      actionCost=.05; actionRisk=.01;
       if(action.target&&key.goalOptions.includes(action.target)){next.priorityTarget=action.target;reward01=.02;}
       else{accepted=false;reason='unknown_priority_target';}
     }else if(action.action==='verify'){
-      const evidence=action.evidence??action.target;
-      if(evidence&&(next.knownSignals.includes(evidence)||next.knownTargets.includes(evidence))){
-        if(!next.verifiedEvidence.includes(evidence))next.verifiedEvidence.push(evidence);
+      actionCost=.1; actionRisk=.02+next.noise01*.25;
+      const evidenceValue=action.evidence??action.target;
+      if(evidenceValue&&(next.knownSignals.includes(evidenceValue)||next.knownTargets.includes(evidenceValue))){
+        if(!next.verifiedEvidence.includes(evidenceValue))next.verifiedEvidence.push(evidenceValue);
         reward01=.05;
       }else{accepted=false;reason='evidence_not_observed';}
-    }
+    }else{actionCost=.02;actionRisk=.01;}
+    if(!accepted)actionCost=0;
     if(next.remainingSteps===0)next.status='exhausted';
     next.events=next.events.slice(-64);
-    session.trace.push({...action,accepted});
+    session.trace.push({...action,cost:actionCost,risk01:actionRisk,accepted});
     session.state=next;
-    return{accepted,state:structuredClone(next),reward01:Number(reward01.toFixed(3)),appliedDisturbances:applied,reason,syntheticOnly:true};
+    return{accepted,state:structuredClone(next),reward01:Number(reward01.toFixed(3)),eventsApplied,reason,syntheticOnly:true};
   }
 
   releaseSession(sessionId:string):void {
