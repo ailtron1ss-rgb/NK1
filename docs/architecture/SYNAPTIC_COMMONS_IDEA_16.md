@@ -17,7 +17,7 @@ The current implementation deliberately transfers declarative JSON skill descrip
 
 ## Trust and lifecycle
 
-imported → quarantined → compatible → attested
+imported → quarantined → compatible → attested → revoked (terminal)
 
 A package must pass every stage:
 
@@ -27,7 +27,7 @@ A package must pass every stage:
 4. **Local compatibility.** The host checks minimum runtime version, the primary capability, every required capability/tool, exact environment fingerprint (when the publisher binds one), and the permission envelope. Destructive skills are never compatible in this version.
 5. **Independent evidence.** An Ed25519 attestor receipt binds the exact artifact fingerprint, runtime, environment, test-suite digest, and holdout digest. It requires at least five independent seeds, at least five holdout samples, positive candidate-over-baseline improvement, and at least 80% candidate holdout success. Receipts expire within 30 days.
 
-A repeated exact fingerprint is idempotent. Reusing the same skill ID/version for different content is a conflict. A failed compatibility check leaves the record quarantined. Rejection requires a reason.
+A repeated exact fingerprint is idempotent. Reusing the same skill ID/version for different content is a conflict. A failed compatibility check leaves the record quarantined. Rejection requires a bounded reason. An attested artifact can be revoked by an authenticated operator: revocation is terminal and durable, preserves signed package and evidence for audit, blocks compatibility re-entry and export, and is exposed as `revocationReason` plus `revokedAt`. Expired evidence remains cryptographically verifiable during restart so old records do not prevent runtime recovery; expiration still blocks export.
 
 ## Execution boundary
 
@@ -55,7 +55,8 @@ Only public keys may be stored in the two trust-key settings. Private signing ke
 - POST /api/organism/synaptic-commons/import — requires confirmed: true and a publisher-signed artifact.
 - POST /api/organism/synaptic-commons/:fingerprint/compatibility — requires confirmed: true; compatibility inputs come only from server environment.
 - POST /api/organism/synaptic-commons/:fingerprint/attestation — requires confirmed: true and an independently signed evidence receipt.
-- POST /api/organism/synaptic-commons/:fingerprint/reject — requires confirmed: true and a reason.
+- POST /api/organism/synaptic-commons/:fingerprint/reject — requires confirmed: true and a bounded reason.
+- POST /api/organism/synaptic-commons/:fingerprint/revoke — requires confirmed: true and a bounded revocation reason; only attested records can be revoked.
 - GET /api/organism/synaptic-commons/:fingerprint/export — exports only a non-expired attested artifact and its attestation.
 
 Every route is subject to the existing API authorization and rate-limit boundary. There is intentionally no route to execute or activate a shared skill.
@@ -69,4 +70,4 @@ From runtime/neuro-kurisu:
 - node tests/synaptic-commons-http-route.mjs
 - npm run typecheck
 
-All four checks run in .github/workflows/synaptic-commons.yml. The workflow targets the Open Loop Radar integration branch because this PR is stacked on the in-progress OrganismRuntime sidecar/API work; it must be retargeted to workpass70-source after that prerequisite is merged.
+All four checks run in .github/workflows/synaptic-commons.yml. The workflow runs on the feature branch and pull requests targeting canonical `workpass70-source`. This PR is based directly on `workpass70-source`, not stacked on an Open Loop Radar prerequisite. Local P23 admission remains default-deny: a portable receipt is not itself an authentic local P23 proposal, independent evaluation, or signed promotion approval.

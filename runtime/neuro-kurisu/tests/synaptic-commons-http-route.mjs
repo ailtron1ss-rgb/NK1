@@ -207,6 +207,24 @@ try {
   assert.equal(exported.body.attestation.artifactFingerprint, fingerprint);
   assert.equal(exported.body.executable, false);
 
+  const unconfirmedRevocation = await request(
+    '/api/organism/synaptic-commons/' + fingerprint + '/revoke',
+    'POST', { confirmed: false, reason: 'test security review' },
+  );
+  assert.equal(unconfirmedRevocation.response.status, 400);
+  const revoked = await request(
+    '/api/organism/synaptic-commons/' + fingerprint + '/revoke',
+    'POST', { confirmed: true, reason: 'independent test review revoked the artifact' },
+  );
+  assert.equal(revoked.response.status, 200, JSON.stringify(revoked.body));
+  assert.equal(revoked.body.status, 'revoked');
+  assert.equal(revoked.body.executable, false);
+  const revokedExport = await request('/api/organism/synaptic-commons/' + fingerprint + '/export');
+  assert.equal(revokedExport.response.status, 409);
+  const afterRevokeListing = await request('/api/organism/synaptic-commons');
+  assert.equal(afterRevokeListing.body.diagnostics.revoked, 1);
+  assert.equal(afterRevokeListing.body.records[0].status, 'revoked');
+
   const missingExecRoute = await request('/api/organism/synaptic-commons/' + fingerprint + '/execute', 'POST', { confirmed: true });
   assert.equal(missingExecRoute.response.status, 404,
     'the distribution API must not expose a direct skill execution route');

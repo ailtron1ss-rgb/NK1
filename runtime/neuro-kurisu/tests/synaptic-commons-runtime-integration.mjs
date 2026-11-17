@@ -131,15 +131,29 @@ try {
     'the file-backed sidecar and trust signatures must survive a full runtime restart');
   assert.equal((await restarted.synapticCommonsDiagnostics()).executableCount, 0,
     'the Commons catalog cannot grant execution rights after restart');
+  const revoked = await restarted.revokeSynapticSkill(fingerprint, 'post-restart independent security review');
+  assert.equal(revoked.status, 'revoked');
+  assert.equal(revoked.attestation?.artifactFingerprint, fingerprint);
   await restarted.flush();
   await restarted.stop();
 
+  const afterRevocationRestart = new OrganismRuntime(config);
+  await afterRevocationRestart.init();
+  const revokedSnapshot = await afterRevocationRestart.synapticCommonsSnapshot();
+  assert.equal(revokedSnapshot.records[0].status, 'revoked');
+  assert.equal((await afterRevocationRestart.synapticCommonsDiagnostics()).revoked, 1);
+  await assert.rejects(() => afterRevocationRestart.exportSynapticArtifact(fingerprint), /requires-attested-artifact/);
+  await assert.rejects(() => afterRevocationRestart.evaluateSynapticSkillCompatibility(fingerprint, {
+    runtimeVersion: '1.2.0', environmentFingerprint,
+    supportedCapabilities: ['documents.read', 'documents.summarize'],
+    permittedTools: ['documents.fetch'],
+  }), /skill-revoked/);
+  await afterRevocationRestart.stop();
+
   console.log(JSON.stringify({
     status: 'SYNAPTIC_COMMONS_RUNTIME_PASS',
-    imported: true,
-    sidecarRestart: true,
-    attested: true,
-    executableCount: 0,
+    imported: true, sidecarRestart: true, attested: true,
+    durableRevocation: true, executableCount: 0,
   }));
 } finally {
   await fs.rm(directory, { recursive: true, force: true });

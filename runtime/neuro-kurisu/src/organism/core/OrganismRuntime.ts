@@ -1953,6 +1953,11 @@ export class OrganismRuntime {
       this.synapticCommons.reject(fingerprint, reason)));
   }
 
+  revokeSynapticSkill(fingerprint: string, reason: string) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.revokeAttestedArtifact(fingerprint, reason)));
+  }
+
   exportSynapticArtifact(fingerprint: string) {
     return this.enqueue(async () => this.synapticCommons.exportArtifact(fingerprint));
   }

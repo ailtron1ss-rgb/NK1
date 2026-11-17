@@ -526,6 +526,8 @@ async function route(req, res) {
                         expiresAt: record.attestation.expiresAt,
                     } : null,
                     rejectionReason: record.rejectionReason,
+                    revocationReason: record.revocationReason,
+                    revokedAt: record.revokedAt,
                 })),
                 note: 'Attested records are still not executable. Local P23 and ActionGateway admission remains a separate requirement.',
             });
@@ -555,7 +557,7 @@ async function route(req, res) {
             }
         }
 
-        const synapticAction = /^\/api\/organism\/synaptic-commons\/([a-f0-9]{64})\/(compatibility|attestation|reject|export)$/.exec(url.pathname);
+        const synapticAction = /^\/api\/organism\/synaptic-commons\/([a-f0-9]{64})\/(compatibility|attestation|reject|revoke|export)$/.exec(url.pathname);
         if (synapticAction && req.method === 'POST' && synapticAction[2] !== 'export') {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
@@ -603,14 +605,18 @@ async function route(req, res) {
                         executable: false,
                     });
                 }
-                const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 240) : '';
-                if (!reason) return json(res, 400, { ok: false, error: 'synaptic-rejection-reason-required' });
+                if (action === 'revoke') {
+                    const reason = typeof input.reason === 'string' ? input.reason : '';
+                    const record = await runtime.revokeSynapticSkill(fingerprint, reason);
+                    return json(res, 200, { ok: true, artifactFingerprint: fingerprint, status: record.status, revokedAt: record.revokedAt, executable: false });
+                }
+                const reason = typeof input.reason === 'string' ? input.reason : '';
                 const record = await runtime.rejectSynapticSkill(fingerprint, reason);
                 return json(res, 200, { ok: true, artifactFingerprint: fingerprint, status: record.status });
             } catch (error) {
                 const message = String(error?.message || error).slice(0, 180);
                 const status = /not-found/.test(message) ? 404
-                    : /conflict|already|requires|expired|capacity/.test(message) ? 409 : 400;
+                    : /conflict|already|requires|expired|capacity|revoked/.test(message) ? 409 : 400;
                 return json(res, status, { ok: false, error: message });
             }
         }
