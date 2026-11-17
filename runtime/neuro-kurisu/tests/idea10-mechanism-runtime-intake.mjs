@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { OrganismSystemFabric } from '../src/organism/core/OrganismSystemFabric.ts';
+import { EvidenceResearchSubsystemRuntime } from '../src/organism/core/EvidenceResearchSubsystemRuntime.ts';
 
 // Regression: the physical seven-subsystem graph must be the input to the
 // mechanism-discovery runtime, not a manually supplied demo graph.
@@ -29,6 +30,17 @@ assert.equal(second.problem.id, first.problem.id, 'unchanged subsystem topology 
 assert.equal(second.diagnostics.suppressedDuplicates, first.experiments.length,
   'repeated scans must not re-queue the same mechanism experiment');
 assert.ok(second.experiments.length <= first.experiments.length);
+
+const durableResearchSnapshot = fabric.research.snapshot();
+const restoredResearch = new EvidenceResearchSubsystemRuntime();
+restoredResearch.restore(durableResearchSnapshot);
+const restartedFabric = new OrganismSystemFabric({ research: restoredResearch });
+const afterRestart = restartedFabric.discoverMechanisms();
+assert.equal(afterRestart.experiments.length, 0,
+  'restored discovery ledger must suppress an already queued hypothesis after restart');
+assert.equal(afterRestart.diagnostics.suppressedDuplicates, first.experiments.length,
+  'restored duplicate suppression must survive research-subsystem restore');
+
 console.log('IDEA10_MECHANISM_RUNTIME_INTAKE=PASS', JSON.stringify({
   actors: first.problem.actors.length,
   flows: first.problem.flows.length,
