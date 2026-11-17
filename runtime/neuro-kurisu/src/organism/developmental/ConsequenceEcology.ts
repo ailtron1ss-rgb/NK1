@@ -200,7 +200,7 @@ function digest(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
-function emptyState(): ConsequenceEcologyState {
+export function defaultConsequenceEcologyState(): ConsequenceEcologyState {
   return {
     version: 1,
     analyses: [],
@@ -211,6 +211,8 @@ function emptyState(): ConsequenceEcologyState {
     lastAt: 0,
   };
 }
+
+const emptyState = defaultConsequenceEcologyState;
 
 function normalizeGoalContext(value: unknown): ConsequenceGoalContext | null {
   if (!isRecord(value)) return null;
