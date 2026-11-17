@@ -458,7 +458,7 @@ const checkedArtifacts = [
   prototype.prototype,
   ...terminalInvention.outcomes.map(outcome => ({
     reference: outcome.evidenceRef,
-    sha256: outcome.attestationFingerprint,
+    sha256: digest(canonical(outcome.signedArtifact)),
   })),
   {
     reference: terminalInvention.critique.reviewRef,
@@ -466,7 +466,7 @@ const checkedArtifacts = [
   },
   {
     reference: 'signed-critique:' + terminalInvention.critique.artifactId,
-    sha256: terminalInvention.critique.attestationFingerprint,
+    sha256: digest(canonical(terminalInvention.critique.signedArtifact)),
   },
 ];
 
@@ -586,7 +586,7 @@ const rejectedCheckedArtifacts = [
   rejectedPrototype.prototype,
   {
     reference: canonicalRejectedInvention.outcomes[0].evidenceRef,
-    sha256: digest(canonicalRejectedInvention.outcomes[0].signedArtifact),
+    sha256: digest(canonical(canonicalRejectedInvention.outcomes[0].signedArtifact)),
   },
 ];
 const rejectedAuditRef = 'audit://science-republic/rejected/' + rejectedCase.id;
