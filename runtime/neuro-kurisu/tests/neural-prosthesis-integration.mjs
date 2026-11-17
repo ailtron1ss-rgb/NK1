@@ -229,6 +229,33 @@ assert.deepEqual(await disabledSupervisor.start(), {
 });
 assert.equal(await disabledSupervisor.stop(), false);
 
+let releasePendingProbe;
+let cancelledSpawnCount = 0;
+const cancellingSupervisor = new NeuralProsthesisSidecarSupervisor({
+  enabled: true,
+  command: process.execPath,
+  args: [],
+  baseUrl: 'http://127.0.0.1:65529/v1',
+  startupTimeoutMs: 2000,
+  fetchImpl: async () => new Promise(resolve => {
+    releasePendingProbe = () => resolve({
+      ok: false,
+      json: async () => ({ ready: false, backend: 'neural-prosthesis' }),
+    });
+  }),
+  spawnImpl: () => {
+    cancelledSpawnCount++;
+    throw new Error('spawn-must-not-run-after-shutdown');
+  },
+});
+const pendingStart = cancellingSupervisor.start();
+while (!releasePendingProbe) await new Promise(resolve => setTimeout(resolve, 1));
+await cancellingSupervisor.stop();
+releasePendingProbe();
+await assert.rejects(pendingStart, /sidecar-start-cancelled/);
+assert.equal(cancelledSpawnCount, 0);
+assert.equal(cancellingSupervisor.snapshot().managed, false);
+
 console.log(JSON.stringify({
   status: 'PASS',
   pass: 'neural-prosthesis-sidecar-lifecycle',
