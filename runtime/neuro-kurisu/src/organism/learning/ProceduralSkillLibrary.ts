@@ -113,8 +113,6 @@ export interface SkillLibraryState {
   promotions:number;
   demotions:number;
   compoundPromotions:number;
-  promotionPaused?:boolean;
-  promotionPauseReason?:string;
 }
 
 export interface SkillBiasResult {
@@ -130,10 +128,7 @@ const normalizeTokens=(value:string):string[]=>String(value??'').toLocaleLowerCa
 const jaccard=(a:string[],b:string[])=>{const A=new Set(a),B=new Set(b);if(!A.size&&!B.size)return 1;let inter=0;for(const x of A)if(B.has(x))inter++;return inter/Math.max(1,new Set([...A,...B]).size);};
 const hashSignature=(value:string)=>{let h=2166136261;for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36)};
 
-export const defaultSkillLibrary=():SkillLibraryState=>({
-  version:8,skills:[],compoundSkills:[],promotions:0,demotions:0,compoundPromotions:0,
-  promotionPaused:false,promotionPauseReason:''
-});
+export const defaultSkillLibrary=():SkillLibraryState=>({version:8,skills:[],compoundSkills:[],promotions:0,demotions:0,compoundPromotions:0});
 
 export class ProceduralSkillLibrary{
  private state:SkillLibraryState=defaultSkillLibrary();
@@ -165,18 +160,11 @@ export class ProceduralSkillLibrary{
  }
  private actionDistinctContexts(action:string){ const contexts=this.state.skills.filter(x=>x.action===action&&x.status!=='disabled').map(x=>x.context); return new Set(contexts).size; }
  private reevaluateActionPromotions(action:string){
-  if(this.state.promotionPaused)return;
   const contexts=this.actionDistinctContexts(action); if(contexts<3)return;
   for(const skill of this.state.skills.filter(x=>x.action===action&&x.status==='candidate')){
    const sufficient=skill.uses>=6&&skill.successRate>=.75&&skill.confidence>=.52&&skill.independentEvidenceUses>=2&&skill.validatedUses>=2;
    if(sufficient){skill.status='habit';this.state.promotions++;}
   }
- }
- setPromotionPaused(paused:boolean,reason='cognitive-health'):void{
-  this.state.promotionPaused=Boolean(paused);
-  this.state.promotionPauseReason=this.state.promotionPaused
-    ?String(reason??'cognitive-health').trim().slice(0,160)||'cognitive-health'
-    :'';
  }
  private registerSkill(skill:SkillRecord){
   this.contextTokenCache.set(skill.id,normalizeTokens(skill.context));
@@ -188,13 +176,7 @@ export class ProceduralSkillLibrary{
   const d:SkillLibraryState=defaultSkillLibrary();
   const rawSkills=Array.isArray(s?.skills)?s!.skills.slice(0,256):[];
   const rawCompound=Array.isArray((s as any)?.compoundSkills)?(s as any).compoundSkills.slice(0,64):[];
-  this.state={...d,...(s??{}),version:8,
-    promotions:Math.max(0,Math.floor(Number.isFinite(Number(s?.promotions))?Number(s?.promotions):0)),
-    demotions:Math.max(0,Math.floor(Number.isFinite(Number(s?.demotions))?Number(s?.demotions):0)),
-    compoundPromotions:Math.max(0,Math.floor(Number.isFinite(Number((s as any)?.compoundPromotions))?Number((s as any)?.compoundPromotions):0)),
-    promotionPaused:Boolean(s?.promotionPaused),
-    promotionPauseReason:Boolean(s?.promotionPaused)?String(s?.promotionPauseReason??'checkpoint-restored').slice(0,160):'',
-    skills:rawSkills.map((x:any)=>({
+  this.state={...d,...(s??{}),version:8,promotions:Math.max(0,Math.floor(Number(s?.promotions??0))),demotions:Math.max(0,Math.floor(Number(s?.demotions??0))),compoundPromotions:Math.max(0,Math.floor(Number((s as any)?.compoundPromotions??0))),skills:rawSkills.map((x:any)=>({
     ...x,
     validatedUses:Math.max(0,Math.floor(Number(x.validatedUses??0))),
     independentEvidenceUses:Math.max(0,Math.floor(Number(x.independentEvidenceUses??0))),
@@ -324,7 +306,7 @@ export class ProceduralSkillLibrary{
   const generalContext=normalizedContext==='general' || normalizedContext==='active';
   const sufficientEvidence=s.independentEvidenceUses>=2 && s.validatedUses>=2 && s.distinctContexts>=2;
   const generalEvidence=s.independentEvidenceUses>=3 && s.validatedUses>=3 && generalContext;
-  if(!this.state.promotionPaused&&s.status==='candidate'&&s.uses>=6&&s.successRate>=.75&&s.confidence>=.52&&(sufficientEvidence||generalEvidence)){
+  if(s.status==='candidate'&&s.uses>=6&&s.successRate>=.75&&s.confidence>=.52&&(sufficientEvidence||generalEvidence)){
     s.status='habit';
     this.state.promotions++;
   }
@@ -506,7 +488,7 @@ export class ProceduralSkillLibrary{
     const nonHoldoutUses=skill.nonHoldoutUses??0;
     const nonHoldoutSuccessRate=(skill.nonHoldoutSuccesses??0)/Math.max(1,nonHoldoutUses);
     const promotable=nonHoldoutUses>=3&&nonHoldoutSuccessRate>=.76&&(skill.nonHoldoutVerifiedExecutions??0)>=2&&(skill.nonHoldoutIndependentExecutions??0)>=2&&skill.confidence01>=.52;
-    if(skill.status==='candidate'&&promotable){skill.status='reusable';this.state.compoundPromotions++;}
+    if(!this.state.promotionPaused&&skill.status==='candidate'&&promotable){skill.status='reusable';this.state.compoundPromotions++;}
     if(skill.status==='reusable'&&nonHoldoutUses>=6&&nonHoldoutSuccessRate<.5){skill.status='candidate';this.state.demotions++;}
     return structuredClone(skill);
   }
@@ -558,6 +540,7 @@ export class ProceduralSkillLibrary{
     return structuredClone(skill);
   }
   promoteFallbackIfReliable(id:string,stepId:string,toTool:string,input:{verified:boolean;confidence01:number}):CompoundSkillRecord|null{
+    if(this.state.promotionPaused)return this.state.compoundSkills.find(x=>x.id===id)?structuredClone(this.state.compoundSkills.find(x=>x.id===id)!):null;
     const skill=this.state.compoundSkills.find(x=>x.id===id); if(!skill||skill.status==='disabled')return null;
     const step=skill.steps.find(x=>x.id===stepId); if(!step)return structuredClone(skill);
     if(!input.verified || input.confidence01<skill.policy.minEvidence01)return structuredClone(skill);
@@ -601,11 +584,12 @@ export class ProceduralSkillLibrary{
     variant.lastOutcome01=success; if(!holdout)variant.lastContext=context;
     const nonHoldoutTrials=variant.nonHoldoutTrials??0;
     const nonHoldoutSuccessRate=(variant.nonHoldoutSuccesses??0)/Math.max(1,nonHoldoutTrials);
-    if(variant.status==='candidate'&&nonHoldoutTrials>=3&&nonHoldoutSuccessRate>=.75&&(variant.verifiedNonHoldoutExecutions??0)>=2&&variant.independentExecutions>=1&&variant.confidence01>=.52)this.promoteVariant(id,variantId);
+    if(!this.state.promotionPaused&&variant.status==='candidate'&&nonHoldoutTrials>=3&&nonHoldoutSuccessRate>=.75&&(variant.verifiedNonHoldoutExecutions??0)>=2&&variant.independentExecutions>=1&&variant.confidence01>=.52)this.promoteVariant(id,variantId);
     else if(variant.status==='candidate'&&nonHoldoutTrials>=4&&nonHoldoutSuccessRate<.5)variant.status='rejected';
     return structuredClone(variant);
   }
   promoteVariant(id:string,variantId:string):CompoundSkillVariant|null{
+    if(this.state.promotionPaused)return null;
     const skill=this.state.compoundSkills.find(x=>x.id===id); const variant=skill?.variants.find(v=>v.id===variantId); if(!skill||!variant||variant.status==='rejected')return null;
     const oldId=skill.activeVariantId;
     if(oldId===variantId){variant.status='active';return structuredClone(variant);}
@@ -651,8 +635,6 @@ export class ProceduralSkillLibrary{
     skills:this.state.skills.length,
     promotions:this.state.promotions,
     demotions:this.state.demotions,
-    promotionPaused:Boolean(this.state.promotionPaused),
-    promotionPauseReason:this.state.promotionPauseReason??'',
     reusable:this.state.skills.filter(s=>s.status==='habit').length,
     validatedUses:this.state.skills.reduce((n,s)=>n+s.validatedUses,0),
     independentEvidenceUses:this.state.skills.reduce((n,s)=>n+s.independentEvidenceUses,0),
