@@ -35,6 +35,9 @@ const generated = network.generateCandidate(context, baseModelFingerprint, cogni
 
 assert.equal(generated.status, 'candidate');
 assert.equal(generated.adapter.schema, 'nk1-lora-v1');
+assert.equal(Object.isFrozen(generated.adapter), true);
+assert.equal(Object.isFrozen(generated.adapter.A), true);
+assert.equal(Object.isFrozen(generated.adapter.B), true);
 assert.equal(generated.adapter.rank, 2);
 assert.equal(generated.adapter.A.length, 2);
 assert.equal(generated.adapter.A[0].length, 4);
@@ -160,6 +163,10 @@ const overlappingPromotion = evaluateHyperPlasticPromotion({
 });
 assert.equal(overlappingPromotion.eligible, false);
 assert.equal(overlappingPromotion.reasons[0], 'calibration-holdout-dataset-overlap');
+const slowReports = holdoutReports.map((record) => ({ ...record, adaptedLatencyMs: 125 }));
+assert.equal(evaluateHyperPlasticPromotion({
+  adapter: target, calibrationReports, holdoutReports: slowReports,
+}).eligible, false, 'a single holdout latency regression above 20% must block promotion');
 
 const unsafeReports = holdoutReports.map((record, index) => ({
   ...record,

@@ -70,6 +70,12 @@ export interface HyperPlasticParameterSnapshot {
   featureCount: number;
   hiddenDim: number;
   outputDim: number;
+  targetLayer: string;
+  targetRows: number;
+  targetCols: number;
+  rank: number;
+  alpha: number;
+  maxFactorAbs: number;
   inputWeights: number[][];
   inputBias: number[];
   outputWeights: number[][];
@@ -98,6 +104,7 @@ function seededUnit(seed: number, index: number): number {
 
 function hashFingerprint(value: unknown): string {
   const source = JSON.stringify(value);
+  if (typeof source !== 'string') throw new TypeError('fingerprint-payload-not-serializable');
   let hash = 0x811c9dc5;
   for (let index = 0; index < source.length; index += 1) {
     hash ^= source.charCodeAt(index);
@@ -280,6 +287,12 @@ export class HyperPlasticNetwork {
       featureCount: FEATURE_COUNT,
       hiddenDim: this.config.hiddenDim,
       outputDim: this.outputDim,
+      targetLayer: this.config.target.layer,
+      targetRows: this.config.target.rows,
+      targetCols: this.config.target.cols,
+      rank: this.config.rank,
+      alpha: this.config.alpha,
+      maxFactorAbs: this.config.maxFactorAbs,
       inputWeights: this.inputWeights.map((row) => [...row]),
       inputBias: [...this.inputBias],
       outputWeights: this.outputWeights.map((row) => [...row]),
@@ -292,16 +305,22 @@ export class HyperPlasticNetwork {
     if (!snapshot || snapshot.schema !== 'nk1.hyper-plastic-weights.v1'
       || snapshot.featureCount !== FEATURE_COUNT
       || snapshot.hiddenDim !== this.config.hiddenDim
-      || snapshot.outputDim !== this.outputDim) {
+      || snapshot.outputDim !== this.outputDim
+      || snapshot.targetLayer !== this.config.target.layer
+      || snapshot.targetRows !== this.config.target.rows
+      || snapshot.targetCols !== this.config.target.cols
+      || snapshot.rank !== this.config.rank
+      || snapshot.alpha !== this.config.alpha
+      || snapshot.maxFactorAbs !== this.config.maxFactorAbs) {
       throw new RangeError('hypernetwork-checkpoint-shape-mismatch');
     }
     const validMatrix = (value: unknown, rows: number, cols: number): value is number[][] =>
       Array.isArray(value) && value.length === rows
       && value.every((row) => Array.isArray(row) && row.length === cols
-        && row.every((item) => typeof item === 'number' && Number.isFinite(item)));
+        && row.every((item) => typeof item === 'number' && Number.isFinite(item) && Math.abs(item) <= 8));
     const validVector = (value: unknown, length: number): value is number[] =>
       Array.isArray(value) && value.length === length
-      && value.every((item) => typeof item === 'number' && Number.isFinite(item));
+      && value.every((item) => typeof item === 'number' && Number.isFinite(item) && Math.abs(item) <= 8);
     if (!validMatrix(snapshot.inputWeights, this.config.hiddenDim, FEATURE_COUNT)
       || !validVector(snapshot.inputBias, this.config.hiddenDim)
       || !validMatrix(snapshot.outputWeights, this.outputDim, this.config.hiddenDim)
@@ -481,6 +500,10 @@ export function applyLowRankAdapter(
     throw new RangeError('baseline-matrix-shape-or-value-invalid');
   }
   if (adapter.schema !== 'nk1-lora-v1'
+    || typeof adapter.target.layer !== 'string' || !adapter.target.layer.trim()
+    || !Number.isFinite(adapter.alpha) || adapter.alpha <= 0
+    || !Number.isFinite(adapter.maxFactorAbs) || adapter.maxFactorAbs <= 0 || adapter.maxFactorAbs > 0.10
+    || !Number.isFinite(adapter.maxDeltaNormL2) || adapter.maxDeltaNormL2 <= 0
     || adapter.rank < 1 || adapter.rank > 4
     || adapter.A.length !== adapter.rank
     || adapter.A.some((row) => row.length !== adapter.target.cols)

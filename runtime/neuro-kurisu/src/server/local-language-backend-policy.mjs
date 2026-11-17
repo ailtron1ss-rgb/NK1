@@ -49,7 +49,7 @@ const HYPER_PLASTIC_MIN_SEEDS = 5;
 const HYPER_PLASTIC_HOLDOUT_T_CRITICAL_95_ONE_SIDED = 2.132;
 
 function normalizeHyperPlasticReports(reports, expected, splitName) {
-  if (!Array.isArray(reports) || reports.length < HYPER_PLASTIC_MIN_SEEDS) {
+  if (!Array.isArray(reports) || reports.length < HYPER_PLASTIC_MIN_SEEDS || reports.length > 64) {
     return { valid: false, reason: `${splitName}-requires-at-least-five-paired-seeds` };
   }
   const seeds = new Set();
@@ -91,6 +91,7 @@ function normalizeHyperPlasticReports(reports, expected, splitName) {
     datasetFingerprint: [...datasets][0],
     gains,
     latencyOverheads,
+    maxLatencyOverhead01: Math.max(...latencyOverheads),
   };
 }
 
@@ -132,7 +133,9 @@ export function evaluateHyperPlasticPromotion({ adapter, calibrationReports, hol
   if (calibrationGain <= 0) return reject('calibration-gain-not-positive');
   if (lowerConfidenceBound95 <= 0) return reject('holdout-gain-not-statistically-positive');
   if (Math.min(...holdout.gains) < -0.01) return reject('holdout-regression-exceeds-tolerance');
-  if (meanLatencyOverhead01 > 0.20) return reject('latency-overhead-exceeds-twenty-percent');
+  if (meanLatencyOverhead01 > 0.20 || holdout.maxLatencyOverhead01 > 0.20) {
+    return reject('latency-overhead-exceeds-twenty-percent');
+  }
 
   const permit = Object.freeze({
     schema: 'nk1.hyper-plastic-promotion-permit.v1',
