@@ -47,7 +47,7 @@ try {
   assert.equal(result.outcomeClass, 'executed-verified');
 
   const workspace = store.siblingPath('workspace');
-  const writtenPath = join(workspace, 'notes', 'undo-first-integration.txt');
+  const writtenPath = join(workspace, 'undo-first-integration.txt');
   assert.equal(await readFile(writtenPath, 'utf8'), input.content);
   const expectedContentHash = createHash('sha256').update(input.content, 'utf8').digest('hex');
   assert.equal(result.result.contentHash, expectedContentHash);
