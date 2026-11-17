@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, link, unlink, readFile, lstat, realpath, rename } from 'node:fs/promises';
-import { dirname, isAbsolute, relative, resolve, join, win32 } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, join } from 'node:path';
 import {
   ActionGateway,
   ToolExecutionNoEffectError,
@@ -13,7 +13,7 @@ import {
 import type { ToolInputContract, ToolOutputContract } from '../system/ToolInputContract.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 
-const MAX_FILE_BYTES = 32 * 1024;
+const MAX_FILE_BYTES = 16 * 1024;
 const RECOVERY_PREFIX = 'nk1-file-create:';
 const RECOVERY_DIRECTORY = '.nk1-recovery';
 const PREPARED_DIRECTORY = 'prepared';
@@ -41,7 +41,7 @@ type FileArtifactCore = {
 
 type FileArtifact = FileArtifactCore & { digest: string };
 
-const WRITE_INPUT_CONTRACT: ToolInputContract = Object.freeze({
+const WRITE_INPUT_CONTRACT: ToolInputContract = {
   type: 'object',
   properties: {
     path: { type: 'string', minLength: 1, maxLength: 180 },
@@ -51,18 +51,18 @@ const WRITE_INPUT_CONTRACT: ToolInputContract = Object.freeze({
   additionalProperties: false,
   maxProperties: 2,
   maxSerializedBytes: 40_000,
-});
+};
 
-const PATH_INPUT_CONTRACT: ToolInputContract = Object.freeze({
+const PATH_INPUT_CONTRACT: ToolInputContract = {
   type: 'object',
   properties: { path: { type: 'string', minLength: 1, maxLength: 180 } },
   required: ['path'],
   additionalProperties: false,
   maxProperties: 1,
   maxSerializedBytes: 1024,
-});
+};
 
-const WRITE_OUTPUT_CONTRACT: ToolOutputContract = Object.freeze({
+const WRITE_OUTPUT_CONTRACT: ToolOutputContract = {
   type: 'object',
   properties: {
     ok: { type: 'boolean' },
@@ -76,9 +76,9 @@ const WRITE_OUTPUT_CONTRACT: ToolOutputContract = Object.freeze({
   additionalProperties: false,
   maxProperties: 6,
   maxSerializedBytes: 2048,
-});
+};
 
-const STATE_OUTPUT_CONTRACT: ToolOutputContract = Object.freeze({
+const STATE_OUTPUT_CONTRACT: ToolOutputContract = {
   type: 'object',
   properties: {
     ok: { type: 'boolean' },
@@ -92,7 +92,7 @@ const STATE_OUTPUT_CONTRACT: ToolOutputContract = Object.freeze({
   additionalProperties: false,
   maxProperties: 6,
   maxSerializedBytes: 2048,
-});
+};
 
 const MISSING_STATE_HASH = sha256Stable({ exists: false, size: 0 });
 
@@ -227,7 +227,7 @@ export class UndoFirstFileSystemAdapter {
   private normalizeRelativePath(value: unknown): string {
     if (typeof value !== 'string') throw new Error('filesystem-relative-path-required');
     const raw = value.normalize('NFKC');
-    if (!raw || raw.length > 180 || /[\u0000-\u001f\u007f\\]/.test(raw) || isAbsolute(raw) || win32.isAbsolute(raw)) {
+    if (!raw || raw.length > 180 || /[\u0000-\u001f\u007f\\]/.test(raw) || isAbsolute(raw) || /^[a-zA-Z]:/.test(raw)) {
       throw new Error('filesystem-relative-path-invalid');
     }
     const segments = raw.split('/');
