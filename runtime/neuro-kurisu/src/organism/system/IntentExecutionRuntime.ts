@@ -298,10 +298,10 @@ export class IntentExecutionRuntime {
     gateway: IntentGatewayPort,
   ): Promise<IntentBridgeReconciliationResult> {
     if (!contract || this.approved.get(contract.id) !== contract) {
-      return { reconciled: false, contractId: null, reason: 'intent-contract-not-owned-or-restored-by-this-core' };
+      return { attempted: false, contractId: null, reason: 'intent-contract-not-owned-or-restored-by-this-core' };
     }
     const result = await this.bridge.reconcile(contract, action, gateway);
-    if (result.reconciled) this.record(contract, action, 'reconcile', result.result);
+    if (result.attempted) this.record(contract, action, 'reconcile', result.result);
     return result;
   }
 
