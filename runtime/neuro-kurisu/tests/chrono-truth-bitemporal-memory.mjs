@@ -182,7 +182,6 @@ memoryOS.attachEvidenceSource(provenanceFact.id, {
   observedAt: 270,
   evidenceFreshnessAt: 270,
 }, 'signed-independent-audit');
-const beforeContentCorrectionAt = provenanceFact.recordedFromAt;
 const provenanceCorrection = memoryOS.reviseContent(
   provenanceFact.id,
   'The active deployment strategy is canary.',
@@ -203,13 +202,14 @@ assert.equal(
   'user',
   'a content correction must retain its primary provenance class',
 );
+const provenanceCorrectionRecordedAt = provenanceCorrection.recordedFromAt;
 assert.equal(
-  memoryOS.temporalBitemporalAt(provenanceFact.id, 260, beforeContentCorrectionAt)?.evidenceSources?.length,
+  memoryOS.temporalBitemporalAt(provenanceFact.id, 260, provenanceCorrectionRecordedAt - 1)?.evidenceSources?.length,
   2,
   'the previous content must remain associated with the complete evidence set NK1 knew then',
 );
 assert.equal(
-  memoryOS.temporalBitemporalAt(provenanceFact.id, 260, 290)?.evidenceSources?.length,
+  memoryOS.temporalBitemporalAt(provenanceFact.id, 260, provenanceCorrectionRecordedAt)?.evidenceSources?.length,
   2,
   'the corrected content must retain the same evidence set after the correction',
 );
