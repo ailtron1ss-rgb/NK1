@@ -42,9 +42,11 @@ function canonicalBaseUrl(raw: string | undefined): string | null {
 }
 function cognitiveTemplateKwargs(profile:CognitiveNeuralControlProfile|undefined):Record<string,unknown>|null {
   if (!profile || profile.version!==2 || profile.featureSchema!=='nk1-cognitive-neural-43-v2' ||
+      !Array.isArray(profile.featureKeys) || profile.featureKeys.length!==43 ||
       !Array.isArray(profile.featureVector01) || profile.featureVector01.length!==43 ||
       profile.featureVector01.some(value=>typeof value!=='number'||!Number.isFinite(value)||value<0||value>1) ||
-      !Number.isSafeInteger(profile.tick) || profile.tick<0) return null;
+      !Number.isSafeInteger(profile.tick) || profile.tick<0 ||
+      !profile.steeringIntent01 || typeof profile.steeringIntent01!=='object') return null;
   const f=profile.featureVector01;
   const clamp01=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(1,value)):0;
   const clampIntent=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(.15,value)):0;
