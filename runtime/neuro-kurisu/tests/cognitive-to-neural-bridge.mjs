@@ -41,7 +41,7 @@ assert.ok(profile.featureVector01.every(value => Number.isFinite(value) && value
 assert.equal(profile.maxTokens, 416);
 assert.equal(profile.temperature, .62);
 assert.ok(Object.values(profile.steeringIntent01).every(value => value >= 0 && value <= .15));
-assert.deepEqual(profile.controlsApplied, {
+assert.deepEqual(profile.controlsConfigured, {
   samplingParameters: true, adapterSelection: false, activationSteering: false, residualBlock: false,
 });
 assert.deepEqual(input, before, 'projection must not mutate organism or neural state');
