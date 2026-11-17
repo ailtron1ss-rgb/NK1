@@ -25,6 +25,7 @@ jobs:
         run: |
           node --experimental-strip-types tests/world-forge-evaluator-isolation.mjs
           node --experimental-strip-types tests/world-forge-perturbation-opacity.mjs
+          node --experimental-strip-types tests/world-forge-action-integrity.mjs
           node --experimental-strip-types tests/world-forge-dynamic-transitions.mjs
           node --experimental-strip-types tests/world-forge-ttl-bounds.mjs
           node --experimental-strip-types tests/world-forge-synthetic-lab.mjs
