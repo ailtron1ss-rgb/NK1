@@ -460,9 +460,25 @@ export class IntentExecutionRuntime {
         Number.isSafeInteger(item.at) && item.at >= 0 &&
         (item.phase === undefined || ['prepared','pending-reconciliation','reconciliation-attempted','completed','blocked'].includes(item.phase)) &&
         (item.idempotencyKeyHash === undefined || /^[a-f0-9]{64}$/i.test(item.idempotencyKeyHash)),
-      ).map(item => structuredClone(item).phase === undefined
-        ? ({ ...structuredClone(item), phase: item.outcomeClass === 'executed-unverified' || item.outcomeClass === 'executed-contradicted' || item.outcomeClass === 'executed-partial' || item.outcomeClass === 'idempotency-recovery-required' ? 'pending-reconciliation' : 'completed' } as IntentExecutionLink)
-        : structuredClone(item));
+      ).map(item => {
+        const restored = structuredClone(item);
+        if (restored.phase === undefined) {
+          restored.phase = restored.outcomeClass === 'executed-unverified' ||
+            restored.outcomeClass === 'executed-contradicted' ||
+            restored.outcomeClass === 'executed-partial' ||
+            restored.outcomeClass === 'idempotency-recovery-required'
+            ? 'pending-reconciliation'
+            : 'completed';
+        }
+        // A prepared intent persisted by a previous process may have crashed
+        // immediately before or after ActionGateway receipt admission. The old
+        // process boundary is gone, so never infer that it is safe to dispatch
+        // again. Reconciliation is the only permitted continuation.
+        if (restored.operation === 'execute' && restored.phase === 'prepared') {
+          restored.phase = 'pending-reconciliation';
+        }
+        return restored;
+      });
     }
   }
 
