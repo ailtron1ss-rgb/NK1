@@ -294,6 +294,137 @@ function observation(raw: unknown, label: string, holdoutFingerprint: string): N
   };
 }
 
+interface NormalizedNeuroPlasticEvaluation {
+  adapterId: string;
+  holdoutFingerprint: string;
+  evaluatedAt: number;
+  baseline: NeuroPlasticObservation[];
+  candidate: NeuroPlasticObservation[];
+  evaluationFingerprint: string;
+}
+
+function sortedObservations(rows: NeuroPlasticObservation[]): NeuroPlasticObservation[] {
+  return [...rows].sort((a, b) => a.pairId.localeCompare(b.pairId) || a.seed - b.seed);
+}
+
+function normalizeEvaluationPayload(
+  adapterId: string,
+  input: NeuroPlasticEvaluationPayload,
+): NormalizedNeuroPlasticEvaluation {
+  const normalizedAdapterId = safeText(adapterId, 'evaluation-adapter-id', 80);
+  const holdoutFingerprint = safeHash(input?.holdoutFingerprint, 'evaluation-holdout-fingerprint');
+  const evaluatedAt = safeCounter(input?.evaluatedAt, 'evaluation-time', 1);
+  if (!Array.isArray(input?.baseline) || !Array.isArray(input?.candidate)) {
+    throw new Error('neuro-plastic-evaluation-pairs-required');
+  }
+  const baseline = sortedObservations(input.baseline.map(value => observation(value, 'baseline', holdoutFingerprint)));
+  const candidate = sortedObservations(input.candidate.map(value => observation(value, 'candidate', holdoutFingerprint)));
+  const identity = {
+    adapterId: normalizedAdapterId,
+    holdoutFingerprint,
+    evaluatedAt,
+    baseline,
+    candidate,
+  };
+  return {
+    ...identity,
+    evaluationFingerprint: createHash('sha256').update(JSON.stringify(identity)).digest('hex'),
+  };
+}
+
+function hmacSha256(message: string, secret: string): string {
+  if (typeof secret !== 'string' || secret.length < 32) throw new Error('neuro-plastic-signing-secret-too-short');
+  const blockSize = 64;
+  const keyBytes = Buffer.from(secret, 'utf8');
+  const normalizedKey = keyBytes.length > blockSize
+    ? Buffer.from(createHash('sha256').update(keyBytes).digest())
+    : keyBytes;
+  const keyBlock = Buffer.alloc(blockSize, 0);
+  normalizedKey.copy(keyBlock);
+  const innerPad = Buffer.alloc(blockSize);
+  const outerPad = Buffer.alloc(blockSize);
+  for (let index = 0; index < blockSize; index++) {
+    innerPad[index] = keyBlock[index] ^ 0x36;
+    outerPad[index] = keyBlock[index] ^ 0x5c;
+  }
+  const innerDigest = createHash('sha256').update(innerPad).update(message, 'utf8').digest();
+  return createHash('sha256').update(outerPad).update(innerDigest).digest('hex');
+}
+
+function constantTimeHexEqual(actualValue: unknown, expected: string): boolean {
+  if (typeof actualValue !== 'string' || !HASH.test(actualValue)) return false;
+  const actual = actualValue.toLowerCase();
+  if (actual.length !== expected.length) return false;
+  let difference = 0;
+  for (let index = 0; index < expected.length; index++) {
+    difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
+function evaluationReceiptPayload(
+  adapterId: string,
+  receipt: Pick<NeuroPlasticEvaluationReceipt, 'evaluationId'|'evaluatorId'|'evaluatedAt'|'evaluationFingerprint'>,
+): string {
+  return JSON.stringify({
+    adapterId,
+    evaluationId: receipt.evaluationId,
+    evaluatorId: receipt.evaluatorId,
+    evaluatedAt: receipt.evaluatedAt,
+    evaluationFingerprint: receipt.evaluationFingerprint,
+  });
+}
+
+export function neuroPlasticEvaluationFingerprint(
+  adapterId: string,
+  input: NeuroPlasticEvaluationPayload,
+): string {
+  return normalizeEvaluationPayload(adapterId, input).evaluationFingerprint;
+}
+
+export function createNeuroPlasticEvaluationReceipt(
+  adapterId: string,
+  input: NeuroPlasticEvaluationPayload,
+  evaluatorId: string,
+  evaluationId: string,
+  secret: string,
+): NeuroPlasticEvaluationReceipt {
+  const normalized = normalizeEvaluationPayload(adapterId, input);
+  const unsigned = {
+    evaluationId: safeText(evaluationId, 'evaluation-id', 160),
+    evaluatorId: safeText(evaluatorId, 'evaluator-id', 160),
+    evaluatedAt: normalized.evaluatedAt,
+    evaluationFingerprint: normalized.evaluationFingerprint,
+  };
+  return {
+    ...unsigned,
+    signature: hmacSha256(evaluationReceiptPayload(normalized.adapterId, unsigned), secret),
+  };
+}
+
+export function verifyNeuroPlasticEvaluationSignature(
+  adapterId: string,
+  input: NeuroPlasticEvaluationPayload,
+  receipt: NeuroPlasticEvaluationReceipt,
+  secret: string,
+): boolean {
+  try {
+    const normalized = normalizeEvaluationPayload(adapterId, input);
+    const normalizedReceipt = {
+      evaluationId: safeText(receipt?.evaluationId, 'evaluation-id', 160),
+      evaluatorId: safeText(receipt?.evaluatorId, 'evaluator-id', 160),
+      evaluatedAt: safeCounter(receipt?.evaluatedAt, 'evaluation-receipt-time', 1),
+      evaluationFingerprint: safeHash(receipt?.evaluationFingerprint, 'evaluation-fingerprint'),
+    };
+    if (normalizedReceipt.evaluatedAt !== normalized.evaluatedAt ||
+        normalizedReceipt.evaluationFingerprint !== normalized.evaluationFingerprint) return false;
+    const expected = hmacSha256(evaluationReceiptPayload(normalized.adapterId, normalizedReceipt), secret);
+    return constantTimeHexEqual(receipt.signature, expected);
+  } catch {
+    return false;
+  }
+}
+
 function mean(values: number[]): number {
   return values.reduce((total, value) => total + value, 0) / Math.max(1, values.length);
 }
