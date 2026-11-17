@@ -174,6 +174,29 @@ const request = (overrides = {}) => ({
   assert.equal(untrustedRestore.snapshot().adapters[0].status, 'quarantined',
     'persisted activation cannot bypass manifest verification on restore');
 
+  const rejectedRestore = new AdaptiveSynapticMatrixEngine();
+  rejectedRestore.restore(snapshot, () => false);
+  assert.equal(rejectedRestore.snapshot().adapters[0].status, 'quarantined',
+    'a failed signature verification on restore must quarantine the adapter');
+
+  const cooldownRecovery = new AdaptiveSynapticMatrixEngine();
+  cooldownRecovery.registerCandidate(candidate());
+  cooldownRecovery.activateValidated(manifest(), () => true);
+  cooldownRecovery.observe('physics-lora-v1', false, 100, 900);
+  cooldownRecovery.observe('physics-lora-v1', false, 100, 1100);
+  assert.equal(cooldownRecovery.select(request(), 1100).mode, 'base-fallback');
+  assert.equal(cooldownRecovery.select(request(), 61_100).mode, 'adapter',
+    'a temporary failure must be recoverable after the bounded cooldown');
+
+  const explicitlyDisabled = new AdaptiveSynapticMatrixEngine();
+  explicitlyDisabled.registerCandidate(candidate());
+  explicitlyDisabled.activateValidated(manifest(), () => true);
+  explicitlyDisabled.disable('physics-lora-v1');
+  assert.equal(explicitlyDisabled.select(request()).mode, 'base-fallback');
+  explicitlyDisabled.activateValidated(manifest(), () => true);
+  assert.equal(explicitlyDisabled.select(request()).mode, 'adapter',
+    'an operator may explicitly reactivate a disabled profile using a fresh verified activation');
+
   const repeatedFailure = new AdaptiveSynapticMatrixEngine();
   repeatedFailure.registerCandidate(candidate());
   repeatedFailure.activateValidated(manifest(), () => true);
