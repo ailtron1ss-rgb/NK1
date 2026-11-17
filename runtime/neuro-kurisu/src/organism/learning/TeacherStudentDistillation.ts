@@ -65,7 +65,7 @@ export interface TeacherDistillationExample {
   taskId: string;
   taskVersion: string;
   family: string;
-  split: 'train' | 'validation';
+  split: TeacherDistillationSplit;
   prompt: string;
   systemPrompt?: string;
   completion: string;
@@ -410,7 +410,7 @@ export class TeacherStudentDistillationDataset {
       taskId: task.taskId,
       taskVersion: task.taskVersion,
       family: task.family,
-      split: task.split === 'holdout' ? 'validation' : task.split,
+      split: task.split,
       prompt: task.prompt,
       ...(task.systemPrompt !== undefined ? { systemPrompt: task.systemPrompt } : {}),
       completion: record.completion,
@@ -437,8 +437,7 @@ export class TeacherStudentDistillationDataset {
       a.seed - b.seed || a.exampleId.localeCompare(b.exampleId));
     const training = sort([...this.examples.values()].filter(row => row.split === 'train'));
     const validation = sort([...this.examples.values()].filter(row => row.split === 'validation'));
-    const holdoutCount = [...this.examples.values()].filter(row =>
-      this.manifest.get(row.taskId)?.split === 'holdout').length;
+    const holdoutCount = [...this.examples.values()].filter(row => row.split === 'holdout').length;
     const datasetIdentity = {
       schemaVersion: 1 as const,
       manifestFingerprint: this.manifestFingerprint(),
