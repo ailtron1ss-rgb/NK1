@@ -971,10 +971,12 @@ export class SharedFutureEngine {
       if (!consequence) throw new Error('outcome-consequence-not-found');
       if (typeof input.occurred !== 'boolean') throw new Error('outcome-result-must-be-boolean');
       if (scenario.owner !== 'system' && actor !== 'user') throw new Error('human-outcome-report-required');
+      // Validate the supplied evidence reference before reporting a consequence-level
+      // duplicate, so malformed input is never masked by an unrelated ledger conflict.
+      const evidenceRef = textField(input.evidenceRef, 'outcome-evidence-ref', 500);
       if (this.state.outcomes.some((row) => row.scenarioId === scenarioId && row.consequenceId === consequenceId)) {
         throw new Error('outcome-already-recorded');
       }
-      const evidenceRef = textField(input.evidenceRef, 'outcome-evidence-ref', 500);
       const forecastProbability01 = finite(consequence.probability01, 0.5, 0, 1);
       const target = input.occurred ? 1 : 0;
       const outcome: SharedFutureOutcomeRecord = {
