@@ -20,9 +20,11 @@ The digest detects accidental corruption and payload alteration when compared to
 
 ## Backend identity and compatibility
 
-Backend profiles are supplied by trusted host configuration, not by an LLM response. A profile identifies the route, provider, model/revision, runtime, privacy class, supported capabilities, embedding space and context window.
+Backend profiles are supplied by trusted host configuration, not by an LLM response. A profile identifies the route, provider, model/revision, runtime, privacy class, supported capabilities, embedding space and context window. The active substrate state stores the digest of the complete profile; calibration evidence pins both source and target profile digests. A model revision change under an otherwise identical backend name therefore invalidates the old active-route preference and old calibration evidence. It is not silently treated as the same substrate.
 
-A transfer is refused when a required capability is missing, the source profile cannot be verified, the embedding space differs (reindex required), or a remote/external backend has not received explicit consent. The deterministic text fallback is deliberately not treated as a model substrate and cannot permanently take over model routing.
+Do not leave the revision at the server default `host-configured` for an actual transferable model. Set an immutable revision identifier or artifact digest in `LLAMA_CPP_MODEL_REVISION`, `KOBOLD_MODEL_REVISION` and `GEMINI_MODEL_REVISION`. A `host-configured` revision may still serve as a normal backend, but it cannot become a substrate-preferred route or pass migration compatibility. Keep old and target backend identities distinguishable when preparing a real migration.
+
+A transfer is refused when a required capability is missing, the source profile cannot be verified, either profile revision is unpinned, the embedding space differs (reindex required), or a remote/external backend has not received explicit consent. The deterministic text fallback is deliberately not treated as a model substrate and cannot permanently take over model routing.
 
 The server recognises configured `llama.cpp`, `kobold`, `gemini` and deterministic fallback routes. A registered substrate preference is considered only when the provider is configured/available; the existing local-language policy and provider fallback remain in place.
 
