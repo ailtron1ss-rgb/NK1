@@ -483,10 +483,15 @@ export class DevelopmentalMultiverseIndependentRunner {
   private busy = false;
   private corpus: ScenarioCorpus | null = null;
 
+  private readonly universe: DevelopmentalMultiverse;
+  private readonly options: DevelopmentalMultiverseIndependentRunnerOptions;
+
   private constructor(
-    private readonly universe: DevelopmentalMultiverse,
-    private readonly options: DevelopmentalMultiverseIndependentRunnerOptions,
+    universe: DevelopmentalMultiverse,
+    options: DevelopmentalMultiverseIndependentRunnerOptions,
   ) {
+    this.universe = universe;
+    this.options = options;
     this.validateOptions();
   }
 
