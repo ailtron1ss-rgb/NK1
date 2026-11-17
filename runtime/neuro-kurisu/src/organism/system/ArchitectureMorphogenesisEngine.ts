@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildCognitiveArchitectureSnapshot } from '../core/CognitiveArchitectureMap.ts';
@@ -376,18 +375,10 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
 export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogenesisGraph {
   const architecture = buildCognitiveArchitectureSnapshot();
   const genome = buildDevelopmentalGenome();
-  const sourceCommit = (() => {
-    try {
-      const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
-        cwd: process.cwd(),
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim();
-      return COMMIT_SHA.test(commit) ? commit : null;
-    } catch {
-      return null;
-    }
-  })();
+  const configuredSourceCommit = process.env.NK1_SOURCE_COMMIT ?? process.env.GITHUB_SHA ?? null;
+  const sourceCommit = typeof configuredSourceCommit === 'string' && COMMIT_SHA.test(configuredSourceCommit)
+    ? configuredSourceCommit
+    : null;
   const usedPrimaryPaths = new Set<string>();
   const modules = architecture.subsystems.map(subsystem => {
     const sourcePaths = [...new Set(subsystem.components
@@ -398,7 +389,7 @@ export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogen
     usedPrimaryPaths.add(primaryPath);
     const fileRevisions = sourcePaths.map(sourcePath => ({
       path: sourcePath,
-      digest: sha256(readFileSync(resolve(process.cwd(), sourcePath))),
+      digest: sha256(readFileSync(resolve(process.cwd(), sourcePath), 'utf8')),
     }));
     return {
       id: subsystem.id,
