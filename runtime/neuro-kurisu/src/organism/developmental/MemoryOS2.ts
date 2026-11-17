@@ -504,7 +504,7 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:strin
    typeof parentSequence==='number'&&Number.isSafeInteger(parentSequence)&&
    typeof childSequence==='number'&&Number.isSafeInteger(childSequence)&&
    parentSequence>=1&&childSequence>parentSequence&&
-   Number.isFinite(parentRecordedFrom)&&Number.isFinite(childRecordedFrom)&&childRecordedFrom>parentRecordedFrom&&
+   Number.isFinite(parentRecordedFrom)&&Number.isFinite(childRecordedFrom)&&childRecordedFrom>=parentRecordedFrom&&
    Number.isFinite(parentValidFrom)&&Number.isFinite(childValidFrom);
  };
  for(const child of unique){
