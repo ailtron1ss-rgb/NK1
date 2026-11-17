@@ -17,7 +17,8 @@ export interface IntentApprovalScope {
   riskAcknowledged?: boolean;
 }
 export interface IntentApprovalEvidence extends IntentApprovalScope {
-  at: number;
+  /** Ignored as authority; the runtime stamps approval time after consuming the host ticket. */
+  at?: number;
   evidenceRef: string;
   expiresAt?: number;
   userConfirmed?: boolean;
@@ -193,7 +194,7 @@ export class IntentExecutionRuntime {
       contractId: contract.id,
       userConfirmed: true,
       ...scope,
-      at: evidence.at,
+      at: this.clock(),
       ...(evidence.expiresAt === undefined ? {} : { expiresAt: evidence.expiresAt }),
       evidenceRef,
     };
