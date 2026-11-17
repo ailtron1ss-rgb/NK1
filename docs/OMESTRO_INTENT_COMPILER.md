@@ -2,46 +2,38 @@
 
 **Concept:** OmeStro idea 12 (Intent Compiler).
 
-## Runtime boundary
+## Runtime components
 
-`IntentCompiler` converts an upstream extraction into a versioned, bounded
-`IntentContract`. It does not pretend that deterministic code can infer all
-semantics from arbitrary natural language: the extraction is supplied by the
-perception/LLM layer and treated as untrusted proposed data.
+- `runtime/neuro-kurisu/src/organism/cognition/IntentCompiler.ts`
+  - Compiles a user request plus an upstream semantic extraction into an immutable, versioned `nk1.intent-contract`.
+  - Preserves verbatim request text and distinguishes structured goal extraction from fallback-to-verbatim.
+  - Records context, expected outcome, must/must-not constraints, priorities, acceptance criteria, assumptions with confidence/impact, explicit action allow/deny lists, stop conditions, risk reasons, missing information and approval evidence.
+- `runtime/neuro-kurisu/src/organism/system/IntentActionGatewayBridge.ts`
+  - Enforces the contract before dispatch and routes accepted actions through the canonical `ActionGateway`.
+  - Binds the gateway decision lineage to the intent contract ID when the caller has not supplied a decision ID.
 
-The contract records:
-- goal, context, constraints and priorities;
-- expected result and acceptance criteria;
-- explicit tool allowlist and denylist;
-- assumptions, unresolved questions and stop conditions;
-- risk level, confirmation requirement and diagnostics.
+## Safety and trust boundaries
 
-## Execution policy
+The semantic extraction is untrusted proposal data. Natural-language interpretation is performed upstream; the compiler validates and bounds the result. It never derives tool permissions from prose.
 
-Only a `ready` contract may pass the Intent execution gate. Missing required
-fields or unresolved questions produce `needs-clarification`; contradictory
-allow/deny entries produce `blocked`. The gate denies tools not explicitly
-allowlisted and tools explicitly forbidden by the contract.
+A contract starts as `not-approved`. Explicit approval may only narrow the declared allow-list; it cannot add an action. The gate rejects incomplete contracts, unapproved contracts, denied actions and actions not included in both the declaration and approval.
 
-This is **not** a replacement for `ActionGateway`. The gate delegates to the
-canonical gateway, preserving its input contracts, durable idempotency,
-permission classes, one-shot tool approvals, verification and reconciliation.
-A high/critical intent requires confirmation bound to the exact contract ID;
-that confirmation does not itself authorize a protected tool operation.
+Risk classification combines lexical risk indicators with the supplied risk level using the more conservative level. A caller cannot downgrade destructive language by labelling the extraction low-risk.
+
+The bridge is not a replacement for `ActionGateway`. Passing the intent gate does not bypass the gateway's independent tool permissions, one-shot approvals, input contracts, durable idempotency, verification or reconciliation.
 
 ## Deliberate limits
 
-- No implicit expansion of tool permissions.
-- No execution when the contract is incomplete or ambiguous.
-- No claim that assumptions are user-approved facts.
+- No implicit permission expansion.
+- No execution from an unapproved or incomplete contract.
+- Assumptions remain labelled as assumptions, not user-approved facts.
 - No auto-merge, release or destructive action.
-- Natural-language extraction quality must be evaluated separately with
-  independent holdouts before production promotion.
+- Extraction quality and risk classification require independent holdout evaluation before production promotion.
 
 ## Verification
 
 Run from `runtime/neuro-kurisu`:
 
 ```sh
-node --experimental-strip-types tests/intent-compiler-workpass1.mjs
+npm run test:intent-compiler
 ```
