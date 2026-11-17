@@ -76,6 +76,7 @@ export interface ConsequenceEcologyContext {
 
 export interface ConsequenceNodeResult {
   id: string;
+  description: string;
   effect: ConsequenceEffect;
   actor: string;
   system: string;
@@ -287,6 +288,24 @@ function isRestorableContext(value: unknown): boolean {
     Object.hasOwn(value, 'goalEcology') && Object.hasOwn(value, 'negativeSpace');
 }
 
+function migrateRestoredAnalysis(value: ConsequenceEcologyAnalysis): ConsequenceEcologyAnalysis {
+  const analysis = structuredClone(value);
+  for (const option of analysis.options) {
+    option.counterfactualCoverage01 ??= 0;
+    option.attributableHarm01 ??= 0;
+    option.avoidedHarm01 ??= 0;
+    option.attributableBenefit01 ??= 0;
+    option.lostBenefit01 ??= 0;
+    option.netAttributableValue01 ??= 0;
+    option.correlatedPathMerges ??= 0;
+    for (const node of option.nodes) {
+      if (node.baselineProbability01 === undefined) node.baselineProbability01 = null;
+      if (node.attributableEffect01 === undefined) node.attributableEffect01 = null;
+    }
+  }
+  return analysis;
+}
+
 function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalysis {
   if (!isRecord(value) || !boundedString(value.id, 96, false) || value.decisionAuthority !== 'none' ||
       value.independentlyVerified !== false || (value.status !== 'analysed' && value.status !== 'bounded-partial') ||
@@ -309,11 +328,14 @@ function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalys
         !boundedNumber(option.riskAdjustedValue01, -1, 1) || !boundedNumber(option.uncertainty01, 0, 1) ||
         !boundedNumber(option.confidence01, 0, 1) || !boundedNumber(option.graphCoverage01, 0, 1) ||
         !boundedNumber(option.evidenceCoverage01, 0, 1) || !boundedNumber(option.irreversibleExposure01, 0, 1) ||
-        !boundedNumber(option.mitigationCredit01, 0, 1) || !boundedNumber(option.counterfactualCoverage01, 0, 1) ||
-        !boundedNumber(option.attributableHarm01, 0, 1) || !boundedNumber(option.avoidedHarm01, 0, 1) ||
-        !boundedNumber(option.attributableBenefit01, 0, 1) || !boundedNumber(option.lostBenefit01, 0, 1) ||
-        !boundedNumber(option.netAttributableValue01, -1, 1) ||
-        !boundedInteger(option.correlatedPathMerges, 0, MAX_PATHS * MAX_NODES) ||
+        !boundedNumber(option.mitigationCredit01, 0, 1) ||
+        !(option.counterfactualCoverage01 === undefined || boundedNumber(option.counterfactualCoverage01, 0, 1)) ||
+        !(option.attributableHarm01 === undefined || boundedNumber(option.attributableHarm01, 0, 1)) ||
+        !(option.avoidedHarm01 === undefined || boundedNumber(option.avoidedHarm01, 0, 1)) ||
+        !(option.attributableBenefit01 === undefined || boundedNumber(option.attributableBenefit01, 0, 1)) ||
+        !(option.lostBenefit01 === undefined || boundedNumber(option.lostBenefit01, 0, 1)) ||
+        !(option.netAttributableValue01 === undefined || boundedNumber(option.netAttributableValue01, -1, 1)) ||
+        !(option.correlatedPathMerges === undefined || boundedInteger(option.correlatedPathMerges, 0, MAX_PATHS * MAX_NODES)) ||
         !boundedInteger(option.feedbackLoopCount, 0, MAX_PATHS) ||
         !boundedInteger(option.excludedBeyondHorizon, 0, MAX_PATHS) ||
         !boundedInteger(option.unreachableNodeCount, 0, MAX_NODES) ||
@@ -339,8 +361,8 @@ function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalys
         boundedNumber(node.propagatedProbability01, 0, 1) && boundedNumber(node.impact01, 0, 1) &&
         boundedNumber(node.expectedEffect01, 0, 1) && boundedNumber(node.confidence01, 0, 1) &&
         boundedNumber(node.uncertaintyContribution01, 0, 1) &&
-        (node.baselineProbability01 === null || boundedNumber(node.baselineProbability01, 0, 1)) &&
-        (node.attributableEffect01 === null || boundedNumber(node.attributableEffect01, -1, 1)) &&
+        (node.baselineProbability01 === undefined || node.baselineProbability01 === null || boundedNumber(node.baselineProbability01, 0, 1)) &&
+        (node.attributableEffect01 === undefined || node.attributableEffect01 === null || boundedNumber(node.attributableEffect01, -1, 1)) &&
         boundedInteger(node.depth, 1, MAX_DEPTH) && boundedNumber(node.delayDays, 0, MAX_HORIZON_DAYS) &&
         typeof node.reversible === 'boolean' && boundedStringArray(node.evidenceRefs, 8, 180) &&
         boundedStringArray(node.missingAssumptionRefs, 8, 128))) return false;
@@ -611,6 +633,7 @@ function analyzeOption(
     for (const ref of missingAssumptionRefs) allMissingAssumptions.add(ref);
     const row: ConsequenceNodeResult = {
       id,
+      description: node.description,
       effect: node.effect,
       actor: node.actor,
       system: node.system,
@@ -759,7 +782,7 @@ export class ConsequenceEcologyEngine {
     const analyses: ConsequenceEcologyState['analyses'] = [];
     for (const row of rows) {
       if (!isRecord(row) || !isRestorableAnalysis(row.analysis)) continue;
-      const analysis = row.analysis;
+      const analysis = migrateRestoredAnalysis(row.analysis);
       const id = clean(analysis.id, 96);
       const hash = typeof row.digest === 'string' && /^[a-f0-9]{64}$/i.test(row.digest) ? row.digest.toLowerCase() : '';
       if (!id || seen.has(id) || !hash) continue;
