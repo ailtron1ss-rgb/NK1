@@ -38,7 +38,6 @@ export interface NegativeSpaceAlternative {
 
 export type NegativeSpaceReviewStatus = 'awaiting-outcome' | 'retained' | 'review-eligible' | 'reopened';
 export type NegativeSpaceOutcomeSource = 'external-evidence' | 'world-transition' | 'internal' | 'unknown';
-export type NegativeSpaceOutcomeSource = 'external-evidence' | 'world-transition' | 'internal' | 'unknown';
 
 export interface NegativeSpaceRecord {
   id: string;
