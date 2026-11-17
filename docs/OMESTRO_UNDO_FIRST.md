@@ -27,6 +27,20 @@ The recovery artifact has a separate lifecycle from the target mutation:
 
 This cleanup hook releases only the auxiliary recovery artifact. It must never reverse or mutate the primary target, and should be safe to call repeatedly with the same handle.
 
+## First concrete adapter — private workspace file creation
+
+The first production integration is registered by `OrganismCore` only when its state backend is a durable `FileStateStore`. It uses the same canonical `ActionGateway`; there is no second executor.
+
+- `organism.files.write` creates a **new** UTF-8 file (1–32 KiB) under the private `organism-core.json.workspace` sidecar directory. Paths are relative, bounded and checked against traversal, reserved recovery paths and symlinked parent directories.
+- Existing files are never overwritten. The provider creates a sibling temporary file, fsyncs it, and uses same-directory hard-link creation; the filesystem atomically rejects an existing destination rather than replacing it.
+- Every write requires a stable idempotency key and one-shot `filesystem` approval. The Undo-First preflight records the expected pre-action absence and the exact post-action content fingerprint in `.nk1-recovery/prepared` before the write executor is entered.
+- The temporary is removed after the link operation; the file's parent directory and recovery record are fsynced. An independent readback checks the actual file bytes and content hash before the Gateway can record a verified outcome.
+- `organism.files.state` is a read-only state/fingerprint tool. The write adapter's provider reconciliation returns a receipt only when the current file exists with the exact prepared content hash; missing or divergent state stays `unknown`.
+- The undo plan is deliberately **manual-intervention-required**. Node's portable filesystem API does not offer an atomic “unlink this path only if its current contents still hash to X” primitive. NK1 therefore returns a durable recovery reference and SHA-256-bound steps, and does not silently delete or replace a file that may have been edited after creation.
+- Admission rejection before the pending-receipt persister runs invokes `discardPrepared` and removes the uncommitted auxiliary record. An ambiguous persister acknowledgement retains it; after a successful create the recovery record is retained for review. The workspace and recovery directory are private to the NK1 state area.
+
+This first adapter is create-only; it does not yet promise arbitrary file replacement, deletion, directory moves, or unattended cleanup of modified files. Those require a separate provider contract with an actual compare-and-set primitive and independent postcondition proof.
+
 ## Recovery sequence
 
 ```
@@ -69,4 +83,4 @@ The gateway reports Undo-First coverage separately from the existing receipt/app
 
 ## Evidence boundary
 
-The added regressions exercise preparation ordering, durable plan restore, verified compensation, duplicate-undo prevention, state divergence, refusal to compensate unresolved original effects, cleanup of definitely uncommitted preflight artifacts, and retention/blocking after an ambiguous pending-receipt write. CI evidence is recorded against the exact PR head. No Release ZIP is changed by this branch.
+The regressions exercise preparation ordering, durable plan restore, verified compensation, duplicate-undo prevention, state divergence, unresolved-action refusal, pre-persist cleanup, and pending-tombstone retention after an ambiguous receipt write. The filesystem integration regression drives a real FileStateStore-backed OrganismCore through approved file creation, content-hash readback, manual recovery-plan persistence and post-restart replay. CI evidence is recorded against the exact PR head. No Release ZIP is changed by this branch.
