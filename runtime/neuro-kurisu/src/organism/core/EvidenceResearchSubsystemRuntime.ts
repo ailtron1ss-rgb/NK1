@@ -297,6 +297,7 @@ export class EvidenceResearchSubsystemRuntime {
       hypothesis: experiment.hypothesis,
       successCriteria: evaluation.successCriteria,
       testFingerprint: evaluation.testFingerprint,
+      holdoutTestFingerprint: evaluation.holdoutTestFingerprint,
       baseline: evaluation.baseline,
       metricScale: evaluation.metricScale,
       minEffect: evaluation.minEffect,
