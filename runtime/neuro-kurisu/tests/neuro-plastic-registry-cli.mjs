@@ -4,11 +4,13 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createNeuroPlasticEvaluationReceipt } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { fileURLToPath } from 'node:url';
 
 const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'neuro-plastic-cli-'));
 const cliPath = fileURLToPath(new URL('../scripts/neuro_plastic_registry.mjs', import.meta.url));
 const secret = 'neuro-plastic-cli-test-secret-with-more-than-32-bytes';
+const evaluatorSecret = 'neuro-plastic-cli-evaluator-secret-held-outside-runtime';
 const adapterId = 'kurisu-reasoning-cli-v1';
 const baseFingerprint = 'a'.repeat(64);
 const tokenizerFingerprint = 'b'.repeat(64);
@@ -27,6 +29,7 @@ function run(args, expectedStatus = 0) {
       NEURO_PLASTIC_REGISTRY_FILE: 'state/neuro-plastic-adapters.json',
       NEURO_PLASTIC_APPROVAL_SECRET: secret,
       NEURO_PLASTIC_APPROVER_ID: 'cli-test-operator',
+      NEURO_PLASTIC_EVALUATOR_SECRET: evaluatorSecret,
     },
   });
   assert.equal(result.status, expectedStatus, result.stderr || result.stdout);
@@ -125,8 +128,24 @@ try {
       metrics: { ...pair.metrics, quality01: 0.82 },
     });
   }
+  const receipt = createNeuroPlasticEvaluationReceipt(
+    adapterId,
+    evaluation,
+    'independent-verifier-v1',
+    'cli-holdout-evaluation-1',
+    evaluatorSecret,
+  );
   const evaluationPath = path.join(runtimeRoot, 'holdout-evaluation.json');
-  await writeFile(evaluationPath, JSON.stringify(evaluation));
+  await writeFile(evaluationPath, JSON.stringify({ ...evaluation, receipt }));
+  const tamperedPath = path.join(runtimeRoot, 'tampered-holdout-evaluation.json');
+  await writeFile(tamperedPath, JSON.stringify({
+    ...evaluation,
+    candidate: evaluation.candidate.map((row, index) => index === 0
+      ? { ...row, metrics: { ...row.metrics, quality01: 0.99 } }
+      : row),
+    receipt,
+  }));
+  run(['evaluate', '--adapter', adapterId, '--input', tamperedPath], 1);
   run(['evaluate', '--adapter', adapterId, '--input', evaluationPath]);
 
   const approvalPath = path.join(runtimeRoot, 'state', adapterId + '.approval.json');
@@ -146,7 +165,7 @@ try {
   snapshot = JSON.parse(await readFile(registryPath, 'utf8'));
   assert.equal(snapshot.adapters[0].status, 'disabled');
 
-  console.log('NEURO_PLASTIC_REGISTRY_CLI=PASS tamperRejected=1 holdoutPairs=7 approvalSigned=1 activation=1 rollback=1');
+  console.log('NEURO_PLASTIC_REGISTRY_CLI=PASS artifactTamperRejected=1 evaluatorTamperRejected=1 holdoutPairs=7 approvalSigned=1 activation=1 rollback=1');
 } finally {
   await rm(runtimeRoot, { recursive: true, force: true });
 }
