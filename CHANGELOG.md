@@ -2,6 +2,7 @@
 
 - Add a read-only architecture graph derived from the live CognitiveArchitectureMap and Developmental Genome digest.
 - Validate canonical module paths, unique ownership, contract references, structural import/contract cycles, and bounded plain-data inputs; preserve recurrent data-flow loops.
+- Bind subsystem graph nodes to every mapped canonical source file, SHA-256 fingerprints of actual file bytes, and the exact checked-out Git commit; require candidate evidence to match the commit sealed into its graph.
 - Add digest-sealed merge/split/move/replace proposals with explicit baseline checkpoint, migration steps, affected-contract receipt and rollback steps.
 - Require exact baseline/candidate commit evidence, focused tests, runtime typecheck, full source-architecture audit, contract validation, verified rollback and human review before a candidate is eligible for manual integration.
 - Keep activation NOT_APPLIED; no runtime hot-swap, branch writes, automatic merge, state-schema change or Release ZIP modification is permitted.
