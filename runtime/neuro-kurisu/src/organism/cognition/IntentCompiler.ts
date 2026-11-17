@@ -53,6 +53,7 @@ export interface IntentContract {
   };
 }
 export interface IntentApproval {
+  contractId: string;
   userConfirmed: boolean;
   allowedActions: string[];
   at: number;
@@ -100,7 +101,8 @@ function inferRisk(text: string, explicit?: IntentRiskLevel): { level: IntentRis
 function isIntentContract(value: IntentContract): boolean {
   return !!value && value.schema === 'nk1.intent-contract' && value.version === 1 &&
     typeof value.id === 'string' && Array.isArray(value.permissions?.allowedActions) &&
-    Array.isArray(value.permissions?.deniedActions) && !!value.approval;
+    Array.isArray(value.permissions?.deniedActions) && Array.isArray(value.missingInformation) &&
+    !!value.approval && Array.isArray(value.approval.allowedActions);
 }
 
 /**
@@ -176,6 +178,7 @@ export class IntentCompiler {
   approve(contract: IntentContract, approval: IntentApproval): IntentContract {
     if (!isIntentContract(contract)) throw new TypeError('invalid intent contract');
     if (contract.missingInformation.length > 0) throw new Error('intent contract is incomplete: ' + contract.missingInformation.join(', '));
+    if (approval?.contractId !== contract.id) throw new Error('approval must be bound to this exact intent contract');
     if (approval?.userConfirmed !== true) throw new Error('explicit user confirmation is required');
     if (!Number.isSafeInteger(approval.at) || approval.at < 0) throw new TypeError('approval timestamp is invalid');
     const evidenceRef = cleanText(approval.evidenceRef, 180);
@@ -203,8 +206,8 @@ export class IntentCompiler {
     if (!isIntentContract(contract)) return { allowed: false, reason: 'invalid-contract' };
     const normalizedAction = cleanText(action, MAX_ACTION);
     if (!normalizedAction) return { allowed: false, reason: 'action-not-explicitly-allowed' };
-    if (contract.permissions.deniedActions.includes(normalizedAction)) return { allowed: false, reason: 'action-explicitly-denied' };
     if (contract.missingInformation.length > 0) return { allowed: false, reason: 'contract-incomplete' };
+    if (contract.permissions.deniedActions.includes(normalizedAction)) return { allowed: false, reason: 'action-explicitly-denied' };
     if (contract.approval.status !== 'approved') return { allowed: false, reason: 'contract-not-approved' };
     if (!contract.permissions.allowedActions.includes(normalizedAction) ||
         !contract.approval.allowedActions.includes(normalizedAction)) {
