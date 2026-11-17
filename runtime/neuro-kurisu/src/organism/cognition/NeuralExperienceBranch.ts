@@ -1878,6 +1878,8 @@ export class NeuralExperienceBranch {
     out.contextualActionPolicy=this.contextualActionPolicy.metrics();
     const fast=this.embodiedBridge.metrics();
     out.testTimeNeuroplasticity={
+      sessionScopeCount:this.sessionAdaptationScopes.size,
+      pendingOutcome:Boolean(this.pendingAdaptationContextId),
       activeAdapterNorm:fast.fastAdapterNorm,
       contextCount:fast.fastContextCount,
       acceptedUpdates:fast.fastAcceptedUpdates,
