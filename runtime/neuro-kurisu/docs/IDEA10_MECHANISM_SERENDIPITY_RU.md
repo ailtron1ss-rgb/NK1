@@ -18,11 +18,11 @@ IntrinsicExperimentGenerator.fromMechanismDiscovery переводит приг�
 
 
 ## Живая интеграция с NK1
-- `OrganismSystemFabric.discoverMechanisms() строит проблему из реального `systemGraph()`, health-probe семи физических подсистем и ограниченных числовых сигналов.
+- `OrganismSystemFabric.discoverMechanisms() строит проблему из реального `systemGraph()`, лёгкой проверки регистрации семи физических подсистем и ограниченных числовых сигналов.
 - `OrganismCore.organismMechanismDiscoveries() выставляет read-only путь наружу; в селектор решений и ActionGateway новая управляющая связь не добавлена.
 - `MechanismProblemAdapter` извлекает типизированные роли, dependency-потоки, давление памяти и бюджета, prediction error, health failures, ресурсы и динамический режим. Содержимое воспоминаний и пользовательский текст не копируются.
 - `MechanismSerendipityRuntime` переводит найденные структуры в `verify`-задачи, ограничивает журнал повторов 256 ID и сохраняет компактную статистику; повторный scan не создаёт одинаковую задачу.
 - Направление и тип потока, обратная связь, ресурсы, ограничения и временной масштаб дают явные breakpoints. Сильные несовпадения снижают transferability.
 
-- Для живого intake `OrganismSystemFabric` читает только bounded-агрегаты владельцев (ограниченный memory sample до 160 записей, ошибка предсказания, остаток бюджета, evidence debt) и health-probes; полный memory/world snapshot не клонируется для поиска.
+- Для живого intake `OrganismSystemFabric` читает только bounded-агрегаты владельцев (ограниченный memory sample до 160 записей, ошибка предсказания, остаток бюджета, evidence debt) и owner-binding probes; полный memory/world snapshot и health snapshot не клонируются ради поиска.
 - Structural similarity, confidence и transferability — эвристические ранжировщики, не вероятности причинной истинности. Подтверждение требует независимого baseline/holdout-эксперимента, проверки побочных эффектов и rollback.

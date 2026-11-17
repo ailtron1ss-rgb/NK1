@@ -1,7 +1,7 @@
 import type { ActorRole,ConstraintKind,DynamicRegime,FlowKind,MechanismDescription,MechanismResource,ResourceKind } from './MechanismSerendipityEngine.ts';
 export interface MechanismProblemInput {
  graph:{nodes:Array<{name:string;phase?:string;cost01?:number;cadence?:number;executionRank?:number}>;edges:Array<{from:string;to:string}>;dependencyCycles?:string[]};
- health:Array<{systemName:string;available:boolean;snapshotMs?:number;probeMs?:number;snapshotKeys?:number;error?:string}>;
+ health:Array<{systemName:string;available:boolean;snapshotMs?:number;probeMs?:number;snapshotKeys?:number;probeKind?:'owner-binding'|'snapshot-probe';error?:string}>;
  systems:Record<string,unknown>;
 }
 export interface MechanismProblemProjection {
@@ -72,7 +72,7 @@ export class MechanismProblemAdapter {
   const evidenceCoverage01=clamp(.55*available/nodes.length+.25*(memoryKnown?1:0)+.20*(predictionSignalPresent?1:0));
   const fingerprint=[nodes.map(x=>x.name).sort().join(','),edges.map(x=>x.from+'>'+x.to).sort().join(','),'m'+round(memoryPressure01),'p'+round(predictionError01),'b'+round(budgetPressure01),'d'+round(researchEvidenceDebt01),'latency'+(maxSnapshotMs>=40?'high':maxSnapshotMs>=8?'elevated':'normal'),unavailable.map(x=>x.systemName).sort().join(',')].join('|');
   const problem:MechanismDescription={id:'nk1-system-'+hash(fingerprint),title:'NK1 physical subsystem dependency and pressure graph',domain:'cognitive-runtime',actors,flows,constraints,feedbackLoops:[],resources,dynamics:{regimes,timescale}};
-  const sourceEvidence=health.filter(x=>names.has(x.systemName)).map(x=>({subsystem:x.systemName,available:x.available,latencyMs:round(Math.max(0,num(x.snapshotMs)??num(x.probeMs)??0)),evidenceKeys:[...(x.snapshotKeys?['snapshot-shape']:[]),...(x.available?['health-probe']:['health-failure'])],error:x.error?.slice(0,160)}));
+  const sourceEvidence=health.filter(x=>names.has(x.systemName)).map(x=>({subsystem:x.systemName,available:x.available,latencyMs:round(Math.max(0,num(x.snapshotMs)??num(x.probeMs)??0)),evidenceKeys:[...(x.snapshotKeys?['snapshot-shape']:[]),...(x.probeKind==='owner-binding'?['owner-binding']:x.available?['health-probe']:['health-failure'])],error:x.error?.slice(0,160)}));
   return{problem,evidenceConfidence01:evidenceCoverage01,sourceEvidence,diagnostics:{total:nodes.length,available,unavailable:unavailable.length,memoryEntries,memoryPressure01:round(memoryPressure01),predictionError01:round(predictionError01),budgetPressure01:round(budgetPressure01),researchEvidenceDebt01:round(researchEvidenceDebt01),maxSnapshotMs:round(maxSnapshotMs),evidenceCoverage01:round(evidenceCoverage01)}};
  }
 }

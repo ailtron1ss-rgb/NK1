@@ -195,7 +195,12 @@ export class OrganismSystemFabric {
     const evidenceDebt01=this.research.predictionDebt.priority();
     return this.research.mechanismSerendipity.analyze({
       graph:this.systemGraph(),
-      health:this.health(),
+      // Owner-binding probes avoid snapshot() cloning of large subsystem state.
+      health:this.names().map(name=>{
+        const owner=this.get(name);
+        const available=Boolean(owner&&typeof owner.snapshot==='function'&&typeof owner.health==='function');
+        return{systemName:name,available,probeKind:'owner-binding' as const,snapshotKeys:0,snapshotMs:0,checkedAt:Date.now(),...(available?{}:{error:'subsystem-owner-unavailable'})};
+      }),
       systems:{
         memory:{memoryEntries},
         world:{predictionError01},
