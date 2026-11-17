@@ -47,6 +47,8 @@ export interface SharedFutureRevisionSignal {
   threshold?: number;
   dueAt?: number;
   lastTriggeredAt: number | null;
+  armed: boolean;
+  lastObservedValue?: number;
   triggerCount: number;
 }
 
@@ -203,6 +205,19 @@ function restoredText(value: unknown, fallback = '', limit = MAX_TEXT): string {
   return typeof value === 'string' ? value.trim().slice(0, limit) : fallback;
 }
 
+function restoredId(value: unknown, fallback: string): string {
+  const candidate = typeof value === 'string' ? value.trim() : '';
+  return /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}$/.test(candidate) ? candidate : fallback;
+}
+
+function assertUniqueIds<T extends { id: string }>(rows: T[], label: string): void {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (seen.has(row.id)) throw new Error(label + '-duplicate');
+    seen.add(row.id);
+  }
+}
+
 function idField(value: unknown, field: string): string {
   const id = textField(value, field, 96);
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}$/.test(id)) throw new Error(field + '-invalid');
@@ -250,6 +265,21 @@ export const defaultSharedFutureState = (): SharedFutureState => ({
 
 export class SharedFutureEngine {
   private state: SharedFutureState = defaultSharedFutureState();
+  private canonicalGoalExists: ((goalId: string) => boolean) | null = null;
+
+  setCanonicalGoalResolver(resolver: ((goalId: string) => boolean) | null): void {
+    this.canonicalGoalExists = typeof resolver === 'function' ? resolver : null;
+  }
+
+  private assertCanonicalGoalLinks(links: SharedFutureGoalLink[]): void {
+    if (!this.canonicalGoalExists) return;
+    for (const link of links) {
+      let exists = false;
+      try { exists = this.canonicalGoalExists(link.id) === true; }
+      catch { throw new Error('canonical-goal-resolution-failed'); }
+      if (!exists) throw new Error('canonical-goal-not-found:' + link.id);
+    }
+  }
 
   snapshot(): SharedFutureState {
     return structuredClone(this.state);
@@ -258,19 +288,45 @@ export class SharedFutureEngine {
   restore(raw?: Partial<SharedFutureState> | null): void {
     const base = defaultSharedFutureState();
     const source = isRecord(raw) ? raw : {};
-    const scenarios = Array.isArray(source.scenarios)
-      ? (source.scenarios as unknown[]).slice(0, MAX_SCENARIOS).filter(isRecord).map((row) => this.restoreScenario(row))
+    const scenarioRows = Array.isArray(source.scenarios)
+      ? (source.scenarios as unknown[]).slice(0, MAX_SCENARIOS).filter(isRecord)
       : [];
-    const scenarioIds = new Set(scenarios.map((row) => row.id));
-    for (const row of scenarios) {
-      if (row.parentId && !scenarioIds.has(row.parentId)) row.parentId = null;
-      if (row.parentId === row.id) row.parentId = null;
+    const seenScenarioIds = new Set<string>();
+    const scenarios: SharedFutureScenario[] = [];
+    for (const [index, row] of scenarioRows.entries()) {
+      const id = restoredId(row.id, 'restored-scenario-' + index);
+      if (seenScenarioIds.has(id)) continue;
+      seenScenarioIds.add(id);
+      scenarios.push(this.restoreScenario({ ...row, id }, index));
     }
-    const decisions = Array.isArray(source.decisions)
+    const scenarioIds = new Set(scenarios.map((row) => row.id));
+    const scenarioById = new Map(scenarios.map((row) => [row.id, row]));
+    for (const row of scenarios) {
+      const visited = new Set<string>([row.id]);
+      let cursor: SharedFutureScenario | undefined = row;
+      let depth = 0;
+      while (cursor?.parentId) {
+        const parent = scenarioById.get(cursor.parentId);
+        if (!parent || visited.has(parent.id) || ++depth > 8) {
+          row.parentId = null;
+          break;
+        }
+        visited.add(parent.id);
+        cursor = parent;
+      }
+    }
+    const decisionRows = Array.isArray(source.decisions)
       ? (source.decisions as unknown[]).slice(0, MAX_DECISIONS).filter(isRecord)
-          .map((row) => this.restoreDecision(row))
-          .filter((row) => scenarioIds.has(row.scenarioId))
       : [];
+    const seenDecisionIds = new Set<string>();
+    const decisions: SharedFutureDecision[] = [];
+    for (const [index, row] of decisionRows.entries()) {
+      const id = restoredId(row.id, 'restored-decision-' + index);
+      if (seenDecisionIds.has(id)) continue;
+      seenDecisionIds.add(id);
+      const decision = this.restoreDecision({ ...row, id }, index);
+      if (scenarioIds.has(decision.scenarioId)) decisions.push(decision);
+    }
     const decisionIds = new Set(decisions.map((row) => row.id));
     for (const decision of decisions) {
       decision.dependsOn = decision.dependsOn.filter((id) => decisionIds.has(id) && id !== decision.id);
@@ -285,7 +341,7 @@ export class SharedFutureEngine {
           actor: row.actor === 'user' ? 'user' as const : 'system' as const,
           note: restoredText(row.note, '', 500),
           successorScenarioId: typeof row.successorScenarioId === 'string' ? row.successorScenarioId.slice(0, 96) : null,
-        }))
+        })).filter((row) => scenarioIds.has(row.scenarioId))
       : [];
     const signalHistory: SharedFutureSignalRecord[] = Array.isArray(source.signalHistory)
       ? (source.signalHistory as unknown[]).slice(0, MAX_SIGNAL_HISTORY).filter(isRecord).map((row): SharedFutureSignalRecord => ({
@@ -298,7 +354,7 @@ export class SharedFutureEngine {
           source: row.source === 'internal-clock' ? 'internal-clock' as const : 'caller-reported' as const,
           triggered: row.triggered === true,
           reason: restoredText(row.reason, '', 500),
-        }))
+        })).filter((row) => scenarioIds.has(row.scenarioId))
       : [];
     this.state = {
       ...base,
@@ -311,7 +367,7 @@ export class SharedFutureEngine {
     };
   }
 
-  private restoreScenario(row: Record<string, unknown>): SharedFutureScenario {
+  private restoreScenario(row: Record<string, unknown>, index = 0): SharedFutureScenario {
     const owner = ownerField(row.owner, 'system');
     const assumptions: SharedFutureAssumption[] = Array.isArray(row.assumptions) ? (row.assumptions as unknown[]).slice(0, MAX_ASSUMPTIONS).filter(isRecord).map((item, index): SharedFutureAssumption => ({
       id: restoredText(item.id, 'assumption-' + index, 96),
@@ -349,7 +405,10 @@ export class SharedFutureEngine {
       ...(typeof item.metricKey === 'string' ? { metricKey: item.metricKey.slice(0, 100) } : {}),
       ...(typeof item.threshold === 'number' && Number.isFinite(item.threshold) ? { threshold: item.threshold } : {}),
       ...(typeof item.dueAt === 'number' && Number.isFinite(item.dueAt) ? { dueAt: timestamp(item.dueAt, 0) } : {}),
-      lastTriggeredAt: item.lastTriggeredAt === null ? null : timestamp(item.lastTriggeredAt, 0),
+      lastTriggeredAt: item.lastTriggeredAt === null || item.lastTriggeredAt === undefined ? null : timestamp(item.lastTriggeredAt, 0),
+      armed: typeof item.armed === 'boolean' ? item.armed : item.lastTriggeredAt == null,
+      ...(typeof item.lastObservedValue === 'number' && Number.isFinite(item.lastObservedValue)
+        ? { lastObservedValue: item.lastObservedValue } : {}),
       triggerCount: timestamp(item.triggerCount, 0),
     })) : [];
     const forecastRow = isRecord(row.forecast) ? row.forecast : null;
@@ -367,7 +426,7 @@ export class SharedFutureEngine {
       independentlyVerified: false,
     } : null;
     return {
-      id: restoredText(row.id, 'restored-scenario', 96),
+      id: restoredId(row.id, 'restored-scenario-' + index),
       title: restoredText(row.title, 'Untitled scenario', 180),
       description: restoredText(row.description, '', MAX_TEXT),
       owner,
@@ -393,9 +452,9 @@ export class SharedFutureEngine {
     };
   }
 
-  private restoreDecision(row: Record<string, unknown>): SharedFutureDecision {
+  private restoreDecision(row: Record<string, unknown>, index = 0): SharedFutureDecision {
     return {
-      id: restoredText(row.id, 'restored-decision', 96),
+      id: restoredId(row.id, 'restored-decision-' + index),
       scenarioId: restoredText(row.scenarioId, '', 96),
       title: restoredText(row.title, 'Untitled decision', 180),
       rationale: restoredText(row.rationale, '', MAX_TEXT),
@@ -514,6 +573,7 @@ export class SharedFutureEngine {
           kind,
           description: textField(row.description ?? 'Review this scenario when the signal occurs', 'revision-signal-description'),
           lastTriggeredAt: null,
+          armed: true,
           triggerCount: 0,
         };
         if (kind === 'metric-below' || kind === 'metric-above') {
@@ -527,6 +587,12 @@ export class SharedFutureEngine {
         }
         return signal;
       });
+      assertUniqueIds(assumptions, 'assumption-id');
+      assertUniqueIds(goalLinks, 'goal-reference-id');
+      assertUniqueIds(consequences, 'consequence-id');
+      assertUniqueIds(pointsOfNoReturn, 'point-of-no-return-id');
+      assertUniqueIds(revisionSignals, 'revision-signal-id');
+      this.assertCanonicalGoalLinks(goalLinks);
       const scenario: SharedFutureScenario = {
         id,
         title: textField(input.title, 'scenario-title', 180),
@@ -563,6 +629,14 @@ export class SharedFutureEngine {
   listScenarios(filter: { owner?: SharedFutureOwner; status?: SharedFutureScenarioStatus } = {}): SharedFutureScenario[] {
     return this.state.scenarios
       .filter((row) => (!filter.owner || row.owner === filter.owner) && (!filter.status || row.status === filter.status))
+      .map((row) => structuredClone(row));
+  }
+
+  listReviews(): SharedFutureScenario[] {
+    return this.state.scenarios
+      .filter((row) => row.reviewRequired && row.status !== 'achieved' &&
+        row.status !== 'invalidated' && row.status !== 'superseded')
+      .sort((a, b) => (a.nextReviewAt ?? 0) - (b.nextReviewAt ?? 0) || a.createdAt - b.createdAt)
       .map((row) => structuredClone(row));
   }
 
@@ -663,18 +737,28 @@ export class SharedFutureEngine {
     const triggered: string[] = [];
     for (const signal of scenario.revisionSignals) {
       let didTrigger = false;
-      let source: 'caller-reported' | 'internal-clock' = 'caller-reported';
+      const source: 'caller-reported' | 'internal-clock' = 'caller-reported';
       if (signal.kind === 'manual') {
-        didTrigger = Boolean(input.signalId && input.signalId === signal.id);
+        didTrigger = signal.armed && Boolean(input.signalId && input.signalId === signal.id);
       } else if (signal.kind === 'date') {
-        didTrigger = signal.dueAt !== undefined && at >= signal.dueAt;
-        source = 'internal-clock';
+        didTrigger = signal.armed && signal.dueAt !== undefined && at >= signal.dueAt;
       } else if (signal.metricKey === input.metricKey && typeof input.metricValue === 'number' && Number.isFinite(input.metricValue)) {
-        didTrigger = signal.kind === 'metric-below'
-          ? input.metricValue < (signal.threshold ?? Number.NEGATIVE_INFINITY)
-          : input.metricValue > (signal.threshold ?? Number.POSITIVE_INFINITY);
+        signal.lastObservedValue = input.metricValue;
+        const threshold = signal.threshold ?? (signal.kind === 'metric-below' ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY);
+        const outsideThreshold = signal.kind === 'metric-below'
+          ? input.metricValue < threshold
+          : input.metricValue > threshold;
+        if (!outsideThreshold) {
+          if (!signal.armed) {
+            signal.armed = true;
+            signal.lastTriggeredAt = null;
+          }
+          continue;
+        }
+        didTrigger = signal.armed;
       }
-      if (!didTrigger || signal.lastTriggeredAt !== null) continue;
+      if (!didTrigger) continue;
+      signal.armed = false;
       signal.lastTriggeredAt = at;
       signal.triggerCount++;
       const reason = 'signal:' + signal.id + ':' + signal.description.slice(0, 100);
@@ -698,8 +782,27 @@ export class SharedFutureEngine {
     const due: Array<{ scenarioId: string; reason: string }> = [];
     for (const scenario of this.state.scenarios) {
       if (scenario.status === 'invalidated' || scenario.status === 'superseded' || scenario.status === 'achieved') continue;
+
+      if (scenario.nextReviewAt !== null && at >= scenario.nextReviewAt) {
+        scenario.nextReviewAt = null;
+        const reason = 'deferred-review-due:' + scenario.id;
+        this.requireReview(scenario, reason, at, 'internal-clock');
+        due.push({ scenarioId: scenario.id, reason });
+      }
+
+      if (scenario.id === 'runtime-world-preview') {
+        if (scenario.forecast && at >= scenario.forecast.simulatedAt + 15 * 60_000) {
+          scenario.status = 'superseded';
+          scenario.reviewRequired = false;
+          scenario.reviewReasons = [];
+          scenario.nextReviewAt = null;
+          scenario.updatedAt = at;
+        }
+        continue;
+      }
+
       for (const assumption of scenario.assumptions) {
-        if (assumption.status === 'assumed' && assumption.expiresAt !== null && at >= assumption.expiresAt) {
+        if (assumption.status !== 'expired' && assumption.expiresAt !== null && at >= assumption.expiresAt) {
           assumption.status = 'expired';
           const reason = 'assumption-expired:' + assumption.id;
           this.requireReview(scenario, reason, at, 'internal-clock');
@@ -707,7 +810,8 @@ export class SharedFutureEngine {
         }
       }
       for (const signal of scenario.revisionSignals) {
-        if (signal.kind !== 'date' || signal.dueAt === undefined || signal.lastTriggeredAt !== null || at < signal.dueAt) continue;
+        if (signal.kind !== 'date' || !signal.armed || signal.dueAt === undefined || at < signal.dueAt) continue;
+        signal.armed = false;
         signal.lastTriggeredAt = at;
         signal.triggerCount++;
         const reason = 'date-signal:' + signal.id + ':' + signal.description.slice(0, 100);
@@ -739,6 +843,12 @@ export class SharedFutureEngine {
         scenario.nextReviewAt = null;
         scenario.lastReviewedAt = at;
         scenario.updatedAt = at;
+        for (const signal of scenario.revisionSignals) {
+          if (signal.kind === 'manual') {
+            signal.armed = true;
+            signal.lastTriggeredAt = null;
+          }
+        }
       } else if (input.action === 'defer') {
         const days = Math.floor(finite(input.deferDays, 1, 1, 365));
         scenario.nextReviewAt = at + days * 86_400_000;
@@ -815,6 +925,10 @@ export class SharedFutureEngine {
     const existing = this.state.scenarios.find((row) => row.id === id);
     if (!existing && this.state.scenarios.length >= MAX_SCENARIOS) return null;
     if (existing) {
+      existing.status = 'draft';
+      existing.reviewRequired = false;
+      existing.reviewReasons = [];
+      existing.nextReviewAt = null;
       existing.forecast = forecast;
       existing.confidence01 = 1 - uncertainty01;
       existing.uncertainty01 = uncertainty01;
@@ -869,18 +983,24 @@ export class SharedFutureEngine {
 
   diagnostics(): {
     scenarios: number;
+    activeScenarios: number;
     decisions: number;
     pendingDecisions: number;
     reviewRequired: number;
+    deferredReviews: number;
+    armedRevisionSignals: number;
     sharedScenarios: number;
     forecasts: number;
     rejectedMutations: number;
   } {
     return {
       scenarios: this.state.scenarios.length,
+      activeScenarios: this.state.scenarios.filter((row) => row.status === 'active').length,
       decisions: this.state.decisions.length,
       pendingDecisions: this.state.decisions.filter((row) => row.status === 'proposed').length,
-      reviewRequired: this.state.scenarios.filter((row) => row.reviewRequired).length,
+      reviewRequired: this.listReviews().length,
+      deferredReviews: this.state.scenarios.filter((row) => row.reviewRequired && row.nextReviewAt !== null).length,
+      armedRevisionSignals: this.state.scenarios.reduce((sum, row) => sum + row.revisionSignals.filter((signal) => signal.armed).length, 0),
       sharedScenarios: this.state.scenarios.filter((row) => row.owner === 'shared').length,
       forecasts: this.state.scenarios.filter((row) => row.forecast !== null).length,
       rejectedMutations: this.state.rejectedMutations,
@@ -907,8 +1027,10 @@ function executeSafely(run: () => Record<string, unknown>): Record<string, unkno
 export function registerSharedFutureTools(
   gateway: Pick<ActionGateway, 'registerTool'>,
   simulator: { sharedFuture: SharedFutureEngine },
+  resolveCanonicalGoal?: (goalId: string) => boolean,
 ): void {
   const future = simulator.sharedFuture;
+  if (resolveCanonicalGoal) future.setCanonicalGoalResolver(resolveCanonicalGoal);
   const register = (definition: ToolDefinition) => gateway.registerTool(definition);
 
   register({
@@ -931,6 +1053,7 @@ export function registerSharedFutureTools(
     id: 'organism.future.scenarios.create',
     capability: 'planning.future.write',
     destructive: false,
+    requiresIdempotencyKey: true,
     projectAllowed: true,
     execute: async (input) => executeSafely(() => {
       if (input.owner !== undefined && input.owner !== 'system') throw new Error('system-scenario-owner-only');
@@ -942,6 +1065,7 @@ export function registerSharedFutureTools(
     id: 'organism.future.scenarios.create-collaborative',
     capability: 'planning.future.write',
     destructive: false,
+    requiresIdempotencyKey: true,
     permissionClass: 'self-modification',
     projectAllowed: true,
     execute: async (input, context) => executeSafely(() => {
@@ -955,6 +1079,7 @@ export function registerSharedFutureTools(
     id: 'organism.future.decisions.propose',
     capability: 'planning.future.write',
     destructive: false,
+    requiresIdempotencyKey: true,
     projectAllowed: true,
     execute: async (input) => executeSafely(() => {
       if (input.owner !== undefined && input.owner !== 'system') throw new Error('system-decision-owner-only');
@@ -966,6 +1091,7 @@ export function registerSharedFutureTools(
     id: 'organism.future.decisions.propose-collaborative',
     capability: 'planning.future.write',
     destructive: false,
+    requiresIdempotencyKey: true,
     permissionClass: 'self-modification',
     projectAllowed: true,
     execute: async (input, context) => executeSafely(() => {
@@ -979,6 +1105,7 @@ export function registerSharedFutureTools(
     id: 'organism.future.decisions.confirm',
     capability: 'planning.future.write',
     destructive: false,
+    requiresIdempotencyKey: true,
     permissionClass: 'self-modification',
     projectAllowed: true,
     execute: async (input, context) => executeSafely(() => {
@@ -995,6 +1122,7 @@ export function registerSharedFutureTools(
     id: 'organism.future.signals.observe',
     capability: 'planning.future.read',
     destructive: false,
+    requiresIdempotencyKey: true,
     projectAllowed: true,
     execute: async (input) => executeSafely(() => ({
       observation: future.observeSignal({
@@ -1009,9 +1137,21 @@ export function registerSharedFutureTools(
   });
 
   register({
+    id: 'organism.future.reviews.list',
+    capability: 'planning.future.read',
+    destructive: false,
+    projectAllowed: true,
+    execute: async () => executeSafely(() => ({
+      reviews: future.listReviews(),
+      diagnostics: future.diagnostics(),
+    })),
+  });
+
+  register({
     id: 'organism.future.reviews.resolve',
     capability: 'planning.future.write',
     destructive: false,
+    requiresIdempotencyKey: true,
     permissionClass: 'self-modification',
     projectAllowed: true,
     execute: async (input, context) => executeSafely(() => {

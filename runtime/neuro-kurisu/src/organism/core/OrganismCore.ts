@@ -1173,7 +1173,7 @@ export class OrganismCore {
     private readonly adaptiveMemoryStrategyReadout = new AdaptiveMemoryStrategyReadout();
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
     /** Owns general cognitive/runtime services; Core remains the orchestration spine. */
-    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272 });
+    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272, resolveCanonicalGoal: (goalId) => this.persisted.goals.some((goal) => goal.id === goalId) });
     /** Owns mutable persistence/continuity machinery; Core supplies orchestration decisions. */
     private readonly persistence = new PersistenceRuntime();
     /** Selected WILL contracts are owned by the composition fabric; Core only orchestrates them. */
@@ -5087,6 +5087,7 @@ export class OrganismCore {
         if (socialPredictionState.socialPredictionError > 0.55) {
             this.cognitiveRuntime.cognitiveField.addPressure('social', 'social prediction uncertainty requires clarification', socialPredictionState.socialPredictionError, ['social-development'], 0.04);
         }
+        this.cognitiveRuntime.futureSimulator.sharedFuture.refresh(state.at);
         const derivedPreview = this.organismSystems.world.derivedWorldPreviewCache.getOrRefresh(this.worldSubsystem.worldModel2, this.cognitiveRuntime.futureSimulator, {
             tick: state.tick,
             worldContextVersion: state.worldContextVersion,

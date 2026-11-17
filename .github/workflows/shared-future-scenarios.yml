@@ -5,6 +5,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/developmental/SharedFutureEngine.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/tests/shared-future-scenarios.mjs"
       - ".github/workflows/shared-future-scenarios.yml"
 permissions:

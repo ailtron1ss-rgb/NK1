@@ -181,6 +181,7 @@ export class CognitiveRuntimeCluster {
     p61IntegratedMind: P61IntegratedMindKernel;
     p64IntegratedOrganismDynamics: P64IntegratedOrganismDynamics;
     endogenousGoalGenesisB272: B272EndogenousGoalGenesis;
+    resolveCanonicalGoal?: (goalId: string) => boolean;
   }) {
     this.intrinsicMotivationGoalCoupling = new IntrinsicMotivationGoalCoupling(
       this.intrinsicMotivation,
@@ -188,6 +189,6 @@ export class CognitiveRuntimeCluster {
     );
     this.cognitiveKernelCoordinator = new CognitiveKernelCoordinator(input.p61IntegratedMind, input.p64IntegratedOrganismDynamics);
     this.cognitiveSubsystemRegistry = new CognitiveSubsystemRegistry(input.organismSystems);
-    registerSharedFutureTools(this.actionGateway, this.futureSimulator);
+    registerSharedFutureTools(this.actionGateway, this.futureSimulator, input.resolveCanonicalGoal);
   }
 }
