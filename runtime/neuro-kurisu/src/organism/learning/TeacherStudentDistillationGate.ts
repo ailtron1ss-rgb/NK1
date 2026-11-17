@@ -3,6 +3,7 @@ import { bootstrapMeanConfidenceInterval } from './PairedSeedConfidence.ts';
 import { hasAuthenticatedOutcomeEvidence } from './VerifiedOutcomeArtifact.ts';
 import { VerifiedOutcomeLedger, type EvaluationSplit, type TaskManifestEntry, type VerifiedTaskOutcome } from './VerifiedOutcomeLedger.ts';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
+import { cloneVerifiedOutcomeLedgerWithAuthenticatedEvidence } from './VerifiedOutcomeArtifact.ts';
 
 export interface DistillationPairedSummary {
   pairedSeedCount: number;
@@ -20,6 +21,11 @@ export interface TeacherStudentDistillationGateState {
   schemaVersion: 1;
   consumedCandidateFingerprints: string[];
   saturated: boolean;
+}
+
+export interface TeacherStudentDistillationGateReservationStore {
+  /** Atomically persists a candidate fingerprint before any holdout data is inspected. */
+  reserveCandidate(candidateFingerprint: string): Promise<boolean>;
 }
 
 export interface TeacherStudentDistillationGateOptions {
@@ -199,6 +205,76 @@ export class TeacherStudentDistillationGate {
       consumedCandidateFingerprints: [...this.consumed].sort(),
       saturated: this.saturated,
     };
+  }
+
+  /**
+   * Durable one-shot variant. The candidate is reserved in the host-owned store
+   * before the outcome ledger is evaluated. The ledger is frozen first, including
+   * its authenticated evidence references, so a concurrent append cannot change
+   * which holdout rows this reservation inspects.
+   */
+  async evaluateOncePersisted(input: {
+    ledger: VerifiedOutcomeLedger;
+    candidateFingerprint: string;
+    baselineMethod: string;
+    studentMethod: string;
+    options?: TeacherStudentDistillationGateOptions;
+  }, store: TeacherStudentDistillationGateReservationStore): Promise<TeacherStudentDistillationGateReport> {
+    if (!store || typeof store.reserveCandidate !== 'function') {
+      throw new Error('teacher-distillation-gate-persistence-required');
+    }
+    const { ledger, candidateFingerprint, baselineMethod, studentMethod } = input;
+    if (!(ledger instanceof VerifiedOutcomeLedger) || !isDigest(candidateFingerprint) ||
+        !safeIdentity(baselineMethod) || !safeIdentity(studentMethod) || baselineMethod === studentMethod) {
+      throw new Error('teacher-distillation-gate-input-invalid');
+    }
+
+    let detachedOptions: TeacherStudentDistillationGateOptions;
+    try {
+      const detached = snapshotPlainData(input.options ?? {});
+      if (!detached || typeof detached !== 'object' || Array.isArray(detached)) {
+        throw new Error('options-not-plain-data');
+      }
+      detachedOptions = detached as TeacherStudentDistillationGateOptions;
+      validOptions(detachedOptions);
+    } catch {
+      throw new Error('teacher-distillation-gate-options-boundary-rejected');
+    }
+
+    const stableInput = {
+      ledger: cloneVerifiedOutcomeLedgerWithAuthenticatedEvidence(ledger),
+      candidateFingerprint,
+      baselineMethod,
+      studentMethod,
+      options: detachedOptions,
+    };
+    if (this.saturated || this.consumed.has(candidateFingerprint)) {
+      return this.evaluateOnce(stableInput);
+    }
+    if (this.consumed.size >= 10_000) {
+      this.saturated = true;
+      return this.evaluateOnce(stableInput);
+    }
+
+    // Reserve in memory before yielding; a concurrent call on this instance is blocked.
+    this.consumed.add(candidateFingerprint);
+    let reserved: boolean;
+    try {
+      reserved = await store.reserveCandidate(candidateFingerprint);
+    } catch {
+      // The store may have committed before a filesystem error surfaced. Never retry
+      // this candidate from this instance when persistence outcome is ambiguous.
+      this.saturated = true;
+      throw new Error('teacher-distillation-gate-persistence-failed');
+    }
+    if (!reserved) {
+      return this.evaluateOnce(stableInput);
+    }
+
+    // The durable store owns the reservation now. Re-enter the synchronous evaluator
+    // without an await between releasing the local pre-reservation and consuming it.
+    this.consumed.delete(candidateFingerprint);
+    return this.evaluateOnce(stableInput);
   }
 
   evaluateOnce(input: {
