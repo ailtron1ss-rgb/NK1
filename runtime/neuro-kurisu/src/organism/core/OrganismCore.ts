@@ -2300,6 +2300,8 @@ export class OrganismCore {
     }
     organismSystemExecutionOrder() { return this.organismSystems.executionOrder(); }
     organismSystemHealth() { return this.organismSystems.health(); }
+    /** Read-only on-demand mechanism discovery from the live physical subsystem graph. */
+    organismMechanismDiscoveries(options: import('../research/MechanismSerendipityEngine.ts').MechanismSerendipityOptions = {}) { return this.organismSystems.discoverMechanisms(options); }
     selfSubsystemSnapshot() { return this.selfSubsystem.snapshot(); }
     governanceSubsystemSnapshot() { return this.governanceSubsystem.snapshot(); }
     cognitiveSubsystemHealth() { return this.cognitiveRuntime.cognitiveSubsystemRegistry.health(); }

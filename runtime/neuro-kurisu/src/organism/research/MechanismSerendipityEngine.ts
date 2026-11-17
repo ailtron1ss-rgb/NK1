@@ -56,7 +56,7 @@ function signature(m:MechanismDescription){return{
 function hash(s:string){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0).toString(16).padStart(8,'0');}
 function correspond(a:MechanismDescription,b:MechanismDescription):MechanismCorrespondence[]{
  const out:MechanismCorrespondence[]=[];
- const add=(aspect:MechanismCorrespondence['aspect'],p:string,r:string,feature:string)=>out.push({aspect,problemElementId:p,referenceElementId:r,structuralFeature:feature,confidence01:1,explanation:'Совпадает причинно-структурная роль; текстовые названия не учитываются.'});
+ const add=(aspect:MechanismCorrespondence['aspect'],p:string,r:string,feature:string)=>out.push({aspect,problemElementId:p,referenceElementId:r,structuralFeature:feature,confidence01:.82,explanation:'Точно совпадает типизированный структурный признак; это не доказывает причинную эквивалентность.'});
  const match=<T extends {id:string}>(aspect:MechanismCorrespondence['aspect'],left:T[],right:T[],key:(x:T)=>string)=>{
   const used=new Set<string>();for(const x of left){const k=key(x),y=right.find(z=>key(z)===k&&!used.has(z.id));if(y){used.add(y.id);add(aspect,x.id,y.id,k);}}
  };
@@ -70,9 +70,23 @@ function correspond(a:MechanismDescription,b:MechanismDescription):MechanismCorr
 }
 function findBreakpoints(a:MechanismDescription,b:MechanismDescription):MechanismBreakpoint[]{
  const out:MechanismBreakpoint[]=[];const targetRoles=new Set(b.actors.map(x=>x.role));
- for(const role of new Set(a.actors.map(x=>x.role)))if(!targetRoles.has(role))out.push({kind:'missing-reference-role',problemFeature:role,referenceFeature:'absent',consequence:'У исходного механизма нет этой роли; её придётся реализовать отдельно.',severity01:.55});
+ for(const role of new Set(a.actors.map(x=>x.role)))if(!targetRoles.has(role))out.push({kind:'missing-reference-role',problemFeature:role,referenceFeature:'absent',consequence:'У эталонного механизма нет этой роли; её нельзя переносить без отдельной реализации.',severity01:.55});
+ for(const flow of a.flows){
+  const exact=b.flows.some(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole&&x.kind===flow.kind);if(exact)continue;
+  const reverse=b.flows.filter(x=>x.fromRole===flow.toRole&&x.toRole===flow.fromRole);
+  const direct=b.flows.filter(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole);
+  if(reverse.length)out.push({kind:'flow-direction-reversal',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:reverse.map(x=>x.kind).join(','),consequence:'Направление потока обращено; прямой перенос может развернуть причинное воздействие.',severity01:.92});
+  else if(direct.length)out.push({kind:'flow-kind-mismatch',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:direct.map(x=>x.kind).join(','),consequence:'Поток связывает те же роли, но переносит другой тип воздействия.',severity01:.68});
+  else out.push({kind:'missing-reference-flow',problemFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,referenceFeature:'absent',consequence:'В эталоне отсутствует этот причинный переход; соответствие неполно.',severity01:.52});
+ }
  for(const c of a.constraints){const same=b.constraints.filter(x=>x.onRole===c.onRole);if(!same.some(x=>x.kind===c.kind))out.push({kind:'constraint-kind-mismatch',problemFeature:c.kind+'@'+c.onRole,referenceFeature:same.map(x=>x.kind).join(',')||'no-constraint-on-role',consequence:'Ограничение целевой системы отличается; пороги нельзя переносить напрямую.',severity01:.72});}
- for(const loop of a.feedbackLoops){const same=b.feedbackLoops.filter(x=>x.sourceRole===loop.sourceRole&&x.targetRole===loop.targetRole);if(same.length&&!same.some(x=>x.polarity===loop.polarity))out.push({kind:'feedback-polarity-mismatch',problemFeature:loop.sourceRole+'>'+loop.targetRole+':'+loop.polarity,referenceFeature:same.map(x=>x.polarity).join(','),consequence:'Обратная связь может усилить ошибку вместо её подавления.',severity01:.9});}
+ for(const loop of a.feedbackLoops){
+  const same=b.feedbackLoops.filter(x=>x.sourceRole===loop.sourceRole&&x.targetRole===loop.targetRole);
+  if(same.length&&!same.some(x=>x.polarity===loop.polarity))out.push({kind:'feedback-polarity-mismatch',problemFeature:loop.sourceRole+'>'+loop.targetRole+':'+loop.polarity,referenceFeature:same.map(x=>x.polarity).join(','),consequence:'Обратная связь может усилить ошибку вместо её подавления.',severity01:.94});
+  else if(!same.length)out.push({kind:'missing-feedback-path',problemFeature:loop.sourceRole+'>'+loop.targetRole,referenceFeature:'absent',consequence:'Контур обратной связи не подтверждён в эталоне; динамику нельзя считать эквивалентной.',severity01:.66});
+ }
+ const referenceResources=new Set(b.resources.map(x=>x.kind));
+ for(const resource of a.resources)if(!referenceResources.has(resource.kind))out.push({kind:'resource-kind-mismatch',problemFeature:resource.kind,referenceFeature:[...referenceResources].join(',')||'none',consequence:'Ресурсные ограничения различаются; бюджет и стоимость переноса требуют самостоятельной оценки.',severity01:.56});
  for(const regime of a.dynamics.regimes)if(b.dynamics.regimes.length&&!b.dynamics.regimes.includes(regime))out.push({kind:'dynamic-regime-mismatch',problemFeature:regime,referenceFeature:b.dynamics.regimes.join(','),consequence:'Требуется отдельная проверка устойчивости целевого динамического режима.',severity01:.65});
  if(a.dynamics.timescale!=='mixed'&&b.dynamics.timescale!=='mixed'&&a.dynamics.timescale!==b.dynamics.timescale)out.push({kind:'timescale-mismatch',problemFeature:a.dynamics.timescale,referenceFeature:b.dynamics.timescale,consequence:'Разница временных масштабов может сделать обратную связь нестабильной.',severity01:.5});
  return out.slice(0,16);
@@ -109,13 +123,14 @@ export class MechanismSerendipityEngine {
    const similarity=total?weighted/total:0;if(categories<3||similarity<min){rejectedN++;continue;}
    const links=correspond(a,b),aspects=new Set(links.map(x=>x.aspect)),breaks=findBreakpoints(a,b);
    if(links.length<3||!aspects.has('flow')||aspects.size<3){rejectedN++;continue;}
-   const transfer=clamp(similarity-breaks.reduce((sum,x)=>sum+x.severity01*.035,0));
+   const transferPenalty=breaks.reduce((sum,x)=>sum+x.severity01*(x.kind.includes('direction')?.20:x.kind.includes('feedback')?.16:x.kind.includes('constraint')?.12:.07),0);
+   const transfer=clamp(similarity*(1-Math.min(.75,transferPenalty)));
    const confidence=clamp(similarity*coverage*(.9+Math.min(.1,links.length/100)));
    const metric=a.constraints[0]?.kind||a.flows[0]?.kind||'system-outcome';
    const hypothesis='Unverified cross-domain mechanism hypothesis only: принцип «'+b.title+'» из области «'+b.domain+'» может помочь в задаче «'+a.title+'» ('+a.domain+'), поскольку совпадают структурные слои '+[...aspects].join(', ')+'. Причинная эквивалентность не доказана.';
    const verificationPlan='Сравнить baseline и одну изолированную модификацию на независимых holdout-наборах; измерить '+metric+', побочные эффекты, безопасность и стоимость; сохранить rollback.';
    const falsifier='Отвергнуть перенос, если holdout-повторы не превосходят baseline по '+metric+' или нарушаются ограничения безопасности/ресурсов.';
-   found.push({id:'mechanism-'+hash(a.id+'|'+b.id+'|'+similarity.toFixed(4)),problemId:a.id,referenceMechanismId:b.id,problemTitle:a.title,referenceTitle:b.title,sourceDomain:b.domain,targetDomain:a.domain,similarity01:Number(similarity.toFixed(4)),confidence01:Number(confidence.toFixed(4)),transferability01:Number(transfer.toFixed(4)),novelty01:.65,coverage01:Number(coverage.toFixed(4)),correspondences:links,breakpoints:breaks,hypothesis,verificationPlan,falsifier,status:'candidate',epistemicStatus:'hypothesis'});
+   found.push({id:'mechanism-'+hash(a.id+'|'+b.id+'|'+similarity.toFixed(4)),problemId:a.id,referenceMechanismId:b.id,problemTitle:a.title,referenceTitle:b.title,sourceDomain:b.domain,targetDomain:a.domain,similarity01:Number(similarity.toFixed(4)),confidence01:Number(confidence.toFixed(4)),transferability01:Number(transfer.toFixed(4)),novelty01:Number(clamp(.5+.5*(1-similarity)).toFixed(4)),coverage01:Number(coverage.toFixed(4)),correspondences:links,breakpoints:breaks,hypothesis,verificationPlan,falsifier,status:'candidate',epistemicStatus:'hypothesis'});
   }
   found.sort((x,y)=>y.transferability01-x.transferability01||y.confidence01-x.confidence01||x.referenceMechanismId.localeCompare(y.referenceMechanismId));
   const discoveries=found.slice(0,limit);

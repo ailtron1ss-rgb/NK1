@@ -1,3 +1,4 @@
+import type { MechanismSerendipityOptions } from '../research/MechanismSerendipityEngine.ts';
 import { SelfSubsystemRuntime } from './SelfSubsystemRuntime.ts';
 import { GovernanceSubsystemRuntime } from './GovernanceSubsystemRuntime.ts';
 import { MemorySubsystemRuntime } from './MemorySubsystemRuntime.ts';
@@ -181,6 +182,16 @@ export class OrganismSystemFabric {
 
   systemGraph(){
     return { order:this.executionOrder(), dependencyCycles:this.dependencyCycles(), nodes:this.contracts().map(c=>({name:c.name,phase:c.phase,cost01:c.estimatedCost01,cadence:c.cadenceCycles,executionRank:c.executionRank ?? 99})), edges:this.contracts().flatMap(c=>c.dependencies.map(dep=>({from:dep,to:c.name}))), cognitiveArchitecture:buildCognitiveArchitectureSnapshot() };
+  }
+
+  /** Build a live read-only problem graph from all seven owned subsystem snapshots and dependency edges. */
+  discoverMechanisms(options:MechanismSerendipityOptions={}){
+    const snapshot=this.snapshot();
+    return this.research.mechanismSerendipity.analyze({
+      graph:this.systemGraph(),
+      health:this.health(),
+      systems:snapshot.systems,
+    },options);
   }
 
   /** Full brain-like system map for the UI; read-only over canonical owners. */

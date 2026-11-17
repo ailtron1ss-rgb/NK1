@@ -27,6 +27,15 @@ assert.equal(best.status,'candidate');
 assert.equal(best.epistemicStatus,'hypothesis');
 assert.ok(best.verificationPlan.includes('holdout'));
 assert.ok(best.falsifier.includes('Отвергнуть'));
+
+const reversed=structuredClone(problem);
+reversed.flows[0]={...reversed.flows[0],fromRole:'queue',toRole:'producer'};
+const reversedResult=engine.analyze(reversed);
+assert.ok(reversedResult.discoveries[0]?.breakpoints.some(x=>x.kind==='flow-direction-reversal'),
+  'reversed causal flow must be surfaced as a transfer breakpoint');
+assert.ok(reversedResult.discoveries[0]?.transferability01<best.transferability01,
+  'a direction-reversed mechanism must receive lower transferability');
+
 const renamed=structuredClone(problem);renamed.title='violet comet / silent orchard';
 renamed.actors.forEach((x,i)=>{x.label='opaque-token-'+i;});
 const again=engine.analyze(renamed);
