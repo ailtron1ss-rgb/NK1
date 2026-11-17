@@ -175,9 +175,8 @@ export class IntentCompiler {
   /** Approval is an explicit user attestation and may only narrow the declared allow-list. */
   approve(contract: IntentContract, approval: IntentApproval): IntentContract {
     if (!isIntentContract(contract)) throw new TypeError('invalid intent contract');
-    if (contract.missingInformation.length > 0) throw new Error('intent contract is incomplete');
+    if (contract.missingInformation.length > 0) throw new Error('intent contract is incomplete: ' + contract.missingInformation.join(', '));
     if (approval?.userConfirmed !== true) throw new Error('explicit user confirmation is required');
-    if (contract.missingInformation.length) throw new Error('intent contract is incomplete: ' + contract.missingInformation.join(', '));
     if (!Number.isSafeInteger(approval.at) || approval.at < 0) throw new TypeError('approval timestamp is invalid');
     const evidenceRef = cleanText(approval.evidenceRef, 180);
     if (!evidenceRef) throw new TypeError('approval evidence reference is required');
