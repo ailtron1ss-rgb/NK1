@@ -22,6 +22,7 @@ neuralCore.step({
 const neural = neuralCore.diagnostics();
 assert.equal(neural.version, 14);
 assert.equal(neural.cycles, 1);
+assert.equal(neural.tick, 1, 'B365 diagnostics must expose the exact causal tick for freshness gating');
 for (const value of [
   neural.predictionError01, neural.plasticity01, neural.neuromodulation01,
   neural.sparseActivity01, neural.recurrentCoherence01, neural.neuralConfidence01,
@@ -42,7 +43,7 @@ const profile = new CognitiveToNeuralBridge().project({
   action: 'verify',
   mode: 'deep',
   neural: {
-    tick: neural.cycles,
+    tick: neural.tick,
     predictionError01: neural.predictionError01,
     plasticity01: neural.plasticity01,
     neuromodulation01: neural.neuromodulation01,
