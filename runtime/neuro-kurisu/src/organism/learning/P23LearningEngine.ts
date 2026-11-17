@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { CorrectionRuleMemory, emptyCorrectionRuleMemorySnapshot, type CorrectionReviewVerifier, type CorrectionRuleAssessment, type CorrectionRuleMemorySnapshot, type ReviewedCorrectionObservation } from './CorrectionRuleMemory.ts';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
+import { p23PolicyContextKeyFromNeeds, type P23PolicyContextNeeds } from './P23PolicyContext.ts';
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
 import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
 import { selectCausalReplayBatch } from './CausalReplaySampler.ts';
@@ -120,6 +121,24 @@ export interface PolicySkillRecord {
   updatedAt:number;
   validationWindowStartTick:number;
   validationWindowEndTick:number;
+  /** Public provenance only; this is not an executable capability or promotion authority. */
+  synapticCommonsProvenance?: SynapticCommonsPolicyProvenance;
+}
+
+export interface SynapticCommonsPolicyProvenance {
+  schemaVersion: 1;
+  artifactFingerprint: string;
+  publisherKeyId: string;
+  attestorId: string;
+  licenseReviewFingerprint: string;
+  sourceInstanceId: string;
+  sourceSkillId: string;
+  sourceSkillVersion: string;
+  localProposalId: string;
+  localManifestFingerprint: string;
+  localOutcomeFingerprint: string;
+  localDatasetFingerprint: string;
+  importedAt: number;
 }
 
 export interface AblationRecord {
@@ -284,6 +303,31 @@ function parseShadowRecord(value:unknown):ShadowEvaluationRecord|null{
     actualSuccess:x.actualSuccess,baselineWasBetterPrediction:x.baselineWasBetterPrediction,
     baselineReason:x.baselineReason,at:x.at};
 }
+function isValidSynapticCommonsPolicyProvenance(value: unknown): value is SynapticCommonsPolicyProvenance {
+  if (!isPlainRecord(value)) return false;
+  const keys = [
+    'schemaVersion','artifactFingerprint','publisherKeyId','attestorId','licenseReviewFingerprint',
+    'sourceInstanceId','sourceSkillId','sourceSkillVersion','localProposalId','localManifestFingerprint',
+    'localOutcomeFingerprint','localDatasetFingerprint','importedAt',
+  ];
+  const own = Reflect.ownKeys(value);
+  if (own.length !== keys.length || own.some(key => typeof key !== 'string' || !keys.includes(key))) return false;
+  const x = value;
+  return x.schemaVersion === 1 &&
+    /^[a-f0-9]{64}$/.test(String(x.artifactFingerprint)) &&
+    /^[a-f0-9]{64}$/.test(String(x.licenseReviewFingerprint)) &&
+    /^[a-f0-9]{64}$/.test(String(x.localProposalId)) &&
+    /^[a-f0-9]{64}$/.test(String(x.localManifestFingerprint)) &&
+    /^[a-f0-9]{64}$/.test(String(x.localOutcomeFingerprint)) &&
+    /^[a-f0-9]{64}$/.test(String(x.localDatasetFingerprint)) &&
+    isPersistedText(x.publisherKeyId, 96) &&
+    isPersistedText(x.attestorId, 96) &&
+    isPersistedText(x.sourceInstanceId, 128) &&
+    isPersistedText(x.sourceSkillId, 128) &&
+    isPersistedText(x.sourceSkillVersion, 64) &&
+    isPersistedCounter(x.importedAt);
+}
+
 function parsePolicySkill(value:unknown):PolicySkillRecord|null{
   if(!isPlainRecord(value))return null;
   const x=value;
@@ -292,11 +336,13 @@ function parsePolicySkill(value:unknown):PolicySkillRecord|null{
      x.trainUses+x.validationUses>x.totalUses||!isPersistedUnit(x.trainSuccess01)||!isPersistedUnit(x.validationSuccess01)||
      !isPersistedUnit(x.confidence01)||!['candidate','promoted','rejected'].includes(String(x.status))||
      !isPersistedCounter(x.createdAt)||!isPersistedCounter(x.updatedAt)||!isPersistedCounter(x.validationWindowStartTick)||
-     !isPersistedCounter(x.validationWindowEndTick)||x.validationWindowEndTick<x.validationWindowStartTick)return null;
+     !isPersistedCounter(x.validationWindowEndTick)||x.validationWindowEndTick<x.validationWindowStartTick||
+     (x.synapticCommonsProvenance!==undefined&&!isValidSynapticCommonsPolicyProvenance(x.synapticCommonsProvenance)))return null;
   return {id:x.id,contextKey:x.contextKey,action:x.action,totalUses:x.totalUses,trainUses:x.trainUses,
     validationUses:x.validationUses,trainSuccess01:x.trainSuccess01,validationSuccess01:x.validationSuccess01,
     confidence01:x.confidence01,status:x.status as PolicySkillRecord['status'],createdAt:x.createdAt,updatedAt:x.updatedAt,
-    validationWindowStartTick:x.validationWindowStartTick,validationWindowEndTick:x.validationWindowEndTick};
+    validationWindowStartTick:x.validationWindowStartTick,validationWindowEndTick:x.validationWindowEndTick,
+    ...(x.synapticCommonsProvenance?{synapticCommonsProvenance:snapshotPlainData(x.synapticCommonsProvenance) as SynapticCommonsPolicyProvenance}:{})};
 }
 function parseAblation(value:unknown):AblationRecord|null{
   if(!isPlainRecord(value))return null;
@@ -378,8 +424,7 @@ export const defaultP23Learning = ():P23LearningState => ({
 });
 
 function contextKey(state:Pick<OrganismState,'needs'>):string {
-  const n=state.needs;
-  return `e${bucket(n.energy)}|c${bucket(n.cognitiveLoad)}|u${bucket(n.uncertainty)}|n${bucket(n.novelty)}|g${bucket(n.goalPressure)}|s${bucket(n.socialNeed)}`;
+  return p23PolicyContextKeyFromNeeds(state.needs);
 }
 
 /** Conservative nearest-context matching: transfer is allowed only when at least five of six normalized context buckets match. */
