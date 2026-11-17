@@ -49,10 +49,19 @@ export type ScienceRoleIdentityResolver = (
   scienceRecordId: string,
 ) => string | undefined;
 
+export interface ScienceArtifactBytesVerificationContext {
+  scienceRecordId: string;
+  purpose: 'evidence' | 'audit';
+  /** Present for the final audit report so the host can enforce authorship policy. */
+  actorRole?: ScienceRole;
+  actorId?: string;
+  actorSubject?: string;
+}
+
 /** Host artifact-store adapter; must verify bytes and compute their SHA-256. */
 export type ScienceArtifactBytesVerifier = (
   artifact: ScienceArtifact,
-  context: { scienceRecordId: string; purpose: 'evidence' | 'audit' },
+  context: ScienceArtifactBytesVerificationContext,
 ) => boolean;
 
 /** Snapshot of the canonical runtime capture; Science Republic never runs a second generator. */
@@ -591,10 +600,19 @@ export class ScienceRepublic {
     artifact: ScienceArtifact,
     scienceRecordId: string,
     purpose: 'evidence' | 'audit',
+    actor?: { role: ScienceRole; actorId: string; actorSubject?: string },
   ): boolean {
     if (!this.verifyArtifactBytes) return false;
     try {
-      return this.verifyArtifactBytes(artifact, { scienceRecordId, purpose }) === true;
+      return this.verifyArtifactBytes(artifact, {
+        scienceRecordId,
+        purpose,
+        ...(actor ? {
+          actorRole: actor.role,
+          actorId: actor.actorId,
+          ...(actor.actorSubject ? { actorSubject: actor.actorSubject } : {}),
+        } : {}),
+      }) === true;
     } catch {
       return false;
     }
@@ -1005,7 +1023,11 @@ export class ScienceRepublic {
     const auditArtifact: ScienceArtifact = { reference: auditRef, sha256: auditSha256 };
     const artifactBytesVerified = required.every(item =>
       this.verifyBytes(item, record.id, 'evidence')) &&
-      this.verifyBytes(auditArtifact, record.id, 'audit');
+      this.verifyBytes(auditArtifact, record.id, 'audit', {
+        role: 'auditor',
+        actorId: record.actors.auditor,
+        actorSubject: record.trust.roleSubjects?.auditor,
+      });
     const result = invention.stage === 'accepted' && blockers.length === 0
       ? artifactBytesVerified ? 'byte-verified' : 'reference-complete'
       : 'blocked';
@@ -1096,7 +1118,11 @@ export class ScienceRepublic {
         sha256: record.audit.auditSha256,
       };
       if (!required.every(item => this.verifyBytes(item, record.id, 'evidence')) ||
-          !this.verifyBytes(auditArtifact, record.id, 'audit')) return false;
+          !this.verifyBytes(auditArtifact, record.id, 'audit', {
+            role: 'auditor',
+            actorId: record.actors.auditor,
+            actorSubject: record.trust.roleSubjects?.auditor,
+          })) return false;
     }
 
     if (invention.stage === 'accepted' && record.audit.result === 'reference-complete') {

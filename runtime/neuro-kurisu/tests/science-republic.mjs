@@ -43,8 +43,11 @@ const resolveScienceRoleIdentity = (_role, actorId) =>
   revokeTheoristIdentity && actorId === actors.theorist
     ? 'revoked-principal:' + actorId
     : 'principal:' + actorId;
-const verifyScienceArtifactBytes = artifact =>
-  artifactBytes.get(artifact.reference) === artifact.sha256;
+const auditByteChecks = [];
+const verifyScienceArtifactBytes = (artifact, context) => {
+  if (context.purpose === 'audit') auditByteChecks.push(context);
+  return artifactBytes.get(artifact.reference) === artifact.sha256;
+};
 const rememberArtifactBytes = artifact =>
   artifactBytes.set(artifact.reference, artifact.sha256);
 const rememberSignedEvidence = artifact => {
@@ -425,6 +428,10 @@ assert.equal(audited.stage, 'audit-complete');
 assert.equal(audited.audit.result, 'byte-verified');
 assert.equal(audited.audit.artifactBytesVerified, true);
 assert.equal(audited.audit.signedEvidenceCount, 26);
+assert.equal(auditByteChecks[0].actorRole, 'auditor');
+assert.equal(auditByteChecks[0].actorId, actors.auditor);
+assert.equal(auditByteChecks[0].actorSubject, 'principal:' + actors.auditor,
+  'host artifact verification receives the canonical Auditor principal');
 assert.equal(audited.trust.roleIdentity, 'host-attested');
 assert.equal(audited.trust.signedEvidence, 'canonical-invention-loop-verified');
 assert.equal(audited.trust.artifactBytesVerified, true);
