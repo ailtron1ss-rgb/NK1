@@ -504,7 +504,7 @@ export class ActionGateway {
   }
 
   private approvalFingerprint(toolId:string,input:Record<string,unknown>,options:ActionGatewayExecutionOptions,operation:ActionToolApprovalOperation):string {
-    return sha256Stable({toolId,input,operation,decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),expectedPreconditionHash:options.expectedPreconditionHash??null});
+    return sha256Stable({toolId,input,operation,decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),...(options.expectedPreconditionHash?{expectedPreconditionHash:options.expectedPreconditionHash}:{})});
   }
 
   async requestToolApproval(toolId:string,input:Record<string,unknown>={},reason='user-request',options:ActionGatewayExecutionOptions={},operation:ActionToolApprovalOperation='execute') {
@@ -759,7 +759,7 @@ export class ActionGateway {
       return this.result(id,'unknown','invalid-idempotency-key','idempotency-conflict',`exec-${randomUUID()}`,{error:'invalid-idempotency-key'},'idempotency key must be 1..160 printable characters');
     }
     let requestHash:string;
-    try { requestHash=sha256Stable({toolId:id,input,expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),expectedPreconditionHash:options.expectedPreconditionHash??null}); }
+    try { requestHash=sha256Stable({toolId:id,input,expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),...(options.expectedPreconditionHash?{expectedPreconditionHash:options.expectedPreconditionHash}:{})}); }
     catch { return this.result(id,'unknown','idempotency-input-not-serializable','idempotency-conflict',`exec-${randomUUID()}`,{error:'idempotency-input-not-serializable'},'idempotent requests require a stable JSON-compatible input'); }
     const keyHash=sha256Stable({idempotencyKey:key});
     // A keyed side effect without a durable receipt store is not idempotent. Refuse it before tool lookup/execution.
@@ -791,12 +791,13 @@ export class ActionGateway {
     const registeredTool=this.tools.get(id);
     const inputValidation=validateToolInputContract(input,registeredTool?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
     if(!inputValidation.valid) return this.result(id,registeredTool?.capability??'unknown','reconciliation-input-invalid','gate-check-failed',`exec-${randomUUID()}`,{error:'reconciliation-input-invalid',issues:inputValidation.issues},'receipt reconciliation requires the original bounded JSON request before provider lookup');
+    if(options.expectedPreconditionHash!==undefined && (!isSha256(options.expectedPreconditionHash) || !registeredTool?.supportsAtomicUndoPrecondition)) return this.result(id,registeredTool?.capability??'unknown','undo-plan-invalid','undo-plan-invalid',`exec-${randomUUID()}`,{error:'undo-precondition-not-supported'},'provider receipt reconciliation requires the same supported atomic precondition contract');
     const rawKey=options?.idempotencyKey;
     if(rawKey===undefined||rawKey===null||rawKey==='') return this.result(id,'unknown','reconciliation-idempotency-key-required','idempotency-recovery-required',`exec-${randomUUID()}`,{error:'reconciliation-idempotency-key-required'},'receipt reconciliation requires the original idempotency key');
     const key=String(rawKey).trim();
     if(!key||key.length>160||/[\u0000-\u001f\u007f]/.test(key)) return this.result(id,'unknown','invalid-idempotency-key','idempotency-conflict',`exec-${randomUUID()}`,{error:'invalid-idempotency-key'},'idempotency key must be 1..160 printable characters');
     let requestHash:string;
-    try { requestHash=sha256Stable({toolId:id,input,expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),expectedPreconditionHash:options.expectedPreconditionHash??null}); }
+    try { requestHash=sha256Stable({toolId:id,input,expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),...(options.expectedPreconditionHash?{expectedPreconditionHash:options.expectedPreconditionHash}:{})}); }
     catch { return this.result(id,'unknown','idempotency-input-not-serializable','idempotency-conflict',`exec-${randomUUID()}`,{error:'idempotency-input-not-serializable'},'receipt reconciliation requires the same stable JSON-compatible request'); }
     const keyHash=sha256Stable({idempotencyKey:key});
     if(!this.executionLedgerPersister) return this.result(id,'unknown','idempotency-storage-unavailable','idempotency-storage-failed',`exec-${randomUUID()}`,{error:'idempotency-storage-unavailable'},'receipt reconciliation requires the durable execution ledger');

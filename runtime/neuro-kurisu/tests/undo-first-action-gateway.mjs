@@ -85,7 +85,7 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
           events.push('prepare');
           assert.match(context.executionId, /^exec-/);
           assert.match(context.idempotencyKey, /^[a-f0-9]{64}$/);
-          return {
+          const plan = {
             version: 1,
             strategy: 'compensate',
             summary: 'restore relay-01 to its exact captured pre-action state',
@@ -260,4 +260,32 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
   assert.equal(state.hash, OTHER);
 }
 
-console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=7');
+// The canonical request fingerprint for legacy keyed operations must remain byte-for-byte
+// compatible when no atomic precondition is supplied.
+{
+  const { sha256Stable } = await import('../src/organism/core/StableSerialization.ts');
+  const gateway = new ActionGateway();
+  const input = { target: 'legacy-read' };
+  const toolId = 'test.undo.legacy-read';
+  const key = 'legacy-receipt-no-precondition';
+  let persisted;
+  gateway.setExecutionLedgerPersister(async snapshot => { persisted = structuredClone(snapshot); });
+  gateway.registerTool({
+    id: toolId,
+    capability: 'state.read',
+    destructive: false,
+    execute: async () => ({ value: 'stable' }),
+  });
+  const result = await gateway.executeTool(toolId, input, 'legacy-format', { idempotencyKey: key });
+  assert.equal(result.outcomeClass, 'executed-unverified');
+  const expectedOldHash = sha256Stable({
+    toolId,
+    input,
+    expectedOutputKeys: null,
+    decisionId: null,
+    autonomous: false,
+  });
+  assert.equal(persisted.records[0].requestHash, expectedOldHash, 'legacy receipt fingerprints stay stable when no expected precondition is used');
+}
+
+console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=8');
