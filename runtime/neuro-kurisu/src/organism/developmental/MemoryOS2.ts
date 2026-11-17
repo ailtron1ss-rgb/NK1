@@ -1796,14 +1796,19 @@ export class MemoryOS2{
    m.context=mergeMemoContext(m.context,patch);
    this.spatialIndex.upsert(m.id,m.context);
    const nextBitemporal=this.bitemporalIntervalFor(m);
-   if(!this.sameBitemporalState(previousBitemporal,nextBitemporal)){
-    const recordedAt=Math.max(Date.now(),Number(m.recordedFromAt??m.createdAt)+1);
+   const changed=!this.sameBitemporalState(previousBitemporal,nextBitemporal);
+   let recordedAt:number|undefined;
+   if(changed){
+    recordedAt=Math.max(Date.now(),Number(m.recordedFromAt??m.createdAt)+1);
     this.beginBitemporalRevision(m,recordedAt,previousBitemporal,false);
-    this.recordRevision(m,{at:recordedAt,from:m.epistemicStatus,to:m.epistemicStatus,reason:'context-update'});
     this.state.reconsolidations++;
    }
    this.reindexMetadataForItem(m);
+   // Reconcile the full snapshot first; recordRevision then accounts only for
+   // its own bounded audit-entry delta. Reversing these operations counted that
+   // delta twice and could trigger premature byte-budget eviction.
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
+   if(recordedAt!==undefined)this.recordRevision(m,{at:recordedAt,from:m.epistemicStatus,to:m.epistemicStatus,reason:'context-update'});
    return structuredClone(m.context??{});
  }
  /** Merge one independently attributed evidence source through the canonical MemoryOS2 owner. */
@@ -1911,6 +1916,16 @@ export class MemoryOS2{
    return {budget,usedBytes:this.state.estimatedBytes,utilization01:clamp(this.state.estimatedBytes/Math.max(1,budget)),evicted:removed};
   }
   budgetDiagnostics(){return {byteBudget:this.state.byteBudget,estimatedBytes:this.state.estimatedBytes,utilization01:clamp(this.state.estimatedBytes/Math.max(1,this.state.byteBudget)),budgetEvictions:this.state.budgetEvictions,budgetMisses:this.state.budgetMisses,meanEvictionRegret01:this.state.meanEvictionRegret01,witnesses:this.state.evictionWitnesses.length};}
+  memoryAccountingDiagnostics(){
+   const recomputedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
+   const estimatedBytes=this.state.estimatedBytes;
+   return {
+    items:this.state.items.length,estimatedBytes,recomputedBytes,
+    driftBytes:estimatedBytes-recomputedBytes,
+    exact:estimatedBytes===recomputedBytes,
+    driftRatio01:recomputedBytes?clamp(Math.abs(estimatedBytes-recomputedBytes)/recomputedBytes):0,
+   };
+  }
 
  maintain(options:{pressure01?:number;maxItems?:number}={}){
    const now=Date.now();
