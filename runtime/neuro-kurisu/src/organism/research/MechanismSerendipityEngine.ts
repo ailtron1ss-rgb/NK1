@@ -104,11 +104,22 @@ function findBreakpoints(a:MechanismDescription,b:MechanismDescription):Mechanis
  // important as missing target mechanics when deciding whether a transfer is safe.
  for(const flow of b.flows){
   const exact=a.flows.some(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole&&x.kind===flow.kind);
-  const sameOrReverseEndpoints=a.flows.some(x=>
-   (x.fromRole===flow.fromRole&&x.toRole===flow.toRole)||
-   (x.fromRole===flow.toRole&&x.toRole===flow.fromRole)
-  );
-  if(!exact&&!sameOrReverseEndpoints)out.push({
+  if(exact)continue;
+  const reversed=a.flows.filter(x=>x.fromRole===flow.toRole&&x.toRole===flow.fromRole);
+  const sameEndpoints=a.flows.filter(x=>x.fromRole===flow.fromRole&&x.toRole===flow.toRole);
+  if(reversed.length)out.push({
+   kind:'reference-flow-direction-reversal',problemFeature:'absent',
+   referenceFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
+   consequence:'Эталон содержит дополнительный поток в направлении, обратном целевой схеме; перенос может инвертировать причинное воздействие.',
+   severity01:.92,
+  });
+  else if(sameEndpoints.length)out.push({
+   kind:'reference-only-flow-kind',problemFeature:'absent',
+   referenceFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
+   consequence:'Эталон использует дополнительный тип воздействия на том же переходе; семантика переноса не подтверждена.',
+   severity01:.68,
+  });
+  else out.push({
    kind:'reference-only-flow',problemFeature:'absent',
    referenceFeature:flow.fromRole+'>'+flow.toRole+':'+flow.kind,
    consequence:'Исходный механизм содержит дополнительный переход, которого нет в целевой схеме; его нельзя переносить без отдельного обоснования.',
