@@ -10,6 +10,8 @@ import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.t
 const tempRoot = await mkdtemp(join(tmpdir(), 'nk1-undo-first-files-'));
 const statePath = join(tempRoot, 'organism-core.json');
 const store = new FileStateStore(statePath, { backupEverySaves: 20 });
+// Simulate an older or manually created workspace with permissive mode bits.
+await mkdir(store.siblingPath('workspace'), { recursive: true, mode: 0o755 });
 const core = new OrganismCore(store, { cycleResultMode: 'operational', checkpointMinIntervalMs: 0 });
 
 function undoArtifactIdFromReference(undoResult) {
@@ -69,6 +71,7 @@ try {
   assert.equal(result.outcomeClass, 'executed-verified');
 
   const workspace = store.siblingPath('workspace');
+  assert.equal((await stat(workspace)).mode & 0o777, 0o700, 'the pre-existing workspace is tightened to owner-only before file creation');
   const writtenPath = join(workspace, 'undo-first-integration.txt');
   assert.equal(await readFile(writtenPath, 'utf8'), input.content);
   const expectedContentHash = createHash('sha256').update(input.content, 'utf8').digest('hex');
