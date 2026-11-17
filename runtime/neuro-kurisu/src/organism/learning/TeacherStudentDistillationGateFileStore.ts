@@ -109,7 +109,11 @@ implements TeacherStudentDistillationGateReservationStore {
     if (!isDigest(candidateFingerprint)) {
       throw new Error('teacher-distillation-gate-candidate-fingerprint-invalid');
     }
-    await mkdir(path.dirname(this.filePath), { recursive: true, mode: 0o700 });
+    const directory = path.dirname(this.filePath);
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    if (await realpath(directory) !== directory) {
+      throw new Error('teacher-distillation-gate-store-path-invalid');
+    }
     let lockHandle: Awaited<ReturnType<typeof open>> | undefined;
     try {
       try {
@@ -160,7 +164,7 @@ implements TeacherStudentDistillationGateReservationStore {
   }
 
   private async readState(): Promise<TeacherStudentDistillationGateState> {
-    let before;
+    let before: Awaited<ReturnType<typeof lstat>>;
     try {
       before = await lstat(this.filePath);
     } catch (error) {
