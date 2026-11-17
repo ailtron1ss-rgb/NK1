@@ -423,6 +423,15 @@ assert.equal(restoreWithoutIdentityAuthority.scienceRepublic.metrics().total, 0)
 assert.equal(restoreWithoutIdentityAuthority.scienceRepublic.metrics().quarantinedRecords, 1,
   'a snapshot declaring host-attested role identities must be reauthenticated by the host on restore');
 
+const restoreWithoutByteVerifier = new EvidenceResearchSubsystemRuntime(
+  resolveKey,
+  resolveScienceRoleIdentity,
+);
+restoreWithoutByteVerifier.restore(snapshot);
+assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().total, 0);
+assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().quarantinedRecords, 1,
+  'a byte-verified audit must be rechecked against the host artifact store on restore');
+
 // Recompute the unkeyed local event chain after forging the projection's audit
 // manifest. Restore must still reject it because the canonical signed Invention
 // record does not match the forged reference/hash list.
