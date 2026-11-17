@@ -72,6 +72,45 @@ function safeInteger(value: unknown, minimum: number, maximum: number): value is
   return Number.isSafeInteger(value) && Number(value) >= minimum && Number(value) <= maximum;
 }
 
+const SENSITIVE_ENV_KEY = /(?:^|_)(?:API_KEY|ACCESS_KEY|SECRET_KEY|SERVICE_ACCOUNT_KEY|PRIVATE_KEY|ACCESS_TOKEN|REFRESH_TOKEN|ID_TOKEN|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?|AUTHORIZATION|COOKIE|SESSION_KEY)(?:_|$)/i;
+
+/**
+ * Keep credentials out of durable child-process receipts. Only values attached
+ * to explicitly sensitive environment-variable names are treated as secrets;
+ * ordinary configuration values remain observable for debugging.
+ */
+function collectSensitiveEnvironmentSecrets(env: NodeJS.ProcessEnv): string[] {
+  const secrets = new Set<string>();
+  for (const [key, value] of Object.entries(env)) {
+    if (SENSITIVE_ENV_KEY.test(key) && typeof value === 'string' && value.length >= 4) {
+      secrets.add(value);
+    }
+  }
+  return [...secrets].sort((left, right) => right.length - left.length);
+}
+
+/**
+ * Redact both complete secrets and a secret prefix cut off by the raw-output
+ * byte limit. Byte counters continue to describe the original child output.
+ */
+function redactSensitiveOutput(output: string, secrets: readonly string[]): string {
+  let result = output;
+  for (const secret of secrets) {
+    result = result.split(secret).join('[REDACTED]');
+    const maxPrefix = Math.min(secret.length - 1, 256, result.length);
+    for (let length = maxPrefix; length >= 4; length -= 1) {
+      const prefix = secret.slice(0, length);
+      if (result.endsWith(prefix)) {
+        result = result.slice(0, -length) + '[REDACTED]';
+        break;
+      }
+    }
+  }
+  result = result.replace(/\\b(Bearer)\\s+[A-Za-z0-9._~+/-]{8,}={0,2}/gi, '$1 [REDACTED]');
+  result = result.replace(/(\\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret|client[_-]?secret|authorization)\\s*[:=]\\s*)("[^"]*"|'[^']*'|[^\\s,;]+)/gi, '$1[REDACTED]');
+  return result;
+}
+
 /**
  * Executes one scheduled learner attempt as a real child process, without a
  * shell. Every attempt gets a fresh scratch directory; the caller explicitly
@@ -166,6 +205,7 @@ export async function runLearningProcess(
     NK1_LEARNING_RUN_DIR: runDirectory,
     NK1_LEARNING_SURVIVE_DIR: surviveDirectory,
   });
+  const redactionSecrets = collectSensitiveEnvironmentSecrets(env);
   if (trustedShadowRun !== undefined) {
     if (!nonEmpty(trustedShadowRun.runtimeVersion) || typeof trustedShadowRun.register !== 'function') {
       throw new Error('invalid trusted shadow run registrar');
@@ -288,8 +328,8 @@ export async function runLearningProcess(
     status: terminalStatus,
     exitCode,
     signal,
-    stdout: stdout.toString('utf8') + (spawnFailure ? `\nSPAWN_ERROR: ${spawnFailure}` : ''),
-    stderr: stderr.toString('utf8'),
+    stdout: redactSensitiveOutput(stdout.toString('utf8'), redactionSecrets) + (spawnFailure ? `\nSPAWN_ERROR: ${spawnFailure}` : ''),
+    stderr: redactSensitiveOutput(stderr.toString('utf8'), redactionSecrets),
     stdoutBytes,
     stderrBytes,
     outputTruncated,
@@ -299,6 +339,7 @@ export async function runLearningProcess(
       'A process receipt records execution, not task correctness or independent verification.',
       'The caller must keep a separate survive directory per experimental arm and control reset timing.',
       'The child process is not OS/container sandboxed by this module; use an external sandbox for untrusted learners.',
+      'Sensitive environment values are redacted from persisted stdout/stderr; byte counters describe raw output.',
       'A child can access paths permitted by the host OS; the survive directory is not tamper-proof.',
     ],
   };
