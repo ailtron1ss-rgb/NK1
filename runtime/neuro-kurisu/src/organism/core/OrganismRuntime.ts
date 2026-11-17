@@ -640,7 +640,7 @@ export class OrganismRuntime {
     const selectedGoal = cycle.goals.find(goal => goal.id === selected?.goalId);
     const needs = cycle.state.needs;
     const neuralInput:CognitiveNeuralBridgeNeuralInput = {
-      tick:neuralSnapshot.cycles,
+      tick:neuralSnapshot.tick,
       predictionError01:neuralSnapshot.predictionError01,
       plasticity01:neuralSnapshot.plasticity01,
       neuromodulation01:neuralSnapshot.neuromodulation01,
