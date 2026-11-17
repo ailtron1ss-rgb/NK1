@@ -359,8 +359,8 @@ export class CognitiveImmuneSystem {
     this.state.health=next;
     const activeSignals=signals.filter(s=>s.status==='open'||s.status==='acknowledged');
     const healthStatus:CognitiveHealthStatus=activeSignals.some(s=>s.severity==='critical')?'critical'
-      :coverage01<.5?'unknown'
-      :activeSignals.length||score01<.65?'degraded':'healthy';
+      :activeSignals.length||score01<.65&&coverage01>=.5?'degraded'
+      :coverage01<.5?'unknown':'healthy';
     const result:CognitiveHealthInspectionResult={
       tick,score01,coverage01,healthStatus,
       metrics:structuredClone(metrics),activeSignals:structuredClone(activeSignals),

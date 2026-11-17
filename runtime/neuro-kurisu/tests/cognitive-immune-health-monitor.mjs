@@ -318,11 +318,16 @@ const contradictionOnly = {
   },epistemic:{claimsData:[]},skills:{skills:[]}
 };
 let contradictionOnlyResult;
-for(let tick=1;tick<=4;tick++)contradictionOnlyResult=criticalLowCoverage.inspectHealth({
+for(let tick=1;tick<=2;tick++)contradictionOnlyResult=criticalLowCoverage.inspectHealth({
   ...contradictionOnly,tick
 });
 assert.equal(contradictionOnlyResult?.coverage01,.22,
   'only the contradiction dimension should contribute its configured weight');
+assert.equal(contradictionOnlyResult?.healthStatus,'degraded',
+  'an active review signal must be visible even with sparse aggregate coverage');
+for(let tick=3;tick<=4;tick++)contradictionOnlyResult=criticalLowCoverage.inspectHealth({
+  ...contradictionOnly,tick
+});
 assert.equal(contradictionOnlyResult?.healthStatus,'critical',
   'a critical signal must dominate incomplete aggregate coverage');
 
