@@ -699,10 +699,13 @@ export class NeuroPlasticAdapterRegistry {
     }
     if (!input || input.schemaVersion !== 1 || !Array.isArray(input.adapters)) return;
     const restored: NeuroPlasticAdapterRecord[] = [];
+    const restoredAdapterIds = new Set<string>();
     for (const item of input.adapters.slice(-MAX_ADAPTERS)) {
       try {
         const row = item as Record<string, unknown>;
         const manifest = normalizeManifest(row.manifest);
+        if (restoredAdapterIds.has(manifest.adapterId)) continue;
+        restoredAdapterIds.add(manifest.adapterId);
         const evaluation = row.evaluation as NeuroPlasticEvaluationReport | null;
         const persistedReceipt: NeuroPlasticEvaluationReceipt | null = evaluation ? {
           evaluationId: evaluation.evaluationId,
