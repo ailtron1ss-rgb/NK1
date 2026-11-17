@@ -62,11 +62,12 @@ state, and an available adapter executor. Near-equal profiles in the same confli
 as ambiguous and route to the base model. The router does not stack adapters.
 
 Two consecutive executor failures apply an escalating bounded cooldown. Six
-consecutive failures quarantine the profile until an operator submits a newly
-verified activation manifest. A successful adapter call resets the consecutive-
-failure counter. An adapter exception or malformed adapter response is recorded
-and the unchanged base invoker is called. An aborted request is not retried after
-cancellation.
+consecutive failures quarantine the profile. Quarantine cannot be cleared by
+replaying the same holdout report: an operator must submit a newly signed report
+with a new report digest and pass the validation gates again. A successful adapter
+call resets the consecutive-failure counter. An adapter exception or malformed
+adapter response is recorded and the unchanged base invoker is called. An aborted
+request is not retried after cancellation.
 
 The real-runtime integration suite covers base fallback, signed activation,
 specialized execution, wrong-base and wrong-weight attestation rejection,
