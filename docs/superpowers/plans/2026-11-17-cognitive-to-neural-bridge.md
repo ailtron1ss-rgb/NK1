@@ -29,6 +29,7 @@ Expected focused command:
 - Apply the same helper before both cognitive-proposal and regular/autonomous `LanguageInvoker` calls.
 - Publish telemetry that explicitly marks adapter selection, activation steering and residual execution as not applied.
 - Reuse the existing per-cycle B365 diagnostics snapshot (no second neural run), apply the bridge to both cognitive-proposal and response/autonomous call paths, expose runtime counters, and verify the real LanguageInvoker boundary for enabled/bypassed modes.
+- Publish an authenticated read-only HTTP diagnostics endpoint; test authorization, 43-channel visibility, snapshot provenance, successful llama.cpp kwargs hand-off and explicit unverified template consumption.
 
 ## Task 4 — exact-head verification and handover
 
