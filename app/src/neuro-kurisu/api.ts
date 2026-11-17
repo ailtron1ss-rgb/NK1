@@ -21,6 +21,52 @@ type ApprovalChallenge = {
 
 type ApiFailure = Error & { status?: number; data?: unknown };
 
+export type DyadicCollaborationKind = "goal" | "task" | "agreement" | "question" | "success-criteria" | "decision";
+export type DyadicTaskProgress = "not-started" | "in-progress" | "blocked" | "completed";
+export type DyadicCollaborationItem = {
+  id: string;
+  kind: DyadicCollaborationKind;
+  title: string;
+  detail: string;
+  author: "human" | "system";
+  status: "proposed" | "accepted" | "rejected";
+  progress: DyadicTaskProgress | null;
+  createdAtTick: number;
+  updatedAtTick: number;
+  updatedBy: "human" | "system";
+};
+export type DyadicCollaborationSummary = {
+  total: number;
+  accepted: number;
+  proposals: number;
+  rejected: number;
+  tasksInProgress: number;
+  tasksBlocked: number;
+  tasksCompleted: number;
+};
+export type DyadicCollaborationSnapshot = {
+  ok: boolean;
+  version: number;
+  summary: DyadicCollaborationSummary;
+  items: DyadicCollaborationItem[];
+  readOnly: true;
+  note: string;
+};
+export type DyadicCollaborationMutation =
+  | { action: "record"; kind: DyadicCollaborationKind; title: string; detail?: string; confirmed: true }
+  | { action: "confirm" | "reject"; itemId: string; confirmed: true }
+  | { action: "progress"; itemId: string; progress: DyadicTaskProgress; confirmed: true }
+  | { action: "correct"; itemId: string; title?: string; detail?: string; confirmed: true };
+export type DyadicCollaborationMutationResponse = {
+  ok: boolean;
+  action: DyadicCollaborationMutation["action"];
+  replayed?: boolean;
+  item: DyadicCollaborationItem;
+  summary: DyadicCollaborationSummary;
+  note: string;
+};
+
+
 async function sendRequest(path: string, init?: RequestInit): Promise<{ response: Response; data: unknown }> {
   const response = await fetch(neuroApiUrl(path), {
     ...init,
@@ -178,6 +224,12 @@ function memoryInspectorSearch(options: MemoryInspectorOptions = {}): string {
 
 export const neuroApi = {
   uiSnapshot: () => request<BackendUiSnapshot>("/api/organism/ui-snapshot"),
+  dyadicCollaboration: () => request<DyadicCollaborationSnapshot>("/api/organism/dyadic-collaboration"),
+  dyadicCollaborationMutation: (payload: DyadicCollaborationMutation, idempotencyKey?: string) => request<DyadicCollaborationMutationResponse>("/api/organism/dyadic-collaboration", {
+    method: "POST",
+    ...(idempotencyKey ? { headers: { "idempotency-key": idempotencyKey } } : {}),
+    body: JSON.stringify(payload),
+  }),
   statusLite: () => request<{ ok: boolean; version: string; tick: number; lastAction: string; autonomyScore: number; predictionError: number; identityContinuity01: number; memoryCount: number; body: Record<string, number | boolean>; language: { calls: number; backend: string; degraded: boolean; lastFailure?: string }; voice: { state?: { speaking: boolean; listening: boolean } } }>("/api/organism/status-lite"),
   sensorium: () => request<Record<string, unknown>>("/api/organism/sensorium/status"),
   chat: (message: string, deliberate = true, speak = false, approvalId?: string) => request<ChatBackendResponse>("/api/organism/chat", {

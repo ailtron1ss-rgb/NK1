@@ -12,6 +12,7 @@ import { HexisControlConsole } from "@/components/HexisControlConsole";
 import { RuntimeAtlas } from "@/components/RuntimeAtlas";
 import { LettaGovernanceConsole } from "@/components/LettaGovernanceConsole";
 import { ConscioControlConsole } from "@/components/ConscioControlConsole";
+import { DyadicCollaborationPanel } from "@/components/DyadicCollaborationPanel";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -68,6 +69,8 @@ function Home() {
       </div>
 
       <div className="mx-auto mt-4 max-w-7xl">
+        <DyadicCollaborationPanel />
+        <div className="mt-4" />
         <Labs snap={snap} />
         <div className="mt-4"><ResearchDock /></div>
         <div className="mt-4"><IntegrationConsole /></div>
