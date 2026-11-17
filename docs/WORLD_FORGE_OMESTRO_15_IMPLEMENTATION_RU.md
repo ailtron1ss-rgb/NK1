@@ -17,8 +17,8 @@ World Forge создаёт воспроизводимые синтетическ
 - Ключи оценивания переведены на ECMAScript private fields (#answers/#sessions); обычное JS-свойство answers больше не открывает answer key.
 - Trace и identity читаются через own data descriptors. Getter-ы не выполняются; proxy, accessor, class instance, sparse array, неизвестные поля и некорректные числа учитываются как нарушение и не проходят оценку.
 - Ограничения шага/ресурса/риска берутся из evaluator-owned записи, а не из изменяемого публичного scenario object.
-- FutureSimulator больше не публикует сам объект WorldForge; наружу отданы ограниченные методы генерации train/validation, старта и шага симуляции, оценки и закрытия.
-- Runtime facade не генерирует holdout. Закрытый holdout остаётся задачей отдельного evaluator-owned harness; синтетический holdout в одном процессе не является криптографически секретным от владельца кода/seed.
+- FutureSimulator больше не публикует сам объект WorldForge; наружу отданы ограниченные методы генерации train/validation, старта и шага симуляции, оценки канонической сессии и закрытия. Runtime API не принимает произвольный caller-supplied trace. Результат строится по trace, который записывает внутренняя сессия после каждого шага.
+- Runtime facade не генерирует holdout и не открывает объект evaluator. Прямой WorldForge остаётся внутренней доверенной точкой для offline harness; полноценная изоляция holdout в отдельном процессе/секретном evaluator пока не реализована. Синтетический holdout в одном процессе не является криптографически секретным от владельца кода/seed.
 
 ## Реализованный контур
 - Три сценарных домена: resource allocation, route planning, investigation.
@@ -38,8 +38,8 @@ World Forge создаёт воспроизводимые синтетическ
 5. Для доказательства переноса необходимы внешние тесты, независимый holdout и сравнение с одинаковым baseline.
 
 ## Интеграционный контракт
-WorldForge.generate() выдаёт задания для исследовательского/оценочного контура. WorldForge.evaluate() оценивает trace, но не вызывает ActionGateway, не исполняет внешние действия, не меняет FutureSimulator state и не пишет в MemoryOS2. Связь с Shared Future scenario space — через scenario ID/метаданные, без дублирования ledger и canonical goals.
+WorldForge.generate() выдаёт задания для исследовательского/оценочного контура. WorldForge.step() меняет только внутреннее состояние синтетической сессии. FutureSimulator.evaluateWorldForgeSession() оценивает только evaluator-owned trace активной сессии; runtime facade не принимает произвольные трассы. Ни один из этих методов не вызывает ActionGateway, не исполняет внешние действия, не меняет FutureSimulator forecast state и не пишет в MemoryOS2. Связь с Shared Future scenario space — через scenario ID/метаданные, без дублирования ledger и canonical goals.
 
 ## Verification
-Дополнительные тесты: world-forge-evaluator-isolation.mjs, world-forge-dynamic-transitions.mjs, world-forge-ttl-bounds.mjs и расширенный world-forge-future-simulator-integration.mjs. Workflow выполняет их вместе с первоначальными проверками и npm run typecheck.
-Локальный запуск в этой среде не выполнялся: исходный репозиторий доступен через GitHub connector без локального checkout. Workflow запускает два focused Node regression test на PR. Пока Actions не завершится, тесты не обозначаются как PASS.
+Дополнительные тесты: world-forge-evaluator-isolation.mjs, world-forge-dynamic-transitions.mjs, world-forge-ttl-bounds.mjs и расширенный world-forge-future-simulator-integration.mjs. Workflow выполняет их вместе с двумя первоначальными проверками и npm run typecheck.
+Локальный запуск в этой среде не выполнялся: исходный репозиторий доступен через GitHub connector без локального checkout. Статус тестов определяется только завершённым GitHub Actions на точном HEAD PR.
