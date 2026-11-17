@@ -390,6 +390,9 @@ import { B304SemanticHoldoutLedger, defaultB304SemanticHoldoutState, type B304Se
 import { B305CriticalPathVerificationLedger, defaultB305CriticalPathState } from '../system/B305CriticalPathVerificationLedger.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 import type { ExternalProjectResearchResult } from '../system/ExternalProjectResearchTool.ts';
+import { IntentExecutionRuntime, type IntentApprovalScope, type IntentApprovalEvidence } from '../system/IntentExecutionRuntime.ts';
+import type { IntentContract, IntentContractInput, IntentExtractionProvider } from '../cognition/IntentCompiler.ts';
+import type { IntentBoundAction, IntentBridgeResult, IntentBridgeReconciliationResult } from '../system/IntentActionGatewayBridge.ts';
 const now = () => Date.now();
 export interface OrganismConfig {
     enableHomeostasis?: boolean;
@@ -475,6 +478,9 @@ export interface OrganismConfig {
     predictivePlanningMode?: 'on' | 'off' | 'sham';
     /** Brick 5: number of imagined steps used by the predictive planner. B363 raises the default to 5. */
     predictivePlanningHorizon?: 3 | 5;
+    /** Stable HMAC key from the host secret store; required to restore intent approvals across process restarts. */
+    intentApprovalKey?: string | Uint8Array;
+    intentExtractionTimeoutMs?: number;
 }
 export interface OrganismFacets {
     memory: import('./types.ts').MemoryFacet;
@@ -532,6 +538,8 @@ export interface OrganismSystemState {
     projectResearchSession?: import('../system/ProjectResearchSession.ts').ResearchSessionState;
     /** Bounded idempotency receipts for caller-keyed tool side effects; pending rows fail closed after recovery. */
     actionExecutionLedger?: import('../system/ActionGateway.ts').ActionExecutionLedgerSnapshot;
+    /** Host-attested intent contracts and bounded execution lineage. */
+    intentContracts?: import('../system/IntentExecutionRuntime.ts').IntentExecutionRuntimeSnapshot;
     outcomeVerification?: {
         version: 1;
         records: Array<{
@@ -930,6 +938,7 @@ function defaultPersisted(): PersistedOrganism {
         system: {
             release: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: ORGANISM_STATE_SCHEMA,
             actionExecutionLedger: {version:1,records:[]},
+            intentContracts: {version:1,records:[],executions:[]},
             capabilities: { version: 1, features: [], refreshedAt: 0 },
             realityGrounding: undefined,
             neuralCausalTrace: undefined,
@@ -1174,6 +1183,8 @@ export class OrganismCore {
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
     /** Owns general cognitive/runtime services; Core remains the orchestration spine. */
     private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272 });
+    /** Core-owned intent gate: compilation, host approval, dispatch and recovery share ActionGateway authority. */
+    private intentExecutionRuntime!: IntentExecutionRuntime;
     /** Owns mutable persistence/continuity machinery; Core supplies orchestration decisions. */
     private readonly persistence = new PersistenceRuntime();
     /** Selected WILL contracts are owned by the composition fabric; Core only orchestrates them. */
@@ -1311,6 +1322,8 @@ export class OrganismCore {
             performanceProfile: (config.performanceProfile ?? (process.env.NEURO_RUNTIME_PROFILE as any) ?? 'balanced') as 'quality' | 'balanced' | 'mobile',
             predictivePlanningMode: config.predictivePlanningMode ?? 'on',
             predictivePlanningHorizon: config.predictivePlanningHorizon ?? 5,
+            intentApprovalKey: config.intentApprovalKey ?? process.env.NEURO_INTENT_APPROVAL_KEY,
+            intentExtractionTimeoutMs: Number(config.intentExtractionTimeoutMs ?? process.env.NEURO_INTENT_EXTRACTION_TIMEOUT_MS ?? 10_000),
             enableTemporalResolutionGovernor: (config.performanceProfile ?? (process.env.NEURO_RUNTIME_PROFILE as any) ?? 'balanced') === 'mobile',
             operationalPulseEvery: (config.performanceProfile ?? (process.env.NEURO_RUNTIME_PROFILE as any) ?? 'balanced') === 'mobile' ? 8 : (config.performanceProfile ?? (process.env.NEURO_RUNTIME_PROFILE as any) ?? 'balanced') === 'balanced' ? 2 : 1,
             spineOnly: String(process.env.KURISU_SPINE_ONLY ?? '').trim() === '1',
@@ -1340,6 +1353,11 @@ export class OrganismCore {
             enableB2523MultiHorizonCounterfactualVerifier: config.enableB2523MultiHorizonCounterfactualVerifier ?? true,
             ...config,
         } as Required<OrganismConfig>;
+        const intentKey = this.config.intentApprovalKey;
+        this.intentExecutionRuntime = new IntentExecutionRuntime(this.cognitiveRuntime.actionGateway, {
+            ...(typeof intentKey === 'string' || intentKey instanceof Uint8Array ? { approvalKey: intentKey } : {}),
+            extractionTimeoutMs: this.config.intentExtractionTimeoutMs,
+        });
         this.cognitiveSubsystemFacadeB297 = new CognitiveSubsystemFacade(this as any);
         this.persistence.configure(this.config.checkpointMinIntervalMs, this.config.checkpointMaxDirtyCycles);
         this.cognitiveRuntime.actionGateway.registerTool({ id: 'organism.inspect', capability: 'core.read', destructive: false, projectAllowed: true, execute: async () => ({ ok: true, verified: true, tick: this.persisted.state.tick, lastAction: this.persisted.state.lastAction, energy: this.persisted.state.needs.energy }) });
@@ -1447,6 +1465,7 @@ export class OrganismCore {
         this.persisted.system.subjectIdentity = ensureSubjectIdentity(this.persisted.system);
         await this.actionExecutionLedgerArchive?.load();
         this.cognitiveRuntime.actionGateway.restoreExecutionLedger(this.persisted.system.actionExecutionLedger);
+        this.intentExecutionRuntime.restore(this.persisted.system.intentContracts);
         this.willIntegration.restore(this.persisted.system.willIntegration);
         this.organismSystems.conscioAdaptation.restore(this.persisted.system.conscioAdaptation);
         this.persisted.facets.memory.semanticGraph = { ...defaultMemoryFacet().semanticGraph, ...(this.persisted.facets.memory.semanticGraph ?? {}) };
@@ -12289,6 +12308,69 @@ export class OrganismCore {
         // Legacy camera tool IDs are aliases only; ActionGateway owns the one physical executor.
         const canonicalId = this.canonicalActionToolId(id);
         return this.cognitiveRuntime.actionGateway.reconcileToolExecution(canonicalId, input, reason, options);
+    }
+    /** Compile a structured proposal into a Core-issued, initially unapproved intent contract. */
+    compileIntent(input: IntentContractInput): IntentContract {
+        return this.intentExecutionRuntime.compile(input);
+    }
+    /** Compile using a bounded semantic extractor; timeout/provider failure remains fail-closed. */
+    compileIntentWith(input: IntentContractInput, provider: IntentExtractionProvider): Promise<IntentContract> {
+        return this.intentExecutionRuntime.compileWith(input, provider);
+    }
+    private canonicalIntentApprovalScope(scope: IntentApprovalScope): IntentApprovalScope {
+        return {
+            ...scope,
+            allowedActions: Array.isArray(scope?.allowedActions)
+                ? scope.allowedActions.map(action => this.canonicalActionToolId(action))
+                : scope?.allowedActions as unknown as string[],
+        };
+    }
+    /** Create a one-shot owner approval ticket in the canonical ActionGateway approval centre. */
+    async requestIntentApproval(contract: IntentContract, scope: IntentApprovalScope, reason = 'intent-user-confirmation') {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        return this.intentExecutionRuntime.requestApproval(contract, this.canonicalIntentApprovalScope(scope), reason);
+    }
+    /** Resolve the host approval ticket; this never dispatches the requested tool. */
+    async resolveIntentApprovalRequest(requestId: string, approved: boolean, actor = 'owner') {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        return this.intentExecutionRuntime.resolveApprovalRequest(requestId, approved, actor);
+    }
+    /** Consume the exact approved ticket, attest and durably checkpoint this intent contract. */
+    async approveIntent(contract: IntentContract, evidence: IntentApprovalEvidence): Promise<IntentContract> {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        const approved = await this.intentExecutionRuntime.approve(contract, {
+            ...evidence,
+            allowedActions: Array.isArray(evidence?.allowedActions)
+                ? evidence.allowedActions.map(action => this.canonicalActionToolId(action))
+                : evidence?.allowedActions,
+        });
+        this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+        await this.checkpoint(true);
+        return approved;
+    }
+    rejectIntent(contract: IntentContract): IntentContract {
+        return this.intentExecutionRuntime.reject(contract);
+    }
+    getIntentContract(contractId: string): IntentContract | null {
+        return this.intentExecutionRuntime.getContract(contractId);
+    }
+    /** New side effects must pass the intent gate and then the canonical Core/ActionGateway wrapper. */
+    async executeIntent(contract: IntentContract, action: IntentBoundAction): Promise<IntentBridgeResult> {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        const normalizedAction = { ...action, toolId: this.canonicalActionToolId(action.toolId) };
+        const result = await this.intentExecutionRuntime.execute(contract, normalizedAction, this);
+        this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+        await this.checkpoint(true);
+        return result;
+    }
+    /** Read-only provider receipt recovery; never creates or repeats the original side effect. */
+    async reconcileIntentExecution(contract: IntentContract, action: IntentBoundAction): Promise<IntentBridgeReconciliationResult> {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        const normalizedAction = { ...action, toolId: this.canonicalActionToolId(action.toolId) };
+        const result = await this.intentExecutionRuntime.reconcile(contract, normalizedAction, this);
+        this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+        await this.checkpoint(true);
+        return result;
     }
     async executeTool(id: string, input: Record<string, unknown> = {}, reason = 'tool-request', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, finalizationContextKeys?: string[]) {
         const canonicalId = this.canonicalActionToolId(id);
