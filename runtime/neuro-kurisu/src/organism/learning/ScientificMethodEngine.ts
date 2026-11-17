@@ -1,13 +1,40 @@
 import { randomUUID } from 'node:crypto';
 export interface ScientificHypothesis{id:string;text:string;confidence:number;status:'open'|'supported'|'rejected';evidenceIds:string[];}
-export interface ScientificProject{ id:string; question:string; hypotheses:ScientificHypothesis[]; predictions:string[]; experiments:string[]; evidence:string[]; contradictions:string[]; beliefRevisions:string[]; uncertainty:number; status:'open'|'testing'|'concluded'; provenance:string[]; createdAt:number; updatedAt:number; }
+export interface ScientificVerificationContract { protocol:'paired-holdout-v1'; minPairedSeeds:5; baselineRequired:true; independentHoldoutRequired:true; maxVariantsPerRun:1; rollbackRequired:true; autoApply:false; }\nexport interface ScientificProject{ id:string; question:string; hypotheses:ScientificHypothesis[]; predictions:string[]; experiments:string[]; evidence:string[]; contradictions:string[]; beliefRevisions:string[]; uncertainty:number; status:'open'|'testing'|'concluded'; provenance:string[]; verificationContract?:ScientificVerificationContract; createdAt:number; updatedAt:number; }
 export interface ScientificMethodState{projects:ScientificProject[];completed:number;revisionCount:number;}
 export const defaultScientificMethod=():ScientificMethodState=>({projects:[],completed:0,revisionCount:0});
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const normalizeVerificationContract=(value:unknown):ScientificVerificationContract|undefined=>{
+ if(!value||typeof value!=='object')return undefined;
+ const v=value as Record<string,unknown>;
+ if(v.protocol!=='paired-holdout-v1'||v.minPairedSeeds!==5||v.baselineRequired!==true||
+    v.independentHoldoutRequired!==true||v.maxVariantsPerRun!==1||v.rollbackRequired!==true||v.autoApply!==false)return undefined;
+ return{protocol:'paired-holdout-v1',minPairedSeeds:5,baselineRequired:true,independentHoldoutRequired:true,maxVariantsPerRun:1,rollbackRequired:true,autoApply:false};
+};
 export class ScientificMethodEngine{
  private state=defaultScientificMethod();
- restore(s:ScientificMethodState|undefined){this.state={...defaultScientificMethod(),...(s??{}),projects:Array.isArray(s?.projects)?s!.projects.slice(0,64):[]};}
- create(question:string,hypothesis:string,prediction:string,provenance:string[]):ScientificProject{const p:ScientificProject={id:randomUUID(),question:question.slice(0,240),hypotheses:[{id:randomUUID(),text:hypothesis.slice(0,240),confidence:.5,status:'open',evidenceIds:[]}],predictions:[prediction.slice(0,240)],experiments:[],evidence:[],contradictions:[],beliefRevisions:[],uncertainty:.7,status:'open',provenance:provenance.slice(0,16),createdAt:Date.now(),updatedAt:Date.now()};this.state.projects=[p,...this.state.projects].slice(0,64);return structuredClone(p);}
+ restore(s:ScientificMethodState|undefined){
+  const projects=Array.isArray(s?.projects)?structuredClone(s!.projects.slice(0,64)).map(project=>{
+   const verificationContract=normalizeVerificationContract(project.verificationContract);
+   const restored={...project};
+   if(verificationContract)restored.verificationContract=verificationContract;else delete restored.verificationContract;
+   return restored;
+  }):[];
+  this.state={...defaultScientificMethod(),...(s??{}),projects};
+ }
+ create(question:string,hypothesis:string,prediction:string,provenance:string[],verificationContract?:ScientificVerificationContract):ScientificProject{
+  const safeContract=normalizeVerificationContract(verificationContract);
+  const p:ScientificProject={
+   id:randomUUID(),question:question.slice(0,240),
+   hypotheses:[{id:randomUUID(),text:hypothesis.slice(0,240),confidence:.5,status:'open',evidenceIds:[]}],
+   predictions:[prediction.slice(0,240)],experiments:[],evidence:[],contradictions:[],beliefRevisions:[],
+   uncertainty:.7,status:'open',provenance:provenance.slice(0,16),
+   ...(safeContract?{verificationContract:safeContract}:{}),
+   createdAt:Date.now(),updatedAt:Date.now(),
+  };
+  this.state.projects=[p,...this.state.projects].slice(0,64);
+  return structuredClone(p);
+ }
  observe(projectId:string,input:{experiment?:string;evidence?:string;success?:number;contradiction?:string;conclusion?:string;verified?:boolean}){
   const p=this.state.projects.find(x=>x.id===projectId);
   if(!p||p.status==='concluded'||input.verified!==true)return;
