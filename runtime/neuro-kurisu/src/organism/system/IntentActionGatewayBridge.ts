@@ -25,8 +25,8 @@ export type IntentBridgeResult =
   | { executed: true; contractId: string; result: ToolExecution }
   | { executed: false; contractId: string | null; reason: string };
 export type IntentBridgeReconciliationResult =
-  | { reconciled: true; contractId: string; result: ToolExecution }
-  | { reconciled: false; contractId: string | null; reason: string };
+  | { attempted: true; contractId: string; result: ToolExecution }
+  | { attempted: false; contractId: string | null; reason: string };
 
 /**
  * Mandatory intent boundary for callers that want to dispatch a tool through
@@ -79,16 +79,16 @@ export class IntentActionGatewayBridge {
   ): Promise<IntentBridgeReconciliationResult> {
     const gate = this.compiler.gate(contract, action?.toolId, 'reconcile');
     if (!gate.allowed) {
-      return { reconciled: false, contractId: null, reason: gate.reason };
+      return { attempted: false, contractId: null, reason: gate.reason };
     }
     if (!action || !action.input || typeof action.input !== 'object' || Array.isArray(action.input)) {
-      return { reconciled: false, contractId: gate.contractId, reason: 'invalid-action-input' };
+      return { attempted: false, contractId: gate.contractId, reason: 'invalid-action-input' };
     }
     if (typeof action.reason !== 'string' || !action.reason.trim()) {
-      return { reconciled: false, contractId: gate.contractId, reason: 'execution-reason-required' };
+      return { attempted: false, contractId: gate.contractId, reason: 'execution-reason-required' };
     }
     if (!gateway || typeof gateway.reconcileToolExecution !== 'function') {
-      return { reconciled: false, contractId: gate.contractId, reason: 'action-gateway-reconciliation-unavailable' };
+      return { attempted: false, contractId: gate.contractId, reason: 'action-gateway-reconciliation-unavailable' };
     }
     const result = await gateway.reconcileToolExecution(
       gate.action,
@@ -96,6 +96,6 @@ export class IntentActionGatewayBridge {
       action.reason,
       action.options,
     );
-    return { reconciled: true, contractId: gate.contractId, result };
+    return { attempted: true, contractId: gate.contractId, result };
   }
 }
