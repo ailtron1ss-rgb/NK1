@@ -68,7 +68,7 @@ export function compileOmeStroIntent(input: OmeStroIntentInput): OmeStroIntentCo
   const requiresHumanApproval = input?.requiresHumanApproval !== false || irreversibleActions.length > 0;
   return {
     schemaVersion: 1,
-    id: 'intent-' + text(input?.sourceRef, 120).replace(/[^a-zA-Z0-9._:-]/g, '-') || 'intent-unbound',
+    id: 'intent-' + (text(input?.sourceRef, 120).replace(/[^a-zA-Z0-9._:-]/g, '-') || 'unbound'),
     goal,
     context: text(input?.context, MAX_TEXT),
     outputs,
@@ -171,9 +171,17 @@ export class ChronoTruthLedger {
     const normalizedKey = text(key, 160);
     if (!normalizedKey || !finiteTime(validAt) || !finiteTime(knownAt)) return null;
     const known = this.state.records.filter(record => record.key === normalizedKey && record.recordedAt <= knownAt);
-    const superseded = new Set(known.filter(record => record.supersedesId).map(record => record.supersedesId!));
+    const supersedingEvents = new Map<string, ChronoTruthRecord[]>();
+    for (const event of known) {
+      if (!event.supersedesId) continue;
+      const events = supersedingEvents.get(event.supersedesId) ?? [];
+      events.push(event);
+      supersedingEvents.set(event.supersedesId, events);
+    }
     const eligible = known.filter(record =>
-      record.kind !== 'retract' && record.value !== null && !superseded.has(record.id) &&
+      record.kind !== 'retract' && record.value !== null &&
+      !(supersedingEvents.get(record.id) ?? []).some(event =>
+        event.validFrom <= validAt && (event.validTo === null || validAt < event.validTo)) &&
       record.validFrom <= validAt && (record.validTo === null || validAt < record.validTo) &&
       (record.expiresAt === null || knownAt < record.expiresAt));
     eligible.sort((a, b) => b.validFrom - a.validFrom || b.recordedAt - a.recordedAt || a.id.localeCompare(b.id));
