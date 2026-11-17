@@ -15,11 +15,13 @@ export interface ParliamentModelIdentity { providerId:string; modelId:string; in
 export class ParliamentModelAttestationRegistry {
   private readonly records=new Map<string,ParliamentModelAttestation>();
   register(attestation:ParliamentModelAttestation):void{
-    if(!attestation||typeof attestation.executionId!=='string'||!attestation.executionId.trim()||
-      typeof attestation.providerId!=='string'||!attestation.providerId.trim()||
-      typeof attestation.modelId!=='string'||!attestation.modelId.trim()||
-      typeof attestation.independenceGroup!=='string'||!attestation.independenceGroup.trim()||
-      !Number.isFinite(attestation.verifiedAt))throw new Error('parliament-model-attestation-invalid');
+    const now=Date.now();
+    if(!attestation||typeof attestation.executionId!=='string'||!attestation.executionId.trim()||attestation.executionId.length>256||
+      typeof attestation.providerId!=='string'||!attestation.providerId.trim()||attestation.providerId.length>160||
+      typeof attestation.modelId!=='string'||!attestation.modelId.trim()||attestation.modelId.length>200||
+      typeof attestation.independenceGroup!=='string'||!attestation.independenceGroup.trim()||attestation.independenceGroup.length>160||
+      !Number.isFinite(attestation.verifiedAt)||attestation.verifiedAt<now-30*60*1000||
+      attestation.verifiedAt>now+5*60*1000)throw new Error('parliament-model-attestation-invalid');
     this.prune();
     if(this.records.has(attestation.executionId))throw new Error('parliament-model-execution-id-reused');
     if(this.records.size>=2048){
@@ -44,8 +46,11 @@ export class OpenAICompatibleLocalParliamentRoleExecutor implements ParliamentRo
   private readonly registry:ParliamentModelAttestationRegistry;
   constructor(provider:ParliamentLocalChatProvider,identity:ParliamentModelIdentity,registry:ParliamentModelAttestationRegistry){
     if(!provider||typeof provider.configured!=='function'||typeof provider.generate!=='function'||
-      !provider.model||!identity||!identity.providerId?.trim()||!identity.modelId?.trim()||
-      !identity.independenceGroup?.trim()||!registry)throw new Error('parliament-local-executor-config-invalid');
+      typeof provider.model!=='string'||!provider.model.trim()||provider.model.length>200||
+      !identity||typeof identity.providerId!=='string'||!identity.providerId.trim()||identity.providerId.length>160||
+      typeof identity.modelId!=='string'||!identity.modelId.trim()||identity.modelId.length>200||
+      typeof identity.independenceGroup!=='string'||!identity.independenceGroup.trim()||identity.independenceGroup.length>160||
+      !registry)throw new Error('parliament-local-executor-config-invalid');
     if(identity.modelId!==provider.model)throw new Error('parliament-local-executor-model-identity-mismatch');
     this.provider=provider;this.identity={...identity};this.registry=registry;
   }
