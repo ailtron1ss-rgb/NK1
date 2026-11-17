@@ -322,6 +322,74 @@ const standaloneTool = await gateway.executeTool('organism.consequences.analyze'
 assert.equal(standaloneTool.ok, true, JSON.stringify(standaloneTool));
 assert.equal(standaloneTool.result.analysis.scenarioId, null, 'a standalone option must not require a Shared Future scenario');
 
+
+const correlatedPaths = simulator.analyzeConsequences({
+  id: 'consequence-analysis-correlated-paths',
+  horizonDays: 30,
+  options: [option('shared-cause', 'evaluate two paths from one common cause', [
+    node('common-trigger', 'neutral', 0.8, 1, 0.9),
+    node('route-a', 'neutral', 1, 1, 0.9),
+    node('route-b', 'neutral', 1, 1, 0.9),
+    node('shared-harm', 'harm', 0.8, 0.9, 0.9),
+  ], [
+    edge('action-common', '__action__', 'common-trigger', { strength01: 1 }),
+    edge('common-route-a', 'common-trigger', 'route-a', { strength01: 1 }),
+    edge('common-route-b', 'common-trigger', 'route-b', { strength01: 1 }),
+    edge('route-a-shared', 'route-a', 'shared-harm', { strength01: 1 }),
+    edge('route-b-shared', 'route-b', 'shared-harm', { strength01: 1 }),
+  ])],
+}).analysis.options[0].nodes.find(row => row.id === 'shared-harm');
+assert.ok(
+  Math.abs(correlatedPaths.propagatedProbability01 - 0.64) < 1e-9,
+  'two paths descended from one root cause must not be double-counted as independent events',
+);
+
+const independentRoots = simulator.analyzeConsequences({
+  id: 'consequence-analysis-independent-roots',
+  horizonDays: 30,
+  options: [option('independent-roots', 'evaluate two declared independent causes', [
+    node('root-a', 'neutral', 0.6, 1, 0.9),
+    node('root-b', 'neutral', 0.6, 1, 0.9),
+    node('shared-outcome', 'harm', 0.8, 0.9, 0.9),
+  ], [
+    edge('action-root-a', '__action__', 'root-a', { strength01: 1, independenceGroup: 'cause-a' }),
+    edge('action-root-b', '__action__', 'root-b', { strength01: 1, independenceGroup: 'cause-b' }),
+    edge('root-a-outcome', 'root-a', 'shared-outcome', { strength01: 1 }),
+    edge('root-b-outcome', 'root-b', 'shared-outcome', { strength01: 1 }),
+  ])],
+}).analysis.options[0].nodes.find(row => row.id === 'shared-outcome');
+assert.ok(
+  Math.abs(independentRoots.propagatedProbability01 - 0.7296) < 1e-9,
+  'only explicitly separate independent root causes may combine with noisy-OR',
+);
+
+const counterfactual = simulator.analyzeConsequences({
+  id: 'consequence-analysis-counterfactual',
+  horizonDays: 30,
+  options: [option('counterfactual-option', 'compare outcomes with a no-action baseline', [
+    node('added-harm', 'harm', 0.8, 0.5, 0.9, { baselineProbability01: 0.2 }),
+    node('avoided-harm', 'harm', 0.3, 0.5, 0.9, { baselineProbability01: 0.7 }),
+    node('gained-benefit', 'benefit', 0.9, 0.6, 0.9, { baselineProbability01: 0.4 }),
+    node('lost-benefit', 'benefit', 0.2, 0.5, 0.9, { baselineProbability01: 0.5 }),
+    node('unknown-baseline', 'harm', 0.4, 0.8, 0.7),
+  ], [
+    edge('action-added-harm', '__action__', 'added-harm', { strength01: 1 }),
+    edge('action-avoided-harm', '__action__', 'avoided-harm', { strength01: 1 }),
+    edge('action-gained-benefit', '__action__', 'gained-benefit', { strength01: 1 }),
+    edge('action-lost-benefit', '__action__', 'lost-benefit', { strength01: 1 }),
+    edge('action-unknown-baseline', '__action__', 'unknown-baseline', { strength01: 1 }),
+  ])],
+}).analysis.options[0];
+assert.equal(counterfactual.counterfactualCoverage01, 0.8);
+assert.equal(counterfactual.attributableHarm01, 0.3);
+assert.equal(counterfactual.avoidedHarm01, 0.1);
+assert.equal(counterfactual.attributableBenefit01, 0.3);
+assert.equal(counterfactual.lostBenefit01, 0.15);
+assert.ok(Math.abs(counterfactual.netAttributableValue01 + 0.05) < 1e-9);
+assert.equal(counterfactual.nodes.find(row => row.id === 'added-harm').attributableEffect01, 0.3);
+assert.equal(counterfactual.nodes.find(row => row.id === 'unknown-baseline').attributableEffect01, null,
+  'missing counterfactual data must remain unknown rather than silently becoming zero');
+
 console.log('CONSEQUENCE_ECOLOGY=PASS', JSON.stringify({
   analysisCount: simulator.consequenceEcology.diagnostics().retainedAnalyses,
   modelTopRankedOptionId: first.analysis.modelTopRankedOptionId,
