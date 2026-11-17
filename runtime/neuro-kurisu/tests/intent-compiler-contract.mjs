@@ -515,8 +515,25 @@ assert.equal(autonomousApproved.approval.authority, 'autonomous-planner',
 assert.equal(autonomousApproved.approval.userConfirmed, undefined,
   'autonomous planner approval must never claim a human confirmed it');
 assert.equal(autonomousRuntime.getContract(autonomousApproved.id)?.id, autonomousApproved.id);
-assert.equal(autonomousRuntime['compiler'].gate(autonomousApproved, 'organism.inspect').allowed, true,
-  'an internally verified, low-risk CEF decision may attest its exact bounded action');
+const autonomousDispatch = await autonomousRuntime.execute(autonomousApproved, {
+  toolId: 'organism.inspect', input: {}, reason: autonomousReceipt.reason,
+  options: { decisionId: autonomousReceipt.decisionId, idempotencyKey: 'autonomous:intent:receipt' },
+}, {
+  async executeTool(id, input, reason, options) {
+    assert.equal(id, 'organism.inspect');
+    assert.equal(reason, autonomousReceipt.reason);
+    assert.equal(options.decisionId, autonomousReceipt.decisionId);
+    return {
+      ok: true, verified: false, executionId: 'exec-autonomous-intent-01', tool: id, capability: 'core.read',
+      result: { tick: 42 },
+      audit: { at: now, executionId: 'exec-autonomous-intent-01', action: 'tool', tool: id, accepted: true, mode: 'dry-run', reason: 'read' },
+      verification: { verified: false, basis: 'none', confidence01: 0, externalObservation: false, notes: 'read-only fixture' },
+      outcomeClass: 'executed-unverified',
+    };
+  },
+});
+assert.equal(autonomousDispatch.executed, true,
+  'an internally verified, low-risk CEF decision may pass the exact bounded action through the gateway');
 
 const untrustedAutonomousRuntime = new IntentExecutionRuntime(new ActionGateway(), {
   clock: () => now,
