@@ -8,6 +8,7 @@ import {
   inheritDevelopmentalGenome,
 } from '../src/organism/system/DevelopmentalGenome.ts';
 import { invariantRuleManifest } from '../src/organism/system/InvariantEngine.ts';
+import { migratePersistedOrganism } from '../src/organism/persistence/StateMigrations.ts';
 import { organismSystemContracts } from '../src/organism/core/OrganismSystemContract.ts';
 
 const expectedModules = ['agency', 'embodiment', 'governance', 'memory', 'research', 'self', 'world'];
@@ -18,6 +19,15 @@ test('InvariantEngine exposes the rule manifest without transferring validation 
   assert.equal(manifest.owner, 'InvariantEngine');
   assert.ok(manifest.rules.length >= 10);
   assert.ok(manifest.rules.every(rule => rule.code && rule.path && ['error', 'warning'].includes(rule.severity)));
+});
+
+test('InvariantEngine rule manifest is complete, unique and bound to the live migration owner', () => {
+  const manifest = invariantRuleManifest();
+  assert.equal(new Set(manifest.rules.map(rule => rule.code)).size, manifest.rules.length);
+  assert.equal(typeof migratePersistedOrganism, 'function');
+  const genome = buildDevelopmentalGenome();
+  assert.equal(genome.runtimeContract.migrationOwner, 'migratePersistedOrganism');
+  assert.equal(genome.runtimeContract.migrationPath, 'runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts');
 });
 
 test('live fabric emits a deterministic genome for exactly its seven canonical systems', () => {
@@ -147,6 +157,17 @@ test('gate rejects altered invariant, release-schema, and migration-owner contra
   assert.equal(report.status, 'BLOCKED');
   assert.ok(report.violations.some(item => item.code === 'invariant-contract-mismatch'));
   assert.ok(report.violations.some(item => item.code === 'runtime-contract-mismatch'));
+});
+
+test('Evolution Gate fails closed on cyclic or throwing candidate objects', () => {
+  const baseline = buildDevelopmentalGenome();
+  const cyclic = structuredClone(baseline);
+  cyclic.untrusted = cyclic;
+  assert.equal(evaluateDevelopmentalGenome(cyclic).status, 'BLOCKED');
+
+  const hostile = structuredClone(baseline);
+  Object.defineProperty(hostile, 'digest', { enumerable: true, get() { throw new Error('hostile digest getter'); } });
+  assert.equal(evaluateDevelopmentalGenome(hostile).status, 'BLOCKED');
 });
 
 test('gate rejects forged digests, broken lineage, duplicate modules, and cyclic dependencies', () => {
