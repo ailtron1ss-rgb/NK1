@@ -96,6 +96,7 @@ test('inheritance rejects unknown or repeated modules and invalid trait values w
 test('gate rejects a re-hashed candidate that changes immutable module ownership or dependency contracts', () => {
   const parent = buildDevelopmentalGenome();
   const candidate = inheritDevelopmentalGenome(parent, [{ module: 'world', cadenceCycles: 2 }]);
+  candidate.modules.find(module => module.name === 'world').contractVersion = 99;
   candidate.modules.find(module => module.name === 'world').purpose = 'forged owner';
   candidate.modules.find(module => module.name === 'world').dependencies.push('agency');
   candidate.digest = computeDevelopmentalGenomeDigest(candidate);
@@ -138,6 +139,13 @@ test('gate rejects forged digests, broken lineage, duplicate modules, and cyclic
   duplicate.modules.push(structuredClone(duplicate.modules[0]));
   duplicate.digest = computeDevelopmentalGenomeDigest(duplicate);
   assert.ok(evaluateDevelopmentalGenome(duplicate).violations.some(item => item.code === 'duplicate-module'));
+
+  const malformed = structuredClone(parent);
+  malformed.modules[0] = null;
+  malformed.digest = computeDevelopmentalGenomeDigest(malformed);
+  const malformedReport = evaluateDevelopmentalGenome(malformed);
+  assert.equal(malformedReport.status, 'BLOCKED');
+  assert.ok(malformedReport.violations.some(item => item.code === 'malformed-module'));
 });
 
 console.log('DEVELOPMENTAL_GENOME_TESTS=DEFINED');
