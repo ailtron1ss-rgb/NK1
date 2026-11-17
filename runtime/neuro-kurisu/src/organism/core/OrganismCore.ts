@@ -390,7 +390,7 @@ import { B304SemanticHoldoutLedger, defaultB304SemanticHoldoutState, type B304Se
 import { B305CriticalPathVerificationLedger, defaultB305CriticalPathState } from '../system/B305CriticalPathVerificationLedger.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 import type { ExternalProjectResearchResult } from '../system/ExternalProjectResearchTool.ts';
-import { IntentExecutionRuntime, type IntentApprovalScope, type IntentApprovalEvidence, type TrustedAutonomousDecisionEvidence } from '../system/IntentExecutionRuntime.ts';
+import { IntentExecutionRuntime, INTENT_APPROVAL_TOOL_ID, type IntentApprovalScope, type IntentApprovalEvidence, type TrustedAutonomousDecisionEvidence } from '../system/IntentExecutionRuntime.ts';
 import type { IntentContract, IntentContractInput, IntentExtractionProvider } from '../cognition/IntentCompiler.ts';
 import type { IntentBoundAction, IntentBridgeResult, IntentBridgeReconciliationResult } from '../system/IntentActionGatewayBridge.ts';
 const now = () => Date.now();
@@ -11729,21 +11729,77 @@ export class OrganismCore {
                         : undefined;
                     const resolvedToolInput={ ...boundInput, ...runtimeInput };
                     const executionReason=`${reason};skill:${skill.id};step:${step.id};attempt:${attempt}`;
+                    const inputHash = sha256Stable({ input: resolvedToolInput, expectedOutputKeys: step.expectedOutputKeys ?? [] });
                     const currentRequiresApproval=Boolean(currentTool.requiresApproval);
                     const stepApprovalId=currentRequiresApproval?pendingApprovalId:undefined;
                     const stepDecisionId = parentDecisionId
                         ? `decision:skill-step:${sha256Stable({ parentDecisionId, skillId: skill.id, stepId: step.id }).slice(0, 48)}`
-                        : undefined;
+                        : `decision:skill-step:${sha256Stable({ skillId: skill.id, stepId: step.id, attempt, toolId: canonicalCandidateTool, inputHash }).slice(0, 48)}`;
                     const executionOptions={
                         ...(stepIdempotencyKey ? { idempotencyKey: stepIdempotencyKey } : {}),
                         expectedOutputKeys: step.expectedOutputKeys ?? [],
-                        ...(stepDecisionId ? { decisionId: stepDecisionId } : {}),
+                        decisionId: stepDecisionId,
                         ...(options.autonomous === true ? { autonomous: true } : {}),
                         ...(stepApprovalId?{approvalId:stepApprovalId}:{})
                     };
                     if(stepApprovalId) pendingApprovalId=undefined; // one approval can authorize only the first matching protected step.
-                    const result = await this.executeTool(
-                        canonicalCandidateTool, resolvedToolInput, executionReason, executionOptions, Object.keys(runtimeInput),
+                    const skillIntentSourceText = executionReason + ' | skill=' + skill.id + ' | step=' + step.id +
+                        ' | attempt=' + attempt + ' | tool=' + canonicalCandidateTool + ' | input=' + inputHash + ' | decision=' + stepDecisionId;
+                    const skillIntentDraft = this.compileIntent({
+                        requestId: 'compound-skill:' + skill.id + ':' + step.id + ':' + attempt + ':' + inputHash,
+                        text: skillIntentSourceText,
+                        extraction: {
+                            goal: executionReason,
+                            context: ['skill:' + skill.id, 'step:' + step.id, 'input:' + inputHash, 'decision:' + stepDecisionId],
+                            expectedOutcome: 'A bounded ActionGateway outcome for reusable skill ' + skill.id + ' step ' + step.id,
+                            constraints: {
+                                must: ['Use only the reusable skill step or a registered repair/fallback candidate', 'Preserve the current step input and idempotency identity'],
+                                mustNot: ['Do not execute destructive skill tools', 'Do not replay an unresolved side effect with a new attempt'],
+                            },
+                            priorities: ['Preserve compound-skill step identity', 'Prefer verified, recoverable execution'],
+                            acceptanceCriteria: ['Return a verified ActionGateway outcome for skill ' + skill.id + ' step ' + step.id + ' via ' + canonicalCandidateTool],
+                            permissions: { allowedActions: [canonicalCandidateTool] },
+                            stopConditions: ['Stop if the skill or step is no longer reusable', 'Stop if the candidate is not in the approved step candidate set', 'Stop on uncertainty, partial execution, or receipt reconciliation'],
+                            assumptions: [],
+                        },
+                    });
+                    const skillIntentEvidence: TrustedAutonomousDecisionEvidence = {
+                        source: 'compound-skill', decisionId: stepDecisionId, tick: this.persisted.state.tick,
+                        plannerToolId: candidateTool, toolId: canonicalCandidateTool,
+                        intentHash: sha256Stable({
+                            version: 1, source: 'compound-skill', skillId: skill.id, stepId: step.id, attempt,
+                            plannerToolId: candidateTool, toolId: canonicalCandidateTool,
+                            parentDecisionId: parentDecisionId ?? null, decisionId: stepDecisionId,
+                            inputHash, tick: this.persisted.state.tick,
+                        }),
+                        reason: executionReason, sourceText: skillIntentSourceText,
+                        skillId: skill.id, stepId: step.id, attempt, parentDecisionId, inputHash,
+                    };
+                    const skillIntentScope: IntentApprovalScope = {
+                        allowedActions: [canonicalCandidateTool], acknowledgedAssumptions: [],
+                        riskAcknowledged: skillIntentDraft.risk.level === 'high' || skillIntentDraft.risk.level === 'critical',
+                    };
+                    const intentDispatch = await this.executeTrustedCoreIntent(
+                        skillIntentDraft, skillIntentEvidence, skillIntentScope,
+                        {
+                            toolId: canonicalCandidateTool, input: resolvedToolInput, reason: executionReason,
+                            options: executionOptions, intentApprovalId: pendingApprovalId,
+                            finalizationContextKeys: Object.keys(runtimeInput),
+                        },
+                    );
+                    if (intentDispatch.approvalRequest) {
+                        await this.checkpoint(true);
+                        return {
+                            ok: false, verified: false, id,
+                            results: [{ stepId: step.id, tool: canonicalCandidateTool, ok: false, verified: false, error: 'intent-approval-required', outcomeClass: 'approval-required' }],
+                            approvalRequired: true, approvalAuthority: 'intent-contract',
+                            intentContractId: skillIntentDraft.id, approvalRequest: intentDispatch.approvalRequest,
+                            blockedAtStep: step.id, skill: structuredClone(skill),
+                        };
+                    }
+                    if (intentDispatch.intentApprovalConsumed) pendingApprovalId = undefined;
+                    const result = intentDispatch.result ?? this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                        canonicalCandidateTool, 'intent-dispatch-returned-no-result', { intentContractId: skillIntentDraft.id },
                     );
                     if(result.outcomeClass==='approval-required') {
                         // Consent is a pause, not a skill failure: never retry through a fallback tool or learn a repair from a blocked side effect.
@@ -12377,7 +12433,72 @@ export class OrganismCore {
 
     private verifyAutonomousPlannerIntent(contract: IntentContract, evidence: TrustedAutonomousDecisionEvidence): boolean {
         try {
-            if (!evidence || evidence.source !== 'autonomous-resource-tool-life' ||
+            if (!evidence || !Number.isSafeInteger(evidence.tick) || evidence.tick !== this.persisted.state.tick ||
+                typeof evidence.decisionId !== 'string' || !evidence.decisionId ||
+                typeof evidence.intentHash !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.intentHash)) return false;
+
+            if (evidence.source === 'project-executor') {
+                const active = this.agencySubsystem.projectExecutor.activeStepOperation();
+                const project = this.agencySubsystem.selfProjects.activeProject();
+                if (!active || !project || !['prepared', 'waiting-approval'].includes(active.stage) ||
+                    active.projectId !== project.id || active.projectId !== evidence.projectId ||
+                    active.stepId !== evidence.stepId || active.toolId !== evidence.plannerToolId ||
+                    active.requestFingerprint !== evidence.requestFingerprint || active.operationKey !== evidence.operationKey ||
+                    active.sequence !== evidence.sequence || active.decisionId !== evidence.decisionId ||
+                    this.canonicalActionToolId(evidence.plannerToolId) !== evidence.toolId ||
+                    !/^[a-f0-9]{64}$/i.test(evidence.requestFingerprint ?? '')) return false;
+                const expectedHash = sha256Stable({
+                    version: 1, source: evidence.source, projectId: evidence.projectId, stepId: evidence.stepId,
+                    requestFingerprint: evidence.requestFingerprint, operationKey: evidence.operationKey,
+                    sequence: evidence.sequence, decisionId: evidence.decisionId, tick: evidence.tick, toolId: evidence.toolId,
+                });
+                const expectedSourceText = evidence.reason + ' | project=' + evidence.projectId + ' | step=' + evidence.stepId +
+                    ' | tool=' + evidence.toolId + ' | operation=' + evidence.operationKey +
+                    ' | request=' + evidence.requestFingerprint + ' | decision=' + evidence.decisionId;
+                const listed = this.cognitiveRuntime.actionGateway.listTools().find(tool => tool.id === evidence.toolId);
+                return expectedHash === evidence.intentHash && evidence.sourceText === expectedSourceText &&
+                    contract.sourceText === expectedSourceText && contract.goal.text === evidence.reason &&
+                    contract.sourceTextTruncated === false && contract.missingInformation.length === 0 &&
+                    contract.permissions.allowedActions.length === 1 && contract.permissions.allowedActions[0] === evidence.toolId &&
+                    contract.permissions.deniedActions.length === 0 && contract.assumptions.length === 0 &&
+                    (contract.risk.level === 'low' || contract.risk.level === 'medium') &&
+                    Boolean(listed?.projectAllowed) && !listed?.destructive;
+            }
+
+            if (evidence.source === 'compound-skill') {
+                const skill = this.cognitiveRuntime.skillLibrary.snapshot().compoundSkills
+                    .find(row => row.id === evidence.skillId && row.status === 'reusable');
+                const step = skill?.steps.find(row => row.id === evidence.stepId);
+                if (!skill || !step || !Number.isSafeInteger(evidence.attempt) ||
+                    evidence.attempt! < 1 || evidence.attempt! > Math.max(1, Math.min(8, Number(step.maxAttempts ?? 3))) ||
+                    typeof evidence.inputHash !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.inputHash) ||
+                    this.canonicalActionToolId(evidence.plannerToolId) !== evidence.toolId) return false;
+                const candidates = [
+                    step.toolId,
+                    ...this.cognitiveRuntime.skillLibrary.repairCandidates(skill.id, step.id, step.toolId),
+                    ...(step.fallbackToolIds ?? []),
+                ].filter((value, index, all) => value && all.indexOf(value) === index).slice(0, 5);
+                if (!candidates.includes(evidence.plannerToolId)) return false;
+                const listed = this.cognitiveRuntime.actionGateway.listTools().find(tool => tool.id === evidence.toolId);
+                if (!listed || listed.destructive) return false;
+                const expectedHash = sha256Stable({
+                    version: 1, source: evidence.source, skillId: evidence.skillId, stepId: evidence.stepId,
+                    attempt: evidence.attempt, plannerToolId: evidence.plannerToolId, toolId: evidence.toolId,
+                    parentDecisionId: evidence.parentDecisionId ?? null, decisionId: evidence.decisionId,
+                    inputHash: evidence.inputHash, tick: evidence.tick,
+                });
+                const expectedSourceText = evidence.reason + ' | skill=' + evidence.skillId + ' | step=' + evidence.stepId +
+                    ' | attempt=' + evidence.attempt + ' | tool=' + evidence.toolId + ' | input=' + evidence.inputHash +
+                    ' | decision=' + evidence.decisionId;
+                return expectedHash === evidence.intentHash && evidence.sourceText === expectedSourceText &&
+                    contract.sourceText === expectedSourceText && contract.goal.text === evidence.reason &&
+                    contract.sourceTextTruncated === false && contract.missingInformation.length === 0 &&
+                    contract.permissions.allowedActions.length === 1 && contract.permissions.allowedActions[0] === evidence.toolId &&
+                    contract.permissions.deniedActions.length === 0 && contract.assumptions.length === 0 &&
+                    (contract.risk.level === 'low' || contract.risk.level === 'medium');
+            }
+
+            if (evidence.source !== 'autonomous-resource-tool-life' ||
                 !Number.isSafeInteger(evidence.tick) || evidence.tick < 0 ||
                 typeof evidence.decisionId !== 'string' || !evidence.decisionId ||
                 typeof evidence.intentHash !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.intentHash)) return false;
@@ -12460,6 +12581,114 @@ export class OrganismCore {
     }
     getIntentContract(contractId: string): IntentContract | null {
         return this.intentExecutionRuntime.getContract(contractId);
+    }
+    /**
+     * Dispatch a Core-authenticated project/skill action through the canonical Intent runtime.
+     * Internal planner authority is limited to verified low/medium-risk decisions; high/critical
+     * intent returns a distinct human approval ticket. ActionGateway tool approval remains separate.
+     */
+    private async executeTrustedCoreIntent(
+        contract: IntentContract,
+        evidence: TrustedAutonomousDecisionEvidence,
+        scope: IntentApprovalScope,
+        action: IntentBoundAction,
+    ): Promise<{ contractId: string; result?: import('../system/ActionGateway.ts').ToolExecution; approvalRequest?: unknown; intentApprovalConsumed?: boolean }> {
+        const toolId = this.canonicalActionToolId(action.toolId);
+        const normalizedAction: IntentBoundAction = { ...action, toolId };
+        let approved = this.getIntentContract(contract.id);
+        let intentApprovalConsumed = false;
+        const intentApprovalId = typeof action.intentApprovalId === 'string' && action.intentApprovalId
+            ? action.intentApprovalId
+            : undefined;
+        const approvalRow = intentApprovalId
+            ? this.cognitiveRuntime.actionGateway.toolPermissionSnapshot().requests.find(row =>
+                row.id === intentApprovalId && row.toolId === INTENT_APPROVAL_TOOL_ID && row.operation === 'direct',
+            )
+            : undefined;
+
+        if (!approved && approvalRow?.status === 'pending') {
+            return { contractId: contract.id, approvalRequest: approvalRow };
+        }
+        if (!approved && approvalRow?.status === 'approved') {
+            try {
+                approved = await this.approveIntent(contract, {
+                    ...scope,
+                    userConfirmed: true,
+                    evidenceRef: intentApprovalId!,
+                });
+                intentApprovalConsumed = true;
+            } catch (error) {
+                const message = String((error as Error)?.message ?? 'intent-approval-consumption-failed')
+                    .replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
+                return {
+                    contractId: contract.id,
+                    result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                        toolId, 'intent-approval-refused:' + message,
+                        { intentContractId: contract.id, riskLevel: contract.risk.level },
+                    ),
+                };
+            }
+        } else if (!approved && approvalRow?.status === 'consumed') {
+            return {
+                contractId: contract.id,
+                result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                    toolId, 'intent-approval-consumed-without-restored-contract',
+                    { intentContractId: contract.id, riskLevel: contract.risk.level },
+                ),
+            };
+        }
+
+        if (!approved) {
+            const requiresHumanApproval = contract.risk.level === 'high' || contract.risk.level === 'critical' ||
+                contract.assumptions.some(item => item.requiresConfirmation);
+            if (requiresHumanApproval) {
+                const ticket = await this.requestIntentApproval(contract, scope, action.reason);
+                if (!ticket.request) {
+                    return {
+                        contractId: contract.id,
+                        result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                            toolId, 'intent-approval-ticket-unavailable',
+                            { intentContractId: contract.id, riskLevel: contract.risk.level },
+                        ),
+                    };
+                }
+                return { contractId: contract.id, approvalRequest: ticket.request };
+            }
+            try {
+                approved = this.intentExecutionRuntime.approveFromTrustedPlanner(contract, scope, evidence);
+                this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+                await this.checkpoint(true);
+            } catch (error) {
+                const message = String((error as Error)?.message ?? 'trusted-intent-evidence-rejected')
+                    .replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
+                return {
+                    contractId: contract.id,
+                    result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                        toolId, 'intent-governance-refused:' + message,
+                        { intentContractId: contract.id, riskLevel: contract.risk.level },
+                    ),
+                };
+            }
+        }
+
+        let dispatchAction = normalizedAction;
+        if (intentApprovalConsumed && normalizedAction.options?.approvalId === intentApprovalId) {
+            const { approvalId: _consumedIntentTicket, ...toolOptions } = normalizedAction.options;
+            dispatchAction = { ...normalizedAction, options: toolOptions };
+        }
+        dispatchAction = { ...dispatchAction, intentApprovalId: undefined };
+        const dispatch = await this.executeIntent(approved, dispatchAction);
+        if (dispatch.executed) {
+            return { contractId: contract.id, result: dispatch.result, intentApprovalConsumed };
+        }
+        return {
+            contractId: contract.id,
+            result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                toolId, 'intent-gate:' + dispatch.reason,
+                { intentContractId: contract.id, riskLevel: contract.risk.level },
+            ),
+            intentApprovalConsumed,
+        };
     }
     /** New side effects must pass the intent gate and then the canonical Core/ActionGateway wrapper. */
     async executeIntent(contract: IntentContract, action: IntentBoundAction): Promise<IntentBridgeResult> {
@@ -12859,6 +13088,48 @@ export class OrganismCore {
         const { idempotencyKey: _rawIdempotencyKey, ...otherExecutionOptions } = options;
         const executionOptions = { ...otherExecutionOptions, idempotencyKey: operationKey, decisionId: stableDecisionId };
         const executionReason=`${reason};project:${project.id};step:${plannedStep?.id ?? 'unplanned'}`;
+        const canonicalProjectToolId = this.canonicalActionToolId(id);
+        const boundedProjectIntentGoal = executionReason.normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, 900);
+        const projectIntentSourceText = boundedProjectIntentGoal + ' | project=' + project.id + ' | step=' + stepOperation.stepId +
+            ' | tool=' + canonicalProjectToolId + ' | operation=' + operationKey + ' | request=' + stepOperation.requestFingerprint +
+            ' | decision=' + stableDecisionId;
+        const projectIntentEvidence: TrustedAutonomousDecisionEvidence = {
+            source: 'project-executor', decisionId: stableDecisionId, tick: this.persisted.state.tick,
+            plannerToolId: id, toolId: canonicalProjectToolId,
+            intentHash: sha256Stable({
+                version: 1, source: 'project-executor', projectId: project.id, stepId: stepOperation.stepId,
+                requestFingerprint: stepOperation.requestFingerprint, operationKey, sequence: stepOperation.sequence,
+                decisionId: stableDecisionId, tick: this.persisted.state.tick, toolId: canonicalProjectToolId,
+            }),
+            reason: boundedProjectIntentGoal, sourceText: projectIntentSourceText, projectId: project.id,
+            stepId: stepOperation.stepId, requestFingerprint: stepOperation.requestFingerprint,
+            operationKey, sequence: stepOperation.sequence,
+        };
+        const projectIntentDraft = this.compileIntent({
+            requestId: 'project-step:' + operationKey, text: projectIntentSourceText,
+            extraction: {
+                goal: boundedProjectIntentGoal,
+                context: ['project:' + project.id, 'step:' + stepOperation.stepId, 'request:' + stepOperation.requestFingerprint, 'decision:' + stableDecisionId],
+                expectedOutcome: 'A bounded ActionGateway outcome for ' + canonicalProjectToolId,
+                constraints: {
+                    must: ['Use the canonical Core and ActionGateway route', 'Preserve the existing project-step receipt identity'],
+                    mustNot: ['Do not substitute a different tool or request fingerprint', 'Do not replay a prepared external side effect'],
+                },
+                priorities: ['Preserve project-plan identity', 'Prefer verified, recoverable execution'],
+                acceptanceCriteria: ['Return the ActionGateway outcome for ' + canonicalProjectToolId + ' correlated to project ' + project.id + ' and step ' + stepOperation.stepId],
+                permissions: { allowedActions: [canonicalProjectToolId] },
+                stopConditions: ['Stop if the durable project-step checkpoint no longer matches', 'Stop if ActionGateway permission or receipt infrastructure refuses dispatch'],
+                assumptions: [],
+            },
+        });
+        const projectIntentScope: IntentApprovalScope = {
+            allowedActions: [canonicalProjectToolId], acknowledgedAssumptions: [],
+            riskAcknowledged: projectIntentDraft.risk.level === 'high' || projectIntentDraft.risk.level === 'critical',
+        };
+        const projectIntentAction: IntentBoundAction = {
+            toolId: canonicalProjectToolId, input, reason: executionReason, options: executionOptions,
+            intentApprovalId: options.approvalId,
+        };
         const reconcileExistingOperation = ['pending','receipt-recorded','reconciliation-required'].includes(stepOperation.stage);
 
         if (stepOperation.stage === 'waiting-approval' && !options.approvalId) {
@@ -12876,7 +13147,19 @@ export class OrganismCore {
         if (reconcileExistingOperation) {
             // Never call the executor again for an operation that may already have
             // crossed the side-effect boundary. The gateway only performs receipt lookup.
-            result = await this.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);
+            const approvedProjectIntent = this.getIntentContract(projectIntentDraft.id);
+            if (approvedProjectIntent) {
+                const reconciliation = await this.reconcileIntentExecution(approvedProjectIntent, {
+                    ...projectIntentAction, reason: `${executionReason};resume-reconcile`,
+                });
+                result = reconciliation.attempted
+                    ? reconciliation.result
+                    : this.cognitiveRuntime.actionGateway.refuseToolExecution(canonicalProjectToolId,
+                        `intent-reconciliation-blocked:${reconciliation.reason}`, { intentContractId: approvedProjectIntent.id });
+            } else {
+                // Compatibility for pre-Intent checkpoints: this path is read-only and cannot dispatch.
+                result = await this.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);
+            }
         } else {
             const budget = this.agencySubsystem.budget.spend('planning', undefined, 0.05, { tick: this.persisted.state.tick, reason: `project-tool:${project.id}` });
             if (!budget.accepted) {
@@ -12886,7 +13169,27 @@ export class OrganismCore {
             }
             await this.checkpoint(true); // Prepared intent is durable; ActionGateway writes its own pending receipt before executor entry.
             stepOperation = this.agencySubsystem.projectExecutor.activeStepOperation()!;
-            result = await this.executeTool(id, input, executionReason, executionOptions);
+            const intentDispatch = await this.executeTrustedCoreIntent(
+                projectIntentDraft, projectIntentEvidence, projectIntentScope, projectIntentAction,
+            );
+            if (intentDispatch.approvalRequest) {
+                this.agencySubsystem.projectExecutor.updateStepOperation({
+                    operationKey, stage: 'waiting-approval', outcomeClass: 'intent-approval-required',
+                    approvalRequestId: (intentDispatch.approvalRequest as any).id,
+                });
+                await this.checkpoint(true);
+                return {
+                    ok: false, verified: false, tool: id, capability: listed.capability,
+                    outcomeClass: 'approval-required', approvalRequired: true, approvalAuthority: 'intent-contract',
+                    intentContractId: projectIntentDraft.id, approvalRequest: intentDispatch.approvalRequest,
+                    result: { error: 'intent-approval-required', intentContractId: projectIntentDraft.id,
+                        approvalRequestId: (intentDispatch.approvalRequest as any).id ?? null },
+                    audit: null,
+                };
+            }
+            result = intentDispatch.result ?? this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                canonicalProjectToolId, 'intent-dispatch-returned-no-result', { intentContractId: projectIntentDraft.id },
+            );
         }
         if(result.outcomeClass==='approval-required') {
             if (reconcileExistingOperation) {
