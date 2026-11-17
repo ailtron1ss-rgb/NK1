@@ -307,4 +307,23 @@ const resumedFallback=fallbackGateLibrary.promoteFallbackIfReliable(
 assert.equal(resumedFallback?.steps[0]?.toolId,'tool-backup',
   'verified fallback may become primary after health recovery');
 
+
+
+// A confirmed critical dimension dominates low aggregate coverage: a single
+// eligible signal can still be sufficiently serious to protect learning.
+const criticalLowCoverage = new CognitiveImmuneSystem();
+const contradictionOnly = {
+  tick:0,contradictions:{
+    claims:Array.from({length:5},(_,i)=>({status:'open'})),unresolvedCount:5
+  },epistemic:{claimsData:[]},skills:{skills:[]}
+};
+let contradictionOnlyResult;
+for(let tick=1;tick<=4;tick++)contradictionOnlyResult=criticalLowCoverage.inspectHealth({
+  ...contradictionOnly,tick
+});
+assert.equal(contradictionOnlyResult?.coverage01,.22,
+  'only the contradiction dimension should contribute its configured weight');
+assert.equal(contradictionOnlyResult?.healthStatus,'critical',
+  'a critical signal must dominate incomplete aggregate coverage');
+
 console.log('COGNITIVE_IMMUNE_HEALTH_MONITOR=PASS');

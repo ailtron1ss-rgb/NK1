@@ -358,8 +358,8 @@ export class CognitiveImmuneSystem {
     };
     this.state.health=next;
     const activeSignals=signals.filter(s=>s.status==='open'||s.status==='acknowledged');
-    const healthStatus:CognitiveHealthStatus=coverage01<.5?'unknown'
-      :activeSignals.some(s=>s.severity==='critical')?'critical'
+    const healthStatus:CognitiveHealthStatus=activeSignals.some(s=>s.severity==='critical')?'critical'
+      :coverage01<.5?'unknown'
       :activeSignals.length||score01<.65?'degraded':'healthy';
     const result:CognitiveHealthInspectionResult={
       tick,score01,coverage01,healthStatus,
