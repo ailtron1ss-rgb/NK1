@@ -595,13 +595,16 @@ export class SubstrateIndependenceEngine {
 
   observeBackend(backendId: string): { changed: boolean; state: SubstrateIndependenceState } {
     if (!isSafeId(backendId)) fail('substrate-backend-id-invalid');
-    const changed = this.state.observedBackendId !== backendId;
+    const previous = String(this.state.observedBackendId ?? '') + '|' + String(this.state.activeBackendId ?? '') + '|' + this.state.activeProvenance;
     this.state.observedBackendId = backendId;
     if (this.state.activeBackendId === null && this.state.pendingTransfer === null) {
       this.state.activeBackendId = backendId;
       this.state.activeProvenance = this.profiles.has(backendId) ? 'bootstrap' : 'unknown';
+    } else if (this.state.activeBackendId === backendId && this.state.activeProvenance === 'unknown' && this.profiles.has(backendId)) {
+      this.state.activeProvenance = 'bootstrap';
     }
-    return { changed, state: this.snapshot() };
+    const current = String(this.state.observedBackendId ?? '') + '|' + String(this.state.activeBackendId ?? '') + '|' + this.state.activeProvenance;
+    return { changed: previous !== current, state: this.snapshot() };
   }
 
   activeBackendId(): string | null { return this.state.activeBackendId; }
