@@ -1,6 +1,5 @@
 import type {
   IntentApproval,
-  IntentCompilerOptions,
   IntentContract,
   IntentContractInput,
   IntentExtractionProvider,
@@ -37,7 +36,11 @@ export interface IntentExecutionRuntimeSnapshot {
   records: IntentContract[];
   executions: IntentExecutionLink[];
 }
-export interface IntentExecutionRuntimeOptions extends Pick<IntentCompilerOptions, 'clock' | 'approvalKey' | 'extractionTimeoutMs'> {}
+export interface IntentExecutionRuntimeOptions {
+  clock?: () => number;
+  approvalKey?: string | Uint8Array;
+  extractionTimeoutMs?: number;
+}
 
 const MAX_CONTRACTS = 64;
 const MAX_EXECUTIONS = 256;
