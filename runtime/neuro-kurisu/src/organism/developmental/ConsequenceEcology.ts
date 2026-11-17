@@ -236,6 +236,38 @@ function normalizeNegativeSpaceContext(value: unknown): ConsequenceNegativeSpace
   };
 }
 
+function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalysis {
+  if (!isRecord(value) || !clean(value.id, 96) || value.decisionAuthority !== 'none' ||
+      value.independentlyVerified !== false || (value.status !== 'analysed' && value.status !== 'bounded-partial') ||
+      !Number.isFinite(value.createdAt) || !Number.isInteger(value.horizonDays) ||
+      finite(value.horizonDays, 0) < 1 || finite(value.horizonDays, MAX_HORIZON_DAYS + 1) > MAX_HORIZON_DAYS ||
+      !(value.scenarioId === null || (typeof value.scenarioId === 'string' && value.scenarioId.length <= 160)) ||
+      !(value.modelTopRankedOptionId === null || (typeof value.modelTopRankedOptionId === 'string' && value.modelTopRankedOptionId.length <= 96)) ||
+      !Array.isArray(value.options) || value.options.length < 1 || value.options.length > MAX_OPTIONS ||
+      !Array.isArray(value.limitations) || value.limitations.length > 12 ||
+      !value.limitations.every(row => typeof row === 'string' && row.length <= 320) ||
+      !isRecord(value.context)) return false;
+
+  return value.options.every(option => {
+    if (!isRecord(option) || typeof option.id !== 'string' || option.id.length > 96 ||
+        typeof option.title !== 'string' || option.title.length > 180 ||
+        typeof option.action !== 'string' || option.action.length > 180 ||
+        !Array.isArray(option.nodes) || option.nodes.length < 1 || option.nodes.length > MAX_NODES ||
+        !Array.isArray(option.stakeholders) || option.stakeholders.length > MAX_NODES ||
+        !Array.isArray(option.criticalPaths) || option.criticalPaths.length > 8 ||
+        !Array.isArray(option.feedbackLoops) || option.feedbackLoops.length > 16 ||
+        !Array.isArray(option.missingAssumptionRefs) || option.missingAssumptionRefs.length > MAX_NODES * 8 ||
+        !Array.isArray(option.limitations) || option.limitations.length > 12) return false;
+    if (!option.nodes.every(node => isRecord(node) && typeof node.id === 'string' && node.id.length <= 96 &&
+        (node.effect === 'harm' || node.effect === 'benefit' || node.effect === 'neutral') &&
+        Array.isArray(node.evidenceRefs) && node.evidenceRefs.length <= 8 &&
+        Array.isArray(node.missingAssumptionRefs) && node.missingAssumptionRefs.length <= 8)) return false;
+    if (!option.criticalPaths.every(path => isRecord(path) && Array.isArray(path.nodeIds) && path.nodeIds.length <= MAX_DEPTH + 1)) return false;
+    if (!option.feedbackLoops.every(loop => isRecord(loop) && Array.isArray(loop.path) && loop.path.length <= MAX_DEPTH + 1)) return false;
+    return true;
+  });
+}
+
 function assumptionConfidence(
   node: ConsequenceNodeInput,
   assumptions: Map<string, { confidence01: number; status: string }>,
@@ -577,29 +609,26 @@ export class ConsequenceEcologyEngine {
   }
 
   restore(raw?: Partial<ConsequenceEcologyState> | null): void {
-    const base = emptyState();
     const source = isRecord(raw) ? raw : {};
     const rows = Array.isArray(source.analyses) ? source.analyses.slice(-MAX_ANALYSES) : [];
     const seen = new Set<string>();
     const analyses: ConsequenceEcologyState['analyses'] = [];
     for (const row of rows) {
-      if (!isRecord(row) || !isRecord(row.analysis)) continue;
-      const analysis = row.analysis as unknown as ConsequenceEcologyAnalysis;
+      if (!isRecord(row) || !isRestorableAnalysis(row.analysis)) continue;
+      const analysis = row.analysis;
       const id = clean(analysis.id, 96);
-      const hash = clean(row.digest, 64);
-      if (!id || seen.has(id) || hash.length !== 64 || !Array.isArray(analysis.options) ||
-          analysis.options.length > MAX_OPTIONS || analysis.independentlyVerified !== false ||
-          analysis.decisionAuthority !== 'none') continue;
+      const hash = typeof row.digest === 'string' && /^[a-f0-9]{64}$/i.test(row.digest) ? row.digest.toLowerCase() : '';
+      if (!id || seen.has(id) || !hash) continue;
       seen.add(id);
       analyses.push({ digest: hash, analysis: structuredClone(analysis) });
     }
     this.state = {
       version: 1,
       analyses,
-      totalAnalyses: Math.max(analyses.length, Math.floor(finite(source.totalAnalyses, analyses.length))),
-      rejectedAnalyses: Math.max(0, Math.floor(finite(source.rejectedAnalyses))),
-      feedbackLoopsObserved: Math.max(0, Math.floor(finite(source.feedbackLoopsObserved))),
-      truncatedAnalyses: Math.max(0, Math.floor(finite(source.truncatedAnalyses))),
+      totalAnalyses: Math.min(1_000_000, Math.max(analyses.length, Math.floor(finite(source.totalAnalyses, analyses.length)))),
+      rejectedAnalyses: Math.min(1_000_000, Math.max(0, Math.floor(finite(source.rejectedAnalyses)))),
+      feedbackLoopsObserved: Math.min(1_000_000, Math.max(0, Math.floor(finite(source.feedbackLoopsObserved)))),
+      truncatedAnalyses: Math.min(1_000_000, Math.max(0, Math.floor(finite(source.truncatedAnalyses)))),
       lastAt: Math.max(0, finite(source.lastAt)),
     };
   }
