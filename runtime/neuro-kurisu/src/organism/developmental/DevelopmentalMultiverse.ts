@@ -235,6 +235,12 @@ function normalizeScenarios(value: unknown, phase: DevelopmentalMultiversePhase)
   if (!Array.isArray(value) || value.length < minimum || value.length > MAX_SCENARIOS_PER_SPLIT) {
     throw new RangeError(`developmental-multiverse-${phase}-scenario-count-invalid`);
   }
+  const uniqueSeeds = new Set(
+    value.filter((raw): raw is Record<string, unknown> => isRecord(raw)).map(raw => raw.seed),
+  );
+  if (uniqueSeeds.size < minimum) {
+    throw new RangeError(`developmental-multiverse-${phase}-seed-diversity-invalid`);
+  }
   const seen = new Set<string>();
   return value.map((raw, index) => {
     if (!isRecord(raw)) throw new TypeError(`developmental-multiverse-${phase}-scenario-${index}-invalid`);
