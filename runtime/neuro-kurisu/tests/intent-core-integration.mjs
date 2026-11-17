@@ -207,6 +207,59 @@ assert.equal(reconciled.result.idempotencyStatus, 'reconciled');
 gateway.executeTool = originalExecute;
 gateway.reconcileToolExecution = originalReconcile;
 
+const originalCoreExecute = restarted.executeTool.bind(restarted);
+let concurrentDispatchCalls = 0;
+let releaseConcurrentDispatch;
+let signalConcurrentDispatchStarted;
+const concurrentDispatchStarted = new Promise(resolve => { signalConcurrentDispatchStarted = resolve; });
+const concurrentDispatchHold = new Promise(resolve => { releaseConcurrentDispatch = resolve; });
+restarted.executeTool = async (...args) => {
+  concurrentDispatchCalls += 1;
+  signalConcurrentDispatchStarted();
+  await concurrentDispatchHold;
+  return originalCoreExecute(...args);
+};
+const concurrentAction = {
+  toolId: 'organism.inspect',
+  input: {},
+  reason: 'intent-core-concurrency-test',
+  options: { idempotencyKey: 'intent:concurrency:01', decisionId: 'decision:concurrency' },
+};
+const firstConcurrentDispatch = restarted.executeIntent(restored, concurrentAction);
+await concurrentDispatchStarted;
+const duplicateConcurrentDispatch = await restarted.executeIntent(restored, concurrentAction);
+assert.equal(duplicateConcurrentDispatch.executed, false,
+  'a second caller must not dispatch the same contract/tool while the first gateway call is in flight');
+assert.equal(duplicateConcurrentDispatch.reason, 'intent-execution-in-progress');
+assert.equal(concurrentDispatchCalls, 1, 'the concurrent duplicate must not enter the Core gateway wrapper');
+releaseConcurrentDispatch();
+const firstConcurrentResult = await firstConcurrentDispatch;
+assert.equal(firstConcurrentResult.executed, true);
+assert.equal(concurrentDispatchCalls, 1);
+restarted.executeTool = originalCoreExecute;
+
+let uncertainGatewayCalls = 0;
+restarted.executeTool = async () => {
+  uncertainGatewayCalls += 1;
+  throw new Error('simulated-gateway-transport-loss-after-dispatch-boundary');
+};
+const uncertainAction = {
+  toolId: 'organism.intent.fixture',
+  input: { operation: 'commit-probe' },
+  reason: 'intent-core-uncertain-gateway-test',
+  options: { idempotencyKey: 'intent:recovery:02', decisionId: 'decision:uncertain-gateway' },
+};
+const uncertainGatewayResult = await restarted.executeIntent(restoredPending, uncertainAction);
+assert.equal(uncertainGatewayResult.executed, false,
+  'an exception at the gateway boundary must be returned as an uncertain, non-retryable intent result');
+assert.equal(uncertainGatewayResult.reason, 'intent-execution-outcome-uncertain');
+const blockedAfterUncertainGateway = await restarted.executeIntent(restoredPending, uncertainAction);
+assert.equal(blockedAfterUncertainGateway.executed, false,
+  'an uncertain gateway exception must never be replayed automatically');
+assert.equal(blockedAfterUncertainGateway.reason, 'intent-execution-reconciliation-required');
+assert.equal(uncertainGatewayCalls, 1, 'uncertain execution must not re-enter the gateway');
+restarted.executeTool = originalCoreExecute;
+
 const replayDraft = restarted.compileIntent({
   requestId: 'intent:core-integration:second',
   text: 'Inspect state',
