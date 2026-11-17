@@ -17,7 +17,6 @@ for(const id of [
 const registered=new Map(gateway.listTools().map(tool=>[tool.id,tool]));
 for(const id of tools.filter(id=>id.startsWith('organism.worldforge.'))){
   assert.equal(registered.get(id)?.requiresIdempotencyKey,false,`${id} mutates only the bounded synthetic sandbox, not an external side effect`);
-}
   assert.equal(registered.get(id)?.hasOutputContract,true,`${id} must validate its bounded output envelope`);
 }
 const generatedScenarioContract=registered.get('organism.worldforge.scenarios.generate')?.outputSchema.properties.scenarios.items;
@@ -31,6 +30,7 @@ const generated=await gateway.executeTool('organism.worldforge.scenarios.generat
 assert.equal(generated.ok,true,JSON.stringify(generated.result));
 const scenarios=generated.result.scenarios;
 assert.equal(scenarios.length,2);
+assert.ok(scenarios.every(row=>row.syntheticOnly===true),'generated scenarios must be explicitly marked synthetic');
 const scenario=scenarios[0];
 assert.equal('disturbances' in scenario,false);
 assert.equal('seedFingerprint' in scenario,false);
