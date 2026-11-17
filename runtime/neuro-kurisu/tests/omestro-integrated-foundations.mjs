@@ -17,6 +17,7 @@ import {
   compileCognitiveNeuralControl, createSparsePlasticityMask, compileNeuralJitSkillCapsule,
   evaluateNeuralAdaptationPromotion,
 } from '../src/organism/system/OmeStroNeuralAdaptation.ts';
+import { OmeStroIntegrationKernel } from '../src/organism/system/OmeStroIntegrationKernel.ts';
 
 const registry = validateOmeStroConceptRegistry();
 assert.equal(registry.valid, true, registry.errors.join(','));
@@ -141,6 +142,44 @@ assert.equal(assessSubstrateMigration({
   qualityDelta01: -.2, maximumAllowedRegression01: .02, rollbackAvailable: false,
   calibrationEvidenceRef: '',
 }).mode, 'base-fallback');
+
+const kernel = new OmeStroIntegrationKernel();
+assert.equal(kernel.registry().validation.valid, true);
+const p28Observation = kernel.recordObservation({
+  vector: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  modality: 'text', source: 'integration-test', tick: 1, trust01: .9,
+});
+assert.equal(p28Observation.learned, true);
+const p25Experiment = kernel.recordControlledExperiment({
+  name: 'OmeStro bridge', controlLabel: 'base', treatmentLabel: 'candidate',
+  metric: 'task-score', controlValue: .6, treatmentValue: .7,
+  sampleSize: 10, independentConditions: true,
+});
+assert.equal(p25Experiment.delta > 0, true);
+assert.equal(kernel.assessModelMigration({
+  sourceFingerprint: 'model:a', targetFingerprint: 'model:b',
+  stateSchemaCompatible: true, stateRoundTripPassed: true, benchmarkPairedSeeds: 5,
+  qualityDelta01: .02, maximumAllowedRegression01: .02, rollbackAvailable: true,
+  calibrationEvidenceRef: 'calibration:bridge', sourceStability01: .9,
+  targetResource01: .8, stateComplexity01: .2,
+}).eligible, true);
+const shadowMorphogenesis = kernel.simulateMorphogenesis({
+  base: { version: 1, modules: [{ id: 'core', dependsOn: [], contractRef: 'core:1' }], invariants: ['safety'] },
+  candidate: {
+    candidateId: 'shadow-2', branchRef: 'aspect/shadow-2', baseVersion: 1, targetVersion: 2,
+    modules: [{ id: 'core', dependsOn: [], contractRef: 'core:2' }],
+    invariants: ['safety'], migrationRef: 'migration:1-2', testRefs: ['test:shadow'], rollbackRef: 'rollback:shadow',
+  },
+  independentEvaluationPassed: true, sandboxPassed: true, safetyPassed: true,
+  at: 10, demand01: .9, predictionError01: .8, energy01: .8, plasticity01: .8,
+});
+assert.equal(shadowMorphogenesis.eligible, true);
+assert.equal(shadowMorphogenesis.mode, 'candidate-shadow-only');
+const kernelSnapshot = kernel.snapshot();
+const restoredKernel = new OmeStroIntegrationKernel();
+restoredKernel.restore(kernelSnapshot);
+assert.equal(restoredKernel.plasticity.snapshot().trustedObservations, 1);
+assert.equal(restoredKernel.scientificDevelopment.snapshot().controlledExperiments.length, 1);
 
 const baseGenome = {
   version: 1, modules: [{ id: 'core', dependsOn: [], contractRef: 'contract:core' }],
