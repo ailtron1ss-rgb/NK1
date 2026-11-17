@@ -1,7 +1,7 @@
 import { createHash, randomUUID, verify as verifySignature } from 'node:crypto';
 import { lstat, readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
-import { canonicalTeacherDistillationPayload, teacherDistillationPayloadFingerprint } from './TeacherStudentDistillation.ts';
+import { canonicalTeacherDistillationPayload, teacherDistillationPayloadFingerprint, fingerprintTeacherDistillationDataset } from './TeacherStudentDistillation.ts';
 import { runLearningProcess, type LearningProcessResult } from './LearningProcessSupervisor.ts';
 
 const sha256 = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
@@ -207,7 +207,9 @@ async function verifySignedDataset(input: {
   }
   const seenExamples = new Set<string>();
   const seenArtifacts = new Set<string>();
-  const verifyRows = (examples: unknown[], proofs: unknown[]) => {
+  const seenSamples = new Set<string>();
+  const verifyRows = (examples: unknown[], proofs: unknown[], split: 'train' | 'validation') => {
+    const verified: Array<Record<string, unknown>> = [];
     for (let i = 0; i < examples.length; i++) {
       const example = examples[i];
       const row = proofs[i];
@@ -220,30 +222,40 @@ async function verifySignedDataset(input: {
           !isSafeText(row.taskVersion, 180) || !isSafeText(row.family, 180) ||
           !isSafeText(row.teacherId, 180) || !isSafeText(row.teacherModel, 256) ||
           !isSafeText(row.teacherRevision, 128) || !isSafeText(row.verifierId, 256) ||
+          !['independent-verifier', 'human-review'].includes(String(row.authority)) ||
           !Number.isSafeInteger(row.seed) || row.seed < 0 || !isDigest(row.evidenceRefDigest) ||
           !isDigest(row.artifactFingerprint) || seenExamples.has(String(row.exampleId))) {
         throw new Error('teacher-distillation-dataset-row-invalid');
       }
       const artifact = row.signedArtifact;
       if (!isRecord(artifact) || !isRecord(artifact.payload) ||
-          typeof artifact.signature !== 'string' || artifact.signature.length < 40) {
+          typeof artifact.signature !== 'string' || artifact.signature.length < 40 ||
+          artifact.signature.length > 4096) {
         throw new Error('teacher-distillation-provenance-artifact-invalid');
       }
       const p = artifact.payload;
       const prompt = String(example.conversations[0].value);
       const completion = String(example.conversations[1].value);
       const system = String(example.system ?? '');
-      if (p.schemaVersion !== 1 || p.manifestFingerprint !== manifest.manifestFingerprint ||
+      const artifactId = String(p.artifactId ?? '');
+      const sampleIdentity = JSON.stringify([
+        row.taskId, row.teacherId, row.teacherModel, row.teacherRevision, row.seed,
+      ]);
+      if (p.schemaVersion !== 1 || !isSafeText(p.artifactId, 256) || !isSafeText(p.runId, 256) ||
+          p.manifestFingerprint !== manifest.manifestFingerprint ||
           p.taskId !== row.taskId || p.taskVersion !== row.taskVersion ||
           p.teacherId !== row.teacherId || p.teacherModel !== row.teacherModel ||
-          p.teacherRevision !== row.teacherRevision || p.seed !== row.seed ||
-          p.verifierId !== row.verifierId || p.authority !== row.authority ||
+          p.teacherRevision !== row.teacherRevision || floatingRevisions.has(String(p.teacherRevision).toLowerCase()) ||
+          p.seed !== row.seed || p.verifierId !== row.verifierId ||
+          !['independent-verifier', 'human-review'].includes(String(p.authority)) ||
+          p.authority !== row.authority || !Number.isFinite(p.verifiedAt) || Number(p.verifiedAt) <= 0 ||
           p.promptFingerprint !== normalizedPromptFingerprint(prompt) ||
           p.systemFingerprint !== textFingerprint(system) ||
           p.completionFingerprint !== textFingerprint(completion) ||
           p.evidenceRefDigest !== row.evidenceRefDigest ||
           teacherDistillationPayloadFingerprint(p as never) !== row.artifactFingerprint ||
-          seenArtifacts.has(String(p.artifactId))) {
+          sha256(JSON.stringify([row.artifactFingerprint, row.taskId, row.teacherId])) !== row.exampleId ||
+          seenArtifacts.has(artifactId) || seenSamples.has(sampleIdentity)) {
         throw new Error('teacher-distillation-provenance-binding-mismatch');
       }
       const publicKey = input.trustedKeys.get(String(p.verifierId));
@@ -255,11 +267,43 @@ async function verifySignedDataset(input: {
       } catch { valid = false; }
       if (!valid) throw new Error('teacher-distillation-provenance-signature-invalid');
       seenExamples.add(String(row.exampleId));
-      seenArtifacts.add(String(p.artifactId));
+      seenArtifacts.add(artifactId);
+      seenSamples.add(sampleIdentity);
+      verified.push({
+        schemaVersion: 1,
+        exampleId: String(row.exampleId),
+        taskId: String(row.taskId),
+        taskVersion: String(row.taskVersion),
+        family: String(row.family),
+        split,
+        prompt,
+        ...(example.system !== undefined ? { systemPrompt: system } : {}),
+        completion,
+        teacherId: String(row.teacherId),
+        teacherModel: String(row.teacherModel),
+        teacherRevision: String(row.teacherRevision),
+        seed: Number(row.seed),
+        verifierId: String(row.verifierId),
+        authority: String(row.authority),
+        evidenceRefDigest: String(row.evidenceRefDigest),
+        artifactFingerprint: String(row.artifactFingerprint),
+        signedArtifact: artifact,
+        verifiedAt: Number(p.verifiedAt),
+      });
     }
+    return verified;
   };
-  verifyRows(train, trainProof);
-  verifyRows(validation, validationProof);
+  const verifiedTraining = verifyRows(train, trainProof, 'train');
+  const verifiedValidation = verifyRows(validation, validationProof, 'validation');
+  const recomputedFingerprint = fingerprintTeacherDistillationDataset({
+    schemaVersion: 1,
+    manifestFingerprint: String(manifest.manifestFingerprint),
+    training: verifiedTraining as never,
+    validation: verifiedValidation as never,
+  });
+  if (recomputedFingerprint !== input.expectedFingerprint) {
+    throw new Error('teacher-distillation-dataset-fingerprint-mismatch');
+  }
   return { manifestFingerprint: String(manifest.manifestFingerprint), rowCount: train.length + validation.length };
 }
 
