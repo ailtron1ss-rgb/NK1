@@ -29,7 +29,6 @@ export interface MemoryEvidenceSource {
 }
 export type MemoryTemporalKind='fact'|'assessment'|'prediction';
 /** All timestamps below are Unix epoch milliseconds (UTC); intervals are half-open. */
-export interface MemoryBitemporalInterval
 export interface MemoryBitemporalInterval {
  validFromAt:number; validUntilAt:number|null;
  recordedFromAt:number; recordedUntilAt:number|null;
