@@ -2000,12 +2000,19 @@ export class OrganismRuntime {
       const state = this.openLoopRadar.snapshot();
       const candidates = this.openLoopRadar.scan();
       const active = state.records.filter(record => record.status === 'open' || record.status === 'blocked');
+      const at = Date.now();
+      const reservedCount = active.filter(record =>
+        record.pendingSurfacingInitiativeId !== null && record.pendingSurfacingLeaseUntil > at).length;
+      const expiredReservationCount = active.filter(record =>
+        record.pendingSurfacingInitiativeId !== null && record.pendingSurfacingLeaseUntil <= at).length;
       return {
         version: state.version,
         total: state.records.length,
         activeCount: active.length,
         openCount: active.filter(record => record.status === 'open').length,
         blockedCount: active.filter(record => record.status === 'blocked').length,
+        reservedCount,
+        expiredReservationCount,
         fulfilledCount: state.records.filter(record => record.status === 'fulfilled').length,
         cancelledCount: state.records.filter(record => record.status === 'cancelled').length,
         overdueCount: candidates.filter(candidate => candidate.overdueMs > 0 && candidate.effectiveStatus === 'open').length,

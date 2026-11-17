@@ -80,6 +80,8 @@ try {
   });
   const initiativeId = 'soc:open-loop:runtime:001';
   await dialogueRuntime.reserveOpenLoopForAutonomousInitiative(dialogueObligation.id, initiativeId);
+  assert.equal((await dialogueRuntime.openLoopDiagnostics()).reservedCount, 1,
+    'runtime diagnostics must expose an active autonomous surfacing lease');
   assert.equal((await dialogueRuntime.scanOpenLoops({ reminderCooldownMs: 0 }))
     .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, false);
   await dialogueRuntime.flush();
@@ -91,6 +93,7 @@ try {
     .find(row => row.id === dialogueObligation.id);
   assert.equal(reservedAfterRestart?.pendingSurfacingInitiativeId, initiativeId,
     'runtime restart must retain which proactive initiative owns the pending surfacing reservation');
+  assert.equal((await dialogueRestarted.openLoopDiagnostics()).reservedCount, 1);
   assert.equal((await dialogueRestarted.scanOpenLoops({ reminderCooldownMs: 0 }))
     .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, false);
   await dialogueRestarted.releaseOpenLoopForAutonomousInitiative(dialogueObligation.id, initiativeId);

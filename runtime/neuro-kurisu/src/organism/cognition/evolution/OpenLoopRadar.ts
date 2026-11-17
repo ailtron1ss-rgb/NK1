@@ -214,7 +214,8 @@ export class OpenLoopRadar {
     }
 
     if (byId.size > MAX_RECORDS) throw new Error('open-loop-state-capacity-exceeded');
-    const records = [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
+    // Preserve the durable snapshot's record order exactly; presentation ranking belongs to scan().
+    const records = [...byId.values()];
     const maxSequence = records.reduce((max, record) => {
       const match = /^open-loop-\d+-(\d+)$/.exec(record.id);
       if (!match) return max;
