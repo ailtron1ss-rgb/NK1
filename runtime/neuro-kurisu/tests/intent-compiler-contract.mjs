@@ -3,6 +3,16 @@ import { IntentCompiler } from '../src/organism/cognition/IntentCompiler.ts';
 import { IntentActionGatewayBridge } from '../src/organism/system/IntentActionGatewayBridge.ts';
 
 const compiler = new IntentCompiler({ clock: () => 1_800_000_000_000 });
+let extractedText = '';
+const providerContract = await compiler.compileWith({ text: 'Summarize the latest verified state.' }, {
+  async extract(text) {
+    extractedText = text;
+    return { goal: 'Summarize verified state', expectedOutcome: 'A grounded summary', acceptanceCriteria: ['Cite the inspected revision'], permissions: { allowedActions: ['organism.inspect'] } };
+  },
+});
+assert.equal(extractedText, 'Summarize the latest verified state.');
+assert.equal(providerContract.goal.source, 'structured-extraction');
+assert.equal(providerContract.goal.text, 'Summarize verified state');
 const ambiguous = compiler.compile({
   requestId: 'intent:test:ambiguous',
   text: 'Please delete old project data and prepare a report.',
