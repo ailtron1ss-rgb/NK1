@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict';
 import { FutureSimulator } from '../src/organism/developmental/FutureSimulator.ts';
 const simulator=new FutureSimulator();
+assert.equal('worldForge' in simulator,false,'runtime callers must not receive the evaluator engine object');
+assert.deepEqual(simulator.generateWorldForgeScenarios({split:'holdout',seed:77,count:3}),[],'agent-facing simulator API must not generate holdout cases');
 const scenarios=simulator.generateWorldForgeScenarios({split:'train',seed:77,count:3});
 assert.equal(scenarios.length,3);
+const initial=simulator.startWorldForgeScenario(scenarios[0]);
+assert.ok(initial);
+const transition=simulator.stepWorldForgeScenario(initial,{action:'observe'});
+assert.equal(transition.accepted,true);
+assert.equal(transition.state.tick,1);
 const before=simulator.snapshot();
 const result=simulator.evaluateWorldForgeScenario(scenarios[0],[{action:'observe',target:'signal-a',evidence:'signal-a'}]);
 assert.equal(result.syntheticOnly,true);
