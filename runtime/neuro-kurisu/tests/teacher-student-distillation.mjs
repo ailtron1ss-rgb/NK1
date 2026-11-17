@@ -354,6 +354,35 @@ try {
     surviveDirectory,
   }), /config-must-be-regular-file/);
 
+  const unsafeOutputLink = path.join(runnerWorkspace, 'unsafe-output-link');
+  await symlink(tempRoot, unsafeOutputLink, 'dir');
+  const unsafeOutputConfig = createLlamaFactorySftConfig({
+    modelNameOrPath: 'Qwen/Qwen2.5-7B-Instruct',
+    modelRevision: '2026-10-10-commit-abc12345',
+    datasetDirectory: runnerWorkspace,
+    outputDirectory: path.join(unsafeOutputLink, 'student'),
+    template: 'qwen',
+    cutoffLen: 2048,
+    loraRank: 16,
+    learningRate: 0.00005,
+    numTrainEpochs: 2,
+    perDeviceTrainBatchSize: 1,
+    gradientAccumulationSteps: 8,
+    quantizationBit: 4,
+  });
+  const unsafeOutputConfigPath = path.join(runnerWorkspace, 'unsafe-output.yaml');
+  await writeFile(unsafeOutputConfigPath, unsafeOutputConfig.yaml, 'utf8');
+  await assert.rejects(runTeacherStudentDistillationTraining({
+    workspaceDirectory: runnerWorkspace,
+    configPath: 'unsafe-output.yaml',
+    expectedConfigFingerprint: unsafeOutputConfig.fingerprint,
+    datasetFingerprint: exported.datasetFingerprint,
+    trustedVerifierKeys: trustedKeys,
+    executable: fakeCliPath,
+    runRoot,
+    surviveDirectory,
+  }), /output-path-invalid/);
+
   const originalTrainFile = await readFile(written['train.jsonl'], 'utf8');
   await writeFile(written['train.jsonl'], originalTrainFile + '\\n{"tampered":true}\\n', 'utf8');
   await assert.rejects(runTeacherStudentDistillationTraining({
