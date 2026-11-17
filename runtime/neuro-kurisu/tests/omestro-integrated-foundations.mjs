@@ -240,6 +240,11 @@ assert.equal(adjudicateCognitiveParliament({
     review.role === 'replicator' ? { ...review, actorId: 'author' } : review),
   holdoutPassed: true, replicationPassed: true, safetyPassed: true, auditPassed: true,
 }).status, 'needs-evidence');
+assert.equal(adjudicateCognitiveParliament({
+  candidateAuthorId: 'author', reviews: reviews.map(review =>
+    review.role === 'skeptic' ? { ...review, actorId: 'experimenter' } : review),
+  holdoutPassed: true, replicationPassed: true, safetyPassed: true, auditPassed: true,
+}).status, 'needs-evidence', 'review roles must not collapse to one model identity');
 
 for (const [stage, evidence] of [
   ['idea', { hypothesisRef: 'hypothesis:1' }],
@@ -285,6 +290,13 @@ assert.equal(createSharedFuture({
     { id: 'degraded', probability01: .3, dependencyIds: ['normal'], pointOfNoReturn: true },
   ],
 }).valid, true);
+assert.equal(createSharedFuture({
+  id: 'future-cycle', assumptions: ['a'], revisitTriggers: ['b'],
+  scenarios: [
+    { id: 'a', probability01: .5, dependencyIds: ['b'] },
+    { id: 'b', probability01: .5, dependencyIds: ['a'] },
+  ],
+}).valid, false, 'scenario dependency cycles must be rejected');
 
 assert.equal(validateSynapticCommonsArtifact({
   artifactId: 'skill-1', artifactFingerprint: 'sha256:skill', artifactType: 'skill-contract',
