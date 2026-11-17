@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 // Keep the behavioral suite runnable outside GitHub Actions without
 // overriding the exact checkout SHA supplied by GitHub Actions.
@@ -233,3 +234,79 @@ cyclicObject.extra = cyclicObject;
 assert.equal(validateArchitectureMorphogenesisGraph(cyclicObject).ok, false);
 
 console.log('ARCHITECTURE_MORPHOGENESIS_WORKPASS17=PASS live-graph+contracts+merge-split-move-replace+rollback+promotion-gate');
+
+
+// Regression: malformed plain-data array members must fail closed, not throw.
+const malformedNullEdge = graph([alpha, beta], [null]);
+const malformedNullEdgeReport = validateArchitectureMorphogenesisGraph(malformedNullEdge);
+assert.equal(malformedNullEdgeReport.ok, false);
+assert.ok(malformedNullEdgeReport.issues.length > 0);
+
+const malformedNullContract = graph(
+  [alpha, beta],
+  [{ from: 'alpha', to: 'beta', kind: 'contract' }],
+  [null],
+);
+const malformedNullContractReport = validateArchitectureMorphogenesisGraph(malformedNullContract);
+assert.equal(malformedNullContractReport.ok, false);
+assert.ok(malformedNullContractReport.issues.length > 0);
+
+// Regression: a maximum-size acyclic chain must not overflow the JS call stack.
+const deepModules = Array.from({ length: 9990 }, (_, index) =>
+  moduleRecord('module-' + String(index).padStart(5, '0'), 'src/organism/system/Node' + index + '.ts', 'a'));
+const deepEdges = deepModules.slice(1).map((module, index) => ({
+  from: deepModules[index].id,
+  to: module.id,
+  kind: 'import',
+}));
+const deepGraphReport = validateArchitectureMorphogenesisGraph(graph(deepModules, deepEdges));
+assert.equal(deepGraphReport.ok, true, JSON.stringify(deepGraphReport.issues.slice(0, 3)));
+
+// Regression: source-footprint changes are structural changes even when a caller
+// incorrectly leaves the revision digest unchanged; they need explicit replace.
+const alphaExpanded = {
+  ...alpha,
+  sourcePaths: [alpha.path, 'src/organism/system/AlphaPart.ts'],
+};
+const sourceFootprintPlan = proposal(
+  graph([alpha]),
+  graph([alphaExpanded]),
+  [{ kind: 'replace', moduleId: 'alpha', rationale: 'Record the newly owned canonical source file' }],
+);
+assert.equal(sourceFootprintPlan.status, 'READY_FOR_REVIEW', JSON.stringify(sourceFootprintPlan.issues));
+
+// Regression: a changed graph edge must be explicitly accounted for by a rewire operation.
+const alphaV2 = moduleRecord('alpha', alpha.path, 'f');
+const edgeBase = graph([alpha, beta]);
+const edgeCandidate = graph([alphaV2, beta], [{ from: 'alpha', to: 'beta', kind: 'import' }]);
+const edgeWithoutRewire = proposal(
+  edgeBase,
+  edgeCandidate,
+  [{ kind: 'replace', moduleId: 'alpha', rationale: 'Update alpha implementation' }],
+);
+assert.equal(edgeWithoutRewire.status, 'BLOCKED');
+assert.ok(edgeWithoutRewire.issues.some(item => item.code === 'edge-change-unaccounted'));
+
+// Regression: recomputing the public plan digest cannot legitimize forged diff metadata.
+const tamperedPlan = JSON.parse(JSON.stringify(mergePlan));
+tamperedPlan.diff.removedModuleIds = [];
+const stableForTest = value => Array.isArray(value)
+  ? value.map(stableForTest)
+  : value && typeof value === 'object'
+    ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stableForTest(value[key])]))
+    : value;
+const rehashForTest = value => 'sha256:' + createHash('sha256')
+  .update(JSON.stringify(stableForTest(value)))
+  .digest('hex');
+const tamperedPayload = { ...tamperedPlan };
+delete tamperedPayload.planDigest;
+tamperedPlan.planDigest = rehashForTest(tamperedPayload);
+const tamperedGate = evaluateArchitectureMorphogenesisPlan(tamperedPlan, {
+  candidateBranch: 'aspect/morphogenesis-architecture-20261117',
+  candidateCommit: '2'.repeat(40),
+  baselineCommit: sha,
+  testsPassed: true, typecheckPassed: true, architectureAuditPassed: true,
+  contractChecksPassed: true, rollbackVerified: true, reviewApproved: true,
+});
+assert.equal(tamperedGate.status, 'BLOCKED');
+assert.ok(tamperedGate.issues.some(item => item.code === 'plan-semantics-invalid'));
