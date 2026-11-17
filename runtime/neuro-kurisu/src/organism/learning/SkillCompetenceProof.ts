@@ -112,21 +112,41 @@ const PERMISSION_CLASSES = new Set<SkillCompetencePermissionClass>([
 const MAX_VALIDITY_MS = 30 * 24 * 60 * 60_000;
 const MAX_CLOCK_SKEW_MS = 60_000;
 
-function rejectProxyGraph(value: unknown, ancestors = new Set<object>(), budget = { nodes: 0 }): void {
+function rejectProxyGraph(
+  value: unknown,
+  ancestors = new Set<object>(),
+  budget = { nodes: 0 },
+  depth = 0,
+): void {
   if (value === null || typeof value !== 'object') return;
   if (nodeUtilTypes.isProxy(value)) throw new Error('skill-competence-proof-proxy-rejected');
   if (ancestors.has(value)) throw new Error('skill-competence-proof-cycle-rejected');
+  if (depth > 16) throw new Error('skill-competence-proof-depth-limit');
   budget.nodes += 1;
   if (budget.nodes > 4096) throw new Error('skill-competence-proof-size-limit');
+  const keys = Reflect.ownKeys(value);
+  if (keys.length > 4097) throw new Error('skill-competence-proof-property-limit');
+  if (Array.isArray(value)) {
+    if (Object.getPrototypeOf(value) !== Array.prototype || value.length > 4096 ||
+        keys.length !== value.length + 1) {
+      throw new Error('skill-competence-proof-array-shape-invalid');
+    }
+    for (let index = 0; index < value.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set || !descriptor.enumerable) {
+        throw new Error('skill-competence-proof-array-entry-invalid');
+      }
+    }
+  }
   ancestors.add(value);
   try {
-    for (const key of Reflect.ownKeys(value)) {
+    for (const key of keys) {
       if (Array.isArray(value) && key === 'length') continue;
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set) {
+      if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set || !descriptor.enumerable) {
         throw new Error('skill-competence-proof-accessor-rejected');
       }
-      rejectProxyGraph(descriptor.value, ancestors, budget);
+      rejectProxyGraph(descriptor.value, ancestors, budget, depth + 1);
     }
   } finally {
     ancestors.delete(value);
@@ -168,8 +188,20 @@ function validIdentifier(value: unknown): value is string {
   return typeof value === 'string' && SAFE_ID.test(value) && value.length <= 128;
 }
 
+function isDensePlainArray(value: unknown, maxLength: number): value is unknown[] {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype ||
+      value.length > maxLength) return false;
+  const keys = Reflect.ownKeys(value);
+  if (keys.length !== value.length + 1) return false;
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set || !descriptor.enumerable) return false;
+  }
+  return true;
+}
+
 function validIdentifierList(value: unknown): value is string[] {
-  return Array.isArray(value) && value.length <= 32 &&
+  return isDensePlainArray(value, 32) &&
     value.every(item => validIdentifier(item)) && new Set(value).size === value.length;
 }
 
@@ -211,7 +243,7 @@ function assertContract(contract: SkillCompetenceContract): void {
       !FINGERPRINT.test(String(contract.environmentFingerprint)) ||
       !validIdentifierList(contract.preconditions) ||
       !validIdentifierList(contract.constraints) ||
-      !Array.isArray(contract.allowedModes) ||
+      !isDensePlainArray(contract.allowedModes, 2) ||
       !contract.allowedModes.includes('assisted') ||
       contract.allowedModes.some(mode => mode !== 'assisted' && mode !== 'autonomous') ||
       new Set(contract.allowedModes).size !== contract.allowedModes.length) {
@@ -220,7 +252,7 @@ function assertContract(contract: SkillCompetenceContract): void {
 }
 
 function validInterval(value: unknown): value is [number, number] {
-  return Array.isArray(value) && value.length === 2 &&
+  return isDensePlainArray(value, 2) && value.length === 2 &&
     value.every(n => typeof n === 'number' && Number.isFinite(n) && n >= -1 && n <= 1) &&
     value[0] <= value[1];
 }
@@ -298,10 +330,10 @@ function assertShadowEvidence(
         payload.proposalOutcomeFingerprint !== candidate.proposalOutcomeFingerprint ||
         payload.manifestFingerprint !== proposal.manifestFingerprint ||
         payload.runId !== observation.runId ||
-        payload.taskId.trim().length === 0 ||
+        typeof payload.taskId !== 'string' || payload.taskId.trim().length === 0 ||
         !Number.isSafeInteger(payload.seed) || payload.seed < 0 ||
         !Number.isFinite(payload.observedAt) || payload.observedAt <= 0 ||
-        !payload.runtimeVersion.trim()) {
+        typeof payload.runtimeVersion !== 'string' || !payload.runtimeVersion.trim()) {
       throw new Error('skill competence proof shadow evidence does not bind to this candidate and holdout manifest');
     }
     if (skillCompetenceRuntimeFingerprint(payload.runtimeVersion) !== contract.runtimeFingerprint) {

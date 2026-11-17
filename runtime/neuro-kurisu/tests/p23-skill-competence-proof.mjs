@@ -7,6 +7,7 @@ import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../sr
 import { isAuthenticVerifiedSkillPromotionProposal, proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
 import {
   createSkillCompetenceProofVerifier,
+  cloneFrozenSkillCompetenceProof,
   parseTrustedSkillCompetenceAttestorKeys,
   canonicalSkillCompetenceProofPayload,
   skillCompetenceRuntimeFingerprint,
@@ -47,6 +48,22 @@ assert.equal(parseTrustedSkillCompetenceAttestorKeys(JSON.stringify({
   'skill-attestor-v1': attestorPublicPem,
 })).size, 1, 'trusted Ed25519 skill attestors load separately');
 assert.throws(() => parseTrustedSkillCompetenceAttestorKeys('{bad-json'), /valid JSON/);
+
+const malformedSparseProof = {
+  payload: {
+    contract: { allowedModes: ['assisted', ,] },
+  },
+  signature: 'A'.repeat(88),
+};
+assert.throws(() => cloneFrozenSkillCompetenceProof(malformedSparseProof), /invalid-skill-competence-proof-data/);
+const accessorProof = { payload: {}, signature: 'A'.repeat(88) };
+Object.defineProperty(accessorProof.payload, 'attestorId', {
+  enumerable: true,
+  get() { throw new Error('accessor must never execute'); },
+});
+assert.throws(() => cloneFrozenSkillCompetenceProof(accessorProof), /invalid-skill-competence-proof-data/);
+const proxyProof = new Proxy({ payload: {}, signature: 'A'.repeat(88) }, {});
+assert.throws(() => cloneFrozenSkillCompetenceProof(proxyProof), /invalid-skill-competence-proof-data/);
 const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 });
 assert.throws(() => parseTrustedSkillCompetenceAttestorKeys(JSON.stringify({
   'not-ed25519': pem(rsa.publicKey, 'spki'),
