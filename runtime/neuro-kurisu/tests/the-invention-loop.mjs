@@ -168,6 +168,49 @@ assert.throws(() => loop.recordOutcome(reuse.id, {
 }), /duplicate-run-or-evidence-across-inventions/);
 assert.equal(loop.snapshot().records.find(record => record.id === reuse.id).outcomes.length, 0);
 
+// A complete replication cohort still fails when fewer than the preregistered
+// fraction of seeds clear the gate, even when its mean effect is positive.
+const weakProtocol = {
+  ...protocol,
+  testFingerprint: sha('7'),
+  primarySeed: 37,
+  replicationSeeds: [38, 39, 40, 41, 42],
+  holdoutSeeds: [43, 44, 45, 46, 47],
+};
+const weak = loop.propose(weakProtocol);
+loop.design(weak.id);
+loop.prototype(weak.id, { reference: 'candidate://weak-replication', sha256: sha('3') });
+loop.recordOutcome(weak.id, {
+  ...primaryInput,
+  seed: 37,
+  runId: 'run-weak-primary',
+  environmentId: 'environment-weak-primary',
+  testFingerprint: sha('7'),
+  evidenceRef: 'artifact://weak/primary.json',
+  evidenceSha256: sha('4'),
+});
+loop.critique(weak.id, {
+  reviewerId: weakProtocol.verifierPlan.critique,
+  reviewRef: 'review://weak',
+  reviewSha256: sha('5'),
+});
+let weakResult;
+for (const [seed, observed] of [[38, 96], [39, 96], [40, 96], [41, 103], [42, 103]]) {
+  weakResult = loop.recordOutcome(weak.id, {
+    ...replicationInput,
+    seed,
+    runId: 'run-weak-replication-' + seed,
+    environmentId: 'environment-weak-replication-' + seed,
+    testFingerprint: sha('7'),
+    evidenceRef: 'artifact://weak/replication/' + seed + '.json',
+    evidenceSha256: sha(String(seed)),
+    observed,
+  });
+}
+assert.equal(weakResult.stage, 'rejected');
+assert.equal(weakResult.phaseSummaries.replication.successRate01, 0.6);
+assert.equal(weakResult.phaseSummaries.replication.passed, false);
+
 // Restoring altered records must quarantine them instead of trusting the mutable cache.
 const tampered = loop.snapshot();
 tampered.records[2].protocol.baseline = 50;
@@ -176,6 +219,6 @@ const restored = new TheInventionLoop(() => now++, () => 'unused');
 restored.restore(tampered);
 assert.equal(restored.metrics().accepted, 0);
 assert.equal(restored.metrics().quarantinedRecords, 1);
-assert.equal(restored.metrics().auditVerifiedRecords, 1);
+assert.equal(restored.metrics().auditVerifiedRecords, 2);
 
 console.log('THE_INVENTION_LOOP_LIFECYCLE=PASS preregistered-seeds+verified-ledger+audit-chain');
