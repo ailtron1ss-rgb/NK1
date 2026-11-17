@@ -268,6 +268,47 @@ const detached = outcomeMetrics.snapshot();
 detached.negativeSpace.records[0].alternatives[0].action = 'tampered';
 assert.equal(outcomeMetrics.snapshot().negativeSpace.records[0].alternatives[0].action, 'defer');
 
+// A corrupted restore with repeated decision IDs keeps only the newest canonical row.
+const duplicatedRestore = new RegretEngine();
+duplicatedRestore.restore({
+  records: [],
+  meanRegret: 0,
+  lastAt: 0,
+  version: 1,
+  negativeSpace: {
+    version: 1,
+    totalRecorded: 2,
+    pruned: 0,
+    lastAt: 20,
+    records: [
+      {
+        decisionId: 'decision-duplicate-restore',
+        chosen: 'respond',
+        chosenExpectedOutcome01: 0.7,
+        chosenActualOutcome01: 0.4,
+        outcomePredictionError01: 0.3,
+        outcomeShortfall01: 0.3,
+        significance: { cost01: 0.8, risk01: 0.1, futureImportance01: 0.1, score01: 0.8 },
+        alternatives: [{ action: 'explore', expectedOutcome01: 0.75 }],
+      },
+      {
+        decisionId: 'decision-duplicate-restore',
+        chosen: 'verify',
+        chosenExpectedOutcome01: 0.8,
+        chosenActualOutcome01: 0.7,
+        outcomePredictionError01: 0.1,
+        outcomeShortfall01: 0.1,
+        significance: { cost01: 0.9, risk01: 0.1, futureImportance01: 0.1, score01: 0.9 },
+        alternatives: [{ action: 'plan', expectedOutcome01: 0.82 }],
+      },
+    ],
+  },
+});
+assert.equal(duplicatedRestore.snapshot().negativeSpace.records.length, 1);
+assert.equal(duplicatedRestore.snapshot().negativeSpace.records[0].chosen, 'verify');
+assert.equal(duplicatedRestore.snapshot().negativeSpace.records[0].alternatives[0].action, 'plan');
+assert.equal(duplicatedRestore.snapshot().negativeSpace.pruned, 1);
+
 // Invalid and inconsistent persisted records are ignored or normalized rather than trusted.
 const malformed = new RegretEngine();
 malformed.restore({
