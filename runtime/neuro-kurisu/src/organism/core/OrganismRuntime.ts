@@ -1958,8 +1958,8 @@ export class OrganismRuntime {
       this.synapticCommons.revokeAttestedArtifact(fingerprint, reason)));
   }
 
-  exportSynapticArtifact(fingerprint: string) {
-    return this.enqueue(async () => this.synapticCommons.exportArtifact(fingerprint));
+  exportSynapticArtifact(fingerprint: string, currentHost: SynapticCompatibilityTarget) {
+    return this.enqueue(async () => this.synapticCommons.exportArtifact(fingerprint, currentHost));
   }
 
   synapticCommonsSnapshot() {

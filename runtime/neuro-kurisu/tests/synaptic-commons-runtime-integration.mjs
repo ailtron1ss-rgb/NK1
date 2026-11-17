@@ -117,7 +117,12 @@ try {
 
   const attested = await runtime.attestSynapticSkill(fingerprint, makeAttestation());
   assert.equal(attested.status, 'attested');
-  assert.equal((await runtime.exportSynapticArtifact(fingerprint)).artifact.skill.skillId, 'runtime-safe-summary');
+  const exportTarget = {
+    runtimeVersion: '1.2.0', environmentFingerprint,
+    supportedCapabilities: ['documents.read', 'documents.summarize'],
+    permittedTools: ['documents.fetch'],
+  };
+  assert.equal((await runtime.exportSynapticArtifact(fingerprint, exportTarget)).artifact.skill.skillId, 'runtime-safe-summary');
 
   await runtime.flush();
   await runtime.stop();
@@ -142,7 +147,7 @@ try {
   const revokedSnapshot = await afterRevocationRestart.synapticCommonsSnapshot();
   assert.equal(revokedSnapshot.records[0].status, 'revoked');
   assert.equal((await afterRevocationRestart.synapticCommonsDiagnostics()).revoked, 1);
-  await assert.rejects(() => afterRevocationRestart.exportSynapticArtifact(fingerprint), /requires-attested-artifact/);
+  await assert.rejects(() => afterRevocationRestart.exportSynapticArtifact(fingerprint, exportTarget), /requires-attested-artifact/);
   await assert.rejects(() => afterRevocationRestart.evaluateSynapticSkillCompatibility(fingerprint, {
     runtimeVersion: '1.2.0', environmentFingerprint,
     supportedCapabilities: ['documents.read', 'documents.summarize'],

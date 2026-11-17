@@ -552,27 +552,8 @@ export class SynapticCommons {
     const record = this.requireRecord(fingerprint);
     if (record.status === 'rejected') throw new Error('synaptic-skill-rejected');
     if (record.status === 'revoked') throw new Error('synaptic-skill-revoked');
-    if (!parseVersion(target?.runtimeVersion) || !HEX_64.test(target?.environmentFingerprint ?? '') ||
-        !Array.isArray(target?.supportedCapabilities) || !Array.isArray(target?.permittedTools))
-      throw new TypeError('synaptic-compatibility-target-invalid');
+    const reasons = this.compatibilityReasons(record.artifact, target);
     const checkedAt = Number.isSafeInteger(target.now) && Number(target.now) > 0 ? Number(target.now) : this.safeNow();
-    const reasons: string[] = [];
-    if (!target.supportedCapabilities.includes(record.artifact.contract.capability))
-      reasons.push('capability-not-supported:' + record.artifact.contract.capability);
-    if (!versionAtLeast(target.runtimeVersion, record.artifact.contract.minimumRuntimeVersion))
-      reasons.push('runtime-version-below-minimum');
-    for (const capability of record.artifact.contract.requiredCapabilities) {
-      if (!target.supportedCapabilities.includes(capability)) reasons.push('missing-capability:' + capability);
-    }
-    for (const tool of record.artifact.contract.requiredTools) {
-      if (!target.permittedTools.includes(tool)) reasons.push('tool-not-permitted:' + tool);
-    }
-    if (record.artifact.contract.environmentFingerprint &&
-        record.artifact.contract.environmentFingerprint !== target.environmentFingerprint)
-      reasons.push('environment-fingerprint-mismatch');
-    if (record.artifact.contract.permissionClass === 'destructive') reasons.push('destructive-permission-not-shareable');
-    if (record.artifact.contract.allowedModes.some(mode => mode !== 'assisted'))
-      reasons.push('unsupported-execution-mode');
     const compatible = reasons.length === 0;
     record.compatibility = {
       compatible,
@@ -630,18 +611,54 @@ export class SynapticCommons {
     return clone(record);
   }
 
-  exportArtifact(fingerprint: string): { artifact: SynapticCommonsArtifact; attestation: SynapticCommonsAttestation } {
+  exportArtifact(fingerprint: string, currentHost: SynapticCompatibilityTarget): { artifact: SynapticCommonsArtifact; attestation: SynapticCommonsAttestation } {
     const record = this.requireRecord(fingerprint);
     if (record.status !== 'attested' || !record.attestation)
       throw new Error('synaptic-export-requires-attested-artifact');
     if (record.attestation.expiresAt <= this.safeNow()) throw new Error('synaptic-attestation-expired');
+    if (!record.compatibility?.compatible) throw new Error('synaptic-export-compatibility-proof-missing');
+    // Export is bound to the live receiving-host manifest, never a stale snapshot
+    // or client-supplied policy. Runtime/environment drift requires fresh checks.
+    if (!currentHost || currentHost.runtimeVersion !== record.compatibility.runtimeVersion ||
+        currentHost.environmentFingerprint !== record.compatibility.environmentFingerprint)
+      throw new Error('synaptic-export-host-context-stale');
+    if (this.compatibilityReasons(record.artifact, currentHost).length > 0)
+      throw new Error('synaptic-export-current-host-incompatible');
     this.assertLicenseReviewTrusted(record.artifact);
     const publisherKey = this.publisherKeys.get(record.artifact.signature.keyId);
     if (!publisherKey || !verifyEd25519(record.artifactFingerprint, record.artifact.signature.value, publisherKey))
       throw new Error('synaptic-publisher-signature-no-longer-trusted');
-    if (!record.compatibility?.compatible) throw new Error('synaptic-export-compatibility-proof-missing');
     this.verifyAttestation(record.artifact, record.artifactFingerprint, record.attestation, record.compatibility);
     return { artifact: clone(record.artifact), attestation: clone(record.attestation) };
+  }
+
+  private compatibilityReasons(artifact: SynapticCommonsArtifact, target: SynapticCompatibilityTarget): string[] {
+    if (!target || !parseVersion(target.runtimeVersion) || !HEX_64.test(target.environmentFingerprint ?? '') ||
+        !Array.isArray(target.supportedCapabilities) || target.supportedCapabilities.length > 256 ||
+        !Array.isArray(target.permittedTools) || target.permittedTools.length > 256 ||
+        [...target.supportedCapabilities, ...target.permittedTools].some(value =>
+          typeof value !== 'string' || !SAFE_ID.test(value)) ||
+        new Set(target.supportedCapabilities).size !== target.supportedCapabilities.length ||
+        new Set(target.permittedTools).size !== target.permittedTools.length)
+      throw new TypeError('synaptic-compatibility-target-invalid');
+    const reasons: string[] = [];
+    if (!target.supportedCapabilities.includes(artifact.contract.capability))
+      reasons.push('capability-not-supported:' + artifact.contract.capability);
+    if (!versionAtLeast(target.runtimeVersion, artifact.contract.minimumRuntimeVersion))
+      reasons.push('runtime-version-below-minimum');
+    for (const capability of artifact.contract.requiredCapabilities) {
+      if (!target.supportedCapabilities.includes(capability)) reasons.push('missing-capability:' + capability);
+    }
+    for (const tool of artifact.contract.requiredTools) {
+      if (!target.permittedTools.includes(tool)) reasons.push('tool-not-permitted:' + tool);
+    }
+    if (artifact.contract.environmentFingerprint &&
+        artifact.contract.environmentFingerprint !== target.environmentFingerprint)
+      reasons.push('environment-fingerprint-mismatch');
+    if (artifact.contract.permissionClass === 'destructive') reasons.push('destructive-permission-not-shareable');
+    if (artifact.contract.allowedModes.some(mode => mode !== 'assisted'))
+      reasons.push('unsupported-execution-mode');
+    return reasons;
   }
 
   private normalizeTransitionReason(reason: string, label: string): string {

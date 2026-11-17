@@ -6,6 +6,7 @@ import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsRe
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import type { SynapticCompatibilityTarget } from '../organism/learning/SynapticCommons.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
@@ -102,6 +103,26 @@ let lastLanguageFailure = '';
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
 const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
 const rateBuckets = new Map();
+function synapticCommonsHostCompatibilityTarget(): SynapticCompatibilityTarget {
+    const runtimeVersion = String(process.env.NEURO_SYNAPTIC_COMMONS_RUNTIME_VERSION || '').trim();
+    const environmentFingerprint = String(process.env.NEURO_SYNAPTIC_COMMONS_ENVIRONMENT_FINGERPRINT || '').trim();
+    const readList = name => {
+        const raw = process.env[name];
+        if (!raw) return null;
+        let parsed;
+        try { parsed = JSON.parse(raw); } catch { return null; }
+        if (!Array.isArray(parsed) || parsed.length > 256 ||
+            parsed.some(value => typeof value !== 'string' || !/^[a-z0-9][a-z0-9._:-]{1,95}$/.test(value)) ||
+            new Set(parsed).size !== parsed.length) return null;
+        return parsed;
+    };
+    const supportedCapabilities = readList('NEURO_SYNAPTIC_COMMONS_SUPPORTED_CAPABILITIES_JSON');
+    const permittedTools = readList('NEURO_SYNAPTIC_COMMONS_PERMITTED_TOOLS_JSON');
+    if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(runtimeVersion) ||
+        !/^[a-f0-9]{64}$/.test(environmentFingerprint) || !supportedCapabilities || !permittedTools)
+        throw new Error('synaptic-host-compatibility-manifest-not-configured');
+    return { runtimeVersion, environmentFingerprint, supportedCapabilities, permittedTools };
+}
 function consumeRateLimit(req, pathName) {
     if (pathName === '/health' || pathName === '/api/health')
         return { allowed: true };
@@ -570,26 +591,10 @@ async function route(req, res) {
                 return json(res, 400, { ok: false, error: 'explicit-synaptic-transition-confirmation-required' });
             try {
                 if (action === 'compatibility') {
-                    const runtimeVersion = String(process.env.NEURO_SYNAPTIC_COMMONS_RUNTIME_VERSION || '').trim();
-                    const environmentFingerprint = String(process.env.NEURO_SYNAPTIC_COMMONS_ENVIRONMENT_FINGERPRINT || '').trim();
-                    const readList = name => {
-                        const raw = process.env[name];
-                        if (!raw) return null;
-                        let parsed;
-                        try { parsed = JSON.parse(raw); } catch { return null; }
-                        if (!Array.isArray(parsed) || parsed.length > 256 ||
-                            parsed.some(value => typeof value !== 'string' || !/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(value))) return null;
-                        return [...new Set(parsed)];
-                    };
-                    const supportedCapabilities = readList('NEURO_SYNAPTIC_COMMONS_SUPPORTED_CAPABILITIES_JSON');
-                    const permittedTools = readList('NEURO_SYNAPTIC_COMMONS_PERMITTED_TOOLS_JSON');
-                    if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(runtimeVersion) ||
-                        !/^[a-f0-9]{64}$/.test(environmentFingerprint) ||
-                        !supportedCapabilities || !permittedTools)
-                        return json(res, 503, { ok: false, error: 'synaptic-host-compatibility-manifest-not-configured' });
-                    const record = await runtime.evaluateSynapticSkillCompatibility(fingerprint, {
-                        runtimeVersion, environmentFingerprint, supportedCapabilities, permittedTools,
-                    });
+                    let target;
+                    try { target = synapticCommonsHostCompatibilityTarget(); }
+                    catch { return json(res, 503, { ok: false, error: 'synaptic-host-compatibility-manifest-not-configured' }); }
+                    const record = await runtime.evaluateSynapticSkillCompatibility(fingerprint, target);
                     return json(res, 200, {
                         ok: true, artifactFingerprint: fingerprint, status: record.status,
                         compatibility: record.compatibility,
@@ -625,11 +630,12 @@ async function route(req, res) {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
             try {
-                const bundle = await runtime.exportSynapticArtifact(synapticAction[1]);
+                const target = synapticCommonsHostCompatibilityTarget();
+                const bundle = await runtime.exportSynapticArtifact(synapticAction[1], target);
                 return json(res, 200, { ok: true, ...bundle, executable: false });
             } catch (error) {
                 const message = String(error?.message || error).slice(0, 180);
-                const status = /not-found/.test(message) ? 404 : 409;
+                const status = /manifest-not-configured/.test(message) ? 503 : /not-found/.test(message) ? 404 : 409;
                 return json(res, status, { ok: false, error: message });
             }
         }

@@ -144,7 +144,20 @@ const attestation = makeAttestation(fingerprint);
 const attested = commons.attachAttestation(fingerprint, attestation);
 assert.equal(attested.status, 'attested');
 assert.equal(commons.diagnostics().attested, 1);
-const exported = commons.exportArtifact(fingerprint);
+const exportTarget = {
+  runtimeVersion: '1.2.0',
+  environmentFingerprint: envFingerprint,
+  supportedCapabilities: ['documents.read', 'documents.summarize'],
+  permittedTools: ['documents.fetch'],
+  now,
+};
+const exported = commons.exportArtifact(fingerprint, exportTarget);
+assert.throws(() => commons.exportArtifact(fingerprint, {
+  ...exportTarget, environmentFingerprint: 'f'.repeat(64),
+}), /host-context-stale/, 'export refuses a host environment different from the attested one');
+assert.throws(() => commons.exportArtifact(fingerprint, {
+  ...exportTarget, permittedTools: [],
+}), /current-host-incompatible/, 'export rechecks the live host permission manifest');
 assert.equal(exported.attestation.artifactFingerprint, fingerprint);
 assert.equal(exported.artifact.skill.skillId, 'summarize-docs');
 
@@ -302,7 +315,7 @@ expiryNow = attestation.expiresAt + 1;
 const restoredAfterExpiry = new SynapticCommons(expiryTrust);
 assert.doesNotThrow(() => restoredAfterExpiry.restore(attestedStateBeforeExpiry),
   'expired evidence remains verifiable during restore and must not prevent runtime startup');
-assert.throws(() => restoredAfterExpiry.exportArtifact(fingerprint), /attestation-expired/,
+assert.throws(() => restoredAfterExpiry.exportArtifact(fingerprint, exportTarget), /attestation-expired/,
   'expired evidence remains non-exportable');
 
 const revoked = commons.revokeAttestedArtifact(fingerprint, 'independent review found a poisoned capability mapping');

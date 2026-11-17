@@ -24,8 +24,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: nk1-synaptic-commons-\${{ github.head_ref || github.ref_name }}-\${{ github.event_name }}
-  cancel-in-progress: true
+  group: nk1-synaptic-commons-${{ github.head_ref || github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: false
 
 jobs:
   synaptic-commons:

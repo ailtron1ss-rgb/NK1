@@ -42,7 +42,7 @@ All trust roots and compatibility manifests are server-owned environment setting
 - NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON: JSON object mapping publisher key IDs to Ed25519 public PEM strings.
 - NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON: JSON object mapping evidence-attestor IDs to Ed25519 public PEM strings.
 - NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON: JSON array of exact 64-character review fingerprints explicitly approved by the receiving host; an absent or unlisted fingerprint blocks import.
-- NEURO_SYNAPTIC_COMMONS_RUNTIME_VERSION: local semantic runtime version (for example 1.2.0).
+- NEURO_SYNAPTIC_COMMONS_RUNTIME_VERSION: local semantic runtime version (for example 1.2.0). The environment fingerprint must change whenever runtime, capabilities, tools, or relevant execution environment changes.
 - NEURO_SYNAPTIC_COMMONS_ENVIRONMENT_FINGERPRINT: exact 64-character lowercase SHA-256 environment fingerprint.
 - NEURO_SYNAPTIC_COMMONS_SUPPORTED_CAPABILITIES_JSON: JSON array of locally supported capability IDs.
 - NEURO_SYNAPTIC_COMMONS_PERMITTED_TOOLS_JSON: JSON array of locally permitted tool IDs.
@@ -57,7 +57,7 @@ Only public keys may be stored in the two trust-key settings. Private signing ke
 - POST /api/organism/synaptic-commons/:fingerprint/attestation — requires confirmed: true and an independently signed evidence receipt.
 - POST /api/organism/synaptic-commons/:fingerprint/reject — requires confirmed: true and a bounded reason.
 - POST /api/organism/synaptic-commons/:fingerprint/revoke — requires confirmed: true and a bounded revocation reason; only attested records can be revoked.
-- GET /api/organism/synaptic-commons/:fingerprint/export — exports only a non-expired attested artifact and its attestation.
+- GET /api/organism/synaptic-commons/:fingerprint/export — exports only a non-expired attested artifact after rechecking the live host runtime version, environment fingerprint, supported capability list, tool allowlist, publisher trust and licence review allowlist. Runtime/environment drift requires fresh compatibility and attestation.
 
 Every route is subject to the existing API authorization and rate-limit boundary. There is intentionally no route to execute or activate a shared skill.
 
