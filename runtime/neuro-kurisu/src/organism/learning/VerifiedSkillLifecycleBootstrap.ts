@@ -6,6 +6,29 @@ import { VersionedSkillCandidateStore } from './VersionedSkillCandidateStore.ts'
 import { createContextBoundSkillShadowEvidenceVerifier } from './VerifiedSkillShadowEvidence.ts';
 import { createSkillCompetenceProofVerifier, parseTrustedSkillCompetenceAttestorKeys } from './SkillCompetenceProof.ts';
 
+function publicKeyFingerprint(pem: string): string {
+  return createPublicKey(pem).export({ type: 'spki', format: 'der' }).toString('base64');
+}
+
+function assertIndependentCompetenceAttestors(
+  shadowVerifierKeys: ReadonlyMap<string, string>,
+  promotionApprovalKeys: ReadonlyMap<string, string>,
+  competenceAttestorKeys: ReadonlyMap<string, string>,
+): void {
+  const otherAuthorityFingerprints = new Set<string>();
+  for (const pem of [...shadowVerifierKeys.values(), ...promotionApprovalKeys.values()]) {
+    otherAuthorityFingerprints.add(publicKeyFingerprint(pem));
+  }
+  const seenAttestors = new Set<string>();
+  for (const pem of competenceAttestorKeys.values()) {
+    const fingerprint = publicKeyFingerprint(pem);
+    if (otherAuthorityFingerprints.has(fingerprint) || seenAttestors.has(fingerprint)) {
+      throw new Error('competence attestor public keys must be cryptographically independent from shadow verifiers, promotion approvers, and each other');
+    }
+    seenAttestors.add(fingerprint);
+  }
+}
+
 function loadTrustedVerifierKeys(raw: string | undefined): ReadonlyMap<string, string> {
   if (raw === undefined || raw.trim() === '') return new Map();
   let parsed: unknown;
@@ -61,6 +84,7 @@ export function createVerifiedSkillLifecycleBootstrap(
   const trustedVerifierKeys = loadTrustedVerifierKeys(rawVerifierKeys);
   const trustedApprovalKeys = parseTrustedSkillPromotionApprovalKeys(rawApprovalKeys);
   const trustedCompetenceAttestorKeys = parseTrustedSkillCompetenceAttestorKeys(rawCompetenceAttestorKeys);
+  assertIndependentCompetenceAttestors(trustedVerifierKeys, trustedApprovalKeys, trustedCompetenceAttestorKeys);
   const verifyCompetenceProof = createSkillCompetenceProofVerifier(trustedCompetenceAttestorKeys);
   const verifyPromotionApproval = createAuthenticatedSkillPromotionApprovalVerifier(trustedApprovalKeys);
   const verifyRollbackApproval = createAuthenticatedSkillRollbackApprovalVerifier(trustedApprovalKeys);

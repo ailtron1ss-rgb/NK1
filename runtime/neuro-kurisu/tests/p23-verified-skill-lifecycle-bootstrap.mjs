@@ -51,6 +51,30 @@ try {
   );
   assert.equal(configuredApproval.trustedApprovalCount, 1, 'a valid detached-signature approval authority key should be accepted');
   assert.throws(() => createVerifiedSkillLifecycleBootstrap(
+    join(root, 'same-shadow-candidates.json'),
+    join(root, 'same-shadow-runs.json'),
+    JSON.stringify({ 'shadow-verifier': validEd25519Pem }),
+    '',
+    JSON.stringify({ 'competence-attestor': validEd25519Pem }),
+  ), /cryptographically independent/,
+  'competence attestor must not reuse a shadow verifier key');
+  assert.throws(() => createVerifiedSkillLifecycleBootstrap(
+    join(root, 'same-approval-candidates.json'),
+    join(root, 'same-approval-runs.json'),
+    JSON.stringify({ 'shadow-verifier': validEd25519Pem }),
+    JSON.stringify({ 'promotion-operator': validApprovalPem }),
+    JSON.stringify({ 'competence-attestor': validApprovalPem }),
+  ), /cryptographically independent/,
+  'competence attestor must not reuse a promotion approval key');
+  assert.throws(() => createVerifiedSkillLifecycleBootstrap(
+    join(root, 'duplicate-attestor-candidates.json'),
+    join(root, 'duplicate-attestor-runs.json'),
+    '',
+    '',
+    JSON.stringify({ 'attestor-a': validEd25519Pem, 'attestor-b': validEd25519Pem }),
+  ), /cryptographically independent/,
+  'two attestor IDs cannot alias the same signing authority');
+  assert.throws(() => createVerifiedSkillLifecycleBootstrap(
     join(root, 'approval-bad-candidates.json'),
     join(root, 'approval-bad-runs.json'),
     '',
