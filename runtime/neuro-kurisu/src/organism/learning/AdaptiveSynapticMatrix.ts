@@ -277,7 +277,8 @@ export class AdaptiveSynapticMatrixEngine {
     const manifest = normalizeManifest(raw);
     const record = this.state.adapters.find(entry => entry.candidate.id === manifest.id);
     if (!record || !sameCandidate(record.candidate, manifest)) throw new Error('synaptic-adapter-candidate-manifest-mismatch');
-    const quarantinedReportSha256 = record.quarantineReportSha256 ?? record.manifest?.validation.reportSha256;
+    const quarantinedReportSha256 = record.quarantineReportSha256
+      ?? (record.status === 'quarantined' ? record.manifest?.validation.reportSha256 : undefined);
     if (quarantinedReportSha256 === manifest.validation.reportSha256) {
       throw new Error('synaptic-adapter-revalidation-required-after-quarantine');
     }
@@ -300,6 +301,10 @@ export class AdaptiveSynapticMatrixEngine {
   disable(id: string): SynapticAdapterRecord | null {
     const record = this.state.adapters.find(entry => entry.candidate.id === id);
     if (!record) return null;
+    if (record.status === 'quarantined') {
+      // Manual disable must preserve the stronger quarantine anti-replay gate.
+      record.quarantineReportSha256 ??= record.manifest?.validation.reportSha256;
+    }
     record.status = 'disabled';
     record.cooldownUntil = 0;
     return structuredClone(record);
