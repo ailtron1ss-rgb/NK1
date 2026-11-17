@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { ToolExecutionUncertainError } from '../src/organism/system/ActionGateway.ts';
 
 const approvalKey = 'nk1-intent-integration-test-key-32-bytes';
 const store = new MemoryStateStore();
@@ -62,6 +63,62 @@ assert.equal(execution.result.ok, true);
 assert.equal(execution.result.tool, 'organism.inspect');
 assert.ok(execution.result.executionId);
 
+let fixtureExecutions = 0;
+let fixtureReconciliations = 0;
+const registerReceiptFixture = target => target.registerActionTool({
+  id: 'organism.intent.fixture',
+  capability: 'core.read',
+  destructive: false,
+  projectAllowed: true,
+  requiresIdempotencyKey: true,
+  execute: async () => {
+    fixtureExecutions += 1;
+    throw new ToolExecutionUncertainError('fixture-provider-ack-lost-after-dispatch');
+  },
+  reconcile: async (_input, context) => {
+    fixtureReconciliations += 1;
+    assert.ok(context.idempotencyKey);
+    return {
+      status: 'found',
+      authoritative: true,
+      receiptId: 'fixture-provider-receipt-01',
+      result: { ok: true, verified: true, providerState: 'committed', providerReceiptId: 'fixture-provider-receipt-01' },
+      checkedAt: Date.now(),
+    };
+  },
+});
+registerReceiptFixture(core);
+
+const pendingDraft = core.compileIntent({
+  requestId: 'intent:core-integration:pending-receipt',
+  text: 'Confirm the fixture operation with its authoritative provider receipt.',
+  extraction: {
+    goal: 'Confirm the fixture operation',
+    expectedOutcome: 'An authoritative provider receipt',
+    acceptanceCriteria: ['Return the provider receipt identity'],
+    permissions: { allowedActions: ['organism.intent.fixture'] },
+    stopConditions: ['Stop if provider receipt lookup is unknown'],
+  },
+});
+const pendingScope = { allowedActions: ['organism.intent.fixture'], acknowledgedAssumptions: [], riskAcknowledged: false };
+const pendingTicket = await core.requestIntentApproval(pendingDraft, pendingScope, 'Approve fixture operation');
+assert.equal(pendingTicket.created, true);
+assert.equal((await core.resolveIntentApprovalRequest(pendingTicket.request.id, true, 'integration-test-owner')).ok, true);
+const pendingApproved = await core.approveIntent(pendingDraft, {
+  ...pendingScope,
+  evidenceRef: pendingTicket.request.id,
+});
+const pendingDispatch = await core.executeIntent(pendingApproved, {
+  toolId: 'organism.intent.fixture',
+  input: { operation: 'commit-probe' },
+  reason: 'intent-core-integration-pending',
+  options: { idempotencyKey: 'intent:recovery:01', decisionId: 'decision:core-recovery' },
+});
+assert.equal(pendingDispatch.executed, true, 'the intent gate should dispatch the keyed operation exactly once');
+assert.equal(pendingDispatch.result.outcomeClass, 'idempotency-recovery-required',
+  'a lost provider acknowledgement must remain an unresolved keyed receipt');
+assert.equal(fixtureExecutions, 1);
+
 const persisted = await store.load();
 assert.ok(persisted?.system?.intentContracts?.records?.some(row => row.id === approved.id),
   'approved contracts must be checkpointed with organism system state');
@@ -73,6 +130,16 @@ assert.ok(restored, 'a host-key-attested approved contract must restore after Co
 assert.equal(restored.approval.status, 'approved');
 
 const recoveryCalls = [];
+const restarted = new OrganismCore(store, config);
+registerReceiptFixture(restarted);
+await restarted.init();
+const restored = restarted.getIntentContract(approved.id);
+assert.ok(restored, 'a host-key-attested approved contract must restore after Core restart');
+assert.equal(restored.approval.status, 'approved');
+const restoredPending = restarted.getIntentContract(pendingApproved.id);
+assert.ok(restoredPending, 'a pending receipt intent must restore after Core restart');
+assert.equal(restoredPending.approval.status, 'approved');
+
 const gateway = restarted.cognitiveRuntime.actionGateway;
 let executeDuringReconciliation = 0;
 const originalExecute = gateway.executeTool.bind(gateway);
@@ -81,26 +148,25 @@ gateway.executeTool = async (...args) => {
   return originalExecute(...args);
 };
 const originalReconcile = gateway.reconcileToolExecution.bind(gateway);
-gateway.reconcileToolExecution = async (id, input, reason, options) => {
-  recoveryCalls.push({ id, input: structuredClone(input), reason, options: structuredClone(options) });
-  return {
-    ok: false, verified: false, executionId: 'exec-intent-recovery-0001',
-    tool: id, capability: 'fixture', result: { error: 'no-pending-receipt-fixture' },
-    audit: { at: Date.now(), action: 'tool', tool: id, accepted: false, mode: 'dry-run', reason: 'no-pending-receipt-fixture' },
-    verification: { verified: false, basis: 'none', confidence01: 0, externalObservation: false, notes: 'fixture' },
-    outcomeClass: 'idempotency-recovery-required',
-  };
+gateway.reconcileToolExecution = async (...args) => {
+  recoveryCalls.push({ id: args[0], input: structuredClone(args[1]), reason: args[2], options: structuredClone(args[3]) });
+  return originalReconcile(...args);
 };
-const reconciled = await restarted.reconcileIntentExecution(restored, {
-  toolId: 'organism.inspect', input: { scope: 'status' }, reason: 'intent-restart-reconciliation',
+const reconciled = await restarted.reconcileIntentExecution(restoredPending, {
+  toolId: 'organism.intent.fixture',
+  input: { operation: 'commit-probe' },
+  reason: 'intent-restart-reconciliation',
   options: { idempotencyKey: 'intent:recovery:01', decisionId: 'decision:core-recovery' },
 });
-assert.equal(reconciled.attempted, true, 'receipt lookup attempt must not be reported as a new side-effect execution');
+assert.equal(reconciled.attempted, true, 'read-only receipt lookup attempt must be correlated to its prepared intent');
 assert.equal(recoveryCalls.length, 1, 'intent reconciliation must be forwarded exactly once');
-assert.equal(recoveryCalls[0].id, 'organism.inspect');
+assert.equal(recoveryCalls[0].id, 'organism.intent.fixture');
 assert.equal(recoveryCalls[0].options.decisionId, 'decision:core-recovery',
   'intent integration must preserve canonical cognitive decision identity');
-assert.equal(executeDuringReconciliation, 0, 'read-only reconciliation must never enter the side-effect executor');
+assert.equal(executeDuringReconciliation, 0, 'read-only reconciliation must never enter ActionGateway.executeTool');
+assert.equal(fixtureExecutions, 1, 'the original side-effect executor must never be re-entered after restart');
+assert.equal(fixtureReconciliations, 1, 'only the provider receipt lookup must run after restart');
+assert.equal(reconciled.result.idempotencyStatus, 'reconciled');
 gateway.executeTool = originalExecute;
 gateway.reconcileToolExecution = originalReconcile;
 
