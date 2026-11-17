@@ -46,7 +46,7 @@ Introduce a reproducible, versioned architecture manifest that explains how the 
 - Genome schema version: 1.
 - Module set: exactly the seven names returned by organismSystemContracts().
 - Dependency order: deterministic topological order of the live contract graph.
-- Immutable module fields: name, contract version, purpose, phase, dependencies and capabilities.
+- Immutable module fields: name, contract version, purpose, phase, snapshot weight, execution rank, dependencies and capabilities.
 - Inheritable fields in v1: finite estimatedCost01 in [0,1]; integer cadenceCycles in [1,64].
 - Invariant manifest: sourced from InvariantEngine; a candidate cannot add, remove, weaken, or re-own rules.
 - Runtime compatibility: pinned to RELEASE_CONTRACT, including current state schema and the existing migration owner/path.
