@@ -70,7 +70,7 @@ const trials = [
   ['goal-continuity', 'task-3'], ['goal-continuity', 'task-4'],
   ['tool-contract', 'task-5'], ['tool-contract', 'task-6'],
 ].map(([taskFamily, taskId], index) => ({
-  trialId: `trial-${index + 1}`,
+  trialId: `trial-${index + 1}`,\n  transferDigest: transfer.integrity.digest,
   sourceBackendId: source.backendId,
   targetBackendId: target.backendId,
   taskId,
