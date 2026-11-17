@@ -30,14 +30,14 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
   });
   if (ledgerFull) gateway.restoreExecutionLedger({
     version: 1,
-    records: [{
-      keyHash: 'd'.repeat(64),
+    records: Array.from({ length: maxIdempotencyRecords }, (_, index) => ({
+      keyHash: index.toString(16).padStart(64, '0'),
       requestHash: 'e'.repeat(64),
       status: 'pending',
-      recordedAt: 1,
-      executionId: 'exec-prefilled-receipt',
+      recordedAt: index + 1,
+      executionId: `exec-prefilled-receipt-${index}`,
       toolId: 'test.undo.preexisting',
-    }],
+    })),
   });
 
   gateway.registerTool({
@@ -331,7 +331,7 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
 // A ledger-capacity refusal happens before the pending persister is called, so
 // the preflight snapshot is definitely orphaned and must be released.
 {
-  const { gateway, counts, events } = makeGateway({ ledgerFull: true, maxIdempotencyRecords: 1 });
+  const { gateway, counts, events } = makeGateway({ ledgerFull: true, maxIdempotencyRecords: 16 });
   const result = await gateway.executeTool(
     'test.undo.mutate',
     { target: 'relay-01' },
