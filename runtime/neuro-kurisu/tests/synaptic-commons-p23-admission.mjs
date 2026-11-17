@@ -11,12 +11,14 @@ import { VersionedSkillCandidateStore } from '../src/organism/learning/Versioned
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
+import { createSynapticP23AdmissionProvider } from '../src/organism/learning/SynapticP23OutcomeBundleProvider.ts';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'nk1-synaptic-p23-admission-'));
 const previous = {
   publisher: process.env.NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON,
   attestor: process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON,
   licence: process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON,
+  shadowVerifiers: process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
 };
 const now = Date.now();
 const environmentFingerprint = 'e'.repeat(64);
@@ -42,6 +44,7 @@ const outcomeVerifierId = 'synaptic-p23-local-verifier';
 process.env.NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON = JSON.stringify({ 'publisher-1': publisher.publicKey });
 process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON = JSON.stringify({ 'attestor-1': attestor.publicKey });
 process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON = JSON.stringify(['b'.repeat(64)]);
+process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = JSON.stringify({ [outcomeVerifierId]: outcomeVerifier.publicKey });
 
 const unsignedArtifact = {
   schemaVersion: 1,
@@ -103,7 +106,7 @@ attestation.signature.value = sign(
   attestor.privateKey,
 ).toString('base64');
 
-function buildLocalProposal(candidateMethod) {
+function buildSignedOutcomeBundle(candidateMethod) {
   const verifierId = outcomeVerifierId;
   const manifest = Array.from({ length: 10 }, (_, index) => ({
     taskId: 'synaptic-local-task-' + index,
@@ -113,18 +116,18 @@ function buildLocalProposal(candidateMethod) {
     verifierId,
     version: 'v1',
   }));
-  const ledger = new VerifiedOutcomeLedger(manifest);
-  const trustedKeys = new Map([[verifierId, outcomeVerifier.publicKey]]);
+  const manifestLedger = new VerifiedOutcomeLedger(manifest);
   const outcomePrivatePem = outcomeVerifier.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  const artifacts = [];
   for (let seed = 1; seed <= 5; seed += 1) {
     for (let index = 0; index < manifest.length; index += 1) {
       for (const [method, passed] of [['baseline', index < 6], [candidateMethod, index < 8]]) {
         const task = manifest[index];
-        const signed = signOutcomePayloadForFixture({
+        artifacts.push(signOutcomePayloadForFixture({
           schemaVersion: 1,
           artifactId: 'local-' + task.taskId + '-' + method + '-' + seed,
           runId: 'local-run-' + method + '-' + seed,
-          manifestFingerprint: ledger.manifestFingerprint(),
+          manifestFingerprint: manifestLedger.manifestFingerprint(),
           taskId: task.taskId,
           taskVersion: task.version,
           method,
@@ -133,16 +136,23 @@ function buildLocalProposal(candidateMethod) {
           passed,
           verifierId,
           observedAt: Date.now(),
-        }, outcomePrivatePem);
-        const ingested = ingestSignedOutcomeArtifact(ledger, manifest, signed, trustedKeys);
-        assert.equal(ingested.accepted, true, 'local signed outcome rejected: ' + ingested.rejection);
+        }, outcomePrivatePem));
       }
     }
   }
-  return proposeVerifiedSkillPromotion(ledger, 'baseline', candidateMethod, {
-    minPairedTasks: 8,
-    minAbsoluteGain: 0.1,
-    minCompleteSeeds: 3,
+  return { schemaVersion: 1, manifest, baselineMethod: 'baseline', candidateMethod, artifacts };
+}
+
+function buildLocalProposal(candidateMethod) {
+  const bundle = buildSignedOutcomeBundle(candidateMethod);
+  const ledger = new VerifiedOutcomeLedger(bundle.manifest);
+  const trustedKeys = new Map([[outcomeVerifierId, outcomeVerifier.publicKey]]);
+  for (const signed of bundle.artifacts) {
+    const ingested = ingestSignedOutcomeArtifact(ledger, bundle.manifest, signed, trustedKeys);
+    assert.equal(ingested.accepted, true, 'local signed outcome rejected: ' + ingested.rejection);
+  }
+  return proposeVerifiedSkillPromotion(ledger, bundle.baselineMethod, bundle.candidateMethod, {
+    minPairedTasks: 8, minAbsoluteGain: 0.1, minCompleteSeeds: 5,
   });
 }
 
@@ -155,6 +165,31 @@ const candidateStore = new VersionedSkillCandidateStore(
 );
 const engine = new P23LearningEngine();
 engine.configureVerifiedSkillLifecycle(candidateStore);
+
+const outcomeBundlePath = path.join(root, 'synaptic-p23-outcomes.json');
+await writeFile(outcomeBundlePath, JSON.stringify(buildSignedOutcomeBundle('synaptic-commons:' + fingerprint)));
+const builtInProposalProvider = createSynapticP23AdmissionProvider({
+  bundlePath: outcomeBundlePath,
+  rawVerifierKeys: process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
+});
+await assert.rejects(
+  () => builtInProposalProvider({ candidateMethod: 'synaptic-commons:' + 'f'.repeat(64) }),
+  /outcome-bundle-shape-or-method-binding-invalid/,
+  'the host evidence file cannot be reused for another artifact fingerprint',
+);
+const staleBundlePath = path.join(root, 'stale-outcomes.json');
+const staleBundle = buildSignedOutcomeBundle('synaptic-commons:' + fingerprint);
+staleBundle.artifacts[0].payload.observedAt = Date.now() - 31 * 24 * 60 * 60_000;
+await writeFile(staleBundlePath, JSON.stringify(staleBundle));
+const staleProposalProvider = createSynapticP23AdmissionProvider({
+  bundlePath: staleBundlePath,
+  rawVerifierKeys: process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
+});
+await assert.rejects(
+  () => staleProposalProvider({ candidateMethod: 'synaptic-commons:' + fingerprint }),
+  /outcome-artifact-time-out-of-window/,
+  'old local holdout results cannot be reused as current P23 evidence',
+);
 
 let proposalMode = 'valid';
 let localProposalCalls = 0;
@@ -173,7 +208,9 @@ const runtime = new OrganismRuntime({
       const actualMethod = proposalMode === 'wrong-method'
         ? 'synaptic-commons:' + 'f'.repeat(64)
         : candidateMethod;
-      const proposal = buildLocalProposal(actualMethod);
+      const proposal = proposalMode === 'valid' || proposalMode === 'host-drift'
+        ? await builtInProposalProvider({ candidateMethod })
+        : buildLocalProposal(actualMethod);
       if (proposalMode === 'host-drift') hostDrift = true;
       return proposalMode === 'serialized' ? JSON.parse(JSON.stringify(proposal)) : proposal;
     },
@@ -261,4 +298,6 @@ try {
   else process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON = previous.attestor;
   if (previous.licence === undefined) delete process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON;
   else process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON = previous.licence;
+  if (previous.shadowVerifiers === undefined) delete process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON;
+  else process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = previous.shadowVerifiers;
 }
