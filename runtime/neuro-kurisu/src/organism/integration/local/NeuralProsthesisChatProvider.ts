@@ -18,6 +18,7 @@ export interface NeuralProsthesisProviderOptions {
   adapterId?: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
+  apiToken?: string;
 }
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);
@@ -81,6 +82,7 @@ export class NeuralProsthesisChatProvider {
   readonly model: string;
   readonly adapterId: string | null;
   readonly timeoutMs: number;
+  readonly apiToken: string | null;
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: NeuralProsthesisProviderOptions = {}) {
@@ -88,6 +90,11 @@ export class NeuralProsthesisChatProvider {
     this.model = String(options.model ?? 'local-transformer').trim().slice(0, 160) || 'local-transformer';
     this.adapterId = String(options.adapterId ?? '').trim().slice(0, 64) || null;
     this.timeoutMs = Math.max(250, Math.min(120_000, Math.floor(options.timeoutMs ?? 30_000)));
+    const apiToken = String(options.apiToken ?? '');
+    if (apiToken && (
+      apiToken.length < 32 || apiToken.length > 512 || !/^[\\x21-\\x7e]+$/.test(apiToken)
+    )) throw new Error('neural-prosthesis-api-token-invalid');
+    this.apiToken = apiToken || null;
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
@@ -116,11 +123,13 @@ export class NeuralProsthesisChatProvider {
       stream: false,
     };
     if (this.adapterId) payload.adapter_id = this.adapterId;
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (this.apiToken) headers.authorization = 'Bearer ' + this.apiToken;
     let response: Response;
     try {
       response = await this.fetchImpl(endpoint, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers,
         signal: transportSignal,
         redirect: 'error',
         body: JSON.stringify(payload),

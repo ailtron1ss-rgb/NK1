@@ -17,14 +17,17 @@ llama.cpp backend.
   calls to the shared model and clears the selected adapter after each request.
 - Adapter files contain safetensors tensors plus a strict JSON manifest. No pickle,
   executable Python, optimizer state, or training examples are exported.
-- The manifest binds the adapter to model ID, host-pinned model revision, model
-  config digest, layer path, layer indexes, hidden width and weight-file digest.
-  Loading fails closed on any mismatch or digest error.
+- The schema-v2 manifest binds the adapter to model ID, host-pinned model revision,
+  model config digest, layer path, layer indexes, hidden width, weight-file digest
+  and (when trained by the bundled trainer) dataset fingerprint, example count,
+  epochs and seed. Loading fails closed on any mismatch or digest error.
 - Newly loaded adapters remain in quarantine. A request can use an adapter only when
   the host allowlists its exact manifest SHA-256. There is no API to approve, train,
   promote, or execute arbitrary adapter artifacts.
 - The service binds to 127.0.0.1 by default and refuses non-loopback bind addresses.
-  Model downloads are disabled with local_files_only=True.
+  Host headers outside localhost/127.0.0.1 are rejected. An optional server-side
+  bearer token protects inference and detailed status; health remains a minimal
+  liveness response. Model downloads are disabled with local_files_only=True.
 - The Python environment is isolated from the Node runtime. It adds no PyTorch or
   Transformers dependency to NK1's production npm dependency graph.
 
@@ -92,7 +95,8 @@ Choose layer indexes that exist in the exact model:
 The command freezes every base-model parameter, optimizes only residual modules,
 clips their gradient norm, and saves a candidate artifact. It refuses an existing
 output directory. The training report contains sample count, dataset SHA-256 and
-epoch losses, not the example text.
+epoch losses, not the example text. The schema-v2 manifest binds that fingerprint
+and the example count, epochs and seed to the adapter weights.
 
 ## 4. Compare baseline and candidate on a disjoint holdout
 
@@ -106,10 +110,14 @@ epoch losses, not the example text.
       --output ./artifacts/kurisu-reasoning-holdout.json
 
 The evaluator performs paired baseline/candidate completion-token loss measurements
-on the same examples. A minimum of five pairs and lower mean candidate loss only make
-the artifact eligible for human review. The report explicitly records
-independently_verified=false and promotion_allowed=false; this local report is not
-a signed independent attestation and does not activate the adapter.
+on the same examples and computes a deterministic paired-bootstrap 95% interval
+for the mean loss delta. It rejects exact reuse of the training file using the
+fingerprint embedded in the schema-v2 manifest. Review eligibility requires a
+holdout split, bound training provenance, at least five pairs, lower mean loss and
+an upper confidence bound below zero. Exact-file separation cannot detect partial
+example overlap, so keep the datasets disjoint by construction. The report records
+independently_verified=false and promotion_allowed=false; this is not an independent
+attestation and does not activate the adapter.
 
 Loss is a training diagnostic, not proof of better factuality, reasoning, user value,
 or safety. Run NK1's separate task-quality, multilingual, safety and regression
@@ -123,6 +131,7 @@ host-owned allowlist. Load only artifacts that have passed the review process:
     export NEURO_NP_ADAPTER_DIRS_JSON='["/absolute/path/to/artifacts/kurisu-reasoning-v1"]'
     export NEURO_NP_ALLOWED_MANIFESTS_JSON='["<reviewed-manifest-sha256>"]'
     export NEURO_NP_DEFAULT_ADAPTER=kurisu-reasoning-v1
+    export NEURO_NP_API_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
     python -m neural_prosthesis.service
 
 The service refuses to use an adapter whose manifest digest is absent from the
@@ -134,6 +143,7 @@ In another shell, configure NK1 before starting its Node server:
     export NEURO_NP_URL=http://127.0.0.1:8091/v1
     export NEURO_NP_MODEL="$NEURO_NP_MODEL_ID"
     export NEURO_NP_ADAPTER_ID=kurisu-reasoning-v1
+    export NEURO_NP_API_TOKEN="<same-sidecar-token>"
     export NEURO_NP_PREFER=1
 
 NK1 registers the optional neural-prosthesis profile with P40 Model Ecology.
@@ -144,8 +154,12 @@ measured model-ecology choice. If the sidecar is unavailable, the request fails,
 adapter is quarantined, the request continues to the normal local/cloud fallbacks.
 Nothing changes the llama.cpp model files.
 
-Read-only sidecar diagnostics are available at GET /health and
-GET /neural-prosthesis/status. NK1 exposes the configured backend projection at
+Read-only liveness at GET /health and GET /api/health is intentionally minimal.
+Detailed GET /neural-prosthesis/status and inference POST requests require the same
+optional 32–512 character printable ASCII bearer token when NEURO_NP_API_TOKEN is set.
+Host headers outside localhost/127.0.0.1 are rejected even though the service binds
+to loopback. Keep the token only in server-side environment configuration.
+NK1 exposes the configured backend projection at
 GET /api/organism/neural-prosthesis.
 
 ## 6. Tests

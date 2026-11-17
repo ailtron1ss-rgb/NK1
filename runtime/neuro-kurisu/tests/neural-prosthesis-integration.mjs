@@ -7,6 +7,7 @@ const provider = new NeuralProsthesisChatProvider({
   baseUrl: 'http://127.0.0.1:8091/v1/',
   model: 'kurisu-transformer-local',
   adapterId: 'kurisu-reasoning-v1',
+  apiToken: 'n'.repeat(48),
   timeoutMs: 8000,
   fetchImpl: async (url, init) => {
     calls.push({ url: String(url), init, body: JSON.parse(String(init.body)) });
@@ -37,7 +38,12 @@ assert.equal(calls[0].body.model, 'kurisu-transformer-local');
 assert.equal(calls[0].body.adapter_id, 'kurisu-reasoning-v1');
 assert.equal(calls[0].body.stream, false);
 assert.equal(calls[0].body.max_tokens, 160);
+assert.equal(calls[0].init.headers.authorization, 'Bearer ' + 'n'.repeat(48));
 assert.equal(calls[0].init.redirect, 'error');
+assert.throws(() => new NeuralProsthesisChatProvider({
+  baseUrl: 'http://127.0.0.1:8091/v1',
+  apiToken: 'too-short',
+}), /api-token-invalid/);
 
 assert.throws(() => new NeuralProsthesisChatProvider({ baseUrl: 'https://127.0.0.1:8091/v1' }), /loopback-http/);
 assert.throws(() => new NeuralProsthesisChatProvider({ baseUrl: 'http://example.com:8091/v1' }), /loopback-http/);

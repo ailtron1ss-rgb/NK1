@@ -38,7 +38,7 @@ const PORT = Number(process.env.PORT || 3000);
 const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').replace(/\/$/, '');
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
-const NEURAL_PROSTHESIS_PROVIDER = new NeuralProsthesisChatProvider({ baseUrl: process.env.NEURO_NP_URL, model: process.env.NEURO_NP_MODEL || process.env.NEURO_NP_MODEL_ID || 'local-transformer', adapterId: process.env.NEURO_NP_ADAPTER_ID, timeoutMs: LLM_TIMEOUT_MS });
+const NEURAL_PROSTHESIS_PROVIDER = new NeuralProsthesisChatProvider({ baseUrl: process.env.NEURO_NP_URL, model: process.env.NEURO_NP_MODEL || process.env.NEURO_NP_MODEL_ID || 'local-transformer', adapterId: process.env.NEURO_NP_ADAPTER_ID, apiToken: process.env.NEURO_NP_API_TOKEN, timeoutMs: LLM_TIMEOUT_MS });
 const NEURAL_PROSTHESIS_PREFER = process.env.NEURO_NP_PREFER === '1';
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 // Optional provider: configuration is server-only and disabled unless NK_MEM0_ENABLED=1.

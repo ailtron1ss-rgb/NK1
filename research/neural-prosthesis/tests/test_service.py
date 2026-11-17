@@ -13,6 +13,8 @@ from neural_prosthesis.service import RequestError, create_handler
 
 
 class FakeRuntime:
+    api_token = None
+
     def status(self):
         return {"ready": True, "backend": "neural-prosthesis", "loaded_adapters": []}
 
@@ -60,6 +62,70 @@ class NeuralProsthesisHttpTests(unittest.TestCase):
         with urllib.request.urlopen(request, timeout=3) as response:
             payload = json.loads(response.read())
             self.assertEqual(payload["choices"][0]["message"]["content"], "fixture response")
+
+    def test_optional_bearer_auth_protects_inference_and_detailed_status(self):
+        self.runtime.api_token = "t" * 48
+        with urllib.request.urlopen(self.base + "/health", timeout=3) as health:
+            payload = json.loads(health.read())
+            self.assertTrue(payload["ready"])
+            self.assertEqual(set(payload), {"ready", "backend"})
+
+        with self.assertRaises(urllib.error.HTTPError) as status:
+            urllib.request.urlopen(self.base + "/neural-prosthesis/status", timeout=3)
+        self.assertEqual(status.exception.code, 401)
+
+        payload = json.dumps({
+            "messages": [{"role": "user", "content": "hello"}],
+            "max_tokens": 8,
+        }).encode("utf-8")
+        unauthorized = urllib.request.Request(
+            self.base + "/v1/chat/completions",
+            data=payload,
+            headers={"content-type": "application/json"},
+            method="POST",
+        )
+        with self.assertRaises(urllib.error.HTTPError) as rejected:
+            urllib.request.urlopen(unauthorized, timeout=3)
+        self.assertEqual(rejected.exception.code, 401)
+
+        authorized = urllib.request.Request(
+            self.base + "/v1/chat/completions",
+            data=payload,
+            headers={
+                "content-type": "application/json",
+                "authorization": "Bearer " + self.runtime.api_token,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(authorized, timeout=3) as response:
+            self.assertEqual(response.status, 200)
+
+        detailed = urllib.request.Request(
+            self.base + "/neural-prosthesis/status",
+            headers={"authorization": "Bearer " + self.runtime.api_token},
+        )
+        with urllib.request.urlopen(detailed, timeout=3) as response:
+            self.assertEqual(json.loads(response.read())["backend"], "neural-prosthesis")
+
+    def test_rejects_host_header_outside_loopback(self):
+        request = urllib.request.Request(
+            self.base + "/health",
+            headers={"Host": "attacker.example"},
+        )
+        with self.assertRaises(urllib.error.HTTPError) as rejected:
+            urllib.request.urlopen(request, timeout=3)
+        self.assertEqual(rejected.exception.code, 403)
+
+    def test_rejects_non_json_inference_requests(self):
+        request = urllib.request.Request(
+            self.base + "/v1/chat/completions",
+            data=b"not-json",
+            headers={"content-type": "text/plain"},
+            method="POST",
+        )
+        with self.assertRaises(urllib.error.HTTPError) as rejected:
+            urllib.request.urlopen(request, timeout=3)
+        self.assertEqual(rejected.exception.code, 415)
 
     def test_quarantined_adapter_is_rejected_and_unknown_path_is_not_served(self):
         body = json.dumps({

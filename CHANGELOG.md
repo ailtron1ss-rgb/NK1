@@ -1,11 +1,13 @@
-## [NK1][OmeStro #28] Neural Prosthesis — draft implementation (2026-11-17)
+## [NK1][OmeStro #28] Neural Prosthesis — hardened draft implementation (2026-11-17)
 
 - Add an optional PyTorch/Transformers residual-bottleneck backend with selected decoder-layer hooks, zero-start identity, request-scoped adapter activation and bounded per-token residual norm.
-- Keep the base model frozen; train only separate adapter parameters and export safetensors artifacts bound to an immutable model revision, model-config digest and exact layer layout.
-- Keep new artifacts quarantined until the host allowlists their exact manifest SHA-256; local holdout evaluation cannot self-promote.
-- Integrate the optional loopback sidecar through the existing local language provider boundary and P40 Model Ecology; preserve llama.cpp/Kobold/Gemini fallback.
+- Keep the base model frozen; train only separate adapter parameters and export safetensors schema-v2 artifacts bound to an immutable model revision, model-config digest, exact layer layout and training-dataset fingerprint/count/epochs/seed.
+- Reject exact reuse of the training JSONL as validation/holdout; report paired-baseline loss deltas with deterministic bootstrap 95% intervals and reasons when human-review eligibility is not met. This is a conservative local gate, not proof of independent evaluation or task-quality improvement.
+- Keep artifacts quarantined until the host allowlists their exact manifest SHA-256; local evaluation cannot self-promote.
+- Protect sidecar inference and detailed status with optional bearer-token authentication, minimal public health checks and loopback Host-header validation; pass the server-only token through NK1's provider.
+- Integrate the optional sidecar through the existing local language provider boundary and P40 Model Ecology; preserve llama.cpp/Kobold/Gemini fallback.
 - Add isolated train/evaluate/service commands, focused Node/Python regressions and a dedicated GitHub Actions workflow.
-- **Draft PR #925 only.** Exact-head Node/Python CI remains pending; no real host model, device latency/memory or independent quality uplift has yet been measured. No merge or Release ZIP change is claimed.
+- **Draft PR #925 only.** The prior exact-head Node/Python CI passed before this hardening pass; latest-head CI remains to be checked. No real host model, device latency/memory or independent task-quality uplift has yet been measured. No merge or Release ZIP change is claimed.
 
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 

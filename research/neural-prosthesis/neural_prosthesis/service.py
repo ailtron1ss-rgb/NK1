@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import json
 import math
 import os
@@ -82,6 +83,13 @@ def _find_layer_path(model: torch.nn.Module) -> str:
 
 class TransformersRuntime:
     def __init__(self) -> None:
+        api_token = str(os.environ.get("NEURO_NP_API_TOKEN", ""))
+        if api_token and (
+            not 32 <= len(api_token) <= 512
+            or any(not 33 <= ord(character) <= 126 for character in api_token)
+        ):
+            raise RuntimeError("NEURO_NP_API_TOKEN-must-be-32-to-512-printable-nonspace-ASCII-characters")
+        self.api_token = api_token or None
         model_path = str(os.environ.get("NEURO_NP_MODEL_PATH", "")).strip()
         if not model_path:
             raise RuntimeError("NEURO_NP_MODEL_PATH-must-point-to-an-existing-local-model")
@@ -264,20 +272,51 @@ def create_handler(runtime: TransformersRuntime):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
 
+        def _host_allowed(self) -> bool:
+            try:
+                host = urlparse("//" + str(self.headers.get("host", ""))).hostname
+            except Exception:
+                return False
+            return host in ("127.0.0.1", "localhost")
+
+        def _authorized(self) -> bool:
+            expected = getattr(runtime, "api_token", None)
+            if not expected:
+                return True
+            supplied = str(self.headers.get("authorization", ""))
+            return hmac.compare_digest(supplied, "Bearer " + expected)
+
         def log_message(self, _format: str, *args: Any) -> None:
             # Never log message contents, prompts, completions, or adapter weights.
             return
 
         def do_GET(self) -> None:
+            if not self._host_allowed():
+                _send_json(self, 403, {"error": "host-not-allowed"})
+                return
             path = urlparse(self.path).path
-            if path in ("/health", "/api/health", "/neural-prosthesis/status"):
+            if path in ("/health", "/api/health"):
+                _send_json(self, 200, {"ready": True, "backend": "neural-prosthesis"})
+            elif path == "/neural-prosthesis/status":
+                if not self._authorized():
+                    _send_json(self, 401, {"error": "unauthorized"})
+                    return
                 _send_json(self, 200, runtime.status())
             else:
                 _send_json(self, 404, {"error": "not-found"})
 
         def do_POST(self) -> None:
+            if not self._host_allowed():
+                _send_json(self, 403, {"error": "host-not-allowed"})
+                return
+            if not self._authorized():
+                _send_json(self, 401, {"error": "unauthorized"})
+                return
             if urlparse(self.path).path != "/v1/chat/completions":
                 _send_json(self, 404, {"error": "not-found"})
+                return
+            if self.headers.get("content-type", "").split(";", 1)[0].strip().lower() != "application/json":
+                _send_json(self, 415, {"error": "application-json-required"})
                 return
             try:
                 length = int(self.headers.get("content-length", "0"))
