@@ -235,6 +235,31 @@ assert.equal(expiredResult.accepted, false,
   'a trusted but stale activation capture must not be admitted as fresh training evidence');
 assert.equal(expiredResult.reason, 'activation-capture-expired');
 
+// A capture that is fresh before asynchronous host verification must also be
+// rejected if its ten-minute trust window expires while the verifier is pending.
+const agingEngine = new NeuralJitEngine({
+  activationCaptureVerifier: {
+    verifyCapture(capture, expected) {
+      const trusted = verifier.verifyCapture(capture, expected);
+      simulatedNow = Number(capture.capturedAt) + 10 * 60_000 + 1;
+      return trusted;
+    },
+  },
+});
+const agingTrace = await makeTrace(997);
+const realDateNow = Date.now;
+let simulatedNow = agingTrace.capture.capturedAt + 9 * 60_000;
+let agingResult;
+try {
+  Date.now = () => simulatedNow;
+  agingResult = await agingEngine.recordVerifiedTrace(agingTrace);
+} finally {
+  Date.now = realDateNow;
+}
+assert.equal(agingResult.accepted, false,
+  'capture freshness must be checked again after asynchronous host verification');
+assert.equal(agingResult.reason, 'activation-capture-expired');
+
 const malformedTrace = await makeTrace(999);
 malformedTrace.capture.inputFeatures = Array(257).fill(0.1);
 const malformed = await engine.recordVerifiedTrace(malformedTrace);
