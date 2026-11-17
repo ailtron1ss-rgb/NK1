@@ -46,6 +46,19 @@ Unset or set the variable to any other value to keep the feature off. With the o
 
 This flag does not enable changes to model weights, hidden states, or residual activations. Keep the default off unless the selected template has been adapted and tested with the NK1 variables.
 
+The bridge accepts a B365 snapshot only when its state version and tick are valid and all 23 neural/allostatic/self-model/goal-authorship signals are finite normalized values. Partial, future or more-than-eight-tick-old snapshots are rejected as a whole and marked unavailable; they are not mixed with partial readings. The provider repeats semantic validation of the 43-channel schema, one-hot fields, adapter hint, provenance, freshness and bounds before forwarding template kwargs.
+
+### Runtime diagnostics
+
+The running server exposes an authenticated, read-only counter view. PowerShell example:
+
+```powershell
+curl.exe -H "Authorization: Bearer $env:NEURO_API_TOKEN" `
+  http://127.0.0.1:3000/api/organism/cognition/neural-bridge/diagnostics
+```
+
+Inspect `diagnostics.projected`, `diagnostics.bypassed`, B365 snapshot counters/version/age, `diagnostics.lastFeatureDimensions`, and `diagnostics.llamaCppTemplateKwargsSent`. The response explicitly keeps `templateConsumptionVerified=false`, `activationSteeringApplied=0`, and `residualBlockApplied=0`: transport success is not evidence of Jinja consumption or neural/quality effects. The endpoint does not return prompt or memory contents.
+
 ### Illustrative Jinja insertion
 
 Do not replace a model's whole chat template with this fragment. Insert it inside the **existing system-message branch** of a tested template, before rendering that system message's content:
