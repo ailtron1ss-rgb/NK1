@@ -107,6 +107,31 @@ function normalizeActionTrace(value:unknown,maxSteps:number):{steps:WorldForgeAc
   }
 }
 
+function normalizeGenerationInput(value:unknown):{split:WorldForgeSplit;seed:number;count:number;difficulty01:number}|null {
+  try {
+    if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    const keys=Reflect.ownKeys(descriptors);
+    const allowed=new Set(['split','seed','count','difficulty01']);
+    if(keys.length>allowed.size||keys.some(k=>typeof k!=='string'||!allowed.has(k)))return null;
+    for(const key of keys as string[]){
+      const descriptor=descriptors[key];
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true)return null;
+    }
+    const split=descriptors.split?.value,seed=descriptors.seed?.value;
+    const count=descriptors.count?.value??1;
+    const difficulty01=descriptors.difficulty01?.value??.35;
+    if(!SPLITS.includes(split)||typeof seed!=='number'||!Number.isSafeInteger(seed)||seed<0)return null;
+    if(typeof count!=='number'||!Number.isSafeInteger(count))return null;
+    if(typeof difficulty01!=='number'||!Number.isFinite(difficulty01))return null;
+    return{split,seed,count,difficulty01};
+  } catch {
+    return null;
+  }
+}
+
 function sessionIdentity(value:unknown):{sessionId:string;scenarioId:string;tick:number}|null {
   try {
     if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
@@ -172,17 +197,18 @@ export class WorldForge {
     while(this.#answers.size>this.maxActiveScenarios)this.#answers.delete(this.#answers.keys().next().value as string);
     while(this.#sessions.size>this.maxActiveScenarios)this.#sessions.delete(this.#sessions.keys().next().value as string);
   }
-  generate(input:{split:WorldForgeSplit;seed:number;count?:number;difficulty01?:number}):WorldForgeCase[]{
-    if(!input||!SPLITS.includes(input.split)||!Number.isSafeInteger(input.seed)||input.seed<0)return[];
+  generate(input:unknown):WorldForgeCase[]{
+    const request=normalizeGenerationInput(input);
+    if(!request)return[];
     this.pruneExpired();
-    const count=Math.max(0,Math.min(this.maxCases,Math.floor(input.count??1)));
-    const difficulty=clamp(input.difficulty01??.35,.05,.95);
-    const namespace=input.split==='holdout'?this.holdoutNamespace:'nk1-world-forge:'+input.split+':v1';
+    const count=Math.max(0,Math.min(this.maxCases,request.count));
+    const difficulty=clamp(request.difficulty01,.05,.95);
+    const namespace=request.split==='holdout'?this.holdoutNamespace:'nk1-world-forge:'+request.split+':v1';
     const out:WorldForgeCase[]=[];
     for(let i=0;i<count;i++){
-      const seed=hash32(namespace+'|'+input.seed+'|'+i),random=rng(seed);
+      const seed=hash32(namespace+'|'+request.seed+'|'+i),random=rng(seed);
       const domain=DOMAINS[Math.floor(random()*DOMAINS.length)];
-      const id='wf-'+input.split+'-'+fingerprint(namespace+'|'+input.seed+'|'+i);
+      const id='wf-'+request.split+'-'+fingerprint(namespace+'|'+request.seed+'|'+i);
       const difficulty01=clamp(difficulty+(random()-.5)*.18,.05,.98);
       const targets=domain==='resource-allocation'?['reserve','allocate','verify']:domain==='route-planning'?['checkpoint-a','checkpoint-b','destination']:['signal-a','signal-b','confirm'];
       const hiddenTarget=targets[Math.floor(random()*targets.length)];
@@ -196,12 +222,12 @@ export class WorldForge {
           ?['A destination must be reached under a limited step and risk budget.','At least one route segment may become unavailable.','More than one route can satisfy the objective.']
           :['Several signals are available but not all are reliable.','At least one observation is ambiguous or misleading.','A claim only earns credit after a verification action.'];
       const families=domain==='resource-allocation'?['reserve-then-allocate','adaptive-priority','verify-and-rebalance']:domain==='route-planning'?['observe-reroute','safe-shortest-path','checkpoint-recovery']:['triangulate-then-verify','cross-check-signals','defer-unverified'];
-      const scenario:WorldForgeCase={id,split:input.split,domain,difficulty01:Number(difficulty01.toFixed(3)),
+      const scenario:WorldForgeCase={id,split:request.split,domain,difficulty01:Number(difficulty01.toFixed(3)),
         task:domain==='resource-allocation'?'Allocate scarce resources while preserving a safety reserve and adapting to a late demand shock.':domain==='route-planning'?'Reach the destination while respecting a changing route and risk budget.':'Identify the reliable explanation from noisy signals and verify it before concluding.',
         observations,goalOptions:[...targets],availableActions:[...ACTIONS],constraints:{maxSteps:Math.max(4,Math.min(16,Math.round(5+difficulty01*8))),resourceBudget:Math.max(3,Math.round(10-difficulty01*3)),riskTolerance01:Number((.75-difficulty01*.35).toFixed(3)),requiredEvidence:domain==='investigation'?2:1},
-        disturbances,acceptedStrategyFamilies:families,seedFingerprint:fingerprint(seed+'|'+input.split),syntheticOnly:true};
+        disturbances,acceptedStrategyFamilies:families,seedFingerprint:fingerprint(seed+'|'+request.split),syntheticOnly:true};
       const createdAt=this.currentTime();
-      this.#answers.set(id,{split:input.split,domain,requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],goalOptions:[...targets],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbances:disturbances.map(d=>({...d})),disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,resourceBudget:scenario.constraints.resourceBudget,maxSteps:scenario.constraints.maxSteps,riskTolerance01:scenario.constraints.riskTolerance01,seed,createdAt});
+      this.#answers.set(id,{split:request.split,domain,requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],goalOptions:[...targets],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbances:disturbances.map(d=>({...d})),disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,resourceBudget:scenario.constraints.resourceBudget,maxSteps:scenario.constraints.maxSteps,riskTolerance01:scenario.constraints.riskTolerance01,seed,createdAt});
       this.pruneExpired(createdAt);
       out.push(scenario);
     }
