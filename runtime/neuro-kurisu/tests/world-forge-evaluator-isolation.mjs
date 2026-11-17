@@ -19,4 +19,15 @@ const evaluation=forge.evaluate(scenario,[hostileStep]);
 assert.equal(getterInvoked,false,'malformed action traces must not execute getters');
 assert.equal(evaluation.success,false);
 assert.ok(evaluation.constraintViolations>0);
+let splitGetterInvoked=false;
+const hostileRequest={seed:5};
+Object.defineProperty(hostileRequest,'split',{enumerable:true,get(){splitGetterInvoked=true;return 'train';}});
+assert.deepEqual(forge.generate(hostileRequest),[],'generation must reject accessor-backed input records');
+assert.equal(splitGetterInvoked,false,'generation must not execute input getters');
+
+let scenarioGetterInvoked=false;
+const hostileScenario={split:'train',domain:scenario.domain,syntheticOnly:true};
+Object.defineProperty(hostileScenario,'id',{enumerable:true,get(){scenarioGetterInvoked=true;return scenario.id;}});
+assert.equal(forge.evaluate(hostileScenario,[]).success,false);
+assert.equal(scenarioGetterInvoked,false,'scenario identity validation must not execute getters');
 console.log('World Forge evaluator isolation regressions passed');
