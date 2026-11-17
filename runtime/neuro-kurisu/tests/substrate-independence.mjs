@@ -48,6 +48,16 @@ const payload = {
 
 const engine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
 engine.setInitialBackend(source.backendId);
+const changedSourceRevision = new SubstrateIndependenceEngine({
+  profiles: [{ ...source, modelRevision: 'rev-b' }, target],
+});
+assert.equal(changedSourceRevision.restore(engine.snapshot()).restored, true);
+assert.equal(changedSourceRevision.preferredRoute(), null,
+  'a backend with the same route/name but a changed model revision must not be treated as the same active substrate');
+changedSourceRevision.observeBackend(source.backendId);
+assert.equal(changedSourceRevision.preferredRoute(), null,
+  'observing the old backend identifier cannot silently rebootstrap a different model revision');
+
 const fallbackBoot = new SubstrateIndependenceEngine({ profiles: [source] });
 fallbackBoot.observeBackend('deterministic-policy-fallback');
 assert.equal(fallbackBoot.activeBackendId(), null, 'the deterministic fallback is not a model substrate');
@@ -184,6 +194,21 @@ assert.equal(promoted.activeBackendId, target.backendId);
 assert.equal(reloadedEngine.preferredRoute(), 'gemini');
 assert.equal(promoted.history.at(-1).fromBackendId, source.backendId);
 assert.equal(promoted.history.at(-1).toBackendId, target.backendId);
+
+const changedTargetRevision = new SubstrateIndependenceEngine({
+  profiles: [source, { ...target, modelRevision: '2026-12' }],
+});
+assert.equal(changedTargetRevision.restore(reloadedEngine.snapshot()).restored, true);
+assert.equal(changedTargetRevision.preferredRoute(), null,
+  'a promoted backend with changed model weights/revision must lose its preferred route');
+assert.equal(
+  await changedTargetRevision.verifyStoredEvaluation(evaluation.evaluationId, verifySignedReceipt),
+  false,
+  'the previous holdout evidence cannot authorize a different model revision under the same backend ID',
+);
+const targetRollback = changedTargetRevision.revokeUnverifiedPromotion();
+assert.equal(targetRollback.activeBackendId, source.backendId);
+assert.equal(changedTargetRevision.preferredRoute(), 'llama.cpp');
 
 const revokedEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
 assert.equal(revokedEngine.restore(reloadedEngine.snapshot()).restored, true);
