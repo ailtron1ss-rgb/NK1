@@ -106,22 +106,39 @@ const riskPolicy=(risk:ParliamentRisk)=>{
   if(risk==='medium')return {threshold:.68,minSources:2,minModels:2};
   return {threshold:.56,minSources:1,minModels:1};
 };
+const safeHttpUrl=(value:unknown):boolean=>{
+  if(!text(value)||value.length>1000)return false;
+  try{
+    const url=new URL(value);
+    return (url.protocol==='http:'||url.protocol==='https:')&&Boolean(url.hostname)&&
+      !url.username&&!url.password;
+  }catch{return false;}
+};
 const validVerifiedEvidence=(value:ParliamentVerifiedEvidence|null,reference:ParliamentEvidenceReference):value is ParliamentVerifiedEvidence=>{
-  return Boolean(value && value.id===reference.id && value.claimKey===reference.claimKey &&
-    text(value.sourceIdentity)&&text(value.sourceFamily)&&EXTERNAL_CLASSES.has(value.sourceClass) &&
-    [value.confidence01,value.trust01,value.promotionScore01,value.observedAt].every(Number.isFinite) &&
-    value.confidence01>=0&&value.confidence01<=1&&value.trust01>=0&&value.trust01<=1&&
-    value.promotionScore01>=0&&value.promotionScore01<=1&&value.observedAt>0&&
-    value.observedAt<=Date.now()+5*60*1000&&
-    (value.material===undefined||(typeof value.material.title==='string'&&value.material.title.length<=240&&
-      typeof value.material.excerpt==='string'&&value.material.excerpt.length<=1200&&
-      typeof value.material.sourceUrl==='string'&&value.material.sourceUrl.length<=1000&&
-      typeof value.material.contentHash==='string'&&value.material.contentHash.length<=96)));
+  try{
+    if(!value||value.id!==reference.id||value.claimKey!==reference.claimKey||
+      !text(value.sourceIdentity)||value.sourceIdentity.length>160||
+      !text(value.sourceFamily)||value.sourceFamily.length>160||
+      !EXTERNAL_CLASSES.has(value.sourceClass)||
+      ![value.confidence01,value.trust01,value.promotionScore01,value.observedAt].every(Number.isFinite)||
+      value.confidence01<0||value.confidence01>1||value.trust01<0||value.trust01>1||
+      value.promotionScore01<0||value.promotionScore01>1||value.observedAt<=0||
+      value.observedAt>Date.now()+5*60*1000)return false;
+    const material=value.material;
+    if(material===undefined)return true;
+    return Boolean(material&&typeof material==='object'&&!Array.isArray(material)&&
+      typeof material.title==='string'&&material.title.trim().length>0&&material.title.length<=240&&
+      typeof material.excerpt==='string'&&material.excerpt.trim().length>0&&material.excerpt.length<=1200&&
+      safeHttpUrl(material.sourceUrl)&&typeof material.contentHash==='string'&&
+      material.contentHash.trim().length>0&&material.contentHash.length<=96);
+  }catch{return false;}
 };
 const validModelAttestation=(value:ParliamentModelAttestation|null,executionId:string):value is ParliamentModelAttestation=>{
-  return Boolean(value && value.executionId===executionId && text(value.providerId)&&text(value.modelId)&&
-    text(value.independenceGroup)&&Number.isFinite(value.verifiedAt)&&
-    value.verifiedAt>=Date.now()-30*60*1000&&value.verifiedAt<=Date.now()+5*60*1000);
+  try{
+    return Boolean(value&&value.executionId===executionId&&text(value.providerId)&&text(value.modelId)&&
+      text(value.independenceGroup)&&Number.isFinite(value.verifiedAt)&&
+      value.verifiedAt>=Date.now()-30*60*1000&&value.verifiedAt<=Date.now()+5*60*1000);
+  }catch{return false;}
 };
 const safeDecision=(candidateId:string,reasons:string[],risk:ParliamentRisk='high'):ParliamentDecision=>{
   const policy=riskPolicy(risk);
