@@ -295,6 +295,56 @@ function reportFingerprint(value: Omit<NeuroPlasticEvaluationReport, 'reportId'>
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
+
+function normalizeApproval(raw: unknown): NeuroPlasticApproval {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('neuro-plastic-approval-invalid');
+  const value = snapshotPlainData(raw) as Record<string, unknown>;
+  return {
+    approvalId: safeText(value.approvalId, 'approval-id'),
+    actorId: safeText(value.actorId, 'approval-actor-id'),
+    approvedAt: safeCounter(value.approvedAt, 'approval-time', 1),
+    signature: safeHash(value.signature, 'approval-signature'),
+  };
+}
+
+function approvalPayload(
+  approval: Pick<NeuroPlasticApproval, 'approvalId' | 'actorId' | 'approvedAt'>,
+  context: { adapterId: string; reportId: string; baseModelFingerprint: string },
+): string {
+  return JSON.stringify({
+    approvalId: approval.approvalId,
+    actorId: approval.actorId,
+    approvedAt: approval.approvedAt,
+    adapterId: context.adapterId,
+    reportId: context.reportId,
+    baseModelFingerprint: context.baseModelFingerprint.toLowerCase(),
+  });
+}
+
+export function createNeuroPlasticApprovalSignature(
+  approval: Pick<NeuroPlasticApproval, 'approvalId' | 'actorId' | 'approvedAt'>,
+  context: { adapterId: string; reportId: string; baseModelFingerprint: string },
+  secret: string,
+): string {
+  if (typeof secret !== 'string' || secret.length < 32) throw new Error('neuro-plastic-approval-secret-too-short');
+  return createHmac('sha256', secret).update(approvalPayload(approval, context)).digest('hex');
+}
+
+export function verifyNeuroPlasticApprovalSignature(
+  approval: NeuroPlasticApproval,
+  context: { adapterId: string; reportId: string; baseModelFingerprint: string },
+  secret: string,
+): boolean {
+  try {
+    const expected = createNeuroPlasticApprovalSignature(approval, context, secret);
+    const actual = Buffer.from(safeHash(approval.signature, 'approval-signature'), 'hex');
+    const wanted = Buffer.from(expected, 'hex');
+    return actual.length === wanted.length && timingSafeEqual(actual, wanted);
+  } catch {
+    return false;
+  }
+}
+
 export class NeuroPlasticAdapterRegistry {
   private state: NeuroPlasticRegistrySnapshot = { schemaVersion: 1, adapters: [] };
 
