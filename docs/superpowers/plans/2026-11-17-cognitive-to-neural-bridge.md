@@ -7,9 +7,9 @@ Branch: `aspect/cognitive-to-neural-bridge-20261117`
 ## Task 1 — deterministic bounded projector
 
 - Add `src/organism/cognition/CognitiveToNeuralBridge.ts`.
-- Export the action/mode types, the 19-feature input projection, versioned profile, and request-application helper.
-- Normalize missing/non-finite values, validate tick, bound steering intent to 0.15, and map modes to fixed temperature/token budgets and adapter hints.
-- Test real projection output, exact vector ordering, immutability, malformed input, caps and request pass-through.
+- Export the action/mode types, 43-feature B365-aware projection, versioned profile, provider request adapter and explicit emergency-bypass helper.
+- Normalize missing/non-finite values, reject future/stale B365 snapshots, expose feature keys/provenance, bound steering intent to 0.15, and scale temperature/token budgets using mode, reserve and allostatic preservation.
+- Test B365 diagnostics projection, exact 43-channel order, freshness rejection, immutability, malformed input, caps and request pass-through.
 
 Expected focused command:
 `node --experimental-strip-types tests/cognitive-to-neural-bridge.mjs`
@@ -26,11 +26,11 @@ Expected focused command:
 - Create one bridge instance per runtime and derive input from the existing cycle state, selected goal/action and existing cognitive-budget snapshot.
 - Apply the same helper before both cognitive-proposal and regular/autonomous `LanguageInvoker` calls.
 - Publish telemetry that explicitly marks adapter selection, activation steering and residual execution as not applied.
-- Add a wiring regression for both call paths and the emergency bypass.
+- Reuse the existing per-cycle B365 diagnostics snapshot (no second neural run), apply the bridge to both cognitive-proposal and response/autonomous call paths, expose runtime counters, and verify the real LanguageInvoker boundary for enabled/bypassed modes.
 
 ## Task 4 — exact-head verification and handover
 
-- Run focused tests and runtime typecheck under Node 24.
+- Run the B365 snapshot, 43-channel projector and real OrganismRuntime/LanguageInvoker integration tests plus runtime typecheck under Node 24.
 - Review the final branch diff and preserve the base/release boundary.
 - Open/update a Draft PR into `workpass70-source`; do not merge or claim a Release ZIP update.
 - Record exact branch/commit/PR/Actions status and clearly list deferred direct-steering work.
