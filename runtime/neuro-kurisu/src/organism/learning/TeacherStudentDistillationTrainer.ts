@@ -1,4 +1,3 @@
-import { constants as fsConstants } from 'node:fs';
 import { createHash, randomUUID, verify as verifySignature } from 'node:crypto';
 import { lstat, open, realpath } from 'node:fs/promises';
 import path from 'node:path';
@@ -13,7 +12,7 @@ import {
 } from './TeacherStudentDistillation.ts';
 import { runLearningProcess, type LearningProcessResult } from './LearningProcessSupervisor.ts';
 
-const sha256 = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
+const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const isDigest = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-f0-9]{64}$/iu.test(value);
 const isSafeText = (value: unknown, maximum = 4096): value is string =>
@@ -61,7 +60,15 @@ async function readRegularTextFile(
   if (before.isSymbolicLink() || !before.isFile() || before.size > maximumBytes) {
     throw new Error(errorCode);
   }
-  const handle = await open(filename, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
+  // O_NOFOLLOW prevents a symlink swap between lstat() and open() on POSIX.
+  // The supervisor currently targets Linux; Darwin's flag differs. Windows relies
+  // on the post-open inode/device check because Node does not expose O_NOFOLLOW there.
+  const noFollowFlags: number | string = process.platform === 'linux'
+    ? 0x20000
+    : process.platform === 'darwin'
+      ? 0x100
+      : 'r';
+  const handle = await open(filename, noFollowFlags);
   try {
     const opened = await handle.stat();
     if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino ||
