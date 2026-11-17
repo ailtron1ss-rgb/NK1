@@ -507,7 +507,8 @@ assert.equal(auditByteChecks[0].actorSubject, 'principal:' + actors.auditor,
 assert.equal(audited.trust.roleIdentity, 'host-attested');
 assert.equal(audited.trust.signedEvidence, 'canonical-invention-loop-verified');
 assert.equal(audited.trust.artifactBytesVerified, true);
-assert.equal(runtime.scienceRepublic.metrics().hostAttestedRecords, 1);
+assert.equal(runtime.scienceRepublic.metrics().hostAttestedRecords, 2,
+  'both intrinsic and dream-association cases have six host-attested role principals');
 assert.equal(runtime.scienceRepublic.metrics().byteVerifiedAudits, 1);
 assert.equal(audited.trust.independentlyVerified, false);
 assert.equal(audited.trust.promotionEligible, false);
