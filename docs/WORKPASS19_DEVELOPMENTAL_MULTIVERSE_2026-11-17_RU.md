@@ -37,3 +37,30 @@ Utility is a transparent comparison aid: 0.45 × quality + 0.25 × safety + 0.20
 - Run a clean synthetic benchmark suite with fixed artifacts and at least five independent holdout seeds per finalist.
 - Only after the independent evaluator returns authenticated evidence should the existing governance/promotion pipeline be asked to consider a policy change. No direct P55 action-bias change is made here.
 - No Release ZIP was rebuilt or published by this work pass.
+
+
+## Усиление и интеграция — 17.11.2026
+
+### Исполняемый P23-контур
+
+Добавлен `DevelopmentalMultiverseIndependentRunner`. Он не принимает произвольные метрики от вызывающей стороны: каждый arm строит отдельный набор фиксированных задач и запускает их через `createIndependentSkillCandidateEvaluator` из P23. В production этот evaluator должен быть создан на основе `createHostOwnedIndependentEvaluationServices`, то есть с отдельными host-owned executor, verifier и safety-scanner. Полный контекст (payload, task, environment, plan, manifest, planned run) проверяется evaluator; runner дополнительно сверяет run ID, план, manifest, trial coverage и evaluation fingerprint прежде чем допустить observation.
+
+### Разделение данных и фаз
+
+- Validation-only и holdout-only стали поддерживаемыми режимами P23 evaluator; старый paired режим по умолчанию не изменён.
+- В первой фазе runner физически передаёт evaluator только validation tasks. Holdout остаётся в manifest для split-binding, но его task inputs не передаются дочерним процессам.
+- После validation runner выбирает максимум один finalist. В holdout запускаются только baseline и этот finalist.
+- Варианты получают только пять whitelisted policy knobs, scenario task input и хэши. Сценарный factory не получает candidate profile и не может незаметно менять входы между arms.
+- Запрещены memory/identity/conversation/secret/credential/token/password поля в scenario data; вход ограничен 64 KiB, глубина — 24.
+
+### Evidence и восстановление
+
+- Для каждого observation сохраняется P23 evaluator fingerprint, общий task-plan fingerprint, manifest fingerprint, оба split-plan fingerprints, method, verifier ID и exact planned/run ID.
+- Final result считает проверенные observations, количество разных evaluator plans и агрегирует fingerprint evidence.
+- `recordValidationObservations` и `recordHoldoutObservations` — атомарные batch admission: при любой ошибке состояние до batch сохраняется.
+- `AtomicFileDevelopmentalMultiverseCheckpointStore` пишет checkpoint через private temporary file + fsync + atomic rename; при восстановлении snapshot повторно проигрывается через прежние проверки и digest сверяется.
+- File checkpoint — single-writer storage. SHA-256 обнаруживает повреждение/случайное изменение, но не является подписью, anti-rollback или шифрованием; каталог и ключевые службы должны оставаться host-owned.
+
+### Остаточные границы
+
+Runner не применяет предложенный профиль к live P55 и не включает autonomous promotion. Host должен предоставить реальные OS/container isolation и независимо развёрнутые authority executables; сам TypeScript-адаптер не является sandbox. Показатель cost — измеренное среднее wall-time на scenario, нормированное на заданный host budget. Stability здесь — bounded single-run proxy из executability/ordered trajectory, а не долгосрочная дисперсия повторных запусков. Результат остаётся review artifact и требует отдельного promotion gate, independent review и rollback path.

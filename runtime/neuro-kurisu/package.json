@@ -177,6 +177,7 @@
     "test:p11:integration": "node --experimental-strip-types tests/p11-integration.mjs",
     "test:developmental": "node --experimental-strip-types tests/developmental-integration.mjs",
     "test:developmental-multiverse": "node --experimental-strip-types tests/developmental-multiverse.mjs",
+    "test:developmental-multiverse-runner": "node --experimental-strip-types tests/developmental-multiverse-runner.mjs",
     "test:developmental:migration": "node --experimental-strip-types tests/developmental-migration.mjs",
     "research:p12": "node --experimental-strip-types research/p12-memory-social-lab.mjs",
     "test:p14": "node --experimental-strip-types tests/p14-embodied.mjs",

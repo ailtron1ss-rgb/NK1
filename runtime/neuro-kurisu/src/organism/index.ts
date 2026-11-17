@@ -78,3 +78,5 @@ export * from './memory/MemoryBudgetCausalHarness.ts';
 
 export * from './integration/mem0/index.ts';
 export * from './developmental/DevelopmentalMultiverse.ts';
+
+export * from './developmental/DevelopmentalMultiverseIndependentRunner.ts';

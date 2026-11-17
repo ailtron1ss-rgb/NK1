@@ -76,10 +76,25 @@ export interface DevelopmentalMultiverseMetrics {
   stability01: number;
 }
 
+export interface DevelopmentalMultiverseVerifiedEvidence {
+  evaluator: 'p23-independent-skill-candidate-evaluator';
+  evaluationFingerprint: string;
+  planFingerprint: string;
+  manifestFingerprint: string;
+  validationPlanFingerprint: string;
+  holdoutPlanFingerprint: string;
+  method: string;
+  verifierId: string;
+  runId: string;
+  plannedRunId: string;
+}
+
 export interface DevelopmentalMultiverseObservationInput extends DevelopmentalMultiverseWorkItem {
   measurementId: string;
   metrics: DevelopmentalMultiverseMetrics;
   safetyViolationCount: number;
+  /** Present only when accepted through the P23 independently verified runner. */
+  verifiedEvidence?: DevelopmentalMultiverseVerifiedEvidence;
 }
 
 export interface DevelopmentalMultiverseObservation {
@@ -98,6 +113,7 @@ export interface DevelopmentalMultiverseObservation {
   policyFingerprint: string;
   metrics: DevelopmentalMultiverseMetrics;
   safetyViolationCount: number;
+  verifiedEvidence?: DevelopmentalMultiverseVerifiedEvidence;
 }
 
 export interface DevelopmentalMultiverseComparison {
@@ -136,6 +152,9 @@ export interface DevelopmentalMultiverseFinalResult {
     initialStateFingerprint: string;
     holdoutPairCount: number;
     comparedArms: ['baseline', string] | null;
+    verifiedObservationCount: number;
+    verifiedPlanCount: number;
+    verifiedEvidenceFingerprint: string | null;
   };
 }
 
@@ -154,6 +173,11 @@ export interface DevelopmentalMultiverseSnapshot {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value) &&
   (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+
+function boundedEvidenceIdentity(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 256 &&
+    /^[A-Za-z0-9._:-]+$/.test(value);
+}
 
 function boundedId(value: unknown, label: string, max = 96): string {
   if (typeof value !== 'string') throw new TypeError(`developmental-multiverse-${label}-invalid`);
@@ -438,8 +462,34 @@ export class DevelopmentalMultiverse {
     return this.recordObservation('validation', input);
   }
 
+  /** Atomically admits a complete independently evaluated arm batch. */
+  recordValidationObservations(inputs: DevelopmentalMultiverseObservationInput[]): DevelopmentalMultiverseObservation[] {
+    return this.recordObservationBatch('validation', inputs);
+  }
+
   recordHoldoutObservation(input: DevelopmentalMultiverseObservationInput): DevelopmentalMultiverseObservation {
     return this.recordObservation('holdout', input);
+  }
+
+  /** Atomically admits baseline + finalist holdout measurements. */
+  recordHoldoutObservations(inputs: DevelopmentalMultiverseObservationInput[]): DevelopmentalMultiverseObservation[] {
+    return this.recordObservationBatch('holdout', inputs);
+  }
+
+  private recordObservationBatch(
+    phase: DevelopmentalMultiversePhase,
+    inputs: DevelopmentalMultiverseObservationInput[],
+  ): DevelopmentalMultiverseObservation[] {
+    if (!Array.isArray(inputs) || inputs.length === 0) {
+      throw new Error('developmental-multiverse-observation-batch-empty');
+    }
+    const current = this.snapshot();
+    if (!current) throw new Error('developmental-multiverse-session-not-created');
+    const staged = new DevelopmentalMultiverse();
+    staged.restore(current);
+    const rows = inputs.map(input => staged.recordObservation(phase, input));
+    this.state = staged.state;
+    return rows.map(row => structuredClone(row));
   }
 
   selectValidationFinalist(): DevelopmentalMultiverseSelection {
@@ -603,6 +653,33 @@ export class DevelopmentalMultiverse {
     if (!Number.isSafeInteger(safetyViolationCount) || (safetyViolationCount as number) < 0 || (safetyViolationCount as number) > 10_000) {
       throw new RangeError('developmental-multiverse-safety-violation-count-invalid');
     }
+    let verifiedEvidence: DevelopmentalMultiverseVerifiedEvidence | undefined;
+    if (raw.verifiedEvidence !== undefined) {
+      const evidence = raw.verifiedEvidence;
+      if (!isRecord(evidence) || evidence.evaluator !== 'p23-independent-skill-candidate-evaluator' ||
+          !/^[a-f0-9]{64}$/i.test(String(evidence.evaluationFingerprint)) ||
+          !/^[a-f0-9]{64}$/i.test(String(evidence.planFingerprint)) ||
+          !/^[a-f0-9]{64}$/i.test(String(evidence.manifestFingerprint)) ||
+          !/^[a-f0-9]{64}$/i.test(String(evidence.validationPlanFingerprint)) ||
+          !/^[a-f0-9]{64}$/i.test(String(evidence.holdoutPlanFingerprint)) ||
+          !boundedEvidenceIdentity(evidence.method) || !boundedEvidenceIdentity(evidence.verifierId) ||
+          !boundedEvidenceIdentity(evidence.runId) || !boundedEvidenceIdentity(evidence.plannedRunId) ||
+          evidence.runId !== evidence.plannedRunId) {
+        throw new Error('developmental-multiverse-verified-evidence-invalid');
+      }
+      verifiedEvidence = {
+        evaluator: 'p23-independent-skill-candidate-evaluator',
+        evaluationFingerprint: String(evidence.evaluationFingerprint).toLowerCase(),
+        planFingerprint: String(evidence.planFingerprint).toLowerCase(),
+        manifestFingerprint: String(evidence.manifestFingerprint).toLowerCase(),
+        validationPlanFingerprint: String(evidence.validationPlanFingerprint).toLowerCase(),
+        holdoutPlanFingerprint: String(evidence.holdoutPlanFingerprint).toLowerCase(),
+        method: evidence.method as string,
+        verifierId: evidence.verifierId as string,
+        runId: evidence.runId as string,
+        plannedRunId: evidence.plannedRunId as string,
+      };
+    }
     const observation: DevelopmentalMultiverseObservation = {
       measurementId,
       runId: expected.runId,
@@ -619,6 +696,7 @@ export class DevelopmentalMultiverse {
       policyFingerprint: expected.policyFingerprint,
       metrics: normalizeMetrics(raw.metrics),
       safetyViolationCount: safetyViolationCount as number,
+      ...(verifiedEvidence ? { verifiedEvidence } : {}),
     };
     if (existing.length >= MAX_OBSERVATIONS) throw new RangeError('developmental-multiverse-observation-capacity-exceeded');
     if (phase === 'validation') state.validationObservations.push(observation);
@@ -635,6 +713,19 @@ export class DevelopmentalMultiverse {
     const state = this.requireState();
     const variant = selectedVariantId ? state.session.variants.find(item => item.id === selectedVariantId) : null;
     const proposedPolicyProfile = variant ? effectiveProfile(state.session.baselineProfile, variant) : undefined;
+    const allObservations = [...state.validationObservations, ...state.holdoutObservations];
+    const verifiedRows = allObservations.flatMap(item => item.verifiedEvidence ? [item.verifiedEvidence] : []);
+    const verifiedEvidenceFingerprint = verifiedRows.length
+      ? digest(verifiedRows.map(item => ({
+          evaluationFingerprint: item.evaluationFingerprint,
+          planFingerprint: item.planFingerprint,
+          manifestFingerprint: item.manifestFingerprint,
+          method: item.method,
+          verifierId: item.verifierId,
+          runId: item.runId,
+        })).sort((a, b) => a.evaluationFingerprint.localeCompare(b.evaluationFingerprint)))
+      : null;
+    const verifiedPlanCount = new Set(verifiedRows.map(item => item.planFingerprint)).size;
     return {
       runId: state.session.runId,
       status,
@@ -650,6 +741,9 @@ export class DevelopmentalMultiverse {
         initialStateFingerprint: state.initialStateFingerprint,
         holdoutPairCount: comparison?.pairedN ?? 0,
         comparedArms: selectedVariantId ? ['baseline', selectedVariantId] : null,
+        verifiedObservationCount: verifiedRows.length,
+        verifiedPlanCount,
+        verifiedEvidenceFingerprint,
       },
     };
   }
