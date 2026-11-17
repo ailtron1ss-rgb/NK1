@@ -19,6 +19,7 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 - Route both cognitive-proposal generation and user/autonomous language generation through the same bridge.
 - Expose explicit adapter/steering intentions and record telemetry distinguishing request controls configured, llama.cpp template kwargs sent, and neural/activation controls not executed.
 - Provide an immediate runtime kill switch; disabled mode leaves requests unchanged.
+- Expose authenticated read-only diagnostics at `GET /api/organism/cognition/neural-bridge/diagnostics`, including projection/bypass counts, B365 snapshot provenance, provider hand-offs and explicit non-execution of activation/residual steering.
 
 ## Non-goals / anti-goals
 
@@ -49,6 +50,7 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 - Existing `CognitiveBudgetManager` snapshot and the already-computed `b365UnifiedNeuroCausalDiagnostics()` read-only signal snapshot exposed by `OrganismCore`; Runtime reuses its per-cycle B365 snapshot rather than running B365 a second time.
 - Existing `LanguageRequest` / `LanguageInvoker` boundary; the local llama.cpp adapter's `chat_template_kwargs` opt-in adds an explicit template-variable route while non-local providers continue to receive supported sampling parameters and ignore unsupported neural controls.
 - Existing `OrganismRuntime` proposal and response generation paths.
+- The existing server authorization middleware and an authenticated read-only diagnostics endpoint; no prompt, user-memory or raw neural snapshot payload is exposed.
 
 ## Success evidence
 
