@@ -197,6 +197,12 @@ export class WorldForge {
     while(this.#answers.size>this.maxActiveScenarios)this.#answers.delete(this.#answers.keys().next().value as string);
     while(this.#sessions.size>this.maxActiveScenarios)this.#sessions.delete(this.#sessions.keys().next().value as string);
   }
+  generateRuntimeScenarios(input:unknown):WorldForgeCase[] {
+    const request=normalizeGenerationInput(input);
+    if(!request||request.split==='holdout')return[];
+    return this.generate(request);
+  }
+
   generate(input:unknown):WorldForgeCase[]{
     const request=normalizeGenerationInput(input);
     if(!request)return[];
