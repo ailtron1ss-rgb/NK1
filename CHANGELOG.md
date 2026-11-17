@@ -9,6 +9,13 @@
 - Add isolated train/evaluate/service commands, focused Node/Python regressions and a dedicated GitHub Actions workflow.
 - **Draft PR #925 only.** The prior exact-head Node/Python CI passed before this hardening pass; latest-head CI remains to be checked. No real host model, device latency/memory or independent task-quality uplift has yet been measured. No merge or Release ZIP change is claimed.
 
+## [NK1][OmeStro #28] Neural Prosthesis — context-window safety (2026-11-17)
+
+- Cap sidecar context by both the operator limit and the model's advertised positional window; reserve space for generation tokens instead of overrunning model context.
+- Truncate the oldest prompt content first so the newest user turn is preserved.
+- Return prompt/completion token usage and a length finish reason for measurable inference budgets.
+- Add regression coverage for model/host context intersections and invalid host limits; no model-specific latency or memory claim is implied.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.

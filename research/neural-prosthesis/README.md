@@ -28,6 +28,11 @@ llama.cpp backend.
   Host headers outside localhost/127.0.0.1 are rejected. An optional server-side
   bearer token protects inference and detailed status; health remains a minimal
   liveness response. Model downloads are disabled with local_files_only=True.
+- The runtime context window is capped by both the host environment setting and the
+  detected model architecture limit (when exposed by its config). Prompt truncation
+  keeps the newest turns, and generation reserves context space for output tokens.
+  The sidecar returns token usage and reports finish_reason=length when the output
+  budget is reached.
 - The Python environment is isolated from the Node runtime. It adds no PyTorch or
   Transformers dependency to NK1's production npm dependency graph.
 
@@ -155,6 +160,8 @@ adapter is quarantined, the request continues to the normal local/cloud fallback
 Nothing changes the llama.cpp model files.
 
 Read-only liveness at GET /health and GET /api/health is intentionally minimal.
+The detailed status reports the effective max_context_tokens limit; token usage is
+returned on each completion so the host can observe prompt/output budgets.
 Detailed GET /neural-prosthesis/status and inference POST requests require the same
 optional 32–512 character printable ASCII bearer token when NEURO_NP_API_TOKEN is set.
 Host headers outside localhost/127.0.0.1 are rejected even though the service binds

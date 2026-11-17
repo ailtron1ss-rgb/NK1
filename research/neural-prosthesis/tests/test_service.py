@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from neural_prosthesis.service import RequestError, create_handler
+from neural_prosthesis.service import RequestError, _context_window, create_handler
 
 
 class FakeRuntime:
@@ -30,6 +30,18 @@ class FakeRuntime:
 
 
 class NeuralProsthesisHttpTests(unittest.TestCase):
+    def test_context_window_never_exceeds_model_architecture_or_host_limit(self):
+        class Config:
+            max_position_embeddings = 4096
+            n_positions = 2048
+
+        self.assertEqual(_context_window(Config(), "8192"), 2048)
+        self.assertEqual(_context_window({"max_position_embeddings": 4096}, 1024), 1024)
+        self.assertEqual(_context_window(object(), 8192), 8192)
+        self.assertEqual(_context_window({"max_position_embeddings": 1_000_000}, 100_000), 65_536)
+        with self.assertRaisesRegex(RuntimeError, "must-be-an-integer"):
+            _context_window(object(), "many")
+
     def setUp(self):
         self.runtime = FakeRuntime()
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), create_handler(self.runtime))

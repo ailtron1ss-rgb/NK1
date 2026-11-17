@@ -17,6 +17,27 @@ from .engine import ArtifactError, NeuralProsthesisBank, _resolve_layer_stack
 MAX_REQUEST_BYTES = 1024 * 1024
 MAX_MESSAGE_CHARS = 64_000
 MAX_MESSAGES = 32
+MAX_CONTEXT_TOKENS = 65_536
+
+
+def _context_window(model_config: Any, configured: str | int) -> int:
+    try:
+        requested = int(configured)
+    except (TypeError, ValueError) as error:
+        raise RuntimeError("NEURO_NP_MAX_CONTEXT_TOKENS-must-be-an-integer") from error
+    limit = max(2, min(MAX_CONTEXT_TOKENS, requested))
+    names = (
+        "max_position_embeddings",
+        "n_positions",
+        "max_sequence_length",
+        "max_seq_len",
+        "seq_length",
+    )
+    for name in names:
+        value = model_config.get(name) if isinstance(model_config, dict) else getattr(model_config, name, None)
+        if type(value) is int and 2 <= value <= 1_000_000:
+            return min(limit, value)
+    return limit
 
 
 class RequestError(ValueError):
@@ -117,6 +138,8 @@ class TransformersRuntime:
         self.model.eval()
         if getattr(self.tokenizer, "pad_token_id", None) is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
+        # Preserve the newest user turn when the prompt must be truncated.
+        self.tokenizer.truncation_side = "left"
         self.model.config.use_cache = True
 
         model_id = str(os.environ.get("NEURO_NP_MODEL_ID") or getattr(self.model.config, "_name_or_path", "") or Path(self.model_path).name)
@@ -146,8 +169,10 @@ class TransformersRuntime:
         self.default_adapter = str(os.environ.get("NEURO_NP_DEFAULT_ADAPTER", "")).strip() or None
         if self.default_adapter is not None and not self._is_approved(self.default_adapter):
             raise RuntimeError("NEURO_NP_DEFAULT_ADAPTER-must-be-host-allowlisted")
-        context_limit = int(os.environ.get("NEURO_NP_MAX_CONTEXT_TOKENS", "8192"))
-        self.max_context_tokens = max(512, min(65536, context_limit))
+        self.max_context_tokens = _context_window(
+            self.model.config,
+            os.environ.get("NEURO_NP_MAX_CONTEXT_TOKENS", "8192"),
+        )
         self._generation_lock = threading.Lock()
         self.model_id = model_id
         self.model_revision = revision
@@ -174,6 +199,7 @@ class TransformersRuntime:
             "layer_path": self.layer_path,
             "loaded_adapters": adapters,
             "default_adapter": self.default_adapter,
+            "max_context_tokens": self.max_context_tokens,
             "remote_model_downloads": False,
         }
 
@@ -202,6 +228,8 @@ class TransformersRuntime:
         temperature = request.get("temperature", 0.7)
         if not isinstance(max_tokens, int) or isinstance(max_tokens, bool) or not 1 <= max_tokens <= 2048:
             raise RequestError(400, "max-tokens-out-of-range")
+        # Reserve at least one prompt token and never exceed the model's own window.
+        max_tokens = min(max_tokens, 2048, self.max_context_tokens - 1)
         if isinstance(temperature, bool) or not isinstance(temperature, (int, float)) or not math.isfinite(float(temperature)) or not 0 <= float(temperature) <= 2:
             raise RequestError(400, "temperature-out-of-range")
         stream = request.get("stream", False)
@@ -244,6 +272,8 @@ class TransformersRuntime:
             with self.bank.activate(adapter_id):
                 generated = self.model.generate(input_ids=input_ids, **generation_kwargs)
         completion_tokens = generated[0, input_ids.shape[-1]:]
+        generated_token_count = int(completion_tokens.shape[-1])
+        finish_reason = "length" if generated_token_count >= max_tokens else "stop"
         text = self.tokenizer.decode(completion_tokens, skip_special_tokens=True).strip()
         if not text:
             raise RequestError(503, "empty-model-response")
@@ -251,7 +281,12 @@ class TransformersRuntime:
             "id": "neural-prosthesis-local",
             "object": "chat.completion",
             "model": self.model_id,
-            "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}],
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": finish_reason}],
+            "usage": {
+                "prompt_tokens": int(input_ids.shape[-1]),
+                "completion_tokens": generated_token_count,
+                "total_tokens": int(input_ids.shape[-1]) + generated_token_count,
+            },
         }
 
     def close(self) -> None:
