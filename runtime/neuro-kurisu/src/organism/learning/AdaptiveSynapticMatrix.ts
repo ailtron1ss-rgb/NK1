@@ -173,8 +173,8 @@ function normalizeCandidate(raw: SynapticAdapterCandidate): SynapticAdapterCandi
   }
   const competenceByTask01: Partial<Record<SynapticAdapterTask, number>> = {};
   for (const task of tasks) {
-    const score = Number(raw.competenceByTask01?.[task]);
-    if (!Number.isFinite(score) || score < 0 || score > 1) throw new Error('synaptic-adapter-competence-invalid');
+    const score = raw.competenceByTask01?.[task];
+    if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > 1) throw new Error('synaptic-adapter-competence-invalid');
     competenceByTask01[task] = score;
   }
   return {
@@ -275,6 +275,10 @@ export class AdaptiveSynapticMatrixEngine {
     const manifest = normalizeManifest(raw);
     const record = this.state.adapters.find(entry => entry.candidate.id === manifest.id);
     if (!record || !sameCandidate(record.candidate, manifest)) throw new Error('synaptic-adapter-candidate-manifest-mismatch');
+    if (record.status === 'quarantined'
+      && record.manifest?.validation.reportSha256 === manifest.validation.reportSha256) {
+      throw new Error('synaptic-adapter-revalidation-required-after-quarantine');
+    }
     if (typeof verify !== 'function') throw new Error('synaptic-adapter-manifest-verifier-required');
     let verified = false;
     try {
