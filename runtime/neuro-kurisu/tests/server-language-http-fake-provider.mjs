@@ -154,6 +154,7 @@ try {
   assert.ok(['reflex', 'shallow', 'retrieve', 'deep', 'simulate', 'defer', 'sleep'].includes(
     lastProviderPayload?.chat_template_kwargs?.nk1_mode,
   ));
+  assert.ok(Number.isSafeInteger(lastProviderPayload?.chat_template_kwargs?.nk1_neural_snapshot_version));
   assert.ok(lastProviderPayload?.chat_template_kwargs?.nk1_neural_snapshot_freshness01 >= 0
     && lastProviderPayload.chat_template_kwargs.nk1_neural_snapshot_freshness01 <= 1);
   console.log('SERVER_LANGUAGE_HTTP_FAKE_PROVIDER=PASS', JSON.stringify({
