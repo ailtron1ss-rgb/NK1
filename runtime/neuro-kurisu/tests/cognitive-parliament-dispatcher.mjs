@@ -56,10 +56,10 @@ const makeExecutors=(onRun=()=>{},delayMs=0)=>Object.fromEntries(roles.map(role=
 }]));
 
 const parliament=new CognitiveParliament(trust);
-let active=0,maxActive=0,seenTokens=[],capturedPayload=null,capturedUserChars=0;
+let active=0,maxActive=0,seenTokens=[],capturedPayload=null,capturedPromptChars=0;
 const executors=makeExecutors((_role,request)=>{
   active++;maxActive=Math.max(maxActive,active);seenTokens.push(request.maxTokens);
-  capturedUserChars=Math.max(capturedUserChars,request.user.length);
+  capturedPromptChars=Math.max(capturedPromptChars,request.system.length+request.user.length);
   if(!capturedPayload)capturedPayload=JSON.parse(request.user);
 },8);
 for(const role of roles){
@@ -79,9 +79,12 @@ assert.equal(seenTokens.length,6);
 assert.ok(seenTokens.every(value=>value===400),'the total requested token budget must be partitioned across six roles');
 assert.equal(dispatched.verifiedEvidenceCount,3);
 assert.equal(dispatched.unverifiedEvidenceCount,0);
-assert.ok(capturedUserChars<=dispatched.inputCharacterBudget,
-  'the exact per-role prompt must stay inside the configured character budget');
-assert.equal(capturedUserChars,dispatched.inputCharactersPerRole);
+assert.ok(capturedPromptChars<=dispatched.inputCharacterBudget,
+  'the full system+user prompt must stay inside the configured character budget');
+assert.ok(dispatched.inputCharactersPerRole>=capturedPromptChars,
+  'the reported ceiling must cover the longest role instruction plus shared user context');
+assert.ok(dispatched.inputCharactersPerRole<=dispatched.inputCharacterBudget);
+assert.ok(dispatched.systemPromptCharacterCeiling>0);
 assert.ok(dispatched.inputCharactersPerRole>0);
 
 // If the indivisible provenance skeleton cannot fit, no role model is called.
@@ -454,8 +457,9 @@ assert.equal(restoredCore.cognitiveParliamentDiagnostics().historyCount,
 
 // With all six roles configured but no promoted evidence, Core must not allow
 // an ordinary risky candidate to escape through a later selector.
+let noEvidenceRoleCalls=0;
 const emptyEvidenceRoles=Object.fromEntries(coreRoles.map(role=>[role,{
-  async execute(){throw new Error('must-not-call-without-promoted-evidence');},
+  async execute(){noEvidenceRoleCalls++;throw new Error('must-not-call-without-promoted-evidence');},
 }]));
 const noEvidenceCore=new OrganismCore(new MemoryStateStore(),{
   performanceProfile:'mobile',cycleResultMode:'operational',spineOnly:false,
@@ -473,6 +477,7 @@ const noEvidenceReceipt=noEvidenceCore.snapshot().system.cognitiveParliamentLast
 assert.ok(noEvidenceReceipt,'fail-closed cycle must leave a durable decision receipt');
 assert.equal(noEvidenceReceipt.dispatchStatus,'evidence-unavailable');
 assert.equal(noEvidenceReceipt.decisionStatus,'needs-evidence');
+assert.equal(noEvidenceRoleCalls,0,'the full Core cycle must stop before all six providers when promoted evidence is absent');
 assert.ok(!noEvidenceReceipt.selectedCandidateId||
   noEvidenceReceipt.selectedCandidateId===noEvidenceReceipt.p69ChosenCandidateId);
 assert.ok(!['explore','respond','communicate'].includes(noEvidenceCycle.decision?.selected?.action??''),
