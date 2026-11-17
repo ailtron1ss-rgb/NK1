@@ -224,7 +224,9 @@ export class ConstitutionEvolutionEngine {
       if (i<0) throw new Error('proposal ledger full'); this.state.proposals.splice(i,1); this.invalidateSnapshot();
     }
     const core: ProposalCore = { authorId,baseVersion:input.baseVersion,change:input.change,targetRuleId,proposedRule,motivation,scope,counterexample,riskAssessment,testPlan };
-    const p: ConstitutionProposal = { id:input.id ? required(input.id,'proposal id',120) : 'constitution-'+randomUUID(), ...core,
+    const proposalId=input.id ? required(input.id,'proposal id',120) : 'constitution-'+randomUUID();
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{2,119}$/.test(proposalId)) throw new Error('proposal id must be URL-safe and use only letters, digits, dot, underscore, colon, or hyphen');
+    const p: ConstitutionProposal = { id:proposalId, ...core,
       submittedAt:Number.isFinite(input.submittedAt)?Number(input.submittedAt):Date.now(), candidateDigest:proposalDigest(core),
       status:'pending-review', reviews:[], approvalRequestId:null, approval:null, appliedVersion:null, rejectionReason:null };
     if (this.state.proposals.some(v=>v.id===p.id)) throw new Error('proposal id already exists');
