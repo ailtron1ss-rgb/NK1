@@ -54,21 +54,21 @@ const SENSITIVE_EVIDENCE_PARAMETERS = new Set([
 export function isSafeConstitutionEvidenceRef(value: unknown): value is string {
   if (!nonEmpty(value, 500)) return false;
   const reference = value.trim();
-  if (/[\\u0000-\\u001f\\u007f]/.test(reference) ||
-      /\\b(?:bearer|basic)\\s+[a-z0-9._~+\\/-]{4,}={0,}/i.test(reference)) return false;
+  if (/[\u0000-\u001f\u007f]/.test(reference) ||
+      /\b(?:bearer|basic)\s+[a-z0-9._~+\/-]{4,}={0,}/i.test(reference)) return false;
 
   // Reject userinfo in any URI authority, including opaque schemes such as ci://.
-  const authority = reference.match(/^[a-z][a-z0-9+.-]*:\\/\\/([^/?#]*)/i)?.[1];
+  const authority = reference.match(/^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i)?.[1];
   if (authority?.includes('@')) return false;
 
   const isSensitiveParameter = (rawKey: string): boolean => {
     let key = rawKey;
-    try { key = decodeURIComponent(key.replace(/\\+/g, ' ')); }
+    try { key = decodeURIComponent(key.replace(/\+/g, ' ')); }
     catch { return true; }
     return SENSITIVE_EVIDENCE_PARAMETERS.has(key.toLowerCase().replace(/[^a-z0-9]/g, ''));
   };
 
-  for (const match of reference.matchAll(/[?&#]([^=&#\\s]+)\\s*=/g)) {
+  for (const match of reference.matchAll(/[?&#]([^=&#\s]+)\s*=/g)) {
     if (isSensitiveParameter(match[1])) return false;
   }
   try {
