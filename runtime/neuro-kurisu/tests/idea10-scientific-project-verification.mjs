@@ -24,4 +24,14 @@ const restored = new ScientificMethodEngine();
 restored.restore(engine.snapshot());
 assert.deepEqual(restored.snapshot().projects[0].verificationContract, contract,
   'the verification contract must survive durable scientific project snapshot/restore');
+
+const callerOwned = { ...contract };
+const safeProject = engine.create('Safe protocol copy', 'Hypothesis', 'Prediction', ['mechanism'], callerOwned);
+callerOwned.autoApply = true;
+assert.equal(safeProject.verificationContract.autoApply, false,
+  'the project must own a validated copy, not caller-mutable verification settings');
+const unsafeProject = engine.create('Unsafe protocol rejected', 'Hypothesis', 'Prediction', ['mechanism'], { ...contract, autoApply: true });
+assert.equal(unsafeProject.verificationContract, undefined,
+  'an auto-apply or weakened verification contract must never be persisted');
+
 console.log('IDEA10_SCIENTIFIC_PROJECT_VERIFICATION=PASS');
