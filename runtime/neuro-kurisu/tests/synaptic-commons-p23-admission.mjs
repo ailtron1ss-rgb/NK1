@@ -268,6 +268,12 @@ try {
   assert.match(staged.candidateId, /^[a-f0-9]{64}$/);
   assert.equal(localProposalCalls, 4);
 
+  const canonicalCoreSnapshot = runtime.core.verifiedSkillCandidateSnapshot();
+  assert.ok(
+    canonicalCoreSnapshot?.candidates.some(item => item.candidateId === staged.candidateId),
+    'Synaptic admission must stage into OrganismCore canonical P23 store, not a detached engine store',
+  );
+
   const snapshot = engine.verifiedSkillCandidateSnapshot();
   assert.deepEqual(snapshot.active, [], 'Synaptic import must never activate a local P23 skill');
   const candidate = snapshot.candidates.find(item => item.candidateId === staged.candidateId);
