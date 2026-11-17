@@ -68,6 +68,7 @@ export interface NeuroPlasticEvaluationReceipt {
   evaluatorId: string;
   evaluatedAt: number;
   evaluationFingerprint: string;
+  reportFingerprint: string;
   signature: string;
 }
 
@@ -82,6 +83,7 @@ export interface NeuroPlasticEvaluationReport {
   evaluationId: string;
   evaluatorId: string;
   evaluationFingerprint: string;
+  reportFingerprint: string;
   evaluatorSignature: string;
   pairedN: number;
   independentSeedCount: number;
@@ -364,7 +366,7 @@ function constantTimeHexEqual(actualValue: unknown, expected: string): boolean {
 
 function evaluationReceiptPayload(
   adapterId: string,
-  receipt: Pick<NeuroPlasticEvaluationReceipt, 'evaluationId'|'evaluatorId'|'evaluatedAt'|'evaluationFingerprint'>,
+  receipt: Pick<NeuroPlasticEvaluationReceipt, 'evaluationId'|'evaluatorId'|'evaluatedAt'|'evaluationFingerprint'|'reportFingerprint'>,
 ): string {
   return JSON.stringify({
     adapterId,
@@ -372,6 +374,7 @@ function evaluationReceiptPayload(
     evaluatorId: receipt.evaluatorId,
     evaluatedAt: receipt.evaluatedAt,
     evaluationFingerprint: receipt.evaluationFingerprint,
+    reportFingerprint: receipt.reportFingerprint,
   });
 }
 
