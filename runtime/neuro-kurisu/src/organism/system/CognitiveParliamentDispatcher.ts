@@ -18,13 +18,14 @@ export interface ParliamentRoleRunResult {
 export interface ParliamentDispatchInput {
   candidateId:string; risk:ParliamentInput['risk']; task:string;
   evidenceReferences?:ParliamentEvidenceReference[]; timeoutMs?:number;
-  maxConcurrent?:number; maxTotalTokens?:number;
+  maxConcurrent?:number; maxTotalTokens?:number; maxInputChars?:number;
 }
 export interface ParliamentDispatchResult {
-  version:1; status:'completed'|'partial'|'timed-out'|'unavailable'|'invalid-input'|'evidence-unavailable'|'evidence-rejected';
+  version:1; status:'completed'|'partial'|'timed-out'|'unavailable'|'invalid-input'|'evidence-unavailable'|'evidence-rejected'|'input-budget-exceeded';
   candidateId:string; decision:ParliamentDecision; roleResults:ParliamentRoleRunResult[];
   startedAt:number; completedAt:number; elapsedMs:number;
   requestedTokenBudget:number; perRoleTokenBudget:number; concurrencyLimit:number;
+  inputCharacterBudget:number; inputCharactersPerRole:number; truncatedMaterialCount:number;
   verifiedEvidenceCount:number; unverifiedEvidenceCount:number;
 }
 const ROLES:ParliamentRole[]=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
@@ -153,11 +154,15 @@ export class CognitiveParliamentDispatcher {
     const perRoleTokenBudget=Math.max(64,Math.min(2048,Math.floor(requestedTokenBudget/6)));
     const concurrencyLimit=Number.isSafeInteger(input?.maxConcurrent)?Math.max(1,Math.min(6,Number(input.maxConcurrent))):3;
     const timeoutMs=Number.isSafeInteger(input?.timeoutMs)?Math.max(25,Math.min(120_000,Number(input.timeoutMs))):25_000;
+    const inputCharacterBudget=Number.isSafeInteger(input?.maxInputChars)?Math.max(8_000,Math.min(96_000,Number(input.maxInputChars))):32_000;
     const roleResults:ParliamentRoleRunResult[]=ROLES.map(role=>({role,status:'unavailable',latencyMs:0,requestedMaxTokens:perRoleTokenBudget}));
     const reports:ParliamentRoleReport[]=[];
     let verifiedEvidence:ParliamentVerifiedEvidence[]=[];
     let verifiedEvidenceMap=new Map<string,string>();
     let unverifiedEvidenceCount=0;
+    let inputCharactersPerRole=0;
+    let truncatedMaterialCount=0;
+    let sharedUserPayload='';
     const finish=(status:ParliamentDispatchResult['status']):ParliamentDispatchResult=>{
       const completedAt=Date.now();
       const stableReports=reports.slice().sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role));
@@ -166,6 +171,7 @@ export class CognitiveParliamentDispatcher {
         decision:this.parliament.deliberate({candidateId,risk:(risk==='low'||risk==='medium'||risk==='high')?risk:'high',reports:stableReports,maxReports:6}),
         roleResults:roleResults.map(row=>({...row})),startedAt,completedAt,
         elapsedMs:Math.max(0,completedAt-startedAt),requestedTokenBudget,perRoleTokenBudget,concurrencyLimit,
+        inputCharacterBudget,inputCharactersPerRole,truncatedMaterialCount,
         verifiedEvidenceCount:verifiedEvidence.length,unverifiedEvidenceCount,
       };
     };
@@ -178,29 +184,56 @@ export class CognitiveParliamentDispatcher {
     if(verifiedEvidence.length===0)return finish('evidence-unavailable');
     const configuredCount=ROLES.filter(role=>Boolean(this.executors[role])).length;
     if(configuredCount===0)return finish('unavailable');
+    const outputContract={
+      stance:['support','oppose','abstain','block'],uncertainty01:'number 0..1',
+      facts:'string[]',assumptions:'string[]',objections:'string[]',evidence:'allowed {id,claimKey} only',
+    };
+    const basePayload={candidateId,task,outputContract};
+    const evidenceShells=verifiedEvidence.map(row=>({
+      id:row.id,claimKey:row.claimKey,sourceIdentity:row.sourceIdentity,
+      sourceFamily:row.sourceFamily,sourceClass:row.sourceClass,
+      confidence01:row.confidence01,trust01:row.trust01,promotionScore01:row.promotionScore01,
+      observedAt:row.observedAt,
+    }));
+    const minimumPayload=JSON.stringify({...basePayload,allowedEvidence:evidenceShells});
+    // Provenance IDs/metadata are indivisible: when they do not fit, do not silently
+    // drop references or expose a partial evidence set to the six specialist roles.
+    if(minimumPayload.length>inputCharacterBudget)return finish('input-budget-exceeded');
+    const materialBudget=Math.min(
+      Math.max(0,inputCharacterBudget-minimumPayload.length),
+      Math.floor(inputCharacterBudget*.30),
+    );
+    const perEvidenceMaterialBudget=verifiedEvidence.length
+      ?Math.floor(materialBudget/verifiedEvidence.length):0;
+    const boundedEvidence=evidenceShells.map((shell,index)=>{
+      const material=verifiedEvidence[index].material;
+      if(!material)return shell;
+      const excerptLimit=Math.max(0,Math.min(material.excerpt.length,perEvidenceMaterialBudget-320));
+      if(excerptLimit<material.excerpt.length)truncatedMaterialCount++;
+      if(excerptLimit===0)return shell;
+      return {...shell,material:{
+        title:material.title.slice(0,160),
+        excerpt:material.excerpt.slice(0,excerptLimit),
+        sourceUrl:material.sourceUrl.slice(0,600),
+        contentHash:material.contentHash,
+      }};
+    });
+    sharedUserPayload=JSON.stringify({...basePayload,allowedEvidence:boundedEvidence});
+    if(sharedUserPayload.length>inputCharacterBudget){
+      // A defensive second pass drops excerpts, never evidence identity or provenance.
+      sharedUserPayload=minimumPayload;
+      truncatedMaterialCount=verifiedEvidence.filter(row=>Boolean(row.material)).length;
+    }
+    inputCharactersPerRole=sharedUserPayload.length;
+    if(inputCharactersPerRole>inputCharacterBudget)return finish('input-budget-exceeded');
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
     let nextIndex=0;
     const runRole=async(role:ParliamentRole,index:number):Promise<void>=>{
       const executor=this.executors[role];if(!executor)return;
       const resultRow=roleResults[index],roleStarted=Date.now();
       try{
-        const userPayload=JSON.stringify({
-          candidateId,task,
-          allowedEvidence:verifiedEvidence.map(row=>({
-            id:row.id,claimKey:row.claimKey,sourceIdentity:row.sourceIdentity,
-            sourceFamily:row.sourceFamily,sourceClass:row.sourceClass,
-            confidence01:row.confidence01,trust01:row.trust01,promotionScore01:row.promotionScore01,
-            observedAt:row.observedAt,
-            ...(row.material?{material:{
-              title:row.material.title,excerpt:row.material.excerpt,
-              sourceUrl:row.material.sourceUrl,contentHash:row.material.contentHash,
-            }}:{}),
-          })),
-          outputContract:{stance:['support','oppose','abstain','block'],uncertainty01:'number 0..1',
-            facts:'string[]',assumptions:'string[]',objections:'string[]',evidence:'allowed {id,claimKey} only'},
-        });
         const execution=await withAbort(Promise.resolve().then(()=>executor.execute({
-          role,system:makeRoleSystem(role),user:userPayload,maxTokens:perRoleTokenBudget,temperature:.1,signal:controller.signal,
+          role,system:makeRoleSystem(role),user:sharedUserPayload,maxTokens:perRoleTokenBudget,temperature:.1,signal:controller.signal,
         })),controller.signal);
         const executionId=boundedString(execution?.executionId,256);
         if(executionId===null||typeof execution.text!=='string'){
