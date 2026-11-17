@@ -13,6 +13,10 @@ assert.ok(holdout.every(x=>!('hiddenVariables'in x)&&!('answerKey'in x)&&!('requ
 assert.equal(forge.generate({split:'holdout',seed:-1,count:1}).length,0);
 assert.equal(forge.generate({split:'holdout',seed:1,count:1000}).length,8);
 const scenario=train[0];
+const alteredSplit=forge.evaluate({...scenario,split:'holdout'},[]);
+assert.equal(alteredSplit.success,false,'caller must not relabel a training scenario as holdout');
+const overBudget=forge.evaluate(scenario,Array.from({length:scenario.constraints.maxSteps+1},()=>({action:'observe',cost:.1,risk01:0})));
+assert.ok(overBudget.constraintViolations>0,'step budget violations must be counted');
 const invalid=forge.evaluate(scenario,[{action:'not-an-action'}]);
 assert.equal(invalid.success,false);assert.equal(invalid.constraintViolations,1);
 const good=forge.evaluate(scenario,[{action:'observe',target:'budget-check',evidence:'budget-check',cost:.2,risk01:.02},{action:'prioritize',target:'reserve',cost:.3,risk01:.03},{action:'verify',target:'allocate',evidence:'budget-check',cost:.2,risk01:.01}]);
