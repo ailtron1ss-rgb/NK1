@@ -248,6 +248,11 @@ for (const retained of legacyConsequenceSnapshot.consequenceEcology.analyses) {
     delete oldOption.lostBenefit01;
     delete oldOption.netAttributableValue01;
     delete oldOption.correlatedPathMerges;
+    delete oldOption.worstStakeholderHarm01;
+    delete oldOption.topStakeholderHarmShare01;
+    delete oldOption.benefitBurdenSeparation01;
+    delete oldOption.mostExposedStakeholder;
+    delete oldOption.mainBeneficiary;
     for (const oldNode of oldOption.nodes) {
       delete oldNode.description;
       delete oldNode.baselineProbability01;
