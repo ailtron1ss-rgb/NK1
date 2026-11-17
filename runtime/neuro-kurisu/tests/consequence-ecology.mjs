@@ -312,6 +312,16 @@ const diagnostics = await gateway.executeTool('organism.consequences.diagnostics
 assert.equal(diagnostics.ok, true);
 assert.equal(diagnostics.result.diagnostics.retainedAnalyses, 1);
 
+const standaloneTool = await gateway.executeTool('organism.consequences.analyze', {
+  id: 'gateway-standalone-analysis',
+  horizonDays: 30,
+  options: [option('standalone-option', 'evaluate a standalone operation', [
+    node('standalone-benefit', 'benefit', 0.7, 0.6, 0.8),
+  ], [edge('standalone-action', '__action__', 'standalone-benefit')])],
+}, 'consequence-ecology-test', { idempotencyKey: 'consequence-gateway-standalone-1' });
+assert.equal(standaloneTool.ok, true, JSON.stringify(standaloneTool));
+assert.equal(standaloneTool.result.analysis.scenarioId, null, 'a standalone option must not require a Shared Future scenario');
+
 console.log('CONSEQUENCE_ECOLOGY=PASS', JSON.stringify({
   analysisCount: simulator.consequenceEcology.diagnostics().retainedAnalyses,
   modelTopRankedOptionId: first.analysis.modelTopRankedOptionId,
