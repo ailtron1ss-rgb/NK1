@@ -277,11 +277,15 @@ export class EmbodiedCausalWorldBridge {
 
   assertCommittedAction(contextId:number|string|undefined,tick:number,action:ActionKind):boolean{
     const expected=this.pendingFastAction(contextId,tick);
-    if(expected!==undefined&&expected!==action){
+    if(expected===undefined){
+      this.fastUnmatchedOutcomes++;
+      return false;
+    }
+    if(expected!==action){
       this.fastActionMismatchOutcomes++;
       throw new Error('P27 outcome committed action mismatch');
     }
-    return expected===undefined||expected===action;
+    return true;
   }
 
   private consumeFastDecision(contextId:number|string|undefined,tick:number):FastAdaptationContext|null{
@@ -441,9 +445,11 @@ export class EmbodiedCausalWorldBridge {
     if(!ACTIONS.includes(args.action))throw new TypeError('P27 outcome requires a known action');
     if(!this.finiteFeatureVector(args.nextFeatures))throw new TypeError('P27 requires a finite next feature vector with 1-64 numeric values');
     if(![args.reward01,args.verified01,args.predictionError01].every(Number.isFinite))throw new TypeError('P27 requires finite outcome metrics');
-    const outcomeContextId=args.contextId??this.activeFastContextKey??undefined;
-    this.assertCommittedAction(outcomeContextId,args.tick,args.action);
-    const fastContext=this.consumeFastDecision(outcomeContextId,args.tick);
+    // Outcome identity must be supplied explicitly; never infer a fast context
+    // from whichever adapter happened to be active most recently.
+    const outcomeContextId=args.contextId;
+    const actionBound=this.assertCommittedAction(outcomeContextId,args.tick,args.action);
+    const fastContext=actionBound?this.consumeFastDecision(outcomeContextId,args.tick):null;
     const ai=ACTIONS.indexOf(args.action);const from=this.state.latent.slice();const observed=this.encode(args.nextFeatures);const pred=this.predict(from,args.action,1);const nextError=clamp(mse(pred.next,observed));const rewardErr=clamp(Math.abs(pred.reward-args.reward01));
     const verified=clamp(args.verified01);const lr=.012+verified*.018;
     // P27 fast adaptation is accepted only when a bounded backtracking search
