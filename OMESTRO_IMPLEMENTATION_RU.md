@@ -75,7 +75,16 @@ npm run test:omestro
 npm run typecheck
 \`\`\`
 
-Перед merge требуется также запустить интеграционный набор, покрывающий memory restore, P25/P28, cognitive-cycle, learning governance, holdout provenance, action finalizer и release contracts. Прохождение новой unit suite не заменяет эти проверки.
+Проверки, выполненные на актуальном PR HEAD: `test:omestro`, полноценный `typecheck-runtime` под TypeScript 5.9.3, Cognitive Immune health, P25 science/integration, P28 plasticity/integration, P26 holdout provenance, полный P23 learning-governance набор, cognitive-cycle boundary + runtime wiring, memory-restore integrity и workpass96 action-finalizer boundary. Выводы и команды отражены в PR; эти проверки не означают, что gated neural-backend capabilities уже существуют.
+
+### Проверки, выполненные на PR HEAD
+
+Дата: 2026-11-17. Временный shallow clone использовался только для чтения/проверки; изменения отправлялись через GitHub в эту branch.
+
+- `node --experimental-strip-types tests/omestro-integrated-foundations.mjs` → `OMESTRO_INTEGRATED_FOUNDATIONS=PASS` (32 идеи, ChronoTruth, genome DAG, adapter routing, TTL plasticity и injection canonical owners).
+- `node scripts/typecheck-runtime.mjs` → `TYPECHECK=PASS mode=tsc compiler=app-lock` с закреплённым TypeScript 5.9.3.
+- `test:cognitive-immune-health`, `test:p25:science`, `test:p28:plasticity`, `test:cognitive-cycle-boundary`, `test:memory-restore-integrity` → PASS.
+- `test:p25:integration`, `test:p28:integration`, `test:p26:holdout-provenance`, `test:p23:learning-governance`, `test:workpass96:finalizer-boundary`, `test:cognitive-cycle-boundary-runtime-wiring` → PASS.
 
 ## Архитектурные границы
 
