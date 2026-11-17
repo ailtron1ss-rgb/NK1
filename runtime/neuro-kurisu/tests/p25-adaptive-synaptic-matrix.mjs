@@ -15,6 +15,7 @@ const candidate = (overrides = {}) => ({
   conflictGroup: 'physics-domain',
   minimumConfidence01: 0.62,
   maximumResourceRisk01: 0.72,
+  maximumUncertainty01: 0.68,
   maximumContextTokens: 8192,
   trainingDatasetRef: 'dataset://physics/train-v3',
   owner: 'neuro-plastic-core',
@@ -51,6 +52,12 @@ const request = (overrides = {}) => ({
 {
   const matrix = new AdaptiveSynapticMatrixEngine();
   matrix.registerCandidate(candidate());
+  assert.throws(() => matrix.registerCandidate(candidate({ maximumContextTokens: 4096 })),
+    /id-collision/i,
+    'an adapter ID cannot be silently rebound to a different capability profile');
+  assert.throws(() => matrix.registerCandidate(candidate({ maximumUncertainty01: '0.68' })),
+    /uncertainty/i,
+    'adapter profile limits must use typed numeric evidence');
 
   assert.equal(matrix.select(request()).mode, 'base-fallback',
     'unvalidated candidates must never enter an inference route');
@@ -81,6 +88,10 @@ const request = (overrides = {}) => ({
     'resource pressure above the adapter profile limit must fall back');
   assert.equal(matrix.select(request({ contextTokens: 9000 })).mode, 'base-fallback',
     'requests above an adapter context limit must fall back');
+  assert.equal(matrix.select(request({ uncertainty01: 0.90 })).mode, 'base-fallback',
+    'high organism uncertainty must bypass a specialized adapter');
+  assert.equal(matrix.select(request({ confidence01: '0.86' })).reason, 'routing-signal-invalid',
+    'string-coerced confidence must not bypass numeric routing gates');
   assert.equal(matrix.select(request({ executorAvailable: false })).mode, 'base-fallback',
     'the router must not advertise an adapter that the host cannot execute');
 }
@@ -107,6 +118,13 @@ const request = (overrides = {}) => ({
   assert.throws(() => matrix.activateValidated(tooFewSeeds, () => true),
     /paired|seed/i,
     'a small, underpowered evaluation must not activate an adapter');
+
+  const malformedMetric = manifest(candidate(), {
+    validation: { ...manifest().validation, adapterScore01: '0.99' },
+  });
+  assert.throws(() => matrix.activateValidated(malformedMetric, () => true),
+    /score/i,
+    'numeric strings cannot be used as signed evaluation evidence');
 }
 
 {
@@ -155,6 +173,13 @@ const request = (overrides = {}) => ({
   untrustedRestore.restore(snapshot);
   assert.equal(untrustedRestore.snapshot().adapters[0].status, 'quarantined',
     'persisted activation cannot bypass manifest verification on restore');
+
+  const repeatedFailure = new AdaptiveSynapticMatrixEngine();
+  repeatedFailure.registerCandidate(candidate());
+  repeatedFailure.activateValidated(manifest(), () => true);
+  for (let i = 0; i < 6; i += 1) repeatedFailure.observe('physics-lora-v1', false, 100, 10_000 + i * 1_000);
+  assert.equal(repeatedFailure.snapshot().adapters[0].status, 'quarantined',
+    'a specialist that repeatedly fails across cooldown windows must be quarantined');
 }
 
 console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX=PASS');
