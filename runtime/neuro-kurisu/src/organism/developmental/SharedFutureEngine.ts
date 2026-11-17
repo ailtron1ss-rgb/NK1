@@ -194,6 +194,9 @@ export interface SharedFutureOutcomeRecord {
   independent01?: number;
   independentSourceCount?: number;
   evidenceObservationIds?: string[];
+  sourceId?: string;
+  sourceClass?: SharedFutureEvidenceSourceClass;
+  independenceKey?: string;
   sourceIds?: string[];
   sourceClasses?: SharedFutureEvidenceSourceClass[];
   independenceKeys?: string[];
@@ -384,7 +387,7 @@ export class SharedFutureEngine {
   }
 
   private canonicalPostcondition(value: string): string {
-    return value.normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase();
+    return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
   }
 
   private assertCanonicalGoalLinks(links: SharedFutureGoalLink[]): void {
@@ -528,6 +531,9 @@ export class SharedFutureEngine {
         ...(typeof row.confidence01 === 'number' ? { confidence01: finite(row.confidence01, 0, 0, 1) } : {}),
         ...(typeof row.independent01 === 'number' ? { independent01: finite(row.independent01, 0, 0, 1) } : {}),
         ...(typeof row.independentSourceCount === 'number' ? { independentSourceCount: Math.floor(finite(row.independentSourceCount, 0, 0, 32)) } : {}),
+        ...(typeof row.sourceId === 'string' ? { sourceId: restoredText(row.sourceId, '', 180) } : {}),
+        ...(row.sourceClass === 'os' || row.sourceClass === 'device' || row.sourceClass === 'user' || row.sourceClass === 'external-api' || row.sourceClass === 'world' ? { sourceClass: row.sourceClass } : {}),
+        ...(typeof row.independenceKey === 'string' ? { independenceKey: restoredText(row.independenceKey, '', 120) } : {}),
         ...(Array.isArray(row.evidenceObservationIds) ? { evidenceObservationIds: uniqueStrings(row.evidenceObservationIds, 16) } : {}),
         ...(Array.isArray(row.sourceIds) ? { sourceIds: uniqueStrings(row.sourceIds, 16) } : {}),
         ...(Array.isArray(row.sourceClasses) ? { sourceClasses: [...new Set(row.sourceClasses.filter((value): value is SharedFutureEvidenceSourceClass =>
@@ -1243,6 +1249,9 @@ export class SharedFutureEngine {
         confidence01,
         independent01,
         independentSourceCount,
+        sourceId: normalizedEvidence[0]?.sourceId,
+        sourceClass: normalizedEvidence[0]?.sourceClass,
+        independenceKey: normalizedEvidence[0]?.independenceKey,
         evidenceObservationIds: [...new Set(normalizedEvidence.map((row) => row.observationId))].slice(0, 16),
         sourceIds: [...new Set(normalizedEvidence.map((row) => row.sourceId))].slice(0, 16),
         sourceClasses: [...new Set(normalizedEvidence.map((row) => row.sourceClass))].slice(0, 16),
