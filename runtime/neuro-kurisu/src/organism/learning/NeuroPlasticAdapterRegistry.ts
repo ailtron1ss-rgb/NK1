@@ -768,7 +768,6 @@ export class NeuroPlasticAdapterRegistry {
       if (record.status !== 'active') continue;
       const key = JSON.stringify([
         record.manifest.domain,
-        record.manifest.baseModel.backendId,
         record.manifest.baseModel.fingerprint,
       ]);
       const group = activeGroups.get(key) ?? [];
