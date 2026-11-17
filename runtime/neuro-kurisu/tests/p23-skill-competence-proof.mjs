@@ -265,13 +265,15 @@ const expiredOnRestoreVerifier = createSkillCompetenceProofVerifier(
   trustedAttestorKeys,
   () => Date.now() + 2 * 60 * 60_000,
 );
-assert.throws(() => new VersionedSkillCandidateStore(
+const expiredRestoredStore = new VersionedSkillCandidateStore(
   skillStorePersistence,
   () => true,
   (observation, restoredCandidate) => verifySignedSkillShadowObservation(observation, restoredCandidate, shadowVerifierKeys),
   () => false,
   expiredOnRestoreVerifier,
-), /competence proof failed signature\/context verification/);
+);
+assert.equal(expiredRestoredStore.resolveActiveSkillCompetenceSubject(skillId), null,
+  'an expired but authentic proof may be restored as historical state, but it cannot authorize an active skill');
 
 const permissionScopeCheck = verifySkillCompetenceProofForTool(activeProof, {
   trustedAttestorKeys,

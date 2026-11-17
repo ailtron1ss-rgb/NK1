@@ -188,7 +188,7 @@ function validIdentifier(value: unknown): value is string {
   return typeof value === 'string' && SAFE_ID.test(value) && value.length <= 128;
 }
 
-function isDensePlainArray(value: unknown, maxLength: number): value is unknown[] {
+function isDensePlainArray<T = unknown>(value: unknown, maxLength: number): value is T[] {
   if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype ||
       value.length > maxLength) return false;
   const keys = Reflect.ownKeys(value);
@@ -201,7 +201,7 @@ function isDensePlainArray(value: unknown, maxLength: number): value is unknown[
 }
 
 function validIdentifierList(value: unknown): value is string[] {
-  return isDensePlainArray(value, 32) &&
+  return isDensePlainArray<unknown>(value, 32) &&
     value.every(item => validIdentifier(item)) && new Set(value).size === value.length;
 }
 
@@ -243,7 +243,7 @@ function assertContract(contract: SkillCompetenceContract): void {
       !FINGERPRINT.test(String(contract.environmentFingerprint)) ||
       !validIdentifierList(contract.preconditions) ||
       !validIdentifierList(contract.constraints) ||
-      !isDensePlainArray(contract.allowedModes, 2) ||
+      !isDensePlainArray<SkillCompetenceExecutionMode>(contract.allowedModes, 2) ||
       !contract.allowedModes.includes('assisted') ||
       contract.allowedModes.some(mode => mode !== 'assisted' && mode !== 'autonomous') ||
       new Set(contract.allowedModes).size !== contract.allowedModes.length) {
@@ -252,7 +252,7 @@ function assertContract(contract: SkillCompetenceContract): void {
 }
 
 function validInterval(value: unknown): value is [number, number] {
-  return isDensePlainArray(value, 2) && value.length === 2 &&
+  return isDensePlainArray<number>(value, 2) && value.length === 2 &&
     value.every(n => typeof n === 'number' && Number.isFinite(n) && n >= -1 && n <= 1) &&
     value[0] <= value[1];
 }
@@ -500,7 +500,11 @@ export function createSkillCompetenceProofVerifier(
     try { assertCandidateOwnsContract(candidate, payload.contract); }
     catch { return false; }
     const current = now();
-    if (!Number.isFinite(current) || payload.issuedAt > current + MAX_CLOCK_SKEW_MS || payload.expiresAt <= current) return false;
+    if (!Number.isFinite(current) || payload.issuedAt > current + MAX_CLOCK_SKEW_MS) return false;
+    // Expiry is an execution-time admission decision. During restore, preserve the
+    // signed historical record so the organism can boot, but the active-subject
+    // resolver uses purpose='promotion' and will return null for an expired proof.
+    if (_purpose !== 'persisted-active' && payload.expiresAt <= current) return false;
     return true;
   };
 }
