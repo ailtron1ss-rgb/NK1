@@ -90,10 +90,10 @@ before executor entry.
    action. It may authorize only read-only receipt reconciliation; ActionGateway
    still enforces the original idempotency receipt and any separate one-shot
    reconciliation approval required for protected tools.
-9. Intent contract identity does not replace cognitive decision identity.
+9. The reconciliation bridge reports that a read-only lookup was attempted, not that the provider outcome is resolved. An unknown/missing receipt remains pending and must not be treated as success or as permission to re-execute. ActionGateway remains the final source of receipt resolution.\n10. Intent contract identity does not replace cognitive decision identity.
    The bridge preserves the host's canonical `ActionGateway decisionId` and
    returns `contractId` separately for correlation.
-10. The Intent Gate does not bypass ActionGateway's tool permissions, input
+11. The Intent Gate does not bypass ActionGateway's tool permissions, input
     contracts, idempotency ledger, finalizer, verification or reconciliation.
 
 ## Key lifecycle and persistence
