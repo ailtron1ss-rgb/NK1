@@ -1,0 +1,33 @@
+name: NK1 Proof-Carrying Skills
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillCompetenceProof.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillLifecycleBootstrap.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/ActionGateway.ts'
+      - 'runtime/neuro-kurisu/tests/p23-skill-competence-proof.mjs'
+      - '.github/workflows/proof-carrying-skills.yml'
+      - 'runtime/neuro-kurisu/package.json'
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-proof-carrying-skills-\${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  proof-carrying-skills:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Run proof-carrying skill admission regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-skill-competence-proof.mjs
