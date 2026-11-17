@@ -234,6 +234,34 @@ assert.equal(promoted.activeBackendId, target.backendId);
 assert.equal(reloadedEngine.preferredRoute(), 'gemini');
 assert.equal(promoted.history.at(-1).fromBackendId, source.backendId);
 assert.equal(promoted.history.at(-1).toBackendId, target.backendId);
+assert.deepEqual([...promoted.calibrationEvidenceLedger.receiptIds].sort(),
+  trials.map((trial) => trial.evaluatorReceiptId).sort(),
+  'successful promotion must persist all consumed evaluator receipt IDs');
+assert.deepEqual([...promoted.calibrationEvidenceLedger.taskIds].sort(),
+  trials.map((trial) => trial.taskId).sort(),
+  'successful promotion must persist all consumed task IDs');
+assert.deepEqual([...promoted.calibrationEvidenceLedger.independenceKeys].sort(),
+  trials.map((trial) => trial.independenceKey).sort(),
+  'successful promotion must persist all consumed independence keys');
+
+const legacySidecar = { ...promoted };
+delete legacySidecar.calibrationEvidenceLedger;
+const legacyRestoreEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
+assert.equal(legacyRestoreEngine.restore(legacySidecar).restored, true,
+  'existing schema-v1 sidecars without an evidence ledger must remain readable');
+assert.deepEqual(legacyRestoreEngine.snapshot().calibrationEvidenceLedger,
+  { receiptIds: [], taskIds: [], independenceKeys: [] },
+  'older schema-v1 sidecars must receive an empty additive replay ledger');
+
+const duplicateLedgerEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
+assert.equal(duplicateLedgerEngine.restore({
+  ...promoted,
+  calibrationEvidenceLedger: {
+    receiptIds: ['duplicate-receipt', 'duplicate-receipt'],
+    taskIds: [],
+    independenceKeys: [],
+  },
+}).restored, false, 'tampered evidence ledgers with duplicate IDs must fail closed');
 
 const replayEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
 assert.equal(replayEngine.restore(promoted).restored, true,
