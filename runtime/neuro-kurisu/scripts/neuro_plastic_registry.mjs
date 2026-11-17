@@ -7,6 +7,7 @@ import {
   createNeuroPlasticApprovalSignature,
   verifyNeuroPlasticApprovalSignature,
   verifyNeuroPlasticEvaluationSignature,
+  verifyNeuroPlasticEvaluationReceiptSignature,
 } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 
 const ROOT = path.resolve(process.env.NEURO_PLASTIC_RUNTIME_ROOT || process.cwd());
@@ -148,8 +149,11 @@ async function main() {
   const registry = new NeuroPlasticAdapterRegistry();
   try {
     const snapshot = await readJson(registryFile);
-    registry.restore(snapshot, (approval, context) =>
-      verifyNeuroPlasticApprovalSignature(approval, context, SECRET));
+    registry.restore(
+      snapshot,
+      (approval, context) => verifyNeuroPlasticApprovalSignature(approval, context, SECRET),
+      (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, EVALUATOR_SECRET),
+    );
   } catch (error) {
     if (error?.code !== 'ENOENT') throw new Error('existing-neuro-plastic-registry-invalid: ' + error.message);
   }
