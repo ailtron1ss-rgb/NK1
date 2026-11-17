@@ -195,6 +195,7 @@ export class OrganismRuntime {
     lastTemperature:null as number|null,
     lastMaxTokens:null as number|null,
     llamaCppTemplateKwargsSent:0,
+    templateConsumptionVerified:false as const,
     lastTemplateControlSchema:null as string|null,
   };
   private readonly temporalObjectTracker = new TemporalObjectTracker();
