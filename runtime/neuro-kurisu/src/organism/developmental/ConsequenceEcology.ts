@@ -690,6 +690,7 @@ export class ConsequenceEcologyEngine {
           'This is a bounded consequence model, not a claim that the causal graph is objectively complete.',
           'A model-ranked option is not an approved decision; canonical governance and ActionGateway remain authoritative.',
           'Synthetic or internal projections are not converted into observed outcomes or independent evidence.',
+          ...(context.scenario?.consequences.length ? ['Shared Future consequence rows have no explicit harm/benefit polarity in their current schema and are conservatively treated as harm exposure.'] : []),
         ],
       };
       this.state.analyses = [...this.state.analyses, { digest: requestDigest, analysis }];
