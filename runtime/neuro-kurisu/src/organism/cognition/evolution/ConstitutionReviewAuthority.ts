@@ -37,6 +37,51 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 const nonEmpty = (value: unknown, max = 160): value is string =>
   typeof value === 'string' && value.trim().length > 0 && value.trim().length <= max;
+
+const SENSITIVE_EVIDENCE_PARAMETERS = new Set([
+  'accesstoken', 'refreshtoken', 'idtoken', 'token', 'apikey', 'clientsecret',
+  'secret', 'password', 'passwd', 'authorization', 'credential', 'cookie',
+  'signature', 'sig', 'jwt', 'auth', 'sessiontoken', 'awsaccesskeyid',
+  'xamzcredential', 'xamzsignature', 'xamzsecuritytoken',
+  'xgoogcredential', 'xgoogsignature', 'xgoogsecuritytoken',
+]);
+
+/**
+ * Evidence references are durable identifiers, not secret transport.
+ * Signed URLs, URL userinfo, bearer/basic credentials and control characters
+ * must never enter the persisted review or audit projection.
+ */
+export function isSafeConstitutionEvidenceRef(value: unknown): value is string {
+  if (!nonEmpty(value, 500)) return false;
+  const reference = value.trim();
+  if (/[\\u0000-\\u001f\\u007f]/.test(reference) ||
+      /\\b(?:bearer|basic)\\s+[a-z0-9._~+\\/-]{4,}={0,}/i.test(reference)) return false;
+
+  // Reject userinfo in any URI authority, including opaque schemes such as ci://.
+  const authority = reference.match(/^[a-z][a-z0-9+.-]*:\\/\\/([^/?#]*)/i)?.[1];
+  if (authority?.includes('@')) return false;
+
+  const isSensitiveParameter = (rawKey: string): boolean => {
+    let key = rawKey;
+    try { key = decodeURIComponent(key.replace(/\\+/g, ' ')); }
+    catch { return true; }
+    return SENSITIVE_EVIDENCE_PARAMETERS.has(key.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  };
+
+  for (const match of reference.matchAll(/[?&#]([^=&#\\s]+)\\s*=/g)) {
+    if (isSensitiveParameter(match[1])) return false;
+  }
+  try {
+    const url = new URL(reference);
+    if (url.username || url.password) return false;
+    for (const key of url.searchParams.keys()) {
+      if (isSensitiveParameter(key)) return false;
+    }
+  } catch {
+    // Opaque evidence IDs (ci://, holdout://, etc.) are valid without URL parsing.
+  }
+  return true;
+}
 const fingerprint = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const safeInteger = (value: unknown, min: number, max: number): value is number =>
@@ -123,7 +168,7 @@ export function createAuthenticatedConstitutionReviewVerifier(
           !validateEvidence(payload.tests, expected.testPlanCount) ||
           !Array.isArray(payload.evidenceRefs) || payload.evidenceRefs.length < 1 ||
           payload.evidenceRefs.length > MAX_EVIDENCE_REFS ||
-          !payload.evidenceRefs.every(ref => nonEmpty(ref, 500)) ||
+          !payload.evidenceRefs.every(isSafeConstitutionEvidenceRef) ||
           !nonEmpty(payload.rationale, MAX_RATIONALE_CHARS) ||
           !safeInteger(payload.at, 1, Number.MAX_SAFE_INTEGER)) return null;
       if (!nonEmpty(expected.proposalId, 120) || !fingerprint(expected.candidateDigest) ||
