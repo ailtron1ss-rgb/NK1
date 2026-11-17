@@ -1011,6 +1011,8 @@ export class SubstrateIndependenceEngine {
     this.state.activeProvenance = 'unknown';
     this.state.observedBackendId = null;
     this.state.pendingTransfer = null;
+    this.state.lastEvaluation = null;
+    this.verifiedEvaluationIds.clear();
     return this.snapshot();
   }
 
@@ -1023,6 +1025,8 @@ export class SubstrateIndependenceEngine {
     this.state.activeBackendId = last.fromBackendId;
     this.state.activeProvenance = this.profiles.has(last.fromBackendId) ? 'bootstrap' : 'unknown';
     this.state.observedBackendId = last.fromBackendId;
+    this.state.lastEvaluation = null;
+    this.verifiedEvaluationIds.clear();
     this.state.history = [...this.state.history, {
       at: Date.now(),
       fromBackendId: last.toBackendId,
