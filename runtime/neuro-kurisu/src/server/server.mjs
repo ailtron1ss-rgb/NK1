@@ -494,6 +494,140 @@ async function route(req, res) {
                 note: 'Only an explicitly confirmed, allowlisted low-risk response style is stored.',
             });
         }
+        // Synaptic Commons — authenticated, signed-package distribution only.
+        if (req.method === 'GET' && url.pathname === '/api/organism/synaptic-commons') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const [diagnostics, snapshot] = await Promise.all([
+                runtime.synapticCommonsDiagnostics(),
+                runtime.synapticCommonsSnapshot(),
+            ]);
+            return json(res, 200, {
+                ok: true,
+                readOnly: true,
+                diagnostics,
+                records: snapshot.records.slice(0, 64).map(record => ({
+                    artifactFingerprint: record.artifactFingerprint,
+                    skill: record.artifact.skill,
+                    contract: record.artifact.contract,
+                    license: record.artifact.license,
+                    provenance: record.artifact.provenance,
+                    publisherKeyId: record.artifact.signature.keyId,
+                    status: record.status,
+                    importedAt: record.importedAt,
+                    updatedAt: record.updatedAt,
+                    compatibility: record.compatibility,
+                    attestation: record.attestation ? {
+                        attestorId: record.attestation.attestorId,
+                        independentSeedCount: record.attestation.independentSeedCount,
+                        holdoutSamples: record.attestation.holdoutSamples,
+                        baselinePasses: record.attestation.baselinePasses,
+                        candidatePasses: record.attestation.candidatePasses,
+                        expiresAt: record.attestation.expiresAt,
+                    } : null,
+                    rejectionReason: record.rejectionReason,
+                })),
+                note: 'Attested records are still not executable. Local P23 and ActionGateway admission remains a separate requirement.',
+            });
+        }
+
+        if (req.method === 'POST' && url.pathname === '/api/organism/synaptic-commons/import') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
+            if (input.confirmed !== true)
+                return json(res, 400, { ok: false, error: 'explicit-synaptic-import-confirmation-required' });
+            try {
+                const result = await runtime.importSynapticArtifact(input.artifact);
+                return json(res, result.duplicate ? 200 : 201, {
+                    ok: true, duplicate: result.duplicate,
+                    artifactFingerprint: result.record.artifactFingerprint,
+                    status: result.record.status,
+                    skill: result.record.artifact.skill,
+                    note: 'Imported into quarantine. Signature validity does not bypass local compatibility, evidence, or P23 admission gates.',
+                });
+            } catch (error) {
+                const message = String(error?.message || error).slice(0, 180);
+                const status = /version-conflict|capacity/.test(message) ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+
+        const synapticAction = /^\/api\/organism\/synaptic-commons\/([a-f0-9]{64})\/(compatibility|attestation|reject|export)$/.exec(url.pathname);
+        if (synapticAction && req.method === 'POST' && synapticAction[2] !== 'export') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const fingerprint = synapticAction[1];
+            const action = synapticAction[2];
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
+            if (input.confirmed !== true)
+                return json(res, 400, { ok: false, error: 'explicit-synaptic-transition-confirmation-required' });
+            try {
+                if (action === 'compatibility') {
+                    const runtimeVersion = String(process.env.NEURO_SYNAPTIC_COMMONS_RUNTIME_VERSION || '').trim();
+                    const environmentFingerprint = String(process.env.NEURO_SYNAPTIC_COMMONS_ENVIRONMENT_FINGERPRINT || '').trim();
+                    const readList = name => {
+                        const raw = process.env[name];
+                        if (!raw) return null;
+                        let parsed;
+                        try { parsed = JSON.parse(raw); } catch { return null; }
+                        if (!Array.isArray(parsed) || parsed.length > 256 ||
+                            parsed.some(value => typeof value !== 'string' || !/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(value))) return null;
+                        return [...new Set(parsed)];
+                    };
+                    const supportedCapabilities = readList('NEURO_SYNAPTIC_COMMONS_SUPPORTED_CAPABILITIES_JSON');
+                    const permittedTools = readList('NEURO_SYNAPTIC_COMMONS_PERMITTED_TOOLS_JSON');
+                    if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(runtimeVersion) ||
+                        !/^[a-f0-9]{64}$/.test(environmentFingerprint) ||
+                        !supportedCapabilities || !permittedTools)
+                        return json(res, 503, { ok: false, error: 'synaptic-host-compatibility-manifest-not-configured' });
+                    const record = await runtime.evaluateSynapticSkillCompatibility(fingerprint, {
+                        runtimeVersion, environmentFingerprint, supportedCapabilities, permittedTools,
+                    });
+                    return json(res, 200, {
+                        ok: true, artifactFingerprint: fingerprint, status: record.status,
+                        compatibility: record.compatibility,
+                        executable: false,
+                    });
+                }
+                if (action === 'attestation') {
+                    const record = await runtime.attestSynapticSkill(fingerprint, input.attestation);
+                    return json(res, 200, {
+                        ok: true, artifactFingerprint: fingerprint, status: record.status,
+                        attestorId: record.attestation?.attestorId ?? null,
+                        independentSeedCount: record.attestation?.independentSeedCount ?? 0,
+                        executable: false,
+                    });
+                }
+                const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 240) : '';
+                if (!reason) return json(res, 400, { ok: false, error: 'synaptic-rejection-reason-required' });
+                const record = await runtime.rejectSynapticSkill(fingerprint, reason);
+                return json(res, 200, { ok: true, artifactFingerprint: fingerprint, status: record.status });
+            } catch (error) {
+                const message = String(error?.message || error).slice(0, 180);
+                const status = /not-found/.test(message) ? 404
+                    : /conflict|already|requires|expired|capacity/.test(message) ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+
+        if (synapticAction && req.method === 'GET' && synapticAction[2] === 'export') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            try {
+                const bundle = await runtime.exportSynapticArtifact(synapticAction[1]);
+                return json(res, 200, { ok: true, ...bundle, executable: false });
+            } catch (error) {
+                const message = String(error?.message || error).slice(0, 180);
+                const status = /not-found/.test(message) ? 404 : 409;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+
         if (req.method === 'GET' && url.pathname === '/api/organism/time') {
             const temporal = runtime.core.temporalContinuitySnapshot();
             return json(res, 200, { ok: true, current: runtime.core.temporalContext(), continuity: temporal, offlineSinceLastCheckpointMs: temporal.gapSincePreviousMs, lastSeenAt: temporal.lastCheckpointAt, lastSessionEndedAt: temporal.lastSessionEndedAt, sessionCount: temporal.sessionCount, interruptionCount: temporal.interruptionCount });
