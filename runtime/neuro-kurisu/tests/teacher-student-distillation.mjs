@@ -250,12 +250,25 @@ try {
     'an existing dataset export must not be silently overwritten');
 
   // Exercise the real process supervisor boundary with a tiny local fake CLI.
-  const runnerWorkspace = path.join(tempRoot, 'runner');
+  const runnerWorkspace = exportDirectory;
   const runRoot = path.join(tempRoot, 'runs');
   const surviveDirectory = path.join(tempRoot, 'candidate-survive');
-  await import('node:fs/promises').then(fs => fs.mkdir(runnerWorkspace, { recursive: true }));
+  const runnerConfig = createLlamaFactorySftConfig({
+    modelNameOrPath: 'Qwen/Qwen2.5-7B-Instruct',
+    modelRevision: '2026-10-10-commit-abc12345',
+    datasetDirectory: runnerWorkspace,
+    outputDirectory: path.join(runnerWorkspace, 'output'),
+    template: 'qwen',
+    cutoffLen: 2048,
+    loraRank: 16,
+    learningRate: 0.00005,
+    numTrainEpochs: 2,
+    perDeviceTrainBatchSize: 1,
+    gradientAccumulationSteps: 8,
+    quantizationBit: 4,
+  });
   const configPath = path.join(runnerWorkspace, 'train.yaml');
-  await writeFile(configPath, config.yaml, 'utf8');
+  await writeFile(configPath, runnerConfig.yaml, 'utf8');
   const fakeCliPath = path.join(runnerWorkspace, 'fake-llamafactory.mjs');
   const fakeCli = '#!' + process.execPath + '\n' +
     'import { readFileSync } from "node:fs";\n' +
@@ -270,8 +283,9 @@ try {
   const run = await runTeacherStudentDistillationTraining({
     workspaceDirectory: runnerWorkspace,
     configPath: 'train.yaml',
-    expectedConfigFingerprint: config.fingerprint,
+    expectedConfigFingerprint: runnerConfig.fingerprint,
     datasetFingerprint: exported.datasetFingerprint,
+    trustedVerifierKeys: trustedKeys,
     executable: fakeCliPath,
     runRoot,
     surviveDirectory,
@@ -283,11 +297,26 @@ try {
   assert.match(run.receipt.stdout, /TRAIN_CONFIG_ACCEPTED/);
   assert.ok(run.receipt.boundaries.some(line => line.includes('execution, not task correctness')));
 
+  const originalTrainFile = await readFile(written['train.jsonl'], 'utf8');
+  await writeFile(written['train.jsonl'], originalTrainFile + '\\n{"tampered":true}\\n', 'utf8');
+  await assert.rejects(runTeacherStudentDistillationTraining({
+    workspaceDirectory: runnerWorkspace,
+    configPath: 'train.yaml',
+    expectedConfigFingerprint: runnerConfig.fingerprint,
+    datasetFingerprint: exported.datasetFingerprint,
+    trustedVerifierKeys: trustedKeys,
+    executable: fakeCliPath,
+    runRoot,
+    surviveDirectory,
+  }), /dataset-file-hash-mismatch/);
+  await writeFile(written['train.jsonl'], originalTrainFile, 'utf8');
+
   await assert.rejects(runTeacherStudentDistillationTraining({
     workspaceDirectory: runnerWorkspace,
     configPath: 'train.yaml',
     expectedConfigFingerprint: 'f'.repeat(64),
     datasetFingerprint: exported.datasetFingerprint,
+    trustedVerifierKeys: trustedKeys,
     executable: fakeCliPath,
     runRoot,
     surviveDirectory,
@@ -296,8 +325,9 @@ try {
   await assert.rejects(runTeacherStudentDistillationTraining({
     workspaceDirectory: runnerWorkspace,
     configPath: '../outside.yaml',
-    expectedConfigFingerprint: config.fingerprint,
+    expectedConfigFingerprint: runnerConfig.fingerprint,
     datasetFingerprint: exported.datasetFingerprint,
+    trustedVerifierKeys: trustedKeys,
     executable: fakeCliPath,
     runRoot,
     surviveDirectory,
