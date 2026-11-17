@@ -15,6 +15,7 @@ import {
   type HostOwnedIndependentEvaluationServices,
 } from '../learning/HostOwnedIndependentEvaluationServices.ts';
 import { createLearningExperimentPlan } from '../learning/LearningExperimentPlan.ts';
+import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
 import { VerifiedOutcomeLedger, type TaskManifestEntry } from '../learning/VerifiedOutcomeLedger.ts';
 import type { SkillLearnBenchTrialReport } from '../learning/SkillLearnBenchAdapter.ts';
 import {
@@ -446,7 +447,14 @@ export class DevelopmentalMultiverseIndependentRunner {
     const manifest: TaskManifestEntry[] = [];
     const byKey = new Map<string, ScenarioCorpusRow>();
     for (const definition of definitions) {
-      const raw = this.options.buildScenarioTask(structuredClone(definition.scenario));
+      let raw: DevelopmentalMultiverseScenarioTask;
+      try {
+        raw = snapshotPlainData(
+          this.options.buildScenarioTask(structuredClone(definition.scenario)),
+        ) as DevelopmentalMultiverseScenarioTask;
+      } catch {
+        throw new Error('developmental-multiverse-runner-scenario-task-data-invalid');
+      }
       if (!raw || typeof raw !== 'object' || !raw.input || typeof raw.input !== 'object' ||
           Array.isArray(raw.input) || typeof raw.input.prompt !== 'string' ||
           !raw.input.prompt.trim() || raw.input.prompt.length > 8192 ||

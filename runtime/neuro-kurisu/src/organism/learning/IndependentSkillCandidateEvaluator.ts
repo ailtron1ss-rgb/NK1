@@ -577,7 +577,7 @@ export function recordIndependentEvaluationOutcomes(
     const scheduled = plan.runs.find(run => run.runId === binding.plannedRunId);
     if (!scheduled || scheduled.taskId !== binding.taskId || scheduled.seed !== binding.seed ||
         scheduled.method !== authority.method || scheduled.split !== binding.split ||
-        seenPlannedRuns.has(scheduled.runId)) {
+        binding.runId !== scheduled.runId || seenPlannedRuns.has(scheduled.runId)) {
       throw new Error('independent-evaluation-ledger-run-not-scheduled');
     }
     seenPlannedRuns.add(scheduled.runId);
