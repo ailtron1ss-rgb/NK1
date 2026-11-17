@@ -194,7 +194,7 @@ export class EvidenceResearchSubsystemRuntime {
       hypothesis: clampTextPrediction(item.hypothesis, ''),
       prediction: clampTextPrediction(item.action, ''),
       scientificProjectId: safe.scientificProjectId,
-      linkedGoal: item.linkedGoal,
+      linkedGoal: clampTextPrediction(item.linkedGoal, '') || undefined,
       createdAt: Date.now(),
       createdTick: safe.tick,
       candidateFingerprint,
@@ -317,7 +317,7 @@ export class EvidenceResearchSubsystemRuntime {
         source,
         experimentId: experiment.id,
         scientificProjectId: 'preflight-scientific-project',
-        linkedGoal: experiment.linkedGoal,
+        linkedGoal: clampTextPrediction(experiment.linkedGoal, '') || undefined,
       },
     });
     const project = this.scientificMethod.create(
