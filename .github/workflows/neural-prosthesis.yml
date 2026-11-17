@@ -1,0 +1,67 @@
+name: NK1 Neural Prosthesis
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/local/NeuralProsthesisChatProvider.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P40ModelEcology.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/neural-prosthesis-integration.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "research/neural-prosthesis/**"
+      - ".github/workflows/neural-prosthesis.yml"
+  push:
+    branches: [aspect/neural-prosthesis-transformer-residual-20261117]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/local/NeuralProsthesisChatProvider.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P40ModelEcology.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/neural-prosthesis-integration.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "research/neural-prosthesis/**"
+      - ".github/workflows/neural-prosthesis.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neural-prosthesis-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Neural prosthesis and P40 regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/neural-prosthesis-integration.mjs && npm --prefix runtime/neuro-kurisu run test:p40:model-ecology
+
+  python-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: research/neural-prosthesis/requirements.txt
+      - name: Install optional CPU inference dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
+          python -m pip install -r research/neural-prosthesis/requirements.txt
+      - name: Residual hook, isolation and artifact-integrity tests
+        working-directory: research/neural-prosthesis
+        run: python -m unittest discover -s tests -v
