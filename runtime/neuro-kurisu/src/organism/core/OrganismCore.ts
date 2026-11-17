@@ -9273,6 +9273,7 @@ export class OrganismCore {
         // outcome, including the mobile path where B365 full-path research can be disabled.
         // This closes the previous integration hole where the branch only advanced its
         // dynamics but did not receive outcome credit.
+        this.developmentalNeural.neuralExperienceBranch.bindPendingAdaptationAction(trace?.selected?.action ?? 'wait', state.tick);
         this.developmentalNeural.neuralExperienceBranch.afterOutcome({
             tick: state.tick,
             action: trace?.selected?.action ?? 'wait',
