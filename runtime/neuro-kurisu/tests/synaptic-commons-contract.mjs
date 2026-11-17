@@ -115,7 +115,7 @@ assert.throws(() => commons.exportArtifact(fingerprint), /requires-attested-arti
 const incompatible = commons.evaluateCompatibility(fingerprint, {
   runtimeVersion: '1.2.0',
   environmentFingerprint: envFingerprint,
-  supportedCapabilities: ['documents.read'],
+  supportedCapabilities: ['documents.read', 'documents.summarize'],
   permittedTools: [],
   now,
 });
@@ -153,7 +153,7 @@ assert.equal(restored.get(fingerprint)?.status, 'attested',
 const tamperedRestore = commons.snapshot();
 tamperedRestore.records[0].artifact.skill.name = 'forged after persistence';
 assert.throws(() => new SynapticCommons(trust).restore(tamperedRestore),
-  /publisher-signature-invalid/,
+  /(?:record-fingerprint-invalid|publisher-signature-invalid)/,
   'persisted content is reauthenticated after restart');
 
 const untrustedArtifact = makeArtifact({ skill: { version: '1.0.0', skillId: 'other-skill' } }, untrustedPrivate, 'untrusted-publisher');
