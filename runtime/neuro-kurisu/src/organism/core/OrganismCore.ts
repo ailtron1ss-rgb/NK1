@@ -11360,8 +11360,8 @@ export class OrganismCore {
         const configuredRuntimeVersion = String(
             this.config.skillCompetenceRuntimeVersion ?? process.env.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION ?? '',
         ).trim();
-        const runtimeVersion = configuredRuntimeVersion || input.runtimeVersion.trim();
-        if (!runtimeVersion || (configuredRuntimeVersion && input.runtimeVersion.trim() !== configuredRuntimeVersion)) {
+        const runtimeVersion = configuredRuntimeVersion || String(input.runtimeVersion ?? '').trim();
+        if (!runtimeVersion || (configuredRuntimeVersion && String(input.runtimeVersion ?? '').trim() !== configuredRuntimeVersion)) {
             throw new Error('trusted shadow runtime version does not match the configured organism runtime');
         }
         const environmentFingerprint = String(
