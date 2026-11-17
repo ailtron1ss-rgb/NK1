@@ -292,7 +292,7 @@ function restoreUndoPlan(value:unknown,executionId:string|undefined,requestHash:
       if(typeof plan.recoveryArtifactRef!=='string' || !plan.recoveryArtifactRef.trim() || plan.recoveryArtifactRef.length>1024 || /[\u0000-\u001f\u007f]/.test(plan.recoveryArtifactRef) || !isSha256(plan.afterStateHash) || !isPlainRecord(plan.compensation) || typeof plan.compensation.toolId!=='string' || !plan.compensation.toolId.trim() || !isPlainRecord(plan.compensation.input) || hasSensitiveRecoveryKey(plan.compensation.input) || !isPlainRecord(plan.verification) || typeof plan.verification.toolId!=='string' || !plan.verification.toolId.trim() || !isPlainRecord(plan.verification.input) || hasSensitiveRecoveryKey(plan.verification.input)) return undefined;
     } else if(plan.strategy==='manual') {
       if(!Array.isArray(plan.manualSteps) || plan.manualSteps.length<1 || plan.manualSteps.length>8 || plan.manualSteps.some(step=>typeof step!=='string' || !step.trim() || step.length>500)) return undefined;
-      if(plan.recoveryArtifactRef!==undefined && (typeof plan.recoveryArtifactRef!=='string' || !plan.recoveryArtifactRef.trim() || plan.recoveryArtifactRef.length>1024 || /[\\u0000-\\u001f\\u007f]/.test(plan.recoveryArtifactRef))) return undefined;
+      if(plan.recoveryArtifactRef!==undefined && (typeof plan.recoveryArtifactRef!=='string' || !plan.recoveryArtifactRef.trim() || plan.recoveryArtifactRef.length>1024 || /[\u0000-\u001f\u007f]/.test(plan.recoveryArtifactRef))) return undefined;
     } else if(typeof plan.irreversibleReason!=='string' || plan.irreversibleReason.trim().length<8 || plan.irreversibleReason.length>500) return undefined;
     return plan;
   } catch { return undefined; }
@@ -907,7 +907,7 @@ export class ActionGateway {
         core.manualSteps=raw.manualSteps.map(step=>step.normalize('NFKC').trim());
         if(raw.recoveryArtifactRef!==undefined) {
           const recoveryArtifactRef=typeof raw.recoveryArtifactRef==='string'?raw.recoveryArtifactRef.normalize('NFKC').trim():'';
-          if(!recoveryArtifactRef || recoveryArtifactRef.length>1024 || /[\\u0000-\\u001f\\u007f]/.test(recoveryArtifactRef)) return {failure:'undo-plan-invalid'};
+          if(!recoveryArtifactRef || recoveryArtifactRef.length>1024 || /[\u0000-\u001f\u007f]/.test(recoveryArtifactRef)) return {failure:'undo-plan-invalid'};
           core.recoveryArtifactRef=recoveryArtifactRef;
         }
       } else {
