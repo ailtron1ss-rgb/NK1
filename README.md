@@ -1,3 +1,17 @@
+## Актуальный source activity — 17 ноября 2026
+
+**Базовая ветка:** `workpass70-source`, HEAD `1e83a011fc677ff20f2348570322bd562181d9ff`.
+**Новая работа:** Draft PR [#924 — P27 bounded-context Test-Time Neuroplasticity](https://github.com/ailtron1ss-rgb/NK1/pull/924), ветка `feature/test-time-neuroplasticity-idea27`. Это кандидат поверх source HEAD, не merge и не часть Release ZIP.
+
+- В существующем `EmbodiedCausalWorldBridge` добавлен отдельный ephemeral fast residual overlay: max 8 contexts, LRU, TTL 30 min / 256 ticks, max 64 verified updates/context, per-component bound 0.025 и L2 bound 0.08.
+- Ключ привязан к active world context + slow-memory context. Runtime API пока не отдаёт unique conversation/session ID; публичный reset предоставлен, host teardown hook остаётся открытой задачей.
+- P27 fast residual не сериализуется и не изменяет durable `residualAdapter`; автоматического promotion/consolidation нет. LLM weights не меняются.
+- Local test-first RED reproduced durable residual leakage (`0.011310623787825652`); focused P27, existing online-adaptation, P28 and 600-cycle neural-branch tests passed locally. Typecheck/exact-head Actions ещё ожидаются.
+
+Подробности и границы: [docs/P27_TEST_TIME_NEUROPLASTICITY_2026-11-17.md](docs/P27_TEST_TIME_NEUROPLASTICITY_2026-11-17.md).
+
+---
+
 ## Актуальный инженерный checkpoint — 13 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  

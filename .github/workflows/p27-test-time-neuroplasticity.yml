@@ -5,6 +5,7 @@ on:
     branches: [feature/test-time-neuroplasticity-idea27]
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/EmbodiedCausalWorldBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/NeuralExperienceBranch.ts"
       - "runtime/neuro-kurisu/tests/p27-test-time-neuroplasticity.mjs"
       - ".github/workflows/p27-test-time-neuroplasticity.yml"
   pull_request:
@@ -26,12 +27,21 @@ concurrency:
 jobs:
   test-time-neuroplasticity:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - name: Verify session-isolated test-time adaptation
-        working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p27-test-time-neuroplasticity.mjs
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Verify bounded-context test-time adaptation and runtime wiring
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p27-test-time-neuroplasticity.mjs
+      - name: Verify online embodied adaptation remains compatible
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-2599-2612-online-adaptation.mjs
+      - name: Verify existing P28 plasticity substrate remains compatible
+        run: npm --prefix runtime/neuro-kurisu run test:p28:plasticity

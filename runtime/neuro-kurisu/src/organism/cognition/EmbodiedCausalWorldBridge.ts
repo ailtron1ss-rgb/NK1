@@ -4,6 +4,13 @@ const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wa
 const HORIZONS = [1,2,4,8,16] as const;
 const LATENT = 16;
 const MODALITIES = 6;
+const FAST_ADAPTATION_TTL_MS = 30 * 60 * 1000;
+const FAST_ADAPTATION_TTL_TICKS = 256;
+const FAST_ADAPTATION_MAX_CONTEXTS = 8;
+const FAST_ADAPTATION_MAX_UPDATES_PER_CONTEXT = 64;
+const FAST_ADAPTATION_MAX_COMPONENT = 0.025;
+const FAST_ADAPTATION_MAX_NORM = 0.08;
+const FAST_ADAPTATION_MIN_VERIFICATION = 0.80;
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
 const tanh=(x:number)=>Math.tanh(Math.max(-6,Math.min(6,x)));
 const finite=(x:number,f=0)=>Number.isFinite(x)?x:f;
@@ -16,6 +23,15 @@ const makeMatrix=(r:number,c:number,seed:number,scale=.08)=>Array.from({length:r
 const makeTensor=(a:number,b:number,c:number,seed:number,scale=.05)=>Array.from({length:a},(_,i)=>makeMatrix(b,c,seed+i*997,scale));
 
 type SensorFrame = {tick:number;values:number[];freshness01:number;confidence01:number;ageTicks:number;source:string};
+
+type FastAdaptationContext = {
+  actionOffsets:number[][];
+  createdAtMs:number;
+  lastTouchedAtMs:number;
+  createdTick:number;
+  lastTouchedTick:number;
+  updates:number;
+};
 
 export interface EmbodiedTransitionRecord {
   tick:number;
@@ -102,8 +118,16 @@ const modalityNames=['vision','audio','interoception','world','social','context'
 
 export class EmbodiedCausalWorldBridge {
   private state=defaultState();
+  private fastContexts=new Map<string,FastAdaptationContext>();
+  private activeFastContextKey:string|null=null;
+  private fastAcceptedUpdates=0;
+  private fastRejectedUpdates=0;
+  private fastExpiredContexts=0;
+  private fastEvictedContexts=0;
   snapshot(){return deep(this.state);}
   restore(raw?:Partial<EmbodiedCausalWorldBridgeState>|null){
+    // Test-time plasticity is process-local by design and is never restored.
+    this.resetTestTimeAdaptation();
     const d=defaultState(),r:any=raw??{};
     const arr=(v:any,n:number,f=0)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-v.length)).fill(f)).slice(0,n):new Array(n).fill(f);
     const matrix=(v:any,rows:number,cols:number,f=0)=>Array.isArray(v)?Array.from({length:rows},(_,i)=>arr(v[i],cols,f)):Array.from({length:rows},()=>new Array(cols).fill(f));
@@ -117,6 +141,85 @@ export class EmbodiedCausalWorldBridge {
     };
   }
 
+
+  private fastContextKey(contextId?:number|string):string{
+    if(typeof contextId==='number')return Number.isFinite(contextId)?String(Math.trunc(contextId)):'default';
+    const key=String(contextId??'default').trim().slice(0,96);
+    return key||'default';
+  }
+
+  private fastContextNorm(context?:FastAdaptationContext):number{
+    if(!context)return 0;
+    let square=0;
+    for(const row of context.actionOffsets)for(const value of row)square+=value*value;
+    return Math.sqrt(square);
+  }
+
+  private pruneFastContexts(tick:number,now=Date.now()){
+    for(const [key,context] of this.fastContexts){
+      const tickExpired=tick>=context.lastTouchedTick && tick-context.lastTouchedTick>FAST_ADAPTATION_TTL_TICKS;
+      const timeExpired=now>=context.lastTouchedAtMs && now-context.lastTouchedAtMs>FAST_ADAPTATION_TTL_MS;
+      if(tickExpired||timeExpired){
+        this.fastContexts.delete(key);
+        if(this.activeFastContextKey===key)this.activeFastContextKey=null;
+        this.fastExpiredContexts++;
+      }
+    }
+  }
+
+  private activateFastContext(contextId:number|string|undefined,tick:number):FastAdaptationContext{
+    const now=Date.now();
+    this.pruneFastContexts(tick,now);
+    const key=this.fastContextKey(contextId);
+    let context=this.fastContexts.get(key);
+    if(!context){
+      if(this.fastContexts.size>=FAST_ADAPTATION_MAX_CONTEXTS){
+        const oldest=[...this.fastContexts.entries()].sort((a,b)=>a[1].lastTouchedAtMs-b[1].lastTouchedAtMs)[0];
+        if(oldest){
+          this.fastContexts.delete(oldest[0]);
+          if(this.activeFastContextKey===oldest[0])this.activeFastContextKey=null;
+          this.fastEvictedContexts++;
+        }
+      }
+      context={
+        actionOffsets:Array.from({length:ACTIONS.length},()=>new Array(LATENT).fill(0)),
+        createdAtMs:now,lastTouchedAtMs:now,createdTick:tick,lastTouchedTick:tick,updates:0,
+      };
+    }
+    context.lastTouchedAtMs=now;
+    context.lastTouchedTick=tick;
+    // Refresh insertion order as well as timestamps: this Map is the bounded LRU.
+    this.fastContexts.delete(key);
+    this.fastContexts.set(key,context);
+    this.activeFastContextKey=key;
+    return context;
+  }
+
+  resetTestTimeAdaptation(contextId?:number|string){
+    if(contextId===undefined){
+      this.fastContexts.clear();
+      this.activeFastContextKey=null;
+      return;
+    }
+    const key=this.fastContextKey(contextId);
+    this.fastContexts.delete(key);
+    if(this.activeFastContextKey===key)this.activeFastContextKey=null;
+  }
+
+  exportTestTimeAdaptationCandidate(contextId?:number|string){
+    this.pruneFastContexts(this.state.tick);
+    const key=this.fastContextKey(contextId??this.activeFastContextKey??undefined);
+    const context=this.fastContexts.get(key);
+    if(!context||context.updates===0)return null;
+    return {
+      status:'requires-independent-validation' as const,
+      contextId:key,
+      updates:context.updates,
+      l2Norm:this.fastContextNorm(context),
+      actionOffsets:deep(context.actionOffsets),
+    };
+  }
+
   private encode(features:number[]){
     const y=new Array(LATENT).fill(0);
     for(let i=0;i<LATENT;i++){
@@ -127,17 +230,19 @@ export class EmbodiedCausalWorldBridge {
   }
   private predict(latent:number[],action:ActionKind,horizon=1){
     const ai=Math.max(0,ACTIONS.indexOf(action)), row=this.state.dynamics[ai]!;
+    const fastContext=this.activeFastContextKey?this.fastContexts.get(this.activeFastContextKey):undefined;
     let cur=latent.slice();
     for(let h=0;h<horizon;h++){
       const next=new Array(LATENT).fill(0);
-      for(let i=0;i<LATENT;i++){let s=(this.state.dynamicsBias[ai]?.[i]??0)+(this.state.residualAdapter[ai]?.[i]??0)*.35;const ae=this.state.actionEmbedding[ai]??[];s+=(ae[i%4]??0)*.06;for(let j=0;j<LATENT;j++)s+=(row[i]?.[j]??0)*(cur[j]??0);next[i]=tanh(s);}
+      for(let i=0;i<LATENT;i++){let s=(this.state.dynamicsBias[ai]?.[i]??0)+(this.state.residualAdapter[ai]?.[i]??0)*.35+(fastContext?.actionOffsets[ai]?.[i]??0)*.35;const ae=this.state.actionEmbedding[ai]??[];s+=(ae[i%4]??0)*.06;for(let j=0;j<LATENT;j++)s+=(row[i]?.[j]??0)*(cur[j]??0);next[i]=tanh(s);}
       cur=next;
     }
     let rs=this.state.rewardBias[ai]??0;for(let i=0;i<LATENT;i++)rs+=(this.state.rewardReadout[ai]?.[i]??0)*(cur[i]??0);
     return {next:cur,reward:clamp(.5+Math.tanh(rs)*.5)};
   }
 
-  beforeDecision(args:{tick:number;features:number[];actionUtilities:Record<ActionKind,number>;novelty01:number;uncertainty01:number;predictionError01:number;computeBudget01:number;sensors?:{vision?:SensorFrame;audio?:SensorFrame;interoception?:SensorFrame;world?:SensorFrame;social?:SensorFrame;context?:SensorFrame}}){
+  beforeDecision(args:{tick:number;contextId?:number|string;features:number[];actionUtilities:Record<ActionKind,number>;novelty01:number;uncertainty01:number;predictionError01:number;computeBudget01:number;sensors?:{vision?:SensorFrame;audio?:SensorFrame;interoception?:SensorFrame;world?:SensorFrame;social?:SensorFrame;context?:SensorFrame}}){
+    this.activateFastContext(args.contextId,args.tick);
     this.state.tick=args.tick;this.state.observations++;
     const frames=[args.sensors?.vision,args.sensors?.audio,args.sensors?.interoception,args.sensors?.world,args.sensors?.social,args.sensors?.context];
     for(let i=0;i<MODALITIES;i++){
@@ -203,7 +308,8 @@ export class EmbodiedCausalWorldBridge {
     return {actionBias:Object.fromEntries(ACTIONS.map((a,i)=>[a,actionBias[i]??0])) as Record<ActionKind,number>,latent:latent.slice(),selectedActionHint:ACTIONS[best]!,selectedReward01:clamp(score[best]??.5),selectedConfidence01:clamp(confidences[best]??.25),actionModelRewards:score.map(v=>clamp(v)),actionModelConfidence:confidences.map(v=>clamp(v)),horizonDepth:this.state.selectedHorizonDepth,epistemicValue01:this.state.epistemicValue01,activeNeuronFraction01:this.state.activeNeuronFraction01,activePerception01:this.state.activePerception01,computeCost01:this.state.computeCost01,asyncSensorPenalty01:this.state.asyncSensorPenalty01};
   }
 
-  afterOutcome(args:{tick:number;action:ActionKind;nextFeatures:number[];reward01:number;verified01:number;predictionError01:number;sensorFreshness01?:number}){
+  afterOutcome(args:{tick:number;contextId?:number|string;action:ActionKind;nextFeatures:number[];reward01:number;verified01:number;predictionError01:number;sensorFreshness01?:number}){
+    const fastContext=this.activateFastContext(args.contextId??this.activeFastContextKey??undefined,args.tick);
     const ai=Math.max(0,ACTIONS.indexOf(args.action));const from=this.state.latent.slice();const observed=this.encode(args.nextFeatures);const pred=this.predict(from,args.action,1);const nextError=clamp(mse(pred.next,observed));const rewardErr=clamp(Math.abs(pred.reward-args.reward01));
     const verified=clamp(args.verified01);const lr=.012+verified*.018;
     const row=this.state.dynamics[ai]!;
@@ -219,16 +325,33 @@ export class EmbodiedCausalWorldBridge {
     this.state.rewardBias[ai]=clamp((this.state.rewardBias[ai]??0)+(args.reward01-pred.reward)*lr,-.25,.25);
     for(let k=0;k<4;k++){const target=tanh((observed[k]??0)-(from[k]??0));this.state.actionEmbedding[ai]![k]=clamp((this.state.actionEmbedding[ai]![k]??0)*.97+target*.03,-1,1);}
     this.state.actionUse[ai]=(this.state.actionUse[ai]??0)+1;this.state.actionRewardMean01[ai]=clamp((this.state.actionRewardMean01[ai]??.5)*.96+args.reward01*.04);this.state.actionSuccess[ai]=(this.state.actionSuccess[ai]??0)+(args.reward01>.55?1:0);this.state.actionConfidence01[ai]=clamp((this.state.actionConfidence01[ai]??.25)*.93+(1-nextError*.7-rewardErr*.3)*.07);
-    // Test-time adaptation: a tiny residual adapter learns only from the observed closed-loop error.
-    // It is deliberately bounded so online adaptation cannot destabilize the main dynamics.
-    const adaptGate=clamp(.25+args.verified01*.35+Math.min(.30,args.predictionError01*.55),.20,.85);
+    // Test-time neuroplasticity lives only in the active context overlay.
+    // Durable residualAdapter remains a legacy/imported baseline and is not trained here.
+    const adaptGate=clamp(.25+verified*.35+Math.min(.30,args.predictionError01*.55),.20,.85);
     const adapterEta=.006*adaptGate;
     let adapterMass=0;
-    for(let i=0;i<LATENT;i++){const residual=(observed[i]??0)-(pred.next[i]??0);adapterMass+=Math.abs(residual);this.state.residualAdapter[ai]![i]=clamp((this.state.residualAdapter[ai]![i]??0)+residual*adapterEta,-.12,.12);}
-    this.state.adaptationUpdates++;
-    const drift=clamp(adapterMass/LATENT*3);
-    this.state.modelDrift01=clamp(this.state.modelDrift01*.94+drift*.06);
-    this.state.onlineAdaptation01=clamp(this.state.onlineAdaptation01*.95+clamp(adapterMass/LATENT*4)*.05);
+    if(verified>=FAST_ADAPTATION_MIN_VERIFICATION && fastContext.updates<FAST_ADAPTATION_MAX_UPDATES_PER_CONTEXT){
+      for(let i=0;i<LATENT;i++){
+        const residual=(observed[i]??0)-(pred.next[i]??0);
+        adapterMass+=Math.abs(residual);
+        fastContext.actionOffsets[ai]![i]=clamp((fastContext.actionOffsets[ai]![i]??0)+residual*adapterEta,-FAST_ADAPTATION_MAX_COMPONENT,FAST_ADAPTATION_MAX_COMPONENT);
+      }
+      const norm=this.fastContextNorm(fastContext);
+      if(norm>FAST_ADAPTATION_MAX_NORM){
+        const scale=FAST_ADAPTATION_MAX_NORM/norm;
+        for(const row of fastContext.actionOffsets)for(let i=0;i<row.length;i++)row[i]*=scale;
+      }
+      fastContext.updates++;
+      fastContext.lastTouchedAtMs=Date.now();
+      fastContext.lastTouchedTick=args.tick;
+      this.fastAcceptedUpdates++;
+      this.state.adaptationUpdates++;
+      const drift=clamp(adapterMass/LATENT*3);
+      this.state.modelDrift01=clamp(this.state.modelDrift01*.94+drift*.06);
+      this.state.onlineAdaptation01=clamp(this.state.onlineAdaptation01*.95+clamp(adapterMass/LATENT*4)*.05);
+    }else{
+      this.fastRejectedUpdates++;
+    }
     this.state.calibrationError01=clamp(this.state.calibrationError01*.94+Math.abs((1-nextError)-(this.state.actionConfidence01[ai]??.25))*.06);
     if(nextError>.48 || args.predictionError01>.72){this.state.failureEvents++;const recovery=clamp((this.state.actionConfidence01[ai]??.25)+verified*.25-(Math.max(nextError,args.predictionError01)*.35));this.state.recoveryGain01=clamp(this.state.recoveryGain01*.92+recovery*.08);}
 
@@ -264,6 +387,7 @@ export class EmbodiedCausalWorldBridge {
 
   diagnostics(){return deep(this.state);}
   metrics(){
+    this.pruneFastContexts(this.state.tick);
     return {
       causalSensitivity01:this.state.causalSensitivity01,
       matchedCausalGain01:this.state.matchedCausalGain01,
@@ -283,6 +407,7 @@ export class EmbodiedCausalWorldBridge {
       horizonErrors:this.state.horizonErrors.slice(),
       horizonCounts:this.state.horizonCounts.slice(),
       horizonConfidence01:this.state.horizonConfidence01.slice(),onlineAdaptation01:this.state.onlineAdaptation01,calibrationError01:this.state.calibrationError01,modelDrift01:this.state.modelDrift01,adaptationUpdates:this.state.adaptationUpdates,failureEvents:this.state.failureEvents,recoveryGain01:this.state.recoveryGain01,
+      fastContextCount:this.fastContexts.size,fastAdapterNorm:this.fastContextNorm(this.activeFastContextKey?this.fastContexts.get(this.activeFastContextKey):undefined),fastAcceptedUpdates:this.fastAcceptedUpdates,fastRejectedUpdates:this.fastRejectedUpdates,fastExpiredContexts:this.fastExpiredContexts,fastEvictedContexts:this.fastEvictedContexts,
       observations:this.state.observations,
       transitions:this.state.transitions,
       interventionComparisons:this.state.interventionComparisons,

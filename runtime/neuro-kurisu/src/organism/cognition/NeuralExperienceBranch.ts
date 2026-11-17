@@ -54,6 +54,7 @@ const selfKnowledgeMetricsSafe=(m:any,ctx:number)=>clamp(Number(m?.teacherConfid
 export interface NeuralExperienceToken {
   tick:number;
   contextId?:number;
+  adaptationContextId?:string;
   input:number[];
   neuralBefore:number[];
   neuralAfter:number[];
@@ -773,11 +774,12 @@ export class NeuralExperienceBranch {
     const computeBudgetHint=this.continuity.metrics().computeBudget01;
     this.state.novelty01=i.novelty01;this.state.uncertainty01=i.uncertainty01;
     const slowContextId=this.deriveSlowContextId(input,activeWorldContext,i.novelty01);
+    const adaptationContextId=`world:${activeWorldContext}:slow:${slowContextId}`;
     this.selectiveSlowMemory(input,pressure,slowContextId,computeBudgetHint);
     const continuity=this.continuity.beforeDecision(input,this.state.state.slice(0,8),{novelty01:i.novelty01,uncertainty01:i.uncertainty01,predictionError01:i.predictionError01,goalPressure01:i.goalPressure01,homeostasis01:i.homeostasis01,identityGap01:i.identityGap01,reward01:i.reward01??.5},null);
     const device=this.deviceScheduler.beforeDecision({tick:i.tick,continuityBudget01:continuity.computeBudget01,thermalStrain01:i.embodied?.thermalStrain01,battery01:i.embodied?.battery01,cpuLoad01:i.embodied?.cpuLoad01,ramPressure01:i.embodied?.ramPressure01,sensorFreshness01:i.embodied?.sensorFreshness01,predictionError01:i.predictionError01,novelty01:i.novelty01});
     const computeBudget01=device.budget01;
-    const embodied=this.embodiedBridge.beforeDecision({tick:i.tick,features:(i.embodied?.sensorFeatures??input).slice(0,64),actionUtilities:i.baseUtilities,novelty01:i.novelty01,uncertainty01:i.uncertainty01,predictionError01:i.predictionError01,computeBudget01:computeBudget01,sensors:i.embodied?.sensors as any});
+    const embodied=this.embodiedBridge.beforeDecision({tick:i.tick,contextId:adaptationContextId,features:(i.embodied?.sensorFeatures??input).slice(0,64),actionUtilities:i.baseUtilities,novelty01:i.novelty01,uncertainty01:i.uncertainty01,predictionError01:i.predictionError01,computeBudget01:computeBudget01,sensors:i.embodied?.sensors as any});
     const causal=this.causalPlanner.beforeDecision({
       tick:i.tick,
       context:[...this.state.state.slice(0,16),i.novelty01,i.uncertainty01,i.predictionError01,i.goalPressure01],
@@ -927,7 +929,7 @@ export class NeuralExperienceBranch {
     for(const a of ACTIONS) bias[a]=clamp(bias[a]!+stabilityPlasticity.actionBias[a]!, -.215, .215);
     const coherence=clamp(.45+Math.abs(mean-.10)*-.7+(1-i.predictionError01)*.25+pressure*.10+.05*this.state.longMemoryStability01);
     const token:NeuralExperienceToken={
-      tick:i.tick,contextId:unifiedWorld.contextId,input:temporalInput,neuralBefore:before,neuralAfter:this.state.state.slice(),
+      tick:i.tick,contextId:unifiedWorld.contextId,adaptationContextId,input:temporalInput,neuralBefore:before,neuralAfter:this.state.state.slice(),
       prediction01:prediction,actual01:i.reward01??.5,predictionError01:i.predictionError01,pressure01:pressure,
       novelty01:i.novelty01,uncertainty01:i.uncertainty01,reward01:i.reward01??.5,action:null,actionUtilities:{...i.baseUtilities},
       selectedAssembly:spikes,replayEligible:true,verified:false,
@@ -1172,7 +1174,7 @@ export class NeuralExperienceBranch {
     this.continuity.afterOutcome({tick:i.tick,input:token.input,latent:token.neuralBefore,nextLatent:i.nextInput.slice(0,8),action:i.action,reward01:reward,predictionError01:error,verified01:verified,novelty01:token.novelty01,uncertainty01:token.uncertainty01,goalPressure01:i.goalPressure01??.5,identityGap01:i.identityGap01??.5,homeostasis01:1});
     const causalOutcome=this.causalPlanner.afterOutcome({tick:i.tick,context:[...token.neuralBefore.slice(0,16),token.novelty01,token.uncertainty01,error,i.goalPressure01??.5],latent:token.neuralBefore.slice(0,8),nextLatent:i.nextInput.slice(0,8),action:i.action,reward01:reward,predictionError01:error,verified01:verified,retrievedMemoryIds:token.retrievedMemoryIds??[],counterfactualReward:this.causalPlanner.metrics().lastCounterfactualReward??new Array(ACTIONS.length).fill(.5),forecastConfidence01:this.causalPlanner.metrics().lastSelectedConfidence01,disagreement01:this.causalPlanner.metrics().selectiveForesight01});
     for(const [id,credit] of causalOutcome.memoryCredit)this.continuity.applyMemoryCredit(id,credit);
-    this.embodiedBridge.afterOutcome({tick:i.tick,action:i.action,nextFeatures:(i.embodied?.nextFeatures??i.nextInput).slice(0,64),reward01:reward,verified01:verified,predictionError01:error,sensorFreshness01:i.embodied?.sensorFreshness01});
+    this.embodiedBridge.afterOutcome({tick:i.tick,contextId:token.adaptationContextId??Number(token.contextId??0),action:i.action,nextFeatures:(i.embodied?.nextFeatures??i.nextInput).slice(0,64),reward01:reward,verified01:verified,predictionError01:error,sensorFreshness01:i.embodied?.sensorFreshness01});
     const embodiedPostMetrics=this.embodiedBridge.metrics();
     this.unifiedCausalWorldLoop.observeEmbodiedOutcome({action:i.action,reward01:reward,verified01:verified,predictionError01:error,sensorimotorError01:embodiedPostMetrics.sensorimotorError01,sensorFreshness01:clamp(1-embodiedPostMetrics.asyncSensorPenalty01)});
     const transferableOutcome=this.transferableSkills.afterOutcome({tick:i.tick,context:sharedContext16,latent:token.neuralBefore.slice(0,8),nextLatent:i.nextInput.slice(0,8),action:i.action,reward01:reward,predictionError01:error,verified01:verified});
@@ -1831,12 +1833,23 @@ export class NeuralExperienceBranch {
   transferSafetySynergyMetricsLite(){return this.transferSafetySynergy.metricsLite();}
   mobileRetentionDiagnostics(){return {replayBufferLength:this.state.replayBuffer.length,embodiedTransitionsLogLength:this.state.embodiedBridge.transitionsLog.length};}
   causalPlannerDiagnostics(){return this.causalPlanner.diagnostics();}
+  resetTestTimeAdaptation(contextId?:string){this.embodiedBridge.resetTestTimeAdaptation(contextId);}
+
   diagnostics(){
     // snapshot() already performs the required subsystem synchronization and deep clone.
     // Re-cloning this.state here doubled allocation/GC cost for every diagnostics call.
     const out:any=this.snapshot();
     out.hierarchicalSlowMemory=this.hierarchicalSlowMemory.metrics();
     out.contextualActionPolicy=this.contextualActionPolicy.metrics();
+    const fast=this.embodiedBridge.metrics();
+    out.testTimeNeuroplasticity={
+      activeAdapterNorm:fast.fastAdapterNorm,
+      contextCount:fast.fastContextCount,
+      acceptedUpdates:fast.fastAcceptedUpdates,
+      rejectedUpdates:fast.fastRejectedUpdates,
+      expiredContexts:fast.fastExpiredContexts,
+      evictedContexts:fast.fastEvictedContexts,
+    };
     return out;
   }
 }

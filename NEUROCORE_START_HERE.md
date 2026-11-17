@@ -1,4 +1,17 @@
-# CURRENT HANDOFF — 2026-11-01
+# CURRENT HANDOFF — 2026-11-17
+
+**Canonical source branch:** `workpass70-source`
+**Verified base HEAD for current work:** `1e83a011fc677ff20f2348570322bd562181d9ff`
+**Active implementation candidate:** Draft PR [#924 — P27 bounded-context Test-Time Neuroplasticity](https://github.com/ailtron1ss-rgb/NK1/pull/924), branch `feature/test-time-neuroplasticity-idea27`. Keep it Draft until typecheck and exact-head Actions complete.
+**Release rule:** the published Release ZIP remains the primary deliverable; PR #924 is source-only and has not changed `main` or any Release artifact.
+
+Start here for the new work: [P27 Test-Time Neuroplasticity handoff](docs/P27_TEST_TIME_NEUROPLASTICITY_2026-11-17.md). The implementation uses the existing `EmbodiedCausalWorldBridge` owner, a bounded ephemeral context-local residual map and explicit reset. It is not an LLM weight update and does not prove improved model capability. The runtime currently has no unique conversation/session identifier in this neural branch API, so isolation is based on causal-world + slow-memory context until a canonical session boundary is available.
+
+The section below is retained as historical context and must not be treated as the current source/release checkpoint.
+
+---
+
+# Historical handoff — 2026-11-01 (archive)
 
 > **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
 
