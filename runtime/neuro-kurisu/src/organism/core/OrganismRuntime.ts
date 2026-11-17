@@ -662,10 +662,12 @@ export class OrganismRuntime {
           throw new Error('synaptic-adapter-response-invalid');
         }
         if (response.modelId !== this.config.synapticBaseModelId
-          || response.modelRevisionSha256 !== this.config.synapticBaseModelRevisionSha256) {
+          || typeof response.modelRevisionSha256 !== 'string'
+          || response.modelRevisionSha256.toLowerCase() !== String(this.config.synapticBaseModelRevisionSha256).toLowerCase()) {
           throw new Error('synaptic-adapter-base-model-attestation-mismatch');
         }
-        if (response.appliedAdapterSha256 !== selection.adapter.artifactSha256) {
+        if (typeof response.appliedAdapterSha256 !== 'string'
+          || response.appliedAdapterSha256.toLowerCase() !== selection.adapter.artifactSha256) {
           throw new Error('synaptic-adapter-weight-attestation-mismatch');
         }
         this.synapticMatrix.observe(selection.adapterId, true, Date.now() - startedAt);
