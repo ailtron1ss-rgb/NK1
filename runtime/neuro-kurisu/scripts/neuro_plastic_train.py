@@ -40,7 +40,7 @@ TOKENIZER_NAMES = {
     "added_tokens.json", "chat_template.jinja",
 }
 MANIFEST_KEYS = {
-    "schemaVersion", "method", "baseModelDirectory", "baseModelFingerprint",
+    "schemaVersion", "method", "domain", "baseModelDirectory", "baseModelFingerprint",
     "tokenizerFingerprint", "trainingFile", "validationFile",
     "corpusFingerprint", "outputDirectory", "seed", "maxSequenceLength",
     "epochs", "learningRate", "lora",
@@ -209,8 +209,10 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
     if output_path.is_relative_to(base) or base.is_relative_to(output_path):
         raise PreflightError("adapter-output-must-be-separate-from-base-model")
 
-    domain = output_path.name
-    training = _read_jsonl(train_path, "training", manifest.get("domain", ""))
+    domain = manifest.get("domain")
+    if not isinstance(domain, str) or not re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,63}", domain):
+        raise PreflightError("training-domain-invalid")
+    training = _read_jsonl(train_path, "training", domain)
     validation = _read_jsonl(validation_path, "validation", manifest.get("domain", ""))
     if len(training) < 5 or len(validation) < 2:
         raise PreflightError("minimum-training-or-validation-example-count-not-met")
@@ -458,10 +460,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--fingerprint-model", type=Path)
+    parser.add_argument("--fingerprint-tokenizer", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.fingerprint_model is not None:
             print(base_model_fingerprint(args.fingerprint_model))
+            return 0
+        if args.fingerprint_tokenizer is not None:
+            print(tokenizer_fingerprint(args.fingerprint_tokenizer))
             return 0
         if args.manifest is None:
             raise PreflightError("--manifest or --fingerprint-model is required")
