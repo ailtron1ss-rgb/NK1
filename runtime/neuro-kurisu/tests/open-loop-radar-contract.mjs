@@ -60,7 +60,7 @@ const tampered = {
   ],
 };
 restored.restore(tampered);
-assert.equal(restored.snapshot().records.length, 1);
+assert.equal(restored.snapshot().records.length, 0, 'records with a missing or rejected prerequisite must not be restored as zombie open loops');
 
 const cancellable = restored.register({ title: 'Optional research', kind: 'task', owner: 'user', accepted: true, source: 'test' });
 assert.throws(() => restored.cancel(cancellable.id, ' '), /cancellation-reason-required/);
