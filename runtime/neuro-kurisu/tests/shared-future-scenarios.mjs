@@ -41,7 +41,6 @@ const rootResult = await gateway.executeTool('organism.future.scenarios.create-s
     id: 'external-migration',
     description: 'Irreversible external data migration.',
     mitigationPlan: 'Take verified backup and run dry-run reconciliation.',
-    compensationPlan: 'Restore backup and reconcile external IDs.',
     requiresExplicitConfirmation: true,
   }],
   revisionSignals: [
@@ -240,9 +239,10 @@ assert.equal(reviewResolved.ok, true, JSON.stringify(reviewResolved.result));
 assert.equal(future.sharedFuture.getScenario('project-root')?.status, 'superseded');
 assert.equal(future.sharedFuture.getScenario('project-root-revised')?.status, 'active');
 
+const rolloutCalls = [];
 const model = {
   rollout(actions, baseReward) {
-    assert.deepEqual(actions, ['verify', 'reflect']);
+    rolloutCalls.push([...actions]);
     assert.equal(baseReward, 0.5);
     return {
       reward: 0.63,
@@ -253,6 +253,7 @@ const model = {
 };
 const simulated = future.simulate(model, ['verify', 'reflect', 'ignored'], 0.5);
 assert.equal(simulated.expectedReward, 0.63);
+assert.deepEqual(rolloutCalls[0], ['verify', 'reflect', 'ignored']);
 const runtimeForecast = future.sharedFuture.getScenario('runtime-world-preview');
 assert.ok(runtimeForecast);
 assert.equal(runtimeForecast.owner, 'system');
@@ -260,6 +261,7 @@ assert.equal(runtimeForecast.status, 'draft');
 assert.equal(runtimeForecast.forecast?.independentlyVerified, false);
 assert.equal(runtimeForecast.assumptions[0].source, 'WorldModel2.rollout');
 future.simulate(model, ['verify'], 0.5);
+assert.deepEqual(rolloutCalls[1], ['verify']);
 assert.equal(future.sharedFuture.listScenarios().filter((row) => row.id === 'runtime-world-preview').length, 1);
 
 const persisted = future.snapshot();
