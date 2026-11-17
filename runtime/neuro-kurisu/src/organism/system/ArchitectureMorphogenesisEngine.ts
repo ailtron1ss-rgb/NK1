@@ -25,6 +25,12 @@ export interface ArchitectureMorphogenesisContract {
   authority: ArchitectureAuthority;
 }
 
+export interface ArchitectureMorphogenesisSharedSourcePath {
+  path: string;
+  moduleIds: string[];
+  rationale: string;
+}
+
 export interface ArchitectureMorphogenesisEdge {
   from: string;
   to: string;
@@ -39,6 +45,8 @@ export interface ArchitectureMorphogenesisGraph {
   modules: ArchitectureMorphogenesisModule[];
   contracts: ArchitectureMorphogenesisContract[];
   edges: ArchitectureMorphogenesisEdge[];
+  /** Explicit declarations for canonical source files represented in multiple subsystem nodes. */
+  sharedSourcePaths: ArchitectureMorphogenesisSharedSourcePath[];
 }
 
 export type ArchitectureMorphogenesisOperation =
@@ -125,6 +133,7 @@ const MAX_EDGES = 100000;
 const MAX_SOURCE_PATHS_PER_MODULE = 64;
 const MAX_STEPS = 50;
 const MAX_REPORTED_CYCLES = 64;
+const MAX_SHARED_SOURCE_PATHS = MAX_MODULES;
 const MAX_PLAIN_ARRAY_LENGTH = MAX_EDGES;
 const MAX_PLAIN_OBJECT_KEYS = 64;
 const MAX_PLAIN_STRING_LENGTH = 16_384;
@@ -290,7 +299,7 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
 
   const graph = input as unknown as ArchitectureMorphogenesisGraph;
   if (!hasOnlyKeys(graph as unknown as Record<string, unknown>, [
-    'schemaVersion', 'sourceCommit', 'canonicalGenomeDigest', 'modules', 'contracts', 'edges',
+    'schemaVersion', 'sourceCommit', 'canonicalGenomeDigest', 'modules', 'contracts', 'edges', 'sharedSourcePaths',
   ])) {
     add('graph-field-unknown', 'graph', 'Graph schema version 1 does not accept unknown top-level fields');
   }
@@ -310,6 +319,9 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
   if (!Array.isArray(graph.edges) || graph.edges.length > MAX_EDGES) {
     add('edges-invalid', 'edges', 'Edges must be a bounded array');
   }
+  if (!Array.isArray(graph.sharedSourcePaths) || graph.sharedSourcePaths.length > MAX_SHARED_SOURCE_PATHS) {
+    add('shared-source-paths-invalid', 'sharedSourcePaths', 'Shared source declarations must be a bounded array');
+  }
   if (issues.length) return {
     ok: false,
     moduleCount: Array.isArray(graph.modules) ? graph.modules.length : 0,
@@ -323,6 +335,7 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
   const edges = graph.edges as ArchitectureMorphogenesisEdge[];
   const ids = new Set<string>();
   const paths = new Set<string>();
+  const actualSourceOwners = new Map<string, Set<string>>();
 
   for (const [index, module] of modules.entries()) {
     const path = 'modules[' + index + ']';
@@ -356,6 +369,60 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
     }
     if (typeof module.revisionSha256 !== 'string' || !SHA256.test(module.revisionSha256)) {
       add('module-revision-invalid', path + '.revisionSha256', 'Module revision must be a SHA-256 digest');
+    }
+  }
+
+  for (const module of modules) {
+    if (!isRecord(module) || typeof module.id !== 'string' || !Array.isArray(module.sourcePaths)) continue;
+    for (const sourcePath of module.sourcePaths) {
+      if (!isCanonicalSourcePath(sourcePath)) continue;
+      const owners = actualSourceOwners.get(sourcePath) ?? new Set<string>();
+      owners.add(module.id);
+      actualSourceOwners.set(sourcePath, owners);
+    }
+  }
+
+  const declaredSharedPaths = new Set<string>();
+  for (const [index, declaration] of graph.sharedSourcePaths.entries()) {
+    const path = 'sharedSourcePaths[' + index + ']';
+    if (!isRecord(declaration) || !hasOnlyKeys(declaration, ['path', 'moduleIds', 'rationale'])) {
+      add('shared-source-record-invalid', path, 'Shared source declaration must contain only path, moduleIds and rationale');
+      continue;
+    }
+    if (!isCanonicalSourcePath(declaration.path)) {
+      add('shared-source-path-invalid', path + '.path', 'Shared source path must be a canonical source file');
+      continue;
+    }
+    if (declaredSharedPaths.has(declaration.path)) {
+      add('shared-source-path-duplicate', path + '.path', 'Each shared source path must be declared once');
+      continue;
+    }
+    declaredSharedPaths.add(declaration.path);
+    if (!Array.isArray(declaration.moduleIds) || declaration.moduleIds.length < 2
+      || declaration.moduleIds.length > MAX_MODULES) {
+      add('shared-source-module-ids-invalid', path + '.moduleIds', 'A shared source path must list at least two bounded subsystem IDs');
+      continue;
+    }
+    const listedOwners = new Set<string>();
+    for (const moduleId of declaration.moduleIds) {
+      if (typeof moduleId !== 'string' || !ids.has(moduleId)) {
+        add('shared-source-module-missing', path + '.moduleIds', 'Every shared source owner must reference a known module');
+        continue;
+      }
+      if (listedOwners.has(moduleId)) add('shared-source-module-duplicate', path + '.moduleIds', 'Shared source owner IDs must be unique');
+      listedOwners.add(moduleId);
+    }
+    if (typeof declaration.rationale !== 'string' || declaration.rationale.trim().length < 12 || declaration.rationale.length > 500) {
+      add('shared-source-rationale-invalid', path + '.rationale', 'Shared source rationale must be explicit and bounded');
+    }
+    const actualOwners = actualSourceOwners.get(declaration.path) ?? new Set<string>();
+    if (stableJson(sortedUnique([...listedOwners])) !== stableJson(sortedUnique([...actualOwners]))) {
+      add('shared-source-path-owners-mismatch', path, 'Declared shared owners must exactly match the modules that list this source path');
+    }
+  }
+  for (const [sourcePath, owners] of actualSourceOwners) {
+    if (owners.size > 1 && !declaredSharedPaths.has(sourcePath)) {
+      add('shared-source-path-unaccounted', 'sharedSourcePaths', 'A source file referenced by multiple modules must have an explicit shared declaration: ' + sourcePath);
     }
   }
 
@@ -525,6 +592,22 @@ export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogen
     for (const consumer of contract.consumerModuleIds) addEdge(contract.ownerModuleId, consumer, 'contract');
   }
   edges.sort((a, b) => a.kind.localeCompare(b.kind) || a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
+  const sourcePathOwners = new Map<string, Set<string>>();
+  for (const module of modules) {
+    for (const sourcePath of module.sourcePaths) {
+      const owners = sourcePathOwners.get(sourcePath) ?? new Set<string>();
+      owners.add(module.id);
+      sourcePathOwners.set(sourcePath, owners);
+    }
+  }
+  const sharedSourcePaths: ArchitectureMorphogenesisSharedSourcePath[] = [...sourcePathOwners.entries()]
+    .filter(([, owners]) => owners.size > 1)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([path, owners]) => ({
+      path,
+      moduleIds: sortedUnique([...owners]),
+      rationale: 'This canonical source file is intentionally represented in multiple subsystem maps; the shared component boundary must remain explicit until a separately reviewed decomposition.',
+    }));
   return {
     schemaVersion: 1,
     sourceCommit,
@@ -532,6 +615,7 @@ export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogen
     modules,
     contracts,
     edges,
+    sharedSourcePaths,
   };
 }
 
@@ -599,7 +683,7 @@ export function createArchitectureMorphogenesisPlan(input: {
 }): ArchitectureMorphogenesisPlan {
   const issues: ArchitectureMorphogenesisIssue[] = [];
   const emptyGraph: ArchitectureMorphogenesisGraph = {
-    schemaVersion: 1, sourceCommit: null, canonicalGenomeDigest: '', modules: [], contracts: [], edges: [],
+    schemaVersion: 1, sourceCommit: null, canonicalGenomeDigest: '', modules: [], contracts: [], edges: [], sharedSourcePaths: [],
   };
   const blocked = (): ArchitectureMorphogenesisPlan => {
     const payload: Omit<ArchitectureMorphogenesisPlan, 'planDigest'> = {

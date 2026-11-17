@@ -16,6 +16,8 @@ const report = {
   sourceFiles: graph.modules.reduce((sum, module) => sum + module.sourcePaths.length, 0),
   contracts: validation.contractCount,
   edges: validation.edgeCount,
+  sharedSourceFiles: graph.sharedSourcePaths.length,
+  sharedSourcePaths: graph.sharedSourcePaths,
   structuralCyclePolicy: 'import and contract edges must be acyclic; recurrent data-flow edges are preserved',
   issues: validation.issues,
   safety: {
