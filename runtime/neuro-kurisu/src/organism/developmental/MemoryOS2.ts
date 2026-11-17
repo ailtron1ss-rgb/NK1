@@ -37,8 +37,8 @@ export interface MemoryBitemporalInterval {
  evidenceFreshnessAt?:number; freshnessUntilAt?:number|null;
  evidenceLineageKeys?:string[];
  evidenceSources?:MemoryEvidenceSource[];
- independenceKey?:string;
- tags?:string[]; context?:Record<string,string>; entities?:string[];
+ independenceKey?:string|null;
+ tags?:string[]; context?:Record<string,string>|null; entities?:string[];
  semanticLinks?:string[]; temporalLinks?:string[]; causalLinks?:string[]; contradictionLinks?:string[];
  supersedesId?:string|null; supersededById?:string|null;
  salience?:number; emotionalWeight?:number; identityRelevance?:number;
@@ -422,9 +422,9 @@ function normalizeBitemporalHistory(value:unknown):MemoryBitemporalInterval[]{
    sourceAuthority01:typeof candidate.sourceAuthority01==='number'&&Number.isFinite(candidate.sourceAuthority01)?Math.max(0,Math.min(1,candidate.sourceAuthority01)):.5,
    evidenceFreshnessAt:finite(candidate.evidenceFreshnessAt),
    freshnessUntilAt:freshnessValue===null||Number.isFinite(freshnessValue)?freshnessValue:recordedFromAt,
-   evidenceLineageKeys,evidenceSources,
-   independenceKey:typeof candidate.independenceKey==='string'?candidate.independenceKey.trim().slice(0,96)||undefined:undefined,
-   tags:boundedStrings(candidate.tags,24,120),context:Object.keys(context).length?context:undefined,
+   evidenceLineageKeys:evidenceLineageKeys??[],evidenceSources:evidenceSources??[],
+   independenceKey:typeof candidate.independenceKey==='string'?candidate.independenceKey.trim().slice(0,96)||undefined:(candidate.independenceKey===null?null:null),
+   tags:boundedStrings(candidate.tags,24,120),context:Object.keys(context).length?context:null,
    entities:boundedStrings(candidate.entities,24,160),semanticLinks:boundedStrings(candidate.semanticLinks,24,160),
    temporalLinks:boundedStrings(candidate.temporalLinks,24,160),causalLinks:boundedStrings(candidate.causalLinks,24,160),
    contradictionLinks:boundedStrings(candidate.contradictionLinks,24,160),
@@ -584,6 +584,8 @@ export class MemoryOS2{
  private readonly tokenIndex=new Map<string,Set<string>>();
  /** Separate bounded postings for curated tags/entities/topic metadata. */
  private readonly metadataTokenIndex=new Map<string,Set<string>>();
+ /** Historical metadata postings are consulted only by transaction-time recall. */
+ private readonly bitemporalMetadataTokenIndex=new Map<string,Set<string>>();
  /** Token-level character n-gram inverted index for typo/inflection-tolerant candidate discovery. */
  private readonly characterGramIndex=new Map<string,Set<string>>();
  private readonly conceptGroupIndex=new Map<number,Set<string>>();
@@ -749,8 +751,8 @@ export class MemoryOS2{
    provenanceClass:item.provenanceClass,sourceAuthority01:item.sourceAuthority01,
    evidenceFreshnessAt:item.evidenceFreshnessAt,freshnessUntilAt:item.freshnessUntilAt??null,
    evidenceLineageKeys:[...(item.evidenceLineageKeys??[])],
-   evidenceSources:(item.evidenceSources??[]).map(row=>({...row})),independenceKey:item.independenceKey,
-   tags:[...(item.tags??[])],context:item.context?{...item.context}:undefined,
+   evidenceSources:(item.evidenceSources??[]).map(row=>({...row})),independenceKey:item.independenceKey??null,
+   tags:[...(item.tags??[])],context:item.context?{...item.context}:null,
    entities:[...(item.entities??[])],semanticLinks:[...(item.semanticLinks??[])],
    temporalLinks:[...(item.temporalLinks??[])],causalLinks:[...(item.causalLinks??[])],
    contradictionLinks:[...(item.contradictionLinks??[])],
@@ -786,8 +788,8 @@ export class MemoryOS2{
    sourceAuthority01:version.sourceAuthority01??item.sourceAuthority01,
    evidenceFreshnessAt:version.evidenceFreshnessAt??item.evidenceFreshnessAt,
    freshnessUntilAt:version.freshnessUntilAt,evidenceLineageKeys:version.evidenceLineageKeys??item.evidenceLineageKeys,
-   evidenceSources:version.evidenceSources??item.evidenceSources,independenceKey:version.independenceKey??item.independenceKey,
-   tags:version.tags??item.tags,context:version.context??item.context,entities:version.entities??item.entities,
+   evidenceSources:version.evidenceSources??item.evidenceSources,independenceKey:version.independenceKey===undefined?item.independenceKey:(version.independenceKey??undefined),
+   tags:version.tags??item.tags,context:version.context===undefined?item.context:(version.context??undefined),entities:version.entities??item.entities,
    semanticLinks:version.semanticLinks??item.semanticLinks,temporalLinks:version.temporalLinks??item.temporalLinks,
    causalLinks:version.causalLinks??item.causalLinks,contradictionLinks:version.contradictionLinks??item.contradictionLinks,
    supersedesId:version.supersedesId??item.supersedesId,supersededById:version.supersededById??item.supersededById,
@@ -1088,7 +1090,7 @@ export class MemoryOS2{
   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:this.state.items.length};
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
-  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.spatialIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.characterGramIndex.clear();this.conceptGroupIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
+  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.spatialIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.bitemporalMetadataTokenIndex.clear();this.characterGramIndex.clear();this.conceptGroupIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
   const indexAt=Date.now();
   for(const item of this.state.items){
    const exactKey=`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`;
@@ -1112,6 +1114,25 @@ export class MemoryOS2{
   const allowedContextKeys=/^(topic|category|subject|project|domain|title|label|goal|intent|location|relationship|type|environment|language|preference|person|organization)$/i;
   for(const [key,value] of Object.entries(item.context??{}).slice(0,32))if(allowedContextKeys.test(key)&&typeof value==='string'&&value.trim())parts.push(value.trim().slice(0,160));
   return this.tokensFor(parts.join(' '));
+ }
+ private bitemporalMetadataTokens(item:MemoryItem2):Set<string>{
+  const tokens=new Set<string>();
+  for(const version of [...(item.bitemporalHistory??[]),this.bitemporalIntervalFor(item)]){
+   const view={...item,tags:version.tags??[],entities:version.entities??[],context:version.context===undefined?{}:(version.context??{})} as MemoryItem2;
+   for(const token of this.metadataTokens(view))tokens.add(token);
+  }
+  return tokens;
+ }
+ private reindexMetadataForItem(item:MemoryItem2):void{
+  for(const index of [this.metadataTokenIndex,this.bitemporalMetadataTokenIndex]){
+   for(const [token,ids] of index)if(ids.delete(item.id)&&ids.size===0)index.delete(token);
+  }
+  for(const token of this.metadataTokens(item)){
+   let ids=this.metadataTokenIndex.get(token);if(!ids){ids=new Set<string>();this.metadataTokenIndex.set(token,ids);}ids.add(item.id);
+  }
+  for(const token of this.bitemporalMetadataTokens(item)){
+   let ids=this.bitemporalMetadataTokenIndex.get(token);if(!ids){ids=new Set<string>();this.bitemporalMetadataTokenIndex.set(token,ids);}ids.add(item.id);
+  }
  }
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
  private provenanceStrength(m:MemoryItem2){const authority=clamp(Number(m.sourceAuthority01??.5));const reliability=clamp(Number(m.confidence??.5));const independence=m.independenceKey?1:0;const classBonus=m.provenanceClass==='device'?1:m.provenanceClass==='external'?.92:m.provenanceClass==='user'?.86:m.provenanceClass==='agent'?.68:m.provenanceClass==='derived'?.52:m.provenanceClass==='simulation'?.28:.5;const independentWitnesses=Math.max(0,this.independentEvidenceCount(m)-1);return clamp(authority*.50+reliability*.24+independence*.06+classBonus*.10+Math.min(.10,independentWitnesses*.025));}
@@ -1265,6 +1286,7 @@ export class MemoryOS2{
     const bitemporalChanged=!this.sameBitemporalState(previousBitemporal,nextBitemporal);
     const recordedAt=bitemporalChanged?Math.max(now,Number(existing.recordedFromAt??existing.createdAt)+1):now;
     if(bitemporalChanged)this.beginBitemporalRevision(existing,recordedAt,previousBitemporal,false);
+    if(bitemporalChanged)this.reindexMetadataForItem(existing);
     this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-priorBytes+estimateMemoryBytes(existing));
     if(bitemporalChanged)this.recordRevision(existing,{at:recordedAt,from:existing.epistemicStatus,to:existing.epistemicStatus,reason:'independent-evidence-reconsolidation'});
     this.state.reconsolidations++;
@@ -1743,6 +1765,7 @@ export class MemoryOS2{
     this.recordRevision(m,{at:recordedAt,from:m.epistemicStatus,to:m.epistemicStatus,reason:'context-update'});
     this.state.reconsolidations++;
    }
+   this.reindexMetadataForItem(m);
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    return structuredClone(m.context??{});
  }
@@ -1922,11 +1945,7 @@ export class MemoryOS2{
      if(!ids.has(item.id))ids.add(item.id);
      if(previousDf===0)for(const gram of charTrigrams(token)){let posting=this.characterGramIndex.get(gram);if(!posting){posting=new Set<string>();this.characterGramIndex.set(gram,posting);}posting.add(token);}
    }
-   for(const token of this.metadataTokens(item)){
-     let ids=this.metadataTokenIndex.get(token);
-     if(!ids){ids=new Set<string>();this.metadataTokenIndex.set(token,ids);}
-     ids.add(item.id);
-   }
+   this.reindexMetadataForItem(item);
    // Bilingual concept postings: which concept groups this memory expresses. Built
    // from the item's own tokens so cross-lingual recall can reach a memory whose
    // wording shares no literal token with the query.
@@ -1964,6 +1983,9 @@ export class MemoryOS2{
    }
    for(const [token,ids] of this.metadataTokenIndex){
      if(ids.delete(id)&&ids.size===0)this.metadataTokenIndex.delete(token);
+   }
+   for(const [token,ids] of this.bitemporalMetadataTokenIndex){
+     if(ids.delete(id)&&ids.size===0)this.bitemporalMetadataTokenIndex.delete(token);
    }
  }
 
