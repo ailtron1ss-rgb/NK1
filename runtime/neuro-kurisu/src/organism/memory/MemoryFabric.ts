@@ -304,6 +304,20 @@ export class MemoryFabric {
     return this.findCanonical(id);
   }
 
+  /** Bitemporal lookup through the canonical MemoryOS2 owner. */
+  temporalBitemporalAt(id:string,validAt:number,knowledgeAtAt:number):MemoryItem2|null {
+    return this.memoryOS.temporalBitemporalAt(id,validAt,knowledgeAtAt);
+  }
+
+  /** Complete bounded valid-time / transaction-time history for one revision chain. */
+  temporalBitemporalHistory(id:string):MemoryItem2[] {
+    return this.memoryOS.temporalBitemporalHistory(id);
+  }
+
+  temporalBitemporalDiff(id:string,validAt:number,fromKnowledgeAt:number,toKnowledgeAt:number) {
+    return this.memoryOS.temporalBitemporalDiff(id,validAt,fromKnowledgeAt,toKnowledgeAt);
+  }
+
   private findCanonical(id:string):MemoryItem2|null {
     const item=this.memoryOS.snapshot({clone:false}).items.find(row=>row.id===String(id));
     return item?structuredClone(item):null;
