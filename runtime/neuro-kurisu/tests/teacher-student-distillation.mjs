@@ -39,6 +39,8 @@ function teacherRecord(dataset, task, seed, completion, artifactId) {
     manifestFingerprint: dataset.manifestFingerprint(),
     taskId: task.taskId,
     taskVersion: task.taskVersion,
+    family: task.family,
+    split: task.split,
     teacherId: 'teacher-a',
     teacherModel: 'teacher/model-70b',
     teacherRevision: '2026-11-10-commit-a1b2c3d4',
@@ -76,6 +78,13 @@ const dataset = new TeacherStudentDistillationDataset(tasks);
 const trainRecord = teacherRecord(dataset, tasks[0], 1, 'The answer is 2.', 'teacher-train-1');
 const validationRecord = teacherRecord(dataset, tasks[1], 1, 'The paragraph says that systems need evidence.', 'teacher-validation-1');
 const holdoutRecord = teacherRecord(dataset, tasks[2], 1, 'A withheld answer.', 'teacher-holdout-1');
+const misScopedRecord = teacherRecord(dataset, tasks[0], 7, 'A signed but mis-scoped answer.', 'teacher-mis-scoped');
+misScopedRecord.artifact = signTeacherDistillationPayloadForFixture({
+  ...misScopedRecord.artifact.payload,
+  family: 'validation-family',
+}, privateKeyPem);
+assert.equal(dataset.ingestSignedExample(misScopedRecord, trustedKeys).rejection.code, 'artifact-payload-mismatch',
+  'a valid verifier signature cannot move a task into another family');
 
 assert.equal(dataset.ingestSignedExample(trainRecord, trustedKeys).accepted, true);
 assert.equal(dataset.ingestSignedExample(validationRecord, trustedKeys).accepted, true);
@@ -134,6 +143,8 @@ const independentVerifier = {
       manifestFingerprint: request.manifestFingerprint,
       taskId: request.taskId,
       taskVersion: request.taskVersion,
+      family: request.family,
+      split: request.split,
       teacherId: request.teacherId,
       teacherModel: request.teacherModel,
       teacherRevision: request.teacherRevision,
