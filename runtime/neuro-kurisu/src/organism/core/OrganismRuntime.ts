@@ -36,6 +36,7 @@ import type { VisionSemanticBackend } from '../body/VisionSemanticBackend.ts';
 import { TemporalObjectTracker } from '../body/TemporalObjectTracker.ts';
 import { RealityGroundingController, type RealityGroundingMode } from '../system/RealityGroundingController.ts';
 import { NeuralCausalTraceLedger } from '../system/NeuralCausalTraceLedger.ts';
+import { OpenLoopRadar, type OpenLoopRadarState, type OpenLoopScanOptions } from '../cognition/evolution/OpenLoopRadar.ts';
 import { RealityLearningGate } from '../system/RealityLearningGate.ts';
 import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
 import { ExternalPostconditionVerifier } from '../system/ExternalPostconditionVerifier.ts';
@@ -200,6 +201,7 @@ export class OrganismRuntime {
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
+  private readonly openLoopRadar = new OpenLoopRadar();
   private readonly resourceEconomy = new CognitiveResourceEconomy();
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
@@ -236,6 +238,7 @@ export class OrganismRuntime {
   };
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
+  private readonly openLoopStore: JsonStateStore<OpenLoopRadarState>;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -342,6 +345,7 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
+    this.openLoopStore = new FileStateStore<OpenLoopRadarState>(`${config.stateFile}.open-loops.json`);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -391,6 +395,9 @@ export class OrganismRuntime {
       }
       await this.compoundRepairRevisionCoordinator?.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
+      const restoredOpenLoopState = await this.openLoopStore.load();
+      this.openLoopRadar.restore(restoredOpenLoopState ?? undefined);
+      if (!restoredOpenLoopState) await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -1904,6 +1911,72 @@ export class OrganismRuntime {
   }
 
 
+
+  /**
+   * Persist every obligation mutation before exposing its result. If the durable
+   * write fails, restore the in-memory snapshot so callers never observe an
+   * uncommitted lifecycle transition.
+   */
+  private async persistOpenLoopMutation<T>(mutation: () => T): Promise<T> {
+    const previous = this.openLoopRadar.snapshot();
+    try {
+      const result = mutation();
+      await this.openLoopStore.save(this.openLoopRadar.snapshot());
+      return result;
+    } catch (error) {
+      this.openLoopRadar.restore(previous);
+      throw error;
+    }
+  }
+
+  registerOpenLoop(input: Parameters<OpenLoopRadar['register']>[0]) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.register(input)));
+  }
+
+  fulfillOpenLoop(id: string, evidence: Parameters<OpenLoopRadar['fulfill']>[1]) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.fulfill(id, evidence)));
+  }
+
+  cancelOpenLoop(id: string, reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.cancel(id, reason)));
+  }
+
+  reopenOpenLoop(id: string, reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.reopen(id, reason)));
+  }
+
+  acknowledgeOpenLoopSurfaced(id: string): Promise<void> {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.markSurfaced(id)));
+  }
+
+  scanOpenLoops(options: OpenLoopScanOptions = {}) {
+    return this.enqueue(async () => this.openLoopRadar.scan(options));
+  }
+
+  openLoopSnapshot() {
+    return this.enqueue(async () => this.openLoopRadar.snapshot());
+  }
+
+  openLoopDiagnostics() {
+    return this.enqueue(async () => {
+      const state = this.openLoopRadar.snapshot();
+      const candidates = this.openLoopRadar.scan();
+      const active = state.records.filter(record => record.status === 'open' || record.status === 'blocked');
+      return {
+        version: state.version,
+        total: state.records.length,
+        activeCount: active.length,
+        openCount: active.filter(record => record.status === 'open').length,
+        blockedCount: active.filter(record => record.status === 'blocked').length,
+        fulfilledCount: state.records.filter(record => record.status === 'fulfilled').length,
+        cancelledCount: state.records.filter(record => record.status === 'cancelled').length,
+        overdueCount: candidates.filter(candidate => candidate.overdueMs > 0 && candidate.effectiveStatus === 'open').length,
+        expiredCount: candidates.filter(candidate => candidate.effectiveStatus === 'expired').length,
+        readyToSurface: candidates.filter(candidate => candidate.shouldSurface).length,
+      };
+    });
+  }
+
   /** Record only caller-confirmed low-risk preferences through the canonical evidence owner. */
   async recordExplicitUserPreference(input: Parameters<OrganismCore['recordExplicitUserModelEvidence']>[0]) {
     return this.enqueue(() => this.core.recordExplicitUserModelEvidence(input));
@@ -1948,6 +2021,7 @@ export class OrganismRuntime {
   async flush(): Promise<void> {
     return this.enqueue(async () => {
       await this.core.flush();
+      await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const view = this.core.runtimeClosureOperationalSnapshot();
       this.runtimeClosure.durable({ at: Date.now(), tick: view.tick, stateTick: view.tick, replaySignature: view.replaySignature, continuousTick: view.continuous?.tick, continuityProcessed: view.continuous?.processed, memoryCount: view.memoryCount });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
