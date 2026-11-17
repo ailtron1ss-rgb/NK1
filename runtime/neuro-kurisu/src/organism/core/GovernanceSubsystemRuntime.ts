@@ -158,11 +158,36 @@ export class GovernanceSubsystemRuntime {
     arbitration:ReturnType<P69ConstitutionalArbiter['arbitrate']>|null;
     selectedCandidate:P69Input['candidates'][number]|null;
   }> {
-    const snapshot=structuredClone(input.p69Input);
+    let snapshot:P69Input;
+    try {
+      snapshot=structuredClone(input.p69Input);
+    } catch {
+      const parliament=await this.cognitiveParliamentDispatcher.dispatch({
+        candidateId:'',risk:input.risk,task:input.task,evidenceReferences:[],
+        timeoutMs:input.timeoutMs,maxConcurrent:input.maxConcurrent,
+        maxTotalTokens:input.maxTotalTokens,maxInputChars:input.maxInputChars,
+      });
+      return {status:'candidate-not-in-p69-set',parliament,arbitration:null,selectedCandidate:null};
+    }
+    const candidates=Array.isArray(snapshot?.candidates)?snapshot.candidates:[];
+    const ids=candidates.map(candidate=>candidate?.id);
+    const candidateSetValid=ids.every(id=>typeof id==='string'&&id.trim().length>0)&&
+      new Set(ids).size===ids.length&&candidates.filter(candidate=>candidate?.id===input.candidateId).length===1;
+    if(!candidateSetValid){
+      const parliament=await this.cognitiveParliamentDispatcher.dispatch({
+        candidateId:'',risk:input.risk,task:input.task,evidenceReferences:[],
+        timeoutMs:input.timeoutMs,maxConcurrent:input.maxConcurrent,
+        maxTotalTokens:input.maxTotalTokens,maxInputChars:input.maxInputChars,
+      });
+      return {status:'candidate-not-in-p69-set',parliament,arbitration:null,selectedCandidate:null};
+    }
     const attempted=await this.deliberateAndArbitrate(input);
+    if(attempted.status==='candidate-not-in-p69-set'){
+      return {status:'candidate-not-in-p69-set',parliament:attempted.parliament,arbitration:null,selectedCandidate:null};
+    }
     let arbitration=attempted.arbitration;
     if(!arbitration){
-      const safeCandidates=snapshot.candidates.filter(candidate=>
+      const safeCandidates=candidates.filter(candidate=>
         ['rest','wait','defer'].includes(candidate.action));
       // Even when no safe action exists, obtain P69's constraint/telemetry frame
       // over an empty candidate set. This keeps downstream diagnostics total while
