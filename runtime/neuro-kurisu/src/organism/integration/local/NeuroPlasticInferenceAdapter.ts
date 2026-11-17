@@ -1,4 +1,3 @@
-import type { P40ModelEcologyEngine } from '../../learning/P40ModelEcology.ts';
 import type { NeuroPlasticAdapterRegistry } from '../../learning/NeuroPlasticAdapterRegistry.ts';
 import type {
   LocalChatCompletionRequest,
@@ -44,16 +43,16 @@ function isCallerCancellation(error: unknown, request: LocalChatCompletionReques
  */
 export class NeuroPlasticInferenceAdapter {
   private readonly registry: NeuroPlasticAdapterRegistry;
-  private readonly ecology: P40ModelEcologyEngine;
+  private readonly backendReady: (backendId: string) => boolean;
   private readonly provider: OpenAICompatibleLocalChatProvider;
 
   constructor(
     registry: NeuroPlasticAdapterRegistry,
-    ecology: P40ModelEcologyEngine,
+    backendReady: (backendId: string) => boolean,
     provider: OpenAICompatibleLocalChatProvider,
   ) {
     this.registry = registry;
-    this.ecology = ecology;
+    this.backendReady = backendReady;
     this.provider = provider;
   }
 
@@ -63,9 +62,7 @@ export class NeuroPlasticInferenceAdapter {
   ): Promise<NeuroPlasticInferenceResponse> {
     if (!this.provider.configured()) throw new Error('llama.cpp-not-configured');
     const baseModelAlias = safeBaseAlias(route.baseModelAlias);
-    const state = this.ecology.snapshot();
-    const backend = state.profiles.find(profile => profile.id === route.backendId);
-    const localBackendReady = Boolean(backend && backend.local && backend.configured && backend.available);
+    const localBackendReady = this.backendReady(route.backendId) === true;
     const selection = this.registry.select({
       domain: route.domain,
       backendId: route.backendId,
