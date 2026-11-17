@@ -363,3 +363,25 @@ const unchangedEdgeReceipt = proposal(
 );
 assert.equal(unchangedEdgeReceipt.status, 'BLOCKED');
 assert.ok(unchangedEdgeReceipt.issues.some(item => item.code === 'rewire-edge-mismatch'));
+
+
+// Regression: reject over-limit collections before walking every untrusted element.
+const oversizedGraph = graph([alpha]);
+oversizedGraph.edges = Array.from({ length: 100001 }, () => ({
+  from: 'alpha',
+  to: 'alpha',
+  kind: 'data-flow',
+}));
+const oversizedGraphReport = validateArchitectureMorphogenesisGraph(oversizedGraph);
+assert.equal(oversizedGraphReport.ok, false);
+assert.ok(
+  oversizedGraphReport.issues.some(item => item.code === 'graph-untrusted-data'),
+  'preflight plain-data budget must reject oversized arrays before graph-level traversal',
+);
+
+// Regression: deeply oversized primitive data is also rejected at the trust boundary.
+const oversizedStringGraph = graph([alpha]);
+oversizedStringGraph.extension = 'x'.repeat(16385);
+const oversizedStringReport = validateArchitectureMorphogenesisGraph(oversizedStringGraph);
+assert.equal(oversizedStringReport.ok, false);
+assert.ok(oversizedStringReport.issues.some(item => item.code === 'graph-untrusted-data'));
