@@ -427,6 +427,26 @@ approx(counterfactual.nodes.find(row => row.id === 'added-harm').attributableEff
 assert.equal(counterfactual.nodes.find(row => row.id === 'unknown-baseline').attributableEffect01, null,
   'missing counterfactual data must remain unknown rather than silently becoming zero');
 
+
+const distributionalResult = simulator.analyzeConsequences({
+  id: 'consequence-analysis-distributional-burden',
+  horizonDays: 30,
+  options: [option('externalized-costs', 'shift risk onto a dependent community', [
+    node('community-harm', 'harm', 0.62, 1, 0.95, { actor: 'local-community', system: 'public-infrastructure' }),
+    node('operator-benefit', 'benefit', 0.9, 1, 0.95, { actor: 'operator', system: 'business' }),
+  ], [
+    edge('action-community-harm', '__action__', 'community-harm', { strength01: 1 }),
+    edge('action-operator-benefit', '__action__', 'operator-benefit', { strength01: 1 }),
+  ])],
+}).analysis.options[0];
+approx(distributionalResult.worstStakeholderHarm01, 0.62, 'worst stakeholder harm');
+approx(distributionalResult.topStakeholderHarmShare01, 1, 'top stakeholder harm share');
+approx(distributionalResult.benefitBurdenSeparation01, 0.62, 'benefit-burden separation');
+assert.equal(distributionalResult.mostExposedStakeholder.actor, 'local-community');
+assert.equal(distributionalResult.mainBeneficiary.actor, 'operator');
+assert.equal(distributionalResult.attention, 'mandatory-review',
+  'high concentrated harm to one stakeholder must trigger mandatory review even below the aggregate harm threshold');
+
 console.log('CONSEQUENCE_ECOLOGY=PASS', JSON.stringify({
   analysisCount: simulator.consequenceEcology.diagnostics().retainedAnalyses,
   modelTopRankedOptionId: first.analysis.modelTopRankedOptionId,
