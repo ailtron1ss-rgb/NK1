@@ -1,6 +1,7 @@
 name: NK1 ChronoTruth bitemporal memory
 
 on:
+  workflow_dispatch:
   push:
     branches: [aspect/chrono-truth-bitemporal-memory-20261117]
     paths:
