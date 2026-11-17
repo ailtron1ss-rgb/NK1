@@ -374,7 +374,7 @@ assert.equal(capacityEngine.snapshot().calibrationEvidenceLedger.receiptIds.leng
   'a full evidence ledger must remain intact after a refused promotion');
 
 console.log('OMESTRO_22_SUBSTRATE_INDEPENDENCE=PASS', JSON.stringify({
-  assertions: 76,
+  assertions: 75,
   tamperDetection: true,
   accessorAndCycleRejection: true,
   holdoutCalibration: true,
