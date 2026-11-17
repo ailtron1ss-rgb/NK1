@@ -3,6 +3,11 @@ import { FutureSimulator } from '../src/organism/developmental/FutureSimulator.t
 const simulator=new FutureSimulator();
 assert.equal('worldForge' in simulator,false,'runtime callers must not receive the evaluator engine object');
 assert.deepEqual(simulator.generateWorldForgeScenarios({split:'holdout',seed:77,count:3}),[],'agent-facing simulator API must not generate holdout cases');
+let splitGetterInvoked=false;
+const hostileRequest={seed:7};
+Object.defineProperty(hostileRequest,'split',{enumerable:true,get(){splitGetterInvoked=true;return 'train';}});
+assert.deepEqual(simulator.generateWorldForgeScenarios(hostileRequest),[]);
+assert.equal(splitGetterInvoked,false,'runtime facade must not invoke generation request getters');
 const scenarios=simulator.generateWorldForgeScenarios({split:'train',seed:77,count:3});
 assert.equal(scenarios.length,3);
 const initial=simulator.startWorldForgeScenario(scenarios[0]);
