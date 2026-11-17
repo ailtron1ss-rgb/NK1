@@ -6,7 +6,7 @@ import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
 
-process.env.NEURO_CONSTITUTION_HMAC_KEY ??= 'p69-p73-constitution-persistence-key-32-bytes';
+process.env.NEURO_CONSTITUTION_HMAC_KEY = 'p69-p73-constitution-persistence-key-32-bytes';
 
 const dir=await mkdtemp(join(tmpdir(),'neuro-p69-p73-'));
 const file=join(dir,'state.json');
