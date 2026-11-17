@@ -22,6 +22,7 @@ jobs:
       - name: Run World Forge regressions
         working-directory: runtime/neuro-kurisu
         run: |
+          node --experimental-strip-types tests/world-forge-evaluator-isolation.mjs
           node --experimental-strip-types tests/world-forge-synthetic-lab.mjs
           node --experimental-strip-types tests/world-forge-splits-and-perturbations.mjs
           node --experimental-strip-types tests/world-forge-future-simulator-integration.mjs
