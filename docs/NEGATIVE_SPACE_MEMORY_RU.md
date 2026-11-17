@@ -12,7 +12,8 @@ Keep a bounded record of consequential alternatives that the canonical decision 
 - Actual outcome, prediction error, shortfall, and evidence are attached after the existing outcome gate has resolved the result.
 - Review eligibility is raised only when a stored condition matches. It does not auto-select, execute, or silently promote the rejected option.
 - An eligible item is marked reopened only through an explicit review call with a reason.
-- `OrganismCore` exposes snapshot, diagnostics, review-queue, and explicit reopen methods for upper-level inspection/review.\n- The ledger is nested inside the existing `RegretState` under `facets.advanced.regret`; it does not create a second canonical memory store.
+- `OrganismCore` exposes snapshot, diagnostics, review-queue, and explicit reopen methods for upper-level inspection/review.
+- The ledger is nested inside the existing `RegretState` under `facets.advanced.regret`; it does not create a second canonical memory store.
 - The field is optional on restore. Pre-feature saves without `negativeSpace` remain valid.
 
 ## Validation

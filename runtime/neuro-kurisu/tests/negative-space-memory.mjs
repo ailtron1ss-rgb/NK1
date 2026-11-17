@@ -105,6 +105,7 @@ for (let i = 0; i < 140; i++) {
 }
 assert.ok(engine.snapshot().negativeSpace.records.length <= 128, 'negative-space history must stay bounded');
 assert.ok(engine.snapshot().negativeSpace.pruned > 0, 'pruning should be accounted for');
+assert.equal(engine.negativeSpaceDiagnostics().bounded, true);
 
 console.log(JSON.stringify({
   pass: true,
