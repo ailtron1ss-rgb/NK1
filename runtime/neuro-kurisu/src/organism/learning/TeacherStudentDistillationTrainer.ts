@@ -188,6 +188,10 @@ async function verifySignedDataset(input: {
       sha256(JSON.stringify(info)) !== manifest.datasetInfoSha256) {
     throw new Error('teacher-distillation-dataset-file-hash-mismatch');
   }
+  const datasetNames = Object.keys(info).sort();
+  if (datasetNames.join('|') !== 'nk1_teacher_student_train|nk1_teacher_student_validation') {
+    throw new Error('teacher-distillation-dataset-info-unexpected-dataset');
+  }
   for (const [name, fileName] of [['nk1_teacher_student_train', 'train.jsonl'], ['nk1_teacher_student_validation', 'validation.jsonl']] as const) {
     const entry = info[name];
     if (!isRecord(entry) || entry.file_name !== fileName || entry.formatting !== 'sharegpt' ||
