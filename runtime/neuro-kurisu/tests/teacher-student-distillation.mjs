@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash, generateKeyPairSync, verify as verifySignature } from 'node:crypto';
@@ -309,8 +309,8 @@ try {
   assert.ok(run.receipt.boundaries.some(line => line.includes('execution, not task correctness')));
 
   const duplicateConfig = runnerConfig.yaml.replace(
-    'dataset: nk1_teacher_student_train\\n',
-    'dataset: nk1_teacher_student_train\\ndataset: nk1_teacher_student_train\\n',
+    'dataset: nk1_teacher_student_train\n',
+    'dataset: nk1_teacher_student_train\ndataset: nk1_teacher_student_train\n',
   );
   const duplicateConfigPath = path.join(runnerWorkspace, 'duplicate-train.yaml');
   await writeFile(duplicateConfigPath, duplicateConfig, 'utf8');
@@ -326,7 +326,7 @@ try {
     surviveDirectory,
   }), /config-duplicate-key/);
 
-  const unknownConfig = runnerConfig.yaml.replace('stage: sft\\n', 'stage: sft\\ncustom_code_enabled: true\\n');
+  const unknownConfig = runnerConfig.yaml.replace('stage: sft\n', 'stage: sft\ncustom_code_enabled: true\n');
   const unknownConfigPath = path.join(runnerWorkspace, 'unknown-option-train.yaml');
   await writeFile(unknownConfigPath, unknownConfig, 'utf8');
   const unknownConfigFingerprint = createHash('sha256').update(unknownConfig, 'utf8').digest('hex');
@@ -340,6 +340,19 @@ try {
     runRoot,
     surviveDirectory,
   }), /config-option-not-allowed/);
+
+  const symlinkConfigPath = path.join(runnerWorkspace, 'symlink-train.yaml');
+  await symlink(configPath, symlinkConfigPath);
+  await assert.rejects(runTeacherStudentDistillationTraining({
+    workspaceDirectory: runnerWorkspace,
+    configPath: 'symlink-train.yaml',
+    expectedConfigFingerprint: runnerConfig.fingerprint,
+    datasetFingerprint: exported.datasetFingerprint,
+    trustedVerifierKeys: trustedKeys,
+    executable: fakeCliPath,
+    runRoot,
+    surviveDirectory,
+  }), /config-must-be-regular-file/);
 
   const originalTrainFile = await readFile(written['train.jsonl'], 'utf8');
   await writeFile(written['train.jsonl'], originalTrainFile + '\\n{"tampered":true}\\n', 'utf8');
