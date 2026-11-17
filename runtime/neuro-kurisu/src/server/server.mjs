@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
+import { createSynapticP23AdmissionProvider } from '../organism/learning/SynapticP23OutcomeBundleProvider.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
@@ -80,9 +81,50 @@ async function configureCompoundRepairRevision() {
     if (typeof provideInputs !== 'function') {
         throw new Error('compound repair revision provider factory must return an input-provider function');
     }
-    return { engine, provideInputs };
+    return {
+        engine,
+        provideInputs,
+        candidateStore: lifecycle.store,
+        trustedRunRegistry: lifecycle.registry,
+        trustedVerifierCount: lifecycle.trustedVerifierCount,
+        trustedApprovalCount: lifecycle.trustedApprovalCount,
+    };
 }
 const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
+const SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE = String(process.env.NEURO_SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE || '').trim();
+const SYNAPTIC_P23_OUTCOME_BUNDLE_PATH = String(process.env.NEURO_SYNAPTIC_P23_OUTCOME_BUNDLE_PATH || '').trim();
+
+async function configureSynapticP23Admission() {
+    if (!SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE && !SYNAPTIC_P23_OUTCOME_BUNDLE_PATH) return undefined;
+    let createLocalPromotionProposal;
+    if (SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE) {
+        const providerPath = path.isAbsolute(SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE)
+            ? SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE
+            : path.resolve(ROOT, SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE);
+        const providerModule = await import(pathToFileURL(providerPath).href);
+        const factory = providerModule.createSynapticP23AdmissionProvider ?? providerModule.default;
+        if (typeof factory !== 'function') {
+            throw new Error('Synaptic P23 admission provider must export createSynapticP23AdmissionProvider() or a default factory');
+        }
+        createLocalPromotionProposal = await factory({
+            stateDirectory: STATE,
+            currentHostCompatibilityTarget: synapticCommonsHostCompatibilityTarget,
+        });
+    } else {
+        const bundlePath = path.isAbsolute(SYNAPTIC_P23_OUTCOME_BUNDLE_PATH)
+            ? SYNAPTIC_P23_OUTCOME_BUNDLE_PATH
+            : path.resolve(ROOT, SYNAPTIC_P23_OUTCOME_BUNDLE_PATH);
+        createLocalPromotionProposal = createSynapticP23AdmissionProvider({
+            bundlePath,
+            rawVerifierKeys: process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
+        });
+    }
+    if (typeof createLocalPromotionProposal !== 'function') {
+        throw new Error('Synaptic P23 admission provider factory must return a local proposal function');
+    }
+    return { currentHostCompatibilityTarget: synapticCommonsHostCompatibilityTarget, createLocalPromotionProposal };
+}
+const SYNAPTIC_P23_ADMISSION = await configureSynapticP23Admission();
 const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
 const PHONE_MODE = PHONE_POLICY.mode !== 'research';
 const INTERVAL_MS = PHONE_POLICY.baseIntervalMs;
@@ -102,6 +144,26 @@ let lastLanguageFailure = '';
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
 const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
 const rateBuckets = new Map();
+function synapticCommonsHostCompatibilityTarget() {
+    const runtimeVersion = String(process.env.NEURO_SYNAPTIC_COMMONS_RUNTIME_VERSION || '').trim();
+    const environmentFingerprint = String(process.env.NEURO_SYNAPTIC_COMMONS_ENVIRONMENT_FINGERPRINT || '').trim();
+    const readList = name => {
+        const raw = process.env[name];
+        if (!raw) return null;
+        let parsed;
+        try { parsed = JSON.parse(raw); } catch { return null; }
+        if (!Array.isArray(parsed) || parsed.length > 256 ||
+            parsed.some(value => typeof value !== 'string' || !/^[a-z0-9][a-z0-9._:-]{1,95}$/.test(value)) ||
+            new Set(parsed).size !== parsed.length) return null;
+        return parsed;
+    };
+    const supportedCapabilities = readList('NEURO_SYNAPTIC_COMMONS_SUPPORTED_CAPABILITIES_JSON');
+    const permittedTools = readList('NEURO_SYNAPTIC_COMMONS_PERMITTED_TOOLS_JSON');
+    if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(runtimeVersion) ||
+        !/^[a-f0-9]{64}$/.test(environmentFingerprint) || !supportedCapabilities || !permittedTools)
+        throw new Error('synaptic-host-compatibility-manifest-not-configured');
+    return { runtimeVersion, environmentFingerprint, supportedCapabilities, permittedTools };
+}
 function consumeRateLimit(req, pathName) {
     if (pathName === '/health' || pathName === '/api/health')
         return { allowed: true };
@@ -179,6 +241,7 @@ const runtime = new OrganismRuntime({
     worldStateStore: new FileStateStore(worldFile, { backupEverySaves: BACKUP_EVERY_SAVES, encoding: PHONE_MODE ? 'v8' : 'json' }),
     ...(TRUSTED_SHADOW_LEARNING ? { trustedShadowLearning: TRUSTED_SHADOW_LEARNING } : {}),
     ...(COMPOUND_REPAIR_REVISION ? { compoundRepairRevision: COMPOUND_REPAIR_REVISION } : {}),
+    ...(SYNAPTIC_P23_ADMISSION ? { synapticP23Admission: SYNAPTIC_P23_ADMISSION } : {}),
 });
 let runtimeReady = false;
 const willSdk = new WillSdkFacade({ step: (message, options) => runtime.step(message, options), snapshot: () => runtime.core.snapshot(), flush: () => runtime.core.flush(), exportWillPma: () => runtime.core.exportWillPma(), validateWillPma: (pma) => runtime.core.validateWillPma(pma) }, { enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() }, 'kurisu');
@@ -494,6 +557,140 @@ async function route(req, res) {
                 note: 'Only an explicitly confirmed, allowlisted low-risk response style is stored.',
             });
         }
+        // Synaptic Commons — authenticated, signed-package distribution only.
+        if (req.method === 'GET' && url.pathname === '/api/organism/synaptic-commons') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const [diagnostics, snapshot] = await Promise.all([
+                runtime.synapticCommonsDiagnostics(),
+                runtime.synapticCommonsSnapshot(),
+            ]);
+            return json(res, 200, {
+                ok: true,
+                readOnly: true,
+                diagnostics,
+                records: snapshot.records.slice(0, 64).map(record => ({
+                    artifactFingerprint: record.artifactFingerprint,
+                    skill: record.artifact.skill,
+                    contract: record.artifact.contract,
+                    license: record.artifact.license,
+                    provenance: record.artifact.provenance,
+                    publisherKeyId: record.artifact.signature.keyId,
+                    status: record.status,
+                    importedAt: record.importedAt,
+                    updatedAt: record.updatedAt,
+                    compatibility: record.compatibility,
+                    attestation: record.attestation ? {
+                        attestorId: record.attestation.attestorId,
+                        independentSeedCount: record.attestation.independentSeedCount,
+                        holdoutSamples: record.attestation.holdoutSamples,
+                        baselinePasses: record.attestation.baselinePasses,
+                        candidatePasses: record.attestation.candidatePasses,
+                        expiresAt: record.attestation.expiresAt,
+                    } : null,
+                    rejectionReason: record.rejectionReason,
+                    revocationReason: record.revocationReason,
+                    revokedAt: record.revokedAt,
+                })),
+                note: 'Attested records are still not executable. Local P23 and ActionGateway admission remains a separate requirement.',
+            });
+        }
+
+        if (req.method === 'POST' && url.pathname === '/api/organism/synaptic-commons/import') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
+            if (input.confirmed !== true)
+                return json(res, 400, { ok: false, error: 'explicit-synaptic-import-confirmation-required' });
+            try {
+                const result = await runtime.importSynapticArtifact(input.artifact);
+                return json(res, result.duplicate ? 200 : 201, {
+                    ok: true, duplicate: result.duplicate,
+                    artifactFingerprint: result.record.artifactFingerprint,
+                    status: result.record.status,
+                    skill: result.record.artifact.skill,
+                    note: 'Imported into quarantine. Signature validity does not bypass local compatibility, evidence, or P23 admission gates.',
+                });
+            } catch (error) {
+                const message = String(error?.message || error).slice(0, 180);
+                const status = /version-conflict|capacity/.test(message) ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+
+        const synapticAction = /^\/api\/organism\/synaptic-commons\/([a-f0-9]{64})\/(compatibility|attestation|reject|revoke|p23-stage|p23-adapt|export)$/.exec(url.pathname);
+        if (synapticAction && req.method === 'POST' && synapticAction[2] !== 'export') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const fingerprint = synapticAction[1];
+            const action = synapticAction[2];
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
+            if (input.confirmed !== true)
+                return json(res, 400, { ok: false, error: 'explicit-synaptic-transition-confirmation-required' });
+            try {
+                if (action === 'compatibility') {
+                    let target;
+                    try { target = synapticCommonsHostCompatibilityTarget(); }
+                    catch { return json(res, 503, { ok: false, error: 'synaptic-host-compatibility-manifest-not-configured' }); }
+                    const record = await runtime.evaluateSynapticSkillCompatibility(fingerprint, target);
+                    return json(res, 200, {
+                        ok: true, artifactFingerprint: fingerprint, status: record.status,
+                        compatibility: record.compatibility,
+                        executable: false,
+                    });
+                }
+                if (action === 'p23-stage') {
+                    const result = await runtime.stageSynapticSkillCandidate(fingerprint, true);
+                    return json(res, 201, { ok: true, ...result, executable: false });
+                }
+                if (action === 'p23-adapt') {
+                    const result = await runtime.stageSynapticNativePolicySkillCandidate(fingerprint, true);
+                    return json(res, 201, { ok: true, ...result, executable: false });
+                }
+                if (action === 'attestation') {
+                    const record = await runtime.attestSynapticSkill(fingerprint, input.attestation);
+                    return json(res, 200, {
+                        ok: true, artifactFingerprint: fingerprint, status: record.status,
+                        attestorId: record.attestation?.attestorId ?? null,
+                        independentSeedCount: record.attestation?.independentSeedCount ?? 0,
+                        executable: false,
+                    });
+                }
+                if (action === 'revoke') {
+                    const reason = typeof input.reason === 'string' ? input.reason : '';
+                    const record = await runtime.revokeSynapticSkill(fingerprint, reason);
+                    return json(res, 200, { ok: true, artifactFingerprint: fingerprint, status: record.status, revokedAt: record.revokedAt, executable: false });
+                }
+                const reason = typeof input.reason === 'string' ? input.reason : '';
+                const record = await runtime.rejectSynapticSkill(fingerprint, reason);
+                return json(res, 200, { ok: true, artifactFingerprint: fingerprint, status: record.status });
+            } catch (error) {
+                const message = String(error?.message || error).slice(0, 180);
+                const status = /p23-admission-not-configured/.test(message) ? 503
+                    : /not-found/.test(message) ? 404
+                    : /conflict|already|requires|expired|capacity|revoked/.test(message) ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+
+        if (synapticAction && req.method === 'GET' && synapticAction[2] === 'export') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            try {
+                const target = synapticCommonsHostCompatibilityTarget();
+                const bundle = await runtime.exportSynapticArtifact(synapticAction[1], target);
+                return json(res, 200, { ok: true, ...bundle, executable: false });
+            } catch (error) {
+                const message = String(error?.message || error).slice(0, 180);
+                const status = /manifest-not-configured/.test(message) ? 503 : /not-found/.test(message) ? 404 : 409;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+
         if (req.method === 'GET' && url.pathname === '/api/organism/time') {
             const temporal = runtime.core.temporalContinuitySnapshot();
             return json(res, 200, { ok: true, current: runtime.core.temporalContext(), continuity: temporal, offlineSinceLastCheckpointMs: temporal.gapSincePreviousMs, lastSeenAt: temporal.lastCheckpointAt, lastSessionEndedAt: temporal.lastSessionEndedAt, sessionCount: temporal.sessionCount, interruptionCount: temporal.interruptionCount });

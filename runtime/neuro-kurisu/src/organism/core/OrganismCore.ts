@@ -11347,6 +11347,18 @@ export class OrganismCore {
     stageVerifiedSkillCandidate(proposal: VerifiedSkillPromotionProposal, skill: PolicySkillRecord) {
         return this.developmentalNeural.p23Learning.stageVerifiedSkillCandidate(proposal, skill);
     }
+    /** Stage a Synaptic Commons review envelope in this Core's canonical P23 lifecycle. */
+    stageSynapticCommonsCandidate(proposal: VerifiedSkillPromotionProposal, admissionBundle: import('../learning/SynapticCommons.ts').SynapticP23AdmissionBundle) {
+        return this.developmentalNeural.p23Learning.stageSynapticCommonsCandidate(proposal, admissionBundle);
+    }
+    /** Native adapter proxy; only P23's allowlisted policy DSL can create a PolicySkillRecord. */
+    stageSynapticCommonsNativePolicyCandidate(
+        proposal: VerifiedSkillPromotionProposal,
+        admissionBundle: import('../learning/SynapticCommons.ts').SynapticP23AdmissionBundle,
+        currentTick: number,
+    ) {
+        return this.developmentalNeural.p23Learning.stageSynapticCommonsNativePolicyCandidate(proposal, admissionBundle, currentTick);
+    }
     /** Trusted execution supervisor hook: persist run context before accepting any signed shadow receipt. */
     registerTrustedSkillShadowRun(context: TrustedShadowExecutionContext) {
         if (!this.verifiedSkillShadowRunRegistry) throw new Error('trusted skill shadow registry is not configured');

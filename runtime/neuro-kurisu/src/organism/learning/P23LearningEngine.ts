@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { CorrectionRuleMemory, emptyCorrectionRuleMemorySnapshot, type CorrectionReviewVerifier, type CorrectionRuleAssessment, type CorrectionRuleMemorySnapshot, type ReviewedCorrectionObservation } from './CorrectionRuleMemory.ts';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
+import { p23PolicyContextKeyFromNeeds, type P23PolicyContextNeeds } from './P23PolicyContext.ts';
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
 import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
 import { selectCausalReplayBatch } from './CausalReplaySampler.ts';
@@ -9,6 +10,11 @@ import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calib
 import { MIN_TRANSFER_SIMILARITY01, retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
 import { classifyLearningFailureReason, isReflectionFailureClass, rankLearningTargets, reflectOnOutcomes, type LearningTarget, type ReflectionFailureClass } from './OutcomeReflectionCurriculum.ts';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
+import {
+  isAuthenticSynapticP23AdmissionBundle,
+  synapticArtifactFingerprint,
+  type SynapticP23AdmissionBundle,
+} from './SynapticCommons.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidateEvaluator.ts';
@@ -115,6 +121,24 @@ export interface PolicySkillRecord {
   updatedAt:number;
   validationWindowStartTick:number;
   validationWindowEndTick:number;
+  /** Public provenance only; this is not an executable capability or promotion authority. */
+  synapticCommonsProvenance?: SynapticCommonsPolicyProvenance;
+}
+
+export interface SynapticCommonsPolicyProvenance {
+  schemaVersion: 1;
+  artifactFingerprint: string;
+  publisherKeyId: string;
+  attestorId: string;
+  licenseReviewFingerprint: string;
+  sourceInstanceId: string;
+  sourceSkillId: string;
+  sourceSkillVersion: string;
+  localProposalId: string;
+  localManifestFingerprint: string;
+  localOutcomeFingerprint: string;
+  localDatasetFingerprint: string;
+  importedAt: number;
 }
 
 export interface AblationRecord {
@@ -279,6 +303,31 @@ function parseShadowRecord(value:unknown):ShadowEvaluationRecord|null{
     actualSuccess:x.actualSuccess,baselineWasBetterPrediction:x.baselineWasBetterPrediction,
     baselineReason:x.baselineReason,at:x.at};
 }
+function isValidSynapticCommonsPolicyProvenance(value: unknown): value is SynapticCommonsPolicyProvenance {
+  if (!isPlainRecord(value)) return false;
+  const keys = [
+    'schemaVersion','artifactFingerprint','publisherKeyId','attestorId','licenseReviewFingerprint',
+    'sourceInstanceId','sourceSkillId','sourceSkillVersion','localProposalId','localManifestFingerprint',
+    'localOutcomeFingerprint','localDatasetFingerprint','importedAt',
+  ];
+  const own = Reflect.ownKeys(value);
+  if (own.length !== keys.length || own.some(key => typeof key !== 'string' || !keys.includes(key))) return false;
+  const x = value;
+  return x.schemaVersion === 1 &&
+    /^[a-f0-9]{64}$/.test(String(x.artifactFingerprint)) &&
+    /^[a-f0-9]{64}$/.test(String(x.licenseReviewFingerprint)) &&
+    /^[a-f0-9]{64}$/.test(String(x.localProposalId)) &&
+    /^[a-f0-9]{64}$/.test(String(x.localManifestFingerprint)) &&
+    /^[a-f0-9]{64}$/.test(String(x.localOutcomeFingerprint)) &&
+    /^[a-f0-9]{64}$/.test(String(x.localDatasetFingerprint)) &&
+    isPersistedText(x.publisherKeyId, 96) &&
+    isPersistedText(x.attestorId, 96) &&
+    isPersistedText(x.sourceInstanceId, 128) &&
+    isPersistedText(x.sourceSkillId, 128) &&
+    isPersistedText(x.sourceSkillVersion, 64) &&
+    isPersistedCounter(x.importedAt);
+}
+
 function parsePolicySkill(value:unknown):PolicySkillRecord|null{
   if(!isPlainRecord(value))return null;
   const x=value;
@@ -287,11 +336,13 @@ function parsePolicySkill(value:unknown):PolicySkillRecord|null{
      x.trainUses+x.validationUses>x.totalUses||!isPersistedUnit(x.trainSuccess01)||!isPersistedUnit(x.validationSuccess01)||
      !isPersistedUnit(x.confidence01)||!['candidate','promoted','rejected'].includes(String(x.status))||
      !isPersistedCounter(x.createdAt)||!isPersistedCounter(x.updatedAt)||!isPersistedCounter(x.validationWindowStartTick)||
-     !isPersistedCounter(x.validationWindowEndTick)||x.validationWindowEndTick<x.validationWindowStartTick)return null;
+     !isPersistedCounter(x.validationWindowEndTick)||x.validationWindowEndTick<x.validationWindowStartTick||
+     (x.synapticCommonsProvenance!==undefined&&!isValidSynapticCommonsPolicyProvenance(x.synapticCommonsProvenance)))return null;
   return {id:x.id,contextKey:x.contextKey,action:x.action,totalUses:x.totalUses,trainUses:x.trainUses,
     validationUses:x.validationUses,trainSuccess01:x.trainSuccess01,validationSuccess01:x.validationSuccess01,
     confidence01:x.confidence01,status:x.status as PolicySkillRecord['status'],createdAt:x.createdAt,updatedAt:x.updatedAt,
-    validationWindowStartTick:x.validationWindowStartTick,validationWindowEndTick:x.validationWindowEndTick};
+    validationWindowStartTick:x.validationWindowStartTick,validationWindowEndTick:x.validationWindowEndTick,
+    ...(x.synapticCommonsProvenance?{synapticCommonsProvenance:snapshotPlainData(x.synapticCommonsProvenance) as SynapticCommonsPolicyProvenance}:{})};
 }
 function parseAblation(value:unknown):AblationRecord|null{
   if(!isPlainRecord(value))return null;
@@ -373,9 +424,67 @@ export const defaultP23Learning = ():P23LearningState => ({
 });
 
 function contextKey(state:Pick<OrganismState,'needs'>):string {
-  const n=state.needs;
-  return `e${bucket(n.energy)}|c${bucket(n.cognitiveLoad)}|u${bucket(n.uncertainty)}|n${bucket(n.novelty)}|g${bucket(n.goalPressure)}|s${bucket(n.socialNeed)}`;
+  return p23PolicyContextKeyFromNeeds(state.needs);
 }
+
+function hasExactOwnKeys(value: unknown, expected: readonly string[]): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const keys = Reflect.ownKeys(value);
+  return keys.length === expected.length &&
+    keys.every(key => typeof key === 'string' && expected.includes(key));
+}
+
+function assertSynapticCommonsP23Admission(
+  proposal: VerifiedSkillPromotionProposal,
+  admissionBundle: SynapticP23AdmissionBundle,
+): void {
+  if (!isAuthenticSynapticP23AdmissionBundle(admissionBundle) ||
+      admissionBundle.schemaVersion !== 1 ||
+      !/^[a-f0-9]{64}$/.test(admissionBundle.artifactFingerprint) ||
+      synapticArtifactFingerprint(admissionBundle.artifact) !== admissionBundle.artifactFingerprint ||
+      admissionBundle.attestation.artifactFingerprint !== admissionBundle.artifactFingerprint ||
+      admissionBundle.compatibility.compatible !== true ||
+      admissionBundle.compatibility.reasons.length !== 0 ||
+      admissionBundle.attestation.runtimeVersion !== admissionBundle.compatibility.runtimeVersion ||
+      admissionBundle.attestation.environmentFingerprint !== admissionBundle.compatibility.environmentFingerprint) {
+    throw new Error('synaptic-p23-authentic-attested-admission-bundle-required');
+  }
+  const checkedAt = Date.now();
+  const clustered = proposal?.seedClusteredEvaluation;
+  if (!isAuthenticVerifiedSkillPromotionProposal(proposal) ||
+      proposal.schemaVersion !== 1 ||
+      proposal.gate?.accepted !== true ||
+      proposal.canActivateAutomatically !== false ||
+      proposal.authenticatedEvidenceRows < 1 ||
+      proposal.unauthenticatedEvidenceRows !== 0 ||
+      !Number.isSafeInteger(proposal.authenticatedEvidenceRows) ||
+      !Number.isSafeInteger(proposal.uniquePairedTasks) ||
+      proposal.uniquePairedTasks < 8 ||
+      !Number.isSafeInteger(proposal.completePairedSeeds) ||
+      proposal.completePairedSeeds < 5 ||
+      !Number.isSafeInteger(proposal.pairedTaskSeedN) ||
+      proposal.pairedTaskSeedN < 5 ||
+      !Number.isSafeInteger(proposal.evaluatedAt) ||
+      proposal.evaluatedAt > checkedAt + 30_000 ||
+      checkedAt - proposal.evaluatedAt > 15 * 60_000 ||
+      !/^[a-f0-9]{64}$/.test(proposal.manifestFingerprint) ||
+      !/^[a-f0-9]{64}$/.test(proposal.datasetFingerprint) ||
+      !/^[a-f0-9]{64}$/.test(proposal.proposalId) ||
+      !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint) ||
+      !clustered || clustered.pairedN < 5 ||
+      !Number.isFinite(clustered.candidatePassRate) ||
+      clustered.candidatePassRate < 0 || clustered.candidatePassRate > 1 ||
+      !clustered.approximate95CI || clustered.approximate95CI[0] <= 0 ||
+      !clustered.bootstrap95CI || clustered.bootstrap95CI[0] <= 0 ||
+      !Array.isArray(proposal.familyEvaluation) || proposal.familyEvaluation.length < 2) {
+    throw new Error('synaptic-p23-authentic-accepted-proposal-required');
+  }
+  const expectedMethod = 'synaptic-commons:' + admissionBundle.artifactFingerprint;
+  if (proposal.candidateMethod !== expectedMethod) {
+    throw new Error('synaptic-p23-candidate-method-binding-mismatch');
+  }
+}
+
 
 /** Conservative nearest-context matching: transfer is allowed only when at least five of six normalized context buckets match. */
 function contextSimilarity(a:string,b:string):number {
@@ -1152,6 +1261,138 @@ export class P23LearningEngine {
     return bindIndependentEvaluationToVerifiedShadowEvidence(evaluation, observations, candidate, verifyEvidence);
   }
 
+  /**
+   * Stage a portable Commons package for local P23 review only. It is not a
+   * PolicySkillRecord and cannot enter the live resolver or generic shadow runner.
+   */
+  stageSynapticCommonsCandidate(
+    proposal: VerifiedSkillPromotionProposal,
+    admissionBundle: SynapticP23AdmissionBundle,
+  ): VersionedSkillCandidate {
+    if (!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    assertSynapticCommonsP23Admission(proposal, admissionBundle);
+    const skillId = 'synaptic-commons:' + admissionBundle.artifact.skill.skillId + '@' + admissionBundle.artifact.skill.version;
+    const payload = {
+      schemaVersion: 1,
+      admissionKind: 'synaptic-commons-p23-review-v1',
+      artifactFingerprint: admissionBundle.artifactFingerprint,
+      artifact: snapshotPlainData(admissionBundle.artifact),
+      attestation: snapshotPlainData(admissionBundle.attestation),
+      compatibility: snapshotPlainData(admissionBundle.compatibility),
+      localEvidence: {
+        proposalId: proposal.proposalId,
+        manifestFingerprint: proposal.manifestFingerprint,
+        outcomeFingerprint: proposal.outcomeFingerprint,
+        datasetFingerprint: proposal.datasetFingerprint,
+        baselineMethod: proposal.baselineMethod,
+        candidateMethod: proposal.candidateMethod,
+        evaluatedAt: proposal.evaluatedAt,
+        authenticatedEvidenceRows: proposal.authenticatedEvidenceRows,
+        pairedTaskSeedN: proposal.pairedTaskSeedN,
+        uniquePairedTasks: proposal.uniquePairedTasks,
+        completePairedSeeds: proposal.completePairedSeeds,
+      },
+      activation: {
+        canActivateAutomatically: false,
+        blockedUntilNativeAdapter: true,
+        reason: 'native-p23-policy-adapter-required',
+      },
+    };
+    return this.verifiedSkillStore.stageCandidate(proposal, skillId, payload);
+  }
+
+  /**
+   * Materialize only the allowlisted NK1 policy-bias DSL. This is not a procedure
+   * or tool adapter: it creates a PolicySkillRecord consumed by P23's existing
+   * context matcher after normal signed shadow evidence and promotion approval.
+   */
+  stageSynapticCommonsNativePolicyCandidate(
+    proposal: VerifiedSkillPromotionProposal,
+    admissionBundle: SynapticP23AdmissionBundle,
+    currentTick: number,
+  ): VersionedSkillCandidate {
+    if (!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    assertSynapticCommonsP23Admission(proposal, admissionBundle);
+    if (!Number.isSafeInteger(currentTick) || currentTick < 0) {
+      throw new Error('synaptic-native-policy-current-tick-invalid');
+    }
+
+    const artifact = admissionBundle.artifact;
+    const contract = artifact.contract;
+    const payload = artifact.definition?.payload;
+    if (artifact.skill.kind !== 'abstraction' ||
+        contract.capability !== 'neurocore.policy.preference' ||
+        contract.permissionClass !== 'read-only' ||
+        !Array.isArray(contract.requiredCapabilities) ||
+        contract.requiredCapabilities.length !== 1 ||
+        contract.requiredCapabilities[0] !== 'neurocore.policy.preference' ||
+        !Array.isArray(contract.requiredTools) || contract.requiredTools.length !== 0 ||
+        !Array.isArray(contract.allowedModes) ||
+        contract.allowedModes.length !== 1 || contract.allowedModes[0] !== 'assisted' ||
+        artifact.definition.format !== 'declarative-json-v1' ||
+        !hasExactOwnKeys(payload, ['schemaVersion', 'schema', 'action', 'contextNeeds']) ||
+        payload.schemaVersion !== 1 ||
+        payload.schema !== 'nk1-policy-bias-v1' ||
+        !ACTIONS.includes(payload.action as ActionKind) ||
+        !hasExactOwnKeys(payload.contextNeeds, [
+          'energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed',
+        ])) {
+      throw new Error('synaptic-native-policy-schema-or-capability-invalid');
+    }
+
+    const contextNeeds = payload.contextNeeds as unknown as P23PolicyContextNeeds;
+    const contextValues = [
+      contextNeeds.energy, contextNeeds.cognitiveLoad, contextNeeds.uncertainty,
+      contextNeeds.novelty, contextNeeds.goalPressure, contextNeeds.socialNeed,
+    ];
+    if (contextValues.some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1)) {
+      throw new Error('synaptic-native-policy-context-needs-invalid');
+    }
+
+    const validationUses = proposal.uniquePairedTasks * proposal.completePairedSeeds;
+    const validationSuccess01 = proposal.seedClusteredEvaluation.candidatePassRate;
+    if (!Number.isSafeInteger(validationUses) || validationUses < 40 || validationUses > 1_000_000 ||
+        !Number.isFinite(validationSuccess01) || validationSuccess01 < 0 || validationSuccess01 > 1) {
+      throw new Error('synaptic-native-policy-local-validation-evidence-invalid');
+    }
+    const importedAt = Date.now();
+    const artifactFingerprint = admissionBundle.artifactFingerprint;
+    // Task cells within one seed are clustered; use independent complete seeds for confidence, not task×seed pseudo-replicates.
+    const confidence01 = wilsonLowerBound(Math.round(validationSuccess01 * proposal.completePairedSeeds), proposal.completePairedSeeds);
+    const skill: PolicySkillRecord = {
+      id: 'synaptic-commons:' + artifact.skill.skillId,
+      contextKey: p23PolicyContextKeyFromNeeds(contextNeeds),
+      action: payload.action as ActionKind,
+      totalUses: validationUses,
+      trainUses: 0,
+      validationUses,
+      trainSuccess01: 0,
+      validationSuccess01,
+      confidence01,
+      status: 'candidate',
+      createdAt: importedAt,
+      updatedAt: importedAt,
+      validationWindowStartTick: currentTick,
+      validationWindowEndTick: currentTick,
+      synapticCommonsProvenance: {
+        schemaVersion: 1,
+        artifactFingerprint,
+        publisherKeyId: artifact.signature.keyId,
+        attestorId: admissionBundle.attestation.attestorId,
+        licenseReviewFingerprint: artifact.license.reviewFingerprint,
+        sourceInstanceId: artifact.provenance.sourceInstanceId,
+        sourceSkillId: artifact.skill.skillId,
+        sourceSkillVersion: artifact.skill.version,
+        localProposalId: proposal.proposalId,
+        localManifestFingerprint: proposal.manifestFingerprint,
+        localOutcomeFingerprint: proposal.outcomeFingerprint,
+        localDatasetFingerprint: proposal.datasetFingerprint,
+        importedAt,
+      },
+    };
+    return this.stageVerifiedSkillCandidate(proposal, skill);
+  }
+
   stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     const ratio01 = (value:number) => Number.isFinite(value) && value >= 0 && value <= 1;
@@ -1167,7 +1408,8 @@ export class P23LearningEngine {
       Number.isFinite(skill.createdAt) && skill.createdAt > 0 &&
       Number.isFinite(skill.updatedAt) && skill.updatedAt >= skill.createdAt &&
       safeCount(skill.validationWindowStartTick) && safeCount(skill.validationWindowEndTick) &&
-      skill.validationWindowEndTick >= skill.validationWindowStartTick;
+      skill.validationWindowEndTick >= skill.validationWindowStartTick &&
+      (skill.synapticCommonsProvenance === undefined || isValidSynapticCommonsPolicyProvenance(skill.synapticCommonsProvenance));
     if (!validSkill) throw new Error('candidate policy skill record is malformed or outside canonical P23 bounds');
     return this.verifiedSkillStore.stageCandidate(proposal,skill.id,skill);
   }

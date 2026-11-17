@@ -487,7 +487,7 @@
     "test:big-pass-81": "node --experimental-strip-types tests/big-pass-81-motive-epistemic-integration.mjs",
     "test:big-pass-81:adversarial": "node --experimental-strip-types tests/big-pass-81-adversarial-consciousness.mjs",
     "test:mobile:10000": "node --experimental-strip-types tests/mobile-horizon-10000.mjs",
-    "test:organism-smoke": "node --experimental-strip-types tests/organism-smoke.mjs",
+    "test:organism-smoke": "node --experimental-strip-types tests/organism-smoke.mjs && node --experimental-strip-types tests/synaptic-commons-contract.mjs && node --experimental-strip-types tests/synaptic-commons-runtime-integration.mjs && node tests/synaptic-commons-http-route.mjs && node --experimental-strip-types tests/synaptic-commons-p23-admission.mjs",
     "test:mobile:1000": "node --experimental-strip-types tests/mobile-horizon-1000.mjs",
     "test:developmental-attractor": "node --experimental-strip-types tests/developmental-attractor-field.mjs",
     "test:p37:episode": "node --experimental-strip-types tests/p37-episode-binding.mjs",
@@ -1864,6 +1864,9 @@
     "test:neko-plugin-manifest-policy": "node --experimental-strip-types tests/neko-plugin-manifest-policy.mjs",
     "test:hexis:hmx-canonical-memory-bridge": "node --experimental-strip-types tests/integration/hexis-hmx-canonical-memory-bridge.mjs",
     "test:cognitive-resource-economy": "node --experimental-strip-types tests/cognitive-resource-economy-workpass322.mjs",
-    "test:will:voluntary-attention-budget": "node --experimental-strip-types tests/will-voluntary-attention-budget-workpass.mjs"
+    "test:will:voluntary-attention-budget": "node --experimental-strip-types tests/will-voluntary-attention-budget-workpass.mjs",
+    "synaptic:sign-artifact": "node --experimental-strip-types scripts/sign-synaptic-artifact.mjs",
+    "test:synaptic-commons-publisher": "node tests/synaptic-commons-publisher-cli.mjs",
+    "test:synaptic-commons-p23-admission": "node --experimental-strip-types tests/synaptic-commons-p23-admission.mjs"
   }
 }

@@ -43,7 +43,17 @@ import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
+import {
+  SynapticCommons,
+  parseSynapticPublicKeyMap,
+  parseSynapticLicenseReviewAllowlist,
+  isAuthenticSynapticP23AdmissionBundle,
+  type SynapticCommonsState,
+  type SynapticCompatibilityTarget,
+  type SynapticP23AdmissionBundle,
+} from '../learning/SynapticCommons.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
+import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from '../learning/VerifiedSkillPromotion.ts';
 import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
@@ -109,6 +119,20 @@ export interface RuntimeConfig extends OrganismConfig {
     independentEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => IndependentCandidateEvaluationConfig;
     /** Optional background repair-to-P23 loop. Opt-in and independently evaluated; never auto-activates candidates. */
     backgroundRevision?: { enabled: boolean; initialDelayMs?: number; intervalMs?: number };
+  };
+  /**
+   * Explicit in-process trust bridge for portable Commons packages. The provider must
+   * build a fresh VerifiedSkillPromotionProposal from locally signed outcome evidence.
+   * It is never exposed as a client-supplied JSON proposal.
+   */
+  synapticP23Admission?: {
+    currentHostCompatibilityTarget: () => SynapticCompatibilityTarget;
+    createLocalPromotionProposal: (input: {
+      artifactFingerprint: string;
+      candidateMethod: string;
+      skillId: string;
+      admissionBundle: SynapticP23AdmissionBundle;
+    }) => Promise<VerifiedSkillPromotionProposal> | VerifiedSkillPromotionProposal;
   };
   /** Optional shared Mem0 adapter; disabled-by-default adapter is created if omitted. */
   mem0Adapter?: Mem0PlatformAdapter;
@@ -236,6 +260,9 @@ export class OrganismRuntime {
   };
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
+  private readonly synapticCommons: SynapticCommons;
+  private readonly synapticCommonsStore: JsonStateStore<SynapticCommonsState>;
+  private readonly synapticP23Admission: RuntimeConfig['synapticP23Admission'] | null;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -342,6 +369,20 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
+    this.synapticCommons = new SynapticCommons({
+      trustedPublisherKeys: parseSynapticPublicKeyMap(process.env.NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON),
+      trustedAttestorKeys: parseSynapticPublicKeyMap(process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON),
+      trustedLicenseReviewFingerprints: parseSynapticLicenseReviewAllowlist(process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON),
+    });
+    this.synapticCommonsStore = new FileStateStore<SynapticCommonsState>(`${config.stateFile}.synaptic-commons.json`);
+    this.synapticP23Admission = config.synapticP23Admission ?? null;
+    if (this.synapticP23Admission) {
+      if (typeof this.synapticP23Admission.currentHostCompatibilityTarget !== 'function' ||
+          typeof this.synapticP23Admission.createLocalPromotionProposal !== 'function' ||
+          !this.core.verifiedSkillCandidateSnapshot()) {
+        throw new Error('synaptic-p23-admission-provider-requires-configured-local-verified-skill-lifecycle');
+      }
+    }
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -391,6 +432,9 @@ export class OrganismRuntime {
       }
       await this.compoundRepairRevisionCoordinator?.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
+      const restoredSynapticCommonsState = await this.synapticCommonsStore.load();
+      this.synapticCommons.restore(restoredSynapticCommonsState ?? undefined);
+      if (!restoredSynapticCommonsState) await this.synapticCommonsStore.save(this.synapticCommons.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -1904,6 +1948,159 @@ export class OrganismRuntime {
   }
 
 
+  /**
+   * Persist every Synaptic Commons mutation before exposing the result. A failed
+   * sidecar write restores the prior snapshot so callers never observe an
+   * uncommitted catalogue transition.
+   */
+  private async persistSynapticCommonsMutation<T>(mutation: () => T): Promise<T> {
+    const previous = this.synapticCommons.snapshot();
+    try {
+      const result = mutation();
+      await this.synapticCommonsStore.save(this.synapticCommons.snapshot());
+      return result;
+    } catch (error) {
+      this.synapticCommons.restore(previous);
+      throw error;
+    }
+  }
+
+  importSynapticArtifact(artifact: unknown) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.importArtifact(artifact)));
+  }
+
+  evaluateSynapticSkillCompatibility(fingerprint: string, target: SynapticCompatibilityTarget) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.evaluateCompatibility(fingerprint, target)));
+  }
+
+  attestSynapticSkill(fingerprint: string, attestation: unknown) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.attachAttestation(fingerprint, attestation)));
+  }
+
+  rejectSynapticSkill(fingerprint: string, reason: string) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.reject(fingerprint, reason)));
+  }
+
+  revokeSynapticSkill(fingerprint: string, reason: string) {
+    return this.enqueue(() => this.persistSynapticCommonsMutation(() =>
+      this.synapticCommons.revokeAttestedArtifact(fingerprint, reason)));
+  }
+
+  exportSynapticArtifact(fingerprint: string, currentHost: SynapticCompatibilityTarget) {
+    return this.enqueue(async () => this.synapticCommons.exportArtifact(fingerprint, currentHost));
+  }
+
+  /** Confirmed, host-owned admission from Commons into the durable local P23 review store. */
+  stageSynapticSkillCandidate(fingerprint: string, confirmed: boolean) {
+    return this.enqueue(async () => {
+      if (confirmed !== true) return { status: 'confirmation-required' as const, artifactFingerprint: fingerprint };
+      const admission = this.synapticP23Admission;
+      if (!admission) throw new Error('synaptic-p23-admission-not-configured');
+      const host = admission.currentHostCompatibilityTarget();
+      const hostSignature = (target: SynapticCompatibilityTarget) => JSON.stringify([
+        target.runtimeVersion,
+        target.environmentFingerprint,
+        [...target.supportedCapabilities].sort(),
+        [...target.permittedTools].sort(),
+      ]);
+      const initialHostSignature = hostSignature(host);
+      const bundle = this.synapticCommons.prepareP23Admission(fingerprint, host);
+      const candidateMethod = 'synaptic-commons:' + fingerprint;
+      const proposal = await admission.createLocalPromotionProposal({
+        artifactFingerprint: fingerprint,
+        candidateMethod,
+        skillId: bundle.artifact.skill.skillId,
+        admissionBundle: bundle,
+      });
+      if (!isAuthenticSynapticP23AdmissionBundle(bundle)) {
+        throw new Error('synaptic-p23-admission-bundle-mutated-by-provider');
+      }
+      if (!isAuthenticVerifiedSkillPromotionProposal(proposal)) {
+        throw new Error('synaptic-p23-authentic-accepted-proposal-required');
+      }
+      const latestHost = admission.currentHostCompatibilityTarget();
+      if (hostSignature(latestHost) !== initialHostSignature) {
+        throw new Error('synaptic-p23-admission-host-manifest-changed-during-evaluation');
+      }
+      // This rechecks attestation expiry, publisher/attestor trust, licence review
+      // and compatibility against the live host after the potentially long local run.
+      const finalBundle = this.synapticCommons.prepareP23Admission(fingerprint, latestHost);
+      const candidate = this.core.stageSynapticCommonsCandidate(proposal, finalBundle);
+      return {
+        status: candidate.status,
+        candidateId: candidate.candidateId,
+        skillId: candidate.skillId,
+        candidateVersion: candidate.version,
+        proposalId: candidate.proposalId,
+        artifactFingerprint: fingerprint,
+        canActivateAutomatically: false as const,
+        promotionBlockedUntilNativeAdapter: true as const,
+      };
+    });
+  }
+
+  /** Confirmed native-policy materialization; the only supported adapter is P23 preference bias. */
+  stageSynapticNativePolicySkillCandidate(fingerprint: string, confirmed: boolean) {
+    return this.enqueue(async () => {
+      if (confirmed !== true) return { status: 'confirmation-required' as const, artifactFingerprint: fingerprint };
+      const admission = this.synapticP23Admission;
+      if (!admission) throw new Error('synaptic-p23-admission-not-configured');
+      const host = admission.currentHostCompatibilityTarget();
+      const hostSignature = (target: SynapticCompatibilityTarget) => JSON.stringify([
+        target.runtimeVersion,
+        target.environmentFingerprint,
+        [...target.supportedCapabilities].sort(),
+        [...target.permittedTools].sort(),
+      ]);
+      const initialHostSignature = hostSignature(host);
+      const bundle = this.synapticCommons.prepareP23Admission(fingerprint, host);
+      const candidateMethod = 'synaptic-commons:' + fingerprint;
+      const proposal = await admission.createLocalPromotionProposal({
+        artifactFingerprint: fingerprint,
+        candidateMethod,
+        skillId: bundle.artifact.skill.skillId,
+        admissionBundle: bundle,
+      });
+      if (!isAuthenticSynapticP23AdmissionBundle(bundle)) {
+        throw new Error('synaptic-p23-admission-bundle-mutated-by-provider');
+      }
+      if (!isAuthenticVerifiedSkillPromotionProposal(proposal)) {
+        throw new Error('synaptic-p23-authentic-accepted-proposal-required');
+      }
+      const latestHost = admission.currentHostCompatibilityTarget();
+      if (hostSignature(latestHost) !== initialHostSignature) {
+        throw new Error('synaptic-p23-admission-host-manifest-changed-during-evaluation');
+      }
+      const finalBundle = this.synapticCommons.prepareP23Admission(fingerprint, latestHost);
+      const currentTick = this.core.operationalStatusSnapshot().tick;
+      const candidate = this.core.stageSynapticCommonsNativePolicyCandidate(proposal, finalBundle, currentTick);
+      return {
+        status: candidate.status,
+        candidateId: candidate.candidateId,
+        skillId: candidate.skillId,
+        candidateVersion: candidate.version,
+        proposalId: candidate.proposalId,
+        artifactFingerprint: fingerprint,
+        nativePolicy: true as const,
+        canActivateAutomatically: false as const,
+        executable: false as const,
+        promotionBlockedUntilShadowAndApproval: true as const,
+      };
+    });
+  }
+
+  synapticCommonsSnapshot() {
+    return this.enqueue(async () => this.synapticCommons.snapshot());
+  }
+
+  synapticCommonsDiagnostics() {
+    return this.enqueue(async () => this.synapticCommons.diagnostics());
+  }
+
   /** Record only caller-confirmed low-risk preferences through the canonical evidence owner. */
   async recordExplicitUserPreference(input: Parameters<OrganismCore['recordExplicitUserModelEvidence']>[0]) {
     return this.enqueue(() => this.core.recordExplicitUserModelEvidence(input));
@@ -1948,6 +2145,7 @@ export class OrganismRuntime {
   async flush(): Promise<void> {
     return this.enqueue(async () => {
       await this.core.flush();
+      await this.synapticCommonsStore.save(this.synapticCommons.snapshot());
       const view = this.core.runtimeClosureOperationalSnapshot();
       this.runtimeClosure.durable({ at: Date.now(), tick: view.tick, stateTick: view.tick, replaySignature: view.replaySignature, continuousTick: view.continuous?.tick, continuityProcessed: view.continuous?.processed, memoryCount: view.memoryCount });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
