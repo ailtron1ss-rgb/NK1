@@ -206,7 +206,7 @@ finiteTamperedCheckpoint.outputWeights[0][0] += 0.001;
 assert.throws(() => restoredNetwork.restoreParameters(finiteTamperedCheckpoint), /checkpoint-fingerprint-mismatch/);
 
 console.log('OME26_HYPER_PLASTIC_NETWORK=PASS', JSON.stringify({
-  assertions: 24,
+  assertions: 41,
   generatedRank: target.rank,
   generatedDeltaNormL2: target.deltaNormL2,
   holdoutLowerConfidenceBound95: promotion.summary.lowerConfidenceBound95,
