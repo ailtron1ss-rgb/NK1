@@ -1865,6 +1865,8 @@
     "test:neko-plugin-manifest-policy": "node --experimental-strip-types tests/neko-plugin-manifest-policy.mjs",
     "test:hexis:hmx-canonical-memory-bridge": "node --experimental-strip-types tests/integration/hexis-hmx-canonical-memory-bridge.mjs",
     "test:cognitive-resource-economy": "node --experimental-strip-types tests/cognitive-resource-economy-workpass322.mjs",
-    "test:will:voluntary-attention-budget": "node --experimental-strip-types tests/will-voluntary-attention-budget-workpass.mjs"
+    "test:will:voluntary-attention-budget": "node --experimental-strip-types tests/will-voluntary-attention-budget-workpass.mjs",
+    "architecture:morphogenesis:inspect": "node --experimental-strip-types scripts/architecture-morphogenesis.mjs",
+    "test:architecture-morphogenesis": "node --experimental-strip-types tests/architecture-morphogenesis-workpass17.mjs"
   }
 }
