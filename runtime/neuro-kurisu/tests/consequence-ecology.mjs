@@ -96,6 +96,8 @@ assert.ok(dangerousResult.nodes.some(row => row.actor === 'customers'));
 assert.ok(dangerousResult.stakeholders.some(row => row.actor === 'customers'));
 assert.equal(dangerousResult.independentlyVerified, false);
 assert.ok(dangerousResult.criticalPaths.length > 0);
+assert.equal(dangerousResult.nodes.find(row => row.id === 'direct-risk').description, 'direct-risk consequence',
+  'persisted analysis rows must retain the consequence description used by restore validation');
 
 const epistemicResult = simulator.analyzeConsequences({
   id: 'consequence-analysis-epistemic-confidence',
@@ -234,6 +236,36 @@ const restored = new FutureSimulator();
 restored.restore(persisted);
 assert.deepEqual(restored.consequenceEcology.snapshot(), persisted.consequenceEcology, 'analysis history must survive FutureSimulator restore');
 assert.deepEqual(restored.snapshot().consequenceEcology, persisted.consequenceEcology);
+
+const legacyConsequenceSnapshot = structuredClone(persisted);
+for (const retained of legacyConsequenceSnapshot.consequenceEcology.analyses) {
+  for (const oldOption of retained.analysis.options) {
+    delete oldOption.counterfactualCoverage01;
+    delete oldOption.attributableHarm01;
+    delete oldOption.avoidedHarm01;
+    delete oldOption.attributableBenefit01;
+    delete oldOption.lostBenefit01;
+    delete oldOption.netAttributableValue01;
+    delete oldOption.correlatedPathMerges;
+    for (const oldNode of oldOption.nodes) {
+      delete oldNode.description;
+      delete oldNode.baselineProbability01;
+      delete oldNode.attributableEffect01;
+    }
+  }
+}
+const migratedLegacy = new FutureSimulator();
+migratedLegacy.restore(legacyConsequenceSnapshot);
+assert.equal(
+  migratedLegacy.consequenceEcology.diagnostics().retainedAnalyses,
+  persisted.consequenceEcology.analyses.length,
+  'pre-counterfactual Consequence Ecology snapshots must migrate instead of dropping their history',
+);
+const migratedRow = migratedLegacy.consequenceEcology.get(first.analysis.id).options[0];
+assert.equal(migratedRow.counterfactualCoverage01, 0);
+assert.equal(migratedRow.nodes[0].baselineProbability01, null);
+assert.equal(migratedRow.nodes[0].description, '');
+
 const legacy = new FutureSimulator();
 legacy.restore({ version: 1, runs: 4, last: [{ action: 'verify', reward: 0.5 }] });
 assert.equal(legacy.snapshot().runs, 4, 'legacy FutureSimulator state remains loadable');
@@ -300,13 +332,15 @@ const toolResult = await gateway.executeTool('organism.consequences.analyze', {
   scenarioId: 'tool-scenario',
   horizonDays: 60,
   options: [option('gateway-option', 'run a bounded operation', [
-    node('gateway-effect', 'benefit', 0.8, 0.7, 0.9),
-  ], [edge('gateway-action', '__action__', 'gateway-effect')])],
+    node('gateway-effect', 'benefit', 0.8, 0.7, 0.9, { baselineProbability01: 0.2 }),
+  ], [edge('gateway-action', '__action__', 'gateway-effect', { independenceGroup: 'gateway-primary-cause' })])],
 }, 'consequence-ecology-test', { idempotencyKey: 'consequence-gateway-analysis-1' });
 assert.equal(toolResult.ok, true, JSON.stringify(toolResult));
 assert.equal(toolResult.result.analysis.context.goalEcology.activeCount, 2);
 assert.equal(toolResult.result.analysis.context.negativeSpace.independentOutcomes, 3);
 assert.equal(toolResult.result.analysis.decisionAuthority, 'none');
+assert.equal(toolResult.result.analysis.options[0].counterfactualCoverage01, 1,
+  'ActionGateway must accept and preserve new counterfactual input fields');
 const listed = await gateway.executeTool('organism.consequences.list', { limit: 4 });
 assert.equal(listed.ok, true);
 assert.ok(listed.result.analyses.some(row => row.id === 'gateway-analysis'));
@@ -370,7 +404,7 @@ const counterfactual = simulator.analyzeConsequences({
   horizonDays: 30,
   options: [option('counterfactual-option', 'compare outcomes with a no-action baseline', [
     node('added-harm', 'harm', 0.8, 0.5, 0.9, { baselineProbability01: 0.2 }),
-    node('avoided-harm', 'harm', 0.3, 0.5, 0.9, { baselineProbability01: 0.7 }),
+    node('avoided-harm', 'harm', 0.3, 0.5, 0.9, { baselineProbability01: 0.5 }),
     node('gained-benefit', 'benefit', 0.9, 0.6, 0.9, { baselineProbability01: 0.4 }),
     node('lost-benefit', 'benefit', 0.2, 0.5, 0.9, { baselineProbability01: 0.5 }),
     node('unknown-baseline', 'harm', 0.4, 0.8, 0.7),
