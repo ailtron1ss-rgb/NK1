@@ -136,6 +136,12 @@ export class TheInventionLoop {
         throw new Error('replication-not-independent');
       }
     }
+    if (input.kind === 'holdout') {
+      const prior = r.outcomes.filter(o => o.kind === 'primary' || o.kind === 'replication');
+      if (prior.some(o => o.verifierId === verifierId || o.environmentId === environmentId)) {
+        throw new Error('holdout-must-be-independent');
+      }
+    }
     const passed = input.effect01 >= r.protocol.minEffect;
     const outcome: InventionOutcome = { id: clampText(input.id, 160) || `${id}:${input.kind}:${r.outcomes.length}`,
       kind: input.kind, verifierId, environmentId, testFingerprint: fingerprint,
