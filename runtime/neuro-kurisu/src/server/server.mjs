@@ -39,6 +39,7 @@ const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').rep
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
 const NEURAL_PROSTHESIS_PROVIDER = new NeuralProsthesisChatProvider({ baseUrl: process.env.NEURO_NP_URL, model: process.env.NEURO_NP_MODEL || process.env.NEURO_NP_MODEL_ID || 'local-transformer', adapterId: process.env.NEURO_NP_ADAPTER_ID, timeoutMs: LLM_TIMEOUT_MS });
+const NEURAL_PROSTHESIS_PREFER = process.env.NEURO_NP_PREFER === '1';
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 // Optional provider: configuration is server-only and disabled unless NK_MEM0_ENABLED=1.
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
@@ -126,9 +127,11 @@ await lock.acquire();
 async function invokeLanguage(request) {
     const started = Date.now();
     const ecologyPreferredBackend = runtime.core.p40SelectModel('language', PHONE_MODE === false, request.maxTokens && request.maxTokens > 900 ? .82 : .72);
-    const preferredBackend = ecologyPreferredBackend === 'neural-prosthesis' && NEURAL_PROSTHESIS_PROVIDER.configured()
+    const preferredBackend = NEURAL_PROSTHESIS_PROVIDER.configured() && NEURAL_PROSTHESIS_PREFER
         ? 'neural-prosthesis'
-        : LOCAL_LANGUAGE_BACKEND_POLICY.select({ localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(), ecologyPreferredBackend });
+        : ecologyPreferredBackend === 'neural-prosthesis' && NEURAL_PROSTHESIS_PROVIDER.configured()
+            ? 'neural-prosthesis'
+            : LOCAL_LANGUAGE_BACKEND_POLICY.select({ localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(), ecologyPreferredBackend });
     const effectiveBackend = preferredBackend === 'local-fallback'
         ? 'deterministic-policy-fallback'
         : preferredBackend;
@@ -1824,6 +1827,7 @@ async function route(req, res) {
                 endpoint: NEURAL_PROSTHESIS_PROVIDER.endpoint(),
                 model: NEURAL_PROSTHESIS_PROVIDER.model,
                 adapterId: NEURAL_PROSTHESIS_PROVIDER.adapterId,
+                preferredByHost: NEURAL_PROSTHESIS_PREFER,
                 modelEcology: runtime.core.p40ModelEcologySnapshot(),
                 note: 'Optional loopback-only Transformers residual backend. Adapter artifacts remain inactive unless the host allowlists the exact manifest digest.',
             });
