@@ -488,7 +488,7 @@ export async function scanNeuroForgeProject(root: string, options: NeuroForgeSca
       const isLicense = /^(license|licence|copying)(\.|$)/i.test(base);
       const isRoot = !relativePath.includes('/');
       const isCredential = isCredentialPath(relativePath);
-      if (isCredential) securityFindings.push({ path: relativePath, kind: 'credential-file' });
+      if (isCredential) securityFindings.push({ path: relativePath, kind: 'credential-file', severity: 'high' });
 
       // Keep text only for source, license and dependency manifests.
       // Tests/configs retain path-only evidence to avoid memory inflation and false proposals.
