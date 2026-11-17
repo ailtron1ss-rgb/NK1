@@ -15,7 +15,7 @@ neuralCore.step({
   predictionError01: .36,
   goalPressure01: .71,
   autonomy01: .64,
-  goalAuthorship: { candidateId: 'bridge-test-goal', source: 'intrinsic', confidence01: .8, novelty01: .7, internalPressure01: .65, autonomy01: .7 },
+  goalAuthorship: { candidateId: 'bridge-test-goal', source: 'internal', confidence01: .8, novelty01: .7, internalPressure01: .65, autonomy01: .7 },
   temporalLife: { experienceSalience01: .7, resourceUrgency01: .3, consolidationPressure01: .5, temporalRegulation01: .7 },
 });
 
