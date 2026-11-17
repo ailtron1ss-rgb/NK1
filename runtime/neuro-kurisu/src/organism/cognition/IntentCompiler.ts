@@ -24,7 +24,7 @@ export interface IntentExtraction {
   risk?: IntentRiskLevel;
 }
 export interface IntentExtractionProvider {
-  extract(requestText: string): Promise<IntentExtraction>;
+  extract(requestText: string, signal?: AbortSignal): Promise<IntentExtraction>;
 }
 export interface IntentContractInput {
   requestId?: string;
@@ -88,6 +88,8 @@ const MAX_TEXT = 2_000;
 const MAX_LIST = 32;
 const MAX_ACTION = 160;
 const DEFAULT_APPROVAL_TTL_MS = 15 * 60 * 1000;
+const DEFAULT_EXTRACTION_TIMEOUT_MS = 10_000;
+const MAX_EXTRACTION_TIMEOUT_MS = 60_000;
 const MAX_CLOCK_SKEW_MS = 30_000;
 const MIN_APPROVAL_KEY_BYTES = 32;
 const PROCESS_APPROVAL_KEY = randomBytes(32).toString('hex');
@@ -255,7 +257,7 @@ function isIntentContract(value: unknown): value is IntentContract {
 
 export class IntentCompiler {
   private readonly provenance = new WeakMap<object, 'draft' | 'approved' | 'rejected' | 'superseded'>();
-  constructor(private readonly options: { clock?: () => number; approvalKey?: string } = {}) {}
+  constructor(private readonly options: { clock?: () => number; approvalKey?: string; extractionTimeoutMs?: number } = {}) {}
 
   private now(): number {
     const value = this.options.clock?.() ?? Date.now();
@@ -294,11 +296,27 @@ export class IntentCompiler {
   async compileWith(input: IntentContractInput, provider: IntentExtractionProvider): Promise<IntentContract> {
     const sourceText = cleanText(input?.text);
     if (!sourceText) return this.build(input, 'omitted');
+    const timeoutMs = this.options.extractionTimeoutMs ?? DEFAULT_EXTRACTION_TIMEOUT_MS;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > MAX_EXTRACTION_TIMEOUT_MS) {
+      return this.build({ ...input, extraction: undefined }, 'provider-failed');
+    }
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      const extraction = await provider.extract(sourceText);
+      const extraction = await Promise.race([
+        provider.extract(sourceText, controller.signal),
+        new Promise<IntentExtraction>((_resolve, reject) => {
+          timeout = setTimeout(() => {
+            controller.abort();
+            reject(new Error('intent-extraction-timeout'));
+          }, timeoutMs);
+        }),
+      ]);
       return this.build({ ...input, extraction }, 'provided');
     } catch {
       return this.build({ ...input, extraction: undefined }, 'provider-failed');
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
     }
   }
 
