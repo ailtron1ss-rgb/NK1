@@ -7,7 +7,19 @@ assert.ok(cases.every(c=>c.disturbances.length>=1&&c.disturbances.every(d=>d.mag
 assert.ok(cases.every(c=>c.constraints.maxSteps>=4&&c.constraints.maxSteps<=16));
 assert.ok(new Set(cases.map(c=>c.domain)).size>=2);
 for(const c of cases){
- const result=forge.evaluate(c,[{action:'observe',target:'signal-a',evidence:'signal-a',cost:.1,risk01:.1},{action:'inspect',target:'signal-b',evidence:'signal-b',cost:.1,risk01:.1},{action:'verify',target:'confirm',evidence:'budget-check',cost:.1,risk01:.1}]);
+ let state=forge.startScenario(c);
+ assert.ok(state);
+ for(const action of [
+  {action:'inspect',target:c.goalOptions[0]},
+  {action:'inspect',target:c.goalOptions[1]},
+  {action:'observe'},
+  {action:'verify',evidence:c.goalOptions[0]},
+ ]){
+  const transition=forge.step(state,action);
+  assert.equal(transition.accepted,true);
+  state=transition.state;
+ }
+ const result=forge.evaluateSession(c,state);
  for(const key of ['score01','evidenceCoverage01','efficiency01','robustness01'])assert.ok(Number.isFinite(result[key])&&result[key]>=0&&result[key]<=1);
  assert.equal(result.split,'validation');assert.equal(result.independentlyVerified,false);
 }
