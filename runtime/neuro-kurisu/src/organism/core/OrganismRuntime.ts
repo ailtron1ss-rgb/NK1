@@ -639,6 +639,20 @@ export class OrganismRuntime {
        receipt.featureSchema!==request.cognitiveControl.featureSchema) return;
     this.cognitiveToNeuralBridgeMetrics.llamaCppTemplateKwargsSent+=1;
     this.cognitiveToNeuralBridgeMetrics.lastTemplateControlSchema=receipt.featureSchema;
+    this.evidenceBus.publish({
+      tick:request.cognitiveControl.tick,
+      kind:'model',
+      source:'llama.cpp-template-control-handoff',
+      confidence01:.99,
+      payload:{
+        provider:'llama.cpp',
+        templateKwargsSent:true,
+        featureSchema:receipt.featureSchema,
+        templateConsumptionVerified:false,
+        activationSteeringApplied:false,
+        residualBlockApplied:false,
+      },
+    });
   }
 
   private applyCognitiveToNeuralControl(
