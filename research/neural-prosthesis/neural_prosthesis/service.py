@@ -125,10 +125,9 @@ class TransformersRuntime:
             if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
                 raise RuntimeError("NEURO_NP_ALLOWED_MANIFESTS_JSON-contains-invalid-sha256")
         self._adapter_manifest_digests: dict[str, str] = {}
-        if revision == "unversioned-local":
-            adapter_dirs: list[str] = []
-        else:
-            adapter_dirs = _json_list("NEURO_NP_ADAPTER_DIRS_JSON", maximum=32)
+        adapter_dirs = _json_list("NEURO_NP_ADAPTER_DIRS_JSON", maximum=32)
+        if revision == "unversioned-local" and adapter_dirs:
+            raise RuntimeError("NEURO_NP_MODEL_REVISION-is-required-to-load-adapters")
         for raw_dir in adapter_dirs:
             artifact_dir = Path(raw_dir).expanduser()
             adapter_id = self.bank.load_adapter(artifact_dir)
