@@ -33,6 +33,20 @@ import {
   type CognitiveImmuneState,
 } from '../cognition/CognitiveImmuneSystem.ts';
 
+export interface OmeStroGovernanceSnapshot {
+  schemaVersion: 1;
+  chronoTruth: ReturnType<ChronoTruthLedger['snapshot']>;
+  negativeSpace: ReturnType<NegativeSpaceLedger['snapshot']>;
+  openLoops: ReturnType<OpenLoopRadar['snapshot']>;
+  adapters: ReturnType<AdaptiveSynapticMatrix['snapshot']>;
+}
+export interface OmeStroKernelDependencies {
+  cognitiveImmune?: CognitiveImmuneSystem;
+  scientificDevelopment?: P25ScientificDevelopmentEngine;
+  plasticity?: P28PlasticitySubstrate;
+  portability?: SubstratePortabilityEngine;
+  morphogenesis?: NeuralMorphogenesisEngine;
+}
 export interface OmeStroKernelSnapshot {
   schemaVersion: 1;
   chronoTruth: ReturnType<ChronoTruthLedger['snapshot']>;
@@ -77,11 +91,19 @@ export class OmeStroIntegrationKernel {
   readonly negativeSpace = new NegativeSpaceLedger();
   readonly openLoops = new OpenLoopRadar();
   readonly adapters = new AdaptiveSynapticMatrix();
-  readonly scientificDevelopment = new P25ScientificDevelopmentEngine();
-  readonly plasticity = new P28PlasticitySubstrate();
-  readonly portability = new SubstratePortabilityEngine();
-  readonly morphogenesis = new NeuralMorphogenesisEngine();
-  readonly cognitiveImmune = new CognitiveImmuneSystem();
+  readonly scientificDevelopment: P25ScientificDevelopmentEngine;
+  readonly plasticity: P28PlasticitySubstrate;
+  readonly portability: SubstratePortabilityEngine;
+  readonly morphogenesis: NeuralMorphogenesisEngine;
+  readonly cognitiveImmune: CognitiveImmuneSystem;
+
+  constructor(dependencies: OmeStroKernelDependencies = {}) {
+    this.scientificDevelopment = dependencies.scientificDevelopment ?? new P25ScientificDevelopmentEngine();
+    this.plasticity = dependencies.plasticity ?? new P28PlasticitySubstrate();
+    this.portability = dependencies.portability ?? new SubstratePortabilityEngine();
+    this.morphogenesis = dependencies.morphogenesis ?? new NeuralMorphogenesisEngine();
+    this.cognitiveImmune = dependencies.cognitiveImmune ?? new CognitiveImmuneSystem();
+  }
 
   /** The registry is deliberately descriptive: tracked does not mean proven. */
   registry() {
@@ -203,6 +225,23 @@ export class OmeStroIntegrationKernel {
     return { ...gate, portability };
   }
 
+  snapshotGovernance(): OmeStroGovernanceSnapshot {
+    return {
+      schemaVersion: 1,
+      chronoTruth: this.chronoTruth.snapshot(),
+      negativeSpace: this.negativeSpace.snapshot(),
+      openLoops: this.openLoops.snapshot(),
+      adapters: this.adapters.snapshot(),
+    };
+  }
+
+  restoreGovernance(raw?: Partial<OmeStroGovernanceSnapshot> | null): void {
+    this.chronoTruth.restore(raw?.chronoTruth);
+    this.negativeSpace.restore(raw?.negativeSpace);
+    this.openLoops.restore(raw?.openLoops);
+    this.adapters.restore(raw?.adapters);
+  }
+
   snapshot(): OmeStroKernelSnapshot {
     return {
       schemaVersion: 1,
@@ -219,10 +258,7 @@ export class OmeStroIntegrationKernel {
   }
 
   restore(raw?: Partial<OmeStroKernelSnapshot> | null): void {
-    this.chronoTruth.restore(raw?.chronoTruth);
-    this.negativeSpace.restore(raw?.negativeSpace);
-    this.openLoops.restore(raw?.openLoops);
-    this.adapters.restore(raw?.adapters);
+    this.restoreGovernance(raw);
     this.scientificDevelopment.restore(raw?.scientificDevelopment);
     this.plasticity.restore(raw?.plasticity);
     this.portability.restore(raw?.portability);
