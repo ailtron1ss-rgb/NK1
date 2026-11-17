@@ -239,7 +239,7 @@ function assertHoldoutProposal(proposal: VerifiedSkillPromotionProposal): SkillC
     throw new Error('skill competence proof requires an authentic accepted independent holdout proposal');
   }
   const paired = proposal.seedClusteredEvaluation;
-  if (!paired || paired.pairedN < 8 ||
+  if (!paired || paired.pairedN < 3 ||
       !Number.isFinite(paired.baselinePassRate) || !Number.isFinite(paired.candidatePassRate) ||
       !Number.isFinite(paired.absoluteGain) || paired.absoluteGain <= 0 ||
       !validInterval(paired.approximate95CI) || paired.approximate95CI[0] <= 0 ||

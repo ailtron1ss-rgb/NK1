@@ -12,6 +12,7 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-skill-competence-proof.mjs'
       - '.github/workflows/proof-carrying-skills.yml'
       - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
 permissions:
   contents: read
 
@@ -29,5 +30,12 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Run proof-carrying skill admission regression
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-skill-competence-proof.mjs
+      - name: Run proof-carrying skill end-to-end regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:skill-competence-proof
+      - name: Run existing authenticated skill lifecycle regressions
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:verified-skill-lifecycle && npm run test:p23:verified-skill-lifecycle-bootstrap
+      - name: Type-check runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
