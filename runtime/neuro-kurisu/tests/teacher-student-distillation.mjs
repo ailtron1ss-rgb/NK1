@@ -78,7 +78,8 @@ const holdoutRecord = teacherRecord(dataset, tasks[2], 1, 'A withheld answer.', 
 
 assert.equal(dataset.ingestSignedExample(trainRecord, trustedKeys).accepted, true);
 assert.equal(dataset.ingestSignedExample(validationRecord, trustedKeys).accepted, true);
-assert.equal(dataset.ingestSignedExample(holdoutRecord, trustedKeys).accepted, true);
+assert.equal(dataset.ingestSignedExample(holdoutRecord, trustedKeys).rejection.code, 'holdout-example-forbidden',
+  'teacher outputs for confirmatory holdout tasks must never be admitted to a distillation corpus');
 
 // Duplicate evidence and conflicting answers for one task/teacher/seed are rejected.
 assert.equal(dataset.ingestSignedExample(trainRecord, trustedKeys).rejection.code, 'duplicate-artifact');
@@ -95,10 +96,74 @@ assert.equal(untrusted.ingestSignedExample(wrongPrompt, trustedKeys).rejection.c
 const credentialRecord = teacherRecord(dataset, tasks[0], 2, 'password=super-secret-value-12345', 'teacher-secret');
 assert.equal(dataset.ingestSignedExample(credentialRecord, trustedKeys).rejection.code, 'record-fields-invalid');
 
+// End-to-end teacher collection calls a teacher provider, then a distinct signed verifier.
+// The manifest's holdout task is skipped before either service sees its prompt.
+const collected = new TeacherStudentDistillationDataset(tasks);
+let teacherCallCount = 0;
+let verifierCallCount = 0;
+let artifactNumber = 0;
+const teacherProvider = {
+  async generate(request) {
+    teacherCallCount++;
+    return {
+      completion: request.taskId === 'train-1' ? 'Verified teacher answer for training.' : 'Verified teacher answer for validation.',
+      teacherId: 'teacher-a',
+      teacherModel: 'teacher/model-70b',
+      teacherRevision: '2026-11-10-commit-a1b2c3d4',
+    };
+  },
+};
+const independentVerifier = {
+  async verify(request) {
+    verifierCallCount++;
+    const artifactId = 'collected-' + (++artifactNumber);
+    const evidenceRef = 'independent-review:' + artifactId;
+    const payload = createTeacherDistillationPayload({
+      artifactId,
+      runId: 'run-' + artifactId,
+      manifestFingerprint: request.manifestFingerprint,
+      taskId: request.taskId,
+      taskVersion: request.taskVersion,
+      teacherId: request.teacherId,
+      teacherModel: request.teacherModel,
+      teacherRevision: request.teacherRevision,
+      seed: request.seed,
+      prompt: request.prompt,
+      systemPrompt: request.systemPrompt,
+      completion: request.completion,
+      evidenceRef,
+      authority: 'independent-verifier',
+      verifierId: 'verifier-a',
+      verifiedAt: now + artifactNumber,
+    });
+    return {
+      accepted: true,
+      evidenceRef,
+      artifact: signTeacherDistillationPayloadForFixture(payload, privateKeyPem),
+    };
+  },
+};
+const collectionReport = await collected.collectTeacherExamples({
+  taskIds: ['train-1', 'validation-1', 'holdout-1'],
+  seeds: [1],
+  teacher: teacherProvider,
+  verifier: independentVerifier,
+  trustedVerifierKeys: trustedKeys,
+});
+assert.equal(collectionReport.attempted, 2);
+assert.equal(collectionReport.accepted, 2);
+assert.equal(collectionReport.rejected, 1);
+assert.equal(teacherCallCount, 2);
+assert.equal(verifierCallCount, 2);
+assert.equal(collected.snapshot().training.length, 1);
+assert.equal(collected.snapshot().validation.length, 1);
+assert.equal(collected.snapshot().withheldHoldoutExampleCount, 0);
+
+
 const snapshot = dataset.snapshot();
 assert.equal(snapshot.training.length, 1);
 assert.equal(snapshot.validation.length, 1);
-assert.equal(snapshot.withheldHoldoutExampleCount, 1);
+assert.equal(snapshot.withheldHoldoutExampleCount, 0);
 assert.ok(!JSON.stringify(snapshot.training).includes('A withheld answer.'));
 assert.ok(!JSON.stringify(snapshot.validation).includes('A withheld answer.'));
 
