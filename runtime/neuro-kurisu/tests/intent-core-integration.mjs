@@ -132,6 +132,17 @@ assert.equal(pendingDispatch.result.outcomeClass, 'idempotency-recovery-required
 assert.equal(fixtureExecutions, 1);
 
 const persisted = await store.load();
+const pendingIntentLink = persisted?.system?.intentContracts?.executions?.find(row =>
+  row.contractId === pendingApproved.id && row.toolId === 'organism.intent.fixture' &&
+  row.operation === 'execute',
+);
+assert.ok(pendingIntentLink, 'intent execution must persist a contract-to-receipt link');
+assert.equal(pendingIntentLink.phase, 'pending-reconciliation');
+pendingIntentLink.phase = 'prepared';
+// Simulate a crash snapshot captured after Core prepared the intent but before
+// its process could durably observe the ActionGateway result. The gateway ledger
+// in this same snapshot still contains the authoritative pending receipt.
+await store.save(persisted);
 assert.ok(persisted?.system?.intentContracts?.records?.some(row => row.id === approved.id),
   'approved contracts must be checkpointed with organism system state');
 
@@ -145,6 +156,17 @@ assert.equal(restored.approval.status, 'approved');
 const restoredPending = restarted.getIntentContract(pendingApproved.id);
 assert.ok(restoredPending, 'a pending receipt intent must restore after Core restart');
 assert.equal(restoredPending.approval.status, 'approved');
+
+const crashWindowRetry = await restarted.executeIntent(restoredPending, {
+  toolId: 'organism.intent.fixture',
+  input: { operation: 'commit-probe' },
+  reason: 'must-not-replay-restored-prepared-intent',
+  options: { idempotencyKey: 'intent:recovery:01', decisionId: 'decision:core-recovery' },
+});
+assert.equal(crashWindowRetry.executed, false,
+  'a prepared intent restored from a previous process must be reconciled, never automatically dispatched');
+assert.equal(crashWindowRetry.reason, 'intent-execution-reconciliation-required');
+assert.equal(fixtureExecutions, 1, 'restore must never re-enter the original side-effect executor');
 
 const gateway = restarted.cognitiveRuntime.actionGateway;
 let executeDuringReconciliation = 0;
