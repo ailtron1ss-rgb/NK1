@@ -1173,7 +1173,14 @@ export class OrganismCore {
     private readonly adaptiveMemoryStrategyReadout = new AdaptiveMemoryStrategyReadout();
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
     /** Owns general cognitive/runtime services; Core remains the orchestration spine. */
-    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272, resolveCanonicalGoal: (goalId) => this.persisted.goals.some((goal) => goal.id === goalId) });
+    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({
+        organismSystems: this.organismSystems,
+        p61IntegratedMind: this.organismSystems.self.p61IntegratedMind,
+        p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics,
+        endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272,
+        resolveCanonicalGoal: (goalId) => this.persisted.goals.some((goal) => goal.id === goalId),
+        resolveCanonicalDecision: (decisionId) => this.persisted.traces.some((trace) => trace.id === decisionId && Boolean(trace.selected)),
+    });
     /** Owns mutable persistence/continuity machinery; Core supplies orchestration decisions. */
     private readonly persistence = new PersistenceRuntime();
     /** Selected WILL contracts are owned by the composition fabric; Core only orchestrates them. */
@@ -1497,7 +1504,9 @@ export class OrganismCore {
         this.cognitiveRuntime.developmentalForks.restore(this.persisted.facets.advanced.developmentalForks);
         this.cognitiveRuntime.relationshipSelf.restore(this.persisted.facets.advanced.relationshipSelf);
         this.cognitiveRuntime.multiHypothesisPersonality.restore(this.persisted.facets.advanced.multiHypothesisPersonality);
-        this.cognitiveRuntime.futureSimulator.restore(this.persisted.facets.advanced.futureSimulator);
+        this.cognitiveRuntime.futureSimulator.restore(this.persisted.facets.advanced.futureSimulator, {
+             validateIndependentlyVerifiedOutcome: (outcome) => this.validateSharedFutureOutcomeEvidence(outcome),
+         });
         this.cognitiveRuntime.longTermSocialMind.restore(this.persisted.facets.advanced.longTermSocialMind);
         this.cognitiveRuntime.futureSelf.restore(this.persisted.facets.advanced.futureSelf);
         this.cognitiveRuntime.socialDevelopment.restore(this.persisted.facets.advanced.socialDevelopment);
@@ -11823,7 +11832,70 @@ export class OrganismCore {
     externalObserverSnapshot() { return this.evidenceResearchSubsystem.externalObserver.snapshot(); }
     externalObserverSummary() { return this.evidenceResearchSubsystem.externalObserver.summary(); }
     reconcileExternalClaim(claimKey: string, expectedPostcondition?: string) { return structuredClone(this.evidenceResearchSubsystem.externalObserver.reconcileClaim(claimKey, expectedPostcondition)); }
-    async ingestExternalObservation(input: Parameters<import('../system/ExternalObserverFabric.ts').ExternalObserverFabric['observe']>[0] & {
+    private validateSharedFutureOutcomeEvidence(
+         outcome: import('../developmental/SharedFutureEngine.ts').SharedFutureOutcomeRecord,
+     ): boolean {
+         try {
+             if (outcome.authority !== 'independent-external') return false;
+             const actionDecisionId = String(outcome.actionDecisionId ?? '');
+             const toolId = String(outcome.actionToolId ?? '');
+             const executionId = String(outcome.executionId ?? '');
+             const observationId = String(outcome.observationId ?? '');
+             const expectedPostcondition = String(outcome.expectedPostcondition ?? '');
+             const observedPostcondition = String(outcome.observedPostcondition ?? '');
+             const direction = outcome.outcomeDirection;
+             if (!actionDecisionId || !toolId || !executionId || !observationId || !expectedPostcondition || !observedPostcondition) return false;
+             if (direction !== 'confirmed' && direction !== 'contradicted') return false;
+             if (outcome.evidenceRef !== 'external-observation:' + observationId) return false;
+
+             const normalize = (value: unknown) => String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+             const savedFuture = (this.persisted.facets.advanced.futureSimulator as any)?.sharedFuture;
+             const sharedDecision = Array.isArray(savedFuture?.decisions)
+                 ? savedFuture.decisions.find((row: any) => row.id === outcome.sharedFutureDecisionId)
+                 : undefined;
+             if (!sharedDecision || sharedDecision.status !== 'accepted' || sharedDecision.scenarioId !== outcome.scenarioId) return false;
+             const binding = sharedDecision.actionBinding;
+             if (!binding || binding.decisionId !== actionDecisionId || binding.toolId !== toolId ||
+                 binding.consequenceId !== outcome.consequenceId ||
+                 normalize(binding.expectedPostcondition) !== normalize(expectedPostcondition)) return false;
+             if (!this.persisted.traces.some((trace) => trace.id === actionDecisionId && Boolean(trace.selected))) return false;
+
+             const projection = this.cognitiveRuntime.outcomeCognition.snapshot().records.find(
+                 (row) => row.executionId === executionId && row.tool === toolId,
+             );
+             if (!projection || !Array.isArray(projection.externalObservations)) return false;
+             const allowed = new Set(['os', 'device', 'user', 'external-api', 'world']);
+             const evidenceIds = [...new Set(outcome.evidenceObservationIds ?? [])];
+             if (!evidenceIds.includes(observationId) || evidenceIds.length < (direction === 'confirmed' ? 1 : 2)) return false;
+             const evidence = evidenceIds.map((id) => projection.externalObservations!.find((row) => row.observationId === id));
+             if (evidence.some((row) => !row)) return false;
+             const verifiedRows = evidence.filter((row): row is NonNullable<typeof row> => {
+                 if (!row || !allowed.has(String(row.sourceClass)) || !row.independenceKey || !row.sourceId) return false;
+                 if (normalize(row.expectedPostcondition) !== normalize(expectedPostcondition) ||
+                     normalize(row.observedPostcondition) !== normalize(observedPostcondition) ||
+                     Number(row.confidence01) < 0.72) return false;
+                 return direction === 'confirmed'
+                     ? row.assessment === 'match' && row.verified === true
+                     : row.assessment === 'mismatch' && row.verified === false;
+             });
+             const independenceKeys = new Set(verifiedRows.map((row) => row.independenceKey));
+             const minimum = direction === 'confirmed' ? 1 : 2;
+             if (independenceKeys.size < minimum || independenceKeys.size !== outcome.independentSourceCount) return false;
+             if (outcome.confidence01 === undefined || outcome.confidence01 < 0.68 ||
+                 outcome.independent01 === undefined || outcome.independent01 < (direction === 'confirmed' ? 0.5 : 1)) return false;
+             if (verifiedRows.some((row) => !(outcome.sourceIds ?? []).includes(String(row.sourceId)) ||
+                 !(outcome.sourceClasses ?? []).includes(row.sourceClass as any) ||
+                 !(outcome.independenceKeys ?? []).includes(String(row.independenceKey)))) return false;
+             if (outcome.occurred !== (direction === 'confirmed')) return false;
+             const expectedBrier = Math.round(((outcome.forecastProbability01 - (outcome.occurred ? 1 : 0)) ** 2) * 1e12) / 1e12;
+             if (Math.abs(outcome.brierScore01 - expectedBrier) > 1e-12) return false;
+             return true;
+         } catch {
+             return false;
+         }
+     }
+
+     async ingestExternalObservation(input: Parameters<import('../system/ExternalObserverFabric.ts').ExternalObserverFabric['observe']>[0] & {
         expectedPostcondition?: string;
         /** Exact OrganismDecisionTrace.id; deliberately never inferred from actionRef/executionId. */
         decisionId?: string;
@@ -11843,6 +11915,7 @@ export class OrganismCore {
             eligible: boolean; reason: string; direction?: 'confirmed' | 'contradicted';
             decisionId?: string; assignments?: number; appliedDelayedAssignments?: number;
         } = null;
+        let sharedFutureOutcome: import('../developmental/SharedFutureEngine.ts').SharedFutureVerifiedExternalOutcomeResult | null = null;
         if (assessment && input.actionRef) {
             resolution = this.cognitiveRuntime.outcomeCognition.resolveExternalObservation({ tick: input.tick ?? this.persisted.state.tick, executionId: input.actionRef, tool: input.tool ?? 'external-observation', observationId: observation.id, verified: assessment.verified, confidence01: Math.min(assessment.confidence01, observation.confidence01), expectedPostcondition: assessment.expectedPostcondition, observedPostcondition: assessment.observedPostcondition, reason: assessment.reason, predictionId: observation.predictionId, assessment: assessment.assessment, sourceId: observation.sourceId, sourceClass: observation.sourceClass, independenceKey: observation.independenceKey });
             if (resolution.resolved) {
@@ -11895,6 +11968,52 @@ export class OrganismCore {
                 autonomous: input.autonomous,
             });
             temporalReafference = { eligible: signal.eligible, reason: signal.reason, ...(signal.direction ? { direction: signal.direction } : {}), ...(signal.decisionId ? { decisionId: signal.decisionId } : {}) };
+            if (signal.eligible && signal.decisionId && signal.direction && this.persisted.traces.some((trace) => trace.id === signal.decisionId && Boolean(trace.selected))) {
+                const actionToolId = input.tool ?? 'external-observation';
+                const actionProjection = this.cognitiveRuntime.outcomeCognition.snapshot().records.find(
+                    (row) => row.executionId === input.actionRef && row.tool === actionToolId,
+                );
+                const sourceClassAllowed = (value: unknown): value is import('../developmental/SharedFutureEngine.ts').SharedFutureEvidenceSourceClass =>
+                    value === 'os' || value === 'device' || value === 'user' || value === 'external-api' || value === 'world';
+                const expectedCanonical = String(assessment.expectedPostcondition ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+                const observedCanonical = String(assessment.observedPostcondition ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+                const verifiedEvidence = (actionProjection?.externalObservations ?? []).filter((row) =>
+                    sourceClassAllowed(row.sourceClass) && Boolean(row.sourceId) && Boolean(row.independenceKey) &&
+                    Number(row.confidence01) >= 0.72 &&
+                    String(row.expectedPostcondition ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase() === expectedCanonical &&
+                    String(row.observedPostcondition ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase() === observedCanonical &&
+                    (signal.direction === 'confirmed' ? row.assessment === 'match' && row.verified === true : row.assessment === 'mismatch' && row.verified === false),
+                );
+                const independentKeys = new Set(verifiedEvidence.map((row) => String(row.independenceKey)));
+                const minimumEvidence = signal.direction === 'confirmed' ? 1 : 2;
+                if (verifiedEvidence.length > 0 && independentKeys.size >= minimumEvidence) {
+                    sharedFutureOutcome = this.cognitiveRuntime.futureSimulator.sharedFuture.recordVerifiedExternalOutcome({
+                        id: 'sf-outcome:' + sha256Stable({ decisionId: signal.decisionId, executionId: input.actionRef, observationId: observation.id, direction: signal.direction }).slice(0, 48),
+                        actionDecisionId: signal.decisionId,
+                        toolId: actionToolId,
+                        executionId: String(input.actionRef),
+                        observationId: observation.id,
+                        expectedPostcondition: assessment.expectedPostcondition,
+                        observedPostcondition: assessment.observedPostcondition,
+                        direction: signal.direction,
+                        confidence01: signal.verified01 ?? 0,
+                        independent01: signal.independent01 ?? 0,
+                        evidence: verifiedEvidence.map((row) => ({
+                            observationId: row.observationId,
+                            sourceId: row.sourceId ?? '',
+                            sourceClass: row.sourceClass as import('../developmental/SharedFutureEngine.ts').SharedFutureEvidenceSourceClass,
+                            independenceKey: row.independenceKey ?? '',
+                            confidence01: row.confidence01,
+                            assessment: row.assessment as 'match' | 'mismatch',
+                            verified: row.verified,
+                        })),
+                        at: observation.observedAt,
+                    });
+                    if (sharedFutureOutcome.recorded) {
+                        this.persisted.facets.advanced.futureSimulator = this.cognitiveRuntime.futureSimulator.snapshot();
+                    }
+                }
+            }
             if (signal.eligible && signal.decisionId) {
                 const temporal = this.cognitiveRuntime.canonicalTemporalCredit.resolveOutcome({
                     decisionId: signal.decisionId,
@@ -12065,7 +12184,7 @@ export class OrganismCore {
             changeSummary: `external-observation:${observation.id}`
         });
         if (options.checkpoint !== false) await this.checkpoint(true);
-        return { observation, assessment, reconciliation, predictionResolution, resolution, temporalReafference };
+        return { observation, assessment, reconciliation, predictionResolution, resolution, temporalReafference, sharedFutureOutcome };
     }
     private async finalizeToolOutcome(
         id: string,
