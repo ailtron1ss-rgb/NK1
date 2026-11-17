@@ -388,18 +388,21 @@ export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogen
       return null;
     }
   })();
+  const usedPrimaryPaths = new Set<string>();
   const modules = architecture.subsystems.map(subsystem => {
     const sourcePaths = [...new Set(subsystem.components
       .map(component => component.replace(/^runtime\\/neuro-kurisu\\//, ''))
       .filter(path => isCanonicalSourcePath(path)))].sort();
     if (!sourcePaths.length) throw new Error('No canonical source components found for architecture subsystem: ' + subsystem.id);
+    const primaryPath = sourcePaths.find(sourcePath => !usedPrimaryPaths.has(sourcePath)) ?? sourcePaths[0];
+    usedPrimaryPaths.add(primaryPath);
     const fileRevisions = sourcePaths.map(sourcePath => ({
       path: sourcePath,
       digest: sha256(readFileSync(resolve(process.cwd(), sourcePath))),
     }));
     return {
       id: subsystem.id,
-      path: sourcePaths[0],
+      path: primaryPath,
       sourcePaths,
       owner: subsystem.owner,
       revisionSha256: sha256(stableJson(fileRevisions)),
@@ -424,7 +427,7 @@ export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogen
       .filter(subsystem => subsystem.id !== ownerModuleId && subsystem.dependsOn.includes(ownerModuleId))
       .map(subsystem => subsystem.id)
       .sort();
-    return { id: authority.role, ownerModuleId, consumerModuleIds, authority: 'single-owner' };
+    return { id: authority.role, ownerModuleId, consumerModuleIds, authority: 'single-owner' as const };
   }).sort((a, b) => a.id.localeCompare(b.id));
 
   const edges: ArchitectureMorphogenesisEdge[] = [];
