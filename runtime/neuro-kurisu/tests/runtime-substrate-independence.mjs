@@ -108,6 +108,7 @@ try {
     interruptedImportRecovered: recoveredJournal.phase,
   }));
 } finally {
+  await recovery.stop().catch(() => {});
   await target.stop().catch(() => {});
   await source.stop().catch(() => {});
   await rm(directory, { recursive: true, force: true });
