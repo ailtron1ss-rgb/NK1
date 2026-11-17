@@ -13,6 +13,7 @@ from http.server import ThreadingHTTPServer
 import torch
 from torch import nn
 
+from contextlib import nullcontext
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -20,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from neural_prosthesis.engine import ArtifactError, _config_digest, _model_config
 from neural_prosthesis.service import (
     RequestError,
+    TransformersRuntime,
     _context_window,
     _load_layer_force_bank,
     _output_token_limit,
@@ -291,6 +293,83 @@ class LayerForceSidecarConfigurationTests(unittest.TestCase):
                     model_revision=self.revision,
                     layer_path=self.layer_path,
                 )
+
+    def test_transformers_runtime_applies_only_the_operator_selected_profile(self):
+        with self._configure(default="service-steering-v1"):
+            controller, default_profile = _load_layer_force_bank(
+                self.model,
+                model_id=self.model_id,
+                model_revision=self.revision,
+                layer_path=self.layer_path,
+            )
+
+        class FakeTokenizer:
+            pad_token_id = 0
+
+            def apply_chat_template(self, _messages, *, tokenize, add_generation_prompt):
+                return "user: fixture"
+
+            def __call__(self, _prompt, *, return_tensors, truncation, max_length):
+                return {
+                    "input_ids": torch.tensor([[1, 2]], dtype=torch.long),
+                    "attention_mask": torch.ones((1, 2), dtype=torch.long),
+                }
+
+            def decode(self, _tokens, *, skip_special_tokens):
+                return "fixture completion"
+
+        class FakeGenerator:
+            def __init__(self, layer_model):
+                self.layer_model = layer_model
+                self.last_hidden = None
+
+            def generate(self, *, input_ids, **_kwargs):
+                self.last_hidden = self.layer_model(torch.ones((1, 2, 4)))
+                return torch.cat([input_ids, torch.tensor([[3]], dtype=torch.long)], dim=-1)
+
+        class InertAdapterBank:
+            def activate(self, _adapter_id):
+                return nullcontext()
+
+            def close(self):
+                return None
+
+            def snapshot(self):
+                return {"loaded_adapters": []}
+
+        runtime = object.__new__(TransformersRuntime)
+        runtime.tokenizer = FakeTokenizer()
+        runtime.model = FakeGenerator(self.model)
+        runtime.device = torch.device("cpu")
+        runtime.model_id = self.model_id
+        runtime.model_revision = self.revision
+        runtime.default_adapter = None
+        runtime._adapter_manifest_digests = {}
+        runtime._approved_manifest_digests = set()
+        runtime.max_context_tokens = 32
+        runtime._generation_lock = threading.Lock()
+        runtime.bank = InertAdapterBank()
+        runtime.layer_force = controller
+        runtime.default_layer_force_profile = default_profile
+
+        try:
+            sample = torch.ones((1, 2, 4))
+            baseline = self.model(sample)
+            response = runtime.complete({
+                "messages": [{"role": "user", "content": "fixture"}],
+                "max_tokens": 8,
+                "temperature": 0,
+            })
+            self.assertEqual(response["choices"][0]["message"]["content"], "fixture completion")
+            self.assertIsNotNone(runtime.model.last_hidden)
+            self.assertFalse(torch.equal(baseline, runtime.model.last_hidden))
+            self.assertTrue(torch.equal(baseline, self.model(sample)))
+            diagnostic = runtime.status()
+            self.assertTrue(diagnostic["layer_force"]["enabled"])
+            self.assertNotIn("direction", json.dumps(diagnostic))
+        finally:
+            runtime.close()
+        self.assertTrue(all(not layer._forward_hooks for layer in self.model.layers))
 
 
 if __name__ == "__main__":
