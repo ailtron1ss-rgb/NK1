@@ -85,4 +85,14 @@ assert.deepEqual(enabledResponse.providerControlReceipt,{
 assert.equal(payloads[1].temperature,profile.temperature);
 assert.equal(payloads[1].max_tokens,profile.maxTokens);
 
+const malformedResponse = await enabledProvider.generate({
+  ...baseRequest,
+  cognitiveControl: { ...profile, featureKeys: [] },
+});
+assert.equal(malformedResponse.text,'local provider response');
+assert.equal(Object.hasOwn(payloads[2],'chat_template_kwargs'),false,
+  'malformed control schemas must be dropped rather than forwarded to the template');
+assert.equal(Object.hasOwn(malformedResponse,'providerControlReceipt'),false);
+
+
 console.log('LOCAL_CHAT_COGNITIVE_CONTROL_TEMPLATE_PASS');
