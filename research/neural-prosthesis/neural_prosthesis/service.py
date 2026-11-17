@@ -33,11 +33,12 @@ def _context_window(model_config: Any, configured: str | int) -> int:
         "max_seq_len",
         "seq_length",
     )
+    model_limits = []
     for name in names:
         value = model_config.get(name) if isinstance(model_config, dict) else getattr(model_config, name, None)
         if type(value) is int and 2 <= value <= 1_000_000:
-            return min(limit, value)
-    return limit
+            model_limits.append(value)
+    return min([limit, *model_limits]) if model_limits else limit
 
 
 class RequestError(ValueError):
