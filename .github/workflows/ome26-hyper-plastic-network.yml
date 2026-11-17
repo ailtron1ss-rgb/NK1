@@ -1,0 +1,59 @@
+name: OME26 Hyper-Plastic Network
+
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/server/local-language-backend-policy.mjs"
+      - "runtime/neuro-kurisu/src/organism/research/HyperPlasticNetwork.ts"
+      - "runtime/neuro-kurisu/tests/ome26-hyper-plastic-network.mjs"
+      - "runtime/neuro-kurisu/tests/ome26-signed-outcome-metrics.mjs"
+      - "runtime/neuro-kurisu/tests/ome26-signed-promotion.mjs"
+      - "runtime/neuro-kurisu/tests/ome26-runtime-budget-bridge.mjs"
+      - "runtime/neuro-kurisu/src/organism/research/HyperPlasticRuntimeBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/CognitiveBudgetManager.ts"
+      - "runtime/neuro-kurisu/src/organism/system/B292CognitiveStateBus.ts"
+      - "runtime/neuro-kurisu/src/organism/research/HyperPlasticOutcomeEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/ome26-hyper-plastic-network.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ome26-hyper-plastic-network-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  research-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Verify signed outcomes preserve bounded execution metrics
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:ome26:signed-outcome-metrics
+      - name: Evaluate signed OME26 validation and holdout evidence
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:ome26:signed-promotion
+      - name: Verify B292 and single-owner cognitive-budget runtime bridge
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:ome26:runtime-budget-bridge
+      - name: Run Hyper-Plastic Network contract and bounded low-rank experiment
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:ome26:hyper-plastic-network

@@ -1,3 +1,5 @@
+import { isTrustedHyperPlasticPromotionPermit } from '../organism/research/HyperPlasticOutcomeEvaluator.ts';
+
 /**
  * Resolve language backend priority and temporarily cool down a local endpoint
  * after repeated failures. Configuration selects preference, not health.
@@ -30,6 +32,10 @@ export class LocalLanguageBackendPolicy {
     return this.snapshot({ now });
   }
 
+  routeHyperPlasticAdapter(input = {}) {
+    return resolveHyperPlasticAdapterRoute(input);
+  }
+
   snapshot({ now = Date.now() } = {}) {
     return {
       consecutiveFailures: this.consecutiveFailures,
@@ -37,4 +43,56 @@ export class LocalLanguageBackendPolicy {
       coolingDown: this.cooldownUntil > now,
     };
   }
+}
+
+
+/**
+ * Caller-supplied score arrays are diagnostic input only. They have no
+ * cryptographic provenance and must never mint an activation permit.
+ */
+export function evaluateHyperPlasticPromotion() {
+  return {
+    eligible: false,
+    reasons: ['signed-outcome-evidence-required'],
+    permit: null,
+  };
+}
+
+/**
+ * Fail-closed selection seam. Unknown capability, copied permits, mismatched
+ * model fingerprints or unsupported target layers all force the baseline path.
+ */
+export function resolveHyperPlasticAdapterRoute({
+  backendCapabilities = {},
+  baseModelFingerprint = '',
+  adapter = null,
+  promotionPermit = null,
+} = {}) {
+  const baseline = (reason) => ({ mode: 'baseline', reason });
+  if (backendCapabilities?.supportsLowRankAdapters !== true) {
+    return baseline('backend-adapter-capability-unavailable');
+  }
+  if (!adapter || adapter.schema !== 'nk1-lora-v1') return baseline('adapter-missing-or-invalid');
+  if (!isTrustedHyperPlasticPromotionPermit(promotionPermit, {
+    adapterFingerprint: adapter.fingerprint,
+    baseModelFingerprint,
+  })) {
+    return baseline('promotion-permit-not-issued-by-signed-ledger');
+  }
+  if (adapter.baseModelFingerprint !== baseModelFingerprint
+    || promotionPermit.baseModelFingerprint !== baseModelFingerprint) {
+    return baseline('base-model-fingerprint-mismatch');
+  }
+  if (promotionPermit.adapterFingerprint !== adapter.fingerprint) {
+    return baseline('adapter-promotion-fingerprint-mismatch');
+  }
+  const supportedTargets = backendCapabilities.supportedLowRankTargets;
+  if (!Array.isArray(supportedTargets) || !supportedTargets.includes(adapter.target?.layer)) {
+    return baseline('backend-target-layer-unavailable');
+  }
+  return {
+    mode: 'adapter',
+    reason: 'holdout-qualified',
+    adapterFingerprint: adapter.fingerprint,
+  };
 }
