@@ -12,7 +12,7 @@ const statePath = join(tempRoot, 'organism-core.json');
 const store = new FileStateStore(statePath, { backupEverySaves: 20 });
 const core = new OrganismCore(store, { cycleResultMode: 'operational', checkpointMinIntervalMs: 0 });
 
-function undoArtifactIdFromReference(undoResult, operationKey) {
+function undoArtifactIdFromReference(undoResult) {
   assert.ok(undoResult.recoveryArtifactRef?.startsWith('nk1-file-create:'));
   return undoResult.recoveryArtifactRef.slice('nk1-file-create:'.length);
 }
@@ -62,7 +62,14 @@ try {
   assert.equal(result.result.contentHash, expectedContentHash);
   assert.equal(result.result.path, input.path);
 
-  const recoveryArtifactId = undoArtifactIdFromReference(result, idempotencyKey);
+  const undo = await core.executeUndoForKey(idempotencyKey, 'inspect filesystem recovery plan');
+  assert.equal(undo.status, 'manual-intervention-required');
+  assert.ok(undo.planHash);
+  assert.ok(undo.recoveryArtifactRef?.startsWith('nk1-file-create:'));
+  assert.ok(undo.manualSteps?.some(step => step.includes(expectedContentHash)));
+  assert.equal(await readFile(writtenPath, 'utf8'), input.content, 'presenting a manual plan must not silently delete user data');
+
+  const recoveryArtifactId = undoArtifactIdFromReference(undo);
   const artifactPath = join(workspace, '.nk1-recovery', 'prepared', `${recoveryArtifactId}.json`);
   const artifact = JSON.parse(await readFile(artifactPath, 'utf8'));
   assert.equal(artifact.version, 1);
@@ -90,12 +97,6 @@ try {
   // Automatic compensation is deliberately not advertised for a regular mutable
   // filesystem path: the current adapter creates new files only and exposes a
   // hash-bound manual recovery procedure instead of claiming a false CAS delete.
-  const undo = await core.executeUndoForKey(idempotencyKey, 'inspect filesystem recovery plan');
-  assert.equal(undo.status, 'manual-intervention-required');
-  assert.ok(undo.planHash);
-  assert.ok(undo.recoveryArtifactRef?.startsWith('nk1-file-create:'));
-  assert.ok(undo.manualSteps?.some(step => step.includes(expectedContentHash)));
-  assert.equal(await readFile(writtenPath, 'utf8'), input.content, 'presenting a manual plan must not silently delete user data');
 
   // Reopen the exact FileStateStore and prove the plan/receipt survives a core restart.
   const restarted = new OrganismCore(store, { cycleResultMode: 'operational', checkpointMinIntervalMs: 0 });
