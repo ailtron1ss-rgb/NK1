@@ -154,11 +154,12 @@ export class GovernanceSubsystemRuntime {
     if(!arbitration){
       const safeCandidates=snapshot.candidates.filter(candidate=>
         ['rest','wait','defer'].includes(candidate.action));
-      if(safeCandidates.length){
-        arbitration=this.p69ConstitutionalArbiter.arbitrate({
-          ...snapshot,candidates:safeCandidates,requestedAction:null,
-        });
-      }
+      // Even when no safe action exists, obtain P69's constraint/telemetry frame
+      // over an empty candidate set. This keeps downstream diagnostics total while
+      // deliberately selecting no action.
+      arbitration=this.p69ConstitutionalArbiter.arbitrate({
+        ...snapshot,candidates:safeCandidates,requestedAction:null,
+      });
     }
     const chosenId=arbitration?.chosen?.id??null;
     const chosen=snapshot.candidates.find(candidate=>candidate.id===chosenId)??null;
