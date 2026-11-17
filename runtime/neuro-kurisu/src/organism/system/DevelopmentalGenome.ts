@@ -257,6 +257,7 @@ function addIssue(list: GenomeGateIssue[], code: string, path: string, message: 
 export function evaluateDevelopmentalGenome(
   candidate: DevelopmentalGenome,
   parent?: DevelopmentalGenome,
+  ancestors: readonly DevelopmentalGenome[] = [],
 ): GenomeGateReport {
   const violations: GenomeGateIssue[] = [];
   const warnings: GenomeGateIssue[] = [];
@@ -357,6 +358,15 @@ export function evaluateDevelopmentalGenome(
     if (!parent) {
       addIssue(warnings, 'parent-proof-missing', 'lineage.parentDigest', 'The direct parent genome is required for approval');
     } else {
+      const parentShapeReport = evaluateDevelopmentalGenome(parent, ancestors[0], ancestors.slice(1));
+      if (parentShapeReport.status === 'BLOCKED') {
+        addIssue(violations, 'parent-invalid', 'parent', 'Supplied parent genome is structurally invalid or incompatible');
+      } else {
+        if (ancestors.length > parent.lineage.generation) {
+          addIssue(violations, 'ancestor-chain-invalid', 'lineage.ancestors', 'Ancestor chain contains more entries than the parent's generation');
+        } else if (ancestors.length < parent.lineage.generation) {
+          addIssue(warnings, 'ancestor-chain-missing', 'lineage.ancestors', 'Provide ancestors from the direct parent’s parent back to generation zero');
+        }
       if (!isDigest(parent.digest) || parent.digest !== computeDevelopmentalGenomeDigest(parent)) {
         addIssue(violations, 'parent-digest-mismatch', 'parent.digest', 'Parent digest does not match its payload');
       }
@@ -386,6 +396,10 @@ export function evaluateDevelopmentalGenome(
       if (stableJson(actualChanges) !== stableJson(claimedChanges)) {
         addIssue(violations, 'lineage-changes-mismatch', 'lineage.changes', 'Lineage receipt must exactly describe every inherited trait change');
       }
+      if (parentShapeReport.status === 'NEEDS_REVIEW' && ancestors.length >= parent.lineage.generation) {
+        addIssue(warnings, 'ancestor-chain-incomplete', 'lineage.ancestors', 'The supplied parent chain could not be fully verified');
+      }
+      }
     }
   }
 
@@ -404,11 +418,13 @@ export function evaluateDevelopmentalGenome(
 export function inheritDevelopmentalGenome(
   parent: DevelopmentalGenome,
   changes: DevelopmentalGenomeTraitPatch[],
+  ancestors: readonly DevelopmentalGenome[] = [],
 ): DevelopmentalGenome {
   if (!parent || !Array.isArray(changes) || changes.length === 0) {
     throw new Error('Inheritance requires a parent genome and at least one trait patch');
   }
-  const parentReport = evaluateDevelopmentalGenome(parent);
+  if (!Array.isArray(ancestors)) throw new Error('Ancestor chain must be an array');
+  const parentReport = evaluateDevelopmentalGenome(parent, ancestors[0], ancestors.slice(1));
   if (parentReport.status === 'BLOCKED') {
     throw new Error('Cannot inherit from a blocked genome: ' + parentReport.violations.map(issue => issue.code).join(','));
   }
@@ -457,8 +473,8 @@ export function inheritDevelopmentalGenome(
     lineage: { generation: parent.lineage.generation + 1, parentDigest: parent.digest, changes: receipt },
     activation: 'NOT_APPLIED',
   });
-  const report = evaluateDevelopmentalGenome(child, parent);
-  if (report.status !== 'APPROVED') {
+  const report = evaluateDevelopmentalGenome(child, parent, ancestors);
+  if (report.status === 'BLOCKED') {
     throw new Error('Inherited genome failed Evolution Gate: ' + report.violations.map(issue => issue.code).join(','));
   }
   return child;
