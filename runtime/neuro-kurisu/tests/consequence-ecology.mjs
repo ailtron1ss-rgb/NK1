@@ -266,6 +266,12 @@ const migratedRow = migratedLegacy.consequenceEcology.get(first.analysis.id).opt
 assert.equal(migratedRow.counterfactualCoverage01, 0);
 assert.equal(migratedRow.nodes[0].baselineProbability01, null);
 assert.equal(migratedRow.nodes[0].description, '');
+assert.equal(migratedRow.worstStakeholderHarm01, 0);
+assert.equal(migratedRow.topStakeholderHarmShare01, 0);
+assert.equal(migratedRow.benefitBurdenSeparation01, 0);
+assert.equal(migratedRow.mostExposedStakeholder, null);
+assert.equal(migratedRow.mainBeneficiary, null,
+  'legacy analyses must migrate with neutral distributional fields');
 
 const legacy = new FutureSimulator();
 legacy.restore({ version: 1, runs: 4, last: [{ action: 'verify', reward: 0.5 }] });
