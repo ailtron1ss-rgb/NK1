@@ -11,6 +11,11 @@ const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const privatePem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 const trusted = parseTrustedConstitutionReviewKeys(JSON.stringify({ 'independent-reviewer-1': publicPem }));
 assert.equal(trusted.size, 1);
+// Distinct reviewer IDs backed by the same private key are one reviewer, not a quorum.
+assert.throws(() => parseTrustedConstitutionReviewKeys(JSON.stringify({
+  'reviewer-alias-1': publicPem,
+  'reviewer-alias-2': publicPem,
+})), /same.*public key/i);
 assert.throws(() => parseTrustedConstitutionReviewKeys(JSON.stringify({ reviewer: 'not-a-public-key' })), /Ed25519/);
 assert.throws(() => parseTrustedConstitutionReviewKeys(JSON.stringify(Object.fromEntries(
   Array.from({ length: 17 }, (_, i) => ['reviewer-' + i, publicPem])
