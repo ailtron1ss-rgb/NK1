@@ -22,6 +22,13 @@ to the already configured base-model identity.
   restored active entries are quarantined.
 - The host adapter invoker receives a single validated profile and a language
   request. It alone owns loading/applying the actual LoRA/QLoRA weights.
+- Each specialist call has a configurable hard deadline (default 15 seconds,
+  bounded to 100 ms–120 seconds) and receives an abort signal. A timeout, abort,
+  malformed response, or failed execution receipt returns to the base invoker.
+- Every adapter response must attest `modelId`, `modelRevisionSha256`, and
+  `appliedAdapterSha256`. The runtime compares these with the configured base
+  identity and registered artifact digest; a mismatch is treated as an execution
+  failure.
 - Every adapter response must attest `modelId`, `modelRevisionSha256`, and
   `appliedAdapterSha256`. The runtime compares these to the configured base
   identity and registered artifact digest; a mismatch is treated as an execution
