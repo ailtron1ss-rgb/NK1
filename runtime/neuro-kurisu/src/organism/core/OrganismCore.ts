@@ -12019,6 +12019,9 @@ private validateSharedFutureOutcomeEvidence(
             decisionId?: string; assignments?: number; appliedDelayedAssignments?: number;
         } = null;
         let sharedFutureOutcome: import('../developmental/SharedFutureEngine.ts').SharedFutureVerifiedExternalOutcomeResult | null = null;
+        const sharedFutureActionLink = input.actionRef && input.decisionId
+            ? this.findSharedFutureActionExecutionBinding(String(input.actionRef), input.tool ?? 'external-observation', input.decisionId)
+            : null;
         if (assessment && input.actionRef) {
             resolution = this.cognitiveRuntime.outcomeCognition.resolveExternalObservation({ tick: input.tick ?? this.persisted.state.tick, executionId: input.actionRef, tool: input.tool ?? 'external-observation', observationId: observation.id, verified: assessment.verified, confidence01: Math.min(assessment.confidence01, observation.confidence01), expectedPostcondition: assessment.expectedPostcondition, observedPostcondition: assessment.observedPostcondition, reason: assessment.reason, predictionId: observation.predictionId, assessment: assessment.assessment, sourceId: observation.sourceId, sourceClass: observation.sourceClass, independenceKey: observation.independenceKey });
             if (resolution.resolved) {
@@ -12068,11 +12071,11 @@ private validateSharedFutureOutcomeEvidence(
                 independenceKey: observation.independenceKey,
                 assessment,
                 reconciliation,
-                autonomous: input.autonomous,
+                autonomous: sharedFutureActionLink ? sharedFutureActionLink.autonomous : input.autonomous,
             });
             temporalReafference = { eligible: signal.eligible, reason: signal.reason, ...(signal.direction ? { direction: signal.direction } : {}), ...(signal.decisionId ? { decisionId: signal.decisionId } : {}) };
-            if (signal.eligible && signal.decisionId && signal.direction &&
-                 this.findSharedFutureActionExecutionBinding(String(input.actionRef), input.tool ?? 'external-observation', signal.decisionId) &&
+            if (signal.eligible && signal.decisionId && signal.direction && sharedFutureActionLink &&
+                 sharedFutureActionLink.expectedPostcondition === assessment.expectedPostcondition &&
                  this.persisted.traces.some((trace) => trace.id === signal.decisionId && Boolean(trace.selected))) {
                 const actionToolId = input.tool ?? 'external-observation';
                 const actionProjection = this.cognitiveRuntime.outcomeCognition.snapshot().records.find(
