@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { IntentCompiler } from '../src/organism/cognition/IntentCompiler.ts';
 import { IntentActionGatewayBridge } from '../src/organism/system/IntentActionGatewayBridge.ts';
+import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 
 let now = 1_800_000_000_000;
 const compiler = new IntentCompiler({ clock: () => now, approvalKey: 'test-only-intent-approval-key-32-bytes-minimum' });
@@ -113,6 +114,28 @@ const defaultLineage = await bridge.execute(approved, {
   return { ok: true, verified: true, tool: 'organism.inspect', outcomeClass: 'executed-verified' };
 } });
 assert.equal(defaultLineage.executed, true);
+
+const realGateway = new ActionGateway();
+let realExecutions = 0;
+realGateway.registerTool({ id: 'notes.search', capability: 'notes.read', destructive: false, execute: async input => {
+  realExecutions += 1;
+  return { echoed: input.query };
+} });
+const realContract = compiler.compile({
+  requestId: 'intent:test:real-gateway', text: 'Search notes and report the result.',
+  extraction: { expectedOutcome: 'Return matching note IDs', acceptanceCriteria: ['Return a grounded search result'], permissions: { allowedActions: ['notes.search'] }, stopConditions: ['Stop if the note store is unavailable'] },
+});
+const realApproved = compiler.approve(realContract, {
+  contractId: realContract.id, userConfirmed: true, allowedActions: ['notes.search'],
+  at: now, evidenceRef: 'real-gateway-test-confirmation',
+});
+const realDispatch = await bridge.execute(realApproved, {
+  toolId: 'notes.search', input: { query: 'intent-compiler-test' }, reason: 'intent-bound read',
+}, realGateway);
+assert.equal(realDispatch.executed, true);
+assert.equal(realDispatch.result.ok, true);
+assert.deepEqual(realDispatch.result.result, { echoed: 'intent-compiler-test' });
+assert.equal(realExecutions, 1, 'the real ActionGateway executor must be reached exactly once');
 
 const highRisk = compiler.compile({
   requestId: 'intent:test:high-risk',

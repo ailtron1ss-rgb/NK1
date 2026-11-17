@@ -170,7 +170,11 @@ function isPlainDataTree(value: unknown, active = new Set<object>()): boolean {
 }
 function stableSerialize(value: unknown): string {
   if (value === null) return 'null';
-  if (typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'string' || typeof value === 'boolean') {
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) throw new TypeError('unsupported primitive in intent payload');
+    return encoded;
+  }
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw new TypeError('non-finite number in intent payload');
     return JSON.stringify(value);
@@ -213,7 +217,7 @@ function isIntentContract(value: unknown): value is IntentContract {
 }
 
 export class IntentCompiler {
-  private readonly issuedContracts = new WeakSet<object>();
+  private readonly provenance = new WeakMap<object, 'draft' | 'approved' | 'rejected' | 'superseded'>();
 
   constructor(private readonly options: { clock?: () => number; approvalKey?: string } = {}) {}
 
@@ -349,13 +353,13 @@ export class IntentCompiler {
       },
     };
     const frozen = freezeDeep(contract);
-    this.issuedContracts.add(frozen);
+    this.provenance.set(frozen, 'draft');
     return frozen;
   }
 
   approve(contract: IntentContract, approval: IntentApproval): IntentContract {
-    if (!isIntentContract(contract) || !this.issuedContracts.has(contract as object)) {
-      throw new TypeError('invalid or unissued intent contract');
+    if (!isIntentContract(contract) || this.provenance.get(contract as object) !== 'draft') {
+      throw new TypeError('invalid, unissued, or superseded intent contract');
     }
     if (contract.missingInformation.length > 0) {
       throw new Error('intent contract is incomplete: ' + contract.missingInformation.join(', '));
@@ -402,14 +406,16 @@ export class IntentCompiler {
     const signature = this.signApproval(contract, unsignedApproval);
     if (!signature) throw new Error('intent approval signing key is unavailable or too short');
     const approved = freezeDeep({ ...contract, approval: { ...unsignedApproval, signature } });
+    this.provenance.set(contract as object, 'superseded');
+    this.provenance.set(approved as object, 'approved');
     return approved;
   }
 
   reject(contract: IntentContract): IntentContract {
-    if (!isIntentContract(contract) || !this.issuedContracts.has(contract as object)) {
-      throw new TypeError('invalid or unissued intent contract');
+    if (!isIntentContract(contract) || this.provenance.get(contract as object) !== 'draft') {
+      throw new TypeError('invalid, unissued, or superseded intent contract');
     }
-    return freezeDeep({
+    const rejected = freezeDeep({
       ...contract,
       approval: {
         status: 'rejected',
@@ -418,10 +424,28 @@ export class IntentCompiler {
         riskAcknowledged: false,
       },
     });
+    this.provenance.set(contract as object, 'superseded');
+    this.provenance.set(rejected as object, 'rejected');
+    return rejected;
+  }
+
+  /** Restore only HMAC-attested approved contracts from a trusted durable store. */
+  restoreApprovedContract(snapshot: unknown): IntentContract | null {
+    if (!isIntentContract(snapshot) || snapshot.approval.status !== 'approved' || !this.hasValidApproval(snapshot)) return null;
+    if (snapshot.missingInformation.length > 0) return null;
+    try {
+      const restored = freezeDeep(structuredClone(snapshot));
+      this.provenance.set(restored as object, 'approved');
+      return restored;
+    } catch {
+      return null;
+    }
   }
 
   gate(contract: IntentContract, action: string): IntentGateResult {
-    if (!isIntentContract(contract)) return { allowed: false, reason: 'invalid-contract' };
+    if (!isIntentContract(contract) || this.provenance.get(contract as object) !== 'approved') {
+      return { allowed: false, reason: 'invalid-contract' };
+    }
     const normalizedAction = cleanText(action, MAX_ACTION);
     if (!normalizedAction) return { allowed: false, reason: 'action-not-explicitly-allowed' };
     if (contract.missingInformation.length > 0) return { allowed: false, reason: 'contract-incomplete' };
