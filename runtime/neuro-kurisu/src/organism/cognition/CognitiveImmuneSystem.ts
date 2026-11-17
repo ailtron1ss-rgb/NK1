@@ -350,6 +350,10 @@ export class CognitiveImmuneSystem {
         recoveredSignals.push(existing);
       }
     }
+    const activeSignals=signals.filter(s=>s.status==='open'||s.status==='acknowledged');
+    const healthStatus:CognitiveHealthStatus=activeSignals.some(s=>s.severity==='critical')?'critical'
+      :activeSignals.length||score01<.65&&coverage01>=.5?'degraded'
+      :coverage01<.5?'unknown':'healthy';
     const next:CognitiveHealthState={
       version:1,inspections:this.state.health.inspections+1,lastTick:tick,lastAt:at,
       score01,coverage01,healthStatus,
@@ -357,10 +361,6 @@ export class CognitiveImmuneSystem {
       signals:signals.slice(0,64),highStreaks,lowStreaks
     };
     this.state.health=next;
-    const activeSignals=signals.filter(s=>s.status==='open'||s.status==='acknowledged');
-    const healthStatus:CognitiveHealthStatus=activeSignals.some(s=>s.severity==='critical')?'critical'
-      :activeSignals.length||score01<.65&&coverage01>=.5?'degraded'
-      :coverage01<.5?'unknown':'healthy';
     const result:CognitiveHealthInspectionResult={
       tick,score01,coverage01,healthStatus,
       metrics:structuredClone(metrics),activeSignals:structuredClone(activeSignals),
