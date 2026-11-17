@@ -375,7 +375,7 @@ function normalizeBitemporalHistory(value:unknown):MemoryBitemporalInterval[]{
   const temporalKind=MEMORY_TEMPORAL_KINDS.has(candidate.temporalKind)?candidate.temporalKind as MemoryTemporalKind:(status==='fact'?'fact':'assessment');
   const freshnessValue=candidate.freshnessUntilAt==null?null:finite(candidate.freshnessUntilAt);
   const evidenceLineageKeys=Array.isArray(candidate.evidenceLineageKeys)
-   ?[...new Set(candidate.evidenceLineageKeys.filter((key:unknown):key is string=>typeof key==='string'&&key.trim()).map((key:string)=>key.slice(0,256)))].slice(-32)
+   ?[...new Set(candidate.evidenceLineageKeys.filter((key:unknown):key is string=>typeof key==='string'&&key.trim().length>0).map((key:string)=>key.slice(0,256)))].slice(-32)
    :undefined;
   return [{
    validFromAt,validUntilAt,recordedFromAt,recordedUntilAt,
@@ -1129,7 +1129,7 @@ export class MemoryOS2{
     recordedFromAt:Number.isFinite(Number(input.recordedFromAt))?Number(input.recordedFromAt):now,
     recordedUntilAt:input.recordedUntilAt==null?null:(Number.isFinite(Number(input.recordedUntilAt))?Number(input.recordedUntilAt):now),
     freshnessUntilAt:input.freshnessUntilAt==null?null:(Number.isFinite(Number(input.freshnessUntilAt))?Number(input.freshnessUntilAt):null),
-    temporalKind:MEMORY_TEMPORAL_KINDS.has(input.temporalKind)?input.temporalKind:(input.epistemicStatus==='fact'?'fact':'assessment'),
+    temporalKind:input.temporalKind!==undefined&&MEMORY_TEMPORAL_KINDS.has(input.temporalKind)?input.temporalKind:(input.epistemicStatus==='fact'?'fact':'assessment'),
     bitemporalHistory:normalizeBitemporalHistory(input.bitemporalHistory),
     supersedesId:input.supersedesId??null,supersededById:input.supersededById??null,
     revisionGroupId:String(input.revisionGroupId??(input.id??identity.stableId)),
