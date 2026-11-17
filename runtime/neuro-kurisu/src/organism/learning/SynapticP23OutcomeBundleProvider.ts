@@ -1,6 +1,6 @@
 import { createPublicKey } from 'node:crypto';
 import { constants as fsConstants } from 'node:fs';
-import { open } from 'node:fs/promises';
+import { lstat, open } from 'node:fs/promises';
 import path from 'node:path';
 import type { VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import { VerifiedOutcomeLedger, type TaskManifestEntry } from './VerifiedOutcomeLedger.ts';
@@ -9,8 +9,8 @@ import { proposeVerifiedSkillPromotion } from './VerifiedSkillPromotion.ts';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
 
 const MAX_BUNDLE_BYTES = 10 * 1024 * 1024;
-const MAX_TASKS = 2048;
-const MAX_ARTIFACTS = 100_000;
+const MAX_TASKS = 512;
+const MAX_ARTIFACTS = 6_000;
 const MAX_OUTCOME_AGE_MS = 30 * 24 * 60 * 60_000;
 const MAX_FUTURE_SKEW_MS = 30_000;
 
@@ -65,6 +65,10 @@ async function readRegularBundle(filePath: string): Promise<unknown> {
   if (typeof filePath !== 'string' || !filePath.trim())
     throw new TypeError('synaptic-p23-outcome-bundle-path-required');
   const absolute = path.resolve(filePath);
+  const entry = await lstat(absolute);
+  if (entry.isSymbolicLink() || !entry.isFile()) {
+    throw new Error('synaptic-p23-outcome-bundle-symlink-or-non-regular-file-rejected');
+  }
   const noFollow = process.platform === 'win32' ? 0 : (fsConstants.O_NOFOLLOW ?? 0);
   const handle = await open(absolute, fsConstants.O_RDONLY | noFollow);
   try {
@@ -78,7 +82,7 @@ async function readRegularBundle(filePath: string): Promise<unknown> {
     let parsed: unknown;
     try { parsed = JSON.parse(encoded); }
     catch { throw new Error('synaptic-p23-outcome-bundle-json-invalid'); }
-    return snapshotPlainData(parsed, { maxDepth: 24, maxNodes: MAX_ARTIFACTS * 24, maxStringUnits: MAX_BUNDLE_BYTES });
+    return snapshotPlainData(parsed, { maxDepth: 24, maxNodes: 100_000, maxStringUnits: 4 * 1024 * 1024 });
   } finally {
     await handle.close();
   }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, symlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
@@ -172,6 +172,18 @@ const builtInProposalProvider = createSynapticP23AdmissionProvider({
   bundlePath: outcomeBundlePath,
   rawVerifierKeys: process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
 });
+if (process.platform !== 'win32') {
+  const linkedBundlePath = path.join(root, 'linked-outcomes.json');
+  await symlink(outcomeBundlePath, linkedBundlePath);
+  const linkedProvider = createSynapticP23AdmissionProvider({
+    bundlePath: linkedBundlePath,
+    rawVerifierKeys: process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
+  });
+  await assert.rejects(
+    () => linkedProvider({ candidateMethod: 'synaptic-commons:' + fingerprint }),
+    /symlink-or-non-regular-file-rejected/,
+    'the host evidence reader must not follow a symbolic link');
+}
 await assert.rejects(
   () => builtInProposalProvider({ candidateMethod: 'synaptic-commons:' + 'f'.repeat(64) }),
   /outcome-bundle-shape-or-method-binding-invalid/,
