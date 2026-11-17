@@ -16,17 +16,17 @@ The overlay changes a compact 16-dimensional latent transition prediction for th
 
 ## Context identity and lifecycle
 
-The Core passes the canonical `TemporalContinuity.currentSessionId` into `NeuralExperienceBranch.beforeDecision`. The branch never uses that raw identifier as an adapter key: it maps it to a random opaque scope held only in an in-memory LRU map (8 sessions maximum). The final context key is:
+The Core passes the canonical `TemporalContinuity.currentSessionId` into `NeuralExperienceBranch.beforeDecision`. Host adapters can also provide a stable conversation/thread identifier through `OrganismRuntime.step(text, { conversationId })`. Runtime normalizes this identifier (NFKC + trim, 1–256 chars) and hashes it with SHA-256 before passing it into Core; the raw ID does not enter `OrganismObservation` or the neural branch. The branch never uses a raw host identifier as an adapter key: it maps the combined runtime-session + hashed conversation scope to a random opaque scope held only in an in-memory LRU map (8 session/chat scopes maximum). The final context key is:
 
 `session:<opaque-scope>:world:<activeWorldContext>:slow:<slowContextId>`
 
 This separates runtime sessions even when the causal-world and slow-memory clusters are identical. The raw host session ID is not copied into `NeuralExperienceToken`, `lastExperience`, replay entries or the P27 adapter snapshot. The existing Core `TemporalContinuity` ledger remains the owner of its normal host-session metadata. The ephemeral adapter key is held in a private pending field only until its matching outcome is consumed.
 
-`OrganismRuntime.stop()` calls `OrganismCore.endTemporalSession()` inside the existing serialized final flush. That ends the canonical session and clears its P27 contexts without introducing an extra checkpoint. Core initialization also clears all P27 overlays before opening a new process session. Restore drops all ephemeral scopes. The branch exposes `resetTestTimeAdaptation(sessionId?)` for one session or all sessions.
+`OrganismRuntime.stop()` calls `OrganismCore.endTemporalSession()` inside the existing serialized final flush. That ends the canonical runtime session and clears all P27 session/chat contexts without introducing an extra checkpoint. Core initialization also clears all P27 overlays before opening a new process session. Restore drops all ephemeral scopes. The branch exposes `resetTestTimeAdaptation(sessionId?)` for one session or all sessions.
 
-This is **runtime-session isolation**, not strict per-chat isolation: the current `OrganismObservation` contract does not include a canonical conversation ID. Multiple conversations inside one long-lived runtime session therefore share the runtime-session envelope and are further separated by world/slow-memory contexts. The host must supply a proper conversation ID before claiming per-chat separation.
+When a host supplies `conversationId`, separate conversations inside one long-lived runtime session receive separate opaque scopes even when world and slow-memory contexts match. When omitted, the documented runtime-session scope is used as a compatibility fallback. The host must consistently pass the same conversation ID for turns in one chat and a different ID for each independent chat; the runtime does not infer it from message text.
 
-The same private opaque context key is carried from `beforeDecision` to `afterOutcome` without being stored in the durable experience token. Outcomes are accepted by the fast layer only when they match a pending decision tick in the same context. Duplicate, out-of-order, stale and orphan outcomes are rejected from fast adaptation and counted; the existing slow world-model path remains unchanged.
+The same private opaque context key is held in a branch-private pending field from `beforeDecision` to `afterOutcome` without being stored in the durable experience token. Outcomes are accepted by the fast layer only when they match a pending decision tick in the same context. Duplicate, out-of-order, stale and orphan outcomes are rejected from fast adaptation and counted; the existing slow world-model path remains unchanged.
 
 ## Safety and resource bounds
 
@@ -53,7 +53,7 @@ The test-first regression was run against base commit `1e83a011fc677ff20f2348570
 After the implementation, the following local tests passed under Node `v24.20.0` in the isolated ProductOS repository clone:
 
 - `tests/p27-test-time-neuroplasticity.mjs` — snapshot separation, session isolation, verified-only admission, duplicate/orphan/out-of-order outcome rejection, candidate-copy isolation, TTL, reset, restore, 8-context LRU cap, 64-update cap, legacy residual compatibility and a matched-snapshot check that the temporary overlay changes the next action evaluation.
-- `tests/p27-neuroplasticity-session-lifecycle.mjs` — real `OrganismRuntime` session start/stop; proves the context exists during a live Core tick and is cleared by the single final stop flush.
+- `tests/p27-neuroplasticity-session-lifecycle.mjs` — real `OrganismRuntime` session start/stop; proves two host conversation IDs get separate scopes inside one runtime session, raw IDs are absent from neural diagnostics, and stop clears all ephemeral scopes in the single final flush.
 - `tests/big-pass-2599-2612-online-adaptation.mjs` — existing online world adaptation regression.
 - `tests/p28-plasticity.mjs` — existing plasticity substrate regression.
 - `tests/big-pass-2522-neural-experience-branch.mjs` — 600-cycle branch regression and snapshot restore.
@@ -62,6 +62,6 @@ Typecheck and exact-head GitHub Actions are run by the dedicated workflow. Indep
 
 ## Next integration steps
 
-1. Add a canonical conversation ID to `OrganismObservation` and pass it from chat/voice ingress to the branch before claiming per-chat isolation.
+1. Wire the host chat/voice ingress to provide a stable `conversationId` on every `OrganismRuntime.step()` call; calls that omit it use runtime-session fallback.
 2. Run independent holdout/paired-seed experiments to measure whether fast adaptation improves decisions beyond the persistent baseline.
 3. Only if holdout evidence shows repeatable gain, create a separately reviewed promotion path. Never promote an overlay from its own training context or diagnostics.

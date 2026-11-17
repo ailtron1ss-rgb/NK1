@@ -1,3 +1,10 @@
+## Unreleased — [NK1][Runtime] Optional conversation-scoped P27 adaptation (2026-11-17)
+
+- Add optional `RuntimeStepOptions.conversationId`; normalize and SHA-256 hash it before passing an opaque scope into OrganismCore.
+- Key ephemeral P27 overlays by runtime temporal session + optional host conversation scope + causal-world/slow-memory context.
+- Preserve compatibility when hosts omit conversation IDs; never infer conversation identity from raw text.
+- Extend real runtime lifecycle regression to verify two conversations remain isolated inside one process and are both cleared on runtime stop.
+
 ## Unreleased — [NK1][Cognition] P27 session lifecycle and outcome replay hardening (2026-11-17)
 
 - Bind ephemeral fast adapters to an opaque in-memory scope derived from the Core temporal session, then combine that scope with causal-world and slow-memory context.
