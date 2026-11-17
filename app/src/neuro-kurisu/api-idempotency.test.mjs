@@ -10,6 +10,7 @@ const payload = {
   confirmed: true,
 };
 
+/** @param {number} status @param {unknown} body */
 const response = (status, body) => new Response(JSON.stringify(body), {
   status,
   headers: { "content-type": "application/json" },
@@ -43,13 +44,15 @@ test("Dyadic API retries a dropped response once with the exact same idempotency
   const result = await neuroApi.dyadicCollaborationMutation(payload, "retry-key-001");
 
   assert.equal(calls.length, 2);
-  assert.equal(calls[0].url, "/api/organism/dyadic-collaboration");
-  assert.equal(calls[1].url, calls[0].url);
-  assert.equal(calls[0].init.method, "POST");
-  assert.equal(calls[1].init.method, "POST");
-  assert.equal(calls[0].init.headers["idempotency-key"], "retry-key-001");
-  assert.equal(calls[1].init.headers["idempotency-key"], "retry-key-001");
-  assert.equal(calls[1].init.body, calls[0].init.body);
+  const [firstCall, secondCall] = calls;
+  assert.ok(firstCall && secondCall, "both the original request and its retry must be captured");
+  assert.equal(firstCall.url, "/api/organism/dyadic-collaboration");
+  assert.equal(secondCall.url, firstCall.url);
+  assert.equal(firstCall.init.method, "POST");
+  assert.equal(secondCall.init.method, "POST");
+  assert.equal(new Headers(firstCall.init.headers).get("idempotency-key"), "retry-key-001");
+  assert.equal(new Headers(secondCall.init.headers).get("idempotency-key"), "retry-key-001");
+  assert.equal(secondCall.init.body, firstCall.init.body);
   assert.equal(result.replayed, true);
 });
 
