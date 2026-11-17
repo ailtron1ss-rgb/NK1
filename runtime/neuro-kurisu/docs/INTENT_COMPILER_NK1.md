@@ -112,7 +112,9 @@ The bounded approved-contract/lineage snapshot is stored in
 intent execution link containing the contract ID, canonical tool, decision ID
 and SHA-256 digest of the original idempotency key. The raw key is never copied
 into this snapshot. On restart, read-only receipt lookup is permitted only when
-the same contract/tool/key digest matches a pending intent execution. The
+the same contract/tool/key digest matches a pending intent execution. A missing
+local ActionGateway receipt is not proof of non-execution; that intent remains
+blocked for manual/external reconciliation and is never automatically retried. The
 canonical ActionGateway execution ledger remains separate and authoritative
 for real-world side effects.
 
