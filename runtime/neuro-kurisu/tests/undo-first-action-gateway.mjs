@@ -358,8 +358,18 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
   assert.equal(result.outcomeClass, 'idempotency-storage-failed');
   assert.equal(counts.mutation, 0);
   assert.equal(counts.cleanup, 0);
+  assert.equal(counts.preparation, 1);
   assert.ok(events.includes('pending-persist'));
   assert.equal(result.result.recoveryArtifactDisposition, 'retained-after-ambiguous-persist');
+  const retry = await gateway.executeTool(
+    'test.undo.mutate',
+    { target: 'relay-01' },
+    'retry-after-ambiguous-ledger-write',
+    { idempotencyKey: 'undo-first:ambiguous-ledger-write' },
+  );
+  assert.equal(retry.outcomeClass, 'idempotency-recovery-required');
+  assert.equal(counts.preparation, 1, 'an uncertain receipt write must keep the in-memory pending tombstone and prevent another preflight');
+  assert.equal(counts.mutation, 0);
 }
 
 console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=11');
