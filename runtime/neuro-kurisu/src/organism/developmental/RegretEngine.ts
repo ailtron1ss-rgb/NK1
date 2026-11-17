@@ -26,6 +26,12 @@ export interface RegretState {
   negativeSpace?: NegativeSpaceMemoryState;
 }
 
+export interface RegretAlternativeInput extends Omit<NegativeSpaceAlternativeInput, 'expectedOutcome01'> {
+  expectedOutcome01?: number;
+  /** Backwards-compatible field used by the original RegretEngine API. */
+  estimated?: number;
+}
+
 export interface RegretObservationContext {
   decisionId: string;
   decisionAt?: number;
@@ -44,6 +50,7 @@ export const defaultRegretState = (): RegretState => ({
 });
 
 const clamp = (x: number): number => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+const expectedOutcomeOf = (candidate: RegretAlternativeInput): number => clamp(candidate.expectedOutcome01 ?? candidate.estimated ?? 0);
 
 export class RegretEngine {
   private state = defaultRegretState();
@@ -61,22 +68,23 @@ export class RegretEngine {
   observe(
     chosen: string,
     chosenOutcome: number,
-    alternatives: NegativeSpaceAlternativeInput[],
+    alternatives: RegretAlternativeInput[],
     context?: RegretObservationContext,
   ): RegretRecord | null {
     const alternative = alternatives
       .filter(candidate => candidate.action !== chosen)
-      .sort((a, b) => b.expectedOutcome01 - a.expectedOutcome01)[0];
+      .sort((a, b) => expectedOutcomeOf(b) - expectedOutcomeOf(a))[0];
     let row: RegretRecord | null = null;
     if (alternative) {
-      const regret = clamp(alternative.expectedOutcome01 - chosenOutcome);
+      const counterfactualOutcome = expectedOutcomeOf(alternative);
+      const regret = clamp(counterfactualOutcome - chosenOutcome);
       row = {
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         at: Date.now(),
         chosen,
         alternative: alternative.action,
         chosenOutcome,
-        counterfactualOutcome: alternative.expectedOutcome01,
+        counterfactualOutcome,
         regret,
         learning: regret > 0.35 ? `reconsider:${alternative.action}` : 'minor-regret',
       };
@@ -94,7 +102,7 @@ export class RegretEngine {
         significance: context.significance,
         alternatives: alternatives.map(candidate => ({
           ...candidate,
-          expectedOutcome01: candidate.expectedOutcome01,
+          expectedOutcome01: expectedOutcomeOf(candidate),
         })),
       });
       if (record) {

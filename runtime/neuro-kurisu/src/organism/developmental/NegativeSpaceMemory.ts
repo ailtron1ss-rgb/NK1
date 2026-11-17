@@ -113,6 +113,7 @@ function normalizeCondition(value: unknown): NegativeSpaceReopenCondition | null
 }
 
 function normalizeAlternative(input: NegativeSpaceAlternativeInput, chosen: string): NegativeSpaceAlternative | null {
+  if (!input || typeof input !== 'object') return null;
   const action = cleanText(input?.action, 96);
   if (!action || action === chosen) return null;
   const suppliedConditions = Array.isArray(input.reopenWhen)
@@ -255,7 +256,7 @@ export class NegativeSpaceMemory {
     alternative.reviewEligible = false;
     alternative.reopenedAt = finite(at, Date.now());
     alternative.reopenReason = normalizedReason;
-    record.reviewStatus = 'reopened';
+    record.reviewStatus = record.alternatives.some(candidate => candidate.reviewEligible) ? 'review-eligible' : 'reopened';
     this.state.lastAt = Math.max(this.state.lastAt, alternative.reopenedAt);
     return true;
   }
@@ -281,19 +282,19 @@ export class NegativeSpaceMemory {
       const decisionId = cleanText(raw.decisionId, 128);
       const chosen = cleanText(raw.chosen, 96);
       if (!decisionId || !chosen || !Array.isArray(raw.alternatives)) continue;
-      const alternatives = raw.alternatives
-        .slice(0, MAX_ALTERNATIVES)
-        .map((alternative: NegativeSpaceAlternativeInput) => normalizeAlternative(alternative, chosen))
-        .filter((alternative: NegativeSpaceAlternative | null): alternative is NegativeSpaceAlternative => Boolean(alternative))
-        .map((alternative: NegativeSpaceAlternative, index: number) => {
-          const source = raw.alternatives[index] as Record<string, any>;
-          return {
-            ...alternative,
-            reviewEligible: source.reviewEligible === true,
-            ...(Number.isFinite(Number(source.reopenedAt)) ? { reopenedAt: finite(source.reopenedAt) } : {}),
-            ...(cleanText(source.reopenReason) ? { reopenReason: cleanText(source.reopenReason) } : {}),
-          };
+        const alternatives: NegativeSpaceAlternative[] = [];
+      for (const sourceValue of raw.alternatives.slice(0, MAX_ALTERNATIVES)) {
+        const source = sourceValue && typeof sourceValue === 'object' ? sourceValue as Record<string, any> : null;
+        if (!source) continue;
+        const normalized = normalizeAlternative(source as NegativeSpaceAlternativeInput, chosen);
+        if (!normalized || alternatives.some(existing => existing.action === normalized.action)) continue;
+        alternatives.push({
+          ...normalized,
+          reviewEligible: source.reviewEligible === true,
+          ...(Number.isFinite(Number(source.reopenedAt)) ? { reopenedAt: finite(source.reopenedAt) } : {}),
+          ...(cleanText(source.reopenReason) ? { reopenReason: cleanText(source.reopenReason) } : {}),
         });
+      }
       const significance = raw.significance && typeof raw.significance === 'object' ? raw.significance : {};
       const actual = raw.chosenActualOutcome01 === null || raw.chosenActualOutcome01 === undefined
         ? null : clamp01(raw.chosenActualOutcome01);
@@ -343,7 +344,7 @@ export class NegativeSpaceMemory {
       totalRecorded: this.state.totalRecorded,
       pruned: this.state.pruned,
       lastAt: this.state.lastAt,
-      bounded: records.length <= MAX_RECORDS && alternatives.every(() => true),
+      bounded: records.length <= MAX_RECORDS && records.every(record => record.alternatives.length <= MAX_ALTERNATIVES),
     };
   }
 }

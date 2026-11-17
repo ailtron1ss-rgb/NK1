@@ -34,6 +34,9 @@ const alternatives = [
 ];
 
 const regret = engine.observe('respond', 0.52, alternatives, context);
+const legacyApi = new RegretEngine();
+const legacyRegret = legacyApi.observe('respond', 0.4, [{ action: 'explore', estimated: 0.8 }]);
+assert.equal(legacyRegret?.counterfactualOutcome, 0.8, 'the original estimated-field RegretEngine contract must remain compatible');
 assert.ok(regret, 'the pre-existing regret path must remain operational');
 
 let snapshot = engine.snapshot();
