@@ -319,6 +319,7 @@ export class ActionGateway {
   private resolveActiveSkillCompetenceSubject?: (skillId: string) => SkillCompetenceActiveSubject | null;
   private evaluateSkillCompetenceCondition?: (conditionId: string, input: Record<string, unknown>, context: SkillCompetenceConditionContext) => boolean;
   private skillCompetenceNow: () => number;
+  private skillCompetenceVerifierConfigured = false;
   private readonly executionLedger=new Map<string,ActionExecutionLedgerEntry>();
   private permissionState:ActionToolPermissionSnapshot=defaultActionToolPermissions();
   private permissionAdmissionTail:Promise<void>=Promise.resolve();
@@ -338,18 +339,25 @@ export class ActionGateway {
     this.resolveActiveSkillCompetenceSubject = config.resolveActiveSkillCompetenceSubject;
     this.evaluateSkillCompetenceCondition = config.evaluateSkillCompetenceCondition;
     this.skillCompetenceNow = config.skillCompetenceNow ?? (() => Date.now());
+    this.skillCompetenceVerifierConfigured = Boolean(
+      config.skillCompetenceVerifierKeys || config.currentSkillCompetenceRuntimeFingerprint ||
+      config.currentSkillCompetenceEnvironmentFingerprint || config.resolveActiveSkillCompetenceSubject ||
+      config.evaluateSkillCompetenceCondition || config.skillCompetenceNow,
+    );
   }
 
   configureSkillCompetenceProofVerifier(config: Pick<ActionGatewayConfig,
     'skillCompetenceVerifierKeys' | 'currentSkillCompetenceRuntimeFingerprint' |
     'currentSkillCompetenceEnvironmentFingerprint' | 'resolveActiveSkillCompetenceSubject' |
     'evaluateSkillCompetenceCondition' | 'skillCompetenceNow'>): void {
+    if (this.skillCompetenceVerifierConfigured) throw new Error('skill-competence-verifier-already-configured');
     this.skillCompetenceVerifierKeys = new Map(config.skillCompetenceVerifierKeys ?? []);
     this.currentSkillCompetenceRuntimeFingerprint = config.currentSkillCompetenceRuntimeFingerprint;
     this.currentSkillCompetenceEnvironmentFingerprint = config.currentSkillCompetenceEnvironmentFingerprint;
     this.resolveActiveSkillCompetenceSubject = config.resolveActiveSkillCompetenceSubject;
     this.evaluateSkillCompetenceCondition = config.evaluateSkillCompetenceCondition;
     this.skillCompetenceNow = config.skillCompetenceNow ?? (() => Date.now());
+    this.skillCompetenceVerifierConfigured = true;
   }
 
   setExecutionLedgerPersister(persist:(snapshot:ActionExecutionLedgerSnapshot)=>Promise<void>|void):void {

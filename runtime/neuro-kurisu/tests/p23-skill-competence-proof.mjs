@@ -134,8 +134,9 @@ const candidatePayload = {
   competenceContract: contract,
 };
 const skillId = 'skill.proof.read';
+const skillStorePersistence = new InMemorySkillStorePersistence();
 const store = new VersionedSkillCandidateStore(
-  new InMemorySkillStorePersistence(),
+  skillStorePersistence,
   () => true,
   (observation, candidate) => verifySignedSkillShadowObservation(observation, candidate, shadowVerifierKeys),
   () => false,
@@ -212,6 +213,33 @@ assert.deepEqual(store.resolveActiveSkillCompetenceSubject(skillId), {
   version: candidate.version,
   payloadFingerprint: candidate.payloadFingerprint,
 });
+
+// Restart reconstruction must re-authenticate the persisted proof and its candidate/evidence binding.
+const restoredStore = new VersionedSkillCandidateStore(
+  skillStorePersistence,
+  () => true,
+  (observation, restoredCandidate) => verifySignedSkillShadowObservation(observation, restoredCandidate, shadowVerifierKeys),
+  () => false,
+  createSkillCompetenceProofVerifier(trustedAttestorKeys),
+);
+assert.deepEqual(restoredStore.resolveActiveSkillCompetenceSubject(skillId), {
+  candidateId: candidate.candidateId,
+  version: candidate.version,
+  payloadFingerprint: candidate.payloadFingerprint,
+});
+const tamperedSnapshot = skillStorePersistence.read();
+tamperedSnapshot.revision += 1;
+tamperedSnapshot.candidates[0].competenceProof.signature =
+  tamperedSnapshot.candidates[0].competenceProof.signature.slice(0, -4) + 'AAAA';
+const tamperedPersistence = new InMemorySkillStorePersistence();
+assert.equal(tamperedPersistence.compareAndSwap(0, tamperedSnapshot), true);
+assert.throws(() => new VersionedSkillCandidateStore(
+  tamperedPersistence,
+  () => true,
+  (observation, restoredCandidate) => verifySignedSkillShadowObservation(observation, restoredCandidate, shadowVerifierKeys),
+  () => false,
+  createSkillCompetenceProofVerifier(trustedAttestorKeys),
+), /competence proof failed signature\/context verification/);
 
 const expiredIssuedAt = Date.now() - 10_000;
 const expiredPayload = store.createCompetenceProofPayload(
@@ -302,6 +330,7 @@ immutableGateway.registerTool({
   inputContract, outputContract,
   execute: async () => ({ ok: true }),
 });
+assert.throws(() => immutableGateway.configureSkillCompetenceProofVerifier({ skillCompetenceVerifierKeys: new Map() }), /already-configured/);
 mutableProof.payload.contract.toolId = 'skill.proof.other';
 const immutableResult = await immutableGateway.executeTool(skillId, { query: 'memory' }, 'proof-registration-snapshot');
 assert.equal(immutableResult.outcomeClass, 'executed-unverified',

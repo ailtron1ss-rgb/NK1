@@ -450,7 +450,7 @@ export function createSkillCompetenceProofVerifier(
   trustedAttestorKeys: ReadonlyMap<string, string>,
   now: () => number = () => Date.now(),
 ): SkillCompetenceProofVerifier {
-  return (proof, candidate, purpose = 'attach') => {
+  return (proof, candidate, _purpose = 'attach') => {
     if (!verifySignedSkillCompetenceProof(proof, trustedAttestorKeys)) return false;
     const detached = snapshotProof(proof);
     if (!detached) return false;
@@ -533,6 +533,7 @@ export function verifySkillCompetenceProofForTool(
 
 export function parseTrustedSkillCompetenceAttestorKeys(raw: string | undefined): ReadonlyMap<string, string> {
   if (raw === undefined || raw.trim() === '') return new Map();
+  if (raw.length > 64_000) throw new Error('NEURO_SKILL_COMPETENCE_ATTESTOR_KEYS_JSON exceeds the configuration size limit');
   let parsed: unknown;
   try { parsed = JSON.parse(raw); }
   catch { throw new Error('NEURO_SKILL_COMPETENCE_ATTESTOR_KEYS_JSON must be valid JSON'); }
