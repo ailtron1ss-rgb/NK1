@@ -81,7 +81,7 @@ const ruleInput = (v: ConstitutionRuleInput): ConstitutionRuleInput => {
   if (weakensCore(stable(r))) throw new Error('proposal appears to weaken a protected invariant');
   return r;
 };
-const revisionDigest = (r: Omit<ConstitutionRevision, 'digest'>) => hash({ version:r.version, revision:r.revision, parentVersion:r.parentVersion, rollbackOf:r.rollbackOf, rules:r.rules, protected:BASELINE_DIGEST });
+const revisionDigest = (r: Omit<ConstitutionRevision, 'digest'>) => hash({ version:r.version, revision:r.revision, createdAt:r.createdAt, parentVersion:r.parentVersion, rollbackOf:r.rollbackOf, rules:r.rules, protected:BASELINE_DIGEST });
 type ProposalCore = Pick<ConstitutionProposal, 'authorId'|'baseVersion'|'change'|'targetRuleId'|'proposedRule'|'motivation'|'scope'|'counterexample'|'riskAssessment'|'testPlan'>;
 const proposalDigest = (p: ProposalCore) => hash({ ...p, protected:BASELINE_DIGEST });
 const baseRevision = (): ConstitutionRevision => {
