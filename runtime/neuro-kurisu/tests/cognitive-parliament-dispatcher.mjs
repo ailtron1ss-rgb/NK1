@@ -200,6 +200,55 @@ const missingCandidate=await governance.deliberateAndArbitrate({
 assert.equal(missingCandidate.status,'candidate-not-in-p69-set');
 assert.equal(missingCandidate.arbitration,null);
 
+// A successful Parliament gate cannot select a second, unreviewed high-impact candidate.
+const unreviewedAlternativeInput={
+  ...p69Input,
+  candidates:[
+    {id:'candidate-authorized',action:'respond',score:.92,confidence:.95,predictedUtility:.92},
+    {id:'candidate-unreviewed',action:'explore',score:1,confidence:1,predictedUtility:1},
+    {id:'candidate-rest-fallback',action:'rest',score:.15,confidence:.8,predictedUtility:.15},
+  ],
+};
+const constrainedSelection=await governance.deliberateAndArbitrate({
+  candidateId:'candidate-authorized',risk:'high',task:'Only the reviewed candidate may pass to P69.',
+  evidenceReferences:evidence,p69Input:unreviewedAlternativeInput,
+});
+assert.ok(['p69-selected','p69-safe-fallback'].includes(constrainedSelection.status));
+assert.notEqual(constrainedSelection.arbitration?.chosen?.id,'candidate-unreviewed',
+  'unreviewed risky candidate must be removed from the post-Parliament P69 candidate set');
+
+// Missing evidence must not fall through to a different ordinary candidate.
+const failClosedCycle=await governance.deliberateCycleCandidate({
+  candidateId:'candidate-cycle-primary',risk:'low',task:'Fail closed without evidence.',
+  evidenceReferences:[],
+  p69Input:{
+    ...p69Input,energy01:.05,thermal01:.95,capacity01:.1,uncertainty01:.9,
+    candidates:[
+      {id:'candidate-cycle-primary',action:'explore',score:.99,confidence:.99,predictedUtility:.99},
+      {id:'candidate-cycle-unreviewed',action:'respond',score:1,confidence:1,predictedUtility:1},
+      {id:'candidate-cycle-rest',action:'rest',score:.1,confidence:.8,predictedUtility:.1},
+      {id:'candidate-cycle-wait',action:'wait',score:.08,confidence:.8,predictedUtility:.08},
+    ],
+  },
+});
+assert.equal(failClosedCycle.parliament.status,'evidence-unavailable');
+assert.equal(failClosedCycle.status,'p69-safe-fallback');
+assert.ok(['rest','wait','defer'].includes(failClosedCycle.selectedCandidate?.action??''));
+assert.ok(!['candidate-cycle-primary','candidate-cycle-unreviewed'].includes(failClosedCycle.selectedCandidate?.id??''),
+  'without verified evidence, only a protective P69 fallback may be selected');
+
+// If no protective fallback exists, no candidate is selected after a failed Parliament gate.
+const noSafeFallback=await governance.deliberateCycleCandidate({
+  candidateId:'candidate-no-safe',risk:'low',task:'No safe action available.',
+  evidenceReferences:[],
+  p69Input:{
+    ...p69Input,
+    candidates:[{id:'candidate-no-safe',action:'explore',score:.9,confidence:.9,predictedUtility:.9}],
+  },
+});
+assert.equal(noSafeFallback.status,'parliament-blocked');
+assert.equal(noSafeFallback.selectedCandidate,null);
+
 // P69 receives an immutable snapshot captured before asynchronous specialist runs.
 // Mutating the caller's input during deliberation cannot replace/remove the approved candidate.
 let releaseCandidateGate;
