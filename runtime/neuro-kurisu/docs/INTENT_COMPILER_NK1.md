@@ -74,5 +74,5 @@ weakening existing finalization, approval, idempotency, or reconciliation logic.
 Run from `runtime/neuro-kurisu`:
 
 ```bash
-npm run test:intent-compiler-contract
+npm run test:intent-compiler
 ```
