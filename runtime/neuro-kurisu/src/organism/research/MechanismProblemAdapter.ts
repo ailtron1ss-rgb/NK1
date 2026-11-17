@@ -44,7 +44,7 @@ export class MechanismProblemAdapter {
   const explicitMemoryEntries=num(memory.memoryEntries),memoryRows=arr(memory.memories,10000);
   const memoryKnown=explicitMemoryEntries!==null||Array.isArray(memory.memories);
   const memoryEntries=explicitMemoryEntries!==null?Math.min(10000,Math.max(0,Math.floor(explicitMemoryEntries))):memoryRows.length;
-  const memoryPressure01=clamp(memoryEntries/2048);
+  const memoryPressure01=clamp(memoryEntries/160);
   const predictions=arr(worldModel.predictionErrors,64),predictionSeries=avg(predictions);
   const worldPredictionMetric=metric(world,['predictionError01','meanPredictionError01','lastActionError01'])??metric(worldModel,['predictionError01','meanPredictionError01']);
   const predictionError01=predictionSeries??worldPredictionMetric??0;

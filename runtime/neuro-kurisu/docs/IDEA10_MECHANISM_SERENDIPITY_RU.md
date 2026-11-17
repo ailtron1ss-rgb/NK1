@@ -24,5 +24,5 @@ IntrinsicExperimentGenerator.fromMechanismDiscovery переводит приг�
 - `MechanismSerendipityRuntime` переводит найденные структуры в `verify`-задачи, ограничивает журнал повторов 256 ID и сохраняет компактную статистику; повторный scan не создаёт одинаковую задачу.
 - Направление и тип потока, обратная связь, ресурсы, ограничения и временной масштаб дают явные breakpoints. Сильные несовпадения снижают transferability.
 
-- Для живого intake `OrganismSystemFabric` читает только bounded-агрегаты владельцев (count памяти, ошибка предсказания, остаток бюджета, evidence debt) и health-probes; полный memory/world snapshot не клонируется для поиска.
+- Для живого intake `OrganismSystemFabric` читает только bounded-агрегаты владельцев (ограниченный memory sample до 160 записей, ошибка предсказания, остаток бюджета, evidence debt) и health-probes; полный memory/world snapshot не клонируется для поиска.
 - Structural similarity, confidence и transferability — эвристические ранжировщики, не вероятности причинной истинности. Подтверждение требует независимого baseline/holdout-эксперимента, проверки побочных эффектов и rollback.
