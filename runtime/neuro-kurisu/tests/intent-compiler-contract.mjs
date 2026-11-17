@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { IntentCompiler } from '../src/organism/cognition/IntentCompiler.ts';
 import { IntentActionGatewayBridge } from '../src/organism/system/IntentActionGatewayBridge.ts';
 
-const compiler = new IntentCompiler({ clock: () => 1_800_000_000_000 });
+let now = 1_800_000_000_000;
+const compiler = new IntentCompiler({ clock: () => now, approvalKey: 'test-only-intent-approval-key-32-bytes-minimum' });
 let extractedText = '';
 const providerContract = await compiler.compileWith({ text: 'Summarize the latest verified state.' }, {
   async extract(text) {
@@ -53,6 +54,7 @@ const approved = compiler.approve(contract, {
   contractId: contract.id,
   userConfirmed: true,
   allowedActions: ['organism.inspect'],
+  acknowledgedAssumptions: ['The current branch is the intended inspection target'],
   at: 1_800_000_000_001,
   evidenceRef: 'user-confirmation:intent:test:bounded',
 });
@@ -61,11 +63,17 @@ const forgedApproved = { ...approved, approval: { ...approved.approval, status: 
 assert.equal(compiler.gate(forgedApproved, 'organism.inspect').allowed, false, 'a structurally forged contract must not be accepted as compiler-issued');
 assert.equal(new IntentCompiler().gate(approved, 'organism.inspect').allowed, false, 'contracts must not cross compiler trust boundaries without a trusted restore mechanism');
 assert.equal(compiler.gate(approved, 'filesystem.write').reason, 'action-not-explicitly-allowed');
+const tamperedApproval = { ...approved, approval: { ...approved.approval, allowedActions: ['organism.inspect', 'filesystem.write'] } };
+assert.equal(compiler.gate(tamperedApproval, 'filesystem.write').allowed, false, 'approval allow-list tampering must invalidate its attestation');
 assert.equal(compiler.gate(approved, 'deploy').reason, 'action-explicitly-denied');
 assert.throws(() => compiler.approve(contract, {
   contractId: contract.id,
   userConfirmed: true, allowedActions: ['deploy'], at: 1_800_000_000_001, evidenceRef: 'forged-expansion',
 }), /not explicitly allowed/);
+assert.throws(() => compiler.approve(contract, {
+  contractId: contract.id, userConfirmed: true, allowedActions: ['organism.inspect'],
+  at: 1_800_000_000_001, evidenceRef: 'missing-assumption-ack',
+}), /assumption/);
 assert.throws(() => compiler.approve(contract, {
   contractId: 'another-intent', userConfirmed: true, allowedActions: ['organism.inspect'],
   at: 1_800_000_000_001, evidenceRef: 'wrong-contract',
@@ -105,4 +113,94 @@ const defaultLineage = await bridge.execute(approved, {
 } });
 assert.equal(defaultLineage.executed, true);
 
-console.log('NK1_INTENT_COMPILER=PASS conservativePermissions=true explicitApproval=true gatewayGate=true');
+const highRisk = compiler.compile({
+  requestId: 'intent:test:high-risk',
+  text: 'Delete the production database',
+  extraction: {
+    goal: 'Delete the production database',
+    expectedOutcome: 'Database removed',
+    acceptanceCriteria: ['Target database is removed'],
+    permissions: { allowedActions: ['database.delete'] },
+    stopConditions: ['Stop unless environment and target are confirmed'],
+    risk: 'low',
+  },
+});
+assert.equal(highRisk.risk.level, 'high', 'explicit low-risk metadata cannot lower destructive risk');
+assert.throws(() => compiler.approve(highRisk, {
+  contractId: highRisk.id, userConfirmed: true, allowedActions: ['database.delete'],
+  at: 1_800_000_000_001, evidenceRef: 'high-risk-no-ack',
+}), /risk acknowledgement/);
+const highRiskApproved = compiler.approve(highRisk, {
+  contractId: highRisk.id, userConfirmed: true, allowedActions: ['database.delete'],
+  at: 1_800_000_000_001, evidenceRef: 'high-risk-confirmation', riskAcknowledged: true,
+});
+assert.equal(compiler.gate(highRiskApproved, 'database.delete').allowed, true);
+
+const conflict = compiler.compile({
+  text: 'Inspect project',
+  extraction: {
+    expectedOutcome: 'Status', acceptanceCriteria: ['Status returned'],
+    permissions: { allowedActions: ['organism.inspect'], deniedActions: ['organism.inspect'] },
+    stopConditions: ['Stop on missing evidence'],
+  },
+});
+assert.equal(compiler.gate(conflict, 'organism.inspect').allowed, false, 'allow/deny collisions must fail closed');
+
+const wildcard = compiler.compile({
+  text: 'Run a task',
+  extraction: {
+    expectedOutcome: 'Task complete', acceptanceCriteria: ['Task verified'],
+    permissions: { allowedActions: ['*'] }, stopConditions: ['Stop on policy refusal'],
+  },
+});
+assert.equal(compiler.gate(wildcard, 'organism.inspect').allowed, false, 'wildcard actions must never become execution capabilities');
+
+const overlong = compiler.compile({
+  text: 'x'.repeat(2_050),
+  extraction: {
+    expectedOutcome: 'Done', acceptanceCriteria: ['Done'], permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop on any uncertainty'],
+  },
+});
+assert.equal(overlong.sourceTextTruncated, true);
+assert.equal(compiler.gate(overlong, 'organism.inspect').allowed, false, 'truncated intent must require reconstruction');
+
+const changedInterpretation = compiler.compile({
+  requestId: 'intent:test:bounded',
+  text: 'Inspect the project status and summarize the result.',
+  extraction: {
+    goal: 'Inspect something else',
+    expectedOutcome: 'A concise status report',
+    acceptanceCriteria: ['Report branch and commit'],
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop if evidence is missing'],
+  },
+});
+assert.notEqual(changedInterpretation.id, contract.id, 'contract identity must bind semantic extraction, not only raw text');
+
+const providerFailure = await compiler.compileWith({ text: 'Summarize safely' }, {
+  async extract() { throw new Error('provider offline'); },
+});
+assert.equal(providerFailure.extractionStatus, 'provider-failed');
+assert.equal(compiler.gate(providerFailure, 'organism.inspect').allowed, false, 'extractor failure must produce a fail-closed incomplete contract');
+
+const expiringCompiler = new IntentCompiler({
+  clock: () => now,
+  approvalKey: 'test-only-expiring-approval-key-32-bytes',
+});
+const expiringContract = expiringCompiler.compile({
+  text: 'Inspect project status',
+  extraction: {
+    expectedOutcome: 'Status summary', acceptanceCriteria: ['Include revision'],
+    permissions: { allowedActions: ['organism.inspect'] }, stopConditions: ['Stop on missing revision'],
+  },
+});
+const expiringApproved = expiringCompiler.approve(expiringContract, {
+  contractId: expiringContract.id, userConfirmed: true, allowedActions: ['organism.inspect'],
+  at: now, evidenceRef: 'expiring-confirmation',
+});
+assert.equal(expiringCompiler.gate(expiringApproved, 'organism.inspect').allowed, true);
+now += 16 * 60 * 1000;
+assert.equal(expiringCompiler.gate(expiringApproved, 'organism.inspect').reason, 'approval-expired');
+
+console.log('NK1_INTENT_COMPILER=PASS intentIntegrity=true approvalAttestation=true expiry=true riskAndScopeGates=true gatewayGate=true');
