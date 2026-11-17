@@ -100,9 +100,14 @@
 - изменения invariant/release/schema/migration контрактов;
 - поддельные SHA, циклы, дубли, malformed records, циклический объект и hostile getter.
 
-**Предыдущая подтверждённая контрольная точка:** PR workflow [44043431286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44043431286), head `da927ef8217854333d565a66755eb9601491839c`: 13/13 тестов, typecheck PASS, architecture audit PASS. После этого добавлены проверка фактического migration export, hostile/cyclic candidate tests и fail-closed wrapper. Результат workflow на окончательном HEAD фиксируется отдельно после завершения актуального exact-head запуска; предыдущая контрольная точка не подменяет его.
+**Финальная проверка code-bearing HEAD:** PR workflow [44044205037](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44044205037), ветка HEAD `8a84560b58b9a0cd7277c059487a6b266f3c93d9`, job `133905770944` — **SUCCESS**.
 
-Architecture audit на подтверждённой контрольной точке: `sourceFiles=2436`, `canonicalFiles=671`, `missing=0`, `cycles=0`, `legacyLeakage=0`.
+- Behavioral suite: **15 passed / 0 failed**.
+- Runtime TypeScript: `TYPECHECK=PASS`, Node 22.16.0, npm 10.9.2.
+- Architecture: `CLEAN_ARCHITECTURE=PASS`.
+- Audit metrics: `sourceFiles=2436`, `canonicalFiles=671`, `missing=0`, `cycles=0`, `legacyLeakage=0`.
+
+Этот run привязан к конкретному PR HEAD `8a84560...`. Последующие обновления отчётной документации не меняли runtime/test/workflow source. Указанная проверка — только специализированный Developmental Genome workflow; она не означает, что все остальные workflow репозитория прошли.
 
 ## Границы поставки
 
