@@ -22,7 +22,7 @@ const registry = validateOmeStroConceptRegistry();
 assert.equal(registry.valid, true, registry.errors.join(','));
 assert.equal(OMESTRO_CONCEPTS.length, 32);
 assert.deepEqual(getOmeStroImplementationSummary().counts, {
-  existing_partial: 5, foundation_added: 18, research_gated: 9,
+  existing_partial: 6, foundation_added: 21, research_gated: 5,
 });
 
 const incompleteIntent = compileOmeStroIntent({ goal: 'Build a report' });
@@ -312,8 +312,13 @@ const mask = createSparsePlasticityMask({
   availableParameterIds: Array.from({ length: 100 }, (_, index) => 'p' + index),
   allowedParameterIds: ['p1', 'p2', 'p3'], protectedParameterIds: ['p3'],
 });
-assert.equal(mask.accepted, true);
-assert.deepEqual(mask.selectedParameterIds, ['p1', 'p2']);
+assert.equal(mask.accepted, false, 'protected parameters in the allowlist must block mask creation');
+const safeMask = createSparsePlasticityMask({
+  availableParameterIds: Array.from({ length: 100 }, (_, index) => 'p' + index),
+  allowedParameterIds: ['p1', 'p2'], protectedParameterIds: ['p3'],
+});
+assert.equal(safeMask.accepted, true);
+assert.deepEqual(safeMask.selectedParameterIds, ['p1', 'p2']);
 assert.equal(createSparsePlasticityMask({
   availableParameterIds: ['critical'], allowedParameterIds: ['critical'],
   protectedParameterIds: ['critical'],
