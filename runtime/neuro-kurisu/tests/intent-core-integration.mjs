@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { ToolExecutionUncertainError } from '../src/organism/system/ActionGateway.ts';
+import { sha256Stable } from '../src/organism/core/StableSerialization.ts';
 
 const approvalKey = 'nk1-intent-integration-test-key-32-bytes';
 const store = new MemoryStateStore();
@@ -73,6 +74,17 @@ const registerReceiptFixture = target => target.registerActionTool({
   requiresIdempotencyKey: true,
   execute: async () => {
     fixtureExecutions += 1;
+    const checkpointBeforeSideEffect = await store.load();
+    const preparedLink = checkpointBeforeSideEffect?.system?.intentContracts?.executions?.find(row =>
+      row.contractId === pendingApproved.id &&
+      row.toolId === 'organism.intent.fixture' &&
+      row.operation === 'execute' &&
+      row.phase === 'prepared',
+    );
+    assert.ok(preparedLink, 'Core must checkpoint the intent/idempotency correlation before ActionGateway enters the side-effect executor');
+    assert.equal(preparedLink.idempotencyKeyHash, sha256Stable({ idempotencyKey: 'intent:recovery:01' }));
+    assert.equal(JSON.stringify(checkpointBeforeSideEffect.system.intentContracts).includes('intent:recovery:01'), false,
+      'the durable intent snapshot stores only a digest, never the raw idempotency secret');
     throw new ToolExecutionUncertainError('fixture-provider-ack-lost-after-dispatch');
   },
   reconcile: async (_input, context) => {
@@ -146,6 +158,15 @@ gateway.reconcileToolExecution = async (...args) => {
   recoveryCalls.push({ id: args[0], input: structuredClone(args[1]), reason: args[2], options: structuredClone(args[3]) });
   return originalReconcile(...args);
 };
+const wrongKeyReconciliation = await restarted.reconcileIntentExecution(restoredPending, {
+  toolId: 'organism.intent.fixture',
+  input: { operation: 'commit-probe' },
+  reason: 'intent-restart-reconciliation-wrong-key',
+  options: { idempotencyKey: 'intent:recovery:wrong', decisionId: 'decision:core-recovery' },
+});
+assert.equal(wrongKeyReconciliation.attempted, false,
+  'a different idempotency key must not be attached to a pending intent execution');
+assert.equal(wrongKeyReconciliation.reason, 'matching-pending-intent-execution-not-found');
 const reconciled = await restarted.reconcileIntentExecution(restoredPending, {
   toolId: 'organism.intent.fixture',
   input: { operation: 'commit-probe' },
