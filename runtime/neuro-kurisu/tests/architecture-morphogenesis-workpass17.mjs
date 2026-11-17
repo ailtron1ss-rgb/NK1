@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 
-const engine = await import('../src/organism/system/ArchitectureMorphogenesisEngine.ts').catch(() => null);
-assert.ok(engine, 'Architecture Morphogenesis must expose a real architecture-control engine');
+let engineImportError;
+const engine = await import('../src/organism/system/ArchitectureMorphogenesisEngine.ts').catch(error => {
+  engineImportError = error;
+  return null;
+});
+assert.ok(engine, 'Architecture Morphogenesis must expose a real architecture-control engine: ' + String(engineImportError?.stack ?? engineImportError));
 
 const {
   buildLiveArchitectureMorphogenesisGraph,
