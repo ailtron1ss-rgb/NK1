@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from .engine import NeuralProsthesisBank
-from .training import dataset_fingerprint, encode_example, read_jsonl
+from .training import (
+    MAX_EVALUATION_EXAMPLES,
+    dataset_fingerprint,
+    encode_example,
+    ensure_holdout_is_distinct,
+    paired_bootstrap_mean_interval,
+    read_jsonl,
+)
 
 
 def main() -> None:
@@ -21,12 +29,31 @@ def main() -> None:
     parser.add_argument("--split", required=True, choices=("validation", "holdout"))
     parser.add_argument("--layer-path", default="")
     parser.add_argument("--max-length", type=int, default=1024)
+    parser.add_argument("--bootstrap-samples", type=int, default=2000)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output", required=True)
     parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda", "mps"))
     args = parser.parse_args()
-    examples = read_jsonl(args.dataset_jsonl)
     if not 64 <= args.max_length <= 32768:
         raise SystemExit("max-length out of range")
+    if not 100 <= args.bootstrap_samples <= 10_000 or not 0 <= args.seed <= 0xFFFFFFFF:
+        raise SystemExit("bootstrap configuration out of range")
+    evaluation_dataset_sha256 = dataset_fingerprint(args.dataset_jsonl)
+    examples = read_jsonl(args.dataset_jsonl, max_examples=MAX_EVALUATION_EXAMPLES)
+    if dataset_fingerprint(args.dataset_jsonl) != evaluation_dataset_sha256:
+        raise SystemExit("evaluation-dataset-changed-while-loading")
+    try:
+        manifest = json.loads((Path(args.adapter_dir).expanduser() / "manifest.json").read_text(encoding="utf-8"))
+    except Exception as error:
+        raise SystemExit("adapter-manifest-unreadable") from error
+    if not isinstance(manifest, dict):
+        raise SystemExit("adapter-manifest-invalid")
+    training_evidence = manifest.get("training_evidence")
+    training_dataset_sha256 = training_evidence.get("dataset_sha256") if isinstance(training_evidence, dict) else None
+    try:
+        ensure_holdout_is_distinct(training_dataset_sha256, evaluation_dataset_sha256)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
     if args.device == "auto":
         device = torch.device("cuda" if torch.cuda.is_available() else "mps" if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() else "cpu")
     else:
@@ -67,6 +94,8 @@ def main() -> None:
                     baseline = float(model(input_ids=input_ids, labels=labels, use_cache=False).loss.float().item())
                 with bank.activate(adapter_id):
                     candidate = float(model(input_ids=input_ids, labels=labels, use_cache=False).loss.float().item())
+                if not math.isfinite(baseline) or not math.isfinite(candidate):
+                    raise RuntimeError("non-finite-evaluation-loss")
                 paired.append({
                     "pair": index + 1,
                     "baseline_loss": baseline,
@@ -76,20 +105,48 @@ def main() -> None:
         baseline_mean = sum(row["baseline_loss"] for row in paired) / len(paired)
         candidate_mean = sum(row["candidate_loss"] for row in paired) / len(paired)
         mean_delta = candidate_mean - baseline_mean
+        deltas = [row["loss_delta"] for row in paired]
+        interval = paired_bootstrap_mean_interval(
+            deltas,
+            bootstrap_samples=args.bootstrap_samples,
+            seed=args.seed,
+        ) if len(paired) >= 2 else None
         improved = sum(1 for row in paired if row["loss_delta"] < 0)
+        worsened = sum(1 for row in paired if row["loss_delta"] > 0)
+        tied = len(paired) - improved - worsened
+        review_ineligibility = []
+        if args.split != "holdout":
+            review_ineligibility.append("split-is-not-holdout")
+        if training_dataset_sha256 is None:
+            review_ineligibility.append("training-provenance-missing")
+        if len(paired) < 5:
+            review_ineligibility.append("fewer-than-five-paired-examples")
+        if mean_delta >= 0:
+            review_ineligibility.append("mean-loss-did-not-improve")
+        if interval is None or float(interval["upper"]) >= 0:
+            review_ineligibility.append("paired-bootstrap-95ci-overlaps-zero")
         report = {
             "status": "observed",
             "split": args.split,
             "adapter_id": adapter_id,
             "manifest_sha256": json.loads((Path(args.adapter_dir) / "manifest.json").read_text(encoding="utf-8"))["manifest_sha256"],
-            "dataset_sha256": dataset_fingerprint(args.dataset_jsonl),
+            "dataset_sha256": evaluation_dataset_sha256,
+            "training_dataset_sha256": training_dataset_sha256,
             "sample_count": len(paired),
             "baseline_mean_loss": baseline_mean,
             "candidate_mean_loss": candidate_mean,
             "mean_loss_delta": mean_delta,
-            "improved_pairs": improved,
             "success_rate": improved / len(paired),
-            "eligible_for_human_review": bool(args.split == "holdout" and len(paired) >= 5 and mean_delta < 0),
+            "improved_pairs": improved,
+            "worsened_pairs": worsened,
+            "tied_pairs": tied,
+            "paired_bootstrap_95ci_mean_loss_delta": (
+                [float(interval["lower"]), float(interval["upper"])] if interval is not None else None
+            ),
+            "bootstrap_samples": args.bootstrap_samples,
+            "bootstrap_seed": args.seed,
+            "review_ineligibility_reasons": review_ineligibility,
+            "eligible_for_human_review": not review_ineligibility,
             "independently_verified": False,
             "promotion_allowed": False,
             "pairs": paired,

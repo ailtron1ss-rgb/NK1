@@ -18,7 +18,7 @@ from torch import nn
 from torch.nn import functional as F
 from safetensors.torch import load_file, save_file
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MAX_TARGET_LAYERS = 8
 MAX_BOTTLENECK_SIZE = 512
 MAX_MANIFEST_BYTES = 64 * 1024
@@ -78,6 +78,32 @@ def _model_config(model: nn.Module) -> dict[str, Any]:
 
 def _config_digest(config: dict[str, Any]) -> str:
     return _sha256_bytes(_canonical_json(config))
+
+
+def _normalize_training_evidence(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    required = {"dataset_sha256", "example_count", "epochs", "seed"}
+    if type(value) is not dict or set(value) != required:
+        raise ArtifactError("adapter-training-evidence-schema-invalid")
+    digest = value.get("dataset_sha256")
+    example_count = value.get("example_count")
+    epochs = value.get("epochs")
+    seed = value.get("seed")
+    if not isinstance(digest, str) or not SHA256.fullmatch(digest):
+        raise ArtifactError("adapter-training-dataset-digest-invalid")
+    if type(example_count) is not int or not 1 <= example_count <= 100_000:
+        raise ArtifactError("adapter-training-example-count-invalid")
+    if type(epochs) is not int or not 1 <= epochs <= 10:
+        raise ArtifactError("adapter-training-epoch-count-invalid")
+    if type(seed) is not int or not 0 <= seed <= 0xFFFFFFFF:
+        raise ArtifactError("adapter-training-seed-invalid")
+    return {
+        "dataset_sha256": digest,
+        "example_count": example_count,
+        "epochs": epochs,
+        "seed": seed,
+    }
 
 
 def _hidden_size(config: dict[str, Any]) -> int:
@@ -282,11 +308,18 @@ class NeuralProsthesisBank(nn.Module):
             "loaded_adapters": loaded,
         }
 
-    def save_adapter(self, adapter_id: str, destination: str | Path) -> dict[str, Any]:
+    def save_adapter(
+        self,
+        adapter_id: str,
+        destination: str | Path,
+        *,
+        training_evidence: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if adapter_id not in self.adapters:
             raise ArtifactError("adapter-not-loaded")
         if not IMMUTABLE_REVISION.fullmatch(self.model_revision):
             raise ArtifactError("adapter-export-requires-immutable-base-model-revision")
+        validated_training_evidence = _normalize_training_evidence(training_evidence)
         target = Path(destination).expanduser()
         if target.exists():
             raise ArtifactError("adapter-destination-already-exists")
@@ -322,6 +355,7 @@ class NeuralProsthesisBank(nn.Module):
                 "weights_file": "adapter.safetensors",
                 "weights_sha256": _sha256_file(weights_path),
                 "status": "candidate",
+                "training_evidence": validated_training_evidence,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
             manifest["manifest_sha256"] = _sha256_bytes(_canonical_json(manifest))
@@ -350,16 +384,21 @@ class NeuralProsthesisBank(nn.Module):
             "base_model_revision", "model_type", "config_sha256", "layer_path",
             "layer_indices", "hidden_size", "bottleneck_size", "max_residual_ratio",
             "activation", "weights_file", "weights_sha256", "status", "created_at",
-            "manifest_sha256",
+            "manifest_sha256", "training_evidence",
         }
         if not isinstance(manifest, dict) or set(manifest) != required:
+            raise ArtifactError("adapter-manifest-schema-mismatch")
+        if not isinstance(manifest, dict):
             raise ArtifactError("adapter-manifest-schema-mismatch")
         supplied_hash = manifest.get("manifest_sha256")
         unsigned = {key: value for key, value in manifest.items() if key != "manifest_sha256"}
         if not isinstance(supplied_hash, str) or _sha256_bytes(_canonical_json(unsigned)) != supplied_hash:
             raise ArtifactError("adapter-manifest-digest-mismatch")
-        if manifest["schema_version"] != SCHEMA_VERSION or manifest["artifact_type"] != "nk1-neural-prosthesis":
+        if type(manifest["schema_version"]) is not int or manifest["schema_version"] != SCHEMA_VERSION or manifest["artifact_type"] != "nk1-neural-prosthesis":
             raise ArtifactError("adapter-artifact-version-unsupported")
+        normalized_training_evidence = _normalize_training_evidence(manifest["training_evidence"])
+        if normalized_training_evidence != manifest["training_evidence"]:
+            raise ArtifactError("adapter-training-evidence-invalid")
         if manifest["status"] not in ("candidate", "evaluated") or manifest["activation"] != "silu":
             raise ArtifactError("adapter-artifact-status-or-activation-invalid")
         if not IMMUTABLE_REVISION.fullmatch(self.model_revision):

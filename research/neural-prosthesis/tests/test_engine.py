@@ -172,6 +172,21 @@ class NeuralProsthesisEngineTests(unittest.TestCase):
             finally:
                 second.close()
 
+    def test_training_provenance_rejects_noncanonical_values(self):
+        invalid = {
+            "dataset_sha256": "not-a-digest",
+            "example_count": True,
+            "epochs": 2,
+            "seed": 42,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ArtifactError):
+                self.bank.save_adapter(
+                    "kurisu-reasoning-v1",
+                    Path(tmp) / "adapter",
+                    training_evidence=invalid,
+                )
+
     def test_candidate_export_requires_immutable_base_model_revision(self):
         unpinned = NeuralProsthesisBank(
             TinyModel(),

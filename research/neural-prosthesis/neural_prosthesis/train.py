@@ -54,10 +54,15 @@ def main() -> None:
         raise SystemExit("epochs or learning-rate out of supported range")
     if not 64 <= args.max_length <= 32768:
         raise SystemExit("max-length out of supported range")
+    if not 0 <= args.seed <= 0xFFFFFFFF:
+        raise SystemExit("seed out of supported range")
     layers = [int(value.strip()) for value in args.layers.split(",") if value.strip()]
     if not layers:
         raise SystemExit("at least one decoder layer is required")
+    train_dataset_sha256 = dataset_fingerprint(args.train_jsonl)
     examples = read_jsonl(args.train_jsonl)
+    if dataset_fingerprint(args.train_jsonl) != train_dataset_sha256:
+        raise SystemExit("training-dataset-changed-while-loading")
     random.seed(args.seed)
     torch.manual_seed(args.seed)
     device = _select_device(args.device)
@@ -124,13 +129,22 @@ def main() -> None:
                 epoch_losses.append(float(loss.detach().float().item()))
             history.append({"epoch": epoch + 1, "mean_loss": sum(epoch_losses) / max(1, len(epoch_losses))})
         bank.eval()
-        manifest = bank.save_adapter(args.adapter_id, args.output_dir)
+        manifest = bank.save_adapter(
+            args.adapter_id,
+            args.output_dir,
+            training_evidence={
+                "dataset_sha256": train_dataset_sha256,
+                "example_count": len(examples),
+                "epochs": args.epochs,
+                "seed": args.seed,
+            },
+        )
         report = {
             "status": "candidate",
             "adapter_id": args.adapter_id,
             "manifest_sha256": manifest["manifest_sha256"],
             "train_examples": len(examples),
-            "train_dataset_sha256": dataset_fingerprint(args.train_jsonl),
+            "train_dataset_sha256": train_dataset_sha256,
             "epochs": args.epochs,
             "seed": args.seed,
             "history": history,
