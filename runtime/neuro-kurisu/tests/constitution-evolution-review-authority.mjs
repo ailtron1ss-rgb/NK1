@@ -71,9 +71,22 @@ assert.equal(verifier({ payload: wrongPlan, signature: signPayload(wrongPlan) },
 const noEvidence = { ...payload, evidenceRefs: [] };
 assert.equal(verifier({ payload: noEvidence, signature: signPayload(noEvidence) }, expected), null);
 
+// Evidence references must not become a channel for leaking credentials into the
+// persisted governance ledger, audit trail, or UI diagnostics.
+for (const evidenceRef of [
+  'https://ci.example/run/123?access_token=secret-value',
+  'https://user:password@ci.example/run/123',
+  'Bearer abcdefghijklmnopqrstuvwxyz',
+  'ci://nk1/run/123\nAuthorization: Bearer secret',
+]) {
+  const unsafeEvidence = { ...payload, evidenceRefs: [evidenceRef] };
+  assert.equal(verifier({ payload: unsafeEvidence, signature: signPayload(unsafeEvidence) }, expected), null,
+    'credential-bearing or control-character evidence references must be rejected');
+}
+
 const reject = { ...payload, decision: 'reject', rationale: 'A required invariant was not preserved.' };
 assert.ok(verifier({ payload: reject, signature: signPayload(reject) }, expected));
 const shuffled = { at: payload.at, rationale: payload.rationale, ...payload };
 assert.equal(canonicalConstitutionReviewPayload(shuffled), canonicalConstitutionReviewPayload(payload));
 
-console.log('OMESTRO_20_CONSTITUTION_REVIEW_AUTHORITY=PASS checks=14');
+console.log('OMESTRO_20_CONSTITUTION_REVIEW_AUTHORITY=PASS checks=18');
