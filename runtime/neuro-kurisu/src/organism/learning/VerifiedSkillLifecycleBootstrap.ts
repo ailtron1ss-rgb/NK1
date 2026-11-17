@@ -1,4 +1,4 @@
-import { createPublicKey } from 'node:crypto';
+import { createHash, createPublicKey } from 'node:crypto';
 import { AtomicFileSkillStorePersistence } from './AtomicFileSkillStorePersistence.ts';
 import { createAuthenticatedSkillPromotionApprovalVerifier, createAuthenticatedSkillRollbackApprovalVerifier, parseTrustedSkillPromotionApprovalKeys } from './AuthenticatedSkillPromotionApproval.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from './TrustedSkillShadowRunRegistry.ts';
@@ -7,7 +7,10 @@ import { createContextBoundSkillShadowEvidenceVerifier } from './VerifiedSkillSh
 import { createSkillCompetenceProofVerifier, parseTrustedSkillCompetenceAttestorKeys } from './SkillCompetenceProof.ts';
 
 function publicKeyFingerprint(pem: string): string {
-  return createPublicKey(pem).export({ type: 'spki', format: 'der' }).toString('base64');
+  const key = createPublicKey(pem) as unknown as {
+    export(options: { type: 'spki'; format: 'der' }): Uint8Array;
+  };
+  return createHash('sha256').update(key.export({ type: 'spki', format: 'der' })).digest('hex');
 }
 
 function assertIndependentCompetenceAttestors(

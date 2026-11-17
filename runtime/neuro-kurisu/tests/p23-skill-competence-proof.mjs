@@ -260,6 +260,12 @@ const refreshedPayload = p23Facade.createVerifiedSkillCompetenceProofPayload(
 );
 const activeProof = signSkillCompetenceProofForTest(refreshedPayload, attestorPrivatePem);
 p23Facade.attachVerifiedSkillCompetenceProof(candidate.candidateId, activeProof);
+const expiredIssuedAt = Date.now() - 10_000;
+const expiredPayload = p23Facade.createVerifiedSkillCompetenceProofPayload(
+  candidate.candidateId, proposal, contract, 'skill-attestor-v1',
+  expiredIssuedAt, Date.now() - 1,
+);
+const expiredProof = signSkillCompetenceProofForTest(expiredPayload, attestorPrivatePem);
 const activeVersion = store.approveAndPromote(candidate.candidateId, {
   approvedBy: 'trusted-test-approver',
   approvedAt: Date.now(),
@@ -352,13 +358,6 @@ substitutedPayload.proofId = sha256Stable({
   expiresAt: substitutedPayload.expiresAt,
 });
 const substitutedProof = signSkillCompetenceProofForTest(substitutedPayload, attestorPrivatePem);
-
-const expiredIssuedAt = Date.now() - 10_000;
-const expiredPayload = store.createCompetenceProofPayload(
-  candidate.candidateId, proposal, contract, 'skill-attestor-v1',
-  expiredIssuedAt, Date.now() - 1,
-);
-const expiredProof = signSkillCompetenceProofForTest(expiredPayload, attestorPrivatePem);
 
 function buildGateway(options = {}) {
   const gateway = new ActionGateway();
