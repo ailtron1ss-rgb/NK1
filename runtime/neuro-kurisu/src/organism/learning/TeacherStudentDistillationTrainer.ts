@@ -91,6 +91,11 @@ export async function runTeacherStudentDistillationTraining(
     surviveDir: input.surviveDirectory,
     timeoutMs: input.timeoutMs ?? 3_600_000,
     maxOutputBytes: input.maxOutputBytes ?? 2_097_152,
+    // Deliberately inherit only non-secret runtime/toolchain paths and device selectors.
+    // Credentials such as HF_TOKEN must be passed by an explicit host secret capability,
+    // never inherited implicitly from an arbitrary parent process environment.
+    inheritEnv: ['PATH', 'HOME', 'TMPDIR', 'CUDA_VISIBLE_DEVICES', 'CUDA_HOME',
+      'LD_LIBRARY_PATH', 'HF_HOME', 'HF_HUB_CACHE', 'TRANSFORMERS_CACHE', 'TORCH_HOME'],
     signal: input.signal,
   });
 }
