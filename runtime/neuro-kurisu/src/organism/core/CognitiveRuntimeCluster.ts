@@ -72,6 +72,7 @@ import { MultiHypothesisPersonality, defaultMultiHypothesisPersonality } from '.
 import { FutureSimulator, defaultFutureSimulator } from '../developmental/FutureSimulator.ts';
 import { registerSharedFutureTools } from '../developmental/SharedFutureEngine.ts';
 import { registerWorldForgeTools } from '../developmental/WorldForgeTools.ts';
+import { registerConsequenceEcologyTools } from '../developmental/ConsequenceEcologyTools.ts';
 import { LongTermSocialMind, defaultLongTermSocialMind } from '../developmental/LongTermSocialMind.ts';
 import { FutureSelfModel, defaultFutureSelf } from '../cognition/evolution/FutureSelfModel.ts';
 import { SocialDevelopmentSystem, defaultSocialDevelopment } from '../developmental/SocialDevelopmentSystem.ts';
@@ -198,5 +199,14 @@ export class CognitiveRuntimeCluster {
       input.resolveCanonicalDecision,
     );
     registerWorldForgeTools(this.actionGateway, this.futureSimulator);
+    registerConsequenceEcologyTools(this.actionGateway, this.futureSimulator, {
+      goalEcology: () => input.organismSystems.agency.p68GoalEcology.summary(),
+      negativeSpace: () => {
+        // Optional compatibility seam: Negative Space Memory is owned by the canonical RegretEngine
+        // when that evidence adapter is present; this layer never creates a second memory store.
+        const regret = this.regretEngine as unknown as { negativeSpaceDiagnostics?: () => unknown };
+        return typeof regret.negativeSpaceDiagnostics === 'function' ? regret.negativeSpaceDiagnostics() : null;
+      },
+    });
   }
 }
