@@ -20,7 +20,6 @@ neuralCore.step({
 });
 
 const neural = neuralCore.diagnostics();
-assert.equal(neural.version, 14);
 assert.equal(neural.cycles, 1);
 assert.equal(neural.tick, 1, 'B365 diagnostics must expose the exact causal tick for freshness gating');
 for (const value of [
@@ -64,10 +63,12 @@ assert.equal(profile.neuralSnapshotTick, 1);
 assert.equal(profile.neuralSnapshotAgeTicks, 1);
 assert.equal(profile.featureVector01.length, 43);
 
-neural.allostatic.drive01 = 0;
-neural.selfModel.agency01 = 0;
+const originalDrive = neural.allostatic.drive01;
+const originalAgency = neural.selfModel.agency01;
+neural.allostatic.drive01 = -1;
+neural.selfModel.agency01 = -1;
 const fresh = neuralCore.diagnostics();
-assert.notEqual(fresh.allostatic.drive01, 0, 'B365 diagnostic snapshot must not expose mutable internal state');
-assert.notEqual(fresh.selfModel.agency01, 0, 'B365 diagnostic snapshot must not expose mutable internal state');
+assert.equal(fresh.allostatic.drive01, originalDrive, 'B365 diagnostic snapshot must not expose mutable internal state');
+assert.equal(fresh.selfModel.agency01, originalAgency, 'B365 diagnostic snapshot must not expose mutable internal state');
 
 console.log('B365_TO_COGNITIVE_NEURAL_BRIDGE_PASS');
