@@ -46,6 +46,12 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Cognitive-to-Neural Bridge bounded feature projection
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/cognitive-to-neural-bridge.mjs
+      - name: Cognitive-to-Neural Bridge runtime wiring
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/cognitive-to-neural-bridge-runtime-wiring.mjs
       - name: Unified cognitive cycle and boundary
         run: npm --prefix runtime/neuro-kurisu run test:workpass287:cognitive-cycle && npm --prefix runtime/neuro-kurisu run test:cognitive-cycle-boundary-runtime-wiring
       - name: Cognitive resource economy and Will voluntary attention
