@@ -17,6 +17,16 @@ A tool opts in with `requiresUndoFirst: true` and a read-only `undoFirst.prepare
 
 For rollback/compensation, the primary tool and compensator must declare atomic compare-and-set support. The gateway passes the exact expected state fingerprint in the executor context; the provider adapter must enforce it in the same write operation (ETag / If-Match / version predicate), returning a typed no-effect result when the state has drifted. The plan also names a durable, independently verifiable, reconcilable compensation tool and a read-only state verifier. The verifier must return `stateHash` and a verified external postcondition. The primary action and compensator must enforce that state fingerprint atomically with the provider write; if the provider reports the compare-and-set failed, the Gateway records no-effect and does not overwrite the changed resource. The preparation result includes a durable, non-secret `recoveryArtifactRef` (provider snapshot ID, rollback handle or compensation artifact); it is normalized, bounded to 16 KiB, bound to the original execution ID and request hash, fingerprinted, and committed inside the pending idempotency receipt **before the primary executor is entered**. The artifact itself may live in provider storage, but the handle must remain resolvable for the recovery window.
 
+The recovery artifact has a separate lifecycle from the target mutation:
+
+- `undoFirst.discardPrepared(recoveryArtifactRef, context)` is an optional, idempotent provider hook for releasing the auxiliary snapshot/rollback artifact.
+- It is invoked only when plan validation fails or ledger admission is rejected **before** the pending-receipt persister is called (for example, an irrecoverably full hot ledger or a failed archive-room operation). The primary executor is not entered.
+- If no cleanup hook is supplied, the provider-managed TTL remains the fallback. Cleanup exceptions are surfaced as `recoveryArtifactDisposition: release-failed` rather than hidden.
+- A rejected/failed persister promise is **not** proof that no write happened: a store may have committed the pending receipt and lost its acknowledgement. In that case NK1 does not call `discardPrepared`, retains the recovery artifact, keeps the pending tombstone in memory, and makes one idempotent persistence retry. A same-process retry for the same key is blocked pending authoritative reconciliation.
+- After a process restart, the durable ledger remains authoritative. Providers must still bound artifact lifetime with TTL because a truly unavailable ledger cannot prove whether an artifact reference was committed.
+
+This cleanup hook releases only the auxiliary recovery artifact. It must never reverse or mutate the primary target, and should be safe to call repeatedly with the same handle.
+
 ## Recovery sequence
 
 ```
@@ -59,4 +69,4 @@ The gateway reports Undo-First coverage separately from the existing receipt/app
 
 ## Evidence boundary
 
-The added regressions exercise preparation ordering, durable plan restore, verified compensation, duplicate-undo prevention, state divergence and refusal to compensate unresolved original effects. CI evidence is recorded against the exact PR head. No Release ZIP is changed by this branch.
+The added regressions exercise preparation ordering, durable plan restore, verified compensation, duplicate-undo prevention, state divergence, refusal to compensate unresolved original effects, cleanup of definitely uncommitted preflight artifacts, and retention/blocking after an ambiguous pending-receipt write. CI evidence is recorded against the exact PR head. No Release ZIP is changed by this branch.
