@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+from contextlib import nullcontext
 import json
 import math
 import os
@@ -12,6 +13,7 @@ from urllib.parse import urlparse
 
 import torch
 from .engine import ArtifactError, NeuralProsthesisBank, _resolve_layer_stack
+from .layer_force import LayerForceBank
 
 
 MAX_REQUEST_BYTES = 1024 * 1024
@@ -111,6 +113,44 @@ def _find_layer_path(model: torch.nn.Module) -> str:
     raise RuntimeError("unsupported-transformer-layer-layout-set-NEURO_NP_LAYER_PATH")
 
 
+def _load_layer_force_bank(
+    model: torch.nn.Module,
+    *,
+    model_id: str,
+    model_revision: str,
+    layer_path: str,
+) -> tuple[LayerForceBank | None, str | None]:
+    profile_paths = _json_list("NEURO_NP_LAYER_FORCE_PROFILE_PATHS_JSON", maximum=16)
+    approved_digests = _json_list("NEURO_NP_ALLOWED_LAYER_FORCE_PROFILES_JSON", maximum=128)
+    default_profile = str(os.environ.get("NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE", "")).strip() or None
+
+    if not profile_paths:
+        if default_profile is not None:
+            raise RuntimeError("NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE-requires-a-local-profile")
+        return None, None
+    if model_revision == "unversioned-local":
+        raise RuntimeError("NEURO_NP_MODEL_REVISION-is-required-for-layer-force-profiles")
+
+    controller = LayerForceBank(
+        model,
+        model_id=model_id,
+        model_revision=model_revision,
+        layer_path=layer_path,
+    )
+    try:
+        loaded: set[str] = set()
+        for profile_path in profile_paths:
+            loaded.add(controller.load_profile(profile_path, approved_digests))
+        if default_profile is not None and default_profile not in loaded:
+            raise RuntimeError("NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE-not-loaded-or-approved")
+        return controller, default_profile
+    except Exception:
+        controller.close()
+        raise
+
+
+
+
 class TransformersRuntime:
     def __init__(self) -> None:
         api_token = str(os.environ.get("NEURO_NP_API_TOKEN", ""))
@@ -174,6 +214,12 @@ class TransformersRuntime:
             manifest = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
             self._adapter_manifest_digests[adapter_id] = str(manifest["manifest_sha256"])
         self.bank.eval()
+        self.layer_force, self.default_layer_force_profile = _load_layer_force_bank(
+            self.model,
+            model_id=model_id,
+            model_revision=revision,
+            layer_path=self.layer_path,
+        )
 
         self.default_adapter = str(os.environ.get("NEURO_NP_DEFAULT_ADAPTER", "")).strip() or None
         if self.default_adapter is not None and not self._is_approved(self.default_adapter):
@@ -208,6 +254,11 @@ class TransformersRuntime:
             "layer_path": self.layer_path,
             "loaded_adapters": adapters,
             "default_adapter": self.default_adapter,
+            "layer_force": {
+                "enabled": bool(self.layer_force is not None and self.default_layer_force_profile),
+                "default_profile": self.default_layer_force_profile,
+                "loaded_profiles": self.layer_force.snapshot()["loaded_profiles"] if self.layer_force is not None else [],
+            },
             "max_context_tokens": self.max_context_tokens,
             "remote_model_downloads": False,
         }
@@ -274,8 +325,13 @@ class TransformersRuntime:
         if attention_mask is not None:
             generation_kwargs["attention_mask"] = attention_mask
 
+        steering_context = (
+            self.layer_force.activate(self.default_layer_force_profile)
+            if self.layer_force is not None and self.default_layer_force_profile is not None
+            else nullcontext()
+        )
         with self._generation_lock, torch.inference_mode():
-            with self.bank.activate(adapter_id):
+            with self.bank.activate(adapter_id), steering_context:
                 generated = self.model.generate(input_ids=input_ids, **generation_kwargs)
         completion_tokens = generated[0, input_ids.shape[-1]:]
         generated_token_count = int(completion_tokens.shape[-1])
@@ -297,6 +353,8 @@ class TransformersRuntime:
 
     def close(self) -> None:
         self.bank.close()
+        if self.layer_force is not None:
+            self.layer_force.close()
 
 
 def _send_json(handler: BaseHTTPRequestHandler, status: int, payload: dict[str, Any]) -> None:
