@@ -43,8 +43,8 @@ class NeuralProsthesisTrainingUtilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "pairs.jsonl"
             source.write_text(
-                '{"prompt":"p1","completion":"c1"}\\n'
-                '{"prompt":"p2","completion":"c2"}\\n',
+                '{"prompt":"p1","completion":"c1"}\n'
+                '{"prompt":"p2","completion":"c2"}\n',
                 encoding="utf-8",
             )
             self.assertEqual(len(read_jsonl(source, max_examples=2)), 2)
