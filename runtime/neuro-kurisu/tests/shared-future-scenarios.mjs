@@ -92,8 +92,10 @@ const forgedCollaborative = await gateway.executeTool('organism.future.scenarios
   title: 'Forged shared plan',
   owner: 'shared',
   confirmShared: true,
-});
+}, 'shared-future-test', { idempotencyKey: 'shared-future-forged-1' });
 assert.equal(forgedCollaborative.ok, false, 'ActionGateway must block unapproved collaborative writes');
+assert.equal(forgedCollaborative.outcomeClass, 'approval-required', 'the request must reach and be denied by the human-approval gate');
+assert.equal(future.sharedFuture.getScenario('forged-shared'), null, 'a denied collaborative write must not enter the scenario ledger');
 
 async function executeWithOwnerApproval(toolId, input, idempotencyKey) {
   const request = await gateway.requestToolApproval(toolId, input, 'shared-future-test', { autonomous: false }, 'execute');
