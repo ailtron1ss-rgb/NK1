@@ -426,7 +426,10 @@ export class UndoFirstFileSystemAdapter {
 
     const { target } = await this.resolveTarget(relativePath);
     const existingState = await this.readState(relativePath);
-    if (existingState.exists) throw new ToolExecutionNoEffectError('filesystem-create-target-already-exists');
+    if (existingState.exists) {
+      await this.discardPrepared(this.reference(artifactId), { executionId: context.executionId });
+      throw new ToolExecutionNoEffectError('filesystem-create-target-already-exists');
+    }
     const temporary = `${target}.${process.pid}.${randomUUID()}.tmp`;
     let linked = false;
     try {
@@ -452,6 +455,7 @@ export class UndoFirstFileSystemAdapter {
           await this.discardPrepared(this.reference(artifactId), { executionId: context.executionId });
           throw new ToolExecutionNoEffectError('filesystem-create-target-appeared-before-atomic-create');
         }
+        await this.discardPrepared(this.reference(artifactId), { executionId: context.executionId }).catch(() => {});
         throw new ToolExecutionNoEffectError(`filesystem-create-not-applied:${String((error as Error)?.message ?? error).slice(0, 160)}`);
       }
       throw new ToolExecutionUncertainError(`filesystem-create-committed-but-receipt-finalization-uncertain:${String((error as Error)?.message ?? error).slice(0, 160)}`);
@@ -477,10 +481,11 @@ export class UndoFirstFileSystemAdapter {
       const artifactId = this.artifactId(context.executionId, relativePath, contentHash);
       const artifact = await this.loadArtifact(artifactId);
       if (artifact.executionId !== context.executionId || artifact.relativePath !== relativePath
-        || artifact.contentHash !== contentHash || artifact.status === 'prepared') {
-        // A prepared artifact plus matching target can result from a lost metadata
-        // acknowledgement after the hard-link commit; readback below decides.
+        || artifact.contentHash !== contentHash) {
+        return { status: 'unknown', reason: 'filesystem-recovery-artifact-does-not-match-request', checkedAt: Date.now() };
       }
+      // A prepared artifact plus matching target can result from a lost metadata
+      // acknowledgement after the hard-link commit; readback below decides.
       const state = await this.readState(relativePath);
       if (!state.exists || state.stateHash !== artifact.afterStateHash || state.contentHash !== contentHash) {
         return { status: 'unknown', reason: 'filesystem-create-state-does-not-prove-the-requested-postcondition', checkedAt: Date.now() };
