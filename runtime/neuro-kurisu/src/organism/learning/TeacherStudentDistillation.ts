@@ -506,8 +506,20 @@ export class TeacherStudentDistillationDataset {
         new Set(input.seeds).size !== input.seeds.length ||
         !input.teacher || typeof input.teacher.generate !== 'function' ||
         !input.verifier || typeof input.verifier.verify !== 'function' ||
-        input.teacher === input.verifier || input.teacher.generate === (input.verifier.verify as unknown)) {
+        input.teacher === input.verifier || input.teacher.generate === (input.verifier.verify as unknown) ||
+        !(input.trustedVerifierKeys instanceof Map)) {
       throw new Error('teacher-distillation-collection-input-invalid');
+    }
+    // Capture caller-owned arrays, capabilities and verifier keys before the first await.
+    // Mutating a provider or key registry during generation must not change who is trusted
+    // or what task/seed schedule this collection run actually executes.
+    const taskIds = [...input.taskIds];
+    const seeds = [...input.seeds];
+    const generateTeacher = input.teacher.generate.bind(input.teacher);
+    const verifyTeacher = input.verifier.verify.bind(input.verifier);
+    const trustedVerifierKeys = new Map(input.trustedVerifierKeys);
+    if ([...trustedVerifierKeys].some(([id, key]) => !isSafeIdentity(id) || typeof key !== 'string' || !key.trim())) {
+      throw new Error('teacher-distillation-collection-verifier-keys-invalid');
     }
     const report: TeacherCollectionReport = {
       attempted: 0, accepted: 0, rejected: 0, rejectionCounts: {}, acceptedExampleIds: [],
@@ -516,16 +528,16 @@ export class TeacherStudentDistillationDataset {
       report.rejected++;
       report.rejectionCounts[code] = (report.rejectionCounts[code] ?? 0) + 1;
     };
-    for (const taskId of input.taskIds) {
+    for (const taskId of taskIds) {
       const task = this.manifest.get(taskId);
       if (!task) { reject('unknown-task'); continue; }
       if (task.split === 'holdout') { reject('holdout-task-forbidden'); continue; }
-      for (const seed of input.seeds) {
+      for (const seed of seeds) {
         if (input.signal?.aborted) throw new Error('teacher-distillation-collection-cancelled');
         report.attempted++;
         let generated: Awaited<ReturnType<TeacherGenerationProvider['generate']>>;
         try {
-          generated = safeSnapshot(await input.teacher.generate({
+          generated = safeSnapshot(await generateTeacher({
             taskId: task.taskId,
             taskVersion: task.taskVersion,
             prompt: task.prompt,
@@ -546,7 +558,7 @@ export class TeacherStudentDistillationDataset {
         }
         let verification: Awaited<ReturnType<TeacherCompletionVerifier['verify']>>;
         try {
-          verification = safeSnapshot(await input.verifier.verify({
+          verification = safeSnapshot(await verifyTeacher({
             taskId: task.taskId,
             taskVersion: task.taskVersion,
             family: task.family,
@@ -582,7 +594,7 @@ export class TeacherStudentDistillationDataset {
           seed,
           evidenceRef: verification.evidenceRef,
           artifact: verification.artifact as SignedTeacherDistillationArtifact,
-        }, input.trustedVerifierKeys);
+        }, trustedVerifierKeys);
         if (result.accepted) {
           report.accepted++;
           report.acceptedExampleIds.push(result.exampleId);
