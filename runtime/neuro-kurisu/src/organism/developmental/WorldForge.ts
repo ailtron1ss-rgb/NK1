@@ -20,7 +20,7 @@ export interface WorldForgeEvaluation {
   evidenceCoverage01:number; efficiency01:number; robustness01:number; strategyFamily:string; stepsUsed:number;
   syntheticOnly:true; independentlyVerified:false; limitations:string[];
 }
-interface HiddenAnswerKey { requiredTargets:string[]; acceptedFamilies:string[]; criticalEvidence:string[]; disturbancePenalty01:number; minimumScore01:number; seed:number; }
+interface HiddenAnswerKey { split:WorldForgeSplit; domain:WorldForgeDomain; requiredTargets:string[]; acceptedFamilies:string[]; criticalEvidence:string[]; disturbancePenalty01:number; minimumScore01:number; resourceBudget:number; maxSteps:number; riskTolerance01:number; seed:number; }
 export interface WorldForgeOptions { maxCasesPerBatch?:number; maxTraceSteps?:number; holdoutNamespace?:string; }
 
 const ACTIONS:WorldForgeAction[]=['observe','inspect','move','collect','wait','reroute','prioritize','verify'];
@@ -69,16 +69,16 @@ export class WorldForge {
         task:domain==='resource-allocation'?'Allocate scarce resources while preserving a safety reserve and adapting to a late demand shock.':domain==='route-planning'?'Reach the destination while respecting a changing route and risk budget.':'Identify the reliable explanation from noisy signals and verify it before concluding.',
         observations,goalOptions:[...targets],availableActions:[...ACTIONS],constraints:{maxSteps:Math.max(4,Math.min(16,Math.round(5+difficulty01*8))),resourceBudget:Math.max(3,Math.round(10-difficulty01*3)),riskTolerance01:Number((.75-difficulty01*.35).toFixed(3)),requiredEvidence:domain==='investigation'?2:1},
         disturbances,acceptedStrategyFamilies:families,seedFingerprint:fingerprint(seed+'|'+input.split),syntheticOnly:true};
-      this.answers.set(id,{requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,seed});
+      this.answers.set(id,{split:input.split,domain,requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,resourceBudget:scenario.constraints.resourceBudget,maxSteps:scenario.constraints.maxSteps,riskTolerance01:scenario.constraints.riskTolerance01,seed});
       out.push(scenario);
     }
     return out;
   }
   evaluate(scenario:WorldForgeCase,trace:WorldForgeActionStep[]):WorldForgeEvaluation{
     const key=scenario&&this.answers.get(scenario.id);
-    if(!key||scenario.syntheticOnly!==true||!Array.isArray(trace))return this.emptyEvaluation(scenario?.id??'invalid',scenario?.split??'train');
+    if(!key||scenario.syntheticOnly!==true||scenario.split!==key.split||scenario.domain!==key.domain||!Array.isArray(trace))return this.emptyEvaluation(scenario?.id??'invalid',scenario?.split??'train');
     const steps=trace.slice(0,this.maxTraceSteps),valid=steps.filter(s=>s&&ACTIONS.includes(s.action));
-    const violations=steps.length-valid.length+Math.max(0,trace.length-this.maxTraceSteps);
+    const cost=valid.reduce((sum,s)=>sum+clamp(s.cost??1,0,10),0);\n    const risk=valid.reduce((sum,s)=>sum+clamp(s.risk01??0),0)/Math.max(1,valid.length);\n    const violations=steps.length-valid.length+Math.max(0,trace.length-this.maxTraceSteps)+Number(valid.length>key.maxSteps)+Number(cost>key.resourceBudget)+Number(risk>key.riskTolerance01);
     const targets=new Set(valid.map(s=>safeText(s.target,80)).filter(Boolean));
     const evidence=new Set(valid.map(s=>safeText(s.evidence,80)).filter(Boolean));
     const family=this.inferFamily(scenario.domain,valid);
