@@ -22,6 +22,15 @@ export interface ScienceActors {
   auditor: string;
 }
 
+export interface ScienceRoleSubjects {
+  discoverer: string;
+  theorist: string;
+  experimentalist: string;
+  replicator: string;
+  skeptic: string;
+  auditor: string;
+}
+
 export type ScienceStage =
   | 'discovered' | 'theorized' | 'registered' | 'prototyped'
   | 'tested' | 'critiqued' | 'replicating' | 'replicated'
@@ -32,6 +41,19 @@ export interface ScienceArtifact {
   reference: string;
   sha256: string;
 }
+
+/** Stable host principal binding for a named actor in a scientific role. */
+export type ScienceRoleIdentityResolver = (
+  role: ScienceRole,
+  actorId: string,
+  scienceRecordId: string,
+) => string | undefined;
+
+/** Host artifact-store adapter; must verify bytes and compute their SHA-256. */
+export type ScienceArtifactBytesVerifier = (
+  artifact: ScienceArtifact,
+  context: { scienceRecordId: string; purpose: 'evidence' | 'audit' },
+) => boolean;
 
 /** Snapshot of the canonical runtime capture; Science Republic never runs a second generator. */
 export interface ScienceCandidateProvenance {
@@ -114,14 +136,16 @@ export interface ScienceAudit {
   blockers: string[];
   limitations: string[];
   signedEvidenceCount: number;
-  result: 'reference-complete' | 'blocked';
+  result: 'reference-complete' | 'byte-verified' | 'blocked';
+  artifactBytesVerified: boolean;
   completedAt: number;
 }
 
 export interface ScienceTrustBoundary {
-  roleIdentity: 'declared-only';
+  roleIdentity: 'declared-only' | 'host-attested';
+  roleSubjects: ScienceRoleSubjects | null;
   signedEvidence: 'canonical-invention-loop-verified' | 'none';
-  artifactBytesVerified: false;
+  artifactBytesVerified: boolean;
   independentlyVerified: false;
   promotionEligible: false;
 }
@@ -174,6 +198,8 @@ export interface ScienceRepublicState {
 export interface ScienceRepublicCallbacks {
   recordOutcome?: (id: string, artifact: SignedOutcomeArtifact) => InventionRecord;
   critique?: (id: string, artifact: SignedOutcomeArtifact) => InventionRecord;
+  resolveRoleIdentity?: ScienceRoleIdentityResolver;
+  verifyArtifactBytes?: ScienceArtifactBytesVerifier;
   now?: () => number;
   id?: () => string;
 }
@@ -306,6 +332,16 @@ function isArtifact(value: unknown): value is ScienceArtifact {
     value.reference.length > 0 && validHash(value.sha256);
 }
 
+function isRoleSubjects(value: unknown): value is ScienceRoleSubjects {
+  if (!isObject(value)) return false;
+  const roles: ScienceRole[] = [
+    'discoverer', 'theorist', 'experimentalist', 'replicator', 'skeptic', 'auditor',
+  ];
+  const subjects = roles.map(role => value[role]);
+  return subjects.every(subject => typeof subject === 'string' && subject.length > 0) &&
+    new Set(subjects).size === subjects.length;
+}
+
 function isActors(value: unknown): value is ScienceActors {
   if (!isObject(value)) return false;
   const keys: ScienceRole[] = [
@@ -351,14 +387,25 @@ function isScienceCore(value: unknown): value is ScienceRepublicRecordCore {
         !Array.isArray(audit.checkedArtifacts) || !audit.checkedArtifacts.every(isArtifact) ||
         !Array.isArray(audit.blockers) || !Array.isArray(audit.limitations) ||
         !Number.isSafeInteger(audit.signedEvidenceCount) || Number(audit.signedEvidenceCount) < 0 ||
-        (audit.result !== 'reference-complete' && audit.result !== 'blocked') ||
+        !['reference-complete', 'byte-verified', 'blocked'].includes(String(audit.result)) ||
+        typeof audit.artifactBytesVerified !== 'boolean' ||
         !finite(audit.completedAt)) return false;
   }
   const trust = value.trust;
-  return isObject(trust) && trust.roleIdentity === 'declared-only' &&
-    (trust.signedEvidence === 'canonical-invention-loop-verified' || trust.signedEvidence === 'none') &&
-    trust.artifactBytesVerified === false &&
-    trust.independentlyVerified === false && trust.promotionEligible === false;
+  if (!isObject(trust) ||
+      !['declared-only', 'host-attested'].includes(String(trust.roleIdentity)) ||
+      (trust.roleIdentity === 'host-attested' && !isRoleSubjects(trust.roleSubjects)) ||
+      (trust.roleIdentity === 'declared-only' && trust.roleSubjects !== null) ||
+      (trust.signedEvidence !== 'canonical-invention-loop-verified' && trust.signedEvidence !== 'none') ||
+      typeof trust.artifactBytesVerified !== 'boolean' ||
+      trust.independentlyVerified !== false || trust.promotionEligible !== false) return false;
+  const auditValue = value.audit;
+  if (auditValue === undefined && trust.artifactBytesVerified !== false) return false;
+  if (auditValue !== undefined) {
+    if (!isObject(auditValue) ||
+        trust.artifactBytesVerified !== auditValue.artifactBytesVerified) return false;
+  }
+  return true;
 }
 
 function verifyRecord(value: unknown): value is ScienceRepublicRecord {
@@ -430,19 +477,39 @@ export class ScienceRepublic {
   private readonly id: () => string;
   private readonly recordOutcomeDelegate: (id: string, artifact: SignedOutcomeArtifact) => InventionRecord;
   private readonly critiqueDelegate: (id: string, artifact: SignedOutcomeArtifact) => InventionRecord;
+  private resolveRoleIdentity?: ScienceRoleIdentityResolver;
+  private verifyArtifactBytes?: ScienceArtifactBytesVerifier;
+  readonly inventionLoop: TheInventionLoop;
 
   constructor(
-    readonly inventionLoop: TheInventionLoop,
+    inventionLoop: TheInventionLoop,
     callbacks: ScienceRepublicCallbacks = {},
   ) {
     if (!inventionLoop) throw new Error('science-republic-invention-loop-required');
+    this.inventionLoop = inventionLoop;
     this.now = callbacks.now ?? (() => Date.now());
     this.id = callbacks.id ?? (() =>
       globalThis.crypto?.randomUUID?.() ?? 'science-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+    this.resolveRoleIdentity = callbacks.resolveRoleIdentity;
+    this.verifyArtifactBytes = callbacks.verifyArtifactBytes;
     this.recordOutcomeDelegate = callbacks.recordOutcome ??
       ((recordId, artifact) => this.inventionLoop.recordOutcome(recordId, artifact));
     this.critiqueDelegate = callbacks.critique ??
       ((recordId, artifact) => this.inventionLoop.critique(recordId, artifact));
+  }
+
+  configureRoleIdentityResolver(resolve?: ScienceRoleIdentityResolver): void {
+    if (resolve !== undefined && typeof resolve !== 'function') {
+      throw new Error('invalid-science-role-identity-resolver');
+    }
+    this.resolveRoleIdentity = resolve;
+  }
+
+  configureArtifactBytesVerifier(verify?: ScienceArtifactBytesVerifier): void {
+    if (verify !== undefined && typeof verify !== 'function') {
+      throw new Error('invalid-science-artifact-bytes-verifier');
+    }
+    this.verifyArtifactBytes = verify;
   }
 
   snapshot(): ScienceRepublicState {
@@ -530,6 +597,34 @@ export class ScienceRepublic {
       return this.verifyArtifactBytes(artifact, { scienceRecordId, purpose }) === true;
     } catch {
       return false;
+    }
+  }
+
+  private assertRoleActor(
+    record: ScienceRepublicRecord,
+    role: ScienceRole,
+    actorId: string,
+  ): void {
+    const normalizedActor = clean(actorId, 120);
+    if (!normalizedActor || normalizedActor !== record.actors[role]) {
+      throw new Error('science-' + role + '-role-mismatch');
+    }
+    if (record.trust.roleIdentity === 'host-attested') {
+      if (!this.resolveRoleIdentity || !record.trust.roleSubjects) {
+        throw new Error('science-role-identity-authority-unavailable');
+      }
+      let currentSubject = '';
+      try {
+        currentSubject = clean(
+          this.resolveRoleIdentity(role, normalizedActor, record.id),
+          180,
+        );
+      } catch {
+        throw new Error('science-role-identity-attestation-failed');
+      }
+      if (!currentSubject || currentSubject !== record.trust.roleSubjects[role]) {
+        throw new Error('science-role-identity-binding-changed');
+      }
     }
   }
 
@@ -674,7 +769,7 @@ export class ScienceRepublic {
     if (!isObject(safe)) throw new Error('invalid-science-theory-payload');
     const record = this.find(id);
     if (record.stage !== 'discovered') throw new Error('science-theory-requires-discovery');
-    if (clean(safe.actorId, 120) !== record.actors.theorist) throw new Error('science-theorist-role-mismatch');
+    this.assertRoleActor(record, 'theorist', safe.actorId);
     const mechanism = clean(safe.mechanism, MAX_TEXT);
     const predictions = cleanList(safe.predictions, 'science-predictions');
     const falsifiers = cleanList(safe.falsifiers, 'science-falsifiers');
@@ -702,9 +797,7 @@ export class ScienceRepublic {
     if (record.stage !== 'theorized' || !record.theory) {
       throw new Error('science-experiment-requires-theory');
     }
-    if (clean(actorId, 120) !== record.actors.experimentalist) {
-      throw new Error('science-experimentalist-role-mismatch');
-    }
+    this.assertRoleActor(record, 'experimentalist', actorId);
     const normalized = this.inventionLoop.validateProtocol(protocol);
     const plan = normalized.verifierPlan;
     if (plan.critique !== record.actors.skeptic || plan.replication !== record.actors.replicator) {
@@ -788,9 +881,7 @@ export class ScienceRepublic {
     if (record.stage !== 'registered' || !record.inventionId) {
       throw new Error('science-prototype-requires-registered-experiment');
     }
-    if (clean(safe.actorId, 120) !== record.actors.experimentalist) {
-      throw new Error('science-experimentalist-role-mismatch');
-    }
+    this.assertRoleActor(record, 'experimentalist', safe.actorId);
     const prototype = normalizeArtifact({
       reference: safe.reference, sha256: safe.sha256,
     }, 'science-prototype');
@@ -811,9 +902,8 @@ export class ScienceRepublic {
     if (!record.prototype || !record.inventionId) throw new Error('science-prototype-required');
     const measurement = safe.payload.measurement;
     if (measurement.contextType !== 'invention-outcome') throw new Error('science-outcome-measurement-required');
-    if (measurement.phase === 'replication' &&
-        safe.payload.verifierId !== record.actors.replicator) {
-      throw new Error('science-replicator-role-mismatch');
+    if (measurement.phase === 'replication') {
+      this.assertRoleActor(record, 'replicator', safe.payload.verifierId);
     }
     if (measurement.phase === 'holdout' &&
         safe.payload.verifierId === record.actors.auditor) {
@@ -836,10 +926,8 @@ export class ScienceRepublic {
     }
     const record = this.find(id);
     if (!record.inventionId || !record.prototype) throw new Error('science-critique-requires-prototype');
-    if (clean(safe.actorId, 120) !== record.actors.skeptic ||
-        safe.artifact.payload.verifierId !== record.actors.skeptic) {
-      throw new Error('science-skeptic-role-mismatch');
-    }
+    this.assertRoleActor(record, 'skeptic', safe.actorId);
+    this.assertRoleActor(record, 'skeptic', safe.artifact.payload.verifierId);
     const invention = this.requireCanonicalInvention(
       this.critiqueDelegate(record.inventionId, safe.artifact),
     );
@@ -884,9 +972,7 @@ export class ScienceRepublic {
         !record.holdoutManifest || !record.prototype) {
       throw new Error('science-audit-requires-complete-research');
     }
-    if (clean(safe.actorId, 120) !== record.actors.auditor) {
-      throw new Error('science-auditor-role-mismatch');
-    }
+    this.assertRoleActor(record, 'auditor', safe.actorId);
     const invention = this.inventionFor(record);
     if (invention.stage !== 'accepted' && invention.stage !== 'rejected') {
       throw new Error('science-audit-requires-terminal-invention');
@@ -907,8 +993,8 @@ export class ScienceRepublic {
         required.some(item => checkedByRef.get(item.reference) !== item.sha256)) {
       throw new Error('science-audit-manifest-incomplete-or-mismatched');
     }
-    if (required.some(item => item.reference === auditRef)) {
-      throw new Error('science-audit-reference-collision');
+    if (required.some(item => item.reference === auditRef || item.sha256 === auditSha256)) {
+      throw new Error('science-audit-reference-or-digest-collision');
     }
     const blockers = Array.isArray(safe.blockers)
       ? safe.blockers.map(item => clean(item, 400)).filter(Boolean).slice(0, MAX_LIST)

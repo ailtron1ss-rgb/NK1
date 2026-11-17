@@ -37,7 +37,11 @@ for (const verifierId of verifierIds) {
 }
 const resolveKey = verifierId => trustedKeys.get(verifierId);
 const artifactBytes = new Map();
-const resolveScienceRoleIdentity = (_role, actorId) => 'principal:' + actorId;
+let revokeTheoristIdentity = false;
+const resolveScienceRoleIdentity = (_role, actorId) =>
+  revokeTheoristIdentity && actorId === actors.theorist
+    ? 'revoked-principal:' + actorId
+    : 'principal:' + actorId;
 const verifyScienceArtifactBytes = artifact =>
   artifactBytes.get(artifact.reference) === artifact.sha256;
 const rememberArtifactBytes = artifact =>
@@ -129,14 +133,22 @@ assert.throws(() => duplicatePrincipalRuntime.scienceRepublic.discover({
   actors,
 }), /science-role-identities-must-be-distinct/);
 
-const theory = runtime.scienceRepublic.theorize(science.id, {
+const theoryInput = {
   actorId: actors.theorist,
   mechanism: 'A bounded candidate index reduces the number of comparisons.',
   predictions: ['p95 latency decreases on the frozen workload'],
   falsifiers: ['p95 latency does not decrease on the frozen workload'],
   alternatives: ['cache warm-up accounts for the observed change'],
   evidence: { reference: 'artifact://science/theory.json', sha256: digest('theory') },
-});
+};
+revokeTheoristIdentity = true;
+assert.throws(
+  () => runtime.scienceRepublic.theorize(science.id, theoryInput),
+  /science-role-identity-binding-changed/,
+  'a revoked host principal must not continue acting under the old actor ID',
+);
+revokeTheoristIdentity = false;
+const theory = runtime.scienceRepublic.theorize(science.id, theoryInput);
 rememberArtifactBytes(theory.theory.evidence);
 assert.equal(theory.stage, 'theorized');
 
