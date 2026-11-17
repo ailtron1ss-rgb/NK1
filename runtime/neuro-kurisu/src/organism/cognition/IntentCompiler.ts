@@ -571,16 +571,26 @@ export class IntentCompiler {
     }
   }
 
-  gate(contract: IntentContract, action: string): IntentGateResult {
+  gate(
+    contract: IntentContract,
+    action: string,
+    purpose: 'execute' | 'reconcile' = 'execute',
+  ): IntentGateResult {
     if (!isIntentContract(contract)) return { allowed: false, reason: 'invalid-contract' };
     const normalizedAction = cleanText(action, MAX_ACTION);
-    if (!normalizedAction) return { allowed: false, reason: 'action-not-explicitly-allowed' };
+    if (!normalizedAction || !/^[a-z0-9][a-z0-9._-]{1,63}$/i.test(normalizedAction) || normalizedAction.includes('*')) {
+      return { allowed: false, reason: 'action-not-explicitly-allowed' };
+    }
     if (contract.missingInformation.length > 0) return { allowed: false, reason: 'contract-incomplete' };
     if (contract.permissions.deniedActions.includes(normalizedAction)) return { allowed: false, reason: 'action-explicitly-denied' };
     if (contract.approval.status !== 'approved') return { allowed: false, reason: 'contract-not-approved' };
     if (!this.hasValidApproval(contract)) return { allowed: false, reason: 'approval-attestation-invalid' };
     const now = this.now();
-    if (typeof contract.approval.expiresAt !== 'number' || contract.approval.expiresAt <= now) {
+    // Reconciliation is a read-only receipt lookup. An expired execution grant
+    // must not cause the system to abandon an already-pending real-world effect;
+    // ActionGateway independently requires its one-shot reconciliation approval.
+    if (typeof contract.approval.expiresAt !== 'number' ||
+        (purpose === 'execute' && contract.approval.expiresAt <= now)) {
       return { allowed: false, reason: 'approval-expired' };
     }
     if (typeof contract.approval.at !== 'number' || contract.approval.at > now + MAX_CLOCK_SKEW_MS) {
