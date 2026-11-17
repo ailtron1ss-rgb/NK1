@@ -11,6 +11,14 @@ const first = fabric.discoverMechanisms();
 assert.equal(first.version, 1);
 assert.equal(first.source, 'organism-system-fabric');
 assert.equal(first.problem.domain, 'cognitive-runtime');
+
+assert.equal(first.problem.flowEvidenceClass, 'declared-dependency',
+  'the physical subsystem graph contains declared dependencies, not observed causal effects');
+assert.ok(first.diagnostics.evidenceConfidence01 <= 0.65,
+  'topology-only intake must cap its evidence confidence');
+assert.ok(first.experiments.every(x => x.mechanismFlowEvidenceClass === 'declared-dependency'),
+  'verify-only experiments must preserve the provenance class of their source graph');
+
 assert.equal(first.problem.actors.length, graph.nodes.length);
 assert.equal(first.problem.flows.length, graph.edges.length);
 assert.equal(first.diagnostics.totalSystems, 7);
