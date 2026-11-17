@@ -49,6 +49,9 @@ import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSn
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
+import {
+  createLanguageInvokerParliamentRoleExecutors, ParliamentModelAttestationRegistry,
+} from '../system/CognitiveParliamentLocalAdapter.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
@@ -274,7 +277,28 @@ export class OrganismRuntime {
     this.phonePolicy.checkpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.checkpointMaxDirtyCycles));
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
-    this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
+    // If the host already enabled the language organ, reuse that existing invoker
+    // for six specialist prompts unless explicit role providers were supplied.
+    // All six calls share one conservative backend family; risk gates will not
+    // mistake one language model for multiple independent models.
+    let parliamentRuntimeConfig:Partial<OrganismConfig> = {};
+    const canReuseLanguageInvoker = config.enableCognitiveParliament !== false &&
+      (this.config.enableLanguage === true || config.enableCognitiveParliament === true) &&
+      typeof config.languageInvoker === 'function' &&
+      !config.parliamentRoleExecutors && !config.parliamentModelAttestor;
+    if (canReuseLanguageInvoker && config.languageInvoker) {
+      const registry = config.parliamentModelAttestationRegistry ?? new ParliamentModelAttestationRegistry();
+      parliamentRuntimeConfig = {
+        parliamentRoleExecutors:createLanguageInvokerParliamentRoleExecutors(config.languageInvoker,registry),
+        parliamentModelAttestationRegistry:registry,
+        parliamentModelAttestor:registry.attest.bind(registry),
+        enableCognitiveParliament:config.enableCognitiveParliament ?? true,
+      };
+    }
+    this.core = new OrganismCore(
+      config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile),
+      { ...config, ...parliamentRuntimeConfig, cycleResultMode:'operational' },
+    );
     const learningJournals = createDefaultLearningJournals(config.stateFile);
     this.core.configureP23LearningJournals(learningJournals);
     this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
