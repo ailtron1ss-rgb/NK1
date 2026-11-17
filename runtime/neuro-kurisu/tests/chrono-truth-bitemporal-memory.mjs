@@ -514,6 +514,15 @@ assert.equal(
   'The archive was stored in the west facility.',
   'restore must preserve retroactive valid-time corrections',
 );
+assert.deepEqual(
+  new Set((restored.temporalBitemporalAt(
+    provenanceFact.id,
+    260,
+    provenanceCorrectionRecordedAt,
+  )?.evidenceSources ?? []).map(row => row.independenceKey)),
+  new Set(['chrono-truth-user-source', 'chrono-truth-signed-audit']),
+  'restore must retain independent evidence lineage on the corrected fact',
+);
 
 console.log('CHRONOTRUTH_BITEMPORAL_MEMORY=PASS', JSON.stringify({
   originalId: firstId,
