@@ -362,6 +362,9 @@ assert.equal(createSparsePlasticityMask({
   availableParameterIds: ['critical'], allowedParameterIds: ['critical'],
   protectedParameterIds: ['critical'],
 }).accepted, false);
+assert.equal(createSparsePlasticityMask({
+  availableParameterIds: ['only-one'], allowedParameterIds: ['only-one'], protectedParameterIds: [],
+}).accepted, false, 'a five-percent cap must not round up and select 100% of a one-parameter model');
 
 const capsule = compileNeuralJitSkillCapsule({
   taskFingerprint: 'task:1', environmentFingerprint: 'env:1', sourceEvidenceRef: 'outcome:1',
