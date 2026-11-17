@@ -17,7 +17,7 @@ Do not reuse the private key of the holdout or shadow verifier as the competence
 
 ## Host configuration
 
-The canonical OrganismCore accepts these optional settings:
+The canonical OrganismCore accepts these optional settings. For trusted candidate/shadow child runs, Core overwrites the matching child-process environment values with its configured runtime version and environment fingerprint; caller-supplied values for these two trust fields are never authoritative.
 
 - NEURO_SKILL_COMPETENCE_ATTESTOR_KEYS_JSON: JSON object mapping stable attestor IDs to Ed25519 public PEM strings.
 - NEURO_SKILL_COMPETENCE_RUNTIME_VERSION: immutable build/runtime identity. Prefer the exact build SHA plus runtime release identifier.
@@ -46,7 +46,7 @@ The contract is included in the candidate payload fingerprint. A code, schema, t
 
 1. Create an authentic VerifiedSkillPromotionProposal from signed, independently verified holdout outcome artifacts. It must pass task coverage, complete-seed coverage, family-regression and positive confidence-interval gates.
 2. Stage the exact proof-carrying payload in VersionedSkillCandidateStore.
-3. Execute at least three independent successful shadow runs. Each signed receipt must bind candidate ID/version, payload fingerprint, proposal outcome fingerprint, holdout manifest, run identity, runtime version and the environment fingerprint recorded independently by the trusted supervisor. The P23 proof builder rejects shadow receipts without the same environment fingerprint as the execution contract.
+3. Execute at least three independent successful shadow runs. Each signed receipt must bind candidate ID/version, payload fingerprint, proposal outcome fingerprint, holdout manifest, run identity, runtime version and the environment fingerprint recorded independently by the trusted supervisor. Core writes the same environment fingerprint into the trusted run registry and passes it to the child learner; the P23 proof builder rejects receipts whose environment binding is missing or differs from the execution contract.
 4. Call store.createCompetenceProofPayload(...) using the exact staged candidate and contract. The store itself verifies the shadow receipts against its trusted run registry.
 5. Send the payload to the external competence attestor. The external authority signs the canonical payload. NK1 does not hold or expose a production signing helper or private key.
 6. Attach the signed artifact using store.attachCompetenceProof(...). This verifies the signature and exact candidate/evidence bindings.

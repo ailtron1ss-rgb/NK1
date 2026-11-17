@@ -11357,7 +11357,23 @@ export class OrganismCore {
      * the registrar: this Core instance records provenance before child spawn.
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
-        return executeTrustedShadowLearningProcess({ ...input, core: { registerTrustedSkillShadowRun: context => { this.registerTrustedSkillShadowRun(context); } } });
+        const environmentFingerprint = String(
+            this.config.skillCompetenceEnvironmentFingerprint ??
+            process.env.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT ?? '',
+        ).trim().toLowerCase();
+        const commandEnv: Record<string, string> = { ...(input.command.env ?? {}) };
+        commandEnv.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION = input.runtimeVersion;
+        if (/^[a-f0-9]{64}$/.test(environmentFingerprint)) {
+            commandEnv.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT = environmentFingerprint;
+        } else {
+            delete commandEnv.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT;
+        }
+        const command = { ...input.command, env: commandEnv };
+        return executeTrustedSkillShadowLearningProcess({
+            ...input,
+            command,
+            core: { registerTrustedSkillShadowRun: context => { this.registerTrustedSkillShadowRun(context); } },
+        });
     }
     /** Attach the single durable P23 journal pair to the organism's actual in-process learner. */
     configureP23LearningJournals(sinks: {
