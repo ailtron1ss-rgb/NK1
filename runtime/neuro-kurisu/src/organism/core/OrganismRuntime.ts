@@ -718,7 +718,7 @@ export class OrganismRuntime {
     return prepared.request;
   }
 
-  private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false, signal?: AbortSignal, neuralSnapshot: ReturnType<OrganismCore['b365UnifiedNeuroCausalDiagnostics']>): Promise<CognitiveProposal|null> {
+  private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, neuralSnapshot: ReturnType<OrganismCore['b365UnifiedNeuroCausalDiagnostics']>, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
     if (!this.config.enableLanguage || !this.config.languageInvoker) return null;
     const current = this.core.operationalStatusSnapshot();
     const budgetSnapshot = this.core.cognitiveBudgetOperationalSnapshot();
@@ -854,7 +854,7 @@ export class OrganismRuntime {
     const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
     const slowCognitionAllowed = executionPlan?.run?.['slow-cognition'] !== false;
     const cognitiveProposal = slowCognitionAllowed
-      ? await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal, previousNeural)
+      ? await this.generateCognitiveProposal(cycle, fusedObservation, previousNeural, Boolean(options.deliberate), !externalText, options.signal)
       : null;
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
