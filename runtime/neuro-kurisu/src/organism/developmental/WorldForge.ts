@@ -1,3 +1,5 @@
+import { types as nodeUtilTypes } from 'node:util';
+
 /**
  * World Forge: deterministic synthetic environments for robust planning tests.
  * Public scenarios exclude latent variables and scoring rules. The evaluator
@@ -31,6 +33,83 @@ const safeText=(v:unknown,max=240):string=>typeof v==='string'?v.normalize('NFKC
 const hash32=(s:string):number=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
 const fingerprint=(s:string)=>hash32(s).toString(16).padStart(8,'0');
 function rng(seed:number):()=>number{let x=seed>>>0;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+
+function normalizeActionStep(value:unknown):WorldForgeActionStep|null {
+  try {
+    if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    const keys=Reflect.ownKeys(descriptors);
+    const allowed=new Set(['action','target','evidence','cost','risk01']);
+    if(keys.length>allowed.size||keys.some(k=>typeof k!=='string'||!allowed.has(k)))return null;
+    for(const key of keys as string[]){
+      const descriptor=descriptors[key];
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true)return null;
+    }
+    const actionDescriptor=descriptors.action;
+    if(!actionDescriptor||!ACTIONS.includes(actionDescriptor.value as WorldForgeAction))return null;
+    const out:WorldForgeActionStep={action:actionDescriptor.value as WorldForgeAction};
+    for(const key of ['target','evidence'] as const){
+      const descriptor=descriptors[key];
+      if(!descriptor)continue;
+      const value=descriptor.value;
+      if(typeof value!=='string'||!value||safeText(value,120)!==value)return null;
+      out[key]=value;
+    }
+    for(const key of ['cost','risk01'] as const){
+      const descriptor=descriptors[key];
+      if(!descriptor)continue;
+      const value=descriptor.value;
+      const maximum=key==='cost'?10:1;
+      if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>maximum)return null;
+      out[key]=value;
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeActionTrace(value:unknown,maxSteps:number):{steps:WorldForgeActionStep[];violations:number;overflow:number} {
+  try {
+    if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype)return{steps:[],violations:1,overflow:0};
+    const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
+    const length=lengthDescriptor&&Object.prototype.hasOwnProperty.call(lengthDescriptor,'value')?lengthDescriptor.value:undefined;
+    if(typeof length!=='number'||!Number.isSafeInteger(length)||length<0)return{steps:[],violations:1,overflow:0};
+    const overflow=Math.max(0,length-maxSteps);
+    const limit=Math.min(length,maxSteps);
+    const steps:WorldForgeActionStep[]=[];
+    let violations=0;
+    for(let i=0;i<limit;i++){
+      const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true){violations++;continue;}
+      const step=normalizeActionStep(descriptor.value);
+      if(step)steps.push(step);else violations++;
+    }
+    return{steps,violations,overflow};
+  } catch {
+    return{steps:[],violations:1,overflow:0};
+  }
+}
+
+function scenarioIdentity(value:unknown):{id:string;split:WorldForgeSplit;domain:WorldForgeDomain}|null {
+  try {
+    if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    const id=descriptors.id,split=descriptors.split,domain=descriptors.domain,synthetic=descriptors.syntheticOnly;
+    for(const descriptor of [id,split,domain,synthetic]){
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true)return null;
+    }
+    if(typeof id.value!=='string'||!id.value||safeText(id.value,160)!==id.value)return null;
+    if(!SPLITS.includes(split.value)||!DOMAINS.includes(domain.value)||synthetic.value!==true)return null;
+    return{id:id.value,split:split.value,domain:domain.value};
+  } catch {
+    return null;
+  }
+}
 
 export class WorldForge {
   readonly #answers=new Map<string,HiddenAnswerKey>();
@@ -74,16 +153,19 @@ export class WorldForge {
     }
     return out;
   }
-  evaluate(scenario:WorldForgeCase,trace:WorldForgeActionStep[]):WorldForgeEvaluation{
-    const key=scenario&&this.#answers.get(scenario.id);
-    if(!key||scenario.syntheticOnly!==true||scenario.split!==key.split||scenario.domain!==key.domain||!Array.isArray(trace))return this.emptyEvaluation(scenario?.id??'invalid',scenario?.split??'train');
-    const steps=trace.slice(0,this.maxTraceSteps),valid=steps.filter(s=>s&&ACTIONS.includes(s.action));
-    const cost=valid.reduce((sum,s)=>sum+clamp(s.cost??1,0,10),0);
-    const risk=valid.reduce((sum,s)=>sum+clamp(s.risk01??0),0)/Math.max(1,valid.length);
-    const violations=steps.length-valid.length+Math.max(0,trace.length-this.maxTraceSteps)+Number(valid.length>key.maxSteps)+Number(cost>key.resourceBudget)+Number(risk>key.riskTolerance01);
-    const targets=new Set(valid.map(s=>safeText(s.target,80)).filter(Boolean));
-    const evidence=new Set(valid.map(s=>safeText(s.evidence,80)).filter(Boolean));
-    const family=this.inferFamily(scenario.domain,valid);
+  evaluate(scenario:unknown,trace:unknown):WorldForgeEvaluation{
+    const identity=scenarioIdentity(scenario);
+    if(!identity)return this.emptyEvaluation('invalid','train');
+    const key=this.#answers.get(identity.id);
+    if(!key||identity.split!==key.split||identity.domain!==key.domain)return this.emptyEvaluation(identity.id,identity.split);
+    const normalized=normalizeActionTrace(trace,this.maxTraceSteps);
+    const valid=normalized.steps;
+    const cost=valid.reduce((sum,s)=>sum+(s.cost??1),0);
+    const risk=valid.reduce((sum,s)=>sum+(s.risk01??0),0)/Math.max(1,valid.length);
+    const violations=normalized.violations+normalized.overflow+Number(valid.length>key.maxSteps)+Number(cost>key.resourceBudget)+Number(risk>key.riskTolerance01);
+    const targets=new Set(valid.map(s=>s.target).filter((v):v is string=>Boolean(v)));
+    const evidence=new Set(valid.map(s=>s.evidence).filter((v):v is string=>Boolean(v)));
+    const family=this.inferFamily(key.domain,valid);
     const targetCoverage=key.requiredTargets.filter(t=>targets.has(t)).length/Math.max(1,key.requiredTargets.length);
     const evidenceCoverage=key.criticalEvidence.filter(e=>evidence.has(e)||targets.has(e)).length/Math.max(1,key.criticalEvidence.length);
     const verification=valid.some(s=>s.action==='verify')?1:0;
@@ -91,7 +173,7 @@ export class WorldForge {
     const robustness=clamp(1-risk-key.disturbancePenalty01);
     const strategy=key.acceptedFamilies.includes(family)?1:.55;
     const score=clamp(targetCoverage*.35+evidenceCoverage*.2+verification*.15+efficiency*.12+robustness*.1+strategy*.08-violations*.12);
-    return{scenarioId:scenario.id,split:scenario.split,score01:Number(score.toFixed(4)),success:score>=key.minimumScore01&&violations===0,constraintViolations:violations,evidenceCoverage01:Number(evidenceCoverage.toFixed(4)),efficiency01:Number(efficiency.toFixed(4)),robustness01:Number(robustness.toFixed(4)),strategyFamily:family,stepsUsed:valid.length,syntheticOnly:true,independentlyVerified:false,limitations:['Synthetic environment only; does not establish real-world competence.','Holdout outcomes are evaluator-only and must not be used for tuning.','Scenario realism requires external calibration against real task distributions.']};
+    return{scenarioId:identity.id,split:identity.split,score01:Number(score.toFixed(4)),success:score>=key.minimumScore01&&violations===0,constraintViolations:violations,evidenceCoverage01:Number(evidenceCoverage.toFixed(4)),efficiency01:Number(efficiency.toFixed(4)),robustness01:Number(robustness.toFixed(4)),strategyFamily:family,stepsUsed:valid.length,syntheticOnly:true,independentlyVerified:false,limitations:['Synthetic environment only; does not establish real-world competence.','Holdout outcomes are evaluator-only and must not be used for tuning.','Scenario realism requires external calibration against real task distributions.']};
   }
   releaseEvaluator(id:string):void{this.#answers.delete(id);}
   reset():void{this.#answers.clear();}
