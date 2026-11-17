@@ -154,9 +154,10 @@ function normalizeCandidate(raw: SynapticAdapterCandidate): SynapticAdapterCandi
   if (!conflictGroup || conflictGroup.length > 120) throw new Error('synaptic-adapter-conflict-group-invalid');
   if (!trainingDatasetRef || trainingDatasetRef.length > 240) throw new Error('synaptic-adapter-training-dataset-ref-invalid');
   if (!owner || owner.length > 120) throw new Error('synaptic-adapter-owner-invalid');
-  if (!Number.isSafeInteger(raw.maximumContextTokens) || raw.maximumContextTokens < 128 || raw.maximumContextTokens > 1_000_000) {
+  if (!Number.isSafeInteger(maximumContextTokens) || maximumContextTokens < 128 || maximumContextTokens > 1_000_000) {
     throw new Error('synaptic-adapter-context-limit-invalid');
   }
+  const maximumContextTokens = Number(raw.maximumContextTokens);
   const minimumConfidence01 = Number(raw.minimumConfidence01);
   const maximumResourceRisk01 = Number(raw.maximumResourceRisk01);
   if (!Number.isFinite(minimumConfidence01) || minimumConfidence01 < 0 || minimumConfidence01 > 1) {
