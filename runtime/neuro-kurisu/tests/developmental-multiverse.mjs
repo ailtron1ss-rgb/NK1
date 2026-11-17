@@ -17,6 +17,14 @@ const input = {
     { id: 'exploration-heavy', label: 'exploration heavy', deltas: { exploration: 0.1 } },
   ],
 };
+const seedConcentration = new DevelopmentalMultiverse();
+assert.throws(() => seedConcentration.createSession({
+  ...input,
+  runId: 'dm19-repeated-holdout-seed',
+  holdoutScenarios: scenarios('holdout-repeated', 301, 5).map(item => ({ ...item, seed: 999 })),
+}), /holdout-seed-diversity-invalid/,
+'five scenario IDs must not be mistaken for five independent holdout seeds');
+
 const baselineMetrics = { quality01: 0.7, cost01: 0.5, safety01: 0.95, stability01: 0.82 };
 const validationMetrics = {
   baseline: baselineMetrics,
