@@ -92,7 +92,6 @@ const SAFETY:ParliamentSafetyVerdict[]=['clear','block','uncertain'];
 const EXTERNAL_CLASSES=new Set(['os','device','user','external-api','world']);
 const clamp=(n:number):number=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const text=(v:unknown):v is string=>typeof v==='string'&&v.trim().length>0;
-const boundedText=(v:unknown,max=500):string=>text(v)?v.trim().slice(0,max):'';
 const uniq=<T>(items:T[]):T[]=>[...new Set(items)];
 const stringArray=(v:unknown,maxItems=24,maxChars=500):string[]|null=>{
   if(!Array.isArray(v)||v.length>maxItems||v.some(x=>!text(x)))return null;

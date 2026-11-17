@@ -41,6 +41,25 @@ assert.equal(syndicatedFamilies.get('publisher-a.example'),syndicatedFamilies.ge
 assert.notEqual(syndicatedFamilies.get('publisher-a.example'),syndicatedFamilies.get('publisher-c.example'),
   'a separate lineage remains independent');
 
+const staleFirewall=new EvidenceFirewallEngine();
+const staleClaim='nk1:cognitive-parliament:stale-observation';
+staleFirewall.observe({claimKey:staleClaim,sourceClass:'external-api',sourceKey:'stale.example',
+  contentHash:'stale-content',confidence01:.99,trust01:.99,at:Date.now()-31*24*60*60*1000});
+staleFirewall.observe({claimKey:staleClaim,sourceClass:'external-api',sourceKey:'fresh-a.example',
+  contentHash:'fresh-content-a',confidence01:.99,trust01:.99});
+staleFirewall.observe({claimKey:staleClaim,sourceClass:'external-api',sourceKey:'fresh-b.example',
+  contentHash:'fresh-content-b',confidence01:.99,trust01:.99});
+assert.equal(staleFirewall.claim(staleClaim).status,'promoted');
+const staleRows=staleFirewall.snapshot().observations.filter(row=>row.claimKey===staleClaim);
+const staleSession=new EvidenceFirewallParliamentTrustPort(staleFirewall,modelAttestor).openSession();
+const staleObservation=staleRows.find(row=>row.sourceKey==='stale.example');
+const freshObservation=staleRows.find(row=>row.sourceKey==='fresh-a.example');
+assert.ok(staleObservation&&freshObservation);
+assert.equal(staleSession.verifyEvidence({id:staleObservation.id,claimKey:staleClaim}),null,
+  'an old observation cannot borrow a fresh promoted claim status');
+assert.ok(staleSession.verifyEvidence({id:freshObservation.id,claimKey:staleClaim}),
+  'a fresh observation covered by the promotion receipt remains valid');
+
 const governance=new GovernanceSubsystemRuntime();
 assert.ok(governance.cognitiveParliament instanceof CognitiveParliament);
 assert.equal(governance.cognitiveParliament.deliberate({candidateId:'no-trust',risk:'low',reports:[]}).status,'needs-evidence',

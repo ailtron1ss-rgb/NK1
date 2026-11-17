@@ -7,10 +7,11 @@ import type {
 export type ParliamentModelAttestor=(executionId:string)=>ParliamentModelAttestation|null;
 
 /**
- * Host-side trust adapter. Evidence is accepted only when its exact immutable
- * canonical firewall observation belongs to a promoted claim and appears in
- * that claim's promotion receipt. Source lineage is collapsed across syndicated
- * publisher copies. Model identity is accepted only from a host attestor.
+ * Host-side trust adapter. Evidence is accepted only when the exact canonical
+ * firewall observation belongs to a promoted claim, is still fresh, and (for
+ * external research) its content hash appears in the promotion receipt. Source
+ * lineage is collapsed across syndicated publisher copies. Model identity is
+ * accepted only from a host attestor.
  */
 export class EvidenceFirewallParliamentTrustPort implements ParliamentTrustPort {
   constructor(
@@ -61,14 +62,17 @@ export class EvidenceFirewallParliamentTrustPort implements ParliamentTrustPort 
         if(!receipt||receipt.policyVersion!=='firewall-v1'||!Number.isFinite(receipt.promotedAt)||
           receipt.promotedAt<=0||receipt.promotedAt>Date.now()+5*60*1000)return null;
         if(!['os','device','user','external-api','world'].includes(observation.sourceClass))return null;
+        if(!Number.isFinite(observation.observedAt)||observation.observedAt<=0||
+          Date.now()-observation.observedAt>30*24*60*60*1000)return null;
+        if(observation.sourceClass==='external-api'&&(!observation.contentHash||
+          !receipt.contentHashes.includes(observation.contentHash)))return null;
         const sourceIdentity=`${observation.sourceClass}:${observation.sourceKey}`;
         if(!receipt.independentSources.includes(sourceIdentity))return null;
         const sourceFamily=observation.sourceClass==='external-api'
           ?(sourceFamilyBySource.get(`source:${observation.sourceKey}`)||`external-api:${observation.sourceKey}`)
           :sourceIdentity;
         if(!sourceIdentity||!sourceFamily||!Number.isFinite(observation.confidence01)||
-          !Number.isFinite(observation.trust01)||!Number.isFinite(observation.observedAt)||
-          observation.observedAt<=0)return null;
+          !Number.isFinite(observation.trust01))return null;
         return {
           id:observation.id,claimKey:observation.claimKey,sourceIdentity,sourceFamily,
           sourceClass:observation.sourceClass as ParliamentVerifiedEvidence['sourceClass'],
