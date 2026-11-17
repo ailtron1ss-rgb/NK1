@@ -36,6 +36,34 @@ try {
   const envTwo = await runLearningProcess(run, 'b'.repeat(64), { ...base, env: { NK1_TEST_FLAG: 'two' } });
   assert.notEqual(envOne.receipt.commandFingerprint, envTwo.receipt.commandFingerprint);
 
+  // Sensitive values explicitly passed to the child must not survive in durable
+  // execution receipts, while byte counters retain the raw-output measurements.
+  const accessToken = 'nk1-access-token-secret-2026';
+  const redacted = await runLearningProcess(run, 'b'.repeat(64), {
+    ...base,
+    env: { NK1_TEST_ACCESS_TOKEN: accessToken },
+    args: ['-e', "process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN); process.stderr.write('Authorization: Bearer '+process.env.NK1_TEST_ACCESS_TOKEN)"],
+  });
+  assert.equal(redacted.receipt.status, 'completed');
+  assert.equal(redacted.receipt.stdout, '[REDACTED]');
+  assert.equal(redacted.receipt.stderr, 'Authorization: Bearer [REDACTED]');
+  assert.equal(redacted.receipt.stdoutBytes, Buffer.byteLength(accessToken));
+  assert.equal(redacted.receipt.stderrBytes, Buffer.byteLength('Authorization: Bearer ' + accessToken));
+  assert.ok(!JSON.stringify(redacted.receipt).includes(accessToken), 'receipt must not contain the explicit access token');
+
+  // If the raw-output limit cuts a credential in the middle, its captured prefix
+  // is also redacted instead of leaking a partial token.
+  const truncatedSecret = await runLearningProcess(run, 'b'.repeat(64), {
+    ...base,
+    maxOutputBytes: 8,
+    env: { NK1_TEST_ACCESS_TOKEN: accessToken },
+    args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN)'],
+  });
+  assert.equal(truncatedSecret.receipt.status, 'output-limit');
+  assert.equal(truncatedSecret.receipt.outputTruncated, true);
+  assert.equal(truncatedSecret.receipt.stdout, '[REDACTED]');
+  assert.ok(!JSON.stringify(truncatedSecret.receipt).includes(accessToken.slice(0, 8)), 'truncated token prefixes must not be persisted');
+
   const failed = await runLearningProcess(run, 'b'.repeat(64), { ...base, args: ['-e', 'process.exit(9)'] });
   assert.equal(failed.receipt.status, 'failed');
   assert.equal(failed.receipt.exitCode, 9);
