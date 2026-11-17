@@ -240,6 +240,40 @@ function safeSnapshot<T>(value: unknown, errorCode: string): T {
   }
 }
 
+/** Bounds injected teacher/verifier calls and propagates cancellation into the provider. */
+function withProviderTimeout<T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  externalSignal: AbortSignal | undefined,
+  timeoutMs: number,
+): Promise<T> {
+  if (externalSignal?.aborted) {
+    return Promise.reject(new Error('teacher-distillation-collection-cancelled'));
+  }
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onExternalAbort: (() => void) | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error('teacher-distillation-provider-timeout'));
+    }, timeoutMs);
+    if (externalSignal) {
+      onExternalAbort = () => {
+        controller.abort();
+        reject(new Error('teacher-distillation-collection-cancelled'));
+      };
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+  });
+  const work = Promise.resolve().then(() => operation(controller.signal));
+  return Promise.race([work, deadline]).finally(() => {
+    if (timer !== undefined) clearTimeout(timer);
+    if (externalSignal && onExternalAbort) {
+      externalSignal.removeEventListener('abort', onExternalAbort);
+    }
+  });
+}
+
 export function canonicalTeacherDistillationPayload(payload: SignedTeacherDistillationPayload): string {
   return canonical(payload);
 }
@@ -520,6 +554,8 @@ export class TeacherStudentDistillationDataset {
     teacher: TeacherGenerationProvider;
     verifier: TeacherCompletionVerifier;
     trustedVerifierKeys: ReadonlyMap<string, string>;
+    /** Deadline for each teacher or verifier call; default 120s, hard maximum 600s. */
+    providerTimeoutMs?: number;
     signal?: AbortSignal;
   }): Promise<TeacherCollectionReport> {
     if (!input || !Array.isArray(input.taskIds) || !input.taskIds.length ||
@@ -531,7 +567,11 @@ export class TeacherStudentDistillationDataset {
         new Set(input.seeds).size !== input.seeds.length ||
         !input.teacher || typeof input.teacher.generate !== 'function' ||
         !input.verifier || typeof input.verifier.verify !== 'function' ||
-        (input.teacher as unknown) === (input.verifier as unknown) || input.teacher.generate === (input.verifier.verify as unknown) ||
+        (input.teacher as unknown) === (input.verifier as unknown) ||
+        input.teacher.generate === (input.verifier.verify as unknown) ||
+        (input.providerTimeoutMs !== undefined &&
+          (!Number.isSafeInteger(input.providerTimeoutMs) || input.providerTimeoutMs < 1 ||
+            input.providerTimeoutMs > 600_000)) ||
         !(input.trustedVerifierKeys instanceof Map)) {
       throw new Error('teacher-distillation-collection-input-invalid');
     }
@@ -540,6 +580,7 @@ export class TeacherStudentDistillationDataset {
     // or what task/seed schedule this collection run actually executes.
     const taskIds = [...input.taskIds];
     const seeds = [...input.seeds];
+    const providerTimeoutMs = input.providerTimeoutMs ?? 120_000;
     const generateTeacher = input.teacher.generate.bind(input.teacher);
     const verifyTeacher = input.verifier.verify.bind(input.verifier);
     const trustedVerifierKeys = new Map(input.trustedVerifierKeys);
@@ -562,16 +603,18 @@ export class TeacherStudentDistillationDataset {
         report.attempted++;
         let generated: Awaited<ReturnType<TeacherGenerationProvider['generate']>>;
         try {
-          generated = safeSnapshot(await generateTeacher({
+          generated = safeSnapshot(await withProviderTimeout(signal => generateTeacher({
             taskId: task.taskId,
             taskVersion: task.taskVersion,
             prompt: task.prompt,
             ...(task.systemPrompt !== undefined ? { systemPrompt: task.systemPrompt } : {}),
             seed,
-            signal: input.signal,
-          }), 'teacher-distillation-generation-response-invalid');
-        } catch {
-          reject('teacher-generation-failed');
+            signal,
+          }), input.signal, providerTimeoutMs), 'teacher-distillation-generation-response-invalid');
+        } catch (error) {
+          if (input.signal?.aborted) throw new Error('teacher-distillation-collection-cancelled');
+          reject(error instanceof Error && error.message === 'teacher-distillation-provider-timeout'
+            ? 'teacher-generation-timeout' : 'teacher-generation-failed');
           continue;
         }
         if (!isRecord(generated) || !validText(generated.completion, MAX_COMPLETION_CHARS) ||
@@ -583,7 +626,7 @@ export class TeacherStudentDistillationDataset {
         }
         let verification: Awaited<ReturnType<TeacherCompletionVerifier['verify']>>;
         try {
-          verification = safeSnapshot(await verifyTeacher({
+          verification = safeSnapshot(await withProviderTimeout(signal => verifyTeacher({
             taskId: task.taskId,
             taskVersion: task.taskVersion,
             family: task.family,
@@ -596,10 +639,12 @@ export class TeacherStudentDistillationDataset {
             teacherRevision: generated.teacherRevision,
             seed,
             manifestFingerprint: this.manifestFingerprint(),
-            signal: input.signal,
-          }), 'teacher-distillation-verifier-response-invalid');
-        } catch {
-          reject('teacher-verification-failed');
+            signal,
+          }), input.signal, providerTimeoutMs), 'teacher-distillation-verifier-response-invalid');
+        } catch (error) {
+          if (input.signal?.aborted) throw new Error('teacher-distillation-collection-cancelled');
+          reject(error instanceof Error && error.message === 'teacher-distillation-provider-timeout'
+            ? 'teacher-verification-timeout' : 'teacher-verification-failed');
           continue;
         }
         if (!isRecord(verification) || verification.accepted !== true ||
