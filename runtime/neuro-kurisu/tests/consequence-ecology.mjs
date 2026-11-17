@@ -95,6 +95,30 @@ assert.ok(dangerousResult.stakeholders.some(row => row.actor === 'customers'));
 assert.equal(dangerousResult.independentlyVerified, false);
 assert.ok(dangerousResult.criticalPaths.length > 0);
 
+const epistemicResult = simulator.analyzeConsequences({
+  id: 'consequence-analysis-epistemic-confidence',
+  horizonDays: 30,
+  options: [
+    option('low-link-confidence', 'act with weak causal evidence', [
+      node('same-effect-low-confidence', 'harm', 0.9, 0.8, 0.9),
+    ], [edge('low-confidence-link', '__action__', 'same-effect-low-confidence', { strength01: 0.9, confidence01: 0.2 })]),
+    option('high-link-confidence', 'act with strong causal evidence', [
+      node('same-effect-high-confidence', 'harm', 0.9, 0.8, 0.9),
+    ], [edge('high-confidence-link', '__action__', 'same-effect-high-confidence', { strength01: 0.9, confidence01: 0.9 })]),
+  ],
+});
+const lowConfidenceEffect = epistemicResult.analysis.options.find(row => row.id === 'low-link-confidence').nodes[0];
+const highConfidenceEffect = epistemicResult.analysis.options.find(row => row.id === 'high-link-confidence').nodes[0];
+assert.equal(
+  lowConfidenceEffect.propagatedProbability01,
+  highConfidenceEffect.propagatedProbability01,
+  'uncertain causal evidence must not make the same possible harm disappear from the risk estimate',
+);
+assert.ok(
+  lowConfidenceEffect.uncertaintyContribution01 > highConfidenceEffect.uncertaintyContribution01,
+  'uncertain causal evidence must be represented as greater forecast uncertainty',
+);
+
 const replayed = simulator.analyzeConsequences(request, context);
 assert.equal(replayed.replayed, true, 'same analysis ID and exact payload must be idempotent');
 assert.deepEqual(replayed.analysis, first.analysis);
