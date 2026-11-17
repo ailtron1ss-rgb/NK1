@@ -22,12 +22,15 @@ interface TeacherDistillationTask extends TeacherDistillationTaskInput {
 }
 
 export interface SignedTeacherDistillationPayload {
-  schemaVersion: 1;
+  /** Version 2 binds the task family and split into the verifier signature. */
+  schemaVersion: 2;
   artifactId: string;
   runId: string;
   manifestFingerprint: string;
   taskId: string;
   taskVersion: string;
+  family: string;
+  split: TeacherDistillationSplit;
   teacherId: string;
   teacherModel: string;
   teacherRevision: string;
@@ -264,6 +267,8 @@ export function createTeacherDistillationPayload(input: {
   manifestFingerprint: string;
   taskId: string;
   taskVersion: string;
+  family: string;
+  split: TeacherDistillationSplit;
   teacherId: string;
   teacherModel: string;
   teacherRevision: string;
@@ -278,13 +283,15 @@ export function createTeacherDistillationPayload(input: {
 }): SignedTeacherDistillationPayload {
   const snapshot = safeSnapshot<typeof input>(input, 'teacher-distillation-payload-boundary-rejected');
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     artifactId: snapshot.artifactId,
     runId: snapshot.runId,
     manifestFingerprint: snapshot.manifestFingerprint,
     taskId: snapshot.taskId,
     taskVersion: snapshot.taskVersion,
-    teacherId: snapshot.teacherId,
+    family: snapshot.family,
+    split: snapshot.split,
+    teacherId: snapshot.teacherId;
     teacherModel: snapshot.teacherModel,
     teacherRevision: snapshot.teacherRevision,
     seed: snapshot.seed,
@@ -411,8 +418,9 @@ export class TeacherStudentDistillationDataset {
       return this.reject('prompt-or-system-mismatch', record.taskId);
     }
     const payload = record.artifact?.payload;
-    if (!isRecord(payload) || payload.schemaVersion !== 1 ||
+    if (!isRecord(payload) || payload.schemaVersion !== 2 ||
         payload.taskId !== record.taskId || payload.taskVersion !== task.taskVersion ||
+        payload.family !== task.family || payload.split !== task.split ||
         payload.manifestFingerprint !== this.manifestFingerprint() ||
         payload.teacherId !== record.teacherId || payload.teacherModel !== record.teacherModel ||
         payload.teacherRevision !== record.teacherRevision || payload.seed !== record.seed ||
