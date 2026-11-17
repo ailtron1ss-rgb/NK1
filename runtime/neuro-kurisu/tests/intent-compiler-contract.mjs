@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { IntentCompiler } from '../src/organism/cognition/IntentCompiler.ts';
 import { IntentActionGatewayBridge } from '../src/organism/system/IntentActionGatewayBridge.ts';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
+import { IntentExecutionRuntime } from '../src/organism/system/IntentExecutionRuntime.ts';
 
 let now = 1_800_000_000_000;
 const verifyTestApproval = (_contract, approval) => approval.evidenceRef.startsWith('test-host-attested:');
@@ -471,5 +472,86 @@ assert.equal(expiredReconcile.reconciled, true, 'expired but authentic intent ma
 assert.equal(expiryExecutionCalls, 0, 'reconciliation must never invoke executeTool');
 assert.equal(expiryReconcileCalls, 1, 'reconciliation must invoke only the read-only receipt lookup once');
 
+
+
+const autonomousGateway = new ActionGateway();
+const autonomousReceipt = {
+  source: 'autonomous-resource-tool-life',
+  decisionId: 'cef:autonomous-tool-plan:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  tick: 42,
+  plannerToolId: 'organism.inspect',
+  toolId: 'organism.inspect',
+  intentHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  reason: 'autonomous-resource-tool-life:inspect-current-state',
+  sourceText: 'autonomous-resource-tool-life:inspect-current-state\\nTool: organism.inspect\\nDecision: cef:autonomous-tool-plan:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+};
+const autonomousRuntime = new IntentExecutionRuntime(autonomousGateway, {
+  clock: () => now,
+  approvalKey: 'test-autonomous-planner-approval-key-32bytes',
+  autonomousDecisionVerifier: (candidate, evidence) =>
+    evidence.source === autonomousReceipt.source &&
+    evidence.decisionId === autonomousReceipt.decisionId &&
+    evidence.intentHash === autonomousReceipt.intentHash &&
+    candidate.sourceText === autonomousReceipt.sourceText &&
+    candidate.goal.text === autonomousReceipt.reason,
+});
+const autonomousDraft = autonomousRuntime.compile({
+  requestId: 'autonomous-resource-tool-life:' + autonomousReceipt.decisionId,
+  text: autonomousReceipt.sourceText,
+  extraction: {
+    goal: autonomousReceipt.reason,
+    expectedOutcome: 'A bounded ActionGateway result for organism.inspect',
+    acceptanceCriteria: ['Return the correlated inspect result'],
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop if the planner receipt is missing or mismatched'],
+    assumptions: [],
+  },
+});
+const autonomousApproved = autonomousRuntime.approveFromTrustedPlanner(autonomousDraft, {
+  allowedActions: ['organism.inspect'], acknowledgedAssumptions: [], riskAcknowledged: false,
+}, autonomousReceipt);
+assert.equal(autonomousApproved.approval.authority, 'autonomous-planner',
+  'trusted planner approval must be distinct from a human approval');
+assert.equal(autonomousApproved.approval.userConfirmed, undefined,
+  'autonomous planner approval must never claim a human confirmed it');
+assert.equal(autonomousRuntime.getContract(autonomousApproved.id)?.id, autonomousApproved.id);
+assert.equal(autonomousRuntime['compiler'].gate(autonomousApproved, 'organism.inspect').allowed, true,
+  'an internally verified, low-risk CEF decision may attest its exact bounded action');
+
+const untrustedAutonomousRuntime = new IntentExecutionRuntime(new ActionGateway(), {
+  clock: () => now,
+  approvalKey: 'test-untrusted-planner-approval-key-32b',
+  autonomousDecisionVerifier: () => false,
+});
+const untrustedDraft = untrustedAutonomousRuntime.compile({
+  requestId: 'autonomous-resource-tool-life:untrusted',
+  text: 'Inspect current state',
+  extraction: {
+    expectedOutcome: 'State summary',
+    acceptanceCriteria: ['Return state'],
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop if unavailable'],
+  },
+});
+assert.throws(() => untrustedAutonomousRuntime.approveFromTrustedPlanner(untrustedDraft, {
+  allowedActions: ['organism.inspect'], acknowledgedAssumptions: [], riskAcknowledged: false,
+}, { ...autonomousReceipt, decisionId: 'cef:forged' }),
+/trusted autonomous planner decision receipt was not verified/);
+
+const autonomousHighRisk = autonomousRuntime.compile({
+  requestId: 'autonomous-resource-tool-life:dangerous',
+  text: 'Delete the production database',
+  extraction: {
+    expectedOutcome: 'Database deleted',
+    acceptanceCriteria: ['Database deletion completed'],
+    permissions: { allowedActions: ['database.delete'] },
+    stopConditions: ['Stop unless the explicit target has been confirmed'],
+  },
+});
+assert.equal(autonomousHighRisk.risk.level, 'high');
+assert.throws(() => autonomousRuntime.approveFromTrustedPlanner(autonomousHighRisk, {
+  allowedActions: ['database.delete'], acknowledgedAssumptions: [], riskAcknowledged: false,
+}, { ...autonomousReceipt, toolId: 'database.delete', plannerToolId: 'database.delete' }),
+/risk acknowledgement|autonomous planner cannot self-approve/);
 
 console.log('NK1_INTENT_COMPILER=PASS intentIntegrity=true approvalAttestation=true expiry=true riskAndScopeGates=true gatewayGate=true');
