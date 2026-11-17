@@ -390,7 +390,7 @@ import { B304SemanticHoldoutLedger, defaultB304SemanticHoldoutState, type B304Se
 import { B305CriticalPathVerificationLedger, defaultB305CriticalPathState } from '../system/B305CriticalPathVerificationLedger.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 import type { ExternalProjectResearchResult } from '../system/ExternalProjectResearchTool.ts';
-import { IntentExecutionRuntime, type IntentApprovalScope, type IntentApprovalEvidence } from '../system/IntentExecutionRuntime.ts';
+import { IntentExecutionRuntime, type IntentApprovalScope, type IntentApprovalEvidence, type TrustedAutonomousDecisionEvidence } from '../system/IntentExecutionRuntime.ts';
 import type { IntentContract, IntentContractInput, IntentExtractionProvider } from '../cognition/IntentCompiler.ts';
 import type { IntentBoundAction, IntentBridgeResult, IntentBridgeReconciliationResult } from '../system/IntentActionGatewayBridge.ts';
 const now = () => Date.now();
@@ -1357,6 +1357,7 @@ export class OrganismCore {
         this.intentExecutionRuntime = new IntentExecutionRuntime(this.cognitiveRuntime.actionGateway, {
             ...(typeof intentKey === 'string' || intentKey instanceof Uint8Array ? { approvalKey: intentKey } : {}),
             extractionTimeoutMs: this.config.intentExtractionTimeoutMs,
+            autonomousDecisionVerifier: (contract, evidence) => this.verifyAutonomousPlannerIntent(contract, evidence),
         });
         this.cognitiveSubsystemFacadeB297 = new CognitiveSubsystemFacade(this as any);
         this.persistence.configure(this.config.checkpointMinIntervalMs, this.config.checkpointMaxDirtyCycles);
@@ -4882,11 +4883,81 @@ export class OrganismCore {
                         planner: 'autonomous-resource-tool-life',
                     },
                 });
-                const toolResult = await this.executeTool(autoToolPlan.tool.id, {}, autonomousToolReason, {
-                    idempotencyKey: autonomousIdempotencyKey,
-                    decisionId: autonomousPlanEvent.id,
-                    autonomous: true,
-                });
+                const canonicalAutonomousToolId = this.canonicalActionToolId(autoToolPlan.tool.id);
+                const autonomousIntentSourceText = `${autonomousToolReason}\nTool: ${canonicalAutonomousToolId}\nDecision: ${autonomousPlanEvent.id}`;
+                let approvedAutonomousIntent: IntentContract | null = null;
+                let autonomousIntentDraft: IntentContract | null = null;
+                let autonomousIntentRefusal = '';
+                try {
+                    autonomousIntentDraft = this.compileIntent({
+                        requestId: `autonomous-resource-tool-life:${autonomousPlanEvent.id}`,
+                        text: autonomousIntentSourceText,
+                        extraction: {
+                            goal: autonomousToolReason,
+                            context: [`planner-decision:${autonomousPlanEvent.id}`],
+                            expectedOutcome: `A bounded ActionGateway execution result for ${canonicalAutonomousToolId}`,
+                            constraints: {
+                                must: ['Use the canonical Core/ActionGateway execution and receipt path'],
+                                mustNot: ['Do not broaden the planner-selected action scope', 'Do not repeat an external side effect with a fresh idempotency key'],
+                            },
+                            priorities: ['Preserve planner decision lineage', 'Prefer verified, recoverable execution'],
+                            acceptanceCriteria: [`Return the ActionGateway outcome for ${canonicalAutonomousToolId} correlated to the planner decision`],
+                            permissions: { allowedActions: [canonicalAutonomousToolId] },
+                            stopConditions: ['Stop if the CEF planner receipt is absent or inconsistent', 'Stop if intent is incomplete or high risk', 'Stop if ActionGateway policy or receipt infrastructure refuses dispatch'],
+                            assumptions: [],
+                        },
+                    });
+                    // After a restart, reuse the same HMAC-attested contract for this
+                    // deterministic CEF plan event rather than minting a new authority.
+                    approvedAutonomousIntent = this.intentExecutionRuntime.getContract(autonomousIntentDraft.id);
+                    if (!approvedAutonomousIntent) {
+                        approvedAutonomousIntent = this.intentExecutionRuntime.approveFromTrustedPlanner(
+                            autonomousIntentDraft,
+                            { allowedActions: [canonicalAutonomousToolId], acknowledgedAssumptions: [], riskAcknowledged: false },
+                            {
+                                source: 'autonomous-resource-tool-life',
+                                decisionId: autonomousPlanEvent.id,
+                                tick: autonomousPlanEvent.tick,
+                                plannerToolId: autoToolPlan.tool.id,
+                                toolId: canonicalAutonomousToolId,
+                                intentHash: String(autonomousPlanEvent.payload.intentHash ?? ''),
+                                reason: autonomousToolReason,
+                                sourceText: autonomousIntentSourceText,
+                            },
+                        );
+                        // Persist authority before the external side effect can begin.
+                        this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+                        await this.checkpoint(true);
+                    }
+                } catch (error) {
+                    autonomousIntentRefusal = String((error as Error)?.message ?? 'autonomous-intent-not-approved').replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
+                }
+                let toolResult;
+                if (approvedAutonomousIntent) {
+                    const dispatch = await this.executeIntent(approvedAutonomousIntent, {
+                        toolId: canonicalAutonomousToolId,
+                        input: {},
+                        reason: autonomousToolReason,
+                        options: {
+                            idempotencyKey: autonomousIdempotencyKey,
+                            decisionId: autonomousPlanEvent.id,
+                            autonomous: true,
+                        },
+                    });
+                    toolResult = dispatch.executed
+                        ? dispatch.result
+                        : this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                            canonicalAutonomousToolId,
+                            `intent-gate:${dispatch.reason}`,
+                            { intentContractId: approvedAutonomousIntent.id, riskLevel: approvedAutonomousIntent.risk.level },
+                        );
+                } else {
+                    toolResult = this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                        canonicalAutonomousToolId,
+                        `intent-governance-refused:${autonomousIntentRefusal || 'intent-not-approved'}`,
+                        { ...(autonomousIntentDraft ? { intentContractId: autonomousIntentDraft.id, riskLevel: autonomousIntentDraft.risk.level } : {}) },
+                    );
+                }
                 const recoveredUncertainOutcome = toolResult.outcomeClass === 'idempotency-recovery-required'
                     || toolResult.outcomeClass === 'idempotency-storage-failed'
                     || toolResult.outcomeClass === 'idempotency-ledger-full'
@@ -12303,6 +12374,41 @@ export class OrganismCore {
         return { integrated: true, observation: ingested.observation, assessment: ingested.assessment ?? undefined };
     }
 
+    private verifyAutonomousPlannerIntent(contract: IntentContract, evidence: TrustedAutonomousDecisionEvidence): boolean {
+        try {
+            if (!evidence || evidence.source !== 'autonomous-resource-tool-life' ||
+                !Number.isSafeInteger(evidence.tick) || evidence.tick < 0 ||
+                typeof evidence.decisionId !== 'string' || !evidence.decisionId ||
+                typeof evidence.intentHash !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.intentHash)) return false;
+            const expectedIntent = {
+                version: 1,
+                tick: evidence.tick,
+                toolId: evidence.plannerToolId,
+                planner: evidence.source,
+            };
+            const expectedHash = sha256Stable(expectedIntent);
+            if (expectedHash !== evidence.intentHash ||
+                evidence.decisionId !== `cef:autonomous-tool-plan:${expectedHash}` ||
+                this.canonicalActionToolId(evidence.plannerToolId) !== evidence.toolId) return false;
+            const event = this.cognitiveRuntime.cognitiveEventFabric.snapshot().recent
+                .find(row => row.id === evidence.decisionId);
+            if (!event || event.stage !== 'plan' || event.source !== evidence.source ||
+                event.tick !== evidence.tick ||
+                event.payload.toolId !== evidence.plannerToolId ||
+                event.payload.planner !== evidence.source ||
+                event.payload.intentHash !== expectedHash) return false;
+            return contract.sourceText === evidence.sourceText &&
+                contract.goal.text === evidence.reason &&
+                contract.sourceTextTruncated === false &&
+                contract.missingInformation.length === 0 &&
+                contract.permissions.allowedActions.length === 1 &&
+                contract.permissions.allowedActions[0] === evidence.toolId &&
+                contract.permissions.deniedActions.length === 0 &&
+                (contract.risk.level === 'low' || contract.risk.level === 'medium');
+        } catch {
+            return false;
+        }
+    }
     private canonicalActionToolId(id: string): string { return id === 'android.capture_camera' ? 'organism.device.capture' : id === 'android.speak' ? 'organism.device.speak' : id; }
     async reconcileToolExecution(id: string, input: Record<string, unknown> = {}, reason = 'tool-receipt-reconciliation', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
         // Legacy camera tool IDs are aliases only; ActionGateway owns the one physical executor.
