@@ -23,11 +23,19 @@ export interface ParliamentResearchSessionPort {
  * accepted only from a host attestor.
  */
 export class EvidenceFirewallParliamentTrustPort implements ParliamentTrustPort {
+  private readonly firewall:EvidenceFirewallEngine;
+  private readonly modelAttestor?:ParliamentModelAttestor;
+  private readonly researchSession?:ParliamentResearchSessionPort;
+
   constructor(
-    private readonly firewall:EvidenceFirewallEngine,
-    private readonly modelAttestor?:ParliamentModelAttestor,
-    private readonly researchSession?:ParliamentResearchSessionPort,
-  ) {}
+    firewall:EvidenceFirewallEngine,
+    modelAttestor?:ParliamentModelAttestor,
+    researchSession?:ParliamentResearchSessionPort,
+  ) {
+    this.firewall=firewall;
+    this.modelAttestor=modelAttestor;
+    this.researchSession=researchSession;
+  }
 
   openSession():ParliamentTrustSession {
     const snapshot=this.firewall.snapshot();
