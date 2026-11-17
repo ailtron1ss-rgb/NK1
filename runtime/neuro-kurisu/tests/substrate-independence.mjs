@@ -336,10 +336,45 @@ assert.equal(rolledBack.lastEvaluation, null,
   'rollback consumes the evaluation so it cannot be replayed for another promotion');
 assert.throws(() => reloadedEngine.promoteBackend(target.backendId, evaluation.evaluationId), /promotion-evidence-required/);
 
+const rollbackReloadEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
+assert.equal(rollbackReloadEngine.restore(rolledBack).restored, true,
+  'the anti-replay ledger must survive rollback and a subsequent process restart');
+rollbackReloadEngine.recordImportedTransfer(transfer, target.backendId);
+const replayAfterRollback = await rollbackReloadEngine.evaluateMigration({
+  transfer, targetBackendId: target.backendId, trials,
+  verifyTrial: verifySignedReceipt, allowExternalBackend: true,
+});
+assert.equal(replayAfterRollback.accepted, false,
+  'rollback must not make previously consumed signed holdouts eligible again');
+assert.ok(replayAfterRollback.reasons.includes('calibration-evidence-replay-rejected'));
 
+const fullLedgerSeed = new SubstrateIndependenceEngine({ profiles: [source, target] });
+fullLedgerSeed.setInitialBackend(source.backendId);
+const fullLedgerState = {
+  ...fullLedgerSeed.snapshot(),
+  calibrationEvidenceLedger: {
+    receiptIds: Array.from({ length: 4096 }, (_, index) => `consumed-receipt-${index}`),
+    taskIds: [],
+    independenceKeys: [],
+  },
+};
+const capacityEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
+assert.equal(capacityEngine.restore(fullLedgerState).restored, true,
+  'a complete but bounded anti-replay ledger must restore cleanly');
+capacityEngine.recordImportedTransfer(transfer, target.backendId);
+const capacityEvaluation = await capacityEngine.evaluateMigration({
+  transfer, targetBackendId: target.backendId, trials,
+  verifyTrial: verifySignedReceipt, allowExternalBackend: true,
+});
+assert.equal(capacityEvaluation.accepted, true);
+assert.throws(() => capacityEngine.promoteBackend(target.backendId, capacityEvaluation.evaluationId),
+  /substrate-evidence-ledger-capacity-exceeded/,
+  'promotion must stop rather than evicting old anti-replay evidence');
+assert.equal(capacityEngine.snapshot().calibrationEvidenceLedger.receiptIds.length, 4096,
+  'a full evidence ledger must remain intact after a refused promotion');
 
 console.log('OMESTRO_22_SUBSTRATE_INDEPENDENCE=PASS', JSON.stringify({
-  assertions: 68,
+  assertions: 76,
   tamperDetection: true,
   accessorAndCycleRejection: true,
   holdoutCalibration: true,
