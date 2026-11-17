@@ -59,6 +59,53 @@ export interface TeacherDistillationCompletionInput {
   artifact: SignedTeacherDistillationArtifact;
 }
 
+export interface TeacherGenerationProvider {
+  generate(input: {
+    taskId: string;
+    taskVersion: string;
+    prompt: string;
+    systemPrompt?: string;
+    seed: number;
+    signal?: AbortSignal;
+  }): Promise<{
+    completion: string;
+    teacherId: string;
+    teacherModel: string;
+    teacherRevision: string;
+  }>;
+}
+
+export interface TeacherCompletionVerifier {
+  verify(input: {
+    taskId: string;
+    taskVersion: string;
+    family: string;
+    split: 'train' | 'validation';
+    prompt: string;
+    systemPrompt?: string;
+    completion: string;
+    teacherId: string;
+    teacherModel: string;
+    teacherRevision: string;
+    seed: number;
+    manifestFingerprint: string;
+    signal?: AbortSignal;
+  }): Promise<{
+    accepted: boolean;
+    evidenceRef?: string;
+    artifact?: SignedTeacherDistillationArtifact;
+    rejectionCode?: string;
+  }>;
+}
+
+export interface TeacherCollectionReport {
+  attempted: number;
+  accepted: number;
+  rejected: number;
+  rejectionCounts: Record<string, number>;
+  acceptedExampleIds: string[];
+}
+
 export interface TeacherDistillationExample {
   schemaVersion: 1;
   exampleId: string;
@@ -346,6 +393,7 @@ export class TeacherStudentDistillationDataset {
     }
     const task = this.manifest.get(record.taskId);
     if (!task) return this.reject('unknown-task', record.taskId);
+    if (task.split === 'holdout') return this.reject('holdout-example-forbidden', record.taskId);
     if (normalizedPromptFingerprint(record.prompt) !== task.promptFingerprint ||
         textFingerprint(record.systemPrompt ?? '') !== task.systemFingerprint) {
       return this.reject('prompt-or-system-mismatch', record.taskId);
@@ -429,6 +477,117 @@ export class TeacherStudentDistillationDataset {
     this.dedupeKeys.add(dedupeKey);
     this.examples.set(exampleId, example);
     return { accepted: true, exampleId, split: task.split as TeacherDistillationSplit };
+  }
+
+  /**
+   * Collects teacher completions only for train/validation tasks. A separate verifier
+   * must return a content-bound signature; a teacher answer or a verifier's boolean
+   * alone is never admitted as a training label. Holdout tasks are never sent to either
+   * provider and cannot be used to improve the student.
+   */
+  async collectTeacherExamples(input: {
+    taskIds: string[];
+    seeds: number[];
+    teacher: TeacherGenerationProvider;
+    verifier: TeacherCompletionVerifier;
+    trustedVerifierKeys: ReadonlyMap<string, string>;
+    signal?: AbortSignal;
+  }): Promise<TeacherCollectionReport> {
+    if (!input || !Array.isArray(input.taskIds) || !input.taskIds.length ||
+        input.taskIds.length > MAX_TASKS || !Array.isArray(input.seeds) ||
+        !input.seeds.length || input.seeds.length > 1000 ||
+        input.taskIds.some(id => !isSafeIdentity(id)) ||
+        new Set(input.taskIds).size !== input.taskIds.length ||
+        input.seeds.some(seed => !Number.isSafeInteger(seed) || seed < 0) ||
+        new Set(input.seeds).size !== input.seeds.length ||
+        !input.teacher || typeof input.teacher.generate !== 'function' ||
+        !input.verifier || typeof input.verifier.verify !== 'function' ||
+        input.teacher === input.verifier || input.teacher.generate === (input.verifier.verify as unknown)) {
+      throw new Error('teacher-distillation-collection-input-invalid');
+    }
+    const report: TeacherCollectionReport = {
+      attempted: 0, accepted: 0, rejected: 0, rejectionCounts: {}, acceptedExampleIds: [],
+    };
+    const reject = (code: string) => {
+      report.rejected++;
+      report.rejectionCounts[code] = (report.rejectionCounts[code] ?? 0) + 1;
+    };
+    for (const taskId of input.taskIds) {
+      const task = this.manifest.get(taskId);
+      if (!task) { reject('unknown-task'); continue; }
+      if (task.split === 'holdout') { reject('holdout-task-forbidden'); continue; }
+      for (const seed of input.seeds) {
+        if (input.signal?.aborted) throw new Error('teacher-distillation-collection-cancelled');
+        report.attempted++;
+        let generated: Awaited<ReturnType<TeacherGenerationProvider['generate']>>;
+        try {
+          generated = safeSnapshot(await input.teacher.generate({
+            taskId: task.taskId,
+            taskVersion: task.taskVersion,
+            prompt: task.prompt,
+            ...(task.systemPrompt !== undefined ? { systemPrompt: task.systemPrompt } : {}),
+            seed,
+            signal: input.signal,
+          }), 'teacher-distillation-generation-response-invalid');
+        } catch {
+          reject('teacher-generation-failed');
+          continue;
+        }
+        if (!isRecord(generated) || !validText(generated.completion, MAX_COMPLETION_CHARS) ||
+            !isSafeIdentity(generated.teacherId, 180) || !isSafeIdentity(generated.teacherModel, 256) ||
+            !isSafeIdentity(generated.teacherRevision, 128) ||
+            FLOATING_REVISIONS.has(String(generated.teacherRevision).toLowerCase())) {
+          reject('teacher-generation-response-invalid');
+          continue;
+        }
+        let verification: Awaited<ReturnType<TeacherCompletionVerifier['verify']>>;
+        try {
+          verification = safeSnapshot(await input.verifier.verify({
+            taskId: task.taskId,
+            taskVersion: task.taskVersion,
+            family: task.family,
+            split: task.split,
+            prompt: task.prompt,
+            ...(task.systemPrompt !== undefined ? { systemPrompt: task.systemPrompt } : {}),
+            completion: generated.completion,
+            teacherId: generated.teacherId,
+            teacherModel: generated.teacherModel,
+            teacherRevision: generated.teacherRevision,
+            seed,
+            manifestFingerprint: this.manifestFingerprint(),
+            signal: input.signal,
+          }), 'teacher-distillation-verifier-response-invalid');
+        } catch {
+          reject('teacher-verification-failed');
+          continue;
+        }
+        if (!isRecord(verification) || verification.accepted !== true ||
+            !isSafeIdentity(verification.evidenceRef, 1024) || !isRecord(verification.artifact)) {
+          reject(isSafeIdentity(verification?.rejectionCode, 128)
+            ? verification.rejectionCode : 'teacher-output-not-verified');
+          continue;
+        }
+        const result = this.ingestSignedExample({
+          taskId: task.taskId,
+          prompt: task.prompt,
+          ...(task.systemPrompt !== undefined ? { systemPrompt: task.systemPrompt } : {}),
+          completion: generated.completion,
+          teacherId: generated.teacherId,
+          teacherModel: generated.teacherModel,
+          teacherRevision: generated.teacherRevision,
+          seed,
+          evidenceRef: verification.evidenceRef,
+          artifact: verification.artifact as SignedTeacherDistillationArtifact,
+        }, input.trustedVerifierKeys);
+        if (result.accepted) {
+          report.accepted++;
+          report.acceptedExampleIds.push(result.exampleId);
+        } else {
+          reject(result.rejection.code);
+        }
+      }
+    }
+    return report;
   }
 
   snapshot(): TeacherDistillationDatasetSnapshot {
