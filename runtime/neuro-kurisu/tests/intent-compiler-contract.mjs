@@ -21,7 +21,7 @@ assert.equal(ambiguous.goal.text, 'Please delete old project data and prepare a 
 assert.equal(ambiguous.risk.level, 'high', 'destructive language must raise risk without granting permission');
 const riskCannotBeDowngraded = compiler.compile({ text: 'Delete the production database', extraction: { risk: 'low' } });
 assert.equal(riskCannotBeDowngraded.risk.level, 'high', 'an extraction must not downgrade risk implied by the request');
-assert.throws(() => compiler.approve(ambiguous, { userConfirmed: true, allowedActions: [], at: 1_800_000_000_001, evidenceRef: 'incomplete-contract' }), /incomplete/);
+assert.throws(() => compiler.approve(ambiguous, { contractId: ambiguous.id, userConfirmed: true, allowedActions: [], at: 1_800_000_000_001, evidenceRef: 'incomplete-contract' }), /incomplete/);
 assert.deepEqual(ambiguous.permissions.allowedActions, [], 'free text must never become an execution allow-list');
 assert.equal(ambiguous.approval.status, 'not-approved');
 assert.equal(compiler.gate(ambiguous, 'filesystem.delete').allowed, false);
@@ -48,6 +48,7 @@ assert.equal(contract.assumptions[0].requiresConfirmation, true);
 assert.equal(compiler.gate(contract, 'organism.inspect').reason, 'contract-not-approved');
 
 const approved = compiler.approve(contract, {
+  contractId: contract.id,
   userConfirmed: true,
   allowedActions: ['organism.inspect'],
   at: 1_800_000_000_001,
@@ -57,8 +58,13 @@ assert.equal(compiler.gate(approved, 'organism.inspect').allowed, true);
 assert.equal(compiler.gate(approved, 'filesystem.write').reason, 'action-not-explicitly-allowed');
 assert.equal(compiler.gate(approved, 'deploy').reason, 'action-explicitly-denied');
 assert.throws(() => compiler.approve(contract, {
+  contractId: contract.id,
   userConfirmed: true, allowedActions: ['deploy'], at: 1_800_000_000_001, evidenceRef: 'forged-expansion',
 }), /not explicitly allowed/);
+assert.throws(() => compiler.approve(contract, {
+  contractId: 'another-intent', userConfirmed: true, allowedActions: ['organism.inspect'],
+  at: 1_800_000_000_001, evidenceRef: 'wrong-contract',
+}), /exact intent contract/);
 
 let calls = 0;
 const decisionIds = [];
