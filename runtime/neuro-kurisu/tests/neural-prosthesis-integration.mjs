@@ -59,6 +59,14 @@ const profile = ecology.profile('neural-prosthesis');
 assert.ok(profile, 'P40 must know the optional neural-prosthesis backend');
 assert.equal(profile.configured, false, 'the optional backend must be disabled by default');
 ecology.configure('neural-prosthesis', true);
+const neutralChoice = ecology.select({
+  task: 'language',
+  urgency01: 0.8,
+  resourceRisk01: 0.2,
+  desiredQuality01: 0.9,
+  allowCloud: false,
+});
+assert.notEqual(neutralChoice, 'neural-prosthesis', 'an unmeasured residual backend must not receive an optimistic quality prior');
 const selected = ecology.select({
   task: 'language',
   urgency01: 0.8,
@@ -67,7 +75,7 @@ const selected = ecology.select({
   allowCloud: false,
   preferredBackend: 'neural-prosthesis',
 });
-assert.equal(selected, 'neural-prosthesis', 'P40 must be able to select the configured local residual backend');
+assert.equal(selected, 'neural-prosthesis', 'explicit host preference may select the configured local residual backend');
 
 const aborted = new AbortController();
 aborted.abort();
