@@ -1,55 +1,93 @@
-# NK1 Intent Compiler (OmeStro idea 12)
+# NK1 Intent Compiler — OmeStro idea 12
 
 ## Purpose
 
-Turn a natural-language request into a versioned, reviewable contract before an
-execution-capable subsystem is called. The contract keeps the user's wording,
-structured interpretation, constraints, acceptance criteria, assumptions,
-risk signals, explicit tool allow-list, explicit denials, and stop conditions
-separate and inspectable.
+Convert a request into a versioned, inspectable execution contract *before*
+planning or dispatch. The contract preserves the request, separates semantic
+interpretation from user wording, captures constraints and acceptance criteria,
+labels assumptions, and defines an explicit action scope.
+
+This component is a contract compiler and enforcement adapter, not a claim that
+a deterministic parser fully understands arbitrary natural language. Semantic
+interpretation is provided through an upstream extractor and treated as
+untrusted proposal data.
 
 ## Runtime components
 
-- `IntentCompiler`: deterministic contract builder and validator.
-- `IntentExtractionProvider`: adapter seam for a local or remote semantic
-  extractor. Provider output is treated as untrusted structured input.
-- `IntentActionGatewayBridge`: checks the contract before forwarding one
-  approved action to the existing canonical `ActionGateway.executeTool`.
-- `tests/intent-compiler-contract.mjs`: behavioral contract and gateway-boundary
-  regression suite.
+- `IntentCompiler`: compiles and validates the contract, risk, incompleteness,
+  approval freshness and approval attestation.
+- `IntentExtractionProvider`: optional local or remote semantic extractor.
+  Provider failure produces an incomplete fail-closed contract; it does not
+  silently fall back to executable intent.
+- `IntentActionGatewayBridge`: validates the approved contract and delegates
+  the action through the canonical `ActionGateway.executeTool` API.
+- `tests/intent-compiler-contract.mjs`: tests intent integrity, risk escalation,
+  assumption acknowledgement, approval boundaries, expiry and the gateway edge.
 
-## Safety invariants
+## Contract invariants
 
-1. Raw request text is preserved; if no structured goal is supplied, the goal
-   is explicitly marked `verbatim-request`, not presented as a semantic parse.
-2. Free text never creates an allowed-action entry. The allow-list must be
-   supplied as structured extraction data.
-3. A semantic extractor cannot lower a deterministic risk signal.
-4. Approval requires explicit confirmation, a timestamp, an evidence reference,
-   acceptance criteria, an expected outcome, and a non-empty explicit allow-list.
-5. Approval can only narrow the declared allow-list. It cannot add a capability.
-6. Explicit denials override approvals.
-7. The bridge does not call ActionGateway when the contract gate refuses.
-8. ActionGateway remains responsible for its existing policy, permission,
-   idempotency, receipt, and outcome-verification controls. Intent approval
-   does not bypass or replace those controls.
+1. The source request is retained separately from the extracted goal. Oversized
+   source text is marked truncated and cannot be approved for execution.
+2. A free-text request never produces a tool allow-list. Tool identifiers must
+   arrive as explicit structured extraction data; wildcard and malformed IDs
+   are rejected.
+3. An action present in both allow and deny lists makes the contract incomplete;
+   denial always wins at the gate.
+4. Expected outcome, acceptance criteria, explicit action scope and stop
+   conditions are required before approval.
+5. Assumptions with material impact or confidence below 0.8 must be explicitly
+   acknowledged at approval time. An assumption is never silently promoted to a
+   user-confirmed fact.
+6. Risk classification is conservative. Deterministic destructive, external
+   mutation and credential-exfiltration signals can raise risk; a semantic
+   extractor cannot downgrade them. English and Russian high-risk terms are
+   covered by lexical safeguards, but these are not a substitute for policy
+   analysis.
+7. High/critical intent requires a distinct risk acknowledgement in addition
+   to ordinary confirmation.
+8. Approval is bound to the exact contract ID and immutable content hash,
+   action subset, assumption acknowledgements, risk acknowledgement, timestamp
+   and evidence reference. A runtime HMAC attestation detects approval edits.
+9. Approval expires after the configured TTL (default 15 minutes; bounded to
+   1–60 minutes). A stale or future-dated approval cannot pass the gate.
+10. The bridge does not invoke ActionGateway when the intent gate refuses.
+    ActionGateway remains responsible for its independent permission checks,
+    one-shot tool approvals, input contracts, idempotency receipts, result
+    verification and reconciliation.
 
-## Integration sketch
+## Approval key lifecycle
+
+The compiler generates a random, process-local key by default. That is safe for
+a single runtime lifetime but intentionally makes approvals unverifiable after
+restart. Production persistence must inject a stable, secret-managed key through
+`IntentCompiler({ approvalKey, clock })` and must never place that key in the
+contract, logs, repository, or Release ZIP. Rotating the key invalidates prior
+approval attestations. The HMAC is an integrity/authenticity check within this
+runtime trust model; it does not replace authentication of the user-confirmation
+event or durable evidence storage.
+
+## Integration example
 
 ```ts
-const compiler = new IntentCompiler();
+const compiler = new IntentCompiler({
+  approvalKey: secretStore.getBytes('nk1-intent-approval-key'),
+});
 const contract = await compiler.compileWith(
   { requestId, text: userRequest },
   semanticExtractor,
 );
 
-// Show contract, assumptions, risk, missing information, and action scope.
-// Obtain explicit user confirmation outside the compiler.
+// Display the verbatim request, extracted goal, assumptions, risk,
+// missing information, acceptance criteria and allowed action scope.
+// Obtain an explicit user confirmation outside the compiler.
 const approved = compiler.approve(contract, {
+  contractId: contract.id,
   userConfirmed: true,
   allowedActions: ['organism.inspect'],
+  acknowledgedAssumptions: [],
+  riskAcknowledged: false,
   at: Date.now(),
-  evidenceRef: 'user-confirmation:<stable-reference>',
+  evidenceRef: confirmationReceipt.id,
 });
 
 const bridge = new IntentActionGatewayBridge(compiler);
@@ -60,14 +98,14 @@ const result = await bridge.execute(
 );
 ```
 
-## Current implementation boundary
+## Current integration boundary
 
-The compiler, provider seam, and ActionGateway bridge are implemented as
-reusable runtime modules. Existing legacy callers that invoke ActionGateway
-directly are not transparently intercepted by this first slice; new intent-bound
-execution paths must use the bridge. A follow-up integration pass should route
-the selected OrganismCore execution entry points through this boundary without
-weakening existing finalization, approval, idempotency, or reconciliation logic.
+The compiler and bridge are reusable runtime modules. They do not transparently
+intercept every legacy caller that invokes ActionGateway directly. Production
+adoption must route the selected OrganismCore planning/execution entry points
+through this bridge, while preserving the canonical core finalizer, planner
+receipt recovery and reconciliation flow. Do not bypass ActionGateway or
+replace its policy layer with intent approval.
 
 ## Verification
 
@@ -75,4 +113,10 @@ Run from `runtime/neuro-kurisu`:
 
 ```bash
 npm run test:intent-compiler
+npm run typecheck
 ```
+
+A passing focused test validates the boundary behavior; it does not establish
+semantic-extraction accuracy. Extractor quality needs independent holdout
+evaluation, multilingual adversarial testing and operational telemetry before
+the feature can be promoted from Draft.
