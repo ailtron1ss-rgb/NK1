@@ -11,7 +11,7 @@ export interface WorldForgeConstraints { maxSteps:number; resourceBudget:number;
 export interface WorldForgeDisturbance { atStep:number; kind:'resource-shock'|'route-block'|'signal-noise'|'deadline-shift'; magnitude01:number; }
 export interface WorldForgeCase {
   id:string; split:WorldForgeSplit; domain:WorldForgeDomain; difficulty01:number; task:string;
-  observations:string[]; availableActions:WorldForgeAction[]; constraints:WorldForgeConstraints;
+  observations:string[]; goalOptions:string[]; availableActions:WorldForgeAction[]; constraints:WorldForgeConstraints;
   disturbances:WorldForgeDisturbance[]; acceptedStrategyFamilies:string[]; seedFingerprint:string; syntheticOnly:true;
 }
 export interface WorldForgeActionStep { action:WorldForgeAction; target?:string; evidence?:string; cost?:number; risk01?:number; }
@@ -27,7 +27,7 @@ const ACTIONS:WorldForgeAction[]=['observe','inspect','move','collect','wait','r
 const DOMAINS:WorldForgeDomain[]=['resource-allocation','route-planning','investigation'];
 const SPLITS:WorldForgeSplit[]=['train','validation','holdout'];
 const clamp=(n:number,min=0,max=1)=>Math.max(min,Math.min(max,Number.isFinite(n)?n:min));
-const safeText=(v:unknown,max=240):string=>typeof v==='string'?v.normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f-\\u009f]/gu,' ').trim().slice(0,max):'';
+const safeText=(v:unknown,max=240):string=>typeof v==='string'?v.normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/gu,' ').trim().slice(0,max):'';
 const hash32=(s:string):number=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
 const fingerprint=(s:string)=>hash32(s).toString(16).padStart(8,'0');
 function rng(seed:number):()=>number{let x=seed>>>0;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
@@ -67,7 +67,7 @@ export class WorldForge {
       const families=domain==='resource-allocation'?['reserve-then-allocate','adaptive-priority','verify-and-rebalance']:domain==='route-planning'?['observe-reroute','safe-shortest-path','checkpoint-recovery']:['triangulate-then-verify','cross-check-signals','defer-unverified'];
       const scenario:WorldForgeCase={id,split:input.split,domain,difficulty01:Number(difficulty01.toFixed(3)),
         task:domain==='resource-allocation'?'Allocate scarce resources while preserving a safety reserve and adapting to a late demand shock.':domain==='route-planning'?'Reach the destination while respecting a changing route and risk budget.':'Identify the reliable explanation from noisy signals and verify it before concluding.',
-        observations,availableActions:[...ACTIONS],constraints:{maxSteps:Math.max(4,Math.min(16,Math.round(5+difficulty01*8))),resourceBudget:Math.max(3,Math.round(10-difficulty01*3)),riskTolerance01:Number((.75-difficulty01*.35).toFixed(3)),requiredEvidence:domain==='investigation'?2:1},
+        observations,goalOptions:[...targets],availableActions:[...ACTIONS],constraints:{maxSteps:Math.max(4,Math.min(16,Math.round(5+difficulty01*8))),resourceBudget:Math.max(3,Math.round(10-difficulty01*3)),riskTolerance01:Number((.75-difficulty01*.35).toFixed(3)),requiredEvidence:domain==='investigation'?2:1},
         disturbances,acceptedStrategyFamilies:families,seedFingerprint:fingerprint(seed+'|'+input.split),syntheticOnly:true};
       this.answers.set(id,{requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,seed});
       out.push(scenario);
