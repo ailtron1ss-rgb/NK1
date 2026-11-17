@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, sign as signSignature } from 'node:crypto';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 import { sha256Stable } from '../src/organism/core/StableSerialization.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
@@ -8,7 +8,7 @@ import { isAuthenticVerifiedSkillPromotionProposal, proposeVerifiedSkillPromotio
 import {
   createSkillCompetenceProofVerifier,
   parseTrustedSkillCompetenceAttestorKeys,
-  signSkillCompetenceProofForFixture,
+  canonicalSkillCompetenceProofPayload,
   skillCompetenceRuntimeFingerprint,
 } from '../src/organism/learning/SkillCompetenceProof.ts';
 import { InMemorySkillStorePersistence, VersionedSkillCandidateStore } from '../src/organism/learning/VersionedSkillCandidateStore.ts';
@@ -28,6 +28,17 @@ const shadowPrivatePem = pem(shadowKeys.privateKey, 'pkcs8');
 const attestorPublicPem = pem(attestorKeys.publicKey, 'spki');
 const attestorPrivatePem = pem(attestorKeys.privateKey, 'pkcs8');
 const holdoutVerifierKeys = new Map([['holdout-verifier-v1', pem(holdoutKeys.publicKey, 'spki')]]);
+
+function signSkillCompetenceProofForTest(payload, privateKeyPem) {
+  return {
+    payload,
+    signature: signSignature(
+      null,
+      Buffer.from(canonicalSkillCompetenceProofPayload(payload), 'utf8'),
+      privateKeyPem,
+    ).toString('base64'),
+  };
+}
 const shadowVerifierKeys = new Map([['shadow-verifier-v1', shadowPublicPem]]);
 const trustedAttestorKeys = new Map([['skill-attestor-v1', attestorPublicPem]]);
 
@@ -168,7 +179,7 @@ const initialIssuedAt = Date.now();
 const firstPayload = store.createCompetenceProofPayload(
   candidate.candidateId, proposal, contract, 'skill-attestor-v1', initialIssuedAt, initialIssuedAt + 60 * 60_000,
 );
-const firstProof = signSkillCompetenceProofForFixture(firstPayload, attestorPrivatePem);
+const firstProof = signSkillCompetenceProofForTest(firstPayload, attestorPrivatePem);
 const attached = store.attachCompetenceProof(candidate.candidateId, firstProof);
 assert.equal(attached.competenceProof.payload.candidateId, candidate.candidateId);
 assert.equal(attached.competenceProof.payload.holdout.completePairedSeeds, 5);
@@ -188,7 +199,7 @@ const refreshedPayload = store.createCompetenceProofPayload(
   candidate.candidateId, proposal, contract, 'skill-attestor-v1',
   refreshedIssuedAt, refreshedIssuedAt + 60 * 60_000,
 );
-const activeProof = signSkillCompetenceProofForFixture(refreshedPayload, attestorPrivatePem);
+const activeProof = signSkillCompetenceProofForTest(refreshedPayload, attestorPrivatePem);
 store.attachCompetenceProof(candidate.candidateId, activeProof);
 const activeVersion = store.approveAndPromote(candidate.candidateId, {
   approvedBy: 'trusted-test-approver',
@@ -207,7 +218,7 @@ const expiredPayload = store.createCompetenceProofPayload(
   candidate.candidateId, proposal, contract, 'skill-attestor-v1',
   expiredIssuedAt, Date.now() - 1,
 );
-const expiredProof = signSkillCompetenceProofForFixture(expiredPayload, attestorPrivatePem);
+const expiredProof = signSkillCompetenceProofForTest(expiredPayload, attestorPrivatePem);
 
 function buildGateway(options = {}) {
   const gateway = new ActionGateway();

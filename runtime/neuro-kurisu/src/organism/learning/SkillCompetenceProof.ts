@@ -1,7 +1,6 @@
 import {
   createHash,
   createPublicKey,
-  sign as signSignature,
   verify as verifySignature,
 } from 'node:crypto';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
@@ -255,7 +254,7 @@ function assertHoldoutProposal(proposal: VerifiedSkillPromotionProposal): SkillC
     manifestFingerprint: proposal.manifestFingerprint,
     outcomeFingerprint: proposal.outcomeFingerprint,
     datasetFingerprint: proposal.datasetFingerprint,
-    pairedTaskSeedN: paired.pairedN,
+    pairedTaskSeedN: proposal.pairedTaskSeedN,
     uniquePairedTasks: proposal.uniquePairedTasks,
     completePairedSeeds: proposal.completePairedSeeds,
     baselinePassRate: paired.baselinePassRate,
@@ -378,16 +377,6 @@ export function buildSkillCompetenceProofPayload(input: {
 
 export function canonicalSkillCompetenceProofPayload(payload: SkillCompetenceProofPayload): string {
   return stableJson(payload);
-}
-
-export function signSkillCompetenceProofForFixture(
-  payload: SkillCompetenceProofPayload,
-  privateKeyPem: string,
-): SignedSkillCompetenceProof {
-  return {
-    payload,
-    signature: signSignature(null, Buffer.from(canonicalSkillCompetenceProofPayload(payload), 'utf8'), privateKeyPem).toString('base64'),
-  };
 }
 
 export function verifySignedSkillCompetenceProof(
