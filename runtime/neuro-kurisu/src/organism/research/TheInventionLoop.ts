@@ -361,8 +361,9 @@ function verifyRecordAudit(record: unknown): record is InventionRecord {
       const addedOutcomes = snapshot.outcomes.length - previousSnapshot.outcomes.length;
       const previousOutcomePrefix = snapshot.outcomes.slice(0, previousSnapshot.outcomes.length);
       if (canonical(previousOutcomePrefix) !== canonical(previousSnapshot.outcomes)) return false;
-      if (event.action === 'outcome-recorded' && addedOutcomes !== 1) return false;
-      if (event.action !== 'outcome-recorded' && event.action !== 'rejected' && addedOutcomes !== 0) return false;
+      if ((event.action === 'outcome-recorded' || event.action === 'accepted') && addedOutcomes !== 1) return false;
+      if (event.action !== 'outcome-recorded' && event.action !== 'accepted' &&
+          event.action !== 'rejected' && addedOutcomes !== 0) return false;
       if (event.action === 'rejected' && addedOutcomes !== 0 && addedOutcomes !== 1) return false;
       const critiqueWasAdded = previousSnapshot.critique === undefined && snapshot.critique !== undefined;
       if (critiqueWasAdded && event.action !== 'critiqued' && event.action !== 'rejected') return false;
