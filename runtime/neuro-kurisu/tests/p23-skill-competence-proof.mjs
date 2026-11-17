@@ -213,6 +213,23 @@ assert.throws(() => store.recordShadowObservation(
   candidate.candidateId,
   signedShadowObservation(candidate, 99, 'f'.repeat(64)),
 ), /shadow observation is not authenticated by the configured evidence verifier/);
+
+// A signed receipt cannot invent an environment identity when the trusted
+// run registry has no environment binding for the corresponding execution.
+const noEnvironmentRegistry = new InMemoryTrustedSkillShadowRunRegistry();
+const noEnvironmentObservation = signedShadowObservation(candidate, 100);
+const noEnvironmentContextVerifier = createContextBoundSkillShadowEvidenceVerifier(
+  shadowVerifierKeys,
+  (observation, subject) => noEnvironmentRegistry.resolve(observation, subject),
+);
+noEnvironmentRegistry.register({
+  runId: noEnvironmentObservation.runId,
+  taskId: noEnvironmentObservation.artifact.payload.taskId,
+  seed: noEnvironmentObservation.artifact.payload.seed,
+  manifestFingerprint: proposal.manifestFingerprint,
+  runtimeVersion,
+});
+assert.equal(noEnvironmentContextVerifier(noEnvironmentObservation, candidate), false);
 const initialIssuedAt = Date.now();
 const firstPayload = store.createCompetenceProofPayload(
   candidate.candidateId, proposal, contract, 'skill-attestor-v1', initialIssuedAt, initialIssuedAt + 60 * 60_000,

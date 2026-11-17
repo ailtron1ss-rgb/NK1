@@ -126,7 +126,9 @@ export function createContextBoundSkillShadowEvidenceVerifier(
       payload.seed === context.seed &&
       payload.manifestFingerprint === context.manifestFingerprint &&
       payload.runtimeVersion === context.runtimeVersion &&
-      (context.environmentFingerprint === undefined || payload.environmentFingerprint === context.environmentFingerprint);
+      (context.environmentFingerprint === undefined
+        ? payload.environmentFingerprint === undefined
+        : payload.environmentFingerprint === context.environmentFingerprint);
   };
 }
 

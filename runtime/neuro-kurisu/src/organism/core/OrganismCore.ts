@@ -11357,20 +11357,28 @@ export class OrganismCore {
      * the registrar: this Core instance records provenance before child spawn.
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
+        const configuredRuntimeVersion = String(
+            this.config.skillCompetenceRuntimeVersion ?? process.env.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION ?? '',
+        ).trim();
+        const runtimeVersion = configuredRuntimeVersion || input.runtimeVersion.trim();
+        if (!runtimeVersion || (configuredRuntimeVersion && input.runtimeVersion.trim() !== configuredRuntimeVersion)) {
+            throw new Error('trusted shadow runtime version does not match the configured organism runtime');
+        }
         const environmentFingerprint = String(
             this.config.skillCompetenceEnvironmentFingerprint ??
             process.env.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT ?? '',
         ).trim().toLowerCase();
         const commandEnv: Record<string, string> = { ...(input.command.env ?? {}) };
-        commandEnv.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION = input.runtimeVersion;
+        commandEnv.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION = runtimeVersion;
         if (/^[a-f0-9]{64}$/.test(environmentFingerprint)) {
             commandEnv.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT = environmentFingerprint;
         } else {
             delete commandEnv.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT;
         }
         const command = { ...input.command, env: commandEnv };
-        return executeTrustedSkillShadowLearningProcess({
+        return executeTrustedShadowLearningProcess({
             ...input,
+            runtimeVersion,
             command,
             core: { registerTrustedSkillShadowRun: context => { this.registerTrustedSkillShadowRun(context); } },
         });
@@ -11397,13 +11405,20 @@ export class OrganismCore {
     /** Trusted execution supervisor hook: persist run context before accepting any signed shadow receipt. */
     registerTrustedSkillShadowRun(context: TrustedShadowExecutionContext) {
         if (!this.verifiedSkillShadowRunRegistry) throw new Error('trusted skill shadow registry is not configured');
+        const configuredRuntimeVersion = String(
+            this.config.skillCompetenceRuntimeVersion ?? process.env.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION ?? '',
+        ).trim();
+        if (configuredRuntimeVersion && context.runtimeVersion !== configuredRuntimeVersion) {
+            throw new Error('trusted shadow run runtime version does not match the configured organism runtime');
+        }
         const environmentFingerprint = String(
             this.config.skillCompetenceEnvironmentFingerprint ??
             process.env.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT ?? '',
         ).trim().toLowerCase();
-        const trustedContext = /^[a-f0-9]{64}$/.test(environmentFingerprint)
-            ? { ...context, environmentFingerprint }
-            : context;
+        const trustedContext = {
+            ...context,
+            environmentFingerprint: /^[a-f0-9]{64}$/.test(environmentFingerprint) ? environmentFingerprint : undefined,
+        };
         return this.verifiedSkillShadowRunRegistry.register(trustedContext);
     }
     /** Promotion is possible only with a valid detached signature from a configured trusted authority. */
