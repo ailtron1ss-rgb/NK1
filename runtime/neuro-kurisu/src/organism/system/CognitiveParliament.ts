@@ -168,12 +168,13 @@ export class CognitiveParliament {
       const audited=raw.auditedEvidenceIds===undefined?[]:stringArray(raw.auditedEvidenceIds,48,256);
       const safetyViolations=raw.safetyViolations===undefined?[]:stringArray(raw.safetyViolations,24,500);
       const safetyVerdict=raw.safetyVerdict;
-      const baseValid=STANCES.includes(raw.stance)&&text(raw.recommendation)&&raw.recommendation.length<=1000&&
-        Number.isFinite(raw.uncertainty01)&&raw.uncertainty01>=0&&raw.uncertainty01<=1&&
-        text(raw.modelExecutionId)&&raw.modelExecutionId.length<=256&&facts!==null&&assumptions!==null&&
-        objections!==null&&evidence!==null&&reviewed!==null&&audited!==null&&safetyViolations!==null&&
-        (raw.role!=='safety-guardian'||(safetyVerdict!==undefined&&SAFETY.includes(safetyVerdict)));
-      if(!baseValid){invalidReport=true;reasons.push(`malformed-role-report:${raw.role}`);continue;}
+      if(!STANCES.includes(raw.stance)||!text(raw.recommendation)||raw.recommendation.length>1000||
+        !Number.isFinite(raw.uncertainty01)||raw.uncertainty01<0||raw.uncertainty01>1||
+        !text(raw.modelExecutionId)||raw.modelExecutionId.length>256||facts===null||assumptions===null||
+        objections===null||evidence===null||reviewed===null||audited===null||safetyViolations===null||
+        (raw.role==='safety-guardian'&&(safetyVerdict===undefined||!SAFETY.includes(safetyVerdict)))){
+        invalidReport=true;reasons.push(`malformed-role-report:${raw.role}`);continue;
+      }
       if(executionIds.has(raw.modelExecutionId)){invalidReport=true;reasons.push('duplicate-model-execution-reuse');continue;}
       executionIds.add(raw.modelExecutionId);
       if(!modelCache.has(raw.modelExecutionId)){
