@@ -421,8 +421,14 @@ export class TheInventionLoop {
     private readonly now: () => number = () => Date.now(),
     private readonly id: () => string = () =>
       globalThis.crypto?.randomUUID?.() ?? 'inv-' + Date.now() + '-' + Math.random().toString(16).slice(2),
-    private readonly resolveVerifierKey: InventionVerifierKeyResolver = () => undefined,
+    private resolveVerifierKey: InventionVerifierKeyResolver = () => undefined,
   ) {}
+
+  /** Host-only trust configuration; resolver functions are never serialized. */
+  configureVerifierKeyResolver(resolveVerifierKey: InventionVerifierKeyResolver): void {
+    if (typeof resolveVerifierKey !== 'function') throw new Error('invalid-verifier-key-resolver');
+    this.resolveVerifierKey = resolveVerifierKey;
+  }
 
   snapshot(): InventionLoopState {
     return structuredClone(this.state);
