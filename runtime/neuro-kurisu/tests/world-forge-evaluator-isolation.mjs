@@ -24,7 +24,7 @@ assert.equal(getterInvoked,false,'malformed action traces must not execute gette
 assert.equal(hostileTransition.accepted,false);
 const evaluation=forge.evaluateSession(scenario,session);
 assert.equal(evaluation.success,false);
-assert.ok(evaluation.constraintViolations>0);
+assert.equal(evaluation.stepsUsed,0,'rejected malformed input must not enter the canonical session trace');
 let splitGetterInvoked=false;
 const hostileRequest={seed:5};
 Object.defineProperty(hostileRequest,'split',{enumerable:true,get(){splitGetterInvoked=true;return 'train';}});
