@@ -7,7 +7,7 @@ let extractedText = '';
 const providerContract = await compiler.compileWith({ text: 'Summarize the latest verified state.' }, {
   async extract(text) {
     extractedText = text;
-    return { goal: 'Summarize verified state', expectedOutcome: 'A grounded summary', acceptanceCriteria: ['Cite the inspected revision'], permissions: { allowedActions: ['organism.inspect'] } };
+    return { goal: 'Summarize verified state', expectedOutcome: 'A grounded summary', acceptanceCriteria: ['Cite the inspected revision'], permissions: { allowedActions: ['organism.inspect'] }, stopConditions: ['Stop if evidence is unavailable'] };
   },
 });
 assert.equal(extractedText, 'Summarize the latest verified state.');
@@ -59,7 +59,7 @@ assert.equal(compiler.gate(approved, 'filesystem.write').reason, 'action-not-exp
 assert.equal(compiler.gate(approved, 'deploy').reason, 'action-explicitly-denied');
 assert.throws(() => compiler.approve(contract, {
   contractId: contract.id,
-  userConfirmed: true, allowedActions: ['deploy'], at: 1_800_000_000_001, evidenceRef: 'forged-expansion',
+  contractId: contract.id, userConfirmed: true, allowedActions: ['deploy'], at: 1_800_000_000_001, evidenceRef: 'forged-expansion',
 }), /not explicitly allowed/);
 assert.throws(() => compiler.approve(contract, {
   contractId: 'another-intent', userConfirmed: true, allowedActions: ['organism.inspect'],
