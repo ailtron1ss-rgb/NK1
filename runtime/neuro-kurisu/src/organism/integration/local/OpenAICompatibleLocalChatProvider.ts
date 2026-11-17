@@ -1,3 +1,5 @@
+import type { CognitiveNeuralControlProfile } from '../../cognition/CognitiveToNeuralBridge.ts';
+
 export interface LocalChatCompletionRequest {
   system: string;
   user: string;
@@ -5,18 +7,23 @@ export interface LocalChatCompletionRequest {
   temperature?: number;
   /** Caller cancellation must reach the actual local HTTP transport. */
   signal?: AbortSignal;
+  /** Optional NK1 control profile; forwarded only when custom llama.cpp Jinja controls are explicitly enabled. */
+  cognitiveControl?: CognitiveNeuralControlProfile;
 }
 export interface LocalChatCompletionResponse {
   text: string;
   backend: string;
   model: string;
   latencyMs: number;
+  providerControlReceipt?: { provider:'llama.cpp'; templateKwargsSent:true; featureSchema:string };
 }
 export interface LocalChatProviderOptions {
   baseUrl?: string;
   model?: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
+  /** Opt-in: forward bounded NK1 channels to a compatible llama.cpp Jinja chat template. */
+  enableCognitiveTemplateControls?: boolean;
 }
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
@@ -33,6 +40,49 @@ function canonicalBaseUrl(raw: string | undefined): string | null {
   if (!url.pathname || url.pathname === '/') url.pathname = '/v1';
   return url.toString().replace(/\/+$/, '');
 }
+function cognitiveTemplateKwargs(profile:CognitiveNeuralControlProfile|undefined):Record<string,unknown>|null {
+  if (!profile || profile.version!==2 || profile.featureSchema!=='nk1-cognitive-neural-43-v2' ||
+      !Array.isArray(profile.featureVector01) || profile.featureVector01.length!==43 ||
+      profile.featureVector01.some(value=>typeof value!=='number'||!Number.isFinite(value)||value<0||value>1) ||
+      !Number.isSafeInteger(profile.tick) || profile.tick<0) return null;
+  const f=profile.featureVector01;
+  const clamp01=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(1,value)):0;
+  const clampIntent=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(.15,value)):0;
+  return {
+    nk1_control_version:2,
+    nk1_feature_schema:profile.featureSchema,
+    nk1_tick:profile.tick,
+    nk1_action:profile.action,
+    nk1_mode:profile.mode,
+    nk1_adapter_hint:profile.adapterHint,
+    nk1_feature_keys:profile.featureKeys.slice(0,43),
+    nk1_feature_vector01:[...f],
+    nk1_motivation01:clamp01(f[7]),
+    nk1_uncertainty01:clamp01(f[8]),
+    nk1_urgency01:clamp01(f[9]),
+    nk1_budget_remaining01:clamp01(f[10]),
+    nk1_attention01:clamp01(f[11]),
+    nk1_neural_prediction_error01:clamp01(f[12]),
+    nk1_neural_plasticity01:clamp01(f[13]),
+    nk1_neuromodulation01:clamp01(f[14]),
+    nk1_neural_confidence01:clamp01(f[17]),
+    nk1_model_agreement01:clamp01(f[18]),
+    nk1_counterfactual_divergence01:clamp01(f[19]),
+    nk1_allostatic_drive01:clamp01(f[22]),
+    nk1_allostatic_exploration01:clamp01(f[24]),
+    nk1_allostatic_preservation01:clamp01(f[25]),
+    nk1_self_agency01:clamp01(f[28]),
+    nk1_self_continuity01:clamp01(f[29]),
+    nk1_goal_commitment01:clamp01(f[33]),
+    nk1_neural_snapshot_available:profile.neuralSnapshotAvailable===true,
+    nk1_neural_snapshot_freshness01:clamp01(f[35]),
+    nk1_steering_curiosity01:clampIntent(profile.steeringIntent01?.curiosity01),
+    nk1_steering_caution01:clampIntent(profile.steeringIntent01?.caution01),
+    nk1_steering_persistence01:clampIntent(profile.steeringIntent01?.persistence01),
+    nk1_steering_verification01:clampIntent(profile.steeringIntent01?.verification01),
+  };
+}
+
 function extractText(value: unknown): string {
   if (typeof value === 'string') return value.trim();
   if (!Array.isArray(value)) return '';
@@ -88,12 +138,14 @@ export class OpenAICompatibleLocalChatProvider {
   readonly model: string;
   readonly timeoutMs: number;
   private readonly fetchImpl: typeof fetch;
+  private readonly enableCognitiveTemplateControls: boolean;
 
   constructor(options: LocalChatProviderOptions = {}) {
     this.baseUrl = canonicalBaseUrl(options.baseUrl);
     this.model = String(options.model ?? 'local-model').trim().slice(0, 160) || 'local-model';
     this.timeoutMs = Math.max(250, Math.min(120_000, Math.floor(options.timeoutMs ?? 15_000)));
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.enableCognitiveTemplateControls = options.enableCognitiveTemplateControls === true;
   }
 
   configured(): boolean { return Boolean(this.baseUrl); }
@@ -110,6 +162,20 @@ export class OpenAICompatibleLocalChatProvider {
     const transportSignal = request.signal
       ? AbortSignal.any([deadlineSignal, request.signal])
       : deadlineSignal;
+    const templateKwargs = this.enableCognitiveTemplateControls
+      ? cognitiveTemplateKwargs(request.cognitiveControl)
+      : null;
+    const completionBody:Record<string,unknown> = {
+      model: this.model,
+      messages: [
+        { role: 'system', content: String(request.system ?? '').slice(0, 64_000) },
+        { role: 'user', content: String(request.user ?? '').slice(0, 64_000) },
+      ],
+      max_tokens: maxTokens,
+      temperature,
+      stream: false,
+    };
+    if (templateKwargs) completionBody.chat_template_kwargs = templateKwargs;
     let response: Response;
     try {
       response = await this.fetchImpl(endpoint, {
@@ -117,16 +183,7 @@ export class OpenAICompatibleLocalChatProvider {
       headers: { 'content-type': 'application/json' },
       signal: transportSignal,
       redirect: 'error',
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          { role: 'system', content: String(request.system ?? '').slice(0, 64_000) },
-          { role: 'user', content: String(request.user ?? '').slice(0, 64_000) },
-        ],
-        max_tokens: maxTokens,
-        temperature,
-        stream: false,
-      }),
+      body: JSON.stringify(completionBody),
       });
     } catch (error) {
       if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
@@ -153,6 +210,12 @@ export class OpenAICompatibleLocalChatProvider {
     const text = extractText(payload?.choices?.[0]?.message?.content);
     if (!text) throw new Error('llama.cpp-empty-response');
     const model = String(payload?.model ?? this.model).slice(0, 160);
-    return { text, backend: `llama.cpp:${model}`, model, latencyMs: Math.max(0, Date.now() - startedAt) };
+    return {
+      text,
+      backend: `llama.cpp:${model}`,
+      model,
+      latencyMs: Math.max(0, Date.now() - startedAt),
+      ...(templateKwargs ? { providerControlReceipt:{provider:'llama.cpp' as const,templateKwargsSent:true as const,featureSchema:request.cognitiveControl!.featureSchema} } : {}),
+    };
   }
 }
