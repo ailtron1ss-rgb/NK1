@@ -4884,7 +4884,8 @@ export class OrganismCore {
                     },
                 });
                 const canonicalAutonomousToolId = this.canonicalActionToolId(autoToolPlan.tool.id);
-                const autonomousIntentSourceText = `${autonomousToolReason}\nTool: ${canonicalAutonomousToolId}\nDecision: ${autonomousPlanEvent.id}`;
+                const autonomousIntentGoal = autonomousToolReason.normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, 2_000);
+                const autonomousIntentSourceText = `${autonomousIntentGoal} | tool=${canonicalAutonomousToolId} | decision=${autonomousPlanEvent.id}`;
                 let approvedAutonomousIntent: IntentContract | null = null;
                 let autonomousIntentDraft: IntentContract | null = null;
                 let autonomousIntentRefusal = '';
@@ -4893,7 +4894,7 @@ export class OrganismCore {
                         requestId: `autonomous-resource-tool-life:${autonomousPlanEvent.id}`,
                         text: autonomousIntentSourceText,
                         extraction: {
-                            goal: autonomousToolReason,
+                            goal: autonomousIntentGoal,
                             context: [`planner-decision:${autonomousPlanEvent.id}`],
                             expectedOutcome: `A bounded ActionGateway execution result for ${canonicalAutonomousToolId}`,
                             constraints: {
@@ -4921,7 +4922,7 @@ export class OrganismCore {
                                 plannerToolId: autoToolPlan.tool.id,
                                 toolId: canonicalAutonomousToolId,
                                 intentHash: String(autonomousPlanEvent.payload.intentHash ?? ''),
-                                reason: autonomousToolReason,
+                                reason: autonomousIntentGoal,
                                 sourceText: autonomousIntentSourceText,
                             },
                         );
