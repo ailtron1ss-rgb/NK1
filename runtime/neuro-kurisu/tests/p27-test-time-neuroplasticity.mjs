@@ -112,6 +112,18 @@ assert.equal(metrics.fastContextCount, 0);
 assert.equal(metrics.fastAdapterNorm, 0);
 assert.equal(residualMass(restored.snapshot()), 0);
 
+// The active overlay must affect the next causal action evaluation, not just diagnostics.
+const withFastOverlay = new EmbodiedCausalWorldBridge();
+decision(withFastOverlay, 1, 'matched-context');
+outcome(withFastOverlay, 1, 'matched-context', 1);
+const durableOnly = new EmbodiedCausalWorldBridge();
+durableOnly.restore(withFastOverlay.snapshot());
+const fastResult = decision(withFastOverlay, 2, 'matched-context');
+const durableResult = decision(durableOnly, 2, 'matched-context');
+const maxActionBiasDelta = Math.max(...ACTIONS.map(action => Math.abs(fastResult.actionBias[action] - durableResult.actionBias[action])));
+assert.ok(maxActionBiasDelta > 0, 'ephemeral fast overlay did not affect the next decision');
+assert.equal(durableOnly.metrics().fastAdapterNorm, 0);
+
 // The context map is bounded and evicts its least-recently-used entry.
 const bounded = new EmbodiedCausalWorldBridge();
 for (let index = 0; index < 9; index++) decision(bounded, index + 1, `context-${index}`);

@@ -46,7 +46,7 @@ The test-first regression was run against base commit `1e83a011fc677ff20f2348570
 
 After the implementation, the following local tests passed under Node `v24.20.0` in the isolated ProductOS repository clone:
 
-- `tests/p27-test-time-neuroplasticity.mjs` — snapshot separation, context isolation, verified-only admission, candidate-copy isolation, TTL, reset, restore, 8-context LRU cap, 64-update cap and `NeuralExperienceBranch` wiring.
+- `tests/p27-test-time-neuroplasticity.mjs` — snapshot separation, context isolation, verified-only admission, candidate-copy isolation, TTL, reset, restore, 8-context LRU cap, 64-update cap, `NeuralExperienceBranch` wiring and a matched-snapshot check that the temporary overlay changes the next action evaluation.
 - `tests/big-pass-2599-2612-online-adaptation.mjs` — existing online world adaptation regression.
 - `tests/p28-plasticity.mjs` — existing plasticity substrate regression.
 - `tests/big-pass-2522-neural-experience-branch.mjs` — 600-cycle branch regression and snapshot restore.
