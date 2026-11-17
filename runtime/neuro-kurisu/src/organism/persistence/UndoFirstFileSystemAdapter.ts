@@ -217,6 +217,8 @@ export class UndoFirstFileSystemAdapter {
   private async ensureWorkspace(): Promise<string> {
     if (this.resolvedRoot) return this.resolvedRoot;
     await mkdir(this.requestedRoot, { recursive: true, mode: 0o700 });
+    const requestedStat = await lstat(this.requestedRoot);
+    if (requestedStat.isSymbolicLink() || !requestedStat.isDirectory()) throw new Error('filesystem-workspace-root-not-a-real-directory');
     const root = await realpath(this.requestedRoot);
     const rootStat = await lstat(root);
     if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) throw new Error('filesystem-workspace-root-not-a-directory');
@@ -231,6 +233,7 @@ export class UndoFirstFileSystemAdapter {
       throw new Error('filesystem-relative-path-invalid');
     }
     const segments = raw.split('/');
+    if (segments.length !== 1) throw new Error('filesystem-nested-paths-not-supported');
     if (segments.some(segment => !segment || segment === '.' || segment === '..' || segment.toLowerCase() === RECOVERY_DIRECTORY)) {
       throw new Error('filesystem-path-traversal-or-reserved-path');
     }
