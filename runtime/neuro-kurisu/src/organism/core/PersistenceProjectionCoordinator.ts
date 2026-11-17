@@ -377,6 +377,7 @@ export class PersistenceProjectionCoordinator {
     target.system.skillAcquisitionBenchmark=this.snapshotOnce('snap:evidenceResearchSubsystem.skillAcquisitionBenchmark', ctx.evidenceResearchSubsystem.skillAcquisitionBenchmark);
     target.system.evidenceFirewall=this.snapshotOnce('snap:evidenceResearchSubsystem.evidenceFirewall', ctx.evidenceResearchSubsystem.evidenceFirewall);
     target.system.projectResearchSession=this.snapshotOnce('snap:evidenceResearchSubsystem.projectResearchSession', ctx.evidenceResearchSubsystem.projectResearchSession);
+    target.system.mechanismSerendipity=this.snapshotOnce('snap:evidenceResearchSubsystem.mechanismSerendipity', ctx.evidenceResearchSubsystem.mechanismSerendipity);
     target.system.cognitiveSpineSchedule=this.snapshotOnce('snap:cognitiveSpineScheduler', ctx.cognitiveSpineScheduler);
     target.system.cognitiveExecutionPlan=this.snapshotOnce('snap:cognitiveExecutionPlanner', ctx.cognitiveExecutionPlanner);
     target.system.advancedProjectionSchedule=this.snapshotOnce('snap:advancedProjectionScheduler', ctx.advancedProjectionScheduler);

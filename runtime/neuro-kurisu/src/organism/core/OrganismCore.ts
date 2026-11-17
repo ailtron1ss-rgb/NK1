@@ -530,6 +530,8 @@ export interface OrganismSystemState {
     skillAcquisitionBenchmark?: import('../system/SkillAcquisitionBenchmark.ts').SkillAcquisitionState;
     evidenceFirewall?: import('../system/EvidenceFirewall.ts').EvidenceFirewallState;
     projectResearchSession?: import('../system/ProjectResearchSession.ts').ResearchSessionState;
+    /** OmeStro idea #10: bounded live cross-domain discovery queue and deduplication ledger. */
+    mechanismSerendipity?: import('../research/MechanismSerendipityRuntime.ts').MechanismSerendipityRuntimeState;
     /** Bounded idempotency receipts for caller-keyed tool side effects; pending rows fail closed after recovery. */
     actionExecutionLedger?: import('../system/ActionGateway.ts').ActionExecutionLedgerSnapshot;
     outcomeVerification?: {
