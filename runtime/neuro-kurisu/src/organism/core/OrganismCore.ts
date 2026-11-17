@@ -1372,7 +1372,12 @@ export class OrganismCore {
             enableB2522AdaptiveWorldModelMixtureRouter: config.enableB2522AdaptiveWorldModelMixtureRouter ?? true,
             enableB2523MultiHorizonCounterfactualVerifier: config.enableB2523MultiHorizonCounterfactualVerifier ?? true,
             ...config,
-            enableCognitiveParliament: config.enableCognitiveParliament === true,
+            enableCognitiveParliament: config.enableCognitiveParliament ?? Boolean(
+                config.parliamentRoleExecutors &&
+                ['researcher', 'planner', 'skeptic', 'executor', 'safety-guardian', 'auditor'].every(role =>
+                    typeof config.parliamentRoleExecutors?.[role as import('../system/CognitiveParliament.ts').ParliamentRole]?.execute === 'function') &&
+                (typeof config.parliamentModelAttestor === 'function' || config.parliamentModelAttestationRegistry),
+            ),
             cognitiveParliamentEveryCycles: Math.max(1, Math.min(256, Math.floor(Number(config.cognitiveParliamentEveryCycles ?? 8) || 8))),
             cognitiveParliamentTimeoutMs: Math.max(25, Math.min(120000, Math.floor(Number(config.cognitiveParliamentTimeoutMs ?? 25000) || 25000))),
             cognitiveParliamentMaxConcurrent: Math.max(1, Math.min(6, Math.floor(Number(config.cognitiveParliamentMaxConcurrent ?? 3) || 3))),
