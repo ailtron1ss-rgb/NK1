@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { URL } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
@@ -551,9 +551,48 @@ async function route(req, res) {
 
             // The authenticated HTTP caller is the human participant. Never trust
             // client-supplied actor, evidenceRef, sourceRef, sensitivity or tick fields.
+            // Optional idempotency is backed by the canonical bounded evidence/event ledger.
+            // Hash the key and full request; never persist or return the caller's raw key.
+            const rawIdempotencyKey = req.headers['idempotency-key'];
+            let stateBeforeMutation;
+            let evidenceRef;
+            if (rawIdempotencyKey !== undefined) {
+                if (typeof rawIdempotencyKey !== 'string')
+                    return json(res, 400, { ok: false, error: 'invalid-idempotency-key' });
+                const idempotencyKey = rawIdempotencyKey.trim();
+                if (!idempotencyKey || idempotencyKey.length > 160 || /[\u0000-\u001f\u007f]/.test(idempotencyKey))
+                    return json(res, 400, { ok: false, error: 'invalid-idempotency-key' });
+                const keyHash = createHash('sha256').update(idempotencyKey).digest('hex');
+                const requestHash = createHash('sha256')
+                    .update(JSON.stringify({ method: req.method, action, input }))
+                    .digest('hex');
+                const keyPrefix = 'http-dyadic-collaboration:idem:' + keyHash + ':';
+                evidenceRef = keyPrefix + requestHash;
+                stateBeforeMutation = await runtime.dyadicCollaborationSnapshot();
+                const existingRef = stateBeforeMutation.processedEvidenceRefs.find(ref => ref.startsWith(keyPrefix));
+                if (existingRef && existingRef !== evidenceRef)
+                    return json(res, 409, { ok: false, error: 'idempotency-key-conflict' });
+                if (existingRef === evidenceRef) {
+                    const priorEvent = stateBeforeMutation.events.find(event => event.evidenceRef === evidenceRef);
+                    if (!priorEvent)
+                        return json(res, 409, { ok: false, error: 'idempotency-replay-window-expired' });
+                    const priorItem = stateBeforeMutation.items.find(item => item.id === priorEvent.itemId);
+                    if (!priorItem)
+                        return json(res, 409, { ok: false, error: 'idempotency-result-unavailable' });
+                    return json(res, 200, {
+                        ok: true,
+                        action,
+                        replayed: true,
+                        item: toPublicItem(priorItem),
+                        summary: toPublicSummary(stateBeforeMutation),
+                        note: 'This idempotency key already committed the same collaboration mutation; no duplicate write was performed.',
+                    });
+                }
+            } else {
+                evidenceRef = 'http-dyadic-collaboration:' + randomUUID();
+            }
             lastDyadicCollaborationEventTick = Math.max(Date.now(), lastDyadicCollaborationEventTick + 1);
             const tick = lastDyadicCollaborationEventTick;
-            const evidenceRef = 'http-dyadic-collaboration:' + randomUUID();
             const itemId = typeof input.itemId === 'string' ? input.itemId.trim().slice(0, 80) : '';
             let result;
 
