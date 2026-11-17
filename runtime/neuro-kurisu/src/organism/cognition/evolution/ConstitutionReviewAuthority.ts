@@ -77,11 +77,11 @@ export function parseTrustedConstitutionReviewKeys(raw: string | undefined): Rea
 
 function validateEvidence(value: unknown, expectedPlanCount: number): value is ConstitutionTestEvidence {
   if (!isRecord(value)) return false;
-  const numbers = [value.planned, value.executed, value.passed, value.failed, value.holdoutCases];
-  if (!numbers.every(n => safeInteger(n, 0, 1000))) return false;
-  if (value.planned !== expectedPlanCount || value.executed > value.planned ||
-      value.passed > value.executed || value.failed > value.executed ||
-      value.passed + value.failed > value.executed || typeof value.holdoutPassed !== 'boolean') return false;
+  const planned=value.planned, executed=value.executed, passed=value.passed, failed=value.failed, holdoutCases=value.holdoutCases;
+  if (!safeInteger(planned,0,1000) || !safeInteger(executed,0,1000) || !safeInteger(passed,0,1000)
+      || !safeInteger(failed,0,1000) || !safeInteger(holdoutCases,0,1000)) return false;
+  if (planned !== expectedPlanCount || executed > planned || passed > executed || failed > executed
+      || passed + failed > executed || typeof value.holdoutPassed !== 'boolean') return false;
   return true;
 }
 
