@@ -5,6 +5,8 @@ on:
     branches: ["aspect/**"]
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveSynapticMatrix.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/index.ts"
       - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs"
       - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix-runtime.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -23,7 +25,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: p25-adaptive-synaptic-matrix-${{ github.event.pull_request.number || github.ref }}
+  group: p25-adaptive-synaptic-matrix-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
