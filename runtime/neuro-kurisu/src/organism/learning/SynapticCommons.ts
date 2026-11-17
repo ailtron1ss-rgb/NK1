@@ -196,7 +196,7 @@ export function synapticCanonicalJson(value: unknown): string {
 }
 
 function sha256(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
+  return createHash('sha256').update(value).digest('hex');
 }
 
 function artifactContent(artifact: SynapticCommonsArtifact): Record<string, unknown> {
@@ -245,20 +245,23 @@ function parseVersion(value: string): ParsedSemVer | null {
 }
 
 function versionAtLeast(actual: string, minimum: string): boolean {
-  const a = parseVersion(actual), b = parseVersion(minimum);
-  if (!a || !b) return false;
-  for (let i = 0; i < 3; i += 1) {
-    if (a[i] > b[i]) return true;
-    if (a[i] < b[i]) return false;
-  }
-  const ap = a[3], bp = b[3];
-  if (!ap && bp) return true;
-  if (ap && !bp) return false;
-  if (!ap && !bp) return true;
-  for (let i = 0; i < Math.max(ap!.length, bp!.length); i += 1) {
-    if (i >= ap!.length) return false;
-    if (i >= bp!.length) return true;
-    const av = ap![i], bv = bp![i];
+  const actualVersion = parseVersion(actual);
+  const minimumVersion = parseVersion(minimum);
+  if (actualVersion === null || minimumVersion === null) return false;
+  const [actualMajor, actualMinor, actualPatch, actualPrerelease] = actualVersion;
+  const [minimumMajor, minimumMinor, minimumPatch, minimumPrerelease] = minimumVersion;
+  if (actualMajor !== minimumMajor) return actualMajor > minimumMajor;
+  if (actualMinor !== minimumMinor) return actualMinor > minimumMinor;
+  if (actualPatch !== minimumPatch) return actualPatch > minimumPatch;
+  if (actualPrerelease === null && minimumPrerelease !== null) return true;
+  if (actualPrerelease !== null && minimumPrerelease === null) return false;
+  if (actualPrerelease === null && minimumPrerelease === null) return true;
+  const actualIds = actualPrerelease ?? [];
+  const minimumIds = minimumPrerelease ?? [];
+  for (let i = 0; i < Math.max(actualIds.length, minimumIds.length); i += 1) {
+    if (i >= actualIds.length) return false;
+    if (i >= minimumIds.length) return true;
+    const av = actualIds[i], bv = minimumIds[i];
     if (av === bv) continue;
     const an = /^\d+$/.test(av), bn = /^\d+$/.test(bv);
     if (an && bn) return av.length === bv.length ? av > bv : av.length > bv.length;
