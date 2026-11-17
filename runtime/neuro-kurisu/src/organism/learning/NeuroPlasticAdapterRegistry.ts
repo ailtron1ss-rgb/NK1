@@ -805,17 +805,21 @@ export class NeuroPlasticAdapterRegistry {
       evaluatorId: safeText(input.receipt?.evaluatorId, 'evaluator-id', 160),
       evaluatedAt: safeCounter(input.receipt?.evaluatedAt, 'evaluation-receipt-time', 1),
       evaluationFingerprint: safeHash(input.receipt?.evaluationFingerprint, 'evaluation-fingerprint'),
+      reportFingerprint: safeHash(input.receipt?.reportFingerprint, 'evaluation-report-fingerprint'),
       signature: safeHash(input.receipt?.signature, 'evaluation-signature'),
     };
     if (receipt.evaluatedAt !== normalized.evaluatedAt ||
         receipt.evaluationFingerprint !== normalized.evaluationFingerprint) {
       throw new Error('neuro-plastic-evaluator-receipt-does-not-bind-to-evaluation');
     }
-    const baseline = normalized.baseline;
-    const candidate = normalized.candidate;
-    if (baseline.some(row => row.verifierId !== receipt.evaluatorId) ||
-        candidate.some(row => row.verifierId !== receipt.evaluatorId)) {
+    if (normalized.baseline.some(row => row.verifierId !== receipt.evaluatorId) ||
+        normalized.candidate.some(row => row.verifierId !== receipt.evaluatorId)) {
       throw new Error('neuro-plastic-holdout-verifier-identity-mismatch');
+    }
+    const evidence = buildEvaluationEvidence(normalized, receipt.evaluationId, receipt.evaluatorId);
+    const computedReportFingerprint = evaluationEvidenceFingerprint(evidence);
+    if (receipt.reportFingerprint !== computedReportFingerprint) {
+      throw new Error('neuro-plastic-evaluator-receipt-does-not-bind-to-report-metrics');
     }
     if (typeof verifyEvidence !== 'function' || verifyEvidence(receipt, {
       adapterId: record.manifest.adapterId,
@@ -824,63 +828,10 @@ export class NeuroPlasticAdapterRegistry {
     }) !== true) {
       throw new Error('neuro-plastic-independent-evaluator-signature-required');
     }
-    const keyed = (rows: NeuroPlasticObservation[], label: string): Map<string, NeuroPlasticObservation> => {
-      const map = new Map<string, NeuroPlasticObservation>();
-      for (const row of rows) {
-        const key = row.pairId + '\u0000' + row.seed;
-        if (map.has(key)) throw new Error('neuro-plastic-' + label + '-duplicate-holdout-pair');
-        map.set(key, row);
-      }
-      return map;
-    };
-    const baselineByPair = keyed(baseline, 'baseline');
-    const candidateByPair = keyed(candidate, 'candidate');
-    if (baselineByPair.size < MIN_HOLDOUT_PAIRS || candidateByPair.size !== baselineByPair.size ||
-        [...baselineByPair.keys()].some(key => !candidateByPair.has(key))) {
-      throw new Error('neuro-plastic-holdout-pairing-incomplete');
-    }
-    const seedCount = new Set(baseline.map(row => row.seed)).size;
-    if (seedCount < MIN_HOLDOUT_PAIRS) throw new Error('neuro-plastic-independent-seeds-insufficient');
-    const pairs = [...baselineByPair.entries()].map(([key, before]) => ({
-      before,
-      after: candidateByPair.get(key)!,
-    }));
-    const quality = pairs.map(pair => pair.after.metrics.quality01 - pair.before.metrics.quality01);
-    const safety = pairs.map(pair => pair.after.metrics.safety01 - pair.before.metrics.safety01);
-    const retention = pairs.map(pair => pair.after.metrics.retention01 - pair.before.metrics.retention01);
-    const cost = pairs.map(pair => pair.after.metrics.cost01 - pair.before.metrics.cost01);
-    const latencyRatios = pairs.map(pair => pair.after.metrics.latencyMs / Math.max(1, pair.before.metrics.latencyMs));
-    const safetyViolationCount = candidate.reduce((sum, row) => sum + row.metrics.safetyViolationCount, 0);
-    const qualityCi95 = qualityConfidenceInterval(quality);
-    const latencyRatio01 = mean(latencyRatios);
-    const reasons: string[] = [];
-    if (mean(quality) < 0.01) reasons.push('quality-uplift-below-1-percent');
-    if (qualityCi95[0] <= 0) reasons.push('quality-confidence-lower-bound-not-positive');
-    if (mean(safety) < -0.005) reasons.push('safety-regression');
-    if (mean(retention) < -0.02) reasons.push('catastrophic-forgetting-risk');
-    if (mean(cost) > 0.03) reasons.push('cost-regression');
-    if (latencyRatio01 > 1.15) reasons.push('latency-regression');
-    if (safetyViolationCount > 0) reasons.push('candidate-safety-violations');
     const summary = {
-      adapterId: record.manifest.adapterId,
-      holdoutFingerprint,
-      evaluationId: receipt.evaluationId,
-      evaluatorId: receipt.evaluatorId,
-      evaluationFingerprint: normalized.evaluationFingerprint,
+      ...evidence,
+      reportFingerprint: computedReportFingerprint,
       evaluatorSignature: receipt.signature,
-      pairedN: pairs.length,
-      independentSeedCount: seedCount,
-      qualityDeltaMean01: mean(quality),
-      qualityCi95,
-      safetyDeltaMean01: mean(safety),
-      retentionDeltaMean01: mean(retention),
-      costDeltaMean01: mean(cost),
-      latencyRatio01,
-      safetyViolationCount,
-      eligible: reasons.length === 0,
-      reasons,
-      automaticActivation: false as const,
-      evaluatedAt: normalized.evaluatedAt,
     };
     const reportId = reportFingerprint(summary);
     const report: NeuroPlasticEvaluationReport = { reportId, ...summary };
