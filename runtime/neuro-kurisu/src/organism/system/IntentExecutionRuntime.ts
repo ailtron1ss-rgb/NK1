@@ -287,7 +287,7 @@ export class IntentExecutionRuntime {
 
   private idempotencyKeyHash(action: IntentBoundAction): string | undefined {
     const key = action?.options?.idempotencyKey;
-    if (typeof key !== 'string' || !key.trim() || key.trim().length > 160 || /[\\u0000-\\u001f\\u007f]/.test(key)) return undefined;
+    if (typeof key !== 'string' || !key.trim() || key.trim().length > 160 || /[\u0000-\u001f\u007f]/.test(key)) return undefined;
     return sha256Stable({ idempotencyKey: key.trim() });
   }
 
