@@ -409,6 +409,16 @@ async function route(req, res) {
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null });
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/cognition/neural-bridge/diagnostics') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            return json(res, 200, {
+                ok: true,
+                readOnly: true,
+                diagnostics: runtime.cognitiveToNeuralBridgeDiagnostics(),
+                note: 'Read-only bounded Cognitive-to-Neural Bridge telemetry. Template consumption and model-quality effects are not verified by this endpoint.',
+            });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/evaluation/evidence') {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
