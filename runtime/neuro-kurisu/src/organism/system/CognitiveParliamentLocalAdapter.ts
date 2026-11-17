@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import type { ParliamentModelAttestation } from './CognitiveParliament.ts';
 import type {
-  ParliamentModelAttestation, ParliamentRoleExecutionRequest, ParliamentRoleExecutionResult,
-  ParliamentRoleExecutor,
+  ParliamentRoleExecutionRequest, ParliamentRoleExecutionResult, ParliamentRoleExecutor,
 } from './CognitiveParliamentDispatcher.ts';
 
 export interface ParliamentLocalChatProvider {
