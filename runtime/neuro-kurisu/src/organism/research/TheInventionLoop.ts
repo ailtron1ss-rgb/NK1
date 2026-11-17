@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { VerifiedOutcomeLedger, type OutcomeAuthority, type EvaluationSplit } from '../learning/VerifiedOutcomeLedger.ts';
 
 /**
  * The Invention Loop — evidence-gated lifecycle for converting hypotheses
@@ -14,6 +15,12 @@ export type InventionAuditAction =
   | 'proposed' | 'designed' | 'prototyped' | 'outcome-recorded'
   | 'critiqued' | 'accepted' | 'rejected';
 
+export interface InventionVerifierPlan {
+  primary: string;
+  critique: string;
+  replication: string;
+  holdout: string;
+}
 export interface InventionProtocol {
   question: string;
   hypothesis: string;
@@ -27,6 +34,8 @@ export interface InventionProtocol {
   /** Required normalized effect in [0, 1]. */
   minEffect: number;
   lowerIsBetter?: boolean;
+  /** All reviewer identities are fixed before the candidate is evaluated. */
+  verifierPlan: InventionVerifierPlan;
 }
 export interface InventionPrototype {
   reference: string;
@@ -35,6 +44,9 @@ export interface InventionPrototype {
 export interface InventionOutcomeInput {
   id?: string;
   kind: OutcomeKind;
+  authority: OutcomeAuthority;
+  seed: number;
+  attempt: number;
   runId: string;
   verifierId: string;
   environmentId: string;
@@ -141,12 +153,21 @@ function isProtocol(value: unknown): value is InventionProtocol {
     typeof value.testFingerprint === 'string' &&
     finite(value.baseline) && finite(value.metricScale) && value.metricScale > 0 &&
     finite(value.minEffect) && value.minEffect >= 0 && value.minEffect <= 1 &&
-    (value.lowerIsBetter === undefined || typeof value.lowerIsBetter === 'boolean');
+    SHA256_RE.test(value.testFingerprint) &&
+    (value.lowerIsBetter === undefined || typeof value.lowerIsBetter === 'boolean') &&
+    isObject(value.verifierPlan) &&
+    ['primary', 'critique', 'replication', 'holdout'].every(key =>
+      typeof value.verifierPlan![key] === 'string' && clampText(value.verifierPlan![key], 120).length > 0) &&
+    new Set(['primary', 'critique', 'replication', 'holdout'].map(key =>
+      clampText(value.verifierPlan![key], 120))).size === 4;
 }
 function isOutcome(value: unknown): value is InventionOutcome {
   if (!isObject(value)) return false;
   return typeof value.id === 'string' && typeof value.runId === 'string' &&
     (value.kind === 'primary' || value.kind === 'replication' || value.kind === 'holdout') &&
+    (value.authority === 'independent-verifier' || value.authority === 'human-review') &&
+    Number.isSafeInteger(value.seed) && Number(value.seed) >= 0 &&
+    Number.isSafeInteger(value.attempt) && Number(value.attempt) >= 1 &&
     typeof value.verifierId === 'string' && typeof value.environmentId === 'string' &&
     typeof value.testFingerprint === 'string' && typeof value.evidenceRef === 'string' &&
     typeof value.evidenceSha256 === 'string' && SHA256_RE.test(value.evidenceSha256) &&
@@ -295,11 +316,20 @@ export class TheInventionLoop {
       metricScale: input?.metricScale,
       minEffect: input?.minEffect,
       lowerIsBetter: input?.lowerIsBetter === true,
+      verifierPlan: {
+        primary: clampText(input?.verifierPlan?.primary, 120),
+        critique: clampText(input?.verifierPlan?.critique, 120),
+        replication: clampText(input?.verifierPlan?.replication, 120),
+        holdout: clampText(input?.verifierPlan?.holdout, 120),
+      },
     };
     if (!protocol.question || !protocol.hypothesis || !protocol.successCriteria ||
         !protocol.testFingerprint || !finite(protocol.baseline) ||
         !finite(protocol.metricScale) || protocol.metricScale <= 0 ||
-        !finite(protocol.minEffect) || protocol.minEffect < 0 || protocol.minEffect > 1) {
+        !finite(protocol.minEffect) || protocol.minEffect < 0 || protocol.minEffect > 1 ||
+        !SHA256_RE.test(protocol.testFingerprint) ||
+        new Set(Object.values(protocol.verifierPlan)).size !== 4 ||
+        Object.values(protocol.verifierPlan).some(value => !value)) {
       throw new Error('invalid-preregistration');
     }
     const at = this.timestamp();
@@ -359,7 +389,20 @@ export class TheInventionLoop {
         !finite(input.observed)) {
       throw new Error('invalid-outcome');
     }
+    const expectedVerifier = record.protocol.verifierPlan[input.kind];
+    if (verifierId !== expectedVerifier) throw new Error('verifier-plan-mismatch');
+    if (input.authority !== 'independent-verifier' && input.authority !== 'human-review') {
+      throw new Error('outcome-not-authoritative:self-report-not-authoritative');
+    }
+    if (!Number.isSafeInteger(input.seed) || input.seed < 0 ||
+        !Number.isSafeInteger(input.attempt) || input.attempt < 1) {
+      throw new Error('invalid-outcome-identity');
+    }
     const outcomeId = clampText(input.id, 160) || `${id}:${input.kind}:${record.outcomes.length}`;
+    if (this.state.records.some(candidate => candidate.outcomes.some(outcome =>
+      outcome.id === outcomeId || outcome.runId === runId || outcome.evidenceRef === evidenceRef))) {
+      throw new Error('duplicate-run-or-evidence-across-inventions');
+    }
     if (record.outcomes.some(outcome => outcome.id === outcomeId || outcome.runId === runId ||
         (outcome.verifierId === verifierId && outcome.environmentId === environmentId))) {
       throw new Error('duplicate-run-or-outcome');
@@ -384,9 +427,26 @@ export class TheInventionLoop {
       record.protocol.metricScale;
     const effect01 = clamp01(normalizedDelta);
     const passed = effect01 >= record.protocol.minEffect;
+    const taskId = `${record.id}:${input.kind}`;
+    const split: EvaluationSplit = input.kind === 'holdout' ? 'holdout' : 'validation';
+    const verifierLedger = new VerifiedOutcomeLedger([{
+      taskId, family: 'invention-loop', split,
+      promptFingerprint: record.protocol.testFingerprint,
+      verifierId, version: '1',
+    }]);
+    const verified = verifierLedger.record({
+      taskId, taskVersion: '1', method: input.kind,
+      seed: input.seed, attempt: input.attempt, passed,
+      authority: input.authority, verifierId, evidenceRef,
+      observedAt: this.timestamp(),
+    });
+    if (!verified.accepted) throw new Error(`outcome-not-authoritative:${verified.rejection?.code ?? 'unknown'}`);
     const outcome: InventionOutcome = {
       id: outcomeId,
       kind: input.kind,
+      authority: input.authority,
+      seed: input.seed,
+      attempt: input.attempt,
       runId,
       verifierId,
       environmentId,
@@ -422,6 +482,7 @@ export class TheInventionLoop {
     const reviewRef = clampText(input?.reviewRef, 512);
     const reviewSha256 = clampText(input?.reviewSha256, 64).toLowerCase();
     if (!reviewerId || !reviewRef || !SHA256_RE.test(reviewSha256)) throw new Error('invalid-critique');
+    if (reviewerId !== record.protocol.verifierPlan.critique) throw new Error('reviewer-plan-mismatch');
     if (record.outcomes.some(outcome => outcome.verifierId === reviewerId)) {
       throw new Error('reviewer-must-be-independent');
     }
