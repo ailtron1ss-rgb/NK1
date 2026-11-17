@@ -331,9 +331,13 @@ export class IntentCompiler {
           invalidAssumptionMetadata = true;
           continue;
         }
-        const knownImpact = item.impact === 'low' || item.impact === 'medium' || item.impact === 'high';
-        if (!knownImpact && item.impact !== undefined) invalidAssumptionMetadata = true;
-        const impact: IntentAssumption['impact'] = knownImpact ? item.impact : 'high';
+        let impact: IntentAssumption['impact'];
+        if (item.impact === 'low' || item.impact === 'medium' || item.impact === 'high') {
+          impact = item.impact;
+        } else {
+          if (item.impact !== undefined) invalidAssumptionMetadata = true;
+          impact = 'high';
+        }
         const confidence01 = clamp01(item.confidence01);
         assumptions.push({
           statement,
@@ -356,6 +360,12 @@ export class IntentCompiler {
     if (sourceTextTruncated) missingInformation.push('request-text-truncated');
     if (extractionStatus === 'provider-failed') missingInformation.push('semantic-extraction-failed');
     if (!extractionValid && input?.extraction != null) missingInformation.push('semantic-extraction-invalid');
+    if (extraction.risk !== undefined &&
+        extraction.risk !== 'low' && extraction.risk !== 'medium' &&
+        extraction.risk !== 'high' && extraction.risk !== 'critical') {
+      missingInformation.push('invalid-risk-level');
+    }
+
     if (!expectedOutcome) missingInformation.push('expected-outcome');
     if (!acceptanceCriteria.length) missingInformation.push('acceptance-criteria');
     if (!allowedActions.length) missingInformation.push('explicit-action-allow-list');
