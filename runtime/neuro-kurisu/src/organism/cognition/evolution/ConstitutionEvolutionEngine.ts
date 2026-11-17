@@ -262,7 +262,6 @@ export class ConstitutionEvolutionEngine {
     const reviewerId=required(input.reviewerId,'reviewerId',160);
     if (p.reviews.some(r=>r.reviewerId===reviewerId)) throw new Error('reviewer already submitted an attestation');
     if (p.reviews.length >= MAX_REVIEWS_PER_PROPOSAL) throw new Error('proposal reviewer limit reached');
-    const e=input.tests;
     const evidenceRefs=input.evidenceRefs.map(v=>required(v,'evidence ref',500));
     const rationale=required(input.rationale,'review rationale',1200);
     const at=input.at;
