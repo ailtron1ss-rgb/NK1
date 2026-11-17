@@ -275,7 +275,7 @@ assert.equal(tamperedPersistence.compareAndSwap(0, tamperedSnapshot), true);
 assert.throws(() => new VersionedSkillCandidateStore(
   tamperedPersistence,
   () => true,
-  (observation, restoredCandidate) => verifySignedSkillShadowObservation(observation, restoredCandidate, shadowVerifierKeys),
+  verifyShadowEvidence,
   () => false,
   createSkillCompetenceProofVerifier(trustedAttestorKeys),
 ), /competence proof failed signature\/context verification/);
@@ -287,7 +287,7 @@ const expiredOnRestoreVerifier = createSkillCompetenceProofVerifier(
 const expiredRestoredStore = new VersionedSkillCandidateStore(
   skillStorePersistence,
   () => true,
-  (observation, restoredCandidate) => verifySignedSkillShadowObservation(observation, restoredCandidate, shadowVerifierKeys),
+  verifyShadowEvidence,
   () => false,
   expiredOnRestoreVerifier,
 );
