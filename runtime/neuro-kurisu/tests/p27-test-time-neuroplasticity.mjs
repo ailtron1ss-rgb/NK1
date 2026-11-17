@@ -8,7 +8,7 @@ const featuresA = Array.from({ length: 64 }, (_, index) => index % 2 === 0 ? -0.
 const featuresB = Array.from({ length: 64 }, (_, index) => index % 3 === 0 ? 1 : -1);
 
 function decision(bridge, tick, contextId, features = featuresA) {
-  return bridge.beforeDecision({
+  const frame = bridge.beforeDecision({
     tick,
     contextId,
     features,
@@ -18,6 +18,8 @@ function decision(bridge, tick, contextId, features = featuresA) {
     predictionError01: 0.65,
     computeBudget01: 0.85,
   });
+  bridge.commitAction(contextId, tick, 'explore');
+  return frame;
 }
 
 function outcome(bridge, tick, contextId, verified01 = 1) {
@@ -236,6 +238,23 @@ assert.equal(residualMass({ residualAdapter: branchDiagnostics.embodiedBridge.re
 branch.resetTestTimeAdaptation();
 assert.equal(branch.diagnostics().testTimeNeuroplasticity.contextCount, 0);
 
+
+// A matched tick/context is not sufficient: the outcome must describe the action
+// that Core committed. A mismatch leaves the pending decision retryable.
+const actionBound = new EmbodiedCausalWorldBridge();
+decision(actionBound, 7, 'action-bound');
+assert.throws(
+  () => actionBound.afterOutcome({
+    tick: 7, contextId: 'action-bound', action: 'verify',
+    nextFeatures: featuresB, reward01: 0.8, verified01: 1, predictionError01: 0.2,
+  }),
+  /committed action mismatch/,
+);
+assert.equal(actionBound.metrics().transitions, 0, 'mismatched action outcome mutated the world model');
+assert.equal(actionBound.metrics().fastActionMismatchOutcomes, 1);
+outcome(actionBound, 7, 'action-bound', 1);
+assert.equal(actionBound.metrics().fastAcceptedUpdates, 1,
+  'correct action outcome could not retry after a rejected mismatched action');
 
 // Hardened input boundary: malformed inference data must fail before mutating state.
 const guarded = new EmbodiedCausalWorldBridge();
