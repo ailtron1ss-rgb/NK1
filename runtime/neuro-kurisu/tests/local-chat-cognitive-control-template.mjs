@@ -70,6 +70,8 @@ assert.equal(kwargs.nk1_tick,24);
 assert.equal(kwargs.nk1_action,'verify');
 assert.equal(kwargs.nk1_mode,'deep');
 assert.equal(kwargs.nk1_adapter_hint,'deep');
+assert.equal(kwargs.nk1_feature_keys.length,43);
+assert.deepEqual(kwargs.nk1_feature_vector01,profile.featureVector01);
 assert.equal(kwargs.nk1_motivation01,.8);
 assert.equal(kwargs.nk1_uncertainty01,.35);
 assert.equal(kwargs.nk1_budget_remaining01,.7);
