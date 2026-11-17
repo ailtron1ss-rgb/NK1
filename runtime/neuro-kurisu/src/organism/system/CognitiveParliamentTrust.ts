@@ -72,7 +72,10 @@ export class EvidenceFirewallParliamentTrustPort implements ParliamentTrustPort 
         for(const next of graph.get(current)??[])if(!visited.has(next)){visited.add(next);stack.push(next);}
       }
       const sourceNodes=component.filter(value=>value.startsWith('source:')).sort();
-      const family=`external-api:${sourceNodes.join('|')}`;
+      // A connected component may contain hundreds of syndicated publisher nodes.
+      // Use its deterministic smallest source as a compact component key instead of
+      // serializing the entire graph into every role prompt.
+      const family=`external-api:${(sourceNodes[0]??'source:unknown').slice('source:'.length)}`;
       for(const sourceNode of sourceNodes)sourceFamilyBySource.set(sourceNode,family);
     }
     const modelCache=new Map<string,ParliamentModelAttestation|null>();
