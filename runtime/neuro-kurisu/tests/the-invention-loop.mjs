@@ -41,6 +41,10 @@ const protocol = {
     holdout: 'verifier-holdout',
   },
 };
+assert.throws(
+  () => loop.validateProtocol({ ...protocol, expectedEffect01: Number.NaN }),
+  /invalid-preregistration/,
+);
 
 function manifestFor(record, phase, seed) {
   return buildInventionVerifierManifest(record.id, record.protocol, phase, seed);
