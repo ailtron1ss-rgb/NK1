@@ -87,14 +87,22 @@ assert.deepEqual(enabledResponse.providerControlReceipt,{
 assert.equal(payloads[1].temperature,profile.temperature);
 assert.equal(payloads[1].max_tokens,profile.maxTokens);
 
-const malformedResponse = await enabledProvider.generate({
-  ...baseRequest,
-  cognitiveControl: { ...profile, featureKeys: [] },
-});
-assert.equal(malformedResponse.text,'local provider response');
-assert.equal(Object.hasOwn(payloads[2],'chat_template_kwargs'),false,
-  'malformed control schemas must be dropped rather than forwarded to the template');
-assert.equal(Object.hasOwn(malformedResponse,'providerControlReceipt'),false);
+const invalidProfiles = [
+  { ...profile, featureKeys: [] },
+  { ...profile, action: 'untrusted-action' },
+  { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index===0?Number.NaN:value) },
+  { ...profile, steeringIntent01: { ...profile.steeringIntent01, caution01: .9 } },
+  { ...profile, neuralSnapshotAvailable: true, neuralSnapshotTick: 999, neuralSnapshotAgeTicks: null },
+  { ...profile, temperature: 1.4 },
+  { ...profile, controlsConfigured: { ...profile.controlsConfigured, activationSteering: true } },
+];
+for (const invalidProfile of invalidProfiles) {
+  const malformedResponse = await enabledProvider.generate({ ...baseRequest, cognitiveControl: invalidProfile });
+  assert.equal(malformedResponse.text,'local provider response');
+  assert.equal(Object.hasOwn(payloads[payloads.length-1],'chat_template_kwargs'),false,
+    'malformed control profiles must be dropped rather than forwarded to the template');
+  assert.equal(Object.hasOwn(malformedResponse,'providerControlReceipt'),false);
+}
 
 
 console.log('LOCAL_CHAT_COGNITIVE_CONTROL_TEMPLATE_PASS');
