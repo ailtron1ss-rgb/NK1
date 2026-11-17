@@ -106,7 +106,7 @@ export class OpenAICompatibleLocalChatProvider {
     if (!endpoint) throw new Error('llama.cpp-not-configured');
     const startedAt = Date.now();
     const requestedModel = request.model === undefined ? this.model : String(request.model).trim();
-    if (!requestedModel || requestedModel.length > 160 || /[\\u0000-\\u001f\\u007f-\\u009f]/.test(requestedModel)) {
+    if (!requestedModel || requestedModel.length > 160 || /[\x00-\x1F\x7F-\x9F]/.test(requestedModel)) {
       throw new Error('llama.cpp-invalid-model-alias');
     }
     const maxTokens = Math.max(1, Math.min(8192, Math.floor(Number(request.maxTokens ?? 512) || 512)));
