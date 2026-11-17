@@ -221,3 +221,77 @@ or BF16/FP16 on supported GPU devices. Bitsandbytes 4-bit/8-bit, GPTQ, AWQ, GGUF
 and llama.cpp adapter injection are not enabled by this implementation and are not
 claimed as compatible. Base-model quantization support needs its own layer-output,
 dtype, memory and quality regression gate before it can be enabled.
+
+
+## OmeStro #24 — Layer Force activation steering
+
+Layer Force is an optional activation-steering controller layered into this same
+sidecar. Unlike the learned residual bottlenecks above, it adds an operator-supplied
+direction vector to selected decoder-layer hidden states at inference time. It
+does not train or mutate base-model weights.
+
+The controller is **disabled by default**. It loads no profile unless the operator
+sets a local profile path and an allowlist containing the exact SHA-256 of the
+profile's raw file bytes. The optional default profile ID explicitly opts that
+profile into inference. Prompt text, client requests and P40 routing cannot enable
+or replace a profile.
+
+### Profile schema v1
+
+Each profile is strict JSON plain data with exactly these top-level keys:
+
+    {
+      "schema_version": 1,
+      "profile_id": "kurisu-reasoning-v1",
+      "model": {
+        "model_id": "your-org/your-model",
+        "model_revision": "immutable-40-character-model-commit",
+        "config_sha256": "64-character-model-config-sha256",
+        "layer_path": "model.layers",
+        "hidden_size": 4096
+      },
+      "layers": [
+        {
+          "index": 12,
+          "direction": ["one finite number per hidden dimension"],
+          "strength": 1.0
+        }
+      ],
+      "max_delta_ratio": 0.05
+    }
+
+Replace the illustrative direction with exactly `hidden_size` finite numeric
+values and use one to eight unique in-range decoder layer indexes. A direction
+must be non-zero. Each per-layer strength must be finite and in [-1, 1].
+`max_delta_ratio` must be positive and no greater than 0.10; 0.05 is the
+recommended starting point, not a measured optimum. The model binding must match
+the loaded model ID, immutable revision, config digest, layer path and width
+exactly. Duplicate JSON keys, unknown fields, malformed numbers, symlinks and
+model mismatches fail closed.
+
+### Explicit operator opt-in
+
+After preparing the profile offline, compute the SHA-256 of the exact file:
+
+    sha256sum ./profiles/kurisu-reasoning-v1.json
+
+Configure the local sidecar before startup:
+
+    export NEURO_NP_LAYER_FORCE_PROFILE_PATHS_JSON='["/absolute/path/kurisu-reasoning-v1.json"]'
+    export NEURO_NP_ALLOWED_LAYER_FORCE_PROFILES_JSON='["<raw-file-sha256>"]'
+    export NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE=kurisu-reasoning-v1
+
+To disable Layer Force, unset the default profile and set the profile paths to
+an empty JSON array. With no configured profile paths, the runtime adds no
+Layer Force hooks. A default profile without a configured local profile is
+rejected. Profiles are never uploaded through an HTTP endpoint.
+
+The controller uses request-local activation state, preserves auxiliary tuple
+and list outputs, and caps each per-token steering delta at 10% of that token's
+hidden-state norm. Detailed diagnostics expose profile IDs, raw-file digests,
+selected layer indexes and aggregate hook/token counts only; they never expose
+direction vectors, hidden states, prompts or completions.
+
+Profile authoring/calibration, independent task-quality evaluation, model-specific
+latency and memory measurement, and target-device soak remain research work.
+No real-model improvement or production readiness is claimed by this feature.
