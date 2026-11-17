@@ -28,7 +28,7 @@ Architecture Morphogenesis превращает перестройку исхо�
 ## Модель графа
 
 - **Module**: стабильный id подсистемы, основной канонический путь под `src/organism/`, полный список её канонических source paths, явный owner и SHA-256 revision, вычисленный по фактическим байтам каждого файла.
-- **Source provenance**: полный 40-символьный commit SHA. Baseline и candidate графы привязаны к точным commit; evidence gate сверяет candidate SHA не только с branch, но и с commit, запечатанным внутри candidate graph. Граф без Git provenance можно прочитать и диагностировать, но использовать как основание миграционного плана нельзя.
+- **Source provenance**: полный 40-символьный commit SHA из `GITHUB_SHA` в GitHub Actions или явного `NK1_SOURCE_COMMIT` в локальной обвязке. Baseline и candidate графы привязаны к точным commit; evidence gate сверяет candidate SHA не только с branch, но и с commit, запечатанным внутри candidate graph. Граф без source provenance можно прочитать и диагностировать, но использовать как основание миграционного плана нельзя.
 - **Contract**: один owner, перечень потребителей и режим `single-owner` либо `shared`.
 - **Edge**:
   - `import` — структурная связь исходных модулей; цикл запрещён.
