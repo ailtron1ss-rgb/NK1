@@ -1,0 +1,46 @@
+name: Science Republic focused validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/science-republic.yml'
+      - 'runtime/neuro-kurisu/src/organism/research/ScienceRepublic.ts'
+      - 'runtime/neuro-kurisu/src/organism/research/TheInventionLoop.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/EvidenceResearchSubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/index.ts'
+      - 'runtime/neuro-kurisu/tests/science-republic.mjs'
+      - 'runtime/neuro-kurisu/docs/SCIENCE_REPUBLIC_RU.md'
+  push:
+    branches:
+      - aspect/science-republic-20261117
+    paths:
+      - '.github/workflows/science-republic.yml'
+      - 'runtime/neuro-kurisu/src/organism/research/ScienceRepublic.ts'
+      - 'runtime/neuro-kurisu/src/organism/research/TheInventionLoop.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/EvidenceResearchSubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/index.ts'
+      - 'runtime/neuro-kurisu/tests/science-republic.mjs'
+      - 'runtime/neuro-kurisu/docs/SCIENCE_REPUBLIC_RU.md'
+
+permissions:
+  contents: read
+
+jobs:
+  focused-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: runtime/neuro-kurisu
+      - name: Type-check integrated runtime
+        run: npm run typecheck
+        working-directory: runtime/neuro-kurisu
+      - name: Exercise Science Republic role protocol
+        run: node --experimental-transform-types --experimental-strip-types tests/science-republic.mjs
+        working-directory: runtime/neuro-kurisu
