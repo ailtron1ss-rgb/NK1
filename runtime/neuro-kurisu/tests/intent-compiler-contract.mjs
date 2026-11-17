@@ -443,4 +443,33 @@ assert.equal(expiringCompiler.gate(expiringApproved, 'organism.inspect').reason,
 assert.equal(expiringCompiler.gate(expiringApproved, 'organism.inspect', 'reconcile').allowed, true,
   'authentic expired intent may only authorize read-only receipt reconciliation, never a new execution');
 
+let expiryExecutionCalls = 0;
+let expiryReconcileCalls = 0;
+const expiryGateway = {
+  async executeTool() { expiryExecutionCalls += 1; throw new Error('expired intent must not execute'); },
+  async reconcileToolExecution(id, input, reason, options) {
+    expiryReconcileCalls += 1;
+    assert.equal(id, 'organism.inspect');
+    assert.deepEqual(input, { scope: 'status' });
+    assert.equal(reason, 'intent-expiry-reconcile');
+    assert.equal(options.idempotencyKey, 'intent:expired:receipt');
+    return { ok: false, verified: false, executionId: 'exec-expired-reconcile-01', tool: id, capability: 'fixture',
+      result: { error: 'no-pending-receipt' }, audit: { at: now, action: 'tool', tool: id, accepted: false, mode: 'dry-run', reason: 'no-pending-receipt' },
+      verification: { verified: false, basis: 'none', confidence01: 0, externalObservation: false, notes: 'fixture' }, outcomeClass: 'idempotency-recovery-required' };
+  },
+};
+const expiryBridge = new IntentActionGatewayBridge(expiringCompiler);
+const expiredExecute = await expiryBridge.execute(expiringApproved, {
+  toolId: 'organism.inspect', input: { scope: 'status' }, reason: 'expired-execute',
+}, expiryGateway);
+assert.equal(expiredExecute.executed, false, 'expired intent must not authorize a new tool action');
+const expiredReconcile = await expiryBridge.reconcile(expiringApproved, {
+  toolId: 'organism.inspect', input: { scope: 'status' }, reason: 'intent-expiry-reconcile',
+  options: { idempotencyKey: 'intent:expired:receipt' },
+}, expiryGateway);
+assert.equal(expiredReconcile.reconciled, true, 'expired but authentic intent may reach the read-only reconciliation route');
+assert.equal(expiryExecutionCalls, 0, 'reconciliation must never invoke executeTool');
+assert.equal(expiryReconcileCalls, 1, 'reconciliation must invoke only the read-only receipt lookup once');
+
+
 console.log('NK1_INTENT_COMPILER=PASS intentIntegrity=true approvalAttestation=true expiry=true riskAndScopeGates=true gatewayGate=true');
