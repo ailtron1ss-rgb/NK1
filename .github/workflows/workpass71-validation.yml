@@ -2,7 +2,7 @@ name: NeuroCore core regression validation
 
 on:
   push:
-    branches: [workpass70-source, nk1-integration-workspace-2026-10-22]
+    branches: [workpass70-source, nk1-integration-workspace-2026-10-22, "aspect/negative-space-memory-20261117"]
   pull_request:
     branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22, rebuild]
     paths:
