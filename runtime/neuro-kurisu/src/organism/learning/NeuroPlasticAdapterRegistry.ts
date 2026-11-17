@@ -430,6 +430,7 @@ export class NeuroPlasticAdapterRegistry {
       updatedAt: now,
       evaluation: null,
       activationApprovalId: null,
+      activationApproval: null,
       disabledReason: null,
     };
     this.state.adapters.push(record);
@@ -516,11 +517,7 @@ export class NeuroPlasticAdapterRegistry {
     if (record.status !== 'eligible' || !record.evaluation?.eligible) {
       throw new Error('neuro-plastic-candidate-not-eligible-for-activation');
     }
-    const normalized: NeuroPlasticApproval = {
-      approvalId: safeText(approval?.approvalId, 'approval-id'),
-      actorId: safeText(approval?.actorId, 'approval-actor-id'),
-      approvedAt: safeCounter(approval?.approvedAt, 'approval-time', 1),
-    };
+    const normalized = normalizeApproval(approval);
     if (typeof verifyApproval !== 'function' || !await verifyApproval(normalized, {
       adapterId,
       reportId: record.evaluation.reportId,
@@ -533,11 +530,13 @@ export class NeuroPlasticAdapterRegistry {
           other.manifest.baseModel.fingerprint === record.manifest.baseModel.fingerprint) {
         other.status = 'eligible';
         other.activationApprovalId = null;
+        other.activationApproval = null;
         other.updatedAt = normalized.approvedAt;
       }
     }
     record.status = 'active';
     record.activationApprovalId = normalized.approvalId;
+    record.activationApproval = normalized;
     record.disabledReason = null;
     record.updatedAt = normalized.approvedAt;
     return structuredClone(record);
@@ -566,6 +565,7 @@ export class NeuroPlasticAdapterRegistry {
     record.status = 'disabled';
     record.disabledReason = safeText(reason, 'runtime-failure-reason', 240);
     record.activationApprovalId = null;
+    record.activationApproval = null;
     record.updatedAt = Date.now();
     return structuredClone(record);
   }
