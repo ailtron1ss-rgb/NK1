@@ -50,8 +50,8 @@ untrusted proposal data.
 8. Approval is bound to the exact contract ID and immutable content hash,
    action subset, assumption acknowledgements, risk acknowledgement, timestamp
    and evidence reference. A runtime HMAC attestation detects approval edits.
-9. Approval expires after the configured TTL (default 15 minutes, maximum
-   15 minutes). A stale or future-dated approval cannot pass the gate.
+9. Approval lifetime is fixed at 15 minutes in this version. A stale or
+   future-dated approval cannot pass the gate.
 10. The bridge does not invoke ActionGateway when the intent gate refuses.
     ActionGateway remains responsible for its independent permission checks,
     one-shot tool approvals, input contracts, idempotency receipts, result
