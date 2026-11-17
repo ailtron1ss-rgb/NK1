@@ -407,6 +407,8 @@ tamperedPrimary.payload.measurement.observed = 99;
 assert.throws(() => runtime.scienceRepublic.recordOutcome(science.id, tamperedPrimary), /invalid-signature/);
 assert.equal(runtime.inventionLoop.snapshot().records[0].outcomes.length, 0);
 
+// The external byte store must retain the exact signed primary envelope too.
+rememberSignedEvidence(primaryArtifact);
 const primary = runtime.scienceRepublic.recordOutcome(science.id, primaryArtifact);
 assert.equal(primary.stage, 'tested');
 assert.equal(primary.trust.signedEvidence, 'canonical-invention-loop-verified');
