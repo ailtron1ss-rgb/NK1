@@ -77,9 +77,9 @@
 
 - [ ] **Step 1: Add inheritance and attack-case assertions**
   - Build a child changing only a valid module's cost/cadence; assert generation, parent digest, exact change receipt and stable digest.
-  - Assert the gate approves a valid child only when its parent is supplied and matches.
+  - Assert the gate approves a valid child only when its parent is supplied and matches; generations above one also require the full ancestor chain through the generation-zero baseline.
   - Assert the gate blocks changes to system set, purpose, phase, snapshot weight, execution rank, dependencies, capabilities, invariant rules, release/state schema, migration owner, digest, and lineage.
-  - Assert unknown/duplicate module patches, NaN, infinities, costs outside [0,1], and cadence outside integer [1,64] throw or block without normalization.
+  - Assert unknown/duplicate module patches, NaN, infinities, costs outside [0,1], and cadence outside integer [1,64] throw or block without normalization. Cyclic objects and hostile getters must return BLOCKED instead of escaping the gate as exceptions.
 - [ ] **Step 2: Run the focused test and verify RED**
   - Run: node --experimental-strip-types runtime/neuro-kurisu/tests/developmental-genome.mjs
   - Expected: the first new inheritance assertion fails because the API is not implemented.
