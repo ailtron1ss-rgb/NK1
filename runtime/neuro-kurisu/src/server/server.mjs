@@ -124,7 +124,19 @@ await lock.acquire();
 async function invokeLanguage(request) {
     const started = Date.now();
     const ecologyPreferredBackend = runtime.core.p40SelectModel('language', PHONE_MODE === false, request.maxTokens && request.maxTokens > 900 ? .82 : .72);
-    const preferredBackend = LOCAL_LANGUAGE_BACKEND_POLICY.select({ localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(), ecologyPreferredBackend });
+    const substratePreferredBackend = runtime.substratePreferredRoute();
+    const availableBackends = {
+        'llama.cpp': LLAMA_CPP_PROVIDER.configured(),
+        kobold: Boolean(KOBOLD_URL),
+        gemini: Boolean(process.env.GEMINI_API_KEY),
+        'deterministic-policy-fallback': true,
+    };
+    const preferredBackend = LOCAL_LANGUAGE_BACKEND_POLICY.select({
+        localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(),
+        ecologyPreferredBackend,
+        substratePreferredBackend,
+        availableBackends,
+    });
     const effectiveBackend = preferredBackend === 'local-fallback'
         ? 'deterministic-policy-fallback'
         : preferredBackend;
@@ -167,6 +179,56 @@ const runtime = new OrganismRuntime({
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
+    substrateBackendProfiles: [
+        {
+            backendId: `llama.cpp:${process.env.LLAMA_CPP_MODEL || 'local-model'}`,
+            routeId: 'llama.cpp',
+            providerId: 'llama.cpp',
+            modelId: process.env.LLAMA_CPP_MODEL || 'local-model',
+            modelRevision: process.env.LLAMA_CPP_MODEL_REVISION || 'host-configured',
+            runtime: 'openai-compatible-chat',
+            privacyClass: 'local-only',
+            capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
+            embeddingSpaceId: process.env.NK1_EMBEDDING_SPACE_ID || 'nk1-memory-embedding-v1',
+            contextWindowTokens: Math.max(256, Number(process.env.LLAMA_CPP_CONTEXT_TOKENS || 8192)),
+        },
+        {
+            backendId: 'kobold',
+            routeId: 'kobold',
+            providerId: 'kobold',
+            modelId: process.env.KOBOLD_MODEL || 'kobold-api-model',
+            modelRevision: process.env.KOBOLD_MODEL_REVISION || 'host-configured',
+            runtime: 'koboldcpp-text-generation',
+            privacyClass: /^https?:\\/\\/(127\\.0\\.0\\.1|localhost|\\[::1\\])(?::\\d+)?$/i.test(KOBOLD_URL) ? 'local-only' : 'private-remote',
+            capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
+            embeddingSpaceId: process.env.NK1_EMBEDDING_SPACE_ID || 'nk1-memory-embedding-v1',
+            contextWindowTokens: 4096,
+        },
+        {
+            backendId: `gemini:${process.env.GEMINI_MODEL || 'gemini-3.8-flash'}`,
+            routeId: 'gemini',
+            providerId: 'gemini',
+            modelId: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+            modelRevision: process.env.GEMINI_MODEL_REVISION || 'host-configured',
+            runtime: 'gemini-generate-content',
+            privacyClass: 'external',
+            capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
+            embeddingSpaceId: process.env.NK1_EMBEDDING_SPACE_ID || 'nk1-memory-embedding-v1',
+            contextWindowTokens: 32768,
+        },
+        {
+            backendId: 'deterministic-policy-fallback',
+            routeId: 'deterministic-policy-fallback',
+            providerId: 'neurocore',
+            modelId: 'deterministic-fallback',
+            modelRevision: 'runtime-v1',
+            runtime: 'host-deterministic',
+            privacyClass: 'local-only',
+            capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
+            embeddingSpaceId: process.env.NK1_EMBEDDING_SPACE_ID || 'nk1-memory-embedding-v1',
+            contextWindowTokens: 4096,
+        },
+    ],
     mem0Adapter: MEM0_MEMORY_ADAPTER,
     mem0CognitiveRecall: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
     autoRun: true,
