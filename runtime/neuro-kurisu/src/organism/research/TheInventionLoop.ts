@@ -147,19 +147,18 @@ function coreOf(record: InventionRecord): InventionRecordCore {
 }
 function isProtocol(value: unknown): value is InventionProtocol {
   if (!isObject(value)) return false;
+  const verifierPlan = value.verifierPlan;
+  if (!isObject(verifierPlan)) return false;
+  const verifierIds = [verifierPlan.primary, verifierPlan.critique, verifierPlan.replication, verifierPlan.holdout];
   return typeof value.question === 'string' &&
     typeof value.hypothesis === 'string' &&
     typeof value.successCriteria === 'string' &&
-    typeof value.testFingerprint === 'string' &&
+    typeof value.testFingerprint === 'string' && SHA256_RE.test(value.testFingerprint) &&
     finite(value.baseline) && finite(value.metricScale) && value.metricScale > 0 &&
     finite(value.minEffect) && value.minEffect >= 0 && value.minEffect <= 1 &&
-    SHA256_RE.test(value.testFingerprint) &&
     (value.lowerIsBetter === undefined || typeof value.lowerIsBetter === 'boolean') &&
-    isObject(value.verifierPlan) &&
-    ['primary', 'critique', 'replication', 'holdout'].every(key =>
-      typeof value.verifierPlan![key] === 'string' && clampText(value.verifierPlan![key], 120).length > 0) &&
-    new Set(['primary', 'critique', 'replication', 'holdout'].map(key =>
-      clampText(value.verifierPlan![key], 120))).size === 4;
+    verifierIds.every(id => typeof id === 'string' && clampText(id, 120).length > 0) &&
+    new Set(verifierIds.map(id => clampText(id, 120))).size === 4;
 }
 function isOutcome(value: unknown): value is InventionOutcome {
   if (!isObject(value)) return false;
