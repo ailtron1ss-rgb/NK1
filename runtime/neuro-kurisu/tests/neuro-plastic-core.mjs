@@ -62,6 +62,7 @@ function observations(quality01, overrides = {}) {
     pairId: 'task-' + (index + 1),
     seed: 100 + index,
     split: 'holdout',
+    authority: 'independent-verifier',
     verifierId: 'independent-evaluator-v1',
     holdoutFingerprint: hash('d'),
     metrics: {
