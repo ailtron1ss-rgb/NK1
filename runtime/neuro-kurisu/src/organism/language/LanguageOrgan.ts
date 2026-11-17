@@ -2,6 +2,7 @@ import { kurisuCanonPrompt } from './KurisuCanonProfile.ts';
 import { buildBudgetedLanguageContext, type ContextBudgetLedgerReport, type ContextSectionInput } from './ContextBudgetLedger.ts';
 
 import type { OrganismDecisionTrace, OrganismCycleResult, CognitiveProposal } from '../core/types.ts';
+import type { CognitiveNeuralControlProfile } from '../cognition/CognitiveToNeuralBridge.ts';
 import type { KnownEntityPromptContext } from '../system/KnownEntityDossier.ts';
 import { sanitizeAutonomousTopicText, type SocialInitiative } from '../system/AutonomousSocialInitiativeEngine.ts';
 
@@ -53,6 +54,8 @@ export interface LanguageRequest {
   /** Optional host cancellation signal for bounded inference. */
   signal?: AbortSignal;
   contextLedger?: ContextBudgetLedgerReport;
+  /** Structured, bounded organism-to-provider control profile; neural steering remains adapter-specific. */
+  cognitiveControl?: CognitiveNeuralControlProfile;
 }
 
 export interface LanguageResponse {
