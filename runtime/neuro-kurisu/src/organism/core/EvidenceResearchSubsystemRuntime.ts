@@ -25,6 +25,7 @@ import { AutonomousScientificBrainSubstrate } from '../learning/AutonomousScient
 import type { OrganismGoal } from './types.ts';
 import type { SignedOutcomeArtifact } from '../learning/VerifiedOutcomeArtifact.ts';
 import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
+import { ScienceRepublic, type ScienceArtifact, type ScienceActors } from '../research/ScienceRepublic.ts';
 
 export type InventionEvaluationPlan = Omit<InventionProtocol, 'question' | 'hypothesis' | 'provenance'>;
 export interface IntrinsicInventionInput extends InventionEvaluationPlan {
@@ -95,9 +96,15 @@ export class EvidenceResearchSubsystemRuntime {
   private capturedCandidates: CapturedInventionCandidate[] = [];
   /** Evidence-gated idea-to-replication lifecycle; host-owned verifier keys are never persisted. */
   readonly inventionLoop: TheInventionLoop;
+  /** Scientific Republic is a role/provenance layer over this exact canonical loop. */
+  readonly scienceRepublic: ScienceRepublic;
 
   constructor(resolveInventionVerifierKey: InventionVerifierKeyResolver = () => undefined) {
     this.inventionLoop = new TheInventionLoop(undefined, undefined, resolveInventionVerifierKey);
+    this.scienceRepublic = new ScienceRepublic(this.inventionLoop, {
+      recordOutcome: (id, artifact) => this.recordInventionOutcome(id, artifact),
+      critique: (id, artifact) => this.recordInventionCritique(id, artifact),
+    });
   }
 
   /** Bind canonical cognitive owners from OrganismCore; avoid shadow ScientificMethod/brain instances. */
@@ -157,6 +164,117 @@ export class EvidenceResearchSubsystemRuntime {
       this.capturedCandidates = this.capturedCandidates.filter(candidate => !staleCaptureIds.has(candidate.id));
     }
     return null;
+  }
+
+  /** Open a Science Republic case from an existing, deduplicated runtime capture. */
+  openScienceCaseFromCapturedCandidate(input: {
+    candidateId: string;
+    domain: string;
+    observation: string;
+    evidence: ScienceArtifact;
+    actors: ScienceActors;
+  }) {
+    const candidate = this.capturedCandidates.find(item => item.id === input.candidateId);
+    if (!candidate) throw new Error('captured-invention-not-found');
+    if (candidate.status !== 'awaiting-preregistration') {
+      throw new Error('captured-invention-already-preregistered');
+    }
+    return this.scienceRepublic.discoverFromCapturedCandidate({
+      candidate,
+      domain: input.domain,
+      observation: input.observation,
+      evidence: input.evidence,
+      actors: input.actors,
+    });
+  }
+
+  /**
+   * Register a Science Republic case in the one canonical signed experiment engine.
+   * Existing captured candidates reuse their ScientificMethod project; manual cases
+   * create one project only after protocol preflight has passed.
+   */
+  registerScienceRepublicExperiment(
+    scienceId: string,
+    input: {
+      actorId: string;
+      evaluation: InventionEvaluationPlan;
+      manifest: ScienceArtifact;
+      holdoutManifest: ScienceArtifact;
+    },
+  ) {
+    const safe = snapshotPlainData(input) as typeof input;
+    const science = this.scienceRepublic.get(scienceId);
+    if (science.stage !== 'theorized' || !science.theory) {
+      throw new Error('science-case-requires-theory-before-preregistration');
+    }
+    const evaluation = safe.evaluation;
+    const provenance = science.candidate ? {
+      source: science.candidate.source,
+      experimentId: science.candidate.experimentId,
+      scientificProjectId: science.candidate.scientificProjectId,
+      linkedGoal: science.candidate.linkedGoal,
+    } : {
+      source: 'manual' as const,
+      experimentId: science.id,
+      scientificProjectId: 'science-project-preflight',
+    };
+    const preflight = this.inventionLoop.validateProtocol({
+      ...evaluation,
+      question: science.title,
+      hypothesis: science.theory.mechanism,
+      provenance,
+    });
+    this.scienceRepublic.validateExperimentPlan(scienceId, {
+      actorId: safe.actorId,
+      protocol: preflight,
+      manifest: safe.manifest,
+      holdoutManifest: safe.holdoutManifest,
+    });
+
+    let protocol = preflight;
+    if (!science.candidate) {
+      const project = this.scientificMethod.create(
+        science.title,
+        science.theory.mechanism,
+        science.theory.predictions[0] ?? science.theory.mechanism,
+        ['science-republic:' + science.id, 'source:manual'],
+      );
+      protocol = this.inventionLoop.validateProtocol({
+        ...evaluation,
+        question: science.title,
+        hypothesis: science.theory.mechanism,
+        provenance: {
+          source: 'manual',
+          experimentId: science.id,
+          scientificProjectId: project.id,
+        },
+      });
+      this.scienceRepublic.validateExperimentPlan(scienceId, {
+        actorId: safe.actorId,
+        protocol,
+        manifest: safe.manifest,
+        holdoutManifest: safe.holdoutManifest,
+      });
+    }
+
+    let invention = science.candidate?.inventionId
+      ? this.inventionLoop.snapshot().records.find(item => item.id === science.candidate!.inventionId)
+      : undefined;
+    if (!invention) invention = this.inventionLoop.propose(protocol);
+    if (science.candidate) {
+      const captured = this.capturedCandidates.find(item => item.id === science.candidate!.id);
+      if (!captured) throw new Error('science-captured-candidate-link-missing');
+      captured.status = 'preregistered';
+      captured.inventionId = invention.id;
+      this.capturedCandidates = this.capturedCandidates.map(item =>
+        item.id === captured.id ? captured : item);
+    }
+    return this.scienceRepublic.attachPreregisteredExperiment(scienceId, {
+      actorId: safe.actorId,
+      inventionId: invention.id,
+      manifest: safe.manifest,
+      holdoutManifest: safe.holdoutManifest,
+    });
   }
 
   /**
@@ -475,6 +593,7 @@ export class EvidenceResearchSubsystemRuntime {
       scientificBrain: this.scientificBrain.snapshot(),
       capturedInventions: this.capturedInventionsSnapshot(),
       inventionLoop: this.inventionLoop.snapshot(),
+      scienceRepublic: this.scienceRepublic.snapshot(),
     };
   }
 
@@ -493,6 +612,7 @@ export class EvidenceResearchSubsystemRuntime {
       p38Research:learning?.p38, p53DevelopmentalSelfModification:advanced?.p53DevelopmentalSelfModification, externalObserver:system?.externalObserver,
       scientificMethod:system?.scientificMethod, scientificBrain:system?.scientificBrain,
       capturedInventions:system?.capturedInventions, inventionLoop:system?.inventionLoop,
+      scienceRepublic:system?.scienceRepublic,
     });
   }
 
@@ -522,5 +642,8 @@ export class EvidenceResearchSubsystemRuntime {
       (candidate.status !== 'preregistered' || typeof candidate.inventionId === 'string'),
     ).map((candidate: CapturedInventionCandidate) => structuredClone(candidate)) : [];
     this.inventionLoop.restore((raw as any).inventionLoop);
+    // The canonical loop must authenticate its signed artifacts before the
+    // Science Republic projection validates its cross-record links.
+    this.scienceRepublic.restore((raw as any).scienceRepublic);
   }
 }
