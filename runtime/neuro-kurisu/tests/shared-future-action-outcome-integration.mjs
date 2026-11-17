@@ -86,6 +86,7 @@ try {
   assert.equal(actionBindingReceipt.toolId, 'observer.shared-future');
   assert.equal(actionBindingReceipt.sharedFutureDecisionId, 'shared-future-action-decision');
   assert.equal(actionBindingReceipt.expectedPostcondition, 'state=ready');
+  assert.equal(actionBindingReceipt.outcomeClass, 'executed-unverified');
 
   const feedback = await core.ingestExternalObservation({
     sourceId: 'device-shared-future-a',

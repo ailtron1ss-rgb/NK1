@@ -11918,7 +11918,7 @@ export class OrganismCore {
         const row = rows[0];
         if (!row.sharedFutureDecisionId || !row.scenarioId || !row.consequenceId ||
             !row.expectedPostcondition || !/^[a-f0-9]{64}$/i.test(String(row.inputHash ?? '')) ||
-            !['execution-failed', 'executed-unverified', 'executed-verified', 'executed-contradicted', 'executed-partial'].includes(String(row.outcomeClass)) ||
+            !['executed-unverified', 'executed-verified'].includes(String(row.outcomeClass)) ||
             typeof row.autonomous !== 'boolean') return null;
         return {
             sharedFutureDecisionId: row.sharedFutureDecisionId,
@@ -12330,8 +12330,8 @@ private validateSharedFutureOutcomeEvidence(
         }
         // Record the canonical action/decision relation only at the trusted
         // ActionGateway finalization boundary, never from external-observation input.
-        if (wasToolExecutorEntered(result.outcomeClass) && suppliedDecisionId && matchingDecisionTrace &&
-            result.executionId && result.tool === id) {
+        if ((result.outcomeClass === 'executed-unverified' || result.outcomeClass === 'executed-verified') &&
+            suppliedDecisionId && matchingDecisionTrace && result.executionId && result.tool === id) {
             const sharedBinding = this.cognitiveRuntime.futureSimulator.sharedFuture.findActionBindingForCanonicalDecision(suppliedDecisionId);
             if (sharedBinding) {
                 this.recordSharedFutureActionExecutionBinding({
