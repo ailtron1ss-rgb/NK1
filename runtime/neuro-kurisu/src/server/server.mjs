@@ -2470,10 +2470,12 @@ try {
             );
         }
     }
-    await runtime.init();
-    await runtime.core.p40ConfigureModelBackend('llama.cpp', LLAMA_CPP_PROVIDER.configured());
-    await runtime.core.p40ConfigureModelBackend('neural-prosthesis', NEURAL_PROSTHESIS_PROVIDER.configured());
-    runtimeReady = true;
+    if (!shuttingDown) {
+        await runtime.init();
+        await runtime.core.p40ConfigureModelBackend('llama.cpp', LLAMA_CPP_PROVIDER.configured());
+        await runtime.core.p40ConfigureModelBackend('neural-prosthesis', NEURAL_PROSTHESIS_PROVIDER.configured());
+        runtimeReady = true;
+    }
 }
 catch (error) {
     console.error('[Neuro-Kurisu Evolution] runtime init failed:', error?.stack || error);
