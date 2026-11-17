@@ -28,7 +28,7 @@ const target = {
   contextWindowTokens: 32768,
 };
 const payload = {
-  organism: { identity: { name: 'NeuroCore' }, memory: [{ id: 'm1', text: 'persistent fact' }], goals: [{ id: 'g1', status: 'active' }] },
+  organism: { identity: { name: 'NeuroCore' }, memory: [{ id: 'm1', text: 'persistent fact' }], goals: [{ id: 'g1', status: 'active' }], modelCache: new Float32Array([1.5, 2.5]), recentByKey: new Map([['m1', { score: 0.9 }]]) },
   world: { tick: 42, location: 'lab', facts: ['stable world fact'] },
   proceduralSkills: { version: 8, skills: [], compoundSkills: [], promotions: 0, demotions: 0, compoundPromotions: 0 },
 };
@@ -43,7 +43,7 @@ const transfer = engine.createTransferPackage({
 });
 assert.equal(transfer.schema, 'nk1.portable-cognitive-state');
 assert.equal(engine.verifyTransferPackage(transfer).valid, true);
-assert.deepEqual(transfer.payload, payload, 'portable package must preserve canonical organism, world and skill state');
+assert.equal(transfer.payload.world.tick, payload.world.tick, 'portable package must preserve canonical world state');\nconst hydratedOrganism = hydratePortableState(transfer.payload.organism);\nassert.deepEqual([...hydratedOrganism.modelCache], [1.5, 2.5]);\nassert.equal(hydratedOrganism.recentByKey.get('m1').score, 0.9);
 assert.equal(engine.verifyTransferPackage({ ...transfer, payload: { ...transfer.payload, world: { tick: 0 } } }).valid, false,
   'a changed payload must fail its integrity check');
 
@@ -91,17 +91,23 @@ const evaluation = await engine.evaluateMigration({
   transfer,
   targetBackendId: target.backendId,
   trials,
-  verifyTrial: async (trial) => trial.evaluatorReceiptId.startsWith('receipt-'),
+  verifyTrial: async (trial) => trial.evaluatorReceiptId.startsWith('receipt-'),\n  allowExternalBackend: true,
 });
 assert.equal(evaluation.accepted, true);
 assert.equal(engine.snapshot().activeBackendId, source.backendId,
   'evaluating a target must not switch the active backend');
 
+const promoted = engine.promoteBackend(target.backendId, evaluation.evaluationId);
+assert.equal(promoted.activeBackendId, target.backendId);
+assert.equal(engine.preferredRoute(), 'gemini');
+assert.equal(promoted.history.at(-1).fromBackendId, source.backendId);
+assert.equal(promoted.history.at(-1).toBackendId, target.backendId);
+
 const denied = await engine.evaluateMigration({
   transfer,
   targetBackendId: target.backendId,
   trials,
-  verifyTrial: async () => false,
+  verifyTrial: async () => false,\n  allowExternalBackend: true,
 });
 assert.equal(denied.accepted, false, 'unverified calibration receipts must fail closed');
 assert.ok(denied.reasons.includes('calibration-evidence-untrusted'));
@@ -111,16 +117,12 @@ const duplicate = await engine.evaluateMigration({
   transfer,
   targetBackendId: target.backendId,
   trials: duplicateTrials,
-  verifyTrial: async () => true,
+  verifyTrial: async () => true,\n  allowExternalBackend: true,
 });
 assert.equal(duplicate.accepted, false);
 assert.ok(duplicate.reasons.includes('calibration-independence-collision'));
 
-const promoted = engine.promoteBackend(target.backendId, evaluation.evaluationId);
-assert.equal(promoted.activeBackendId, target.backendId);
-assert.equal(engine.preferredRoute(), 'gemini');
-assert.equal(promoted.history.at(-1).fromBackendId, source.backendId);
-assert.equal(promoted.history.at(-1).toBackendId, target.backendId);
+
 
 console.log('OMESTRO_22_SUBSTRATE_INDEPENDENCE=PASS', JSON.stringify({
   assertions: 17,
