@@ -759,6 +759,30 @@ export class NeuroPlasticAdapterRegistry {
         // Invalid persisted candidates are discarded individually; one corrupt row does not block safe recovery.
       }
     }
+
+    // Persisted approvals are independently valid, but two signed rows must not
+    // restore competing active adapters for the same domain/base-model route.
+    // Demote every member of a collision group rather than choosing by array order.
+    const activeGroups = new Map<string, NeuroPlasticAdapterRecord[]>();
+    for (const record of restored) {
+      if (record.status !== 'active') continue;
+      const key = JSON.stringify([
+        record.manifest.domain,
+        record.manifest.baseModel.backendId,
+        record.manifest.baseModel.fingerprint,
+      ]);
+      const group = activeGroups.get(key) ?? [];
+      group.push(record);
+      activeGroups.set(key, group);
+    }
+    for (const group of activeGroups.values()) {
+      if (group.length < 2) continue;
+      for (const record of group) {
+        record.status = 'eligible';
+        record.activationApprovalId = null;
+        record.activationApproval = null;
+      }
+    }
     this.state.adapters = restored;
   }
   stage(rawManifest: unknown): NeuroPlasticAdapterRecord {
