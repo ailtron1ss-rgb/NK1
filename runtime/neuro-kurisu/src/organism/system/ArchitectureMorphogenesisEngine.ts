@@ -173,6 +173,7 @@ function sha256(value: string): string {
 }
 
 export function computeArchitectureGraphDigest(graph: ArchitectureMorphogenesisGraph): string {
+  if (!isPlainData(graph)) throw new TypeError('Architecture graph digest requires bounded plain data');
   return sha256(stableJson(graph));
 }
 
@@ -319,6 +320,20 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
     edgeKeys.add(key);
   }
 
+  const contractEdges = new Set(edges.filter(edge => edge.kind === 'contract').map(edge => edge.from + '|' + edge.to));
+  for (const contract of contracts) {
+    for (const consumer of contract.consumerModuleIds ?? []) {
+      if (!contractEdges.has(contract.ownerModuleId + '|' + consumer)) {
+        add('contract-edge-missing', 'contracts.' + contract.id, 'Every declared contract consumer needs a matching owner-to-consumer edge');
+      }
+    }
+  }
+  for (const edge of edges) {
+    if (edge.kind === 'contract' && !contracts.some(contract => contract.ownerModuleId === edge.from && contract.consumerModuleIds.includes(edge.to))) {
+      add('contract-edge-unowned', 'edges', 'Every contract edge must be declared by an owner contract');
+    }
+  }
+
   const cycles = structuralCycles(edges, ids);
   for (const cycle of cycles) {
     add('structural-cycle', 'edges', 'Import/contract cycle: ' + cycle.join(' -> '));
@@ -336,12 +351,14 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
 export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogenesisGraph {
   const architecture = buildCognitiveArchitectureSnapshot();
   const genome = buildDevelopmentalGenome();
+  const usedPaths = new Set<string>();
   const modules = architecture.subsystems.map(subsystem => {
     const candidatePaths = subsystem.components
       .map(component => component.replace(/^runtime\/neuro-kurisu\//, ''))
       .filter(path => isCanonicalSourcePath(path));
-    const selectedPath = candidatePaths[0];
-    if (!selectedPath) throw new Error('No canonical source component found for architecture subsystem: ' + subsystem.id);
+    const selectedPath = candidatePaths.find(path => !usedPaths.has(path));
+    if (!selectedPath) throw new Error('No unique canonical source component found for architecture subsystem: ' + subsystem.id);
+    usedPaths.add(selectedPath);
     const revision = {
       id: subsystem.id,
       owner: subsystem.owner,
@@ -415,10 +432,17 @@ function sortedUnique(values: string[]): string[] {
   return [...new Set(values)].sort();
 }
 
-function operationModuleIds(operation: ArchitectureMorphogenesisOperation): string[] {
-  if (operation.kind === 'merge') return [...operation.sourceModuleIds, operation.targetModuleId];
-  if (operation.kind === 'split') return [operation.sourceModuleId, ...operation.targetModuleIds];
-  return [operation.moduleId];
+function operationModuleIds(operation: any): string[] {
+  if (!isRecord(operation)) return [];
+  if (operation.kind === 'merge') {
+    return [...(Array.isArray(operation.sourceModuleIds) ? operation.sourceModuleIds : []), ...(typeof operation.targetModuleId === 'string' ? [operation.targetModuleId] : [])]
+      .filter((id): id is string => typeof id === 'string');
+  }
+  if (operation.kind === 'split') {
+    return [...(typeof operation.sourceModuleId === 'string' ? [operation.sourceModuleId] : []), ...(Array.isArray(operation.targetModuleIds) ? operation.targetModuleIds : [])]
+      .filter((id): id is string => typeof id === 'string');
+  }
+  return typeof operation.moduleId === 'string' ? [operation.moduleId] : [];
 }
 
 function validStepList(value: unknown, path: string, issues: ArchitectureMorphogenesisIssue[]): value is ArchitectureMigrationStep[] {
@@ -463,8 +487,8 @@ export function createArchitectureMorphogenesisPlan(input: {
       schemaVersion: 1,
       status: 'BLOCKED',
       activation: 'NOT_APPLIED',
-      baselineCommit: typeof input?.baselineCommit === 'string' ? input.baselineCommit : '',
-      candidateBranch: typeof input?.candidateBranch === 'string' ? input.candidateBranch : '',
+      baselineCommit: '',
+      candidateBranch: '',
       baselineGraph: emptyGraph,
       candidateGraph: emptyGraph,
       operations: [],
@@ -683,7 +707,9 @@ export function evaluateArchitectureMorphogenesisPlan(
       issues,
     };
   }
-  if (evidence.baselineCommit !== plan.baselineCommit || typeof evidence.candidateCommit !== 'string' || !COMMIT_SHA.test(evidence.candidateCommit)) {
+  if (evidence.baselineCommit === undefined || evidence.candidateCommit === undefined) {
+    fail('evidence-commit-missing', 'evidence', 'Evidence must bind the exact baseline and a full candidate commit SHA');
+  } else if (evidence.baselineCommit !== plan.baselineCommit || typeof evidence.candidateCommit !== 'string' || !COMMIT_SHA.test(evidence.candidateCommit)) {
     fail('evidence-commit-mismatch', 'evidence', 'Evidence must bind the exact baseline and a full candidate commit SHA');
   }
   const required: Array<keyof ArchitectureMorphogenesisEvidence> = [
@@ -691,10 +717,11 @@ export function evaluateArchitectureMorphogenesisPlan(
   ];
   for (const key of required) {
     if (evidence[key] === false) fail('evidence-gate-failed', 'evidence.' + key, 'A required verification gate failed');
-    else if (evidence[key] !== true) fail('evidence-gate-missing', 'evidence.' + key, 'A required verification result is missing');
+    else if (evidence[key] === undefined) fail('evidence-gate-missing', 'evidence.' + key, 'A required verification result is missing');
+    else if (evidence[key] !== true) fail('evidence-gate-invalid', 'evidence.' + key, 'A required verification result must be a boolean');
   }
   if (evidence.reviewApproved !== true) fail('human-review-missing', 'evidence.reviewApproved', 'Explicit human review approval is required');
-  const blocked = issues.some(item => item.code !== 'evidence-gate-missing' && item.code !== 'human-review-missing');
+  const blocked = issues.some(item => !['evidence-gate-missing', 'evidence-commit-missing', 'human-review-missing'].includes(item.code));
   if (blocked) return { status: 'BLOCKED', activation: 'NOT_APPLIED', mergeAllowed: false, planDigest: plan.planDigest, issues };
   if (issues.length) return { status: 'NEEDS_REVIEW', activation: 'NOT_APPLIED', mergeAllowed: false, planDigest: plan.planDigest, issues };
   return {
