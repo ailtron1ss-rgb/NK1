@@ -9,6 +9,9 @@ const ambiguous = compiler.compile({
 });
 assert.equal(ambiguous.goal.text, 'Please delete old project data and prepare a report.');
 assert.equal(ambiguous.risk.level, 'high', 'destructive language must raise risk without granting permission');
+const riskCannotBeDowngraded = compiler.compile({ text: 'Delete the production database', extraction: { risk: 'low' } });
+assert.equal(riskCannotBeDowngraded.risk.level, 'high', 'an extraction must not downgrade risk implied by the request');
+assert.throws(() => compiler.approve(ambiguous, { userConfirmed: true, allowedActions: [], at: 1_800_000_000_001, evidenceRef: 'incomplete-contract' }), /incomplete/);
 assert.deepEqual(ambiguous.permissions.allowedActions, [], 'free text must never become an execution allow-list');
 assert.equal(ambiguous.approval.status, 'not-approved');
 assert.equal(compiler.gate(ambiguous, 'filesystem.delete').allowed, false);
@@ -73,5 +76,13 @@ const executed = await bridge.execute(approved, {
 assert.equal(executed.executed, true);
 assert.equal(executed.result.ok, true);
 assert.equal(calls, 1, 'approved allowed actions must pass through ActionGateway exactly once');
+
+const defaultLineage = await bridge.execute(approved, {
+  toolId: 'organism.inspect', input: { scope: 'project' }, reason: 'intent-bridge-test',
+}, { async executeTool(_id, _input, _reason, options) {
+  assert.equal(options.decisionId, approved.id, 'bridge must bind gateway decision lineage to the intent contract');
+  return { ok: true, verified: true, tool: 'organism.inspect', outcomeClass: 'executed-verified' };
+} });
+assert.equal(defaultLineage.executed, true);
 
 console.log('NK1_INTENT_COMPILER=PASS conservativePermissions=true explicitApproval=true gatewayGate=true');
