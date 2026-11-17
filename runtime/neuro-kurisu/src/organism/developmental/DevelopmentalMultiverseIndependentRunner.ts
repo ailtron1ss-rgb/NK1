@@ -279,16 +279,16 @@ export class DevelopmentalMultiverseIndependentRunner {
     input: DevelopmentalMultiverseSessionInput,
     options: DevelopmentalMultiverseHostCommandRunnerOptions,
   ): Promise<DevelopmentalMultiverseIndependentRunner> {
-    const services = await createHostOwnedIndependentEvaluationServices(options.commands);
-    const { commands: _commands, ...runnerOptions } = options;
+    const { commands, ...runnerOptions } = options;
+    const services = await createHostOwnedIndependentEvaluationServices(commands);
     return this.create(input, { ...runnerOptions, services });
   }
 
   static async restoreWithHostCommands(
     options: DevelopmentalMultiverseHostCommandRunnerOptions,
   ): Promise<DevelopmentalMultiverseIndependentRunner> {
-    const services = await createHostOwnedIndependentEvaluationServices(options.commands);
-    const { commands: _commands, ...runnerOptions } = options;
+    const { commands, ...runnerOptions } = options;
+    const services = await createHostOwnedIndependentEvaluationServices(commands);
     return this.restore({ ...runnerOptions, services });
   }
 
@@ -448,7 +448,9 @@ export class DevelopmentalMultiverseIndependentRunner {
           Array.isArray(raw.input) || typeof raw.input.prompt !== 'string' ||
           !raw.input.prompt.trim() || raw.input.prompt.length > 8192 ||
           !Array.isArray(raw.requiredCapabilityIds) || raw.requiredCapabilityIds.length === 0 ||
-          !Array.isArray(raw.expectedStepIds) || raw.expectedStepIds.length === 0) {
+          raw.requiredCapabilityIds.length > 128 ||
+          !Array.isArray(raw.expectedStepIds) || raw.expectedStepIds.length === 0 ||
+          raw.expectedStepIds.length > 512) {
         throw new Error('developmental-multiverse-runner-scenario-task-invalid');
       }
       const baseInput = structuredClone(raw.input) as Record<string, unknown>;
