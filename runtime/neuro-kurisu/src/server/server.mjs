@@ -2111,7 +2111,7 @@ async function route(req, res) {
             // The author identity is derived from the server's authenticated API mode, never from request JSON.
             const authorId = auth.reason === 'authenticated' ? 'api-token-owner' : 'loopback-owner';
             try {
-                const proposal = await runtime.core.constitutionEvolutionPropose({ ...input, authorId });
+                const proposal = await runtime.core.constitutionEvolutionPropose({ ...input, authorId, submittedAt:Date.now() });
                 return json(res, 201, { ok:true, proposal });
             } catch (error) {
                 const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
