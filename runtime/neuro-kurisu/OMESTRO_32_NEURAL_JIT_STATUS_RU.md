@@ -27,6 +27,7 @@
 - Activation capture отклоняется по TTL 10 минут до и после async host-verifier, поэтому задержка проверки не расширяет временное окно доверия.
 - Runtime type shim объявляет точную сигнатуру `randomBytes(size): Buffer`; это устраняет найденный Actions TS2305 для `node:crypto`.
 - Core regression workflow постоянно запускает `neural-jit-engine.mjs`, `neural-jit-runtime-wiring.mjs` и `neural-jit-runtime-bridge.mjs`, а HTTP fake-provider regression остаётся отдельным интеграционным шагом.
+- Дополнительно создан отдельный `.github/workflows/neural-jit-validation.yml`: самостоятельный PR gate с runtime typecheck и четырьмя проверками engine / wiring / verified ActionGateway bridge / local-language HTTP fake provider.
 
 ## Host adapter contract
 
@@ -49,7 +50,7 @@ Runtime и сервер теперь имеют реальный интегра�
 - В workflow `NK1 Action Gateway governance` на commit `1e05bf22cef0bdea5f6062d667ec6b93027b6937` все шаги прошли, включая `Runtime typecheck` и outcome / gateway regressions (run `44141962868`).
 - В workflow `P26 Learning Validation` на том же commit все шаги прошли, включая `Typecheck runtime`, learning recovery, continual matrix, replay ablations и P23 evidence suite (run `44141963387`).
 - Ранее эти же workflows блокировались из-за отсутствующей декларации `randomBytes`; причина исправлена в `src/node-shims.d.ts`.
-- Commit `a3728a4d6e23ff28d9f53cf785ff65b3b2c4508d` добавил три dedicated Neural JIT regression tests в основной `workpass71-validation.yml`. После последующих изменений replay/TTL актуальная ветка получила новый head `cc2df1009d28d3d787a1d7973c1774f0d060d4ad`; свежие Actions для него должны считаться незавершёнными до появления результатов.
+- Commit `a3728a4d6e23ff28d9f53cf785ff65b3b2c4508d` добавил три dedicated Neural JIT regression tests в основной `workpass71-validation.yml`; commit `1fad131a35c855e1d57b8979f253fb5f062c9521` добавил проверку истечения TTL во время асинхронной host verification; `cc2df1009d28d3d787a1d7973c1774f0d060d4ad` добавил post-verifier TTL recheck. После этого отдельные CI workflow и status doc также были обновлены; выводы по тестам относятся только к конкретному head и не переносятся автоматически на последующие коммиты.
 - Доступ к текущему checkout для непосредственного локального запуска тестов отсутствовал; изменения внесены в feature branch через GitHub и проходят удалённую проверку. Поэтому нельзя заявлять, что новые тесты на последнем head уже прошли или что выполнен локальный red-green цикл.
 - Базовый ранее известный дефект `tests/p22-chat-routing.mjs` (cognitive-proposal expectation) был воспроизведён до этой серии изменений на исходном baseline; если он встретится в широком regression run, его следует классифицировать отдельно, а не скрывать.
 - Реальные Transformer activations, paired baseline-vs-shadow benchmarks, tokens/s, latency, RAM/VRAM и влияние на качество не измерялись: instrumented local model host adapter в окружении не настроен. Никакого ускорения LLM не заявляется; live inference остаётся выключенным.
