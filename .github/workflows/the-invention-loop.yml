@@ -10,6 +10,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/cognition/IntrinsicExperimentGenerator.ts'
       - 'runtime/neuro-kurisu/src/organism/core/EvidenceResearchSubsystemRuntime.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/tests/the-invention-loop.mjs'
       - 'runtime/neuro-kurisu/tests/p23-signed-outcome-artifact.mjs'
       - 'runtime/neuro-kurisu/package.json'
