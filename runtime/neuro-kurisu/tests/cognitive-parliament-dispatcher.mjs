@@ -401,15 +401,47 @@ assert.equal(coreReceipt.verifiedEvidenceCount,3);
 assert.equal(coreReceipt.unverifiedEvidenceCount,0);
 assert.equal(coreReceipt.roleResults.length,6);
 assert.ok(coreReceipt.roleResults.every(row=>row.status==='completed'));
+const coreHistory=core.snapshot().system.cognitiveParliamentDecisionHistory;
+assert.ok(Array.isArray(coreHistory));
+assert.equal(coreHistory.length,1);
+assert.deepEqual(coreHistory[0],coreReceipt);
 
-// The sanitized cycle receipt survives a full Core persistence restore.
+// The bounded history is append-only by tick and capped at 64 receipts.
+await core.observe({text:'Repeat the evidence-backed review for a separate cycle.'},'operational');
+const twoCycleHistory=core.snapshot().system.cognitiveParliamentDecisionHistory;
+assert.equal(twoCycleHistory.length,2);
+assert.ok(twoCycleHistory[1].tick>twoCycleHistory[0].tick);
+const boundedHistoryFixture=Array.from({length:64},(_,i)=>({
+  ...coreReceipt,tick:1000+i,candidateId:`prior-${i}`,
+}));
+const seededHistorySnapshot=core.snapshot();
+seededHistorySnapshot.system.cognitiveParliamentDecisionHistory=boundedHistoryFixture;
+const boundedHistoryCore=new OrganismCore(new MemoryStateStore({initial:seededHistorySnapshot}),{
+  performanceProfile:'mobile',cycleResultMode:'operational',spineOnly:false,
+  parliamentRoleExecutors:coreExecutors,
+  parliamentModelAttestor:executionId=>{
+    const role=executionId.replace(/^core-run-/,'');
+    return {executionId,providerId:`core-provider-${role}`,modelId:`core-model-${role}`,
+      independenceGroup:`core-family-${role}`,verifiedAt:Date.now()};
+  },
+});
+await boundedHistoryCore.init();
+await boundedHistoryCore.observe({text:'Run one more bounded-history review.'},'operational');
+const boundedHistory=boundedHistoryCore.snapshot().system.cognitiveParliamentDecisionHistory;
+assert.equal(boundedHistory.length,64);
+assert.equal(boundedHistory.at(-1).candidateId,boundedHistoryCore.snapshot().system.cognitiveParliamentLastDecision.candidateId);
+
+// The sanitized cycle receipt and bounded history survive a full Core persistence restore.
 const coreSnapshot=core.snapshot();
 const restoredCore=new OrganismCore(new MemoryStateStore({initial:coreSnapshot}),{
   performanceProfile:'mobile',cycleResultMode:'operational',spineOnly:false,
 });
 await restoredCore.init();
-assert.deepEqual(restoredCore.snapshot().system.cognitiveParliamentLastDecision,coreReceipt,
+assert.deepEqual(restoredCore.snapshot().system.cognitiveParliamentLastDecision,core.snapshot().system.cognitiveParliamentLastDecision,
   'latest parliamentary cycle receipt must survive restart exactly');
+assert.deepEqual(restoredCore.snapshot().system.cognitiveParliamentDecisionHistory,
+  core.snapshot().system.cognitiveParliamentDecisionHistory,
+  'bounded parliamentary decision history must survive restart exactly');
 
 // With all six roles configured but no promoted evidence, Core must not allow
 // an ordinary risky candidate to escape through a later selector.
