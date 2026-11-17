@@ -60,6 +60,82 @@ try {
   assert.equal(corroborated?.reviewStatus, 'review-eligible');
   assert.equal(runtime.core.negativeSpaceMemoryReviewQueue().length, 1);
 
+  // The persistence-batch guard must reject before mutating either Core API's canonical engine state.
+  regretEngine.observe('respond', 0.3, [{
+    action: 'verify',
+    expectedOutcome01: 0.9,
+    confidence01: 1,
+  }], {
+    decisionId: 'core-negative-space-batch-reopen-002',
+    decisionAt: 110,
+    outcomeAt: 210,
+    chosenExpectedOutcome01: 0.9,
+    significance: { cost01: 0.2, risk01: 0.95, futureImportance01: 0.1 },
+    outcomeEvidence: ['initial-verified-report'],
+    outcomeVerified01: 1,
+    outcomeIndependent01: 1,
+    outcomeSource: 'external-evidence',
+  });
+  const batchReopenBefore = runtime.core.negativeSpaceMemorySnapshot();
+  await runtime.core.beginBatch();
+  try {
+    await assert.rejects(
+      runtime.core.negativeSpaceMemoryMarkReopened(
+        'core-negative-space-batch-reopen-002',
+        'verify',
+        'must not mutate inside active batch',
+        450,
+      ),
+      /negative-space-memory-persistence-busy/,
+    );
+    assert.deepEqual(
+      runtime.core.negativeSpaceMemorySnapshot(),
+      batchReopenBefore,
+      'a rejected reopen during a batch must not mutate in-memory history',
+    );
+  } finally {
+    await runtime.core.endBatch();
+  }
+
+  regretEngine.observe('respond', 0.3, [{
+    action: 'explore',
+    expectedOutcome01: 0.9,
+    confidence01: 1,
+  }], {
+    decisionId: 'core-negative-space-batch-outcome-003',
+    decisionAt: 120,
+    outcomeAt: 220,
+    chosenExpectedOutcome01: 0.9,
+    significance: { cost01: 0.2, risk01: 0.95, futureImportance01: 0.1 },
+    outcomeEvidence: ['initial-unverified-report'],
+    outcomeVerified01: 0,
+    outcomeIndependent01: 0,
+    outcomeSource: 'internal',
+  });
+  const batchOutcomeBefore = runtime.core.negativeSpaceMemorySnapshot();
+  await runtime.core.beginBatch();
+  try {
+    await assert.rejects(
+      runtime.core.negativeSpaceMemoryRecordOutcome({
+        decisionId: 'core-negative-space-batch-outcome-003',
+        actualOutcome01: 0.3,
+        verified01: 1,
+        independent01: 1,
+        source: 'external-evidence',
+        evidence: ['must-not-be-applied-inside-active-batch'],
+        at: 460,
+      }),
+      /negative-space-memory-persistence-busy/,
+    );
+    assert.deepEqual(
+      runtime.core.negativeSpaceMemorySnapshot(),
+      batchOutcomeBefore,
+      'a rejected outcome update during a batch must not mutate in-memory history',
+    );
+  } finally {
+    await runtime.core.endBatch();
+  }
+
   // A successful public mutation must update the canonical persisted facet and be durable
   // before the API resolves; relying on the next cognitive tick is not sufficient.
   let saved = await stateStore.load();
