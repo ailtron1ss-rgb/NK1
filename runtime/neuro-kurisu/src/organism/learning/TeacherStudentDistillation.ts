@@ -128,6 +128,15 @@ export interface TeacherDistillationExample {
   verifiedAt: number;
 }
 
+export function fingerprintTeacherDistillationDataset(identity: {
+  schemaVersion: 1;
+  manifestFingerprint: string;
+  training: TeacherDistillationExample[];
+  validation: TeacherDistillationExample[];
+}): string {
+  return sha256(canonical(identity));
+}
+
 export interface TeacherDistillationDatasetSnapshot {
   schemaVersion: 1;
   manifestFingerprint: string;
@@ -620,7 +629,7 @@ export class TeacherStudentDistillationDataset {
       validation,
     };
     const detachedIdentity = snapshotPlainData(datasetIdentity) as typeof datasetIdentity;
-    const datasetFingerprint = sha256(canonical(detachedIdentity));
+    const datasetFingerprint = fingerprintTeacherDistillationDataset(detachedIdentity);
     return {
       ...detachedIdentity,
       datasetFingerprint,
