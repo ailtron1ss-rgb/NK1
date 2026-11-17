@@ -209,7 +209,7 @@ try {
   const checkpointAfterValidation = await frozenStore.load();
   assert.equal(checkpointAfterValidation.corpus.rows.length, 9,
     'the checkpoint must retain the exact frozen validation + holdout task corpus');
-  assert.equal(checkpointAfterValidation.corpus.ledger.acceptedOutcomes, 12,
+  assert.equal(checkpointAfterValidation.corpus.ledgerSnapshot.acceptedOutcomes, 12,
     'the checkpoint must retain canonical P23 validation outcomes, not only their hash');
   const frozenRestored = await DevelopmentalMultiverseIndependentRunner.restore(frozenOptions);
   await frozenRestored.runHoldout();
@@ -223,7 +223,7 @@ try {
     row.verifiedEvidence?.holdoutPlanFingerprint === validationEvidence.holdoutPlanFingerprint),
     'holdout execution must use the untouched holdout plan frozen before validation');
   const checkpointAfterHoldout = await frozenStore.load();
-  assert.equal(checkpointAfterHoldout.corpus.ledger.acceptedOutcomes, 22,
+  assert.equal(checkpointAfterHoldout.corpus.ledgerSnapshot.acceptedOutcomes, 22,
     'the restored P23 ledger must contain validation and finalist-only holdout outcome rows');
 
   const restoredAfterHoldout = await DevelopmentalMultiverseIndependentRunner.restore(options);

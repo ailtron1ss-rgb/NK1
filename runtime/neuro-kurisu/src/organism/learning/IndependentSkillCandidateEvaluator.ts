@@ -61,11 +61,15 @@ export interface IndependentCandidateSafetyScanner {
     violationCount: number;
   }>;
 }
+export type IndependentCandidateEvaluationScope = 'paired' | 'validation-only' | 'holdout-only';
+
 export interface IndependentCandidateEvaluationConfig {
   tasks: IndependentCandidateTask[];
   executor: CandidateSandboxExecutor;
   verifier: IndependentTaskVerifier;
   safetyScanner: IndependentCandidateSafetyScanner;
+  /** Execute one split only, so holdout task inputs remain undisclosed during finalist selection. */
+  evaluationScope?: IndependentCandidateEvaluationScope;
   /** Optional bridge to the canonical matched experiment plan and verified-outcome ledger. */
   experimentAuthority?: {
     manifest: TaskManifestEntry[];
@@ -199,8 +203,18 @@ function validateConfig(config: IndependentCandidateEvaluationConfig, tasks: Ind
     trialIds.add(task.trialId);
     splitTasks[task.split].add(task.taskId);
   }
-  if (!splitTasks.validation.size || !splitTasks.holdout.size) {
+  const evaluationScope = config.evaluationScope ?? 'paired';
+  if (!['paired', 'validation-only', 'holdout-only'].includes(evaluationScope)) {
+    throw new Error('independent-candidate-evaluator-scope-invalid');
+  }
+  if (evaluationScope === 'paired' && (!splitTasks.validation.size || !splitTasks.holdout.size)) {
     throw new Error('independent-candidate-evaluator-validation-and-holdout-required');
+  }
+  if (evaluationScope === 'validation-only' && (!splitTasks.validation.size || splitTasks.holdout.size)) {
+    throw new Error('independent-candidate-evaluator-validation-only-scope-mismatch');
+  }
+  if (evaluationScope === 'holdout-only' && (!splitTasks.holdout.size || splitTasks.validation.size)) {
+    throw new Error('independent-candidate-evaluator-holdout-only-scope-mismatch');
   }
   for (const taskId of splitTasks.validation) {
     if (splitTasks.holdout.has(taskId)) throw new Error('independent-candidate-evaluator-task-leakage');
