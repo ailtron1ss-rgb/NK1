@@ -193,21 +193,32 @@ const unreviewedLicense = makeArtifact({ skill: { skillId: 'unreviewed-license' 
 assert.throws(() => commons.importArtifact(unreviewedLicense), /license-review-not-trusted-by-host/,
   'a publisher cannot self-assert legal redistribution clearance without a host-approved review fingerprint');
 
-const weak = makeAttestation(fingerprint, { independentSeedCount: 2 });
-assert.throws(() => commons.attachAttestation(fingerprint, weak), /evidence-invalid/,
-  'fewer than five independent holdout seeds cannot attest a skill');
+const evidenceCommons = new SynapticCommons(trust);
+const evidenceArtifact = makeArtifact({ skill: { skillId: 'attestation-evidence-gates' } });
+const evidenceFingerprint = synapticArtifactFingerprint(evidenceArtifact);
+evidenceCommons.importArtifact(evidenceArtifact);
+evidenceCommons.evaluateCompatibility(evidenceFingerprint, {
+  runtimeVersion: '1.2.0',
+  environmentFingerprint: envFingerprint,
+  supportedCapabilities: ['documents.read', 'documents.summarize'],
+  permittedTools: ['documents.fetch'],
+  now,
+});
+const weak = makeAttestation(evidenceFingerprint, { independentSeedCount: 2 });
+assert.throws(() => evidenceCommons.attachAttestation(evidenceFingerprint, weak), /evidence-invalid/,
+  'fewer than five independent holdout seeds cannot attest a compatible skill');
 
-const noImprovement = makeAttestation(fingerprint, { baselinePasses: 4, candidatePasses: 4 });
-assert.throws(() => commons.attachAttestation(fingerprint, noImprovement), /evidence-invalid/,
+const noImprovement = makeAttestation(evidenceFingerprint, { baselinePasses: 4, candidatePasses: 4 });
+assert.throws(() => evidenceCommons.attachAttestation(evidenceFingerprint, noImprovement), /evidence-invalid/,
   'a candidate without positive holdout improvement cannot be attested');
 
-const wrongEnvironment = makeAttestation(fingerprint, { environmentFingerprint: 'f'.repeat(64) });
-assert.throws(() => commons.attachAttestation(fingerprint, wrongEnvironment), /context-mismatch/,
+const wrongEnvironment = makeAttestation(evidenceFingerprint, { environmentFingerprint: 'f'.repeat(64) });
+assert.throws(() => evidenceCommons.attachAttestation(evidenceFingerprint, wrongEnvironment), /context-mismatch/,
   'holdout evidence from a different environment cannot attest this local copy');
 
-const tamperedAttestation = makeAttestation(fingerprint);
+const tamperedAttestation = makeAttestation(evidenceFingerprint);
 tamperedAttestation.candidatePasses = 5;
-assert.throws(() => commons.attachAttestation(fingerprint, tamperedAttestation), /attestor-signature-invalid/,
+assert.throws(() => evidenceCommons.attachAttestation(evidenceFingerprint, tamperedAttestation), /attestor-signature-invalid/,
   'modifying an evidence receipt invalidates its signature');
 
 const anotherArtifact = makeArtifact({ skill: { version: '1.0.0', summary: 'Changed content, same slot.' } });
@@ -243,6 +254,61 @@ const destructiveResult = destructiveCommons.evaluateCompatibility(destructive.r
 });
 assert.equal(destructiveResult.status, 'quarantined');
 assert.ok(destructiveResult.compatibility?.reasons.includes('destructive-permission-not-shareable'));
+
+const overlongDescriptor = makeArtifact({
+  skill: { skillId: 'overlong-field', name: 'n'.repeat(121) },
+});
+assert.throws(() => commons.importArtifact(overlongDescriptor), /field-too-long/,
+  'oversized fields must be rejected, never silently truncated before signature verification');
+
+const prereleaseRuntime = new SynapticCommons(trust);
+const stableRequirement = prereleaseRuntime.importArtifact(makeArtifact({
+  skill: { skillId: 'stable-runtime-required' },
+  contract: { minimumRuntimeVersion: '1.2.0' },
+}));
+const prereleaseCompatibility = prereleaseRuntime.evaluateCompatibility(
+  stableRequirement.record.artifactFingerprint,
+  {
+    runtimeVersion: '1.2.0-rc.1',
+    environmentFingerprint: envFingerprint,
+    supportedCapabilities: ['documents.read', 'documents.summarize'],
+    permittedTools: ['documents.fetch'],
+    now,
+  },
+);
+assert.equal(prereleaseCompatibility.status, 'quarantined',
+  'a prerelease runtime must not satisfy a stable minimum runtime version');
+
+const attestedStateBeforeExpiry = commons.snapshot();
+let expiryNow = now;
+const expiryTrust = { ...trust, now: () => expiryNow };
+const restoredBeforeExpiry = new SynapticCommons(expiryTrust);
+restoredBeforeExpiry.restore(attestedStateBeforeExpiry);
+expiryNow = attestation.expiresAt + 1;
+const restoredAfterExpiry = new SynapticCommons(expiryTrust);
+assert.doesNotThrow(() => restoredAfterExpiry.restore(attestedStateBeforeExpiry),
+  'expired evidence remains verifiable during restore and must not prevent runtime startup');
+assert.throws(() => restoredAfterExpiry.exportArtifact(fingerprint), /attestation-expired/,
+  'expired evidence remains non-exportable');
+
+const revoked = commons.revokeAttestedArtifact(fingerprint, 'independent review found a poisoned capability mapping');
+assert.equal(revoked.status, 'revoked');
+assert.ok(revoked.attestation, 'revocation preserves the signed evidence for audit');
+assert.equal(commons.diagnostics().revoked, 1);
+assert.throws(() => commons.exportArtifact(fingerprint), /requires-attested-artifact/,
+  'revoked skills can never be exported as trusted packages');
+assert.throws(() => commons.evaluateCompatibility(fingerprint, {
+  runtimeVersion: '1.2.0', environmentFingerprint: envFingerprint,
+  supportedCapabilities: ['documents.read', 'documents.summarize'],
+  permittedTools: ['documents.fetch'], now,
+}), /skill-revoked/, 'revocation is terminal and cannot be undone by rerunning compatibility');
+
+const revokedRestore = new SynapticCommons(trust);
+revokedRestore.restore(commons.snapshot());
+assert.equal(revokedRestore.get(fingerprint)?.status, 'revoked',
+  'revocation survives durable snapshot restore');
+assert.throws(() => revokedRestore.reject(fingerprint, 'change state'), /skill-revoked/,
+  'a revoked record cannot be rewritten as an ordinary rejection');
 
 const corrupted = { schemaVersion: 1, revision: 0, records: [{ status: 'attested' }] };
 assert.throws(() => new SynapticCommons(trust).restore(corrupted),
