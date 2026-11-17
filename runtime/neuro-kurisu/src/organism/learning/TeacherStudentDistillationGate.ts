@@ -213,6 +213,16 @@ export class TeacherStudentDistillationGate {
         !safeIdentity(baselineMethod) || !safeIdentity(studentMethod) || baselineMethod === studentMethod) {
       throw new Error('teacher-distillation-gate-input-invalid');
     }
+    let options: ReturnType<typeof validOptions>;
+    try {
+      const detachedOptions = snapshotPlainData(input.options ?? {});
+      if (!detachedOptions || typeof detachedOptions !== 'object' || Array.isArray(detachedOptions)) {
+        throw new Error('options-not-plain-data');
+      }
+      options = validOptions(detachedOptions as TeacherStudentDistillationGateOptions);
+    } catch {
+      throw new Error('teacher-distillation-gate-options-boundary-rejected');
+    }
     const manifestFingerprint = ledger.manifestFingerprint();
     const blocked = this.saturated || this.consumed.has(candidateFingerprint);
     if (blocked) {
@@ -254,8 +264,7 @@ export class TeacherStudentDistillationGate {
       };
     }
 
-    const options = validOptions(input.options ?? {});
-    const manifest = ledger.snapshot().manifest as TaskManifestEntry[];
+        const manifest = ledger.snapshot().manifest as TaskManifestEntry[];
     const holdoutFamilies = [...new Set(manifest
       .filter(task => task.split === 'holdout')
       .map(task => task.family))].sort();
