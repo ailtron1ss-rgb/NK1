@@ -166,6 +166,7 @@ export class ConstitutionEvolutionEngine {
 
   review(id:string,input:ConstitutionReviewInput):ConstitutionProposal {
     const p=this.requireProposal(id);
+    if (!['approve','reject'].includes(input.decision)) throw new Error('unsupported review decision');
     if (p.status!=='pending-review') throw new Error('proposal is not accepting reviews');
     const reviewerId=required(input.reviewerId,'reviewerId',160);
     if (reviewerId===p.authorId) throw new Error('proposal author cannot review their own change');
