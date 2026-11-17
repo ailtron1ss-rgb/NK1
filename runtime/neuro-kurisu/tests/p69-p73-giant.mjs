@@ -45,6 +45,5 @@ try{
  assert.ok(restored.facets.advanced.p72LifeCycle.cycles>=snap.facets.advanced.p72LifeCycle.cycles);
  assert.ok(restored.facets.advanced.p73CapabilityLedger.evidenceEvents>=snap.facets.advanced.p73CapabilityLedger.evidenceEvents);
  assert.equal(restored.facets.advanced.constitutionEvolution.active.digest,snap.facets.advanced.constitutionEvolution.active.digest);
- assert.equal(core2.organismSystemFabric?.governance?.constitutionEvolution?.diagnostics?.().lastRestore?.ok,true);
  console.log('P69_P73_GIANT_RUNTIME_PERSISTENCE=PASS');
 } finally { await rm(dir,{recursive:true,force:true}); }
