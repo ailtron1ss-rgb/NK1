@@ -212,7 +212,7 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
     if (Object.getPrototypeOf(value) !== Set.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-set-subclass-or-extra-fields-rejected');
     seen.add(value);
     try {
-      return { $nk1Type: 'Set', values: [...Set.prototype.values.call(value)].map((entry) => [
+      return { $nk1Type: 'Set', values: [...Set.prototype.values.call(value)].map((entry) =>
         normalizePortableValue(entry, seen, depth + 1, counter)) };
     } finally { seen.delete(value); }
   }
