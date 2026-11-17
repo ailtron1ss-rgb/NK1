@@ -1867,6 +1867,7 @@
     "test:will:voluntary-attention-budget": "node --experimental-strip-types tests/will-voluntary-attention-budget-workpass.mjs",
     "test:idea10:mechanism-serendipity": "node --experimental-strip-types tests/idea10-mechanism-serendipity.mjs",
     "test:idea10:mechanism-intake": "node --experimental-strip-types tests/idea10-mechanism-runtime-intake.mjs",
-    "test:idea10:mechanism-symmetry": "node --experimental-strip-types tests/idea10-mechanism-symmetry.mjs"
+    "test:idea10:mechanism-symmetry": "node --experimental-strip-types tests/idea10-mechanism-symmetry.mjs",
+    "test:idea10:scientific-project": "node --experimental-strip-types tests/idea10-scientific-project-verification.mjs"
   }
 }
