@@ -97,6 +97,7 @@ const MAX_ALTERNATIVES = 4;
 const MAX_CONTEXT_RESULTS = 24;
 const SIGNIFICANCE_THRESHOLD01 = 0.72;
 const MIN_REVIEW_VERIFICATION01 = 0.5;
+const OUTCOME_RECONCILIATION_TOLERANCE01 = 0.02;
 const DEFAULT_REOPEN_CONDITION: NegativeSpaceReopenCondition = {
   signal: 'outcome.shortfall01',
   operator: 'gte',
@@ -230,31 +231,61 @@ export class NegativeSpaceMemory {
     const decisionId = cleanText(input?.decisionId, 128);
     const record = this.state.records.find(candidate => candidate.decisionId === decisionId);
     if (!record) return null;
-    if (record.chosenActualOutcome01 !== null) return structuredClone(record);
 
     const actualOutcome01 = clamp01(input.actualOutcome01);
     const at = finite(input.at, Date.now());
-    const predictionError01 = Math.abs(record.chosenExpectedOutcome01 - actualOutcome01);
-    const shortfall01 = Math.max(0, record.chosenExpectedOutcome01 - actualOutcome01);
-    record.chosenActualOutcome01 = actualOutcome01;
-    record.outcomeAt = at;
-    record.outcomePredictionError01 = predictionError01;
-    record.outcomeShortfall01 = shortfall01;
-    record.chosenActualReward01 = input.reward01 === undefined ? null : clamp01(input.reward01);
-    record.chosenSurprise01 = input.surprise01 === undefined ? null : clamp01(input.surprise01);
-    record.outcomeVerified01 = input.verified01 === undefined ? null : clamp01(input.verified01);
-    record.outcomeIndependent01 = input.independent01 === undefined ? null : clamp01(input.independent01);
-    const source = input.source;
-    record.outcomeSource = source === 'external-evidence' || source === 'world-transition' || source === 'internal' || source === 'unknown'
-      ? source : 'unknown';
-    record.outcomeEvidence = cleanList(input.evidence, 8, 180);
+    const hasCanonicalOutcome = record.chosenActualOutcome01 !== null;
+    if (hasCanonicalOutcome && Math.abs(record.chosenActualOutcome01! - actualOutcome01) > OUTCOME_RECONCILIATION_TOLERANCE01) {
+      // A conflicting report cannot silently replace the first canonical outcome.
+      return structuredClone(record);
+    }
 
+    if (!hasCanonicalOutcome) {
+      const predictionError01 = Math.abs(record.chosenExpectedOutcome01 - actualOutcome01);
+      const shortfall01 = Math.max(0, record.chosenExpectedOutcome01 - actualOutcome01);
+      record.chosenActualOutcome01 = actualOutcome01;
+      record.outcomeAt = at;
+      record.outcomePredictionError01 = predictionError01;
+      record.outcomeShortfall01 = shortfall01;
+    }
+
+    const previousVerification01 = record.outcomeVerified01 ?? 0;
+    const incomingVerification01 = input.verified01 === undefined
+      ? previousVerification01 : clamp01(input.verified01);
+    const verificationImproved = incomingVerification01 > previousVerification01;
+    record.outcomeVerified01 = Math.max(previousVerification01, incomingVerification01);
+
+    if (input.reward01 !== undefined && (record.chosenActualReward01 === null || verificationImproved)) {
+      record.chosenActualReward01 = clamp01(input.reward01);
+    }
+    if (input.surprise01 !== undefined && (record.chosenSurprise01 === null || verificationImproved)) {
+      record.chosenSurprise01 = clamp01(input.surprise01);
+    }
+    if (input.independent01 !== undefined) {
+      record.outcomeIndependent01 = Math.max(record.outcomeIndependent01 ?? 0, clamp01(input.independent01));
+    }
+
+    const source = input.source;
+    const validSource = source === 'external-evidence' || source === 'world-transition' || source === 'internal' || source === 'unknown';
+    if (validSource) {
+      const sourceRank = (value: NegativeSpaceOutcomeSource): number =>
+        value === 'external-evidence' ? 3 : value === 'world-transition' ? 2 : value === 'internal' ? 1 : 0;
+      if (verificationImproved || sourceRank(source) > sourceRank(record.outcomeSource)) {
+        record.outcomeSource = source;
+      }
+    }
+
+    record.outcomeEvidence = cleanList(
+      [...new Set([...record.outcomeEvidence, ...cleanList(input.evidence, 8, 180)])],
+      8,
+      180,
+    );
     this.evaluateReviewConditions(decisionId, {
       ...input.signals,
-      'outcome.actual01': actualOutcome01,
+      'outcome.actual01': record.chosenActualOutcome01!,
       'outcome.expected01': record.chosenExpectedOutcome01,
-      'outcome.predictionError01': predictionError01,
-      'outcome.shortfall01': shortfall01,
+      'outcome.predictionError01': record.outcomePredictionError01 ?? 0,
+      'outcome.shortfall01': record.outcomeShortfall01 ?? 0,
     }, at);
     return structuredClone(record);
   }

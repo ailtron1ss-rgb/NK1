@@ -14,6 +14,7 @@ Keep a bounded record of consequential alternatives that the canonical decision 
 - A bounded exact-context index retrieves rejected alternatives from matching prior situations with the selected action's observed outcome and evidence quality. Historical estimates remain marked as estimates; retrieval never promotes them to facts or actions.
 - Review eligibility requires a stored condition match and verified outcome quality of at least 0.5. Predicted or unverified outcomes stay out of the review queue, including after restore. It does not auto-select, execute, or silently promote the rejected option.
 - An eligible item is marked reopened only through an explicit review call with a reason.
+- Late evidence may upgrade verification only when it corroborates the already recorded outcome within 0.02; conflicting reports cannot silently overwrite canonical outcome history. This path is exposed through `OrganismCore.negativeSpaceMemoryRecordOutcome()`.
 - `OrganismCore` exposes snapshot, diagnostics, review-queue, explicit reopen, and context-retrieval methods for upper-level inspection/review.
 - The ledger is nested inside the existing `RegretState` under `facets.advanced.regret`; it does not create a second canonical memory store.
 - The field is optional on restore. Pre-feature saves without `negativeSpace` remain valid.

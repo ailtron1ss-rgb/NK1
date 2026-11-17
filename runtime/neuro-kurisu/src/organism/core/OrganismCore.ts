@@ -241,7 +241,7 @@ import { defaultP35SemanticWorldBody } from '../body/P35SemanticWorldBody.ts';
 import { MemoryOS2, defaultMemoryOS2 } from '../developmental/MemoryOS2.ts';
 import { MemorySubstrateCoordinator } from '../developmental/MemorySubstrateCoordinator.ts';
 import { WorldModel2, defaultWorldModel2 } from '../developmental/WorldModel2.ts';
-import { RegretEngine, defaultRegretState } from '../developmental/RegretEngine.ts';
+import { RegretEngine, defaultRegretState, type NegativeSpaceOutcomeInput } from '../developmental/RegretEngine.ts';
 import { SemanticScarEngine, defaultSemanticScarState } from '../developmental/SemanticScarEngine.ts';
 import { ValueProvenance, defaultValueProvenance } from '../developmental/ValueProvenance.ts';
 import { CommitmentRepair, defaultCommitmentRepair } from '../developmental/CommitmentRepair.ts';
@@ -11287,6 +11287,9 @@ export class OrganismCore {
     negativeSpaceMemoryRelatedAlternatives(contextKey: string, limit = 8) { return this.cognitiveRuntime.regretEngine.negativeSpaceRelatedAlternatives(contextKey, limit); }
     negativeSpaceMemoryMarkReopened(decisionId: string, action: string, reason: string, at?: number) {
         return this.cognitiveRuntime.regretEngine.markNegativeSpaceAlternativeReopened(decisionId, action, reason, at);
+    }
+    negativeSpaceMemoryRecordOutcome(input: NegativeSpaceOutcomeInput) {
+        return this.cognitiveRuntime.regretEngine.recordNegativeSpaceOutcome(input);
     }
     cognitiveOrganismContinuitySnapshot() { return this.developmentalNeural.cognitiveOrganismContinuity.snapshot(); }
     cognitiveOrganismContinuityBenchmark() { return this.developmentalNeural.cognitiveOrganismContinuity.benchmark(); }

@@ -141,6 +141,10 @@ export class RegretEngine {
     return this.negativeSpace.markReopened(decisionId, action, reason, at);
   }
 
+  recordNegativeSpaceOutcome(input: NegativeSpaceOutcomeInput) {
+    return this.negativeSpace.recordOutcome(input);
+  }
+
   negativeSpaceReviewQueue() {
     return this.negativeSpace.reviewQueue();
   }
