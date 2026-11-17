@@ -441,26 +441,6 @@ export class IntentExecutionRuntime {
     }
   }
 
-  private record(
-    contract: IntentContract,
-    action: IntentBoundAction,
-    operation: IntentExecutionLink['operation'],
-    result: ToolExecution,
-  ): void {
-    this.approved.set(contract.id, contract);
-    this.executions.push({
-      at: this.clock(),
-      contractId: contract.id,
-      toolId: action.toolId,
-      operation,
-      ...(result.executionId ? { executionId: result.executionId } : {}),
-      ...(result.outcomeClass ? { outcomeClass: result.outcomeClass } : {}),
-      ...(result.idempotencyStatus ? { idempotencyStatus: result.idempotencyStatus } : {}),
-    });
-    if (this.executions.length > MAX_EXECUTIONS) this.executions.splice(0, this.executions.length - MAX_EXECUTIONS);
-    this.trimContracts();
-  }
-
   private trimContracts(): void {
     while (this.approved.size > MAX_CONTRACTS) {
       const first = this.approved.keys().next().value as string | undefined;
