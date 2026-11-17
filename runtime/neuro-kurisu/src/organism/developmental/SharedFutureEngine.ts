@@ -397,6 +397,7 @@ export class SharedFutureEngine {
     const matches = this.state.decisions.filter((row) => row.actionBinding?.decisionId === canonicalId);
     if (matches.length !== 1) return null;
     const decision = matches[0]!;
+    if (decision.status !== 'accepted') return null;
     const scenario = this.state.scenarios.find((row) => row.id === decision.scenarioId);
     if (!scenario || !scenario.consequences.some((row) => row.id === decision.actionBinding!.consequenceId)) return null;
     return {
