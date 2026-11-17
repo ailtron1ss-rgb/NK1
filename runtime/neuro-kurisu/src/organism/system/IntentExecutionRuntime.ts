@@ -97,6 +97,8 @@ export class IntentExecutionRuntime {
   private readonly drafts = new Map<string, IntentContract>();
   private readonly approved = new Map<string, IntentContract>();
   private executions: IntentExecutionLink[] = [];
+  /** Prevent concurrent callers from dispatching the same approved intent/tool pair. */
+  private readonly inFlightExecutions = new Set<string>();
   private readonly clock: () => number;
   private readonly actionGateway: ActionGateway;
   private readonly options: IntentExecutionRuntimeOptions;
@@ -320,42 +322,69 @@ export class IntentExecutionRuntime {
     if (typeof action.reason !== 'string' || !action.reason.trim() || !gateway || typeof gateway.executeTool !== 'function') {
       return { executed: false, contractId: gate.contractId, reason: 'action-gateway-unavailable-or-invalid-reason' };
     }
-    const keyHash = this.idempotencyKeyHash(action);
-    const prior = this.pendingIntentExecution(contract.id, gate.action);
-    if (prior && prior.phase !== 'prepared') {
-      if (!keyHash || prior.idempotencyKeyHash !== keyHash) {
+
+    const executionLock = contract.id + String.fromCharCode(0) + gate.action;
+    if (this.inFlightExecutions.has(executionLock)) {
+      return { executed: false, contractId: contract.id, reason: 'intent-execution-in-progress' };
+    }
+    this.inFlightExecutions.add(executionLock);
+    try {
+      const keyHash = this.idempotencyKeyHash(action);
+      const prior = this.pendingIntentExecution(contract.id, gate.action);
+      if (prior && prior.phase !== 'prepared') {
         return { executed: false, contractId: contract.id, reason: 'intent-execution-reconciliation-required' };
       }
-      return { executed: false, contractId: contract.id, reason: 'intent-execution-reconciliation-required' };
+      if (prior?.phase === 'prepared' && prior.idempotencyKeyHash !== keyHash) {
+        return { executed: false, contractId: contract.id, reason: 'intent-prepared-operation-key-mismatch' };
+      }
+      const link: IntentExecutionLink = prior ?? {
+        at: this.clock(),
+        contractId: contract.id,
+        toolId: gate.action,
+        operation: 'execute',
+        phase: 'prepared',
+        ...(keyHash ? { idempotencyKeyHash: keyHash } : {}),
+        ...(action.options?.decisionId ? { decisionId: action.options.decisionId } : {}),
+      };
+      if (!prior) this.pushExecutionLink(link);
+
+      // A durable link is checkpointed before ActionGateway can write its own
+      // receipt or enter a side-effect executor. The in-process lock prevents
+      // a concurrent caller from seeing the prepared row and dispatching it.
+      await beforeDispatch?.();
+
+      let result: IntentBridgeResult;
+      try {
+        result = await this.bridge.execute(contract, action, gateway);
+      } catch {
+        // An exception at the gateway boundary is ambiguous: the executor may
+        // have started before transport/adapter failure. Never permit a fresh
+        // side-effect attempt; persist a reconciliation-required state.
+        link.at = this.clock();
+        link.phase = 'pending-reconciliation';
+        try {
+          await beforeDispatch?.();
+        } catch {
+          // The pre-dispatch checkpoint already records prepared; restore()
+          // promotes that crash window to pending-reconciliation as well.
+        }
+        return { executed: false, contractId: contract.id, reason: 'intent-execution-outcome-uncertain' };
+      }
+
+      link.at = this.clock();
+      link.phase = result.executed
+        ? (['idempotency-recovery-required', 'idempotency-storage-failed', 'idempotency-ledger-full', 'executed-partial', 'executed-unverified', 'executed-contradicted'].includes(String(result.result.outcomeClass))
+            ? 'pending-reconciliation' : 'completed')
+        : 'blocked';
+      if (result.executed) {
+        link.executionId = result.result.executionId;
+        link.outcomeClass = result.result.outcomeClass;
+        link.idempotencyStatus = result.result.idempotencyStatus;
+      }
+      return result;
+    } finally {
+      this.inFlightExecutions.delete(executionLock);
     }
-    if (prior?.phase === 'prepared' && prior.idempotencyKeyHash !== keyHash) {
-      return { executed: false, contractId: contract.id, reason: 'intent-prepared-operation-key-mismatch' };
-    }
-    const link: IntentExecutionLink = prior ?? {
-      at: this.clock(),
-      contractId: contract.id,
-      toolId: gate.action,
-      operation: 'execute',
-      phase: 'prepared',
-      ...(keyHash ? { idempotencyKeyHash: keyHash } : {}),
-      ...(action.options?.decisionId ? { decisionId: action.options.decisionId } : {}),
-    };
-    if (!prior) this.pushExecutionLink(link);
-    // A durable link is checkpointed before the canonical gateway can write its
-    // own pending receipt or enter a side-effect executor.
-    await beforeDispatch?.();
-    const result = await this.bridge.execute(contract, action, gateway);
-    link.at = this.clock();
-    link.phase = result.executed
-      ? (['idempotency-recovery-required', 'idempotency-storage-failed', 'idempotency-ledger-full', 'executed-partial', 'executed-unverified', 'executed-contradicted'].includes(String(result.result.outcomeClass))
-          ? 'pending-reconciliation' : 'completed')
-      : 'blocked';
-    if (result.executed) {
-      link.executionId = result.result.executionId;
-      link.outcomeClass = result.result.outcomeClass;
-      link.idempotencyStatus = result.result.idempotencyStatus;
-    }
-    return result;
   }
 
   async reconcile(
