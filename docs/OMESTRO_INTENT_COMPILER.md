@@ -35,7 +35,7 @@ The integrated `autonomous-resource-tool-life` planner receives a distinct `auto
 
 - New dispatch goes through Intent Gate → IntentActionGatewayBridge → OrganismCore.executeTool → ActionGateway.
 - The canonical host `decisionId` is preserved; intent ID is separately returned as `contractId`.
-- Before dispatch, Core checkpoints the contract/tool/decision link and a SHA-256 digest of the exact idempotency key. The raw key is never copied into the intent snapshot. After restart, receipt reconciliation requires the same contract, tool and key digest before attempting the read-only lookup.
+- Before dispatch, Core checkpoints the contract/tool/decision link and a SHA-256 digest of the exact idempotency key. The raw key is never copied into the intent snapshot. After restart, receipt reconciliation requires the same contract, tool and key digest before attempting the read-only lookup. Missing local receipt data is not proof of non-execution and keeps the intent blocked; no automatic retry is allowed.
 - Expired approvals cannot start new work. The distinct reconciliation path performs only a read-only lookup against the original idempotency receipt and never calls the side-effect executor. Its result reports that lookup was attempted; an unknown or missing receipt is not reported as resolved and does not authorize a retry.
 - Keyed receipts, finalizer semantics and reconciliation remain owned by ActionGateway.
 
