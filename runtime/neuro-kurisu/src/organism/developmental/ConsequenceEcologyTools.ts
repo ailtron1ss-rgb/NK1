@@ -35,10 +35,11 @@ const nodeContract = {
     basis: { type: 'string' as const, enum: ['measured', 'external-research', 'user-assumption', 'simulation', 'internal-model'] },
     evidenceRefs: { type: 'array' as const, items: { type: 'string' as const, minLength: 1, maxLength: 180 }, maxItems: 8 },
     assumptionRefs: { type: 'array' as const, items: { type: 'string' as const, minLength: 1, maxLength: 128 }, maxItems: 8 },
+    baselineProbability01: number01,
   },
   required: ['id', 'description', 'effect', 'actor', 'system', 'probability01', 'impact01', 'confidence01', 'delayDays', 'reversible', 'basis'],
   additionalProperties: false,
-  maxProperties: 13,
+  maxProperties: 14,
 };
 const edgeContract = {
   type: 'object' as const,
@@ -51,10 +52,11 @@ const edgeContract = {
     strength01: number01,
     confidence01: number01,
     delayDays: { type: 'number' as const, minimum: 0, maximum: 365 },
+    independenceGroup: { type: 'string' as const, minLength: 1, maxLength: 96 },
   },
   required: ['id', 'from', 'to', 'relation', 'polarity', 'strength01', 'confidence01', 'delayDays'],
   additionalProperties: false,
-  maxProperties: 8,
+  maxProperties: 9,
 };
 const optionContract = {
   type: 'object' as const,
