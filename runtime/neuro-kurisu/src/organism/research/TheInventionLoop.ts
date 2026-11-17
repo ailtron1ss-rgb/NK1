@@ -8,7 +8,6 @@ import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
 import {
   hasAuthenticatedOutcomeEvidence,
   ingestSignedOutcomeArtifact,
-  outcomePayloadFingerprint,
   type SignedOutcomeArtifact,
   type SignedOutcomeMeasurement,
 } from '../learning/VerifiedOutcomeArtifact.ts';
@@ -312,6 +311,26 @@ function auditHash(event: Omit<InventionAuditEvent, 'hash'>): string {
     snapshot: event.snapshot,
   });
 }
+function actionForStage(stage: InventionStage): InventionAuditAction {
+  if (stage === 'proposed' || stage === 'designed' || stage === 'prototyped' ||
+      stage === 'critiqued' || stage === 'accepted' || stage === 'rejected') return stage;
+  return 'outcome-recorded';
+}
+function transitionAllowed(from: InventionStage, to: InventionStage): boolean {
+  const next: Record<InventionStage, readonly InventionStage[]> = {
+    proposed: ['designed', 'rejected'],
+    designed: ['prototyped', 'rejected'],
+    prototyped: ['tested', 'rejected'],
+    tested: ['critiqued', 'rejected'],
+    critiqued: ['replicating', 'rejected'],
+    replicating: ['replicating', 'replicated', 'rejected'],
+    replicated: ['holdingout', 'rejected'],
+    holdingout: ['holdingout', 'accepted', 'rejected'],
+    accepted: [],
+    rejected: [],
+  };
+  return next[from].includes(to);
+}
 function verifyRecordAudit(record: unknown): record is InventionRecord {
   if (!isObject(record)) return false;
   const candidate = record as Record<string, unknown>;
@@ -319,6 +338,7 @@ function verifyRecordAudit(record: unknown): record is InventionRecord {
   if (!isCore(candidate) || !Array.isArray(trail) ||
       trail.length < 1 || trail.length > MAX_AUDIT_EVENTS) return false;
   let previousHash = GENESIS_HASH;
+  let previousSnapshot: InventionRecordCore | undefined;
   for (let index = 0; index < trail.length; index += 1) {
     const event = trail[index];
     if (!isObject(event) || event.sequence !== index + 1 ||
@@ -326,18 +346,43 @@ function verifyRecordAudit(record: unknown): record is InventionRecord {
         !finite(event.at) || event.previousHash !== previousHash ||
         typeof event.hash !== 'string' || !SHA256_RE.test(event.hash) ||
         !isCore(event.snapshot) || event.snapshot.id !== record.id ||
-        event.snapshot.updatedAt !== event.at) return false;
-    const expectedStage = index === 0 ? 'proposed' : undefined;
-    if (expectedStage && event.snapshot.stage !== expectedStage) return false;
+        event.snapshot.updatedAt !== event.at ||
+        actionForStage(event.snapshot.stage) !== event.action) return false;
+    const snapshot = event.snapshot as InventionRecordCore;
+    if (index === 0) {
+      if (snapshot.stage !== 'proposed' || snapshot.outcomes.length !== 0 ||
+          snapshot.critique !== undefined || snapshot.prototypeRef !== undefined ||
+          snapshot.prototypeSha256 !== undefined) return false;
+    } else if (previousSnapshot) {
+      if (!transitionAllowed(previousSnapshot.stage, snapshot.stage) ||
+          snapshot.createdAt !== previousSnapshot.createdAt ||
+          canonical(snapshot.protocol) !== canonical(previousSnapshot.protocol) ||
+          snapshot.updatedAt <= previousSnapshot.updatedAt) return false;
+      const addedOutcomes = snapshot.outcomes.length - previousSnapshot.outcomes.length;
+      const previousOutcomePrefix = snapshot.outcomes.slice(0, previousSnapshot.outcomes.length);
+      if (canonical(previousOutcomePrefix) !== canonical(previousSnapshot.outcomes)) return false;
+      if (event.action === 'outcome-recorded' && addedOutcomes !== 1) return false;
+      if (event.action !== 'outcome-recorded' && event.action !== 'rejected' && addedOutcomes !== 0) return false;
+      if (event.action === 'rejected' && addedOutcomes !== 0 && addedOutcomes !== 1) return false;
+      const critiqueWasAdded = previousSnapshot.critique === undefined && snapshot.critique !== undefined;
+      if (critiqueWasAdded && event.action !== 'critiqued' && event.action !== 'rejected') return false;
+      if (previousSnapshot.critique !== undefined &&
+          canonical(previousSnapshot.critique) !== canonical(snapshot.critique)) return false;
+      if (previousSnapshot.prototypeSha256 !== undefined &&
+          previousSnapshot.prototypeSha256 !== snapshot.prototypeSha256) return false;
+      if (previousSnapshot.prototypeRef !== undefined &&
+          previousSnapshot.prototypeRef !== snapshot.prototypeRef) return false;
+    }
     const payload = {
       sequence: event.sequence,
       action: event.action as InventionAuditAction,
       at: event.at,
       previousHash,
-      snapshot: event.snapshot,
+      snapshot,
     };
     if (event.hash !== auditHash(payload)) return false;
     previousHash = event.hash;
+    previousSnapshot = snapshot;
   }
   const finalEvent = trail[trail.length - 1] as InventionAuditEvent;
   return canonical(finalEvent.snapshot) === canonical(coreOf(record as InventionRecord));
