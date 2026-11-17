@@ -14,6 +14,7 @@ assert.equal(first.problem.actors.length, graph.nodes.length);
 assert.equal(first.problem.flows.length, graph.edges.length);
 assert.equal(first.diagnostics.totalSystems, 7);
 assert.ok(first.result.evaluatedN >= 1);
+assert.ok(first.experiments.length >= 1, 'a matching live NK1 structure must produce at least one verify-only hypothesis');
 assert.ok(['matched', 'no-match', 'insufficient-structure'].includes(first.result.status));
 assert.ok(first.experiments.every(x =>
   x.action === 'verify' &&

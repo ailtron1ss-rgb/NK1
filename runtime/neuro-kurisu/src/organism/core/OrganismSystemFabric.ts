@@ -186,11 +186,22 @@ export class OrganismSystemFabric {
 
   /** Build a live read-only problem graph from all seven owned subsystem snapshots and dependency edges. */
   discoverMechanisms(options:MechanismSerendipityOptions={}){
-    const snapshot=this.snapshot();
+    // Read scalar summaries directly from subsystem owners. Do not clone the full
+    // memory/world state merely to construct a discovery query.
+    const memoryEntries=this.memory.memories.snapshot({clone:false}).length;
+    const worldStats=this.world.worldLearningSnapshot().stats;
+    const predictionError01=Math.max(0,Math.min(1,Math.max(worldStats.lastActionError01,worldStats.lastPassiveError01)));
+    const budgetRemaining01=this.agency.budget.snapshot().remaining01;
+    const evidenceDebt01=this.research.predictionDebt.priority();
     return this.research.mechanismSerendipity.analyze({
       graph:this.systemGraph(),
       health:this.health(),
-      systems:snapshot.systems,
+      systems:{
+        memory:{memoryEntries},
+        world:{predictionError01},
+        agency:{remaining01:budgetRemaining01},
+        research:{evidenceDebt01},
+      },
     },options);
   }
 
