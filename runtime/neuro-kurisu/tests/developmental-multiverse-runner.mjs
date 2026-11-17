@@ -3,14 +3,15 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createIndependentSkillCandidateEvaluator } from '../src/organism/learning/IndependentSkillCandidateEvaluator.ts';
+import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import {
   AtomicFileDevelopmentalMultiverseCheckpointStore,
   DevelopmentalMultiverseIndependentRunner,
 } from '../src/organism/developmental/DevelopmentalMultiverseIndependentRunner.ts';
 
 const baselineProfile = { exploration: 0.5, verification: 0.5, reflection: 0.5, attention: 0.5, prediction: 0.5 };
-const scenarioList = (prefix, start, count) =>
-  Array.from({ length: count }, (_, index) => ({ id: prefix + '-' + index, seed: start + index }));
+const scenarioList = (prefix, scenarioCount, firstSeed, seedCount) =>
+  Array.from({ length: scenarioCount }, (_, scenario) => Array.from({ length: seedCount }, (_, offset) => ({ id: prefix + '-' + scenario, seed: firstSeed + offset }))).flat();
 const root = await mkdtemp(join(tmpdir(), 'nk1-dm19-runner-'));
 const checkpoint = join(root, 'developmental-multiverse.json');
 const store = new AtomicFileDevelopmentalMultiverseCheckpointStore(checkpoint);
@@ -23,7 +24,7 @@ const services = {
   },
   executor: {
     async execute({ payload, task, context }) {
-      observations.push({ split: task.split, variantId: payload.variantId, scenarioId: task.taskId });
+      observations.push({ split: task.split, variantId: payload.variantId, scenarioId: task.taskId, seed: task.seed });
       const improved = payload.policyProfile.verification >= 0.58;
       return {
         runId: context.plannedRunId,
@@ -65,8 +66,8 @@ const input = {
   sourceRevision: 'a'.repeat(40),
   environmentFingerprint: options.environmentFingerprint,
   baselineProfile,
-  validationScenarios: scenarioList('validation', 101, 4),
-  holdoutScenarios: scenarioList('holdout', 201, 5),
+  validationScenarios: scenarioList('validation', 2, 101, 3),
+  holdoutScenarios: scenarioList('holdout', 2, 201, 5),
   variants: [
     { id: 'verification-plus', label: 'verification plus', deltas: { verification: 0.08 } },
     { id: 'exploration-heavy', label: 'exploration heavy', deltas: { exploration: 0.1 } },
@@ -128,8 +129,8 @@ try {
   assert.equal(selection.selectedVariantId, 'verification-plus',
     'the independently evaluated candidate with better ordered execution should win validation');
   assert.equal(runner.snapshot().status, 'holding-out');
-  assert.equal(runner.snapshot().validationObservations.length, 12,
-    'baseline and both candidate arms should each have four independently bound validation observations');
+  assert.equal(runner.snapshot().validationObservations.length, 18,
+    'baseline and both candidate arms should each have six scenario-seed validation pairs (two scenarios × three seeds)');
   assert.ok(runner.snapshot().validationObservations.every(row => row.verifiedEvidence?.runId === row.verifiedEvidence?.plannedRunId));
   assert.ok(runner.snapshot().validationObservations.every(row =>
     /^[a-f0-9]{64}$/.test(row.verifiedEvidence?.outcomeLedgerFingerprint ?? '') &&
@@ -145,8 +146,8 @@ try {
   assert.equal(result.status, 'eligible-for-independent-review');
   assert.equal(result.selectedVariantId, 'verification-plus');
   assert.equal(result.automaticPromotion, false);
-  assert.equal(result.evidence.verifiedObservationCount, 22,
-    'verified evidence count must include 12 validation and 10 finalist-only holdout observations');
+  assert.equal(result.evidence.verifiedObservationCount, 38,
+    'verified evidence count must include 18 validation and 20 finalist-only holdout observations');
   assert.ok(/^[a-f0-9]{64}$/.test(result.evidence.verifiedEvidenceFingerprint));
   assert.ok(restoredBeforeHoldout.snapshot().holdoutObservations.every(row =>
     /^[a-f0-9]{64}$/.test(row.verifiedEvidence?.outcomeLedgerFingerprint ?? '') &&
@@ -155,7 +156,7 @@ try {
   assert.equal(result.evidence.verifiedPlanCount, 2,
     'validation and holdout must be separate evaluator plans');
   const holdoutCalls = observations.filter(row => row.split === 'holdout');
-  assert.equal(holdoutCalls.length, 10, 'only baseline and validation finalist may execute on the five holdout scenarios');
+  assert.equal(holdoutCalls.length, 20, 'only baseline and validation finalist may execute on two holdout scenarios across five seeds');
   assert.ok(holdoutCalls.every(row => ['baseline', 'verification-plus'].includes(row.variantId)));
   assert.ok(holdoutCalls.every(row => !row.scenarioId.includes('validation-')));
 
@@ -191,7 +192,7 @@ try {
     buildScenarioTask: scenario => {
       frozenFactoryCalls += 1;
       return {
-        input: { prompt: 'frozen scenario ' + scenario.id + ' revision ' + frozenFactoryCalls },
+        input: { prompt: 'frozen scenario ' + scenario.id },
         requiredCapabilityIds: ['cap-core'],
         expectedStepIds: ['step-core'],
         taskFamily: 'dm19-frozen-corpus-family',
@@ -202,18 +203,24 @@ try {
     { ...input, runId: 'dm19-frozen-corpus' },
     frozenOptions,
   );
-  assert.equal(frozenFactoryCalls, 9,
-    'all validation and holdout tasks must be created once before the first checkpoint');
+  assert.equal(frozenFactoryCalls, 16,
+    'all 16 validation/holdout scenario-seed rows must be frozen before the first checkpoint');
   await frozenRunner.runValidation();
   const validationEvidence = frozenRunner.snapshot().validationObservations[0].verifiedEvidence;
   const checkpointAfterValidation = await frozenStore.load();
-  assert.equal(checkpointAfterValidation.corpus.rows.length, 9,
+  assert.equal(checkpointAfterValidation.corpus.rows.length, 16,
     'the checkpoint must retain the exact frozen validation + holdout task corpus');
-  assert.equal(checkpointAfterValidation.corpus.ledgerSnapshot.acceptedOutcomes, 12,
+  assert.equal(checkpointAfterValidation.corpus.ledgerSnapshot.acceptedOutcomes, 18,
     'the checkpoint must retain canonical P23 validation outcomes, not only their hash');
+  const validationLedger = VerifiedOutcomeLedger.restoreSnapshot(checkpointAfterValidation.corpus.ledgerSnapshot);
+  const validationBySeed = validationLedger.comparePairedBySeed('dm19:baseline', 'dm19:candidate:1', 'validation');
+  assert.equal(validationBySeed.pairedN, 3,
+    'every validation seed must contain all task rows for baseline and candidate in the canonical P23 ledger');
+  assert.equal(validationBySeed.absoluteGain, 1,
+    'P23 seed-clustered summaries must compare complete seed-level task aggregates');
   const frozenRestored = await DevelopmentalMultiverseIndependentRunner.restore(frozenOptions);
   await frozenRestored.runHoldout();
-  assert.equal(frozenFactoryCalls, 9,
+  assert.equal(frozenFactoryCalls, 16,
     'restoring and running holdout must never rebuild the scenario task corpus');
   const frozenHoldoutRows = frozenRestored.snapshot().holdoutObservations;
   assert.ok(frozenHoldoutRows.every(row =>
@@ -223,8 +230,12 @@ try {
     row.verifiedEvidence?.holdoutPlanFingerprint === validationEvidence.holdoutPlanFingerprint),
     'holdout execution must use the untouched holdout plan frozen before validation');
   const checkpointAfterHoldout = await frozenStore.load();
-  assert.equal(checkpointAfterHoldout.corpus.ledgerSnapshot.acceptedOutcomes, 22,
+  assert.equal(checkpointAfterHoldout.corpus.ledgerSnapshot.acceptedOutcomes, 38,
     'the restored P23 ledger must contain validation and finalist-only holdout outcome rows');
+  const fullLedger = VerifiedOutcomeLedger.restoreSnapshot(checkpointAfterHoldout.corpus.ledgerSnapshot);
+  const holdoutBySeed = fullLedger.comparePairedBySeed('dm19:baseline', 'dm19:candidate:1', 'holdout');
+  assert.equal(holdoutBySeed.pairedN, 5,
+    'the canonical P23 holdout ledger must expose five complete independent seed clusters');
 
   const restoredAfterHoldout = await DevelopmentalMultiverseIndependentRunner.restore(options);
   assert.deepEqual(restoredAfterHoldout.snapshot().finalResult, result,
@@ -234,7 +245,7 @@ try {
   await writeFile(checkpoint, JSON.stringify(corrupted));
   await assert.rejects(() => store.load(), /fingerprint-mismatch/,
     'checkpoint tampering must fail closed before restore');
-  console.log('DEVELOPMENTAL_MULTIVERSE_P23_RUNNER=PASS phase-isolation=PASS finalist-only-holdout=PASS durable-restore=PASS verified-evidence=22');
+  console.log('DEVELOPMENTAL_MULTIVERSE_P23_RUNNER=PASS phase-isolation=PASS finalist-only-holdout=PASS durable-restore=PASS verified-evidence=38');
 } finally {
   await rm(root, { recursive: true, force: true });
 }

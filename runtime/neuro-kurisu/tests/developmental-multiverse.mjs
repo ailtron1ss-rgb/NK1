@@ -2,15 +2,15 @@ import assert from 'node:assert/strict';
 import { createDevelopmentalMultiverseSessionFromP55, DevelopmentalMultiverse, variantsFromP55Forks } from '../src/organism/developmental/DevelopmentalMultiverse.ts';
 
 const baselineProfile = { exploration: 0.5, verification: 0.5, reflection: 0.5, attention: 0.5, prediction: 0.5 };
-const scenarios = (prefix, firstSeed, count) => Array.from({ length: count }, (_, i) => ({ id: `${prefix}-${i + 1}`, seed: firstSeed + i }));
+const scenarioMatrix = (prefix, scenarioCount, firstSeed, seedCount) => Array.from({ length: scenarioCount }, (_, scenario) => Array.from({ length: seedCount }, (_, offset) => ({ id: `${prefix}-${scenario + 1}`, seed: firstSeed + offset }))).flat();
 const input = {
   runId: 'dm19-contract-test',
   createdAt: 1_800_000_000_000,
   sourceRevision: 'a'.repeat(40),
   environmentFingerprint: 'b'.repeat(64),
   baselineProfile,
-  validationScenarios: scenarios('validation', 101, 4),
-  holdoutScenarios: scenarios('holdout', 201, 5),
+  validationScenarios: scenarioMatrix('validation', 2, 101, 3),
+  holdoutScenarios: scenarioMatrix('holdout', 2, 201, 5),
   privateUserData: { conversation: 'must-not-be-copied' },
   variants: [
     { id: 'verification-plus', label: 'verification plus', deltas: { verification: 0.08 } },
@@ -21,9 +21,26 @@ const seedConcentration = new DevelopmentalMultiverse();
 assert.throws(() => seedConcentration.createSession({
   ...input,
   runId: 'dm19-repeated-holdout-seed',
-  holdoutScenarios: scenarios('holdout-repeated', 301, 5).map(item => ({ ...item, seed: 999 })),
+  holdoutScenarios: scenarioMatrix('holdout-repeated', 5, 301, 1).map(item => ({ ...item, seed: 999 })),
 }), /holdout-seed-diversity-invalid/,
 'five scenario IDs must not be mistaken for five independent holdout seeds');
+
+assert.throws(() => new DevelopmentalMultiverse().createSession({
+  ...input,
+  runId: 'dm19-incomplete-seed-matrix',
+  validationScenarios: [
+    { id: 'validation-1', seed: 101 },
+    { id: 'validation-2', seed: 101 },
+    { id: 'validation-1', seed: 102 },
+  ],
+}), /validation-scenario-seed-matrix-incomplete/,
+'P23 paired-seed statistics require every validation scenario on every validation seed');
+assert.throws(() => new DevelopmentalMultiverse().createSession({
+  ...input,
+  runId: 'dm19-overlapping-phase-seeds',
+  holdoutScenarios: scenarioMatrix('holdout', 2, 101, 5),
+}), /holdout-seeds-overlap-validation/,
+'holdout must use seed values disjoint from validation');
 
 let sessionGetterCalls = 0;
 const accessorSession = { ...input };
@@ -72,9 +89,9 @@ assert.throws(() => universe.holdoutWorkPlan(), /no-holdout-finalist/);
 
 for (const item of validationPlan) {
   const metrics = validationMetrics[item.variantId];
-  universe.recordValidationObservation({ ...item, measurementId: `val:${item.variantId}:${item.scenarioId}`, metrics, safetyViolationCount: 0 });
+  universe.recordValidationObservation({ ...item, measurementId: `val:${item.variantId}:${item.scenarioId}:${item.seed}`, metrics, safetyViolationCount: 0 });
 }
-assert.throws(() => universe.recordValidationObservation({ ...validationPlan[0], measurementId: `val:baseline:validation-1`, metrics: baselineMetrics, safetyViolationCount: 0 }), /measurement-id-duplicate/);
+assert.throws(() => universe.recordValidationObservation({ ...validationPlan[0], measurementId: `val:baseline:validation-1:101`, metrics: baselineMetrics, safetyViolationCount: 0 }), /measurement-id-duplicate/);
 const selection = universe.selectValidationFinalist();
 assert.equal(selection.selectedVariantId, 'verification-plus', 'selection must use matched validation pairs and hard safety constraints');
 assert.equal(universe.snapshot().status, 'holding-out');
@@ -89,12 +106,13 @@ for (const item of holdoutPlan) {
   const metrics = item.variantId === 'baseline'
     ? { quality01: 0.68, cost01: 0.5, safety01: 0.95, stability01: 0.82 }
     : { quality01: 0.75, cost01: 0.52, safety01: 0.95, stability01: 0.84 };
-  universe.recordHoldoutObservation({ ...item, measurementId: `hold:${item.variantId}:${item.scenarioId}`, metrics, safetyViolationCount: 0 });
+  universe.recordHoldoutObservation({ ...item, measurementId: `hold:${item.variantId}:${item.scenarioId}:${item.seed}`, metrics, safetyViolationCount: 0 });
 }
 const result = universe.finalize();
 assert.equal(result.status, 'eligible-for-independent-review');
 assert.equal(result.selectedVariantId, 'verification-plus');
-assert.equal(result.comparison.pairedN, 5);
+assert.equal(result.comparison.pairedN, 5, 'confidence interval N must count independent seeds, not scenario-seed rows');
+assert.equal(result.comparison.matchedScenarioSeedPairs, 10, 'all 10 paired scenario-seed cells must be reported separately');
 assert.ok(result.comparison.utilityDelta01 > 0);
 assert.ok(result.comparison.utilityCi95[0] > 0, 'holdout lower confidence bound must be positive');
 assert.equal(result.automaticPromotion, false, 'the multiverse must never mutate live policy by itself');
@@ -116,7 +134,7 @@ const partial = new DevelopmentalMultiverse();
 partial.createSession({ ...input, runId: 'dm19-resume-test' });
 for (const item of partial.validationWorkPlan()) {
   const metrics = validationMetrics[item.variantId];
-  partial.recordValidationObservation({ ...item, measurementId: `resume:val:${item.variantId}:${item.scenarioId}`, metrics, safetyViolationCount: 0 });
+  partial.recordValidationObservation({ ...item, measurementId: `resume:val:${item.variantId}:${item.scenarioId}:${item.seed}`, metrics, safetyViolationCount: 0 });
 }
 partial.selectValidationFinalist();
 const partialHoldoutItem = partial.holdoutWorkPlan()[0];
@@ -166,9 +184,9 @@ const blocked = new DevelopmentalMultiverse();
 blocked.createSession({ ...input, runId: 'dm19-safety-test', variants: [{ id: 'unsafe', label: 'unsafe', deltas: { verification: 0.08 } }] });
 for (const item of blocked.validationWorkPlan()) {
   const metrics = item.variantId === 'baseline' ? baselineMetrics : { quality01: 0.9, cost01: 0.4, safety01: 0.7, stability01: 0.9 };
-  blocked.recordValidationObservation({ ...item, measurementId: `safety:${item.variantId}:${item.scenarioId}`, metrics, safetyViolationCount: item.variantId === 'baseline' ? 0 : 1 });
+  blocked.recordValidationObservation({ ...item, measurementId: `safety:${item.variantId}:${item.scenarioId}:${item.seed}`, metrics, safetyViolationCount: item.variantId === 'baseline' ? 0 : 1 });
 }
 assert.equal(blocked.selectValidationFinalist().selectedVariantId, null, 'safety regressions must block finalist selection');
 assert.equal(blocked.snapshot().status, 'rejected');
 
-console.log('DEVELOPMENTAL_MULTIVERSE=PASS matched-arms=3 validation-pairs=4 holdout-pairs=5 safety-gate=PASS auto-promotion=DISABLED');
+console.log('DEVELOPMENTAL_MULTIVERSE=PASS matched-arms=3 validation-seeds=3 holdout-seeds=5 cluster-bootstrap=PASS safety-gate=PASS auto-promotion=DISABLED');

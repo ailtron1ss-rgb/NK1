@@ -48,12 +48,17 @@ const run = async (split, tasks) => {
   });
   return evaluator({ payload: { profile: 'candidate-1', split }, payloadFingerprint: digest({ profile: 'candidate-1', split }) });
 };
-const makeTasks = (split, suffix) => [
-  { taskId: split + '-a', trialId: split + '-trial-a', seed: suffix + 1, split, input: { prompt: split + ' prompt a' }, requiredCapabilityIds: ['cap-a'], expectedStepIds: ['step-a'] },
-  { taskId: split + '-b', trialId: split + '-trial-b', seed: suffix + 2, split, input: { prompt: split + ' prompt b' }, requiredCapabilityIds: ['cap-a'], expectedStepIds: ['step-a'] },
-];
+const makeTasks = (split, seeds) => ['a', 'b'].flatMap(scenario => seeds.map(seed => ({
+  taskId: split + '-' + scenario,
+  trialId: split + '-trial-' + scenario + '-' + seed,
+  seed,
+  split,
+  input: { prompt: split + ' prompt ' + scenario },
+  requiredCapabilityIds: ['cap-a'],
+  expectedStepIds: ['step-a'],
+})));
 
-const validationResult = await run('validation', makeTasks('validation', 100));
+const validationResult = await run('validation', makeTasks('validation', [101, 102]));
 assert.equal(validationResult.evaluation.holdout.length, 0, 'validation-only report must contain no holdout rows');
 const detachedResult = structuredClone(validationResult);
 detachedResult.evaluation.provenance.runBindings[0].runId = 'detached-runtime-run';
@@ -61,7 +66,7 @@ detachedResult.evaluationFingerprint = digest(detachedResult.evaluation);
 const detachedLedger = new VerifiedOutcomeLedger(manifest);
 assert.throws(
   () => recordIndependentEvaluationOutcomes(detachedResult, {
-    ...authority, ledger: detachedLedger, evaluationScope: 'validation-only', allowPartialSchedule: true,
+    ...authority, ledger: detachedLedger, evaluationScope: 'validation-only',
   }),
   /run-not-scheduled/,
   'the canonical ledger must reject an execution receipt detached from its planned run ID',
@@ -76,26 +81,26 @@ assert.throws(
   'strict P23 ledger commits must continue to require the complete scheduled method plan',
 );
 assert.equal(recordIndependentEvaluationOutcomes(validationResult, {
-  ...authority, evaluationScope: 'validation-only', allowPartialSchedule: true,
-}).accepted, 2,
+  ...authority, evaluationScope: 'validation-only',
+}).accepted, 4,
   'only planned validation runs should be committed to the canonical P23 ledger');
 assert.deepEqual(ledger.snapshot().outcomes.map(row => row.taskId).sort(), ['validation-a', 'validation-b']);
 assert.throws(
   () => recordIndependentEvaluationOutcomes(validationResult, {
-    ...authority, evaluationScope: 'validation-only', allowPartialSchedule: true,
+    ...authority, evaluationScope: 'validation-only',
   }),
   /cell-already-recorded/,
   'a repeated phase receipt must not create duplicate evidence',
 );
 
-const holdoutResult = await run('holdout', makeTasks('holdout', 200));
+const holdoutResult = await run('holdout', makeTasks('holdout', [201, 202]));
 assert.equal(holdoutResult.evaluation.validation.length, 0, 'holdout-only report must contain no validation rows');
 assert.equal(recordIndependentEvaluationOutcomes(holdoutResult, {
-  ...authority, evaluationScope: 'holdout-only', allowPartialSchedule: true,
+  ...authority, evaluationScope: 'holdout-only',
 }).accepted, 2,
   'only planned holdout runs should be committed to the canonical P23 ledger');
 assert.deepEqual(
   ledger.snapshot().outcomes.map(row => row.taskId).sort(),
-  ['holdout-a', 'holdout-b', 'validation-a', 'validation-b'],
+  ['holdout-a', 'holdout-a', 'holdout-b', 'holdout-b', 'validation-a', 'validation-a', 'validation-b', 'validation-b'],
 );
-console.log('DEVELOPMENTAL_MULTIVERSE_PHASE_OUTCOME_LEDGER=PASS split-scoped-commit=PASS duplicate-rejection=PASS');
+console.log('DEVELOPMENTAL_MULTIVERSE_PHASE_OUTCOME_LEDGER=PASS split-scoped-commit=PASS full-factorial-coverage=PASS duplicate-rejection=PASS');
