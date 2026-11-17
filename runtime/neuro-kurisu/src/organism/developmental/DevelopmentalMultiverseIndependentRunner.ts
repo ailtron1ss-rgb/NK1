@@ -6,7 +6,12 @@ import {
   createIndependentSkillCandidateEvaluator,
   type IndependentCandidateTask,
 } from '../learning/IndependentSkillCandidateEvaluator.ts';
-import type { HostOwnedIndependentEvaluationServices } from '../learning/HostOwnedIndependentEvaluationServices.ts';
+import {
+  createHostOwnedIndependentEvaluationServices,
+  isHostOwnedIndependentEvaluationServices,
+  type HostOwnedIndependentEvaluationCommands,
+  type HostOwnedIndependentEvaluationServices,
+} from '../learning/HostOwnedIndependentEvaluationServices.ts';
 import { createLearningExperimentPlan } from '../learning/LearningExperimentPlan.ts';
 import { VerifiedOutcomeLedger, type TaskManifestEntry } from '../learning/VerifiedOutcomeLedger.ts';
 import type { SkillLearnBenchTrialReport } from '../learning/SkillLearnBenchAdapter.ts';
@@ -15,7 +20,7 @@ import {
   type DevelopmentalMultiverseFinalResult,
   type DevelopmentalMultiverseObservationInput,
   type DevelopmentalMultiversePhase,
-  type DevelopmentalMultiverseScenarioSeed,
+  type DevelopmentalScenarioSeed,
   type DevelopmentalMultiverseSelection,
   type DevelopmentalMultiverseSessionInput,
   type DevelopmentalMultiverseSnapshot,
@@ -23,7 +28,7 @@ import {
 
 const MAX_CHECKPOINT_BYTES = 8 * 1024 * 1024;
 const MAX_SCENARIO_INPUT_BYTES = 64 * 1024;
-const FORBIDDEN_SCENARIO_KEYS = /^(?:memory|memories|identity|identities|conversation|conversations|secret|secrets|credential|credentials|token|password|privatekey)$/i;
+const FORBIDDEN_SCENARIO_KEYS = /(?:memory|identity|conversation|secret|credential|token|password|private.?key)/i;
 
 function canonical(value: unknown, ancestors = new Set<object>()): string {
   if (value === undefined) throw new Error('developmental-multiverse-runner-undefined-value');
@@ -86,7 +91,7 @@ export interface DevelopmentalMultiverseScenarioTask {
   taskFamily?: string;
 }
 export type DevelopmentalMultiverseScenarioTaskFactory =
-  (scenario: Readonly<DevelopmentalMultiverseScenarioSeed>) => DevelopmentalMultiverseScenarioTask;
+  (scenario: Readonly<DevelopmentalScenarioSeed>) => DevelopmentalMultiverseScenarioTask;
 
 export interface DevelopmentalMultiverseCheckpointStore {
   save(snapshot: DevelopmentalMultiverseSnapshot): Promise<void>;
@@ -178,6 +183,11 @@ export class AtomicFileDevelopmentalMultiverseCheckpointStore implements Develop
   }
 }
 
+export type DevelopmentalMultiverseHostCommandRunnerOptions =
+  Omit<DevelopmentalMultiverseIndependentRunnerOptions, 'services'> & {
+    commands: HostOwnedIndependentEvaluationCommands;
+  };
+
 export interface DevelopmentalMultiverseIndependentRunnerOptions {
   services: HostOwnedIndependentEvaluationServices;
   checkpointStore: DevelopmentalMultiverseCheckpointStore;
@@ -264,6 +274,24 @@ export class DevelopmentalMultiverseIndependentRunner {
     return runner;
   }
 
+  /** Turnkey composition with the same host-owned OS/container authority adapter used by P23. */
+  static async createWithHostCommands(
+    input: DevelopmentalMultiverseSessionInput,
+    options: DevelopmentalMultiverseHostCommandRunnerOptions,
+  ): Promise<DevelopmentalMultiverseIndependentRunner> {
+    const services = await createHostOwnedIndependentEvaluationServices(options.commands);
+    const { commands: _commands, ...runnerOptions } = options;
+    return this.create(input, { ...runnerOptions, services });
+  }
+
+  static async restoreWithHostCommands(
+    options: DevelopmentalMultiverseHostCommandRunnerOptions,
+  ): Promise<DevelopmentalMultiverseIndependentRunner> {
+    const services = await createHostOwnedIndependentEvaluationServices(options.commands);
+    const { commands: _commands, ...runnerOptions } = options;
+    return this.restore({ ...runnerOptions, services });
+  }
+
   static async restore(
     options: DevelopmentalMultiverseIndependentRunnerOptions,
   ): Promise<DevelopmentalMultiverseIndependentRunner> {
@@ -285,6 +313,10 @@ export class DevelopmentalMultiverseIndependentRunner {
         typeof options.buildScenarioTask !== 'function' ||
         !isDigest(options.environmentFingerprint) || !nonEmpty(options.verifierId)) {
       throw new Error('developmental-multiverse-runner-config-invalid');
+    }
+    if (process.env.NODE_ENV === 'production' &&
+        !isHostOwnedIndependentEvaluationServices(options.services)) {
+      throw new Error('developmental-multiverse-production-requires-host-owned-authorities');
     }
     const identities = [
       options.services.authorityIdentity?.executorExecutable,
@@ -578,8 +610,8 @@ export class DevelopmentalMultiverseIndependentRunner {
         !Array.isArray(bindings) || bindings.length !== tasks.length) {
       throw new Error('developmental-multiverse-runner-evaluator-coverage-incomplete');
     }
-    const reportByTrial = new Map(reports.map(report => [report.trialId, report]));
-    const bindingByTrial = new Map(bindings.map(binding => [binding.trialId, binding]));
+    const reportByTrial = new Map(reports.map(report => [report.trialId, report] as const));
+    const bindingByTrial = new Map(bindings.map(binding => [binding.trialId, binding] as const));
     if (reportByTrial.size !== tasks.length || bindingByTrial.size !== tasks.length) {
       throw new Error('developmental-multiverse-runner-evaluator-trial-duplicate');
     }

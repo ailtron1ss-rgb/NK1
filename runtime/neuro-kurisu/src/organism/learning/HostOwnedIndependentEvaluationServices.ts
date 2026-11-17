@@ -48,6 +48,16 @@ export interface HostOwnedIndependentEvaluationServices {
   };
 }
 
+const hostOwnedServiceReceipts = new WeakSet<object>();
+
+/** True only for service bundles prepared by this module's host-owned factory in this process. */
+export function isHostOwnedIndependentEvaluationServices(
+  value: unknown,
+): value is HostOwnedIndependentEvaluationServices {
+  return value !== null && typeof value === 'object' && hostOwnedServiceReceipts.has(value);
+}
+
+
 const nonEmpty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 const digest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
 const forbiddenInheritedEnvironmentKey = (key: string): boolean =>
@@ -341,7 +351,7 @@ export async function createHostOwnedIndependentEvaluationServices(
       }
     }
   }
-  return {
+  const services: HostOwnedIndependentEvaluationServices = {
     authorityIdentity: {
       executorExecutable: executorCommand.executable,
       verifierExecutable: verifierCommand.executable,
@@ -417,6 +427,8 @@ export async function createHostOwnedIndependentEvaluationServices(
       },
     },
   };
+  hostOwnedServiceReceipts.add(services);
+  return services;
 }
 
 
