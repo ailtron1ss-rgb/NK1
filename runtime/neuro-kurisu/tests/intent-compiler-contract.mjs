@@ -184,13 +184,16 @@ assert.equal(executed.executed, true);
 assert.equal(executed.result.ok, true);
 assert.equal(calls, 1, 'approved allowed actions must pass through ActionGateway exactly once');
 
-const defaultLineage = await bridge.execute(approved, {
+const contractTrace = await bridge.execute(approved, {
   toolId: 'organism.inspect', input: { scope: 'project' }, reason: 'intent-bridge-test',
 }, { async executeTool(_id, _input, _reason, options) {
-  assert.equal(options.decisionId, approved.id, 'bridge must bind gateway decision lineage to the intent contract');
+  assert.equal(options.decisionId, undefined,
+    'intent identity must not be forged into ActionGateway decisionId when the host has no canonical decision ID');
   return { ok: true, verified: true, tool: 'organism.inspect', outcomeClass: 'executed-verified' };
 } });
-assert.equal(defaultLineage.executed, true);
+assert.equal(contractTrace.executed, true);
+assert.equal(contractTrace.contractId, approved.id,
+  'bridge result must expose the intent contract ID for caller-owned trace correlation');
 const noGateway = await bridge.execute(approved, {
   toolId: 'organism.inspect', input: { scope: 'project' }, reason: 'missing-gateway',
 }, null);
