@@ -425,8 +425,9 @@ const deniedCases = [
 for (const pair of deniedCases) {
   const name = pair[0], options = pair[1];
   const denied = buildGateway(options);
+  const invokedToolId = options.toolId ?? skillId;
   const result = await denied.gateway.executeTool(
-    skillId, { query: 'memory' }, 'proof-admission-' + name, { autonomous: options.autonomous === true },
+    invokedToolId, { query: 'memory' }, 'proof-admission-' + name, { autonomous: options.autonomous === true },
   );
   assert.equal(result.outcomeClass, 'competence-insufficient', name + ' must fail closed');
   assert.equal(denied.executorCalls(), 0, name + ' must refuse before executor entry');
