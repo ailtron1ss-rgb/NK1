@@ -368,6 +368,7 @@ assert.equal(
   'confidence versioning and its revision audit must keep exact memory accounting',
 );
 
+// Deterministic local fake: historical semantic retrieval is tested without a network or model dependency.
 const semanticHistoryProvider = {
   providerId: 'chrono-truth-deterministic-semantic',
   modelId: 'chrono-truth-test-v1',
