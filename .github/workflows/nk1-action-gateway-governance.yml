@@ -46,6 +46,8 @@ jobs:
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
       - name: Install locked runtime dependencies
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Intent contract compiler and ActionGateway bridge
+        run: npm --prefix runtime/neuro-kurisu run test:intent-compiler
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Action runtime architecture audit
@@ -58,7 +60,5 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:workpass64:archived-receipt-reconciliation && npm --prefix runtime/neuro-kurisu run test:workpass95:receipt-integrity && npm --prefix runtime/neuro-kurisu run test:workpass96:finalizer-boundary
       - name: Core planner and project routing
         run: npm --prefix runtime/neuro-kurisu run test:workpass97:planner-route && npm --prefix runtime/neuro-kurisu run test:workpass98:project-reconciliation-route
-      - name: Intent contract compiler and ActionGateway bridge
-        run: npm --prefix runtime/neuro-kurisu run test:intent-compiler
       - name: Decision-linked external postconditions
         run: npm --prefix runtime/neuro-kurisu run test:workpass294:correlated-postcondition
