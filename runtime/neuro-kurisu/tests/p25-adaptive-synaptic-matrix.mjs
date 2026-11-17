@@ -229,6 +229,15 @@ const request = (overrides = {}) => ({
       holdoutDatasetRef: 'dataset://physics/holdout-v3',
     },
   });
+  const restoredQuarantine = new AdaptiveSynapticMatrixEngine();
+  restoredQuarantine.restore(repeatedFailure.snapshot(), () => true);
+  assert.equal(restoredQuarantine.snapshot().adapters[0].status, 'quarantined',
+    'quarantine must survive restart and must never become an active profile during restore');
+  assert.throws(() => restoredQuarantine.activateValidated(manifest(), () => true),
+    /revalidation/i,
+    'the last accepted holdout digest must survive restart to prevent stale-report replay');
+  assert.equal(restoredQuarantine.activateValidated(freshManifest, () => true).status, 'active',
+    'a fresh signed holdout report may reactivate the quarantined adapter after restart');
   assert.equal(repeatedFailure.activateValidated(freshManifest, () => true).status, 'active',
     'a new signed holdout report can explicitly revalidate a quarantined specialist');
 }
