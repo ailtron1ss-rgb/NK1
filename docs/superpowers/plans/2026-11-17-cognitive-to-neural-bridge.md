@@ -18,7 +18,7 @@ Expected focused command:
 
 - Add optional typed `cognitiveControl` to `LanguageRequest`.
 - Keep the control contract type-only to avoid runtime import cycles.
-- Typecheck the runtime and test request adaptation preserves system/user/signal/context fields while applying bounded sampling parameters.
+- Typecheck the runtime and test request adaptation preserves system/user/signal/context fields while configuring bounded sampling parameters.
 
 ## Task 3 — OrganismRuntime wiring
 
