@@ -747,8 +747,12 @@ export function evaluateArchitectureMorphogenesisPlan(
   }
   if (evidence.baselineCommit === undefined || evidence.candidateCommit === undefined || evidence.candidateBranch === undefined) {
     fail('evidence-commit-missing', 'evidence', 'Evidence must bind the exact baseline, candidate branch and full candidate commit SHA');
-  } else if (evidence.baselineCommit !== plan.baselineCommit || evidence.candidateBranch !== plan.candidateBranch || typeof evidence.candidateCommit !== 'string' || !COMMIT_SHA.test(evidence.candidateCommit)) {
-    fail('evidence-commit-mismatch', 'evidence', 'Evidence must identify the exact baseline, planned branch and a full candidate commit SHA');
+  } else if (evidence.baselineCommit !== plan.baselineCommit
+    || evidence.candidateBranch !== plan.candidateBranch
+    || typeof evidence.candidateCommit !== 'string'
+    || !COMMIT_SHA.test(evidence.candidateCommit)
+    || evidence.candidateCommit !== plan.candidateGraph.sourceCommit) {
+    fail('evidence-commit-mismatch', 'evidence', 'Evidence must identify the exact baseline, planned branch and the exact source commit sealed into the candidate graph');
   }
   const required: Array<keyof ArchitectureMorphogenesisEvidence> = [
     'testsPassed', 'typecheckPassed', 'architectureAuditPassed', 'contractChecksPassed', 'rollbackVerified',
