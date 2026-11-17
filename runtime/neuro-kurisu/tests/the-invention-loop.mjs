@@ -183,18 +183,20 @@ assert.throws(
 );
 
 // Five independent, signed replication seeds are required.
-for (const [seed, observed] of [[18, 97], [19, 97], [20, 101], [21, 97], [22, 96]]) {
+for (const [index, [seed, observed]] of [[18, 97], [19, 97], [20, 101], [21, 97], [22, 96]].entries()) {
   const result = loop.recordOutcome(p.id, signedArtifact(p, 'replication', seed, { observed }));
-  assert.equal(result.stage, seed === 22 ? 'replicated' : 'replicating');
+  assert.equal(result.stage, index === 4 ? 'replicated' : 'replicating');
+  if (index === 0) {
+    assert.throws(
+      () => loop.recordOutcome(p.id, signedArtifact(p, 'replication', 18, {
+        artifactId: 'artifact-new-duplicate-seed',
+        runId: 'run-new-duplicate-seed',
+        environmentId: 'environment-new-duplicate-seed',
+      })),
+      /duplicate-seed/,
+    );
+  }
 }
-assert.throws(
-  () => loop.recordOutcome(p.id, signedArtifact(p, 'replication', 18, {
-    artifactId: 'artifact-new-duplicate-seed',
-    runId: 'run-new-duplicate-seed',
-    environmentId: 'environment-new-duplicate-seed',
-  })),
-  /duplicate-seed/,
-);
 assert.throws(
   () => loop.recordOutcome(p.id, signedArtifact(p, 'holdout', 23, {
     testFingerprint: p.protocol.testFingerprint,
