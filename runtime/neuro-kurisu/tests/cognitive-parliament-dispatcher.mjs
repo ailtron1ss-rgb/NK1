@@ -385,6 +385,41 @@ assert.equal(coreReceipt.verifiedEvidenceCount,3);
 assert.equal(coreReceipt.unverifiedEvidenceCount,0);
 assert.equal(coreReceipt.roleResults.length,6);
 assert.ok(coreReceipt.roleResults.every(row=>row.status==='completed'));
+
+// The sanitized cycle receipt survives a full Core persistence restore.
+const coreSnapshot=core.snapshot();
+const restoredCore=new OrganismCore(new MemoryStateStore({initial:coreSnapshot}),{
+  performanceProfile:'mobile',cycleResultMode:'operational',spineOnly:false,
+});
+await restoredCore.init();
+assert.deepEqual(restoredCore.snapshot().system.cognitiveParliamentLastDecision,coreReceipt,
+  'latest parliamentary cycle receipt must survive restart exactly');
+
+// With all six roles configured but no promoted evidence, Core must not allow
+// an ordinary risky candidate to escape through a later selector.
+const emptyEvidenceRoles=Object.fromEntries(coreRoles.map(role=>[role,{
+  async execute(){throw new Error('must-not-call-without-promoted-evidence');},
+}]));
+const noEvidenceCore=new OrganismCore(new MemoryStateStore(),{
+  performanceProfile:'mobile',cycleResultMode:'operational',spineOnly:false,
+  parliamentRoleExecutors:emptyEvidenceRoles,
+  parliamentModelAttestor:executionId=>({
+    executionId,providerId:'no-evidence-provider',modelId:'no-evidence-model',
+    independenceGroup:'no-evidence-family',verifiedAt:Date.now(),
+  }),
+});
+await noEvidenceCore.init();
+const noEvidenceCycle=await noEvidenceCore.observe({
+  text:'Proceed with an uncertain high-impact action immediately.',
+},'operational');
+const noEvidenceReceipt=noEvidenceCore.snapshot().system.cognitiveParliamentLastDecision;
+assert.ok(noEvidenceReceipt,'fail-closed cycle must leave a durable decision receipt');
+assert.equal(noEvidenceReceipt.dispatchStatus,'evidence-unavailable');
+assert.equal(noEvidenceReceipt.decisionStatus,'needs-evidence');
+assert.ok(!noEvidenceReceipt.selectedCandidateId||
+  noEvidenceReceipt.selectedCandidateId===noEvidenceReceipt.p69ChosenCandidateId);
+assert.ok(!['explore','respond','communicate'].includes(noEvidenceCycle.decision?.selected?.action??''),
+  'missing promoted evidence must not fall through to a risky ordinary action');
 console.log(JSON.stringify({
   dispatch:dispatched.decision.status,roleCount:dispatched.roleResults.length,
   maxConcurrency:maxActive,tokenBudget:seenTokens.reduce((sum,n)=>sum+n,0),
