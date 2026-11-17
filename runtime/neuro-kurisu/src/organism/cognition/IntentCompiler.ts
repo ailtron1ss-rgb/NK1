@@ -72,6 +72,7 @@ export interface IntentApproval {
   expiresAt?: number;
   evidenceRef: string;
 }
+export type IntentApprovalVerifier = (contract: IntentContract, approval: IntentApproval) => boolean;
 export type IntentGateResult =
   | { allowed: true; contractId: string; action: string }
   | { allowed: false; reason:
@@ -257,7 +258,7 @@ function isIntentContract(value: unknown): value is IntentContract {
 
 export class IntentCompiler {
   private readonly provenance = new WeakMap<object, 'draft' | 'approved' | 'rejected' | 'superseded'>();
-  constructor(private readonly options: { clock?: () => number; approvalKey?: string | Uint8Array; extractionTimeoutMs?: number } = {}) {}
+  constructor(private readonly options: { clock?: () => number; approvalKey?: string | Uint8Array; approvalVerifier?: IntentApprovalVerifier; extractionTimeoutMs?: number } = {}) {}
 
   private now(): number {
     const value = this.options.clock?.() ?? Date.now();
@@ -511,6 +512,13 @@ export class IntentCompiler {
     if ((contract.risk.level === 'high' || contract.risk.level === 'critical') && approval.riskAcknowledged !== true) {
       throw new Error('explicit risk acknowledgement is required');
     }
+    let hostApprovalVerified = false;
+    try {
+      hostApprovalVerified = this.options.approvalVerifier?.(contract, approval) === true;
+    } catch {
+      hostApprovalVerified = false;
+    }
+    if (!hostApprovalVerified) throw new Error('host approval verifier did not attest this confirmation');
     const unsignedApproval: Omit<IntentContract['approval'], 'signature'> = {
       status: 'approved',
       allowedActions: requested,
