@@ -120,6 +120,22 @@ assert.ok(gatedAfter);
 assert.equal(gatedAfter.evidence.length, 1,
   'holdout seeds overlapping training seeds must be rejected');
 
+const legacyProject = gatedEngine.create(
+  'Legacy mechanism project without paired protocol',
+  'A historical mechanism hypothesis is still unverified.',
+  'Independent holdout needed',
+  ['mechanism-serendipity', 'legacy-project'],
+);
+gatedEngine.observe(legacyProject.id, {
+  evidence: 'legacy-verified-flag-only',
+  success: 1,
+  verified: true,
+});
+const legacyAfter = gatedEngine.snapshot().projects.find(row => row.id === legacyProject.id);
+assert.ok(legacyAfter);
+assert.equal(legacyAfter.evidence.length, 0,
+  'legacy mechanism projects without a persisted contract must fail closed instead of bypassing the receipt gate');
+
 const autoAppliedReceipt = { ...validReceipt, evidenceId: 'receipt-auto-apply', autoApplied: true };
 gatedEngine.observe(gatedProject.id, {
   evidence: autoAppliedReceipt.evidenceId,
