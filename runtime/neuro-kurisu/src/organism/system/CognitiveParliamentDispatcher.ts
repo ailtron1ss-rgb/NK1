@@ -173,9 +173,9 @@ export class CognitiveParliamentDispatcher {
     verifiedEvidence=this.parliament.resolveEvidenceReferences([...evidenceMap].map(([id,claimKey])=>({id,claimKey})));
     verifiedEvidenceMap=new Map(verifiedEvidence.map(row=>[row.id,row.claimKey]));
     unverifiedEvidenceCount=Math.max(0,evidenceMap.size-verifiedEvidenceMap.size);
-    if(verifiedEvidence.length===0)return finish('evidence-unavailable');
     // Do not ask the models to reason over a partial/tainted user-supplied evidence set.
     if(unverifiedEvidenceCount>0)return finish('evidence-rejected');
+    if(verifiedEvidence.length===0)return finish('evidence-unavailable');
     const configuredCount=ROLES.filter(role=>Boolean(this.executors[role])).length;
     if(configuredCount===0)return finish('unavailable');
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
