@@ -96,8 +96,8 @@ try {
 
   // Parent symlinks are rejected too: a valid-looking relative path must not
   // redirect the write outside the private workspace.
-  await symlink(tempRoot, join(workspace, 'external-link'));
-  const symlinkInput = { path: 'external-link/symlink-escape.txt', content: 'must not follow symlinks' };
+  await symlink(tempRoot, join(workspace, 'external-link.txt'));
+  const symlinkInput = { path: 'external-link.txt', content: 'must not follow symlinks' };
   const symlinkOptions = await approveWrite(core, symlinkInput, 'filesystem-undo-first:symlink-denied');
   const symlinkResult = await core.executeTool('organism.files.write', symlinkInput, 'must-not-follow-symlink', symlinkOptions);
   assert.equal(symlinkResult.outcomeClass, 'undo-preparation-failed');
