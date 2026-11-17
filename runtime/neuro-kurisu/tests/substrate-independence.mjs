@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { generateKeyPairSync, sign as signSignature, verify as verifySignature } from 'node:crypto';
 import {
   SubstrateIndependenceEngine,
   hydratePortableState,
+  substrateCalibrationSigningPayload,
 } from '../src/organism/system/SubstrateIndependenceEngine.ts';
 
 const source = {
@@ -81,7 +83,7 @@ const privacyGate = engine.assessCompatibility(transfer, target);
 assert.equal(privacyGate.compatible, false);
 assert.ok(privacyGate.reasons.includes('remote-backend-requires-explicit-consent'));
 
-const trials = [
+const unsignedTrials = [
   ['memory-recall', 'task-1'], ['memory-recall', 'task-2'],
   ['goal-continuity', 'task-3'], ['goal-continuity', 'task-4'],
   ['tool-contract', 'task-5'], ['tool-contract', 'task-6'],
@@ -105,11 +107,35 @@ const trials = [
   targetLatencyMs: 1200,
 }));
 
+const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+const trustedKeyId = 'nk1-test-evaluator-v1';
+const trials = unsignedTrials.map((trial) => {
+  const claim = { ...trial, evaluatorKeyId: trustedKeyId };
+  const evaluatorSignatureBase64 = signSignature(
+    null,
+    Buffer.from(substrateCalibrationSigningPayload(claim), 'utf8'),
+    privateKey,
+  ).toString('base64');
+  return { ...claim, evaluatorSignatureBase64 };
+});
+const verifySignedReceipt = async (trial) => {
+  if (trial.evaluatorKeyId !== trustedKeyId || typeof trial.evaluatorSignatureBase64 !== 'string') return false;
+  return verifySignature(
+    null,
+    Buffer.from(substrateCalibrationSigningPayload(trial), 'utf8'),
+    publicKey,
+    Buffer.from(trial.evaluatorSignatureBase64, 'base64'),
+  );
+};
+const tamperedReceipt = { ...trials[0], taskSuccess01: 0.99 };
+assert.equal(await verifySignedReceipt(tamperedReceipt), false,
+  'a signed evaluator receipt must not survive a modified metric');
+
 const evaluation = await engine.evaluateMigration({
   transfer,
   targetBackendId: target.backendId,
   trials,
-  verifyTrial: async (trial) => trial.evaluatorReceiptId.startsWith('receipt-'),
+  verifyTrial: verifySignedReceipt,
   allowExternalBackend: true,
 });
 assert.equal(evaluation.accepted, true);
