@@ -359,6 +359,16 @@ const providerFailure = await compiler.compileWith({ text: 'Summarize safely' },
 });
 assert.equal(providerFailure.extractionStatus, 'provider-failed');
 assert.equal(compiler.gate(providerFailure, 'organism.inspect').allowed, false, 'extractor failure must produce a fail-closed incomplete contract');
+const timeoutCompiler = new IntentCompiler({
+  clock: () => now,
+  approvalKey: 'test-only-timeout-approval-key-32-bytes',
+  extractionTimeoutMs: 100,
+});
+const timedOutExtraction = await timeoutCompiler.compileWith({ text: 'Summarize safely' }, {
+  async extract() { return new Promise(() => {}); },
+});
+assert.equal(timedOutExtraction.extractionStatus, 'provider-failed', 'a stalled semantic extractor must time out into a fail-closed contract');
+assert.equal(timeoutCompiler.gate(timedOutExtraction, 'organism.inspect').allowed, false);
 
 const expiringCompiler = new IntentCompiler({
   clock: () => now,
