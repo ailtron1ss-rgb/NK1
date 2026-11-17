@@ -33,7 +33,7 @@ const fingerprint=(s:string)=>hash32(s).toString(16).padStart(8,'0');
 function rng(seed:number):()=>number{let x=seed>>>0;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
 
 export class WorldForge {
-  private readonly answers=new Map<string,HiddenAnswerKey>();
+  readonly #answers=new Map<string,HiddenAnswerKey>();
   private readonly maxCases:number;
   private readonly maxTraceSteps:number;
   private readonly holdoutNamespace:string;
@@ -69,13 +69,13 @@ export class WorldForge {
         task:domain==='resource-allocation'?'Allocate scarce resources while preserving a safety reserve and adapting to a late demand shock.':domain==='route-planning'?'Reach the destination while respecting a changing route and risk budget.':'Identify the reliable explanation from noisy signals and verify it before concluding.',
         observations,goalOptions:[...targets],availableActions:[...ACTIONS],constraints:{maxSteps:Math.max(4,Math.min(16,Math.round(5+difficulty01*8))),resourceBudget:Math.max(3,Math.round(10-difficulty01*3)),riskTolerance01:Number((.75-difficulty01*.35).toFixed(3)),requiredEvidence:domain==='investigation'?2:1},
         disturbances,acceptedStrategyFamilies:families,seedFingerprint:fingerprint(seed+'|'+input.split),syntheticOnly:true};
-      this.answers.set(id,{split:input.split,domain,requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,resourceBudget:scenario.constraints.resourceBudget,maxSteps:scenario.constraints.maxSteps,riskTolerance01:scenario.constraints.riskTolerance01,seed});
+      this.#answers.set(id,{split:input.split,domain,requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,resourceBudget:scenario.constraints.resourceBudget,maxSteps:scenario.constraints.maxSteps,riskTolerance01:scenario.constraints.riskTolerance01,seed});
       out.push(scenario);
     }
     return out;
   }
   evaluate(scenario:WorldForgeCase,trace:WorldForgeActionStep[]):WorldForgeEvaluation{
-    const key=scenario&&this.answers.get(scenario.id);
+    const key=scenario&&this.#answers.get(scenario.id);
     if(!key||scenario.syntheticOnly!==true||scenario.split!==key.split||scenario.domain!==key.domain||!Array.isArray(trace))return this.emptyEvaluation(scenario?.id??'invalid',scenario?.split??'train');
     const steps=trace.slice(0,this.maxTraceSteps),valid=steps.filter(s=>s&&ACTIONS.includes(s.action));
     const cost=valid.reduce((sum,s)=>sum+clamp(s.cost??1,0,10),0);
@@ -93,8 +93,8 @@ export class WorldForge {
     const score=clamp(targetCoverage*.35+evidenceCoverage*.2+verification*.15+efficiency*.12+robustness*.1+strategy*.08-violations*.12);
     return{scenarioId:scenario.id,split:scenario.split,score01:Number(score.toFixed(4)),success:score>=key.minimumScore01&&violations===0,constraintViolations:violations,evidenceCoverage01:Number(evidenceCoverage.toFixed(4)),efficiency01:Number(efficiency.toFixed(4)),robustness01:Number(robustness.toFixed(4)),strategyFamily:family,stepsUsed:valid.length,syntheticOnly:true,independentlyVerified:false,limitations:['Synthetic environment only; does not establish real-world competence.','Holdout outcomes are evaluator-only and must not be used for tuning.','Scenario realism requires external calibration against real task distributions.']};
   }
-  releaseEvaluator(id:string):void{this.answers.delete(id);}
-  reset():void{this.answers.clear();}
+  releaseEvaluator(id:string):void{this.#answers.delete(id);}
+  reset():void{this.#answers.clear();}
   private inferFamily(domain:WorldForgeDomain,steps:WorldForgeActionStep[]):string{
     const actions=steps.map(s=>s.action);
     if(domain==='resource-allocation')return actions.includes('prioritize')&&actions.includes('verify')?'adaptive-priority':actions.includes('collect')&&actions.includes('observe')?'reserve-then-allocate':'verify-and-rebalance';
