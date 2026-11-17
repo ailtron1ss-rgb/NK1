@@ -562,8 +562,22 @@ export class OrganismRuntime {
         if (!restoredSubstrate.restored) {
           await this.journal.write('warn', 'runtime.substrate-state.restore-failed', { reason: restoredSubstrate.reason });
           await this.substrateStateStore.save(this.substrateIndependence.snapshot());
+        } else if (restoredSubstrate.restored && substrateState.lastEvaluation?.accepted === true) {
+          const verifier = this.config.substrateCalibrationVerifier;
+          if (typeof verifier === 'function') {
+            const reverified = await this.substrateIndependence.verifyStoredEvaluation(
+              substrateState.lastEvaluation.evaluationId,
+              verifier,
+            );
+            if (!reverified) {
+              await this.journal.write('warn', 'runtime.substrate-evaluation.restore-untrusted', {
+                evaluationId: substrateState.lastEvaluation.evaluationId,
+              });
+            }
+          }
         }
       }
+      await this.substrateStateStore.save(this.substrateIndependence.snapshot());
       await this.core.init();
       const restoredTemporalTracks=this.temporalObjectTracker.restoreFromPerception(
         this.core.p41PerceptionSnapshot().entities,
