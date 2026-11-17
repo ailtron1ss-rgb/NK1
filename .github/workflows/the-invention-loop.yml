@@ -1,0 +1,40 @@
+name: The Invention Loop focused validation
+
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/research/TheInventionLoop.ts'
+      - 'runtime/neuro-kurisu/tests/the-invention-loop.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/EvidenceResearchSubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/package.json'
+  push:
+    branches:
+      - aspect/the-invention-loop-20261117
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/research/TheInventionLoop.ts'
+      - 'runtime/neuro-kurisu/tests/the-invention-loop.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/EvidenceResearchSubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/package.json'
+
+permissions:
+  contents: read
+
+jobs:
+  focused-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: runtime/neuro-kurisu
+      - name: Exercise invention lifecycle and integrity gates
+        run: node --experimental-strip-types tests/the-invention-loop.mjs
+        working-directory: runtime/neuro-kurisu
+      - name: Type-check integrated runtime
+        run: npm run typecheck
+        working-directory: runtime/neuro-kurisu
