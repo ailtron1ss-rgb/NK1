@@ -56,17 +56,33 @@ export interface NeuroPlasticObservation {
   };
 }
 
-export interface NeuroPlasticEvaluationInput {
+export interface NeuroPlasticEvaluationPayload {
   holdoutFingerprint: string;
   baseline: NeuroPlasticObservation[];
   candidate: NeuroPlasticObservation[];
   evaluatedAt: number;
 }
 
+export interface NeuroPlasticEvaluationReceipt {
+  evaluationId: string;
+  evaluatorId: string;
+  evaluatedAt: number;
+  evaluationFingerprint: string;
+  signature: string;
+}
+
+export interface NeuroPlasticEvaluationInput extends NeuroPlasticEvaluationPayload {
+  receipt: NeuroPlasticEvaluationReceipt;
+}
+
 export interface NeuroPlasticEvaluationReport {
   reportId: string;
   adapterId: string;
   holdoutFingerprint: string;
+  evaluationId: string;
+  evaluatorId: string;
+  evaluationFingerprint: string;
+  evaluatorSignature: string;
   pairedN: number;
   independentSeedCount: number;
   qualityDeltaMean01: number;
