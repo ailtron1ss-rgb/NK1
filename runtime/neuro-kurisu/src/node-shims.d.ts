@@ -25,6 +25,7 @@ declare namespace NodeJS {
 }
 declare module 'node:crypto' {
   export function randomUUID(): string;
+  export function randomBytes(size: number): Buffer;
   export function createPublicKey(key: string | Uint8Array): { asymmetricKeyType?: string };
   export function createHash(algorithm: string): { update(data: string | Uint8Array): any; digest(encoding: string): string };
   export function verify(algorithm: null | string, data: Uint8Array, key: string, signature: Uint8Array): boolean;
