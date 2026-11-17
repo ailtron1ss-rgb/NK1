@@ -157,7 +157,9 @@ export class PersistenceProjectionCoordinator {
       }
       if(materialize.has('critical')) {
       target.facets.advanced.p69ConstitutionalArbiter=this.snapshotOnce('snap:governanceSubsystem.p69ConstitutionalArbiter', ctx.governanceSubsystem.p69ConstitutionalArbiter);
+    target.facets.advanced.constitutionEvolution=this.snapshotOnce('snap:governanceSubsystem.constitutionEvolution', ctx.governanceSubsystem.constitutionEvolution);
       }
+      target.facets.advanced.constitutionEvolution=this.snapshotOnce('snap:governanceSubsystem.constitutionEvolution', ctx.governanceSubsystem.constitutionEvolution);
       if(materialize.has('critical')) {
       target.facets.advanced.p70MemoryLifecycleGovernor=this.snapshotOnce('snap:memorySubsystem.p70MemoryLifecycleGovernor', ctx.memorySubsystem.p70MemoryLifecycleGovernor);
       }
