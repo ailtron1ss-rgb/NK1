@@ -1909,6 +1909,7 @@ export class NeuralExperienceBranch {
       acceptedUpdates:fast.fastAcceptedUpdates,
       rejectedUpdates:fast.fastRejectedUpdates,
       unmatchedOutcomes:fast.fastUnmatchedOutcomes,
+      actionMismatchOutcomes:fast.fastActionMismatchOutcomes,
       expiredContexts:fast.fastExpiredContexts,
       evictedContexts:fast.fastEvictedContexts,
       decayedContexts:fast.fastDecayedContexts,
