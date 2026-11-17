@@ -289,16 +289,24 @@ export class UndoFirstFileSystemAdapter {
     }
   }
 
+  private async ensureRealDirectory(path: string, errorCode: string): Promise<void> {
+    try {
+      await mkdir(path, { mode: 0o700 });
+    } catch (error) {
+      if (!error || typeof error !== 'object' || (error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    }
+    const info = await lstat(path);
+    if (info.isSymbolicLink() || !info.isDirectory()) throw new Error(errorCode);
+  }
+
   private async recoveryDirectory(): Promise<{ prepared: string }> {
     const root = await this.ensureWorkspace();
     const recovery = join(root, RECOVERY_DIRECTORY);
-    await mkdir(recovery, { recursive: true, mode: 0o700 });
-    const recoveryStat = await lstat(recovery);
-    if (recoveryStat.isSymbolicLink() || !recoveryStat.isDirectory()) throw new Error('filesystem-recovery-directory-invalid');
+    // Do not create descendants with recursive mkdir: it would follow an existing
+    // recovery-directory symlink before lstat had a chance to reject it.
+    await this.ensureRealDirectory(recovery, 'filesystem-recovery-directory-invalid');
     const prepared = join(recovery, PREPARED_DIRECTORY);
-    await mkdir(prepared, { recursive: true, mode: 0o700 });
-    const preparedStat = await lstat(prepared);
-    if (preparedStat.isSymbolicLink() || !preparedStat.isDirectory()) throw new Error('filesystem-prepared-directory-invalid');
+    await this.ensureRealDirectory(prepared, 'filesystem-prepared-directory-invalid');
     return { prepared };
   }
 
@@ -320,9 +328,16 @@ export class UndoFirstFileSystemAdapter {
   private async loadArtifact(artifactId: string): Promise<FileArtifact> {
     const { prepared } = await this.recoveryDirectory();
     const path = artifactPathFor(prepared, artifactId);
-    const info = await lstat(path);
-    if (info.isSymbolicLink() || !info.isFile() || info.size > 4096) throw new Error('filesystem-recovery-artifact-invalid');
-    const parsed = JSON.parse(await readFile(path, 'utf8')) as FileArtifact;
+    if (!constants.O_NOFOLLOW) throw new Error('filesystem-no-follow-open-unavailable');
+    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    let parsed: FileArtifact;
+    try {
+      const info = await handle.stat();
+      if (!info.isFile() || info.size > 4096) throw new Error('filesystem-recovery-artifact-invalid');
+      parsed = JSON.parse(await handle.readFile('utf8')) as FileArtifact;
+    } finally {
+      await handle.close();
+    }
     const { digest, ...core } = parsed;
     if (parsed.version !== ARTIFACT_VERSION || parsed.artifactId !== artifactId
       || !/^exec-[a-z0-9-]{8,80}$/i.test(parsed.executionId)
