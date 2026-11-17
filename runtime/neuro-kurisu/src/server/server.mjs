@@ -65,6 +65,14 @@ function parseSubstrateCalibrationPublicKeys(raw) {
 const SUBSTRATE_CALIBRATION_PUBLIC_KEYS = parseSubstrateCalibrationPublicKeys(
     String(process.env.NEURO_SUBSTRATE_CALIBRATION_PUBLIC_KEYS_JSON || '').trim(),
 );
+function isLoopbackBackendEndpoint(value) {
+    try {
+        const url = new URL(String(value || ''));
+        return ['127.0.0.1', 'localhost', '[::1]', '::1'].includes(url.hostname);
+    } catch {
+        return false;
+    }
+}
 function verifySubstrateCalibrationTrial(trial) {
     const key = SUBSTRATE_CALIBRATION_PUBLIC_KEYS.get(String(trial?.evaluatorKeyId || ''));
     const encoded = trial?.evaluatorSignatureBase64;
@@ -240,7 +248,7 @@ const runtime = new OrganismRuntime({
             modelId: process.env.KOBOLD_MODEL || 'kobold-api-model',
             modelRevision: process.env.KOBOLD_MODEL_REVISION || 'host-configured',
             runtime: 'koboldcpp-text-generation',
-            privacyClass: ['127.0.0.1', 'localhost', '[::1]', '::1'].includes(new URL(KOBOLD_URL).hostname) ? 'local-only' : 'private-remote',
+            privacyClass: isLoopbackBackendEndpoint(KOBOLD_URL) ? 'local-only' : 'private-remote',
             capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
             embeddingSpaceId: process.env.NK1_EMBEDDING_SPACE_ID || 'nk1-memory-embedding-v1',
             contextWindowTokens: 4096,
