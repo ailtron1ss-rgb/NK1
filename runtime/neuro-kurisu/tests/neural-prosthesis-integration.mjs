@@ -65,6 +65,7 @@ const selected = ecology.select({
   resourceRisk01: 0.2,
   desiredQuality01: 0.9,
   allowCloud: false,
+  preferredBackend: 'neural-prosthesis',
 });
 assert.equal(selected, 'neural-prosthesis', 'P40 must be able to select the configured local residual backend');
 
