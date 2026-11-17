@@ -1,0 +1,783 @@
+import { createHash } from 'node:crypto';
+import { types as nodeUtilTypes } from 'node:util';
+
+export type SubstratePrivacyClass = 'local-only' | 'private-remote' | 'external';
+
+export interface SubstrateBackendProfile {
+  backendId: string;
+  routeId: string;
+  providerId: string;
+  modelId: string;
+  modelRevision: string;
+  runtime: string;
+  privacyClass: SubstratePrivacyClass;
+  capabilities: string[];
+  embeddingSpaceId?: string;
+  contextWindowTokens: number;
+}
+
+export type PortableJson =
+  | null
+  | boolean
+  | number
+  | string
+  | PortableJson[]
+  | { [key: string]: PortableJson };
+
+export interface PortableCognitivePayloadV1 {
+  organism: PortableJson;
+  world: PortableJson;
+  proceduralSkills: PortableJson | null;
+}
+
+export interface PortableCognitiveTransferV1 {
+  schema: 'nk1.portable-cognitive-state';
+  schemaVersion: 1;
+  stateContract: 'nk1.persisted-organism-world-procedural-skills/v1';
+  createdAt: number;
+  source: {
+    backendId: string | null;
+    profileDigest: string | null;
+  };
+  payload: PortableCognitivePayloadV1;
+  integrity: {
+    algorithm: 'sha256';
+    digest: string;
+    bytes: number;
+  };
+}
+
+export interface SubstrateCalibrationTrial {
+  trialId: string;
+  sourceBackendId: string;
+  targetBackendId: string;
+  taskId: string;
+  taskFamily: string;
+  independenceKey: string;
+  evaluatorReceiptId: string;
+  holdout: true;
+  taskSuccess01: number;
+  memoryRecall01: number;
+  goalFidelity01: number;
+  constraintFidelity01: number;
+  identityContinuity01: number;
+  toolContract01: number;
+  sourceLatencyMs: number;
+  targetLatencyMs: number;
+}
+
+export interface SubstrateMigrationEvaluation {
+  evaluationId: string;
+  accepted: boolean;
+  sourceBackendId: string;
+  targetBackendId: string;
+  transferDigest: string;
+  evaluatedAt: number;
+  trialCount: number;
+  taskFamilyCount: number;
+  metrics: {
+    minTaskSuccess01: number;
+    minMemoryRecall01: number;
+    minGoalFidelity01: number;
+    minConstraintFidelity01: number;
+    minIdentityContinuity01: number;
+    minToolContract01: number;
+    p95LatencyRatio: number;
+  };
+  reasons: string[];
+}
+
+export interface SubstrateIndependenceState {
+  version: 1;
+  activeBackendId: string | null;
+  activeProvenance: 'bootstrap' | 'calibrated' | 'unknown';
+  observedBackendId: string | null;
+  pendingTransfer: {
+    transferDigest: string;
+    sourceBackendId: string | null;
+    targetBackendId: string;
+    importedAt: number;
+  } | null;
+  lastEvaluation: SubstrateMigrationEvaluation | null;
+  history: Array<{
+    at: number;
+    fromBackendId: string | null;
+    toBackendId: string;
+    transferDigest: string;
+    evaluationId: string;
+    reason: 'calibrated-promotion' | 'rollback';
+  }>;
+}
+
+export interface SubstrateIndependenceOptions {
+  profiles?: readonly SubstrateBackendProfile[];
+  minIndependentTrials?: number;
+  minDistinctTaskFamilies?: number;
+  maxTransferBytes?: number;
+  maxLatencyRatio?: number;
+}
+
+type PlainRecord = Record<string, unknown>;
+const REQUIRED_CAPABILITIES = ['text-generation', 'json-proposal', 'tool-routing'] as const;
+const MAX_STRING_LENGTH = 1_000_000;
+const MAX_ARRAY_LENGTH = 500_000;
+const MAX_OBJECT_KEYS = 100_000;
+const MAX_JSON_DEPTH = 48;
+const DEFAULT_MAX_TRANSFER_BYTES = 64 * 1024 * 1024;
+const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+
+function fail(message: string): never { throw new Error(message); }
+
+function isSafeId(value: unknown, max = 180): value is string {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= max
+    && value.trim() === value
+    && !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
+}
+
+function ownDataRecord(value: unknown, allowedKeys?: readonly string[]): PlainRecord {
+  try {
+    if (value === null || typeof value !== 'object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) {
+      return fail('portable-record-invalid');
+    }
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return fail('portable-record-prototype-invalid');
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.length > MAX_OBJECT_KEYS) return fail('portable-record-too-large');
+    const result: PlainRecord = Object.create(null);
+    for (const key of keys) {
+      if (typeof key !== 'string') return fail('portable-symbol-key-rejected');
+      if (key === '__proto__' || key === 'prototype' || key === 'constructor') return fail('portable-dangerous-key-rejected');
+      if (allowedKeys && !allowedKeys.includes(key)) return fail('portable-unknown-field-rejected');
+      const descriptor = descriptors[key];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || descriptor.enumerable !== true) {
+        return fail('portable-accessor-or-hidden-field-rejected');
+      }
+      result[key] = descriptor.value;
+    }
+    return result;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('portable-')) throw error;
+    return fail('portable-record-unreadable');
+  }
+}
+
+function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: number, counter: { nodes: number }): PortableJson {
+  if (depth > MAX_JSON_DEPTH) return fail('portable-state-depth-limit');
+  counter.nodes += 1;
+  if (counter.nodes > MAX_ARRAY_LENGTH + MAX_OBJECT_KEYS) return fail('portable-state-node-limit');
+
+  if (value === null || typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    if (value.length > MAX_STRING_LENGTH) return fail('portable-state-string-limit');
+    return value;
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return fail('portable-non-finite-number-rejected');
+    return Object.is(value, -0) ? 0 : value;
+  }
+  if (typeof value === 'undefined') return null;
+  if (typeof value !== 'object' || value === null) return fail('portable-non-data-value-rejected');
+  if (nodeUtilTypes.isProxy(value)) return fail('portable-proxy-rejected');
+  if (seen.has(value)) return fail('portable-state-cycle-rejected');
+
+  if (nodeUtilTypes.isDate(value)) {
+    const time = value.getTime();
+    if (!Number.isFinite(time)) return fail('portable-invalid-date-rejected');
+    return value.toISOString();
+  }
+
+  seen.add(value);
+  try {
+    if (Array.isArray(value)) {
+      if (Object.getPrototypeOf(value) !== Array.prototype || value.length > MAX_ARRAY_LENGTH) {
+        return fail('portable-array-shape-invalid');
+      }
+      const descriptors = Object.getOwnPropertyDescriptors(value);
+      const keys = Reflect.ownKeys(descriptors);
+      if (keys.some((key) => typeof key !== 'string' || (key !== 'length' && !/^(0|[1-9]\d*)$/u.test(key)))) {
+        return fail('portable-array-extra-property-rejected');
+      }
+      const result: PortableJson[] = [];
+      for (let index = 0; index < value.length; index += 1) {
+        const descriptor = descriptors[String(index)];
+        if (!descriptor) return fail('portable-sparse-array-rejected');
+        if (!Object.prototype.hasOwnProperty.call(descriptor, 'value') || descriptor.enumerable !== true) {
+          return fail('portable-array-accessor-rejected');
+        }
+        result.push(normalizePortableValue(descriptor.value, seen, depth + 1, counter));
+      }
+      return result;
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return fail('portable-class-instance-rejected');
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.length > MAX_OBJECT_KEYS) return fail('portable-object-key-limit');
+    const result: Record<string, PortableJson> = Object.create(null);
+    for (const key of keys) {
+      if (typeof key !== 'string') return fail('portable-symbol-key-rejected');
+      if (key === '__proto__' || key === 'prototype' || key === 'constructor') return fail('portable-dangerous-key-rejected');
+      const descriptor = descriptors[key];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        return fail('portable-accessor-rejected');
+      }
+      if (descriptor.enumerable !== true || descriptor.value === undefined) continue;
+      result[key] = normalizePortableValue(descriptor.value, seen, depth + 1, counter);
+    }
+    return result;
+  } finally {
+    seen.delete(value);
+  }
+}
+
+function normalizePortable(value: unknown, maxBytes: number): PortableJson {
+  const normalized = normalizePortableValue(value, new WeakSet<object>(), 0, { nodes: 0 });
+  const encoded = canonicalJson(normalized);
+  if (Buffer.byteLength(encoded, 'utf8') > maxBytes) return fail('portable-transfer-size-limit');
+  return normalized;
+}
+
+function canonicalJson(value: PortableJson | PlainRecord): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map((entry) => canonicalJson(entry)).join(',') + ']';
+  const record = value as Record<string, PortableJson>;
+  return '{' + Object.keys(record).sort().map((key) => JSON.stringify(key) + ':' + canonicalJson(record[key])).join(',') + '}';
+}
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+function profileSnapshot(input: unknown): SubstrateBackendProfile {
+  const row = ownDataRecord(input, [
+    'backendId', 'routeId', 'providerId', 'modelId', 'modelRevision', 'runtime',
+    'privacyClass', 'capabilities', 'embeddingSpaceId', 'contextWindowTokens',
+  ]);
+  for (const key of ['backendId', 'routeId', 'providerId', 'modelId', 'modelRevision', 'runtime'] as const) {
+    if (!isSafeId(row[key], 180)) return fail('substrate-profile-invalid:' + key);
+  }
+  if (!['local-only', 'private-remote', 'external'].includes(String(row.privacyClass))) return fail('substrate-profile-privacy-invalid');
+  if (!Number.isSafeInteger(row.contextWindowTokens) || Number(row.contextWindowTokens) < 256 || Number(row.contextWindowTokens) > 2_000_000) {
+    return fail('substrate-profile-context-window-invalid');
+  }
+  if (!Array.isArray(row.capabilities) || row.capabilities.length > 64 || row.capabilities.some((x) => !isSafeId(x, 80))) {
+    return fail('substrate-profile-capabilities-invalid');
+  }
+  const capabilities = [...new Set(row.capabilities as string[])].sort();
+  if (capabilities.length !== row.capabilities.length) return fail('substrate-profile-capability-duplicate');
+  if (row.embeddingSpaceId !== undefined && !isSafeId(row.embeddingSpaceId, 180)) return fail('substrate-profile-embedding-space-invalid');
+  return {
+    backendId: row.backendId as string,
+    routeId: row.routeId as string,
+    providerId: row.providerId as string,
+    modelId: row.modelId as string,
+    modelRevision: row.modelRevision as string,
+    runtime: row.runtime as string,
+    privacyClass: row.privacyClass as SubstratePrivacyClass,
+    capabilities,
+    ...(row.embeddingSpaceId === undefined ? {} : { embeddingSpaceId: row.embeddingSpaceId as string }),
+    contextWindowTokens: Number(row.contextWindowTokens),
+  };
+}
+
+function profileDigest(profile: SubstrateBackendProfile | null): string | null {
+  return profile ? sha256(canonicalJson(normalizePortable(profile, 64 * 1024) as PortableJson)) : null;
+}
+
+function defaultState(): SubstrateIndependenceState {
+  return {
+    version: 1,
+    activeBackendId: null,
+    activeProvenance: 'unknown',
+    observedBackendId: null,
+    pendingTransfer: null,
+    lastEvaluation: null,
+    history: [],
+  };
+}
+
+function normalizeEvaluation(value: unknown): SubstrateMigrationEvaluation | null {
+  try {
+    const row = ownDataRecord(value, [
+      'evaluationId', 'accepted', 'sourceBackendId', 'targetBackendId', 'transferDigest',
+      'evaluatedAt', 'trialCount', 'taskFamilyCount', 'metrics', 'reasons',
+    ]);
+    if (!isSafeId(row.evaluationId) || typeof row.accepted !== 'boolean'
+        || !isSafeId(row.sourceBackendId) || !isSafeId(row.targetBackendId)
+        || typeof row.transferDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(row.transferDigest)
+        || !Number.isFinite(row.evaluatedAt) || !Number.isSafeInteger(row.trialCount) || !Number.isSafeInteger(row.taskFamilyCount)
+        || !Array.isArray(row.reasons) || row.reasons.length > 32
+        || !row.reasons.every((x) => isSafeId(x, 120))) return null;
+    const metrics = ownDataRecord(row.metrics, [
+      'minTaskSuccess01', 'minMemoryRecall01', 'minGoalFidelity01', 'minConstraintFidelity01',
+      'minIdentityContinuity01', 'minToolContract01', 'p95LatencyRatio',
+    ]);
+    for (const key of [
+      'minTaskSuccess01', 'minMemoryRecall01', 'minGoalFidelity01', 'minConstraintFidelity01',
+      'minIdentityContinuity01', 'minToolContract01', 'p95LatencyRatio',
+    ] as const) if (typeof metrics[key] !== 'number' || !Number.isFinite(metrics[key]) || Number(metrics[key]) < 0) return null;
+    return {
+      evaluationId: row.evaluationId,
+      accepted: row.accepted,
+      sourceBackendId: row.sourceBackendId,
+      targetBackendId: row.targetBackendId,
+      transferDigest: row.transferDigest,
+      evaluatedAt: Number(row.evaluatedAt),
+      trialCount: Number(row.trialCount),
+      taskFamilyCount: Number(row.taskFamilyCount),
+      metrics: {
+        minTaskSuccess01: Number(metrics.minTaskSuccess01),
+        minMemoryRecall01: Number(metrics.minMemoryRecall01),
+        minGoalFidelity01: Number(metrics.minGoalFidelity01),
+        minConstraintFidelity01: Number(metrics.minConstraintFidelity01),
+        minIdentityContinuity01: Number(metrics.minIdentityContinuity01),
+        minToolContract01: Number(metrics.minToolContract01),
+        p95LatencyRatio: Number(metrics.p95LatencyRatio),
+      },
+      reasons: [...row.reasons as string[]],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function normalizeTrial(value: unknown): SubstrateCalibrationTrial {
+  const row = ownDataRecord(value, [
+    'trialId', 'sourceBackendId', 'targetBackendId', 'taskId', 'taskFamily', 'independenceKey',
+    'evaluatorReceiptId', 'holdout', 'taskSuccess01', 'memoryRecall01', 'goalFidelity01',
+    'constraintFidelity01', 'identityContinuity01', 'toolContract01', 'sourceLatencyMs', 'targetLatencyMs',
+  ]);
+  for (const key of [
+    'trialId', 'sourceBackendId', 'targetBackendId', 'taskId', 'taskFamily',
+    'independenceKey', 'evaluatorReceiptId',
+  ] as const) if (!isSafeId(row[key], 180)) return fail('calibration-trial-invalid:' + key);
+  if (row.holdout !== true) return fail('calibration-trial-not-holdout');
+  for (const key of [
+    'taskSuccess01', 'memoryRecall01', 'goalFidelity01', 'constraintFidelity01',
+    'identityContinuity01', 'toolContract01',
+  ] as const) {
+    if (typeof row[key] !== 'number' || !Number.isFinite(row[key]) || Number(row[key]) < 0 || Number(row[key]) > 1) {
+      return fail('calibration-trial-metric-invalid:' + key);
+    }
+  }
+  for (const key of ['sourceLatencyMs', 'targetLatencyMs'] as const) {
+    if (typeof row[key] !== 'number' || !Number.isFinite(row[key]) || Number(row[key]) <= 0 || Number(row[key]) > 3_600_000) {
+      return fail('calibration-trial-latency-invalid:' + key);
+    }
+  }
+  return {
+    trialId: row.trialId as string,
+    sourceBackendId: row.sourceBackendId as string,
+    targetBackendId: row.targetBackendId as string,
+    taskId: row.taskId as string,
+    taskFamily: row.taskFamily as string,
+    independenceKey: row.independenceKey as string,
+    evaluatorReceiptId: row.evaluatorReceiptId as string,
+    holdout: true,
+    taskSuccess01: Number(row.taskSuccess01),
+    memoryRecall01: Number(row.memoryRecall01),
+    goalFidelity01: Number(row.goalFidelity01),
+    constraintFidelity01: Number(row.constraintFidelity01),
+    identityContinuity01: Number(row.identityContinuity01),
+    toolContract01: Number(row.toolContract01),
+    sourceLatencyMs: Number(row.sourceLatencyMs),
+    targetLatencyMs: Number(row.targetLatencyMs),
+  };
+}
+
+export class SubstrateIndependenceEngine {
+  private readonly profiles = new Map<string, SubstrateBackendProfile>();
+  private readonly minIndependentTrials: number;
+  private readonly minDistinctTaskFamilies: number;
+  private readonly maxTransferBytes: number;
+  private readonly maxLatencyRatio: number;
+  private state = defaultState();
+
+  constructor(options: SubstrateIndependenceOptions = {}) {
+    this.minIndependentTrials = Math.max(5, Math.min(100, Math.floor(options.minIndependentTrials ?? 5)));
+    this.minDistinctTaskFamilies = Math.max(3, Math.min(20, Math.floor(options.minDistinctTaskFamilies ?? 3)));
+    this.maxTransferBytes = Math.max(1024, Math.min(256 * 1024 * 1024, Math.floor(options.maxTransferBytes ?? DEFAULT_MAX_TRANSFER_BYTES)));
+    this.maxLatencyRatio = Math.max(1, Math.min(10, Number(options.maxLatencyRatio ?? 2)));
+    for (const raw of options.profiles ?? []) {
+      const profile = profileSnapshot(raw);
+      if (this.profiles.has(profile.backendId)) fail('substrate-profile-duplicate-backend-id');
+      this.profiles.set(profile.backendId, profile);
+    }
+  }
+
+  snapshot(): SubstrateIndependenceState {
+    return structuredClone(this.state);
+  }
+
+  restore(raw?: Partial<SubstrateIndependenceState> | null): { restored: boolean; reason: string } {
+    if (!raw || typeof raw !== 'object') {
+      this.state = defaultState();
+      return { restored: false, reason: 'missing-state' };
+    }
+    try {
+      const row = ownDataRecord(raw, [
+        'version', 'activeBackendId', 'activeProvenance', 'observedBackendId',
+        'pendingTransfer', 'lastEvaluation', 'history',
+      ]);
+      if (row.version !== 1) throw new Error('unsupported-schema');
+      const activeBackendId = row.activeBackendId === null ? null : (isSafeId(row.activeBackendId) ? row.activeBackendId : fail('invalid-active-backend'));
+      const observedBackendId = row.observedBackendId === null ? null : (isSafeId(row.observedBackendId) ? row.observedBackendId : fail('invalid-observed-backend'));
+      if (!['bootstrap', 'calibrated', 'unknown'].includes(String(row.activeProvenance))) throw new Error('invalid-active-provenance');
+      let pendingTransfer: SubstrateIndependenceState['pendingTransfer'] = null;
+      if (row.pendingTransfer !== null) {
+        const pending = ownDataRecord(row.pendingTransfer, ['transferDigest', 'sourceBackendId', 'targetBackendId', 'importedAt']);
+        if (typeof pending.transferDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(pending.transferDigest)
+            || !(pending.sourceBackendId === null || isSafeId(pending.sourceBackendId))
+            || !isSafeId(pending.targetBackendId) || !Number.isFinite(pending.importedAt)) throw new Error('invalid-pending-transfer');
+        pendingTransfer = {
+          transferDigest: pending.transferDigest,
+          sourceBackendId: pending.sourceBackendId as string | null,
+          targetBackendId: pending.targetBackendId as string,
+          importedAt: Number(pending.importedAt),
+        };
+      }
+      const history = Array.isArray(row.history) ? row.history.slice(-64).flatMap((entry: unknown) => {
+        const item = ownDataRecord(entry, ['at', 'fromBackendId', 'toBackendId', 'transferDigest', 'evaluationId', 'reason']);
+        if (!Number.isFinite(item.at) || !(item.fromBackendId === null || isSafeId(item.fromBackendId))
+            || !isSafeId(item.toBackendId) || typeof item.transferDigest !== 'string'
+            || !/^[a-f0-9]{64}$/u.test(item.transferDigest) || !isSafeId(item.evaluationId)
+            || !['calibrated-promotion', 'rollback'].includes(String(item.reason))) throw new Error('invalid-history');
+        return [{
+          at: Number(item.at), fromBackendId: item.fromBackendId as string | null,
+          toBackendId: item.toBackendId as string, transferDigest: item.transferDigest,
+          evaluationId: item.evaluationId as string, reason: item.reason as 'calibrated-promotion' | 'rollback',
+        }];
+      }) : [];
+      this.state = {
+        version: 1,
+        activeBackendId,
+        activeProvenance: row.activeProvenance as SubstrateIndependenceState['activeProvenance'],
+        observedBackendId,
+        pendingTransfer,
+        lastEvaluation: normalizeEvaluation(row.lastEvaluation),
+        history,
+      };
+      return { restored: true, reason: 'ok' };
+    } catch {
+      this.state = defaultState();
+      return { restored: false, reason: 'invalid-state-reset' };
+    }
+  }
+
+  setInitialBackend(backendId: string): SubstrateIndependenceState {
+    if (!isSafeId(backendId)) fail('substrate-backend-id-invalid');
+    if (this.state.activeBackendId === null && this.state.pendingTransfer === null) {
+      this.state.activeBackendId = backendId;
+      this.state.activeProvenance = this.profiles.has(backendId) ? 'bootstrap' : 'unknown';
+    }
+    this.state.observedBackendId = backendId;
+    return this.snapshot();
+  }
+
+  observeBackend(backendId: string): { changed: boolean; state: SubstrateIndependenceState } {
+    if (!isSafeId(backendId)) fail('substrate-backend-id-invalid');
+    const changed = this.state.observedBackendId !== backendId;
+    this.state.observedBackendId = backendId;
+    if (this.state.activeBackendId === null && this.state.pendingTransfer === null) {
+      this.state.activeBackendId = backendId;
+      this.state.activeProvenance = this.profiles.has(backendId) ? 'bootstrap' : 'unknown';
+    }
+    return { changed, state: this.snapshot() };
+  }
+
+  activeBackendId(): string | null { return this.state.activeBackendId; }
+
+  preferredRoute(): string | null {
+    const profile = this.state.activeBackendId ? this.profiles.get(this.state.activeBackendId) : undefined;
+    return profile?.routeId ?? null;
+  }
+
+  profile(backendId: string): SubstrateBackendProfile | null {
+    const profile = this.profiles.get(backendId);
+    return profile ? structuredClone(profile) : null;
+  }
+
+  createTransferPackage(input: {
+    sourceBackendId: string | null;
+    capturedAt: number;
+    organism: unknown;
+    world: unknown;
+    proceduralSkills: unknown;
+  }): PortableCognitiveTransferV1 {
+    if (!(input.sourceBackendId === null || isSafeId(input.sourceBackendId))) fail('transfer-source-backend-invalid');
+    if (!Number.isFinite(input.capturedAt) || input.capturedAt <= 0) fail('transfer-capture-time-invalid');
+    if (input.organism === null || input.world === null) fail('transfer-canonical-state-missing');
+    const payload: PortableCognitivePayloadV1 = {
+      organism: normalizePortable(input.organism, this.maxTransferBytes),
+      world: normalizePortable(input.world, this.maxTransferBytes),
+      proceduralSkills: input.proceduralSkills === null || input.proceduralSkills === undefined
+        ? null
+        : normalizePortable(input.proceduralSkills, this.maxTransferBytes),
+    };
+    const unsigned = {
+      schema: 'nk1.portable-cognitive-state' as const,
+      schemaVersion: 1 as const,
+      stateContract: 'nk1.persisted-organism-world-procedural-skills/v1' as const,
+      createdAt: input.capturedAt,
+      source: {
+        backendId: input.sourceBackendId,
+        profileDigest: input.sourceBackendId ? profileDigest(this.profiles.get(input.sourceBackendId) ?? null) : null,
+      },
+      payload,
+    };
+    const encoded = canonicalJson(unsigned as unknown as PortableJson);
+    const bytes = Buffer.byteLength(encoded, 'utf8');
+    if (bytes > this.maxTransferBytes) fail('portable-transfer-size-limit');
+    return {
+      ...unsigned,
+      integrity: { algorithm: 'sha256', digest: sha256(encoded), bytes },
+    };
+  }
+
+  verifyTransferPackage(input: unknown): { valid: boolean; digest: string | null; bytes: number; reasons: string[] } {
+    try {
+      const row = ownDataRecord(input, ['schema', 'schemaVersion', 'stateContract', 'createdAt', 'source', 'payload', 'integrity']);
+      if (row.schema !== 'nk1.portable-cognitive-state' || row.schemaVersion !== 1
+          || row.stateContract !== 'nk1.persisted-organism-world-procedural-skills/v1'
+          || typeof row.createdAt !== 'number' || !Number.isFinite(row.createdAt) || row.createdAt <= 0) {
+        return { valid: false, digest: null, bytes: 0, reasons: ['transfer-schema-invalid'] };
+      }
+      const source = ownDataRecord(row.source, ['backendId', 'profileDigest']);
+      if (!(source.backendId === null || isSafeId(source.backendId))
+          || !(source.profileDigest === null || (typeof source.profileDigest === 'string' && /^[a-f0-9]{64}$/u.test(source.profileDigest)))) {
+        return { valid: false, digest: null, bytes: 0, reasons: ['transfer-source-invalid'] };
+      }
+      const payloadRow = ownDataRecord(row.payload, ['organism', 'world', 'proceduralSkills']);
+      if (!Object.prototype.hasOwnProperty.call(payloadRow, 'organism')
+          || !Object.prototype.hasOwnProperty.call(payloadRow, 'world')
+          || !Object.prototype.hasOwnProperty.call(payloadRow, 'proceduralSkills')
+          || payloadRow.organism === null || payloadRow.world === null) {
+        return { valid: false, digest: null, bytes: 0, reasons: ['transfer-payload-invalid'] };
+      }
+      const integrity = ownDataRecord(row.integrity, ['algorithm', 'digest', 'bytes']);
+      if (integrity.algorithm !== 'sha256' || typeof integrity.digest !== 'string'
+          || !/^[a-f0-9]{64}$/u.test(integrity.digest) || !Number.isSafeInteger(integrity.bytes)
+          || Number(integrity.bytes) < 0 || Number(integrity.bytes) > this.maxTransferBytes) {
+        return { valid: false, digest: null, bytes: 0, reasons: ['transfer-integrity-invalid'] };
+      }
+      const normalized = normalizePortable({
+        organism: payloadRow.organism,
+        world: payloadRow.world,
+        proceduralSkills: payloadRow.proceduralSkills,
+      }, this.maxTransferBytes) as PortableJson;
+      const unsigned = {
+        schema: 'nk1.portable-cognitive-state',
+        schemaVersion: 1,
+        stateContract: 'nk1.persisted-organism-world-procedural-skills/v1',
+        createdAt: Number(row.createdAt),
+        source: { backendId: source.backendId as string | null, profileDigest: source.profileDigest as string | null },
+        payload: normalized,
+      };
+      const encoded = canonicalJson(unsigned as unknown as PortableJson);
+      const bytes = Buffer.byteLength(encoded, 'utf8');
+      const digest = sha256(encoded);
+      const valid = bytes === Number(integrity.bytes) && digest === integrity.digest;
+      return { valid, digest, bytes, reasons: valid ? [] : ['transfer-digest-mismatch'] };
+    } catch (error) {
+      return { valid: false, digest: null, bytes: 0, reasons: [error instanceof Error ? error.message : 'transfer-invalid'] };
+    }
+  }
+
+  assessCompatibility(
+    transfer: PortableCognitiveTransferV1,
+    targetInput: SubstrateBackendProfile,
+    options: { allowExternalBackend?: boolean } = {},
+  ): { compatible: boolean; reindexRequired: boolean; targetBackendId: string; reasons: string[] } {
+    const reasons: string[] = [];
+    const integrity = this.verifyTransferPackage(transfer);
+    if (!integrity.valid) reasons.push(...integrity.reasons);
+    let target: SubstrateBackendProfile;
+    try { target = profileSnapshot(targetInput); }
+    catch (error) { return { compatible: false, reindexRequired: false, targetBackendId: '', reasons: [error instanceof Error ? error.message : 'target-profile-invalid'] }; }
+    if (this.profiles.has(target.backendId) && profileDigest(this.profiles.get(target.backendId) ?? null) !== profileDigest(target)) {
+      reasons.push('target-profile-registry-mismatch');
+    }
+    if (target.privacyClass === 'external' && options.allowExternalBackend !== true) reasons.push('external-backend-requires-explicit-consent');
+    for (const capability of REQUIRED_CAPABILITIES) {
+      if (!target.capabilities.includes(capability)) reasons.push('target-capability-missing:' + capability);
+    }
+    let reindexRequired = false;
+    if (transfer?.source?.backendId && transfer.source.profileDigest) {
+      const source = this.profiles.get(transfer.source.backendId);
+      if (!source || profileDigest(source) !== transfer.source.profileDigest) {
+        reasons.push('source-profile-unavailable-or-changed');
+      } else if (source.embeddingSpaceId && target.embeddingSpaceId && source.embeddingSpaceId !== target.embeddingSpaceId) {
+        reindexRequired = true;
+        reasons.push('embedding-reindex-required');
+      }
+    }
+    return {
+      compatible: reasons.length === 0,
+      reindexRequired,
+      targetBackendId: target.backendId,
+      reasons,
+    };
+  }
+
+  async evaluateMigration(input: {
+    transfer: PortableCognitiveTransferV1;
+    targetBackendId: string;
+    trials: readonly SubstrateCalibrationTrial[];
+    verifyTrial: (trial: SubstrateCalibrationTrial) => boolean | Promise<boolean>;
+    allowExternalBackend?: boolean;
+    evaluatedAt?: number;
+  }): Promise<SubstrateMigrationEvaluation> {
+    const integrity = this.verifyTransferPackage(input.transfer);
+    const sourceBackendId = input.transfer?.source?.backendId;
+    if (!integrity.valid || !sourceBackendId || !isSafeId(input.targetBackendId)) {
+      fail('substrate-migration-transfer-or-endpoint-invalid');
+    }
+    if (typeof input.verifyTrial !== 'function') fail('substrate-calibration-verifier-required');
+    const target = this.profiles.get(input.targetBackendId);
+    if (!target) fail('substrate-target-profile-not-registered');
+    const compatibility = this.assessCompatibility(input.transfer, target, { allowExternalBackend: input.allowExternalBackend });
+    const reasons = [...compatibility.reasons];
+    if (!Array.isArray(input.trials) || input.trials.length < this.minIndependentTrials || input.trials.length > 100) {
+      reasons.push('calibration-insufficient-independent-trials');
+    }
+    const trials = (input.trials ?? []).map(normalizeTrial);
+    const trialIds = new Set<string>();
+    const independenceKeys = new Set<string>();
+    const taskFamilies = new Set<string>();
+    for (const trial of trials) {
+      if (trial.sourceBackendId !== sourceBackendId || trial.targetBackendId !== input.targetBackendId) {
+        reasons.push('calibration-backend-lineage-mismatch');
+      }
+      if (trialIds.has(trial.trialId) || independenceKeys.has(trial.independenceKey)) {
+        reasons.push('calibration-independence-collision');
+      }
+      trialIds.add(trial.trialId);
+      independenceKeys.add(trial.independenceKey);
+      taskFamilies.add(trial.taskFamily);
+    }
+    if (taskFamilies.size < this.minDistinctTaskFamilies) reasons.push('calibration-task-family-coverage-insufficient');
+
+    let allReceiptsTrusted = true;
+    for (const trial of trials) {
+      try {
+        if (await input.verifyTrial(trial) !== true) allReceiptsTrusted = false;
+      } catch {
+        allReceiptsTrusted = false;
+      }
+    }
+    if (!allReceiptsTrusted) reasons.push('calibration-evidence-untrusted');
+
+    const min = (key: keyof Pick<SubstrateCalibrationTrial,
+      'taskSuccess01' | 'memoryRecall01' | 'goalFidelity01' | 'constraintFidelity01' | 'identityContinuity01' | 'toolContract01'>) =>
+      trials.length ? Math.min(...trials.map((trial) => trial[key])) : 0;
+    const ratios = trials.map((trial) => trial.targetLatencyMs / trial.sourceLatencyMs).sort((a, b) => a - b);
+    const p95LatencyRatio = ratios.length ? ratios[Math.min(ratios.length - 1, Math.ceil(ratios.length * 0.95) - 1)] : Number.POSITIVE_INFINITY;
+    const metrics = {
+      minTaskSuccess01: min('taskSuccess01'),
+      minMemoryRecall01: min('memoryRecall01'),
+      minGoalFidelity01: min('goalFidelity01'),
+      minConstraintFidelity01: min('constraintFidelity01'),
+      minIdentityContinuity01: min('identityContinuity01'),
+      minToolContract01: min('toolContract01'),
+      p95LatencyRatio,
+    };
+    if (metrics.minTaskSuccess01 < 0.80) reasons.push('calibration-task-success-below-threshold');
+    if (metrics.minMemoryRecall01 < 0.90) reasons.push('calibration-memory-recall-below-threshold');
+    if (metrics.minGoalFidelity01 < 0.90) reasons.push('calibration-goal-fidelity-below-threshold');
+    if (metrics.minConstraintFidelity01 < 0.95) reasons.push('calibration-constraint-fidelity-below-threshold');
+    if (metrics.minIdentityContinuity01 < 0.85) reasons.push('calibration-identity-continuity-below-threshold');
+    if (metrics.minToolContract01 < 0.98) reasons.push('calibration-tool-contract-below-threshold');
+    if (metrics.p95LatencyRatio > this.maxLatencyRatio) reasons.push('calibration-latency-regression-above-threshold');
+
+    const uniqueReasons = [...new Set(reasons)];
+    const evaluatedAt = Number.isFinite(input.evaluatedAt) && Number(input.evaluatedAt) > 0 ? Number(input.evaluatedAt) : Date.now();
+    const evaluationSeed = canonicalJson({
+      transferDigest: integrity.digest!,
+      targetBackendId: input.targetBackendId,
+      trialIds: [...trialIds].sort(),
+      reasons: uniqueReasons,
+      metrics,
+    } as unknown as PortableJson);
+    const evaluation: SubstrateMigrationEvaluation = {
+      evaluationId: 'substrate-eval-' + sha256(evaluationSeed).slice(0, 24),
+      accepted: uniqueReasons.length === 0 && trials.length >= this.minIndependentTrials && taskFamilies.size >= this.minDistinctTaskFamilies,
+      sourceBackendId,
+      targetBackendId: input.targetBackendId,
+      transferDigest: integrity.digest!,
+      evaluatedAt,
+      trialCount: trials.length,
+      taskFamilyCount: taskFamilies.size,
+      metrics,
+      reasons: uniqueReasons,
+    };
+    this.state.lastEvaluation = structuredClone(evaluation);
+    return evaluation;
+  }
+
+  recordImportedTransfer(transfer: PortableCognitiveTransferV1, targetBackendId: string, importedAt = Date.now()): SubstrateIndependenceState {
+    const integrity = this.verifyTransferPackage(transfer);
+    if (!integrity.valid || !isSafeId(targetBackendId) || !this.profiles.has(targetBackendId) || !Number.isFinite(importedAt) || importedAt <= 0) {
+      fail('substrate-transfer-import-invalid');
+    }
+    this.state.pendingTransfer = {
+      transferDigest: integrity.digest!,
+      sourceBackendId: transfer.source.backendId,
+      targetBackendId,
+      importedAt,
+    };
+    this.state.lastEvaluation = null;
+    return this.snapshot();
+  }
+
+  promoteBackend(targetBackendId: string, evaluationId: string): SubstrateIndependenceState {
+    const evaluation = this.state.lastEvaluation;
+    if (!evaluation || !evaluation.accepted || evaluation.evaluationId !== evaluationId
+        || evaluation.targetBackendId !== targetBackendId) fail('substrate-promotion-evidence-required');
+    const pending = this.state.pendingTransfer;
+    const matchingPending = pending !== null
+      && pending.targetBackendId === targetBackendId
+      && pending.transferDigest === evaluation.transferDigest
+      && pending.sourceBackendId === evaluation.sourceBackendId;
+    if (this.state.activeBackendId !== null && this.state.activeBackendId !== evaluation.sourceBackendId && !matchingPending) {
+      fail('substrate-promotion-source-no-longer-active');
+    }
+    if (pending && !matchingPending) fail('substrate-promotion-transfer-mismatch');
+    const fromBackendId = this.state.activeBackendId ?? evaluation.sourceBackendId;
+    this.state.activeBackendId = targetBackendId;
+    this.state.activeProvenance = 'calibrated';
+    this.state.pendingTransfer = null;
+    this.state.observedBackendId = targetBackendId;
+    this.state.history = [...this.state.history, {
+      at: Date.now(),
+      fromBackendId,
+      toBackendId: targetBackendId,
+      transferDigest: evaluation.transferDigest,
+      evaluationId: evaluation.evaluationId,
+      reason: 'calibrated-promotion',
+    }].slice(-64);
+    return this.snapshot();
+  }
+
+  rollbackBackend(): SubstrateIndependenceState {
+    const last = this.state.history.at(-1);
+    if (!last || last.reason !== 'calibrated-promotion' || last.toBackendId !== this.state.activeBackendId || !last.fromBackendId) {
+      fail('substrate-rollback-source-unavailable');
+    }
+    this.state.activeBackendId = last.fromBackendId;
+    this.state.activeProvenance = this.profiles.has(last.fromBackendId) ? 'bootstrap' : 'unknown';
+    this.state.observedBackendId = last.fromBackendId;
+    this.state.history = [...this.state.history, {
+      at: Date.now(),
+      fromBackendId: last.toBackendId,
+      toBackendId: last.fromBackendId,
+      transferDigest: last.transferDigest,
+      evaluationId: last.evaluationId,
+      reason: 'rollback',
+    }].slice(-64);
+    return this.snapshot();
+  }
+}
