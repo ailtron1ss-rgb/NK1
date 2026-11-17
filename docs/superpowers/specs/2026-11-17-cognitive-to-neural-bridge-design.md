@@ -15,13 +15,13 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 - Normalize malformed/non-finite values, reject future or more-than-eight-tick-old neural snapshots, mark unavailable neural state explicitly, and clamp every numeric channel to [0, 1].
 - Apply bounded sampling controls (`temperature`, `maxTokens`) and attach the structured profile to `LanguageRequest`.
 - Route both cognitive-proposal generation and user/autonomous language generation through the same bridge.
-- Expose explicit adapter/steering intentions and record telemetry distinguishing hints from controls actually applied.
+- Expose explicit adapter/steering intentions and record telemetry distinguishing request controls configured, llama.cpp template kwargs sent, and neural/activation controls not executed.
 - Provide an immediate runtime kill switch; disabled mode leaves requests unchanged.
 
 ## Non-goals / anti-goals
 
 - No model-weight edits, activation hooks, hidden-state patches, residual adapters, or claims of neuron-level steering.
-- No forced provider/adapter switch: `adapterHint` is advisory until a provider explicitly supports it.
+- No forced provider/adapter switch: `adapterHint` is advisory. The local llama.cpp adapter may forward named channels through `chat_template_kwargs` only when `LLAMA_CPP_NK1_TEMPLATE_CONTROLS=1`; the selected Jinja template must explicitly consume them.
 - No new LLM, runtime dependency, external process, or persistence schema migration.
 - No learning from unverified feedback and no autonomous increase in resource budget.
 
@@ -37,14 +37,14 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 - Modes: `reflex | shallow | retrieve | deep | simulate | defer | sleep`.
 - Feature vector order: action one-hot (7), organism motivation/uncertainty/urgency/budget/attention (5), B365 prediction/plasticity/neuromodulation/sparsity/coherence/confidence/agreement/counterfactual/goal/entropy (10), B365 allostatic drive/arousal/exploration/preservation/reflection/social approach (6), B365 self agency/continuity/growth/identity conflict (4), B365 goal ownership/commitment/revision pressure (3), neural freshness (1), then cognitive mode one-hot (7). Total: 43.
 - The output includes a stable feature-key schema, B365 snapshot provenance/age, a mode-derived adapter hint, budget- and preservation-scaled sampling parameters, and steering intent channels capped at 0.15.
-- `controlsConfigured` records that sampling parameters are configured on the request while adapter switching, activation steering and residual-block execution remain false.
+- `controlsConfigured` records that sampling parameters are configured on the request while adapter switching, activation steering and residual-block execution remain false. A separate provider receipt records only that llama.cpp template kwargs were sent, not that the template consumed them.
 - Bridge defaults enabled; `RuntimeConfig.cognitiveToNeuralBridge.enabled=false` is the emergency bypass.
 
 ## Integration points
 
 - Existing `OrganismState` and `OrganismGoal` from `core/types.ts`.
 - Existing `CognitiveBudgetManager` snapshot and the already-computed `b365UnifiedNeuroCausalDiagnostics()` read-only signal snapshot exposed by `OrganismCore`; Runtime reuses its per-cycle B365 snapshot rather than running B365 a second time.
-- Existing `LanguageRequest` / `LanguageInvoker` boundary.
+- Existing `LanguageRequest` / `LanguageInvoker` boundary; the local llama.cpp adapter's `chat_template_kwargs` opt-in adds an explicit template-variable route while non-local providers continue to receive supported sampling parameters and ignore unsupported neural controls.
 - Existing `OrganismRuntime` proposal and response generation paths.
 
 ## Success evidence
