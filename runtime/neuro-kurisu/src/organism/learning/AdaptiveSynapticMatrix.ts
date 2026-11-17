@@ -476,7 +476,7 @@ export class AdaptiveSynapticMatrixEngine {
           at: Number.isFinite(row.at) && row.at >= 0 ? row.at : 0,
         }))
       : [];
-    const metrics = raw?.metrics ?? {};
+    const metrics: AdaptiveSynapticMatrixState['metrics'] = raw?.metrics ?? emptyState().metrics;
     next.metrics = {
       routeDecisions: Number.isSafeInteger(metrics.routeDecisions) ? Math.max(0, metrics.routeDecisions) : 0,
       adapterSelections: Number.isSafeInteger(metrics.adapterSelections) ? Math.max(0, metrics.adapterSelections) : 0,
