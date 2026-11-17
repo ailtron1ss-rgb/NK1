@@ -468,7 +468,9 @@ function outcomeEvidence(record: InventionRecord): ScienceArtifact[] {
     }
     return {
       reference: outcome.evidenceRef,
-      sha256: outcome.attestationFingerprint,
+      // The artifact-store check covers the full signed envelope (payload + signature),
+      // not merely the canonical payload fingerprint used by the verifier ledger.
+      sha256: digest(outcome.signedArtifact),
     };
   });
 }
@@ -991,7 +993,8 @@ export class ScienceRepublic {
       });
       required.push({
         reference: 'signed-critique:' + invention.critique.artifactId,
-        sha256: invention.critique.attestationFingerprint,
+        // Include the Ed25519 signature bytes in the externally checked receipt.
+        sha256: digest(invention.critique.signedArtifact),
       });
     }
     return required;

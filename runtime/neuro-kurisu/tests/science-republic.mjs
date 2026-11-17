@@ -46,26 +46,37 @@ const resolveScienceRoleIdentity = (_role, actorId) =>
 const auditByteChecks = [];
 const verifyScienceArtifactBytes = (artifact, context) => {
   if (context.purpose === 'audit') auditByteChecks.push(context);
-  return artifactBytes.get(artifact.reference) === artifact.sha256;
+  const bytes = artifactBytes.get(artifact.reference);
+  return typeof bytes === 'string' && digest(bytes) === artifact.sha256;
 };
-const rememberArtifactBytes = artifact =>
-  artifactBytes.set(artifact.reference, artifact.sha256);
+const rememberArtifactBytes = (artifact, bytes) => {
+  if (typeof bytes !== 'string' || digest(bytes) !== artifact.sha256) {
+    throw new Error('test-artifact-bytes-do-not-match-reference-digest');
+  }
+  artifactBytes.set(artifact.reference, bytes);
+};
 const rememberSignedEvidence = artifact => {
-  const fingerprint = createHash('sha256')
+  const payloadFingerprint = createHash('sha256')
     .update(canonicalOutcomePayload(artifact.payload))
     .digest('hex');
+  const storedBytes = canonical(artifact);
+  const storedDigest = digest(storedBytes);
   const measurement = artifact.payload.measurement;
   if (measurement?.contextType === 'invention-critique') {
-    rememberArtifactBytes({ reference: measurement.reviewRef, sha256: measurement.reviewSha256 });
+    const reviewBytes = 'review-' + artifact.payload.measurement.experimentId;
+    rememberArtifactBytes({
+      reference: measurement.reviewRef,
+      sha256: measurement.reviewSha256,
+    }, reviewBytes);
     rememberArtifactBytes({
       reference: 'signed-critique:' + artifact.payload.artifactId,
-      sha256: fingerprint,
-    });
+      sha256: storedDigest,
+    }, storedBytes);
   } else if (measurement?.contextType === 'invention-outcome') {
     rememberArtifactBytes({
-      reference: 'signed-artifact:' + artifact.payload.artifactId + ':sha256:' + fingerprint,
-      sha256: fingerprint,
-    });
+      reference: 'signed-artifact:' + artifact.payload.artifactId + ':sha256:' + payloadFingerprint,
+      sha256: storedDigest,
+    }, storedBytes);
   }
 };
 const runtime = new EvidenceResearchSubsystemRuntime(
@@ -130,7 +141,7 @@ const science = runtime.openScienceCaseFromCapturedCandidate({
   evidence: { reference: 'artifact://science/discovery.json', sha256: digest('discovery') },
   actors,
 });
-rememberArtifactBytes(science.discoveryEvidence);
+rememberArtifactBytes(science.discoveryEvidence, 'discovery');
 assert.equal(science.stage, 'discovered');
 assert.equal(science.trust.roleIdentity, 'host-attested');
 assert.equal(science.trust.artifactBytesVerified, false);
@@ -190,7 +201,7 @@ assert.throws(
 );
 revokeTheoristIdentity = false;
 const theory = runtime.scienceRepublic.theorize(science.id, theoryInput);
-rememberArtifactBytes(theory.theory.evidence);
+rememberArtifactBytes(theory.theory.evidence, 'theory');
 assert.equal(theory.stage, 'theorized');
 
 const replicationSeeds = Array.from({ length: 12 }, (_, index) => 11 + index);
@@ -223,8 +234,8 @@ const holdoutManifest = {
   reference: 'artifact://science/holdout-manifest.json',
   sha256: evaluation.holdoutTestFingerprint,
 };
-rememberArtifactBytes(manifest);
-rememberArtifactBytes(holdoutManifest);
+rememberArtifactBytes(manifest, 'science-validation-manifest');
+rememberArtifactBytes(holdoutManifest, 'science-sealed-holdout-manifest');
 
 const duplicateRunnerEvaluation = {
   ...evaluation,
@@ -280,7 +291,7 @@ const prototype = runtime.scienceRepublic.attachPrototype(science.id, {
   reference: 'artifact://science/prototype.bin',
   sha256: digest('science-prototype'),
 });
-rememberArtifactBytes(prototype.prototype);
+rememberArtifactBytes(prototype.prototype, 'science-prototype');
 assert.equal(prototype.stage, 'prototyped');
 
 function signedArtifact(invention, phase, seed, options = {}) {
@@ -424,7 +435,7 @@ assert.throws(() => runtime.scienceRepublic.audit(science.id, {
 
 const auditRef = 'audit://science-republic/' + science.id;
 const auditSha256 = digest('audit-' + science.id);
-rememberArtifactBytes({ reference: auditRef, sha256: auditSha256 });
+rememberArtifactBytes({ reference: auditRef, sha256: auditSha256 }, 'audit-' + science.id);
 const audited = runtime.scienceRepublic.audit(science.id, {
   actorId: actors.auditor,
   auditRef,
