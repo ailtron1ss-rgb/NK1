@@ -6,6 +6,10 @@ import { EmbodimentSubsystemRuntime } from './EmbodimentSubsystemRuntime.ts';
 import { AgencySubsystemRuntime } from './AgencySubsystemRuntime.ts';
 import { EvidenceResearchSubsystemRuntime } from './EvidenceResearchSubsystemRuntime.ts';
 import type { InventionVerifierKeyResolver } from '../research/TheInventionLoop.ts';
+import type {
+  ScienceRoleIdentityResolver,
+  ScienceArtifactBytesVerifier,
+} from '../research/ScienceRepublic.ts';
 import { organismSystemContract, organismSystemContracts, type OrganismSystemContract, type ResolvedOrganismSystemContract, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
 import { WillIntegrationBridge } from '../integration/will/WillIntegrationBridge.ts';
 import { LuminaAdaptationFabric } from '../integration/lumina/LuminaAdaptationFabric.ts';
@@ -63,6 +67,8 @@ export class OrganismSystemFabric {
     agency: AgencySubsystemRuntime;
     research: EvidenceResearchSubsystemRuntime;
     inventionVerifierKeyResolver: InventionVerifierKeyResolver;
+    scienceRoleIdentityResolver: ScienceRoleIdentityResolver;
+    scienceArtifactBytesVerifier: ScienceArtifactBytesVerifier;
     willIntegration: WillIntegrationBridge;
     luminaAdaptation: LuminaAdaptationFabric;
     hexisAdaptation: HexisAdaptationFabric;
@@ -77,7 +83,20 @@ export class OrganismSystemFabric {
     this.world=input.world ?? new WorldSubsystemRuntime();
     this.embodiment=input.embodiment ?? new EmbodimentSubsystemRuntime();
     this.agency=input.agency ?? new AgencySubsystemRuntime();
-    this.research=input.research ?? new EvidenceResearchSubsystemRuntime(input.inventionVerifierKeyResolver);
+    this.research=input.research ?? new EvidenceResearchSubsystemRuntime(
+      input.inventionVerifierKeyResolver,
+      input.scienceRoleIdentityResolver,
+      input.scienceArtifactBytesVerifier,
+    );
+    if (input.research && input.inventionVerifierKeyResolver) {
+      this.research.configureInventionVerifierKeyResolver(input.inventionVerifierKeyResolver);
+    }
+    if (input.research && input.scienceRoleIdentityResolver) {
+      this.research.configureScienceRoleIdentityResolver(input.scienceRoleIdentityResolver);
+    }
+    if (input.research && input.scienceArtifactBytesVerifier) {
+      this.research.configureScienceArtifactBytesVerifier(input.scienceArtifactBytesVerifier);
+    }
     this.willIntegration=input.willIntegration ?? new WillIntegrationBridge();
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
@@ -95,6 +114,16 @@ export class OrganismSystemFabric {
   /** Late-bind trusted evaluator keys supplied by the host after Core construction. */
   configureInventionVerifierKeyResolver(resolveKey: InventionVerifierKeyResolver): void {
     this.research.configureInventionVerifierKeyResolver(resolveKey);
+  }
+
+  /** Late-bind the six role identities through the host principal registry. */
+  configureScienceRoleIdentityResolver(resolveRole: ScienceRoleIdentityResolver): void {
+    this.research.configureScienceRoleIdentityResolver(resolveRole);
+  }
+
+  /** Late-bind actual artifact-store byte verification through the host. */
+  configureScienceArtifactBytesVerifier(verifyArtifact: ScienceArtifactBytesVerifier): void {
+    this.research.configureScienceArtifactBytesVerifier(verifyArtifact);
   }
 
   snapshot(): OrganismSystemFabricSnapshot {

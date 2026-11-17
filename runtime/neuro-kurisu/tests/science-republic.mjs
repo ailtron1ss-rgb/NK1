@@ -4,6 +4,7 @@ import { EvidenceResearchSubsystemRuntime } from '../src/organism/core/EvidenceR
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { canonicalOutcomePayload } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { inventionProtocolFingerprint } from '../src/organism/research/TheInventionLoop.ts';
+import { OrganismSystemFabric } from '../src/organism/core/OrganismSystemFabric.ts';
 
 const digest = value => createHash('sha256').update(String(value)).digest('hex');
 const canonical = value => {
@@ -69,6 +70,34 @@ const runtime = new EvidenceResearchSubsystemRuntime(
   resolveScienceRoleIdentity,
   verifyScienceArtifactBytes,
 );
+
+// Verify the actual organism composition root can inject the host trust
+// adapters into its one canonical research subsystem.
+const fabric = new OrganismSystemFabric({
+  inventionVerifierKeyResolver: resolveKey,
+  scienceRoleIdentityResolver: resolveScienceRoleIdentity,
+  scienceArtifactBytesVerifier: verifyScienceArtifactBytes,
+});
+assert.ok(fabric.research.scienceRepublic);
+const fabricCase = fabric.research.scienceRepublic.discover({
+  title: 'Fabric-level role binding',
+  domain: 'composition root',
+  observation: 'The organism fabric routes host identity policy to its research runtime.',
+  evidence: { reference: 'artifact://science/fabric-discovery.json', sha256: digest('fabric-discovery') },
+  actors,
+});
+assert.equal(fabricCase.trust.roleIdentity, 'host-attested');
+const lateConfiguredFabric = new OrganismSystemFabric();
+lateConfiguredFabric.configureScienceRoleIdentityResolver(resolveScienceRoleIdentity);
+lateConfiguredFabric.configureScienceArtifactBytesVerifier(verifyScienceArtifactBytes);
+const lateConfiguredCase = lateConfiguredFabric.research.scienceRepublic.discover({
+  title: 'Late-bound fabric trust',
+  domain: 'composition root',
+  observation: 'Host adapters can be configured after the fabric is constructed.',
+  evidence: { reference: 'artifact://science/fabric-late-binding.json', sha256: digest('fabric-late-binding') },
+  actors,
+});
+assert.equal(lateConfiguredCase.trust.roleIdentity, 'host-attested');
 
 assert.ok(runtime.scienceRepublic, 'EvidenceResearchSubsystemRuntime owns the Science Republic');
 assert.equal(runtime.scienceRepublic.inventionLoop, runtime.inventionLoop,
