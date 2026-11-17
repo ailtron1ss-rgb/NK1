@@ -78,6 +78,7 @@ export interface SubstrateMigrationEvaluation {
   evaluatedAt: number;
   trialCount: number;
   taskFamilyCount: number;
+  receipts: SubstrateCalibrationTrial[];
   metrics: {
     minTaskSuccess01: number;
     minMemoryRecall01: number;
@@ -420,12 +421,13 @@ function normalizeEvaluation(value: unknown): SubstrateMigrationEvaluation | nul
   try {
     const row = ownDataRecord(value, [
       'evaluationId', 'accepted', 'sourceBackendId', 'targetBackendId', 'transferDigest',
-      'evaluatedAt', 'trialCount', 'taskFamilyCount', 'metrics', 'reasons',
+      'evaluatedAt', 'trialCount', 'taskFamilyCount', 'receipts', 'metrics', 'reasons',
     ]);
     if (!isSafeId(row.evaluationId) || typeof row.accepted !== 'boolean'
         || !isSafeId(row.sourceBackendId) || !isSafeId(row.targetBackendId)
         || typeof row.transferDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(row.transferDigest)
         || !Number.isFinite(row.evaluatedAt) || !Number.isSafeInteger(row.trialCount) || !Number.isSafeInteger(row.taskFamilyCount)
+        || !Array.isArray(row.receipts) || row.receipts.length > 100 || row.receipts.length !== row.trialCount
         || !Array.isArray(row.reasons) || row.reasons.length > 32
         || !row.reasons.every((x) => isSafeId(x, 120))) return null;
     const metrics = ownDataRecord(row.metrics, [
@@ -454,6 +456,7 @@ function normalizeEvaluation(value: unknown): SubstrateMigrationEvaluation | nul
         minToolContract01: Number(metrics.minToolContract01),
         p95LatencyRatio: Number(metrics.p95LatencyRatio),
       },
+      receipts: (row.receipts as unknown[]).map(normalizeTrial),
       reasons: [...row.reasons as string[]],
     };
   } catch {
@@ -532,6 +535,7 @@ export class SubstrateIndependenceEngine {
   private readonly minDistinctTaskFamilies: number;
   private readonly maxTransferBytes: number;
   private readonly maxLatencyRatio: number;
+  private readonly verifiedEvaluationIds = new Set<string>();
   private state = defaultState();
 
   constructor(options: SubstrateIndependenceOptions = {}) {
@@ -551,6 +555,7 @@ export class SubstrateIndependenceEngine {
   }
 
   restore(raw?: Partial<SubstrateIndependenceState> | null): { restored: boolean; reason: string } {
+    this.verifiedEvaluationIds.clear();
     if (!raw || typeof raw !== 'object') {
       this.state = defaultState();
       return { restored: false, reason: 'missing-state' };
@@ -858,6 +863,9 @@ export class SubstrateIndependenceEngine {
       transferDigest: integrity.digest!,
       targetBackendId: input.targetBackendId,
       trialIds: [...trialIds].sort(),
+      taskIds: [...taskIds].sort(),
+      receiptIds: [...receiptIds].sort(),
+      independenceKeys: [...independenceKeys].sort(),
       reasons: uniqueReasons,
       metrics,
     } as unknown as PortableJson);
@@ -870,10 +878,13 @@ export class SubstrateIndependenceEngine {
       evaluatedAt,
       trialCount: trials.length,
       taskFamilyCount: taskFamilies.size,
+      receipts: trials.map((trial) => structuredClone(trial)),
       metrics,
       reasons: uniqueReasons,
     };
     this.state.lastEvaluation = structuredClone(evaluation);
+    if (evaluation.accepted) this.verifiedEvaluationIds.add(evaluation.evaluationId);
+    else this.verifiedEvaluationIds.delete(evaluation.evaluationId);
     return evaluation;
   }
 
@@ -892,9 +903,74 @@ export class SubstrateIndependenceEngine {
     return this.snapshot();
   }
 
+  async verifyStoredEvaluation(
+    evaluationId: string,
+    verifyTrial: (trial: SubstrateCalibrationTrial) => boolean | Promise<boolean>,
+  ): Promise<boolean> {
+    const evaluation = this.state.lastEvaluation;
+    this.verifiedEvaluationIds.delete(evaluationId);
+    if (!evaluation || !evaluation.accepted || evaluation.evaluationId !== evaluationId ||
+        typeof verifyTrial !== 'function' || !Array.isArray(evaluation.receipts) ||
+        evaluation.receipts.length !== evaluation.trialCount || evaluation.receipts.length < this.minIndependentTrials) {
+      return false;
+    }
+    const taskIds = new Set<string>();
+    const trialIds = new Set<string>();
+    const receiptIds = new Set<string>();
+    const independenceKeys = new Set<string>();
+    const families = new Set<string>();
+    let trusted = true;
+    for (const trial of evaluation.receipts) {
+      if (trial.transferDigest !== evaluation.transferDigest ||
+          trial.sourceBackendId !== evaluation.sourceBackendId ||
+          trial.targetBackendId !== evaluation.targetBackendId ||
+          taskIds.has(trial.taskId) || trialIds.has(trial.trialId) ||
+          receiptIds.has(trial.evaluatorReceiptId) || independenceKeys.has(trial.independenceKey)) {
+        trusted = false;
+      }
+      taskIds.add(trial.taskId);
+      trialIds.add(trial.trialId);
+      receiptIds.add(trial.evaluatorReceiptId);
+      independenceKeys.add(trial.independenceKey);
+      families.add(trial.taskFamily);
+      try { if (await verifyTrial(trial) !== true) trusted = false; }
+      catch { trusted = false; }
+    }
+    const min = (key: keyof Pick<SubstrateCalibrationTrial,
+      'taskSuccess01' | 'memoryRecall01' | 'goalFidelity01' | 'constraintFidelity01' | 'identityContinuity01' | 'toolContract01'>) =>
+      evaluation.receipts.length ? Math.min(...evaluation.receipts.map((trial) => trial[key])) : 0;
+    const ratios = evaluation.receipts.map((trial) => trial.targetLatencyMs / trial.sourceLatencyMs).sort((a, b) => a - b);
+    const p95LatencyRatio = ratios.length ? ratios[Math.min(ratios.length - 1, Math.ceil(ratios.length * 0.95) - 1)] : Number.POSITIVE_INFINITY;
+    const actualMetrics = {
+      minTaskSuccess01: min('taskSuccess01'),
+      minMemoryRecall01: min('memoryRecall01'),
+      minGoalFidelity01: min('goalFidelity01'),
+      minConstraintFidelity01: min('constraintFidelity01'),
+      minIdentityContinuity01: min('identityContinuity01'),
+      minToolContract01: min('toolContract01'),
+      p95LatencyRatio,
+    };
+    const sameMetrics = Object.entries(actualMetrics).every(([key, value]) =>
+      Object.is(value, evaluation.metrics[key as keyof typeof actualMetrics]));
+    const acceptedByMetrics = actualMetrics.minTaskSuccess01 >= 0.80 &&
+      actualMetrics.minMemoryRecall01 >= 0.90 &&
+      actualMetrics.minGoalFidelity01 >= 0.90 &&
+      actualMetrics.minConstraintFidelity01 >= 0.95 &&
+      actualMetrics.minIdentityContinuity01 >= 0.85 &&
+      actualMetrics.minToolContract01 >= 0.98 &&
+      actualMetrics.p95LatencyRatio <= this.maxLatencyRatio;
+    const valid = trusted && sameMetrics && acceptedByMetrics &&
+      families.size >= this.minDistinctTaskFamilies &&
+      families.size === evaluation.taskFamilyCount &&
+      evaluation.receipts.length === evaluation.trialCount &&
+      evaluation.reasons.length === 0;
+    if (valid) this.verifiedEvaluationIds.add(evaluationId);
+    return valid;
+  }
+
   promoteBackend(targetBackendId: string, evaluationId: string): SubstrateIndependenceState {
     const evaluation = this.state.lastEvaluation;
-    if (!evaluation || !evaluation.accepted || evaluation.evaluationId !== evaluationId
+    if (!this.verifiedEvaluationIds.has(evaluationId) || !evaluation || !evaluation.accepted || evaluation.evaluationId !== evaluationId
         || evaluation.targetBackendId !== targetBackendId) fail('substrate-promotion-evidence-required');
     const pending = this.state.pendingTransfer;
     const matchingPending = pending !== null
