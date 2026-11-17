@@ -317,10 +317,15 @@ assert.throws(() => commons.evaluateCompatibility(fingerprint, {
   permittedTools: ['documents.fetch'], now,
 }), /skill-revoked/, 'revocation is terminal and cannot be undone by rerunning compatibility');
 
-const revokedRestore = new SynapticCommons(trust);
+const revokedRestore = new SynapticCommons({
+  trustedPublisherKeys: new Map(),
+  trustedAttestorKeys: new Map(),
+  trustedLicenseReviewFingerprints: new Set(),
+  now: () => now,
+});
 revokedRestore.restore(commons.snapshot());
 assert.equal(revokedRestore.get(fingerprint)?.status, 'revoked',
-  'revocation survives durable snapshot restore');
+  'revocation survives trust-root rotation as an audit-only tombstone');
 assert.throws(() => revokedRestore.reject(fingerprint, 'change state'), /skill-revoked/,
   'a revoked record cannot be rewritten as an ordinary rejection');
 

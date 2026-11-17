@@ -460,15 +460,20 @@ export class SynapticCommons {
       const fingerprint = synapticArtifactFingerprint(artifact);
       if (own(raw, 'artifactFingerprint') !== fingerprint || fingerprints.has(fingerprint))
         throw new Error('synaptic-commons-record-fingerprint-invalid');
-      this.assertLicenseReviewTrusted(artifact);
-      const slot = artifact.skill.skillId + '@' + artifact.skill.version;
-      if (slots.has(slot)) throw new Error('synaptic-commons-version-conflict');
-      const publisherKey = this.publisherKeys.get(artifact.signature.keyId);
-      if (!publisherKey || !verifyEd25519(fingerprint, artifact.signature.value, publisherKey))
-        throw new Error('synaptic-commons-publisher-signature-invalid');
       const status = own(raw, 'status');
       if (!['quarantined', 'compatible', 'attested', 'rejected', 'revoked'].includes(String(status)))
         throw new Error('synaptic-commons-status-invalid');
+      const terminalTombstone = status === 'rejected' || status === 'revoked';
+      // Terminal records can only deny further use. Keep them auditable across publisher,
+      // attestor and licence-key rotation without making runtime startup depend on retired roots.
+      if (!terminalTombstone) {
+        this.assertLicenseReviewTrusted(artifact);
+        const publisherKey = this.publisherKeys.get(artifact.signature.keyId);
+        if (!publisherKey || !verifyEd25519(fingerprint, artifact.signature.value, publisherKey))
+          throw new Error('synaptic-commons-publisher-signature-invalid');
+      }
+      const slot = artifact.skill.skillId + '@' + artifact.skill.version;
+      if (slots.has(slot)) throw new Error('synaptic-commons-version-conflict');
       const compatibilityRaw = own(raw, 'compatibility');
       const compatibility = compatibilityRaw == null ? null : this.normalizeCompatibility(compatibilityRaw);
       const attestationRaw = own(raw, 'attestation');
@@ -477,7 +482,9 @@ export class SynapticCommons {
         throw new Error('synaptic-commons-compatibility-proof-missing');
       if (status === 'attested' || status === 'revoked') {
         if (!compatibility?.compatible || !attestation) throw new Error('synaptic-commons-attestation-state-invalid');
-        this.verifyAttestation(artifact, fingerprint, attestation, compatibility, { allowExpired: true });
+        if (status !== 'revoked' || this.attestorKeys.has(attestation.attestorId)) {
+          this.verifyAttestation(artifact, fingerprint, attestation, compatibility, { allowExpired: true });
+        }
       }
       const importedAt = own(raw, 'importedAt'), updatedAt = own(raw, 'updatedAt');
       if (!Number.isSafeInteger(importedAt) || Number(importedAt) <= 0 ||
@@ -711,8 +718,7 @@ export class SynapticCommons {
         attestation.runtimeVersion !== compatibility.runtimeVersion ||
         attestation.environmentFingerprint !== compatibility.environmentFingerprint ||
         attestation.issuedAt > now || (!options.allowExpired && attestation.expiresAt <= now) ||
-        attestation.issuedAt < compatibility.checkedAt - 5 * 60_000 ||
-        attestation.issuedAt > compatibility.checkedAt + 5 * 60_000)
+        attestation.issuedAt < compatibility.checkedAt - 5 * 60_000)
       throw new Error('synaptic-attestation-context-mismatch');
     if (artifact.contract.permissionClass === 'destructive' ||
         artifact.contract.allowedModes.some(mode => mode !== 'assisted'))
