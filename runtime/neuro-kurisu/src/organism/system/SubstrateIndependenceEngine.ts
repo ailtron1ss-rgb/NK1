@@ -638,7 +638,9 @@ export class SubstrateIndependenceEngine {
         lastEvaluation: normalizeEvaluation(row.lastEvaluation),
         history,
       };
-      return { restored: true, reason: 'ok' };
+      const activeProfile = activeBackendId ? this.profiles.get(activeBackendId) : undefined;
+      if (activeProfile && activeProfileDigest !== profileDigest(activeProfile)) this.state.activeProvenance = 'unknown';
+      return { restored: true, reason: activeProfile && activeProfileDigest !== profileDigest(activeProfile) ? 'active-profile-drift' : 'ok' };
     } catch {
       this.state = defaultState();
       return { restored: false, reason: 'invalid-state-reset' };
@@ -651,7 +653,9 @@ export class SubstrateIndependenceEngine {
         && (this.state.activeBackendId === null || this.state.activeBackendId === 'deterministic-policy-fallback')
         && this.state.pendingTransfer === null) {
       this.state.activeBackendId = backendId;
-      this.state.activeProvenance = this.profiles.has(backendId) ? 'bootstrap' : 'unknown';
+      const profile = this.profiles.get(backendId);
+      this.state.activeProfileDigest = profile ? profileDigest(profile) : null;
+      this.state.activeProvenance = profile ? 'bootstrap' : 'unknown';
     }
     this.state.observedBackendId = backendId;
     return this.snapshot();
@@ -667,9 +671,12 @@ export class SubstrateIndependenceEngine {
         && (this.state.activeBackendId === null || this.state.activeBackendId === 'deterministic-policy-fallback')
         && this.state.pendingTransfer === null) {
       this.state.activeBackendId = backendId;
-      this.state.activeProvenance = this.profiles.has(backendId) ? 'bootstrap' : 'unknown';
-    } else if (this.state.activeBackendId === backendId && this.state.activeProvenance === 'unknown' && this.profiles.has(backendId)) {
-      this.state.activeProvenance = 'bootstrap';
+      const profile = this.profiles.get(backendId);
+      this.state.activeProfileDigest = profile ? profileDigest(profile) : null;
+      this.state.activeProvenance = profile ? 'bootstrap' : 'unknown';
+    } else if (this.state.activeBackendId === backendId) {
+      const profile = this.profiles.get(backendId);
+      if (profile && this.state.activeProfileDigest !== profileDigest(profile)) this.state.activeProvenance = 'unknown';
     }
     const current = String(this.state.observedBackendId ?? '') + '|' + String(this.state.activeBackendId ?? '') + '|' + this.state.activeProvenance;
     return { changed: previous !== current, state: this.snapshot() };
@@ -678,9 +685,11 @@ export class SubstrateIndependenceEngine {
   activeBackendId(): string | null { return this.state.activeBackendId; }
 
   preferredRoute(): string | null {
-    if (!this.state.activeBackendId || this.state.activeBackendId === 'deterministic-policy-fallback') return null;
+    if (!this.state.activeBackendId || this.state.activeBackendId === 'deterministic-policy-fallback'
+        || this.state.activeProvenance === 'unknown') return null;
     const profile = this.profiles.get(this.state.activeBackendId);
-    return profile?.routeId ?? null;
+    if (!profile || !this.state.activeProfileDigest || profileDigest(profile) !== this.state.activeProfileDigest) return null;
+    return profile.routeId;
   }
 
   profile(backendId: string): SubstrateBackendProfile | null {
@@ -898,6 +907,8 @@ export class SubstrateIndependenceEngine {
     const evaluationSeed = canonicalJson({
       transferDigest: integrity.digest!,
       targetBackendId: input.targetBackendId,
+      sourceProfileDigest: input.transfer.source.profileDigest,
+      targetProfileDigest: profileDigest(target),
       trialIds: [...trialIds].sort(),
       taskIds: [...taskIds].sort(),
       receiptIds: [...receiptIds].sort(),
@@ -909,7 +920,9 @@ export class SubstrateIndependenceEngine {
       evaluationId: 'substrate-eval-' + sha256(evaluationSeed).slice(0, 24),
       accepted: uniqueReasons.length === 0 && trials.length >= this.minIndependentTrials && taskFamilies.size >= this.minDistinctTaskFamilies,
       sourceBackendId,
+      sourceProfileDigest: input.transfer.source.profileDigest!,
       targetBackendId: input.targetBackendId,
+      targetProfileDigest: profileDigest(target)!,
       transferDigest: integrity.digest!,
       evaluatedAt,
       trialCount: trials.length,
