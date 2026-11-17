@@ -28,13 +28,15 @@ assert.equal(best.epistemicStatus,'hypothesis');
 assert.ok(best.verificationPlan.includes('holdout'));
 assert.ok(best.falsifier.includes('Отвергнуть'));
 
+const controlledEngine=new MechanismSerendipityEngine([{...problem,id:'controlled-reference',domain:'reference-domain'}]);
+const exactTransfer=controlledEngine.analyze(problem).discoveries[0]?.transferability01 ?? 0;
 const reversed=structuredClone(problem);
 reversed.flows[0]={...reversed.flows[0],fromRole:'queue',toRole:'producer'};
-const reversedResult=engine.analyze(reversed);
-assert.ok(reversedResult.discoveries[0]?.breakpoints.some(x=>x.kind==='flow-direction-reversal'),
+const reversedDiscovery=controlledEngine.analyze(reversed).discoveries[0];
+assert.ok(reversedDiscovery?.breakpoints.some(x=>x.kind==='flow-direction-reversal'),
   'reversed causal flow must be surfaced as a transfer breakpoint');
-assert.ok(reversedResult.discoveries[0]?.transferability01<best.transferability01,
-  'a direction-reversed mechanism must receive lower transferability');
+assert.ok(reversedDiscovery.transferability01<exactTransfer,
+  'a direction-reversed mechanism must receive lower transferability than an exact structural control');
 
 const renamed=structuredClone(problem);renamed.title='violet comet / silent orchard';
 renamed.actors.forEach((x,i)=>{x.label='opaque-token-'+i;});

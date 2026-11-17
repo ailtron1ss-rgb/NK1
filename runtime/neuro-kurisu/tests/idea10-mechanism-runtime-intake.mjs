@@ -8,11 +8,11 @@ const graph = fabric.systemGraph();
 const first = fabric.discoverMechanisms();
 
 assert.equal(first.version, 1);
-assert.equal(first.problem.source, 'organism-system-fabric');
+assert.equal(first.source, 'organism-system-fabric');
 assert.equal(first.problem.domain, 'cognitive-runtime');
 assert.equal(first.problem.actors.length, graph.nodes.length);
 assert.equal(first.problem.flows.length, graph.edges.length);
-assert.equal(first.diagnostics.health.total, 7);
+assert.equal(first.diagnostics.totalSystems, 7);
 assert.ok(first.result.evaluatedN >= 1);
 assert.ok(['matched', 'no-match', 'insufficient-structure'].includes(first.result.status));
 assert.ok(first.experiments.every(x =>
