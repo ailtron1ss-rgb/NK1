@@ -3,7 +3,6 @@ import { NeuroPlasticAdapterRegistry } from '../src/organism/learning/NeuroPlast
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
-import { P40ModelEcologyEngine } from '../src/organism/learning/P40ModelEcology.ts';
 
 const hash = (char) => char.repeat(64);
 const manifest = (adapterId = 'kurisu-reasoning-v1') => ({
@@ -73,13 +72,13 @@ assert.equal(report.eligible, true);
 assert.ok(report.qualityCi95[0] > 0, 'promotion evidence must have a positive lower confidence bound');
 assert.equal(registry.snapshot().adapters[0].status, 'eligible', 'holdout success must not activate weights');
 await assert.rejects(
-  registry.activate('kurisu-reasoning-v1', { approvalId: 'approval-1', actorId: 'operator', approvedAt: 1_800_000_000_200 }, async () => false),
+  registry.activate('kurisu-reasoning-v1', { approvalId: 'approval-1', actorId: 'operator', approvedAt: 1_800_000_000_200, signature: hash('8') }, async () => false),
   /approval/,
   'the registry must require a host-verified human approval',
 );
 await registry.activate(
   'kurisu-reasoning-v1',
-  { approvalId: 'approval-1', actorId: 'operator', approvedAt: 1_800_000_000_200 },
+  { approvalId: 'approval-1', actorId: 'operator', approvedAt: 1_800_000_000_200, signature: hash('8') },
   async (approval, context) => approval.actorId === 'operator' && context.adapterId === 'kurisu-reasoning-v1',
 );
 assert.equal(registry.snapshot().adapters[0].status, 'active');
@@ -229,11 +228,9 @@ inferenceRegistry.evaluateCandidate('kurisu-runtime-v1', {
 });
 await inferenceRegistry.activate(
   'kurisu-runtime-v1',
-  { approvalId: 'approval-runtime', actorId: 'operator', approvedAt: 1_800_000_000_200 },
+  { approvalId: 'approval-runtime', actorId: 'operator', approvedAt: 1_800_000_000_200, signature: hash('8') },
   async () => true,
 );
-const ecology = new P40ModelEcologyEngine();
-ecology.configure('llama.cpp', true);
 const inferenceCalls = [];
 const provider = new OpenAICompatibleLocalChatProvider({
   baseUrl: 'http://127.0.0.1:43123/v1',
@@ -247,7 +244,7 @@ const provider = new OpenAICompatibleLocalChatProvider({
     }), { status: 200, headers: { 'content-type': 'application/json' } });
   },
 });
-const inference = new NeuroPlasticInferenceAdapter(inferenceRegistry, ecology, provider);
+const inference = new NeuroPlasticInferenceAdapter(inferenceRegistry, (backendId) => backendId === 'llama.cpp', provider);
 const adaptedResponse = await inference.generate({ system: 'system', user: 'prompt' }, {
   domain: 'reasoning',
   backendId: 'llama.cpp',
@@ -271,7 +268,7 @@ failedRegistry.evaluateCandidate('kurisu-runtime-fallback-v1', {
 });
 await failedRegistry.activate(
   'kurisu-runtime-fallback-v1',
-  { approvalId: 'approval-fallback', actorId: 'operator', approvedAt: 1_800_000_000_200 },
+  { approvalId: 'approval-fallback', actorId: 'operator', approvedAt: 1_800_000_000_200, signature: hash('8') },
   async () => true,
 );
 const fallbackCalls = [];
@@ -290,7 +287,7 @@ const fallbackProvider = new OpenAICompatibleLocalChatProvider({
     }), { status: 200, headers: { 'content-type': 'application/json' } });
   },
 });
-const fallback = await new NeuroPlasticInferenceAdapter(failedRegistry, ecology, fallbackProvider).generate(
+const fallback = await new NeuroPlasticInferenceAdapter(failedRegistry, (backendId) => backendId === 'llama.cpp', fallbackProvider).generate(
   { system: 'system', user: 'prompt' },
   {
     domain: 'reasoning',
