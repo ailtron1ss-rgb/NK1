@@ -453,6 +453,27 @@ assert.equal(distributionalResult.mainBeneficiary.actor, 'operator');
 assert.equal(distributionalResult.attention, 'mandatory-review',
   'high concentrated harm to one stakeholder must trigger mandatory review even below the aggregate harm threshold');
 
+const distributedBurden = simulator.analyzeConsequences({
+  id: 'consequence-analysis-distributed-burden',
+  horizonDays: 30,
+  options: [option('two-communities', 'distribute a comparable burden across two groups', [
+    node('community-a-harm', 'harm', 0.4, 1, 0.95, { actor: 'community-a', system: 'service' }),
+    node('community-b-harm', 'harm', 0.4, 1, 0.95, { actor: 'community-b', system: 'service' }),
+  ], [
+    edge('action-community-a', '__action__', 'community-a-harm', { strength01: 1 }),
+    edge('action-community-b', '__action__', 'community-b-harm', { strength01: 1 }),
+  ])],
+}).analysis.options[0];
+approx(distributedBurden.worstStakeholderHarm01, 0.4, 'distributed worst stakeholder harm');
+approx(distributedBurden.topStakeholderHarmShare01, 0.5, 'distributed harm concentration proxy');
+assert.equal(distributedBurden.benefitBurdenSeparation01, 0);
+assert.equal(distributedBurden.mainBeneficiary, null);
+const distributionDiagnostics = simulator.consequenceEcology.diagnostics();
+assert.ok(distributionDiagnostics.meanWorstStakeholderHarm01 > 0);
+assert.ok(distributionDiagnostics.meanBenefitBurdenSeparation01 > 0);
+assert.ok(distributionDiagnostics.highConcentrationOptions >= 1);
+
+
 console.log('CONSEQUENCE_ECOLOGY=PASS', JSON.stringify({
   analysisCount: simulator.consequenceEcology.diagnostics().retainedAnalyses,
   modelTopRankedOptionId: first.analysis.modelTopRankedOptionId,
