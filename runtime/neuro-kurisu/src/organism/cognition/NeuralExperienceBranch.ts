@@ -1885,6 +1885,11 @@ export class NeuralExperienceBranch {
       unmatchedOutcomes:fast.fastUnmatchedOutcomes,
       expiredContexts:fast.fastExpiredContexts,
       evictedContexts:fast.fastEvictedContexts,
+      decayedContexts:fast.fastDecayedContexts,
+      backtrackedUpdates:fast.fastBacktrackedUpdates,
+      noGainRejections:fast.fastNoGainRejections,
+      lastPredictionErrorBefore01:fast.fastLastPredictionErrorBefore01,
+      lastPredictionErrorAfter01:fast.fastLastPredictionErrorAfter01,
     };
     return out;
   }
