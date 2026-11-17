@@ -45,7 +45,7 @@ export class IntentActionGatewayBridge {
       gate.action,
       action.input,
       action.reason,
-      action.options,
+      { ...action.options, decisionId: action.options?.decisionId ?? gate.contractId },
     );
     return { executed: true, contractId: gate.contractId, result };
   }
