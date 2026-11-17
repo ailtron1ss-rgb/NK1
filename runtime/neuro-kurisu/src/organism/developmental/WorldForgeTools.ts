@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import type { ActionGateway, ToolDefinition } from '../system/ActionGateway.ts';
 import type { FutureSimulator } from './FutureSimulator.ts';
 import type { WorldForgeAction, WorldForgeCase } from './WorldForge.ts';
@@ -113,7 +113,7 @@ export class WorldForgeToolAdapter {
         if (split !== 'train' && split !== 'validation') throw new Error('worldforge-runtime-split-forbidden');
         const count = input.count as number;
         const difficulty01 = input.difficulty01 as number;
-        const seed = randomBytes(4).readUInt32BE(0);
+        const seed = Number.parseInt(randomUUID().replace(/-/g, '').slice(0, 8), 16);
         const scenarios = this.#simulator.generateWorldForgeScenarios({ split, seed, count, difficulty01 });
         for (const scenario of scenarios) this.rememberScenario(scenario);
         return resultEnvelope({
@@ -136,8 +136,8 @@ export class WorldForgeToolAdapter {
     });
 
     register({
-      id: 'organism.worldforge.sessions.start',
-      capability: 'planning.simulation.write',
+      id: 'organism.worldforge.sessions.begin',
+      capability: 'planning.simulation.state',
       destructive: false,
       projectAllowed: true,
       inputContract: {
@@ -165,7 +165,7 @@ export class WorldForgeToolAdapter {
 
     register({
       id: 'organism.worldforge.sessions.step',
-      capability: 'planning.simulation.write',
+      capability: 'planning.simulation.state',
       destructive: false,
       projectAllowed: true,
       inputContract: {
@@ -229,7 +229,7 @@ export class WorldForgeToolAdapter {
 
     register({
       id: 'organism.worldforge.scenarios.release',
-      capability: 'planning.simulation.write',
+      capability: 'planning.simulation.state',
       destructive: false,
       projectAllowed: true,
       inputContract: {
