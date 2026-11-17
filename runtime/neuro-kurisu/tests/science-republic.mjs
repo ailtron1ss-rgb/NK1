@@ -129,7 +129,7 @@ const project = runtime.scientificMethod.create(
   generated.question,
   generated.hypothesis,
   generated.action,
-  ['experiment:' + generated.id],
+  ['intrinsic-experiment', 'tick:101', 'experiment:' + generated.id],
 );
 const captured = runtime.captureGeneratedExperiment(generated, project.id, 101);
 assert.equal(captured.status, 'awaiting-preregistration');
@@ -165,6 +165,50 @@ assert.throws(() => runtime.openScienceCaseFromCapturedCandidate({
   evidence: { reference: 'artifact://science/duplicate-discovery.json', sha256: digest('duplicate') },
   actors,
 }), /science-candidate-already-admitted/);
+
+// Dream-derived candidates are also fingerprinted against their source-memory,
+// dream and linked-goal markers in the already-existing ScientificMethod project.
+const dreamExperiment = runtime.intrinsicExperimentGenerator.fromDreamAssociation({
+  id: 'dream-capture-01',
+  question: 'Do these two episodes share a causal context?',
+  confidence: 0.72,
+  at: nextTime(),
+  sourceMemoryIds: ['memory-episode-a', 'memory-episode-b'],
+  sharedTerms: ['location', 'unexpected event'],
+  kind: 'association',
+  validationStatus: 'candidate',
+}, [{ id: 'goal-dream-replication', source: 'intrinsic' }]);
+assert.ok(dreamExperiment);
+const dreamSources = [
+  'intrinsic-experiment',
+  'tick:102',
+  'experiment:' + dreamExperiment.id,
+  'goal:' + dreamExperiment.linkedGoal,
+  'dream-association',
+  'dream:' + dreamExperiment.dreamId,
+  ...(dreamExperiment.sourceMemoryIds ?? []).map(id => 'source-memory:' + id),
+];
+const dreamProject = runtime.scientificMethod.create(
+  dreamExperiment.question,
+  dreamExperiment.hypothesis,
+  dreamExperiment.action,
+  dreamSources,
+);
+const dreamCaptured = runtime.captureGeneratedExperiment(dreamExperiment, dreamProject.id, 102);
+const dreamScience = runtime.openScienceCaseFromCapturedCandidate({
+  candidateId: dreamCaptured.id,
+  domain: 'episodic memory',
+  observation: 'A dream subsystem linked two stored episodic memories for independent testing.',
+  evidence: {
+    reference: 'artifact://science/dream-discovery.json',
+    sha256: digest('dream-discovery'),
+  },
+  actors,
+});
+rememberArtifactBytes(dreamScience.discoveryEvidence, 'dream-discovery');
+assert.equal(dreamScience.candidate.source, 'dream-association');
+assert.equal(dreamScience.candidate.linkedGoal, 'goal-dream-replication');
+assert.equal(dreamScience.stage, 'discovered');
 
 assert.throws(() => runtime.scienceRepublic.discover({
   title: 'Role collision',
@@ -586,7 +630,7 @@ assert.equal(restored.scientificBrain.diagnostics().acceptedUpdates, afterReplic
 const restoreWithoutIdentityAuthority = new EvidenceResearchSubsystemRuntime(resolveKey);
 restoreWithoutIdentityAuthority.restore(snapshot);
 assert.equal(restoreWithoutIdentityAuthority.scienceRepublic.metrics().total, 0);
-assert.equal(restoreWithoutIdentityAuthority.scienceRepublic.metrics().quarantinedRecords, 2,
+assert.equal(restoreWithoutIdentityAuthority.scienceRepublic.metrics().quarantinedRecords, 3,
   'all records declaring host-attested role identities must be reauthenticated by the host on restore');
 
 const restoreWithoutByteVerifier = new EvidenceResearchSubsystemRuntime(
@@ -594,9 +638,10 @@ const restoreWithoutByteVerifier = new EvidenceResearchSubsystemRuntime(
   resolveScienceRoleIdentity,
 );
 restoreWithoutByteVerifier.restore(snapshot);
-assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().total, 0);
-assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().quarantinedRecords, 2,
-  'all byte-verified audits must be rechecked against the host artifact store on restore');
+assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().total, 1);
+assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().quarantinedRecords, 2);
+assert.equal(restoreWithoutByteVerifier.scienceRepublic.get(dreamScience.id).stage, 'discovered',
+  'an un-audited draft does not claim byte verification and remains restorable without an artifact-store verifier');
 
 // Recompute the unkeyed local event chain after forging the projection's audit
 // manifest. Restore must still reject it because the canonical signed Invention
@@ -626,10 +671,11 @@ const quarantined = new EvidenceResearchSubsystemRuntime(
   verifyScienceArtifactBytes,
 );
 quarantined.restore(rehashedSnapshot);
-assert.equal(quarantined.scienceRepublic.metrics().total, 1);
+assert.equal(quarantined.scienceRepublic.metrics().total, 2);
 assert.equal(quarantined.scienceRepublic.metrics().quarantinedRecords, 1);
-assert.equal(quarantined.scienceRepublic.get(rejectedCase.id).stage, 'rejected',
-  'a separate valid rejected record remains intact when another record is quarantined');
+assert.equal(quarantined.scienceRepublic.get(rejectedCase.id).stage, 'rejected');
+assert.equal(quarantined.scienceRepublic.get(dreamScience.id).stage, 'discovered',
+  'other valid studies remain intact when one projection is quarantined');
 
 assert.equal(quarantined.inventionLoop.metrics().accepted, 1,
   'a corrupt Science Republic projection must not delete the canonical signed invention');
@@ -641,7 +687,12 @@ const forgedCandidateSnapshot = runtime.snapshot();
 const forgedCandidateRecord = forgedCandidateSnapshot.scienceRepublic.records.find(
   record => record.id === science.id,
 );
-forgedCandidateRecord.candidate.candidateFingerprint = digest('forged-runtime-capture-fingerprint');
+const forgedRuntimeCapture = forgedCandidateSnapshot.capturedInventions.find(
+  candidate => candidate.id === forgedCandidateRecord.candidate.id,
+);
+const forgedFingerprint = digest('forged-runtime-capture-fingerprint');
+forgedRuntimeCapture.candidateFingerprint = forgedFingerprint;
+forgedCandidateRecord.candidate.candidateFingerprint = forgedFingerprint;
 const { auditTrail: candidateTrail, ...candidateCore } = forgedCandidateRecord;
 candidateTrail[candidateTrail.length - 1].snapshot = structuredClone(candidateCore);
 previousHash = '0'.repeat(64);
@@ -662,9 +713,10 @@ const candidateQuarantine = new EvidenceResearchSubsystemRuntime(
   verifyScienceArtifactBytes,
 );
 candidateQuarantine.restore(forgedCandidateSnapshot);
-assert.equal(candidateQuarantine.scienceRepublic.metrics().total, 1);
+assert.equal(candidateQuarantine.scienceRepublic.metrics().total, 2);
 assert.equal(candidateQuarantine.scienceRepublic.metrics().quarantinedRecords, 1);
-assert.equal(candidateQuarantine.scienceRepublic.get(rejectedCase.id).stage, 'rejected',
-  'candidate provenance tampering must not quarantine an unrelated valid rejected study');
+assert.equal(candidateQuarantine.scienceRepublic.get(rejectedCase.id).stage, 'rejected');
+assert.equal(candidateQuarantine.scienceRepublic.get(dreamScience.id).stage, 'discovered',
+  'coordinated capture-list and projection tampering still cannot counterfeit source provenance');
 
 console.log('SCIENCE_REPUBLIC=PASS roles+host-captured-candidate+signed-outcomes+replication+holdout+accepted-and-rejected-audits+restore');

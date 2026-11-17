@@ -5446,7 +5446,15 @@ export class OrganismCore {
             this.memorySubsystem.events.append(makeEvent('experiment', state.tick, experiment as any));
         }
         if (this.config.enableScientificMethod && experiment) {
-            const experimentSources = ['intrinsic-experiment', `tick:${state.tick}`, `experiment:${experiment.id}`, ...(experiment.source === 'dream-association' ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)] : [])];
+            const experimentSources = [
+                'intrinsic-experiment',
+                `tick:${state.tick}`,
+                `experiment:${experiment.id}`,
+                ...(experiment.linkedGoal ? [`goal:${experiment.linkedGoal}`] : []),
+                ...(experiment.source === 'dream-association'
+                    ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)]
+                    : []),
+            ];
             const research = this.evidenceResearchSubsystem;
             const existingCapture = research.findCapturedExperiment(experiment);
             const existingProject = existingCapture

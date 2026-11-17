@@ -171,11 +171,37 @@ export class EvidenceResearchSubsystemRuntime {
         !project.predictions.includes(captured.prediction) ||
         !project.provenance.includes('experiment:' + captured.experimentId)) return false;
 
-    const sourceMarker = project.provenance.find(value => value.startsWith('source:'));
-    if (sourceMarker && sourceMarker !== 'source:' + captured.source) return false;
-    const goalMarker = project.provenance.find(value => value.startsWith('goal:'));
-    if (goalMarker && goalMarker !== 'goal:' + (captured.linkedGoal ?? '')) return false;
-    return true;
+    if (captured.id !== 'captured-' + captured.experimentId ||
+        !project.provenance.includes('intrinsic-experiment') ||
+        !project.provenance.includes('tick:' + captured.createdTick)) return false;
+
+    const dreamMarkers = project.provenance.filter(value => value.startsWith('dream:'));
+    const memoryMarkers = project.provenance
+      .filter(value => value.startsWith('source-memory:'))
+      .map(value => value.slice('source-memory:'.length));
+    const goalMarkers = project.provenance.filter(value => value.startsWith('goal:'));
+    if (captured.source === 'dream-association') {
+      if (!project.provenance.includes('dream-association') || dreamMarkers.length !== 1) return false;
+    } else if (project.provenance.includes('dream-association') ||
+        dreamMarkers.length > 0 || memoryMarkers.length > 0) {
+      return false;
+    }
+    if (captured.linkedGoal) {
+      if (goalMarkers.length !== 1 ||
+          goalMarkers[0] !== 'goal:' + captured.linkedGoal) return false;
+    } else if (goalMarkers.length > 0) {
+      return false;
+    }
+
+    const fingerprint = createHash('sha256').update([
+      captured.source,
+      captured.question.normalize('NFKC').trim(),
+      captured.hypothesis.normalize('NFKC').trim(),
+      captured.linkedGoal ?? '',
+      dreamMarkers[0]?.slice('dream:'.length) ?? '',
+      ...memoryMarkers.slice().sort(),
+    ].join('\u0000')).digest('hex');
+    return fingerprint === captured.candidateFingerprint;
   }
 
   private capturedCandidateFingerprint(experiment: IntrinsicExperiment): string {
