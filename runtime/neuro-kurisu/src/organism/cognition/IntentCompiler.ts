@@ -257,17 +257,18 @@ function isIntentContract(value: unknown): value is IntentContract {
 
 export class IntentCompiler {
   private readonly provenance = new WeakMap<object, 'draft' | 'approved' | 'rejected' | 'superseded'>();
-  constructor(private readonly options: { clock?: () => number; approvalKey?: string; extractionTimeoutMs?: number } = {}) {}
+  constructor(private readonly options: { clock?: () => number; approvalKey?: string | Uint8Array; extractionTimeoutMs?: number } = {}) {}
 
   private now(): number {
     const value = this.options.clock?.() ?? Date.now();
     return Number.isSafeInteger(value) && value >= 0 ? value : Date.now();
   }
 
-  private approvalKey(): string | null {
+  private approvalKey(): string | Uint8Array | null {
     const key = this.options.approvalKey;
     if (key === undefined) return PROCESS_APPROVAL_KEY;
-    return typeof key === 'string' && Buffer.byteLength(key, 'utf8') >= MIN_APPROVAL_KEY_BYTES ? key : null;
+    if (typeof key === 'string') return Buffer.byteLength(key, 'utf8') >= MIN_APPROVAL_KEY_BYTES ? key : null;
+    return key instanceof Uint8Array && key.byteLength >= MIN_APPROVAL_KEY_BYTES ? key : null;
   }
 
   private signApproval(
