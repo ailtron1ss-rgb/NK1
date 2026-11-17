@@ -213,8 +213,8 @@ function buildGateway(options = {}) {
   const gateway = new ActionGateway();
   gateway.configureSkillCompetenceProofVerifier({
     skillCompetenceVerifierKeys: trustedAttestorKeys,
-    currentSkillCompetenceRuntimeFingerprint: () => options.runtimeFingerprint ?? runtimeFingerprint,
-    currentSkillCompetenceEnvironmentFingerprint: () => options.environmentFingerprint ?? environmentFingerprint,
+    currentSkillCompetenceRuntimeFingerprint: () => options.runtimeFingerprint === undefined ? runtimeFingerprint : options.runtimeFingerprint,
+    currentSkillCompetenceEnvironmentFingerprint: () => options.environmentFingerprint === undefined ? environmentFingerprint : options.environmentFingerprint,
     resolveActiveSkillCompetenceSubject: () => options.activeSubject ?? store.resolveActiveSkillCompetenceSubject(skillId),
     evaluateSkillCompetenceCondition: (conditionId, _input, context) =>
       options.rejectCondition ? false :
