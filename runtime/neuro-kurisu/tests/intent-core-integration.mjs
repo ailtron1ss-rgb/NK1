@@ -95,7 +95,7 @@ const reconciled = await restarted.reconcileIntentExecution(restored, {
   toolId: 'organism.inspect', input: { scope: 'status' }, reason: 'intent-restart-reconciliation',
   options: { idempotencyKey: 'intent:recovery:01', decisionId: 'decision:core-recovery' },
 });
-assert.equal(reconciled.reconciled, true, 'receipt lookup must not be reported as a new execution');
+assert.equal(reconciled.attempted, true, 'receipt lookup attempt must not be reported as a new side-effect execution');
 assert.equal(recoveryCalls.length, 1, 'intent reconciliation must be forwarded exactly once');
 assert.equal(recoveryCalls[0].id, 'organism.inspect');
 assert.equal(recoveryCalls[0].options.decisionId, 'decision:core-recovery',
