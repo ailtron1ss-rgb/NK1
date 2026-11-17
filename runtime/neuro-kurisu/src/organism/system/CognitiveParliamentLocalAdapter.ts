@@ -102,3 +102,54 @@ export function createLocalParliamentRoleExecutors(
   }
   return result;
 }
+
+export interface ParliamentLanguageInvoker {
+  (request:{system:string;user:string;maxTokens?:number;temperature?:number;signal?:AbortSignal}):Promise<{
+    text:string;backend:string;latencyMs?:number;
+  }>;
+}
+
+/**
+ * Adapter for the runtime's existing LanguageInvoker. Backend identity is read
+ * from the host invoker response, never from model-generated content. All six
+ * specialist roles share one conservative independence family in this mode.
+ */
+export class LanguageInvokerParliamentRoleExecutor implements ParliamentRoleExecutor {
+  private readonly invoke:ParliamentLanguageInvoker;
+  private readonly registry:ParliamentModelAttestationRegistry;
+  constructor(invoke:ParliamentLanguageInvoker,registry:ParliamentModelAttestationRegistry){
+    if(typeof invoke!=='function'||!registry)throw new Error('parliament-language-invoker-config-invalid');
+    this.invoke=invoke;this.registry=registry;
+  }
+  async execute(request:ParliamentRoleExecutionRequest):Promise<ParliamentRoleExecutionResult>{
+    if(request.signal.aborted)throw new Error('parliament-language-invoker-aborted');
+    const response=await this.invoke({
+      system:request.system,user:request.user,maxTokens:request.maxTokens,
+      temperature:request.temperature,signal:request.signal,
+    });
+    if(request.signal.aborted)throw new Error('parliament-language-invoker-aborted');
+    if(!response||typeof response.text!=='string'||!response.text.trim()||response.text.length>65_536||
+      typeof response.backend!=='string'||!response.backend.trim()||response.backend.length>120)
+      throw new Error('parliament-language-invoker-response-invalid');
+    const executionId=randomUUID();
+    const backend=response.backend.trim();
+    this.registry.register({
+      executionId,providerId:'language-invoker',modelId:backend,
+      independenceGroup:`language-backend:${backend}`,verifiedAt:Date.now(),
+    });
+    return {executionId,text:response.text};
+  }
+}
+
+/**
+ * Six role-specific prompts over the host's existing language invoker.
+ * This is a convenient single-family mode, not six independent models.
+ */
+export function createLanguageInvokerParliamentRoleExecutors(
+  invoke:ParliamentLanguageInvoker,
+  registry:ParliamentModelAttestationRegistry,
+):ParliamentRoleExecutorMap {
+  const executor=new LanguageInvokerParliamentRoleExecutor(invoke,registry);
+  const roles:ParliamentRole[]=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
+  return Object.fromEntries(roles.map(role=>[role,executor])) as ParliamentRoleExecutorMap;
+}
