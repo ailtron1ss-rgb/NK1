@@ -17,6 +17,7 @@ import { P53DevelopmentalSelfModificationLab } from '../developmental/P53Develop
 import { ExternalObserverFabric } from '../system/ExternalObserverFabric.ts';
 import { P77RealityExperimentOS, defaultP77 } from '../system/P77RealityExperimentOS.ts';
 import { P82RealityProgressController, defaultP82 } from '../system/P82RealityProgressController.ts';
+import { TheInventionLoop } from '../research/TheInventionLoop.ts';
 
 /**
  * BIG PASS 49: physical ownership boundary for evidence, prediction and research.
@@ -45,6 +46,8 @@ export class EvidenceResearchSubsystemRuntime {
   readonly p38Research = new P38AutonomousCausalResearchEngine();
   readonly p53DevelopmentalSelfModification = new P53DevelopmentalSelfModificationLab();
   readonly externalObserver = new ExternalObserverFabric();
+  /** Evidence-gated idea-to-replication lifecycle; no autonomous code promotion. */
+  readonly inventionLoop = new TheInventionLoop();
 
   snapshot() {
     return {
@@ -64,6 +67,7 @@ export class EvidenceResearchSubsystemRuntime {
       p38Research: this.p38Research.snapshot(),
       p53DevelopmentalSelfModification: this.p53DevelopmentalSelfModification.snapshot(),
       externalObserver: this.externalObserver.snapshot(),
+      inventionLoop: this.inventionLoop.snapshot(),
     };
   }
 
@@ -80,6 +84,7 @@ export class EvidenceResearchSubsystemRuntime {
       modelOlympics:system?.modelOlympics, predictionDebt:system?.predictionDebt, shadowOrganism:system?.shadowOrganism,
       identityCausality:system?.identityCausality, longHorizonPrediction:system?.longHorizonPrediction,
       p38Research:learning?.p38, p53DevelopmentalSelfModification:advanced?.p53DevelopmentalSelfModification, externalObserver:system?.externalObserver,
+      inventionLoop:system?.inventionLoop,
     });
   }
 
@@ -99,5 +104,6 @@ export class EvidenceResearchSubsystemRuntime {
     this.p38Research.restore((raw as any).p38Research);
     this.p53DevelopmentalSelfModification.restore((raw as any).p53DevelopmentalSelfModification);
     this.externalObserver.restore((raw as any).externalObserver);
+    this.inventionLoop.restore((raw as any).inventionLoop);
   }
 }
