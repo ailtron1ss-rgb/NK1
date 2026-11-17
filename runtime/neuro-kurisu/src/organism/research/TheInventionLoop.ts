@@ -500,8 +500,10 @@ export class TheInventionLoop {
       outcome.id === outcomeId || outcome.runId === runId || outcome.evidenceRef === evidenceRef))) {
       throw new Error('duplicate-run-or-evidence-across-inventions');
     }
+    if (record.outcomes.some(outcome => outcome.kind === safe.kind && outcome.seed === safe.seed)) {
+      throw new Error('duplicate-seed');
+    }
     if (record.outcomes.some(outcome => outcome.id === outcomeId ||
-        (outcome.kind === safe.kind && outcome.seed === safe.seed) ||
         outcome.runId === runId ||
         (outcome.verifierId === verifierId && outcome.environmentId === environmentId))) {
       throw new Error('duplicate-run-outcome-or-seed');
