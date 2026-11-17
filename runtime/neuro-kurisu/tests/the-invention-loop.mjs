@@ -273,6 +273,69 @@ assert.equal(
   'tested',
 );
 
+// Intrinsic idea generation is connected to a scientific project and the signed
+// invention lifecycle. Only a complete, signed replication cohort may train the
+// scientific substrate; the holdout cohort is calibration-only.
+const generated = runtime.proposeIntrinsicInvention({
+  uncertainty: 0.95,
+  predictionError: 0.35,
+  novelty: 0.25,
+  goals: [],
+  successCriteria: 'At least 10% normalized improvement, reproduced on independent seeds.',
+  testFingerprint: digest('intrinsic-generator-manifest'),
+  baseline: 100,
+  metricScale: 20,
+  minEffect: 0.1,
+  expectedEffect01: 0.2,
+  minSuccessRate: 0.8,
+  primarySeed: 63,
+  replicationSeeds: [64, 65, 66, 67, 68],
+  holdoutSeeds: [69, 70, 71, 72, 73],
+  lowerIsBetter: true,
+  verifierPlan: protocol.verifierPlan,
+});
+assert.ok(generated);
+assert.equal(generated.protocol.provenance.source, 'intrinsic');
+assert.ok(generated.protocol.provenance.experimentId);
+const scientificProjectId = generated.protocol.provenance.scientificProjectId;
+assert.ok(runtime.scientificMethod.snapshot().projects.some(project => project.id === scientificProjectId));
+runtime.inventionLoop.design(generated.id);
+const generatedPrototype = runtime.inventionLoop.prototype(generated.id, {
+  reference: 'candidate://generated/' + generated.id,
+  sha256: digest('generated-prototype'),
+});
+assert.equal(runtime.recordInventionOutcome(
+  generated.id,
+  signedArtifact(generatedPrototype, 'primary', 63),
+).stage, 'tested');
+assert.equal(runtime.recordInventionCritique(
+  generated.id,
+  signedArtifact(generatedPrototype, 'critique', 0),
+).stage, 'critiqued');
+for (const [seed, observed] of [[64, 97], [65, 97], [66, 101], [67, 97], [68, 96]]) {
+  runtime.recordInventionOutcome(
+    generated.id,
+    signedArtifact(generatedPrototype, 'replication', seed, { observed }),
+  );
+}
+assert.equal(runtime.inventionLoop.snapshot().records.find(record => record.id === generated.id).stage, 'replicated');
+const trainedAfterReplication = runtime.scientificBrain.diagnostics().acceptedUpdates;
+assert.equal(trainedAfterReplication, 1);
+let generatedFinal;
+for (const [seed, observed] of [[69, 96], [70, 97], [71, 105], [72, 96], [73, 96]]) {
+  generatedFinal = runtime.recordInventionOutcome(
+    generated.id,
+    signedArtifact(generatedPrototype, 'holdout', seed, { observed }),
+  );
+}
+assert.equal(generatedFinal.stage, 'accepted');
+assert.equal(runtime.scientificBrain.diagnostics().acceptedUpdates, trainedAfterReplication,
+  'holdout evidence must never update the trainable weights');
+const scientificProject = runtime.scientificMethod.snapshot().projects.find(project => project.id === scientificProjectId);
+assert.ok(scientificProject);
+assert.ok(scientificProject.evidence.some(evidence => evidence.includes('invention-holdout:')));
+assert.ok(scientificProject.experiments.includes(generated.id));
+
 // The canonical seven-system composition root forwards host key authority to research.
 const fabric = new OrganismSystemFabric({ inventionVerifierKeyResolver: resolveKey });
 const fabricRecord = startInvention(fabric.research.inventionLoop, {
