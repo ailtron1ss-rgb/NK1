@@ -262,7 +262,7 @@ function boundedNumber(value: unknown, min: number, max: number): boolean {
 
 function requiredBoundedNumber(value: unknown, min: number, max: number, code: string): number {
   if (!boundedNumber(value, min, max)) throw new Error(code);
-  return value;
+  return value as number;
 }
 
 function boundedInteger(value: unknown, min: number, max: number): boolean {
