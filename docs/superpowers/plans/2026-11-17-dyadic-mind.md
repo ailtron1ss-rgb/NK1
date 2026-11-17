@@ -1,13 +1,13 @@
 # Dyadic Mind Implementation Plan
 
-**Status:** Implemented, connected and verified on exact HEAD \`ca2af1eb9d84a6c17679df5b299be4edf64ee5b3\`.  
+**Status:** Implemented, connected and verified on exact code/test HEAD \`edf98a66c6a911c5ad83e51d483472df110269d7\`.  
 **Branch:** \`aspect/dyadic-mind-collaboration-layer-20261117\`  
 **Base:** \`workpass70-source\`  
 **PR:** [#898 — Draft](https://github.com/ailtron1ss-rgb/NK1/pull/898)
 
 **Goal:** Add persistent, evidence-bound collaboration for human + NK1 while preserving separate personal states and explicit human authority.
 
-**Architecture:** A bounded workspace is owned by SelfSubsystemRuntime. Its typed snapshot flows through the existing critical persistence projection. OrganismCore checkpoints writes, OrganismRuntime serializes mutations, and the existing server exposes a bearer-authenticated host adapter. MemoryOS2 and project execution remain unchanged.
+**Architecture:** A bounded workspace is owned by SelfSubsystemRuntime. Its state flows through the existing critical persistence projection. OrganismCore checkpoints mutations, OrganismRuntime serializes writes, the existing server provides the authenticated host API, and the existing React app exposes the workspace. MemoryOS2 and project execution remain unchanged.
 
 ## Guardrails
 
@@ -15,52 +15,61 @@
 - [x] One canonical self-subsystem persistence owner: SelfSubsystemRuntime.
 - [x] System proposals never become accepted without human confirmation.
 - [x] System cannot mark a shared task completed.
-- [x] Client cannot author as system or choose evidence, source, sensitivity or tick metadata.
+- [x] Client cannot author as system or choose evidence/source/sensitivity/tick.
 - [x] No external database, public unauthenticated route, new secret or release.
-- [x] No actions/tools execute merely because an item becomes accepted.
+- [x] No external action executes merely because a shared item is accepted.
 
 ## Task 1 — Behavioral contract and red phase
 
-- [x] Add workspace behavior tests before production integration.
+- [x] Add workspace tests before production integration.
 - [x] Observe missing-owner RED in WorkPass79 at \`0cbfa202\`.
-- [x] Wire the test into the existing WorkPass79 workflow.
+- [x] Wire tests into WorkPass79.
 
 ## Task 2 — Bounded collaboration domain
 
 - [x] Add goals, tasks, agreements, questions, success criteria and decisions.
-- [x] Preserve actor, evidence, status, progress and bounded event history.
-- [x] Require human confirmation for system proposals, corrections and task completion.
-- [x] Reject duplicate evidence, credential-like content, sensitive/unclassified input, stale transitions and capacity overflow.
+- [x] Preserve author, evidence, status, progress and bounded event history.
+- [x] Enforce human confirmation, correction and completion authority.
+- [x] Reject duplicate evidence, credential-like content, sensitive/unclassified input, stale transitions and overflow.
 - [x] Add accessor-safe restore and bounded data-only prompt projection.
 
 ## Task 3 — Runtime and persistence integration
 
 - [x] Own workspace through SelfSubsystemRuntime.
-- [x] Add AdvancedDevelopmentFacet snapshot typing.
-- [x] Include it in the existing critical persistence projection.
-- [x] Add checkpointed OrganismCore operations.
-- [x] Add serialized OrganismRuntime operations and snapshot read.
-- [x] Include collaboration context in existing cognitive prompt paths without replacing personal UserModel context.
-- [x] Verify restart persistence with OrganismRuntime.
+- [x] Add AdvancedDevelopmentFacet state typing.
+- [x] Persist through the existing critical projection group.
+- [x] Add checkpointed Core operations and serialized Runtime APIs.
+- [x] Include shared context in existing cognitive prompts without replacing personal UserModel context.
+- [x] Verify runtime restart persistence.
 
-## Task 4 — Authenticated host adapter
+## Task 4 — Authenticated host API
 
 - [x] Add GET \`/api/organism/dyadic-collaboration\`.
-- [x] Add POST record / confirm / reject / progress / correct actions.
-- [x] Reuse existing bearer authentication and API rate limiting.
-- [x] Derive actor, tick and evidence refs server-side; redact internal provenance from responses.
-- [x] Require explicit \`confirmed=true\` for all mutations.
-- [x] Add live HTTP tests for auth, explicit confirmation, human authorship, create, correction, progress, readback, redaction and secret rejection.
-- [x] Add idempotent retries: identical key+payload replays; changed payload with same key conflicts.
-- [x] Add concurrent same-key identical/conflicting request tests.
+- [x] Add POST record / confirm / reject / progress / correct.
+- [x] Reuse existing bearer authentication and API rate limit.
+- [x] Derive actor, tick and evidence server-side; redact internal provenance.
+- [x] Require \`confirmed=true\` for mutations.
+- [x] Add live HTTP tests for auth, consent, human authorship, correction, progress, readback and sensitive-input rejection.
+- [x] Add idempotency replay/conflict and concurrent same-key tests.
 
-## Task 5 — Verification and delivery
+## Task 5 — Existing app integration
 
-- [x] Observe RED for missing workspace owner, missing HTTP route and missing idempotency.
-- [x] Fix runtime type errors and the credential-classification gap.
-- [x] Inspect the compare diff against the source base.
-- [x] WorkPass79 exact HEAD \`ca2af1eb\`: SUCCESS; all steps passed.
+- [x] Add typed Dyadic Mind API methods to the existing \`neuroApi\`.
+- [x] Add the collapsible shared-work panel to the current Kurisu home route.
+- [x] Support create, accept, reject, edit, task start/block/resume and two-step completion confirmation.
+- [x] Use the existing API transport and same authentication path; no token storage added to the client.
+- [x] Add transient mutation retry with the same Idempotency-Key and exact same body.
+- [x] Add app typecheck and regression checks to CI.
+- [x] App typecheck passed; 55 existing app tests and 3 new idempotency tests passed.
+
+## Task 6 — Verification and delivery
+
+- [x] Reproduce RED for owner, HTTP route, idempotency and app TypeScript type issues.
+- [x] Correct each observed failure without weakening behavior tests.
+- [x] WorkPass79 exact code/test HEAD \`edf98a66\`: SUCCESS, all 27 work steps passed.
+- [x] Unified Organism Runtime exact HEAD \`edf98a66\`: SUCCESS.
+- [x] App Integration exact HEAD \`edf98a66\`: SUCCESS.
 - [x] Dyadic workspace tests: 9/9.
-- [x] Unified Organism Runtime exact HEAD \`ca2af1eb\`: SUCCESS; typecheck and full runtime integration passed.
-- [x] Update the implementation report and changelog with evidence and release boundaries.
-- [x] Keep PR #898 Draft; no merge or Release ZIP publication.
+- [x] App regression tests: 55/55 plus idempotency retry: 3/3.
+- [x] Update report and changelog with exact evidence.
+- [x] Keep PR #898 Draft; do not merge or publish Release ZIP.

@@ -1,3 +1,5 @@
+- Add a collapsible Dyadic Mind panel to the existing Kurisu home route, using the shared neuroApi transport for create/approve/reject/edit/progress actions and explicit completion confirmation.
+- Retry one transient app mutation once with the exact same idempotency key and payload; do not retry deterministic 4xx responses. Add 3 app client tests for dropped responses, 409 conflicts and missing keys.
 ## [NK1][Dyadic Mind] Add authenticated collaboration workspace and host API (2026-11-17)
 
 - Implement a bounded, evidence-bound human/system workspace for shared goals, tasks, agreements, questions, success criteria and decisions.
