@@ -834,7 +834,7 @@ export class ActionGateway {
       if(!raw || typeof raw!=='object' || !['rollback','compensate','manual','irreversible'].includes(String(raw.strategy))) return {failure:'undo-plan-invalid'};
       const summary=typeof raw.summary==='string'?raw.summary.normalize('NFKC').trim():'';
       const beforeStateHash=typeof raw.beforeStateHash==='string'?raw.beforeStateHash.toLowerCase():'';
-      if(!summary || summary.length>500 || !isSha256(beforeStateHash)) return {failure:'undo-plan-invalid'};
+      if(!summary || summary.length>500 || !isSha256(beforeStateHash) || (options.expectedPreconditionHash!==undefined && options.expectedPreconditionHash!==beforeStateHash)) return {failure:'undo-plan-invalid'};
       const core:any={version:1,strategy:raw.strategy,summary,beforeStateHash,preparedAt:Date.now(),executionId:context.executionId,requestHash:context.requestHash};
       if(raw.strategy==='compensate' || raw.strategy==='rollback') {
         const afterStateHash=typeof raw.afterStateHash==='string'?raw.afterStateHash.toLowerCase():'';
@@ -900,6 +900,9 @@ export class ActionGateway {
       autonomous:false,
       ...(options.compensationApprovalId?{approvalId:options.compensationApprovalId}:{}),
     });
+    if(compensation.outcomeClass==='failed-no-effect') {
+      return {status:'state-diverged',reason:'atomic-compensator-precondition-rejected-because-the-resource-changed-after-independent-readback',originalExecutionId:entry.executionId,planHash:plan.planHash,precondition,compensation};
+    }
     if(!compensation.ok || !compensation.verified || compensation.outcomeClass!=='executed-verified') {
       return {status:'compensation-failed',reason:'compensation-did-not-produce-a-verified-terminal-outcome;its-own-durable-receipt-remains-authoritative',originalExecutionId:entry.executionId,planHash:plan.planHash,precondition,compensation};
     }

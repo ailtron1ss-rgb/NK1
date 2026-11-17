@@ -10,7 +10,7 @@ const AFTER = 'b'.repeat(64);
 const OTHER = 'c'.repeat(64);
 const ORIGINAL_KEY = 'undo-first:relay:operation-01';
 
-function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, driftDuringPreparation = false } = {}) {
+function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, driftDuringPreparation = false, driftAfterPreconditionRead = false } = {}) {
   const gateway = new ActionGateway({ live: true });
   const events = [];
   const state = { hash: stateHash };
@@ -33,16 +33,19 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
     capability: 'state.read',
     destructive: false,
     execute: async () => ({ stateHash: state.hash }),
-    verify: async ({ result }) => ({
-      verified: true,
-      basis: 'external-postcondition',
-      confidence01: 1,
-      externalObservation: true,
-      observationId: `readback-${String(result.stateHash).slice(0, 12)}`,
-      expectedPostcondition: String(result.stateHash),
-      observedPostcondition: String(result.stateHash),
-      notes: 'independent read-only state fingerprint',
-    }),
+    verify: async ({ result }) => {
+      if (driftAfterPreconditionRead) state.hash = OTHER;
+      return {
+        verified: true,
+        basis: 'external-postcondition',
+        confidence01: 1,
+        externalObservation: true,
+        observationId: `readback-${String(result.stateHash).slice(0, 12)}`,
+        expectedPostcondition: String(result.stateHash),
+        observedPostcondition: String(result.stateHash),
+        notes: 'independent read-only state fingerprint',
+      };
+    },
   });
 
   gateway.registerTool({
@@ -288,4 +291,20 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
   assert.equal(persisted.records[0].requestHash, expectedOldHash, 'legacy receipt fingerprints stay stable when no expected precondition is used');
 }
 
-console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=8');
+
+// A state change after the independent readback but before compensation must be
+// rejected by the compensator's atomic compare-and-set, not overwritten.
+{
+  const { gateway, state, counts } = makeGateway({ driftAfterPreconditionRead: true });
+  const result = await gateway.executeTool(
+    'test.undo.mutate', { target: 'relay-01' }, 'compensation-race',
+    { idempotencyKey: 'undo-first:compensation-race' },
+  );
+  assert.equal(result.outcomeClass, 'executed-verified');
+  const undo = await gateway.executeUndoForKey('undo-first:compensation-race', 'raced compensation');
+  assert.equal(undo.status, 'state-diverged');
+  assert.equal(counts.compensation, 0);
+  assert.equal(state.hash, OTHER);
+}
+
+console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=9');
