@@ -118,9 +118,9 @@ function normalizeRecord(value: unknown): OpenLoopRecord | null {
   if (status !== 'cancelled' && cancellationReason !== null) return null;
   if (updatedAt < createdAt) return null;
   const lastSurfacedRaw = ownData(value, 'lastSurfacedAt');
-  const lastSurfacedAt = lastSurfacedRaw == null ? 0 : time(lastSurfacedRaw);
+  const lastSurfacedAt = lastSurfacedRaw == null || lastSurfacedRaw === 0 ? 0 : time(lastSurfacedRaw);
   const unblockedRaw = ownData(value, 'unblockedAt');
-  const unblockedAt = unblockedRaw == null ? 0 : time(unblockedRaw);
+  const unblockedAt = unblockedRaw == null || unblockedRaw === 0 ? 0 : time(unblockedRaw);
   if (lastSurfacedAt === null || unblockedAt === null ||
       lastSurfacedAt > updatedAt || unblockedAt > updatedAt ||
       (status === 'blocked' && unblockedAt > 0)) return null;
