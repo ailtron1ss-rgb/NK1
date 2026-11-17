@@ -193,6 +193,8 @@ export class OrganismRuntime {
     lastFeatureDimensions:0,
     lastTemperature:null as number|null,
     lastMaxTokens:null as number|null,
+    llamaCppTemplateKwargsSent:0,
+    lastTemplateControlSchema:null as string|null,
   };
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
@@ -630,6 +632,15 @@ export class OrganismRuntime {
     });
   }
 
+  private recordCognitiveProviderControlReceipt(request: LanguageRequest, response: LanguageResponse): void {
+    const receipt=response.providerControlReceipt;
+    if(!request.cognitiveControl || receipt?.provider!=='llama.cpp' ||
+       receipt.templateKwargsSent!==true ||
+       receipt.featureSchema!==request.cognitiveControl.featureSchema) return;
+    this.cognitiveToNeuralBridgeMetrics.llamaCppTemplateKwargsSent+=1;
+    this.cognitiveToNeuralBridgeMetrics.lastTemplateControlSchema=receipt.featureSchema;
+  }
+
   private applyCognitiveToNeuralControl(
     request: LanguageRequest,
     cycle: OrganismCycleResult,
@@ -736,6 +747,7 @@ export class OrganismRuntime {
     request = this.applyCognitiveToNeuralControl(request, cycle, neuralSnapshot);
     try {
       const response=await this.config.languageInvoker(request);
+      this.recordCognitiveProviderControlReceipt(request, response);
       await this.core.recordLanguageBackend(response.backend, response.latencyMs, true);
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
       return parseCognitiveProposal(response.text,'llm');
@@ -949,6 +961,7 @@ export class OrganismRuntime {
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
         language = await languageInvoker(request);
+        this.recordCognitiveProviderControlReceipt(request, language);
         if (!externalText && autonomousAgenda && !this.core.stageAutonomousSocialInitiativeMessage(autonomousAgenda.id, language?.text ?? '', Date.now())) {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
         }
