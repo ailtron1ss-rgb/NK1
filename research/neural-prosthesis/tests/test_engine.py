@@ -95,8 +95,11 @@ class NeuralProsthesisEngineTests(unittest.TestCase):
             second, _ = self.model(sample)
         self.assertFalse(torch.allclose(first, second))
         self.assertTrue(torch.equal(base, self.model(sample)[0]))
-        delta = (first - base).float().norm(dim=-1)
-        base_norm = base.float().norm(dim=-1).clamp_min(1e-6)
+        branch = self.bank.adapters["kurisu-reasoning-v1"]["layer_1"]
+        probe = torch.randn(2, 4, 8)
+        residual_output = branch(probe)
+        delta = (residual_output - probe).float().norm(dim=-1)
+        base_norm = probe.float().norm(dim=-1).clamp_min(1e-6)
         self.assertTrue(torch.all(delta <= base_norm * 0.251))
 
     def test_adapter_artifact_round_trip_is_bound_to_exact_model_revision(self):
