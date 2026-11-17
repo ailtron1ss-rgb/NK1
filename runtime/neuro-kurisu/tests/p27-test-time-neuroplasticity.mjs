@@ -256,6 +256,21 @@ outcome(actionBound, 7, 'action-bound', 1);
 assert.equal(actionBound.metrics().fastAcceptedUpdates, 1,
   'correct action outcome could not retry after a rejected mismatched action');
 
+// An outcome with no committed action binding must not train the fast overlay.
+const unboundAction = new EmbodiedCausalWorldBridge();
+unboundAction.beforeDecision({
+  tick: 6, contextId: 'unbound-action', features: featuresA,
+  actionUtilities: utilities, novelty01: 0.55, uncertainty01: 0.45,
+  predictionError01: 0.65, computeBudget01: 0.85,
+});
+unboundAction.afterOutcome({
+  tick: 6, contextId: 'unbound-action', action: 'explore',
+  nextFeatures: featuresB, reward01: 0.8, verified01: 1, predictionError01: 0.2,
+});
+assert.equal(unboundAction.metrics().fastAcceptedUpdates, 0,
+  'outcome without an explicit committed action trained the fast overlay');
+assert.equal(unboundAction.metrics().fastUnmatchedOutcomes, 1);
+
 // Hardened input boundary: malformed inference data must fail before mutating state.
 const guarded = new EmbodiedCausalWorldBridge();
 assert.throws(
