@@ -4,6 +4,8 @@ import { TheInventionLoop, buildInventionVerifierManifest, inventionProtocolFing
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { canonicalOutcomePayload } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { EvidenceResearchSubsystemRuntime } from '../src/organism/core/EvidenceResearchSubsystemRuntime.ts';
+import { ScientificMethodEngine } from '../src/organism/learning/ScientificMethodEngine.ts';
+import { AutonomousScientificBrainSubstrate } from '../src/organism/learning/AutonomousScientificBrainSubstrate.ts';
 import { OrganismSystemFabric } from '../src/organism/core/OrganismSystemFabric.ts';
 
 const digest = (value) => createHash('sha256').update(String(value)).digest('hex');
@@ -391,6 +393,82 @@ const dreamGenerated = runtime.proposeDreamInvention({
 assert.ok(dreamGenerated);
 assert.equal(dreamGenerated.protocol.provenance.source, 'dream-association');
 assert.equal(dreamGenerated.stage, 'proposed');
+
+// Exercise the exact OrganismCore integration seam: a hypothesis and its
+// already-created ScientificMethod project are captured without creating a
+// duplicate project; evaluation policy is injected later by the trusted host.
+const sharedScientificMethod = new ScientificMethodEngine();
+const sharedScientificBrain = new AutonomousScientificBrainSubstrate();
+const captureRuntime = new EvidenceResearchSubsystemRuntime(resolveKey);
+captureRuntime.bindCognitiveSubsystems({
+  scientificMethod: sharedScientificMethod,
+  scientificBrain: sharedScientificBrain,
+});
+assert.equal(captureRuntime.scientificMethod, sharedScientificMethod);
+assert.equal(captureRuntime.scientificBrain, sharedScientificBrain);
+const nativeExperiment = captureRuntime.intrinsicExperimentGenerator.generate({
+  uncertainty: 0.96,
+  predictionError: 0.2,
+  novelty: 0.1,
+  goals: [],
+});
+assert.ok(nativeExperiment);
+const preexistingProject = sharedScientificMethod.create(
+  nativeExperiment.question,
+  nativeExperiment.hypothesis,
+  nativeExperiment.action,
+  ['experiment:' + nativeExperiment.id],
+);
+const captured = captureRuntime.captureGeneratedExperiment(nativeExperiment, preexistingProject.id, 101);
+assert.equal(captured.status, 'awaiting-preregistration');
+assert.equal(sharedScientificMethod.snapshot().projects.length, 1);
+assert.equal(captureRuntime.capturedInventionsSnapshot().length, 1);
+const coreEvaluationPlan = {
+  testFingerprint: digest('core-validation-manifest'),
+  holdoutTestFingerprint: digest('core-holdout-manifest'),
+  baseline: 100,
+  metricScale: 20,
+  minEffect: 0.1,
+  expectedEffect01: 0.2,
+  minSuccessRate: 0.8,
+  primarySeed: 102,
+  replicationSeeds: [103, 104, 105, 106, 107],
+  holdoutSeeds: [108, 109, 110, 111, 112],
+  lowerIsBetter: true,
+  verifierPlan: protocol.verifierPlan,
+};
+const coreRegistered = captureRuntime.preregisterCapturedExperiment(captured.id, coreEvaluationPlan);
+assert.equal(coreRegistered.protocol.provenance.experimentId, nativeExperiment.id);
+assert.equal(coreRegistered.protocol.provenance.scientificProjectId, preexistingProject.id);
+assert.equal(sharedScientificMethod.snapshot().projects.length, 1,
+  'captured hypotheses must reuse the existing project, not fork a second scientific project');
+assert.equal(captureRuntime.capturedInventionsSnapshot()[0].inventionId, coreRegistered.id);
+
+// A malformed or missing host evaluation policy never invents seed/verifier identity.
+const pendingAgain = captureRuntime.captureGeneratedExperiment({
+  ...nativeExperiment,
+  id: nativeExperiment.id + '-pending',
+}, preexistingProject.id, 102);
+assert.equal(pendingAgain.status, 'awaiting-preregistration');
+captureRuntime.markCapturePreregistrationFailure(pendingAgain.id, new Error('missing-evaluator-policy'));
+assert.equal(
+  captureRuntime.capturedInventionsSnapshot().find(item => item.id === pendingAgain.id).preregistrationError,
+  'missing-evaluator-policy',
+);
+
+// Late host key configuration matches OrganismCore's constructor ordering.
+const lateConfiguredFabric = new OrganismSystemFabric();
+lateConfiguredFabric.configureInventionVerifierKeyResolver(resolveKey);
+const lateRecord = startInvention(lateConfiguredFabric.research.inventionLoop, {
+  ...protocol, testFingerprint: digest('late-fabric-manifest'), primarySeed: 113,
+});
+assert.equal(
+  lateConfiguredFabric.research.inventionLoop.recordOutcome(
+    lateRecord.id,
+    signedArtifact(lateRecord, 'primary', 113),
+  ).stage,
+  'tested',
+);
 
 // The canonical seven-system composition root forwards host key authority to research.
 const fabric = new OrganismSystemFabric({ inventionVerifierKeyResolver: resolveKey });
