@@ -64,13 +64,15 @@ assert.throws(() => compiler.approve(contract, {
 }), /not explicitly allowed/);
 
 let calls = 0;
+const decisionIds = [];
 const gateway = {
   async executeTool(id, input, reason, options) {
     calls += 1;
     assert.equal(id, 'organism.inspect');
     assert.deepEqual(input, { scope: 'project' });
     assert.equal(reason, 'intent-bridge-test');
-    assert.equal(options.decisionId, 'decision:intent:test');
+    decisionIds.push(options.decisionId);
+    if (calls === 1) assert.equal(options.decisionId, 'decision:intent:test');
     return { ok: true, verified: true, tool: id, outcomeClass: 'executed-verified' };
   },
 };
