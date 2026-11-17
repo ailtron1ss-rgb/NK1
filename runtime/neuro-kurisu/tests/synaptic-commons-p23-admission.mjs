@@ -24,7 +24,7 @@ const environmentFingerprint = 'e'.repeat(64);
 const host = {
   runtimeVersion: '1.2.0',
   environmentFingerprint,
-  supportedCapabilities: ['documents.read', 'documents.summarize'],
+  supportedCapabilities: ['documents.read', 'documents.summarize', 'neurocore.policy.preference'],
   permittedTools: ['documents.fetch'],
 };
 
@@ -102,6 +102,66 @@ const attestation = {
 attestation.signature.value = sign(
   null,
   Buffer.from(synapticAttestationSigningPayload(attestation), 'utf8'),
+  attestor.privateKey,
+).toString('base64');
+
+const nativeUnsignedArtifact = {
+  schemaVersion: 1,
+  skill: {
+    skillId: 'portable-verify-bias',
+    name: 'Verified policy preference',
+    version: '1.0.0',
+    summary: 'A bounded local preference for the existing verify action in a fixed six-dimensional need context.',
+    kind: 'abstraction',
+  },
+  contract: {
+    capability: 'neurocore.policy.preference',
+    requiredCapabilities: ['neurocore.policy.preference'],
+    requiredTools: [],
+    permissionClass: 'read-only',
+    allowedModes: ['assisted'],
+    minimumRuntimeVersion: '1.0.0',
+    environmentFingerprint,
+  },
+  definition: {
+    format: 'declarative-json-v1',
+    payload: {
+      schemaVersion: 1,
+      schema: 'nk1-policy-bias-v1',
+      action: 'verify',
+      contextNeeds: {
+        energy: 0.6,
+        cognitiveLoad: 0.2,
+        uncertainty: 0.8,
+        novelty: 0.25,
+        goalPressure: 0.8,
+        socialNeed: 0.25,
+      },
+    },
+  },
+  provenance: {
+    sourceInstanceId: 'remote-neurocore-instance',
+    sourceRuntimeVersion: '1.2.0',
+    sourceArtifactFingerprint: 'a'.repeat(64),
+    createdAt: now,
+  },
+  license: {
+    identifier: 'Apache-2.0',
+    redistributionAllowed: true,
+    reviewFingerprint: 'b'.repeat(64),
+  },
+};
+const nativeArtifact = createSignedSynapticArtifact(nativeUnsignedArtifact, 'publisher-1', artifactFingerprint =>
+  sign(null, Buffer.from(artifactFingerprint, 'utf8'), publisher.privateKey).toString('base64'));
+const nativeFingerprint = synapticArtifactFingerprint(nativeArtifact);
+const nativeAttestation = {
+  ...JSON.parse(JSON.stringify(attestation)),
+  artifactFingerprint: nativeFingerprint,
+  signature: { algorithm: 'Ed25519', value: 'A'.repeat(88) },
+};
+nativeAttestation.signature.value = sign(
+  null,
+  Buffer.from(synapticAttestationSigningPayload(nativeAttestation), 'utf8'),
   attestor.privateKey,
 ).toString('base64');
 
@@ -204,6 +264,10 @@ const runtime = new OrganismRuntime({
       ? { ...host, permittedTools: [] }
       : { ...host },
     createLocalPromotionProposal: async ({ candidateMethod }) => {
+      if (candidateMethod === 'synaptic-commons:' + nativeFingerprint) {
+        await writeFile(outcomeBundlePath, JSON.stringify(buildSignedOutcomeBundle(candidateMethod)));
+        return builtInProposalProvider({ candidateMethod });
+      }
       localProposalCalls += 1;
       const actualMethod = proposalMode === 'wrong-method'
         ? 'synaptic-commons:' + 'f'.repeat(64)
@@ -291,7 +355,73 @@ try {
   assert.equal(restored.candidates[0].status, 'staged');
   assert.deepEqual(restored.active, []);
   assert.equal((await runtime.synapticCommonsDiagnostics()).executableCount, 0);
-  console.log('SYNAPTIC_COMMONS_P23_ADMISSION=PASS authenticated-local-proposal exact-artifact-binding durable-stage shadow-only promotion-block');
+
+  const nativeImported = await runtime.importSynapticArtifact(nativeArtifact);
+  assert.equal(nativeImported.record.status, 'quarantined');
+  const nativeCompatible = await runtime.evaluateSynapticSkillCompatibility(nativeFingerprint, host);
+  assert.equal(nativeCompatible.status, 'compatible');
+  await runtime.attestSynapticSkill(nativeFingerprint, nativeAttestation);
+
+  assert.equal(
+    typeof runtime.stageSynapticNativePolicySkillCandidate,
+    'function',
+    'the host-owned native P23 policy adapter must be exposed by OrganismRuntime',
+  );
+  const nativeStaged = await runtime.stageSynapticNativePolicySkillCandidate(nativeFingerprint, true);
+  assert.equal(nativeStaged.status, 'staged');
+  assert.equal(nativeStaged.nativePolicy, true);
+  assert.equal(nativeStaged.canActivateAutomatically, false);
+  assert.equal(nativeStaged.executable, false);
+
+  const nativeSnapshot = runtime.core.verifiedSkillCandidateSnapshot();
+  const nativeCandidate = nativeSnapshot.candidates.find(item => item.candidateId === nativeStaged.candidateId);
+  assert.ok(nativeCandidate, 'native policy candidate must be in the canonical Core P23 store');
+  assert.equal(nativeCandidate.status, 'staged');
+  assert.equal(nativeCandidate.payload.id, 'synaptic-commons:portable-verify-bias');
+  assert.equal(nativeCandidate.payload.action, 'verify');
+  assert.equal(nativeCandidate.payload.contextKey, 'e2|c1|u2|n1|g2|s1');
+  assert.equal(nativeCandidate.payload.validationUses, 50);
+  assert.equal(nativeCandidate.payload.validationSuccess01, 0.8);
+  assert.equal(nativeCandidate.payload.synapticCommonsProvenance.artifactFingerprint, nativeFingerprint);
+  assert.equal(nativeCandidate.payload.synapticCommonsProvenance.publisherKeyId, 'publisher-1');
+  assert.equal(nativeCandidate.payload.synapticCommonsProvenance.attestorId, 'attestor-1');
+  assert.equal(nativeCandidate.payload.synapticCommonsProvenance.localOutcomeFingerprint, nativeCandidate.proposalOutcomeFingerprint);
+  assert.equal(nativeSnapshot.active.some(item => item.skillId === nativeCandidate.skillId), false,
+    'native materialization remains staged until normal P23 signed shadow and approval gates complete');
+  assert.deepEqual(runtime.core.p23TopSkills().filter(item => item.id === nativeCandidate.skillId), [],
+    'a staged policy record cannot influence the live P23 skill resolver');
+
+  const invalidNativeUnsigned = JSON.parse(JSON.stringify(nativeUnsignedArtifact));
+  invalidNativeUnsigned.definition.payload.steps = [{ operation: 'invoke-capability', capability: 'documents.fetch' }];
+  invalidNativeUnsigned.definition.payload.tool = 'documents.fetch';
+  const invalidNativeArtifact = createSignedSynapticArtifact(invalidNativeUnsigned, 'publisher-1', artifactFingerprint =>
+    sign(null, Buffer.from(artifactFingerprint, 'utf8'), publisher.privateKey).toString('base64'));
+  const invalidNativeFingerprint = synapticArtifactFingerprint(invalidNativeArtifact);
+  const invalidNativeAttestation = {
+    ...JSON.parse(JSON.stringify(nativeAttestation)),
+    artifactFingerprint: invalidNativeFingerprint,
+    signature: { algorithm: 'Ed25519', value: 'A'.repeat(88) },
+  };
+  invalidNativeAttestation.signature.value = sign(
+    null,
+    Buffer.from(synapticAttestationSigningPayload(invalidNativeAttestation), 'utf8'),
+    attestor.privateKey,
+  ).toString('base64');
+  const beforeInvalidNative = runtime.core.verifiedSkillCandidateSnapshot().candidates.length;
+  await runtime.importSynapticArtifact(invalidNativeArtifact);
+  const invalidCompatible = await runtime.evaluateSynapticSkillCompatibility(invalidNativeFingerprint, host);
+  assert.equal(invalidCompatible.status, 'compatible');
+  await runtime.attestSynapticSkill(invalidNativeFingerprint, invalidNativeAttestation);
+  await assert.rejects(
+    () => runtime.stageSynapticNativePolicySkillCandidate(invalidNativeFingerprint, true),
+    /native-policy-schema|unknown-field|capability|tool/,
+    'tool/capability operations and unknown fields must not be accepted as P23 policy skills',
+  );
+  assert.equal(runtime.core.verifiedSkillCandidateSnapshot().candidates.length, beforeInvalidNative,
+    'invalid native DSL must not mutate the canonical P23 candidate store');
+
+  console.log('SYNAPTIC_COMMONS_P23_ADMISSION=PASS authenticated-review canonical-core durable-stage');
+  console.log('SYNAPTIC_COMMONS_NATIVE_P23_ADAPTER=PASS allowlisted-policy-only canonical-context evidence-lineage no-tool-execution promotion-gated');
 } finally {
   await runtime.stop().catch(() => {});
   await rm(root, { recursive: true, force: true });
