@@ -1975,6 +1975,15 @@ export class OrganismRuntime {
     return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.markSurfaced(id)));
   }
 
+  snoozeOpenLoop(id: string, until: number, reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.snooze(id, until, reason)));
+  }
+
+  updateOpenLoopDependencies(id: string, dependencies: string[], reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() =>
+      this.openLoopRadar.updateDependencies(id, dependencies, reason)));
+  }
+
   reserveOpenLoopForAutonomousInitiative(id: string, initiativeId: string) {
     return this.enqueue(() => this.persistOpenLoopMutation(() =>
       this.openLoopRadar.reserveForInitiative(id, initiativeId)));
@@ -2013,6 +2022,7 @@ export class OrganismRuntime {
         activeCount: active.length,
         openCount: active.filter(record => record.status === 'open').length,
         blockedCount: active.filter(record => record.status === 'blocked').length,
+        snoozedCount: active.filter(record => record.snoozedUntil > at).length,
         reservedCount,
         expiredReservationCount,
         fulfilledCount: state.records.filter(record => record.status === 'fulfilled').length,

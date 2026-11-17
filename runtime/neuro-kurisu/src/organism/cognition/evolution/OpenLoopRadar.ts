@@ -32,6 +32,10 @@ export interface OpenLoopRecord {
   pendingSurfacingInitiativeId: string | null;
   /** Lease expiry for the reservation; stale reservations never hide an obligation forever. */
   pendingSurfacingLeaseUntil: number;
+  /** Do not surface this obligation before the user's explicit wake time. */
+  snoozedUntil: number;
+  snoozeReason: string | null;
+  lastDependencyChangeReason: string | null;
 }
 export interface OpenLoopRadarState { version: 1; records: OpenLoopRecord[]; sequence: number; }
 export interface OpenLoopCandidate {
@@ -42,6 +46,8 @@ export interface OpenLoopCandidate {
   risk01: number;
   shouldSurface: boolean;
   surfaceReason: 'overdue' | 'due-soon' | 'dependency-unblocked' | 'expired' | null;
+  suppressionReason: 'snoozed' | 'reservation' | 'quiet-hours' | 'cooldown' | null;
+  snoozeRemainingMs: number;
 }
 export interface OpenLoopScanOptions { now?: number; dueSoonMs?: number; reminderCooldownMs?: number; quietUntil?: number; }
 
@@ -150,6 +156,12 @@ function normalizeRecord(value: unknown): OpenLoopRecord | null {
   if (pendingSurfacingInitiativeId === undefined || pendingSurfacingLeaseUntil === null ||
       (pendingSurfacingInitiativeId === null) !== (pendingSurfacingLeaseUntil === 0) ||
       (TERMINAL.has(status) && pendingSurfacingInitiativeId !== null)) return null;
+  const rawSnoozedUntil = ownData(value, 'snoozedUntil');
+  const snoozedUntil = rawSnoozedUntil == null || rawSnoozedUntil === 0 ? 0 : time(rawSnoozedUntil);
+  const snoozeReason = text(ownData(value, 'snoozeReason'), 240) || null;
+  if (snoozedUntil === null || (snoozedUntil === 0 && snoozeReason !== null) ||
+      (snoozedUntil > 0 && (!snoozeReason || TERMINAL.has(status)))) return null;
+  const lastDependencyChangeReason = text(ownData(value, 'lastDependencyChangeReason'), 240) || null;
 
   return {
     id, title, description: text(ownData(value, 'description')), kind, owner, status,
@@ -158,6 +170,7 @@ function normalizeRecord(value: unknown): OpenLoopRecord | null {
     source: text(ownData(value, 'source'), 120) || 'unknown',
     accepted: true, closureEvidence, cancellationReason, idempotencyKey: idempotencyKey ?? null,
     lastSurfacedAt, unblockedAt, pendingSurfacingInitiativeId, pendingSurfacingLeaseUntil,
+    snoozedUntil, snoozeReason, lastDependencyChangeReason,
   };
 }
 export function defaultOpenLoopRadarState(): OpenLoopRadarState {
@@ -383,6 +396,9 @@ export class OpenLoopRadar {
       unblockedAt: 0,
       pendingSurfacingInitiativeId: null,
       pendingSurfacingLeaseUntil: 0,
+      snoozedUntil: 0,
+      snoozeReason: null,
+      lastDependencyChangeReason: null,
     };
     this.state.sequence = nextSequence;
     this.state.records = [record, ...retained];
@@ -403,6 +419,8 @@ export class OpenLoopRadar {
     record.closureEvidence = normalized;
     record.pendingSurfacingInitiativeId = null;
     record.pendingSurfacingLeaseUntil = 0;
+    record.snoozedUntil = 0;
+    record.snoozeReason = null;
     record.updatedAt = now;
     this.reconcileDependencies();
     return structuredClone(record);
@@ -416,6 +434,8 @@ export class OpenLoopRadar {
     record.cancellationReason = cancellationReason;
     record.pendingSurfacingInitiativeId = null;
     record.pendingSurfacingLeaseUntil = 0;
+    record.snoozedUntil = 0;
+    record.snoozeReason = null;
     record.updatedAt = this.safeNow();
     this.reconcileDependencies();
     return structuredClone(record);
@@ -431,6 +451,8 @@ export class OpenLoopRadar {
     record.cancellationReason = null;
     record.pendingSurfacingInitiativeId = null;
     record.pendingSurfacingLeaseUntil = 0;
+    record.snoozedUntil = 0;
+    record.snoozeReason = null;
     record.updatedAt = this.safeNow();
     record.unblockedAt = 0;
     record.description = [record.description, `Reopened: ${note}`].filter(Boolean).join('\n').slice(0, MAX_TEXT);
@@ -467,14 +489,101 @@ export class OpenLoopRadar {
       const cooldownElapsed = record.lastSurfacedAt === 0 || now - record.lastSurfacedAt >= cooldown;
       const reservationActive = record.pendingSurfacingInitiativeId !== null &&
         record.pendingSurfacingLeaseUntil > now;
-      const shouldSurface = surfaceReason !== null && now >= quietUntil && cooldownElapsed && !reservationActive;
+      const snoozed = record.snoozedUntil > now;
+      const suppressionReason: OpenLoopCandidate['suppressionReason'] = surfaceReason === null ? null
+        : reservationActive ? 'reservation'
+          : snoozed ? 'snoozed'
+            : now < quietUntil ? 'quiet-hours'
+              : !cooldownElapsed ? 'cooldown' : null;
+      const shouldSurface = surfaceReason !== null && suppressionReason === null;
       return [{
-        record: structuredClone(record), effectiveStatus, blockedBy, overdueMs, risk01, shouldSurface, surfaceReason,
+        record: structuredClone(record), effectiveStatus, blockedBy, overdueMs, risk01,
+        shouldSurface, surfaceReason, suppressionReason,
+        snoozeRemainingMs: snoozed ? record.snoozedUntil - now : 0,
       }];
     }).sort((a, b) =>
       Number(b.shouldSurface) - Number(a.shouldSurface) ||
       b.risk01 - a.risk01 ||
       (a.record.dueAt ?? Number.MAX_SAFE_INTEGER) - (b.record.dueAt ?? Number.MAX_SAFE_INTEGER));
+  }
+
+  snooze(id: string, until: number, reason: string): OpenLoopRecord {
+    const record = this.requireActive(id);
+    const now = this.safeNow();
+    if (!Number.isSafeInteger(until) || until <= now) {
+      throw new RangeError('snooze requires a future timestamp');
+    }
+    if (until - now > 365 * 24 * 60 * 60 * 1000) {
+      throw new RangeError('snooze must be within the 365-day horizon');
+    }
+    const snoozeReason = text(reason, 240);
+    if (!snoozeReason) throw new TypeError('snooze-reason-required');
+    record.snoozedUntil = until;
+    record.snoozeReason = snoozeReason;
+    record.pendingSurfacingInitiativeId = null;
+    record.pendingSurfacingLeaseUntil = 0;
+    record.updatedAt = now;
+    return structuredClone(record);
+  }
+
+  updateDependencies(id: string, dependenciesInput: string[], reason: string): OpenLoopRecord {
+    const record = this.requireActive(id);
+    const changeReason = text(reason, 240);
+    if (!changeReason) throw new TypeError('dependency-change-reason-required');
+    if (!Array.isArray(dependenciesInput)) throw new TypeError('dependencies must be an array');
+    const entries = safeArray(dependenciesInput, MAX_DEPENDENCIES + 1);
+    if (!entries) throw new TypeError('dependencies must be a plain data array');
+    if (entries.length > MAX_DEPENDENCIES) throw new RangeError('too-many-open-loop-dependencies');
+    const dependencies = [...new Set(entries.map(value => {
+      if (typeof value !== 'string' || !value.trim() || value.length > 128) {
+        throw new TypeError('dependency ids must be non-empty strings of at most 128 characters');
+      }
+      return value.trim();
+    }))];
+    for (const dependencyId of dependencies) {
+      if (dependencyId === id || this.dependencyPathExists(dependencyId, id)) {
+        throw new Error('open-loop-dependency-cycle');
+      }
+      const dependency = this.state.records.find(item => item.id === dependencyId);
+      if (!dependency) throw new Error('unknown-dependency:' + dependencyId);
+      if (dependency.status === 'cancelled') throw new Error('open-loop-dependency-cancelled:' + dependencyId);
+    }
+    if (dependencies.length === record.dependencies.length &&
+        dependencies.every((dependencyId, index) => dependencyId === record.dependencies[index])) {
+      return structuredClone(record);
+    }
+    const wasBlocked = record.status === 'blocked';
+    const now = this.safeNow();
+    record.dependencies = dependencies;
+    record.lastDependencyChangeReason = changeReason;
+    const remainsBlocked = dependencies.some(dependencyId => !this.isSatisfied(dependencyId));
+    if (remainsBlocked) {
+      record.status = 'blocked';
+      record.unblockedAt = 0;
+    } else if (wasBlocked) {
+      record.status = 'open';
+      record.unblockedAt = now;
+    } else {
+      record.status = 'open';
+    }
+    record.updatedAt = now;
+    this.reconcileDependencies();
+    return structuredClone(record);
+  }
+
+  private dependencyPathExists(startId: string, targetId: string): boolean {
+    const records = new Map(this.state.records.map(item => [item.id, item]));
+    const visited = new Set<string>();
+    const queue = [startId];
+    while (queue.length > 0) {
+      const current = queue.pop()!;
+      if (current === targetId) return true;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      const record = records.get(current);
+      if (record) queue.push(...record.dependencies);
+    }
+    return false;
   }
 
   reserveForInitiative(id: string, initiativeId: string, leaseMs = 15 * 60 * 1000): OpenLoopRecord {

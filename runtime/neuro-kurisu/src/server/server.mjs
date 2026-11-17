@@ -569,11 +569,16 @@ async function route(req, res) {
             }
         }
 
-        const openLoopAction = new RegExp('^/api/organism/open-loops/([^/]+)/(complete|cancel|reopen|surface)$').exec(url.pathname);
+        const openLoopAction = new RegExp('^/api/organism/open-loops/([^/]+)/(complete|cancel|reopen|surface|snooze|dependencies)$').exec(url.pathname);
         if (req.method === 'POST' && openLoopAction) {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
-            const id = decodeURIComponent(openLoopAction[1]).slice(0, 128);
+            let id;
+            try {
+                id = decodeURIComponent(openLoopAction[1]).slice(0, 128);
+            } catch {
+                return json(res, 400, { ok: false, error: 'invalid-open-loop-id-encoding' });
+            }
             const action = openLoopAction[2];
             const input = await body(req);
             if (!input || typeof input !== 'object' || Array.isArray(input))
@@ -606,12 +611,31 @@ async function route(req, res) {
                     const record = await runtime.reopenOpenLoop(id, reason);
                     return json(res, 200, { ok: true, record });
                 }
+                if (action === 'snooze') {
+                    const until = input.until;
+                    const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 240) : '';
+                    if (!Number.isSafeInteger(until) || until <= Date.now())
+                        return json(res, 400, { ok: false, error: 'snooze-requires-future-integer-timestamp' });
+                    if (!reason) return json(res, 400, { ok: false, error: 'snooze-reason-required' });
+                    const record = await runtime.snoozeOpenLoop(id, until, reason);
+                    return json(res, 200, { ok: true, record });
+                }
+                if (action === 'dependencies') {
+                    const dependencies = input.dependencies;
+                    const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 240) : '';
+                    if (!Array.isArray(dependencies) || dependencies.length > 32 ||
+                        dependencies.some(value => typeof value !== 'string' || !value.trim() || value.length > 128))
+                        return json(res, 400, { ok: false, error: 'invalid-open-loop-dependencies' });
+                    if (!reason) return json(res, 400, { ok: false, error: 'dependency-change-reason-required' });
+                    const record = await runtime.updateOpenLoopDependencies(id, dependencies, reason);
+                    return json(res, 200, { ok: true, record });
+                }
                 await runtime.acknowledgeOpenLoopSurfaced(id);
                 return json(res, 200, { ok: true, acknowledged: true, id });
             } catch (error) {
                 const message = String(error?.message || error).slice(0, 180);
                 const status = /not-found/.test(message) ? 404
-                    : /already-closed|blocked|capacity|not-reopenable|not-ready-to-surface/.test(message) ? 409 : 400;
+                    : /already-closed|blocked|capacity|not-reopenable|not-ready-to-surface|dependency-cycle|unknown-dependency|dependency-cancelled/.test(message) ? 409 : 400;
                 return json(res, status, { ok: false, error: message });
             }
         }
