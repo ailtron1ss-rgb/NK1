@@ -1,0 +1,61 @@
+name: NK1 Layer Force activation steering
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [aspect/neural-prosthesis-transformer-residual-20261117]
+    paths:
+      - "research/neural-prosthesis/**"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/layer-force.yml"
+  push:
+    branches: [aspect/layer-force-activation-steering-20261117]
+    paths:
+      - "research/neural-prosthesis/**"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/layer-force.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: layer-force-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-sidecar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: research/neural-prosthesis/requirements.txt
+      - name: Install optional CPU inference dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
+          python -m pip install -r research/neural-prosthesis/requirements.txt
+      - name: Neural Prosthesis and Layer Force tests
+        working-directory: research/neural-prosthesis
+        run: python -m unittest discover -s tests -v
+
+  node-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck and Neural Prosthesis/P40 regression
+        run: |
+          npm --prefix runtime/neuro-kurisu run typecheck
+          npm --prefix runtime/neuro-kurisu run test:neural-prosthesis
+          npm --prefix runtime/neuro-kurisu run test:p40:model-ecology
