@@ -52,6 +52,20 @@ assert.throws(() => compiler.approve(malformedAssumption, {
   contractId: malformedAssumption.id, userConfirmed: true, allowedActions: ['organism.inspect'],
   at: now, evidenceRef: 'malformed-assumption-test',
 }), /incomplete/);
+const invalidAssumptionConfidence = compiler.compile({
+  text: 'Inspect the repository.',
+  extraction: {
+    expectedOutcome: 'A verified repository summary',
+    acceptanceCriteria: ['Include the branch head'],
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop when the branch head cannot be read'],
+    assumptions: [{ statement: 'The branch is current', impact: 'low', confidence01: 1.5 }],
+  },
+});
+assert.equal(invalidAssumptionConfidence.assumptions[0].impact, 'high',
+  'out-of-range confidence must not be treated as high confidence');
+assert.equal(invalidAssumptionConfidence.assumptions[0].requiresConfirmation, true);
+assert.ok(invalidAssumptionConfidence.missingInformation.includes('invalid-assumption-impact'));
 
 const truncatedPermissionList = compiler.compile({
   text: 'Inspect the project.',
