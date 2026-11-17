@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
@@ -369,6 +370,20 @@ tamperedRestoreRegistry.restore(
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
 );
 assert.equal(tamperedRestoreRegistry.snapshot().adapters[0].status, 'staged', 'tampered evaluator evidence must be demoted on restore');
+const tamperedMetricSnapshot = structuredClone(activeSnapshot);
+tamperedMetricSnapshot.adapters[0].evaluation.qualityDeltaMean01 = 0.99;
+const { reportId: _oldReportId, ...tamperedSummary } = tamperedMetricSnapshot.adapters[0].evaluation;
+tamperedMetricSnapshot.adapters[0].evaluation.reportId = createHash('sha256')
+  .update(JSON.stringify(tamperedSummary))
+  .digest('hex');
+const tamperedMetricRegistry = new NeuroPlasticAdapterRegistry();
+tamperedMetricRegistry.restore(
+  tamperedMetricSnapshot,
+  verifyApproval,
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+);
+assert.equal(tamperedMetricRegistry.snapshot().adapters[0].status, 'staged',
+  'changing a signed quality result and recomputing the plain report hash must still be rejected');
 const signedRestoreRegistry = new NeuroPlasticAdapterRegistry();
 signedRestoreRegistry.restore(
   activeSnapshot,
