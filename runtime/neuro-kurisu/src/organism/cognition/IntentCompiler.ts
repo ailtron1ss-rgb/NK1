@@ -20,6 +20,9 @@ export interface IntentExtraction {
   stopConditions?: string[];
   risk?: IntentRiskLevel;
 }
+export interface IntentExtractionProvider {
+  extract(requestText: string): Promise<IntentExtraction>;
+}
 export interface IntentContractInput {
   requestId?: string;
   text: string;
@@ -106,6 +109,13 @@ function isIntentContract(value: IntentContract): boolean {
  */
 export class IntentCompiler {
   constructor(private readonly options: { clock?: () => number } = {}) {}
+
+  async compileWith(input: IntentContractInput, provider: IntentExtractionProvider): Promise<IntentContract> {
+    const sourceText = cleanText(input?.text);
+    if (!sourceText) return this.compile(input);
+    const extraction = await provider.extract(sourceText);
+    return this.compile({ ...input, extraction });
+  }
 
   compile(input: IntentContractInput): IntentContract {
     const sourceText = cleanText(input?.text);
