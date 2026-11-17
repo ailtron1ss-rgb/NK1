@@ -121,6 +121,9 @@ let languageCallCount = 0;
 let lastUserModelPreferenceEventTick = 0;
 let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
+let lastNeuralProsthesisUsage = null;
+let lastNeuralProsthesisFinishReason = null;
+let lastNeuralProsthesisCompletedAt = 0;
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
 const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
 const rateBuckets = new Map();
@@ -160,6 +163,11 @@ async function invokeLanguage(request) {
     const backend = String(response.backend ?? effectiveBackend ?? 'unknown');
     const provider = backend.split(':')[0];
     const model = backend.includes(':') ? backend.split(':').slice(1).join(':') : undefined;
+    if (provider === 'neural-prosthesis') {
+        lastNeuralProsthesisUsage = response.usage ?? null;
+        lastNeuralProsthesisFinishReason = response.finishReason ?? null;
+        lastNeuralProsthesisCompletedAt = finishedAt;
+    }
     languageCallCount++;
     lastLanguageBackend = backend;
     // Completion accounting is a synchronous best-effort state update. Keep telemetry
@@ -1848,6 +1856,11 @@ async function route(req, res) {
                 adapterId: NEURAL_PROSTHESIS_PROVIDER.adapterId,
                 preferredByHost: NEURAL_PROSTHESIS_PREFER,
                 sidecarSupervisor: NEURAL_PROSTHESIS_SIDECAR.snapshot(),
+                lastCompletion: {
+                    usage: lastNeuralProsthesisUsage,
+                    finishReason: lastNeuralProsthesisFinishReason,
+                    completedAt: lastNeuralProsthesisCompletedAt || null,
+                },
                 modelEcology: runtime.core.p40ModelEcologySnapshot(),
                 note: 'Optional loopback-only Transformers residual backend. Adapter artifacts remain inactive unless the host allowlists the exact manifest digest.',
             });

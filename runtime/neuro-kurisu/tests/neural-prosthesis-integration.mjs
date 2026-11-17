@@ -53,6 +53,41 @@ assert.throws(() => new NeuralProsthesisChatProvider({
   apiToken: 'too-short',
 }), /api-token-invalid/);
 
+const malformedUsageProvider = new NeuralProsthesisChatProvider({
+  baseUrl: 'http://127.0.0.1:8091/v1',
+  fetchImpl: async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => null },
+    text: async () => JSON.stringify({
+      model: 'kurisu-transformer-local',
+      choices: [{ message: { content: 'Malformed metrics are ignored.' }, finish_reason: 17 }],
+      usage: { prompt_tokens: 73, completion_tokens: 160, total_tokens: 999 },
+    }),
+  }),
+});
+const malformedUsageAnswer = await malformedUsageProvider.generate({ system: '', user: 'hello' });
+assert.equal(malformedUsageAnswer.text, 'Malformed metrics are ignored.');
+assert.equal(malformedUsageAnswer.usage, undefined, 'inconsistent usage counters must not cross the provider boundary');
+assert.equal(malformedUsageAnswer.finishReason, undefined, 'non-string finish reasons must be ignored');
+
+const legacyProvider = new NeuralProsthesisChatProvider({
+  baseUrl: 'http://127.0.0.1:8091/v1',
+  fetchImpl: async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => null },
+    text: async () => JSON.stringify({
+      model: 'legacy-local-transformer',
+      choices: [{ message: { content: 'Legacy response without metrics.' } }],
+    }),
+  }),
+});
+const legacyAnswer = await legacyProvider.generate({ system: '', user: 'hello' });
+assert.equal(legacyAnswer.text, 'Legacy response without metrics.');
+assert.equal(legacyAnswer.usage, undefined);
+assert.equal(legacyAnswer.finishReason, undefined);
+
 assert.throws(() => new NeuralProsthesisChatProvider({ baseUrl: 'https://127.0.0.1:8091/v1' }), /loopback-http/);
 assert.throws(() => new NeuralProsthesisChatProvider({ baseUrl: 'http://example.com:8091/v1' }), /loopback-http/);
 assert.equal(new NeuralProsthesisChatProvider().configured(), false);

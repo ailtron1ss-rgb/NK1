@@ -176,6 +176,13 @@ measured model-ecology choice. If the sidecar is unavailable, the request fails,
 adapter is quarantined, the request continues to the normal local/cloud fallbacks.
 Nothing changes the llama.cpp model files.
 
+When the sidecar returns consistent OpenAI-style token counters, NK1 carries the
+validated `usage` object and `finishReason` through `RuntimeStep.language`.
+The read-only `GET /api/organism/neural-prosthesis` diagnostic also retains only
+the last sidecar token counters, finish reason and completion timestamp; prompt and
+completion text are never copied into these diagnostics. Malformed or internally
+inconsistent usage counters are ignored without rejecting the text response.
+
 Read-only liveness at GET /health and GET /api/health is intentionally minimal.
 The detailed status reports the effective max_context_tokens limit and the
 sidecar supervisor's enabled/managed/ready state; token usage is returned on each

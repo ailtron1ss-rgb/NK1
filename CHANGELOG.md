@@ -30,6 +30,14 @@
 - Add a regression that holds the health probe, requests stop, releases the probe and verifies the Python process was never spawned.
 - Preserve the existing 3-second shutdown bound when autostart is disabled; allow up to 10 seconds when the explicitly managed model process needs termination.
 
+## [NK1][OmeStro #28] Neural Prosthesis — inference usage telemetry (2026-11-17)
+
+- Parse OpenAI-compatible prompt/completion/total token counts and finish reason from the sidecar response.
+- Require safe non-negative integer counters whose total exactly matches prompt plus completion and remains within the sidecar's 65,536-token context cap; ignore malformed telemetry without rejecting valid generated text.
+- Extend NK1's optional `LanguageResponse` metadata so token usage and finish reason survive into `RuntimeStep.language`.
+- Expose only the last sidecar usage counters, finish reason and timestamp through the read-only Neural Prosthesis diagnostic; do not store prompt or generated text in this metric snapshot.
+- Preserve backward compatibility for providers that do not report usage.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.

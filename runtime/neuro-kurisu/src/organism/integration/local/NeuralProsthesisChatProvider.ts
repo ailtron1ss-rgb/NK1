@@ -11,6 +11,8 @@ export interface NeuralProsthesisResponse {
   model: string;
   latencyMs: number;
   adapterId?: string;
+  usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+  finishReason?: string;
 }
 export interface NeuralProsthesisProviderOptions {
   baseUrl?: string;
@@ -154,17 +156,44 @@ export class NeuralProsthesisChatProvider {
       if (deadlineSignal.aborted) throw new Error('neural-prosthesis-timeout');
       throw error;
     }
-    let result: { choices?: Array<{ message?: { content?: unknown } }>; model?: unknown; error?: unknown };
+    let result: {
+      choices?: Array<{ message?: { content?: unknown }; finish_reason?: unknown }>;
+      model?: unknown;
+      error?: unknown;
+      usage?: { prompt_tokens?: unknown; completion_tokens?: unknown; total_tokens?: unknown };
+    };
     try { result = JSON.parse(raw) as typeof result; } catch { throw new Error('neural-prosthesis-invalid-json'); }
     const text = extractText(result?.choices?.[0]?.message?.content);
     if (!text) throw new Error('neural-prosthesis-empty-response');
     const model = String(result?.model ?? this.model).slice(0, 160);
+    const rawUsage = result?.usage;
+    const promptTokens = rawUsage?.prompt_tokens;
+    const completionTokens = rawUsage?.completion_tokens;
+    const totalTokens = rawUsage?.total_tokens;
+    const validUsage = (
+      Number.isSafeInteger(promptTokens) && Number(promptTokens) >= 0 && Number(promptTokens) <= 65_536 &&
+      Number.isSafeInteger(completionTokens) && Number(completionTokens) >= 0 && Number(completionTokens) <= 65_536 &&
+      Number.isSafeInteger(totalTokens) && Number(totalTokens) === Number(promptTokens) + Number(completionTokens) &&
+      Number(totalTokens) <= 65_536
+    );
+    const finishReasonValue = result?.choices?.[0]?.finish_reason;
+    const finishReason = typeof finishReasonValue === 'string' && finishReasonValue.length > 0 && finishReasonValue.length <= 32
+      ? finishReasonValue
+      : undefined;
     return {
       text,
       backend: 'neural-prosthesis:' + model,
       model,
       latencyMs: Math.max(0, Date.now() - startedAt),
       ...(this.adapterId ? { adapterId: this.adapterId } : {}),
+      ...(validUsage ? {
+        usage: {
+          promptTokens: Number(promptTokens),
+          completionTokens: Number(completionTokens),
+          totalTokens: Number(totalTokens),
+        },
+      } : {}),
+      ...(finishReason ? { finishReason } : {}),
     };
   }
 }
