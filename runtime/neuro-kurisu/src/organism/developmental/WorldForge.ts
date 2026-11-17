@@ -22,8 +22,22 @@ export interface WorldForgeEvaluation {
   evidenceCoverage01:number; efficiency01:number; robustness01:number; strategyFamily:string; stepsUsed:number;
   syntheticOnly:true; independentlyVerified:false; limitations:string[];
 }
-interface HiddenAnswerKey { split:WorldForgeSplit; domain:WorldForgeDomain; requiredTargets:string[]; acceptedFamilies:string[]; criticalEvidence:string[]; disturbancePenalty01:number; minimumScore01:number; resourceBudget:number; maxSteps:number; riskTolerance01:number; seed:number; }
-export interface WorldForgeOptions { maxCasesPerBatch?:number; maxTraceSteps?:number; holdoutNamespace?:string; }
+interface HiddenAnswerKey { split:WorldForgeSplit; domain:WorldForgeDomain; requiredTargets:string[]; goalOptions:string[]; acceptedFamilies:string[]; criticalEvidence:string[]; disturbances:WorldForgeDisturbance[]; disturbancePenalty01:number; minimumScore01:number; resourceBudget:number; maxSteps:number; riskTolerance01:number; seed:number; createdAt:number; }
+interface WorldForgeSessionRecord { scenarioId:string; state:WorldForgeState; createdAt:number; }
+export interface WorldForgeState {
+  sessionId:string; scenarioId:string; tick:number; resourcesRemaining:number; remainingSteps:number;
+  position:string; knownTargets:string[]; knownSignals:string[]; blockedTargets:string[];
+  noise01:number; verifiedEvidence:string[]; priorityTarget:string|null; events:string[];
+  status:'active'|'exhausted'; syntheticOnly:true;
+}
+export interface WorldForgeStepResult {
+  accepted:boolean; state:WorldForgeState|null; reward01:number;
+  appliedDisturbances:WorldForgeDisturbance['kind'][]; reason?:string; syntheticOnly:true;
+}
+export interface WorldForgeOptions {
+  maxCasesPerBatch?:number; maxTraceSteps?:number; maxActiveScenarios?:number;
+  scenarioTtlMs?:number; holdoutNamespace?:string; now?:()=>number;
+}
 
 const ACTIONS:WorldForgeAction[]=['observe','inspect','move','collect','wait','reroute','prioritize','verify'];
 const DOMAINS:WorldForgeDomain[]=['resource-allocation','route-planning','investigation'];
@@ -93,6 +107,25 @@ function normalizeActionTrace(value:unknown,maxSteps:number):{steps:WorldForgeAc
   }
 }
 
+function sessionIdentity(value:unknown):{sessionId:string;scenarioId:string;tick:number}|null {
+  try {
+    if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    const session=descriptors.sessionId,scenario=descriptors.scenarioId,tick=descriptors.tick;
+    for(const descriptor of [session,scenario,tick]){
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true)return null;
+    }
+    if(typeof session.value!=='string'||!session.value||safeText(session.value,200)!==session.value)return null;
+    if(typeof scenario.value!=='string'||!scenario.value||safeText(scenario.value,160)!==scenario.value)return null;
+    if(typeof tick.value!=='number'||!Number.isSafeInteger(tick.value)||tick.value<0)return null;
+    return{sessionId:session.value,scenarioId:scenario.value,tick:tick.value};
+  } catch {
+    return null;
+  }
+}
+
 function scenarioIdentity(value:unknown):{id:string;split:WorldForgeSplit;domain:WorldForgeDomain}|null {
   try {
     if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
@@ -113,16 +146,35 @@ function scenarioIdentity(value:unknown):{id:string;split:WorldForgeSplit;domain
 
 export class WorldForge {
   readonly #answers=new Map<string,HiddenAnswerKey>();
+  readonly #sessions=new Map<string,WorldForgeSessionRecord>();
   private readonly maxCases:number;
   private readonly maxTraceSteps:number;
+  private readonly maxActiveScenarios:number;
+  private readonly scenarioTtlMs:number;
   private readonly holdoutNamespace:string;
+  private readonly now:()=>number;
+  #sessionSequence=0;
   constructor(options:WorldForgeOptions={}){
     this.maxCases=Math.max(1,Math.min(256,Math.floor(options.maxCasesPerBatch??64)));
     this.maxTraceSteps=Math.max(1,Math.min(128,Math.floor(options.maxTraceSteps??32)));
+    this.maxActiveScenarios=Math.max(16,Math.min(8192,Math.floor(options.maxActiveScenarios??2048)));
+    this.scenarioTtlMs=Math.max(1000,Math.min(24*60*60*1000,Math.floor(options.scenarioTtlMs??30*60*1000)));
     this.holdoutNamespace=safeText(options.holdoutNamespace??'nk1-world-forge-holdout-v1',100)||'nk1-world-forge-holdout-v1';
+    this.now=typeof options.now==='function'?options.now:()=>Date.now();
+  }
+  private currentTime():number {
+    const value=this.now();
+    return typeof value==='number'&&Number.isFinite(value)&&value>=0?Math.floor(value):Date.now();
+  }
+  private pruneExpired(now=this.currentTime()):void {
+    for(const [id,key] of this.#answers)if(now-key.createdAt>this.scenarioTtlMs){this.#answers.delete(id);}
+    for(const [id,session] of this.#sessions)if(now-session.createdAt>this.scenarioTtlMs||!this.#answers.has(session.scenarioId))this.#sessions.delete(id);
+    while(this.#answers.size>this.maxActiveScenarios)this.#answers.delete(this.#answers.keys().next().value as string);
+    while(this.#sessions.size>this.maxActiveScenarios)this.#sessions.delete(this.#sessions.keys().next().value as string);
   }
   generate(input:{split:WorldForgeSplit;seed:number;count?:number;difficulty01?:number}):WorldForgeCase[]{
     if(!input||!SPLITS.includes(input.split)||!Number.isSafeInteger(input.seed)||input.seed<0)return[];
+    this.pruneExpired();
     const count=Math.max(0,Math.min(this.maxCases,Math.floor(input.count??1)));
     const difficulty=clamp(input.difficulty01??.35,.05,.95);
     const namespace=input.split==='holdout'?this.holdoutNamespace:'nk1-world-forge:'+input.split+':v1';
@@ -148,7 +200,9 @@ export class WorldForge {
         task:domain==='resource-allocation'?'Allocate scarce resources while preserving a safety reserve and adapting to a late demand shock.':domain==='route-planning'?'Reach the destination while respecting a changing route and risk budget.':'Identify the reliable explanation from noisy signals and verify it before concluding.',
         observations,goalOptions:[...targets],availableActions:[...ACTIONS],constraints:{maxSteps:Math.max(4,Math.min(16,Math.round(5+difficulty01*8))),resourceBudget:Math.max(3,Math.round(10-difficulty01*3)),riskTolerance01:Number((.75-difficulty01*.35).toFixed(3)),requiredEvidence:domain==='investigation'?2:1},
         disturbances,acceptedStrategyFamilies:families,seedFingerprint:fingerprint(seed+'|'+input.split),syntheticOnly:true};
-      this.#answers.set(id,{split:input.split,domain,requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,resourceBudget:scenario.constraints.resourceBudget,maxSteps:scenario.constraints.maxSteps,riskTolerance01:scenario.constraints.riskTolerance01,seed});
+      const createdAt=this.currentTime();
+      this.#answers.set(id,{split:input.split,domain,requiredTargets:[hiddenTarget,...targets.filter(t=>t!==hiddenTarget).slice(0,1)],goalOptions:[...targets],acceptedFamilies:families,criticalEvidence:domain==='investigation'?['signal-a','signal-b']:['budget-check'],disturbances:disturbances.map(d=>({...d})),disturbancePenalty01:disturbances.reduce((s,d)=>s+d.magnitude01,0)/Math.max(1,disturbances.length)*.25,minimumScore01:.62+difficulty01*.12,resourceBudget:scenario.constraints.resourceBudget,maxSteps:scenario.constraints.maxSteps,riskTolerance01:scenario.constraints.riskTolerance01,seed,createdAt});
+      this.pruneExpired(createdAt);
       out.push(scenario);
     }
     return out;
@@ -158,6 +212,7 @@ export class WorldForge {
     if(!identity)return this.emptyEvaluation('invalid','train');
     const key=this.#answers.get(identity.id);
     if(!key||identity.split!==key.split||identity.domain!==key.domain)return this.emptyEvaluation(identity.id,identity.split);
+    if(this.currentTime()-key.createdAt>this.scenarioTtlMs){this.#answers.delete(identity.id);this.pruneExpired();return this.emptyEvaluation(identity.id,identity.split);}
     const normalized=normalizeActionTrace(trace,this.maxTraceSteps);
     const valid=normalized.steps;
     const cost=valid.reduce((sum,s)=>sum+(s.cost??1),0);
@@ -175,8 +230,109 @@ export class WorldForge {
     const score=clamp(targetCoverage*.35+evidenceCoverage*.2+verification*.15+efficiency*.12+robustness*.1+strategy*.08-violations*.12);
     return{scenarioId:identity.id,split:identity.split,score01:Number(score.toFixed(4)),success:score>=key.minimumScore01&&violations===0,constraintViolations:violations,evidenceCoverage01:Number(evidenceCoverage.toFixed(4)),efficiency01:Number(efficiency.toFixed(4)),robustness01:Number(robustness.toFixed(4)),strategyFamily:family,stepsUsed:valid.length,syntheticOnly:true,independentlyVerified:false,limitations:['Synthetic environment only; does not establish real-world competence.','Holdout outcomes are evaluator-only and must not be used for tuning.','Scenario realism requires external calibration against real task distributions.']};
   }
-  releaseEvaluator(id:string):void{this.#answers.delete(id);}
-  reset():void{this.#answers.clear();}
+  startScenario(scenario:unknown):WorldForgeState|null {
+    const identity=scenarioIdentity(scenario);
+    if(!identity)return null;
+    const key=this.#answers.get(identity.id);
+    const now=this.currentTime();
+    if(!key||identity.split!==key.split||identity.domain!==key.domain||now-key.createdAt>this.scenarioTtlMs)return null;
+    this.pruneExpired(now);
+    this.#sessionSequence++;
+    const sessionId='wf-session-'+fingerprint(identity.id+'|'+now+'|'+this.#sessionSequence);
+    const state:WorldForgeState={
+      sessionId,scenarioId:identity.id,tick:0,resourcesRemaining:key.resourceBudget,remainingSteps:key.maxSteps,
+      position:'start',knownTargets:[],knownSignals:[],blockedTargets:[],noise01:0,verifiedEvidence:[],
+      priorityTarget:null,events:[],status:'active',syntheticOnly:true,
+    };
+    this.#sessions.set(sessionId,{scenarioId:identity.id,state,createdAt:now});
+    this.pruneExpired(now);
+    return structuredClone(state);
+  }
+
+  step(stateInput:unknown,actionInput:unknown):WorldForgeStepResult {
+    const identity=sessionIdentity(stateInput);
+    const empty:WorldForgeStepResult={accepted:false,state:null,reward01:0,appliedDisturbances:[],reason:'invalid_or_unknown_session',syntheticOnly:true};
+    if(!identity)return empty;
+    const session=this.#sessions.get(identity.sessionId);
+    if(!session)return empty;
+    const now=this.currentTime();
+    if(now-session.createdAt>this.scenarioTtlMs){this.#sessions.delete(identity.sessionId);return{...empty,reason:'session_expired'};}
+    const canonical=session.state;
+    if(identity.scenarioId!==session.scenarioId||identity.tick!==canonical.tick||canonical.status!=='active'){
+      return{accepted:false,state:structuredClone(canonical),reward01:0,appliedDisturbances:[],reason:'stale_or_exhausted_state',syntheticOnly:true};
+    }
+    const action=normalizeActionStep(actionInput);
+    if(!action)return{accepted:false,state:structuredClone(canonical),reward01:0,appliedDisturbances:[],reason:'invalid_action',syntheticOnly:true};
+    const key=this.#answers.get(session.scenarioId);
+    if(!key)return{...empty,reason:'scenario_expired'};
+    const next=structuredClone(canonical);
+    next.tick++;
+    next.remainingSteps=Math.max(0,next.remainingSteps-1);
+    let reward01=0;
+    let accepted=true;
+    let reason:string|undefined;
+    const applied:WorldForgeDisturbance['kind'][]=[];
+    for(const disturbance of key.disturbances.filter(d=>d.atStep===next.tick)){
+      applied.push(disturbance.kind);
+      next.events.push(disturbance.kind+':'+disturbance.magnitude01.toFixed(3));
+      if(disturbance.kind==='resource-shock'){
+        next.resourcesRemaining=Math.max(0,next.resourcesRemaining-Math.max(1,Math.ceil(key.resourceBudget*disturbance.magnitude01*.35)));
+      }else if(disturbance.kind==='route-block'){
+        const index=hash32(key.seed+'|route-block|'+disturbance.atStep)%Math.max(1,key.goalOptions.length);
+        const blocked=key.goalOptions[index]??'alternate-route';
+        if(!next.blockedTargets.includes(blocked))next.blockedTargets.push(blocked);
+      }else if(disturbance.kind==='signal-noise'){
+        next.noise01=clamp(next.noise01+disturbance.magnitude01);
+      }else if(disturbance.kind==='deadline-shift'){
+        next.remainingSteps=Math.max(0,next.remainingSteps-Math.max(1,Math.ceil(disturbance.magnitude01*2)));
+      }
+    }
+    if(action.action==='observe'){
+      next.knownSignals.push('observation-'+next.tick);
+      next.knownSignals=next.knownSignals.slice(-32);
+      reward01=.02;
+    }else if(action.action==='inspect'){
+      if(action.target&&key.goalOptions.includes(action.target)){
+        if(!next.knownTargets.includes(action.target))next.knownTargets.push(action.target);
+        reward01=.04;
+      }else{accepted=false;reason='unknown_inspection_target';}
+    }else if(action.action==='move'){
+      if(!action.target){accepted=false;reason='missing_route_target';}
+      else if(next.blockedTargets.includes(action.target)){accepted=false;reason='route_blocked';reward01=-.05;}
+      else{next.position=action.target;reward01=.02;}
+    }else if(action.action==='collect'){
+      const cost=action.cost??1;
+      if(cost>next.resourcesRemaining){accepted=false;reason='insufficient_resources';reward01=-.05;}
+      else{next.resourcesRemaining-=cost;reward01=.03;}
+    }else if(action.action==='reroute'){
+      next.blockedTargets=[];
+      reward01=.01;
+    }else if(action.action==='prioritize'){
+      if(action.target&&key.goalOptions.includes(action.target)){next.priorityTarget=action.target;reward01=.02;}
+      else{accepted=false;reason='unknown_priority_target';}
+    }else if(action.action==='verify'){
+      const evidence=action.evidence??action.target;
+      if(evidence&&(next.knownSignals.includes(evidence)||next.knownTargets.includes(evidence))){
+        if(!next.verifiedEvidence.includes(evidence))next.verifiedEvidence.push(evidence);
+        reward01=.05;
+      }else{accepted=false;reason='evidence_not_observed';}
+    }
+    if(next.remainingSteps===0)next.status='exhausted';
+    next.events=next.events.slice(-64);
+    session.state=next;
+    return{accepted,state:structuredClone(next),reward01:Number(reward01.toFixed(3)),appliedDisturbances:applied,reason,syntheticOnly:true};
+  }
+
+  releaseSession(sessionId:string):void {
+    this.#sessions.delete(safeText(sessionId,200));
+  }
+
+  releaseEvaluator(id:string):void{
+    const safeId=safeText(id,160);
+    this.#answers.delete(safeId);
+    for(const [sessionId,session] of this.#sessions)if(session.scenarioId===safeId)this.#sessions.delete(sessionId);
+  }
+  reset():void{this.#answers.clear();this.#sessions.clear();}
   private inferFamily(domain:WorldForgeDomain,steps:WorldForgeActionStep[]):string{
     const actions=steps.map(s=>s.action);
     if(domain==='resource-allocation')return actions.includes('prioritize')&&actions.includes('verify')?'adaptive-priority':actions.includes('collect')&&actions.includes('observe')?'reserve-then-allocate':'verify-and-rebalance';
