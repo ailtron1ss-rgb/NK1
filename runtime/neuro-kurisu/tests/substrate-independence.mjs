@@ -36,6 +36,12 @@ const payload = {
 
 const engine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
 engine.setInitialBackend(source.backendId);
+const fallbackBoot = new SubstrateIndependenceEngine({ profiles: [source] });
+fallbackBoot.observeBackend('deterministic-policy-fallback');
+assert.equal(fallbackBoot.activeBackendId(), null, 'the deterministic fallback is not a model substrate');
+fallbackBoot.observeBackend(source.backendId);
+assert.equal(fallbackBoot.activeBackendId(), source.backendId, 'a live model provider can initialize after fallback-only startup');
+
 const observed = engine.observeBackend('kobold');
 assert.equal(observed.state.activeBackendId, source.backendId,
   'an uncalibrated observed provider must not replace the active substrate');
