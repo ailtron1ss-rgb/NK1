@@ -3,6 +3,7 @@ import { SharedFutureEngine, defaultSharedFutureState, type SharedFutureState, t
 import { WorldForge, type WorldForgeCase, type WorldForgeEvaluation, type WorldForgeState, type WorldForgeStepResult } from './WorldForge.ts';
 import {
   ConsequenceEcologyEngine,
+  defaultConsequenceEcologyState,
   type ConsequenceEcologyContext,
   type ConsequenceEcologyRequest,
   type ConsequenceEcologyState,
@@ -28,15 +29,7 @@ export const defaultFutureSimulator = (): FutureSimulatorState => ({
   last: [],
   version: 1,
   sharedFuture: defaultSharedFutureState(),
-  consequenceEcology: {
-    version: 1,
-    analyses: [],
-    totalAnalyses: 0,
-    rejectedAnalyses: 0,
-    feedbackLoopsObserved: 0,
-    truncatedAnalyses: 0,
-    lastAt: 0,
-  },
+  consequenceEcology: defaultConsequenceEcologyState(),
 });
 
 export class FutureSimulator {
