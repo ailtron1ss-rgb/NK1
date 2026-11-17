@@ -171,7 +171,7 @@ export function ConstitutionEvolutionConsole() {
     <div className="mt-5 rounded-lg border border-border bg-bg p-3"><h3 className="text-sm font-semibold text-fg">Audited rollback</h3>
       <p className="mt-1 text-[11px] text-muted">Rollback appends a new revision pointing to a retained version; superseded history is never deleted.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)_auto]">
-        <Field label="Target version"><select className={field} value={rollbackTarget} onChange={e => setRollbackTarget(e.target.value)}>{[...new Set([rollbackTarget,"1.0.0",...proposals.map(p => p.appliedVersion).filter(Boolean)])].map((v: string) => <option key={v}>{v}</option>)}</select></Field>
+        <Field label="Target version"><select className={field} value={rollbackTarget} onChange={e => setRollbackTarget(e.target.value)}>{(Array.isArray(state?.revisions) ? state.revisions.map((revision: AnyRecord) => revision.version) : ["1.0.0"]).map((v: string) => <option key={v}>{v}</option>)}</select></Field>
         <Field label="Reason"><input className={field} value={rollbackReason} onChange={e => setRollbackReason(e.target.value)} /></Field>
         <div className="flex items-end"><button type="button" onClick={() => void perform("rollback", () => neuroApi.rollbackConstitution(rollbackTarget, rollbackReason), "Rollback approval consumed and a new revision appended.")} disabled={busy !== null || !rollbackReason.trim()} className="h-10 rounded-md border border-border px-3 text-xs text-fg disabled:opacity-50">{busy === "rollback" ? "Waiting for owner approval…" : "Request rollback"}</button></div>
       </div>
