@@ -41,5 +41,21 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/chrono-truth-bitemporal-memory.mjs
       - name: Existing temporal revision regression
         run: npm --prefix runtime/neuro-kurisu run test:memory-temporal-inspector-closure
+      - name: MemoryOS2 restore, lifecycle and revision-lineage compatibility
+        run: |
+          npm --prefix runtime/neuro-kurisu run test:memory-restore-integrity
+          npm --prefix runtime/neuro-kurisu run test:memory-subsystem-state-roundtrip
+          npm --prefix runtime/neuro-kurisu run test:r5:memory-lifecycle
+          npm --prefix runtime/neuro-kurisu run test:workpass76:memory-lineage-integrity
+          npm --prefix runtime/neuro-kurisu run test:workpass87:superseded-memory
+          npm --prefix runtime/neuro-kurisu run test:revision-graph:persistence
+          npm --prefix runtime/neuro-kurisu run test:revision-aware-projection
+          npm --prefix runtime/neuro-kurisu run test:p314:memory-doctor
+      - name: Metadata, semantic and cross-lingual retrieval compatibility
+        run: |
+          npm --prefix runtime/neuro-kurisu run test:memoryos2-metadata-retrieval
+          npm --prefix runtime/neuro-kurisu run test:memory-fabric-semantic-retrieval
+          npm --prefix runtime/neuro-kurisu run test:memory-retrieval-cross-lingual-bridge
+          npm --prefix runtime/neuro-kurisu run test:memory-retrieval-grounded-abstention-workpass574
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
