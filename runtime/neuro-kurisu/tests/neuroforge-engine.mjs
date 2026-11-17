@@ -84,7 +84,7 @@ test('NeuroForge identifies a donor capability gap but never authorizes code reu
     assert.equal(proposal.copyAllowed, false);
     assert.equal(proposal.promotionStatus, 'blocked');
     assert.ok(proposal.blockingReasons.includes('human-license-review-required'));
-    assert.ok(proposal.evidence.donorFiles.some(file => file === 'src/workflow.ts'));
+    assert.ok(proposal.evidence.donorFiles.some(file => file === 'src/durable_workflow_engine.ts'));
     assert.equal(report.codeCopied, false);
     assert.equal(report.donorCodeExecuted, false);
   });
@@ -283,12 +283,12 @@ test('secret scanner ignores generic tokens and runtime getters while catching a
   await withTempRoot(async root => {
     const donorRoot = path.join(root, 'safe-config');
     await makeProject(donorRoot, {
-      'src/config.ts': [
+      'src/example.ts': [
         'export const REPLICATE_API_TOKEN = "replace-me";',
         'export const access_token = get_secret("access_token");',
         'const authToken = process.env.AUTH_TOKEN;',
-        'export const apiKey = "sk-live-123456789012345678901234567890";',
-      ].join('\\n'),
+      ].join('\n'),
+      'src/hardcoded.ts': 'export const apiKey = "sk-live-123456789012345678901234567890";\n',
     });
     const manifest = await scanNeuroForgeProject(donorRoot);
     assert.equal(manifest.securityFindings.filter(row => row.kind === 'possible-secret-assignment').length, 1);
