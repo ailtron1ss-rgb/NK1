@@ -11,7 +11,7 @@ import { OfflineConsolidation, type ConsolidationResult } from '../cognition/Off
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
 import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageRequest, type LanguageResponse } from '../language/LanguageOrgan.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
-import { CognitiveToNeuralBridge, applyCognitiveNeuralControl, type CognitiveNeuralControlProfile } from '../cognition/CognitiveToNeuralBridge.ts';
+import { CognitiveToNeuralBridge, applyCognitiveNeuralControl } from '../cognition/CognitiveToNeuralBridge.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
@@ -867,7 +867,7 @@ export class OrganismRuntime {
     if (languageInvoker && shouldInvokeLanguageForRuntimeStep({ enabled:this.config.enableLanguage, hasInvoker:true, languageBudgetAllows, hasExternalText:Boolean(externalText), hasAutonomousAgenda:Boolean(autonomousAgenda), suppressResponse:options.suppressResponse })) {
       const mem0Query = externalText || autonomousAgenda?.topic || '';
       const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
-      const request = externalText
+      let request = externalText
         ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
         : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext());
       request = this.applyCognitiveToNeuralControl(request, cycle);
