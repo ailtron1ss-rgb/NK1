@@ -38,8 +38,28 @@ assert.ok(syndicatedVerified.every(Boolean));
 const syndicatedFamilies=new Map(syndicatedRows.map((row,index)=>[row.sourceKey,syndicatedVerified[index].sourceFamily]));
 assert.equal(syndicatedFamilies.get('publisher-a.example'),syndicatedFamilies.get('publisher-b.example'),
   'syndicated publisher copies are one source family');
+
 assert.notEqual(syndicatedFamilies.get('publisher-a.example'),syndicatedFamilies.get('publisher-c.example'),
   'a separate lineage remains independent');
+
+// A long syndication component keeps its family identifier compact.
+const longLineageFirewall=new EvidenceFirewallEngine();
+const longLineageClaim='nk1:cognitive-parliament:bounded-family-id';
+const longSourceKeys=Array.from({length:10},(_,i)=>`publisher-${String(i).padStart(2,'0')}-${'x'.repeat(90)}.example`);
+for(const [i,sourceKey] of longSourceKeys.entries()){
+  longLineageFirewall.observe({claimKey:longLineageClaim,sourceClass:'external-api',sourceKey,
+    sourceLineageKey:'one-large-syndicated-lineage',contentHash:`long-copy-${i}`,confidence01:.99,trust01:.99});
+}
+longLineageFirewall.observe({claimKey:longLineageClaim,sourceClass:'external-api',sourceKey:'independent.example',
+  sourceLineageKey:'independent-lineage',contentHash:'independent-copy',confidence01:.99,trust01:.99});
+assert.equal(longLineageFirewall.claim(longLineageClaim).status,'promoted');
+const longLineageObservation=longLineageFirewall.snapshot().observations.find(row=>row.sourceKey===longSourceKeys[0]);
+assert.ok(longLineageObservation);
+const longLineageVerified=new EvidenceFirewallParliamentTrustPort(longLineageFirewall).openSession()
+  .verifyEvidence({id:longLineageObservation.id,claimKey:longLineageClaim});
+assert.ok(longLineageVerified);
+assert.ok(longLineageVerified.sourceFamily.length<=140,
+  'source-family identifiers must stay compact even for large connected lineages');
 
 const staleFirewall=new EvidenceFirewallEngine();
 const staleClaim='nk1:cognitive-parliament:stale-observation';
