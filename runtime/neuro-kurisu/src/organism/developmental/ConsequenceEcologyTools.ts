@@ -62,7 +62,8 @@ const optionContract = {
     id: { type: 'string' as const, minLength: 1, maxLength: 96 },
     title: { type: 'string' as const, minLength: 1, maxLength: 180 },
     action: { type: 'string' as const, minLength: 1, maxLength: 180 },
-    nodes: { type: 'array' as const, items: nodeContract, minItems: 1, maxItems: 64 },
+    // Reserve 16 graph slots for scenario consequences already stored in Shared Future.
+    nodes: { type: 'array' as const, items: nodeContract, minItems: 1, maxItems: 48 },
     edges: { type: 'array' as const, items: edgeContract, maxItems: 100 },
   },
   required: ['id', 'title', 'action', 'nodes', 'edges'],
