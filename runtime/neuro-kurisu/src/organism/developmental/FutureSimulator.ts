@@ -1,5 +1,5 @@
 import type { WorldModel2 } from './WorldModel2.ts';
-import { SharedFutureEngine, defaultSharedFutureState, type SharedFutureState } from './SharedFutureEngine.ts';
+import { SharedFutureEngine, defaultSharedFutureState, type SharedFutureState, type SharedFutureOutcomeRecord } from './SharedFutureEngine.ts';
 
 export interface FutureSimulationResult {
   path: Array<{ action: string; reward: number; uncertainty: number; confidence: number }>;
@@ -25,14 +25,17 @@ export class FutureSimulator {
   private state = defaultFutureSimulator();
   readonly sharedFuture = new SharedFutureEngine();
 
-  restore(s: FutureSimulatorState | undefined): void {
+  restore(
+    s: FutureSimulatorState | undefined,
+    options: { validateIndependentlyVerifiedOutcome?: (outcome: SharedFutureOutcomeRecord) => boolean } = {},
+  ): void {
     this.state = {
       ...defaultFutureSimulator(),
       ...(s ?? {}),
       last: Array.isArray(s?.last) ? s!.last.slice(-32) : [],
     };
     // Older snapshots do not have this field; restore() deliberately keeps them valid.
-    this.sharedFuture.restore(s?.sharedFuture);
+    this.sharedFuture.restore(s?.sharedFuture, options.validateIndependentlyVerifiedOutcome);
   }
 
   simulate(model: WorldModel2, actions: string[], baseReward: number): FutureSimulationResult {
