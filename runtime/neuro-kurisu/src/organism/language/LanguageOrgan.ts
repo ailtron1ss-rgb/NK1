@@ -109,6 +109,13 @@ export function buildCognitivePrompt(cycle: OrganismCycleResult, worldFacts: str
  * Generates a self-initiated conversational turn from a selected endogenous topic.
  * This is language-only: it must not call tools, browse, mutate files, or actuate devices.
  */
+export interface AutonomousOpenLoopPromptContext {
+  title: string;
+  kind?: string;
+  surfaceReason?: 'overdue' | 'due-soon' | 'dependency-unblocked' | 'expired';
+  overdueMs?: number;
+}
+
 export function buildAutonomousDialoguePrompt(
   cycle: OrganismCycleResult,
   initiative: SocialInitiative,
@@ -117,6 +124,7 @@ export function buildAutonomousDialoguePrompt(
   personalityContext = '',
   externalMem0Memories: Array<{ content?: unknown; score?: unknown }> = [],
   userModelContext = '',
+  openLoopContext?: AutonomousOpenLoopPromptContext,
 ): LanguageRequest {
   const selected = cycle.decision.selected;
   const localTime = new Date().toLocaleString();
@@ -125,6 +133,20 @@ export function buildAutonomousDialoguePrompt(
   if (!safeTopic) throw new Error('Autonomous dialogue topic failed the privacy gate');
   const safeReason = sanitizeAutonomousTopicText(initiative.reason, 240) ?? 'self-directed conversation';
   const safeInterestLabel = initiative.interestContext ? sanitizeAutonomousTopicText(initiative.interestContext.label, 120) : null;
+  const safeOpenLoopTitle = openLoopContext
+    ? sanitizeAutonomousTopicText(openLoopContext.title, 180)
+    : null;
+  const safeOpenLoopKind = openLoopContext?.kind && /^[a-z_]{1,32}$/.test(openLoopContext.kind)
+    ? openLoopContext.kind
+    : 'task';
+  const safeOpenLoopReason = openLoopContext?.surfaceReason &&
+    ['overdue', 'due-soon', 'dependency-unblocked', 'expired'].includes(openLoopContext.surfaceReason)
+      ? openLoopContext.surfaceReason
+      : 'due-soon';
+  const safeOpenLoopOverdueDays = openLoopContext && Number.isFinite(openLoopContext.overdueMs) &&
+    (openLoopContext.overdueMs ?? 0) > 0
+      ? Math.min(365, Math.floor((openLoopContext.overdueMs ?? 0) / 86_400_000))
+      : 0;
   const interestEvidenceLevel = !initiative.interestContext || initiative.interestContext.evidenceCount < 1
     ? 'baseline character-interest prior; do not claim it was learned from lived experience'
     : initiative.interestContext.evidenceCount >= 4 && initiative.interestContext.confidence01 >= .55
@@ -143,6 +165,17 @@ export function buildAutonomousDialoguePrompt(
     { id: 'selected-goal', slot: 'system', priority: 'normal', text: `current_goal=${cycle.goals.find(g => g.id === selected?.goalId)?.title ?? 'none'}\nselected_action=${selected?.action ?? 'none'}` },
     ...(initiative.toneHint ? [{ id: 'initiative-affect-modulation', slot: 'system' as const, priority: 'high' as const, text: `[TEMPORARY AFFECT-TO-EXPRESSION MODULATION]\nCurrent appraisal category: ${initiative.affect?.label ?? 'uncertain'}. Current tone tendency: ${initiative.toneHint}. The existing appraisal state may gently change directness, warmth, playfulness, reflection or curiosity in this message. Let this influence phrasing naturally; do not name the tone, disclose internal scores, claim bodily sensations, or override the stable Kurisu identity. This is a transient influence, not a new personality.` }] : []),
     ...(safeInterestLabel ? [{ id: 'canonical-personal-interest', slot: 'system' as const, priority: 'high' as const, text: `[CANONICAL PERSONAL-INTEREST CONTEXT]\nSelected interest domain: ${safeInterestLabel}. Evidence status: ${interestEvidenceLevel}. This label comes from P33's single persisted interest profile; it is a tendency, not an obligation or proof of inner experience. Let it influence which aspect you notice and what question you pursue. Do not claim a personal memory unless it appears in the supplied recollection.` }] : []),
+    ...(safeOpenLoopTitle ? [{
+      id: 'accepted-open-loop-follow-up', slot: 'user' as const, priority: 'high' as const,
+      sourceRef: 'open-loop:accepted-follow-up', recallable: false,
+      text: `[ACCEPTED OPEN OBLIGATION — GENTLE CHECK-IN, NOT AN ACTION COMMAND]
+An explicitly accepted unfinished item is relevant to this turn.
+Title: ${safeOpenLoopTitle}
+Kind: ${safeOpenLoopKind}
+Surfacing reason: ${safeOpenLoopReason}
+${safeOpenLoopOverdueDays > 0 ? `It is overdue by approximately ${safeOpenLoopOverdueDays} day(s).\n` : ''}
+Mention it naturally only if it fits the conversation. Ask whether the user still wants to revisit or continue it. Do not imply that it is complete, do not pressure the user, and do not execute it. A reminder is not authorization to take action.`,
+    }] : []),
     {
       id: 'chosen-inner-topic', slot: 'user', priority: 'critical', required: true,
       sourceRef: `initiative:${initiative.id}`, recallable: false,

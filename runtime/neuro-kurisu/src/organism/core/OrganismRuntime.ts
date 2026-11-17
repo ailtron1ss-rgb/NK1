@@ -827,19 +827,43 @@ export class OrganismRuntime {
     const languageBudgetAllows = currentBudgetAllowsLanguage(this.core.cognitiveBudgetOperationalSnapshot()?.mode);
     const languageInvoker = this.config.languageInvoker;
     if (languageInvoker && shouldInvokeLanguageForRuntimeStep({ enabled:this.config.enableLanguage, hasInvoker:true, languageBudgetAllows, hasExternalText:Boolean(externalText), hasAutonomousAgenda:Boolean(autonomousAgenda), suppressResponse:options.suppressResponse })) {
-      const mem0Query = externalText || autonomousAgenda?.topic || '';
-      const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
-      const request = externalText
-        ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
-        : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext());
-      if(options.signal) request.signal=options.signal;
-      this.lastContextBudgetLedger = request.contextLedger ?? null;
+      let openLoopReservation: { id: string; initiativeId: string } | null = null;
       try {
+        const mem0Query = externalText || autonomousAgenda?.topic || '';
+        const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
+        let openLoopPromptContext: import('../language/LanguageOrgan.ts').AutonomousOpenLoopPromptContext | undefined;
+        if (!externalText && autonomousAgenda) {
+          const dueCandidate = this.openLoopRadar.scan({ reminderCooldownMs: 0 }).find(item => item.shouldSurface);
+          if (dueCandidate) {
+            const reserved = await this.persistOpenLoopMutation(() =>
+              this.openLoopRadar.reserveForInitiative(dueCandidate.record.id, autonomousAgenda.id));
+            openLoopReservation = { id: reserved.id, initiativeId: autonomousAgenda.id };
+            openLoopPromptContext = {
+              title: reserved.title,
+              kind: reserved.kind,
+              surfaceReason: dueCandidate.surfaceReason ?? undefined,
+              overdueMs: dueCandidate.overdueMs,
+            };
+          }
+        }
+        const request = externalText
+          ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
+          : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext(), openLoopPromptContext);
+        if(options.signal) request.signal=options.signal;
+        this.lastContextBudgetLedger = request.contextLedger ?? null;
         language = await languageInvoker(request);
         if (!externalText && autonomousAgenda && !this.core.stageAutonomousSocialInitiativeMessage(autonomousAgenda.id, language?.text ?? '', Date.now())) {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
+          if (openLoopReservation) {
+            await this.persistOpenLoopMutation(() => this.openLoopRadar.releaseInitiative(openLoopReservation!.initiativeId));
+            openLoopReservation = null;
+          }
         }
       } catch (error) {
+        if (openLoopReservation) {
+          await this.persistOpenLoopMutation(() => this.openLoopRadar.releaseInitiative(openLoopReservation!.initiativeId)).catch(() => {});
+          openLoopReservation = null;
+        }
         if(options.signal?.aborted) {
           this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'language-cancelled',confidence01:.95,payload:{reason:'caller-aborted',role:'response-generation'}});
         } else if (!externalText && autonomousAgenda) {
@@ -1949,6 +1973,20 @@ export class OrganismRuntime {
     return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.markSurfaced(id)));
   }
 
+  reserveOpenLoopForAutonomousInitiative(id: string, initiativeId: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() =>
+      this.openLoopRadar.reserveForInitiative(id, initiativeId)));
+  }
+
+  releaseOpenLoopForAutonomousInitiative(id: string, initiativeId: string): Promise<boolean> {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => {
+      const record = this.openLoopRadar.snapshot().records.find(item => item.id === id);
+      return record?.pendingSurfacingInitiativeId === initiativeId
+        ? this.openLoopRadar.releaseInitiative(initiativeId)
+        : false;
+    }));
+  }
+
   scanOpenLoops(options: OpenLoopScanOptions = {}) {
     return this.enqueue(async () => this.openLoopRadar.scan(options));
   }
@@ -2000,7 +2038,10 @@ export class OrganismRuntime {
   async acknowledgeAutonomousDialogue(id: string): Promise<boolean> {
     return this.enqueue(async () => {
       const acknowledged = this.core.acknowledgeAutonomousSocialInitiative(id, Date.now());
-      if (acknowledged) await this.core.flush();
+      if (acknowledged) {
+        await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(id));
+        await this.core.flush();
+      }
       return acknowledged;
     });
   }

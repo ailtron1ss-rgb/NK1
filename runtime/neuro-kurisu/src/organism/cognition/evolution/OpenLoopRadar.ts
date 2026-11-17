@@ -28,6 +28,10 @@ export interface OpenLoopRecord {
   lastSurfacedAt: number;
   /** Set only when a previously blocked record becomes actionable. */
   unblockedAt: number;
+  /** Autonomous initiative holding the reminder while a message is generated/delivered. */
+  pendingSurfacingInitiativeId: string | null;
+  /** Lease expiry for the reservation; stale reservations never hide an obligation forever. */
+  pendingSurfacingLeaseUntil: number;
 }
 export interface OpenLoopRadarState { version: 1; records: OpenLoopRecord[]; sequence: number; }
 export interface OpenLoopCandidate {
@@ -133,6 +137,19 @@ function normalizeRecord(value: unknown): OpenLoopRecord | null {
   if (lastSurfacedAt === null || unblockedAt === null ||
       lastSurfacedAt > updatedAt || unblockedAt > updatedAt ||
       (status === 'blocked' && unblockedAt > 0)) return null;
+  const rawPendingInitiativeId = ownData(value, 'pendingSurfacingInitiativeId');
+  const pendingSurfacingInitiativeId = rawPendingInitiativeId == null
+    ? null
+    : typeof rawPendingInitiativeId === 'string' && rawPendingInitiativeId.trim().length > 0 &&
+      rawPendingInitiativeId.trim().length <= 128
+      ? rawPendingInitiativeId.trim()
+      : undefined;
+  const rawPendingLeaseUntil = ownData(value, 'pendingSurfacingLeaseUntil');
+  const pendingSurfacingLeaseUntil = rawPendingLeaseUntil == null || rawPendingLeaseUntil === 0
+    ? 0 : time(rawPendingLeaseUntil);
+  if (pendingSurfacingInitiativeId === undefined || pendingSurfacingLeaseUntil === null ||
+      (pendingSurfacingInitiativeId === null) !== (pendingSurfacingLeaseUntil === 0) ||
+      (TERMINAL.has(status) && pendingSurfacingInitiativeId !== null)) return null;
 
   return {
     id, title, description: text(ownData(value, 'description')), kind, owner, status,
@@ -140,7 +157,7 @@ function normalizeRecord(value: unknown): OpenLoopRecord | null {
     priority: clamp01(ownData(value, 'priority')),
     source: text(ownData(value, 'source'), 120) || 'unknown',
     accepted: true, closureEvidence, cancellationReason, idempotencyKey: idempotencyKey ?? null,
-    lastSurfacedAt, unblockedAt,
+    lastSurfacedAt, unblockedAt, pendingSurfacingInitiativeId, pendingSurfacingLeaseUntil,
   };
 }
 export function defaultOpenLoopRadarState(): OpenLoopRadarState {
@@ -320,6 +337,8 @@ export class OpenLoopRadar {
       cancellationReason: null,
       lastSurfacedAt: 0,
       unblockedAt: 0,
+      pendingSurfacingInitiativeId: null,
+      pendingSurfacingLeaseUntil: 0,
     };
     this.state.sequence = nextSequence;
     this.state.records = [record, ...retained];
@@ -396,7 +415,9 @@ export class OpenLoopRadar {
         Math.min(1, overdueMs / (7 * 24 * 60 * 60 * 1000)) * 0.4 +
         (blockedBy.length ? 0.15 : 0));
       const cooldownElapsed = record.lastSurfacedAt === 0 || now - record.lastSurfacedAt >= cooldown;
-      const shouldSurface = surfaceReason !== null && now >= quietUntil && cooldownElapsed;
+      const reservationActive = record.pendingSurfacingInitiativeId !== null &&
+        record.pendingSurfacingLeaseUntil > now;
+      const shouldSurface = surfaceReason !== null && now >= quietUntil && cooldownElapsed && !reservationActive;
       return [{
         record: structuredClone(record), effectiveStatus, blockedBy, overdueMs, risk01, shouldSurface, surfaceReason,
       }];
@@ -404,6 +425,56 @@ export class OpenLoopRadar {
       Number(b.shouldSurface) - Number(a.shouldSurface) ||
       b.risk01 - a.risk01 ||
       (a.record.dueAt ?? Number.MAX_SAFE_INTEGER) - (b.record.dueAt ?? Number.MAX_SAFE_INTEGER));
+  }
+
+  reserveForInitiative(id: string, initiativeId: string, leaseMs = 15 * 60 * 1000): OpenLoopRecord {
+    const record = this.requireActive(id);
+    const normalizedInitiativeId = text(initiativeId, 128);
+    if (!normalizedInitiativeId) throw new TypeError('open-loop-initiative-id-required');
+    if (!Number.isSafeInteger(leaseMs) || leaseMs < 60_000 || leaseMs > 30 * 60 * 1000) {
+      throw new RangeError('open-loop-initiative-lease-out-of-range');
+    }
+    const now = this.safeNow();
+    if (record.pendingSurfacingInitiativeId !== null && record.pendingSurfacingLeaseUntil > now) {
+      if (record.pendingSurfacingInitiativeId === normalizedInitiativeId) return structuredClone(record);
+      throw new Error('open-loop-initiative-already-bound');
+    }
+    const candidate = this.scan({ now, reminderCooldownMs: 0 }).find(item => item.record.id === id);
+    if (!candidate?.shouldSurface) throw new Error('open-loop-not-ready-to-surface');
+    const leaseUntil = now + leaseMs;
+    if (!Number.isSafeInteger(leaseUntil)) throw new RangeError('open-loop-initiative-lease-overflow');
+    record.pendingSurfacingInitiativeId = normalizedInitiativeId;
+    record.pendingSurfacingLeaseUntil = leaseUntil;
+    record.updatedAt = now;
+    return structuredClone(record);
+  }
+
+  releaseInitiative(initiativeId: string): boolean {
+    const normalizedInitiativeId = text(initiativeId, 128);
+    if (!normalizedInitiativeId) return false;
+    const now = this.safeNow();
+    let released = false;
+    for (const record of this.state.records) {
+      if (record.pendingSurfacingInitiativeId !== normalizedInitiativeId) continue;
+      record.pendingSurfacingInitiativeId = null;
+      record.pendingSurfacingLeaseUntil = 0;
+      record.updatedAt = now;
+      released = true;
+    }
+    return released;
+  }
+
+  acknowledgeInitiative(initiativeId: string): boolean {
+    const normalizedInitiativeId = text(initiativeId, 128);
+    if (!normalizedInitiativeId) return false;
+    const now = this.safeNow();
+    const record = this.state.records.find(item => item.pendingSurfacingInitiativeId === normalizedInitiativeId);
+    if (!record || record.pendingSurfacingLeaseUntil <= now || TERMINAL.has(record.status)) return false;
+    record.lastSurfacedAt = now;
+    record.pendingSurfacingInitiativeId = null;
+    record.pendingSurfacingLeaseUntil = 0;
+    record.updatedAt = now;
+    return true;
   }
 
   markSurfaced(id: string): void {
