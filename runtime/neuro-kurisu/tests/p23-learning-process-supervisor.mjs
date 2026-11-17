@@ -64,6 +64,17 @@ try {
   assert.equal(truncatedSecret.receipt.stdout, '[REDACTED]');
   assert.ok(!JSON.stringify(truncatedSecret.receipt).includes(accessToken.slice(0, 8)), 'truncated token prefixes must not be persisted');
 
+  // Generic credential-shaped output is redacted even when the value was not
+  // passed through the supervisor's environment allowlist.
+  const genericCredentials = await runLearningProcess(run, 'b'.repeat(64), {
+    ...base,
+    args: ['-e', "process.stdout.write('Authorization: Bearer unbound-credential-value-123456'); process.stderr.write('api_key=unbound-api-key-value')"],
+  });
+  assert.equal(genericCredentials.receipt.stdout, 'Authorization: Bearer [REDACTED]');
+  assert.equal(genericCredentials.receipt.stderr, 'api_key=[REDACTED]');
+  assert.ok(!JSON.stringify(genericCredentials.receipt).includes('unbound-credential-value-123456'));
+  assert.ok(!JSON.stringify(genericCredentials.receipt).includes('unbound-api-key-value'));
+
   const failed = await runLearningProcess(run, 'b'.repeat(64), { ...base, args: ['-e', 'process.exit(9)'] });
   assert.equal(failed.receipt.status, 'failed');
   assert.equal(failed.receipt.exitCode, 9);
