@@ -21,7 +21,7 @@ assert.deepEqual(profile.featureVector01,[
 ]);
 assert.equal(profile.featureVector01.length,19);
 assert.ok(profile.featureVector01.every(value=>Number.isFinite(value)&&value>=0&&value<=1));
-assert.equal(profile.maxTokens,768);
+assert.equal(profile.maxTokens,448);
 assert.equal(profile.temperature,.662);
 assert.ok(Object.values(profile.steeringIntent01).every(value=>value>=0&&value<=.15));
 assert.deepEqual(profile.controlsApplied,{
@@ -48,7 +48,7 @@ const contextLedger={owner:'LanguageOrgan',totalInputChars:12};
 const request={system:'system',user:'user',temperature:.7,maxTokens:512,signal,contextLedger};
 const applied=applyCognitiveNeuralControl(request,profile);
 assert.equal(applied.temperature,.662);
-assert.equal(applied.maxTokens,768);
+assert.equal(applied.maxTokens,448);
 assert.equal(applied.cognitiveControl.tick,17);
 assert.equal(applied.system,'system');
 assert.equal(applied.user,'user');
@@ -58,7 +58,7 @@ assert.notEqual(applied.cognitiveControl,profile,'provider metadata must not ali
 
 const conservative=bridge.project({mode:'sleep',budgetRemaining01:0,uncertainty01:1});
 assert.equal(conservative.adapterHint,'conservative');
-assert.equal(conservative.maxTokens,128);
+assert.equal(conservative.maxTokens,96);
 assert.ok(conservative.temperature>=.2&&conservative.temperature<=.85);
 assert.ok(conservative.steeringIntent01.caution01<=.15);
 
