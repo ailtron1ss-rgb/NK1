@@ -217,6 +217,7 @@ import { P24WorldIdentityEngine, defaultP24WorldIdentity } from '../developmenta
 import { P25ScientificDevelopmentEngine, defaultP25ScientificDevelopment } from '../learning/P25ScientificDevelopmentEngine.ts';
 import { P26TrueLearningEngine, defaultP26TrueLearning } from '../learning/P26TrueLearningEngine.ts';
 import { P28PlasticitySubstrate, defaultP28Plasticity } from '../learning/P28PlasticitySubstrate.ts';
+import { OmeStroIntegrationKernel } from '../system/OmeStroIntegrationKernel.ts';
 import { P29LearningGovernanceEngine, defaultP29Governance } from '../learning/P29LearningGovernance.ts';
 import { P30ContinualIntelligenceEngine, defaultP30Continual } from '../learning/P30ContinualIntelligence.ts';
 import { DevelopmentalSynthesisEngine, defaultDevelopmentalSynthesis } from '../learning/DevelopmentalSynthesisEngine.ts';
@@ -907,6 +908,7 @@ function defaultAdvancedFacet(): import('./types.ts').AdvancedDevelopmentFacet {
         cognitiveResearchBattery: defaultCognitiveResearchBattery(),
         causalDevelopmentLoop: defaultCausalDevelopmentLoop(),
         b380TemporalLife: defaultB380TemporalLifeState(),
+        omeStro: undefined,
     };
 }
 const defaultP47 = () => ({ version: 1 as const, ingestedEvents: 0, nodes: 0, beliefs: 0, contradictionsResolved: 0, contradictionsOpen: 0, compressions: 0, lastCompactionAt: 0, lastReflectionAt: 0, memoryPressure01: 0, identityStability01: 0.88, predictionCalibration01: 0.5, nodesData: [], beliefsData: [] });
@@ -1174,6 +1176,15 @@ export class OrganismCore {
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
     /** Owns general cognitive/runtime services; Core remains the orchestration spine. */
     private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272 });
+
+    /** OmeStro governance is composed over canonical NK1 owners; no parallel P25/P28/immune engines. */
+    private readonly omeStroIntegration = new OmeStroIntegrationKernel({
+        cognitiveImmune: this.cognitiveRuntime.cognitiveImmune,
+        scientificDevelopment: this.developmentalNeural.p25ScientificDevelopment,
+        plasticity: this.developmentalNeural.p28Plasticity,
+        portability: this.developmentalNeural.neuroDigitalEvolution.substratePortability,
+        morphogenesis: this.developmentalNeural.neuralMorphogenesis,
+    });
     /** Owns mutable persistence/continuity machinery; Core supplies orchestration decisions. */
     private readonly persistence = new PersistenceRuntime();
     /** Selected WILL contracts are owned by the composition fabric; Core only orchestrates them. */
@@ -1749,6 +1760,7 @@ export class OrganismCore {
         this.developmentalNeural.neuralMorphogenesis.restore(this.persisted.system.neuralMorphogenesis);
         this.developmentalNeural.hybridNeuroCognitiveLoop.restore(this.persisted.system.hybridNeuroCognitiveLoop);
         this.developmentalNeural.neuroDigitalEvolution.restore(this.persisted.system.neuroDigitalEvolution);
+        this.omeStroIntegration.restoreGovernance(this.persisted.facets.advanced.omeStro);
         this.worldSubsystem.worldModelEnsemble.restore(this.persisted.system.worldModelEnsemble);
         this.cognitiveRuntime.cognitiveExecutionPlanner.restore(this.persisted.system.cognitiveExecutionPlan);
         this.cognitiveRuntime.temporalResolutionGovernor.restore(this.persisted.system.temporalResolution);
@@ -1952,12 +1964,14 @@ export class OrganismCore {
     private syncPersistenceProjection(includeAdvanced = true, forceAllAdvanced = false) {
         this.persisted.system.conscioAdaptation = this.conscioAdaptation.snapshot();
         this.persistence.persistenceProjectionCoordinator.sync(this.persisted, this.projectionContext(), includeAdvanced, forceAllAdvanced);
+        this.persisted.facets.advanced.omeStro = this.omeStroIntegration.snapshotGovernance();
         // Persist Hexis evidence provenance separately from inferred cognition sources.
         this.persisted.facets.advanced.hexisSourceMonitor = this.memorySubsystem.sourceMonitor.snapshot();
     }
     private syncHotPersistenceProjection() {
         this.persisted.system.conscioAdaptation = this.conscioAdaptation.snapshot();
         this.persistence.persistenceProjectionCoordinator.syncHot(this.persisted, this.projectionContext());
+        this.persisted.facets.advanced.omeStro = this.omeStroIntegration.snapshotGovernance();
     }
     private effectiveCheckpointDirtyCycles(): number {
         const resource = this.developmentalNeural.resourceAllocator.snapshot();
@@ -2086,6 +2100,7 @@ export class OrganismCore {
         projectionContext.p29Learning.captureLastKnownGood({ p26: projectionContext.p26TrueLearning.snapshot(), p27: projectionContext.worldSubsystem.p27NeuralWorld.snapshot(), p28: projectionContext.p28Plasticity.snapshot() });
         projectionContext.embodimentSubsystem.p37EmbodiedSensorium.sealHash();
         this.persistence.persistenceProjectionCoordinator.sync(this.persisted, projectionContext, fullProjection, force || (fullProjection && projectionDecision.reason === 'pressure'));
+        this.persisted.facets.advanced.omeStro = this.omeStroIntegration.snapshotGovernance();
         projectionMs = Date.now() - t;
         this.persistence.lastProjectionWasFull = fullProjection;
         // Recovery certification must describe an actually durable checkpoint. Partial
@@ -11308,6 +11323,41 @@ export class OrganismCore {
         return d;
     }
     p25Snapshot() { return this.developmentalNeural.p25ScientificDevelopment.snapshot(); }
+
+    omeStroRegistry() { return this.omeStroIntegration.registry(); }
+    omeStroSnapshot() { return this.omeStroIntegration.snapshotGovernance(); }
+    omeStroPrepareActionPlan(input: Parameters<OmeStroIntegrationKernel['prepareActionPlan']>[0]) {
+        return this.omeStroIntegration.prepareActionPlan(input);
+    }
+    private async persistOmeStroGovernance(): Promise<void> {
+        this.persisted.facets.advanced.omeStro = this.omeStroIntegration.snapshotGovernance();
+        await this.checkpoint(true);
+    }
+    async omeStroAppendTruth(input: Parameters<OmeStroIntegrationKernel['recordTruth']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        const result = this.omeStroIntegration.recordTruth(input);
+        if (result.accepted) await this.persistOmeStroGovernance();
+        return result;
+    }
+    async omeStroRecordRejectedAlternative(input: Parameters<OmeStroIntegrationKernel['negativeSpace']['record']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        const result = this.omeStroIntegration.negativeSpace.record(input);
+        if (result.accepted) await this.persistOmeStroGovernance();
+        return result;
+    }
+    async omeStroTrackCommitment(input: Parameters<OmeStroIntegrationKernel['trackCommitment']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        const result = this.omeStroIntegration.trackCommitment(input);
+        if (result.accepted) await this.persistOmeStroGovernance();
+        return result;
+    }
+    async omeStroAssessModelMigration(input: Parameters<OmeStroIntegrationKernel['assessModelMigration']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        const result = this.omeStroIntegration.assessModelMigration(input);
+        this.persisted.system.neuroDigitalEvolution = this.developmentalNeural.neuroDigitalEvolution.snapshot();
+        await this.checkpoint(true);
+        return result;
+    }
     p25RecordControlledExperiment(input: Parameters<P25ScientificDevelopmentEngine['recordControlledExperiment']>[0]) {
         const r = this.developmentalNeural.p25ScientificDevelopment.recordControlledExperiment(input);
         this.persisted.facets.advanced.p25 = this.developmentalNeural.p25ScientificDevelopment.snapshot();

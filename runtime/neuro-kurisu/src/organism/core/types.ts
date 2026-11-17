@@ -432,6 +432,7 @@ export interface AdvancedDevelopmentFacet {
   cognitiveResearchBattery: import('../learning/CognitiveResearchBattery.ts').CognitiveResearchBatteryState;
   causalDevelopmentLoop: import('../learning/CausalDevelopmentLoop.ts').CausalDevelopmentLoopState;
   b380TemporalLife: import('../system/B380TemporalLifeIntegrator.ts').B380State;
+  omeStro?: import('../system/OmeStroIntegrationKernel.ts').OmeStroGovernanceSnapshot;
 }
 
 export interface EvolutionResearchState {
