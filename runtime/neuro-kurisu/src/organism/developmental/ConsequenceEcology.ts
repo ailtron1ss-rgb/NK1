@@ -267,12 +267,15 @@ interface NormalizedNode extends ConsequenceNodeInput {
 interface PathState {
   nodeId: string;
   probability01: number;
+  confidence01: number;
   depth: number;
   delayDays: number;
   path: string[];
 }
 interface NodeAccumulation {
   pathProbabilities: number[];
+  weightedConfidenceMass: number;
+  probabilityMass: number;
   minDepth: number;
   minDelayDays: number;
   maxPathProbability01: number;
@@ -359,7 +362,7 @@ function analyzeOption(
   for (const bucket of outgoing.values()) bucket.sort((a, b) => a.id.localeCompare(b.id));
 
   const accumulated = new Map<string, NodeAccumulation>();
-  const queue: PathState[] = [{ nodeId: ACTION_NODE, probability01: 1, depth: 0, delayDays: 0, path: [ACTION_NODE] }];
+  const queue: PathState[] = [{ nodeId: ACTION_NODE, probability01: 1, confidence01: 1, depth: 0, delayDays: 0, path: [ACTION_NODE] }];
   const feedbackLoops: ConsequenceOptionResult['feedbackLoops'] = [];
   const criticalPaths: ConsequenceOptionResult['criticalPaths'] = [];
   let excludedBeyondHorizon = 0;
@@ -375,13 +378,16 @@ function analyzeOption(
       const node = nodes.get(edge.to)!;
       const delayDays = current.delayDays + edge.delayDays + node.delayDays;
       if (delayDays > horizonDays) { excludedBeyondHorizon++; continue; }
-      const transfer01 = edge.strength01 * edge.confidence01;
+      const mitigationTransfer01 = edge.strength01 * edge.confidence01;
       const targetPrior01 = node.probability01;
       if (edge.polarity === 'decrease' && node.effect === 'harm') {
-        mitigationCredit01 = noisyOr([mitigationCredit01, current.probability01 * transfer01 * targetPrior01 * node.impact01]);
+        mitigationCredit01 = noisyOr([mitigationCredit01, current.probability01 * mitigationTransfer01 * targetPrior01 * node.impact01]);
       }
-      const residualTransfer01 = edge.polarity === 'decrease' ? 1 - transfer01 : transfer01;
+      // Influence strength controls how much the cause propagates. Evidence confidence
+      // is carried separately so weak evidence cannot make a possible harm disappear.
+      const residualTransfer01 = edge.polarity === 'decrease' ? 1 - mitigationTransfer01 : edge.strength01;
       const probability01 = clamp(current.probability01 * residualTransfer01 * targetPrior01);
+      const pathConfidence01 = clamp(current.confidence01 * edge.confidence01 * node.effectiveConfidence01);
       if (current.path.includes(edge.to)) {
         feedbackLoops.push({
           from: edge.from,
@@ -397,9 +403,16 @@ function analyzeOption(
       const depth = current.depth + 1;
       const path = [...current.path, edge.to];
       const entry = accumulated.get(edge.to) ?? {
-        pathProbabilities: [], minDepth: depth, minDelayDays: delayDays, maxPathProbability01: 0,
+        pathProbabilities: [],
+        weightedConfidenceMass: 0,
+        probabilityMass: 0,
+        minDepth: depth,
+        minDelayDays: delayDays,
+        maxPathProbability01: 0,
       };
       entry.pathProbabilities.push(probability01);
+      entry.weightedConfidenceMass += probability01 * pathConfidence01;
+      entry.probabilityMass += probability01;
       entry.minDepth = Math.min(entry.minDepth, depth);
       entry.minDelayDays = Math.min(entry.minDelayDays, delayDays);
       entry.maxPathProbability01 = Math.max(entry.maxPathProbability01, probability01);
@@ -412,7 +425,7 @@ function analyzeOption(
           delayDays,
         });
       }
-      queue.push({ nodeId: edge.to, probability01, depth, delayDays, path });
+      queue.push({ nodeId: edge.to, probability01, confidence01: pathConfidence01, depth, delayDays, path });
       exploredPathCount++;
       if (exploredPathCount >= MAX_PATHS) { truncated = true; break; }
     }
@@ -430,7 +443,8 @@ function analyzeOption(
     const node = nodes.get(id)!;
     const propagatedProbability01 = noisyOr(exposure.pathProbabilities);
     const expectedEffect01 = propagatedProbability01 * node.impact01;
-    const uncertaintyContribution01 = expectedEffect01 * (1 - node.effectiveConfidence01);
+    const propagatedConfidence01 = clamp(exposure.weightedConfidenceMass / Math.max(1e-9, exposure.probabilityMass));
+    const uncertaintyContribution01 = expectedEffect01 * (1 - propagatedConfidence01);
     const order = exposure.minDepth <= 1 ? 'direct' : exposure.minDepth === 2 ? 'secondary' : 'tertiary';
     const refs = node.evidenceRefs ?? [];
     const missingAssumptionRefs = [...node.missingAssumptionRefs];
@@ -443,7 +457,7 @@ function analyzeOption(
       propagatedProbability01,
       impact01: node.impact01,
       expectedEffect01,
-      confidence01: node.effectiveConfidence01,
+      confidence01: propagatedConfidence01,
       uncertaintyContribution01,
       depth: exposure.minDepth,
       order,
