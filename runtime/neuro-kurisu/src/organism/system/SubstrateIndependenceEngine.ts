@@ -900,6 +900,7 @@ export class SubstrateIndependenceEngine {
       importedAt,
     };
     this.state.lastEvaluation = null;
+    this.verifiedEvaluationIds.clear();
     return this.snapshot();
   }
 
@@ -981,6 +982,7 @@ export class SubstrateIndependenceEngine {
       fail('substrate-promotion-source-no-longer-active');
     }
     if (pending && !matchingPending) fail('substrate-promotion-transfer-mismatch');
+    this.verifiedEvaluationIds.delete(evaluationId);
     const fromBackendId = this.state.activeBackendId ?? evaluation.sourceBackendId;
     this.state.activeBackendId = targetBackendId;
     this.state.activeProvenance = 'calibrated';
@@ -1017,6 +1019,7 @@ export class SubstrateIndependenceEngine {
     if (!last || last.reason !== 'calibrated-promotion' || last.toBackendId !== this.state.activeBackendId || !last.fromBackendId) {
       fail('substrate-rollback-source-unavailable');
     }
+    this.verifiedEvaluationIds.delete(last.evaluationId);
     this.state.activeBackendId = last.fromBackendId;
     this.state.activeProvenance = this.profiles.has(last.fromBackendId) ? 'bootstrap' : 'unknown';
     this.state.observedBackendId = last.fromBackendId;
