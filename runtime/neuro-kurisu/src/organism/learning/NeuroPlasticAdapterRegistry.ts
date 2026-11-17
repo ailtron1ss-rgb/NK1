@@ -565,6 +565,7 @@ export class NeuroPlasticAdapterRegistry {
     return structuredClone(this.state);
   }
 
+  /** Restore only after both the evaluator evidence receipt and operator activation receipt are independently revalidated. */
   restore(
     raw?: unknown,
     verifyRestoredApproval?: (
