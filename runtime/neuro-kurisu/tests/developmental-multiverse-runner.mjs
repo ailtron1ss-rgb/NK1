@@ -148,7 +148,7 @@ try {
   assert.equal(result.evidence.verifiedObservationCount, 22,
     'verified evidence count must include 12 validation and 10 finalist-only holdout observations');
   assert.ok(/^[a-f0-9]{64}$/.test(result.evidence.verifiedEvidenceFingerprint));
-  assert.ok(restoredBeforeHoldout.snapshot().holdoutObservations.every(row
+  assert.ok(restoredBeforeHoldout.snapshot().holdoutObservations.every(row =>
     /^[a-f0-9]{64}$/.test(row.verifiedEvidence?.outcomeLedgerFingerprint ?? '') &&
     row.verifiedEvidence?.outcomeCount >= 5),
     'holdout receipts must be tied to P23 ledger commits for baseline and finalist only');
@@ -161,7 +161,7 @@ try {
 
   let getterCalls = 0;
   const accessorStore = new AtomicFileDevelopmentalMultiverseCheckpointStore(join(root, 'accessor-checkpoint.json'));
-  const accessorRunner = await DevelopmentalMultiverseIndependentRunner.create(
+  await assert.rejects(() => DevelopmentalMultiverseIndependentRunner.create(
     { ...input, runId: 'dm19-accessor-boundary' },
     {
       ...options,
@@ -179,10 +179,52 @@ try {
         return task;
       },
     },
-  );
-  await assert.rejects(() => accessorRunner.runValidation(), /scenario-task-data-invalid/,
-    'scenario task accessors must be rejected without executing user code');
+  ), /scenario-task-data-invalid/,
+    'scenario task accessors must be rejected before the runner can be checkpointed');
   assert.equal(getterCalls, 0, 'scenario input trust-boundary snapshot must not invoke getters');
+
+  let frozenFactoryCalls = 0;
+  const frozenStore = new AtomicFileDevelopmentalMultiverseCheckpointStore(join(root, 'frozen-corpus.json'));
+  const frozenOptions = {
+    ...options,
+    checkpointStore: frozenStore,
+    buildScenarioTask: scenario => {
+      frozenFactoryCalls += 1;
+      return {
+        input: { prompt: 'frozen scenario ' + scenario.id + ' revision ' + frozenFactoryCalls },
+        requiredCapabilityIds: ['cap-core'],
+        expectedStepIds: ['step-core'],
+        taskFamily: 'dm19-frozen-corpus-family',
+      };
+    },
+  };
+  const frozenRunner = await DevelopmentalMultiverseIndependentRunner.create(
+    { ...input, runId: 'dm19-frozen-corpus' },
+    frozenOptions,
+  );
+  assert.equal(frozenFactoryCalls, 9,
+    'all validation and holdout tasks must be created once before the first checkpoint');
+  await frozenRunner.runValidation();
+  const validationEvidence = frozenRunner.snapshot().validationObservations[0].verifiedEvidence;
+  const checkpointAfterValidation = await frozenStore.load();
+  assert.equal(checkpointAfterValidation.corpus.rows.length, 9,
+    'the checkpoint must retain the exact frozen validation + holdout task corpus');
+  assert.equal(checkpointAfterValidation.corpus.ledger.acceptedOutcomes, 12,
+    'the checkpoint must retain canonical P23 validation outcomes, not only their hash');
+  const frozenRestored = await DevelopmentalMultiverseIndependentRunner.restore(frozenOptions);
+  await frozenRestored.runHoldout();
+  assert.equal(frozenFactoryCalls, 9,
+    'restoring and running holdout must never rebuild the scenario task corpus');
+  const frozenHoldoutRows = frozenRestored.snapshot().holdoutObservations;
+  assert.ok(frozenHoldoutRows.every(row =>
+    row.verifiedEvidence?.manifestFingerprint === validationEvidence.manifestFingerprint),
+    'validation and holdout must use the exact same canonical task manifest');
+  assert.ok(frozenHoldoutRows.every(row =>
+    row.verifiedEvidence?.holdoutPlanFingerprint === validationEvidence.holdoutPlanFingerprint),
+    'holdout execution must use the untouched holdout plan frozen before validation');
+  const checkpointAfterHoldout = await frozenStore.load();
+  assert.equal(checkpointAfterHoldout.corpus.ledger.acceptedOutcomes, 22,
+    'the restored P23 ledger must contain validation and finalist-only holdout outcome rows');
 
   const restoredAfterHoldout = await DevelopmentalMultiverseIndependentRunner.restore(options);
   assert.deepEqual(restoredAfterHoldout.snapshot().finalResult, result,
