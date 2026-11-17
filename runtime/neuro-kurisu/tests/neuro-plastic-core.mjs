@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
@@ -350,8 +350,31 @@ assert.equal(restoredRegistry.select({
   confidence01: 0.9,
   risk01: 0.1,
 }).useAdapter, false, 'restart restore without an approval verifier must fail closed');
+const approvalOnlyRestoreRegistry = new NeuroPlasticAdapterRegistry();
+approvalOnlyRestoreRegistry.restore(activeSnapshot, verifyApproval);
+assert.equal(approvalOnlyRestoreRegistry.select({
+  domain: 'reasoning',
+  backendId: 'llama.cpp',
+  baseModelFingerprint: hash('a'),
+  backendSupportsModelAliases: true,
+  confidence01: 0.9,
+  risk01: 0.1,
+}).useAdapter, false, 'restored evaluator evidence must also be verified before active state is trusted');
+const tamperedEvaluationSnapshot = structuredClone(activeSnapshot);
+tamperedEvaluationSnapshot.adapters[0].evaluation.evaluatorSignature = hash('9');
+const tamperedRestoreRegistry = new NeuroPlasticAdapterRegistry();
+tamperedRestoreRegistry.restore(
+  tamperedEvaluationSnapshot,
+  verifyApproval,
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+);
+assert.equal(tamperedRestoreRegistry.snapshot().adapters[0].status, 'staged', 'tampered evaluator evidence must be demoted on restore');
 const signedRestoreRegistry = new NeuroPlasticAdapterRegistry();
-signedRestoreRegistry.restore(activeSnapshot, verifyApproval);
+signedRestoreRegistry.restore(
+  activeSnapshot,
+  verifyApproval,
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+);
 assert.equal(signedRestoreRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
