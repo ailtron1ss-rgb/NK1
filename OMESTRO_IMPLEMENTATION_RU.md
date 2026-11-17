@@ -85,6 +85,7 @@ npm run typecheck
 - `node scripts/typecheck-runtime.mjs` → `TYPECHECK=PASS mode=tsc compiler=app-lock` с закреплённым TypeScript 5.9.3.
 - `test:cognitive-immune-health`, `test:p25:science`, `test:p28:plasticity`, `test:cognitive-cycle-boundary`, `test:memory-restore-integrity` → PASS.
 - `test:p25:integration`, `test:p28:integration`, `test:p26:holdout-provenance`, `test:p23:learning-governance`, `test:workpass96:finalizer-boundary`, `test:cognitive-cycle-boundary-runtime-wiring` → PASS.
+- `test:organism-smoke`, `test:revision-aware-projection`, `test:revision-graph:persistence` → PASS.
 
 ## Архитектурные границы
 
