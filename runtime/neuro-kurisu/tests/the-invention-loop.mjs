@@ -9,14 +9,23 @@ const protocol = {
   question: 'Does the candidate reduce retrieval latency?',
   hypothesis: 'The candidate reduces p95 latency without reducing recall.',
   successCriteria: 'At least 10% improvement against the preregistered baseline.',
-  testFingerprint: 'sha256:fixed-evaluation-manifest-v2',
+  testFingerprint: sha('9'),
   baseline: 100,
   metricScale: 20,
   minEffect: 0.1,
   lowerIsBetter: true,
+  verifierPlan: {
+    primary: 'verifier-primary',
+    critique: 'reviewer-independent',
+    replication: 'verifier-replication',
+    holdout: 'verifier-holdout',
+  },
 };
 const primaryInput = {
   kind: 'primary',
+  authority: 'independent-verifier',
+  seed: 17,
+  attempt: 1,
   runId: 'run-primary-001',
   verifierId: 'verifier-primary',
   environmentId: 'environment-primary',
@@ -27,6 +36,9 @@ const primaryInput = {
 };
 const replicationInput = {
   kind: 'replication',
+  authority: 'independent-verifier',
+  seed: 17,
+  attempt: 1,
   runId: 'run-replication-001',
   verifierId: 'verifier-replication',
   environmentId: 'environment-replication',
@@ -37,6 +49,9 @@ const replicationInput = {
 };
 const holdoutInput = {
   kind: 'holdout',
+  authority: 'independent-verifier',
+  seed: 17,
+  attempt: 1,
   runId: 'run-holdout-001',
   verifierId: 'verifier-holdout',
   environmentId: 'environment-holdout',
@@ -48,6 +63,7 @@ const holdoutInput = {
 
 const p = loop.propose(protocol);
 assert.equal(p.stage, 'proposed');
+assert.throws(() => loop.propose({ ...protocol, verifierPlan: { ...protocol.verifierPlan, holdout: 'verifier-primary' } }), /invalid-preregistration/);
 assert.throws(() => loop.propose({ ...protocol, metricScale: 0 }), /invalid-preregistration/);
 assert.throws(() => loop.recordOutcome(p.id, primaryInput), /outcome-kind-not-allowed-at-stage/);
 loop.design(p.id);
@@ -55,6 +71,7 @@ assert.throws(() => loop.prototype(p.id, 'candidate://missing-digest'), /invalid
 loop.prototype(p.id, { reference: 'candidate://isolated-prototype', sha256: sha('d') });
 
 // A caller-supplied effect must never override the preregistered metric calculation.
+assert.throws(() => loop.recordOutcome(p.id, { ...primaryInput, authority: 'self-report' }), /outcome-not-authoritative:self-report-not-authoritative/);
 const primary = loop.recordOutcome(p.id, { ...primaryInput, effect01: 1 });
 assert.equal(primary.stage, 'tested');
 assert.equal(primary.outcomes[0].effect01, 0.2);
@@ -63,14 +80,14 @@ assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, runId: 'run-
 assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, evidenceSha256: 'not-a-sha256' }), /invalid-outcome/);
 assert.throws(() => loop.critique(p.id, { reviewerId: 'verifier-primary', reviewRef: 'review://primary', reviewSha256: sha('e') }), /reviewer-must-be-independent/);
 loop.critique(p.id, {
-  reviewerId: 'reviewer-independent',
+  reviewerId: protocol.verifierPlan.critique,
   reviewRef: 'review://independent-review',
   reviewSha256: sha('e'),
   blockers: [],
   limitations: ['Initial sample is deliberately small'],
 });
 assert.equal(loop.snapshot().records[0].stage, 'critiqued');
-assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, verifierId: 'verifier-primary' }), /replication-not-independent/);
+assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, verifierId: 'verifier-primary' }), /verifier-plan-mismatch/);
 loop.recordOutcome(p.id, replicationInput);
 assert.equal(loop.snapshot().records[0].stage, 'replicated');
 assert.throws(() => loop.recordOutcome(p.id, {
@@ -111,4 +128,4 @@ assert.equal(restored.metrics().accepted, 0);
 assert.equal(restored.metrics().quarantinedRecords, 1);
 assert.equal(restored.metrics().auditVerifiedRecords, 1);
 
-console.log('THE_INVENTION_LOOP_LIFECYCLE=PASS assertions=24');
+console.log('THE_INVENTION_LOOP_LIFECYCLE=PASS authoritative-evidence=required');
