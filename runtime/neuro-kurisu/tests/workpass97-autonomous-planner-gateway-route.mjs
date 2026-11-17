@@ -17,6 +17,14 @@ assert.match(autonomousBlock, /intentExecutionRuntime\.getContract\(autonomousIn
   'deterministic planner retries must reuse the same restored HMAC-attested intent contract');
 assert.match(autonomousBlock, /cognitiveEventFabric\.append\(/,
   'internal approval must be anchored to the actual CEF plan event');
+assert.match(source, /private verifyAutonomousPlannerIntent\(contract: IntentContract, evidence: TrustedAutonomousDecisionEvidence\)/,
+  'the Core must independently validate the planner receipt before minting an internal approval');
+assert.match(source, /cognitiveEventFabric\.snapshot\(\)\.recent/,
+  'planner approval must check the decision event in the canonical CEF snapshot');
+assert.match(source, /event\.payload\.intentHash !== expectedHash/,
+  'planner receipt validation must compare the deterministic intent hash');
+assert.match(source, /contract\.risk\.level === 'low' \|\| contract\.risk\.level === 'medium'/,
+  'the internal planner verifier must not authorize high or critical intent');
 assert.match(autonomousBlock, /refuseToolExecution\(/,
   'unverified or high-risk planner intents must create an audited refusal before executor entry');
 const directCallAt = source.indexOf('this.cognitiveRuntime.actionGateway.executeTool(', planAt);
