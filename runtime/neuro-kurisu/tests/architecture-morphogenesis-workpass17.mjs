@@ -41,6 +41,13 @@ assert.ok(live.contracts.length >= 6, 'single-owner architecture authorities mus
 assert.match(live.canonicalGenomeDigest, /^sha256:[a-f0-9]{64}$/);
 assert.ok(live.edges.some(edge => edge.kind === 'data-flow'), 'live graph must preserve typed data flows');
 assert.ok(live.edges.some(edge => edge.kind === 'contract'), 'live graph must expose dependency/contract edges');
+assert.ok(Array.isArray(live.sharedSourcePaths), 'live graph must model intentional cross-subsystem source sharing');
+assert.ok(live.sharedSourcePaths.some(entry =>
+  entry.path === 'src/organism/learning/CanonicalActionPolicyArbiter.ts'
+    && entry.moduleIds.includes('goal-value')
+    && entry.moduleIds.includes('executive')
+    && entry.moduleIds.length === 2
+), 'CanonicalActionPolicyArbiter must be explicitly shared by goal-value and executive');
 
 const digest = letter => 'sha256:' + letter.repeat(64);
 const moduleRecord = (id, path, hash) => ({
@@ -50,13 +57,14 @@ const moduleRecord = (id, path, hash) => ({
   owner: 'owner:' + id,
   revisionSha256: digest(hash),
 });
-const graph = (modules, edges = [], contracts = []) => ({
+const graph = (modules, edges = [], contracts = [], sharedSourcePaths = []) => ({
   schemaVersion: 1,
   sourceCommit: sha,
   canonicalGenomeDigest: digest('0'),
   modules,
   edges,
   contracts,
+  sharedSourcePaths,
 });
 const sha = '1'.repeat(40);
 const migration = (changed = []) => ({
@@ -422,5 +430,49 @@ const unknownContractField = graph(
 const unknownContractFieldReport = validateArchitectureMorphogenesisGraph(unknownContractField);
 assert.equal(unknownContractFieldReport.ok, false);
 assert.ok(unknownContractFieldReport.issues.some(item => item.code === 'contract-field-unknown'));
+
+
+
+// Shared source files are declared explicitly instead of being mistaken for
+// accidental multiple ownership or silently accepted as duplicate paths.
+const sharedPolicyPath = 'src/organism/system/SharedPolicy.ts';
+const leftSharedModule = {
+  ...moduleRecord('left', 'src/organism/system/Left.ts', 'a'),
+  sourcePaths: ['src/organism/system/Left.ts', sharedPolicyPath],
+};
+const rightSharedModule = {
+  ...moduleRecord('right', 'src/organism/system/Right.ts', 'b'),
+  sourcePaths: ['src/organism/system/Right.ts', sharedPolicyPath],
+};
+const explicitSharedGraph = graph(
+  [leftSharedModule, rightSharedModule],
+  [],
+  [],
+  [{
+    path: sharedPolicyPath,
+    moduleIds: ['left', 'right'],
+    rationale: 'One canonical policy file is consumed by two mapped subsystems',
+  }],
+);
+assert.equal(validateArchitectureMorphogenesisGraph(explicitSharedGraph).ok, true);
+
+const undisclosedSharedGraph = graph([leftSharedModule, rightSharedModule]);
+const undisclosedSharedReport = validateArchitectureMorphogenesisGraph(undisclosedSharedGraph);
+assert.equal(undisclosedSharedReport.ok, false);
+assert.ok(undisclosedSharedReport.issues.some(item => item.code === 'shared-source-path-unaccounted'));
+
+const mismatchedSharedGraph = graph(
+  [leftSharedModule, rightSharedModule],
+  [],
+  [],
+  [{
+    path: sharedPolicyPath,
+    moduleIds: ['left'],
+    rationale: 'This declaration does not match the graph',
+  }],
+);
+const mismatchedSharedReport = validateArchitectureMorphogenesisGraph(mismatchedSharedGraph);
+assert.equal(mismatchedSharedReport.ok, false);
+assert.ok(mismatchedSharedReport.issues.some(item => item.code === 'shared-source-path-owners-mismatch'));
 
 console.log('ARCHITECTURE_MORPHOGENESIS_WORKPASS17=PASS live-graph+contracts+merge-split-move-replace+rollback+promotion-gate');
