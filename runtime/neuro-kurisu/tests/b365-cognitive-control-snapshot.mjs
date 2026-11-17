@@ -42,6 +42,7 @@ const profile = new CognitiveToNeuralBridge().project({
   action: 'verify',
   mode: 'deep',
   neural: {
+    version: neural.version,
     tick: neural.tick,
     predictionError01: neural.predictionError01,
     plasticity01: neural.plasticity01,
@@ -59,6 +60,7 @@ const profile = new CognitiveToNeuralBridge().project({
   },
 });
 assert.equal(profile.neuralSnapshotAvailable, true);
+assert.equal(profile.neuralSnapshotVersion, neural.version);
 assert.equal(profile.neuralSnapshotTick, 1);
 assert.equal(profile.neuralSnapshotAgeTicks, 1);
 assert.equal(profile.featureVector01.length, 43);
