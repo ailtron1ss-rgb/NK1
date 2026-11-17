@@ -8,6 +8,7 @@ import {
   inheritDevelopmentalGenome,
 } from '../src/organism/system/DevelopmentalGenome.ts';
 import { invariantRuleManifest } from '../src/organism/system/InvariantEngine.ts';
+import { organismSystemContracts } from '../src/organism/core/OrganismSystemContract.ts';
 
 const expectedModules = ['agency', 'embodiment', 'governance', 'memory', 'research', 'self', 'world'];
 
@@ -31,6 +32,16 @@ test('live fabric emits a deterministic genome for exactly its seven canonical s
   assert.equal(direct.digest, rebuilt.digest);
   assert.equal(fabric.snapshot().developmentalGenome.digest, direct.digest);
   assert.match(direct.digest, /^sha256:[0-9a-f]{64}$/);
+});
+
+test('baseline builder rejects invalid inherited resource traits in live contracts', () => {
+  const invalidCost = organismSystemContracts();
+  invalidCost.find(module => module.name === 'world').estimatedCost01 = 1.5;
+  assert.throws(() => buildDevelopmentalGenome(invalidCost));
+
+  const invalidCadence = organismSystemContracts();
+  invalidCadence.find(module => module.name === 'world').cadenceCycles = 65;
+  assert.throws(() => buildDevelopmentalGenome(invalidCadence));
 });
 
 test('dependency order places each prerequisite before its dependent', () => {
