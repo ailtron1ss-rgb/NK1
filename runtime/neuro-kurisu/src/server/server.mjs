@@ -494,6 +494,122 @@ async function route(req, res) {
                 note: 'Only an explicitly confirmed, allowlisted low-risk response style is stored.',
             });
         }
+
+        // Open Loop Radar — authenticated, explicit-consent HTTP surface.
+        if (req.method === 'GET' && url.pathname === '/api/organism/open-loops') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const limitValue = Number(url.searchParams.get('limit') || 64);
+            const limit = Number.isSafeInteger(limitValue) ? Math.max(1, Math.min(128, limitValue)) : 64;
+            const options = {};
+            for (const key of ['dueSoonMs', 'reminderCooldownMs', 'quietUntil']) {
+                const raw = url.searchParams.get(key);
+                if (raw === null || raw === '') continue;
+                const value = Number(raw);
+                if (Number.isSafeInteger(value) && value >= 0) options[key] = value;
+            }
+            const [diagnostics, snapshot, candidates] = await Promise.all([
+                runtime.openLoopDiagnostics(),
+                runtime.openLoopSnapshot(),
+                runtime.scanOpenLoops(options),
+            ]);
+            return json(res, 200, {
+                ok: true, readOnly: true, diagnostics,
+                records: snapshot.records.slice(0, limit),
+                candidates: candidates.slice(0, limit),
+                totalRecords: snapshot.records.length,
+            });
+        }
+
+        if (req.method === 'POST' && url.pathname === '/api/organism/open-loops') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
+            if (input.confirmed !== true)
+                return json(res, 400, { ok: false, error: 'explicit-open-loop-confirmation-required' });
+            const title = typeof input.title === 'string' ? input.title.trim().slice(0, 180) : '';
+            const description = input.description === undefined ? '' :
+                typeof input.description === 'string' ? input.description.trim().slice(0, 500) : null;
+            const kind = input.kind;
+            const owner = input.owner;
+            const allowedKinds = ['promise', 'task', 'waiting', 'project_step', 'dependency'];
+            if (!title || description === null || !allowedKinds.includes(kind) || !['user', 'system'].includes(owner))
+                return json(res, 400, { ok: false, error: 'invalid-open-loop-fields' });
+            if (input.dependencies !== undefined &&
+                (!Array.isArray(input.dependencies) || input.dependencies.length > 32 ||
+                 input.dependencies.some(value => typeof value !== 'string' || !value.trim() || value.length > 128)))
+                return json(res, 400, { ok: false, error: 'invalid-open-loop-dependencies' });
+            const parseTimestamp = value => value === undefined || value === null
+                ? null : typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : NaN;
+            const dueAt = parseTimestamp(input.dueAt);
+            const expiresAt = parseTimestamp(input.expiresAt);
+            const priority = input.priority === undefined ? 0.5 : input.priority;
+            if (Number.isNaN(dueAt) || Number.isNaN(expiresAt) ||
+                typeof priority !== 'number' || !Number.isFinite(priority) || priority < 0 || priority > 1)
+                return json(res, 400, { ok: false, error: 'invalid-open-loop-temporal-or-priority-field' });
+            try {
+                const record = await runtime.registerOpenLoop({
+                    title, description, kind, owner, accepted: true,
+                    source: 'http-api:explicit-user-confirmation',
+                    dueAt, expiresAt, dependencies: input.dependencies || [], priority,
+                });
+                return json(res, 201, { ok: true, record, accepted: true });
+            } catch (error) {
+                const message = String(error?.message || error).replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
+                const status = /capacity|unknown-dependency|sequence-exhausted/.test(message) ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+
+        const openLoopAction = /^\\/api\\/organism\\/open-loops\\/([^/]+)\\/(complete|cancel|reopen|surface)$/.exec(url.pathname);
+        if (req.method === 'POST' && openLoopAction) {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const id = decodeURIComponent(openLoopAction[1]).slice(0, 128);
+            const action = openLoopAction[2];
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
+            if (action === 'surface') {
+                if (input.displayed !== true)
+                    return json(res, 400, { ok: false, error: 'explicit-display-acknowledgement-required' });
+            } else if (input.confirmed !== true) {
+                return json(res, 400, { ok: false, error: 'explicit-open-loop-confirmation-required' });
+            }
+            try {
+                if (action === 'complete') {
+                    // The server owns closure provenance; any client-supplied evidence is ignored.
+                    const record = await runtime.fulfillOpenLoop(id, {
+                        kind: 'user-confirmation',
+                        reference: 'http-open-loop-confirmation:' + randomUUID(),
+                        verifiedAt: Date.now(),
+                    });
+                    return json(res, 200, { ok: true, record });
+                }
+                if (action === 'cancel') {
+                    const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 240) : '';
+                    if (!reason) return json(res, 400, { ok: false, error: 'cancellation-reason-required' });
+                    const record = await runtime.cancelOpenLoop(id, reason);
+                    return json(res, 200, { ok: true, record });
+                }
+                if (action === 'reopen') {
+                    const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 240) : '';
+                    if (!reason) return json(res, 400, { ok: false, error: 'reopen-reason-required' });
+                    const record = await runtime.reopenOpenLoop(id, reason);
+                    return json(res, 200, { ok: true, record });
+                }
+                await runtime.acknowledgeOpenLoopSurfaced(id);
+                return json(res, 200, { ok: true, acknowledged: true, id });
+            } catch (error) {
+                const message = String(error?.message || error).replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
+                const status = /not-found/.test(message) ? 404
+                    : /already-closed|blocked|capacity|not-reopenable|not-ready-to-surface/.test(message) ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+
         if (req.method === 'GET' && url.pathname === '/api/organism/time') {
             const temporal = runtime.core.temporalContinuitySnapshot();
             return json(res, 200, { ok: true, current: runtime.core.temporalContext(), continuity: temporal, offlineSinceLastCheckpointMs: temporal.gapSincePreviousMs, lastSeenAt: temporal.lastCheckpointAt, lastSessionEndedAt: temporal.lastSessionEndedAt, sessionCount: temporal.sessionCount, interruptionCount: temporal.interruptionCount });

@@ -62,8 +62,8 @@ function ownData(value: unknown, key: string): unknown {
   return descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') ? descriptor.value : undefined;
 }
 function safeArray(value: unknown, limit: number): unknown[] | null {
-  if (!Array.isArray(value)) return null;
-  const length = Math.min(value.length, limit);
+  if (!Array.isArray(value) || !Number.isSafeInteger(value.length) || value.length > limit) return null;
+  const length = value.length;
   const items: unknown[] = [];
   for (let index = 0; index < length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
@@ -97,11 +97,17 @@ function normalizeRecord(value: unknown): OpenLoopRecord | null {
 
   const rawDependencies = ownData(value, 'dependencies');
   let dependencies: string[] = [];
-  if (rawDependencies !== undefined) {
-    const entries = safeArray(rawDependencies, MAX_DEPENDENCIES * 4);
-    if (!entries) return null;
-    dependencies = [...new Set(entries.map(entry => text(entry, 128)).filter(Boolean))].slice(0, MAX_DEPENDENCIES);
+  if (rawDependencies != null) {
+    const entries = safeArray(rawDependencies, MAX_DEPENDENCIES);
+    if (!entries || entries.some(entry => typeof entry !== 'string' || !entry.trim())) return null;
+    dependencies = [...new Set(entries.map(entry => String(entry).trim().slice(0, 128)))];
   }
+  const dueInput = ownData(value, 'dueAt');
+  const expiresInput = ownData(value, 'expiresAt');
+  const dueAt = dueInput == null ? null : time(dueInput);
+  const expiresAt = expiresInput == null ? null : time(expiresInput);
+  if ((dueInput != null && dueAt === null) || (expiresInput != null && expiresAt === null) ||
+      (dueAt !== null && expiresAt !== null && expiresAt < dueAt)) return null;
   const closureEvidence = normalizeEvidence(ownData(value, 'closureEvidence'));
   if (status === 'fulfilled' && !closureEvidence) return null;
   const cancellationReason = text(ownData(value, 'cancellationReason'), 240) || null;
@@ -137,11 +143,14 @@ export class OpenLoopRadar {
   constructor(now: () => number = Date.now) { this.now = now; }
 
   restore(value: unknown): void {
+    if (value === undefined || value === null) {
+      this.state = defaultOpenLoopRadarState();
+      return;
+    }
     const version = ownData(value, 'version');
     const rawRecords = safeArray(ownData(value, 'records'), MAX_RESTORE_RECORDS);
     if (!isObject(value) || version !== 1 || !rawRecords) {
-      this.state = defaultOpenLoopRadarState();
-      return;
+      throw new Error('open-loop-state-invalid-or-unsupported');
     }
 
     const byId = new Map<string, OpenLoopRecord>();
@@ -193,26 +202,38 @@ export class OpenLoopRadar {
     dependencies?: string[];
     priority?: number;
   }): OpenLoopRecord {
-    const title = text(input?.title, 180);
+    if (!isObject(input)) throw new TypeError('open-loop-input-must-be-object');
+    const title = text(ownData(input, 'title'), 180);
     if (!title) throw new TypeError('title must be a non-empty string');
-    if (input.accepted !== true) throw new Error('explicit-acceptance-required');
-    if (input.owner !== 'user' && input.owner !== 'system') throw new TypeError('owner is invalid');
-    if (input.kind !== 'promise' && input.kind !== 'task' && input.kind !== 'waiting' &&
-        input.kind !== 'project_step' && input.kind !== 'dependency') throw new TypeError('kind is invalid');
+    const accepted = ownData(input, 'accepted');
+    const owner = ownData(input, 'owner');
+    const kind = ownData(input, 'kind');
+    const description = text(ownData(input, 'description'));
+    const source = text(ownData(input, 'source'), 120) || 'unspecified';
+    const priority = clamp01(ownData(input, 'priority'));
+    if (accepted !== true) throw new Error('explicit-acceptance-required');
+    if (owner !== 'user' && owner !== 'system') throw new TypeError('owner is invalid');
+    if (kind !== 'promise' && kind !== 'task' && kind !== 'waiting' &&
+        kind !== 'project_step' && kind !== 'dependency') throw new TypeError('kind is invalid');
 
     const now = this.safeNow();
-    const dueAt = input.dueAt == null ? null : time(input.dueAt);
-    const expiresAt = input.expiresAt == null ? null : time(input.expiresAt);
-    if (input.dueAt != null && !dueAt) throw new TypeError('dueAt must be a positive safe integer timestamp');
-    if (input.expiresAt != null && !expiresAt) throw new TypeError('expiresAt must be a positive safe integer timestamp');
+    const dueInput = ownData(input, 'dueAt');
+    const expiresInput = ownData(input, 'expiresAt');
+    const dueAt = dueInput == null ? null : time(dueInput);
+    const expiresAt = expiresInput == null ? null : time(expiresInput);
+    if (dueInput != null && !dueAt) throw new TypeError('dueAt must be a positive safe integer timestamp');
+    if (expiresInput != null && !expiresAt) throw new TypeError('expiresAt must be a positive safe integer timestamp');
     if (dueAt && expiresAt && expiresAt < dueAt) throw new RangeError('expiresAt must not precede dueAt');
 
-    if (input.dependencies != null && !Array.isArray(input.dependencies)) throw new TypeError('dependencies must be an array');
-    const dependencies = [...new Set((input.dependencies ?? []).map(value => {
+    const rawDependencies = ownData(input, 'dependencies');
+    if (rawDependencies != null && !Array.isArray(rawDependencies)) throw new TypeError('dependencies must be an array');
+    const dependencyEntries = rawDependencies == null ? [] : safeArray(rawDependencies, MAX_DEPENDENCIES + 1);
+    if (!dependencyEntries) throw new TypeError('dependencies must be a plain data array');
+    if (dependencyEntries.length > MAX_DEPENDENCIES) throw new RangeError('too-many-open-loop-dependencies');
+    const dependencies = [...new Set(dependencyEntries.map(value => {
       if (typeof value !== 'string' || !value.trim()) throw new TypeError('dependency ids must be non-empty strings');
       return value.trim().slice(0, 128);
     }))];
-    if (dependencies.length > MAX_DEPENDENCIES) throw new RangeError('too-many-open-loop-dependencies');
     for (const dependency of dependencies) {
       if (!this.state.records.some(record => record.id === dependency)) throw new Error('unknown-dependency:' + dependency);
     }
@@ -224,20 +245,21 @@ export class OpenLoopRadar {
     if (retained.length >= MAX_RECORDS) throw new Error('open-loop-capacity-exhausted');
 
     const nextSequence = this.state.sequence + 1;
+    if (!Number.isSafeInteger(nextSequence)) throw new RangeError('open-loop-sequence-exhausted');
     const record: OpenLoopRecord = {
       id: `open-loop-${now}-${nextSequence}`,
       title,
-      description: text(input.description),
-      kind: input.kind,
-      owner: input.owner,
+      description,
+      kind,
+      owner,
       status: dependencies.some(id => !this.isSatisfied(id)) ? 'blocked' : 'open',
       createdAt: now,
       updatedAt: now,
       dueAt,
       expiresAt,
       dependencies,
-      priority: clamp01(input.priority),
-      source: text(input.source, 120) || 'unspecified',
+      priority,
+      source,
       accepted: true,
       closureEvidence: null,
       cancellationReason: null,

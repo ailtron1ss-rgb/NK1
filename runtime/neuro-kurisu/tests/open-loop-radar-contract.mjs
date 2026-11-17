@@ -15,6 +15,10 @@ const dependent = radar.register({
   source: 'test', dependencies: [prerequisite.id], dueAt: now + 120_000, priority: 0.9,
 });
 assert.equal(dependent.status, 'blocked');
+assert.throws(() => radar.fulfill(dependent.id, {
+  kind: 'user-confirmation', reference: 'cannot-complete-blocked', verifiedAt: now,
+}), /open-loop-blocked-cannot-be-fulfilled/,
+  'blocked obligations cannot be declared complete while prerequisites remain open');
 now += 121_000;
 
 const blockedScan = radar.scan({ now, dueSoonMs: 120_000, reminderCooldownMs: 0 });
@@ -91,6 +95,21 @@ const downstream = { ...before.records[0], id: 'cycle-downstream', status: 'bloc
 cycleRadar.restore({ version: 1, sequence: 0, records: [cycleA, cycleB, downstream] });
 assert.equal(cycleRadar.snapshot().records.length, 0,
   'restore must reject cyclic dependency components and records that depend on rejected nodes');
+
+const oversizedRadar = new OpenLoopRadar(() => now);
+assert.throws(() => oversizedRadar.restore({
+  version: 1, sequence: 0, records: new Array(2049).fill(null),
+}), /open-loop-state-invalid-or-unsupported/,
+'oversized persisted snapshots must fail closed instead of truncating possible commitments');
+
+let inputGetterCalls = 0;
+const hostileInput = { accepted: true, owner: 'system', kind: 'task', source: 'test' };
+Object.defineProperty(hostileInput, 'title', { enumerable: true, get() { inputGetterCalls++; return 'hostile'; } });
+assert.throws(() => new OpenLoopRadar(() => now).register(hostileInput), /title must be a non-empty string/);
+assert.equal(inputGetterCalls, 0, 'register must not execute caller-provided getters');
+
+const invalidStateRadar = new OpenLoopRadar(() => now);
+assert.throws(() => invalidStateRadar.restore({ version: 99, records: [] }), /open-loop-state-invalid-or-unsupported/);
 
 const capacityRadar = new OpenLoopRadar(() => now);
 for (let index = 0; index < 512; index++) {
