@@ -1,15 +1,29 @@
+import hashlib
 import json
+import os
 import threading
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
+
+import torch
+from torch import nn
 
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from neural_prosthesis.service import RequestError, _context_window, _output_token_limit, create_handler
+from neural_prosthesis.engine import ArtifactError, _config_digest, _model_config
+from neural_prosthesis.service import (
+    RequestError,
+    _context_window,
+    _load_layer_force_bank,
+    _output_token_limit,
+    create_handler,
+)
 
 
 class FakeRuntime:
@@ -165,6 +179,117 @@ class NeuralProsthesisHttpTests(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as missing:
             urllib.request.urlopen(self.base + "/unknown", timeout=3)
         self.assertEqual(missing.exception.code, 404)
+
+
+
+class LayerForceSidecarConfigurationTests(unittest.TestCase):
+    class TinyModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.config = SimpleNamespace(
+                to_dict=lambda: {"model_type": "layer-force-service-test", "hidden_size": 4}
+            )
+            self.layers = nn.ModuleList([nn.Identity(), nn.Identity(), nn.Identity()])
+            self.anchor = nn.Parameter(torch.zeros(1))
+
+        def forward(self, hidden):
+            for layer in self.layers:
+                hidden = layer(hidden)
+            return hidden
+
+    def setUp(self):
+        self.model = self.TinyModel()
+        self.model_id = "nk1/layer-force-service-test"
+        self.revision = "a" * 40
+        self.layer_path = "layers"
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.profile_path = Path(self.temp.name) / "profile.json"
+        payload = {
+            "schema_version": 1,
+            "profile_id": "service-steering-v1",
+            "model": {
+                "model_id": self.model_id,
+                "model_revision": self.revision,
+                "config_sha256": _config_digest(_model_config(self.model)),
+                "layer_path": self.layer_path,
+                "hidden_size": 4,
+            },
+            "layers": [{"index": 1, "direction": [1.0, 0.0, 0.0, 0.0], "strength": 1.0}],
+            "max_delta_ratio": 0.05,
+        }
+        self.profile_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        self.profile_digest = hashlib.sha256(self.profile_path.read_bytes()).hexdigest()
+
+    def _configure(self, *, paths=None, allowlist=None, default=""):
+        return patch.dict(os.environ, {
+            "NEURO_NP_LAYER_FORCE_PROFILE_PATHS_JSON": json.dumps(
+                paths if paths is not None else [str(self.profile_path)]
+            ),
+            "NEURO_NP_ALLOWED_LAYER_FORCE_PROFILES_JSON": json.dumps(
+                allowlist if allowlist is not None else [self.profile_digest]
+            ),
+            "NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE": default,
+        })
+
+    def test_layer_force_is_disabled_without_operator_profile(self):
+        with self._configure(paths=[], allowlist=[], default=""):
+            controller, default_profile = _load_layer_force_bank(
+                self.model,
+                model_id=self.model_id,
+                model_revision=self.revision,
+                layer_path=self.layer_path,
+            )
+        self.assertIsNone(controller)
+        self.assertIsNone(default_profile)
+
+    def test_default_layer_force_profile_is_loaded_and_changes_generate_path_activations(self):
+        with self._configure(default="service-steering-v1"):
+            controller, default_profile = _load_layer_force_bank(
+                self.model,
+                model_id=self.model_id,
+                model_revision=self.revision,
+                layer_path=self.layer_path,
+            )
+        self.assertIsNotNone(controller)
+        self.assertEqual(default_profile, "service-steering-v1")
+        self.assertEqual(controller.snapshot()["loaded_profiles"][0]["profile_id"], default_profile)
+        try:
+            sample = torch.ones(1, 2, 4)
+            baseline = self.model(sample)
+            with torch.inference_mode(), controller.activate(default_profile):
+                steered = self.model(sample)
+            self.assertFalse(torch.equal(baseline, steered))
+        finally:
+            controller.close()
+
+    def test_layer_force_refuses_unapproved_profiles_and_unversioned_models(self):
+        with self._configure(allowlist=["0" * 64], default="service-steering-v1"):
+            with self.assertRaisesRegex(ArtifactError, "not-host-approved"):
+                _load_layer_force_bank(
+                    self.model,
+                    model_id=self.model_id,
+                    model_revision=self.revision,
+                    layer_path=self.layer_path,
+                )
+        with self._configure(default="service-steering-v1"):
+            with self.assertRaisesRegex(RuntimeError, "MODEL_REVISION"):
+                _load_layer_force_bank(
+                    self.model,
+                    model_id=self.model_id,
+                    model_revision="unversioned-local",
+                    layer_path=self.layer_path,
+                )
+
+    def test_layer_force_default_must_reference_an_loaded_profile(self):
+        with self._configure(paths=[], allowlist=[], default="missing-profile"):
+            with self.assertRaisesRegex(RuntimeError, "requires-a-local-profile"):
+                _load_layer_force_bank(
+                    self.model,
+                    model_id=self.model_id,
+                    model_revision=self.revision,
+                    layer_path=self.layer_path,
+                )
 
 
 if __name__ == "__main__":
