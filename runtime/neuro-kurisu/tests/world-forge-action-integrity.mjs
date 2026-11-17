@@ -29,6 +29,12 @@ state=forge.step(state,{action:'inspect',target:firstTarget}).state;
 state=forge.step(state,{action:'inspect',target:secondTarget}).state;
 const beforeVerify=forge.evaluateSession(scenario,state);
 assert.equal(beforeVerify.evidenceCoverage01,0,'inspection is not independent verification');
+const rejectedVerify=forge.step(state,{action:'verify',evidence:'not-observed-evidence'});
+assert.equal(rejectedVerify.accepted,false,'unobserved evidence must not be verified');
+assert.equal(rejectedVerify.reason,'evidence_not_observed');
+state=rejectedVerify.state;
+assert.equal(forge.evaluateSession(scenario,state).evidenceCoverage01,0,
+  'a rejected verification must not discharge critical evidence');
 state=forge.step(state,{action:'verify',evidence:firstTarget}).state;
 state=forge.step(state,{action:'verify',evidence:secondTarget}).state;
 const afterVerify=forge.evaluateSession(scenario,state);
