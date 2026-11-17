@@ -8,9 +8,11 @@ import {
   OpenAICompatibleLocalParliamentRoleExecutor,
   ParliamentModelAttestationRegistry,
   createLocalParliamentRoleExecutors,
+  createLanguageInvokerParliamentRoleExecutors,
 } from '../src/organism/system/CognitiveParliamentLocalAdapter.ts';
 import { GovernanceSubsystemRuntime } from '../src/organism/core/GovernanceSubsystemRuntime.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
 const roles=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
@@ -203,6 +205,47 @@ const factoryRun=await localRoleExecutors.researcher.execute({
 assert.equal(factoryRegistry.attest(factoryRun.executionId)?.independenceGroup,'factory-family-researcher');
 assert.throws(()=>createLocalParliamentRoleExecutors({...localBindings,unknownRole:localBindings.planner},factoryRegistry),
   /role-unknown/,'factory must reject unknown specialist roles');
+
+// The existing LanguageInvoker can be reused as six role prompts, but every role
+// is attested to the same backend family (never six fabricated independent models).
+const languageRegistry=new ParliamentModelAttestationRegistry();
+let languageInvokerCalls=0;
+const languageInvoker=async request=>{
+  languageInvokerCalls++;
+  assert.ok(request.system.includes('specialist'));
+  return {text:responseFor('planner'),backend:'local-qwen-backend',latencyMs:2};
+};
+const languageRoleExecutors=createLanguageInvokerParliamentRoleExecutors(languageInvoker,languageRegistry);
+const languageResearch=await languageRoleExecutors.researcher.execute({
+  role:'researcher',system:'You are one isolated specialist.',user:'test',maxTokens:120,temperature:.1,
+  signal:new AbortController().signal,
+});
+const languageAuditor=await languageRoleExecutors.auditor.execute({
+  role:'auditor',system:'You are one isolated specialist.',user:'test',maxTokens:120,temperature:.1,
+  signal:new AbortController().signal,
+});
+assert.equal(languageInvokerCalls,2);
+assert.equal(languageRegistry.attest(languageResearch.executionId)?.independenceGroup,
+  languageRegistry.attest(languageAuditor.executionId)?.independenceGroup,
+  'the default language-invoker adapter must never manufacture model diversity');
+
+// Runtime automatically composes this adapter only when language is enabled,
+// no explicit specialist providers/attestor override it, and Parliament is not disabled.
+const languageRuntime=new OrganismRuntime({
+  stateFile:'/tmp/nk-parliament-language-runtime.json',
+  worldStateFile:'/tmp/nk-parliament-language-world.json',
+  stateStore:new MemoryStateStore(),worldStateStore:new MemoryStateStore(),
+  languageInvoker,enableLanguage:true,autoRun:false,performanceProfile:'mobile',
+});
+try {
+  await languageRuntime.init();
+  const runtimeParliament=languageRuntime.core.cognitiveParliamentDiagnostics();
+  assert.equal(runtimeParliament.enabled,true);
+  assert.equal(runtimeParliament.configuredRoleCount,6);
+  assert.equal(runtimeParliament.trustedModelAttestorConfigured,true);
+} finally {
+  await languageRuntime.stop();
+}
 
 let lateRegistrationCount=0;
 const lateAttestations=new ParliamentModelAttestationRegistry();
