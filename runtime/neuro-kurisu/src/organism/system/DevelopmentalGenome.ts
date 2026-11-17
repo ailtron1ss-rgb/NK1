@@ -363,7 +363,7 @@ export function evaluateDevelopmentalGenome(
         addIssue(violations, 'parent-invalid', 'parent', 'Supplied parent genome is structurally invalid or incompatible');
       } else {
         if (ancestors.length > parent.lineage.generation) {
-          addIssue(violations, 'ancestor-chain-invalid', 'lineage.ancestors', 'Ancestor chain contains more entries than the parent's generation');
+          addIssue(violations, 'ancestor-chain-invalid', 'lineage.ancestors', 'Ancestor chain contains more entries than the parent generation');
         } else if (ancestors.length < parent.lineage.generation) {
           addIssue(warnings, 'ancestor-chain-missing', 'lineage.ancestors', 'Provide ancestors from the direct parent’s parent back to generation zero');
         }
