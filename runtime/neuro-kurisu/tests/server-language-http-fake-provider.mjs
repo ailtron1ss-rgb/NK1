@@ -59,6 +59,7 @@ const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server
     NK_MEM0_COGNITIVE_RECALL: '1',
     NK_MEM0_USER_ID: 'mem0-http-smoke-user',
     LLAMA_CPP_MODEL: 'neurocore-http-smoke-model',
+    LLAMA_CPP_NK1_TEMPLATE_CONTROLS: '1',
     LLM_TIMEOUT_MS: '5000',
     NEURO_REQUEST_TIMEOUT_MS: '20000',
   },
@@ -147,6 +148,14 @@ try {
   assert.equal(lastProviderPayload?.model, 'neurocore-http-smoke-model', 'configured model identity must reach the provider');
   assert.ok(Array.isArray(lastProviderPayload?.messages) && lastProviderPayload.messages.some(message => message.role === 'user' && message.content.includes('configured local model')), 'user prompt must reach the local provider');
   assert.equal(lastProviderPayload?.stream, false, 'smoke provider request should use the bounded non-streaming response path');
+  assert.equal(lastProviderPayload?.chat_template_kwargs?.nk1_control_version, 2,
+    'opt-in llama.cpp template controls must reach the actual chat-completions payload');
+  assert.equal(lastProviderPayload?.chat_template_kwargs?.nk1_feature_schema, 'nk1-cognitive-neural-43-v2');
+  assert.ok(['reflex', 'shallow', 'retrieve', 'deep', 'simulate', 'defer', 'sleep'].includes(
+    lastProviderPayload?.chat_template_kwargs?.nk1_mode,
+  ));
+  assert.ok(lastProviderPayload?.chat_template_kwargs?.nk1_neural_snapshot_freshness01 >= 0
+    && lastProviderPayload.chat_template_kwargs.nk1_neural_snapshot_freshness01 <= 1);
   console.log('SERVER_LANGUAGE_HTTP_FAKE_PROVIDER=PASS', JSON.stringify({
     status: response.status,
     backend: body.language.backend,
