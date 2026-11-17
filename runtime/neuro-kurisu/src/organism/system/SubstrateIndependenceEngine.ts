@@ -188,17 +188,20 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
   if (seen.has(value)) return fail('portable-state-cycle-rejected');
 
   if (nodeUtilTypes.isDate(value)) {
-    const time = value.getTime();
+    if (Object.getPrototypeOf(value) !== Date.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-date-instance-invalid');
+    const time = Date.prototype.getTime.call(value);
     if (!Number.isFinite(time)) return fail('portable-invalid-date-rejected');
     return { $nk1Type: 'Date', value: value.toISOString() };
   }
   if (Buffer.isBuffer(value)) {
-    return { $nk1Type: 'Buffer', base64: value.toString('base64') };
+    if (Object.getPrototypeOf(value) !== Buffer.prototype) return fail('portable-buffer-subclass-rejected');
+    return { $nk1Type: 'Buffer', base64: Buffer.prototype.toString.call(value, 'base64') };
   }
   if (nodeUtilTypes.isMap(value)) {
+    if (Object.getPrototypeOf(value) !== Map.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-map-subclass-or-extra-fields-rejected');
     seen.add(value);
     try {
-      const entries = [...value.entries()].map(([key, entry]) => [
+      const entries = [...Map.prototype.entries.call(value)].map(([key, entry]) => [
         normalizePortableValue(key, seen, depth + 1, counter),
         normalizePortableValue(entry, seen, depth + 1, counter),
       ]);
@@ -206,9 +209,10 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
     } finally { seen.delete(value); }
   }
   if (nodeUtilTypes.isSet(value)) {
+    if (Object.getPrototypeOf(value) !== Set.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-set-subclass-or-extra-fields-rejected');
     seen.add(value);
     try {
-      return { $nk1Type: 'Set', values: [...value.values()].map((entry) =>
+      return { $nk1Type: 'Set', values: [...Set.prototype.values.call(value)].map((entry) => [
         normalizePortableValue(entry, seen, depth + 1, counter)) };
     } finally { seen.delete(value); }
   }
@@ -764,9 +768,10 @@ export class SubstrateIndependenceEngine {
       if (!target.capabilities.includes(capability)) reasons.push('target-capability-missing:' + capability);
     }
     let reindexRequired = false;
-    if (transfer?.source?.backendId) {
-      const source = this.profiles.get(transfer.source.backendId);
-      if (!transfer.source.profileDigest || !source || profileDigest(source) !== transfer.source.profileDigest) {
+    const transferSource = integrity.valid ? transfer.source : null;
+    if (transferSource?.backendId) {
+      const source = this.profiles.get(transferSource.backendId);
+      if (!transferSource.profileDigest || !source || profileDigest(source) !== transferSource.profileDigest) {
         reasons.push('source-profile-unavailable-or-changed');
       } else if (source.embeddingSpaceId && target.embeddingSpaceId && source.embeddingSpaceId !== target.embeddingSpaceId) {
         reindexRequired = true;
@@ -790,7 +795,7 @@ export class SubstrateIndependenceEngine {
     evaluatedAt?: number;
   }): Promise<SubstrateMigrationEvaluation> {
     const integrity = this.verifyTransferPackage(input.transfer);
-    const sourceBackendId = input.transfer?.source?.backendId;
+    const sourceBackendId = integrity.valid ? input.transfer.source.backendId : null;
     if (!integrity.valid || !sourceBackendId || !isSafeId(input.targetBackendId)) {
       fail('substrate-migration-transfer-or-endpoint-invalid');
     }
