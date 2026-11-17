@@ -487,12 +487,17 @@ export class TheInventionLoop {
       }
       records.push(structuredClone(item));
     }
+    const retained = records.slice(0, MAX_RECORDS);
+    const priorQuarantine = Number.isSafeInteger(detached.quarantinedRecords)
+      ? Math.max(0, Number(detached.quarantinedRecords)) : 0;
     this.state = {
       version: 4,
-      records: records.slice(0, MAX_RECORDS),
-      accepted: records.filter(record => record.stage === 'accepted').length,
-      rejected: records.filter(record => record.stage === 'rejected').length,
-      quarantinedRecords: quarantinedRecords + Math.max(0, incoming.length - MAX_RECORDS * 2),
+      records: retained,
+      accepted: retained.filter(record => record.stage === 'accepted').length,
+      rejected: retained.filter(record => record.stage === 'rejected').length,
+      quarantinedRecords: priorQuarantine + quarantinedRecords +
+        Math.max(0, incoming.length - MAX_RECORDS * 2) +
+        Math.max(0, records.length - retained.length),
     };
   }
 
@@ -692,10 +697,21 @@ export class TheInventionLoop {
             checked.verified.verifierId !== record.critique.reviewerId) return false;
       }
 
+      const primaryOutcomes = record.outcomes.filter(outcome => outcome.kind === 'primary');
       const replicationCount = record.outcomes.filter(outcome => outcome.kind === 'replication').length;
       const holdoutCount = record.outcomes.filter(outcome => outcome.kind === 'holdout').length;
       const replicationSummary = record.phaseSummaries?.replication;
       const holdoutSummary = record.phaseSummaries?.holdout;
+      const phaseOrder = (kind: OutcomeKind): number =>
+        kind === 'primary' ? 0 : kind === 'replication' ? 1 : 2;
+      let lastPhaseOrder = -1;
+      for (const outcome of record.outcomes) {
+        const order = phaseOrder(outcome.kind);
+        if (order < lastPhaseOrder) return false;
+        lastPhaseOrder = order;
+      }
+      if (record.outcomes.length > 0 &&
+          (primaryOutcomes.length !== 1 || record.outcomes[0]?.kind !== 'primary')) return false;
       if ((replicationCount > 0) !== Boolean(replicationSummary) ||
           (holdoutCount > 0) !== Boolean(holdoutSummary)) return false;
       if (replicationSummary &&
@@ -704,12 +720,49 @@ export class TheInventionLoop {
           canonical(holdoutSummary) !== canonical(this.summarizePhase(record, 'holdout'))) return false;
       if (record.outcomes.some(outcome => outcome.kind === 'replication' || outcome.kind === 'holdout') &&
           (!record.critique || record.critique.blockers.length > 0)) return false;
-      if (['replicating', 'replicated', 'holdingout', 'accepted'].includes(record.stage) &&
-          !record.critique) return false;
-      if (['replicated', 'holdingout', 'accepted'].includes(record.stage) &&
-          !replicationSummary?.passed) return false;
-      if (['holdingout', 'accepted'].includes(record.stage) && !holdoutSummary) return false;
-      if (record.stage === 'accepted' && !holdoutSummary?.passed) return false;
+      if (holdoutCount > 0 && !replicationSummary?.passed) return false;
+
+      const primary = primaryOutcomes[0];
+      if (primary && !primary.passed) {
+        if (record.stage !== 'rejected' || record.decisionReason !== 'primary-failed-preregistered-threshold' ||
+            record.outcomes.length !== 1 || record.critique || replicationSummary || holdoutSummary) return false;
+      } else if (record.stage === 'tested') {
+        if (!primary?.passed || record.outcomes.length !== 1 || record.critique ||
+            replicationSummary || holdoutSummary) return false;
+      } else if (record.stage === 'critiqued') {
+        if (!primary?.passed || !record.critique || record.critique.blockers.length > 0 ||
+            replicationCount !== 0 || holdoutCount !== 0) return false;
+      } else if (record.stage === 'replicating') {
+        if (!primary?.passed || !record.critique || record.critique.blockers.length > 0 ||
+            !replicationSummary || replicationSummary.sampleCount < 1 ||
+            replicationSummary.sampleCount >= replicationSummary.requiredSamples ||
+            holdoutCount !== 0 || holdoutSummary) return false;
+      } else if (record.stage === 'replicated') {
+        if (!primary?.passed || !record.critique || !replicationSummary?.passed ||
+            replicationCount !== replicationSummary.requiredSamples ||
+            holdoutCount !== 0 || holdoutSummary) return false;
+      } else if (record.stage === 'holdingout') {
+        if (!primary?.passed || !record.critique || !replicationSummary?.passed ||
+            !holdoutSummary || holdoutSummary.sampleCount < 1 ||
+            holdoutSummary.sampleCount >= holdoutSummary.requiredSamples) return false;
+      } else if (record.stage === 'accepted') {
+        if (!primary?.passed || !record.critique || !replicationSummary?.passed ||
+            !holdoutSummary?.passed || holdoutSummary.sampleCount !== holdoutSummary.requiredSamples ||
+            record.decisionReason !== 'replication-and-holdout-cohorts-passed') return false;
+      } else if (record.stage === 'proposed' || record.stage === 'designed' || record.stage === 'prototyped') {
+        if (record.outcomes.length > 0 || record.critique || replicationSummary || holdoutSummary) return false;
+      } else if (record.stage === 'rejected') {
+        if (!record.decisionReason) return false;
+        if (record.critique?.blockers.length &&
+            record.decisionReason !== 'independent-critique-blockers') return false;
+        if (replicationSummary && replicationSummary.sampleCount === replicationSummary.requiredSamples &&
+            !replicationSummary.passed &&
+            record.decisionReason !== 'replication-cohort-failed-preregistered-gate') return false;
+        if (holdoutSummary && holdoutSummary.sampleCount === holdoutSummary.requiredSamples &&
+            !holdoutSummary.passed &&
+            record.decisionReason !== 'holdout-cohort-failed-preregistered-gate') return false;
+        if (holdoutSummary && holdoutCount > 0 && !replicationSummary?.passed) return false;
+      }
       if (record.critique?.blockers.length && record.stage !== 'rejected') return false;
       return true;
     } catch {
