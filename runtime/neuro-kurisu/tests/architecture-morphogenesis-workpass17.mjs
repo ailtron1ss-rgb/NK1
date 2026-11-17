@@ -23,6 +23,9 @@ const live = buildLiveArchitectureMorphogenesisGraph();
 const liveReport = validateArchitectureMorphogenesisGraph(live);
 assert.equal(liveReport.ok, true, JSON.stringify(liveReport));
 assert.ok(live.modules.length >= 12, 'live graph must cover the existing cognitive architecture map');
+assert.match(live.sourceCommit, /^[a-f0-9]{40}$/, 'live graph must bind the exact checked-out source commit');
+assert.ok(live.modules.every(module => module.sourcePaths.length > 0 && module.sourcePaths.includes(module.path)), 'each architecture node must include its canonical source-file set');
+assert.ok(live.modules.every(module => /^sha256:[a-f0-9]{64}$/.test(module.revisionSha256)), 'module revisions must fingerprint actual source bytes');
 assert.ok(live.contracts.length >= 6, 'single-owner architecture authorities must be represented as contracts');
 assert.match(live.canonicalGenomeDigest, /^sha256:[a-f0-9]{64}$/);
 assert.ok(live.edges.some(edge => edge.kind === 'data-flow'), 'live graph must preserve typed data flows');
@@ -32,11 +35,13 @@ const digest = letter => 'sha256:' + letter.repeat(64);
 const moduleRecord = (id, path, hash) => ({
   id,
   path,
+  sourcePaths: [path],
   owner: 'owner:' + id,
   revisionSha256: digest(hash),
 });
 const graph = (modules, edges = [], contracts = []) => ({
   schemaVersion: 1,
+  sourceCommit: sha,
   canonicalGenomeDigest: digest('0'),
   modules,
   edges,
@@ -57,8 +62,8 @@ const migration = (changed = []) => ({
 const proposal = (baselineGraph, candidateGraph, operations, changed = []) => createArchitectureMorphogenesisPlan({
   baselineCommit: sha,
   candidateBranch: 'aspect/morphogenesis-architecture-20261117',
-  baselineGraph,
-  candidateGraph,
+  baselineGraph: { ...baselineGraph, sourceCommit: sha },
+  candidateGraph: { ...candidateGraph, sourceCommit: '2'.repeat(40) },
   operations,
   migrationPlan: migration(changed),
 });
@@ -152,6 +157,16 @@ assert.equal(validateArchitectureMorphogenesisGraph(recurrentFlow).ok, true);
 // An unaccounted source change, an unsafe path, or a protected branch must fail closed.
 const unaccounted = proposal(graph([alpha]), graph([replaced]), []);
 assert.equal(unaccounted.status, 'BLOCKED');
+const mismatchedBaseline = createArchitectureMorphogenesisPlan({
+  baselineCommit: sha,
+  candidateBranch: 'aspect/morphogenesis-architecture-20261117',
+  baselineGraph: { ...graph([alpha]), sourceCommit: '3'.repeat(40) },
+  candidateGraph: graph([replaced]),
+  operations: [{ kind: 'replace', moduleId: 'alpha', rationale: 'source commit mismatch must block' }],
+  migrationPlan: migration(),
+});
+assert.equal(mismatchedBaseline.status, 'BLOCKED');
+assert.ok(mismatchedBaseline.issues.some(issue => issue.code === 'baseline-source-commit-mismatch'));
 const unsafePath = graph([moduleRecord('unsafe', 'src/organism/legacy/Unsafe.ts', 'a')]);
 assert.equal(validateArchitectureMorphogenesisGraph(unsafePath).ok, false);
 const protectedBranch = createArchitectureMorphogenesisPlan({
