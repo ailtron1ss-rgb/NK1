@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { NeuralProsthesisChatProvider } from '../src/organism/integration/local/NeuralProsthesisChatProvider.ts';
 import { P40ModelEcologyEngine } from '../src/organism/learning/P40ModelEcology.ts';
+import { createServer } from 'node:http';
+import { once } from 'node:events';
 
 const calls = [];
 const provider = new NeuralProsthesisChatProvider({
@@ -97,4 +99,106 @@ console.log(JSON.stringify({
   ecologySelection: selected,
   adapter: calls[0].body.adapter_id,
   safety: 'loopback-only; opt-in',
+}));
+
+// Managed local sidecar lifecycle: it starts on explicit opt-in, reuses a healthy
+// manually-started process, bounds startup time, and never owns/stops an external one.
+let sidecarSupervisorModule = {};
+try {
+  sidecarSupervisorModule = await import('../src/organism/integration/local/NeuralProsthesisSidecarSupervisor.mjs');
+} catch {
+  // The assertion below reports the missing production contract as a behavioral failure.
+}
+const { NeuralProsthesisSidecarSupervisor } = sidecarSupervisorModule;
+assert.equal(
+  typeof NeuralProsthesisSidecarSupervisor,
+  'function',
+  'managed Neural Prosthesis sidecar supervisor must be exported',
+);
+
+async function reserveLoopbackPort() {
+  const socket = createServer();
+  socket.listen(0, '127.0.0.1');
+  await once(socket, 'listening');
+  const port = socket.address().port;
+  await new Promise((resolve, reject) => socket.close(error => error ? reject(error) : resolve()));
+  return port;
+}
+
+const supervisorPort = await reserveLoopbackPort();
+const supervisorBaseUrl = `http://127.0.0.1:${supervisorPort}/v1`;
+const childHealthProgram = [
+  "const http = require('node:http');",
+  "const server = http.createServer((req, res) => {",
+  "  if (req.url !== '/health') { res.writeHead(404); res.end(); return; }",
+  "  res.writeHead(200, { 'content-type': 'application/json' });",
+  "  res.end(JSON.stringify({ ready: true, backend: 'neural-prosthesis' }));",
+  "});",
+  "server.listen(Number(process.env.NP_TEST_PORT), '127.0.0.1');",
+  "process.on('SIGTERM', () => server.close(() => process.exit(0)));",
+].join('\n');
+
+const managedSupervisor = new NeuralProsthesisSidecarSupervisor({
+  enabled: true,
+  command: process.execPath,
+  args: ['-e', childHealthProgram],
+  cwd: process.cwd(),
+  env: { ...process.env, NP_TEST_PORT: String(supervisorPort) },
+  baseUrl: supervisorBaseUrl,
+  startupTimeoutMs: 5000,
+  stopTimeoutMs: 1500,
+});
+const managedStart = await managedSupervisor.start();
+assert.equal(managedStart.started, true);
+assert.equal(managedStart.ready, true);
+assert.equal(managedSupervisor.snapshot().managed, true);
+assert.ok(managedSupervisor.snapshot().pid > 0);
+assert.equal(await managedSupervisor.stop(), true);
+assert.equal(managedSupervisor.snapshot().managed, false);
+assert.equal(managedSupervisor.snapshot().ready, false);
+await assert.rejects(
+  fetch(new URL('/health', supervisorBaseUrl), { signal: AbortSignal.timeout(500) }),
+);
+
+const externalServer = createServer((_req, res) => {
+  res.writeHead(200, { 'content-type': 'application/json' });
+  res.end(JSON.stringify({ ready: true, backend: 'neural-prosthesis' }));
+});
+externalServer.listen(0, '127.0.0.1');
+await once(externalServer, 'listening');
+const externalPort = externalServer.address().port;
+const externalBaseUrl = `http://127.0.0.1:${externalPort}/v1`;
+const reuseSupervisor = new NeuralProsthesisSidecarSupervisor({
+  enabled: true,
+  command: '/this-command-must-not-be-spawned',
+  args: [],
+  baseUrl: externalBaseUrl,
+  startupTimeoutMs: 1000,
+});
+try {
+  const reused = await reuseSupervisor.start();
+  assert.equal(reused.ready, true);
+  assert.equal(reused.reusedExisting, true);
+  assert.equal(reuseSupervisor.snapshot().managed, false);
+  assert.equal(await reuseSupervisor.stop(), false);
+  const stillHealthy = await fetch(new URL('/health', externalBaseUrl));
+  assert.equal(stillHealthy.ok, true, 'stopping NK1 must not terminate a manually-managed sidecar');
+} finally {
+  externalServer.close();
+  await once(externalServer, 'close');
+}
+
+const disabledSupervisor = new NeuralProsthesisSidecarSupervisor({ enabled: false });
+assert.deepEqual(await disabledSupervisor.start(), {
+  started: false,
+  ready: false,
+  reason: 'disabled',
+});
+assert.equal(await disabledSupervisor.stop(), false);
+
+console.log(JSON.stringify({
+  status: 'PASS',
+  pass: 'neural-prosthesis-sidecar-lifecycle',
+  managedProcess: 'started-and-stopped',
+  externalProcess: 'reused-without-ownership',
 }));
