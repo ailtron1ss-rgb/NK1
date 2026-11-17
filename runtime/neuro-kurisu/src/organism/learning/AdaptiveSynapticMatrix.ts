@@ -24,6 +24,7 @@ export interface SynapticAdapterCandidate {
   conflictGroup: string;
   minimumConfidence01: number;
   maximumResourceRisk01: number;
+  maximumUncertainty01: number;
   maximumContextTokens: number;
   trainingDatasetRef: string;
   owner: string;
@@ -160,11 +161,15 @@ function normalizeCandidate(raw: SynapticAdapterCandidate): SynapticAdapterCandi
   }
   const minimumConfidence01 = Number(raw.minimumConfidence01);
   const maximumResourceRisk01 = Number(raw.maximumResourceRisk01);
+  const maximumUncertainty01 = Number(raw.maximumUncertainty01);
   if (!Number.isFinite(minimumConfidence01) || minimumConfidence01 < 0 || minimumConfidence01 > 1) {
     throw new Error('synaptic-adapter-minimum-confidence-invalid');
   }
   if (!Number.isFinite(maximumResourceRisk01) || maximumResourceRisk01 < 0 || maximumResourceRisk01 > 1) {
     throw new Error('synaptic-adapter-resource-risk-invalid');
+  }
+  if (!Number.isFinite(maximumUncertainty01) || maximumUncertainty01 < 0 || maximumUncertainty01 > 1) {
+    throw new Error('synaptic-adapter-uncertainty-limit-invalid');
   }
   const competenceByTask01: Partial<Record<SynapticAdapterTask, number>> = {};
   for (const task of tasks) {
@@ -177,7 +182,7 @@ function normalizeCandidate(raw: SynapticAdapterCandidate): SynapticAdapterCandi
     adapterFormat: raw.adapterFormat, rank: raw.rank, baseModelId,
     baseModelRevisionSha256: String(raw.baseModelRevisionSha256).toLowerCase(),
     tasks, competenceByTask01, conflictGroup, minimumConfidence01,
-    maximumResourceRisk01, maximumContextTokens, trainingDatasetRef, owner,
+    maximumResourceRisk01, maximumUncertainty01, maximumContextTokens, trainingDatasetRef, owner,
   };
 }
 
@@ -249,7 +254,7 @@ export class AdaptiveSynapticMatrixEngine {
     const candidate = normalizeCandidate(raw);
     const existing = this.state.adapters.find(entry => entry.candidate.id === candidate.id);
     if (existing) {
-      if (existing.candidate.artifactSha256 !== candidate.artifactSha256) {
+      if (!sameCandidate(existing.candidate, candidate)) {
         throw new Error('synaptic-adapter-id-collision');
       }
       return structuredClone(existing);
@@ -270,6 +275,7 @@ export class AdaptiveSynapticMatrixEngine {
     const manifest = normalizeManifest(raw);
     const record = this.state.adapters.find(entry => entry.candidate.id === manifest.id);
     if (!record || !sameCandidate(record.candidate, manifest)) throw new Error('synaptic-adapter-candidate-manifest-mismatch');
+    if (record.status === 'disabled') throw new Error('synaptic-adapter-explicitly-disabled');
     if (typeof verify !== 'function') throw new Error('synaptic-adapter-manifest-verifier-required');
     let verified = false;
     try {
@@ -301,7 +307,7 @@ export class AdaptiveSynapticMatrixEngine {
       this.trimDecisions();
       return { mode: 'base-fallback', reason, adapterIds: [], score01: 0 };
     };
-    if (!input.executorAvailable) return fallback('adapter-executor-unavailable');
+    if (input.executorAvailable !== true) return fallback('adapter-executor-unavailable');
     if (!(SYNAPTIC_ADAPTER_TASKS as readonly string[]).includes(input.task)) return fallback('routing-task-invalid');
     if (![input.confidence01, input.uncertainty01, input.resourceRisk01].every(value => Number.isFinite(value) && value >= 0 && value <= 1)) {
       return fallback('routing-signal-invalid');
@@ -323,6 +329,7 @@ export class AdaptiveSynapticMatrixEngine {
           && profile.tasks.includes(input.task)
           && input.contextTokens <= profile.maximumContextTokens
           && confidence >= profile.minimumConfidence01
+          && uncertainty <= profile.maximumUncertainty01
           && resourceRisk <= profile.maximumResourceRisk01;
       })
       .map(entry => {
@@ -381,6 +388,13 @@ export class AdaptiveSynapticMatrixEngine {
     record.consecutiveFailures += 1;
     record.lastErrorAt = now;
     this.state.metrics.adapterFailures += 1;
+    if (record.consecutiveFailures >= 6) {
+      // Repeated failure across escalating cooldowns requires an explicit, newly
+      // verified activation instead of silently returning to inference.
+      record.status = 'quarantined';
+      record.cooldownUntil = 0;
+      return;
+    }
     if (record.consecutiveFailures >= 2) {
       const cooldownMs = Math.min(15 * 60_000, 60_000 * (2 ** Math.min(4, record.consecutiveFailures - 2)));
       record.cooldownUntil = now + cooldownMs;
@@ -429,7 +443,14 @@ export class AdaptiveSynapticMatrixEngine {
     next.decisions = Array.isArray(raw?.decisions)
       ? raw!.decisions.filter(row => row && (row.mode === 'adapter' || row.mode === 'base-fallback')
         && (SYNAPTIC_ADAPTER_TASKS as readonly string[]).includes(row.task)
-        && typeof row.reason === 'string').slice(0, MAX_DECISIONS)
+        && typeof row.reason === 'string').slice(0, MAX_DECISIONS).map(row => ({
+          task: row.task,
+          mode: row.mode,
+          reason: String(row.reason).slice(0, 120),
+          ...(typeof row.adapterId === 'string' && /^[a-z0-9][a-z0-9._:-]{1,79}$/i.test(row.adapterId) ? { adapterId: row.adapterId } : {}),
+          score01: Number.isFinite(row.score01) ? clamp01(row.score01) : 0,
+          at: Number.isFinite(row.at) && row.at >= 0 ? row.at : 0,
+        }))
       : [];
     const metrics = raw?.metrics ?? {};
     next.metrics = {
