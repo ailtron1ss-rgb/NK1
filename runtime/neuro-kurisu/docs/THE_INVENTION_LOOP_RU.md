@@ -1,28 +1,33 @@
-# The Invention Loop — NK1 implementation
+# The Invention Loop — усиленная реализация NK1
 
-Status: first implementation slice, isolated on `aspect/the-invention-loop-20261117`.
+Ветка: `aspect/the-invention-loop-20261117`  
+Назначение: превращать инженерные гипотезы в проверенные улучшения, не смешивая генерацию идей, факт изменения кода и доказательство пользы.
 
-## Purpose
-Coordinate the complete idea-to-evidence lifecycle without confusing generated ideas, code changes, and verified improvements.
-
-## Lifecycle
+## Жизненный цикл
 `proposed → designed → prototyped → tested → critiqued → replicated → accepted`
-Any failed preregistered threshold or independent critique blocker ends in `rejected`.
 
-## Evidence rules
-- The protocol (question, hypothesis, success criteria, baseline, threshold and test fingerprint) is fixed before prototype testing.
-- Only one primary outcome is admitted.
-- Critique must be performed by a reviewer distinct from the primary verifier.
-- Replication requires a different verifier and environment.
-- A final holdout outcome is required before acceptance.
-- Duplicate receipts, changed test fingerprints, invalid numeric values and out-of-order transitions are rejected.
-- The coordinator records evidence and decisions; it does not execute arbitrary code, merge branches, publish releases or promote model weights.
+Любая неудача по заранее объявленному порогу или блокирующая независимая критика ведёт в `rejected`.
 
-## Integration boundary
-This module is designed to coordinate existing NK1 research foundations such as `IntrinsicExperimentGenerator`, `ScientificMethodEngine`, `AutonomousScientificBrainSubstrate` and `P53DevelopmentalSelfModificationLab`. It intentionally does not duplicate their hypothesis generation, scientific state or candidate mutation logic. The coordinator is wired into `EvidenceResearchSubsystemRuntime` snapshot/restore and exported from the organism entry point. Automatic experiment execution and candidate promotion remain intentionally out of scope.
+## Защита эксперимента
+- До прототипирования фиксируются вопрос, гипотеза, успех-критерий, baseline, масштаб метрики, направление оптимизации, порог и fingerprint набора тестов.
+- Эффект рассчитывается из наблюдаемого значения, baseline и направления метрики. Переданное вызывающей стороной значение эффекта не принимается.
+- Каждый запуск имеет уникальный run ID, проверяющего, среду, ссылку на доказательство и SHA-256 самого файла доказательства.
+- Прототип фиксируется ссылкой и SHA-256; независимая критика имеет собственный артефакт и digest.
+- Репликация использует другой verifier и environment; закрытый holdout требует отдельные verifier, environment и run.
+- Невалидные digest, повторные запуски, подменённый test fingerprint, нарушение порядка стадий и ухудшение метрики блокируют продвижение.
 
-## Verification
-Run from `runtime/neuro-kurisu`:
+## Целостность состояния
+Каждый переход записывает состояние в per-record hash chain. Во время восстановления история перепроверяется, а кеш записи сравнивается с последним аудируемым снимком. Записи с изменённым состоянием или без доказуемой цепочки отправляются в quarantine; counters вычисляются заново и не доверяются сохранённым числам.
+
+Hash chain — контроль случайного/непреднамеренного изменения журнала, а не цифровая подпись личности проверяющего или внешняя аттестация. Для криптографической идентификации verifier потребуется отдельная подпись/authority от Evidence Firewall / Verified Outcome Ledger.
+
+## Runtime и границы полномочий
+The Invention Loop принадлежит `EvidenceResearchSubsystemRuntime`, входит в snapshot/restore и экспортируется organism entry point. Координатор ведёт экспериментальный протокол и evidence; он не исполняет произвольный код, не сливает ветки, не публикует Release и не продвигает веса модели. Эти действия остаются за существующими ActionGateway, независимыми evaluator-ами и отдельными approval gates.
+
+## Проверка
+Из `runtime/neuro-kurisu`:
 ```sh
 node --experimental-strip-types tests/the-invention-loop.mjs
+npm run typecheck
 ```
+Для PR создан отдельный workflow `.github/workflows/the-invention-loop.yml`, который сначала запускает целевой lifecycle-тест, затем typecheck.
