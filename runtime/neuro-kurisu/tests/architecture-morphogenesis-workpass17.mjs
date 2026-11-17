@@ -234,9 +234,17 @@ const originalDigest = computeArchitectureGraphDigest(cleanGraph);
 assert.match(originalDigest, /^sha256:[a-f0-9]{64}$/);
 const tamperedGraph = { ...cleanGraph, modules: [moduleRecord('alpha', alpha.path, 'b')] };
 assert.notEqual(computeArchitectureGraphDigest(tamperedGraph), originalDigest);
-const accessorGraph = graph([alpha]);
-Object.defineProperty(accessorGraph.modules[0], 'owner', { enumerable: true, get() { throw new Error('getter executed'); } });
+const accessorGraph = graph([{ ...alpha }]);
+let accessorGetterInvoked = false;
+Object.defineProperty(accessorGraph.modules[0], 'owner', {
+  enumerable: true,
+  get() {
+    accessorGetterInvoked = true;
+    throw new Error('getter must never execute');
+  },
+});
 assert.equal(validateArchitectureMorphogenesisGraph(accessorGraph).ok, false);
+assert.equal(accessorGetterInvoked, false, 'plain-data validation must inspect descriptors without executing getters');
 const cyclicObject = graph([alpha]);
 cyclicObject.extra = cyclicObject;
 assert.equal(validateArchitectureMorphogenesisGraph(cyclicObject).ok, false);
