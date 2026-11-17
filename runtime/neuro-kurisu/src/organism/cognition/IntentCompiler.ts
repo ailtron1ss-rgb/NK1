@@ -57,7 +57,7 @@ export interface IntentApproval {
 }
 export type IntentGateResult =
   | { allowed: true; contractId: string; action: string }
-  | { allowed: false; reason: 'invalid-contract' | 'contract-not-approved' | 'action-explicitly-denied' | 'action-not-explicitly-allowed' };
+  | { allowed: false; reason: 'invalid-contract' | 'contract-incomplete' | 'contract-not-approved' | 'action-explicitly-denied' | 'action-not-explicitly-allowed' };
 
 const MAX_TEXT = 2_000;
 const MAX_LIST = 32;
@@ -131,6 +131,7 @@ export class IntentCompiler {
     if (!cleanText(extraction.expectedOutcome)) missingInformation.push('expected-outcome');
     if (!cleanList(extraction.acceptanceCriteria).length) missingInformation.push('acceptance-criteria');
     if (!cleanList(extraction.permissions?.allowedActions).length) missingInformation.push('explicit-action-allow-list');
+    if (!cleanList(extraction.stopConditions).length) missingInformation.push('stop-conditions');
     const timestamp = this.options.clock?.() ?? Date.now();
     const requestId = cleanText(input?.requestId, 180);
     const contract: IntentContract = {
@@ -164,6 +165,7 @@ export class IntentCompiler {
   /** Approval is an explicit user attestation and may only narrow the declared allow-list. */
   approve(contract: IntentContract, approval: IntentApproval): IntentContract {
     if (!isIntentContract(contract)) throw new TypeError('invalid intent contract');
+    if (contract.missingInformation.length > 0) throw new Error('intent contract is incomplete');
     if (approval?.userConfirmed !== true) throw new Error('explicit user confirmation is required');
     if (contract.missingInformation.length) throw new Error('intent contract is incomplete: ' + contract.missingInformation.join(', '));
     if (!Number.isSafeInteger(approval.at) || approval.at < 0) throw new TypeError('approval timestamp is invalid');
@@ -193,6 +195,7 @@ export class IntentCompiler {
     const normalizedAction = cleanText(action, MAX_ACTION);
     if (!normalizedAction) return { allowed: false, reason: 'action-not-explicitly-allowed' };
     if (contract.permissions.deniedActions.includes(normalizedAction)) return { allowed: false, reason: 'action-explicitly-denied' };
+    if (contract.missingInformation.length > 0) return { allowed: false, reason: 'contract-incomplete' };
     if (contract.approval.status !== 'approved') return { allowed: false, reason: 'contract-not-approved' };
     if (!contract.permissions.allowedActions.includes(normalizedAction) ||
         !contract.approval.allowedActions.includes(normalizedAction)) {
