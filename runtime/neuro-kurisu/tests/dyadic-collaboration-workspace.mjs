@@ -116,6 +116,16 @@ test('snapshot restore preserves accepted items and ignores accessor-backed stat
     sourceRef: 'chat:question:1', tick: 7, sensitivity: 'low-risk',
   });
   const snapshot = source.snapshot();
+  const subsystemSnapshot = new SelfSubsystemRuntime();
+  subsystemSnapshot.dyadicCollaboration.recordItem({
+    actor: 'human', kind: 'agreement', title: 'Persist coordination separately',
+    sourceRef: 'chat:restore-subsystem:1', tick: 8, sensitivity: 'low-risk',
+  });
+  const persistedSelf = subsystemSnapshot.snapshot();
+  const persistedRestore = new SelfSubsystemRuntime();
+  persistedRestore.restoreFromPersisted({ advanced: { dyadicCollaboration: persistedSelf.dyadicCollaboration } });
+  assert.deepEqual(persistedRestore.dyadicCollaboration.snapshot(), persistedSelf.dyadicCollaboration);
+
   const restored = new SelfSubsystemRuntime().dyadicCollaboration;
   restored.restore(snapshot);
   assert.deepEqual(restored.snapshot(), snapshot);
@@ -140,4 +150,25 @@ test('proposal rejection cannot leave the item in the prompt projection', () => 
   assert.equal(rejected.accepted, true);
   assert.equal(rejected.item.status, 'rejected');
   assert.doesNotMatch(workspace.promptContext(), /change the canonical memory owner/i);
+});
+
+
+test('stale task updates cannot roll shared progress backwards', () => {
+  const workspace = new SelfSubsystemRuntime().dyadicCollaboration;
+  const task = workspace.recordItem({
+    actor: 'human', kind: 'task', title: 'Keep progress monotonic',
+    sourceRef: 'chat:monotonic-task:1', tick: 10, sensitivity: 'low-risk',
+  });
+  const advanced = workspace.updateTaskProgress({
+    id: task.item.id, actor: 'system', progress: 'in-progress',
+    evidenceRef: 'runtime:monotonic:1', tick: 12,
+  });
+  assert.equal(advanced.accepted, true);
+  const stale = workspace.updateTaskProgress({
+    id: task.item.id, actor: 'human', progress: 'blocked',
+    evidenceRef: 'chat:monotonic:stale', tick: 11,
+  });
+  assert.equal(stale.accepted, false);
+  assert.equal(stale.reason, 'stale-event');
+  assert.equal(workspace.snapshot().items[0].progress, 'in-progress');
 });

@@ -1918,6 +1918,26 @@ export class OrganismRuntime {
     return this.enqueue(() => this.core.forgetExplicitUserModelEvidence(input));
   }
 
+  /** Record one shared human/system collaboration artifact through the serialized runtime queue. */
+  async recordDyadicCollaborationItem(input: Parameters<OrganismCore['recordDyadicCollaborationItem']>[0]) {
+    return this.enqueue(() => this.core.recordDyadicCollaborationItem(input));
+  }
+  async confirmDyadicCollaborationProposal(input: Parameters<OrganismCore['confirmDyadicCollaborationProposal']>[0]) {
+    return this.enqueue(() => this.core.confirmDyadicCollaborationProposal(input));
+  }
+  async rejectDyadicCollaborationProposal(input: Parameters<OrganismCore['rejectDyadicCollaborationProposal']>[0]) {
+    return this.enqueue(() => this.core.rejectDyadicCollaborationProposal(input));
+  }
+  async updateDyadicCollaborationTaskProgress(input: Parameters<OrganismCore['updateDyadicCollaborationTaskProgress']>[0]) {
+    return this.enqueue(() => this.core.updateDyadicCollaborationTaskProgress(input));
+  }
+  async correctDyadicCollaborationItem(input: Parameters<OrganismCore['correctDyadicCollaborationItem']>[0]) {
+    return this.enqueue(() => this.core.correctDyadicCollaborationItem(input));
+  }
+  async dyadicCollaborationSnapshot() {
+    return this.enqueue(() => this.core.dyadicCollaborationSnapshot());
+  }
+
   /** Pending self-initiated chat turn for the UI; no tool/device side effects occur here. */
   async autonomousDialogueReady() {
     return this.enqueue(async () => this.core.pendingAutonomousSocialInitiativeMessage());

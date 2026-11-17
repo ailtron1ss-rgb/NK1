@@ -1,3 +1,10 @@
+## [NK1][Dyadic Mind] Introduce evidence-bound shared collaboration workspace (2026-11-17)
+
+- Add a bounded human/system collaboration record for goals, tasks, agreements, questions, success criteria and decisions, with actor, source reference, lifecycle status and an append-only bounded event trail.
+- Keep system-authored items as proposals until explicit human confirmation; require a human for corrections and task completion; reject sensitive/unclassified data, duplicate evidence and stale state transitions.
+- Persist through the canonical SelfSubsystemRuntime and critical persistence projection; expose serialized runtime commands and a labelled collaboration context to existing cognitive prompts.
+- Reuse MemoryOS2 and existing project/task execution owners; no second memory, database, planner, public route, UI, merge or release is introduced.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
