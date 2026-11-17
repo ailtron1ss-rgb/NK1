@@ -19,6 +19,7 @@ on:
       - "runtime/neuro-kurisu/tests/constitution-evolution-*.mjs"
       - "runtime/neuro-kurisu/tests/p69-p73-giant.mjs"
       - ".github/workflows/omestro-20-constitution-evolution.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
