@@ -696,7 +696,8 @@ export class SubstrateIndependenceEngine {
     if (!this.state.activeBackendId || this.state.activeBackendId === 'deterministic-policy-fallback'
         || this.state.activeProvenance === 'unknown') return null;
     const profile = this.profiles.get(this.state.activeBackendId);
-    if (!profile || !this.state.activeProfileDigest || profileDigest(profile) !== this.state.activeProfileDigest) return null;
+    if (!profile || profile.modelRevision === 'host-configured'
+        || !this.state.activeProfileDigest || profileDigest(profile) !== this.state.activeProfileDigest) return null;
     return profile.routeId;
   }
 
@@ -811,6 +812,7 @@ export class SubstrateIndependenceEngine {
     if (this.profiles.has(target.backendId) && profileDigest(this.profiles.get(target.backendId) ?? null) !== profileDigest(target)) {
       reasons.push('target-profile-registry-mismatch');
     }
+    if (target.modelRevision === 'host-configured') reasons.push('target-model-revision-unpinned');
     if (target.privacyClass !== 'local-only' && options.allowExternalBackend !== true) reasons.push('remote-backend-requires-explicit-consent');
     for (const capability of REQUIRED_CAPABILITIES) {
       if (!target.capabilities.includes(capability)) reasons.push('target-capability-missing:' + capability);
@@ -821,6 +823,8 @@ export class SubstrateIndependenceEngine {
       const source = this.profiles.get(transferSource.backendId);
       if (!transferSource.profileDigest || !source || profileDigest(source) !== transferSource.profileDigest) {
         reasons.push('source-profile-unavailable-or-changed');
+      } else if (source.modelRevision === 'host-configured') {
+        reasons.push('source-model-revision-unpinned');
       } else if (source.embeddingSpaceId && target.embeddingSpaceId && source.embeddingSpaceId !== target.embeddingSpaceId) {
         reindexRequired = true;
         reasons.push('embedding-reindex-required');
