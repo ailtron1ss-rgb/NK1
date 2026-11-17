@@ -190,7 +190,7 @@ const clamp = (value: number, lo = 0, hi = 1): number =>
 const finite = (value: unknown, fallback = 0): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 const clean = (value: unknown, limit = 160): string =>
-  typeof value === 'string' ? value.normalize('NFKC').trim().replace(/\\s+/g, ' ').slice(0, limit) : '';
+  typeof value === 'string' ? value.normalize('NFKC').trim().replace(/\s+/g, ' ').slice(0, limit) : '';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const noisyOr = (values: number[]): number =>
@@ -452,7 +452,7 @@ function analyzeOption(
       missingAssumptionRefs,
     };
     rows.push(row);
-    const actorKey = node.actor + '\\u0000' + node.system;
+    const actorKey = node.actor + '\u0000' + node.system;
     const stakeholder = stakeholderBuckets.get(actorKey) ?? {
       actor: node.actor, system: node.system, harms: [], benefits: [], uncertainty: [], irreversible: [], count: 0,
     };
