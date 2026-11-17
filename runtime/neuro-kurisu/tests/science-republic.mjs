@@ -462,6 +462,113 @@ assert.equal(audited.trust.promotionEligible, false);
 assert.equal(audited.auditTrail.length, 31,
   'the maximum 12+12 preregistered cohorts fit within the bounded role-protocol audit history');
 
+// A failed primary experiment remains rejected after the Auditor checks its
+// complete, byte-verified record. Audit completion must never turn rejection
+// into acceptance or make the candidate promotion-eligible.
+const rejectedCase = runtime.scienceRepublic.discover({
+  title: 'A failed candidate remains rejected after audit',
+  domain: 'negative control',
+  observation: 'The measured latency regressed on the preregistered workload.',
+  evidence: {
+    reference: 'artifact://science/rejected-discovery.json',
+    sha256: digest('rejected-discovery'),
+  },
+  actors,
+});
+rememberArtifactBytes(rejectedCase.discoveryEvidence, 'rejected-discovery');
+const rejectedTheory = runtime.scienceRepublic.theorize(rejectedCase.id, {
+  actorId: actors.theorist,
+  mechanism: 'The candidate changes the retrieval path and may increase p95 latency.',
+  predictions: ['p95 latency increases under the frozen workload'],
+  falsifiers: ['p95 latency does not increase under the frozen workload'],
+  alternatives: ['the baseline workload was misconfigured'],
+  evidence: {
+    reference: 'artifact://science/rejected-theory.json',
+    sha256: digest('rejected-theory'),
+  },
+});
+rememberArtifactBytes(rejectedTheory.theory.evidence, 'rejected-theory');
+const rejectedEvaluation = {
+  ...evaluation,
+  successCriteria: 'At least ten percent normalized latency improvement.',
+  testFingerprint: digest('rejected-validation-manifest'),
+  holdoutTestFingerprint: digest('rejected-sealed-holdout-manifest'),
+  primarySeed: 301,
+  replicationSeeds: [302, 303, 304, 305, 306],
+  holdoutSeeds: [307, 308, 309, 310, 311],
+};
+const rejectedManifest = {
+  reference: 'artifact://science/rejected-validation-manifest.json',
+  sha256: rejectedEvaluation.testFingerprint,
+};
+const rejectedHoldoutManifest = {
+  reference: 'artifact://science/rejected-holdout-manifest.json',
+  sha256: rejectedEvaluation.holdoutTestFingerprint,
+};
+rememberArtifactBytes(rejectedManifest, 'rejected-validation-manifest');
+rememberArtifactBytes(rejectedHoldoutManifest, 'rejected-sealed-holdout-manifest');
+const rejectedRegistered = runtime.registerScienceRepublicExperiment(rejectedCase.id, {
+  actorId: actors.experimentalist,
+  evaluation: rejectedEvaluation,
+  manifest: rejectedManifest,
+  holdoutManifest: rejectedHoldoutManifest,
+});
+const rejectedPrototype = runtime.scienceRepublic.attachPrototype(rejectedCase.id, {
+  actorId: actors.experimentalist,
+  reference: 'artifact://science/rejected-prototype.bin',
+  sha256: digest('rejected-prototype'),
+});
+rememberArtifactBytes(rejectedPrototype.prototype, 'rejected-prototype');
+const rejectedInvention = runtime.inventionLoop.snapshot().records.find(
+  record => record.id === rejectedRegistered.inventionId,
+);
+assert.ok(rejectedInvention);
+const failedPrimary = signedArtifact(rejectedInvention, 'primary', rejectedEvaluation.primarySeed, {
+  observed: 120,
+});
+rememberSignedEvidence(failedPrimary);
+const failedScienceRecord = runtime.scienceRepublic.recordOutcome(rejectedCase.id, failedPrimary);
+assert.equal(failedScienceRecord.stage, 'rejected');
+assert.equal(runtime.inventionLoop.metrics().rejected, 1);
+
+const canonicalRejectedInvention = runtime.inventionLoop.snapshot().records.find(
+  record => record.id === rejectedRegistered.inventionId,
+);
+const rejectedCheckedArtifacts = [
+  rejectedCase.discoveryEvidence,
+  rejectedTheory.theory.evidence,
+  rejectedRegistered.manifest,
+  rejectedRegistered.holdoutManifest,
+  rejectedPrototype.prototype,
+  {
+    reference: canonicalRejectedInvention.outcomes[0].evidenceRef,
+    sha256: digest(canonicalRejectedInvention.outcomes[0].signedArtifact),
+  },
+];
+const rejectedAuditRef = 'audit://science-republic/rejected/' + rejectedCase.id;
+const rejectedAuditSha = digest('audit-rejected-' + rejectedCase.id);
+rememberArtifactBytes(
+  { reference: rejectedAuditRef, sha256: rejectedAuditSha },
+  'audit-rejected-' + rejectedCase.id,
+);
+const rejectedAudited = runtime.scienceRepublic.audit(rejectedCase.id, {
+  actorId: actors.auditor,
+  auditRef: rejectedAuditRef,
+  auditSha256: rejectedAuditSha,
+  checkedArtifacts: rejectedCheckedArtifacts,
+  blockers: [],
+  limitations: ['The primary signed measurement failed its preregistered effect threshold.'],
+});
+assert.equal(rejectedAudited.stage, 'rejected');
+assert.equal(rejectedAudited.audit.result, 'blocked');
+assert.equal(rejectedAudited.audit.artifactBytesVerified, true);
+assert.equal(rejectedAudited.trust.artifactBytesVerified, true);
+assert.equal(rejectedAudited.trust.independentlyVerified, false);
+assert.equal(rejectedAudited.trust.promotionEligible, false);
+assert.equal(runtime.scienceRepublic.metrics().artifactByteVerifiedAudits, 2);
+assert.equal(runtime.scienceRepublic.metrics().blockedAudits, 1);
+assert.equal(runtime.scienceRepublic.metrics().promotionEligible, 0);
+
 const snapshot = runtime.snapshot();
 const restored = new EvidenceResearchSubsystemRuntime(
   resolveKey,
@@ -470,14 +577,17 @@ const restored = new EvidenceResearchSubsystemRuntime(
 );
 restored.restore(snapshot);
 assert.equal(restored.inventionLoop.metrics().accepted, 1);
+assert.equal(restored.inventionLoop.metrics().rejected, 1);
 assert.equal(restored.scienceRepublic.get(science.id).stage, 'audit-complete');
+assert.equal(restored.scienceRepublic.get(rejectedCase.id).stage, 'rejected');
+assert.equal(restored.scienceRepublic.get(rejectedCase.id).audit.result, 'blocked');
 assert.equal(restored.scienceRepublic.metrics().quarantinedRecords, 0);
 assert.equal(restored.scientificBrain.diagnostics().acceptedUpdates, afterReplication);
 const restoreWithoutIdentityAuthority = new EvidenceResearchSubsystemRuntime(resolveKey);
 restoreWithoutIdentityAuthority.restore(snapshot);
 assert.equal(restoreWithoutIdentityAuthority.scienceRepublic.metrics().total, 0);
-assert.equal(restoreWithoutIdentityAuthority.scienceRepublic.metrics().quarantinedRecords, 1,
-  'a snapshot declaring host-attested role identities must be reauthenticated by the host on restore');
+assert.equal(restoreWithoutIdentityAuthority.scienceRepublic.metrics().quarantinedRecords, 2,
+  'all records declaring host-attested role identities must be reauthenticated by the host on restore');
 
 const restoreWithoutByteVerifier = new EvidenceResearchSubsystemRuntime(
   resolveKey,
@@ -485,14 +595,16 @@ const restoreWithoutByteVerifier = new EvidenceResearchSubsystemRuntime(
 );
 restoreWithoutByteVerifier.restore(snapshot);
 assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().total, 0);
-assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().quarantinedRecords, 1,
-  'a byte-verified audit must be rechecked against the host artifact store on restore');
+assert.equal(restoreWithoutByteVerifier.scienceRepublic.metrics().quarantinedRecords, 2,
+  'all byte-verified audits must be rechecked against the host artifact store on restore');
 
 // Recompute the unkeyed local event chain after forging the projection's audit
 // manifest. Restore must still reject it because the canonical signed Invention
 // record does not match the forged reference/hash list.
 const rehashedSnapshot = runtime.snapshot();
-const projectedRecord = rehashedSnapshot.scienceRepublic.records[0];
+const projectedRecord = rehashedSnapshot.scienceRepublic.records.find(
+  record => record.id === science.id,
+);
 projectedRecord.audit.checkedArtifacts[0].sha256 = digest('forged-audit-reference-hash');
 const { auditTrail: projectedTrail, ...projectedCore } = projectedRecord;
 projectedTrail[projectedTrail.length - 1].snapshot = structuredClone(projectedCore);
@@ -514,9 +626,11 @@ const quarantined = new EvidenceResearchSubsystemRuntime(
   verifyScienceArtifactBytes,
 );
 quarantined.restore(rehashedSnapshot);
-assert.equal(quarantined.scienceRepublic.metrics().total, 0);
-assert.equal(quarantined.scienceRepublic.metrics().quarantinedRecords, 1,
-  'a recomputed local hash chain cannot override canonical signed evidence references');
+assert.equal(quarantined.scienceRepublic.metrics().total, 1);
+assert.equal(quarantined.scienceRepublic.metrics().quarantinedRecords, 1);
+assert.equal(quarantined.scienceRepublic.get(rejectedCase.id).stage, 'rejected',
+  'a separate valid rejected record remains intact when another record is quarantined');
+
 assert.equal(quarantined.inventionLoop.metrics().accepted, 1,
   'a corrupt Science Republic projection must not delete the canonical signed invention');
 
@@ -524,7 +638,9 @@ assert.equal(quarantined.inventionLoop.metrics().accepted, 1,
 // fingerprint cannot be restored unless it matches the runtime-owned capture
 // and its still-existing ScientificMethod project.
 const forgedCandidateSnapshot = runtime.snapshot();
-const forgedCandidateRecord = forgedCandidateSnapshot.scienceRepublic.records[0];
+const forgedCandidateRecord = forgedCandidateSnapshot.scienceRepublic.records.find(
+  record => record.id === science.id,
+);
 forgedCandidateRecord.candidate.candidateFingerprint = digest('forged-runtime-capture-fingerprint');
 const { auditTrail: candidateTrail, ...candidateCore } = forgedCandidateRecord;
 candidateTrail[candidateTrail.length - 1].snapshot = structuredClone(candidateCore);
@@ -546,8 +662,9 @@ const candidateQuarantine = new EvidenceResearchSubsystemRuntime(
   verifyScienceArtifactBytes,
 );
 candidateQuarantine.restore(forgedCandidateSnapshot);
-assert.equal(candidateQuarantine.scienceRepublic.metrics().total, 0);
-assert.equal(candidateQuarantine.scienceRepublic.metrics().quarantinedRecords, 1,
-  'the host capture registry must reauthenticate restored candidate provenance');
+assert.equal(candidateQuarantine.scienceRepublic.metrics().total, 1);
+assert.equal(candidateQuarantine.scienceRepublic.metrics().quarantinedRecords, 1);
+assert.equal(candidateQuarantine.scienceRepublic.get(rejectedCase.id).stage, 'rejected',
+  'candidate provenance tampering must not quarantine an unrelated valid rejected study');
 
-console.log('SCIENCE_REPUBLIC=PASS roles+host-captured-candidate+signed-outcomes+replication+holdout+audit+restore');
+console.log('SCIENCE_REPUBLIC=PASS roles+host-captured-candidate+signed-outcomes+replication+holdout+accepted-and-rejected-audits+restore');

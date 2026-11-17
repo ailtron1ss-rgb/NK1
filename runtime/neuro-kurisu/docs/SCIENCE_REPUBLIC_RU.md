@@ -33,6 +33,7 @@ Primary и holdout evaluator — дополнительные исполните
 `discovered → theorized → registered → prototyped → tested → critiqued → replicating → replicated → holdingout → awaiting-audit → audit-complete`
 
 Отрицательный primary outcome, блокирующая critique или провал preregistered cohort завершаются в `rejected`. Принятый эксперимент с неполным Auditor manifest или audit blocker получает `audit-blocked`.
+Для отклонённого эксперимента Auditor тоже может завершить evidence audit со статусом `blocked`; это фиксирует проверенный отрицательный результат, но не меняет `rejected` на `accepted`.
 
 1. Discoverer создаёт source-bound observation. Для intrinsic/dream hypothesis используется существующий captured candidate; он остаётся hypothesis, не доказательством.
 2. Theorist закрепляет механизм, предсказания, falsifiers и альтернативные объяснения отдельным evidence artifact.
@@ -56,6 +57,7 @@ Primary и holdout evaluator — дополнительные исполните
 - Уникальность проверяется и по reference, и по digest: один blob нельзя выдать за несколько разных артефактов/ролей/этапов.
 - Подписи `TheInventionLoop`, host identity resolver и host artifact verifier — отдельные trust seams. Но они сами по себе всё ещё не доказывают беспристрастность организации или научную истину.
 - `roleIdentity` и `artifactBytesVerified` — ортогональные статусы: byte verification само по себе не повышает `declared-only` до `host-attested`. Поэтому `independentlyVerified=false` и `promotionEligible=false` остаются неизменными даже после `byte-verified`. Этот статус подтверждает реальные байты артефактов и audit report, а не научную истину или разрешение на autonomous model promotion.
+- Runtime metrics различают `byteVerifiedAudits` (успешное принятое исследование с полной byte verification), `artifactByteVerifiedAudits` (любые завершённые аудиты, чьи bytes действительно проверены) и `blockedAudits` (включая аудит отклонённых экспериментов). Это не позволяет смешать отрицательный результат с непроверенным аудитом.
 
 ## Проверка
 

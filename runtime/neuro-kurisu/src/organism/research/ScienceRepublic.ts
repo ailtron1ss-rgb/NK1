@@ -553,6 +553,10 @@ export class ScienceRepublic {
         record.trust.roleIdentity === 'declared-only').length,
       byteVerifiedAudits: this.state.records.filter(record =>
         record.audit?.result === 'byte-verified').length,
+      artifactByteVerifiedAudits: this.state.records.filter(record =>
+        record.audit?.artifactBytesVerified === true).length,
+      blockedAudits: this.state.records.filter(record =>
+        record.audit?.result === 'blocked').length,
       referenceOnlyAudits: this.state.records.filter(record =>
         record.audit?.result === 'reference-complete').length,
       independentlyVerified: 0,
