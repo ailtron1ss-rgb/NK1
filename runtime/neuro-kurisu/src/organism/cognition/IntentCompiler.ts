@@ -3,6 +3,7 @@ import { types as nodeUtilTypes } from 'node:util';
 
 export type IntentRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type IntentApprovalStatus = 'not-approved' | 'approved' | 'rejected';
+export type IntentApprovalAuthority = 'human' | 'autonomous-planner';
 export type IntentExtractionStatus = 'provided' | 'omitted' | 'provider-failed';
 
 export interface IntentAssumption {
@@ -56,6 +57,7 @@ export interface IntentContract {
     readonly allowedActions: readonly string[];
     readonly acknowledgedAssumptions: readonly string[];
     readonly riskAcknowledged: boolean;
+    readonly authority?: IntentApprovalAuthority;
     readonly at?: number;
     readonly expiresAt?: number;
     readonly evidenceRef?: string;
@@ -64,7 +66,8 @@ export interface IntentContract {
 }
 export interface IntentApproval {
   contractId: string;
-  userConfirmed: boolean;
+  userConfirmed?: boolean;
+  authority?: IntentApprovalAuthority;
   allowedActions: string[];
   acknowledgedAssumptions?: string[];
   riskAcknowledged?: boolean;
@@ -479,7 +482,16 @@ export class IntentCompiler {
       throw new Error('intent contract is incomplete: ' + contract.missingInformation.join(', '));
     }
     if (approval?.contractId !== contract.id) throw new Error('approval must be bound to this exact intent contract');
-    if (approval?.userConfirmed !== true) throw new Error('explicit user confirmation is required');
+    const authority: IntentApprovalAuthority = approval?.authority ?? 'human';
+    if (authority !== 'human' && authority !== 'autonomous-planner') {
+      throw new TypeError('intent approval authority is invalid');
+    }
+    if (authority === 'human' && approval?.userConfirmed !== true) {
+      throw new Error('explicit user confirmation is required');
+    }
+    if (authority === 'autonomous-planner' && approval?.userConfirmed === true) {
+      throw new Error('autonomous planner approval cannot impersonate a human confirmation');
+    }
     if (!Number.isSafeInteger(approval.at) || approval.at < 0) throw new TypeError('approval timestamp is invalid');
     const now = this.now();
     const expiresAt = approval.expiresAt ?? approval.at + DEFAULT_APPROVAL_TTL_MS;
@@ -528,6 +540,7 @@ export class IntentCompiler {
       allowedActions: requested,
       acknowledgedAssumptions,
       riskAcknowledged: approval.riskAcknowledged === true,
+      authority,
       at: approval.at,
       expiresAt,
       evidenceRef,
