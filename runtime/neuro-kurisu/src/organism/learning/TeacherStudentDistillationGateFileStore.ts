@@ -131,7 +131,9 @@ implements TeacherStudentDistillationGateReservationStore {
       try {
         current = await this.readState();
       } catch {
-        return false;
+        // Corrupt state is not equivalent to a previously consumed candidate.
+        // Surface an ambiguous persistence failure so the caller saturates its gate.
+        throw new Error('teacher-distillation-gate-store-state-invalid');
       }
       if (current.saturated ||
           current.consumedCandidateFingerprints.includes(candidateFingerprint)) {
