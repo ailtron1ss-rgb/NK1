@@ -31,7 +31,7 @@ This cleanup hook releases only the auxiliary recovery artifact. It must never r
 
 The first production integration is registered by `OrganismCore` only when its state backend is a durable `FileStateStore`. It uses the same canonical `ActionGateway`; there is no second executor.
 
-- `organism.files.write` creates a **new** UTF-8 file (1–32 KiB) under the private `organism-core.json.workspace` sidecar directory. Paths are relative, bounded and checked against traversal, reserved recovery paths and symlinked parent directories.
+- `organism.files.write` creates a **new** UTF-8 file (1–16 KiB) directly under the private `organism-core.json.workspace` sidecar directory. Version one deliberately disallows nested paths; it rejects traversal, reserved recovery paths, a symlinked workspace root and a symlink at the target.
 - Existing files are never overwritten. The provider creates a sibling temporary file, fsyncs it, and uses same-directory hard-link creation; the filesystem atomically rejects an existing destination rather than replacing it.
 - Every write requires a stable idempotency key and one-shot `filesystem` approval. The Undo-First preflight records the expected pre-action absence and the exact post-action content fingerprint in `.nk1-recovery/prepared` before the write executor is entered.
 - The temporary is removed after the link operation; the file's parent directory and recovery record are fsynced. An independent readback checks the actual file bytes and content hash before the Gateway can record a verified outcome.
