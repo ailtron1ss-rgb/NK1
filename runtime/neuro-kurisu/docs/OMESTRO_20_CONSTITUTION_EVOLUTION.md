@@ -72,7 +72,7 @@ A signed artifact has this shape:
 }
 ```
 
-The signature covers canonical JSON: recursively sort object keys, preserve array order, and UTF-8 encode the resulting JSON string. The canonicalization function is exported as `canonicalConstitutionReviewPayload`. The verifier rejects untrusted keys, altered payloads, stale/future timestamps, author self-review, failed planned tests, missing holdout evidence, and mismatched candidate digests. CI/reviewer systems must actually run the test plan and holdout before signing; the runtime verifies the attestation but does not execute arbitrary prose test plans or independently inspect external evidence URLs.
+The signature covers canonical JSON: recursively sort object keys, preserve array order, and UTF-8 encode the resulting JSON string. The canonicalization function is exported as `canonicalConstitutionReviewPayload`. The server route and `ConstitutionEvolutionEngine.review()` independently reject untrusted keys, altered payloads, stale/future timestamps, author self-review, failed planned tests, missing holdout evidence, and mismatched candidate digests. The engine accepts only a signed artifact; it never accepts a plain `ConstitutionReviewInput` DTO. This remains true for callers that bypass HTTP and use the Core facade directly. CI/reviewer systems must actually run the test plan and holdout before signing; the runtime verifies the attestation but does not execute arbitrary prose test plans or independently inspect external evidence URLs.
 
 ## Cryptographic integrity and host authority
 
