@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 import { ConstitutionEvolutionEngine, PROTECTED_CONSTITUTIONAL_INVARIANTS } from '../src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts';
 
@@ -11,6 +12,17 @@ gateway.setExecutionLedgerPersister(async snapshot => { actionSnapshot = structu
 const engine = new ConstitutionEvolutionEngine({ signingKey: TEST_KEY });
 const testEvidence = { planned:2, executed:2, passed:2, failed:0, holdoutCases:2, holdoutPassed:true };
 const evidenceRefs = ['ci://constitution-evolution/unit/green','holdout://constitution-evolution/independent-set'];
+const stable = value => {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';
+  return '{' + Object.keys(value).filter(key => value[key] !== undefined).sort()
+    .map(key => JSON.stringify(key) + ':' + stable(value[key])).join(',') + '}';
+};
+const resignSnapshot = snapshot => {
+  const { integrityMac: _mac, ...body } = snapshot;
+  snapshot.integrityMac = createHmac('sha256', TEST_KEY).update(stable(body)).digest('hex');
+  return snapshot;
+};
 
 assert.equal(engine.activeConstitution().version,'1.0.0');
 assert.equal(engine.protectedInvariants().length,10);
@@ -69,6 +81,11 @@ const snapshot=engine.snapshot();
 const restored=new ConstitutionEvolutionEngine({signingKey:TEST_KEY});
 assert.equal(restored.restore(snapshot),true);
 assert.equal(restored.activeConstitution().digest,revision.digest);
+const malformedNested=engine.snapshot();
+malformedNested.proposals[0].reviews[0]=null;
+resignSnapshot(malformedNested);
+const nestedGuard=new ConstitutionEvolutionEngine({signingKey:TEST_KEY});
+assert.equal(nestedGuard.restore(malformedNested),false,'malformed nested records fail closed even with a valid outer HMAC');
 const tamperedReview=engine.snapshot(); tamperedReview.proposals[0].reviews[0].reviewerId='attacker';
 const reviewGuard=new ConstitutionEvolutionEngine({signingKey:TEST_KEY});
 assert.equal(reviewGuard.restore(tamperedReview),false,'tampered reviewer identity must be rejected');
@@ -105,6 +122,9 @@ const reviewHigh=(reviewerId)=>engine.review(highRisk.id,{reviewerId,candidateDi
   invariantsPassed:true,tests:testEvidence,evidenceRefs,rationale:'independent review passed'});
 assert.equal(reviewHigh('reviewer-2').status,'pending-review');
 assert.equal(reviewHigh('reviewer-3').status,'awaiting-ratification');
+const awaitingSnapshot=engine.snapshot();
+const awaitingRestore=new ConstitutionEvolutionEngine({signingKey:TEST_KEY});
+assert.equal(awaitingRestore.restore(awaitingSnapshot),true,'awaiting ratification without a ticket is a valid recoverable state');
 
 console.log(JSON.stringify({pass:true,protectedInvariantCount:10,activeVersionAfterRollback:engine.activeConstitution().version,
   auditEvents:engine.listAuditEvents().length,highRiskReviewerQuorum:2,actionGatewayApprovalsConsumed:2,
