@@ -213,8 +213,13 @@ let languageInvokerCalls=0;
 const languageInvoker=async request=>{
   languageInvokerCalls++;
   assert.ok(request.system.includes('specialist'));
+  const role=roles.find(candidate=>{
+    const label=candidate==='safety-guardian'?'SAFETY GUARDIAN':candidate.toUpperCase();
+    return request.system.includes(`${label}:`);
+  });
+  assert.ok(role,'language invoker must receive a role-specific instruction');
   return {
-    text:responseFor('planner'),
+    text:responseFor(role),
     backend:languageInvokerCalls%2?'local-qwen-backend-a':'local-qwen-backend-b',
     latencyMs:2,
   };
@@ -235,6 +240,26 @@ assert.notEqual(languageRegistry.attest(languageResearch.executionId)?.modelId,
 assert.equal(languageRegistry.attest(languageResearch.executionId)?.independenceGroup,
   languageRegistry.attest(languageAuditor.executionId)?.independenceGroup,
   'the default language-invoker adapter must never manufacture model diversity from changing backend labels');
+
+const languageParliament=new CognitiveParliament(new EvidenceFirewallParliamentTrustPort(
+  firewall,executionId=>languageRegistry.attest(executionId),researchSession,
+));
+const languageDispatcher=new CognitiveParliamentDispatcher(languageParliament,languageRoleExecutors);
+const singleFamilyLowRisk=await languageDispatcher.dispatch({
+  candidateId:'language-invoker-low-risk',risk:'low',
+  task:'Check a low-risk bounded maintenance intent.',evidenceReferences:evidence,
+  timeoutMs:2000,maxConcurrent:3,maxTotalTokens:2400,
+});
+assert.equal(singleFamilyLowRisk.decision.status,'approved');
+assert.equal(singleFamilyLowRisk.decision.independentModelCount,1);
+assert.equal(singleFamilyLowRisk.decision.sharedModelWarning,true);
+const singleFamilyHighRisk=await languageDispatcher.dispatch({
+  candidateId:'language-invoker-high-risk',risk:'high',
+  task:'Reject high-risk approval with only one model family.',evidenceReferences:evidence,
+  timeoutMs:2000,maxConcurrent:3,maxTotalTokens:2400,
+});
+assert.equal(singleFamilyHighRisk.decision.status,'needs-evidence');
+assert.ok(singleFamilyHighRisk.decision.reasons.includes('insufficient-independent-model-families'));
 
 // Runtime automatically composes this adapter only when language is enabled,
 // no explicit specialist providers/attestor override it, and Parliament is not disabled.
