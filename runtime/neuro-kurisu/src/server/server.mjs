@@ -80,9 +80,61 @@ async function configureCompoundRepairRevision() {
     if (typeof provideInputs !== 'function') {
         throw new Error('compound repair revision provider factory must return an input-provider function');
     }
-    return { engine, provideInputs };
+    return {
+        engine,
+        provideInputs,
+        candidateStore: lifecycle.store,
+        trustedRunRegistry: lifecycle.registry,
+        trustedVerifierCount: lifecycle.trustedVerifierCount,
+        trustedApprovalCount: lifecycle.trustedApprovalCount,
+    };
 }
 const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
+const SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE = String(process.env.NEURO_SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE || '').trim();
+
+async function configureSynapticP23Admission(compoundRepairRevision) {
+    if (!SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE) return undefined;
+    let engine;
+    let candidateStore;
+    let trustedRunRegistry;
+    let trustedVerifierCount;
+    let trustedApprovalCount;
+    if (compoundRepairRevision) {
+        ({ engine, candidateStore, trustedRunRegistry, trustedVerifierCount, trustedApprovalCount } = compoundRepairRevision);
+    } else {
+        const lifecycle = createVerifiedSkillLifecycleBootstrap(
+            path.join(STATE, 'p23-verified-skill-candidates.json'),
+            path.join(STATE, 'p23-trusted-shadow-runs.json'),
+        );
+        ({ store: candidateStore, registry: trustedRunRegistry, trustedVerifierCount, trustedApprovalCount } = lifecycle);
+        engine = new P23LearningEngine();
+        engine.configureVerifiedSkillLifecycle(candidateStore);
+    }
+    if (!engine || !candidateStore || !trustedRunRegistry ||
+        trustedVerifierCount < 1 || trustedApprovalCount < 1) {
+        throw new Error('Synaptic Commons P23 admission requires trusted local outcome verifiers and promotion approval authorities');
+    }
+    const providerPath = path.isAbsolute(SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE)
+        ? SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE
+        : path.resolve(ROOT, SYNAPTIC_P23_ADMISSION_PROVIDER_MODULE);
+    const providerModule = await import(pathToFileURL(providerPath).href);
+    const factory = providerModule.createSynapticP23AdmissionProvider ?? providerModule.default;
+    if (typeof factory !== 'function') {
+        throw new Error('Synaptic P23 admission provider must export createSynapticP23AdmissionProvider() or a default factory');
+    }
+    const createLocalPromotionProposal = await factory({
+        engine,
+        candidateStore,
+        trustedRunRegistry,
+        stateDirectory: STATE,
+        currentHostCompatibilityTarget: synapticCommonsHostCompatibilityTarget,
+    });
+    if (typeof createLocalPromotionProposal !== 'function') {
+        throw new Error('Synaptic P23 admission provider factory must return a local proposal function');
+    }
+    return { engine, currentHostCompatibilityTarget: synapticCommonsHostCompatibilityTarget, createLocalPromotionProposal };
+}
+const SYNAPTIC_P23_ADMISSION = await configureSynapticP23Admission(COMPOUND_REPAIR_REVISION);
 const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
 const PHONE_MODE = PHONE_POLICY.mode !== 'research';
 const INTERVAL_MS = PHONE_POLICY.baseIntervalMs;
@@ -199,6 +251,7 @@ const runtime = new OrganismRuntime({
     worldStateStore: new FileStateStore(worldFile, { backupEverySaves: BACKUP_EVERY_SAVES, encoding: PHONE_MODE ? 'v8' : 'json' }),
     ...(TRUSTED_SHADOW_LEARNING ? { trustedShadowLearning: TRUSTED_SHADOW_LEARNING } : {}),
     ...(COMPOUND_REPAIR_REVISION ? { compoundRepairRevision: COMPOUND_REPAIR_REVISION } : {}),
+    ...(SYNAPTIC_P23_ADMISSION ? { synapticP23Admission: SYNAPTIC_P23_ADMISSION } : {}),
 });
 let runtimeReady = false;
 const willSdk = new WillSdkFacade({ step: (message, options) => runtime.step(message, options), snapshot: () => runtime.core.snapshot(), flush: () => runtime.core.flush(), exportWillPma: () => runtime.core.exportWillPma(), validateWillPma: (pma) => runtime.core.validateWillPma(pma) }, { enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() }, 'kurisu');
@@ -577,7 +630,7 @@ async function route(req, res) {
             }
         }
 
-        const synapticAction = /^\/api\/organism\/synaptic-commons\/([a-f0-9]{64})\/(compatibility|attestation|reject|revoke|export)$/.exec(url.pathname);
+        const synapticAction = /^\/api\/organism\/synaptic-commons\/([a-f0-9]{64})\/(compatibility|attestation|reject|revoke|p23-stage|export)$/.exec(url.pathname);
         if (synapticAction && req.method === 'POST' && synapticAction[2] !== 'export') {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
@@ -600,6 +653,10 @@ async function route(req, res) {
                         executable: false,
                     });
                 }
+                if (action === 'p23-stage') {
+                    const result = await runtime.stageSynapticSkillCandidate(fingerprint, true);
+                    return json(res, 201, { ok: true, ...result, executable: false });
+                }
                 if (action === 'attestation') {
                     const record = await runtime.attestSynapticSkill(fingerprint, input.attestation);
                     return json(res, 200, {
@@ -619,7 +676,8 @@ async function route(req, res) {
                 return json(res, 200, { ok: true, artifactFingerprint: fingerprint, status: record.status });
             } catch (error) {
                 const message = String(error?.message || error).slice(0, 180);
-                const status = /not-found/.test(message) ? 404
+                const status = /p23-admission-not-configured/.test(message) ? 503
+                    : /not-found/.test(message) ? 404
                     : /conflict|already|requires|expired|capacity|revoked/.test(message) ? 409 : 400;
                 return json(res, status, { ok: false, error: message });
             }

@@ -9,6 +9,11 @@ import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calib
 import { MIN_TRANSFER_SIMILARITY01, retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
 import { classifyLearningFailureReason, isReflectionFailureClass, rankLearningTargets, reflectOnOutcomes, type LearningTarget, type ReflectionFailureClass } from './OutcomeReflectionCurriculum.ts';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
+import {
+  isAuthenticSynapticP23AdmissionBundle,
+  synapticArtifactFingerprint,
+  type SynapticP23AdmissionBundle,
+} from './SynapticCommons.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidateEvaluator.ts';
@@ -1150,6 +1155,78 @@ export class P23LearningEngine {
     verifyEvidence: SkillShadowEvidenceVerifier,
   ): ReflectiveEvidenceBindingReport {
     return bindIndependentEvaluationToVerifiedShadowEvidence(evaluation, observations, candidate, verifyEvidence);
+  }
+
+  /**
+   * Stage a portable Commons package for local P23 review only.
+   * The proposal must be a process-authentic object created from this instance's
+   * own signed outcome ledger, and its candidateMethod must bind the exact artifact.
+   * The durable payload is deliberately not a PolicySkillRecord; it cannot influence
+   * effectiveSkills() or ActionGateway until a future native adapter creates a new
+   * locally evaluated PolicySkillRecord candidate.
+   */
+  stageSynapticCommonsCandidate(
+    proposal: VerifiedSkillPromotionProposal,
+    admissionBundle: SynapticP23AdmissionBundle,
+  ): VersionedSkillCandidate {
+    if (!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    if (!isAuthenticSynapticP23AdmissionBundle(admissionBundle) ||
+        admissionBundle.schemaVersion !== 1 ||
+        !/^[a-f0-9]{64}$/.test(admissionBundle.artifactFingerprint) ||
+        synapticArtifactFingerprint(admissionBundle.artifact) !== admissionBundle.artifactFingerprint ||
+        admissionBundle.attestation.artifactFingerprint !== admissionBundle.artifactFingerprint ||
+        admissionBundle.compatibility.compatible !== true ||
+        admissionBundle.compatibility.reasons.length !== 0 ||
+        admissionBundle.attestation.runtimeVersion !== admissionBundle.compatibility.runtimeVersion ||
+        admissionBundle.attestation.environmentFingerprint !== admissionBundle.compatibility.environmentFingerprint) {
+      throw new Error('synaptic-p23-authentic-attested-admission-bundle-required');
+    }
+    if (!isAuthenticVerifiedSkillPromotionProposal(proposal) ||
+        proposal.schemaVersion !== 1 ||
+        proposal.gate?.accepted !== true ||
+        proposal.canActivateAutomatically !== false ||
+        proposal.authenticatedEvidenceRows < 1 ||
+        proposal.unauthenticatedEvidenceRows !== 0 ||
+        proposal.uniquePairedTasks < 8 ||
+        proposal.completePairedSeeds < 3 ||
+        proposal.pairedTaskSeedN < 3 ||
+        !/^[a-f0-9]{64}$/.test(proposal.datasetFingerprint) ||
+        !/^[a-f0-9]{64}$/.test(proposal.proposalId) ||
+        !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {
+      throw new Error('synaptic-p23-authentic-accepted-proposal-required');
+    }
+    const expectedMethod = 'synaptic-commons:' + admissionBundle.artifactFingerprint;
+    if (proposal.candidateMethod !== expectedMethod) {
+      throw new Error('synaptic-p23-candidate-method-binding-mismatch');
+    }
+    const skillId = 'synaptic-commons:' + admissionBundle.artifact.skill.skillId + '@' + admissionBundle.artifact.skill.version;
+    const payload = {
+      schemaVersion: 1,
+      admissionKind: 'synaptic-commons-p23-review-v1',
+      artifactFingerprint: admissionBundle.artifactFingerprint,
+      artifact: snapshotPlainData(admissionBundle.artifact),
+      attestation: snapshotPlainData(admissionBundle.attestation),
+      compatibility: snapshotPlainData(admissionBundle.compatibility),
+      localEvidence: {
+        proposalId: proposal.proposalId,
+        manifestFingerprint: proposal.manifestFingerprint,
+        outcomeFingerprint: proposal.outcomeFingerprint,
+        datasetFingerprint: proposal.datasetFingerprint,
+        baselineMethod: proposal.baselineMethod,
+        candidateMethod: proposal.candidateMethod,
+        evaluatedAt: proposal.evaluatedAt,
+        authenticatedEvidenceRows: proposal.authenticatedEvidenceRows,
+        pairedTaskSeedN: proposal.pairedTaskSeedN,
+        uniquePairedTasks: proposal.uniquePairedTasks,
+        completePairedSeeds: proposal.completePairedSeeds,
+      },
+      activation: {
+        canActivateAutomatically: false,
+        blockedUntilNativeAdapter: true,
+        reason: 'native-p23-policy-adapter-required',
+      },
+    };
+    return this.verifiedSkillStore.stageCandidate(proposal, skillId, payload);
   }
 
   stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {

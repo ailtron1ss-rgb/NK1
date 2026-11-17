@@ -43,8 +43,16 @@ import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
-import { SynapticCommons, parseSynapticPublicKeyMap, parseSynapticLicenseReviewAllowlist, type SynapticCommonsState, type SynapticCompatibilityTarget } from '../learning/SynapticCommons.ts';
+import {
+  SynapticCommons,
+  parseSynapticPublicKeyMap,
+  parseSynapticLicenseReviewAllowlist,
+  type SynapticCommonsState,
+  type SynapticCompatibilityTarget,
+  type SynapticP23AdmissionBundle,
+} from '../learning/SynapticCommons.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
+import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from '../learning/VerifiedSkillPromotion.ts';
 import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
@@ -110,6 +118,21 @@ export interface RuntimeConfig extends OrganismConfig {
     independentEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => IndependentCandidateEvaluationConfig;
     /** Optional background repair-to-P23 loop. Opt-in and independently evaluated; never auto-activates candidates. */
     backgroundRevision?: { enabled: boolean; initialDelayMs?: number; intervalMs?: number };
+  };
+  /**
+   * Explicit in-process trust bridge for portable Commons packages. The provider must
+   * build a fresh VerifiedSkillPromotionProposal from locally signed outcome evidence.
+   * It is never exposed as a client-supplied JSON proposal.
+   */
+  synapticP23Admission?: {
+    engine: P23LearningEngine;
+    currentHostCompatibilityTarget: () => SynapticCompatibilityTarget;
+    createLocalPromotionProposal: (input: {
+      artifactFingerprint: string;
+      candidateMethod: string;
+      skillId: string;
+      admissionBundle: SynapticP23AdmissionBundle;
+    }) => Promise<VerifiedSkillPromotionProposal> | VerifiedSkillPromotionProposal;
   };
   /** Optional shared Mem0 adapter; disabled-by-default adapter is created if omitted. */
   mem0Adapter?: Mem0PlatformAdapter;
@@ -239,6 +262,7 @@ export class OrganismRuntime {
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
   private readonly synapticCommons: SynapticCommons;
   private readonly synapticCommonsStore: JsonStateStore<SynapticCommonsState>;
+  private readonly synapticP23Admission: RuntimeConfig['synapticP23Admission'] | null;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -351,6 +375,14 @@ export class OrganismRuntime {
       trustedLicenseReviewFingerprints: parseSynapticLicenseReviewAllowlist(process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON),
     });
     this.synapticCommonsStore = new FileStateStore<SynapticCommonsState>(`${config.stateFile}.synaptic-commons.json`);
+    this.synapticP23Admission = config.synapticP23Admission ?? null;
+    if (this.synapticP23Admission) {
+      if (typeof this.synapticP23Admission.currentHostCompatibilityTarget !== 'function' ||
+          typeof this.synapticP23Admission.createLocalPromotionProposal !== 'function' ||
+          !this.synapticP23Admission.engine?.verifiedSkillCandidateSnapshot()) {
+        throw new Error('synaptic-p23-admission-provider-requires-configured-local-verified-skill-lifecycle');
+      }
+    }
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -1960,6 +1992,38 @@ export class OrganismRuntime {
 
   exportSynapticArtifact(fingerprint: string, currentHost: SynapticCompatibilityTarget) {
     return this.enqueue(async () => this.synapticCommons.exportArtifact(fingerprint, currentHost));
+  }
+
+  /** Confirmed, host-owned admission from Commons into the durable local P23 review store. */
+  stageSynapticSkillCandidate(fingerprint: string, confirmed: boolean) {
+    return this.enqueue(async () => {
+      if (confirmed !== true) return { status: 'confirmation-required' as const, artifactFingerprint: fingerprint };
+      const admission = this.synapticP23Admission;
+      if (!admission) throw new Error('synaptic-p23-admission-not-configured');
+      const host = admission.currentHostCompatibilityTarget();
+      const bundle = this.synapticCommons.prepareP23Admission(fingerprint, host);
+      const candidateMethod = 'synaptic-commons:' + fingerprint;
+      const proposal = await admission.createLocalPromotionProposal({
+        artifactFingerprint: fingerprint,
+        candidateMethod,
+        skillId: bundle.artifact.skill.skillId,
+        admissionBundle: bundle,
+      });
+      if (!isAuthenticVerifiedSkillPromotionProposal(proposal)) {
+        throw new Error('synaptic-p23-authentic-accepted-proposal-required');
+      }
+      const candidate = admission.engine.stageSynapticCommonsCandidate(proposal, bundle);
+      return {
+        status: candidate.status,
+        candidateId: candidate.candidateId,
+        skillId: candidate.skillId,
+        candidateVersion: candidate.version,
+        proposalId: candidate.proposalId,
+        artifactFingerprint: fingerprint,
+        canActivateAutomatically: false as const,
+        promotionBlockedUntilNativeAdapter: true as const,
+      };
+    });
   }
 
   synapticCommonsSnapshot() {

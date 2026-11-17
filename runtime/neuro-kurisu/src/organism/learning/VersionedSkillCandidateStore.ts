@@ -206,6 +206,13 @@ export function computeVersionedSkillCandidateId(input: {
   ])).digest('hex');
 }
 
+function isSynapticCommonsReviewPayload(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const descriptor = Object.getOwnPropertyDescriptor(value, 'admissionKind');
+  return !!descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') &&
+    descriptor.value === 'synaptic-commons-p23-review-v1';
+}
+
 function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): ActiveSkillVersion | null {
   return snapshot.active.find(item => item.skillId === skillId) ?? null;
 }
@@ -266,6 +273,9 @@ export class VersionedSkillCandidateStore {
       if (!candidate || candidate.payloadFingerprint !== active.payloadFingerprint ||
           candidate.proposalId !== active.proposalId || canonical(candidate.payload) !== canonical(active.payload)) {
         throw new Error('persisted active skill is not bound to its candidate payload/version');
+      }
+      if (isSynapticCommonsReviewPayload(candidate.payload)) {
+        throw new Error('persisted synaptic Commons candidate requires a native P23 adapter before activation');
       }
       if (candidate.baseVersion !== null) {
         const prior = current.candidates.find(item => item.skillId === candidate.skillId &&
@@ -430,6 +440,9 @@ export class VersionedSkillCandidateStore {
     const current = this.readTrustedSnapshot();
     const candidate = current.candidates.find(item => item.candidateId === candidateId);
     if (!candidate || candidate.status !== 'shadow') throw new Error('candidate must complete shadow staging before promotion');
+    if (isSynapticCommonsReviewPayload(candidate.payload)) {
+      throw new Error('synaptic-candidate-requires-native-adapter');
+    }
     const active = activeFor(current, candidate.skillId);
     const activeVersion = active?.version ?? null;
     if (approval.expectedActiveVersion !== activeVersion || candidate.baseVersion !== activeVersion) {

@@ -108,6 +108,29 @@ export interface SynapticCommonsConfig {
   now?: () => number;
 }
 
+export interface SynapticP23AdmissionBundle {
+  schemaVersion: 1;
+  artifactFingerprint: string;
+  artifact: SynapticCommonsArtifact;
+  attestation: SynapticCommonsAttestation;
+  compatibility: SynapticCompatibilityResult;
+}
+
+const authenticP23AdmissionBundles = new WeakMap<object, string>();
+
+function admissionBundleDigest(value: SynapticP23AdmissionBundle): string {
+  return createHash('sha256').update(synapticCanonicalJson(value)).digest('hex');
+}
+
+/** True only for an exact, unmodified bundle minted by a live SynapticCommons instance. */
+export function isAuthenticSynapticP23AdmissionBundle(value: unknown): value is SynapticP23AdmissionBundle {
+  if (!value || typeof value !== 'object') return false;
+  const expected = authenticP23AdmissionBundles.get(value as object);
+  if (!expected) return false;
+  try { return admissionBundleDigest(value as SynapticP23AdmissionBundle) === expected; }
+  catch { return false; }
+}
+
 const MAX_RECORDS = 256;
 const MAX_ARTIFACT_BYTES = 48 * 1024;
 const MAX_DEFINITION_DEPTH = 8;
@@ -669,6 +692,29 @@ export class SynapticCommons {
       throw new Error('synaptic-publisher-signature-no-longer-trusted');
     this.verifyAttestation(record.artifact, record.artifactFingerprint, record.attestation, record.compatibility);
     return { artifact: clone(record.artifact), attestation: clone(record.attestation) };
+  }
+
+  /**
+   * Mint an in-process-only admission envelope after rechecking every export gate.
+   * Its WeakMap brand prevents JSON round-tripping or caller-fabricated metadata
+   * from impersonating a package that the live Commons instance actually trusts.
+   */
+  prepareP23Admission(
+    fingerprint: string,
+    currentHost: SynapticCompatibilityTarget,
+  ): SynapticP23AdmissionBundle {
+    const exported = this.exportArtifact(fingerprint, currentHost);
+    const record = this.requireRecord(fingerprint);
+    if (!record.compatibility?.compatible) throw new Error('synaptic-p23-admission-compatibility-proof-missing');
+    const bundle: SynapticP23AdmissionBundle = {
+      schemaVersion: 1,
+      artifactFingerprint: fingerprint,
+      artifact: exported.artifact,
+      attestation: exported.attestation,
+      compatibility: clone(record.compatibility),
+    };
+    authenticP23AdmissionBundles.set(bundle, admissionBundleDigest(bundle));
+    return bundle;
   }
 
   private compatibilityReasons(artifact: SynapticCommonsArtifact, target: SynapticCompatibilityTarget): string[] {
