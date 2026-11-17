@@ -10,7 +10,20 @@ export class LocalLanguageBackendPolicy {
     this.cooldownUntil = 0;
   }
 
-  select({ localLlamaConfigured, ecologyPreferredBackend, now = Date.now() }) {
+  select({
+    localLlamaConfigured,
+    ecologyPreferredBackend,
+    substratePreferredBackend,
+    availableBackends = {},
+    now = Date.now(),
+  }) {
+    const allowedRoutes = new Set(['llama.cpp', 'kobold', 'gemini', 'deterministic-policy-fallback']);
+    if (allowedRoutes.has(substratePreferredBackend) && availableBackends[substratePreferredBackend] === true) {
+      if (substratePreferredBackend !== 'llama.cpp' ||
+          (localLlamaConfigured === true && now >= this.cooldownUntil)) {
+        return substratePreferredBackend;
+      }
+    }
     if (localLlamaConfigured === true && now >= this.cooldownUntil) return 'llama.cpp';
     return String(ecologyPreferredBackend || 'local-fallback');
   }
