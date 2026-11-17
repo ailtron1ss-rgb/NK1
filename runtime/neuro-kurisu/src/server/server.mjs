@@ -97,6 +97,8 @@ let languageCallCount = 0;
 // UserModel event ticks represent ingress time, not the slower cognitive scheduler tick.
 // Keep them strictly increasing within the process; epoch milliseconds remain ordered across restarts.
 let lastUserModelPreferenceEventTick = 0;
+// Dyadic collaboration ingress uses server-owned epoch ticks and evidence IDs.
+let lastDyadicCollaborationEventTick = 0;
 let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
@@ -492,6 +494,133 @@ async function route(req, res) {
                     source: 'user-explicit',
                 },
                 note: 'Only an explicitly confirmed, allowlisted low-risk response style is stored.',
+            });
+        }
+        if ((req.method === 'GET' || req.method === 'POST') && url.pathname === '/api/organism/dyadic-collaboration') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+
+            const toPublicItem = (item) => ({
+                id: item.id,
+                kind: item.kind,
+                title: item.title,
+                detail: item.detail,
+                author: item.author,
+                status: item.status,
+                progress: item.progress,
+                createdAtTick: item.createdAtTick,
+                updatedAtTick: item.updatedAtTick,
+                updatedBy: item.updatedBy,
+            });
+            const toPublicSummary = (state) => {
+                const active = state.items.filter(item => item.status !== 'rejected');
+                const tasks = active.filter(item => item.kind === 'task');
+                return {
+                    total: state.items.length,
+                    accepted: active.filter(item => item.status === 'accepted').length,
+                    proposals: active.filter(item => item.status === 'proposed').length,
+                    rejected: state.items.filter(item => item.status === 'rejected').length,
+                    tasksInProgress: tasks.filter(item => item.progress === 'in-progress').length,
+                    tasksBlocked: tasks.filter(item => item.progress === 'blocked').length,
+                    tasksCompleted: tasks.filter(item => item.progress === 'completed').length,
+                };
+            };
+
+            if (req.method === 'GET') {
+                const state = await runtime.dyadicCollaborationSnapshot();
+                return json(res, 200, {
+                    ok: true,
+                    version: state.version,
+                    summary: toPublicSummary(state),
+                    items: state.items.map(toPublicItem),
+                    readOnly: true,
+                    note: 'Shared coordination state only. Personal human and NK1 states remain separate; evidence references and internal events are not exposed.',
+                });
+            }
+
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
+            const action = ['record', 'confirm', 'reject', 'progress', 'correct'].includes(input.action)
+                ? input.action
+                : '';
+            if (!action)
+                return json(res, 400, { ok: false, error: 'action-must-be-record-confirm-reject-progress-or-correct' });
+            if (input.confirmed !== true)
+                return json(res, 400, { ok: false, error: 'explicit-user-confirmation-required' });
+
+            // The authenticated HTTP caller is the human participant. Never trust
+            // client-supplied actor, evidenceRef, sourceRef, sensitivity or tick fields.
+            lastDyadicCollaborationEventTick = Math.max(Date.now(), lastDyadicCollaborationEventTick + 1);
+            const tick = lastDyadicCollaborationEventTick;
+            const evidenceRef = \`http-dyadic-collaboration:\${randomUUID()}\`;
+            const itemId = typeof input.itemId === 'string' ? input.itemId.trim().slice(0, 80) : '';
+            let result;
+
+            if (action === 'record') {
+                const kinds = ['goal', 'task', 'agreement', 'question', 'success-criteria', 'decision'];
+                const kind = kinds.includes(input.kind) ? input.kind : '';
+                if (!kind)
+                    return json(res, 400, { ok: false, error: 'invalid-collaboration-kind' });
+                if (typeof input.title !== 'string' || input.title.length > 160 ||
+                    (input.detail !== undefined && (typeof input.detail !== 'string' || input.detail.length > 600)))
+                    return json(res, 400, { ok: false, error: 'invalid-collaboration-content' });
+                result = await runtime.recordDyadicCollaborationItem({
+                    actor: 'human',
+                    kind,
+                    title: input.title,
+                    ...(typeof input.detail === 'string' ? { detail: input.detail } : {}),
+                    sourceRef: evidenceRef,
+                    tick,
+                    sensitivity: 'low-risk',
+                });
+            } else if (action === 'confirm' || action === 'reject') {
+                if (!itemId)
+                    return json(res, 400, { ok: false, error: 'missing-collaboration-item-id' });
+                const transition = { id: itemId, actor: 'human', evidenceRef, tick };
+                result = action === 'confirm'
+                    ? await runtime.confirmDyadicCollaborationProposal(transition)
+                    : await runtime.rejectDyadicCollaborationProposal(transition);
+            } else if (action === 'progress') {
+                const progress = ['not-started', 'in-progress', 'blocked', 'completed'].includes(input.progress)
+                    ? input.progress
+                    : '';
+                if (!itemId || !progress)
+                    return json(res, 400, { ok: false, error: 'invalid-collaboration-progress' });
+                result = await runtime.updateDyadicCollaborationTaskProgress({
+                    id: itemId, actor: 'human', progress, evidenceRef, tick,
+                });
+            } else {
+                if (!itemId || (input.title === undefined && input.detail === undefined) ||
+                    (input.title !== undefined && (typeof input.title !== 'string' || input.title.length > 160)) ||
+                    (input.detail !== undefined && (typeof input.detail !== 'string' || input.detail.length > 600)))
+                    return json(res, 400, { ok: false, error: 'invalid-collaboration-correction' });
+                result = await runtime.correctDyadicCollaborationItem({
+                    id: itemId,
+                    actor: 'human',
+                    ...(typeof input.title === 'string' ? { title: input.title } : {}),
+                    ...(typeof input.detail === 'string' ? { detail: input.detail } : {}),
+                    evidenceRef,
+                    tick,
+                });
+            }
+
+            if (!result.accepted) {
+                const status = result.reason === 'duplicate-evidence' || result.reason === 'capacity-exhausted'
+                    ? 409
+                    : result.reason === 'item-not-found'
+                        ? 404
+                        : 400;
+                return json(res, status, { ok: false, error: result.reason || 'dyadic-collaboration-write-rejected' });
+            }
+            const state = await runtime.dyadicCollaborationSnapshot();
+            const currentItem = state.items.find(item => item.id === result.item.id) || result.item;
+            return json(res, action === 'record' ? 201 : 200, {
+                ok: true,
+                action,
+                item: toPublicItem(currentItem),
+                summary: toPublicSummary(state),
+                note: 'The authenticated human action was recorded with server-owned provenance in the canonical Dyadic Mind workspace.',
             });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/time') {
