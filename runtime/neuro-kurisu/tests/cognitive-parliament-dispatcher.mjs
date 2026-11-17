@@ -7,6 +7,7 @@ import { EvidenceFirewallParliamentTrustPort } from '../src/organism/system/Cogn
 import {
   OpenAICompatibleLocalParliamentRoleExecutor,
   ParliamentModelAttestationRegistry,
+  createLocalParliamentRoleExecutors,
 } from '../src/organism/system/CognitiveParliamentLocalAdapter.ts';
 import { GovernanceSubsystemRuntime } from '../src/organism/core/GovernanceSubsystemRuntime.ts';
 
@@ -159,6 +160,27 @@ assert.equal(localAttestation.providerId,'host-configured-provider');
 assert.equal(localAttestation.modelId,'configured-host-model');
 assert.equal(localAttestation.independenceGroup,'host-configured-family');
 assert.ok(!localAttestation.modelId.includes('lied'));
+
+// The local-profile factory maps each specialist to its own host-configured provider identity.
+const factoryRegistry=new ParliamentModelAttestationRegistry();
+const localBindings=Object.fromEntries(roles.map(role=>[role,{
+  provider:{
+    configured:()=>true,model:`factory-model-${role}`,
+    async generate(){return {text:responseFor(role)};},
+  },
+  identity:{
+    providerId:`factory-provider-${role}`,modelId:`factory-model-${role}`,
+    independenceGroup:`factory-family-${role}`,
+  },
+}]));
+const localRoleExecutors=createLocalParliamentRoleExecutors(localBindings,factoryRegistry);
+assert.deepEqual(Object.keys(localRoleExecutors).sort(),roles.slice().sort());
+const factoryRun=await localRoleExecutors.researcher.execute({
+  role:'researcher',system:'system',user:'user',maxTokens:100,temperature:0,signal:new AbortController().signal,
+});
+assert.equal(factoryRegistry.attest(factoryRun.executionId)?.independenceGroup,'factory-family-researcher');
+assert.throws(()=>createLocalParliamentRoleExecutors({...localBindings,unknownRole:localBindings.planner},factoryRegistry),
+  /role-unknown/,'factory must reject unknown specialist roles');
 
 let lateRegistrationCount=0;
 const lateAttestations=new ParliamentModelAttestationRegistry();
