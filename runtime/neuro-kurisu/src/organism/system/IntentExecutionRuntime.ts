@@ -314,6 +314,12 @@ export class IntentExecutionRuntime {
     }
     const gate = this.compiler.gate(contract, action?.toolId);
     if (!gate.allowed) return { executed: false, contractId: null, reason: gate.reason };
+    if (!action || !action.input || typeof action.input !== 'object' || Array.isArray(action.input)) {
+      return { executed: false, contractId: gate.contractId, reason: 'invalid-action-input' };
+    }
+    if (typeof action.reason !== 'string' || !action.reason.trim() || !gateway || typeof gateway.executeTool !== 'function') {
+      return { executed: false, contractId: gate.contractId, reason: 'action-gateway-unavailable-or-invalid-reason' };
+    }
     const keyHash = this.idempotencyKeyHash(action);
     const prior = this.pendingIntentExecution(contract.id, gate.action);
     if (prior && prior.phase !== 'prepared') {
@@ -363,6 +369,13 @@ export class IntentExecutionRuntime {
     }
     const gate = this.compiler.gate(contract, action?.toolId, 'reconcile');
     if (!gate.allowed) return { attempted: false, contractId: null, reason: gate.reason };
+    if (!action || !action.input || typeof action.input !== 'object' || Array.isArray(action.input)) {
+      return { attempted: false, contractId: gate.contractId, reason: 'invalid-action-input' };
+    }
+    if (typeof action.reason !== 'string' || !action.reason.trim() ||
+        !gateway || typeof gateway.reconcileToolExecution !== 'function') {
+      return { attempted: false, contractId: gate.contractId, reason: 'action-gateway-reconciliation-unavailable' };
+    }
     const keyHash = this.idempotencyKeyHash(action);
     if (!keyHash) return { attempted: false, contractId: contract.id, reason: 'original-idempotency-key-required' };
     const pending = this.pendingIntentExecution(contract.id, gate.action);
@@ -389,11 +402,24 @@ export class IntentExecutionRuntime {
       link.executionId = outcome.executionId;
       link.outcomeClass = outcome.outcomeClass;
       link.idempotencyStatus = outcome.idempotencyStatus;
+      const noGatewayReceipt = outcome.result?.error === 'no-pending-receipt-to-reconcile';
       const resolved = outcome.idempotencyStatus === 'reconciled' ||
         outcome.idempotencyStatus === 'confirmed-not-executed' ||
         outcome.outcomeClass === 'reconciled-not-executed' ||
         outcome.verified === true;
-      if (resolved) {
+      if (noGatewayReceipt) {
+        // Core may have checkpointed the prepared intent immediately before a
+        // crash that occurred before ActionGateway admitted its pending receipt.
+        // ActionGateway writes that receipt before executor entry, so absence here
+        // proves the side-effect boundary was never crossed; retry only with the
+        // same original key, allowing ActionGateway to admit it exactly once.
+        link.phase = 'completed';
+        pending.phase = 'prepared';
+        pending.at = this.clock();
+        pending.outcomeClass = outcome.outcomeClass;
+        pending.executionId = undefined;
+        pending.idempotencyStatus = undefined;
+      } else if (resolved) {
         link.phase = 'completed';
         pending.phase = 'completed';
         pending.at = this.clock();
