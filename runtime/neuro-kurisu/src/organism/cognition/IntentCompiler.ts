@@ -93,9 +93,6 @@ const MIN_APPROVAL_KEY_BYTES = 32;
 const PROCESS_APPROVAL_KEY = randomBytes(32).toString('hex');
 
 const RISK_PATTERNS: ReadonlyArray<[RegExp, string, IntentRiskLevel]> = [
-  [/(?:\b(?:token|api[ _-]?key|secret|password|credential|private[ _-]?key)\b.{0,120}\b(?:send|post|upload|transfer|exfiltrat\w*|leak)\b.{0,100}\b(?:external|remote|third[ -]?party|public)\b|\b(?:exfiltrat\w*|steal\s+(?:the\s+)?(?:credentials?|passwords?|secrets?|tokens?)|dump\s+credentials?)\b|(?:токен|ключ|секрет|парол|уч[её]тн\p{L}*\s+данн).{0,120}(?:отправ|переда|слить|выгруз|эксфильтр).{0,100}(?:внешн|публичн|удал[её]нн|чуж)|(?:отправ|переда|слить|выгруз).{0,100}(?:токен|ключ|секрет|парол).{0,100}(?:внешн|публичн|удал[её]нн|чуж)/iu,
-    'credential-or-secret-exfiltration-language', 'critical'],
-  [/(?:\b(?:token|api[ _-]?key|secret|password|credential|private[ _-]?key)\b.{0,120}\b(?:send|post|upload|transfer|exfiltrat\w*|leak)\b.{0,100}\b(?:external|remote|third[ -]?party|public)\b|\b(?:exfiltrat\w*|steal\s+(?:the\s+)?(?:credentials?|passwords?|secrets?|tokens?)|dump\s+credentials?)\b|(?:токен|ключ|секрет|парол|уч[её]тн\p{L}*\s+данн).{0,120}(?:отправ|переда|слить|выгруз|эксфильтр).{0,100}(?:внешн|публичн|удал[её]нн|чуж)|(?:отправ|переда|слить|выгруз).{0,100}(?:токен|ключ|секрет|парол).{0,100}(?:внешн|публичн|удал[её]нн|чуж)/iu,
     'credential-or-secret-exfiltration-language', 'critical'],
 
   [/\b(delete|erase|drop|destroy|remove|wipe|format)\b|удал\p{L}*|стер\p{L}*|уничтож\p{L}*|очист\p{L}*|сброс\p{L}*|форматир\p{L}*/iu,
