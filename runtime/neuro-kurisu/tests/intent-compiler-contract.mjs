@@ -15,6 +15,20 @@ const providerContract = await compiler.compileWith({ text: 'Summarize the lates
 assert.equal(extractedText, 'Summarize the latest verified state.');
 assert.equal(providerContract.goal.source, 'structured-extraction');
 assert.equal(providerContract.goal.text, 'Summarize verified state');
+const processScopedCompiler = new IntentCompiler({ clock: () => now });
+const processScopedContract = processScopedCompiler.compile({
+  text: 'Read system status',
+  extraction: { expectedOutcome: 'Status', acceptanceCriteria: ['Show status'], permissions: { allowedActions: ['organism.inspect'] }, stopConditions: ['Stop on missing status'] },
+});
+const processScopedApproved = processScopedCompiler.approve(processScopedContract, {
+  contractId: processScopedContract.id, userConfirmed: true, allowedActions: ['organism.inspect'],
+  at: now, evidenceRef: 'process-key-confirmation',
+});
+assert.equal(new IntentCompiler({ clock: () => now }).gate(processScopedApproved, 'organism.inspect').allowed, true,
+  'default ephemeral attestation key must be shared by compiler instances within one process');
+assert.equal(new IntentCompiler({ clock: () => now, approvalKey: 'a-different-managed-key-with-at-least-32-bytes' }).gate(processScopedApproved, 'organism.inspect').allowed, false,
+  'a different key must not validate the approval');
+
 const ambiguous = compiler.compile({
   requestId: 'intent:test:ambiguous',
   text: 'Please delete old project data and prepare a report.',
