@@ -291,7 +291,7 @@ export function createTeacherDistillationPayload(input: {
     taskVersion: snapshot.taskVersion,
     family: snapshot.family,
     split: snapshot.split,
-    teacherId: snapshot.teacherId;
+    teacherId: snapshot.teacherId,
     teacherModel: snapshot.teacherModel,
     teacherRevision: snapshot.teacherRevision,
     seed: snapshot.seed,
