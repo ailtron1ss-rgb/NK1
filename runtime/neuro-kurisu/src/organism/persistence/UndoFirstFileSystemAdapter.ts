@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { mkdir, chmod, open, link, unlink, readFile, lstat, realpath, rename } from 'node:fs/promises';
+import { mkdir, open, link, unlink, readFile, lstat, realpath, rename } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, join } from 'node:path';
 import {
   ActionGateway,
@@ -221,11 +221,17 @@ export class UndoFirstFileSystemAdapter {
     if (requestedStat.isSymbolicLink() || !requestedStat.isDirectory()) throw new Error('filesystem-workspace-root-not-a-real-directory');
     const root = await realpath(this.requestedRoot);
     if (this.resolvedRoot && root !== this.resolvedRoot) throw new Error('filesystem-workspace-root-changed');
-    const rootStat = await lstat(root);
-    if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) throw new Error('filesystem-workspace-root-not-a-directory');
-    await chmod(root, 0o700);
-    const privateStat = await lstat(root);
-    if ((privateStat.mode & 0o077) !== 0) throw new Error('filesystem-workspace-permissions-not-private');
+    if (!constants.O_NOFOLLOW) throw new Error('filesystem-no-follow-open-unavailable');
+    const rootHandle = await open(root, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+      const rootStat = await rootHandle.stat();
+      if (!rootStat.isDirectory()) throw new Error('filesystem-workspace-root-not-a-directory');
+      await rootHandle.chmod(0o700);
+      const privateStat = await rootHandle.stat();
+      if ((privateStat.mode & 0o077) !== 0) throw new Error('filesystem-workspace-permissions-not-private');
+    } finally {
+      await rootHandle.close();
+    }
     this.resolvedRoot = root;
     return root;
   }
@@ -298,12 +304,16 @@ export class UndoFirstFileSystemAdapter {
     } catch (error) {
       if (!error || typeof error !== 'object' || (error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
     }
-    const info = await lstat(path);
-    if (info.isSymbolicLink() || !info.isDirectory()) throw new Error(errorCode);
-    await chmod(path, 0o700);
-    const privateInfo = await lstat(path);
-    if (privateInfo.isSymbolicLink() || !privateInfo.isDirectory() || (privateInfo.mode & 0o077) !== 0) {
-      throw new Error(`${errorCode}:permissions-not-private`);
+    if (!constants.O_NOFOLLOW) throw new Error('filesystem-no-follow-open-unavailable');
+    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+      const info = await handle.stat();
+      if (!info.isDirectory()) throw new Error(errorCode);
+      await handle.chmod(0o700);
+      const privateInfo = await handle.stat();
+      if ((privateInfo.mode & 0o077) !== 0) throw new Error(`${errorCode}:permissions-not-private`);
+    } finally {
+      await handle.close();
     }
   }
 
