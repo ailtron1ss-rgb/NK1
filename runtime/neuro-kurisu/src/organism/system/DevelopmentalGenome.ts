@@ -82,7 +82,7 @@ const stableValue = (value: any): any => {
   }
   return value;
 };
-const stableJson = (value: unknown): string => JSON.stringify(stableValue(value));
+const stableJson = (value: unknown): string => JSON.stringify(stableValue(value)) ?? 'undefined';
 
 function currentRuntimeContract(): DevelopmentalGenomeRuntimeContract {
   return {
@@ -388,7 +388,7 @@ export function inheritDevelopmentalGenome(
     if (!fields.length || fields.some(field => field !== 'estimatedCost01' && field !== 'cadenceCycles')) {
       throw new Error('Only estimatedCost01 and cadenceCycles may be inherited');
     }
-    if (patch.estimatedCost01 !== undefined) {
+    if (Object.prototype.hasOwnProperty.call(patch, 'estimatedCost01')) {
       const next = patch.estimatedCost01;
       if (typeof next !== 'number' || !Number.isFinite(next) || next < 0 || next > 1) {
         throw new Error('estimatedCost01 must be finite and within [0,1]');
@@ -397,7 +397,7 @@ export function inheritDevelopmentalGenome(
       receipt.push({ module: module.name, trait: 'estimatedCost01', from: module.estimatedCost01, to: next });
       module.estimatedCost01 = next;
     }
-    if (patch.cadenceCycles !== undefined) {
+    if (Object.prototype.hasOwnProperty.call(patch, 'cadenceCycles')) {
       const next = patch.cadenceCycles;
       if (!Number.isInteger(next) || next < 1 || next > 64) {
         throw new Error('cadenceCycles must be an integer within [1,64]');
