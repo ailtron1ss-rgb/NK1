@@ -647,7 +647,7 @@ export class TeacherStudentDistillationDataset {
       evidenceRefDigest: row.evidenceRefDigest,
       artifactFingerprint: row.artifactFingerprint,
       signedArtifact: row.signedArtifact,
-    })).join('\\n') + '\\n';
+    })).join('\n') + '\n';
     const trainProvenance = toProvenanceJsonl(snapshot.training);
     const validationProvenance = toProvenanceJsonl(snapshot.validation);
     const datasetInfo = {
