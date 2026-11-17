@@ -425,9 +425,12 @@ export class DyadicCollaborationWorkspace {
     if (!id.startsWith('dyad-event-') || !itemId.startsWith('dyad-item-') ||
         !isOneOf(action, ACTIONS) || !isOneOf(actor, ACTORS) ||
         !evidenceRef || !validTick(tick)) return null;
-    if (action === 'progress' && !isOneOf(progress, PROGRESS)) return null;
-    if (action !== 'progress' && progress !== undefined) return null;
-    return { id, itemId, action, actor, evidenceRef, tick, ...(progress ? { progress } : {}) };
+    let normalizedProgress: DyadicTaskProgress | undefined;
+    if (action === 'progress') {
+      if (!isOneOf(progress, PROGRESS)) return null;
+      normalizedProgress = progress;
+    } else if (progress !== undefined) return null;
+    return { id, itemId, action, actor, evidenceRef, tick, ...(normalizedProgress ? { progress: normalizedProgress } : {}) };
   }
   private reset(): void {
     this.state = { version: 1, sequence: 0, items: [], events: [], processedEvidenceRefs: [] };

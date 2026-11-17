@@ -1935,7 +1935,7 @@ export class OrganismRuntime {
     return this.enqueue(() => this.core.correctDyadicCollaborationItem(input));
   }
   async dyadicCollaborationSnapshot() {
-    return this.enqueue(() => this.core.dyadicCollaborationSnapshot());
+    return this.enqueue(async () => this.core.dyadicCollaborationSnapshot());
   }
 
   /** Pending self-initiated chat turn for the UI; no tool/device side effects occur here. */
