@@ -252,7 +252,7 @@ const forgedApproved = { ...approved, goal: { ...approved.goal, text: 'Forged go
 assert.equal(compiler.gate(forgedApproved, 'organism.inspect').allowed, false, 'a structurally forged contract must not be accepted as compiler-issued');
 assert.equal(new IntentCompiler().gate(approved, 'organism.inspect').allowed, false, 'ephemeral compiler keys must not authenticate persisted approvals');
 assert.equal(new IntentCompiler({ clock: () => now, approvalKey: 'test-only-intent-approval-key-32-bytes-minimum' }).gate(approved, 'organism.inspect').allowed, true, 'a configured stable runtime key must validate approvals across compiler instances');
-assert.equal(compiler.gate(approved, 'filesystem.write').reason, 'action-not-explicitly-allowed');
+assert.equal(compiler.gate(approved, 'filesystem.write').reason, 'action-explicitly-denied', 'explicit denials must dominate absence from the allow-list');
 const tamperedApproval = { ...approved, approval: { ...approved.approval, allowedActions: ['organism.inspect', 'filesystem.write'] } };
 assert.equal(compiler.gate(tamperedApproval, 'filesystem.write').allowed, false, 'approval allow-list tampering must invalidate its attestation');
 assert.equal(compiler.gate(approved, 'deploy').reason, 'action-explicitly-denied');
@@ -440,5 +440,7 @@ const expiringApproved = expiringCompiler.approve(expiringContract, {
 assert.equal(expiringCompiler.gate(expiringApproved, 'organism.inspect').allowed, true);
 now += 16 * 60 * 1000;
 assert.equal(expiringCompiler.gate(expiringApproved, 'organism.inspect').reason, 'approval-expired');
+assert.equal(expiringCompiler.gate(expiringApproved, 'organism.inspect', 'reconcile').allowed, true,
+  'authentic expired intent may only authorize read-only receipt reconciliation, never a new execution');
 
 console.log('NK1_INTENT_COMPILER=PASS intentIntegrity=true approvalAttestation=true expiry=true riskAndScopeGates=true gatewayGate=true');
