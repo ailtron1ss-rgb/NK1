@@ -47,6 +47,7 @@ import {
   SynapticCommons,
   parseSynapticPublicKeyMap,
   parseSynapticLicenseReviewAllowlist,
+  isAuthenticSynapticP23AdmissionBundle,
   type SynapticCommonsState,
   type SynapticCompatibilityTarget,
   type SynapticP23AdmissionBundle,
@@ -2001,6 +2002,13 @@ export class OrganismRuntime {
       const admission = this.synapticP23Admission;
       if (!admission) throw new Error('synaptic-p23-admission-not-configured');
       const host = admission.currentHostCompatibilityTarget();
+      const hostSignature = (target: SynapticCompatibilityTarget) => JSON.stringify([
+        target.runtimeVersion,
+        target.environmentFingerprint,
+        [...target.supportedCapabilities].sort(),
+        [...target.permittedTools].sort(),
+      ]);
+      const initialHostSignature = hostSignature(host);
       const bundle = this.synapticCommons.prepareP23Admission(fingerprint, host);
       const candidateMethod = 'synaptic-commons:' + fingerprint;
       const proposal = await admission.createLocalPromotionProposal({
@@ -2009,10 +2017,20 @@ export class OrganismRuntime {
         skillId: bundle.artifact.skill.skillId,
         admissionBundle: bundle,
       });
+      if (!isAuthenticSynapticP23AdmissionBundle(bundle)) {
+        throw new Error('synaptic-p23-admission-bundle-mutated-by-provider');
+      }
       if (!isAuthenticVerifiedSkillPromotionProposal(proposal)) {
         throw new Error('synaptic-p23-authentic-accepted-proposal-required');
       }
-      const candidate = admission.engine.stageSynapticCommonsCandidate(proposal, bundle);
+      const latestHost = admission.currentHostCompatibilityTarget();
+      if (hostSignature(latestHost) !== initialHostSignature) {
+        throw new Error('synaptic-p23-admission-host-manifest-changed-during-evaluation');
+      }
+      // This rechecks attestation expiry, publisher/attestor trust, licence review
+      // and compatibility against the live host after the potentially long local run.
+      const finalBundle = this.synapticCommons.prepareP23Admission(fingerprint, latestHost);
+      const candidate = admission.engine.stageSynapticCommonsCandidate(proposal, finalBundle);
       return {
         status: candidate.status,
         candidateId: candidate.candidateId,

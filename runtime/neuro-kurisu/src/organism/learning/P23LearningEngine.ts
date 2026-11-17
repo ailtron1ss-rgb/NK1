@@ -1187,9 +1187,17 @@ export class P23LearningEngine {
         proposal.canActivateAutomatically !== false ||
         proposal.authenticatedEvidenceRows < 1 ||
         proposal.unauthenticatedEvidenceRows !== 0 ||
+        !Number.isSafeInteger(proposal.authenticatedEvidenceRows) ||
+        !Number.isSafeInteger(proposal.uniquePairedTasks) ||
         proposal.uniquePairedTasks < 8 ||
+        !Number.isSafeInteger(proposal.completePairedSeeds) ||
         proposal.completePairedSeeds < 5 ||
+        !Number.isSafeInteger(proposal.pairedTaskSeedN) ||
         proposal.pairedTaskSeedN < 5 ||
+        !Number.isSafeInteger(proposal.evaluatedAt) ||
+        proposal.evaluatedAt > Date.now() + 30_000 ||
+        Date.now() - proposal.evaluatedAt > 15 * 60_000 ||
+        !/^[a-f0-9]{64}$/.test(proposal.manifestFingerprint) ||
         !/^[a-f0-9]{64}$/.test(proposal.datasetFingerprint) ||
         !/^[a-f0-9]{64}$/.test(proposal.proposalId) ||
         !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {

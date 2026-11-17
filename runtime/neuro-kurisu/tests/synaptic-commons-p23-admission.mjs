@@ -158,19 +158,23 @@ engine.configureVerifiedSkillLifecycle(candidateStore);
 
 let proposalMode = 'valid';
 let localProposalCalls = 0;
+let hostDrift = false;
 const runtime = new OrganismRuntime({
   stateFile: path.join(root, 'organism.json'),
   autoRun: false,
   enableLanguage: false,
   synapticP23Admission: {
     engine,
-    currentHostCompatibilityTarget: () => ({ ...host }),
+    currentHostCompatibilityTarget: () => hostDrift
+      ? { ...host, permittedTools: [] }
+      : { ...host },
     createLocalPromotionProposal: async ({ candidateMethod }) => {
       localProposalCalls += 1;
       const actualMethod = proposalMode === 'wrong-method'
         ? 'synaptic-commons:' + 'f'.repeat(64)
         : candidateMethod;
       const proposal = buildLocalProposal(actualMethod);
+      if (proposalMode === 'host-drift') hostDrift = true;
       return proposalMode === 'serialized' ? JSON.parse(JSON.stringify(proposal)) : proposal;
     },
   },
@@ -200,6 +204,12 @@ try {
     /candidate-method-binding-mismatch/,
     'local holdout evidence must name the exact imported artifact fingerprint',
   );
+  proposalMode = 'host-drift';
+  await assert.rejects(
+    () => runtime.stageSynapticSkillCandidate(fingerprint, true),
+    /host-manifest-changed-during-evaluation/,
+    'host capability/tool drift during local evaluation must invalidate admission');
+  hostDrift = false;
   proposalMode = 'valid';
   const staged = await runtime.stageSynapticSkillCandidate(fingerprint, true);
   assert.equal(staged.status, 'staged');
@@ -207,7 +217,7 @@ try {
   assert.equal(staged.canActivateAutomatically, false);
   assert.equal(staged.promotionBlockedUntilNativeAdapter, true);
   assert.match(staged.candidateId, /^[a-f0-9]{64}$/);
-  assert.equal(localProposalCalls, 3);
+  assert.equal(localProposalCalls, 4);
 
   const snapshot = engine.verifiedSkillCandidateSnapshot();
   assert.deepEqual(snapshot.active, [], 'Synaptic import must never activate a local P23 skill');
