@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createHash } from 'node:crypto';
 
 // Keep the behavioral suite runnable outside GitHub Actions without
 // overriding the exact checkout SHA supplied by GitHub Actions.
