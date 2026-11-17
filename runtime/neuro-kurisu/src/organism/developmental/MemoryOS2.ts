@@ -949,9 +949,24 @@ export class MemoryOS2{
    const requestedKnowledgeAt=typeof temporalOptions.knowledgeAtAt==='number'&&Number.isFinite(temporalOptions.knowledgeAtAt)?temporalOptions.knowledgeAtAt:undefined;
    const temporalMode=temporalOptions.temporalMode??'current';
    const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:Date.now();
-   const eligible=(item:MemoryItem2)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&(temporalMode==='all'||
-    (requestedKnowledgeAt!==undefined?this.bitemporalVersionAt(item,now,requestedKnowledgeAt)!==null:this.validAt(item,now)));
-   const corpus=this.state.items.filter(eligible);
+   const eligibleView=(item:MemoryItem2):MemoryItem2|null=>{
+    let view=item;
+    if(temporalMode!=='all'&&requestedKnowledgeAt!==undefined){
+     const version=this.bitemporalVersionAt(item,now,requestedKnowledgeAt);
+     if(!version)return null;
+     view=this.materializeBitemporalView(item,version);
+    }else if(temporalMode!=='all'&&!this.validAt(item,now))return null;
+    // Trust/availability is evaluated against the requested historical state,
+    // not today's flags. A later quarantine or dormancy must not rewrite what NK1
+    // was allowed to retrieve before that transaction-time change.
+    if(view.dormant||view.epistemicStatus==='quarantined')return null;
+    return view;
+   };
+   const eligible=(item:MemoryItem2)=>eligibleView(item)!==null;
+   const corpus=this.state.items.flatMap(item=>{
+    const view=eligibleView(item);
+    return view?[view]:[];
+   });
    const corpusById=new Map(corpus.map(item=>[item.id,item]));
    for(const [id,row] of this.semanticEmbeddingIndex){
      const current=corpusById.get(id);
