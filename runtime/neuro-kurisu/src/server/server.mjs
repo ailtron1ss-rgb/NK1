@@ -2114,11 +2114,11 @@ async function route(req, res) {
                 const proposal = await runtime.core.constitutionEvolutionPropose({ ...input, authorId });
                 return json(res, 201, { ok:true, proposal });
             } catch (error) {
-                const message=String(error?.message||error).replace(/[\\r\\n\\t]+/g,' ').slice(0,240);
+                const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
                 return json(res, message.includes('signing key') ? 503 : 409, { ok:false, error:'constitution-proposal-denied', reason:message });
             }
         }
-        const constitutionProposalMatch = url.pathname.match(/^\\/api\\/organism\\/constitution\\/proposals\\/([A-Za-z0-9._:-]{3,120})\\/(review|ratify|activate)$/);
+        const constitutionProposalMatch = url.pathname.match(/^\/api\/organism\/constitution\/proposals\/([A-Za-z0-9._:-]{3,120})\/(review|ratify|activate)$/);
         if (req.method === 'POST' && constitutionProposalMatch) {
             const proposalId=constitutionProposalMatch[1], action=constitutionProposalMatch[2];
             const proposal=runtime.core.constitutionEvolutionProposal(proposalId);
@@ -2137,7 +2137,7 @@ async function route(req, res) {
                     const updated=await runtime.core.constitutionEvolutionReview(proposalId,review);
                     return json(res, 200, { ok:true, proposal:updated });
                 } catch (error) {
-                    const message=String(error?.message||error).replace(/[\\r\\n\\t]+/g,' ').slice(0,240);
+                    const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
                     return json(res, 409, { ok:false, error:'constitution-review-denied', reason:message });
                 }
             }
@@ -2153,7 +2153,7 @@ async function route(req, res) {
                     if (!approvalRequest) return json(res, 503, { ok:false, error:'constitution-ratification-ticket-not-persisted' });
                     return json(res, 403, { ok:false, approvalRequired:true, error:'user-approval-required', approvalRequest });
                 } catch (error) {
-                    const message=String(error?.message||error).replace(/[\\r\\n\\t]+/g,' ').slice(0,240);
+                    const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
                     return json(res, 409, { ok:false, error:'constitution-ratification-denied', reason:message });
                 }
             }
@@ -2161,7 +2161,7 @@ async function route(req, res) {
                 const revision=await runtime.core.constitutionEvolutionActivate(proposalId);
                 return json(res, 200, { ok:true, revision });
             } catch (error) {
-                const message=String(error?.message||error).replace(/[\\r\\n\\t]+/g,' ').slice(0,240);
+                const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
                 return json(res, 409, { ok:false, error:'constitution-activation-denied', reason:message });
             }
         }
@@ -2181,7 +2181,7 @@ async function route(req, res) {
                 if (!approvalRequest) return json(res, 503, { ok:false, error:'constitution-rollback-ticket-not-persisted' });
                 return json(res, 403, { ok:false, approvalRequired:true, error:'user-approval-required', approvalRequest });
             } catch (error) {
-                const message=String(error?.message||error).replace(/[\\r\\n\\t]+/g,' ').slice(0,240);
+                const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
                 return json(res, 409, { ok:false, error:'constitution-rollback-denied', reason:message });
             }
         }
