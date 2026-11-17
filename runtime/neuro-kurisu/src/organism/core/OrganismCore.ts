@@ -4884,7 +4884,7 @@ export class OrganismCore {
                     },
                 });
                 const canonicalAutonomousToolId = this.canonicalActionToolId(autoToolPlan.tool.id);
-                const autonomousIntentGoal = autonomousToolReason.normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, 2_000);
+                const autonomousIntentGoal = autonomousToolReason.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 2_000);
                 const autonomousIntentSourceText = `${autonomousIntentGoal} | tool=${canonicalAutonomousToolId} | decision=${autonomousPlanEvent.id}`;
                 let approvedAutonomousIntent: IntentContract | null = null;
                 let autonomousIntentDraft: IntentContract | null = null;
@@ -4931,7 +4931,7 @@ export class OrganismCore {
                         await this.checkpoint(true);
                     }
                 } catch (error) {
-                    autonomousIntentRefusal = String((error as Error)?.message ?? 'autonomous-intent-not-approved').replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
+                    autonomousIntentRefusal = String((error as Error)?.message ?? 'autonomous-intent-not-approved').replace(/[\r\n\t]+/g, ' ').slice(0, 180);
                 }
                 let toolResult;
                 if (approvedAutonomousIntent) {
