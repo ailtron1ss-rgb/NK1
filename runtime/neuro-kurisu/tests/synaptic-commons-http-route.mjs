@@ -175,6 +175,15 @@ try {
     'P23 admission must fail closed until a trusted local proposal provider is configured');
   assert.match(p23AdmissionUnavailable.body.error, /synaptic-p23-admission-not-configured/);
 
+  const p23NativeAdapterUnavailable = await request(
+    '/api/organism/synaptic-commons/' + fingerprint + '/p23-adapt',
+    'POST',
+    { confirmed: true },
+  );
+  assert.equal(p23NativeAdapterUnavailable.response.status, 503,
+    'native P23 adaptation must fail closed without a locally configured signed-outcome provider');
+  assert.match(p23NativeAdapterUnavailable.body.error, /synaptic-p23-admission-not-configured/);
+
   const duplicate = await request('/api/organism/synaptic-commons/import', 'POST', {
     confirmed: true, artifact,
   });

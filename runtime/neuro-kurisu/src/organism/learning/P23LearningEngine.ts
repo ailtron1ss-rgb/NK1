@@ -1262,14 +1262,6 @@ export class P23LearningEngine {
   }
 
   /**
-   * Stage a portable Commons package for local P23 review only.
-   * The proposal must be a process-authentic object created from this instance's
-   * own signed outcome ledger, and its candidateMethod must bind the exact artifact.
-   * The durable payload is deliberately not a PolicySkillRecord; it cannot influence
-   * effectiveSkills() or ActionGateway until a future native adapter creates a new
-   * locally evaluated PolicySkillRecord candidate.
-   */
-  /**
    * Stage a portable Commons package for local P23 review only. It is not a
    * PolicySkillRecord and cannot enter the live resolver or generic shadow runner.
    */
