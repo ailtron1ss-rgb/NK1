@@ -105,7 +105,14 @@ export class EvidenceFirewallParliamentTrustPort implements ParliamentTrustPort 
           :undefined;
         const title=typeof researchMaterial?.title==='string'?researchMaterial.title.trim().slice(0,240):'';
         const excerpt=typeof researchMaterial?.snippet==='string'?researchMaterial.snippet.trim().slice(0,1200):'';
-        const sourceUrl=typeof researchMaterial?.url==='string'?researchMaterial.url.trim().slice(0,1000):'';
+        const rawSourceUrl=typeof researchMaterial?.url==='string'?researchMaterial.url.trim().slice(0,1000):'';
+        let sourceUrl='';
+        try{
+          const parsedUrl=new URL(rawSourceUrl);
+          if((parsedUrl.protocol==='http:'||parsedUrl.protocol==='https:')&&parsedUrl.hostname&&
+            !parsedUrl.username&&!parsedUrl.password&&parsedUrl.toString().length<=1000)
+            sourceUrl=parsedUrl.toString();
+        }catch{/* Non-web or malformed URLs are not exposed as evidence material. */}
         const material=researchMaterial&&observation.contentHash&&title&&excerpt&&sourceUrl
           ?{title,excerpt,sourceUrl,contentHash:observation.contentHash}:undefined;
         return {
