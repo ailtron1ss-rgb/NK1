@@ -91,7 +91,8 @@ const evaluation = await engine.evaluateMigration({
   transfer,
   targetBackendId: target.backendId,
   trials,
-  verifyTrial: async (trial) => trial.evaluatorReceiptId.startsWith('receipt-'),\n  allowExternalBackend: true,
+  verifyTrial: async (trial) => trial.evaluatorReceiptId.startsWith('receipt-'),
+  allowExternalBackend: true,
 });
 assert.equal(evaluation.accepted, true);
 assert.equal(engine.snapshot().activeBackendId, source.backendId,
@@ -107,7 +108,8 @@ const denied = await engine.evaluateMigration({
   transfer,
   targetBackendId: target.backendId,
   trials,
-  verifyTrial: async () => false,\n  allowExternalBackend: true,
+  verifyTrial: async () => false,
+  allowExternalBackend: true,
 });
 assert.equal(denied.accepted, false, 'unverified calibration receipts must fail closed');
 assert.ok(denied.reasons.includes('calibration-evidence-untrusted'));
@@ -117,7 +119,8 @@ const duplicate = await engine.evaluateMigration({
   transfer,
   targetBackendId: target.backendId,
   trials: duplicateTrials,
-  verifyTrial: async () => true,\n  allowExternalBackend: true,
+  verifyTrial: async () => true,
+  allowExternalBackend: true,
 });
 assert.equal(duplicate.accepted, false);
 assert.ok(duplicate.reasons.includes('calibration-independence-collision'));
