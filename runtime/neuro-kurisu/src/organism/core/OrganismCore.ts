@@ -11402,6 +11402,26 @@ export class OrganismCore {
     stageVerifiedSkillCandidate(proposal: VerifiedSkillPromotionProposal, skill: PolicySkillRecord) {
         return this.developmentalNeural.p23Learning.stageVerifiedSkillCandidate(proposal, skill);
     }
+    /** Produce a candidate/evidence-bound payload for a separate competence attestor. */
+    createVerifiedSkillCompetenceProofPayload(
+        candidateId: string,
+        proposal: VerifiedSkillPromotionProposal,
+        contract: import('../learning/SkillCompetenceProof.ts').SkillCompetenceContract,
+        attestorId: string,
+        issuedAt: number,
+        expiresAt: number,
+    ) {
+        return this.developmentalNeural.p23Learning.createVerifiedSkillCompetenceProofPayload(
+            candidateId, proposal, contract, attestorId, issuedAt, expiresAt,
+        );
+    }
+    /** Accept only the externally signed artifact; P23 store verifies it before attachment. */
+    attachVerifiedSkillCompetenceProof(
+        candidateId: string,
+        proof: import('../learning/SkillCompetenceProof.ts').SignedSkillCompetenceProof,
+    ) {
+        return this.developmentalNeural.p23Learning.attachVerifiedSkillCompetenceProof(candidateId, proof);
+    }
     /** Trusted execution supervisor hook: persist run context before accepting any signed shadow receipt. */
     registerTrustedSkillShadowRun(context: TrustedShadowExecutionContext) {
         if (!this.verifiedSkillShadowRunRegistry) throw new Error('trusted skill shadow registry is not configured');

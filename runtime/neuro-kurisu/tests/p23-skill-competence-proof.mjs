@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign as signSignature } from 'node:crypto';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
+import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
 import { sha256Stable } from '../src/organism/core/StableSerialization.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
@@ -167,6 +168,9 @@ const store = new VersionedSkillCandidateStore(
   createSkillCompetenceProofVerifier(trustedAttestorKeys),
 );
 const candidate = store.stageCandidate(proposal, skillId, candidatePayload);
+const p23Facade = new P23LearningEngine();
+p23Facade.configureVerifiedSkillLifecycle(store);
+assert.equal(p23Facade.verifiedSkillCandidateSnapshot().candidates.length, 1);
 assert.equal(candidate.status, 'staged');
 
 function signedShadowObservation(candidateRecord, index, signedEnvironmentFingerprint = environmentFingerprint) {
@@ -207,7 +211,7 @@ function signedShadowObservation(candidateRecord, index, signedEnvironmentFinger
   };
 }
 for (let index = 1; index <= 3; index++) {
-  store.recordShadowObservation(candidate.candidateId, signedShadowObservation(candidate, index));
+  p23Facade.recordVerifiedSkillShadow(candidate.candidateId, signedShadowObservation(candidate, index));
 }
 assert.throws(() => store.recordShadowObservation(
   candidate.candidateId,
@@ -231,17 +235,17 @@ noEnvironmentRegistry.register({
 });
 assert.equal(noEnvironmentContextVerifier(noEnvironmentObservation, candidate), false);
 const initialIssuedAt = Date.now();
-const firstPayload = store.createCompetenceProofPayload(
+const firstPayload = p23Facade.createVerifiedSkillCompetenceProofPayload(
   candidate.candidateId, proposal, contract, 'skill-attestor-v1', initialIssuedAt, initialIssuedAt + 60 * 60_000,
 );
 const firstProof = signSkillCompetenceProofForTest(firstPayload, attestorPrivatePem);
-const attached = store.attachCompetenceProof(candidate.candidateId, firstProof);
+const attached = p23Facade.attachVerifiedSkillCompetenceProof(candidate.candidateId, firstProof);
 assert.equal(attached.competenceProof.payload.candidateId, candidate.candidateId);
 assert.equal(attached.competenceProof.payload.holdout.completePairedSeeds, 5);
 assert.equal(attached.competenceProof.payload.shadowRunCount, 3);
 
 // New evidence changes the evidence-set digest; the previous certificate is revoked.
-store.recordShadowObservation(candidate.candidateId, signedShadowObservation(candidate, 4));
+p23Facade.recordVerifiedSkillShadow(candidate.candidateId, signedShadowObservation(candidate, 4));
 assert.equal(store.snapshot().candidates[0].competenceProof, undefined);
 assert.throws(() => store.approveAndPromote(candidate.candidateId, {
   approvedBy: 'trusted-test-approver',
@@ -250,12 +254,12 @@ assert.throws(() => store.approveAndPromote(candidate.candidateId, {
 }, 3), /without a signed competence certificate/);
 
 const refreshedIssuedAt = Date.now();
-const refreshedPayload = store.createCompetenceProofPayload(
+const refreshedPayload = p23Facade.createVerifiedSkillCompetenceProofPayload(
   candidate.candidateId, proposal, contract, 'skill-attestor-v1',
   refreshedIssuedAt, refreshedIssuedAt + 60 * 60_000,
 );
 const activeProof = signSkillCompetenceProofForTest(refreshedPayload, attestorPrivatePem);
-store.attachCompetenceProof(candidate.candidateId, activeProof);
+p23Facade.attachVerifiedSkillCompetenceProof(candidate.candidateId, activeProof);
 const activeVersion = store.approveAndPromote(candidate.candidateId, {
   approvedBy: 'trusted-test-approver',
   approvedAt: Date.now(),

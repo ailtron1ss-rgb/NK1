@@ -18,6 +18,7 @@ import type { LearningRobustMetricSummary } from './LearningRobustMetrics.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import { generateLocalSkillRevision, type SkillRevisionChatProvider } from './P23LocalModelSkillRevisionGenerator.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
+import type { SkillCompetenceContract, SkillCompetenceProofPayload, SignedSkillCompetenceProof } from './SkillCompetenceProof.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
 /**
@@ -115,6 +116,10 @@ export interface PolicySkillRecord {
   updatedAt:number;
   validationWindowStartTick:number;
   validationWindowEndTick:number;
+  /** Opt-in marker for signed proof-carrying skill admission. */
+  proofCarryingSkill?: boolean;
+  /** Exact execution envelope; included in the candidate payload fingerprint. */
+  competenceContract?: SkillCompetenceContract;
 }
 
 export interface AblationRecord {
@@ -1175,6 +1180,30 @@ export class P23LearningEngine {
   recordVerifiedSkillShadow(candidateId:string,observation:SkillShadowObservation):VersionedSkillCandidate {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     return this.verifiedSkillStore.recordShadowObservation(candidateId,observation);
+  }
+
+  /** Build the attestation request only from the canonical P23 candidate and authenticated evidence. */
+  createVerifiedSkillCompetenceProofPayload(
+    candidateId:string,
+    proposal:VerifiedSkillPromotionProposal,
+    contract:SkillCompetenceContract,
+    attestorId:string,
+    issuedAt:number,
+    expiresAt:number,
+  ):SkillCompetenceProofPayload {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    return this.verifiedSkillStore.createCompetenceProofPayload(
+      candidateId,proposal,contract,attestorId,issuedAt,expiresAt,
+    );
+  }
+
+  /** Attach an externally signed attestation; the canonical store rechecks signature and exact evidence bindings. */
+  attachVerifiedSkillCompetenceProof(
+    candidateId:string,
+    proof:SignedSkillCompetenceProof,
+  ):VersionedSkillCandidate {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    return this.verifiedSkillStore.attachCompetenceProof(candidateId,proof);
   }
 
   /**
