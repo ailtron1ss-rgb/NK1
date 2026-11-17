@@ -87,6 +87,14 @@ export interface SharedFutureScenario {
   forecast: SharedFutureForecast | null;
 }
 
+export interface SharedFutureActionBinding {
+  /** Exact OrganismCore decision trace ID; never inferred from an execution receipt. */
+  decisionId: string;
+  toolId: string;
+  consequenceId: string;
+  expectedPostcondition: string;
+}
+
 export interface SharedFutureDecision {
   id: string;
   scenarioId: string;
@@ -98,6 +106,7 @@ export interface SharedFutureDecision {
   irreversible: boolean;
   pointOfNoReturnId: string | null;
   compensationPlan: string;
+  actionBinding: SharedFutureActionBinding | null;
   proposedAt: number;
   confirmedAt: number | null;
   confirmedBy: 'user' | 'system' | null;
@@ -125,6 +134,42 @@ export interface SharedFutureSignalRecord {
   reason: string;
 }
 
+export type SharedFutureOutcomeAuthority = 'user-report' | 'system-report' | 'independent-external' | 'restored-unverified';
+export type SharedFutureEvidenceSourceClass = 'os' | 'device' | 'user' | 'external-api' | 'world';
+
+export interface SharedFutureVerifiedEvidenceObservation {
+  observationId: string;
+  sourceId: string;
+  sourceClass: SharedFutureEvidenceSourceClass;
+  independenceKey: string;
+  confidence01: number;
+  assessment: 'match' | 'mismatch';
+  verified: boolean;
+}
+
+export interface SharedFutureVerifiedExternalOutcomeInput {
+  id: string;
+  actionDecisionId: string;
+  toolId: string;
+  executionId: string;
+  observationId: string;
+  expectedPostcondition: string;
+  observedPostcondition: string;
+  direction: 'confirmed' | 'contradicted';
+  confidence01: number;
+  independent01: number;
+  evidence: SharedFutureVerifiedEvidenceObservation[];
+  at?: number;
+}
+
+export interface SharedFutureVerifiedExternalOutcomeResult {
+  recorded: boolean;
+  replayed: boolean;
+  independentlyVerified: boolean;
+  outcome?: SharedFutureOutcomeRecord;
+  reason?: string;
+}
+
 export interface SharedFutureOutcomeRecord {
   id: string;
   scenarioId: string;
@@ -135,7 +180,23 @@ export interface SharedFutureOutcomeRecord {
   brierScore01: number;
   evidenceRef: string;
   reportedBy: 'user' | 'system';
-  independentlyVerified: false;
+  authority: SharedFutureOutcomeAuthority;
+  independentlyVerified: boolean;
+  sharedFutureDecisionId?: string;
+  actionDecisionId?: string;
+  actionToolId?: string;
+  executionId?: string;
+  observationId?: string;
+  expectedPostcondition?: string;
+  observedPostcondition?: string;
+  outcomeDirection?: 'confirmed' | 'contradicted';
+  confidence01?: number;
+  independent01?: number;
+  independentSourceCount?: number;
+  evidenceObservationIds?: string[];
+  sourceIds?: string[];
+  sourceClasses?: SharedFutureEvidenceSourceClass[];
+  independenceKeys?: string[];
 }
 
 export interface SharedFutureOutcomeInput {
@@ -192,6 +253,7 @@ export interface SharedFutureDecisionInput {
   irreversible?: boolean;
   pointOfNoReturnId?: string | null;
   compensationPlan?: string;
+  actionBinding?: Record<string, unknown> | null;
   at?: number;
 }
 
@@ -291,9 +353,38 @@ export const defaultSharedFutureState = (): SharedFutureState => ({
 export class SharedFutureEngine {
   private state: SharedFutureState = defaultSharedFutureState();
   private canonicalGoalExists: ((goalId: string) => boolean) | null = null;
+  private canonicalDecisionExists: ((decisionId: string) => boolean) | null = null;
 
   setCanonicalGoalResolver(resolver: ((goalId: string) => boolean) | null): void {
     this.canonicalGoalExists = typeof resolver === 'function' ? resolver : null;
+  }
+
+  setCanonicalDecisionResolver(resolver: ((decisionId: string) => boolean) | null): void {
+    this.canonicalDecisionExists = typeof resolver === 'function' ? resolver : null;
+  }
+
+  private parseActionBinding(value: unknown, scenario: SharedFutureScenario): SharedFutureActionBinding | null {
+    if (value === undefined || value === null) return null;
+    if (!isRecord(value)) throw new Error('action-binding-must-be-object');
+    const decisionId = idField(value.decisionId, 'action-binding-decision-id');
+    const toolId = textField(value.toolId, 'action-binding-tool-id', 64);
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{1,63}$/.test(toolId)) throw new Error('action-binding-tool-id-invalid');
+    const consequenceId = idField(value.consequenceId, 'action-binding-consequence-id');
+    if (!scenario.consequences.some((row) => row.id === consequenceId)) throw new Error('action-binding-consequence-not-found');
+    const expectedPostcondition = textField(value.expectedPostcondition, 'action-binding-postcondition', 1024);
+    if (!this.canonicalDecisionExists) throw new Error('canonical-decision-resolution-unavailable');
+    let exists = false;
+    try { exists = this.canonicalDecisionExists(decisionId) === true; }
+    catch { throw new Error('canonical-decision-resolution-failed'); }
+    if (!exists) throw new Error('canonical-decision-not-found');
+    if (this.state.decisions.some((row) => row.actionBinding?.decisionId === decisionId)) {
+      throw new Error('canonical-decision-already-bound');
+    }
+    return { decisionId, toolId, consequenceId, expectedPostcondition };
+  }
+
+  private canonicalPostcondition(value: string): string {
+    return value.normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase();
   }
 
   private assertCanonicalGoalLinks(links: SharedFutureGoalLink[]): void {
@@ -310,7 +401,10 @@ export class SharedFutureEngine {
     return structuredClone(this.state);
   }
 
-  restore(raw?: Partial<SharedFutureState> | null): void {
+  restore(
+    raw?: Partial<SharedFutureState> | null,
+    validateIndependentlyVerifiedOutcome?: (outcome: SharedFutureOutcomeRecord) => boolean,
+  ): void {
     const base = defaultSharedFutureState();
     const source = isRecord(raw) ? raw : {};
     const scenarioRows = Array.isArray(source.scenarios)
@@ -356,6 +450,14 @@ export class SharedFutureEngine {
     for (const decision of decisions) {
       decision.dependsOn = decision.dependsOn.filter((id) => decisionIds.has(id) && id !== decision.id);
     }
+    for (const decision of decisions) {
+      if (decision.actionBinding) {
+        const parentScenario = scenarioById.get(decision.scenarioId);
+        if (!parentScenario?.consequences.some((row) => row.id === decision.actionBinding!.consequenceId)) {
+          decision.actionBinding = null;
+        }
+      }
+    }
     const reviewHistory = Array.isArray(source.reviewHistory)
       ? source.reviewHistory.slice(0, MAX_REVIEW_HISTORY).filter(isRecord).map((row) => ({
           id: restoredText(row.id, 'restored-review', 96),
@@ -397,11 +499,13 @@ export class SharedFutureEngine {
       if (!scenario || !consequence || !evidenceRef || typeof row.occurred !== 'boolean') continue;
       const targetKey = scenarioId + '\\u0000' + consequenceId;
       if (seenOutcomeIds.has(id) || seenOutcomeConsequences.has(targetKey)) continue;
-      seenOutcomeIds.add(id);
-      seenOutcomeConsequences.add(targetKey);
       const forecastProbability01 = finite(row.forecastProbability01, consequence.probability01, 0, 1);
       const target = row.occurred ? 1 : 0;
-      outcomes.push({
+      const claimedAuthority: SharedFutureOutcomeAuthority = row.authority === 'independent-external'
+        ? 'independent-external'
+        : row.authority === 'restored-unverified' ? 'restored-unverified'
+          : row.reportedBy === 'user' ? 'user-report' : 'system-report';
+      const candidate: SharedFutureOutcomeRecord = {
         id,
         scenarioId,
         consequenceId,
@@ -411,8 +515,34 @@ export class SharedFutureEngine {
         brierScore01: Math.round(((forecastProbability01 - target) ** 2) * 1e12) / 1e12,
         evidenceRef,
         reportedBy: row.reportedBy === 'user' ? 'user' : 'system',
+        authority: claimedAuthority,
         independentlyVerified: false,
-      });
+        ...(typeof row.sharedFutureDecisionId === 'string' ? { sharedFutureDecisionId: restoredId(row.sharedFutureDecisionId, '') } : {}),
+        ...(typeof row.actionDecisionId === 'string' ? { actionDecisionId: restoredId(row.actionDecisionId, '') } : {}),
+        ...(typeof row.actionToolId === 'string' ? { actionToolId: restoredText(row.actionToolId, '', 64) } : {}),
+        ...(typeof row.executionId === 'string' ? { executionId: restoredText(row.executionId, '', 180) } : {}),
+        ...(typeof row.observationId === 'string' ? { observationId: restoredText(row.observationId, '', 180) } : {}),
+        ...(typeof row.expectedPostcondition === 'string' ? { expectedPostcondition: restoredText(row.expectedPostcondition, '', 1024) } : {}),
+        ...(typeof row.observedPostcondition === 'string' ? { observedPostcondition: restoredText(row.observedPostcondition, '', 1024) } : {}),
+        ...(row.outcomeDirection === 'confirmed' || row.outcomeDirection === 'contradicted' ? { outcomeDirection: row.outcomeDirection } : {}),
+        ...(typeof row.confidence01 === 'number' ? { confidence01: finite(row.confidence01, 0, 0, 1) } : {}),
+        ...(typeof row.independent01 === 'number' ? { independent01: finite(row.independent01, 0, 0, 1) } : {}),
+        ...(typeof row.independentSourceCount === 'number' ? { independentSourceCount: Math.floor(finite(row.independentSourceCount, 0, 0, 32)) } : {}),
+        ...(Array.isArray(row.evidenceObservationIds) ? { evidenceObservationIds: uniqueStrings(row.evidenceObservationIds, 16) } : {}),
+        ...(Array.isArray(row.sourceIds) ? { sourceIds: uniqueStrings(row.sourceIds, 16) } : {}),
+        ...(Array.isArray(row.sourceClasses) ? { sourceClasses: [...new Set(row.sourceClasses.filter((value): value is SharedFutureEvidenceSourceClass =>
+          value === 'os' || value === 'device' || value === 'user' || value === 'external-api' || value === 'world'
+        ))].slice(0, 16) } : {}),
+        ...(Array.isArray(row.independenceKeys) ? { independenceKeys: uniqueStrings(row.independenceKeys, 16) } : {}),
+      };
+      const independentlyVerified = claimedAuthority === 'independent-external' && row.independentlyVerified === true &&
+        typeof validateIndependentlyVerifiedOutcome === 'function' &&
+        (() => { try { return validateIndependentlyVerifiedOutcome(candidate) === true; } catch { return false; } })();
+      candidate.independentlyVerified = independentlyVerified;
+      if (claimedAuthority === 'independent-external' && !independentlyVerified) candidate.authority = 'restored-unverified';
+      seenOutcomeIds.add(id);
+      seenOutcomeConsequences.add(targetKey);
+      outcomes.push(candidate);
     }
     this.state = {
       ...base,
@@ -523,6 +653,15 @@ export class SharedFutureEngine {
       irreversible: row.irreversible === true,
       pointOfNoReturnId: typeof row.pointOfNoReturnId === 'string' ? row.pointOfNoReturnId.slice(0, 96) : null,
       compensationPlan: restoredText(row.compensationPlan, '', MAX_TEXT),
+      actionBinding: (() => {
+        if (!isRecord(row.actionBinding)) return null;
+        const decisionId = restoredId(row.actionBinding.decisionId, '');
+        const toolId = restoredText(row.actionBinding.toolId, '', 64);
+        const consequenceId = restoredId(row.actionBinding.consequenceId, '');
+        const expectedPostcondition = restoredText(row.actionBinding.expectedPostcondition, '', 1024);
+        if (!decisionId || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{1,63}$/.test(toolId) || !consequenceId || !expectedPostcondition) return null;
+        return { decisionId, toolId, consequenceId, expectedPostcondition };
+      })(),
       proposedAt: timestamp(row.proposedAt, 0),
       confirmedAt: row.confirmedAt === null ? null : timestamp(row.confirmedAt, 0),
       confirmedBy: row.confirmedBy === 'user' ? 'user' : row.confirmedBy === 'system' ? 'system' : null,
@@ -727,6 +866,7 @@ export class SharedFutureEngine {
         : null;
       if (pointOfNoReturnId && !point) throw new Error('point-of-no-return-not-found');
       const irreversible = input.irreversible === true || Boolean(point?.requiresExplicitConfirmation);
+      const actionBinding = this.parseActionBinding(input.actionBinding, scenario);
       const decision: SharedFutureDecision = {
         id,
         scenarioId,
@@ -738,6 +878,7 @@ export class SharedFutureEngine {
         irreversible,
         pointOfNoReturnId,
         compensationPlan: textField(input.compensationPlan ?? point?.compensationPlan ?? '', 'decision-compensation-plan', MAX_TEXT, false),
+        actionBinding,
         proposedAt: timestamp(input.at, Date.now()),
         confirmedAt: null,
         confirmedBy: null,
@@ -989,7 +1130,8 @@ export class SharedFutureEngine {
         brierScore01: Math.round(((forecastProbability01 - target) ** 2) * 1e12) / 1e12,
         evidenceRef,
         reportedBy: actor,
-        // A source reference is retained for audit; it is not independently verified here.
+        authority: actor === 'user' ? 'user-report' : 'system-report',
+        // A caller-supplied source reference is not an independent verification.
         independentlyVerified: false,
       };
       this.state.outcomes = [...this.state.outcomes, outcome];
@@ -997,6 +1139,120 @@ export class SharedFutureEngine {
     } catch (error) {
       this.state.rejectedMutations++;
       throw error;
+    }
+  }
+
+  recordVerifiedExternalOutcome(input: SharedFutureVerifiedExternalOutcomeInput): SharedFutureVerifiedExternalOutcomeResult {
+    try {
+      const id = idField(input.id, 'verified-outcome-id');
+      const actionDecisionId = idField(input.actionDecisionId, 'verified-action-decision-id');
+      const toolId = textField(input.toolId, 'verified-action-tool-id', 64);
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{1,63}$/.test(toolId)) throw new Error('verified-action-tool-id-invalid');
+      const executionId = textField(input.executionId, 'verified-action-execution-id', 180);
+      const observationId = textField(input.observationId, 'verified-action-observation-id', 180);
+      const expectedPostcondition = textField(input.expectedPostcondition, 'verified-expected-postcondition', 1024);
+      const observedPostcondition = textField(input.observedPostcondition, 'verified-observed-postcondition', 1024);
+      if (input.direction !== 'confirmed' && input.direction !== 'contradicted') throw new Error('verified-outcome-direction-invalid');
+      const expectedCanonical = this.canonicalPostcondition(expectedPostcondition);
+      const observedCanonical = this.canonicalPostcondition(observedPostcondition);
+      if (!expectedCanonical || !observedCanonical) throw new Error('verified-outcome-postcondition-invalid');
+      if (input.direction === 'confirmed' && expectedCanonical !== observedCanonical) throw new Error('verified-outcome-postcondition-mismatch');
+      if (input.direction === 'contradicted' && expectedCanonical === observedCanonical) throw new Error('verified-outcome-contradiction-not-established');
+
+      const evidence = Array.isArray(input.evidence) ? input.evidence.slice(0, 16) : [];
+      const eligibleEvidence = evidence.filter((row) => {
+        if (!row || typeof row !== 'object') return false;
+        const sourceAllowed = row.sourceClass === 'os' || row.sourceClass === 'device' ||
+          row.sourceClass === 'user' || row.sourceClass === 'external-api' || row.sourceClass === 'world';
+        const matchingAssessment = input.direction === 'confirmed'
+          ? row.assessment === 'match' && row.verified === true
+          : row.assessment === 'mismatch' && row.verified === false;
+        return sourceAllowed && matchingAssessment && Number.isFinite(row.confidence01) && row.confidence01 >= 0.72 &&
+          Boolean(String(row.observationId ?? '').trim()) && Boolean(String(row.sourceId ?? '').trim()) &&
+          Boolean(String(row.independenceKey ?? '').trim());
+      });
+      const independentByKey = new Map<string, SharedFutureVerifiedEvidenceObservation>();
+      for (const row of eligibleEvidence) {
+        const key = textField(row.independenceKey, 'verified-independence-key', 120);
+        const prior = independentByKey.get(key);
+        if (!prior || row.confidence01 > prior.confidence01) independentByKey.set(key, row);
+      }
+      const independentSourceCount = independentByKey.size;
+      const minimumIndependentSources = input.direction === 'confirmed' ? 1 : 2;
+      if (independentSourceCount < minimumIndependentSources) throw new Error('verified-outcome-independent-evidence-insufficient');
+      const confidence01 = finite(input.confidence01, 0, 0, 1);
+      const independent01 = finite(input.independent01, 0, 0, 1);
+      if (confidence01 < 0.68 || independent01 < (input.direction === 'confirmed' ? 0.5 : 1)) {
+        throw new Error('verified-outcome-confidence-insufficient');
+      }
+
+      const normalizedEvidence = [...independentByKey.values()].sort((a, b) => a.independenceKey.localeCompare(b.independenceKey));
+      const existingById = this.state.outcomes.find((row) => row.id === id);
+      if (existingById) {
+        const same = existingById.authority === 'independent-external' &&
+          existingById.actionDecisionId === actionDecisionId && existingById.actionToolId === toolId &&
+          existingById.executionId === executionId && existingById.observationId === observationId &&
+          existingById.outcomeDirection === input.direction &&
+          existingById.expectedPostcondition === expectedPostcondition &&
+          existingById.observedPostcondition === observedPostcondition &&
+          JSON.stringify(existingById.evidenceObservationIds ?? []) === JSON.stringify(normalizedEvidence.map((row) => row.observationId));
+        if (!same) throw new Error('verified-outcome-id-conflict');
+        return { recorded: true, replayed: true, independentlyVerified: existingById.independentlyVerified, outcome: structuredClone(existingById) };
+      }
+
+      const decision = this.state.decisions.find((row) => row.actionBinding?.decisionId === actionDecisionId);
+      if (!decision) throw new Error('verified-outcome-action-binding-not-found');
+      if (decision.status !== 'accepted') throw new Error('verified-outcome-decision-not-accepted');
+      const binding = decision.actionBinding!;
+      if (binding.toolId !== toolId) throw new Error('verified-outcome-action-tool-mismatch');
+      if (this.canonicalPostcondition(binding.expectedPostcondition) !== expectedCanonical) {
+        throw new Error('verified-outcome-action-postcondition-mismatch');
+      }
+      const scenario = this.requireScenario(decision.scenarioId);
+      const consequence = scenario.consequences.find((row) => row.id === binding.consequenceId);
+      if (!consequence) throw new Error('verified-outcome-consequence-not-found');
+      if (this.state.outcomes.length >= MAX_OUTCOMES) throw new Error('outcome-capacity-reached');
+      if (this.state.outcomes.some((row) => row.scenarioId === scenario.id && row.consequenceId === consequence.id)) {
+        throw new Error('outcome-already-recorded');
+      }
+
+      const forecastProbability01 = finite(consequence.probability01, 0.5, 0, 1);
+      const occurred = input.direction === 'confirmed';
+      const target = occurred ? 1 : 0;
+      const evidenceRef = 'external-observation:' + observationId;
+      const outcome: SharedFutureOutcomeRecord = {
+        id,
+        scenarioId: scenario.id,
+        consequenceId: consequence.id,
+        observedAt: timestamp(input.at, Date.now()),
+        forecastProbability01,
+        occurred,
+        brierScore01: Math.round(((forecastProbability01 - target) ** 2) * 1e12) / 1e12,
+        evidenceRef,
+        reportedBy: 'system',
+        authority: 'independent-external',
+        independentlyVerified: true,
+        sharedFutureDecisionId: decision.id,
+        actionDecisionId,
+        actionToolId: toolId,
+        executionId,
+        observationId,
+        expectedPostcondition,
+        observedPostcondition,
+        outcomeDirection: input.direction,
+        confidence01,
+        independent01,
+        independentSourceCount,
+        evidenceObservationIds: [...new Set(normalizedEvidence.map((row) => row.observationId))].slice(0, 16),
+        sourceIds: [...new Set(normalizedEvidence.map((row) => row.sourceId))].slice(0, 16),
+        sourceClasses: [...new Set(normalizedEvidence.map((row) => row.sourceClass))].slice(0, 16),
+        independenceKeys: [...new Set(normalizedEvidence.map((row) => row.independenceKey))].slice(0, 16),
+      };
+      this.state.outcomes = [...this.state.outcomes, outcome];
+      return { recorded: true, replayed: false, independentlyVerified: true, outcome: structuredClone(outcome) };
+    } catch (error) {
+      this.state.rejectedMutations++;
+      return { recorded: false, replayed: false, independentlyVerified: false, reason: reasonCode(error) };
     }
   }
 
@@ -1100,11 +1356,17 @@ export class SharedFutureEngine {
     sharedScenarios: number;
     forecasts: number;
     observedOutcomes: number;
+    independentlyVerifiedOutcomes: number;
     meanBrierScore01: number;
+    meanVerifiedBrierScore01: number;
     rejectedMutations: number;
   } {
+    const independentlyVerified = this.state.outcomes.filter((row) => row.independentlyVerified && row.authority === 'independent-external');
     const meanBrierScore01 = this.state.outcomes.length
       ? Math.round((this.state.outcomes.reduce((sum, row) => sum + row.brierScore01, 0) / this.state.outcomes.length) * 1e12) / 1e12
+      : 0;
+    const meanVerifiedBrierScore01 = independentlyVerified.length
+      ? Math.round((independentlyVerified.reduce((sum, row) => sum + row.brierScore01, 0) / independentlyVerified.length) * 1e12) / 1e12
       : 0;
     return {
       scenarios: this.state.scenarios.length,
@@ -1117,7 +1379,9 @@ export class SharedFutureEngine {
       sharedScenarios: this.state.scenarios.filter((row) => row.owner === 'shared').length,
       forecasts: this.state.scenarios.filter((row) => row.forecast !== null).length,
       observedOutcomes: this.state.outcomes.length,
+      independentlyVerifiedOutcomes: independentlyVerified.length,
       meanBrierScore01,
+      meanVerifiedBrierScore01,
       rejectedMutations: this.state.rejectedMutations,
     };
   }
@@ -1143,9 +1407,11 @@ export function registerSharedFutureTools(
   gateway: Pick<ActionGateway, 'registerTool'>,
   simulator: { sharedFuture: SharedFutureEngine },
   resolveCanonicalGoal?: (goalId: string) => boolean,
+  resolveCanonicalDecision?: (decisionId: string) => boolean,
 ): void {
   const future = simulator.sharedFuture;
   if (resolveCanonicalGoal) future.setCanonicalGoalResolver(resolveCanonicalGoal);
+  if (resolveCanonicalDecision) future.setCanonicalDecisionResolver(resolveCanonicalDecision);
   const register = (definition: ToolDefinition) => gateway.registerTool(definition);
 
   register({
