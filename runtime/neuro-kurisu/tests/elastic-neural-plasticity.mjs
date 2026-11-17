@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { ParametricPolicyLearner } from '../src/organism/learning/ParametricPolicyLearner.ts';
 import { P26TrueLearningEngine } from '../src/organism/learning/P26TrueLearningEngine.ts';
+import { P29LearningGovernanceEngine } from '../src/organism/learning/P29LearningGovernance.ts';
 
 const DIM = 18;
 const vector = (index, value = 1) => {
@@ -151,21 +152,53 @@ assert.equal(frozenResult.accepted, false);
 assert.equal(frozenResult.reason, 'policy-frozen');
 assert.deepEqual(frozen.snapshot().weights, frozenBefore.weights);
 
+const p29 = new P29LearningGovernanceEngine();
 const p26 = new P26TrueLearningEngine();
-const p26Result = p26.trainFeaturesElastic({
+const p26Input = {
   sampleId: 'p26-elastic-train-001',
   features: vector(0),
   action: 'respond',
   target01: 1,
   learningRate01: .25,
-}, options({
-  trainingSampleId: 'p26-elastic-train-001',
-}));
-assert.equal(p26Result.accepted, true, 'P26 must expose the same selective update path');
+};
+const p26Options = options({ trainingSampleId: p26Input.sampleId });
+const p26Result = p26.trainFeaturesElastic(p26Input, p26Options, p29);
+assert.equal(p26Result.accepted, true, 'P26 must commit through the canonical P29 learning arbiter');
 const p26State = p26.snapshot();
 assert.equal(p26State.metrics.onlineUpdates, 1);
 assert.equal(p26State.metrics.independentHoldoutSamples, 0, 'local holdout pairs must not forge independent evidence');
 assert.notEqual(p26State.policy.weights.respond[0], 0);
 assert.equal(p26State.policy.elasticNeuralPlasticity.acceptedUpdates, 1);
+assert.equal(p29.snapshot().acceptedUpdates, 1, 'P29 must account for the accepted elastic policy change');
+assert.equal(p29.snapshot().provenance.at(-1).source, 'p26-policy');
+assert.equal(p29.snapshot().provenance.at(-1).accepted, true);
 
+// A training sample may be consumed only once, even when the same call is replayed.
+const duplicate = p26.trainFeaturesElastic(p26Input, p26Options, p29);
+assert.equal(duplicate.accepted, false);
+assert.equal(duplicate.reason, 'duplicate-training-sample');
+assert.equal(p26.snapshot().metrics.onlineUpdates, 1, 'duplicate evidence must not train twice');
+
+// The last accepted elastic change has a durable, one-shot rollback snapshot.
+const beforeRollback = p26.snapshot().policy.weights.respond[0];
+const rolledBack = p26.rollbackElasticPlasticity('respond', p29);
+assert.equal(rolledBack.rolledBack, true);
+assert.equal(p26.snapshot().policy.weights.respond[0], 0);
+assert.notEqual(beforeRollback, 0);
+assert.equal(p29.snapshot().provenance.at(-1).reason, 'elastic-plasticity-rollback');
+
+// P29 exhaustion must fail closed before candidate weights mutate.
+const deniedGovernance = new P29LearningGovernanceEngine();
+deniedGovernance.setResourceBudget(0, 0);
+const deniedEngine = new P26TrueLearningEngine();
+const deniedBefore = deniedEngine.snapshot();
+const denied = deniedEngine.trainFeaturesElastic({
+  ...p26Input,
+  sampleId: 'p26-elastic-budget-denied',
+}, options({ trainingSampleId: 'p26-elastic-budget-denied' }), deniedGovernance);
+assert.equal(denied.accepted, false);
+assert.equal(denied.reason, 'governance-budget-rejected');
+assert.deepEqual(deniedEngine.snapshot().policy.weights, deniedBefore.policy.weights);
+assert.equal(deniedEngine.snapshot().metrics.onlineUpdates, 0);
+assert.equal(deniedGovernance.snapshot().rejectedUpdates, 1);
 console.log('ELASTIC_NEURAL_PLASTICITY=PASS sparse=1 protected=3 retentionGate=PASS leakageGate=PASS persistence=PASS frozen=PASS');
