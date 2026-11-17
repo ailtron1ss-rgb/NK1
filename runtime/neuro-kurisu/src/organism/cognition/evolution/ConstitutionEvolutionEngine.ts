@@ -69,7 +69,7 @@ const MAX_REVISIONS = 32;
 const MAX_PROPOSALS = 64;
 const MAX_REVIEWS_PER_PROPOSAL = 4;
 const MAX_EVIDENCE_REFS_PER_REVIEW = 12;
-const MAX_AUDIT_EVIDENCE_REFS = MAX_REVIEWS_PER_PROPOSAL * MAX_EVIDENCE_REFS_PER_REVIEW; + 1;
+const MAX_AUDIT_EVIDENCE_REFS = MAX_REVIEWS_PER_PROPOSAL * MAX_EVIDENCE_REFS_PER_REVIEW + 1;
 const MAX_AUDIT_EVENTS = 256;
 const stable = (v: unknown): string => {
   if (v === null || typeof v !== 'object') return JSON.stringify(v) ?? 'null';
