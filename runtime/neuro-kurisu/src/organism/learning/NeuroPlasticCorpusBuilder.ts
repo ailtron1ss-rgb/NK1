@@ -198,8 +198,9 @@ export function toNeuroPlasticJsonl(
   corpus: NeuroPlasticTrainingCorpus,
   split: 'train' | 'validation',
 ): string {
-  if (!corpus || corpus.schemaVersion !== 1 || !Array.isArray(corpus[split])) {
+  const rows = split === 'train' ? corpus?.training : corpus?.validation;
+  if (!corpus || corpus.schemaVersion !== 1 || !Array.isArray(rows)) {
     throw new Error('neuro-plastic-corpus-split-invalid');
   }
-  return serializeRows(split === 'train' ? corpus.training : corpus.validation);
+  return serializeRows(rows);
 }
