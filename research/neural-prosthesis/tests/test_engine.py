@@ -57,6 +57,7 @@ class NeuralProsthesisEngineTests(unittest.TestCase):
             layer_path="layers",
         )
         self.bank.add_adapter("kurisu-reasoning-v1", layer_indices=[1], bottleneck_size=4)
+        self.bank.eval()
 
     def tearDown(self):
         self.bank.close()
@@ -82,6 +83,7 @@ class NeuralProsthesisEngineTests(unittest.TestCase):
 
     def test_residual_is_bounded_and_adapter_contexts_are_isolated(self):
         self.bank.add_adapter("kurisu-style-v1", layer_indices=[0, 2], bottleneck_size=3)
+        self.bank.eval()
         sample = torch.randn(2, 4, 8)
         base, _ = self.model(sample)
         for adapter_id in ("kurisu-reasoning-v1", "kurisu-style-v1"):
