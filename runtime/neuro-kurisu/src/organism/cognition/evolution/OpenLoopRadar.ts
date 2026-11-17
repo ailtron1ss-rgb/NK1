@@ -108,24 +108,29 @@ function normalizeRecord(value: unknown): OpenLoopRecord | null {
   const expiresAt = expiresInput == null ? null : time(expiresInput);
   if ((dueInput != null && dueAt === null) || (expiresInput != null && expiresAt === null) ||
       (dueAt !== null && expiresAt !== null && expiresAt < dueAt)) return null;
-  const closureEvidence = normalizeEvidence(ownData(value, 'closureEvidence'));
-  if (status === 'fulfilled' && !closureEvidence) return null;
+  const rawClosureEvidence = ownData(value, 'closureEvidence');
+  const closureEvidence = normalizeEvidence(rawClosureEvidence);
+  if (status === 'fulfilled' && (!closureEvidence ||
+      closureEvidence.verifiedAt < createdAt || closureEvidence.verifiedAt > updatedAt)) return null;
+  if (status !== 'fulfilled' && rawClosureEvidence != null) return null;
   const cancellationReason = text(ownData(value, 'cancellationReason'), 240) || null;
   if (status === 'cancelled' && !cancellationReason) return null;
+  if (status !== 'cancelled' && cancellationReason !== null) return null;
+  if (updatedAt < createdAt) return null;
+  const lastSurfacedRaw = ownData(value, 'lastSurfacedAt');
+  const lastSurfacedAt = lastSurfacedRaw == null ? 0 : time(lastSurfacedRaw);
+  const unblockedRaw = ownData(value, 'unblockedAt');
+  const unblockedAt = unblockedRaw == null ? 0 : time(unblockedRaw);
+  if (lastSurfacedAt === null || unblockedAt === null ||
+      lastSurfacedAt > updatedAt || unblockedAt > updatedAt ||
+      (status === 'blocked' && unblockedAt > 0)) return null;
 
   return {
     id, title, description: text(ownData(value, 'description')), kind, owner, status,
-    createdAt, updatedAt,
-    dueAt: time(ownData(value, 'dueAt')),
-    expiresAt: time(ownData(value, 'expiresAt')),
-    dependencies,
+    createdAt, updatedAt, dueAt, expiresAt, dependencies,
     priority: clamp01(ownData(value, 'priority')),
     source: text(ownData(value, 'source'), 120) || 'unknown',
-    accepted: true,
-    closureEvidence,
-    cancellationReason,
-    lastSurfacedAt: time(ownData(value, 'lastSurfacedAt')) ?? 0,
-    unblockedAt: time(ownData(value, 'unblockedAt')) ?? 0,
+    accepted: true, closureEvidence, cancellationReason, lastSurfacedAt, unblockedAt,
   };
 }
 export function defaultOpenLoopRadarState(): OpenLoopRadarState {
@@ -179,7 +184,10 @@ export class OpenLoopRadar {
     const records = [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
     const maxSequence = records.reduce((max, record) => {
       const match = /^open-loop-\d+-(\d+)$/.exec(record.id);
-      return match ? Math.max(max, Number(match[1]) || 0) : max;
+      if (!match) return max;
+      const parsed = Number(match[1]);
+      if (!Number.isSafeInteger(parsed)) throw new Error('open-loop-sequence-invalid');
+      return Math.max(max, parsed);
     }, 0);
     const suppliedSequence = ownData(value, 'sequence');
     const sequence = typeof suppliedSequence === 'number' && Number.isSafeInteger(suppliedSequence) && suppliedSequence >= 0

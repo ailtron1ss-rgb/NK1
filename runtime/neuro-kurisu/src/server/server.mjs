@@ -557,13 +557,13 @@ async function route(req, res) {
                 });
                 return json(res, 201, { ok: true, record, accepted: true });
             } catch (error) {
-                const message = String(error?.message || error).replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
+                const message = String(error?.message || error).slice(0, 180);
                 const status = /capacity|unknown-dependency|sequence-exhausted/.test(message) ? 409 : 400;
                 return json(res, status, { ok: false, error: message });
             }
         }
 
-        const openLoopAction = /^\\/api\\/organism\\/open-loops\\/([^/]+)\\/(complete|cancel|reopen|surface)$/.exec(url.pathname);
+        const openLoopAction = new RegExp('^/api/organism/open-loops/([^/]+)/(complete|cancel|reopen|surface)$').exec(url.pathname);
         if (req.method === 'POST' && openLoopAction) {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
@@ -603,7 +603,7 @@ async function route(req, res) {
                 await runtime.acknowledgeOpenLoopSurfaced(id);
                 return json(res, 200, { ok: true, acknowledged: true, id });
             } catch (error) {
-                const message = String(error?.message || error).replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
+                const message = String(error?.message || error).slice(0, 180);
                 const status = /not-found/.test(message) ? 404
                     : /already-closed|blocked|capacity|not-reopenable|not-ready-to-surface/.test(message) ? 409 : 400;
                 return json(res, status, { ok: false, error: message });

@@ -110,6 +110,17 @@ assert.equal(inputGetterCalls, 0, 'register must not execute caller-provided get
 
 const invalidStateRadar = new OpenLoopRadar(() => now);
 assert.throws(() => invalidStateRadar.restore({ version: 99, records: [] }), /open-loop-state-invalid-or-unsupported/);
+const malformedFulfillment = {
+  ...before.records[0], id: 'bad-closure-time', dependencies: [], status: 'fulfilled',
+  closureEvidence: {
+    kind: 'user-confirmation', reference: 'bad-evidence',
+    verifiedAt: before.records[0].createdAt - 1,
+  },
+};
+const rejectBadClosure = new OpenLoopRadar(() => now);
+rejectBadClosure.restore({ version: 1, sequence: 0, records: [malformedFulfillment] });
+assert.equal(rejectBadClosure.snapshot().records.length, 0,
+  'restored completion evidence must not predate the obligation');
 
 const capacityRadar = new OpenLoopRadar(() => now);
 for (let index = 0; index < 512; index++) {
