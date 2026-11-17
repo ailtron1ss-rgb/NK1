@@ -34,10 +34,12 @@ untrusted proposal data.
 3. An action present in both allow and deny lists makes the contract incomplete;
    denial always wins at the gate.
 4. Expected outcome, acceptance criteria, explicit action scope and stop
-   conditions are required before approval.
+   conditions are required before approval. Truncated or malformed lists are
+   explicitly reported as missing/incomplete rather than silently shortened.
 5. Assumptions with material impact or confidence below 0.8 must be explicitly
-   acknowledged at approval time. An assumption is never silently promoted to a
-   user-confirmed fact.
+   acknowledged at approval time. Unknown severity is conservatively elevated to
+   high and malformed assumption records block approval; assumptions are never
+   silently promoted to user-confirmed facts.
 6. Risk classification is conservative. Deterministic destructive, external
    mutation and credential-exfiltration signals can raise risk; a semantic
    extractor cannot downgrade them. English and Russian high-risk terms, including credential-exfiltration
