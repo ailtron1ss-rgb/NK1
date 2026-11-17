@@ -46,9 +46,12 @@ assert.equal(radar.scan({ now, quietUntil: now + 60_000, reminderCooldownMs: 0 }
 
 radar.markSurfaced(dependent.id);
 assert.equal(radar.scan({ now, reminderCooldownMs: 60_000 }).find(x => x.record.id === dependent.id)?.shouldSurface, false);
+assert.equal(radar.snapshot().records.find(x => x.id === dependent.id)?.status, 'open',
+  'display acknowledgement must not imply task completion');
 const before = radar.snapshot();
+radar.fulfill(dependent.id, { kind: 'user-confirmation', reference: 'done', verifiedAt: now });
 assert.throws(() => radar.fulfill(dependent.id, {
-  kind: 'user-confirmation', reference: 'done', verifiedAt: now,
+  kind: 'user-confirmation', reference: 'done-again', verifiedAt: now,
 }), /open-loop-already-closed/);
 
 const restored = new OpenLoopRadar(() => now);
