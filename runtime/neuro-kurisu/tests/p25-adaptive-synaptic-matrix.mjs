@@ -198,7 +198,7 @@ const request = (overrides = {}) => ({
     validation: {
       ...manifest().validation,
       reportId: 'holdout-biology-2026-11',
-      reportSha256: hash('g'),
+      reportSha256: hash('7'),
       holdoutDatasetRef: 'dataset://biology/holdout-v2',
     },
   }), () => true);
@@ -206,7 +206,7 @@ const request = (overrides = {}) => ({
     validation: {
       ...manifest().validation,
       reportId: 'holdout-physics-v2-2026-11',
-      reportSha256: hash('h'),
+      reportSha256: hash('8'),
       holdoutDatasetRef: 'dataset://physics/holdout-v4',
     },
   }), () => true);
