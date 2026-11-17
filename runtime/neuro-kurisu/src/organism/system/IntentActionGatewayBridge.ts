@@ -8,6 +8,12 @@ export interface IntentGatewayPort {
     reason: string,
     options?: ActionGatewayExecutionOptions,
   ): Promise<ToolExecution>;
+  reconcileToolExecution?(
+    id: string,
+    input: Record<string, unknown>,
+    reason: string,
+    options?: ActionGatewayExecutionOptions,
+  ): Promise<ToolExecution>;
 }
 export interface IntentBoundAction {
   toolId: string;
@@ -18,6 +24,9 @@ export interface IntentBoundAction {
 export type IntentBridgeResult =
   | { executed: true; contractId: string; result: ToolExecution }
   | { executed: false; contractId: string | null; reason: string };
+export type IntentBridgeReconciliationResult =
+  | { reconciled: true; contractId: string; result: ToolExecution }
+  | { reconciled: false; contractId: string | null; reason: string };
 
 /**
  * Mandatory intent boundary for callers that want to dispatch a tool through
@@ -55,5 +64,38 @@ export class IntentActionGatewayBridge {
       action.options,
     );
     return { executed: true, contractId: gate.contractId, result };
+  }
+
+  /**
+   * Receipt recovery is deliberately a separate, read-only route. It may use an
+   * expired-but-authentic intent approval because the operation cannot start a
+   * side effect; ActionGateway still enforces the original idempotency receipt and
+   * its separate one-shot reconciliation approval for protected tools.
+   */
+  async reconcile(
+    contract: IntentContract,
+    action: IntentBoundAction,
+    gateway: IntentGatewayPort,
+  ): Promise<IntentBridgeReconciliationResult> {
+    const gate = this.compiler.gate(contract, action?.toolId, 'reconcile');
+    if (!gate.allowed) {
+      return { reconciled: false, contractId: null, reason: gate.reason };
+    }
+    if (!action || !action.input || typeof action.input !== 'object' || Array.isArray(action.input)) {
+      return { reconciled: false, contractId: gate.contractId, reason: 'invalid-action-input' };
+    }
+    if (typeof action.reason !== 'string' || !action.reason.trim()) {
+      return { reconciled: false, contractId: gate.contractId, reason: 'execution-reason-required' };
+    }
+    if (!gateway || typeof gateway.reconcileToolExecution !== 'function') {
+      return { reconciled: false, contractId: gate.contractId, reason: 'action-gateway-reconciliation-unavailable' };
+    }
+    const result = await gateway.reconcileToolExecution(
+      gate.action,
+      action.input,
+      action.reason,
+      action.options,
+    );
+    return { reconciled: true, contractId: gate.contractId, result };
   }
 }
