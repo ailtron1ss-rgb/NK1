@@ -22,7 +22,7 @@ An invalid or unsupported outer snapshot fails closed. Restore reads only own da
 The radar is connected to the existing `OrganismRuntime` spontaneous-dialogue path; it does not create a competing scheduler or force a new conversation by itself.
 - When an existing autonomous social initiative is selected, the runtime scans for one actionable accepted obligation and reserves at most one item for that initiative.
 - The reservation is persisted before language generation, suppresses duplicate surfacing, and carries a bounded 15-minute default lease.
-- A generated message receives only a privacy-sanitized title/type/reason projection. The prompt frames it as an optional check-in, not authorization or evidence of completion.
+- A generated message receives only a privacy-sanitized title/type/reason/owner projection. User-owned items are framed as user-accepted follow-ups; system-owned items are framed as the organism's own previously accepted intentions, never falsely attributed to the user. The prompt frames either as an optional check-in, not authorization or evidence of completion.
 - If generation or message staging fails, the reservation is released. An abandoned reservation expires after its lease so the obligation becomes eligible again after restart.
 - The existing `POST /api/organism/proactive-message/ack` delivery acknowledgement also acknowledges the matching open-loop reservation and starts its reminder cooldown.
 - Fulfilling, cancelling, reopening or snoozing a reserved obligation clears the reservation.

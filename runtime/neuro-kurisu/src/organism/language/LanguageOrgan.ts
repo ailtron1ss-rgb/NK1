@@ -111,6 +111,7 @@ export function buildCognitivePrompt(cycle: OrganismCycleResult, worldFacts: str
  */
 export interface AutonomousOpenLoopPromptContext {
   title: string;
+  owner?: 'user' | 'system';
   kind?: string;
   surfaceReason?: 'overdue' | 'due-soon' | 'dependency-unblocked' | 'expired';
   overdueMs?: number;
@@ -136,6 +137,7 @@ export function buildAutonomousDialoguePrompt(
   const safeOpenLoopTitle = openLoopContext
     ? sanitizeAutonomousTopicText(openLoopContext.title, 180)
     : null;
+  const safeOpenLoopOwner = openLoopContext?.owner === 'system' ? 'system' : 'user';
   const safeOpenLoopKind = openLoopContext?.kind && /^[a-z_]{1,32}$/.test(openLoopContext.kind)
     ? openLoopContext.kind
     : 'task';
@@ -174,7 +176,7 @@ Title: ${safeOpenLoopTitle}
 Kind: ${safeOpenLoopKind}
 Surfacing reason: ${safeOpenLoopReason}
 ${safeOpenLoopOverdueDays > 0 ? `It is overdue by approximately ${safeOpenLoopOverdueDays} day(s).\n` : ''}
-Mention it naturally only if it fits the conversation. Ask whether the user still wants to revisit or continue it. Never claim it is complete, do not pressure the user, and do not execute it. A reminder is not authorization to take action.`,
+${safeOpenLoopOwner === 'user'\n  ? 'This is a user-owned commitment the user explicitly accepted. Mention it naturally only if it fits the conversation, and ask whether the user still wants to revisit or continue it.'\n  : 'This is your own system-owned follow-up that was explicitly accepted into the shared obligation registry. Do not imply the user assigned it. If it fits, say briefly that you had wanted to return to it, then ask whether it is still useful in the current context.'}\nNever claim the item is complete, do not pressure the user, and do not execute it. A reminder is not authorization to take action.`,
     }] : []),
     {
       id: 'chosen-inner-topic', slot: 'user', priority: 'critical', required: true,

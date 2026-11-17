@@ -37,7 +37,7 @@ assert.ok(prompt.contextLedger);
 
 const openLoopPrompt = buildAutonomousDialoguePrompt(
   cycle, initiative, [], undefined, '', [], '',
-  { title: 'Revisit the NK1 causal-memory validation', kind: 'task', surfaceReason: 'overdue', overdueMs: 86_400_000 },
+  { title: 'Revisit the NK1 causal-memory validation', owner: 'user', kind: 'task', surfaceReason: 'overdue', overdueMs: 86_400_000 },
 );
 assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
   /Revisit the NK1 causal-memory validation/,
@@ -45,6 +45,19 @@ assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
 assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
   /ask whether it is still relevant|ask whether the user still wants to revisit/i,
   'the model must treat the obligation as a gentle check-in, not an order');
+assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
+  /user-owned commitment the user explicitly accepted/i,
+  'user-owned commitments must be framed as user-agreed follow-ups');
+const systemOwnedPrompt = buildAutonomousDialoguePrompt(
+  cycle, initiative, [], undefined, '', [], '',
+  { title: 'Revisit the internal predictive-memory experiment', owner: 'system', kind: 'project_step', surfaceReason: 'dependency-unblocked' },
+);
+assert.match(`${systemOwnedPrompt.system}\\n${systemOwnedPrompt.user}`,
+  /your own system-owned follow-up/i,
+  'system-owned obligations must be framed as the organism own accepted follow-up');
+assert.doesNotMatch(`${systemOwnedPrompt.system}\\n${systemOwnedPrompt.user}`,
+  /the user explicitly accepted|the user assigned it/i,
+  'system-owned obligations must not be falsely attributed to the user');
 assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
   /must not claim it is complete|never claim it is complete/i,
   'the prompt must not imply an unfinished commitment was completed');

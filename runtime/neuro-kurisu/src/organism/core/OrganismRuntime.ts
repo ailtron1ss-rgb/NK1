@@ -840,6 +840,7 @@ export class OrganismRuntime {
             openLoopReservation = { id: reserved.id, initiativeId: autonomousAgenda.id };
             openLoopPromptContext = {
               title: reserved.title,
+              owner: reserved.owner,
               kind: reserved.kind,
               surfaceReason: dueCandidate.surfaceReason ?? undefined,
               overdueMs: dueCandidate.overdueMs,
