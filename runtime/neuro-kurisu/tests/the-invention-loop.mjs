@@ -4,6 +4,7 @@ import { TheInventionLoop } from '../src/organism/research/TheInventionLoop.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { canonicalOutcomePayload } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { EvidenceResearchSubsystemRuntime } from '../src/organism/core/EvidenceResearchSubsystemRuntime.ts';
+import { OrganismSystemFabric } from '../src/organism/core/OrganismSystemFabric.ts';
 
 const digest = (value) => createHash('sha256').update(String(value)).digest('hex');
 function canonical(value) {
@@ -285,6 +286,19 @@ assert.equal(
   runtime.inventionLoop.recordOutcome(
     runtimeRecord.id,
     signedArtifact(runtimeRecord, 'primary', 60),
+  ).stage,
+  'tested',
+);
+
+// The canonical seven-system composition root forwards host key authority to research.
+const fabric = new OrganismSystemFabric({ inventionVerifierKeyResolver: resolveKey });
+const fabricRecord = startInvention(fabric.research.inventionLoop, {
+  ...protocol, testFingerprint: digest('fabric-manifest'), primarySeed: 62,
+});
+assert.equal(
+  fabric.research.inventionLoop.recordOutcome(
+    fabricRecord.id,
+    signedArtifact(fabricRecord, 'primary', 62),
   ).stage,
   'tested',
 );
