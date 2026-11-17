@@ -147,6 +147,15 @@ const dialogueObligation = initiativeRadar.register({
 const initiativeId = 'soc:open-loop:contract:001';
 const reserved = initiativeRadar.reserveForInitiative(dialogueObligation.id, initiativeId);
 assert.equal(reserved.pendingSurfacingInitiativeId, initiativeId);
+const duplicateInitiativeCandidate = initiativeRadar.register({
+  title: 'Another accepted follow-up for reservation uniqueness', kind: 'task', owner: 'user',
+  accepted: true, source: 'initiative-uniqueness-test', dueAt: now - 1,
+});
+assert.throws(
+  () => initiativeRadar.reserveForInitiative(duplicateInitiativeCandidate.id, initiativeId),
+  /open-loop-initiative-already-bound/,
+  'one proactive initiative must own at most one open-loop reservation',
+);
 assert.equal(initiativeRadar.scan({ now, reminderCooldownMs: 0 })
   .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, false,
   'one proactive initiative reservation must suppress duplicate surfacing');
