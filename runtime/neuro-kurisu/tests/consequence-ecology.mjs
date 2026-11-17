@@ -17,6 +17,7 @@ const node = (id, effect, probability01, impact01, confidence01, extra = {}) => 
   basis: extra.basis ?? 'internal-model',
   ...(extra.evidenceRefs ? { evidenceRefs: extra.evidenceRefs } : {}),
   ...(extra.assumptionRefs ? { assumptionRefs: extra.assumptionRefs } : {}),
+  ...(extra.baselineProbability01 !== undefined ? { baselineProbability01: extra.baselineProbability01 } : {}),
 });
 const edge = (id, from, to, extra = {}) => ({
   id,
@@ -27,6 +28,7 @@ const edge = (id, from, to, extra = {}) => ({
   strength01: extra.strength01 ?? 0.9,
   confidence01: extra.confidence01 ?? 0.9,
   delayDays: extra.delayDays ?? 0,
+  ...(extra.independenceGroup ? { independenceGroup: extra.independenceGroup } : {}),
 });
 const option = (id, action, nodes, edges) => ({ id, title: id, action, nodes, edges });
 
