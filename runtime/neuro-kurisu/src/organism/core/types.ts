@@ -403,6 +403,7 @@ export interface AdvancedDevelopmentFacet {
   p67AutonomousGoalGenesis: import('../developmental/P67AutonomousGoalGenesis.ts').P67State;
   p68GoalEcology: import('../developmental/P68GoalEcology.ts').P68State;
   p69ConstitutionalArbiter: import('../cognition/P69ConstitutionalArbiter.ts').P69State;
+  constitutionEvolution?: import('../cognition/evolution/ConstitutionEvolutionEngine.ts').ConstitutionEvolutionSnapshot;
   p70MemoryLifecycleGovernor: import('../developmental/P70MemoryLifecycleGovernor.ts').P70State;
   p71SelfConsistency: import('../cognition/P71SelfConsistencyModel.ts').P71State;
   p72LifeCycle: import('../system/P72LifeCycleOrchestrator.ts').P72State;
