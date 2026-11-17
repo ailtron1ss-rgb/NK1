@@ -186,6 +186,7 @@ export class OrganismRuntime {
     activationSteeringApplied:0,
     residualBlockApplied:0,
     lastTick:-1,
+    lastNeuralSnapshotVersion:null as number|null,
     lastNeuralSnapshotTick:null as number|null,
     lastNeuralSnapshotAgeTicks:null as number|null,
     lastMode:'uninitialized' as CognitiveNeuralControlProfile['mode']|'uninitialized',
@@ -665,6 +666,7 @@ export class OrganismRuntime {
     const selectedGoal = cycle.goals.find(goal => goal.id === selected?.goalId);
     const needs = cycle.state.needs;
     const neuralInput:CognitiveNeuralBridgeNeuralInput = {
+      version:neuralSnapshot.version,
       tick:neuralSnapshot.tick,
       predictionError01:neuralSnapshot.predictionError01,
       plasticity01:neuralSnapshot.plasticity01,
@@ -708,6 +710,7 @@ export class OrganismRuntime {
     if(profile.neuralSnapshotAvailable)this.cognitiveToNeuralBridgeMetrics.neuralSnapshotsAvailable+=1;
     else this.cognitiveToNeuralBridgeMetrics.neuralSnapshotsUnavailable+=1;
     this.cognitiveToNeuralBridgeMetrics.lastTick=profile.tick;
+    this.cognitiveToNeuralBridgeMetrics.lastNeuralSnapshotVersion=profile.neuralSnapshotVersion;
     this.cognitiveToNeuralBridgeMetrics.lastNeuralSnapshotTick=profile.neuralSnapshotTick;
     this.cognitiveToNeuralBridgeMetrics.lastNeuralSnapshotAgeTicks=profile.neuralSnapshotAgeTicks;
     this.cognitiveToNeuralBridgeMetrics.lastMode=profile.mode;
@@ -728,6 +731,7 @@ export class OrganismRuntime {
         adapterHint:profile.adapterHint,
         neuralSource:profile.neuralSource,
         neuralSnapshotAvailable:profile.neuralSnapshotAvailable,
+        neuralSnapshotVersion:profile.neuralSnapshotVersion,
         neuralSnapshotTick:profile.neuralSnapshotTick,
         neuralSnapshotAgeTicks:profile.neuralSnapshotAgeTicks,
         temperature:profile.temperature,
