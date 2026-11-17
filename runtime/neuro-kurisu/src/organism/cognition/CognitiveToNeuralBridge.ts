@@ -23,7 +23,7 @@ const safeTick=(value:unknown):number|null=>typeof value==='number'&&Number.isSa
 const isAction=(value:unknown):value is ActionKind=>typeof value==='string'&&ACTIONS.includes(value as ActionKind);
 const isMode=(value:unknown):value is CognitiveBridgeMode=>typeof value==='string'&&MODES.includes(value as CognitiveBridgeMode);
 
-const FEATURE_KEYS=[
+export const COGNITIVE_NEURAL_FEATURE_KEYS=[
   'action.respond','action.explore','action.verify','action.rest','action.reflect','action.wait','action.defer',
   'organism.motivation01','organism.uncertainty01','organism.urgency01','organism.budgetRemaining01','organism.attention01',
   'neural.predictionError01','neural.plasticity01','neural.neuromodulation01','neural.sparseActivity01',
@@ -196,7 +196,7 @@ export class CognitiveToNeuralBridge {
       tick,action,mode,adapterHint:ADAPTER_BY_MODE[mode],
       neuralSource:neuralSnapshotAvailable?'b365-unified-neuro-causal-core':'unavailable',
       neuralSnapshotAvailable,neuralSnapshotTick,neuralSnapshotAgeTicks,
-      featureKeys:[...FEATURE_KEYS],
+      featureKeys:[...COGNITIVE_NEURAL_FEATURE_KEYS],
       featureVector01,temperature,maxTokens,steeringIntent01,
       controlsConfigured:{
         samplingParameters:true,
