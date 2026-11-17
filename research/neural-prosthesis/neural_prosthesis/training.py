@@ -18,12 +18,29 @@ MAX_EVALUATION_EXAMPLES = 5_000
 _DATASET_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
+def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"dataset-json-duplicate-key:{key}")
+        result[key] = value
+    return result
+
+
+def _dataset_source(path: str | Path) -> Path:
+    source = Path(path).expanduser()
+    try:
+        if not source.is_file() or source.stat().st_size > MAX_DATASET_BYTES:
+            raise ValueError("dataset-missing-or-too-large")
+    except OSError as error:
+        raise ValueError("dataset-missing-or-too-large") from error
+    return source
+
+
 def read_jsonl(path: str | Path, *, max_examples: int = MAX_EXAMPLES) -> list[dict[str, str]]:
     if type(max_examples) is not int or not 1 <= max_examples <= MAX_EXAMPLES:
         raise ValueError("dataset-example-limit-invalid")
-    source = Path(path).expanduser().resolve()
-    if not source.is_file() or source.stat().st_size > MAX_DATASET_BYTES:
-        raise ValueError("dataset-missing-or-too-large")
+    source = _dataset_source(path).resolve()
     examples: list[dict[str, str]] = []
     with source.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
@@ -32,7 +49,7 @@ def read_jsonl(path: str | Path, *, max_examples: int = MAX_EXAMPLES) -> list[di
             if len(examples) >= max_examples:
                 raise ValueError("dataset-example-limit-exceeded")
             try:
-                row = json.loads(line)
+                row = json.loads(line, object_pairs_hook=_reject_duplicate_json_keys)
             except json.JSONDecodeError as error:
                 raise ValueError(f"dataset-json-invalid-line-{line_number}") from error
             if not isinstance(row, dict) or set(row) - {"prompt", "completion", "id"}:
@@ -49,13 +66,25 @@ def read_jsonl(path: str | Path, *, max_examples: int = MAX_EXAMPLES) -> list[di
 
 
 def dataset_fingerprint(path: str | Path) -> str:
-    digest = hashlib.sha256()
-    with Path(path).expanduser().open("rb") as handle:
-        while True:
-            chunk = handle.read(1024 * 1024)
-            if not chunk:
-                break
-            digest.update(chunk)
+    source = _dataset_source(path)
+    try:
+        initial = source.stat()
+        digest = hashlib.sha256()
+        total_bytes = 0
+        with source.open("rb") as handle:
+            while True:
+                chunk = handle.read(1024 * 1024)
+                if not chunk:
+                    break
+                total_bytes += len(chunk)
+                if total_bytes > MAX_DATASET_BYTES:
+                    raise ValueError("dataset-missing-or-too-large")
+                digest.update(chunk)
+        final = source.stat()
+    except OSError as error:
+        raise ValueError("dataset-missing-or-too-large") from error
+    if total_bytes != initial.st_size or final.st_size != initial.st_size or final.st_mtime_ns != initial.st_mtime_ns:
+        raise ValueError("dataset-changed-while-fingerprinting")
     return digest.hexdigest()
 
 
