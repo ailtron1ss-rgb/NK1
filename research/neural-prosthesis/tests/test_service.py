@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import tempfile
 import threading
 import unittest
 from types import SimpleNamespace
