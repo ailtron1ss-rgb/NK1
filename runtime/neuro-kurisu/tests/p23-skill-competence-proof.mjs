@@ -413,7 +413,7 @@ const deniedCases = [
     payloadFingerprint: candidate.payloadFingerprint,
   } }],
   ['wrong-input-contract', { inputContract: {
-    ...inputContract, properties: { query: { type: 'string', maxLength: 4 } },
+    ...inputContract, properties: { query: { type: 'string', maxLength: 10 } },
   } }],
   ['tampered-signature', { proof: {
     ...activeProof, signature: activeProof.signature.slice(0, -4) + 'AAAA',
