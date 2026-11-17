@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 
+// Use an explicit test source identity outside GitHub Actions.
+process.env.NK1_SOURCE_COMMIT ??= 'a'.repeat(40);
+
 let engineImportError;
 const engine = await import('../src/organism/system/ArchitectureMorphogenesisEngine.ts').catch(error => {
   engineImportError = error;
