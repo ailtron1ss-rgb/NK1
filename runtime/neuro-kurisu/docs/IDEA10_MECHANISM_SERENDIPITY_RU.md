@@ -26,3 +26,11 @@ IntrinsicExperimentGenerator.fromMechanismDiscovery переводит приг�
 
 - Для живого intake `OrganismSystemFabric` читает только bounded-агрегаты владельцев (ограниченный memory sample до 160 записей, ошибка предсказания, остаток бюджета, evidence debt) и owner-binding probes; полный memory/world snapshot и health snapshot не клонируются ради поиска.
 - Structural similarity, confidence и transferability — эвристические ранжировщики, не вероятности причинной истинности. Подтверждение требует независимого baseline/holdout-эксперимента, проверки побочных эффектов и rollback.
+
+
+## Автоматический verification intake
+- `OrganismCore.observe()` запускает read-only discovery каждые 8 тиков при включённом scientific method — с тем же cadence, что и исследовательская подсистема.
+- Новые `mechanism-serendipity` candidates добавляются в `persisted.facets.memory.experiments` и event log ровно один раз. Pending-кандидат остаётся в очереди между тиками до создания scientific project.
+- Механизм конкурирует с intrinsic и dream задачами по expected information gain; срочная intrinsic неопределённость/ошибка/новизна сохраняет приоритет.
+- При создании scientific project в lineage включаются mechanism ID, исходный и целевой домены и ограниченный набор структурных correspondences. Scientific project запускает только `verify`-план; исполнитель действий и ActionGateway не получают новых разрешений.
+- `organismMechanismExperimentQueue()` предоставляет bounded read-only обзор ожидающих гипотез для диагностики и тестов.
