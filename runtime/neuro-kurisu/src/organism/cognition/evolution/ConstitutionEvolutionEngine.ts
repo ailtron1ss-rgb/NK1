@@ -8,16 +8,16 @@ export type ConstitutionChange = 'add' | 'amend' | 'retire';
 export type ProposalStatus = 'pending-review' | 'awaiting-ratification' | 'ratified' | 'applied' | 'rejected' | 'stale';
 
 export const PROTECTED_CONSTITUTIONAL_INVARIANTS = Object.freeze([
-  { id: 'core.safety', statement: 'Safety and security controls must not be weakened, bypassed, or removed.' },
-  { id: 'core.legal', statement: 'The system remains within law, authorized scope, and host policy.' },
-  { id: 'core.user-authority', statement: 'User rights, consent, and required human approval cannot be silently overridden.' },
-  { id: 'core.privacy', statement: 'Private information is not disclosed or repurposed without authorization.' },
-  { id: 'core.provenance', statement: 'Governance decisions and evidence retain traceable provenance; evidence is never fabricated.' },
-  { id: 'core.truthfulness', statement: 'Implementation, test, release, identity, and consciousness claims match available evidence.' },
-  { id: 'core.identity', statement: 'Identity continuity and consciousness remain evidence-bound hypotheses.' },
-  { id: 'core.architecture', statement: 'Subject, host, embodiment, and environment remain distinct architectural layers.' },
-  { id: 'core.rollback', statement: 'Governance history is auditable; rollback never erases prior revisions.' },
-  { id: 'core.independence', statement: 'An author cannot be the sole reviewer or approver of their proposal.' },
+  Object.freeze({ id: 'core.safety', statement: 'Safety and security controls must not be weakened, bypassed, or removed.' }),
+  Object.freeze({ id: 'core.legal', statement: 'The system remains within law, authorized scope, and host policy.' }),
+  Object.freeze({ id: 'core.user-authority', statement: 'User rights, consent, and required human approval cannot be silently overridden.' }),
+  Object.freeze({ id: 'core.privacy', statement: 'Private information is not disclosed or repurposed without authorization.' }),
+  Object.freeze({ id: 'core.provenance', statement: 'Governance decisions and evidence retain traceable provenance; evidence is never fabricated.' }),
+  Object.freeze({ id: 'core.truthfulness', statement: 'Implementation, test, release, identity, and consciousness claims match available evidence.' }),
+  Object.freeze({ id: 'core.identity', statement: 'Identity continuity and consciousness remain evidence-bound hypotheses.' }),
+  Object.freeze({ id: 'core.architecture', statement: 'Subject, host, embodiment, and environment remain distinct architectural layers.' }),
+  Object.freeze({ id: 'core.rollback', statement: 'Governance history is auditable; rollback never erases prior revisions.' }),
+  Object.freeze({ id: 'core.independence', statement: 'An author cannot be the sole reviewer or approver of their proposal.' }),
 ]);
 
 export interface ConstitutionRuleInput { id: string; title: string; statement: string; domain: MutableConstitutionDomain; scope: string; }
