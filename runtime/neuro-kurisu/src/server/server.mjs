@@ -2449,7 +2449,7 @@ async function shutdown() {
     await NEURAL_PROSTHESIS_SIDECAR.stop().catch(() => false);
     await lock.release().catch(() => { });
     server.close(() => process.exit(0));
-    setTimeout(() => process.exit(0), 3000).unref();
+    setTimeout(() => process.exit(0), NEURAL_PROSTHESIS_AUTOSTART ? 10000 : 3000).unref();
 }
 process.on('SIGINT', () => void shutdown());
 process.on('SIGTERM', () => void shutdown());
