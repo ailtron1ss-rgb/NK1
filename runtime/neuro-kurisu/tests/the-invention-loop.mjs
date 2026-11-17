@@ -84,7 +84,7 @@ function signedArtifact(record, phase, seed, options = {}) {
     phase,
     protocolFingerprint: protocolFingerprint(record.protocol),
     prototypeSha256: record.prototypeSha256,
-    testFingerprint: phaseTestFingerprint,
+    testFingerprint: options.testFingerprint ?? phaseTestFingerprint,
     environmentId: options.environmentId ?? 'environment-' + phase + '-' + seed,
     observed,
     evidenceSha256,
@@ -192,6 +192,12 @@ assert.throws(
     environmentId: 'environment-new-duplicate-seed',
   })),
   /duplicate-seed/,
+);
+assert.throws(
+  () => loop.recordOutcome(p.id, signedArtifact(p, 'holdout', 23, {
+    testFingerprint: p.protocol.testFingerprint,
+  })),
+  /attestation-context-mismatch/,
 );
 
 // Holdout has a different verifier and isolated environments and seed cohort.
