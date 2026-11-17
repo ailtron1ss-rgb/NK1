@@ -467,7 +467,10 @@ assert.equal(captureRuntime.capturedInventionsSnapshot()[0].inventionId, coreReg
 const pendingAgain = captureRuntime.captureGeneratedExperiment({
   ...nativeExperiment,
   id: nativeExperiment.id + '-pending',
+  hypothesis: nativeExperiment.hypothesis + ' Pending-policy validation variant.',
 }, preexistingProject.id, 102);
+assert.notEqual(pendingAgain.id, captured.id,
+  'a materially different hypothesis must not reuse the already-preregistered capture');
 assert.equal(pendingAgain.status, 'awaiting-preregistration');
 captureRuntime.markCapturePreregistrationFailure(pendingAgain.id, new Error('missing-evaluator-policy'));
 assert.equal(
