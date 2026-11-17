@@ -94,7 +94,7 @@ export interface CognitiveNeuralControlProfile {
     persistence01:number;
     verification01:number;
   };
-  controlsApplied:{
+  controlsConfigured:{
     samplingParameters:true;
     adapterSelection:false;
     activationSteering:false;
@@ -198,7 +198,7 @@ export class CognitiveToNeuralBridge {
       neuralSnapshotAvailable,neuralSnapshotTick,neuralSnapshotAgeTicks,
       featureKeys:[...FEATURE_KEYS],
       featureVector01,temperature,maxTokens,steeringIntent01,
-      controlsApplied:{
+      controlsConfigured:{
         samplingParameters:true,
         adapterSelection:false,
         activationSteering:false,
