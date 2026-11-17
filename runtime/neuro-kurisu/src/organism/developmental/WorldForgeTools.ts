@@ -1,7 +1,7 @@
-import { randomInt } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import type { ActionGateway, ToolDefinition } from '../system/ActionGateway.ts';
 import type { FutureSimulator } from './FutureSimulator.ts';
-import type { WorldForgeAction, WorldForgeCase, WorldForgeSplit } from './WorldForge.ts';
+import type { WorldForgeAction, WorldForgeCase } from './WorldForge.ts';
 
 const MAX_SCENARIOS = 512;
 const MAX_SESSIONS = 2048;
@@ -109,10 +109,11 @@ export class WorldForgeToolAdapter {
       },
       execute: async (input) => {
         this.prune();
-        const split = input.split as WorldForgeSplit;
+        const split = input.split;
+        if (split !== 'train' && split !== 'validation') throw new Error('worldforge-runtime-split-forbidden');
         const count = input.count as number;
         const difficulty01 = input.difficulty01 as number;
-        const seed = randomInt(0, 0x1_0000_0000);
+        const seed = randomBytes(4).readUInt32BE(0);
         const scenarios = this.#simulator.generateWorldForgeScenarios({ split, seed, count, difficulty01 });
         for (const scenario of scenarios) this.rememberScenario(scenario);
         return resultEnvelope({
