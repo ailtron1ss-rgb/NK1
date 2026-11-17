@@ -153,7 +153,8 @@ try {
   assert.equal(recovered.language?.text, 'base response');
   assert.equal(adapterCalls, 5);
   assert.equal(baseCalls, 5, 'adapter loader failure must execute the original base invoker exactly once');
-  assert.ok(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures >= 2);
+  assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1,
+    'the explicit activation immediately before this call resets the prior failure streak');
 
   await stopRuntime(runtime);
   runtime = makeRuntime();
