@@ -211,7 +211,7 @@ export class OpenLoopRadar {
     const dependencies = [...new Set((input.dependencies ?? []).map(value => {
       if (typeof value !== 'string' || !value.trim()) throw new TypeError('dependency ids must be non-empty strings');
       return value.trim().slice(0, 128);
-    }))].slice(0, MAX_DEPENDENCIES);
+    }))];
     if (dependencies.length > MAX_DEPENDENCIES) throw new RangeError('too-many-open-loop-dependencies');
     for (const dependency of dependencies) {
       if (!this.state.records.some(record => record.id === dependency)) throw new Error('unknown-dependency:' + dependency);
