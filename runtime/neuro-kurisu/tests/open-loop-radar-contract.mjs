@@ -162,7 +162,7 @@ assert.equal(initiativeRadar.scan({ now, reminderCooldownMs: 0 })
 
 const restoredInitiativeRadar = new OpenLoopRadar(() => now);
 restoredInitiativeRadar.restore(initiativeRadar.snapshot());
-assert.equal(restoredInitiativeRadar.snapshot().records[0].pendingSurfacingInitiativeId, initiativeId,
+assert.equal(restoredInitiativeRadar.snapshot().records.find(record => record.id === dialogueObligation.id)?.pendingSurfacingInitiativeId, initiativeId,
   'pending initiative ownership must survive restart');
 assert.equal(restoredInitiativeRadar.releaseInitiative('wrong-initiative'), false);
 assert.throws(() => restoredInitiativeRadar.reserveForInitiative(dialogueObligation.id, 'soc:open-loop:contract:002'),
@@ -176,7 +176,7 @@ restoredInitiativeRadar.reserveForInitiative(dialogueObligation.id, secondInitia
 assert.equal(restoredInitiativeRadar.acknowledgeInitiative(secondInitiativeId), true);
 assert.equal(restoredInitiativeRadar.acknowledgeInitiative(secondInitiativeId), false,
   'delivered initiative acknowledgement must be idempotent');
-assert.equal(restoredInitiativeRadar.snapshot().records[0].lastSurfacedAt, now);
+assert.equal(restoredInitiativeRadar.snapshot().records.find(record => record.id === dialogueObligation.id)?.lastSurfacedAt, now);
 assert.equal(restoredInitiativeRadar.scan({ now, reminderCooldownMs: 60_000 })
   .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, false,
   'delivered proactive reminder must respect a positive reminder cooldown');
@@ -272,6 +272,58 @@ assert.equal(retainedIds.has(dependentOfTerminal.id), true,
   'capacity pruning must not remove active obligations');
 assert.equal(retainedIds.has(evictableTerminal.id), false,
   'only unreferenced terminal history may be evicted when the registry is full');
+
+const transitiveCapacityRadar = new OpenLoopRadar(() => now);
+const chainRoot = transitiveCapacityRadar.register({
+  title: 'Transitive root prerequisite', kind: 'task', owner: 'system',
+  accepted: true, source: 'transitive-capacity-test',
+});
+const chainMiddle = transitiveCapacityRadar.register({
+  title: 'Terminal prerequisite depending on root', kind: 'task', owner: 'system',
+  accepted: true, source: 'transitive-capacity-test', dependencies: [chainRoot.id],
+});
+const chainLeaf = transitiveCapacityRadar.register({
+  title: 'Active obligation depending on terminal chain', kind: 'task', owner: 'system',
+  accepted: true, source: 'transitive-capacity-test', dependencies: [chainMiddle.id],
+});
+transitiveCapacityRadar.fulfill(chainRoot.id, {
+  kind: 'execution-receipt', reference: 'transitive-root-receipt', verifiedAt: now,
+});
+transitiveCapacityRadar.fulfill(chainMiddle.id, {
+  kind: 'execution-receipt', reference: 'transitive-middle-receipt', verifiedAt: now,
+});
+const disposableAncestor = transitiveCapacityRadar.register({
+  title: 'Unreferenced terminal record', kind: 'task', owner: 'system',
+  accepted: true, source: 'transitive-capacity-test',
+});
+transitiveCapacityRadar.fulfill(disposableAncestor.id, {
+  kind: 'execution-receipt', reference: 'disposable-history-receipt', verifiedAt: now,
+});
+for (let index = 0; index < 508; index += 1) {
+  transitiveCapacityRadar.register({
+    title: 'Transitive capacity item ' + index, kind: 'task', owner: 'system',
+    accepted: true, source: 'transitive-capacity-test',
+  });
+}
+assert.equal(transitiveCapacityRadar.snapshot().records.length, 512);
+transitiveCapacityRadar.register({
+  title: 'New work after transitive-safe pruning', kind: 'task', owner: 'system',
+  accepted: true, source: 'transitive-capacity-test',
+});
+const transitiveAfterPrune = transitiveCapacityRadar.snapshot();
+const transitiveRetainedIds = new Set(transitiveAfterPrune.records.map(record => record.id));
+assert.equal(transitiveAfterPrune.records.length, 512);
+assert.equal(transitiveRetainedIds.has(chainLeaf.id), true);
+assert.equal(transitiveRetainedIds.has(chainMiddle.id), true,
+  'terminal prerequisites directly referenced by active work must be retained');
+assert.equal(transitiveRetainedIds.has(chainRoot.id), true,
+  'terminal ancestors of a protected prerequisite must also be retained');
+assert.equal(transitiveRetainedIds.has(disposableAncestor.id), false,
+  'only terminal records outside every active dependency ancestry may be pruned');
+const transitiveRestored = new OpenLoopRadar(() => now);
+transitiveRestored.restore(transitiveAfterPrune);
+assert.equal(transitiveRestored.snapshot().records.length, 512,
+  'capacity pruning must preserve a snapshot that can be restored without losing active dependency chains');
 
 const detached = restored.snapshot();
 detached.records[0].title = 'tampered';

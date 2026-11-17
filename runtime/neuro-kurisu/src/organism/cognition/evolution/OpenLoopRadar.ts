@@ -286,15 +286,27 @@ export class OpenLoopRadar {
       if (typeof value !== 'string' || !value.trim()) throw new TypeError('dependency ids must be non-empty strings');
       return value.trim().slice(0, 128);
     }))];
-    const protectedTerminalIds = new Set(
-      this.state.records.filter(record => !TERMINAL.has(record.status)).flatMap(record => record.dependencies),
-    );
+    // Protect the full dependency ancestry of every active obligation. A terminal
+    // prerequisite can itself depend on another terminal record; pruning that
+    // transitive ancestor would make the active obligation unrestorable.
+    const recordsById = new Map(this.state.records.map(record => [record.id, record]));
+    const protectedDependencyIds = new Set<string>();
+    const dependencyQueue = this.state.records
+      .filter(record => !TERMINAL.has(record.status))
+      .flatMap(record => record.dependencies);
+    while (dependencyQueue.length > 0) {
+      const dependencyId = dependencyQueue.pop()!;
+      if (protectedDependencyIds.has(dependencyId)) continue;
+      protectedDependencyIds.add(dependencyId);
+      const dependency = recordsById.get(dependencyId);
+      if (dependency) dependencyQueue.push(...dependency.dependencies);
+    }
     if (idempotencyKey) {
       const existing = this.state.records.find(record => record.idempotencyKey === idempotencyKey);
       if (existing) {
         const ageMs = now - existing.updatedAt;
         const keyStillRetained = !TERMINAL.has(existing.status) || ageMs < IDEMPOTENCY_RETENTION_MS ||
-          protectedTerminalIds.has(existing.id);
+          protectedDependencyIds.has(existing.id);
         if (keyStillRetained) {
           const sameRequest = existing.title === title && existing.description === description &&
             existing.kind === kind && existing.owner === owner && existing.dueAt === dueAt &&
@@ -315,7 +327,7 @@ export class OpenLoopRadar {
     // when admission would exceed the bounded record capacity.
     let retained = this.state.records.filter(record =>
       !TERMINAL.has(record.status) ||
-      protectedTerminalIds.has(record.id) ||
+      protectedDependencyIds.has(record.id) ||
       record.idempotencyKey === null ||
       now - record.updatedAt < IDEMPOTENCY_RETENTION_MS,
     );
@@ -323,7 +335,7 @@ export class OpenLoopRadar {
       const evictable = retained
         .filter(record =>
           TERMINAL.has(record.status) &&
-          !protectedTerminalIds.has(record.id) &&
+          !protectedDependencyIds.has(record.id) &&
           (record.idempotencyKey === null || now - record.updatedAt >= IDEMPOTENCY_RETENTION_MS),
         )
         .sort((a, b) =>
@@ -470,6 +482,10 @@ export class OpenLoopRadar {
       throw new RangeError('open-loop-initiative-lease-out-of-range');
     }
     const now = this.safeNow();
+    const initiativeBoundElsewhere = this.state.records.find(item =>
+      item.id !== id && item.pendingSurfacingInitiativeId === normalizedInitiativeId,
+    );
+    if (initiativeBoundElsewhere) throw new Error('open-loop-initiative-already-bound');
     if (record.pendingSurfacingInitiativeId !== null && record.pendingSurfacingLeaseUntil > now) {
       if (record.pendingSurfacingInitiativeId === normalizedInitiativeId) return structuredClone(record);
       throw new Error('open-loop-initiative-already-bound');
