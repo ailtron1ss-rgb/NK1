@@ -714,6 +714,15 @@ export class SubstrateIndependenceEngine {
     proceduralSkills: unknown;
   }): PortableCognitiveTransferV1 {
     if (!(input.sourceBackendId === null || isSafeId(input.sourceBackendId))) fail('transfer-source-backend-invalid');
+    if (input.sourceBackendId === 'deterministic-policy-fallback') fail('transfer-source-is-not-a-model-substrate');
+    if (input.sourceBackendId !== null) {
+      const sourceProfile = this.profiles.get(input.sourceBackendId);
+      if (!sourceProfile) fail('transfer-source-profile-unavailable');
+      const currentProfileDigest = profileDigest(sourceProfile);
+      if (this.state.activeBackendId === input.sourceBackendId && this.state.activeProfileDigest !== currentProfileDigest) {
+        fail('transfer-source-profile-drift');
+      }
+    }
     if (!Number.isFinite(input.capturedAt) || input.capturedAt <= 0) fail('transfer-capture-time-invalid');
     if (input.organism === null || input.world === null) fail('transfer-canonical-state-missing');
     const payload: PortableCognitivePayloadV1 = {
