@@ -60,6 +60,10 @@ const approved = compiler.approve(contract, {
   evidenceRef: 'user-confirmation:intent:test:bounded',
 });
 assert.equal(compiler.gate(approved, 'organism.inspect').allowed, true);
+assert.equal(Object.isFrozen(approved), true, 'approved contract root must be immutable');
+assert.equal(Object.isFrozen(approved.permissions.allowedActions), true, 'permission scope must be immutable');
+const persistedApproved = JSON.parse(JSON.stringify(approved));
+assert.equal(new IntentCompiler({ clock: () => now, approvalKey: 'test-only-intent-approval-key-32-bytes-minimum' }).gate(persistedApproved, 'organism.inspect').allowed, true, 'the same managed key must validate a serialized contract after restore');
 const forgedApproved = { ...approved, goal: { ...approved.goal, text: 'Forged goal' } };
 assert.equal(compiler.gate(forgedApproved, 'organism.inspect').allowed, false, 'a structurally forged contract must not be accepted as compiler-issued');
 assert.equal(new IntentCompiler().gate(approved, 'organism.inspect').allowed, false, 'ephemeral compiler keys must not authenticate persisted approvals');
@@ -114,6 +118,10 @@ const defaultLineage = await bridge.execute(approved, {
   return { ok: true, verified: true, tool: 'organism.inspect', outcomeClass: 'executed-verified' };
 } });
 assert.equal(defaultLineage.executed, true);
+const noGateway = await bridge.execute(approved, {
+  toolId: 'organism.inspect', input: { scope: 'project' }, reason: 'missing-gateway',
+}, null);
+assert.equal(noGateway.executed, false, 'missing gateway adapter must fail closed');
 
 const realGateway = new ActionGateway();
 let realExecutions = 0;
