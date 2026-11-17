@@ -14,6 +14,7 @@ export * from './cognition/ValuePlasticity.ts';
 export * from './cognition/SelfAuthorship.ts';
 export * from './cognition/SensorimotorLoop.ts';
 export * from './cognition/IntrinsicExperimentGenerator.ts';
+export * from './research/MechanismSerendipityEngine.ts';
 export * from './cognition/OfflineConsolidation.ts';
 export * from './memory/EventSourcing.ts';
 export * from './memory/MultiTimescaleMemory.ts';
