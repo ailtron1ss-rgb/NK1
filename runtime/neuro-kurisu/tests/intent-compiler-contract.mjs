@@ -104,6 +104,21 @@ const malformedRisk = compiler.compile({
 assert.ok(malformedRisk.missingInformation.includes('invalid-risk-level'),
   'unknown risk labels must not be silently interpreted as low risk');
 assert.equal(compiler.gate(malformedRisk, 'organism.inspect').allowed, false);
+const malformedNestedExtraction = compiler.compile({
+  text: 'Inspect project',
+  extraction: {
+    goal: 42,
+    expectedOutcome: 'Status',
+    acceptanceCriteria: ['Return status'],
+    constraints: 'Do not modify files',
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop if status is unavailable'],
+  },
+});
+assert.ok(malformedNestedExtraction.missingInformation.includes('goal-invalid'));
+assert.ok(malformedNestedExtraction.missingInformation.includes('constraints-invalid'));
+assert.equal(compiler.gate(malformedNestedExtraction, 'organism.inspect').allowed, false,
+  'malformed nested extraction objects must not be silently replaced by defaults');
 
 const processScopedCompiler = new IntentCompiler({ clock: () => now });
 const processScopedContract = processScopedCompiler.compile({
