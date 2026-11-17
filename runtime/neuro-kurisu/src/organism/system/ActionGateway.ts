@@ -240,6 +240,12 @@ export interface ActionUndoFirstPreparationContext extends ToolExecutionContext 
 export interface ActionUndoFirstDefinition {
   /** Must not mutate the primary target; it may create a bounded recovery artifact with provider-managed expiry. */
   prepare:(input:Record<string,unknown>,context:ActionUndoFirstPreparationContext)=>Promise<ActionUndoFirstPreparation>|ActionUndoFirstPreparation;
+  /**
+   * Idempotently releases an auxiliary recovery artifact when validation or receipt
+   * admission rejects the action before the pending persister is invoked. Never
+   * delete the primary target or an artifact whose receipt-write outcome is unknown.
+   */
+  discardPrepared?:(recoveryArtifactRef:string,context:ActionUndoFirstPreparationContext)=>Promise<void>|void;
 }
 export interface ActionUndoExecutionOptions {
   compensationApprovalId?:string;
@@ -257,6 +263,10 @@ export interface ActionUndoExecutionResult {
   compensation?:ToolExecution;
   postcondition?:ToolExecution;
 }
+type PendingReceiptAdmission =
+  | {status:'admitted'}
+  | {status:'rejected-before-persist';response:ToolExecution}
+  | {status:'persist-outcome-unknown';response:ToolExecution};
 
 function isPlainRecord(value:unknown):value is Record<string,unknown> {
   if(!value || typeof value!=='object' || Array.isArray(value)) return false;
@@ -831,6 +841,42 @@ export class ActionGateway {
     }
   }
 
+  private preparedArtifactRef(preparation:unknown):string|undefined {
+    try {
+      if(!preparation || typeof preparation!=='object') return undefined;
+      const descriptor=Object.getOwnPropertyDescriptor(preparation,'recoveryArtifactRef');
+      const candidate=descriptor && 'value' in descriptor ? descriptor.value : undefined;
+      return typeof candidate==='string' && candidate.trim() && candidate.length<=1024 && !/[\\u0000-\\u001f\\u007f]/.test(candidate) ? candidate : undefined;
+    } catch { return undefined; }
+  }
+
+  private async discardPreparedUndoArtifact(
+    definition:ToolDefinition,
+    recoveryArtifactRef:string|undefined,
+    context:ActionUndoFirstPreparationContext,
+  ):Promise<{disposition:'not-applicable'|'provider-ttl-fallback'|'released'|'release-failed';error?:string}> {
+    if(!recoveryArtifactRef) return {disposition:'not-applicable'};
+    const discard=definition.undoFirst?.discardPrepared;
+    if(!discard) return {disposition:'provider-ttl-fallback'};
+    try {
+      await discard(recoveryArtifactRef,structuredClone(context));
+      return {disposition:'released'};
+    } catch(error) {
+      return {disposition:'release-failed',error:String((error as Error)?.message??'artifact-cleanup-failed').replace(/[\\r\\n\\t]+/g,' ').slice(0,160)};
+    }
+  }
+
+  private withArtifactDisposition(
+    response:ToolExecution,
+    disposition:{disposition:string;error?:string},
+  ):ToolExecution {
+    return {
+      ...response,
+      result:{...response.result,recoveryArtifactDisposition:disposition.disposition,...(disposition.error?{recoveryArtifactCleanupError:disposition.error}:{})},
+      audit:{...response.audit,result:(response.audit.result??'') + '; recovery-artifact-' + disposition.disposition},
+    };
+  }
+
   private normalizeUndoFirstPlan(id:string,raw:ActionUndoFirstPreparation,context:ActionUndoFirstPreparationContext,options:ActionGatewayExecutionOptions):{plan?:ActionUndoFirstPlan;failure?:'undo-plan-invalid'|'undo-policy-refused'} {
     try {
       if(!raw || typeof raw!=='object' || !['rollback','compensate','manual','irreversible'].includes(String(raw.strategy))) return {failure:'undo-plan-invalid'};
@@ -1062,35 +1108,54 @@ export class ActionGateway {
       catch(error) {
         return this.result(id,definition.capability,'undo-preparation-failed','undo-preparation-failed',context.executionId,{error:'undo-preparation-failed',reason:String((error as Error)?.message??'preparation-error').slice(0,160)},'Undo-First preparation failed before executor entry; the primary side effect was not started');
       }
+      const recoveryArtifactRef=this.preparedArtifactRef(preparation);
       const normalized=this.normalizeUndoFirstPlan(id,preparation,context,options);
-      if(normalized.failure) return this.result(id,definition.capability,normalized.failure,normalized.failure,context.executionId,{error:normalized.failure},'the proposed recovery plan failed validation or policy before executor entry');
+      if(normalized.failure) {
+        const failure=this.result(id,definition.capability,normalized.failure,normalized.failure,context.executionId,{error:normalized.failure},'the proposed recovery plan failed validation or policy before executor entry');
+        return this.withArtifactDisposition(failure,await this.discardPreparedUndoArtifact(definition,recoveryArtifactRef,context));
+      }
       undoPlan=normalized.plan;
+      const pending:ActionExecutionLedgerEntry={keyHash,requestHash,status:'pending',recordedAt:Date.now(),executionId:this.executionIdForKey(keyHash),toolId:id,decisionId:options.decisionId,autonomous:Boolean(options.autonomous),...(undoPlan?{undoPlan}:{})};
+      const admission=await this.admitPendingReceipt(pending,id);
+      if(admission.status!=='admitted') {
+        const disposition=admission.status==='rejected-before-persist'
+          ? await this.discardPreparedUndoArtifact(definition,recoveryArtifactRef,context)
+          : {disposition:recoveryArtifactRef?'retained-after-ambiguous-persist':'not-applicable'};
+        return this.withArtifactDisposition(admission.response,disposition);
+      }
+      return this.executeWithLedger(id,input,reason,pending,options);
     }
-    const pending:ActionExecutionLedgerEntry={keyHash,requestHash,status:'pending',recordedAt:Date.now(),executionId:this.executionIdForKey(keyHash),toolId:id,decisionId:options.decisionId,autonomous:Boolean(options.autonomous),...(undoPlan?{undoPlan}:{})};
-    const admissionResult=await this.admitPendingReceipt(pending,id);
-    if(admissionResult) return admissionResult;
+    const pending:ActionExecutionLedgerEntry={keyHash,requestHash,status:'pending',recordedAt:Date.now(),executionId:this.executionIdForKey(keyHash),toolId:id,decisionId:options.decisionId,autonomous:Boolean(options.autonomous)};
+    const admission=await this.admitPendingReceipt(pending,id);
+    if(admission.status!=='admitted') return admission.response;
     return this.executeWithLedger(id,input,reason,pending,options);
   }
 
   /** Serialize capacity checks and pending-record commits across distinct keys. */
-  private async admitPendingReceipt(pending:ActionExecutionLedgerEntry,id:string):Promise<ToolExecution|null> {
+  private async admitPendingReceipt(pending:ActionExecutionLedgerEntry,id:string):Promise<PendingReceiptAdmission> {
     let release!:()=>void;
     const previous=this.ledgerAdmissionTail;
     this.ledgerAdmissionTail=new Promise<void>(resolve=>{release=resolve;});
     await previous;
     try {
       try { await this.makeLedgerRoom(); }
-      catch { return this.result(id,'unknown','idempotency-storage-failed','idempotency-storage-failed',`exec-${randomUUID()}`,{error:'idempotency-archive-write-failed'},'could not archive a prior receipt; refusing to execute a side effect'); }
+      catch {
+        return {status:'rejected-before-persist',response:this.result(id,'unknown','idempotency-storage-failed','idempotency-storage-failed','exec-' + randomUUID(),{error:'idempotency-archive-write-failed'},'could not archive a prior receipt; refusing to execute a side effect')};
+      }
       if(this.executionLedger.size>=this.maxIdempotencyRecords) {
-        return this.result(id,'unknown','idempotency-ledger-full','idempotency-ledger-full',`exec-${randomUUID()}`,{error:'idempotency-ledger-full'},'ledger is full and no durable archive is available; refusing to discard prior keys or execute a side effect');
+        return {status:'rejected-before-persist',response:this.result(id,'unknown','idempotency-ledger-full','idempotency-ledger-full','exec-' + randomUUID(),{error:'idempotency-ledger-full'},'ledger is full and no durable archive is available; refusing to discard prior keys or execute a side effect')};
       }
       this.executionLedger.set(pending.keyHash,pending);
       try { await this.persistExecutionLedger(); }
       catch {
-        this.executionLedger.delete(pending.keyHash);
-        return this.result(id,'unknown','idempotency-storage-failed','idempotency-storage-failed',`exec-${randomUUID()}`,{error:'idempotency-storage-failed'},'execution was not started because the pending receipt could not be persisted');
+        // A rejected persister promise is not proof that the write did not commit:
+        // it may have durably stored the pending receipt and then lost its ACK.
+        // Keep the in-memory tombstone, try one idempotent checkpoint retry, and
+        // forbid same-process re-execution until authoritative reconciliation.
+        try { await this.persistExecutionLedger(); } catch { /* retain the in-memory pending receipt */ }
+        return {status:'persist-outcome-unknown',response:this.result(id,'unknown','idempotency-storage-failed','idempotency-storage-failed',pending.executionId??this.executionIdForKey(pending.keyHash),{error:'idempotency-storage-failed'},'pending receipt persistence outcome is ambiguous; the side effect was not entered and the recovery artifact is retained')};
       }
-      return null;
+      return {status:'admitted'};
     } finally { release(); }
   }
 
