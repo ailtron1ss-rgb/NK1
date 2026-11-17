@@ -370,7 +370,7 @@ export function inheritDevelopmentalGenome(
   if (!parent || !Array.isArray(changes) || changes.length === 0) {
     throw new Error('Inheritance requires a parent genome and at least one trait patch');
   }
-  const parentReport = evaluateDevelopmentalGenome(parent, parent.lineage.generation > 0 ? parent : undefined);
+  const parentReport = evaluateDevelopmentalGenome(parent);
   if (parentReport.status === 'BLOCKED') {
     throw new Error('Cannot inherit from a blocked genome: ' + parentReport.violations.map(issue => issue.code).join(','));
   }
