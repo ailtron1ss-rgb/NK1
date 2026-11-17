@@ -8,7 +8,8 @@
   - Builds an immutable, versioned contract from the verbatim request and an optional upstream semantic extraction.
   - Hash-binds the complete interpretation, constraints, risk, stop conditions and explicit permissions into a stable contract identity.
   - Requires expected outcome, acceptance criteria, an explicit tool allow-list and stop conditions before approval.
-  - Tracks incomplete/truncated requests, extractor failures, conflicting permissions, malformed assumptions and malformed/wildcard action identifiers; bounded lists are never silently accepted after truncation.
+  - Tracks incomplete/truncated requests, extractor failures/timeouts, conflicting permissions, malformed assumptions and malformed/wildcard action identifiers; bounded lists are never silently accepted after truncation.
+  - Bounds semantic extraction latency (default 10 seconds, maximum 60 seconds) and aborts stalled providers where supported.
   - Uses multilingual deterministic risk escalators for destructive, mutating and credential-exfiltration intent; upstream metadata cannot downgrade detected risk.
   - Requires explicit acknowledgement of material assumptions and separate acknowledgement for high/critical intent; unknown assumption severity is escalated rather than defaulted to low.
   - HMAC-attests approval to the exact contract and permission subset; approvals expire after a bounded TTL.
