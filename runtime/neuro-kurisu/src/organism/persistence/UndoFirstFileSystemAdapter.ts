@@ -446,8 +446,19 @@ export class UndoFirstFileSystemAdapter {
       linked = true;
       await unlink(temporary);
       await syncDirectory(dirname(target));
-      const { digest: _preparedDigest, ...artifactCore } = artifact;
-      await this.persistArtifact({ ...artifactCore, status: 'committed' });
+      const artifactCore: FileArtifactCore = {
+        version: artifact.version,
+        artifactId: artifact.artifactId,
+        executionId: artifact.executionId,
+        relativePath: artifact.relativePath,
+        contentHash: artifact.contentHash,
+        byteLength: artifact.byteLength,
+        beforeStateHash: artifact.beforeStateHash,
+        afterStateHash: artifact.afterStateHash,
+        createdAt: artifact.createdAt,
+        status: 'committed',
+      };
+      await this.persistArtifact(artifactCore);
     } catch (error) {
       await unlink(temporary).catch(cleanupError => { if (!isNotFound(cleanupError)) throw cleanupError; });
       if (!linked) {
