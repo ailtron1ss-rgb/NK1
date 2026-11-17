@@ -25,6 +25,7 @@ MAX_MANIFEST_BYTES = 64 * 1024
 MAX_WEIGHTS_BYTES = 512 * 1024 * 1024
 ADAPTER_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+IMMUTABLE_REVISION = re.compile(r"^(?:[0-9a-f]{40}|sha256:[0-9a-f]{64})$")
 
 
 class ArtifactError(ValueError):
@@ -284,6 +285,8 @@ class NeuralProsthesisBank(nn.Module):
     def save_adapter(self, adapter_id: str, destination: str | Path) -> dict[str, Any]:
         if adapter_id not in self.adapters:
             raise ArtifactError("adapter-not-loaded")
+        if not IMMUTABLE_REVISION.fullmatch(self.model_revision):
+            raise ArtifactError("adapter-export-requires-immutable-base-model-revision")
         target = Path(destination).expanduser()
         if target.exists():
             raise ArtifactError("adapter-destination-already-exists")
@@ -298,6 +301,8 @@ class NeuralProsthesisBank(nn.Module):
                 key: tensor.detach().to(device="cpu", dtype=torch.float32).contiguous()
                 for key, tensor in modules.state_dict().items()
             }
+            if any(not torch.isfinite(tensor).all().item() for tensor in state.values()):
+                raise ArtifactError("adapter-export-nonfinite-weights")
             weights_path = temp_dir / "adapter.safetensors"
             save_file(state, str(weights_path))
             manifest: dict[str, Any] = {
@@ -357,6 +362,8 @@ class NeuralProsthesisBank(nn.Module):
             raise ArtifactError("adapter-artifact-version-unsupported")
         if manifest["status"] not in ("candidate", "evaluated") or manifest["activation"] != "silu":
             raise ArtifactError("adapter-artifact-status-or-activation-invalid")
+        if not IMMUTABLE_REVISION.fullmatch(self.model_revision):
+            raise ArtifactError("adapter-load-requires-immutable-base-model-revision")
         if manifest["base_model_id"] != self.model_id or manifest["base_model_revision"] != self.model_revision:
             raise ArtifactError("adapter-base-model-revision-mismatch")
         if manifest["config_sha256"] != self.config_sha256 or manifest["hidden_size"] != self.hidden_size:
