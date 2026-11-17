@@ -253,6 +253,9 @@ export class OpenLoopRadar {
     const record = this.requireActive(id);
     const normalized = normalizeEvidence(evidence);
     if (!normalized) throw new TypeError('valid-closure-evidence-required');
+    if (record.status === 'blocked' || record.dependencies.some(dependency => !this.isSatisfied(dependency))) {
+      throw new Error('open-loop-blocked-cannot-be-fulfilled');
+    }
     const now = this.safeNow();
     if (normalized.verifiedAt > now) throw new RangeError('closure-evidence-cannot-be-from-the-future');
     if (normalized.verifiedAt < record.createdAt) throw new RangeError('closure-evidence-predates-obligation');
