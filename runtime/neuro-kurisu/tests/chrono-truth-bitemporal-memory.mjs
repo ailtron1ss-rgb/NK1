@@ -331,6 +331,74 @@ assert.equal(
   'the preview-then-commit cognitive path must return the same historical metadata view',
 );
 
+const semanticHistoryProvider = {
+  providerId: 'chrono-truth-deterministic-semantic',
+  modelId: 'chrono-truth-test-v1',
+  async embedBatch(texts) {
+    return texts.map(() => [1, 0]);
+  },
+  diagnostics() {
+    return {
+      configured: true,
+      provider: 'ollama',
+      model: 'chrono-truth-test-v1',
+      endpoint: 'http://127.0.0.1:11434',
+      cacheEntries: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      requests: 1,
+      failures: 0,
+      lastError: null,
+      lastLatencyMs: 1,
+      redactedInputs: 0,
+    };
+  },
+};
+const semanticHistoryOS = new MemoryOS2({
+  signalFusionProfile: 'balanced',
+  metadataRecallEnabled: true,
+  embeddingProvider: semanticHistoryProvider,
+});
+const semanticHistoryFact = semanticHistoryOS.encode({
+  content: 'The operational workspace has a formally assigned site.',
+  kind: 'semantic',
+  source: 'chrono-truth-semantic-history-regression',
+  tags: ['workspace'],
+  context: { location: 'North Campus', project: 'NeuroCore' },
+  salience: .8,
+  emotionalWeight: .1,
+  identityRelevance: .1,
+  goalRelevance: .1,
+  socialRelevance: .1,
+  predictionError: .1,
+  confidence: .9,
+  epistemicStatus: 'fact',
+  entities: ['NeuroCore'],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  validFromAt: 300,
+  observedAt: 300,
+  recordedFromAt: 320,
+}, { clone: false });
+const semanticKnowledgeAt = semanticHistoryFact.recordedFromAt;
+semanticHistoryOS.updateContext(semanticHistoryFact.id, { location: 'South Campus' });
+const semanticHistoricalPreview = await semanticHistoryOS.previewRetrieveWithEmbeddings(
+  'North Campus',
+  8,
+  0,
+  0,
+  { temporalMode: 'at', asOfAt: 350, knowledgeAtAt: semanticKnowledgeAt },
+  { maxIndexItems: 12, maxLexicalPool: 24, providerTimeoutMs: 1000 },
+);
+assert.equal(semanticHistoricalPreview.semantic.enabled, true, 'the deterministic semantic provider must exercise the embedding path');
+assert.equal(
+  semanticHistoricalPreview.items[0]?.context?.location,
+  'North Campus',
+  'semantic preview must return the bitemporal metadata snapshot, not today\'s canonical metadata',
+);
+
 const lateLearnedFact = encode('The archive was stored in the east facility.', {
   validFromAt: 500,
   observedAt: 500,
