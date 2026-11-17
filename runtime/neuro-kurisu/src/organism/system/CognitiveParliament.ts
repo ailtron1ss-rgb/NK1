@@ -135,8 +135,11 @@ const validVerifiedEvidence=(value:ParliamentVerifiedEvidence|null,reference:Par
 };
 const validModelAttestation=(value:ParliamentModelAttestation|null,executionId:string):value is ParliamentModelAttestation=>{
   try{
-    return Boolean(value&&value.executionId===executionId&&text(value.providerId)&&text(value.modelId)&&
-      text(value.independenceGroup)&&Number.isFinite(value.verifiedAt)&&
+    return Boolean(value&&value.executionId===executionId&&
+      text(value.providerId)&&value.providerId.length<=160&&
+      text(value.modelId)&&value.modelId.length<=200&&
+      text(value.independenceGroup)&&value.independenceGroup.length<=160&&
+      Number.isFinite(value.verifiedAt)&&
       value.verifiedAt>=Date.now()-30*60*1000&&value.verifiedAt<=Date.now()+5*60*1000);
   }catch{return false;}
 };
