@@ -75,6 +75,9 @@ await assert.rejects(()=>engine.ratify(proposal.id,{approvalId:ratification.appr
 const revision=engine.activate(proposal.id,1800000000200);
 assert.equal(revision.version,'1.1.0');
 assert.equal(engine.diagnostics().mutableRuleCount,1);
+const callerOwnedSnapshot=engine.snapshot();
+callerOwnedSnapshot.active.rules[0].title='mutated external clone';
+assert.equal(engine.snapshot().active.rules[0].title,'Reproducible workflow evidence','cached signed snapshots are returned as defensive clones');
 
 // Host HMAC authenticates all reviews, approvals, audit events, and the active revision.
 const snapshot=engine.snapshot();
