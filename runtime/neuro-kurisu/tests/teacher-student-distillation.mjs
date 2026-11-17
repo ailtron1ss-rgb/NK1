@@ -356,6 +356,29 @@ for (const task of evaluationManifest.filter(row => row.split === 'holdout')) {
   }
 }
 
+const optionsBoundaryGate = new TeacherStudentDistillationGate();
+let optionsGetterCalled = false;
+const hostileGateOptions = {};
+Object.defineProperty(hostileGateOptions, 'minHoldoutSeeds', {
+  enumerable: true,
+  get() { optionsGetterCalled = true; return 1; },
+});
+assert.throws(() => optionsBoundaryGate.evaluateOnce({
+  ledger,
+  candidateFingerprint: 'c'.repeat(64),
+  baselineMethod: 'baseline',
+  studentMethod: 'student-candidate',
+  options: hostileGateOptions,
+}), /options-boundary-rejected/);
+assert.equal(optionsGetterCalled, false, 'gate options are copied through descriptor-only snapshotting');
+assert.equal(optionsBoundaryGate.evaluateOnce({
+  ledger,
+  candidateFingerprint: 'c'.repeat(64),
+  baselineMethod: 'baseline',
+  studentMethod: 'student-candidate',
+}).status, 'eligible-for-manual-review',
+  'invalid options must not consume the one-shot holdout candidate identity');
+
 const gate = new TeacherStudentDistillationGate();
 const gateReport = gate.evaluateOnce({
   ledger,
@@ -392,5 +415,50 @@ const unauthenticatedGate = new TeacherStudentDistillationGate().evaluateOnce({
 });
 assert.equal(unauthenticatedGate.status, 'insufficient-evidence',
   'unsigned/self-reported outcomes must not satisfy the holdout gate');
+
+// A strong regression in one holdout family rejects the student even when the family-average gain is neutral.
+const regressionLedger = new VerifiedOutcomeLedger(evaluationManifest);
+const regressionManifestFingerprint = regressionLedger.manifestFingerprint();
+let regressionCounter = 0;
+function recordRegressionOutcome(taskId, method, seed, passed) {
+  const payload = {
+    schemaVersion: 1,
+    artifactId: 'regression-outcome-' + (++regressionCounter),
+    runId: 'regression-run-' + method + '-' + seed + '-' + taskId,
+    manifestFingerprint: regressionManifestFingerprint,
+    taskId,
+    taskVersion: 'v1',
+    method,
+    seed,
+    attempt: 1,
+    passed,
+    verifierId: 'verifier-a',
+    observedAt: now + regressionCounter,
+  };
+  const signed = signOutcomePayloadForFixture(payload, privateKeyPem);
+  assert.equal(ingestSignedOutcomeArtifact(regressionLedger, evaluationManifest, signed, trustedKeys).accepted, true);
+}
+for (const task of evaluationManifest.filter(row => row.split === 'validation')) {
+  for (let seed = 1; seed <= 3; seed++) {
+    recordRegressionOutcome(task.taskId, 'baseline', seed, false);
+    recordRegressionOutcome(task.taskId, 'student-regression', seed, true);
+  }
+}
+for (const task of evaluationManifest.filter(row => row.split === 'holdout')) {
+  for (let seed = 1; seed <= 5; seed++) {
+    recordRegressionOutcome(task.taskId, 'baseline', seed, true);
+    recordRegressionOutcome(task.taskId, 'student-regression', seed, task.family === 'holdout-family-b');
+  }
+}
+const regressionReport = new TeacherStudentDistillationGate().evaluateOnce({
+  ledger: regressionLedger,
+  candidateFingerprint: 'd'.repeat(64),
+  baselineMethod: 'baseline',
+  studentMethod: 'student-regression',
+});
+assert.equal(regressionReport.status, 'rejected');
+assert.ok(regressionReport.reasonCodes.includes('holdout-family-regression'));
+assert.ok(regressionReport.reasonCodes.includes('holdout-gain-below-threshold'));
+assert.equal(regressionReport.automaticActivation, false);
 
 console.log('TEACHER_STUDENT_DISTILLATION=PASS');
