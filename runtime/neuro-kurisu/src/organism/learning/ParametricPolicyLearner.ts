@@ -1,6 +1,6 @@
 import type { ActionKind, OrganismState } from '../core/types.ts';
 import { actionCost } from '../core/ActionCostPolicy.ts';
-import { ElasticNeuralPlasticityController, defaultElasticNeuralPlasticityState, type ElasticNeuralPlasticityOptions, type ElasticNeuralPlasticityResult, type ElasticNeuralPlasticityState } from './ElasticNeuralPlasticity.ts';
+import { ElasticNeuralPlasticityController, defaultElasticNeuralPlasticityState, type ElasticNeuralPlasticityOptions, type ElasticNeuralPlasticityProposal, type ElasticNeuralPlasticityResult, type ElasticNeuralPlasticityState } from './ElasticNeuralPlasticity.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -225,36 +225,64 @@ export class ParametricPolicyLearner{
    * coordinates of the selected action can move; target and retention holdouts
    * are evaluated before the current policy weights are mutated.
    */
-  trainFeaturesElastic(input:{sampleId:string;features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number},options:ElasticNeuralPlasticityOptions):ElasticNeuralPlasticityResult & {predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+  proposeFeaturesElastic(input:{sampleId:string;features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number},options:ElasticNeuralPlasticityOptions):ElasticNeuralPlasticityProposal & {predictionBefore:number;loss01:number;tdError01:number}{
     assertFeatureTrainingInput(input);
     if(input.features.length!==featureNames.length)throw new RangeError('feature-vector-dimension-mismatch');
-    const x=input.features.map(clamp);
+    if(input.features.some(value=>value<0||value>1))throw new RangeError('feature-value-out-of-range');
+    const x=input.features.slice();
     const before=this.predictFromFeatures(x,input.action);
-    if(this.state.frozen){
-      const blocked=this.elasticPlasticity.blocked('policy-frozen');
-      return {...blocked,predictionBefore:before,predictionAfter:before,loss01:0,tdError01:0};
-    }
-    const target=clamp(input.target01);
-    const error=target-before;
+    if(this.state.frozen)return {eligible:false,reason:'policy-frozen',proposalId:null,action:input.action,sampleId:input.sampleId,candidateParameterNames:[],targetLossBefore01:0,targetLossAfter01:0,retentionLossBefore01:0,retentionLossAfter01:0,targetLossImprovement01:0,retentionLossIncrease01:0,predictionBefore:before,loss01:0,tdError01:0};
+    const target=clamp(input.target01),error=target-before;
     const requestedRate=Math.max(.002,Math.min(.25,input.learningRate01))*Math.max(.05,Math.min(1,input.sampleWeight01??1));
     const derivative=Math.max(.05,2*before*(1-before));
     const norm=.25+x.reduce((sum,value)=>sum+value*value,0);
     const step=requestedRate*error*derivative/norm;
-    const weights=this.state.weights[input.action];
-    const result=this.elasticPlasticity.consider({
-      action:input.action,weights,bias:this.state.bias[input.action],features:x,step,sampleId:input.sampleId,
-    },options);
-    const after=result.accepted?this.predictFromFeatures(x,input.action):before;
-    if(result.accepted){
+    const result=this.elasticPlasticity.prepare({action:input.action,weights:this.state.weights[input.action],bias:this.state.bias[input.action],features:x,step,sampleId:input.sampleId,predictionBefore:before,trainingLoss01:clamp(error*error)},options);
+    return {...result,predictionBefore:before,loss01:clamp(error*error),tdError01:clamp(Math.abs(error))};
+  }
+
+  commitFeaturesElastic(proposalId:string):ElasticNeuralPlasticityResult & {predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    const committed=this.elasticPlasticity.commit(proposalId,this.state.weights,this.state.bias);
+    if(committed.result.accepted&&committed.action&&committed.weights){
+      this.state.weights[committed.action]=committed.weights;
+      this.state.bias[committed.action]=committed.bias??this.state.bias[committed.action];
       this.state.updates++;
-      this.state.tdAbsMean01=clamp(this.state.tdAbsMean01*.97+Math.abs(error)*.03);
-      this.state.trainRewardMean01=clamp(this.state.trainRewardMean01*.98+target*.02);
+      this.state.tdAbsMean01=clamp(this.state.tdAbsMean01*.97+Math.sqrt(committed.trainingLoss01)*.03);
+      this.state.trainRewardMean01=clamp(this.state.trainRewardMean01*.98+(1-Math.sqrt(committed.trainingLoss01))*.02);
       this.state.explorationRate01=clamp(.16-Math.min(.12,this.state.updates/2500*.12)+Math.min(.05,this.state.tdAbsMean01*.05));
-      this.state.lastLoss01=clamp(error*error);
+      this.state.lastLoss01=committed.trainingLoss01;
       this.state.lastTrainedAt=now();
     }
     this.state.elasticNeuralPlasticity=this.elasticPlasticity.snapshot();
-    return {...result,predictionBefore:before,predictionAfter:after,loss01:clamp(error*error),tdError01:clamp(Math.abs(error))};
+    const predictionAfter=committed.result.accepted&&committed.action&&committed.weights
+      ?this.predictFromFeatures(committed.features,committed.action):committed.predictionBefore;
+    return {...committed.result,predictionBefore:committed.predictionBefore,predictionAfter,loss01:committed.trainingLoss01,tdError01:Math.sqrt(committed.trainingLoss01)};
+  }
+
+  rejectFeaturesElastic(proposalId:string,reason:string):ElasticNeuralPlasticityResult{
+    const result=this.elasticPlasticity.reject(proposalId,reason);
+    this.state.elasticNeuralPlasticity=this.elasticPlasticity.snapshot();
+    return result;
+  }
+
+  trainFeaturesElastic(input:{sampleId:string;features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number},options:ElasticNeuralPlasticityOptions):ElasticNeuralPlasticityResult & {predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    const proposal=this.proposeFeaturesElastic(input,options);
+    if(!proposal.eligible||!proposal.proposalId){
+      const result=this.elasticPlasticity.snapshot();
+      return {...proposal,accepted:false,updatedParameterNames:[],rollbackAvailable:this.elasticPlasticity.rollbackAvailable(input.action),predictionAfter:proposal.predictionBefore,tdError01:proposal.tdError01};
+    }
+    return this.commitFeaturesElastic(proposal.proposalId);
+  }
+
+  rollbackElasticPlasticity(action:ActionKind):{rolledBack:boolean;reason:string;sampleId:string|null}{
+    const result=this.elasticPlasticity.rollback(action,this.state.weights[action],this.state.bias[action]);
+    if(result.rolledBack&&result.weights){
+      this.state.weights[action]=result.weights;
+      this.state.bias[action]=result.bias??0;
+      this.state.lastTrainedAt=now();
+      this.state.elasticNeuralPlasticity=this.elasticPlasticity.snapshot();
+    }
+    return {rolledBack:result.rolledBack,reason:result.reason,sampleId:result.sampleId};
   }
 
   predictFromFeatures(features:number[],action:ActionKind):number{

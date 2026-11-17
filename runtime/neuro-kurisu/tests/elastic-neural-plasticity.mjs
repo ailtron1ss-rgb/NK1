@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { ParametricPolicyLearner } from '../src/organism/learning/ParametricPolicyLearner.ts';
 import { P26TrueLearningEngine } from '../src/organism/learning/P26TrueLearningEngine.ts';
 import { P29LearningGovernanceEngine } from '../src/organism/learning/P29LearningGovernance.ts';
+import { DevelopmentalNeuralRuntime } from '../src/organism/core/DevelopmentalNeuralRuntime.ts';
 
 const DIM = 18;
 const vector = (index, value = 1) => {
@@ -201,4 +202,23 @@ assert.equal(denied.reason, 'governance-budget-rejected');
 assert.deepEqual(deniedEngine.snapshot().policy.weights, deniedBefore.policy.weights);
 assert.equal(deniedEngine.snapshot().metrics.onlineUpdates, 0);
 assert.equal(deniedGovernance.snapshot().rejectedUpdates, 1);
+assert.equal(deniedGovernance.snapshot().provenance.at(-1).accepted, false);
+
+// The organism composition root routes elastic learning through P29 and persists its rollback state.
+const developmentalRuntime = new DevelopmentalNeuralRuntime();
+const runtimeInput = { ...p26Input, sampleId: 'runtime-elastic-train-001' };
+const runtimeResult = developmentalRuntime.trainElasticNeuralPolicy(runtimeInput, options({ trainingSampleId: runtimeInput.sampleId }));
+assert.equal(runtimeResult.accepted, true);
+const hotSnapshot = developmentalRuntime.snapshotHotNeuralPersistenceState();
+assert.equal(hotSnapshot.p26TrueLearning.policy.elasticNeuralPlasticity.acceptedUpdates, 1);
+assert.equal(hotSnapshot.p29Learning.acceptedUpdates, 1);
+assert.ok(hotSnapshot.p28Plasticity);
+assert.ok(hotSnapshot.p30Continual);
+const restoredRuntime = new DevelopmentalNeuralRuntime();
+restoredRuntime.restoreHotNeuralLearningState(hotSnapshot);
+assert.equal(restoredRuntime.p26TrueLearning.snapshot().policy.weights.respond[0], hotSnapshot.p26TrueLearning.policy.weights.respond[0]);
+assert.equal(restoredRuntime.p29Learning.snapshot().acceptedUpdates, 1);
+const runtimeRollback = restoredRuntime.rollbackElasticNeuralPolicy('respond');
+assert.equal(runtimeRollback.rolledBack, true);
+assert.equal(restoredRuntime.p26TrueLearning.snapshot().policy.weights.respond[0], 0);
 console.log('ELASTIC_NEURAL_PLASTICITY=PASS sparse=1 protected=3 retentionGate=PASS leakageGate=PASS persistence=PASS frozen=PASS');
