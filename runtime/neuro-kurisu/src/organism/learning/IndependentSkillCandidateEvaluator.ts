@@ -489,6 +489,8 @@ export function recordIndependentEvaluationOutcomes(
     method: string;
     attempt?: number;
     evaluationScope?: IndependentCandidateEvaluationScope;
+    /** Permit a phase evaluator to commit only its actually scheduled subset; strict full-plan mode remains default. */
+    allowPartialSchedule?: boolean;
   },
   observedAt = Date.now(),
 ): { accepted: number } {
@@ -555,11 +557,13 @@ export function recordIndependentEvaluationOutcomes(
     ...(evaluationScope === 'holdout-only' ? [] : authority.validationPlan.runs.filter(run => run.method === authority.method)),
     ...(evaluationScope === 'validation-only' ? [] : authority.holdoutPlan.runs.filter(run => run.method === authority.method)),
   ];
+  const allowPartialSchedule = authority.allowPartialSchedule === true;
   if ((evaluationScope === 'validation-only' && evaluation.holdout.length !== 0) ||
       (evaluationScope === 'holdout-only' && evaluation.validation.length !== 0)) {
     throw new Error('independent-evaluation-ledger-split-scope-mismatch');
   }
-  if (expectedRuns.length !== bindings.length ||
+  if (!expectedRuns.length ||
+      (!allowPartialSchedule && expectedRuns.length !== bindings.length) ||
       new Set(expectedRuns.map(run => run.runId)).size !== expectedRuns.length) {
     throw new Error('independent-evaluation-ledger-plan-coverage-incomplete');
   }
@@ -589,8 +593,9 @@ export function recordIndependentEvaluationOutcomes(
       evidenceRef: binding.runId,
     });
   }
-  if (seenPlannedRuns.size !== expectedRuns.length ||
-      expectedRuns.some(run => !seenPlannedRuns.has(run.runId))) {
+  if (!allowPartialSchedule &&
+      (seenPlannedRuns.size !== expectedRuns.length ||
+       expectedRuns.some(run => !seenPlannedRuns.has(run.runId)))) {
     throw new Error('independent-evaluation-ledger-plan-coverage-incomplete');
   }
   // Preflight every cell before writing any rows. The canonical ledger rejects a

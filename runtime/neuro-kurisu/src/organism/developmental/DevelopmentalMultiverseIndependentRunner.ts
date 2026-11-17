@@ -632,6 +632,7 @@ export class DevelopmentalMultiverseIndependentRunner {
         method,
         attempt: 1,
         evaluationScope,
+        allowPartialSchedule: true,
       },
     });
     if (ledgerCommit.accepted !== tasks.length) {
