@@ -222,10 +222,19 @@ const metadataFact = historicalMetadataOS.encode({
   observedAt: 300,
   recordedFromAt: 320,
 }, { clone: false });
+const historicalMetadataFabric = new MemoryFabric(
+  historicalMetadataOS,
+  new EventLog(128),
+  new MultiTimescaleMemory(),
+  new MemorySubstrateCoordinator(),
+  new UnifiedMemorySystem(),
+  new P62MemoryFabric(),
+  new SemanticMemoryGraph(),
+);
 const beforeContextKnowledgeAt = metadataFact.recordedFromAt;
 historicalMetadataOS.updateContext(metadataFact.id, { location: 'South Campus' });
 const afterContextKnowledgeAt = metadataFact.recordedFromAt;
-const oldMetadataRecall = historicalMetadataOS.previewRetrieve('North Campus', 8, 0, 0, {
+const oldMetadataRecall = historicalMetadataFabric.retrieve('North Campus', 8, 0, 0, {
   temporalMode: 'at', asOfAt: 350, knowledgeAtAt: beforeContextKnowledgeAt,
 });
 assert.equal(
@@ -233,7 +242,7 @@ assert.equal(
   'North Campus',
   'retrieval must rank and return the metadata that existed at the requested knowledge-time',
 );
-const newMetadataRecall = historicalMetadataOS.previewRetrieve('South Campus', 8, 0, 0, {
+const newMetadataRecall = historicalMetadataFabric.retrieve('South Campus', 8, 0, 0, {
   temporalMode: 'at', asOfAt: 350, knowledgeAtAt: afterContextKnowledgeAt,
 });
 assert.equal(
@@ -242,11 +251,21 @@ assert.equal(
   'retrieval must use updated metadata after the transaction-time boundary',
 );
 assert.equal(
-  historicalMetadataOS.previewRetrieve('South Campus', 8, 0, 0, {
+  historicalMetadataFabric.retrieve('South Campus', 8, 0, 0, {
     temporalMode: 'at', asOfAt: 350, knowledgeAtAt: beforeContextKnowledgeAt,
   }).length,
   0,
   'future metadata must not leak into earlier knowledge-time retrieval',
+);
+const cognitiveOldMetadata = await historicalMetadataFabric.retrieveForCognition('North Campus', 8, 0, 0, {
+  temporalMode: 'at',
+  asOfAt: 350,
+  knowledgeAtAt: beforeContextKnowledgeAt,
+});
+assert.equal(
+  cognitiveOldMetadata[0]?.context?.location,
+  'North Campus',
+  'the preview-then-commit cognitive path must return the same historical metadata view',
 );
 
 const lateLearnedFact = encode('The archive was stored in the east facility.', {
