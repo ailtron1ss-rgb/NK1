@@ -37,7 +37,7 @@ export class IntentActionGatewayBridge {
   ): Promise<IntentBridgeResult> {
     const gate = this.compiler.gate(contract, action?.toolId);
     if (!gate.allowed) {
-      return { executed: false, contractId: contract?.id ?? null, reason: gate.reason };
+      return { executed: false, contractId: null, reason: gate.reason };
     }
     if (!action || !action.input || typeof action.input !== 'object' || Array.isArray(action.input)) {
       return { executed: false, contractId: gate.contractId, reason: 'invalid-action-input' };
