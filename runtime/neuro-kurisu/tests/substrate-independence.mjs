@@ -157,6 +157,12 @@ assert.equal(reloadedEngine.preferredRoute(), 'gemini');
 assert.equal(promoted.history.at(-1).fromBackendId, source.backendId);
 assert.equal(promoted.history.at(-1).toBackendId, target.backendId);
 
+const revokedEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
+assert.equal(revokedEngine.restore(reloadedEngine.snapshot()).restored, true);
+const revoked = revokedEngine.revokeUnverifiedPromotion();
+assert.equal(revoked.activeBackendId, source.backendId,
+  'a previously promoted target must fall back if its signed receipts are not trusted after restart');
+
 const denied = await engine.evaluateMigration({
   transfer,
   targetBackendId: target.backendId,
