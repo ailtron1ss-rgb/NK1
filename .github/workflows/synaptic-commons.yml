@@ -1,0 +1,48 @@
+name: NK1 Synaptic Commons
+
+on:
+  push:
+    branches: [aspect/synaptic-commons-20261117]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/SynapticCommons.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/synaptic-commons-*.mjs'
+      - '.github/workflows/synaptic-commons.yml'
+  pull_request:
+    branches: [aspect/open-loop-radar-20261117]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/SynapticCommons.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/tests/synaptic-commons-*.mjs'
+      - '.github/workflows/synaptic-commons.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-synaptic-commons-\${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  synaptic-commons:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Run Synaptic Commons contract tests
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/synaptic-commons-contract.mjs
+      - name: Run Synaptic Commons durable runtime integration
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/synaptic-commons-runtime-integration.mjs
+      - name: Run Synaptic Commons HTTP contract
+        working-directory: runtime/neuro-kurisu
+        run: node tests/synaptic-commons-http-route.mjs
+      - name: Type-check runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
