@@ -451,7 +451,7 @@ function defaultState(): SubstrateIndependenceState {
 }
 
 function normalizeEvidenceIdLedger(value: unknown, label: string): string[] {
-  if (value === undefined) return [];
+  if (value === undefined) return fail('substrate-evidence-ledger-field-missing:' + label);
   if (!Array.isArray(value) || nodeUtilTypes.isProxy(value)
       || Object.getPrototypeOf(value) !== Array.prototype
       || value.length > MAX_CONSUMED_CALIBRATION_EVIDENCE) {
@@ -667,14 +667,24 @@ export class SubstrateIndependenceEngine {
           evaluationId: item.evaluationId as string, reason: item.reason as 'calibrated-promotion' | 'rollback',
         }];
       }) : [];
-      const evidenceLedgerRaw = row.calibrationEvidenceLedger === undefined
-        ? Object.create(null) as PlainRecord
-        : ownDataRecord(row.calibrationEvidenceLedger, ['receiptIds', 'taskIds', 'independenceKeys']);
-      const calibrationEvidenceLedger = {
-        receiptIds: normalizeEvidenceIdLedger(evidenceLedgerRaw.receiptIds, 'receiptIds'),
-        taskIds: normalizeEvidenceIdLedger(evidenceLedgerRaw.taskIds, 'taskIds'),
-        independenceKeys: normalizeEvidenceIdLedger(evidenceLedgerRaw.independenceKeys, 'independenceKeys'),
-      };
+      const calibrationEvidenceLedger = row.calibrationEvidenceLedger === undefined
+        ? { receiptIds: [], taskIds: [], independenceKeys: [] }
+        : (() => {
+          const evidenceLedgerRaw = ownDataRecord(
+            row.calibrationEvidenceLedger,
+            ['receiptIds', 'taskIds', 'independenceKeys'],
+          );
+          for (const key of ['receiptIds', 'taskIds', 'independenceKeys'] as const) {
+            if (!Object.prototype.hasOwnProperty.call(evidenceLedgerRaw, key)) {
+              fail('substrate-evidence-ledger-field-missing:' + key);
+            }
+          }
+          return {
+            receiptIds: normalizeEvidenceIdLedger(evidenceLedgerRaw.receiptIds, 'receiptIds'),
+            taskIds: normalizeEvidenceIdLedger(evidenceLedgerRaw.taskIds, 'taskIds'),
+            independenceKeys: normalizeEvidenceIdLedger(evidenceLedgerRaw.independenceKeys, 'independenceKeys'),
+          };
+        })();
       this.state = {
         version: 1,
         activeBackendId,
