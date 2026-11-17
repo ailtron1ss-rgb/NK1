@@ -25,7 +25,7 @@ export interface IntentApprovalEvidence extends IntentApprovalScope {
   userConfirmed?: boolean;
 }
 export interface TrustedAutonomousDecisionEvidence {
-  source: 'autonomous-resource-tool-life';
+  source: 'autonomous-resource-tool-life' | 'project-executor' | 'compound-skill';
   decisionId: string;
   tick: number;
   /** Tool identifier selected by the planner before Core alias normalization. */
@@ -35,6 +35,15 @@ export interface TrustedAutonomousDecisionEvidence {
   intentHash: string;
   reason: string;
   sourceText: string;
+  projectId?: string;
+  stepId?: string;
+  requestFingerprint?: string;
+  operationKey?: string;
+  sequence?: number;
+  skillId?: string;
+  attempt?: number;
+  parentDecisionId?: string;
+  inputHash?: string;
 }
 export type IntentExecutionPhase = 'prepared' | 'pending-reconciliation' | 'reconciliation-attempted' | 'completed' | 'blocked';
 export interface IntentExecutionLink {
@@ -372,10 +381,14 @@ export class IntentExecutionRuntime {
       }
 
       link.at = this.clock();
-      link.phase = result.executed
-        ? (['idempotency-recovery-required', 'idempotency-storage-failed', 'idempotency-ledger-full', 'executed-partial', 'executed-unverified', 'executed-contradicted'].includes(String(result.result.outcomeClass))
-            ? 'pending-reconciliation' : 'completed')
-        : 'blocked';
+      const gatewayOutcomeClass = String(result.executed ? result.result.outcomeClass : '');
+      const gatewayNeedsApproval = ['approval-required', 'approval-invalid', 'approval-storage-failed'].includes(gatewayOutcomeClass);
+      link.phase = gatewayNeedsApproval
+        ? 'blocked'
+        : result.executed
+          ? (['idempotency-recovery-required', 'idempotency-storage-failed', 'idempotency-ledger-full', 'executed-partial', 'executed-unverified', 'executed-contradicted'].includes(gatewayOutcomeClass)
+              ? 'pending-reconciliation' : 'completed')
+          : 'blocked';
       if (result.executed) {
         link.executionId = result.result.executionId;
         link.outcomeClass = result.result.outcomeClass;

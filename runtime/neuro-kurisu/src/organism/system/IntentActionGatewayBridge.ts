@@ -7,6 +7,7 @@ export interface IntentGatewayPort {
     input: Record<string, unknown>,
     reason: string,
     options?: ActionGatewayExecutionOptions,
+    finalizationContextKeys?: string[],
   ): Promise<ToolExecution>;
   reconcileToolExecution?(
     id: string,
@@ -20,6 +21,8 @@ export interface IntentBoundAction {
   input: Record<string, unknown>;
   reason: string;
   options?: ActionGatewayExecutionOptions;
+  intentApprovalId?: string;
+  finalizationContextKeys?: string[];
 }
 export type IntentBridgeResult =
   | { executed: true; contractId: string; result: ToolExecution }
@@ -62,6 +65,7 @@ export class IntentActionGatewayBridge {
       action.input,
       action.reason,
       action.options,
+      action.finalizationContextKeys,
     );
     return { executed: true, contractId: gate.contractId, result };
   }

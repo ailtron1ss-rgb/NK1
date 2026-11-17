@@ -327,6 +327,18 @@ const contractTrace = await bridge.execute(approved, {
 assert.equal(contractTrace.executed, true);
 assert.equal(contractTrace.contractId, approved.id,
   'bridge result must expose the intent contract ID for caller-owned trace correlation');
+const forwardedFinalizationKeys = [];
+const finalizationContextDispatch = await bridge.execute(approved, {
+  toolId: 'organism.inspect', input: { scope: 'compound-skill' },
+  reason: 'intent-finalization-context-test',
+  finalizationContextKeys: ['contextKey', 'skillRunId'],
+}, { async executeTool(_id, _input, _reason, _options, keys) {
+  forwardedFinalizationKeys.push(...(keys ?? []));
+  return { ok: true, verified: true, tool: 'organism.inspect', outcomeClass: 'executed-verified' };
+} });
+assert.equal(finalizationContextDispatch.executed, true);
+assert.deepEqual(forwardedFinalizationKeys, ['contextKey', 'skillRunId'],
+  'Intent bridge must preserve Core finalization context for compound skills');
 const noGateway = await bridge.execute(approved, {
   toolId: 'organism.inspect', input: { scope: 'project' }, reason: 'missing-gateway',
 }, null);
