@@ -152,7 +152,9 @@ export class ConstitutionEvolutionEngine {
 
   constructor(options: { signingKey?: string | Uint8Array | null } = {}) {
     const configured = options.signingKey ?? process.env.NEURO_CONSTITUTION_HMAC_KEY ?? null;
-    this.signingKey = configured && Buffer.byteLength(configured as any) >= MIN_SIGNING_KEY_BYTES ? configured : null;
+    const keyLength = typeof configured === 'string' ? Buffer.byteLength(configured, 'utf8')
+      : configured instanceof Uint8Array ? configured.byteLength : 0;
+    this.signingKey = keyLength >= MIN_SIGNING_KEY_BYTES ? configured : null;
   }
 
   private requireSigningKey(): void {
