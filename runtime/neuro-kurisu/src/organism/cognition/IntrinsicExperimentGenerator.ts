@@ -1,5 +1,15 @@
 import type { OrganismGoal } from '../core/types.ts';
 
+export interface MechanismVerificationContract {
+  protocol:'paired-holdout-v1';
+  minPairedSeeds:5;
+  baselineRequired:true;
+  independentHoldoutRequired:true;
+  maxVariantsPerRun:1;
+  rollbackRequired:true;
+  autoApply:false;
+}
+
 export interface IntrinsicExperiment {
   id:string;
   question:string;
@@ -13,6 +23,7 @@ export interface IntrinsicExperiment {
   sourceMemoryIds?:string[];
   sharedTerms?:string[];
   mechanismDiscoveryId?:string;
+  mechanismVerification?:MechanismVerificationContract;
   mechanismFlowEvidenceClass?:'observed-causal'|'declared-dependency'|'inferred';
   mechanismSourceDomain?:string;
   mechanismTargetDomain?:string;
@@ -138,6 +149,16 @@ export class IntrinsicExperimentGenerator {
       expectedInformationGain:Number(Math.min(.9,.55*confidence+.35*transferability).toFixed(3)),
       linkedGoal:goal?.id,createdAt,source:'mechanism-serendipity',
       mechanismDiscoveryId:id,mechanismFlowEvidenceClass:flowEvidenceClass,mechanismSourceDomain:sourceDomain,mechanismTargetDomain:targetDomain,
+      mechanismVerification:{
+        protocol:'paired-holdout-v1',
+        minPairedSeeds:5,
+        baselineRequired:true,
+        independentHoldoutRequired:true,
+        maxVariantsPerRun:1,
+        rollbackRequired:true,
+        autoApply:false,
+      },
+
       mechanismCorrespondences:correspondences,mechanismBreakpoints:breakpoints,verificationPlan,
       epistemicStatus:'hypothesis',status:'candidate',verificationRequired:true,
     };

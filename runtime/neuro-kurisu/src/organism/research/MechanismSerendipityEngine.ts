@@ -42,7 +42,7 @@ function normalize(raw:unknown):MechanismDescription|null{
  const d=x.dynamics&&typeof x.dynamics==='object'?x.dynamics as Record<string,unknown>:{};
  const ds=unique((Array.isArray(d.regimes)?d.regimes:[]).slice(0,10).filter((v):v is DynamicRegime=>typeof v==='string'&&regimes.has(v as DynamicRegime)));
  const timescale=['fast','slow','mixed'].includes(String(d.timescale))?d.timescale as 'fast'|'slow'|'mixed':'mixed';
- const flowEvidenceClass=['observed-causal','declared-dependency','inferred'].includes(String(x.flowEvidenceClass))?x.flowEvidenceClass as MechanismFlowEvidenceClass:'observed-causal';
+ const flowEvidenceClass=['observed-causal','declared-dependency','inferred'].includes(String(x.flowEvidenceClass))?x.flowEvidenceClass as MechanismFlowEvidenceClass:'inferred';
  return actors.length>=2&&fs.length?{id,title,domain,flowEvidenceClass,actors,flows:fs,constraints:cs,feedbackLoops:bs,resources:rs,dynamics:{regimes:ds,timescale}}:null;
 }
 function dice(a:readonly string[],b:readonly string[]):number{
@@ -70,10 +70,10 @@ function correspond(a:MechanismDescription,b:MechanismDescription):MechanismCorr
    if(!y)continue;
    used.add(y.id);
    const kindsMatch=x.kind===y.kind;
-   const declared=a.flowEvidenceClass==='declared-dependency'||b.flowEvidenceClass==='declared-dependency';
+   const evidenceLimited=a.flowEvidenceClass!=='observed-causal'||b.flowEvidenceClass!=='observed-causal';
    add('flow',x.id,y.id,x.fromRole+'>'+x.toRole,
-    declared?.56:kindsMatch?.82:.58,
-    declared?'Совпадает направление объявленной архитектурной зависимости; это не измеренное причинное влияние.':kindsMatch?'Совпадают направление и тип потока; причинную связь всё равно требуется проверять.':'Совпадает направление потока, но тип воздействия различается.');
+    evidenceLimited?.56:kindsMatch?.82:.58,
+    evidenceLimited?'Совпадает структурное направление, но хотя бы один граф не является непосредственно наблюдаемым причинным потоком.':kindsMatch?'Совпадают направление и тип потока; причинную связь всё равно требуется проверять.':'Совпадает направление потока, но тип воздействия различается.');
   }
  }
  match('constraint',a.constraints,b.constraints,x=>x.kind+'@'+x.onRole);
@@ -85,7 +85,7 @@ function correspond(a:MechanismDescription,b:MechanismDescription):MechanismCorr
 function findBreakpoints(a:MechanismDescription,b:MechanismDescription):MechanismBreakpoint[]{
  const out:MechanismBreakpoint[]=[];
  const rolesA=new Set(a.actors.map(x=>x.role)),rolesB=new Set(b.actors.map(x=>x.role));
- const topologyOnly=a.flowEvidenceClass==='declared-dependency'||a.flowEvidenceClass==='inferred';
+ const topologyOnly=a.flowEvidenceClass!=='observed-causal'||b.flowEvidenceClass!=='observed-causal';
  for(const role of rolesA)if(!rolesB.has(role))out.push({kind:'missing-reference-role',problemFeature:role,referenceFeature:'absent',consequence:'У эталонного механизма нет этой роли; её нельзя переносить без отдельной реализации.',severity01:.55});
  for(const role of rolesB)if(!rolesA.has(role))out.push({kind:'reference-only-role',problemFeature:'absent',referenceFeature:role,consequence:'В эталоне есть дополнительная роль; перенос всей схемы добавит непроверенную функциональность.',severity01:.42});
 
@@ -171,12 +171,12 @@ export class MechanismSerendipityEngine {
    const transferPenalty=breaks.reduce((sum,x)=>sum+x.severity01*(x.kind.includes('direction')?.20:x.kind.includes('feedback')?.16:x.kind.includes('constraint')?.12:.07),0);
    const transfer=clamp(similarity*(1-Math.min(.75,transferPenalty)));
    const flowEvidenceClass=a.flowEvidenceClass??'observed-causal';
-   const evidenceFactor=flowEvidenceClass==='declared-dependency'?.62:flowEvidenceClass==='inferred'?.76:1;
-   const confidence=clamp(similarity*coverage*(.9+Math.min(.1,links.length/100))*evidenceFactor);
+   const evidenceFactor=(value:MechanismFlowEvidenceClass)=>value==='observed-causal'?1:value==='declared-dependency'?.62:.76;
+   const confidence=clamp(similarity*coverage*(.9+Math.min(.1,links.length/100))*Math.min(evidenceFactor(flowEvidenceClass),evidenceFactor(b.flowEvidenceClass??'inferred')));
    const metric=a.constraints[0]?.kind||a.flows[0]?.kind||'system-outcome';
    const epistemicBoundary=flowEvidenceClass==='declared-dependency'?' Целевые рёбра описывают объявленные архитектурные зависимости NK1, а не измеренные причинные эффекты; это гипотеза по топологии, не доказательство причинности.':flowEvidenceClass==='inferred'?' Часть потоков выведена по типам ролей и не наблюдалась непосредственно.':'';
    const hypothesis='Unverified cross-domain mechanism hypothesis only: принцип «'+b.title+'» из области «'+b.domain+'» может помочь в задаче «'+a.title+'» ('+a.domain+'), поскольку совпадают структурные слои '+[...aspects].join(', ')+'. Причинная эквивалентность не доказана.'+epistemicBoundary;
-   const verificationPlan=(flowEvidenceClass==='declared-dependency'?'Сначала сформулировать измеримый причинный прогноз; топология зависимостей служит только поисковым сигналом. Затем сравнить baseline и одну изолированную интервенцию на независимых holdout-наборах; ':'Сравнить baseline и одну изолированную модификацию на независимых holdout-наборах; ')+'измерить '+metric+', побочные эффекты, безопасность и стоимость; сохранить rollback.';
+   const verificationPlan=(flowEvidenceClass==='declared-dependency'?'Сначала сформулировать измеримый причинный прогноз; топология зависимостей служит только поисковым сигналом. Затем сравнить baseline и одну изолированную интервенцию на независимых holdout-наборах; ':'Сравнить baseline и одну изолированную модификацию на независимых holdout-наборах; ')+'использовать не менее пяти парных seed; holdout должен быть независим и не использоваться для выбора аналога или настройки; одновременно проверять только один вариант; измерить '+metric+', побочные эффекты, безопасность и стоимость; сохранить rollback; auto-apply запрещён.';
    const falsifier='Отвергнуть перенос, если holdout-повторы не превосходят baseline по '+metric+' или нарушаются ограничения безопасности/ресурсов.';
    found.push({id:'mechanism-'+hash(a.id+'|'+b.id+'|'+similarity.toFixed(4)),problemId:a.id,referenceMechanismId:b.id,flowEvidenceClass,problemTitle:a.title,referenceTitle:b.title,sourceDomain:b.domain,targetDomain:a.domain,similarity01:Number(similarity.toFixed(4)),confidence01:Number(confidence.toFixed(4)),transferability01:Number(transfer.toFixed(4)),novelty01:Number(clamp(.5+.5*(1-similarity)).toFixed(4)),coverage01:Number(coverage.toFixed(4)),correspondences:links,breakpoints:breaks,hypothesis,verificationPlan,falsifier,status:'candidate',epistemicStatus:'hypothesis'});
   }
