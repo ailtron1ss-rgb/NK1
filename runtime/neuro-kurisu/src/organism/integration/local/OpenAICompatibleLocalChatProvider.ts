@@ -1,4 +1,4 @@
-import { COGNITIVE_NEURAL_FEATURE_KEYS, type CognitiveNeuralControlProfile } from '../../cognition/CognitiveToNeuralBridge.ts';
+import { isValidCognitiveNeuralControlProfile, type CognitiveNeuralControlProfile } from '../../cognition/CognitiveToNeuralBridge.ts';
 
 export interface LocalChatCompletionRequest {
   system: string;
@@ -41,33 +41,7 @@ function canonicalBaseUrl(raw: string | undefined): string | null {
   return url.toString().replace(/\/+$/, '');
 }
 function cognitiveTemplateKwargs(profile:CognitiveNeuralControlProfile|undefined):Record<string,unknown>|null {
-  const actions=new Set(['respond','explore','verify','rest','reflect','wait','defer','none']);
-  const modes=new Set(['reflex','shallow','retrieve','deep','simulate','defer','sleep']);
-  const adapters=new Set(['fast','balanced','retrieval','deep','simulation','conservative']);
-  const steering=profile?.steeringIntent01;
-  const validIntent=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=.15;
-  const freshness=profile?.neuralSnapshotAgeTicks;
-  const validFreshness=profile?.neuralSnapshotAvailable===true
-    ? Number.isSafeInteger(profile.neuralSnapshotTick)&&Number.isSafeInteger(freshness)&&Number(freshness)>=0&&Number(freshness)<=8
-    : profile?.neuralSnapshotTick===null&&freshness===null;
-  if (!profile || profile.version!==2 || profile.featureSchema!=='nk1-cognitive-neural-43-v2' ||
-      !Number.isSafeInteger(profile.tick) || profile.tick<0 ||
-      !actions.has(profile.action) || !modes.has(profile.mode) || !adapters.has(profile.adapterHint) ||
-      !Array.isArray(profile.featureKeys) || profile.featureKeys.length!==43 ||
-      profile.featureKeys.some((key,index)=>key!==COGNITIVE_NEURAL_FEATURE_KEYS[index]) ||
-      !Array.isArray(profile.featureVector01) || profile.featureVector01.length!==43 ||
-      profile.featureVector01.some(value=>typeof value!=='number'||!Number.isFinite(value)||value<0||value>1) ||
-      !validFreshness ||
-      (profile.neuralSnapshotAvailable && profile.neuralSource!=='b365-unified-neuro-causal-core') ||
-      (!profile.neuralSnapshotAvailable && profile.neuralSource!=='unavailable') ||
-      typeof profile.temperature!=='number'||!Number.isFinite(profile.temperature)||profile.temperature<.2||profile.temperature>.85 ||
-      !Number.isSafeInteger(profile.maxTokens)||profile.maxTokens<96||profile.maxTokens>768 ||
-      !steering || !validIntent(steering.curiosity01)||!validIntent(steering.caution01)||
-      !validIntent(steering.persistence01)||!validIntent(steering.verification01) ||
-      profile.controlsConfigured?.samplingParameters!==true ||
-      profile.controlsConfigured?.adapterSelection!==false ||
-      profile.controlsConfigured?.activationSteering!==false ||
-      profile.controlsConfigured?.residualBlock!==false) return null;
+  if(!isValidCognitiveNeuralControlProfile(profile)) return null;
   const f=profile.featureVector01;
   const clamp01=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(1,value)):0;
   const clampIntent=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(.15,value)):0;
@@ -78,7 +52,7 @@ function cognitiveTemplateKwargs(profile:CognitiveNeuralControlProfile|undefined
     nk1_action:profile.action,
     nk1_mode:profile.mode,
     nk1_adapter_hint:profile.adapterHint,
-    nk1_feature_keys:profile.featureKeys.slice(0,43),
+    nk1_feature_keys:[...profile.featureKeys],
     nk1_feature_vector01:[...f],
     nk1_motivation01:clamp01(f[7]),
     nk1_uncertainty01:clamp01(f[8]),
@@ -97,15 +71,15 @@ function cognitiveTemplateKwargs(profile:CognitiveNeuralControlProfile|undefined
     nk1_self_agency01:clamp01(f[28]),
     nk1_self_continuity01:clamp01(f[29]),
     nk1_goal_commitment01:clamp01(f[33]),
-    nk1_neural_snapshot_available:profile.neuralSnapshotAvailable===true,
+    nk1_neural_snapshot_available:profile.neuralSnapshotAvailable,
+    nk1_neural_snapshot_version:profile.neuralSnapshotVersion,
     nk1_neural_snapshot_freshness01:clamp01(f[35]),
-    nk1_steering_curiosity01:clampIntent(profile.steeringIntent01?.curiosity01),
-    nk1_steering_caution01:clampIntent(profile.steeringIntent01?.caution01),
-    nk1_steering_persistence01:clampIntent(profile.steeringIntent01?.persistence01),
-    nk1_steering_verification01:clampIntent(profile.steeringIntent01?.verification01),
+    nk1_steering_curiosity01:clampIntent(profile.steeringIntent01.curiosity01),
+    nk1_steering_caution01:clampIntent(profile.steeringIntent01.caution01),
+    nk1_steering_persistence01:clampIntent(profile.steeringIntent01.persistence01),
+    nk1_steering_verification01:clampIntent(profile.steeringIntent01.verification01),
   };
 }
-
 function extractText(value: unknown): string {
   if (typeof value === 'string') return value.trim();
   if (!Array.isArray(value)) return '';
