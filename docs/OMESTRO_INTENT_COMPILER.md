@@ -8,13 +8,13 @@
   - Builds an immutable, versioned contract from the verbatim request and an optional upstream semantic extraction.
   - Hash-binds the complete interpretation, constraints, risk, stop conditions and explicit permissions into a stable contract identity.
   - Requires expected outcome, acceptance criteria, an explicit tool allow-list and stop conditions before approval.
-  - Tracks incomplete/truncated requests, extractor failures, conflicting permissions and malformed/wildcard action identifiers.
+  - Tracks incomplete/truncated requests, extractor failures, conflicting permissions, malformed assumptions and malformed/wildcard action identifiers; bounded lists are never silently accepted after truncation.
   - Uses multilingual deterministic risk escalators for destructive, mutating and credential-exfiltration intent; upstream metadata cannot downgrade detected risk.
-  - Requires explicit acknowledgement of material assumptions and separate acknowledgement for high/critical intent.
+  - Requires explicit acknowledgement of material assumptions and separate acknowledgement for high/critical intent; unknown assumption severity is escalated rather than defaulted to low.
   - HMAC-attests approval to the exact contract and permission subset; approvals expire after a bounded TTL.
 - `runtime/neuro-kurisu/src/organism/system/IntentActionGatewayBridge.ts`
   - Refuses incomplete, expired, altered, unapproved and out-of-scope requests.
-  - Forwards one approved action through canonical `ActionGateway.executeTool` and binds a default decision ID to the intent contract.
+  - Forwards one approved action through canonical `ActionGateway.executeTool` and preserves any caller-supplied canonical `decisionId` unchanged. It returns the `contractId` separately rather than misusing intent identity as a decision ID.
 
 ## Safety and trust boundaries
 
@@ -24,7 +24,7 @@ A contract is initially `not-approved`. Approval is exact-contract-bound and can
 
 The approval HMAC key is generated per process by default. Production persistence must inject a stable key from a secret store; the key must never be written to the contract, repository, logs or Release ZIP. Without the same configured key after restart, persisted approval correctly fails closed. The contract ID also binds a digest of the complete source request, including content omitted by the visible text-size cap.
 
-The bridge is not a replacement for `ActionGateway`. Passing the intent gate does not bypass its independent permission checks, one-shot approvals, input contracts, durable idempotency, verification or reconciliation.
+The bridge is not a replacement for `ActionGateway`. Passing the intent gate does not bypass its independent permission checks, one-shot approvals, input contracts, durable idempotency, verification or reconciliation. Intent-contract identity and canonical decision identity remain separate; callers correlate the bridge result's `contractId` with their own task/decision record.
 
 ## Deliberate limits
 
