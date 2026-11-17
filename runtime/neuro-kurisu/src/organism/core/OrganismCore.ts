@@ -1829,6 +1829,7 @@ export class OrganismCore {
         this.persisted.system.b1701B2200UnifiedLifeContinuity = this.developmentalNeural.b1701B2200UnifiedLifeContinuity.snapshot();
         this.persisted.system.b2201B2500LifeCourseSelfModel = this.developmentalNeural.b2201B2500LifeCourseSelfModel.snapshot();
         const temporal = this.cognitiveRuntime.temporalContinuity.startSession(Date.now(), 'process-start');
+        this.developmentalNeural.neuralExperienceBranch.resetTestTimeAdaptation();
         this.persisted.facets.advanced.temporalContinuity = temporal;
         this.persisted.facets.advanced.b380TemporalLife = this.developmentalNeural.b380TemporalLife.snapshot();
         this.persisted.facets.advanced.advancedResilience = this.governanceSubsystem.resilience.snapshot();
@@ -3162,14 +3163,15 @@ export class OrganismCore {
         return evaluatePortableSubjectFidelity(this.persisted);
     }
     adaptiveMemoryStrategyReadoutDiagnostics() { return this.adaptiveMemoryStrategyReadout.diagnostics(); }
-    async endTemporalSession(reason = 'shutdown', clean = true): Promise<void> {
+    async endTemporalSession(reason = 'shutdown', clean = true, checkpoint = true): Promise<void> {
         if (!this.ready)
             return;
         const ended = this.cognitiveRuntime.temporalContinuity.endSession(Date.now(), reason, clean);
+        this.developmentalNeural.neuralExperienceBranch.resetTestTimeAdaptation(ended.sessions[0]?.id ?? undefined);
         this.memorySubsystem.events.append(makeEvent('session', this.persisted.state.tick, { sessionId: ended.sessions[0]?.id ?? '', kind: 'end', reason, clean, endedAt: ended.lastSessionEndedAt }));
         this.persisted.facets.memory.eventLog = this.memorySubsystem.events.list();
         this.persisted.facets.advanced.temporalContinuity = ended;
-        await this.checkpoint(true);
+        if (checkpoint) await this.checkpoint(true);
     }
     advancedResilienceSnapshot() { return this.governanceSubsystem.resilience.snapshot(); }
     async releaseQuarantine(id: string, approve: boolean) { if (!this.ready)
@@ -3598,7 +3600,7 @@ export class OrganismCore {
         const embodiedSpine = embodiedBridgeFrame(observation, state.tick, neuralExperienceInput);
         this.developmentalNeural.lastEmbodiedBridgeFeatures = embodiedSpine.sensorFeatures.slice();
         this.developmentalNeural.lastEmbodiedBridgeFreshness01 = observation.embodiment?.sensoryFreshness01 ?? .8;
-        const nebFrame = this.developmentalNeural.neuralExperienceBranch.beforeDecision({ tick: state.tick, input: neuralExperienceInput, baseUtilities: Object.fromEntries(actions.map(a => [a, .5])) as Record<ActionKind, number>, predictionError01: state.predictionError, novelty01: state.needs.novelty, uncertainty01: state.needs.uncertainty, homeostasis01: 1 - state.needs.energy, identityGap01: clamp(1 - this.selfSubsystem.p80UnifiedSelfState.snapshot().continuity01), goalPressure01: state.needs.goalPressure, reward01: observation.reward ?? .5, identityVector: this.developmentalNeural.neuralAutobiographicalIdentityB284.identityLatent(), embodied: embodiedSpine });
+        const nebFrame = this.developmentalNeural.neuralExperienceBranch.beforeDecision({ tick: state.tick, sessionId: this.cognitiveRuntime.temporalContinuity.snapshot().currentSessionId, input: neuralExperienceInput, baseUtilities: Object.fromEntries(actions.map(a => [a, .5])) as Record<ActionKind, number>, predictionError01: state.predictionError, novelty01: state.needs.novelty, uncertainty01: state.needs.uncertainty, homeostasis01: 1 - state.needs.energy, identityGap01: clamp(1 - this.selfSubsystem.p80UnifiedSelfState.snapshot().continuity01), goalPressure01: state.needs.goalPressure, reward01: observation.reward ?? .5, identityVector: this.developmentalNeural.neuralAutobiographicalIdentityB284.identityLatent(), embodied: embodiedSpine });
         const worldState: InternalWorldState = { energy: state.needs.energy, uncertainty: state.needs.uncertainty, cognitiveLoad: state.needs.cognitiveLoad, novelty: state.needs.novelty };
         const worldPredictionByAction = Object.fromEntries(actions.map(action => {
             const prediction = this.config.enableWorldModel
@@ -6063,7 +6065,7 @@ export class OrganismCore {
             const embodiedFull = embodiedBridgeFrame(observation, state.tick, nebFullInput);
             this.developmentalNeural.lastEmbodiedBridgeFeatures = embodiedFull.sensorFeatures.slice();
             this.developmentalNeural.lastEmbodiedBridgeFreshness01 = observation.embodiment?.sensoryFreshness01 ?? .8;
-            const nebFullFrame = this.developmentalNeural.neuralExperienceBranch.beforeDecision({ tick: state.tick, input: nebFullInput, baseUtilities: b365FullFrame?.forecastUtilities ?? (Object.fromEntries(actions.map(a => [a, .5])) as Record<ActionKind, number>), predictionError01: state.predictionError, novelty01: state.needs.novelty, uncertainty01: state.needs.uncertainty, homeostasis01: 1 - state.needs.energy, identityGap01: clamp(1 - this.developmentalNeural.neuralAutobiographicalIdentityB284.diagnostics().autobiographicalContinuity01), goalPressure01: state.needs.goalPressure, reward01: observation.reward ?? .5, identityVector: this.developmentalNeural.neuralAutobiographicalIdentityB284.identityLatent(), embodied: embodiedFull });
+            const nebFullFrame = this.developmentalNeural.neuralExperienceBranch.beforeDecision({ tick: state.tick, sessionId: this.cognitiveRuntime.temporalContinuity.snapshot().currentSessionId, input: nebFullInput, baseUtilities: b365FullFrame?.forecastUtilities ?? (Object.fromEntries(actions.map(a => [a, .5])) as Record<ActionKind, number>), predictionError01: state.predictionError, novelty01: state.needs.novelty, uncertainty01: state.needs.uncertainty, homeostasis01: 1 - state.needs.energy, identityGap01: clamp(1 - this.developmentalNeural.neuralAutobiographicalIdentityB284.diagnostics().autobiographicalContinuity01), goalPressure01: state.needs.goalPressure, reward01: observation.reward ?? .5, identityVector: this.developmentalNeural.neuralAutobiographicalIdentityB284.identityLatent(), embodied: embodiedFull });
             neuralExperienceFullFrame = nebFullFrame;
             b2521FullFrame = this.developmentalNeural.b2521LearnedGenerativeOrganismLoop.beforeDecision({ tick: state.tick, latent: b2515FullFrame.latent, baseUtilities: b365FullFrame?.forecastUtilities ?? (Object.fromEntries(actions.map(a => [a, .5])) as Record<ActionKind, number>), goalPressure01: state.needs.goalPressure, uncertainty01: state.needs.uncertainty, predictionError01: state.predictionError, horizon: b2519FullFrame?.horizon ?? 3, verified01: 0 });
         }

@@ -1,3 +1,11 @@
+## Unreleased — [NK1][Cognition] P27 session lifecycle and outcome replay hardening (2026-11-17)
+
+- Bind ephemeral fast adapters to an opaque in-memory scope derived from the Core temporal session, then combine that scope with causal-world and slow-memory context.
+- Clear one session on `endTemporalSession`, clear all ephemeral scopes on process start/restore, and close the session during `OrganismRuntime.stop()`'s existing final flush.
+- Keep raw session IDs and opaque adapter keys out of durable NeuralExperienceToken/replay/snapshot state.
+- Accept fast updates only for a matching pending decision tick; duplicate, stale, out-of-order and orphan outcomes cannot train the fast overlay.
+- Add a real OrganismRuntime stop/restart lifecycle regression. PR #924 remains Draft and source-only.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.

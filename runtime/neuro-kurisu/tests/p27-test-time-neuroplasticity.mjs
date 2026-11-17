@@ -112,6 +112,32 @@ assert.equal(metrics.fastContextCount, 0);
 assert.equal(metrics.fastAdapterNorm, 0);
 assert.equal(residualMass(restored.snapshot()), 0);
 
+// Fast adaptation accepts only one matched outcome for each decision tick.
+const idempotent = new EmbodiedCausalWorldBridge();
+decision(idempotent, 1, 'idempotent-session');
+outcome(idempotent, 1, 'idempotent-session', 1);
+assert.equal(idempotent.metrics().fastAcceptedUpdates, 1);
+outcome(idempotent, 1, 'idempotent-session', 1);
+assert.equal(idempotent.metrics().fastAcceptedUpdates, 1, 'duplicate outcome was applied twice');
+assert.equal(idempotent.metrics().fastUnmatchedOutcomes, 1);
+
+// An outcome with no preceding decision cannot create or train a fresh context.
+const orphan = new EmbodiedCausalWorldBridge();
+outcome(orphan, 1, 'orphan-context', 1);
+assert.equal(orphan.metrics().fastAcceptedUpdates, 0);
+assert.equal(orphan.metrics().fastContextCount, 0);
+assert.equal(orphan.metrics().fastUnmatchedOutcomes, 1);
+
+// Out-of-order outcomes cannot roll the fast adapter back onto an older decision.
+const outOfOrder = new EmbodiedCausalWorldBridge();
+decision(outOfOrder, 1, 'ordered-session');
+decision(outOfOrder, 2, 'ordered-session');
+outcome(outOfOrder, 2, 'ordered-session', 1);
+assert.equal(outOfOrder.metrics().fastAcceptedUpdates, 1);
+outcome(outOfOrder, 1, 'ordered-session', 1);
+assert.equal(outOfOrder.metrics().fastAcceptedUpdates, 1);
+assert.equal(outOfOrder.metrics().fastUnmatchedOutcomes, 1);
+
 // The active overlay must affect the next causal action evaluation, not just diagnostics.
 const withFastOverlay = new EmbodiedCausalWorldBridge();
 decision(withFastOverlay, 1, 'matched-context');
@@ -123,6 +149,42 @@ const durableResult = decision(durableOnly, 2, 'matched-context');
 const maxActionBiasDelta = Math.max(...ACTIONS.map(action => Math.abs(fastResult.actionBias[action] - durableResult.actionBias[action])));
 assert.ok(maxActionBiasDelta > 0, 'ephemeral fast overlay did not affect the next decision');
 assert.equal(durableOnly.metrics().fastAdapterNorm, 0);
+
+// The host runtime session is part of adaptation identity; a later session starts clean.
+const sessionScoped = new NeuralExperienceBranch();
+const sharedInput = Array.from({ length: 64 }, (_, index) => Math.sin(index * 0.17) * 0.55);
+const sessionA = sessionScoped.beforeDecision({
+  tick: 10, sessionId: 'runtime-session-A', input: sharedInput, baseUtilities: utilities,
+  predictionError01: 0.62, novelty01: 0.48, uncertainty01: 0.42,
+  homeostasis01: 0.7, identityGap01: 0.2, goalPressure01: 0.55,
+  reward01: 0.72, embodied: { sensorFeatures: sharedInput },
+});
+sessionScoped.commitAction('explore', utilities);
+sessionScoped.afterOutcome({
+  tick: 10, action: 'explore', reward01: 0.82, predictionError01: 0.62,
+  verified01: 1, nextInput: sharedInput.map((value, index) => value + (index % 2 ? 0.2 : -0.2)), holdout01: 1,
+});
+const sessionB = sessionScoped.beforeDecision({
+  tick: 11, sessionId: 'runtime-session-B', input: sharedInput, baseUtilities: utilities,
+  predictionError01: 0.62, novelty01: 0.48, uncertainty01: 0.42,
+  homeostasis01: 0.7, identityGap01: 0.2, goalPressure01: 0.55,
+  reward01: 0.72, embodied: { sensorFeatures: sharedInput },
+});
+assert.equal(sessionScoped.diagnostics().testTimeNeuroplasticity.activeAdapterNorm, 0);
+assert.equal(sessionScoped.diagnostics().testTimeNeuroplasticity.contextCount, 2);
+assert.equal(JSON.stringify(sessionScoped.snapshot()).includes('runtime-session-A'), false, 'host session identifier leaked into durable cognitive snapshot');
+sessionScoped.resetTestTimeAdaptation('runtime-session-A');
+assert.equal(sessionScoped.diagnostics().testTimeNeuroplasticity.contextCount, 1);
+sessionScoped.resetTestTimeAdaptation('runtime-session-B');
+assert.equal(sessionScoped.diagnostics().testTimeNeuroplasticity.contextCount, 0);
+
+// Oversized externally supplied context IDs fail closed instead of colliding after truncation.
+const invalidContext = new EmbodiedCausalWorldBridge();
+decision(invalidContext, 1, 'x'.repeat(97));
+outcome(invalidContext, 1, 'x'.repeat(97), 1);
+assert.equal(invalidContext.metrics().fastAcceptedUpdates, 0);
+assert.equal(invalidContext.metrics().fastContextCount, 0);
+assert.equal(invalidContext.metrics().fastUnmatchedOutcomes, 1);
 
 // The context map is bounded and evicts its least-recently-used entry.
 const bounded = new EmbodiedCausalWorldBridge();
@@ -156,7 +218,7 @@ const branchDecision = branch.beforeDecision({
   reward01: 0.72,
   embodied: { sensorFeatures: branchInput },
 });
-assert.equal(typeof branchDecision.experience.adaptationContextId, 'string');
+assert.equal(JSON.stringify(branch.snapshot()).includes('adaptationContextId'), false, 'ephemeral adapter identity entered durable token state');
 branch.commitAction('explore', utilities);
 branch.afterOutcome({
   tick: 1,

@@ -1637,6 +1637,9 @@ export class OrganismRuntime {
     // with the same queue used by step()/tool calls.  This closes the crash/restart
     // window without making every cycle pay a synchronous disk write.
     await this.enqueue(async () => {
+      // Close the host-owned temporal session before the single final durability flush.
+      // This is also the privacy boundary that clears process-local test-time adaptation.
+      await this.core.endTemporalSession('runtime-stop', true, false);
       // Capture the closure before the single durable flush. A previous implementation
       // flushed twice here, which is disproportionately expensive because a full core
       // projection serializes several MB of state on a phone.

@@ -4,9 +4,9 @@
 **Новая работа:** Draft PR [#924 — P27 bounded-context Test-Time Neuroplasticity](https://github.com/ailtron1ss-rgb/NK1/pull/924), ветка `feature/test-time-neuroplasticity-idea27`. Это кандидат поверх source HEAD, не merge и не часть Release ZIP.
 
 - В существующем `EmbodiedCausalWorldBridge` добавлен отдельный ephemeral fast residual overlay: max 8 contexts, LRU, TTL 30 min / 256 ticks, max 64 verified updates/context, per-component bound 0.025 и L2 bound 0.08.
-- Ключ привязан к active world context + slow-memory context. Runtime API пока не отдаёт unique conversation/session ID; публичный reset предоставлен, host teardown hook остаётся открытой задачей.
+- Ключ привязан к настоящему `TemporalContinuity.currentSessionId` (в непрозрачном ephemeral scope) + active world context + slow-memory context. `OrganismRuntime.stop()` закрывает сессию и очищает fast-state в том же финальном flush; raw session ID не дублируется в NeuralExperienceToken/replay/P27 state (существующий TemporalContinuity ledger продолжает хранить свою обычную session metadata). Это runtime-session isolation, не per-chat isolation: отдельного conversation ID в `OrganismObservation` пока нет.
 - P27 fast residual не сериализуется и не изменяет durable `residualAdapter`; автоматического promotion/consolidation нет. LLM weights не меняются.
-- Local test-first RED reproduced durable residual leakage (`0.011310623787825652`); focused P27, existing online-adaptation, P28 and 600-cycle neural-branch tests passed locally. Typecheck/exact-head Actions ещё ожидаются.
+- Fast updates additionally require one unmatched pending decision tick: duplicate, stale and orphan outcomes cannot update the fast overlay. Session scopes are opaque, bounded to 8 and cleared on restore/session end. Local test-first RED reproduced durable residual leakage (`0.011310623787825652`), duplicate-outcome acceptance and session-ID snapshot leakage; focused P27, runtime lifecycle, existing online-adaptation, P28 and 600-cycle neural-branch tests passed locally. Typecheck/exact-head Actions are the remaining verification gate.
 
 Подробности и границы: [docs/P27_TEST_TIME_NEUROPLASTICITY_2026-11-17.md](docs/P27_TEST_TIME_NEUROPLASTICITY_2026-11-17.md).
 

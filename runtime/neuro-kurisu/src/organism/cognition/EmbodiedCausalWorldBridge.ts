@@ -31,6 +31,8 @@ type FastAdaptationContext = {
   createdTick:number;
   lastTouchedTick:number;
   updates:number;
+  pendingDecisionTicks:number[];
+  lastConsumedOutcomeTick:number;
 };
 
 export interface EmbodiedTransitionRecord {
@@ -124,6 +126,7 @@ export class EmbodiedCausalWorldBridge {
   private fastRejectedUpdates=0;
   private fastExpiredContexts=0;
   private fastEvictedContexts=0;
+  private fastUnmatchedOutcomes=0;
   snapshot(){return deep(this.state);}
   restore(raw?:Partial<EmbodiedCausalWorldBridgeState>|null){
     // Test-time plasticity is process-local by design and is never restored.
@@ -142,23 +145,24 @@ export class EmbodiedCausalWorldBridge {
   }
 
 
-  private fastContextKey(contextId?:number|string):string{
-    if(typeof contextId==='number')return Number.isFinite(contextId)?String(Math.trunc(contextId)):'default';
-    const key=String(contextId??'default').trim().slice(0,96);
-    return key||'default';
+  private fastContextKey(contextId?:number|string):string|null{
+    if(typeof contextId==='number')return Number.isSafeInteger(contextId)?String(contextId):null;
+    const key=String(contextId??'default').trim();
+    if(!key||key.length>96)return null;
+    return key;
   }
 
   private fastContextNorm(context?:FastAdaptationContext):number{
     if(!context)return 0;
     let square=0;
-    for(const row of context.actionOffsets)for(const value of row)square+=value*value;
-    return Math.sqrt(square);
+    for(const row of context.actionOffsets)for(const value of row){const safe=finite(value);square+=safe*safe;}
+    return Number.isFinite(square)?Math.sqrt(square):0;
   }
 
   private pruneFastContexts(tick:number,now=Date.now()){
     for(const [key,context] of this.fastContexts){
-      const tickExpired=tick>=context.lastTouchedTick && tick-context.lastTouchedTick>FAST_ADAPTATION_TTL_TICKS;
-      const timeExpired=now>=context.lastTouchedAtMs && now-context.lastTouchedAtMs>FAST_ADAPTATION_TTL_MS;
+      const tickExpired=Number.isSafeInteger(tick)&&tick>=context.lastTouchedTick&&tick-context.lastTouchedTick>FAST_ADAPTATION_TTL_TICKS;
+      const timeExpired=now>=context.lastTouchedAtMs&&now-context.lastTouchedAtMs>FAST_ADAPTATION_TTL_MS;
       if(tickExpired||timeExpired){
         this.fastContexts.delete(key);
         if(this.activeFastContextKey===key)this.activeFastContextKey=null;
@@ -167,10 +171,26 @@ export class EmbodiedCausalWorldBridge {
     }
   }
 
-  private activateFastContext(contextId:number|string|undefined,tick:number):FastAdaptationContext{
+  private touchFastContext(key:string,context:FastAdaptationContext,tick:number,now=Date.now()){
+    context.lastTouchedAtMs=now;
+    context.lastTouchedTick=tick;
+    this.fastContexts.delete(key);
+    this.fastContexts.set(key,context);
+    this.activeFastContextKey=key;
+  }
+
+  private activateFastContext(contextId:number|string|undefined,tick:number):FastAdaptationContext|null{
+    if(!Number.isSafeInteger(tick)||tick<0){this.activeFastContextKey=null;return null;}
     const now=Date.now();
     this.pruneFastContexts(tick,now);
     const key=this.fastContextKey(contextId);
+    if(!key){this.activeFastContextKey=null;return null;}
+    if(this.activeFastContextKey&&this.activeFastContextKey!==key){
+      const previous=this.fastContexts.get(this.activeFastContextKey);
+      if(previous){
+        previous.pendingDecisionTicks=previous.pendingDecisionTicks.filter(value=>value!==tick);
+      }
+    }
     let context=this.fastContexts.get(key);
     if(!context){
       if(this.fastContexts.size>=FAST_ADAPTATION_MAX_CONTEXTS){
@@ -184,14 +204,30 @@ export class EmbodiedCausalWorldBridge {
       context={
         actionOffsets:Array.from({length:ACTIONS.length},()=>new Array(LATENT).fill(0)),
         createdAtMs:now,lastTouchedAtMs:now,createdTick:tick,lastTouchedTick:tick,updates:0,
+        pendingDecisionTicks:[],lastConsumedOutcomeTick:-1,
       };
     }
-    context.lastTouchedAtMs=now;
-    context.lastTouchedTick=tick;
-    // Refresh insertion order as well as timestamps: this Map is the bounded LRU.
-    this.fastContexts.delete(key);
-    this.fastContexts.set(key,context);
-    this.activeFastContextKey=key;
+    if(!context.pendingDecisionTicks.includes(tick))context.pendingDecisionTicks.push(tick);
+    if(context.pendingDecisionTicks.length>16)context.pendingDecisionTicks.splice(0,context.pendingDecisionTicks.length-16);
+    this.touchFastContext(key,context,tick,now);
+    return context;
+  }
+
+  private consumeFastDecision(contextId:number|string|undefined,tick:number):FastAdaptationContext|null{
+    if(!Number.isSafeInteger(tick)||tick<0){this.activeFastContextKey=null;this.fastUnmatchedOutcomes++;return null;}
+    const now=Date.now();
+    this.pruneFastContexts(tick,now);
+    const key=this.fastContextKey(contextId);
+    const context=key?this.fastContexts.get(key):undefined;
+    if(!key||!context||!context.pendingDecisionTicks.includes(tick)||tick<=context.lastConsumedOutcomeTick){
+      if(context&&key&&context.pendingDecisionTicks.includes(tick))context.pendingDecisionTicks=context.pendingDecisionTicks.filter(value=>value!==tick);
+      this.activeFastContextKey=null;
+      this.fastUnmatchedOutcomes++;
+      return null;
+    }
+    context.pendingDecisionTicks=context.pendingDecisionTicks.filter(value=>value!==tick);
+    context.lastConsumedOutcomeTick=tick;
+    this.touchFastContext(key,context,tick,now);
     return context;
   }
 
@@ -202,14 +238,24 @@ export class EmbodiedCausalWorldBridge {
       return;
     }
     const key=this.fastContextKey(contextId);
+    if(!key)return;
     this.fastContexts.delete(key);
     if(this.activeFastContextKey===key)this.activeFastContextKey=null;
+  }
+
+  resetTestTimeAdaptationPrefix(prefix:string){
+    const safe=String(prefix??'');
+    if(!safe||safe.length>128)return;
+    for(const key of this.fastContexts.keys())if(key.startsWith(safe)){
+      this.fastContexts.delete(key);
+      if(this.activeFastContextKey===key)this.activeFastContextKey=null;
+    }
   }
 
   exportTestTimeAdaptationCandidate(contextId?:number|string){
     this.pruneFastContexts(this.state.tick);
     const key=this.fastContextKey(contextId??this.activeFastContextKey??undefined);
-    const context=this.fastContexts.get(key);
+    const context=key?this.fastContexts.get(key):undefined;
     if(!context||context.updates===0)return null;
     return {
       status:'requires-independent-validation' as const,
@@ -309,7 +355,7 @@ export class EmbodiedCausalWorldBridge {
   }
 
   afterOutcome(args:{tick:number;contextId?:number|string;action:ActionKind;nextFeatures:number[];reward01:number;verified01:number;predictionError01:number;sensorFreshness01?:number}){
-    const fastContext=this.activateFastContext(args.contextId??this.activeFastContextKey??undefined,args.tick);
+    const fastContext=this.consumeFastDecision(args.contextId??this.activeFastContextKey??undefined,args.tick);
     const ai=Math.max(0,ACTIONS.indexOf(args.action));const from=this.state.latent.slice();const observed=this.encode(args.nextFeatures);const pred=this.predict(from,args.action,1);const nextError=clamp(mse(pred.next,observed));const rewardErr=clamp(Math.abs(pred.reward-args.reward01));
     const verified=clamp(args.verified01);const lr=.012+verified*.018;
     const row=this.state.dynamics[ai]!;
@@ -330,7 +376,7 @@ export class EmbodiedCausalWorldBridge {
     const adaptGate=clamp(.25+verified*.35+Math.min(.30,args.predictionError01*.55),.20,.85);
     const adapterEta=.006*adaptGate;
     let adapterMass=0;
-    if(verified>=FAST_ADAPTATION_MIN_VERIFICATION && fastContext.updates<FAST_ADAPTATION_MAX_UPDATES_PER_CONTEXT){
+    if(fastContext && verified>=FAST_ADAPTATION_MIN_VERIFICATION && fastContext.updates<FAST_ADAPTATION_MAX_UPDATES_PER_CONTEXT){
       for(let i=0;i<LATENT;i++){
         const residual=(observed[i]??0)-(pred.next[i]??0);
         adapterMass+=Math.abs(residual);
@@ -407,7 +453,7 @@ export class EmbodiedCausalWorldBridge {
       horizonErrors:this.state.horizonErrors.slice(),
       horizonCounts:this.state.horizonCounts.slice(),
       horizonConfidence01:this.state.horizonConfidence01.slice(),onlineAdaptation01:this.state.onlineAdaptation01,calibrationError01:this.state.calibrationError01,modelDrift01:this.state.modelDrift01,adaptationUpdates:this.state.adaptationUpdates,failureEvents:this.state.failureEvents,recoveryGain01:this.state.recoveryGain01,
-      fastContextCount:this.fastContexts.size,fastAdapterNorm:this.fastContextNorm(this.activeFastContextKey?this.fastContexts.get(this.activeFastContextKey):undefined),fastAcceptedUpdates:this.fastAcceptedUpdates,fastRejectedUpdates:this.fastRejectedUpdates,fastExpiredContexts:this.fastExpiredContexts,fastEvictedContexts:this.fastEvictedContexts,
+      fastContextCount:this.fastContexts.size,fastAdapterNorm:this.fastContextNorm(this.activeFastContextKey?this.fastContexts.get(this.activeFastContextKey):undefined),fastAcceptedUpdates:this.fastAcceptedUpdates,fastRejectedUpdates:this.fastRejectedUpdates,fastExpiredContexts:this.fastExpiredContexts,fastEvictedContexts:this.fastEvictedContexts,fastUnmatchedOutcomes:this.fastUnmatchedOutcomes,
       observations:this.state.observations,
       transitions:this.state.transitions,
       interventionComparisons:this.state.interventionComparisons,
