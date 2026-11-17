@@ -48,8 +48,12 @@ assert.notEqual(projectStart, -1, 'project execution/reconciliation path must re
 const projectEnd = source.indexOf('const unresolvedReceipt = [', projectStart);
 assert.ok(projectEnd > projectStart, 'project execution path must have an explicit receipt outcome boundary');
 const projectDispatch = source.slice(projectStart, projectEnd);
-assert.match(projectDispatch, /result = await this\.executeTool\(id, input, executionReason, executionOptions\)/,
-  'fresh project tool execution must use the canonical core wrapper so unkeyed outcomes are finalized');
+assert.match(projectDispatch, /this\.executeTrustedCoreIntent\(/,
+  'fresh project tool execution must pass through the project-checkpoint-attested Intent Contract');
+assert.match(projectDispatch, /this\.reconcileIntentExecution\(approvedProjectIntent/,
+  'a project operation with a persisted Intent Contract must reconcile through the intent runtime');
+assert.match(projectDispatch, /else \{[\s\S]*this\.reconcileToolExecution\(/,
+  'legacy checkpoints without an Intent record may use only the existing read-only receipt recovery path');
 assert.doesNotMatch(projectDispatch, /actionGateway\.executeTool\(id, input, executionReason, executionOptions\)/,
   'project executor must not bypass the canonical core finalizer for fresh tool execution');
 assert.match(projectDispatch, /this\.reconcileToolExecution\(id, input, `\$\{executionReason\};resume-reconcile`, executionOptions\)/,
@@ -63,11 +67,13 @@ assert.notEqual(skillStart, -1, 'compound skill execution path must remain ident
 const skillEnd = source.indexOf('stepError = result.result?.error', skillStart);
 assert.ok(skillEnd > skillStart, 'compound skill execution must expose its outcome boundary');
 const skillDispatch = source.slice(skillStart, skillEnd);
-assert.match(skillDispatch, /this\.executeTool\(\s*canonicalCandidateTool, resolvedToolInput, executionReason, executionOptions, Object\.keys\(runtimeInput\)/,
-  'compound skill steps must dispatch through OrganismCore.executeTool and preserve finalization context keys');
+assert.match(skillDispatch, /this\.executeTrustedCoreIntent\(/,
+  'compound skill steps must pass through a verified step-bound Intent Contract');
+assert.match(skillDispatch, /finalizationContextKeys: Object\.keys\(runtimeInput\)/,
+  'compound skill steps must preserve finalizer context through the Intent bridge');
 assert.doesNotMatch(skillDispatch, /actionGateway\.executeTool\(/,
   'compound skill execution must not bypass canonical core finalization');
 assert.doesNotMatch(skillDispatch, /this\.finalizeToolOutcome\(/,
   'compound skill execution must not duplicate the core wrapper finalizer');
 
-console.log('NK1_AUTONOMOUS_PLANNER_GATEWAY_ROUTE=PASS plannerUsesCoreWrapper=true projectUsesCoreWrapper=true canonicalGateway=true finalizerOwnership=true');
+console.log('NK1_AUTONOMOUS_PLANNER_GATEWAY_ROUTE=PASS plannerUsesIntent=true projectUsesIntent=true compoundSkillsUseIntent=true canonicalGateway=true finalizerOwnership=true');
