@@ -399,9 +399,12 @@ export function createNeuroPlasticEvaluationReceipt(
     evaluatedAt: normalized.evaluatedAt,
     evaluationFingerprint: normalized.evaluationFingerprint,
   };
+  const evidence = buildEvaluationEvidence(normalized, unsigned.evaluationId, unsigned.evaluatorId);
+  const reportFingerprint = evaluationEvidenceFingerprint(evidence);
+  const receipt = { ...unsigned, reportFingerprint };
   return {
-    ...unsigned,
-    signature: hmacSha256(evaluationReceiptPayload(normalized.adapterId, unsigned), secret),
+    ...receipt,
+    signature: hmacSha256(evaluationReceiptPayload(normalized.adapterId, receipt), secret),
   };
 }
 
@@ -416,6 +419,7 @@ export function verifyNeuroPlasticEvaluationReceiptSignature(
       evaluatorId: safeText(receipt?.evaluatorId, 'evaluator-id', 160),
       evaluatedAt: safeCounter(receipt?.evaluatedAt, 'evaluation-receipt-time', 1),
       evaluationFingerprint: safeHash(receipt?.evaluationFingerprint, 'evaluation-fingerprint'),
+      reportFingerprint: safeHash(receipt?.reportFingerprint, 'evaluation-report-fingerprint'),
     };
     const expected = hmacSha256(evaluationReceiptPayload(
       safeText(adapterId, 'evaluation-adapter-id', 80),
@@ -440,14 +444,22 @@ export function verifyNeuroPlasticEvaluationSignature(
       evaluatorId: safeText(receipt?.evaluatorId, 'evaluator-id', 160),
       evaluatedAt: safeCounter(receipt?.evaluatedAt, 'evaluation-receipt-time', 1),
       evaluationFingerprint: safeHash(receipt?.evaluationFingerprint, 'evaluation-fingerprint'),
+      reportFingerprint: safeHash(receipt?.reportFingerprint, 'evaluation-report-fingerprint'),
     };
     if (normalizedReceipt.evaluatedAt !== normalized.evaluatedAt ||
         normalizedReceipt.evaluationFingerprint !== normalized.evaluationFingerprint) return false;
+    const evidence = buildEvaluationEvidence(
+      normalized,
+      normalizedReceipt.evaluationId,
+      normalizedReceipt.evaluatorId,
+    );
+    if (normalizedReceipt.reportFingerprint !== evaluationEvidenceFingerprint(evidence)) return false;
     return verifyNeuroPlasticEvaluationReceiptSignature(normalized.adapterId, receipt, secret);
   } catch {
     return false;
   }
 }
+
 
 function mean(values: number[]): number {
   return values.reduce((total, value) => total + value, 0) / Math.max(1, values.length);
