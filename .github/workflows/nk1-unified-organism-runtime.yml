@@ -46,6 +46,8 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: P25 Adaptive Synaptic Matrix regression contract
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs
+      - name: P25 real runtime adapter integration
+        run: npm --prefix runtime/neuro-kurisu run test:p25:adaptive-synaptic-matrix:runtime
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Unified cognitive cycle and boundary
