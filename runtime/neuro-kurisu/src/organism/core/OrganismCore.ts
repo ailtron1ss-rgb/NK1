@@ -3376,6 +3376,38 @@ export class OrganismCore {
         const p52 = (this.persisted.facets.advanced as any)?.p52CounterfactualDevelopment;
         return { tick: s.tick, embodimentPresent: Boolean((this.persisted.facets as any).embodiment?.body), selfAuthorshipPresent: Boolean((this.persisted.facets as any).learning?.selfAuthorship), worldTransitions: Array.isArray((this.persisted as any).worldModel?.transitions) ? (this.persisted as any).worldModel.transitions.length : 0, p52Samples: Number(p52?.samples ?? 0) };
     }
+    /** Read-only operational diagnostics for the evidence-backed Parliament gate. */
+    cognitiveParliamentDiagnostics() {
+        if (!this.ready)
+            throw new Error('OrganismCore.init() must be called first');
+        const roles:import('../system/CognitiveParliament.ts').ParliamentRole[] = [
+            'researcher','planner','skeptic','executor','safety-guardian','auditor',
+        ];
+        const configuredRoles = roles.filter(role =>
+            typeof this.config.parliamentRoleExecutors?.[role]?.execute === 'function');
+        const history = Array.isArray(this.persisted.system.cognitiveParliamentDecisionHistory)
+            ? this.persisted.system.cognitiveParliamentDecisionHistory
+            : [];
+        return {
+            version:1 as const,
+            enabled:this.config.enableCognitiveParliament,
+            cadenceCycles:this.config.cognitiveParliamentEveryCycles,
+            timeoutMs:this.config.cognitiveParliamentTimeoutMs,
+            maxConcurrent:this.config.cognitiveParliamentMaxConcurrent,
+            maxTotalTokens:this.config.cognitiveParliamentMaxTotalTokens,
+            maxInputChars:this.config.cognitiveParliamentMaxInputChars,
+            configuredRoles,
+            configuredRoleCount:configuredRoles.length,
+            trustedModelAttestorConfigured:Boolean(
+                typeof this.config.parliamentModelAttestor === 'function' ||
+                this.config.parliamentModelAttestationRegistry,
+            ),
+            historyCount:history.length,
+            lastDecision:structuredClone(this.persisted.system.cognitiveParliamentLastDecision ?? null),
+            recentDecisions:structuredClone(history.slice(-16)),
+        };
+    }
+
     snapshot(): PersistedOrganism {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
