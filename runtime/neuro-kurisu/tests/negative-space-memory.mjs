@@ -10,6 +10,9 @@ const context = {
   significance: { cost01: 0.82, risk01: 0.15, futureImportance01: 0.2 },
   outcomeEvidence: ['grounded-outcome:device', 'postcondition:verified'],
   contextKey: 'goal:maintain-system|energy:1|uncertainty:3|load:1|novelty:2',
+  outcomeVerified01: 1,
+  outcomeIndependent01: 1,
+  outcomeSource: 'world-transition',
 };
 const alternatives = [
   {
@@ -80,6 +83,32 @@ assert.equal(record.alternatives[0].reviewEligible, false);
 assert.equal(record.alternatives[1].reviewEligible, true);
 assert.equal(engine.negativeSpaceReviewQueue().length, 1);
 assert.equal(record.alternatives[0].reopenReason, 'new evidence supports a retry');
+
+// An outcome shortfall without verified evidence must never enter the review queue.
+const unverified = new RegretEngine();
+unverified.observe('act', 0.2, [{ action: 'explore', estimated: 0.95 }], {
+  decisionId: 'decision-unverified-outcome',
+  contextKey: 'same-context-but-unverified',
+  chosenExpectedOutcome01: 0.9,
+  significance: { cost01: 0.2, risk01: 0.95, futureImportance01: 0.1 },
+  outcomeVerified01: 0,
+  outcomeIndependent01: 0,
+  outcomeSource: 'internal',
+});
+assert.equal(unverified.snapshot().negativeSpace.records[0].reviewStatus, 'retained');
+assert.equal(unverified.negativeSpaceReviewQueue().length, 0);
+assert.equal(unverified.markNegativeSpaceAlternativeReopened(
+  'decision-unverified-outcome', 'explore', 'unverified evidence must not reopen', 300,
+), false);
+
+// Missing verification metadata is also insufficient; legacy callers do not gain review authority.
+const unknownEvidence = new RegretEngine();
+unknownEvidence.observe('act', 0.1, [{ action: 'verify', estimated: 0.9 }], {
+  decisionId: 'decision-unknown-outcome-quality',
+  chosenExpectedOutcome01: 0.9,
+  significance: { cost01: 0.1, risk01: 0.9, futureImportance01: 0.1 },
+});
+assert.equal(unknownEvidence.negativeSpaceReviewQueue().length, 0);
 
 // Small decisions must not create a permanent counterfactual-memory trail.
 engine.observe('wait', 0.6, [{ action: 'rest', estimated: 0.7 }], {
