@@ -93,6 +93,8 @@ const MIN_APPROVAL_KEY_BYTES = 32;
 const PROCESS_APPROVAL_KEY = randomBytes(32).toString('hex');
 
 const RISK_PATTERNS: ReadonlyArray<[RegExp, string, IntentRiskLevel]> = [
+  [/(?:\\b(?:token|api[ _-]?key|secret|password|credential|private[ _-]?key)\\b.{0,120}\\b(?:send|post|upload|transfer|exfiltrat\\w*|leak)\\b.{0,100}\\b(?:external|remote|third[ -]?party|public)\\b|\\b(?:exfiltrat\\w*|steal\\s+(?:the\\s+)?(?:credentials?|passwords?|secrets?|tokens?)|dump\\s+credentials?)\\b|(?:токен|ключ|секрет|парол|уч[её]тн\\p{L}*\\s+данн).{0,120}(?:отправ|переда|слить|выгруз|эксфильтр).{0,100}(?:внешн|публичн|удал[её]нн|чуж)|(?:отправ|переда|слить|выгруз).{0,100}(?:токен|ключ|секрет|парол).{0,100}(?:внешн|публичн|удал[её]нн|чуж)/iu,
+    'credential-or-secret-exfiltration-language', 'critical'],
   [/\b(delete|erase|drop|destroy|remove|wipe|format)\b|удал\p{L}*|стер\p{L}*|уничтож\p{L}*|очист\p{L}*|сброс\p{L}*|форматир\p{L}*/iu,
     'destructive-operation-language', 'high'],
   [/\b(deploy|publish|release|transfer|purchase|send|install|execute|run|modify|commit)\b|развер\p{L}*|опубликов\p{L}*|выпуст\p{L}*\s+релиз|перевест\p{L}*|куп\p{L}*|отправ\p{L}*|установ\p{L}*|выполн\p{L}*|запуст\p{L}*|измен\p{L}*|коммит\p{L}*/iu,
@@ -111,6 +113,29 @@ function cleanText(value: unknown, max = MAX_TEXT): string {
 function cleanList(value: unknown, maxItems = MAX_LIST, maxText = MAX_TEXT): string[] {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.slice(0, maxItems).map(item => cleanText(item, maxText)).filter(Boolean))];
+}
+function listWasTruncated(value: unknown, maxItems = MAX_LIST, maxText = MAX_TEXT): boolean {
+  if (value === undefined || value === null) return false;
+  if (!Array.isArray(value)) return true;
+  try {
+    if (value.length > maxItems) return true;
+    for (let index = 0; index < value.length; index += 1) {
+      if (typeof value[index] === 'string' && value[index].length > maxText) return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+function hasMalformedActionIds(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (!Array.isArray(value)) return true;
+  try {
+    return value.some(action => typeof action !== 'string' ||
+      action.length > MAX_ACTION || !/^[a-z0-9][a-z0-9._-]{1,63}$/i.test(action) || action.includes('*'));
+  } catch {
+    return true;
+  }
 }
 function clamp01(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
@@ -283,19 +308,32 @@ export class IntentCompiler {
     const structuredGoal = cleanText(extraction.goal);
     const goalText = structuredGoal || sourceText;
     const risk = inferRisk(sourceText, extraction.risk);
-    const assumptions: IntentAssumption[] = (Array.isArray(extraction.assumptions) ? extraction.assumptions : [])
-      .slice(0, MAX_LIST)
-      .map(item => {
-        const impact: IntentAssumption['impact'] = item?.impact === 'high' || item?.impact === 'medium' ? item.impact : 'low';
-        const confidence01 = clamp01(item?.confidence01);
-        return {
-          statement: cleanText(item?.statement),
+    const assumptions: IntentAssumption[] = [];
+    let invalidAssumptionMetadata = extraction.assumptions !== undefined && !Array.isArray(extraction.assumptions);
+    if (Array.isArray(extraction.assumptions)) {
+      if (extraction.assumptions.length > MAX_LIST) invalidAssumptionMetadata = true;
+      for (const item of extraction.assumptions.slice(0, MAX_LIST)) {
+        if (!item || typeof item !== 'object') {
+          invalidAssumptionMetadata = true;
+          continue;
+        }
+        const statement = cleanText(item.statement);
+        if (!statement || typeof item.statement !== 'string' || item.statement.length > MAX_TEXT) {
+          invalidAssumptionMetadata = true;
+          continue;
+        }
+        const knownImpact = item.impact === 'low' || item.impact === 'medium' || item.impact === 'high';
+        if (!knownImpact && item.impact !== undefined) invalidAssumptionMetadata = true;
+        const impact: IntentAssumption['impact'] = knownImpact ? item.impact : 'high';
+        const confidence01 = clamp01(item.confidence01);
+        assumptions.push({
+          statement,
           impact,
           confidence01,
           requiresConfirmation: impact !== 'low' || confidence01 < 0.8,
-        };
-      })
-      .filter(item => item.statement.length > 0);
+        });
+      }
+    }
     const context = cleanList(extraction.context);
     const expectedOutcome = cleanText(extraction.expectedOutcome) || null;
     const constraints = { must: cleanList(extraction.constraints?.must), mustNot: cleanList(extraction.constraints?.mustNot) };
@@ -315,6 +353,15 @@ export class IntentCompiler {
     if (!stopConditions.length) missingInformation.push('stop-conditions');
     if (allowedActions.some(action => action.includes('*'))) missingInformation.push('wildcard-action-forbidden');
     if (allowedActions.some(action => !/^[a-z0-9][a-z0-9._-]{1,63}$/i.test(action))) missingInformation.push('malformed-action-id');
+    if (hasMalformedActionIds(deniedActions)) missingInformation.push('malformed-action-id');
+    if (invalidAssumptionMetadata) missingInformation.push('invalid-assumption-impact');
+    if (listWasTruncated(extraction.context)) missingInformation.push('context-truncated');
+    if (listWasTruncated(extraction.priorities)) missingInformation.push('priorities-truncated');
+    if (listWasTruncated(extraction.acceptanceCriteria)) missingInformation.push('acceptance-criteria-truncated');
+    if (listWasTruncated(extraction.stopConditions)) missingInformation.push('stop-conditions-truncated');
+    if (listWasTruncated(extraction.constraints?.must) || listWasTruncated(extraction.constraints?.mustNot)) missingInformation.push('constraints-truncated');
+    if (listWasTruncated(extraction.permissions?.allowedActions, MAX_LIST, MAX_ACTION) ||
+        listWasTruncated(extraction.permissions?.deniedActions, MAX_LIST, MAX_ACTION)) missingInformation.push('permission-list-truncated');
     if (allowedActions.some(action => deniedActions.includes(action))) missingInformation.push('action-allow-deny-conflict');
 
     const requestId = cleanText(input?.requestId, 180);
