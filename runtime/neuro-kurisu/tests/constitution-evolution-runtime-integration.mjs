@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
+import { generateKeyPairSync, sign } from 'node:crypto';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 import { GovernanceSubsystemRuntime } from '../src/organism/core/GovernanceSubsystemRuntime.ts';
+import { canonicalConstitutionReviewPayload } from '../src/organism/cognition/evolution/ConstitutionReviewAuthority.ts';
 
 const HOST_KEY = 'omestro-20-runtime-signing-key-32-bytes-minimum';
 process.env.NEURO_CONSTITUTION_HMAC_KEY = HOST_KEY;
+const reviewer = generateKeyPairSync('ed25519');
+const reviewerPublic = reviewer.publicKey.export({type:'spki',format:'pem'}).toString();
+const reviewerPrivate = reviewer.privateKey.export({type:'pkcs8',format:'pem'}).toString();
+process.env.NEURO_CONSTITUTION_REVIEW_KEYS_JSON = JSON.stringify({'runtime-test-reviewer':reviewerPublic});
 
 const first = new GovernanceSubsystemRuntime();
 const engine = first.constitutionEvolution;
@@ -33,15 +39,23 @@ const proposal = engine.propose({
   },
   testPlan: ['Activate a reviewed rule and restore it through GovernanceSubsystemRuntime.']
 });
-engine.review(proposal.id, {
-  reviewerId: 'runtime-test-reviewer',
+const reviewPayload = {
+  schemaVersion: 1,
+  proposalId: proposal.id,
   candidateDigest: proposal.candidateDigest,
+  reviewerId: 'runtime-test-reviewer',
   decision: 'approve',
   invariantsPassed: true,
   tests: { planned: 1, executed: 1, passed: 1, failed: 0, holdoutCases: 1, holdoutPassed: true },
   evidenceRefs: ['ci://omestro20/runtime-persistence'],
-  rationale: 'Runtime integration test evidence.'
-});
+  rationale: 'Runtime integration test evidence.',
+  at: Date.now(),
+};
+const reviewArtifact = {
+  payload: reviewPayload,
+  signature: sign(null, Buffer.from(canonicalConstitutionReviewPayload(reviewPayload), 'utf8'), reviewerPrivate).toString('base64'),
+};
+engine.review(proposal.id, reviewArtifact);
 
 const ratification = await engine.requestRatification(proposal.id, gateway);
 assert.equal(gatewayLedger.permissions.requests.at(-1).id, ratification.approvalRequestId);
