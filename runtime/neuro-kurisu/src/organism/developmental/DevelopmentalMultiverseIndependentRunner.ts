@@ -14,7 +14,10 @@ import {
   type HostOwnedIndependentEvaluationCommands,
   type HostOwnedIndependentEvaluationServices,
 } from '../learning/HostOwnedIndependentEvaluationServices.ts';
-import { createLearningExperimentPlan } from '../learning/LearningExperimentPlan.ts';
+import {
+  createLearningExperimentPlan,
+  validateResearchGradeLearningExperimentPlan,
+} from '../learning/LearningExperimentPlan.ts';
 import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
 import { VerifiedOutcomeLedger, type TaskManifestEntry } from '../learning/VerifiedOutcomeLedger.ts';
 import type { SkillLearnBenchTrialReport } from '../learning/SkillLearnBenchAdapter.ts';
@@ -545,12 +548,11 @@ export class DevelopmentalMultiverseIndependentRunner {
         resetMethodPrefix: 'dm19:candidate:',
       });
     };
-    return {
-      manifest, ledger,
-      validationPlan: makePlan('validation'),
-      holdoutPlan: makePlan('holdout'),
-      byKey,
-    };
+    const validationPlan = makePlan('validation');
+    const holdoutPlan = makePlan('holdout');
+    // Require P23's research-grade holdout contract before any finalist is evaluated.
+    validateResearchGradeLearningExperimentPlan(holdoutPlan, manifest);
+    return { manifest, ledger, validationPlan, holdoutPlan, byKey };
   }
 
   private async evaluateArm(

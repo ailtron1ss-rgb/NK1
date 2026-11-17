@@ -69,3 +69,8 @@ Runner не применяет предложенный профиль к live P
 ### Канонический P23 outcome ledger
 
 Каждый arm теперь после проверки evaluation digest и run bindings отдельно коммитит свои validation-only либо holdout-only outcomes через `recordIndependentEvaluationOutcomes()` в `VerifiedOutcomeLedger`. Этот метод повторно сверяет план/manifest/trial/run ID, отклоняет повторную запись ячейки и принимает batch атомарно. Для observation фиксируются fingerprint snapshot ledger и число принятых outcome rows. Ledger в этой реализации ограничен текущей фазой/процессом; в checkpoint сохраняется fingerprint его snapshot, а не сам ledger. Это provenance trace, а не подписанный verifier certificate и не замена host-controlled signed evidence/anti-rollback storage.
+
+
+### Независимость статистических выборок
+
+Входной контракт теперь требует не только минимум 3 validation и 5 holdout пар, но и столько же различных seed в каждой фазе. Перед запуском runner дополнительно вызывает P23 `validateResearchGradeLearningExperimentPlan()` для holdout: минимум пять независимых seed и полное покрытие всех holdout task families. Повтор одного seed на разных сценариях больше не увеличивает искусственно размер выборки для confidence interval.
