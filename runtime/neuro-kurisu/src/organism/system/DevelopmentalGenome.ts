@@ -115,7 +115,14 @@ function dependencyTopology(modules: DevelopmentalGenomeModule[]): {
   issues: GenomeGateIssue[];
 } {
   const issues: GenomeGateIssue[] = [];
-  const names = modules.map(module => module.name);
+  const names: string[] = [];
+  for (const module of modules) {
+    if (!module || typeof module !== 'object' || Array.isArray(module) || typeof module.name !== 'string' || !module.name) {
+      issues.push({ code: 'malformed-module', path: 'modules', message: 'Every module must be an object with a non-empty string name' });
+      continue;
+    }
+    names.push(module.name);
+  }
   const known = new Set<string>();
   for (const name of names) {
     if (known.has(name)) issues.push({ code: 'duplicate-module', path: 'modules', message: 'Duplicate module name: ' + name });
@@ -130,6 +137,7 @@ function dependencyTopology(modules: DevelopmentalGenomeModule[]): {
   }
 
   for (const module of modules) {
+    if (!module || typeof module !== 'object' || Array.isArray(module) || typeof module.name !== 'string' || !module.name) continue;
     if (!Array.isArray(module.dependencies)) {
       issues.push({ code: 'invalid-dependencies', path: 'modules.' + module.name + '.dependencies', message: 'Dependencies must be an array' });
       continue;
@@ -271,6 +279,10 @@ export function evaluateDevelopmentalGenome(
 
   if (Array.isArray(value.modules)) {
     for (const module of value.modules) {
+      if (!module || typeof module !== 'object' || Array.isArray(module)) {
+        addIssue(violations, 'malformed-module', 'modules', 'Every module must be a structured object');
+        continue;
+      }
       const contract = contractByName.get(module?.name);
       if (!contract) {
         addIssue(violations, 'unknown-module', 'modules', 'Unknown module: ' + String(module?.name));
