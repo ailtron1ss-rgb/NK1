@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, stat, symlink } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -46,6 +46,19 @@ try {
   assert.equal(writer.hasReceiptReconciliation, true);
 
   const input = { path: 'undo-first-integration.txt', content: 'NK1 filesystem Undo-First integration\n' };
+
+  // The tool must not accept anonymous or unapproved filesystem writes.
+  const missingKey = await core.executeTool('organism.files.write', input, 'anonymous-filesystem-write');
+  assert.equal(missingKey.outcomeClass, 'idempotency-key-required');
+  const unapprovedKey = 'filesystem-undo-first:unapproved';
+  const missingApproval = await core.executeTool('organism.files.write', input, 'unapproved-filesystem-write', {
+    idempotencyKey: unapprovedKey,
+    decisionId: 'filesystem-integration:unapproved',
+    autonomous: false,
+  });
+  assert.equal(missingApproval.outcomeClass, 'approval-required');
+  await assert.rejects(readFile(join(store.siblingPath('workspace'), input.path), 'utf8'), { code: 'ENOENT' });
+
   const idempotencyKey = 'filesystem-undo-first:integration-create-01';
   const options = await approveWrite(core, input, idempotencyKey);
   const result = await core.executeTool(
@@ -94,8 +107,7 @@ try {
   assert.equal(traversal.outcomeClass, 'undo-preparation-failed');
   await assert.rejects(readFile(join(tempRoot, 'escaped-from-workspace.txt'), 'utf8'), { code: 'ENOENT' });
 
-  // Parent symlinks are rejected too: a valid-looking relative path must not
-  // redirect the write outside the private workspace.
+  // A final-component symlink is rejected rather than followed outside the workspace.
   await symlink(tempRoot, join(workspace, 'external-link.txt'));
   const symlinkInput = { path: 'external-link.txt', content: 'must not follow symlinks' };
   const symlinkOptions = await approveWrite(core, symlinkInput, 'filesystem-undo-first:symlink-denied');
@@ -129,7 +141,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     pass: 'filesystem-undo-first-integration',
-    assertions: 46,
+    checks: ['one-shot-approval','required-idempotency','create-only-no-overwrite','path-traversal-denial','symlink-denial','readback-hash','durable-artifact','restart-replay','memory-store-isolation'],
     tool: 'organism.files.write',
     receipt: result.executionId,
     undoStatus: undo.status,
