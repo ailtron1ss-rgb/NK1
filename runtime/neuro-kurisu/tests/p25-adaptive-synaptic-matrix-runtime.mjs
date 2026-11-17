@@ -137,6 +137,8 @@ try {
   // Re-enablement is an explicit operator action and must present a fresh,
   // trusted manifest again; it is never triggered by ordinary routing.
   failAdapter = false;
+  badReceipt = false;
+  badBaseReceipt = false;
   await runtime.activateSynapticAdapter(manifest);
   const reactivated = await runtime.step('Use the explicitly reactivated specialist.');
   assert.equal(reactivated.language?.text, 'specialized response');
