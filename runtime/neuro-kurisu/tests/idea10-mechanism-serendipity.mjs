@@ -62,6 +62,15 @@ assert.equal(experiment.action,'verify');
 assert.equal(experiment.status,'candidate');
 assert.equal(experiment.epistemicStatus,'hypothesis');
 assert.equal(experiment.verificationRequired,true);
+assert.deepEqual(experiment.mechanismVerification, {
+  protocol: 'paired-holdout-v1',
+  minPairedSeeds: 5,
+  baselineRequired: true,
+  independentHoldoutRequired: true,
+  maxVariantsPerRun: 1,
+  rollbackRequired: true,
+  autoApply: false,
+}, 'a mechanism transfer must carry a conservative, independently testable verification contract');
 assert.equal(experiment.mechanismDiscoveryId,best.id);
 assert.equal(experiment.mechanismFlowEvidenceClass,best.flowEvidenceClass);
 assert.equal(experiment.createdAt,now);

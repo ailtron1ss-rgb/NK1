@@ -48,7 +48,7 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
-      - name: OmeStro idea 10 — mechanism-level cross-domain discovery
+      - name: OmeStro idea 10 — structural discovery, provenance and holdout gate
         run: npm --prefix runtime/neuro-kurisu run test:idea10:mechanism-serendipity && npm --prefix runtime/neuro-kurisu run test:idea10:mechanism-intake && npm --prefix runtime/neuro-kurisu run test:idea10:mechanism-symmetry
       - name: Unified cognitive cycle and boundary
         run: npm --prefix runtime/neuro-kurisu run test:workpass287:cognitive-cycle && npm --prefix runtime/neuro-kurisu run test:cognitive-cycle-boundary-runtime-wiring
