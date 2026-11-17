@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, rename, rm, stat } from 'node:fs/promises';
-import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import {
   createIndependentSkillCandidateEvaluator,
@@ -36,7 +35,8 @@ import {
   type DevelopmentalMultiverseSnapshot,
 } from './DevelopmentalMultiverse.ts';
 
-const MAX_CHECKPOINT_BYTES = 8 * 1024 * 1024;
+const MAX_CHECKPOINT_BYTES = 16 * 1024 * 1024;
+const MAX_SCENARIOS_PER_SPLIT = 32;
 const MAX_SCENARIO_INPUT_BYTES = 64 * 1024;
 const FORBIDDEN_SCENARIO_KEYS = /(?:memory|identity|conversation|secret|credential|token|password|private.?key)/i;
 
@@ -726,7 +726,7 @@ export class DevelopmentalMultiverseIndependentRunner {
     const snapshot = this.universe.snapshot();
     if (!snapshot) throw new Error('developmental-multiverse-session-not-created');
     const session = snapshot.session;
-    const definitions: Array<{ phase: DevelopmentalMultiversePhase; scenario: DevelopmentalMultiverseScenarioSeed }> = [
+    const definitions: Array<{ phase: DevelopmentalMultiversePhase; scenario: DevelopmentalScenarioSeed }> = [
       ...session.validationScenarios.map(scenario => ({ phase: 'validation' as const, scenario })),
       ...session.holdoutScenarios.map(scenario => ({ phase: 'holdout' as const, scenario })),
     ];
@@ -887,9 +887,15 @@ export class DevelopmentalMultiverseIndependentRunner {
       policyProfile: structuredClone(workItems[0]!.policyProfile),
     };
     const payloadFingerprint = digest(payload);
-    const started = performance.now();
-    const rawResult = await evaluator({ payload, payloadFingerprint }) as unknown as EvaluatorEnvelope;
-    const elapsedMs = Math.max(0, performance.now() - started);
+    const startedAt = Date.now();
+    const emptyReports = { validation: [] as SkillLearnBenchTrialReport[], holdout: [] as SkillLearnBenchTrialReport[] };
+    const rawResult = await evaluator({
+      payload,
+      payloadFingerprint,
+      baseline: emptyReports,
+      previousEvaluation: emptyReports,
+    }) as unknown as EvaluatorEnvelope;
+    const elapsedMs = Math.max(0, Date.now() - startedAt);
     const result = rawResult;
     const provenance = result?.evaluation?.provenance;
     const expectedSplitPlan = phase === 'validation' ? corpus.validationPlan : corpus.holdoutPlan;
