@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { ActionGateway } from '../../system/ActionGateway.ts';
+import { createAuthenticatedConstitutionReviewVerifier, parseTrustedConstitutionReviewKeys, type ConstitutionReviewVerifier } from './ConstitutionReviewAuthority.ts';
 
 export const CONSTITUTION_EVOLUTION_SCHEMA = 1 as const;
 export const MUTABLE_CONSTITUTION_DOMAINS = Object.freeze(['workflow', 'quality', 'performance', 'resource', 'operations'] as const);
@@ -158,13 +159,17 @@ export class ConstitutionEvolutionEngine {
   private state = defaults();
   private restoreState = { ok:true, reason:'compiled-baseline', checkedAt:0 };
   private readonly signingKey: string | Uint8Array | null;
+  private readonly reviewVerifier: ConstitutionReviewVerifier;
   private snapshotCache: ConstitutionEvolutionSnapshot | null = null;
 
-  constructor(options: { signingKey?: string | Uint8Array | null } = {}) {
+  constructor(options: { signingKey?: string | Uint8Array | null; reviewVerifier?: ConstitutionReviewVerifier } = {}) {
     const configured = options.signingKey ?? process.env.NEURO_CONSTITUTION_HMAC_KEY ?? null;
     const keyLength = typeof configured === 'string' ? Buffer.byteLength(configured, 'utf8')
       : configured instanceof Uint8Array ? configured.byteLength : 0;
     this.signingKey = keyLength >= MIN_SIGNING_KEY_BYTES ? configured : null;
+    this.reviewVerifier = options.reviewVerifier ?? createAuthenticatedConstitutionReviewVerifier(
+      parseTrustedConstitutionReviewKeys(process.env.NEURO_CONSTITUTION_REVIEW_KEYS_JSON),
+    );
   }
 
   private requireSigningKey(): void {
@@ -246,24 +251,21 @@ export class ConstitutionEvolutionEngine {
     return clone(p);
   }
 
-  review(id:string,input:ConstitutionReviewInput):ConstitutionProposal {
+  review(id:string,artifact:unknown):ConstitutionProposal {
     this.requireSigningKey();
     const p=this.requireProposal(id);
-    if (!['approve','reject'].includes(input.decision)) throw new Error('unsupported review decision');
     if (p.status!=='pending-review') throw new Error('proposal is not accepting reviews');
+    const input=this.reviewVerifier(artifact,{
+      proposalId:p.id,candidateDigest:p.candidateDigest,authorId:p.authorId,testPlanCount:p.testPlan.length,
+    });
+    if (!input) throw new Error('constitution review requires a fresh trusted Ed25519 signature bound to this proposal');
     const reviewerId=required(input.reviewerId,'reviewerId',160);
-    if (reviewerId===p.authorId) throw new Error('proposal author cannot review their own change');
     if (p.reviews.some(r=>r.reviewerId===reviewerId)) throw new Error('reviewer already submitted an attestation');
     if (p.reviews.length >= MAX_REVIEWS_PER_PROPOSAL) throw new Error('proposal reviewer limit reached');
-    if (input.candidateDigest!==p.candidateDigest) throw new Error('review digest mismatch');
     const e=input.tests;
-    if (!e || ![e.planned,e.executed,e.passed,e.failed,e.holdoutCases].every(n=>Number.isInteger(n)&&n>=0)
-      || e.planned!==p.testPlan.length || e.executed>e.planned || e.passed>e.executed || e.failed>e.executed || e.passed+e.failed>e.executed) throw new Error('test evidence is inconsistent');
-    const evidenceRefs=Array.isArray(input.evidenceRefs)?input.evidenceRefs.map(v=>required(v,'evidence ref',500)):[];
-    if (!evidenceRefs.length || evidenceRefs.length>MAX_EVIDENCE_REFS_PER_REVIEW) throw new Error('validation evidence refs are required');
+    const evidenceRefs=input.evidenceRefs.map(v=>required(v,'evidence ref',500));
     const rationale=required(input.rationale,'review rationale',1200);
-    if (input.decision==='approve' && (input.invariantsPassed!==true || e.executed!==e.planned || e.passed!==e.planned || e.failed!==0 || e.holdoutCases<1 || e.holdoutPassed!==true)) throw new Error('tests, holdout and invariant checks must pass');
-    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+    const at=input.at;
     if (input.decision==='reject') { p.status='rejected'; p.rejectionReason=rationale; }
     const review = { ...input,reviewerId,evidenceRefs,rationale,at };
     const signed = { ...review, attestationMac:this.mac(reviewCore(p.id,p.candidateDigest,review)) };
