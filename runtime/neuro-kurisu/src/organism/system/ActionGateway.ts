@@ -271,7 +271,7 @@ function hasSensitiveRecoveryKey(value:unknown,depth=0):boolean {
 function restoreUndoPlan(value:unknown,executionId:string|undefined,requestHash:string):ActionUndoFirstPlan|undefined {
   try {
     if(!isPlainRecord(value) || value.version!==1 || !executionId || value.executionId!==executionId || value.requestHash!==requestHash || !isSha256(value.planHash)) return undefined;
-    const plan=structuredClone(value) as ActionUndoFirstPlan;
+    const plan=structuredClone(value) as unknown as ActionUndoFirstPlan;
     const {planHash,...core}=plan;
     if(sha256Stable(core)!==planHash || new TextEncoder().encode(stableJson(core)).byteLength>16*1024) return undefined;
     if(!['rollback','compensate','manual','irreversible'].includes(String(plan.strategy)) || typeof plan.summary!=='string' || !plan.summary.trim() || plan.summary.length>500 || !isSha256(plan.beforeStateHash) || !Number.isFinite(plan.preparedAt) || plan.preparedAt<0) return undefined;
