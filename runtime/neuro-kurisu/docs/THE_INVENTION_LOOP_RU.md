@@ -3,6 +3,20 @@
 Ветка: `aspect/the-invention-loop-20261117`  
 Компонент принадлежит `EvidenceResearchSubsystemRuntime`; ключи verifier-ов передаются только host-кодом через `OrganismSystemFabric`.
 
+## Интеграция в основной cognitive cycle
+
+TheInventionLoop подключён не только как отдельный runtime API, но и к фактическому циклу `OrganismCore`:
+- Core продолжает генерировать intrinsic/dream-гипотезы через свой существующий `IntrinsicExperimentGenerator`
+- когда ScientificMethod включён, Core создаёт или находит уже существующий ScientificMethod project и передаёт готовую гипотезу в `EvidenceResearchSubsystemRuntime.captureGeneratedExperiment()`
+- candidate fingerprint включает источник гипотезы, нормализованные question/hypothesis, linked goal, dream ID и source-memory IDs; повторная генерация той же гипотезы повторно использует project/capture, а не создаёт лишний project
+- pending candidate сохраняет `awaiting-preregistration`; без host evaluation provider Core не выдумывает seed/verifier/fingerprints и не ломает cognitive cycle
+- host задаёт `OrganismConfig.inventionEvaluationPlanProvider` для каждой гипотезы и `OrganismConfig.inventionVerifierKeyResolver` для проверки публичных ключей
+- provider возвращает полный immutable evaluation plan; null или ошибка оставляет candidate ожидающим, а причина ошибки сохраняется в bounded capture state
+- после готового plan кандидат связывается с полноценным InventionLoop record; последующие ticks возвращают тот же invention ID, а не создают новый
+- если capture ссылается на потерянный project/record после повреждённого восстановления, запись не переиспользуется как доверенная и удаляется из dedup-каталога перед повторным захватом
+
+Host provider должен обеспечивать настоящую изоляцию validation/holdout datasets, уникальные environment IDs и соответствующие независимые verifier identities. В NK1 хранятся только публичные ключи/ resolver authority от host и подписанные receipts; приватные ключи остаются вне организма.
+
 ## Назначение и интеграция
 The Invention Loop связывает в один проверяемый цикл:
 - `IntrinsicExperimentGenerator`: формирует проверяемые гипотезы из uncertainty, prediction error, novelty и dream-associations
