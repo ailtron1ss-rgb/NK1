@@ -334,6 +334,22 @@ const duplicateCandidate=await governance.deliberateAndArbitrate({
 assert.equal(duplicateCandidate.status,'candidate-not-in-p69-set');
 assert.equal(duplicateCandidate.arbitration,null);
 
+// A malformed/ambiguous candidate set cannot be rescued by selecting its safe-looking row.
+const duplicateSafeCycle=await governance.deliberateCycleCandidate({
+  candidateId:'duplicate-safe-id',risk:'low',task:'Reject ambiguous cycle candidates before P69 fallback.',
+  evidenceReferences:[],
+  p69Input:{
+    ...p69Input,
+    candidates:[
+      {id:'duplicate-safe-id',action:'explore',score:.99,confidence:.99,predictedUtility:.99},
+      {id:'duplicate-safe-id',action:'rest',score:.1,confidence:.8,predictedUtility:.1},
+    ],
+  },
+});
+assert.equal(duplicateSafeCycle.status,'candidate-not-in-p69-set');
+assert.equal(duplicateSafeCycle.selectedCandidate,null,
+  'invalid candidate identities must not receive a protective fallback that hides the malformed set');
+
 // Exercise the real OrganismCore.observe path with canonical research evidence and host-wired roles.
 const coreRoles=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
 const coreClaimKey='nk1:cognitive-parliament:core-observe-claim';
