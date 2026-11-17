@@ -53,6 +53,7 @@ export class NeuralProsthesisSidecarSupervisor {
     this.managed = false;
     this.ready = false;
     this.lastError = null;
+    this.stopRequested = false;
     this.startPromise = null;
   }
 
@@ -86,6 +87,7 @@ export class NeuralProsthesisSidecarSupervisor {
   async start() {
     if (!this.enabled) return { started: false, ready: false, reason: 'disabled' };
     if (this.startPromise) return this.startPromise;
+    this.stopRequested = false;
     this.startPromise = this.startInternal();
     try {
       return await this.startPromise;
@@ -96,6 +98,7 @@ export class NeuralProsthesisSidecarSupervisor {
 
   async startInternal() {
     if (!this.healthUrl) throw new Error('neural-prosthesis-sidecar-endpoint-required');
+    if (this.stopRequested) throw new Error('sidecar-start-cancelled');
     if (this.managed && this.child) {
       if (await this.probe()) {
         this.ready = true;
@@ -104,11 +107,13 @@ export class NeuralProsthesisSidecarSupervisor {
       await this.stop();
     }
     if (await this.probe()) {
+      if (this.stopRequested) throw new Error('sidecar-start-cancelled');
       this.ready = true;
       this.managed = false;
       this.lastError = null;
       return { started: false, ready: true, reusedExisting: true };
     }
+    if (this.stopRequested) throw new Error('sidecar-start-cancelled');
     if (!this.command) throw new Error('neural-prosthesis-sidecar-command-required');
 
     let child;
@@ -139,6 +144,11 @@ export class NeuralProsthesisSidecarSupervisor {
 
     const deadline = Date.now() + this.startupTimeoutMs;
     while (Date.now() < deadline) {
+      if (this.stopRequested) {
+        this.lastError = 'sidecar-start-cancelled';
+        await this.stop();
+        throw new Error(this.lastError);
+      }
       if (spawnError) {
         this.lastError = 'sidecar-spawn-failed';
         await this.stop();
@@ -153,6 +163,11 @@ export class NeuralProsthesisSidecarSupervisor {
         throw new Error(this.lastError);
       }
       if (await this.probe()) {
+        if (this.stopRequested) {
+          this.lastError = 'sidecar-start-cancelled';
+          await this.stop();
+          throw new Error(this.lastError);
+        }
         if (exitInfo || child.exitCode !== null || child.signalCode !== null) continue;
         this.ready = true;
         return { started: true, ready: true, managed: true, pid: child.pid };
@@ -166,6 +181,7 @@ export class NeuralProsthesisSidecarSupervisor {
   }
 
   async stop() {
+    this.stopRequested = true;
     if (!this.managed || !this.child) return false;
     const child = this.child;
     this.child = null;
