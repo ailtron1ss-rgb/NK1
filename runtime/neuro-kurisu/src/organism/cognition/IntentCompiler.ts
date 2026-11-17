@@ -340,12 +340,16 @@ export class IntentCompiler {
           if (item.impact !== undefined) invalidAssumptionMetadata = true;
           impact = 'high';
         }
-        const confidence01 = clamp01(item.confidence01);
+        const confidenceValid = item.confidence01 === undefined ||
+          (typeof item.confidence01 === 'number' && Number.isFinite(item.confidence01) && item.confidence01 >= 0 && item.confidence01 <= 1);
+        if (!confidenceValid) invalidAssumptionMetadata = true;
+        if (!confidenceValid && impact === 'low') impact = 'high';
+        const confidence01 = confidenceValid ? clamp01(item.confidence01) : 0;
         assumptions.push({
           statement,
           impact,
           confidence01,
-          requiresConfirmation: impact !== 'low' || confidence01 < 0.8,
+          requiresConfirmation: !confidenceValid || impact !== 'low' || confidence01 < 0.8,
         });
       }
     }
