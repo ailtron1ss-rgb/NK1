@@ -212,7 +212,7 @@ for (let index = 1; index <= 3; index++) {
 assert.throws(() => store.recordShadowObservation(
   candidate.candidateId,
   signedShadowObservation(candidate, 99, 'f'.repeat(64)),
-), /shadow evidence failed authentication/);
+), /shadow observation is not authenticated by the configured evidence verifier/);
 const initialIssuedAt = Date.now();
 const firstPayload = store.createCompetenceProofPayload(
   candidate.candidateId, proposal, contract, 'skill-attestor-v1', initialIssuedAt, initialIssuedAt + 60 * 60_000,
