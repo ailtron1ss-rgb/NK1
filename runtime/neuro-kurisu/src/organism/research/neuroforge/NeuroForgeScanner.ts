@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { constants } from 'node:fs';
 import { lstat, open, readdir } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
 import { readNeuroForgeGitProvenance, type NeuroForgeGitProvenance } from './NeuroForgeGitProvenance.ts';
@@ -126,20 +125,23 @@ async function readBoundedFile(path: string, maxBytes: number): Promise<{
   data: Buffer | null;
   reason: 'read-failed' | 'file-size-limit' | 'not-regular-file' | null;
 }> {
-  const noFollow = typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0;
-  const handle = await open(path, constants.O_RDONLY | noFollow).catch(() => null);
+  const handle = await open(path, 'r').catch(() => null);
   if (!handle) return { data: null, reason: 'read-failed' };
 
   try {
     const current = await handle.stat();
-    if (!current.isFile()) return { data: null, reason: 'not-regular-file' };
+    const pathCurrent = await lstat(path).catch(() => null);
+    if (!current.isFile() || !pathCurrent || pathCurrent.isSymbolicLink() || !pathCurrent.isFile() ||
+        current.dev !== pathCurrent.dev || current.ino !== pathCurrent.ino) {
+      return { data: null, reason: 'not-regular-file' };
+    }
     if (current.size > maxBytes) return { data: null, reason: 'file-size-limit' };
 
     const chunks: Buffer[] = [];
     let total = 0;
     while (total <= maxBytes) {
       const capacity = Math.min(64 * 1024, maxBytes + 1 - total);
-      const chunk = Buffer.allocUnsafe(capacity);
+      const chunk = Buffer.alloc(capacity);
       const { bytesRead } = await handle.read(chunk, 0, capacity, null);
       if (bytesRead === 0) return { data: Buffer.concat(chunks, total), reason: null };
       total += bytesRead;
