@@ -15,6 +15,14 @@ export interface SignedOutcomePayload {
   passed: boolean;
   verifierId: string;
   observedAt: number;
+  /** Optional legacy-compatible, signature-covered execution telemetry. */
+  metrics?: {
+    durationMs: number;
+    safetyRegressionCount: number;
+    peakMemoryBytes?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+  };
 }
 
 export interface SignedOutcomeArtifact {
@@ -130,6 +138,7 @@ export function ingestSignedOutcomeArtifact(
     verifierId: payload.verifierId,
     evidenceRef: `signed-artifact:${payload.artifactId}:sha256:${fingerprint}`,
     observedAt: payload.observedAt,
+    ...(payload.metrics !== undefined ? { metrics: payload.metrics } : {}),
   };
   // A restored ledger intentionally has no in-memory trust receipts. Permit the exact
   // signed artifact to re-establish its receipt after restart, but never overwrite or

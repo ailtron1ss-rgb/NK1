@@ -13,6 +13,16 @@ export interface TaskManifestEntry {
   version: string;
 }
 
+export interface VerifiedOutcomeMetrics {
+  /** Wall-clock evaluation time for this task/method/seed attempt. */
+  durationMs: number;
+  /** Safety regressions independently observed for this exact attempt. */
+  safetyRegressionCount: number;
+  peakMemoryBytes?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+}
+
 export interface VerifiedTaskOutcome {
   taskId: string;
   taskVersion: string;
@@ -24,6 +34,8 @@ export interface VerifiedTaskOutcome {
   verifierId: string;
   evidenceRef: string;
   observedAt: number;
+  /** Optional for legacy artifacts; OME26 promotion requires both fields above. */
+  metrics?: VerifiedOutcomeMetrics;
 }
 
 export interface OutcomeRejection {
@@ -53,6 +65,34 @@ export interface PairedMethodSummary {
  * Deterministic percentile bootstrap over independent seed-level aggregates.
  * This is a sensitivity interval, not a cure for too few independent seeds.
  */
+const OUTCOME_METRIC_KEYS = new Set([
+  'durationMs', 'safetyRegressionCount', 'peakMemoryBytes', 'promptTokens', 'completionTokens',
+]);
+
+function normalizeOutcomeMetrics(value: unknown): VerifiedOutcomeMetrics | null | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const metrics = value as Record<string, unknown>;
+  if (Object.keys(metrics).some(key => !OUTCOME_METRIC_KEYS.has(key))) return null;
+  if (typeof metrics.durationMs !== 'number' || !Number.isFinite(metrics.durationMs) ||
+      metrics.durationMs <= 0 || metrics.durationMs > 86_400_000 ||
+      !Number.isSafeInteger(metrics.safetyRegressionCount) ||
+      (metrics.safetyRegressionCount as number) < 0 || (metrics.safetyRegressionCount as number) > 100_000) return null;
+  for (const key of ['peakMemoryBytes', 'promptTokens', 'completionTokens'] as const) {
+    const metric = metrics[key];
+    if (metric !== undefined && (!Number.isSafeInteger(metric) || (metric as number) < 0 ||
+        (key === 'peakMemoryBytes' && (metric as number) > 1_099_511_627_776) ||
+        (key !== 'peakMemoryBytes' && (metric as number) > 10_000_000))) return null;
+  }
+  return {
+    durationMs: metrics.durationMs,
+    safetyRegressionCount: metrics.safetyRegressionCount as number,
+    ...(metrics.peakMemoryBytes !== undefined ? { peakMemoryBytes: metrics.peakMemoryBytes as number } : {}),
+    ...(metrics.promptTokens !== undefined ? { promptTokens: metrics.promptTokens as number } : {}),
+    ...(metrics.completionTokens !== undefined ? { completionTokens: metrics.completionTokens as number } : {}),
+  };
+}
+
 function bootstrapMean95CI(values: number[], identity: string, replicates = 4000): [number, number] | null {
   if (values.length < 2) return null;
   const digest = createHash('sha256').update(identity + '\u0000' + values.map(value => value.toFixed(12)).join(',')).digest();
@@ -193,6 +233,11 @@ export class VerifiedOutcomeLedger {
     else if (outcome.evidenceRef.length === 0) { code = 'missing-evidence'; detail = 'accepted outcomes require an evidence reference'; }
     else if (!isSafeLearningIdentity(outcome.evidenceRef, 1024)) { code = 'invalid-evidence-reference'; detail = 'evidence reference must be bounded, normalized, trimmed and free of control characters'; }
     else if (!Number.isFinite(outcome.observedAt) || (outcome.observedAt as number) <= 0) { code = 'invalid-time'; detail = 'observedAt must be a positive finite timestamp'; }
+    const normalizedMetrics = normalizeOutcomeMetrics(outcome?.metrics);
+    if (!code && outcome?.metrics !== undefined && normalizedMetrics === null) {
+      code = 'invalid-outcome';
+      detail = 'execution metrics must contain bounded, finite duration and safety fields with no unknown keys';
+    }
 
     const trustedOutcome = outcome as VerifiedTaskOutcome | null;
     if (code || !trustedOutcome) {
@@ -226,6 +271,7 @@ export class VerifiedOutcomeLedger {
       verifierId: trustedOutcome.verifierId,
       evidenceRef: trustedOutcome.evidenceRef,
       observedAt: trustedOutcome.observedAt,
+      ...(normalizedMetrics ? { metrics: normalizedMetrics } : {}),
     };
     return { key, outcome: accepted };
   }
