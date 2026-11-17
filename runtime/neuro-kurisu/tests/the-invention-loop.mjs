@@ -13,6 +13,10 @@ const protocol = {
   baseline: 100,
   metricScale: 20,
   minEffect: 0.1,
+  minSuccessRate: 0.8,
+  primarySeed: 17,
+  replicationSeeds: [18, 19, 20, 21, 22],
+  holdoutSeeds: [23, 24, 25, 26, 27],
   lowerIsBetter: true,
   verifierPlan: {
     primary: 'verifier-primary',
@@ -37,26 +41,26 @@ const primaryInput = {
 const replicationInput = {
   kind: 'replication',
   authority: 'independent-verifier',
-  seed: 17,
+  seed: 18,
   attempt: 1,
-  runId: 'run-replication-001',
+  runId: 'run-replication-18',
   verifierId: 'verifier-replication',
-  environmentId: 'environment-replication',
+  environmentId: 'environment-replication-18',
   testFingerprint: protocol.testFingerprint,
-  evidenceRef: 'artifact://replication/result.json',
+  evidenceRef: 'artifact://replication/18.json',
   evidenceSha256: sha('b'),
   observed: 94,
 };
 const holdoutInput = {
   kind: 'holdout',
   authority: 'independent-verifier',
-  seed: 17,
+  seed: 23,
   attempt: 1,
-  runId: 'run-holdout-001',
+  runId: 'run-holdout-23',
   verifierId: 'verifier-holdout',
-  environmentId: 'environment-holdout',
+  environmentId: 'environment-holdout-23',
   testFingerprint: protocol.testFingerprint,
-  evidenceRef: 'artifact://holdout/result.json',
+  evidenceRef: 'artifact://holdout/23.json',
   evidenceSha256: sha('c'),
   observed: 92,
 };
@@ -65,6 +69,8 @@ const p = loop.propose(protocol);
 assert.equal(p.stage, 'proposed');
 assert.throws(() => loop.propose({ ...protocol, verifierPlan: { ...protocol.verifierPlan, holdout: 'verifier-primary' } }), /invalid-preregistration/);
 assert.throws(() => loop.propose({ ...protocol, metricScale: 0 }), /invalid-preregistration/);
+assert.throws(() => loop.propose({ ...protocol, replicationSeeds: [1, 1, 2, 3, 4] }), /invalid-preregistration/);
+assert.throws(() => loop.propose({ ...protocol, holdoutSeeds: [17, 23, 24, 25, 26] }), /invalid-preregistration/);
 assert.throws(() => loop.recordOutcome(p.id, primaryInput), /outcome-kind-not-allowed-at-stage/);
 loop.design(p.id);
 assert.throws(() => loop.prototype(p.id, 'candidate://missing-digest'), /invalid-prototype/);
@@ -72,6 +78,7 @@ loop.prototype(p.id, { reference: 'candidate://isolated-prototype', sha256: sha(
 
 // A caller-supplied effect must never override the preregistered metric calculation.
 assert.throws(() => loop.recordOutcome(p.id, { ...primaryInput, authority: 'self-report' }), /outcome-not-authoritative:self-report-not-authoritative/);
+assert.throws(() => loop.recordOutcome(p.id, { ...primaryInput, attempt: 2 }), /attempt-must-be-one/);
 const primary = loop.recordOutcome(p.id, { ...primaryInput, effect01: 1 });
 assert.equal(primary.stage, 'tested');
 assert.equal(primary.outcomes[0].effect01, 0.2);
@@ -91,15 +98,44 @@ loop.critique(p.id, {
 });
 assert.equal(loop.snapshot().records[0].stage, 'critiqued');
 assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, verifierId: 'verifier-primary' }), /verifier-plan-mismatch/);
-loop.recordOutcome(p.id, replicationInput);
-assert.equal(loop.snapshot().records[0].stage, 'replicated');
+const replicationRuns = [
+  [18, 97], [19, 97], [20, 101], [21, 97], [22, 96],
+];
+for (let index = 0; index < replicationRuns.length; index += 1) {
+  const [seed, observed] = replicationRuns[index];
+  const result = loop.recordOutcome(p.id, {
+    ...replicationInput,
+    seed,
+    runId: `run-replication-${seed}`,
+    environmentId: `environment-replication-${seed}`,
+    evidenceRef: `artifact://replication/${seed}.json`,
+    evidenceSha256: sha(String(seed)),
+    observed,
+  });
+  assert.equal(result.stage, index === 4 ? 'replicated' : 'replicating');
+}
+assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, seed: 18, runId: 'run-replication-duplicate', evidenceRef: 'artifact://replication/duplicate.json' }), /duplicate-seed/);
 assert.throws(() => loop.recordOutcome(p.id, {
   ...holdoutInput,
-  environmentId: replicationInput.environmentId,
+  environmentId: 'environment-replication-18',
   runId: 'run-holdout-bad',
 }), /holdout-must-be-independent/);
-loop.recordOutcome(p.id, holdoutInput);
-assert.equal(loop.snapshot().records[0].stage, 'accepted');
+const holdoutRuns = [
+  [23, 96], [24, 97], [25, 105], [26, 96], [27, 96],
+];
+for (let index = 0; index < holdoutRuns.length; index += 1) {
+  const [seed, observed] = holdoutRuns[index];
+  const result = loop.recordOutcome(p.id, {
+    ...holdoutInput,
+    seed,
+    runId: `run-holdout-${seed}`,
+    environmentId: `environment-holdout-${seed}`,
+    evidenceRef: `artifact://holdout/${seed}.json`,
+    evidenceSha256: sha(String(seed + 20)),
+    observed,
+  });
+  assert.equal(result.stage, index === 4 ? 'accepted' : 'holdingout');
+}
 assert.equal(loop.metrics().accepted, 1);
 assert.equal(loop.metrics().auditVerifiedRecords, 1);
 assert.throws(() => loop.reject(p.id, 'late-reject'), /invention-closed/);
@@ -142,4 +178,4 @@ assert.equal(restored.metrics().accepted, 0);
 assert.equal(restored.metrics().quarantinedRecords, 1);
 assert.equal(restored.metrics().auditVerifiedRecords, 1);
 
-console.log('THE_INVENTION_LOOP_LIFECYCLE=PASS verifier-plan+verified-ledger+audit-chain');
+console.log('THE_INVENTION_LOOP_LIFECYCLE=PASS preregistered-seeds+verified-ledger+audit-chain');
