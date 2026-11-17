@@ -17,8 +17,12 @@ assert.equal('answers' in forge,false,'ordinary runtime property access must not
 let getterInvoked=false;
 const hostileStep={};
 Object.defineProperty(hostileStep,'action',{enumerable:true,get(){getterInvoked=true;return 'verify';}});
-const evaluation=forge.evaluate(scenario,[hostileStep]);
+const session=forge.startScenario(scenario);
+assert.ok(session);
+const hostileTransition=forge.step(session,hostileStep);
 assert.equal(getterInvoked,false,'malformed action traces must not execute getters');
+assert.equal(hostileTransition.accepted,false);
+const evaluation=forge.evaluateSession(scenario,session);
 assert.equal(evaluation.success,false);
 assert.ok(evaluation.constraintViolations>0);
 let splitGetterInvoked=false;
@@ -30,6 +34,6 @@ assert.equal(splitGetterInvoked,false,'generation must not execute input getters
 let scenarioGetterInvoked=false;
 const hostileScenario={split:'train',domain:scenario.domain,syntheticOnly:true};
 Object.defineProperty(hostileScenario,'id',{enumerable:true,get(){scenarioGetterInvoked=true;return scenario.id;}});
-assert.equal(forge.evaluate(hostileScenario,[]).success,false);
+assert.equal(forge.evaluateSession(hostileScenario,session).success,false);
 assert.equal(scenarioGetterInvoked,false,'scenario identity validation must not execute getters');
 console.log('World Forge evaluator isolation regressions passed');
