@@ -59,9 +59,10 @@ const approved = compiler.approve(contract, {
   evidenceRef: 'user-confirmation:intent:test:bounded',
 });
 assert.equal(compiler.gate(approved, 'organism.inspect').allowed, true);
-const forgedApproved = { ...approved, approval: { ...approved.approval, status: 'approved', allowedActions: ['organism.inspect'] } };
+const forgedApproved = { ...approved, goal: { ...approved.goal, text: 'Forged goal' } };
 assert.equal(compiler.gate(forgedApproved, 'organism.inspect').allowed, false, 'a structurally forged contract must not be accepted as compiler-issued');
-assert.equal(new IntentCompiler().gate(approved, 'organism.inspect').allowed, false, 'contracts must not cross compiler trust boundaries without a trusted restore mechanism');
+assert.equal(new IntentCompiler().gate(approved, 'organism.inspect').allowed, false, 'ephemeral compiler keys must not authenticate persisted approvals');
+assert.equal(new IntentCompiler({ clock: () => now, approvalKey: 'test-only-intent-approval-key-32-bytes-minimum' }).gate(approved, 'organism.inspect').allowed, true, 'a configured stable runtime key must validate approvals across compiler instances');
 assert.equal(compiler.gate(approved, 'filesystem.write').reason, 'action-not-explicitly-allowed');
 const tamperedApproval = { ...approved, approval: { ...approved.approval, allowedActions: ['organism.inspect', 'filesystem.write'] } };
 assert.equal(compiler.gate(tamperedApproval, 'filesystem.write').allowed, false, 'approval allow-list tampering must invalidate its attestation');
