@@ -33,3 +33,15 @@ node --experimental-strip-types tests/local-llm-live-smoke.mjs
 The provider intentionally rejects non-loopback hosts. Do not weaken that boundary just to make a remote endpoint pass this local smoke. For real comparisons, record the exact model file/hash, quantization, context, GPU layers, server version, cold/warm runs and system resource usage separately.
 
 **Evidence limit:** a successful smoke proves only that the local HTTP inference path responds. It does not establish answer correctness, Russian/English quality, learning, memory uplift, stable long-context reasoning or consciousness.
+
+## Optional NK1 cognitive-template controls
+
+The NK1 runtime can optionally forward a compact, bounded subset of the Cognitive-to-Neural Bridge v2 profile through llama.cpp's documented `chat_template_kwargs` field. Enable it in the **server process** only when using a custom Jinja chat template that explicitly reads the `nk1_*` variables:
+
+```powershell
+$env:LLAMA_CPP_NK1_TEMPLATE_CONTROLS = "1"
+```
+
+Unset or set the variable to any other value to keep the feature off. With the opt-in enabled, the server sends the 43-value profile plus named action/mode, motivation, uncertainty, budget, freshness and bounded steering-intent fields. The actual chat template must explicitly consume those variables; the default template may ignore them. The receipt exposed by NK1 means only that `chat_template_kwargs` was sent to the local endpoint, not that the template used it or that model activations were steered.
+
+This flag does not enable changes to model weights, hidden states, or residual activations. Keep the default off unless the selected template has been adapted and tested with the NK1 variables.
