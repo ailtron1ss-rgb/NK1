@@ -43,8 +43,10 @@ export interface InventionProtocol {
   question: string;
   hypothesis: string;
   successCriteria: string;
-  /** SHA-256 identity of the frozen task manifest and evaluation implementation. */
+  /** SHA-256 identity of the primary/replication evaluation manifest. */
   testFingerprint: string;
+  /** A different SHA-256 identity for the sealed holdout evaluation manifest. */
+  holdoutTestFingerprint: string;
   /** Measured baseline, captured before prototype evaluation. */
   baseline: number;
   /** Absolute metric delta corresponding to 1.0 normalized effect. */
@@ -208,7 +210,7 @@ export function buildInventionVerifierManifest(
     taskId,
     family: 'invention-loop',
     split,
-    promptFingerprint: protocol.testFingerprint,
+    promptFingerprint: phase === 'holdout' ? protocol.holdoutTestFingerprint : protocol.testFingerprint,
     verifierId,
     version: '1',
   }];
@@ -240,6 +242,8 @@ function isProtocol(value: unknown): value is InventionProtocol {
     typeof value.hypothesis === 'string' &&
     typeof value.successCriteria === 'string' &&
     typeof value.testFingerprint === 'string' && SHA256_RE.test(value.testFingerprint) &&
+    typeof value.holdoutTestFingerprint === 'string' && SHA256_RE.test(value.holdoutTestFingerprint) &&
+    value.holdoutTestFingerprint !== value.testFingerprint &&
     finite(value.baseline) && finite(value.metricScale) && value.metricScale > 0 &&
     finite(value.minEffect) && value.minEffect >= 0 && value.minEffect <= 1 &&
     (value.expectedEffect01 === undefined ||
@@ -576,10 +580,12 @@ export class TheInventionLoop {
     const context = payload.measurement as SignedOutcomeMeasurement | undefined;
     if (!context) throw new Error('signed-measurement-required');
     const fingerprint = inventionProtocolFingerprint(record.protocol);
+    const expectedTestFingerprint = phase === 'holdout'
+      ? record.protocol.holdoutTestFingerprint : record.protocol.testFingerprint;
     if (context.experimentId !== record.id ||
         context.protocolFingerprint !== fingerprint ||
         context.prototypeSha256 !== record.prototypeSha256 ||
-        context.testFingerprint !== record.protocol.testFingerprint) {
+        context.testFingerprint !== expectedTestFingerprint) {
       throw new Error('attestation-context-mismatch');
     }
     if (phase === 'critique') {
@@ -723,6 +729,7 @@ export class TheInventionLoop {
       hypothesis: clampText(safe.hypothesis, MAX_TEXT),
       successCriteria: clampText(safe.successCriteria, MAX_TEXT),
       testFingerprint: clampText(safe.testFingerprint, 64).toLowerCase(),
+      holdoutTestFingerprint: clampText(safe.holdoutTestFingerprint, 64).toLowerCase(),
       baseline: safe.baseline,
       metricScale: safe.metricScale,
       minEffect: safe.minEffect,
@@ -750,7 +757,9 @@ export class TheInventionLoop {
       protocol.primarySeed, ...protocol.replicationSeeds, ...protocol.holdoutSeeds,
     ]);
     if (!protocol.question || !protocol.hypothesis || !protocol.successCriteria ||
-        !SHA256_RE.test(protocol.testFingerprint) || !finite(protocol.baseline) ||
+        !SHA256_RE.test(protocol.testFingerprint) ||
+        !SHA256_RE.test(protocol.holdoutTestFingerprint) ||
+        protocol.holdoutTestFingerprint === protocol.testFingerprint || !finite(protocol.baseline) ||
         !finite(protocol.metricScale) || protocol.metricScale <= 0 ||
         !finite(protocol.minEffect) || protocol.minEffect < 0 || protocol.minEffect > 1 ||
         !finite(protocol.expectedEffect01) || protocol.expectedEffect01 < 0 || protocol.expectedEffect01 > 1 ||
