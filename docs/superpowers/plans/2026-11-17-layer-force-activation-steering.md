@@ -14,8 +14,8 @@
 
 - Use the existing Neural Prosthesis sidecar and P40 provider boundary; do not create a second runtime or provider.
 - Base model weights remain immutable; steering modifies only request-time hidden-state outputs.
-- No profile is active unless the operator explicitly configures a local path, exact digest allowlist, and default profile ID.
-- Bind profiles to exact model ID, immutable model revision, model config digest, decoder layer path and hidden width.
+- No profile is active unless the operator explicitly configures a local path, SHA-256 of the exact raw profile file in the host allowlist, and default profile ID.
+- Bind profiles to exact model ID, immutable model revision, model config digest, decoder layer path and hidden width; require per-layer finite strength in [-1, 1].
 - Target no more than 8 decoder layers; per-token delta ratio is capped at 0.10, default 0.05.
 - Strength must be finite and in [-1, 1].
 - When disabled, output must be exactly unchanged.
@@ -40,7 +40,7 @@
 
 **Interfaces:**
 - `LayerForceBank(model, *, model_id, model_revision, layer_path)`
-- `load_profile(path, approved_manifest_digests) -> profile_id`
+- `load_profile(path, approved_profile_file_sha256) -> profile_id`
 - `activate(profile_id, strength=1.0)` context manager
 - `snapshot() -> redacted diagnostics`
 - `close() -> None`
@@ -59,7 +59,7 @@
 
 **Interfaces:**
 - Environment: `NEURO_NP_LAYER_FORCE_PROFILE_PATHS_JSON` (local profile paths, maximum 16).
-- Environment: `NEURO_NP_ALLOWED_LAYER_FORCE_PROFILES_JSON` (exact allowlisted SHA-256 digests).
+- Environment: `NEURO_NP_ALLOWED_LAYER_FORCE_PROFILES_JSON` (exact SHA-256 digests of raw profile files).
 - Environment: `NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE` (optional profile ID; empty means disabled).
 - Runtime diagnostics: `status()["layer_force"]` with enabled flag, default profile ID and redacted loaded-profile metadata.
 
