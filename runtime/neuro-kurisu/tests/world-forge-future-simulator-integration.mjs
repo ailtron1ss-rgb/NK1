@@ -19,9 +19,12 @@ assert.equal(typeof simulator.evaluateWorldForgeScenario,'undefined','runtime AP
 assert.equal(typeof simulator.evaluateWorldForgeSession,'function');
 const before=simulator.snapshot();
 const result=simulator.evaluateWorldForgeSession(scenarios[0],transition.state);
+const forgedState={...transition.state,verifiedEvidence:['fabricated-proof'],resourcesRemaining:999999};
+assert.deepEqual(simulator.evaluateWorldForgeSession(scenarios[0],forgedState),result,'caller-mutated state details must not rewrite the canonical session trace');
+assert.equal(simulator.evaluateWorldForgeSession(scenarios[0],initial).success,false,'stale session snapshots cannot be used for evaluation');
 assert.equal(result.syntheticOnly,true);
 assert.equal(result.independentlyVerified,false);
 assert.deepEqual(simulator.snapshot(),before,'World Forge evaluation must not mutate FutureSimulator forecast state');
 simulator.releaseWorldForgeScenario(scenarios[0].id);
-assert.equal(simulator.evaluateWorldForgeScenario(scenarios[0],[]).success,false);
+assert.equal(simulator.evaluateWorldForgeSession(scenarios[0],transition.state).success,false,'released scenarios must no longer produce an evaluation');
 console.log('World Forge / FutureSimulator integration passed');
