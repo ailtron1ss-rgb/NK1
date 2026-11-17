@@ -187,6 +187,10 @@ export function adjudicateCognitiveParliament(input: {
     byRole.set(review.role, review);
   }
   for (const role of required) if (!byRole.has(role)) blockers.push('missing-role:' + role);
+  const reviewerIds = required.map(role => byRole.get(role)?.actorId).filter((value): value is string => !!value);
+  if (new Set(reviewerIds).size !== reviewerIds.length || reviewerIds.includes(input.candidateAuthorId)) {
+    blockers.push('research-roles-must-use-distinct-independent-actors');
+  }
   const experimentalist = byRole.get('experimentalist');
   const replicator = byRole.get('replicator');
   const auditor = byRole.get('auditor');
@@ -317,22 +321,47 @@ export function createSharedFuture(input: {
   assumptions: string[];
   scenarios: Array<{ id: string; probability01: number; dependencyIds: string[]; pointOfNoReturn?: boolean }>;
   revisitTriggers: string[];
-}): { valid: boolean; blockers: string[]; pointOfNoReturnIds: string[] } {
+}): { valid: boolean; blockers: string[]; pointOfNoReturnIds: string[]; scenarioOrder: string[] } {
   const blockers: string[] = [];
   if (!safeText(input?.id, 160)) blockers.push('future-id-required');
   if (!unique(input?.assumptions).length) blockers.push('assumptions-required');
   if (!unique(input?.revisitTriggers).length) blockers.push('revisit-trigger-required');
-  const scenarios = Array.isArray(input?.scenarios) ? input.scenarios : [];
-  const ids = new Set(scenarios.map(scenario => scenario.id));
+  const scenarios = Array.isArray(input?.scenarios) ? input.scenarios.slice(0, 128) : [];
+  const ids = new Set<string>();
+  const byId = new Map<string, { id: string; probability01: number; dependencyIds: string[]; pointOfNoReturn?: boolean }>();
   if (!scenarios.length) blockers.push('scenarios-required');
   for (const scenario of scenarios) {
-    if (!safeText(scenario.id, 160) || !Number.isFinite(scenario.probability01) ||
-        scenario.probability01 < 0 || scenario.probability01 > 1) blockers.push('invalid-scenario:' + scenario.id);
-    for (const dependency of unique(scenario.dependencyIds)) if (!ids.has(dependency)) blockers.push('unknown-scenario-dependency:' + dependency);
+    const id = safeText(scenario?.id, 160);
+    if (!id || ids.has(id) || !Number.isFinite(scenario?.probability01) ||
+        scenario.probability01 < 0 || scenario.probability01 > 1) blockers.push('invalid-or-duplicate-scenario:' + id);
+    if (id) {
+      ids.add(id);
+      byId.set(id, scenario);
+    }
   }
+  for (const scenario of scenarios) {
+    for (const dependency of unique(scenario.dependencyIds)) {
+      if (!ids.has(dependency)) blockers.push('unknown-scenario-dependency:' + dependency);
+    }
+  }
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const scenarioOrder: string[] = [];
+  const visit = (id: string) => {
+    if (visiting.has(id)) { blockers.push('scenario-dependency-cycle:' + id); return; }
+    if (visited.has(id)) return;
+    visiting.add(id);
+    const scenario = byId.get(id);
+    for (const dependency of unique(scenario?.dependencyIds)) if (byId.has(dependency)) visit(dependency);
+    visiting.delete(id);
+    visited.add(id);
+    scenarioOrder.push(id);
+  };
+  for (const id of [...ids].sort()) visit(id);
   return {
     valid: blockers.length === 0, blockers: [...new Set(blockers)],
     pointOfNoReturnIds: scenarios.filter(scenario => scenario.pointOfNoReturn === true).map(scenario => scenario.id),
+    scenarioOrder,
   };
 }
 
