@@ -258,6 +258,7 @@ export interface ActionUndoExecutionResult {
   reason?:string;
   originalExecutionId?:string;
   planHash?:string;
+  recoveryArtifactRef?:string;
   manualSteps?:string[];
   precondition?:ToolExecution;
   compensation?:ToolExecution;
@@ -291,6 +292,7 @@ function restoreUndoPlan(value:unknown,executionId:string|undefined,requestHash:
       if(typeof plan.recoveryArtifactRef!=='string' || !plan.recoveryArtifactRef.trim() || plan.recoveryArtifactRef.length>1024 || /[\u0000-\u001f\u007f]/.test(plan.recoveryArtifactRef) || !isSha256(plan.afterStateHash) || !isPlainRecord(plan.compensation) || typeof plan.compensation.toolId!=='string' || !plan.compensation.toolId.trim() || !isPlainRecord(plan.compensation.input) || hasSensitiveRecoveryKey(plan.compensation.input) || !isPlainRecord(plan.verification) || typeof plan.verification.toolId!=='string' || !plan.verification.toolId.trim() || !isPlainRecord(plan.verification.input) || hasSensitiveRecoveryKey(plan.verification.input)) return undefined;
     } else if(plan.strategy==='manual') {
       if(!Array.isArray(plan.manualSteps) || plan.manualSteps.length<1 || plan.manualSteps.length>8 || plan.manualSteps.some(step=>typeof step!=='string' || !step.trim() || step.length>500)) return undefined;
+      if(plan.recoveryArtifactRef!==undefined && (typeof plan.recoveryArtifactRef!=='string' || !plan.recoveryArtifactRef.trim() || plan.recoveryArtifactRef.length>1024 || /[\\u0000-\\u001f\\u007f]/.test(plan.recoveryArtifactRef))) return undefined;
     } else if(typeof plan.irreversibleReason!=='string' || plan.irreversibleReason.trim().length<8 || plan.irreversibleReason.length>500) return undefined;
     return plan;
   } catch { return undefined; }
@@ -903,6 +905,11 @@ export class ActionGateway {
         if(!Array.isArray(raw.manualSteps) || raw.manualSteps.length<1 || raw.manualSteps.length>8 || raw.manualSteps.some(step=>typeof step!=='string' || !step.trim() || step.length>500)) return {failure:'undo-plan-invalid'};
         if(options.autonomous || !this.permissionClassFor(id)) return {failure:'undo-policy-refused'};
         core.manualSteps=raw.manualSteps.map(step=>step.normalize('NFKC').trim());
+        if(raw.recoveryArtifactRef!==undefined) {
+          const recoveryArtifactRef=typeof raw.recoveryArtifactRef==='string'?raw.recoveryArtifactRef.normalize('NFKC').trim():'';
+          if(!recoveryArtifactRef || recoveryArtifactRef.length>1024 || /[\\u0000-\\u001f\\u007f]/.test(recoveryArtifactRef)) return {failure:'undo-plan-invalid'};
+          core.recoveryArtifactRef=recoveryArtifactRef;
+        }
       } else {
         const irreversibleReason=typeof raw.irreversibleReason==='string'?raw.irreversibleReason.normalize('NFKC').trim():'';
         if(irreversibleReason.length<8 || irreversibleReason.length>500) return {failure:'undo-plan-invalid'};
@@ -926,7 +933,7 @@ export class ActionGateway {
     if(!entry.response || entry.response.ok!==true || entry.response.verified!==true || entry.response.outcomeClass!=='executed-verified') return {status:'operation-not-verified',reason:'automatic-compensation-requires-a-verified-original-outcome',...(entry.executionId?{originalExecutionId:entry.executionId}:{})};
     const plan=restoreUndoPlan(entry.undoPlan,entry.executionId,entry.requestHash);
     if(!plan) return {status:'not-undoable',reason:'no-valid-durable-undo-plan-is-bound-to-this-execution',originalExecutionId:entry.executionId};
-    if(plan.strategy==='manual') return {status:'manual-intervention-required',reason:plan.summary,originalExecutionId:entry.executionId,planHash:plan.planHash,manualSteps:structuredClone(plan.manualSteps??[])};
+    if(plan.strategy==='manual') return {status:'manual-intervention-required',reason:plan.summary,originalExecutionId:entry.executionId,planHash:plan.planHash,...(plan.recoveryArtifactRef?{recoveryArtifactRef:plan.recoveryArtifactRef}:{}),manualSteps:structuredClone(plan.manualSteps??[])};
     if(plan.strategy==='irreversible') return {status:'irreversible',reason:plan.irreversibleReason??plan.summary,originalExecutionId:entry.executionId,planHash:plan.planHash};
     const compensationTool=this.tools.get(plan.compensation!.toolId);
     const verificationTool=this.tools.get(plan.verification!.toolId);
