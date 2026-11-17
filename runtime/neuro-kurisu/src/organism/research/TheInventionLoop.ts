@@ -389,6 +389,10 @@ export class TheInventionLoop {
 
   propose(input: InventionProtocol): InventionRecord {
     const safe = detach<InventionProtocol>(input, 'invalid-preregistration-payload');
+    if (!isObject(safe) || !isVerifierPlan(safe.verifierPlan) ||
+        !Array.isArray(safe.replicationSeeds) || !Array.isArray(safe.holdoutSeeds)) {
+      throw new Error('invalid-preregistration-payload');
+    }
     const protocol: InventionProtocol = {
       question: clampText(safe.question, 500),
       hypothesis: clampText(safe.hypothesis, MAX_TEXT),
@@ -449,6 +453,7 @@ export class TheInventionLoop {
 
   prototype(id: string, input: InventionPrototype): InventionRecord {
     const safe = detach<InventionPrototype>(input, 'invalid-prototype-payload');
+    if (!isObject(safe)) throw new Error('invalid-prototype-payload');
     const record = this.find(id);
     if (record.stage !== 'designed') throw new Error('invalid-stage-transition');
     const reference = clampText(safe.reference, 300);
@@ -463,6 +468,7 @@ export class TheInventionLoop {
 
   recordOutcome(id: string, input: InventionOutcomeInput): InventionRecord {
     const safe = detach<InventionOutcomeInput>(input, 'invalid-outcome-payload');
+    if (!isObject(safe)) throw new Error('invalid-outcome-payload');
     const record = this.find(id);
     let expectedKind: OutcomeKind | null = null;
     if (record.stage === 'prototyped') expectedKind = 'primary';
@@ -601,6 +607,7 @@ export class TheInventionLoop {
 
   critique(id: string, input: InventionCritiqueInput): InventionRecord {
     const safe = detach<InventionCritiqueInput>(input, 'invalid-critique-payload');
+    if (!isObject(safe)) throw new Error('invalid-critique-payload');
     const record = this.find(id);
     if (record.stage !== 'tested') throw new Error('critique-requires-tested-prototype');
     const reviewerId = clampText(safe.reviewerId, 120);
