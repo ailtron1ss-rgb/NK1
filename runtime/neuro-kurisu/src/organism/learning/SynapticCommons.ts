@@ -217,7 +217,7 @@ function verifyEd25519(payload: string, signature: string, publicKey: string): b
   try {
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(signature)) return false;
     const bytes = Buffer.from(signature, 'base64');
-    if (!bytes.length || bytes.length > 256) return false;
+    if (bytes.length !== 64) return false;
     return verifySignature(null, Buffer.from(payload, 'utf8'), publicKey, bytes);
   } catch {
     return false;
@@ -406,10 +406,13 @@ export class SynapticCommons {
       this.state = defaultSynapticCommonsState();
       return;
     }
-    if (!isRecord(value) || own(value, 'schemaVersion') !== 1 || !Number.isSafeInteger(own(value, 'revision')) ||
-        Number(own(value, 'revision')) < 0 || !Array.isArray(own(value, 'records')))
+    const copiedState = cloneSafeJson(value) as Record<string, unknown>;
+    const revision = own(copiedState, 'revision');
+    if (!isRecord(copiedState) || own(copiedState, 'schemaVersion') !== 1 ||
+        typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0 ||
+        !Array.isArray(own(copiedState, 'records')))
       throw new Error('synaptic-commons-state-invalid');
-    const records = own(value, 'records') as unknown[];
+    const records = own(copiedState, 'records') as unknown[];
     if (records.length > MAX_RECORDS) throw new Error('synaptic-commons-state-capacity-exceeded');
     const normalized: SynapticCommonsRecord[] = [];
     const fingerprints = new Set<string>();
@@ -429,7 +432,7 @@ export class SynapticCommons {
       if (!['quarantined', 'compatible', 'attested', 'rejected'].includes(String(status)))
         throw new Error('synaptic-commons-status-invalid');
       const compatibilityRaw = own(raw, 'compatibility');
-      const compatibility = compatibilityRaw == null ? null : cloneSafeJson(compatibilityRaw) as SynapticCompatibilityResult;
+      const compatibility = compatibilityRaw == null ? null : this.normalizeCompatibility(compatibilityRaw);
       const attestationRaw = own(raw, 'attestation');
       const attestation = attestationRaw == null ? null : normalizeAttestation(attestationRaw);
       if (status === 'compatible' && (!compatibility?.compatible || !compatibility.checkedAt))
@@ -458,7 +461,7 @@ export class SynapticCommons {
       fingerprints.add(fingerprint);
       slots.add(slot);
     }
-    this.state = { schemaVersion: 1, revision: Number(own(value, 'revision')), records: normalized };
+    this.state = { schemaVersion: 1, revision, records: normalized };
   }
 
   snapshot(): SynapticCommonsState {
@@ -582,6 +585,26 @@ export class SynapticCommons {
       executableCount: 0 as const,
       trustedPublisherCount: this.publisherKeys.size,
       trustedAttestorCount: this.attestorKeys.size,
+    };
+  }
+
+  private normalizeCompatibility(raw: unknown): SynapticCompatibilityResult {
+    if (!isRecord(raw)) throw new Error('synaptic-commons-compatibility-invalid');
+    const copied = cloneSafeJson(raw) as Record<string, unknown>;
+    assertExactKeys(copied, ['compatible', 'checkedAt', 'runtimeVersion', 'environmentFingerprint', 'reasons'], 'synaptic-compatibility');
+    const reasons = copied.reasons;
+    if (typeof copied.compatible !== 'boolean' || !Number.isSafeInteger(copied.checkedAt) || Number(copied.checkedAt) <= 0 ||
+        typeof copied.runtimeVersion !== 'string' || !parseVersion(copied.runtimeVersion) ||
+        typeof copied.environmentFingerprint !== 'string' || !HEX_64.test(copied.environmentFingerprint) ||
+        !Array.isArray(reasons) || reasons.length > 32 || reasons.some(item => typeof item !== 'string' || item.length > 160) ||
+        (copied.compatible && reasons.length !== 0) || (!copied.compatible && reasons.length === 0))
+      throw new Error('synaptic-commons-compatibility-invalid');
+    return {
+      compatible: copied.compatible,
+      checkedAt: Number(copied.checkedAt),
+      runtimeVersion: copied.runtimeVersion,
+      environmentFingerprint: copied.environmentFingerprint,
+      reasons: [...reasons] as string[],
     };
   }
 
