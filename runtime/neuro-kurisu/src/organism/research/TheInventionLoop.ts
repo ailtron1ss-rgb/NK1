@@ -726,7 +726,7 @@ export class TheInventionLoop {
       baseline: safe.baseline,
       metricScale: safe.metricScale,
       minEffect: safe.minEffect,
-      expectedEffect01: finite(safe.expectedEffect01) ? safe.expectedEffect01 : safe.minEffect,
+      expectedEffect01: safe.expectedEffect01 === undefined ? safe.minEffect : safe.expectedEffect01,
       minSuccessRate: safe.minSuccessRate,
       primarySeed: safe.primarySeed,
       replicationSeeds: [...safe.replicationSeeds],
