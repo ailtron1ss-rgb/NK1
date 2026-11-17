@@ -408,17 +408,16 @@ export class IntentExecutionRuntime {
         outcome.outcomeClass === 'reconciled-not-executed' ||
         outcome.verified === true;
       if (noGatewayReceipt) {
-        // Core may have checkpointed the prepared intent immediately before a
-        // crash that occurred before ActionGateway admitted its pending receipt.
-        // ActionGateway writes that receipt before executor entry, so absence here
-        // proves the side-effect boundary was never crossed; retry only with the
-        // same original key, allowing ActionGateway to admit it exactly once.
-        link.phase = 'completed';
-        pending.phase = 'prepared';
+        // No local ActionGateway receipt is not an authoritative provider
+        // assertion that the side effect never happened. The durable ledger may
+        // have been lost or become inconsistent after an external action; keep
+        // the intent blocked for manual/external reconciliation, never auto-retry.
+        link.phase = 'pending-reconciliation';
+        pending.phase = 'pending-reconciliation';
         pending.at = this.clock();
         pending.outcomeClass = outcome.outcomeClass;
         pending.executionId = undefined;
-        pending.idempotencyStatus = undefined;
+        pending.idempotencyStatus = outcome.idempotencyStatus;
       } else if (resolved) {
         link.phase = 'completed';
         pending.phase = 'completed';
