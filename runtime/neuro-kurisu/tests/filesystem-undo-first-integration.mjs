@@ -101,7 +101,7 @@ try {
   const symlinkOptions = await approveWrite(core, symlinkInput, 'filesystem-undo-first:symlink-denied');
   const symlinkResult = await core.executeTool('organism.files.write', symlinkInput, 'must-not-follow-symlink', symlinkOptions);
   assert.equal(symlinkResult.outcomeClass, 'undo-preparation-failed');
-  await assert.rejects(readFile(join(tempRoot, 'symlink-escape.txt'), 'utf8'), { code: 'ENOENT' });
+  await assert.rejects(readFile(join(tempRoot, 'external-link.txt'), 'utf8'), { code: 'ENOENT' });
 
   // Automatic compensation is deliberately not advertised for a regular mutable
   // filesystem path: the current adapter creates new files only and exposes a
