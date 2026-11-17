@@ -11285,31 +11285,46 @@ export class OrganismCore {
     negativeSpaceMemoryDiagnostics() { return this.cognitiveRuntime.regretEngine.negativeSpaceDiagnostics(); }
     negativeSpaceMemoryReviewQueue() { return this.cognitiveRuntime.regretEngine.negativeSpaceReviewQueue(); }
     negativeSpaceMemoryRelatedAlternatives(contextKey: string, limit = 8) { return this.cognitiveRuntime.regretEngine.negativeSpaceRelatedAlternatives(contextKey, limit); }
-    private async persistNegativeSpaceMemoryMutation(): Promise<void> {
+    private assertNegativeSpaceMemoryMutationBoundary(): void {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
         if (this.persistence.persistenceDepth > 0)
             throw new Error('negative-space-memory-persistence-busy');
+    }
+    private async persistNegativeSpaceMemoryMutation(
+        previous: ReturnType<RegretEngine['snapshot']>,
+    ): Promise<void> {
+        this.assertNegativeSpaceMemoryMutationBoundary();
         this.persisted.facets.advanced.regret = this.cognitiveRuntime.regretEngine.snapshot();
         this.markPersistenceDirty();
-        await this.checkpoint(true);
+        try {
+            await this.checkpoint(true);
+        }
+        catch (error) {
+            // Keep the in-memory owner and the canonical persisted facet aligned when the
+            // durability boundary fails. The dirty marker remains set so a later checkpoint
+            // can safely retry the restored state.
+            this.cognitiveRuntime.regretEngine.restore(previous);
+            this.persisted.facets.advanced.regret = structuredClone(previous);
+            throw error;
+        }
     }
     async negativeSpaceMemoryMarkReopened(decisionId: string, action: string, reason: string, at?: number): Promise<boolean> {
-        if (!this.ready)
-            throw new Error('OrganismCore.init() must be called first');
+        this.assertNegativeSpaceMemoryMutationBoundary();
+        const previous = this.cognitiveRuntime.regretEngine.snapshot();
         const changed = this.cognitiveRuntime.regretEngine.markNegativeSpaceAlternativeReopened(decisionId, action, reason, at);
         if (!changed)
             return false;
-        await this.persistNegativeSpaceMemoryMutation();
+        await this.persistNegativeSpaceMemoryMutation(previous);
         return true;
     }
     async negativeSpaceMemoryRecordOutcome(input: NegativeSpaceOutcomeInput): Promise<NegativeSpaceRecord | null> {
-        if (!this.ready)
-            throw new Error('OrganismCore.init() must be called first');
+        this.assertNegativeSpaceMemoryMutationBoundary();
+        const previous = this.cognitiveRuntime.regretEngine.snapshot();
         const updated = this.cognitiveRuntime.regretEngine.recordNegativeSpaceOutcome(input);
         if (!updated)
             return null;
-        await this.persistNegativeSpaceMemoryMutation();
+        await this.persistNegativeSpaceMemoryMutation(previous);
         return updated;
     }
     cognitiveOrganismContinuitySnapshot() { return this.developmentalNeural.cognitiveOrganismContinuity.snapshot(); }
