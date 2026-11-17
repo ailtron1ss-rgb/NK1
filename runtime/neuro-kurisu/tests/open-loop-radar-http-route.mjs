@@ -148,6 +148,37 @@ try {
   const completedFollowUp = await request('/api/organism/open-loops/' + dependent.id + '/complete', 'POST', { confirmed: true });
   assert.equal(completedFollowUp.response.status, 200);
   assert.equal(completedFollowUp.body.record.status, 'fulfilled');
+
+  const snoozeCreated = await request('/api/organism/open-loops', 'POST', {
+    confirmed: true, title: 'Review later', kind: 'task', owner: 'user', dueAt: Date.now() - 1,
+  });
+  assert.equal(snoozeCreated.response.status, 201);
+  const snoozeRecord = snoozeCreated.body.record;
+  const snoozed = await request('/api/organism/open-loops/' + snoozeRecord.id + '/snooze', 'POST', {
+    confirmed: true, until: Date.now() + 180_000, reason: 'Wait for the next review window',
+  });
+  assert.equal(snoozed.response.status, 200);
+  const snoozeListing = await request('/api/organism/open-loops');
+  assert.equal(snoozeListing.body.candidates.find(row => row.record.id === snoozeRecord.id)?.suppressionReason, 'snoozed');
+
+  const obsoleteParent = await request('/api/organism/open-loops', 'POST', {
+    confirmed: true, title: 'Obsolete dependency', kind: 'waiting', owner: 'system',
+  });
+  assert.equal(obsoleteParent.response.status, 201);
+  const blockedChild = await request('/api/organism/open-loops', 'POST', {
+    confirmed: true, title: 'Child with obsolete dependency', kind: 'project_step', owner: 'system',
+    dependencies: [obsoleteParent.body.record.id],
+  });
+  assert.equal(blockedChild.response.status, 201);
+  const cancelParent = await request('/api/organism/open-loops/' + obsoleteParent.body.record.id + '/cancel', 'POST', {
+    confirmed: true, reason: 'No longer needed',
+  });
+  assert.equal(cancelParent.response.status, 200);
+  const repairedDependencies = await request('/api/organism/open-loops/' + blockedChild.body.record.id + '/dependencies', 'POST', {
+    confirmed: true, dependencies: [], reason: 'Replace the retired prerequisite',
+  });
+  assert.equal(repairedDependencies.response.status, 200);
+  assert.equal(repairedDependencies.body.record.status, 'open');
   console.log('OPEN_LOOP_RADAR_HTTP_ROUTE=PASS');
 } finally {
   if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');

@@ -100,10 +100,27 @@ try {
   assert.equal((await dialogueRestarted.scanOpenLoops({ reminderCooldownMs: 0 }))
     .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, true,
     'a generation failure after restart must release the reservation without losing the obligation');
+  const snoozedAtRuntime = await dialogueRestarted.registerOpenLoop({
+    title: 'Recheck an accepted item after cooldown',
+    kind: 'task', owner: 'user', accepted: true, source: 'runtime-snooze-integration',
+    dueAt: Date.now() - 1,
+  });
+  const wakeAt = Date.now() + 120_000;
+  await dialogueRestarted.snoozeOpenLoop(snoozedAtRuntime.id, wakeAt, 'Wait for the next user check-in');
   await dialogueRestarted.flush();
   await dialogueRestarted.stop();
 
-  console.log(JSON.stringify({ status: 'OPEN_LOOP_RADAR_RUNTIME_PASS', activeCount: diagnostics.activeCount, restored: restored.records.length, fulfilled: final.records.length, initiativeReservation: 'PASS' }));
+  const snoozeRestarted = new OrganismRuntime(dialogueConfig);
+  await snoozeRestarted.init();
+  const restoredSnooze = (await snoozeRestarted.openLoopSnapshot()).records
+    .find(row => row.id === snoozedAtRuntime.id);
+  assert.equal(restoredSnooze?.snoozedUntil, wakeAt,
+    'snooze wake time must be durable across organism restart');
+  assert.equal((await snoozeRestarted.scanOpenLoops({ now: Date.now(), reminderCooldownMs: 0 }))
+    .find(row => row.record.id === snoozedAtRuntime.id)?.suppressionReason, 'snoozed');
+  await snoozeRestarted.stop();
+
+  console.log(JSON.stringify({ status: 'OPEN_LOOP_RADAR_RUNTIME_PASS', activeCount: diagnostics.activeCount, restored: restored.records.length, fulfilled: final.records.length, initiativeReservation: 'PASS', snooze: 'PASS' }));
 } finally {
   await fs.rm(directory, { recursive: true, force: true });
 }

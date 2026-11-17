@@ -351,6 +351,70 @@ transitiveRestored.restore(transitiveAfterPrune);
 assert.equal(transitiveRestored.snapshot().records.length, 512,
   'capacity pruning must preserve a snapshot that can be restored without losing active dependency chains');
 
+const lifecycleRadar = new OpenLoopRadar(() => now);
+const snoozed = lifecycleRadar.register({
+  title: 'Review the deferred milestone', kind: 'task', owner: 'user',
+  accepted: true, source: 'snooze-contract', dueAt: now - 1,
+});
+const snoozedUntil = now + 90_000;
+const snoozedRecord = lifecycleRadar.snooze(snoozed.id, snoozedUntil, 'Waiting for the next planning window');
+assert.equal(snoozedRecord.snoozedUntil, snoozedUntil);
+const snoozedCandidate = lifecycleRadar.scan({ now, reminderCooldownMs: 0 })
+  .find(row => row.record.id === snoozed.id);
+assert.equal(snoozedCandidate?.shouldSurface, false);
+assert.equal(snoozedCandidate?.suppressionReason, 'snoozed');
+assert.equal(snoozedCandidate?.snoozeRemainingMs, 90_000);
+const snoozeSnapshot = lifecycleRadar.snapshot();
+const restoredSnoozeRadar = new OpenLoopRadar(() => now);
+restoredSnoozeRadar.restore(snoozeSnapshot);
+assert.equal(restoredSnoozeRadar.scan({ now, reminderCooldownMs: 0 })
+  .find(row => row.record.id === snoozed.id)?.suppressionReason, 'snoozed',
+  'snooze must survive process restart');
+now = snoozedUntil;
+assert.equal(restoredSnoozeRadar.scan({ now, reminderCooldownMs: 0 })
+  .find(row => row.record.id === snoozed.id)?.shouldSurface, true,
+  'snoozed obligations must become eligible again at their wake time');
+const snoozeInitiative = 'soc:open-loop:snooze:001';
+restoredSnoozeRadar.reserveForInitiative(snoozed.id, snoozeInitiative);
+const movedWakeTime = now + 120_000;
+restoredSnoozeRadar.snooze(snoozed.id, movedWakeTime, 'User asked to revisit later');
+assert.equal(restoredSnoozeRadar.snapshot().records.find(row => row.id === snoozed.id)?.pendingSurfacingInitiativeId, null,
+  'snoozing must release an in-flight autonomous dialogue reservation');
+assert.throws(() => restoredSnoozeRadar.snooze(snoozed.id, now, 'not future'), /future timestamp/);
+assert.throws(() => restoredSnoozeRadar.snooze(snoozed.id, now + 366 * 86_400_000, 'too distant'), /365-day/);
+assert.throws(() => restoredSnoozeRadar.snooze(snoozed.id, now + 60_000, ''), /snooze-reason-required/);
+
+const dependencyRadar = new OpenLoopRadar(() => now);
+const cancelledPrerequisite = dependencyRadar.register({
+  title: 'Superseded provider task', kind: 'waiting', owner: 'system',
+  accepted: true, source: 'dependency-edit-contract',
+});
+const activeDependent = dependencyRadar.register({
+  title: 'Continue after provider task', kind: 'project_step', owner: 'system',
+  accepted: true, source: 'dependency-edit-contract', dependencies: [cancelledPrerequisite.id],
+});
+dependencyRadar.cancel(cancelledPrerequisite.id, 'Provider path was retired');
+assert.equal(dependencyRadar.snapshot().records.find(row => row.id === activeDependent.id)?.status, 'blocked');
+assert.throws(() => dependencyRadar.updateDependencies(activeDependent.id, [], '  '), /dependency-change-reason-required/);
+dependencyRadar.updateDependencies(activeDependent.id, [], 'Use the replacement provider path');
+assert.equal(dependencyRadar.snapshot().records.find(row => row.id === activeDependent.id)?.status, 'open',
+  'removing an obsolete cancelled prerequisite must unblock the dependent task');
+
+const cycleLeft = dependencyRadar.register({
+  title: 'Cycle left', kind: 'task', owner: 'system', accepted: true, source: 'dependency-cycle-contract',
+});
+const cycleRight = dependencyRadar.register({
+  title: 'Cycle right', kind: 'task', owner: 'system', accepted: true,
+  source: 'dependency-cycle-contract', dependencies: [cycleLeft.id],
+});
+const beforeCycleMutation = dependencyRadar.snapshot();
+assert.throws(() => dependencyRadar.updateDependencies(cycleLeft.id, [cycleRight.id], 'Would create a cycle'),
+  /open-loop-dependency-cycle/);
+assert.deepEqual(dependencyRadar.snapshot(), beforeCycleMutation);
+assert.throws(() => dependencyRadar.updateDependencies(cycleLeft.id, ['missing-dependency'], 'Invalid reference'),
+  /unknown-dependency/);
+assert.deepEqual(dependencyRadar.snapshot(), beforeCycleMutation);
+
 const detached = restored.snapshot();
 detached.records[0].title = 'tampered';
 assert.notEqual(restored.snapshot().records[0].title, 'tampered');
