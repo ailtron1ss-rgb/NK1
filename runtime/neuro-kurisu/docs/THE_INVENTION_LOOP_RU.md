@@ -1,36 +1,74 @@
-# The Invention Loop — усиленная реализация NK1
+# The Invention Loop — интегрированный контур доказательного саморазвития NK1
 
 Ветка: `aspect/the-invention-loop-20261117`  
-Назначение: превращать инженерные гипотезы в проверенные улучшения, не смешивая генерацию идей, факт изменения кода и доказательство пользы.
+Компонент принадлежит `EvidenceResearchSubsystemRuntime`; ключи verifier-ов передаются только host-кодом через `OrganismSystemFabric`.
 
-## Жизненный цикл
+## Назначение и интеграция
+The Invention Loop связывает в один проверяемый цикл:
+- `IntrinsicExperimentGenerator`: формирует проверяемые гипотезы из uncertainty, prediction error, novelty и dream-associations
+- `ScientificMethodEngine`: хранит вопрос, гипотезу, прогноз, provenance и только независимо подтверждённые evidence
+- `VerifiedOutcomeLedger` + `VerifiedOutcomeArtifact`: проверяют task manifest, verifier identity, authority, seed/attempt и Ed25519-подпись
+- `TheInventionLoop`: фиксирует протокол, прототип, независимую критику, replication cohort и закрытый holdout
+- `AutonomousScientificBrainSubstrate`: получает train update только после полной успешной replication cohort; holdout идёт только в calibration и не изменяет веса
+
+Публичные runtime-входы:
+- `proposeIntrinsicInvention(input)` — создать ScientificMethod project и preregistered invention из автономной гипотезы
+- `proposeDreamInvention(input)` — превратить candidate dream association в verification hypothesis, не в факт/память
+- `recordInventionOutcome(id, signedArtifact)` — проверить подписанное измерение, сохранить outcome и передать только разрешённое evidence научным подсистемам
+- `recordInventionCritique(id, signedArtifact)` — проверить подписанную независимую критику
+
+Обе proposal-функции сначала валидируют evaluation protocol, затем создают ScientificMethod project и связывают его ID с invention provenance. Низкий intrinsic drive или невалидная dream association возвращают `null`; они не создают проект и не повышают epistemic status.
+
+## Предрегистрация
+До первого запуска фиксируются:
+- question, hypothesis, success criteria
+- test fingerprint SHA-256, measured baseline, metricScale, direction, minEffect, expectedEffect01
+- minSuccessRate, primary seed и отдельные непересекающиеся наборы replication и holdout (каждый минимум 5 seed)
+- четыре разные роли: primary verifier, independent critic, replication verifier, holdout verifier
+- provenance: источник гипотезы, ID experiment generator и ID ScientificMethod project
+
+Все входные структуры проходят plain-data snapshot до чтения полей. Изменение протокола после preregistration делает цепочку audit невалидной.
+
+## Подписанные артефакты verifier-а
+The Invention Loop принимает только `SignedOutcomeArtifact` с Ed25519-подписью и обязательным `measurement`:
+- measurement содержит experiment ID, fingerprint полного протокола, SHA-256 прототипа и test fingerprint
+- outcome дополнительно подписывает phase, seed, environment, measured value и evidence SHA-256
+- critique подписывает ссылку/digest review-артефакта, blockers и limitations
+- payload связан с manifest fingerprint из `buildInventionVerifierManifest()`
+- эффект вычисляется NK1 из observed/baseline/metricScale/direction; signed `passed` сверяется с вычисленным результатом
+- подпись проверяется существующим `ingestSignedOutcomeArtifact()`; один и тот же artifact/run/evidence/seed нельзя переиспользовать
+
+Внешний verifier получает точный manifest через `inventionLoop.verifierManifest(id, phase, seed)` (или чистый builder `buildInventionVerifierManifest`), затем подписывает canonical payload. Приватные ключи должны находиться вне NK1, у evaluator/host. Public-key resolver передаётся конструктору `EvidenceResearchSubsystemRuntime` или `OrganismSystemFabric` как `inventionVerifierKeyResolver`. Если ключ не настроен, verifier неизвестен или подпись недействительна, запись не принимается. Ключи не входят в snapshot.
+
+Подпись доказывает владение доверенным приватным ключом и целостность подписанного измерения; она не доказывает беспристрастность verifier-а. Разделение ролей, среды, seed и закрытый holdout остаются самостоятельными gate.
+
+## Цикл и promotion gates
 `proposed → designed → prototyped → tested → critiqued → replicating → replicated → holdingout → accepted`
 
-Любая неудача скринингового primary-прогона, агрегатного replication/holdout gate или блокирующая независимая критика ведёт в `rejected`.
+- Primary — только screening; провал закрывает invention как rejected.
+- Critique — отдельный заранее назначенный подписывающий verifier; blockers немедленно отклоняют.
+- Replication — все preregistered seed, разные среды выполнения, средний эффект ≥ minEffect и success rate ≥ minSuccessRate.
+- Holdout — отдельный verifier, seed cohort и среды; acceptance требует полного покрытия, среднего эффекта и success rate по preregistration.
+- Retry (`attempt != 1`), повтор seed, run ID, artifact ID, evidence reference и cross-invention replay отклоняются.
 
-## Предрегистрация и разделение ролей
-- До прототипирования фиксируются вопрос, гипотеза, критерии успеха, baseline, шкала метрики, направление оптимизации, порог, минимальная доля успешных прогонов, SHA-256 fingerprint набора испытаний и точные seed когорты.
-- Один primary seed используется только для скрининга. Репликация и закрытый holdout каждый требуют минимум **5 заранее выбранных разных seed** в каждом непересекающемся наборе; сами запуски дополнительно разводятся по уникальным environment ID.
-- Для replication и holdout результаты собираются по каждому seed. Продвижение требует полного покрытия всех preregistered seed и уникальных сред выполнения, среднего эффекта не ниже порога и доли успешных прогонов не ниже preregistered `minSuccessRate`.
-- Каждый прогон одноразовый (`attempt=1`); скрытые повторы и переиспользование run/evidence reference между стадиями и разными inventions блокируются. Для новой серии попыток нужна новая запись invention с новой preregistration.
-- Роли primary verifier, independent critic, replication verifier и holdout verifier фиксируются до запуска и должны быть разными.
-- Для каждого результата требуются authority, seed, attempt, уникальный run ID, environment ID, evidence reference и SHA-256 evidence-артефакта.
-- Самоотчёт `self-report` не принимается. Результат проходит через существующий в NK1 `VerifiedOutcomeLedger`: проверяется authority-класс, verifier identity по manifest, task/version, seed/attempt и неповторность evidence reference.
-- Эффект вычисляется внутри модуля из observed, baseline, metricScale и направления метрики. Caller-supplied effect/score не используется.
-- Входные структуры отсоединяются через NK1 plain-data trust boundary до чтения полей; accessor/getter-backed, циклические и неподдерживаемые payload блокируются.
+## Обучение и контроль утечки
+`AutonomousScientificBrainSubstrate.learn()` получает один update только при переходе replication cohort в полностью подтверждённое состояние. Условия дополнительно ограничиваются собственным admission-gate научного мозга (evidence, replication и calibration error). Holdout передаётся с `holdout: true`: он измеряет калибровку, но не обновляет trainable weights. ScientificMethodEngine получает aggregate evidence только из прошедших подпись verifier receipts; неподписанный самоотчёт не меняет belief state.
 
-## Целостность состояния
-Каждый переход записывает состояние в per-record SHA-256 hash chain. Во время восстановления история перепроверяется, а сохранённое состояние сравнивается с последним аудируемым снимком. Изменённые или неаудируемые записи отправляются в quarantine; счётчики вычисляются заново и не доверяются сериализованным числам. Старый version-1/version-2 формат без полного audit contract не повышается автоматически до доверенного.
+## Состояние, аудит и восстановление
+State schema The Invention Loop: version 4. Каждый переход включён в per-record SHA-256 audit chain; verifier receipts сохраняются вместе с record. Restore:
+1. проверяет структуру и непрерывность цепочки переходов
+2. перепроверяет каждую Ed25519 подпись по заново предоставленному host key resolver
+3. повторно рассчитывает metric effect и cohort summaries
+4. проверяет уникальность run/artifact/evidence/seed и stage consistency
+5. отправляет неподтверждённые/изменённые записи в quarantine и заново вычисляет counters
 
-Hash chain защищает от случайного/непреднамеренного изменения и обеспечивает обнаружение изменения цепочки; это не цифровая подпись verifier. Текущая система использует контракт `VerifiedOutcomeLedger` и preregistered verifier IDs, но криптографическая аттестация личности требует отдельной подписи и проверки на стороне host/evaluator.
-
-## Runtime и границы полномочий
-The Invention Loop принадлежит `EvidenceResearchSubsystemRuntime`, входит в snapshot/restore и экспортируется organism entry point. Координатор ведёт экспериментальный протокол и admission доказательств; он не исполняет произвольный код, не сливает ветки, не публикует Release и не продвигает веса модели. Исполнение и promotion остаются за отдельными sandbox, ActionGateway, независимыми evaluator-ами и approval gates.
+Hash chain обнаруживает изменения сохранённого состояния; криптографическую подлинность verifier receipts обеспечивает Ed25519, а не сам hash chain.
 
 ## Проверка
 Из `runtime/neuro-kurisu`:
 ```sh
+node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs
 node --experimental-strip-types tests/the-invention-loop.mjs
 npm run typecheck
 ```
-Для PR создан отдельный workflow `.github/workflows/the-invention-loop.yml`, который запускает целевой lifecycle-тест и затем полный runtime typecheck.
+Специальный GitHub Actions workflow выполняет те же две целевые проверки и typecheck для ветки/PR.
