@@ -5,6 +5,21 @@
 ## Назначение
 World Forge создаёт воспроизводимые синтетические сценарии для проверки устойчивости планирования, распределения ресурсов, навигации и проверки гипотез. Он расширяет существующую линию FutureSimulator / WorldModel2, не создавая второй canonical world model и не изменяя реальные системы.
 
+## Усиление реализации
+
+### Stateful simulation
+- Добавлены startScenario/step: пошаговая среда, в которой наблюдения, осмотр, перемещение, сбор ресурсов, перестроение маршрута, приоритет и проверка свидетельств меняют состояние.
+- Возмущения теперь действуют в назначенный тик: resource-shock уменьшает запас, route-block закрывает цель-маршрут, signal-noise повышает шум, deadline-shift сокращает оставшиеся шаги.
+- Каждая сессия имеет внутреннее каноническое состояние; старый snapshot не может откатить симуляцию, а изменённые вызывающей стороной ресурсы/позиция не используются как источник истины.
+- Сессии и ключи ограничены TTL и максимальным числом активных сценариев. Очистка истёкших записей выполняется при обращении/генерации, без фоновых таймеров.
+
+### Evaluator hardening
+- Ключи оценивания переведены на ECMAScript private fields (#answers/#sessions); обычное JS-свойство answers больше не открывает answer key.
+- Trace и identity читаются через own data descriptors. Getter-ы не выполняются; proxy, accessor, class instance, sparse array, неизвестные поля и некорректные числа учитываются как нарушение и не проходят оценку.
+- Ограничения шага/ресурса/риска берутся из evaluator-owned записи, а не из изменяемого публичного scenario object.
+- FutureSimulator больше не публикует сам объект WorldForge; наружу отданы ограниченные методы генерации train/validation, старта и шага симуляции, оценки и закрытия.
+- Runtime facade не генерирует holdout. Закрытый holdout остаётся задачей отдельного evaluator-owned harness; синтетический holdout в одном процессе не является криптографически секретным от владельца кода/seed.
+
 ## Реализованный контур
 - Три сценарных домена: resource allocation, route planning, investigation.
 - Контролируемая сложность, скрытые evaluator-only переменные, несколько семейств допустимых стратегий и управляемые возмущения.
@@ -26,4 +41,5 @@ World Forge создаёт воспроизводимые синтетическ
 WorldForge.generate() выдаёт задания для исследовательского/оценочного контура. WorldForge.evaluate() оценивает trace, но не вызывает ActionGateway, не исполняет внешние действия, не меняет FutureSimulator state и не пишет в MemoryOS2. Связь с Shared Future scenario space — через scenario ID/метаданные, без дублирования ledger и canonical goals.
 
 ## Verification
+Дополнительные тесты: world-forge-evaluator-isolation.mjs, world-forge-dynamic-transitions.mjs, world-forge-ttl-bounds.mjs и расширенный world-forge-future-simulator-integration.mjs. Workflow выполняет их вместе с первоначальными проверками и npm run typecheck.
 Локальный запуск в этой среде не выполнялся: исходный репозиторий доступен через GitHub connector без локального checkout. Workflow запускает два focused Node regression test на PR. Пока Actions не завершится, тесты не обозначаются как PASS.
