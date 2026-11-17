@@ -139,6 +139,50 @@ assert.throws(() => idempotentRadar.register({
   ...idempotentInput, title: 'Different task, same idempotency key',
 }), /open-loop-idempotency-conflict/);
 
+const initiativeRadar = new OpenLoopRadar(() => now);
+const dialogueObligation = initiativeRadar.register({
+  title: 'Revisit the causal-memory validation', kind: 'task', owner: 'user',
+  accepted: true, source: 'autonomous-dialogue-test', dueAt: now - 1, priority: 0.9,
+});
+const initiativeId = 'soc:open-loop:contract:001';
+const reserved = initiativeRadar.reserveForInitiative(dialogueObligation.id, initiativeId);
+assert.equal(reserved.pendingSurfacingInitiativeId, initiativeId);
+assert.equal(initiativeRadar.scan({ now, reminderCooldownMs: 0 })
+  .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, false,
+  'one proactive initiative reservation must suppress duplicate surfacing');
+
+const restoredInitiativeRadar = new OpenLoopRadar(() => now);
+restoredInitiativeRadar.restore(initiativeRadar.snapshot());
+assert.equal(restoredInitiativeRadar.snapshot().records[0].pendingSurfacingInitiativeId, initiativeId,
+  'pending initiative ownership must survive restart');
+assert.equal(restoredInitiativeRadar.releaseInitiative('wrong-initiative'), false);
+assert.throws(() => restoredInitiativeRadar.reserveForInitiative(dialogueObligation.id, 'soc:open-loop:contract:002'),
+  /open-loop-not-ready-to-surface|open-loop-initiative-already-bound/);
+assert.equal(restoredInitiativeRadar.releaseInitiative(initiativeId), true);
+assert.equal(restoredInitiativeRadar.scan({ now, reminderCooldownMs: 0 })
+  .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, true,
+  'failed generation release must make the accepted obligation eligible again');
+const secondInitiativeId = 'soc:open-loop:contract:002';
+restoredInitiativeRadar.reserveForInitiative(dialogueObligation.id, secondInitiativeId);
+assert.equal(restoredInitiativeRadar.acknowledgeInitiative(secondInitiativeId), true);
+assert.equal(restoredInitiativeRadar.acknowledgeInitiative(secondInitiativeId), false,
+  'delivered initiative acknowledgement must be idempotent');
+assert.equal(restoredInitiativeRadar.snapshot().records[0].lastSurfacedAt, now);
+assert.equal(restoredInitiativeRadar.scan({ now, reminderCooldownMs: 0 })
+  .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, false,
+  'delivered proactive reminder must respect the reminder cooldown');
+
+const leaseRadar = new OpenLoopRadar(() => now);
+const leaseItem = leaseRadar.register({
+  title: 'Review the accepted follow-up', kind: 'task', owner: 'user',
+  accepted: true, source: 'lease-test', dueAt: now - 1,
+});
+leaseRadar.reserveForInitiative(leaseItem.id, 'soc:open-loop:lease:001');
+now += 16 * 60 * 1000;
+assert.equal(leaseRadar.scan({ now, reminderCooldownMs: 0 })
+  .find(row => row.record.id === leaseItem.id)?.shouldSurface, true,
+  'an abandoned generation reservation must expire instead of hiding a commitment forever');
+
 const capacityRadar = new OpenLoopRadar(() => now);
 for (let index = 0; index < 512; index++) {
   capacityRadar.register({ title: 'Active item ' + index, kind: 'task', owner: 'system', accepted: true, source: 'capacity-test' });

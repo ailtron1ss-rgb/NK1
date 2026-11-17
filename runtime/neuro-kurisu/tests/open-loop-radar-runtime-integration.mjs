@@ -63,7 +63,44 @@ try {
   assert.equal(final.records[0].closureEvidence?.reference, 'runtime-test:verified-result');
   await restarted.flush();
   await restarted.stop();
-  console.log(JSON.stringify({ status: 'OPEN_LOOP_RADAR_RUNTIME_PASS', activeCount: diagnostics.activeCount, restored: restored.records.length, fulfilled: final.records.length }));
+
+  const dialogueConfig = {
+    ...config,
+    stateFile: path.join(directory, 'dialogue-organism.json'),
+    worldStateFile: path.join(directory, 'dialogue-world.json'),
+    stateStore: new MemoryStateStore(),
+    worldStateStore: new MemoryStateStore(),
+  };
+  const dialogueRuntime = new OrganismRuntime(dialogueConfig);
+  await dialogueRuntime.init();
+  const dialogueObligation = await dialogueRuntime.registerOpenLoop({
+    title: 'Revisit the accepted causal-memory follow-up',
+    kind: 'task', owner: 'user', accepted: true,
+    source: 'runtime-dialogue-bridge-test', dueAt: Date.now() - 1,
+  });
+  const initiativeId = 'soc:open-loop:runtime:001';
+  await dialogueRuntime.reserveOpenLoopForAutonomousInitiative(dialogueObligation.id, initiativeId);
+  assert.equal((await dialogueRuntime.scanOpenLoops({ reminderCooldownMs: 0 }))
+    .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, false);
+  await dialogueRuntime.flush();
+  await dialogueRuntime.stop();
+
+  const dialogueRestarted = new OrganismRuntime(dialogueConfig);
+  await dialogueRestarted.init();
+  const reservedAfterRestart = (await dialogueRestarted.openLoopSnapshot()).records
+    .find(row => row.id === dialogueObligation.id);
+  assert.equal(reservedAfterRestart?.pendingSurfacingInitiativeId, initiativeId,
+    'runtime restart must retain which proactive initiative owns the pending surfacing reservation');
+  assert.equal((await dialogueRestarted.scanOpenLoops({ reminderCooldownMs: 0 }))
+    .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, false);
+  await dialogueRestarted.releaseOpenLoopForAutonomousInitiative(dialogueObligation.id, initiativeId);
+  assert.equal((await dialogueRestarted.scanOpenLoops({ reminderCooldownMs: 0 }))
+    .find(row => row.record.id === dialogueObligation.id)?.shouldSurface, true,
+    'a generation failure after restart must release the reservation without losing the obligation');
+  await dialogueRestarted.flush();
+  await dialogueRestarted.stop();
+
+  console.log(JSON.stringify({ status: 'OPEN_LOOP_RADAR_RUNTIME_PASS', activeCount: diagnostics.activeCount, restored: restored.records.length, fulfilled: final.records.length, initiativeReservation: 'PASS' }));
 } finally {
   await fs.rm(directory, { recursive: true, force: true });
 }
