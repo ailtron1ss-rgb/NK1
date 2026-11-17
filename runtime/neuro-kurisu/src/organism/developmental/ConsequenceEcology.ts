@@ -236,35 +236,113 @@ function normalizeNegativeSpaceContext(value: unknown): ConsequenceNegativeSpace
   };
 }
 
+function boundedNumber(value: unknown, min: number, max: number): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+}
+
+function boundedInteger(value: unknown, min: number, max: number): boolean {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
+}
+
+function boundedString(value: unknown, maxLength: number, allowEmpty = true): boolean {
+  return typeof value === 'string' && value.length <= maxLength && (allowEmpty || value.trim().length > 0);
+}
+
+function boundedStringArray(value: unknown, maxItems: number, maxLength: number): boolean {
+  return Array.isArray(value) && value.length <= maxItems &&
+    value.every(item => boundedString(item, maxLength, false));
+}
+
+function isRestorableContext(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const goal = value.goalEcology;
+  const negative = value.negativeSpace;
+  if (goal !== null && (!isRecord(goal) ||
+      !boundedInteger(goal.activeCount, 0, 1_000_000) ||
+      !boundedNumber(goal.goalPressure01, 0, 1) ||
+      !boundedNumber(goal.meanConflict01, 0, 1) ||
+      !boundedNumber(goal.meanStaleness01, 0, 1) ||
+      !(goal.topGoalId === null || boundedString(goal.topGoalId, 128)))) return false;
+  if (negative !== null && (!isRecord(negative) ||
+      !boundedInteger(negative.records, 0, 1_000_000) ||
+      !boundedInteger(negative.alternatives, 0, 1_000_000) ||
+      !boundedInteger(negative.reviewEligible, 0, 1_000_000) ||
+      !boundedInteger(negative.verifiedOutcomes, 0, 1_000_000) ||
+      !boundedInteger(negative.independentOutcomes, 0, 1_000_000))) return false;
+  return Object.keys(value).length <= 2 &&
+    Object.hasOwn(value, 'goalEcology') && Object.hasOwn(value, 'negativeSpace');
+}
+
 function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalysis {
-  if (!isRecord(value) || !clean(value.id, 96) || value.decisionAuthority !== 'none' ||
+  if (!isRecord(value) || !boundedString(value.id, 96, false) || value.decisionAuthority !== 'none' ||
       value.independentlyVerified !== false || (value.status !== 'analysed' && value.status !== 'bounded-partial') ||
-      typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt) ||
-      typeof value.horizonDays !== 'number' || !Number.isInteger(value.horizonDays) ||
-      finite(value.horizonDays, 0) < 1 || finite(value.horizonDays, MAX_HORIZON_DAYS + 1) > MAX_HORIZON_DAYS ||
-      !(value.scenarioId === null || (typeof value.scenarioId === 'string' && value.scenarioId.length <= 160)) ||
-      !(value.modelTopRankedOptionId === null || (typeof value.modelTopRankedOptionId === 'string' && value.modelTopRankedOptionId.length <= 96)) ||
+      !boundedNumber(value.createdAt, 0, Number.MAX_SAFE_INTEGER) ||
+      !boundedInteger(value.horizonDays, 1, MAX_HORIZON_DAYS) ||
+      !(value.scenarioId === null || boundedString(value.scenarioId, 160, false)) ||
+      !(value.modelTopRankedOptionId === null || boundedString(value.modelTopRankedOptionId, 96, false)) ||
       !Array.isArray(value.options) || value.options.length < 1 || value.options.length > MAX_OPTIONS ||
-      !Array.isArray(value.limitations) || value.limitations.length > 12 ||
-      !value.limitations.every(row => typeof row === 'string' && row.length <= 320) ||
-      !isRecord(value.context)) return false;
+      !boundedStringArray(value.limitations, 12, 320) || !isRestorableContext(value.context)) return false;
 
   return value.options.every(option => {
-    if (!isRecord(option) || typeof option.id !== 'string' || option.id.length > 96 ||
-        typeof option.title !== 'string' || option.title.length > 180 ||
-        typeof option.action !== 'string' || option.action.length > 180 ||
+    if (!isRecord(option) || !boundedString(option.id, 96, false) ||
+        !boundedString(option.title, 180, false) || !boundedString(option.action, 180, false) ||
+        !boundedInteger(option.ranking, 1, MAX_OPTIONS) ||
+        !(['low', 'moderate', 'high', 'critical'] as unknown[]).includes(option.riskBand) ||
+        !(['routine-review', 'enhanced-review', 'mandatory-review'] as unknown[]).includes(option.attention) ||
+        !boundedNumber(option.directRisk01, 0, 1) || !boundedNumber(option.secondaryRisk01, 0, 1) ||
+        !boundedNumber(option.tertiaryRisk01, 0, 1) || !boundedNumber(option.totalHarm01, 0, 1) ||
+        !boundedNumber(option.totalBenefit01, 0, 1) || !boundedNumber(option.netExpectedValue01, -1, 1) ||
+        !boundedNumber(option.riskAdjustedValue01, -1, 1) || !boundedNumber(option.uncertainty01, 0, 1) ||
+        !boundedNumber(option.confidence01, 0, 1) || !boundedNumber(option.graphCoverage01, 0, 1) ||
+        !boundedNumber(option.evidenceCoverage01, 0, 1) || !boundedNumber(option.irreversibleExposure01, 0, 1) ||
+        !boundedNumber(option.mitigationCredit01, 0, 1) || !boundedInteger(option.feedbackLoopCount, 0, MAX_PATHS) ||
+        !boundedInteger(option.excludedBeyondHorizon, 0, MAX_PATHS) ||
+        !boundedInteger(option.unreachableNodeCount, 0, MAX_NODES) ||
+        !boundedInteger(option.exploredPathCount, 0, MAX_PATHS) || typeof option.truncated !== 'boolean' ||
         !Array.isArray(option.nodes) || option.nodes.length < 1 || option.nodes.length > MAX_NODES ||
         !Array.isArray(option.stakeholders) || option.stakeholders.length > MAX_NODES ||
-        !Array.isArray(option.criticalPaths) || option.criticalPaths.length > 8 ||
+        !isRecord(option.temporalEffects) || !Array.isArray(option.criticalPaths) || option.criticalPaths.length > 8 ||
         !Array.isArray(option.feedbackLoops) || option.feedbackLoops.length > 16 ||
-        !Array.isArray(option.missingAssumptionRefs) || option.missingAssumptionRefs.length > MAX_NODES * 8 ||
-        !Array.isArray(option.limitations) || option.limitations.length > 12) return false;
-    if (!option.nodes.every(node => isRecord(node) && typeof node.id === 'string' && node.id.length <= 96 &&
+        !boundedStringArray(option.missingAssumptionRefs, MAX_NODES * 8, 128) ||
+        !boundedStringArray(option.limitations, 12, 320)) return false;
+
+    if (!option.temporalEffects ||
+        !['immediateHarm01', 'shortTermHarm01', 'longTermHarm01', 'immediateBenefit01', 'shortTermBenefit01', 'longTermBenefit01']
+          .every(key => boundedNumber(option.temporalEffects[key], 0, 1))) return false;
+
+    if (!option.nodes.every(node => isRecord(node) &&
+        boundedString(node.id, 96, false) && boundedString(node.actor, 96, false) &&
+        boundedString(node.system, 96, false) &&
         (node.effect === 'harm' || node.effect === 'benefit' || node.effect === 'neutral') &&
-        Array.isArray(node.evidenceRefs) && node.evidenceRefs.length <= 8 &&
-        Array.isArray(node.missingAssumptionRefs) && node.missingAssumptionRefs.length <= 8)) return false;
-    if (!option.criticalPaths.every(path => isRecord(path) && Array.isArray(path.nodeIds) && path.nodeIds.length <= MAX_DEPTH + 1)) return false;
-    if (!option.feedbackLoops.every(loop => isRecord(loop) && Array.isArray(loop.path) && loop.path.length <= MAX_DEPTH + 1)) return false;
+        (node.order === 'direct' || node.order === 'secondary' || node.order === 'tertiary') &&
+        (node.basis === 'measured' || node.basis === 'external-research' || node.basis === 'user-assumption' ||
+          node.basis === 'simulation' || node.basis === 'internal-model') &&
+        boundedNumber(node.propagatedProbability01, 0, 1) && boundedNumber(node.impact01, 0, 1) &&
+        boundedNumber(node.expectedEffect01, 0, 1) && boundedNumber(node.confidence01, 0, 1) &&
+        boundedNumber(node.uncertaintyContribution01, 0, 1) &&
+        boundedInteger(node.depth, 1, MAX_DEPTH) && boundedNumber(node.delayDays, 0, MAX_HORIZON_DAYS) &&
+        typeof node.reversible === 'boolean' && boundedStringArray(node.evidenceRefs, 8, 180) &&
+        boundedStringArray(node.missingAssumptionRefs, 8, 128))) return false;
+
+    if (!option.stakeholders.every(row => isRecord(row) &&
+        boundedString(row.actor, 96, false) && boundedString(row.system, 96, false) &&
+        boundedNumber(row.harm01, 0, 1) && boundedNumber(row.benefit01, 0, 1) &&
+        boundedNumber(row.uncertainty01, 0, 1) && boundedNumber(row.irreversibleExposure01, 0, 1) &&
+        boundedInteger(row.consequenceCount, 0, MAX_NODES))) return false;
+
+    if (!option.criticalPaths.every(row => isRecord(row) &&
+        Array.isArray(row.nodeIds) && row.nodeIds.length >= 2 && row.nodeIds.length <= MAX_DEPTH + 1 &&
+        boundedStringArray(row.nodeIds, MAX_DEPTH + 1, 96) &&
+        boundedNumber(row.probability01, 0, 1) && boundedNumber(row.expectedHarm01, 0, 1) &&
+        boundedNumber(row.delayDays, 0, MAX_HORIZON_DAYS))) return false;
+
+    if (!option.feedbackLoops.every(row => isRecord(row) &&
+        boundedString(row.from, 96, false) && boundedString(row.to, 96, false) &&
+        (row.relation === 'causes' || row.relation === 'amplifies' || row.relation === 'mitigates' ||
+          row.relation === 'depends-on' || row.relation === 'feedback') &&
+        boundedNumber(row.exposure01, 0, 1) && Array.isArray(row.path) &&
+        row.path.length >= 2 && row.path.length <= MAX_DEPTH + 1 &&
+        boundedStringArray(row.path, MAX_DEPTH + 1, 96))) return false;
     return true;
   });
 }
