@@ -206,6 +206,11 @@ now += 16 * 60 * 1000;
 assert.equal(leaseRadar.scan({ now, reminderCooldownMs: 0 })
   .find(row => row.record.id === leaseItem.id)?.shouldSurface, true,
   'an abandoned generation reservation must expire instead of hiding a commitment forever');
+assert.equal(leaseRadar.acknowledgeInitiative('soc:open-loop:lease:001'), true,
+  'a delayed acknowledgement for the same delivered initiative must still be accepted after lease expiry');
+assert.equal(leaseRadar.scan({ now, reminderCooldownMs: 60_000 })
+  .find(row => row.record.id === leaseItem.id)?.shouldSurface, false,
+  'a delayed but valid display acknowledgement must start the reminder cooldown');
 
 const capacityRadar = new OpenLoopRadar(() => now);
 for (let index = 0; index < 512; index++) {

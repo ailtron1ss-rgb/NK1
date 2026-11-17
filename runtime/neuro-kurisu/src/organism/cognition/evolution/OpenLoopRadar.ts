@@ -476,7 +476,9 @@ export class OpenLoopRadar {
     if (!normalizedInitiativeId) return false;
     const now = this.safeNow();
     const record = this.state.records.find(item => item.pendingSurfacingInitiativeId === normalizedInitiativeId);
-    if (!record || record.pendingSurfacingLeaseUntil <= now || TERMINAL.has(record.status)) return false;
+    // A delayed UI delivery acknowledgement is still authoritative for the same
+    // reservation owner after lease expiry, unless another initiative has claimed it.
+    if (!record || TERMINAL.has(record.status)) return false;
     record.lastSurfacedAt = now;
     record.pendingSurfacingInitiativeId = null;
     record.pendingSurfacingLeaseUntil = 0;
