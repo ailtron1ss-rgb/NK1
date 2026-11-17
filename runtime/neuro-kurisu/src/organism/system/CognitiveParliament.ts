@@ -130,6 +130,37 @@ export class CognitiveParliament {
   private readonly trustPort:ParliamentTrustPort;
   constructor(trustPort:ParliamentTrustPort=failClosedTrustPort){this.trustPort=trustPort;}
 
+
+  /**
+   * Resolve evidence references against one immutable trust session before they
+   * are shown to model adapters. Unverified or stale records are never added to
+   * role prompts. The final deliberation independently verifies them again.
+   */
+  resolveEvidenceReferences(references: ParliamentEvidenceReference[]): ParliamentVerifiedEvidence[] {
+    if (!Array.isArray(references) || references.length > 48) return [];
+    let session: ParliamentTrustSession;
+    try { session = this.trustPort.openSession(); } catch { return []; }
+    if (!session || typeof session.verifyEvidence !== 'function') return [];
+    const seen = new Map<string, string>();
+    const verified: ParliamentVerifiedEvidence[] = [];
+    for (const reference of references) {
+      if (!reference || typeof reference !== 'object' ||
+          !text(reference.id) || !text(reference.claimKey)) continue;
+      const id = reference.id.trim(), claimKey = reference.claimKey.trim();
+      const prior = seen.get(id);
+      if (prior !== undefined) {
+        if (prior !== claimKey) return [];
+        continue;
+      }
+      seen.set(id, claimKey);
+      try {
+        const record = session.verifyEvidence({ id, claimKey });
+        if (validVerifiedEvidence(record, { id, claimKey })) verified.push(record);
+      } catch { /* Invalid trust-port records are omitted from model context. */ }
+    }
+    return verified;
+  }
+
   deliberate(input:ParliamentInput):ParliamentDecision{
     const reasons:string[]=[];
     const inputValid=Boolean(input&&text(input.candidateId)&&input.candidateId.length<=160&&

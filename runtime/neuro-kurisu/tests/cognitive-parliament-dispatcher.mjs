@@ -42,8 +42,11 @@ const makeExecutors=(onRun=()=>{},delayMs=0)=>Object.fromEntries(roles.map(role=
 }]));
 
 const parliament=new CognitiveParliament(trust);
-let active=0,maxActive=0,seenTokens=[];
-const executors=makeExecutors((_role,request)=>{active++;maxActive=Math.max(maxActive,active);seenTokens.push(request.maxTokens);},8);
+let active=0,maxActive=0,seenTokens=[],capturedPayload=null;
+const executors=makeExecutors((_role,request)=>{
+  active++;maxActive=Math.max(maxActive,active);seenTokens.push(request.maxTokens);
+  if(!capturedPayload)capturedPayload=JSON.parse(request.user);
+},8);
 for(const role of roles){
   const original=executors[role].execute;
   executors[role].execute=async request=>{try{return await original(request);}finally{active--;}};
@@ -59,7 +62,20 @@ assert.equal(dispatched.roleResults.filter(row=>row.status==='completed').length
 assert.ok(maxActive<=2,'role concurrency must obey the hard fan-out limit');
 assert.equal(seenTokens.length,6);
 assert.ok(seenTokens.every(value=>value===400),'the total requested token budget must be partitioned across six roles');
+assert.equal(dispatched.verifiedEvidenceCount,3);
+assert.equal(dispatched.unverifiedEvidenceCount,0);
+assert.equal(capturedPayload.verifiedEvidence[0].sourceFamily.length>0,true,
+  'role prompts must include host-verified provenance, not just model-provided source labels');
 assert.ok(dispatched.elapsedMs>=0);
+
+const forgedReference=await dispatcher.dispatch({
+  candidateId:'forged-context',risk:'low',task:'Do not let an unverified reference enter model context.',
+  evidenceReferences:[{id:'forged-evidence-id',claimKey}],
+});
+assert.equal(forgedReference.verifiedEvidenceCount,0);
+assert.equal(forgedReference.unverifiedEvidenceCount,1);
+assert.equal(forgedReference.decision.status,'needs-evidence');
+
 
 // Missing providers never synthesize role reports or an approval.
 const unavailable=new CognitiveParliamentDispatcher(parliament,{}).dispatch({
