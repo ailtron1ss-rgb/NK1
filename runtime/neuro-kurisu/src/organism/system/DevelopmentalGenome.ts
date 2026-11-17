@@ -254,7 +254,7 @@ function addIssue(list: GenomeGateIssue[], code: string, path: string, message: 
 }
 
 /** Fail-closed structural and parent-child compatibility gate. */
-export function evaluateDevelopmentalGenome(
+function evaluateDevelopmentalGenomeUnchecked(
   candidate: DevelopmentalGenome,
   parent?: DevelopmentalGenome,
   ancestors: readonly DevelopmentalGenome[] = [],
@@ -412,6 +412,36 @@ export function evaluateDevelopmentalGenome(
     violations,
     warnings,
   };
+}
+
+export function evaluateDevelopmentalGenome(
+  candidate: DevelopmentalGenome,
+  parent?: DevelopmentalGenome,
+  ancestors: readonly DevelopmentalGenome[] = [],
+): GenomeGateReport {
+  try {
+    if (!Array.isArray(ancestors)) {
+      return {
+        status: 'BLOCKED',
+        activation: 'NOT_APPLIED',
+        candidateDigest: '',
+        parentDigest: null,
+        violations: [{ code: 'ancestor-chain-invalid', path: 'lineage.ancestors', message: 'Ancestor chain must be an array' }],
+        warnings: [],
+      };
+    }
+    return evaluateDevelopmentalGenomeUnchecked(candidate, parent, ancestors);
+  } catch (error) {
+    const message = String((error as any)?.message ?? error).slice(0, 240);
+    return {
+      status: 'BLOCKED',
+      activation: 'NOT_APPLIED',
+      candidateDigest: '',
+      parentDigest: null,
+      violations: [{ code: 'candidate-unreadable', path: 'candidate', message: 'Candidate could not be safely evaluated: ' + message }],
+      warnings: [],
+    };
+  }
 }
 
 /** Create an immutable child manifest; this does not apply the traits to runtime systems. */
