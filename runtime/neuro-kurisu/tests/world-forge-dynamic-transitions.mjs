@@ -5,7 +5,7 @@ const forge=new WorldForge({maxCasesPerBatch:64});
 const scenarios=forge.generate({split:'train',seed:20261117,count:64,difficulty01:.8});
 const byKind=new Map();
 for(const scenario of scenarios){
-  for(const disturbance of scenario.disturbances) if(!byKind.has(disturbance.kind))byKind.set(disturbance.kind,{scenario,disturbance});
+  for(const disturbance of [...scenario.disturbances].sort((a,b)=>a.atStep-b.atStep)) if(!byKind.has(disturbance.kind))byKind.set(disturbance.kind,{scenario,disturbance});
 }
 for(const kind of ['resource-shock','route-block','signal-noise','deadline-shift'])assert.ok(byKind.has(kind),`seeded batch must cover disturbance kind ${kind}`);
 
