@@ -73,12 +73,13 @@ assert.throws(
 );
 assert.equal(detachedLedger.snapshot().acceptedOutcomes, 0,
   'a detached execution must not write any canonical outcome rows');
+const sparseValidationResult = await run('validation', makeTasks('validation', [101]));
 assert.throws(
-  () => recordIndependentEvaluationOutcomes(validationResult, {
+  () => recordIndependentEvaluationOutcomes(sparseValidationResult, {
     ...authority, evaluationScope: 'validation-only',
   }),
   /plan-coverage-incomplete/,
-  'strict P23 ledger commits must continue to require the complete scheduled method plan',
+  'strict P23 ledger commits must reject a deliberately incomplete task × seed matrix',
 );
 assert.equal(recordIndependentEvaluationOutcomes(validationResult, {
   ...authority, evaluationScope: 'validation-only',
@@ -97,8 +98,8 @@ const holdoutResult = await run('holdout', makeTasks('holdout', [201, 202]));
 assert.equal(holdoutResult.evaluation.validation.length, 0, 'holdout-only report must contain no validation rows');
 assert.equal(recordIndependentEvaluationOutcomes(holdoutResult, {
   ...authority, evaluationScope: 'holdout-only',
-}).accepted, 2,
-  'only planned holdout runs should be committed to the canonical P23 ledger');
+}).accepted, 4,
+  'all task × seed holdout cells for the candidate arm must be committed');
 assert.deepEqual(
   ledger.snapshot().outcomes.map(row => row.taskId).sort(),
   ['holdout-a', 'holdout-a', 'holdout-b', 'holdout-b', 'validation-a', 'validation-a', 'validation-b', 'validation-b'],
