@@ -64,7 +64,7 @@ Architecture Morphogenesis превращает перестройку исхо�
 Дополнительные гарантии v2:
 
 - Structural import/contract cycle detection использует iterative DFS и выдерживает верхнюю границу 10 000 модулей без переполнения JS call stack.
-- Каждый добавленный/удалённый typed edge требует точный `rewire` receipt; изменения `sourcePaths` учитываются в module diff.
+- Каждый добавленный/удалённый typed edge требует точный `rewire` receipt; неизменившиеся связи и повторные receipts отклоняются; изменения `sourcePaths` учитываются в module diff.
 - Перед оценкой evidence gate заново строит план из baseline/candidate graph, операций и migration plan. Одного повторного хеширования изменённого `diff` недостаточно.
 - Malformed элементы массивов контрактов и связей дают структурированные validation issues, а не выбрасывают исключение.
 

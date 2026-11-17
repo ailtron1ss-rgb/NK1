@@ -625,12 +625,14 @@ export function createArchitectureMorphogenesisPlan(input: {
 
     const baselineEdgesByKey = new Map(baseline.edges.map(edge => [morphogenesisEdgeKey(edge), edge]));
     const candidateEdgesByKey = new Map(candidate.edges.map(edge => [morphogenesisEdgeKey(edge), edge]));
-    const addedEdges = sortedUnique(candidate.edges
+    const addedEdgeChangesByKey = new Map(candidate.edges
       .filter(edge => !baselineEdgesByKey.has(morphogenesisEdgeKey(edge)))
-      .map(morphogenesisEdgeLabel));
-    const removedEdges = sortedUnique(baseline.edges
+      .map(edge => [morphogenesisEdgeKey(edge), edge]));
+    const removedEdgeChangesByKey = new Map(baseline.edges
       .filter(edge => !candidateEdgesByKey.has(morphogenesisEdgeKey(edge)))
-      .map(morphogenesisEdgeLabel));
+      .map(edge => [morphogenesisEdgeKey(edge), edge]));
+    const addedEdges = sortedUnique([...addedEdgeChangesByKey.values()].map(morphogenesisEdgeLabel));
+    const removedEdges = sortedUnique([...removedEdgeChangesByKey.values()].map(morphogenesisEdgeLabel));
 
     const removedCoverage = new Set<string>();
     const addedCoverage = new Set<string>();
@@ -731,8 +733,8 @@ export function createArchitectureMorphogenesisPlan(input: {
             coverage.add(key);
           }
         };
-        verifyReferences(op.addedEdges, candidateEdgesByKey, addedEdgeCoverage, 'added');
-        verifyReferences(op.removedEdges, baselineEdgesByKey, removedEdgeCoverage, 'removed');
+        verifyReferences(op.addedEdges, addedEdgeChangesByKey, addedEdgeCoverage, 'added');
+        verifyReferences(op.removedEdges, removedEdgeChangesByKey, removedEdgeCoverage, 'removed');
       } else {
         issues.push(issue('operation-kind-unsupported', path + '.kind', 'Only merge, split, move, replace and rewire operations are supported'));
       }

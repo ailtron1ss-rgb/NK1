@@ -2,7 +2,7 @@
 
 - Replace recursive structural-cycle traversal with iterative DFS; malformed edge/contract records fail closed without throwing.
 - Fingerprint source files from raw bytes and use the first valid source commit provenance.
-- Track source-footprint changes and require exact `rewire` receipts for every added/removed typed graph edge.
+- Track source-footprint changes and require exact `rewire` receipts only for added/removed typed graph edges; unchanged or repeated edges are rejected.
 - Rebuild plans in the evidence gate so recomputing a public digest cannot legitimize forged diff metadata.
 
 ## [NK1][Architecture] OmeStro #17 — Architecture Morphogenesis v1 (2026-11-17, unreleased)

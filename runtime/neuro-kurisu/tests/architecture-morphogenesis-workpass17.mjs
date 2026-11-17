@@ -286,8 +286,9 @@ assert.equal(sourceFootprintPlan.status, 'READY_FOR_REVIEW', JSON.stringify(sour
 
 // Regression: a changed graph edge must be explicitly accounted for by a rewire operation.
 const alphaV2 = moduleRecord('alpha', alpha.path, 'f');
-const edgeBase = graph([alpha, beta]);
-const edgeCandidate = graph([alphaV2, beta], [{ from: 'alpha', to: 'beta', kind: 'import' }]);
+const commonFeedbackEdge = { from: 'beta', to: 'alpha', kind: 'data-flow' };
+const edgeBase = graph([alpha, beta], [commonFeedbackEdge]);
+const edgeCandidate = graph([alphaV2, beta], [commonFeedbackEdge, { from: 'alpha', to: 'beta', kind: 'import' }]);
 const edgeWithoutRewire = proposal(
   edgeBase,
   edgeCandidate,
@@ -336,3 +337,22 @@ const edgeWithRewire = proposal(
 assert.equal(edgeWithRewire.status, 'READY_FOR_REVIEW', JSON.stringify(edgeWithRewire.issues));
 assert.deepEqual(edgeWithRewire.diff.addedEdges, ['import:alpha->beta']);
 assert.deepEqual(edgeWithRewire.diff.removedEdges, []);
+
+const unchangedEdgeReceipt = proposal(
+  edgeBase,
+  edgeCandidate,
+  [
+    { kind: 'replace', moduleId: 'alpha', rationale: 'Update alpha implementation' },
+    {
+      kind: 'rewire',
+      removedEdges: [],
+      addedEdges: [
+        { from: 'alpha', to: 'beta', kind: 'import' },
+        commonFeedbackEdge,
+      ],
+      rationale: 'Negative test: unchanged edges are not migration deltas',
+    },
+  ],
+);
+assert.equal(unchangedEdgeReceipt.status, 'BLOCKED');
+assert.ok(unchangedEdgeReceipt.issues.some(item => item.code === 'rewire-edge-mismatch'));
