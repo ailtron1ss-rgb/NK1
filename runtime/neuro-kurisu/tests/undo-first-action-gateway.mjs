@@ -10,22 +10,23 @@ const AFTER = 'b'.repeat(64);
 const OTHER = 'c'.repeat(64);
 const ORIGINAL_KEY = 'undo-first:relay:operation-01';
 
-function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, driftDuringPreparation = false, driftAfterPreconditionRead = false } = {}) {
+function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, driftDuringPreparation = false, driftAfterPreconditionRead = false, failPendingPersist = false } = {}) {
   const gateway = new ActionGateway({ live: true });
   const events = [];
   const state = { hash: stateHash };
-  const counts = { mutation: 0, compensation: 0, preparation: 0 };
+  const counts = { mutation: 0, compensation: 0, preparation: 0, cleanup: 0 };
   let durableSnapshot = { version: 1, records: [] };
 
   gateway.setExecutionLedgerPersister(async (snapshot) => {
-    durableSnapshot = structuredClone(snapshot);
     const pending = snapshot.records?.find((row) =>
       row.toolId === 'test.undo.mutate' && row.status === 'pending'
     );
     if (pending) {
       events.push('pending-persist');
       if (prepare) assert.ok(pending.undoPlan, 'undo plan must be durable before executor entry');
+      if (failPendingPersist) throw new Error('simulated-durable-ledger-write-failure');
     }
+    durableSnapshot = structuredClone(snapshot);
   });
 
   gateway.registerTool({
@@ -107,6 +108,12 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
           };
           if (driftDuringPreparation) state.hash = OTHER;
           return plan;
+        },
+        discardPrepared: async (recoveryArtifactRef, context) => {
+          events.push('discard-prepared');
+          assert.equal(recoveryArtifactRef, 'snapshot:relay-01:before-v17');
+          assert.match(context.executionId, /^exec-/);
+          counts.cleanup += 1;
         },
       },
     } : {}),
@@ -310,4 +317,20 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
   assert.equal(state.hash, OTHER);
 }
 
-console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=9');
+// If the pending receipt cannot be durably admitted, release the preflight snapshot;
+ // the primary executor must never run and the cleanup must happen exactly once.
+{
+  const { gateway, counts, events } = makeGateway({ failPendingPersist: true });
+  const result = await gateway.executeTool(
+    'test.undo.mutate',
+    { target: 'relay-01' },
+    'storage-admission-failure',
+    { idempotencyKey: 'undo-first:storage-admission-failure' },
+  );
+  assert.equal(result.outcomeClass, 'idempotency-storage-failed');
+  assert.equal(counts.mutation, 0);
+  assert.equal(counts.cleanup, 1);
+  assert.ok(events.indexOf('discard-prepared') > events.indexOf('pending-persist'));
+}
+
+console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=10');
