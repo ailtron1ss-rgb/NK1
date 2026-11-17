@@ -9516,8 +9516,7 @@ export class OrganismCore {
                         `novelty-after01:${clamp(prediction.nextState.novelty).toFixed(3)}`,
                     ],
                     reopenWhen: [
-                        { signal: 'outcome.shortfall01', operator: 'gte' as const, value: 0.20 },
-                        { signal: 'outcome.alternativeAdvantage01', operator: 'gte' as const, value: 0.15 },
+                        { signal: 'outcome.confidenceAdjustedAlternativeAdvantage01', operator: 'gte' as const, value: 0.15 },
                     ],
                 };
             });

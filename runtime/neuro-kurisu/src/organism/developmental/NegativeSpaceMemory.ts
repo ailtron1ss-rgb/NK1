@@ -99,9 +99,9 @@ const SIGNIFICANCE_THRESHOLD01 = 0.72;
 const MIN_REVIEW_VERIFICATION01 = 0.5;
 const OUTCOME_RECONCILIATION_TOLERANCE01 = 0.02;
 const DEFAULT_REOPEN_CONDITION: NegativeSpaceReopenCondition = {
-  signal: 'outcome.shortfall01',
+  signal: 'outcome.confidenceAdjustedAlternativeAdvantage01',
   operator: 'gte',
-  value: 0.2,
+  value: 0.15,
 };
 
 const clamp01 = (value: unknown): number => {
@@ -232,8 +232,9 @@ export class NegativeSpaceMemory {
     const record = this.state.records.find(candidate => candidate.decisionId === decisionId);
     if (!record) return null;
 
+    if (!Number.isFinite(input.actualOutcome01)) return null;
     const actualOutcome01 = clamp01(input.actualOutcome01);
-    const at = finite(input.at, Date.now());
+    const at = Math.max(record.at, finite(input.at, Date.now()));
     const hasCanonicalOutcome = record.chosenActualOutcome01 !== null;
     if (hasCanonicalOutcome && Math.abs(record.chosenActualOutcome01! - actualOutcome01) > OUTCOME_RECONCILIATION_TOLERANCE01) {
       // A conflicting report cannot silently replace the first canonical outcome.
@@ -305,9 +306,12 @@ export class NegativeSpaceMemory {
     const eligible: string[] = [];
     for (const alternative of record.alternatives) {
       if (alternative.reopenedAt !== undefined) continue;
+      const confidenceAdjustedOutcome01 = alternative.expectedOutcome01 * alternative.confidence01
+        + 0.5 * (1 - alternative.confidence01);
       const alternativeSignals = {
         ...signals,
         'outcome.alternativeAdvantage01': Math.max(0, alternative.expectedOutcome01 - record.chosenActualOutcome01),
+        'outcome.confidenceAdjustedAlternativeAdvantage01': Math.max(0, confidenceAdjustedOutcome01 - record.chosenActualOutcome01),
       };
       alternative.reviewEligible = alternative.reopenWhen.some(condition => conditionMatches(condition, alternativeSignals));
       if (alternative.reviewEligible) eligible.push(alternative.action);
@@ -431,10 +435,14 @@ export class NegativeSpaceMemory {
         outcomeVerified01: record.outcomeVerified01,
         outcomeIndependent01: record.outcomeIndependent01,
         outcomeSource: record.outcomeSource,
+        outcomeEvidence: [...record.outcomeEvidence],
         reviewStatus: record.reviewStatus,
         alternative: structuredClone(alternative),
       })))
-      .sort((a, b) => b.recordAt - a.recordAt || b.alternative.expectedOutcome01 - a.alternative.expectedOutcome01)
+      .sort((a, b) => (b.outcomeVerified01 ?? 0) - (a.outcomeVerified01 ?? 0)
+        || (b.outcomeIndependent01 ?? 0) - (a.outcomeIndependent01 ?? 0)
+        || b.recordAt - a.recordAt
+        || b.alternative.expectedOutcome01 - a.alternative.expectedOutcome01)
       .slice(0, boundedLimit);
   }
 

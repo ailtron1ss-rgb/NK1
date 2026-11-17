@@ -67,6 +67,7 @@ assert.equal(engine.negativeSpaceDiagnostics().contextIndexedRecords, 1);
 assert.equal(engine.negativeSpaceRelatedAlternatives(context.contextKey).length, 2);
 assert.equal(engine.negativeSpaceRelatedAlternatives('unseen-context').length, 0);
 assert.equal(engine.negativeSpaceRelatedAlternatives(context.contextKey, 1).length, 1);
+assert.deepEqual(engine.negativeSpaceRelatedAlternatives(context.contextKey)[0].outcomeEvidence, context.outcomeEvidence);
 assert.ok(record.outcomeEvidence.includes('postcondition:verified'));
 const originalRegretRecordCount = engine.snapshot().records.length;
 const replayed = engine.observe('respond', 0.52, alternatives, context);
@@ -166,6 +167,9 @@ assert.equal(corroborated?.outcomeSource, 'external-evidence');
 assert.ok(corroborated?.outcomeEvidence.includes('initial-unverified-report'));
 assert.ok(corroborated?.outcomeEvidence.includes('independent-postcondition-confirmation'));
 assert.equal(delayedVerification.negativeSpaceReviewQueue().length, 1);
+assert.equal(delayedVerification.recordNegativeSpaceOutcome({
+  decisionId: 'decision-delayed-verification', actualOutcome01: Number.NaN, verified01: 1,
+}), null, 'non-finite outcome values must be rejected rather than coerced to zero');
 const conflicting = delayedVerification.recordNegativeSpaceOutcome({
   decisionId: 'decision-delayed-verification',
   actualOutcome01: 0.95,
