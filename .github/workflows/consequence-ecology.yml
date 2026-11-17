@@ -1,0 +1,26 @@
+name: NK1 Consequence Ecology
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/ConsequenceEcology.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/ConsequenceEcologyTools.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts"
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts"
+      - "runtime/neuro-kurisu/tests/consequence-ecology.mjs"
+      - ".github/workflows/consequence-ecology.yml"
+permissions:
+  contents: read
+jobs:
+  consequence-ecology:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Consequence Ecology runtime seam
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/consequence-ecology.mjs
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: node scripts/typecheck-runtime.mjs
