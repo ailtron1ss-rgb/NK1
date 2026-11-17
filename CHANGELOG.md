@@ -1,3 +1,12 @@
+## [NK1][Dyadic Mind] Add authenticated collaboration workspace and host API (2026-11-17)
+
+- Implement a bounded, evidence-bound human/system workspace for shared goals, tasks, agreements, questions, success criteria and decisions.
+- Keep system-created artifacts as proposals until explicit human confirmation; restrict corrections and task completion to the human participant.
+- Persist through the canonical self subsystem and critical persistence projection; expose checkpointed Core and serialized Runtime operations.
+- Add the bearer-authenticated /api/organism/dyadic-collaboration host endpoint with redacted reads and server-owned actor, evidence, tick and sensitivity metadata.
+- Feed a bounded, data-labelled shared context into existing cognitive prompt paths without creating a second memory or project executor.
+- Add behavioral and HTTP tests for consent, provenance, persistence, redaction, secret rejection and task-state boundaries. Final exact-head endpoint CI remains pending; no merge or release is claimed.
+
 ## [NK1][Dyadic Mind] Introduce evidence-bound shared collaboration workspace (2026-11-17)
 
 - Add a bounded human/system collaboration record for goals, tasks, agreements, questions, success criteria and decisions, with actor, source reference, lifecycle status and an append-only bounded event trail.
