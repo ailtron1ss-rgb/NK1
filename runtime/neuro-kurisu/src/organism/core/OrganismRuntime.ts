@@ -725,7 +725,6 @@ export class OrganismRuntime {
     const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
     if (!shouldAsk) return null;
     let request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.userModelPromptContext());
-    request = this.applyCognitiveToNeuralControl(request, cycle, neuralSnapshot);
     if(signal) request.signal=signal;
     this.lastContextBudgetLedger = request.contextLedger ?? null;
     const budgetMode = budgetSnapshot?.mode ?? 'shallow';
@@ -734,6 +733,7 @@ export class OrganismRuntime {
     const tierCost=budgetMode==='deep' ? .42 : budgetMode==='simulate' ? .30 : .20;
     const spend=this.core.cognitiveBudgetSpend(budgetMode==='deep'?'llm-deep':'llm-fast',tierCost,infoGain,'cognitive-proposal');
     if(!spend.accepted) return parseCognitiveProposal('budget constrained: preserve resources and verify supplied evidence before changing course','local-fallback');
+    request = this.applyCognitiveToNeuralControl(request, cycle, neuralSnapshot);
     try {
       const response=await this.config.languageInvoker(request);
       await this.core.recordLanguageBackend(response.backend, response.latencyMs, true);
