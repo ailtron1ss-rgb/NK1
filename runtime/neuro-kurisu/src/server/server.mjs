@@ -1,11 +1,12 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createPublicKey, verify as verifySignature } from 'node:crypto';
 import { URL } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { substrateCalibrationSigningPayload } from '../organism/system/SubstrateIndependenceEngine.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
@@ -38,6 +39,45 @@ const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').rep
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
+
+// Calibration keys are public-only host trust anchors. No key or signature is accepted
+// from the model/provider response itself.
+function parseSubstrateCalibrationPublicKeys(raw) {
+    if (!raw) return new Map();
+    let parsed;
+    try { parsed = JSON.parse(raw); }
+    catch { throw new Error('invalid NEURO_SUBSTRATE_CALIBRATION_PUBLIC_KEYS_JSON'); }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || Object.getPrototypeOf(parsed) !== Object.prototype ||
+        Object.keys(parsed).length > 32) {
+        throw new Error('invalid NEURO_SUBSTRATE_CALIBRATION_PUBLIC_KEYS_JSON shape');
+    }
+    const keys = new Map();
+    for (const [keyId, pem] of Object.entries(parsed)) {
+        if (!/^[a-z0-9][a-z0-9._:-]{0,119}$/i.test(keyId) || typeof pem !== 'string' || pem.length > 16_384) {
+            throw new Error('invalid substrate calibration public key entry');
+        }
+        const key = createPublicKey(pem);
+        if (key.asymmetricKeyType !== 'ed25519') throw new Error('substrate calibration keys must be Ed25519');
+        keys.set(keyId, key);
+    }
+    return keys;
+}
+const SUBSTRATE_CALIBRATION_PUBLIC_KEYS = parseSubstrateCalibrationPublicKeys(
+    String(process.env.NEURO_SUBSTRATE_CALIBRATION_PUBLIC_KEYS_JSON || '').trim(),
+);
+function verifySubstrateCalibrationTrial(trial) {
+    const key = SUBSTRATE_CALIBRATION_PUBLIC_KEYS.get(String(trial?.evaluatorKeyId || ''));
+    const encoded = trial?.evaluatorSignatureBase64;
+    if (!key || typeof encoded !== 'string') return false;
+    const signature = Buffer.from(encoded, 'base64');
+    if (signature.length !== 64 || signature.toString('base64') !== encoded) return false;
+    try {
+        const payload = Buffer.from(substrateCalibrationSigningPayload(trial), 'utf8');
+        return verifySignature(null, payload, key, signature);
+    } catch {
+        return false;
+    }
+}
 // Optional provider: configuration is server-only and disabled unless NK_MEM0_ENABLED=1.
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
@@ -179,6 +219,7 @@ const runtime = new OrganismRuntime({
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
+    ...(SUBSTRATE_CALIBRATION_PUBLIC_KEYS.size > 0 ? { substrateCalibrationVerifier: verifySubstrateCalibrationTrial } : {}),
     substrateBackendProfiles: [
         {
             backendId: `llama.cpp:${process.env.LLAMA_CPP_MODEL || 'local-model'}`,
