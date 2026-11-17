@@ -140,8 +140,9 @@ async function prepareSafeOutputDirectory(
   datasetDirectory: string,
 ): Promise<string> {
   if (!pathIsWithin(workspace, outputDirectory) || outputDirectory === workspace ||
-      pathIsWithin(datasetDirectory, outputDirectory, true) ||
-      pathIsWithin(outputDirectory, datasetDirectory, true)) {
+      (datasetDirectory !== workspace &&
+        (pathIsWithin(datasetDirectory, outputDirectory, true) ||
+          pathIsWithin(outputDirectory, datasetDirectory, true)))) {
     throw new Error('teacher-distillation-output-path-invalid');
   }
   const relative = path.relative(workspace, outputDirectory);
