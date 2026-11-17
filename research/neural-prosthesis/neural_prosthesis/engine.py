@@ -11,7 +11,6 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Sequence
-import weakref
 
 import torch
 from torch import nn
@@ -168,7 +167,8 @@ class NeuralProsthesisBank(nn.Module):
         self.config_sha256 = _config_digest(self._config)
         self.hidden_size = _hidden_size(self._config)
         self._model_ref = weakref.ref(model)
-        self._layer_stack_ref = weakref.ref(_resolve_layer_stack(model, self.layer_path))
+        layer_stack = _resolve_layer_stack(model, self.layer_path)
+        self._layer_count = len(layer_stack)
         self.adapters = nn.ModuleDict()
         self._active_adapter: contextvars.ContextVar[str | None] = contextvars.ContextVar(
             f"neural_prosthesis_adapter_{id(self)}", default=None
@@ -217,8 +217,7 @@ class NeuralProsthesisBank(nn.Module):
         normalized = sorted(set(layer_indices))
         if len(normalized) != len(layer_indices) or any(i < 0 for i in normalized):
             raise ArtifactError("adapter-layer-index-invalid")
-        stack = self._layer_stack_ref()
-        if stack is None or any(i >= len(stack) for i in normalized):
+        if any(i >= self._layer_count for i in normalized):
             raise ArtifactError("adapter-layer-index-out-of-range")
         if not isinstance(bottleneck_size, int) or isinstance(bottleneck_size, bool) or not 1 <= bottleneck_size <= min(MAX_BOTTLENECK_SIZE, self.hidden_size):
             raise ArtifactError("adapter-bottleneck-size-out-of-range")
