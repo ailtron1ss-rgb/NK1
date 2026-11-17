@@ -440,6 +440,7 @@ const reusedCapture = captureRuntime.captureGeneratedExperiment(
 assert.equal(reusedCapture.id, captured.id);
 assert.equal(captureRuntime.capturedInventionsSnapshot().length, 1);
 const coreEvaluationPlan = {
+  successCriteria: protocol.successCriteria,
   testFingerprint: digest('core-validation-manifest'),
   holdoutTestFingerprint: digest('core-holdout-manifest'),
   baseline: 100,
@@ -455,6 +456,8 @@ const coreEvaluationPlan = {
 };
 const coreRegistered = captureRuntime.preregisterCapturedExperiment(captured.id, coreEvaluationPlan);
 assert.equal(coreRegistered.protocol.provenance.experimentId, nativeExperiment.id);
+assert.equal(coreRegistered.protocol.successCriteria, protocol.successCriteria,
+  'captured preregistration must preserve the host-supplied success criterion');
 assert.equal(coreRegistered.protocol.provenance.scientificProjectId, preexistingProject.id);
 assert.equal(sharedScientificMethod.snapshot().projects.length, 1,
   'captured hypotheses must reuse the existing project, not fork a second scientific project');
