@@ -94,6 +94,12 @@ try {
   assert.equal(unauthDiagnostics.reason, 'missing-bearer-token');
   assert.equal(Object.prototype.hasOwnProperty.call(unauthDiagnostics, 'diagnostics'), false);
 
+  const unauthBridgeDiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/cognition/neural-bridge/diagnostics`);
+  const unauthBridgeDiagnostics = await unauthBridgeDiagnosticsResponse.json();
+  assert.equal(unauthBridgeDiagnosticsResponse.status, 401,
+    'neural bridge diagnostics must remain behind the existing API authorization boundary');
+  assert.equal(Object.prototype.hasOwnProperty.call(unauthBridgeDiagnostics, 'diagnostics'), false);
+
   const authHeaders = { authorization: 'Bearer mem0-http-smoke-only-token' };
   const mem0DiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/diagnostics`, { headers: authHeaders });
   const mem0Diagnostics = await mem0DiagnosticsResponse.json();
@@ -157,6 +163,24 @@ try {
   assert.ok(Number.isSafeInteger(lastProviderPayload?.chat_template_kwargs?.nk1_neural_snapshot_version));
   assert.ok(lastProviderPayload?.chat_template_kwargs?.nk1_neural_snapshot_freshness01 >= 0
     && lastProviderPayload.chat_template_kwargs.nk1_neural_snapshot_freshness01 <= 1);
+
+  const bridgeDiagnosticsResponse = await fetch(
+    `http://127.0.0.1:${appPort}/api/organism/cognition/neural-bridge/diagnostics',
+    { headers: authHeaders },
+  );
+  const bridgeDiagnosticsBody = await bridgeDiagnosticsResponse.json();
+  assert.equal(bridgeDiagnosticsResponse.status, 200);
+  assert.equal(bridgeDiagnosticsBody.ok, true);
+  assert.equal(bridgeDiagnosticsBody.readOnly, true);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.enabled, true);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.projected > 0);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.neuralSnapshotsAvailable > 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.lastFeatureDimensions, 43);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.llamaCppTemplateKwargsSent > 0,
+    'the runtime must preserve the provider receipt and count the real local-template hand-off');
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.activationSteeringApplied, 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.residualBlockApplied, 0);
+
   console.log('SERVER_LANGUAGE_HTTP_FAKE_PROVIDER=PASS', JSON.stringify({
     status: response.status,
     backend: body.language.backend,
