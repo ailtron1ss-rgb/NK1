@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
 
 export type NeuroPlasticMethod = 'lora' | 'qlora';
@@ -86,6 +86,7 @@ export interface NeuroPlasticApproval {
   approvalId: string;
   actorId: string;
   approvedAt: number;
+  signature: string;
 }
 
 export interface NeuroPlasticAdapterRecord {
@@ -95,6 +96,7 @@ export interface NeuroPlasticAdapterRecord {
   updatedAt: number;
   evaluation: NeuroPlasticEvaluationReport | null;
   activationApprovalId: string | null;
+  activationApproval: NeuroPlasticApproval | null;
   disabledReason: string | null;
 }
 
