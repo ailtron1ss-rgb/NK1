@@ -42,6 +42,17 @@ const forgedCost=await gateway.executeTool('organism.worldforge.sessions.step',{
 assert.equal(forgedCost.ok,false,'ActionGateway schema must reject caller-provided cost');
 assert.equal(forgedCost.result.error,'tool-input-invalid');
 
+const baselineStarted=await gateway.executeTool('organism.worldforge.sessions.start',{
+ scenarioId:scenario.id,
+},'worldforge-baseline-start');
+assert.equal(baselineStarted.ok,true);
+const baselineState=baselineStarted.result.state;
+const baselineWait=await gateway.executeTool('organism.worldforge.sessions.step',{
+ scenarioId:scenario.id,sessionId:baselineState.sessionId,tick:baselineState.tick,
+ action:{action:'wait'},
+},'worldforge-baseline-wait');
+assert.equal(baselineWait.ok,true);
+
 const beforeResources=state.resourcesRemaining;
 const collect=await gateway.executeTool('organism.worldforge.sessions.step',{
  scenarioId:scenario.id,sessionId:state.sessionId,tick:state.tick,
@@ -49,7 +60,7 @@ const collect=await gateway.executeTool('organism.worldforge.sessions.step',{
 },'worldforge-collect');
 assert.equal(collect.ok,true,JSON.stringify(collect.result));
 state=collect.result.transition.state;
-assert.equal(state.resourcesRemaining,beforeResources-1,'runtime tools must use evaluator-owned action economics');
+assert.equal(state.resourcesRemaining,baselineWait.result.transition.state.resourcesRemaining-1,'runtime tools must use fixed evaluator-owned cost after the same hidden environment event');
 
 const inspected=await gateway.executeTool('organism.worldforge.sessions.step',{
  scenarioId:scenario.id,sessionId:state.sessionId,tick:state.tick,
