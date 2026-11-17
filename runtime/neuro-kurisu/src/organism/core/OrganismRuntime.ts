@@ -830,8 +830,6 @@ export class OrganismRuntime {
     if (languageInvoker && shouldInvokeLanguageForRuntimeStep({ enabled:this.config.enableLanguage, hasInvoker:true, languageBudgetAllows, hasExternalText:Boolean(externalText), hasAutonomousAgenda:Boolean(autonomousAgenda), suppressResponse:options.suppressResponse })) {
       let openLoopReservation: { id: string; initiativeId: string } | null = null;
       try {
-        const mem0Query = externalText || autonomousAgenda?.topic || '';
-        const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
         let openLoopPromptContext: import('../language/LanguageOrgan.ts').AutonomousOpenLoopPromptContext | undefined;
         if (!externalText && autonomousAgenda) {
           const dueCandidate = this.openLoopRadar.scan({ reminderCooldownMs: 0 }).find(item =>
@@ -848,6 +846,8 @@ export class OrganismRuntime {
             };
           }
         }
+        const mem0Query = externalText || openLoopPromptContext?.title || autonomousAgenda?.topic || '';
+        const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
         const request = externalText
           ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
           : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext(), openLoopPromptContext);
