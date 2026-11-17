@@ -48,7 +48,7 @@ const result = new MechanismSerendipityEngine([reference]).analyze(problem);
 assert.equal(result.status, 'matched');
 assert.equal(result.discoveries.length, 1);
 assert.ok(
-  result.discoveries[0].breakpoints.some(x => x.kind === 'reference-only-flow'),
+  result.discoveries[0].breakpoints.some(x => x.kind === 'reference-flow-direction-reversal'),
   'the engine must report extra source-mechanism flows absent from the target problem',
 );
 assert.ok(
