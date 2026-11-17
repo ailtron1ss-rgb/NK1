@@ -123,12 +123,6 @@ const persisted = await store.load();
 assert.ok(persisted?.system?.intentContracts?.records?.some(row => row.id === approved.id),
   'approved contracts must be checkpointed with organism system state');
 
-const restarted = new OrganismCore(store, config);
-await restarted.init();
-const restored = restarted.getIntentContract(approved.id);
-assert.ok(restored, 'a host-key-attested approved contract must restore after Core restart');
-assert.equal(restored.approval.status, 'approved');
-
 const recoveryCalls = [];
 const restarted = new OrganismCore(store, config);
 registerReceiptFixture(restarted);
