@@ -112,7 +112,7 @@ function materialize(
   const result: NeuroPlasticTrainingExample[] = [];
   const ids = new Set<string>();
   for (const row of rows) {
-    if (!row || row.split !== split || row.authority === 'self-report') continue;
+    if (!row || row.split !== split) continue;
     const resolved = resolver(row);
     if (resolved === null) continue;
     if (!resolved || typeof resolved !== 'object') throw new Error('neuro-plastic-resolved-evidence-invalid');
@@ -201,5 +201,5 @@ export function toNeuroPlasticJsonl(
   if (!corpus || corpus.schemaVersion !== 1 || !Array.isArray(corpus[split])) {
     throw new Error('neuro-plastic-corpus-split-invalid');
   }
-  return serializeRows(corpus[split]);
+  return serializeRows(split === 'train' ? corpus.training : corpus.validation);
 }
