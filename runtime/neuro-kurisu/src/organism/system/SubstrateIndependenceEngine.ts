@@ -135,7 +135,7 @@ const MAX_OBJECT_KEYS = 100_000;
 const MAX_JSON_DEPTH = 48;
 const MAX_CONSUMED_CALIBRATION_EVIDENCE = 4096;
 const DEFAULT_MAX_TRANSFER_BYTES = 64 * 1024 * 1024;
-const BUFFER_PROTOTYPE = Object.getPrototypeOf(Buffer.from([]));
+const BUFFER_PROTOTYPE = Object.getPrototypeOf(Buffer.from(new Uint8Array(0)));
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 
 function fail(message: string): never { throw new Error(message); }
@@ -203,7 +203,7 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
   }
   if (Buffer.isBuffer(value)) {
     if (Object.getPrototypeOf(value) !== BUFFER_PROTOTYPE) return fail('portable-buffer-subclass-rejected');
-    return { $nk1Type: 'Buffer', base64: Buffer.from(value).toString('base64') };
+    return { $nk1Type: 'Buffer', base64: Buffer.from(value as Uint8Array).toString('base64') };
   }
   if (value instanceof Map) {
     if (Object.getPrototypeOf(value) !== Map.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-map-subclass-or-extra-fields-rejected');
