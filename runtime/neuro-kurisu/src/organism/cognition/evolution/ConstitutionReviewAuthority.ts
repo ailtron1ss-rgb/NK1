@@ -102,7 +102,7 @@ export function createAuthenticatedConstitutionReviewVerifier(
       !safeInteger(allowedClockSkewMs, 0, 5 * 60_000)) {
     throw new Error('constitution review freshness policy is out of bounds');
   }
-  return (artifact: unknown, expected: ConstitutionReviewExpected): ConstitutionReviewInput | null => {
+  return (artifact: unknown, expected: ConstitutionReviewExpected): (ConstitutionReviewInput & { at: number }) | null => {
     try {
       if (trustedKeys.size === 0 || !isRecord(artifact) || !isRecord(artifact.payload) ||
           typeof artifact.signature !== 'string' || artifact.signature.length > 1024) return null;
