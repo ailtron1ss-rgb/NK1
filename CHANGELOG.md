@@ -1,6 +1,6 @@
 ## [NK1][Architecture] OmeStro #17 — Morphogenesis hardening v2 (2026-11-17, unreleased)
 
-- Bound untrusted plain-data traversal: max 100,000 array items, 64 object keys, 16,384 string code units, and 1,250,000 visited values per payload. Accessors are inspected by descriptors without executing getters; hidden array properties outside length are rejected. Schema-v1 graph, module, contract, and edge records now reject unknown fields. Explicit `sharedSourcePaths` declarations preserve intentional cross-subsystem ownership and reject unaccounted or inaccurate duplicate source mappings.
+- Bound untrusted plain-data traversal: max 100,000 array items, 64 object keys, 16,384 string code units, and 1,250,000 visited values per payload. Accessors are inspected by descriptors without executing getters; hidden array properties outside length are rejected. Schema-v1 graph, module, contract, and edge records now reject unknown fields. Explicit `sharedSourcePaths` declarations preserve intentional cross-subsystem ownership and reject unaccounted or inaccurate duplicate source mappings. Migration operations, checkpoint, steps, and evidence use strict allowlists; overlapping operations against one module are rejected.
 
 - Replace recursive structural-cycle traversal with iterative DFS; malformed edge/contract records fail closed without throwing.
 - Fingerprint source files from raw bytes and use the first valid source commit provenance.

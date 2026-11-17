@@ -63,6 +63,8 @@ Architecture Morphogenesis превращает перестройку исхо�
 
 Дополнительные гарантии v2:
 
+- Migration DSL использует строгие allowlists для операций, checkpoint, migration plan и verification steps; неизвестные поля отклоняются. Один модуль не может одновременно участвовать в нескольких конфликтующих structural operations. Evidence payload также не принимает неизвестные поля.
+
 - Cross-cutting source paths отражаются в `sharedSourcePaths`: для каждого повторно указанного canonical file требуется точный список подсистем-потребителей и bounded rationale. Недекларированное пересечение, фиктивный owner или дубликат декларации блокируются.
 
 - Schema v1 использует allowlist ключей на уровне графа, модуля, контракта и edge. Незнакомые поля отклоняются с адресными issues вместо молчаливого игнорирования.

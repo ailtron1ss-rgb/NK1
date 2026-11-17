@@ -655,6 +655,9 @@ function validStepList(value: unknown, path: string, issues: ArchitectureMorphog
   }
   const ids = new Set<string>();
   for (const [index, step] of value.entries()) {
+    if (isRecord(step) && !hasOnlyKeys(step, ['id', 'description', 'verify'])) {
+      issues.push(issue('migration-step-field-unknown', path + '[' + index + ']', 'Migration step contains unknown fields'));
+    }
     if (!isRecord(step) || typeof step.id !== 'string' || !MODULE_ID.test(step.id)
       || typeof step.description !== 'string' || !step.description.trim() || step.description.length > 500
       || typeof step.verify !== 'string' || !step.verify.trim() || step.verify.length > 500) {
@@ -708,6 +711,9 @@ export function createArchitectureMorphogenesisPlan(input: {
   if (!isPlainData(input) || !isRecord(input)) {
     issues.push(issue('proposal-untrusted-data', 'proposal', 'Proposal must be bounded plain JSON data without getters, prototypes or cycles'));
     return blocked();
+  }
+  if (!hasOnlyKeys(input, ['baselineCommit', 'candidateBranch', 'baselineGraph', 'candidateGraph', 'operations', 'migrationPlan'])) {
+    issues.push(issue('proposal-field-unknown', 'proposal', 'Proposal contains unknown fields'));
   }
   if (!COMMIT_SHA.test(input.baselineCommit)) issues.push(issue('baseline-commit-invalid', 'baselineCommit', 'Baseline must be a full 40-character commit SHA'));
   if (typeof input.candidateBranch !== 'string' || !/^(aspect|feature)\/[a-z0-9][a-z0-9-]{2,100}$/.test(input.candidateBranch)) {
@@ -769,6 +775,7 @@ export function createArchitectureMorphogenesisPlan(input: {
     const removedEdgeCoverage = new Set<string>();
     const operationEdgeKeys = new Set<string>();
     const operationKeys = new Set<string>();
+    const globallyTouchedModules = new Map<string, string>();
 
     if (Array.isArray(input.operations)) for (const [index, operation] of input.operations.entries()) {
       const path = 'operations[' + index + ']';
@@ -776,7 +783,26 @@ export function createArchitectureMorphogenesisPlan(input: {
         issues.push(issue('operation-invalid', path, 'Every operation requires a supported kind and a concrete bounded rationale'));
         continue;
       }
+      const operationFields: Record<string, string[]> = {
+        merge: ['kind', 'sourceModuleIds', 'targetModuleId', 'rationale'],
+        split: ['kind', 'sourceModuleId', 'targetModuleIds', 'rationale'],
+        move: ['kind', 'moduleId', 'fromPath', 'toPath', 'rationale'],
+        replace: ['kind', 'moduleId', 'rationale'],
+        rewire: ['kind', 'addedEdges', 'removedEdges', 'rationale'],
+      };
+      const allowedOperationFields = operationFields[operation.kind];
+      if (allowedOperationFields && !hasOnlyKeys(operation, allowedOperationFields)) {
+        issues.push(issue('operation-field-unknown', path, 'Operation contains fields not allowed for kind ' + operation.kind));
+      }
       const touched = operationModuleIds(operation as ArchitectureMorphogenesisOperation);
+      if (operation.kind !== 'rewire') for (const id of touched) {
+        const previousPath = globallyTouchedModules.get(id);
+        if (previousPath) {
+          issues.push(issue('operation-module-overlap', path, 'Module ' + id + ' is already claimed by ' + previousPath + '; one migration plan cannot apply conflicting structural operations to the same module'));
+        } else {
+          globallyTouchedModules.set(id, path);
+        }
+      }
       for (const id of touched) {
         if (operationKeys.has(operation.kind + ':' + id)) issues.push(issue('operation-duplicate', path, 'The same module cannot be repeated in an operation of the same kind'));
         operationKeys.add(operation.kind + ':' + id);
@@ -892,20 +918,29 @@ export function createArchitectureMorphogenesisPlan(input: {
     });
 
     const migration = input.migrationPlan as ArchitectureMigrationPlan;
+    if (isRecord(migration) && !hasOnlyKeys(migration, ['checkpoint', 'steps', 'rollbackSteps', 'affectedContractIds'])) {
+      issues.push(issue('migration-plan-field-unknown', 'migrationPlan', 'Migration plan contains unknown fields'));
+    }
     if (!isRecord(migration) || !isRecord(migration.checkpoint)) {
       issues.push(issue('checkpoint-missing', 'migrationPlan.checkpoint', 'A baseline checkpoint is mandatory'));
     } else {
-      if (typeof migration.checkpoint.id !== 'string' || !migration.checkpoint.id.trim()
+      if (!hasOnlyKeys(migration.checkpoint, ['id', 'baselineCommit', 'reference', 'description'])) {
+        issues.push(issue('checkpoint-field-unknown', 'migrationPlan.checkpoint', 'Checkpoint contains unknown fields'));
+      }
+      if (typeof migration.checkpoint.id !== 'string' || !migration.checkpoint.id.trim() || migration.checkpoint.id.length > 120
         || migration.checkpoint.baselineCommit !== input.baselineCommit
-        || typeof migration.checkpoint.reference !== 'string' || !migration.checkpoint.reference.trim()
-        || typeof migration.checkpoint.description !== 'string' || !migration.checkpoint.description.trim()) {
-        issues.push(issue('checkpoint-invalid', 'migrationPlan.checkpoint', 'Checkpoint must identify the exact baseline commit and a restorable reference'));
+        || typeof migration.checkpoint.reference !== 'string' || !migration.checkpoint.reference.trim() || migration.checkpoint.reference.length > 1024
+        || typeof migration.checkpoint.description !== 'string' || !migration.checkpoint.description.trim() || migration.checkpoint.description.length > 500) {
+        issues.push(issue('checkpoint-invalid', 'migrationPlan.checkpoint', 'Checkpoint must identify the exact baseline commit and a bounded restorable reference'));
       }
     }
     validStepList(migration?.steps, 'migrationPlan.steps', issues);
     validStepList(migration?.rollbackSteps, 'migrationPlan.rollbackSteps', issues);
-    if (!Array.isArray(migration?.affectedContractIds)) {
-      issues.push(issue('affected-contracts-invalid', 'migrationPlan.affectedContractIds', 'Affected contract IDs must be explicit'));
+    if (!Array.isArray(migration?.affectedContractIds) || migration.affectedContractIds.length > MAX_CONTRACTS
+      || !migration.affectedContractIds.every((id: unknown) => typeof id === 'string' && CONTRACT_ID.test(id))) {
+      issues.push(issue('affected-contracts-invalid', 'migrationPlan.affectedContractIds', 'Affected contract IDs must be a bounded array of valid contract identifiers'));
+    } else if (new Set(migration.affectedContractIds).size !== migration.affectedContractIds.length) {
+      issues.push(issue('affected-contracts-duplicate', 'migrationPlan.affectedContractIds', 'Affected contract IDs must be unique'));
     } else if (stableJson(sortedUnique(migration.affectedContractIds)) !== stableJson(changedContractIds)) {
       issues.push(issue('affected-contracts-mismatch', 'migrationPlan.affectedContractIds', 'Migration plan must name every and only changed contract'));
     }
@@ -999,6 +1034,13 @@ export function evaluateArchitectureMorphogenesisPlan(
       planDigest: plan.planDigest,
       issues,
     };
+  }
+  if (!hasOnlyKeys(evidence, [
+    'candidateBranch', 'candidateCommit', 'baselineCommit',
+    'testsPassed', 'typecheckPassed', 'architectureAuditPassed',
+    'contractChecksPassed', 'rollbackVerified', 'reviewApproved',
+  ])) {
+    fail('evidence-field-unknown', 'evidence', 'Evidence contains unknown fields');
   }
   if (evidence.baselineCommit === undefined || evidence.candidateCommit === undefined || evidence.candidateBranch === undefined) {
     fail('evidence-commit-missing', 'evidence', 'Evidence must bind the exact baseline, candidate branch and full candidate commit SHA');
