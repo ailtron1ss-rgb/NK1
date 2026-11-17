@@ -353,9 +353,6 @@ export class UndoFirstFileSystemAdapter {
     if (before.exists) throw new Error('filesystem-create-only-target-already-exists');
     const afterStateHash = stateHashForContent(contentHash, bytes.byteLength);
     const artifactId = this.artifactId(context.executionId, relativePath, contentHash);
-    const { prepared } = await this.recoveryDirectory();
-    const artifactPath = artifactPathFor(prepared, artifactId);
-
     try {
       const existing = await this.loadArtifact(artifactId);
       if (existing.executionId !== context.executionId || existing.relativePath !== relativePath
@@ -402,7 +399,7 @@ export class UndoFirstFileSystemAdapter {
     };
   }
 
-  private async discardPrepared(reference: string, context: ActionUndoFirstPreparationContext): Promise<void> {
+  private async discardPrepared(reference: string, context: Pick<ActionUndoFirstPreparationContext, 'executionId'>): Promise<void> {
     const artifactId = this.parseReference(reference);
     let artifact: FileArtifact;
     try { artifact = await this.loadArtifact(artifactId); }
@@ -446,15 +443,13 @@ export class UndoFirstFileSystemAdapter {
       linked = true;
       await unlink(temporary);
       await syncDirectory(dirname(target));
-      await this.persistArtifact({ ...artifact, status: 'committed' });
+      const { digest: _preparedDigest, ...artifactCore } = artifact;
+      await this.persistArtifact({ ...artifactCore, status: 'committed' });
     } catch (error) {
       await unlink(temporary).catch(cleanupError => { if (!isNotFound(cleanupError)) throw cleanupError; });
       if (!linked) {
         if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'EEXIST') {
-          await this.discardPrepared(this.reference(artifactId), {
-            ...context,
-            requestHash: artifact.digest,
-          } as ActionUndoFirstPreparationContext);
+          await this.discardPrepared(this.reference(artifactId), { executionId: context.executionId });
           throw new ToolExecutionNoEffectError('filesystem-create-target-appeared-before-atomic-create');
         }
         throw new ToolExecutionNoEffectError(`filesystem-create-not-applied:${String((error as Error)?.message ?? error).slice(0, 160)}`);
