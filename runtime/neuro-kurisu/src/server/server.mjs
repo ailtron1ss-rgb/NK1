@@ -199,7 +199,7 @@ const runtime = new OrganismRuntime({
             modelId: process.env.KOBOLD_MODEL || 'kobold-api-model',
             modelRevision: process.env.KOBOLD_MODEL_REVISION || 'host-configured',
             runtime: 'koboldcpp-text-generation',
-            privacyClass: /^https?:\\/\\/(127\\.0\\.0\\.1|localhost|\\[::1\\])(?::\\d+)?$/i.test(KOBOLD_URL) ? 'local-only' : 'private-remote',
+            privacyClass: ['127.0.0.1', 'localhost', '[::1]', '::1'].includes(new URL(KOBOLD_URL).hostname) ? 'local-only' : 'private-remote',
             capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
             embeddingSpaceId: process.env.NK1_EMBEDDING_SPACE_ID || 'nk1-memory-embedding-v1',
             contextWindowTokens: 4096,
