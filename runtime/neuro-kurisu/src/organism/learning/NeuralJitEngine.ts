@@ -294,7 +294,7 @@ export class NeuralJitEngine {
     const captureFingerprint = digest([
       capture.captureId, capture.taskFingerprint, capture.modelFingerprint,
       capture.toolId, capture.executionId, capture.decisionId, capture.inputFingerprint,
-    ].join('\\u0000'));
+    ].join(String.fromCharCode(0)));
     if (this.seenObservationFingerprints.has(observationFingerprint)) return this.reject('duplicate-outcome-observation');
     if (this.seenCaptureFingerprints.has(captureFingerprint)) return this.reject('duplicate-activation-capture');
     if (this.traces.length >= MAX_TRACE_COUNT) return this.reject('trace-buffer-full');
