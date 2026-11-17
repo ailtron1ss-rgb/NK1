@@ -27,6 +27,11 @@ import { P25ScientificDevelopmentEngine } from '../learning/P25ScientificDevelop
 import { P28PlasticitySubstrate, type PlasticityObservation } from '../learning/P28PlasticitySubstrate.ts';
 import { SubstratePortabilityEngine } from './SubstratePortabilityEngine.ts';
 import { NeuralMorphogenesisEngine } from './NeuralMorphogenesisEngine.ts';
+import {
+  CognitiveImmuneSystem,
+  type CognitiveHealthInput,
+  type CognitiveImmuneState,
+} from '../cognition/CognitiveImmuneSystem.ts';
 
 export interface OmeStroKernelSnapshot {
   schemaVersion: 1;
@@ -38,6 +43,7 @@ export interface OmeStroKernelSnapshot {
   plasticity: ReturnType<P28PlasticitySubstrate['snapshot']>;
   portability: ReturnType<SubstratePortabilityEngine['snapshot']>;
   morphogenesis: ReturnType<NeuralMorphogenesisEngine['snapshot']>;
+  cognitiveImmune: CognitiveImmuneState;
 }
 export interface OmeStroMigrationInput {
   sourceFingerprint: string;
@@ -75,6 +81,7 @@ export class OmeStroIntegrationKernel {
   readonly plasticity = new P28PlasticitySubstrate();
   readonly portability = new SubstratePortabilityEngine();
   readonly morphogenesis = new NeuralMorphogenesisEngine();
+  readonly cognitiveImmune = new CognitiveImmuneSystem();
 
   /** The registry is deliberately descriptive: tracked does not mean proven. */
   registry() {
@@ -83,6 +90,28 @@ export class OmeStroIntegrationKernel {
       summary: getOmeStroImplementationSummary(),
       validation: validateOmeStroConceptRegistry(),
     };
+  }
+
+  inspectInput(
+    source: string,
+    payload: unknown,
+    kind: 'input' | 'claim' | 'tool' | 'memory' | 'world' = 'input',
+    options: Parameters<CognitiveImmuneSystem['inspect']>[3] = {},
+  ) {
+    return this.cognitiveImmune.inspect(source, payload, kind, options);
+  }
+
+  assessCognitiveHealth(input: CognitiveHealthInput) {
+    return this.cognitiveImmune.inspectHealth(input);
+  }
+
+  reviewCognitiveHealthSignal(
+    id: string,
+    verdict: 'confirmed' | 'false-positive' | 'recovered',
+    reviewer: string,
+    evidenceRef?: string,
+  ) {
+    return this.cognitiveImmune.reviewHealthSignal(id, verdict, reviewer, evidenceRef);
   }
 
   recordTruth(input: ChronoTruthInput) {
@@ -185,6 +214,7 @@ export class OmeStroIntegrationKernel {
       plasticity: this.plasticity.snapshot(),
       portability: this.portability.snapshot(),
       morphogenesis: this.morphogenesis.snapshot(),
+      cognitiveImmune: this.cognitiveImmune.snapshot(),
     };
   }
 
@@ -197,5 +227,6 @@ export class OmeStroIntegrationKernel {
     this.plasticity.restore(raw?.plasticity);
     this.portability.restore(raw?.portability);
     this.morphogenesis.restore(raw?.morphogenesis);
+    this.cognitiveImmune.restore(raw?.cognitiveImmune);
   }
 }
