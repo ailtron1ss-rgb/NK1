@@ -95,6 +95,14 @@ const invalidProfiles = [
   { ...profile, neuralSnapshotAvailable: true, neuralSnapshotTick: 999, neuralSnapshotAgeTicks: null },
   { ...profile, temperature: 1.4 },
   { ...profile, controlsConfigured: { ...profile.controlsConfigured, activationSteering: true } },
+  { ...profile, action: 'reflect' },
+  { ...profile, mode: 'retrieve' },
+  { ...profile, adapterHint: 'fast' },
+  { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index===0?1:index===2?0:value) },
+  { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index===39?0:index===38?1:value) },
+  { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index===35?.5:value) },
+  { ...profile, neuralSnapshotAgeTicks: 2 },
+
 ];
 for (const invalidProfile of invalidProfiles) {
   const malformedResponse = await enabledProvider.generate({ ...baseRequest, cognitiveControl: invalidProfile });
