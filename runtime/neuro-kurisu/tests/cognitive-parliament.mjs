@@ -49,16 +49,21 @@ staleFirewall.observe({claimKey:staleClaim,sourceClass:'external-api',sourceKey:
   contentHash:'fresh-content-a',confidence01:.99,trust01:.99});
 staleFirewall.observe({claimKey:staleClaim,sourceClass:'external-api',sourceKey:'fresh-b.example',
   contentHash:'fresh-content-b',confidence01:.99,trust01:.99});
+staleFirewall.observe({claimKey:staleClaim,sourceClass:'external-api',sourceKey:'no-hash.example',
+  confidence01:.99,trust01:.99});
 assert.equal(staleFirewall.claim(staleClaim).status,'promoted');
 const staleRows=staleFirewall.snapshot().observations.filter(row=>row.claimKey===staleClaim);
 const staleSession=new EvidenceFirewallParliamentTrustPort(staleFirewall,modelAttestor).openSession();
 const staleObservation=staleRows.find(row=>row.sourceKey==='stale.example');
 const freshObservation=staleRows.find(row=>row.sourceKey==='fresh-a.example');
-assert.ok(staleObservation&&freshObservation);
+const noHashObservation=staleRows.find(row=>row.sourceKey==='no-hash.example');
+assert.ok(staleObservation&&freshObservation&&noHashObservation);
 assert.equal(staleSession.verifyEvidence({id:staleObservation.id,claimKey:staleClaim}),null,
   'an old observation cannot borrow a fresh promoted claim status');
 assert.ok(staleSession.verifyEvidence({id:freshObservation.id,claimKey:staleClaim}),
   'a fresh observation covered by the promotion receipt remains valid');
+assert.equal(staleSession.verifyEvidence({id:noHashObservation.id,claimKey:staleClaim}),null,
+  'external evidence without a content hash cannot borrow another source hash in the promotion receipt');
 
 const governance=new GovernanceSubsystemRuntime();
 assert.ok(governance.cognitiveParliament instanceof CognitiveParliament);
