@@ -254,8 +254,8 @@ function withProviderTimeout<T>(
   let onExternalAbort: (() => void) | undefined;
   const deadline = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
-      controller.abort();
       reject(new Error('teacher-distillation-provider-timeout'));
+      controller.abort();
     }, timeoutMs);
     if (externalSignal) {
       onExternalAbort = () => {
