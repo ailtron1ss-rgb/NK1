@@ -1357,7 +1357,8 @@ export class P23LearningEngine {
     }
     const importedAt = Date.now();
     const artifactFingerprint = admissionBundle.artifactFingerprint;
-    const confidence01 = wilsonLowerBound(Math.round(validationSuccess01 * validationUses), validationUses);
+    // Task cells within one seed are clustered; use independent complete seeds for confidence, not task×seed pseudo-replicates.
+    const confidence01 = wilsonLowerBound(Math.round(validationSuccess01 * proposal.completePairedSeeds), proposal.completePairedSeeds);
     const skill: PolicySkillRecord = {
       id: 'synaptic-commons:' + artifact.skill.skillId,
       contextKey: p23PolicyContextKeyFromNeeds(contextNeeds),

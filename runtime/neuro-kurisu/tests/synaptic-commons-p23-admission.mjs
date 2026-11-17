@@ -382,6 +382,8 @@ try {
   assert.equal(nativeCandidate.payload.contextKey, 'e2|c1|u2|n1|g2|s1');
   assert.equal(nativeCandidate.payload.validationUses, 50);
   assert.equal(nativeCandidate.payload.validationSuccess01, 0.8);
+  assert.ok(nativeCandidate.payload.confidence01 > 0.37 && nativeCandidate.payload.confidence01 < 0.38,
+    'confidence must use five independent seed clusters, not fifty correlated task×seed cells');
   assert.equal(nativeCandidate.payload.synapticCommonsProvenance.artifactFingerprint, nativeFingerprint);
   assert.equal(nativeCandidate.payload.synapticCommonsProvenance.publisherKeyId, 'publisher-1');
   assert.equal(nativeCandidate.payload.synapticCommonsProvenance.attestorId, 'attestor-1');
