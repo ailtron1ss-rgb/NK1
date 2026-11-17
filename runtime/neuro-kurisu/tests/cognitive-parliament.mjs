@@ -58,8 +58,27 @@ assert.ok(longLineageObservation);
 const longLineageVerified=new EvidenceFirewallParliamentTrustPort(longLineageFirewall).openSession()
   .verifyEvidence({id:longLineageObservation.id,claimKey:longLineageClaim});
 assert.ok(longLineageVerified);
+
 assert.ok(longLineageVerified.sourceFamily.length<=140,
   'source-family identifiers must stay compact even for large connected lineages');
+
+// Malformed host trust metadata must fail closed, never crash a cognitive cycle.
+const trustRecord={id:'malformed-material',claimKey:'malformed-material',sourceIdentity:'external-api:test',
+  sourceFamily:'external-api:test',sourceClass:'external-api',confidence01:.9,trust01:.9,promotionScore01:.9,
+  observedAt:Date.now(),material:null};
+const malformedMaterialParliament=new CognitiveParliament({openSession:()=>({
+  verifyEvidence:()=>trustRecord,verifyModelExecution:()=>null,
+})});
+assert.deepEqual(malformedMaterialParliament.resolveEvidenceReferences([
+  {id:'malformed-material',claimKey:'malformed-material'},
+]),[],'null material is rejected as untrusted evidence instead of throwing');
+const unsafeUrlParliament=new CognitiveParliament({openSession:()=>({
+  verifyEvidence:()=>({...trustRecord,material:{title:'Hostile link',excerpt:'untrusted',sourceUrl:'javascript:alert(1)',contentHash:'hash'}}),
+  verifyModelExecution:()=>null,
+})});
+assert.deepEqual(unsafeUrlParliament.resolveEvidenceReferences([
+  {id:'malformed-material',claimKey:'malformed-material'},
+]),[],'non-HTTP(S) source URLs are rejected at the trust boundary');
 
 const staleFirewall=new EvidenceFirewallEngine();
 const staleClaim='nk1:cognitive-parliament:stale-observation';
