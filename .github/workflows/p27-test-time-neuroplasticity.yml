@@ -1,0 +1,37 @@
+name: NK1 P27 test-time neuroplasticity
+
+on:
+  push:
+    branches: [feature/test-time-neuroplasticity-idea27]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/EmbodiedCausalWorldBridge.ts"
+      - "runtime/neuro-kurisu/tests/p27-test-time-neuroplasticity.mjs"
+      - ".github/workflows/p27-test-time-neuroplasticity.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/EmbodiedCausalWorldBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/NeuralExperienceBranch.ts"
+      - "runtime/neuro-kurisu/tests/p27-test-time-neuroplasticity.mjs"
+      - ".github/workflows/p27-test-time-neuroplasticity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p27-test-time-neuroplasticity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-time-neuroplasticity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Verify session-isolated test-time adaptation
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p27-test-time-neuroplasticity.mjs
