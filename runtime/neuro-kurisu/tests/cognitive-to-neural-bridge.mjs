@@ -95,4 +95,16 @@ assert.equal(incompleteSnapshot.neuralSnapshotAvailable, false,
 assert.equal(incompleteSnapshot.neuralSource, 'unavailable');
 assert.ok(incompleteSnapshot.featureVector01.slice(12, 35).every(value => value === .5));
 
+const missingVersion = bridge.project({
+  tick:17,
+  neural:{ ...neural, version:undefined },
+});
+assert.equal(missingVersion.neuralSnapshotAvailable,false,
+  'unversioned neural snapshots must not be treated as authoritative');
+const missingCurrentTick = bridge.project({
+  neural,
+});
+assert.equal(missingCurrentTick.neuralSnapshotAvailable,false,
+  'freshness cannot be established without the current organism tick');
+
 console.log('COGNITIVE_TO_NEURAL_BRIDGE_V2_PASS');
