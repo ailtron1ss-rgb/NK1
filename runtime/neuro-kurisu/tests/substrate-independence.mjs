@@ -142,9 +142,18 @@ assert.equal(evaluation.accepted, true);
 assert.equal(engine.snapshot().activeBackendId, source.backendId,
   'evaluating a target must not switch the active backend');
 
-const promoted = engine.promoteBackend(target.backendId, evaluation.evaluationId);
+const reloadedEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
+assert.equal(reloadedEngine.restore(engine.snapshot()).restored, true);
+assert.throws(() => reloadedEngine.promoteBackend(target.backendId, evaluation.evaluationId), /promotion-evidence-required/,
+  'a restored accepted score cannot promote until signed holdout receipts are reverified');
+assert.equal(
+  await reloadedEngine.verifyStoredEvaluation(evaluation.evaluationId, verifySignedReceipt),
+  true,
+  'persisted holdout receipts must be cryptographically reverified after restart',
+);
+const promoted = reloadedEngine.promoteBackend(target.backendId, evaluation.evaluationId);
 assert.equal(promoted.activeBackendId, target.backendId);
-assert.equal(engine.preferredRoute(), 'gemini');
+assert.equal(reloadedEngine.preferredRoute(), 'gemini');
 assert.equal(promoted.history.at(-1).fromBackendId, source.backendId);
 assert.equal(promoted.history.at(-1).toBackendId, target.backendId);
 
@@ -177,7 +186,7 @@ const stale = await engine.evaluateMigration({
 assert.equal(stale.accepted, false);
 assert.ok(stale.reasons.includes('calibration-transfer-lineage-mismatch'));
 
-const rolledBack = engine.rollbackBackend();
+const rolledBack = reloadedEngine.rollbackBackend();
 assert.equal(rolledBack.activeBackendId, source.backendId);
 assert.equal(engine.preferredRoute(), 'llama.cpp');
 
