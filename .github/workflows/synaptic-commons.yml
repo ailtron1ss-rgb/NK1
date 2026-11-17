@@ -19,6 +19,7 @@ on:
     branches: [workpass70-source]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/SynapticCommons.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/SynapticP23OutcomeBundleProvider.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts'
