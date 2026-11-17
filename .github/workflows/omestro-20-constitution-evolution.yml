@@ -147,6 +147,8 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/constitution-evolution-engine.mjs
       - name: Signed independent constitutional review authority
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/constitution-evolution-review-authority.mjs
+      - name: End-to-end server API, ActionGateway ratification and rollback
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/constitution-evolution-server.mjs
       - name: Governance snapshot, restore and fail-closed integration
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/constitution-evolution-runtime-integration.mjs
       - name: Existing P69-P73 runtime persistence regression
