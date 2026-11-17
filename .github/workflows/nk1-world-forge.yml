@@ -6,6 +6,7 @@ on:
       - aspect/shared-future-scenario-space-20261117
     paths:
       - 'runtime/neuro-kurisu/src/organism/developmental/WorldForge.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts'
       - 'runtime/neuro-kurisu/tests/world-forge-*.mjs'
       - '.github/workflows/nk1-world-forge.yml'
   workflow_dispatch:
