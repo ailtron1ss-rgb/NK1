@@ -660,6 +660,17 @@ try {
   }, gateStore);
   assert.equal(corruptReport.status, 'already-consumed');
   assert.ok(corruptReport.reasonCodes.includes('holdout-ledger-invalid-or-saturated'));
+
+  // A caller that forgot to load state still receives a hard persistence error,
+  // never a misleading duplicate-candidate result.
+  const unhydratedCorruptGate = new TeacherStudentDistillationGate();
+  await assert.rejects(unhydratedCorruptGate.evaluateOncePersisted({
+    ledger,
+    candidateFingerprint: '9'.repeat(64),
+    baselineMethod: 'baseline',
+    studentMethod: 'student-candidate',
+  }, gateStore), /persistence-failed/);
+  assert.equal(unhydratedCorruptGate.snapshot().saturated, true);
 } finally {
   await rm(gateStoreRoot, { recursive: true, force: true });
 }
