@@ -35,9 +35,10 @@ const syndicatedRows=syndicatedFirewall.snapshot().observations.filter(row=>row.
 const syndicatedSession=new EvidenceFirewallParliamentTrustPort(syndicatedFirewall,modelAttestor).openSession();
 const syndicatedVerified=syndicatedRows.map(row=>syndicatedSession.verifyEvidence({id:row.id,claimKey:syndicatedClaim}));
 assert.ok(syndicatedVerified.every(Boolean));
-assert.equal(syndicatedVerified[0].sourceFamily,syndicatedVerified[1].sourceFamily,
+const syndicatedFamilies=new Map(syndicatedRows.map((row,index)=>[row.sourceKey,syndicatedVerified[index].sourceFamily]));
+assert.equal(syndicatedFamilies.get('publisher-a.example'),syndicatedFamilies.get('publisher-b.example'),
   'syndicated publisher copies are one source family');
-assert.notEqual(syndicatedVerified[0].sourceFamily,syndicatedVerified[2].sourceFamily,
+assert.notEqual(syndicatedFamilies.get('publisher-a.example'),syndicatedFamilies.get('publisher-c.example'),
   'a separate lineage remains independent');
 
 const governance=new GovernanceSubsystemRuntime();
