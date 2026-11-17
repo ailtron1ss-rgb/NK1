@@ -225,11 +225,27 @@ function memoryInspectorSearch(options: MemoryInspectorOptions = {}): string {
 export const neuroApi = {
   uiSnapshot: () => request<BackendUiSnapshot>("/api/organism/ui-snapshot"),
   dyadicCollaboration: () => request<DyadicCollaborationSnapshot>("/api/organism/dyadic-collaboration"),
-  dyadicCollaborationMutation: (payload: DyadicCollaborationMutation, idempotencyKey?: string) => request<DyadicCollaborationMutationResponse>("/api/organism/dyadic-collaboration", {
-    method: "POST",
-    ...(idempotencyKey ? { headers: { "idempotency-key": idempotencyKey } } : {}),
-    body: JSON.stringify(payload),
-  }),
+  dyadicCollaborationMutation: async (payload: DyadicCollaborationMutation, idempotencyKey?: string) => {
+    const init: RequestInit = {
+      method: "POST",
+      ...(idempotencyKey ? { headers: { "idempotency-key": idempotencyKey } } : {}),
+      body: JSON.stringify(payload),
+    };
+    const send = () => request<DyadicCollaborationMutationResponse>("/api/organism/dyadic-collaboration", init);
+    try {
+      return await send();
+    } catch (error) {
+      // Retry once only when the caller supplied an idempotency key. This covers
+      // a lost response after the server committed, without risking a duplicate.
+      if (!idempotencyKey) throw error;
+      const status = error && typeof error === "object" && "status" in error
+        ? Number((error as { status?: unknown }).status)
+        : null;
+      const transient = status === null || status >= 500 || status === 408 || status === 429;
+      if (!transient) throw error;
+      return send();
+    }
+  },
   statusLite: () => request<{ ok: boolean; version: string; tick: number; lastAction: string; autonomyScore: number; predictionError: number; identityContinuity01: number; memoryCount: number; body: Record<string, number | boolean>; language: { calls: number; backend: string; degraded: boolean; lastFailure?: string }; voice: { state?: { speaking: boolean; listening: boolean } } }>("/api/organism/status-lite"),
   sensorium: () => request<Record<string, unknown>>("/api/organism/sensorium/status"),
   chat: (message: string, deliberate = true, speak = false, approvalId?: string) => request<ChatBackendResponse>("/api/organism/chat", {
