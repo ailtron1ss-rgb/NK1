@@ -650,7 +650,7 @@ export class ActionGateway {
     context:{intentContractId?:string;riskLevel?:string}={},
   ):ToolExecution {
     const tool=this.tools.get(id);
-    const safeReason=String(reason||'pre-execution-policy-refused').replace(/[\\r\\n\\t]+/g,' ').slice(0,240);
+    const safeReason=String(reason||'pre-execution-policy-refused').replace(/[\r\n\t]+/g,' ').slice(0,240);
     const details={
       error:'pre-execution-policy-refused',
       reason:safeReason,
