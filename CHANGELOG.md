@@ -23,6 +23,13 @@
 - Bound startup and shutdown, terminate a child that fails to become healthy, keep failures non-fatal so existing language-provider fallbacks remain available, and expose supervisor status in NK1 diagnostics.
 - Keep automatic startup disabled by default; no model downloads or dependency installation are performed by NK1.
 
+## [NK1][OmeStro #28] Neural Prosthesis — cancellable sidecar startup (2026-11-17)
+
+- Make managed startup cancellable during NK1 shutdown: a stop request received while the liveness probe is pending prevents a later child spawn.
+- Ensure the server startup path does not call organism runtime initialization after shutdown has already begun.
+- Add a regression that holds the health probe, requests stop, releases the probe and verifies the Python process was never spawned.
+- Preserve the existing 3-second shutdown bound when autostart is disabled; allow up to 10 seconds when the explicitly managed model process needs termination.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
