@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, verify as verifySignature } from 'node:crypto';
 import {
   TeacherStudentDistillationDataset,
   createTeacherDistillationPayload,
   signTeacherDistillationPayloadForFixture,
   writeTeacherDistillationExport,
   createLlamaFactorySftConfig,
+  canonicalTeacherDistillationPayload,
 } from '../src/organism/learning/TeacherStudentDistillation.ts';
 import { TeacherStudentDistillationGate } from '../src/organism/learning/TeacherStudentDistillationGate.ts';
 import { runTeacherStudentDistillationTraining } from '../src/organism/learning/TeacherStudentDistillationTrainer.ts';
@@ -174,6 +175,27 @@ assert.ok(exported.files['validation.jsonl'].includes('The paragraph says'));
 assert.ok(!allExportedText.includes('A withheld answer.'));
 assert.ok(!allExportedText.includes('Solve the unseen puzzle.'));
 assert.ok(!allExportedText.includes('holdout-1'));
+assert.ok(!allExportedText.includes('A withheld answer.'));
+assert.ok(exported.files['train-provenance.jsonl'].includes('teacher-train-1'));
+assert.ok(exported.files['validation-provenance.jsonl'].includes('teacher-validation-1'));
+assert.ok(!exported.files['train-provenance.jsonl'].includes('holdout-1'));
+assert.ok(!exported.files['validation-provenance.jsonl'].includes('holdout-1'));
+const trainProvenanceRows = exported.files['train-provenance.jsonl'].trim().split('\\n').map(JSON.parse);
+const validationProvenanceRows = exported.files['validation-provenance.jsonl'].trim().split('\\n').map(JSON.parse);
+assert.equal(trainProvenanceRows.length, 1);
+assert.equal(validationProvenanceRows.length, 1);
+for (const row of [...trainProvenanceRows, ...validationProvenanceRows]) {
+  assert.equal(verifySignature(
+    null,
+    Buffer.from(canonicalTeacherDistillationPayload(row.signedArtifact.payload), 'utf8'),
+    publicKey,
+    Buffer.from(row.signedArtifact.signature, 'base64'),
+  ), true, 'every exported teacher target retains its independently verified signature');
+}
+const detachedSnapshot = dataset.snapshot();
+detachedSnapshot.training[0].signedArtifact.payload.teacherModel = 'tampered-after-snapshot';
+assert.equal(dataset.snapshot().training[0].signedArtifact.payload.teacherModel, 'teacher/model-70b',
+  'mutating an exported snapshot must not mutate the canonical in-memory dataset');
 assert.match(exported.files['dataset_info.json'], /nk1_teacher_student_train/);
 assert.match(exported.files['dataset_info.json'], /nk1_teacher_student_validation/);
 assert.match(exported.files['manifest.json'], /"holdoutExported": false/);
