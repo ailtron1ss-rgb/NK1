@@ -20,6 +20,8 @@ export interface ConsequenceNodeInput {
   basis: ConsequenceBasis;
   evidenceRefs?: string[];
   assumptionRefs?: string[];
+  /** Probability of this outcome without the evaluated option, under comparable conditions. */
+  baselineProbability01?: number;
 }
 
 export interface ConsequenceEdgeInput {
@@ -31,6 +33,8 @@ export interface ConsequenceEdgeInput {
   strength01: number;
   confidence01: number;
   delayDays: number;
+  /** Same group means shared/unknown cause; different declared groups are treated as independent. */
+  independenceGroup?: string;
 }
 
 export interface ConsequenceOptionInput {
@@ -87,6 +91,9 @@ export interface ConsequenceNodeResult {
   basis: ConsequenceBasis;
   evidenceRefs: string[];
   missingAssumptionRefs: string[];
+  baselineProbability01: number | null;
+  /** Signed probability delta × impact; null when no comparable baseline was supplied. */
+  attributableEffect01: number | null;
 }
 
 export interface ConsequenceStakeholderResult {
@@ -119,6 +126,13 @@ export interface ConsequenceOptionResult {
   evidenceCoverage01: number;
   irreversibleExposure01: number;
   mitigationCredit01: number;
+  counterfactualCoverage01: number;
+  attributableHarm01: number;
+  avoidedHarm01: number;
+  attributableBenefit01: number;
+  lostBenefit01: number;
+  netAttributableValue01: number;
+  correlatedPathMerges: number;
   feedbackLoopCount: number;
   excludedBeyondHorizon: number;
   unreachableNodeCount: number;
@@ -295,7 +309,12 @@ function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalys
         !boundedNumber(option.riskAdjustedValue01, -1, 1) || !boundedNumber(option.uncertainty01, 0, 1) ||
         !boundedNumber(option.confidence01, 0, 1) || !boundedNumber(option.graphCoverage01, 0, 1) ||
         !boundedNumber(option.evidenceCoverage01, 0, 1) || !boundedNumber(option.irreversibleExposure01, 0, 1) ||
-        !boundedNumber(option.mitigationCredit01, 0, 1) || !boundedInteger(option.feedbackLoopCount, 0, MAX_PATHS) ||
+        !boundedNumber(option.mitigationCredit01, 0, 1) || !boundedNumber(option.counterfactualCoverage01, 0, 1) ||
+        !boundedNumber(option.attributableHarm01, 0, 1) || !boundedNumber(option.avoidedHarm01, 0, 1) ||
+        !boundedNumber(option.attributableBenefit01, 0, 1) || !boundedNumber(option.lostBenefit01, 0, 1) ||
+        !boundedNumber(option.netAttributableValue01, -1, 1) ||
+        !boundedInteger(option.correlatedPathMerges, 0, MAX_PATHS * MAX_NODES) ||
+        !boundedInteger(option.feedbackLoopCount, 0, MAX_PATHS) ||
         !boundedInteger(option.excludedBeyondHorizon, 0, MAX_PATHS) ||
         !boundedInteger(option.unreachableNodeCount, 0, MAX_NODES) ||
         !boundedInteger(option.exploredPathCount, 0, MAX_PATHS) || typeof option.truncated !== 'boolean' ||
@@ -320,6 +339,8 @@ function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalys
         boundedNumber(node.propagatedProbability01, 0, 1) && boundedNumber(node.impact01, 0, 1) &&
         boundedNumber(node.expectedEffect01, 0, 1) && boundedNumber(node.confidence01, 0, 1) &&
         boundedNumber(node.uncertaintyContribution01, 0, 1) &&
+        (node.baselineProbability01 === null || boundedNumber(node.baselineProbability01, 0, 1)) &&
+        (node.attributableEffect01 === null || boundedNumber(node.attributableEffect01, -1, 1)) &&
         boundedInteger(node.depth, 1, MAX_DEPTH) && boundedNumber(node.delayDays, 0, MAX_HORIZON_DAYS) &&
         typeof node.reversible === 'boolean' && boundedStringArray(node.evidenceRefs, 8, 180) &&
         boundedStringArray(node.missingAssumptionRefs, 8, 128))) return false;
@@ -371,7 +392,8 @@ function assumptionConfidence(
   return { confidence01: clamp(node.confidence01) * factor, missing };
 }
 
-interface NormalizedNode extends ConsequenceNodeInput {
+interface NormalizedNode extends Omit<ConsequenceNodeInput, 'baselineProbability01'> {
+  baselineProbability01: number | null;
   effectiveConfidence01: number;
   missingAssumptionRefs: string[];
 }
@@ -382,9 +404,11 @@ interface PathState {
   depth: number;
   delayDays: number;
   path: string[];
+  originGroup: string;
 }
 interface NodeAccumulation {
-  pathProbabilities: number[];
+  originPaths: Map<string, { probability01: number; confidence01: number }>;
+  correlatedPathMerges: number;
   weightedConfidenceMass: number;
   probabilityMass: number;
   minDepth: number;
@@ -436,6 +460,7 @@ function analyzeOption(
       basis,
       evidenceRefs: Array.isArray(raw.evidenceRefs) ? raw.evidenceRefs.map(x => clean(x, 180)).filter(Boolean).slice(0, 8) : [],
       assumptionRefs: Array.isArray(raw.assumptionRefs) ? raw.assumptionRefs.map(x => clean(x, 128)).filter(Boolean).slice(0, 8) : [],
+      baselineProbability01: boundedNumber(raw.baselineProbability01, 0, 1) ? raw.baselineProbability01 : null,
     };
     const confidence = assumptionConfidence(node, assumptions);
     nodes.set(id, { ...node, effectiveConfidence01: confidence.confidence01, missingAssumptionRefs: confidence.missing });
@@ -461,6 +486,7 @@ function analyzeOption(
       strength01: clamp(finite(raw.strength01)),
       confidence01: clamp(finite(raw.confidence01)),
       delayDays: clamp(finite(raw.delayDays), 0, MAX_HORIZON_DAYS),
+      ...(clean(raw.independenceGroup, 96) ? { independenceGroup: clean(raw.independenceGroup, 96) } : {}),
     });
   }
 
@@ -473,7 +499,7 @@ function analyzeOption(
   for (const bucket of outgoing.values()) bucket.sort((a, b) => a.id.localeCompare(b.id));
 
   const accumulated = new Map<string, NodeAccumulation>();
-  const queue: PathState[] = [{ nodeId: ACTION_NODE, probability01: 1, confidence01: 1, depth: 0, delayDays: 0, path: [ACTION_NODE] }];
+  const queue: PathState[] = [{ nodeId: ACTION_NODE, probability01: 1, confidence01: 1, depth: 0, delayDays: 0, path: [ACTION_NODE], originGroup: '__unknown_root_cause__' }];
   const feedbackLoops: ConsequenceOptionResult['feedbackLoops'] = [];
   const criticalPaths: ConsequenceOptionResult['criticalPaths'] = [];
   let excludedBeyondHorizon = 0;
@@ -514,16 +540,25 @@ function analyzeOption(
       const depth = current.depth + 1;
       const path = [...current.path, edge.to];
       const entry = accumulated.get(edge.to) ?? {
-        pathProbabilities: [],
+        originPaths: new Map(),
+        correlatedPathMerges: 0,
         weightedConfidenceMass: 0,
         probabilityMass: 0,
         minDepth: depth,
         minDelayDays: delayDays,
         maxPathProbability01: 0,
       };
-      entry.pathProbabilities.push(probability01);
-      entry.weightedConfidenceMass += probability01 * pathConfidence01;
-      entry.probabilityMass += probability01;
+      const originGroup = current.depth === 0
+        ? (clean(edge.independenceGroup, 96) || '__unknown_root_cause__')
+        : current.originGroup;
+      const priorOrigin = entry.originPaths.get(originGroup);
+      if (priorOrigin) entry.correlatedPathMerges++;
+      if (!priorOrigin || probability01 > priorOrigin.probability01) {
+        entry.originPaths.set(originGroup, { probability01, confidence01: pathConfidence01 });
+      }
+      const groupedOrigins = [...entry.originPaths.values()];
+      entry.weightedConfidenceMass = groupedOrigins.reduce((sum, row) => sum + row.probability01 * row.confidence01, 0);
+      entry.probabilityMass = groupedOrigins.reduce((sum, row) => sum + row.probability01, 0);
       entry.minDepth = Math.min(entry.minDepth, depth);
       entry.minDelayDays = Math.min(entry.minDelayDays, delayDays);
       entry.maxPathProbability01 = Math.max(entry.maxPathProbability01, probability01);
@@ -536,7 +571,7 @@ function analyzeOption(
           delayDays,
         });
       }
-      queue.push({ nodeId: edge.to, probability01, confidence01: pathConfidence01, depth, delayDays, path });
+      queue.push({ nodeId: edge.to, probability01, confidence01: pathConfidence01, depth, delayDays, path, originGroup });
       exploredPathCount++;
       if (exploredPathCount >= MAX_PATHS) { truncated = true; break; }
     }
@@ -547,13 +582,27 @@ function analyzeOption(
   const orderRisk = { direct: [] as number[], secondary: [] as number[], tertiary: [] as number[] };
   const temporalRisk = { immediate: [] as number[], short: [] as number[], long: [] as number[] };
   const temporalBenefit = { immediate: [] as number[], short: [] as number[], long: [] as number[] };
+  const attributableHarm: number[] = [];
+  const avoidedHarm: number[] = [];
+  const attributableBenefit: number[] = [];
+  const lostBenefit: number[] = [];
   const allMissingAssumptions = new Set<string>();
   const reachable = Array.from(accumulated.entries()).sort(([a], [b]) => a.localeCompare(b));
 
   for (const [id, exposure] of reachable) {
     const node = nodes.get(id)!;
-    const propagatedProbability01 = noisyOr(exposure.pathProbabilities);
+    const groupedOrigins = [...exposure.originPaths.values()];
+    const propagatedProbability01 = noisyOr(groupedOrigins.map(row => row.probability01));
     const expectedEffect01 = propagatedProbability01 * node.impact01;
+    const attributableEffect01 = node.baselineProbability01 === null
+      ? null : (propagatedProbability01 - node.baselineProbability01) * node.impact01;
+    if (attributableEffect01 !== null) {
+      if (node.effect === 'harm') {
+        (attributableEffect01 >= 0 ? attributableHarm : avoidedHarm).push(Math.abs(attributableEffect01));
+      } else if (node.effect === 'benefit') {
+        (attributableEffect01 >= 0 ? attributableBenefit : lostBenefit).push(Math.abs(attributableEffect01));
+      }
+    }
     const propagatedConfidence01 = clamp(exposure.weightedConfidenceMass / Math.max(1e-9, exposure.probabilityMass));
     const uncertaintyContribution01 = expectedEffect01 * (1 - propagatedConfidence01);
     const order = exposure.minDepth <= 1 ? 'direct' : exposure.minDepth === 2 ? 'secondary' : 'tertiary';
@@ -577,6 +626,8 @@ function analyzeOption(
       basis: node.basis,
       evidenceRefs: [...refs],
       missingAssumptionRefs,
+      baselineProbability01: node.baselineProbability01,
+      attributableEffect01,
     };
     rows.push(row);
     const actorKey = node.actor + '\u0000' + node.system;
@@ -605,6 +656,7 @@ function analyzeOption(
   const weightedMass = rows.reduce((sum, row) => sum + row.expectedEffect01, 0);
   const uncertaintyMass = rows.reduce((sum, row) => sum + row.uncertaintyContribution01, 0);
   const evidenceCoverage01 = rows.length ? rows.filter(row => row.evidenceRefs.length > 0).length / rows.length : 0;
+  const counterfactualCoverage01 = rows.length ? rows.filter(row => row.baselineProbability01 !== null).length / rows.length : 0;
   const graphCoverage01 = nodes.size ? rows.length / nodes.size : 0;
   const uncertainty01 = clamp((weightedMass > 0 ? uncertaintyMass / weightedMass : 0.5) + (1 - graphCoverage01) * 0.25);
   const confidence01 = 1 - uncertainty01;
@@ -630,12 +682,16 @@ function analyzeOption(
   const limitations = [
     'Causal links and conditional probabilities are supplied assumptions or model inputs, not proof of objective causation.',
     'Path propagation is bounded to six edges and 2,048 explored paths; cycles are reported, not solved as a physical dynamical system.',
+    'Paths sharing a root-cause group are merged by maximum exposure; noisy-OR is used only across separately declared root-cause groups. Missing groups are conservatively treated as one shared/unknown cause.',
     'Evidence references provide traceability only; this engine does not fetch, authenticate or independently verify sources.',
     'The analysis ranks modelled exposure only. It does not select, approve, schedule or execute an action.',
   ];
   if (truncated) limitations.push('Path budget reached; unvisited branches remain outside this result.');
   if (excludedBeyondHorizon) limitations.push('Some effects were excluded because their accumulated delay exceeded the requested horizon.');
   if (allMissingAssumptions.size) limitations.push('One or more referenced assumptions were missing and reduced confidence.');
+  if (counterfactualCoverage01 < 1) limitations.push(counterfactualCoverage01 === 0
+    ? 'No comparable baseline probabilities were supplied; action-attributable effects remain unknown.'
+    : 'Counterfactual coverage is partial; aggregate attributable effects omit nodes without a baseline.');
   if (!rows.length) limitations.push('No consequence node was reachable from the proposed action.');
   return {
     id: clean(option.id, 96),
@@ -657,6 +713,15 @@ function analyzeOption(
     evidenceCoverage01,
     irreversibleExposure01,
     mitigationCredit01,
+    counterfactualCoverage01,
+    attributableHarm01: noisyOr(attributableHarm),
+    avoidedHarm01: noisyOr(avoidedHarm),
+    attributableBenefit01: noisyOr(attributableBenefit),
+    lostBenefit01: noisyOr(lostBenefit),
+    netAttributableValue01: clamp(
+      noisyOr(attributableBenefit) + noisyOr(avoidedHarm) - noisyOr(attributableHarm) - noisyOr(lostBenefit), -1, 1,
+    ),
+    correlatedPathMerges: reachable.reduce((sum, [, exposure]) => sum + exposure.correlatedPathMerges, 0),
     feedbackLoopCount: feedbackLoops.length,
     excludedBeyondHorizon,
     unreachableNodeCount: nodes.size - rows.length,
@@ -758,6 +823,7 @@ export class ConsequenceEcologyEngine {
             to: consequence.id,
             relation: 'causes',
             polarity: 'increase',
+            independenceGroup: '__unknown_root_cause__',
             strength01: 1,
             confidence01: context.scenario!.confidence01,
             delayDays: 0,
@@ -854,6 +920,10 @@ export class ConsequenceEcologyEngine {
       meanGraphCoverage01: options.length
         ? options.reduce((sum, option) => sum + option.graphCoverage01, 0) / options.length
         : 0,
+      meanCounterfactualCoverage01: options.length
+        ? options.reduce((sum, option) => sum + option.counterfactualCoverage01, 0) / options.length
+        : 0,
+      correlatedPathMerges: options.reduce((sum, option) => sum + option.correlatedPathMerges, 0),
       bounded: analyses.length <= MAX_ANALYSES && options.every(option =>
         option.nodes.length <= MAX_NODES && option.feedbackLoops.length <= 16),
       decisionAuthority: 'none' as const,
