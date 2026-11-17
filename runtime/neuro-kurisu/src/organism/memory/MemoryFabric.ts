@@ -355,10 +355,10 @@ export class MemoryFabric {
    * immediately keeps the lexical result while the single in-flight job may warm the
    * derived vector index for subsequent turns.
    */
-  async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}):Promise<MemoryItem2[]> {
+  async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}):Promise<MemoryItem2[]> {
     this.lastCognitiveMemoryQueryAt=Date.now();
     const safeLimit=Math.max(1,Math.min(16,Math.floor(Number.isFinite(limit)?limit:8)));
-    const temporalContext={temporalMode:context.temporalMode,asOfAt:context.asOfAt};
+    const temporalContext={temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt};
     // Preview read-only until the runtime chooses the actual result. Otherwise the
     // lexical fallback is counted even when semantic retrieval replaces it.
     const fallbackPreview=this.memoryOS.previewRetrieveWithDiagnostics(query,safeLimit,goalRelevance,identityRelevance,temporalContext);
@@ -432,8 +432,8 @@ export class MemoryFabric {
     return rows;
   }
 
-  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
-    const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt},false);
+  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}) {
+    const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt},false);
     return this.recordRetrievalResult(query,rows,{tick:context.tick,emitEvent:context.emitEvent,evidenceMode:'retrieval-audit'});
   }
 

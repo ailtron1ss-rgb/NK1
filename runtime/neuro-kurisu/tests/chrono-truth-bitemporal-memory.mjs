@@ -26,6 +26,7 @@ const encode = (content, extra = {}) => memoryOS.encode({
   observedAt: 100,
   recordedFromAt: 200,
   recordedUntilAt: null,
+  freshnessUntilAt: 125,
   temporalKind: 'fact',
   ...extra,
 }, { clone: false });
@@ -42,6 +43,11 @@ assert.equal(
   null,
   'a fact must not appear in system knowledge before its transaction time',
 );
+assert.equal(
+  memoryOS.temporalBitemporalAt(firstId, 150, 250)?.epistemicStatus,
+  'fact',
+  'an expired freshness estimate must not silently convert an uncorrected fact into a falsehood',
+);
 
 const corrected = memoryOS.reviseContent(firstId, 'Project location is West Campus.', {
   validAt: 120,
@@ -52,6 +58,7 @@ assert.ok(corrected, 'a correction must append a new revision');
 assert.equal(first.validUntilAt, 120, 'current valid-time interval must close at the world-change time');
 assert.equal(first.recordedFromAt, 260, 'the current stored state must begin when the correction was recorded');
 assert.equal(first.bitemporalHistory?.length, 1, 'the previous knowledge state must be retained');
+assert.equal(first.revisionHistory.at(-1)?.at, 260, 'the revision audit timestamp must use transaction time, not world-valid time');
 
 assert.equal(
   memoryOS.temporalBitemporalAt(firstId, 150, 250)?.content,

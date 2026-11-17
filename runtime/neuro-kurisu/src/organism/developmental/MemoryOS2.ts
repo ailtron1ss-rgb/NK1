@@ -28,7 +28,8 @@ export interface MemoryEvidenceSource {
  evidenceFreshnessAt:number;
 }
 export type MemoryTemporalKind='fact'|'assessment'|'prediction';
-/** One half-open valid-time / transaction-time rectangle from NK1's knowledge history. */
+/** All timestamps below are Unix epoch milliseconds (UTC); intervals are half-open. */
+export interface MemoryBitemporalInterval
 export interface MemoryBitemporalInterval {
  validFromAt:number; validUntilAt:number|null;
  recordedFromAt:number; recordedUntilAt:number|null;
@@ -694,6 +695,7 @@ export class MemoryOS2{
   return matches[0]??null;
  }
  private beginBitemporalRevision(item:MemoryItem2,recordedAt:number):void{
+  const beforeBytes=estimateMemoryBytes(item);
   const previous:MemoryBitemporalInterval={
    validFromAt:Number(item.validFromAt??item.createdAt),validUntilAt:item.validUntilAt??null,
    recordedFromAt:Number(item.recordedFromAt??item.createdAt),recordedUntilAt:recordedAt,
@@ -705,6 +707,7 @@ export class MemoryOS2{
   item.bitemporalHistory=normalizeBitemporalHistory([...(item.bitemporalHistory??[]),previous]);
   item.recordedFromAt=recordedAt;
   item.recordedUntilAt=null;
+  this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeBytes+estimateMemoryBytes(item));
  }
  private preferIndexRecord(candidate:MemoryItem2,incumbent:MemoryItem2,at:number){
   const currentDelta=Number(this.validAt(candidate,at))-Number(this.validAt(incumbent,at));if(currentDelta)return currentDelta>0;
@@ -1569,7 +1572,14 @@ export class MemoryOS2{
   m.revisionHistory=normalizeRevisionHistory([entry,...m.revisionHistory]);
   if(tracked)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
  }
- revise(id:string,to:EpistemicStatus,reason:string){const m=this.state.items.find(x=>x.id===id);if(!m||m.epistemicStatus===to)return;const from=m.epistemicStatus;this.recordRevision(m,{at:Date.now(),from,to,reason});m.epistemicStatus=to;m.lastAccessAt=Date.now();this.state.reconsolidations++;if(to==='quarantined')this.state.quarantined++;}
+ revise(id:string,to:EpistemicStatus,reason:string){
+  const m=this.state.items.find(x=>x.id===id);if(!m||m.epistemicStatus===to)return;
+  const from=m.epistemicStatus;
+  const recordedAt=Math.max(Date.now(),Number(m.recordedFromAt??m.createdAt)+1);
+  this.beginBitemporalRevision(m,recordedAt);
+  this.recordRevision(m,{at:recordedAt,from,to,reason});
+  m.epistemicStatus=to;m.lastAccessAt=Date.now();this.state.reconsolidations++;if(to==='quarantined')this.state.quarantined++;
+ }
  reviseContent(id:string,newContent:string,options:{reason?:string;validAt?:number;recordedAt?:number;source?:string;epistemicStatus?:EpistemicStatus;salience?:number;confidence?:number;freshnessUntilAt?:number|null;temporalKind?:MemoryTemporalKind}={}){
    const requested=this.itemIndex.get(id); if(!requested||!String(newContent).trim())return null;
    const group=requested.revisionGroupId??requested.id;
