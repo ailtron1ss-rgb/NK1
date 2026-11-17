@@ -12,11 +12,13 @@ import { HexisAdaptationFabric } from '../integration/hexis/HexisAdaptationFabri
 import { LettaGovernanceAdaptationFabric } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import { buildCognitiveArchitectureSnapshot } from './CognitiveArchitectureMap.ts';
+import { buildDevelopmentalGenome, type DevelopmentalGenome } from '../system/DevelopmentalGenome.ts';
 
 export type OrganismSystemName = 'self'|'governance'|'memory'|'world'|'embodiment'|'agency'|'research';
 
 export interface OrganismSystemFabricSnapshot {
   version: 1;
+  developmentalGenome: DevelopmentalGenome;
   systems: Record<OrganismSystemName, unknown> & { willIntegration: unknown; luminaAdaptation: unknown; hexisAdaptation: unknown; lettaGovernanceAdaptation: unknown; conscioAdaptation: unknown };
   capturedAt: number;
 }
@@ -90,9 +92,13 @@ export class OrganismSystemFabric {
 
   get(name: OrganismSystemName) { return this[name]; }
 
+  /** Deterministic architecture genome derived from the resolved live system contracts. */
+  developmentalGenome(): DevelopmentalGenome { return buildDevelopmentalGenome(this.resolvedContracts); }
+
   snapshot(): OrganismSystemFabricSnapshot {
     return {
       version:1,
+      developmentalGenome:this.developmentalGenome(),
       systems:{
         self:this.self.snapshot(),
         governance:this.governance.snapshot(),
