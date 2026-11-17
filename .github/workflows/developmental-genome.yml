@@ -31,6 +31,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - name: Run Developmental Genome behavioral tests
         run: npm --prefix runtime/neuro-kurisu run test:developmental-genome
       - name: Runtime TypeScript check
