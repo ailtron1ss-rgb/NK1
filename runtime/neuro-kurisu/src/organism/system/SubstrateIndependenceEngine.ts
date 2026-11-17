@@ -191,7 +191,7 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
     if (Object.getPrototypeOf(value) !== Date.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-date-instance-invalid');
     const time = Date.prototype.getTime.call(value);
     if (!Number.isFinite(time)) return fail('portable-invalid-date-rejected');
-    return { $nk1Type: 'Date', value: value.toISOString() };
+    return { $nk1Type: 'Date', value: new Date(time).toISOString() };
   }
   if (Buffer.isBuffer(value)) {
     if (Object.getPrototypeOf(value) !== Buffer.prototype) return fail('portable-buffer-subclass-rejected');
@@ -217,19 +217,19 @@ function normalizePortableValue(value: unknown, seen: WeakSet<object>, depth: nu
     } finally { seen.delete(value); }
   }
   if (nodeUtilTypes.isArrayBuffer(value)) {
+    if (Object.getPrototypeOf(value) !== ArrayBuffer.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-arraybuffer-instance-invalid');
     return { $nk1Type: 'ArrayBuffer', base64: Buffer.from(value).toString('base64') };
   }
   if (ArrayBuffer.isView(value)) {
     if (nodeUtilTypes.isDataView(value)) {
-      return { $nk1Type: 'DataView', base64: Buffer.from(value.buffer, value.byteOffset, value.byteLength).toString('base64') };
+      if (Object.getPrototypeOf(value) !== DataView.prototype || Reflect.ownKeys(value).length > 0) return fail('portable-dataview-instance-invalid');
+      const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+      return { $nk1Type: 'DataView', base64: Buffer.from(bytes).toString('base64') };
     }
-    const type = Object.getPrototypeOf(value)?.constructor?.name;
-    const supported = new Set([
-      'Int8Array', 'Uint8Array', 'Uint8ClampedArray', 'Int16Array', 'Uint16Array',
-      'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'BigInt64Array', 'BigUint64Array',
-    ]);
-    if (!supported.has(type)) return fail('portable-typed-array-rejected');
-    return { $nk1Type: type, base64: Buffer.from(value.buffer, value.byteOffset, value.byteLength).toString('base64') };
+    const type = TYPED_ARRAY_KIND_BY_PROTOTYPE.get(Object.getPrototypeOf(value));
+    if (!type || Reflect.ownKeys(value).length !== value.length) return fail('portable-typed-array-instance-invalid');
+    const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    return { $nk1Type: type, base64: Buffer.from(bytes).toString('base64') };
   }
 
   seen.add(value);
@@ -288,7 +288,9 @@ function normalizePortable(value: unknown, maxBytes: number): PortableJson {
 }
 
 function canonicalJson(value: PortableJson | PlainRecord): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (value === null) return 'null';
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (Array.isArray(value)) return '[' + value.map((entry) => canonicalJson(entry)).join(',') + ']';
   const record = value as Record<string, PortableJson>;
   return '{' + Object.keys(record).sort().map((key) => JSON.stringify(key) + ':' + canonicalJson(record[key])).join(',') + '}';
@@ -305,6 +307,15 @@ const TYPED_ARRAY_CONSTRUCTORS: Record<string, any> = {
   ...(typeof BigInt64Array === 'undefined' ? {} : { BigInt64Array }),
   ...(typeof BigUint64Array === 'undefined' ? {} : { BigUint64Array }),
 };
+const TYPED_ARRAY_KIND_BY_PROTOTYPE = new Map<object, string>([
+  [Int8Array.prototype, 'Int8Array'], [Uint8Array.prototype, 'Uint8Array'],
+  [Uint8ClampedArray.prototype, 'Uint8ClampedArray'], [Int16Array.prototype, 'Int16Array'],
+  [Uint16Array.prototype, 'Uint16Array'], [Int32Array.prototype, 'Int32Array'],
+  [Uint32Array.prototype, 'Uint32Array'], [Float32Array.prototype, 'Float32Array'],
+  [Float64Array.prototype, 'Float64Array'],
+  ...(typeof BigInt64Array === 'undefined' ? [] : [[BigInt64Array.prototype, 'BigInt64Array'] as [object, string]]),
+  ...(typeof BigUint64Array === 'undefined' ? [] : [[BigUint64Array.prototype, 'BigUint64Array'] as [object, string]]),
+]);
 
 function decodeBase64(value: unknown): Buffer {
   if (typeof value !== 'string' || value.length > DEFAULT_MAX_TRANSFER_BYTES * 2
