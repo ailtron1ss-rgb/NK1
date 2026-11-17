@@ -275,7 +275,6 @@ export class AdaptiveSynapticMatrixEngine {
     const manifest = normalizeManifest(raw);
     const record = this.state.adapters.find(entry => entry.candidate.id === manifest.id);
     if (!record || !sameCandidate(record.candidate, manifest)) throw new Error('synaptic-adapter-candidate-manifest-mismatch');
-    if (record.status === 'disabled') throw new Error('synaptic-adapter-explicitly-disabled');
     if (typeof verify !== 'function') throw new Error('synaptic-adapter-manifest-verifier-required');
     let verified = false;
     try {
