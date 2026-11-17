@@ -41,6 +41,7 @@ All trust roots and compatibility manifests are server-owned environment setting
 
 - NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON: JSON object mapping publisher key IDs to Ed25519 public PEM strings.
 - NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON: JSON object mapping evidence-attestor IDs to Ed25519 public PEM strings.
+- NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON: JSON array of exact 64-character review fingerprints explicitly approved by the receiving host; an absent or unlisted fingerprint blocks import.
 - NEURO_SYNAPTIC_COMMONS_RUNTIME_VERSION: local semantic runtime version (for example 1.2.0).
 - NEURO_SYNAPTIC_COMMONS_ENVIRONMENT_FINGERPRINT: exact 64-character lowercase SHA-256 environment fingerprint.
 - NEURO_SYNAPTIC_COMMONS_SUPPORTED_CAPABILITIES_JSON: JSON array of locally supported capability IDs.
