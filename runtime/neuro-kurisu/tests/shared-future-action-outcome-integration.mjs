@@ -78,6 +78,15 @@ try {
   assert.equal(execution.ok, true);
   assert.ok(execution.executionId);
 
+  const actionBindingReceipt = core.snapshot().system.sharedFutureActionBindings?.records?.find(
+    (row) => row.executionId === execution.executionId,
+  );
+  assert.ok(actionBindingReceipt, 'the trusted ActionGateway finalizer must persist the execution-to-decision link');
+  assert.equal(actionBindingReceipt.actionDecisionId, cycle.decision.id);
+  assert.equal(actionBindingReceipt.toolId, 'observer.shared-future');
+  assert.equal(actionBindingReceipt.sharedFutureDecisionId, 'shared-future-action-decision');
+  assert.equal(actionBindingReceipt.expectedPostcondition, 'state=ready');
+
   const feedback = await core.ingestExternalObservation({
     sourceId: 'device-shared-future-a',
     sourceClass: 'device',
@@ -141,6 +150,20 @@ try {
         'removing the canonical evidence projection must downgrade a restored outcome');
     } finally {
       await downgraded.flush();
+    }
+
+    const missingActionLink = structuredClone(persisted);
+    missingActionLink.system.sharedFutureActionBindings.records = [];
+    const downgradedBinding = new OrganismCore(new MemoryStateStore({ initial: missingActionLink }), config);
+    await downgradedBinding.init();
+    try {
+      const restoredWithoutBinding = await downgradedBinding.executeTool('organism.future.outcomes.list', {
+        scenarioId: 'shared-future-action-integration',
+      });
+      assert.equal(restoredWithoutBinding.result.outcomes[0].independentlyVerified, false,
+        'removing the trusted ActionGateway execution/decision link must downgrade the restored outcome');
+    } finally {
+      await downgradedBinding.flush();
     }
   } finally {
     await restarted.flush();
