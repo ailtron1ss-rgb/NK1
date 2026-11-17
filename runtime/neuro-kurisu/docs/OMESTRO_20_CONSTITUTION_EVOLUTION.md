@@ -43,7 +43,7 @@ Configure only reviewer *public* Ed25519 keys in the server environment:
 NEURO_CONSTITUTION_REVIEW_KEYS_JSON='{"reviewer-1":"-----BEGIN PUBLIC KEY-----..."}'
 ```
 
-For high/critical proposals configure two or more distinct reviewer IDs/keys. The private signing keys must remain with the external reviewer or signing service and must never be placed in NK1, the browser, the Release ZIP, or the server environment.
+For high/critical proposals configure two or more distinct reviewer IDs backed by different Ed25519 public keys. The loader fingerprints canonical DER public keys and rejects aliases, so repeating one key under multiple IDs cannot satisfy the quorum. The private signing keys must remain with the external reviewer or signing service and must never be placed in NK1, the browser, the Release ZIP, or the server environment.
 
 A signed artifact has this shape:
 
@@ -72,7 +72,7 @@ A signed artifact has this shape:
 }
 ```
 
-The signature covers canonical JSON: recursively sort object keys, preserve array order, and UTF-8 encode the resulting JSON string. The canonicalization function is exported as `canonicalConstitutionReviewPayload`. The server route and `ConstitutionEvolutionEngine.review()` independently reject untrusted keys, altered payloads, stale/future timestamps, author self-review, failed planned tests, missing holdout evidence, and mismatched candidate digests. The engine accepts only a signed artifact; it never accepts a plain `ConstitutionReviewInput` DTO. This remains true for callers that bypass HTTP and use the Core facade directly. CI/reviewer systems must actually run the test plan and holdout before signing; the runtime verifies the attestation but does not execute arbitrary prose test plans or independently inspect external evidence URLs.
+The signature covers canonical JSON: recursively sort object keys, preserve array order, and UTF-8 encode the resulting JSON string. Evidence references must be credential-free durable identifiers or safe run URLs: the authority rejects URL userinfo, signed-URL query parameters, access/API tokens, bearer/basic credentials, and control characters. Prefer immutable CI run IDs and opaque `ci://` / `holdout://` references; never paste a presigned download URL or secret-bearing link into the artifact. The canonicalization function is exported as `canonicalConstitutionReviewPayload`. The server route and `ConstitutionEvolutionEngine.review()` independently reject untrusted keys, altered payloads, stale/future timestamps, author self-review, failed planned tests, missing holdout evidence, and mismatched candidate digests. The engine accepts only a signed artifact; it never accepts a plain `ConstitutionReviewInput` DTO. This remains true for callers that bypass HTTP and use the Core facade directly. CI/reviewer systems must actually run the test plan and holdout before signing; the runtime verifies the attestation but does not execute arbitrary prose test plans or independently inspect external evidence URLs.
 
 ## Cryptographic integrity and host authority
 
@@ -84,7 +84,7 @@ The server's normal `authorizeApiRequest` gate applies to every constitution rou
 
 ## Bounds and failure behaviour
 
-Revision history is bounded to 32, proposals to 64, mutable rules to 128, reviewers per proposal to 4, evidence references per review to 12, and audit events to 256 (with an anchor digest across compaction). The signed checkpoint projection is memoized until the governance ledger changes, avoiding repeat full-state cloning and HMAC work on unchanged hot cycles. A stale proposal cannot activate against a changed base. Failed signature, missing host key, or corrupted persistence returns the engine to the compiled baseline rather than accepting partially trusted state.
+Revision history is bounded to 32, proposals to 64, mutable rules to 128, reviewers per proposal to 4, credential-free evidence references per review to 12, and audit events to 256 (with an anchor digest across compaction). The signed checkpoint projection is memoized until the governance ledger changes, avoiding repeat full-state cloning and HMAC work on unchanged hot cycles. A stale proposal cannot activate against a changed base. Failed signature, missing host key, or corrupted persistence returns the engine to the compiled baseline rather than accepting partially trusted state.
 
 ## Validation
 
