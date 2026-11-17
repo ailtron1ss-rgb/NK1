@@ -605,15 +605,51 @@ export class NeuroPlasticAdapterRegistry {
     return structuredClone(record);
   }
 
-  evaluateCandidate(adapterId: string, input: NeuroPlasticEvaluationInput): NeuroPlasticEvaluationReport {
+  evaluateCandidate(
+    adapterId: string,
+    rawInput: NeuroPlasticEvaluationInput,
+    verifyEvidence: (
+      receipt: NeuroPlasticEvaluationReceipt,
+      context: { adapterId: string; holdoutFingerprint: string; evaluationFingerprint: string },
+    ) => boolean,
+  ): NeuroPlasticEvaluationReport {
     const record = this.find(adapterId);
     if (record.status !== 'staged') throw new Error('neuro-plastic-candidate-not-in-staged-state');
-    const holdoutFingerprint = safeHash(input.holdoutFingerprint, 'holdout-fingerprint');
+    let input: NeuroPlasticEvaluationInput;
+    try {
+      input = snapshotPlainData(rawInput) as NeuroPlasticEvaluationInput;
+    } catch {
+      throw new Error('neuro-plastic-evaluation-data-boundary-rejected');
+    }
+    const normalized = normalizeEvaluationPayload(adapterId, input);
+    const holdoutFingerprint = normalized.holdoutFingerprint;
     if (holdoutFingerprint !== record.manifest.holdoutPlanFingerprint) {
       throw new Error('neuro-plastic-holdout-plan-mismatch');
     }
-    const baseline = input.baseline.map((value) => observation(value, 'baseline', holdoutFingerprint));
-    const candidate = input.candidate.map((value) => observation(value, 'candidate', holdoutFingerprint));
+    const receipt: NeuroPlasticEvaluationReceipt = {
+      evaluationId: safeText(input.receipt?.evaluationId, 'evaluation-id', 160),
+      evaluatorId: safeText(input.receipt?.evaluatorId, 'evaluator-id', 160),
+      evaluatedAt: safeCounter(input.receipt?.evaluatedAt, 'evaluation-receipt-time', 1),
+      evaluationFingerprint: safeHash(input.receipt?.evaluationFingerprint, 'evaluation-fingerprint'),
+      signature: safeHash(input.receipt?.signature, 'evaluation-signature'),
+    };
+    if (receipt.evaluatedAt !== normalized.evaluatedAt ||
+        receipt.evaluationFingerprint !== normalized.evaluationFingerprint) {
+      throw new Error('neuro-plastic-evaluator-receipt-does-not-bind-to-evaluation');
+    }
+    const baseline = normalized.baseline;
+    const candidate = normalized.candidate;
+    if (baseline.some(row => row.verifierId !== receipt.evaluatorId) ||
+        candidate.some(row => row.verifierId !== receipt.evaluatorId)) {
+      throw new Error('neuro-plastic-holdout-verifier-identity-mismatch');
+    }
+    if (typeof verifyEvidence !== 'function' || verifyEvidence(receipt, {
+      adapterId: record.manifest.adapterId,
+      holdoutFingerprint,
+      evaluationFingerprint: normalized.evaluationFingerprint,
+    }) !== true) {
+      throw new Error('neuro-plastic-independent-evaluator-signature-required');
+    }
     const keyed = (rows: NeuroPlasticObservation[], label: string): Map<string, NeuroPlasticObservation> => {
       const map = new Map<string, NeuroPlasticObservation>();
       for (const row of rows) {
@@ -654,6 +690,10 @@ export class NeuroPlasticAdapterRegistry {
     const summary = {
       adapterId: record.manifest.adapterId,
       holdoutFingerprint,
+      evaluationId: receipt.evaluationId,
+      evaluatorId: receipt.evaluatorId,
+      evaluationFingerprint: normalized.evaluationFingerprint,
+      evaluatorSignature: receipt.signature,
       pairedN: pairs.length,
       independentSeedCount: seedCount,
       qualityDeltaMean01: mean(quality),
@@ -666,7 +706,7 @@ export class NeuroPlasticAdapterRegistry {
       eligible: reasons.length === 0,
       reasons,
       automaticActivation: false as const,
-      evaluatedAt: safeCounter(input.evaluatedAt, 'evaluated-at', 1),
+      evaluatedAt: normalized.evaluatedAt,
     };
     const reportId = reportFingerprint(summary);
     const report: NeuroPlasticEvaluationReport = { reportId, ...summary };
@@ -675,7 +715,6 @@ export class NeuroPlasticAdapterRegistry {
     record.updatedAt = report.evaluatedAt;
     return structuredClone(report);
   }
-
   async activate(
     adapterId: string,
     approval: NeuroPlasticApproval,
