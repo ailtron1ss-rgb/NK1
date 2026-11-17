@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -94,6 +94,15 @@ try {
   assert.equal(traversal.outcomeClass, 'undo-preparation-failed');
   await assert.rejects(readFile(join(tempRoot, 'escaped-from-workspace.txt'), 'utf8'), { code: 'ENOENT' });
 
+  // Parent symlinks are rejected too: a valid-looking relative path must not
+  // redirect the write outside the private workspace.
+  await symlink(tempRoot, join(workspace, 'external-link'));
+  const symlinkInput = { path: 'external-link/symlink-escape.txt', content: 'must not follow symlinks' };
+  const symlinkOptions = await approveWrite(core, symlinkInput, 'filesystem-undo-first:symlink-denied');
+  const symlinkResult = await core.executeTool('organism.files.write', symlinkInput, 'must-not-follow-symlink', symlinkOptions);
+  assert.equal(symlinkResult.outcomeClass, 'undo-preparation-failed');
+  await assert.rejects(readFile(join(tempRoot, 'symlink-escape.txt'), 'utf8'), { code: 'ENOENT' });
+
   // Automatic compensation is deliberately not advertised for a regular mutable
   // filesystem path: the current adapter creates new files only and exposes a
   // hash-bound manual recovery procedure instead of claiming a false CAS delete.
@@ -120,7 +129,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     pass: 'filesystem-undo-first-integration',
-    assertions: 42,
+    assertions: 46,
     tool: 'organism.files.write',
     receipt: result.executionId,
     undoStatus: undo.status,
