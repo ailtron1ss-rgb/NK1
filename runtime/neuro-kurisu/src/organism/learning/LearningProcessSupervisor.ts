@@ -107,7 +107,10 @@ function redactSensitiveOutput(output: string, secrets: readonly string[]): stri
     }
   }
   result = result.replace(/\b(Bearer)\s+[A-Za-z0-9._~+/-]{8,}={0,2}/gi, '$1 [REDACTED]');
-  result = result.replace(/(\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret|client[_-]?secret|authorization)\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,;]+)/gi, '$1[REDACTED]');
+  result = result.replace(/(\bauthorization\s*[:=]\s*Bearer\s+)[^\s,;]+/gi, '$1[REDACTED]');
+  result = result.replace(/(\bauthorization\s*[:=]\s*Basic\s+)[^\s,;]+/gi, '$1[REDACTED]');
+  result = result.replace(/(\bauthorization\s*[:=]\s*)(?!Bearer\s|Basic\s)[^\s,;]+/gi, '$1[REDACTED]');
+  result = result.replace(/(\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret|client[_-]?secret)\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,;]+)/gi, '$1[REDACTED]');
   return result;
 }
 
