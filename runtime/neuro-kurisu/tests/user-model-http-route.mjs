@@ -60,6 +60,18 @@ async function post(payload, authorization = true) {
   });
   return { response, body: await response.json() };
 }
+async function dyadicRequest(method, payload, authorization = true) {
+  const headers = {};
+  if (payload !== undefined) headers['content-type'] = 'application/json';
+  if (authorization) headers.authorization = `Bearer ${token}`;
+  const response = await fetch(`http://127.0.0.1:${port}/api/organism/dyadic-collaboration`, {
+    method, headers,
+    ...(payload !== undefined ? { body: JSON.stringify(payload) } : {}),
+    signal: AbortSignal.timeout(15000),
+  });
+  return { response, body: await response.json() };
+}
+
 try {
   await waitReady();
 
@@ -109,6 +121,71 @@ try {
   const reestablished = await post({ action: 'record', value: 'concise', confirmed: true });
   assert.equal(reestablished.response.status, 200);
   assert.equal(reestablished.body.preference.status, 'confirmed');
+
+  const dyadicUnauthenticated = await dyadicRequest('GET', undefined, false);
+  assert.equal(dyadicUnauthenticated.response.status, 401);
+  assert.equal(dyadicUnauthenticated.body.reason, 'missing-bearer-token');
+
+  const dyadicInvalidBody = await dyadicRequest('POST', null);
+  assert.equal(dyadicInvalidBody.response.status, 400);
+  assert.equal(dyadicInvalidBody.body.error, 'request-body-must-be-object');
+
+  const dyadicUnconfirmed = await dyadicRequest('POST', {
+    action: 'record', kind: 'task', title: 'Do not save without confirmation', confirmed: false,
+  });
+  assert.equal(dyadicUnconfirmed.response.status, 400);
+  assert.equal(dyadicUnconfirmed.body.error, 'explicit-user-confirmation-required');
+
+  const dyadicBefore = await dyadicRequest('GET');
+  assert.equal(dyadicBefore.response.status, 200, JSON.stringify(dyadicBefore.body));
+
+  const dyadicRecorded = await dyadicRequest('POST', {
+    action: 'record', kind: 'task', title: 'Coordinate the shared release plan',
+    detail: 'Collect the agreed validation and release evidence.',
+    confirmed: true,
+    // Host must derive actor, provenance, sensitivity and tick itself.
+    actor: 'system', sourceRef: 'client-forged-source', evidenceRef: 'client-forged-evidence',
+    sensitivity: 'sensitive', tick: -10,
+  });
+  assert.equal(dyadicRecorded.response.status, 201, JSON.stringify(dyadicRecorded.body));
+  assert.equal(dyadicRecorded.body.item.author, 'human');
+  assert.equal(dyadicRecorded.body.item.status, 'accepted');
+  assert.equal(dyadicRecorded.body.item.kind, 'task');
+  assert.equal(dyadicRecorded.body.item.progress, 'not-started');
+  assert.equal(Object.hasOwn(dyadicRecorded.body.item, 'sourceRef'), false);
+  assert.equal(Object.hasOwn(dyadicRecorded.body.item, 'lastEvidenceRef'), false);
+  assert.equal(Object.hasOwn(dyadicRecorded.body.item, 'evidenceRef'), false);
+  const dyadicItemId = dyadicRecorded.body.item.id;
+
+  const dyadicCorrected = await dyadicRequest('POST', {
+    action: 'correct', itemId: dyadicItemId,
+    title: 'Coordinate the agreed shared release plan',
+    confirmed: true, actor: 'system', evidenceRef: 'forged-correction-ref',
+  });
+  assert.equal(dyadicCorrected.response.status, 200, JSON.stringify(dyadicCorrected.body));
+  assert.equal(dyadicCorrected.body.item.title, 'Coordinate the agreed shared release plan');
+  assert.equal(dyadicCorrected.body.item.updatedBy, 'human');
+
+  const dyadicCompleted = await dyadicRequest('POST', {
+    action: 'progress', itemId: dyadicItemId, progress: 'completed', confirmed: true,
+  });
+  assert.equal(dyadicCompleted.response.status, 200, JSON.stringify(dyadicCompleted.body));
+  assert.equal(dyadicCompleted.body.item.progress, 'completed');
+
+  const dyadicSensitive = await dyadicRequest('POST', {
+    action: 'record', kind: 'decision', title: 'API token = sk-ABCDEFGHIJKLMNOPQRSTUVWX',
+    confirmed: true,
+  });
+  assert.equal(dyadicSensitive.response.status, 400);
+  assert.equal(dyadicSensitive.body.error, 'sensitive-content');
+
+  const dyadicAfter = await dyadicRequest('GET');
+  assert.equal(dyadicAfter.response.status, 200);
+  assert.equal(dyadicAfter.body.items.some(item =>
+    item.id === dyadicItemId &&
+    item.title === 'Coordinate the agreed shared release plan' &&
+    item.progress === 'completed'), true);
+  assert.equal(Object.hasOwn(dyadicAfter.body.items.find(item => item.id === dyadicItemId), 'sourceRef'), false);
 
   console.log('USER_MODEL_HTTP_ROUTE=PASS', JSON.stringify({
     unauthenticated: unauthenticated.response.status,
