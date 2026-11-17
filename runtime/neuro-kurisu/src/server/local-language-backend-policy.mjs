@@ -30,6 +30,10 @@ export class LocalLanguageBackendPolicy {
     return this.snapshot({ now });
   }
 
+  routeHyperPlasticAdapter(input = {}) {
+    return resolveHyperPlasticAdapterRoute(input);
+  }
+
   snapshot({ now = Date.now() } = {}) {
     return {
       consecutiveFailures: this.consecutiveFailures,

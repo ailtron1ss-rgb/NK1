@@ -66,6 +66,7 @@ export type HyperPlasticGenerationResult =
 
 export interface HyperPlasticParameterSnapshot {
   schema: 'nk1.hyper-plastic-weights.v1';
+  fingerprint: string;
   featureCount: number;
   hiddenDim: number;
   outputDim: number;
@@ -155,6 +156,16 @@ function matrixNormL2(values: number[][]): number {
   let sum = 0;
   for (const row of values) for (const value of row) sum += value * value;
   return Math.sqrt(sum);
+}
+
+function freezeAdapter(adapter: HyperPlasticLoRAAdapter): HyperPlasticLoRAAdapter {
+  Object.freeze(adapter.target);
+  for (const row of adapter.A) Object.freeze(row);
+  for (const row of adapter.B) Object.freeze(row);
+  Object.freeze(adapter.A);
+  Object.freeze(adapter.B);
+  Object.freeze(adapter.generatedFrom);
+  return Object.freeze(adapter) as HyperPlasticLoRAAdapter;
 }
 
 function adapterFingerprint(adapter: Omit<HyperPlasticLoRAAdapter, 'fingerprint' | 'deltaNormL2'>): string {
@@ -264,8 +275,8 @@ export class HyperPlasticNetwork {
   }
 
   snapshotParameters(): HyperPlasticParameterSnapshot {
-    return {
-      schema: 'nk1.hyper-plastic-weights.v1',
+    const payload = {
+      schema: 'nk1.hyper-plastic-weights.v1' as const,
       featureCount: FEATURE_COUNT,
       hiddenDim: this.config.hiddenDim,
       outputDim: this.outputDim,
@@ -274,6 +285,7 @@ export class HyperPlasticNetwork {
       outputWeights: this.outputWeights.map((row) => [...row]),
       outputBias: [...this.outputBias],
     };
+    return { ...payload, fingerprint: hashFingerprint(payload) };
   }
 
   restoreParameters(snapshot: HyperPlasticParameterSnapshot): void {
@@ -295,6 +307,10 @@ export class HyperPlasticNetwork {
       || !validMatrix(snapshot.outputWeights, this.outputDim, this.config.hiddenDim)
       || !validVector(snapshot.outputBias, this.outputDim)) {
       throw new RangeError('hypernetwork-checkpoint-nonfinite-or-malformed');
+    }
+    const { fingerprint, ...payload } = snapshot;
+    if (typeof fingerprint !== 'string' || fingerprint !== hashFingerprint(payload)) {
+      throw new RangeError('hypernetwork-checkpoint-fingerprint-mismatch');
     }
     this.inputWeights = snapshot.inputWeights.map((row) => [...row]);
     this.inputBias = [...snapshot.inputBias];
@@ -416,7 +432,7 @@ export class HyperPlasticNetwork {
     const draft: Omit<HyperPlasticLoRAAdapter, 'fingerprint' | 'deltaNormL2'> = {
       schema: 'nk1-lora-v1',
       baseModelFingerprint,
-      target,
+      target: { ...target },
       rank,
       alpha,
       A,
@@ -444,7 +460,7 @@ export class HyperPlasticNetwork {
       ...finalized,
       fingerprint: adapterFingerprint(finalized),
     };
-    return { status: 'candidate', reason: 'generated', adapter };
+    return { status: 'candidate', reason: 'generated', adapter: freezeAdapter(adapter) };
   }
 }
 
@@ -456,7 +472,10 @@ export function applyLowRankAdapter(
   baseline: number[][],
   adapter: HyperPlasticLoRAAdapter,
 ): number[][] {
-  if (!Array.isArray(baseline) || baseline.length !== adapter.target.rows
+  if (!adapter || !adapter.target
+    || !Number.isInteger(adapter.target.rows) || !Number.isInteger(adapter.target.cols)
+    || adapter.target.rows < 1 || adapter.target.cols < 1
+    || !Array.isArray(baseline) || baseline.length !== adapter.target.rows
     || baseline.some((row) => !Array.isArray(row) || row.length !== adapter.target.cols
       || row.some((value) => !Number.isFinite(value)))) {
     throw new RangeError('baseline-matrix-shape-or-value-invalid');
@@ -471,8 +490,16 @@ export function applyLowRankAdapter(
       row.some((value) => !Number.isFinite(value) || Math.abs(value) > adapter.maxFactorAbs + 1e-9))) {
     throw new RangeError('adapter-shape-or-factor-bound-invalid');
   }
+  const { fingerprint, deltaNormL2, ...fingerprintPayload } = adapter;
+  if (fingerprint !== adapterFingerprint(fingerprintPayload)) {
+    throw new RangeError('adapter-fingerprint-mismatch');
+  }
   const delta = calculateDelta(adapter);
-  if (matrixNormL2(delta) > adapter.maxDeltaNormL2 + 1e-8) {
+  const actualDeltaNorm = matrixNormL2(delta);
+  if (!Number.isFinite(deltaNormL2) || Math.abs(actualDeltaNorm - deltaNormL2) > 1e-8) {
+    throw new RangeError('adapter-delta-norm-mismatch');
+  }
+  if (actualDeltaNorm > adapter.maxDeltaNormL2 + 1e-8) {
     throw new RangeError('adapter-delta-norm-exceeded');
   }
   return baseline.map((row, rowIndex) =>

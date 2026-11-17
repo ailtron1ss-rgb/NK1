@@ -6,6 +6,7 @@ import {
   hyperPlasticContextFromB292,
 } from '../src/organism/research/HyperPlasticNetwork.ts';
 import {
+  LocalLanguageBackendPolicy,
   evaluateHyperPlasticPromotion,
   resolveHyperPlasticAdapterRoute,
 } from '../src/server/local-language-backend-policy.mjs';
@@ -57,6 +58,12 @@ const baseline = [
 const baselineBefore = structuredClone(baseline);
 const adapted = applyLowRankAdapter(baseline, generated.adapter);
 assert.deepEqual(baseline, baselineBefore, 'baseline matrix must remain immutable');
+const tamperedAdapter = {
+  ...generated.adapter,
+  A: generated.adapter.A.map((row) => [...row]),
+};
+tamperedAdapter.A[0][0] += 0.001;
+assert.throws(() => applyLowRankAdapter(baseline, tamperedAdapter), /adapter-fingerprint-mismatch/);
 assert.notDeepEqual(adapted, baseline, 'LoRA composition must produce a separate candidate matrix');
 assert.notStrictEqual(adapted, baseline);
 
@@ -84,7 +91,8 @@ const makeReports = (datasetFingerprint, improvements) => seeds.map((seed, index
 const calibrationReports = makeReports('calibration-dataset-fp', [0.020, 0.022, 0.021, 0.019, 0.023]);
 const holdoutReports = makeReports('independent-holdout-fp', [0.018, 0.019, 0.017, 0.020, 0.0185]);
 
-const noCapability = resolveHyperPlasticAdapterRoute({
+const languagePolicy = new LocalLanguageBackendPolicy();
+const noCapability = languagePolicy.routeHyperPlasticAdapter({
   backendCapabilities: { supportsLowRankAdapters: false },
   baseModelFingerprint,
   adapter: target,
@@ -186,6 +194,9 @@ assert.deepEqual(restoredNetwork.snapshotParameters(), checkpoint);
 const tamperedCheckpoint = structuredClone(checkpoint);
 tamperedCheckpoint.outputWeights[0][0] = Number.NaN;
 assert.throws(() => restoredNetwork.restoreParameters(tamperedCheckpoint), /nonfinite-or-malformed/);
+const finiteTamperedCheckpoint = structuredClone(checkpoint);
+finiteTamperedCheckpoint.outputWeights[0][0] += 0.001;
+assert.throws(() => restoredNetwork.restoreParameters(finiteTamperedCheckpoint), /checkpoint-fingerprint-mismatch/);
 
 console.log('OME26_HYPER_PLASTIC_NETWORK=PASS', JSON.stringify({
   assertions: 24,

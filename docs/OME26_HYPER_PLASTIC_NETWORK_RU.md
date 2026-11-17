@@ -17,7 +17,8 @@
 - Сейчас это математический и контрактный прототип на малых матрицах, а не LoRA-патч для реальной llama.cpp/Transformer-модели.
 - Весовые параметры гиперсети и offline fitting API реализованы, но калиброванный реальный обучающий корпус, модель-специфичный export, quantization compatibility и измеренный inference uplift ещё не представлены.
 - Synthetic evaluation reports в тесте подтверждают работу gate и вычислений, а не качество реальной модели, transfer или ускорение.
-- Permit — in-process object capability для защиты от простых JSON/caller-boolean подмен; это не криптографическая подпись и не замена независимому evaluator/host verifier при реальном deployment.
+- Permit — in-process object capability для защиты от простых JSON/caller-boolean подмен; это не криптографическая подпись и не замена независимому evaluator/host verifier при реальном deployment. Fingerprint адаптера — детерминированный идентификатор прототипа, не криптографический digest.
+- Сгенерированный адаптер и его вложенные матрицы замораживаются; композиция повторно проверяет fingerprint и норму дельты. Checkpoint гиперсети также имеет checksum-проверку при restore.
 - Реальный backend сегодня не заявляет low-rank capability в этой ветке; поэтому стандартный runtime остаётся на базовой модели.
 
 ## Следующий инженерный этап
