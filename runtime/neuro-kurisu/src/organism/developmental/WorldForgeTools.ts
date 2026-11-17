@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ActionGateway, ToolDefinition } from '../system/ActionGateway.ts';
+import type { ToolOutputContract, ToolInputNodeContract } from '../system/ToolInputContract.ts';
 import type { FutureSimulator } from './FutureSimulator.ts';
 import type { WorldForgeAction, WorldForgeCase } from './WorldForge.ts';
 
@@ -7,6 +8,106 @@ const MAX_SCENARIOS = 512;
 const MAX_SESSIONS = 2048;
 const ENTRY_TTL_MS = 30 * 60_000;
 const ACTIONS: WorldForgeAction[] = ['observe','inspect','move','collect','wait','reroute','prioritize','verify'];
+
+const boundedString = (maxLength: number): ToolInputNodeContract => ({ type: 'string', minLength: 1, maxLength });
+const boundedStringArray = (maxItems: number, maxLength = 160): ToolInputNodeContract => ({
+  type: 'array', maxItems, items: boundedString(maxLength),
+});
+const worldForgeScenarioOutput: ToolInputNodeContract = {
+  type: 'object',
+  properties: {
+    id: boundedString(160),
+    split: { type: 'string', enum: ['train', 'validation'] },
+    domain: { type: 'string', enum: ['resource-allocation', 'route-planning', 'investigation'] },
+    difficulty01: { type: 'number', minimum: 0, maximum: 1 },
+    task: boundedString(512),
+    observations: boundedStringArray(8, 512),
+    goalOptions: boundedStringArray(8, 120),
+    availableActions: { type: 'array', maxItems: 8, items: { type: 'string', enum: ACTIONS } },
+    constraints: {
+      type: 'object',
+      properties: {
+        maxSteps: { type: 'integer', minimum: 1, maximum: 64 },
+        resourceBudget: { type: 'integer', minimum: 0, maximum: 64 },
+        riskTolerance01: { type: 'number', minimum: 0, maximum: 1 },
+        requiredEvidence: { type: 'integer', minimum: 0, maximum: 16 },
+      },
+      required: ['maxSteps', 'resourceBudget', 'riskTolerance01', 'requiredEvidence'],
+      additionalProperties: false,
+      maxProperties: 4,
+    },
+    strategyFamilies: boundedStringArray(8, 80),
+    syntheticOnly: { type: 'boolean', enum: [true] },
+  },
+  required: ['id', 'split', 'domain', 'difficulty01', 'task', 'observations', 'goalOptions',
+    'availableActions', 'constraints', 'strategyFamilies', 'syntheticOnly'],
+  additionalProperties: false,
+  maxProperties: 11,
+};
+const worldForgeStateOutput: ToolInputNodeContract = {
+  type: 'object',
+  properties: {
+    sessionId: boundedString(160),
+    scenarioId: boundedString(160),
+    tick: { type: 'integer', minimum: 0, maximum: 128 },
+    resourcesRemaining: { type: 'integer', minimum: 0, maximum: 256 },
+    remainingSteps: { type: 'integer', minimum: 0, maximum: 128 },
+    position: boundedString(120),
+    knownTargets: boundedStringArray(32, 120),
+    knownSignals: boundedStringArray(32, 120),
+    blockedTargets: boundedStringArray(32, 120),
+    noise01: { type: 'number', minimum: 0, maximum: 1 },
+    verifiedEvidence: boundedStringArray(32, 120),
+    events: boundedStringArray(32, 160),
+    status: { type: 'string', enum: ['active', 'exhausted'] },
+    syntheticOnly: { type: 'boolean', enum: [true] },
+  },
+  required: ['sessionId', 'scenarioId', 'tick', 'resourcesRemaining', 'remainingSteps', 'position',
+    'knownTargets', 'knownSignals', 'blockedTargets', 'noise01', 'verifiedEvidence',
+    'events', 'status', 'syntheticOnly'],
+  // priorityTarget is nullable in the in-memory state model. This contract
+  // deliberately leaves that one field unconstrained; the rest are closed and bounded.
+  additionalProperties: true,
+  maxProperties: 15,
+};
+const worldForgeEvaluationOutput: ToolInputNodeContract = {
+  type: 'object',
+  properties: {
+    scenarioId: boundedString(160),
+    split: { type: 'string', enum: ['train', 'validation'] },
+    score01: { type: 'number', minimum: 0, maximum: 1 },
+    success: { type: 'boolean' },
+    constraintViolations: { type: 'integer', minimum: 0, maximum: 256 },
+    evidenceCoverage01: { type: 'number', minimum: 0, maximum: 1 },
+    efficiency01: { type: 'number', minimum: 0, maximum: 1 },
+    robustness01: { type: 'number', minimum: 0, maximum: 1 },
+    strategyFamily: { type: 'string', maxLength: 120 },
+    stepsUsed: { type: 'integer', minimum: 0, maximum: 128 },
+    syntheticOnly: { type: 'boolean', enum: [true] },
+    independentlyVerified: { type: 'boolean', enum: [false] },
+    limitations: boundedStringArray(8, 512),
+  },
+  required: ['scenarioId', 'split', 'score01', 'success', 'constraintViolations',
+    'evidenceCoverage01', 'efficiency01', 'robustness01', 'strategyFamily', 'stepsUsed',
+    'syntheticOnly', 'independentlyVerified', 'limitations'],
+  additionalProperties: false,
+  maxProperties: 13,
+};
+function outputContract(properties: Record<string, ToolInputNodeContract>, required: string[]): ToolOutputContract {
+  return {
+    type: 'object',
+    properties: {
+      ok: { type: 'boolean', enum: [true] },
+      syntheticOnly: { type: 'boolean', enum: [true] },
+      independentlyVerified: { type: 'boolean', enum: [false] },
+      ...properties,
+    },
+    required: ['ok', 'syntheticOnly', 'independentlyVerified', ...required],
+    additionalProperties: false,
+    maxProperties: 8,
+    maxSerializedBytes: 65_536,
+  };
+}
 
 type ScenarioEntry = { scenario: WorldForgeCase; createdAt: number };
 type SessionEntry = { scenarioId: string; createdAt: number };
@@ -92,6 +193,11 @@ export class WorldForgeToolAdapter {
 
     register({
       id: 'organism.worldforge.scenarios.generate',
+      outputContract: outputContract({
+        scenarios: { type: 'array', minItems: 1, maxItems: 64, items: worldForgeScenarioOutput },
+        count: { type: 'integer', minimum: 1, maximum: 64 },
+        note: boundedString(512),
+      }, ['scenarios', 'count', 'note']),
       capability: 'planning.simulation.read',
       destructive: false,
       projectAllowed: true,
@@ -137,6 +243,7 @@ export class WorldForgeToolAdapter {
 
     register({
       id: 'organism.worldforge.sessions.begin',
+      outputContract: outputContract({ state: worldForgeStateOutput }, ['state']),
       capability: 'planning.simulation.state',
       destructive: false,
       projectAllowed: true,
@@ -165,6 +272,22 @@ export class WorldForgeToolAdapter {
 
     register({
       id: 'organism.worldforge.sessions.step',
+      outputContract: outputContract({
+        transition: {
+          type: 'object',
+          properties: {
+            accepted: { type: 'boolean' },
+            state: worldForgeStateOutput,
+            reward01: { type: 'number', minimum: -1, maximum: 1 },
+            eventsApplied: { type: 'integer', minimum: 0, maximum: 16 },
+            reason: { type: 'string', maxLength: 160 },
+            syntheticOnly: { type: 'boolean', enum: [true] },
+          },
+          required: ['accepted', 'state', 'reward01', 'eventsApplied', 'syntheticOnly'],
+          additionalProperties: false,
+          maxProperties: 6,
+        },
+      }, ['transition']),
       capability: 'planning.simulation.state',
       destructive: false,
       projectAllowed: true,
@@ -203,6 +326,7 @@ export class WorldForgeToolAdapter {
 
     register({
       id: 'organism.worldforge.sessions.evaluate',
+      outputContract: outputContract({ evaluation: worldForgeEvaluationOutput }, ['evaluation']),
       capability: 'planning.simulation.read',
       destructive: false,
       projectAllowed: true,
@@ -229,6 +353,10 @@ export class WorldForgeToolAdapter {
 
     register({
       id: 'organism.worldforge.scenarios.release',
+      outputContract: outputContract({
+        released: { type: 'boolean', enum: [true] },
+        scenarioId: boundedString(160),
+      }, ['released', 'scenarioId']),
       capability: 'planning.simulation.state',
       destructive: false,
       projectAllowed: true,
