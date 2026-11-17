@@ -30,7 +30,11 @@ export type ActionOutcomeClass =
   | 'idempotency-key-required'
   | 'approval-required'
   | 'approval-invalid'
-  | 'approval-storage-failed';
+  | 'approval-storage-failed'
+  | 'undo-plan-required'
+  | 'undo-preparation-failed'
+  | 'undo-plan-invalid'
+  | 'undo-policy-refused';
 
 
 const EXECUTOR_ENTERED_OUTCOMES: ReadonlySet<ActionOutcomeClass> = new Set([
@@ -110,6 +114,8 @@ export interface ActionExecutionLedgerEntry {
   /** Deterministic per logical operation; retained even when a crash leaves the receipt pending. */
   executionId?:string; toolId?:string; decisionId?:string; autonomous?:boolean;
   response?:ToolExecution; responseOmitted?:boolean;
+  /** Prepared, request-bound recovery plan, committed before the executor may run. */
+  undoPlan?:ActionUndoFirstPlan;
 }
 
 export interface ToolExecutionContext {
@@ -180,6 +186,10 @@ export interface ToolDefinition {
   competence?:(input:Record<string,unknown>)=>ToolCompetence;
   /** Declares the independent source identity for verified external postconditions. */
   observationSource?: ToolObservationSource;
+  /** Require recovery preparation before any keyed side effect. */
+  requiresUndoFirst?: boolean;
+  /** Read-only preflight that produces a bounded, durable rollback/compensation contract. */
+  undoFirst?:ActionUndoFirstDefinition;
   /** Explicitly governed capability class; inferred from ID/capability when omitted. */
   permissionClass?: ActionToolPermissionClass;
 }
@@ -195,6 +205,77 @@ export interface ToolExecution {
   /** Opaque provider receipt identity, not the raw response body. */
   providerReceiptId?:string;
   idempotencyStatus?:'recorded'|'replayed'|'recovery-required'|'conflict'|'payload-omitted'|'reconciled'|'confirmed-not-executed';
+}
+
+export type ActionUndoFirstStrategy = 'rollback'|'compensate'|'manual'|'irreversible';
+export interface ActionUndoFirstPreparation {
+  strategy:ActionUndoFirstStrategy;
+  summary:string;
+  /** SHA-256 fingerprint of the state captured before the primary action. */
+  beforeStateHash:string;
+  /** SHA-256 fingerprint expected immediately after the primary action. */
+  afterStateHash?:string;
+  compensation?:{toolId:string;input:Record<string,unknown>};
+  verification?:{toolId:string;input:Record<string,unknown>};
+  manualSteps?:string[];
+  irreversibleReason?:string;
+}
+export interface ActionUndoFirstPlan extends ActionUndoFirstPreparation {
+  version:1;
+  preparedAt:number;
+  executionId:string;
+  requestHash:string;
+  /** Integrity fingerprint over the complete normalized plan and its binding. */
+  planHash:string;
+}
+export interface ActionUndoFirstPreparationContext extends ToolExecutionContext { requestHash:string; }
+export interface ActionUndoFirstDefinition {
+  /** Must be read-only: capture the baseline and describe a safe compensating path before execution. */
+  prepare:(input:Record<string,unknown>,context:ActionUndoFirstPreparationContext)=>Promise<ActionUndoFirstPreparation>|ActionUndoFirstPreparation;
+}
+export interface ActionUndoExecutionOptions {
+  compensationApprovalId?:string;
+  verificationBeforeApprovalId?:string;
+  verificationAfterApprovalId?:string;
+}
+export type ActionUndoExecutionStatus = 'restored'|'already-restored'|'manual-intervention-required'|'irreversible'|'not-undoable'|'operation-unresolved'|'operation-not-verified'|'plan-invalid'|'state-diverged'|'state-verification-failed'|'compensation-failed'|'restoration-unverified';
+export interface ActionUndoExecutionResult {
+  status:ActionUndoExecutionStatus;
+  reason?:string;
+  originalExecutionId?:string;
+  planHash?:string;
+  manualSteps?:string[];
+  precondition?:ToolExecution;
+  compensation?:ToolExecution;
+  postcondition?:ToolExecution;
+}
+
+function isPlainRecord(value:unknown):value is Record<string,unknown> {
+  if(!value || typeof value!=='object' || Array.isArray(value)) return false;
+  const proto=Object.getPrototypeOf(value);
+  return proto===Object.prototype || proto===null;
+}
+function isSha256(value:unknown):value is string { return typeof value==='string' && /^[a-f0-9]{64}$/.test(value); }
+function hasSensitiveRecoveryKey(value:unknown,depth=0):boolean {
+  if(depth>8) return true;
+  if(Array.isArray(value)) return value.some(item=>hasSensitiveRecoveryKey(item,depth+1));
+  if(!isPlainRecord(value)) return false;
+  return Object.entries(value).some(([key,child])=>/(?:secret|token|password|authorization|api[-_]?key|cookie|private[-_]?key|credential)/i.test(key) || hasSensitiveRecoveryKey(child,depth+1));
+}
+function restoreUndoPlan(value:unknown,executionId:string|undefined,requestHash:string):ActionUndoFirstPlan|undefined {
+  try {
+    if(!isPlainRecord(value) || value.version!==1 || !executionId || value.executionId!==executionId || value.requestHash!==requestHash || !isSha256(value.planHash)) return undefined;
+    const plan=structuredClone(value) as ActionUndoFirstPlan;
+    const {planHash,...core}=plan;
+    if(sha256Stable(core)!==planHash || new TextEncoder().encode(stableJson(core)).byteLength>16*1024) return undefined;
+    if(!['rollback','compensate','manual','irreversible'].includes(String(plan.strategy)) || typeof plan.summary!=='string' || !plan.summary.trim() || plan.summary.length>500 || !isSha256(plan.beforeStateHash) || !Number.isFinite(plan.preparedAt) || plan.preparedAt<0) return undefined;
+    if(plan.strategy==='compensate' || plan.strategy==='rollback') {
+      if(!isSha256(plan.afterStateHash) || !isPlainRecord(plan.compensation) || typeof plan.compensation.toolId!=='string' || !plan.compensation.toolId.trim() || !isPlainRecord(plan.compensation.input) || hasSensitiveRecoveryKey(plan.compensation.input) || !isPlainRecord(plan.verification) || typeof plan.verification.toolId!=='string' || !plan.verification.toolId.trim() || !isPlainRecord(plan.verification.input) || hasSensitiveRecoveryKey(plan.verification.input)) return undefined;
+    } else if(plan.strategy==='manual') {
+      if(!Array.isArray(plan.manualSteps) || plan.manualSteps.length<1 || plan.manualSteps.length>8 || plan.manualSteps.some(step=>typeof step!=='string' || !step.trim() || step.length>500)) return undefined;
+    } else if(typeof plan.irreversibleReason!=='string' || plan.irreversibleReason.trim().length<8 || plan.irreversibleReason.length>500) return undefined;
+    return plan;
+  } catch { return undefined; }
 }
 const DEFAULT_ALLOWED:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const unavailableVerification:OutcomeVerification={verified:false,basis:'none',confidence01:0,externalObservation:false,notes:'not executed'};
@@ -247,6 +328,7 @@ const READ_ONLY_ACTION_TOKENS = new Set([
 ]);
 function requiresDurableIdempotency(tool:ToolDefinition|undefined):boolean {
   if (!tool) return false;
+  if (tool.requiresUndoFirst === true || Boolean(tool.undoFirst)) return true;
   if (tool.requiresIdempotencyKey === true || tool.destructive === true) return true;
   const text=`${tool.id} ${tool.capability}`.toLocaleLowerCase();
   const tokens=text.split(/[^a-z0-9]+/).filter(Boolean);
@@ -505,6 +587,8 @@ export class ActionGateway {
         ...(typeof row.toolId==='string'&&row.toolId.length<=64?{toolId:row.toolId}:{}),
         ...(typeof row.decisionId==='string'&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
         ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{})};
+      const restoredUndoPlan=restoreUndoPlan(row.undoPlan,safe.executionId,safe.requestHash);
+      if(restoredUndoPlan) safe.undoPlan=restoredUndoPlan;
       if(row.status==='completed' && row.response && typeof row.response==='object') {
         try {
           const response=structuredClone(row.response) as ToolExecution;
@@ -580,7 +664,7 @@ export class ActionGateway {
       id:t.id,capability:t.capability,destructive:t.destructive,projectAllowed:Boolean(t.projectAllowed),
       hasInputContract:Boolean(t.inputContract),inputSchema:t.inputContract?structuredClone(t.inputContract):undefined,
       hasOutputContract:Boolean(t.outputContract),outputSchema:t.outputContract?structuredClone(t.outputContract):undefined,
-      permissionClass:t.permissionClass??inferPermissionClass(t.id,t.capability)??'none',requiresApproval:Boolean(t.permissionClass??inferPermissionClass(t.id,t.capability)),hasAvailabilityGate:Boolean(t.availability),hasCompetenceGate:Boolean(t.competence),hasOutcomeVerifier:Boolean(t.verify),hasReceiptReconciliation:Boolean(t.reconcile),requiresIdempotencyKey:requiresDurableIdempotency(t),
+      permissionClass:t.permissionClass??inferPermissionClass(t.id,t.capability)??'none',requiresApproval:Boolean(t.permissionClass??inferPermissionClass(t.id,t.capability)),hasAvailabilityGate:Boolean(t.availability),hasCompetenceGate:Boolean(t.competence),hasOutcomeVerifier:Boolean(t.verify),hasReceiptReconciliation:Boolean(t.reconcile),requiresIdempotencyKey:requiresDurableIdempotency(t),requiresUndoFirst:Boolean(t.requiresUndoFirst||t.undoFirst),hasUndoFirstPreparation:Boolean(t.undoFirst),
     }));
   }
 
@@ -616,6 +700,7 @@ export class ActionGateway {
         id:tool.id, capability:tool.capability, permissionClass,
         riskTier:tool.destructive || permissionClass==='self-modification' ? 'critical' as const : highRisk ? 'elevated' as const : 'standard' as const,
         required, present, gaps,
+        undoFirst:{required:durableReceiptRequired,present:Boolean(tool.undoFirst),enforced:Boolean(tool.requiresUndoFirst||tool.undoFirst)},
       };
     });
     const count=(key:'inputContract'|'outputContract'|'durableReceipt'|'independentVerifier'|'providerReconciliation')=>
@@ -636,6 +721,7 @@ export class ActionGateway {
         independentVerifiers:{present:count('independentVerifier'),required:required('independentVerifier')},
         providerReconciliation:{present:count('providerReconciliation'),required:required('providerReconciliation')},
       },
+      undoFirstCoverage:{sideEffecting:tools.filter(tool=>tool.required.durableReceipt).length,prepared:tools.filter(tool=>tool.undoFirst.present).length,enforced:tools.filter(tool=>tool.undoFirst.enforced).length,missing:tools.filter(tool=>tool.required.durableReceipt&&!tool.undoFirst.present).length},
       tools,
     };
   }
@@ -731,6 +817,87 @@ export class ActionGateway {
       try { return await task; }
       finally { const current=this.inFlight.get(keyHash); if(current?.promise===task) this.inFlight.delete(keyHash); }
     }
+  }
+
+  private normalizeUndoFirstPlan(id:string,raw:ActionUndoFirstPreparation,context:ActionUndoFirstPreparationContext,options:ActionGatewayExecutionOptions):{plan?:ActionUndoFirstPlan;failure?:'undo-plan-invalid'|'undo-policy-refused'} {
+    try {
+      if(!raw || typeof raw!=='object' || !['rollback','compensate','manual','irreversible'].includes(String(raw.strategy))) return {failure:'undo-plan-invalid'};
+      const summary=typeof raw.summary==='string'?raw.summary.normalize('NFKC').trim():'';
+      const beforeStateHash=typeof raw.beforeStateHash==='string'?raw.beforeStateHash.toLowerCase():'';
+      if(!summary || summary.length>500 || !isSha256(beforeStateHash)) return {failure:'undo-plan-invalid'};
+      const core:any={version:1,strategy:raw.strategy,summary,beforeStateHash,preparedAt:Date.now(),executionId:context.executionId,requestHash:context.requestHash};
+      if(raw.strategy==='compensate' || raw.strategy==='rollback') {
+        const afterStateHash=typeof raw.afterStateHash==='string'?raw.afterStateHash.toLowerCase():'';
+        if(!isSha256(afterStateHash) || !isPlainRecord(raw.compensation) || typeof raw.compensation.toolId!=='string' || !raw.compensation.toolId.trim() || !isPlainRecord(raw.compensation.input) || hasSensitiveRecoveryKey(raw.compensation.input) || !isPlainRecord(raw.verification) || typeof raw.verification.toolId!=='string' || !raw.verification.toolId.trim() || !isPlainRecord(raw.verification.input) || hasSensitiveRecoveryKey(raw.verification.input)) return {failure:'undo-plan-invalid'};
+        const compensationTool=this.tools.get(raw.compensation.toolId);
+        const verificationTool=this.tools.get(raw.verification.toolId);
+        if(!compensationTool || compensationTool.id===id || !requiresDurableIdempotency(compensationTool) || !compensationTool.verify || !compensationTool.reconcile) return {failure:'undo-plan-invalid'};
+        if(!verificationTool || requiresDurableIdempotency(verificationTool) || !verificationTool.verify) return {failure:'undo-plan-invalid'};
+        const compensationInput=structuredClone(raw.compensation.input);
+        const verificationInput=structuredClone(raw.verification.input);
+        if(!validateToolInputContract(compensationInput,compensationTool.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE).valid || !validateToolInputContract(verificationInput,verificationTool.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE).valid) return {failure:'undo-plan-invalid'};
+        core.afterStateHash=afterStateHash;
+        core.compensation={toolId:compensationTool.id,input:compensationInput};
+        core.verification={toolId:verificationTool.id,input:verificationInput};
+      } else if(raw.strategy==='manual') {
+        if(!Array.isArray(raw.manualSteps) || raw.manualSteps.length<1 || raw.manualSteps.length>8 || raw.manualSteps.some(step=>typeof step!=='string' || !step.trim() || step.length>500)) return {failure:'undo-plan-invalid'};
+        if(options.autonomous || !this.permissionClassFor(id)) return {failure:'undo-policy-refused'};
+        core.manualSteps=raw.manualSteps.map(step=>step.normalize('NFKC').trim());
+      } else {
+        const irreversibleReason=typeof raw.irreversibleReason==='string'?raw.irreversibleReason.normalize('NFKC').trim():'';
+        if(irreversibleReason.length<8 || irreversibleReason.length>500) return {failure:'undo-plan-invalid'};
+        if(options.autonomous || !this.permissionClassFor(id)) return {failure:'undo-policy-refused'};
+        core.irreversibleReason=irreversibleReason;
+      }
+      if(new TextEncoder().encode(stableJson(core)).byteLength>16*1024) return {failure:'undo-plan-invalid'};
+      return {plan:{...core,planHash:sha256Stable(core)}};
+    } catch { return {failure:'undo-plan-invalid'}; }
+  }
+
+  /** Execute a previously prepared rollback/compensation through the same ActionGateway authority. */
+  async executeUndoForKey(idempotencyKey:string,reason='undo-request',options:ActionUndoExecutionOptions={}):Promise<ActionUndoExecutionResult> {
+    const key=typeof idempotencyKey==='string'?idempotencyKey.trim():'';
+    if(!key || key.length>160 || /[\\u0000-\\u001f\\u007f]/.test(key)) return {status:'operation-unresolved',reason:'invalid-original-idempotency-key'};
+    const keyHash=sha256Stable({idempotencyKey:key});
+    const lookup=await this.findLedgerEntry(keyHash);
+    if(lookup.error) return {status:'operation-unresolved',reason:lookup.error};
+    const entry=lookup.entry;
+    if(!entry || entry.status==='pending') return {status:'operation-unresolved',reason:entry?'original-action-outcome-pending':'original-action-receipt-not-found',...(entry?.executionId?{originalExecutionId:entry.executionId}:{})};
+    if(!entry.response || entry.response.ok!==true || entry.response.verified!==true || entry.response.outcomeClass!=='executed-verified') return {status:'operation-not-verified',reason:'automatic-compensation-requires-a-verified-original-outcome',...(entry.executionId?{originalExecutionId:entry.executionId}:{})};
+    const plan=restoreUndoPlan(entry.undoPlan,entry.executionId,entry.requestHash);
+    if(!plan) return {status:'not-undoable',reason:'no-valid-durable-undo-plan-is-bound-to-this-execution',originalExecutionId:entry.executionId};
+    if(plan.strategy==='manual') return {status:'manual-intervention-required',reason:plan.summary,originalExecutionId:entry.executionId,planHash:plan.planHash,manualSteps:structuredClone(plan.manualSteps??[])};
+    if(plan.strategy==='irreversible') return {status:'irreversible',reason:plan.irreversibleReason??plan.summary,originalExecutionId:entry.executionId,planHash:plan.planHash};
+    const compensationTool=this.tools.get(plan.compensation!.toolId);
+    const verificationTool=this.tools.get(plan.verification!.toolId);
+    if(!compensationTool || !requiresDurableIdempotency(compensationTool) || !compensationTool.verify || !compensationTool.reconcile ||
+       !verificationTool || requiresDurableIdempotency(verificationTool) || !verificationTool.verify) {
+      return {status:'plan-invalid',reason:'registered-compensation-or-verification-tool-no-longer-matches-the-plan',originalExecutionId:entry.executionId,planHash:plan.planHash};
+    }
+    const verificationOptions=(approvalId:string|undefined)=>({decisionId:entry.decisionId,autonomous:false,approvalId});
+    const precondition=await this.executeTool(plan.verification!.toolId,structuredClone(plan.verification!.input),`${reason}:undo-precondition`,verificationOptions(options.verificationBeforeApprovalId));
+    const preHash=typeof precondition.result?.stateHash==='string'?precondition.result.stateHash.toLowerCase():'';
+    if(!precondition.ok || !precondition.verified || precondition.verification.externalObservation!==true || !isSha256(preHash)) {
+      return {status:'state-verification-failed',reason:'pre-compensation-state-could-not-be-independently-verified',originalExecutionId:entry.executionId,planHash:plan.planHash,precondition};
+    }
+    if(preHash===plan.beforeStateHash) return {status:'already-restored',reason:'external-state-already-matches-the-captured-pre-action-baseline',originalExecutionId:entry.executionId,planHash:plan.planHash,precondition};
+    if(preHash!==plan.afterStateHash) return {status:'state-diverged',reason:'current-external-state-matches-neither-the-captured-baseline-nor-the-expected-post-action-state',originalExecutionId:entry.executionId,planHash:plan.planHash,precondition};
+    const compensationKey=`undo-${sha256Stable({originalKeyHash:keyHash,planHash:plan.planHash})}`;
+    const compensation=await this.executeTool(plan.compensation!.toolId,structuredClone(plan.compensation!.input),`${reason}:compensation`,{
+      idempotencyKey:compensationKey,
+      ...(entry.decisionId?{decisionId:entry.decisionId}:{}),
+      autonomous:false,
+      ...(options.compensationApprovalId?{approvalId:options.compensationApprovalId}:{}),
+    });
+    if(!compensation.ok || !compensation.verified || compensation.outcomeClass!=='executed-verified') {
+      return {status:'compensation-failed',reason:'compensation-did-not-produce-a-verified-terminal-outcome;its-own-durable-receipt-remains-authoritative',originalExecutionId:entry.executionId,planHash:plan.planHash,precondition,compensation};
+    }
+    const postcondition=await this.executeTool(plan.verification!.toolId,structuredClone(plan.verification!.input),`${reason}:verify-restoration`,verificationOptions(options.verificationAfterApprovalId));
+    const postHash=typeof postcondition.result?.stateHash==='string'?postcondition.result.stateHash.toLowerCase():'';
+    if(!postcondition.ok || !postcondition.verified || postcondition.verification.externalObservation!==true || postHash!==plan.beforeStateHash) {
+      return {status:'restoration-unverified',reason:'compensation-ran-but-independent-readback-did-not-confirm-the-original-state',originalExecutionId:entry.executionId,planHash:plan.planHash,precondition,compensation,postcondition};
+    }
+    return {status:'restored',reason:'independent-readback-matches-the-captured-pre-action-state',originalExecutionId:entry.executionId,planHash:plan.planHash,precondition,compensation,postcondition};
   }
 
   private async findLedgerEntry(keyHash:string):Promise<{entry?:ActionExecutionLedgerEntry;error?:string;source?:'archive'|'hot'}> {
@@ -865,7 +1032,23 @@ export class ActionGateway {
     }
     const permission=await this.consumeDirectActionApproval(id,input,options.approvalId,options,'execute');
     if(!permission.ok) return this.result(id,this.tools.get(id)?.capability??'unknown',permission.reason??'user-approval-required',permission.reason==='approval-storage-failed'?'approval-storage-failed':permission.reason==='user-approval-required'?'approval-required':'approval-invalid',`exec-${randomUUID()}`,{error:permission.reason??'user-approval-required'},'protected tool execution requires a persisted one-time user approval bound to this exact request');
-    const pending:ActionExecutionLedgerEntry={keyHash,requestHash,status:'pending',recordedAt:Date.now(),executionId:this.executionIdForKey(keyHash),toolId:id,decisionId:options.decisionId,autonomous:Boolean(options.autonomous)};
+    const definition=this.tools.get(id);
+    if(definition?.requiresUndoFirst===true && !definition.undoFirst) {
+      return this.result(id,definition.capability,'undo-plan-required','undo-plan-required',this.executionIdForKey(keyHash),{error:'undo-plan-required'},'this tool is declared Undo-First but has no preflight recovery preparation');
+    }
+    let undoPlan:ActionUndoFirstPlan|undefined;
+    if(definition?.undoFirst) {
+      const context:ActionUndoFirstPreparationContext={executionId:this.executionIdForKey(keyHash),idempotencyKey:keyHash,decisionId:options.decisionId,autonomous:Boolean(options.autonomous),requestHash};
+      let preparation:ActionUndoFirstPreparation;
+      try { preparation=await definition.undoFirst.prepare(structuredClone(input),structuredClone(context)); }
+      catch(error) {
+        return this.result(id,definition.capability,'undo-preparation-failed','undo-preparation-failed',context.executionId,{error:'undo-preparation-failed',reason:String((error as Error)?.message??'preparation-error').slice(0,160)},'Undo-First preparation failed before executor entry; the primary side effect was not started');
+      }
+      const normalized=this.normalizeUndoFirstPlan(id,preparation,context,options);
+      if(normalized.failure) return this.result(id,definition.capability,normalized.failure,normalized.failure,context.executionId,{error:normalized.failure},'the proposed recovery plan failed validation or policy before executor entry');
+      undoPlan=normalized.plan;
+    }
+    const pending:ActionExecutionLedgerEntry={keyHash,requestHash,status:'pending',recordedAt:Date.now(),executionId:this.executionIdForKey(keyHash),toolId:id,decisionId:options.decisionId,autonomous:Boolean(options.autonomous),...(undoPlan?{undoPlan}:{})};
     const admissionResult=await this.admitPendingReceipt(pending,id);
     if(admissionResult) return admissionResult;
     return this.executeWithLedger(id,input,reason,pending,options);

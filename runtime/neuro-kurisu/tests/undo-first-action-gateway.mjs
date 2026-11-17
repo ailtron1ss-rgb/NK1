@@ -32,11 +32,14 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false } =
     capability: 'state.read',
     destructive: false,
     execute: async () => ({ stateHash: state.hash }),
-    verify: async () => ({
+    verify: async ({ result }) => ({
       verified: true,
       basis: 'external-postcondition',
       confidence01: 1,
       externalObservation: true,
+      observationId: `readback-${String(result.stateHash).slice(0, 12)}`,
+      expectedPostcondition: String(result.stateHash),
+      observedPostcondition: String(result.stateHash),
       notes: 'independent read-only state fingerprint',
     }),
   });
@@ -48,10 +51,10 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false } =
     requiresIdempotencyKey: true,
     verify: async () => ({
       verified: true,
-      basis: 'external-postcondition',
+      basis: 'tool-contract',
       confidence01: 1,
-      externalObservation: true,
-      notes: 'compensation accepted and independently verified',
+      externalObservation: false,
+      notes: 'compensation tool contract accepted the state reset',
     }),
     reconcile: async () => ({
       status: 'unknown',
@@ -97,10 +100,10 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false } =
     } : {}),
     verify: async () => ({
       verified: true,
-      basis: 'external-postcondition',
+      basis: 'tool-contract',
       confidence01: 1,
-      externalObservation: true,
-      notes: 'mutated state is independently visible',
+      externalObservation: false,
+      notes: 'primary action output contract is valid; independent state fingerprint is checked by the undo verifier',
     }),
     execute: async () => {
       events.push('execute');
