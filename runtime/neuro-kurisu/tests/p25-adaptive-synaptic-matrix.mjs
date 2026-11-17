@@ -173,6 +173,51 @@ const request = (overrides = {}) => ({
 
 {
   const matrix = new AdaptiveSynapticMatrixEngine();
+  const strongestPhysics = candidate({
+    competenceByTask01: { language: 0.94, reasoning: 0.94 },
+  });
+  const interposedBiology = candidate({
+    id: 'biology-lora-v1',
+    artifactRef: 'file:adapters/biology-lora-v1.safetensors',
+    artifactSha256: hash('e'),
+    conflictGroup: 'biology-domain',
+    competenceByTask01: { language: 0.93, reasoning: 0.93 },
+  });
+  const thirdPhysics = candidate({
+    id: 'physics-lora-v2',
+    artifactRef: 'file:adapters/physics-lora-v2.safetensors',
+    artifactSha256: hash('f'),
+    conflictGroup: 'physics-domain',
+    competenceByTask01: { language: 0.92, reasoning: 0.92 },
+  });
+  matrix.registerCandidate(strongestPhysics);
+  matrix.registerCandidate(interposedBiology);
+  matrix.registerCandidate(thirdPhysics);
+  matrix.activateValidated(manifest(strongestPhysics), () => true);
+  matrix.activateValidated(manifest(interposedBiology, {
+    validation: {
+      ...manifest().validation,
+      reportId: 'holdout-biology-2026-11',
+      reportSha256: hash('g'),
+      holdoutDatasetRef: 'dataset://biology/holdout-v2',
+    },
+  }), () => true);
+  matrix.activateValidated(manifest(thirdPhysics, {
+    validation: {
+      ...manifest().validation,
+      reportId: 'holdout-physics-v2-2026-11',
+      reportSha256: hash('h'),
+      holdoutDatasetRef: 'dataset://physics/holdout-v4',
+    },
+  }), () => true);
+  const interposedAmbiguity = matrix.select(request());
+  assert.equal(interposedAmbiguity.mode, 'base-fallback',
+    'a cross-group adapter between same-group competitors must not hide their ambiguity');
+  assert.equal(interposedAmbiguity.reason, 'ambiguous-adapter-competition');
+}
+
+{
+  const matrix = new AdaptiveSynapticMatrixEngine();
   matrix.registerCandidate(candidate());
   matrix.activateValidated(manifest(), () => true);
   matrix.observe('physics-lora-v1', false, 900);
