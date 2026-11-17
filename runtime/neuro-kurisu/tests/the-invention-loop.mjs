@@ -232,7 +232,7 @@ assert.equal(rejected.outcomes[0].passed, false);
 
 // The signed receipt is bound to the exact invention and prototype; it cannot be replayed.
 const reuse = startInvention(loop, protocol);
-assert.throws(() => loop.recordOutcome(reuse.id, validPrimary), /attestation-context-mismatch/);
+assert.throws(() => loop.recordOutcome(reuse.id, validPrimary), /signed-artifact-context-mismatch/);
 assert.equal(loop.snapshot().records.find(record => record.id === reuse.id).outcomes.length, 0);
 
 // Signed critique contents cannot be changed after signing.
