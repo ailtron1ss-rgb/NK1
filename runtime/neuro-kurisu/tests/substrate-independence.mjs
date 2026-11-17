@@ -194,7 +194,10 @@ assert.ok(stale.reasons.includes('calibration-transfer-lineage-mismatch'));
 
 const rolledBack = reloadedEngine.rollbackBackend();
 assert.equal(rolledBack.activeBackendId, source.backendId);
-assert.equal(engine.preferredRoute(), 'llama.cpp');
+assert.equal(reloadedEngine.preferredRoute(), 'llama.cpp');
+assert.equal(rolledBack.lastEvaluation, null,
+  'rollback consumes the evaluation so it cannot be replayed for another promotion');
+assert.throws(() => reloadedEngine.promoteBackend(target.backendId, evaluation.evaluationId), /promotion-evidence-required/);
 
 
 
