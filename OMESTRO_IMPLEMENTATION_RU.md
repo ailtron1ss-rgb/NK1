@@ -2,13 +2,13 @@
 
 Дата: 2026-11-17
 
-Ветка: \`aspect/omestro-integrated-cognition-20261117\`
+Ветка: \`aspect/omestro-integrated-cognition-20261117-r2\`
 
-База: \`workpass70-source\` @ \`1e83a011fc677ff20f2348570322bd562181d9ff\`
+База: \`workpass70-source\` @ \`bee2b133fdedd48723bc49b3eedae5f0df929c1c\`
 
 ## Что сделано
 
-OmeStro реализован как интеграционный слой над уже существующими подсистемами NK1, а не как второй параллельный runtime. Новые контракты экспортируются из \`src/organism/index.ts\`; \`OmeStroIntegrationKernel\` соединяет их с P25/P28, portability и morphogenesis engines.
+OmeStro реализован как интеграционный слой над уже существующими подсистемами NK1, а не как второй параллельный runtime. Новые контракты экспортируются из \`src/organism/index.ts\`; \`OrganismCore\` создаёт \`OmeStroIntegrationKernel\` с прямыми ссылками на канонические \`CognitiveImmuneSystem\`, P25, P28, \`NeuroDigitalEvolutionEngine.substratePortability\` и \`NeuralMorphogenesisEngine\`. Новые OmeStro-ledger сохраняются в \`facets.advanced.omeStro\`, восстанавливаются при старте и входят в hot/full projection и durable checkpoints. Так не создаются конкурирующие копии P25/P28/immune-состояния.
 
 | Класс статуса | Количество | Смысл |
 |---|---:|---|
@@ -61,7 +61,8 @@ OmeStro реализован как интеграционный слой над
 - \`src/organism/system/OmeStroCognitiveGovernance.ts\` — intent compiler, ChronoTruth, negative-space ledger, open-loop radar, undo-first plan, consequence ecology, substrate migration gate.
 - \`src/organism/system/OmeStroDevelopmentProtocol.ts\` — developmental genome, World Forge, Parliament, Invention Loop, NeuroForge intake, shared futures, dyadic scope, commons gate, fork comparison.
 - \`src/organism/system/OmeStroNeuralAdaptation.ts\` — adapter evidence validation/routing, ephemeral plasticity, bounded state controls, sparse mask, inert JIT capsules and promotion gates.
-- \`src/organism/system/OmeStroIntegrationKernel.ts\` — integration with the established P25, P28, SubstratePortability and NeuralMorphogenesis classes.
+- \`src/organism/system/OmeStroIntegrationKernel.ts\` — dependency-injected composition with canonical CognitiveImmuneSystem, P25, P28, SubstratePortability and NeuralMorphogenesis owners.
+- \`src/organism/core/OrganismCore.ts\` + \`core/types.ts\` — canonical runtime wiring, startup restore, state projection/checkpoint persistence and Core-facing governance methods.
 - \`tests/omestro-integrated-foundations.mjs\` — functional and negative-path regression tests.
 - \`src/organism/index.ts\` — public barrel exports.
 - \`package.json\` — \`test:omestro\` command.
@@ -79,7 +80,7 @@ npm run typecheck
 
 ### Проверки, выполненные на PR HEAD
 
-Дата: 2026-11-17. Временный shallow clone использовался только для чтения/проверки; изменения отправлялись через GitHub в эту branch.
+Дата: 2026-11-17. Временный shallow clone использовался только для чтения/проверки; изменения отправлялись через GitHub в эту branch. Проверки локально зелёные, а GitHub Actions validation matrix также завершилась успешно по состоянию на последнюю проверку.
 
 - `node --experimental-strip-types tests/omestro-integrated-foundations.mjs` → `OMESTRO_INTEGRATED_FOUNDATIONS=PASS` (32 идеи, ChronoTruth, genome DAG, adapter routing, TTL plasticity и injection canonical owners).
 - `node scripts/typecheck-runtime.mjs` → `TYPECHECK=PASS mode=tsc compiler=app-lock` с закреплённым TypeScript 5.9.3.
