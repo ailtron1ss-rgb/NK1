@@ -470,6 +470,31 @@ assert.equal(
   'missing-evaluator-policy',
 );
 
+// A preregistered capture whose InventionLoop record was lost during a damaged
+// recovery cannot be silently reused by the next cognitive cycle.
+const staleRuntime = new EvidenceResearchSubsystemRuntime(resolveKey);
+const staleExperiment = staleRuntime.intrinsicExperimentGenerator.generate({
+  uncertainty: 0.97, predictionError: 0.1, novelty: 0.1, goals: [],
+});
+const staleProject = staleRuntime.scientificMethod.create(
+  staleExperiment.question, staleExperiment.hypothesis, staleExperiment.action, ['stale-capture-test'],
+);
+const staleCapture = staleRuntime.captureGeneratedExperiment(staleExperiment, staleProject.id, 103);
+const staleRecord = staleRuntime.preregisterCapturedExperiment(staleCapture.id, {
+  ...coreEvaluationPlan,
+  testFingerprint: digest('stale-validation-manifest'),
+  holdoutTestFingerprint: digest('stale-holdout-manifest'),
+  primarySeed: 114,
+  replicationSeeds: [115, 116, 117, 118, 119],
+  holdoutSeeds: [120, 121, 122, 123, 124],
+});
+assert.ok(staleRecord);
+staleRuntime.inventionLoop.restore({
+  version: 4, records: [], accepted: 0, rejected: 0, quarantinedRecords: 0,
+});
+assert.equal(staleRuntime.findCapturedExperiment(staleExperiment), null);
+assert.equal(staleRuntime.capturedInventionsSnapshot().length, 0);
+
 // Late host key configuration matches OrganismCore's constructor ordering.
 const lateConfiguredFabric = new OrganismSystemFabric();
 lateConfiguredFabric.configureInventionVerifierKeyResolver(resolveKey);
