@@ -386,6 +386,26 @@ export class SharedFutureEngine {
     return { decisionId, toolId, consequenceId, expectedPostcondition };
   }
 
+  findActionBindingForCanonicalDecision(decisionId: string): {
+    sharedFutureDecisionId: string;
+    scenarioId: string;
+    binding: SharedFutureActionBinding;
+  } | null {
+    let canonicalId: string;
+    try { canonicalId = idField(decisionId, 'action-binding-decision-id'); }
+    catch { return null; }
+    const matches = this.state.decisions.filter((row) => row.actionBinding?.decisionId === canonicalId);
+    if (matches.length !== 1) return null;
+    const decision = matches[0]!;
+    const scenario = this.state.scenarios.find((row) => row.id === decision.scenarioId);
+    if (!scenario || !scenario.consequences.some((row) => row.id === decision.actionBinding!.consequenceId)) return null;
+    return {
+      sharedFutureDecisionId: decision.id,
+      scenarioId: decision.scenarioId,
+      binding: structuredClone(decision.actionBinding!),
+    };
+  }
+
   private canonicalPostcondition(value: string): string {
     return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
   }
