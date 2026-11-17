@@ -146,7 +146,7 @@ class NeuralProsthesisEngineTests(unittest.TestCase):
             finally:
                 mismatched.close()
 
-    def test_training_provenance_is_bound_into_the_signed_artifact_manifest(self):
+    def test_training_provenance_is_bound_into_the_manifest_digest(self):
         with tempfile.TemporaryDirectory() as tmp:
             artifact = Path(tmp) / "adapter"
             training = {
@@ -186,6 +186,27 @@ class NeuralProsthesisEngineTests(unittest.TestCase):
                     Path(tmp) / "adapter",
                     training_evidence=invalid,
                 )
+
+    def test_adapter_artifact_directory_symlink_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "artifact"
+            self.bank.save_adapter("kurisu-reasoning-v1", artifact)
+            link = Path(tmp) / "artifact-link"
+            try:
+                link.symlink_to(artifact, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("directory symlinks are unavailable on this platform")
+            other = NeuralProsthesisBank(
+                TinyModel(),
+                model_id="nk1/tiny-test",
+                model_revision="a" * 40,
+                layer_path="layers",
+            )
+            try:
+                with self.assertRaises(ArtifactError):
+                    other.load_adapter(link)
+            finally:
+                other.close()
 
     def test_candidate_export_requires_immutable_base_model_revision(self):
         unpinned = NeuralProsthesisBank(
