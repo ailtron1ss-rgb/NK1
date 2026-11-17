@@ -21,7 +21,7 @@ export interface ParliamentDispatchInput {
   maxConcurrent?:number; maxTotalTokens?:number;
 }
 export interface ParliamentDispatchResult {
-  version:1; status:'completed'|'partial'|'timed-out'|'unavailable'|'invalid-input'|'evidence-rejected';
+  version:1; status:'completed'|'partial'|'timed-out'|'unavailable'|'invalid-input'|'evidence-unavailable'|'evidence-rejected';
   candidateId:string; decision:ParliamentDecision; roleResults:ParliamentRoleRunResult[];
   startedAt:number; completedAt:number; elapsedMs:number;
   requestedTokenBudget:number; perRoleTokenBudget:number; concurrencyLimit:number;
@@ -173,6 +173,7 @@ export class CognitiveParliamentDispatcher {
     verifiedEvidence=this.parliament.resolveEvidenceReferences([...evidenceMap].map(([id,claimKey])=>({id,claimKey})));
     verifiedEvidenceMap=new Map(verifiedEvidence.map(row=>[row.id,row.claimKey]));
     unverifiedEvidenceCount=Math.max(0,evidenceMap.size-verifiedEvidenceMap.size);
+    if(verifiedEvidence.length===0)return finish('evidence-unavailable');
     // Do not ask the models to reason over a partial/tainted user-supplied evidence set.
     if(unverifiedEvidenceCount>0)return finish('evidence-rejected');
     const configuredCount=ROLES.filter(role=>Boolean(this.executors[role])).length;

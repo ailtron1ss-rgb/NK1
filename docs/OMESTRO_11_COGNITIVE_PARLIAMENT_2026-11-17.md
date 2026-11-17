@@ -34,8 +34,8 @@ Model provider, model identity and independence group come only from the host at
 The composition root connects `GovernanceSubsystemRuntime.cognitiveParliament` to the research subsystem's canonical `EvidenceFirewallEngine` and `ProjectResearchSession`. The adapter attaches a title, bounded excerpt and source URL only when source key, lineage and content hash match the exact firewall observation. Arbitrary or unmatched page text is not sent to roles. It also exposes `cognitiveParliamentDispatcher` and accepts a role→executor registry through `OrganismSystemFabric`.
 
 The dispatcher:
-- rejects the entire evidence-reference set before any model call if even one supplied reference is unverified;
-- fans out to exactly six role slots with a configurable hard concurrency cap (default 3), a global deadline (default 25 seconds), and a requested token budget divided equally across role calls (default 4096 total);
+- stops before inference if there are no verified references (`evidence-unavailable`), and rejects the entire evidence-reference set before any model call if even one supplied reference is unverified (`evidence-rejected`);
+- fans out to exactly six role slots with a configurable hard concurrency cap (default 3), a global deadline (default 25 seconds), and a requested generation/output-token ceiling divided equally across role calls (default 4096 total; prompt/input tokens are outside this ceiling);
 - propagates cancellation to adapters and still returns on deadline if an adapter ignores AbortSignal;
 - accepts only bounded JSON role reports, rejects extra fields and invented evidence references, and never accepts model-supplied model/provider/execution identity;
 - records each role's outcome (completed, unavailable, failed, invalid-output or timed-out) and deliberates only over successfully parsed reports.

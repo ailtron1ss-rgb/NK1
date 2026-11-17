@@ -103,6 +103,16 @@ assert.equal(mixedCalls,0,'models must not be called on a partially tainted refe
 assert.equal(mixed.unverifiedEvidenceCount,1);
 
 
+const noEvidenceCalls=0;
+let noEvidenceCallCount=noEvidenceCalls;
+const noEvidenceExecutors=makeExecutors(()=>{noEvidenceCallCount++;});
+const emptyEvidence=await new CognitiveParliamentDispatcher(parliament,noEvidenceExecutors).dispatch({
+  candidateId:'no-evidence',risk:'low',task:'Do not call models without canonical evidence.',
+});
+assert.equal(emptyEvidence.status,'evidence-unavailable');
+assert.equal(emptyEvidence.decision.status,'needs-evidence');
+assert.equal(noEvidenceCallCount,0,'empty evidence must stop before inference calls');
+
 // Missing providers never synthesize role reports or an approval.
 const unavailable=new CognitiveParliamentDispatcher(parliament,{}).dispatch({
   candidateId:'no-providers',risk:'low',task:'Do not proceed without evidence.',evidenceReferences:evidence,
