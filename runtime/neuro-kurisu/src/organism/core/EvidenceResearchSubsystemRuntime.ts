@@ -132,18 +132,29 @@ export class EvidenceResearchSubsystemRuntime {
     const fingerprint = this.capturedCandidateFingerprint(experiment);
     const now = Date.now();
     const projects = new Set(this.scientificMethod.snapshot().projects.map(project => project.id));
+    const inventionRecords = new Map(
+      this.inventionLoop.snapshot().records.map(record => [record.id, record]),
+    );
+    const staleCaptureIds = new Set<string>();
     for (const candidate of this.capturedCandidates) {
-      if (candidate.candidateFingerprint !== fingerprint ||
-          !projects.has(candidate.scientificProjectId)) continue;
-      if (candidate.status === 'awaiting-preregistration' || now - candidate.createdAt < 24 * 60 * 60 * 1000) {
+      if (candidate.candidateFingerprint !== fingerprint) continue;
+      if (!projects.has(candidate.scientificProjectId)) {
+        staleCaptureIds.add(candidate.id);
+        continue;
+      }
+      if (candidate.status === 'awaiting-preregistration') return structuredClone(candidate);
+      const record = candidate.inventionId ? inventionRecords.get(candidate.inventionId) : undefined;
+      if (!record) {
+        staleCaptureIds.add(candidate.id);
+        continue;
+      }
+      if (now - candidate.createdAt < 24 * 60 * 60 * 1000 ||
+          (record.stage !== 'accepted' && record.stage !== 'rejected')) {
         return structuredClone(candidate);
       }
-      if (candidate.inventionId) {
-        const record = this.inventionLoop.snapshot().records.find(item => item.id === candidate.inventionId);
-        if (record && record.stage !== 'accepted' && record.stage !== 'rejected') {
-          return structuredClone(candidate);
-        }
-      }
+    }
+    if (staleCaptureIds.size) {
+      this.capturedCandidates = this.capturedCandidates.filter(candidate => !staleCaptureIds.has(candidate.id));
     }
     return null;
   }
