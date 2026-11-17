@@ -46,6 +46,7 @@ const stateFile = path.join(dir, 'organism.json');
 let baseCalls = 0;
 let adapterCalls = 0;
 let failAdapter = false;
+let badReceipt = false;
 const baseInvoker = async () => {
   baseCalls += 1;
   return { text: 'base response', backend: 'test-base', latencyMs: 3 };
@@ -54,7 +55,12 @@ const adapterInvoker = async (_request, selected) => {
   adapterCalls += 1;
   assert.equal(selected.id, candidate.id);
   if (failAdapter) throw new Error('synthetic-adapter-load-failure');
-  return { text: 'specialized response', backend: 'test-specialist', latencyMs: 4 };
+  return {
+    text: 'specialized response', backend: 'test-specialist', latencyMs: 4,
+    modelId: candidate.baseModelId,
+    modelRevisionSha256: candidate.baseModelRevisionSha256,
+    appliedAdapterSha256: badReceipt ? hash('z') : candidate.artifactSha256,
+  };
 };
 const makeRuntime = () => new OrganismRuntime({
   stateFile,
@@ -93,12 +99,19 @@ try {
   assert.equal(adapterCalls, 1);
   assert.equal(baseCalls, 1, 'successful specialist inference must not also invoke the base model');
 
-  failAdapter = true;
-  const recovered = await runtime.step('Try the specialist, but preserve the base fallback.');
-  assert.equal(recovered.language?.text, 'base response');
+  badReceipt = true;
+  const rejectedReceipt = await runtime.step('Reject a specialist response that attests the wrong weight digest.');
+  assert.equal(rejectedReceipt.language?.text, 'base response');
   assert.equal(adapterCalls, 2);
-  assert.equal(baseCalls, 2, 'adapter failure must execute the original base invoker exactly once');
-  assert.ok(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures >= 1);
+  assert.equal(baseCalls, 2, 'wrong adapter weight attestation must execute the original base invoker exactly once');
+  assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1);
+
+  failAdapter = true;
+  const recovered = await runtime.step('Recover from an adapter loader exception.');
+  assert.equal(recovered.language?.text, 'base response');
+  assert.equal(adapterCalls, 3);
+  assert.equal(baseCalls, 3, 'adapter loader failure must execute the original base invoker exactly once');
+  assert.ok(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures >= 2);
 
   await runtime.stop();
   runtime = makeRuntime();
@@ -110,7 +123,7 @@ try {
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'disabled');
   const disabled = await runtime.step('Confirm the disabled profile cannot intercept this request.');
   assert.equal(disabled.language?.text, 'base response');
-  assert.equal(adapterCalls, 2);
+  assert.equal(adapterCalls, 3);
 
   // Re-enablement is an explicit operator action and must present a fresh,
   // trusted manifest again; it is never triggered by ordinary routing.
@@ -118,7 +131,7 @@ try {
   await runtime.activateSynapticAdapter(manifest);
   const reactivated = await runtime.step('Use the explicitly reactivated specialist.');
   assert.equal(reactivated.language?.text, 'specialized response');
-  assert.equal(adapterCalls, 3);
+  assert.equal(adapterCalls, 4);
   await runtime.stop();
 
   console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX_RUNTIME=PASS');
