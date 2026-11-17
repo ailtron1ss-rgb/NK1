@@ -1,5 +1,6 @@
 import type { WorldModel2 } from './WorldModel2.ts';
 import { SharedFutureEngine, defaultSharedFutureState, type SharedFutureState } from './SharedFutureEngine.ts';
+import { WorldForge, type WorldForgeCase, type WorldForgeEvaluation, type WorldForgeActionStep, type WorldForgeSplit } from './WorldForge.ts';
 
 export interface FutureSimulationResult {
   path: Array<{ action: string; reward: number; uncertainty: number; confidence: number }>;
@@ -24,6 +25,20 @@ export const defaultFutureSimulator = (): FutureSimulatorState => ({
 export class FutureSimulator {
   private state = defaultFutureSimulator();
   readonly sharedFuture = new SharedFutureEngine();
+  /** Ephemeral synthetic lab; evaluator keys are intentionally not persisted. */
+  readonly worldForge = new WorldForge();
+
+  generateWorldForgeScenarios(input: { split: WorldForgeSplit; seed: number; count?: number; difficulty01?: number }): WorldForgeCase[] {
+    return this.worldForge.generate(input);
+  }
+
+  evaluateWorldForgeScenario(scenario: WorldForgeCase, trace: WorldForgeActionStep[]): WorldForgeEvaluation {
+    return this.worldForge.evaluate(scenario, trace);
+  }
+
+  releaseWorldForgeScenario(scenarioId: string): void {
+    this.worldForge.releaseEvaluator(scenarioId);
+  }
 
   restore(s: FutureSimulatorState | undefined): void {
     this.state = {
