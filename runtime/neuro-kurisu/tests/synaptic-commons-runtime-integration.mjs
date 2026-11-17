@@ -17,6 +17,7 @@ const publicPem = pair => pair.publicKey.export({ type: 'spki', format: 'pem' })
 const privatePem = pair => pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 process.env.NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON = JSON.stringify({ 'runtime-publisher': publicPem(publisher) });
 process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON = JSON.stringify({ 'runtime-evaluator': publicPem(attestor) });
+process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON = JSON.stringify(['b'.repeat(64)]);
 
 const now = Date.now();
 const environmentFingerprint = 'e'.repeat(64);
