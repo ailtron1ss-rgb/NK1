@@ -58,6 +58,9 @@ const request = (overrides = {}) => ({
   assert.throws(() => matrix.registerCandidate(candidate({ maximumUncertainty01: '0.68' })),
     /uncertainty/i,
     'adapter profile limits must use typed numeric evidence');
+  assert.throws(() => matrix.registerCandidate(candidate({ competenceByTask01: { language: '0.9', reasoning: 0.94 } })),
+    /competence/i,
+    'task competence cannot be coerced from a string');
 
   assert.equal(matrix.select(request()).mode, 'base-fallback',
     'unvalidated candidates must never enter an inference route');
@@ -203,6 +206,19 @@ const request = (overrides = {}) => ({
   for (let i = 0; i < 6; i += 1) repeatedFailure.observe('physics-lora-v1', false, 100, 10_000 + i * 1_000);
   assert.equal(repeatedFailure.snapshot().adapters[0].status, 'quarantined',
     'a specialist that repeatedly fails across cooldown windows must be quarantined');
+  assert.throws(() => repeatedFailure.activateValidated(manifest(), () => true),
+    /revalidation/i,
+    'quarantine cannot be cleared by replaying the same stale evaluation report');
+  const freshManifest = manifest(candidate(), {
+    validation: {
+      ...manifest().validation,
+      reportId: 'holdout-physics-revalidated-2026-11',
+      reportSha256: hash('g'),
+      holdoutDatasetRef: 'dataset://physics/holdout-v3',
+    },
+  });
+  assert.equal(repeatedFailure.activateValidated(freshManifest, () => true).status, 'active',
+    'a new signed holdout report can explicitly revalidate a quarantined specialist');
 }
 
 console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX=PASS');
