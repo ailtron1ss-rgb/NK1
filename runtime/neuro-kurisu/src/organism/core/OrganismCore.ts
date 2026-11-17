@@ -11842,8 +11842,8 @@ export class OrganismCore {
         await this.persistConstitutionEvolution();
         return proposal;
     }
-    async constitutionEvolutionReview(id:string,input:import('../cognition/evolution/ConstitutionEvolutionEngine.ts').ConstitutionReviewInput) {
-        const proposal=this.governanceSubsystem.constitutionEvolution.review(id,input);
+    async constitutionEvolutionReview(id:string,artifact:unknown) {
+        const proposal=this.governanceSubsystem.constitutionEvolution.review(id,artifact);
         await this.persistConstitutionEvolution();
         return proposal;
     }
