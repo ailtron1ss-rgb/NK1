@@ -181,7 +181,10 @@ export class EvidenceResearchSubsystemRuntime {
       .map(value => value.slice('source-memory:'.length));
     const goalMarkers = project.provenance.filter(value => value.startsWith('goal:'));
     if (captured.source === 'dream-association') {
-      if (!project.provenance.includes('dream-association') || dreamMarkers.length !== 1) return false;
+      if (!project.provenance.includes('dream-association') ||
+          dreamMarkers.length !== 1 ||
+          memoryMarkers.length !== 2 ||
+          new Set(memoryMarkers).size !== 2) return false;
     } else if (project.provenance.includes('dream-association') ||
         dreamMarkers.length > 0 || memoryMarkers.length > 0) {
       return false;
@@ -206,13 +209,23 @@ export class EvidenceResearchSubsystemRuntime {
 
   private capturedCandidateFingerprint(experiment: IntrinsicExperiment): string {
     const source = experiment.source === 'dream-association' ? 'dream-association' : 'intrinsic';
+    // Fingerprint exactly the bounded values admitted into the canonical
+    // ScientificMethodEngine project, not longer caller-supplied raw strings.
+    const dreamDerived = source === 'dream-association';
+    const sourceMemoryIds = dreamDerived && Array.isArray(experiment.sourceMemoryIds)
+      ? [...new Set(experiment.sourceMemoryIds
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map(value => value.normalize('NFKC').trim().slice(0, 160)))]
+        .slice(0, 2)
+        .sort()
+      : [];
     return createHash('sha256').update([
       source,
-      experiment.question.normalize('NFKC').trim(),
-      experiment.hypothesis.normalize('NFKC').trim(),
-      experiment.linkedGoal ?? '',
-      experiment.dreamId ?? '',
-      ...(experiment.sourceMemoryIds ?? []).slice().sort(),
+      clampTextPrediction(experiment.question, ''),
+      clampTextPrediction(experiment.hypothesis, ''),
+      clampTextPrediction(experiment.linkedGoal, ''),
+      dreamDerived ? clampTextPrediction(experiment.dreamId, '') : '',
+      ...sourceMemoryIds,
     ].join('\u0000')).digest('hex');
   }
 
