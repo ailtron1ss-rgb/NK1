@@ -5,6 +5,7 @@ import type {
   IntentExtractionProvider,
 } from '../cognition/IntentCompiler.ts';
 import { IntentCompiler } from '../cognition/IntentCompiler.ts';
+import { sha256Stable } from '../core/StableSerialization.ts';
 import type { ActionGateway, ToolExecution } from './ActionGateway.ts';
 import type { IntentBoundAction, IntentBridgeReconciliationResult, IntentBridgeResult, IntentGatewayPort } from './IntentActionGatewayBridge.ts';
 import { IntentActionGatewayBridge } from './IntentActionGatewayBridge.ts';
@@ -35,11 +36,16 @@ export interface TrustedAutonomousDecisionEvidence {
   reason: string;
   sourceText: string;
 }
+export type IntentExecutionPhase = 'prepared' | 'pending-reconciliation' | 'reconciliation-attempted' | 'completed' | 'blocked';
 export interface IntentExecutionLink {
   at: number;
   contractId: string;
   toolId: string;
   operation: 'execute' | 'reconcile';
+  phase?: IntentExecutionPhase;
+  /** SHA-256 digest only; the original idempotency key is never persisted here. */
+  idempotencyKeyHash?: string;
+  decisionId?: string;
   executionId?: string;
   outcomeClass?: ToolExecution['outcomeClass'];
   idempotencyStatus?: ToolExecution['idempotencyStatus'];
@@ -279,16 +285,70 @@ export class IntentExecutionRuntime {
     return this.approved.get(contractId) ?? null;
   }
 
+  private idempotencyKeyHash(action: IntentBoundAction): string | undefined {
+    const key = action?.options?.idempotencyKey;
+    if (typeof key !== 'string' || !key.trim() || key.trim().length > 160 || /[\\u0000-\\u001f\\u007f]/.test(key)) return undefined;
+    return sha256Stable({ idempotencyKey: key.trim() });
+  }
+
+  private pendingIntentExecution(contractId: string, toolId: string): IntentExecutionLink | undefined {
+    return [...this.executions].reverse().find(row =>
+      row.contractId === contractId && row.toolId === toolId && row.operation === 'execute' &&
+      (row.phase === 'prepared' || row.phase === 'pending-reconciliation' || row.phase === 'reconciliation-attempted'),
+    );
+  }
+
+  private pushExecutionLink(row: IntentExecutionLink): void {
+    this.executions.push(row);
+    if (this.executions.length > MAX_EXECUTIONS) this.executions.splice(0, this.executions.length - MAX_EXECUTIONS);
+  }
+
   async execute(
     contract: IntentContract,
     action: IntentBoundAction,
     gateway: IntentGatewayPort,
+    beforeDispatch?: () => Promise<void>,
   ): Promise<IntentBridgeResult> {
     if (!contract || this.approved.get(contract.id) !== contract) {
       return { executed: false, contractId: null, reason: 'intent-contract-not-owned-or-restored-by-this-core' };
     }
+    const gate = this.compiler.gate(contract, action?.toolId);
+    if (!gate.allowed) return { executed: false, contractId: null, reason: gate.reason };
+    const keyHash = this.idempotencyKeyHash(action);
+    const prior = this.pendingIntentExecution(contract.id, gate.action);
+    if (prior && prior.phase !== 'prepared') {
+      if (!keyHash || prior.idempotencyKeyHash !== keyHash) {
+        return { executed: false, contractId: contract.id, reason: 'intent-execution-reconciliation-required' };
+      }
+      return { executed: false, contractId: contract.id, reason: 'intent-execution-reconciliation-required' };
+    }
+    if (prior?.phase === 'prepared' && prior.idempotencyKeyHash !== keyHash) {
+      return { executed: false, contractId: contract.id, reason: 'intent-prepared-operation-key-mismatch' };
+    }
+    const link: IntentExecutionLink = prior ?? {
+      at: this.clock(),
+      contractId: contract.id,
+      toolId: gate.action,
+      operation: 'execute',
+      phase: 'prepared',
+      ...(keyHash ? { idempotencyKeyHash: keyHash } : {}),
+      ...(action.options?.decisionId ? { decisionId: action.options.decisionId } : {}),
+    };
+    if (!prior) this.pushExecutionLink(link);
+    // A durable link is checkpointed before the canonical gateway can write its
+    // own pending receipt or enter a side-effect executor.
+    await beforeDispatch?.();
     const result = await this.bridge.execute(contract, action, gateway);
-    if (result.executed) this.record(contract, action, 'execute', result.result);
+    link.at = this.clock();
+    link.phase = result.executed
+      ? (['idempotency-recovery-required', 'idempotency-storage-failed', 'idempotency-ledger-full', 'executed-partial', 'executed-unverified', 'executed-contradicted'].includes(String(result.result.outcomeClass))
+          ? 'pending-reconciliation' : 'completed')
+      : 'blocked';
+    if (result.executed) {
+      link.executionId = result.result.executionId;
+      link.outcomeClass = result.result.outcomeClass;
+      link.idempotencyStatus = result.result.idempotencyStatus;
+    }
     return result;
   }
 
@@ -296,12 +356,52 @@ export class IntentExecutionRuntime {
     contract: IntentContract,
     action: IntentBoundAction,
     gateway: IntentGatewayPort,
+    beforeLookup?: () => Promise<void>,
   ): Promise<IntentBridgeReconciliationResult> {
     if (!contract || this.approved.get(contract.id) !== contract) {
       return { attempted: false, contractId: null, reason: 'intent-contract-not-owned-or-restored-by-this-core' };
     }
+    const gate = this.compiler.gate(contract, action?.toolId, 'reconcile');
+    if (!gate.allowed) return { attempted: false, contractId: null, reason: gate.reason };
+    const keyHash = this.idempotencyKeyHash(action);
+    if (!keyHash) return { attempted: false, contractId: contract.id, reason: 'original-idempotency-key-required' };
+    const pending = this.pendingIntentExecution(contract.id, gate.action);
+    if (!pending || pending.idempotencyKeyHash !== keyHash) {
+      return { attempted: false, contractId: contract.id, reason: 'matching-pending-intent-execution-not-found' };
+    }
+    pending.phase = 'reconciliation-attempted';
+    pending.at = this.clock();
+    const link: IntentExecutionLink = {
+      at: this.clock(),
+      contractId: contract.id,
+      toolId: gate.action,
+      operation: 'reconcile',
+      phase: 'reconciliation-attempted',
+      idempotencyKeyHash: keyHash,
+      ...(action.options?.decisionId ? { decisionId: action.options.decisionId } : {}),
+    };
+    this.pushExecutionLink(link);
+    await beforeLookup?.();
     const result = await this.bridge.reconcile(contract, action, gateway);
-    if (result.attempted) this.record(contract, action, 'reconcile', result.result);
+    if (result.attempted) {
+      const outcome = result.result;
+      link.at = this.clock();
+      link.executionId = outcome.executionId;
+      link.outcomeClass = outcome.outcomeClass;
+      link.idempotencyStatus = outcome.idempotencyStatus;
+      const resolved = outcome.idempotencyStatus === 'reconciled' ||
+        outcome.idempotencyStatus === 'confirmed-not-executed' ||
+        outcome.outcomeClass === 'reconciled-not-executed' ||
+        outcome.verified === true;
+      if (resolved) {
+        link.phase = 'completed';
+        pending.phase = 'completed';
+        pending.at = this.clock();
+        pending.outcomeClass = outcome.outcomeClass;
+        pending.executionId = outcome.executionId;
+        pending.idempotencyStatus = outcome.idempotencyStatus;
+      }
+    }
     return result;
   }
 
@@ -332,8 +432,12 @@ export class IntentExecutionRuntime {
         typeof item.contractId === 'string' &&
         typeof item.toolId === 'string' &&
         (item.operation === 'execute' || item.operation === 'reconcile') &&
-        Number.isSafeInteger(item.at) && item.at >= 0,
-      ).map(item => structuredClone(item));
+        Number.isSafeInteger(item.at) && item.at >= 0 &&
+        (item.phase === undefined || ['prepared','pending-reconciliation','reconciliation-attempted','completed','blocked'].includes(item.phase)) &&
+        (item.idempotencyKeyHash === undefined || /^[a-f0-9]{64}$/i.test(item.idempotencyKeyHash)),
+      ).map(item => structuredClone(item).phase === undefined
+        ? ({ ...structuredClone(item), phase: item.outcomeClass === 'executed-unverified' || item.outcomeClass === 'executed-contradicted' || item.outcomeClass === 'executed-partial' || item.outcomeClass === 'idempotency-recovery-required' ? 'pending-reconciliation' : 'completed' } as IntentExecutionLink)
+        : structuredClone(item));
     }
   }
 
