@@ -222,6 +222,48 @@ assert.throws(() => capacityRadar.register({
 }), /open-loop-capacity-exhausted/);
 assert.deepEqual(capacityRadar.snapshot(), atCapacity, 'capacity exhaustion must not silently evict active obligations');
 
+const terminalCapacityRadar = new OpenLoopRadar(() => now);
+const protectedPrerequisite = terminalCapacityRadar.register({
+  title: 'Keep verified prerequisite history', kind: 'task', owner: 'system',
+  accepted: true, source: 'terminal-capacity-test',
+});
+const dependentOfTerminal = terminalCapacityRadar.register({
+  title: 'Active task depending on verified history', kind: 'task', owner: 'system',
+  accepted: true, source: 'terminal-capacity-test', dependencies: [protectedPrerequisite.id],
+});
+terminalCapacityRadar.fulfill(protectedPrerequisite.id, {
+  kind: 'execution-receipt', reference: 'protected-prerequisite-receipt', verifiedAt: now,
+});
+const evictableTerminal = terminalCapacityRadar.register({
+  title: 'Old terminal history eligible only under capacity pressure', kind: 'task',
+  owner: 'system', accepted: true, source: 'terminal-capacity-test',
+});
+terminalCapacityRadar.fulfill(evictableTerminal.id, {
+  kind: 'execution-receipt', reference: 'evictable-terminal-receipt', verifiedAt: now,
+});
+for (let index = 0; index < 509; index += 1) {
+  terminalCapacityRadar.register({
+    title: 'Active capacity item ' + index, kind: 'task', owner: 'system',
+    accepted: true, source: 'terminal-capacity-test',
+  });
+}
+assert.equal(terminalCapacityRadar.snapshot().records.length, 512,
+  'terminal history must be retained until the bounded registry is full');
+const admittedAfterPrune = terminalCapacityRadar.register({
+  title: 'Admit new work by pruning only safe terminal history', kind: 'task',
+  owner: 'system', accepted: true, source: 'terminal-capacity-test',
+});
+const afterTerminalPrune = terminalCapacityRadar.snapshot();
+const retainedIds = new Set(afterTerminalPrune.records.map(record => record.id));
+assert.equal(afterTerminalPrune.records.length, 512);
+assert.equal(retainedIds.has(admittedAfterPrune.id), true);
+assert.equal(retainedIds.has(protectedPrerequisite.id), true,
+  'terminal prerequisites referenced by an active obligation must never be evicted');
+assert.equal(retainedIds.has(dependentOfTerminal.id), true,
+  'capacity pruning must not remove active obligations');
+assert.equal(retainedIds.has(evictableTerminal.id), false,
+  'only unreferenced terminal history may be evicted when the registry is full');
+
 const detached = restored.snapshot();
 detached.records[0].title = 'tampered';
 assert.notEqual(restored.snapshot().records[0].title, 'tampered');

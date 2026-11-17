@@ -310,10 +310,38 @@ export class OpenLoopRadar {
       if (!this.state.records.some(record => record.id === dependency)) throw new Error('unknown-dependency:' + dependency);
     }
 
-    const retained = this.state.records.filter(record =>
-      !TERMINAL.has(record.status) || protectedTerminalIds.has(record.id) ||
-      (record.idempotencyKey !== null && now - record.updatedAt < IDEMPOTENCY_RETENTION_MS),
+    // Keep terminal history while there is room. Expired idempotency receipts are
+    // no longer needed for retry de-duplication, but are otherwise pruned only
+    // when admission would exceed the bounded record capacity.
+    let retained = this.state.records.filter(record =>
+      !TERMINAL.has(record.status) ||
+      protectedTerminalIds.has(record.id) ||
+      record.idempotencyKey === null ||
+      now - record.updatedAt < IDEMPOTENCY_RETENTION_MS,
     );
+    if (retained.length >= MAX_RECORDS) {
+      const evictable = retained
+        .filter(record =>
+          TERMINAL.has(record.status) &&
+          !protectedTerminalIds.has(record.id) &&
+          (record.idempotencyKey === null || now - record.updatedAt >= IDEMPOTENCY_RETENTION_MS),
+        )
+        .sort((a, b) =>
+          a.updatedAt - b.updatedAt ||
+          a.createdAt - b.createdAt ||
+          a.id.localeCompare(b.id),
+        );
+      const evictedIds = new Set<string>();
+      let slotsNeeded = retained.length - (MAX_RECORDS - 1);
+      for (const record of evictable) {
+        if (slotsNeeded <= 0) break;
+        evictedIds.add(record.id);
+        slotsNeeded -= 1;
+      }
+      if (evictedIds.size > 0) {
+        retained = retained.filter(record => !evictedIds.has(record.id));
+      }
+    }
     if (retained.length >= MAX_RECORDS) throw new Error('open-loop-capacity-exhausted');
 
     const nextSequence = this.state.sequence + 1;
