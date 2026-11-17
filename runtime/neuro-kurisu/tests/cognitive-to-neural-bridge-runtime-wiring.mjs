@@ -15,7 +15,18 @@ async function runRuntime(enabled) {
     enableLanguage: true,
     languageInvoker: async request => {
       requests.push(request);
-      return { text: 'Verified local language response.', backend: 'cognitive-bridge-test', latencyMs: 1 };
+      return {
+        text: 'Verified local language response.',
+        backend: 'cognitive-bridge-test',
+        latencyMs: 1,
+        ...(request.cognitiveControl ? {
+          providerControlReceipt: {
+            provider: 'llama.cpp',
+            templateKwargsSent: true,
+            featureSchema: request.cognitiveControl.featureSchema,
+          },
+        } : {}),
+      };
     },
     stateStore: new MemoryStateStore(),
     worldStateStore: new MemoryStateStore(),
@@ -35,7 +46,7 @@ async function runRuntime(enabled) {
       assert.equal(request.cognitiveControl.featureVector01.length, 43);
       assert.equal(request.cognitiveControl.neuralSnapshotAvailable, true);
       assert.equal(request.cognitiveControl.controlsConfigured.samplingParameters, true);
-      assert.equal(request.cognitiveControl.controlsApplied.activationSteering, false);
+      assert.equal(request.cognitiveControl.controlsConfigured.activationSteering, false);
       const diagnostics = runtime.cognitiveToNeuralBridgeDiagnostics();
       assert.ok(diagnostics.projected > 0);
       assert.ok(diagnostics.samplingControlsConfigured > 0);
@@ -43,12 +54,15 @@ async function runRuntime(enabled) {
       assert.equal(diagnostics.lastFeatureDimensions, 43);
       assert.equal(diagnostics.activationSteeringApplied, 0);
       assert.equal(diagnostics.residualBlockApplied, 0);
+      assert.equal(diagnostics.llamaCppTemplateKwargsSent, 1);
+      assert.equal(diagnostics.lastTemplateControlSchema, 'nk1-cognitive-neural-43-v2');
     } else {
       assert.ok(requests.every(value => value.cognitiveControl === undefined),
         'emergency bypass must pass requests to the provider without mutation');
       const diagnostics = runtime.cognitiveToNeuralBridgeDiagnostics();
       assert.equal(diagnostics.projected, 0);
       assert.ok(diagnostics.bypassed > 0);
+      assert.equal(diagnostics.llamaCppTemplateKwargsSent, 0, 'provider receipts must not be attributed when the bridge was bypassed');
     }
   } finally {
     await runtime.stop();
