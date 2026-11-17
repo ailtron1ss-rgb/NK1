@@ -562,18 +562,27 @@ export class OrganismRuntime {
         if (!restoredSubstrate.restored) {
           await this.journal.write('warn', 'runtime.substrate-state.restore-failed', { reason: restoredSubstrate.reason });
           await this.substrateStateStore.save(this.substrateIndependence.snapshot());
-        } else if (restoredSubstrate.restored && substrateState.lastEvaluation?.accepted === true) {
+        } else if (restoredSubstrate.restored) {
           const verifier = this.config.substrateCalibrationVerifier;
-          if (typeof verifier === 'function') {
-            const reverified = await this.substrateIndependence.verifyStoredEvaluation(
-              substrateState.lastEvaluation.evaluationId,
+          const storedEvaluation = this.substrateIndependence.snapshot().lastEvaluation;
+          let reverified = false;
+          if (storedEvaluation?.accepted === true && typeof verifier === 'function') {
+            reverified = await this.substrateIndependence.verifyStoredEvaluation(
+              storedEvaluation.evaluationId,
               verifier,
             );
             if (!reverified) {
               await this.journal.write('warn', 'runtime.substrate-evaluation.restore-untrusted', {
-                evaluationId: substrateState.lastEvaluation.evaluationId,
+                evaluationId: storedEvaluation.evaluationId,
               });
             }
+          }
+          if (this.substrateIndependence.snapshot().activeProvenance === 'calibrated' && !reverified) {
+            const recovered = this.substrateIndependence.revokeUnverifiedPromotion();
+            await this.journal.write('warn', 'runtime.substrate-promotion.revoked-after-restore', {
+              activeBackendId: recovered.activeBackendId,
+              reason: 'trusted-calibration-receipts-unavailable-or-invalid',
+            });
           }
         }
       }
