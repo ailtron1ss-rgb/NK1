@@ -41,6 +41,10 @@ Place a model already downloaded on disk. The service and trainer do not downloa
 weights. Set a stable model ID and immutable revision/commit identifier; adapter
 artifacts cannot be loaded with the fallback unversioned-local revision.
 
+Set the package directory on Python's import path before using its module commands:
+
+    export PYTHONPATH="$PWD/research/neural-prosthesis"
+
     export NEURO_NP_MODEL_PATH=/models/your-causal-lm
     export NEURO_NP_MODEL_ID=your-org/your-model
     export NEURO_NP_MODEL_REVISION=your-immutable-model-commit
