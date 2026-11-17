@@ -60,10 +60,11 @@ async function post(payload, authorization = true) {
   });
   return { response, body: await response.json() };
 }
-async function dyadicRequest(method, payload, authorization = true) {
+async function dyadicRequest(method, payload, authorization = true, idempotencyKey) {
   const headers = {};
   if (payload !== undefined) headers['content-type'] = 'application/json';
   if (authorization) headers.authorization = `Bearer ${token}`;
+  if (idempotencyKey) headers['idempotency-key'] = idempotencyKey;
   const response = await fetch(`http://127.0.0.1:${port}/api/organism/dyadic-collaboration`, {
     method, headers,
     ...(payload !== undefined ? { body: JSON.stringify(payload) } : {}),
@@ -139,14 +140,16 @@ try {
   const dyadicBefore = await dyadicRequest('GET');
   assert.equal(dyadicBefore.response.status, 200, JSON.stringify(dyadicBefore.body));
 
-  const dyadicRecorded = await dyadicRequest('POST', {
+  const dyadicRecordPayload = {
     action: 'record', kind: 'task', title: 'Coordinate the shared release plan',
     detail: 'Collect the agreed validation and release evidence.',
     confirmed: true,
     // Host must derive actor, provenance, sensitivity and tick itself.
     actor: 'system', sourceRef: 'client-forged-source', evidenceRef: 'client-forged-evidence',
     sensitivity: 'sensitive', tick: -10,
-  });
+  };
+  const dyadicIdempotencyKey = 'dyadic-http-record-retry-1';
+  const dyadicRecorded = await dyadicRequest('POST', dyadicRecordPayload, true, dyadicIdempotencyKey);
   assert.equal(dyadicRecorded.response.status, 201, JSON.stringify(dyadicRecorded.body));
   assert.equal(dyadicRecorded.body.item.author, 'human');
   assert.equal(dyadicRecorded.body.item.status, 'accepted');
@@ -156,6 +159,16 @@ try {
   assert.equal(Object.hasOwn(dyadicRecorded.body.item, 'lastEvidenceRef'), false);
   assert.equal(Object.hasOwn(dyadicRecorded.body.item, 'evidenceRef'), false);
   const dyadicItemId = dyadicRecorded.body.item.id;
+  const dyadicReplay = await dyadicRequest('POST', dyadicRecordPayload, true, dyadicIdempotencyKey);
+  assert.equal(dyadicReplay.response.status, 200, JSON.stringify(dyadicReplay.body));
+  assert.equal(dyadicReplay.body.replayed, true);
+  assert.equal(dyadicReplay.body.item.id, dyadicItemId);
+
+  const dyadicIdempotencyConflict = await dyadicRequest('POST', {
+    ...dyadicRecordPayload, title: 'Conflicting payload under the same key',
+  }, true, dyadicIdempotencyKey);
+  assert.equal(dyadicIdempotencyConflict.response.status, 409);
+  assert.equal(dyadicIdempotencyConflict.body.error, 'idempotency-key-conflict');
 
   const dyadicCorrected = await dyadicRequest('POST', {
     action: 'correct', itemId: dyadicItemId,
