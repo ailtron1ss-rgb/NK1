@@ -32,11 +32,11 @@ The feature is an extension of the existing optional Neural Prosthesis sidecar (
 
 ## Safety and compatibility invariants
 
-- A profile must be JSON plain data with an exact schema; duplicate keys, unknown fields, non-finite values, symlinks, path mismatch and oversized files fail closed.
-- The profile digest must match both its declared digest and a host-owned allowlist.
+- A profile must be JSON plain data with the exact schema; duplicate keys, unknown fields, non-finite values, symlinks, model-binding mismatch and oversized files fail closed.
+- The SHA-256 of the exact raw profile file bytes must match a host-owned allowlist; the profile carries no self-declared digest.
 - The profile must match the exact model/revision/config/layer path/hidden size used by the running sidecar.
-- At most eight target layers are allowed; direction vectors must have exactly the model hidden width and finite non-zero values.
-- The controller accepts only bounded finite strength in [-1, 1]; the per-token delta norm is capped at 10% of the current activation norm.
+- At most eight target layers are allowed; every direction vector must have exactly the model hidden width and finite non-zero values, with a separate finite per-layer strength in [-1, 1].
+- The request-level and per-layer strengths are finite and bounded to [-1, 1]; the per-token delta norm is capped at 10% of the current activation norm.
 - Steering is request-scoped through a ContextVar and reset in a finally block. Shared-model generation remains serialized by the existing sidecar lock.
 - Errors do not silently fall through to an unbounded or partially applied profile. Invalid profiles prevent the service from starting with that configuration; no profile configured means the base model path remains untouched.
 
@@ -48,17 +48,17 @@ The feature is an extension of the existing optional Neural Prosthesis sidecar (
 
 ## Architecture
 
-- New `LayerForceBank` module owns the activation directions, request-local activation context, decoder hooks, profile validation and redacted diagnostics.
-- Existing `TransformersRuntime` loads profile files only from operator-supplied local paths, checks the host allowlist, and applies the operator-selected default profile under the existing generation lock.
+- New `LayerForceBank` module owns the activation directions, request-local activation context, decoder hooks, profile validation and redacted diagnostics. Profiles use schema v1: `schema_version`, `profile_id`, exact `model` binding, `layers` entries with `index`/`direction`/`strength`, and `max_delta_ratio`.
+- Existing `TransformersRuntime` reads `NEURO_NP_LAYER_FORCE_PROFILE_PATHS_JSON`, `NEURO_NP_ALLOWED_LAYER_FORCE_PROFILES_JSON`, and optional `NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE`; it checks the raw-file SHA-256 allowlist and applies only the operator-selected default profile under the existing generation lock.
 - The existing `NeuralProsthesisBank` continues to own residual adapters; the two controllers compose in deterministic hook-registration order, without sharing weights or profile state.
 - The existing P40 provider path and llama.cpp fallback are unchanged.
 
 ## Acceptance criteria
 
-1. An approved profile alters the selected layer's hidden state and preserves the enclosing model output structure.
+1. An approved profile alters the selected layer's hidden state and preserves the enclosing model output structure; its digest is the SHA-256 of the raw profile file.
 2. The measured per-token steering delta never exceeds the configured cap.
 3. No active profile yields bit-identical output to the unsteered model in a deterministic fixture.
-4. A profile from another model revision, a tampered profile, an unapproved digest, an invalid vector, or a symlink path is rejected.
+4. A profile from another model revision, a tampered file, an unapproved raw-file digest, an invalid vector, or a symlink path is rejected.
 5. Activation context is reset after success and exception; one request cannot leak steering into the next.
 6. The existing Neural Prosthesis tests and runtime checks remain green.
 7. Diagnostics disclose profile IDs/digests and bounded counters only.
