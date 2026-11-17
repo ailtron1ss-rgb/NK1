@@ -791,6 +791,7 @@ export class DevelopmentalMultiverseIndependentRunner {
           pairFingerprint,
           sourceRevision: session.sourceRevision,
           environmentFingerprint: session.environmentFingerprint,
+          initialStateFingerprint: snapshot.initialStateFingerprint,
           evaluationNonce: nonce,
         },
       };
