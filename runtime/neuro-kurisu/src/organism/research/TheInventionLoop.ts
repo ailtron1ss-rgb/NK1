@@ -254,9 +254,11 @@ function isPhaseSummary(value: unknown): value is InventionPhaseSummary {
 function isSignedArtifact(value: unknown, contextType: SignedOutcomeMeasurement['contextType']): value is SignedOutcomeArtifact {
   if (!isObject(value) || typeof value.signature !== 'string' || !value.signature.trim() ||
       !isObject(value.payload)) return false;
-  return value.payload.schemaVersion === 1 &&
-    typeof value.payload.artifactId === 'string' && typeof value.payload.runId === 'string' &&
-    value.payload.measurement?.contextType === contextType;
+  const payload = value.payload;
+  const measurement = payload.measurement;
+  return payload.schemaVersion === 1 &&
+    typeof payload.artifactId === 'string' && typeof payload.runId === 'string' &&
+    isObject(measurement) && measurement.contextType === contextType;
 }
 function isOutcome(value: unknown): value is InventionOutcome {
   if (!isObject(value)) return false;
