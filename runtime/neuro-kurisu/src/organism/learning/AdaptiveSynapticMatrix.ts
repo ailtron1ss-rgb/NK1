@@ -121,7 +121,7 @@ const clamp01 = (value: unknown): number => {
 };
 
 function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
   if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
   const record = value as Record<string, unknown>;
   return '{' + Object.keys(record).sort()
@@ -142,8 +142,9 @@ function normalizeCandidate(raw: SynapticAdapterCandidate): SynapticAdapterCandi
     ? [...new Set(raw.tasks)].filter((task): task is SynapticAdapterTask =>
         (SYNAPTIC_ADAPTER_TASKS as readonly string[]).includes(task)).sort()
     : [];
+  if (!Array.isArray(raw.tasks) || tasks.length !== raw.tasks.length) throw new Error('synaptic-adapter-tasks-invalid');
   if (!/^[a-z0-9][a-z0-9._:-]{1,79}$/i.test(id)) throw new Error('synaptic-adapter-id-invalid');
-  if (!/^(file|https?|oci|s3):[^\s]{1,500}$/i.test(artifactRef)) throw new Error('synaptic-adapter-artifact-ref-invalid');
+  if (!/^(file|https?|oci|s3):[^\s]{1,500}$/i.test(artifactRef) || /(^|[\\/])\.\.([\\/]|$)/.test(artifactRef)) throw new Error('synaptic-adapter-artifact-ref-invalid');
   if (!HASH_PATTERN.test(String(raw.artifactSha256 ?? ''))) throw new Error('synaptic-adapter-artifact-sha256-invalid');
   if (raw.adapterFormat !== 'lora' && raw.adapterFormat !== 'qlora') throw new Error('synaptic-adapter-format-invalid');
   if (!Number.isSafeInteger(raw.rank) || raw.rank < 1 || raw.rank > 256) throw new Error('synaptic-adapter-rank-invalid');
@@ -196,8 +197,10 @@ function normalizeValidation(raw: SynapticAdapterValidationEvidence, trainingDat
     throw new Error('synaptic-adapter-training-and-holdout-must-be-disjoint');
   }
   if (!Number.isSafeInteger(pairedSeeds) || pairedSeeds < 5) throw new Error('synaptic-adapter-paired-seed-evidence-insufficient');
-  for (const score of [baselineScore01, adapterScore01, lower95Delta01]) {
-    if (!Number.isFinite(score) || score < -1 || score > 1) throw new Error('synaptic-adapter-validation-score-invalid');
+  if (!Number.isFinite(baselineScore01) || baselineScore01 < 0 || baselineScore01 > 1
+    || !Number.isFinite(adapterScore01) || adapterScore01 < 0 || adapterScore01 > 1
+    || !Number.isFinite(lower95Delta01) || lower95Delta01 < -1 || lower95Delta01 > 1) {
+    throw new Error('synaptic-adapter-validation-score-invalid');
   }
   if (adapterScore01 <= baselineScore01 || lower95Delta01 <= 0) {
     throw new Error('synaptic-adapter-holdout-improvement-not-established');
@@ -298,14 +301,18 @@ export class AdaptiveSynapticMatrixEngine {
       return { mode: 'base-fallback', reason, adapterIds: [], score01: 0 };
     };
     if (!input.executorAvailable) return fallback('adapter-executor-unavailable');
+    if (!(SYNAPTIC_ADAPTER_TASKS as readonly string[]).includes(input.task)) return fallback('routing-task-invalid');
+    if (![input.confidence01, input.uncertainty01, input.resourceRisk01].every(value => Number.isFinite(value) && value >= 0 && value <= 1)) {
+      return fallback('routing-signal-invalid');
+    }
     if (!input.baseModelId || !HASH_PATTERN.test(String(input.baseModelRevisionSha256 ?? ''))) {
       return fallback('base-model-identity-unavailable');
     }
     if (!Number.isSafeInteger(input.contextTokens) || input.contextTokens < 0) return fallback('context-token-count-invalid');
 
-    const confidence = clamp01(input.confidence01);
-    const uncertainty = clamp01(input.uncertainty01);
-    const resourceRisk = clamp01(input.resourceRisk01);
+    const confidence = input.confidence01;
+    const uncertainty = input.uncertainty01;
+    const resourceRisk = input.resourceRisk01;
     const scored = this.state.adapters
       .filter(entry => entry.status === 'active' && entry.cooldownUntil <= now)
       .filter(entry => {
