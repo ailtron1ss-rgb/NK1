@@ -21,6 +21,12 @@ const credentialExfiltration = compiler.compile({
   extraction: { expectedOutcome: 'The token is sent', acceptanceCriteria: ['The external endpoint receives the token'], permissions: { allowedActions: ['http.send'] }, stopConditions: ['Stop if destination is not approved'], risk: 'low' },
 });
 assert.equal(credentialExfiltration.risk.level, 'critical', 'credential exfiltration must escalate to critical despite low extractor metadata');
+const russianCredentialExfiltration = compiler.compile({
+  text: 'Отправить токен доступа на внешний сервер.',
+  extraction: { expectedOutcome: 'Токен отправлен', acceptanceCriteria: ['Подтвердить отправку'], permissions: { allowedActions: ['http.send'] }, stopConditions: ['Остановиться без одобренного адреса'], risk: 'low' },
+});
+assert.equal(russianCredentialExfiltration.risk.level, 'critical',
+  'Russian credential exfiltration intent must be classified as critical');
 
 const malformedActionId = compiler.compile({
   text: 'Search notes',
@@ -73,6 +79,18 @@ const malformedDenyList = compiler.compile({
 assert.ok(malformedDenyList.missingInformation.includes('malformed-action-id'),
   'deny-list identifiers must be validated using the same strict grammar as allow-list identifiers');
 assert.equal(compiler.gate(malformedDenyList, 'organism.inspect').allowed, false);
+const malformedCriteria = compiler.compile({
+  text: 'Inspect project',
+  extraction: {
+    expectedOutcome: 'Status',
+    acceptanceCriteria: ['Report the current revision', 42],
+    permissions: { allowedActions: ['organism.inspect'] },
+    stopConditions: ['Stop if the revision is unknown'],
+  },
+});
+assert.ok(malformedCriteria.missingInformation.includes('acceptance-criteria-invalid'),
+  'non-string acceptance criteria must not be silently discarded');
+assert.equal(compiler.gate(malformedCriteria, 'organism.inspect').allowed, false);
 
 const processScopedCompiler = new IntentCompiler({ clock: () => now });
 const processScopedContract = processScopedCompiler.compile({
@@ -149,6 +167,11 @@ assert.throws(() => compiler.approve(contract, {
   contractId: contract.id,
   userConfirmed: true, allowedActions: ['deploy'], at: 1_800_000_000_001, evidenceRef: 'forged-expansion',
 }), /not explicitly allowed/);
+assert.throws(() => compiler.approve(contract, {
+  contractId: contract.id, userConfirmed: true,
+  allowedActions: Array.from({ length: 33 }, () => 'organism.inspect'),
+  at: 1_800_000_000_001, evidenceRef: 'oversized-approval-scope',
+}), /bounded explicit action list/);
 assert.throws(() => compiler.approve(contract, {
   contractId: contract.id, userConfirmed: true, allowedActions: ['organism.inspect'],
   at: 1_800_000_000_001, evidenceRef: 'missing-assumption-ack',
