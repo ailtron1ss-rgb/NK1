@@ -294,6 +294,95 @@ capProbe.restore({
 });
 assert.equal(capProbe.diagnostics().scenarios, 48, 'restore must clamp the scenario ledger to its capacity');
 
+
+const hardening = new SharedFutureEngine();
+assert.equal(typeof hardening.setCanonicalGoalResolver, 'function', 'Shared Future must accept the organism canonical-goal resolver');
+hardening.setCanonicalGoalResolver((goalId) => goalId === 'goal-canonical');
+const canonicalLink = hardening.createScenario({
+  id: 'canonical-goal-scenario',
+  title: 'Scenario bound to an existing organism goal',
+  goalLinks: [{ id: 'goal-canonical', owner: 'user', relationship: 'supports' }],
+});
+assert.equal(canonicalLink.goalLinks[0].id, 'goal-canonical');
+assert.throws(() => hardening.createScenario({
+  id: 'orphan-goal-scenario',
+  title: 'Scenario with a deleted or fabricated goal',
+  goalLinks: [{ id: 'goal-does-not-exist', owner: 'user', relationship: 'supports' }],
+}), /canonical-goal-not-found/);
+
+const hysteresis = new SharedFutureEngine();
+hysteresis.createScenario({
+  id: 'budget-hysteresis',
+  title: 'Budget review with hysteresis',
+  revisionSignals: [{
+    id: 'budget-floor',
+    kind: 'metric-below',
+    metricKey: 'budget',
+    threshold: 50,
+    description: 'Budget is below the agreed floor.',
+  }],
+});
+assert.deepEqual(hysteresis.observeSignal({
+  scenarioId: 'budget-hysteresis', metricKey: 'budget', metricValue: 40, at: 10,
+}).triggered, ['budget-floor']);
+hysteresis.resolveReview({
+  scenarioId: 'budget-hysteresis', action: 'confirm', note: 'Reviewed with the owner.', at: 20,
+}, 'system');
+assert.deepEqual(hysteresis.observeSignal({
+  scenarioId: 'budget-hysteresis', metricKey: 'budget', metricValue: 40, at: 30,
+}).triggered, [], 'a continuously violated metric must not spam repeated review alerts');
+assert.deepEqual(hysteresis.observeSignal({
+  scenarioId: 'budget-hysteresis', metricKey: 'budget', metricValue: 60, at: 40,
+}).triggered, [], 'returning above the threshold rearms the signal without triggering it');
+assert.deepEqual(hysteresis.observeSignal({
+  scenarioId: 'budget-hysteresis', metricKey: 'budget', metricValue: 40, at: 50,
+}).triggered, ['budget-floor'], 'a new threshold crossing must create a fresh review request');
+
+const deferred = new SharedFutureEngine();
+deferred.createScenario({
+  id: 'deferred-review',
+  title: 'A review with a due date',
+  revisionSignals: [{ id: 'manual-review', kind: 'manual', description: 'Owner requested a review.' }],
+});
+deferred.observeSignal({ scenarioId: 'deferred-review', signalId: 'manual-review', at: 1000 });
+deferred.resolveReview({
+  scenarioId: 'deferred-review', action: 'defer', deferDays: 1, note: 'Review tomorrow.', at: 2000,
+}, 'system');
+assert.equal(typeof deferred.listReviews, 'function', 'review queue must be inspectable without mutating the scenario');
+assert.equal(deferred.listReviews()[0]?.nextReviewAt, 86_402_000);
+assert.deepEqual(deferred.refresh(86_401_999), []);
+const dueReview = deferred.refresh(86_402_000);
+assert.equal(dueReview.length, 1, 'a deferred review must re-enter the review queue when due');
+assert.match(dueReview[0].reason, /deferred-review-due/);
+assert.equal(deferred.listReviews()[0]?.nextReviewAt, null, 'a due notification must be consumed exactly once');
+assert.deepEqual(deferred.refresh(86_402_001), [], 'the same due review must not emit repeatedly');
+
+const damagedGraph = new SharedFutureEngine();
+damagedGraph.restore({
+  version: 1,
+  scenarios: [
+    { id: 'cycle-a', title: 'A', owner: 'system', status: 'draft', parentId: 'cycle-b' },
+    { id: 'cycle-b', title: 'B', owner: 'system', status: 'draft', parentId: 'cycle-a' },
+    { id: 'cycle-a', title: 'Duplicate A', owner: 'system', status: 'draft', parentId: null },
+  ],
+});
+assert.equal(damagedGraph.diagnostics().scenarios, 2, 'restore must reject duplicate scenario IDs deterministically');
+assert.equal(damagedGraph.getScenario('cycle-a')?.parentId, null, 'restore must break a parent cycle instead of preserving a cyclic scenario graph');
+assert.equal(damagedGraph.getScenario('cycle-b')?.parentId, 'cycle-a');
+
+for (const toolId of [
+  'organism.future.scenarios.create',
+  'organism.future.decisions.propose',
+  'organism.future.signals.observe',
+]) {
+  assert.equal(
+    gateway.listTools().find((row) => row.id === toolId)?.requiresIdempotencyKey,
+    true,
+    toolId + ' mutates the ledger and must require durable idempotency',
+  );
+}
+assert.ok(gateway.listTools().some((row) => row.id === 'organism.future.reviews.list'), 'review queue must be exposed as a read-only organism tool');
+
 console.log(JSON.stringify({
   pass: true,
   scenarios: future.sharedFuture.diagnostics(),
