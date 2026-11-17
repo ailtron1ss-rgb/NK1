@@ -49,6 +49,7 @@ export interface PortableCognitiveTransferV1 {
 
 export interface SubstrateCalibrationTrial {
   trialId: string;
+  transferDigest: string;
   sourceBackendId: string;
   targetBackendId: string;
   taskId: string;
@@ -460,7 +461,7 @@ function normalizeEvaluation(value: unknown): SubstrateMigrationEvaluation | nul
 
 function normalizeTrial(value: unknown): SubstrateCalibrationTrial {
   const row = ownDataRecord(value, [
-    'trialId', 'sourceBackendId', 'targetBackendId', 'taskId', 'taskFamily', 'independenceKey',
+    'trialId', 'transferDigest', 'sourceBackendId', 'targetBackendId', 'taskId', 'taskFamily', 'independenceKey',
     'evaluatorReceiptId', 'holdout', 'taskSuccess01', 'memoryRecall01', 'goalFidelity01',
     'constraintFidelity01', 'identityContinuity01', 'toolContract01', 'sourceLatencyMs', 'targetLatencyMs',
   ]);
@@ -484,6 +485,7 @@ function normalizeTrial(value: unknown): SubstrateCalibrationTrial {
   }
   return {
     trialId: row.trialId as string,
+    transferDigest: row.transferDigest as string,
     sourceBackendId: row.sourceBackendId as string,
     targetBackendId: row.targetBackendId as string,
     taskId: row.taskId as string,
@@ -645,10 +647,13 @@ export class SubstrateIndependenceEngine {
     const encoded = canonicalJson(unsigned as unknown as PortableJson);
     const bytes = Buffer.byteLength(encoded, 'utf8');
     if (bytes > this.maxTransferBytes) fail('portable-transfer-size-limit');
-    return {
+    const transfer: PortableCognitiveTransferV1 = {
       ...unsigned,
       integrity: { algorithm: 'sha256', digest: sha256(encoded), bytes },
     };
+    const verified = this.verifyTransferPackage(transfer);
+    if (!verified.valid) fail('portable-transfer-self-verification-failed');
+    return transfer;
   }
 
   verifyTransferPackage(input: unknown): { valid: boolean; digest: string | null; bytes: number; reasons: string[] } {
@@ -717,14 +722,14 @@ export class SubstrateIndependenceEngine {
     if (this.profiles.has(target.backendId) && profileDigest(this.profiles.get(target.backendId) ?? null) !== profileDigest(target)) {
       reasons.push('target-profile-registry-mismatch');
     }
-    if (target.privacyClass === 'external' && options.allowExternalBackend !== true) reasons.push('external-backend-requires-explicit-consent');
+    if (target.privacyClass !== 'local-only' && options.allowExternalBackend !== true) reasons.push('remote-backend-requires-explicit-consent');
     for (const capability of REQUIRED_CAPABILITIES) {
       if (!target.capabilities.includes(capability)) reasons.push('target-capability-missing:' + capability);
     }
     let reindexRequired = false;
-    if (transfer?.source?.backendId && transfer.source.profileDigest) {
+    if (transfer?.source?.backendId) {
       const source = this.profiles.get(transfer.source.backendId);
-      if (!source || profileDigest(source) !== transfer.source.profileDigest) {
+      if (!transfer.source.profileDigest || !source || profileDigest(source) !== transfer.source.profileDigest) {
         reasons.push('source-profile-unavailable-or-changed');
       } else if (source.embeddingSpaceId && target.embeddingSpaceId && source.embeddingSpaceId !== target.embeddingSpaceId) {
         reindexRequired = true;
@@ -763,16 +768,22 @@ export class SubstrateIndependenceEngine {
     const trials = (input.trials ?? []).map(normalizeTrial);
     const trialIds = new Set<string>();
     const independenceKeys = new Set<string>();
+    const taskIds = new Set<string>();
+    const receiptIds = new Set<string>();
     const taskFamilies = new Set<string>();
     for (const trial of trials) {
+      if (trial.transferDigest !== integrity.digest) reasons.push('calibration-transfer-lineage-mismatch');
       if (trial.sourceBackendId !== sourceBackendId || trial.targetBackendId !== input.targetBackendId) {
         reasons.push('calibration-backend-lineage-mismatch');
       }
-      if (trialIds.has(trial.trialId) || independenceKeys.has(trial.independenceKey)) {
+      if (trialIds.has(trial.trialId) || independenceKeys.has(trial.independenceKey)
+          || taskIds.has(trial.taskId) || receiptIds.has(trial.evaluatorReceiptId)) {
         reasons.push('calibration-independence-collision');
       }
       trialIds.add(trial.trialId);
       independenceKeys.add(trial.independenceKey);
+      taskIds.add(trial.taskId);
+      receiptIds.add(trial.evaluatorReceiptId);
       taskFamilies.add(trial.taskFamily);
     }
     if (taskFamilies.size < this.minDistinctTaskFamilies) reasons.push('calibration-task-family-coverage-insufficient');
@@ -858,7 +869,7 @@ export class SubstrateIndependenceEngine {
       && pending.targetBackendId === targetBackendId
       && pending.transferDigest === evaluation.transferDigest
       && pending.sourceBackendId === evaluation.sourceBackendId;
-    if (this.state.activeBackendId !== null && this.state.activeBackendId !== evaluation.sourceBackendId && !matchingPending) {
+    if (!matchingPending && this.state.activeBackendId !== evaluation.sourceBackendId) {
       fail('substrate-promotion-source-no-longer-active');
     }
     if (pending && !matchingPending) fail('substrate-promotion-transfer-mismatch');
