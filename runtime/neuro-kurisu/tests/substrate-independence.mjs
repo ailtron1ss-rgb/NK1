@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   SubstrateIndependenceEngine,
+  hydratePortableState,
 } from '../src/organism/system/SubstrateIndependenceEngine.ts';
 
 const source = {
