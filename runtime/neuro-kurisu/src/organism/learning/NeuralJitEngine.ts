@@ -64,10 +64,15 @@ export interface NeuralJitCandidate {
 export interface NeuralJitPersistedSnapshot {
   version: 1; splitSalt: string; candidates: NeuralJitCandidate[];
   acceptedTraces: number; rejectedTraces: number; lastDecision: string; lastDecisionAt: number;
+  /** Bounded one-way replay guards; raw provider IDs are never persisted. */
+  seenObservationFingerprints?: string[];
+  seenCaptureFingerprints?: string[];
 }
 
 const MAX_TRACE_COUNT = 1024;
 const MAX_CANDIDATES = 16;
+const MAX_REPLAY_FINGERPRINTS = 4096;
+const MAX_CAPTURE_AGE_MS = 10 * 60_000;
 const MIN_TRAIN_TRACES = 12;
 const MIN_HOLDOUT_TRACES = 8;
 const MIN_HOLDOUT_TASKS = 8;
@@ -78,6 +83,22 @@ const SAFE_ID = /^[a-z0-9][a-z0-9._:-]{1,119}$/i;
 const SAFE_FAMILY = /^[a-z0-9][a-z0-9._:-]{1,79}$/i;
 const clamp = (value: number) => Math.max(-8, Math.min(8, value));
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+
+function restoreFingerprintSet(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const recent = raw.slice(-MAX_REPLAY_FINGERPRINTS * 2);
+  const valid = recent.filter((value): value is string => typeof value === 'string' && HEX_256.test(value));
+  return Array.from(new Set(valid)).slice(-MAX_REPLAY_FINGERPRINTS);
+}
+
+function rememberFingerprint(set: Set<string>, value: string): void {
+  set.add(value);
+  while (set.size > MAX_REPLAY_FINGERPRINTS) {
+    const oldest = set.values().next().value;
+    if (typeof oldest !== 'string') break;
+    set.delete(oldest);
+  }
+}
 
 /** Stable, complete request identity shared by the runtime capture adapter and the JIT gate. */
 export function neuralJitInputFingerprint(binding: ExpectedDecisionOutcomeBinding): string {
@@ -193,7 +214,8 @@ export class NeuralJitEngine {
   private candidates: NeuralJitCandidate[] = [];
   private acceptedTraces = 0;
   private rejectedTraces = 0;
-  private readonly seenObservationIds = new Set<string>();
+  private readonly seenObservationFingerprints = new Set<string>();
+  private readonly seenCaptureFingerprints = new Set<string>();
   private lastDecision = 'idle';
   private lastDecisionAt = 0;
 
@@ -238,6 +260,7 @@ export class NeuralJitEngine {
         !Number.isSafeInteger(seed) || Number(seed) < 0 || Number(seed) > 1_000_000_000 ||
         !Number.isSafeInteger(capturedAt) || Number(capturedAt) <= 0 ||
         Number(capturedAt) > Date.now() + 300_000) return this.reject('invalid-activation-capture-metadata');
+    if (Date.now() - Number(capturedAt) > MAX_CAPTURE_AGE_MS) return this.reject('activation-capture-expired');
     const inputFeatures = vector(dataField(rawCapture, 'inputFeatures'), 256);
     const targetResidual = vector(dataField(rawCapture, 'targetResidual'), 128);
     if (!inputFeatures || !targetResidual) return this.reject('invalid-activation-vector');
@@ -267,7 +290,13 @@ export class NeuralJitEngine {
 
     const observationId = String(verification.observationId ?? '').trim();
     if (!observationId || observationId.length > 180) return this.reject('missing-observation-id');
-    if (this.seenObservationIds.has(observationId)) return this.reject('duplicate-outcome-observation');
+    const observationFingerprint = digest(observationId);
+    const captureFingerprint = digest([
+      capture.captureId, capture.taskFingerprint, capture.modelFingerprint,
+      capture.toolId, capture.executionId, capture.decisionId, capture.inputFingerprint,
+    ].join('\\u0000'));
+    if (this.seenObservationFingerprints.has(observationFingerprint)) return this.reject('duplicate-outcome-observation');
+    if (this.seenCaptureFingerprints.has(captureFingerprint)) return this.reject('duplicate-activation-capture');
     if (this.traces.length >= MAX_TRACE_COUNT) return this.reject('trace-buffer-full');
     const id = digest([capture.captureId, observationId, capture.taskFingerprint, capture.modelFingerprint].join('\u0000'));
     if (this.traces.some(trace => trace.id === id)) return this.reject('duplicate-neural-jit-trace');
@@ -279,7 +308,8 @@ export class NeuralJitEngine {
       executionId: binding.executionId, decisionId: binding.decisionId, observationId,
       seed: capture.seed, split, inputFeatures, targetResidual,
     });
-    this.seenObservationIds.add(observationId);
+    rememberFingerprint(this.seenObservationFingerprints, observationFingerprint);
+    rememberFingerprint(this.seenCaptureFingerprints, captureFingerprint);
     this.acceptedTraces += 1;
     this.lastDecision = 'trace-admitted:' + split;
     this.lastDecisionAt = Date.now();
@@ -434,18 +464,24 @@ export class NeuralJitEngine {
       candidates: this.candidates.slice(-MAX_CANDIDATES).map(candidate => structuredClone(candidate)),
       acceptedTraces: this.acceptedTraces, rejectedTraces: this.rejectedTraces,
       lastDecision: this.lastDecision, lastDecisionAt: this.lastDecisionAt,
+      seenObservationFingerprints: Array.from(this.seenObservationFingerprints),
+      seenCaptureFingerprints: Array.from(this.seenCaptureFingerprints),
     };
   }
 
   restore(raw?: Partial<NeuralJitPersistedSnapshot> | null): void {
     if (!raw || raw.version !== 1 || typeof raw.splitSalt !== 'string' || !HEX_256.test(raw.splitSalt)) {
-      this.traces = []; this.candidates = []; this.seenObservationIds.clear();
+      this.traces = []; this.candidates = [];
+      this.seenObservationFingerprints.clear(); this.seenCaptureFingerprints.clear();
       this.acceptedTraces = 0; this.rejectedTraces = 0;
       this.lastDecision = 'restore-empty-or-invalid-snapshot'; this.lastDecisionAt = Date.now();
       return;
     }
     this.splitSalt = raw.splitSalt;
-    this.traces = []; this.seenObservationIds.clear();
+    this.traces = [];
+    this.seenObservationFingerprints.clear(); this.seenCaptureFingerprints.clear();
+    for (const value of restoreFingerprintSet(raw.seenObservationFingerprints)) this.seenObservationFingerprints.add(value);
+    for (const value of restoreFingerprintSet(raw.seenCaptureFingerprints)) this.seenCaptureFingerprints.add(value);
     this.acceptedTraces = Number.isSafeInteger(raw.acceptedTraces) ? Math.max(0, Number(raw.acceptedTraces)) : 0;
     this.rejectedTraces = Number.isSafeInteger(raw.rejectedTraces) ? Math.max(0, Number(raw.rejectedTraces)) : 0;
     this.candidates = Array.isArray(raw.candidates)
@@ -460,6 +496,11 @@ export class NeuralJitEngine {
       activationCaptureAuthorityConfigured: Boolean(this.activationCaptureVerifier),
       liveInferenceEnabled: false as const, activeCandidates: 0,
       acceptedTraces: this.acceptedTraces, rejectedTraces: this.rejectedTraces,
+      replayProtection: {
+        observationFingerprints: this.seenObservationFingerprints.size,
+        captureFingerprints: this.seenCaptureFingerprints.size,
+        maximumPerKind: MAX_REPLAY_FINGERPRINTS,
+      },
       splitCounts: {
         train: this.traces.filter(row => row.split === 'train').length,
         holdout: this.traces.filter(row => row.split === 'holdout').length,
