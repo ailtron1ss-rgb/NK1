@@ -505,6 +505,8 @@ export class SynapticCommons {
       throw new TypeError('synaptic-compatibility-target-invalid');
     const checkedAt = Number.isSafeInteger(target.now) && Number(target.now) > 0 ? Number(target.now) : this.safeNow();
     const reasons: string[] = [];
+    if (!target.supportedCapabilities.includes(record.artifact.contract.capability))
+      reasons.push('capability-not-supported:' + record.artifact.contract.capability);
     if (!versionAtLeast(target.runtimeVersion, record.artifact.contract.minimumRuntimeVersion))
       reasons.push('runtime-version-below-minimum');
     for (const capability of record.artifact.contract.requiredCapabilities) {
