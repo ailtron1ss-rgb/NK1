@@ -1190,7 +1190,8 @@ export class NeuralExperienceBranch {
     const adaptationTick=this.pendingAdaptationTick;
     if(adaptationContextId!==undefined&&adaptationTick===i.tick){
       // Validate the executed action before any outcome learner mutates state.
-      this.embodiedBridge.assertCommittedAction(adaptationContextId,i.tick,i.action);
+      // Missing binding disables only the fast overlay; an actual mismatch throws.
+      if(!this.embodiedBridge.assertCommittedAction(adaptationContextId,i.tick,i.action))adaptationContextId=undefined;
     }else{
       adaptationContextId=undefined;
     }
@@ -1222,7 +1223,7 @@ export class NeuralExperienceBranch {
     this.continuity.afterOutcome({tick:i.tick,input:token.input,latent:token.neuralBefore,nextLatent:i.nextInput.slice(0,8),action:i.action,reward01:reward,predictionError01:error,verified01:verified,novelty01:token.novelty01,uncertainty01:token.uncertainty01,goalPressure01:i.goalPressure01??.5,identityGap01:i.identityGap01??.5,homeostasis01:1});
     const causalOutcome=this.causalPlanner.afterOutcome({tick:i.tick,context:[...token.neuralBefore.slice(0,16),token.novelty01,token.uncertainty01,error,i.goalPressure01??.5],latent:token.neuralBefore.slice(0,8),nextLatent:i.nextInput.slice(0,8),action:i.action,reward01:reward,predictionError01:error,verified01:verified,retrievedMemoryIds:token.retrievedMemoryIds??[],counterfactualReward:this.causalPlanner.metrics().lastCounterfactualReward??new Array(ACTIONS.length).fill(.5),forecastConfidence01:this.causalPlanner.metrics().lastSelectedConfidence01,disagreement01:this.causalPlanner.metrics().selectiveForesight01});
     for(const [id,credit] of causalOutcome.memoryCredit)this.continuity.applyMemoryCredit(id,credit);
-    this.embodiedBridge.afterOutcome({tick:i.tick,contextId:adaptationContextId??Number(token.contextId??0),action:i.action,nextFeatures:(i.embodied?.nextFeatures??i.nextInput).slice(0,64),reward01:reward,verified01:verified,predictionError01:error,sensorFreshness01:i.embodied?.sensorFreshness01});
+    this.embodiedBridge.afterOutcome({tick:i.tick,contextId:adaptationContextId,action:i.action,nextFeatures:(i.embodied?.nextFeatures??i.nextInput).slice(0,64),reward01:reward,verified01:verified,predictionError01:error,sensorFreshness01:i.embodied?.sensorFreshness01});
     const embodiedPostMetrics=this.embodiedBridge.metrics();
     this.unifiedCausalWorldLoop.observeEmbodiedOutcome({action:i.action,reward01:reward,verified01:verified,predictionError01:error,sensorimotorError01:embodiedPostMetrics.sensorimotorError01,sensorFreshness01:clamp(1-embodiedPostMetrics.asyncSensorPenalty01)});
     const transferableOutcome=this.transferableSkills.afterOutcome({tick:i.tick,context:sharedContext16,latent:token.neuralBefore.slice(0,8),nextLatent:i.nextInput.slice(0,8),action:i.action,reward01:reward,predictionError01:error,verified01:verified});
