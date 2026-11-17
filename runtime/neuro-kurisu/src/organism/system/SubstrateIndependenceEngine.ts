@@ -585,7 +585,9 @@ export class SubstrateIndependenceEngine {
 
   setInitialBackend(backendId: string): SubstrateIndependenceState {
     if (!isSafeId(backendId)) fail('substrate-backend-id-invalid');
-    if (this.state.activeBackendId === null && this.state.pendingTransfer === null) {
+    if (backendId !== 'deterministic-policy-fallback'
+        && (this.state.activeBackendId === null || this.state.activeBackendId === 'deterministic-policy-fallback')
+        && this.state.pendingTransfer === null) {
       this.state.activeBackendId = backendId;
       this.state.activeProvenance = this.profiles.has(backendId) ? 'bootstrap' : 'unknown';
     }
@@ -597,7 +599,11 @@ export class SubstrateIndependenceEngine {
     if (!isSafeId(backendId)) fail('substrate-backend-id-invalid');
     const previous = String(this.state.observedBackendId ?? '') + '|' + String(this.state.activeBackendId ?? '') + '|' + this.state.activeProvenance;
     this.state.observedBackendId = backendId;
-    if (this.state.activeBackendId === null && this.state.pendingTransfer === null) {
+    // The deterministic fallback is not a language-model substrate. Do not lock
+    // the organism to it when a real provider later becomes available.
+    if (backendId !== 'deterministic-policy-fallback'
+        && (this.state.activeBackendId === null || this.state.activeBackendId === 'deterministic-policy-fallback')
+        && this.state.pendingTransfer === null) {
       this.state.activeBackendId = backendId;
       this.state.activeProvenance = this.profiles.has(backendId) ? 'bootstrap' : 'unknown';
     } else if (this.state.activeBackendId === backendId && this.state.activeProvenance === 'unknown' && this.profiles.has(backendId)) {
@@ -610,7 +616,8 @@ export class SubstrateIndependenceEngine {
   activeBackendId(): string | null { return this.state.activeBackendId; }
 
   preferredRoute(): string | null {
-    const profile = this.state.activeBackendId ? this.profiles.get(this.state.activeBackendId) : undefined;
+    if (!this.state.activeBackendId || this.state.activeBackendId === 'deterministic-policy-fallback') return null;
+    const profile = this.profiles.get(this.state.activeBackendId);
     return profile?.routeId ?? null;
   }
 
