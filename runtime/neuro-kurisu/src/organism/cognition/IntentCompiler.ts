@@ -360,6 +360,10 @@ export class IntentCompiler {
     if (sourceTextTruncated) missingInformation.push('request-text-truncated');
     if (extractionStatus === 'provider-failed') missingInformation.push('semantic-extraction-failed');
     if (!extractionValid && input?.extraction != null) missingInformation.push('semantic-extraction-invalid');
+    if (extraction.goal !== undefined && (typeof extraction.goal !== 'string' || !cleanText(extraction.goal))) missingInformation.push('goal-invalid');
+    if (extraction.constraints !== undefined && extraction.constraints !== null && !isPlainDataObject(extraction.constraints)) missingInformation.push('constraints-invalid');
+    if (extraction.permissions !== undefined && extraction.permissions !== null && !isPlainDataObject(extraction.permissions)) missingInformation.push('permissions-invalid');
+
     if (extraction.risk !== undefined &&
         extraction.risk !== 'low' && extraction.risk !== 'medium' &&
         extraction.risk !== 'high' && extraction.risk !== 'critical') {
