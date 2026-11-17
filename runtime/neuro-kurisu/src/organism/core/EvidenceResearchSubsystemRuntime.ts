@@ -17,7 +17,7 @@ import { P53DevelopmentalSelfModificationLab } from '../developmental/P53Develop
 import { ExternalObserverFabric } from '../system/ExternalObserverFabric.ts';
 import { P77RealityExperimentOS, defaultP77 } from '../system/P77RealityExperimentOS.ts';
 import { P82RealityProgressController, defaultP82 } from '../system/P82RealityProgressController.ts';
-import { TheInventionLoop } from '../research/TheInventionLoop.ts';
+import { TheInventionLoop, type InventionVerifierKeyResolver } from '../research/TheInventionLoop.ts';
 
 /**
  * BIG PASS 49: physical ownership boundary for evidence, prediction and research.
@@ -46,8 +46,12 @@ export class EvidenceResearchSubsystemRuntime {
   readonly p38Research = new P38AutonomousCausalResearchEngine();
   readonly p53DevelopmentalSelfModification = new P53DevelopmentalSelfModificationLab();
   readonly externalObserver = new ExternalObserverFabric();
-  /** Evidence-gated idea-to-replication lifecycle; no autonomous code promotion. */
-  readonly inventionLoop = new TheInventionLoop();
+  /** Evidence-gated idea-to-replication lifecycle; host-owned verifier keys are never persisted. */
+  readonly inventionLoop: TheInventionLoop;
+
+  constructor(resolveInventionVerifierKey: InventionVerifierKeyResolver = () => undefined) {
+    this.inventionLoop = new TheInventionLoop(undefined, undefined, resolveInventionVerifierKey);
+  }
 
   snapshot() {
     return {
