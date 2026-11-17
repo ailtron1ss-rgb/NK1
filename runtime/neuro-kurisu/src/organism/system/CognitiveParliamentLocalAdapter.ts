@@ -135,7 +135,9 @@ export class LanguageInvokerParliamentRoleExecutor implements ParliamentRoleExec
     const backend=response.backend.trim();
     this.registry.register({
       executionId,providerId:'language-invoker',modelId:backend,
-      independenceGroup:`language-backend:${backend}`,verifiedAt:Date.now(),
+      // A generic LanguageInvoker has no explicit independent-model manifest.
+      // Keep every call in one family even if its backend label changes at runtime.
+      independenceGroup:'language-invoker:shared-backend',verifiedAt:Date.now(),
     });
     return {executionId,text:response.text};
   }
