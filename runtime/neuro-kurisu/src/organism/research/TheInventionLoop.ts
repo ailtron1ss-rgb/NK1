@@ -174,11 +174,13 @@ function auditHash(event: Omit<InventionAuditEvent, 'hash'>): string {
   });
 }
 function verifyRecordAudit(record: unknown): record is InventionRecord {
-  if (!isObject(record) || !isCore(record) || !Array.isArray(record.auditTrail) ||
-      record.auditTrail.length < 1 || record.auditTrail.length > 8) return false;
+  if (!isObject(record)) return false;
+  const candidate = record as Record<string, unknown>;
+  const trail = candidate.auditTrail;
+  if (!isCore(candidate) || !Array.isArray(trail) || trail.length < 1 || trail.length > 8) return false;
   let previousHash = GENESIS_HASH;
-  for (let index = 0; index < record.auditTrail.length; index += 1) {
-    const event = record.auditTrail[index];
+  for (let index = 0; index < trail.length; index += 1) {
+    const event = trail[index];
     if (!isObject(event) || event.sequence !== index + 1 ||
         !AUDIT_ACTIONS.includes(event.action as InventionAuditAction) ||
         !finite(event.at) || event.previousHash !== previousHash ||
@@ -196,8 +198,8 @@ function verifyRecordAudit(record: unknown): record is InventionRecord {
     if (event.hash !== expectedHash) return false;
     previousHash = event.hash;
   }
-  return canonical(record.auditTrail[record.auditTrail.length - 1].snapshot) ===
-    canonical(coreOf(record as InventionRecord));
+  const finalEvent = trail[trail.length - 1] as InventionAuditEvent;
+  return canonical(finalEvent.snapshot) === canonical(coreOf(record as InventionRecord));
 }
 
 export class TheInventionLoop {
