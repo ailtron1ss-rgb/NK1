@@ -20,6 +20,7 @@ const envFingerprint = 'e'.repeat(64);
 const trust = {
   trustedPublisherKeys: new Map([['publisher-1', publisherPublic]]),
   trustedAttestorKeys: new Map([['evaluator-1', attestorPublic]]),
+  trustedLicenseReviewFingerprints: new Set(['b'.repeat(64)]),
   now: () => now,
 };
 
@@ -187,6 +188,10 @@ const noLicense = makeArtifact({
 });
 assert.throws(() => commons.importArtifact(noLicense), /license-not-cleared/,
   'unreviewed or non-redistributable material cannot enter the shared catalogue');
+
+const unreviewedLicense = makeArtifact({ skill: { skillId: 'unreviewed-license' }, license: { reviewFingerprint: 'f'.repeat(64) } });
+assert.throws(() => commons.importArtifact(unreviewedLicense), /license-review-not-trusted-by-host/,
+  'a publisher cannot self-assert legal redistribution clearance without a host-approved review fingerprint');
 
 const weak = makeAttestation(fingerprint, { independentSeedCount: 2 });
 assert.throws(() => commons.attachAttestation(fingerprint, weak), /evidence-invalid/,
