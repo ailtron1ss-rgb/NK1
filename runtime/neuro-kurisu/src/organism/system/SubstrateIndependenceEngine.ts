@@ -471,6 +471,7 @@ function normalizeTrial(value: unknown): SubstrateCalibrationTrial {
     'trialId', 'sourceBackendId', 'targetBackendId', 'taskId', 'taskFamily',
     'independenceKey', 'evaluatorReceiptId',
   ] as const) if (!isSafeId(row[key], 180)) return fail('calibration-trial-invalid:' + key);
+  if (typeof row.transferDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(row.transferDigest)) return fail('calibration-trial-transfer-digest-invalid');
   if (row.evaluatorKeyId !== undefined && !isSafeId(row.evaluatorKeyId, 120)) return fail('calibration-evaluator-key-id-invalid');
   if (row.evaluatorSignatureBase64 !== undefined) {
     if (typeof row.evaluatorSignatureBase64 !== 'string') return fail('calibration-evaluator-signature-invalid');
