@@ -494,6 +494,89 @@ const toolOutcome = await gateway.executeTool('organism.future.outcomes.record',
 assert.equal(toolOutcome.ok, true, JSON.stringify(toolOutcome));
 assert.equal(future.sharedFuture.listOutcomes('gateway-outcome-scenario')[0]?.reportedBy, 'user');
 
+
+const untrustedOutcomeRestore = new SharedFutureEngine();
+untrustedOutcomeRestore.restore({
+  version: 1,
+  scenarios: [{
+    id: 'restored-outcome-scenario',
+    title: 'Restored evidence scenario',
+    owner: 'system',
+    status: 'draft',
+    consequences: [{
+      id: 'restored-outcome-consequence',
+      description: 'A previously predicted result.',
+      probability01: 0.25,
+    }],
+  }],
+  outcomes: [
+    {
+      id: 'restored-outcome-record',
+      scenarioId: 'restored-outcome-scenario',
+      consequenceId: 'restored-outcome-consequence',
+      observedAt: 8000,
+      forecastProbability01: 0.25,
+      occurred: true,
+      brierScore01: 0,
+      evidenceRef: 'audit:restored',
+      reportedBy: 'system',
+      independentlyVerified: true,
+    },
+    {
+      id: 'duplicate-outcome-id',
+      scenarioId: 'restored-outcome-scenario',
+      consequenceId: 'restored-outcome-consequence',
+      observedAt: 8001,
+      forecastProbability01: 0.25,
+      occurred: false,
+      evidenceRef: 'audit:duplicate',
+      reportedBy: 'user',
+    },
+  ],
+});
+assert.equal(untrustedOutcomeRestore.listOutcomes().length, 1, 'restore must discard duplicate consequence observations');
+assert.equal(untrustedOutcomeRestore.listOutcomes()[0].brierScore01, 0.5625, 'restore must recompute outcome scores instead of trusting persisted scores');
+assert.equal(untrustedOutcomeRestore.listOutcomes()[0].independentlyVerified, false, 'restored input must not be able to self-promote an outcome as verified');
+
+const terminalRevision = new SharedFutureEngine();
+terminalRevision.createScenario({
+  id: 'terminal-revision-parent',
+  title: 'Parent requiring revision',
+  status: 'active',
+  revisionSignals: [{ id: 'terminal-review-signal', kind: 'manual', description: 'A manual review is required.' }],
+});
+terminalRevision.observeSignal({
+  scenarioId: 'terminal-revision-parent', signalId: 'terminal-review-signal', at: 9000,
+});
+terminalRevision.createScenario({
+  id: 'achieved-revision-child',
+  title: 'Already achieved successor',
+  parentId: 'terminal-revision-parent',
+  status: 'achieved',
+});
+assert.throws(() => terminalRevision.resolveReview({
+  scenarioId: 'terminal-revision-parent',
+  action: 'revise',
+  successorScenarioId: 'achieved-revision-child',
+  at: 9001,
+}, 'system'), /revision-successor-not-promotable/);
+assert.equal(terminalRevision.getScenario('terminal-revision-parent')?.reviewRequired, true, 'failed promotion must leave the parent review intact');
+assert.equal(terminalRevision.getScenario('achieved-revision-child')?.status, 'achieved', 'an achieved child must remain terminal');
+
+terminalRevision.createScenario({
+  id: 'active-revision-child',
+  title: 'Already active successor',
+  parentId: 'terminal-revision-parent',
+  status: 'active',
+});
+assert.throws(() => terminalRevision.resolveReview({
+  scenarioId: 'terminal-revision-parent',
+  action: 'revise',
+  successorScenarioId: 'active-revision-child',
+  at: 9002,
+}, 'system'), /revision-successor-not-promotable/);
+assert.equal(terminalRevision.getScenario('terminal-revision-parent')?.status, 'active', 'invalid successor selection must not supersede the parent');
+
 console.log(JSON.stringify({
   pass: true,
   scenarios: future.sharedFuture.diagnostics(),
