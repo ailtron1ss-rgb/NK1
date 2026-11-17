@@ -75,6 +75,27 @@ try {
   assert.ok(!JSON.stringify(genericCredentials.receipt).includes('unbound-credential-value-123456'));
   assert.ok(!JSON.stringify(genericCredentials.receipt).includes('unbound-api-key-value'));
 
+  // Connection strings and service-role credentials are sensitive even when their
+  // variable names do not contain the generic TOKEN/SECRET suffix.
+  const databaseUrl = 'postgres://nk1:db-password@db.example.invalid:5432/nk1';
+  const serviceRoleKey = 'supabase-service-role-secret-2026';
+  const redisUrl = 'redis://:redis-password@cache.example.invalid:6379/0';
+  const connectionSecrets = await runLearningProcess(run, 'b'.repeat(64), {
+    ...base,
+    env: {
+      DATABASE_URL: databaseUrl,
+      SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
+      REDIS_URL: redisUrl,
+    },
+    args: ['-e', "process.stdout.write(process.env.DATABASE_URL); process.stderr.write(process.env.SUPABASE_SERVICE_ROLE_KEY+' '+process.env.REDIS_URL)"],
+  });
+  assert.equal(connectionSecrets.receipt.stdout, '[REDACTED]');
+  assert.equal(connectionSecrets.receipt.stderr, '[REDACTED] [REDACTED]');
+  const serializedConnectionReceipt = JSON.stringify(connectionSecrets.receipt);
+  assert.ok(!serializedConnectionReceipt.includes(databaseUrl));
+  assert.ok(!serializedConnectionReceipt.includes(serviceRoleKey));
+  assert.ok(!serializedConnectionReceipt.includes(redisUrl));
+
   const failed = await runLearningProcess(run, 'b'.repeat(64), { ...base, args: ['-e', 'process.exit(9)'] });
   assert.equal(failed.receipt.status, 'failed');
   assert.equal(failed.receipt.exitCode, 9);
