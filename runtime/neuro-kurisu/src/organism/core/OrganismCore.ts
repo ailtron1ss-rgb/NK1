@@ -11909,13 +11909,15 @@ export class OrganismCore {
     } | null {
         const state = (this.persisted.system as any)?.sharedFutureActionBindings;
         if (state?.quarantined === true || !Array.isArray(state?.records) || state.records.length > 512) return null;
+        // Execution IDs are unique identities. A second row for the same
+        // execution is a conflict even when only one row matches the caller's
+        // requested decision/tool pair.
         const rows = state.records.filter((row: any) =>
-            row && typeof row === 'object' &&
-            row.executionId === executionId && row.toolId === toolId &&
-            row.actionDecisionId === actionDecisionId
+            row && typeof row === 'object' && row.executionId === executionId
         );
         if (rows.length !== 1) return null;
         const row = rows[0];
+        if (row.toolId !== toolId || row.actionDecisionId !== actionDecisionId) return null;
         if (!row.sharedFutureDecisionId || !row.scenarioId || !row.consequenceId ||
             !row.expectedPostcondition || !/^[a-f0-9]{64}$/i.test(String(row.inputHash ?? '')) ||
             !['executed-unverified', 'executed-verified'].includes(String(row.outcomeClass)) ||
