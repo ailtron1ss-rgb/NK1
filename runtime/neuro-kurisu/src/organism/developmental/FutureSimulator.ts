@@ -1,6 +1,6 @@
 import type { WorldModel2 } from './WorldModel2.ts';
 import { SharedFutureEngine, defaultSharedFutureState, type SharedFutureState } from './SharedFutureEngine.ts';
-import { WorldForge, type WorldForgeCase, type WorldForgeEvaluation, type WorldForgeActionStep, type WorldForgeSplit, type WorldForgeState, type WorldForgeStepResult } from './WorldForge.ts';
+import { WorldForge, type WorldForgeCase, type WorldForgeEvaluation, type WorldForgeState, type WorldForgeStepResult } from './WorldForge.ts';
 
 export interface FutureSimulationResult {
   path: Array<{ action: string; reward: number; uncertainty: number; confidence: number }>;
