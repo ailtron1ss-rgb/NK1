@@ -259,7 +259,7 @@ export class SharedFutureEngine {
     const base = defaultSharedFutureState();
     const source = isRecord(raw) ? raw : {};
     const scenarios = Array.isArray(source.scenarios)
-      ? source.scenarios.slice(0, MAX_SCENARIOS).filter(isRecord).map((row) => this.restoreScenario(row))
+      ? (source.scenarios as unknown[]).slice(0, MAX_SCENARIOS).filter(isRecord).map((row) => this.restoreScenario(row))
       : [];
     const scenarioIds = new Set(scenarios.map((row) => row.id));
     for (const row of scenarios) {
@@ -267,7 +267,7 @@ export class SharedFutureEngine {
       if (row.parentId === row.id) row.parentId = null;
     }
     const decisions = Array.isArray(source.decisions)
-      ? source.decisions.slice(0, MAX_DECISIONS).filter(isRecord)
+      ? (source.decisions as unknown[]).slice(0, MAX_DECISIONS).filter(isRecord)
           .map((row) => this.restoreDecision(row))
           .filter((row) => scenarioIds.has(row.scenarioId))
       : [];
@@ -287,8 +287,8 @@ export class SharedFutureEngine {
           successorScenarioId: typeof row.successorScenarioId === 'string' ? row.successorScenarioId.slice(0, 96) : null,
         }))
       : [];
-    const signalHistory = Array.isArray(source.signalHistory)
-      ? source.signalHistory.slice(0, MAX_SIGNAL_HISTORY).filter(isRecord).map((row) => ({
+    const signalHistory: SharedFutureSignalRecord[] = Array.isArray(source.signalHistory)
+      ? (source.signalHistory as unknown[]).slice(0, MAX_SIGNAL_HISTORY).filter(isRecord).map((row): SharedFutureSignalRecord => ({
           id: restoredText(row.id, 'restored-signal', 96),
           scenarioId: restoredText(row.scenarioId, '', 96),
           signalId: restoredText(row.signalId, '', 96),
@@ -313,16 +313,16 @@ export class SharedFutureEngine {
 
   private restoreScenario(row: Record<string, unknown>): SharedFutureScenario {
     const owner = ownerField(row.owner, 'system');
-    const assumptions = Array.isArray(row.assumptions) ? row.assumptions.slice(0, MAX_ASSUMPTIONS).filter(isRecord).map((item, index) => ({
+    const assumptions: SharedFutureAssumption[] = Array.isArray(row.assumptions) ? (row.assumptions as unknown[]).slice(0, MAX_ASSUMPTIONS).filter(isRecord).map((item, index): SharedFutureAssumption => ({
       id: restoredText(item.id, 'assumption-' + index, 96),
       statement: restoredText(item.statement, '', MAX_TEXT),
       source: restoredText(item.source, 'unknown', 160),
       confidence01: finite(item.confidence01, 0.25, 0, 1),
       status: item.status === 'supported' || item.status === 'challenged' || item.status === 'expired' ? item.status : 'assumed',
       checkedAt: timestamp(item.checkedAt, 0),
-      expiresAt: item.expiresAt === null ? null : timestamp(item.expiresAt, 0),
+      expiresAt: item.expiresAt === null || item.expiresAt === undefined ? null : timestamp(item.expiresAt, 0),
     })) : [];
-    const goalLinks = Array.isArray(row.goalLinks) ? row.goalLinks.slice(0, MAX_GOAL_LINKS).filter(isRecord).map((item) => ({
+    const goalLinks: SharedFutureGoalLink[] = Array.isArray(row.goalLinks) ? (row.goalLinks as unknown[]).slice(0, MAX_GOAL_LINKS).filter(isRecord).map((item): SharedFutureGoalLink => ({
       id: restoredText(item.id, '', 96),
       owner: ownerField(item.owner, owner),
       relationship: item.relationship === 'blocks' || item.relationship === 'depends-on' ? item.relationship : 'supports',
@@ -342,7 +342,7 @@ export class SharedFutureEngine {
       compensationPlan: restoredText(item.compensationPlan, '', MAX_TEXT),
       requiresExplicitConfirmation: item.requiresExplicitConfirmation !== false,
     })) : [];
-    const revisionSignals = Array.isArray(row.revisionSignals) ? row.revisionSignals.slice(0, MAX_REVISION_SIGNALS).filter(isRecord).map((item, index) => ({
+    const revisionSignals: SharedFutureRevisionSignal[] = Array.isArray(row.revisionSignals) ? (row.revisionSignals as unknown[]).slice(0, MAX_REVISION_SIGNALS).filter(isRecord).map((item, index): SharedFutureRevisionSignal => ({
       id: restoredText(item.id, 'signal-' + index, 96),
       kind: item.kind === 'metric-below' || item.kind === 'metric-above' || item.kind === 'date' ? item.kind : 'manual',
       description: restoredText(item.description, '', MAX_TEXT),
@@ -436,12 +436,13 @@ export class SharedFutureEngine {
       scenario.reviewReasons = [...scenario.reviewReasons, reason].slice(-12);
       scenario.reviewRequired = true;
       scenario.updatedAt = at;
+      const kind: SharedFutureSignalKind = source === 'internal-clock' ? 'date' : 'manual';
       this.state.signalHistory = [{
         id: 'sf-signal-' + at.toString(36) + '-' + this.state.signalHistory.length.toString(36),
         scenarioId: scenario.id,
         signalId: reason,
         at,
-        kind: source === 'internal-clock' ? 'date' : 'manual',
+        kind,
         source,
         triggered: true,
         reason,
@@ -477,7 +478,7 @@ export class SharedFutureEngine {
           .reduce((sum, row) => sum + row.probability01, 0);
         if (siblingProbability + probability01 > 1.001) throw new Error('alternative-probability-total-exceeded');
       }
-      const assumptions = (input.assumptions ?? []).slice(0, MAX_ASSUMPTIONS).map((row, index) => ({
+      const assumptions: SharedFutureAssumption[] = (input.assumptions ?? []).slice(0, MAX_ASSUMPTIONS).map((row, index): SharedFutureAssumption => ({
         id: idField(row.id ?? 'assumption-' + index, 'assumption-id'),
         statement: textField(row.statement, 'assumption-statement'),
         source: textField(row.source ?? 'unspecified', 'assumption-source', 160),
@@ -486,7 +487,7 @@ export class SharedFutureEngine {
         checkedAt: timestamp(row.checkedAt, at),
         expiresAt: row.expiresAt === null || row.expiresAt === undefined ? null : timestamp(row.expiresAt, at),
       }));
-      const goalLinks = (input.goalLinks ?? []).slice(0, MAX_GOAL_LINKS).map((row) => ({
+      const goalLinks: SharedFutureGoalLink[] = (input.goalLinks ?? []).slice(0, MAX_GOAL_LINKS).map((row): SharedFutureGoalLink => ({
         id: idField(row.id, 'goal-reference-id'),
         owner: ownerField(row.owner, 'system'),
         relationship: row.relationship === 'blocks' || row.relationship === 'depends-on' ? row.relationship : 'supports',
@@ -506,8 +507,8 @@ export class SharedFutureEngine {
         compensationPlan: textField(row.compensationPlan ?? '', 'point-of-no-return-compensation', MAX_TEXT, false),
         requiresExplicitConfirmation: row.requiresExplicitConfirmation !== false,
       }));
-      const revisionSignals = (input.revisionSignals ?? []).slice(0, MAX_REVISION_SIGNALS).map((row, index) => {
-        const kind = row.kind === 'metric-below' || row.kind === 'metric-above' || row.kind === 'date' ? row.kind : 'manual';
+      const revisionSignals: SharedFutureRevisionSignal[] = (input.revisionSignals ?? []).slice(0, MAX_REVISION_SIGNALS).map((row, index): SharedFutureRevisionSignal => {
+        const kind: SharedFutureSignalKind = row.kind === 'metric-below' || row.kind === 'metric-above' || row.kind === 'date' ? row.kind : 'manual';
         const signal: SharedFutureRevisionSignal = {
           id: idField(row.id ?? 'signal-' + index, 'revision-signal-id'),
           kind,
@@ -927,7 +928,7 @@ export function registerSharedFutureTools(
   });
 
   register({
-    id: 'organism.future.scenarios.create-system',
+    id: 'organism.future.scenarios.create',
     capability: 'planning.future.write',
     destructive: false,
     projectAllowed: true,

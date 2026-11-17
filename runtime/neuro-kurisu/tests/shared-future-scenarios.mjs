@@ -12,7 +12,7 @@ const listed = await gateway.executeTool('organism.future.scenarios.list', {});
 assert.equal(listed.ok, true, 'the canonical ActionGateway must expose the shared-future scenario list');
 assert.equal(listed.result.verificationScope, 'local-future-ledger-only');
 
-const rootResult = await gateway.executeTool('organism.future.scenarios.create-system', {
+const rootResult = await gateway.executeTool('organism.future.scenarios.create', {
   id: 'project-root',
   title: 'NK1 stable organism trajectory',
   description: 'A multi-month path for the core project.',
@@ -48,7 +48,9 @@ const rootResult = await gateway.executeTool('organism.future.scenarios.create-s
     { id: 'release-date', kind: 'date', dueAt: 1000, description: 'Review the target release date.' },
     { id: 'human-review', kind: 'manual', description: 'The user requests a scenario review.' },
   ],
-}, 'system');
+}, 'shared-future-test', {
+  idempotencyKey: 'shared-future-root-create-1',
+});
 assert.equal(rootResult.ok, true, JSON.stringify(rootResult.result));
 assert.equal(rootResult.result.scenario.owner, 'system');
 
