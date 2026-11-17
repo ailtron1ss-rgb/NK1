@@ -170,6 +170,10 @@ export class IntentExecutionRuntime {
   }
 
   async resolveApprovalRequest(requestId: string, approved: boolean, actor = 'owner') {
+    const request = this.actionGateway.toolPermissionSnapshot().requests.find(row => row.id === requestId);
+    if (!request || request.toolId !== INTENT_APPROVAL_TOOL_ID || request.operation !== 'direct') {
+      return { ok: false, error: 'intent-approval-request-not-found' };
+    }
     return this.actionGateway.resolveToolApproval(requestId, approved, actor);
   }
 
