@@ -15,6 +15,8 @@ export interface RegretRecord {
   counterfactualOutcome: number;
   regret: number;
   learning: string;
+  /** Optional decision-level id; absent on pre-Negative-Space snapshots. */
+  decisionId?: string;
 }
 
 export interface RegretState {
@@ -39,6 +41,11 @@ export interface RegretObservationContext {
   chosenExpectedOutcome01: number;
   significance: Omit<NegativeSpaceSignificance, 'score01'>;
   outcomeEvidence?: string[];
+  outcomeReward01?: number;
+  outcomeSurprise01?: number;
+  outcomeVerified01?: number;
+  outcomeIndependent01?: number;
+  outcomeSource?: 'external-evidence' | 'world-transition' | 'internal' | 'unknown';
 }
 
 export const defaultRegretState = (): RegretState => ({
@@ -71,6 +78,11 @@ export class RegretEngine {
     alternatives: RegretAlternativeInput[],
     context?: RegretObservationContext,
   ): RegretRecord | null {
+    const prior = context?.decisionId
+      ? this.state.records.find(record => record.decisionId === context.decisionId)
+      : undefined;
+    if (prior) return structuredClone(prior);
+
     const alternative = alternatives
       .filter(candidate => candidate.action !== chosen)
       .sort((a, b) => expectedOutcomeOf(b) - expectedOutcomeOf(a))[0];
@@ -87,6 +99,7 @@ export class RegretEngine {
         counterfactualOutcome,
         regret,
         learning: regret > 0.35 ? `reconsider:${alternative.action}` : 'minor-regret',
+        ...(context?.decisionId ? { decisionId: context.decisionId } : {}),
       };
       this.state.records = [row, ...this.state.records].slice(0, 256);
       this.state.meanRegret = this.state.meanRegret * 0.9 + regret * 0.1;
@@ -111,6 +124,11 @@ export class RegretEngine {
           actualOutcome01: chosenOutcome,
           at: context.outcomeAt,
           evidence: context.outcomeEvidence,
+          reward01: context.outcomeReward01,
+          surprise01: context.outcomeSurprise01,
+          verified01: context.outcomeVerified01,
+          independent01: context.outcomeIndependent01,
+          source: context.outcomeSource,
         });
       }
     }

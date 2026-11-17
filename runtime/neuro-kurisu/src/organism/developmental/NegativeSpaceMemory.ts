@@ -37,6 +37,7 @@ export interface NegativeSpaceAlternative {
 }
 
 export type NegativeSpaceReviewStatus = 'awaiting-outcome' | 'retained' | 'review-eligible' | 'reopened';
+export type NegativeSpaceOutcomeSource = 'external-evidence' | 'world-transition' | 'internal' | 'unknown';
 
 export interface NegativeSpaceRecord {
   id: string;
@@ -48,6 +49,11 @@ export interface NegativeSpaceRecord {
   outcomeAt: number | null;
   outcomePredictionError01: number | null;
   outcomeShortfall01: number | null;
+  chosenActualReward01: number | null;
+  chosenSurprise01: number | null;
+  outcomeVerified01: number | null;
+  outcomeIndependent01: number | null;
+  outcomeSource: NegativeSpaceOutcomeSource;
   significance: NegativeSpaceSignificance;
   alternatives: NegativeSpaceAlternative[];
   outcomeEvidence: string[];
@@ -76,6 +82,11 @@ export interface NegativeSpaceOutcomeInput {
   actualOutcome01: number;
   at?: number;
   evidence?: string[];
+  reward01?: number;
+  surprise01?: number;
+  verified01?: number;
+  independent01?: number;
+  source?: NegativeSpaceOutcomeSource;
   signals?: Record<string, number>;
 }
 
@@ -184,6 +195,11 @@ export class NegativeSpaceMemory {
       outcomeAt: null,
       outcomePredictionError01: null,
       outcomeShortfall01: null,
+      chosenActualReward01: null,
+      chosenSurprise01: null,
+      outcomeVerified01: null,
+      outcomeIndependent01: null,
+      outcomeSource: 'unknown',
       significance: { cost01, risk01, futureImportance01, score01 },
       alternatives,
       outcomeEvidence: [],
@@ -215,6 +231,12 @@ export class NegativeSpaceMemory {
     record.outcomeAt = at;
     record.outcomePredictionError01 = predictionError01;
     record.outcomeShortfall01 = shortfall01;
+    record.chosenActualReward01 = input.reward01 === undefined ? null : clamp01(input.reward01);
+    record.chosenSurprise01 = input.surprise01 === undefined ? null : clamp01(input.surprise01);
+    record.outcomeVerified01 = input.verified01 === undefined ? null : clamp01(input.verified01);
+    record.outcomeIndependent01 = input.independent01 === undefined ? null : clamp01(input.independent01);
+    record.outcomeSource = ['external-evidence', 'world-transition', 'internal', 'unknown'].includes(input.source ?? '')
+      ? input.source! : 'unknown';
     record.outcomeEvidence = cleanList(input.evidence, 8, 180);
 
     this.evaluateReviewConditions(decisionId, {
@@ -282,24 +304,30 @@ export class NegativeSpaceMemory {
       const decisionId = cleanText(raw.decisionId, 128);
       const chosen = cleanText(raw.chosen, 96);
       if (!decisionId || !chosen || !Array.isArray(raw.alternatives)) continue;
+      const actual = raw.chosenActualOutcome01 === null || raw.chosenActualOutcome01 === undefined
+        ? null : clamp01(raw.chosenActualOutcome01);
       const alternatives: NegativeSpaceAlternative[] = [];
       for (const sourceValue of raw.alternatives.slice(0, MAX_ALTERNATIVES)) {
         const source = sourceValue && typeof sourceValue === 'object' ? sourceValue as Record<string, any> : null;
         if (!source) continue;
         const normalized = normalizeAlternative(source as NegativeSpaceAlternativeInput, chosen);
         if (!normalized || alternatives.some(existing => existing.action === normalized.action)) continue;
+        const reopenAtIsValid = source.reopenedAt !== null && source.reopenedAt !== undefined
+          && Number.isFinite(Number(source.reopenedAt)) && Number(source.reopenedAt) >= 0;
+        const reopenReason = cleanText(source.reopenReason);
+        const reopened = reopenAtIsValid && Boolean(reopenReason);
         alternatives.push({
           ...normalized,
-          reviewEligible: source.reviewEligible === true,
-          ...(Number.isFinite(Number(source.reopenedAt)) ? { reopenedAt: finite(source.reopenedAt) } : {}),
-          ...(cleanText(source.reopenReason) ? { reopenReason: cleanText(source.reopenReason) } : {}),
+          reviewEligible: actual !== null && source.reviewEligible === true && !reopened,
+          ...(reopened ? { reopenedAt: finite(source.reopenedAt), reopenReason } : {}),
         });
       }
+      if (!alternatives.length) continue;
       const significance = raw.significance && typeof raw.significance === 'object' ? raw.significance : {};
-      const actual = raw.chosenActualOutcome01 === null || raw.chosenActualOutcome01 === undefined
-        ? null : clamp01(raw.chosenActualOutcome01);
-      const status: NegativeSpaceReviewStatus = ['awaiting-outcome', 'retained', 'review-eligible', 'reopened'].includes(raw.reviewStatus)
-        ? raw.reviewStatus : actual === null ? 'awaiting-outcome' : 'retained';
+      const hasEligible = alternatives.some(alternative => alternative.reviewEligible);
+      const hasReopened = alternatives.some(alternative => alternative.reopenedAt !== undefined);
+      const status: NegativeSpaceReviewStatus = actual === null
+        ? 'awaiting-outcome' : hasEligible ? 'review-eligible' : hasReopened ? 'reopened' : 'retained';
       restored.push({
         id: cleanText(raw.id, 128) || decisionId,
         decisionId,
@@ -310,6 +338,11 @@ export class NegativeSpaceMemory {
         outcomeAt: raw.outcomeAt === null || raw.outcomeAt === undefined ? null : finite(raw.outcomeAt),
         outcomePredictionError01: raw.outcomePredictionError01 === null || raw.outcomePredictionError01 === undefined ? null : clamp01(raw.outcomePredictionError01),
         outcomeShortfall01: raw.outcomeShortfall01 === null || raw.outcomeShortfall01 === undefined ? null : clamp01(raw.outcomeShortfall01),
+        chosenActualReward01: raw.chosenActualReward01 === null || raw.chosenActualReward01 === undefined ? null : clamp01(raw.chosenActualReward01),
+        chosenSurprise01: raw.chosenSurprise01 === null || raw.chosenSurprise01 === undefined ? null : clamp01(raw.chosenSurprise01),
+        outcomeVerified01: raw.outcomeVerified01 === null || raw.outcomeVerified01 === undefined ? null : clamp01(raw.outcomeVerified01),
+        outcomeIndependent01: raw.outcomeIndependent01 === null || raw.outcomeIndependent01 === undefined ? null : clamp01(raw.outcomeIndependent01),
+        outcomeSource: ['external-evidence', 'world-transition', 'internal', 'unknown'].includes(raw.outcomeSource) ? raw.outcomeSource : 'unknown',
         significance: {
           cost01: clamp01(significance.cost01), risk01: clamp01(significance.risk01),
           futureImportance01: clamp01(significance.futureImportance01), score01: clamp01(significance.score01),
@@ -340,6 +373,8 @@ export class NegativeSpaceMemory {
       records: records.length,
       alternatives: alternatives.length,
       reviewEligible: alternatives.filter(alternative => alternative.reviewEligible).length,
+      verifiedOutcomes: records.filter(record => (record.outcomeVerified01 ?? 0) >= 0.5).length,
+      independentOutcomes: records.filter(record => (record.outcomeIndependent01 ?? 0) >= 0.5).length,
       reopened: alternatives.filter(alternative => alternative.reopenedAt !== undefined).length,
       totalRecorded: this.state.totalRecorded,
       pruned: this.state.pruned,

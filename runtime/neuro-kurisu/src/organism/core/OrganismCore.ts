@@ -9532,8 +9532,15 @@ export class OrganismCore {
                 },
                 outcomeEvidence: [
                     `gated-success01:${clamp(gatedSuccess01).toFixed(3)}`,
+                    `gated-reward01:${clamp(gatedReward01).toFixed(3)}`,
                     `gated-surprise01:${clamp(gatedSurprise01).toFixed(3)}`,
+                    `verified-policy-outcome:${verifiedPolicyOutcome}`,
                 ],
+                outcomeReward01: gatedReward01,
+                outcomeSurprise01: gatedSurprise01,
+                outcomeVerified01: verifiedPolicyOutcome ? 1 : 0,
+                outcomeIndependent01: (Boolean(outcome.worldTransition?.after) || projectEvidenceExternal) ? 1 : 0,
+                outcomeSource: projectEvidenceExternal ? 'external-evidence' : outcome.worldTransition ? 'world-transition' : 'internal',
             });
             const provenanceAttribution = this.cognitiveRuntime.valueEvolution.attributeExperience({
                 action: trace.selected.action,
