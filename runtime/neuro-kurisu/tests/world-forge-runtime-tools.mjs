@@ -1,0 +1,88 @@
+import assert from 'node:assert/strict';
+import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
+import { FutureSimulator } from '../src/organism/developmental/FutureSimulator.ts';
+import { registerWorldForgeTools } from '../src/organism/developmental/WorldForgeTools.ts';
+
+const gateway=new ActionGateway({live:false});
+const simulator=new FutureSimulator();
+registerWorldForgeTools(gateway,simulator);
+const tools=gateway.listTools().map(tool=>tool.id);
+for(const id of [
+ 'organism.worldforge.scenarios.generate',
+ 'organism.worldforge.sessions.start',
+ 'organism.worldforge.sessions.step',
+ 'organism.worldforge.sessions.evaluate',
+ 'organism.worldforge.scenarios.release',
+])assert.ok(tools.includes(id),`runtime must register ${id}`);
+
+const generated=await gateway.executeTool('organism.worldforge.scenarios.generate',{
+ split:'train',count:2,difficulty01:.65,
+},'worldforge-runtime-test');
+assert.equal(generated.ok,true,JSON.stringify(generated.result));
+const scenarios=generated.result.scenarios;
+assert.equal(scenarios.length,2);
+const scenario=scenarios[0];
+assert.equal('disturbances' in scenario,false);
+assert.equal('seedFingerprint' in scenario,false);
+
+const holdout=await gateway.executeTool('organism.worldforge.scenarios.generate',{
+ split:'holdout',count:1,difficulty01:.65,
+},'worldforge-holdout-attempt');
+assert.equal(holdout.ok,false,'runtime tool contract must reject holdout generation');
+
+const started=await gateway.executeTool('organism.worldforge.sessions.start',{
+ scenarioId:scenario.id,
+},'worldforge-start');
+assert.equal(started.ok,true,JSON.stringify(started.result));
+let state=started.result.state;
+const forgedCost=await gateway.executeTool('organism.worldforge.sessions.step',{
+ scenarioId:scenario.id,sessionId:state.sessionId,tick:state.tick,
+ action:{action:'collect',cost:0},
+},'worldforge-forged-cost');
+assert.equal(forgedCost.ok,false,'ActionGateway schema must reject caller-provided cost');
+assert.equal(forgedCost.result.error,'tool-input-invalid');
+
+const beforeResources=state.resourcesRemaining;
+const collect=await gateway.executeTool('organism.worldforge.sessions.step',{
+ scenarioId:scenario.id,sessionId:state.sessionId,tick:state.tick,
+ action:{action:'collect'},
+},'worldforge-collect');
+assert.equal(collect.ok,true,JSON.stringify(collect.result));
+state=collect.result.transition.state;
+assert.equal(state.resourcesRemaining,beforeResources-1,'runtime tools must use evaluator-owned action economics');
+
+const inspected=await gateway.executeTool('organism.worldforge.sessions.step',{
+ scenarioId:scenario.id,sessionId:state.sessionId,tick:state.tick,
+ action:{action:'inspect',target:scenario.goalOptions[0]},
+},'worldforge-inspect');
+assert.equal(inspected.ok,true);
+state=inspected.result.transition.state;
+const beforeVerify=await gateway.executeTool('organism.worldforge.sessions.evaluate',{
+ scenarioId:scenario.id,sessionId:state.sessionId,tick:state.tick,
+},'worldforge-evaluate-before-verify');
+assert.equal(beforeVerify.ok,true);
+assert.equal(beforeVerify.result.evaluation.evidenceCoverage01,0,'inspection alone cannot count as verified evidence');
+
+const verified=await gateway.executeTool('organism.worldforge.sessions.step',{
+ scenarioId:scenario.id,sessionId:state.sessionId,tick:state.tick,
+ action:{action:'verify',evidence:scenario.goalOptions[0]},
+},'worldforge-verify');
+assert.equal(verified.ok,true);
+state=verified.result.transition.state;
+const evaluation=await gateway.executeTool('organism.worldforge.sessions.evaluate',{
+ scenarioId:scenario.id,sessionId:state.sessionId,tick:state.tick,
+},'worldforge-evaluate');
+assert.equal(evaluation.ok,true);
+assert.equal(evaluation.result.evaluation.syntheticOnly,true);
+assert.equal(evaluation.result.evaluation.independentlyVerified,false);
+assert.equal(evaluation.result.evaluation.evidenceCoverage01,.5);
+
+const released=await gateway.executeTool('organism.worldforge.scenarios.release',{
+ scenarioId:scenario.id,
+},'worldforge-release');
+assert.equal(released.ok,true);
+const afterRelease=await gateway.executeTool('organism.worldforge.sessions.evaluate',{
+ scenarioId:scenario.id,sessionId:state.sessionId,tick:state.tick,
+},'worldforge-evaluate-after-release');
+assert.equal(afterRelease.ok,false);
+console.log('World Forge ActionGateway runtime integration passed');
