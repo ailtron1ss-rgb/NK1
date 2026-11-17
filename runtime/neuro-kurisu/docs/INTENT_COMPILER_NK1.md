@@ -50,7 +50,10 @@ untrusted proposal data.
    requires a distinct risk acknowledgement in addition to ordinary confirmation.
 8. Approval is bound to the exact contract ID and immutable content hash,
    action subset, assumption acknowledgements, risk acknowledgement, timestamp
-   and evidence reference. A runtime HMAC attestation detects approval edits.
+   and evidence reference. `approve()` requires an injected host/UI
+   `IntentApprovalVerifier` to validate and, where possible, consume a one-time
+   user-confirmation receipt; a boolean or caller-chosen evidence string alone
+   cannot mint approval. A runtime HMAC attestation detects later approval edits.
 9. Approval lifetime is fixed at 15 minutes in this version. A stale or
    future-dated approval cannot pass the gate.
 10. The bridge does not invoke ActionGateway when the intent gate refuses.
@@ -66,15 +69,17 @@ restart. Production persistence must inject a stable, secret-managed key through
 `IntentCompiler({ approvalKey, clock })` and must never place that key in the
 contract, logs, repository, or Release ZIP. Rotating the key invalidates prior
 approval attestations. The complete source request is bound through a SHA-256
-digest even when the visible contract text is truncated. The HMAC is an integrity/authenticity check within this
-runtime trust model; it does not replace authentication of the user-confirmation
-event or durable evidence storage.
+digest even when the visible contract text is truncated. The HMAC is an integrity check over the host-verified approval attestation; it does not replace authentication of the user-confirmation event or durable evidence storage. Without the host verifier, `approve()` refuses to sign.
 
 ## Integration example
 
 ```ts
+// Supplied by the authenticated host/UI; verifies and consumes a one-time
+// confirmation receipt bound to the exact contract and approved action subset.
+declare const hostApprovalVerifier: IntentApprovalVerifier;
 const compiler = new IntentCompiler({
   approvalKey: secretStore.getBytes('nk1-intent-approval-key'),
+  approvalVerifier: hostApprovalVerifier,
 });
 const contract = await compiler.compileWith(
   { requestId, text: userRequest },
