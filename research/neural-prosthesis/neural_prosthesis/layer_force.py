@@ -49,7 +49,7 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 def _read_profile(path: str | Path) -> tuple[dict[str, Any], bytes]:
     supplied = Path(path).expanduser()
     try:
-        if supplied.is_symlink():
+        if any(part.is_symlink() for part in (supplied, *supplied.parents)):
             raise LayerForceError("profile-symlink-not-allowed")
         resolved = supplied.resolve(strict=True)
         descriptor = os.open(str(resolved), os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
@@ -179,7 +179,12 @@ class LayerForceBank:
             "layer_path": self.layer_path,
             "hidden_size": self.hidden_size,
         }
-        if type(binding) is not dict or set(binding) != set(expected_binding) or binding != expected_binding:
+        if (
+            type(binding) is not dict
+            or set(binding) != set(expected_binding)
+            or any(type(binding[key]) is not type(expected) or binding[key] != expected
+                   for key, expected in expected_binding.items())
+        ):
             raise LayerForceError("profile-model-binding-mismatch")
 
         ratio = profile["max_delta_ratio"]
@@ -284,7 +289,7 @@ class LayerForceBank:
             profile_id, request_strength = active
             profile = self._profiles.get(profile_id)
             layer = profile.layers.get(index) if profile is not None else None
-            if layer is None or layer.strength == 0:
+            if layer is None or layer.strength == 0 or request_strength == 0:
                 return output
             scaled_layer = _SteeringLayer(layer.direction, layer.strength * request_strength)
             result = self._steer_output(output, scaled_layer, profile.max_delta_ratio, index)
