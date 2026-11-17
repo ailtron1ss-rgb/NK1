@@ -16,7 +16,7 @@ Expected focused command:
 
 ## Task 2 — LanguageRequest contract
 
-- Add optional typed `cognitiveControl` to `LanguageRequest`.
+- Add optional typed `cognitiveControl` to `LanguageRequest` and a typed provider-delivery receipt on `LanguageResponse`.
 - Keep the control contract type-only to avoid runtime import cycles.
 - Typecheck the runtime and test request adaptation preserves system/user/signal/context fields while configuring bounded sampling parameters.
 
@@ -30,7 +30,7 @@ Expected focused command:
 
 ## Task 4 — exact-head verification and handover
 
-- Run the B365 snapshot, 43-channel projector and real OrganismRuntime/LanguageInvoker integration tests plus runtime typecheck under Node 24.
+- Run the B365 snapshot, 43-channel projector, real OrganismRuntime/LanguageInvoker integration, local llama.cpp template opt-in and fake-server HTTP end-to-end tests plus runtime typecheck under Node 24.
 - Review the final branch diff and preserve the base/release boundary.
 - Open/update a Draft PR into `workpass70-source`; do not merge or claim a Release ZIP update.
 - Record exact branch/commit/PR/Actions status and clearly list deferred direct-steering work.
