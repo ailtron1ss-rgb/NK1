@@ -132,7 +132,7 @@ for (let index = 0; index < replicationRuns.length; index += 1) {
   });
   assert.equal(result.stage, index === 4 ? 'replicated' : 'replicating');
 }
-assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, seed: 18, runId: 'run-replication-duplicate', environmentId: 'environment-replication-duplicate-seed', evidenceRef: 'artifact://replication/duplicate-seed.json', evidenceSha256: sha('c') }), /duplicate-seed/);
+assert.throws(() => loop.recordOutcome(p.id, { ...replicationInput, id: 'unique-attempt-for-same-seed', seed: 18, runId: 'run-replication-duplicate', environmentId: 'environment-replication-duplicate-seed', evidenceRef: 'artifact://replication/duplicate-seed.json', evidenceSha256: sha('c') }), /duplicate-seed/);
 assert.throws(() => loop.recordOutcome(p.id, {
   ...holdoutInput,
   environmentId: 'environment-replication-18',
