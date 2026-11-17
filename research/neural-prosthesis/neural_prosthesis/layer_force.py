@@ -129,7 +129,7 @@ class LayerForceBank:
         self._model = model
         self._layers = _resolve_layer_stack(model, self.layer_path)
         self._profiles: dict[str, _SteeringProfile] = {}
-        self._active: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+        self._active: contextvars.ContextVar[tuple[str, float] | None] = contextvars.ContextVar(
             f"layer_force_profile_{id(self)}", default=None
         )
         self._handles: dict[int, Any] = {}
@@ -278,14 +278,16 @@ class LayerForceBank:
 
     def _make_hook(self, index: int):
         def apply(_module: nn.Module, _inputs: tuple[Any, ...], output: Any) -> Any:
-            profile_id = self._active.get()
-            if profile_id is None:
+            active = self._active.get()
+            if active is None:
                 return output
+            profile_id, request_strength = active
             profile = self._profiles.get(profile_id)
             layer = profile.layers.get(index) if profile is not None else None
             if layer is None or layer.strength == 0:
                 return output
-            result = self._steer_output(output, layer, profile.max_delta_ratio, index)
+            scaled_layer = _SteeringLayer(layer.direction, layer.strength * request_strength)
+            result = self._steer_output(output, scaled_layer, profile.max_delta_ratio, index)
             hidden = result if isinstance(result, torch.Tensor) else result[0]
             self._applied_hook_calls += 1
             self._applied_token_count += hidden.numel() // hidden.shape[-1]
@@ -297,7 +299,7 @@ class LayerForceBank:
         if self._closed:
             raise LayerForceError("controller-closed")
         if profile_id is None:
-            token = self._active.set(None)
+            active = None
         else:
             if not isinstance(profile_id, str) or profile_id not in self._profiles:
                 raise LayerForceError("profile-not-loaded")
@@ -308,29 +310,12 @@ class LayerForceBank:
                 or not -1.0 <= float(strength) <= 1.0
             ):
                 raise LayerForceError("steering-strength-out-of-range")
-            # Global request strength is represented by a request-local profile scale.
-            token = self._active.set(profile_id if float(strength) == 1.0 else self._scaled_profile(profile_id, float(strength)))
+            active = (profile_id, float(strength))
+        token = self._active.set(active)
         try:
             yield
         finally:
             self._active.reset(token)
-
-    def _scaled_profile(self, profile_id: str, strength: float) -> str:
-        # Keep the immutable registered profile; the active context stores a synthetic
-        # key mapped to a temporary scaled profile only for this context.
-        key = f"{profile_id}\x00{strength:.17g}"
-        current = self._profiles[profile_id]
-        if key not in self._profiles:
-            self._profiles[key] = _SteeringProfile(
-                profile_id=key,
-                profile_sha256=current.profile_sha256,
-                layers={
-                    index: _SteeringLayer(layer.direction, layer.strength * strength)
-                    for index, layer in current.layers.items()
-                },
-                max_delta_ratio=current.max_delta_ratio,
-            )
-        return key
 
     def snapshot(self) -> dict[str, Any]:
         visible = [
