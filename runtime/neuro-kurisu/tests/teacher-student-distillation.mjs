@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { generateKeyPairSync, verify as verifySignature } from 'node:crypto';
+import { createHash, generateKeyPairSync, verify as verifySignature } from 'node:crypto';
 import {
   TeacherStudentDistillationDataset,
   createTeacherDistillationPayload,
@@ -307,6 +307,39 @@ try {
   assert.equal(run.receipt.exitCode, 0);
   assert.match(run.receipt.stdout, /TRAIN_CONFIG_ACCEPTED/);
   assert.ok(run.receipt.boundaries.some(line => line.includes('execution, not task correctness')));
+
+  const duplicateConfig = runnerConfig.yaml.replace(
+    'dataset: nk1_teacher_student_train\\n',
+    'dataset: nk1_teacher_student_train\\ndataset: nk1_teacher_student_train\\n',
+  );
+  const duplicateConfigPath = path.join(runnerWorkspace, 'duplicate-train.yaml');
+  await writeFile(duplicateConfigPath, duplicateConfig, 'utf8');
+  const duplicateConfigFingerprint = createHash('sha256').update(duplicateConfig, 'utf8').digest('hex');
+  await assert.rejects(runTeacherStudentDistillationTraining({
+    workspaceDirectory: runnerWorkspace,
+    configPath: 'duplicate-train.yaml',
+    expectedConfigFingerprint: duplicateConfigFingerprint,
+    datasetFingerprint: exported.datasetFingerprint,
+    trustedVerifierKeys: trustedKeys,
+    executable: fakeCliPath,
+    runRoot,
+    surviveDirectory,
+  }), /config-duplicate-key/);
+
+  const unknownConfig = runnerConfig.yaml.replace('stage: sft\\n', 'stage: sft\\ncustom_code_enabled: true\\n');
+  const unknownConfigPath = path.join(runnerWorkspace, 'unknown-option-train.yaml');
+  await writeFile(unknownConfigPath, unknownConfig, 'utf8');
+  const unknownConfigFingerprint = createHash('sha256').update(unknownConfig, 'utf8').digest('hex');
+  await assert.rejects(runTeacherStudentDistillationTraining({
+    workspaceDirectory: runnerWorkspace,
+    configPath: 'unknown-option-train.yaml',
+    expectedConfigFingerprint: unknownConfigFingerprint,
+    datasetFingerprint: exported.datasetFingerprint,
+    trustedVerifierKeys: trustedKeys,
+    executable: fakeCliPath,
+    runRoot,
+    surviveDirectory,
+  }), /config-option-not-allowed/);
 
   const originalTrainFile = await readFile(written['train.jsonl'], 'utf8');
   await writeFile(written['train.jsonl'], originalTrainFile + '\\n{"tampered":true}\\n', 'utf8');
