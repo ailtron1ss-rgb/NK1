@@ -139,6 +139,32 @@ assert.throws(() => idempotentRadar.register({
   ...idempotentInput, title: 'Different task, same idempotency key',
 }), /open-loop-idempotency-conflict/);
 
+let retryWindowNow = now;
+const retryWindowRadar = new OpenLoopRadar(() => retryWindowNow);
+const expiredKey = 'request:retry:after-retention';
+const firstWindowRecord = retryWindowRadar.register({
+  title: 'First accepted operation', kind: 'task', owner: 'system',
+  accepted: true, source: 'idempotency-expiry-test', idempotencyKey: expiredKey,
+});
+retryWindowRadar.fulfill(firstWindowRecord.id, {
+  kind: 'execution-receipt', reference: 'first-operation-complete', verifiedAt: retryWindowNow,
+});
+retryWindowNow += 24 * 60 * 60 * 1000 + 1;
+const secondWindowRecord = retryWindowRadar.register({
+  title: 'New operation after idempotency retention expired', kind: 'task', owner: 'system',
+  accepted: true, source: 'idempotency-expiry-test', idempotencyKey: expiredKey,
+});
+const afterKeyExpiry = retryWindowRadar.snapshot();
+assert.equal(afterKeyExpiry.records.length, 2,
+  'expired idempotency keys may be reused without deleting terminal history');
+assert.equal(afterKeyExpiry.records.find(record => record.id === firstWindowRecord.id)?.idempotencyKey, null,
+  'the old terminal history must release its expired retry key when the key is reused');
+assert.equal(afterKeyExpiry.records.find(record => record.id === secondWindowRecord.id)?.idempotencyKey, expiredKey);
+const restoredAfterKeyExpiry = new OpenLoopRadar(() => retryWindowNow);
+restoredAfterKeyExpiry.restore(afterKeyExpiry);
+assert.equal(restoredAfterKeyExpiry.snapshot().records.length, 2,
+  'both historical and new operations must survive restore without duplicate-key conflicts');
+
 const initiativeRadar = new OpenLoopRadar(() => now);
 const dialogueObligation = initiativeRadar.register({
   title: 'Revisit the causal-memory validation', kind: 'task', owner: 'user',
