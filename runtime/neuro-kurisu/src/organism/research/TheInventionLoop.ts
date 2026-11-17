@@ -431,12 +431,37 @@ export class TheInventionLoop {
     const records: InventionRecord[] = [];
     let quarantinedRecords = 0;
     const seen = new Set<string>();
+    const seenArtifactIds = new Set<string>();
+    const seenRunIds = new Set<string>();
+    const seenEvidenceRefs = new Set<string>();
     for (const item of incoming.slice(0, MAX_RECORDS * 2)) {
       if (!verifyRecordAudit(item) || seen.has(item.id) || !this.verifyRecordAttestations(item)) {
         quarantinedRecords += 1;
         continue;
       }
+      const receipts = [
+        ...item.outcomes.map(outcome => ({
+          artifactId: outcome.artifactId,
+          runId: outcome.runId,
+          evidenceRef: outcome.evidenceRef,
+        })),
+        ...(item.critique ? [{
+          artifactId: item.critique.artifactId,
+          runId: item.critique.signedArtifact.payload.runId,
+          evidenceRef: 'signed-review:' + item.critique.artifactId + ':' + item.critique.attestationFingerprint,
+        }] : []),
+      ];
+      if (receipts.some(receipt => seenArtifactIds.has(receipt.artifactId) ||
+          seenRunIds.has(receipt.runId) || seenEvidenceRefs.has(receipt.evidenceRef))) {
+        quarantinedRecords += 1;
+        continue;
+      }
       seen.add(item.id);
+      for (const receipt of receipts) {
+        seenArtifactIds.add(receipt.artifactId);
+        seenRunIds.add(receipt.runId);
+        seenEvidenceRefs.add(receipt.evidenceRef);
+      }
       records.push(structuredClone(item));
     }
     this.state = {
@@ -599,20 +624,41 @@ export class TheInventionLoop {
 
   private verifyRecordAttestations(record: InventionRecord): boolean {
     try {
+      const seenRuns = new Set<string>();
+      const seenArtifacts = new Set<string>();
+      const seenEvidence = new Set<string>();
+      const seenSeeds = new Set<string>();
+      const seenEnvironments = new Set<string>();
       for (const outcome of record.outcomes) {
+        const expectedSeeds = outcome.kind === 'primary' ? [record.protocol.primarySeed] :
+          outcome.kind === 'replication' ? record.protocol.replicationSeeds : record.protocol.holdoutSeeds;
+        const seedKey = outcome.kind + ':' + outcome.seed;
+        if (!expectedSeeds.includes(outcome.seed) || seenSeeds.has(seedKey) ||
+            seenRuns.has(outcome.runId) || seenArtifacts.has(outcome.artifactId) ||
+            seenEvidence.has(outcome.evidenceRef) || seenEnvironments.has(outcome.environmentId) ||
+            outcome.verifierId !== record.protocol.verifierPlan[outcome.kind] ||
+            outcome.id !== record.id + ':' + outcome.kind + ':' + outcome.seed) return false;
+        seenSeeds.add(seedKey);
+        seenRuns.add(outcome.runId);
+        seenArtifacts.add(outcome.artifactId);
+        seenEvidence.add(outcome.evidenceRef);
+        seenEnvironments.add(outcome.environmentId);
         const checked = this.verifyOutcomeContents(record, outcome.signedArtifact, outcome.kind, outcome.seed);
         if (checked.verified.artifactId !== outcome.artifactId ||
             checked.verified.runId !== outcome.runId ||
             checked.verified.evidenceRef !== outcome.evidenceRef ||
             checked.verified.attestationFingerprint !== outcome.attestationFingerprint ||
             checked.context.environmentId !== outcome.environmentId ||
+            checked.context.testFingerprint !== outcome.testFingerprint ||
             checked.context.evidenceSha256 !== outcome.evidenceSha256 ||
             checked.observed !== outcome.observed || checked.effect01 !== outcome.effect01 ||
             checked.passed !== outcome.passed || checked.verified.verifierId !== outcome.verifierId) return false;
       }
       if (record.critique) {
         const checked = this.verifyCritiqueContents(record, record.critique.signedArtifact);
-        if (checked.verified.artifactId !== record.critique.artifactId ||
+        const critiqueRunId = record.critique.signedArtifact.payload.runId;
+        if (seenArtifacts.has(record.critique.artifactId) || seenRuns.has(critiqueRunId) ||
+            checked.verified.artifactId !== record.critique.artifactId ||
             checked.verified.attestationFingerprint !== record.critique.attestationFingerprint ||
             checked.context.reviewRef !== record.critique.reviewRef ||
             checked.context.reviewSha256 !== record.critique.reviewSha256 ||
@@ -620,6 +666,26 @@ export class TheInventionLoop {
             canonical(checked.context.limitations) !== canonical(record.critique.limitations) ||
             checked.verified.verifierId !== record.critique.reviewerId) return false;
       }
+
+      const replicationCount = record.outcomes.filter(outcome => outcome.kind === 'replication').length;
+      const holdoutCount = record.outcomes.filter(outcome => outcome.kind === 'holdout').length;
+      const replicationSummary = record.phaseSummaries?.replication;
+      const holdoutSummary = record.phaseSummaries?.holdout;
+      if ((replicationCount > 0) !== Boolean(replicationSummary) ||
+          (holdoutCount > 0) !== Boolean(holdoutSummary)) return false;
+      if (replicationSummary &&
+          canonical(replicationSummary) !== canonical(this.summarizePhase(record, 'replication'))) return false;
+      if (holdoutSummary &&
+          canonical(holdoutSummary) !== canonical(this.summarizePhase(record, 'holdout'))) return false;
+      if (record.outcomes.some(outcome => outcome.kind === 'replication' || outcome.kind === 'holdout') &&
+          (!record.critique || record.critique.blockers.length > 0)) return false;
+      if (['replicating', 'replicated', 'holdingout', 'accepted'].includes(record.stage) &&
+          !record.critique) return false;
+      if (['replicated', 'holdingout', 'accepted'].includes(record.stage) &&
+          !replicationSummary?.passed) return false;
+      if (['holdingout', 'accepted'].includes(record.stage) && !holdoutSummary) return false;
+      if (record.stage === 'accepted' && !holdoutSummary?.passed) return false;
+      if (record.critique?.blockers.length && record.stage !== 'rejected') return false;
       return true;
     } catch {
       return false;
