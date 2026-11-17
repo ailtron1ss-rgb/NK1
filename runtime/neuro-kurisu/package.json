@@ -1853,6 +1853,7 @@
     "test:workpass641:cef-restore-integrity": "node --experimental-strip-types tests/workpass641-cognitive-event-fabric-restore-integrity.mjs",
     "test:user-model-http-route": "node tests/user-model-http-route.mjs",
     "test:user-model-explicit-forget": "node --experimental-strip-types tests/user-model-explicit-forget.mjs",
+    "test:dyadic-collaboration": "node --experimental-strip-types tests/dyadic-collaboration-workspace.mjs",
     "test:embodiment-perception-routing-restore": "node --experimental-strip-types tests/embodiment-perception-routing-restore-integrity.mjs",
     "test:workpass667:causal-live-binding": "node --experimental-strip-types tests/workpass667-causal-live-binding.mjs",
     "test:b306:outcome-attribution": "node --experimental-strip-types tests/b306-outcome-attribution.mjs",
