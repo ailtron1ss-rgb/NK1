@@ -201,4 +201,80 @@ restoredPromotionGate.observeOutcome(
 assert.equal(restoredPromotionGate.snapshot().skills[0]?.status,'habit',
   'promotion should resume after the critical health gate is released');
 
+
+
+// Health must distinguish a perfect score computed from no observations from
+// a genuinely observed healthy system. Coverage describes measured dimensions.
+const unknownHealth = new CognitiveImmuneSystem().inspectHealth({
+  tick:1,epistemic:{claimsData:[]},contradictions:{claims:[]},skills:{skills:[]}
+});
+assert.equal(unknownHealth.coverage01,0,
+  'no eligible evidence must produce zero health coverage');
+assert.equal(unknownHealth.healthStatus,'unknown',
+  'unobserved dimensions must not be reported as healthy');
+const observedHealth = new CognitiveImmuneSystem().inspectHealth({
+  ...healthy,tick:1
+});
+assert.ok(observedHealth.coverage01>0,
+  'eligible evidence must contribute to health coverage');
+assert.equal(observedHealth.healthStatus,'healthy',
+  'measured healthy evidence must produce a healthy status');
+
+// Prediction health uses the recent resolved-prediction cohort, rather than
+// an all-time average that can hide recent calibration collapse.
+const predictionCohort = [
+  ...Array.from({length:8},(_,i)=>({
+    id:`recent-prediction-${i}`,kind:'prediction',resolved:true,status:'resolved',error01:.92
+  })),
+  ...Array.from({length:8},(_,i)=>({
+    id:`old-prediction-${i}`,kind:'prediction',resolved:true,status:'resolved',error01:.08
+  }))
+];
+const predictionCohortResult = new CognitiveImmuneSystem().inspectHealth({
+  tick:1,
+  epistemic:{claimsData:predictionCohort,resolvedPredictions:900,meanPredictionError01:.12}
+});
+assert.ok(predictionCohortResult.metrics['prediction-calibration'].value01>.9,
+  'recent prediction errors must override an optimistic all-time aggregate');
+assert.equal(predictionCohortResult.metrics['prediction-calibration'].sampleCount,16,
+  'prediction sample count must represent the retained resolved cohort');
+
+// The safety pause must cover compound-skill promotion and the variant
+// activation boundary, not only the primitive-skill habit path.
+const compoundGateLibrary = new ProceduralSkillLibrary();
+const gatedCompound = compoundGateLibrary.compileCompoundSkill({
+  projectId:'cognitive-immune-test',name:'gated-compound',origin:'test',
+  steps:[
+    {id:'step-a',action:'verify',toolId:'tool-a',fallbackToolIds:['tool-a2']},
+    {id:'step-b',action:'reflect',toolId:'tool-b'}
+  ]
+});
+assert.ok(gatedCompound);
+compoundGateLibrary.setPromotionPaused(true,'cognitive-immune:critical');
+for(let i=0;i<5;i++)compoundGateLibrary.recordCompoundExecution(
+  gatedCompound.id,{success01:1,verified:true,independent:true,holdout:false,context:`independent-context-${i}`}
+);
+assert.equal(compoundGateLibrary.compoundSkills()[0]?.status,'candidate',
+  'critical health must block compound-skill reusable promotion');
+const gatedVariant=compoundGateLibrary.createRepairVariant(
+  gatedCompound.id,{stepId:'step-a',toTool:'tool-a2',reason:'verified-repair-test'}
+);
+assert.ok(gatedVariant);
+for(let i=0;i<4;i++)compoundGateLibrary.recordVariantExecution(
+  gatedCompound.id,gatedVariant.id,
+  {success01:1,verified:true,independent:true,holdout:false,context:`variant-context-${i}`}
+);
+assert.equal(compoundGateLibrary.compoundSkills()[0]?.variants.find(v=>v.id===gatedVariant.id)?.status,'candidate',
+  'critical health must block automatic variant activation');
+assert.equal(compoundGateLibrary.promoteVariant(gatedCompound.id,gatedVariant.id),null,
+  'public promotion API must not bypass the critical health gate');
+const restoredCompoundGate = new ProceduralSkillLibrary();
+restoredCompoundGate.restore(compoundGateLibrary.snapshot());
+assert.equal(restoredCompoundGate.summary().promotionPaused,true,
+  'compound promotion pause must survive checkpoint restore');
+restoredCompoundGate.setPromotionPaused(false);
+const activatedVariant=restoredCompoundGate.promoteVariant(gatedCompound.id,gatedVariant.id);
+assert.equal(activatedVariant?.status,'active',
+  'verified candidate variant may be promoted after health recovery');
+
 console.log('COGNITIVE_IMMUNE_HEALTH_MONITOR=PASS');
