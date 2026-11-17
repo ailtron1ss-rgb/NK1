@@ -468,7 +468,7 @@ const expiredReconcile = await expiryBridge.reconcile(expiringApproved, {
   toolId: 'organism.inspect', input: { scope: 'status' }, reason: 'intent-expiry-reconcile',
   options: { idempotencyKey: 'intent:expired:receipt' },
 }, expiryGateway);
-assert.equal(expiredReconcile.reconciled, true, 'expired but authentic intent may reach the read-only reconciliation route');
+assert.equal(expiredReconcile.attempted, true, 'expired but authentic intent may reach the read-only reconciliation route');
 assert.equal(expiryExecutionCalls, 0, 'reconciliation must never invoke executeTool');
 assert.equal(expiryReconcileCalls, 1, 'reconciliation must invoke only the read-only receipt lookup once');
 
