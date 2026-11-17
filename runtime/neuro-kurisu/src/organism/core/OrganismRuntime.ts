@@ -179,7 +179,7 @@ export class OrganismRuntime {
     version:1 as const,
     projected:0,
     bypassed:0,
-    samplingControlsApplied:0,
+    samplingControlsConfigured:0,
     neuralSnapshotsAvailable:0,
     neuralSnapshotsUnavailable:0,
     adapterHintsIssued:0,
@@ -678,7 +678,7 @@ export class OrganismRuntime {
 
     const profile=prepared.profile;
     this.cognitiveToNeuralBridgeMetrics.projected+=1;
-    this.cognitiveToNeuralBridgeMetrics.samplingControlsApplied+=1;
+    this.cognitiveToNeuralBridgeMetrics.samplingControlsConfigured+=1;
     this.cognitiveToNeuralBridgeMetrics.adapterHintsIssued+=1;
     if(profile.neuralSnapshotAvailable)this.cognitiveToNeuralBridgeMetrics.neuralSnapshotsAvailable+=1;
     else this.cognitiveToNeuralBridgeMetrics.neuralSnapshotsUnavailable+=1;
@@ -709,7 +709,7 @@ export class OrganismRuntime {
         maxTokens:profile.maxTokens,
         featureDimensions:profile.featureVector01.length,
         steeringIntent01:profile.steeringIntent01,
-        samplingParametersApplied:true,
+        samplingParametersConfigured:true,
         adapterSelectionApplied:false,
         activationSteeringApplied:false,
         residualBlockApplied:false,
