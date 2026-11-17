@@ -18,6 +18,12 @@ const registered=new Map(gateway.listTools().map(tool=>[tool.id,tool]));
 for(const id of tools.filter(id=>id.startsWith('organism.worldforge.'))){
   assert.equal(registered.get(id)?.requiresIdempotencyKey,false,`${id} mutates only the bounded synthetic sandbox, not an external side effect`);
 }
+  assert.equal(registered.get(id)?.hasOutputContract,true,`${id} must validate its bounded output envelope`);
+}
+const generatedScenarioContract=registered.get('organism.worldforge.scenarios.generate')?.outputSchema.properties.scenarios.items;
+assert.equal(generatedScenarioContract?.additionalProperties,false,'scenario outputs must reject evaluator-only or undeclared fields');
+assert.equal('disturbances' in generatedScenarioContract.properties,false,'runtime output schema must not expose hidden perturbations');
+assert.equal('seedFingerprint' in generatedScenarioContract.properties,false,'runtime output schema must not expose seed material');
 
 const generated=await gateway.executeTool('organism.worldforge.scenarios.generate',{
  split:'train',count:2,difficulty01:.65,
