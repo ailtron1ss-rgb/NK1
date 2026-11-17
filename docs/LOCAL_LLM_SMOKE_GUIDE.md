@@ -52,12 +52,12 @@ Do not replace a model's whole chat template with this fragment. Insert it insid
 
 ```jinja
 {%- if nk1_control_version | default(0) == 2 %}
-{{- '\\n[NEUROCORE CONTROL]' -}}
-{{- '\\nmode=' ~ (nk1_mode | default('shallow')) -}}
-{{- '\\naction=' ~ (nk1_action | default('none')) -}}
-{{- '\\nuncertainty=' ~ (nk1_uncertainty01 | default(0.5)) -}}
-{{- '\\nbudget=' ~ (nk1_budget_remaining01 | default(0.5)) -}}
-{{- '\\nneural_freshness=' ~ (nk1_neural_snapshot_freshness01 | default(0)) -}}
+{{- '\n[NEUROCORE CONTROL]' -}}
+{{- '\nmode=' ~ (nk1_mode | default('shallow')) -}}
+{{- '\naction=' ~ (nk1_action | default('none')) -}}
+{{- '\nuncertainty=' ~ (nk1_uncertainty01 | default(0.5)) -}}
+{{- '\nbudget=' ~ (nk1_budget_remaining01 | default(0.5)) -}}
+{{- '\nneural_freshness=' ~ (nk1_neural_snapshot_freshness01 | default(0)) -}}
 {%- endif %}
 ```
 
