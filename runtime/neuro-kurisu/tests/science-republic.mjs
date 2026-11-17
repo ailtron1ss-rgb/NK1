@@ -399,7 +399,7 @@ function signedArtifact(invention, phase, seed, options = {}) {
   };
 }
 
-const invention = runtime.inventionLoop.snapshot().records.find(row => row.id === science.inventionId);
+const invention = runtime.inventionLoop.snapshot().records.find(row => row.id === registered.inventionId);
 assert.ok(invention);
 const primaryArtifact = signedArtifact(invention, 'primary', evaluation.primarySeed);
 const tamperedPrimary = structuredClone(primaryArtifact);
@@ -449,7 +449,7 @@ assert.equal(runtime.scienceRepublic.get(science.id).stage, 'awaiting-audit');
 assert.equal(runtime.scientificBrain.diagnostics().acceptedUpdates, afterReplication,
   'holdout remains calibration-only and cannot update trainable weights');
 
-const terminalInvention = runtime.inventionLoop.snapshot().records.find(row => row.id === science.inventionId);
+const terminalInvention = runtime.inventionLoop.snapshot().records.find(row => row.id === registered.inventionId);
 const checkedArtifacts = [
   science.discoveryEvidence,
   theory.theory.evidence,
