@@ -82,6 +82,7 @@ export class CognitiveToNeuralBridge {
       TEMPERATURE_BY_MODE[mode]+motivation01*.08-uncertainty01*.16+urgency01*.02,
       .2,.85,
     ).toFixed(3));
+    const maxTokens=Math.max(96,Math.round((TOKENS_BY_MODE[mode]*(.4+budgetRemaining01*.6))/16)*16);
     const steeringIntent01={
       curiosity01:clamp(motivation01*(1-uncertainty01)*.15,0,.15),
       caution01:clamp(uncertainty01*.15,0,.15),
@@ -90,7 +91,7 @@ export class CognitiveToNeuralBridge {
     };
     return {
       version:1,tick,action,mode,adapterHint:ADAPTER_BY_MODE[mode],
-      featureVector01,temperature,maxTokens:TOKENS_BY_MODE[mode],steeringIntent01,
+      featureVector01,temperature,maxTokens,steeringIntent01,
       controlsApplied:{
         samplingParameters:true,
         adapterSelection:false,
