@@ -23,6 +23,7 @@ export interface ConstitutionReviewExpected {
   authorId: string;
   testPlanCount: number;
 }
+export type ConstitutionReviewVerifier = (artifact: unknown, expected: ConstitutionReviewExpected) => ConstitutionReviewInput | null;
 export interface ConstitutionReviewAuthorityOptions {
   maxAgeMs?: number;
   allowedClockSkewMs?: number;
@@ -93,7 +94,7 @@ function validateEvidence(value: unknown, expectedPlanCount: number): value is C
 export function createAuthenticatedConstitutionReviewVerifier(
   trustedKeys: ReadonlyMap<string, string>,
   options: ConstitutionReviewAuthorityOptions = {},
-): (artifact: unknown, expected: ConstitutionReviewExpected) => ConstitutionReviewInput | null {
+): ConstitutionReviewVerifier {
   const now = options.now ?? Date.now;
   const maxAgeMs = options.maxAgeMs ?? 15 * 60_000;
   const allowedClockSkewMs = options.allowedClockSkewMs ?? 30_000;
