@@ -448,7 +448,7 @@ export class EmbodiedCausalWorldBridge {
     // Outcome identity must be supplied explicitly; never infer a fast context
     // from whichever adapter happened to be active most recently.
     const outcomeContextId=args.contextId;
-    const actionBound=this.assertCommittedAction(outcomeContextId,args.tick,args.action);
+    const actionBound=outcomeContextId!==undefined&&this.assertCommittedAction(outcomeContextId,args.tick,args.action);
     const fastContext=actionBound?this.consumeFastDecision(outcomeContextId,args.tick):null;
     const ai=ACTIONS.indexOf(args.action);const from=this.state.latent.slice();const observed=this.encode(args.nextFeatures);const pred=this.predict(from,args.action,1);const nextError=clamp(mse(pred.next,observed));const rewardErr=clamp(Math.abs(pred.reward-args.reward01));
     const verified=clamp(args.verified01);const lr=.012+verified*.018;
