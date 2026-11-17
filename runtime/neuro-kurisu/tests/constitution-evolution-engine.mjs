@@ -17,7 +17,7 @@ assert.equal(engine.protectedInvariants().length,10);
 assert.equal(Object.isFrozen(PROTECTED_CONSTITUTIONAL_INVARIANTS),true);
 assert.equal(Object.isFrozen(PROTECTED_CONSTITUTIONAL_INVARIANTS[0]),true);
 assert.throws(()=>{ PROTECTED_CONSTITUTIONAL_INVARIANTS[0].statement='mutable'; },TypeError);
-assert.throws(()=>new ConstitutionEvolutionEngine().propose({authorId:'no-key',baseVersion:'1.0.0',change:'add',
+assert.throws(()=>new ConstitutionEvolutionEngine({ signingKey: '' }).propose({authorId:'no-key',baseVersion:'1.0.0',change:'add',
   proposedRule:{id:'workflow.no-key',title:'No key',statement:'Must not mutate without a host key.',domain:'workflow',scope:'tests'},
   motivation:'Missing host key.',scope:'tests',counterexample:'Unsigned state could be forged.',riskAssessment:{level:'low',summary:'No signing key.',mitigations:['Fail closed.']},testPlan:['reject']}),
   /signing key/);
@@ -78,7 +78,7 @@ assert.equal(auditGuard.restore(tamperedAudit),false,'tampered append-only audit
 const timestampTamper=engine.snapshot(); timestampTamper.active.createdAt+=1;
 const timestampGuard=new ConstitutionEvolutionEngine({signingKey:TEST_KEY});
 assert.equal(timestampGuard.restore(timestampTamper),false,'revision timestamps are authenticated');
-const noKeyRestore=new ConstitutionEvolutionEngine();
+const noKeyRestore=new ConstitutionEvolutionEngine({ signingKey: '' });
 assert.equal(noKeyRestore.restore(snapshot),false,'non-baseline governance state cannot restore without the host key');
 assert.equal(noKeyRestore.activeConstitution().version,'1.0.0');
 
