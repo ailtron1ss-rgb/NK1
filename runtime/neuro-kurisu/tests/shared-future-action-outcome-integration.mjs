@@ -166,6 +166,24 @@ try {
     } finally {
       await downgradedBinding.flush();
     }
+
+    const duplicateActionLink = structuredClone(persisted);
+    duplicateActionLink.system.sharedFutureActionBindings.records.push({
+      ...actionBindingReceipt,
+      id: 'sf-action-link:conflicting-execution-binding',
+      actionDecisionId: 'forged-canonical-decision',
+    });
+    const downgradedDuplicate = new OrganismCore(new MemoryStateStore({ initial: duplicateActionLink }), config);
+    await downgradedDuplicate.init();
+    try {
+      const restoredWithConflictingLink = await downgradedDuplicate.executeTool('organism.future.outcomes.list', {
+        scenarioId: 'shared-future-action-integration',
+      });
+      assert.equal(restoredWithConflictingLink.result.outcomes[0].independentlyVerified, false,
+        'a duplicate execution ID with a conflicting decision link must invalidate the correlation');
+    } finally {
+      await downgradedDuplicate.flush();
+    }
   } finally {
     await restarted.flush();
   }
