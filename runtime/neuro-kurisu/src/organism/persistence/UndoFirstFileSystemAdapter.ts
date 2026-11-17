@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { mkdir, open, link, unlink, readFile, lstat, realpath, rename } from 'node:fs/promises';
+import { mkdir, chmod, open, link, unlink, readFile, lstat, realpath, rename } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, join } from 'node:path';
 import {
   ActionGateway,
@@ -216,13 +216,16 @@ export class UndoFirstFileSystemAdapter {
   }
 
   private async ensureWorkspace(): Promise<string> {
-    if (this.resolvedRoot) return this.resolvedRoot;
     await mkdir(this.requestedRoot, { recursive: true, mode: 0o700 });
     const requestedStat = await lstat(this.requestedRoot);
     if (requestedStat.isSymbolicLink() || !requestedStat.isDirectory()) throw new Error('filesystem-workspace-root-not-a-real-directory');
     const root = await realpath(this.requestedRoot);
+    if (this.resolvedRoot && root !== this.resolvedRoot) throw new Error('filesystem-workspace-root-changed');
     const rootStat = await lstat(root);
     if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) throw new Error('filesystem-workspace-root-not-a-directory');
+    await chmod(root, 0o700);
+    const privateStat = await lstat(root);
+    if ((privateStat.mode & 0o077) !== 0) throw new Error('filesystem-workspace-permissions-not-private');
     this.resolvedRoot = root;
     return root;
   }
@@ -297,6 +300,11 @@ export class UndoFirstFileSystemAdapter {
     }
     const info = await lstat(path);
     if (info.isSymbolicLink() || !info.isDirectory()) throw new Error(errorCode);
+    await chmod(path, 0o700);
+    const privateInfo = await lstat(path);
+    if (privateInfo.isSymbolicLink() || !privateInfo.isDirectory() || (privateInfo.mode & 0o077) !== 0) {
+      throw new Error(`${errorCode}:permissions-not-private`);
+    }
   }
 
   private async recoveryDirectory(): Promise<{ prepared: string }> {
