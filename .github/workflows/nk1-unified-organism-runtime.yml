@@ -44,6 +44,8 @@ jobs:
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
       - name: Install locked runtime dependencies
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: OmeStro 22 substrate independence transfer and migration gate
+        run: npm --prefix runtime/neuro-kurisu run test:substrate-independence
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Unified cognitive cycle and boundary
@@ -64,7 +66,5 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:big-pass-39
       - name: Continuity and organism integration
         run: npm --prefix runtime/neuro-kurisu run test:b1701-b2200:continuity && npm --prefix runtime/neuro-kurisu run test:p29:core-integration && npm --prefix runtime/neuro-kurisu run test:pcontinuity:integration
-      - name: OmeStro 22 substrate independence transfer and migration gate
-        run: npm --prefix runtime/neuro-kurisu run test:substrate-independence
       - name: Organism runtime smoke
         run: npm --prefix runtime/neuro-kurisu run test:organism-smoke
