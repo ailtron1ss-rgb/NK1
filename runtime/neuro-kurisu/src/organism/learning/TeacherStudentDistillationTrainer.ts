@@ -1,5 +1,5 @@
 import { createHash, randomUUID, verify as verifySignature } from 'node:crypto';
-import { lstat, open, realpath } from 'node:fs/promises';
+import { lstat, mkdir, open, readdir, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import {
   canonicalTeacherDistillationPayload,
@@ -132,6 +132,46 @@ function requireConfigScalar(values: Map<string, string>, key: string, expected:
   if (values.get(key) !== expected) {
     throw new Error('teacher-distillation-config-' + key + '-invalid');
   }
+}
+
+async function prepareSafeOutputDirectory(
+  workspace: string,
+  outputDirectory: string,
+  datasetDirectory: string,
+): Promise<string> {
+  if (!pathIsWithin(workspace, outputDirectory) || outputDirectory === workspace ||
+      pathIsWithin(datasetDirectory, outputDirectory, true) ||
+      pathIsWithin(outputDirectory, datasetDirectory, true)) {
+    throw new Error('teacher-distillation-output-path-invalid');
+  }
+  const relative = path.relative(workspace, outputDirectory);
+  const parts = relative.split(path.sep).filter(Boolean);
+  if (!parts.length) throw new Error('teacher-distillation-output-path-invalid');
+
+  let current = workspace;
+  for (let index = 0; index < parts.length; index++) {
+    current = path.join(current, parts[index]!);
+    try {
+      await mkdir(current, { mode: 0o700 });
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error
+        ? (error as { code?: unknown }).code
+        : undefined;
+      if (code !== 'EEXIST') throw new Error('teacher-distillation-output-directory-create-failed');
+    }
+    const metadata = await lstat(current);
+    if (metadata.isSymbolicLink() || !metadata.isDirectory()) {
+      throw new Error('teacher-distillation-output-path-invalid');
+    }
+    const resolved = await realpath(current);
+    if (!pathIsWithin(workspace, resolved, true)) {
+      throw new Error('teacher-distillation-output-path-invalid');
+    }
+    if (index === parts.length - 1 && (await readdir(current)).length !== 0) {
+      throw new Error('teacher-distillation-output-directory-not-empty');
+    }
+  }
+  return outputDirectory;
 }
 
 async function verifySignedDataset(input: {
@@ -530,11 +570,10 @@ export async function runTeacherStudentDistillationTraining(
     trustedKeys: trustedVerifierKeys,
   });
   const resolvedOutputDirectory = path.resolve(workspace, outputDirectory);
-  if (!pathIsWithin(workspace, resolvedOutputDirectory) ||
-      resolvedOutputDirectory === workspace ||
-      resolvedOutputDirectory === resolvedDatasetPath) {
-    throw new Error('teacher-distillation-output-path-invalid');
+  if (input.signal?.aborted) {
+    throw new Error('teacher-distillation-training-cancelled-before-start');
   }
+  await prepareSafeOutputDirectory(workspace, resolvedOutputDirectory, resolvedDatasetPath);
 
   const relativeConfig = path.relative(workspace, config);
   const planFingerprint = sha256(JSON.stringify({
