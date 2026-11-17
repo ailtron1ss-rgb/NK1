@@ -1,0 +1,334 @@
+from __future__ import annotations
+
+import ipaddress
+import json
+import math
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+from urllib.parse import urlparse
+
+import torch
+from .engine import ArtifactError, NeuralProsthesisBank, _resolve_layer_stack
+
+
+MAX_REQUEST_BYTES = 1024 * 1024
+MAX_MESSAGE_CHARS = 64_000
+MAX_MESSAGES = 32
+
+
+class RequestError(ValueError):
+    def __init__(self, status: int, code: str):
+        super().__init__(code)
+        self.status = int(status)
+        self.code = code
+
+
+def _json_list(env_name: str, *, maximum: int) -> list[str]:
+    raw = os.environ.get(env_name, "[]")
+    try:
+        value = json.loads(raw)
+    except Exception as error:
+        raise RuntimeError(f"{env_name}-must-be-json-array") from error
+    if not isinstance(value, list) or len(value) > maximum or any(not isinstance(item, str) for item in value):
+        raise RuntimeError(f"{env_name}-invalid")
+    return value
+
+
+def _device_and_dtype(requested: str) -> tuple[torch.device, torch.dtype]:
+    value = str(requested or "auto").lower()
+    if value == "auto":
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            device = torch.device("mps")
+        else:
+            device = torch.device("cpu")
+    else:
+        device = torch.device(value)
+        if device.type == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("requested-cuda-device-unavailable")
+        if device.type == "mps" and not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
+            raise RuntimeError("requested-mps-device-unavailable")
+    if device.type == "cuda":
+        dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+    else:
+        dtype = torch.float32
+    return device, dtype
+
+
+def _find_layer_path(model: torch.nn.Module) -> str:
+    configured = str(os.environ.get("NEURO_NP_LAYER_PATH", "")).strip()
+    candidates = [configured] if configured else []
+    candidates.extend([
+        "model.layers",
+        "transformer.h",
+        "gpt_neox.layers",
+        "model.decoder.layers",
+        "decoder.layers",
+        "layers",
+    ])
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            _resolve_layer_stack(model, candidate)
+            return candidate
+        except ArtifactError:
+            continue
+    raise RuntimeError("unsupported-transformer-layer-layout-set-NEURO_NP_LAYER_PATH")
+
+
+class TransformersRuntime:
+    def __init__(self) -> None:
+        model_path = str(os.environ.get("NEURO_NP_MODEL_PATH", "")).strip()
+        if not model_path:
+            raise RuntimeError("NEURO_NP_MODEL_PATH-must-point-to-an-existing-local-model")
+        if not Path(model_path).expanduser().exists():
+            raise RuntimeError("NEURO_NP_MODEL_PATH-not-found")
+        try:
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+        except ImportError as error:
+            raise RuntimeError("install-research/neural-prosthesis/requirements.txt") from error
+
+        self.device, dtype = _device_and_dtype(os.environ.get("NEURO_NP_DEVICE", "auto"))
+        self.model_path = str(Path(model_path).expanduser().resolve())
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model_path,
+            local_files_only=True,
+            trust_remote_code=False,
+        )
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.model_path,
+            local_files_only=True,
+            trust_remote_code=False,
+            torch_dtype=dtype,
+        )
+        self.model.to(self.device)
+        self.model.eval()
+        if getattr(self.tokenizer, "pad_token_id", None) is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.model.config.use_cache = True
+
+        model_id = str(os.environ.get("NEURO_NP_MODEL_ID") or getattr(self.model.config, "_name_or_path", "") or Path(self.model_path).name)
+        revision = str(os.environ.get("NEURO_NP_MODEL_REVISION") or "unversioned-local")
+        self.layer_path = _find_layer_path(self.model)
+        self.bank = NeuralProsthesisBank(
+            self.model,
+            model_id=model_id,
+            model_revision=revision,
+            layer_path=self.layer_path,
+        )
+        self._approved_manifest_digests = set(_json_list("NEURO_NP_ALLOWED_MANIFESTS_JSON", maximum=128))
+        for value in self._approved_manifest_digests:
+            if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
+                raise RuntimeError("NEURO_NP_ALLOWED_MANIFESTS_JSON-contains-invalid-sha256")
+        self._adapter_manifest_digests: dict[str, str] = {}
+        if revision == "unversioned-local":
+            adapter_dirs: list[str] = []
+        else:
+            adapter_dirs = _json_list("NEURO_NP_ADAPTER_DIRS_JSON", maximum=32)
+        for raw_dir in adapter_dirs:
+            artifact_dir = Path(raw_dir).expanduser()
+            adapter_id = self.bank.load_adapter(artifact_dir)
+            manifest = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
+            self._adapter_manifest_digests[adapter_id] = str(manifest["manifest_sha256"])
+        self.bank.eval()
+
+        self.default_adapter = str(os.environ.get("NEURO_NP_DEFAULT_ADAPTER", "")).strip() or None
+        if self.default_adapter is not None and not self._is_approved(self.default_adapter):
+            raise RuntimeError("NEURO_NP_DEFAULT_ADAPTER-must-be-host-allowlisted")
+        context_limit = int(os.environ.get("NEURO_NP_MAX_CONTEXT_TOKENS", "8192"))
+        self.max_context_tokens = max(512, min(65536, context_limit))
+        self._generation_lock = threading.Lock()
+        self.model_id = model_id
+        self.model_revision = revision
+
+    def _is_approved(self, adapter_id: str) -> bool:
+        digest = self._adapter_manifest_digests.get(adapter_id)
+        return bool(digest and digest in self._approved_manifest_digests)
+
+    def status(self) -> dict[str, Any]:
+        adapters = []
+        for item in self.bank.snapshot()["loaded_adapters"]:
+            digest = self._adapter_manifest_digests.get(item["adapter_id"])
+            adapters.append({
+                **item,
+                "manifest_sha256": digest,
+                "admission": "approved" if digest in self._approved_manifest_digests else "quarantine",
+            })
+        return {
+            "ready": True,
+            "backend": "neural-prosthesis",
+            "model": self.model_id,
+            "revision": self.model_revision,
+            "device": str(self.device),
+            "layer_path": self.layer_path,
+            "loaded_adapters": adapters,
+            "default_adapter": self.default_adapter,
+            "remote_model_downloads": False,
+        }
+
+    def complete(self, request: dict[str, Any]) -> dict[str, Any]:
+        messages = request.get("messages")
+        if not isinstance(messages, list) or not 1 <= len(messages) <= MAX_MESSAGES:
+            raise RequestError(400, "messages-invalid")
+        normalized = []
+        for message in messages:
+            if not isinstance(message, dict) or message.get("role") not in ("system", "user", "assistant"):
+                raise RequestError(400, "message-role-invalid")
+            content = message.get("content")
+            if not isinstance(content, str) or not content.strip() or len(content) > MAX_MESSAGE_CHARS:
+                raise RequestError(400, "message-content-invalid")
+            normalized.append({"role": message["role"], "content": content})
+        requested_model = request.get("model")
+        if requested_model and str(requested_model) != self.model_id:
+            raise RequestError(404, "model-not-loaded")
+        adapter_id = request.get("adapter_id", self.default_adapter)
+        if adapter_id is not None:
+            if not isinstance(adapter_id, str) or adapter_id not in self._adapter_manifest_digests:
+                raise RequestError(404, "adapter-not-loaded")
+            if not self._is_approved(adapter_id):
+                raise RequestError(403, "adapter-quarantined")
+        max_tokens = request.get("max_tokens", 512)
+        temperature = request.get("temperature", 0.7)
+        if not isinstance(max_tokens, int) or isinstance(max_tokens, bool) or not 1 <= max_tokens <= 2048:
+            raise RequestError(400, "max-tokens-out-of-range")
+        if isinstance(temperature, bool) or not isinstance(temperature, (int, float)) or not math.isfinite(float(temperature)) or not 0 <= float(temperature) <= 2:
+            raise RequestError(400, "temperature-out-of-range")
+        stream = request.get("stream", False)
+        if stream is not False:
+            raise RequestError(400, "streaming-not-supported")
+
+        try:
+            prompt = self.tokenizer.apply_chat_template(
+                normalized,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+        except Exception:
+            prompt = "\n".join(f"{item['role']}: {item['content']}" for item in normalized) + "\nassistant:"
+        input_limit = max(1, self.max_context_tokens - max_tokens)
+        encoded = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=input_limit,
+        )
+        input_ids = encoded["input_ids"].to(self.device)
+        attention_mask = encoded.get("attention_mask")
+        if attention_mask is not None:
+            attention_mask = attention_mask.to(self.device)
+        do_sample = float(temperature) > 0
+        generation_kwargs: dict[str, Any] = {
+            "max_new_tokens": max_tokens,
+            "do_sample": do_sample,
+            "pad_token_id": self.tokenizer.pad_token_id,
+            "use_cache": True,
+        }
+        if do_sample:
+            generation_kwargs["temperature"] = max(0.01, float(temperature))
+            generation_kwargs["top_p"] = 0.9
+        if attention_mask is not None:
+            generation_kwargs["attention_mask"] = attention_mask
+
+        with self._generation_lock, torch.inference_mode():
+            with self.bank.activate(adapter_id):
+                generated = self.model.generate(input_ids=input_ids, **generation_kwargs)
+        completion_tokens = generated[0, input_ids.shape[-1]:]
+        text = self.tokenizer.decode(completion_tokens, skip_special_tokens=True).strip()
+        if not text:
+            raise RequestError(503, "empty-model-response")
+        return {
+            "id": "neural-prosthesis-local",
+            "object": "chat.completion",
+            "model": self.model_id,
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}],
+        }
+
+    def close(self) -> None:
+        self.bank.close()
+
+
+def _send_json(handler: BaseHTTPRequestHandler, status: int, payload: dict[str, Any]) -> None:
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    handler.send_response(status)
+    handler.send_header("content-type", "application/json; charset=utf-8")
+    handler.send_header("content-length", str(len(body)))
+    handler.send_header("cache-control", "no-store")
+    handler.end_headers()
+    handler.wfile.write(body)
+
+
+def create_handler(runtime: TransformersRuntime):
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def log_message(self, _format: str, *args: Any) -> None:
+            # Never log message contents, prompts, completions, or adapter weights.
+            return
+
+        def do_GET(self) -> None:
+            path = urlparse(self.path).path
+            if path in ("/health", "/api/health", "/neural-prosthesis/status"):
+                _send_json(self, 200, runtime.status())
+            else:
+                _send_json(self, 404, {"error": "not-found"})
+
+        def do_POST(self) -> None:
+            if urlparse(self.path).path != "/v1/chat/completions":
+                _send_json(self, 404, {"error": "not-found"})
+                return
+            try:
+                length = int(self.headers.get("content-length", "0"))
+            except ValueError:
+                _send_json(self, 400, {"error": "content-length-invalid"})
+                return
+            if length <= 0 or length > MAX_REQUEST_BYTES:
+                _send_json(self, 413, {"error": "request-too-large"})
+                return
+            try:
+                raw = self.rfile.read(length)
+                payload = json.loads(raw.decode("utf-8"))
+                if not isinstance(payload, dict):
+                    raise RequestError(400, "request-object-required")
+                response = runtime.complete(payload)
+                _send_json(self, 200, response)
+            except RequestError as error:
+                _send_json(self, error.status, {"error": error.code})
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                _send_json(self, 400, {"error": "invalid-json"})
+            except Exception:
+                _send_json(self, 503, {"error": "inference-failed"})
+    return Handler
+
+
+def main() -> None:
+    host = str(os.environ.get("NEURO_NP_HOST", "127.0.0.1")).strip().lower()
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        try:
+            if not ipaddress.ip_address(host).is_loopback:
+                raise RuntimeError("Neural Prosthesis HTTP service must bind to a loopback address")
+        except ValueError as error:
+            raise RuntimeError("Neural Prosthesis HTTP service must bind to a loopback address") from error
+    port = int(os.environ.get("NEURO_NP_PORT", "8091"))
+    if not 1 <= port <= 65535:
+        raise RuntimeError("NEURO_NP_PORT-out-of-range")
+    runtime = TransformersRuntime()
+    server = ThreadingHTTPServer((host, port), create_handler(runtime))
+    server.daemon_threads = True
+    print(f"NEURAL_PROSTHESIS_READY http://{host}:{port} model={runtime.model_id} device={runtime.device}")
+    try:
+        server.serve_forever(poll_interval=0.5)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.shutdown()
+        server.server_close()
+        runtime.close()
+
+
+if __name__ == "__main__":
+    main()
