@@ -165,3 +165,9 @@ zero. Models with a different layer layout need an explicit NEURO_NP_LAYER_PATH;
 models with a different layer-output contract are rejected instead of patched
 heuristically. Quantized GGUF/llama.cpp execution is deliberately outside this
 backend and continues to use the existing provider.
+
+The current sidecar loads non-quantized Transformers weights and uses FP32 on CPU,
+or BF16/FP16 on supported GPU devices. Bitsandbytes 4-bit/8-bit, GPTQ, AWQ, GGUF,
+and llama.cpp adapter injection are not enabled by this implementation and are not
+claimed as compatible. Base-model quantization support needs its own layer-output,
+dtype, memory and quality regression gate before it can be enabled.
