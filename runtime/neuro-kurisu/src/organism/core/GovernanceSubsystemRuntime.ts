@@ -7,12 +7,13 @@ import { P69ConstitutionalArbiter } from '../cognition/P69ConstitutionalArbiter.
 import { P72LifeCycleOrchestrator } from '../system/P72LifeCycleOrchestrator.ts';
 import { P73CapabilityEvolutionLedger } from '../system/P73CapabilityEvolutionLedger.ts';
 import { SelfGovernanceEngine } from '../cognition/evolution/SelfGovernanceEngine.ts';
-import { BehavioralInfluenceLedger, defaultBehavioralInfluenceLedger } from '../system/BehavioralInfluenceLedger.ts';
+import { ConstitutionEvolutionEngine } from '../cognition/evolution/ConstitutionEvolutionEngine.ts';
+import { BehavioralInfluenceLedger } from '../system/BehavioralInfluenceLedger.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
-import { SelfModelValidationEngine, defaultSelfModelValidation } from '../system/SelfModelValidationEngine.ts';
-import { FailureRecoveryCertification, defaultFailureRecoveryCertification } from '../system/FailureRecoveryCertification.ts';
-import { CognitiveDomainClosure, type CognitiveDomainMarkSet, type CognitiveDomain } from '../system/CognitiveDomainClosure.ts';
-import { CausalDomainClosureLedger, defaultCausalDomainClosureLedger, type CausalDomainClosureSnapshot } from '../system/CausalDomainClosureLedger.ts';
+import { SelfModelValidationEngine } from '../system/SelfModelValidationEngine.ts';
+import { FailureRecoveryCertification } from '../system/FailureRecoveryCertification.ts';
+import { CognitiveDomainClosure } from '../system/CognitiveDomainClosure.ts';
+import { CausalDomainClosureLedger } from '../system/CausalDomainClosureLedger.ts';
 
 /** BIG PASS 51: physical owner for capability, integrity, resilience and constitutional governance. */
 export class GovernanceSubsystemRuntime {
@@ -29,20 +30,16 @@ export class GovernanceSubsystemRuntime {
   readonly p72LifeCycle = new P72LifeCycleOrchestrator();
   readonly p73CapabilityLedger = new P73CapabilityEvolutionLedger();
   readonly selfGovernance = new SelfGovernanceEngine();
+  /** OmeStro #20: versioned governance ledger; it never rewrites P69 or protected host controls. */
+  readonly constitutionEvolution = new ConstitutionEvolutionEngine();
 
-
-  /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly behavioralInfluenceLedger = new BehavioralInfluenceLedger();
-  /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly realityEvidenceLedger = new RealityEvidenceLedger(384);
-  /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly selfModelValidation = new SelfModelValidationEngine();
-  /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly failureRecoveryCertification = new FailureRecoveryCertification();
-  /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly cognitiveDomainClosure = new CognitiveDomainClosure(16);
-  /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly causalDomainClosureLedger = new CausalDomainClosureLedger(32);
+
   restoreFromPersisted(input: { advanced?: any }) {
     const advanced=input.advanced ?? {};
     this.resilience.restore(advanced.advancedResilience);
@@ -50,6 +47,8 @@ export class GovernanceSubsystemRuntime {
     this.p72LifeCycle.restore(advanced.p72LifeCycle);
     this.p73CapabilityLedger.restore(advanced.p73CapabilityLedger);
     this.selfGovernance.restore(advanced.selfGovernance);
+    // Fail-closed restore: invalid snapshots reset to the compiled immutable baseline and expose diagnostics.
+    this.constitutionEvolution.restore(advanced.constitutionEvolution);
   }
 
   snapshot() {
@@ -60,6 +59,7 @@ export class GovernanceSubsystemRuntime {
       p72LifeCycle: this.p72LifeCycle.snapshot(),
       p73CapabilityLedger: this.p73CapabilityLedger.snapshot(),
       selfGovernance: this.selfGovernance.snapshot(),
+      constitutionEvolution: this.constitutionEvolution.snapshot(),
     };
   }
 }
