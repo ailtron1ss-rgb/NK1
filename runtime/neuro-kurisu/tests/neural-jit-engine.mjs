@@ -167,9 +167,23 @@ assert.equal(engine.projectShadowResidual(candidate.id, [0.1]), null,
 const stored = engine.persistenceSnapshot();
 assert.equal(stored.traces, undefined, 'raw activation traces must not be persisted as trusted evidence');
 assert.equal(stored.candidates.length, 1);
+assert.ok(stored.seenObservationFingerprints?.length > 0,
+  'the durable sidecar must retain bounded replay protection across process restarts');
+assert.ok(stored.seenCaptureFingerprints?.length > 0,
+  'the durable sidecar must retain capture replay protection across process restarts');
+assert.ok(stored.seenObservationFingerprints.every(value => /^[a-f0-9]{64}$/.test(value)));
+assert.ok(stored.seenCaptureFingerprints.every(value => /^[a-f0-9]{64}$/.test(value)));
+assert.equal(JSON.stringify(stored).includes('observation-'), false,
+  'raw observation IDs must never be persisted');
+assert.equal(JSON.stringify(stored).includes('capture-'), false,
+  'raw capture IDs must never be persisted');
 
 const restored = new NeuralJitEngine({ activationCaptureVerifier: verifier });
 restored.restore(stored);
+const replayAfterRestart = await restored.recordVerifiedTrace(await makeTrace(0));
+assert.equal(replayAfterRestart.accepted, false,
+  'a previously admitted outcome must remain replay-protected after restart');
+assert.equal(replayAfterRestart.reason, 'duplicate-outcome-observation');
 assert.equal(restored.diagnostics().candidates[0].status, 'quarantined',
   'persisted weights must not retain trust after process restart');
 assert.equal(restored.diagnostics().liveInferenceEnabled, false);
@@ -212,6 +226,14 @@ for (let i = 0; i < 120; i += 1) {
 }
 assert.equal(unstableCoefficientEngine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint }), null,
   'rank-1 compilation must reject unstable residual coefficients instead of persisting unbounded adapters');
+
+const expiredEngine = new NeuralJitEngine({ activationCaptureVerifier: verifier });
+const expiredTrace = await makeTrace(998);
+expiredTrace.capture.capturedAt = Date.now() - 10 * 60_000 - 1;
+const expiredResult = await expiredEngine.recordVerifiedTrace(expiredTrace);
+assert.equal(expiredResult.accepted, false,
+  'a trusted but stale activation capture must not be admitted as fresh training evidence');
+assert.equal(expiredResult.reason, 'activation-capture-expired');
 
 const malformedTrace = await makeTrace(999);
 malformedTrace.capture.inputFeatures = Array(257).fill(0.1);
