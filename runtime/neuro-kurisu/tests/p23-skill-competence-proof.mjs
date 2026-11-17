@@ -228,7 +228,7 @@ assert.deepEqual(restoredStore.resolveActiveSkillCompetenceSubject(skillId), {
   payloadFingerprint: candidate.payloadFingerprint,
 });
 const tamperedSnapshot = skillStorePersistence.read();
-tamperedSnapshot.revision += 1;
+tamperedSnapshot.revision = 1;
 tamperedSnapshot.candidates[0].competenceProof.signature =
   tamperedSnapshot.candidates[0].competenceProof.signature.slice(0, -4) + 'AAAA';
 const tamperedPersistence = new InMemorySkillStorePersistence();
