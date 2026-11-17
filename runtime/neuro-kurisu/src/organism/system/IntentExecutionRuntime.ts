@@ -23,6 +23,18 @@ export interface IntentApprovalEvidence extends IntentApprovalScope {
   expiresAt?: number;
   userConfirmed?: boolean;
 }
+export interface TrustedAutonomousDecisionEvidence {
+  source: 'autonomous-resource-tool-life';
+  decisionId: string;
+  tick: number;
+  /** Tool identifier selected by the planner before Core alias normalization. */
+  plannerToolId: string;
+  /** Canonical ActionGateway tool identifier included in the intent contract. */
+  toolId: string;
+  intentHash: string;
+  reason: string;
+  sourceText: string;
+}
 export interface IntentExecutionLink {
   at: number;
   contractId: string;
@@ -41,6 +53,7 @@ export interface IntentExecutionRuntimeOptions {
   clock?: () => number;
   approvalKey?: string | Uint8Array;
   extractionTimeoutMs?: number;
+  autonomousDecisionVerifier?: (contract: IntentContract, evidence: TrustedAutonomousDecisionEvidence) => boolean;
 }
 
 const MAX_CONTRACTS = 64;
@@ -210,6 +223,47 @@ export class IntentExecutionRuntime {
     this.approved.set(contract.id, approved);
     this.trimContracts();
     return approved;
+  }
+
+  /**
+   * Mint a short-lived internal approval only from a Core-verified CEF planner event.
+   * Autonomous approval cannot waive material assumptions or high/critical risk;
+   * those cases must return to the human approval centre.
+   */
+  approveFromTrustedPlanner(
+    contract: IntentContract,
+    scope: IntentApprovalScope,
+    evidence: TrustedAutonomousDecisionEvidence,
+  ): IntentContract {
+    this.issuedDraft(contract);
+    const normalized = this.normalizeScope(contract, scope);
+    if (contract.risk.level === 'high' || contract.risk.level === 'critical') {
+      throw new Error('autonomous planner cannot self-approve high or critical intent');
+    }
+    if (contract.assumptions.some(item => item.requiresConfirmation)) {
+      throw new Error('autonomous planner cannot self-acknowledge material intent assumptions');
+    }
+    const verifier = this.options.autonomousDecisionVerifier;
+    let verified = false;
+    try {
+      verified = Boolean(verifier?.(contract, evidence));
+    } catch {
+      verified = false;
+    }
+    if (!verified) throw new Error('trusted autonomous planner decision receipt was not verified');
+    const approval: IntentApproval = {
+      contractId: contract.id,
+      authority: 'autonomous-planner',
+      ...normalized,
+      at: this.clock(),
+      evidenceRef: `planner-decision:${evidence.decisionId}`,
+    };
+    this.verifiedApprovals.add(approval);
+    const signed = this.compiler.approve(contract, approval);
+    this.drafts.delete(contract.id);
+    this.approved.set(contract.id, signed);
+    this.trimContracts();
+    return signed;
   }
 
   reject(contract: IntentContract): IntentContract {
