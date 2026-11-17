@@ -182,7 +182,7 @@ const isSafeIdentity = (value: unknown, max = 256): value is string =>
   !/[\u0000-\u001f\u007f-\u009f]/.test(value);
 
 const sha256 = (value: string): string =>
-  createHash('sha256').update(value, 'utf8').digest('hex');
+  createHash('sha256').update(value).digest('hex');
 
 function canonical(value: unknown, ancestors = new Set<object>()): string {
   if (value === null || typeof value !== 'object') {
@@ -531,7 +531,7 @@ export class TeacherStudentDistillationDataset {
         new Set(input.seeds).size !== input.seeds.length ||
         !input.teacher || typeof input.teacher.generate !== 'function' ||
         !input.verifier || typeof input.verifier.verify !== 'function' ||
-        input.teacher === input.verifier || input.teacher.generate === (input.verifier.verify as unknown) ||
+        (input.teacher as unknown) === (input.verifier as unknown) || input.teacher.generate === (input.verifier.verify as unknown) ||
         !(input.trustedVerifierKeys instanceof Map)) {
       throw new Error('teacher-distillation-collection-input-invalid');
     }
