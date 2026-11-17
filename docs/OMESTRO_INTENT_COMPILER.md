@@ -9,7 +9,7 @@
   - Hash-binds the complete interpretation, constraints, risk, stop conditions and explicit permissions into a stable contract identity.
   - Requires expected outcome, acceptance criteria, an explicit tool allow-list and stop conditions before approval.
   - Tracks incomplete/truncated requests, extractor failures, conflicting permissions and malformed/wildcard action identifiers.
-  - Uses multilingual deterministic risk escalators; upstream metadata cannot downgrade detected risk.
+  - Uses multilingual deterministic risk escalators for destructive, mutating and credential-exfiltration intent; upstream metadata cannot downgrade detected risk.
   - Requires explicit acknowledgement of material assumptions and separate acknowledgement for high/critical intent.
   - HMAC-attests approval to the exact contract and permission subset; approvals expire after a bounded TTL.
 - `runtime/neuro-kurisu/src/organism/system/IntentActionGatewayBridge.ts`

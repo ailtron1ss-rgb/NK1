@@ -90,6 +90,7 @@ const MAX_ACTION = 160;
 const DEFAULT_APPROVAL_TTL_MS = 15 * 60 * 1000;
 const MAX_CLOCK_SKEW_MS = 30_000;
 const MIN_APPROVAL_KEY_BYTES = 32;
+const PROCESS_APPROVAL_KEY = randomBytes(32).toString('hex');
 
 const RISK_PATTERNS: ReadonlyArray<[RegExp, string, IntentRiskLevel]> = [
   [/\b(delete|erase|drop|destroy|remove|wipe|format)\b|удал\p{L}*|стер\p{L}*|уничтож\p{L}*|очист\p{L}*|сброс\p{L}*|форматир\p{L}*/iu,
@@ -220,8 +221,6 @@ function isIntentContract(value: unknown): value is IntentContract {
 
 export class IntentCompiler {
   private readonly provenance = new WeakMap<object, 'draft' | 'approved' | 'rejected' | 'superseded'>();
-  private readonly processApprovalKey = randomBytes(32).toString('hex');
-
   constructor(private readonly options: { clock?: () => number; approvalKey?: string } = {}) {}
 
   private now(): number {
@@ -231,7 +230,7 @@ export class IntentCompiler {
 
   private approvalKey(): string | null {
     const key = this.options.approvalKey;
-    if (key === undefined) return this.processApprovalKey;
+    if (key === undefined) return PROCESS_APPROVAL_KEY;
     return typeof key === 'string' && Buffer.byteLength(key, 'utf8') >= MIN_APPROVAL_KEY_BYTES ? key : null;
   }
 
@@ -315,6 +314,7 @@ export class IntentCompiler {
     if (!allowedActions.length) missingInformation.push('explicit-action-allow-list');
     if (!stopConditions.length) missingInformation.push('stop-conditions');
     if (allowedActions.some(action => action.includes('*'))) missingInformation.push('wildcard-action-forbidden');
+    if (allowedActions.some(action => !/^[a-z0-9][a-z0-9._-]{1,63}$/i.test(action))) missingInformation.push('malformed-action-id');
     if (allowedActions.some(action => deniedActions.includes(action))) missingInformation.push('action-allow-deny-conflict');
 
     const requestId = cleanText(input?.requestId, 180);

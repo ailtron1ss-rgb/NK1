@@ -29,8 +29,8 @@ untrusted proposal data.
 1. The source request is retained separately from the extracted goal. Oversized
    source text is marked truncated and cannot be approved for execution.
 2. A free-text request never produces a tool allow-list. Tool identifiers must
-   arrive as explicit structured extraction data; wildcard and malformed IDs
-   are rejected.
+   arrive as explicit structured extraction data and match ActionGateway's
+   bounded identifier syntax; wildcard and malformed IDs are rejected.
 3. An action present in both allow and deny lists makes the contract incomplete;
    denial always wins at the gate.
 4. Expected outcome, acceptance criteria, explicit action scope and stop
@@ -40,9 +40,9 @@ untrusted proposal data.
    user-confirmed fact.
 6. Risk classification is conservative. Deterministic destructive, external
    mutation and credential-exfiltration signals can raise risk; a semantic
-   extractor cannot downgrade them. English and Russian high-risk terms are
-   covered by lexical safeguards, but these are not a substitute for policy
-   analysis.
+   extractor cannot downgrade them. English and Russian high-risk terms, including credential-exfiltration
+   patterns, are covered by lexical safeguards, but these are not a substitute
+   for policy analysis.
 7. High/critical intent, including detected credential-exfiltration language,
    requires a distinct risk acknowledgement in addition to ordinary confirmation.
 8. Approval is bound to the exact contract ID and immutable content hash,
