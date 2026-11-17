@@ -423,6 +423,20 @@ const captured = captureRuntime.captureGeneratedExperiment(nativeExperiment, pre
 assert.equal(captured.status, 'awaiting-preregistration');
 assert.equal(sharedScientificMethod.snapshot().projects.length, 1);
 assert.equal(captureRuntime.capturedInventionsSnapshot().length, 1);
+// Simulate the next cognitive tick producing an equivalent hypothesis under a
+// new generator ID: the Core integration must reuse the captured project/candidate.
+const repeatExperiment = { ...nativeExperiment, id: nativeExperiment.id + '-next-cycle' };
+const existingCapture = captureRuntime.findCapturedExperiment(repeatExperiment);
+assert.equal(existingCapture.id, captured.id);
+assert.equal(existingCapture.scientificProjectId, preexistingProject.id);
+assert.equal(sharedScientificMethod.snapshot().projects.length, 1);
+const reusedCapture = captureRuntime.captureGeneratedExperiment(
+  repeatExperiment,
+  preexistingProject.id,
+  102,
+);
+assert.equal(reusedCapture.id, captured.id);
+assert.equal(captureRuntime.capturedInventionsSnapshot().length, 1);
 const coreEvaluationPlan = {
   testFingerprint: digest('core-validation-manifest'),
   holdoutTestFingerprint: digest('core-holdout-manifest'),
