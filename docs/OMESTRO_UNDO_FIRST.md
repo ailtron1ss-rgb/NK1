@@ -15,7 +15,7 @@ A tool opts in with `requiresUndoFirst: true` and a read-only `undoFirst.prepare
 - `manual` — durable instructions explain the human recovery path.
 - `irreversible` — records why no full rollback exists.
 
-For rollback/compensation, the plan names a durable, independently verifiable, reconcilable compensation tool and a read-only state verifier. The verifier must return `stateHash` and a verified external postcondition. The preparation result is normalized, bounded to 16 KiB, bound to the original execution ID and request hash, fingerprinted, and committed inside the pending idempotency receipt **before the primary executor is entered**.
+For rollback/compensation, the primary tool and compensator must declare atomic compare-and-set support. The gateway passes the exact expected state fingerprint in the executor context; the provider adapter must enforce it in the same write operation (ETag / If-Match / version predicate), returning a typed no-effect result when the state has drifted. The plan also names a durable, independently verifiable, reconcilable compensation tool and a read-only state verifier. The verifier must return `stateHash` and a verified external postcondition. The preparation result is normalized, bounded to 16 KiB, bound to the original execution ID and request hash, fingerprinted, and committed inside the pending idempotency receipt **before the primary executor is entered**.
 
 ## Recovery sequence
 
@@ -50,7 +50,7 @@ report restored only when beforeHash matches
 - Autonomous execution is restricted to rollback/compensation plans. Manual and irreversible strategies require a protected permission class and the existing one-shot approval path.
 - Secrets and credentials are not allowed in persisted compensation/verification inputs. Plans carry resource references and bounded state fingerprints, not API keys or credentials.
 - Pending/ambiguous original actions cannot be automatically undone. The original provider receipt must first be reconciled; otherwise the system could compensate an action that never happened or execute a second side effect.
-- A state fingerprint that matches neither the prepared baseline nor the expected post-action state is treated as divergence; NK1 does not overwrite concurrent external changes.
+- Primary mutations and compensations receive an expected-state fingerprint that adapters must compare atomically with the write. A state fingerprint that matches neither the prepared baseline nor the expected post-action state is treated as divergence; NK1 does not overwrite concurrent external changes.
 - The compensator is a normal ActionGateway tool with durable idempotency, an outcome verifier, and provider reconciliation. It gets its own idempotency receipt.
 
 ## Rollout

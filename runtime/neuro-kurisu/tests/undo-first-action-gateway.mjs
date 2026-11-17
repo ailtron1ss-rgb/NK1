@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   ActionGateway,
   ToolExecutionUncertainError,
+  ToolExecutionNoEffectError,
 } from '../src/organism/system/ActionGateway.ts';
 
 const BEFORE = 'a'.repeat(64);
@@ -9,7 +10,7 @@ const AFTER = 'b'.repeat(64);
 const OTHER = 'c'.repeat(64);
 const ORIGINAL_KEY = 'undo-first:relay:operation-01';
 
-function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false } = {}) {
+function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, driftDuringPreparation = false } = {}) {
   const gateway = new ActionGateway({ live: true });
   const events = [];
   const state = { hash: stateHash };
@@ -49,6 +50,7 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false } =
     capability: 'state.write',
     destructive: false,
     requiresIdempotencyKey: true,
+    supportsAtomicUndoPrecondition: true,
     verify: async () => ({
       verified: true,
       basis: 'tool-contract',
@@ -60,8 +62,10 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false } =
       status: 'unknown',
       reason: 'test provider cannot yet resolve this compensation receipt',
     }),
-    execute: async () => {
+    execute: async (_input, context) => {
       events.push('compensate');
+      assert.equal(context.expectedPreconditionHash, AFTER, 'compensator receives the expected post-action fingerprint for an atomic compare-and-set');
+      if (state.hash !== context.expectedPreconditionHash) throw new ToolExecutionNoEffectError('state changed before compensation');
       counts.compensation += 1;
       state.hash = BEFORE;
       return { accepted: true };
@@ -73,6 +77,7 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false } =
     capability: 'state.write',
     destructive: false,
     requiresUndoFirst: true,
+    supportsAtomicUndoPrecondition: true,
     ...(prepare ? {
       undoFirst: {
         prepare: async (_input, context) => {
@@ -95,6 +100,8 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false } =
               input: { target: 'relay-01' },
             },
           };
+          if (driftDuringPreparation) state.hash = OTHER;
+          return plan;
         },
       },
     } : {}),
@@ -105,10 +112,12 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false } =
       externalObservation: false,
       notes: 'primary action output contract is valid; independent state fingerprint is checked by the undo verifier',
     }),
-    execute: async () => {
+    execute: async (_input, context) => {
       events.push('execute');
-      counts.mutation += 1;
+      assert.equal(context.expectedPreconditionHash, BEFORE, 'primary adapter receives the preflight state for atomic compare-and-set');
       if (uncertain) throw new ToolExecutionUncertainError('provider timed out after send');
+      if (state.hash !== context.expectedPreconditionHash) throw new ToolExecutionNoEffectError('captured state changed before mutation');
+      counts.mutation += 1;
       state.hash = AFTER;
       return { accepted: true };
     },
@@ -237,4 +246,18 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false } =
   assert.equal(second.counts.compensation, 1);
 }
 
-console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=6');
+
+// A concurrent change between prepare() and primary execution must be caught by the
+// adapter's atomic compare-and-set, rather than overwritten by a stale action.
+{
+  const { gateway, state, counts } = makeGateway({ driftDuringPreparation: true });
+  const result = await gateway.executeTool(
+    'test.undo.mutate', { target: 'relay-01' }, 'preflight-race',
+    { idempotencyKey: 'undo-first:preflight-race' },
+  );
+  assert.equal(result.outcomeClass, 'failed-no-effect');
+  assert.equal(counts.mutation, 0);
+  assert.equal(state.hash, OTHER);
+}
+
+console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=7');

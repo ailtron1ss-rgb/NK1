@@ -96,6 +96,8 @@ export interface ActionGatewayExecutionOptions {
   expectedOutputKeys?: string[];
   /** One-shot, time-limited user approval bound to the exact tool and canonical request. */
   approvalId?: string;
+  /** Expected resource fingerprint for an adapter-enforced atomic compare-and-set. */
+  expectedPreconditionHash?: string;
 }
 export interface ToolObservationSource {
   sourceId: string;
@@ -125,6 +127,8 @@ export interface ToolExecutionContext {
   idempotencyKey?:string;
   decisionId?:string;
   autonomous:boolean;
+  /** Adapters with supportsAtomicUndoPrecondition must enforce this in the provider write itself. */
+  expectedPreconditionHash?:string;
 }
 export type ActionToolPermissionClass = 'web'|'device'|'filesystem'|'code'|'system'|'self-modification';
 export type ActionToolApprovalOperation = 'execute'|'reconcile'|'direct';
@@ -190,6 +194,8 @@ export interface ToolDefinition {
   requiresUndoFirst?: boolean;
   /** Read-only preflight that produces a bounded, durable rollback/compensation contract. */
   undoFirst?:ActionUndoFirstDefinition;
+  /** Adapter contract: atomically compare expectedPreconditionHash before every mutation. */
+  supportsAtomicUndoPrecondition?:boolean;
   /** Explicitly governed capability class; inferred from ID/capability when omitted. */
   permissionClass?: ActionToolPermissionClass;
 }
@@ -498,7 +504,7 @@ export class ActionGateway {
   }
 
   private approvalFingerprint(toolId:string,input:Record<string,unknown>,options:ActionGatewayExecutionOptions,operation:ActionToolApprovalOperation):string {
-    return sha256Stable({toolId,input,operation,decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys)});
+    return sha256Stable({toolId,input,operation,decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),expectedPreconditionHash:options.expectedPreconditionHash??null});
   }
 
   async requestToolApproval(toolId:string,input:Record<string,unknown>={},reason='user-request',options:ActionGatewayExecutionOptions={},operation:ActionToolApprovalOperation='execute') {
@@ -663,7 +669,7 @@ export class ActionGateway {
     return [...this.tools.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(t=>({
       id:t.id,capability:t.capability,destructive:t.destructive,projectAllowed:Boolean(t.projectAllowed),
       hasInputContract:Boolean(t.inputContract),inputSchema:t.inputContract?structuredClone(t.inputContract):undefined,
-      hasOutputContract:Boolean(t.outputContract),outputSchema:t.outputContract?structuredClone(t.outputContract):undefined,
+      hasOutputContract:Boolean(t.outputContract),outputSchema:t.outputContract?structuredClone(t.outputContract):undefined,supportsAtomicUndoPrecondition:Boolean(t.supportsAtomicUndoPrecondition),
       permissionClass:t.permissionClass??inferPermissionClass(t.id,t.capability)??'none',requiresApproval:Boolean(t.permissionClass??inferPermissionClass(t.id,t.capability)),hasAvailabilityGate:Boolean(t.availability),hasCompetenceGate:Boolean(t.competence),hasOutcomeVerifier:Boolean(t.verify),hasReceiptReconciliation:Boolean(t.reconcile),requiresIdempotencyKey:requiresDurableIdempotency(t),requiresUndoFirst:Boolean(t.requiresUndoFirst||t.undoFirst),hasUndoFirstPreparation:Boolean(t.undoFirst),
     }));
   }
@@ -700,7 +706,7 @@ export class ActionGateway {
         id:tool.id, capability:tool.capability, permissionClass,
         riskTier:tool.destructive || permissionClass==='self-modification' ? 'critical' as const : highRisk ? 'elevated' as const : 'standard' as const,
         required, present, gaps,
-        undoFirst:{required:durableReceiptRequired,present:Boolean(tool.undoFirst),enforced:Boolean(tool.requiresUndoFirst||tool.undoFirst)},
+        undoFirst:{required:durableReceiptRequired,present:Boolean(tool.undoFirst),enforced:Boolean(tool.requiresUndoFirst||tool.undoFirst),atomicPrecondition:Boolean(tool.supportsAtomicUndoPrecondition)},
       };
     });
     const count=(key:'inputContract'|'outputContract'|'durableReceipt'|'independentVerifier'|'providerReconciliation')=>
@@ -730,6 +736,9 @@ export class ActionGateway {
     const registeredTool=this.tools.get(id);
     const validation=validateToolInputContract(input,registeredTool?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
     if(!validation.valid) return this.result(id,registeredTool?.capability??'unknown','tool-input-invalid','gate-check-failed','exec-' + randomUUID(),{error:'tool-input-invalid',issues:validation.issues},'tool arguments must be inert bounded JSON and satisfy the registered contract before approval, receipt admission or executor entry');
+    if(options.expectedPreconditionHash!==undefined && (!isSha256(options.expectedPreconditionHash) || !registeredTool?.supportsAtomicUndoPrecondition)) {
+      return this.result(id,registeredTool?.capability??'unknown','undo-plan-invalid','undo-plan-invalid',`exec-${randomUUID()}`,{error:'undo-precondition-not-supported'},'an expected state fingerprint may only be supplied to a tool that declares atomic compare-and-set support');
+    }
     const rawKey=options?.idempotencyKey;
     // A hard policy refusal is terminal and must dominate the idempotency prompt:
     // asking for a key to run an action that is refused either way would imply the
@@ -750,7 +759,7 @@ export class ActionGateway {
       return this.result(id,'unknown','invalid-idempotency-key','idempotency-conflict',`exec-${randomUUID()}`,{error:'invalid-idempotency-key'},'idempotency key must be 1..160 printable characters');
     }
     let requestHash:string;
-    try { requestHash=sha256Stable({toolId:id,input,expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous)}); }
+    try { requestHash=sha256Stable({toolId:id,input,expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),expectedPreconditionHash:options.expectedPreconditionHash??null}); }
     catch { return this.result(id,'unknown','idempotency-input-not-serializable','idempotency-conflict',`exec-${randomUUID()}`,{error:'idempotency-input-not-serializable'},'idempotent requests require a stable JSON-compatible input'); }
     const keyHash=sha256Stable({idempotencyKey:key});
     // A keyed side effect without a durable receipt store is not idempotent. Refuse it before tool lookup/execution.
@@ -787,7 +796,7 @@ export class ActionGateway {
     const key=String(rawKey).trim();
     if(!key||key.length>160||/[\u0000-\u001f\u007f]/.test(key)) return this.result(id,'unknown','invalid-idempotency-key','idempotency-conflict',`exec-${randomUUID()}`,{error:'invalid-idempotency-key'},'idempotency key must be 1..160 printable characters');
     let requestHash:string;
-    try { requestHash=sha256Stable({toolId:id,input,expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous)}); }
+    try { requestHash=sha256Stable({toolId:id,input,expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),expectedPreconditionHash:options.expectedPreconditionHash??null}); }
     catch { return this.result(id,'unknown','idempotency-input-not-serializable','idempotency-conflict',`exec-${randomUUID()}`,{error:'idempotency-input-not-serializable'},'receipt reconciliation requires the same stable JSON-compatible request'); }
     const keyHash=sha256Stable({idempotencyKey:key});
     if(!this.executionLedgerPersister) return this.result(id,'unknown','idempotency-storage-unavailable','idempotency-storage-failed',`exec-${randomUUID()}`,{error:'idempotency-storage-unavailable'},'receipt reconciliation requires the durable execution ledger');
@@ -828,10 +837,10 @@ export class ActionGateway {
       const core:any={version:1,strategy:raw.strategy,summary,beforeStateHash,preparedAt:Date.now(),executionId:context.executionId,requestHash:context.requestHash};
       if(raw.strategy==='compensate' || raw.strategy==='rollback') {
         const afterStateHash=typeof raw.afterStateHash==='string'?raw.afterStateHash.toLowerCase():'';
-        if(!isSha256(afterStateHash) || !isPlainRecord(raw.compensation) || typeof raw.compensation.toolId!=='string' || !raw.compensation.toolId.trim() || !isPlainRecord(raw.compensation.input) || hasSensitiveRecoveryKey(raw.compensation.input) || !isPlainRecord(raw.verification) || typeof raw.verification.toolId!=='string' || !raw.verification.toolId.trim() || !isPlainRecord(raw.verification.input) || hasSensitiveRecoveryKey(raw.verification.input)) return {failure:'undo-plan-invalid'};
+        if(!this.tools.get(id)?.supportsAtomicUndoPrecondition || !isSha256(afterStateHash) || !isPlainRecord(raw.compensation) || typeof raw.compensation.toolId!=='string' || !raw.compensation.toolId.trim() || !isPlainRecord(raw.compensation.input) || hasSensitiveRecoveryKey(raw.compensation.input) || !isPlainRecord(raw.verification) || typeof raw.verification.toolId!=='string' || !raw.verification.toolId.trim() || !isPlainRecord(raw.verification.input) || hasSensitiveRecoveryKey(raw.verification.input)) return {failure:'undo-plan-invalid'};
         const compensationTool=this.tools.get(raw.compensation.toolId);
         const verificationTool=this.tools.get(raw.verification.toolId);
-        if(!compensationTool || compensationTool.id===id || !requiresDurableIdempotency(compensationTool) || !compensationTool.verify || !compensationTool.reconcile) return {failure:'undo-plan-invalid'};
+        if(!compensationTool || compensationTool.id===id || !compensationTool.supportsAtomicUndoPrecondition || !requiresDurableIdempotency(compensationTool) || !compensationTool.verify || !compensationTool.reconcile) return {failure:'undo-plan-invalid'};
         if(!verificationTool || requiresDurableIdempotency(verificationTool) || !verificationTool.verify) return {failure:'undo-plan-invalid'};
         const compensationInput=structuredClone(raw.compensation.input);
         const verificationInput=structuredClone(raw.verification.input);
@@ -885,6 +894,7 @@ export class ActionGateway {
     const compensationKey=`undo-${sha256Stable({originalKeyHash:keyHash,planHash:plan.planHash})}`;
     const compensation=await this.executeTool(plan.compensation!.toolId,structuredClone(plan.compensation!.input),`${reason}:compensation`,{
       idempotencyKey:compensationKey,
+      expectedPreconditionHash:plan.afterStateHash,
       ...(entry.decisionId?{decisionId:entry.decisionId}:{}),
       autonomous:false,
       ...(options.compensationApprovalId?{approvalId:options.compensationApprovalId}:{}),
@@ -928,7 +938,7 @@ export class ActionGateway {
     if(!permission.ok) return this.result(id,this.tools.get(id)?.capability??'unknown',permission.reason??'user-approval-required',permission.reason==='approval-storage-failed'?'approval-storage-failed':permission.reason==='user-approval-required'?'approval-required':'approval-invalid',prior.executionId,{error:permission.reason??'user-approval-required'},'protected receipt lookup requires a persisted one-time user approval');
     const tool=this.tools.get(id);
     if(!tool?.reconcile) return this.result(id,'unknown','tool-does-not-support-receipt-reconciliation','idempotency-recovery-required',prior.executionId,{error:'tool-does-not-support-receipt-reconciliation',toolId:id},'adapter has no authoritative read-only receipt lookup; pending action remains unresolved');
-    const context:ToolExecutionContext={executionId:prior.executionId,idempotencyKey:keyHash,decisionId:prior.decisionId??options.decisionId,autonomous:prior.autonomous??Boolean(options.autonomous)};
+    const context:ToolExecutionContext={executionId:prior.executionId,idempotencyKey:keyHash,decisionId:prior.decisionId??options.decisionId,autonomous:prior.autonomous??Boolean(options.autonomous),...(options.expectedPreconditionHash?{expectedPreconditionHash:options.expectedPreconditionHash}:{})};
     let provider:ToolReceiptLookup;
     try { provider=await tool.reconcile(structuredClone(input),structuredClone(context)); }
     catch(error) { provider={status:'unknown',reason:String((error as Error)?.message??'provider-receipt-lookup-failed').slice(0,180)}; }
@@ -1079,7 +1089,7 @@ export class ActionGateway {
   private executionIdForKey(keyHash:string):string { return `exec-${String(keyHash).slice(0,32).toLowerCase()}`; }
 
   private async executeWithLedger(id:string,input:Record<string,unknown>,reason:string,pending:ActionExecutionLedgerEntry,options:ActionGatewayExecutionOptions):Promise<ToolExecution> {
-    let response=await this.executeToolDirect(id,input,reason,{executionId:pending.executionId??this.executionIdForKey(pending.keyHash),idempotencyKey:pending.keyHash,decisionId:options.decisionId,autonomous:Boolean(options.autonomous)});
+    let response=await this.executeToolDirect(id,input,reason,{executionId:pending.executionId??this.executionIdForKey(pending.keyHash),idempotencyKey:pending.keyHash,decisionId:options.decisionId,autonomous:Boolean(options.autonomous),...(pending.undoPlan?{expectedPreconditionHash:pending.undoPlan.beforeStateHash}:options.expectedPreconditionHash?{expectedPreconditionHash:options.expectedPreconditionHash}:{})});
     // An adapter can explicitly report that its side effect may have occurred but
     // no authoritative result is available. Keep the original pending receipt and
     // do not finalize/learn/commit a false terminal failure.
@@ -1236,7 +1246,7 @@ export class ActionGateway {
       return this.result(id,tool.capability,'live-destructive-verifier-required','policy-refused',executionId,{error:'live-destructive-verifier-required'},'live destructive tools require an independent postcondition verifier',competenceConfidence01);
 
     try {
-      const result=await tool.execute(input,{executionId,idempotencyKey:context.idempotencyKey,decisionId:context.decisionId,autonomous:context.autonomous===true});
+      const result=await tool.execute(input,{executionId,idempotencyKey:context.idempotencyKey,decisionId:context.decisionId,autonomous:context.autonomous===true,...(context.expectedPreconditionHash && tool.supportsAtomicUndoPrecondition?{expectedPreconditionHash:context.expectedPreconditionHash}:{})});
       if(tool.outputContract) {
         const validation=validateToolOutputContract(result,tool.outputContract);
         if(!validation.valid) {
