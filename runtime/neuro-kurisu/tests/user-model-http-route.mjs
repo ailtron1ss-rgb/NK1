@@ -199,6 +199,18 @@ try {
     item.title === 'Coordinate the agreed shared release plan' &&
     item.progress === 'completed'), true);
   assert.equal(Object.hasOwn(dyadicAfter.body.items.find(item => item.id === dyadicItemId), 'sourceRef'), false);
+  console.log('DYADIC_HTTP_ROUTE=PASS', JSON.stringify({
+    unauthenticated: dyadicUnauthenticated.response.status,
+    confirmationRequired: dyadicUnconfirmed.response.status,
+    record: dyadicRecorded.response.status,
+    replay: dyadicReplay.response.status,
+    replayed: dyadicReplay.body.replayed,
+    conflictingKey: dyadicIdempotencyConflict.response.status,
+    correction: dyadicCorrected.response.status,
+    completion: dyadicCompleted.response.status,
+    sensitiveRejected: dyadicSensitive.response.status,
+    redactedReadback: true,
+  }));
 
   console.log('USER_MODEL_HTTP_ROUTE=PASS', JSON.stringify({
     unauthenticated: unauthenticated.response.status,
