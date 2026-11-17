@@ -482,6 +482,7 @@ export interface OrganismConfig {
     cognitiveParliamentTimeoutMs?: number;
     cognitiveParliamentMaxConcurrent?: number;
     cognitiveParliamentMaxTotalTokens?: number;
+    cognitiveParliamentMaxInputChars?: number;
     /** Host-injected role-specific execution providers and trusted model identity. */
     parliamentRoleExecutors?: import('../system/CognitiveParliamentDispatcher.ts').ParliamentRoleExecutorMap;
     parliamentModelAttestor?: import('../system/CognitiveParliamentTrust.ts').ParliamentModelAttestor;
@@ -1382,6 +1383,7 @@ export class OrganismCore {
             cognitiveParliamentTimeoutMs: Math.max(25, Math.min(120000, Math.floor(Number(config.cognitiveParliamentTimeoutMs ?? 25000) || 25000))),
             cognitiveParliamentMaxConcurrent: Math.max(1, Math.min(6, Math.floor(Number(config.cognitiveParliamentMaxConcurrent ?? 3) || 3))),
             cognitiveParliamentMaxTotalTokens: Math.max(384, Math.min(12288, Math.floor(Number(config.cognitiveParliamentMaxTotalTokens ?? 4096) || 4096))),
+            cognitiveParliamentMaxInputChars: Math.max(8000, Math.min(96000, Math.floor(Number(config.cognitiveParliamentMaxInputChars ?? 32000) || 32000))),
         } as Required<OrganismConfig>;
         this.cognitiveSubsystemFacadeB297 = new CognitiveSubsystemFacade(this as any);
         this.persistence.configure(this.config.checkpointMinIntervalMs, this.config.checkpointMaxDirtyCycles);
@@ -7606,6 +7608,7 @@ export class OrganismCore {
                 timeoutMs: this.config.cognitiveParliamentTimeoutMs,
                 maxConcurrent: this.config.cognitiveParliamentMaxConcurrent,
                 maxTotalTokens: this.config.cognitiveParliamentMaxTotalTokens,
+                maxInputChars: this.config.cognitiveParliamentMaxInputChars,
             });
             p69Decision = review.arbitration ?? this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate({
                 ...p69Input, candidates: [], requestedAction: null,
