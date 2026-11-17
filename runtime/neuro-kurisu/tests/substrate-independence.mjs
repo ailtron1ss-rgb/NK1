@@ -31,7 +31,17 @@ const target = {
   contextWindowTokens: 32768,
 };
 const payload = {
-  organism: { identity: { name: 'NeuroCore' }, memory: [{ id: 'm1', text: 'persistent fact' }], goals: [{ id: 'g1', status: 'active' }], modelCache: new Float32Array([1.5, 2.5]), recentByKey: new Map([['m1', { score: 0.9 }]]) },
+  organism: {
+    identity: { name: 'NeuroCore' },
+    memory: [{ id: 'm1', text: 'persistent fact' }],
+    goals: [{ id: 'g1', status: 'active' }],
+    modelCache: new Float32Array([1.5, 2.5]),
+    modelWindow: new DataView(new Uint8Array([10, 20, 30]).buffer),
+    recentByKey: new Map([['m1', { score: 0.9 }]]),
+    recentSet: new Set(['m1', 'm2']),
+    eventDate: new Date('2026-11-17T10:00:00.000Z'),
+    audioBuffer: Buffer.from([1, 2, 3, 4]),
+  },
   world: { tick: 42, location: 'lab', facts: ['stable world fact'] },
   proceduralSkills: { version: 8, skills: [], compoundSkills: [], promotions: 0, demotions: 0, compoundPromotions: 0 },
 };
@@ -59,7 +69,25 @@ assert.equal(engine.verifyTransferPackage(transfer).valid, true);
 assert.equal(transfer.payload.world.tick, payload.world.tick, 'portable package must preserve canonical world state');
 const hydratedOrganism = hydratePortableState(transfer.payload.organism);
 assert.deepEqual([...hydratedOrganism.modelCache], [1.5, 2.5]);
+assert.deepEqual([...new Uint8Array(hydratedOrganism.modelWindow.buffer)], [10, 20, 30]);
 assert.equal(hydratedOrganism.recentByKey.get('m1').score, 0.9);
+assert.deepEqual([...hydratedOrganism.recentSet], ['m1', 'm2']);
+assert.equal(hydratedOrganism.eventDate.toISOString(), '2026-11-17T10:00:00.000Z');
+assert.deepEqual([...hydratedOrganism.audioBuffer], [1, 2, 3, 4]);
+
+class CustomMap extends Map {}
+assert.throws(() => engine.createTransferPackage({
+  sourceBackendId: source.backendId, capturedAt: 1_800_000_000_003,
+  organism: { custom: new CustomMap([['hidden', 1]]) }, world: payload.world,
+  proceduralSkills: payload.proceduralSkills,
+}), /map-subclass|portable/i, 'custom Map subclasses must not run custom serialization behaviour');
+
+class CustomFloatArray extends Float32Array {}
+assert.throws(() => engine.createTransferPackage({
+  sourceBackendId: source.backendId, capturedAt: 1_800_000_000_004,
+  organism: { custom: new CustomFloatArray([1, 2]) }, world: payload.world,
+  proceduralSkills: payload.proceduralSkills,
+}), /typed-array-instance|portable/i, 'custom typed-array subclasses must fail closed');
 assert.equal(engine.verifyTransferPackage({ ...transfer, payload: { ...transfer.payload, world: { tick: 0 } } }).valid, false,
   'a changed payload must fail its integrity check');
 
