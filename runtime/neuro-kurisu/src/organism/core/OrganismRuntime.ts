@@ -445,8 +445,10 @@ export class OrganismRuntime {
       ]);
       if (!organism || !world) throw new Error('substrate-export-canonical-state-unavailable');
       const state = this.substrateIndependence.snapshot();
+      const observedSource = state.activeBackendId ?? state.observedBackendId;
+      const sourceBackendId = observedSource === 'deterministic-policy-fallback' ? null : observedSource;
       const transfer = this.substrateIndependence.createTransferPackage({
-        sourceBackendId: state.activeBackendId ?? state.observedBackendId,
+        sourceBackendId,
         capturedAt: Date.now(), organism, world, proceduralSkills,
       });
       await this.substrateStateStore.save(this.substrateIndependence.snapshot());
