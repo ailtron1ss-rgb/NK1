@@ -134,11 +134,15 @@ In another shell, configure NK1 before starting its Node server:
     export NEURO_NP_URL=http://127.0.0.1:8091/v1
     export NEURO_NP_MODEL="$NEURO_NP_MODEL_ID"
     export NEURO_NP_ADAPTER_ID=kurisu-reasoning-v1
+    export NEURO_NP_PREFER=1
 
 NK1 registers the optional neural-prosthesis profile with P40 Model Ecology.
-When selected, it uses the local Transformers sidecar. If the sidecar is unavailable,
-the request fails, or the adapter is quarantined, the request continues to the normal
-local/cloud fallbacks. Nothing changes the llama.cpp model files.
+The new profile starts with neutral quality/reliability priors rather than assuming an
+unmeasured quality advantage. Set NEURO_NP_PREFER=1 only when the host explicitly wants
+to prefer this configured local backend for an experiment; otherwise P40 uses its normal
+measured model-ecology choice. If the sidecar is unavailable, the request fails, or the
+adapter is quarantined, the request continues to the normal local/cloud fallbacks.
+Nothing changes the llama.cpp model files.
 
 Read-only sidecar diagnostics are available at GET /health and
 GET /neural-prosthesis/status. NK1 exposes the configured backend projection at
