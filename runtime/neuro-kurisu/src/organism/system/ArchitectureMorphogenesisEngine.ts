@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { buildCognitiveArchitectureSnapshot } from '../core/CognitiveArchitectureMap.ts';
 import { buildDevelopmentalGenome } from './DevelopmentalGenome.ts';
 
@@ -7,8 +10,12 @@ export type ArchitectureAuthority = 'single-owner' | 'shared';
 
 export interface ArchitectureMorphogenesisModule {
   id: string;
+  /** Primary canonical source file for the subsystem. */
   path: string;
+  /** Every canonical source file represented by this subsystem node. */
+  sourcePaths: string[];
   owner: string;
+  /** Digest of actual source-file bytes and paths, not descriptive metadata. */
   revisionSha256: string;
 }
 
@@ -27,6 +34,8 @@ export interface ArchitectureMorphogenesisEdge {
 
 export interface ArchitectureMorphogenesisGraph {
   schemaVersion: 1;
+  /** Commit containing the exact source files used to build this graph. */
+  sourceCommit: string | null;
   canonicalGenomeDigest: string;
   modules: ArchitectureMorphogenesisModule[];
   contracts: ArchitectureMorphogenesisContract[];
@@ -108,9 +117,10 @@ const SHA256 = /^sha256:[a-f0-9]{64}$/;
 const COMMIT_SHA = /^[a-f0-9]{40}$/;
 const MODULE_ID = /^[a-z0-9][a-z0-9-]{0,95}$/;
 const CONTRACT_ID = /^[a-z0-9][a-z0-9._:-]{0,127}$/;
-const MAX_MODULES = 512;
-const MAX_CONTRACTS = 512;
-const MAX_EDGES = 12000;
+const MAX_MODULES = 10000;
+const MAX_CONTRACTS = 1000;
+const MAX_EDGES = 100000;
+const MAX_SOURCE_PATHS_PER_MODULE = 64;
 const MAX_STEPS = 50;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -232,6 +242,9 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
 
   const graph = input as unknown as ArchitectureMorphogenesisGraph;
   if (graph.schemaVersion !== 1) add('schema-unsupported', 'schemaVersion', 'Only graph schema version 1 is supported');
+  if (graph.sourceCommit !== null && (typeof graph.sourceCommit !== 'string' || !COMMIT_SHA.test(graph.sourceCommit))) {
+    add('source-commit-invalid', 'sourceCommit', 'Source provenance must be null or a full 40-character commit SHA');
+  }
   if (typeof graph.canonicalGenomeDigest !== 'string' || !SHA256.test(graph.canonicalGenomeDigest)) {
     add('genome-digest-invalid', 'canonicalGenomeDigest', 'A valid Developmental Genome SHA-256 digest is required');
   }
@@ -267,6 +280,17 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
     if (ids.has(module.id)) add('module-id-duplicate', path + '.id', 'Module ids must be unique');
     ids.add(module.id);
     if (!isCanonicalSourcePath(module.path)) add('module-path-forbidden', path + '.path', 'Module path must remain inside canonical src/organism and outside legacy, research and state');
+    if (!Array.isArray(module.sourcePaths) || module.sourcePaths.length === 0 || module.sourcePaths.length > MAX_SOURCE_PATHS_PER_MODULE) {
+      add('module-source-paths-invalid', path + '.sourcePaths', 'Every module must identify a bounded non-empty set of canonical source files');
+    } else {
+      const sourcePathSet = new Set<string>();
+      for (const sourcePath of module.sourcePaths) {
+        if (!isCanonicalSourcePath(sourcePath)) add('module-source-path-forbidden', path + '.sourcePaths', 'Source paths must remain inside canonical src/organism');
+        if (sourcePathSet.has(sourcePath)) add('module-source-path-duplicate', path + '.sourcePaths', 'Source file paths must be unique within a module');
+        sourcePathSet.add(sourcePath);
+      }
+      if (!sourcePathSet.has(module.path)) add('module-primary-path-missing', path + '.path', 'Primary module path must be included in sourcePaths');
+    }
     if (typeof module.path === 'string') {
       if (paths.has(module.path)) add('module-path-duplicate', path + '.path', 'Each module must have one unique canonical source path');
       paths.add(module.path);
@@ -352,30 +376,33 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
 export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogenesisGraph {
   const architecture = buildCognitiveArchitectureSnapshot();
   const genome = buildDevelopmentalGenome();
-  const usedPaths = new Set<string>();
+  const sourceCommit = (() => {
+    try {
+      const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+      return COMMIT_SHA.test(commit) ? commit : null;
+    } catch {
+      return null;
+    }
+  })();
   const modules = architecture.subsystems.map(subsystem => {
-    const candidatePaths = subsystem.components
-      .map(component => component.replace(/^runtime\/neuro-kurisu\//, ''))
-      .filter(path => isCanonicalSourcePath(path));
-    const selectedPath = candidatePaths.find(path => !usedPaths.has(path));
-    if (!selectedPath) throw new Error('No unique canonical source component found for architecture subsystem: ' + subsystem.id);
-    usedPaths.add(selectedPath);
-    const revision = {
-      id: subsystem.id,
-      owner: subsystem.owner,
-      layer: subsystem.layer,
-      cadence: subsystem.cadence,
-      components: subsystem.components,
-      inputs: subsystem.inputs,
-      outputs: subsystem.outputs,
-      dependsOn: subsystem.dependsOn,
-      purpose: subsystem.purpose,
-    };
+    const sourcePaths = [...new Set(subsystem.components
+      .map(component => component.replace(/^runtime\\/neuro-kurisu\\//, ''))
+      .filter(path => isCanonicalSourcePath(path)))].sort();
+    if (!sourcePaths.length) throw new Error('No canonical source components found for architecture subsystem: ' + subsystem.id);
+    const fileRevisions = sourcePaths.map(sourcePath => ({
+      path: sourcePath,
+      digest: sha256(readFileSync(resolve(process.cwd(), sourcePath))),
+    }));
     return {
       id: subsystem.id,
-      path: selectedPath,
+      path: sourcePaths[0],
+      sourcePaths,
       owner: subsystem.owner,
-      revisionSha256: sha256(stableJson(revision)),
+      revisionSha256: sha256(stableJson(fileRevisions)),
     };
   }).sort((a, b) => a.id.localeCompare(b.id));
 
@@ -418,6 +445,7 @@ export function buildLiveArchitectureMorphogenesisGraph(): ArchitectureMorphogen
   edges.sort((a, b) => a.kind.localeCompare(b.kind) || a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
   return {
     schemaVersion: 1,
+    sourceCommit,
     canonicalGenomeDigest: genome.digest,
     modules,
     contracts,
@@ -481,7 +509,7 @@ export function createArchitectureMorphogenesisPlan(input: {
 }): ArchitectureMorphogenesisPlan {
   const issues: ArchitectureMorphogenesisIssue[] = [];
   const emptyGraph: ArchitectureMorphogenesisGraph = {
-    schemaVersion: 1, canonicalGenomeDigest: '', modules: [], contracts: [], edges: [],
+    schemaVersion: 1, sourceCommit: null, canonicalGenomeDigest: '', modules: [], contracts: [], edges: [],
   };
   const blocked = (): ArchitectureMorphogenesisPlan => {
     const payload: Omit<ArchitectureMorphogenesisPlan, 'planDigest'> = {
@@ -522,6 +550,12 @@ export function createArchitectureMorphogenesisPlan(input: {
   if (baselineReport.ok && candidateReport.ok) {
     const baseline = input.baselineGraph;
     const candidate = input.candidateGraph;
+    if (baseline.sourceCommit !== input.baselineCommit) {
+      issues.push(issue('baseline-source-commit-mismatch', 'baselineGraph.sourceCommit', 'Baseline graph must be built from the exact baseline commit'));
+    }
+    if (typeof candidate.sourceCommit !== 'string' || !COMMIT_SHA.test(candidate.sourceCommit)) {
+      issues.push(issue('candidate-source-commit-missing', 'candidateGraph.sourceCommit', 'Candidate graph must be pinned to a full source commit SHA'));
+    }
     if (baseline.canonicalGenomeDigest !== candidate.canonicalGenomeDigest) {
       issues.push(issue('canonical-genome-changed', 'candidateGraph.canonicalGenomeDigest', 'A source morphogenesis proposal cannot rewrite the immutable Developmental Genome contract'));
     }
@@ -536,7 +570,7 @@ export function createArchitectureMorphogenesisPlan(input: {
     }).map(module => module.id));
     const replaced = sortedUnique(baseline.modules.filter(module => {
       const next = nextById.get(module.id);
-      return Boolean(next && (next.revisionSha256 !== module.revisionSha256 || next.owner !== module.owner));
+      return Boolean(next && next.path === module.path && (next.revisionSha256 !== module.revisionSha256 || next.owner !== module.owner));
     }).map(module => module.id));
 
     const removedCoverage = new Set<string>();
