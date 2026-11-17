@@ -343,6 +343,14 @@ export class EvidenceResearchSubsystemRuntime {
       ? this.inventionLoop.snapshot().records.find(item => item.id === science.candidate!.inventionId)
       : undefined;
     if (!invention) invention = this.inventionLoop.propose(protocol);
+    const attached = this.scienceRepublic.attachPreregisteredExperiment(scienceId, {
+      actorId: safe.actorId,
+      inventionId: invention.id,
+      manifest: safe.manifest,
+      holdoutManifest: safe.holdoutManifest,
+    });
+    // Publish the runtime capture's matching status only after the Republic and
+    // canonical Invention Loop have committed the linked experiment.
     if (science.candidate) {
       const captured = this.capturedCandidates.find(item => item.id === science.candidate!.id);
       if (!captured) throw new Error('science-captured-candidate-link-missing');
@@ -351,12 +359,7 @@ export class EvidenceResearchSubsystemRuntime {
       this.capturedCandidates = this.capturedCandidates.map(item =>
         item.id === captured.id ? captured : item);
     }
-    return this.scienceRepublic.attachPreregisteredExperiment(scienceId, {
-      actorId: safe.actorId,
-      inventionId: invention.id,
-      manifest: safe.manifest,
-      holdoutManifest: safe.holdoutManifest,
-    });
+    return attached;
   }
 
   /**
