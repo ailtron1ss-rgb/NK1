@@ -1,3 +1,11 @@
+## [NK1][Architecture] OmeStro #17 — Architecture Morphogenesis v1 (2026-11-17, unreleased)
+
+- Add a read-only architecture graph derived from the live CognitiveArchitectureMap and Developmental Genome digest.
+- Validate canonical module paths, unique ownership, contract references, structural import/contract cycles, and bounded plain-data inputs; preserve recurrent data-flow loops.
+- Add digest-sealed merge/split/move/replace proposals with explicit baseline checkpoint, migration steps, affected-contract receipt and rollback steps.
+- Require exact baseline/candidate commit evidence, focused tests, runtime typecheck, full source-architecture audit, contract validation, verified rollback and human review before a candidate is eligible for manual integration.
+- Keep activation NOT_APPLIED; no runtime hot-swap, branch writes, automatic merge, state-schema change or Release ZIP modification is permitted.
+
 ## [NK1][Architecture] Developmental Genome v1 (2026-11-17, unreleased)
 
 - Add a deterministic architecture genome derived from the seven live `OrganismSystemContract` records and expose it through `OrganismSystemFabric.developmentalGenome()` and fabric diagnostic snapshots.
