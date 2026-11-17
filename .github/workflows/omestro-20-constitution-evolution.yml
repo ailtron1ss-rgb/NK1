@@ -5,7 +5,7 @@ on:
     branches:
       - aspect/omestro-20-constitution-evolution-20261117
       - workpass70-source
-    paths: &omestro20_paths
+    paths:
       - "runtime/neuro-kurisu/src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/evolution/ConstitutionReviewAuthority.ts"
       - "runtime/neuro-kurisu/src/organism/core/GovernanceSubsystemRuntime.ts"
@@ -21,18 +21,38 @@ on:
       - "app/src/components/ActionApprovalCenter.tsx"
       - "app/src/components/ConstitutionEvolutionConsole.tsx"
       - "app/src/routes/index.tsx"
+      - "app/package.json"
+      - "app/package-lock.json"
       - ".github/workflows/omestro-20-constitution-evolution.yml"
   pull_request:
     branches:
       - workpass70-source
-    paths: *omestro20_paths
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/evolution/ConstitutionReviewAuthority.ts"
+      - "runtime/neuro-kurisu/src/organism/core/GovernanceSubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/core/types.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/constitution-evolution-*.mjs"
+      - "runtime/neuro-kurisu/tests/p69-p73-giant.mjs"
+      - "runtime/neuro-kurisu/docs/OMESTRO_20_CONSTITUTION_EVOLUTION.md"
+      - "app/src/neuro-kurisu/api.ts"
+      - "app/src/components/ActionApprovalCenter.tsx"
+      - "app/src/components/ConstitutionEvolutionConsole.tsx"
+      - "app/src/routes/index.tsx"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/omestro-20-constitution-evolution.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: omestro-20-constitution-evolution-\${{ github.event.pull_request.number || github.ref }}
+  group: omestro-20-constitution-evolution-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
