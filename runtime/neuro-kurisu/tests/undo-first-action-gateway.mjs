@@ -10,8 +10,8 @@ const AFTER = 'b'.repeat(64);
 const OTHER = 'c'.repeat(64);
 const ORIGINAL_KEY = 'undo-first:relay:operation-01';
 
-function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, driftDuringPreparation = false, driftAfterPreconditionRead = false, failPendingPersist = false } = {}) {
-  const gateway = new ActionGateway({ live: true });
+function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, driftDuringPreparation = false, driftAfterPreconditionRead = false, failPendingPersist = false, ledgerFull = false, maxIdempotencyRecords = 64 } = {}) {
+  const gateway = new ActionGateway({ live: true, maxIdempotencyRecords });
   const events = [];
   const state = { hash: stateHash };
   const counts = { mutation: 0, compensation: 0, preparation: 0, cleanup: 0 };
@@ -27,6 +27,17 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
       if (failPendingPersist) throw new Error('simulated-durable-ledger-write-failure');
     }
     durableSnapshot = structuredClone(snapshot);
+  });
+  if (ledgerFull) gateway.restoreExecutionLedger({
+    version: 1,
+    records: [{
+      keyHash: 'd'.repeat(64),
+      requestHash: 'e'.repeat(64),
+      status: 'pending',
+      recordedAt: 1,
+      executionId: 'exec-prefilled-receipt',
+      toolId: 'test.undo.preexisting',
+    }],
   });
 
   gateway.registerTool({
@@ -317,20 +328,38 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
   assert.equal(state.hash, OTHER);
 }
 
-// If the pending receipt cannot be durably admitted, release the preflight snapshot;
- // the primary executor must never run and the cleanup must happen exactly once.
+// A ledger-capacity refusal happens before the pending persister is called, so
+// the preflight snapshot is definitely orphaned and must be released.
+{
+  const { gateway, counts, events } = makeGateway({ ledgerFull: true, maxIdempotencyRecords: 1 });
+  const result = await gateway.executeTool(
+    'test.undo.mutate',
+    { target: 'relay-01' },
+    'ledger-capacity-refusal',
+    { idempotencyKey: 'undo-first:ledger-capacity-refusal' },
+  );
+  assert.equal(result.outcomeClass, 'idempotency-ledger-full');
+  assert.equal(counts.mutation, 0);
+  assert.equal(counts.cleanup, 1);
+  assert.ok(events.includes('discard-prepared'));
+  assert.equal(events.includes('pending-persist'), false);
+}
+
+// A rejected persister call has an ambiguous commit outcome; keep the recovery
+// artifact because the pending receipt may already be durable despite a lost ACK.
 {
   const { gateway, counts, events } = makeGateway({ failPendingPersist: true });
   const result = await gateway.executeTool(
     'test.undo.mutate',
     { target: 'relay-01' },
-    'storage-admission-failure',
-    { idempotencyKey: 'undo-first:storage-admission-failure' },
+    'ambiguous-ledger-write',
+    { idempotencyKey: 'undo-first:ambiguous-ledger-write' },
   );
   assert.equal(result.outcomeClass, 'idempotency-storage-failed');
   assert.equal(counts.mutation, 0);
-  assert.equal(counts.cleanup, 1);
-  assert.ok(events.indexOf('discard-prepared') > events.indexOf('pending-persist'));
+  assert.equal(counts.cleanup, 0);
+  assert.ok(events.includes('pending-persist'));
+  assert.equal(result.result.recoveryArtifactDisposition, 'retained-after-ambiguous-persist');
 }
 
-console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=10');
+console.log('UNDO_FIRST_ACTION_GATEWAY=PASS cases=11');
