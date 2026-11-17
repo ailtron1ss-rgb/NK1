@@ -296,13 +296,14 @@ export function evaluateHyperPlasticSignedPromotion(
       validation.baseModelFingerprint !== holdout.baseModelFingerprint) {
     return reject('validation-holdout-model-identity-mismatch');
   }
+  if (validation.safetyRegressions !== 0) return reject('validation-safety-regression');
+  if (holdout.safetyRegressions !== 0) return reject('holdout-safety-regression');
   const validationSeeds = new Set(validation.seedMeasurements.map(row => row.seed));
   if (validationSeeds.size !== holdout.seedMeasurements.length ||
       holdout.seedMeasurements.some(row => !validationSeeds.has(row.seed))) {
     return reject('validation-holdout-seed-pairing-mismatch');
   }
   if (validation.meanGain01 <= 0) return reject('validation-gain-not-positive');
-  if (holdout.safetyRegressions !== 0) return reject('holdout-safety-regression');
   if (holdout.lowerConfidenceBound95OneSided01 <= 0) {
     return reject('holdout-gain-not-statistically-positive');
   }
