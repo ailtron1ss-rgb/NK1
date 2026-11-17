@@ -189,6 +189,65 @@ assert.deepEqual(
   ['initial-context'],
   'historical tags must be retained with the same knowledge snapshot',
 );
+const contextHistory = memoryOS.temporalBitemporalHistory(contextFact.id);
+assert.ok(contextHistory.some(row => row.context?.campus === 'North'), 'full history must expose the old context version');
+assert.ok(contextHistory.some(row => row.context?.campus === 'South'), 'full history must expose the new context version');
+assert.equal(
+  memoryOS.temporalBitemporalDiff(contextFact.id, 350, contextRecordedAt - 1, contextRecordedAt).changed,
+  true,
+  'bitemporal diff must detect context-only changes',
+);
+
+const historicalMetadataOS = new MemoryOS2({ signalFusionProfile: 'balanced', metadataRecallEnabled: true });
+const metadataFact = historicalMetadataOS.encode({
+  content: 'The active workspace has an assigned physical site.',
+  kind: 'semantic',
+  source: 'chrono-truth-metadata-regression',
+  tags: ['workspace'],
+  context: { location: 'North Campus', project: 'NeuroCore' },
+  salience: .8,
+  emotionalWeight: .1,
+  identityRelevance: .1,
+  goalRelevance: .1,
+  socialRelevance: .1,
+  predictionError: .1,
+  confidence: .9,
+  epistemicStatus: 'fact',
+  entities: ['NeuroCore'],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  validFromAt: 300,
+  observedAt: 300,
+  recordedFromAt: 320,
+}, { clone: false });
+const beforeContextKnowledgeAt = metadataFact.recordedFromAt;
+historicalMetadataOS.updateContext(metadataFact.id, { location: 'South Campus' });
+const afterContextKnowledgeAt = metadataFact.recordedFromAt;
+const oldMetadataRecall = historicalMetadataOS.previewRetrieve('North Campus', 8, 0, 0, {
+  temporalMode: 'at', asOfAt: 350, knowledgeAtAt: beforeContextKnowledgeAt,
+});
+assert.equal(
+  oldMetadataRecall[0]?.context?.location,
+  'North Campus',
+  'retrieval must rank and return the metadata that existed at the requested knowledge-time',
+);
+const newMetadataRecall = historicalMetadataOS.previewRetrieve('South Campus', 8, 0, 0, {
+  temporalMode: 'at', asOfAt: 350, knowledgeAtAt: afterContextKnowledgeAt,
+});
+assert.equal(
+  newMetadataRecall[0]?.context?.location,
+  'South Campus',
+  'retrieval must use updated metadata after the transaction-time boundary',
+);
+assert.equal(
+  historicalMetadataOS.previewRetrieve('South Campus', 8, 0, 0, {
+    temporalMode: 'at', asOfAt: 350, knowledgeAtAt: beforeContextKnowledgeAt,
+  }).length,
+  0,
+  'future metadata must not leak into earlier knowledge-time retrieval',
+);
 
 const lateLearnedFact = encode('The archive was stored in the east facility.', {
   validFromAt: 500,
@@ -227,6 +286,21 @@ assert.equal(
   restored.temporalBitemporalAt(firstId, 150, 270)?.content,
   'Project location is West Campus.',
   'restore must retain the current bitemporal knowledge interval',
+);
+assert.equal(
+  restored.temporalBitemporalAt(contextFact.id, 350, contextRecordedAt - 1)?.context?.campus,
+  'North',
+  'restore must retain the previous context metadata snapshot',
+);
+assert.equal(
+  restored.temporalBitemporalAt(contextFact.id, 350, contextRecordedAt)?.context?.campus,
+  'South',
+  'restore must retain the updated context metadata snapshot',
+);
+assert.equal(
+  restored.temporalBitemporalAt(lateLearnedFact.id, 475, 750)?.content,
+  'The archive was stored in the west facility.',
+  'restore must preserve retroactive valid-time corrections',
 );
 
 console.log('CHRONOTRUTH_BITEMPORAL_MEMORY=PASS', JSON.stringify({
