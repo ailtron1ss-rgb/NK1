@@ -38,10 +38,12 @@ export interface NegativeSpaceAlternative {
 
 export type NegativeSpaceReviewStatus = 'awaiting-outcome' | 'retained' | 'review-eligible' | 'reopened';
 export type NegativeSpaceOutcomeSource = 'external-evidence' | 'world-transition' | 'internal' | 'unknown';
+export type NegativeSpaceOutcomeSource = 'external-evidence' | 'world-transition' | 'internal' | 'unknown';
 
 export interface NegativeSpaceRecord {
   id: string;
   decisionId: string;
+  contextKey?: string;
   at: number;
   chosen: string;
   chosenExpectedOutcome01: number;
@@ -70,6 +72,7 @@ export interface NegativeSpaceMemoryState {
 
 export interface NegativeSpaceDecisionInput {
   decisionId: string;
+  contextKey?: string;
   at?: number;
   chosen: string;
   chosenExpectedOutcome01: number;
@@ -92,6 +95,7 @@ export interface NegativeSpaceOutcomeInput {
 
 const MAX_RECORDS = 128;
 const MAX_ALTERNATIVES = 4;
+const MAX_CONTEXT_RESULTS = 24;
 const SIGNIFICANCE_THRESHOLD01 = 0.72;
 const DEFAULT_REOPEN_CONDITION: NegativeSpaceReopenCondition = {
   signal: 'outcome.shortfall01',
@@ -188,6 +192,7 @@ export class NegativeSpaceMemory {
     const row: NegativeSpaceRecord = {
       id: decisionId,
       decisionId,
+      ...(cleanText(input.contextKey, 160) ? { contextKey: cleanText(input.contextKey, 160) } : {}),
       at,
       chosen,
       chosenExpectedOutcome01: clamp01(input.chosenExpectedOutcome01),
@@ -235,8 +240,9 @@ export class NegativeSpaceMemory {
     record.chosenSurprise01 = input.surprise01 === undefined ? null : clamp01(input.surprise01);
     record.outcomeVerified01 = input.verified01 === undefined ? null : clamp01(input.verified01);
     record.outcomeIndependent01 = input.independent01 === undefined ? null : clamp01(input.independent01);
-    record.outcomeSource = ['external-evidence', 'world-transition', 'internal', 'unknown'].includes(input.source ?? '')
-      ? input.source! : 'unknown';
+    const source = input.source;
+    record.outcomeSource = source === 'external-evidence' || source === 'world-transition' || source === 'internal' || source === 'unknown'
+      ? source : 'unknown';
     record.outcomeEvidence = cleanList(input.evidence, 8, 180);
 
     this.evaluateReviewConditions(decisionId, {
@@ -331,6 +337,7 @@ export class NegativeSpaceMemory {
       restored.push({
         id: cleanText(raw.id, 128) || decisionId,
         decisionId,
+        ...(cleanText(raw.contextKey, 160) ? { contextKey: cleanText(raw.contextKey, 160) } : {}),
         at: finite(raw.at),
         chosen,
         chosenExpectedOutcome01: clamp01(raw.chosenExpectedOutcome01),
@@ -361,6 +368,29 @@ export class NegativeSpaceMemory {
     };
   }
 
+  relatedAlternatives(contextKey: string, limit = 8) {
+    const key = cleanText(contextKey, 160);
+    if (!key) return [];
+    const boundedLimit = Math.max(1, Math.min(MAX_CONTEXT_RESULTS, Math.floor(finite(limit, 8))));
+    return this.state.records
+      .filter(record => record.contextKey === key)
+      .flatMap(record => record.alternatives.map(alternative => ({
+        decisionId: record.decisionId,
+        recordAt: record.at,
+        chosen: record.chosen,
+        chosenActualOutcome01: record.chosenActualOutcome01,
+        chosenActualReward01: record.chosenActualReward01,
+        outcomeShortfall01: record.outcomeShortfall01,
+        outcomeVerified01: record.outcomeVerified01,
+        outcomeIndependent01: record.outcomeIndependent01,
+        outcomeSource: record.outcomeSource,
+        reviewStatus: record.reviewStatus,
+        alternative: structuredClone(alternative),
+      })))
+      .sort((a, b) => b.recordAt - a.recordAt || b.alternative.expectedOutcome01 - a.alternative.expectedOutcome01)
+      .slice(0, boundedLimit);
+  }
+
   snapshot(): NegativeSpaceMemoryState {
     return structuredClone(this.state);
   }
@@ -372,6 +402,8 @@ export class NegativeSpaceMemory {
       version: 1 as const,
       records: records.length,
       alternatives: alternatives.length,
+      contextIndexedRecords: records.filter(record => Boolean(record.contextKey)).length,
+      distinctContextKeys: new Set(records.map(record => record.contextKey).filter(Boolean)).size,
       reviewEligible: alternatives.filter(alternative => alternative.reviewEligible).length,
       verifiedOutcomes: records.filter(record => (record.outcomeVerified01 ?? 0) >= 0.5).length,
       independentOutcomes: records.filter(record => (record.outcomeIndependent01 ?? 0) >= 0.5).length,

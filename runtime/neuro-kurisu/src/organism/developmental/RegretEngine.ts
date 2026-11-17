@@ -36,6 +36,7 @@ export interface RegretAlternativeInput extends Omit<NegativeSpaceAlternativeInp
 
 export interface RegretObservationContext {
   decisionId: string;
+  contextKey?: string;
   decisionAt?: number;
   outcomeAt?: number;
   chosenExpectedOutcome01: number;
@@ -109,6 +110,7 @@ export class RegretEngine {
     if (context?.decisionId && alternatives.some(candidate => candidate.action !== chosen)) {
       const record = this.negativeSpace.recordDecision({
         decisionId: context.decisionId,
+        contextKey: context.contextKey,
         at: context.decisionAt,
         chosen,
         chosenExpectedOutcome01: context.chosenExpectedOutcome01,
@@ -141,6 +143,10 @@ export class RegretEngine {
 
   negativeSpaceReviewQueue() {
     return this.negativeSpace.reviewQueue();
+  }
+
+  negativeSpaceRelatedAlternatives(contextKey: string, limit = 8) {
+    return this.negativeSpace.relatedAlternatives(contextKey, limit);
   }
 
   negativeSpaceDiagnostics() {

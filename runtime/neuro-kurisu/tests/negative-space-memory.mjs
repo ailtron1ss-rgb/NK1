@@ -9,6 +9,7 @@ const context = {
   chosenExpectedOutcome01: 0.84,
   significance: { cost01: 0.82, risk01: 0.15, futureImportance01: 0.2 },
   outcomeEvidence: ['grounded-outcome:device', 'postcondition:verified'],
+  contextKey: 'goal:maintain-system|energy:1|uncertainty:3|load:1|novelty:2',
 };
 const alternatives = [
   {
@@ -46,6 +47,7 @@ assert.equal(snapshot.negativeSpace.records.length, 1, 'a high-cost decision mus
 let record = snapshot.negativeSpace.records[0];
 assert.equal(record.decisionId, context.decisionId);
 assert.equal(record.chosen, 'respond');
+assert.equal(record.contextKey, context.contextKey);
 assert.equal(record.chosenExpectedOutcome01, 0.84);
 assert.equal(record.chosenActualOutcome01, 0.52);
 assert.equal(record.chosenActualReward01, null);
@@ -58,6 +60,10 @@ assert.deepEqual(record.alternatives[0].constraints, alternatives[0].constraints
 assert.equal(record.alternatives[0].reviewEligible, true);
 assert.equal(engine.negativeSpaceReviewQueue().length, 2);
 assert.equal(engine.negativeSpaceDiagnostics().reviewEligible, 2);
+assert.equal(engine.negativeSpaceDiagnostics().contextIndexedRecords, 1);
+assert.equal(engine.negativeSpaceRelatedAlternatives(context.contextKey).length, 2);
+assert.equal(engine.negativeSpaceRelatedAlternatives('unseen-context').length, 0);
+assert.equal(engine.negativeSpaceRelatedAlternatives(context.contextKey, 1).length, 1);
 assert.ok(record.outcomeEvidence.includes('postcondition:verified'));
 const originalRegretRecordCount = engine.snapshot().records.length;
 const replayed = engine.observe('respond', 0.52, alternatives, context);
@@ -115,6 +121,7 @@ assert.equal(engine.negativeSpaceDiagnostics().bounded, true);
 const outcomeMetrics = new RegretEngine();
 outcomeMetrics.observe('act', 0.7, [{ action: 'defer', estimated: 0.8 }], {
   decisionId: 'decision-outcome-metrics',
+  contextKey: 'verified-device-context',
   chosenExpectedOutcome01: 0.78,
   significance: { cost01: 0.1, risk01: 0.9, futureImportance01: 0.1 },
   outcomeReward01: 0.66,
@@ -134,6 +141,7 @@ metricRestore.restore(outcomeMetrics.snapshot());
 assert.deepEqual(metricRestore.snapshot().negativeSpace, outcomeMetrics.snapshot().negativeSpace);
 assert.equal(metricRestore.negativeSpaceDiagnostics().verifiedOutcomes, 1);
 assert.equal(metricRestore.negativeSpaceDiagnostics().independentOutcomes, 1);
+assert.equal(metricRestore.negativeSpaceRelatedAlternatives('verified-device-context').length, 1);
 
 // Boundary: the significance threshold is inclusive and never stores empty-option records.
 const threshold = new RegretEngine();
@@ -201,6 +209,7 @@ assert.equal(malformedState.records[0].alternatives[0].expectedOutcome01, 1);
 assert.equal(malformedState.records[0].alternatives[0].reopenedAt, undefined);
 assert.equal(malformedState.records[0].alternatives[1].reopenedAt, 10);
 assert.equal(malformedState.records[0].outcomeSource, 'unknown');
+assert.equal(malformed.negativeSpaceRelatedAlternatives('malformed-context').length, 0);
 assert.equal(malformedState.records[0].significance.cost01, 1);
 assert.equal(malformedState.records[0].significance.risk01, 0);
 assert.equal(malformedState.pruned, 0);

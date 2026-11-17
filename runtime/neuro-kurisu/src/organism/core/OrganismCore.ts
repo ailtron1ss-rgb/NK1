@@ -9522,6 +9522,13 @@ export class OrganismCore {
             });
             this.cognitiveRuntime.regretEngine.observe(trace.selected.action, gatedSuccess01, alternatives, {
                 decisionId: trace.id,
+                contextKey: trace.worldContextKey ?? [
+                    `goal:${trace.selected.goalId ?? 'none'}`,
+                    `energy:${Math.round(clamp(trace.stateBefore.needs.energy) * 4)}`,
+                    `uncertainty:${Math.round(clamp(trace.stateBefore.needs.uncertainty) * 4)}`,
+                    `load:${Math.round(clamp(trace.stateBefore.needs.cognitiveLoad) * 4)}`,
+                    `novelty:${Math.round(clamp(trace.stateBefore.needs.novelty) * 4)}`,
+                ].join('|'),
                 decisionAt: trace.createdAt,
                 outcomeAt: state.at,
                 chosenExpectedOutcome01: trace.selected.predictedUtility,
@@ -11277,6 +11284,7 @@ export class OrganismCore {
     negativeSpaceMemorySnapshot() { return this.cognitiveRuntime.regretEngine.snapshot().negativeSpace; }
     negativeSpaceMemoryDiagnostics() { return this.cognitiveRuntime.regretEngine.negativeSpaceDiagnostics(); }
     negativeSpaceMemoryReviewQueue() { return this.cognitiveRuntime.regretEngine.negativeSpaceReviewQueue(); }
+    negativeSpaceMemoryRelatedAlternatives(contextKey: string, limit = 8) { return this.cognitiveRuntime.regretEngine.negativeSpaceRelatedAlternatives(contextKey, limit); }
     negativeSpaceMemoryMarkReopened(decisionId: string, action: string, reason: string, at?: number) {
         return this.cognitiveRuntime.regretEngine.markNegativeSpaceAlternativeReopened(decisionId, action, reason, at);
     }
