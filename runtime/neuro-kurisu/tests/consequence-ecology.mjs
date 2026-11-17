@@ -31,6 +31,7 @@ const edge = (id, from, to, extra = {}) => ({
   ...(extra.independenceGroup ? { independenceGroup: extra.independenceGroup } : {}),
 });
 const option = (id, action, nodes, edges) => ({ id, title: id, action, nodes, edges });
+const approx = (actual, expected, label) => assert.ok(Math.abs(actual - expected) < 1e-9, `${label}: expected ${expected}, got ${actual}`);
 
 const simulator = new FutureSimulator();
 assert.equal(typeof simulator.analyzeConsequences, 'function', 'FutureSimulator must expose the Consequence Ecology analysis seam');
@@ -417,12 +418,12 @@ const counterfactual = simulator.analyzeConsequences({
   ])],
 }).analysis.options[0];
 assert.equal(counterfactual.counterfactualCoverage01, 0.8);
-assert.equal(counterfactual.attributableHarm01, 0.3);
-assert.equal(counterfactual.avoidedHarm01, 0.1);
-assert.equal(counterfactual.attributableBenefit01, 0.3);
-assert.equal(counterfactual.lostBenefit01, 0.15);
+approx(counterfactual.attributableHarm01, 0.3, 'attributable harm');
+approx(counterfactual.avoidedHarm01, 0.1, 'avoided harm');
+approx(counterfactual.attributableBenefit01, 0.3, 'attributable benefit');
+approx(counterfactual.lostBenefit01, 0.15, 'lost benefit');
 assert.ok(Math.abs(counterfactual.netAttributableValue01 + 0.05) < 1e-9);
-assert.equal(counterfactual.nodes.find(row => row.id === 'added-harm').attributableEffect01, 0.3);
+approx(counterfactual.nodes.find(row => row.id === 'added-harm').attributableEffect01, 0.3, 'node attributable effect');
 assert.equal(counterfactual.nodes.find(row => row.id === 'unknown-baseline').attributableEffect01, null,
   'missing counterfactual data must remain unknown rather than silently becoming zero');
 
