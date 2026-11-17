@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, stat, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -132,6 +132,23 @@ try {
   assert.equal(restoredUndo.recoveryArtifactRef, undo.recoveryArtifactRef);
   assert.equal((await stat(writtenPath)).isFile(), true);
 
+  // An attacker-controlled recovery-directory symlink must be rejected before
+  // the adapter creates any child directory outside the private workspace.
+  const symlinkStoreRoot = join(tempRoot, 'symlink-store');
+  const symlinkStore = new FileStateStore(join(symlinkStoreRoot, 'organism-core.json'), { backupEverySaves: 20 });
+  const symlinkWorkspace = symlinkStore.siblingPath('workspace');
+  const externalRecoveryTarget = join(tempRoot, 'external-recovery-target');
+  await mkdir(symlinkWorkspace, { recursive: true });
+  await mkdir(externalRecoveryTarget, { recursive: true });
+  await symlink(externalRecoveryTarget, join(symlinkWorkspace, '.nk1-recovery'));
+  const symlinkCore = new OrganismCore(symlinkStore, { cycleResultMode: 'operational', checkpointMinIntervalMs: 0 });
+  await symlinkCore.init();
+  const symlinkStoreInput = { path: 'must-not-write.txt', content: 'must remain inside workspace' };
+  const symlinkStoreOptions = await approveWrite(symlinkCore, symlinkStoreInput, 'filesystem-undo-first:recovery-symlink');
+  const symlinkStoreResult = await symlinkCore.executeTool('organism.files.write', symlinkStoreInput, 'must-not-follow-recovery-symlink', symlinkStoreOptions);
+  assert.equal(symlinkStoreResult.outcomeClass, 'undo-preparation-failed');
+  await assert.rejects(stat(join(externalRecoveryTarget, 'prepared')), { code: 'ENOENT' });
+
   // Memory-only cores have no durable filesystem workspace and must not expose
   // the mutation tool at all.
   const memoryCore = new OrganismCore(new MemoryStateStore(), { cycleResultMode: 'operational', checkpointMinIntervalMs: 0 });
@@ -141,7 +158,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     pass: 'filesystem-undo-first-integration',
-    checks: ['one-shot-approval','required-idempotency','create-only-no-overwrite','path-traversal-denial','symlink-denial','readback-hash','durable-artifact','restart-replay','memory-store-isolation'],
+    checks: ['one-shot-approval','required-idempotency','create-only-no-overwrite','path-traversal-denial','target-symlink-denial','recovery-directory-symlink-denial','readback-hash','durable-artifact','restart-replay','memory-store-isolation'],
     tool: 'organism.files.write',
     receipt: result.executionId,
     undoStatus: undo.status,
