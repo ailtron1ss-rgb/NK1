@@ -12,7 +12,7 @@ const source = {
   modelRevision: 'rev-a',
   runtime: 'openai-compatible',
   privacyClass: 'local-only',
-  capabilities: ['text-generation', 'structured-output', 'tool-routing'],
+  capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
   embeddingSpaceId: 'nk1-embed-v1',
   contextWindowTokens: 8192,
 };
@@ -24,7 +24,7 @@ const target = {
   modelRevision: '2026-11',
   runtime: 'generate-content',
   privacyClass: 'external',
-  capabilities: ['text-generation', 'structured-output', 'tool-routing'],
+  capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
   embeddingSpaceId: 'nk1-embed-v1',
   contextWindowTokens: 32768,
 };
