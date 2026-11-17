@@ -122,6 +122,18 @@ const incompatible = { ...target, embeddingSpaceId: 'other-embedding-space' };
 const compatibility = engine.assessCompatibility(transfer, incompatible);
 assert.equal(compatibility.compatible, false);
 assert.ok(compatibility.reasons.includes('embedding-reindex-required'));
+const unknownEmbeddingTarget = { ...target };
+delete unknownEmbeddingTarget.embeddingSpaceId;
+const unknownEmbeddingEngine = new SubstrateIndependenceEngine({
+  profiles: [source, unknownEmbeddingTarget],
+});
+const unknownEmbeddingCompatibility = unknownEmbeddingEngine.assessCompatibility(
+  transfer, unknownEmbeddingTarget, { allowExternalBackend: true },
+);
+assert.equal(unknownEmbeddingCompatibility.compatible, false,
+  'migration must not assume embedding compatibility when the target embedding space is unknown');
+assert.ok(unknownEmbeddingCompatibility.reasons.includes('embedding-reindex-required'),
+  'an unknown embedding space must require a verified reindex before migration');
 const privacyGate = engine.assessCompatibility(transfer, target);
 assert.equal(privacyGate.compatible, false);
 assert.ok(privacyGate.reasons.includes('remote-backend-requires-explicit-consent'));
@@ -222,6 +234,22 @@ assert.equal(promoted.activeBackendId, target.backendId);
 assert.equal(reloadedEngine.preferredRoute(), 'gemini');
 assert.equal(promoted.history.at(-1).fromBackendId, source.backendId);
 assert.equal(promoted.history.at(-1).toBackendId, target.backendId);
+
+const replayEngine = new SubstrateIndependenceEngine({ profiles: [source, target], minIndependentTrials: 5 });
+assert.equal(replayEngine.restore(promoted).restored, true,
+  'the consumed-evidence ledger must survive a process restart');
+replayEngine.recordImportedTransfer(transfer, target.backendId);
+const replayedEvaluation = await replayEngine.evaluateMigration({
+  transfer,
+  targetBackendId: target.backendId,
+  trials,
+  verifyTrial: verifySignedReceipt,
+  allowExternalBackend: true,
+});
+assert.equal(replayedEvaluation.accepted, false,
+  'the same signed holdout receipts must not authorize a second migration after restart');
+assert.ok(replayedEvaluation.reasons.includes('calibration-evidence-replay-rejected'),
+  'replayed evaluator receipt IDs or independence keys must be rejected');
 
 const changedTargetRevision = new SubstrateIndependenceEngine({
   profiles: [source, { ...target, modelRevision: '2026-12' }],
