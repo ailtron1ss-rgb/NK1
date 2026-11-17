@@ -1,3 +1,12 @@
+## [NK1][OmeStro #24] Layer Force — bounded activation steering (2026-11-17)
+
+- Add a dedicated, optional PyTorch activation-hook controller to the Neural Prosthesis sidecar; steer selected decoder-layer hidden states with host-supplied, model-bound directions rather than chat-template metadata.
+- Bind schema-v1 profiles to exact model ID, immutable model revision, model-config digest, layer path and hidden width; validate raw-file SHA-256 against a host-owned allowlist.
+- Preserve tuple/list auxiliary outputs and request-local context; hard-cap every per-token steering delta at 10% of the current hidden-state norm and keep base-model parameters unchanged.
+- Keep activation disabled by default; only the operator-selected, locally loaded and allowlisted default profile enters inference.
+- Add profile admission, redacted diagnostic, context-reset and sidecar opt-in regression coverage.
+- **Draft PR #931 stacked on #925.** Direction authoring/calibration, independent task-quality evaluation, target-model latency/memory and device soak remain unverified. No merge or Release ZIP change is claimed.
+
 ## [NK1][OmeStro #28] Neural Prosthesis — hardened draft implementation (2026-11-17)
 
 - Add an optional PyTorch/Transformers residual-bottleneck backend with selected decoder-layer hooks, zero-start identity, request-scoped adapter activation and bounded per-token residual norm.
