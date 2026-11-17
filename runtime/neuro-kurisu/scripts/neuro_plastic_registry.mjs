@@ -54,7 +54,9 @@ async function readJson(filePath) {
 }
 
 async function atomicWrite(filePath, value) {
+  await assertNoSymlinkAncestors(filePath);
   await mkdir(path.dirname(filePath), { recursive: true });
+  await assertNoSymlinkAncestors(filePath);
   try {
     const existing = await lstat(filePath);
     if (existing.isSymbolicLink() || !existing.isFile()) throw new Error('refusing-to-overwrite-non-regular-file');
@@ -66,6 +68,26 @@ async function atomicWrite(filePath, value) {
   await rename(temporary, filePath);
 }
 
+async function assertNoSymlinkAncestors(targetPath) {
+  const relative = path.relative(ROOT, path.dirname(targetPath));
+  if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
+    throw new Error('path-escapes-runtime-root');
+  }
+  let cursor = ROOT;
+  for (const segment of relative ? relative.split(path.sep) : []) {
+    cursor = path.join(cursor, segment);
+    try {
+      const info = await lstat(cursor);
+      if (info.isSymbolicLink() || !info.isDirectory()) {
+        throw new Error('refusing-symlink-or-nondirectory-in-runtime-path');
+      }
+    } catch (error) {
+      if (error?.code === 'ENOENT') break;
+      throw error;
+    }
+  }
+}
+
 async function verifyArtifact(manifest) {
   const directory = String(manifest?.artifact?.directory || '');
   if (!directory.startsWith('adapter-store/') || directory.includes('\\') ||
@@ -75,9 +97,10 @@ async function verifyArtifact(manifest) {
   const storeRoot = path.resolve(ROOT, 'adapter-store');
   const adapterDirectory = path.resolve(ROOT, directory);
   const relative = path.relative(storeRoot, adapterDirectory);
-  if (!relative || relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
-    throw new Error('adapter-artifact-escapes-store');
-  }
+  if (relative !== manifest.adapterId) throw new Error('adapter-artifact-directory-must-match-adapter-id');
+  await assertNoSymlinkAncestors(adapterDirectory);
+  const storeStat = await lstat(storeRoot);
+  if (storeStat.isSymbolicLink() || !storeStat.isDirectory()) throw new Error('adapter-store-root-not-regular');
   const directoryStat = await lstat(adapterDirectory);
   if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) throw new Error('adapter-artifact-directory-not-regular');
   const configPath = path.join(adapterDirectory, 'adapter_config.json');
