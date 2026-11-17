@@ -143,7 +143,8 @@ try {
   assert.equal(rejectedReceipt.language?.text, 'base response');
   assert.equal(adapterCalls, 4);
   assert.equal(baseCalls, 4, 'wrong adapter weight attestation must execute the original base invoker exactly once');
-  assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 2);
+  assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1,
+    'explicit signed reactivation resets the consecutive-failure streak before the next execution');
 
   badReceipt = false;
   await runtime.activateSynapticAdapter(manifest);
