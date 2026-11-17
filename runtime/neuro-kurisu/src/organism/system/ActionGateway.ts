@@ -873,7 +873,7 @@ export class ActionGateway {
     return {
       ...response,
       result:{...response.result,recoveryArtifactDisposition:disposition.disposition,...(disposition.error?{recoveryArtifactCleanupError:disposition.error}:{})},
-      audit:{...response.audit,result:(response.audit.result??'') + '; recovery-artifact-' + disposition.disposition},
+      audit:{...response.audit,result:((response.audit.result??'') + '; recovery-artifact-' + disposition.disposition).slice(0,300)},
     };
   }
 
