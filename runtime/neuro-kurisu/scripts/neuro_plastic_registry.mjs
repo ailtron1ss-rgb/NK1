@@ -6,10 +6,12 @@ import {
   NeuroPlasticAdapterRegistry,
   createNeuroPlasticApprovalSignature,
   verifyNeuroPlasticApprovalSignature,
+  verifyNeuroPlasticEvaluationSignature,
 } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 
 const ROOT = path.resolve(process.env.NEURO_PLASTIC_RUNTIME_ROOT || process.cwd());
 const SECRET = String(process.env.NEURO_PLASTIC_APPROVAL_SECRET || '');
+const EVALUATOR_SECRET = String(process.env.NEURO_PLASTIC_EVALUATOR_SECRET || '');
 const APPROVER = String(process.env.NEURO_PLASTIC_APPROVER_ID || '').trim();
 
 function usage() {
@@ -21,6 +23,7 @@ function usage() {
     '  node --experimental-strip-types scripts/neuro_plastic_registry.mjs activate --adapter ID --input approval.json',
     '  node --experimental-strip-types scripts/neuro_plastic_registry.mjs rollback --adapter ID --reason "reason"',
     '',
+    'Set NEURO_PLASTIC_EVALUATOR_SECRET (32+ chars, held by the independent evaluator) for evaluation.',
     'Set NEURO_PLASTIC_APPROVAL_SECRET (32+ chars) and NEURO_PLASTIC_APPROVER_ID for approval commands.',
     '',
   ].join('\n'));
@@ -166,7 +169,9 @@ async function main() {
   } else if (options.operation === 'evaluate') {
     if (!options.input) throw new Error('--input-holdout-evaluation-required');
     const input = await readJson(path.resolve(options.input));
-    const report = registry.evaluateCandidate(adapterId, input);
+    if (EVALUATOR_SECRET.length < 32) throw new Error('independent-evaluator-secret-required');
+    const report = registry.evaluateCandidate(adapterId, input, (receipt) =>
+      verifyNeuroPlasticEvaluationSignature(adapterId, input, receipt, EVALUATOR_SECRET));
     await atomicWrite(registryFile, registry.snapshot());
     process.stdout.write(JSON.stringify(report, null, 2) + '\n');
     return;
