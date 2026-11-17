@@ -202,6 +202,14 @@ export function buildDevelopmentalGenome(
   if (stableJson(actualNames) !== stableJson(expectedNames)) {
     throw new Error('Developmental Genome requires the complete canonical system set');
   }
+  for (const module of modules) {
+    if (typeof module.estimatedCost01 !== 'number' || !Number.isFinite(module.estimatedCost01) || module.estimatedCost01 < 0 || module.estimatedCost01 > 1) {
+      throw new Error('Invalid canonical estimatedCost01 for module: ' + module.name);
+    }
+    if (!Number.isInteger(module.cadenceCycles) || module.cadenceCycles < 1 || module.cadenceCycles > 64) {
+      throw new Error('Invalid canonical cadenceCycles for module: ' + module.name);
+    }
+  }
   const topology = dependencyTopology(modules);
   if (topology.issues.length) {
     throw new Error('Developmental Genome contract graph is invalid: ' + topology.issues.map(issue => issue.code).join(','));
