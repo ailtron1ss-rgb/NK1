@@ -106,7 +106,7 @@ try {
   let runtime = makeRuntime();
   await runtime.init();
 
-  const initial = await runtime.step('Check the supplied facts and answer cautiously.');
+  const initial = await runtime.step('Check the supplied facts and answer cautiously.', { deliberate: false });
   assert.equal(initial.language?.text, 'base response');
   assert.equal(baseCalls, 1);
   assert.equal(adapterCalls, 0, 'no adapter can route before a candidate is registered and validated');
@@ -115,13 +115,13 @@ try {
   await runtime.activateSynapticAdapter(manifest);
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'active');
 
-  const specialized = await runtime.step('Solve this physics reasoning question.');
+  const specialized = await runtime.step('Solve this physics reasoning question.', { deliberate: false });
   assert.equal(specialized.language?.text, 'specialized response');
   assert.equal(adapterCalls, 1);
   assert.equal(baseCalls, 1, 'successful specialist inference must not also invoke the base model');
 
   stallAdapter = true;
-  const timedOut = await runtime.step('Force a non-responsive adapter loader to exceed its deadline.');
+  const timedOut = await runtime.step('Force a non-responsive adapter loader to exceed its deadline.', { deliberate: false });
   assert.equal(timedOut.language?.text, 'base response');
   assert.equal(adapterCalls, 2);
   assert.equal(baseCalls, 2, 'adapter timeout must abort specialist execution and call the base model');
@@ -130,7 +130,7 @@ try {
   await runtime.activateSynapticAdapter(manifest);
 
   badBaseReceipt = true;
-  const rejectedBaseReceipt = await runtime.step('Reject a specialist response for the wrong base-model identity.');
+  const rejectedBaseReceipt = await runtime.step('Reject a specialist response for the wrong base-model identity.', { deliberate: false });
   assert.equal(rejectedBaseReceipt.language?.text, 'base response');
   assert.equal(adapterCalls, 3);
   assert.equal(baseCalls, 3, 'wrong base-model attestation must execute the original base invoker exactly once');
@@ -139,7 +139,7 @@ try {
   badBaseReceipt = false;
   await runtime.activateSynapticAdapter(manifest);
   badReceipt = true;
-  const rejectedReceipt = await runtime.step('Reject a specialist response that attests the wrong weight digest.');
+  const rejectedReceipt = await runtime.step('Reject a specialist response that attests the wrong weight digest.', { deliberate: false });
   assert.equal(rejectedReceipt.language?.text, 'base response');
   assert.equal(adapterCalls, 4);
   assert.equal(baseCalls, 4, 'wrong adapter weight attestation must execute the original base invoker exactly once');
@@ -148,7 +148,7 @@ try {
   badReceipt = false;
   await runtime.activateSynapticAdapter(manifest);
   failAdapter = true;
-  const recovered = await runtime.step('Recover from an adapter loader exception.');
+  const recovered = await runtime.step('Recover from an adapter loader exception.', { deliberate: false });
   assert.equal(recovered.language?.text, 'base response');
   assert.equal(adapterCalls, 5);
   assert.equal(baseCalls, 5, 'adapter loader failure must execute the original base invoker exactly once');
@@ -162,7 +162,7 @@ try {
 
   await runtime.disableSynapticAdapter(candidate.id);
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'disabled');
-  const disabled = await runtime.step('Confirm the disabled profile cannot intercept this request.');
+  const disabled = await runtime.step('Confirm the disabled profile cannot intercept this request.', { deliberate: false });
   assert.equal(disabled.language?.text, 'base response');
   assert.equal(adapterCalls, 5);
 
@@ -172,7 +172,7 @@ try {
   badReceipt = false;
   badBaseReceipt = false;
   await runtime.activateSynapticAdapter(manifest);
-  const reactivated = await runtime.step('Use the explicitly reactivated specialist.');
+  const reactivated = await runtime.step('Use the explicitly reactivated specialist.', { deliberate: false });
   assert.equal(reactivated.language?.text, 'specialized response');
   assert.equal(adapterCalls, 6);
   await stopRuntime(runtime);
