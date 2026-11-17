@@ -64,6 +64,34 @@ function isShadowObservation(value: unknown): value is SkillShadowObservation {
     typeof value.passed === 'boolean' && isTime(value.observedAt);
 }
 
+function isCompetenceProof(value: unknown): boolean {
+  if (!isRecord(value) || !isText(value.signature) || !isRecord(value.payload)) return false;
+  const p=value.payload, c=p.contract, h=p.holdout;
+  if (!isRecord(c) || !isRecord(h)) return false;
+  return p.schemaVersion===1 && isFingerprint(p.proofId) && isText(p.attestorId) &&
+    isFingerprint(p.candidateId) && isText(p.skillId) && isVersion(p.candidateVersion) &&
+    isFingerprint(p.payloadFingerprint) && isFingerprint(p.proposalId) &&
+    isFingerprint(p.proposalOutcomeFingerprint) && isFingerprint(p.shadowEvidenceFingerprint) &&
+    Number.isSafeInteger(p.shadowRunCount) && Number(p.shadowRunCount)>=3 &&
+    isTime(p.issuedAt) && isTime(p.expiresAt) && Number(p.expiresAt)>Number(p.issuedAt) &&
+    isText(c.toolId) && isText(c.capability) &&
+    ['none','web','device','filesystem','code','system','self-modification'].includes(String(c.permissionClass)) &&
+    isFingerprint(c.inputContractFingerprint) && isFingerprint(c.outputContractFingerprint) &&
+    isFingerprint(c.runtimeFingerprint) && isFingerprint(c.environmentFingerprint) &&
+    Array.isArray(c.preconditions) && c.preconditions.length<=32 && c.preconditions.every(isText) &&
+    Array.isArray(c.constraints) && c.constraints.length<=32 && c.constraints.every(isText) &&
+    Array.isArray(c.allowedModes) && c.allowedModes.includes('assisted') &&
+    c.allowedModes.every((mode: unknown)=>mode==='assisted'||mode==='autonomous') &&
+    isFingerprint(h.manifestFingerprint) && isFingerprint(h.outcomeFingerprint) &&
+    isFingerprint(h.datasetFingerprint) && isFingerprint(h.familyEvaluationFingerprint) &&
+    Number.isSafeInteger(h.pairedTaskSeedN) && Number(h.pairedTaskSeedN)>=8 &&
+    Number.isSafeInteger(h.uniquePairedTasks) && Number(h.uniquePairedTasks)>=8 &&
+    Number.isSafeInteger(h.completePairedSeeds) && Number(h.completePairedSeeds)>=3 &&
+    [h.baselinePassRate,h.candidatePassRate,h.absoluteGain].every(Number.isFinite) &&
+    Array.isArray(h.approximate95CI) && h.approximate95CI.length===2 &&
+    Array.isArray(h.bootstrap95CI) && h.bootstrap95CI.length===2;
+}
+
 function isRollbackApproval(value: unknown): value is SkillRollbackApproval {
   if (!isRecord(value) || !isText(value.approvedBy) || !isTime(value.approvedAt) ||
       !isVersion(value.expectedActiveVersion)) return false;
@@ -123,6 +151,7 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
   if (value.candidateId !== expectedId &&
       !(value.revisionProvenance === undefined && value.candidateId === legacyId)) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
+  if (value.competenceProof !== undefined && !isCompetenceProof(value.competenceProof)) return false;
   if (value.rollbackApproval !== undefined && !isRollbackApproval(value.rollbackApproval)) return false;
   if (value.promotedAt !== undefined && !isTime(value.promotedAt)) return false;
   if (value.rolledBackAt !== undefined && !isTime(value.rolledBackAt)) return false;

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
+import { buildSkillCompetenceProofPayload, type SignedSkillCompetenceProof, type SkillCompetenceContract, type SkillCompetenceProofPayload, type SkillCompetenceProofVerifier } from './SkillCompetenceProof.ts';
 
 export type SkillCandidateStatus = 'staged' | 'shadow' | 'active' | 'superseded' | 'rolled-back';
 
@@ -138,6 +139,8 @@ export interface VersionedSkillCandidate {
   createdAt: number;
   approval?: SkillPromotionApproval;
   rollbackApproval?: SkillRollbackApproval;
+  /** Signed competence certificate for proof-carrying candidates; heuristic legacy skills omit it. */
+  competenceProof?: SignedSkillCompetenceProof;
   promotedAt?: number;
   rolledBackAt?: number;
 }
@@ -168,6 +171,14 @@ export class InMemorySkillStorePersistence implements SkillStorePersistence {
 }
 
 function clone<T>(value: T): T { return JSON.parse(JSON.stringify(value)) as T; }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isProofCarryingCandidate(candidate: Readonly<VersionedSkillCandidate>): boolean {
+  return isRecord(candidate.payload) && candidate.payload.proofCarryingSkill === true;
+}
 
 function canonical(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -220,17 +231,20 @@ export class VersionedSkillCandidateStore {
   private readonly verifyApproval: SkillPromotionApprovalVerifier;
   private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier;
   private readonly verifyRollbackApproval: SkillRollbackApprovalVerifier;
+  private readonly verifyCompetenceProof: SkillCompetenceProofVerifier;
 
   constructor(
     persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
     verifyApproval: SkillPromotionApprovalVerifier = () => false,
     verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
     verifyRollbackApproval: SkillRollbackApprovalVerifier = () => false,
+    verifyCompetenceProof: SkillCompetenceProofVerifier = () => false,
   ) {
     this.persistence = persistence;
     this.verifyApproval = verifyApproval;
     this.verifyShadowEvidence = verifyShadowEvidence;
     this.verifyRollbackApproval = verifyRollbackApproval;
+    this.verifyCompetenceProof = verifyCompetenceProof;
     const initial = persistence.read();
     if (initial.schemaVersion !== 1 || !Number.isSafeInteger(initial.revision) ||
         initial.revision < 0 || !Array.isArray(initial.active) || !Array.isArray(initial.candidates)) {
@@ -240,6 +254,18 @@ export class VersionedSkillCandidateStore {
   }
 
   snapshot(): VersionedSkillStoreSnapshot { return clone(this.readTrustedSnapshot()); }
+
+  /** Resolve only the current, unexpired, signed active P23 candidate. */
+  resolveActiveSkillCompetenceSubject(skillId: string): { candidateId: string; version: number; payloadFingerprint: string } | null {
+    const current = this.readTrustedSnapshot();
+    const active = current.candidates.find(item => item.skillId === skillId && item.status === 'active');
+    if (!active?.competenceProof) return null;
+    let verified = false;
+    try { verified = this.verifyCompetenceProof(clone(active.competenceProof), clone(active), 'promotion'); }
+    catch { verified = false; }
+    if (verified !== true) return null;
+    return { candidateId: active.candidateId, version: active.version, payloadFingerprint: active.payloadFingerprint };
+  }
 
   private readTrustedSnapshot(): VersionedSkillStoreSnapshot {
     const current = this.persistence.read();
@@ -308,6 +334,17 @@ export class VersionedSkillCandidateStore {
         catch { evidenceAuthorized = false; }
         if (evidenceAuthorized !== true) {
           throw new Error('persisted active skill shadow evidence failed authentication');
+        }
+      }
+      if (isProofCarryingCandidate(candidate) && !candidate.competenceProof) {
+        throw new Error('persisted active proof-carrying skill is missing its competence certificate');
+      }
+      if (candidate.competenceProof) {
+        let proofAuthorized = false;
+        try { proofAuthorized = this.verifyCompetenceProof(clone(candidate.competenceProof), clone(candidate), 'persisted-active'); }
+        catch { proofAuthorized = false; }
+        if (proofAuthorized !== true) {
+          throw new Error('persisted active skill competence proof failed signature/context verification');
         }
       }
     }
@@ -388,6 +425,54 @@ export class VersionedSkillCandidateStore {
     return clone(candidate);
   }
 
+  createCompetenceProofPayload(
+    candidateId: string,
+    proposal: VerifiedSkillPromotionProposal,
+    contract: SkillCompetenceContract,
+    attestorId: string,
+    issuedAt: number,
+    expiresAt: number,
+  ): SkillCompetenceProofPayload {
+    const current = this.readTrustedSnapshot();
+    const candidate = current.candidates.find(item => item.candidateId === candidateId);
+    if (!candidate || candidate.status !== 'shadow') {
+      throw new Error('competence proof can only be prepared for a shadow-evaluated candidate');
+    }
+    if (!isAuthenticVerifiedSkillPromotionProposal(proposal) ||
+        candidate.proposalId !== proposal.proposalId ||
+        candidate.proposalOutcomeFingerprint !== proposal.outcomeFingerprint) {
+      throw new Error('competence proof proposal does not match the authentic staged candidate');
+    }
+    for (const observation of candidate.shadowObservations) {
+      let authorized = false;
+      try { authorized = this.verifyShadowEvidence(clone(observation), clone(candidate)); }
+      catch { authorized = false; }
+      if (authorized !== true) throw new Error('competence proof requires independently authenticated shadow observations');
+    }
+    return buildSkillCompetenceProofPayload({
+      candidate: clone(candidate), proposal, contract: clone(contract), attestorId, issuedAt, expiresAt,
+      verifiedShadowObservations: clone(candidate.shadowObservations),
+    });
+  }
+
+  attachCompetenceProof(candidateId: string, proof: SignedSkillCompetenceProof): VersionedSkillCandidate {
+    const current = this.readTrustedSnapshot();
+    const candidate = current.candidates.find(item => item.candidateId === candidateId);
+    if (!candidate || candidate.status !== 'shadow') {
+      throw new Error('competence proof can only be attached before promotion to a shadow candidate');
+    }
+    let authorized = false;
+    try { authorized = this.verifyCompetenceProof(clone(proof), clone(candidate), 'attach'); }
+    catch { authorized = false; }
+    if (authorized !== true) throw new Error('competence proof is not authenticated or does not bind the current candidate evidence');
+    const next = clone(current);
+    const target = next.candidates.find(item => item.candidateId === candidateId)!;
+    target.competenceProof = clone(proof);
+    next.revision += 1;
+    this.commit(current, next);
+    return clone(target);
+  }
+
   recordShadowObservation(candidateId: string, observation: SkillShadowObservation): VersionedSkillCandidate {
     if (!observation || !observation.runId?.trim() ||
         !/^[a-f0-9]{64}$/i.test(observation.evidenceFingerprint) ||
@@ -409,6 +494,8 @@ export class VersionedSkillCandidateStore {
     const next = clone(current);
     const target = next.candidates.find(item => item.candidateId === candidateId)!;
     target.shadowObservations.push(clone(observation));
+    // Any new evidence changes the signed evidence-set digest; revoke the stale proof.
+    target.competenceProof = undefined;
     target.status = 'shadow';
     next.revision += 1;
     this.commit(current, next);
@@ -444,6 +531,15 @@ export class VersionedSkillCandidateStore {
       let evidenceAuthorized = false;
       try { evidenceAuthorized = this.verifyShadowEvidence(clone(observation), clone(candidate)); } catch { evidenceAuthorized = false; }
       if (evidenceAuthorized !== true) throw new Error('persisted shadow evidence failed authentication');
+    }
+    if (isProofCarryingCandidate(candidate) && !candidate.competenceProof) {
+      throw new Error('proof-carrying skill cannot be promoted without a signed competence certificate');
+    }
+    if (candidate.competenceProof) {
+      let proofAuthorized = false;
+      try { proofAuthorized = this.verifyCompetenceProof(clone(candidate.competenceProof), clone(candidate), 'promotion'); }
+      catch { proofAuthorized = false; }
+      if (proofAuthorized !== true) throw new Error('competence proof expired or failed candidate/evidence verification');
     }
     // Never treat caller-supplied audit fields as proof of human authorization.
     // Default is deny; production must inject a verifier backed by authenticated authority.
