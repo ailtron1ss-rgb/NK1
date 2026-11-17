@@ -487,7 +487,7 @@
     "test:big-pass-81": "node --experimental-strip-types tests/big-pass-81-motive-epistemic-integration.mjs",
     "test:big-pass-81:adversarial": "node --experimental-strip-types tests/big-pass-81-adversarial-consciousness.mjs",
     "test:mobile:10000": "node --experimental-strip-types tests/mobile-horizon-10000.mjs",
-    "test:organism-smoke": "node --experimental-strip-types tests/organism-smoke.mjs",
+    "test:organism-smoke": "node --experimental-strip-types tests/organism-smoke.mjs && node --experimental-strip-types tests/synaptic-commons-contract.mjs && node --experimental-strip-types tests/synaptic-commons-runtime-integration.mjs && node tests/synaptic-commons-http-route.mjs",
     "test:mobile:1000": "node --experimental-strip-types tests/mobile-horizon-1000.mjs",
     "test:developmental-attractor": "node --experimental-strip-types tests/developmental-attractor-field.mjs",
     "test:p37:episode": "node --experimental-strip-types tests/p37-episode-binding.mjs",
