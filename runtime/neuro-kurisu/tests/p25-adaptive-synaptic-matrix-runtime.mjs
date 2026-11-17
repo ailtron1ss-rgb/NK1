@@ -111,6 +111,14 @@ try {
   const disabled = await runtime.step('Confirm the disabled profile cannot intercept this request.');
   assert.equal(disabled.language?.text, 'base response');
   assert.equal(adapterCalls, 2);
+
+  // Re-enablement is an explicit operator action and must present a fresh,
+  // trusted manifest again; it is never triggered by ordinary routing.
+  failAdapter = false;
+  await runtime.activateSynapticAdapter(manifest);
+  const reactivated = await runtime.step('Use the explicitly reactivated specialist.');
+  assert.equal(reactivated.language?.text, 'specialized response');
+  assert.equal(adapterCalls, 3);
   await runtime.stop();
 
   console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX_RUNTIME=PASS');
