@@ -20,6 +20,26 @@ const modelAttestor=executionId=>{
   return {executionId,providerId:`provider-${group}`,modelId:`model-${group}`,independenceGroup:group,verifiedAt:Date.now()};
 };
 const parliament=new CognitiveParliament(new EvidenceFirewallParliamentTrustPort(firewall,modelAttestor));
+const syndicatedFirewall=new EvidenceFirewallEngine();
+const syndicatedClaim='nk1:cognitive-parliament:syndicated-copy';
+for(const row of [
+  {sourceKey:'publisher-a.example',lineage:'same-syndicated-story',hash:'copy-a'},
+  {sourceKey:'publisher-b.example',lineage:'same-syndicated-story',hash:'copy-b'},
+  {sourceKey:'publisher-c.example',lineage:'independent-story',hash:'copy-c'},
+]){
+  syndicatedFirewall.observe({claimKey:syndicatedClaim,sourceClass:'external-api',sourceKey:row.sourceKey,
+    sourceLineageKey:row.lineage,contentHash:row.hash,confidence01:.98,trust01:.98});
+}
+assert.equal(syndicatedFirewall.claim(syndicatedClaim).status,'promoted');
+const syndicatedRows=syndicatedFirewall.snapshot().observations.filter(row=>row.claimKey===syndicatedClaim);
+const syndicatedSession=new EvidenceFirewallParliamentTrustPort(syndicatedFirewall,modelAttestor).openSession();
+const syndicatedVerified=syndicatedRows.map(row=>syndicatedSession.verifyEvidence({id:row.id,claimKey:syndicatedClaim}));
+assert.ok(syndicatedVerified.every(Boolean));
+assert.equal(syndicatedVerified[0].sourceFamily,syndicatedVerified[1].sourceFamily,
+  'syndicated publisher copies are one source family');
+assert.notEqual(syndicatedVerified[0].sourceFamily,syndicatedVerified[2].sourceFamily,
+  'a separate lineage remains independent');
+
 const governance=new GovernanceSubsystemRuntime();
 assert.ok(governance.cognitiveParliament instanceof CognitiveParliament);
 assert.equal(governance.cognitiveParliament.deliberate({candidateId:'no-trust',risk:'low',reports:[]}).status,'needs-evidence',

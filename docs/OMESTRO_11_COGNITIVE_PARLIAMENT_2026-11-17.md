@@ -13,9 +13,9 @@
 
 ## Trust boundary
 
-Role reports cannot certify themselves. They provide only immutable evidence IDs, claim keys and host-generated inference execution IDs. The trust port resolves those IDs against the host-owned Evidence Firewall and model-execution attestor.
+Role reports cannot certify themselves. They provide only canonical evidence IDs, claim keys and host-generated inference execution IDs. The trust port resolves those IDs against the host-owned Evidence Firewall and model-execution attestor.
 
-The Evidence Firewall adapter accepts evidence only if the exact observation exists, belongs to the exact claim, the claim is promoted, the promotion receipt is valid, and the source is an eligible non-simulator source. Source identity and source-family grouping are derived from the canonical observation, not supplied by the model.
+The Evidence Firewall adapter accepts evidence only if the exact observation exists, belongs to the exact claim, the claim is promoted, the promotion receipt is valid, and the source is an eligible non-simulator source. Source identity and source-family grouping are derived from the canonical observation, not supplied by the model. The adapter reconstructs the firewall's source↔lineage connected components so syndicated copies across publisher domains count as one family.
 
 Model provider, model identity and independence group come only from the host attestor. If no attestor is connected, model reports are unverified and the result is `needs-evidence`. Merely naming six roles or six model strings never establishes six independent minds.
 
