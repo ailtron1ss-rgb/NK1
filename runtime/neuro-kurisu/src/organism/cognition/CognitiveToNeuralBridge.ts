@@ -20,6 +20,21 @@ const NEURAL_SNAPSHOT_MAX_AGE_TICKS=8;
 const clamp=(value:number,min=0,max=1)=>Math.max(min,Math.min(max,Number.isFinite(value)?value:min));
 const safe01=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
 const safeTick=(value:unknown):number|null=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;
+const isNormalizedSignal=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+function hasCompleteNeuralSnapshot(value:CognitiveNeuralBridgeNeuralInput|undefined):boolean {
+  if(!value || !Number.isSafeInteger(value.version) || Number(value.version)<1) return false;
+  const signals=[
+    value.predictionError01,value.plasticity01,value.neuromodulation01,value.sparseActivity01,
+    value.recurrentCoherence01,value.neuralConfidence01,value.modelAgreement01,
+    value.counterfactualDivergence01,value.goalField01,value.actionEntropy01,
+    value.allostatic?.drive01,value.allostatic?.arousal01,value.allostatic?.exploration01,
+    value.allostatic?.preservation01,value.allostatic?.reflection01,value.allostatic?.socialApproach01,
+    value.selfModel?.agency01,value.selfModel?.continuity01,value.selfModel?.growthReadiness01,
+    value.selfModel?.identityConflict01,value.goalAuthorship?.ownership01,
+    value.goalAuthorship?.commitment01,value.goalAuthorship?.revisionPressure01,
+  ];
+  return signals.every(isNormalizedSignal);
+}
 const isAction=(value:unknown):value is ActionKind=>typeof value==='string'&&ACTIONS.includes(value as ActionKind);
 const isMode=(value:unknown):value is CognitiveBridgeMode=>typeof value==='string'&&MODES.includes(value as CognitiveBridgeMode);
 
@@ -38,6 +53,8 @@ export const COGNITIVE_NEURAL_FEATURE_KEYS=[
 ] as const;
 
 export interface CognitiveNeuralBridgeNeuralInput {
+  /** B365 diagnostic-state schema version; only versioned snapshots are trusted. */
+  version?:unknown;
   tick?:unknown;
   predictionError01?:unknown;
   plasticity01?:unknown;
@@ -82,6 +99,7 @@ export interface CognitiveNeuralControlProfile {
   adapterHint:CognitiveAdapterHint;
   neuralSource:'b365-unified-neuro-causal-core'|'unavailable';
   neuralSnapshotAvailable:boolean;
+  neuralSnapshotVersion:number|null;
   neuralSnapshotTick:number|null;
   neuralSnapshotAgeTicks:number|null;
   featureKeys:string[];
@@ -111,7 +129,8 @@ export class CognitiveToNeuralBridge {
   project(input:CognitiveToNeuralBridgeInput={}):CognitiveNeuralControlProfile {
     const action:CognitiveBridgeAction=isAction(input.action)?input.action:'none';
     const mode:CognitiveBridgeMode=isMode(input.mode)?input.mode:'shallow';
-    const tick=safeTick(input.tick)??0;
+    const currentTick=safeTick(input.tick);
+    const tick=currentTick??0;
     const motivation01=safe01(input.motivation01,0);
     const uncertainty01=safe01(input.uncertainty01,.5);
     const urgency01=safe01(input.urgency01,0);
@@ -121,8 +140,10 @@ export class CognitiveToNeuralBridge {
     const candidateNeural=input.neural??undefined;
     const candidateNeuralTick=safeTick(candidateNeural?.tick);
     const ageTicks=candidateNeuralTick===null?null:tick-candidateNeuralTick;
-    const neuralSnapshotAvailable=ageTicks!==null&&ageTicks>=0&&ageTicks<=NEURAL_SNAPSHOT_MAX_AGE_TICKS;
+    const neuralSnapshotAvailable=currentTick!==null&&ageTicks!==null&&ageTicks>=0
+      &&ageTicks<=NEURAL_SNAPSHOT_MAX_AGE_TICKS&&hasCompleteNeuralSnapshot(candidateNeural);
     const neural=neuralSnapshotAvailable?candidateNeural:undefined;
+    const neuralSnapshotVersion=neuralSnapshotAvailable?Number(candidateNeural?.version):null;
     const neuralSnapshotTick=neuralSnapshotAvailable?candidateNeuralTick:null;
     const neuralSnapshotAgeTicks=neuralSnapshotAvailable?ageTicks:null;
     const neuralSnapshotFreshness01=neuralSnapshotAvailable
@@ -195,7 +216,7 @@ export class CognitiveToNeuralBridge {
       featureSchema:'nk1-cognitive-neural-43-v2',
       tick,action,mode,adapterHint:ADAPTER_BY_MODE[mode],
       neuralSource:neuralSnapshotAvailable?'b365-unified-neuro-causal-core':'unavailable',
-      neuralSnapshotAvailable,neuralSnapshotTick,neuralSnapshotAgeTicks,
+      neuralSnapshotAvailable,neuralSnapshotVersion,neuralSnapshotTick,neuralSnapshotAgeTicks,
       featureKeys:[...COGNITIVE_NEURAL_FEATURE_KEYS],
       featureVector01,temperature,maxTokens,steeringIntent01,
       controlsConfigured:{
@@ -206,6 +227,65 @@ export class CognitiveToNeuralBridge {
       },
     };
   }
+}
+
+/**
+ * Validate the complete v2 hand-off contract before a provider forwards it.
+ * This catches internally inconsistent profiles (not just malformed numbers):
+ * action/mode one-hots, adapter hint, B365 provenance, tick age and freshness
+ * must all agree. Missing/partial neural snapshots must remain explicitly neutral.
+ */
+export function isValidCognitiveNeuralControlProfile(value:unknown):value is CognitiveNeuralControlProfile {
+  if(!value || typeof value!=='object' || Array.isArray(value)) return false;
+  const profile=value as Partial<CognitiveNeuralControlProfile>;
+  const vector=profile.featureVector01;
+  const keys=profile.featureKeys;
+  const steering=profile.steeringIntent01;
+  if(profile.version!==2 || profile.featureSchema!=='nk1-cognitive-neural-43-v2'
+    || !Number.isSafeInteger(profile.tick) || Number(profile.tick)<0
+    || !(profile.action==='none' || isAction(profile.action))
+    || !isMode(profile.mode) || profile.adapterHint!==ADAPTER_BY_MODE[profile.mode]
+    || !Array.isArray(keys) || keys.length!==COGNITIVE_NEURAL_FEATURE_KEYS.length
+    || keys.some((key,index)=>key!==COGNITIVE_NEURAL_FEATURE_KEYS[index])
+    || !Array.isArray(vector) || vector.length!==COGNITIVE_NEURAL_FEATURE_KEYS.length
+    || vector.some(entry=>!isNormalizedSignal(entry))
+    || typeof profile.temperature!=='number' || !Number.isFinite(profile.temperature)
+    || profile.temperature<.2 || profile.temperature>.85
+    || !Number.isSafeInteger(profile.maxTokens) || Number(profile.maxTokens)<96
+    || Number(profile.maxTokens)>768 || Number(profile.maxTokens)%16!==0
+    || !steering
+    || !isNormalizedSignal(steering.curiosity01) || steering.curiosity01>.15
+    || !isNormalizedSignal(steering.caution01) || steering.caution01>.15
+    || !isNormalizedSignal(steering.persistence01) || steering.persistence01>.15
+    || !isNormalizedSignal(steering.verification01) || steering.verification01>.15
+    || profile.controlsConfigured?.samplingParameters!==true
+    || profile.controlsConfigured?.adapterSelection!==false
+    || profile.controlsConfigured?.activationSteering!==false
+    || profile.controlsConfigured?.residualBlock!==false) return false;
+
+  const actionsMatch=ACTIONS.every((action,index)=>vector[index]===(profile.action===action?1:0));
+  const modeOffset=36;
+  const modesMatch=MODES.every((mode,index)=>vector[modeOffset+index]===(profile.mode===mode?1:0));
+  if(!actionsMatch || !modesMatch) return false;
+
+  if(profile.neuralSnapshotAvailable===true){
+    const snapshotTick=safeTick(profile.neuralSnapshotTick);
+    const snapshotVersion=profile.neuralSnapshotVersion;
+    const age=profile.neuralSnapshotAgeTicks;
+    if(profile.neuralSource!=='b365-unified-neuro-causal-core'
+      || snapshotTick===null || !Number.isSafeInteger(snapshotVersion) || Number(snapshotVersion)<1
+      || !Number.isSafeInteger(age) || Number(age)<0 || Number(age)>NEURAL_SNAPSHOT_MAX_AGE_TICKS
+      || Number(profile.tick)-snapshotTick!==Number(age)) return false;
+    const expectedFreshness=clamp(1-Number(age)/NEURAL_SNAPSHOT_MAX_AGE_TICKS);
+    if(Math.abs(Number(vector[35])-expectedFreshness)>1e-9) return false;
+  } else if(profile.neuralSnapshotAvailable===false){
+    if(profile.neuralSource!=='unavailable' || profile.neuralSnapshotVersion!==null
+      || profile.neuralSnapshotTick!==null || profile.neuralSnapshotAgeTicks!==null
+      || vector[35]!==0 || vector.slice(12,35).some(entry=>entry!==.5)) return false;
+  } else {
+    return false;
+  }
+  return true;
 }
 
 /** Apply only the provider contract's supported, bounded sampling parameters. */
