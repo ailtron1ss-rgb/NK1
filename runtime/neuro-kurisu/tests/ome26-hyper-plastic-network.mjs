@@ -116,6 +116,8 @@ assert.equal(forgedPermit.mode, 'baseline');
 assert.equal(forgedPermit.reason, 'promotion-permit-not-issued-by-gate');
 
 const promotion = evaluateHyperPlasticPromotion({ adapter: target, calibrationReports, holdoutReports });
+assert.equal(evaluateHyperPlasticPromotion({ adapter: target, calibrationReports, holdoutReports }).permit, null,
+  'caller-supplied score objects must never mint an OME26 promotion permit; only authenticated signed ledger evidence may do so');
 assert.equal(promotion.eligible, true, JSON.stringify(promotion.reasons));
 assert.equal(promotion.summary.seedCount, 5);
 assert.ok(promotion.summary.lowerConfidenceBound95 > 0);
