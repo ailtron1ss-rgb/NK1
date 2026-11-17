@@ -1360,7 +1360,7 @@ export class MemoryOS2{
      this.linkSupportCache=support;this.linkSupportCacheVersion=this.state.linkUpdates;
    }
    const linkSupport=this.linkSupportCache;
-   const rows:Array<{m:MemoryItem2;score:number;bm25:number;entity:number;lexical:number}> = [];
+   const rows:Array<{m:MemoryItem2;canonical:MemoryItem2;score:number;bm25:number;entity:number;lexical:number}> = [];
    // Candidate truncation must not depend on the insertion order of the snapshot.
    // Accumulate inverse-document-frequency support across all unique query terms, then
    // select a bounded deterministic top set. The old first-192 walk could omit relevant
@@ -1374,7 +1374,8 @@ export class MemoryOS2{
      const idf=idfFor(token);
      if(ids)for(const id of ids){const priority=priorityFor(id);priority.idfSupport+=idf;priority.matchedTerms++;}
      if(this.metadataRecallEnabled){
-       const metadataIds=this.metadataTokenIndex.get(token);
+       const metadataIndex=requestedKnowledgeAt!==undefined&&temporalMode!=='all'?this.bitemporalMetadataTokenIndex:this.metadataTokenIndex;
+       const metadataIds=metadataIndex.get(token);
        if(metadataIds){const support=idf*.42;for(const id of metadataIds){const priority=priorityFor(id);priority.metadataSupport+=support;priority.metadataMatches++;}}
      }
      // Fuzzy discovery only runs for meaningful token lengths. Candidate terms
@@ -1472,18 +1473,21 @@ export class MemoryOS2{
    if(candidateIds.size>192)throw new Error(`memory retrieval candidate budget exceeded: ${candidateIds.size}/192`);
    this.lastCandidateCount=candidateIds.size;
    const identifierBias=identifierLike(query);
-   const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;metadata:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number;spatial:number;spatialDistance:number|null}> = [];
+   const rawRows:Array<{m:MemoryItem2;canonical:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;metadata:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number;spatial:number;spatialDistance:number|null}> = [];
    for(const id of candidateIds){
-     const m=this.itemIndex.get(id);
-     if(!m||m.dormant||m.epistemicStatus==='quarantined')continue;
-     // `all` is the archival view: expired revisions must remain inspectable.
-     // Current/point-in-time recall still excludes them and tracks stale suppression.
+     const canonical=this.itemIndex.get(id);
+     if(!canonical)continue;
+     let m=canonical;
      if(requestedKnowledgeAt!==undefined&&temporalMode!=='all'){
-      if(!this.bitemporalVersionAt(m,now,requestedKnowledgeAt)){this.state.staleRetrievalsAvoided++;continue;}
+      const version=this.bitemporalVersionAt(canonical,now,requestedKnowledgeAt);
+      if(!version){this.state.staleRetrievalsAvoided++;continue;}
+      m=this.materializeBitemporalView(canonical,version);
      }else{
-      if(temporalMode!=='all'&&((m.validUntilAt!=null&&Number(m.validUntilAt)<=now)||(m.supersededById!=null&&m.validUntilAt==null))){this.state.staleRetrievalsAvoided++;continue;}
-      if(temporalMode!=='all'&&!isValidAt(m,now))continue;
+      if(canonical.dormant||canonical.epistemicStatus==='quarantined')continue;
+      if(temporalMode!=='all'&&((canonical.validUntilAt!=null&&Number(canonical.validUntilAt)<=now)||(canonical.supersededById!=null&&canonical.validUntilAt==null))){this.state.staleRetrievalsAvoided++;continue;}
+      if(temporalMode!=='all'&&!isValidAt(canonical,now))continue;
      }
+     if(m.dormant||m.epistemicStatus==='quarantined')continue;
      const temporalValid=temporalMode==='all'||requestedKnowledgeAt!==undefined?true:isValidAt(m,now);
      m.temperature01=memoryTemperature(m,now);
      const lexicalTokens=this.tokensFor(m.content);
@@ -1505,7 +1509,7 @@ export class MemoryOS2{
      const temporalBase=this.signalFusion.temporalHint(query,m.validFromAt??m.createdAt,now); const validity=temporalMode==='all'?1:(isValidAt(m,now)?1:0); const temporal=clamp(.72*validity+.28*temporalBase);
      const identity=clamp(m.identityRelevance*clamp(identityRelevance));
      const goal=clamp(m.goalRelevance*clamp(goalRelevance));
-     rawRows.push({m,bm25,entity,lexical,coverage,fuzzy,metadata,conceptCoverage,temporal,causal,identity,goal,recency,spatial,spatialDistance});
+     rawRows.push({m,canonical,bm25,entity,lexical,coverage,fuzzy,metadata,conceptCoverage,temporal,causal,identity,goal,recency,spatial,spatialDistance});
    }
    const rrfK=60;
    const rankBy=(score:(row:typeof rawRows[number])=>number)=>new Map(rawRows.filter(row=>score(row)>0).sort((a,b)=>score(b)-score(a)||a.m.id.localeCompare(b.m.id)).map((row,index)=>[row.m.id,index+1]));
@@ -1540,7 +1544,7 @@ export class MemoryOS2{
      const conceptBoost01=row.conceptCoverage*.10;
      const spatialBoost01=spatialQuery?row.spatial*.24:0;
      fused.score01=clamp(fused.score01+policyBias+intentBoost01+conceptBoost01+spatialBoost01);
-     return {m:row.m,score:fused.score01,bm25:row.bm25,entity:row.entity,lexical,intentBoost01,conceptBoost01,spatialBoost01};
+     return {m:row.m,canonical:row.canonical,score:fused.score01,bm25:row.bm25,entity:row.entity,lexical,intentBoost01,conceptBoost01,spatialBoost01};
    }).sort((a,b)=>b.score-a.score||a.m.id.localeCompare(b.m.id)).slice(0,Math.max(1,limit));
    // Answerability gate: a high recency/salience/identity score is not proof that a
    // memory answers the current question. Require item-level lexical, entity, fuzzy,
@@ -1618,7 +1622,15 @@ export class MemoryOS2{
        this.state.budgetMisses++;
      }
    }
-   return rows.map(({m})=>{m.lastAccessAt=now;m.retrievalCount++;return clone?structuredClone(m):m;});
+   return rows.map(({m,canonical})=>{
+    canonical.lastAccessAt=wallClockNow;
+    canonical.retrievalCount++;
+    if(m!==canonical){
+     const historic={...m,lastAccessAt:wallClockNow,retrievalCount:canonical.retrievalCount};
+     return clone?structuredClone(historic):historic;
+    }
+    return clone?structuredClone(canonical):canonical;
+   });
  }
  /**
   * Commit the outcome of a read-only retrieval preview to canonical state.
