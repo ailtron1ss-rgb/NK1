@@ -14,6 +14,8 @@ export interface SignedSkillShadowPayload {
   manifestFingerprint: string;
   seed: number;
   runtimeVersion: string;
+  /** Environment identity captured by the trusted supervisor. */
+  environmentFingerprint?: string;
   passed: boolean;
   observedAt: number;
   verifierId: string;
@@ -59,7 +61,9 @@ export function verifySignedSkillShadowObservation(
   const payload = artifact?.payload;
   if (!payload || payload.schemaVersion !== 1 || typeof artifact.signature !== 'string' || !artifact.signature.trim()) return false;
   if (!payload.artifactId?.trim() || !payload.runId?.trim() || !payload.taskId?.trim() ||
-      !payload.runtimeVersion?.trim() || !payload.verifierId?.trim() ||
+      !payload.runtimeVersion?.trim() ||
+      (payload.environmentFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(payload.environmentFingerprint)) ||
+      !payload.verifierId?.trim() ||
       !Number.isSafeInteger(payload.candidateVersion) || !Number.isSafeInteger(payload.seed) || payload.seed < 0 ||
       !Number.isFinite(payload.observedAt) || payload.observedAt <= 0 || typeof payload.passed !== 'boolean') return false;
   if (!/^[a-f0-9]{64}$/.test(payload.payloadFingerprint) ||
@@ -87,6 +91,8 @@ export interface TrustedShadowExecutionContext {
   seed: number;
   manifestFingerprint: string;
   runtimeVersion: string;
+  /** Present for proof-carrying skills; supplied by the trusted host. */
+  environmentFingerprint?: string;
 }
 
 /**
@@ -110,7 +116,8 @@ export function createContextBoundSkillShadowEvidenceVerifier(
         typeof context.taskId !== 'string' || !context.taskId.trim() ||
         !Number.isSafeInteger(context.seed) || context.seed < 0 ||
         typeof context.manifestFingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(context.manifestFingerprint) ||
-        typeof context.runtimeVersion !== 'string' || !context.runtimeVersion.trim()) return false;
+        typeof context.runtimeVersion !== 'string' || !context.runtimeVersion.trim() ||
+        (context.environmentFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(context.environmentFingerprint))) return false;
     const payload = observation.artifact!.payload;
     // in-toto-inspired subject/provenance binding: receipt identity, task, seed,
     // manifest and runtime must all agree with independently trusted run metadata.
@@ -118,7 +125,8 @@ export function createContextBoundSkillShadowEvidenceVerifier(
       payload.taskId === context.taskId &&
       payload.seed === context.seed &&
       payload.manifestFingerprint === context.manifestFingerprint &&
-      payload.runtimeVersion === context.runtimeVersion;
+      payload.runtimeVersion === context.runtimeVersion &&
+      (context.environmentFingerprint === undefined || payload.environmentFingerprint === context.environmentFingerprint);
   };
 }
 

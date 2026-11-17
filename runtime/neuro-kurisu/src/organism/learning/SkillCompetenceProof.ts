@@ -333,7 +333,8 @@ function assertShadowEvidence(
         typeof payload.taskId !== 'string' || payload.taskId.trim().length === 0 ||
         !Number.isSafeInteger(payload.seed) || payload.seed < 0 ||
         !Number.isFinite(payload.observedAt) || payload.observedAt <= 0 ||
-        typeof payload.runtimeVersion !== 'string' || !payload.runtimeVersion.trim()) {
+        typeof payload.runtimeVersion !== 'string' || !payload.runtimeVersion.trim() ||
+        payload.environmentFingerprint !== contract.environmentFingerprint) {
       throw new Error('skill competence proof shadow evidence does not bind to this candidate and holdout manifest');
     }
     if (skillCompetenceRuntimeFingerprint(payload.runtimeVersion) !== contract.runtimeFingerprint) {

@@ -178,6 +178,7 @@ function signedShadowObservation(candidateRecord, index) {
     manifestFingerprint: proposal.manifestFingerprint,
     seed: index,
     runtimeVersion,
+    environmentFingerprint,
     passed: true,
     observedAt,
     verifierId: 'shadow-verifier-v1',

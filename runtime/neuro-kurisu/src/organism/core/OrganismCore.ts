@@ -11381,7 +11381,14 @@ export class OrganismCore {
     /** Trusted execution supervisor hook: persist run context before accepting any signed shadow receipt. */
     registerTrustedSkillShadowRun(context: TrustedShadowExecutionContext) {
         if (!this.verifiedSkillShadowRunRegistry) throw new Error('trusted skill shadow registry is not configured');
-        return this.verifiedSkillShadowRunRegistry.register(context);
+        const environmentFingerprint = String(
+            this.config.skillCompetenceEnvironmentFingerprint ??
+            process.env.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT ?? '',
+        ).trim().toLowerCase();
+        const trustedContext = /^[a-f0-9]{64}$/.test(environmentFingerprint)
+            ? { ...context, environmentFingerprint }
+            : context;
+        return this.verifiedSkillShadowRunRegistry.register(trustedContext);
     }
     /** Promotion is possible only with a valid detached signature from a configured trusted authority. */
     approveVerifiedSkillCandidate(candidateId: string, approval: SkillPromotionApproval, minShadowRuns = 3) {

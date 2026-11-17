@@ -46,7 +46,7 @@ The contract is included in the candidate payload fingerprint. A code, schema, t
 
 1. Create an authentic VerifiedSkillPromotionProposal from signed, independently verified holdout outcome artifacts. It must pass task coverage, complete-seed coverage, family-regression and positive confidence-interval gates.
 2. Stage the exact proof-carrying payload in VersionedSkillCandidateStore.
-3. Execute at least three independent successful shadow runs. Each signed receipt must bind candidate ID/version, payload fingerprint, proposal outcome fingerprint, holdout manifest, run identity and runtime version.
+3. Execute at least three independent successful shadow runs. Each signed receipt must bind candidate ID/version, payload fingerprint, proposal outcome fingerprint, holdout manifest, run identity, runtime version and the environment fingerprint recorded independently by the trusted supervisor. The P23 proof builder rejects shadow receipts without the same environment fingerprint as the execution contract.
 4. Call store.createCompetenceProofPayload(...) using the exact staged candidate and contract. The store itself verifies the shadow receipts against its trusted run registry.
 5. Send the payload to the external competence attestor. The external authority signs the canonical payload. NK1 does not hold or expose a production signing helper or private key.
 6. Attach the signed artifact using store.attachCompetenceProof(...). This verifies the signature and exact candidate/evidence bindings.

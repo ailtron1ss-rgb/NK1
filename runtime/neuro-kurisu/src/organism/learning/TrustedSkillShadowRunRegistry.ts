@@ -7,6 +7,7 @@ import type { TrustedShadowExecutionContext } from './VerifiedSkillShadowEvidenc
 
 export interface TrustedSkillShadowRunContext extends TrustedShadowExecutionContext {
   registeredAt: number;
+  environmentFingerprint?: string;
 }
 interface RegistrySnapshot {
   schemaVersion: 1;
@@ -23,6 +24,7 @@ function validateContext(value: unknown): value is TrustedSkillShadowRunContext 
   return isRecord(value) && nonEmpty(value.runId) && nonEmpty(value.taskId) &&
     Number.isSafeInteger(value.seed) && (value.seed as number) >= 0 &&
     fingerprint(value.manifestFingerprint) && nonEmpty(value.runtimeVersion) &&
+    (value.environmentFingerprint === undefined || fingerprint(value.environmentFingerprint)) &&
     typeof value.registeredAt === 'number' && Number.isFinite(value.registeredAt) && value.registeredAt > 0;
 }
 function validateSnapshot(value: unknown): value is RegistrySnapshot {
@@ -39,7 +41,8 @@ function validateSnapshot(value: unknown): value is RegistrySnapshot {
 function contextKey(runId: string, taskId: string): string { return JSON.stringify([runId, taskId]); }
 function sameContext(a: TrustedSkillShadowRunContext, b: TrustedSkillShadowRunContext): boolean {
   return a.runId === b.runId && a.taskId === b.taskId && a.seed === b.seed &&
-    a.manifestFingerprint === b.manifestFingerprint && a.runtimeVersion === b.runtimeVersion;
+    a.manifestFingerprint === b.manifestFingerprint && a.runtimeVersion === b.runtimeVersion &&
+    a.environmentFingerprint === b.environmentFingerprint;
 }
 
 /**
@@ -189,6 +192,7 @@ export class AtomicFileTrustedSkillShadowRunRegistry {
     return context ? {
       runId: context.runId, taskId: context.taskId, seed: context.seed,
       manifestFingerprint: context.manifestFingerprint, runtimeVersion: context.runtimeVersion,
+      ...(context.environmentFingerprint ? { environmentFingerprint: context.environmentFingerprint } : {}),
     } : null;
   }
 
@@ -219,6 +223,7 @@ export class InMemoryTrustedSkillShadowRunRegistry {
     return {
       runId: context.runId, taskId: context.taskId, seed: context.seed,
       manifestFingerprint: context.manifestFingerprint, runtimeVersion: context.runtimeVersion,
+      ...(context.environmentFingerprint ? { environmentFingerprint: context.environmentFingerprint } : {}),
     };
   }
 }
