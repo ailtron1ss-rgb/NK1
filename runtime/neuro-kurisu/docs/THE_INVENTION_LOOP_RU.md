@@ -22,7 +22,7 @@ The Invention Loop связывает в один проверяемый цик�
 ## Предрегистрация
 До первого запуска фиксируются:
 - question, hypothesis, success criteria
-- test fingerprint SHA-256, measured baseline, metricScale, direction, minEffect, expectedEffect01
+- отдельные SHA-256 fingerprints для validation (primary/replication) и sealed holdout; совпадающие fingerprints запрещены, measured baseline, metricScale, direction, minEffect и expectedEffect01
 - minSuccessRate, primary seed и отдельные непересекающиеся наборы replication и holdout (каждый минимум 5 seed)
 - четыре разные роли: primary verifier, independent critic, replication verifier, holdout verifier
 - provenance: источник гипотезы, ID experiment generator и ID ScientificMethod project
@@ -34,13 +34,13 @@ The Invention Loop принимает только `SignedOutcomeArtifact` с Ed
 - measurement содержит experiment ID, fingerprint полного протокола, SHA-256 прототипа и test fingerprint
 - outcome дополнительно подписывает phase, seed, environment, measured value и evidence SHA-256
 - critique подписывает ссылку/digest review-артефакта, blockers и limitations
-- payload связан с manifest fingerprint из `buildInventionVerifierManifest()`
+- payload связан с manifest fingerprint из `buildInventionVerifierManifest()`; holdout manifest использует отдельный holdoutTestFingerprint, поэтому тот же fingerprint не может одновременно маркировать validation и holdout split
 - эффект вычисляется NK1 из observed/baseline/metricScale/direction; signed `passed` сверяется с вычисленным результатом
 - подпись проверяется существующим `ingestSignedOutcomeArtifact()`; один и тот же artifact/run/evidence/seed нельзя переиспользовать
 
 Внешний verifier получает точный manifest через `inventionLoop.verifierManifest(id, phase, seed)` (или чистый builder `buildInventionVerifierManifest`), затем подписывает canonical payload. Приватные ключи должны находиться вне NK1, у evaluator/host. Public-key resolver передаётся конструктору `EvidenceResearchSubsystemRuntime` или `OrganismSystemFabric` как `inventionVerifierKeyResolver`. Если ключ не настроен, verifier неизвестен или подпись недействительна, запись не принимается. Ключи не входят в snapshot.
 
-Подпись доказывает владение доверенным приватным ключом и целостность подписанного измерения; она не доказывает беспристрастность verifier-а. Разделение ролей, среды, seed и закрытый holdout остаются самостоятельными gate.
+Подпись доказывает владение доверенным приватным ключом и целостность подписанного измерения; она не доказывает беспристрастность verifier-а. Разделение ролей, среды, seed и holdout остаются самостоятельными gate. NK1 проверяет, что validation/holdout fingerprints различаются; фактическую непересекаемость данных обязан обеспечивать доверенный host/evaluator, так как один digest не доказывает семантическую независимость двух датасетов.
 
 ## Цикл и promotion gates
 `proposed → designed → prototyped → tested → critiqued → replicating → replicated → holdingout → accepted`
