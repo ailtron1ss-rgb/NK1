@@ -172,7 +172,7 @@ export class TeacherStudentDistillationGate {
     this.restore(rawState);
   }
 
-  restore(rawState: TeacherStudentDistillationGateState): void {
+  private restore(rawState: TeacherStudentDistillationGateState): void {
     let state: TeacherStudentDistillationGateState;
     try {
       state = snapshotPlainData(rawState) as TeacherStudentDistillationGateState;
