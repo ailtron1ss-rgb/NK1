@@ -1086,11 +1086,17 @@ export class MemoryOS2{
    for(let oi=ni+1;oi<this.state.items.length&&pairs<pairBudget;oi++){const older=this.state.items[oi]!;if(older.id===newer.id||older.validUntilAt!=null||older.epistemicStatus==='quarantined')continue;const olderAt=Number(older.observedAt??older.createdAt);if(!(olderAt<newerAt))continue;if(newer.revisionGroupId&&older.revisionGroupId&&newer.revisionGroupId===older.revisionGroupId)continue;pairs++;const signal=this.implicitConflictSignals(newer,older);if(signal.score<.75)continue;candidates++;
     const newerProv=this.provenanceStrength(newer),olderProv=this.provenanceStrength(older);
     if(olderProv-newerProv>.18){
-      newer.epistemicStatus='quarantined'; this.recordRevision(newer,{at:newerAt,from:'fact',to:'quarantined',reason:'implicit-conflict-provenance-protection'});
+      const recordedAt=Math.max(at,Number(newer.recordedFromAt??newer.createdAt)+1);
+      this.beginBitemporalRevision(newer,recordedAt);
+      this.recordRevision(newer,{at:recordedAt,from:newer.epistemicStatus,to:'quarantined',reason:'implicit-conflict-provenance-protection'});
+      newer.epistemicStatus='quarantined';
       this.state.implicitConflictsDeferred++; this.state.provenanceProtected++; this.state.quarantined++; continue;
     }
     const group=older.revisionGroupId??older.id; const previousNewGroup=this.revisionGroupIndex.get(newer.revisionGroupId??newer.id); if(previousNewGroup)previousNewGroup.delete(newer.id); newer.revisionGroupId=group; newer.revisionSequence=Math.max(Number(older.revisionSequence??1)+1,Number(newer.revisionSequence??1)); let groupSet=this.revisionGroupIndex.get(group); if(!groupSet){groupSet=new Set<string>();this.revisionGroupIndex.set(group,groupSet);} groupSet.add(older.id);groupSet.add(newer.id);
-    older.validUntilAt=newerAt;older.supersededById=newer.id;this.recordRevision(older,{at:newerAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});newer.supersedesId=older.id;older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
+    const recordedAt=Math.max(at,Number(older.recordedFromAt??older.createdAt)+1);
+    this.beginBitemporalRevision(older,recordedAt);
+    older.validUntilAt=newerAt;older.supersededById=newer.id;
+    this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});newer.supersedesId=older.id;older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
    }
   }
   this.state.implicitConflictCandidates+=candidates;this.state.lastConflictScanAt=at;return {candidates,resolved,at};

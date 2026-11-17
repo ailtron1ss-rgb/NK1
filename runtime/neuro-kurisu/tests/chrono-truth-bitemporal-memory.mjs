@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
+import { MemoryFabric } from '../src/organism/memory/MemoryFabric.ts';
+import { EventLog } from '../src/organism/memory/EventSourcing.ts';
+import { MultiTimescaleMemory } from '../src/organism/memory/MultiTimescaleMemory.ts';
+import { MemorySubstrateCoordinator } from '../src/organism/developmental/MemorySubstrateCoordinator.ts';
+import { UnifiedMemorySystem } from '../src/organism/developmental/UnifiedMemorySystem.ts';
+import { P62MemoryFabric } from '../src/organism/memory/P62MemoryFabric.ts';
+import { SemanticMemoryGraph } from '../src/organism/memory/SemanticMemoryGraph.ts';
 
 const memoryOS = new MemoryOS2({ signalFusionProfile: 'balanced' });
 const encode = (content, extra = {}) => memoryOS.encode({
@@ -88,6 +95,42 @@ const knowsNow = memoryOS.previewRetrieve('Project location Campus', 8, 0, 0, {
   knowledgeAtAt: 270,
 });
 assert.equal(knowsNow[0]?.id, corrected.id, 'retrieval must surface the corrected fact for later knowledge time');
+
+const fabric = new MemoryFabric(
+  memoryOS,
+  new EventLog(128),
+  new MultiTimescaleMemory(),
+  new MemorySubstrateCoordinator(),
+  new UnifiedMemorySystem(),
+  new P62MemoryFabric(),
+  new SemanticMemoryGraph(),
+);
+const fabricKnewThen = fabric.retrieve('Project location Campus', 8, 0, 0, {
+  temporalMode: 'at',
+  asOfAt: 150,
+  knowledgeAtAt: 250,
+});
+assert.equal(fabricKnewThen[0]?.id, firstId, 'MemoryFabric operational retrieval must forward knowledge time');
+const fabricKnowsNow = fabric.retrieve('Project location Campus', 8, 0, 0, {
+  temporalMode: 'at',
+  asOfAt: 150,
+  knowledgeAtAt: 270,
+});
+assert.equal(fabricKnowsNow[0]?.id, corrected.id, 'MemoryFabric must select the corrected revision for later knowledge time');
+
+const statusFact = encode('NK1 confidence is currently classified as a fact.');
+memoryOS.revise(statusFact.id, 'belief', 'status-reconciliation');
+const statusRecordedAt = statusFact.recordedFromAt;
+assert.equal(
+  memoryOS.temporalBitemporalAt(statusFact.id, 150, statusRecordedAt - 1)?.epistemicStatus,
+  'fact',
+  'status changes must preserve the prior epistemic classification',
+);
+assert.equal(
+  memoryOS.temporalBitemporalAt(statusFact.id, 150, statusRecordedAt)?.epistemicStatus,
+  'belief',
+  'the new classification must begin at transaction time',
+);
 
 const restored = new MemoryOS2({ signalFusionProfile: 'balanced' });
 restored.restore(memoryOS.snapshot());
