@@ -29,9 +29,19 @@ Model provider, model identity and independence group come only from the host at
 - Safety Guardian block is unconditional. An uncertain safety verdict cannot approve.
 - This component only returns a deliberation result. It does not execute tools, grant permissions or bypass P69 Constitutional Arbiter / ActionGateway.
 
-## Runtime wiring
+## Runtime wiring and dispatch
 
-The composition root connects `GovernanceSubsystemRuntime.cognitiveParliament` to the research subsystem's `EvidenceFirewallEngine`. A host-owned `ParliamentModelAttestor` must additionally be supplied when real model execution metadata is available. Without this adapter, the engine remains safely non-authorizing.
+The composition root connects `GovernanceSubsystemRuntime.cognitiveParliament` to the research subsystem's canonical `EvidenceFirewallEngine`. It also exposes `cognitiveParliamentDispatcher` and accepts a role→executor registry through `OrganismSystemFabric`.
+
+The dispatcher:
+- fans out to exactly six role slots with a configurable hard concurrency cap (default 3), a global deadline (default 25 seconds), and a requested token budget divided equally across role calls (default 4096 total);
+- propagates cancellation to adapters and still returns on deadline if an adapter ignores AbortSignal;
+- accepts only bounded JSON role reports, rejects extra fields and invented evidence references, and never accepts model-supplied model/provider/execution identity;
+- records each role's outcome (completed, unavailable, failed, invalid-output or timed-out) and deliberates only over successfully parsed reports.
+
+`OpenAICompatibleLocalParliamentRoleExecutor` adapts the existing local OpenAI-compatible chat provider. It creates a host execution UUID and records configured provider/model/independence identity in `ParliamentModelAttestationRegistry`. It deliberately ignores provider/model names echoed in the model response. The host passes the registry to `OrganismSystemFabric` as `parliamentModelAttestationRegistry` and maps role-specific executors as `parliamentRoleExecutors`. Use distinct configured model independence groups for genuinely independent model substrates; six prompts to one model remain one model family and cannot satisfy higher-risk gates.
+
+`GovernanceSubsystemRuntime.deliberateAndArbitrate()` is the integrated selection seam: only an `approved` parliamentary result for a candidate present in the P69 candidate set proceeds to P69. The method returns P69's final selection but does not execute anything. ActionGateway remains the sole side-effect boundary. Missing role executors or missing model attestors fail closed.
 
 ## Verification
 
@@ -39,6 +49,7 @@ Run from `runtime/neuro-kurisu`:
 
 ```sh
 node --experimental-strip-types tests/cognitive-parliament.mjs
+node --experimental-strip-types tests/cognitive-parliament-dispatcher.mjs
 node scripts/typecheck-runtime.mjs
 ```
 

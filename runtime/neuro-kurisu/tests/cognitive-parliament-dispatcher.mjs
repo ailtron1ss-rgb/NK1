@@ -70,10 +70,10 @@ assert.equal(unavailableResult.decision.status,'needs-evidence');
 assert.equal(unavailableResult.roleResults.filter(row=>row.status==='unavailable').length,6);
 
 // Invalid JSON and role-shape violations become failed reports, not approvals.
-const malformed=new CognitiveParliamentDispatcher(parliament,makeExecutors())
-  .dispatch({candidateId:'malformed',risk:'low',task:'Validate output.',evidenceReferences:evidence});
-const malformedResult=await malformed;
-assert.equal(malformedResult.decision.status,'approved','valid structured baseline must approve');
+const validBaseline=await new CognitiveParliamentDispatcher(parliament,makeExecutors()).dispatch({
+  candidateId:'valid-baseline',risk:'low',task:'Validate structured role outputs.',evidenceReferences:evidence,
+});
+assert.equal(validBaseline.decision.status,'approved','valid structured baseline must approve');
 const malformedExecutors=Object.fromEntries(roles.map(role=>[role,{async execute(){return {executionId:`bad-${role}`,text:'not-json'};}}]));
 const invalid=await new CognitiveParliamentDispatcher(parliament,malformedExecutors).dispatch({
   candidateId:'invalid-report',risk:'low',task:'Reject malformed data.',evidenceReferences:evidence,

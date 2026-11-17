@@ -107,13 +107,6 @@ function makeRoleSystem(role:ParliamentRole):string{
     'evidence must be an array of {id,claimKey}. Do not include role, provider, model, execution ID, source identity, markdown or extra keys.',
   ].join(' ');
 }
-function waitForAbort(signal:AbortSignal):Promise<never>{
-  return new Promise((_,reject)=>{
-    if(signal.aborted){reject(new Error('parliament-dispatch-aborted'));return;}
-    const onAbort=()=>reject(new Error('parliament-dispatch-aborted'));
-    signal.addEventListener('abort',onAbort,{once:true});
-  });
-}
 async function withAbort<T>(work:Promise<T>,signal:AbortSignal):Promise<T>{
   if(signal.aborted)throw new Error('parliament-dispatch-aborted');
   let listener:()=>void=()=>{};
@@ -139,7 +132,7 @@ export class CognitiveParliamentDispatcher {
     }
   }
   async dispatch(input:ParliamentDispatchInput):Promise<ParliamentDispatchResult>{
-    const startedAt=Date.now(),candidateId=safeCandidateId(input?.candidateId),risk=input?.risk;
+    const startedAt=Date.now(),candidateValue=boundedString(input?.candidateId,160),candidateId=safeCandidateId(candidateValue),risk=input?.risk;
     const task=boundedString(input?.task,8000),evidenceInput=input?.evidenceReferences??[];
     const evidenceMap=new Map<string,string>();
     let referencesValid=Array.isArray(evidenceInput)&&evidenceInput.length<=48;
@@ -151,7 +144,7 @@ export class CognitiveParliamentDispatcher {
       }
       evidenceMap.set(id,claimKey);
     }
-    const validInput=Boolean(input&&candidateId!=='invalid-candidate'&&
+    const validInput=Boolean(input&&candidateValue!==null&&
       (risk==='low'||risk==='medium'||risk==='high')&&task!==null&&referencesValid);
     const requestedTokenBudget=Number.isSafeInteger(input?.maxTotalTokens)?Math.max(384,Math.min(12_288,Number(input.maxTotalTokens))):4096;
     const perRoleTokenBudget=Math.max(64,Math.min(2048,Math.floor(requestedTokenBudget/6)));
