@@ -514,23 +514,29 @@ export class OrganismRuntime {
     if (typeof this.config.substrateCalibrationVerifier !== 'function') {
       throw new Error('substrate-calibration-host-verifier-not-configured');
     }
-    const result = await this.substrateIndependence.evaluateMigration({
-      ...input, verifyTrial: this.config.substrateCalibrationVerifier,
+    return this.enqueue(async () => {
+      const result = await this.substrateIndependence.evaluateMigration({
+        ...input, verifyTrial: this.config.substrateCalibrationVerifier!,
+      });
+      await this.substrateStateStore.save(this.substrateIndependence.snapshot());
+      return result;
     });
-    await this.substrateStateStore.save(this.substrateIndependence.snapshot());
-    return result;
   }
 
   async promoteSubstrateBackend(targetBackendId: string, evaluationId: string): Promise<SubstrateIndependenceState> {
-    const state = this.substrateIndependence.promoteBackend(targetBackendId, evaluationId);
-    await this.substrateStateStore.save(state);
-    return state;
+    return this.enqueue(async () => {
+      const state = this.substrateIndependence.promoteBackend(targetBackendId, evaluationId);
+      await this.substrateStateStore.save(state);
+      return state;
+    });
   }
 
   async rollbackSubstrateBackend(): Promise<SubstrateIndependenceState> {
-    const state = this.substrateIndependence.rollbackBackend();
-    await this.substrateStateStore.save(state);
-    return state;
+    return this.enqueue(async () => {
+      const state = this.substrateIndependence.rollbackBackend();
+      await this.substrateStateStore.save(state);
+      return state;
+    });
   }
 
   private async observeSubstrateBackend(backendId: string): Promise<void> {
