@@ -553,7 +553,7 @@ async function route(req, res) {
             // client-supplied actor, evidenceRef, sourceRef, sensitivity or tick fields.
             lastDyadicCollaborationEventTick = Math.max(Date.now(), lastDyadicCollaborationEventTick + 1);
             const tick = lastDyadicCollaborationEventTick;
-            const evidenceRef = \`http-dyadic-collaboration:\${randomUUID()}\`;
+            const evidenceRef = 'http-dyadic-collaboration:' + randomUUID();
             const itemId = typeof input.itemId === 'string' ? input.itemId.trim().slice(0, 80) : '';
             let result;
 
