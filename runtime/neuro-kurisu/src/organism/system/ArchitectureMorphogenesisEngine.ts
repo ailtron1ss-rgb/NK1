@@ -134,6 +134,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
+  const allowlist = new Set(allowed);
+  return Object.keys(value).every(key => allowlist.has(key));
+}
+
 interface PlainDataBudget {
   nodes: number;
 }
@@ -284,6 +289,11 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
   }
 
   const graph = input as unknown as ArchitectureMorphogenesisGraph;
+  if (!hasOnlyKeys(graph as unknown as Record<string, unknown>, [
+    'schemaVersion', 'sourceCommit', 'canonicalGenomeDigest', 'modules', 'contracts', 'edges',
+  ])) {
+    add('graph-field-unknown', 'graph', 'Graph schema version 1 does not accept unknown top-level fields');
+  }
   if (graph.schemaVersion !== 1) add('schema-unsupported', 'schemaVersion', 'Only graph schema version 1 is supported');
   if (graph.sourceCommit !== null && (typeof graph.sourceCommit !== 'string' || !COMMIT_SHA.test(graph.sourceCommit))) {
     add('source-commit-invalid', 'sourceCommit', 'Source provenance must be null or a full 40-character commit SHA');
@@ -316,6 +326,9 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
 
   for (const [index, module] of modules.entries()) {
     const path = 'modules[' + index + ']';
+    if (isRecord(module) && !hasOnlyKeys(module, ['id', 'path', 'sourcePaths', 'owner', 'revisionSha256'])) {
+      add('module-field-unknown', path, 'Module records may contain only schema-v1 fields');
+    }
     if (!isRecord(module) || typeof module.id !== 'string' || !MODULE_ID.test(module.id)) {
       add('module-id-invalid', path + '.id', 'Module id must be a bounded lowercase identifier');
       continue;
@@ -350,6 +363,9 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
   const validContracts: ArchitectureMorphogenesisContract[] = [];
   for (const [index, contract] of contracts.entries()) {
     const path = 'contracts[' + index + ']';
+    if (isRecord(contract) && !hasOnlyKeys(contract, ['id', 'ownerModuleId', 'consumerModuleIds', 'authority'])) {
+      add('contract-field-unknown', path, 'Contract records may contain only schema-v1 fields');
+    }
     if (!isRecord(contract) || typeof contract.id !== 'string' || !CONTRACT_ID.test(contract.id)) {
       add('contract-id-invalid', path + '.id', 'Contract must be a plain record with a bounded identifier');
       continue;
@@ -383,6 +399,9 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
   const validEdges: ArchitectureMorphogenesisEdge[] = [];
   for (const [index, edge] of edges.entries()) {
     const path = 'edges[' + index + ']';
+    if (isRecord(edge) && !hasOnlyKeys(edge, ['from', 'to', 'kind'])) {
+      add('edge-field-unknown', path, 'Edge records may contain only schema-v1 fields');
+    }
     if (!isRecord(edge)) {
       add('edge-record-invalid', path, 'Every edge must be a plain record');
       continue;
