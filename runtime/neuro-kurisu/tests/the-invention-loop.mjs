@@ -103,7 +103,7 @@ assert.equal(rejected.outcomes[0].passed, false);
 
 // Restoring altered records must quarantine them instead of trusting the mutable cache.
 const tampered = loop.snapshot();
-tampered.records[0].protocol.baseline = 50;
+tampered.records[1].protocol.baseline = 50;
 tampered.accepted = 999;
 const restored = new TheInventionLoop(() => now++, () => 'unused');
 restored.restore(tampered);
@@ -111,4 +111,4 @@ assert.equal(restored.metrics().accepted, 0);
 assert.equal(restored.metrics().quarantinedRecords, 1);
 assert.equal(restored.metrics().auditVerifiedRecords, 1);
 
-console.log('THE_INVENTION_LOOP_LIFECYCLE=PASS cases=14');
+console.log('THE_INVENTION_LOOP_LIFECYCLE=PASS assertions=24');
