@@ -40,7 +40,7 @@ try {
   const sourceWorldTick = source.environment.snapshot().tick;
   const transfer = await source.createPortableSubstrateTransferPackage();
   assert.equal(transfer.schemaVersion, 1);
-  assert.equal(sourceWorldTick, transfer.payload.world.tick);
+  assert.equal(sourceWorldTick, transfer.payload.world.snapshot.tick);
 
   const imported = await target.importPortableSubstrateTransferPackage(transfer, profile.backendId);
   assert.equal(imported.imported, true);
