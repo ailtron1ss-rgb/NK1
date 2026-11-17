@@ -40,6 +40,8 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: P25 adapter registry, validation, routing and fallback contract
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs
+      - name: Real OrganismRuntime adapter, fallback, restore and disable integration
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix-runtime.mjs
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Preserve model ecology and organism smoke
