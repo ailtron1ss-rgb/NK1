@@ -277,4 +277,34 @@ const activatedVariant=restoredCompoundGate.promoteVariant(gatedCompound.id,gate
 assert.equal(activatedVariant?.status,'active',
   'verified candidate variant may be promoted after health recovery');
 
+
+
+// Promoting a repaired fallback tool into the active primary route is also a
+// promotion mutation and must remain blocked until cognitive health recovers.
+const fallbackGateLibrary = new ProceduralSkillLibrary();
+const fallbackSkill = fallbackGateLibrary.compileCompoundSkill({
+  projectId:'cognitive-immune-fallback-test',name:'fallback-gate',origin:'test',
+  steps:[
+    {id:'step-fallback',action:'verify',toolId:'tool-primary',fallbackToolIds:['tool-backup']},
+    {id:'step-followup',action:'reflect',toolId:'tool-followup'}
+  ]
+});
+assert.ok(fallbackSkill);
+fallbackGateLibrary.setPromotionPaused(true,'cognitive-immune:critical');
+for(let i=0;i<2;i++)fallbackGateLibrary.adaptCompoundSkill(
+  fallbackSkill.id,{stepId:'step-fallback',fromTool:'tool-primary',toTool:'tool-backup',
+    reason:'independent-verified-repair',verified:true,confidence01:.9}
+);
+const pausedFallback=fallbackGateLibrary.promoteFallbackIfReliable(
+  fallbackSkill.id,'step-fallback','tool-backup',{verified:true,confidence01:.9}
+);
+assert.equal(pausedFallback?.steps[0]?.toolId,'tool-primary',
+  'critical health must block fallback from replacing the active primary tool');
+fallbackGateLibrary.setPromotionPaused(false);
+const resumedFallback=fallbackGateLibrary.promoteFallbackIfReliable(
+  fallbackSkill.id,'step-fallback','tool-backup',{verified:true,confidence01:.9}
+);
+assert.equal(resumedFallback?.steps[0]?.toolId,'tool-backup',
+  'verified fallback may become primary after health recovery');
+
 console.log('COGNITIVE_IMMUNE_HEALTH_MONITOR=PASS');
