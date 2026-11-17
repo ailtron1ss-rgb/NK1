@@ -5447,19 +5447,26 @@ export class OrganismCore {
         }
         if (this.config.enableScientificMethod && experiment) {
             const experimentSources = ['intrinsic-experiment', `tick:${state.tick}`, `experiment:${experiment.id}`, ...(experiment.source === 'dream-association' ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)] : [])];
-            const project = this.cognitiveRuntime.scientificMethod.create(experiment.question, experiment.hypothesis, experiment.action, experimentSources);
-            const capturedInvention = this.evidenceResearchSubsystem.captureGeneratedExperiment(experiment, project.id, state.tick);
+            const research = this.evidenceResearchSubsystem;
+            const existingCapture = research.findCapturedExperiment(experiment);
+            const existingProject = existingCapture
+                ? this.cognitiveRuntime.scientificMethod.snapshot().projects.find(project => project.id === existingCapture.scientificProjectId)
+                : undefined;
+            const project = existingProject ?? this.cognitiveRuntime.scientificMethod.create(
+                experiment.question, experiment.hypothesis, experiment.action, experimentSources);
+            const capturedInvention = existingCapture ??
+                research.captureGeneratedExperiment(experiment, project.id, state.tick);
             const evaluationPlanProvider = this.config.inventionEvaluationPlanProvider;
-            if (evaluationPlanProvider) {
+            if (evaluationPlanProvider && capturedInvention.status === 'awaiting-preregistration') {
                 try {
                     const evaluationPlan = evaluationPlanProvider(experiment);
                     if (evaluationPlan)
-                        this.evidenceResearchSubsystem.preregisterCapturedExperiment(capturedInvention.id, evaluationPlan);
+                        research.preregisterCapturedExperiment(capturedInvention.id, evaluationPlan);
                 }
                 catch (error) {
                     // A missing/malformed host evaluation policy leaves the idea pending;
                     // it must not crash the cognitive cycle or invent verifier identities.
-                    this.evidenceResearchSubsystem.markCapturePreregistrationFailure(capturedInvention.id, error);
+                    research.markCapturePreregistrationFailure(capturedInvention.id, error);
                 }
             }
             this.persisted.facets.memory.experiments = this.persisted.facets.memory.experiments.map((row: any) => row?.id === experiment.id ? {
