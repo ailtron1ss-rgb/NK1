@@ -63,12 +63,11 @@ async function readRegularTextFile(
   // O_NOFOLLOW prevents a symlink swap between lstat() and open() on POSIX.
   // The supervisor currently targets Linux; Darwin's flag differs. Windows relies
   // on the post-open inode/device check because Node does not expose O_NOFOLLOW there.
-  const noFollowFlags: number | string = process.platform === 'linux'
-    ? 0x20000
+  const handle = process.platform === 'linux'
+    ? await open(filename, 0x20000)
     : process.platform === 'darwin'
-      ? 0x100
-      : 'r';
-  const handle = await open(filename, noFollowFlags);
+      ? await open(filename, 0x100)
+      : await open(filename, 'r');
   try {
     const opened = await handle.stat();
     if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino ||
