@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { ParliamentModelAttestation } from './CognitiveParliament.ts';
+import type { ParliamentModelAttestation, ParliamentRole } from './CognitiveParliament.ts';
 import type {
-  ParliamentRoleExecutionRequest, ParliamentRoleExecutionResult, ParliamentRoleExecutor,
+  ParliamentRoleExecutionRequest, ParliamentRoleExecutionResult, ParliamentRoleExecutor, ParliamentRoleExecutorMap,
 } from './CognitiveParliamentDispatcher.ts';
 
 export interface ParliamentLocalChatProvider {
@@ -66,4 +66,34 @@ export class OpenAICompatibleLocalParliamentRoleExecutor implements ParliamentRo
     });
     return {executionId,text:response.text};
   }
+}
+
+export interface ParliamentLocalProviderBinding {
+  provider:ParliamentLocalChatProvider;
+  identity:ParliamentModelIdentity;
+}
+
+/**
+ * Build a role-specific executor map from host-configured local model profiles.
+ * Independence groups are supplied by the host and are never inferred from model text.
+ */
+export function createLocalParliamentRoleExecutors(
+  bindings:Partial<Record<ParliamentRole,ParliamentLocalProviderBinding>>,
+  registry:ParliamentModelAttestationRegistry,
+):ParliamentRoleExecutorMap {
+  if(!bindings||typeof bindings!=='object'||Array.isArray(bindings)||!registry)
+    throw new Error('parliament-local-provider-bindings-invalid');
+  const roles:ParliamentRole[]=['researcher','planner','skeptic','executor','safety-guardian','auditor'];
+  const result:ParliamentRoleExecutorMap={};
+  for(const key of Object.keys(bindings))if(!roles.includes(key as ParliamentRole))
+    throw new Error('parliament-local-provider-role-unknown');
+  for(const role of roles){
+    const descriptor=Object.getOwnPropertyDescriptor(bindings,role);
+    const binding=descriptor&&'value' in descriptor?descriptor.value:undefined;
+    if(binding===undefined)continue;
+    if(!binding||typeof binding!=='object'||Array.isArray(binding))
+      throw new Error('parliament-local-provider-binding-invalid');
+    result[role]=new OpenAICompatibleLocalParliamentRoleExecutor(binding.provider,binding.identity,registry);
+  }
+  return result;
 }
