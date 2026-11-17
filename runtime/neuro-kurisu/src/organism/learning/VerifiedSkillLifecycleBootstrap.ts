@@ -38,6 +38,7 @@ export interface VerifiedSkillLifecycleBootstrap {
   trustedVerifierCount: number;
   trustedApprovalCount: number;
   trustedCompetenceAttestorCount: number;
+  trustedCompetenceAttestorKeys: ReadonlyMap<string, string>;
 }
 
 /**
@@ -75,5 +76,6 @@ export function createVerifiedSkillLifecycleBootstrap(
     verifyRollbackApproval,
     verifyCompetenceProof,
   );
-  return { store, registry, trustedVerifierCount: trustedVerifierKeys.size, trustedApprovalCount: trustedApprovalKeys.size, trustedCompetenceAttestorCount: trustedCompetenceAttestorKeys.size };
+  return { store, registry, trustedVerifierCount: trustedVerifierKeys.size, trustedApprovalCount: trustedApprovalKeys.size,
+    trustedCompetenceAttestorCount: trustedCompetenceAttestorKeys.size, trustedCompetenceAttestorKeys };
 }

@@ -5,6 +5,8 @@ import {
   verify as verifySignature,
 } from 'node:crypto';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
+import { types as nodeUtilTypes } from 'node:util';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 import type { VersionedSkillCandidate, SkillShadowObservation } from './VersionedSkillCandidateStore.ts';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 
@@ -108,6 +110,52 @@ const PERMISSION_CLASSES = new Set<SkillCompetencePermissionClass>([
 ]);
 const MAX_VALIDITY_MS = 30 * 24 * 60 * 60_000;
 const MAX_CLOCK_SKEW_MS = 60_000;
+
+function rejectProxyGraph(value: unknown, ancestors = new Set<object>(), budget = { nodes: 0 }): void {
+  if (value === null || typeof value !== 'object') return;
+  if (nodeUtilTypes.isProxy(value)) throw new Error('skill-competence-proof-proxy-rejected');
+  if (ancestors.has(value)) throw new Error('skill-competence-proof-cycle-rejected');
+  budget.nodes += 1;
+  if (budget.nodes > 4096) throw new Error('skill-competence-proof-size-limit');
+  ancestors.add(value);
+  try {
+    for (const key of Reflect.ownKeys(value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set) {
+        throw new Error('skill-competence-proof-accessor-rejected');
+      }
+      rejectProxyGraph(descriptor.value, ancestors, budget);
+    }
+  } finally {
+    ancestors.delete(value);
+  }
+}
+
+function snapshotProof(value: unknown): SignedSkillCompetenceProof | null {
+  try {
+    rejectProxyGraph(value);
+    const detached = snapshotPlainData(value, { maxDepth: 16, maxNodes: 4096, maxStringUnits: 256_000 });
+    if (!isRecord(detached) || !isRecord(detached.payload) || typeof detached.signature !== 'string') return null;
+    return detached as unknown as SignedSkillCompetenceProof;
+  } catch {
+    return null;
+  }
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+/** Copy and freeze proof data at registration to prevent post-registration mutation. */
+export function cloneFrozenSkillCompetenceProof(value: unknown): SignedSkillCompetenceProof {
+  const detached = snapshotProof(value);
+  if (!detached) throw new Error('invalid-skill-competence-proof-data');
+  return deepFreeze(detached);
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value) &&
@@ -232,7 +280,9 @@ function assertShadowEvidence(
   proposal: VerifiedSkillPromotionProposal,
   contract: SkillCompetenceContract,
 ): void {
-  if (observations.length < 3) throw new Error('skill competence proof requires at least three signed shadow runs');
+  if (!Array.isArray(observations) || observations.length < 3 || observations.length > 1000) {
+    throw new Error('skill competence proof requires 3–1000 signed shadow runs');
+  }
   const runIds = new Set<string>();
   const taskSeeds = new Set<string>();
   for (const observation of observations) {
@@ -251,6 +301,9 @@ function assertShadowEvidence(
         !Number.isFinite(payload.observedAt) || payload.observedAt <= 0 ||
         !payload.runtimeVersion.trim()) {
       throw new Error('skill competence proof shadow evidence does not bind to this candidate and holdout manifest');
+    }
+    if (skillCompetenceRuntimeFingerprint(payload.runtimeVersion) !== contract.runtimeFingerprint) {
+      throw new Error('skill competence proof runtime fingerprint does not match signed shadow evidence');
     }
     if (runIds.has(payload.runId)) throw new Error('skill competence proof contains duplicate shadow run IDs');
     const taskSeed = JSON.stringify([payload.taskId, payload.seed]);
@@ -340,9 +393,11 @@ export function verifySignedSkillCompetenceProof(
   proof: unknown,
   trustedAttestorKeys: ReadonlyMap<string, string>,
 ): proof is SignedSkillCompetenceProof {
-  if (!isRecord(proof) || !isRecord(proof.payload) ||
-      typeof proof.signature !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(proof.signature)) return false;
-  const payload = proof.payload as unknown as SkillCompetenceProofPayload;
+  const detached = snapshotProof(proof);
+  if (!detached || detached.signature.length > 128 || !/^[A-Za-z0-9+/]+={0,2}$/.test(detached.signature)) return false;
+  const signatureBytes = Buffer.from(detached.signature, 'base64');
+  if (signatureBytes.length !== 64 || signatureBytes.toString('base64') !== detached.signature) return false;
+  const payload = detached.payload;
   try {
     assertContract(payload.contract);
     if (payload.schemaVersion !== 1 ||
@@ -373,7 +428,7 @@ export function verifySignedSkillCompetenceProof(
         payload.holdout.absoluteGain <= 0 ||
         !validInterval(payload.holdout.approximate95CI) || payload.holdout.approximate95CI[0] <= 0 ||
         !validInterval(payload.holdout.bootstrap95CI) || payload.holdout.bootstrap95CI[0] <= 0 ||
-        payload.holdout.candidatePassRate - payload.holdout.baselinePassRate !== payload.holdout.absoluteGain ||
+        Math.abs((payload.holdout.candidatePassRate - payload.holdout.baselinePassRate) - payload.holdout.absoluteGain) > 1e-9 ||
         payload.holdout.absoluteGain < 0) return false;
     const expectedProofId = sha256Stable({
       candidateId: payload.candidateId,
@@ -394,7 +449,7 @@ export function verifySignedSkillCompetenceProof(
       null,
       Buffer.from(canonicalSkillCompetenceProofPayload(payload), 'utf8'),
       publicKeyPem,
-      Buffer.from(proof.signature, 'base64'),
+      signatureBytes,
     );
   } catch {
     return false;
@@ -407,7 +462,9 @@ export function createSkillCompetenceProofVerifier(
 ): SkillCompetenceProofVerifier {
   return (proof, candidate, purpose = 'attach') => {
     if (!verifySignedSkillCompetenceProof(proof, trustedAttestorKeys)) return false;
-    const payload = proof.payload;
+    const detached = snapshotProof(proof);
+    if (!detached) return false;
+    const payload = detached.payload;
     if (payload.candidateId !== candidate.candidateId ||
         payload.skillId !== candidate.skillId ||
         payload.candidateVersion !== candidate.version ||
@@ -431,7 +488,9 @@ export function verifySkillCompetenceProofForTool(
   context: SkillCompetenceToolVerificationContext,
 ): { ok: boolean; reason: string } {
   if (!verifySignedSkillCompetenceProof(proof, context.trustedAttestorKeys)) return { ok: false, reason: 'skill-competence-proof-invalid' };
-  const payload = proof.payload;
+  const detached = snapshotProof(proof);
+  if (!detached) return { ok: false, reason: 'skill-competence-proof-invalid' };
+  const payload = detached.payload;
   const contract = payload.contract;
   const active = context.activeSubject;
   const currentMode: SkillCompetenceExecutionMode = context.autonomous ? 'autonomous' : 'assisted';
@@ -440,7 +499,7 @@ export function verifySkillCompetenceProofForTool(
       active.payloadFingerprint !== payload.payloadFingerprint) {
     return { ok: false, reason: 'skill-competence-proof-not-current-active-version' };
   }
-  if (payload.expiresAt <= context.now || payload.issuedAt > context.now + MAX_CLOCK_SKEW_MS) {
+  if (!Number.isFinite(context.now) || payload.expiresAt <= context.now || payload.issuedAt > context.now + MAX_CLOCK_SKEW_MS) {
     return { ok: false, reason: 'skill-competence-proof-expired-or-not-yet-valid' };
   }
   if (contract.toolId !== context.toolId ||
@@ -491,8 +550,10 @@ export function parseTrustedSkillCompetenceAttestorKeys(raw: string | undefined)
   catch { throw new Error('NEURO_SKILL_COMPETENCE_ATTESTOR_KEYS_JSON must be valid JSON'); }
   if (!isRecord(parsed)) throw new Error('NEURO_SKILL_COMPETENCE_ATTESTOR_KEYS_JSON must be an object keyed by attestor ID');
   const keys = new Map<string, string>();
-  for (const [id, value] of Object.entries(parsed)) {
-    if (!validIdentifier(id) || typeof value !== 'string' || !value.includes('BEGIN PUBLIC KEY')) {
+  const entries = Object.entries(parsed);
+  if (entries.length > 32) throw new Error('skill competence attestor key limit exceeded');
+  for (const [id, value] of entries) {
+    if (!validIdentifier(id) || typeof value !== 'string' || value.length > 4096 || !value.includes('BEGIN PUBLIC KEY')) {
       throw new Error('skill competence attestor keys must map valid IDs to PEM Ed25519 public keys');
     }
     try {

@@ -10,7 +10,7 @@ import {
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 import type { ExternalObservationChannel, ExternalObservationSourceClass } from './ExternalObserverFabric.ts';
 import { cloneFrozenToolInputContract, cloneFrozenToolOutputContract, validateToolInputContract, validateToolOutputContract, type ToolInputContract, type ToolOutputContract } from './ToolInputContract.ts';
-import { verifySkillCompetenceProofForTool, type SignedSkillCompetenceProof, type SkillCompetenceActiveSubject, type SkillCompetenceConditionContext, type SkillCompetencePermissionClass } from '../learning/SkillCompetenceProof.ts';
+import { cloneFrozenSkillCompetenceProof, verifySkillCompetenceProofForTool, type SignedSkillCompetenceProof, type SkillCompetenceActiveSubject, type SkillCompetenceConditionContext, type SkillCompetencePermissionClass } from '../learning/SkillCompetenceProof.ts';
 
 export type ActionOutcomeClass =
   | 'unavailable'
@@ -152,8 +152,8 @@ export interface ActionGatewayConfig {
   /** Separate trusted Ed25519 attestor keys; missing trust denies proof-required tools. */
   skillCompetenceVerifierKeys?: ReadonlyMap<string, string>;
   /** Current fingerprints are supplied by the host, never copied from the proof. */
-  currentSkillCompetenceRuntimeFingerprint?: () => string;
-  currentSkillCompetenceEnvironmentFingerprint?: () => string;
+  currentSkillCompetenceRuntimeFingerprint?: () => string | null;
+  currentSkillCompetenceEnvironmentFingerprint?: () => string | null;
   /** Must resolve the currently active P23 subject. Missing resolver means deny. */
   resolveActiveSkillCompetenceSubject?: (skillId: string) => SkillCompetenceActiveSubject | null;
   /** Host-owned evaluator for stable precondition/constraint IDs in the signed contract. */
@@ -313,9 +313,9 @@ export class ActionGateway {
   private history:ActionAuditRecord[]=[];
   private readonly verifier=new OutcomeVerificationService();
   private readonly maxIdempotencyRecords:number;
-  private readonly skillCompetenceVerifierKeys: ReadonlyMap<string, string>;
-  private readonly currentSkillCompetenceRuntimeFingerprint?: () => string;
-  private readonly currentSkillCompetenceEnvironmentFingerprint?: () => string;
+  private skillCompetenceVerifierKeys: ReadonlyMap<string, string>;
+  private currentSkillCompetenceRuntimeFingerprint?: () => string | null;
+  private currentSkillCompetenceEnvironmentFingerprint?: () => string | null;
   private readonly resolveActiveSkillCompetenceSubject?: (skillId: string) => SkillCompetenceActiveSubject | null;
   private readonly evaluateSkillCompetenceCondition?: (conditionId: string, input: Record<string, unknown>, context: SkillCompetenceConditionContext) => boolean;
   private readonly skillCompetenceNow: () => number;
@@ -333,6 +333,18 @@ export class ActionGateway {
     this.allowed = new Set(config.allow ?? DEFAULT_ALLOWED);
     this.maxIdempotencyRecords = Math.max(16, Math.min(512, Math.floor(config.maxIdempotencyRecords ?? 128)));
     this.skillCompetenceVerifierKeys = config.skillCompetenceVerifierKeys ?? new Map();
+    this.currentSkillCompetenceRuntimeFingerprint = config.currentSkillCompetenceRuntimeFingerprint;
+    this.currentSkillCompetenceEnvironmentFingerprint = config.currentSkillCompetenceEnvironmentFingerprint;
+    this.resolveActiveSkillCompetenceSubject = config.resolveActiveSkillCompetenceSubject;
+    this.evaluateSkillCompetenceCondition = config.evaluateSkillCompetenceCondition;
+    this.skillCompetenceNow = config.skillCompetenceNow ?? (() => Date.now());
+  }
+
+  configureSkillCompetenceProofVerifier(config: Pick<ActionGatewayConfig,
+    'skillCompetenceVerifierKeys' | 'currentSkillCompetenceRuntimeFingerprint' |
+    'currentSkillCompetenceEnvironmentFingerprint' | 'resolveActiveSkillCompetenceSubject' |
+    'evaluateSkillCompetenceCondition' | 'skillCompetenceNow'>): void {
+    this.skillCompetenceVerifierKeys = new Map(config.skillCompetenceVerifierKeys ?? []);
     this.currentSkillCompetenceRuntimeFingerprint = config.currentSkillCompetenceRuntimeFingerprint;
     this.currentSkillCompetenceEnvironmentFingerprint = config.currentSkillCompetenceEnvironmentFingerprint;
     this.resolveActiveSkillCompetenceSubject = config.resolveActiveSkillCompetenceSubject;
@@ -603,11 +615,12 @@ export class ActionGateway {
       if(!['filesystem','http','process','device','camera','audio','sensor','user','world','tool','unknown'].includes(source.channel)) throw new Error('invalid-tool-observation-channel');
     }
     if(this.tools.has(def.id)) throw new Error(`duplicate-tool-id:${def.id}`);
-    const registered = (def.inputContract || def.outputContract) ? {
+    const registered = {
       ...def,
       ...(def.inputContract ? { inputContract: cloneFrozenToolInputContract(def.inputContract) } : {}),
       ...(def.outputContract ? { outputContract: cloneFrozenToolOutputContract(def.outputContract) } : {}),
-    } : def;
+      ...(def.skillCompetenceProof ? { skillCompetenceProof: cloneFrozenSkillCompetenceProof(def.skillCompetenceProof) } : {}),
+    };
     this.tools.set(def.id,registered);
   }
   listTools() {
@@ -1079,10 +1092,16 @@ export class ActionGateway {
       try {
         runtimeFingerprint = this.currentSkillCompetenceRuntimeFingerprint?.() ?? null;
         environmentFingerprint = this.currentSkillCompetenceEnvironmentFingerprint?.() ?? null;
-        activeSubject = this.resolveActiveSkillCompetenceSubject?.(tool.skillCompetenceProof?.payload.skillId ?? '') ?? null;
+        activeSubject = this.resolveActiveSkillCompetenceSubject?.(tool.skillCompetenceProof?.payload?.skillId ?? '') ?? null;
       } catch {
         return this.result(id, tool.capability, 'skill-competence-context-unavailable', 'competence-insufficient', executionId,
           { error: 'skill-competence-context-unavailable' }, 'trusted current skill/runtime/environment context is unavailable');
+      }
+      let competenceNow: number;
+      try { competenceNow = this.skillCompetenceNow(); }
+      catch {
+        return this.result(id, tool.capability, 'skill-competence-clock-unavailable', 'competence-insufficient', executionId,
+          { error: 'skill-competence-clock-unavailable' }, 'trusted competence clock is unavailable');
       }
       const proofCheck = verifySkillCompetenceProofForTool(tool.skillCompetenceProof, {
         trustedAttestorKeys: this.skillCompetenceVerifierKeys,
@@ -1094,7 +1113,7 @@ export class ActionGateway {
         runtimeFingerprint,
         environmentFingerprint,
         autonomous: context.autonomous === true,
-        now: this.skillCompetenceNow(),
+        now: competenceNow,
         activeSubject,
         input,
         evaluateCondition: this.evaluateSkillCompetenceCondition,
