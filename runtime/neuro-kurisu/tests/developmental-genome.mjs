@@ -87,6 +87,14 @@ test('candidate without its parent is NEEDS_REVIEW, never silently APPROVED', ()
   assert.equal(evaluateDevelopmentalGenome(child).status, 'NEEDS_REVIEW');
 });
 
+test('multi-generation candidates require and verify the complete parent chain', () => {
+  const baseline = buildDevelopmentalGenome();
+  const first = inheritDevelopmentalGenome(baseline, [{ module: 'world', cadenceCycles: 2 }]);
+  const second = inheritDevelopmentalGenome(first, [{ module: 'world', estimatedCost01: 0.24 }]);
+  assert.equal(evaluateDevelopmentalGenome(second, first).status, 'NEEDS_REVIEW');
+  assert.equal(evaluateDevelopmentalGenome(second, first, [baseline]).status, 'APPROVED');
+});
+
 test('inheritance rejects unknown or repeated modules and invalid trait values without coercion', () => {
   const parent = buildDevelopmentalGenome();
   assert.throws(() => inheritDevelopmentalGenome(parent, [{ module: 'unknown', cadenceCycles: 2 }]));
