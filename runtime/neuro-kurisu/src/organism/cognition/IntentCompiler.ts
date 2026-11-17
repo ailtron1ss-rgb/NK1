@@ -280,20 +280,26 @@ export class IntentCompiler {
     const goalText = structuredGoal || sourceText;
     const risk = inferRisk(sourceText, extraction.risk);
 
-    const assumptions: IntentAssumption[] = cleanList(extraction.assumptions, MAX_LIST, MAX_TEXT)
-      .length > 0
-      ? (Array.isArray(extraction.assumptions) ? extraction.assumptions : []).slice(0, MAX_LIST)
-          .map(item => {
-            const impact: IntentAssumption['impact'] = item?.impact === 'high' || item?.impact === 'medium' ? item.impact : 'low';
-            const confidence01 = clamp01(item?.confidence01);
-            return {
-              statement: cleanText(item?.statement),
-              impact,
-              confidence01,
-              requiresConfirmation: impact !== 'low' || confidence01 < 0.8,
-            };
-          }).filter(item => item.statement.length > 0)
-      : [];
+    const assumptions: IntentAssumption[] = [];
+    if (Array.isArray(extraction.assumptions)) {
+      try {
+        for (const item of extraction.assumptions.slice(0, MAX_LIST)) {
+          if (!item || typeof item !== 'object') continue;
+          const statement = cleanText(item.statement);
+          if (!statement) continue;
+          const impact: IntentAssumption['impact'] = item.impact === 'high' || item.impact === 'medium' ? item.impact : 'low';
+          const confidence01 = clamp01(item.confidence01);
+          assumptions.push({
+            statement,
+            impact,
+            confidence01,
+            requiresConfirmation: impact !== 'low' || confidence01 < 0.8,
+          });
+        }
+      } catch {
+        assumptions.length = 0;
+      }
+    }
 
     const allowed = cleanActions(extraction.permissions?.allowedActions);
     const denied = cleanActions(extraction.permissions?.deniedActions);
