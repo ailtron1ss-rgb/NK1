@@ -23,6 +23,10 @@
 - JIT изменения сериализованы отдельной очередью; проверены параллельные keyed и unkeyed ActionGateway execution receipts. Ошибки shadow capture/обучения не могут отменить уже подтверждённое внешнее действие.
 - Перед асинхронным host-verifier Engine снимает изолированный snapshot точного action binding и всех полей activation capture; после await обучение использует только этот immutable snapshot. Это закрывает TOCTOU-гонку, при которой mutable capture или вложенный tool input могли измениться после проверки.
 - Векторы активаций принимаются только как плотные plain numeric arrays с data descriptors; sparse arrays, getters/accessors, символы и дополнительные свойства отклоняются без чтения getter.
+- Защита от повторного обучения переживает рестарт: bounded sidecar сохраняет только SHA-256 fingerprints observation/capture identity (до 4096 каждого типа), никогда не raw IDs, activations или prompts; восстановление фильтрует malformed/duplicate hashes и ограничивает входной массив.
+- Activation capture отклоняется по TTL 10 минут до и после async host-verifier, поэтому задержка проверки не расширяет временное окно доверия.
+- Runtime type shim объявляет точную сигнатуру `randomBytes(size): Buffer`; это устраняет найденный Actions TS2305 для `node:crypto`.
+- Core regression workflow постоянно запускает `neural-jit-engine.mjs`, `neural-jit-runtime-wiring.mjs` и `neural-jit-runtime-bridge.mjs`, а HTTP fake-provider regression остаётся отдельным интеграционным шагом.
 
 ## Host adapter contract
 
@@ -40,14 +44,14 @@ Runtime и сервер теперь имеют реальный интегра�
 
 Следующая ступень после подключения host adapter: получить реальные слойные captures; выполнить paired baseline-vs-shadow replay на независимом holdout; измерить latency, throughput, VRAM/RAM и качество; включить candidate shadow forward-pass на выбранном локальном backend. Любое live activation требует отдельного explicit gate, независимой проверки и instant rollback.
 
-## Проверки
+## Проверки и текущий статус
 
-- `node --experimental-strip-types tests/neural-jit-engine.mjs`
-  Проверяет также асинхронную TOCTOU-гонку для capture и binding, отказ от getter/accessor и sparse vectors.
-- `node --experimental-strip-types tests/neural-jit-runtime-wiring.mjs`
-- `node --experimental-strip-types tests/neural-jit-runtime-bridge.mjs`
-- `node --experimental-strip-types tests/server-language-http-fake-provider.mjs`
-- P23 learning execution evidence, signed shadow evidence, Hermes verified evidence binding, verified outcome ledger и verified promotion gate.
-- `npm run typecheck` использует Node strip-only fallback (672+ файлов); семантический `tsc --noEmit` недоступен в текущем образе.
-
-Синтетические unit fixtures подтверждают алгоритм и связки, но не являются измерением производительности реальной LLM. Semantic npm run typecheck на текущем toolchain остаётся красным по 9 существующим Buffer<ArrayBufferLike> / Uint8Array<ArrayBuffer> конфликтам в AuthenticatedSkillPromotionApproval.ts, LearningProcessSupervisor.ts, VerifiedOutcomeArtifact.ts, VerifiedSkillShadowEvidence.ts и ExternalProjectResearchTool.ts; на точном base commit c1d0970 воспроизводятся те же 9 ошибки плюс 7 прежних narrowing-ошибок JIT finalizer, устранённых этой доработкой. PR остаётся Draft; Release ZIP не менялся.
+- В workflow `NK1 Action Gateway governance` на commit `1e05bf22cef0bdea5f6062d667ec6b93027b6937` все шаги прошли, включая `Runtime typecheck` и outcome / gateway regressions (run `44141962868`).
+- В workflow `P26 Learning Validation` на том же commit все шаги прошли, включая `Typecheck runtime`, learning recovery, continual matrix, replay ablations и P23 evidence suite (run `44141963387`).
+- Ранее эти же workflows блокировались из-за отсутствующей декларации `randomBytes`; причина исправлена в `src/node-shims.d.ts`.
+- Commit `a3728a4d6e23ff28d9f53cf785ff65b3b2c4508d` добавил три dedicated Neural JIT regression tests в основной `workpass71-validation.yml`. После последующих изменений replay/TTL актуальная ветка получила новый head `cc2df1009d28d3d787a1d7973c1774f0d060d4ad`; свежие Actions для него должны считаться незавершёнными до появления результатов.
+- Доступ к текущему checkout для непосредственного локального запуска тестов отсутствовал; изменения внесены в feature branch через GitHub и проходят удалённую проверку. Поэтому нельзя заявлять, что новые тесты на последнем head уже прошли или что выполнен локальный red-green цикл.
+- Базовый ранее известный дефект `tests/p22-chat-routing.mjs` (cognitive-proposal expectation) был воспроизведён до этой серии изменений на исходном baseline; если он встретится в широком regression run, его следует классифицировать отдельно, а не скрывать.
+- Реальные Transformer activations, paired baseline-vs-shadow benchmarks, tokens/s, latency, RAM/VRAM и влияние на качество не измерялись: instrumented local model host adapter в окружении не настроен. Никакого ускорения LLM не заявляется; live inference остаётся выключенным.
+- Метаданные опубликованного Release: tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, опубликован 2026-10-19, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. Бинарный ZIP не удалось скачать/проверить в этой сессии; Release не изменялся.
+- PR остаётся **Draft / open**. Нет merge в `workpass70-source` и нет публикации нового Release ZIP.
