@@ -459,7 +459,7 @@ export class ActionGateway {
   }
 
   /** Consume a single approved ticket before a protected side effect starts. */
-  async consumeDirectActionApproval(toolId:string,input:Record<string,unknown>,approvalId:string|undefined,options:ActionGatewayExecutionOptions={},operation:ActionToolApprovalOperation='direct'):Promise<{ok:boolean;reason?:string}> {
+  async consumeDirectActionApproval(toolId:string,input:Record<string,unknown>,approvalId:string|undefined,options:ActionGatewayExecutionOptions={},operation:ActionToolApprovalOperation='direct'):Promise<{ok:boolean;reason?:string;approvalId?:string;actor?:string;consumedAt?:number}> {
     return this.withPermissionAdmission(async()=>{
     const permissionClass=this.permissionClassFor(toolId) ?? (DIRECT_PERMISSION_ACTIONS.has(toolId)?'device':null);
     if(!permissionClass) return {ok:true};
@@ -478,7 +478,7 @@ export class ActionGateway {
     row.status='consumed'; row.consumedAt=now; this.permissionState.consumed++; this.permissionState.lastChangeAt=now;
     try { await this.persistExecutionLedger(); }
     catch { row.status='approved'; row.consumedAt=undefined; this.permissionState.consumed=Math.max(0,this.permissionState.consumed-1); this.permissionState.lastChangeAt=priorLastChangeAt; return {ok:false,reason:'approval-storage-failed'}; }
-    return {ok:true};
+    return {ok:true,approvalId:row.id,actor:row.actor??'owner',consumedAt:now};
     });
   }
 
