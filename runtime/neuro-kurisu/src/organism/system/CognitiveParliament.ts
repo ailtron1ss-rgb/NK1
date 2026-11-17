@@ -45,10 +45,10 @@ export interface ParliamentInput {
 export class CognitiveParliament {
   deliberate(input:ParliamentInput):ParliamentDecision {
     const reasons:string[]=[];
-    const inputValid=Boolean(input && text(input.candidateId) && RISKS.includes(input.risk) && Array.isArray(input.reports));
+    const inputValid=Boolean(input && text(input.candidateId) && input.risk && RISKS.includes(input.risk) && Array.isArray(input.reports));
     if(!inputValid) reasons.push('invalid-parliament-input');
     const candidateId=text(input?.candidateId)?input.candidateId:'invalid-candidate';
-    const risk=RISKS.includes(input?.risk)?input.risk:'high';
+    const risk:ParliamentRisk=input && RISKS.includes(input.risk)?input.risk:'high';
     const maxReports=Math.max(1,Math.min(12,Math.floor(input?.maxReports??6)));
     const reports=Array.isArray(input?.reports)?input.reports.slice(0,maxReports):[];
     const seenRoles=new Set<ParliamentRole>();
