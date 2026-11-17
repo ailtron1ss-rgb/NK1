@@ -47,11 +47,11 @@
 - `snapshot() -> redacted diagnostics`
 - `close() -> None`
 
-- [ ] **Step 1: Write the failing behavioral tests** for selected-layer activation changes with a 10% token-norm ceiling, exact no-op without activation, output tuple preservation and request-context reset.
-- [ ] **Step 2: Verify RED** by running `python -m unittest research.neural-prosthesis.tests.test_layer_force -v`; expected failure is the missing `neural_prosthesis.layer_force` module/API, not a fixture/setup error.
-- [ ] **Step 3: Add profile-admission tests** for unapproved digest, wrong model revision, wrong hidden width, duplicate JSON keys, non-finite/zero vectors, too many layers, tampered digest and symlink paths.
-- [ ] **Step 4: Implement the minimum controller** with ContextVar-scoped profile selection, selected decoder forward hooks, normalized directions and per-token delta clipping.
-- [ ] **Step 5: Verify GREEN** with the same focused unittest command, then run the whole Python sidecar test suite.
+- [x] **Step 1: Write behavioral tests** for selected-layer activation changes with a 10% token-norm ceiling, exact no-op without activation, tuple/list output preservation and request-context reset.
+- [x] **Step 2: Verify RED and refine the contract.** Initial runs exposed mismatches with the nested profile schema and a missing nested-disable behavior; fixtures were aligned to the actual contract and the controller was hardened.
+- [x] **Step 3: Add profile-admission tests** for unapproved digest, wrong model revision, wrong hidden width, duplicate JSON keys, non-finite/zero vectors, too many layers, tampered digest and file/parent symlink paths.
+- [x] **Step 4: Implement the controller** with ContextVar-scoped profile selection, selected decoder forward hooks, normalized directions, per-token delta clipping and rollback-safe hook registration.
+- [x] **Step 5: Verify GREEN** with the complete Python sidecar suite in the exact-head GitHub Actions workflow.
 
 ### Task 2: Sidecar runtime integration
 
@@ -65,11 +65,11 @@
 - Environment: `NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE` (optional profile ID; empty means disabled).
 - Runtime diagnostics: `status()["layer_force"]` with enabled flag, default profile ID and redacted loaded-profile metadata.
 
-- [ ] **Step 1: Write failing service/configuration tests** for disabled-by-default behavior, default profile admission, and rejection of an unapproved or model-mismatched profile.
-- [ ] **Step 2: Verify RED** using the focused service unittest command.
-- [ ] **Step 3: Wire profile loading** to `TransformersRuntime`, preserving the existing generation lock and residual adapter context; apply steering only when the operator-selected default profile is loaded and allowlisted.
-- [ ] **Step 4: Add redacted diagnostics and close-time hook cleanup.**
-- [ ] **Step 5: Verify GREEN** using `python -m unittest discover -s research/neural-prosthesis/tests -v`.
+- [x] **Step 1: Add service/configuration tests** for disabled-by-default behavior, default profile admission and rejection of unapproved or model-mismatched profiles.
+- [x] **Step 2: Verify the admission boundary** with disabled-by-default, invalid-digest, unversioned-model and missing-profile negative cases.
+- [x] **Step 3: Wire profile loading** to `TransformersRuntime`, preserving the existing generation lock and residual adapter context; only the operator-selected, loaded and allowlisted profile is applied.
+- [x] **Step 4: Add redacted diagnostics and close-time hook cleanup**, including residual-hook cleanup when Layer Force admission fails during startup.
+- [x] **Step 5: Verify GREEN** using the full Python sidecar test suite in exact-head Actions.
 
 ### Task 3: CI, operator documentation and release boundary
 
