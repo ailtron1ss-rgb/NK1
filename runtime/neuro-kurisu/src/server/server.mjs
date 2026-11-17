@@ -1,11 +1,12 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createPublicKey, verify as verifySignature } from 'node:crypto';
 import { URL } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { substrateCalibrationSigningPayload } from '../organism/system/SubstrateIndependenceEngine.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
@@ -38,6 +39,53 @@ const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').rep
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
+
+// Calibration keys are public-only host trust anchors. No key or signature is accepted
+// from the model/provider response itself.
+function parseSubstrateCalibrationPublicKeys(raw) {
+    if (!raw) return new Map();
+    let parsed;
+    try { parsed = JSON.parse(raw); }
+    catch { throw new Error('invalid NEURO_SUBSTRATE_CALIBRATION_PUBLIC_KEYS_JSON'); }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || Object.getPrototypeOf(parsed) !== Object.prototype ||
+        Object.keys(parsed).length > 32) {
+        throw new Error('invalid NEURO_SUBSTRATE_CALIBRATION_PUBLIC_KEYS_JSON shape');
+    }
+    const keys = new Map();
+    for (const [keyId, pem] of Object.entries(parsed)) {
+        if (!/^[a-z0-9][a-z0-9._:-]{0,119}$/i.test(keyId) || typeof pem !== 'string' || pem.length > 16_384) {
+            throw new Error('invalid substrate calibration public key entry');
+        }
+        const key = createPublicKey(pem);
+        if (key.asymmetricKeyType !== 'ed25519') throw new Error('substrate calibration keys must be Ed25519');
+        keys.set(keyId, key);
+    }
+    return keys;
+}
+const SUBSTRATE_CALIBRATION_PUBLIC_KEYS = parseSubstrateCalibrationPublicKeys(
+    String(process.env.NEURO_SUBSTRATE_CALIBRATION_PUBLIC_KEYS_JSON || '').trim(),
+);
+function isLoopbackBackendEndpoint(value) {
+    try {
+        const url = new URL(String(value || ''));
+        return ['127.0.0.1', 'localhost', '[::1]', '::1'].includes(url.hostname);
+    } catch {
+        return false;
+    }
+}
+function verifySubstrateCalibrationTrial(trial) {
+    const key = SUBSTRATE_CALIBRATION_PUBLIC_KEYS.get(String(trial?.evaluatorKeyId || ''));
+    const encoded = trial?.evaluatorSignatureBase64;
+    if (!key || typeof encoded !== 'string') return false;
+    const signature = Buffer.from(encoded, 'base64');
+    if (signature.length !== 64 || signature.toString('base64') !== encoded) return false;
+    try {
+        const payload = Buffer.from(substrateCalibrationSigningPayload(trial), 'utf8');
+        return verifySignature(null, payload, key, signature);
+    } catch {
+        return false;
+    }
+}
 // Optional provider: configuration is server-only and disabled unless NK_MEM0_ENABLED=1.
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
@@ -124,7 +172,19 @@ await lock.acquire();
 async function invokeLanguage(request) {
     const started = Date.now();
     const ecologyPreferredBackend = runtime.core.p40SelectModel('language', PHONE_MODE === false, request.maxTokens && request.maxTokens > 900 ? .82 : .72);
-    const preferredBackend = LOCAL_LANGUAGE_BACKEND_POLICY.select({ localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(), ecologyPreferredBackend });
+    const substratePreferredBackend = runtime.substratePreferredRoute();
+    const availableBackends = {
+        'llama.cpp': LLAMA_CPP_PROVIDER.configured(),
+        kobold: Boolean(KOBOLD_URL),
+        gemini: Boolean(process.env.GEMINI_API_KEY),
+        'deterministic-policy-fallback': true,
+    };
+    const preferredBackend = LOCAL_LANGUAGE_BACKEND_POLICY.select({
+        localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(),
+        ecologyPreferredBackend,
+        substratePreferredBackend,
+        availableBackends,
+    });
     const effectiveBackend = preferredBackend === 'local-fallback'
         ? 'deterministic-policy-fallback'
         : preferredBackend;
@@ -167,6 +227,57 @@ const runtime = new OrganismRuntime({
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
+    ...(SUBSTRATE_CALIBRATION_PUBLIC_KEYS.size > 0 ? { substrateCalibrationVerifier: verifySubstrateCalibrationTrial } : {}),
+    substrateBackendProfiles: [
+        {
+            backendId: `llama.cpp:${process.env.LLAMA_CPP_MODEL || 'local-model'}`,
+            routeId: 'llama.cpp',
+            providerId: 'llama.cpp',
+            modelId: process.env.LLAMA_CPP_MODEL || 'local-model',
+            modelRevision: process.env.LLAMA_CPP_MODEL_REVISION || 'host-configured',
+            runtime: 'openai-compatible-chat',
+            privacyClass: 'local-only',
+            capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
+            embeddingSpaceId: process.env.NK1_EMBEDDING_SPACE_ID || 'nk1-memory-embedding-v1',
+            contextWindowTokens: Math.max(256, Number(process.env.LLAMA_CPP_CONTEXT_TOKENS || 8192)),
+        },
+        {
+            backendId: 'kobold',
+            routeId: 'kobold',
+            providerId: 'kobold',
+            modelId: process.env.KOBOLD_MODEL || 'kobold-api-model',
+            modelRevision: process.env.KOBOLD_MODEL_REVISION || 'host-configured',
+            runtime: 'koboldcpp-text-generation',
+            privacyClass: isLoopbackBackendEndpoint(KOBOLD_URL) ? 'local-only' : 'private-remote',
+            capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
+            embeddingSpaceId: process.env.NK1_EMBEDDING_SPACE_ID || 'nk1-memory-embedding-v1',
+            contextWindowTokens: 4096,
+        },
+        {
+            backendId: `gemini:${process.env.GEMINI_MODEL || 'gemini-3.8-flash'}`,
+            routeId: 'gemini',
+            providerId: 'gemini',
+            modelId: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+            modelRevision: process.env.GEMINI_MODEL_REVISION || 'host-configured',
+            runtime: 'gemini-generate-content',
+            privacyClass: 'external',
+            capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
+            embeddingSpaceId: process.env.NK1_EMBEDDING_SPACE_ID || 'nk1-memory-embedding-v1',
+            contextWindowTokens: 32768,
+        },
+        {
+            backendId: 'deterministic-policy-fallback',
+            routeId: 'deterministic-policy-fallback',
+            providerId: 'neurocore',
+            modelId: 'deterministic-fallback',
+            modelRevision: 'runtime-v1',
+            runtime: 'host-deterministic',
+            privacyClass: 'local-only',
+            capabilities: ['text-generation', 'json-proposal', 'tool-routing'],
+            embeddingSpaceId: process.env.NK1_EMBEDDING_SPACE_ID || 'nk1-memory-embedding-v1',
+            contextWindowTokens: 4096,
+        },
+    ],
     mem0Adapter: MEM0_MEMORY_ADAPTER,
     mem0CognitiveRecall: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
     autoRun: true,

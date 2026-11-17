@@ -51,6 +51,28 @@ assert.deepEqual(recovered, { consecutiveFailures: 0, cooldownUntil: 0, coolingD
   'a real successful local response clears the circuit-breaker state');
 assert.equal(policy.select({ ...preferred, now: 20_001 }), 'llama.cpp');
 
+assert.equal(policy.select({
+  localLlamaConfigured: true,
+  ecologyPreferredBackend: 'gemini',
+  substratePreferredBackend: 'kobold',
+  availableBackends: { kobold: true },
+  now: 20_001,
+}), 'kobold', 'a registered healthy active substrate should preserve its route across requests');
+assert.equal(policy.select({
+  localLlamaConfigured: true,
+  ecologyPreferredBackend: 'gemini',
+  substratePreferredBackend: 'gemini',
+  availableBackends: { gemini: false },
+  now: 20_001,
+}), 'llama.cpp', 'an unavailable substrate route must fall through to the normal backend policy');
+assert.equal(policy.select({
+  localLlamaConfigured: false,
+  ecologyPreferredBackend: 'gemini',
+  substratePreferredBackend: 'deterministic-policy-fallback',
+  availableBackends: { 'deterministic-policy-fallback': true },
+  now: 20_001,
+}), 'gemini', 'deterministic fallback must not pin future model routing');
+
 const unconfigured = policy.select({
   localLlamaConfigured: false,
   ecologyPreferredBackend: 'remote-preferred',

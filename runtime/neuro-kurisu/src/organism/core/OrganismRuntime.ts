@@ -43,6 +43,7 @@ import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
+import { SubstrateIndependenceEngine, hydratePortableState, type PortableCognitiveTransferV1, type SubstrateBackendProfile, type SubstrateCalibrationTrial, type SubstrateIndependenceState } from '../system/SubstrateIndependenceEngine.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
@@ -122,6 +123,10 @@ export interface RuntimeConfig extends OrganismConfig {
   voiceTranscriptCharacterName?: string;
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
+  /** Host-owned exact backend identities; model responses cannot self-register a trusted profile. */
+  substrateBackendProfiles?: readonly SubstrateBackendProfile[];
+  /** Trusted host verifier for independently executed, signed substrate calibration receipts. */
+  substrateCalibrationVerifier?: (trial: SubstrateCalibrationTrial) => boolean | Promise<boolean>;
 }
 
 export interface RuntimeStepOptions {
@@ -137,6 +142,22 @@ export interface RuntimeStepOptions {
 }
 
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
+
+interface SubstrateImportBackup {
+  version: 1;
+  organism: PersistedOrganism | null;
+  world: PersistedWorld | null;
+  proceduralSkills: SkillLibraryState | null;
+  substrate: SubstrateIndependenceState;
+}
+interface SubstrateImportJournal {
+  version: 1;
+  importId: string;
+  phase: 'prepared' | 'committed' | 'rolled-back';
+  transferDigest: string;
+  targetBackendId: string;
+  updatedAt: number;
+}
 
 export class OrganismRuntime {
   /**
@@ -236,6 +257,11 @@ export class OrganismRuntime {
   };
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
+  private readonly organismStore: JsonStateStore<PersistedOrganism>;
+  private readonly substrateIndependence: SubstrateIndependenceEngine;
+  private readonly substrateStateStore: JsonStateStore<SubstrateIndependenceState>;
+  private readonly substrateImportBackupStore: JsonStateStore<SubstrateImportBackup>;
+  private readonly substrateImportJournalStore: JsonStateStore<SubstrateImportJournal>;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -274,7 +300,8 @@ export class OrganismRuntime {
     this.phonePolicy.checkpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.checkpointMaxDirtyCycles));
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
-    this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
+    this.organismStore = config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile);
+    this.core = new OrganismCore(this.organismStore, { ...config, cycleResultMode:'operational' });
     const learningJournals = createDefaultLearningJournals(config.stateFile);
     this.core.configureP23LearningJournals(learningJournals);
     this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
@@ -342,6 +369,10 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
+    this.substrateIndependence = new SubstrateIndependenceEngine({ profiles: config.substrateBackendProfiles ?? [] });
+    this.substrateStateStore = new FileStateStore<SubstrateIndependenceState>(`${config.stateFile}.substrate-independence.json`);
+    this.substrateImportBackupStore = new FileStateStore<SubstrateImportBackup>(`${config.stateFile}.substrate-import-backup.json`);
+    this.substrateImportJournalStore = new FileStateStore<SubstrateImportJournal>(`${config.stateFile}.substrate-import-journal.json`);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -377,10 +408,187 @@ export class OrganismRuntime {
     }
   }
 
+  private async recoverInterruptedSubstrateImport(): Promise<void> {
+    const journal = await this.substrateImportJournalStore.load();
+    if (!journal || journal.phase !== 'prepared') return;
+    const backup = await this.substrateImportBackupStore.load();
+    if (!backup || backup.version !== 1 || !backup.substrate) {
+      throw new Error('substrate-import-recovery-backup-missing');
+    }
+    await this.organismStore.save(backup.organism as PersistedOrganism);
+    await this.worldStore.save(backup.world as PersistedWorld);
+    await this.proceduralSkillStore.save(backup.proceduralSkills as SkillLibraryState);
+    this.substrateIndependence.restore(backup.substrate);
+    await this.substrateStateStore.save(this.substrateIndependence.snapshot());
+    await this.substrateImportJournalStore.save({ ...journal, phase: 'rolled-back', updatedAt: Date.now() });
+    await this.journal.write('warn', 'runtime.substrate-import.recovered-by-rollback', {
+      importId: journal.importId, transferDigest: journal.transferDigest, targetBackendId: journal.targetBackendId,
+    });
+  }
+
+  substrateDiagnostics(): SubstrateIndependenceState {
+    return this.substrateIndependence.snapshot();
+  }
+
+  substratePreferredRoute(): string | null {
+    return this.substrateIndependence.preferredRoute();
+  }
+
+  async createPortableSubstrateTransferPackage(): Promise<PortableCognitiveTransferV1> {
+    return this.enqueue(async () => {
+      if (!this.initialized) throw new Error('OrganismRuntime.init() must be called before substrate export');
+      await this.core.flush();
+      await this.checkpointWorld(true);
+      await this.proceduralSkillStore.save(this.proceduralSkillLibrary.snapshot());
+      const [organism, world, proceduralSkills] = await Promise.all([
+        this.organismStore.load(), this.worldStore.load(), this.proceduralSkillStore.load(),
+      ]);
+      if (!organism || !world) throw new Error('substrate-export-canonical-state-unavailable');
+      const state = this.substrateIndependence.snapshot();
+      const observedSource = state.activeBackendId ?? state.observedBackendId;
+      const sourceBackendId = observedSource === 'deterministic-policy-fallback' ? null : observedSource;
+      const transfer = this.substrateIndependence.createTransferPackage({
+        sourceBackendId,
+        capturedAt: Date.now(), organism, world, proceduralSkills,
+      });
+      await this.substrateStateStore.save(this.substrateIndependence.snapshot());
+      return transfer;
+    });
+  }
+
+  async importPortableSubstrateTransferPackage(
+    transfer: PortableCognitiveTransferV1,
+    targetBackendId: string,
+    options: { allowExternalBackend?: boolean } = {},
+  ): Promise<{ imported: true; transferDigest: string; targetBackendId: string; requiresCalibration: true }> {
+    return this.enqueue(async () => {
+      if (this.initialized) throw new Error('substrate-import-requires-uninitialized-runtime');
+      const profile = this.substrateIndependence.profile(targetBackendId);
+      if (!profile) throw new Error('substrate-target-profile-not-registered');
+      const compatibility = this.substrateIndependence.assessCompatibility(transfer, profile, options);
+      if (!compatibility.compatible) throw new Error(`substrate-import-rejected:${compatibility.reasons.join(',')}`);
+      const verified = this.substrateIndependence.verifyTransferPackage(transfer);
+      if (!verified.valid || !verified.digest) throw new Error('substrate-transfer-integrity-invalid');
+      const backup: SubstrateImportBackup = {
+        version: 1,
+        organism: await this.organismStore.load(),
+        world: await this.worldStore.load(),
+        proceduralSkills: await this.proceduralSkillStore.load(),
+        substrate: this.substrateIndependence.snapshot(),
+      };
+      const importId = randomUUID();
+      const journal: SubstrateImportJournal = {
+        version: 1, importId, phase: 'prepared', transferDigest: verified.digest,
+        targetBackendId, updatedAt: Date.now(),
+      };
+      await this.substrateImportBackupStore.save(backup);
+      await this.substrateImportJournalStore.save(journal);
+      try {
+        await this.organismStore.save(hydratePortableState(transfer.payload.organism) as PersistedOrganism);
+        await this.worldStore.save(hydratePortableState(transfer.payload.world) as PersistedWorld);
+        await this.proceduralSkillStore.save(hydratePortableState(transfer.payload.proceduralSkills) as SkillLibraryState);
+        this.substrateIndependence.recordImportedTransfer(transfer, targetBackendId);
+        await this.substrateStateStore.save(this.substrateIndependence.snapshot());
+        await this.substrateImportJournalStore.save({ ...journal, phase: 'committed', updatedAt: Date.now() });
+        return { imported: true as const, transferDigest: verified.digest, targetBackendId, requiresCalibration: true as const };
+      } catch (error) {
+        try {
+          await this.organismStore.save(backup.organism as PersistedOrganism);
+          await this.worldStore.save(backup.world as PersistedWorld);
+          await this.proceduralSkillStore.save(backup.proceduralSkills as SkillLibraryState);
+          this.substrateIndependence.restore(backup.substrate);
+          await this.substrateStateStore.save(this.substrateIndependence.snapshot());
+          await this.substrateImportJournalStore.save({ ...journal, phase: 'rolled-back', updatedAt: Date.now() });
+        } catch (rollbackError) {
+          throw new Error(`substrate-import-rollback-pending:${String((rollbackError as Error)?.message ?? rollbackError)}`);
+        }
+        throw error;
+      }
+    });
+  }
+
+  async evaluateSubstrateMigration(input: {
+    transfer: PortableCognitiveTransferV1;
+    targetBackendId: string;
+    trials: readonly SubstrateCalibrationTrial[];
+    allowExternalBackend?: boolean;
+  }): Promise<Awaited<ReturnType<SubstrateIndependenceEngine['evaluateMigration']>>> {
+    if (typeof this.config.substrateCalibrationVerifier !== 'function') {
+      throw new Error('substrate-calibration-host-verifier-not-configured');
+    }
+    return this.enqueue(async () => {
+      const result = await this.substrateIndependence.evaluateMigration({
+        ...input, verifyTrial: this.config.substrateCalibrationVerifier!,
+      });
+      await this.substrateStateStore.save(this.substrateIndependence.snapshot());
+      return result;
+    });
+  }
+
+  async promoteSubstrateBackend(targetBackendId: string, evaluationId: string): Promise<SubstrateIndependenceState> {
+    return this.enqueue(async () => {
+      const state = this.substrateIndependence.promoteBackend(targetBackendId, evaluationId);
+      await this.substrateStateStore.save(state);
+      return state;
+    });
+  }
+
+  async rollbackSubstrateBackend(): Promise<SubstrateIndependenceState> {
+    return this.enqueue(async () => {
+      const state = this.substrateIndependence.rollbackBackend();
+      await this.substrateStateStore.save(state);
+      return state;
+    });
+  }
+
+  private async observeSubstrateBackend(backendId: string): Promise<void> {
+    const result = this.substrateIndependence.observeBackend(backendId);
+    if (!result.changed) return;
+    try {
+      await this.substrateStateStore.save(result.state);
+    } catch (error) {
+      await this.journal.write('warn', 'runtime.substrate-state.persist-failed', {
+        backendId, message: String((error as Error)?.message ?? error).slice(0, 180),
+      }).catch(() => {});
+    }
+  }
+
   async init(): Promise<void> {
     return this.enqueue(async () => {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
+      await this.recoverInterruptedSubstrateImport();
+      const substrateState = await this.substrateStateStore.load();
+      if (substrateState) {
+        const restoredSubstrate = this.substrateIndependence.restore(substrateState);
+        if (!restoredSubstrate.restored) {
+          await this.journal.write('warn', 'runtime.substrate-state.restore-failed', { reason: restoredSubstrate.reason });
+          await this.substrateStateStore.save(this.substrateIndependence.snapshot());
+        } else if (restoredSubstrate.restored) {
+          const verifier = this.config.substrateCalibrationVerifier;
+          const storedEvaluation = this.substrateIndependence.snapshot().lastEvaluation;
+          let reverified = false;
+          if (storedEvaluation?.accepted === true && typeof verifier === 'function') {
+            reverified = await this.substrateIndependence.verifyStoredEvaluation(
+              storedEvaluation.evaluationId,
+              verifier,
+            );
+            if (!reverified) {
+              await this.journal.write('warn', 'runtime.substrate-evaluation.restore-untrusted', {
+                evaluationId: storedEvaluation.evaluationId,
+              });
+            }
+          }
+          if (this.substrateIndependence.snapshot().activeProvenance === 'calibrated' && !reverified) {
+            const recovered = this.substrateIndependence.revokeUnverifiedPromotion();
+            await this.journal.write('warn', 'runtime.substrate-promotion.revoked-after-restore', {
+              activeBackendId: recovered.activeBackendId,
+              reason: 'trusted-calibration-receipts-unavailable-or-invalid',
+            });
+          }
+        }
+      }
+      await this.substrateStateStore.save(this.substrateIndependence.snapshot());
       await this.core.init();
       const restoredTemporalTracks=this.temporalObjectTracker.restoreFromPerception(
         this.core.p41PerceptionSnapshot().entities,
@@ -618,6 +826,7 @@ export class OrganismRuntime {
     try {
       const response=await this.config.languageInvoker(request);
       await this.core.recordLanguageBackend(response.backend, response.latencyMs, true);
+      await this.observeSubstrateBackend(response.backend);
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
       return parseCognitiveProposal(response.text,'llm');
     } catch (error) {
@@ -1652,6 +1861,7 @@ export class OrganismRuntime {
       });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
       await this.core.flush();
+      await this.substrateStateStore.save(this.substrateIndependence.snapshot());
       await this.checkpointWorld(true);
       await this.journal.write('info', 'runtime.stop.durable', {
         tick: runtimeView.tick,
