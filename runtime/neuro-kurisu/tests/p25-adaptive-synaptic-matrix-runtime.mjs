@@ -43,6 +43,14 @@ const manifest = {
 
 const dir = await mkdtemp(path.join(tmpdir(), 'nk-p25-runtime-'));
 const stateFile = path.join(dir, 'organism.json');
+const runtimes = [];
+const stopped = new WeakSet();
+const stopRuntime = async runtime => {
+  if (runtime && !stopped.has(runtime)) {
+    await runtime.stop();
+    stopped.add(runtime);
+  }
+};
 let baseCalls = 0;
 let adapterCalls = 0;
 let failAdapter = false;
@@ -63,7 +71,8 @@ const adapterInvoker = async (_request, selected) => {
     appliedAdapterSha256: badReceipt ? hash('z') : candidate.artifactSha256,
   };
 };
-const makeRuntime = () => new OrganismRuntime({
+const makeRuntime = () => {
+  const runtime = new OrganismRuntime({
   stateFile,
   worldStateFile: path.join(dir, 'world.json'),
   enableLanguage: true,
@@ -80,7 +89,10 @@ const makeRuntime = () => new OrganismRuntime({
       && signature === manifest.signature
       && keyId === manifest.signerKeyId,
   synapticAdapterInvoker: adapterInvoker,
-});
+  });
+  runtimes.push(runtime);
+  return runtime;
+};
 
 try {
   let runtime = makeRuntime();
@@ -122,7 +134,7 @@ try {
   assert.equal(baseCalls, 4, 'adapter loader failure must execute the original base invoker exactly once');
   assert.ok(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures >= 2);
 
-  await runtime.stop();
+  await stopRuntime(runtime);
   runtime = makeRuntime();
   await runtime.init();
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'active',
@@ -143,9 +155,10 @@ try {
   const reactivated = await runtime.step('Use the explicitly reactivated specialist.');
   assert.equal(reactivated.language?.text, 'specialized response');
   assert.equal(adapterCalls, 5);
-  await runtime.stop();
+  await stopRuntime(runtime);
 
   console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX_RUNTIME=PASS');
 } finally {
+  await Promise.allSettled(runtimes.map(stopRuntime));
   await rm(dir, { recursive: true, force: true });
 }
