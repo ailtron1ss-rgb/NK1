@@ -291,7 +291,7 @@ export class WorldForge {
     const evidence=new Set(valid.filter(s=>s.action==='verify').map(s=>s.evidence??s.target).filter((v):v is string=>Boolean(v)));
     const family=this.inferFamily(key.domain,valid);
     const targetCoverage=key.requiredTargets.filter(t=>targets.has(t)).length/Math.max(1,key.requiredTargets.length);
-    const evidenceCoverage=key.criticalEvidence.filter(e=>evidence.has(e)||targets.has(e)).length/Math.max(1,key.criticalEvidence.length);
+    const evidenceCoverage=key.criticalEvidence.filter(e=>evidence.has(e)).length/Math.max(1,key.criticalEvidence.length);
     const verification=valid.some(s=>s.action==='verify')?1:0;
     const efficiency=clamp(1-cost/Math.max(1,key.resourceBudget*2));
     const robustness=clamp(1-risk-key.disturbancePenalty01);
