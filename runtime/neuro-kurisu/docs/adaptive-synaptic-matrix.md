@@ -22,9 +22,13 @@ to the already configured base-model identity.
   restored active entries are quarantined.
 - The host adapter invoker receives a single validated profile and a language
   request. It alone owns loading/applying the actual LoRA/QLoRA weights.
-- Each specialist call has a configurable hard deadline (default 15 seconds,
-  bounded to 100 ms–120 seconds) and receives an abort signal. A timeout, abort,
-  malformed response, or failed execution receipt returns to the base invoker.
+- Each specialist call has a configurable response deadline (default 15 seconds,
+  bounded to 100 ms–120 seconds) and receives an abort signal. The runtime stops
+  waiting and falls back at the deadline; the host executor must honor the signal
+  to stop underlying compute (the runtime cannot forcibly terminate an arbitrary
+  callback). Caller cancellation is propagated without retrying the base model
+  and is not counted as an adapter reliability failure. Adapter timeout or other
+  execution failure does count as a failure and returns to the base invoker.
 - Every adapter response must attest `modelId`, `modelRevisionSha256`, and
   `appliedAdapterSha256`. The runtime compares these with the configured base
   identity and registered artifact digest; a mismatch is treated as an execution
@@ -70,9 +74,10 @@ adapter response is recorded and the unchanged base invoker is called. An aborte
 request is not retried after cancellation.
 
 The real-runtime integration suite covers base fallback, signed activation,
-specialized execution, wrong-base and wrong-weight attestation rejection,
-adapter-error recovery, persistence across restart, explicit disablement, and
-operator-authorized reactivation.
+specialized execution, Unicode-safe context gating, caller cancellation without
+failure-score penalties, timeout/abort, wrong-base and wrong-weight attestation
+rejection, adapter-error recovery, persistence across restart, explicit disablement,
+and operator-authorized reactivation.
 
 Online response completion is recorded only as executor availability/latency;
 it does not update task competence. Competence changes require a new offline

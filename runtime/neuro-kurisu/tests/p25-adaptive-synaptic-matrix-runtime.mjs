@@ -175,6 +175,48 @@ try {
   const reactivated = await runtime.step('Use the explicitly reactivated specialist.', { deliberate: false });
   assert.equal(reactivated.language?.text, 'specialized response');
   assert.equal(adapterCalls, 6);
+  // UTF-8-heavy prompts must not slip through a chars/4 estimate and exceed
+  // the specialist's declared context window.
+  const contextCycle = {
+    state: { needs: { energy: 0.9, cognitiveLoad: 0.1, uncertainty: 0.1 } },
+    decision: { selected: { confidence: 0.95 } },
+  };
+  const beforeContextAdapterCalls = adapterCalls;
+  const beforeContextBaseCalls = baseCalls;
+  const contextGuarded = await runtime.invokeLanguageWithSynapticMatrix(
+    'language',
+    { system: '', user: '💡'.repeat(20_000), maxTokens: 1 },
+    contextCycle,
+    baseInvoker,
+  );
+  assert.equal(contextGuarded.text, 'base response');
+  assert.equal(adapterCalls, beforeContextAdapterCalls,
+    'a UTF-8 prompt whose byte upper bound exceeds the profile context must bypass the adapter');
+  assert.equal(baseCalls, beforeContextBaseCalls + 1);
+
+  // Cancelling from the caller must abort the host adapter, avoid base retry,
+  // and leave the adapter's failure/cooldown counters unchanged.
+  const beforeCancelAdapterCalls = adapterCalls;
+  const beforeCancelBaseCalls = baseCalls;
+  const beforeCancelFailures = runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures;
+  const caller = new AbortController();
+  stallAdapter = true;
+  const cancelledCall = runtime.invokeLanguageWithSynapticMatrix(
+    'language',
+    { system: 'test system', user: 'caller cancellation test', maxTokens: 16, signal: caller.signal },
+    contextCycle,
+    baseInvoker,
+  );
+  const cancellationTimer = setTimeout(() => caller.abort(new Error('caller-cancelled')), 10);
+  await assert.rejects(cancelledCall, /caller-cancelled/);
+  clearTimeout(cancellationTimer);
+  stallAdapter = false;
+  assert.equal(adapterCalls, beforeCancelAdapterCalls + 1);
+  assert.equal(baseCalls, beforeCancelBaseCalls,
+    'a caller-cancelled request must not be retried against the base model');
+  assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, beforeCancelFailures,
+    'caller cancellation must not count as an adapter execution failure');
+
   await stopRuntime(runtime);
 
   console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX_RUNTIME=PASS');

@@ -645,12 +645,14 @@ export class OrganismRuntime {
     const cognitiveLoad01 = clamp01(Number(needs.cognitiveLoad ?? 1));
     const uncertainty01 = clamp01(Number(needs.uncertainty ?? 1));
     const resourceRisk01 = clamp01((1 - energy01) * 0.45 + cognitiveLoad01 * 0.35 + uncertainty01 * 0.20);
-    const promptChars = String(request.system ?? '').length + String(request.user ?? '').length;
-    const characterTokenEstimate = Math.ceil(promptChars / 4);
+    const promptText = String(request.system ?? '') + '\n' + String(request.user ?? '');
+    // UTF-8 bytes are a conservative upper bound for byte-tokenized prompt pieces.
+    // Prefer overestimating adapter context use to silently exceeding a profile limit.
+    const utf8ByteTokenUpperBound = new TextEncoder().encode(promptText).length;
     const ledgerTokenEstimate = Number(request.contextLedger?.estimatedRenderedTokens);
     const promptTokenEstimate = Number.isFinite(ledgerTokenEstimate) && ledgerTokenEstimate >= 0
-      ? Math.max(characterTokenEstimate, Math.ceil(ledgerTokenEstimate))
-      : characterTokenEstimate;
+      ? Math.max(utf8ByteTokenUpperBound, Math.ceil(ledgerTokenEstimate))
+      : utf8ByteTokenUpperBound;
     const contextTokens = promptTokenEstimate + Math.max(0, Math.floor(Number(request.maxTokens ?? 0) || 0));
     const selection = this.synapticMatrix.select({
       task,
@@ -662,6 +664,14 @@ export class OrganismRuntime {
       resourceRisk01,
       executorAvailable: typeof this.config.synapticAdapterInvoker === 'function',
     });
+    // Persist bounded fallback diagnostics periodically without forcing a disk write
+    // on every phone inference cycle.
+    if (selection.mode === 'base-fallback') {
+      const snapshot = this.synapticMatrix.snapshot();
+      if (snapshot.metrics.routeDecisions % 8 === 0) {
+        await this.synapticMatrixStore.save(snapshot).catch(() => {});
+      }
+    }
     if (selection.mode === 'adapter' && this.config.synapticAdapterInvoker) {
       const startedAt = Date.now();
       const adapterController = new AbortController();
@@ -684,7 +694,9 @@ export class OrganismRuntime {
                 adapterController.abort(reason);
                 reject(reason);
               };
-              request.signal?.addEventListener('abort', onParentAbort, { once: true });
+              // AbortSignal does not replay an abort event to listeners added late.
+              if (request.signal?.aborted) onParentAbort?.();
+              else request.signal?.addEventListener('abort', onParentAbort, { once: true });
             })
           : new Promise<never>(() => {});
         const response = await Promise.race([
@@ -692,6 +704,9 @@ export class OrganismRuntime {
           timeoutPromise,
           parentAbortPromise,
         ]);
+        if (request.signal?.aborted) {
+          throw request.signal.reason ?? new Error('synaptic-adapter-request-aborted');
+        }
         if (!response || typeof response.text !== 'string' || !response.text.trim()
           || typeof response.backend !== 'string' || !response.backend.trim()
           || !Number.isFinite(response.latencyMs) || response.latencyMs < 0 || response.latencyMs > 300_000) {
@@ -717,9 +732,17 @@ export class OrganismRuntime {
         }).catch(() => {});
         return response;
       } catch (error) {
+        // Caller cancellation is not a model/adapter fault and must not poison
+        // the specialist's reliability score or trigger cooldown/quarantine.
+        if (request.signal?.aborted) {
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+          await this.journal.write('info', 'runtime.synaptic-adapter.cancelled', {
+            adapterId: selection.adapterId, task,
+          }).catch(() => {});
+          throw error;
+        }
         this.synapticMatrix.observe(selection.adapterId, false, Date.now() - startedAt);
         await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
-        if (request.signal?.aborted) throw error;
         await this.journal.write('warn', 'runtime.synaptic-adapter.base-fallback', {
           adapterId: selection.adapterId, task, reason: String((error as any)?.message ?? error).slice(0, 180),
         }).catch(() => {});

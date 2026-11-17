@@ -128,6 +128,18 @@ const request = (overrides = {}) => ({
   assert.throws(() => matrix.activateValidated(malformedMetric, () => true),
     /score/i,
     'numeric strings cannot be used as signed evaluation evidence');
+
+  const malformedDigest = manifest(candidate(), {
+    validation: { ...manifest().validation, reportSha256: 'g'.repeat(64) },
+  });
+  assert.throws(() => matrix.activateValidated(malformedDigest, () => true),
+    /report/i,
+    'non-hex report digests must be rejected before signature verification');
+
+  assert.throws(() => matrix.activateValidated(manifest(), () => {
+    throw new Error('trusted-keystore-unavailable');
+  }), /signature|verification/i,
+  'a verifier failure must fail closed rather than activating the adapter');
 }
 
 {
@@ -213,7 +225,7 @@ const request = (overrides = {}) => ({
     validation: {
       ...manifest().validation,
       reportId: 'holdout-physics-revalidated-2026-11',
-      reportSha256: hash('g'),
+      reportSha256: hash('d'),
       holdoutDatasetRef: 'dataset://physics/holdout-v3',
     },
   });
