@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { DevelopmentalMultiverse, variantsFromP55Forks } from '../src/organism/developmental/DevelopmentalMultiverse.ts';
+import { createDevelopmentalMultiverseSessionFromP55, DevelopmentalMultiverse, variantsFromP55Forks } from '../src/organism/developmental/DevelopmentalMultiverse.ts';
 
 const baselineProfile = { exploration: 0.5, verification: 0.5, reflection: 0.5, attention: 0.5, prediction: 0.5 };
 const scenarios = (prefix, firstSeed, count) => Array.from({ length: count }, (_, i) => ({ id: `${prefix}-${i + 1}`, seed: firstSeed + i }));
@@ -112,6 +112,35 @@ const p55 = variantsFromP55Forks([
 ]);
 assert.equal(p55.length, 1, 'rejected/replaced P55 forks cannot enter the multiverse');
 assert.equal(p55[0].id, 'p55:2:balanced:abc');
+
+const snapshotSession = createDevelopmentalMultiverseSessionFromP55(
+  { ...input, runId: 'dm19-real-p55-snapshot' },
+  {
+    version: 2,
+    generations: 2,
+    simulated: 2,
+    promoted: 0,
+    rejected: 1,
+    replaced: 0,
+    unresolvedForks: 1,
+    meanDevelopmentalValue01: 0.6,
+    branchDiversity01: 0.5,
+    futureCoverage01: 0.3,
+    lastWinnerId: null,
+    lastAppliedForkId: null,
+    appliedCount: 0,
+    calibration01: 0.5,
+    actionBiases: { explore: 0.018 },
+    forks: [
+      { id: 'p55:snapshot:balanced', style: 'balanced', status: 'candidate', deltas: { exploration: 0.03, verification: 0.03, reflection: 0.03, attention: 0, prediction: 0.03 } },
+      { id: 'p55:snapshot:rejected', style: 'radical', status: 'rejected', deltas: { exploration: 0.12, verification: -0.04, reflection: 0.08, attention: -0.06, prediction: 0.09 } },
+    ],
+  },
+);
+assert.deepEqual(snapshotSession.variants.map(item => item.id), ['p55:snapshot:balanced'],
+  'the public P55 snapshot adapter must admit only active fork candidates');
+assert.equal('actionBiases' in snapshotSession, false,
+  'P55 action bias/runtime state must not be copied into the developmental experiment');
 
 const blocked = new DevelopmentalMultiverse();
 blocked.createSession({ ...input, runId: 'dm19-safety-test', variants: [{ id: 'unsafe', label: 'unsafe', deltas: { verification: 0.08 } }] });
