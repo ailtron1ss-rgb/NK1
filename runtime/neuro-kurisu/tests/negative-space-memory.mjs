@@ -335,7 +335,6 @@ duplicatedRestore.restore({
 assert.equal(duplicatedRestore.snapshot().negativeSpace.records.length, 1);
 assert.equal(duplicatedRestore.snapshot().negativeSpace.records[0].chosen, 'verify');
 assert.equal(duplicatedRestore.snapshot().negativeSpace.records[0].alternatives[0].action, 'plan');
-assert.equal(duplicatedRestore.snapshot().negativeSpace.records[0].alternatives[0].action, 'plan');
 assert.equal(duplicatedRestore.snapshot().negativeSpace.pruned, 1);
 const chronological = new RegretEngine();
 chronological.restore({

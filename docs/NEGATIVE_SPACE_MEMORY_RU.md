@@ -27,6 +27,7 @@ Run from `runtime/neuro-kurisu`:
 
 ```sh
 npm run test:negative-space-memory
+npm run test:negative-space-memory-core
 npm run typecheck
 ```
 
