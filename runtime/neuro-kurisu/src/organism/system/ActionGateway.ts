@@ -221,6 +221,8 @@ export interface ActionUndoFirstPreparation {
   beforeStateHash:string;
   /** SHA-256 fingerprint expected immediately after the primary action. */
   afterStateHash?:string;
+  /** Non-secret durable handle to a provider snapshot or prepared recovery artifact. */
+  recoveryArtifactRef?:string;
   compensation?:{toolId:string;input:Record<string,unknown>};
   verification?:{toolId:string;input:Record<string,unknown>};
   manualSteps?:string[];
@@ -276,7 +278,7 @@ function restoreUndoPlan(value:unknown,executionId:string|undefined,requestHash:
     if(sha256Stable(core)!==planHash || new TextEncoder().encode(stableJson(core)).byteLength>16*1024) return undefined;
     if(!['rollback','compensate','manual','irreversible'].includes(String(plan.strategy)) || typeof plan.summary!=='string' || !plan.summary.trim() || plan.summary.length>500 || !isSha256(plan.beforeStateHash) || !Number.isFinite(plan.preparedAt) || plan.preparedAt<0) return undefined;
     if(plan.strategy==='compensate' || plan.strategy==='rollback') {
-      if(!isSha256(plan.afterStateHash) || !isPlainRecord(plan.compensation) || typeof plan.compensation.toolId!=='string' || !plan.compensation.toolId.trim() || !isPlainRecord(plan.compensation.input) || hasSensitiveRecoveryKey(plan.compensation.input) || !isPlainRecord(plan.verification) || typeof plan.verification.toolId!=='string' || !plan.verification.toolId.trim() || !isPlainRecord(plan.verification.input) || hasSensitiveRecoveryKey(plan.verification.input)) return undefined;
+      if(typeof plan.recoveryArtifactRef!=='string' || !plan.recoveryArtifactRef.trim() || plan.recoveryArtifactRef.length>1024 || /[\u0000-\u001f\u007f]/.test(plan.recoveryArtifactRef) || !isSha256(plan.afterStateHash) || !isPlainRecord(plan.compensation) || typeof plan.compensation.toolId!=='string' || !plan.compensation.toolId.trim() || !isPlainRecord(plan.compensation.input) || hasSensitiveRecoveryKey(plan.compensation.input) || !isPlainRecord(plan.verification) || typeof plan.verification.toolId!=='string' || !plan.verification.toolId.trim() || !isPlainRecord(plan.verification.input) || hasSensitiveRecoveryKey(plan.verification.input)) return undefined;
     } else if(plan.strategy==='manual') {
       if(!Array.isArray(plan.manualSteps) || plan.manualSteps.length<1 || plan.manualSteps.length>8 || plan.manualSteps.some(step=>typeof step!=='string' || !step.trim() || step.length>500)) return undefined;
     } else if(typeof plan.irreversibleReason!=='string' || plan.irreversibleReason.trim().length<8 || plan.irreversibleReason.length>500) return undefined;
@@ -838,7 +840,8 @@ export class ActionGateway {
       const core:any={version:1,strategy:raw.strategy,summary,beforeStateHash,preparedAt:Date.now(),executionId:context.executionId,requestHash:context.requestHash};
       if(raw.strategy==='compensate' || raw.strategy==='rollback') {
         const afterStateHash=typeof raw.afterStateHash==='string'?raw.afterStateHash.toLowerCase():'';
-        if(!this.tools.get(id)?.supportsAtomicUndoPrecondition || !isSha256(afterStateHash) || !isPlainRecord(raw.compensation) || typeof raw.compensation.toolId!=='string' || !raw.compensation.toolId.trim() || !isPlainRecord(raw.compensation.input) || hasSensitiveRecoveryKey(raw.compensation.input) || !isPlainRecord(raw.verification) || typeof raw.verification.toolId!=='string' || !raw.verification.toolId.trim() || !isPlainRecord(raw.verification.input) || hasSensitiveRecoveryKey(raw.verification.input)) return {failure:'undo-plan-invalid'};
+        const recoveryArtifactRef=typeof raw.recoveryArtifactRef==='string'?raw.recoveryArtifactRef.normalize('NFKC').trim():'';
+        if(!recoveryArtifactRef || recoveryArtifactRef.length>1024 || /[\u0000-\u001f\u007f]/.test(recoveryArtifactRef) || !this.tools.get(id)?.supportsAtomicUndoPrecondition || !isSha256(afterStateHash) || !isPlainRecord(raw.compensation) || typeof raw.compensation.toolId!=='string' || !raw.compensation.toolId.trim() || !isPlainRecord(raw.compensation.input) || hasSensitiveRecoveryKey(raw.compensation.input) || !isPlainRecord(raw.verification) || typeof raw.verification.toolId!=='string' || !raw.verification.toolId.trim() || !isPlainRecord(raw.verification.input) || hasSensitiveRecoveryKey(raw.verification.input)) return {failure:'undo-plan-invalid'};
         const compensationTool=this.tools.get(raw.compensation.toolId);
         const verificationTool=this.tools.get(raw.verification.toolId);
         if(!compensationTool || compensationTool.id===id || !compensationTool.supportsAtomicUndoPrecondition || !requiresDurableIdempotency(compensationTool) || !compensationTool.verify || !compensationTool.reconcile) return {failure:'undo-plan-invalid'};
@@ -847,6 +850,7 @@ export class ActionGateway {
         const verificationInput=structuredClone(raw.verification.input);
         if(!validateToolInputContract(compensationInput,compensationTool.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE).valid || !validateToolInputContract(verificationInput,verificationTool.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE).valid) return {failure:'undo-plan-invalid'};
         core.afterStateHash=afterStateHash;
+        core.recoveryArtifactRef=recoveryArtifactRef;
         core.compensation={toolId:compensationTool.id,input:compensationInput};
         core.verification={toolId:verificationTool.id,input:verificationInput};
       } else if(raw.strategy==='manual') {
@@ -867,7 +871,7 @@ export class ActionGateway {
   /** Execute a previously prepared rollback/compensation through the same ActionGateway authority. */
   async executeUndoForKey(idempotencyKey:string,reason='undo-request',options:ActionUndoExecutionOptions={}):Promise<ActionUndoExecutionResult> {
     const key=typeof idempotencyKey==='string'?idempotencyKey.trim():'';
-    if(!key || key.length>160 || /[\\u0000-\\u001f\\u007f]/.test(key)) return {status:'operation-unresolved',reason:'invalid-original-idempotency-key'};
+    if(!key || key.length>160 || /[\u0000-\u001f\u007f]/.test(key)) return {status:'operation-unresolved',reason:'invalid-original-idempotency-key'};
     const keyHash=sha256Stable({idempotencyKey:key});
     const lookup=await this.findLedgerEntry(keyHash);
     if(lookup.error) return {status:'operation-unresolved',reason:lookup.error};

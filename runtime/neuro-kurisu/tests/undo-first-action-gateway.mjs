@@ -65,9 +65,10 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
       status: 'unknown',
       reason: 'test provider cannot yet resolve this compensation receipt',
     }),
-    execute: async (_input, context) => {
+    execute: async (input, context) => {
       events.push('compensate');
       assert.equal(context.expectedPreconditionHash, AFTER, 'compensator receives the expected post-action fingerprint for an atomic compare-and-set');
+      assert.equal(input.recoveryArtifactRef, 'snapshot:relay-01:before-v17', 'durable recovery artifact handle reaches the provider compensator');
       if (state.hash !== context.expectedPreconditionHash) throw new ToolExecutionNoEffectError('state changed before compensation');
       counts.compensation += 1;
       state.hash = BEFORE;
@@ -94,9 +95,10 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
             summary: 'restore relay-01 to its exact captured pre-action state',
             beforeStateHash: BEFORE,
             afterStateHash: AFTER,
+            recoveryArtifactRef: 'snapshot:relay-01:before-v17',
             compensation: {
               toolId: 'test.undo.restore',
-              input: { target: 'relay-01', stateHash: BEFORE },
+              input: { target: 'relay-01', stateHash: BEFORE, recoveryArtifactRef: 'snapshot:relay-01:before-v17' },
             },
             verification: {
               toolId: 'test.undo.state-read',
@@ -160,6 +162,7 @@ function makeGateway({ prepare = true, stateHash = BEFORE, uncertain = false, dr
   assert.equal(pendingPlan.status, 'completed');
   assert.equal(pendingPlan.undoPlan.beforeStateHash, BEFORE);
   assert.equal(pendingPlan.undoPlan.afterStateHash, AFTER);
+  assert.equal(pendingPlan.undoPlan.recoveryArtifactRef, 'snapshot:relay-01:before-v17');
   assert.match(pendingPlan.undoPlan.planHash, /^[a-f0-9]{64}$/);
 
   const undo = await gateway.executeUndoForKey(ORIGINAL_KEY, 'restore relay after verified mutation');
