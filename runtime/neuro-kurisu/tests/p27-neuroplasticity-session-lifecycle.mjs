@@ -35,7 +35,7 @@ const afterBeta = runtime.core.neuralExperienceBranchDiagnostics().testTimeNeuro
 assert.equal(afterBeta.sessionScopeCount, initialScopeCount + 2,
   'distinct conversations inside one runtime session were not isolated');
 
-const nfdConversation = 'cafe\\u0301';
+const nfdConversation = 'cafe\u0301';
 await runtime.step('unicode conversation first turn', { conversationId: nfdConversation, suppressResponse: true });
 const afterNfd = runtime.core.neuralExperienceBranchDiagnostics().testTimeNeuroplasticity.sessionScopeCount;
 await runtime.step('unicode conversation normalized turn', { conversationId: 'café', suppressResponse: true });
