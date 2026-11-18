@@ -1,4 +1,4 @@
-import type { CognitiveBudgetManager, CognitiveBudgetState } from '../cognition/CognitiveBudgetManager.ts';
+import type { CognitiveBudgetManager, CognitiveBudgetState, CognitiveOperation } from '../cognition/CognitiveBudgetManager.ts';
 import type { B292CognitiveStateBusState } from '../system/B292CognitiveStateBus.ts';
 import {
   hyperPlasticContextFromB292,
@@ -8,13 +8,59 @@ import {
 } from './HyperPlasticNetwork.ts';
 import { HyperPlasticNetwork } from './HyperPlasticNetwork.ts';
 
+/** Narrow view of the canonical OrganismCore authority; this bridge never owns a budget. */
+export interface HyperPlasticCoreBudgetAuthority {
+  cognitiveBudgetOperationalSnapshot(): CognitiveBudgetState;
+  cognitiveBudgetEstimateCost(
+    operation: CognitiveOperation,
+    context?: Parameters<CognitiveBudgetManager['estimateCost']>[1],
+  ): number;
+  cognitiveBudgetCanSpend(operation: CognitiveOperation, cost01?: number): boolean;
+  cognitiveBudgetSpend(
+    operation: CognitiveOperation,
+    cost01?: number,
+    informationGain01?: number,
+    reason?: string,
+  ): ReturnType<CognitiveBudgetManager['spend']>;
+}
+export interface HyperPlasticBudgetPort {
+  snapshot(): CognitiveBudgetState;
+  estimateCost(
+    operation: CognitiveOperation,
+    context?: Parameters<CognitiveBudgetManager['estimateCost']>[1],
+  ): number;
+  canSpend(operation: CognitiveOperation, cost01?: number): boolean;
+  spend(
+    operation: CognitiveOperation,
+    cost01?: number,
+    informationGain01?: number,
+    meta?: { tick?: number; reason?: string },
+  ): ReturnType<CognitiveBudgetManager['spend']>;
+}
+/** Adapt the real Core-owned budget APIs without constructing a second manager. */
+export function hyperPlasticBudgetPortFromCore(core: HyperPlasticCoreBudgetAuthority): HyperPlasticBudgetPort {
+  if (!core || typeof core.cognitiveBudgetOperationalSnapshot !== 'function' ||
+      typeof core.cognitiveBudgetEstimateCost !== 'function' ||
+      typeof core.cognitiveBudgetCanSpend !== 'function' ||
+      typeof core.cognitiveBudgetSpend !== 'function') {
+    throw new TypeError('ome26-core-budget-authority-unavailable');
+  }
+  return Object.freeze({
+    snapshot: () => core.cognitiveBudgetOperationalSnapshot(),
+    estimateCost: (operation, context) => core.cognitiveBudgetEstimateCost(operation, context),
+    canSpend: (operation, cost01) => core.cognitiveBudgetCanSpend(operation, cost01),
+    spend: (operation, cost01, informationGain01, meta) =>
+      core.cognitiveBudgetSpend(operation, cost01, informationGain01, meta?.reason ?? 'ome26-hyper-plastic-shadow'),
+  });
+}
+
 export interface HyperPlasticRuntimeProposalInput {
   state: B292CognitiveStateBusState;
   taskType: HyperPlasticTaskType;
   strategy: HyperPlasticStrategy;
   confidence01: number;
   baseModelFingerprint: string;
-  budgetManager: CognitiveBudgetManager;
+  budgetManager: HyperPlasticBudgetPort;
 }
 
 export type HyperPlasticRuntimeProposalResult =

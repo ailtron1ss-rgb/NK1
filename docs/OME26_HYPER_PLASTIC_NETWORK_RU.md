@@ -21,6 +21,13 @@
 - Сгенерированный адаптер и его вложенные матрицы замораживаются; композиция повторно проверяет fingerprint и норму дельты. Checkpoint гиперсети также имеет checksum-проверку при restore.
 - Реальный backend сегодня не заявляет low-rank capability в этой ветке; поэтому стандартный runtime остаётся на базовой модели.
 
+## Runtime-интеграция
+
+- В `OrganismCore` добавлены read-only snapshot канонического B292 и метод оценки стоимости через уже существующий `CognitiveBudgetManager`.
+- `OrganismRuntime` получил opt-in `hyperPlasticResearch.enabled`; по умолчанию контур выключен. Требуется SHA-256 fingerprint точной базовой модели и model-specific target shape.
+- На заданной cadence и при достаточной новизне runtime читает B292 из Core, оценивает и списывает `research` через тот же Core-owned budget manager ровно один раз.
+- Кандидат выходит в результате цикла и evidence/journal как `shadow-only`; базовая модель и активный backend не меняются.
+
 ## Следующий инженерный этап
 
 1. Подключить адаптер только к локальному backend, который явно предоставляет queryable capability и точный список поддерживаемых target layers.
@@ -31,5 +38,9 @@
 ## Проверки
 
 `npm run test:ome26:hyper-plastic-network`
+`npm run test:ome26:signed-outcome-metrics`
+`npm run test:ome26:signed-promotion`
+`npm run test:ome26:runtime-budget-bridge`
+`npm run test:ome26:runtime-integration`
 
 Workflow `.github/workflows/ome26-hyper-plastic-network.yml` выполняет этот тест и runtime typecheck на PR. Этот research PR не меняет Release ZIP и не выполняет автоматическое слияние.

@@ -1,5 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPluginVoiceTranscriptBridge.ts';
+import { HyperPlasticNetwork, type HyperPlasticTaskType, type HyperPlasticStrategy, type HyperPlasticNetworkConfig } from '../research/HyperPlasticNetwork.ts';
+import { HyperPlasticRuntimeBridge, hyperPlasticBudgetPortFromCore, type HyperPlasticRuntimeProposalResult } from '../research/HyperPlasticRuntimeBridge.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
@@ -120,6 +122,14 @@ export interface RuntimeConfig extends OrganismConfig {
   voiceTranscriptObserverSessionId?: string;
   /** Character label sent with explicitly consented voice observations. */
   voiceTranscriptCharacterName?: string;
+  /** Explicit opt-in OME26 shadow proposal integration. No live adapter loading or weight mutation. */
+  hyperPlasticResearch?: {
+    enabled: boolean;
+    baseModelFingerprint: string;
+    network: HyperPlasticNetworkConfig;
+    cadenceTicks?: number;
+    minNovelty01?: number;
+  };
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
 }
@@ -136,7 +146,14 @@ export interface RuntimeStepOptions {
   externalSource?: RuntimeExternalPluginSource;
 }
 
-export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
+export interface RuntimeStep {
+  cycle: OrganismCycleResult;
+  worldAction: EnvironmentAction;
+  language?: LanguageResponse;
+  embodiedAction?: EmbodiedActionResult;
+  /** Research-only candidate; never active in the local language provider. */
+  hyperPlasticProposal?: HyperPlasticRuntimeProposalResult;
+}
 
 export class OrganismRuntime {
   /**
@@ -212,6 +229,12 @@ export class OrganismRuntime {
   private readonly runtimeClosure = new RuntimeClosureLedger();
   private readonly causalDomainClosureLedger = new CausalDomainClosureLedger(32);
   private readonly adaptiveConsolidationGate = new AdaptiveConsolidationGate();
+  private readonly hyperPlasticRuntimeBridge: HyperPlasticRuntimeBridge | null;
+  private readonly hyperPlasticResearchConfig: {
+    baseModelFingerprint: string;
+    cadenceTicks: number;
+    minNovelty01: number;
+  } | null;
   private readonly trustedShadowLearningScheduler: P23TrustedShadowLearningScheduler | null;
   private readonly compoundRepairRevisionCoordinator: P23CompoundRepairRevisionCoordinator | null;
   private compoundRepairRevisionCursor = 0;
@@ -274,6 +297,24 @@ export class OrganismRuntime {
     this.phonePolicy.checkpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.checkpointMaxDirtyCycles));
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
+    if (config.hyperPlasticResearch?.enabled === true) {
+      const research = config.hyperPlasticResearch;
+      if (typeof research.baseModelFingerprint !== 'string' ||
+          !/^sha256:[a-f0-9]{64}$/i.test(research.baseModelFingerprint)) {
+        throw new Error('ome26-requires-real-sha256-base-model-fingerprint');
+      }
+      const cadenceTicks = research.cadenceTicks ?? 16;
+      const minNovelty01 = research.minNovelty01 ?? 0.55;
+      if (!Number.isSafeInteger(cadenceTicks) || cadenceTicks < 8 || cadenceTicks > 4096 ||
+          !Number.isFinite(minNovelty01) || minNovelty01 < 0 || minNovelty01 > 1) {
+        throw new Error('ome26-runtime-cadence-or-novelty-invalid');
+      }
+      this.hyperPlasticRuntimeBridge = new HyperPlasticRuntimeBridge(new HyperPlasticNetwork(research.network));
+      this.hyperPlasticResearchConfig = { baseModelFingerprint: research.baseModelFingerprint, cadenceTicks, minNovelty01 };
+    } else {
+      this.hyperPlasticRuntimeBridge = null;
+      this.hyperPlasticResearchConfig = null;
+    }
     this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
     const learningJournals = createDefaultLearningJournals(config.stateFile);
     this.core.configureP23LearningJournals(learningJournals);
@@ -588,6 +629,40 @@ export class OrganismRuntime {
     });
   }
 
+  private proposeHyperPlasticShadowCandidate(
+    cycle: OrganismCycleResult, action: string, hasExternalInput: boolean,
+  ): HyperPlasticRuntimeProposalResult | undefined {
+    const config = this.hyperPlasticResearchConfig;
+    const bridge = this.hyperPlasticRuntimeBridge;
+    if (!config || !bridge || cycle.state.tick <= 0 ||
+        cycle.state.tick % config.cadenceTicks !== 0 ||
+        cycle.state.needs.novelty < config.minNovelty01) return undefined;
+    const b292 = this.core.b292CognitiveStateBusSnapshot();
+    const budgetManager = hyperPlasticBudgetPortFromCore(this.core);
+    const taskType: HyperPlasticTaskType = hasExternalInput || action === 'communicate'
+      ? 'dialogue' : action === 'collect' ? 'retrieval'
+        : action === 'inspect' || action === 'observe' ? 'perception'
+          : action === 'move' || action === 'rest' ? 'planning' : 'reasoning';
+    const strategy: HyperPlasticStrategy = hasExternalInput || action === 'communicate'
+      ? 'respond' : action === 'collect' ? 'retrieve'
+        : action === 'inspect' || action === 'observe' ? 'verify'
+          : action === 'move' ? 'explore'
+            : action === 'rest' || action === 'wait' ? 'defer' : 'reflect';
+    return bridge.propose({
+      state: b292, taskType, strategy,
+      confidence01: Number(cycle.decision.selected?.confidence ?? 0.5),
+      baseModelFingerprint: config.baseModelFingerprint, budgetManager,
+    });
+  }
+
+  hyperPlasticResearchDiagnostics() {
+    return {
+      enabled: Boolean(this.hyperPlasticRuntimeBridge),
+      bridge: this.hyperPlasticRuntimeBridge?.snapshot() ?? null,
+      note: 'shadow proposal only; no adapter loader or live weight mutation',
+    };
+  }
+
   /** Remote recall is a separately gated, best-effort source. It never writes to canonical MemoryOS2. */
   private async retrieveMem0Context(query: string): Promise<Mem0Candidate[]> {
     if (!this.mem0CognitiveRecallEnabled || !query.trim() || !this.mem0Adapter.diagnostics().available) return [];
@@ -741,6 +816,26 @@ export class OrganismRuntime {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
     const internalAction = cycle.decision.selected?.action ?? 'wait';
+    const hyperPlasticProposal = this.proposeHyperPlasticShadowCandidate(cycle, internalAction, Boolean(externalText));
+    if (hyperPlasticProposal) {
+      this.evidenceBus.publish({
+        tick: cycle.state.tick, kind: 'model', source: 'ome26-hyper-plastic-shadow',
+        confidence01: hyperPlasticProposal.status === 'shadow-candidate' ? .65 : .20,
+        payload: {
+          status: hyperPlasticProposal.status, reason: hyperPlasticProposal.reason,
+          adapterFingerprint: hyperPlasticProposal.adapter?.fingerprint ?? null,
+          targetLayer: hyperPlasticProposal.adapter?.target.layer ?? null,
+          budgetSpent01: hyperPlasticProposal.budgetSpent01,
+          remainingBudget01: hyperPlasticProposal.remainingBudget01,
+          activation: 'shadow-only', baselineWeightsMutated: false,
+        },
+      });
+      await this.journal.write('info', 'runtime.ome26.shadow-proposal', {
+        tick: cycle.state.tick, status: hyperPlasticProposal.status, reason: hyperPlasticProposal.reason,
+        adapterFingerprint: hyperPlasticProposal.adapter?.fingerprint ?? null,
+        budgetSpent01: hyperPlasticProposal.budgetSpent01,
+      }).catch(() => {});
+    }
     const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
     const projectAllowed = executionPlan?.run?.project !== false;
     const planningBudget = projectAllowed
@@ -1169,7 +1264,7 @@ export class OrganismRuntime {
       });
       if(gate.run) await this.consolidateInternal(false);
     }
-    return { cycle: { ...cycle, multimodal: this.core.multimodalSnapshot(), cognitiveProposal }, worldAction, language, embodiedAction };
+    return { cycle: { ...cycle, multimodal: this.core.multimodalSnapshot(), cognitiveProposal }, worldAction, language, embodiedAction, hyperPlasticProposal };
   }
 
   /**
@@ -1976,6 +2071,7 @@ export class OrganismRuntime {
       ...this.core.longitudinalSnapshot(),
       trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       compoundRepairRevision:this.compoundRepairRevisionDiagnostics(),
+      hyperPlasticResearch:this.hyperPlasticResearchDiagnostics(),
       lastAutonomyStepMs:this.lastAutonomyStepAt,
       runtimeClocks:this.clockScheduler.snapshot(),
       continuityLedger:this.continuityLedger.metrics(),

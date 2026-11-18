@@ -10,6 +10,9 @@ on:
       - "runtime/neuro-kurisu/tests/ome26-signed-promotion.mjs"
       - "runtime/neuro-kurisu/tests/ome26-runtime-budget-bridge.mjs"
       - "runtime/neuro-kurisu/src/organism/research/HyperPlasticRuntimeBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/ome26-runtime-integration.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/CognitiveBudgetManager.ts"
       - "runtime/neuro-kurisu/src/organism/system/B292CognitiveStateBus.ts"
       - "runtime/neuro-kurisu/src/organism/research/HyperPlasticOutcomeEvaluator.ts"
@@ -54,6 +57,9 @@ jobs:
       - name: Verify B292 and single-owner cognitive-budget runtime bridge
         working-directory: runtime/neuro-kurisu
         run: npm run test:ome26:runtime-budget-bridge
+      - name: Verify OME26 attachment to the real OrganismCore runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:ome26:runtime-integration
       - name: Run Hyper-Plastic Network contract and bounded low-rank experiment
         working-directory: runtime/neuro-kurisu
         run: npm run test:ome26:hyper-plastic-network

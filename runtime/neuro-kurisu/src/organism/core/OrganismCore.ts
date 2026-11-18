@@ -2378,6 +2378,10 @@ export class OrganismCore {
     p65Snapshot() { return this.memorySubsystem.p65EpistemicLedger.snapshot(); }
     cognitiveBudgetSpend(operation: import('../cognition/CognitiveBudgetManager.ts').CognitiveOperation, cost01?: number, informationGain01 = 0, reason = 'runtime'): ReturnType<CognitiveBudgetManager['spend']> { const result = this.agencySubsystem.budget.spend(operation, cost01, informationGain01, { tick: this.persisted.state.tick, reason }); this.persisted.facets.cognition.budget = this.agencySubsystem.budget.snapshot(); return result; }
     cognitiveBudgetCanSpend(operation: import('../cognition/CognitiveBudgetManager.ts').CognitiveOperation, cost01?: number): boolean { return this.agencySubsystem.budget.canSpend(operation, cost01); }
+    cognitiveBudgetEstimateCost(
+        operation: import('../cognition/CognitiveBudgetManager.ts').CognitiveOperation,
+        context: Parameters<CognitiveBudgetManager['estimateCost']>[1] = {},
+    ): number { return this.agencySubsystem.budget.estimateCost(operation, context); }
     cognitiveImmuneSnapshot() { return structuredClone(this.cognitiveRuntime.cognitiveImmune.snapshot()); }
     setRuntimeEvidence(snapshot: import('../system/RuntimeEvidenceBus.ts').RuntimeEvidenceSnapshot): void { this.persisted.system.runtimeEvidence = snapshot; }
     setCognitiveEventFabric(snapshot: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot): void { this.persisted.system.cognitiveEventFabric = snapshot; }
@@ -10924,6 +10928,7 @@ export class OrganismCore {
     b291UnifiedSelfAgencySnapshot() { return this.developmentalNeural.unifiedSelfAgencyPersonalityB291.snapshot(); }
     b291UnifiedSelfAgencyLesion(fraction01 = .5) { const r = this.developmentalNeural.unifiedSelfAgencyPersonalityB291.lesion(fraction01); this.persisted.system.unifiedSelfAgencyPersonalityB291 = this.developmentalNeural.unifiedSelfAgencyPersonalityB291.snapshot(); return r; }
     b291UnifiedSelfAgencyClearLesion() { this.developmentalNeural.unifiedSelfAgencyPersonalityB291.clearLesion(); this.persisted.system.unifiedSelfAgencyPersonalityB291 = this.developmentalNeural.unifiedSelfAgencyPersonalityB291.snapshot(); return this.developmentalNeural.unifiedSelfAgencyPersonalityB291.diagnostics(); }
+    b292CognitiveStateBusSnapshot() { return structuredClone(this.developmentalNeural.cognitiveStateBusB292.snapshot()); }
     b292CognitiveStateBusDiagnostics() { return this.developmentalNeural.cognitiveStateBusB292.diagnostics(); }
     b292IntentTraceDiagnostics() { return this.developmentalNeural.intentTraceB292.diagnostics(); }
     b293SelfWorldPredictiveDiagnostics() { return this.developmentalNeural.selfWorldPredictiveMicrocircuitB293.diagnostics(); }

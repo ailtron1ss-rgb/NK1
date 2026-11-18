@@ -1,3 +1,7 @@
+import {
+  hyperPlasticBudgetPortFromCore,
+  HyperPlasticRuntimeBridge,
+} from '../src/organism/research/HyperPlasticRuntimeBridge.ts';
 import assert from 'node:assert/strict';
 import { CognitiveBudgetManager } from '../src/organism/cognition/CognitiveBudgetManager.ts';
 import { B292CognitiveStateBus, defaultB292CognitiveStateBus } from '../src/organism/system/B292CognitiveStateBus.ts';
@@ -100,3 +104,32 @@ console.log('OME26_RUNTIME_BUDGET_BRIDGE=PASS', JSON.stringify({
   oneSpendPerProposal: true,
   liveActivation: false,
 }));
+
+const authorityCalls = [];
+const fakeCoreBudgetAuthority = {
+  cognitiveBudgetOperationalSnapshot() {
+    authorityCalls.push(['snapshot']);
+    return { mode: 'shallow', remaining01: 0.8, available01: 0.8, estimatedCost01: 0, expectedInformationGain01: 0, rationale: 'fixture', updatedAt: 0, spent01: 0, operationCount: 0, informationGainRealized01: 0 };
+  },
+  cognitiveBudgetEstimateCost(operation, context) { authorityCalls.push(['estimate', operation, context]); return 0.1; },
+  cognitiveBudgetCanSpend(operation, cost) { authorityCalls.push(['canSpend', operation, cost]); return true; },
+  cognitiveBudgetSpend(operation, cost, gain, reason) {
+    authorityCalls.push(['spend', operation, cost, gain, reason]);
+    return { accepted: true, spent01: cost, remaining01: 0.7, reason: 'budget-accepted' };
+  },
+};
+const coreOwnedBudgetPort = hyperPlasticBudgetPortFromCore(fakeCoreBudgetAuthority);
+const coreBridge = new HyperPlasticRuntimeBridge(new HyperPlasticNetwork({
+  target: { layer: 'attention.query', rows: 4, cols: 4 }, rank: 2, hiddenDim: 12, seed: 26028,
+}));
+const coreOwnedProposal = coreBridge.propose({
+  state, taskType: 'reasoning', strategy: 'verify', confidence01: 0.86,
+  baseModelFingerprint, budgetManager: coreOwnedBudgetPort,
+});
+assert.equal(coreOwnedProposal.status, 'shadow-candidate');
+assert.ok(authorityCalls.some(call => call[0] === 'estimate' && call[1] === 'research'));
+assert.ok(authorityCalls.some(call => call[0] === 'canSpend' && call[1] === 'research'));
+assert.ok(authorityCalls.some(call => call[0] === 'spend' && call[1] === 'research' && call[4] === 'ome26-hyper-plastic-shadow'));
+assert.equal(authorityCalls.filter(call => call[0] === 'spend').length, 1,
+  'Core-owned adapter must debit exactly once through the canonical budget method');
+console.log('OME26_CORE_BUDGET_PORT=PASS', JSON.stringify({calls:authorityCalls.map(x=>x[0]),singleOwner:true}));

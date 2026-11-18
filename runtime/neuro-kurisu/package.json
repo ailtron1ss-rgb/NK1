@@ -1868,6 +1868,7 @@
     "test:ome26:hyper-plastic-network": "node --experimental-strip-types tests/ome26-hyper-plastic-network.mjs",
     "test:ome26:signed-outcome-metrics": "node --experimental-strip-types tests/ome26-signed-outcome-metrics.mjs",
     "test:ome26:signed-promotion": "node --experimental-strip-types tests/ome26-signed-promotion.mjs",
-    "test:ome26:runtime-budget-bridge": "node --experimental-strip-types tests/ome26-runtime-budget-bridge.mjs"
+    "test:ome26:runtime-budget-bridge": "node --experimental-strip-types tests/ome26-runtime-budget-bridge.mjs",
+    "test:ome26:runtime-integration": "node --experimental-strip-types tests/ome26-runtime-integration.mjs"
   }
 }
