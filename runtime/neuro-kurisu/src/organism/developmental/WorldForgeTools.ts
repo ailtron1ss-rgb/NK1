@@ -172,11 +172,12 @@ export class WorldForgeToolAdapter {
       }
     }
     const modes = new Set(evaluation.failureModes);
-    if (modes.has('resource-budget')) this.#trainingFeedback['resource-shock'] += 2;
-    if (modes.has('step-budget')) this.#trainingFeedback['deadline-shift'] += 2;
-    if (modes.has('risk-budget') || modes.has('disturbance-pressure')) this.#trainingFeedback['route-block'] += 2;
-    if (modes.has('evidence-gap') || modes.has('invalid-trace')) this.#trainingFeedback['signal-noise'] += 2;
-    if (modes.has('goal-gap')) this.#trainingFeedback.balanced += 1;
+    if (modes.has('resource-budget')) this.#trainingFeedback['resource-shock'] += 3;
+    if (modes.has('step-budget')) this.#trainingFeedback['deadline-shift'] += 4;
+    if (modes.has('risk-budget') || modes.has('disturbance-pressure')) this.#trainingFeedback['route-block'] += 3;
+    if (modes.has('evidence-gap')) this.#trainingFeedback['signal-noise'] += 1;
+    if (modes.has('invalid-trace')) this.#trainingFeedback['signal-noise'] += 2;
+    if (modes.has('goal-gap')) this.#trainingFeedback.balanced += 0.5;
   }
 
   private resolveAutomaticFocus(): WorldForgeAdversarialFocus {
