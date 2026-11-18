@@ -62,6 +62,12 @@ class ValidationEarlyStoppingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "validation-dataset-matches-training-dataset"):
             checker("a" * 64, "a" * 64)
 
+    def test_legacy_artifact_without_training_provenance_remains_diagnostically_evaluable(self):
+        checker = getattr(training, "ensure_validation_is_distinct", None)
+        self.assertTrue(callable(checker), "training/validation split guard is required")
+        if checker is not None:
+            checker(None, "b" * 64)
+
     def test_holdout_must_be_distinct_from_both_training_and_validation(self):
         checker = getattr(training, "ensure_holdout_is_distinct", None)
         self.assertTrue(callable(checker), "holdout separation guard is required")
