@@ -148,7 +148,7 @@ test('critical code changes require independent sandbox and third holdout identi
     changes: [{ path: 'src/organism/core/ActionGateway.ts', operation: 'create', content: 'export const gatewayPolicy = "safe";' }],
   });
   assert.equal(proposal.risk, 'critical');
-  assert.equal((await engine.recordSandboxVerification(proposal.proposalId, { primary: runReceipt() })).status, 'tests-failed');
+  assert.equal((await engine.recordSandboxVerification(proposal.proposalId, { primary: runReceipt(proposal) })).status, 'tests-failed');
   const verified = await engine.recordSandboxVerification(proposal.proposalId, {
     primary: runReceipt(proposal),
     independent: runReceipt(proposal, { runId: 'run-independent', sandboxId: 'sandbox-independent' }),
