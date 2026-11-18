@@ -575,8 +575,8 @@ await tamperedManifestRegistry.restore(
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
   () => true,
 );
-assert.equal(tamperedManifestRegistry.snapshot().adapters[0].status, 'eligible',
-  'changing a served alias must invalidate the operator approval that was bound to the original manifest');
+assert.equal(tamperedManifestRegistry.snapshot().adapters[0].status, 'staged',
+  'changing a served alias invalidates both the manifest-bound approval and the evaluator-bound report; a fresh independent evaluation is required');
 assert.equal(tamperedManifestRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
