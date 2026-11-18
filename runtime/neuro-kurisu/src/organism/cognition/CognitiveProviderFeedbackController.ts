@@ -1,4 +1,4 @@
-import { COGNITIVE_MODE_TOKEN_CEILINGS, type CognitiveBridgeMode } from './CognitiveToNeuralBridge.ts';
+import { COGNITIVE_MODE_TOKEN_CEILINGS, type CognitiveBridgeMode } from './CognitiveModeContract.ts';
 
 export const COGNITIVE_PROVIDER_FEEDBACK_MODES:readonly CognitiveBridgeMode[]=[
   'reflex','shallow','retrieve','deep','simulate','defer','sleep',
