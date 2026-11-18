@@ -967,8 +967,17 @@ export class ConsequenceEcologyEngine {
           Math.abs(canonicalOutcome.forecastProbability01 - row.sharedFutureForecastProbability01) > 1e-9 ||
           canonicalOutcome.evidenceRef !== row.evidenceRef ||
           canonicalOutcome.independentSourceCount !== row.independentSourceCount ||
+          Math.abs((canonicalOutcome.confidence01 ?? -1) - row.confidence01) > 1e-9 ||
+          Math.abs((canonicalOutcome.independent01 ?? -1) - row.independent01) > 1e-9 ||
+          new Set(canonicalOutcome.evidenceObservationIds ?? []).size !== row.independentSourceCount ||
+          new Set(canonicalOutcome.sourceIds ?? []).size !== row.independentSourceCount ||
+          new Set(canonicalOutcome.independenceKeys ?? []).size !== row.independentSourceCount ||
           JSON.stringify([...new Set(canonicalOutcome.evidenceObservationIds ?? [])].slice(0, 16)) !==
-            JSON.stringify(row.evidenceObservationIds)) continue;
+            JSON.stringify(row.evidenceObservationIds) ||
+          JSON.stringify([...new Set(canonicalOutcome.sourceIds ?? [])].slice(0, 16)) !==
+            JSON.stringify(row.sourceIds) ||
+          JSON.stringify([...new Set(canonicalOutcome.independenceKeys ?? [])].slice(0, 16)) !==
+            JSON.stringify(row.independenceKeys)) continue;
       const canonicalSourceClasses = [...new Set([
         ...(canonicalOutcome.sourceClasses ?? []),
         ...(canonicalOutcome.sourceClass ? [canonicalOutcome.sourceClass] : []),
@@ -1208,9 +1217,9 @@ export class ConsequenceEcologyEngine {
           !boundedNumber(outcome.forecastProbability01, 0, 1) ||
           !boundedInteger(outcome.independentSourceCount, 1, 16) ||
           !boundedNumber(outcome.confidence01, 0.68, 1) || !boundedNumber(outcome.independent01, outcome.occurred ? 0.5 : 1, 1) ||
-          !Array.isArray(outcome.evidenceObservationIds) || outcome.evidenceObservationIds.length < outcome.independentSourceCount ||
-          !Array.isArray(outcome.sourceIds) || outcome.sourceIds.length < outcome.independentSourceCount ||
-          !Array.isArray(outcome.independenceKeys) || outcome.independenceKeys.length < outcome.independentSourceCount ||
+          !Array.isArray(outcome.evidenceObservationIds) || new Set(outcome.evidenceObservationIds).size !== outcome.independentSourceCount ||
+          !Array.isArray(outcome.sourceIds) || new Set(outcome.sourceIds).size !== outcome.independentSourceCount ||
+          !Array.isArray(outcome.independenceKeys) || new Set(outcome.independenceKeys).size !== outcome.independentSourceCount ||
           !outcome.evidenceRef?.trim()) {
         throw new Error('consequence-outcome-evidence-incomplete');
       }
