@@ -276,16 +276,27 @@ class LayerForceBank:
         over_limit = actual_delta_norm > max_delta_norm
 
         if over_limit.any().item():
-            correction = (max_delta_norm / actual_delta_norm.clamp_min(torch.finfo(torch.float32).tiny)).clamp(max=1.0)
-            corrected = (base + delta * correction).to(dtype=hidden.dtype)
-            corrected_delta_norm = torch.linalg.vector_norm(corrected.float() - base, dim=-1, keepdim=True)
-            still_over_limit = corrected_delta_norm > max_delta_norm
-            # Some low-precision formats have no representable value inside
-            # the remaining interval. In that case preserve the exact baseline
-            # for that token instead of violating the hard safety bound.
-            fallback = still_over_limit
-            self._precision_fallback_tokens += int(fallback.sum().item())
-            candidate = torch.where(fallback, hidden, corrected)
+            # Quantization error is not smoothly invertible: a single analytic
+            # rescale can still round to the same out-of-bound FP16/BF16 value.
+            # Back off only the tokens that exceed the cap until the actual
+            # cast tensor is safe. Each step preserves the direction and keeps
+            # the largest tested safe scale rather than disabling the whole
+            # steering update after the first overshoot.
+            scale = torch.ones_like(max_delta_norm)
+            for _ in range(12):
+                if not over_limit.any().item():
+                    break
+                scale = torch.where(over_limit, scale * 0.5, scale)
+                candidate = (base + delta * scale).to(dtype=hidden.dtype)
+                actual_delta_norm = torch.linalg.vector_norm(candidate.float() - base, dim=-1, keepdim=True)
+                over_limit = actual_delta_norm > max_delta_norm
+
+            # Some low-precision formats still have no non-zero representable
+            # value inside the remaining interval. Preserve just those tokens.
+            fallback = over_limit
+            if fallback.any().item():
+                self._precision_fallback_tokens += int(fallback.sum().item())
+                candidate = torch.where(fallback, hidden, candidate)
 
         return candidate
 
