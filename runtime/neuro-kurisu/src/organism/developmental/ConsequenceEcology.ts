@@ -1315,29 +1315,83 @@ export class ConsequenceEcologyEngine {
     const calibrations = this.state.outcomeCalibrations;
     const calibrationScenarioCount = new Set(calibrations.map(row => row.scenarioId)).size;
     const calibrationDecisionCount = new Set(calibrations.map(row => row.actionDecisionId)).size;
+    const calibrationSourceIds = new Set(calibrations.flatMap(row => row.sourceIds));
+    const calibrationIndependenceKeys = new Set(calibrations.flatMap(row => row.independenceKeys));
+    const calibrationSourceClasses = new Set(calibrations.flatMap(row => row.sourceClasses));
+    const hasObservedPositive = calibrations.some(row => row.observed);
+    const hasObservedNegative = calibrations.some(row => !row.observed);
+    const calibrationWeight = (row: ConsequenceOutcomeCalibrationRecord) =>
+      Math.max(0, Math.min(1, row.confidence01 * row.independent01));
+    const totalCalibrationWeight = calibrations.reduce((sum, row) => sum + calibrationWeight(row), 0);
+    const squaredCalibrationWeight = calibrations.reduce((sum, row) => sum + calibrationWeight(row) ** 2, 0);
+    const effectiveCalibrationSampleSize = squaredCalibrationWeight > 0
+      ? totalCalibrationWeight ** 2 / squaredCalibrationWeight
+      : 0;
     const meanCalibrationBrier01 = calibrations.length
       ? calibrations.reduce((sum, row) => sum + row.brierScore01, 0) / calibrations.length
       : null;
     const meanSharedFutureBaselineBrier01 = calibrations.length
       ? calibrations.reduce((sum, row) => sum + row.sharedFutureBrierScore01, 0) / calibrations.length
       : null;
+    const weightedMeanCalibrationBrier01 = totalCalibrationWeight > 0
+      ? calibrations.reduce((sum, row) => sum + calibrationWeight(row) * row.brierScore01, 0) / totalCalibrationWeight
+      : null;
+    const weightedMeanSharedFutureBaselineBrier01 = totalCalibrationWeight > 0
+      ? calibrations.reduce((sum, row) => sum + calibrationWeight(row) * row.sharedFutureBrierScore01, 0) / totalCalibrationWeight
+      : null;
+    const wilson95 = (successes: number, count: number): { lower01: number; upper01: number } | null => {
+      if (!count) return null;
+      const z = 1.959963984540054;
+      const observed = successes / count;
+      const denominator = 1 + z * z / count;
+      const center = (observed + z * z / (2 * count)) / denominator;
+      const margin = z * Math.sqrt((observed * (1 - observed) / count) + (z * z / (4 * count * count))) / denominator;
+      return { lower01: Math.max(0, center - margin), upper01: Math.min(1, center + margin) };
+    };
     const calibrationBins = Array.from({ length: 5 }, (_, index) => {
       const lower = index / 5;
       const upper = (index + 1) / 5;
       const rows = calibrations.filter(row => row.forecastProbability01 >= lower &&
         (index === 4 ? row.forecastProbability01 <= upper : row.forecastProbability01 < upper));
+      const binWeight = rows.reduce((sum, row) => sum + calibrationWeight(row), 0);
+      const observedCount = rows.filter(row => row.observed).length;
+      const interval = wilson95(observedCount, rows.length);
       return {
         lower01: lower,
         upper01: upper,
         count: rows.length,
         meanForecastProbability01: rows.length ? rows.reduce((sum, row) => sum + row.forecastProbability01, 0) / rows.length : null,
-        observedFrequency01: rows.length ? rows.filter(row => row.observed).length / rows.length : null,
+        observedFrequency01: rows.length ? observedCount / rows.length : null,
+        lower95ObservedFrequency01: interval?.lower01 ?? null,
+        upper95ObservedFrequency01: interval?.upper01 ?? null,
+        weight: binWeight,
+        weightedMeanForecastProbability01: binWeight
+          ? rows.reduce((sum, row) => sum + calibrationWeight(row) * row.forecastProbability01, 0) / binWeight
+          : null,
+        weightedObservedFrequency01: binWeight
+          ? rows.reduce((sum, row) => sum + calibrationWeight(row) * (row.observed ? 1 : 0), 0) / binWeight
+          : null,
       };
     });
     const expectedCalibrationError01 = calibrations.length
       ? calibrationBins.reduce((sum, bin) => sum + (bin.count / calibrations.length) *
         Math.abs((bin.meanForecastProbability01 ?? 0) - (bin.observedFrequency01 ?? 0)), 0)
       : null;
+    const weightedExpectedCalibrationError01 = totalCalibrationWeight > 0
+      ? calibrationBins.reduce((sum, bin) => sum + (bin.weight / totalCalibrationWeight) *
+        Math.abs((bin.weightedMeanForecastProbability01 ?? 0) - (bin.weightedObservedFrequency01 ?? 0)), 0)
+      : null;
+    const calibrationReadinessReasons = [
+      ...(calibrations.length < 20 ? ['need-at-least-20-verified-samples'] : []),
+      ...(calibrationScenarioCount < 5 ? ['need-at-least-5-distinct-scenarios'] : []),
+      ...(calibrationDecisionCount < 10 ? ['need-at-least-10-distinct-action-decisions'] : []),
+      ...(effectiveCalibrationSampleSize < 15 ? ['effective-sample-size-below-15'] : []),
+      ...(calibrationSourceIds.size < 3 ? ['need-at-least-3-distinct-evidence-sources'] : []),
+      ...(calibrationIndependenceKeys.size < 3 ? ['need-at-least-3-distinct-independence-keys'] : []),
+      ...(calibrationSourceClasses.size < 2 ? ['need-at-least-2-evidence-source-classes'] : []),
+      ...(!hasObservedPositive || !hasObservedNegative ? ['need-both-positive-and-negative-observed-outcomes'] : []),
+    ];
+    const calibrationSampleSufficient = calibrationReadinessReasons.length === 0;
     return {
       version: 1 as const,
       retainedAnalyses: analyses.length,
@@ -1350,15 +1404,30 @@ export class ConsequenceEcologyEngine {
       rejectedCalibrations: this.state.rejectedCalibrations,
       calibrationScenarioCount,
       calibrationDecisionCount,
+      calibrationSourceCount: calibrationSourceIds.size,
+      calibrationIndependenceKeyCount: calibrationIndependenceKeys.size,
+      calibrationSourceClassCount: calibrationSourceClasses.size,
+      hasObservedPositive,
+      hasObservedNegative,
       meanCalibrationBrier01,
       meanSharedFutureBaselineBrier01,
       brierSkillScore: meanCalibrationBrier01 !== null && meanSharedFutureBaselineBrier01 !== null &&
         meanSharedFutureBaselineBrier01 > 0
         ? 1 - meanCalibrationBrier01 / meanSharedFutureBaselineBrier01
         : null,
+      weightedMeanCalibrationBrier01,
+      weightedMeanSharedFutureBaselineBrier01,
+      weightedBrierSkillScore: weightedMeanCalibrationBrier01 !== null &&
+        weightedMeanSharedFutureBaselineBrier01 !== null && weightedMeanSharedFutureBaselineBrier01 > 0
+        ? 1 - weightedMeanCalibrationBrier01 / weightedMeanSharedFutureBaselineBrier01
+        : null,
+      effectiveCalibrationSampleSize,
       expectedCalibrationError01,
+      weightedExpectedCalibrationError01,
       calibrationBins,
-      calibrationSampleSufficient: calibrations.length >= 5 && calibrationScenarioCount >= 3 && calibrationDecisionCount >= 3,
+      calibrationSampleSufficient,
+      calibrationReadinessReasons,
+      calibrationReadiness: calibrationSampleSufficient ? 'sample-sufficient-for-review' as const : 'insufficient-evidence' as const,
       modelWeightsUpdated: false as const,
       lastCalibrationAt: this.state.lastCalibrationAt,
       meanUncertainty01: options.length
