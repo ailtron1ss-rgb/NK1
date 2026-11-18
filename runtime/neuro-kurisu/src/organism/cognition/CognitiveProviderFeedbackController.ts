@@ -98,6 +98,8 @@ export class CognitiveProviderFeedbackController {
     if(!Number.isSafeInteger(input.maxTokens)||Number(input.maxTokens)<MIN_TOKENS
       ||Number(input.maxTokens)>MAX_TOKENS||Number(input.maxTokens)%16!==0)
       return {accepted:false,reason:'invalid-configured-token-budget'};
+    if(Number(input.completionTokens)>Number(input.maxTokens))
+      return {accepted:false,reason:'completion-exceeds-configured-budget'};
     if(!validFinishReason(input.finishReason)) return {accepted:false,reason:'invalid-provider-finish-reason'};
     const requestId=input.requestId;
     if(this.seenRequestIds.has(requestId)) return {accepted:false,reason:'duplicate-request-id'};
