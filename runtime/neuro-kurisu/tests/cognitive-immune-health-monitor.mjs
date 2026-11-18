@@ -39,12 +39,24 @@ function buildInputs({damaged=false}={}) {
       {verified:true,independent:true,context}
     );
   }
+  const compound=skills.compileCompoundSkill({
+    projectId:'cognitive-immune-fixture',name:'compound-health-fixture',origin:'test',
+    steps:[
+      {id:'compound-step-a',action:'verify',toolId:'tool-a'},
+      {id:'compound-step-b',action:'reflect',toolId:'tool-b'}
+    ]
+  });
+  assert.ok(compound);
+  for(let i=0;i<12;i++)skills.recordCompoundExecution(compound.id,{
+    success01:damaged?0:1,verified:!damaged,independent:true,holdout:false,
+    context:`compound-context-${i}`
+  });
   return {
     epistemic:p65.snapshot(),
     contradictions:contradictions.snapshot(),
     skills:skills.snapshot(),
     evidenceIds:{staleBeliefs:beliefs,predictions:predictionIds,contradictions:contradictionIds,
-      skills:skills.snapshot().skills.map(s=>s.id)}
+      skills:[...skills.snapshot().skills.map(s=>s.id),...skills.snapshot().compoundSkills.map(s=>s.id)]}
   };
 }
 
@@ -78,6 +90,8 @@ assert.ok(predictionSignal?.evidenceRefs.length>0&&predictionSignal.evidenceRefs
 const skillSignal=second.newSignals.find(s=>s.metric==='procedural-skill-degradation');
 assert.ok(skillSignal?.evidenceRefs.length>0&&skillSignal.evidenceRefs.every(id=>damaged.evidenceIds.skills.includes(id)),
   'skill degradation alerts must identify real skill records');
+assert.ok(skillSignal.evidenceRefs.some(id=>damaged.skills.compoundSkills.some(s=>s.id===id)),
+  'skill degradation monitoring must include mature compound procedures, using their non-holdout outcomes');
 assert.ok(immune.healthSnapshot().events.some(e=>e.type==='signal-opened'&&e.signalId===contradictionSignal.id),
   'opening a health signal must append an audit event');
 assert.equal(JSON.stringify(damaged),immutableBefore,'the monitor must not mutate P65, contradiction or skill source state');

@@ -14,6 +14,7 @@ export interface CognitiveHealthClaim {
 export interface CognitiveHealthSkill {
   id?:string; uses?:number; successes?:number; failures?:number; successRate?:number;
   status?:string; validatedUses?:number; independentEvidenceUses?:number;
+  nonHoldoutUses?:number; nonHoldoutSuccesses?:number;
 }
 export interface CognitiveHealthInput {
   tick:number; at?:number;
@@ -22,7 +23,7 @@ export interface CognitiveHealthInput {
     meanPredictionError01?:number; meanConfidence01?:number;
   };
   contradictions?:{claims?:Array<{id?:string;status?:string}>; unresolvedCount?:number};
-  skills?:{skills?:CognitiveHealthSkill[]};
+  skills?:{skills?:CognitiveHealthSkill[];compoundSkills?:CognitiveHealthSkill[]};
 }
 export type CognitiveHealthSeverity='review'|'critical';
 export type CognitiveHealthStatus='unknown'|'healthy'|'degraded'|'critical';
@@ -274,10 +275,19 @@ export class CognitiveImmuneSystem {
     const predictionError01=recentPredictionErrors.length>=3
       ?recentPredictionErrors.reduce((sum,error)=>sum+error,0)/recentPredictionErrors.length
       :clamp(input.epistemic?.meanPredictionError01);
-    const skills=(Array.isArray(input.skills?.skills)?input.skills!.skills!:[])
-      .filter(s=>s.status!=='disabled'&&Number(s.uses??0)>=6);
-    const skillUses=skills.reduce((n,s)=>n+Math.max(0,Number(s.uses??0)),0);
-    const skillFailures=skills.reduce((n,s)=>n+Math.max(0,Number(s.failures??Math.round((1-clamp(s.successRate))*Number(s.uses??0)))),0);
+    const primitiveSkills=(Array.isArray(input.skills?.skills)?input.skills!.skills!:[])
+      .filter(s=>s.status!=='disabled'&&Number(s.uses??0)>=6)
+      .map(s=>({...s,healthUses:Math.max(0,Number(s.uses??0)),healthFailures:Math.max(0,Number(s.failures??Math.round((1-clamp(s.successRate))*Number(s.uses??0))))}));
+    const compoundSkills=(Array.isArray(input.skills?.compoundSkills)?input.skills!.compoundSkills!:[])
+      .filter(s=>s.status!=='disabled'&&Number(s.nonHoldoutUses??0)>=6)
+      .map(s=>{
+        const uses=Math.max(0,Number(s.nonHoldoutUses??0));
+        const successes=Math.max(0,Math.min(uses,Number(s.nonHoldoutSuccesses??0)));
+        return {...s,healthUses:uses,healthFailures:Math.max(0,uses-successes)};
+      });
+    const skills=[...primitiveSkills,...compoundSkills];
+    const skillUses=skills.reduce((n,s)=>n+Math.max(0,Number((s as any).healthUses??0)),0);
+    const skillFailures=skills.reduce((n,s)=>n+Math.max(0,Number((s as any).healthFailures??0)),0);
     const beliefEligible=beliefs.length>=3;
     const contradictionEligible=contradictionTotal>=2;
     const predictionEligible=predictions>=3;
@@ -300,8 +310,11 @@ export class CognitiveImmuneSystem {
     const refs=(rows:Array<{id?:string}>):string[]=>Array.from(new Set(rows
       .map(row=>String(row.id??'').trim().slice(0,180)).filter(Boolean))).slice(0,12);
     const failureRate=(skill:CognitiveHealthSkill)=>{
-      const uses=Math.max(1,Number(skill.uses??0));
-      return Math.max(0,Number(skill.failures??Math.round((1-clamp(skill.successRate))*uses)))/uses;
+      const uses=Math.max(1,Number(skill.nonHoldoutUses??skill.uses??0));
+      const failures=skill.nonHoldoutUses!=null
+        ?Math.max(0,uses-Number(skill.nonHoldoutSuccesses??0))
+        :Math.max(0,Number(skill.failures??Math.round((1-clamp(skill.successRate))*uses)));
+      return failures/uses;
     };
     const predictionEvidence=retainedPredictions
       ?.slice().sort((a,b)=>clamp(b.error01)-clamp(a.error01)).slice(0,8)??[];
