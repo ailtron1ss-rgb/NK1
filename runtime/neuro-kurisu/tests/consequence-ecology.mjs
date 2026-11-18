@@ -520,6 +520,134 @@ assert.throws(() => simulator.analyzeConsequences({
 }), /consequence-horizon-invalid/,
 'fractional horizons must not be silently rounded to another analysis window');
 
+
+const calibrationSimulator = new FutureSimulator();
+const calibrationDecisionId = 'organism-decision-consequence-calibration';
+calibrationSimulator.sharedFuture.setCanonicalDecisionResolver(id => id === calibrationDecisionId);
+const calibrationScenario = calibrationSimulator.sharedFuture.createScenario({
+  id: 'verified-calibration-scenario',
+  title: 'Scenario used for independent consequence calibration',
+  owner: 'system',
+  confidence01: 0.95,
+  consequences: [{
+    id: 'verified-calibration-consequence',
+    description: 'The selected action reaches its measured postcondition.',
+    probability01: 0.72,
+    impact01: 0.9,
+    horizonDays: 3,
+    reversible: true,
+  }],
+});
+const calibrationAt = Date.now();
+const calibrationDecision = calibrationSimulator.sharedFuture.proposeDecision({
+  id: 'shared-future-calibration-decision',
+  scenarioId: calibrationScenario.id,
+  title: 'Execute the consequence-calibration action',
+  owner: 'system',
+  at: calibrationAt,
+  actionBinding: {
+    decisionId: calibrationDecisionId,
+    toolId: 'runtime.execute',
+    consequenceId: 'verified-calibration-consequence',
+    expectedPostcondition: 'deployment is healthy',
+  },
+});
+calibrationSimulator.sharedFuture.confirmDecision({
+  decisionId: calibrationDecision.id,
+  at: calibrationAt + 1,
+}, 'system');
+const calibrationAnalysis = calibrationSimulator.analyzeConsequences({
+  id: 'analysis-before-independent-outcome',
+  scenarioId: calibrationScenario.id,
+  horizonDays: 30,
+  at: calibrationAt + 2,
+  options: [{
+    ...option('verified-selected-option', 'execute the approved deployment action', [
+      node('additional-context', 'neutral', 0.2, 0.1, 0.9),
+    ], [edge('action-context', '__action__', 'additional-context')]),
+    decisionId: calibrationDecisionId,
+  }],
+});
+assert.equal(calibrationAnalysis.analysis.options[0].decisionId, calibrationDecisionId,
+  'the analysis must retain the exact accepted action-decision binding');
+assert.equal(typeof calibrationSimulator.recordVerifiedConsequenceOutcome, 'function',
+  'FutureSimulator must reconcile canonical verified outcomes with stored model forecasts');
+const independentlyRecorded = calibrationSimulator.sharedFuture.recordVerifiedExternalOutcome({
+  id: 'verified-calibration-outcome',
+  actionDecisionId: calibrationDecisionId,
+  toolId: 'runtime.execute',
+  executionId: 'exec-consequence-calibration-1',
+  observationId: 'observation-consequence-calibration-1',
+  expectedPostcondition: 'deployment is healthy',
+  observedPostcondition: 'deployment is healthy',
+  direction: 'confirmed',
+  confidence01: 0.93,
+  independent01: 0.82,
+  evidence: [{
+    observationId: 'observation-consequence-calibration-1',
+    sourceId: 'deployment-monitor-1',
+    sourceClass: 'external-api',
+    independenceKey: 'deployment-monitor-independent',
+    confidence01: 0.95,
+    assessment: 'match',
+    verified: true,
+  }],
+  at: calibrationAt + 100,
+});
+assert.equal(independentlyRecorded.recorded, true);
+const matchedCalibration = calibrationSimulator.recordVerifiedConsequenceOutcome({
+  outcomeId: independentlyRecorded.outcome.id,
+  analysisId: calibrationAnalysis.analysis.id,
+  optionId: 'verified-selected-option',
+});
+assert.equal(matchedCalibration.recorded, true);
+assert.equal(matchedCalibration.independentlyVerified, true);
+approx(matchedCalibration.calibration.forecastProbability01, 0.72, 'calibrated model forecast');
+approx(matchedCalibration.calibration.brierScore01, (0.72 - 1) ** 2, 'recomputed consequence ecology brier score');
+approx(matchedCalibration.calibration.baselineBrierScore01, (0.72 - 1) ** 2, 'shared future baseline brier score');
+assert.equal(matchedCalibration.calibration.skillScore01, 0,
+  'the calibration ledger must compare like-for-like predictions without inventing model skill');
+const replayedCalibration = calibrationSimulator.recordVerifiedConsequenceOutcome({
+  outcomeId: independentlyRecorded.outcome.id,
+  analysisId: calibrationAnalysis.analysis.id,
+  optionId: 'verified-selected-option',
+});
+assert.equal(replayedCalibration.replayed, true, 'calibration must be idempotent');
+assert.equal(
+  calibrationSimulator.consequenceEcology.diagnostics().verifiedCalibrationSamples,
+  1,
+);
+assert.equal(calibrationSimulator.consequenceEcology.diagnostics().calibrationReady, false,
+  'a single verified outcome is not enough to declare model calibration reliable');
+
+const unverifiedSimulator = new FutureSimulator();
+const unverifiedScenario = unverifiedSimulator.sharedFuture.createScenario({
+  id: 'unverified-calibration-scenario',
+  title: 'User/system report is not independent validation',
+  consequences: [{ id: 'unverified-result', description: 'An unverified result', probability01: 0.6 }],
+});
+const unverifiedAnalysis = unverifiedSimulator.analyzeConsequences({
+  id: 'unverified-calibration-analysis',
+  scenarioId: unverifiedScenario.id,
+  horizonDays: 30,
+  options: [option('unverified-option', 'perform the action', [
+    node('context', 'neutral', 0.5, 0.1, 0.9),
+  ], [edge('context-edge', '__action__', 'context')])],
+});
+const unverifiedOutcome = unverifiedSimulator.sharedFuture.recordOutcome({
+  id: 'unverified-outcome-record',
+  scenarioId: unverifiedScenario.id,
+  consequenceId: 'unverified-result',
+  occurred: true,
+  evidenceRef: 'user-report:unverified',
+});
+assert.equal(unverifiedOutcome.independentlyVerified, false);
+assert.throws(() => unverifiedSimulator.recordVerifiedConsequenceOutcome({
+  outcomeId: unverifiedOutcome.id,
+  analysisId: unverifiedAnalysis.analysis.id,
+  optionId: 'unverified-option',
+}), /consequence-outcome-not-independently-verified/);
+
 console.log('CONSEQUENCE_ECOLOGY=PASS', JSON.stringify({
   analysisCount: simulator.consequenceEcology.diagnostics().retainedAnalyses,
   modelTopRankedOptionId: first.analysis.modelTopRankedOptionId,
