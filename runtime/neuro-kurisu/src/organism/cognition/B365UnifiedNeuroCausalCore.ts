@@ -17,6 +17,9 @@ const SELF_EPISODE_LIMIT = 64;
 const GOAL_HISTORY_LIMIT = 96;
 const GOAL_DIM = 8;
 
+/** Version of the persisted B365 state and the read-only diagnostics signal contract. */
+export const B365_STATE_SCHEMA_VERSION = 14 as const;
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 const clamp11 = (x: number) => Math.max(-1, Math.min(1, Number.isFinite(x) ? x : 0));
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-Math.max(-8, Math.min(8, x))));
@@ -98,7 +101,7 @@ export interface B365GoalEcologyMemory {
 }
 
 export interface B365State {
-  version: 14;
+  version: typeof B365_STATE_SCHEMA_VERSION;
   tick: number;
   cycles: number;
   learningUpdates: number;
@@ -391,7 +394,7 @@ const makeActionForecasts = (): Record<ActionKind, B365ActionForecast> => Object
 ) as Record<ActionKind, B365ActionForecast>;
 
 export const defaultB365State = (): B365State => ({
-  version: 14,
+  version: B365_STATE_SCHEMA_VERSION,
   tick: 0,
   cycles: 0,
   learningUpdates: 0,
@@ -553,7 +556,7 @@ export class B365UnifiedNeuroCausalCore {
     this.state = {
       ...defaults,
       ...source,
-      version: 14,
+      version: B365_STATE_SCHEMA_VERSION,
       areas: source.areas ? structuredClone({ ...defaults.areas, ...source.areas }) : structuredClone(defaults.areas),
       synapses: Array.isArray(source.synapses) ? structuredClone(source.synapses) : defaults.synapses,
       actionReadout: Array.isArray(source.actionReadout) ? structuredClone(source.actionReadout) : defaults.actionReadout,
