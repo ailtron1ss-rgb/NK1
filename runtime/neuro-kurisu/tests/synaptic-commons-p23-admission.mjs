@@ -268,6 +268,7 @@ await assert.rejects(
 let proposalMode = 'valid';
 let localProposalCalls = 0;
 let hostDrift = false;
+let activeOutcomeBundleMethod = 'synaptic-commons:' + fingerprint;
 const runtime = new OrganismRuntime({
   stateFile: path.join(root, 'organism.json'),
   autoRun: false,
@@ -277,8 +278,11 @@ const runtime = new OrganismRuntime({
       ? { ...host, permittedTools: [] }
       : { ...host },
     createLocalPromotionProposal: async ({ candidateMethod }) => {
-      if (candidateMethod !== 'synaptic-commons:' + fingerprint) {
+      if (candidateMethod !== activeOutcomeBundleMethod) {
         await writeFile(outcomeBundlePath, JSON.stringify(buildSignedOutcomeBundle(candidateMethod)));
+        activeOutcomeBundleMethod = candidateMethod;
+      }
+      if (candidateMethod !== 'synaptic-commons:' + fingerprint) {
         return builtInProposalProvider({ candidateMethod });
       }
       localProposalCalls += 1;
