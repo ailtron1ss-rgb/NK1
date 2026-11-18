@@ -270,33 +270,34 @@ let localProposalCalls = 0;
 let hostDrift = false;
 let runtimeStopped = false;
 let activeOutcomeBundleMethod = 'synaptic-commons:' + fingerprint;
+const synapticP23Admission = {
+  currentHostCompatibilityTarget: () => hostDrift
+    ? { ...host, permittedTools: [] }
+    : { ...host },
+  createLocalPromotionProposal: async ({ candidateMethod }) => {
+    if (candidateMethod !== activeOutcomeBundleMethod) {
+      await writeFile(outcomeBundlePath, JSON.stringify(buildSignedOutcomeBundle(candidateMethod)));
+      activeOutcomeBundleMethod = candidateMethod;
+    }
+    if (candidateMethod !== 'synaptic-commons:' + fingerprint) {
+      return builtInProposalProvider({ candidateMethod });
+    }
+    localProposalCalls += 1;
+    const actualMethod = proposalMode === 'wrong-method'
+      ? 'synaptic-commons:' + 'f'.repeat(64)
+      : candidateMethod;
+    const proposal = proposalMode === 'valid' || proposalMode === 'host-drift'
+      ? await builtInProposalProvider({ candidateMethod })
+      : buildLocalProposal(actualMethod);
+    if (proposalMode === 'host-drift') hostDrift = true;
+    return proposalMode === 'serialized' ? JSON.parse(JSON.stringify(proposal)) : proposal;
+  },
+};
 const runtime = new OrganismRuntime({
   stateFile: path.join(root, 'organism.json'),
   autoRun: false,
   enableLanguage: false,
-  synapticP23Admission: {
-    currentHostCompatibilityTarget: () => hostDrift
-      ? { ...host, permittedTools: [] }
-      : { ...host },
-    createLocalPromotionProposal: async ({ candidateMethod }) => {
-      if (candidateMethod !== activeOutcomeBundleMethod) {
-        await writeFile(outcomeBundlePath, JSON.stringify(buildSignedOutcomeBundle(candidateMethod)));
-        activeOutcomeBundleMethod = candidateMethod;
-      }
-      if (candidateMethod !== 'synaptic-commons:' + fingerprint) {
-        return builtInProposalProvider({ candidateMethod });
-      }
-      localProposalCalls += 1;
-      const actualMethod = proposalMode === 'wrong-method'
-        ? 'synaptic-commons:' + 'f'.repeat(64)
-        : candidateMethod;
-      const proposal = proposalMode === 'valid' || proposalMode === 'host-drift'
-        ? await builtInProposalProvider({ candidateMethod })
-        : buildLocalProposal(actualMethod);
-      if (proposalMode === 'host-drift') hostDrift = true;
-      return proposalMode === 'serialized' ? JSON.parse(JSON.stringify(proposal)) : proposal;
-    },
-  },
+  synapticP23Admission,
 });
 
 try {
@@ -603,6 +604,20 @@ try {
 
   const biasBeforeRevoke = runtime.core.p23SkillBias('verify');
   assert.ok(biasBeforeRevoke > biasBeforeActivation);
+
+  // Host policy drift invalidates the exact environment-bound attestation.
+  hostDrift = true;
+  assert.equal(runtime.core.p23TopSkills().some(item =>
+    item.id === 'synaptic-commons:portable-verify-bias-live'), false,
+  'runtime/capability/tool manifest drift must suppress an active native preference');
+  assert.ok(runtime.core.p23SkillBias('verify') <= biasBeforeActivation + 1e-9,
+    'host policy drift must immediately remove the native preference bias');
+  hostDrift = false;
+  assert.ok(runtime.core.p23TopSkills().some(item =>
+    item.id === 'synaptic-commons:portable-verify-bias-live'),
+  'restoring the exact attested host manifest restores eligibility before revocation');
+  assert.ok(runtime.core.p23SkillBias('verify') > biasBeforeActivation);
+
   const revokedNative = await runtime.revokeSynapticSkill(liveNativeFingerprint, 'publisher withdrawal test');
   assert.equal(revokedNative.status, 'revoked');
   assert.ok(runtime.core.verifiedSkillCandidateSnapshot().active.some(item =>
@@ -622,6 +637,7 @@ try {
     stateFile: path.join(root, 'organism.json'),
     autoRun: false,
     enableLanguage: false,
+    synapticP23Admission,
   });
   try {
     await restartedRuntime.init();

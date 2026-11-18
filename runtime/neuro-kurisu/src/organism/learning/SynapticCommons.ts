@@ -769,12 +769,19 @@ export class SynapticCommons {
    * expired or no-longer-trusted source artifacts suppress the policy immediately.
    * The durable P23 candidate remains untouched for audit and approval lineage.
    */
-  isNativePolicyArtifactUsable(fingerprint: string): boolean {
+  isNativePolicyArtifactUsable(
+    fingerprint: string,
+    currentHost: SynapticCompatibilityTarget,
+  ): boolean {
     if (!HEX_64.test(fingerprint)) return false;
     const record = this.state.records.find(item => item.artifactFingerprint === fingerprint);
     if (!record || record.status !== 'attested' || !record.compatibility?.compatible ||
         !record.attestation || record.attestation.expiresAt <= this.safeNow()) return false;
     try {
+      // Native policy eligibility is tied to the exact host context used for attestation.
+      if (!currentHost || currentHost.runtimeVersion !== record.compatibility.runtimeVersion ||
+          currentHost.environmentFingerprint !== record.compatibility.environmentFingerprint ||
+          this.compatibilityReasons(record.artifact, currentHost).length !== 0) return false;
       this.assertLicenseReviewTrusted(record.artifact);
       const publisherKey = this.publisherKeys.get(record.artifact.signature.keyId);
       if (!publisherKey || !verifyEd25519(fingerprint, record.artifact.signature.value, publisherKey)) return false;
