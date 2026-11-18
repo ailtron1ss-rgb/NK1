@@ -137,7 +137,7 @@ const NEURO_PLASTIC_APPROVAL_SECRET = String(process.env.NEURO_PLASTIC_APPROVAL_
 const NEURO_PLASTIC_EVALUATOR_SECRET = String(process.env.NEURO_PLASTIC_EVALUATOR_SECRET || '');
 try {
     const registrySnapshot = JSON.parse(await readFile(NEURO_PLASTIC_REGISTRY_PATH, 'utf8'));
-    NEURO_PLASTIC_REGISTRY.restore(
+    await NEURO_PLASTIC_REGISTRY.restore(
         registrySnapshot,
         (approval, context) => verifyNeuroPlasticApprovalSignature(
             approval, context, NEURO_PLASTIC_APPROVAL_SECRET,
