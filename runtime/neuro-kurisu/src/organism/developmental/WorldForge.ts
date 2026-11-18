@@ -10,6 +10,8 @@ import { types as nodeUtilTypes } from 'node:util';
 export type WorldForgeSplit = 'train' | 'validation' | 'holdout';
 export type WorldForgeDomain = 'resource-allocation' | 'route-planning' | 'investigation';
 export type WorldForgeAction = 'observe' | 'inspect' | 'move' | 'collect' | 'wait' | 'reroute' | 'prioritize' | 'verify';
+export type WorldForgeAdversarialFocus = 'balanced' | 'resource-shock' | 'route-block' | 'signal-noise' | 'deadline-shift';
+export type WorldForgeFailureMode = 'goal-gap' | 'evidence-gap' | 'resource-budget' | 'risk-budget' | 'step-budget' | 'invalid-trace' | 'disturbance-pressure';
 export interface WorldForgeConstraints { maxSteps:number; resourceBudget:number; riskTolerance01:number; requiredEvidence:number; }
 interface WorldForgeDisturbance { atStep:number; kind:'resource-shock'|'route-block'|'signal-noise'|'deadline-shift'; magnitude01:number; }
 export interface WorldForgeCase {
@@ -21,7 +23,7 @@ export interface WorldForgeActionStep { action:WorldForgeAction; target?:string;
 export interface WorldForgeEvaluation {
   scenarioId:string; split:WorldForgeSplit; score01:number; success:boolean; constraintViolations:number;
   evidenceCoverage01:number; efficiency01:number; robustness01:number; strategyFamily:string; stepsUsed:number;
-  syntheticOnly:true; independentlyVerified:false; limitations:string[];
+  syntheticOnly:true; independentlyVerified:false; failureModes:WorldForgeFailureMode[]; limitations:string[];
 }
 interface HiddenAnswerKey { split:WorldForgeSplit; domain:WorldForgeDomain; requiredTargets:string[]; goalOptions:string[]; acceptedFamilies:string[]; criticalEvidence:string[]; disturbances:WorldForgeDisturbance[]; disturbancePenalty01:number; minimumScore01:number; resourceBudget:number; maxSteps:number; riskTolerance01:number; seed:number; createdAt:number; }
 interface WorldForgeSessionRecord { scenarioId:string; state:WorldForgeState; trace:WorldForgeActionStep[]; createdAt:number; }
@@ -38,6 +40,9 @@ export interface WorldForgeStepResult {
 export interface WorldForgeOptions {
   maxCasesPerBatch?:number; maxTraceSteps?:number; maxActiveScenarios?:number;
   scenarioTtlMs?:number; holdoutNamespace?:string; now?:()=>number;
+}
+export interface WorldForgeAdversarialRequest {
+  seed:number; count:number; difficulty01:number; focus:WorldForgeAdversarialFocus; candidateMultiplier?:number;
 }
 
 const ACTIONS:WorldForgeAction[]=['observe','inspect','move','collect','wait','reroute','prioritize','verify'];
@@ -142,6 +147,31 @@ function normalizeActionTrace(value:unknown,maxSteps:number):{steps:WorldForgeAc
   }
 }
 
+function normalizeAdversarialInput(value:unknown):WorldForgeAdversarialRequest|null {
+  try {
+    if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    const keys=Reflect.ownKeys(descriptors);
+    const allowed=new Set(['seed','count','difficulty01','focus','candidateMultiplier']);
+    if(keys.length>allowed.size||keys.some(k=>typeof k!=='string'||!allowed.has(k)))return null;
+    for(const key of keys as string[]){
+      const descriptor=descriptors[key];
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true)return null;
+    }
+    const seed=descriptors.seed?.value,count=descriptors.count?.value;
+    const difficulty01=descriptors.difficulty01?.value,focus=descriptors.focus?.value??'balanced';
+    const candidateMultiplier=descriptors.candidateMultiplier?.value??4;
+    if(typeof seed!=='number'||!Number.isSafeInteger(seed)||seed<0)return null;
+    if(typeof count!=='number'||!Number.isSafeInteger(count)||count<1||count>16)return null;
+    if(typeof difficulty01!=='number'||!Number.isFinite(difficulty01)||difficulty01<.2||difficulty01>.95)return null;
+    if(!['balanced','resource-shock','route-block','signal-noise','deadline-shift'].includes(focus))return null;
+    if(typeof candidateMultiplier!=='number'||!Number.isSafeInteger(candidateMultiplier)||candidateMultiplier<2||candidateMultiplier>4)return null;
+    return{seed,count,difficulty01,focus:focus as WorldForgeAdversarialFocus,candidateMultiplier};
+  } catch { return null; }
+}
+
 function normalizeGenerationInput(value:unknown):{split:WorldForgeSplit;seed:number;count:number;difficulty01:number}|null {
   try {
     if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
@@ -238,6 +268,31 @@ export class WorldForge {
     return this.generate(request);
   }
 
+  generateAdversarialRuntimeScenarios(input:unknown):WorldForgeCase[] {
+    const request=normalizeAdversarialInput(input);
+    if(!request)return[];
+    const candidateCount=Math.min(this.maxCases,request.count*request.candidateMultiplier);
+    const candidates=this.generate({split:'train',seed:request.seed,count:candidateCount,difficulty01:request.difficulty01});
+    const focusKind=request.focus==='balanced'?null:request.focus;
+    const ranked=candidates.map(scenario=>{
+      const key=this.#answers.get(scenario.id);
+      if(!key)return{scenario,pressure:-1};
+      const focusMatches=key.disturbances.filter(d=>focusKind===null||d.kind===focusKind);
+      const meanMagnitude=focusMatches.reduce((sum,d)=>sum+d.magnitude01,0)/Math.max(1,focusMatches.length);
+      const domainMatch=request.focus==='resource-shock'?Number(key.domain==='resource-allocation'):
+        request.focus==='route-block'?Number(key.domain==='route-planning'):
+        request.focus==='signal-noise'?Number(key.domain==='investigation'):
+        request.focus==='deadline-shift'?Number(key.maxSteps>0):.5;
+      const disturbanceCoverage=focusKind===null?key.disturbances.length/2:Number(focusMatches.length>0);
+      const pressure=clamp(.35*scenario.difficulty01+.35*meanMagnitude+.2*domainMatch+.1*disturbanceCoverage);
+      return{scenario,pressure};
+    }).sort((a,b)=>b.pressure-a.pressure||a.scenario.id.localeCompare(b.scenario.id));
+    const selected=ranked.slice(0,request.count).map(item=>item.scenario);
+    const selectedIds=new Set(selected.map(s=>s.id));
+    for(const candidate of candidates)if(!selectedIds.has(candidate.id))this.releaseEvaluator(candidate.id);
+    return selected;
+  }
+
   generate(input:unknown):WorldForgeCase[]{
     const request=normalizeGenerationInput(input);
     if(!request)return[];
@@ -274,7 +329,7 @@ export class WorldForge {
     }
     return out;
   }
-  #evaluateTrace(scenario:unknown,trace:unknown):WorldForgeEvaluation{
+  #evaluateTrace(scenario:unknown,trace:unknown,remainingSteps?:number):WorldForgeEvaluation{
     const identity=scenarioIdentity(scenario);
     if(!identity)return this.emptyEvaluation('invalid','train');
     const key=this.#answers.get(identity.id);
@@ -297,7 +352,15 @@ export class WorldForge {
     const robustness=clamp(1-risk-key.disturbancePenalty01);
     const strategy=key.acceptedFamilies.includes(family)?1:.55;
     const score=clamp(targetCoverage*.35+evidenceCoverage*.2+verification*.15+efficiency*.12+robustness*.1+strategy*.08-violations*.12);
-    return{scenarioId:identity.id,split:identity.split,score01:Number(score.toFixed(4)),success:score>=key.minimumScore01&&violations===0,constraintViolations:violations,evidenceCoverage01:Number(evidenceCoverage.toFixed(4)),efficiency01:Number(efficiency.toFixed(4)),robustness01:Number(robustness.toFixed(4)),strategyFamily:family,stepsUsed:attempted.length,syntheticOnly:true,independentlyVerified:false,limitations:['Synthetic environment only; does not establish real-world competence.','Holdout outcomes are evaluator-only and must not be used for tuning.','Scenario realism requires external calibration against real task distributions.']};
+    const failureModes:WorldForgeFailureMode[]=[];
+    if(targetCoverage<1)failureModes.push('goal-gap');
+    if(evidenceCoverage<1)failureModes.push('evidence-gap');
+    if(normalized.violations>0||failedActions>0)failureModes.push('invalid-trace');
+    if(normalized.overflow>0||valid.length>=Math.ceil(key.maxSteps*.85)||remainingSteps===0)failureModes.push('step-budget');
+    if(cost>=key.resourceBudget*.8)failureModes.push('resource-budget');
+    if(risk>=key.riskTolerance01*.8)failureModes.push('risk-budget');
+    if(robustness<.75)failureModes.push('disturbance-pressure');
+    return{scenarioId:identity.id,split:identity.split,score01:Number(score.toFixed(4)),success:score>=key.minimumScore01&&violations===0,constraintViolations:violations,evidenceCoverage01:Number(evidenceCoverage.toFixed(4)),efficiency01:Number(efficiency.toFixed(4)),robustness01:Number(robustness.toFixed(4)),strategyFamily:family,stepsUsed:attempted.length,syntheticOnly:true,independentlyVerified:false,failureModes,limitations:['Synthetic environment only; does not establish real-world competence.','Holdout outcomes are evaluator-only and must not be used for tuning.','Scenario realism requires external calibration against real task distributions.']};
   }
   evaluateSession(scenario:unknown,stateInput:unknown):WorldForgeEvaluation {
     const identity=scenarioIdentity(scenario);
@@ -306,7 +369,7 @@ export class WorldForge {
     const session=this.#sessions.get(sessionState.sessionId);
     if(!session||session.scenarioId!==identity.id||sessionState.scenarioId!==identity.id||sessionState.tick!==session.state.tick)return this.emptyEvaluation(identity.id,identity.split);
     if(this.currentTime()-session.createdAt>this.scenarioTtlMs){this.#sessions.delete(sessionState.sessionId);return this.emptyEvaluation(identity.id,identity.split);}
-    return this.#evaluateTrace(scenario,session.trace);
+    return this.#evaluateTrace(scenario,session.trace,session.state.remainingSteps);
   }
 
   startScenario(scenario:unknown):WorldForgeState|null {
@@ -406,7 +469,7 @@ export class WorldForge {
     next.events=next.events.slice(-64);
     session.trace.push({...action,cost:actionCost,risk01:actionRisk,accepted});
     session.state=next;
-    return{accepted,state:structuredClone(next),reward01:Number(reward01.toFixed(3)),eventsApplied,reason,syntheticOnly:true};
+    return{accepted,state:structuredClone(next),reward01:Number(reward01.toFixed(3)),eventsApplied,...(reason?{reason}:{}),syntheticOnly:true};
   }
 
   releaseSession(sessionId:string):void {
@@ -425,5 +488,5 @@ export class WorldForge {
     if(domain==='route-planning')return actions.includes('reroute')?'observe-reroute':actions.includes('inspect')&&actions.includes('move')?'safe-shortest-path':'checkpoint-recovery';
     return actions.includes('verify')&&actions.includes('inspect')?'triangulate-then-verify':actions.includes('observe')?'cross-check-signals':'defer-unverified';
   }
-  private emptyEvaluation(id:string,split:WorldForgeSplit):WorldForgeEvaluation{return{scenarioId:id,split,score01:0,success:false,constraintViolations:1,evidenceCoverage01:0,efficiency01:0,robustness01:0,strategyFamily:'invalid',stepsUsed:0,syntheticOnly:true,independentlyVerified:false,limitations:['Unknown, expired, or malformed scenario; evaluation failed closed.']};}
+  private emptyEvaluation(id:string,split:WorldForgeSplit):WorldForgeEvaluation{return{scenarioId:id,split,score01:0,success:false,constraintViolations:1,evidenceCoverage01:0,efficiency01:0,robustness01:0,strategyFamily:'invalid',stepsUsed:0,syntheticOnly:true,independentlyVerified:false,failureModes:['invalid-trace'],limitations:['Unknown, expired, or malformed scenario; evaluation failed closed.']};}
 }
