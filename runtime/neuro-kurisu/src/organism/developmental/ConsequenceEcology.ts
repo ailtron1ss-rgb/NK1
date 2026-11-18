@@ -889,7 +889,7 @@ export class ConsequenceEcologyEngine {
   }
 
   private canonicalPostcondition(value: string): string {
-    return value.normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase();
+    return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
   }
 
   private restoreCalibrationRecords(
