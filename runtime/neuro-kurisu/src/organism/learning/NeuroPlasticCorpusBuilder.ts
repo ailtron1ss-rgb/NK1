@@ -120,6 +120,9 @@ function materialize(
     if (!DOMAIN.test(rowDomain)) throw new Error('neuro-plastic-domain-invalid');
     if (rowDomain !== domain) continue;
     const consent = validateConsent(resolved.consent);
+    if (consent.provenanceDigest !== safeHash(row.evidenceRefDigest, 'evidence-reference-digest')) {
+      throw new Error('neuro-plastic-consent-provenance-evidence-mismatch');
+    }
     const prompt = safeText(resolved.prompt, 'prompt', 12_000);
     const completion = safeText(resolved.completion, 'completion', 12_000);
     if (prompt.length + completion.length > 20_000) throw new Error('neuro-plastic-example-too-large');
@@ -176,6 +179,12 @@ export function buildVerifiedNeuroPlasticCorpus(
     .map(row => row.taskId));
   if (rawDataset.validation.some(row => row && trainingTaskIds.has(row.taskId))) {
     throw new Error('neuro-plastic-train-validation-task-overlap');
+  }
+  const trainingPromptFingerprints = new Set(rawDataset.training
+    .filter(row => row && row.split === 'train')
+    .map(row => row.promptFingerprint));
+  if (rawDataset.validation.some(row => row && trainingPromptFingerprints.has(row.promptFingerprint))) {
+    throw new Error('neuro-plastic-train-validation-prompt-fingerprint-overlap');
   }
   if (new Set(rawDataset.training.filter(row => row?.split === 'train').map(row => row.seed)).size < 3 ||
       new Set(rawDataset.validation.filter(row => row?.split === 'validation').map(row => row.seed)).size < 2) {
