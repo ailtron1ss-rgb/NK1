@@ -112,11 +112,23 @@ export async function verifyNeuroPlasticAdapterArtifact(
         metadata.adapterId !== manifest.adapterId ||
         metadata.method !== manifest.method ||
         metadata.domain !== manifest.domain ||
+        metadata.baseModelId !== manifest.baseModel.id ||
+        metadata.backendId !== manifest.baseModel.backendId ||
+        metadata.baseModelAlias !== manifest.baseModel.servedModelAlias ||
+        metadata.servedModelAlias !== manifest.servedModelAlias ||
         metadata.baseModelFingerprint !== manifest.baseModel.fingerprint ||
         metadata.tokenizerFingerprint !== manifest.tokenizerFingerprint ||
         metadata.sourceDatasetFingerprint !== manifest.sourceDatasetFingerprint ||
         metadata.holdoutPlanFingerprint !== manifest.holdoutPlanFingerprint ||
-        metadata.corpusFingerprint !== manifest.corpusFingerprint) return false;
+        metadata.corpusFingerprint !== manifest.corpusFingerprint ||
+        metadata.governance?.trainingOptIn !== manifest.governance.trainingOptIn ||
+        metadata.governance?.privacyReviewed !== manifest.governance.privacyReviewed ||
+        metadata.governance?.licenseApproved !== manifest.governance.licenseApproved ||
+        metadata.governance?.piiScreening !== manifest.governance.piiScreening ||
+        metadata.governance?.evidenceCount !== manifest.governance.evidenceCount ||
+        metadata.governance?.attestedBy !== manifest.governance.attestedBy ||
+        metadata.governance?.attestedAt !== manifest.governance.attestedAt ||
+        metadata.governance?.licenseId !== manifest.governance.licenseId) return false;
 
     const artifacts = metadata.artifacts;
     if (!artifacts ||
