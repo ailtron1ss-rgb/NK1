@@ -20,6 +20,7 @@ neuralCore.step({
 });
 
 const neural = neuralCore.diagnostics();
+assert.equal(neural.version, 14, 'bridge v2 currently consumes the B365 v14 diagnostic schema');
 assert.equal(neural.cycles, 1);
 assert.equal(neural.tick, 1, 'B365 diagnostics must expose the exact causal tick for freshness gating');
 for (const value of [
