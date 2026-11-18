@@ -334,6 +334,9 @@ export class ElasticNeuralPlasticityController {
       .20*(fisher[index]/fisherMax)+
       .15*(ablation[index]/ablationMax),
     ));
+    // Importance is a bounded diagnostic estimate even when the candidate is rejected;
+    // a rejected policy-weight update must not erase evidence of retained dependencies.
+    this.state.importanceByAction[input.action]=importance.slice();
 
     const protectedSet=new Set([...protectedNames,...HARD_PROTECTED]);
     const allowSet=new Set(allowlist);
