@@ -1,4 +1,5 @@
 import { isTrustedHyperPlasticPromotionPermit } from '../organism/research/HyperPlasticOutcomeEvaluator.ts';
+import { isTrustedHyperPlasticBackendCapabilities } from '../organism/research/HyperPlasticBackendCapabilities.ts';
 
 /**
  * Resolve language backend priority and temporarily cool down a local endpoint
@@ -69,8 +70,14 @@ export function resolveHyperPlasticAdapterRoute({
   promotionPermit = null,
 } = {}) {
   const baseline = (reason) => ({ mode: 'baseline', reason });
-  if (backendCapabilities?.supportsLowRankAdapters !== true) {
+  if (!isTrustedHyperPlasticBackendCapabilities(backendCapabilities)) {
+    return baseline('backend-capability-not-provider-issued');
+  }
+  if (!backendCapabilities.supportsLowRankAdapters || !backendCapabilities.loader) {
     return baseline('backend-adapter-capability-unavailable');
+  }
+  if (backendCapabilities.baseModelFingerprint !== baseModelFingerprint) {
+    return baseline('backend-base-model-fingerprint-mismatch');
   }
   if (!adapter || adapter.schema !== 'nk1-lora-v1') return baseline('adapter-missing-or-invalid');
   if (!isTrustedHyperPlasticPromotionPermit(promotionPermit, {

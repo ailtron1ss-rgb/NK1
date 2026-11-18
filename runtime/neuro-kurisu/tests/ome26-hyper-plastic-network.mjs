@@ -103,7 +103,7 @@ const noCapability = languagePolicy.routeHyperPlasticAdapter({
 });
 assert.deepEqual(noCapability, {
   mode: 'baseline',
-  reason: 'backend-adapter-capability-unavailable',
+  reason: 'backend-capability-not-provider-issued',
 });
 
 const rawPromotion = evaluateHyperPlasticPromotion({ adapter: target, calibrationReports, holdoutReports });
@@ -118,7 +118,7 @@ const forgedPermit = resolveHyperPlasticAdapterRoute({
   promotionPermit: { eligible: true, adapterFingerprint: target.fingerprint },
 });
 assert.equal(forgedPermit.mode, 'baseline');
-assert.equal(forgedPermit.reason, 'promotion-permit-not-issued-by-signed-ledger');
+assert.equal(forgedPermit.reason, 'backend-capability-not-provider-issued');
 
 const wrongModelRoute = resolveHyperPlasticAdapterRoute({
   backendCapabilities: { supportsLowRankAdapters: true, supportedLowRankTargets: ['attention.query'] },
