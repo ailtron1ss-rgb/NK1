@@ -414,9 +414,9 @@ export function cognitiveNeuralProfileFingerprint(profile:CognitiveNeuralControl
     profile.steeringIntent01.persistence01,profile.steeringIntent01.verification01,
     profile.controlsConfigured.samplingParameters,profile.controlsConfigured.adapterSelection,
     profile.controlsConfigured.activationSteering,profile.controlsConfigured.residualBlock,
-    profile.providerFeedback.version,profile.providerFeedback.mode,providerFeedback.sampleCount,
-    providerFeedback.truncatedCount,providerFeedback.nearLimitCount,
-    providerFeedback.truncationPressure01,
+    profile.providerFeedback.version,profile.providerFeedback.mode,profile.providerFeedback.sampleCount,
+    profile.providerFeedback.truncatedCount,profile.providerFeedback.nearLimitCount,
+    profile.providerFeedback.truncationPressure01,
   ]);
   return createHash('sha256').update(canonical).digest('hex');
 }
