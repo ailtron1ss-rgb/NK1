@@ -5,16 +5,18 @@ import path from 'node:path';
 import { verifyNeuroPlasticAdapterArtifact } from '../src/organism/learning/NeuroPlasticArtifactVerifier.ts';
 import {
   NeuroPlasticAdapterRegistry,
-  createNeuroPlasticApprovalSignature,
+  canonicalNeuroPlasticApprovalPayload,
   neuroPlasticAdapterManifestFingerprint,
+  parseTrustedNeuroPlasticApprovalKeys,
+  parseTrustedNeuroPlasticEvaluatorKeys,
   verifyNeuroPlasticApprovalSignature,
   verifyNeuroPlasticEvaluationSignature,
   verifyNeuroPlasticEvaluationReceiptSignature,
 } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 
 const ROOT = path.resolve(process.env.NEURO_PLASTIC_RUNTIME_ROOT || process.cwd());
-const SECRET = String(process.env.NEURO_PLASTIC_APPROVAL_SECRET || '');
-const EVALUATOR_SECRET = String(process.env.NEURO_PLASTIC_EVALUATOR_SECRET || '');
+const APPROVAL_KEYS = parseTrustedNeuroPlasticApprovalKeys(process.env.NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON);
+const EVALUATOR_KEYS = parseTrustedNeuroPlasticEvaluatorKeys(process.env.NEURO_PLASTIC_EVALUATOR_PUBLIC_KEYS_JSON);
 const APPROVER = String(process.env.NEURO_PLASTIC_APPROVER_ID || '').trim();
 
 function usage() {
@@ -26,8 +28,8 @@ function usage() {
     '  node --experimental-strip-types scripts/neuro_plastic_registry.mjs activate --adapter ID --input approval.json',
     '  node --experimental-strip-types scripts/neuro_plastic_registry.mjs rollback --adapter ID --reason "reason"',
     '',
-    'Set NEURO_PLASTIC_EVALUATOR_SECRET (32+ chars, held by the independent evaluator) for evaluation.',
-    'Set NEURO_PLASTIC_APPROVAL_SECRET (32+ chars) and NEURO_PLASTIC_APPROVER_ID for approval commands.',
+    'Set NEURO_PLASTIC_EVALUATOR_PUBLIC_KEYS_JSON and NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON to trusted Ed25519 public keys.',
+    'Private evaluator and approver keys must remain outside NK1; approve creates an unsigned request for an external signer.',
     '',
   ].join('\n'));
 }
@@ -110,8 +112,12 @@ async function main() {
     const snapshot = await readJson(registryFile);
     await registry.restore(
       snapshot,
-      (approval, context) => verifyNeuroPlasticApprovalSignature(approval, context, SECRET),
-      (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, EVALUATOR_SECRET),
+      (approval, context) => verifyNeuroPlasticApprovalSignature(
+        approval, context, APPROVAL_KEYS.get(approval.actorId) || '',
+      ),
+      (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(
+        context.adapterId, receipt, EVALUATOR_KEYS.get(receipt.evaluatorId) || '',
+      ),
       (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
     );
   } catch (error) {
@@ -137,19 +143,22 @@ async function main() {
   } else if (options.operation === 'evaluate') {
     if (!options.input) throw new Error('--input-holdout-evaluation-required');
     const input = await readJson(path.resolve(options.input));
-    if (EVALUATOR_SECRET.length < 32) throw new Error('independent-evaluator-secret-required');
     const report = registry.evaluateCandidate(adapterId, input, (receipt) =>
-      verifyNeuroPlasticEvaluationSignature(adapterId, input, receipt, EVALUATOR_SECRET));
+      verifyNeuroPlasticEvaluationSignature(
+        adapterId, input, receipt, EVALUATOR_KEYS.get(receipt.evaluatorId) || '',
+      ));
     await atomicWrite(registryFile, registry.snapshot());
     process.stdout.write(JSON.stringify(report, null, 2) + '\n');
     return;
   } else if (options.operation === 'approve') {
-    if (SECRET.length < 32 || !APPROVER) throw new Error('approval-secret-and-approver-id-required');
+    if (!APPROVER || !APPROVAL_KEYS.has(APPROVER)) {
+      throw new Error('approver-id-must-have-a-trusted-ed25519-public-key');
+    }
     const record = registry.snapshot().adapters.find(item => item.manifest.adapterId === adapterId);
     if (!record || record.status !== 'eligible' || !record.evaluation?.eligible) {
       throw new Error('only-an-independently-eligible-candidate-can-be-approved');
     }
-    const unsigned = {
+    const approvalRequest = {
       approvalId: randomUUID(),
       actorId: APPROVER,
       approvedAt: Date.now(),
@@ -160,21 +169,27 @@ async function main() {
       baseModelFingerprint: record.manifest.baseModel.fingerprint,
       manifestFingerprint: neuroPlasticAdapterManifestFingerprint(record.manifest),
     };
-    const approval = {
-      ...unsigned,
-      signature: createNeuroPlasticApprovalSignature(unsigned, context, SECRET),
-    };
-    const outputPath = path.resolve(options.output || ('state/' + adapterId + '.approval.json'));
+    const outputPath = path.resolve(options.output || ('state/' + adapterId + '.approval-request.json'));
     const safeOutput = insideRoot(path.relative(ROOT, outputPath), 'approval-output-path');
-    await atomicWrite(safeOutput, { adapterId, ...context, approval });
-    process.stdout.write('NEURO_PLASTIC_APPROVAL_CREATED=' + safeOutput + '\n');
+    await atomicWrite(safeOutput, {
+      adapterId,
+      ...context,
+      approvalRequest,
+      canonicalPayload: canonicalNeuroPlasticApprovalPayload(approvalRequest, context),
+    });
+    process.stdout.write('NEURO_PLASTIC_APPROVAL_REQUEST=' + safeOutput + '\n');
     return;
   } else if (options.operation === 'activate') {
-    if (!SECRET || !options.input) throw new Error('approval-secret-and---input-approval-required');
+    if (APPROVAL_KEYS.size === 0 || !options.input) throw new Error('trusted-approval-public-keys-and---input-signed-approval-required');
     const input = await readJson(path.resolve(options.input));
     if (input.adapterId !== adapterId) throw new Error('approval-adapter-id-mismatch');
+    if (input.manifestFingerprint !== neuroPlasticAdapterManifestFingerprint(registry.getManifest(adapterId))) {
+      throw new Error('approval-manifest-fingerprint-mismatch');
+    }
     await registry.activate(adapterId, input.approval, (approval, context) =>
-      verifyNeuroPlasticApprovalSignature(approval, context, SECRET));
+      verifyNeuroPlasticApprovalSignature(
+        approval, context, APPROVAL_KEYS.get(approval.actorId) || '',
+      ));
     await atomicWrite(registryFile, registry.snapshot());
   } else if (options.operation === 'rollback') {
     const reason = String(options.reason || '').trim();
