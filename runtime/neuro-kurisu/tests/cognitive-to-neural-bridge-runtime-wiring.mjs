@@ -28,6 +28,7 @@ async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterRece
         text: 'Verified local language response.',
         backend: 'llama.cpp:bridge-test-model',
         latencyMs: 1,
+        providerFinishReason: usageMode==='over-budget'?'length':'stop',
         ...(providerUsage ? {providerUsage} : {}),
         ...(request.cognitiveControl && request.cognitiveControlRequestId && receiptEnabled ? {
           providerControlReceipt: {
@@ -88,6 +89,9 @@ async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterRece
       assert.ok(diagnostics.providerTotalTokensTotal>=122);
       assert.ok(diagnostics.providerCompletionBudgetUtilizationMean>=0);
       assert.equal(diagnostics.providerCompletionBudgetExceeded,0);
+      assert.ok(diagnostics.providerBudgetFeedbackObservations>0);
+      assert.ok(diagnostics.providerBudgetFeedback.some(item=>item.mode===request.cognitiveControl.mode
+        && item.sampleCount>0));
       assert.equal(diagnostics.lastTemplateControlSchema, 'nk1-cognitive-neural-43-v2');
       assert.match(request.cognitiveControlRequestId,/^[a-f0-9-]{36}:\d+:\d+$/i);
       assert.equal(responses[requests.indexOf(request)].providerControlReceipt.requestId,
@@ -162,6 +166,8 @@ async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterRece
       assert.ok(diagnostics.providerUsageObservations>0);
       assert.ok(diagnostics.providerCompletionBudgetExceeded>0);
       assert.ok(diagnostics.providerCompletionBudgetUtilizationMax>1);
+      assert.ok(diagnostics.providerBudgetFeedbackTruncations>0,
+        'length finish reasons must be recorded as bounded provider truncation evidence');
     } else if (enabled) {
       const request=requests.find(value=>value.cognitiveControl);
       assert.ok(request,'bridge projection must remain active when template controls are disabled');
