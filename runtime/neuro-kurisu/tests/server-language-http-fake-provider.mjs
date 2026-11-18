@@ -27,6 +27,7 @@ const fakeProvider = createServer(async (req, res) => {
     object: 'chat.completion',
     model: 'neurocore-http-smoke-model',
     choices: [{ index: 0, message: { role: 'assistant', content: 'FAKE_LOCAL_PROVIDER_OK' }, finish_reason: 'stop' }],
+    usage: { prompt_tokens:84, completion_tokens:19, total_tokens:103 },
   }));
 });
 await new Promise((resolve, reject) => {
@@ -150,6 +151,8 @@ try {
   assert.equal(body.language?.backend, 'llama.cpp:neurocore-http-smoke-model', 'reported backend must identify the provider that actually answered');
   assert.equal(body.language?.preferredBackend, 'llama.cpp', 'configured local provider should be preferred while healthy');
   assert.ok(Number.isFinite(body.language?.latencyMs) && body.language.latencyMs >= 0, 'language invocation must report finite non-negative latency');
+  assert.deepEqual(body.language?.providerUsage,{promptTokens:84,completionTokens:19,totalTokens:103},
+    'llama.cpp usage counters must survive the server language adapter');
   assert.equal(providerRequests, 1, 'one chat request should reach the local provider exactly once');
   assert.equal(lastProviderPayload?.model, 'neurocore-http-smoke-model', 'configured model identity must reach the provider');
   assert.ok(Array.isArray(lastProviderPayload?.messages) && lastProviderPayload.messages.some(message => message.role === 'user' && message.content.includes('configured local model')), 'user prompt must reach the local provider');
@@ -181,6 +184,10 @@ try {
   assert.ok(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsAccepted > 0);
   assert.equal(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsRejected, 0);
   assert.equal(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsDuplicate, 0);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.providerUsageObservations > 0);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.providerPromptTokensTotal >= 84);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.providerCompletionTokensTotal >= 19);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageInvalid, 0);
   assert.match(bridgeDiagnosticsBody.diagnostics?.lastTemplateProfileFingerprint ?? '', /^[a-f0-9]{64}$/);
   assert.equal(bridgeDiagnosticsBody.diagnostics?.templateConsumptionVerified, false,
     'sending kwargs does not prove the selected Jinja template consumed them');
