@@ -7,6 +7,7 @@ import math
 import os
 import re
 import stat
+import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -133,8 +134,10 @@ class LayerForceBank:
             f"layer_force_profile_{id(self)}", default=None
         )
         self._handles: dict[int, Any] = {}
+        self._hook_lock = threading.RLock()
         self._applied_hook_calls = 0
         self._applied_token_count = 0
+        self._precision_fallback_tokens = 0
         self._closed = False
 
     def load_profile(
@@ -239,24 +242,16 @@ class LayerForceBank:
                 strength=float(strength),
             )
 
-        # Registration happens only after the complete profile passed all admission checks.
+        # Loading validates and stores a profile but has no model-side effect.
+        # Forward hooks are attached only when an operator-selected profile is
+        # explicitly activated for a request.
         prepared = _SteeringProfile(
             profile_id=profile_id,
             profile_sha256=digest,
             layers=normalized_layers,
             max_delta_ratio=float(ratio),
         )
-        new_handles: dict[int, Any] = {}
-        try:
-            for index in normalized_layers:
-                if index not in self._handles:
-                    new_handles[index] = self._layers[index].register_forward_hook(self._make_hook(index))
-        except Exception:
-            for handle in new_handles.values():
-                handle.remove()
-            raise
         self._profiles[profile_id] = prepared
-        self._handles.update(new_handles)
         return profile_id
 
     def _steer(self, hidden: torch.Tensor, layer: _SteeringLayer, ratio: float) -> torch.Tensor:
@@ -269,8 +264,30 @@ class LayerForceBank:
         direction = layer.direction.to(device=base.device, dtype=base.dtype).view(
             *([1] * (base.ndim - 1)), self.hidden_size
         )
-        delta = direction * (token_norm * (layer.strength * ratio))
-        return (base + delta).to(dtype=hidden.dtype)
+        signed_ratio = layer.strength * ratio
+        max_delta_norm = token_norm * abs(signed_ratio)
+        delta = direction * (token_norm * signed_ratio)
+
+        # The requested bound is defined on the actual tensor consumed by the
+        # next model layer, not on the FP32 pre-cast candidate. FP16/BF16
+        # rounding can otherwise push the stored activation beyond the cap.
+        candidate = (base + delta).to(dtype=hidden.dtype)
+        actual_delta_norm = torch.linalg.vector_norm(candidate.float() - base, dim=-1, keepdim=True)
+        over_limit = actual_delta_norm > max_delta_norm
+
+        if over_limit.any().item():
+            correction = (max_delta_norm / actual_delta_norm.clamp_min(torch.finfo(torch.float32).tiny)).clamp(max=1.0)
+            corrected = (base + delta * correction).to(dtype=hidden.dtype)
+            corrected_delta_norm = torch.linalg.vector_norm(corrected.float() - base, dim=-1, keepdim=True)
+            still_over_limit = corrected_delta_norm > max_delta_norm
+            # Some low-precision formats have no representable value inside
+            # the remaining interval. In that case preserve the exact baseline
+            # for that token instead of violating the hard safety bound.
+            fallback = still_over_limit
+            self._precision_fallback_tokens += int(fallback.sum().item())
+            candidate = torch.where(fallback, hidden, corrected)
+
+        return candidate
 
     def _steer_output(self, output: Any, layer: _SteeringLayer, ratio: float, index: int) -> Any:
         if isinstance(output, torch.Tensor):
@@ -315,6 +332,22 @@ class LayerForceBank:
                 or not -1.0 <= float(strength) <= 1.0
             ):
                 raise LayerForceError("steering-strength-out-of-range")
+            # Register each selected decoder hook once, on explicit activation.
+            # Roll back only hooks created by this attempt if registration fails.
+            with self._hook_lock:
+                if self._closed:
+                    raise LayerForceError("controller-closed")
+                profile = self._profiles[profile_id]
+                new_handles: dict[int, Any] = {}
+                try:
+                    for index in profile.layers:
+                        if index not in self._handles:
+                            new_handles[index] = self._layers[index].register_forward_hook(self._make_hook(index))
+                except Exception:
+                    for handle in new_handles.values():
+                        handle.remove()
+                    raise
+                self._handles.update(new_handles)
             active = (profile_id, float(strength))
         token = self._active.set(active)
         try:
@@ -338,15 +371,18 @@ class LayerForceBank:
                 }
                 for item in sorted(visible, key=lambda value: value.profile_id)
             ],
+            "registered_hook_count": len(self._handles),
             "applied_hook_calls": self._applied_hook_calls,
             "applied_token_count": self._applied_token_count,
+            "precision_fallback_tokens": self._precision_fallback_tokens,
         }
 
     def close(self) -> None:
-        if self._closed:
-            return
-        self._closed = True
-        for handle in self._handles.values():
-            handle.remove()
-        self._handles.clear()
-        self._profiles.clear()
+        with self._hook_lock:
+            if self._closed:
+                return
+            self._closed = True
+            for handle in self._handles.values():
+                handle.remove()
+            self._handles.clear()
+            self._profiles.clear()
