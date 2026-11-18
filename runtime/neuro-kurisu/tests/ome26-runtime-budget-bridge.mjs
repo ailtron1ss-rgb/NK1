@@ -1,12 +1,8 @@
-import {
-  hyperPlasticBudgetPortFromCore,
-  HyperPlasticRuntimeBridge,
-} from '../src/organism/research/HyperPlasticRuntimeBridge.ts';
+import { hyperPlasticBudgetPortFromCore, HyperPlasticRuntimeBridge } from '../src/organism/research/HyperPlasticRuntimeBridge.ts';
 import assert from 'node:assert/strict';
 import { CognitiveBudgetManager } from '../src/organism/cognition/CognitiveBudgetManager.ts';
 import { B292CognitiveStateBus, defaultB292CognitiveStateBus } from '../src/organism/system/B292CognitiveStateBus.ts';
 import { HyperPlasticNetwork } from '../src/organism/research/HyperPlasticNetwork.ts';
-import { HyperPlasticRuntimeBridge } from '../src/organism/research/HyperPlasticRuntimeBridge.ts';
 
 const baseModelFingerprint = `sha256:${'a'.repeat(64)}`;
 const bus = new B292CognitiveStateBus();
@@ -39,10 +35,58 @@ assert.equal(budget.ledgerSnapshot()[0].accepted, true);
 assert.equal(bridge.snapshot().proposals, 1);
 assert.equal(bridge.snapshot().lastStatus, 'shadow-candidate');
 
+
+const duplicateTickBudget = new CognitiveBudgetManager();
+const duplicateTick = bridge.propose({
+  state,
+  taskType: 'reasoning',
+  strategy: 'verify',
+  confidence01: 0.86,
+  baseModelFingerprint,
+  budgetManager: duplicateTickBudget,
+});
+assert.equal(duplicateTick.status, 'blocked');
+assert.equal(duplicateTick.reason, 'duplicate-tick');
+assert.equal(duplicateTickBudget.snapshot().operationCount, 0,
+  'a single B292 tick must never spend the same research budget twice');
+
+const invalidFingerprintBudget = new CognitiveBudgetManager();
+const invalidFingerprintBridge = new HyperPlasticRuntimeBridge(new HyperPlasticNetwork({
+  target: { layer: 'attention.query', rows: 4, cols: 4 }, rank: 2, hiddenDim: 12, seed: 26029,
+}));
+const invalidFingerprint = invalidFingerprintBridge.propose({
+  state: { ...state, tick: 10 },
+  taskType: 'reasoning',
+  strategy: 'verify',
+  confidence01: 0.86,
+  baseModelFingerprint: 'fixture-not-a-sha256-model-id',
+  budgetManager: invalidFingerprintBudget,
+});
+assert.equal(invalidFingerprint.status, 'blocked');
+assert.equal(invalidFingerprint.reason, 'base-model-fingerprint-invalid');
+assert.equal(invalidFingerprintBudget.snapshot().operationCount, 0,
+  'invalid model identity must be rejected before charging the canonical budget');
+
+const deferredStrategyBudget = new CognitiveBudgetManager();
+const deferredStrategy = new HyperPlasticRuntimeBridge(new HyperPlasticNetwork({
+  target: { layer: 'attention.query', rows: 4, cols: 4 }, rank: 2, hiddenDim: 12, seed: 26030,
+})).propose({
+  state: { ...state, tick: 12 },
+  taskType: 'planning',
+  strategy: 'defer',
+  confidence01: 0.8,
+  baseModelFingerprint,
+  budgetManager: deferredStrategyBudget,
+});
+assert.equal(deferredStrategy.status, 'blocked');
+assert.equal(deferredStrategy.reason, 'strategy-deferred');
+assert.equal(deferredStrategyBudget.snapshot().operationCount, 0,
+  'a deferred strategy must not generate or charge a plasticity candidate');
+
 const deferBudget = new CognitiveBudgetManager();
 deferBudget.restore({ ...deferBudget.snapshot(), mode: 'defer', remaining01: 0.8 });
 const deferred = bridge.propose({
-  state,
+  state: { ...state, tick: 1 },
   taskType: 'reasoning',
   strategy: 'verify',
   confidence01: 0.8,
@@ -61,7 +105,7 @@ assert.equal(deferBudget.snapshot().operationCount, 0);
 const scarceBudget = new CognitiveBudgetManager();
 scarceBudget.restore({ ...scarceBudget.snapshot(), remaining01: 0.1, available01: 0.1 });
 const scarce = bridge.propose({
-  state,
+  state: { ...state, tick: 2 },
   taskType: 'reasoning',
   strategy: 'verify',
   confidence01: 0.8,
@@ -75,7 +119,7 @@ assert.equal(scarceBudget.snapshot().operationCount, 0);
 const unstableState = { ...state, readiness01: 0.1 };
 const unstableBudget = new CognitiveBudgetManager();
 const unstable = bridge.propose({
-  state: unstableState,
+  state: { ...unstableState, tick: 3 },
   taskType: 'reasoning',
   strategy: 'verify',
   confidence01: 0.8,
@@ -87,7 +131,7 @@ assert.equal(unstable.reason, 'cognitive-state-not-ready');
 assert.equal(unstableBudget.snapshot().operationCount, 0);
 
 const invalidConfidence = bridge.propose({
-  state,
+  state: { ...state, tick: 4 },
   taskType: 'reasoning',
   strategy: 'verify',
   confidence01: Number.NaN,
