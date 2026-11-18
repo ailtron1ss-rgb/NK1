@@ -9,7 +9,7 @@
     "npm": ">=10.8.0"
   },
   "scripts": {
-    "test:developmental-genome": "node --experimental-strip-types tests/developmental-genome.mjs",
+    "test:developmental-genome": "node --experimental-strip-types tests/developmental-genome.mjs && node --experimental-strip-types tests/developmental-genome-p53-p63-bridge.mjs",
     "test:embodiment-voice-cognitive-context": "node --experimental-strip-types tests/embodiment-voice-cognitive-context.mjs",
     "test:adaptive-experience-consolidator": "node --experimental-strip-types tests/adaptive-experience-consolidator-boundary.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",

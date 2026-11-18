@@ -13,6 +13,7 @@ import { LettaGovernanceAdaptationFabric } from '../integration/letta/LettaGover
 import { ConscioAdaptationFabric } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import { buildCognitiveArchitectureSnapshot } from './CognitiveArchitectureMap.ts';
 import { buildDevelopmentalGenome, type DevelopmentalGenome } from '../system/DevelopmentalGenome.ts';
+import { evaluateDevelopmentalGenomeExperiment as evaluateGenomeExperiment, type DevelopmentalGenomeExperimentInput, type DevelopmentalGenomeExperimentReport } from '../developmental/DevelopmentalGenomeExperimentBridge.ts';
 
 export type OrganismSystemName = 'self'|'governance'|'memory'|'world'|'embodiment'|'agency'|'research';
 
@@ -94,6 +95,11 @@ export class OrganismSystemFabric {
 
   /** Deterministic architecture genome derived from the resolved live system contracts. */
   developmentalGenome(): DevelopmentalGenome { return buildDevelopmentalGenome(this.resolvedContracts); }
+
+  /** Stage a P53/P63-governed genome experiment for review; never applies it to live systems. */
+  stageDevelopmentalGenomeExperiment(input: DevelopmentalGenomeExperimentInput): DevelopmentalGenomeExperimentReport {
+    return evaluateGenomeExperiment(input);
+  }
 
   snapshot(): OrganismSystemFabricSnapshot {
     return {
