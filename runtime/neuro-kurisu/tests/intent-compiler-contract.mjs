@@ -318,7 +318,7 @@ assert.equal(executed.result.ok, true);
 assert.equal(calls, 1, 'approved allowed actions must pass through ActionGateway exactly once');
 
 const contractTrace = await bridge.execute(approved, {
-  toolId: 'organism.inspect', input: { scope: 'project' }, reason: 'intent-bridge-test',
+  toolId: 'organism.inspect', input: { scope: 'project' }, reason: 'intent-bridge-test', options: {},
 }, { async executeTool(_id, _input, _reason, options) {
   assert.equal(options.decisionId, undefined,
     'intent identity must not be forged into ActionGateway decisionId when the host has no canonical decision ID');

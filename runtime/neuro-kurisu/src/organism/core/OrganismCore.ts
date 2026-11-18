@@ -11612,7 +11612,7 @@ export class OrganismCore {
         independent?: boolean;
         context?: string;
     }) { const out = this.cognitiveRuntime.skillLibrary.recordCompoundExecution(id, input); this.persisted.facets.cognition.skills = this.cognitiveRuntime.skillLibrary.snapshot(); return out; }
-    async executeReusableSkill(id: string, input: Record<string, unknown> = {}, reason = 'reusable-skill', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
+    async executeReusableSkill(id: string, input: Record<string, unknown> = {}, reason = 'reusable-skill', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, intentApprovalId?: string) {
         const skill = this.cognitiveRuntime.skillLibrary.snapshot().compoundSkills.find(x => x.id === id && x.status === 'reusable');
         if (!skill)
             return { ok: false, verified: false, id, result: { error: 'reusable-skill-not-found' } };
@@ -11662,6 +11662,7 @@ export class OrganismCore {
         let replayedExecutions = 0;
         let preExecutionBlocked = false;
         let pendingApprovalId=typeof options.approvalId==='string'&&options.approvalId?options.approvalId:undefined;
+        let pendingIntentApprovalId = typeof intentApprovalId === 'string' && intentApprovalId ? intentApprovalId : undefined;
         const resolveBinding = (expression: string): unknown => {
             const match = /^\$step:([a-zA-Z0-9_-]+)(?:\.([a-zA-Z0-9_-]+))?$/.exec(String(expression ?? ''));
             if (!match)
@@ -11783,7 +11784,7 @@ export class OrganismCore {
                         skillIntentDraft, skillIntentEvidence, skillIntentScope,
                         {
                             toolId: canonicalCandidateTool, input: resolvedToolInput, reason: executionReason,
-                            options: executionOptions, intentApprovalId: pendingApprovalId,
+                            options: executionOptions, intentApprovalId: pendingIntentApprovalId,
                             finalizationContextKeys: Object.keys(runtimeInput),
                         },
                     );
@@ -11797,7 +11798,7 @@ export class OrganismCore {
                             blockedAtStep: step.id, skill: structuredClone(skill),
                         };
                     }
-                    if (intentDispatch.intentApprovalConsumed) pendingApprovalId = undefined;
+                    if (intentDispatch.intentApprovalConsumed) pendingIntentApprovalId = undefined;
                     const result = intentDispatch.result ?? this.cognitiveRuntime.actionGateway.refuseToolExecution(
                         canonicalCandidateTool, 'intent-dispatch-returned-no-result', { intentContractId: skillIntentDraft.id },
                     );
@@ -12450,11 +12451,12 @@ export class OrganismCore {
                 const expectedHash = sha256Stable({
                     version: 1, source: evidence.source, projectId: evidence.projectId, stepId: evidence.stepId,
                     requestFingerprint: evidence.requestFingerprint, operationKey: evidence.operationKey,
-                    sequence: evidence.sequence, decisionId: evidence.decisionId, tick: evidence.tick, toolId: evidence.toolId,
+                    sequence: evidence.sequence, decisionId: evidence.decisionId, tick: evidence.tick,
+                    toolId: evidence.toolId, inputHash: evidence.inputHash,
                 });
                 const expectedSourceText = evidence.reason + ' | project=' + evidence.projectId + ' | step=' + evidence.stepId +
                     ' | tool=' + evidence.toolId + ' | operation=' + evidence.operationKey +
-                    ' | request=' + evidence.requestFingerprint + ' | decision=' + evidence.decisionId;
+                    ' | request=' + evidence.requestFingerprint + ' | input=' + evidence.inputHash + ' | decision=' + evidence.decisionId;
                 const listed = this.cognitiveRuntime.actionGateway.listTools().find(tool => tool.id === evidence.toolId);
                 return expectedHash === evidence.intentHash && evidence.sourceText === expectedSourceText &&
                     contract.sourceText === expectedSourceText && contract.goal.text === evidence.reason &&
@@ -12595,11 +12597,28 @@ export class OrganismCore {
     ): Promise<{ contractId: string; result?: import('../system/ActionGateway.ts').ToolExecution; approvalRequest?: unknown; intentApprovalConsumed?: boolean }> {
         const toolId = this.canonicalActionToolId(action.toolId);
         const normalizedAction: IntentBoundAction = { ...action, toolId };
+        if (evidence.toolId !== toolId || evidence.reason !== action.reason ||
+            ((evidence.source === 'project-executor' || evidence.source === 'compound-skill') &&
+             (!evidence.inputHash || evidence.inputHash !== sha256Stable({ input: action.input, expectedOutputKeys: action.options?.expectedOutputKeys ?? [] })))) {
+            return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                toolId, 'intent-action-binding-mismatch', { intentContractId: contract.id },
+            ) };
+        }
         let approved = this.getIntentContract(contract.id);
         let intentApprovalConsumed = false;
         const intentApprovalId = typeof action.intentApprovalId === 'string' && action.intentApprovalId
             ? action.intentApprovalId
             : undefined;
+        if (intentApprovalId && !approvalRow) {
+            return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                toolId, 'intent-approval-ticket-not-found', { intentContractId: contract.id },
+            ) };
+        }
+        if (approvalRow && ['declined', 'expired'].includes(approvalRow.status)) {
+            return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                toolId, 'intent-approval-ticket-' + approvalRow.status, { intentContractId: contract.id },
+            ) };
+        }
         const approvalRow = intentApprovalId
             ? this.cognitiveRuntime.actionGateway.toolPermissionSnapshot().requests.find(row =>
                 row.id === intentApprovalId && row.toolId === INTENT_APPROVAL_TOOL_ID && row.operation === 'direct',
@@ -12671,12 +12690,7 @@ export class OrganismCore {
             }
         }
 
-        let dispatchAction = normalizedAction;
-        if (intentApprovalConsumed && normalizedAction.options?.approvalId === intentApprovalId) {
-            const { approvalId: _consumedIntentTicket, ...toolOptions } = normalizedAction.options;
-            dispatchAction = { ...normalizedAction, options: toolOptions };
-        }
-        dispatchAction = { ...dispatchAction, intentApprovalId: undefined };
+        const dispatchAction: IntentBoundAction = { ...normalizedAction, intentApprovalId: undefined };
         const dispatch = await this.executeIntent(approved, dispatchAction);
         if (dispatch.executed) {
             return { contractId: contract.id, result: dispatch.result, intentApprovalConsumed };
@@ -12984,7 +12998,7 @@ export class OrganismCore {
             goal.status = 'active';
         }
     }
-    async executeNextProjectStep(reason = 'project-step', input: Record<string, unknown> = {}, options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
+    async executeNextProjectStep(reason = 'project-step', input: Record<string, unknown> = {}, options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, intentApprovalId?: string) {
         const project = this.agencySubsystem.selfProjects.activeProject();
         if (!project)
             return { ok: false, verified: false, tool: 'none', capability: 'project', result: { error: 'no-active-project' }, audit: null };
@@ -12998,9 +13012,9 @@ export class OrganismCore {
         const tool = step.preferredTool ?? 'organism.project.context';
         const plannedInput = step.toolInput && typeof step.toolInput === 'object' ? step.toolInput : {};
         const mergedInput = { ...plannedInput, ...input };
-        return this.executeProjectTool(tool, mergedInput, `${reason};step:${step.id}`, options);
+        return this.executeProjectTool(tool, mergedInput, `${reason};step:${step.id}`, options, intentApprovalId);
     }
-    async executeProjectTool(id: string, input: Record<string, unknown> = {}, reason = 'project-tool', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
+    async executeProjectTool(id: string, input: Record<string, unknown> = {}, reason = 'project-tool', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, intentApprovalId?: string) {
         const project = this.agencySubsystem.selfProjects.activeProject();
         if (!project)
             return { ok: false, verified: false, tool: id, capability: 'project', result: { error: 'no-active-project' }, audit: null };
@@ -13090,9 +13104,10 @@ export class OrganismCore {
         const executionReason=`${reason};project:${project.id};step:${plannedStep?.id ?? 'unplanned'}`;
         const canonicalProjectToolId = this.canonicalActionToolId(id);
         const boundedProjectIntentGoal = executionReason.normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, 900);
+        const projectInputHash = sha256Stable({ input, expectedOutputKeys: executionOptions.expectedOutputKeys ?? [] });
         const projectIntentSourceText = boundedProjectIntentGoal + ' | project=' + project.id + ' | step=' + stepOperation.stepId +
             ' | tool=' + canonicalProjectToolId + ' | operation=' + operationKey + ' | request=' + stepOperation.requestFingerprint +
-            ' | decision=' + stableDecisionId;
+            ' | input=' + projectInputHash + ' | decision=' + stableDecisionId;
         const projectIntentEvidence: TrustedAutonomousDecisionEvidence = {
             source: 'project-executor', decisionId: stableDecisionId, tick: this.persisted.state.tick,
             plannerToolId: id, toolId: canonicalProjectToolId,
@@ -13103,7 +13118,7 @@ export class OrganismCore {
             }),
             reason: boundedProjectIntentGoal, sourceText: projectIntentSourceText, projectId: project.id,
             stepId: stepOperation.stepId, requestFingerprint: stepOperation.requestFingerprint,
-            operationKey, sequence: stepOperation.sequence,
+            operationKey, sequence: stepOperation.sequence, inputHash: projectInputHash,
         };
         const projectIntentDraft = this.compileIntent({
             requestId: 'project-step:' + operationKey, text: projectIntentSourceText,
@@ -13128,11 +13143,11 @@ export class OrganismCore {
         };
         const projectIntentAction: IntentBoundAction = {
             toolId: canonicalProjectToolId, input, reason: executionReason, options: executionOptions,
-            intentApprovalId: options.approvalId,
+            intentApprovalId,
         };
         const reconcileExistingOperation = ['pending','receipt-recorded','reconciliation-required'].includes(stepOperation.stage);
 
-        if (stepOperation.stage === 'waiting-approval' && !options.approvalId) {
+        if (stepOperation.stage === 'waiting-approval' && !options.approvalId && !intentApprovalId) {
             await this.checkpoint(true);
             return {
                 ok: false, verified: false, tool: id, capability: listed.capability,

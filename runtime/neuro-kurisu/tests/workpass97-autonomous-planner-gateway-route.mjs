@@ -50,6 +50,8 @@ assert.ok(projectEnd > projectStart, 'project execution path must have an explic
 const projectDispatch = source.slice(projectStart, projectEnd);
 assert.match(projectDispatch, /this\.executeTrustedCoreIntent\(/,
   'fresh project tool execution must pass through the project-checkpoint-attested Intent Contract');
+assert.match(projectDispatch, /intentApprovalId,/,
+  'project Intent approval ID must remain separate from ActionGateway approval options');
 assert.match(projectDispatch, /this\.reconcileIntentExecution\(approvedProjectIntent/,
   'a project operation with a persisted Intent Contract must reconcile through the intent runtime');
 assert.match(projectDispatch, /else \{[\s\S]*this\.reconcileToolExecution\(/,
@@ -69,6 +71,8 @@ assert.ok(skillEnd > skillStart, 'compound skill execution must expose its outco
 const skillDispatch = source.slice(skillStart, skillEnd);
 assert.match(skillDispatch, /this\.executeTrustedCoreIntent\(/,
   'compound skill steps must pass through a verified step-bound Intent Contract');
+assert.match(skillDispatch, /intentApprovalId: pendingIntentApprovalId/,
+  'compound skill Intent approvals must be distinct from ActionGateway tool approval IDs');
 assert.match(skillDispatch, /finalizationContextKeys: Object\.keys\(runtimeInput\)/,
   'compound skill steps must preserve finalizer context through the Intent bridge');
 assert.doesNotMatch(skillDispatch, /actionGateway\.executeTool\(/,
