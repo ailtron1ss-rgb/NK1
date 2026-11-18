@@ -222,7 +222,7 @@ try {
   const registryPath = path.join(runtimeRoot, 'state', 'neuro-plastic-adapters.json');
   let snapshot = JSON.parse(await readFile(registryPath, 'utf8'));
   assert.equal(snapshot.adapters[0].status, 'active');
-  assert.equal(snapshot.adapters[0].activationApproval.approvalId, approval.approval.approvalId);
+  assert.equal(snapshot.adapters[0].activationApproval.approvalId, approvalRequest.approval.approvalId);
 
   // A fresh process must preserve the activation only when the trusted Ed25519 public key verifies.
   run(['rollback', '--adapter', adapterId, '--reason', 'exercise rollback and registry persistence']);
