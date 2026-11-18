@@ -677,6 +677,10 @@ export class NeuroPlasticAdapterRegistry {
     return structuredClone(this.state);
   }
 
+  getManifest(adapterId: string): NeuroPlasticAdapterManifest {
+    return structuredClone(this.find(adapterId).manifest);
+  }
+
   /** Restore only after both the evaluator evidence receipt and operator activation receipt are independently revalidated. */
   restore(
     raw?: unknown,
