@@ -73,6 +73,12 @@ export async function verifyNeuroPlasticAdapterArtifact(
       manifest.artifact.configSha256,
       manifest.artifact.weightsSha256,
       manifest.artifact.totalBytes,
+      manifest.domain,
+      manifest.method,
+      manifest.baseModel.fingerprint,
+      manifest.tokenizerFingerprint,
+      manifest.sourceDatasetFingerprint,
+      manifest.holdoutPlanFingerprint,
       manifest.corpusFingerprint,
     ].join('|');
     if ([configInfo, weightsInfo, metadataInfo].some(info => info.nlink !== 1)) return false;
