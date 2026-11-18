@@ -6,6 +6,7 @@ on:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/local/NeuralProsthesisChatProvider.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/local/NeuralProsthesisSidecarSupervisor.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/P40ModelEcology.ts"
       - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/tests/neural-prosthesis-integration.mjs"
@@ -17,6 +18,7 @@ on:
     branches: [aspect/neural-prosthesis-transformer-residual-20261117]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/local/NeuralProsthesisChatProvider.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/local/NeuralProsthesisSidecarSupervisor.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/P40ModelEcology.ts"
       - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/tests/neural-prosthesis-integration.mjs"
