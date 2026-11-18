@@ -251,7 +251,7 @@ export class WorldForgeToolAdapter {
       outputContract: outputContract({
         scenarios: { type: 'array', minItems: 1, maxItems: 16, items: worldForgeScenarioOutput },
         count: { type: 'integer', minimum: 1, maximum: 16 },
-        candidateCount: { type: 'integer', minimum: 2, maximum: 128 },
+        candidateCount: { type: 'integer', minimum: 2, maximum: 64 },
         focus: { type: 'string', enum: ['balanced','resource-shock','route-block','signal-noise','deadline-shift'] },
         note: boundedString(512),
       }, ['scenarios','count','candidateCount','focus','note']),
@@ -264,7 +264,7 @@ export class WorldForgeToolAdapter {
           count: { type: 'integer', minimum: 1, maximum: 16 },
           difficulty01: { type: 'number', minimum: 0.2, maximum: 0.95 },
           focus: { type: 'string', enum: ['balanced','resource-shock','route-block','signal-noise','deadline-shift'] },
-          candidateMultiplier: { type: 'integer', minimum: 2, maximum: 8 },
+          candidateMultiplier: { type: 'integer', minimum: 2, maximum: 4 },
         },
         required: ['count','difficulty01','focus','candidateMultiplier'],
         additionalProperties: false,
