@@ -949,6 +949,7 @@ export class NeuroPlasticAdapterRegistry {
   select(input: NeuroPlasticSelectInput): NeuroPlasticSelection {
     const domain = safeText(input.domain, 'selection-domain', 64).toLowerCase();
     const baseAlias = safeText(input.baseModelAlias, 'selection-base-model-alias', 160);
+    if (!IDENTIFIER.test(baseAlias)) throw new Error('neuro-plastic-selection-base-alias-invalid');
     const baseFingerprint = safeHash(input.baseModelFingerprint, 'selection-base-fingerprint');
     const confidence = finiteUnit(input.confidence01, 'selection-confidence');
     const risk = finiteUnit(input.risk01, 'selection-risk');
