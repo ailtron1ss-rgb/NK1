@@ -264,6 +264,11 @@ function normalizeManifest(raw: unknown): NeuroPlasticAdapterManifest {
   };
 }
 
+export function neuroPlasticAdapterManifestFingerprint(raw: unknown): string {
+  const manifest = normalizeManifest(raw);
+  return createHash('sha256').update(JSON.stringify(manifest)).digest('hex');
+}
+
 function observation(raw: unknown, label: string, holdoutFingerprint: string): NeuroPlasticObservation {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('neuro-plastic-' + label + '-observation-invalid');
   const value = snapshotPlainData(raw) as Record<string, unknown>;
@@ -613,7 +618,7 @@ function normalizeApproval(raw: unknown): NeuroPlasticApproval {
 
 function approvalPayload(
   approval: Pick<NeuroPlasticApproval, 'approvalId' | 'actorId' | 'approvedAt'>,
-  context: { adapterId: string; reportId: string; baseModelFingerprint: string },
+  context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
 ): string {
   return JSON.stringify({
     approvalId: approval.approvalId,
@@ -622,12 +627,13 @@ function approvalPayload(
     adapterId: context.adapterId,
     reportId: context.reportId,
     baseModelFingerprint: context.baseModelFingerprint.toLowerCase(),
+    manifestFingerprint: safeHash(context.manifestFingerprint, 'approval-manifest-fingerprint'),
   });
 }
 
 export function createNeuroPlasticApprovalSignature(
   approval: Pick<NeuroPlasticApproval, 'approvalId' | 'actorId' | 'approvedAt'>,
-  context: { adapterId: string; reportId: string; baseModelFingerprint: string },
+  context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
   secret: string,
 ): string {
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('neuro-plastic-approval-secret-too-short');
@@ -653,7 +659,7 @@ export function createNeuroPlasticApprovalSignature(
 
 export function verifyNeuroPlasticApprovalSignature(
   approval: NeuroPlasticApproval,
-  context: { adapterId: string; reportId: string; baseModelFingerprint: string },
+  context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
   secret: string,
 ): boolean {
   try {
@@ -686,7 +692,7 @@ export class NeuroPlasticAdapterRegistry {
     raw?: unknown,
     verifyRestoredApproval?: (
       approval: NeuroPlasticApproval,
-      context: { adapterId: string; reportId: string; baseModelFingerprint: string },
+      context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
     ) => boolean,
     verifyRestoredEvaluation?: (
       receipt: NeuroPlasticEvaluationReceipt,
@@ -740,6 +746,7 @@ export class NeuroPlasticAdapterRegistry {
               adapterId: manifest.adapterId,
               reportId: evaluation!.reportId,
               baseModelFingerprint: manifest.baseModel.fingerprint,
+              manifestFingerprint: neuroPlasticAdapterManifestFingerprint(manifest),
             }) === true;
           } catch {
             restoredApprovalTrusted = false;
@@ -877,7 +884,7 @@ export class NeuroPlasticAdapterRegistry {
   async activate(
     adapterId: string,
     approval: NeuroPlasticApproval,
-    verifyApproval: (approval: NeuroPlasticApproval, context: { adapterId: string; reportId: string; baseModelFingerprint: string }) => boolean | Promise<boolean>,
+    verifyApproval: (approval: NeuroPlasticApproval, context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string }) => boolean | Promise<boolean>,
   ): Promise<NeuroPlasticAdapterRecord> {
     const record = this.find(adapterId);
     if (record.status !== 'eligible' || !record.evaluation?.eligible) {
@@ -888,6 +895,7 @@ export class NeuroPlasticAdapterRegistry {
       adapterId,
       reportId: record.evaluation.reportId,
       baseModelFingerprint: record.manifest.baseModel.fingerprint,
+      manifestFingerprint: neuroPlasticAdapterManifestFingerprint(record.manifest),
     })) {
       throw new Error('neuro-plastic-human-approval-required');
     }
