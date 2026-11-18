@@ -51,8 +51,16 @@ export const defaultP29Governance=():LearningGovernanceState=>({
 
 type SnapshotBundle={p26:any;p27:any;p28:any};
 
+// `instanceof` can be forged with Object.create(P29LearningGovernanceEngine.prototype).
+// Only instances created by this module's constructor may authorize learning mutations.
+const TRUSTED_P29_GOVERNANCE_INSTANCES = new WeakSet<object>();
+
 export class P29LearningGovernanceEngine {
   private state=defaultP29Governance();
+  constructor(){TRUSTED_P29_GOVERNANCE_INSTANCES.add(this);}
+  static isTrustedInstance(value:unknown):value is P29LearningGovernanceEngine{
+    return typeof value==='object'&&value!==null&&TRUSTED_P29_GOVERNANCE_INSTANCES.has(value);
+  }
   private currentGood:SnapshotBundle|null=null;
   private previousGood:SnapshotBundle|null=null;
 

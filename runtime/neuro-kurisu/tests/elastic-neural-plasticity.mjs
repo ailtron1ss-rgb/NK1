@@ -321,4 +321,23 @@ assert.equal(missingGovernorRollback.reason, 'learning-governance-required');
 assert.deepEqual(ungated.snapshot(), ungatedBefore,
   'rollback without the canonical governor must remain side-effect-free');
 
-console.log('ELASTIC_NEURAL_PLASTICITY=PASS sparse=1 protected=3 retentionGate=PASS leakageGate=PASS persistence=PASS frozen=PASS');
+// `instanceof` alone is forgeable with Object.create; it must not grant P29 authority.
+const forgedGovernor = Object.create(P29LearningGovernanceEngine.prototype);
+const forgedInput = { ...p26Input, sampleId: 'p26-elastic-forged-governor' };
+const forgedBefore = ungated.snapshot();
+const forgedResult = ungated.trainFeaturesElastic(
+  forgedInput,
+  options({ trainingSampleId: forgedInput.sampleId }),
+  forgedGovernor,
+);
+assert.equal(forgedResult.accepted, false);
+assert.equal(forgedResult.reason, 'learning-governance-required');
+assert.deepEqual(ungated.snapshot(), forgedBefore,
+  'prototype-forged P29 object must not stage or mutate a policy update');
+const forgedRollback = ungated.rollbackElasticPlasticity('respond', forgedGovernor);
+assert.equal(forgedRollback.rolledBack, false);
+assert.equal(forgedRollback.reason, 'learning-governance-required');
+assert.deepEqual(ungated.snapshot(), forgedBefore,
+  'prototype-forged P29 object must not authorize rollback');
+
+console.log('ELASTIC_NEURAL_PLASTICITY=PASS sparse=1 protected=3 retentionGate=PASS leakageGate=PASS persistence=PASS frozen=PASS forgedGovernor=PASS');

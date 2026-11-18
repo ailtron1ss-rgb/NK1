@@ -143,7 +143,7 @@ export class P26TrueLearningEngine{
       rollbackAvailable:this.learner.snapshot().elasticNeuralPlasticity.rollbackByAction[input.action]!==undefined,
       predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0,
     });
-    if(!(governance instanceof P29LearningGovernanceEngine))return blocked('learning-governance-required');
+    if(!P29LearningGovernanceEngine.isTrustedInstance(governance))return blocked('learning-governance-required');
     const proposal=this.learner.proposeFeaturesElastic(input,options);
     const cost01=clamp(options.governanceCost01??.25);
     if(!proposal.eligible||!proposal.proposalId){
@@ -187,7 +187,7 @@ export class P26TrueLearningEngine{
   }
 
   rollbackElasticPlasticity(action:ActionKind,governance:P29LearningGovernanceEngine){
-    if(!(governance instanceof P29LearningGovernanceEngine))return {rolledBack:false,reason:'learning-governance-required',sampleId:null};
+    if(!P29LearningGovernanceEngine.isTrustedInstance(governance))return {rolledBack:false,reason:'learning-governance-required',sampleId:null};
     const result=this.learner.rollbackElasticPlasticity(action);
     if(result.rolledBack){
       governance.recordProvenance('p26-policy',action,'elastic-plasticity-rollback',[result.sampleId??'unknown'],governance.sourceTrust('p26-policy'),0,false);
