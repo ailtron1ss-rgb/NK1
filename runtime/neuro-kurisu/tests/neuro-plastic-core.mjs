@@ -1,35 +1,42 @@
 import assert from 'node:assert/strict';
-import { createHash, createHmac, generateKeyPairSync } from 'node:crypto';
-import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, neuroPlasticAdapterManifestFingerprint, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { createHash, sign, generateKeyPairSync } from 'node:crypto';
+import { NeuroPlasticAdapterRegistry, canonicalNeuroPlasticApprovalPayload, parseTrustedNeuroPlasticApprovalKeys, parseTrustedNeuroPlasticPublicKeys, verifyNeuroPlasticApprovalSignature, verifyNeuroPlasticDetachedEd25519Signature, neuroPlasticAdapterManifestFingerprint, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 
 const hash = (char) => char.repeat(64);
-const approvalSecret = 'neuro-plastic-test-approval-secret-32-bytes-minimum';
+const approvalSigner = generateKeyPairSync('ed25519');
+const approvalPublicPem = approvalSigner.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+const unrelatedApprovalSigner = generateKeyPairSync('ed25519');
+const unrelatedApprovalPublicPem = unrelatedApprovalSigner.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const evaluatorKeyPair = generateKeyPairSync('ed25519');
 const evaluatorPrivateKeyPem = evaluatorKeyPair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 const evaluatorPublicKeyPem = evaluatorKeyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
-const hmacProbe = { approvalId: 'hmac-probe', actorId: 'test-operator', approvedAt: 1_800_000_000_000 };
-const hmacContext = {
-  adapterId: 'hmac-probe-adapter',
-  reportId: hash('7'),
-  baseModelFingerprint: hash('a'),
-  manifestFingerprint: hash('b'),
-};
-const hmacPayload = JSON.stringify({
-  approvalId: hmacProbe.approvalId,
-  actorId: hmacProbe.actorId,
-  approvedAt: hmacProbe.approvedAt,
-  adapterId: hmacContext.adapterId,
-  reportId: hmacContext.reportId,
-  baseModelFingerprint: hmacContext.baseModelFingerprint,
-  manifestFingerprint: hmacContext.manifestFingerprint,
-});
-assert.equal(
-  createNeuroPlasticApprovalSignature(hmacProbe, hmacContext, approvalSecret),
-  createHmac('sha256', approvalSecret).update(hmacPayload, 'utf8').digest('hex'),
-  'approval signatures must match the standard HMAC-SHA256 implementation',
+const approvalKeys = parseTrustedNeuroPlasticApprovalKeys(JSON.stringify({ 'test-operator-key': approvalPublicPem }));
+const p25Signer = generateKeyPairSync('ed25519');
+const p25PublicPem = p25Signer.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+const p25Keys = parseTrustedNeuroPlasticPublicKeys(JSON.stringify({ 'test-p25-policy': p25PublicPem }));
+const p25PolicyPayload = '{"policy":"test","baseModel":"sha256"}';
+const p25PolicySignature = sign(null, Buffer.from(p25PolicyPayload, 'utf8'), p25Signer.privateKey).toString('base64');
+assert.equal(verifyNeuroPlasticDetachedEd25519Signature(
+  p25PolicyPayload, p25PolicySignature, 'test-p25-policy', p25Keys,
+), true, 'P25 host policy signatures must verify with a trusted Ed25519 public key');
+assert.equal(verifyNeuroPlasticDetachedEd25519Signature(
+  p25PolicyPayload, p25PolicySignature, 'unknown-key', p25Keys,
+), false, 'P25 host policy must fail closed for an unknown signer key');
+assert.equal(verifyNeuroPlasticDetachedEd25519Signature(
+  p25PolicyPayload, 'not-base64', 'test-p25-policy', p25Keys,
+), false, 'P25 host policy must reject malformed detached signatures');
+assert.throws(
+  () => parseTrustedNeuroPlasticPublicKeys(JSON.stringify({ private: approvalSigner.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() })),
+  /public|ed25519|key/i,
+  'runtime trust maps must reject private key material',
+);
+assert.throws(
+  () => parseTrustedNeuroPlasticPublicKeys(JSON.stringify({ rsa: generateKeyPairSync('rsa', { modulusLength: 2048 }).publicKey.export({ type: 'spki', format: 'pem' }).toString() })),
+  /ed25519|key/i,
+  'runtime trust maps must accept Ed25519 keys only',
 );
 function signedEvaluate(registry, adapterId, payload) {
   const boundPayload = {
@@ -42,13 +49,17 @@ function signedEvaluate(registry, adapterId, payload) {
   return registry.evaluateCandidate(adapterId, { ...boundPayload, receipt }, (verifiedReceipt) =>
     verifyNeuroPlasticEvaluationSignature(adapterId, boundPayload, verifiedReceipt, evaluatorPublicKeyPem));
 }
-function signedApproval(adapterId, reportId, approvalId, registry) {
-  const unsigned = { approvalId, actorId: 'operator', approvedAt: 1_800_000_000_200 };
+function signedApproval(adapterId, reportId, approvalId, registry, approvedAt = Date.now()) {
+  const unsigned = { approvalId, actorId: 'operator', approvedAt, signerKeyId: 'test-operator-key' };
   const context = { adapterId, reportId, baseModelFingerprint: hash('a'), manifestFingerprint: neuroPlasticAdapterManifestFingerprint(registry.getManifest(adapterId)) };
-  return { ...unsigned, signature: createNeuroPlasticApprovalSignature(unsigned, context, approvalSecret) };
+  const canonicalPayload = canonicalNeuroPlasticApprovalPayload(unsigned, context);
+  return {
+    ...unsigned,
+    signature: sign(null, Buffer.from(canonicalPayload, 'utf8'), approvalSigner.privateKey).toString('base64'),
+  };
 }
-function verifyApproval(approval, context) {
-  return verifyNeuroPlasticApprovalSignature(approval, context, approvalSecret);
+function verifyApproval(approval, context, purpose = 'activation') {
+  return verifyNeuroPlasticApprovalSignature(approval, context, approvalKeys, { purpose });
 }
 const manifest = (adapterId = 'kurisu-reasoning-v1') => ({
   schemaVersion: 1,
@@ -135,7 +146,25 @@ const approvalContext = {
   manifestFingerprint: neuroPlasticAdapterManifestFingerprint(registry.getManifest('kurisu-reasoning-v1')),
 };
 assert.equal(verifyApproval(approval, approvalContext), true);
-assert.equal(verifyNeuroPlasticApprovalSignature(approval, approvalContext, 'wrong-secret'), false);
+assert.equal(verifyNeuroPlasticApprovalSignature(approval, approvalContext,
+  parseTrustedNeuroPlasticApprovalKeys(JSON.stringify({ 'test-operator-key': unrelatedApprovalPublicPem }))), false,
+  'approval signed by a different private key must not be trusted');
+assert.equal(verifyNeuroPlasticApprovalSignature(
+  { ...approval, signerKeyId: 'unknown-operator' }, approvalContext, approvalKeys,
+), false, 'approval with an unknown signer key ID must fail closed');
+assert.equal(verifyNeuroPlasticApprovalSignature(
+  { ...approval, signature: 'invalid-base64' }, approvalContext, approvalKeys,
+), false, 'malformed Ed25519 signature bytes must be rejected');
+assert.equal(verifyNeuroPlasticApprovalSignature(
+  approval, { ...approvalContext, manifestFingerprint: hash('9') }, approvalKeys,
+), false, 'approval cannot be replayed after the exact manifest changes');
+const expiredApproval = signedApproval(
+  'kurisu-reasoning-v1', report.reportId, 'approval-expired', registry, Date.now() - 16 * 60_000,
+);
+assert.equal(verifyNeuroPlasticApprovalSignature(expiredApproval, approvalContext, approvalKeys), false,
+  'a stale operator approval must not activate a candidate');
+assert.equal(verifyNeuroPlasticApprovalSignature(expiredApproval, approvalContext, approvalKeys, { purpose: 'restore' }), true,
+  'a previously valid signed approval remains verifiable for persisted ACTIVE-state recovery');
 await assert.rejects(
   registry.activate('kurisu-reasoning-v1', approval, async () => false),
   /approval/,
@@ -621,6 +650,28 @@ assert.equal(signedRestoreRegistry.select({
   confidence01: 0.9,
   risk01: 0.1,
 }).useAdapter, true, 'restart restore must preserve an active adapter only with a valid signed approval');
+const expiredRuntimeApproval = signedApproval(
+  'kurisu-runtime-v1', inferenceReport.reportId, 'approval-restore-after-expiry', inferenceRegistry, Date.now() - 16 * 60_000,
+);
+const expiredApprovalSnapshot = structuredClone(activeSnapshot);
+expiredApprovalSnapshot.adapters[0].activationApproval = expiredRuntimeApproval;
+expiredApprovalSnapshot.adapters[0].activationApprovalId = expiredRuntimeApproval.approvalId;
+const expiredApprovalRestoreRegistry = new NeuroPlasticAdapterRegistry();
+await expiredApprovalRestoreRegistry.restore(
+  expiredApprovalSnapshot,
+  verifyApproval,
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorPublicKeyPem),
+  () => true,
+);
+assert.equal(expiredApprovalRestoreRegistry.select({
+  domain: 'reasoning',
+  backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
+  baseModelFingerprint: hash('a'),
+  backendSupportsModelAliases: true,
+  confidence01: 0.9,
+  risk01: 0.1,
+}).useAdapter, true, 'a valid prior activation can restore after the activation-window expiry without becoming newly activatable');
 const artifactRejectedRestoreRegistry = new NeuroPlasticAdapterRegistry();
 await artifactRejectedRestoreRegistry.restore(
   activeSnapshot,

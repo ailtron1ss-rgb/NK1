@@ -157,7 +157,7 @@ Trainer автоматически пишет рядом с adapter weights фа
     openssl pkey -in evaluator-private.pem -pubout -out evaluator-public.pem
     chmod 600 evaluator-private.pem
 
-Приватный ключ должен оставаться только у независимого evaluator/scorer и никогда не попадать в NK1 runtime, CLI host, trainer или Git. Для подписания evaluator вызывает экспортированный helper `createNeuroPlasticEvaluationReceipt(..., evaluatorPrivateKeyPem)`. NK1 получает только public PEM и не может самостоятельно выпускать валидные evaluation receipts. Operator approval остаётся отдельным HMAC-подтверждением и не заменяет evaluator signature.
+Приватный ключ должен оставаться только у независимого evaluator/scorer и никогда не попадать в NK1 runtime, CLI host, trainer или Git. Для подписания evaluator вызывает экспортированный helper `createNeuroPlasticEvaluationReceipt(..., evaluatorPrivateKeyPem)`. NK1 получает только public PEM и не может самостоятельно выпускать валидные evaluation receipts. Операторское разрешение также использует Ed25519, но отдельный ключ и отдельный trust map; evaluator и operator не должны разделять приватный ключ.
 
 CLI:
 
@@ -173,13 +173,56 @@ Promotion gate требует не менее 5 matched pairs и 5 незави�
 
 Оценка переводит адаптер максимум в eligible; она никогда не активирует его автоматически.
 
-    export NEURO_PLASTIC_APPROVAL_SECRET="<operator-secret-32+-chars>"
+    openssl genpkey -algorithm ED25519 -out operator-private.pem
+    openssl pkey -in operator-private.pem -pubout -out operator-public.pem
+    chmod 600 operator-private.pem
+
+Положите operator public PEM в отдельный JSON trust map (например, { "operator-key-2026": "<PEM>" }); этот map можно безопасно передавать runtime, а приватный ключ не должен попадать в проект или на inference host.
+
+    # Публичные ключи: JSON object { "operator-key-2026": "<Ed25519 public PEM>" }
+    export NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON="$(cat /secure/path/neuro-plastic-approval-public-keys.json)"
     export NEURO_PLASTIC_APPROVER_ID="operator-id"
+    export NEURO_PLASTIC_APPROVER_KEY_ID="operator-key-2026"
 
-    node --experimental-strip-types scripts/neuro_plastic_registry.mjs approve --adapter kurisu-reasoning-v1
-    node --experimental-strip-types scripts/neuro_plastic_registry.mjs activate --adapter kurisu-reasoning-v1 --input state/kurisu-reasoning-v1.approval.json
+    node --experimental-strip-types scripts/neuro_plastic_registry.mjs approve --adapter kurisu-reasoning-v1 --output state/kurisu-reasoning-v1.approval-request.json
 
-Signature оператора связана с adapter ID, evaluation report ID, base-model fingerprint, fingerprint полного нормализованного adapter manifest (артефакт, tokenizer, source dataset, holdout plan, domain, method, served alias и governance), actor ID и timestamp. Любое изменение manifest после approval требует нового разрешения. При каждом восстановлении сервер и CLI отдельно перепроверяют обе подписи — evaluator receipt и operator approval. Для восстановления требуется NEURO_PLASTIC_EVALUATOR_SECRET наряду с NEURO_PLASTIC_APPROVAL_SECRET. Если любая подпись отсутствует, неверна или секрет недоступен, состояние понижается до staged/eligible и адаптер не вызывается (fail closed).
+Команда approve создаёт только unsigned request с canonical payload, точным adapter/report/base-model/manifest binding, signerKeyId и timestamp. Для локальной изолированной подписи можно использовать отдельный offline signer (сам NK1 runtime и registry CLI приватный ключ не читают):
+
+    chmod 600 /secure/path/operator-private.pem
+    node --experimental-strip-types scripts/neuro_plastic_sign_approval.mjs \\
+      --input state/kurisu-reasoning-v1.approval-request.json \\
+      --key-id operator-key-2026 \\
+      --key-file /secure/path/operator-private.pem \\
+      --output state/kurisu-reasoning-v1.approval-signed.json
+
+Signer проверяет canonical payload и key ID, требует Ed25519 private key в regular file с owner-only permissions, отклоняет symlink в любом компоненте пути входного request, private key и output (не только конечный файл), проверяет inode/version до и после чтения, запрещает перезапись output и создаёт подписанный JSON с правами 0600. Используйте canonical absolute paths и заранее созданные обычные каталоги без symlink; проверка пути уменьшает TOCTOU-окно, но не заменяет изолированный signer/KMS/HSM. Приватный ключ должен находиться вне репозитория; для production предпочтителен KMS/HSM или отдельный signer service. Либо передайте request в такой сервис: он подписывает поле canonicalPayload и добавляет base64 detached signature в approval.signature. Затем выполните:
+
+    node --experimental-strip-types scripts/neuro_plastic_registry.mjs activate --adapter kurisu-reasoning-v1 --input state/kurisu-reasoning-v1.approval-signed.json
+
+Подпись оператора связана с adapter ID, evaluation report ID, base-model fingerprint, fingerprint полного нормализованного adapter manifest (артефакт, tokenizer, source dataset, holdout plan, domain, method, served alias и governance), actor ID, signer key ID и timestamp. Для новой активации подпись должна быть не старше 15 минут; допустимый clock skew вперёд — 30 секунд. При восстановлении уже сохранённого ACTIVE состояния подпись проверяется криптографически, но не истекает по времени. Любое изменение manifest или signer identity после выдачи request требует новой подписи. NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON содержит только доверенные Ed25519 public PEM keys, максимум 64 ключа; NEURO_PLASTIC_APPROVER_KEY_ID выбирает один ключ из этого набора. NK1 runtime и CLI не принимают operator private keys и не выпускают подписи. При restore сервер и CLI отдельно перепроверяют evaluator receipt, operator approval и artifact hashes; отсутствие или неверность любого доказательства переводит adapter в неактивное состояние (fail closed).
+
+P25 host policy использует независимый trust set и не наследует права operator approval:
+
+    export NEURO_PLASTIC_P25_POLICY_PUBLIC_KEYS_JSON="$(cat /secure/path/neuro-plastic-p25-policy-public-keys.json)"
+    export NEURO_PLASTIC_P25_POLICY_KEY_ID="p25-policy-key-2026"
+
+Создайте policy key отдельно от evaluator и operator:
+
+    openssl genpkey -algorithm ED25519 -out p25-policy-private.pem
+    openssl pkey -in p25-policy-private.pem -pubout -out p25-policy-public.pem
+    chmod 600 p25-policy-private.pem
+
+Передайте публичный ключ в отдельный JSON trust map (key ID → PEM), а приватный храните только вне репозитория. В подготовленном P25 activation manifest укажите signerKeyId равным NEURO_PLASTIC_P25_POLICY_KEY_ID и signature="UNSIGNED", затем подпишите точный канонический payload:
+
+    node --experimental-strip-types scripts/neuro_plastic_sign_p25_manifest.mjs \\
+      --input p25-adapter-manifest.unsigned.json \\
+      --key-id p25-policy-key-2026 \\
+      --key-file /secure/path/p25-policy-private.pem \\
+      --output p25-adapter-manifest.signed.json
+
+P25 signer проверяет полный manifest через synapticAdapterManifestPayload, читает только Ed25519 private key из regular file с owner-only permissions, отклоняет symlink в любом компоненте пути manifest, private key и output, повторную подпись и перезапись output; используйте canonical absolute paths и заранее созданные каталоги без symlink. Полученный signed manifest передаётся обычному P25 registration/activation flow. P25 runtime независимо проверяет base64 detached signature по P25 public-key trust map, затем canonical Neuro-Plastic registry повторно подтверждает adapter ID, manifest/artifact digest, base model и фактически применённые веса.
+
+Включение NEURO_PLASTIC_MODEL_ALIASES_ENABLED=1 допускается только при наличии соответствующего NEURO_PLASTIC_P25_POLICY_KEY_ID в policy public-key map, настроенного llama.cpp endpoint и точного base-model fingerprint. Отсутствие ключа или неверная подпись отключает P25 executor, не ослабляя базовый inference path. Для evaluator, operator approval и P25 policy используйте три независимые пары Ed25519 ключей и три раздельных trust map; плановая ротация выполняется добавлением нового public key до переключения signerKeyId, после подтверждённого перехода старый ключ удаляется из trust map.
 
 Откат:
 
@@ -203,7 +246,7 @@ Confidence берётся из выбранного IntentCandidate. Risk рас
 Перед запуском локального сервера загрузите adapter alias в совместимый llama.cpp endpoint. Registry не изменяет конфигурацию llama-server и не подменяет base model самостоятельно: endpoint должен уметь разрешать переданный model alias в заранее загруженный adapter. Затем выставьте:
 
     NEURO_PLASTIC_REGISTRY_FILE="/absolute/runtime/path/state/neuro-plastic-adapters.json"
-    NEURO_PLASTIC_APPROVAL_SECRET="<same-operator-secret>"
+    NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON="<trusted-operator-public-key-map>"
     NEURO_PLASTIC_BASE_MODEL_SHA256="<exact-base-model-fingerprint>"
     NEURO_PLASTIC_MODEL_ALIASES_ENABLED=1
 
@@ -213,7 +256,7 @@ NEURO_PLASTIC_MODEL_ALIASES_ENABLED оставляйте выключенным,
 
 - CI проверяет contracts, CLI lifecycle, Python preflight и server syntax; он не запускает дорогое обучение 7B и не подтверждает реальный GPU/QLoRA throughput.
 - До обучения нужна человеческая проверка consent, provenance, privacy и лицензий. PII regex — только дополнительный фильтр, не DLP-сертификат.
-- Holdout secret/data и evaluator private key должны находиться вне trainer/runtime host; runtime получает только Ed25519 public key. Operator approval HMAC key храните отдельно в secret manager.
+- Holdout secret/data и evaluator private key должны находиться вне trainer/runtime host; runtime получает только Ed25519 public key. Operator approval и P25 policy private keys храните только в отдельных signer/KMS/HSM; runtime получает только раздельные public-key maps.
 - Не коммитьте модельные веса, JSONL corpus, holdout rows, approval secrets, evaluator private keys или state registry. Adapter artifacts и state — локальные runtime данные.
 - Не обновляйте base fingerprint после обучения «для удобства»: mismatch означает, что adapter не относится к текущей base model.
 - Не считайте eligible доказательством production readiness. Нужны независимый review, реальные unseen tasks, retention/forgetting checks, latency/cost measurements и длительный runtime soak.
