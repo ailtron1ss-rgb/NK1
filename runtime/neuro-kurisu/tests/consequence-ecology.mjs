@@ -605,7 +605,7 @@ assert.equal(matchedCalibration.independentlyVerified, true);
 approx(matchedCalibration.calibration.forecastProbability01, 0.72, 'calibrated model forecast');
 approx(matchedCalibration.calibration.brierScore01, (0.72 - 1) ** 2, 'recomputed consequence ecology brier score');
 approx(matchedCalibration.calibration.sharedFutureBrierScore01, (0.72 - 1) ** 2, 'shared future baseline brier score');
-assert.equal(matchedCalibration.calibration.skillScore01, 0,
+assert.equal(matchedCalibration.calibration.brierSkillScore, 0,
   'the calibration ledger must compare like-for-like predictions without inventing model skill');
 const replayedCalibration = calibrationSimulator.recordVerifiedConsequenceOutcome({
   outcomeId: independentlyRecorded.outcome.id,
