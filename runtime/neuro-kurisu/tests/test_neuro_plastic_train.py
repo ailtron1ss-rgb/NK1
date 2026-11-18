@@ -42,6 +42,8 @@ class NeuroPlasticTrainerPreflightTests(unittest.TestCase):
             "baseModelDirectory": str(self.base),
             "baseModelFingerprint": TRAINER.base_model_fingerprint(self.base),
             "tokenizerFingerprint": TRAINER.tokenizer_fingerprint(self.base),
+            "sourceDatasetFingerprint": "c" * 64,
+            "holdoutPlanFingerprint": "d" * 64,
             "trainingFile": "train.jsonl",
             "validationFile": "validation.jsonl",
             "corpusFingerprint": TRAINER.corpus_fingerprint(self.training, self.validation),
