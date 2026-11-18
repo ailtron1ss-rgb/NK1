@@ -243,5 +243,13 @@ class NeuroPlasticTrainerPreflightTests(unittest.TestCase):
             TRAINER.base_model_fingerprint(self.base)
 
 
+    def test_preflight_rejects_symlinked_manifest_path(self):
+        linked = self.root / "manifest-linked.json"
+        linked.symlink_to(self.manifest_path)
+        with self.assertRaisesRegex(TRAINER.PreflightError, "symlink-path-component-rejected"):
+            TRAINER.validate_manifest(linked)
+
+
+
 if __name__ == "__main__":
     unittest.main()

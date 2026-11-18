@@ -261,3 +261,8 @@ NEURO_PLASTIC_MODEL_ALIASES_ENABLED оставляйте выключенным,
 - Не обновляйте base fingerprint после обучения «для удобства»: mismatch означает, что adapter не относится к текущей base model.
 - Не считайте eligible доказательством production readiness. Нужны независимый review, реальные unseen tasks, retention/forgetting checks, latency/cost measurements и длительный runtime soak.
 - В текущей интеграции нет автоматического обучения при каждом разговоре. Только offline candidate build → независимая оценка → human approval → controlled inference.
+
+
+## CI: реальный CPU LoRA smoke
+
+Помимо preflight/registry tests, workflow `.github/workflows/neuro-plastic-core.yml` запускает небольшой end-to-end тест на синтетической локальной GPT-2-совместимой модели: строит base/tokenizer без сети, выполняет один CPU LoRA train pass, сохраняет adapter-only safetensors, сверяет SHA-256, проверяет неизменность base snapshot и загружает adapter обратно через PEFT. Этот smoke подтверждает техническую совместимость train/export/reload пути; он **не** является benchmark качества, QLoRA/GPU test или основанием для promotion.
