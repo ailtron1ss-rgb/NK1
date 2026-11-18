@@ -13,9 +13,13 @@ on:
       - 'runtime/neuro-kurisu/src/organism/language/LanguageOrgan.ts'
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_registry.mjs'
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_sign_approval.mjs'
+      - 'runtime/neuro-kurisu/scripts/neuro_plastic_sign_p25_manifest.mjs'
+      - 'runtime/neuro-kurisu/scripts/neuro_plastic_sign_approval.mjs'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-external-signer.mjs'
       - 'runtime/neuro-kurisu/requirements-neuro-plastic.txt'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-registry-cli.mjs'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-external-signer.mjs'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-p25-signer.mjs'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-language-routing.mjs'
       - 'runtime/neuro-kurisu/NEURO_PLASTIC_CORE_RU.md'
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_train.py'
@@ -32,8 +36,12 @@ on:
       - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/src/organism/language/LanguageOrgan.ts'
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_registry.mjs'
+      - 'runtime/neuro-kurisu/scripts/neuro_plastic_sign_approval.mjs'
+      - 'runtime/neuro-kurisu/scripts/neuro_plastic_sign_p25_manifest.mjs'
       - 'runtime/neuro-kurisu/requirements-neuro-plastic.txt'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-registry-cli.mjs'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-external-signer.mjs'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-p25-signer.mjs'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-language-routing.mjs'
       - 'runtime/neuro-kurisu/NEURO_PLASTIC_CORE_RU.md'
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_train.py'
@@ -63,6 +71,7 @@ jobs:
           node --check src/server/server.mjs
           node --check scripts/neuro_plastic_registry.mjs
           node --check scripts/neuro_plastic_sign_approval.mjs
+          node --check scripts/neuro_plastic_sign_p25_manifest.mjs
       - name: Neuro-Plastic registry, verified corpus and local inference
         working-directory: runtime/neuro-kurisu
         run: |
@@ -70,6 +79,7 @@ jobs:
           node --experimental-strip-types tests/neuro-plastic-language-routing.mjs
           node --experimental-strip-types tests/neuro-plastic-registry-cli.mjs
           node --experimental-strip-types tests/neuro-plastic-external-signer.mjs
+          node --experimental-strip-types tests/neuro-plastic-p25-signer.mjs
 
   trainer-preflight:
     runs-on: ubuntu-latest
