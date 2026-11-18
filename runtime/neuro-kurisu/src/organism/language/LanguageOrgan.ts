@@ -65,6 +65,12 @@ export interface LanguageResponse {
   backend: string;
   latencyMs: number;
   /** Receipt that a compatible adapter sent NK1 hints to its template engine; not proof that the template used them. */
+  /** Token usage returned by a provider; absent when unsupported or not supplied. */
+  providerUsage?: {
+    promptTokens:number;
+    completionTokens:number;
+    totalTokens:number;
+  };
   providerControlReceipt?: {
     provider:'llama.cpp';
     templateKwargsSent:true;
