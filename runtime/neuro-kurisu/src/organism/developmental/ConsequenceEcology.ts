@@ -115,6 +115,14 @@ export interface ConsequenceOptionResult {
   title: string;
   action: string;
   decisionId: string | null;
+  decisionBinding: {
+    sharedFutureDecisionId: string;
+    actionDecisionId: string;
+    scenarioId: string;
+    consequenceId: string;
+    toolId: string;
+    expectedPostcondition: string;
+  } | null;
   ranking: number;
   riskBand: 'low' | 'moderate' | 'high' | 'critical';
   attention: 'routine-review' | 'enhanced-review' | 'mandatory-review';
@@ -336,6 +344,7 @@ function migrateRestoredAnalysis(value: ConsequenceEcologyAnalysis): Consequence
   const analysis = structuredClone(value);
   for (const option of analysis.options) {
     option.decisionId ??= null;
+    option.decisionBinding ??= null;
     option.counterfactualCoverage01 ??= 0;
     option.attributableHarm01 ??= 0;
     option.avoidedHarm01 ??= 0;
@@ -371,6 +380,14 @@ function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalys
     if (!isRecord(option) || !boundedString(option.id, 96, false) ||
         !boundedString(option.title, 180, false) || !boundedString(option.action, 180, false) ||
         !(option.decisionId === undefined || option.decisionId === null || boundedString(option.decisionId, 180, false)) ||
+        !(option.decisionBinding === undefined || option.decisionBinding === null ||
+          (isRecord(option.decisionBinding) &&
+            boundedString(option.decisionBinding.sharedFutureDecisionId, 96, false) &&
+            boundedString(option.decisionBinding.actionDecisionId, 180, false) &&
+            boundedString(option.decisionBinding.scenarioId, 160, false) &&
+            boundedString(option.decisionBinding.consequenceId, 96, false) &&
+            boundedString(option.decisionBinding.toolId, 64, false) &&
+            boundedString(option.decisionBinding.expectedPostcondition, 1024, false))) ||
         !boundedInteger(option.ranking, 1, MAX_OPTIONS) ||
         !(['low', 'moderate', 'high', 'critical'] as unknown[]).includes(option.riskBand) ||
         !(['routine-review', 'enhanced-review', 'mandatory-review'] as unknown[]).includes(option.attention) ||
@@ -810,6 +827,7 @@ function analyzeOption(
     title: clean(option.title, 180),
     action: clean(option.action, 180),
     decisionId: clean(option.decisionId, 180) || null,
+    decisionBinding: null,
     ranking: 0,
     riskBand: riskBand(totalHarm01),
     attention,
@@ -868,6 +886,10 @@ export class ConsequenceEcologyEngine {
 
   snapshot(): ConsequenceEcologyState {
     return structuredClone(this.state);
+  }
+
+  private canonicalPostcondition(value: string): string {
+    return value.normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase();
   }
 
   private restoreCalibrationRecords(raw: unknown): ConsequenceOutcomeCalibrationRecord[] {
@@ -956,7 +978,7 @@ export class ConsequenceEcologyEngine {
         assumptions.set(assumption.id, { confidence01: clamp(assumption.confidence01), status: assumption.status });
       }
       const scenarioConsequences = context.scenario?.consequences ?? [];
-      const decisionBindings: Array<{ optionId: string; decisionId: string; scenarioId: string; consequenceId: string; toolId: string }> = [];
+      const decisionBindings: Array<{ optionId: string; decisionId: string; sharedFutureDecisionId: string; scenarioId: string; consequenceId: string; toolId: string; expectedPostcondition: string }> = [];
       const preparedOptions = request.options.map(option => {
         const nodes = [...(Array.isArray(option.nodes) ? option.nodes : [])];
         const edges = [...(Array.isArray(option.edges) ? option.edges : [])];
@@ -972,7 +994,15 @@ export class ConsequenceEcologyEngine {
               !scenarioConsequences.some(consequence => consequence.id === binding.consequenceId)) {
             throw new Error('consequence-action-binding-node-not-found');
           }
-          decisionBindings.push({ optionId: clean(option.id, 96), decisionId, scenarioId, consequenceId: binding.consequenceId, toolId: binding.toolId });
+          decisionBindings.push({
+            optionId: clean(option.id, 96),
+            decisionId,
+            sharedFutureDecisionId: decision.id,
+            scenarioId,
+            consequenceId: binding.consequenceId,
+            toolId: binding.toolId,
+            expectedPostcondition: binding.expectedPostcondition,
+          });
         }
         for (const consequence of scenarioConsequences) {
           if (existingIds.has(consequence.id)) continue;
@@ -1028,8 +1058,22 @@ export class ConsequenceEcologyEngine {
       }
       if (this.state.analyses.length >= MAX_ANALYSES) throw new Error('consequence-analysis-capacity-reached');
 
-      const options = preparedOptions.map(option => analyzeOption(option, horizonDays, assumptions))
-        .sort((a, b) => b.riskAdjustedValue01 - a.riskAdjustedValue01 || a.id.localeCompare(b.id));
+      const options = preparedOptions.map(option => {
+        const analysed = analyzeOption(option, horizonDays, assumptions);
+        const binding = decisionBindings.find(row => row.optionId === analysed.id);
+        return {
+          ...analysed,
+          decisionId: clean(option.decisionId, 180) || null,
+          decisionBinding: binding ? {
+            sharedFutureDecisionId: binding.sharedFutureDecisionId,
+            actionDecisionId: binding.decisionId,
+            scenarioId: binding.scenarioId,
+            consequenceId: binding.consequenceId,
+            toolId: binding.toolId,
+            expectedPostcondition: binding.expectedPostcondition,
+          } : null,
+        };
+      }).sort((a, b) => b.riskAdjustedValue01 - a.riskAdjustedValue01 || a.id.localeCompare(b.id));
       options.forEach((option, index) => { option.ranking = index + 1; });
       const top = options[0] ?? null;
       const second = options[1] ?? null;
@@ -1096,7 +1140,15 @@ export class ConsequenceEcologyEngine {
       if (outcome.observedAt <= analysisRow.createdAt) throw new Error('consequence-calibration-outcome-not-after-forecast');
       const option = analysisRow.options.find(row => row.id === optionId);
       if (!option) throw new Error('consequence-calibration-option-not-found');
-      if (!option.decisionId || option.decisionId !== outcome.actionDecisionId) {
+      const binding = option.decisionBinding;
+      if (!option.decisionId || option.decisionId !== outcome.actionDecisionId || !binding ||
+          binding.actionDecisionId !== outcome.actionDecisionId ||
+          binding.sharedFutureDecisionId !== outcome.sharedFutureDecisionId ||
+          binding.scenarioId !== outcome.scenarioId ||
+          binding.consequenceId !== outcome.consequenceId ||
+          binding.toolId !== outcome.actionToolId ||
+          this.canonicalPostcondition(binding.expectedPostcondition) !==
+            this.canonicalPostcondition(outcome.expectedPostcondition ?? '')) {
         throw new Error('consequence-calibration-action-decision-mismatch');
       }
       const node = option.nodes.find(row => row.id === outcome.consequenceId);
