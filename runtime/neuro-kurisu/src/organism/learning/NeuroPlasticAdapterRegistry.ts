@@ -57,6 +57,7 @@ export interface NeuroPlasticObservation {
 }
 
 export interface NeuroPlasticEvaluationPayload {
+  manifestFingerprint: string;
   holdoutFingerprint: string;
   baseline: NeuroPlasticObservation[];
   candidate: NeuroPlasticObservation[];
@@ -79,6 +80,7 @@ export interface NeuroPlasticEvaluationInput extends NeuroPlasticEvaluationPaylo
 export interface NeuroPlasticEvaluationReport {
   reportId: string;
   adapterId: string;
+  manifestFingerprint: string;
   holdoutFingerprint: string;
   evaluationId: string;
   evaluatorId: string;
@@ -303,6 +305,7 @@ function observation(raw: unknown, label: string, holdoutFingerprint: string): N
 
 interface NormalizedNeuroPlasticEvaluation {
   adapterId: string;
+  manifestFingerprint: string;
   holdoutFingerprint: string;
   evaluatedAt: number;
   baseline: NeuroPlasticObservation[];
@@ -319,6 +322,7 @@ function normalizeEvaluationPayload(
   input: NeuroPlasticEvaluationPayload,
 ): NormalizedNeuroPlasticEvaluation {
   const normalizedAdapterId = safeText(adapterId, 'evaluation-adapter-id', 80);
+  const manifestFingerprint = safeHash(input?.manifestFingerprint, 'evaluation-manifest-fingerprint');
   const holdoutFingerprint = safeHash(input?.holdoutFingerprint, 'evaluation-holdout-fingerprint');
   const evaluatedAt = safeCounter(input?.evaluatedAt, 'evaluation-time', 1);
   if (!Array.isArray(input?.baseline) || !Array.isArray(input?.candidate)) {
@@ -328,6 +332,7 @@ function normalizeEvaluationPayload(
   const candidate = sortedObservations(input.candidate.map(value => observation(value, 'candidate', holdoutFingerprint)));
   const identity = {
     adapterId: normalizedAdapterId,
+    manifestFingerprint,
     holdoutFingerprint,
     evaluatedAt,
     baseline,
@@ -491,6 +496,7 @@ function qualityConfidenceInterval(deltas: number[]): [number, number] {
 
 interface NeuroPlasticEvaluationEvidence {
   adapterId: string;
+  manifestFingerprint: string;
   holdoutFingerprint: string;
   evaluationId: string;
   evaluatorId: string;
@@ -564,6 +570,7 @@ function buildEvaluationEvidence(
   if (safetyViolationCount > 0) reasons.push('candidate-safety-violations');
   return {
     adapterId: normalized.adapterId,
+    manifestFingerprint: normalized.manifestFingerprint,
     holdoutFingerprint: normalized.holdoutFingerprint,
     evaluationId,
     evaluatorId,
@@ -591,12 +598,14 @@ function reportFingerprint(value: Omit<NeuroPlasticEvaluationReport, 'reportId'>
 function isValidEvaluationReport(
   value: unknown,
   adapterId: string,
+  manifestFingerprint: string,
   holdoutFingerprint: string,
 ): value is NeuroPlasticEvaluationReport {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const report = value as NeuroPlasticEvaluationReport;
   const { reportId, reportFingerprint: signedEvidenceFingerprint, evaluatorSignature, ...evidence } = report;
   if (report.adapterId !== adapterId ||
+      report.manifestFingerprint !== manifestFingerprint ||
       report.holdoutFingerprint !== holdoutFingerprint ||
       report.automaticActivation !== false ||
       typeof report.eligible !== 'boolean' ||
@@ -746,6 +755,7 @@ export class NeuroPlasticAdapterRegistry {
         const validReport = isValidEvaluationReport(
           evaluation,
           manifest.adapterId,
+          neuroPlasticAdapterManifestFingerprint(manifest),
           manifest.holdoutPlanFingerprint,
         ) && Boolean(persistedReceipt && verifyRestoredEvaluation?.(persistedReceipt, {
           adapterId: manifest.adapterId,
@@ -854,6 +864,9 @@ export class NeuroPlasticAdapterRegistry {
     }
     const normalized = normalizeEvaluationPayload(adapterId, input);
     const holdoutFingerprint = normalized.holdoutFingerprint;
+    if (normalized.manifestFingerprint !== neuroPlasticAdapterManifestFingerprint(record.manifest)) {
+      throw new Error('neuro-plastic-candidate-manifest-fingerprint-mismatch');
+    }
     if (holdoutFingerprint !== record.manifest.holdoutPlanFingerprint) {
       throw new Error('neuro-plastic-holdout-plan-mismatch');
     }
