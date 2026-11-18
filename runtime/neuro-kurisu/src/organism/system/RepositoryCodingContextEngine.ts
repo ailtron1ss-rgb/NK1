@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { sha256Stable } from '../core/StableSerialization.ts';
-import type { ToolDefinition, ToolExecutionContext } from './ActionGateway.ts';
+import type { ToolDefinition, ToolExecutionContext, ToolReceiptLookup } from './ActionGateway.ts';
 
 export type RepositoryCodingRisk = 'low' | 'medium' | 'high' | 'critical';
 export type RepositoryPatchOperation = 'create' | 'modify' | 'delete';
@@ -9,7 +9,7 @@ export type RepositoryProposalStatus =
   | 'applied' | 'reconciliation-required' | 'blocked';
 
 export interface RepositoryFileInput { path: string; content: string; symlink?: boolean; }
-export interface RepositorySnapshot { repository: string; revision: string; files: RepositoryFileInput[]; }
+export interface RepositorySnapshot { repository: string; revision: string; complete: boolean; files: RepositoryFileInput[]; }
 export interface RepositoryContextFile {
   path: string; sha256: string;
   role: 'source' | 'test' | 'documentation' | 'configuration' | 'asset' | 'other';
@@ -73,6 +73,8 @@ export interface RepositoryCodingHost {
   verifySandbox(payload: RepositoryCodingHostPayload): Promise<RepositorySandboxTestReceipt>;
   /** Atomic working-tree write only. Must never push, merge, release, deploy, or mutate external systems. */
   applyPatch(payload: RepositoryCodingHostPayload, idempotencyKey: string): Promise<RepositoryApplyReceipt>;
+  /** Authoritative read-only provider receipt lookup. Must never execute or retry the patch. */
+  reconcilePatch(payload: RepositoryCodingHostPayload, idempotencyKey: string): Promise<ToolReceiptLookup>;
 }
 export interface RepositoryCodingHostPayload {
   proposalId: string; repository: string; baseRevision: string; requiredTests: string[]; rationale: string;
@@ -188,7 +190,7 @@ function excerpts(content: string, terms: string[], maxBytes: number): Repositor
 function validTestCommand(command: string): boolean {
   const value = command.trim();
   if (value.length > 220 || /[;&|$\x60<>\n\r]/.test(value)) return false;
-  return /^npm run [a-z0-9:_-]+$/i.test(value) || /^node --experimental-strip-types tests\/[a-z0-9._/-]+\.mjs$/i.test(value);
+  return /^npm run (?:test:[a-z0-9:_-]+|typecheck)$/i.test(value) || /^node --experimental-strip-types tests\/[a-z0-9._/-]+\.mjs$/i.test(value);
 }
 function sameSet(a: string[], b: string[]): boolean {
   const left = [...a].sort(), right = [...b].sort();
@@ -498,9 +500,23 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
       }, required: ['baseRevision','rationale','requiredTests','changes'], additionalProperties: false, maxProperties: 4 },
       execute: async input => {
         const snapshot = await host.snapshot(), base = revision(input.baseRevision);
+        if (snapshot.complete !== true) throw new Error('repository-coding-incomplete-snapshot');
         if (base !== revision(snapshot.revision)) throw new Error('repository-coding-stale-base-revision');
+        const byPath = new Map<string, RepositoryFileInput>();
+        for (const file of snapshot.files) { try { byPath.set(safePath(file.path), file); } catch { /* unsafe paths are never patch targets */ } }
+        const changes = input.changes as RepositoryPatchChangeInput[];
+        for (const change of changes) {
+          const target = safePath(change.path), current = byPath.get(target);
+          if (change.operation === 'create') {
+            if (current) throw new Error('repository-coding-create-target-exists');
+          } else {
+            if (!current || current.symlink === true || typeof current.content !== 'string' || current.content !== change.baseContent || digest(current.content) !== String(change.expectedSha256 ?? '').toLowerCase()) {
+              throw new Error('repository-coding-host-preimage-mismatch');
+            }
+          }
+        }
         return await engine.proposePatch({ repository: snapshot.repository, baseRevision: base, rationale: String(input.rationale),
-          requiredTests: input.requiredTests as string[], changes: input.changes as RepositoryPatchChangeInput[] }) as unknown as Record<string, unknown>;
+          requiredTests: input.requiredTests as string[], changes }) as unknown as Record<string, unknown>;
       },
     },
     {
@@ -510,6 +526,7 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
         const id = String(input.proposalId), payload = engine.hostPayload(id);
         if (!payload) throw new Error('repository-coding-proposal-not-found');
         const snapshot = await host.snapshot();
+        if (snapshot.complete !== true) throw new Error('repository-coding-incomplete-snapshot');
         if (revision(snapshot.revision) !== payload.baseRevision) throw new Error('repository-coding-stale-base-revision');
         return await engine.recordSandboxVerification(id, await host.verifySandbox(payload)) as unknown as Record<string, unknown>;
       },
@@ -517,6 +534,30 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
     {
       id: 'organism.project.patch.apply', capability: 'project.patch.apply', destructive: true, projectAllowed: true,
       permissionClass: 'self-modification', requiresIdempotencyKey: true, inputContract: proposalIdContract,
+      outputContract: { type: 'object', properties: {
+        proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+        status: { type: 'string', enum: ['applied', 'reconciliation-required'] },
+        testStatus: { type: 'string', enum: ['passed'] },
+        applyAllowed: { type: 'boolean', enum: [false] },
+      }, required: ['proposalId', 'status', 'testStatus', 'applyAllowed'], additionalProperties: true, maxProperties: 20 },
+      verify: async ({ input, result }) => {
+        const verified = result?.status === 'applied' && result?.proposalId === input?.proposalId &&
+          result?.testStatus === 'passed' && result?.applyAllowed === false;
+        return { verified, basis: 'tool-contract', confidence01: verified ? 0.99 : 0,
+          notes: verified ? 'engine-validated-atomic-working-tree-receipt' : 'apply-receipt-not-verified-by-engine' };
+      },
+      reconcile: async (input, context) => {
+        const id = String(input.proposalId), payload = engine.hostPayload(id), key = context.idempotencyKey;
+        if (!payload || !key) return { status: 'unknown', reason: 'proposal-or-idempotency-context-unavailable' };
+        const lookup = await host.reconcilePatch(payload, key);
+        if (lookup.status === 'found') {
+          const receipt = lookup.result.receipt as RepositoryApplyReceipt | undefined;
+          if (!receipt) return { status: 'unknown', reason: 'provider-receipt-payload-missing' };
+          const reconciled = await engine.recordApplyReceipt(id, key, receipt);
+          if (reconciled.status !== 'applied') return { status: 'unknown', reason: 'receipt-requires-manual-reconciliation' };
+        }
+        return lookup;
+      },
       execute: async (input, context?: ToolExecutionContext) => {
         const id = String(input.proposalId), eligibility = engine.canApply(id);
         if (!eligibility.allowed) throw new Error('repository-coding-apply-not-eligible:' + eligibility.reason);
@@ -524,6 +565,7 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
         if (!payload) throw new Error('repository-coding-proposal-not-found');
         if (!key) throw new Error('repository-coding-idempotency-key-required');
         const snapshot = await host.snapshot();
+        if (snapshot.complete !== true) throw new Error('repository-coding-incomplete-snapshot');
         if (revision(snapshot.revision) !== payload.baseRevision) throw new Error('repository-coding-stale-base-revision');
         const receipt = await host.applyPatch(payload, key);
         return await engine.recordApplyReceipt(id, key, receipt) as unknown as Record<string, unknown>;
