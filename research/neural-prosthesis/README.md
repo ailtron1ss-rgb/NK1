@@ -286,11 +286,21 @@ an empty JSON array. With no configured profile paths, the runtime adds no
 Layer Force hooks. A default profile without a configured local profile is
 rejected. Profiles are never uploaded through an HTTP endpoint.
 
-The controller uses request-local activation state, preserves auxiliary tuple
-and list outputs, and caps each per-token steering delta at 10% of that token's
-hidden-state norm. Detailed diagnostics expose profile IDs, raw-file digests,
-selected layer indexes and aggregate hook/token counts only; they never expose
-direction vectors, hidden states, prompts or completions.
+Loading a profile only validates and stores its bounded direction tensors; it does
+not attach forward hooks. Hooks are registered lazily, once per selected layer,
+only when a non-zero-strength default profile is explicitly entered for inference.
+A profile preloaded without a selected default therefore adds no model-forward
+overhead. Hooks are removed when the sidecar closes.
+
+The steering limit is checked on the actual output tensor after casting back to
+the model's activation dtype, not merely on the FP32 intermediate. If FP16/BF16
+rounding would push a token over its configured limit, the controller rescales
+once and, when no representable in-bound value exists, leaves that token
+unchanged. The strict bound therefore takes priority over applying a steering
+delta. Diagnostics expose profile IDs, raw-file digests, selected layer indexes,
+registered-hook count, applied hook/token counters and low-precision fallback
+count only; they never expose direction vectors, hidden states, prompts or
+completions.
 
 Profile authoring/calibration, independent task-quality evaluation, model-specific
 latency and memory measurement, and target-device soak remain research work.
