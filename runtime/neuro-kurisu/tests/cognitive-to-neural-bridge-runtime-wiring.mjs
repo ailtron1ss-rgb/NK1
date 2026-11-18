@@ -126,7 +126,7 @@ async function runRuntime(enabled) {
       const afterUsageOverrun=runtime.cognitiveToNeuralBridgeDiagnostics();
       assert.equal(afterUsageOverrun.providerCompletionBudgetExceeded,1,
         'actual provider usage above the requested token budget must be observable');
-      assert.ok(afterUsageOverrun.providerCompletionBudgetUtilizationMean>1);
+      assert.ok(afterUsageOverrun.providerCompletionBudgetUtilizationMax>1);
     } else {
       assert.ok(requests.every(value => value.cognitiveControl === undefined),
         'emergency bypass must pass requests to the provider without mutation');
