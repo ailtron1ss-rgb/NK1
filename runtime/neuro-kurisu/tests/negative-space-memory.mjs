@@ -68,6 +68,21 @@ assert.equal(engine.negativeSpaceRelatedAlternatives(context.contextKey).length,
 assert.equal(engine.negativeSpaceRelatedAlternatives('unseen-context').length, 0);
 assert.equal(engine.negativeSpaceRelatedAlternatives(context.contextKey, 1).length, 1);
 assert.deepEqual(engine.negativeSpaceRelatedAlternatives(context.contextKey)[0].outcomeEvidence, context.outcomeEvidence);
+
+// Unverified outcomes remain available only through an explicit exploratory retrieval.
+engine.observe('respond', 0.3, [{ action: 'plan', estimated: 0.9, confidence01: 0.95 }], {
+  decisionId: 'decision-negative-space-unverified-context',
+  contextKey: context.contextKey,
+  chosenExpectedOutcome01: 0.8,
+  significance: { cost01: 0.1, risk01: 0.9, futureImportance01: 0.1 },
+  outcomeVerified01: 0,
+  outcomeIndependent01: 0,
+  outcomeSource: 'internal',
+});
+assert.equal(engine.negativeSpaceRelatedAlternatives(context.contextKey).length, 2,
+  'default contextual retrieval must exclude unverified outcomes');
+assert.equal(engine.negativeSpaceRelatedAlternatives(context.contextKey, 8, true).length, 3,
+  'unverified history requires explicit opt-in');
 assert.ok(record.outcomeEvidence.includes('postcondition:verified'));
 const originalRegretRecordCount = engine.snapshot().records.length;
 const replayed = engine.observe('respond', 0.52, alternatives, context);
@@ -405,6 +420,59 @@ assert.equal(malformedState.records[0].significance.cost01, 1);
 assert.equal(malformedState.records[0].significance.risk01, 0);
 assert.equal(malformedState.pruned, 0);
 assert.equal(malformed.negativeSpaceDiagnostics().bounded, true);
+
+
+const monotonic = new RegretEngine();
+monotonic.observe('act', 0.3, [{ action: 'defer', estimated: 0.9, confidence01: 1 }], {
+  decisionId: 'decision-time-monotonic-001',
+  decisionAt: 500,
+  outcomeAt: 510,
+  chosenExpectedOutcome01: 0.8,
+  significance: { cost01: 0.9, risk01: 0.1, futureImportance01: 0.1 },
+  outcomeVerified01: 1,
+});
+assert.equal(monotonic.markNegativeSpaceAlternativeReopened(
+  'decision-time-monotonic-001', 'defer', 'reviewed', 100,
+), true);
+assert.equal(monotonic.snapshot().negativeSpace.records[0].alternatives[0].reopenedAt, 510,
+  'reopen timestamp cannot predate the decision outcome');
+monotonic.observe('act', 0.3, [{ action: 'rest', estimated: 0.9, confidence01: 1 }], {
+  decisionId: 'decision-time-monotonic-002',
+  decisionAt: 300,
+  outcomeAt: 301,
+  chosenExpectedOutcome01: 0.8,
+  significance: { cost01: 0.9, risk01: 0.1, futureImportance01: 0.1 },
+  outcomeVerified01: 1,
+});
+assert.equal(monotonic.snapshot().negativeSpace.lastAt, 510,
+  'out-of-order events must not move the ledger clock backwards');
+
+// Restore overflow is accounted for instead of silently discarding older history.
+const overflow = new RegretEngine();
+overflow.restore({
+  records: [],
+  meanRegret: 0,
+  lastAt: 0,
+  version: 1,
+  negativeSpace: {
+    version: 1,
+    totalRecorded: 140,
+    pruned: 0,
+    lastAt: 139,
+    records: Array.from({ length: 140 }, (_, index) => ({
+      decisionId: `overflow-${index}`,
+      at: index,
+      chosen: 'respond',
+      chosenExpectedOutcome01: 0.7,
+      chosenActualOutcome01: null,
+      alternatives: [{ action: 'verify', expectedOutcome01: 0.8 }],
+    })),
+  },
+});
+assert.equal(overflow.snapshot().negativeSpace.records.length, 128);
+assert.equal(overflow.snapshot().negativeSpace.pruned, 12,
+  'restore must account for records dropped by the ledger bound');
+assert.equal(overflow.snapshot().negativeSpace.totalRecorded, 140);
 
 console.log(JSON.stringify({
   pass: true,
