@@ -40,6 +40,13 @@ export class FutureSimulator {
   /** Ephemeral synthetic laboratory; evaluator state is never persisted. */
   readonly #worldForge = new WorldForge();
 
+  constructor() {
+    // Bind calibration to the canonical Shared Future outcome ledger. Callers cannot submit
+    // a caller-constructed object with `independentlyVerified: true` to enter the trust ledger.
+    this.consequenceEcology.setVerifiedOutcomeResolver(outcomeId =>
+      this.sharedFuture.listOutcomes().find(row => row.id === outcomeId) ?? null);
+  }
+
   generateWorldForgeScenarios(input: { split: 'train' | 'validation'; seed: number; count?: number; difficulty01?: number }): WorldForgeCase[] {
     return this.#worldForge.generateRuntimeScenarios(input);
   }
@@ -78,10 +85,8 @@ export class FutureSimulator {
   recordVerifiedConsequenceOutcome(input: { outcomeId: string; analysisId: string; optionId: string }) {
     const outcomeId = typeof input?.outcomeId === 'string' ? input.outcomeId.trim() : '';
     if (!outcomeId) throw new Error('consequence-outcome-id-required');
-    const outcome = this.sharedFuture.listOutcomes().find(row => row.id === outcomeId);
-    if (!outcome) throw new Error('consequence-outcome-not-found');
     return this.consequenceEcology.recordVerifiedOutcome({
-      outcome,
+      outcomeId,
       analysisId: input.analysisId,
       optionId: input.optionId,
     });
