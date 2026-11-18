@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { sha256Stable } from '../core/StableSerialization.ts';
 import type { ToolDefinition, ToolExecutionContext, ToolReceiptLookup } from './ActionGateway.ts';
+import type { ToolInputContract } from './ToolInputContract.ts';
 
 export type RepositoryCodingRisk = 'low' | 'medium' | 'high' | 'critical';
 export type RepositoryPatchOperation = 'create' | 'modify' | 'delete';
@@ -562,7 +563,7 @@ export class RepositoryCodingContextEngine {
 }
 
 export function createRepositoryCodingActionTools(engine: RepositoryCodingContextEngine, host: RepositoryCodingHost): ToolDefinition[] {
-  const proposalIdContract = { type: 'object', properties: { proposalId: { type: 'string', minLength: 64, maxLength: 64 } }, required: ['proposalId'], additionalProperties: false, maxProperties: 1 } as const;
+  const proposalIdContract: ToolInputContract = { type: 'object', properties: { proposalId: { type: 'string', minLength: 64, maxLength: 64 } }, required: ['proposalId'], additionalProperties: false, maxProperties: 1 };
   return [
     {
       id: 'organism.project.repository-context.read', capability: 'project.repository.read', destructive: false, projectAllowed: true,
