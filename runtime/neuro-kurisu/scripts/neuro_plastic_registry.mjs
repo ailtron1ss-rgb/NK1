@@ -111,6 +111,7 @@ async function main() {
       snapshot,
       (approval, context) => verifyNeuroPlasticApprovalSignature(approval, context, SECRET),
       (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, EVALUATOR_SECRET),
+      (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
     );
   } catch (error) {
     if (error?.code !== 'ENOENT') throw new Error('existing-neuro-plastic-registry-invalid: ' + error.message);
