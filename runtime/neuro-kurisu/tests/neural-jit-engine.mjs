@@ -476,6 +476,29 @@ assert.equal(fullLedgerEngine.diagnostics().holdoutProtection.spentTaskFingerpri
   'the saturated ledger must not evict old fingerprints to make room for a new evaluation');
 assert.equal(fullLedgerEngine.diagnostics().holdoutProtection.healthy, false);
 
+// An unreadable or incompatible durable snapshot must not silently start a
+// fresh trusted holdout epoch with an unknown prior evaluation history.
+const invalidSnapshotEngine = new NeuralJitEngine({ activationCaptureVerifier: verifier });
+invalidSnapshotEngine.restore({
+  version: 99,
+  splitSalt: 'invalid',
+  candidates: [],
+  acceptedTraces: 0,
+  rejectedTraces: 0,
+  lastDecision: 'corrupt',
+  lastDecisionAt: Date.now(),
+});
+assert.equal(invalidSnapshotEngine.diagnostics().holdoutProtection.healthy, false);
+for (let i = 0; i < 120; i += 1) {
+  const trace = await makeTrace(16_000 + i);
+  assert.equal((await invalidSnapshotEngine.recordVerifiedTrace(trace)).accepted, true);
+}
+const invalidSnapshotCandidate = invalidSnapshotEngine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint });
+assert.ok(invalidSnapshotCandidate);
+const invalidSnapshotEvaluation = invalidSnapshotEngine.evaluateCandidate(invalidSnapshotCandidate.id);
+assert.equal(invalidSnapshotEvaluation.status, 'rejected');
+assert.ok(invalidSnapshotEvaluation.reasons.includes('holdout-evidence-ledger-capacity-exceeded'));
+
 // A rejected candidate is part of the experiment record. Later candidate
 // compilation must not silently delete it from diagnostics or persistence.
 const historyEngine = new NeuralJitEngine({ activationCaptureVerifier: verifier });
