@@ -70,6 +70,8 @@ async function runRuntime(enabled) {
       assert.ok(diagnostics.providerUsageObservations>0);
       assert.equal(diagnostics.providerUsageUnavailable,0);
       assert.equal(diagnostics.providerUsageInvalid,0);
+      assert.equal(diagnostics.providerUsageDuplicates,0);
+      assert.equal(diagnostics.providerUsageRequestIdUnavailable,0);
       assert.ok(diagnostics.providerPromptTokensTotal>=90);
       assert.ok(diagnostics.providerCompletionTokensTotal>=32);
       assert.ok(diagnostics.providerTotalTokensTotal>=122);
@@ -82,6 +84,19 @@ async function runRuntime(enabled) {
 
       const acceptedBeforeReplay=diagnostics.providerControlReceiptsAccepted;
       const selectedResponse=responses[requests.indexOf(request)];
+      const usageObservationsBeforeReplay=diagnostics.providerUsageObservations;
+      const totalTokensBeforeReplay=diagnostics.providerTotalTokensTotal;
+      runtime.recordCognitiveProviderUsage(request,selectedResponse);
+      const afterUsageReplay=runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.equal(afterUsageReplay.providerUsageObservations,usageObservationsBeforeReplay,
+        'replaying the same provider usage receipt must not count token usage twice');
+      assert.equal(afterUsageReplay.providerUsageDuplicates,1);
+      assert.equal(afterUsageReplay.providerTotalTokensTotal,totalTokensBeforeReplay);
+      runtime.recordCognitiveProviderUsage({
+        ...request,cognitiveControlRequestId:undefined,
+      },selectedResponse);
+      assert.equal(runtime.cognitiveToNeuralBridgeDiagnostics().providerUsageRequestIdUnavailable,1,
+        'usage observations without a runtime request ID must not enter the ledger');
       runtime.recordCognitiveProviderControlReceipt(request,selectedResponse);
       const afterReplay=runtime.cognitiveToNeuralBridgeDiagnostics();
       assert.equal(afterReplay.providerControlReceiptsAccepted,acceptedBeforeReplay,
@@ -129,6 +144,8 @@ async function runRuntime(enabled) {
       assert.equal(afterUsageOverrun.providerCompletionBudgetExceeded,1,
         'actual provider usage above the requested token budget must be observable');
       assert.ok(afterUsageOverrun.providerCompletionBudgetUtilizationMax>1);
+      assert.equal(afterUsageOverrun.providerUsageObservations,usageObservationsBeforeReplay+1);
+      assert.equal(afterUsageOverrun.providerUsageDuplicates,1);
     } else {
       assert.ok(requests.every(value => value.cognitiveControl === undefined),
         'emergency bypass must pass requests to the provider without mutation');
