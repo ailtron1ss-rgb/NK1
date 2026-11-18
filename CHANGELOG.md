@@ -2,7 +2,8 @@
 
 - Add a dedicated, optional PyTorch activation-hook controller to the Neural Prosthesis sidecar; steer selected decoder-layer hidden states with host-supplied, model-bound directions rather than chat-template metadata.
 - Bind schema-v1 profiles to exact model ID, immutable model revision, model-config digest, layer path and hidden width; validate raw-file SHA-256 against a host-owned allowlist.
-- Preserve tuple/list auxiliary outputs and request-local context; hard-cap every per-token steering delta at 10% of the current hidden-state norm and keep base-model parameters unchanged.
+- Preserve tuple/list auxiliary outputs and request-local context; hard-cap every per-token steering delta at 10% of the current hidden-state norm after FP16/BF16 output casting. When quantization offers no safe non-zero step, preserve the original token activation.
+- Validate and preload profiles without installing hooks; attach one hook per selected non-zero layer only during explicit non-zero request activation, eliminating disabled/preload-path forward overhead. Expose hook, token and precision-fallback counters without exposing vectors or activation tensors.
 - Keep activation disabled by default; only the operator-selected, locally loaded and allowlisted default profile enters inference.
 - Add profile admission, redacted diagnostic, context-reset and sidecar opt-in regression coverage.
 - **Draft PR #931 stacked on #925.** Direction authoring/calibration, independent task-quality evaluation, target-model latency/memory and device soak remain unverified. No merge or Release ZIP change is claimed.
