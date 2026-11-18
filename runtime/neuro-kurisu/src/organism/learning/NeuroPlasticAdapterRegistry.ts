@@ -682,7 +682,7 @@ export class NeuroPlasticAdapterRegistry {
   }
 
   /** Restore only after both the evaluator evidence receipt and operator activation receipt are independently revalidated. */
-  restore(
+  async restore(
     raw?: unknown,
     verifyRestoredApproval?: (
       approval: NeuroPlasticApproval,
@@ -692,8 +692,8 @@ export class NeuroPlasticAdapterRegistry {
       receipt: NeuroPlasticEvaluationReceipt,
       context: { adapterId: string; holdoutFingerprint: string },
     ) => boolean,
-    verifyRestoredArtifact?: (manifest: NeuroPlasticAdapterManifest) => boolean,
-  ): void {
+    verifyRestoredArtifact?: (manifest: NeuroPlasticAdapterManifest) => boolean | Promise<boolean>,
+  ): Promise<void> {
     this.state = { schemaVersion: 1, adapters: [] };
     if (!raw) return;
     let input: Record<string, unknown>;
@@ -711,7 +711,7 @@ export class NeuroPlasticAdapterRegistry {
         const manifest = normalizeManifest(row.manifest);
         if (restoredAdapterIds.has(manifest.adapterId)) continue;
         const artifactTrusted = typeof verifyRestoredArtifact === 'function' &&
-          verifyRestoredArtifact(manifest) === true;
+          await verifyRestoredArtifact(manifest) === true;
         const evaluation = row.evaluation as NeuroPlasticEvaluationReport | null;
         const persistedReceipt: NeuroPlasticEvaluationReceipt | null = evaluation ? {
           evaluationId: evaluation.evaluationId,
