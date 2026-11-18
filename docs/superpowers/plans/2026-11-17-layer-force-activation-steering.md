@@ -82,7 +82,7 @@
 - [x] **Step 2: Document profile schema and operator opt-in** with model binding, raw-file digest calculation, allowlist and disable procedure.
 - [x] **Step 3: Record the implementation status** as Draft/IMPLEMENTED and explicitly leave real-model evaluation, quality, latency, memory, safety and device soak unresolved.
 - [x] **Step 4: Run the full applicable Python suite and Node runtime typecheck/integration/P40 tests in exact-head CI.** The initial implementation passed at its verified HEAD; later hardening introduced new regression tests, recorded separately in Task 4.
-- [x] **Step 5: Inspect the exact diff and maintain Draft PR #931 targeting the #925 branch.** Original verified baseline head: `9d70ef1ba54319cea4e350eba9ba1d6fe0d1e9d5`.
+- [x] **Step 5: Inspect the exact diff and maintain Draft PR #931 targeting the #925 branch.** Latest verified implementation head: `06a52dea266e3f23b77c41fcfc7ebdf81abeaef3`.
 
 ### Task 4: Lazy hooks and post-cast precision safety
 
@@ -99,8 +99,8 @@
 - [x] **Step 2: Verify RED on exact HEAD `38edc6c0c28e44df029205e08b5c168338888f83`.** GitHub Actions confirmed one missing `registered_hook_count` and two precision violations: FP16 slightly exceeded the cap and BF16 produced 0.0273 against 0.0266 allowed.
 - [x] **Step 3: Implement lazy, rollback-safe hook registration.** Loading/preloading a profile is inert; only explicit non-zero activation attaches one hook per selected non-zero layer; zero-strength activation remains hook-free.
 - [x] **Step 4: Enforce the bound after dtype casting.** Measure the actual returned activation, rescale if it overshoots, and preserve the input token if the dtype cannot represent an in-bound steering step.
-- [ ] **Step 5: Verify GREEN on the final exact HEAD** with Python sidecar tests and Node typecheck/Neural Prosthesis/P40 regressions. Current implementation is committed; the exact-head Actions run is still pending.
-- [ ] **Step 6: Record final metrics and update PR description only after the exact-head run completes.
+- [x] **Step 5: Verify GREEN on the final exact HEAD `06a52dea266e3f23b77c41fcfc7ebdf81abeaef3`.** GitHub Actions run [#44239599893](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44239599893) completed successfully: Python sidecar (38 tests) and Node runtime typecheck plus Neural Prosthesis/P40 regression both passed.
+- [x] **Step 6: Record verification and update PR #931.** Latest verified implementation HEAD is `06a52dea266e3f23b77c41fcfc7ebdf81abeaef3`; all exact-head workflow jobs completed successfully. Real model/quality/device evaluation remains open.
 
 ## Verification Commands
 
