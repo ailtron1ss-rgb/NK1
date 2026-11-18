@@ -185,6 +185,10 @@ try {
   assert.equal(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsRejected, 0);
   assert.equal(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsDuplicate, 0);
   assert.ok(bridgeDiagnosticsBody.diagnostics?.providerUsageObservations > 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageDuplicates, 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageUnavailable, 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageInvalid, 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageRequestIdUnavailable, 0);
   assert.ok(bridgeDiagnosticsBody.diagnostics?.providerPromptTokensTotal >= 84);
   assert.ok(bridgeDiagnosticsBody.diagnostics?.providerCompletionTokensTotal >= 19);
   assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageInvalid, 0);
