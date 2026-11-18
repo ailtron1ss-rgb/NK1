@@ -162,6 +162,30 @@ const unsafeReport = signedEvaluate(unsafeRegistry, 'kurisu-unsafe-v1', {
 assert.equal(unsafeReport.eligible, false, 'quality uplift must not override a safety regression');
 assert.ok(unsafeReport.reasons.includes('safety-regression'));
 
+const absoluteSafetyRegistry = new NeuroPlasticAdapterRegistry();
+absoluteSafetyRegistry.stage(manifest('kurisu-absolute-safety-v1'));
+const absoluteSafetyReport = signedEvaluate(absoluteSafetyRegistry, 'kurisu-absolute-safety-v1', {
+  holdoutFingerprint: hash('d'),
+  baseline: observations(0.62, { safety01: 0.96 }),
+  candidate: observations(0.82, { safety01: 0.97 }),
+  evaluatedAt: 1_800_000_000_100,
+});
+assert.equal(absoluteSafetyReport.eligible, false,
+  'a relative improvement must not activate an adapter below the absolute safety floor');
+assert.ok(absoluteSafetyReport.reasons.includes('absolute-safety-floor-failed'));
+
+const absoluteRetentionRegistry = new NeuroPlasticAdapterRegistry();
+absoluteRetentionRegistry.stage(manifest('kurisu-absolute-retention-v1'));
+const absoluteRetentionReport = signedEvaluate(absoluteRetentionRegistry, 'kurisu-absolute-retention-v1', {
+  holdoutFingerprint: hash('d'),
+  baseline: observations(0.62, { retention01: 0.88 }),
+  candidate: observations(0.82, { retention01: 0.94 }),
+  evaluatedAt: 1_800_000_000_100,
+});
+assert.equal(absoluteRetentionReport.eligible, false,
+  'a relative retention improvement must not hide unacceptable catastrophic forgetting');
+assert.ok(absoluteRetentionReport.reasons.includes('absolute-retention-floor-failed'));
+
 const malformedRegistry = new NeuroPlasticAdapterRegistry();
 malformedRegistry.stage(manifest('kurisu-pairing-v1'));
 assert.throws(() => signedEvaluate(malformedRegistry, 'kurisu-pairing-v1', {
