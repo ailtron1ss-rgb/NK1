@@ -207,6 +207,13 @@ assert.equal(replayAfterRestart.accepted, false,
 assert.equal(replayAfterRestart.reason, 'duplicate-outcome-observation');
 assert.equal(restored.diagnostics().candidates[0].status, 'quarantined',
   'persisted weights must not retain trust after process restart');
+assert.equal(restored.diagnostics().holdoutProtection.spentTaskFingerprints,
+  stored.spentHoldoutTaskFingerprints.length,
+  'consumed holdout evidence must remain spent after process restart');
+const quarantinedEvaluation = restored.evaluateCandidate(candidate.id);
+assert.ok(quarantinedEvaluation.reasons.includes('candidate-quarantined-after-restore'));
+assert.equal(restored.diagnostics().candidates[0].status, 'quarantined',
+  'new holdout traces alone must not promote a persisted, unverified training candidate');
 assert.equal(restored.diagnostics().liveInferenceEnabled, false);
 assert.equal(restored.diagnostics().activeCandidates, 0);
 assert.equal(restored.projectShadowResidual(candidate.id,candidate.meanInput), null,
