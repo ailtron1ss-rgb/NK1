@@ -1866,5 +1866,8 @@
     "test:hexis:hmx-canonical-memory-bridge": "node --experimental-strip-types tests/integration/hexis-hmx-canonical-memory-bridge.mjs",
     "test:cognitive-resource-economy": "node --experimental-strip-types tests/cognitive-resource-economy-workpass322.mjs",
     "test:will:voluntary-attention-budget": "node --experimental-strip-types tests/will-voluntary-attention-budget-workpass.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   }
 }

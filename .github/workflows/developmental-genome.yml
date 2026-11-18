@@ -32,6 +32,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
+      - name: Install pinned runtime TypeScript compiler
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Run Developmental Genome behavioral tests
         run: npm --prefix runtime/neuro-kurisu run test:developmental-genome
       - name: Runtime TypeScript check
