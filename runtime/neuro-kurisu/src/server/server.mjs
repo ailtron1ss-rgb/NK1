@@ -313,7 +313,7 @@ async function tryLlamaCpp(request, failures) {
     if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     if (!LLAMA_CPP_PROVIDER.configured() || LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown) return null;
     try {
-        return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature, signal: request.signal, cognitiveControl: request.cognitiveControl });
+        return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature, signal: request.signal, cognitiveControl: request.cognitiveControl, cognitiveControlRequestId: request.cognitiveControlRequestId });
     }
     catch (error) {
         if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
