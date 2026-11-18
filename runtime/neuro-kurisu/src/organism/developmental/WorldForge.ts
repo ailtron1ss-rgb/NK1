@@ -166,7 +166,7 @@ function normalizeAdversarialInput(value:unknown):WorldForgeAdversarialRequest|n
     if(typeof count!=='number'||!Number.isSafeInteger(count)||count<1||count>16)return null;
     if(typeof difficulty01!=='number'||!Number.isFinite(difficulty01)||difficulty01<.2||difficulty01>.95)return null;
     if(!['balanced','resource-shock','route-block','signal-noise','deadline-shift'].includes(focus))return null;
-    if(typeof candidateMultiplier!=='number'||!Number.isSafeInteger(candidateMultiplier)||candidateMultiplier<2||candidateMultiplier>8)return null;
+    if(typeof candidateMultiplier!=='number'||!Number.isSafeInteger(candidateMultiplier)||candidateMultiplier<2||candidateMultiplier>4)return null;
     return{seed,count,difficulty01,focus:focus as WorldForgeAdversarialFocus,candidateMultiplier};
   } catch { return null; }
 }
