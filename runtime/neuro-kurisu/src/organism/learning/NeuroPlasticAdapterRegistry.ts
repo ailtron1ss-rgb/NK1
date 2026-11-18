@@ -749,13 +749,30 @@ export function canonicalNeuroPlasticApprovalPayload(
   });
 }
 
+export interface NeuroPlasticApprovalVerificationOptions {
+  purpose?: 'activation' | 'restore';
+  maxAgeMs?: number;
+  allowedClockSkewMs?: number;
+  now?: () => number;
+}
+
 export function verifyNeuroPlasticApprovalSignature(
   approval: NeuroPlasticApproval,
   context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
   trustedKeys: ReadonlyMap<string, string>,
+  options: NeuroPlasticApprovalVerificationOptions = {},
 ): boolean {
   try {
     const normalized = normalizeApproval(approval);
+    const maxAgeMs = options.maxAgeMs ?? 15 * 60_000;
+    const allowedClockSkewMs = options.allowedClockSkewMs ?? 30_000;
+    if (!Number.isSafeInteger(maxAgeMs) || maxAgeMs < 1_000 || maxAgeMs > 24 * 60 * 60_000
+      || !Number.isSafeInteger(allowedClockSkewMs) || allowedClockSkewMs < 0 || allowedClockSkewMs > 5 * 60_000) {
+      return false;
+    }
+    const now = (options.now ?? Date.now)();
+    if (!Number.isFinite(now) || normalized.approvedAt > now + allowedClockSkewMs) return false;
+    if ((options.purpose ?? 'activation') === 'activation' && now - normalized.approvedAt > maxAgeMs) return false;
     return verifyNeuroPlasticDetachedEd25519Signature(
       canonicalNeuroPlasticApprovalPayload(normalized, context),
       normalized.signature,
@@ -784,6 +801,7 @@ export class NeuroPlasticAdapterRegistry {
     verifyRestoredApproval?: (
       approval: NeuroPlasticApproval,
       context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
+      purpose: 'restore',
     ) => boolean,
     verifyRestoredEvaluation?: (
       receipt: NeuroPlasticEvaluationReceipt,
@@ -839,7 +857,7 @@ export class NeuroPlasticAdapterRegistry {
               reportId: evaluation!.reportId,
               baseModelFingerprint: manifest.baseModel.fingerprint,
               manifestFingerprint: neuroPlasticAdapterManifestFingerprint(manifest),
-            }) === true;
+            }, 'restore') === true;
           } catch {
             restoredApprovalTrusted = false;
             activationApproval = null;
@@ -979,7 +997,7 @@ export class NeuroPlasticAdapterRegistry {
   async activate(
     adapterId: string,
     approval: NeuroPlasticApproval,
-    verifyApproval: (approval: NeuroPlasticApproval, context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string }) => boolean | Promise<boolean>,
+    verifyApproval: (approval: NeuroPlasticApproval, context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string }, purpose: 'activation') => boolean | Promise<boolean>,
   ): Promise<NeuroPlasticAdapterRecord> {
     const record = this.find(adapterId);
     if (record.status !== 'eligible' || !record.evaluation?.eligible) {
@@ -991,7 +1009,7 @@ export class NeuroPlasticAdapterRegistry {
       reportId: record.evaluation.reportId,
       baseModelFingerprint: record.manifest.baseModel.fingerprint,
       manifestFingerprint: neuroPlasticAdapterManifestFingerprint(record.manifest),
-    })) {
+    }, 'activation')) {
       throw new Error('neuro-plastic-human-approval-required');
     }
     for (const other of this.state.adapters) {
