@@ -1,15 +1,17 @@
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
-import { NeuroPlasticAdapterRegistry, canonicalNeuroPlasticApprovalPayload, canonicalNeuroPlasticEvaluationReceiptPayload, verifyNeuroPlasticApprovalSignature, createNeuroPlasticEvaluationReceiptPayload, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature, neuroPlasticAdapterManifestFingerprint } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { NeuroPlasticAdapterRegistry, canonicalNeuroPlasticApprovalPayload, canonicalNeuroPlasticEvaluationReceiptPayload, verifyNeuroPlasticApprovalSignature, createNeuroPlasticEvaluationReceiptPayload, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature, neuroPlasticAdapterManifestFingerprint, parseTrustedNeuroPlasticApprovalKeys, parseTrustedNeuroPlasticEvaluatorKeys } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 
 const hash = (char) => char.repeat(64);
 const approvalKeyPair = generateKeyPairSync('ed25519');
+const wrongApprovalKeyPair = generateKeyPairSync('ed25519');
 const evaluatorKeyPair = generateKeyPairSync('ed25519');
 const wrongEvaluatorKeyPair = generateKeyPairSync('ed25519');
 const approvalPublicPem = approvalKeyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+const wrongApprovalPublicPem = wrongApprovalKeyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const evaluatorPublicPem = evaluatorKeyPair.publicKey.export({ type: 'spki', format: 'pem' });
 const wrongEvaluatorPublicPem = wrongEvaluatorKeyPair.publicKey.export({ type: 'spki', format: 'pem' });
 function detachedSignature(payload, keyPair) {
@@ -133,6 +135,15 @@ assert.throws(() => registry.evaluateCandidate(
   (receipt) => verifyNeuroPlasticEvaluationSignature('kurisu-reasoning-v1', tamperedEvaluation, receipt, evaluatorPublicPem),
 ), /fingerprint|signature|receipt/i, 'changing holdout outcomes after evaluator signing must be rejected');
 const report = signedEvaluate(registry, 'kurisu-reasoning-v1', evaluationPayload);
+assert.equal(parseTrustedNeuroPlasticEvaluatorKeys(JSON.stringify({
+  'independent-evaluator-v1': evaluatorPublicPem,
+})).get('independent-evaluator-v1'), evaluatorPublicPem);
+assert.equal(parseTrustedNeuroPlasticApprovalKeys(JSON.stringify({
+  operator: approvalPublicPem,
+})).get('operator'), approvalPublicPem);
+assert.throws(() => parseTrustedNeuroPlasticEvaluatorKeys(JSON.stringify({
+  attacker: evaluatorKeyPair.privateKey.export({ type: 'pkcs8', format: 'pem' }),
+})), /public-only|public keys/i, 'runtime must reject private signer keys');
 assert.equal(report.pairedN, 7);
 assert.equal(report.eligible, true);
 assert.ok(report.qualityCi95[0] > 0, 'promotion evidence must have a positive lower confidence bound');
@@ -140,7 +151,10 @@ assert.equal(registry.snapshot().adapters[0].status, 'eligible', 'holdout succes
 const approval = signedApproval('kurisu-reasoning-v1', report.reportId, 'approval-1', registry);
 const mainApprovalContext = approvalContext('kurisu-reasoning-v1', report.reportId, registry);
 assert.equal(verifyApproval(approval, mainApprovalContext), true);
-assert.equal(verifyNeuroPlasticApprovalSignature(approval, mainApprovalContext, approvalPublicPem === wrongEvaluatorPublicPem ? evaluatorPublicPem : wrongEvaluatorPublicPem), false);
+assert.equal(verifyNeuroPlasticApprovalSignature(approval, mainApprovalContext, wrongApprovalPublicPem), false);
+assert.equal(verifyNeuroPlasticEvaluationReceiptSignature(
+  'kurisu-reasoning-v1', evaluationReceipt, wrongEvaluatorPublicPem,
+), false, 'evaluator receipts must not verify under another evaluator key');
 await assert.rejects(
   registry.activate('kurisu-reasoning-v1', approval, async () => false),
   /approval/,
