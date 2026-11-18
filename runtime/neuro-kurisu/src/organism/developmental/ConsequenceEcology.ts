@@ -892,17 +892,22 @@ export class ConsequenceEcologyEngine {
     return value.normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase();
   }
 
-  private restoreCalibrationRecords(raw: unknown): ConsequenceOutcomeCalibrationRecord[] {
-    if (!Array.isArray(raw)) return [];
+  private restoreCalibrationRecords(
+    raw: unknown,
+    analyses: ConsequenceEcologyAnalysis[],
+    validateOutcome?: (outcomeId: string) => boolean,
+  ): ConsequenceOutcomeCalibrationRecord[] {
+    if (!Array.isArray(raw) || typeof validateOutcome !== 'function') return [];
     const accepted: ConsequenceOutcomeCalibrationRecord[] = [];
     const seen = new Set<string>();
+    const allowedClasses = new Set(['os', 'device', 'user', 'external-api', 'world']);
     for (const row of raw.slice(-MAX_OUTCOME_CALIBRATIONS)) {
       if (!isRecord(row)) continue;
-      const allowedClasses = new Set(['os', 'device', 'user', 'external-api', 'world']);
       const classes = row.sourceClasses;
       const evidenceIds = row.evidenceObservationIds;
       const skill = row.brierSkillScore;
-      if (!boundedString(row.id, 180, false) || !boundedString(row.outcomeId, 180, false) ||
+      if (!boundedString(row.id, 180, false) || row.id !== row.outcomeId ||
+          !boundedString(row.outcomeId, 180, false) ||
           !boundedString(row.analysisId, 96, false) || !boundedString(row.optionId, 96, false) ||
           !boundedString(row.nodeId, 96, false) || !boundedString(row.scenarioId, 160, false) ||
           !boundedString(row.actionDecisionId, 180, false) ||
@@ -914,18 +919,41 @@ export class ConsequenceEcologyEngine {
           !(skill === null || boundedNumber(skill, -100, 1)) ||
           !boundedString(row.evidenceRef, 500, false) ||
           !boundedInteger(row.independentSourceCount, 1, 16) ||
-          !boundedStringArray(evidenceIds, 16, 180) || evidenceIds.length < 1 ||
+          !boundedStringArray(evidenceIds, 16, 180) || evidenceIds.length < row.independentSourceCount ||
           !Array.isArray(classes) || classes.length > 5 ||
           !classes.every(value => typeof value === 'string' && allowedClasses.has(value)) ||
           row.authority !== 'independent-external' || row.independentlyVerified !== true ||
           seen.has(row.outcomeId)) continue;
+
+      const analysis = analyses.find(item => item.id === row.analysisId);
+      const option = analysis?.options.find(item => item.id === row.optionId);
+      const node = option?.nodes.find(item => item.id === row.nodeId);
+      if (!analysis || analysis.scenarioId !== row.scenarioId ||
+          analysis.createdAt >= row.observedAt ||
+          option?.decisionId !== row.actionDecisionId ||
+          !node || Math.abs(node.propagatedProbability01 - row.forecastProbability01) > 1e-9) continue;
+
+      let independentlyRevalidated = false;
+      try { independentlyRevalidated = validateOutcome(row.outcomeId) === true; } catch { independentlyRevalidated = false; }
+      if (!independentlyRevalidated) continue;
+
+      const target = row.observed ? 1 : 0;
+      const recomputedBrier = Math.round(((row.forecastProbability01 - target) ** 2) * 1e12) / 1e12;
+      const recomputedBaselineBrier = Math.round(((row.sharedFutureForecastProbability01 - target) ** 2) * 1e12) / 1e12;
+      const recomputedSkill = recomputedBaselineBrier > 0
+        ? Math.max(-100, Math.min(1, 1 - recomputedBrier / recomputedBaselineBrier))
+        : null;
+      if (Math.abs(recomputedBrier - row.brierScore01) > 1e-9 ||
+          Math.abs(recomputedBaselineBrier - row.sharedFutureBrierScore01) > 1e-9 ||
+          (recomputedSkill === null ? skill !== null : typeof skill !== 'number' || Math.abs(recomputedSkill - skill) > 1e-9)) continue;
+
       seen.add(row.outcomeId);
       accepted.push(structuredClone(row) as unknown as ConsequenceOutcomeCalibrationRecord);
     }
     return accepted;
   }
 
-  restore(raw?: Partial<ConsequenceEcologyState> | null): void {
+  restore(raw?: Partial<ConsequenceEcologyState> | null, validateOutcome?: (outcomeId: string) => boolean): void {
     const source = isRecord(raw) ? raw : {};
     const rows = Array.isArray(source.analyses) ? source.analyses.slice(-MAX_ANALYSES) : [];
     const seen = new Set<string>();
@@ -942,7 +970,7 @@ export class ConsequenceEcologyEngine {
     this.state = {
       version: 1,
       analyses,
-      outcomeCalibrations: this.restoreCalibrationRecords(source.outcomeCalibrations),
+      outcomeCalibrations: this.restoreCalibrationRecords(source.outcomeCalibrations, analyses.map(row => row.analysis), validateOutcome),
       rejectedCalibrations: Math.min(1_000_000, Math.max(0, Math.floor(finite(source.rejectedCalibrations)))),
       lastCalibrationAt: Math.max(0, finite(source.lastCalibrationAt)),
       totalAnalyses: Math.min(1_000_000, Math.max(analyses.length, Math.floor(finite(source.totalAnalyses, analyses.length)))),
