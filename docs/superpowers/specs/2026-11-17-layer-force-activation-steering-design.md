@@ -39,7 +39,7 @@ The feature is an extension of the existing optional Neural Prosthesis sidecar (
 - The request-level and per-layer strengths are finite and bounded to [-1, 1]; the per-token delta norm is capped at 10% of the current activation norm.
 - Profile loading validates and stores inert data without registering hooks. Non-zero activation lazily installs each required layer hook exactly once; zero-strength activation and profile preloading remain hook-free.
 - Steering is request-scoped through a ContextVar and reset in a finally block. Shared-model generation remains serialized by the existing sidecar lock.
-- The output is re-measured after casting to the model activation dtype. If quantization overshoots, one rescaling attempt is made; if the cast still violates the limit, the affected token is left unchanged.
+- The output is re-measured after casting to the model activation dtype. If quantization overshoots, only those tokens iteratively back off their delta scale until the cast is inside the limit; if no non-zero representable safe step is found, the affected token is left unchanged.
 - Errors do not silently fall through to an unbounded or partially applied profile. Invalid profiles prevent the service from starting with that configuration; no profile configured means the base model path remains untouched.
 
 ## Approaches considered
