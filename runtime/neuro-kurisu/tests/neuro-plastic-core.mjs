@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, neuroPlasticAdapterManifestFingerprint, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, neuroPlasticAdapterManifestFingerprint, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature, neuroPlasticAdapterManifestFingerprint } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
@@ -9,11 +9,15 @@ const hash = (char) => char.repeat(64);
 const approvalSecret = 'neuro-plastic-test-approval-secret-32-bytes-minimum';
 const evaluatorSecret = 'neuro-plastic-test-evaluator-secret-held-outside-the-runtime';
 function signedEvaluate(registry, adapterId, payload) {
+  const boundPayload = {
+    ...payload,
+    manifestFingerprint: payload.manifestFingerprint || neuroPlasticAdapterManifestFingerprint(registry.getManifest(adapterId)),
+  };
   const receipt = createNeuroPlasticEvaluationReceipt(
-    adapterId, payload, 'independent-evaluator-v1', 'evaluation-' + adapterId, evaluatorSecret,
+    adapterId, boundPayload, 'independent-evaluator-v1', 'evaluation-' + adapterId, evaluatorSecret,
   );
-  return registry.evaluateCandidate(adapterId, { ...payload, receipt }, (verifiedReceipt) =>
-    verifyNeuroPlasticEvaluationSignature(adapterId, payload, verifiedReceipt, evaluatorSecret));
+  return registry.evaluateCandidate(adapterId, { ...boundPayload, receipt }, (verifiedReceipt) =>
+    verifyNeuroPlasticEvaluationSignature(adapterId, boundPayload, verifiedReceipt, evaluatorSecret));
 }
 function signedApproval(adapterId, reportId, approvalId, registry) {
   const unsigned = { approvalId, actorId: 'operator', approvedAt: 1_800_000_000_200 };
@@ -81,6 +85,7 @@ function observations(quality01, overrides = {}) {
 const registry = new NeuroPlasticAdapterRegistry();
 registry.stage(manifest());
 const evaluationPayload = {
+  manifestFingerprint: neuroPlasticAdapterManifestFingerprint(registry.getManifest('kurisu-reasoning-v1')),
   holdoutFingerprint: hash('d'),
   baseline: observations(0.62),
   candidate: observations(0.82),
