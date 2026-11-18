@@ -661,6 +661,25 @@ tamperedCalibrationRestore.restore(tamperedCalibrationSnapshot, {
 });
 assert.equal(tamperedCalibrationRestore.consequenceEcology.listCalibrations().length, 0,
   'persisted calibration scores must be recomputed and tampered values rejected');
+
+const misboundCalibrationSnapshot = structuredClone(calibrationSnapshot);
+misboundCalibrationSnapshot.consequenceEcology.outcomeCalibrations[0].actionDecisionId = 'foreign-action-decision';
+const misboundCalibrationRestore = new FutureSimulator();
+misboundCalibrationRestore.restore(misboundCalibrationSnapshot, {
+  validateIndependentlyVerifiedOutcome: outcome => outcome.id === independentlyRecorded.outcome.id,
+});
+assert.equal(misboundCalibrationRestore.consequenceEcology.listCalibrations().length, 0,
+  'a calibration row must match the canonical action-decision ID, not only a valid outcome ID');
+
+const alteredEvidenceCalibrationSnapshot = structuredClone(calibrationSnapshot);
+alteredEvidenceCalibrationSnapshot.consequenceEcology.outcomeCalibrations[0].evidenceRef = 'external-observation:substituted';
+const alteredEvidenceCalibrationRestore = new FutureSimulator();
+alteredEvidenceCalibrationRestore.restore(alteredEvidenceCalibrationSnapshot, {
+  validateIndependentlyVerifiedOutcome: outcome => outcome.id === independentlyRecorded.outcome.id,
+});
+assert.equal(alteredEvidenceCalibrationRestore.consequenceEcology.listCalibrations().length, 0,
+  'a calibration row must retain the exact canonical evidence reference');
+
 const calibrationGateway = new ActionGateway({ live: false });
 calibrationGateway.setExecutionLedgerPersister(async () => {});
 registerConsequenceEcologyTools(calibrationGateway, calibrationSimulator);
