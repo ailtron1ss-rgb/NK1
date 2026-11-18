@@ -443,9 +443,12 @@ export class OrganismRuntime {
               }).catch(() => {});
             }
           } catch {
-            this.synapticMatrix.markReplayAnchorUntrusted(record.candidate.id);
+            if (record.status === 'active' || Boolean(record.manifest) || (record.acceptedReportCount ?? 0) > 0) {
+              this.synapticMatrix.markReplayAnchorUntrusted(record.candidate.id);
+            }
             await this.journal.write('warn', 'runtime.synaptic-adapter.replay-anchor-unavailable', {
               adapterId: record.candidate.id,
+              hadActivationEvidence: record.status === 'active' || Boolean(record.manifest) || (record.acceptedReportCount ?? 0) > 0,
             }).catch(() => {});
           }
         } else if (this.config.synapticReplayAnchorRequired === true &&
@@ -1477,8 +1480,10 @@ export class OrganismRuntime {
       }
 
       let record: ReturnType<AdaptiveSynapticMatrixEngine['activateValidated']>;
+      let activationCommitted = false;
       try {
         record = this.synapticMatrix.activateValidated(manifest, this.config.synapticAdapterManifestVerifier);
+        activationCommitted = true;
         if (replayAnchorStore) {
           const nextAnchor = this.synapticMatrix.replayAnchorState(record.candidate.id);
           const latestReportSha256 = record.manifest?.validation.reportSha256;
@@ -1494,10 +1499,12 @@ export class OrganismRuntime {
         }
         await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
       } catch (error) {
-        // Never leave an in-memory ACTIVE adapter after a failed anchor or persistence
-        // operation. The accepted report remains consumed locally and cannot be replayed.
-        this.synapticMatrix.disable(manifest.id);
-        await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+        // Only compensate after the local registry accepted the report. A rejected
+        // signature/replay attempt must not be able to disable a currently active adapter.
+        if (activationCommitted) {
+          this.synapticMatrix.disable(manifest.id);
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+        }
         throw error;
       }
 
