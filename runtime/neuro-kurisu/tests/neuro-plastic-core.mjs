@@ -439,7 +439,7 @@ assert.equal(aliasMismatchRegistry.snapshot().adapters[0].status, 'disabled');
 
 const activeSnapshot = inferenceRegistry.snapshot();
 const restoredRegistry = new NeuroPlasticAdapterRegistry();
-restoredRegistry.restore(activeSnapshot);
+await restoredRegistry.restore(activeSnapshot);
 assert.equal(restoredRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
@@ -449,7 +449,7 @@ assert.equal(restoredRegistry.select({
   risk01: 0.1,
 }).useAdapter, false, 'restart restore without an approval verifier must fail closed');
 const approvalOnlyRestoreRegistry = new NeuroPlasticAdapterRegistry();
-approvalOnlyRestoreRegistry.restore(activeSnapshot, verifyApproval, (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret), () => true);
+await approvalOnlyRestoreRegistry.restore(activeSnapshot, verifyApproval, (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret), () => true);
 assert.equal(approvalOnlyRestoreRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
@@ -461,7 +461,7 @@ assert.equal(approvalOnlyRestoreRegistry.select({
 const tamperedEvaluationSnapshot = structuredClone(activeSnapshot);
 tamperedEvaluationSnapshot.adapters[0].evaluation.evaluatorSignature = hash('9');
 const tamperedRestoreRegistry = new NeuroPlasticAdapterRegistry();
-tamperedRestoreRegistry.restore(
+await tamperedRestoreRegistry.restore(
   tamperedEvaluationSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
@@ -475,7 +475,7 @@ tamperedMetricSnapshot.adapters[0].evaluation.reportId = createHash('sha256')
   .update(JSON.stringify(tamperedSummary))
   .digest('hex');
 const tamperedMetricRegistry = new NeuroPlasticAdapterRegistry();
-tamperedMetricRegistry.restore(
+await tamperedMetricRegistry.restore(
   tamperedMetricSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
@@ -484,7 +484,7 @@ tamperedMetricRegistry.restore(
 assert.equal(tamperedMetricRegistry.snapshot().adapters[0].status, 'staged',
   'changing a signed quality result and recomputing the plain report hash must still be rejected');
 const signedRestoreRegistry = new NeuroPlasticAdapterRegistry();
-signedRestoreRegistry.restore(
+await signedRestoreRegistry.restore(
   activeSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
@@ -499,7 +499,7 @@ assert.equal(signedRestoreRegistry.select({
   risk01: 0.1,
 }).useAdapter, true, 'restart restore must preserve an active adapter only with a valid signed approval');
 const artifactRejectedRestoreRegistry = new NeuroPlasticAdapterRegistry();
-artifactRejectedRestoreRegistry.restore(
+await artifactRejectedRestoreRegistry.restore(
   activeSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
@@ -519,7 +519,7 @@ assert.equal(artifactRejectedRestoreRegistry.select({
 const duplicatedSnapshot = structuredClone(activeSnapshot);
 duplicatedSnapshot.adapters.push(structuredClone(duplicatedSnapshot.adapters[0]));
 const duplicateRestoreRegistry = new NeuroPlasticAdapterRegistry();
-duplicateRestoreRegistry.restore(
+await duplicateRestoreRegistry.restore(
   duplicatedSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
@@ -545,7 +545,7 @@ const conflictSnapshot = {
   ],
 };
 const conflictRestoreRegistry = new NeuroPlasticAdapterRegistry();
-conflictRestoreRegistry.restore(
+await conflictRestoreRegistry.restore(
   conflictSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
