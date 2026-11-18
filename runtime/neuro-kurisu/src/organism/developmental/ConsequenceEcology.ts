@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { SharedFutureScenario } from './SharedFutureEngine.ts';
+import type { SharedFutureDecision, SharedFutureOutcomeRecord, SharedFutureScenario } from './SharedFutureEngine.ts';
 
 export type ConsequenceEffect = 'harm' | 'benefit' | 'neutral';
 export type ConsequenceBasis = 'measured' | 'external-research' | 'user-assumption' | 'simulation' | 'internal-model';
@@ -43,6 +43,8 @@ export interface ConsequenceOptionInput {
   action: string;
   nodes: ConsequenceNodeInput[];
   edges: ConsequenceEdgeInput[];
+  /** Exact canonical Shared Future actionDecisionId used by the accepted action binding. */
+  decisionId?: string;
 }
 
 export interface ConsequenceEcologyRequest {
@@ -72,6 +74,7 @@ export interface ConsequenceNegativeSpaceContext {
 export interface ConsequenceEcologyContext {
   goalEcology?: ConsequenceGoalContext | null;
   negativeSpace?: ConsequenceNegativeSpaceContext | null;
+  resolveDecision?: (decisionId: string) => SharedFutureDecision | null;
 }
 
 export interface ConsequenceNodeResult {
@@ -111,6 +114,7 @@ export interface ConsequenceOptionResult {
   id: string;
   title: string;
   action: string;
+  decisionId: string | null;
   ranking: number;
   riskBand: 'low' | 'moderate' | 'high' | 'critical';
   attention: 'routine-review' | 'enhanced-review' | 'mandatory-review';
@@ -186,9 +190,35 @@ export interface ConsequenceEcologyAnalysis {
   limitations: string[];
 }
 
+export interface ConsequenceOutcomeCalibrationRecord {
+  id: string;
+  outcomeId: string;
+  analysisId: string;
+  optionId: string;
+  nodeId: string;
+  scenarioId: string;
+  actionDecisionId: string;
+  observedAt: number;
+  forecastProbability01: number;
+  observed: boolean;
+  brierScore01: number;
+  sharedFutureForecastProbability01: number;
+  sharedFutureBrierScore01: number;
+  brierSkillScore: number | null;
+  evidenceRef: string;
+  independentSourceCount: number;
+  evidenceObservationIds: string[];
+  sourceClasses: string[];
+  authority: 'independent-external';
+  independentlyVerified: true;
+}
+
 export interface ConsequenceEcologyState {
   version: 1;
   analyses: Array<{ digest: string; analysis: ConsequenceEcologyAnalysis }>;
+  outcomeCalibrations: ConsequenceOutcomeCalibrationRecord[];
+  rejectedCalibrations: number;
+  lastCalibrationAt: number;
   totalAnalyses: number;
   rejectedAnalyses: number;
   feedbackLoopsObserved: number;
@@ -224,6 +254,9 @@ export function defaultConsequenceEcologyState(): ConsequenceEcologyState {
   return {
     version: 1,
     analyses: [],
+    outcomeCalibrations: [],
+    rejectedCalibrations: 0,
+    lastCalibrationAt: 0,
     totalAnalyses: 0,
     rejectedAnalyses: 0,
     feedbackLoopsObserved: 0,
@@ -301,6 +334,7 @@ function isRestorableContext(value: unknown): boolean {
 function migrateRestoredAnalysis(value: ConsequenceEcologyAnalysis): ConsequenceEcologyAnalysis {
   const analysis = structuredClone(value);
   for (const option of analysis.options) {
+    option.decisionId ??= null;
     option.counterfactualCoverage01 ??= 0;
     option.attributableHarm01 ??= 0;
     option.avoidedHarm01 ??= 0;
@@ -335,6 +369,7 @@ function isRestorableAnalysis(value: unknown): value is ConsequenceEcologyAnalys
   return value.options.every(option => {
     if (!isRecord(option) || !boundedString(option.id, 96, false) ||
         !boundedString(option.title, 180, false) || !boundedString(option.action, 180, false) ||
+        !(option.decisionId === undefined || option.decisionId === null || boundedString(option.decisionId, 180, false)) ||
         !boundedInteger(option.ranking, 1, MAX_OPTIONS) ||
         !(['low', 'moderate', 'high', 'critical'] as unknown[]).includes(option.riskBand) ||
         !(['routine-review', 'enhanced-review', 'mandatory-review'] as unknown[]).includes(option.attention) ||
@@ -773,6 +808,7 @@ function analyzeOption(
     id: clean(option.id, 96),
     title: clean(option.title, 180),
     action: clean(option.action, 180),
+    decisionId: clean(option.decisionId, 180) || null,
     ranking: 0,
     riskBand: riskBand(totalHarm01),
     attention,
@@ -850,6 +886,9 @@ export class ConsequenceEcologyEngine {
     this.state = {
       version: 1,
       analyses,
+      outcomeCalibrations: this.restoreCalibrationRecords(source.outcomeCalibrations),
+      rejectedCalibrations: Math.min(1_000_000, Math.max(0, Math.floor(finite(source.rejectedCalibrations)))),
+      lastCalibrationAt: Math.max(0, finite(source.lastCalibrationAt)),
       totalAnalyses: Math.min(1_000_000, Math.max(analyses.length, Math.floor(finite(source.totalAnalyses, analyses.length)))),
       rejectedAnalyses: Math.min(1_000_000, Math.max(0, Math.floor(finite(source.rejectedAnalyses)))),
       feedbackLoopsObserved: Math.min(1_000_000, Math.max(0, Math.floor(finite(source.feedbackLoopsObserved)))),
@@ -883,10 +922,24 @@ export class ConsequenceEcologyEngine {
         assumptions.set(assumption.id, { confidence01: clamp(assumption.confidence01), status: assumption.status });
       }
       const scenarioConsequences = context.scenario?.consequences ?? [];
+      const decisionBindings: Array<{ optionId: string; decisionId: string; scenarioId: string; consequenceId: string; toolId: string }> = [];
       const preparedOptions = request.options.map(option => {
         const nodes = [...(Array.isArray(option.nodes) ? option.nodes : [])];
         const edges = [...(Array.isArray(option.edges) ? option.edges : [])];
         const existingIds = new Set(nodes.map(node => clean(node?.id, 96)));
+        const decisionId = clean(option?.decisionId, 180);
+        if (decisionId) {
+          if (!scenarioId || !context.scenario || !context.resolveDecision) throw new Error('consequence-decision-binding-context-required');
+          const decision = context.resolveDecision(decisionId);
+          const binding = decision?.actionBinding;
+          if (!decision || decision.status !== 'accepted') throw new Error('consequence-action-decision-not-accepted');
+          if (decision.scenarioId !== scenarioId || binding?.decisionId !== decisionId) throw new Error('consequence-action-decision-scenario-mismatch');
+          if (!nodes.some(node => clean(node?.id, 96) === binding.consequenceId) &&
+              !scenarioConsequences.some(consequence => consequence.id === binding.consequenceId)) {
+            throw new Error('consequence-action-binding-node-not-found');
+          }
+          decisionBindings.push({ optionId: clean(option.id, 96), decisionId, scenarioId, consequenceId: binding.consequenceId, toolId: binding.toolId });
+        }
         for (const consequence of scenarioConsequences) {
           if (existingIds.has(consequence.id)) continue;
           nodes.push({
@@ -924,6 +977,7 @@ export class ConsequenceEcologyEngine {
       };
       const requestDigest = digest({
         request: { ...request, horizonDays },
+        decisions: decisionBindings,
         scenario: context.scenario ? {
           id: context.scenario.id,
           confidence01: context.scenario.confidence01,
@@ -963,6 +1017,7 @@ export class ConsequenceEcologyEngine {
           'This is a bounded consequence model, not a claim that the causal graph is objectively complete.',
           'A model-ranked option is not an approved decision; canonical governance and ActionGateway remain authoritative.',
           'Synthetic or internal projections are not converted into observed outcomes or independent evidence.',
+          'Forecast calibration is diagnostic-only and accepts canonical independently verified Shared Future outcomes; it does not auto-update model weights.',
           ...(context.scenario?.consequences.length ? ['Shared Future consequence rows have no explicit harm/benefit polarity in their current schema and are conservatively treated as harm exposure.'] : []),
         ],
       };
