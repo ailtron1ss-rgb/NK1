@@ -104,8 +104,10 @@ function rememberFingerprint(set: Set<string>, value: string, maximum = MAX_REPL
   }
 }
 
-function holdoutTaskEvidenceKey(taskFamily: string, modelFingerprint: string, taskFingerprint: string): string {
-  return digest([taskFamily, modelFingerprint, taskFingerprint].join(String.fromCharCode(0)));
+function holdoutTaskEvidenceKey(taskFingerprint: string): string {
+  // The same canonical task must not be re-queried as holdout evidence for
+  // another candidate, task-family alias, model revision or process lifetime.
+  return digest(taskFingerprint);
 }
 
 /** Stable, complete request identity shared by the runtime capture adapter and the JIT gate. */
@@ -434,6 +436,9 @@ export class NeuralJitEngine {
   evaluateCandidate(candidateId: string): NeuralJitHoldoutEvaluation {
     const candidate = this.candidates.find(row => row.id === candidateId);
     if (!candidate) return this.emptyEvaluation(['candidate-not-found']);
+    if (candidate.status === 'quarantined') {
+      return this.emptyEvaluation(['candidate-quarantined-after-restore']);
+    }
     if (candidate.evaluation && (candidate.evaluation.status === 'eligible' || candidate.evaluation.status === 'rejected')) {
       // Final results are immutable. A later training batch must compile a new candidate
       // and use only fresh, unspent holdout tasks rather than querying this set again.
@@ -444,9 +449,7 @@ export class NeuralJitEngine {
     const holdout = this.traces.filter(trace => trace.split === 'holdout' &&
       trace.taskFamily === candidate.taskFamily && trace.modelFingerprint === candidate.modelFingerprint &&
       !trained.has(trace.taskFingerprint) &&
-      !this.spentHoldoutTaskFingerprints.has(holdoutTaskEvidenceKey(
-        candidate.taskFamily, candidate.modelFingerprint, trace.taskFingerprint,
-      )));
+      !this.spentHoldoutTaskFingerprints.has(holdoutTaskEvidenceKey(trace.taskFingerprint)));
     const tasks = new Set(holdout.map(trace => trace.taskFingerprint));
     const seeds = new Set(holdout.map(trace => trace.seed));
     const reasons: string[] = [];
@@ -492,7 +495,7 @@ export class NeuralJitEngine {
     for (const taskFingerprint of tasks) {
       rememberFingerprint(
         this.spentHoldoutTaskFingerprints,
-        holdoutTaskEvidenceKey(candidate.taskFamily, candidate.modelFingerprint, taskFingerprint),
+        holdoutTaskEvidenceKey(taskFingerprint),
         MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS,
       );
     }
