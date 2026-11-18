@@ -210,7 +210,7 @@ test('action tools route apply through self-modification permission and idempote
   assert.equal(execution.ok, true);
   assert.equal(execution.verified, true);
   assert.equal(execution.result.status, 'applied');
-  assert.equal(sample.applied.idempotencyKey, 'approved-request-001');
+  assert.match(sample.applied.idempotencyKey, /^[a-f0-9]{64}$/, 'ActionGateway passes only the hashed idempotency token to the host');
   assert.equal(engine.getProposal(proposal.proposalId).status, 'applied');
 });
 
