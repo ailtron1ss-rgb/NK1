@@ -100,8 +100,12 @@ export class FutureSimulator {
     this.sharedFuture.restore(s?.sharedFuture, options.validateIndependentlyVerifiedOutcome);
     this.consequenceEcology.restore(s?.consequenceEcology, outcomeId => {
       const outcome = this.sharedFuture.listOutcomes().find(row => row.id === outcomeId);
-      if (!outcome || outcome.authority !== 'independent-external' || outcome.independentlyVerified !== true) return false;
-      try { return options.validateIndependentlyVerifiedOutcome?.(outcome) === true; } catch { return false; }
+      if (!outcome || outcome.authority !== 'independent-external' || outcome.independentlyVerified !== true) return null;
+      try {
+        return options.validateIndependentlyVerifiedOutcome?.(outcome) === true ? outcome : null;
+      } catch {
+        return null;
+      }
     });
   }
 
