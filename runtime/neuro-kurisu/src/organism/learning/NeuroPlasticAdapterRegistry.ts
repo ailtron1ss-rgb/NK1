@@ -373,8 +373,9 @@ export function parseTrustedNeuroPlasticKeys(raw: string | undefined, label: str
   const keys = new Map<string, string>();
   for (const [signerId, pem] of Object.entries(parsed as Record<string, unknown>)) {
     if (!/^[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}$/.test(signerId) ||
-        typeof pem !== 'string' || !pem.trim()) {
-      throw new Error(label + ' entries must map valid signer IDs to PEM public keys');
+        typeof pem !== 'string' || !pem.includes('-----BEGIN PUBLIC KEY-----') ||
+        /-----BEGIN (?:PRIVATE|ENCRYPTED PRIVATE) KEY-----/.test(pem)) {
+      throw new Error(label + ' entries must map valid signer IDs to public-only PEM keys');
     }
     if (keys.size >= 64) throw new Error(label + ' exceeds the 64-key limit');
     let key;
