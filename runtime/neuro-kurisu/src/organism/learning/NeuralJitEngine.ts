@@ -28,6 +28,7 @@ export interface NeuralJitActivationCaptureVerifier {
     expected: Pick<NeuralJitActivationCapture,
       'taskFamily' | 'taskFingerprint' | 'modelFingerprint' | 'toolId' |
       'executionId' | 'decisionId' | 'inputFingerprint' | 'seed'>,
+    options?: { signal?: AbortSignal },
   ): boolean | Promise<boolean>;
 }
 
@@ -209,6 +210,7 @@ function restoreCandidate(raw: unknown): NeuralJitCandidate | null {
 
 export class NeuralJitEngine {
   private readonly activationCaptureVerifier?: NeuralJitActivationCaptureVerifier;
+  private readonly activationCaptureVerificationTimeoutMs: number;
   private splitSalt = randomBytes(32).toString('hex');
   private traces: NeuralJitTrace[] = [];
   private candidates: NeuralJitCandidate[] = [];
@@ -219,8 +221,15 @@ export class NeuralJitEngine {
   private lastDecision = 'idle';
   private lastDecisionAt = 0;
 
-  constructor(options: { activationCaptureVerifier?: NeuralJitActivationCaptureVerifier } = {}) {
+  constructor(options: {
+    activationCaptureVerifier?: NeuralJitActivationCaptureVerifier;
+    activationCaptureVerificationTimeoutMs?: number;
+  } = {}) {
     this.activationCaptureVerifier = options.activationCaptureVerifier;
+    const requestedTimeout = options.activationCaptureVerificationTimeoutMs;
+    this.activationCaptureVerificationTimeoutMs = Number.isFinite(requestedTimeout)
+      ? Math.max(10, Math.min(10_000, Math.floor(Number(requestedTimeout))))
+      : 1_000;
   }
 
   async recordVerifiedTrace(input: NeuralJitTraceInput): Promise<
@@ -280,8 +289,31 @@ export class NeuralJitEngine {
       inputFingerprint, seed: Number(seed),
     };
     let trusted = false;
-    try { trusted = await this.activationCaptureVerifier.verifyCapture(rawCapture, expected); }
-    catch { return this.reject('activation-capture-verification-failed'); }
+    let verificationTimedOut = false;
+    const verificationAbort = new AbortController();
+    let verificationTimer: ReturnType<typeof setTimeout> | undefined;
+    const verificationTimeout = new Promise<never>((_resolve, reject) => {
+      verificationTimer = setTimeout(() => {
+        verificationTimedOut = true;
+        verificationAbort.abort();
+        reject(new Error('activation-capture-verification-timeout'));
+      }, this.activationCaptureVerificationTimeoutMs);
+    });
+    try {
+      trusted = await Promise.race([
+        Promise.resolve().then(() => this.activationCaptureVerifier!.verifyCapture(
+          rawCapture, expected, { signal: verificationAbort.signal },
+        )),
+        verificationTimeout,
+      ]);
+      if (verificationTimedOut) return this.reject('activation-capture-verification-timeout');
+    } catch {
+      return this.reject(verificationTimedOut
+        ? 'activation-capture-verification-timeout'
+        : 'activation-capture-verification-failed');
+    } finally {
+      if (verificationTimer !== undefined) clearTimeout(verificationTimer);
+    }
     if (!trusted) return this.reject('untrusted-activation-capture');
     // Host verification may be asynchronous; do not admit a capture whose trust window expired while awaiting it.
     if (Date.now() - capture.capturedAt > MAX_CAPTURE_AGE_MS) return this.reject('activation-capture-expired');
@@ -496,6 +528,7 @@ export class NeuralJitEngine {
     return {
       version: 1 as const, mode: 'shadow' as const,
       activationCaptureAuthorityConfigured: Boolean(this.activationCaptureVerifier),
+      activationCaptureVerificationTimeoutMs: this.activationCaptureVerificationTimeoutMs,
       liveInferenceEnabled: false as const, activeCandidates: 0,
       acceptedTraces: this.acceptedTraces, rejectedTraces: this.rejectedTraces,
       replayProtection: {
