@@ -29,7 +29,7 @@ await assert.rejects(
     baseUrl: 'http://127.0.0.1:8080/v1',
     fetchImpl: async () => ({ ok: true, headers: { get: () => null }, text: async () => JSON.stringify({ choices: [{ message: { content: 'valid text but missing model identity' } }] }) }),
   }).generate({ system: '', user: 'x' }),
-  /llama\\.cpp-response-model-missing/,
+  /llama\.cpp-response-model-missing/,
   'a successful response must include the model identity actually served by the backend',
 );
 
