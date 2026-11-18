@@ -128,6 +128,7 @@ async function verifyArtifact(manifest) {
     throw new Error('adapter-artifact-hash-or-size-mismatch');
   }
   if (metadata.schemaVersion !== 1 || metadata.automaticActivation !== false ||
+      metadata.adapterId !== manifest.adapterId ||
       metadata.domain !== manifest.domain || metadata.method !== manifest.method ||
       metadata.baseModelFingerprint !== manifest.baseModel?.fingerprint ||
       metadata.tokenizerFingerprint !== manifest.tokenizerFingerprint ||
