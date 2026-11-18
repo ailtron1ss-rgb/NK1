@@ -13,11 +13,12 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 
 - Produce a deterministic 43-value feature vector: seven action indicators, five organism-state scalars, 23 read-only B365 neural/allostatic/self-model/goal-authorship signals, one neural-snapshot freshness channel, and seven cognitive-mode indicators.
 - Normalize malformed/non-finite organism inputs, reject future or more-than-eight-tick-old neural snapshots, and clamp every numeric channel to [0, 1].
-- Accept a B365 snapshot only when it carries a positive integer state version and tick and all 23 neural/allostatic/self-model/goal-authorship channels are finite normalized values. A partial snapshot is rejected as a whole; it is never blended with neutral-looking defaults.
+- Accept a B365 snapshot only when it uses the currently supported diagnostic schema version 14, has a valid tick, and all 23 neural/allostatic/self-model/goal-authorship channels are finite normalized values. Older/newer unknown versions and partial snapshots are rejected as a whole; they are never blended with neutral-looking defaults.
 - Revalidate the full provider hand-off: action and mode one-hots, mode-to-adapter hint, B365 version/provenance, tick-age arithmetic, freshness scalar, neutral unavailable-state encoding and all control bounds must agree.
 - Apply bounded sampling controls (`temperature`, `maxTokens`) and attach the structured profile to `LanguageRequest`.
 - Route both cognitive-proposal generation and user/autonomous language generation through the same bridge.
 - Expose explicit adapter/steering intentions and record telemetry distinguishing request controls configured, llama.cpp template kwargs sent, and neural/activation controls not executed.
+- Bind every local-provider receipt to a runtime-session request ID and SHA-256 fingerprint of the exact validated profile. Reject stale/mismatched receipts and suppress duplicate accounting using a bounded 512-entry replay ledger. The fingerprint correlates payloads; it is not a provider-authentication mechanism.
 - Provide an immediate runtime kill switch; disabled mode leaves requests unchanged.
 - Expose authenticated read-only diagnostics at `GET /api/organism/cognition/neural-bridge/diagnostics`, including projection/bypass counts, B365 snapshot provenance, provider hand-offs and explicit non-execution of activation/residual steering.
 
@@ -41,7 +42,7 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 - Feature vector order: action one-hot (7), organism motivation/uncertainty/urgency/budget/attention (5), B365 prediction/plasticity/neuromodulation/sparsity/coherence/confidence/agreement/counterfactual/goal/entropy (10), B365 allostatic drive/arousal/exploration/preservation/reflection/social approach (6), B365 self agency/continuity/growth/identity conflict (4), B365 goal ownership/commitment/revision pressure (3), neural freshness (1), then cognitive mode one-hot (7). Total: 43.
 - The output includes a stable feature-key schema, B365 state-version provenance/age, a mode-derived adapter hint, budget- and preservation-scaled sampling parameters, and steering intent channels capped at 0.15.
 - When no valid B365 snapshot exists, B365 feature channels 12–34 use an explicit neutral sentinel (0.5), freshness is 0, and snapshot version/tick/age are null. The separate availability flag and source label must be honored by templates.
-- `controlsConfigured` records that sampling parameters are configured on the request while adapter switching, activation steering and residual-block execution remain false. A separate provider receipt records only that llama.cpp template kwargs were sent, not that the template consumed them.
+- `controlsConfigured` records that sampling parameters are configured on the request while adapter switching, activation steering and residual-block execution remain false. A provider receipt carries the per-request correlation ID, SHA-256 profile fingerprint and schema; the runtime validates all three and deduplicates replayed receipts. It records only successful kwargs hand-off, not template consumption.
 - Bridge defaults enabled; `RuntimeConfig.cognitiveToNeuralBridge.enabled=false` is the emergency bypass.
 
 ## Integration points
