@@ -36,6 +36,20 @@ const approx = (actual, expected, label) => assert.ok(Math.abs(actual - expected
 const simulator = new FutureSimulator();
 assert.equal(typeof simulator.analyzeConsequences, 'function', 'FutureSimulator must expose the Consequence Ecology analysis seam');
 assert.ok(simulator.snapshot().consequenceEcology, 'Consequence Ecology state must live in the canonical FutureSimulator snapshot');
+assert.equal(typeof simulator.generateAdversarialWorldForgeScenarios, 'function',
+  'WorldForge adversarial curriculum remains available after Consequence Ecology is integrated into FutureSimulator');
+const adversarialWorldForgeCases = simulator.generateAdversarialWorldForgeScenarios({
+  seed: 21021,
+  count: 2,
+  difficulty01: 0.55,
+  focus: 'resource-shock',
+  candidateMultiplier: 3,
+});
+assert.equal(adversarialWorldForgeCases.length, 2,
+  'integrated FutureSimulator must still generate the requested adversarial WorldForge cases');
+assert.equal(new Set(adversarialWorldForgeCases.map(row => row.id)).size, 2,
+  'adversarial WorldForge cases must retain unique scenario identity');
+for (const scenario of adversarialWorldForgeCases) simulator.releaseWorldForgeScenario(scenario.id);
 
 const dangerous = option('accelerate', 'accelerate the migration', [
   node('direct-risk', 'harm', 0.95, 0.9, 0.82, { actor: 'operators', reversible: false }),
