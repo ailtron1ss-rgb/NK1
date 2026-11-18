@@ -38,6 +38,9 @@ llama.cpp backend.
   HTTP 429 inference-busy before tokenization rather than waiting in an unbounded queue.
   NK1 can then use its existing fallback chain. This is a protective default for a
   shared local GPU/CPU model, not a claim of parallel inference throughput.
+- Accepted HTTP sockets use an idle-I/O timeout from NEURO_NP_HTTP_REQUEST_TIMEOUT_SECONDS
+  (0.1–120 seconds, default 15). Stalled headers or request bodies are closed so idle
+  clients cannot pin every bounded request worker indefinitely.
 - The Python environment is isolated from the Node runtime. It adds no PyTorch or
   Transformers dependency to NK1's production npm dependency graph.
 

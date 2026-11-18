@@ -1,3 +1,8 @@
+## [NK1][OmeStro #28] Bound Neural Prosthesis HTTP client idle time (2026-11-18)
+- Apply a validated per-socket idle-I/O timeout to accepted sidecar connections; close stalled header/body reads and release bounded worker capacity.
+- Add NEURO_NP_HTTP_REQUEST_TIMEOUT_SECONDS (0.1–120 seconds, default 15) with finite-value validation and regression coverage for slow clients.
+- Keep model inference single-flight and independent of the socket timeout; no change to host-model generation budgets or fallback routing.
+
 ## [NK1][OmeStro #28] Harden Neural Prosthesis sidecar crash recovery (2026-11-18)
 - Clear managed-child ownership, PID and readiness immediately when an owned sidecar exits unexpectedly; retain a bounded diagnostic reason.
 - Keep intentional shutdown distinct: the supervisor detaches its child before signalling it, so normal stop does not create a crash error.

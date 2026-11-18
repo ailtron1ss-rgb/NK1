@@ -16,6 +16,7 @@ from neural_prosthesis.service import (
     RequestError,
     _context_window,
     _output_token_limit,
+    _http_request_timeout_seconds,
     create_handler,
 )
 
@@ -241,16 +242,29 @@ class NeuralProsthesisHttpTests(unittest.TestCase):
         self.assertEqual(missing.exception.code, 404)
 
 
+    def test_http_request_timeout_configuration_is_finite_and_bounded(self):
+        self.assertEqual(_http_request_timeout_seconds("15"), 15.0)
+        self.assertEqual(_http_request_timeout_seconds("0.1"), 0.1)
+        for invalid in ("fast", "nan", "inf", "0.09", "120.1"):
+            with self.subTest(invalid=invalid):
+                with self.assertRaisesRegex(RuntimeError, "NEURO_NP_HTTP_REQUEST_TIMEOUT_SECONDS"):
+                    _http_request_timeout_seconds(invalid)
+
+        with self.assertRaisesRegex(ValueError, "http-request-timeout-out-of-range"):
+            BoundedThreadingHTTPServer(
+                ("127.0.0.1", 0),
+                create_handler(self.runtime),
+                request_timeout_seconds=float("inf"),
+            )
+
     def test_idle_http_client_is_closed_and_worker_recovers(self):
         runtime = FakeRuntime()
         server = BoundedThreadingHTTPServer(
             ("127.0.0.1", 0),
             create_handler(runtime),
             max_workers=2,
+            request_timeout_seconds=0.1,
         )
-        # Configure a short idle timeout for this test without relying on a new
-        # constructor argument, so the regression fails on the missing behavior.
-        server.request_timeout_seconds = 0.1
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         base = "http://127.0.0.1:" + str(server.server_address[1])

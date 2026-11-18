@@ -21,6 +21,9 @@ MAX_CONTEXT_TOKENS = 65_536
 DEFAULT_MAX_HTTP_WORKERS = 16
 MIN_MAX_HTTP_WORKERS = 2
 MAX_MAX_HTTP_WORKERS = 64
+DEFAULT_HTTP_REQUEST_TIMEOUT_SECONDS = 15.0
+MIN_HTTP_REQUEST_TIMEOUT_SECONDS = 0.1
+MAX_HTTP_REQUEST_TIMEOUT_SECONDS = 120.0
 
 
 def _context_window(model_config: Any, configured: str | int) -> int:
@@ -57,6 +60,16 @@ def _output_token_limit(requested: Any, context_window: int) -> int:
     if type(context_window) is not int or context_window < 2:
         raise RuntimeError("model-context-window-invalid")
     return min(requested, context_window - 1)
+
+
+def _http_request_timeout_seconds(configured: Any) -> float:
+    try:
+        timeout = float(configured)
+    except (TypeError, ValueError) as error:
+        raise RuntimeError("NEURO_NP_HTTP_REQUEST_TIMEOUT_SECONDS-must-be-a-number") from error
+    if not math.isfinite(timeout) or not MIN_HTTP_REQUEST_TIMEOUT_SECONDS <= timeout <= MAX_HTTP_REQUEST_TIMEOUT_SECONDS:
+        raise RuntimeError("NEURO_NP_HTTP_REQUEST_TIMEOUT_SECONDS-out-of-range")
+    return timeout
 
 
 def _json_list(env_name: str, *, maximum: int) -> list[str]:
@@ -416,12 +429,36 @@ class BoundedThreadingHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     block_on_close = False
 
-    def __init__(self, server_address, RequestHandlerClass, *, max_workers: int = DEFAULT_MAX_HTTP_WORKERS):
+    def __init__(
+        self,
+        server_address,
+        RequestHandlerClass,
+        *,
+        max_workers: int = DEFAULT_MAX_HTTP_WORKERS,
+        request_timeout_seconds: float = DEFAULT_HTTP_REQUEST_TIMEOUT_SECONDS,
+    ):
         if type(max_workers) is not int or not MIN_MAX_HTTP_WORKERS <= max_workers <= MAX_MAX_HTTP_WORKERS:
             raise ValueError("http-worker-limit-out-of-range")
+        if (
+            isinstance(request_timeout_seconds, bool)
+            or not isinstance(request_timeout_seconds, (int, float))
+            or not math.isfinite(float(request_timeout_seconds))
+            or not MIN_HTTP_REQUEST_TIMEOUT_SECONDS <= float(request_timeout_seconds) <= MAX_HTTP_REQUEST_TIMEOUT_SECONDS
+        ):
+            raise ValueError("http-request-timeout-out-of-range")
         self.max_workers = max_workers
+        self.request_timeout_seconds = float(request_timeout_seconds)
         self._worker_slots = threading.BoundedSemaphore(max_workers)
         super().__init__(server_address, RequestHandlerClass)
+
+    def get_request(self):
+        request, client_address = super().get_request()
+        try:
+            request.settimeout(self.request_timeout_seconds)
+        except Exception:
+            request.close()
+            raise
+        return request, client_address
 
     def process_request(self, request, client_address) -> None:
         if not self._worker_slots.acquire(blocking=False):
@@ -448,11 +485,15 @@ def main() -> None:
     port = int(os.environ.get("NEURO_NP_PORT", "8091"))
     if not 1 <= port <= 65535:
         raise RuntimeError("NEURO_NP_PORT-out-of-range")
+    request_timeout_seconds = _http_request_timeout_seconds(
+        os.environ.get("NEURO_NP_HTTP_REQUEST_TIMEOUT_SECONDS", str(DEFAULT_HTTP_REQUEST_TIMEOUT_SECONDS))
+    )
     runtime = TransformersRuntime()
     server = BoundedThreadingHTTPServer(
         (host, port),
         create_handler(runtime),
         max_workers=runtime.max_http_workers,
+        request_timeout_seconds=request_timeout_seconds,
     )
     print(f"NEURAL_PROSTHESIS_READY http://{host}:{port} model={runtime.model_id} device={runtime.device}")
     try:
