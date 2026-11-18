@@ -10,6 +10,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import inspect
+import importlib.metadata
+import math
+import platform
 import json
 import os
 import re
@@ -50,6 +53,32 @@ MANIFEST_KEYS = {
 
 class PreflightError(ValueError):
     """A rejected local training input."""
+
+
+def json_safe(value: Any) -> Any:
+    """Convert training metrics to strict JSON without NaN/Infinity values."""
+    if isinstance(value, dict):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(item) for item in value]
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if value is None or isinstance(value, (str, int, bool)):
+        return value
+    scalar = getattr(value, "item", None)
+    if callable(scalar):
+        try:
+            return json_safe(scalar())
+        except (TypeError, ValueError):
+            pass
+    return str(value)
+
+
+def package_version(name: str) -> str:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return "not-installed"
 
 
 def sha256_file(path: Path) -> str:
@@ -471,27 +500,67 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
             path.name: {"sha256": sha256_file(path), "bytes": path.stat().st_size}
             for path in artifact_files
         }
-        metadata = {
+        cuda_devices = []
+        if torch.cuda.is_available():
+            for device_index in range(torch.cuda.device_count()):
+                try:
+                    props = torch.cuda.get_device_properties(device_index)
+                    cuda_devices.append({
+                        "index": device_index,
+                        "name": str(props.name),
+                        "totalMemoryBytes": int(props.total_memory),
+                        "computeCapability": str(props.major) + "." + str(props.minor),
+                    })
+                except Exception:
+                    cuda_devices.append({"index": device_index, "name": "unavailable"})
+        training_metadata = {
             "schemaVersion": 1,
             "adapterId": validated["adapterId"],
             "method": method,
             "domain": validated["domain"],
             "baseModelFingerprint": validated["baseFingerprint"],
             "tokenizerFingerprint": validated["tokenizerFingerprint"],
-            "sourceDatasetFingerprint": manifest["sourceDatasetFingerprint"],
-            "holdoutPlanFingerprint": manifest["holdoutPlanFingerprint"],
+            "sourceDatasetFingerprint": validated["sourceDatasetFingerprint"],
+            "holdoutPlanFingerprint": validated["holdoutPlanFingerprint"],
             "corpusFingerprint": validated["corpusFingerprint"],
             "seed": manifest["seed"],
             "trainingExampleCount": len(validated["training"]),
             "validationExampleCount": len(validated["validation"]),
+            "maxSequenceLength": manifest["maxSequenceLength"],
+            "epochs": manifest["epochs"],
+            "learningRate": manifest["learningRate"],
+            "lora": manifest["lora"],
             "targetModules": target_modules,
-            "trainingMetrics": train_result.metrics,
-            "validationMetrics": evaluation,
+            "trainingMetrics": json_safe(train_result.metrics),
+            "validationMetrics": json_safe(evaluation),
+            "trainingEnvironment": {
+                "python": platform.python_version(),
+                "platform": platform.platform(),
+                "torch": str(torch.__version__),
+                "transformers": package_version("transformers"),
+                "peft": package_version("peft"),
+                "datasets": package_version("datasets"),
+                "accelerate": package_version("accelerate"),
+                "safetensors": package_version("safetensors"),
+                "cudaRuntime": torch.version.cuda,
+                "cudaAvailable": bool(torch.cuda.is_available()),
+                "bf16Supported": bool(torch.cuda.is_available() and torch.cuda.is_bf16_supported()),
+                "cudaDevices": cuda_devices,
+                "offlineMode": True,
+                "trustRemoteCode": False,
+            },
+            "quantization": ({
+                "loadIn4Bit": True,
+                "quantType": "nf4",
+                "doubleQuant": True,
+                "computeDtype": "bfloat16" if torch.cuda.is_bf16_supported() else "float16",
+            } if method == "qlora" else None),
             "artifacts": artifact_hashes,
             "automaticActivation": False,
         }
+        metadata = json_safe(training_metadata)
         (staging / "neuro-plastic-artifact.json").write_text(
-            json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+            json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + "\n",
             encoding="utf-8",
         )
         validated["output"].parent.mkdir(parents=True, exist_ok=True)
