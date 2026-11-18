@@ -225,6 +225,86 @@ try {
     'failed durable writes must leave the durable snapshot unchanged',
   );
 
+
+  // Concurrent durability updates are serialized: a failed first write must not roll back
+  // the second decision's independently successful evidence promotion.
+  regretEngine.observe('respond', 0.2, [{
+    action: 'explore',
+    expectedOutcome01: 0.9,
+    confidence01: 1,
+  }], {
+    decisionId: 'core-negative-space-concurrent-failure-005',
+    decisionAt: 140,
+    outcomeAt: 240,
+    chosenExpectedOutcome01: 0.8,
+    significance: { cost01: 0.1, risk01: 0.9, futureImportance01: 0.1 },
+    outcomeVerified01: 0,
+    outcomeIndependent01: 0,
+    outcomeSource: 'internal',
+  });
+  regretEngine.observe('respond', 0.25, [{
+    action: 'verify',
+    expectedOutcome01: 0.85,
+    confidence01: 1,
+  }], {
+    decisionId: 'core-negative-space-concurrent-success-006',
+    decisionAt: 150,
+    outcomeAt: 250,
+    chosenExpectedOutcome01: 0.8,
+    significance: { cost01: 0.1, risk01: 0.9, futureImportance01: 0.1 },
+    outcomeVerified01: 0,
+    outcomeIndependent01: 0,
+    outcomeSource: 'internal',
+  });
+  await runtime.core.flush();
+  const stableStoreSave = stateStore.save.bind(stateStore);
+  let failConcurrentFirstSave = true;
+  stateStore.save = async value => {
+    if (failConcurrentFirstSave) {
+      failConcurrentFirstSave = false;
+      throw new Error('injected-first-concurrent-negative-space-save-failure');
+    }
+    await stableStoreSave(value);
+  };
+  let concurrentResults;
+  try {
+    concurrentResults = await Promise.allSettled([
+      runtime.core.negativeSpaceMemoryRecordOutcome({
+        decisionId: 'core-negative-space-concurrent-failure-005',
+        actualOutcome01: 0.2,
+        verified01: 1,
+        independent01: 1,
+        source: 'external-evidence',
+        evidence: ['first-write-fails'],
+        at: 480,
+      }),
+      runtime.core.negativeSpaceMemoryRecordOutcome({
+        decisionId: 'core-negative-space-concurrent-success-006',
+        actualOutcome01: 0.25,
+        verified01: 1,
+        independent01: 1,
+        source: 'external-evidence',
+        evidence: ['second-write-must-survive'],
+        at: 490,
+      }),
+    ]);
+  } finally {
+    stateStore.save = stableStoreSave;
+  }
+  assert.equal(concurrentResults[0].status, 'rejected');
+  assert.equal(concurrentResults[1].status, 'fulfilled');
+  const concurrentState = runtime.core.negativeSpaceMemorySnapshot();
+  const failedRecord = concurrentState.records.find(row => row.decisionId === 'core-negative-space-concurrent-failure-005');
+  const successfulRecord = concurrentState.records.find(row => row.decisionId === 'core-negative-space-concurrent-success-006');
+  assert.equal(failedRecord?.outcomeVerified01, 0,
+    'failed concurrent mutation must be rolled back');
+  assert.equal(successfulRecord?.outcomeVerified01, 1,
+    'later successful mutation must survive an earlier rollback');
+  const concurrentStored = await stateStore.load();
+  const storedSuccessfulRecord = concurrentStored?.facets?.advanced?.regret?.negativeSpace?.records
+    ?.find(row => row.decisionId === 'core-negative-space-concurrent-success-006');
+  assert.equal(storedSuccessfulRecord?.outcomeVerified01, 1);
+
   await runtime.stop();
   runtimeStopped = true;
 
