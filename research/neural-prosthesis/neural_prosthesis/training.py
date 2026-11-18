@@ -88,11 +88,15 @@ def dataset_fingerprint(path: str | Path) -> str:
     return digest.hexdigest()
 
 
-def ensure_validation_is_distinct(training_digest: str, validation_digest: str) -> None:
-    if not isinstance(training_digest, str) or not _DATASET_SHA256.fullmatch(training_digest):
-        raise ValueError("training-dataset-digest-invalid")
+def ensure_validation_is_distinct(training_digest: str | None, validation_digest: str) -> None:
     if not isinstance(validation_digest, str) or not _DATASET_SHA256.fullmatch(validation_digest):
         raise ValueError("validation-dataset-digest-invalid")
+    # Legacy/manual artifacts may have no training provenance. They remain
+    # evaluable for diagnostics, but the evaluator will not mark them eligible.
+    if training_digest is None:
+        return
+    if not isinstance(training_digest, str) or not _DATASET_SHA256.fullmatch(training_digest):
+        raise ValueError("training-dataset-digest-invalid")
     if training_digest == validation_digest:
         raise ValueError("validation-dataset-matches-training-dataset")
 
