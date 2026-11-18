@@ -64,21 +64,22 @@ const optionContract = {
     id: { type: 'string' as const, minLength: 1, maxLength: 96 },
     title: { type: 'string' as const, minLength: 1, maxLength: 180 },
     action: { type: 'string' as const, minLength: 1, maxLength: 180 },
+    decisionId: { type: 'string' as const, minLength: 1, maxLength: 180 },
     // Reserve 16 graph slots for scenario consequences already stored in Shared Future.
     nodes: { type: 'array' as const, items: nodeContract, minItems: 1, maxItems: 48 },
     edges: { type: 'array' as const, items: edgeContract, maxItems: 100 },
   },
   required: ['id', 'title', 'action', 'nodes', 'edges'],
   additionalProperties: false,
-  maxProperties: 5,
+  maxProperties: 6,
 };
 
 export class ConsequenceEcologyToolAdapter {
-  readonly #simulator: Pick<FutureSimulator, 'analyzeConsequences' | 'consequenceEcology'>;
+  readonly #simulator: Pick<FutureSimulator, 'analyzeConsequences' | 'recordVerifiedConsequenceOutcome' | 'consequenceEcology'>;
   readonly #providers: ConsequenceEcologyContextProviders;
 
   constructor(
-    simulator: Pick<FutureSimulator, 'analyzeConsequences' | 'consequenceEcology'>,
+    simulator: Pick<FutureSimulator, 'analyzeConsequences' | 'recordVerifiedConsequenceOutcome' | 'consequenceEcology'>,
     providers: ConsequenceEcologyContextProviders = {},
   ) {
     this.#simulator = simulator;
@@ -156,6 +157,54 @@ export class ConsequenceEcologyToolAdapter {
       },
     });
     register({
+      id: 'organism.consequences.outcomes.calibrate',
+      capability: 'planning.future.write',
+      destructive: false,
+      projectAllowed: true,
+      requiresIdempotencyKey: true,
+      inputContract: {
+        type: 'object',
+        properties: {
+          outcomeId: { type: 'string', minLength: 1, maxLength: 180 },
+          analysisId: { type: 'string', minLength: 1, maxLength: 96 },
+          optionId: { type: 'string', minLength: 1, maxLength: 96 },
+        },
+        required: ['outcomeId', 'analysisId', 'optionId'],
+        additionalProperties: false,
+        maxProperties: 3,
+        maxSerializedBytes: 768,
+      },
+      execute: async input => {
+        const result = this.#simulator.recordVerifiedConsequenceOutcome({
+          outcomeId: String(input.outcomeId),
+          analysisId: String(input.analysisId),
+          optionId: String(input.optionId),
+        });
+        return resultEnvelope({
+          ...result,
+          note: 'Only a canonical independently verified Shared Future outcome can enter this diagnostic calibration ledger. No model weights or action policy are automatically updated.',
+        });
+      },
+    });
+    register({
+      id: 'organism.consequences.outcomes.list',
+      capability: 'planning.future.read',
+      destructive: false,
+      projectAllowed: true,
+      inputContract: {
+        type: 'object',
+        properties: { limit: { type: 'integer', minimum: 1, maximum: 64 } },
+        required: [],
+        additionalProperties: false,
+        maxProperties: 1,
+        maxSerializedBytes: 128,
+      },
+      execute: async input => resultEnvelope({
+        calibrations: this.#simulator.consequenceEcology.listCalibrations(Number(input.limit ?? 32)),
+        diagnostics: this.#simulator.consequenceEcology.diagnostics(),
+      }),
+    });
+    register({
       id: 'organism.consequences.diagnostics',
       capability: 'planning.future.read',
       destructive: false,
@@ -177,7 +226,7 @@ export class ConsequenceEcologyToolAdapter {
 
 export function registerConsequenceEcologyTools(
   gateway: Pick<ActionGateway, 'registerTool'>,
-  simulator: Pick<FutureSimulator, 'analyzeConsequences' | 'consequenceEcology'>,
+  simulator: Pick<FutureSimulator, 'analyzeConsequences' | 'recordVerifiedConsequenceOutcome' | 'consequenceEcology'>,
   providers: ConsequenceEcologyContextProviders = {},
 ): ConsequenceEcologyToolAdapter {
   const adapter = new ConsequenceEcologyToolAdapter(simulator, providers);
