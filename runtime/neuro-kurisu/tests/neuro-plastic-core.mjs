@@ -650,6 +650,28 @@ assert.equal(signedRestoreRegistry.select({
   confidence01: 0.9,
   risk01: 0.1,
 }).useAdapter, true, 'restart restore must preserve an active adapter only with a valid signed approval');
+const expiredRuntimeApproval = signedApproval(
+  'kurisu-runtime-v1', inferenceReport.reportId, 'approval-restore-after-expiry', inferenceRegistry, Date.now() - 16 * 60_000,
+);
+const expiredApprovalSnapshot = structuredClone(activeSnapshot);
+expiredApprovalSnapshot.adapters[0].activationApproval = expiredRuntimeApproval;
+expiredApprovalSnapshot.adapters[0].activationApprovalId = expiredRuntimeApproval.approvalId;
+const expiredApprovalRestoreRegistry = new NeuroPlasticAdapterRegistry();
+await expiredApprovalRestoreRegistry.restore(
+  expiredApprovalSnapshot,
+  verifyApproval,
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorPublicKeyPem),
+  () => true,
+);
+assert.equal(expiredApprovalRestoreRegistry.select({
+  domain: 'reasoning',
+  backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
+  baseModelFingerprint: hash('a'),
+  backendSupportsModelAliases: true,
+  confidence01: 0.9,
+  risk01: 0.1,
+}).useAdapter, true, 'a valid prior activation can restore after the activation-window expiry without becoming newly activatable');
 const artifactRejectedRestoreRegistry = new NeuroPlasticAdapterRegistry();
 await artifactRejectedRestoreRegistry.restore(
   activeSnapshot,
