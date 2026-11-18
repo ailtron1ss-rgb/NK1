@@ -31,6 +31,19 @@ import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdap
 import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
+function loadNeuroPlasticTrustMap(raw, envName, approval = false) {
+    try {
+        return approval
+            ? parseTrustedNeuroPlasticApprovalKeys(raw)
+            : parseTrustedNeuroPlasticPublicKeys(raw, envName);
+    }
+    catch (error) {
+        // An invalid optional trust map disables only its promotion path.
+        // The base local-language provider remains available as a safe fallback.
+        console.error('[Neuro-Plastic] invalid ' + envName + '; related adapter promotion is disabled:', error?.message || error);
+        return new Map();
+    }
+}
 const PUBLIC = path.join(ROOT, 'public');
 const STATE = path.resolve(process.env.STATE_DIR || path.join(ROOT, 'state'));
 const stateFile = path.join(STATE, 'organism-core.json');
@@ -146,8 +159,10 @@ try {
 catch (error) {
     if (error?.code !== 'ENOENT') throw error;
 }
-const NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS = parseTrustedNeuroPlasticApprovalKeys(
+const NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS = loadNeuroPlasticTrustMap(
     process.env.NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON,
+    'NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON',
+    true,
 );
 const NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY = String(process.env.NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY || '');
 try {
@@ -202,7 +217,7 @@ const NEURO_PLASTIC_INFERENCE = new NeuroPlasticInferenceAdapter(
 // remains the final authority over signed model artifacts and actual inference.
 const P25_BASE_MODEL_ID = String(process.env.NEURO_PLASTIC_BASE_MODEL_ID || '').trim();
 const P25_BASE_MODEL_SHA256 = String(process.env.NEURO_PLASTIC_BASE_MODEL_SHA256 || '').trim().toLowerCase();
-const P25_POLICY_PUBLIC_KEYS = parseTrustedNeuroPlasticPublicKeys(
+const P25_POLICY_PUBLIC_KEYS = loadNeuroPlasticTrustMap(
     process.env.NEURO_PLASTIC_P25_POLICY_PUBLIC_KEYS_JSON,
     'NEURO_PLASTIC_P25_POLICY_PUBLIC_KEYS_JSON',
 );
