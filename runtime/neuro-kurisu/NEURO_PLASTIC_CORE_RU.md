@@ -131,11 +131,11 @@ Governance поля подтверждаются отдельно. Не став
 
 Независимый evaluator получает неизменяемые baseline и candidate inputs и запускает один и тот же закрытый holdout protocol на одинаковых парах/seed. В training corpus holdout не попадает. Каждая observation содержит pairId, seed, split="holdout", authority="independent-verifier", verifierId, holdoutFingerprint и metrics: quality01, safety01, retention01, cost01, latencyMs, safetyViolationCount.
 
-Перед evaluation получите fingerprint точного staged manifest из вывода команды stage: NEURO_PLASTIC_MANIFEST_FINGERPRINT=... . В корневом JSON evaluation обязательны manifestFingerprint (это значение), holdoutFingerprint, evaluatedAt, baseline[], candidate[] и подписанный receipt. manifestFingerprint связывает scorer с конкретной ревизией config/weights, базовой модели, tokenizer, source dataset, holdout plan и training corpus; после замены любого из этих inputs receipt больше не пройдёт проверку. Receipt связывает evaluator identity, timestamp, SHA-256 точного нормализованного содержимого обеих paired arms и отдельный fingerprint вычисленного решения (paired count, seeds, quality uplift/CI, safety, retention, cost, latency, violations и eligibility). При restore registry заново сверяет report summary с подписанным fingerprint; пересчёт обычного SHA отчёта не позволяет подменить числа. Секрет evaluator должен быть отдельным от operator approval secret, выдаваться только доверенному scorer и храниться в secret manager; не помещайте его в Git, manifest или dataset. Реестр принимает оценку только если signature проверена, report metrics fingerprint совпадает с signed receipt и все observation verifier IDs совпадают с подписанным evaluator ID.
+Перед evaluation получите fingerprint точного staged manifest из вывода команды stage: NEURO_PLASTIC_MANIFEST_FINGERPRINT=... . В корневом JSON evaluation обязательны manifestFingerprint (это значение), holdoutFingerprint, evaluatedAt, baseline[], candidate[] и подписанный receipt. manifestFingerprint связывает scorer с конкретной ревизией config/weights, базовой модели, tokenizer, source dataset, holdout plan и training corpus; после замены любого из этих inputs receipt больше не пройдёт проверку. Receipt использует detached Ed25519-подпись: signer хранит private key вне NK1, а runtime получает только PEM public key в NEURO_PLASTIC_EVALUATOR_PUBLIC_KEYS_JSON. Подпись покрывает evaluator identity, timestamp, SHA-256 нормализованных baseline/candidate пар, manifest fingerprint и отдельный fingerprint вычисленного решения (paired count, seeds, quality uplift/CI, safety, retention, cost, latency, violations и eligibility). Создать unsigned receipt можно через createNeuroPlasticEvaluationReceiptPayload(...), затем внешняя evaluator-служба подписывает canonicalNeuroPlasticEvaluationReceiptPayload(...) и записывает base64-подпись в receipt.signature. При restore registry заново сверяет report summary с подписанным fingerprint; пересчёт обычного SHA отчёта не позволяет подменить числа. Private key evaluator никогда не передаётся в trainer, CLI или runtime. Реестр принимает оценку только если Ed25519-подпись проверена, report metrics fingerprint совпадает с signed receipt и все observation verifier IDs совпадают с подписанным evaluator ID.
 
 CLI:
 
-    export NEURO_PLASTIC_EVALUATOR_SECRET="<evaluator-secret-32+-chars>"
+    export NEURO_PLASTIC_EVALUATOR_PUBLIC_KEYS_JSON='{"independent-evaluator-v1":"-----BEGIN PUBLIC KEY-----\\n...\\n-----END PUBLIC KEY-----"}'
     export NEURO_PLASTIC_REGISTRY_FILE="state/neuro-plastic-adapters.json"
 
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs stage --input adapter-manifest.json
@@ -145,15 +145,18 @@ Promotion gate требует не менее 5 matched pairs и 5 незави�
 
 ## 5. Подписать ручное разрешение, активировать или откатить
 
-Оценка переводит адаптер максимум в eligible; она никогда не активирует его автоматически.
+Оценка переводит адаптер максимум в eligible; она никогда не активирует его автоматически. NK1 не хранит и не использует private key approver.
 
-    export NEURO_PLASTIC_APPROVAL_SECRET="<operator-secret-32+-chars>"
     export NEURO_PLASTIC_APPROVER_ID="operator-id"
+    export NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON='{"operator-id":"-----BEGIN PUBLIC KEY-----\\n...\\n-----END PUBLIC KEY-----"}'
 
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs approve --adapter kurisu-reasoning-v1
+
+Команда approve создаёт unsigned request-файл state/kurisu-reasoning-v1.approval-request.json с canonicalPayload. Внешний approver подписывает UTF-8 canonicalPayload своим Ed25519 private key, затем записывает base64-подпись в approval.signature и сохраняет итоговый signed JSON, например state/kurisu-reasoning-v1.approval.json. После этого:
+
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs activate --adapter kurisu-reasoning-v1 --input state/kurisu-reasoning-v1.approval.json
 
-Signature оператора связана с adapter ID, evaluation report ID, base-model fingerprint, fingerprint полного нормализованного adapter manifest (артефакт, tokenizer, source dataset, holdout plan, domain, method, served alias и governance), actor ID и timestamp. Любое изменение manifest после approval требует нового разрешения. При каждом восстановлении сервер и CLI отдельно перепроверяют обе подписи — evaluator receipt и operator approval. Для восстановления требуется NEURO_PLASTIC_EVALUATOR_SECRET наряду с NEURO_PLASTIC_APPROVAL_SECRET. Если любая подпись отсутствует, неверна или секрет недоступен, состояние понижается до staged/eligible и адаптер не вызывается (fail closed).
+Signature оператора связана с adapter ID, evaluation report ID, base-model fingerprint, fingerprint полного нормализованного adapter manifest (артефакт, tokenizer, source dataset, holdout plan, domain, method, served alias и governance), actor ID и timestamp. Любое изменение manifest после approval требует нового разрешения. При каждом восстановлении сервер и CLI отдельно перепроверяют обе Ed25519-подписи — evaluator receipt и operator approval — по настроенным публичным ключам. Private keys не загружаются в NK1. Если любая подпись отсутствует, неверна или публичный ключ недоступен, состояние понижается до staged/eligible и адаптер не вызывается (fail closed).
 
 Откат:
 
@@ -187,8 +190,8 @@ NEURO_PLASTIC_MODEL_ALIASES_ENABLED оставляйте выключенным,
 
 - CI проверяет contracts, CLI lifecycle, Python preflight и server syntax; он не запускает дорогое обучение 7B и не подтверждает реальный GPU/QLoRA throughput.
 - До обучения нужна человеческая проверка consent, provenance, privacy и лицензий. PII regex — только дополнительный фильтр, не DLP-сертификат.
-- Holdout secret/data должны находиться вне trainer host; HMAC key evaluator защищайте отдельно. Для ещё более строгой модели угроз можно перейти на asymmetric signature (private key только у evaluator, public key в runtime).
-- Не коммитьте модельные веса, JSONL corpus, holdout rows, approval/evaluator secrets или state registry. Adapter artifacts и state — локальные runtime данные.
+- Holdout secret/data должны находиться вне trainer host. Evaluator и approver используют отдельные Ed25519 private keys, хранят их в signer service/KMS/HSM и не передают в NK1; runtime хранит только public key PEM maps. Не совмещайте роли и ключи evaluator/approver.
+- Не коммитьте модельные веса, JSONL corpus, holdout rows, approval/evaluator private keys или state registry. Adapter artifacts и state — локальные runtime данные; публичные ключи не являются секретами, но их fingerprint/rotation должны управляться централизованно.
 - Не обновляйте base fingerprint после обучения «для удобства»: mismatch означает, что adapter не относится к текущей base model.
 - Не считайте eligible доказательством production readiness. Нужны независимый review, реальные unseen tasks, retention/forgetting checks, latency/cost measurements и длительный runtime soak.
 - В текущей интеграции нет автоматического обучения при каждом разговоре. Только offline candidate build → независимая оценка → human approval → controlled inference.
