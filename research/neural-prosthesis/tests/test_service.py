@@ -1,4 +1,5 @@
 import json
+import socket
 import threading
 import unittest
 import urllib.error
@@ -238,6 +239,42 @@ class NeuralProsthesisHttpTests(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as missing:
             urllib.request.urlopen(self.base + "/unknown", timeout=3)
         self.assertEqual(missing.exception.code, 404)
+
+
+    def test_idle_http_client_is_closed_and_worker_recovers(self):
+        runtime = FakeRuntime()
+        server = BoundedThreadingHTTPServer(
+            ("127.0.0.1", 0),
+            create_handler(runtime),
+            max_workers=2,
+        )
+        # Configure a short idle timeout for this test without relying on a new
+        # constructor argument, so the regression fails on the missing behavior.
+        server.request_timeout_seconds = 0.1
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base = "http://127.0.0.1:" + str(server.server_address[1])
+        client = None
+        try:
+            client = socket.create_connection(server.server_address, timeout=2)
+            client.settimeout(1)
+            # A client that never terminates its HTTP headers must not retain a
+            # bounded handler worker forever.
+            client.sendall(b"GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\n")
+            try:
+                received = client.recv(1)
+            except socket.timeout:
+                self.fail("idle HTTP client must be closed by the configured request timeout")
+            self.assertEqual(received, b"", "timed-out client connection must be closed")
+
+            with urllib.request.urlopen(base + "/health", timeout=2) as response:
+                self.assertEqual(response.status, 200)
+        finally:
+            if client is not None:
+                client.close()
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
 
 
 if __name__ == "__main__":
