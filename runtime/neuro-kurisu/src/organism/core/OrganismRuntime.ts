@@ -205,6 +205,7 @@ export class OrganismRuntime {
     providerCompletionTokensTotal:0,
     providerTotalTokensTotal:0,
     providerCompletionBudgetUtilizationMean:0,
+    providerCompletionBudgetUtilizationMax:0,
     providerCompletionBudgetExceeded:0,
     lastProviderPromptTokens:null as number|null,
     lastProviderCompletionTokens:null as number|null,
@@ -710,6 +711,8 @@ export class OrganismRuntime {
       const utilization=usage.completionTokens/Math.max(1,profile.maxTokens);
       this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean=
         (this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean*observations+utilization)/(observations+1);
+      this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax=
+        Math.max(this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax,utilization);
       if(usage.completionTokens>profile.maxTokens)
         this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetExceeded+=1;
       usageEvidence={promptTokens:usage.promptTokens,completionTokens:usage.completionTokens,totalTokens:usage.totalTokens,
