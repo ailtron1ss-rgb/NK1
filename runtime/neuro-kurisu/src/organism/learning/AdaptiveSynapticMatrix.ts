@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 /**
  * P25 Adaptive Synaptic Matrix.
  *
