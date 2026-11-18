@@ -95,6 +95,7 @@ const protectedResult = hardProtected.trainFeaturesElastic({
   target01: 1,
   learningRate01: .25,
 }, options({
+  trainingSampleId: 'train-protected-001',
   allowedParameterNames: ['identityCoherence', 'actionCost'],
   protectedParameterNames: [],
   targetHoldout: holdout('protected-target', 'respond', 8, .9, 1),
