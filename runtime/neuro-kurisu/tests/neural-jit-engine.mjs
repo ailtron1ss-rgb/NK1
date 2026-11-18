@@ -222,6 +222,26 @@ assert.equal(restored.diagnostics().candidates[0].status, 'quarantined',
   'new holdout traces alone must not promote a persisted, unverified training candidate');
 assert.equal(restored.diagnostics().liveInferenceEnabled, false);
 assert.equal(restored.diagnostics().activeCandidates, 0);
+
+// A sidecar checksum mismatch must permanently close this process' holdout
+// promotion gate, even when fresh and otherwise valid captures arrive later.
+const tamperedHoldoutSnapshot = structuredClone(stored);
+tamperedHoldoutSnapshot.spentHoldoutTaskFingerprints[0] = digest('tampered-holdout-task-key');
+const tamperedHoldoutEngine = new NeuralJitEngine({ activationCaptureVerifier: verifier });
+tamperedHoldoutEngine.restore(tamperedHoldoutSnapshot);
+assert.equal(tamperedHoldoutEngine.diagnostics().holdoutProtection.healthy, false);
+for (let i = 0; i < 120; i += 1) {
+  const trace = await makeTrace(15_000 + i);
+  assert.equal((await tamperedHoldoutEngine.recordVerifiedTrace(trace)).accepted, true);
+}
+const tamperedLedgerCandidate = tamperedHoldoutEngine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint });
+assert.ok(tamperedLedgerCandidate);
+const tamperedLedgerEvaluation = tamperedHoldoutEngine.evaluateCandidate(tamperedLedgerCandidate.id);
+assert.equal(tamperedLedgerEvaluation.status, 'rejected');
+assert.ok(tamperedLedgerEvaluation.reasons.includes('holdout-evidence-ledger-capacity-exceeded'));
+assert.equal(tamperedHoldoutEngine.diagnostics().holdoutProtection.healthy, false,
+  'new training data must not repair or bypass a corrupt spent-holdout ledger');
+assert.equal(restored.diagnostics().activeCandidates, 0);
 assert.equal(restored.projectShadowResidual(candidate.id,candidate.meanInput), null,
   'restored candidates remain quarantined and cannot feed a local inference shadow branch');
 const wideWeights = structuredClone(stored);
