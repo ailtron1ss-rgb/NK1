@@ -83,6 +83,14 @@ export interface CognitiveNeuralBridgeNeuralInput {
 
 export interface CognitiveToNeuralBridgeInput {
   tick?:unknown;
+  /** Session-local feedback from validated llama.cpp token usage; never a response-quality score. */
+  providerFeedback?:{
+    version?:unknown;
+    mode?:unknown;
+    sampleCount?:unknown;
+    truncatedCount?:unknown;
+    nearLimitCount?:unknown;
+  };
   action?:unknown;
   mode?:unknown;
   motivation01?:unknown;
@@ -122,6 +130,14 @@ export interface CognitiveNeuralControlProfile {
     activationSteering:false;
     residualBlock:false;
   };
+  providerFeedback:{
+    version:1;
+    mode:CognitiveBridgeMode;
+    sampleCount:number;
+    truncatedCount:number;
+    nearLimitCount:number;
+    truncationPressure01:number;
+  };
 }
 
 /**
@@ -140,6 +156,34 @@ export class CognitiveToNeuralBridge {
     const urgency01=safe01(input.urgency01,0);
     const budgetRemaining01=safe01(input.budgetRemaining01,.5);
     const attention01=safe01(input.attention01,.5);
+    const feedback=input.providerFeedback;
+    const feedbackSampleCount=feedback?.version===1 && feedback.mode===mode
+      && Number.isSafeInteger(feedback.sampleCount) && Number(feedback.sampleCount)>=0 && Number(feedback.sampleCount)<=32
+      ? Number(feedback.sampleCount) : 0;
+    const feedbackTruncatedCount=feedbackSampleCount>0 && Number.isSafeInteger(feedback?.truncatedCount)
+      && Number(feedback?.truncatedCount)>=0 && Number(feedback?.truncatedCount)<=feedbackSampleCount
+      ? Number(feedback?.truncatedCount) : 0;
+    const feedbackNearLimitCount=feedbackSampleCount>0 && Number.isSafeInteger(feedback?.nearLimitCount)
+      && Number(feedback?.nearLimitCount)>=0 && Number(feedback?.nearLimitCount)<=feedbackSampleCount
+      ? Number(feedback?.nearLimitCount) : 0;
+    const feedbackCountersValid=feedback?.version===1 && feedback.mode===mode
+      && feedbackSampleCount===Number(feedback.sampleCount)
+      && feedbackTruncatedCount===Number(feedback.truncatedCount)
+      && feedbackNearLimitCount===Number(feedback.nearLimitCount);
+    const providerTruncationPressure01=feedbackCountersValid && feedbackSampleCount>=4
+      ? Number(clamp(
+        (feedbackTruncatedCount/feedbackSampleCount)*.8
+        +(feedbackNearLimitCount/feedbackSampleCount)*.2,
+      ).toFixed(3))
+      : 0;
+    const providerFeedback={
+      version:1 as const,
+      mode,
+      sampleCount:feedbackCountersValid?feedbackSampleCount:0,
+      truncatedCount:feedbackCountersValid?feedbackTruncatedCount:0,
+      nearLimitCount:feedbackCountersValid?feedbackNearLimitCount:0,
+      truncationPressure01:providerTruncationPressure01,
+    };
 
     const candidateNeural=input.neural??undefined;
     const candidateNeuralTick=safeTick(candidateNeural?.tick);
@@ -205,9 +249,13 @@ export class CognitiveToNeuralBridge {
       .2,.85,
     ).toFixed(3));
     const budgetFactor=.4+budgetRemaining01*.6;
+    // Evidence-based truncation feedback may reclaim at most 15% of unused
+    // per-mode budget headroom. Allostatic preservation remains a hard multiplier.
+    const adaptiveBudgetFactor=budgetFactor
+      +providerFeedback.truncationPressure01*.15*(1-budgetFactor);
     const preservationFactor=1-preservation01*.35;
     const maxTokens=Math.max(96,Math.min(768,
-      Math.round((TOKENS_BY_MODE[mode]*budgetFactor*preservationFactor)/16)*16,
+      Math.round((TOKENS_BY_MODE[mode]*adaptiveBudgetFactor*preservationFactor)/16)*16,
     ));
     const steeringIntent01={
       curiosity01:clamp(Math.max(motivation01,exploration01)*(1-uncertainty01)*(.6+.4*selfGrowthReadiness01)*.15,0,.15),
@@ -229,6 +277,7 @@ export class CognitiveToNeuralBridge {
         activationSteering:false,
         residualBlock:false,
       },
+      providerFeedback:{...providerFeedback},
     };
   }
 }
@@ -265,7 +314,21 @@ export function isValidCognitiveNeuralControlProfile(value:unknown):value is Cog
     || profile.controlsConfigured?.samplingParameters!==true
     || profile.controlsConfigured?.adapterSelection!==false
     || profile.controlsConfigured?.activationSteering!==false
-    || profile.controlsConfigured?.residualBlock!==false) return false;
+    || profile.controlsConfigured?.residualBlock!==false
+    || profile.providerFeedback?.version!==1
+    || profile.providerFeedback?.mode!==profile.mode
+    || !Number.isSafeInteger(profile.providerFeedback.sampleCount)
+    || profile.providerFeedback.sampleCount<0 || profile.providerFeedback.sampleCount>32
+    || !Number.isSafeInteger(profile.providerFeedback.truncatedCount)
+    || profile.providerFeedback.truncatedCount<0 || profile.providerFeedback.truncatedCount>profile.providerFeedback.sampleCount
+    || !Number.isSafeInteger(profile.providerFeedback.nearLimitCount)
+    || profile.providerFeedback.nearLimitCount<0 || profile.providerFeedback.nearLimitCount>profile.providerFeedback.sampleCount
+    || !isNormalizedSignal(profile.providerFeedback.truncationPressure01)) return false;
+  const expectedFeedbackPressure=profile.providerFeedback.sampleCount<4?0:Number(clamp(
+    (profile.providerFeedback.truncatedCount/profile.providerFeedback.sampleCount)*.8
+    +(profile.providerFeedback.nearLimitCount/profile.providerFeedback.sampleCount)*.2,
+  ).toFixed(3));
+  if(profile.providerFeedback.truncationPressure01!==expectedFeedbackPressure) return false;
 
   const actionsMatch=ACTIONS.every((action,index)=>vector[index]===(profile.action===action?1:0));
   const modeOffset=36;
@@ -295,9 +358,11 @@ export function isValidCognitiveNeuralControlProfile(value:unknown):value is Cog
     .2,.85,
   ).toFixed(3));
   const budgetFactor=.4+budgetRemaining01*.6;
+  const adaptiveBudgetFactor=budgetFactor
+    +profile.providerFeedback.truncationPressure01*.15*(1-budgetFactor);
   const preservationFactor=1-preservation01*.35;
   const expectedMaxTokens=Math.max(96,Math.min(768,
-    Math.round((TOKENS_BY_MODE[profile.mode!]*budgetFactor*preservationFactor)/16)*16,
+    Math.round((TOKENS_BY_MODE[profile.mode!]*adaptiveBudgetFactor*preservationFactor)/16)*16,
   ));
   const expectedSteering={
     curiosity01:clamp(Math.max(motivation01,exploration01)*(1-uncertainty01)*(.6+.4*selfGrowthReadiness01)*.15,0,.15),
@@ -348,6 +413,9 @@ export function cognitiveNeuralProfileFingerprint(profile:CognitiveNeuralControl
     profile.steeringIntent01.persistence01,profile.steeringIntent01.verification01,
     profile.controlsConfigured.samplingParameters,profile.controlsConfigured.adapterSelection,
     profile.controlsConfigured.activationSteering,profile.controlsConfigured.residualBlock,
+    profile.providerFeedback.version,profile.providerFeedback.mode,profile.providerFeedback.sampleCount,
+    profile.providerFeedback.truncatedCount,profile.providerFeedback.nearLimitCount,
+    profile.providerFeedback.truncationPressure01,
   ]);
   return createHash('sha256').update(canonical).digest('hex');
 }
