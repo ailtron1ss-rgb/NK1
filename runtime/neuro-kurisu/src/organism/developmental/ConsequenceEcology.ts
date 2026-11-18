@@ -215,8 +215,12 @@ export interface ConsequenceOutcomeCalibrationRecord {
   brierSkillScore: number | null;
   evidenceRef: string;
   independentSourceCount: number;
+  confidence01: number;
+  independent01: number;
   evidenceObservationIds: string[];
+  sourceIds: string[];
   sourceClasses: string[];
+  independenceKeys: string[];
   authority: 'independent-external';
   independentlyVerified: true;
 }
@@ -919,7 +923,10 @@ export class ConsequenceEcologyEngine {
           !(skill === null || boundedNumber(skill, -100, 1)) ||
           !boundedString(row.evidenceRef, 500, false) ||
           !boundedInteger(row.independentSourceCount, 1, 16) ||
+          !boundedNumber(row.confidence01, 0.68, 1) || !boundedNumber(row.independent01, 0.5, 1) ||
           !boundedStringArray(evidenceIds, 16, 180) || evidenceIds.length < row.independentSourceCount ||
+          !boundedStringArray(row.sourceIds, 16, 180) || row.sourceIds.length < row.independentSourceCount ||
+          !boundedStringArray(row.independenceKeys, 16, 120) || row.independenceKeys.length < row.independentSourceCount ||
           !Array.isArray(classes) || classes.length > 5 ||
           !classes.every(value => typeof value === 'string' && allowedClasses.has(value)) ||
           row.authority !== 'independent-external' || row.independentlyVerified !== true ||
@@ -1186,7 +1193,10 @@ export class ConsequenceEcologyEngine {
           !boundedNumber(outcome.observedAt, 0, Number.MAX_SAFE_INTEGER) ||
           !boundedNumber(outcome.forecastProbability01, 0, 1) ||
           !boundedInteger(outcome.independentSourceCount, 1, 16) ||
-          !Array.isArray(outcome.evidenceObservationIds) || outcome.evidenceObservationIds.length < 1 ||
+          !boundedNumber(outcome.confidence01, 0.68, 1) || !boundedNumber(outcome.independent01, outcome.occurred ? 0.5 : 1, 1) ||
+          !Array.isArray(outcome.evidenceObservationIds) || outcome.evidenceObservationIds.length < outcome.independentSourceCount ||
+          !Array.isArray(outcome.sourceIds) || outcome.sourceIds.length < outcome.independentSourceCount ||
+          !Array.isArray(outcome.independenceKeys) || outcome.independenceKeys.length < outcome.independentSourceCount ||
           !outcome.evidenceRef?.trim()) {
         throw new Error('consequence-outcome-evidence-incomplete');
       }
@@ -1256,8 +1266,12 @@ export class ConsequenceEcologyEngine {
         brierSkillScore,
         evidenceRef: outcome.evidenceRef,
         independentSourceCount: outcome.independentSourceCount,
+        confidence01: outcome.confidence01!,
+        independent01: outcome.independent01!,
         evidenceObservationIds: [...new Set(outcome.evidenceObservationIds)].slice(0, 16),
+        sourceIds: [...new Set(outcome.sourceIds)].slice(0, 16),
         sourceClasses,
+        independenceKeys: [...new Set(outcome.independenceKeys)].slice(0, 16),
         authority: 'independent-external',
         independentlyVerified: true,
       };
