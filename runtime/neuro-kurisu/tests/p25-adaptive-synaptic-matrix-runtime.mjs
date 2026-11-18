@@ -25,12 +25,12 @@ const candidate = {
   trainingDatasetRef: 'dataset://runtime/train',
   owner: 'p25-runtime-test',
 };
-const manifest = {
+const manifest = (reportId, digest) => ({
   ...candidate,
   validation: {
-    reportId: 'runtime-holdout-2026-11',
-    reportSha256: hash('b'),
-    holdoutDatasetRef: 'dataset://runtime/holdout',
+    reportId,
+    reportSha256: hash(digest),
+    holdoutDatasetRef: 'dataset://runtime/holdout/' + reportId,
     pairedSeeds: 8,
     baselineScore01: 0.70,
     adapterScore01: 0.82,
@@ -38,8 +38,8 @@ const manifest = {
     guardrailRegressionCount: 0,
   },
   signerKeyId: 'runtime-test-validator',
-  signature: 'runtime-test-signature',
-};
+  signature: 'runtime-test-signature:' + reportId,
+});
 
 const dir = await mkdtemp(path.join(tmpdir(), 'nk-p25-runtime-'));
 const stateFile = path.join(dir, 'organism.json');
@@ -115,10 +115,12 @@ const makeRuntime = () => {
   synapticBaseModelId: candidate.baseModelId,
   synapticBaseModelRevisionSha256: candidate.baseModelRevisionSha256,
   synapticAdapterTimeoutMs: 100,
-  synapticAdapterManifestVerifier: (payload, signature, keyId) =>
-    payload.includes('"reportId":"runtime-holdout-2026-11"')
-      && signature === manifest.signature
-      && keyId === manifest.signerKeyId,
+  synapticAdapterManifestVerifier: (payload, signature, keyId) => {
+    const reportId = payload.match(/"reportId":"([^"]+)"/)?.[1];
+    return Boolean(reportId)
+      && signature === 'runtime-test-signature:' + reportId
+      && keyId === 'runtime-test-validator';
+  },
   synapticAdapterInvoker: adapterInvoker,
   });
   runtimes.push(runtime);
@@ -135,7 +137,7 @@ try {
   assert.equal(adapterCalls, 0, 'no adapter can route before a candidate is registered and validated');
 
   await runtime.registerSynapticAdapterCandidate(candidate);
-  await runtime.activateSynapticAdapter(manifest);
+  await runtime.activateSynapticAdapter(manifest('runtime-holdout-2026-11', 'b'));
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'active');
 
   const specialized = await runtime.step('Solve this physics reasoning question.', { deliberate: false });
@@ -177,7 +179,7 @@ try {
   assert.equal(baseCallsByUser.get(lastAdapterUser) ?? 0, lastAdapterBaseCallsAtStart + 1,
     'adapter timeout must invoke the base model exactly once for the timed-out adapter prompt');
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1);
-  await runtime.activateSynapticAdapter(manifest);
+  await runtime.activateSynapticAdapter(manifest('runtime-holdout-after-timeout', 'd'));
 
   const adapterCallsBeforeBadBaseReceipt = adapterCalls;
   badBaseReceipt = true;
@@ -189,7 +191,7 @@ try {
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1);
 
   badBaseReceipt = false;
-  await runtime.activateSynapticAdapter(manifest);
+  await runtime.activateSynapticAdapter(manifest('runtime-holdout-after-base-attestation', 'e'));
   const adapterCallsBeforeBadDigest = adapterCalls;
   badReceipt = true;
   const rejectedReceipt = await runtime.step('Reject a specialist response that attests the wrong weight digest.', { deliberate: false });
@@ -201,7 +203,7 @@ try {
     'explicit signed reactivation resets the consecutive-failure streak before the next execution');
 
   badReceipt = false;
-  await runtime.activateSynapticAdapter(manifest);
+  await runtime.activateSynapticAdapter(manifest('runtime-holdout-after-weight-attestation', 'f'));
   const adapterCallsBeforeLoaderFailure = adapterCalls;
   failAdapter = true;
   const recovered = await runtime.step('Recover from an adapter loader exception.', { deliberate: false });
@@ -231,7 +233,7 @@ try {
   failAdapter = false;
   badReceipt = false;
   badBaseReceipt = false;
-  await runtime.activateSynapticAdapter(manifest);
+  await runtime.activateSynapticAdapter(manifest('runtime-operator-reactivation', '1'));
   const adapterCallsBeforeReactivation = adapterCalls;
   const reactivated = await runtime.step('Use the explicitly reactivated specialist.', { deliberate: false });
   assert.equal(reactivated.language?.text, 'specialized response');
