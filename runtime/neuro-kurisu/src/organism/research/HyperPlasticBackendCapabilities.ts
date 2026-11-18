@@ -61,13 +61,19 @@ export function createTrustedHyperPlasticAdapterCapabilities(
     throw new RangeError('ome26-backend-adapter-loader-contract-invalid');
   }
   const targets = Object.freeze([...loader.supportedLowRankTargets]);
+  const trustedLoader: HyperPlasticAdapterLoader = Object.freeze({
+    providerId: loader.providerId,
+    baseModelFingerprint: loader.baseModelFingerprint,
+    supportedLowRankTargets: targets,
+    loadAdapter: loader.loadAdapter.bind(loader),
+  });
   const capabilities: HyperPlasticBackendCapabilities = Object.freeze({
     schema: 'nk1.hyper-plastic-backend-capability.v1',
     providerId: loader.providerId,
     supportsLowRankAdapters: true,
     baseModelFingerprint: loader.baseModelFingerprint,
     supportedLowRankTargets: targets,
-    loader,
+    loader: trustedLoader,
   });
   trustedCapabilities.add(capabilities);
   return capabilities;

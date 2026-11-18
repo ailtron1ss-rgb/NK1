@@ -50,6 +50,20 @@ assert.equal(duplicateTick.reason, 'duplicate-tick');
 assert.equal(duplicateTickBudget.snapshot().operationCount, 0,
   'a single B292 tick must never spend the same research budget twice');
 
+const mismatchedTickBudget = new CognitiveBudgetManager();
+const mismatchedTick = bridge.propose({
+  state: { ...state, tick: 8 },
+  expectedTick: 9,
+  taskType: 'reasoning',
+  strategy: 'verify',
+  confidence01: 0.86,
+  baseModelFingerprint,
+  budgetManager: mismatchedTickBudget,
+});
+assert.equal(mismatchedTick.status, 'blocked');
+assert.equal(mismatchedTick.reason, 'cognitive-state-tick-mismatch');
+assert.equal(mismatchedTickBudget.snapshot().operationCount, 0);
+
 const invalidFingerprintBudget = new CognitiveBudgetManager();
 const invalidFingerprintBridge = new HyperPlasticRuntimeBridge(new HyperPlasticNetwork({
   target: { layer: 'attention.query', rows: 4, cols: 4 }, rank: 2, hiddenDim: 12, seed: 26029,

@@ -120,6 +120,32 @@ const route = resolveHyperPlasticAdapterRoute({
 assert.equal(route.mode, 'adapter');
 assert.equal(route.reason, 'holdout-qualified');
 
+const wrongProviderModel = createTrustedHyperPlasticAdapterCapabilities({
+  providerId: 'ome26-other-model-loader',
+  baseModelFingerprint: `sha256:${'b'.repeat(64)}`,
+  supportedLowRankTargets: ['attention.query'],
+  loadAdapter: async () => ({ loaded: true }),
+});
+assert.equal(resolveHyperPlasticAdapterRoute({
+  backendCapabilities: wrongProviderModel,
+  baseModelFingerprint,
+  adapter,
+  promotionPermit: promoted.permit,
+}).reason, 'backend-base-model-fingerprint-mismatch');
+
+const wrongTargetLoader = createTrustedHyperPlasticAdapterCapabilities({
+  providerId: 'ome26-wrong-target-loader',
+  baseModelFingerprint,
+  supportedLowRankTargets: ['mlp.down'],
+  loadAdapter: async () => ({ loaded: true }),
+});
+assert.equal(resolveHyperPlasticAdapterRoute({
+  backendCapabilities: wrongTargetLoader,
+  baseModelFingerprint,
+  adapter,
+  promotionPermit: promoted.permit,
+}).reason, 'backend-target-layer-unavailable');
+
 const forgedCapabilityRoute = resolveHyperPlasticAdapterRoute({
   backendCapabilities: {
     providerId: 'forged-caller',

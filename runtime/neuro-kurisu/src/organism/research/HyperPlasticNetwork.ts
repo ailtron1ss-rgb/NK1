@@ -348,7 +348,7 @@ export class HyperPlasticNetwork {
     context: HyperPlasticContext,
     targetFactors: number[],
     learningRate = 0.01,
-  ): { loss: number; applied: true } {
+  ): { loss: number; applied: true; gradientNormL2: number; gradientClipScale: number } {
     const contextError = validateContext(context);
     if (contextError) throw new RangeError(contextError);
     if (!Array.isArray(targetFactors) || targetFactors.length !== this.outputDim
