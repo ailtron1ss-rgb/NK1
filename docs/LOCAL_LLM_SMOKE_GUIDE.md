@@ -72,6 +72,7 @@ Do not replace a model's whole chat template with this fragment. Insert it insid
 {{- '\naction=' ~ (nk1_action | default('none')) -}}
 {{- '\nuncertainty=' ~ (nk1_uncertainty01 | default(0.5)) -}}
 {{- '\nbudget=' ~ (nk1_budget_remaining01 | default(0.5)) -}}
+{{- '\nprovider_truncation_pressure=' ~ (nk1_provider_truncation_pressure01 | default(0)) -}}
 {{- '\nneural_freshness=' ~ (nk1_neural_snapshot_freshness01 | default(0)) -}}
 {%- endif %}
 ```
