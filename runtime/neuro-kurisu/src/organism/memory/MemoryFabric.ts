@@ -310,6 +310,20 @@ export class MemoryFabric {
     return this.findCanonical(id);
   }
 
+  /** Bitemporal lookup through the canonical MemoryOS2 owner. */
+  temporalBitemporalAt(id:string,validAt:number,knowledgeAtAt:number):MemoryItem2|null {
+    return this.memoryOS.temporalBitemporalAt(id,validAt,knowledgeAtAt);
+  }
+
+  /** Complete bounded valid-time / transaction-time history for one revision chain. */
+  temporalBitemporalHistory(id:string):MemoryItem2[] {
+    return this.memoryOS.temporalBitemporalHistory(id);
+  }
+
+  temporalBitemporalDiff(id:string,validAt:number,fromKnowledgeAt:number,toKnowledgeAt:number) {
+    return this.memoryOS.temporalBitemporalDiff(id,validAt,fromKnowledgeAt,toKnowledgeAt);
+  }
+
   private findCanonical(id:string):MemoryItem2|null {
     const item=this.memoryOS.snapshot({clone:false}).items.find(row=>row.id===String(id));
     return item?structuredClone(item):null;
@@ -328,12 +342,12 @@ export class MemoryFabric {
   }
 
   /** Non-mutating search for inspectors and diagnostics; it must not train policy or heat live memories. */
-  previewRetrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
-    return this.memoryOS.previewRetrieve(query,Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt});
+  previewRetrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}) {
+    return this.memoryOS.previewRetrieve(query,Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt});
   }
 
   /** Read-only semantic inspector path; serialize it with cognitive retrieval and background indexing. */
-  async previewRetrieveWithEmbeddings(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
+  async previewRetrieveWithEmbeddings(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}) {
     // Inspector requests are explicit and may do more work than live cognition, but they
     // must still use the same local embedding provider serially. Wait for already-running
     // work, then claim the shared foreground slot before yielding to another operation.
@@ -347,7 +361,7 @@ export class MemoryFabric {
       Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8))),
       goalRelevance,
       identityRelevance,
-      {temporalMode:context.temporalMode,asOfAt:context.asOfAt},
+      {temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt},
     );
     const tracked=work.finally(()=>{if(this.cognitionSemanticInFlight===tracked)this.cognitionSemanticInFlight=null;});
     this.cognitionSemanticInFlight=tracked;
@@ -361,10 +375,10 @@ export class MemoryFabric {
    * immediately keeps the lexical result while the single in-flight job may warm the
    * derived vector index for subsequent turns.
    */
-  async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}):Promise<MemoryItem2[]> {
+  async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}):Promise<MemoryItem2[]> {
     this.lastCognitiveMemoryQueryAt=Date.now();
     const safeLimit=Math.max(1,Math.min(16,Math.floor(Number.isFinite(limit)?limit:8)));
-    const temporalContext={temporalMode:context.temporalMode,asOfAt:context.asOfAt};
+    const temporalContext={temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt};
     // Preview read-only until the runtime chooses the actual result. Otherwise the
     // lexical fallback is counted even when semantic retrieval replaces it.
     const fallbackPreview=this.memoryOS.previewRetrieveWithDiagnostics(query,safeLimit,goalRelevance,identityRelevance,temporalContext);
@@ -438,8 +452,8 @@ export class MemoryFabric {
     return rows;
   }
 
-  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
-    const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt},false);
+  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}) {
+    const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt},false);
     return this.recordRetrievalResult(query,rows,{tick:context.tick,emitEvent:context.emitEvent,evidenceMode:'retrieval-audit'});
   }
 
@@ -600,6 +614,7 @@ export class MemoryFabric {
   registerTaskConditionedUtilityProbe(input:MemoryTaskConditionedUtilityProbeInput){return this.taskConditionedUtilityLedger.register(input);}
   resolveTaskConditionedUtilityProbe(input:MemoryTaskConditionedUtilityResolutionInput){return this.taskConditionedUtilityLedger.resolve(input);}
   taskConditionedUtilityEvidence(input:MemoryTaskConditionedUtilityLookupInput){return this.taskConditionedUtilityLedger.lookup(input);}
+  taskConditionedActionEvidence(input:MemoryTaskConditionedUtilityLookupInput){return this.taskConditionedUtilityLedger.lookupActionEvidence(input);}
   taskConditionedUtilityDiagnostics(){return this.taskConditionedUtilityLedger.diagnostics();}
   retrieveWithPolicyDecision(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean}={}){
     const rows=this.retrieve(query,limit,goalRelevance,identityRelevance,context);

@@ -79,6 +79,40 @@ export interface MemoryTaskConditionedUtilityProbeInput {
   at?: number;
 }
 
+export interface MemoryTaskConditionedActionArmEvidence {
+  decisionFingerprint: string;
+  traceFingerprint: string;
+  evidenceFingerprint: string;
+  taskCompletion01: number;
+  goalProgress01: number;
+  groundedActionRate01: number;
+  verifiedActionRate01: number;
+  staleMemoryUseRate01: number;
+  safetyViolationCount: number;
+}
+
+/** Hash-only action trajectory evidence; it deliberately contains no prompts or memory text. */
+export interface MemoryTaskConditionedActionEvidence {
+  withMemory: MemoryTaskConditionedActionArmEvidence;
+  withoutMemory: MemoryTaskConditionedActionArmEvidence;
+}
+
+export interface MemoryTaskConditionedActionEstimate {
+  samples: number;
+  meanTaskCompletionDelta01: number;
+  taskCompletionLower95Delta01: number | null;
+  taskCompletionUpper95Delta01: number | null;
+  positiveTaskCompletionRate01: number;
+  meanGoalProgressDelta01: number;
+  meanGroundedActionRateDelta01: number;
+  meanVerifiedActionRateDelta01: number;
+  meanStaleMemoryUseDelta01: number;
+  meanSafetyViolationDelta: number;
+  staleMemoryRegressionRate01: number;
+  safetyRegressionRate01: number;
+  lastVerifiedAt: number;
+}
+
 export interface MemoryTaskConditionedUtilityResolutionInput {
   probeId: string;
   withMemoryScore01: number;
@@ -89,7 +123,9 @@ export interface MemoryTaskConditionedUtilityResolutionInput {
   withoutMemoryOutputTokens: number;
   withMemoryRetrievalLatencyMs: number;
   withoutMemoryRetrievalLatencyMs: number;
-  /** Exact process-local receipt minted by OutcomeVerificationService for this probe and metric tuple. */
+  /** Optional paired, hash-only trajectories for action-grounded evaluation. */
+  actionEvidence?: MemoryTaskConditionedActionEvidence;
+  /** Exact process-local receipt minted by OutcomeVerificationService for every supplied metric. */
   verification: OutcomeVerification;
   validationAt?: number;
 }
@@ -115,6 +151,8 @@ export interface MemoryTaskConditionedUtilityOutcome {
   outputTokenDelta: number;
   retrievalLatencyDeltaMs: number;
   independentVerified: boolean;
+  /** Present only for verified paired action-grounded evaluations. */
+  actionEvidence?: MemoryTaskConditionedActionEvidence;
   at: number;
 }
 
@@ -226,6 +264,41 @@ function score01(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
+function cleanActionArmEvidence(raw: unknown): MemoryTaskConditionedActionArmEvidence | null {
+  const row = readDataEnvelope(raw, [
+    'decisionFingerprint', 'traceFingerprint', 'evidenceFingerprint', 'taskCompletion01',
+    'goalProgress01', 'groundedActionRate01', 'verifiedActionRate01', 'staleMemoryUseRate01',
+    'safetyViolationCount',
+  ]);
+  if (!row || !digest(row.decisionFingerprint) || !digest(row.traceFingerprint) || !digest(row.evidenceFingerprint) ||
+      !score01(row.taskCompletion01) || !score01(row.goalProgress01) || !score01(row.groundedActionRate01) ||
+      !score01(row.verifiedActionRate01) || !score01(row.staleMemoryUseRate01) ||
+      !finiteInteger(row.safetyViolationCount, 10_000)) return null;
+  return {
+    decisionFingerprint: (row.decisionFingerprint as string).toLowerCase(),
+    traceFingerprint: (row.traceFingerprint as string).toLowerCase(),
+    evidenceFingerprint: (row.evidenceFingerprint as string).toLowerCase(),
+    taskCompletion01: row.taskCompletion01 as number,
+    goalProgress01: row.goalProgress01 as number,
+    groundedActionRate01: row.groundedActionRate01 as number,
+    verifiedActionRate01: row.verifiedActionRate01 as number,
+    staleMemoryUseRate01: row.staleMemoryUseRate01 as number,
+    safetyViolationCount: row.safetyViolationCount as number,
+  };
+}
+
+function cleanActionEvidence(raw: unknown): MemoryTaskConditionedActionEvidence | null {
+  const row = readDataEnvelope(raw, ['withMemory', 'withoutMemory']);
+  if (!row) return null;
+  const withMemory = cleanActionArmEvidence(row.withMemory);
+  const withoutMemory = cleanActionArmEvidence(row.withoutMemory);
+  if (!withMemory || !withoutMemory ||
+      withMemory.decisionFingerprint === withoutMemory.decisionFingerprint ||
+      withMemory.traceFingerprint === withoutMemory.traceFingerprint ||
+      withMemory.evidenceFingerprint === withoutMemory.evidenceFingerprint) return null;
+  return { withMemory, withoutMemory };
+}
+
 function canonicalProbeId(probe: Pick<MemoryTaskConditionedUtilityProbe,
   'memoryKeyHash' | 'taskKeyHash' | 'holdoutFingerprint' | 'contextFingerprint' | 'readerFingerprint' |
   'scorerFingerprint' | 'fillerFingerprint' | 'insertionPosition' | 'seed' | 'replicate'>): string {
@@ -254,7 +327,9 @@ function tCritical95(degreesOfFreedom: number): number {
 
 export type MemoryTaskConditionedUtilityResolutionMetrics = Pick<MemoryTaskConditionedUtilityResolutionInput,
   'withMemoryScore01' | 'withoutMemoryScore01' | 'withMemoryInputTokens' | 'withoutMemoryInputTokens' |
-  'withMemoryOutputTokens' | 'withoutMemoryOutputTokens' | 'withMemoryRetrievalLatencyMs' | 'withoutMemoryRetrievalLatencyMs'>;
+  'withMemoryOutputTokens' | 'withoutMemoryOutputTokens' | 'withMemoryRetrievalLatencyMs' | 'withoutMemoryRetrievalLatencyMs'> & {
+    actionEvidence?: MemoryTaskConditionedActionEvidence;
+  };
 
 /**
  * Canonical input tuple that an independent verifier must bind into its
@@ -265,6 +340,14 @@ export function memoryTaskConditionedUtilityVerificationInput(
   probe: MemoryTaskConditionedUtilityProbe,
   metrics: MemoryTaskConditionedUtilityResolutionMetrics,
 ): Record<string, unknown> {
+  const row = readDataEnvelope(metrics, [
+    'withMemoryScore01', 'withoutMemoryScore01', 'withMemoryInputTokens', 'withoutMemoryInputTokens',
+    'withMemoryOutputTokens', 'withoutMemoryOutputTokens', 'withMemoryRetrievalLatencyMs',
+    'withoutMemoryRetrievalLatencyMs', 'actionEvidence',
+  ]);
+  if (!row) throw new TypeError('invalid-task-conditioned-utility-metrics');
+  const actionEvidence = row.actionEvidence === undefined ? undefined : cleanActionEvidence(row.actionEvidence);
+  if (row.actionEvidence !== undefined && !actionEvidence) throw new TypeError('invalid-task-conditioned-action-evidence');
   return {
     schema: 'nk1.memory-task-conditioned-utility.v1',
     probeId: probe.id,
@@ -278,14 +361,15 @@ export function memoryTaskConditionedUtilityVerificationInput(
     insertionPosition: probe.insertionPosition,
     seed: probe.seed,
     replicate: probe.replicate,
-    withMemoryScore01: metrics.withMemoryScore01,
-    withoutMemoryScore01: metrics.withoutMemoryScore01,
-    withMemoryInputTokens: metrics.withMemoryInputTokens,
-    withoutMemoryInputTokens: metrics.withoutMemoryInputTokens,
-    withMemoryOutputTokens: metrics.withMemoryOutputTokens,
-    withoutMemoryOutputTokens: metrics.withoutMemoryOutputTokens,
-    withMemoryRetrievalLatencyMs: metrics.withMemoryRetrievalLatencyMs,
-    withoutMemoryRetrievalLatencyMs: metrics.withoutMemoryRetrievalLatencyMs,
+    withMemoryScore01: row.withMemoryScore01,
+    withoutMemoryScore01: row.withoutMemoryScore01,
+    withMemoryInputTokens: row.withMemoryInputTokens,
+    withoutMemoryInputTokens: row.withoutMemoryInputTokens,
+    withMemoryOutputTokens: row.withMemoryOutputTokens,
+    withoutMemoryOutputTokens: row.withoutMemoryOutputTokens,
+    withMemoryRetrievalLatencyMs: row.withMemoryRetrievalLatencyMs,
+    withoutMemoryRetrievalLatencyMs: row.withoutMemoryRetrievalLatencyMs,
+    ...(actionEvidence ? { actionEvidence } : {}),
   };
 }
 
@@ -309,12 +393,14 @@ function estimate(aggregate: MemoryTaskConditionedUtilityAggregate): MemoryTaskC
 
 /**
  * Records paired, task-conditioned memory utility without changing retrieval or retention policy.
- * Both arms must share the frozen task, immutable holdout, context, reader, scorer, filler,
- * insertion position and seed. The host must set independentVerified only after its separate
- * immutable-holdout verifier has checked the pair.
+ * Both arms share the frozen task, immutable holdout, context, reader, scorer, filler,
+ * insertion position and seed. Optional action trajectories are hash-only and are included
+ * in the exact trusted OutcomeVerificationService receipt before they become audit evidence.
  */
 export class MemoryTaskConditionedUtilityLedger {
   private state = blank();
+  /** Only current-process receipts count as live action evidence; restore always clears this cache. */
+  private liveActionOutcomes: MemoryTaskConditionedUtilityOutcome[] = [];
   private readonly maxPending = MAX_PENDING;
   private readonly maxAggregates = MAX_AGGREGATES;
   private readonly maxRecentIds = MAX_RECENT_IDS;
@@ -324,6 +410,7 @@ export class MemoryTaskConditionedUtilityLedger {
   }
 
   restore(raw?: Partial<MemoryTaskConditionedUtilityLedgerState> | null): void {
+    this.liveActionOutcomes = [];
     const row = readDataEnvelope(raw, [
       'version', 'registered', 'resolved', 'dropped', 'unverifiedAttempts', 'pending', 'outcomes', 'aggregates', 'recentProbeIds',
     ]);
@@ -434,7 +521,7 @@ export class MemoryTaskConditionedUtilityLedger {
     const input = readDataEnvelope(raw, [
       'probeId', 'withMemoryScore01', 'withoutMemoryScore01', 'withMemoryInputTokens', 'withoutMemoryInputTokens',
       'withMemoryOutputTokens', 'withoutMemoryOutputTokens', 'withMemoryRetrievalLatencyMs',
-      'withoutMemoryRetrievalLatencyMs', 'verification', 'validationAt',
+      'withoutMemoryRetrievalLatencyMs', 'actionEvidence', 'verification', 'validationAt',
     ]);
     if (!input || typeof input.probeId !== 'string' || !/^mtu:[a-f0-9]{64}$/.test(input.probeId) ||
         !score01(input.withMemoryScore01) || !score01(input.withoutMemoryScore01) ||
@@ -444,6 +531,7 @@ export class MemoryTaskConditionedUtilityLedger {
         input.withMemoryRetrievalLatencyMs < 0 || input.withMemoryRetrievalLatencyMs > MAX_LATENCY_MS ||
         typeof input.withoutMemoryRetrievalLatencyMs !== 'number' || !Number.isFinite(input.withoutMemoryRetrievalLatencyMs) ||
         input.withoutMemoryRetrievalLatencyMs < 0 || input.withoutMemoryRetrievalLatencyMs > MAX_LATENCY_MS ||
+        (input.actionEvidence !== undefined && !cleanActionEvidence(input.actionEvidence)) ||
         (input.validationAt !== undefined && !finiteInteger(input.validationAt, Number.MAX_SAFE_INTEGER))) {
       return { accepted: false, reason: 'invalid-input' };
     }
@@ -464,6 +552,7 @@ export class MemoryTaskConditionedUtilityLedger {
       withoutMemoryOutputTokens: input.withoutMemoryOutputTokens as number,
       withMemoryRetrievalLatencyMs: input.withMemoryRetrievalLatencyMs as number,
       withoutMemoryRetrievalLatencyMs: input.withoutMemoryRetrievalLatencyMs as number,
+      ...(input.actionEvidence !== undefined ? { actionEvidence: cleanActionEvidence(input.actionEvidence)! } : {}),
     };
     const expectedVerificationInput = memoryTaskConditionedUtilityVerificationInput(probe, metrics);
     if (!isTrustedExternalPostconditionVerification(input.verification, expectedVerificationInput)) {
@@ -485,11 +574,13 @@ export class MemoryTaskConditionedUtilityLedger {
       outputTokenDelta: metrics.withMemoryOutputTokens - metrics.withoutMemoryOutputTokens,
       retrievalLatencyDeltaMs: metrics.withMemoryRetrievalLatencyMs - metrics.withoutMemoryRetrievalLatencyMs,
       independentVerified: true,
+      ...(metrics.actionEvidence ? { actionEvidence: metrics.actionEvidence } : {}),
       at: validationAt,
     };
 
     this.state.pending.splice(index, 1);
     this.state.outcomes = [...this.state.outcomes, outcome].slice(-MAX_OUTCOMES);
+    if (outcome.actionEvidence) this.liveActionOutcomes = [...this.liveActionOutcomes, outcome].slice(-MAX_OUTCOMES);
     this.state.recentProbeIds = [...this.state.recentProbeIds, probe.id].slice(-this.maxRecentIds);
     this.state.resolved++;
     const key = aggregateKey(probe);
@@ -550,11 +641,63 @@ export class MemoryTaskConditionedUtilityLedger {
     return aggregate ? estimate(aggregate) : null;
   }
 
+  /**
+   * Returns only paired action traces verified in this process. Restored outcomes remain
+   * available for audit but cannot be promoted into a fresh measurement after restart.
+   */
+  lookupActionEvidence(raw: MemoryTaskConditionedUtilityLookupInput): MemoryTaskConditionedActionEstimate | null {
+    const input = readDataEnvelope(raw, [
+      'memoryId', 'taskKeyHash', 'holdoutFingerprint', 'contextFingerprint', 'readerFingerprint',
+      'scorerFingerprint', 'fillerFingerprint', 'insertionPosition',
+    ]);
+    if (!input || !safeIdentity(input.memoryId) || !digest(input.taskKeyHash) || !digest(input.holdoutFingerprint) ||
+        !digest(input.contextFingerprint) || !digest(input.readerFingerprint) || !digest(input.scorerFingerprint) ||
+        !digest(input.fillerFingerprint) || !finiteInteger(input.insertionPosition, MAX_TOKENS)) return null;
+    const key = aggregateKey({
+      memoryKeyHash: sha256('nk1-memory-task-utility-v1\0' + input.memoryId),
+      taskKeyHash: (input.taskKeyHash as string).toLowerCase(),
+      holdoutFingerprint: (input.holdoutFingerprint as string).toLowerCase(),
+      contextFingerprint: (input.contextFingerprint as string).toLowerCase(),
+      readerFingerprint: (input.readerFingerprint as string).toLowerCase(),
+      scorerFingerprint: (input.scorerFingerprint as string).toLowerCase(),
+      fillerFingerprint: (input.fillerFingerprint as string).toLowerCase(),
+      insertionPosition: input.insertionPosition as number,
+    } as MemoryTaskConditionedUtilityProbe);
+    const outcomes = this.liveActionOutcomes.filter(item => item.actionEvidence && aggregateKey(item) === key);
+    if (outcomes.length === 0) return null;
+    const completion = outcomes.map(item => item.actionEvidence!.withMemory.taskCompletion01 - item.actionEvidence!.withoutMemory.taskCompletion01);
+    const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+    const m = mean(completion);
+    const variance = completion.length > 1
+      ? completion.reduce((sum, value) => sum + ((value - m) ** 2), 0) / (completion.length - 1) : null;
+    const standardError = variance === null ? null : Math.sqrt(variance / completion.length);
+    const margin = standardError === null ? null : tCritical95(completion.length - 1) * standardError;
+    const staleRegressions = outcomes.filter(item => item.actionEvidence!.withMemory.staleMemoryUseRate01 > item.actionEvidence!.withoutMemory.staleMemoryUseRate01).length;
+    const safetyRegressions = outcomes.filter(item => item.actionEvidence!.withMemory.safetyViolationCount > item.actionEvidence!.withoutMemory.safetyViolationCount).length;
+    return {
+      samples: outcomes.length,
+      meanTaskCompletionDelta01: m,
+      taskCompletionLower95Delta01: margin === null ? null : m - margin,
+      taskCompletionUpper95Delta01: margin === null ? null : m + margin,
+      positiveTaskCompletionRate01: completion.filter(value => value > 0).length / outcomes.length,
+      meanGoalProgressDelta01: mean(outcomes.map(item => item.actionEvidence!.withMemory.goalProgress01 - item.actionEvidence!.withoutMemory.goalProgress01)),
+      meanGroundedActionRateDelta01: mean(outcomes.map(item => item.actionEvidence!.withMemory.groundedActionRate01 - item.actionEvidence!.withoutMemory.groundedActionRate01)),
+      meanVerifiedActionRateDelta01: mean(outcomes.map(item => item.actionEvidence!.withMemory.verifiedActionRate01 - item.actionEvidence!.withoutMemory.verifiedActionRate01)),
+      meanStaleMemoryUseDelta01: mean(outcomes.map(item => item.actionEvidence!.withMemory.staleMemoryUseRate01 - item.actionEvidence!.withoutMemory.staleMemoryUseRate01)),
+      meanSafetyViolationDelta: mean(outcomes.map(item => item.actionEvidence!.withMemory.safetyViolationCount - item.actionEvidence!.withoutMemory.safetyViolationCount)),
+      staleMemoryRegressionRate01: staleRegressions / outcomes.length,
+      safetyRegressionRate01: safetyRegressions / outcomes.length,
+      lastVerifiedAt: Math.max(...outcomes.map(item => item.at)),
+    };
+  }
+
   diagnostics() {
     return {
       version: 1, registered: this.state.registered, resolved: this.state.resolved,
       dropped: this.state.dropped, unverifiedAttempts: this.state.unverifiedAttempts,
       pending: this.state.pending.length, outcomes: this.state.outcomes.length, aggregates: this.state.aggregates.length,
+      currentProcessActionEvidenceOutcomes: this.liveActionOutcomes.length,
+      actionEvidenceScope: 'current-process-trusted-receipts-only' as const,
       evidenceScope: 'paired-task-conditioned-counterfactual' as const,
       decisionAuthority: 'audit-only-no-retrieval-or-retention-mutation' as const,
     };
@@ -590,7 +733,7 @@ export class MemoryTaskConditionedUtilityLedger {
       'contextFingerprint', 'readerFingerprint', 'scorerFingerprint', 'fillerFingerprint',
       'insertionPosition', 'formationCostTokens', 'storageBytes', 'withMemoryScore01',
       'withoutMemoryScore01', 'delta01', 'inputTokenDelta', 'outputTokenDelta',
-      'retrievalLatencyDeltaMs', 'independentVerified', 'at',
+      'retrievalLatencyDeltaMs', 'independentVerified', 'actionEvidence', 'at',
     ]);
     if (!row || typeof row.probeId !== 'string' || !/^mtu:[a-f0-9]{64}$/.test(row.probeId) ||
         !digest(row.memoryKeyHash) || !digest(row.taskKeyHash) || !digest(row.holdoutFingerprint) ||
@@ -605,8 +748,9 @@ export class MemoryTaskConditionedUtilityLedger {
         !Number.isSafeInteger(row.outputTokenDelta) || Math.abs(row.outputTokenDelta as number) > MAX_TOKENS ||
         typeof row.retrievalLatencyDeltaMs !== 'number' || !Number.isFinite(row.retrievalLatencyDeltaMs) ||
         Math.abs(row.retrievalLatencyDeltaMs) > MAX_LATENCY_MS || row.independentVerified !== true ||
+        (row.actionEvidence !== undefined && !cleanActionEvidence(row.actionEvidence)) ||
         !finiteInteger(row.at, Number.MAX_SAFE_INTEGER)) return null;
-    const outcome = row as unknown as MemoryTaskConditionedUtilityOutcome;
+    const outcome = { ...row, ...(row.actionEvidence !== undefined ? { actionEvidence: cleanActionEvidence(row.actionEvidence)! } : {}) } as unknown as MemoryTaskConditionedUtilityOutcome;
     return canonicalProbeId(outcome) === outcome.probeId ? structuredClone(outcome) : null;
   }
 

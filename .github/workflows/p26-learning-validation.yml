@@ -14,6 +14,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/MemoryTaskConditionedUtilityLedger.ts"
       - "runtime/neuro-kurisu/tests/memory-task-conditioned-utility-*.mjs"
+      - "runtime/neuro-kurisu/tests/memory-action-grounded-utility-benchmark.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/p26-learning-validation.yml"
   pull_request:
@@ -78,6 +79,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/MemoryTaskConditionedUtilityLedger.ts"
       - "runtime/neuro-kurisu/tests/memory-task-conditioned-utility-*.mjs"
+      - "runtime/neuro-kurisu/tests/memory-action-grounded-utility-benchmark.mjs"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
 
