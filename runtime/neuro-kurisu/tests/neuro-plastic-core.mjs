@@ -177,6 +177,46 @@ await registry.activate(
 );
 assert.equal(registry.snapshot().adapters[0].status, 'active');
 
+// A delayed host signer decision must not resurrect a candidate after an
+// operator rollback has revoked its eligibility while activation was awaiting.
+const activationRaceRegistry = new NeuroPlasticAdapterRegistry();
+activationRaceRegistry.stage(manifest('kurisu-activation-race-v1'));
+const activationRaceReport = signedEvaluate(
+  activationRaceRegistry,
+  'kurisu-activation-race-v1',
+  evaluationPayload,
+);
+const activationRaceApproval = signedApproval(
+  'kurisu-activation-race-v1',
+  activationRaceReport.reportId,
+  'approval-activation-race',
+  activationRaceRegistry,
+);
+let releaseActivationVerification;
+const activationVerificationGate = new Promise(resolve => {
+  releaseActivationVerification = resolve;
+});
+const pendingActivation = activationRaceRegistry.activate(
+  'kurisu-activation-race-v1',
+  activationRaceApproval,
+  async (candidateApproval, context, purpose) => {
+    const allow = await activationVerificationGate;
+    return allow && verifyApproval(candidateApproval, context, purpose);
+  },
+);
+activationRaceRegistry.rollback('kurisu-activation-race-v1', 'operator revoked while signature verification was pending');
+releaseActivationVerification(true);
+await assert.rejects(
+  pendingActivation,
+  /changed|eligible|revoked|state/i,
+  'an activation completing after rollback must be rejected rather than resurrecting the revoked candidate',
+);
+assert.equal(
+  activationRaceRegistry.snapshot().adapters[0].status,
+  'disabled',
+  'a late signature-verification result must not change a rollback-disabled candidate back to active',
+);
+
 const selected = registry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
