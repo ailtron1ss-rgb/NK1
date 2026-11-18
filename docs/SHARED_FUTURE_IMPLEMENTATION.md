@@ -45,3 +45,10 @@ A verified record stores the Shared Future decision ID, canonical organism decis
 On restore, independentlyVerified is re-established only if the persisted Shared Future binding still points to an accepted decision, the canonical OrganismCore trace still exists, and OutcomeCognitionFabric still contains matching external observations for the exact execution and tool with the stored source identities, confidence, postcondition and direction. Missing/tampered verification projections downgrade the record to restored-unverified. Legacy snapshots continue to restore without action bindings or outcome evidence.
 
 The unified organism runtime regression now runs both Shared Future scenario/consent tests and the end-to-end verified-action integration test, followed by the existing runtime typecheck.
+
+
+## Restart integrity for action correlation
+
+The execution-to-decision binding ledger is part of the canonical persisted OrganismCore system state, not transient runtime memory. StateMigrations now carries the versioned field through the persisted-state allowlist. It accepts at most 512 unique execution receipts and validates the execution ID, canonical decision IDs, scenario/consequence references, tool identity, expected postcondition, input SHA-256, outcome class, autonomy flag and timestamp. Legacy snapshots without this field migrate to an empty ledger, so an old outcome without its original action link is downgraded rather than guessed. Malformed or oversized state, control characters in correlation fields, or duplicate execution IDs quarantine the ledger and discard its bindings; a conflicting receipt is never silently selected.
+
+The integration regression verifies that a valid accepted action binding and independent external outcome survive a real OrganismCore restart, while removal of the evidence projection, removal of the action binding, control-character tampering and duplicate execution IDs all downgrade the outcome or quarantine the correlation state. Both the focused Shared Future workflow and the unified organism workflow include StateMigrations.ts in their path filters so future migration changes cannot bypass these checks.
