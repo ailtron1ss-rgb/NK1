@@ -11,6 +11,8 @@ import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeL
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
 import { createSynapticP23AdmissionProvider } from '../src/organism/learning/SynapticP23OutcomeBundleProvider.ts';
+import { signSkillShadowArtifactForFixture, skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
+import { createSkillPromotionApprovalPayload, canonicalSkillPromotionApprovalPayload } from '../src/organism/learning/AuthenticatedSkillPromotionApproval.ts';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'nk1-synaptic-p23-admission-'));
 const previous = {
@@ -18,6 +20,7 @@ const previous = {
   attestor: process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON,
   licence: process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON,
   shadowVerifiers: process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
+  approvalKeys: process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON,
 };
 const now = Date.now();
 const environmentFingerprint = 'e'.repeat(64);
@@ -39,11 +42,21 @@ function ed25519Pair() {
 const publisher = ed25519Pair();
 const attestor = ed25519Pair();
 const outcomeVerifier = ed25519Pair();
+const shadowVerifier = ed25519Pair();
+const approvalAuthority = ed25519Pair();
 const outcomeVerifierId = 'synaptic-p23-local-verifier';
+const shadowVerifierId = 'synaptic-p23-shadow-verifier';
+const approvalAuthorityId = 'synaptic-p23-approval-authority';
 process.env.NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON = JSON.stringify({ 'publisher-1': publisher.publicKey });
 process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON = JSON.stringify({ 'attestor-1': attestor.publicKey });
 process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON = JSON.stringify(['b'.repeat(64)]);
-process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = JSON.stringify({ [outcomeVerifierId]: outcomeVerifier.publicKey });
+process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = JSON.stringify({
+  [outcomeVerifierId]: outcomeVerifier.publicKey,
+  [shadowVerifierId]: shadowVerifier.publicKey,
+});
+process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON = JSON.stringify({
+  [approvalAuthorityId]: approvalAuthority.publicKey,
+});
 
 const unsignedArtifact = {
   schemaVersion: 1,
@@ -390,10 +403,22 @@ try {
   assert.equal(nativeCandidate.payload.synapticCommonsProvenance.localOutcomeFingerprint, nativeCandidate.proposalOutcomeFingerprint);
   assert.equal(nativeSnapshot.active.some(item => item.skillId === nativeCandidate.skillId), false,
     'native materialization remains staged until normal P23 signed shadow and approval gates complete');
+
+  const nativeCountBeforeRepeat = nativeSnapshot.candidates.filter(item =>
+    item.payload?.synapticCommonsProvenance?.artifactFingerprint === nativeFingerprint).length;
+  const nativeRepeat = await runtime.stageSynapticNativePolicySkillCandidate(nativeFingerprint, true);
+  const nativeAfterRepeat = runtime.core.verifiedSkillCandidateSnapshot();
+  assert.equal(nativeRepeat.candidateId, nativeStaged.candidateId,
+    'the same artifact fingerprint and local outcome dataset must be idempotent');
+  assert.equal(nativeAfterRepeat.candidates.filter(item =>
+    item.payload?.synapticCommonsProvenance?.artifactFingerprint === nativeFingerprint).length,
+  nativeCountBeforeRepeat, 're-importing identical evidence must not create duplicate native P23 candidates');
   assert.deepEqual(runtime.core.p23TopSkills().filter(item => item.id === nativeCandidate.skillId), [],
     'a staged policy record cannot influence the live P23 skill resolver');
 
   const invalidNativeUnsigned = JSON.parse(JSON.stringify(nativeUnsignedArtifact));
+  invalidNativeUnsigned.skill.skillId = 'portable-verify-bias-invalid';
+  invalidNativeUnsigned.skill.name = 'Invalid portable policy';
   invalidNativeUnsigned.definition.payload.steps = [{ operation: 'invoke-capability', capability: 'documents.fetch' }];
   const invalidNativeArtifact = createSignedSynapticArtifact(invalidNativeUnsigned, 'publisher-1', artifactFingerprint =>
     sign(null, Buffer.from(artifactFingerprint, 'utf8'), publisher.privateKey).toString('base64'));
@@ -421,8 +446,158 @@ try {
   assert.equal(runtime.core.verifiedSkillCandidateSnapshot().candidates.length, beforeInvalidNative,
     'invalid native DSL must not mutate the canonical P23 candidate store');
 
+  // Create a second native package whose context is exactly the live OrganismCore
+  // context. Its preference bias must become observable only after signed shadow
+  // execution receipts and a detached approval from a separate authority.
+  const liveNeeds = runtime.core.operationalStatusSnapshot().needs;
+  const liveNativeUnsigned = JSON.parse(JSON.stringify(nativeUnsignedArtifact));
+  liveNativeUnsigned.skill.skillId = 'portable-verify-bias-live';
+  liveNativeUnsigned.skill.name = 'Live-context verified policy preference';
+  liveNativeUnsigned.definition.payload.contextNeeds = {
+    energy: liveNeeds.energy,
+    cognitiveLoad: liveNeeds.cognitiveLoad,
+    uncertainty: liveNeeds.uncertainty,
+    novelty: liveNeeds.novelty,
+    goalPressure: liveNeeds.goalPressure,
+    socialNeed: liveNeeds.socialNeed,
+  };
+  const liveNativeArtifact = createSignedSynapticArtifact(liveNativeUnsigned, 'publisher-1', artifactFingerprint =>
+    sign(null, Buffer.from(artifactFingerprint, 'utf8'), publisher.privateKey).toString('base64'));
+  const liveNativeFingerprint = synapticArtifactFingerprint(liveNativeArtifact);
+  const liveNativeAttestation = {
+    ...JSON.parse(JSON.stringify(nativeAttestation)),
+    artifactFingerprint: liveNativeFingerprint,
+    signature: { algorithm: 'Ed25519', value: 'A'.repeat(88) },
+  };
+  liveNativeAttestation.signature.value = sign(
+    null,
+    Buffer.from(synapticAttestationSigningPayload(liveNativeAttestation), 'utf8'),
+    attestor.privateKey,
+  ).toString('base64');
+
+  const biasBeforeActivation = runtime.core.p23SkillBias('verify');
+  await runtime.importSynapticArtifact(liveNativeArtifact);
+  const liveCompatible = await runtime.evaluateSynapticSkillCompatibility(liveNativeFingerprint, host);
+  assert.equal(liveCompatible.status, 'compatible');
+  await runtime.attestSynapticSkill(liveNativeFingerprint, liveNativeAttestation);
+  const liveNativeStaged = await runtime.stageSynapticNativePolicySkillCandidate(liveNativeFingerprint, true);
+  assert.equal(liveNativeStaged.status, 'staged');
+  assert.equal(liveNativeStaged.executable, false);
+
+  let shadowCandidate = runtime.core.verifiedSkillCandidateSnapshot().candidates
+    .find(item => item.candidateId === liveNativeStaged.candidateId);
+  assert.ok(shadowCandidate);
+  const shadowManifestFingerprint = '9'.repeat(64);
+  const shadowVerifierPrivatePem = shadowVerifier.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+
+  const recordNativeShadow = (index) => {
+    const runId = 'synaptic-native-shadow-run-' + index;
+    const taskId = 'synaptic-native-shadow-task-' + index;
+    const seed = 101 + index;
+    const observedAt = Date.now();
+    const context = {
+      runId, taskId, seed,
+      manifestFingerprint: shadowManifestFingerprint,
+      runtimeVersion: host.runtimeVersion,
+    };
+    runtime.core.registerTrustedSkillShadowRun(context);
+    const payload = {
+      schemaVersion: 1,
+      artifactId: 'synaptic-native-shadow-artifact-' + index,
+      candidateId: shadowCandidate.candidateId,
+      skillId: shadowCandidate.skillId,
+      candidateVersion: shadowCandidate.version,
+      payloadFingerprint: shadowCandidate.payloadFingerprint,
+      proposalOutcomeFingerprint: shadowCandidate.proposalOutcomeFingerprint,
+      runId, taskId,
+      manifestFingerprint: shadowManifestFingerprint,
+      seed,
+      runtimeVersion: host.runtimeVersion,
+      passed: true,
+      observedAt,
+      verifierId: shadowVerifierId,
+    };
+    const signedArtifact = signSkillShadowArtifactForFixture(payload, shadowVerifierPrivatePem);
+    runtime.core.recordVerifiedSkillShadow(shadowCandidate.candidateId, {
+      runId,
+      evidenceFingerprint: skillShadowPayloadFingerprint(payload),
+      passed: true,
+      observedAt,
+      artifact: signedArtifact,
+    });
+    shadowCandidate = runtime.core.verifiedSkillCandidateSnapshot().candidates
+      .find(item => item.candidateId === shadowCandidate.candidateId);
+    assert.ok(shadowCandidate);
+  };
+
+  recordNativeShadow(0);
+  recordNativeShadow(1);
+  const twoRunApprovalPayload = createSkillPromotionApprovalPayload(
+    shadowCandidate, approvalAuthorityId, 'synaptic-native-approval-two-runs',
+    Date.now(), null, 3,
+  );
+  const twoRunApproval = {
+    approvedBy: approvalAuthorityId,
+    approvedAt: twoRunApprovalPayload.approvedAt,
+    expectedActiveVersion: null,
+    artifact: {
+      payload: twoRunApprovalPayload,
+      signature: sign(
+        null,
+        Buffer.from(canonicalSkillPromotionApprovalPayload(twoRunApprovalPayload), 'utf8'),
+        approvalAuthority.privateKey,
+      ).toString('base64'),
+    },
+  };
+  assert.throws(
+    () => runtime.core.approveVerifiedSkillCandidate(shadowCandidate.candidateId, twoRunApproval, 3),
+    /shadow gate requires enough runs/,
+    'the detached approval cannot bypass the three-run shadow minimum',
+  );
+
+  recordNativeShadow(2);
+  assert.throws(
+    () => runtime.core.approveVerifiedSkillCandidate(shadowCandidate.candidateId, twoRunApproval, 3),
+    /promotion approval is not authenticated/,
+    'an approval signed before the final shadow receipt cannot be replayed after evidence changes',
+  );
+  shadowCandidate = runtime.core.verifiedSkillCandidateSnapshot().candidates
+    .find(item => item.candidateId === shadowCandidate.candidateId);
+  const finalApprovalPayload = createSkillPromotionApprovalPayload(
+    shadowCandidate, approvalAuthorityId, 'synaptic-native-approval-final',
+    Date.now(), null, 3,
+  );
+  const finalApproval = {
+    approvedBy: approvalAuthorityId,
+    approvedAt: finalApprovalPayload.approvedAt,
+    expectedActiveVersion: null,
+    artifact: {
+      payload: finalApprovalPayload,
+      signature: sign(
+        null,
+        Buffer.from(canonicalSkillPromotionApprovalPayload(finalApprovalPayload), 'utf8'),
+        approvalAuthority.privateKey,
+      ).toString('base64'),
+    },
+  };
+  const activeVersion = runtime.core.approveVerifiedSkillCandidate(shadowCandidate.candidateId, finalApproval, 3);
+  assert.equal(activeVersion.skillId, shadowCandidate.skillId);
+
+  const activeSnapshot = runtime.core.verifiedSkillCandidateSnapshot();
+  assert.ok(activeSnapshot.active.some(item =>
+    item.skillId === 'synaptic-commons:portable-verify-bias-live'),
+  'only the native P23 policy record may become active after signed shadow and approval');
+  assert.ok(runtime.core.p23TopSkills().some(item =>
+    item.id === 'synaptic-commons:portable-verify-bias-live' && item.status === 'promoted'),
+  'the live P23 resolver must load the authenticated active PolicySkillRecord');
+  const liveBias = runtime.core.p23SkillBias('verify');
+  assert.ok(liveBias > biasBeforeActivation && liveBias > 0 && liveBias < 0.05,
+    'the promoted adapter may only apply the bounded P23 preference bias, not execute a tool');
+  assert.equal((await runtime.synapticCommonsDiagnostics()).executableCount, 0,
+    'native policy activation must not make the portable artifact executable');
+
   console.log('SYNAPTIC_COMMONS_P23_ADMISSION=PASS authenticated-review canonical-core durable-stage');
-  console.log('SYNAPTIC_COMMONS_NATIVE_P23_ADAPTER=PASS allowlisted-policy-only canonical-context evidence-lineage no-tool-execution promotion-gated');
+  console.log('SYNAPTIC_COMMONS_NATIVE_P23_ADAPTER=PASS allowlisted-policy-only signed-outcomes signed-shadow detached-approval live-bias idempotent');
 } finally {
   await runtime.stop().catch(() => {});
   await rm(root, { recursive: true, force: true });
@@ -434,4 +609,6 @@ try {
   else process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON = previous.licence;
   if (previous.shadowVerifiers === undefined) delete process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON;
   else process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = previous.shadowVerifiers;
+  if (previous.approvalKeys === undefined) delete process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON;
+  else process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON = previous.approvalKeys;
 }
