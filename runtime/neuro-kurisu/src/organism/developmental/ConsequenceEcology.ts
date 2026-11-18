@@ -206,6 +206,8 @@ export interface ConsequenceOutcomeCalibrationRecord {
   nodeId: string;
   scenarioId: string;
   actionDecisionId: string;
+  executionId: string;
+  observationId: string;
   observedAt: number;
   forecastProbability01: number;
   observed: boolean;
@@ -921,6 +923,7 @@ export class ConsequenceEcologyEngine {
           !boundedString(row.analysisId, 96, false) || !boundedString(row.optionId, 96, false) ||
           !boundedString(row.nodeId, 96, false) || !boundedString(row.scenarioId, 160, false) ||
           !boundedString(row.actionDecisionId, 180, false) ||
+          !boundedString(row.executionId, 180, false) || !boundedString(row.observationId, 180, false) ||
           !boundedNumber(row.observedAt, 0, Number.MAX_SAFE_INTEGER) ||
           !boundedNumber(row.forecastProbability01, 0, 1) || typeof row.observed !== 'boolean' ||
           !boundedNumber(row.brierScore01, 0, 1) ||
@@ -958,6 +961,7 @@ export class ConsequenceEcologyEngine {
           canonicalOutcome.authority !== 'independent-external' || canonicalOutcome.independentlyVerified !== true ||
           canonicalOutcome.scenarioId !== row.scenarioId || canonicalOutcome.consequenceId !== row.nodeId ||
           canonicalOutcome.actionDecisionId !== row.actionDecisionId ||
+          canonicalOutcome.executionId !== row.executionId || canonicalOutcome.observationId !== row.observationId ||
           canonicalOutcome.observedAt !== row.observedAt ||
           canonicalOutcome.occurred !== row.observed ||
           Math.abs(canonicalOutcome.forecastProbability01 - row.sharedFutureForecastProbability01) > 1e-9 ||
@@ -1267,6 +1271,8 @@ export class ConsequenceEcologyEngine {
         nodeId: outcome.consequenceId,
         scenarioId: outcome.scenarioId,
         actionDecisionId: outcome.actionDecisionId,
+        executionId: outcome.executionId!,
+        observationId: outcome.observationId!,
         observedAt: outcome.observedAt,
         forecastProbability01,
         observed,
@@ -1315,6 +1321,9 @@ export class ConsequenceEcologyEngine {
     const calibrations = this.state.outcomeCalibrations;
     const calibrationScenarioCount = new Set(calibrations.map(row => row.scenarioId)).size;
     const calibrationDecisionCount = new Set(calibrations.map(row => row.actionDecisionId)).size;
+    const calibrationExecutionCount = new Set(calibrations.map(row => row.executionId)).size;
+    const calibrationObservationCount = new Set(calibrations.map(row => row.observationId)).size;
+    const calibrationEvidenceObservationCount = new Set(calibrations.flatMap(row => row.evidenceObservationIds)).size;
     const calibrationSourceIds = new Set(calibrations.flatMap(row => row.sourceIds));
     const calibrationIndependenceKeys = new Set(calibrations.flatMap(row => row.independenceKeys));
     const calibrationSourceClasses = new Set(calibrations.flatMap(row => row.sourceClasses));
@@ -1385,6 +1394,9 @@ export class ConsequenceEcologyEngine {
       ...(calibrations.length < 20 ? ['need-at-least-20-verified-samples'] : []),
       ...(calibrationScenarioCount < 5 ? ['need-at-least-5-distinct-scenarios'] : []),
       ...(calibrationDecisionCount < 10 ? ['need-at-least-10-distinct-action-decisions'] : []),
+      ...(calibrationExecutionCount < 20 ? ['need-at-least-20-distinct-executions'] : []),
+      ...(calibrationObservationCount < 20 ? ['need-at-least-20-distinct-observations'] : []),
+      ...(calibrationEvidenceObservationCount < 20 ? ['need-at-least-20-distinct-evidence-observations'] : []),
       ...(effectiveCalibrationSampleSize < 15 ? ['effective-sample-size-below-15'] : []),
       ...(calibrationSourceIds.size < 3 ? ['need-at-least-3-distinct-evidence-sources'] : []),
       ...(calibrationIndependenceKeys.size < 3 ? ['need-at-least-3-distinct-independence-keys'] : []),
@@ -1404,6 +1416,9 @@ export class ConsequenceEcologyEngine {
       rejectedCalibrations: this.state.rejectedCalibrations,
       calibrationScenarioCount,
       calibrationDecisionCount,
+      calibrationExecutionCount,
+      calibrationObservationCount,
+      calibrationEvidenceObservationCount,
       calibrationSourceCount: calibrationSourceIds.size,
       calibrationIndependenceKeyCount: calibrationIndependenceKeys.size,
       calibrationSourceClassCount: calibrationSourceClasses.size,
