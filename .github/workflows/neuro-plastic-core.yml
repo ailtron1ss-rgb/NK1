@@ -1,0 +1,78 @@
+name: Neuro-Plastic Core offline adapter gate
+
+on:
+  push:
+    branches:
+      - 'aspect/neuro-plastic-core-lora-adapters-*'
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/NeuroPlastic*.ts'
+      - 'runtime/neuro-kurisu/src/organism/integration/local/NeuroPlastic*.ts'
+      - 'runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/src/organism/language/LanguageOrgan.ts'
+      - 'runtime/neuro-kurisu/scripts/neuro_plastic_registry.mjs'
+      - 'runtime/neuro-kurisu/requirements-neuro-plastic.txt'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-registry-cli.mjs'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-language-routing.mjs'
+      - 'runtime/neuro-kurisu/NEURO_PLASTIC_CORE_RU.md'
+      - 'runtime/neuro-kurisu/scripts/neuro_plastic_train.py'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-core.mjs'
+      - 'runtime/neuro-kurisu/tests/test_neuro_plastic_train.py'
+      - '.github/workflows/neuro-plastic-core.yml'
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/NeuroPlastic*.ts'
+      - 'runtime/neuro-kurisu/src/organism/integration/local/NeuroPlastic*.ts'
+      - 'runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/src/organism/language/LanguageOrgan.ts'
+      - 'runtime/neuro-kurisu/scripts/neuro_plastic_registry.mjs'
+      - 'runtime/neuro-kurisu/requirements-neuro-plastic.txt'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-registry-cli.mjs'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-language-routing.mjs'
+      - 'runtime/neuro-kurisu/NEURO_PLASTIC_CORE_RU.md'
+      - 'runtime/neuro-kurisu/scripts/neuro_plastic_train.py'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-core.mjs'
+      - 'runtime/neuro-kurisu/tests/test_neuro_plastic_train.py'
+      - '.github/workflows/neuro-plastic-core.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Verify runtime Node floor
+        run: node -e "if (Number(process.versions.node.split('.')[0]) !== 24) process.exit(1)"
+      - name: Syntax-check server and registry CLI
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --check src/server/server.mjs
+          node --check scripts/neuro_plastic_registry.mjs
+      - name: Neuro-Plastic registry, verified corpus and local inference
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --experimental-strip-types tests/neuro-plastic-core.mjs
+          node --experimental-strip-types tests/neuro-plastic-language-routing.mjs
+          node --experimental-strip-types tests/neuro-plastic-registry-cli.mjs
+
+  trainer-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Python trainer syntax
+        run: python3 -m py_compile runtime/neuro-kurisu/scripts/neuro_plastic_train.py
+      - name: Offline trainer manifest and integrity contracts
+        working-directory: runtime/neuro-kurisu
+        run: python3 -m unittest discover -s tests -p 'test_neuro_plastic_train.py' -v

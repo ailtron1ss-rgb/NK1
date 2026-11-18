@@ -3,6 +3,7 @@
 - Add an opt-in sparse-update path to the canonical P26 parametric policy learner, with explicit parameter allowlists, hard-protected coordinates, bounded update count/L2 norm and ablation-derived retention importance.
 - Stage each candidate without mutating live weights; require the canonical P29 trust/conflict/resource-budget arbiter before commit. Reject duplicate training sample IDs, use empirical-Fisher plus ablation importance, and persist one-step stale-checked rollback snapshots.
 - Route the feature through DevelopmentalNeuralRuntime and add P26/P28/P29/P30 to hot-neural snapshot/restore. Standard SGD remains unchanged; local holdout pairs are preflight only, not independent evidence.
+- Keep P25 host-owned LoRA/QLoRA adapter artifacts separate from the P30 P26 policy-vector owner; the systems share governance boundaries without duplicate model-weight ownership.
 - Add P26-facing API, focused regression and learning-validation workflow coverage. No arbitrary LLM tensor fine-tuning, production auto-activation, release promotion or generalization claim is made.
 
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)

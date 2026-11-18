@@ -17,6 +17,11 @@
 - Маски, оценка важности, причины решений и счётчики проходят через существующий snapshot/restore ParametricPolicyLearner и, следовательно, P26.
 - P26TrueLearningEngine.trainFeaturesElastic() предоставляет явную точку вызова. Локальные holdout-оценки не добавляются в счётчик независимо аутентифицированных evidence.
 
+## Граница интеграции с P25 и P36
+
+- P25 Adaptive Synaptic Matrix остаётся отдельным владельцем маршрутизации host-owned LoRA/QLoRA-артефактов: матрица хранит manifests/receipts, а модельные веса остаются у host executor. P30 изменяет только ограниченный вектор весов канонического P26 ParametricPolicyLearner. Владельцы параметров не объединяются и не меняют тензоры друг друга.
+- P29 арбитрирует trust/conflict/resource budget и фиксирует provenance, но не аутентифицирует caller-provided локальные holdout-массивы. Они служат только bounded preflight gate; не дают независимого generalization/retention evidence. Для такого утверждения нужен отдельный host-signed/P36 evidence flow.
+
 ## Ограничения / статус
 
 - Это контролируемый адаптер для малой параметрической policy-модели NK1, а не механизм fine-tuning произвольной LLM или изменения всех тензоров сети.
