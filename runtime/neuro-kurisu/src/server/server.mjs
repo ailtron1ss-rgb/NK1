@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { URL } from 'node:url';
 import { mkdir, readFile, writeFile, rename, unlink, lstat } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
@@ -23,7 +23,7 @@ import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
-import { NeuroPlasticAdapterRegistry, verifyNeuroPlasticApprovalSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { NeuroPlasticAdapterRegistry, parseTrustedNeuroPlasticApprovalKeys, parseTrustedNeuroPlasticPublicKeys, verifyNeuroPlasticApprovalSignature, verifyNeuroPlasticDetachedEd25519Signature, verifyNeuroPlasticEvaluationReceiptSignature } from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { verifyNeuroPlasticAdapterArtifact } from '../organism/learning/NeuroPlasticArtifactVerifier.ts';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
@@ -31,6 +31,19 @@ import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdap
 import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
+function loadNeuroPlasticTrustMap(raw, envName, approval = false) {
+    try {
+        return approval
+            ? parseTrustedNeuroPlasticApprovalKeys(raw)
+            : parseTrustedNeuroPlasticPublicKeys(raw, envName);
+    }
+    catch (error) {
+        // An invalid optional trust map disables only its promotion path.
+        // The base local-language provider remains available as a safe fallback.
+        console.error('[Neuro-Plastic] invalid ' + envName + '; related adapter promotion is disabled:', error?.message || error);
+        return new Map();
+    }
+}
 const PUBLIC = path.join(ROOT, 'public');
 const STATE = path.resolve(process.env.STATE_DIR || path.join(ROOT, 'state'));
 const stateFile = path.join(STATE, 'organism-core.json');
@@ -146,14 +159,18 @@ try {
 catch (error) {
     if (error?.code !== 'ENOENT') throw error;
 }
-const NEURO_PLASTIC_APPROVAL_SECRET = String(process.env.NEURO_PLASTIC_APPROVAL_SECRET || '');
+const NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS = loadNeuroPlasticTrustMap(
+    process.env.NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON,
+    'NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON',
+    true,
+);
 const NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY = String(process.env.NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY || '');
 try {
     const registrySnapshot = JSON.parse(await readFile(NEURO_PLASTIC_REGISTRY_PATH, 'utf8'));
     await NEURO_PLASTIC_REGISTRY.restore(
         registrySnapshot,
-        (approval, context) => verifyNeuroPlasticApprovalSignature(
-            approval, context, NEURO_PLASTIC_APPROVAL_SECRET,
+        (approval, context, purpose) => verifyNeuroPlasticApprovalSignature(
+            approval, context, NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS, { purpose },
         ),
         (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(
             context.adapterId, receipt, NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY,
@@ -200,15 +217,18 @@ const NEURO_PLASTIC_INFERENCE = new NeuroPlasticInferenceAdapter(
 // remains the final authority over signed model artifacts and actual inference.
 const P25_BASE_MODEL_ID = String(process.env.NEURO_PLASTIC_BASE_MODEL_ID || '').trim();
 const P25_BASE_MODEL_SHA256 = String(process.env.NEURO_PLASTIC_BASE_MODEL_SHA256 || '').trim().toLowerCase();
-const P25_POLICY_SECRET = String(process.env.NEURO_PLASTIC_P25_POLICY_SECRET || '');
+const P25_POLICY_PUBLIC_KEYS = loadNeuroPlasticTrustMap(
+    process.env.NEURO_PLASTIC_P25_POLICY_PUBLIC_KEYS_JSON,
+    'NEURO_PLASTIC_P25_POLICY_PUBLIC_KEYS_JSON',
+);
 const P25_POLICY_KEY_ID = String(process.env.NEURO_PLASTIC_P25_POLICY_KEY_ID || '').trim();
 const P25_EXECUTOR_ENABLED =
     process.env.NEURO_PLASTIC_MODEL_ALIASES_ENABLED === '1' &&
     LLAMA_CPP_PROVIDER.configured() &&
     P25_BASE_MODEL_ID.length > 0 &&
     /^[a-f0-9]{64}$/.test(P25_BASE_MODEL_SHA256) &&
-    P25_POLICY_SECRET.length >= 32 &&
-    /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(P25_POLICY_KEY_ID);
+    /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(P25_POLICY_KEY_ID) &&
+    P25_POLICY_PUBLIC_KEYS.has(P25_POLICY_KEY_ID);
 const P25_TASK_TO_CANONICAL_DOMAIN = Object.freeze({
     language: 'language',
     reasoning: 'reasoning',
@@ -218,16 +238,13 @@ const P25_TASK_TO_CANONICAL_DOMAIN = Object.freeze({
 });
 
 function verifyP25SynapticPolicy(canonicalPayload, signature, signerKeyId) {
-    if (!P25_EXECUTOR_ENABLED || signerKeyId !== P25_POLICY_KEY_ID ||
-        typeof canonicalPayload !== 'string' ||
-        typeof signature !== 'string' || !/^[a-f0-9]{64}$/i.test(signature)) {
-        return false;
-    }
-    const expected = createHmac('sha256', P25_POLICY_SECRET)
-        .update(canonicalPayload, 'utf8')
-        .digest();
-    const supplied = Buffer.from(signature, 'hex');
-    return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+    if (!P25_EXECUTOR_ENABLED || signerKeyId !== P25_POLICY_KEY_ID) return false;
+    return verifyNeuroPlasticDetachedEd25519Signature(
+        canonicalPayload,
+        signature,
+        signerKeyId,
+        P25_POLICY_PUBLIC_KEYS,
+    );
 }
 
 async function invokeCanonicalSynapticAdapter(request, candidate, routing) {
