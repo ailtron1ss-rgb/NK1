@@ -71,6 +71,12 @@ try {
   assert.ok(traceContext && traceContext.decisionId, 'the language request must carry the exact selected decision ID');
   assert.equal(traceContext.taskFamily, 'language-response');
   assert.equal(step.cycle.decision.id, traceContext.decisionId);
+  const dropsBeforeDuplicateHandle = runtime.neuralJitDiagnostics().captureDrops;
+  runtime.rememberNeuralJitCapture({ text: 'replacement must be discarded', backend: 'llama.cpp:fixture', latencyMs: 1,
+    neuralJitCapture: { captureHandle: 'replacement-capture-handle' } }, traceContext);
+  assert.equal(runtime.neuralJitDiagnostics().pendingCaptureCount, 1,
+    'a second host capture for the same selected decision must not replace its original one-shot handle');
+  assert.equal(runtime.neuralJitDiagnostics().captureDrops, dropsBeforeDuplicateHandle + 1);
 
   runtime.core.registerActionTool({
     id: 'fixture.neuraljit.observe', capability: 'fixture.read-only-observation', destructive: false,
@@ -156,6 +162,8 @@ try {
   assert.equal(runtime.neuralJitDiagnostics().pendingCaptureCount, 1,
     'the timed-out capture must be consumed and not retried with a later action');
   await runtime.stop();
+  assert.equal(runtime.neuralJitDiagnostics().pendingCaptureCount, 0,
+    'runtime shutdown must release every remaining opaque local activation handle');
   console.log('NEURAL_JIT_RUNTIME_BRIDGE=PASS');
 } finally {
   await rm(dir, { recursive: true, force: true });
