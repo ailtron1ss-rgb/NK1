@@ -14,7 +14,6 @@ on:
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_registry.mjs'
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_sign_approval.mjs'
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_sign_p25_manifest.mjs'
-      - 'runtime/neuro-kurisu/scripts/neuro_plastic_sign_approval.mjs'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-external-signer.mjs'
       - 'runtime/neuro-kurisu/requirements-neuro-plastic.txt'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-registry-cli.mjs'
