@@ -101,7 +101,7 @@ test('proposal creation enforces immutable pre-image, bounded paths, and allowli
 });
 
 test('proposal stays non-applicable until sandbox verification has passed', async () => {
-  const engine = new RepositoryCodingContextEngine();
+  const engine = new RepositoryCodingContextEngine(undefined, () => 1_000_000);
   const baseContent = 'export const before = 1;';
   const expectedSha256 = await sha256(baseContent);
   const proposal = await engine.proposePatch({
