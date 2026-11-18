@@ -145,16 +145,19 @@ try {
   // return a base response itself. P25 must not retry base a second time or
   // record a specialist execution failure for a policy/registry disagreement.
   const adapterCallsBeforeCanonicalFallback = adapterCalls;
-  const adapterPromptBaseCallsBefore = baseCallsByUser.get(lastAdapterUser) ?? 0;
+  const adapterPromptBeforeCanonicalFallback = lastAdapterUser;
+  const adapterPromptBaseCallsBefore = baseCallsByUser.get(adapterPromptBeforeCanonicalFallback) ?? 0;
   const failuresBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures;
   const fallbackCountBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().metrics.baseFallbacks;
   canonicalFallback = true;
   const canonicalBase = await runtime.step('Exercise canonical registry mismatch fallback.', { deliberate: false });
   canonicalFallback = false;
+  const canonicalAdapterPrompt = lastAdapterUser;
   assert.equal(canonicalBase.language?.text, 'base response from canonical registry');
   assert.equal(adapterCalls, adapterCallsBeforeCanonicalFallback + 1,
     'the P25 adapter executor must return the canonical base fallback for the selected request');
-  assert.equal(baseCallsByUser.get(lastAdapterUser) ?? 0, adapterPromptBaseCallsBefore,
+  assert.equal(baseCallsByUser.get(canonicalAdapterPrompt) ?? 0,
+    canonicalAdapterPrompt === adapterPromptBeforeCanonicalFallback ? adapterPromptBaseCallsBefore : 0,
     'P25 must not re-send the same specialist request to the base invoker after canonical executor fallback');
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'active',
     'canonical selection mismatch must not disable a healthy P25 candidate');
