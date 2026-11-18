@@ -7,7 +7,7 @@ import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.t
 import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
 import { cognitiveNeuralProfileFingerprint } from '../src/organism/cognition/CognitiveToNeuralBridge.ts';
 
-async function runRuntime(enabled, receiptEnabled = true) {
+async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterReceipt = false) {
   const dir = await mkdtemp(path.join(tmpdir(), 'nk-cognitive-neural-bridge-'));
   const requests = [];
   const responses = [];
@@ -33,6 +33,10 @@ async function runRuntime(enabled, receiptEnabled = true) {
         } : {}),
       };
       responses.push(response);
+      if(mutateProfileAfterReceipt && request.cognitiveControl) {
+        // Simulate a provider mutating caller-owned request metadata after producing its receipt.
+        request.cognitiveControl.temperature=Math.min(.85,request.cognitiveControl.temperature+.001);
+      }
       return response;
     },
     stateStore: new MemoryStateStore(),
@@ -46,7 +50,7 @@ async function runRuntime(enabled, receiptEnabled = true) {
     await runtime.init();
     await runtime.step('Please reason about this controlled test observation.', { deliberate: true });
     assert.ok(requests.length > 0, 'the runtime must reach its injected LanguageInvoker');
-    if (enabled && receiptEnabled) {
+    if (enabled && receiptEnabled && !mutateProfileAfterReceipt) {
       const request = requests.find(value => value.cognitiveControl);
       assert.ok(request, 'enabled runtime must attach cognitive control to LanguageRequest');
       assert.equal(request.cognitiveControl.version, 2);
@@ -165,6 +169,16 @@ async function runRuntime(enabled, receiptEnabled = true) {
       assert.equal(afterUsageOverrun.providerUsageDuplicates,1);
       assert.equal(afterUsageOverrun.providerUsageUnavailable,1);
       assert.equal(afterUsageOverrun.providerUsageInvalid,1);
+    } else if (enabled && receiptEnabled && mutateProfileAfterReceipt) {
+      const diagnostics=runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.ok(requests.some(value=>value.cognitiveControl));
+      assert.equal(diagnostics.llamaCppTemplateKwargsSent,0,
+        'provider receipts must be rejected when async code mutates the originally projected profile');
+      assert.equal(diagnostics.providerControlReceiptsAccepted,0);
+      assert.equal(diagnostics.providerControlReceiptsRejected,1);
+      assert.equal(diagnostics.providerUsageObservations,0,
+        'mutated control profiles must not contribute trusted usage statistics');
+      assert.equal(diagnostics.providerUsageInvalid,1);
     } else if (enabled) {
       const request=requests.find(value=>value.cognitiveControl);
       assert.ok(request,'bridge projection must remain active when template controls are disabled');
@@ -193,5 +207,6 @@ async function runRuntime(enabled, receiptEnabled = true) {
 
 await runRuntime(true);
 await runRuntime(true,false);
+await runRuntime(true,true,true);
 await runRuntime(false);
 console.log('COGNITIVE_TO_NEURAL_RUNTIME_INTEGRATION_PASS');
