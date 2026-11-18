@@ -79,6 +79,7 @@ const invalidInputs=[
   { requestId:'session:bad-limit',mode:'deep',completionTokens:10,maxTokens:97,finishReason:'stop' },
   { requestId:'session:bad-finish',mode:'deep',completionTokens:10,maxTokens:128,finishReason:'made-up' },
   { requestId:'session:bad-overflow',mode:'deep',completionTokens:1_000_001,maxTokens:128,finishReason:'stop' },
+  { requestId:'session:provider-over-budget',mode:'deep',completionTokens:129,maxTokens:128,finishReason:'length' },
 ];
 for(const input of invalidInputs){
   const result=feedback.record(input);
@@ -87,6 +88,11 @@ for(const input of invalidInputs){
 }
 assert.equal(feedback.snapshot('deep').sampleCount,8,
   'invalid observations must not contaminate the adaptive window');
+assert.equal(feedback.record({
+  requestId:'session:provider-over-budget-2',
+  mode:'deep',completionTokens:129,maxTokens:128,finishReason:'length',
+}).reason,'completion-exceeds-configured-budget',
+'provider budget overruns must be measured as anomalies, never used to increase future token allocation');
 
 for(let index=9;index<=48;index+=1){
   feedback.record({
