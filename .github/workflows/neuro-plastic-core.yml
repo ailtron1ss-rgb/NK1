@@ -17,7 +17,6 @@ on:
       - 'runtime/neuro-kurisu/tests/neuro-plastic-external-signer.mjs'
       - 'runtime/neuro-kurisu/requirements-neuro-plastic.txt'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-registry-cli.mjs'
-      - 'runtime/neuro-kurisu/tests/neuro-plastic-external-signer.mjs'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-p25-signer.mjs'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-language-routing.mjs'
       - 'runtime/neuro-kurisu/NEURO_PLASTIC_CORE_RU.md'
