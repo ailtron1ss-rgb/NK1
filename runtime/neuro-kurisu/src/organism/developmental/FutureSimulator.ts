@@ -98,7 +98,11 @@ export class FutureSimulator {
     };
     // Older snapshots do not have this field; restore() deliberately keeps them valid.
     this.sharedFuture.restore(s?.sharedFuture, options.validateIndependentlyVerifiedOutcome);
-    this.consequenceEcology.restore(s?.consequenceEcology);
+    this.consequenceEcology.restore(s?.consequenceEcology, outcomeId => {
+      const outcome = this.sharedFuture.listOutcomes().find(row => row.id === outcomeId);
+      if (!outcome || outcome.authority !== 'independent-external' || outcome.independentlyVerified !== true) return false;
+      try { return options.validateIndependentlyVerifiedOutcome?.(outcome) === true; } catch { return false; }
+    });
   }
 
   simulate(model: WorldModel2, actions: string[], baseReward: number): FutureSimulationResult {
