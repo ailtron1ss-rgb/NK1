@@ -664,7 +664,7 @@ function normalizeApproval(raw: unknown): NeuroPlasticApproval {
     approvalId: safeText(value.approvalId, 'approval-id'),
     actorId: safeText(value.actorId, 'approval-actor-id'),
     approvedAt: safeCounter(value.approvedAt, 'approval-time', 1),
-    signature: safeHash(value.signature, 'approval-signature'),
+    signature: safeText(value.signature, 'approval-signature', 256),
   };
 }
 
@@ -872,7 +872,7 @@ export class NeuroPlasticAdapterRegistry {
       evaluatedAt: safeCounter(input.receipt?.evaluatedAt, 'evaluation-receipt-time', 1),
       evaluationFingerprint: safeHash(input.receipt?.evaluationFingerprint, 'evaluation-fingerprint'),
       reportFingerprint: safeHash(input.receipt?.reportFingerprint, 'evaluation-report-fingerprint'),
-      signature: safeHash(input.receipt?.signature, 'evaluation-signature'),
+      signature: safeText(input.receipt?.signature, 'evaluation-signature', 256),
     };
     if (receipt.evaluatedAt !== normalized.evaluatedAt ||
         receipt.evaluationFingerprint !== normalized.evaluationFingerprint) {
