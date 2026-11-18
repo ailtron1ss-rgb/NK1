@@ -45,17 +45,20 @@ export class NeuroPlasticInferenceAdapter {
   private readonly registry: NeuroPlasticAdapterRegistry;
   private readonly backendReady: (backendId: string) => boolean;
   private readonly provider: OpenAICompatibleLocalChatProvider;
+  private readonly verifyArtifact: (manifest: import('../../learning/NeuroPlasticAdapterRegistry.ts').NeuroPlasticAdapterManifest) => boolean | Promise<boolean>;
   private readonly onRegistryChanged: (() => Promise<void> | void) | null;
 
   constructor(
     registry: NeuroPlasticAdapterRegistry,
     backendReady: (backendId: string) => boolean,
     provider: OpenAICompatibleLocalChatProvider,
+    verifyArtifact: (manifest: import('../../learning/NeuroPlasticAdapterRegistry.ts').NeuroPlasticAdapterManifest) => boolean | Promise<boolean>,
     onRegistryChanged?: () => Promise<void> | void,
   ) {
     this.registry = registry;
     this.backendReady = backendReady;
     this.provider = provider;
+    this.verifyArtifact = verifyArtifact;
     this.onRegistryChanged = onRegistryChanged ?? null;
   }
 
@@ -83,8 +86,27 @@ export class NeuroPlasticInferenceAdapter {
       };
     }
 
+    let artifactVerified = false;
+    try {
+      artifactVerified = await this.verifyArtifact(this.registry.getManifest(selection.adapterId));
+    } catch {
+      artifactVerified = false;
+    }
+    if (!artifactVerified) {
+      this.registry.recordRuntimeFailure(selection.adapterId, 'adapter-artifact-integrity-failure');
+      try { await this.onRegistryChanged?.(); } catch { /* Persist failure must not suppress base-model recovery. */ }
+      const response = await this.provider.generate({ ...request, model: baseModelAlias });
+      return {
+        ...response,
+        adapter: { used: false, adapterId: selection.adapterId, fallbackReason: 'adapter-artifact-integrity-failure' },
+      };
+    }
+
     try {
       const response = await this.provider.generate({ ...request, model: selection.modelAlias });
+      if (response.model !== selection.modelAlias) {
+        throw new Error('adapter-model-alias-not-honored');
+      }
       return {
         ...response,
         adapter: { used: true, adapterId: selection.adapterId, fallbackReason: null },
