@@ -390,6 +390,53 @@ assert.equal(artifactFailureRegistry.snapshot().adapters[0].status, 'disabled');
 assert.equal(integrityPersistCalls, 1);
 
 
+const aliasMismatchRegistry = new NeuroPlasticAdapterRegistry();
+aliasMismatchRegistry.stage(manifest('kurisu-runtime-alias-mismatch-v1'));
+signedEvaluate(aliasMismatchRegistry, 'kurisu-runtime-alias-mismatch-v1', {
+  holdoutFingerprint: hash('d'),
+  baseline: observations(0.62),
+  candidate: observations(0.82),
+  evaluatedAt: 1_800_000_000_100,
+});
+const aliasMismatchReport = aliasMismatchRegistry.snapshot().adapters[0].evaluation;
+await aliasMismatchRegistry.activate(
+  'kurisu-runtime-alias-mismatch-v1',
+  signedApproval('kurisu-runtime-alias-mismatch-v1', aliasMismatchReport.reportId, 'approval-alias-mismatch'),
+  verifyApproval,
+);
+const aliasMismatchCalls = [];
+const aliasMismatchProvider = new OpenAICompatibleLocalChatProvider({
+  baseUrl: 'http://127.0.0.1:43123/v1',
+  model: 'kurisu-base',
+  fetchImpl: async (_url, init) => {
+    const body = JSON.parse(String(init.body));
+    aliasMismatchCalls.push(body.model);
+    // Simulate a local backend that silently serves the base model for an adapter alias.
+    return new Response(JSON.stringify({
+      model: 'kurisu-base',
+      choices: [{ message: { content: 'base model served' } }],
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  },
+});
+const aliasMismatchFallback = await new NeuroPlasticInferenceAdapter(
+  aliasMismatchRegistry,
+  (backendId) => backendId === 'llama.cpp',
+  aliasMismatchProvider,
+  async () => true,
+).generate({ system: 'system', user: 'prompt' }, {
+  domain: 'reasoning',
+  backendId: 'llama.cpp',
+  baseModelFingerprint: hash('a'),
+  baseModelAlias: 'kurisu-base',
+  backendSupportsModelAliases: true,
+  confidence01: 0.9,
+  risk01: 0.1,
+});
+assert.equal(aliasMismatchFallback.adapter.fallbackReason, 'adapter-runtime-failure');
+assert.deepEqual(aliasMismatchCalls, ['kurisu-reasoning-lora', 'kurisu-base'],
+  'the runtime must verify the backend actually served the requested adapter alias');
+assert.equal(aliasMismatchRegistry.snapshot().adapters[0].status, 'disabled');
+
 const activeSnapshot = inferenceRegistry.snapshot();
 const restoredRegistry = new NeuroPlasticAdapterRegistry();
 restoredRegistry.restore(activeSnapshot);
@@ -496,4 +543,4 @@ assert.equal(conflictRestoreRegistry.select({
 await inferenceRegistry.rollback('kurisu-runtime-v1', 'operator requested rollback');
 assert.equal(inferenceRegistry.snapshot().adapters[0].status, 'disabled');
 
-console.log('NEURO_PLASTIC_CORE=PASS registry=8 pairedHoldout=7 safetyGate=PASS signedEvidence=PASS explicitApproval=PASS corpus=9 holdoutLeakage=0 artifactIntegrity=PASS inferenceFallback=PASS restartFailClosed=PASS');
+console.log('NEURO_PLASTIC_CORE=PASS registry=8 pairedHoldout=7 safetyGate=PASS signedEvidence=PASS explicitApproval=PASS corpus=9 holdoutLeakage=0 artifactIntegrity=PASS aliasBinding=PASS inferenceFallback=PASS restartFailClosed=PASS');
