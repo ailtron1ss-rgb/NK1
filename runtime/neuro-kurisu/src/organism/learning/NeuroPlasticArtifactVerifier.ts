@@ -67,14 +67,15 @@ export async function verifyNeuroPlasticAdapterArtifact(
     ]);
     const cacheKey = [
       directoryInfo.ino,
-      configInfo.ino, configInfo.size, configInfo.mtimeMs,
-      weightsInfo.ino, weightsInfo.size, weightsInfo.mtimeMs,
-      metadataInfo.ino, metadataInfo.size, metadataInfo.mtimeMs,
+      configInfo.ino, configInfo.nlink, configInfo.size, configInfo.mtimeMs, configInfo.ctimeMs,
+      weightsInfo.ino, weightsInfo.nlink, weightsInfo.size, weightsInfo.mtimeMs, weightsInfo.ctimeMs,
+      metadataInfo.ino, metadataInfo.nlink, metadataInfo.size, metadataInfo.mtimeMs, metadataInfo.ctimeMs,
       manifest.artifact.configSha256,
       manifest.artifact.weightsSha256,
       manifest.artifact.totalBytes,
       manifest.corpusFingerprint,
     ].join('|');
+    if ([configInfo, weightsInfo, metadataInfo].some(info => info.nlink !== 1)) return false;
     const cacheId = root + '|' + manifest.adapterId;
     if (verifiedArtifacts.get(cacheId) === cacheKey) return true;
 
@@ -86,6 +87,11 @@ export async function verifyNeuroPlasticAdapterArtifact(
       hashFile(weightsPath),
       readFile(metadataPath, 'utf8'),
     ]);
+    const postReadInfo = await Promise.all([lstat(configPath), lstat(weightsPath), lstat(metadataPath)]);
+    const initialInfo = [configInfo, weightsInfo, metadataInfo];
+    if (postReadInfo.some((info, index) => info.ino !== initialInfo[index].ino ||
+        info.size !== initialInfo[index].size || info.mtimeMs !== initialInfo[index].mtimeMs ||
+        info.ctimeMs !== initialInfo[index].ctimeMs || info.nlink !== 1)) return false;
     if (configSha !== manifest.artifact.configSha256.toLowerCase() ||
         weightsSha !== manifest.artifact.weightsSha256.toLowerCase()) return false;
     const metadata = JSON.parse(rawMetadata);
