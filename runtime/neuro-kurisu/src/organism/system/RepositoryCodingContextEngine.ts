@@ -210,7 +210,13 @@ function clone<T>(value: T): T { return structuredClone(value); }
 export class RepositoryCodingContextEngine {
   private readonly proposals = new Map<string, StoredProposal>();
   private initialized = false;
-  constructor(private readonly store?: RepositoryCodingStateStore, private readonly now: () => number = Date.now) {}
+  private readonly store?: RepositoryCodingStateStore;
+  private readonly now: () => number;
+
+  constructor(store?: RepositoryCodingStateStore, now: () => number = Date.now) {
+    this.store = store;
+    this.now = now;
+  }
 
   async init(): Promise<void> {
     if (this.initialized) return;
