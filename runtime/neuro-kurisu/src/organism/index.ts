@@ -77,3 +77,4 @@ export * from './cognition/BoundedRecurrentStateSubstrate.ts';
 export * from './memory/MemoryBudgetCausalHarness.ts';
 
 export * from './integration/mem0/index.ts';
+export * from './system/RepositoryCodingContextEngine.ts';
