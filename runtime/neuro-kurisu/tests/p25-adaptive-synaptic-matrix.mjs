@@ -354,4 +354,40 @@ const request = (overrides = {}) => ({
     'capacity exhaustion remains fail-closed after persistence restore');
 }
 
+
+{
+  const matrix = new AdaptiveSynapticMatrixEngine();
+  matrix.registerCandidate(candidate());
+  const firstReport = manifest(candidate(), {
+    validation: {
+      ...manifest().validation,
+      reportId: 'truncation-first-report',
+      reportSha256: hash('2'),
+      holdoutDatasetRef: 'dataset://physics/truncation-first',
+    },
+  });
+  const latestReport = manifest(candidate(), {
+    validation: {
+      ...manifest().validation,
+      reportId: 'truncation-latest-report',
+      reportSha256: hash('3'),
+      holdoutDatasetRef: 'dataset://physics/truncation-latest',
+    },
+  });
+  matrix.activateValidated(firstReport, () => true);
+  matrix.activateValidated(latestReport, () => true);
+
+  const truncatedSnapshot = matrix.snapshot();
+  truncatedSnapshot.adapters[0].acceptedReportSha256s = [
+    latestReport.validation.reportSha256,
+  ];
+  const restored = new AdaptiveSynapticMatrixEngine();
+  restored.restore(truncatedSnapshot, () => true);
+  assert.equal(restored.snapshot().adapters[0].activationHistorySaturated, true,
+    'a truncated but still current-report-containing ledger must be detected after restore');
+  assert.throws(() => restored.activateValidated(firstReport, () => true),
+    /history-capacity/i,
+    'an older consumed report must not become reusable after partial history truncation');
+}
+
 console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX=PASS');
