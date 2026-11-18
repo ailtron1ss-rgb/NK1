@@ -139,6 +139,7 @@ const outputContract = {
 const contract = {
   toolId: 'skill.proof.read',
   capability: 'skill-competence-proof-test',
+  permissionClass: 'none',
   inputContractFingerprint: sha256Stable(inputContract),
   outputContractFingerprint: sha256Stable(outputContract),
   runtimeFingerprint,
