@@ -471,9 +471,11 @@ export class OpenLoopRadar {
     return this.state.records.flatMap(record => {
       if (TERMINAL.has(record.status)) return [];
       const blockedBy = record.dependencies.filter(id => !this.isSatisfied(id));
+      // An unresolved prerequisite takes precedence over expiry: a blocked item
+      // must never look actionable merely because its deadline has elapsed.
       const effectiveStatus: OpenLoopCandidate['effectiveStatus'] =
-        record.expiresAt !== null && record.expiresAt <= now
-          ? 'expired' : blockedBy.length ? 'blocked' : 'open';
+        blockedBy.length > 0 ? 'blocked'
+          : record.expiresAt !== null && record.expiresAt <= now ? 'expired' : 'open';
       const overdueMs = record.dueAt !== null ? Math.max(0, now - record.dueAt) : 0;
       const dueSoon = record.dueAt !== null && record.dueAt > now && record.dueAt - now <= dueSoonMs;
       const dependencyUnblocked = record.unblockedAt > 0 && record.unblockedAt > record.lastSurfacedAt;
@@ -677,11 +679,15 @@ export class OpenLoopRadar {
       if (blocked && record.status !== 'blocked') {
         record.status = 'blocked';
         record.unblockedAt = 0;
+        record.pendingSurfacingInitiativeId = null;
+        record.pendingSurfacingLeaseUntil = 0;
         record.updatedAt = this.safeNow();
       } else if (!blocked && record.status === 'blocked') {
         const now = this.safeNow();
         record.status = 'open';
         record.unblockedAt = now;
+        record.pendingSurfacingInitiativeId = null;
+        record.pendingSurfacingLeaseUntil = 0;
         record.updatedAt = now;
       }
     }

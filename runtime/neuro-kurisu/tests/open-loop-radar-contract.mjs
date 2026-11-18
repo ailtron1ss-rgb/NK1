@@ -91,6 +91,48 @@ hostileRadar.restore({ version: 1, sequence: 0, records: [hostileRecord] });
 assert.equal(getterCalls, 0, 'restore must not execute untrusted snapshot getters');
 assert.equal(hostileRadar.snapshot().records.length, 0, 'accessor-backed records must be rejected');
 
+// Expired obligations stay non-actionable while any prerequisite is still unresolved.
+const expiredBlockedRadar = new OpenLoopRadar(() => now);
+const expiredBlockedParent = expiredBlockedRadar.register({
+  title: 'Expired external prerequisite', kind: 'waiting', owner: 'system',
+  accepted: true, source: 'expired-blocked-contract', dueAt: now - 10_000, expiresAt: now - 1,
+});
+const expiredBlockedChild = expiredBlockedRadar.register({
+  title: 'Expired dependent step', kind: 'project_step', owner: 'system',
+  accepted: true, source: 'expired-blocked-contract', dependencies: [expiredBlockedParent.id],
+  dueAt: now - 5_000, expiresAt: now - 1,
+});
+const expiredBlockedCandidate = expiredBlockedRadar.scan({ now, reminderCooldownMs: 0 })
+  .find(row => row.record.id === expiredBlockedChild.id);
+assert.equal(expiredBlockedCandidate?.effectiveStatus, 'blocked');
+assert.equal(expiredBlockedCandidate?.surfaceReason, null);
+assert.equal(expiredBlockedCandidate?.shouldSurface, false,
+  'expiry must not make a blocked dependent task actionable');
+
+// If a prerequisite is reopened, an already reserved dependant must lose the
+// stale initiative lease because its prompt was composed against the old graph.
+const leaseReconciliationRadar = new OpenLoopRadar(() => now);
+const leaseGate = leaseReconciliationRadar.register({
+  title: 'Verified prerequisite', kind: 'task', owner: 'system',
+  accepted: true, source: 'lease-reconciliation-contract',
+});
+leaseGate && leaseReconciliationRadar.fulfill(leaseGate.id, {
+  kind: 'external-confirmation', reference: 'verified-prerequisite', verifiedAt: now,
+});
+const leaseDependent = leaseReconciliationRadar.register({
+  title: 'Dependent work item', kind: 'project_step', owner: 'system',
+  accepted: true, source: 'lease-reconciliation-contract', dependencies: [leaseGate.id], dueAt: now - 1,
+});
+const staleInitiative = 'soc:open-loop:stale-dependency:001';
+leaseReconciliationRadar.reserveForInitiative(leaseDependent.id, staleInitiative);
+leaseReconciliationRadar.reopen(leaseGate.id, 'Prerequisite needs re-verification');
+const leaseDependentAfterReopen = leaseReconciliationRadar.snapshot().records
+  .find(row => row.id === leaseDependent.id);
+assert.equal(leaseDependentAfterReopen?.status, 'blocked');
+assert.equal(leaseDependentAfterReopen?.pendingSurfacingInitiativeId, null,
+  'dependency reconciliation must release a reservation whose underlying prompt context is stale');
+assert.equal(leaseDependentAfterReopen?.pendingSurfacingLeaseUntil, 0);
+
 const cycleRadar = new OpenLoopRadar(() => now);
 const cycleA = { ...before.records[0], id: 'cycle-a', status: 'blocked', dependencies: ['cycle-b'], closureEvidence: null };
 const cycleB = { ...before.records[0], id: 'cycle-b', status: 'blocked', dependencies: ['cycle-a'], closureEvidence: null };
