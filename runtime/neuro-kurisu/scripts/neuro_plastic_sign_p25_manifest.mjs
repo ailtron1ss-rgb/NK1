@@ -42,7 +42,7 @@ async function main() {
   }
   const signature = cryptoSign(null, Buffer.from(payload, 'utf8'), privateKey).toString('base64');
   const signedManifest = { ...unsigned, signature };
-  await writeSecureNewFile(outputPath, JSON.stringify(signedManifest, null, 2) + '\\n', 0o600);
+  await writeSecureNewFile(outputPath, JSON.stringify(signedManifest, null, 2) + '\n', 0o600);
   process.stdout.write('NEURO_PLASTIC_P25_MANIFEST_SIGNED=' + outputPath + '\n');
 }
 
