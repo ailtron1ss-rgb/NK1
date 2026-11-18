@@ -19,7 +19,7 @@ async function runRuntime(enabled) {
       requests.push(request);
       const response = {
         text: 'Verified local language response.',
-        backend: 'cognitive-bridge-test',
+        backend: 'llama.cpp:bridge-test-model',
         latencyMs: 1,
         ...(request.cognitiveControl && request.cognitiveControlRequestId ? {
           providerControlReceipt: {
@@ -89,9 +89,13 @@ async function runRuntime(enabled) {
           profileFingerprint:'0'.repeat(64),
         },
       });
+      runtime.recordCognitiveProviderControlReceipt(request,{
+        ...selectedResponse,
+        backend:'gemini:wrong-provider',
+      });
       const afterTampering=runtime.cognitiveToNeuralBridgeDiagnostics();
-      assert.equal(afterTampering.providerControlReceiptsRejected,2,
-        'stale request IDs and mismatched profile fingerprints must be rejected');
+      assert.equal(afterTampering.providerControlReceiptsRejected,3,
+        'stale IDs, mismatched fingerprints and non-llama.cpp responses must be rejected');
       assert.equal(afterTampering.llamaCppTemplateKwargsSent,acceptedBeforeReplay);
     } else {
       assert.ok(requests.every(value => value.cognitiveControl === undefined),
