@@ -10,6 +10,7 @@ import { types as nodeUtilTypes } from 'node:util';
 export type WorldForgeSplit = 'train' | 'validation' | 'holdout';
 export type WorldForgeDomain = 'resource-allocation' | 'route-planning' | 'investigation';
 export type WorldForgeAction = 'observe' | 'inspect' | 'move' | 'collect' | 'wait' | 'reroute' | 'prioritize' | 'verify';
+export type WorldForgeAdversarialFocus = 'balanced' | 'resource-shock' | 'route-block' | 'signal-noise' | 'deadline-shift';
 export interface WorldForgeConstraints { maxSteps:number; resourceBudget:number; riskTolerance01:number; requiredEvidence:number; }
 interface WorldForgeDisturbance { atStep:number; kind:'resource-shock'|'route-block'|'signal-noise'|'deadline-shift'; magnitude01:number; }
 export interface WorldForgeCase {
@@ -38,6 +39,9 @@ export interface WorldForgeStepResult {
 export interface WorldForgeOptions {
   maxCasesPerBatch?:number; maxTraceSteps?:number; maxActiveScenarios?:number;
   scenarioTtlMs?:number; holdoutNamespace?:string; now?:()=>number;
+}
+export interface WorldForgeAdversarialRequest {
+  seed:number; count:number; difficulty01:number; focus:WorldForgeAdversarialFocus; candidateMultiplier?:number;
 }
 
 const ACTIONS:WorldForgeAction[]=['observe','inspect','move','collect','wait','reroute','prioritize','verify'];
@@ -142,6 +146,31 @@ function normalizeActionTrace(value:unknown,maxSteps:number):{steps:WorldForgeAc
   }
 }
 
+function normalizeAdversarialInput(value:unknown):WorldForgeAdversarialRequest|null {
+  try {
+    if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    const keys=Reflect.ownKeys(descriptors);
+    const allowed=new Set(['seed','count','difficulty01','focus','candidateMultiplier']);
+    if(keys.length>allowed.size||keys.some(k=>typeof k!=='string'||!allowed.has(k)))return null;
+    for(const key of keys as string[]){
+      const descriptor=descriptors[key];
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true)return null;
+    }
+    const seed=descriptors.seed?.value,count=descriptors.count?.value;
+    const difficulty01=descriptors.difficulty01?.value,focus=descriptors.focus?.value??'balanced';
+    const candidateMultiplier=descriptors.candidateMultiplier?.value??4;
+    if(typeof seed!=='number'||!Number.isSafeInteger(seed)||seed<0)return null;
+    if(typeof count!=='number'||!Number.isSafeInteger(count)||count<1||count>16)return null;
+    if(typeof difficulty01!=='number'||!Number.isFinite(difficulty01)||difficulty01<.2||difficulty01>.95)return null;
+    if(!['balanced','resource-shock','route-block','signal-noise','deadline-shift'].includes(focus))return null;
+    if(typeof candidateMultiplier!=='number'||!Number.isSafeInteger(candidateMultiplier)||candidateMultiplier<2||candidateMultiplier>8)return null;
+    return{seed,count,difficulty01,focus:focus as WorldForgeAdversarialFocus,candidateMultiplier};
+  } catch { return null; }
+}
+
 function normalizeGenerationInput(value:unknown):{split:WorldForgeSplit;seed:number;count:number;difficulty01:number}|null {
   try {
     if(value===null||typeof value!=='object'||nodeUtilTypes.isProxy(value)||Array.isArray(value))return null;
@@ -236,6 +265,31 @@ export class WorldForge {
     const request=normalizeGenerationInput(input);
     if(!request||request.split==='holdout')return[];
     return this.generate(request);
+  }
+
+  generateAdversarialRuntimeScenarios(input:unknown):WorldForgeCase[] {
+    const request=normalizeAdversarialInput(input);
+    if(!request)return[];
+    const candidateCount=Math.min(this.maxCases,request.count*request.candidateMultiplier);
+    const candidates=this.generate({split:'train',seed:request.seed,count:candidateCount,difficulty01:request.difficulty01});
+    const focusKind=request.focus==='balanced'?null:request.focus;
+    const ranked=candidates.map(scenario=>{
+      const key=this.#answers.get(scenario.id);
+      if(!key)return{scenario,pressure:-1};
+      const focusMatches=key.disturbances.filter(d=>focusKind===null||d.kind===focusKind);
+      const meanMagnitude=focusMatches.reduce((sum,d)=>sum+d.magnitude01,0)/Math.max(1,focusMatches.length);
+      const domainMatch=request.focus==='resource-shock'?Number(key.domain==='resource-allocation'):
+        request.focus==='route-block'?Number(key.domain==='route-planning'):
+        request.focus==='signal-noise'?Number(key.domain==='investigation'):
+        request.focus==='deadline-shift'?Number(key.maxSteps>0):.5;
+      const disturbanceCoverage=focusKind===null?key.disturbances.length/2:Number(focusMatches.length>0);
+      const pressure=clamp(.35*scenario.difficulty01+.35*meanMagnitude+.2*domainMatch+.1*disturbanceCoverage);
+      return{scenario,pressure};
+    }).sort((a,b)=>b.pressure-a.pressure||a.scenario.id.localeCompare(b.scenario.id));
+    const selected=ranked.slice(0,request.count).map(item=>item.scenario);
+    const selectedIds=new Set(selected.map(s=>s.id));
+    for(const candidate of candidates)if(!selectedIds.has(candidate.id))this.releaseEvaluator(candidate.id);
+    return selected;
   }
 
   generate(input:unknown):WorldForgeCase[]{
