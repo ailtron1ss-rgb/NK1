@@ -126,8 +126,14 @@ assert.equal(report.eligible, true);
 assert.ok(report.qualityCi95[0] > 0, 'promotion evidence must have a positive lower confidence bound');
 assert.equal(registry.snapshot().adapters[0].status, 'eligible', 'holdout success must not activate weights');
 const approval = signedApproval('kurisu-reasoning-v1', report.reportId, 'approval-1', registry);
-assert.equal(verifyApproval(approval, { adapterId: 'kurisu-reasoning-v1', reportId: report.reportId, baseModelFingerprint: hash('a') }), true);
-assert.equal(verifyNeuroPlasticApprovalSignature(approval, { adapterId: 'kurisu-reasoning-v1', reportId: report.reportId, baseModelFingerprint: hash('a') }, 'wrong-secret'), false);
+const approvalContext = {
+  adapterId: 'kurisu-reasoning-v1',
+  reportId: report.reportId,
+  baseModelFingerprint: hash('a'),
+  manifestFingerprint: neuroPlasticAdapterManifestFingerprint(registry.getManifest('kurisu-reasoning-v1')),
+};
+assert.equal(verifyApproval(approval, approvalContext), true);
+assert.equal(verifyNeuroPlasticApprovalSignature(approval, approvalContext, 'wrong-secret'), false);
 await assert.rejects(
   registry.activate('kurisu-reasoning-v1', approval, async () => false),
   /approval/,
