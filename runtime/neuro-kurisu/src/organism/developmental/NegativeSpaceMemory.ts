@@ -193,7 +193,7 @@ export class NegativeSpaceMemory {
     alternatives.length = Math.min(alternatives.length, MAX_ALTERNATIVES);
     if (!alternatives.length) return null;
 
-    const at = finite(input.at, Date.now());
+    const at = Math.max(0, finite(input.at, Date.now()));
     const row: NegativeSpaceRecord = {
       id: decisionId,
       decisionId,
@@ -222,7 +222,7 @@ export class NegativeSpaceMemory {
       records: records.slice(-MAX_RECORDS),
       totalRecorded: this.state.totalRecorded + 1,
       pruned: this.state.pruned + pruned,
-      lastAt: at,
+      lastAt: Math.max(this.state.lastAt, at),
     };
     return structuredClone(row);
   }
@@ -234,7 +234,7 @@ export class NegativeSpaceMemory {
 
     if (!Number.isFinite(input.actualOutcome01)) return null;
     const actualOutcome01 = clamp01(input.actualOutcome01);
-    const at = Math.max(record.at, finite(input.at, Date.now()));
+    const at = Math.max(record.at, 0, finite(input.at, Date.now()));
     const hasCanonicalOutcome = record.chosenActualOutcome01 !== null;
     if (hasCanonicalOutcome && Math.abs(record.chosenActualOutcome01! - actualOutcome01) > OUTCOME_RECONCILIATION_TOLERANCE01) {
       // A conflicting report cannot silently replace the first canonical outcome.
@@ -330,7 +330,7 @@ export class NegativeSpaceMemory {
     const normalizedReason = cleanText(reason);
     if (!record || !hasVerifiedOutcome(record) || !alternative || !alternative.reviewEligible || !normalizedReason) return false;
     alternative.reviewEligible = false;
-    alternative.reopenedAt = finite(at, Date.now());
+    alternative.reopenedAt = Math.max(record.at, 0, finite(at, Date.now()));
     alternative.reopenReason = normalizedReason;
     record.reviewStatus = record.alternatives.some(candidate => candidate.reviewEligible) ? 'review-eligible' : 'reopened';
     this.state.lastAt = Math.max(this.state.lastAt, alternative.reopenedAt);
@@ -351,7 +351,9 @@ export class NegativeSpaceMemory {
   restore(snapshot?: Partial<NegativeSpaceMemoryState> | null): void {
     const input = (snapshot ?? {}) as Record<string, unknown>;
     const restored: NegativeSpaceRecord[] = [];
-    const rawRecords = Array.isArray(input.records) ? input.records.slice(-MAX_RECORDS) : [];
+    const allRawRecords = Array.isArray(input.records) ? input.records : [];
+    const overflowCount = Math.max(0, allRawRecords.length - MAX_RECORDS);
+    const rawRecords = allRawRecords.slice(-MAX_RECORDS);
     for (const rawValue of rawRecords) {
       if (!rawValue || typeof rawValue !== 'object') continue;
       const raw = rawValue as Record<string, any>;
@@ -389,7 +391,7 @@ export class NegativeSpaceMemory {
         id: cleanText(raw.id, 128) || decisionId,
         decisionId,
         ...(cleanText(raw.contextKey, 160) ? { contextKey: cleanText(raw.contextKey, 160) } : {}),
-        at: finite(raw.at),
+        at: Math.max(0, finite(raw.at)),
         chosen,
         chosenExpectedOutcome01: clamp01(raw.chosenExpectedOutcome01),
         chosenActualOutcome01: actual,
@@ -416,21 +418,25 @@ export class NegativeSpaceMemory {
       .sort((a, b) => a.at - b.at || a.decisionId.localeCompare(b.decisionId))
       .slice(-MAX_RECORDS);
     const duplicateCount = Math.max(0, restored.length - deduplicated.length);
+    const restoredPruned = Math.max(0, Math.floor(finite(input.pruned))) + duplicateCount + overflowCount;
+    const minimumTotalRecorded = deduplicated.length + restoredPruned;
+    const maximumRecordAt = deduplicated.reduce((maximum, record) => Math.max(maximum, record.at), 0);
     this.state = {
       version: 1,
       records: deduplicated,
-      totalRecorded: Math.max(deduplicated.length, Math.floor(finite(input.totalRecorded, deduplicated.length))),
-      pruned: Math.max(0, Math.floor(finite(input.pruned))) + duplicateCount,
-      lastAt: finite(input.lastAt),
+      totalRecorded: Math.max(minimumTotalRecorded, Math.floor(finite(input.totalRecorded, minimumTotalRecorded))),
+      pruned: restoredPruned,
+      lastAt: Math.max(0, finite(input.lastAt), maximumRecordAt),
     };
   }
 
-  relatedAlternatives(contextKey: string, limit = 8) {
+  relatedAlternatives(contextKey: string, limit = 8, includeUnverified = false) {
     const key = cleanText(contextKey, 160);
     if (!key) return [];
     const boundedLimit = Math.max(1, Math.min(MAX_CONTEXT_RESULTS, Math.floor(finite(limit, 8))));
     return this.state.records
-      .filter(record => record.contextKey === key)
+      .filter(record => record.contextKey === key
+        && (includeUnverified || (record.chosenActualOutcome01 !== null && hasVerifiedOutcome(record))))
       .flatMap(record => record.alternatives.map(alternative => ({
         decisionId: record.decisionId,
         recordAt: record.at,
@@ -439,6 +445,8 @@ export class NegativeSpaceMemory {
         chosenActualReward01: record.chosenActualReward01,
         outcomeShortfall01: record.outcomeShortfall01,
         outcomeVerified01: record.outcomeVerified01,
+        evidenceStatus: record.chosenActualOutcome01 === null ? 'awaiting-outcome' as const
+          : hasVerifiedOutcome(record) ? 'verified' as const : 'unverified' as const,
         outcomeIndependent01: record.outcomeIndependent01,
         outcomeSource: record.outcomeSource,
         outcomeEvidence: [...record.outcomeEvidence],

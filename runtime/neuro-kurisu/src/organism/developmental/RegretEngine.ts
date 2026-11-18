@@ -150,8 +150,8 @@ export class RegretEngine {
     return this.negativeSpace.reviewQueue();
   }
 
-  negativeSpaceRelatedAlternatives(contextKey: string, limit = 8) {
-    return this.negativeSpace.relatedAlternatives(contextKey, limit);
+  negativeSpaceRelatedAlternatives(contextKey: string, limit = 8, includeUnverified = false) {
+    return this.negativeSpace.relatedAlternatives(contextKey, limit, includeUnverified);
   }
 
   negativeSpaceDiagnostics() {

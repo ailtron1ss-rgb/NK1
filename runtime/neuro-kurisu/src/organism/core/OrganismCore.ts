@@ -11284,7 +11284,7 @@ export class OrganismCore {
     negativeSpaceMemorySnapshot() { return this.cognitiveRuntime.regretEngine.snapshot().negativeSpace; }
     negativeSpaceMemoryDiagnostics() { return this.cognitiveRuntime.regretEngine.negativeSpaceDiagnostics(); }
     negativeSpaceMemoryReviewQueue() { return this.cognitiveRuntime.regretEngine.negativeSpaceReviewQueue(); }
-    negativeSpaceMemoryRelatedAlternatives(contextKey: string, limit = 8) { return this.cognitiveRuntime.regretEngine.negativeSpaceRelatedAlternatives(contextKey, limit); }
+    negativeSpaceMemoryRelatedAlternatives(contextKey: string, limit = 8, includeUnverified = false) { return this.cognitiveRuntime.regretEngine.negativeSpaceRelatedAlternatives(contextKey, limit, includeUnverified); }
     private assertNegativeSpaceMemoryMutationBoundary(): void {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
