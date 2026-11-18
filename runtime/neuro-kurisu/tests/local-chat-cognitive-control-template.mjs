@@ -173,6 +173,9 @@ const invalidProfiles = [
   { ...profile, neuralSnapshotVersion: 15 },
   { ...profile, neuralSource: 'unavailable' },
   { ...profile, maxTokens: 97 },
+  { ...profile, temperature: profile.temperature + .01 },
+  { ...profile, maxTokens: profile.maxTokens + 16 },
+  { ...profile, steeringIntent01: { ...profile.steeringIntent01, caution01: Math.min(.15,profile.steeringIntent01.caution01+.01) } },
   { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index === 22 ? -0.1 : value) },
 
 ];
