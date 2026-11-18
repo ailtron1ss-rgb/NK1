@@ -212,11 +212,11 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
     base_raw = manifest.get("baseModelDirectory")
     if not isinstance(base_raw, str) or not base_raw:
         raise PreflightError("base-model-directory-required")
-    base = Path(base_raw)
-    if not base.is_absolute():
-        base = (root / base).resolve(strict=True)
-    else:
-        base = base.resolve(strict=True)
+    base_candidate = Path(base_raw)
+    if not base_candidate.is_absolute():
+        base_candidate = root / base_candidate
+    _reject_symlink_ancestors(base_candidate)
+    base = base_candidate.resolve(strict=True)
     if not base.is_dir():
         raise PreflightError("base-model-directory-invalid")
     expected_base = _safe_hash(manifest.get("baseModelFingerprint"), "base-model")
