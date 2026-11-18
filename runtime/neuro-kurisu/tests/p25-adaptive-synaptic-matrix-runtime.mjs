@@ -148,7 +148,7 @@ try {
   const adapterPromptBeforeCanonicalFallback = lastAdapterUser;
   const adapterPromptBaseCallsBefore = baseCallsByUser.get(adapterPromptBeforeCanonicalFallback) ?? 0;
   const failuresBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures;
-  const fallbackCountBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().metrics.baseFallbacks;
+  const fallbackCountBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().metrics.canonicalRegistryFallbacks;
   canonicalFallback = true;
   const canonicalBase = await runtime.step('Exercise canonical registry mismatch fallback.', { deliberate: false });
   canonicalFallback = false;
@@ -163,7 +163,7 @@ try {
     'canonical selection mismatch must not disable a healthy P25 candidate');
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, failuresBeforeCanonicalFallback,
     'canonical selection mismatch must not count as an adapter execution failure');
-  assert.equal(runtime.synapticMatrixSnapshot().metrics.baseFallbacks, fallbackCountBeforeCanonicalFallback + 1,
+  assert.equal(runtime.synapticMatrixSnapshot().metrics.canonicalRegistryFallbacks, fallbackCountBeforeCanonicalFallback + 1,
     'canonical selection mismatch must be recorded as a safe base fallback');
   assert.equal(lastRoutingInput?.baseModelId, candidate.baseModelId);
   assert.equal(lastRoutingInput?.baseModelRevisionSha256, candidate.baseModelRevisionSha256);
