@@ -74,6 +74,8 @@ const request = (overrides = {}) => ({
       && keyId === 'nk1-offline-adapter-validator',
   );
   assert.equal(activated.status, 'active');
+  assert.throws(() => matrix.activateValidated(manifest(), () => true), /report-replay/i,
+    'an accepted validation report must not be reusable while the adapter remains active');
 
   const selected = matrix.select(request());
   assert.equal(selected.mode, 'adapter');
@@ -253,9 +255,19 @@ const request = (overrides = {}) => ({
   explicitlyDisabled.activateValidated(manifest(), () => true);
   explicitlyDisabled.disable('physics-lora-v1');
   assert.equal(explicitlyDisabled.select(request()).mode, 'base-fallback');
-  explicitlyDisabled.activateValidated(manifest(), () => true);
+  assert.throws(() => explicitlyDisabled.activateValidated(manifest(), () => true), /report-replay/i,
+    'disabling an adapter must not make a previously consumed report reusable');
+  const disabledFreshManifest = manifest(candidate(), {
+    validation: {
+      ...manifest().validation,
+      reportId: 'holdout-physics-reenabled-2026-11',
+      reportSha256: hash('9'),
+      holdoutDatasetRef: 'dataset://physics/holdout-reenabled-v2',
+    },
+  });
+  explicitlyDisabled.activateValidated(disabledFreshManifest, () => true);
   assert.equal(explicitlyDisabled.select(request()).mode, 'adapter',
-    'an operator may explicitly reactivate a disabled profile using a fresh verified activation');
+    'an operator may reactivate a disabled profile only with a fresh verified report');
 
   const repeatedFailure = new AdaptiveSynapticMatrixEngine();
   repeatedFailure.registerCandidate(candidate());
@@ -282,6 +294,17 @@ const request = (overrides = {}) => ({
     /revalidation/i,
     'the last accepted holdout digest must survive restart to prevent stale-report replay');
 
+  const legacyState = repeatedFailure.snapshot();
+  delete legacyState.adapters[0].acceptedReportSha256s;
+  const restoredLegacy = new AdaptiveSynapticMatrixEngine();
+  restoredLegacy.restore(legacyState, () => true);
+  assert.equal(restoredLegacy.snapshot().adapters[0].status, 'quarantined');
+  assert.equal(restoredLegacy.snapshot().adapters[0].activationHistorySaturated, true,
+    'legacy snapshots without complete report history must fail closed instead of pretending replay history is complete');
+  assert.throws(() => restoredLegacy.activateValidated(freshManifest, () => true),
+    /history-capacity/i,
+    'incomplete legacy report history requires explicit migration and cannot activate new weights');
+
   const administrativelyDisabledQuarantine = new AdaptiveSynapticMatrixEngine();
   administrativelyDisabledQuarantine.restore(repeatedFailure.snapshot(), () => true);
   assert.equal(administrativelyDisabledQuarantine.disable('physics-lora-v1')?.status, 'disabled');
@@ -295,6 +318,40 @@ const request = (overrides = {}) => ({
     'a fresh signed holdout report may reactivate the quarantined adapter after restart');
   assert.equal(repeatedFailure.activateValidated(freshManifest, () => true).status, 'active',
     'a new signed holdout report can explicitly revalidate a quarantined specialist');
+}
+
+
+{
+  const matrix = new AdaptiveSynapticMatrixEngine();
+  matrix.registerCandidate(candidate());
+  for (let index = 0; index < 64; index += 1) {
+    const report = manifest(candidate(), {
+      validation: {
+        ...manifest().validation,
+        reportId: `capacity-report-${index}`,
+        reportSha256: String(index + 1).padStart(64, '0'),
+        holdoutDatasetRef: `dataset://physics/capacity-holdout-${index}`,
+      },
+    });
+    matrix.activateValidated(report, () => true);
+  }
+  assert.equal(matrix.snapshot().adapters[0].acceptedReportSha256s.length, 64);
+  const overflowReport = manifest(candidate(), {
+    validation: {
+      ...manifest().validation,
+      reportId: 'capacity-report-overflow',
+      reportSha256: 'f'.repeat(64),
+      holdoutDatasetRef: 'dataset://physics/capacity-holdout-overflow',
+    },
+  });
+  assert.throws(() => matrix.activateValidated(overflowReport, () => true),
+    /history-capacity/i,
+    'the anti-replay ledger must fail closed and never evict an older accepted digest');
+  const restored = new AdaptiveSynapticMatrixEngine();
+  restored.restore(matrix.snapshot(), () => true);
+  assert.throws(() => restored.activateValidated(overflowReport, () => true),
+    /history-capacity/i,
+    'capacity exhaustion remains fail-closed after persistence restore');
 }
 
 console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX=PASS');

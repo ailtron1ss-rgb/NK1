@@ -25,12 +25,12 @@ const candidate = {
   trainingDatasetRef: 'dataset://runtime/train',
   owner: 'p25-runtime-test',
 };
-const manifest = {
+const manifestFor = (reportId, digest, holdoutDatasetRef) => ({
   ...candidate,
   validation: {
-    reportId: 'runtime-holdout-2026-11',
-    reportSha256: hash('b'),
-    holdoutDatasetRef: 'dataset://runtime/holdout',
+    reportId,
+    reportSha256: hash(digest),
+    holdoutDatasetRef,
     pairedSeeds: 8,
     baselineScore01: 0.70,
     adapterScore01: 0.82,
@@ -38,8 +38,9 @@ const manifest = {
     guardrailRegressionCount: 0,
   },
   signerKeyId: 'runtime-test-validator',
-  signature: 'runtime-test-signature',
-};
+  signature: `runtime-test-signature:${reportId}`,
+});
+const manifest = manifestFor('runtime-holdout-2026-11', 'b', 'dataset://runtime/holdout');
 
 const dir = await mkdtemp(path.join(tmpdir(), 'nk-p25-runtime-'));
 const stateFile = path.join(dir, 'organism.json');
@@ -115,10 +116,12 @@ const makeRuntime = () => {
   synapticBaseModelId: candidate.baseModelId,
   synapticBaseModelRevisionSha256: candidate.baseModelRevisionSha256,
   synapticAdapterTimeoutMs: 100,
-  synapticAdapterManifestVerifier: (payload, signature, keyId) =>
-    payload.includes('"reportId":"runtime-holdout-2026-11"')
-      && signature === manifest.signature
-      && keyId === manifest.signerKeyId,
+  synapticAdapterManifestVerifier: (payload, signature, keyId) => {
+    const reportId = payload.match(/"reportId":"([^"]+)"/)?.[1];
+    return Boolean(reportId)
+      && signature === `runtime-test-signature:${reportId}`
+      && keyId === manifest.signerKeyId;
+  },
   synapticAdapterInvoker: adapterInvoker,
   });
   runtimes.push(runtime);
@@ -137,6 +140,8 @@ try {
   await runtime.registerSynapticAdapterCandidate(candidate);
   await runtime.activateSynapticAdapter(manifest);
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'active');
+  await assert.rejects(runtime.activateSynapticAdapter(manifest), /report-replay/i,
+    'the same signed evaluation report cannot be replayed to reset runtime failure counters');
 
   const specialized = await runtime.step('Solve this physics reasoning question.', { deliberate: false });
   assert.equal(specialized.language?.text, 'specialized response');
@@ -177,7 +182,9 @@ try {
   assert.equal(baseCallsByUser.get(lastAdapterUser) ?? 0, lastAdapterBaseCallsAtStart + 1,
     'adapter timeout must invoke the base model exactly once for the timed-out adapter prompt');
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1);
-  await runtime.activateSynapticAdapter(manifest);
+  await runtime.activateSynapticAdapter(manifestFor(
+    'runtime-holdout-after-timeout', 'd', 'dataset://runtime/holdout-timeout',
+  ));
 
   const adapterCallsBeforeBadBaseReceipt = adapterCalls;
   badBaseReceipt = true;
@@ -189,7 +196,9 @@ try {
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1);
 
   badBaseReceipt = false;
-  await runtime.activateSynapticAdapter(manifest);
+  await runtime.activateSynapticAdapter(manifestFor(
+    'runtime-holdout-after-base-attestation', 'e', 'dataset://runtime/holdout-base-attestation',
+  ));
   const adapterCallsBeforeBadDigest = adapterCalls;
   badReceipt = true;
   const rejectedReceipt = await runtime.step('Reject a specialist response that attests the wrong weight digest.', { deliberate: false });
@@ -201,7 +210,9 @@ try {
     'explicit signed reactivation resets the consecutive-failure streak before the next execution');
 
   badReceipt = false;
-  await runtime.activateSynapticAdapter(manifest);
+  await runtime.activateSynapticAdapter(manifestFor(
+    'runtime-holdout-after-weight-attestation', 'f', 'dataset://runtime/holdout-weight-attestation',
+  ));
   const adapterCallsBeforeLoaderFailure = adapterCalls;
   failAdapter = true;
   const recovered = await runtime.step('Recover from an adapter loader exception.', { deliberate: false });
@@ -221,6 +232,12 @@ try {
 
   await runtime.disableSynapticAdapter(candidate.id);
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'disabled');
+  await assert.rejects(runtime.activateSynapticAdapter(manifest), /report-replay/i,
+    'the original report remains consumed after multiple newer activations and a restart');
+  await assert.rejects(runtime.activateSynapticAdapter(manifestFor(
+    'runtime-holdout-after-weight-attestation', 'f', 'dataset://runtime/holdout-weight-attestation',
+  )), /report-replay/i,
+  'disabling the adapter must not make a previously used report reusable');
   const adapterCallsBeforeDisabledStep = adapterCalls;
   const disabled = await runtime.step('Confirm the disabled profile cannot intercept this request.', { deliberate: false });
   assert.equal(disabled.language?.text, 'base response');
@@ -231,7 +248,9 @@ try {
   failAdapter = false;
   badReceipt = false;
   badBaseReceipt = false;
-  await runtime.activateSynapticAdapter(manifest);
+  await runtime.activateSynapticAdapter(manifestFor(
+    'runtime-operator-reactivation', '1', 'dataset://runtime/holdout-operator-reactivation',
+  ));
   const adapterCallsBeforeReactivation = adapterCalls;
   const reactivated = await runtime.step('Use the explicitly reactivated specialist.', { deliberate: false });
   assert.equal(reactivated.language?.text, 'specialized response');

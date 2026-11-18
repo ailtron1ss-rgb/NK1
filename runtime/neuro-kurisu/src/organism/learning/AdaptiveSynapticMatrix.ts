@@ -65,6 +65,10 @@ export interface SynapticAdapterRecord {
   lastErrorAt: number;
   /** Last accepted report digest captured when the profile entered quarantine. */
   quarantineReportSha256?: string;
+  /** All accepted validation reports for this adapter; entries are never evicted. */
+  acceptedReportSha256s: string[];
+  /** Incomplete/corrupt legacy history disables future activation until migration. */
+  activationHistorySaturated?: boolean;
 }
 
 export interface SynapticMatrixDecision {
@@ -118,6 +122,7 @@ export type SynapticAdapterSelection =
 
 const MAX_ADAPTERS = 32;
 const MAX_DECISIONS = 128;
+const MAX_ACCEPTED_REPORTS_PER_ADAPTER = 64;
 const HASH_PATTERN = /^[a-f0-9]{64}$/i;
 const clamp01 = (value: unknown): number => {
   const n = Number(value);
@@ -266,6 +271,7 @@ export class AdaptiveSynapticMatrixEngine {
     const record: SynapticAdapterRecord = {
       candidate, status: 'candidate', cooldownUntil: 0, consecutiveFailures: 0,
       selections: 0, failures: 0, averageLatencyMs: 0, lastErrorAt: 0,
+      acceptedReportSha256s: [],
     };
     this.state.adapters.push(record);
     return structuredClone(record);
@@ -278,10 +284,20 @@ export class AdaptiveSynapticMatrixEngine {
     const manifest = normalizeManifest(raw);
     const record = this.state.adapters.find(entry => entry.candidate.id === manifest.id);
     if (!record || !sameCandidate(record.candidate, manifest)) throw new Error('synaptic-adapter-candidate-manifest-mismatch');
+    const reportSha256 = manifest.validation.reportSha256;
     const quarantinedReportSha256 = record.quarantineReportSha256
       ?? (record.status === 'quarantined' ? record.manifest?.validation.reportSha256 : undefined);
-    if (quarantinedReportSha256 === manifest.validation.reportSha256) {
+    if (quarantinedReportSha256 === reportSha256) {
       throw new Error('synaptic-adapter-revalidation-required-after-quarantine');
+    }
+    if (record.activationHistorySaturated) {
+      throw new Error('synaptic-adapter-activation-history-capacity-reached');
+    }
+    if (record.acceptedReportSha256s.includes(reportSha256)) {
+      throw new Error('synaptic-adapter-validation-report-replay');
+    }
+    if (record.acceptedReportSha256s.length >= MAX_ACCEPTED_REPORTS_PER_ADAPTER) {
+      throw new Error('synaptic-adapter-activation-history-capacity-reached');
     }
     if (typeof verify !== 'function') throw new Error('synaptic-adapter-manifest-verifier-required');
     let verified = false;
@@ -293,6 +309,7 @@ export class AdaptiveSynapticMatrixEngine {
     if (!verified) throw new Error('synaptic-adapter-manifest-signature-verification-failed');
     record.status = 'active';
     record.manifest = structuredClone(manifest);
+    record.acceptedReportSha256s.push(reportSha256);
     delete record.quarantineReportSha256;
     record.cooldownUntil = 0;
     record.consecutiveFailures = 0;
@@ -453,6 +470,15 @@ export class AdaptiveSynapticMatrixEngine {
       try {
         const candidate = normalizeCandidate(item.candidate);
         if (next.adapters.some(entry => entry.candidate.id === candidate.id)) continue;
+        const hasPersistedReportHistory = Array.isArray(item.acceptedReportSha256s);
+        const rawReportHistory = hasPersistedReportHistory ? item.acceptedReportSha256s : [];
+        const validReportHistory = rawReportHistory
+          .filter((digest): digest is string => typeof digest === 'string' && HASH_PATTERN.test(digest))
+          .map(digest => digest.toLowerCase());
+        const uniqueReportHistory = [...new Set(validReportHistory)];
+        const reportHistoryCorrupt = rawReportHistory.length !== validReportHistory.length
+          || uniqueReportHistory.length !== validReportHistory.length
+          || validReportHistory.length > MAX_ACCEPTED_REPORTS_PER_ADAPTER;
         const restored: SynapticAdapterRecord = {
           candidate,
           status: item.status === 'disabled' || item.status === 'quarantined' ? item.status : 'candidate',
@@ -462,22 +488,47 @@ export class AdaptiveSynapticMatrixEngine {
           failures: Number.isSafeInteger(item.failures) ? Math.max(0, item.failures) : 0,
           averageLatencyMs: Number.isFinite(Number(item.averageLatencyMs)) ? Math.max(0, Number(item.averageLatencyMs)) : 0,
           lastErrorAt: Number.isFinite(Number(item.lastErrorAt)) ? Math.max(0, Number(item.lastErrorAt)) : 0,
+          acceptedReportSha256s: uniqueReportHistory.slice(0, MAX_ACCEPTED_REPORTS_PER_ADAPTER),
+          ...(item.activationHistorySaturated === true || reportHistoryCorrupt ||
+              (!hasPersistedReportHistory && Boolean(item.manifest))
+            ? { activationHistorySaturated: true }
+            : {}),
           ...(typeof item.quarantineReportSha256 === 'string' && HASH_PATTERN.test(item.quarantineReportSha256)
             ? { quarantineReportSha256: item.quarantineReportSha256.toLowerCase() }
             : {}),
         };
-        if (item.status === 'quarantined' && !restored.quarantineReportSha256) {
-          // Backward compatibility: older snapshots kept the accepted manifest
-          // but had no dedicated anti-replay field. Recover only its digest;
-          // it is deny-only evidence and can never authorize activation.
+
+        // A modern snapshot must include its last accepted report in the ledger.
+        // Older snapshots can recover only the last stored manifest digest and
+        // are marked saturated because earlier activations cannot be reconstructed.
+        if (item.manifest) {
           try {
             const priorManifest = normalizeManifest(item.manifest as SynapticAdapterActivationManifest);
             if (sameCandidate(candidate, priorManifest)) {
-              restored.quarantineReportSha256 = priorManifest.validation.reportSha256;
+              const priorDigest = priorManifest.validation.reportSha256;
+              if (!restored.acceptedReportSha256s.includes(priorDigest)) {
+                if (hasPersistedReportHistory) {
+                  restored.activationHistorySaturated = true;
+                }
+                if (restored.acceptedReportSha256s.length < MAX_ACCEPTED_REPORTS_PER_ADAPTER) {
+                  restored.acceptedReportSha256s.push(priorDigest);
+                } else {
+                  restored.activationHistorySaturated = true;
+                }
+              }
+              if (item.status === 'quarantined' && !restored.quarantineReportSha256) {
+                restored.quarantineReportSha256 = priorDigest;
+              }
             }
           } catch {
-            // Keep the adapter quarantined; lack of legacy evidence never activates it.
+            if (item.status === 'active' || item.status === 'disabled' || item.status === 'quarantined') {
+              restored.activationHistorySaturated = true;
+            }
           }
+        }
+        if (item.status === 'quarantined' && !restored.quarantineReportSha256) {
+          // Without the last accepted receipt the quarantine cannot be cleared safely.
+          restored.activationHistorySaturated = true;
         }
         if (item.status === 'active') {
           try {
@@ -491,9 +542,11 @@ export class AdaptiveSynapticMatrixEngine {
             } else {
               restored.status = 'quarantined';
               restored.manifest = manifest;
+              restored.quarantineReportSha256 ??= manifest.validation.reportSha256;
             }
           } catch {
             restored.status = 'quarantined';
+            restored.activationHistorySaturated = true;
           }
         }
         next.adapters.push(restored);

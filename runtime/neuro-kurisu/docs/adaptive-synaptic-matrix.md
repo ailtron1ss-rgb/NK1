@@ -43,6 +43,16 @@ A candidate records its artifact reference and SHA-256, format/rank, exact base
 model identity/revision, task capabilities, competence scores, conflict group,
 resource/context limits, maximum uncertainty, training dataset reference, and owner.
 
+Each P25 adapter also stores a bounded ledger of up to 64 accepted validation
+report SHA-256 digests. Every signed P25 report is single-use across activation,
+disable/enable, cooldown recovery, quarantine recovery and process restarts.
+Entries are never evicted; once full, further P25 activation fails closed.
+A snapshot missing its prior report ledger is treated as incomplete: its last
+manifest digest is recovered as deny-only evidence and future activations remain
+blocked until an explicit trusted state migration. The P25 sidecar must be
+protected by host filesystem/storage integrity controls; an administrator able
+to rewrite this sidecar can otherwise rewrite local anti-replay metadata.
+
 Activation requires a signed offline validation manifest. The matrix checks:
 - the manifest matches the registered candidate and its artifact digest;
 - training and holdout dataset references are distinct;
@@ -66,8 +76,8 @@ as ambiguous and route to the base model. The router does not stack adapters.
 
 Two consecutive executor failures apply an escalating bounded cooldown. Six
 consecutive failures quarantine the profile. Quarantine cannot be cleared by
-replaying the same holdout report: an operator must submit a newly signed report
-with a new report digest and pass the validation gates again. A successful adapter
+replaying any previously accepted report: an operator must submit a newly signed
+report with an unused digest and pass the validation gates again. A successful adapter
 call resets the consecutive-failure counter. An adapter exception or malformed
 adapter response is recorded and the unchanged base invoker is called. An aborted
 request is not retried after cancellation.
