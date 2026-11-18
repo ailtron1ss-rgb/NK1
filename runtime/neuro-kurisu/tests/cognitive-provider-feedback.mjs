@@ -118,4 +118,18 @@ detached.truncationPressure01=99;
 assert.ok(feedback.snapshot('deep').truncationPressure01<=1,
   'diagnostic snapshots must not expose mutable calibration state');
 
+const ledger = new CognitiveProviderFeedbackController();
+assert.equal(ledger.record({
+  requestId:'ledger:replay-target',mode:'shallow',completionTokens:10,maxTokens:128,finishReason:'stop',
+}).accepted,true);
+for(let index=0;index<512;index+=1){
+  assert.equal(ledger.record({
+    requestId:`ledger:fill:${index}`,mode:'shallow',completionTokens:10,maxTokens:128,finishReason:'stop',
+  }).accepted,true);
+}
+assert.equal(ledger.record({
+  requestId:'ledger:replay-target',mode:'shallow',completionTokens:10,maxTokens:128,finishReason:'stop',
+}).accepted,true,
+'after the 512-ID bounded replay ledger evicts its oldest request, memory must remain bounded and permit ID reuse');
+
 console.log('COGNITIVE_PROVIDER_FEEDBACK_PASS');
