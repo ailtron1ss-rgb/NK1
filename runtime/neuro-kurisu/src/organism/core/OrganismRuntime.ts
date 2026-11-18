@@ -10,7 +10,7 @@ import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
 import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
-import { AdaptiveSynapticMatrixEngine, type AdaptiveSynapticMatrixState, type SynapticAdapterActivationManifest, type SynapticAdapterCandidate, type SynapticAdapterManifestVerifier, type SynapticAdapterTask } from '../learning/AdaptiveSynapticMatrix.ts';
+import { AdaptiveSynapticMatrixEngine, type AdaptiveSynapticMatrixState, type SynapticAdapterActivationManifest, type SynapticAdapterCandidate, type SynapticAdapterManifestVerifier, type SynapticAdapterRoutingInput, type SynapticAdapterTask } from '../learning/AdaptiveSynapticMatrix.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
