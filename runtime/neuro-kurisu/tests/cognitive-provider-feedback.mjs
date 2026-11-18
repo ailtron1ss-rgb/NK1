@@ -77,6 +77,7 @@ const invalidInputs=[
   { requestId:'session:bad-mode',mode:'unknown',completionTokens:10,maxTokens:128,finishReason:'stop' },
   { requestId:'session:bad-completion',mode:'deep',completionTokens:-1,maxTokens:128,finishReason:'stop' },
   { requestId:'session:bad-limit',mode:'deep',completionTokens:10,maxTokens:97,finishReason:'stop' },
+  { requestId:'session:bad-mode-budget',mode:'reflex',completionTokens:10,maxTokens:512,finishReason:'stop' },
   { requestId:'session:bad-finish',mode:'deep',completionTokens:10,maxTokens:128,finishReason:'made-up' },
   { requestId:'session:bad-overflow',mode:'deep',completionTokens:1_000_001,maxTokens:128,finishReason:'stop' },
   { requestId:'session:provider-over-budget',mode:'deep',completionTokens:129,maxTokens:128,finishReason:'length' },
