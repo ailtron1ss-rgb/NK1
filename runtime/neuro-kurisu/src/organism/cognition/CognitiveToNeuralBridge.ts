@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { ActionKind } from '../core/types.ts';
 import { B365_STATE_SCHEMA_VERSION } from './B365DiagnosticsSchema.ts';
-
-export type CognitiveBridgeMode = 'reflex'|'shallow'|'retrieve'|'deep'|'simulate'|'defer'|'sleep';
+import { COGNITIVE_MODE_TOKEN_CEILINGS, type CognitiveBridgeMode } from './CognitiveModeContract.ts';
+export { COGNITIVE_MODE_TOKEN_CEILINGS } from './CognitiveModeContract.ts';
 export type CognitiveBridgeAction = ActionKind|'none';
 export type CognitiveAdapterHint = 'fast'|'balanced'|'retrieval'|'deep'|'simulation'|'conservative';
 
@@ -10,10 +10,6 @@ const ACTIONS:readonly ActionKind[]=['respond','explore','verify','rest','reflec
 const MODES:readonly CognitiveBridgeMode[]=['reflex','shallow','retrieve','deep','simulate','defer','sleep'];
 const TEMPERATURE_BY_MODE:Record<CognitiveBridgeMode,number>={
   reflex:.30,shallow:.52,retrieve:.43,deep:.65,simulate:.60,defer:.25,sleep:.22,
-};
-/** Single source of truth for mode-specific completion-token ceilings. */
-export const COGNITIVE_MODE_TOKEN_CEILINGS:Readonly<Record<CognitiveBridgeMode,number>>={
-  reflex:256,shallow:384,retrieve:512,deep:768,simulate:768,defer:128,sleep:128,
 };
 const TOKENS_BY_MODE=COGNITIVE_MODE_TOKEN_CEILINGS;
 const ADAPTER_BY_MODE:Record<CognitiveBridgeMode,CognitiveAdapterHint>={
