@@ -91,7 +91,11 @@ export type SynapticAdapterLanguageResponse = LanguageResponse & {
   /** Executor attests the exact base model and adapter digest used for this response. */
   modelId: string;
   modelRevisionSha256: string;
-  appliedAdapterSha256: string;
+  appliedAdapterSha256: string | null;
+  /** False means the host canonical registry already returned the base-model fallback. */
+  adapterApplied?: boolean;
+  /** Bounded reason supplied by the host canonical adapter executor when it fell back. */
+  adapterFallbackReason?: string | null;
 };
 
 export interface RuntimeConfig extends OrganismConfig {
@@ -111,7 +115,11 @@ export interface RuntimeConfig extends OrganismConfig {
   /** Hard wall-clock bound for specialist inference before falling back to the base model. */
   synapticAdapterTimeoutMs?: number;
   /** Host-owned inference port that actually loads/applies the selected adapter. */
-  synapticAdapterInvoker?: (request: Parameters<LanguageInvoker>[0], adapter: SynapticAdapterCandidate) => Promise<SynapticAdapterLanguageResponse>;
+  synapticAdapterInvoker?: (
+    request: Parameters<LanguageInvoker>[0],
+    adapter: SynapticAdapterCandidate,
+    routing: SynapticAdapterRoutingInput,
+  ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
@@ -654,7 +662,7 @@ export class OrganismRuntime {
       ? Math.max(utf8ByteTokenUpperBound, Math.ceil(ledgerTokenEstimate))
       : utf8ByteTokenUpperBound;
     const contextTokens = promptTokenEstimate + Math.max(0, Math.floor(Number(request.maxTokens ?? 0) || 0));
-    const selection = this.synapticMatrix.select({
+    const routingInput: SynapticAdapterRoutingInput = {
       task,
       baseModelId: this.config.synapticBaseModelId,
       baseModelRevisionSha256: this.config.synapticBaseModelRevisionSha256,
@@ -663,7 +671,8 @@ export class OrganismRuntime {
       uncertainty01,
       resourceRisk01,
       executorAvailable: typeof this.config.synapticAdapterInvoker === 'function',
-    });
+    };
+    const selection = this.synapticMatrix.select(routingInput);
     // Persist bounded fallback diagnostics periodically without forcing a disk write
     // on every phone inference cycle.
     if (selection.mode === 'base-fallback') {
@@ -700,7 +709,7 @@ export class OrganismRuntime {
             })
           : new Promise<never>(() => {});
         const response = await Promise.race([
-          this.config.synapticAdapterInvoker(adapterRequest, selection.adapter),
+          this.config.synapticAdapterInvoker(adapterRequest, selection.adapter, routingInput),
           timeoutPromise,
           parentAbortPromise,
         ]);
@@ -716,6 +725,25 @@ export class OrganismRuntime {
           || typeof response.modelRevisionSha256 !== 'string'
           || response.modelRevisionSha256.toLowerCase() !== String(this.config.synapticBaseModelRevisionSha256).toLowerCase()) {
           throw new Error('synaptic-adapter-base-model-attestation-mismatch');
+        }
+        if (response.adapterApplied === false) {
+          if (response.appliedAdapterSha256 !== null && response.appliedAdapterSha256 !== undefined) {
+            throw new Error('synaptic-canonical-fallback-must-not-attest-applied-adapter');
+          }
+          const fallbackReason = typeof response.adapterFallbackReason === 'string'
+            ? response.adapterFallbackReason.slice(0, 120)
+            : 'canonical-selection-mismatch';
+          this.synapticMatrix.recordCanonicalFallback(task, selection.adapterId, fallbackReason);
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+          await this.journal.write('info', 'runtime.synaptic-adapter.canonical-base-fallback', {
+            adapterId: selection.adapterId, task, fallbackReason,
+            baseModelId: this.config.synapticBaseModelId,
+            baseModelRevisionSha256: response.modelRevisionSha256,
+          }).catch(() => {});
+          // The canonical executor already returned the base response. Do not
+          // invoke baseInvoker a second time and do not penalize a healthy P25
+          // candidate for a registry/policy disagreement.
+          return response;
         }
         if (typeof response.appliedAdapterSha256 !== 'string'
           || response.appliedAdapterSha256.toLowerCase() !== selection.adapter.artifactSha256) {
