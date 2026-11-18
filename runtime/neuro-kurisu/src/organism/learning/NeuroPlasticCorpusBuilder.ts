@@ -164,6 +164,10 @@ export function buildVerifiedNeuroPlasticCorpus(
   }
   const training = materialize(rawDataset.training, resolver, domain, 'train');
   const validation = materialize(rawDataset.validation, resolver, domain, 'validation');
+  const trainingExampleIds = new Set(training.map(row => row.exampleId));
+  if (validation.some(row => trainingExampleIds.has(row.exampleId))) {
+    throw new Error('neuro-plastic-train-validation-example-overlap');
+  }
   if (training.length < 5 || validation.length < 2) {
     throw new Error('neuro-plastic-minimum-training-validation-examples-not-met');
   }
