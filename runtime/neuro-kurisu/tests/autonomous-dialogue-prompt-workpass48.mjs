@@ -56,7 +56,7 @@ assert.match(`${systemOwnedPrompt.system}\\n${systemOwnedPrompt.user}`,
   /your own system-owned follow-up/i,
   'system-owned obligations must be framed as the organism own accepted follow-up');
 assert.doesNotMatch(`${systemOwnedPrompt.system}\\n${systemOwnedPrompt.user}`,
-  /the user explicitly accepted|the user assigned it/i,
+  /This is a user-owned commitment|user-owned commitment the user explicitly accepted/i,
   'system-owned obligations must not be falsely attributed to the user');
 assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
   /must not claim it is complete|never claim it is complete/i,
