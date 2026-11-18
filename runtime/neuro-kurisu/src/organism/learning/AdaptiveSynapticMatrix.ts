@@ -65,6 +65,14 @@ export interface SynapticAdapterRecord {
   lastErrorAt: number;
   /** Last accepted report digest captured when the profile entered quarantine. */
   quarantineReportSha256?: string;
+  /** Ordered, single-use validation reports. Entries are never evicted. */
+  acceptedReportSha256s: string[];
+  /** Monotonic number of accepted reports represented by this ledger. */
+  acceptedReportCount: number;
+  /** SHA-256 commitment to the complete ordered report digest sequence. */
+  acceptedReportHistorySha256: string;
+  /** Incomplete/corrupt history disables activation until a trusted migration. */
+  activationHistorySaturated?: boolean;
 }
 
 export interface SynapticMatrixDecision {
@@ -118,6 +126,7 @@ export type SynapticAdapterSelection =
 
 const MAX_ADAPTERS = 32;
 const MAX_DECISIONS = 128;
+export const MAX_ACCEPTED_SYNAPTIC_REPORTS_PER_ADAPTER = 64;
 const HASH_PATTERN = /^[a-f0-9]{64}$/i;
 const clamp01 = (value: unknown): number => {
   const n = Number(value);
@@ -133,6 +142,35 @@ function canonicalJson(value: unknown): string {
     .map(key => JSON.stringify(key) + ':' + canonicalJson(record[key]))
     .join(',') + '}';
 }
+
+/** Deterministic local commitment; external replay anchors authenticate monotonic history across restores. */
+export function synapticReplayHistoryCommitment(digests: readonly string[]): string {
+  return createHash('sha256')
+    .update('nk1-p25-report-history:v1:')
+    .update(canonicalJson(digests.map(digest => digest.toLowerCase())))
+    .digest('hex');
+}
+
+export interface SynapticReplayAnchorState {
+  acceptedReportCount: number;
+  acceptedReportHistorySha256: string;
+}
+
+/**
+ * Host-owned, rollback-resistant ledger anchor. Implementations must use an atomic
+ * compare-and-swap in a separately protected store (for example a transactional DB
+ * with monotonic constraints); a second JSON file on the same writable disk is not
+ * a trusted anchor.
+ */
+export interface SynapticReplayAnchorStore {
+  read(adapterId: string): Promise<SynapticReplayAnchorState | null>;
+  compareAndSwap(
+    adapterId: string,
+    expected: SynapticReplayAnchorState | null,
+    next: SynapticReplayAnchorState & { latestReportSha256: string },
+  ): Promise<boolean>;
+}
+
 
 function normalizeCandidate(raw: SynapticAdapterCandidate): SynapticAdapterCandidate {
   if (!raw || typeof raw !== 'object') throw new Error('synaptic-adapter-candidate-invalid');
@@ -266,6 +304,9 @@ export class AdaptiveSynapticMatrixEngine {
     const record: SynapticAdapterRecord = {
       candidate, status: 'candidate', cooldownUntil: 0, consecutiveFailures: 0,
       selections: 0, failures: 0, averageLatencyMs: 0, lastErrorAt: 0,
+      acceptedReportSha256s: [],
+      acceptedReportCount: 0,
+      acceptedReportHistorySha256: synapticReplayHistoryCommitment([]),
     };
     this.state.adapters.push(record);
     return structuredClone(record);
@@ -278,10 +319,20 @@ export class AdaptiveSynapticMatrixEngine {
     const manifest = normalizeManifest(raw);
     const record = this.state.adapters.find(entry => entry.candidate.id === manifest.id);
     if (!record || !sameCandidate(record.candidate, manifest)) throw new Error('synaptic-adapter-candidate-manifest-mismatch');
+    const reportSha256 = manifest.validation.reportSha256;
     const quarantinedReportSha256 = record.quarantineReportSha256
       ?? (record.status === 'quarantined' ? record.manifest?.validation.reportSha256 : undefined);
-    if (quarantinedReportSha256 === manifest.validation.reportSha256) {
+    if (quarantinedReportSha256 === reportSha256) {
       throw new Error('synaptic-adapter-revalidation-required-after-quarantine');
+    }
+    if (record.activationHistorySaturated) {
+      throw new Error('synaptic-adapter-activation-history-capacity-reached');
+    }
+    if (record.acceptedReportSha256s.includes(reportSha256)) {
+      throw new Error('synaptic-adapter-validation-report-replay');
+    }
+    if (record.acceptedReportSha256s.length >= MAX_ACCEPTED_SYNAPTIC_REPORTS_PER_ADAPTER) {
+      throw new Error('synaptic-adapter-activation-history-capacity-reached');
     }
     if (typeof verify !== 'function') throw new Error('synaptic-adapter-manifest-verifier-required');
     let verified = false;
@@ -293,6 +344,9 @@ export class AdaptiveSynapticMatrixEngine {
     if (!verified) throw new Error('synaptic-adapter-manifest-signature-verification-failed');
     record.status = 'active';
     record.manifest = structuredClone(manifest);
+    record.acceptedReportSha256s.push(reportSha256);
+    record.acceptedReportCount = record.acceptedReportSha256s.length;
+    record.acceptedReportHistorySha256 = synapticReplayHistoryCommitment(record.acceptedReportSha256s);
     delete record.quarantineReportSha256;
     record.cooldownUntil = 0;
     record.consecutiveFailures = 0;
@@ -453,6 +507,32 @@ export class AdaptiveSynapticMatrixEngine {
       try {
         const candidate = normalizeCandidate(item.candidate);
         if (next.adapters.some(entry => entry.candidate.id === candidate.id)) continue;
+        const hasPersistedReportHistory = Array.isArray(item.acceptedReportSha256s);
+        const rawReportHistory = hasPersistedReportHistory ? item.acceptedReportSha256s : [];
+        // Never scan an unbounded attacker-controlled history array during restore.
+        const boundedReportHistory = rawReportHistory.slice(0, MAX_ACCEPTED_REPORTS_PER_ADAPTER);
+        const validReportHistory = boundedReportHistory
+          .filter((digest): digest is string => typeof digest === 'string' && HASH_PATTERN.test(digest))
+          .map(digest => digest.toLowerCase());
+        const uniqueReportHistory = [...new Set(validReportHistory)];
+        const reportHistoryCorrupt = rawReportHistory.length > MAX_ACCEPTED_REPORTS_PER_ADAPTER
+          || rawReportHistory.length !== validReportHistory.length
+          || uniqueReportHistory.length !== validReportHistory.length;
+        const persistedReportCount = typeof item.acceptedReportCount === 'number'
+          && Number.isSafeInteger(item.acceptedReportCount) && item.acceptedReportCount >= 0
+          ? item.acceptedReportCount : null;
+        const persistedHistoryCommitment = typeof item.acceptedReportHistorySha256 === 'string'
+          && HASH_PATTERN.test(item.acceptedReportHistorySha256)
+          ? item.acceptedReportHistorySha256.toLowerCase() : null;
+        const currentHistoryCommitment = reportHistoryCommitment(uniqueReportHistory);
+        const reportHistoryEvidencePresent = rawReportHistory.length > 0 || Boolean(item.manifest)
+          || (persistedReportCount !== null && persistedReportCount > 0)
+          || (persistedHistoryCommitment !== null
+            && persistedHistoryCommitment !== reportHistoryCommitment([]));
+        const reportHistoryIntegrityMissing = reportHistoryEvidencePresent
+          && (persistedReportCount === null || persistedHistoryCommitment === null
+            || persistedReportCount !== uniqueReportHistory.length
+            || persistedHistoryCommitment !== currentHistoryCommitment);
         const restored: SynapticAdapterRecord = {
           candidate,
           status: item.status === 'disabled' || item.status === 'quarantined' ? item.status : 'candidate',
@@ -462,22 +542,55 @@ export class AdaptiveSynapticMatrixEngine {
           failures: Number.isSafeInteger(item.failures) ? Math.max(0, item.failures) : 0,
           averageLatencyMs: Number.isFinite(Number(item.averageLatencyMs)) ? Math.max(0, Number(item.averageLatencyMs)) : 0,
           lastErrorAt: Number.isFinite(Number(item.lastErrorAt)) ? Math.max(0, Number(item.lastErrorAt)) : 0,
+          acceptedReportSha256s: uniqueReportHistory,
+          acceptedReportCount: persistedReportCount ?? uniqueReportHistory.length,
+          acceptedReportHistorySha256: persistedHistoryCommitment ?? currentHistoryCommitment,
+          ...(item.activationHistorySaturated === true || reportHistoryCorrupt || reportHistoryIntegrityMissing ||
+              (!hasPersistedReportHistory && Boolean(item.manifest))
+            ? { activationHistorySaturated: true }
+            : {}),
           ...(typeof item.quarantineReportSha256 === 'string' && HASH_PATTERN.test(item.quarantineReportSha256)
             ? { quarantineReportSha256: item.quarantineReportSha256.toLowerCase() }
             : {}),
         };
-        if (item.status === 'quarantined' && !restored.quarantineReportSha256) {
-          // Backward compatibility: older snapshots kept the accepted manifest
-          // but had no dedicated anti-replay field. Recover only its digest;
-          // it is deny-only evidence and can never authorize activation.
+
+        // A modern snapshot must include its last accepted report in the ledger.
+        // Older snapshots can recover only the last stored manifest digest and
+        // are marked saturated because earlier activations cannot be reconstructed.
+        if (item.manifest) {
           try {
             const priorManifest = normalizeManifest(item.manifest as SynapticAdapterActivationManifest);
             if (sameCandidate(candidate, priorManifest)) {
-              restored.quarantineReportSha256 = priorManifest.validation.reportSha256;
+              const priorDigest = priorManifest.validation.reportSha256;
+              if (!restored.acceptedReportSha256s.includes(priorDigest)) {
+                if (hasPersistedReportHistory) {
+                  restored.activationHistorySaturated = true;
+                }
+                if (restored.acceptedReportSha256s.length < MAX_ACCEPTED_REPORTS_PER_ADAPTER) {
+                  restored.acceptedReportSha256s.push(priorDigest);
+                } else {
+                  restored.activationHistorySaturated = true;
+                }
+              }
+              if (item.status === 'quarantined' && !restored.quarantineReportSha256) {
+                restored.quarantineReportSha256 = priorDigest;
+              }
             }
           } catch {
-            // Keep the adapter quarantined; lack of legacy evidence never activates it.
+            if (item.status === 'active' || item.status === 'disabled' || item.status === 'quarantined') {
+              restored.activationHistorySaturated = true;
+            }
           }
+        }
+        // Snapshots from the first P25 ledger release lack a count/commitment.
+        // Carry their observed entries forward, but do not claim their history is complete.
+        if (persistedReportCount === null || persistedHistoryCommitment === null) {
+          restored.acceptedReportCount = restored.acceptedReportSha256s.length;
+          restored.acceptedReportHistorySha256 = reportHistoryCommitment(restored.acceptedReportSha256s);
+        }
+        if (item.status === 'quarantined' && !restored.quarantineReportSha256) {
+          // Without the last accepted receipt the quarantine cannot be cleared safely.
+          restored.activationHistorySaturated = true;
         }
         if (item.status === 'active') {
           try {
@@ -485,15 +598,18 @@ export class AdaptiveSynapticMatrixEngine {
             const payloadMatches = sameCandidate(candidate, manifest);
             const signatureValid = typeof verify === 'function'
               && verify(synapticAdapterManifestPayload(manifest), manifest.signature, manifest.signerKeyId) === true;
-            if (payloadMatches && signatureValid) {
+            if (payloadMatches && signatureValid && !restored.activationHistorySaturated) {
               restored.status = 'active';
               restored.manifest = manifest;
             } else {
               restored.status = 'quarantined';
               restored.manifest = manifest;
+              restored.quarantineReportSha256 ??= manifest.validation.reportSha256;
+              restored.quarantineReportSha256 ??= manifest.validation.reportSha256;
             }
           } catch {
             restored.status = 'quarantined';
+            restored.activationHistorySaturated = true;
           }
         }
         next.adapters.push(restored);
@@ -522,6 +638,48 @@ export class AdaptiveSynapticMatrixEngine {
       adapterFailures: Number.isSafeInteger(metrics.adapterFailures) ? Math.max(0, metrics.adapterFailures) : 0,
     };
     this.state = next;
+  }
+
+  replayAnchorState(adapterId: string): SynapticReplayAnchorState | null {
+    const record = this.state.adapters.find(entry => entry.candidate.id === adapterId);
+    if (!record) return null;
+    return {
+      acceptedReportCount: record.acceptedReportCount,
+      acceptedReportHistorySha256: record.acceptedReportHistorySha256,
+    };
+  }
+
+  reconcileReplayAnchor(adapterId: string, anchor: SynapticReplayAnchorState | null): boolean {
+    const record = this.state.adapters.find(entry => entry.candidate.id === adapterId);
+    if (!record) return false;
+    const local = this.replayAnchorState(adapterId);
+    const validAnchor = anchor === null || (
+      Number.isSafeInteger(anchor.acceptedReportCount) &&
+      anchor.acceptedReportCount >= 0 &&
+      anchor.acceptedReportCount <= MAX_ACCEPTED_SYNAPTIC_REPORTS_PER_ADAPTER &&
+      typeof anchor.acceptedReportHistorySha256 === 'string' &&
+      HASH_PATTERN.test(anchor.acceptedReportHistorySha256)
+    );
+    const emptyCommitment = synapticReplayHistoryCommitment([]);
+    const anchorCount = anchor?.acceptedReportCount ?? 0;
+    const anchorDigest = anchor?.acceptedReportHistorySha256 ?? emptyCommitment;
+    const matches = validAnchor && local !== null &&
+      local.acceptedReportCount === anchorCount &&
+      local.acceptedReportHistorySha256 === anchorDigest &&
+      (anchor !== null || local.acceptedReportCount === 0);
+    if (matches) return true;
+    this.markReplayAnchorUntrusted(adapterId);
+    return false;
+  }
+
+  markReplayAnchorUntrusted(adapterId: string): SynapticAdapterRecord | null {
+    const record = this.state.adapters.find(entry => entry.candidate.id === adapterId);
+    if (!record) return null;
+    record.activationHistorySaturated = true;
+    record.status = 'quarantined';
+    record.quarantineReportSha256 ??= record.manifest?.validation.reportSha256;
+    record.cooldownUntil = 0;
+    return structuredClone(record);
   }
 
   snapshot(): AdaptiveSynapticMatrixState {
