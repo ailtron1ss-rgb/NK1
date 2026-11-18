@@ -14,6 +14,7 @@ from .training import (
     dataset_fingerprint,
     encode_example,
     ensure_holdout_is_distinct,
+    ensure_validation_is_distinct,
     paired_bootstrap_mean_interval,
     read_jsonl,
 )
@@ -50,8 +51,18 @@ def main() -> None:
         raise SystemExit("adapter-manifest-invalid")
     training_evidence = manifest.get("training_evidence")
     training_dataset_sha256 = training_evidence.get("dataset_sha256") if isinstance(training_evidence, dict) else None
+    validation_dataset_sha256 = training_evidence.get("validation_dataset_sha256") if isinstance(training_evidence, dict) else None
     try:
-        ensure_holdout_is_distinct(training_dataset_sha256, evaluation_dataset_sha256)
+        if args.split == "holdout":
+            ensure_holdout_is_distinct(
+                training_dataset_sha256,
+                evaluation_dataset_sha256,
+                validation_digest=validation_dataset_sha256,
+            )
+        else:
+            ensure_validation_is_distinct(training_dataset_sha256, evaluation_dataset_sha256)
+            if validation_dataset_sha256 is not None and evaluation_dataset_sha256 != validation_dataset_sha256:
+                raise ValueError("evaluation-dataset-does-not-match-recorded-validation-dataset")
     except ValueError as error:
         raise SystemExit(str(error)) from error
     if args.device == "auto":
@@ -132,6 +143,7 @@ def main() -> None:
             "manifest_sha256": json.loads((Path(args.adapter_dir) / "manifest.json").read_text(encoding="utf-8"))["manifest_sha256"],
             "dataset_sha256": evaluation_dataset_sha256,
             "training_dataset_sha256": training_dataset_sha256,
+            "validation_dataset_sha256": validation_dataset_sha256,
             "sample_count": len(paired),
             "baseline_mean_loss": baseline_mean,
             "candidate_mean_loss": candidate_mean,

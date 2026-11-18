@@ -9,7 +9,14 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from .engine import NeuralProsthesisBank
-from .training import dataset_fingerprint, encode_example, read_jsonl
+from .training import (
+    MAX_EVALUATION_EXAMPLES,
+    ValidationEarlyStopping,
+    dataset_fingerprint,
+    encode_example,
+    ensure_validation_is_distinct,
+    read_jsonl,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -18,6 +25,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--base-model-id", required=True, help="Stable host model identifier.")
     parser.add_argument("--base-model-revision", required=True, help="Immutable commit/revision identifier pinned by the host.")
     parser.add_argument("--train-jsonl", required=True, help="Sanitized, consented JSONL with prompt/completion pairs.")
+    parser.add_argument("--validation-jsonl", help="Optional disjoint validation JSONL used only for early stopping.")
+    parser.add_argument("--early-stopping-patience", type=int, default=2)
+    parser.add_argument("--early-stopping-min-delta", type=float, default=0.001)
     parser.add_argument("--output-dir", required=True, help="New, empty adapter artifact directory.")
     parser.add_argument("--adapter-id", required=True)
     parser.add_argument("--layer-path", default="", help="Explicit layer container path, for example model.layers.")
@@ -56,6 +66,8 @@ def main() -> None:
         raise SystemExit("max-length out of supported range")
     if not 0 <= args.seed <= 0xFFFFFFFF:
         raise SystemExit("seed out of supported range")
+    if not 1 <= args.early_stopping_patience <= 20 or not 0.0 <= args.early_stopping_min_delta <= 10.0:
+        raise SystemExit("early-stopping configuration out of range")
     layers = [int(value.strip()) for value in args.layers.split(",") if value.strip()]
     if not layers:
         raise SystemExit("at least one decoder layer is required")
@@ -63,6 +75,20 @@ def main() -> None:
     examples = read_jsonl(args.train_jsonl)
     if dataset_fingerprint(args.train_jsonl) != train_dataset_sha256:
         raise SystemExit("training-dataset-changed-while-loading")
+    validation_dataset_sha256 = None
+    validation_examples = None
+    if args.validation_jsonl:
+        validation_dataset_sha256 = dataset_fingerprint(args.validation_jsonl)
+        try:
+            ensure_validation_is_distinct(train_dataset_sha256, validation_dataset_sha256)
+        except ValueError as error:
+            raise SystemExit(str(error)) from error
+        validation_examples = read_jsonl(
+            args.validation_jsonl,
+            max_examples=MAX_EVALUATION_EXAMPLES,
+        )
+        if dataset_fingerprint(args.validation_jsonl) != validation_dataset_sha256:
+            raise SystemExit("validation-dataset-changed-while-loading")
     random.seed(args.seed)
     torch.manual_seed(args.seed)
     device = _select_device(args.device)
@@ -110,9 +136,18 @@ def main() -> None:
         for parameter in branch.parameters():
             parameter.requires_grad_(True)
         optimizer = torch.optim.AdamW(branch.parameters(), lr=args.learning_rate, weight_decay=0.01)
-        bank.train()
+        stopping = (
+            ValidationEarlyStopping(
+                patience=args.early_stopping_patience,
+                min_delta=args.early_stopping_min_delta,
+            )
+            if validation_examples is not None
+            else None
+        )
         history = []
+        early_stopped = False
         for epoch in range(args.epochs):
+            bank.train()
             random.shuffle(examples)
             epoch_losses = []
             for example in examples:
@@ -127,7 +162,29 @@ def main() -> None:
                 torch.nn.utils.clip_grad_norm_(branch.parameters(), max_norm=1.0)
                 optimizer.step()
                 epoch_losses.append(float(loss.detach().float().item()))
-            history.append({"epoch": epoch + 1, "mean_loss": sum(epoch_losses) / max(1, len(epoch_losses))})
+            epoch_record = {
+                "epoch": epoch + 1,
+                "mean_loss": sum(epoch_losses) / max(1, len(epoch_losses)),
+            }
+            if validation_examples is not None and stopping is not None:
+                bank.eval()
+                validation_losses = []
+                with torch.inference_mode(), bank.activate(args.adapter_id):
+                    for example in validation_examples:
+                        input_ids, labels = encode_example(tokenizer, example, args.max_length, device)
+                        output = model(input_ids=input_ids, labels=labels, use_cache=False)
+                        validation_loss = output.loss
+                        if not torch.isfinite(validation_loss).item():
+                            raise RuntimeError("non-finite-validation-loss")
+                        validation_losses.append(float(validation_loss.float().item()))
+                validation_mean = sum(validation_losses) / len(validation_losses)
+                epoch_record["validation_mean_loss"] = validation_mean
+                early_stopped = stopping.update(epoch + 1, validation_mean, branch)
+            history.append(epoch_record)
+            if early_stopped:
+                break
+        if stopping is not None:
+            stopping.restore(branch)
         bank.eval()
         manifest = bank.save_adapter(
             args.adapter_id,
@@ -135,8 +192,9 @@ def main() -> None:
             training_evidence={
                 "dataset_sha256": train_dataset_sha256,
                 "example_count": len(examples),
-                "epochs": args.epochs,
+                "epochs": len(history),
                 "seed": args.seed,
+                "validation_dataset_sha256": validation_dataset_sha256,
             },
         )
         report = {
@@ -145,8 +203,16 @@ def main() -> None:
             "manifest_sha256": manifest["manifest_sha256"],
             "train_examples": len(examples),
             "train_dataset_sha256": train_dataset_sha256,
-            "epochs": args.epochs,
+            "epochs_requested": args.epochs,
+            "epochs_completed": len(history),
             "seed": args.seed,
+            "validation_dataset_sha256": validation_dataset_sha256,
+            "validation_examples": len(validation_examples) if validation_examples is not None else 0,
+            "best_validation_epoch": stopping.best_epoch if stopping is not None else None,
+            "best_validation_loss": stopping.best_loss if stopping is not None else None,
+            "early_stopping_patience": args.early_stopping_patience if stopping is not None else None,
+            "early_stopping_min_delta": args.early_stopping_min_delta if stopping is not None else None,
+            "early_stopped": early_stopped,
             "history": history,
             "holdout_evaluated": False,
             "promotion_allowed": False,

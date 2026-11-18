@@ -84,7 +84,8 @@ def _normalize_training_evidence(value: Any) -> dict[str, Any] | None:
     if value is None:
         return None
     required = {"dataset_sha256", "example_count", "epochs", "seed"}
-    if type(value) is not dict or set(value) != required:
+    with_validation = required | {"validation_dataset_sha256"}
+    if type(value) is not dict or set(value) not in (required, with_validation):
         raise ArtifactError("adapter-training-evidence-schema-invalid")
     digest = value.get("dataset_sha256")
     example_count = value.get("example_count")
@@ -98,12 +99,21 @@ def _normalize_training_evidence(value: Any) -> dict[str, Any] | None:
         raise ArtifactError("adapter-training-epoch-count-invalid")
     if type(seed) is not int or not 0 <= seed <= 0xFFFFFFFF:
         raise ArtifactError("adapter-training-seed-invalid")
-    return {
+    normalized = {
         "dataset_sha256": digest,
         "example_count": example_count,
         "epochs": epochs,
         "seed": seed,
     }
+    if "validation_dataset_sha256" in value:
+        validation_digest = value["validation_dataset_sha256"]
+        if validation_digest is not None:
+            if not isinstance(validation_digest, str) or not SHA256.fullmatch(validation_digest):
+                raise ArtifactError("adapter-validation-dataset-digest-invalid")
+            if validation_digest == digest:
+                raise ArtifactError("adapter-validation-dataset-matches-training-dataset")
+        normalized["validation_dataset_sha256"] = validation_digest
+    return normalized
 
 
 def _hidden_size(config: dict[str, Any]) -> int:

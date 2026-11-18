@@ -89,6 +89,9 @@ Choose layer indexes that exist in the exact model:
       --base-model-id "$NEURO_NP_MODEL_ID" \
       --base-model-revision "$NEURO_NP_MODEL_REVISION" \
       --train-jsonl ./data/train.jsonl \
+      --validation-jsonl ./data/validation.jsonl \
+      --early-stopping-patience 2 \
+      --early-stopping-min-delta 0.001 \
       --output-dir ./artifacts/kurisu-reasoning-v1 \
       --adapter-id kurisu-reasoning-v1 \
       --layers 3,7,11 \
@@ -99,9 +102,14 @@ Choose layer indexes that exist in the exact model:
 
 The command freezes every base-model parameter, optimizes only residual modules,
 clips their gradient norm, and saves a candidate artifact. It refuses an existing
-output directory. The training report contains sample count, dataset SHA-256 and
-epoch losses, not the example text. The schema-v2 manifest binds that fingerprint
-and the example count, epochs and seed to the adapter weights.
+output directory. When --validation-jsonl is supplied, the trainer checks that its
+fingerprint differs from the training file, measures validation loss after each
+epoch, applies patience/min-delta early stopping and restores the best adapter-only
+checkpoint before export. The schema-v2 manifest binds the training fingerprint,
+optional validation fingerprint, example count, completed epochs and seed to the
+adapter weights. The report records requested/completed epochs, best validation
+epoch/loss and whether early stopping fired; no prompt or completion text is stored.
+Without a validation file, the previous fixed-epoch training behavior is preserved.
 
 ## 4. Compare baseline and candidate on a disjoint holdout
 
@@ -116,11 +124,11 @@ and the example count, epochs and seed to the adapter weights.
 
 The evaluator performs paired baseline/candidate completion-token loss measurements
 on the same examples and computes a deterministic paired-bootstrap 95% interval
-for the mean loss delta. It rejects exact reuse of the training file using the
-fingerprint embedded in the schema-v2 manifest. Review eligibility requires a
-holdout split, bound training provenance, at least five pairs, lower mean loss and
-an upper confidence bound below zero. Exact-file separation cannot detect partial
-example overlap, so keep the datasets disjoint by construction. The report records
+for the mean loss delta. It rejects exact reuse of either the training or recorded
+validation file as a final holdout. Review eligibility requires a holdout split,
+bound training provenance, at least five pairs, lower mean loss and an upper
+confidence bound below zero. Exact-file separation cannot detect partial example
+overlap, so keep the datasets disjoint by construction. The report records
 independently_verified=false and promotion_allowed=false; this is not an independent
 attestation and does not activate the adapter.
 

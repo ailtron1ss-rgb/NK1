@@ -53,6 +53,15 @@ class ValidationEarlyStoppingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "validation-loss-must-be-finite"):
             stopping.update(1, float("nan"), nn.Linear(1, 1))
 
+    def test_validation_dataset_must_be_distinct_from_training(self):
+        checker = getattr(training, "ensure_validation_is_distinct", None)
+        self.assertTrue(callable(checker), "training/validation split guard is required")
+        if checker is None:
+            return
+        checker("a" * 64, "b" * 64)
+        with self.assertRaisesRegex(ValueError, "validation-dataset-matches-training-dataset"):
+            checker("a" * 64, "a" * 64)
+
     def test_holdout_must_be_distinct_from_both_training_and_validation(self):
         checker = getattr(training, "ensure_holdout_is_distinct", None)
         self.assertTrue(callable(checker), "holdout separation guard is required")

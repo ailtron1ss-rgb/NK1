@@ -38,6 +38,14 @@
 - Expose only the last sidecar usage counters, finish reason and timestamp through the read-only Neural Prosthesis diagnostic; do not store prompt or generated text in this metric snapshot.
 - Preserve backward compatibility for providers that do not report usage.
 
+## [NK1][OmeStro #28] Neural Prosthesis — validation-aware adapter training (2026-11-18)
+
+- Add an optional, separately fingerprinted validation JSONL dataset to offline residual-adapter training; training and validation fingerprints must differ and the source must remain unchanged while loading.
+- Measure adapter validation loss after every epoch, checkpoint the best residual-only state, stop after configurable patience/min-delta and restore the best checkpoint before exporting the candidate.
+- Bind the validation dataset fingerprint into training provenance while retaining backward compatibility with earlier schema-v2 manifests that do not contain it.
+- Refuse to reuse the recorded validation dataset as the final holdout; validation evaluation must match the recorded validation fingerprint.
+- Report requested/completed epochs, best validation epoch/loss and early-stop status without storing example text. Fixed-epoch behavior remains available when no validation dataset is supplied.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.

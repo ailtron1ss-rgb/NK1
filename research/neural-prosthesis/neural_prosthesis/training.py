@@ -88,15 +88,84 @@ def dataset_fingerprint(path: str | Path) -> str:
     return digest.hexdigest()
 
 
-def ensure_holdout_is_distinct(training_digest: str | None, evaluation_digest: str) -> None:
-    if not isinstance(evaluation_digest, str) or not _DATASET_SHA256.fullmatch(evaluation_digest):
-        raise ValueError("evaluation-dataset-digest-invalid")
-    if training_digest is None:
-        return
+def ensure_validation_is_distinct(training_digest: str, validation_digest: str) -> None:
     if not isinstance(training_digest, str) or not _DATASET_SHA256.fullmatch(training_digest):
         raise ValueError("training-dataset-digest-invalid")
-    if training_digest == evaluation_digest:
-        raise ValueError("holdout-dataset-matches-training-dataset")
+    if not isinstance(validation_digest, str) or not _DATASET_SHA256.fullmatch(validation_digest):
+        raise ValueError("validation-dataset-digest-invalid")
+    if training_digest == validation_digest:
+        raise ValueError("validation-dataset-matches-training-dataset")
+
+
+def ensure_holdout_is_distinct(
+    training_digest: str | None,
+    evaluation_digest: str,
+    *,
+    validation_digest: str | None = None,
+) -> None:
+    if not isinstance(evaluation_digest, str) or not _DATASET_SHA256.fullmatch(evaluation_digest):
+        raise ValueError("evaluation-dataset-digest-invalid")
+    if training_digest is not None:
+        if not isinstance(training_digest, str) or not _DATASET_SHA256.fullmatch(training_digest):
+            raise ValueError("training-dataset-digest-invalid")
+        if training_digest == evaluation_digest:
+            raise ValueError("holdout-dataset-matches-training-dataset")
+    if validation_digest is not None:
+        if not isinstance(validation_digest, str) or not _DATASET_SHA256.fullmatch(validation_digest):
+            raise ValueError("validation-dataset-digest-invalid")
+        if validation_digest == evaluation_digest:
+            raise ValueError("holdout-dataset-matches-validation-dataset")
+
+
+class ValidationEarlyStopping:
+    """Keep the best adapter-only state and stop after stale validation epochs."""
+
+    def __init__(self, *, patience: int = 2, min_delta: float = 0.001) -> None:
+        if type(patience) is not int or not 1 <= patience <= 20:
+            raise ValueError("early-stopping-patience-out-of-range")
+        if (
+            isinstance(min_delta, bool)
+            or not isinstance(min_delta, (int, float))
+            or not math.isfinite(float(min_delta))
+            or not 0.0 <= float(min_delta) <= 10.0
+        ):
+            raise ValueError("early-stopping-min-delta-out-of-range")
+        self.patience = patience
+        self.min_delta = float(min_delta)
+        self.best_loss = math.inf
+        self.best_epoch: int | None = None
+        self.bad_epochs = 0
+        self._best_state: dict[str, torch.Tensor] | None = None
+
+    def update(self, epoch: int, validation_loss: float, module: torch.nn.Module) -> bool:
+        if type(epoch) is not int or epoch < 1:
+            raise ValueError("early-stopping-epoch-invalid")
+        value = float(validation_loss)
+        if not math.isfinite(value):
+            raise ValueError("validation-loss-must-be-finite")
+        if not isinstance(module, torch.nn.Module):
+            raise TypeError("early-stopping-requires-a-torch-module")
+        if value < self.best_loss - self.min_delta:
+            snapshot: dict[str, torch.Tensor] = {}
+            for name, tensor in module.state_dict().items():
+                if not isinstance(tensor, torch.Tensor):
+                    raise ValueError("adapter-checkpoint-state-invalid")
+                if tensor.is_floating_point() and not torch.isfinite(tensor).all().item():
+                    raise ValueError("adapter-checkpoint-state-non-finite")
+                snapshot[name] = tensor.detach().to(device="cpu").clone()
+            self._best_state = snapshot
+            self.best_loss = value
+            self.best_epoch = epoch
+            self.bad_epochs = 0
+            return False
+        self.bad_epochs += 1
+        return self.bad_epochs >= self.patience
+
+    def restore(self, module: torch.nn.Module) -> int:
+        if self._best_state is None or self.best_epoch is None:
+            raise ValueError("early-stopping-has-no-best-checkpoint")
+        module.load_state_dict(self._best_state, strict=True)
+        return self.best_epoch
 
 
 def paired_bootstrap_mean_interval(
