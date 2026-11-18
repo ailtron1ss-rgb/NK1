@@ -1399,7 +1399,6 @@ export class P23LearningEngine {
       const provenance = prior?.synapticCommonsProvenance;
       return provenance?.schemaVersion === 1 &&
         provenance.artifactFingerprint === artifactFingerprint &&
-        provenance.localProposalId === proposal.proposalId &&
         provenance.localManifestFingerprint === proposal.manifestFingerprint &&
         provenance.localOutcomeFingerprint === proposal.outcomeFingerprint &&
         provenance.localDatasetFingerprint === proposal.datasetFingerprint &&
