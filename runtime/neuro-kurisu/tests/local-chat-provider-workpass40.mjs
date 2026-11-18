@@ -22,8 +22,16 @@ assert.equal(calls[0].body.stream, false);
 assert.equal(calls[0].body.max_tokens, 128);
 assert.equal(calls[0].init.redirect, 'error', 'a loopback endpoint must not redirect requests to another host');
 
-const structured = new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://localhost:8080/v1', fetchImpl: async () => ({ ok: true, headers: { get: () => null }, text: async () => JSON.stringify({ choices: [{ message: { content: [{ type: 'text', text: 'Part A. ' }, { type: 'text', text: 'Part B.' }] } }] }) }) });
+const structured = new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://localhost:8080/v1', fetchImpl: async () => ({ ok: true, headers: { get: () => null }, text: async () => JSON.stringify({ model: 'local-model', choices: [{ message: { content: [{ type: 'text', text: 'Part A. ' }, { type: 'text', text: 'Part B.' }] } }] }) }) });
 assert.equal((await structured.generate({ system: '', user: 'x' })).text, 'Part A. Part B.');
+await assert.rejects(
+  new OpenAICompatibleLocalChatProvider({
+    baseUrl: 'http://127.0.0.1:8080/v1',
+    fetchImpl: async () => ({ ok: true, headers: { get: () => null }, text: async () => JSON.stringify({ choices: [{ message: { content: 'valid text but missing model identity' } }] }) }),
+  }).generate({ system: '', user: 'x' }),
+  /llama\\.cpp-response-model-missing/,
+  'a successful response must include the model identity actually served by the backend',
+);
 
 assert.throws(() => new OpenAICompatibleLocalChatProvider({ baseUrl: 'https://localhost:8080/v1' }), /loopback-http/);
 assert.throws(() => new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://example.com/v1' }), /loopback-http/);
