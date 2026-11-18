@@ -410,7 +410,6 @@ let liveProofExecutorCalls = 0;
 liveProofGateway.registerTool({
   id: skillId,
   capability: contract.capability,
-  permissionClass: 'none',
   destructive: false,
   requiresSkillCompetenceProof: true,
   skillCompetenceSkillId: skillId,
