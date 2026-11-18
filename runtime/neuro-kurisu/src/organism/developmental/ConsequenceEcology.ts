@@ -974,7 +974,7 @@ export class ConsequenceEcologyEngine {
     return accepted;
   }
 
-  restore(raw?: Partial<ConsequenceEcologyState> | null, validateOutcome?: (outcomeId: string) => boolean): void {
+  restore(raw?: Partial<ConsequenceEcologyState> | null, resolveVerifiedOutcome?: (outcomeId: string) => SharedFutureOutcomeRecord | null): void {
     const source = isRecord(raw) ? raw : {};
     const rows = Array.isArray(source.analyses) ? source.analyses.slice(-MAX_ANALYSES) : [];
     const seen = new Set<string>();
@@ -991,7 +991,7 @@ export class ConsequenceEcologyEngine {
     this.state = {
       version: 1,
       analyses,
-      outcomeCalibrations: this.restoreCalibrationRecords(source.outcomeCalibrations, analyses.map(row => row.analysis), validateOutcome),
+      outcomeCalibrations: this.restoreCalibrationRecords(source.outcomeCalibrations, analyses.map(row => row.analysis), resolveVerifiedOutcome),
       rejectedCalibrations: Math.min(1_000_000, Math.max(0, Math.floor(finite(source.rejectedCalibrations)))),
       lastCalibrationAt: Math.max(0, finite(source.lastCalibrationAt)),
       totalAnalyses: Math.min(1_000_000, Math.max(analyses.length, Math.floor(finite(source.totalAnalyses, analyses.length)))),
