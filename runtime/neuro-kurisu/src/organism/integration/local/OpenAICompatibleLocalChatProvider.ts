@@ -158,7 +158,10 @@ export class OpenAICompatibleLocalChatProvider {
     try { payload = JSON.parse(rawPayload) as typeof payload; } catch { throw new Error('llama.cpp-invalid-json'); }
     const text = extractText(payload?.choices?.[0]?.message?.content);
     if (!text) throw new Error('llama.cpp-empty-response');
-    const model = String(payload?.model ?? requestedModel).slice(0, 160);
+    if (typeof payload?.model !== 'string' || !payload.model.trim()) {
+      throw new Error('llama.cpp-response-model-missing');
+    }
+    const model = payload.model.trim().slice(0, 160);
     return { text, backend: `llama.cpp:${model}`, model, latencyMs: Math.max(0, Date.now() - startedAt) };
   }
 }
