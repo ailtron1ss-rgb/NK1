@@ -12,6 +12,7 @@ import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransit
 import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageRequest, type LanguageResponse } from '../language/LanguageOrgan.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CognitiveToNeuralBridge, cognitiveNeuralProfileFingerprint, prepareCognitiveNeuralRequest, type CognitiveNeuralControlProfile, type CognitiveNeuralBridgeNeuralInput } from '../cognition/CognitiveToNeuralBridge.ts';
+import { CognitiveProviderFeedbackController } from '../cognition/CognitiveProviderFeedbackController.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
@@ -175,6 +176,7 @@ export class OrganismRuntime {
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
   private readonly cognitiveToNeuralBridge = new CognitiveToNeuralBridge();
+  private readonly cognitiveProviderFeedback = new CognitiveProviderFeedbackController();
   private readonly cognitiveToNeuralBridgeMetrics = {
     version:1 as const,
     projected:0,
@@ -209,6 +211,10 @@ export class OrganismRuntime {
     providerCompletionBudgetUtilizationMean:0,
     providerCompletionBudgetUtilizationMax:0,
     providerCompletionBudgetExceeded:0,
+    providerBudgetFeedbackObservations:0,
+    providerBudgetFeedbackRejected:0,
+    providerBudgetFeedbackDuplicates:0,
+    providerBudgetFeedbackTruncations:0,
     lastProviderPromptTokens:null as number|null,
     lastProviderCompletionTokens:null as number|null,
     lastProviderTotalTokens:null as number|null,
@@ -659,6 +665,7 @@ export class OrganismRuntime {
     return structuredClone({
       ...this.cognitiveToNeuralBridgeMetrics,
       enabled:this.config.cognitiveToNeuralBridge?.enabled !== false,
+      providerBudgetFeedback:this.cognitiveProviderFeedback.snapshotAll(),
     });
   }
 
@@ -790,6 +797,22 @@ export class OrganismRuntime {
       Math.max(this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax,utilization);
     if(usage.completionTokens>expected.maxTokens)
       this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetExceeded+=1;
+    const feedbackResult=this.cognitiveProviderFeedback.record({
+      requestId:expected.requestId,
+      mode:profile.mode,
+      completionTokens:usage.completionTokens,
+      maxTokens:expected.maxTokens,
+      finishReason:response.providerFinishReason,
+    });
+    if(feedbackResult.accepted){
+      this.cognitiveToNeuralBridgeMetrics.providerBudgetFeedbackObservations+=1;
+      if(response.providerFinishReason==='length')
+        this.cognitiveToNeuralBridgeMetrics.providerBudgetFeedbackTruncations+=1;
+    }else if(feedbackResult.reason==='duplicate-request-id'){
+      this.cognitiveToNeuralBridgeMetrics.providerBudgetFeedbackDuplicates+=1;
+    }else{
+      this.cognitiveToNeuralBridgeMetrics.providerBudgetFeedbackRejected+=1;
+    }
     this.evidenceBus.publish({
       tick:profile.tick,
       kind:'resource',
@@ -802,6 +825,11 @@ export class OrganismRuntime {
         totalTokens:usage.totalTokens,
         configuredMaxTokens:expected.maxTokens,
         completionBudgetUtilization:utilization,
+        finishReason:response.providerFinishReason??null,
+        feedbackAccepted:feedbackResult.accepted,
+        feedbackTruncationPressure01:feedbackResult.accepted
+          ? feedbackResult.snapshot.truncationPressure01
+          : this.cognitiveProviderFeedback.snapshot(profile.mode).truncationPressure01,
         overBudget:usage.completionTokens>expected.maxTokens,
       },
     });
@@ -846,6 +874,7 @@ export class OrganismRuntime {
         budgetRemaining01:budget?.remaining01??budget?.available01??.5,
         attention01:cycle.state.attentionBudget,
         neural:neuralInput,
+        providerFeedback:this.cognitiveProviderFeedback.snapshot(budget?.mode??'shallow'),
       },
       this.config.cognitiveToNeuralBridge?.enabled !== false,
     );
@@ -898,6 +927,7 @@ export class OrganismRuntime {
         maxTokens:profile.maxTokens,
         featureDimensions:profile.featureVector01.length,
         steeringIntent01:profile.steeringIntent01,
+        providerFeedback:profile.providerFeedback,
         samplingParametersConfigured:true,
         adapterSelectionApplied:false,
         activationSteeringApplied:false,
