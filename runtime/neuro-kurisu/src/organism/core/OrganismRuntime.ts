@@ -685,6 +685,8 @@ export class OrganismRuntime {
       this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsRejected+=1;
       return;
     }
+    const requestId=expected.requestId;
+    const expectedFingerprint=expected.profileFingerprint;
     if(this.cognitiveToNeuralBridgeReceiptIds.has(requestId)) {
       this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsDuplicate+=1;
       return;
@@ -780,7 +782,7 @@ export class OrganismRuntime {
       (this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean*observations+utilization)/(observations+1);
     this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax=
       Math.max(this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax,utilization);
-    if(usage.completionTokens>profile.maxTokens)
+    if(usage.completionTokens>expected.maxTokens)
       this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetExceeded+=1;
     this.evidenceBus.publish({
       tick:profile.tick,
@@ -788,6 +790,7 @@ export class OrganismRuntime {
       source:'llama.cpp-token-usage',
       confidence01:.99,
       payload:{
+        requestId:expected.requestId,
         promptTokens:usage.promptTokens,
         completionTokens:usage.completionTokens,
         totalTokens:usage.totalTokens,
