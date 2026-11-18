@@ -156,8 +156,9 @@ class NeuroPlasticTrainerCpuSmokeTests(unittest.TestCase):
         self.assertTrue((output / "neuro-plastic-registry-manifest.json").is_file())
         self.assertFalse((output / "model.safetensors").exists())
         self.assertFalse(metadata["automaticActivation"])
-        self.assertGreater(metadata["trainingMetrics"]["global_step"], 0)
+        self.assertGreater(metadata["trainingMetrics"]["globalStep"], 0)
         self.assertTrue(torch.isfinite(torch.tensor(metadata["trainingMetrics"]["train_loss"])).item())
+        self.assertTrue(torch.isfinite(torch.tensor(metadata["validationMetrics"]["eval_loss"])).item())
 
         for filename in ("adapter_config.json", "adapter_model.safetensors"):
             expected = metadata["artifacts"][filename]["sha256"]

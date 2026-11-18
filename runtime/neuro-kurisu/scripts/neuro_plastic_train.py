@@ -605,6 +605,15 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
         )
         train_result = trainer.train()
         evaluation = trainer.evaluate()
+        global_step = int(trainer.state.global_step)
+        if global_step < 1:
+            raise RuntimeError("adapter-training-produced-zero-optimization-steps")
+        training_metrics = json_safe(train_result.metrics)
+        if not isinstance(training_metrics, dict):
+            raise RuntimeError("trainer-training-metrics-invalid")
+        # Trainer's metrics dictionary does not consistently include global_step
+        # across Transformers versions; persist the authoritative trainer state.
+        training_metrics["globalStep"] = global_step
         trainer.model.save_pretrained(staging, safe_serialization=True)
         required_config = staging / "adapter_config.json"
         weight_file = staging / "adapter_model.safetensors"
@@ -654,7 +663,7 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
             "learningRate": manifest["learningRate"],
             "lora": manifest["lora"],
             "targetModules": target_modules,
-            "trainingMetrics": json_safe(train_result.metrics),
+            "trainingMetrics": training_metrics,
             "validationMetrics": json_safe(evaluation),
             "trainingEnvironment": {
                 "python": platform.python_version(),
