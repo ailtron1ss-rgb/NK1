@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
+const intentRuntimeSource = await readFile(new URL('../src/organism/system/IntentExecutionRuntime.ts', import.meta.url), 'utf8');
 const planAt = source.indexOf("planner: 'autonomous-resource-tool-life'");
 assert.notEqual(planAt, -1, 'autonomous resource/tool/life planner must remain identifiable');
 const autonomousBlock = source.slice(planAt, source.indexOf('const recorded =', planAt));
@@ -58,8 +59,10 @@ assert.match(source, /evidence\.inputHash !== sha256Stable\(\{ input: action\.in
   'Core must re-check the exact action input against its planner evidence immediately before approval');
 assert.match(source, /outcomeClass: 'idempotency-recovery-required'/,
   'an uncertain Intent dispatch must preserve the project/skill reconciliation state instead of becoming an ordinary refusal');
-assert.match(source, /this\.inFlightExecutions\.add\(lock\)/,
+assert.match(intentRuntimeSource, /this\.inFlightExecutions\.add\(lock\)/,
   'Intent receipt reconciliation must serialize with execution and other lookups');
+assert.match(intentRuntimeSource, /this\.inFlightExecutions\.delete\(lock\)/,
+  'the shared execution/reconciliation lock must always be released');
 assert.match(projectDispatch, /this\.reconcileIntentExecution\(approvedProjectIntent/,
   'a project operation with a persisted Intent Contract must reconcile through the intent runtime');
 assert.match(projectDispatch, /else \{[\s\S]*this\.reconcileToolExecution\(/,
