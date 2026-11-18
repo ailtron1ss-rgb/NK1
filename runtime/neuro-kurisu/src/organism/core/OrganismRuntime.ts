@@ -1229,6 +1229,10 @@ export class OrganismRuntime {
       this.neuralJitCaptureDrops++;
       return;
     }
+    if(this.neuralJitPendingCaptures.has(decisionId)) {
+      this.neuralJitCaptureDrops++;
+      return;
+    }
     // Pending model-host handles are opaque and process-local. Keep them bounded,
     // never serialize them, and require an object/string token from trusted host code.
     if(typeof capture!=='string' && (typeof capture!=='object' || Array.isArray(capture))) {
@@ -1282,6 +1286,7 @@ export class OrganismRuntime {
     const original=host.finalizeToolOutcome.bind(this.core);
     host.finalizeToolOutcome=async(...args:FinalizerArgs)=>{
       await original(...args);
+      if(this.stopping) return;
       const [toolId,input,,result,options,,gatewayDecisionLinked]=args;
       const decisionId=String(options?.decisionId??'').trim();
       // The pending capture was created from a real Runtime-selected decision.
@@ -1371,6 +1376,7 @@ export class OrganismRuntime {
     } catch { this.neuralJitCaptureDrops++; return; }
     finally { if(bindingTimer!==undefined) clearTimeout(bindingTimer); }
     if(!boundCapture) { this.neuralJitCaptureDrops++; return; }
+    if(this.stopping) { this.neuralJitCaptureDrops++; return; }
 
     // Engine admission is atomic after the asynchronous verifier resolves. Only the small
     // durable snapshot write is serialized, so a slow host verifier cannot block other binds.
@@ -1862,6 +1868,9 @@ export class OrganismRuntime {
     await this.clockScheduler.drain();
     await this.trustedShadowLearningScheduler?.drain();
     await this.queue.catch(() => undefined);
+    await this.neuralJitMutationTail.catch(() => undefined);
+    // Opaque host activation handles are process-local and must never survive Runtime shutdown.
+    this.neuralJitPendingCaptures.clear();
 
     // All queued cognitive work has drained, so the final flush is now serialized
     // with the same queue used by step()/tool calls.  This closes the crash/restart
