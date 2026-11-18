@@ -199,6 +199,35 @@ function sameSet(a: string[], b: string[]): boolean {
   const left = [...a].sort(), right = [...b].sort();
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
+
+function assertHostPreimages(
+  snapshot: RepositorySnapshot,
+  repository: string,
+  baseRevision: string,
+  changes: Array<{ path: string; operation: RepositoryPatchOperation; baseContent?: string; expectedSha256?: string }>,
+): void {
+  if (snapshot.complete !== true) throw new Error('repository-coding-incomplete-snapshot');
+  if (repositoryName(snapshot.repository) !== repositoryName(repository) ||
+      revision(snapshot.revision) !== revision(baseRevision)) throw new Error('repository-coding-stale-base-revision');
+  const byPath = new Map<string, RepositoryFileInput>();
+  for (const file of snapshot.files) {
+    const path = safePath(file.path);
+    if (byPath.has(path)) throw new Error('repository-coding-snapshot-duplicate-path');
+    byPath.set(path, file);
+  }
+  for (const change of changes) {
+    const path = safePath(change.path), current = byPath.get(path);
+    if (change.operation === 'create') {
+      if (current) throw new Error('repository-coding-create-target-exists');
+      continue;
+    }
+    if (!current || current.symlink === true || typeof current.content !== 'string' ||
+        current.content !== change.baseContent ||
+        digest(current.content) !== String(change.expectedSha256 ?? '').toLowerCase()) {
+      throw new Error('repository-coding-host-preimage-mismatch');
+    }
+  }
+}
 export interface RepositorySandboxAttestationBinding { proposalId: string; repository: string; baseRevision: string; requiredTests: string[]; }
 
 function runAttestationMaterial(run: RepositorySandboxRun) {
@@ -552,21 +581,8 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
       }, required: ['baseRevision','rationale','requiredTests','changes'], additionalProperties: false, maxProperties: 4 },
       execute: async input => {
         const snapshot = await host.snapshot(), base = revision(input.baseRevision);
-        if (snapshot.complete !== true) throw new Error('repository-coding-incomplete-snapshot');
-        if (base !== revision(snapshot.revision)) throw new Error('repository-coding-stale-base-revision');
-        const byPath = new Map<string, RepositoryFileInput>();
-        for (const file of snapshot.files) { try { byPath.set(safePath(file.path), file); } catch { /* unsafe paths are never patch targets */ } }
         const changes = input.changes as RepositoryPatchChangeInput[];
-        for (const change of changes) {
-          const target = safePath(change.path), current = byPath.get(target);
-          if (change.operation === 'create') {
-            if (current) throw new Error('repository-coding-create-target-exists');
-          } else {
-            if (!current || current.symlink === true || typeof current.content !== 'string' || current.content !== change.baseContent || digest(current.content) !== String(change.expectedSha256 ?? '').toLowerCase()) {
-              throw new Error('repository-coding-host-preimage-mismatch');
-            }
-          }
-        }
+        assertHostPreimages(snapshot, snapshot.repository, base, changes);
         const requiredTests = input.requiredTests as string[];
         const approvedTests = await host.allowedTestCommands();
         if (!Array.isArray(approvedTests) || requiredTests.some(command => !approvedTests.includes(command))) {
@@ -583,8 +599,7 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
         const id = String(input.proposalId), payload = engine.hostPayload(id);
         if (!payload) throw new Error('repository-coding-proposal-not-found');
         const snapshot = await host.snapshot();
-        if (snapshot.complete !== true) throw new Error('repository-coding-incomplete-snapshot');
-        if (revision(snapshot.revision) !== payload.baseRevision) throw new Error('repository-coding-stale-base-revision');
+        assertHostPreimages(snapshot, payload.repository, payload.baseRevision, payload.changes);
         const approvedTests = await host.allowedTestCommands();
         if (!Array.isArray(approvedTests) || payload.requiredTests.some(command => !approvedTests.includes(command))) {
           throw new Error('repository-coding-test-command-not-host-approved');
@@ -649,8 +664,7 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
         if (!payload) throw new Error('repository-coding-proposal-not-found');
         if (!key) throw new Error('repository-coding-idempotency-key-required');
         const snapshot = await host.snapshot();
-        if (snapshot.complete !== true) throw new Error('repository-coding-incomplete-snapshot');
-        if (revision(snapshot.revision) !== payload.baseRevision) throw new Error('repository-coding-stale-base-revision');
+        assertHostPreimages(snapshot, payload.repository, payload.baseRevision, payload.changes);
         const approvedTests = await host.allowedTestCommands();
         if (!Array.isArray(approvedTests) || payload.requiredTests.some(command => !approvedTests.includes(command))) {
           throw new Error('repository-coding-test-command-not-host-approved');
