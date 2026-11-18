@@ -12,6 +12,16 @@ async function hashFile(filePath: string): Promise<string> {
   return hash.digest('hex');
 }
 
+async function assertNoSymlinkAncestors(absolutePath: string): Promise<void> {
+  const absolute = path.resolve(absolutePath);
+  let current = path.parse(absolute).root;
+  for (const segment of absolute.slice(current.length).split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment);
+    const info = await lstat(current);
+    if (info.isSymbolicLink()) throw new Error('neuro-plastic-artifact-symlink-ancestor-rejected');
+  }
+}
+
 async function assertRegularPath(root: string, absolutePath: string, directory: boolean): Promise<void> {
   const relative = path.relative(root, absolutePath);
   if (!relative || relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
@@ -36,6 +46,7 @@ export async function verifyNeuroPlasticAdapterArtifact(
 ): Promise<boolean> {
   try {
     const root = path.resolve(runtimeRoot);
+    await assertNoSymlinkAncestors(root);
     const rootInfo = await lstat(root);
     if (rootInfo.isSymbolicLink() || !rootInfo.isDirectory()) return false;
 
