@@ -39,6 +39,7 @@ class NeuroPlasticTrainerPreflightTests(unittest.TestCase):
             "schemaVersion": 1,
             "method": "lora",
             "domain": "reasoning",
+            "adapterId": "reasoning-v1",
             "baseModelDirectory": str(self.base),
             "baseModelFingerprint": TRAINER.base_model_fingerprint(self.base),
             "tokenizerFingerprint": TRAINER.tokenizer_fingerprint(self.base),
