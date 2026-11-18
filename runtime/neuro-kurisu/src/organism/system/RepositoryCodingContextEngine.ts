@@ -496,12 +496,24 @@ export class RepositoryCodingContextEngine {
         requiredTests: summary.requiredTests,
         changes: proposal.changes.map(({ path, operation, baseSha256, nextSha256, risk }) => ({ path, operation, baseSha256, nextSha256, risk })),
       })) throw new Error('repository-coding-state-fingerprint-mismatch');
-      if (summary.status === 'verified-awaiting-approval' || summary.status === 'applied') {
-        if (!proposal.verification || !isSha(summary.verificationId) || sha256Stable(proposal.verification) !== summary.verificationId || summary.testStatus !== 'passed') throw new Error('repository-coding-state-verification-invalid');
+      if (summary.status === 'verified-awaiting-approval' || summary.status === 'applied' || summary.status === 'reconciliation-required') {
+        if (!proposal.verification || !isSha(summary.verificationId) ||
+            sha256Stable(proposal.verification) !== summary.verificationId || summary.testStatus !== 'passed') {
+          throw new Error('repository-coding-state-verification-invalid');
+        }
       }
-      if (summary.status === 'applied' && (!proposal.applyReceipt || proposal.applyReceipt.status !== 'applied' ||
-          proposal.applyReceipt.proposalId !== summary.proposalId || proposal.applyReceipt.atomic !== true ||
-          !isSha(proposal.applyReceipt.rollbackSnapshotSha256))) throw new Error('repository-coding-state-apply-invalid');
+      if (summary.status === 'applied') {
+        const receipt = proposal.applyReceipt;
+        const expectedFiles = proposal.changes.map(change => ({ path: change.path, sha256: change.nextSha256 }));
+        if (!receipt || receipt.status !== 'applied' || receipt.proposalId !== summary.proposalId ||
+            receipt.repository !== summary.repository || receipt.baseRevision !== summary.baseRevision ||
+            receipt.atomic !== true || !REVISION_RE.test(String(receipt.headRevision ?? '')) ||
+            !isSha(receipt.rollbackSnapshotSha256) || !Array.isArray(receipt.changedFiles) ||
+            receipt.changedFiles.length !== expectedFiles.length ||
+            expectedFiles.some(row => !receipt.changedFiles!.some(actual => actual.path === row.path && actual.sha256 === row.sha256))) {
+          throw new Error('repository-coding-state-apply-invalid');
+        }
+      }
       restored.set(summary.proposalId, clone(proposal));
     }
     this.proposals.clear(); for (const [id, item] of restored) this.proposals.set(id, item);
