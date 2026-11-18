@@ -57,12 +57,15 @@ let failAdapter = false;
 let badReceipt = false;
 let badBaseReceipt = false;
 let stallAdapter = false;
+let canonicalFallback = false;
+let lastRoutingInput = null;
 const baseInvoker = async () => {
   baseCalls += 1;
   return { text: 'base response', backend: 'test-base', latencyMs: 3 };
 };
-const adapterInvoker = async (_request, selected) => {
+const adapterInvoker = async (_request, selected, routingInput) => {
   adapterCalls += 1;
+  lastRoutingInput = routingInput;
   assert.equal(selected.id, candidate.id);
   if (stallAdapter) {
     await new Promise((_resolve, reject) => {
@@ -71,11 +74,24 @@ const adapterInvoker = async (_request, selected) => {
     });
   }
   if (failAdapter) throw new Error('synthetic-adapter-load-failure');
+  if (canonicalFallback) {
+    return {
+      text: 'base response from canonical registry',
+      backend: 'test-base',
+      latencyMs: 5,
+      modelId: candidate.baseModelId,
+      modelRevisionSha256: candidate.baseModelRevisionSha256,
+      appliedAdapterSha256: null,
+      adapterApplied: false,
+      adapterFallbackReason: 'p25-canonical-selection-mismatch',
+    };
+  }
   return {
     text: 'specialized response', backend: 'test-specialist', latencyMs: 4,
     modelId: badBaseReceipt ? 'wrong-base-model' : candidate.baseModelId,
     modelRevisionSha256: candidate.baseModelRevisionSha256,
     appliedAdapterSha256: badReceipt ? hash('z') : candidate.artifactSha256,
+    adapterApplied: true,
   };
 };
 const makeRuntime = () => {
@@ -119,6 +135,28 @@ try {
   assert.equal(specialized.language?.text, 'specialized response');
   assert.equal(adapterCalls, 1);
   assert.equal(baseCalls, 1, 'successful specialist inference must not also invoke the base model');
+
+  // The host canonical #936 registry can refuse this exact P25-selected ID and
+  // return a base response itself. P25 must not retry base a second time or
+  // record a specialist execution failure for a policy/registry disagreement.
+  const baseCallsBeforeCanonicalFallback = baseCalls;
+  const failuresBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures;
+  const fallbackCountBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().metrics.baseFallbacks;
+  canonicalFallback = true;
+  const canonicalBase = await runtime.step('Exercise canonical registry mismatch fallback.', { deliberate: false });
+  canonicalFallback = false;
+  assert.equal(canonicalBase.language?.text, 'base response from canonical registry');
+  assert.equal(baseCalls, baseCallsBeforeCanonicalFallback,
+    'P25 must not call the base invoker twice after the canonical registry has already returned base');
+  assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'active',
+    'canonical selection mismatch must not disable a healthy P25 candidate');
+  assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, failuresBeforeCanonicalFallback,
+    'canonical selection mismatch must not count as an adapter execution failure');
+  assert.equal(runtime.synapticMatrixSnapshot().metrics.baseFallbacks, fallbackCountBeforeCanonicalFallback + 1,
+    'canonical selection mismatch must be recorded as a safe base fallback');
+  assert.equal(lastRoutingInput?.baseModelId, candidate.baseModelId);
+  assert.equal(lastRoutingInput?.baseModelRevisionSha256, candidate.baseModelRevisionSha256);
+  assert.ok(lastRoutingInput?.contextTokens > 0, 'P25 must pass its bounded context estimate to the canonical host adapter');
 
   stallAdapter = true;
   const timedOut = await runtime.step('Force a non-responsive adapter loader to exceed its deadline.', { deliberate: false });
