@@ -141,7 +141,7 @@ function role(path: string): RepositoryContextFile['role'] {
 }
 function riskFor(path: string): RepositoryCodingRisk {
   const value = path.toLowerCase();
-  if (/^\.github\/workflows\//.test(value) || /(actiongateway|toolinputcontract|organismcore|organismruntime|security|permission|auth|safety|governance)/i.test(value)) return 'critical';
+  if (/^\.github\/workflows\//.test(value) || /(actiongateway|toolinputcontract|organismcore|organismruntime|repositorycodingcontextengine|security|permission|auth|safety|governance)/i.test(value)) return 'critical';
   if (/(package(-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig[^/]*\.json|\.ya?ml$)/i.test(value) || role(path) === 'configuration') return 'high';
   if (role(path) === 'documentation') return 'low';
   return 'medium';
