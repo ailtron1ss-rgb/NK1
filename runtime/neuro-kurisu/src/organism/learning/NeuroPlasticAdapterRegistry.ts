@@ -623,6 +623,16 @@ function reportFingerprint(value: Omit<NeuroPlasticEvaluationReport, 'reportId'>
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
+function isEd25519Signature(value: unknown): boolean {
+  if (typeof value !== 'string' || value.length !== 88) return false;
+  try {
+    const decoded = Buffer.from(value, 'base64');
+    return decoded.length === 64 && decoded.toString('base64') === value;
+  } catch {
+    return false;
+  }
+}
+
 function isValidEvaluationReport(
   value: unknown,
   adapterId: string,
@@ -640,7 +650,7 @@ function isValidEvaluationReport(
       !Array.isArray(report.reasons) ||
       !HASH.test(String(report.evaluationFingerprint || '')) ||
       !HASH.test(String(signedEvidenceFingerprint || '')) ||
-      !HASH.test(String(evaluatorSignature || '')) ||
+      !isEd25519Signature(evaluatorSignature) ||
       !report.evaluationId || !report.evaluatorId ||
       !HASH.test(String(reportId || ''))) return false;
   try {
