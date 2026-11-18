@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
-import { lstat, readFile } from 'node:fs/promises';
-import { createReadStream } from 'node:fs';
+import { lstat, readFile, open } from 'node:fs/promises';
 import path from 'node:path';
 import type { NeuroPlasticAdapterManifest } from './NeuroPlasticAdapterRegistry.ts';
 
@@ -8,14 +7,27 @@ const verifiedArtifacts = new Map<string, string>();
 
 async function hashFile(filePath: string): Promise<string> {
   const hash = createHash('sha256');
-  for await (const chunk of createReadStream(filePath)) hash.update(chunk);
+  const handle = await open(filePath, 'r');
+  const chunk = Buffer.alloc(1024 * 1024);
+  let position = 0;
+  try {
+    while (true) {
+      const result = await handle.read(chunk, 0, chunk.length, position);
+      if (result.bytesRead === 0) break;
+      hash.update(chunk.subarray(0, result.bytesRead));
+      position += result.bytesRead;
+    }
+  } finally {
+    await handle.close();
+  }
   return hash.digest('hex');
 }
 
 async function assertNoSymlinkAncestors(absolutePath: string): Promise<void> {
   const absolute = path.resolve(absolutePath);
-  let current = path.parse(absolute).root;
-  for (const segment of absolute.slice(current.length).split(path.sep).filter(Boolean)) {
+  const filesystemRoot = path.resolve(path.sep);
+  let current = filesystemRoot;
+  for (const segment of absolute.slice(filesystemRoot.length).split(path.sep).filter(Boolean)) {
     current = path.join(current, segment);
     const info = await lstat(current);
     if (info.isSymbolicLink()) throw new Error('neuro-plastic-artifact-symlink-ancestor-rejected');
