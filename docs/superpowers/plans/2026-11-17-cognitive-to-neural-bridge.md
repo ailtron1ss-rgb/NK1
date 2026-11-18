@@ -30,6 +30,7 @@ Expected focused command:
 - Create one bridge instance per runtime and derive input from the existing cycle state, selected goal/action and existing cognitive-budget snapshot.
 - Apply the same helper before both cognitive-proposal and regular/autonomous `LanguageInvoker` calls.
 - Publish telemetry that explicitly marks adapter selection, activation steering and residual execution as not applied.
+- Retain immutable pre-invocation ID/fingerprint/schema/tick/maxTokens in a runtime-private WeakMap; validate the post-response request object and receipt against it to reject async provider mutation.
 - Validate receipt request ID/profile fingerprint/schema and actual llama.cpp backend before counting it; suppress duplicate IDs in a bounded 512-entry ledger and expose accepted/rejected/duplicate counters.
 - Parse bounded provider token usage, track prompt/completion/total counts and average/maximum completion-budget utilization, and flag provider overages without treating token usage as quality evidence.
 - Reuse the existing per-cycle B365 diagnostics snapshot (no second neural run), apply the bridge to both cognitive-proposal and response/autonomous call paths, expose runtime counters, and verify the real LanguageInvoker boundary for enabled/bypassed modes.
