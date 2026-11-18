@@ -44,7 +44,7 @@
 | 22 | Substrate Independence | [#927](https://github.com/ailtron1ss-rgb/NK1/pull/927) | DRAFT | `aspect/omestro-22-substrate-independence-20261117` |
 | 23 | Neuro-Plastic Core | [#936](https://github.com/ailtron1ss-rgb/NK1/pull/936) | DRAFT | Source-synchronized LoRA/QLoRA pipeline; supersedes closed unmerged #930 |
 | 24 | Layer Force | [#931](https://github.com/ailtron1ss-rgb/NK1/pull/931) | STACKED | Базируется на #925 |
-| 25 | Adaptive Synaptic Matrix | [#921](https://github.com/ailtron1ss-rgb/NK1/pull/921) | DRAFT | Валидация и маршрутизация адаптеров |
+| 25 | Adaptive Synaptic Matrix | [#939](https://github.com/ailtron1ss-rgb/NK1/pull/939); legacy [#921](https://github.com/ailtron1ss-rgb/NK1/pull/921) | STACKED | P25 policy/router over canonical #936 registry; legacy standalone registry is superseded |
 | 26 | Hyper-Plastic Network | [#920](https://github.com/ailtron1ss-rgb/NK1/pull/920) | DRAFT | `aspect/ome26-hyper-plastic-network` |
 | 27 | Test-Time Neuroplasticity | [#924](https://github.com/ailtron1ss-rgb/NK1/pull/924) | DRAFT | Контекстно-ограниченная адаптация |
 | 28 | Neural Prosthesis | [#925](https://github.com/ailtron1ss-rgb/NK1/pull/925) | DRAFT | Родитель для #931 |
@@ -201,4 +201,27 @@
 | #931 | PR HEAD `661827ad6eb1eb636d4f8bcad7f1d351f51756eb` (code CI head `06a52dea266e3f23b77c41fcfc7ebdf81abeaef3`) | #925 head `8ae6445642f52f9eef06fb1a3070682129764558` | Draft, stacked; Python/Node CI success on code head |
 | #936 | `05ba70cc7e2c7aec2d84de1b609b548c59c0c918` | `bee2b133fdedd48723bc49b3eedae5f0df929c1c` | Draft, source-synchronized #23 implementation |
 
-Recommended next sequence: synchronize #922 with current source; retarget #936 onto the approved cognitive-control contract if integration is needed; retarget #921 onto #936 and replace its duplicate artifact lifecycle with a P25 routing facade; keep #926 shadow-only and connect only through a host-owned capture/decision interface. #925 must be synchronized before #931 can leave its stacked state.
+Recommended next sequence: finish exact-head CI on #939, then update/close the legacy #921 and initial #938 branches as superseded; synchronize #922 with current source and connect its advisory controls through the host policy boundary; keep #926 shadow-only and connect only through a host-owned capture/decision interface. #925 must be synchronized before #931 can leave its stacked state.
+
+
+## 11. P25 canonical-routing child PR — 18 November 2026
+
+Legacy #921 was not genuinely rebased when its base was retargeted. To avoid a false stacked relationship, a new child branch was created directly from #936 and the nine P25 changed files were ported to it.
+
+- New PR: [#939 — P25 canonical registry-backed synaptic routing](https://github.com/ailtron1ss-rgb/NK1/pull/939)
+- Child branch: `aspect/p25-neuroplastic-canonical-routing-v2-20261118`
+- Latest head at register update: `1f6d4a655c11a04d71804c6f6818a6cb444b44bb`
+- Parent branch: `aspect/neuro-plastic-core-lora-adapters-20261118`
+- Parent base SHA shown by GitHub: `125621918f70117f43aa86617f116879eaf1a42f`
+- #939 remains Draft; its P25 workflow is queued and exact-head verification has not completed.
+
+### Changes in #939
+
+1. P25 receives the typed full routing input in its host executor: task, base-model ID/fingerprint, context estimate, confidence, uncertainty and resource-risk.
+2. #936 `NeuroPlasticInferenceAdapter` now accepts an optional `expectedAdapterId`. A canonical/P25 adapter mismatch returns the untouched base alias and `p25-canonical-selection-mismatch`; it does not substitute another adapter and does not disable the healthy canonical artifact.
+3. P25 records a canonical base fallback without increasing adapter-failure counters; the already-produced base response is returned directly, preventing a duplicate base-model request.
+4. Host wiring in `server.mjs` is opt-in only: model aliases enabled, immutable base-model ID/fingerprint configured, P25 HMAC key secret and key ID available. P25 policy HMAC is an additional host gate, not a replacement for #936's independent evaluator receipt, human approval or artifact validation.
+5. Host validates exact ID, model ID/revision fingerprint, weights SHA, adapter method, llama.cpp backend, served base alias and one-to-one P25 task-to-domain mapping before canonical inference.
+6. P25 workflow now runs the canonical #936 tests, P25 unit/runtime tests, runtime typecheck and P40/organism smoke tests; it is scoped to the stacked #936 base and the relevant changed files.
+
+The first P25 workflow attempt at old child heads was cancelled by the overlapping push/PR workflow triggers. The push trigger has been removed; the latest P25 workflow on head `1f6d4a655c11a04d71804c6f6818a6cb444b44bb` is pending. No green result is claimed for #939 yet.
