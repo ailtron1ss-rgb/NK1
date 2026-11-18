@@ -55,6 +55,8 @@ export class OrganismSystemFabric {
   /** Conscio-derived retrieval, federated-skill, liaison, calibration and metabolic adapters. */
   readonly conscioAdaptation: ConscioAdaptationFabric;
   private readonly resolvedContracts: ResolvedOrganismSystemContract[];
+  /** Public keys are injected by the host; an empty set keeps experiment staging review-only. */
+  private readonly trustedGenomeEvaluatorKeys: ReadonlyMap<string, string>;
 
   constructor(input: Partial<{
     self: SelfSubsystemRuntime;
@@ -69,6 +71,7 @@ export class OrganismSystemFabric {
     hexisAdaptation: HexisAdaptationFabric;
     lettaGovernanceAdaptation: LettaGovernanceAdaptationFabric;
     conscioAdaptation: ConscioAdaptationFabric;
+    trustedGenomeEvaluatorKeys: ReadonlyMap<string, string>;
   }> = {}) {
     this.self=input.self ?? new SelfSubsystemRuntime();
     this.governance=input.governance ?? new GovernanceSubsystemRuntime();
@@ -83,6 +86,13 @@ export class OrganismSystemFabric {
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
     this.conscioAdaptation=input.conscioAdaptation ?? new ConscioAdaptationFabric();
+    const trustedGenomeKeys = [...(input.trustedGenomeEvaluatorKeys ?? new Map<string, string>()).entries()];
+    if (trustedGenomeKeys.some(([keyId, publicKey]) =>
+      typeof keyId !== 'string' || !keyId.trim() || keyId.length > 180 ||
+      typeof publicKey !== 'string' || !publicKey.includes('PUBLIC KEY'))) {
+      throw new Error('developmental-genome-trusted-evaluator-public-keys-invalid');
+    }
+    this.trustedGenomeEvaluatorKeys = new Map(trustedGenomeKeys);
     this.resolvedContracts = organismSystemContracts().map(contract => {
       const runtime = this[contract.name!];
       return { ...contract, systemName: runtime.systemName, dependencies:[...runtime.dependencies], capabilityNames:[...contract.capabilityNames], capabilities:[...contract.capabilityNames], snapshot:()=>runtime.snapshot(), health:()=>runtimeHealth(runtime) };
@@ -98,7 +108,7 @@ export class OrganismSystemFabric {
 
   /** Stage a P53/P63-governed genome experiment for review; never applies it to live systems. */
   stageDevelopmentalGenomeExperiment(input: DevelopmentalGenomeExperimentInput): DevelopmentalGenomeExperimentReport {
-    return evaluateGenomeExperiment(input);
+    return evaluateGenomeExperiment(input, this.trustedGenomeEvaluatorKeys);
   }
 
   snapshot(): OrganismSystemFabricSnapshot {
