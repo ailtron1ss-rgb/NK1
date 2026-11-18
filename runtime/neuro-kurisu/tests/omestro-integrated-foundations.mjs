@@ -28,8 +28,15 @@ const registry = validateOmeStroConceptRegistry();
 assert.equal(registry.valid, true, registry.errors.join(','));
 assert.equal(OMESTRO_CONCEPTS.length, 32);
 assert.deepEqual(getOmeStroImplementationSummary().counts, {
-  existing_partial: 6, foundation_added: 21, research_gated: 5,
+  existing_partial: 6, foundation_added: 22, research_gated: 4,
 });
+const neuroPlasticConcept = OMESTRO_CONCEPTS.find(item => item.id === 23);
+assert.equal(neuroPlasticConcept?.status, 'foundation_added');
+assert.ok(neuroPlasticConcept?.integratesWith.includes('NeuroPlasticAdapterRegistry'));
+assert.ok(neuroPlasticConcept?.integratesWith.includes('AdaptiveSynapticMatrixEngine'));
+const synapticMatrixConcept = OMESTRO_CONCEPTS.find(item => item.id === 25);
+assert.ok(synapticMatrixConcept?.integratesWith.includes('AdaptiveSynapticMatrixEngine'));
+assert.ok(synapticMatrixConcept?.integratesWith.includes('NeuroPlasticAdapterRegistry'));
 
 const incompleteIntent = compileOmeStroIntent({ goal: 'Build a report' });
 assert.equal(incompleteIntent.status, 'needs-clarification');

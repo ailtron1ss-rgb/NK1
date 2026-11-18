@@ -8,13 +8,24 @@
 
 ## Что сделано
 
+## Обновление по канонической ветке — 2026-11-18
+
+В актуальном `workpass70-source` @ `d84e4ed6d9531f2af913256ae56012f565b73770` присутствует offline LoRA/QLoRA pipeline: `NeuroPlasticCorpusBuilder`, `neuro_plastic_train.py`, `NeuroPlasticAdapterRegistry`, `NeuroPlasticArtifactVerifier`, `NeuroPlasticInferenceAdapter` и P25 `AdaptiveSynapticMatrixEngine`, подключённый к `OrganismRuntime` / `LanguageOrgan`. Коммит содержит host opt-in, signed evaluation/approval, exact model/artifact binding и fail-closed base fallback. Поэтому идея #23 больше не классифицируется как полностью отсутствующая: её инфраструктурный фундамент подключён. Это **не** означает, что реальная модель уже обучена или что качество NK1 улучшилось.
+
+PR #937 (Draft) добавляет дальнейшее усиление этого контура; его exact-head CI прошёл 13/13 проверок на SHA `1d681ebe869b9ed7cdcb34ebecb23dab2505a0ca`, но PR остаётся открытым и не слитым. Перед слиянием требуется сравнение с актуальной базой, проверка полного diff и сохранение единственного canonical artifact owner.
+
+**Важная граница:** `AdaptiveSynapticMatrix` внутри `OmeStroNeuralAdaptation.ts` — изолированный shadow/research registry для концептуальных тестов. Он не должен считаться владельцем production adapter artifacts, подписей, approval или inference. Каноническое admission принадлежит `NeuroPlasticAdapterRegistry`, runtime routing — P25 `AdaptiveSynapticMatrixEngine`. Эту shadow-реализацию нельзя использовать как второй путь активации весов.
+
+Эта запись описывает актуальную source-ветку; PR #933 основан на более раннем commit и должен быть синхронизирован с текущим `workpass70-source` до merge. Release ZIP не проверялся и не обновлялся.
+
+
 OmeStro реализован как интеграционный слой над уже существующими подсистемами NK1, а не как второй параллельный runtime. Новые контракты экспортируются из \`src/organism/index.ts\`; \`OrganismCore\` создаёт \`OmeStroIntegrationKernel\` с прямыми ссылками на канонические \`CognitiveImmuneSystem\`, P25, P28, \`NeuroDigitalEvolutionEngine.substratePortability\` и \`NeuralMorphogenesisEngine\`. Новые OmeStro-ledger сохраняются в \`facets.advanced.omeStro\`, восстанавливаются при старте и входят в hot/full projection и durable checkpoints. Так не создаются конкурирующие копии P25/P28/immune-состояния.
 
 | Класс статуса | Количество | Смысл |
 |---|---:|---|
 | \`existing_partial\` | 6 | В NK1 уже есть первичная реализация; OmeStro добавляет карту интеграции и/или недостающие границы |
-| \`foundation_added\` | 21 | Добавлены исполняемые контракты/алгоритмы и регрессионные тесты; это ещё не доказательство промышленной готовности всей функции |
-| \`research_gated\` | 5 | Нужен реальный neural backend, артефакты обучения или измерительная инфраструктура; нельзя честно объявить feature полностью реализованной |
+| \`foundation_added\` | 22 | Добавлены исполняемые контракты/алгоритмы и регрессионные тесты; это ещё не доказательство промышленной готовности всей функции |
+| \`research_gated\` | 4 | Нужен реальный neural backend, артефакты обучения или измерительная инфраструктура; нельзя честно объявить feature полностью реализованной |
 
 Реестр содержит ровно 32 идеи, проверяет уникальность и полноту идентификаторов. Статусы и ограничения находятся в \`OmeStroConceptRegistry.ts\`.
 
@@ -44,7 +55,7 @@ OmeStro реализован как интеграционный слой над
 | 20 | Constitution Evolution | foundation_added | Candidate invariants cannot remove inherited safety/provenance invariants |
 | 21 | Consequence Ecology | foundation_added | Bounded probability/impact paths with delayed exposure by stakeholder |
 | 22 | Substrate Independence | existing_partial | Reuse portability engine; add state round-trip, paired-seed, regression and fallback gate |
-| 23 | Neuro-Plastic Core | research_gated | Adapter training requires real offline LoRA/QLoRA backend and measured artifacts |
+| 23 | Neuro-Plastic Core | foundation_added | Offline LoRA/QLoRA trainer, verified corpus, signed artifact registry and P25 runtime route; real model gain remains unproven |
 | 24 | Layer Force | research_gated | Requires layer-activation instrumentation, calibration and a hard bypass |
 | 25 | Adaptive Synaptic Matrix | foundation_added | Validated adapter manifest routing; incompatible/unknown adapters fall back to base |
 | 26 | Hyper-Plastic Network | research_gated | Need a bounded hypernetwork/low-rank generator and reproducible training benchmark |
