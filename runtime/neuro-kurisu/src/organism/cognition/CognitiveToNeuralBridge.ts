@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { ActionKind } from '../core/types.ts';
+import { B365_STATE_SCHEMA_VERSION } from './B365DiagnosticsSchema.ts';
 
 export type CognitiveBridgeMode = 'reflex'|'shallow'|'retrieve'|'deep'|'simulate'|'defer'|'sleep';
 export type CognitiveBridgeAction = ActionKind|'none';
@@ -18,8 +19,8 @@ const ADAPTER_BY_MODE:Record<CognitiveBridgeMode,CognitiveAdapterHint>={
   simulate:'simulation',defer:'conservative',sleep:'conservative',
 };
 const NEURAL_SNAPSHOT_MAX_AGE_TICKS=8;
-/** B365State.version currently identifies the diagnostic signal layout consumed by bridge v2. */
-export const B365_DIAGNOSTICS_SCHEMA_VERSION=14;
+/** Public bridge-facing alias for the canonical B365 diagnostic schema contract. */
+export const B365_DIAGNOSTICS_SCHEMA_VERSION=B365_STATE_SCHEMA_VERSION;
 const clamp=(value:number,min=0,max=1)=>Math.max(min,Math.min(max,Number.isFinite(value)?value:min));
 const safe01=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
 const safeTick=(value:unknown):number|null=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;
