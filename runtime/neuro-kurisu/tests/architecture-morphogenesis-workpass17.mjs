@@ -473,6 +473,7 @@ const mismatchedSharedGraph = graph(
 );
 const mismatchedSharedReport = validateArchitectureMorphogenesisGraph(mismatchedSharedGraph);
 assert.equal(mismatchedSharedReport.ok, false);
+assert.ok(mismatchedSharedReport.issues.some(item => item.code === 'shared-source-module-ids-invalid'));
 assert.ok(mismatchedSharedReport.issues.some(item => item.code === 'shared-source-path-owners-mismatch'));
 
 
