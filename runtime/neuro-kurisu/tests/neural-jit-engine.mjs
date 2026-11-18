@@ -164,7 +164,28 @@ assert.ok(shadowProjection.residual.every(Number.isFinite));
 assert.equal(engine.projectShadowResidual(candidate.id, [0.1]), null,
   'host branch must fail closed on activation dimension mismatch');
 
+// A final candidate evaluation must freeze its exact holdout evidence. New
+// training batches must not let a later candidate repeatedly query old holdout tasks.
+for (let i = 120; i < 240; i += 1) {
+  const trace = await makeTrace(i);
+  const result = await engine.recordVerifiedTrace(trace);
+  assert.equal(result.accepted, true, `additional trace ${i} should be admitted`);
+}
+const repeatedEvaluation = engine.evaluateCandidate(candidate.id);
+assert.deepEqual(repeatedEvaluation.holdoutTaskFingerprints, evaluation.holdoutTaskFingerprints,
+  'a final evaluation must remain bound to its first independent holdout set');
+const nextCandidate = engine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint });
+assert.ok(nextCandidate);
+assert.notEqual(nextCandidate.id, candidate.id);
+const nextEvaluation = engine.evaluateCandidate(nextCandidate.id);
+assert.equal(nextEvaluation.eligible, true);
+assert.equal(nextEvaluation.holdoutTaskFingerprints.some(fingerprint =>
+  evaluation.holdoutTaskFingerprints.includes(fingerprint)), false,
+  'a second candidate must never reuse holdout tasks consumed by the first candidate');
+
 const stored = engine.persistenceSnapshot();
+assert.ok(stored.spentHoldoutTaskFingerprints?.length >= evaluation.holdoutTaskFingerprints.length,
+  'used holdout task fingerprints must be persisted to prevent cross-restart reuse');
 assert.equal(stored.traces, undefined, 'raw activation traces must not be persisted as trusted evidence');
 assert.equal(stored.candidates.length, 1);
 assert.ok(stored.seenObservationFingerprints?.length > 0,
