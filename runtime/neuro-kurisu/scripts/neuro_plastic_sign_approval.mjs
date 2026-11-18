@@ -77,7 +77,7 @@ async function main() {
     ...request,
     approval: { ...request.approval, signature },
   };
-  await writeSecureNewFile(outputPath, JSON.stringify(signedRequest, null, 2) + '\\n', 0o600);
+  await writeSecureNewFile(outputPath, JSON.stringify(signedRequest, null, 2) + '\n', 0o600);
   process.stdout.write('NEURO_PLASTIC_APPROVAL_SIGNED=' + outputPath + '\n');
 }
 
