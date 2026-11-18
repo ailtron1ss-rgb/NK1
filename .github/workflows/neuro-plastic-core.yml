@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'aspect/neuro-plastic-core-lora-adapters-*'
+      - 'aspect/neuro-plastic-ed25519-approval-*'
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/NeuroPlastic*.ts'
       - 'runtime/neuro-kurisu/src/organism/integration/local/NeuroPlastic*.ts'
@@ -11,6 +12,8 @@ on:
       - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/src/organism/language/LanguageOrgan.ts'
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_registry.mjs'
+      - 'runtime/neuro-kurisu/scripts/neuro_plastic_sign_approval.mjs'
+      - 'runtime/neuro-kurisu/tests/neuro-plastic-external-signer.mjs'
       - 'runtime/neuro-kurisu/requirements-neuro-plastic.txt'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-registry-cli.mjs'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-language-routing.mjs'
@@ -59,12 +62,14 @@ jobs:
         run: |
           node --check src/server/server.mjs
           node --check scripts/neuro_plastic_registry.mjs
+          node --check scripts/neuro_plastic_sign_approval.mjs
       - name: Neuro-Plastic registry, verified corpus and local inference
         working-directory: runtime/neuro-kurisu
         run: |
           node --experimental-strip-types tests/neuro-plastic-core.mjs
           node --experimental-strip-types tests/neuro-plastic-language-routing.mjs
           node --experimental-strip-types tests/neuro-plastic-registry-cli.mjs
+          node --experimental-strip-types tests/neuro-plastic-external-signer.mjs
 
   trainer-preflight:
     runs-on: ubuntu-latest
