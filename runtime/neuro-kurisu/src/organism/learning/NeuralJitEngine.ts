@@ -568,7 +568,9 @@ export class NeuralJitEngine {
       this.traces = []; this.candidates = [];
       this.seenObservationFingerprints.clear(); this.seenCaptureFingerprints.clear();
       this.spentHoldoutTaskFingerprints.clear();
-      this.holdoutEvidenceGateHealthy = true;
+      // Missing state is a new empty runtime; a present but unreadable state
+      // may have lost prior spent evidence, so never reopen promotion implicitly.
+      this.holdoutEvidenceGateHealthy = !raw;
       this.acceptedTraces = 0; this.rejectedTraces = 0;
       this.lastDecision = 'restore-empty-or-invalid-snapshot'; this.lastDecisionAt = Date.now();
       return;
