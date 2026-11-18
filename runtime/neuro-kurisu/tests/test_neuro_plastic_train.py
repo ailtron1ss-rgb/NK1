@@ -84,6 +84,56 @@ class NeuroPlasticTrainerPreflightTests(unittest.TestCase):
     def _write_manifest(self):
         self.manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
 
+    def test_registry_manifest_builder_binds_all_trainer_inputs_and_real_artifact_hashes(self):
+        config_hash = "1" * 64
+        weights_hash = "2" * 64
+        validated = {
+            "manifest": {
+                "outputDirectory": "adapter-store/reasoning-v1",
+                "seed": 41,
+            },
+            "adapterId": "reasoning-v1",
+            "domain": "reasoning",
+            "method": "qlora",
+            "baseModelId": "kurisu-7b",
+            "backendId": "llama.cpp",
+            "baseModelAlias": "kurisu-base",
+            "servedModelAlias": "kurisu-reasoning-qlora",
+            "baseFingerprint": "a" * 64,
+            "tokenizerFingerprint": "b" * 64,
+            "sourceDatasetFingerprint": "c" * 64,
+            "holdoutPlanFingerprint": "d" * 64,
+            "corpusFingerprint": "e" * 64,
+            "governance": {
+                "trainingOptIn": True,
+                "privacyReviewed": True,
+                "licenseApproved": True,
+                "piiScreening": "passed",
+                "evidenceCount": 7,
+                "attestedBy": "operator",
+                "attestedAt": 1_800_000_000_000,
+                "licenseId": "approved-license",
+            },
+        }
+        registry_manifest = TRAINER.build_registry_manifest(
+            validated,
+            {
+                "adapter_config.json": {"sha256": config_hash, "bytes": 120},
+                "adapter_model.safetensors": {"sha256": weights_hash, "bytes": 4096},
+            },
+            1_800_000_000_100,
+        )
+        self.assertEqual(registry_manifest["artifact"]["configSha256"], config_hash)
+        self.assertEqual(registry_manifest["artifact"]["weightsSha256"], weights_hash)
+        self.assertEqual(registry_manifest["artifact"]["totalBytes"], 4216)
+        self.assertEqual(registry_manifest["artifact"]["directory"], "adapter-store/reasoning-v1")
+        self.assertEqual(registry_manifest["baseModel"]["fingerprint"], validated["baseFingerprint"])
+        self.assertEqual(registry_manifest["baseModel"]["servedModelAlias"], "kurisu-base")
+        self.assertEqual(registry_manifest["servedModelAlias"], "kurisu-reasoning-qlora")
+        self.assertEqual(registry_manifest["governance"], validated["governance"])
+        self.assertFalse("training" in registry_manifest)
+        json.dumps(registry_manifest, allow_nan=False)
+
     def test_json_safe_converts_nonfinite_training_metrics_for_strict_json(self):
         payload = {
             "loss": float("nan"),
