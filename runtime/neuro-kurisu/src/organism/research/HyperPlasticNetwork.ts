@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { B292CognitiveStateBusState } from '../system/B292CognitiveStateBus.ts';
 
 export type HyperPlasticTaskType =
@@ -34,6 +36,8 @@ export interface HyperPlasticNetworkConfig {
   alpha?: number;
   maxFactorAbs?: number;
   maxDeltaNormL2?: number;
+  /** Global L2 gradient clipping for offline hypernetwork fitting. */
+  gradientClipNorm?: number;
   minResourceBudget01?: number;
   minReadiness01?: number;
   minStability01?: number;
@@ -105,12 +109,7 @@ function seededUnit(seed: number, index: number): number {
 function hashFingerprint(value: unknown): string {
   const source = JSON.stringify(value);
   if (typeof source !== 'string') throw new TypeError('fingerprint-payload-not-serializable');
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < source.length; index += 1) {
-    hash ^= source.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return `ome26-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+  return `sha256:${createHash('sha256').update(source, 'utf8').digest('hex')}`;
 }
 
 function validateContext(context: HyperPlasticContext): string | null {
@@ -237,6 +236,7 @@ export class HyperPlasticNetwork {
     const alpha = config.alpha ?? rank;
     const maxFactorAbs = config.maxFactorAbs ?? 0.05;
     const maxDeltaNormL2 = config.maxDeltaNormL2 ?? 0.12;
+    const gradientClipNorm = config.gradientClipNorm ?? 1.0;
     const minResourceBudget01 = config.minResourceBudget01 ?? 0.25;
     const minReadiness01 = config.minReadiness01 ?? 0.30;
     const minStability01 = config.minStability01 ?? 0.35;
@@ -258,7 +258,8 @@ export class HyperPlasticNetwork {
     }
     if (!Number.isFinite(alpha) || alpha <= 0 || alpha > rank * 4
       || !Number.isFinite(maxFactorAbs) || maxFactorAbs <= 0 || maxFactorAbs > 0.10
-      || !Number.isFinite(maxDeltaNormL2) || maxDeltaNormL2 <= 0 || maxDeltaNormL2 > 1) {
+      || !Number.isFinite(maxDeltaNormL2) || maxDeltaNormL2 <= 0 || maxDeltaNormL2 > 1
+      || !Number.isFinite(gradientClipNorm) || gradientClipNorm <= 0 || gradientClipNorm > 10) {
       throw new RangeError('adapter-magnitude-out-of-bounds');
     }
     for (const [name, value] of Object.entries({
@@ -269,7 +270,7 @@ export class HyperPlasticNetwork {
     if (!Number.isSafeInteger(seed)) throw new RangeError('seed-invalid');
 
     this.config = {
-      target, rank, hiddenDim, alpha, maxFactorAbs, maxDeltaNormL2,
+      target, rank, hiddenDim, alpha, maxFactorAbs, maxDeltaNormL2, gradientClipNorm,
       minResourceBudget01, minReadiness01, minStability01, maxUncertainty01, seed,
     };
     this.outputDim = rank * target.cols + target.rows * rank;
@@ -293,6 +294,7 @@ export class HyperPlasticNetwork {
       rank: this.config.rank,
       alpha: this.config.alpha,
       maxFactorAbs: this.config.maxFactorAbs,
+      gradientClipNorm: this.config.gradientClipNorm,
       inputWeights: this.inputWeights.map((row) => [...row]),
       inputBias: [...this.inputBias],
       outputWeights: this.outputWeights.map((row) => [...row]),
@@ -311,7 +313,8 @@ export class HyperPlasticNetwork {
       || snapshot.targetCols !== this.config.target.cols
       || snapshot.rank !== this.config.rank
       || snapshot.alpha !== this.config.alpha
-      || snapshot.maxFactorAbs !== this.config.maxFactorAbs) {
+      || snapshot.maxFactorAbs !== this.config.maxFactorAbs
+      || snapshot.gradientClipNorm !== this.config.gradientClipNorm) {
       throw new RangeError('hypernetwork-checkpoint-shape-mismatch');
     }
     const validMatrix = (value: unknown, rows: number, cols: number): value is number[][] =>
@@ -384,22 +387,45 @@ export class HyperPlasticNetwork {
       }
       return gradient * (1 - value * value);
     });
+    const gradientNormL2 = Math.sqrt(
+      outputGradients.reduce((sum, value) => sum + value * value, 0) +
+      hiddenGradients.reduce((sum, value) => sum + value * value, 0),
+    );
+    if (!Number.isFinite(loss) || !Number.isFinite(gradientNormL2) ||
+        outputGradients.some(value => !Number.isFinite(value)) ||
+        hiddenGradients.some(value => !Number.isFinite(value))) {
+      throw new RangeError('hypernetwork-training-gradient-nonfinite');
+    }
+    const gradientClipScale = gradientNormL2 > this.config.gradientClipNorm
+      ? this.config.gradientClipNorm / gradientNormL2
+      : 1;
+    const clippedOutputGradients = outputGradients.map(value => value * gradientClipScale);
+    const clippedHiddenGradients = hiddenGradients.map(value => value * gradientClipScale);
 
-    for (let outputIndex = 0; outputIndex < this.outputDim; outputIndex += 1) {
-      for (let hiddenIndex = 0; hiddenIndex < this.config.hiddenDim; hiddenIndex += 1) {
-        this.outputWeights[outputIndex][hiddenIndex] -=
-          learningRate * outputGradients[outputIndex] * hidden[hiddenIndex];
-      }
-      this.outputBias[outputIndex] -= learningRate * outputGradients[outputIndex];
+    // Compute a complete next parameter set before committing. An overflow or
+    // runaway update cannot leave half of the hypernetwork mutated.
+    const nextOutputWeights = this.outputWeights.map((row, outputIndex) =>
+      row.map((weight, hiddenIndex) =>
+        weight - learningRate * clippedOutputGradients[outputIndex] * hidden[hiddenIndex]));
+    const nextOutputBias = this.outputBias.map((bias, outputIndex) =>
+      bias - learningRate * clippedOutputGradients[outputIndex]);
+    const nextInputWeights = this.inputWeights.map((row, hiddenIndex) =>
+      row.map((weight, inputIndex) =>
+        weight - learningRate * clippedHiddenGradients[hiddenIndex] * input[inputIndex]));
+    const nextInputBias = this.inputBias.map((bias, hiddenIndex) =>
+      bias - learningRate * clippedHiddenGradients[hiddenIndex]);
+    const nextParameters = [
+      ...nextOutputWeights.flat(), ...nextOutputBias,
+      ...nextInputWeights.flat(), ...nextInputBias,
+    ];
+    if (nextParameters.some(value => !Number.isFinite(value) || Math.abs(value) > 8)) {
+      throw new RangeError('hypernetwork-training-update-out-of-bounds');
     }
-    for (let hiddenIndex = 0; hiddenIndex < this.config.hiddenDim; hiddenIndex += 1) {
-      for (let inputIndex = 0; inputIndex < FEATURE_COUNT; inputIndex += 1) {
-        this.inputWeights[hiddenIndex][inputIndex] -=
-          learningRate * hiddenGradients[hiddenIndex] * input[inputIndex];
-      }
-      this.inputBias[hiddenIndex] -= learningRate * hiddenGradients[hiddenIndex];
-    }
-    return { loss, applied: true };
+    this.outputWeights = nextOutputWeights;
+    this.outputBias = nextOutputBias;
+    this.inputWeights = nextInputWeights;
+    this.inputBias = nextInputBias;
+    return { loss, applied: true, gradientNormL2, gradientClipScale };
   }
 
   generateCandidate(
@@ -409,8 +435,7 @@ export class HyperPlasticNetwork {
   ): HyperPlasticGenerationResult {
     const contextError = validateContext(context);
     if (contextError) return { status: 'fallback', reason: contextError, adapter: null };
-    if (typeof baseModelFingerprint !== 'string' || !baseModelFingerprint.trim()
-      || baseModelFingerprint.length > 256) {
+    if (typeof baseModelFingerprint !== 'string' || !/^sha256:[a-f0-9]{64}$/i.test(baseModelFingerprint)) {
       return { status: 'fallback', reason: 'base-model-fingerprint-missing', adapter: null };
     }
     if (!Number.isSafeInteger(tick) || tick < 0) {

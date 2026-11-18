@@ -24,7 +24,7 @@ const context = hyperPlasticContextFromB292(cognitiveState, {
   confidence01: 0.82,
   resourceBudget01: 0.78,
 });
-const baseModelFingerprint = 'nk1-local-model-sha256:fixture-v1';
+const baseModelFingerprint = 'sha256:8a'.padEnd(71, '0');
 const network = new HyperPlasticNetwork({
   target: { layer: 'attention.query', rows: 4, cols: 4 },
   rank: 2,
@@ -35,6 +35,8 @@ const generated = network.generateCandidate(context, baseModelFingerprint, cogni
 
 assert.equal(generated.status, 'candidate');
 assert.equal(generated.adapter.schema, 'nk1-lora-v1');
+assert.match(generated.adapter.fingerprint, /^sha256:[a-f0-9]{64}$/);
+assert.match(generated.adapter.baseModelFingerprint, /^sha256:[a-f0-9]{64}$/);
 assert.equal(Object.isFrozen(generated.adapter), true);
 assert.equal(Object.isFrozen(generated.adapter.A), true);
 assert.equal(Object.isFrozen(generated.adapter.B), true);
@@ -135,7 +137,10 @@ const trainingNetwork = new HyperPlasticNetwork({
   seed: 26018,
 });
 const targetFactors = new Array(16).fill(0.025);
-const firstLoss = trainingNetwork.trainStep(context, targetFactors, 0.01).loss;
+const firstTraining = trainingNetwork.trainStep(context, targetFactors, 0.01);
+const firstLoss = firstTraining.loss;
+assert.ok(firstTraining.gradientNormL2 >= 0);
+assert.ok(firstTraining.gradientClipScale > 0 && firstTraining.gradientClipScale <= 1);
 let lastLoss = firstLoss;
 for (let index = 0; index < 80; index += 1) {
   lastLoss = trainingNetwork.trainStep(context, targetFactors, 0.01).loss;
