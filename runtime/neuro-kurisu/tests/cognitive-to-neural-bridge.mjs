@@ -56,6 +56,9 @@ assert.deepEqual(profile.featureVector01, [
 ]);
 assert.ok(profile.featureVector01.every(value => Number.isFinite(value) && value >= 0 && value <= 1));
 assert.equal(profile.maxTokens, 416);
+assert.deepEqual(profile.providerFeedback,{
+  version:1,mode:'deep',sampleCount:0,truncatedCount:0,nearLimitCount:0,truncationPressure01:0,
+});
 assert.equal(profile.temperature, .62);
 assert.ok(Object.values(profile.steeringIntent01).every(value => value >= 0 && value <= .15));
 assert.deepEqual(profile.controlsConfigured, {
@@ -172,6 +175,26 @@ const lowBudget=bridge.project({ tick:17, mode:'deep', budgetRemaining01:.2, neu
 const highBudget=bridge.project({ tick:17, mode:'deep', budgetRemaining01:.8, neural });
 assert.ok(highBudget.maxTokens>lowBudget.maxTokens,
   'more remaining cognitive reserve must not reduce the configured token budget');
+const noFeedback=bridge.project({tick:17,mode:'deep',budgetRemaining01:.3,neural});
+const strongFeedback=bridge.project({
+  tick:17,mode:'deep',budgetRemaining01:.3,neural,
+  providerFeedback:{version:1,mode:'deep',sampleCount:8,truncatedCount:6,nearLimitCount:8},
+});
+assert.ok(strongFeedback.maxTokens>noFeedback.maxTokens,
+  'repeated provider truncation and near-limit completions must reclaim a bounded part of unused token headroom');
+assert.ok(strongFeedback.maxTokens<=768);
+assert.equal(strongFeedback.providerFeedback.truncationPressure01,.8);
+assert.equal(isValidCognitiveNeuralControlProfile(strongFeedback),true);
+const feedbackTamper=structuredClone(strongFeedback);
+feedbackTamper.providerFeedback.truncationPressure01=.1;
+assert.equal(isValidCognitiveNeuralControlProfile(feedbackTamper),false,
+  'provider feedback pressure must be derived from its bounded evidence counters');
+const feedbackWrongMode=bridge.project({
+  tick:17,mode:'deep',budgetRemaining01:.3,neural,
+  providerFeedback:{version:1,mode:'shallow',sampleCount:8,truncatedCount:8,nearLimitCount:8},
+});
+assert.equal(feedbackWrongMode.providerFeedback.sampleCount,0,
+  'feedback from another cognitive mode must never influence this mode');
 const lowPreservation=bridge.project({
   tick:17,mode:'deep',budgetRemaining01:.8,
   neural:{ ...neural, allostatic:{ ...neural.allostatic, preservation01:0 } },
