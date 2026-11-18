@@ -941,6 +941,7 @@ export class NeuroPlasticAdapterRegistry {
     record.status = 'disabled';
     record.disabledReason = safeText(reason, 'rollback-reason', 240);
     record.activationApprovalId = null;
+    record.activationApproval = null;
     record.updatedAt = Date.now();
     return structuredClone(record);
   }
