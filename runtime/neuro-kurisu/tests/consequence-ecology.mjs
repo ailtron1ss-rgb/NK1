@@ -702,6 +702,14 @@ tamperedCalibrationRestore.restore(tamperedCalibrationSnapshot, {
 });
 assert.equal(tamperedCalibrationRestore.consequenceEcology.listCalibrations().length, 0,
   'persisted calibration scores must be recomputed and tampered values rejected');
+const tamperedLineageSnapshot = structuredClone(calibrationSnapshot);
+tamperedLineageSnapshot.consequenceEcology.outcomeCalibrations[0].sourceIds = ['forged-source'];
+const tamperedLineageRestore = new FutureSimulator();
+tamperedLineageRestore.restore(tamperedLineageSnapshot, {
+  validateIndependentlyVerifiedOutcome: outcome => outcome.id === independentlyRecorded.outcome.id,
+});
+assert.equal(tamperedLineageRestore.consequenceEcology.listCalibrations().length, 0,
+  'persisted source identity must match the canonical independently revalidated outcome');
 
 const misboundCalibrationSnapshot = structuredClone(calibrationSnapshot);
 misboundCalibrationSnapshot.consequenceEcology.outcomeCalibrations[0].actionDecisionId = 'foreign-action-decision';
@@ -751,6 +759,11 @@ assert.equal(oneSampleDiagnostics.calibrationReadiness, 'insufficient-evidence')
 assert.ok(oneSampleDiagnostics.calibrationReadinessReasons.includes('need-at-least-20-verified-samples'));
 assert.ok(oneSampleDiagnostics.calibrationReadinessReasons.includes('need-at-least-5-distinct-scenarios'));
 approx(oneSampleDiagnostics.effectiveCalibrationSampleSize, 1, 'single-sample effective sample size');
+assert.equal(oneSampleDiagnostics.calibrationExecutionCount, 1);
+assert.equal(oneSampleDiagnostics.calibrationObservationCount, 1);
+assert.equal(oneSampleDiagnostics.calibrationEvidenceObservationCount, 1);
+assert.ok(oneSampleDiagnostics.calibrationReadinessReasons.includes('need-at-least-20-distinct-executions'));
+assert.ok(oneSampleDiagnostics.calibrationReadinessReasons.includes('need-at-least-20-distinct-evidence-observations'));
 approx(oneSampleDiagnostics.weightedMeanCalibrationBrier01, oneSampleDiagnostics.meanCalibrationBrier01,
   'single-sample weighted Brier must match unweighted Brier');
 assert.ok(oneSampleDiagnostics.weightedExpectedCalibrationError01 >= 0);
