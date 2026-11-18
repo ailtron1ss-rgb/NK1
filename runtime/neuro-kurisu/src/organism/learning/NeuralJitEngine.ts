@@ -577,7 +577,9 @@ export class NeuralJitEngine {
     this.traces = [];
     this.seenObservationFingerprints.clear(); this.seenCaptureFingerprints.clear();
     this.spentHoldoutTaskFingerprints.clear();
-    this.holdoutEvidenceGateHealthy = raw.holdoutEvidenceGateHealthy !== false;
+    this.holdoutEvidenceGateHealthy = raw.holdoutEvidenceGateHealthy === undefined
+      ? true
+      : typeof raw.holdoutEvidenceGateHealthy === 'boolean' && raw.holdoutEvidenceGateHealthy;
     for (const value of restoreFingerprintSet(raw.seenObservationFingerprints)) this.seenObservationFingerprints.add(value);
     for (const value of restoreFingerprintSet(raw.seenCaptureFingerprints)) this.seenCaptureFingerprints.add(value);
     const rawSpent = raw.spentHoldoutTaskFingerprints;
