@@ -19,6 +19,7 @@ import re
 import shutil
 import sys
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -43,11 +44,12 @@ TOKENIZER_NAMES = {
     "added_tokens.json", "chat_template.jinja",
 }
 MANIFEST_KEYS = {
-    "schemaVersion", "method", "domain", "adapterId", "baseModelDirectory", "baseModelFingerprint",
-    "tokenizerFingerprint", "sourceDatasetFingerprint", "holdoutPlanFingerprint",
-    "trainingFile", "validationFile",
-    "corpusFingerprint", "outputDirectory", "seed", "maxSequenceLength",
-    "epochs", "learningRate", "lora",
+    "schemaVersion", "method", "domain", "adapterId",
+    "baseModelId", "backendId", "baseModelAlias", "servedModelAlias", "governance",
+    "baseModelDirectory", "baseModelFingerprint", "tokenizerFingerprint",
+    "sourceDatasetFingerprint", "holdoutPlanFingerprint",
+    "trainingFile", "validationFile", "corpusFingerprint", "outputDirectory",
+    "seed", "maxSequenceLength", "epochs", "learningRate", "lora",
 }
 
 
@@ -224,6 +226,45 @@ def corpus_fingerprint(training: list[dict[str, str]], validation: list[dict[str
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def validate_governance(raw: Any, minimum_evidence: int) -> dict[str, Any]:
+    required = {
+        "trainingOptIn", "privacyReviewed", "licenseApproved", "piiScreening",
+        "evidenceCount", "attestedBy", "attestedAt", "licenseId",
+    }
+    if not isinstance(raw, dict) or set(raw) != required:
+        raise PreflightError("governance-attestation-schema-invalid")
+    if raw["trainingOptIn"] is not True or raw["privacyReviewed"] is not True or \
+            raw["licenseApproved"] is not True or raw["piiScreening"] != "passed":
+        raise PreflightError("governance-explicit-consent-and-review-required")
+    evidence_count = raw["evidenceCount"]
+    if not isinstance(evidence_count, int) or isinstance(evidence_count, bool) or evidence_count < minimum_evidence:
+        raise PreflightError("governance-evidence-count-insufficient")
+    attested_at = raw["attestedAt"]
+    if not isinstance(attested_at, int) or isinstance(attested_at, bool) or attested_at <= 0:
+        raise PreflightError("governance-attestation-time-invalid")
+    attested_by = raw["attestedBy"]
+    license_id = raw["licenseId"]
+    if not isinstance(attested_by, str) or not attested_by.strip() or len(attested_by) > 160 or \
+            not isinstance(license_id, str) or not license_id.strip() or len(license_id) > 240:
+        raise PreflightError("governance-attestor-or-license-invalid")
+    return {
+        "trainingOptIn": True,
+        "privacyReviewed": True,
+        "licenseApproved": True,
+        "piiScreening": "passed",
+        "evidenceCount": evidence_count,
+        "attestedBy": attested_by,
+        "attestedAt": attested_at,
+        "licenseId": license_id,
+    }
+
+
+def validate_identifier(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,159}", value):
+        raise PreflightError(label + "-identifier-invalid")
+    return value
+
+
 def validate_manifest(manifest_path: Path) -> dict[str, Any]:
     manifest_path = manifest_path.resolve(strict=True)
     if not manifest_path.is_file():
@@ -258,6 +299,7 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
         raise PreflightError("tokenizer-fingerprint-mismatch")
     source_dataset_fingerprint = _safe_hash(manifest.get("sourceDatasetFingerprint"), "source-dataset")
     holdout_plan_fingerprint = _safe_hash(manifest.get("holdoutPlanFingerprint"), "holdout-plan")
+    governance = validate_governance(manifest.get("governance"), len(training) + len(validation))
 
     train_path = _safe_child(root, manifest.get("trainingFile"), "training", True)
     validation_path = _safe_child(root, manifest.get("validationFile"), "validation", True)
@@ -272,6 +314,10 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
         raise PreflightError("adapter-id-invalid")
     if output_path.name != adapter_id:
         raise PreflightError("adapter-output-directory-must-match-adapter-id")
+    base_model_id = validate_identifier(manifest.get("baseModelId"), "base-model")
+    backend_id = validate_identifier(manifest.get("backendId"), "backend")
+    base_model_alias = validate_identifier(manifest.get("baseModelAlias"), "base-model-alias")
+    served_model_alias = validate_identifier(manifest.get("servedModelAlias"), "served-model-alias")
     if output_path.exists():
         raise PreflightError("adapter-output-already-exists")
     if output_path.is_relative_to(base) or base.is_relative_to(output_path):
@@ -324,6 +370,11 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
         "validation": validation,
         "output": output_path,
         "adapterId": adapter_id,
+        "baseModelId": base_model_id,
+        "backendId": backend_id,
+        "baseModelAlias": base_model_alias,
+        "servedModelAlias": served_model_alias,
+        "governance": governance,
         "baseFingerprint": actual_base,
         "tokenizerFingerprint": actual_tokenizer,
         "sourceDatasetFingerprint": source_dataset_fingerprint,
