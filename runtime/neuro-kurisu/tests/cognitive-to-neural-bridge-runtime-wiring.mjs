@@ -7,7 +7,7 @@ import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.t
 import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
 import { cognitiveNeuralProfileFingerprint } from '../src/organism/cognition/CognitiveToNeuralBridge.ts';
 
-async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterReceipt = false) {
+async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterReceipt = false, usageMode = 'normal') {
   const dir = await mkdtemp(path.join(tmpdir(), 'nk-cognitive-neural-bridge-'));
   const requests = [];
   const responses = [];
@@ -17,11 +17,18 @@ async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterRece
     enableLanguage: true,
     languageInvoker: async request => {
       requests.push(request);
+      let providerUsage={promptTokens:90,completionTokens:32,totalTokens:122};
+      if(usageMode==='missing') providerUsage=undefined;
+      else if(usageMode==='invalid') providerUsage={promptTokens:-1,completionTokens:10,totalTokens:9};
+      else if(usageMode==='over-budget' && request.cognitiveControl) {
+        const completionTokens=request.cognitiveControl.maxTokens+3;
+        providerUsage={promptTokens:90,completionTokens,totalTokens:90+completionTokens};
+      }
       const response = {
         text: 'Verified local language response.',
         backend: 'llama.cpp:bridge-test-model',
         latencyMs: 1,
-        providerUsage: { promptTokens:90, completionTokens:32, totalTokens:122 },
+        ...(providerUsage ? {providerUsage} : {}),
         ...(request.cognitiveControl && request.cognitiveControlRequestId && receiptEnabled ? {
           providerControlReceipt: {
             provider: 'llama.cpp',
@@ -50,7 +57,7 @@ async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterRece
     await runtime.init();
     await runtime.step('Please reason about this controlled test observation.', { deliberate: true });
     assert.ok(requests.length > 0, 'the runtime must reach its injected LanguageInvoker');
-    if (enabled && receiptEnabled && !mutateProfileAfterReceipt) {
+    if (enabled && receiptEnabled && !mutateProfileAfterReceipt && usageMode === 'normal') {
       const request = requests.find(value => value.cognitiveControl);
       assert.ok(request, 'enabled runtime must attach cognitive control to LanguageRequest');
       assert.equal(request.cognitiveControl.version, 2);
@@ -126,49 +133,7 @@ async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterRece
         'stale IDs, mismatched fingerprints and non-llama.cpp responses must be rejected');
       assert.equal(afterTampering.llamaCppTemplateKwargsSent,acceptedBeforeReplay);
 
-      const noUsageRequest={
-        ...request,cognitiveControlRequestId:request.cognitiveControlRequestId+':no-usage',
-      };
-      runtime.recordCognitiveProviderUsage(noUsageRequest,{
-        ...selectedResponse,providerUsage:undefined,
-      });
-      const invalidUsageRequest={
-        ...request,cognitiveControlRequestId:request.cognitiveControlRequestId+':invalid-usage',
-      };
-      runtime.recordCognitiveProviderUsage(invalidUsageRequest,{
-        ...selectedResponse,
-        providerUsage:{promptTokens:-1,completionTokens:10,totalTokens:9},
-      });
-      const usageValidity=runtime.cognitiveToNeuralBridgeDiagnostics();
-      assert.equal(usageValidity.providerUsageUnavailable,1);
-      assert.equal(usageValidity.providerUsageInvalid,1);
 
-      const overBudgetRequest={
-        ...request,cognitiveControlRequestId:request.cognitiveControlRequestId+':over-budget',
-      };
-      const overBudgetCompletionTokens=request.cognitiveControl.maxTokens+3;
-      const overBudgetResponse={
-        ...selectedResponse,
-        providerUsage:{
-          promptTokens:100,
-          completionTokens:overBudgetCompletionTokens,
-          totalTokens:100+overBudgetCompletionTokens,
-        },
-        providerControlReceipt:{
-          ...selectedResponse.providerControlReceipt,
-          requestId:overBudgetRequest.cognitiveControlRequestId,
-        },
-      };
-      runtime.recordCognitiveProviderUsage(overBudgetRequest,overBudgetResponse);
-      runtime.recordCognitiveProviderControlReceipt(overBudgetRequest,overBudgetResponse);
-      const afterUsageOverrun=runtime.cognitiveToNeuralBridgeDiagnostics();
-      assert.equal(afterUsageOverrun.providerCompletionBudgetExceeded,1,
-        'actual provider usage above the requested token budget must be observable');
-      assert.ok(afterUsageOverrun.providerCompletionBudgetUtilizationMax>1);
-      assert.equal(afterUsageOverrun.providerUsageObservations,usageObservationsBeforeReplay+1);
-      assert.equal(afterUsageOverrun.providerUsageDuplicates,1);
-      assert.equal(afterUsageOverrun.providerUsageUnavailable,1);
-      assert.equal(afterUsageOverrun.providerUsageInvalid,1);
     } else if (enabled && receiptEnabled && mutateProfileAfterReceipt) {
       const diagnostics=runtime.cognitiveToNeuralBridgeDiagnostics();
       assert.ok(requests.some(value=>value.cognitiveControl));
@@ -179,6 +144,24 @@ async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterRece
       assert.equal(diagnostics.providerUsageObservations,0,
         'mutated control profiles must not contribute trusted usage statistics');
       assert.equal(diagnostics.providerUsageInvalid,1);
+    } else if (enabled && receiptEnabled && usageMode === 'missing') {
+      const diagnostics=runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.ok(diagnostics.providerControlReceiptsAccepted>0);
+      assert.equal(diagnostics.providerUsageObservations,0);
+      assert.ok(diagnostics.providerUsageUnavailable>0);
+      assert.equal(diagnostics.providerUsageInvalid,0);
+    } else if (enabled && receiptEnabled && usageMode === 'invalid') {
+      const diagnostics=runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.ok(diagnostics.providerControlReceiptsAccepted>0);
+      assert.equal(diagnostics.providerUsageObservations,0);
+      assert.equal(diagnostics.providerUsageUnavailable,0);
+      assert.ok(diagnostics.providerUsageInvalid>0);
+    } else if (enabled && receiptEnabled && usageMode === 'over-budget') {
+      const diagnostics=runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.ok(diagnostics.providerControlReceiptsAccepted>0);
+      assert.ok(diagnostics.providerUsageObservations>0);
+      assert.ok(diagnostics.providerCompletionBudgetExceeded>0);
+      assert.ok(diagnostics.providerCompletionBudgetUtilizationMax>1);
     } else if (enabled) {
       const request=requests.find(value=>value.cognitiveControl);
       assert.ok(request,'bridge projection must remain active when template controls are disabled');
@@ -208,5 +191,8 @@ async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterRece
 await runRuntime(true);
 await runRuntime(true,false);
 await runRuntime(true,true,true);
+await runRuntime(true,true,false,'missing');
+await runRuntime(true,true,false,'invalid');
+await runRuntime(true,true,false,'over-budget');
 await runRuntime(false);
 console.log('COGNITIVE_TO_NEURAL_RUNTIME_INTEGRATION_PASS');
