@@ -25,7 +25,6 @@ import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local
 import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { NeuroPlasticAdapterRegistry, verifyNeuroPlasticApprovalSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { verifyNeuroPlasticAdapterArtifact } from '../organism/learning/NeuroPlasticArtifactVerifier.ts';
-import { verifyNeuroPlasticAdapterArtifact } from '../organism/learning/NeuroPlasticArtifactVerifier.ts';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
