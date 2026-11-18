@@ -250,3 +250,41 @@ All stages passed:
 - [#939](https://github.com/ailtron1ss-rgb/NK1/pull/939) — merged into #936; retained as the completed integration history.
 
 No real model-task quality gain, target-device latency/memory or independent holdout advantage is claimed. Those require a separate model-specific evaluation and device soak before #936 can be merged into source or released.
+
+---
+
+## Live refresh — 18 ноября 2026
+
+Этот блок добавлен после повторной проверки GitHub API, опубликованного ZIP, точного source HEAD и Actions. Исторический снимок 17 ноября выше сохранён без переписывания.
+
+### Канонический source и проверка CI
+
+- Live `workpass70-source` HEAD: `24a7a05abea0b904c9b543af8ec4ff55dcd7dd17` (18 ноября, подписанный commit).
+- Предыдущий source commit: `d84e4ed6d9531f2af913256ae56012f565b73770`; именно он является merge commit PR #936.
+- Exact-SHA Actions на `24a7a05`: **9/9 завершены SUCCESS** — explicit-forget, action-governance, browser-affect, verified-learning, source-lineage-contract, targeted-and-regression, local-language-resilience, unified-organism и independent-evidence-evaluation. Это CI-покрытие текущего source SHA, а не доказательство качества модели, phone soak или независимого uplift.
+- PR #936 закрыт с merge в source: merge commit `d84e4ed6d9531f2af913256ae56012f565b73770`. Его child PR #939 (P25 canonical registry-backed routing) был merged в родительскую ветку #936 как `f4b5b7638810bc2127524e2f402b01c04e504d00`, затем родитель #936 интегрирован в source.
+- Подтверждённые merged-концепции из каталога: #08 ChronoTruth (#901), #05 Cognitive Immune System (#913), #23 Neuro-Plastic Core (#936) и #25 Adaptive Synaptic Matrix (#939 → #936). Итого **4/32 концепций в canonical source**; остальные не считать интегрированными только по наличию кода в Draft/STACKED PR.
+
+### Последующие открытые workstreams
+
+- #923 Elastic Neural Plasticity остаётся Draft. Его branch HEAD обновлён до `3df5fd775ad04f64590a48033caee00a21c8c6a5`: добавлен regression на fail-closed поведение P26 при отсутствующем/поддельном P29 governor. Локальный focused test прошёл; runtime typecheck прошёл в режиме Node strip-syntax-only (676 файлов), но semantic TypeScript `tsc` не был доступен. Exact-head Actions после этого commit запущены и на момент снимка ещё выполняются. PR не переведён в Ready и не merged.
+- #925 Neural Prosthesis остаётся Draft; #931 Layer Force — STACKED на #925. Реальная модельная генерация, целевой hardware RAM/VRAM/latency и независимый task-quality uplift не подтверждены.
+- #937 Neuro-Plastic offline pipeline hardening и #942 P25 single-use validation ledger остаются отдельными Draft workstreams; не смешивать их с уже merged базовой интеграцией #936.
+- #933 общий интеграционный train для 32 идей и этот реестр #934 остаются Draft. Никакой из этих PR не merged этим обновлением.
+
+### Release ZIP — фактическая граница
+
+- Последний опубликованный артефакт с учётом prerelease: `workpass70-hotfix1-2026-10-19`, `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- ZIP скачан и проверен: SHA-256 совпал с GitHub Release metadata; `unzip -tq` завершился без ошибок.
+- Сопоставление архива с live source: 9,349 файлов в ZIP против 10,082 tracked files в source; 762 текущих source paths отсутствуют в ZIP. В частности, в ZIP нет `NEUROCORE_START_HERE.md`, `engineering-os/aspects.v1.json`, `docs/RESEARCH_INTAKE_LEDGER.md` и текущего `NeuroPlasticAdapterRegistry.ts`. Есть 29 release-only Live2D paths, поэтому простое сравнение множеств путей не является полным семантическим parity audit.
+- Следовательно, изменения ноября **не released**. Новый ZIP не собирался и не публиковался.
+- `contracts/RELEASE_LICENSE_REVIEW.json` по-прежнему `pending`: root project `NOASSERTION`, runtime `LicenseRef-NK1-Private-All-Rights-Reserved`, `redistributionApproved=false`. Human legal clearance остаётся обязательным gate.
+
+### Следующие действия
+
+1. Дождаться и проверить все exact-head Actions для #923 на SHA `3df5fd7`; при любом fail разбирать только конкретный failing check.
+2. Оставить #923 Draft до независимых target/retention holdouts и реальной оценки transfer/forgetting; локальные paired holdouts не повышать до independent evidence.
+3. Перед дальнейшей работой с #925 обновить его parent base на live source, затем синхронизировать stacked #931; не обходить parent/child порядок.
+4. Разделять merged base #936, открытые #937/#942 и эксперименты #920–#931; не создавать второй PR на тот же owner/contract.
+5. Не готовить Release publisher без human license review и повторного ZIP provenance/parity gate.
+
