@@ -708,6 +708,28 @@ assert.equal(calibrationSimulator.consequenceEcology.diagnostics().calibrationSa
   'a single verified outcome is not enough to declare model calibration reliable');
 assert.equal(calibrationSimulator.consequenceEcology.diagnostics().modelWeightsUpdated, false,
   'observed outcomes must not silently update model weights or confidence');
+const oneSampleDiagnostics = calibrationSimulator.consequenceEcology.diagnostics();
+assert.equal(oneSampleDiagnostics.calibrationSampleSufficient, false,
+  'a single independent outcome cannot pass statistical sufficiency');
+assert.equal(oneSampleDiagnostics.calibrationReadiness, 'insufficient-evidence');
+assert.ok(oneSampleDiagnostics.calibrationReadinessReasons.includes('need-at-least-20-verified-samples'));
+assert.ok(oneSampleDiagnostics.calibrationReadinessReasons.includes('need-at-least-5-distinct-scenarios'));
+approx(oneSampleDiagnostics.effectiveCalibrationSampleSize, 1, 'single-sample effective sample size');
+approx(oneSampleDiagnostics.weightedMeanCalibrationBrier01, oneSampleDiagnostics.meanCalibrationBrier01,
+  'single-sample weighted Brier must match unweighted Brier');
+assert.ok(oneSampleDiagnostics.weightedExpectedCalibrationError01 >= 0);
+const populatedBin = oneSampleDiagnostics.calibrationBins.find(bin => bin.count === 1);
+assert.ok(populatedBin);
+assert.ok(populatedBin.lower95ObservedFrequency01 >= 0 && populatedBin.lower95ObservedFrequency01 <= 1);
+assert.ok(populatedBin.upper95ObservedFrequency01 >= 0 && populatedBin.upper95ObservedFrequency01 <= 1);
+assert.ok(populatedBin.lower95ObservedFrequency01 <= populatedBin.upper95ObservedFrequency01);
+assert.throws(() => calibrationSimulator.consequenceEcology.recordVerifiedOutcome({
+  outcomeId: 'caller-forged-independent-outcome',
+  analysisId: calibrationAnalysis.analysis.id,
+  optionId: 'verified-selected-option',
+  outcome: { authority: 'independent-external', independentlyVerified: true, occurred: true },
+}), /consequence-outcome-not-independently-verified/,
+'callers cannot inject a self-asserted independently verified outcome directly into the calibration engine');
 
 const unverifiedSimulator = new FutureSimulator();
 const unverifiedScenario = unverifiedSimulator.sharedFuture.createScenario({
