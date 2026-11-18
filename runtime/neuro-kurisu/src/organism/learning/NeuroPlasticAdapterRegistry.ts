@@ -770,9 +770,11 @@ export function verifyNeuroPlasticApprovalSignature(
       || !Number.isSafeInteger(allowedClockSkewMs) || allowedClockSkewMs < 0 || allowedClockSkewMs > 5 * 60_000) {
       return false;
     }
+    const purpose = options.purpose ?? 'activation';
+    if (purpose !== 'activation' && purpose !== 'restore') return false;
     const now = (options.now ?? Date.now)();
     if (!Number.isFinite(now) || normalized.approvedAt > now + allowedClockSkewMs) return false;
-    if ((options.purpose ?? 'activation') === 'activation' && now - normalized.approvedAt > maxAgeMs) return false;
+    if (purpose === 'activation' && now - normalized.approvedAt > maxAgeMs) return false;
     return verifyNeuroPlasticDetachedEd25519Signature(
       canonicalNeuroPlasticApprovalPayload(normalized, context),
       normalized.signature,
