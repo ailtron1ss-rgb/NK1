@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,7 +10,9 @@ import { fileURLToPath } from 'node:url';
 const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'neuro-plastic-cli-'));
 const cliPath = fileURLToPath(new URL('../scripts/neuro_plastic_registry.mjs', import.meta.url));
 const secret = 'neuro-plastic-cli-test-secret-with-more-than-32-bytes';
-const evaluatorSecret = 'neuro-plastic-cli-evaluator-secret-held-outside-runtime';
+const evaluatorKeyPair = generateKeyPairSync('ed25519');
+const evaluatorPrivateKeyPem = evaluatorKeyPair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const evaluatorPublicKeyPem = evaluatorKeyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const adapterId = 'kurisu-reasoning-cli-v1';
 const baseFingerprint = 'a'.repeat(64);
 const tokenizerFingerprint = 'b'.repeat(64);
@@ -29,7 +31,7 @@ function run(args, expectedStatus = 0) {
       NEURO_PLASTIC_REGISTRY_FILE: 'state/neuro-plastic-adapters.json',
       NEURO_PLASTIC_APPROVAL_SECRET: secret,
       NEURO_PLASTIC_APPROVER_ID: 'cli-test-operator',
-      NEURO_PLASTIC_EVALUATOR_SECRET: evaluatorSecret,
+      NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY: evaluatorPublicKeyPem,
     },
   });
   assert.equal(result.status, expectedStatus, result.stderr || result.stdout);
@@ -160,7 +162,7 @@ try {
     evaluation,
     'independent-verifier-v1',
     'cli-holdout-evaluation-1',
-    evaluatorSecret,
+    evaluatorPrivateKeyPem,
   );
   const evaluationPath = path.join(runtimeRoot, 'holdout-evaluation.json');
   await writeFile(evaluationPath, JSON.stringify({ ...evaluation, receipt }));
