@@ -133,6 +133,20 @@ class NeuroPlasticTrainerPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(TRAINER.PreflightError, "symlink-path-component-rejected"):
             TRAINER.validate_manifest(self.manifest_path)
 
+    def test_preflight_rejects_adapter_directory_identity_mismatch(self):
+        self.manifest["adapterId"] = "different-adapter-id"
+        self._write_manifest()
+        with self.assertRaisesRegex(TRAINER.PreflightError, "adapter-output-directory-must-match-adapter-id"):
+            TRAINER.validate_manifest(self.manifest_path)
+
+    def test_preflight_rejects_symlinked_base_model_root(self):
+        linked = self.root / "base-model-link"
+        linked.symlink_to(self.base, target_is_directory=True)
+        self.manifest["baseModelDirectory"] = str(linked)
+        self._write_manifest()
+        with self.assertRaisesRegex(TRAINER.PreflightError, "symlink-path-component-rejected"):
+            TRAINER.validate_manifest(self.manifest_path)
+
     def test_model_fingerprint_rejects_symlinked_snapshot_directory(self):
         linked = self.base / "external-weights"
         linked.symlink_to(self.root, target_is_directory=True)
