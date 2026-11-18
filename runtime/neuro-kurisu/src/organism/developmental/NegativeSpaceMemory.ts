@@ -513,6 +513,10 @@ export class NegativeSpaceMemory {
       totalRecorded: this.state.totalRecorded,
       pruned: this.state.pruned,
       lastAt: this.state.lastAt,
+      reviewPolicy: {
+        minimumVerification01: MIN_REVIEW_VERIFICATION01,
+        minimumIndependence01: MIN_REVIEW_INDEPENDENCE01,
+      },
       bounded: records.length <= MAX_RECORDS && records.every(record => record.alternatives.length <= MAX_ALTERNATIVES),
     };
   }

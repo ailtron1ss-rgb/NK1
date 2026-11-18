@@ -355,6 +355,11 @@ assert.equal(independentUpgrade.negativeSpaceRelatedAlternatives('independence-g
   'default contextual recall must exclude non-independent outcomes');
 assert.equal(independentUpgrade.negativeSpaceRelatedAlternatives('independence-gate-context', 8, true).length, 1,
   'non-independent history remains available only for explicit exploratory recall');
+const pendingIndependenceRestore = new RegretEngine();
+pendingIndependenceRestore.restore(independentUpgrade.snapshot());
+assert.equal(pendingIndependenceRestore.snapshot().negativeSpace.records[0].reviewStatus, 'awaiting-independent-evidence');
+assert.equal(pendingIndependenceRestore.negativeSpaceReviewQueue().length, 0,
+  'restart must not grant review authority before independent corroboration');
 const improvedIndependentEvidence = independentUpgrade.recordNegativeSpaceOutcome({
   decisionId: 'decision-independent-evidence-upgrade',
   actualOutcome01: 0.5,
@@ -469,12 +474,13 @@ malformed.restore({
 });
 const malformedState = malformed.snapshot().negativeSpace;
 assert.equal(malformedState.records.length, 1);
-assert.equal(malformedState.records[0].reviewStatus, 'reopened');
+assert.equal(malformedState.records[0].reviewStatus, 'retained', 'restore must discard forged reopen authority without verified independent evidence');
 assert.equal(malformed.negativeSpaceReviewQueue().length, 0, 'unverified restored snapshots must not restore review authority');
 assert.deepEqual(malformedState.records[0].alternatives.map(row => row.action), ['explore', 'verify']);
 assert.equal(malformedState.records[0].alternatives[0].expectedOutcome01, 1);
 assert.equal(malformedState.records[0].alternatives[0].reopenedAt, undefined);
-assert.equal(malformedState.records[0].alternatives[1].reopenedAt, 10);
+assert.equal(malformedState.records[0].alternatives[1].reopenedAt, undefined);
+assert.equal(malformedState.records[0].alternatives[1].reopenReason, undefined);
 assert.equal(malformedState.records[0].outcomeSource, 'unknown');
 assert.equal(malformed.negativeSpaceRelatedAlternatives('malformed-context').length, 0);
 assert.equal(malformedState.records[0].significance.cost01, 1);
