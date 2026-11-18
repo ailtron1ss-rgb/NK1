@@ -1,4 +1,5 @@
 import type { ActionKind } from '../core/types.ts';
+import { B365_STATE_SCHEMA_VERSION } from './B365DiagnosticsSchema.ts';
 import { BalancedReservoirSampler, PrioritizedReplaySampler, robustPercentileNormalize, type ReservoirState } from '../system/UpstreamReplayPrimitives.ts';
 import { NeuroCoreAdaptiveOperators, type NeuroCoreAdaptiveOperatorState } from '../system/NeuroCoreAdaptiveOperators.ts';
 
@@ -16,9 +17,6 @@ const SELF_DIM = 16;
 const SELF_EPISODE_LIMIT = 64;
 const GOAL_HISTORY_LIMIT = 96;
 const GOAL_DIM = 8;
-
-/** Version of the persisted B365 state and the read-only diagnostics signal contract. */
-export const B365_STATE_SCHEMA_VERSION = 14 as const;
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 const clamp11 = (x: number) => Math.max(-1, Math.min(1, Number.isFinite(x) ? x : 0));
