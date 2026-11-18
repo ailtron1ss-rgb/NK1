@@ -258,6 +258,15 @@ assert.equal(Object.hasOwn(corpus, 'holdoutAggregates'), false, 'holdout values 
 assert.equal(corpus.training[0].prompt.startsWith('Question train-task-'), true);
 assert.equal(toNeuroPlasticJsonl(corpus, 'train').trim().split('\n').length, 6);
 assert.equal(toNeuroPlasticJsonl(corpus, 'validation').trim().split('\n').length, 3);
+const duplicateCrossSplitDataset = {
+  ...verifiedDataset,
+  validation: validationRows.map((row, index) => ({
+    ...row,
+    exampleId: index === 0 ? trainingRows[0].exampleId : row.exampleId,
+  })),
+};
+assert.throws(() => buildVerifiedNeuroPlasticCorpus(duplicateCrossSplitDataset, resolver, 'reasoning'),
+  /train-validation-example-overlap/i, 'example identities must be unique across train and validation');
 
 assert.throws(() => buildVerifiedNeuroPlasticCorpus(
   verifiedDataset,
