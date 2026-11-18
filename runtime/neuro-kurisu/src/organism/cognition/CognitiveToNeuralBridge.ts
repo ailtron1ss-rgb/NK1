@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { ActionKind } from '../core/types.ts';
 
 export type CognitiveBridgeMode = 'reflex'|'shallow'|'retrieve'|'deep'|'simulate'|'defer'|'sleep';
@@ -17,12 +18,14 @@ const ADAPTER_BY_MODE:Record<CognitiveBridgeMode,CognitiveAdapterHint>={
   simulate:'simulation',defer:'conservative',sleep:'conservative',
 };
 const NEURAL_SNAPSHOT_MAX_AGE_TICKS=8;
+/** B365State.version currently identifies the diagnostic signal layout consumed by bridge v2. */
+export const B365_DIAGNOSTICS_SCHEMA_VERSION=14;
 const clamp=(value:number,min=0,max=1)=>Math.max(min,Math.min(max,Number.isFinite(value)?value:min));
 const safe01=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
 const safeTick=(value:unknown):number|null=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;
 const isNormalizedSignal=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
 function hasCompleteNeuralSnapshot(value:CognitiveNeuralBridgeNeuralInput|undefined):boolean {
-  if(!value || !Number.isSafeInteger(value.version) || Number(value.version)<1) return false;
+  if(!value || value.version!==B365_DIAGNOSTICS_SCHEMA_VERSION) return false;
   const signals=[
     value.predictionError01,value.plasticity01,value.neuromodulation01,value.sparseActivity01,
     value.recurrentCoherence01,value.neuralConfidence01,value.modelAgreement01,
@@ -273,7 +276,7 @@ export function isValidCognitiveNeuralControlProfile(value:unknown):value is Cog
     const snapshotVersion=profile.neuralSnapshotVersion;
     const age=profile.neuralSnapshotAgeTicks;
     if(profile.neuralSource!=='b365-unified-neuro-causal-core'
-      || snapshotTick===null || !Number.isSafeInteger(snapshotVersion) || Number(snapshotVersion)<1
+      || snapshotTick===null || snapshotVersion!==B365_DIAGNOSTICS_SCHEMA_VERSION
       || !Number.isSafeInteger(age) || Number(age)<0 || Number(age)>NEURAL_SNAPSHOT_MAX_AGE_TICKS
       || Number(profile.tick)-snapshotTick!==Number(age)) return false;
     const expectedFreshness=clamp(1-Number(age)/NEURAL_SNAPSHOT_MAX_AGE_TICKS);
@@ -286,6 +289,26 @@ export function isValidCognitiveNeuralControlProfile(value:unknown):value is Cog
     return false;
   }
   return true;
+}
+
+/**
+ * Stable SHA-256 binding for a single validated control profile.
+ * This is a correlation/integrity digest, not an authentication token: trust still
+ * comes from the configured local provider boundary and the successful response.
+ */
+export function cognitiveNeuralProfileFingerprint(profile:CognitiveNeuralControlProfile):string {
+  if(!isValidCognitiveNeuralControlProfile(profile)) throw new Error('cognitive-neural-invalid-profile-fingerprint');
+  const canonical=JSON.stringify([
+    profile.version,profile.featureSchema,profile.tick,profile.action,profile.mode,profile.adapterHint,
+    profile.neuralSource,profile.neuralSnapshotAvailable,profile.neuralSnapshotVersion,
+    profile.neuralSnapshotTick,profile.neuralSnapshotAgeTicks,profile.featureKeys,profile.featureVector01,
+    profile.temperature,profile.maxTokens,
+    profile.steeringIntent01.curiosity01,profile.steeringIntent01.caution01,
+    profile.steeringIntent01.persistence01,profile.steeringIntent01.verification01,
+    profile.controlsConfigured.samplingParameters,profile.controlsConfigured.adapterSelection,
+    profile.controlsConfigured.activationSteering,profile.controlsConfigured.residualBlock,
+  ]);
+  return createHash('sha256').update(canonical,'utf8').digest('hex');
 }
 
 /** Apply only the provider contract's supported, bounded sampling parameters. */
