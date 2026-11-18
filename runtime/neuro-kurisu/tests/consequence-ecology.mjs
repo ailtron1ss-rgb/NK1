@@ -613,10 +613,28 @@ const replayedCalibration = calibrationSimulator.recordVerifiedConsequenceOutcom
   optionId: 'verified-selected-option',
 });
 assert.equal(replayedCalibration.replayed, true, 'calibration must be idempotent');
+const calibrationSnapshot = calibrationSimulator.snapshot();
+const unvalidatedCalibrationRestore = new FutureSimulator();
+unvalidatedCalibrationRestore.restore(calibrationSnapshot);
+assert.equal(unvalidatedCalibrationRestore.consequenceEcology.listCalibrations().length, 0,
+  'independent outcome claims must not survive restore without external revalidation');
 const calibrationRoundTrip = new FutureSimulator();
-calibrationRoundTrip.restore(calibrationSimulator.snapshot());
+calibrationRoundTrip.restore(calibrationSnapshot, {
+  validateIndependentlyVerifiedOutcome: outcome =>
+    outcome.id === independentlyRecorded.outcome.id &&
+    outcome.authority === 'independent-external' &&
+    outcome.independentlyVerified === true,
+});
 assert.deepEqual(calibrationRoundTrip.consequenceEcology.listCalibrations(), calibrationSimulator.consequenceEcology.listCalibrations(),
-  'verified calibration records must survive the canonical FutureSimulator snapshot');
+  'verified calibration records must survive only after canonical Shared Future outcome revalidation');
+const tamperedCalibrationSnapshot = structuredClone(calibrationSnapshot);
+tamperedCalibrationSnapshot.consequenceEcology.outcomeCalibrations[0].brierScore01 = 0;
+const tamperedCalibrationRestore = new FutureSimulator();
+tamperedCalibrationRestore.restore(tamperedCalibrationSnapshot, {
+  validateIndependentlyVerifiedOutcome: outcome => outcome.id === independentlyRecorded.outcome.id,
+});
+assert.equal(tamperedCalibrationRestore.consequenceEcology.listCalibrations().length, 0,
+  'persisted calibration scores must be recomputed and tampered values rejected');
 const calibrationGateway = new ActionGateway({ live: false });
 calibrationGateway.setExecutionLedgerPersister(async () => {});
 registerConsequenceEcologyTools(calibrationGateway, calibrationSimulator);
