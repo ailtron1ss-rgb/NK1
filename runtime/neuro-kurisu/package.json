@@ -1868,7 +1868,9 @@
     "test:cognitive-immune-health": "node --experimental-strip-types tests/cognitive-immune-health-monitor.mjs",
     "test:p25:adaptive-synaptic-matrix": "node --experimental-strip-types tests/p25-adaptive-synaptic-matrix.mjs",
     "test:p25:adaptive-synaptic-matrix:runtime": "node --experimental-strip-types tests/p25-adaptive-synaptic-matrix-runtime.mjs",
-    "test:developmental-genome": "node --experimental-strip-types tests/developmental-genome.mjs && node --experimental-strip-types tests/developmental-genome-p53-p63-bridge.mjs"
+    "test:developmental-genome": "node --experimental-strip-types tests/developmental-genome.mjs && node --experimental-strip-types tests/developmental-genome-p53-p63-bridge.mjs",
+    "architecture:morphogenesis:inspect": "node --experimental-strip-types scripts/architecture-morphogenesis.mjs",
+    "test:architecture-morphogenesis": "node --experimental-strip-types tests/architecture-morphogenesis-workpass17.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3"
