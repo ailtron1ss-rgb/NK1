@@ -62,6 +62,7 @@ const baselineWait=await gateway.executeTool('organism.worldforge.sessions.step'
  action:{action:'wait'},
 },'worldforge-baseline-wait');
 assert.equal(baselineWait.ok,true,JSON.stringify(baselineWait.result));
+assert.equal('reason' in baselineWait.result.transition,false,'successful step envelopes must remain JSON-safe and omit absent optional reason');
 
 const beforeResources=state.resourcesRemaining;
 const collect=await gateway.executeTool('organism.worldforge.sessions.step',{
