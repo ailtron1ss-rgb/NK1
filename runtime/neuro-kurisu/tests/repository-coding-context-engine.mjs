@@ -1,15 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import { RepositoryCodingContextEngine, createRepositoryCodingActionTools } from '../src/organism/system/RepositoryCodingContextEngine.ts';
 
 const REVISION = '1e83a011fc677ff20f2348570322bd562181d9ff';
-const HASH = value => createHashForTest(value);
-function createHashForTest(value) {
-  return requireHash(value);
-}
-function requireHash(value) {
-  return globalThis.__hashForTest ? globalThis.__hashForTest(value) : '0'.repeat(64);
-}
 function runReceipt({ runId = 'run-primary', sandboxId = 'sandbox-primary', commands = ['node --experimental-strip-types tests/repository-coding-context-engine.mjs'], now = 1_000_000 } = {}) {
   return {
     runId, sandboxId, networkDisabled: true, workspaceIsolated: true,
@@ -197,9 +191,7 @@ test('adapter rejects stale base revisions before sandbox or mutation', async ()
 });
 
 async function sha256(value) {
-  const bytes = new TextEncoder().encode(value);
-  const hash = await crypto.subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(hash)].map(value => value.toString(16).padStart(2, '0')).join('');
+  return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
 async function createProposal(engine) {
