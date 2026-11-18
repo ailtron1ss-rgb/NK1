@@ -11,9 +11,11 @@ const MODES:readonly CognitiveBridgeMode[]=['reflex','shallow','retrieve','deep'
 const TEMPERATURE_BY_MODE:Record<CognitiveBridgeMode,number>={
   reflex:.30,shallow:.52,retrieve:.43,deep:.65,simulate:.60,defer:.25,sleep:.22,
 };
-const TOKENS_BY_MODE:Record<CognitiveBridgeMode,number>={
+/** Single source of truth for mode-specific completion-token ceilings. */
+export const COGNITIVE_MODE_TOKEN_CEILINGS:Readonly<Record<CognitiveBridgeMode,number>>={
   reflex:256,shallow:384,retrieve:512,deep:768,simulate:768,defer:128,sleep:128,
 };
+const TOKENS_BY_MODE=COGNITIVE_MODE_TOKEN_CEILINGS;
 const ADAPTER_BY_MODE:Record<CognitiveBridgeMode,CognitiveAdapterHint>={
   reflex:'fast',shallow:'balanced',retrieve:'retrieval',deep:'deep',
   simulate:'simulation',defer:'conservative',sleep:'conservative',
