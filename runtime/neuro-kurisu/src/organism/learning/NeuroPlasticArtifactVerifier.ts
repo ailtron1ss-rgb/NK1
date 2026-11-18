@@ -6,10 +6,6 @@ import type { NeuroPlasticAdapterManifest } from './NeuroPlasticAdapterRegistry.
 
 const verifiedArtifacts = new Map<string, string>();
 
-function digest(value: Uint8Array): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
 async function hashFile(filePath: string): Promise<string> {
   const hash = createHash('sha256');
   for await (const chunk of createReadStream(filePath)) hash.update(chunk);
