@@ -266,6 +266,25 @@ class LayerForceSidecarConfigurationTests(unittest.TestCase):
         finally:
             controller.close()
 
+
+    def test_preloaded_profile_without_default_keeps_sidecar_hooks_disabled(self):
+        with self._configure(default=""):
+            controller, default_profile = _load_layer_force_bank(
+                self.model,
+                model_id=self.model_id,
+                model_revision=self.revision,
+                layer_path=self.layer_path,
+            )
+        self.assertIsNotNone(controller)
+        self.assertIsNone(default_profile)
+        try:
+            diagnostic = controller.snapshot()
+            self.assertTrue(diagnostic["loaded_profiles"])
+            self.assertEqual(diagnostic["registered_hook_count"], 0)
+            self.assertTrue(all(not layer._forward_hooks for layer in self.model.layers))
+        finally:
+            controller.close()
+
     def test_layer_force_refuses_unapproved_profiles_and_unversioned_models(self):
         with self._configure(allowlist=["0" * 64], default="service-steering-v1"):
             with self.assertRaisesRegex(ArtifactError, "not-host-approved"):
