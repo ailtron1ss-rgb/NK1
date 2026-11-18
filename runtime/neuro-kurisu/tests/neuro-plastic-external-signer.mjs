@@ -69,23 +69,23 @@ try {
     '--output', path.join(root, 'tampered-signed.json')], 1);
 
   await chmod(privateKeyPath, 0o644);
-  run(['--input', requestPath, '--key-file', privateKeyPath, '--key-id': signerKeyId,
+  run(['--input', requestPath, '--key-file', privateKeyPath, '--key-id', signerKeyId,
     '--output', path.join(root, 'permissive-key-mode.json')], 1);
   await chmod(privateKeyPath, 0o600);
 
   const symlinkPath = path.join(root, 'operator-private-symlink.pem');
   await symlink(privateKeyPath, symlinkPath);
-  run(['--input', requestPath, '--key-file', symlinkPath, '--key-id': signerKeyId,
+  run(['--input', requestPath, '--key-file', symlinkPath, '--key-id', signerKeyId,
     '--output', path.join(root, 'symlink-key-output.json')], 1);
 
-  run(['--input', requestPath, '--key-file', privateKeyPath, '--key-id': signerKeyId,
+  run(['--input', requestPath, '--key-file', privateKeyPath, '--key-id', signerKeyId,
     '--output', outputPath], 1);
 
   const rsaPair = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const rsaPrivatePath = path.join(root, 'rsa-private.pem');
   await writeFile(rsaPrivatePath, rsaPair.privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
   await chmod(rsaPrivatePath, 0o600);
-  run(['--input', requestPath, '--key-file', rsaPrivatePath, '--key-id': signerKeyId,
+  run(['--input', requestPath, '--key-file', rsaPrivatePath, '--key-id', signerKeyId,
     '--output', path.join(root, 'rsa-output.json')], 1);
 
   console.log('NEURO_PLASTIC_EXTERNAL_SIGNER=PASS canonicalBinding=1 publicKeyVerification=1 noPrivateKeyLeak=1 symlinkRejected=1 permissivePermissionsRejected=1 wrongKeyIdRejected=1 overwriteRejected=1');
