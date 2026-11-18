@@ -55,6 +55,7 @@ let baseCalls = 0;
 let adapterCalls = 0;
 const baseCallsByUser = new Map();
 let lastAdapterUser = null;
+let lastAdapterBaseCallsAtStart = 0;
 let failAdapter = false;
 let badReceipt = false;
 let badBaseReceipt = false;
@@ -70,6 +71,7 @@ const baseInvoker = async request => {
 const adapterInvoker = async (_request, selected, routingInput) => {
   adapterCalls += 1;
   lastAdapterUser = String(_request?.user ?? '');
+  lastAdapterBaseCallsAtStart = baseCallsByUser.get(lastAdapterUser) ?? 0;
   lastRoutingInput = routingInput;
   assert.equal(selected.id, candidate.id);
   if (stallAdapter) {
@@ -145,19 +147,16 @@ try {
   // return a base response itself. P25 must not retry base a second time or
   // record a specialist execution failure for a policy/registry disagreement.
   const adapterCallsBeforeCanonicalFallback = adapterCalls;
-  const adapterPromptBeforeCanonicalFallback = lastAdapterUser;
-  const adapterPromptBaseCallsBefore = baseCallsByUser.get(adapterPromptBeforeCanonicalFallback) ?? 0;
   const failuresBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures;
   const fallbackCountBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().metrics.canonicalRegistryFallbacks;
   canonicalFallback = true;
   const canonicalBase = await runtime.step('Exercise canonical registry mismatch fallback.', { deliberate: false });
   canonicalFallback = false;
-  const canonicalAdapterPrompt = lastAdapterUser;
+
   assert.equal(canonicalBase.language?.text, 'base response from canonical registry');
   assert.equal(adapterCalls, adapterCallsBeforeCanonicalFallback + 1,
     'the P25 adapter executor must return the canonical base fallback for the selected request');
-  assert.equal(baseCallsByUser.get(canonicalAdapterPrompt) ?? 0,
-    canonicalAdapterPrompt === adapterPromptBeforeCanonicalFallback ? adapterPromptBaseCallsBefore : 0,
+  assert.equal(baseCallsByUser.get(lastAdapterUser) ?? 0, lastAdapterBaseCallsAtStart,
     'P25 must not re-send the same specialist request to the base invoker after canonical executor fallback');
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'active',
     'canonical selection mismatch must not disable a healthy P25 candidate');
@@ -169,29 +168,35 @@ try {
   assert.equal(lastRoutingInput?.baseModelRevisionSha256, candidate.baseModelRevisionSha256);
   assert.ok(lastRoutingInput?.contextTokens > 0, 'P25 must pass its bounded context estimate to the canonical host adapter');
 
+  const adapterCallsBeforeTimeout = adapterCalls;
   stallAdapter = true;
   const timedOut = await runtime.step('Force a non-responsive adapter loader to exceed its deadline.', { deliberate: false });
-  assert.equal(timedOut.language?.text, 'base response');
-  assert.equal(adapterCalls, 2);
-  assert.equal(baseCalls, 2, 'adapter timeout must abort specialist execution and call the base model');
-  assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1);
   stallAdapter = false;
+  assert.equal(timedOut.language?.text, 'base response');
+  assert.equal(adapterCalls, adapterCallsBeforeTimeout + 1);
+  assert.equal(baseCallsByUser.get(lastAdapterUser) ?? 0, lastAdapterBaseCallsAtStart + 1,
+    'adapter timeout must invoke the base model exactly once for the timed-out adapter prompt');
+  assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1);
   await runtime.activateSynapticAdapter(manifest);
 
+  const adapterCallsBeforeBadBaseReceipt = adapterCalls;
   badBaseReceipt = true;
   const rejectedBaseReceipt = await runtime.step('Reject a specialist response for the wrong base-model identity.', { deliberate: false });
   assert.equal(rejectedBaseReceipt.language?.text, 'base response');
-  assert.equal(adapterCalls, 3);
-  assert.equal(baseCalls, 3, 'wrong base-model attestation must execute the original base invoker exactly once');
+  assert.equal(adapterCalls, adapterCallsBeforeBadBaseReceipt + 1);
+  assert.equal(baseCallsByUser.get(lastAdapterUser) ?? 0, lastAdapterBaseCallsAtStart + 1,
+    'wrong base-model attestation must execute the original base invoker exactly once for the selected prompt');
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1);
 
   badBaseReceipt = false;
   await runtime.activateSynapticAdapter(manifest);
+  const adapterCallsBeforeBadDigest = adapterCalls;
   badReceipt = true;
   const rejectedReceipt = await runtime.step('Reject a specialist response that attests the wrong weight digest.', { deliberate: false });
   assert.equal(rejectedReceipt.language?.text, 'base response');
-  assert.equal(adapterCalls, 4);
-  assert.equal(baseCalls, 4, 'wrong adapter weight attestation must execute the original base invoker exactly once');
+  assert.equal(adapterCalls, adapterCallsBeforeBadDigest + 1);
+  assert.equal(baseCallsByUser.get(lastAdapterUser) ?? 0, lastAdapterBaseCallsAtStart + 1,
+    'wrong adapter weight attestation must execute the original base invoker exactly once for the selected prompt');
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1,
     'explicit signed reactivation resets the consecutive-failure streak before the next execution');
 
