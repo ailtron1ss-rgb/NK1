@@ -84,9 +84,10 @@ assert.equal(engine.negativeSpaceRelatedAlternatives(context.contextKey).length,
 assert.equal(engine.negativeSpaceRelatedAlternatives(context.contextKey, 8, true).length, 3,
   'unverified history requires explicit opt-in');
 assert.ok(record.outcomeEvidence.includes('postcondition:verified'));
+const originalNegativeSpaceRecordCount = engine.snapshot().negativeSpace.records.length;
 const originalRegretRecordCount = engine.snapshot().records.length;
 const replayed = engine.observe('respond', 0.52, alternatives, context);
-assert.equal(engine.snapshot().negativeSpace.records.length, 1, 'replayed decision IDs must not duplicate the ledger row');
+assert.equal(engine.snapshot().negativeSpace.records.length, originalNegativeSpaceRecordCount, 'replayed decision IDs must not duplicate the ledger row');
 assert.equal(engine.snapshot().records.length, originalRegretRecordCount, 'replayed decision IDs must not duplicate regret rows');
 assert.equal(replayed?.decisionId, context.decisionId);
 
