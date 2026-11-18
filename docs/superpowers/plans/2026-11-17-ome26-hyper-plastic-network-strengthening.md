@@ -96,7 +96,7 @@
 - Do not add an adapter to the provider request unless a real loader contract exists.
 
 - [ ] Test current provider fails closed; caller-injected capability values do not override provider-owned capability.
-- [ ] Implement immutable provider capability snapshot and route integration seam.
+- [x] Implement immutable provider-owned capability objects and fail-closed route integration seam. The current chat provider explicitly reports no adapter loader.
 
 ### Task 5: Harden offline hypernetwork and final CI
 
@@ -106,8 +106,8 @@
 - Modify: `.github/workflows/ome26-hyper-plastic-network.yml`
 - Modify: `docs/OME26_HYPER_PLASTIC_NETWORK_RU.md`
 
-- [ ] Add deterministic SHA-256 fingerprint and test finite tampering/collision-sensitive metadata.
-- [ ] Add gradient clipping, bounded optimizer-state handling, finite update checks, and checkpoint compatibility tests.
+- [x] Add deterministic SHA-256 fingerprint and test finite tampering/collision-sensitive metadata.
+- [x] Add global L2 gradient clipping, atomic bounded parameter updates, finite update checks, and checkpoint compatibility tests.
 - [ ] Add signed-evidence test matrix and provider boundary integration.
 - [ ] Run focused tests, runtime typecheck, and targeted source regressions.
 - [ ] Inspect exact PR diff and exact-head Actions before reporting status.
