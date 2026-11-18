@@ -6,7 +6,7 @@ import { ProceduralSkillLibrary } from '../src/organism/learning/ProceduralSkill
 
 function buildInputs({damaged=false}={}) {
   const p65=new P65EpistemicLedger();
-  const beliefs=[];
+  const beliefs=[],predictionIds=[],contradictionIds=[];
   for(let i=0;i<8;i++){
     beliefs.push(p65.record({
       tick:i+1,at:1_000,kind:'belief',content:`belief-${i}`,
@@ -22,12 +22,15 @@ function buildInputs({damaged=false}={}) {
       tick:40+i,at:1_000,kind:'prediction',content:`prediction-${i}`,
       confidence01:.92,predicted01:.92,source:'organism'
     });
+    predictionIds.push(id);
     p65.resolvePrediction(id,damaged ? .05 : .9);
   }
   if(damaged)p65.expireBeliefs(70_001,60_000);
   else for(const id of beliefs){p65.supportBelief(id,2_000);p65.supportBelief(id,3_000);p65.supportBelief(id,4_000);}
   const contradictions=new ContradictionReservoir();
-  if(damaged)for(let i=0;i<5;i++)contradictions.register(`conflict-${i}`,[],.8);
+  if(damaged)for(let i=0;i<5;i++)contradictionIds.push(
+    contradictions.register(`conflict-${i}`,[],.8).id
+  );
   const skills=new ProceduralSkillLibrary();
   for(const [action,context] of [['explore','context-a'],['verify','context-b']]){
     for(let i=0;i<12;i++)skills.observeOutcome(
@@ -38,7 +41,9 @@ function buildInputs({damaged=false}={}) {
   return {
     epistemic:p65.snapshot(),
     contradictions:contradictions.snapshot(),
-    skills:skills.snapshot()
+    skills:skills.snapshot(),
+    evidenceIds:{staleBeliefs:beliefs,predictions:predictionIds,contradictions:contradictionIds,
+      skills:skills.snapshot().skills.map(s=>s.id)}
   };
 }
 
@@ -58,6 +63,22 @@ assert.ok(second.metrics['contradiction-pressure'].value01>.8);
 assert.ok(second.metrics['prediction-calibration'].value01>.55);
 assert.ok(second.metrics['procedural-skill-degradation'].value01>.7);
 assert.equal(second.recommendedAction,'review-evidence');
+const contradictionSignal=second.newSignals.find(s=>s.metric==='contradiction-pressure');
+assert.ok(contradictionSignal?.evidenceRefs.length>0,
+  'contradiction alerts must link back to concrete reservoir records');
+assert.ok(contradictionSignal.evidenceRefs.every(id=>damaged.evidenceIds.contradictions.includes(id)),
+  'contradiction evidence references must belong to the real source snapshot');
+const staleSignal=second.newSignals.find(s=>s.metric==='belief-staleness');
+assert.ok(staleSignal?.evidenceRefs.length>0&&staleSignal.evidenceRefs.every(id=>damaged.epistemic.claimsData.some(c=>c.id===id)),
+  'stale-belief alerts must identify exact P65 claims');
+const predictionSignal=second.newSignals.find(s=>s.metric==='prediction-calibration');
+assert.ok(predictionSignal?.evidenceRefs.length>0&&predictionSignal.evidenceRefs.every(id=>damaged.evidenceIds.predictions.includes(id)),
+  'prediction alerts must identify exact resolved P65 predictions');
+const skillSignal=second.newSignals.find(s=>s.metric==='procedural-skill-degradation');
+assert.ok(skillSignal?.evidenceRefs.length>0&&skillSignal.evidenceRefs.every(id=>damaged.evidenceIds.skills.includes(id)),
+  'skill degradation alerts must identify real skill records');
+assert.ok(immune.healthSnapshot().events.some(e=>e.type==='signal-opened'&&e.signalId===contradictionSignal.id),
+  'opening a health signal must append an audit event');
 assert.equal(JSON.stringify(damaged),immutableBefore,'the monitor must not mutate P65, contradiction or skill source state');
 
 const before=immune.snapshot();
@@ -67,20 +88,28 @@ assert.equal(immune.reviewHealthSignal(signal.id,'false-positive','independent-r
 const after=immune.snapshot();
 assert.equal(after.health.signals.find(s=>s.id===signal.id)?.status,'dismissed');
 assert.equal(after.health.signals.length,before.health.signals.length,'review should annotate, not erase signal history');
+assert.ok(after.health.events.some(e=>e.type==='signal-dismissed'&&e.signalId===signal.id&&e.reviewer==='independent-reviewer'),
+  'manual dismissal must be retained in the health audit timeline');
 
 const restored=new CognitiveImmuneSystem();
 restored.restore(after);
 assert.equal(restored.healthSnapshot().signals.length,after.health.signals.length);
 assert.equal(restored.healthSnapshot().inspections,after.health.inspections);
+assert.deepEqual(restored.healthSnapshot().events,after.health.events,
+  'audit events and evidence references must survive checkpoint restore');
 
 const legacy=new CognitiveImmuneSystem();
 legacy.restore({trustedSources:{user:.8},quarantine:[],rejectedCount:0,validatedCount:0,reviewQueue:[],reviewedCount:0});
 assert.equal(legacy.healthSnapshot().score01,1,'pre-monitor checkpoints must migrate to a neutral health baseline');
+assert.equal(legacy.healthSnapshot().events.length,0,'legacy checkpoints must migrate with an empty audit timeline');
 
 for(let tick=7;tick<100;tick++)immune.inspectHealth({...healthy,tick,at:1_000+tick});
 assert.equal(immune.healthSnapshot().signals.filter(s=>s.status==='open').length,0,'sustained recovery must close active signals');
 assert.ok(immune.healthSnapshot().signals.some(s=>s.status==='recovered'),'recovery must be retained in signal history');
 assert.ok(immune.healthSnapshot().samples.length<=64,'health history must remain bounded');
+assert.ok(immune.healthSnapshot().events.length<=128,'health audit history must remain bounded');
+assert.ok(immune.healthSnapshot().events.every(e=>e.evidenceRefs.length<=12),
+  'each audit event must keep only a bounded number of evidence references');
 
 
 // Temporal integrity: retries and out-of-order observations must not manufacture
