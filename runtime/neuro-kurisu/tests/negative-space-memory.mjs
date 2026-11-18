@@ -313,8 +313,8 @@ assert.ok(!retainedEvidence?.outcomeEvidence.includes('old-evidence-0'));
 // The restored unique history is chronological even when the newest duplicate replaces an earlier row.
 // A corrupted restore with repeated decision IDs keeps only the newest canonical row.
 
-const confidenceGate = new RegretEngine();
-confidenceGate.observe('act', 0.7, [{
+const singleConfidenceGate = new RegretEngine();
+singleConfidenceGate.observe('act', 0.7, [{
   action: 'risky-alternative',
   expectedOutcome01: 0.95,
   confidence01: 0.1,
@@ -326,9 +326,9 @@ confidenceGate.observe('act', 0.7, [{
   outcomeIndependent01: 1,
   outcomeSource: 'world-transition',
 });
-assert.equal(confidenceGate.negativeSpaceReviewQueue().length, 0,
+assert.equal(singleConfidenceGate.negativeSpaceReviewQueue().length, 0,
   'an optimistic but low-confidence counterfactual must not trigger review by raw utility alone');
-assert.equal(confidenceGate.snapshot().negativeSpace.records[0].reviewStatus, 'retained');
+assert.equal(singleConfidenceGate.snapshot().negativeSpace.records[0].reviewStatus, 'retained');
 
 const independentUpgrade = new RegretEngine();
 independentUpgrade.observe('act', 0.5, [{
