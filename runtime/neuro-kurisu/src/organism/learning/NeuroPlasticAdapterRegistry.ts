@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createPublicKey, verify as verifySignature } from 'node:crypto';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
 
 export type NeuroPlasticMethod = 'lora' | 'qlora';
@@ -344,41 +344,63 @@ function normalizeEvaluationPayload(
   };
 }
 
-function hmacSha256(message: string, secret: string): string {
-  if (typeof secret !== 'string' || secret.length < 32) throw new Error('neuro-plastic-signing-secret-too-short');
-  const blockSize = 64;
-  const keyBytes = Buffer.from(secret, 'utf8');
-  const normalizedKey = keyBytes.length > blockSize
-    ? Buffer.from(createHash('sha256').update(keyBytes).digest())
-    : keyBytes;
-  const keyBlock = Buffer.alloc(blockSize);
-  for (let index = 0; index < normalizedKey.length; index++) keyBlock[index] = normalizedKey[index];
-  const innerPad = Buffer.alloc(blockSize);
-  const outerPad = Buffer.alloc(blockSize);
-  for (let index = 0; index < blockSize; index++) {
-    innerPad[index] = keyBlock[index] ^ 0x36;
-    outerPad[index] = keyBlock[index] ^ 0x5c;
-  }
-  const innerDigest = createHash('sha256').update(innerPad).update(message, 'utf8').digest();
-  return createHash('sha256').update(outerPad).update(innerDigest).digest('hex');
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+  const object = value as Record<string, unknown>;
+  return '{' + Object.keys(object).sort().map(key => JSON.stringify(key) + ':' + canonical(object[key])).join(',') + '}';
 }
 
-function constantTimeHexEqual(actualValue: unknown, expected: string): boolean {
-  if (typeof actualValue !== 'string' || !HASH.test(actualValue)) return false;
-  const actual = actualValue.toLowerCase();
-  if (actual.length !== expected.length) return false;
-  let difference = 0;
-  for (let index = 0; index < expected.length; index++) {
-    difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
+function verifyEd25519(payload: string, signature: unknown, publicKeyPem: string): boolean {
+  if (typeof signature !== 'string' || signature.length > 256 || typeof publicKeyPem !== 'string' || !publicKeyPem.trim()) {
+    return false;
   }
-  return difference === 0;
+  const bytes = Buffer.from(signature, 'base64');
+  if (bytes.length !== 64 || bytes.toString('base64') !== signature) return false;
+  const publicKey = createPublicKey(publicKeyPem);
+  if (publicKey.asymmetricKeyType !== 'ed25519') return false;
+  return verifySignature(null, Buffer.from(payload, 'utf8'), publicKeyPem, bytes);
+}
+
+export function parseTrustedNeuroPlasticKeys(raw: string | undefined, label: string): ReadonlyMap<string, string> {
+  if (raw === undefined || raw.trim() === '') return new Map();
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); }
+  catch { throw new Error(label + ' must be valid JSON'); }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(label + ' must be an object keyed by trusted signer ID');
+  }
+  const keys = new Map<string, string>();
+  for (const [signerId, pem] of Object.entries(parsed as Record<string, unknown>)) {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}$/.test(signerId) ||
+        typeof pem !== 'string' || !pem.trim()) {
+      throw new Error(label + ' entries must map valid signer IDs to PEM public keys');
+    }
+    if (keys.size >= 64) throw new Error(label + ' exceeds the 64-key limit');
+    let key;
+    try { key = createPublicKey(pem); }
+    catch { throw new Error(label + ' contains an invalid public key'); }
+    if (key.asymmetricKeyType !== 'ed25519') {
+      throw new Error(label + ' only accepts Ed25519 public keys');
+    }
+    keys.set(signerId, pem);
+  }
+  return keys;
+}
+
+export function parseTrustedNeuroPlasticEvaluatorKeys(raw: string | undefined): ReadonlyMap<string, string> {
+  return parseTrustedNeuroPlasticKeys(raw, 'NEURO_PLASTIC_EVALUATOR_PUBLIC_KEYS_JSON');
+}
+
+export function parseTrustedNeuroPlasticApprovalKeys(raw: string | undefined): ReadonlyMap<string, string> {
+  return parseTrustedNeuroPlasticKeys(raw, 'NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON');
 }
 
 function evaluationReceiptPayload(
   adapterId: string,
   receipt: Pick<NeuroPlasticEvaluationReceipt, 'evaluationId'|'evaluatorId'|'evaluatedAt'|'evaluationFingerprint'|'reportFingerprint'>,
 ): string {
-  return JSON.stringify({
+  return canonical({
     adapterId,
     evaluationId: receipt.evaluationId,
     evaluatorId: receipt.evaluatorId,
@@ -388,6 +410,13 @@ function evaluationReceiptPayload(
   });
 }
 
+export function canonicalNeuroPlasticEvaluationReceiptPayload(
+  adapterId: string,
+  receipt: Omit<NeuroPlasticEvaluationReceipt, 'signature'>,
+): string {
+  return evaluationReceiptPayload(safeText(adapterId, 'evaluation-adapter-id', 80), receipt);
+}
+
 export function neuroPlasticEvaluationFingerprint(
   adapterId: string,
   input: NeuroPlasticEvaluationPayload,
@@ -395,13 +424,13 @@ export function neuroPlasticEvaluationFingerprint(
   return normalizeEvaluationPayload(adapterId, input).evaluationFingerprint;
 }
 
-export function createNeuroPlasticEvaluationReceipt(
+/** Prepare the exact receipt fields an external Ed25519 evaluator must sign. No private key enters NK1. */
+export function createNeuroPlasticEvaluationReceiptPayload(
   adapterId: string,
   input: NeuroPlasticEvaluationPayload,
   evaluatorId: string,
   evaluationId: string,
-  secret: string,
-): NeuroPlasticEvaluationReceipt {
+): Omit<NeuroPlasticEvaluationReceipt, 'signature'> {
   const normalized = normalizeEvaluationPayload(adapterId, input);
   const unsigned = {
     evaluationId: safeText(evaluationId, 'evaluation-id', 160),
@@ -410,18 +439,16 @@ export function createNeuroPlasticEvaluationReceipt(
     evaluationFingerprint: normalized.evaluationFingerprint,
   };
   const evidence = buildEvaluationEvidence(normalized, unsigned.evaluationId, unsigned.evaluatorId);
-  const reportFingerprint = evaluationEvidenceFingerprint(evidence);
-  const receipt = { ...unsigned, reportFingerprint };
   return {
-    ...receipt,
-    signature: hmacSha256(evaluationReceiptPayload(normalized.adapterId, receipt), secret),
+    ...unsigned,
+    reportFingerprint: evaluationEvidenceFingerprint(evidence),
   };
 }
 
 export function verifyNeuroPlasticEvaluationReceiptSignature(
   adapterId: string,
   receipt: NeuroPlasticEvaluationReceipt,
-  secret: string,
+  publicKeyPem: string,
 ): boolean {
   try {
     const normalized = {
@@ -431,11 +458,11 @@ export function verifyNeuroPlasticEvaluationReceiptSignature(
       evaluationFingerprint: safeHash(receipt?.evaluationFingerprint, 'evaluation-fingerprint'),
       reportFingerprint: safeHash(receipt?.reportFingerprint, 'evaluation-report-fingerprint'),
     };
-    const expected = hmacSha256(evaluationReceiptPayload(
+    const payload = evaluationReceiptPayload(
       safeText(adapterId, 'evaluation-adapter-id', 80),
       normalized,
-    ), secret);
-    return constantTimeHexEqual(receipt.signature, expected);
+    );
+    return verifyEd25519(payload, receipt.signature, publicKeyPem);
   } catch {
     return false;
   }
@@ -445,7 +472,7 @@ export function verifyNeuroPlasticEvaluationSignature(
   adapterId: string,
   input: NeuroPlasticEvaluationPayload,
   receipt: NeuroPlasticEvaluationReceipt,
-  secret: string,
+  publicKeyPem: string,
 ): boolean {
   try {
     const normalized = normalizeEvaluationPayload(adapterId, input);
@@ -464,7 +491,7 @@ export function verifyNeuroPlasticEvaluationSignature(
       normalizedReceipt.evaluatorId,
     );
     if (normalizedReceipt.reportFingerprint !== evaluationEvidenceFingerprint(evidence)) return false;
-    return verifyNeuroPlasticEvaluationReceiptSignature(normalized.adapterId, receipt, secret);
+    return verifyNeuroPlasticEvaluationReceiptSignature(normalized.adapterId, receipt, publicKeyPem);
   } catch {
     return false;
   }
@@ -641,11 +668,11 @@ function normalizeApproval(raw: unknown): NeuroPlasticApproval {
   };
 }
 
-function approvalPayload(
+export function canonicalNeuroPlasticApprovalPayload(
   approval: Pick<NeuroPlasticApproval, 'approvalId' | 'actorId' | 'approvedAt'>,
   context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
 ): string {
-  return JSON.stringify({
+  return canonical({
     approvalId: approval.approvalId,
     actorId: approval.actorId,
     approvedAt: approval.approvedAt,
@@ -656,50 +683,19 @@ function approvalPayload(
   });
 }
 
-export function createNeuroPlasticApprovalSignature(
-  approval: Pick<NeuroPlasticApproval, 'approvalId' | 'actorId' | 'approvedAt'>,
-  context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
-  secret: string,
-): string {
-  if (typeof secret !== 'string' || secret.length < 32) throw new Error('neuro-plastic-approval-secret-too-short');
-  const blockSize = 64;
-  const keyBytes = Buffer.from(secret, 'utf8');
-  const normalizedKey = keyBytes.length > blockSize
-    ? Buffer.from(createHash('sha256').update(keyBytes).digest())
-    : keyBytes;
-  const keyBlock = Buffer.alloc(blockSize);
-  for (let index = 0; index < normalizedKey.length; index++) keyBlock[index] = normalizedKey[index];
-  const innerPad = Buffer.alloc(blockSize);
-  const outerPad = Buffer.alloc(blockSize);
-  for (let index = 0; index < blockSize; index++) {
-    innerPad[index] = keyBlock[index] ^ 0x36;
-    outerPad[index] = keyBlock[index] ^ 0x5c;
-  }
-  const innerDigest = createHash('sha256')
-    .update(innerPad)
-    .update(approvalPayload(approval, context), 'utf8')
-    .digest();
-  return createHash('sha256').update(outerPad).update(innerDigest).digest('hex');
-}
-
 export function verifyNeuroPlasticApprovalSignature(
   approval: NeuroPlasticApproval,
   context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
-  secret: string,
+  publicKeyPem: string,
 ): boolean {
   try {
-    const expected = createNeuroPlasticApprovalSignature(approval, context, secret);
-    const actual = safeHash(approval.signature, 'approval-signature');
-    if (actual.length !== expected.length) return false;
-    let difference = 0;
-    for (let index = 0; index < expected.length; index++) {
-      difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
-    }
-    return difference === 0;
+    const normalized = normalizeApproval(approval);
+    return verifyEd25519(canonicalNeuroPlasticApprovalPayload(normalized, context), normalized.signature, publicKeyPem);
   } catch {
     return false;
   }
 }
+
 
 export class NeuroPlasticAdapterRegistry {
   private state: NeuroPlasticRegistrySnapshot = { schemaVersion: 1, adapters: [] };
