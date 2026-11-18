@@ -2,16 +2,24 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
-import { RepositoryCodingContextEngine, createRepositoryCodingActionTools } from '../src/organism/system/RepositoryCodingContextEngine.ts';
+import { RepositoryCodingContextEngine, createRepositoryCodingActionTools, repositorySandboxAttestationSha256, repositorySandboxHoldoutAttestationSha256, repositorySandboxSuiteSha256 } from '../src/organism/system/RepositoryCodingContextEngine.ts';
 
 const REVISION = '1e83a011fc677ff20f2348570322bd562181d9ff';
-function runReceipt({ runId = 'run-primary', sandboxId = 'sandbox-primary', commands = ['node --experimental-strip-types tests/repository-coding-context-engine.mjs'], now = 1_000_000 } = {}) {
-  return {
+function runReceipt(binding, { runId = 'run-primary', sandboxId = 'sandbox-primary', commands = binding.requiredTests, now = 1_000_000 } = {}) {
+  const run = {
     runId, sandboxId, networkDisabled: true, workspaceIsolated: true,
     startedAt: now - 100, finishedAt: now,
     commands: commands.map(command => ({ command, exitCode: 0, outputSha256: 'a'.repeat(64), startedAt: now - 90, finishedAt: now - 10 })),
-    attestationSha256: 'b'.repeat(64),
+    attestationSha256: '',
   };
+  run.attestationSha256 = repositorySandboxAttestationSha256(binding, run);
+  return run;
+}
+function holdoutReceipt(binding) {
+  const holdout = { runId: 'run-holdout', sandboxId: 'sandbox-holdout', passed: true,
+    suiteSha256: repositorySandboxSuiteSha256(binding.requiredTests), outputSha256: 'e'.repeat(64), attestationSha256: '' };
+  holdout.attestationSha256 = repositorySandboxHoldoutAttestationSha256(binding, holdout);
+  return holdout;
 }
 function sampleHost() {
   const base = 'export function oldValue() { return 1; }\n';
@@ -30,7 +38,7 @@ function sampleHost() {
           { path: 'src/linked.ts', content: 'export const linked = true;', symlink: true },
         ],
       }),
-      verifySandbox: async () => ({ primary: runReceipt() }),
+      verifySandbox: async payload => ({ primary: runReceipt(payload) }),
       reconcilePatch: async () => ({ status: 'not-found', authoritative: true, reason: 'no-provider-receipt' }),
       applyPatch: async (payload, idempotencyKey) => {
         applied = { payload, idempotencyKey };
@@ -114,7 +122,7 @@ test('proposal stays non-applicable until sandbox verification has passed', asyn
   assert.equal(proposal.status, 'awaiting-tests');
   assert.equal(proposal.applyAllowed, false);
   assert.equal(engine.canApply(proposal.proposalId).allowed, false);
-  const verified = await engine.recordSandboxVerification(proposal.proposalId, { primary: runReceipt() });
+  const verified = await engine.recordSandboxVerification(proposal.proposalId, { primary: runReceipt(proposal) });
   assert.equal(verified.status, 'verified-awaiting-approval');
   assert.equal(verified.testStatus, 'passed');
   assert.equal(verified.applyAllowed, false);
@@ -125,7 +133,7 @@ test('proposal stays non-applicable until sandbox verification has passed', asyn
 test('sandbox verification rejects networked, non-isolated, expired, or mismatched runs', async () => {
   const engine = new RepositoryCodingContextEngine(undefined, () => 1_000_000);
   const proposal = await createProposal(engine);
-  const invalid = runReceipt();
+  const invalid = runReceipt(proposal);
   invalid.networkDisabled = false;
   const failed = await engine.recordSandboxVerification(proposal.proposalId, { primary: invalid });
   assert.equal(failed.status, 'tests-failed');
@@ -142,9 +150,9 @@ test('critical code changes require independent sandbox and third holdout identi
   assert.equal(proposal.risk, 'critical');
   assert.equal((await engine.recordSandboxVerification(proposal.proposalId, { primary: runReceipt() })).status, 'tests-failed');
   const verified = await engine.recordSandboxVerification(proposal.proposalId, {
-    primary: runReceipt(),
-    independent: runReceipt({ runId: 'run-independent', sandboxId: 'sandbox-independent' }),
-    holdout: { runId: 'run-holdout', passed: true, suiteSha256: 'd'.repeat(64), outputSha256: 'e'.repeat(64) },
+    primary: runReceipt(proposal),
+    independent: runReceipt(proposal, { runId: 'run-independent', sandboxId: 'sandbox-independent' }),
+    holdout: holdoutReceipt(proposal),
   });
   assert.equal(verified.status, 'verified-awaiting-approval');
 });
@@ -166,7 +174,7 @@ test('action tools route apply through self-modification permission and idempote
   const engine = new RepositoryCodingContextEngine(undefined, () => 1_000_000);
   const sample = sampleHost();
   const proposal = await createProposal(engine);
-  await engine.recordSandboxVerification(proposal.proposalId, { primary: runReceipt({ now: 1_000_000 }) });
+  await engine.recordSandboxVerification(proposal.proposalId, { primary: runReceipt(proposal, { now: 1_000_000 }) });
   const tools = createRepositoryCodingActionTools(engine, sample.host);
   const apply = tools.find(tool => tool.id === 'organism.project.patch.apply');
   assert.ok(apply);
