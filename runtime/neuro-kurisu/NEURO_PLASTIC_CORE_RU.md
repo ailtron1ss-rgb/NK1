@@ -86,6 +86,8 @@ Trainer не скачивает модели: base model и tokenizer должн
       "baseModelDirectory": "/absolute/path/to/base-model",
       "baseModelFingerprint": "<sha256-from-fingerprint-model>",
       "tokenizerFingerprint": "<sha256-from-fingerprint-tokenizer>",
+      "sourceDatasetFingerprint": "<verified-P23-dataset-sha256>",
+      "holdoutPlanFingerprint": "<P23-manifest-fingerprint>",
       "trainingFile": "train.jsonl",
       "validationFile": "validation.jsonl",
       "corpusFingerprint": "<corpus.corpusFingerprint>",
@@ -118,7 +120,7 @@ Trainer не скачивает модели: base model и tokenizer должн
 - artifact.configSha256 = artifacts["adapter_config.json"].sha256;
 - artifact.weightsSha256 = artifacts["adapter_model.safetensors"].sha256;
 - artifact.totalBytes = сумма bytes этих двух файлов;
-- baseModel.fingerprint, tokenizerFingerprint, sourceDatasetFingerprint, holdoutPlanFingerprint, corpusFingerprint должны совпадать с исходными inputs;
+- baseModel.fingerprint, tokenizerFingerprint, sourceDatasetFingerprint, holdoutPlanFingerprint, corpusFingerprint должны совпадать с исходными inputs; эти значения записываются и в neuro-plastic-artifact.json;
 - artifact.directory должен быть строго adapter-store/<adapterId>;
 - servedModelAlias — alias, который вы реально предварительно загрузили в локальном llama.cpp-compatible server.
 
