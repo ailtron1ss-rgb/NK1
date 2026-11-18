@@ -312,6 +312,54 @@ assert.ok(!retainedEvidence?.outcomeEvidence.includes('old-evidence-0'));
 
 // The restored unique history is chronological even when the newest duplicate replaces an earlier row.
 // A corrupted restore with repeated decision IDs keeps only the newest canonical row.
+
+const confidenceGate = new RegretEngine();
+confidenceGate.observe('act', 0.7, [{
+  action: 'risky-alternative',
+  expectedOutcome01: 0.95,
+  confidence01: 0.1,
+}], {
+  decisionId: 'decision-confidence-adjusted-review-gate',
+  chosenExpectedOutcome01: 0.8,
+  significance: { cost01: 0.1, risk01: 0.9, futureImportance01: 0.1 },
+  outcomeVerified01: 1,
+  outcomeIndependent01: 1,
+  outcomeSource: 'world-transition',
+});
+assert.equal(confidenceGate.negativeSpaceReviewQueue().length, 0,
+  'an optimistic but low-confidence counterfactual must not trigger review by raw utility alone');
+assert.equal(confidenceGate.snapshot().negativeSpace.records[0].reviewStatus, 'retained');
+
+const independentUpgrade = new RegretEngine();
+independentUpgrade.observe('act', 0.5, [{
+  action: 'defer',
+  expectedOutcome01: 0.8,
+  confidence01: 0.8,
+}], {
+  decisionId: 'decision-independent-evidence-upgrade',
+  chosenExpectedOutcome01: 0.6,
+  significance: { cost01: 0.1, risk01: 0.9, futureImportance01: 0.1 },
+  outcomeReward01: 0.25,
+  outcomeSurprise01: 0.2,
+  outcomeVerified01: 0.8,
+  outcomeIndependent01: 0,
+  outcomeSource: 'internal',
+});
+const improvedIndependentEvidence = independentUpgrade.recordNegativeSpaceOutcome({
+  decisionId: 'decision-independent-evidence-upgrade',
+  actualOutcome01: 0.5,
+  reward01: 0.9,
+  surprise01: 0.7,
+  verified01: 0.8,
+  independent01: 1,
+  source: 'external-evidence',
+  evidence: ['independent-world-observation'],
+});
+assert.equal(improvedIndependentEvidence?.chosenActualReward01, 0.9,
+  'improved independence must refresh reward attribution even when verification level is unchanged');
+assert.equal(improvedIndependentEvidence?.chosenSurprise01, 0.7);
+assert.equal(improvedIndependentEvidence?.outcomeSource, 'external-evidence');
+
 const duplicatedRestore = new RegretEngine();
 duplicatedRestore.restore({
   records: [],
