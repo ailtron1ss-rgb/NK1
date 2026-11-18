@@ -113,7 +113,7 @@ function holdoutTaskEvidenceKey(taskFingerprint: string): string {
 }
 
 function fingerprintSetDigest(values: Iterable<string>): string {
-  return digest(Array.from(values).sort().join('\\n'));
+  return digest(Array.from(values).sort().join('\n'));
 }
 
 /** Stable, complete request identity shared by the runtime capture adapter and the JIT gate. */
