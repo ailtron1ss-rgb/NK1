@@ -903,6 +903,14 @@ export class SharedFutureEngine {
     return decision ? structuredClone(decision) : null;
   }
 
+  /** Resolve the canonical Shared Future decision bound to an exact OrganismCore decision trace. */
+  getDecisionByActionBindingDecisionId(actionDecisionId: string): SharedFutureDecision | null {
+    const key = String(actionDecisionId ?? '').trim();
+    if (!key) return null;
+    const decision = this.state.decisions.find((row) => row.actionBinding?.decisionId === key);
+    return decision ? structuredClone(decision) : null;
+  }
+
   confirmDecision(input: { decisionId: string; confirmIrreversible?: boolean; at?: number }, actor: 'user' | 'system'): SharedFutureDecision {
     try {
       const decisionId = idField(input.decisionId, 'decision-id');
