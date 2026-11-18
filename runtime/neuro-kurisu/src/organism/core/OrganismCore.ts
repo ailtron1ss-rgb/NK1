@@ -12615,7 +12615,7 @@ export class OrganismCore {
             ? approvalRequests.find(row => row.id === intentApprovalId && row.toolId === INTENT_APPROVAL_TOOL_ID &&
                 row.operation === 'direct' && row.inputPreview.intentContractId === contract.id)
             : [...approvalRequests].reverse().find(row => row.toolId === INTENT_APPROVAL_TOOL_ID &&
-                row.operation === 'direct' && row.inputPreview.intentContractId === contract.id);
+                row.operation === 'direct' && row.inputPreview.intentContractId === contract.id && row.status !== 'expired');
 
         if (intentApprovalId && !approvalRow && !approved) {
             return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
@@ -12686,7 +12686,8 @@ export class OrganismCore {
             { intentContractId: contract.id, riskLevel: contract.risk.level },
         );
         if (dispatch.reason === 'intent-execution-outcome-uncertain' ||
-            dispatch.reason === 'intent-execution-reconciliation-required') {
+            dispatch.reason === 'intent-execution-reconciliation-required' ||
+            dispatch.reason === 'intent-execution-in-progress') {
             return {
                 contractId: contract.id,
                 result: {
@@ -13137,7 +13138,7 @@ export class OrganismCore {
             riskAcknowledged: projectIntentDraft.risk.level === 'high' || projectIntentDraft.risk.level === 'critical',
         };
         const projectIntentAction: IntentBoundAction = {
-            toolId: canonicalProjectToolId, input, reason: executionReason, options: executionOptions,
+            toolId: canonicalProjectToolId, input, reason: boundedProjectIntentGoal, options: executionOptions,
             intentApprovalId,
         };
         const reconcileExistingOperation = ['pending','receipt-recorded','reconciliation-required'].includes(stepOperation.stage);

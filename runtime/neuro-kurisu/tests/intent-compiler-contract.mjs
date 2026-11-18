@@ -339,6 +339,72 @@ const finalizationContextDispatch = await bridge.execute(approved, {
 assert.equal(finalizationContextDispatch.executed, true);
 assert.deepEqual(forwardedFinalizationKeys, ['contextKey', 'skillRunId'],
   'Intent bridge must preserve Core finalization context for compound skills');
+const reconciliationGateway = {
+  executeCalls: 0,
+  reconciliationCalls: 0,
+  reconciliationStarted: null,
+  releaseReconciliation: null,
+  async executeTool(id) {
+    this.executeCalls += 1;
+    return {
+      ok: false, verified: false, executionId: 'exec-intent-reconcile-lock', tool: id, capability: 'notes.read',
+      result: { error: 'pending-receipt' }, audit: { accepted: false }, verification: { verified: false, basis: 'none', confidence01: 0 },
+      outcomeClass: 'idempotency-recovery-required', idempotencyStatus: 'recovery-required',
+    };
+  },
+  async reconcileToolExecution(id) {
+    this.reconciliationCalls += 1;
+    this.reconciliationStarted?.();
+    await new Promise(resolve => { this.releaseReconciliation = resolve; });
+    return {
+      ok: true, verified: true, executionId: 'exec-intent-reconcile-lock', tool: id, capability: 'notes.read',
+      result: { receipt: 'found' }, audit: { accepted: true }, verification: { verified: true, basis: 'tool-contract', confidence01: 1 },
+      outcomeClass: 'executed-verified', idempotencyStatus: 'reconciled',
+    };
+  },
+};
+const reconcileRuntime = new IntentExecutionRuntime(reconciliationGateway, {
+  approvalKey: 'test-only-intent-reconcile-lock-key-32-bytes',
+  autonomousDecisionVerifier: () => true,
+});
+const reconcileDraft = reconcileRuntime.compile({
+  requestId: 'intent:test:reconcile-lock',
+  text: 'Inspect the notes index and report its state.',
+  extraction: {
+    goal: 'Inspect the notes index.',
+    expectedOutcome: 'A notes index status',
+    acceptanceCriteria: ['Return a bounded status'],
+    permissions: { allowedActions: ['notes.search'] },
+    stopConditions: ['Stop if the notes index is unavailable'],
+    assumptions: [],
+  },
+});
+const reconcileApproved = reconcileRuntime.approveFromTrustedPlanner(reconcileDraft, {
+  allowedActions: ['notes.search'], acknowledgedAssumptions: [],
+}, {});
+const reconcileAction = {
+  toolId: 'notes.search', input: { query: 'status' }, reason: 'intent-reconcile-lock-test',
+  options: { idempotencyKey: 'intent:reconcile-lock:01', decisionId: 'decision:reconcile-lock' },
+};
+const pendingIntentDispatch = await reconcileRuntime.execute(reconcileApproved, reconcileAction, reconciliationGateway);
+assert.equal(pendingIntentDispatch.executed, true);
+assert.equal(pendingIntentDispatch.result.outcomeClass, 'idempotency-recovery-required');
+let signalReconciliationStarted;
+const reconciliationStarted = new Promise(resolve => { signalReconciliationStarted = resolve; });
+reconciliationGateway.reconciliationStarted = signalReconciliationStarted;
+const firstReconciliation = reconcileRuntime.reconcile(reconcileApproved, reconcileAction, reconciliationGateway);
+await reconciliationStarted;
+const duplicateReconciliation = await reconcileRuntime.reconcile(reconcileApproved, reconcileAction, reconciliationGateway);
+assert.equal(duplicateReconciliation.attempted, false,
+  'a concurrent duplicate receipt lookup must be blocked while the first read-only reconciliation is in flight');
+assert.equal(duplicateReconciliation.reason, 'intent-execution-in-progress');
+assert.equal(reconciliationGateway.reconciliationCalls, 1);
+reconciliationGateway.releaseReconciliation();
+const firstReconciliationResult = await firstReconciliation;
+assert.equal(firstReconciliationResult.attempted, true);
+assert.equal(firstReconciliationResult.result.idempotencyStatus, 'reconciled');
+assert.equal(reconciliationGateway.reconciliationCalls, 1);
+
 const noGateway = await bridge.execute(approved, {
   toolId: 'organism.inspect', input: { scope: 'project' }, reason: 'missing-gateway',
 }, null);

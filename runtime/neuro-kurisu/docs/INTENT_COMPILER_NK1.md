@@ -22,9 +22,13 @@ semantics; its output is untrusted and must pass bounded validation.
   receipt reconciliation; both are delegated to the canonical ActionGateway.
 - `OrganismCore` — public compile/approve/execute/reconcile methods; approved
   contracts are checkpointed in `OrganismSystemState.intentContracts` and
-  restored during `init()`.
+  restored during `init()`. Project steps are linked to durable project checkpoints,
+  and reusable compound skills are linked to the selected tool, step, attempt and
+  exact input digest.
 - `ActionGateway` — remains the sole tool policy, one-shot approval,
   idempotency, durable receipt, finalization and reconciliation authority.
+- Human approval tickets for `system.intent.approve` remain separate from
+  ActionGateway's tool-execution `approvalId`; both may be required for one action.
 - Autonomous `autonomous-resource-tool-life` planner — now creates an intent
   contract from its canonical CEF plan event, obtains a distinct
   `autonomous-planner` attestation only after Core verifies the CEF event, and
@@ -65,8 +69,10 @@ This internal authority is deliberately narrower than human approval:
   durable receipt gates.
 
 High/critical intent and material assumptions return to the human approval
-centre. A missing or inconsistent CEF event produces an audited refusal
-before executor entry.
+centre. The same human gate applies to project and reusable compound-skill
+routes; internal planner approval is only used for low/medium-risk,
+assumption-free contracts. A missing or inconsistent planner receipt produces
+an audited refusal before executor entry.
 
 ## Contract invariants
 
@@ -95,6 +101,22 @@ before executor entry.
    returns `contractId` separately for correlation.
 11. The Intent Gate does not bypass ActionGateway's tool permissions, input
     contracts, idempotency ledger, finalizer, verification or reconciliation.
+
+## Project and compound-skill routing
+
+Project intents bind to the durable project-step checkpoint and its request
+fingerprint/operation key. Compound-skill intents bind to the reusable skill,
+selected candidate or registered fallback, attempt number, canonical decision
+ID and exact input digest. Core re-checks the digest against the action payload
+immediately before internal approval and dispatch.
+
+Project and skill calls accept a separate `intentApprovalId` argument for the
+`system.intent.approve` ticket. The existing `ActionGatewayExecutionOptions`
+`approvalId` remains reserved for the tool's separate permission ticket. A high
+or critical action may therefore require both one-shot approvals. Concurrent
+execution and reconciliation for the same intent/tool pair are serialized.
+Ambiguous execution or unknown receipt status remains pending reconciliation;
+no retry, fallback or learning credit is allowed while the outcome is unknown.
 
 ## Key lifecycle and persistence
 

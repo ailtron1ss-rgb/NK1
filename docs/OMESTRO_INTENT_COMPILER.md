@@ -15,11 +15,14 @@
   - Human approval uses the canonical ActionGateway one-shot approval centre.
   - Autonomous planner approval is minted only when a Core-provided verifier validates a real CEF plan receipt; it cannot self-approve high/critical risk or material assumptions.
 - `runtime/neuro-kurisu/src/organism/system/IntentActionGatewayBridge.ts`
-  - Separate execute and read-only reconciliation routes; preserves canonical decision identity.
+  - Separate execute and read-only reconciliation routes; preserves canonical decision identity and forwards the Core finalization context for compound skills.
 - `runtime/neuro-kurisu/src/organism/core/OrganismCore.ts`
   - Exposes compile, compileWith, request/resolve/approve/reject, execute and reconcile APIs.
   - Persists approved contracts in `OrganismSystemState.intentContracts` and restores only valid HMAC attestations.
-  - The autonomous resource/tool/life planner now compiles and approves its exact CEF-bound intent before dispatching through `executeIntent`.
+  - Autonomous resource/tool/life planning is bound to a verified CEF plan receipt.
+  - Project-step execution is bound to the durable `ProjectStepExecutionCheckpoint` (project, step, request fingerprint, operation key, sequence and decision ID).
+  - Reusable compound-skill steps are bound to the reusable skill, selected candidate/fallback, attempt and SHA-256 input digest.
+  - High/critical project/skill intent uses a separate human Intent ticket. `intentApprovalId` is an independent API parameter; `options.approvalId` remains reserved for the ActionGateway tool ticket.
 - `runtime/neuro-kurisu/src/organism/system/ActionGateway.ts`
   - Adds a canonical audited pre-execution refusal result; ActionGateway remains the authority for permissions, one-shot tickets, input contracts, idempotency, finalization and receipt reconciliation.
 
@@ -35,13 +38,15 @@ The integrated `autonomous-resource-tool-life` planner receives a distinct `auto
 
 - New dispatch goes through Intent Gate → IntentActionGatewayBridge → OrganismCore.executeTool → ActionGateway.
 - The canonical host `decisionId` is preserved; intent ID is separately returned as `contractId`.
+- Project and skill planner evidence is checked against the exact action input digest immediately before internal approval/dispatch. Intent approval ticket IDs are bound to `inputPreview.intentContractId` and never read from or removed from ActionGateway execution options.
+- A concurrent duplicate execution or receipt lookup for the same contract/tool pair is blocked. An ambiguous execution and a failed/unknown reconciliation are represented as `idempotency-recovery-required`, preserving project step checkpoints and preventing compound-skill fallback/learning.
 - Before dispatch, Core checkpoints the contract/tool/decision link and a SHA-256 digest of the exact idempotency key. The raw key is never copied into the intent snapshot. After restart, receipt reconciliation requires the same contract, tool and key digest before attempting the read-only lookup. Any restored `prepared` record is moved to pending reconciliation because the prior process may have crashed on either side of ActionGateway receipt admission. Missing local receipt data is not proof of non-execution and keeps the intent blocked; no automatic retry is allowed.
 - Expired approvals cannot start new work. The distinct reconciliation path performs only a read-only lookup against the original idempotency receipt and never calls the side-effect executor. Its result reports that lookup was attempted; an unknown or missing receipt is not reported as resolved and does not authorize a retry.
 - Keyed receipts, finalizer semantics and reconciliation remain owned by ActionGateway.
 
 ## Boundaries
 
-Project-execution and compound-skill routes still use the canonical Core `executeTool()` wrapper and ActionGateway safeguards, but not every legacy tool call has a separately persisted Intent Contract yet. Universal interception is a follow-up migration; it must retain ActionGateway policy, decision IDs, idempotency and finalizer/recovery semantics.
+Autonomous planner, project-step and reusable compound-skill routes now pass through the Core Intent runtime before the canonical ActionGateway wrapper. Pre-Intent project checkpoints retain read-only legacy reconciliation. Direct legacy tool calls outside these orchestrated routes still use ActionGateway's existing policy/finalizer/receipt gates; adding an Intent contract to every direct entry point remains a separately scoped migration.
 
 Production restore across restart requires `OrganismConfig.intentApprovalKey` or `NEURO_INTENT_APPROVAL_KEY` backed by a stable secret store. The key is never persisted in the contract or repository. Without that key, contracts fail closed after restart.
 

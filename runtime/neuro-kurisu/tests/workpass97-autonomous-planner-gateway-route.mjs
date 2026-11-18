@@ -52,6 +52,14 @@ assert.match(projectDispatch, /this\.executeTrustedCoreIntent\(/,
   'fresh project tool execution must pass through the project-checkpoint-attested Intent Contract');
 assert.match(projectDispatch, /intentApprovalId,/,
   'project Intent approval ID must remain separate from ActionGateway approval options');
+assert.match(source, /projectInputHash = sha256Stable\(\{ input, expectedOutputKeys:/,
+  'project intents must bind the exact project-step input digest');
+assert.match(source, /evidence\.inputHash !== sha256Stable\(\{ input: action\.input/,
+  'Core must re-check the exact action input against its planner evidence immediately before approval');
+assert.match(source, /outcomeClass: 'idempotency-recovery-required'/,
+  'an uncertain Intent dispatch must preserve the project/skill reconciliation state instead of becoming an ordinary refusal');
+assert.match(source, /this\.inFlightExecutions\.add\(lock\)/,
+  'Intent receipt reconciliation must serialize with execution and other lookups');
 assert.match(projectDispatch, /this\.reconcileIntentExecution\(approvedProjectIntent/,
   'a project operation with a persisted Intent Contract must reconcile through the intent runtime');
 assert.match(projectDispatch, /else \{[\s\S]*this\.reconcileToolExecution\(/,
