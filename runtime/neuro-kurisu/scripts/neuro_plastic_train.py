@@ -41,7 +41,8 @@ TOKENIZER_NAMES = {
 }
 MANIFEST_KEYS = {
     "schemaVersion", "method", "domain", "baseModelDirectory", "baseModelFingerprint",
-    "tokenizerFingerprint", "trainingFile", "validationFile",
+    "tokenizerFingerprint", "sourceDatasetFingerprint", "holdoutPlanFingerprint",
+    "trainingFile", "validationFile",
     "corpusFingerprint", "outputDirectory", "seed", "maxSequenceLength",
     "epochs", "learningRate", "lora",
 }
@@ -195,6 +196,8 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
     actual_tokenizer = tokenizer_fingerprint(base)
     if actual_tokenizer != expected_tokenizer:
         raise PreflightError("tokenizer-fingerprint-mismatch")
+    source_dataset_fingerprint = _safe_hash(manifest.get("sourceDatasetFingerprint"), "source-dataset")
+    holdout_plan_fingerprint = _safe_hash(manifest.get("holdoutPlanFingerprint"), "holdout-plan")
 
     train_path = _safe_child(root, manifest.get("trainingFile"), "training", True)
     validation_path = _safe_child(root, manifest.get("validationFile"), "validation", True)
@@ -257,6 +260,8 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
         "output": output_path,
         "baseFingerprint": actual_base,
         "tokenizerFingerprint": actual_tokenizer,
+        "sourceDatasetFingerprint": source_dataset_fingerprint,
+        "holdoutPlanFingerprint": holdout_plan_fingerprint,
         "corpusFingerprint": actual_corpus,
         "domain": training[0]["domain"],
         "method": manifest["method"],
@@ -435,6 +440,8 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
             "domain": validated["domain"],
             "baseModelFingerprint": validated["baseFingerprint"],
             "tokenizerFingerprint": validated["tokenizerFingerprint"],
+            "sourceDatasetFingerprint": manifest["sourceDatasetFingerprint"],
+            "holdoutPlanFingerprint": manifest["holdoutPlanFingerprint"],
             "corpusFingerprint": validated["corpusFingerprint"],
             "seed": manifest["seed"],
             "trainingExampleCount": len(validated["training"]),
