@@ -178,6 +178,10 @@ try {
   assert.equal(bridgeDiagnosticsBody.diagnostics?.lastFeatureDimensions, 43);
   assert.ok(bridgeDiagnosticsBody.diagnostics?.llamaCppTemplateKwargsSent > 0,
     'the runtime must preserve the provider receipt and count the real local-template hand-off');
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsAccepted > 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsRejected, 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsDuplicate, 0);
+  assert.match(bridgeDiagnosticsBody.diagnostics?.lastTemplateProfileFingerprint ?? '', /^[a-f0-9]{64}$/);
   assert.equal(bridgeDiagnosticsBody.diagnostics?.templateConsumptionVerified, false,
     'sending kwargs does not prove the selected Jinja template consumed them');
   assert.equal(bridgeDiagnosticsBody.diagnostics?.activationSteeringApplied, 0);
