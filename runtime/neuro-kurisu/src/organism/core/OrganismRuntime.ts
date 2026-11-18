@@ -725,9 +725,15 @@ export class OrganismRuntime {
     const profile=request.cognitiveControl;
     if(!profile || !String(response.backend??'').startsWith('llama.cpp:')) return;
     const expected=this.cognitiveToNeuralBridgeExpectedRequests.get(request);
+    if(!expected) {
+      if(typeof request.cognitiveControlRequestId!=='string' || request.cognitiveControlRequestId.length<1)
+        this.cognitiveToNeuralBridgeMetrics.providerUsageRequestIdUnavailable+=1;
+      else
+        this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
+      return;
+    }
     let actualFingerprint:string;
     try {
-      if(!expected) throw new Error('missing-pre-invocation-control-snapshot');
       actualFingerprint=cognitiveNeuralProfileFingerprint(profile);
     } catch {
       this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
