@@ -663,7 +663,8 @@ assert.equal(duplicateRestoreRegistry.snapshot().adapters.length, 1,
 
 const conflictRegistry = new NeuroPlasticAdapterRegistry();
 conflictRegistry.stage(manifest('kurisu-reasoning-v2'));
-signedEvaluate(conflictRegistry, 'kurisu-reasoning-v2', evaluationPayload);
+const { manifestFingerprint: _firstManifestFingerprint, ...conflictEvaluationPayload } = evaluationPayload;
+signedEvaluate(conflictRegistry, 'kurisu-reasoning-v2', conflictEvaluationPayload);
 const conflictReport = conflictRegistry.snapshot().adapters[0].evaluation;
 await conflictRegistry.activate(
   'kurisu-reasoning-v2',
