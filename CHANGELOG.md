@@ -1,3 +1,10 @@
+## [NK1][OmeStro #28] Harden Neural Prosthesis sidecar crash recovery (2026-11-18)
+- Clear managed-child ownership, PID and readiness immediately when an owned sidecar exits unexpectedly; retain a bounded diagnostic reason.
+- Keep intentional shutdown distinct: the supervisor detaches its child before signalling it, so normal stop does not create a crash error.
+- Verify restart recovery after an unexpected exit and clear the previous crash diagnostic only after successful startup.
+- Include the supervisor source itself in both pull-request and feature-branch CI path filters.
+- This verifies process lifecycle recovery; it does not establish real-model quality, hardware latency or production readiness.
+
 ## [NK1][OmeStro #28] Neural Prosthesis — hardened draft implementation (2026-11-17)
 
 - Add an optional PyTorch/Transformers residual-bottleneck backend with selected decoder-layer hooks, zero-start identity, request-scoped adapter activation and bounded per-token residual norm.
