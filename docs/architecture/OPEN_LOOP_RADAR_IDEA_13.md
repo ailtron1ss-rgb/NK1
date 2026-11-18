@@ -41,6 +41,8 @@ Authenticated routes:
 - `POST /api/organism/open-loops/:id/surface` — accepts only `displayed: true`, then persists cooldown.
 - Existing `GET /api/organism/proactive-message` and `POST /api/organism/proactive-message/ack` provide the autonomous dialogue delivery surface.
 
+Capacity-admission regression additionally covers a new obligation referencing completed work whose own completed prerequisite must remain in the graph. At full capacity, only an unrelated terminal leaf may be pruned; the resulting snapshot must still restore without dropping that obligation.
+
 ## Verification
 `npm --prefix runtime/neuro-kurisu run test:open-loop-radar`
 `npm --prefix runtime/neuro-kurisu run test:open-loop-radar-runtime`
