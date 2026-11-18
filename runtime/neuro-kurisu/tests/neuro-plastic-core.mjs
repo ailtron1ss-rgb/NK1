@@ -49,8 +49,8 @@ function signedEvaluate(registry, adapterId, payload) {
   return registry.evaluateCandidate(adapterId, { ...boundPayload, receipt }, (verifiedReceipt) =>
     verifyNeuroPlasticEvaluationSignature(adapterId, boundPayload, verifiedReceipt, evaluatorPublicKeyPem));
 }
-function signedApproval(adapterId, reportId, approvalId, registry) {
-  const unsigned = { approvalId, actorId: 'operator', approvedAt: 1_800_000_000_200, signerKeyId: 'test-operator-key' };
+function signedApproval(adapterId, reportId, approvalId, registry, approvedAt = Date.now()) {
+  const unsigned = { approvalId, actorId: 'operator', approvedAt, signerKeyId: 'test-operator-key' };
   const context = { adapterId, reportId, baseModelFingerprint: hash('a'), manifestFingerprint: neuroPlasticAdapterManifestFingerprint(registry.getManifest(adapterId)) };
   const canonicalPayload = canonicalNeuroPlasticApprovalPayload(unsigned, context);
   return {
@@ -58,8 +58,8 @@ function signedApproval(adapterId, reportId, approvalId, registry) {
     signature: sign(null, Buffer.from(canonicalPayload, 'utf8'), approvalSigner.privateKey).toString('base64'),
   };
 }
-function verifyApproval(approval, context) {
-  return verifyNeuroPlasticApprovalSignature(approval, context, approvalKeys);
+function verifyApproval(approval, context, purpose = 'activation') {
+  return verifyNeuroPlasticApprovalSignature(approval, context, approvalKeys, { purpose });
 }
 const manifest = (adapterId = 'kurisu-reasoning-v1') => ({
   schemaVersion: 1,
@@ -158,6 +158,13 @@ assert.equal(verifyNeuroPlasticApprovalSignature(
 assert.equal(verifyNeuroPlasticApprovalSignature(
   approval, { ...approvalContext, manifestFingerprint: hash('9') }, approvalKeys,
 ), false, 'approval cannot be replayed after the exact manifest changes');
+const expiredApproval = signedApproval(
+  'kurisu-reasoning-v1', report.reportId, 'approval-expired', registry, Date.now() - 16 * 60_000,
+);
+assert.equal(verifyNeuroPlasticApprovalSignature(expiredApproval, approvalContext, approvalKeys), false,
+  'a stale operator approval must not activate a candidate');
+assert.equal(verifyNeuroPlasticApprovalSignature(expiredApproval, approvalContext, approvalKeys, { purpose: 'restore' }), true,
+  'a previously valid signed approval remains verifiable for persisted ACTIVE-state recovery');
 await assert.rejects(
   registry.activate('kurisu-reasoning-v1', approval, async () => false),
   /approval/,
