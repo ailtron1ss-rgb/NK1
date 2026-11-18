@@ -77,6 +77,12 @@ assert.equal(kwargs.nk1_tick,24);
 assert.equal(kwargs.nk1_action,'verify');
 assert.equal(kwargs.nk1_mode,'deep');
 assert.equal(kwargs.nk1_adapter_hint,'deep');
+assert.equal(kwargs.nk1_provider_feedback_version,1);
+assert.equal(kwargs.nk1_provider_feedback_mode,'deep');
+assert.equal(kwargs.nk1_provider_feedback_samples,0);
+assert.equal(kwargs.nk1_provider_truncated_samples,0);
+assert.equal(kwargs.nk1_provider_near_limit_samples,0);
+assert.equal(kwargs.nk1_provider_truncation_pressure01,0);
 assert.equal(Object.hasOwn(kwargs,'nk1_request_id'),false,
   'runtime correlation IDs must never become model-template prompt inputs');
 assert.equal(Object.hasOwn(payloads[1],'cognitiveControlRequestId'),false,
@@ -172,6 +178,8 @@ const unavailableResponse = await enabledProvider.generate({
   cognitiveControlRequestId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:25:2',
 });
 const unavailableKwargs = payloads[payloads.length-1].chat_template_kwargs;
+assert.equal(unavailableKwargs.nk1_provider_feedback_samples,0);
+assert.equal(unavailableKwargs.nk1_provider_truncation_pressure01,0);
 assert.equal(unavailableResponse.text,'local provider response');
 assert.equal(unavailableKwargs.nk1_neural_snapshot_available,false);
 assert.equal(unavailableKwargs.nk1_neural_snapshot_version,null);
