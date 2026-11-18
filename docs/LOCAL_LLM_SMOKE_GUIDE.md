@@ -46,7 +46,7 @@ Unset or set the variable to any other value to keep the feature off. With the o
 
 This flag does not enable changes to model weights, hidden states, or residual activations. Keep the default off unless the selected template has been adapted and tested with the NK1 variables.
 
-The bridge accepts a B365 snapshot only when its state version and tick are valid and all 23 neural/allostatic/self-model/goal-authorship signals are finite normalized values. Partial, future or more-than-eight-tick-old snapshots are rejected as a whole and marked unavailable; they are not mixed with partial readings. The provider repeats semantic validation of the 43-channel schema, one-hot fields, adapter hint, provenance, freshness and bounds before forwarding template kwargs.
+The bridge accepts only the B365 v14 diagnostic schema, a valid state tick, and all 23 neural/allostatic/self-model/goal-authorship signals as finite normalized values. Unknown B365 versions, partial, future or more-than-eight-tick-old snapshots are rejected as a whole and marked unavailable; they are never mixed with partial readings. The provider repeats semantic validation of the 43-channel schema, one-hot fields, adapter hint, provenance, freshness and bounds before forwarding template kwargs.
 
 ### Runtime diagnostics
 
@@ -57,7 +57,7 @@ curl.exe -H "Authorization: Bearer $env:NEURO_API_TOKEN" `
   http://127.0.0.1:3000/api/organism/cognition/neural-bridge/diagnostics
 ```
 
-Inspect `diagnostics.projected`, `diagnostics.bypassed`, B365 snapshot counters/version/age, `diagnostics.lastFeatureDimensions`, and `diagnostics.llamaCppTemplateKwargsSent`. The response explicitly keeps `templateConsumptionVerified=false`, `activationSteeringApplied=0`, and `residualBlockApplied=0`: transport success is not evidence of Jinja consumption or neural/quality effects. The endpoint does not return prompt or memory contents.
+Inspect `diagnostics.projected`, `diagnostics.bypassed`, B365 snapshot counters/version/age, `diagnostics.lastFeatureDimensions`, `diagnostics.llamaCppTemplateKwargsSent`, and accepted/rejected/duplicate receipt counters. Every request receives a runtime-session-scoped ID; the local adapter returns it with a SHA-256 fingerprint of the exact control profile. NK1 rejects mismatched/stale receipts and suppresses duplicate counts in a bounded 512-entry replay ledger. This fingerprint binds the receipt to the profile but does not independently authenticate the provider. The response explicitly keeps `templateConsumptionVerified=false`, `activationSteeringApplied=0`, and `residualBlockApplied=0`: transport success is not evidence of Jinja consumption or neural/quality effects. The endpoint does not return prompts or memory contents.
 
 ### Illustrative Jinja insertion
 
