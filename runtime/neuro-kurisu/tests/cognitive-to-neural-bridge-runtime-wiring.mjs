@@ -122,6 +122,23 @@ async function runRuntime(enabled) {
         'stale IDs, mismatched fingerprints and non-llama.cpp responses must be rejected');
       assert.equal(afterTampering.llamaCppTemplateKwargsSent,acceptedBeforeReplay);
 
+      const noUsageRequest={
+        ...request,cognitiveControlRequestId:request.cognitiveControlRequestId+':no-usage',
+      };
+      runtime.recordCognitiveProviderUsage(noUsageRequest,{
+        ...selectedResponse,providerUsage:undefined,
+      });
+      const invalidUsageRequest={
+        ...request,cognitiveControlRequestId:request.cognitiveControlRequestId+':invalid-usage',
+      };
+      runtime.recordCognitiveProviderUsage(invalidUsageRequest,{
+        ...selectedResponse,
+        providerUsage:{promptTokens:-1,completionTokens:10,totalTokens:9},
+      });
+      const usageValidity=runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.equal(usageValidity.providerUsageUnavailable,1);
+      assert.equal(usageValidity.providerUsageInvalid,1);
+
       const overBudgetRequest={
         ...request,cognitiveControlRequestId:request.cognitiveControlRequestId+':over-budget',
       };
@@ -146,6 +163,8 @@ async function runRuntime(enabled) {
       assert.ok(afterUsageOverrun.providerCompletionBudgetUtilizationMax>1);
       assert.equal(afterUsageOverrun.providerUsageObservations,usageObservationsBeforeReplay+1);
       assert.equal(afterUsageOverrun.providerUsageDuplicates,1);
+      assert.equal(afterUsageOverrun.providerUsageUnavailable,1);
+      assert.equal(afterUsageOverrun.providerUsageInvalid,1);
     } else {
       assert.ok(requests.every(value => value.cognitiveControl === undefined),
         'emergency bypass must pass requests to the provider without mutation');
