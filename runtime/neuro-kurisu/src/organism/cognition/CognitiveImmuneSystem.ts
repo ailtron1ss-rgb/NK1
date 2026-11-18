@@ -156,7 +156,7 @@ function restoreHealth(raw?:Partial<CognitiveHealthState>):CognitiveHealthState 
         metrics
       };
     });
-  const events=(Array.isArray(r.events)?r.events:[]).slice(-128)
+  const events=(Array.isArray(r.events)?r.events:[]).slice(0,128)
     .filter((e:any)=>e&&typeof e==='object'&&!Array.isArray(e)
       &&['signal-opened','signal-escalated','signal-recovered','signal-acknowledged','signal-dismissed','signal-manually-recovered'].includes(e.type)
       &&HEALTH_METRICS.includes(e.metric))

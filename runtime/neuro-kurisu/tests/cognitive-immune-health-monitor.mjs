@@ -3,6 +3,7 @@ import { CognitiveImmuneSystem } from '../src/organism/cognition/CognitiveImmune
 import { ContradictionReservoir } from '../src/organism/cognition/ContradictionReservoir.ts';
 import { P65EpistemicLedger } from '../src/organism/memory/P65EpistemicLedger.ts';
 import { ProceduralSkillLibrary } from '../src/organism/learning/ProceduralSkillLibrary.ts';
+import { CognitiveFieldEngine } from '../src/organism/cognition/CognitiveField.ts';
 
 function buildInputs({damaged=false}={}) {
   const p65=new P65EpistemicLedger();
@@ -359,5 +360,37 @@ for(let tick=3;tick<=4;tick++)contradictionOnlyResult=criticalLowCoverage.inspec
 });
 assert.equal(contradictionOnlyResult?.healthStatus,'critical',
   'a critical signal must dominate incomplete aggregate coverage');
+
+
+
+// Cognitive-field pressure is owned by signal IDs. Recovering or dismissing
+// one source must not erase pressure still owned by another active signal.
+const pressureField = new CognitiveFieldEngine();
+const pressureA = pressureField.addPressure('contradiction','cognitive health shared test',.08,['signal-a','signal-b']);
+assert.equal(pressureA.sourceIds.length,2);
+assert.equal(pressureField.resolvePressureBySource('signal-a'),1);
+const afterFirstRelease = pressureField.snapshot().pressures.find(p=>p.id===pressureA.id);
+assert.ok(afterFirstRelease&&afterFirstRelease.sourceIds.includes('signal-b'),
+  'releasing one owner must preserve another active source');
+assert.ok(afterFirstRelease.level>.03,
+  'shared pressure must remain while at least one source is active');
+assert.equal(pressureField.resolvePressureBySource('signal-b'),1);
+assert.equal(pressureField.snapshot().pressures.some(p=>p.id===pressureA.id),false,
+  'pressure must be removed promptly after the final source recovers');
+assert.equal(pressureField.resolvePressureBySource('signal-missing'),0,
+  'unknown source release must be a no-op');
+
+// Audit restore is newest-first and must retain the most recent bounded window.
+const newestAudit = Array.from({length:160},(_,i)=>({
+  id:`audit-${i}`,type:'signal-opened',tick:i,at:10_000+i,
+  signalId:`signal-${i}`,metric:'contradiction-pressure',severity:'review',evidenceRefs:[`claim-${i}`]
+}));
+const cappedAudit = new CognitiveImmuneSystem();
+cappedAudit.restore({...after,health:{...after.health,events:newestAudit}});
+assert.equal(cappedAudit.healthSnapshot().events.length,128);
+assert.equal(cappedAudit.healthSnapshot().events[0].id,'audit-159',
+  'restore must retain the newest event at the head of the journal');
+assert.equal(cappedAudit.healthSnapshot().events[127].id,'audit-32',
+  'restore must discard old tail events rather than recent head events');
 
 console.log('COGNITIVE_IMMUNE_HEALTH_MONITOR=PASS');
