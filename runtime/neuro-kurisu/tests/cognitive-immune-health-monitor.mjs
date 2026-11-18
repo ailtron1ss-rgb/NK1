@@ -395,10 +395,14 @@ assert.equal(pressureField.resolvePressureBySource('signal-missing'),0,
   'unknown source release must be a no-op');
 
 // Audit restore is newest-first and must retain the most recent bounded window.
-const newestAudit = Array.from({length:160},(_,i)=>({
-  id:`audit-${i}`,type:'signal-opened',tick:i,at:10_000+i,
-  signalId:`signal-${i}`,metric:'contradiction-pressure',severity:'review',evidenceRefs:[`claim-${i}`]
-}));
+const newestAudit = Array.from({length:160},(_,i)=>{
+  const eventIndex=159-i;
+  return {
+    id:`audit-${eventIndex}`,type:'signal-opened',tick:eventIndex,at:10_000+eventIndex,
+    signalId:`signal-${eventIndex}`,metric:'contradiction-pressure',severity:'review',
+    evidenceRefs:[`claim-${eventIndex}`]
+  };
+});
 const cappedAudit = new CognitiveImmuneSystem();
 cappedAudit.restore({...after,health:{...after.health,events:newestAudit}});
 assert.equal(cappedAudit.healthSnapshot().events.length,128);
