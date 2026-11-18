@@ -272,6 +272,46 @@ export function isValidCognitiveNeuralControlProfile(value:unknown):value is Cog
   const modesMatch=MODES.every((mode,index)=>vector[modeOffset+index]===(profile.mode===mode?1:0));
   if(!actionsMatch || !modesMatch) return false;
 
+  // Sampling and steering controls are derived from the vector, never independently trusted.
+  const motivation01=vector[7]!;
+  const uncertainty01=vector[8]!;
+  const budgetRemaining01=vector[10]!;
+  const predictionError01=vector[12]!;
+  const modelAgreement01=vector[18]!;
+  const counterfactualDivergence01=vector[19]!;
+  const exploration01=vector[24]!;
+  const preservation01=vector[25]!;
+  const selfContinuity01=vector[29]!;
+  const selfGrowthReadiness01=vector[30]!;
+  const selfIdentityConflict01=vector[31]!;
+  const goalCommitment01=vector[33]!;
+  const neuralCaution01=Math.max(
+    uncertainty01,predictionError01,counterfactualDivergence01,
+    selfIdentityConflict01,1-modelAgreement01,
+  );
+  const expectedTemperature=Number(clamp(
+    TEMPERATURE_BY_MODE[profile.mode!]+motivation01*.06+exploration01*.03
+      -uncertainty01*.12-predictionError01*.06-neuralCaution01*.04,
+    .2,.85,
+  ).toFixed(3));
+  const budgetFactor=.4+budgetRemaining01*.6;
+  const preservationFactor=1-preservation01*.35;
+  const expectedMaxTokens=Math.max(96,Math.min(768,
+    Math.round((TOKENS_BY_MODE[profile.mode!]*budgetFactor*preservationFactor)/16)*16,
+  ));
+  const expectedSteering={
+    curiosity01:clamp(Math.max(motivation01,exploration01)*(1-uncertainty01)*(.6+.4*selfGrowthReadiness01)*.15,0,.15),
+    caution01:clamp(neuralCaution01*.15,0,.15),
+    persistence01:clamp(Math.max(motivation01,goalCommitment01)*(.55+.45*selfContinuity01)*.15,0,.15),
+    verification01:clamp(Math.max(uncertainty01,predictionError01,counterfactualDivergence01,1-modelAgreement01)*.15,0,.15),
+  };
+  const close=(left:number,right:number)=>Math.abs(left-right)<=1e-9;
+  if(!close(profile.temperature!,expectedTemperature) || profile.maxTokens!==expectedMaxTokens
+    || !close(steering!.curiosity01,expectedSteering.curiosity01)
+    || !close(steering!.caution01,expectedSteering.caution01)
+    || !close(steering!.persistence01,expectedSteering.persistence01)
+    || !close(steering!.verification01,expectedSteering.verification01)) return false;
+
   if(profile.neuralSnapshotAvailable===true){
     const snapshotTick=safeTick(profile.neuralSnapshotTick);
     const snapshotVersion=profile.neuralSnapshotVersion;
