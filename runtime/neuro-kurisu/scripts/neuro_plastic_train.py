@@ -654,12 +654,19 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
             "artifacts": artifact_hashes,
             "automaticActivation": False,
         }
+        completed_at_ms = int(time.time() * 1000)
+        training_metadata["trainer"] = {
+            "name": "neuro-plastic-trainer",
+            "version": "1.1.0",
+            "seed": manifest["seed"],
+            "completedAt": completed_at_ms,
+        }
         metadata = json_safe(training_metadata)
         (staging / "neuro-plastic-artifact.json").write_text(
             json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + "\n",
             encoding="utf-8",
         )
-        registry_manifest = build_registry_manifest(validated, artifact_hashes, int(time.time() * 1000))
+        registry_manifest = build_registry_manifest(validated, artifact_hashes, completed_at_ms)
         (staging / "neuro-plastic-registry-manifest.json").write_text(
             json.dumps(registry_manifest, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + "\n",
             encoding="utf-8",
