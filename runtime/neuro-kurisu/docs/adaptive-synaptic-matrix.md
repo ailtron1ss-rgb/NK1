@@ -20,8 +20,10 @@ to the already configured base-model identity.
 - Adapter activation additionally requires a host-owned
   `synapticAdapterManifestVerifier`. Without it, candidates stay inactive and
   restored active entries are quarantined.
-- The host adapter invoker receives a single validated profile and a language
-  request. It alone owns loading/applying the actual LoRA/QLoRA weights.
+- The host adapter invoker receives a validated P25 candidate, the language
+  request and the complete bounded P25 routing context. It never directly loads
+  a model artifact; it delegates actual inference to the canonical Neuro-Plastic
+  adapter registry and inference adapter (#23/#936).
 - Each specialist call has a configurable response deadline (default 15 seconds,
   bounded to 100 ms–120 seconds) and receives an abort signal. The runtime stops
   waiting and falls back at the deadline; the host executor must honor the signal
@@ -29,14 +31,11 @@ to the already configured base-model identity.
   callback). Caller cancellation is propagated without retrying the base model
   and is not counted as an adapter reliability failure. Adapter timeout or other
   execution failure does count as a failure and returns to the base invoker.
-- Every adapter response must attest `modelId`, `modelRevisionSha256`, and
-  `appliedAdapterSha256`. The runtime compares these with the configured base
-  identity and registered artifact digest; a mismatch is treated as an execution
-  failure.
-- Every adapter response must attest `modelId`, `modelRevisionSha256`, and
-  `appliedAdapterSha256`. The runtime compares these to the configured base
-  identity and registered artifact digest; a mismatch is treated as an execution
-  failure and the unchanged base invoker is called.
+- Every applied-adapter response must attest `modelId`,
+  `modelRevisionSha256`, and `appliedAdapterSha256`. A canonical base fallback
+  explicitly returns `adapterApplied: false`, a null adapter digest and a bounded
+  fallback reason. A P25 policy/registry mismatch is a safe base fallback, not an
+  adapter execution failure; P25 does not call the base invoker a second time.
 
 ## Candidate and activation gates
 
@@ -91,3 +90,55 @@ specialization.
 - No changes are made to P40 provider selection or the canonical neural learner.
 - No claims are made about measured quality improvement until independent
   holdout reports and deployed adapter artifacts exist.
+
+
+## Canonical Neuro-Plastic registry integration (#23 → #25)
+
+P25 is a policy/routing layer only. It may nominate an adapter for a task, but its
+own persisted `active` state is **not** authority to apply weights. The host
+executor must resolve the same adapter ID from the canonical #936
+`NeuroPlasticAdapterRegistry`, then pass it through
+`NeuroPlasticInferenceAdapter` with `expectedAdapterId`. The canonical registry
+rechecks its own current active status, independent evaluation receipt, signed
+human approval, artifact integrity, exact backend, base model alias and
+fingerprint before applying anything.
+
+P25 and the canonical registry must agree on all of the following:
+
+- exact adapter ID;
+- base model ID and immutable SHA-256 fingerprint;
+- artifact weights SHA-256;
+- LoRA/QLoRA method;
+- backend (`llama.cpp`) and base-model served alias.
+
+If the P25 candidate is absent from #936, the registry has disabled/quarantined
+it, another adapter wins canonical selection, or any binding differs, the host
+returns the unchanged base-model result. It reports `adapterApplied: false`,
+`appliedAdapterSha256: null` and a bounded `adapterFallbackReason`. P25 records
+a canonical base fallback but does not penalize or disable a healthy candidate
+and does not invoke a second base request. If the canonical artifact itself fails
+integrity/inference, #936 owns the disable/rollback and base retry.
+
+### Explicit host opt-in
+
+The following settings are required before P25 can register a live adapter
+executor. Without them the runtime remains on the base path:
+
+    NEURO_PLASTIC_MODEL_ALIASES_ENABLED=1
+    NEURO_PLASTIC_BASE_MODEL_ID=<immutable base model identity>
+    NEURO_PLASTIC_BASE_MODEL_SHA256=<64 lowercase hex characters>
+    NEURO_PLASTIC_P25_POLICY_SECRET=<at least 32 secret characters>
+    NEURO_PLASTIC_P25_POLICY_KEY_ID=<host-registered signer key id>
+
+The P25 policy manifest signature is an HMAC-SHA256 over the exact canonical
+P25 manifest payload, using the configured host secret and key ID. The secret
+must remain in server-side environment configuration; it is never returned by
+runtime diagnostics or accepted from an inference request. The canonical #936
+activation still requires its separate signed evaluation receipt, operator
+approval, base-model binding and artifact verification; the P25 HMAC does not
+replace or bypass those gates.
+
+P25's own adapter candidate ID is intentionally pinned into canonical selection:
+the canonical registry may not silently substitute a different active adapter
+even when that other adapter is eligible for the same domain. This gives P25 a
+single route-decision record and #936 a single canonical artifact authority.
