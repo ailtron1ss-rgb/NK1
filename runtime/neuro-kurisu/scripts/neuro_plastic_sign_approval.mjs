@@ -1,12 +1,10 @@
-import { constants as fsConstants } from 'node:fs';
-import { open, unlink } from 'node:fs/promises';
 import { createPrivateKey, sign as cryptoSign } from 'node:crypto';
 import path from 'node:path';
+import { readSecureRegularFile, writeSecureNewFile } from './neuro_plastic_secure_files.mjs';
 import { canonicalNeuroPlasticApprovalPayload } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 
 const MAX_REQUEST_BYTES = 256 * 1024;
 const MAX_PRIVATE_KEY_BYTES = 16 * 1024;
-const NOFOLLOW = fsConstants.O_NOFOLLOW ?? 0;
 
 function parseArgs(argv) {
   const options = {};
@@ -26,24 +24,6 @@ function parseArgs(argv) {
     }
   }
   return options;
-}
-
-async function readRegularFile(filePath, label, maxBytes, requirePrivatePermissions = false) {
-  const handle = await open(filePath, fsConstants.O_RDONLY | NOFOLLOW);
-  try {
-    const stat = await handle.stat();
-    if (!stat.isFile() || stat.size < 1 || stat.size > maxBytes) {
-      throw new Error(label + '-must-be-a-bounded-regular-file');
-    }
-    if (requirePrivatePermissions && process.platform !== 'win32' && (stat.mode & 0o077) !== 0) {
-      throw new Error('private-key-file-permissions-must-be-owner-only');
-    }
-    const bytes = await handle.readFile();
-    if (bytes.byteLength > maxBytes) throw new Error(label + '-exceeds-size-limit');
-    return bytes;
-  } finally {
-    await handle.close();
-  }
 }
 
 function requireApprovalRequest(raw) {
@@ -71,7 +51,7 @@ async function main() {
   const inputPath = path.resolve(options.input);
   const outputPath = path.resolve(options.output);
   if (inputPath === outputPath) throw new Error('signer-output-must-not-overwrite-request');
-  const requestBytes = await readRegularFile(inputPath, 'approval-request', MAX_REQUEST_BYTES);
+  const requestBytes = await readSecureRegularFile(inputPath, 'approval-request', MAX_REQUEST_BYTES);
   const request = requireApprovalRequest(JSON.parse(requestBytes.toString('utf8')));
   if (request.approval.signerKeyId !== options['key-id']) {
     throw new Error('approval-request-signer-key-id-does-not-match-selected-key');
@@ -87,7 +67,7 @@ async function main() {
     throw new Error('approval-request-canonical-payload-mismatch');
   }
 
-  const privateKeyBytes = await readRegularFile(options['key-file'], 'private-key', MAX_PRIVATE_KEY_BYTES, true);
+  const privateKeyBytes = await readSecureRegularFile(options['key-file'], 'private-key', MAX_PRIVATE_KEY_BYTES, true);
   const privateKey = createPrivateKey(privateKeyBytes);
   if (privateKey.type !== 'private' || privateKey.asymmetricKeyType !== 'ed25519') {
     throw new Error('approval-signer-requires-an-ed25519-private-key');
@@ -97,16 +77,7 @@ async function main() {
     ...request,
     approval: { ...request.approval, signature },
   };
-  const outputHandle = await open(outputPath, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | NOFOLLOW, 0o600);
-  try {
-    await outputHandle.writeFile(JSON.stringify(signedRequest, null, 2) + '\n', 'utf8');
-    await outputHandle.sync();
-  } catch (error) {
-    await outputHandle.close().catch(() => {});
-    await unlink(outputPath).catch(() => {});
-    throw error;
-  }
-  await outputHandle.close();
+  await writeSecureNewFile(outputPath, JSON.stringify(signedRequest, null, 2) + '\\n', 0o600);
   process.stdout.write('NEURO_PLASTIC_APPROVAL_SIGNED=' + outputPath + '\n');
 }
 
