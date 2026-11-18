@@ -13,6 +13,8 @@ export interface NeuroPlasticInferenceRoute {
   backendSupportsModelAliases: boolean;
   confidence01: number;
   risk01: number;
+  /** Optional policy pin from P25; canonical selection must return this exact active adapter. */
+  expectedAdapterId?: string;
 }
 
 export interface NeuroPlasticInferenceResponse extends LocalChatCompletionResponse {
@@ -69,6 +71,12 @@ export class NeuroPlasticInferenceAdapter {
     if (!this.provider.configured()) throw new Error('llama.cpp-not-configured');
     const baseModelAlias = safeBaseAlias(route.baseModelAlias);
     const localBackendReady = this.backendReady(route.backendId) === true;
+    const expectedAdapterId = route.expectedAdapterId;
+    if (expectedAdapterId !== undefined &&
+        (typeof expectedAdapterId !== 'string' ||
+          !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,159}$/.test(expectedAdapterId))) {
+      throw new Error('neuro-plastic-expected-adapter-id-invalid');
+    }
     const selection = this.registry.select({
       domain: route.domain,
       backendId: route.backendId,
@@ -78,6 +86,24 @@ export class NeuroPlasticInferenceAdapter {
       confidence01: route.confidence01,
       risk01: route.risk01,
     });
+
+    // P25 is a policy layer, never an artifact authority. If its chosen adapter
+    // is absent or does not match the currently active, signed canonical registry
+    // row for this exact backend/base-model route, do not substitute another
+    // active adapter. Use the unchanged base alias and leave the canonical
+    // artifact's health/approval state untouched.
+    if (expectedAdapterId !== undefined &&
+        (!selection.useAdapter || selection.adapterId !== expectedAdapterId)) {
+      const response = await this.provider.generate({ ...request, model: baseModelAlias });
+      return {
+        ...response,
+        adapter: {
+          used: false,
+          adapterId: selection.adapterId,
+          fallbackReason: 'p25-canonical-selection-mismatch',
+        },
+      };
+    }
 
     if (!selection.useAdapter || !selection.adapterId || !selection.modelAlias) {
       const response = await this.provider.generate({ ...request, model: baseModelAlias });
