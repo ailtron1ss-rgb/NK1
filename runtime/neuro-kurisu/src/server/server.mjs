@@ -37,6 +37,7 @@ const PORT = Number(process.env.PORT || 3000);
 const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').replace(/\/$/, '');
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
+const NEURAL_JIT_CAPTURE_ADAPTER_MODULE = String(process.env.NEURO_NEURAL_JIT_CAPTURE_ADAPTER_MODULE || '').trim();
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 // Optional provider: configuration is server-only and disabled unless NK_MEM0_ENABLED=1.
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
@@ -82,7 +83,32 @@ async function configureCompoundRepairRevision() {
     }
     return { engine, provideInputs };
 }
+await mkdir(STATE, { recursive: true });
 const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
+async function configureNeuralJitCaptureAdapter() {
+    if (!NEURAL_JIT_CAPTURE_ADAPTER_MODULE)
+        return undefined;
+    if (!LLAMA_CPP_PROVIDER.configured())
+        throw new Error('neural-jit-capture-adapter-requires-configured-local-llama-cpp-provider');
+    const adapterPath = path.resolve(ROOT, NEURAL_JIT_CAPTURE_ADAPTER_MODULE);
+    const relative = path.relative(ROOT, adapterPath);
+    if (!relative || relative.startsWith('..') || path.isAbsolute(relative))
+        throw new Error('neural-jit-capture-adapter-must-resolve-inside-runtime-root');
+    const module = await import(pathToFileURL(adapterPath).href);
+    const factory = module.createNeuralJitLocalCaptureAdapter ?? module.default;
+    if (typeof factory !== 'function')
+        throw new Error('neural-jit-capture-adapter-module-must-export-createNeuralJitLocalCaptureAdapter');
+    const adapter = await factory({
+        provider: LLAMA_CPP_PROVIDER,
+        model: LLAMA_CPP_PROVIDER.model,
+        stateDirectory: STATE,
+    });
+    if (!adapter || typeof adapter.captureLocalInference !== 'function' ||
+        typeof adapter.bindVerifiedOutcome !== 'function' || typeof adapter.verifyCapture !== 'function')
+        throw new Error('neural-jit-capture-adapter-contract-invalid');
+    return adapter;
+}
+const NEURAL_JIT_CAPTURE_ADAPTER = await configureNeuralJitCaptureAdapter();
 const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
 const PHONE_MODE = PHONE_POLICY.mode !== 'research';
 const INTERVAL_MS = PHONE_POLICY.baseIntervalMs;
@@ -118,7 +144,6 @@ function consumeRateLimit(req, pathName) {
     return bucket.count <= RATE_LIMIT ? { allowed: true, remaining: RATE_LIMIT - bucket.count } : { allowed: false, retryAfterSec: Math.ceil((bucket.startedAt + RATE_WINDOW_MS - now) / 1000) };
 }
 const VISION_BACKEND = VISION_ENABLED && process.env.GEMINI_API_KEY ? new GeminiVisionSemanticBackend({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash', timeoutMs: Number(process.env.GEMINI_VISION_TIMEOUT_MS || 12000), maxImageBytes: Number(process.env.GEMINI_VISION_MAX_IMAGE_BYTES || 8000000) }) : undefined;
-await mkdir(STATE, { recursive: true });
 const lock = new ProcessLock(path.join(STATE, 'organism-runtime.lock'));
 await lock.acquire();
 async function invokeLanguage(request) {
@@ -167,6 +192,7 @@ const runtime = new OrganismRuntime({
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
+    ...(NEURAL_JIT_CAPTURE_ADAPTER ? { neuralJitCaptureAdapter: NEURAL_JIT_CAPTURE_ADAPTER } : {}),
     mem0Adapter: MEM0_MEMORY_ADAPTER,
     mem0CognitiveRecall: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
     autoRun: true,
@@ -313,7 +339,23 @@ async function tryLlamaCpp(request, failures) {
     if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     if (!LLAMA_CPP_PROVIDER.configured() || LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown) return null;
     try {
-        return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature, signal: request.signal });
+        const response = await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature, signal: request.signal });
+        if (NEURAL_JIT_CAPTURE_ADAPTER && request.neuralJitTraceContext) {
+            try {
+                const pendingCapture = await NEURAL_JIT_CAPTURE_ADAPTER.captureLocalInference({
+                    traceContext: request.neuralJitTraceContext,
+                    request: { system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature },
+                    response: { text: response.text, backend: response.backend, model: response.model, latencyMs: response.latencyMs },
+                    evaluateCandidateShadow: (candidateId, inputFeatures) => runtime.projectNeuralJitShadowResidual(candidateId, inputFeatures),
+                });
+                if (pendingCapture !== undefined && pendingCapture !== null)
+                    return { ...response, neuralJitCapture: pendingCapture };
+            }
+            catch {
+                // Instrumentation failure is isolated from inference and cannot trip the llama.cpp backend circuit breaker.
+            }
+        }
+        return response;
     }
     catch (error) {
         if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
@@ -417,6 +459,32 @@ async function route(req, res) {
                 evidence: runtime.independentEvaluationEvidenceSnapshot(),
                 note: 'Read-only, hashed and payload-free independent-evaluation projection.',
             });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/learning/neural-jit') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            return json(res, 200, { ok: true, neuralJit: runtime.neuralJitDiagnostics() });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/learning/neural-jit/compile') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            const taskFamily = typeof input.taskFamily === 'string' ? input.taskFamily.trim() : '';
+            const modelFingerprint = typeof input.modelFingerprint === 'string' ? input.modelFingerprint.trim().toLowerCase() : '';
+            if (!/^[a-z0-9][a-z0-9._:-]{1,79}$/i.test(taskFamily) || !/^[a-f0-9]{64}$/.test(modelFingerprint))
+                return json(res, 400, { ok: false, error: 'neural-jit-target-invalid' });
+            const candidate = await runtime.compileNeuralJitCandidate({ taskFamily, modelFingerprint });
+            return json(res, candidate ? 200 : 409, { ok: Boolean(candidate), candidate, neuralJit: runtime.neuralJitDiagnostics() });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/learning/neural-jit/evaluate') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            const candidateId = typeof input.candidateId === 'string' ? input.candidateId.trim() : '';
+            if (!/^[a-f0-9]{64}$/.test(candidateId))
+                return json(res, 400, { ok: false, error: 'neural-jit-candidate-id-invalid' });
+            const evaluation = await runtime.evaluateNeuralJitCandidate(candidateId);
+            return json(res, evaluation.eligible ? 200 : 409, { ok: evaluation.eligible, evaluation, neuralJit: runtime.neuralJitDiagnostics() });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/learning/compound-repair-revision') {
             if (!runtimeReady)
