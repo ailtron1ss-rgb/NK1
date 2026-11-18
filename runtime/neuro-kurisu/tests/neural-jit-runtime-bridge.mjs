@@ -19,9 +19,16 @@ try {
   const pendingCapture = Object.freeze({ captureHandle: 'host-local-activation-1' });
   const authenticBoundCaptures = new WeakSet();
   const bindings = [];
+  let hangNextBinding = false;
+  let bindAbortObserved = false;
   const adapter = {
     captureLocalInference: async () => pendingCapture,
     bindVerifiedOutcome: async (pending, context) => {
+      if (hangNextBinding) {
+        hangNextBinding = false;
+        context.signal?.addEventListener('abort', () => { bindAbortObserved = true; }, { once: true });
+        return await new Promise(() => {});
+      }
       assert.equal(pending, pendingCapture, 'the exact opaque capture handle must survive until the verified outcome');
       assert.equal(context.taskFamily, 'language-response');
       assert.ok(context.verification && context.verification.externalObservation === true);
@@ -128,6 +135,26 @@ try {
   const persistedAfterConcurrent = JSON.parse(await readFile(path.join(dir, 'organism.json.neural-jit.json'), 'utf8'));
   assert.equal(persistedAfterConcurrent.acceptedTraces, 3,
     'serialized sidecar checkpoints must not overwrite one concurrent verified trace with another');
+
+  await runtime.step('Prepare one verified action whose shadow capture binder will hang.');
+  const slowContext = languageCalls.at(-1).neuralJitTraceContext;
+  hangNextBinding = true;
+  const slowStart = Date.now();
+  const slowExecution = await Promise.race([
+    runtime.core.executeTool('fixture.neuraljit.observe', { query: 'bounded-shadow-observer' }, 'neural-jit-bounded-observer', {
+      decisionId: slowContext.decisionId, autonomous: true,
+    }),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('shadow capture observer blocked the canonical action finalizer')), 3_000)),
+  ]);
+  assert.equal(slowExecution.outcomeClass, 'executed-verified',
+    'a hung shadow adapter must not prevent the already-verified ActionGateway result from returning');
+  assert.ok(Date.now() - slowStart < 3_000);
+  assert.equal(bindAbortObserved, true,
+    'the timed-out shadow adapter must receive cancellation');
+  assert.equal(runtime.neuralJitDiagnostics().acceptedTraces, 3,
+    'a late or timed-out capture binding must never be admitted after the deadline');
+  assert.equal(runtime.neuralJitDiagnostics().pendingCaptureCount, 1,
+    'the timed-out capture must be consumed and not retried with a later action');
   await runtime.stop();
   console.log('NEURAL_JIT_RUNTIME_BRIDGE=PASS');
 } finally {
