@@ -704,7 +704,8 @@ export function verifyNeuroPlasticDetachedEd25519Signature(
     if (typeof signature !== 'string' || signature.length !== 88) return false;
     const signatureBytes = Buffer.from(signature, 'base64');
     if (signatureBytes.byteLength !== 64 || signatureBytes.toString('base64') !== signature) return false;
-    return cryptoVerify(null, Buffer.from(canonicalPayload, 'utf8'), publicKey, signatureBytes);
+    // The runtime's minimal Node crypto type shim intentionally accepts PEM here.
+    return cryptoVerify(null, Buffer.from(canonicalPayload, 'utf8'), pem, signatureBytes);
   } catch {
     return false;
   }
