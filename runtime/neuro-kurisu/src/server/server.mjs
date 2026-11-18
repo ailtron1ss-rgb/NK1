@@ -24,6 +24,7 @@ import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemant
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { NeuroPlasticAdapterRegistry, verifyNeuroPlasticApprovalSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { verifyNeuroPlasticAdapterArtifact } from '../organism/learning/NeuroPlasticArtifactVerifier.ts';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
@@ -163,6 +164,8 @@ async function verifyNeuroPlasticArtifact(manifest) {
             metadata.domain !== manifest.domain || metadata.method !== manifest.method ||
             metadata.baseModelFingerprint !== manifest.baseModel.fingerprint ||
             metadata.tokenizerFingerprint !== manifest.tokenizerFingerprint ||
+            metadata.sourceDatasetFingerprint !== manifest.sourceDatasetFingerprint ||
+            metadata.holdoutPlanFingerprint !== manifest.holdoutPlanFingerprint ||
             metadata.corpusFingerprint !== manifest.corpusFingerprint ||
             metadata.artifacts?.['adapter_config.json']?.sha256 !== configSha256 ||
             metadata.artifacts?.['adapter_model.safetensors']?.sha256 !== weightsSha256) return false;
@@ -193,6 +196,7 @@ try {
         (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(
             context.adapterId, receipt, NEURO_PLASTIC_EVALUATOR_SECRET,
         ),
+        (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
     );
 }
 catch (error) {
