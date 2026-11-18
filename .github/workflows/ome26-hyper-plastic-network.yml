@@ -5,6 +5,9 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/server/local-language-backend-policy.mjs"
       - "runtime/neuro-kurisu/src/organism/research/HyperPlasticNetwork.ts"
+      - "runtime/neuro-kurisu/src/organism/research/HyperPlasticBackendCapabilities.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts"
+      - "runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs"
       - "runtime/neuro-kurisu/tests/ome26-hyper-plastic-network.mjs"
       - "runtime/neuro-kurisu/tests/ome26-signed-outcome-metrics.mjs"
       - "runtime/neuro-kurisu/tests/ome26-signed-promotion.mjs"
@@ -51,6 +54,9 @@ jobs:
       - name: Verify signed outcomes preserve bounded execution metrics
         working-directory: runtime/neuro-kurisu
         run: npm run test:ome26:signed-outcome-metrics
+      - name: Verify provider-owned local backend capabilities
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:ome26:provider-capabilities
       - name: Evaluate signed OME26 validation and holdout evidence
         working-directory: runtime/neuro-kurisu
         run: npm run test:ome26:signed-promotion
