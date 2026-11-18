@@ -195,7 +195,7 @@ Promotion gate требует не менее 5 matched pairs и 5 незави�
       --key-file /secure/path/operator-private.pem \\
       --output state/kurisu-reasoning-v1.approval-signed.json
 
-Signer проверяет canonical payload и key ID, требует Ed25519 private key в regular file с owner-only permissions, отклоняет symlink и перезапись существующего output и создаёт подписанный JSON с правами 0600. Приватный ключ должен находиться вне репозитория; для production предпочтителен KMS/HSM или отдельный signer service. Либо передайте request в такой сервис: он подписывает поле canonicalPayload и добавляет base64 detached signature в approval.signature. Затем выполните:
+Signer проверяет canonical payload и key ID, требует Ed25519 private key в regular file с owner-only permissions, отклоняет symlink в любом компоненте пути входного request, private key и output (не только конечный файл), проверяет inode/version до и после чтения, запрещает перезапись output и создаёт подписанный JSON с правами 0600. Используйте canonical absolute paths и заранее созданные обычные каталоги без symlink; проверка пути уменьшает TOCTOU-окно, но не заменяет изолированный signer/KMS/HSM. Приватный ключ должен находиться вне репозитория; для production предпочтителен KMS/HSM или отдельный signer service. Либо передайте request в такой сервис: он подписывает поле canonicalPayload и добавляет base64 detached signature в approval.signature. Затем выполните:
 
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs activate --adapter kurisu-reasoning-v1 --input state/kurisu-reasoning-v1.approval-signed.json
 
@@ -220,7 +220,7 @@ P25 host policy использует независимый trust set и не н
       --key-file /secure/path/p25-policy-private.pem \\
       --output p25-adapter-manifest.signed.json
 
-P25 signer проверяет полный manifest через synapticAdapterManifestPayload, читает только Ed25519 private key из regular file с owner-only permissions, отклоняет symlink, повторную подпись и перезапись output. Полученный signed manifest передаётся обычному P25 registration/activation flow. P25 runtime независимо проверяет base64 detached signature по P25 public-key trust map, затем canonical Neuro-Plastic registry повторно подтверждает adapter ID, manifest/artifact digest, base model и фактически применённые веса.
+P25 signer проверяет полный manifest через synapticAdapterManifestPayload, читает только Ed25519 private key из regular file с owner-only permissions, отклоняет symlink в любом компоненте пути manifest, private key и output, повторную подпись и перезапись output; используйте canonical absolute paths и заранее созданные каталоги без symlink. Полученный signed manifest передаётся обычному P25 registration/activation flow. P25 runtime независимо проверяет base64 detached signature по P25 public-key trust map, затем canonical Neuro-Plastic registry повторно подтверждает adapter ID, manifest/artifact digest, base model и фактически применённые веса.
 
 Включение NEURO_PLASTIC_MODEL_ALIASES_ENABLED=1 допускается только при наличии соответствующего NEURO_PLASTIC_P25_POLICY_KEY_ID в policy public-key map, настроенного llama.cpp endpoint и точного base-model fingerprint. Отсутствие ключа или неверная подпись отключает P25 executor, не ослабляя базовый inference path. Для evaluator, operator approval и P25 policy используйте три независимые пары Ed25519 ключей и три раздельных trust map; плановая ротация выполняется добавлением нового public key до переключения signerKeyId, после подтверждённого перехода старый ключ удаляется из trust map.
 
