@@ -1,10 +1,15 @@
 import { createHash } from 'node:crypto';
 import { lstat, readFile } from 'node:fs/promises';
-import { createReadStream } from 'node:fs';
+import * as nodeFs from 'node:fs';
 import path from 'node:path';
 import type { NeuroPlasticAdapterManifest } from './NeuroPlasticAdapterRegistry.ts';
 
 const verifiedArtifacts = new Map<string, string>();
+// The runtime Node API exposes createReadStream, but this repository's compact
+// Node type surface omits it. Keep the stream path typed at this boundary only.
+const createReadStream = (nodeFs as unknown as {
+  createReadStream: (filePath: string) => AsyncIterable<Uint8Array>;
+}).createReadStream;
 
 async function hashFile(filePath: string): Promise<string> {
   const hash = createHash('sha256');
