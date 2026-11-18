@@ -200,7 +200,23 @@ P25 host policy использует независимый trust set и не н
     export NEURO_PLASTIC_P25_POLICY_PUBLIC_KEYS_JSON="$(cat /secure/path/neuro-plastic-p25-policy-public-keys.json)"
     export NEURO_PLASTIC_P25_POLICY_KEY_ID="p25-policy-key-2026"
 
-Включение NEURO_PLASTIC_MODEL_ALIASES_ENABLED=1 допускается только при наличии соответствующего NEURO_PLASTIC_P25_POLICY_KEY_ID в policy public-key map, настроенного llama.cpp endpoint и точного base-model fingerprint. P25 manifest подписывается внешним Ed25519 policy signer; runtime проверяет detached base64 signature и signer ID. Отсутствие ключа или неверная подпись отключает P25 executor, не ослабляя базовый inference path.
+Создайте policy key отдельно от evaluator и operator:
+
+    openssl genpkey -algorithm ED25519 -out p25-policy-private.pem
+    openssl pkey -in p25-policy-private.pem -pubout -out p25-policy-public.pem
+    chmod 600 p25-policy-private.pem
+
+Передайте публичный ключ в отдельный JSON trust map (key ID → PEM), а приватный храните только вне репозитория. В подготовленном P25 activation manifest укажите signerKeyId равным NEURO_PLASTIC_P25_POLICY_KEY_ID и signature="UNSIGNED", затем подпишите точный канонический payload:
+
+    node --experimental-strip-types scripts/neuro_plastic_sign_p25_manifest.mjs \\
+      --input p25-adapter-manifest.unsigned.json \\
+      --key-id p25-policy-key-2026 \\
+      --key-file /secure/path/p25-policy-private.pem \\
+      --output p25-adapter-manifest.signed.json
+
+P25 signer проверяет полный manifest через synapticAdapterManifestPayload, читает только Ed25519 private key из regular file с owner-only permissions, отклоняет symlink, повторную подпись и перезапись output. Полученный signed manifest передаётся обычному P25 registration/activation flow. P25 runtime независимо проверяет base64 detached signature по P25 public-key trust map, затем canonical Neuro-Plastic registry повторно подтверждает adapter ID, manifest/artifact digest, base model и фактически применённые веса.
+
+Включение NEURO_PLASTIC_MODEL_ALIASES_ENABLED=1 допускается только при наличии соответствующего NEURO_PLASTIC_P25_POLICY_KEY_ID в policy public-key map, настроенного llama.cpp endpoint и точного base-model fingerprint. Отсутствие ключа или неверная подпись отключает P25 executor, не ослабляя базовый inference path. Для evaluator, operator approval и P25 policy используйте три независимые пары Ed25519 ключей и три раздельных trust map; плановая ротация выполняется добавлением нового public key до переключения signerKeyId, после подтверждённого перехода старый ключ удаляется из trust map.
 
 Откат:
 
