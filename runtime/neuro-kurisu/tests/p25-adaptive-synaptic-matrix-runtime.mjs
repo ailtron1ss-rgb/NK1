@@ -202,11 +202,14 @@ try {
 
   badReceipt = false;
   await runtime.activateSynapticAdapter(manifest);
+  const adapterCallsBeforeLoaderFailure = adapterCalls;
   failAdapter = true;
   const recovered = await runtime.step('Recover from an adapter loader exception.', { deliberate: false });
+  failAdapter = false;
   assert.equal(recovered.language?.text, 'base response');
-  assert.equal(adapterCalls, 5);
-  assert.equal(baseCalls, 5, 'adapter loader failure must execute the original base invoker exactly once');
+  assert.equal(adapterCalls, adapterCallsBeforeLoaderFailure + 1);
+  assert.equal(baseCallsByUser.get(lastAdapterUser) ?? 0, lastAdapterBaseCallsAtStart + 1,
+    'adapter loader failure must execute the original base invoker exactly once for the selected prompt');
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, 1,
     'the explicit activation immediately before this call resets the prior failure streak');
 
@@ -218,9 +221,10 @@ try {
 
   await runtime.disableSynapticAdapter(candidate.id);
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'disabled');
+  const adapterCallsBeforeDisabledStep = adapterCalls;
   const disabled = await runtime.step('Confirm the disabled profile cannot intercept this request.', { deliberate: false });
   assert.equal(disabled.language?.text, 'base response');
-  assert.equal(adapterCalls, 5);
+  assert.equal(adapterCalls, adapterCallsBeforeDisabledStep);
 
   // Re-enablement is an explicit operator action and must present a fresh,
   // trusted manifest again; it is never triggered by ordinary routing.
@@ -228,9 +232,10 @@ try {
   badReceipt = false;
   badBaseReceipt = false;
   await runtime.activateSynapticAdapter(manifest);
+  const adapterCallsBeforeReactivation = adapterCalls;
   const reactivated = await runtime.step('Use the explicitly reactivated specialist.', { deliberate: false });
   assert.equal(reactivated.language?.text, 'specialized response');
-  assert.equal(adapterCalls, 6);
+  assert.equal(adapterCalls, adapterCallsBeforeReactivation + 1);
   // UTF-8-heavy prompts must not slip through a chars/4 estimate and exceed
   // the specialist's declared context window.
   const contextCycle = {
