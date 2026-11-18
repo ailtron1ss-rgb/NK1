@@ -201,6 +201,8 @@ export class OrganismRuntime {
     providerUsageObservations:0,
     providerUsageUnavailable:0,
     providerUsageInvalid:0,
+    providerUsageDuplicates:0,
+    providerUsageRequestIdUnavailable:0,
     providerPromptTokensTotal:0,
     providerCompletionTokensTotal:0,
     providerTotalTokensTotal:0,
@@ -218,6 +220,8 @@ export class OrganismRuntime {
   private cognitiveToNeuralBridgeRequestSequence=0;
   private readonly cognitiveToNeuralBridgeReceiptIds=new Set<string>();
   private readonly cognitiveToNeuralBridgeReceiptOrder:string[]=[];
+  private readonly cognitiveToNeuralBridgeUsageIds=new Set<string>();
+  private readonly cognitiveToNeuralBridgeUsageOrder:string[]=[];
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
@@ -713,6 +717,22 @@ export class OrganismRuntime {
   private recordCognitiveProviderUsage(request: LanguageRequest, response: LanguageResponse): void {
     const profile=request.cognitiveControl;
     if(!profile || !String(response.backend??'').startsWith('llama.cpp:')) return;
+    const requestId=request.cognitiveControlRequestId;
+    if(typeof requestId!=='string' || requestId.length<1 || requestId.length>128 ||
+      !/^[a-z0-9][a-z0-9._:-]*$/i.test(requestId)) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageRequestIdUnavailable+=1;
+      return;
+    }
+    if(this.cognitiveToNeuralBridgeUsageIds.has(requestId)) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageDuplicates+=1;
+      return;
+    }
+    this.cognitiveToNeuralBridgeUsageIds.add(requestId);
+    this.cognitiveToNeuralBridgeUsageOrder.push(requestId);
+    if(this.cognitiveToNeuralBridgeUsageOrder.length>512) {
+      const expired=this.cognitiveToNeuralBridgeUsageOrder.shift();
+      if(expired) this.cognitiveToNeuralBridgeUsageIds.delete(expired);
+    }
     const usage=response.providerUsage;
     if(!usage) {
       this.cognitiveToNeuralBridgeMetrics.providerUsageUnavailable+=1;
