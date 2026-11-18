@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { generateKeyPairSync, verify as cryptoVerify } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { synapticAdapterManifestPayload } from '../src/organism/learning/AdaptiveSynapticMatrix.ts';
 
-const root = await mkdtemp(path.join(os.tmpdir(), 'neuro-plastic-p25-signer-'));
+const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'neuro-plastic-p25-signer-')));
 const scriptPath = fileURLToPath(new URL('../scripts/neuro_plastic_sign_p25_manifest.mjs', import.meta.url));
 const keyId = 'p25-policy-offline-key';
 const signer = generateKeyPairSync('ed25519');
@@ -86,9 +86,23 @@ try {
   await symlink(privatePath, keySymlink);
   run(['--input', inputPath, '--key-file', keySymlink, '--key-id', keyId,
     '--output', path.join(root, 'symlink-key.json')], 1);
+
+  const symlinkParent = path.join(root, 'linked-parent');
+  await symlink(root, symlinkParent, 'dir');
+  const linkedInput = path.join(symlinkParent, path.basename(inputPath));
+  const linkedKey = path.join(symlinkParent, path.basename(privatePath));
+  const linkedOutput = path.join(symlinkParent, 'signed-through-linked-parent.json');
+  run(['--input', linkedInput, '--key-file', privatePath, '--key-id', keyId,
+    '--output', path.join(root, 'linked-input-output.json')], 1);
+  run(['--input', inputPath, '--key-file', linkedKey, '--key-id', keyId,
+    '--output', path.join(root, 'linked-key-output.json')], 1);
+  run(['--input', inputPath, '--key-file', privatePath, '--key-id', keyId,
+    '--output', linkedOutput], 1);
+  await assert.rejects(readFile(path.join(root, 'signed-through-linked-parent.json')), { code: 'ENOENT' });
+
   run(['--input', inputPath, '--key-file', privatePath, '--key-id', keyId, '--output', outputPath], 1);
 
-  console.log('NEURO_PLASTIC_P25_SIGNER=PASS canonicalManifest=1 signatureVerification=1 tamperRejected=1 wrongKeyIdRejected=1 symlinkRejected=1 permissionsRejected=1 overwriteRejected=1');
+  console.log('NEURO_PLASTIC_P25_SIGNER=PASS canonicalManifest=1 signatureVerification=1 tamperRejected=1 wrongKeyIdRejected=1 symlinkRejected=1 parentSymlinkRejected=1 permissionsRejected=1 overwriteRejected=1');
 } finally {
   await rm(root, { recursive: true, force: true });
 }
