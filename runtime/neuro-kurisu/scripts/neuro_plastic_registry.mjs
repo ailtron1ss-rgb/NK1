@@ -113,7 +113,7 @@ async function main() {
     const snapshot = await readJson(registryFile);
     await registry.restore(
       snapshot,
-      (approval, context) => verifyNeuroPlasticApprovalSignature(approval, context, APPROVAL_PUBLIC_KEYS),
+      (approval, context, purpose) => verifyNeuroPlasticApprovalSignature(approval, context, APPROVAL_PUBLIC_KEYS, { purpose }),
       (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, EVALUATOR_PUBLIC_KEY),
       (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
     );
@@ -196,8 +196,8 @@ async function main() {
     }
     const canonicalPayload = canonicalNeuroPlasticApprovalPayload(input.approval, context);
     if (input.canonicalPayload !== canonicalPayload) throw new Error('approval-canonical-payload-mismatch');
-    await registry.activate(adapterId, input.approval, (approval, verifiedContext) =>
-      verifyNeuroPlasticApprovalSignature(approval, verifiedContext, APPROVAL_PUBLIC_KEYS));
+    await registry.activate(adapterId, input.approval, (approval, verifiedContext, purpose) =>
+      verifyNeuroPlasticApprovalSignature(approval, verifiedContext, APPROVAL_PUBLIC_KEYS, { purpose }));
     await atomicWrite(registryFile, registry.snapshot());
   } else if (options.operation === 'rollback') {
     const reason = String(options.reason || '').trim();
