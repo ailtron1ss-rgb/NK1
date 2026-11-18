@@ -691,35 +691,6 @@ export class OrganismRuntime {
     this.cognitiveToNeuralBridgeMetrics.llamaCppTemplateKwargsSent+=1;
     this.cognitiveToNeuralBridgeMetrics.lastTemplateControlSchema=receipt.featureSchema;
     this.cognitiveToNeuralBridgeMetrics.lastTemplateProfileFingerprint=expectedFingerprint;
-    const usage=response.providerUsage;
-    let usageEvidence:Record<string,number>|undefined;
-    if(!usage) {
-      this.cognitiveToNeuralBridgeMetrics.providerUsageUnavailable+=1;
-    } else if(
-      Number.isSafeInteger(usage.promptTokens) && usage.promptTokens>=0 && usage.promptTokens<=1_000_000 &&
-      Number.isSafeInteger(usage.completionTokens) && usage.completionTokens>=0 && usage.completionTokens<=1_000_000 &&
-      Number.isSafeInteger(usage.totalTokens) && usage.totalTokens>=usage.promptTokens+usage.completionTokens && usage.totalTokens<=1_000_000
-    ) {
-      const observations=this.cognitiveToNeuralBridgeMetrics.providerUsageObservations;
-      this.cognitiveToNeuralBridgeMetrics.providerUsageObservations+=1;
-      this.cognitiveToNeuralBridgeMetrics.providerPromptTokensTotal+=usage.promptTokens;
-      this.cognitiveToNeuralBridgeMetrics.providerCompletionTokensTotal+=usage.completionTokens;
-      this.cognitiveToNeuralBridgeMetrics.providerTotalTokensTotal+=usage.totalTokens;
-      this.cognitiveToNeuralBridgeMetrics.lastProviderPromptTokens=usage.promptTokens;
-      this.cognitiveToNeuralBridgeMetrics.lastProviderCompletionTokens=usage.completionTokens;
-      this.cognitiveToNeuralBridgeMetrics.lastProviderTotalTokens=usage.totalTokens;
-      const utilization=usage.completionTokens/Math.max(1,profile.maxTokens);
-      this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean=
-        (this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean*observations+utilization)/(observations+1);
-      this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax=
-        Math.max(this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax,utilization);
-      if(usage.completionTokens>profile.maxTokens)
-        this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetExceeded+=1;
-      usageEvidence={promptTokens:usage.promptTokens,completionTokens:usage.completionTokens,totalTokens:usage.totalTokens,
-        configuredMaxTokens:profile.maxTokens,completionBudgetUtilization:utilization};
-    } else {
-      this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
-    }
     this.evidenceBus.publish({
       tick:profile.tick,
       kind:'model',
@@ -731,10 +702,58 @@ export class OrganismRuntime {
         requestId,
         profileFingerprint:expectedFingerprint,
         featureSchema:receipt.featureSchema,
-        ...(usageEvidence ? {providerUsage:usageEvidence} : {}),
         templateConsumptionVerified:false,
         activationSteeringApplied:false,
         residualBlockApplied:false,
+      },
+    });
+  }
+
+  /** Record provider consumption independently of optional Jinja template controls. */
+  private recordCognitiveProviderUsage(request: LanguageRequest, response: LanguageResponse): void {
+    const profile=request.cognitiveControl;
+    if(!profile || !String(response.backend??'').startsWith('llama.cpp:')) return;
+    const usage=response.providerUsage;
+    if(!usage) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageUnavailable+=1;
+      return;
+    }
+    if(
+      !Number.isSafeInteger(usage.promptTokens) || usage.promptTokens<0 || usage.promptTokens>1_000_000 ||
+      !Number.isSafeInteger(usage.completionTokens) || usage.completionTokens<0 || usage.completionTokens>1_000_000 ||
+      !Number.isSafeInteger(usage.totalTokens) || usage.totalTokens<usage.promptTokens+usage.completionTokens ||
+      usage.totalTokens>1_000_000
+    ) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
+      return;
+    }
+    const observations=this.cognitiveToNeuralBridgeMetrics.providerUsageObservations;
+    this.cognitiveToNeuralBridgeMetrics.providerUsageObservations+=1;
+    this.cognitiveToNeuralBridgeMetrics.providerPromptTokensTotal+=usage.promptTokens;
+    this.cognitiveToNeuralBridgeMetrics.providerCompletionTokensTotal+=usage.completionTokens;
+    this.cognitiveToNeuralBridgeMetrics.providerTotalTokensTotal+=usage.totalTokens;
+    this.cognitiveToNeuralBridgeMetrics.lastProviderPromptTokens=usage.promptTokens;
+    this.cognitiveToNeuralBridgeMetrics.lastProviderCompletionTokens=usage.completionTokens;
+    this.cognitiveToNeuralBridgeMetrics.lastProviderTotalTokens=usage.totalTokens;
+    const utilization=usage.completionTokens/Math.max(1,profile.maxTokens);
+    this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean=
+      (this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean*observations+utilization)/(observations+1);
+    this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax=
+      Math.max(this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax,utilization);
+    if(usage.completionTokens>profile.maxTokens)
+      this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetExceeded+=1;
+    this.evidenceBus.publish({
+      tick:profile.tick,
+      kind:'resource',
+      source:'llama.cpp-token-usage',
+      confidence01:.99,
+      payload:{
+        promptTokens:usage.promptTokens,
+        completionTokens:usage.completionTokens,
+        totalTokens:usage.totalTokens,
+        configuredMaxTokens:profile.maxTokens,
+        completionBudgetUtilization:utilization,
+        overBudget:usage.completionTokens>profile.maxTokens,
       },
     });
   }
@@ -849,6 +868,7 @@ export class OrganismRuntime {
     request = this.applyCognitiveToNeuralControl(request, cycle, neuralSnapshot);
     try {
       const response=await this.config.languageInvoker(request);
+      this.recordCognitiveProviderUsage(request,response);
       this.recordCognitiveProviderControlReceipt(request, response);
       await this.core.recordLanguageBackend(response.backend, response.latencyMs, true);
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
@@ -1063,6 +1083,7 @@ export class OrganismRuntime {
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
         language = await languageInvoker(request);
+        this.recordCognitiveProviderUsage(request,language);
         this.recordCognitiveProviderControlReceipt(request, language);
         if (!externalText && autonomousAgenda && !this.core.stageAutonomousSocialInitiativeMessage(autonomousAgenda.id, language?.text ?? '', Date.now())) {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
