@@ -512,20 +512,29 @@ const cancelledPrerequisite = dependencyRadar.register({
   title: 'Superseded provider task', kind: 'waiting', owner: 'system',
   accepted: true, source: 'dependency-edit-contract',
 });
+dependencyRadar.cancel(cancelledPrerequisite.id, 'Provider path was retired');
+const replacementPrerequisite = dependencyRadar.register({
+  title: 'Replacement provider task', kind: 'waiting', owner: 'system',
+  accepted: true, source: 'dependency-edit-contract',
+});
 const activeDependent = dependencyRadar.register({
   title: 'Continue after provider task', kind: 'project_step', owner: 'system',
-  accepted: true, source: 'dependency-edit-contract', dependencies: [cancelledPrerequisite.id],
+  accepted: true, source: 'dependency-edit-contract', dueAt: now - 1,
 });
-dependencyRadar.cancel(cancelledPrerequisite.id, 'Provider path was retired');
-assert.equal(dependencyRadar.snapshot().records.find(row => row.id === activeDependent.id)?.status, 'blocked');
 assert.throws(() => dependencyRadar.updateDependencies(activeDependent.id, [], '  '), /dependency-change-reason-required/);
 const dependencyInitiative = 'soc:open-loop:dependency-edit:001';
 dependencyRadar.reserveForInitiative(activeDependent.id, dependencyInitiative);
-dependencyRadar.updateDependencies(activeDependent.id, [], 'Use the replacement provider path');
+dependencyRadar.updateDependencies(activeDependent.id, [replacementPrerequisite.id], 'Wait for the replacement provider path');
 assert.equal(dependencyRadar.snapshot().records.find(row => row.id === activeDependent.id)?.pendingSurfacingInitiativeId, null,
   'changing dependency semantics must release any in-flight initiative built from the old dependency graph');
+assert.equal(dependencyRadar.snapshot().records.find(row => row.id === activeDependent.id)?.status, 'blocked',
+  'adding an unresolved prerequisite must block the dependent task');
+assert.throws(() => dependencyRadar.updateDependencies(activeDependent.id, [cancelledPrerequisite.id], 'Use retired provider path'),
+  /open-loop-dependency-cancelled/,
+  'a cancelled prerequisite cannot be reintroduced by dependency repair');
+dependencyRadar.updateDependencies(activeDependent.id, [], 'Replacement provider work is no longer required');
 assert.equal(dependencyRadar.snapshot().records.find(row => row.id === activeDependent.id)?.status, 'open',
-  'removing an obsolete cancelled prerequisite must unblock the dependent task');
+  'removing an obsolete prerequisite must unblock the dependent task');
 
 const cycleLeft = dependencyRadar.register({
   title: 'Cycle left', kind: 'task', owner: 'system', accepted: true, source: 'dependency-cycle-contract',
