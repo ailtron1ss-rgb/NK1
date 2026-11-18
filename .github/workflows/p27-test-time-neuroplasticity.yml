@@ -10,6 +10,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/p27-test-time-neuroplasticity.mjs"
       - "runtime/neuro-kurisu/tests/p27-neuroplasticity-session-lifecycle.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-2599-2612-online-adaptation.mjs"
       - ".github/workflows/p27-test-time-neuroplasticity.yml"
   pull_request:
     branches: [workpass70-source]
