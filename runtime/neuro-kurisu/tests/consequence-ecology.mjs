@@ -620,6 +620,42 @@ const independentlyRecorded = calibrationSimulator.sharedFuture.recordVerifiedEx
   at: calibrationAt + 100,
 });
 assert.equal(independentlyRecorded.recorded, true);
+const reusedProviderAttempt = calibrationSimulator.sharedFuture.recordVerifiedExternalOutcome({
+  id: 'verified-calibration-reused-provider',
+  actionDecisionId: calibrationDecisionId,
+  toolId: 'runtime.execute',
+  executionId: 'exec-consequence-calibration-2',
+  observationId: 'observation-reused-provider',
+  expectedPostcondition: 'deployment is healthy',
+  observedPostcondition: 'deployment is healthy',
+  direction: 'confirmed',
+  confidence01: 0.93,
+  independent01: 0.82,
+  evidence: [
+    {
+      observationId: 'reused-provider-observation-a',
+      sourceId: 'same-provider',
+      sourceClass: 'external-api',
+      independenceKey: 'claimed-independent-key-a',
+      confidence01: 0.95,
+      assessment: 'match',
+      verified: true,
+    },
+    {
+      observationId: 'reused-provider-observation-b',
+      sourceId: 'same-provider',
+      sourceClass: 'external-api',
+      independenceKey: 'claimed-independent-key-b',
+      confidence01: 0.94,
+      assessment: 'match',
+      verified: true,
+    },
+  ],
+  at: calibrationAt + 101,
+});
+assert.equal(reusedProviderAttempt.recorded, false);
+assert.equal(reusedProviderAttempt.reason, 'verified-outcome-source-reused-across-independence-keys',
+  'one provider cannot be counted twice as independent evidence by changing its independence key');
 const matchedCalibration = calibrationSimulator.recordVerifiedConsequenceOutcome({
   outcomeId: independentlyRecorded.outcome.id,
   analysisId: calibrationAnalysis.analysis.id,
