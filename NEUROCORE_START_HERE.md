@@ -1,4 +1,33 @@
-# CURRENT HANDOFF — 2026-11-01
+# CURRENT HANDOFF — 2026-11-18
+
+**Canonical source branch:** `workpass70-source`  
+**Confirmed source HEAD:** `bee2b133fdedd48723bc49b3eedae5f0df929c1c`  
+**Latest merged integration at this checkpoint:** PR [#913](https://github.com/ailtron1ss-rgb/NK1/pull/913), Cognitive Immune health monitor.
+
+## Current verified evidence
+
+- 19 push-triggered GitHub Actions runs for the exact source HEAD above; all 19 concluded SUCCESS.
+- Representative runs: [core regression](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153691143), [unified organism runtime](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153691079), [memory integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153690888), [ActionGateway governance](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153691295), [verified learning](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153690962).
+- At least 400 open PRs were returned across the first four pages of GitHub's open-PR listing; this is a lower bound. Enumerate every page and build a dependency graph before bulk integration.
+- `workpass70-source` branch protection was disabled at the time of inspection. Required status checks need a safe, explicitly verified policy.
+- The 75-aspect registry snapshot is dated 2026-11-06 and points at an older source SHA. Do not use its status counts as a current readiness percentage until each aspect is refreshed against live code and evidence.
+
+## Release truth
+
+- Latest stable Release visible in the API: tag `Neuro`, 2026-10-19.
+- Latest published ZIP including prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- No newer ZIP was found in the checked Release inventory. November source changes must not be described as released.
+- License review remains pending and redistribution approval is false. Do not publish until human review and exact-SHA publisher gates pass.
+
+## Canonical completion program
+
+Read [NK1 — 100% functional completion program](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md) before choosing the next workstream. It decomposes completion into 20 streams and 305 work units, maps them to the existing 75-aspect registry, and defines evidence/exit criteria without creating a duplicate status registry.
+
+**Immediate P0:** finish Release ZIP/source parity inspection; fully paginate PRs and stacked dependencies; refresh 75-aspect evidence; close human license review; run independent RU/EN memory evaluation and target-device/browser tests.
+
+---
+
+# ARCHIVED HANDOFF — 2026-11-01 (historical checkpoint)
 
 > **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
 
