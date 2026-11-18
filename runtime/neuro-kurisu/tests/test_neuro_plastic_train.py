@@ -131,6 +131,12 @@ class NeuroPlasticTrainerPreflightTests(unittest.TestCase):
         self.assertEqual(registry_manifest["baseModel"]["servedModelAlias"], "kurisu-base")
         self.assertEqual(registry_manifest["servedModelAlias"], "kurisu-reasoning-qlora")
         self.assertEqual(registry_manifest["governance"], validated["governance"])
+        self.assertEqual(registry_manifest["trainer"], {
+            "name": "neuro-plastic-trainer",
+            "version": "1.1.0",
+            "seed": 41,
+            "completedAt": 1_800_000_000_100,
+        })
         self.assertFalse("training" in registry_manifest)
         json.dumps(registry_manifest, allow_nan=False)
 
