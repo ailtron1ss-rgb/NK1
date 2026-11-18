@@ -633,7 +633,7 @@ function isValidEvaluationReport(
       !Array.isArray(report.reasons) ||
       !HASH.test(String(report.evaluationFingerprint || '')) ||
       !HASH.test(String(signedEvidenceFingerprint || '')) ||
-      !HASH.test(String(evaluatorSignature || '')) ||
+      !SIGNATURE.test(String(evaluatorSignature || '')) ||
       !report.evaluationId || !report.evaluatorId ||
       !HASH.test(String(reportId || ''))) return false;
   try {
