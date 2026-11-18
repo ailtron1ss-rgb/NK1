@@ -329,7 +329,7 @@ export class WorldForge {
     }
     return out;
   }
-  #evaluateTrace(scenario:unknown,trace:unknown):WorldForgeEvaluation{
+  #evaluateTrace(scenario:unknown,trace:unknown,remainingSteps?:number):WorldForgeEvaluation{
     const identity=scenarioIdentity(scenario);
     if(!identity)return this.emptyEvaluation('invalid','train');
     const key=this.#answers.get(identity.id);
@@ -356,7 +356,7 @@ export class WorldForge {
     if(targetCoverage<1)failureModes.push('goal-gap');
     if(evidenceCoverage<1)failureModes.push('evidence-gap');
     if(normalized.violations>0||failedActions>0)failureModes.push('invalid-trace');
-    if(normalized.overflow>0||valid.length>=Math.ceil(key.maxSteps*.85))failureModes.push('step-budget');
+    if(normalized.overflow>0||valid.length>=Math.ceil(key.maxSteps*.85)||remainingSteps===0)failureModes.push('step-budget');
     if(cost>=key.resourceBudget*.8)failureModes.push('resource-budget');
     if(risk>=key.riskTolerance01*.8)failureModes.push('risk-budget');
     if(robustness<.75)failureModes.push('disturbance-pressure');
@@ -369,7 +369,7 @@ export class WorldForge {
     const session=this.#sessions.get(sessionState.sessionId);
     if(!session||session.scenarioId!==identity.id||sessionState.scenarioId!==identity.id||sessionState.tick!==session.state.tick)return this.emptyEvaluation(identity.id,identity.split);
     if(this.currentTime()-session.createdAt>this.scenarioTtlMs){this.#sessions.delete(sessionState.sessionId);return this.emptyEvaluation(identity.id,identity.split);}
-    return this.#evaluateTrace(scenario,session.trace);
+    return this.#evaluateTrace(scenario,session.trace,session.state.remainingSteps);
   }
 
   startScenario(scenario:unknown):WorldForgeState|null {
