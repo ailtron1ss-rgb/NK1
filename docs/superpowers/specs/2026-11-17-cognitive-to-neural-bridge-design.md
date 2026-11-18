@@ -19,6 +19,7 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 - Route both cognitive-proposal generation and user/autonomous language generation through the same bridge.
 - Expose explicit adapter/steering intentions and record telemetry distinguishing request controls configured, llama.cpp template kwargs sent, and neural/activation controls not executed.
 - Bind every local-provider receipt to a runtime-session request ID and SHA-256 fingerprint of the exact validated profile. Reject stale/mismatched receipts and suppress duplicate accounting using a bounded 512-entry replay ledger. The fingerprint correlates payloads; it is not a provider-authentication mechanism.
+- When the provider reports bounded token usage, measure prompt/completion/total tokens against the configured cognitive max-token budget. Track observations, missing/invalid usage, mean/max budget utilization and budget overruns; never infer model-quality uplift from token counts.
 - Provide an immediate runtime kill switch; disabled mode leaves requests unchanged.
 - Expose authenticated read-only diagnostics at `GET /api/organism/cognition/neural-bridge/diagnostics`, including projection/bypass counts, B365 snapshot provenance, provider hand-offs and explicit non-execution of activation/residual steering.
 
