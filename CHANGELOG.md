@@ -1,3 +1,21 @@
+## [NK1][Architecture] OmeStro #17 — Morphogenesis hardening v2 (2026-11-17, unreleased)
+
+- Bound untrusted plain-data traversal: max 100,000 array items, 64 object keys, 16,384 string code units, and 1,250,000 visited values per payload. Accessors are inspected by descriptors without executing getters; hidden array properties outside length are rejected. Schema-v1 graph, module, contract, and edge records now reject unknown fields. Explicit `sharedSourcePaths` declarations preserve intentional cross-subsystem ownership and reject unaccounted or inaccurate duplicate source mappings. Migration operations, checkpoint, steps, and evidence use strict allowlists; overlapping operations against one module are rejected.
+
+- Replace recursive structural-cycle traversal with iterative DFS; malformed edge/contract records fail closed without throwing.
+- Fingerprint source files from raw bytes and use the first valid source commit provenance.
+- Track source-footprint changes and require exact `rewire` receipts only for added/removed typed graph edges; unchanged or repeated edges are rejected.
+- Rebuild plans in the evidence gate so recomputing a public digest cannot legitimize forged diff metadata.
+
+## [NK1][Architecture] OmeStro #17 — Architecture Morphogenesis v1 (2026-11-17, unreleased)
+
+- Add a read-only architecture graph derived from the live CognitiveArchitectureMap and Developmental Genome digest.
+- Validate canonical module paths, unique ownership, contract references, structural import/contract cycles, and bounded plain-data inputs; preserve recurrent data-flow loops.
+- Bind subsystem graph nodes to every mapped canonical source file, SHA-256 fingerprints of actual file bytes, and the exact checked-out Git commit; require candidate evidence to match the commit sealed into its graph.
+- Add digest-sealed merge/split/move/replace proposals with explicit baseline checkpoint, migration steps, affected-contract receipt and rollback steps.
+- Require exact baseline/candidate commit evidence, focused tests, runtime typecheck, full source-architecture audit, contract validation, verified rollback and human review before a candidate is eligible for manual integration.
+- Keep activation NOT_APPLIED; no runtime hot-swap, branch writes, automatic merge, state-schema change or Release ZIP modification is permitted.
+
 ## [NK1][Architecture] Developmental Genome v1 (2026-11-17, unreleased)
 
 - Add a deterministic architecture genome derived from the seven live `OrganismSystemContract` records and expose it through `OrganismSystemFabric.developmentalGenome()` and fabric diagnostic snapshots.
