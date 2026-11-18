@@ -21,6 +21,12 @@
 - Полный HMX importer пока не заявляется: episodes/relationships/clusters остаются deferred. Donor trust/embeddings/permissions/identity/goals не применяются.
 - Ни одна из этих интеграций не доказывает субъективное сознание. Целевой критерий остаётся измеряемая agency, coherent memory, самостоятельная инициатива и проверяемая адаптация.
 
+### Изменения после checkpoint 13 ноября — 17 ноября 2026
+
+| PR | Статус | Содержание | Проверка |
+|---|---|---|---|
+| [#901](https://github.com/ailtron1ss-rgb/NK1/pull/901) | DRAFT, отдельная ветка | ChronoTruth: отдельные valid-time и transaction-time координаты, ограниченная история знаний, ретроактивные исправления, knowledge-time retrieval в MemoryOS2/MemoryFabric | Exact-head Actions и typecheck выполняются; до PASS не считать готовым, до merge не считать интегрированным в canonical source, ZIP не обновлён |
+
 ### Реально интегрировано и проверено
 
 | PR | Что вошло в проект | Проверки на точном PR HEAD |
