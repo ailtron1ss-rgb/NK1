@@ -12,7 +12,9 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/p25-adaptive-synaptic-matrix.yml"
   pull_request:
-    branches: [workpass70-source]
+    branches:
+      - workpass70-source
+      - aspect/neuro-plastic-core-lora-adapters-20261118
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveSynapticMatrix.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
@@ -41,6 +43,8 @@ jobs:
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
       - name: Install locked runtime dependencies
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Canonical Neuro-Plastic registry and host admission contract
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/neuro-plastic-core.mjs
       - name: P25 adapter registry, validation, routing and fallback contract
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs
       - name: Real OrganismRuntime adapter, fallback, restore and disable integration
