@@ -53,18 +53,23 @@ const stopRuntime = async runtime => {
 };
 let baseCalls = 0;
 let adapterCalls = 0;
+const baseCallsByUser = new Map();
+let lastAdapterUser = null;
 let failAdapter = false;
 let badReceipt = false;
 let badBaseReceipt = false;
 let stallAdapter = false;
 let canonicalFallback = false;
 let lastRoutingInput = null;
-const baseInvoker = async () => {
+const baseInvoker = async request => {
   baseCalls += 1;
+  const user = String(request?.user ?? '');
+  baseCallsByUser.set(user, (baseCallsByUser.get(user) ?? 0) + 1);
   return { text: 'base response', backend: 'test-base', latencyMs: 3 };
 };
 const adapterInvoker = async (_request, selected, routingInput) => {
   adapterCalls += 1;
+  lastAdapterUser = String(_request?.user ?? '');
   lastRoutingInput = routingInput;
   assert.equal(selected.id, candidate.id);
   if (stallAdapter) {
@@ -139,15 +144,18 @@ try {
   // The host canonical #936 registry can refuse this exact P25-selected ID and
   // return a base response itself. P25 must not retry base a second time or
   // record a specialist execution failure for a policy/registry disagreement.
-  const baseCallsBeforeCanonicalFallback = baseCalls;
+  const adapterCallsBeforeCanonicalFallback = adapterCalls;
+  const adapterPromptBaseCallsBefore = baseCallsByUser.get(lastAdapterUser) ?? 0;
   const failuresBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures;
   const fallbackCountBeforeCanonicalFallback = runtime.synapticMatrixSnapshot().metrics.baseFallbacks;
   canonicalFallback = true;
   const canonicalBase = await runtime.step('Exercise canonical registry mismatch fallback.', { deliberate: false });
   canonicalFallback = false;
   assert.equal(canonicalBase.language?.text, 'base response from canonical registry');
-  assert.equal(baseCalls, baseCallsBeforeCanonicalFallback,
-    'P25 must not call the base invoker twice after the canonical registry has already returned base');
+  assert.equal(adapterCalls, adapterCallsBeforeCanonicalFallback + 1,
+    'the P25 adapter executor must return the canonical base fallback for the selected request');
+  assert.equal(baseCallsByUser.get(lastAdapterUser) ?? 0, adapterPromptBaseCallsBefore,
+    'P25 must not re-send the same specialist request to the base invoker after canonical executor fallback');
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].status, 'active',
     'canonical selection mismatch must not disable a healthy P25 candidate');
   assert.equal(runtime.synapticMatrixSnapshot().adapters[0].consecutiveFailures, failuresBeforeCanonicalFallback,
