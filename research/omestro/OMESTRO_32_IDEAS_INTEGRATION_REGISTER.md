@@ -44,7 +44,7 @@
 | 22 | Substrate Independence | [#927](https://github.com/ailtron1ss-rgb/NK1/pull/927) | DRAFT | `aspect/omestro-22-substrate-independence-20261117` |
 | 23 | Neuro-Plastic Core | [#936](https://github.com/ailtron1ss-rgb/NK1/pull/936) | DRAFT | Source-synchronized LoRA/QLoRA pipeline; supersedes closed unmerged #930 |
 | 24 | Layer Force | [#931](https://github.com/ailtron1ss-rgb/NK1/pull/931) | STACKED | Базируется на #925 |
-| 25 | Adaptive Synaptic Matrix | [#939](https://github.com/ailtron1ss-rgb/NK1/pull/939) | STACKED | Canonical registry-backed P25 policy/router over #936; legacy #921 and initial #938 closed without merge |
+| 25 | Adaptive Synaptic Matrix | [#936](https://github.com/ailtron1ss-rgb/NK1/pull/936) (includes merged child [#939](https://github.com/ailtron1ss-rgb/NK1/pull/939)) | DRAFT | Canonical registry-backed P25 policy/router integrated into Neuro-Plastic parent branch |
 | 26 | Hyper-Plastic Network | [#920](https://github.com/ailtron1ss-rgb/NK1/pull/920) | DRAFT | `aspect/ome26-hyper-plastic-network` |
 | 27 | Test-Time Neuroplasticity | [#924](https://github.com/ailtron1ss-rgb/NK1/pull/924) | DRAFT | Контекстно-ограниченная адаптация |
 | 28 | Neural Prosthesis | [#925](https://github.com/ailtron1ss-rgb/NK1/pull/925) | DRAFT | Родитель для #931 |
@@ -204,42 +204,49 @@
 Recommended next sequence: finish exact-head CI on #939, then update/close the legacy #921 and initial #938 branches as superseded; synchronize #922 with current source and connect its advisory controls through the host policy boundary; keep #926 shadow-only and connect only through a host-owned capture/decision interface. #925 must be synchronized before #931 can leave its stacked state.
 
 
-## 11. P25 canonical-routing child PR — 18 November 2026
+## 11. P25 canonical-routing integration — 18 November 2026
 
-The old standalone P25 PR #921 was not genuinely rebased and carried a second adapter manifest/activation lifecycle. A first canonical port #938 was also created before #936 stopped moving. Both were closed without merge; the clean, tested child #939 is now the single P25 implementation branch.
+The old standalone P25 PR #921 was not genuinely rebased and carried a second adapter manifest/activation lifecycle. A first canonical port #938 was also created before #936 stopped moving. Both were closed without merge. A clean child #939 was built on top of #936, verified and then squash-merged into the parent aspect branch.
 
-- Active PR: [#939 — P25 canonical registry-backed synaptic routing](https://github.com/ailtron1ss-rgb/NK1/pull/939)
-- Child branch: `aspect/p25-neuroplastic-canonical-routing-v2-20261118`
-- Verified child HEAD: `3d5e7adecdb16e9d557988fa9e9bbe4e0c1296de`
-- Parent PR #936 current HEAD at verification: `a7994d11f69f81f0cf088aff1b12e0c032a6be25`
+- Parent integration PR: [#936 — Neuro-Plastic Core](https://github.com/ailtron1ss-rgb/NK1/pull/936)
+- Merged child PR: [#939 — P25 canonical registry-backed synaptic routing](https://github.com/ailtron1ss-rgb/NK1/pull/939)
+- Child merge commit now at parent HEAD: `f4b5b7638810bc2127524e2f402b01c04e504d00`
+- Parent branch: `aspect/neuro-plastic-core-lora-adapters-20261118`
 - Parent source base: `workpass70-source` at `bee2b133fdedd48723bc49b3eedae5f0df929c1c`
-- GitHub reports #939 as Draft and mergeable, stacked on #936. No merge or Release ZIP change is claimed.
+- Parent #936 remains Draft; it has not merged into source or Release ZIP.
 
-### Exact-head verification
+### Exact child verification before merge
 
-<badge color="success">SUCCESS</badge> GitHub Actions run [#44242222036](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44242222036) completed successfully on child code HEAD `3d5e7adecdb16e9d557988fa9e9bbe4e0c1296de`, with a GitHub PR merge ref that included parent #936 HEAD `a7994d11f69f81f0cf088aff1b12e0c032a6be25`.
+<badge color="success">SUCCESS</badge> GitHub Actions run [#44242222036](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44242222036) passed on child code HEAD `3d5e7adecdb16e9d557988fa9e9bbe4e0c1296de`, with merge ref including parent #936 HEAD `a7994d11f69f81f0cf088aff1b12e0c032a6be25`.
 
-All workflow stages passed:
-1. Canonical Neuro-Plastic registry and host admission contract.
-2. P25 adapter registry, validation, routing and fallback contract.
-3. Real OrganismRuntime adapter/fallback/restore/disable integration.
+All stages passed:
+1. Canonical Neuro-Plastic registry/host admission tests.
+2. P25 registry, route and fallback engine tests.
+3. Actual OrganismRuntime adapter/fallback/restore/disable integration.
 4. Runtime typecheck.
 5. P40 Model Ecology and organism smoke.
 
-### Changes in #939
+### P25 integration details now present in #936
 
 1. P25 receives the typed full routing input in its host executor: task, base-model ID/fingerprint, context estimate, confidence, uncertainty and resource-risk.
-2. #936 `NeuroPlasticInferenceAdapter` accepts an optional `expectedAdapterId`. A canonical/P25 adapter mismatch returns the untouched base alias and `p25-canonical-selection-mismatch`; it does not substitute another adapter and does not disable the healthy canonical artifact.
-3. P25 records canonical base fallbacks separately from ordinary base decisions and adapter execution failures. New persisted metric `canonicalRegistryFallbacks` is backward-compatible: snapshots that predate this field restore it to zero.
-4. A canonical base response is returned directly. P25 does not issue a second base request for the same selected adapter prompt. Timeout and bad model/artifact attestation still perform one base fallback for the exact selected request.
-5. Host wiring in `server.mjs` is opt-in only: model aliases enabled, immutable base-model ID/fingerprint configured, and P25 HMAC key secret/key ID available. P25 policy HMAC is an additional host gate, not a replacement for #936's independent evaluator receipt, human approval or artifact validation.
-6. Host validates exact adapter ID, model ID/revision fingerprint, weights SHA, adapter method, llama.cpp backend, served base alias and one-to-one task-to-domain mapping before canonical inference.
-7. P25 workflow runs canonical #936 tests, P25 engine/runtime tests, runtime typecheck and P40/organism smoke.
+2. #936 `NeuroPlasticInferenceAdapter` accepts optional `expectedAdapterId`. If canonical registry selection does not yield that exact ID, it returns the unchanged base alias with `p25-canonical-selection-mismatch`; it never substitutes a different adapter and does not disable a healthy canonical artifact.
+3. P25 records canonical base fallbacks separately from ordinary base decisions and adapter execution failures. Persisted `canonicalRegistryFallbacks` is backward-compatible: snapshots without the field restore it to zero.
+4. The already-generated canonical base response is returned directly; P25 never issues a second base request for the same selected adapter prompt. Timeout and bad model/artifact attestation still issue exactly one base fallback for the selected prompt.
+5. Host wiring is explicit opt-in only: model aliases enabled, immutable base-model ID/fingerprint configured, and separate P25 HMAC policy secret/key ID available. This policy gate does not replace #936's independent evaluator receipt, holdout evidence, operator approval or artifact integrity checks.
+6. Host validates exact adapter ID, model/revision fingerprint, weights SHA, adapter method, llama.cpp backend, served base alias and one-to-one task-to-domain mapping.
+7. The parent branch now contains P25 workflow filters and runs the P25 checks alongside the offline Neuro-Plastic gate.
+
+### Post-merge parent verification in progress
+
+- Neuro-Plastic Core offline adapter gate [#44242499958](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44242499958): SUCCESS on parent HEAD `f4b5b763...` (trainer preflight + registry/inference contracts).
+- Unified Organism Runtime [#44242509203](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44242509203): P25 engine regression, real runtime integration and Node typecheck have passed; continuity/integration and final organism smoke are running.
+- Full NeuroCore core regression [#44242509388](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44242509388): still running.
+- P25-specific parent PR run [#44242510764](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44242510764): queued.
 
 ### Superseded branches
 
 - [#921](https://github.com/ailtron1ss-rgb/NK1/pull/921) — closed without merge; retained for history.
 - [#938](https://github.com/ailtron1ss-rgb/NK1/pull/938) — closed without merge; retained for history.
-- [#939](https://github.com/ailtron1ss-rgb/NK1/pull/939) — sole active P25 child of #936.
+- [#939](https://github.com/ailtron1ss-rgb/NK1/pull/939) — merged into #936; retained as the completed integration history.
 
-No real model-task quality gain, target-device latency/memory or independent holdout advantage is claimed. Those require a separate model-specific evaluation and device soak before merging or release.
+No real model-task quality gain, target-device latency/memory or independent holdout advantage is claimed. Those require a separate model-specific evaluation and device soak before #936 can be merged into source or released.
