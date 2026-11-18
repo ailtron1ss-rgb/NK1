@@ -332,7 +332,7 @@ export class NegativeSpaceMemory {
     const normalizedReason = cleanText(reason);
     if (!record || !hasVerifiedOutcome(record) || !alternative || !alternative.reviewEligible || !normalizedReason) return false;
     alternative.reviewEligible = false;
-    alternative.reopenedAt = Math.max(record.at, 0, finite(at, Date.now()));
+    alternative.reopenedAt = Math.max(record.at, record.outcomeAt ?? 0, 0, finite(at, Date.now()));
     alternative.reopenReason = normalizedReason;
     record.reviewStatus = record.alternatives.some(candidate => candidate.reviewEligible) ? 'review-eligible' : 'reopened';
     this.state.lastAt = Math.max(this.state.lastAt, alternative.reopenedAt);
