@@ -623,7 +623,8 @@ calibrationRoundTrip.restore(calibrationSnapshot, {
   validateIndependentlyVerifiedOutcome: outcome =>
     outcome.id === independentlyRecorded.outcome.id &&
     outcome.authority === 'independent-external' &&
-    outcome.independentlyVerified === true,
+    outcome.independentSourceCount === 1 &&
+    outcome.evidenceObservationIds?.includes('observation-consequence-calibration-1') === true,
 });
 assert.deepEqual(calibrationRoundTrip.consequenceEcology.listCalibrations(), calibrationSimulator.consequenceEcology.listCalibrations(),
   'verified calibration records must survive only after canonical Shared Future outcome revalidation');
