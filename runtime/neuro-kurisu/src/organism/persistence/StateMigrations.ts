@@ -527,7 +527,7 @@ function migrateSharedFutureActionBindings(value: unknown): SharedFutureActionBi
       const candidate = row[key];
       if (typeof candidate !== 'string') return null;
       const clean = candidate.trim();
-      return clean.length > 0 && clean.length <= max && !/[\\u0000-\\u001f\\u007f]/.test(clean)
+      return clean.length > 0 && clean.length <= max && !/[\u0000-\u001f\u007f]/.test(clean)
         ? clean
         : null;
     };
