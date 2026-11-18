@@ -445,10 +445,11 @@ export class EmbodiedCausalWorldBridge {
     if(!ACTIONS.includes(args.action))throw new TypeError('P27 outcome requires a known action');
     if(!this.finiteFeatureVector(args.nextFeatures))throw new TypeError('P27 requires a finite next feature vector with 1-64 numeric values');
     if(![args.reward01,args.verified01,args.predictionError01].every(Number.isFinite))throw new TypeError('P27 requires finite outcome metrics');
-    // Outcome identity must be supplied explicitly; never infer a fast context
-    // from whichever adapter happened to be active most recently.
-    const outcomeContextId=args.contextId;
-    const actionBound=outcomeContextId!==undefined&&this.assertCommittedAction(outcomeContextId,args.tick,args.action);
+    // Omitted context IDs have always represented the stable "default" scope.
+    // Never infer from the last active adapter: only the explicit context or this
+    // deterministic default key can bind the outcome to its committed action.
+    const outcomeContextId=args.contextId===undefined?'default':args.contextId;
+    const actionBound=this.assertCommittedAction(outcomeContextId,args.tick,args.action);
     const fastContext=actionBound?this.consumeFastDecision(outcomeContextId,args.tick):null;
     const ai=ACTIONS.indexOf(args.action);const from=this.state.latent.slice();const observed=this.encode(args.nextFeatures);const pred=this.predict(from,args.action,1);const nextError=clamp(mse(pred.next,observed));const rewardErr=clamp(Math.abs(pred.reward-args.reward01));
     const verified=clamp(args.verified01);const lr=.012+verified*.018;
