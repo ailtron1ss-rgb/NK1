@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { generateKeyPairSync } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,7 +11,7 @@ import {
   verifyNeuroPlasticApprovalSignature,
 } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 
-const root = await mkdtemp(path.join(os.tmpdir(), 'neuro-plastic-external-signer-'));
+const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'neuro-plastic-external-signer-')));
 const scriptPath = fileURLToPath(new URL('../scripts/neuro_plastic_sign_approval.mjs', import.meta.url));
 const signerKeyId = 'offline-operator-key';
 const signer = generateKeyPairSync('ed25519');
@@ -77,6 +77,19 @@ try {
   await symlink(privateKeyPath, symlinkPath);
   run(['--input', requestPath, '--key-file', symlinkPath, '--key-id', signerKeyId,
     '--output', path.join(root, 'symlink-key-output.json')], 1);
+
+  const symlinkParent = path.join(root, 'linked-parent');
+  await symlink(root, symlinkParent, 'dir');
+  const linkedRequest = path.join(symlinkParent, path.basename(requestPath));
+  const linkedKey = path.join(symlinkParent, path.basename(privateKeyPath));
+  const linkedOutput = path.join(symlinkParent, 'signed-through-linked-parent.json');
+  run(['--input', linkedRequest, '--key-file', privateKeyPath, '--key-id', signerKeyId,
+    '--output', path.join(root, 'linked-input-output.json')], 1);
+  run(['--input', requestPath, '--key-file', linkedKey, '--key-id', signerKeyId,
+    '--output', path.join(root, 'linked-key-output.json')], 1);
+  run(['--input', requestPath, '--key-file', privateKeyPath, '--key-id', signerKeyId,
+    '--output', linkedOutput], 1);
+  await assert.rejects(readFile(path.join(root, 'signed-through-linked-parent.json')), { code: 'ENOENT' });
 
   run(['--input', requestPath, '--key-file', privateKeyPath, '--key-id', signerKeyId,
     '--output', outputPath], 1);
