@@ -210,6 +210,18 @@ try {
   const checkpointAfterValidation = await frozenStore.load();
   assert.equal(checkpointAfterValidation.corpus.rows.length, 16,
     'the checkpoint must retain the exact frozen validation + holdout task corpus');
+  assert.equal(checkpointAfterValidation.corpus.manifest.length, 4,
+    'P23 manifest must contain one immutable task definition per scenario, not one per seed');
+  const repeatedScenarioRows = checkpointAfterValidation.corpus.rows.filter(row =>
+    row.phase === 'validation' && row.scenario.id === 'validation-0');
+  assert.equal(repeatedScenarioRows.length, 3);
+  assert.equal(new Set(repeatedScenarioRows.map(row => row.task.taskId)).size, 1,
+    'all independent seeds for a scenario must share the same canonical task identity');
+  assert.equal(new Set(repeatedScenarioRows.map(row => row.task.trialId)).size, 3,
+    'each seed execution must retain its own distinct trial identity');
+  assert.equal(new Set(repeatedScenarioRows.map(row =>
+    row.task.input.developmentalMultiverse.scenarioFingerprint)).size, 1,
+    'scenario inputs and rubric must stay identical across independent seeds');
   assert.equal(checkpointAfterValidation.corpus.ledgerSnapshot.acceptedOutcomes, 18,
     'the checkpoint must retain canonical P23 validation outcomes, not only their hash');
   const validationLedger = VerifiedOutcomeLedger.restoreSnapshot(checkpointAfterValidation.corpus.ledgerSnapshot);
@@ -220,8 +232,8 @@ try {
     'P23 seed-clustered summaries must compare complete seed-level task aggregates');
   const frozenRestored = await DevelopmentalMultiverseIndependentRunner.restore(frozenOptions);
   await frozenRestored.runHoldout();
-  assert.equal(frozenFactoryCalls, 16,
-    'restoring and running holdout must never rebuild the scenario task corpus');
+  assert.equal(frozenFactoryCalls, 4,
+    'restoring and running holdout must never rebuild the four frozen scenario definitions');
   const frozenHoldoutRows = frozenRestored.snapshot().holdoutObservations;
   assert.ok(frozenHoldoutRows.every(row =>
     row.verifiedEvidence?.manifestFingerprint === validationEvidence.manifestFingerprint),
