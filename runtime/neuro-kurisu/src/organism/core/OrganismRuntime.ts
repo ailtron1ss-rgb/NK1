@@ -222,6 +222,10 @@ export class OrganismRuntime {
   private readonly cognitiveToNeuralBridgeReceiptOrder:string[]=[];
   private readonly cognitiveToNeuralBridgeUsageIds=new Set<string>();
   private readonly cognitiveToNeuralBridgeUsageOrder:string[]=[];
+  /** Immutable pre-invocation facts, insulated from async provider mutation of LanguageRequest. */
+  private readonly cognitiveToNeuralBridgeExpectedRequests=new WeakMap<LanguageRequest,{
+    requestId:string; profileFingerprint:string; featureSchema:string; tick:number; maxTokens:number;
+  }>();
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
@@ -662,21 +666,22 @@ export class OrganismRuntime {
     const receipt=response.providerControlReceipt;
     if(!receipt) return;
     const profile=request.cognitiveControl;
-    const requestId=request.cognitiveControlRequestId;
-    let expectedFingerprint:string;
+    const expected=this.cognitiveToNeuralBridgeExpectedRequests.get(request);
+    let actualFingerprint:string;
     try {
-      if(!profile) throw new Error('missing-control-profile');
-      expectedFingerprint=cognitiveNeuralProfileFingerprint(profile);
+      if(!profile || !expected) throw new Error('missing-pre-invocation-control-snapshot');
+      actualFingerprint=cognitiveNeuralProfileFingerprint(profile);
     } catch {
       this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsRejected+=1;
       return;
     }
-    if(receipt.provider!=='llama.cpp' || !String(response.backend??'').startsWith('llama.cpp:') ||
+    if(actualFingerprint!==expected.profileFingerprint ||
+       receipt.provider!=='llama.cpp' || !String(response.backend??'').startsWith('llama.cpp:') ||
        receipt.templateKwargsSent!==true ||
-       receipt.featureSchema!==profile.featureSchema ||
-       typeof requestId!=='string' || requestId.length<1 ||
-       receipt.requestId!==requestId ||
-       receipt.profileFingerprint!==expectedFingerprint) {
+       receipt.featureSchema!==expected.featureSchema ||
+       request.cognitiveControlRequestId!==expected.requestId ||
+       receipt.requestId!==expected.requestId ||
+       receipt.profileFingerprint!==expected.profileFingerprint) {
       this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsRejected+=1;
       return;
     }
@@ -717,7 +722,22 @@ export class OrganismRuntime {
   private recordCognitiveProviderUsage(request: LanguageRequest, response: LanguageResponse): void {
     const profile=request.cognitiveControl;
     if(!profile || !String(response.backend??'').startsWith('llama.cpp:')) return;
-    const requestId=request.cognitiveControlRequestId;
+    const expected=this.cognitiveToNeuralBridgeExpectedRequests.get(request);
+    let actualFingerprint:string;
+    try {
+      if(!expected) throw new Error('missing-pre-invocation-control-snapshot');
+      actualFingerprint=cognitiveNeuralProfileFingerprint(profile);
+    } catch {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
+      return;
+    }
+    if(actualFingerprint!==expected.profileFingerprint ||
+      profile.maxTokens!==expected.maxTokens ||
+      request.cognitiveControlRequestId!==expected.requestId) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
+      return;
+    }
+    const requestId=expected.requestId;
     if(typeof requestId!=='string' || requestId.length<1 || requestId.length>128 ||
       !/^[a-z0-9][a-z0-9._:-]*$/i.test(requestId)) {
       this.cognitiveToNeuralBridgeMetrics.providerUsageRequestIdUnavailable+=1;
@@ -755,7 +775,7 @@ export class OrganismRuntime {
     this.cognitiveToNeuralBridgeMetrics.lastProviderPromptTokens=usage.promptTokens;
     this.cognitiveToNeuralBridgeMetrics.lastProviderCompletionTokens=usage.completionTokens;
     this.cognitiveToNeuralBridgeMetrics.lastProviderTotalTokens=usage.totalTokens;
-    const utilization=usage.completionTokens/Math.max(1,profile.maxTokens);
+    const utilization=usage.completionTokens/Math.max(1,expected.maxTokens);
     this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean=
       (this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean*observations+utilization)/(observations+1);
     this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax=
@@ -771,9 +791,9 @@ export class OrganismRuntime {
         promptTokens:usage.promptTokens,
         completionTokens:usage.completionTokens,
         totalTokens:usage.totalTokens,
-        configuredMaxTokens:profile.maxTokens,
+        configuredMaxTokens:expected.maxTokens,
         completionBudgetUtilization:utilization,
-        overBudget:usage.completionTokens>profile.maxTokens,
+        overBudget:usage.completionTokens>expected.maxTokens,
       },
     });
   }
@@ -841,6 +861,14 @@ export class OrganismRuntime {
     this.cognitiveToNeuralBridgeMetrics.lastTemperature=profile.temperature;
     this.cognitiveToNeuralBridgeMetrics.lastMaxTokens=profile.maxTokens;
     const cognitiveControlRequestId=`${this.cognitiveToNeuralBridgeSessionId}:${profile.tick}:${++this.cognitiveToNeuralBridgeRequestSequence}`;
+    const controlledRequest={...prepared.request,cognitiveControlRequestId};
+    this.cognitiveToNeuralBridgeExpectedRequests.set(controlledRequest,{
+      requestId:cognitiveControlRequestId,
+      profileFingerprint:cognitiveNeuralProfileFingerprint(profile),
+      featureSchema:profile.featureSchema,
+      tick:profile.tick,
+      maxTokens:profile.maxTokens,
+    });
     this.evidenceBus.publish({
       tick:profile.tick,
       kind:'resource',
@@ -867,7 +895,7 @@ export class OrganismRuntime {
         residualBlockApplied:false,
       },
     });
-    return { ...prepared.request, cognitiveControlRequestId };
+    return controlledRequest;
   }
 
   private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, neuralSnapshot: ReturnType<OrganismCore['b365UnifiedNeuroCausalDiagnostics']>, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
