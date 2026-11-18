@@ -519,7 +519,9 @@ export class SharedFutureEngine {
         evidenceRef,
         reportedBy: row.reportedBy === 'user' ? 'user' : 'system',
         authority: claimedAuthority,
-        independentlyVerified: false,
+        // Preserve the persisted bit only as an untrusted claim for the independent validator.
+        // The candidate is promoted to trusted below only when the caller revalidates it.
+        independentlyVerified: row.independentlyVerified === true,
         ...(typeof row.sharedFutureDecisionId === 'string' ? { sharedFutureDecisionId: restoredId(row.sharedFutureDecisionId, '') } : {}),
         ...(typeof row.actionDecisionId === 'string' ? { actionDecisionId: restoredId(row.actionDecisionId, '') } : {}),
         ...(typeof row.actionToolId === 'string' ? { actionToolId: restoredText(row.actionToolId, '', 64) } : {}),
