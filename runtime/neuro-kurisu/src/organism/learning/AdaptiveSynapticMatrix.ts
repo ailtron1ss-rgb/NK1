@@ -84,6 +84,7 @@ export interface AdaptiveSynapticMatrixState {
     routeDecisions: number;
     adapterSelections: number;
     baseFallbacks: number;
+    canonicalRegistryFallbacks: number;
     adapterFailures: number;
   };
 }
@@ -245,7 +246,7 @@ function emptyState(): AdaptiveSynapticMatrixState {
     version: 1,
     adapters: [],
     decisions: [],
-    metrics: { routeDecisions: 0, adapterSelections: 0, baseFallbacks: 0, adapterFailures: 0 },
+    metrics: { routeDecisions: 0, adapterSelections: 0, baseFallbacks: 0, canonicalRegistryFallbacks: 0, adapterFailures: 0 },
   };
 }
 
@@ -403,6 +404,7 @@ export class AdaptiveSynapticMatrixEngine {
       || 'canonical-selection-mismatch';
     this.state.metrics.routeDecisions += 1;
     this.state.metrics.baseFallbacks += 1;
+    this.state.metrics.canonicalRegistryFallbacks += 1;
     this.state.decisions.unshift({
       task,
       mode: 'base-fallback',
@@ -516,6 +518,7 @@ export class AdaptiveSynapticMatrixEngine {
       routeDecisions: Number.isSafeInteger(metrics.routeDecisions) ? Math.max(0, metrics.routeDecisions) : 0,
       adapterSelections: Number.isSafeInteger(metrics.adapterSelections) ? Math.max(0, metrics.adapterSelections) : 0,
       baseFallbacks: Number.isSafeInteger(metrics.baseFallbacks) ? Math.max(0, metrics.baseFallbacks) : 0,
+      canonicalRegistryFallbacks: Number.isSafeInteger(metrics.canonicalRegistryFallbacks) ? Math.max(0, metrics.canonicalRegistryFallbacks) : 0,
       adapterFailures: Number.isSafeInteger(metrics.adapterFailures) ? Math.max(0, metrics.adapterFailures) : 0,
     };
     this.state = next;
