@@ -95,6 +95,29 @@ export interface SharedFutureActionBinding {
   expectedPostcondition: string;
 }
 
+/** Durable correlation receipt linking one executed ActionGateway call to one accepted Shared Future decision. */
+export interface SharedFutureActionExecutionBindingRecord {
+  id: string;
+  executionId: string;
+  toolId: string;
+  actionDecisionId: string;
+  sharedFutureDecisionId: string;
+  scenarioId: string;
+  consequenceId: string;
+  expectedPostcondition: string;
+  inputHash: string;
+  outcomeClass: 'executed-unverified' | 'executed-verified';
+  autonomous: boolean;
+  recordedAt: number;
+}
+
+export interface SharedFutureActionBindingsState {
+  version: 1;
+  records: SharedFutureActionExecutionBindingRecord[];
+  overflow: number;
+  quarantined?: boolean;
+}
+
 export interface SharedFutureDecision {
   id: string;
   scenarioId: string;
