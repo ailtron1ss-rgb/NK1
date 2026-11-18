@@ -24,6 +24,7 @@ on:
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_train.py'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-core.mjs'
       - 'runtime/neuro-kurisu/tests/test_neuro_plastic_train.py'
+      - 'runtime/neuro-kurisu/tests/test_neuro_plastic_train_smoke.py'
       - '.github/workflows/neuro-plastic-core.yml'
   pull_request:
     branches:
@@ -47,6 +48,7 @@ on:
       - 'runtime/neuro-kurisu/scripts/neuro_plastic_train.py'
       - 'runtime/neuro-kurisu/tests/neuro-plastic-core.mjs'
       - 'runtime/neuro-kurisu/tests/test_neuro_plastic_train.py'
+      - 'runtime/neuro-kurisu/tests/test_neuro_plastic_train_smoke.py'
       - '.github/workflows/neuro-plastic-core.yml'
   workflow_dispatch:
 
@@ -91,3 +93,22 @@ jobs:
       - name: Offline trainer manifest and integrity contracts
         working-directory: runtime/neuro-kurisu
         run: python3 -m unittest discover -s tests -p 'test_neuro_plastic_train.py' -v
+
+  trainer-cpu-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install CPU-only PyTorch
+        run: python3 -m pip install --disable-pip-version-check "torch>=2.4,<3" --index-url https://download.pytorch.org/whl/cpu
+      - name: Install optional offline trainer dependencies
+        run: python3 -m pip install --disable-pip-version-check "transformers>=4.45,<6" "peft>=0.20.0" "datasets>=3.0" "accelerate>=1.0" "safetensors>=0.4"
+      - name: Train, export, hash and reload a local tiny LoRA adapter
+        working-directory: runtime/neuro-kurisu
+        env:
+          HF_HUB_OFFLINE: "1"
+          TRANSFORMERS_OFFLINE: "1"
+          HF_DATASETS_OFFLINE: "1"
+          TOKENIZERS_PARALLELISM: "false"
+          WANDB_DISABLED: "true"
+        run: python3 -m unittest discover -s tests -p 'test_neuro_plastic_train_smoke.py' -v
