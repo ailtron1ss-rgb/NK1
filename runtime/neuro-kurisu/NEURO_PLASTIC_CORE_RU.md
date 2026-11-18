@@ -180,7 +180,16 @@ Promotion gate требует не менее 5 matched pairs и 5 незави�
 
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs approve --adapter kurisu-reasoning-v1 --output state/kurisu-reasoning-v1.approval-request.json
 
-Команда approve создаёт только unsigned request с canonical payload, точным adapter/report/base-model/manifest binding, signerKeyId и timestamp. Передайте request во внешний signer (KMS/HSM или отдельный approval service), который держит приватный Ed25519 key, подписывает поле canonicalPayload и добавляет base64 detached signature в approval.signature. Затем сохраните подписанный JSON и выполните:
+Команда approve создаёт только unsigned request с canonical payload, точным adapter/report/base-model/manifest binding, signerKeyId и timestamp. Для локальной изолированной подписи можно использовать отдельный offline signer (сам NK1 runtime и registry CLI приватный ключ не читают):
+
+    chmod 600 /secure/path/operator-private.pem
+    node --experimental-strip-types scripts/neuro_plastic_sign_approval.mjs \\
+      --input state/kurisu-reasoning-v1.approval-request.json \\
+      --key-id operator-key-2026 \\
+      --key-file /secure/path/operator-private.pem \\
+      --output state/kurisu-reasoning-v1.approval-signed.json
+
+Signer проверяет canonical payload и key ID, требует Ed25519 private key в regular file с owner-only permissions, отклоняет symlink и перезапись существующего output и создаёт подписанный JSON с правами 0600. Приватный ключ должен находиться вне репозитория; для production предпочтителен KMS/HSM или отдельный signer service. Либо передайте request в такой сервис: он подписывает поле canonicalPayload и добавляет base64 detached signature в approval.signature. Затем выполните:
 
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs activate --adapter kurisu-reasoning-v1 --input state/kurisu-reasoning-v1.approval-signed.json
 
