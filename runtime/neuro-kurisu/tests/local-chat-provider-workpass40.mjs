@@ -11,6 +11,12 @@ const provider = new OpenAICompatibleLocalChatProvider({
   },
 });
 assert.equal(provider.configured(), true);
+const localAdapterCapabilities = provider.hyperPlasticAdapterCapabilities();
+assert.equal(Object.isFrozen(localAdapterCapabilities), true);
+assert.equal(localAdapterCapabilities.supportsLowRankAdapters, false,
+  'OpenAI-compatible llama-server chat completions must not claim support for LoRA activation');
+assert.deepEqual(localAdapterCapabilities.supportedLowRankTargets, []);
+assert.equal(localAdapterCapabilities.reason, 'chat-completions-endpoint-has-no-adapter-loader');
 assert.equal(provider.endpoint(), 'http://127.0.0.1:8080/v1/chat/completions');
 const answer = await provider.generate({ system: 'You are Kurisu.', user: 'Think carefully.', maxTokens: 128, temperature: 0.35 });
 assert.equal(answer.text, 'Я проверю гипотезу и сохраню причинность.');

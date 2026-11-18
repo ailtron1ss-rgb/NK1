@@ -16,6 +16,8 @@ import {
   measureHyperPlasticSignedSplit,
 } from '../src/organism/research/HyperPlasticOutcomeEvaluator.ts';
 import { resolveHyperPlasticAdapterRoute } from '../src/server/local-language-backend-policy.mjs';
+import { createTrustedHyperPlasticAdapterCapabilities } from '../src/organism/research/HyperPlasticBackendCapabilities.ts';
+import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { B292CognitiveStateBus, defaultB292CognitiveStateBus } from '../src/organism/system/B292CognitiveStateBus.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -97,12 +99,39 @@ assert.equal(isTrustedHyperPlasticPromotionPermit(promoted.permit, {
   adapterFingerprint: adapter.fingerprint, baseModelFingerprint,
 }), true);
 
+const unsupportedProvider = new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://127.0.0.1:8080/v1' });
+const unsupportedRoute = resolveHyperPlasticAdapterRoute({
+  backendCapabilities: unsupportedProvider.hyperPlasticAdapterCapabilities(),
+  baseModelFingerprint, adapter, promotionPermit: promoted.permit,
+});
+assert.equal(unsupportedRoute.mode, 'baseline');
+assert.equal(unsupportedRoute.reason, 'backend-adapter-capability-unavailable');
+
+const trustedLoader = createTrustedHyperPlasticAdapterCapabilities({
+  providerId: 'ome26-test-loader',
+  baseModelFingerprint,
+  supportedLowRankTargets: ['attention.query'],
+  loadAdapter: async () => ({ loaded: true }),
+});
 const route = resolveHyperPlasticAdapterRoute({
-  backendCapabilities: { supportsLowRankAdapters: true, supportedLowRankTargets: ['attention.query'] },
+  backendCapabilities: trustedLoader,
   baseModelFingerprint, adapter, promotionPermit: promoted.permit,
 });
 assert.equal(route.mode, 'adapter');
 assert.equal(route.reason, 'holdout-qualified');
+
+const forgedCapabilityRoute = resolveHyperPlasticAdapterRoute({
+  backendCapabilities: {
+    providerId: 'forged-caller',
+    supportsLowRankAdapters: true,
+    baseModelFingerprint,
+    supportedLowRankTargets: ['attention.query'],
+    loadAdapter: async () => ({ loaded: true }),
+  },
+  baseModelFingerprint, adapter, promotionPermit: promoted.permit,
+});
+assert.equal(forgedCapabilityRoute.mode, 'baseline');
+assert.equal(forgedCapabilityRoute.reason, 'backend-capability-not-provider-issued');
 
 const copiedPermit = structuredClone(promoted.permit);
 assert.equal(isTrustedHyperPlasticPromotionPermit(copiedPermit, {
