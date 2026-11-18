@@ -152,7 +152,7 @@ Promotion gate требует не менее 5 matched pairs и 5 незави�
 
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs approve --adapter kurisu-reasoning-v1
 
-Команда approve создаёт unsigned request-файл state/kurisu-reasoning-v1.approval-request.json с canonicalPayload. Внешний approver подписывает UTF-8 canonicalPayload своим Ed25519 private key, затем записывает base64-подпись в approval.signature и сохраняет итоговый signed JSON, например state/kurisu-reasoning-v1.approval.json. После этого:
+Команда approve создаёт unsigned request-файл state/kurisu-reasoning-v1.approval-request.json с полями approvalRequest, context и canonicalPayload. Внешний signer/HSM/KMS подписывает UTF-8 canonicalPayload своим Ed25519 private key и возвращает detached base64 signature. В итоговый JSON для activate нужно добавить поле approval, скопировав approvalRequest и добавив signature; остальные поля запроса (adapterId, reportId, baseModelFingerprint, manifestFingerprint) сохраняются без изменений. Приватный ключ в файл или NK1 не передаётся. После внешней подписи сохраните, например, state/kurisu-reasoning-v1.approval.json:
 
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs activate --adapter kurisu-reasoning-v1 --input state/kurisu-reasoning-v1.approval.json
 
@@ -180,7 +180,8 @@ Confidence берётся из выбранного IntentCandidate. Risk рас
 Перед запуском локального сервера загрузите adapter alias в совместимый llama.cpp endpoint. Registry не изменяет конфигурацию llama-server и не подменяет base model самостоятельно: endpoint должен уметь разрешать переданный model alias в заранее загруженный adapter. Затем выставьте:
 
     NEURO_PLASTIC_REGISTRY_FILE="/absolute/runtime/path/state/neuro-plastic-adapters.json"
-    NEURO_PLASTIC_APPROVAL_SECRET="<same-operator-secret>"
+    NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON='{"operator-id":"-----BEGIN PUBLIC KEY-----\\n...\\n-----END PUBLIC KEY-----"}'
+    NEURO_PLASTIC_EVALUATOR_PUBLIC_KEYS_JSON='{"independent-evaluator-v1":"-----BEGIN PUBLIC KEY-----\\n...\\n-----END PUBLIC KEY-----"}'
     NEURO_PLASTIC_BASE_MODEL_SHA256="<exact-base-model-fingerprint>"
     NEURO_PLASTIC_MODEL_ALIASES_ENABLED=1
 
