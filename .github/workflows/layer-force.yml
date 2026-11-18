@@ -8,18 +8,11 @@ on:
       - "research/neural-prosthesis/**"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/layer-force.yml"
-  push:
-    branches: [aspect/layer-force-activation-steering-20261117]
-    paths:
-      - "research/neural-prosthesis/**"
-      - "runtime/neuro-kurisu/package.json"
-      - ".github/workflows/layer-force.yml"
-
 permissions:
   contents: read
 
 concurrency:
-  group: layer-force-${{ github.event.pull_request.number || github.ref }}
+  group: layer-force-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
