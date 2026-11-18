@@ -188,7 +188,7 @@ test('action tools route apply through self-modification permission and idempote
   gateway.registerTool(apply);
   const input = { proposalId: proposal.proposalId };
   const options = { idempotencyKey: 'approved-request-001', decisionId: 'decision:repository-coding-test' };
-  const denied = await gateway.executeTool(apply.id, input, 'test-without-owner-approval', options);
+  const denied = await gateway.executeTool(apply.id, input, 'test-without-owner-approval', { ...options, idempotencyKey: 'unapproved-attempt-001' });
   assert.equal(denied.outcomeClass, 'approval-required');
   assert.equal(sample.applied, null, 'the ActionGateway must refuse application before a one-shot approval');
   const request = await gateway.requestToolApproval(apply.id, input, 'repository-coding-test', options, 'execute');
