@@ -4940,6 +4940,15 @@ export class OrganismCore {
             contradictions: this.cognitiveRuntime.contradictions.snapshot(),
             skills: this.cognitiveRuntime.skillLibrary.snapshot(),
         });
+        const activeHealthSignalIds = new Set(cognitiveHealth.activeSignals.map(signal => signal.id));
+        const existingHealthPressureSources = this.cognitiveRuntime.cognitiveField.snapshot().pressures
+            .filter(pressure => pressure.description.startsWith('cognitive health '))
+            .flatMap(pressure => pressure.sourceIds);
+        for (const sourceId of existingHealthPressureSources) {
+            if (!activeHealthSignalIds.has(sourceId)) {
+                this.cognitiveRuntime.cognitiveField.resolvePressureBySource(sourceId, .92);
+            }
+        }
         for (const signal of cognitiveHealth.activeSignals) {
             this.cognitiveRuntime.cognitiveField.addPressure(
                 'contradiction',
