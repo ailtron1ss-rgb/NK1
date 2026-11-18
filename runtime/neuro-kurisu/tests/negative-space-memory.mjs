@@ -340,6 +340,7 @@ independentUpgrade.observe('act', 0.5, [{
 }], {
   decisionId: 'decision-independent-evidence-upgrade',
   chosenExpectedOutcome01: 0.6,
+  contextKey: 'independence-gate-context',
   significance: { cost01: 0.1, risk01: 0.9, futureImportance01: 0.1 },
   outcomeReward01: 0.25,
   outcomeSurprise01: 0.2,
@@ -347,6 +348,13 @@ independentUpgrade.observe('act', 0.5, [{
   outcomeIndependent01: 0,
   outcomeSource: 'internal',
 });
+assert.equal(independentUpgrade.negativeSpaceReviewQueue().length, 0,
+  'verified but non-independent outcomes must not grant review authority');
+assert.equal(independentUpgrade.snapshot().negativeSpace.records[0].reviewStatus, 'awaiting-independent-evidence');
+assert.equal(independentUpgrade.negativeSpaceRelatedAlternatives('independence-gate-context').length, 0,
+  'default contextual recall must exclude non-independent outcomes');
+assert.equal(independentUpgrade.negativeSpaceRelatedAlternatives('independence-gate-context', 8, true).length, 1,
+  'non-independent history remains available only for explicit exploratory recall');
 const improvedIndependentEvidence = independentUpgrade.recordNegativeSpaceOutcome({
   decisionId: 'decision-independent-evidence-upgrade',
   actualOutcome01: 0.5,
@@ -361,6 +369,9 @@ assert.equal(improvedIndependentEvidence?.chosenActualReward01, 0.9,
   'improved independence must refresh reward attribution even when verification level is unchanged');
 assert.equal(improvedIndependentEvidence?.chosenSurprise01, 0.7);
 assert.equal(improvedIndependentEvidence?.outcomeSource, 'external-evidence');
+assert.equal(improvedIndependentEvidence?.reviewStatus, 'review-eligible',
+  'independent corroboration should promote an otherwise verified outcome into review');
+assert.equal(independentUpgrade.negativeSpaceReviewQueue().length, 1);
 
 const duplicatedRestore = new RegretEngine();
 duplicatedRestore.restore({
