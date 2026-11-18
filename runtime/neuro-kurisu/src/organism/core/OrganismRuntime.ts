@@ -11,7 +11,7 @@ import { OfflineConsolidation, type ConsolidationResult } from '../cognition/Off
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
 import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageRequest, type LanguageResponse } from '../language/LanguageOrgan.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
-import { CognitiveToNeuralBridge, prepareCognitiveNeuralRequest, type CognitiveNeuralControlProfile, type CognitiveNeuralBridgeNeuralInput } from '../cognition/CognitiveToNeuralBridge.ts';
+import { CognitiveToNeuralBridge, cognitiveNeuralProfileFingerprint, prepareCognitiveNeuralRequest, type CognitiveNeuralControlProfile, type CognitiveNeuralBridgeNeuralInput } from '../cognition/CognitiveToNeuralBridge.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
@@ -195,9 +195,17 @@ export class OrganismRuntime {
     lastTemperature:null as number|null,
     lastMaxTokens:null as number|null,
     llamaCppTemplateKwargsSent:0,
+    providerControlReceiptsAccepted:0,
+    providerControlReceiptsRejected:0,
+    providerControlReceiptsDuplicate:0,
     templateConsumptionVerified:false as const,
     lastTemplateControlSchema:null as string|null,
+    lastTemplateProfileFingerprint:null as string|null,
   };
+  private readonly cognitiveToNeuralBridgeSessionId=randomUUID();
+  private cognitiveToNeuralBridgeRequestSequence=0;
+  private readonly cognitiveToNeuralBridgeReceiptIds=new Set<string>();
+  private readonly cognitiveToNeuralBridgeReceiptOrder:string[]=[];
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
@@ -636,19 +644,50 @@ export class OrganismRuntime {
 
   private recordCognitiveProviderControlReceipt(request: LanguageRequest, response: LanguageResponse): void {
     const receipt=response.providerControlReceipt;
-    if(!request.cognitiveControl || receipt?.provider!=='llama.cpp' ||
-       receipt.templateKwargsSent!==true ||
-       receipt.featureSchema!==request.cognitiveControl.featureSchema) return;
+    if(!receipt) return;
+    const profile=request.cognitiveControl;
+    const requestId=request.cognitiveControlRequestId;
+    let expectedFingerprint:string;
+    try {
+      if(!profile) throw new Error('missing-control-profile');
+      expectedFingerprint=cognitiveNeuralProfileFingerprint(profile);
+    } catch {
+      this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsRejected+=1;
+      return;
+    }
+    if(receipt.provider!=='llama.cpp' || receipt.templateKwargsSent!==true ||
+       receipt.featureSchema!==profile.featureSchema ||
+       typeof requestId!=='string' || requestId.length<1 ||
+       receipt.requestId!==requestId ||
+       receipt.profileFingerprint!==expectedFingerprint) {
+      this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsRejected+=1;
+      return;
+    }
+    if(this.cognitiveToNeuralBridgeReceiptIds.has(requestId)) {
+      this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsDuplicate+=1;
+      return;
+    }
+
+    this.cognitiveToNeuralBridgeReceiptIds.add(requestId);
+    this.cognitiveToNeuralBridgeReceiptOrder.push(requestId);
+    if(this.cognitiveToNeuralBridgeReceiptOrder.length>512) {
+      const expired=this.cognitiveToNeuralBridgeReceiptOrder.shift();
+      if(expired) this.cognitiveToNeuralBridgeReceiptIds.delete(expired);
+    }
+    this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsAccepted+=1;
     this.cognitiveToNeuralBridgeMetrics.llamaCppTemplateKwargsSent+=1;
     this.cognitiveToNeuralBridgeMetrics.lastTemplateControlSchema=receipt.featureSchema;
+    this.cognitiveToNeuralBridgeMetrics.lastTemplateProfileFingerprint=expectedFingerprint;
     this.evidenceBus.publish({
-      tick:request.cognitiveControl.tick,
+      tick:profile.tick,
       kind:'model',
       source:'llama.cpp-template-control-handoff',
       confidence01:.99,
       payload:{
         provider:'llama.cpp',
         templateKwargsSent:true,
+        requestId,
+        profileFingerprint:expectedFingerprint,
         featureSchema:receipt.featureSchema,
         templateConsumptionVerified:false,
         activationSteeringApplied:false,
@@ -719,6 +758,7 @@ export class OrganismRuntime {
     this.cognitiveToNeuralBridgeMetrics.lastFeatureDimensions=profile.featureVector01.length;
     this.cognitiveToNeuralBridgeMetrics.lastTemperature=profile.temperature;
     this.cognitiveToNeuralBridgeMetrics.lastMaxTokens=profile.maxTokens;
+    const cognitiveControlRequestId=`${this.cognitiveToNeuralBridgeSessionId}:${profile.tick}:${++this.cognitiveToNeuralBridgeRequestSequence}`;
     this.evidenceBus.publish({
       tick:profile.tick,
       kind:'resource',
@@ -745,7 +785,7 @@ export class OrganismRuntime {
         residualBlockApplied:false,
       },
     });
-    return prepared.request;
+    return { ...prepared.request, cognitiveControlRequestId };
   }
 
   private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, neuralSnapshot: ReturnType<OrganismCore['b365UnifiedNeuroCausalDiagnostics']>, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
