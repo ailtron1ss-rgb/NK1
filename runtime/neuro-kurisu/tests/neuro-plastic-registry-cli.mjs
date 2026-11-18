@@ -45,10 +45,13 @@ try {
   await writeFile(path.join(adapterDirectory, 'adapter_model.safetensors'), weightBytes);
   await writeFile(path.join(adapterDirectory, 'neuro-plastic-artifact.json'), JSON.stringify({
     schemaVersion: 1,
+    adapterId,
     method: 'lora',
     domain: 'reasoning',
     baseModelFingerprint: baseFingerprint,
     tokenizerFingerprint,
+    sourceDatasetFingerprint,
+    holdoutPlanFingerprint: holdoutFingerprint,
     corpusFingerprint,
     automaticActivation: false,
     artifacts: {},
