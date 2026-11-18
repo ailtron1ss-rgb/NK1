@@ -6,6 +6,7 @@ Branch: `aspect/cognitive-to-neural-bridge-20261117`
 
 ## Task 1 — deterministic bounded projector
 
+- Add `src/organism/cognition/B365DiagnosticsSchema.ts` as the single B365 state/diagnostics version contract and consume it from both the B365 core and bridge.
 - Add `src/organism/cognition/CognitiveToNeuralBridge.ts`.
 - Export the action/mode types, 43-feature B365-aware projection, versioned profile, provider request adapter and explicit emergency-bypass helper.
 - Normalize organism inputs; accept only complete B365 v14 diagnostic snapshots with valid ticks and all 23 normalized signals; reject unknown versions, partial, future and stale (>8 tick) snapshots as a whole.
