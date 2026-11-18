@@ -644,13 +644,18 @@ unvalidatedCalibrationRestore.restore(calibrationSnapshot);
 assert.equal(unvalidatedCalibrationRestore.consequenceEcology.listCalibrations().length, 0,
   'independent outcome claims must not survive restore without external revalidation');
 const calibrationRoundTrip = new FutureSimulator();
+let independentOutcomeValidatorCalls = 0;
 calibrationRoundTrip.restore(calibrationSnapshot, {
-  validateIndependentlyVerifiedOutcome: outcome =>
-    outcome.id === independentlyRecorded.outcome.id &&
-    outcome.authority === 'independent-external' &&
-    outcome.independentSourceCount === 1 &&
-    outcome.evidenceObservationIds?.includes('observation-consequence-calibration-1') === true,
+  validateIndependentlyVerifiedOutcome: outcome => {
+    independentOutcomeValidatorCalls++;
+    return outcome.id === independentlyRecorded.outcome.id &&
+      outcome.authority === 'independent-external' &&
+      outcome.independentSourceCount === 1 &&
+      outcome.evidenceObservationIds?.includes('observation-consequence-calibration-1') === true;
+  },
 });
+assert.equal(independentOutcomeValidatorCalls, 1,
+  'the external verifier must run exactly once; Consequence Ecology must reuse the canonical Shared Future admission result');
 assert.deepEqual(calibrationRoundTrip.consequenceEcology.listCalibrations(), calibrationSimulator.consequenceEcology.listCalibrations(),
   'verified calibration records must survive only after canonical Shared Future outcome revalidation');
 const tamperedCalibrationSnapshot = structuredClone(calibrationSnapshot);
