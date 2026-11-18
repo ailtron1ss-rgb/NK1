@@ -137,6 +137,49 @@ restarted.restore(after);
 assert.deepEqual(restarted.snapshot().elasticNeuralPlasticity, after.elasticNeuralPlasticity);
 assert.deepEqual(restarted.snapshot().weights, after.weights);
 
+// A committed sample ID remains consumed after a process restart.
+const replayAfterRestart = restarted.trainFeaturesElastic({
+  sampleId: 'train-energy-001',
+  features: vector(0),
+  action: 'respond',
+  target01: 1,
+  learningRate01: .25,
+}, options({ trainingSampleId: 'train-energy-001' }));
+assert.equal(replayAfterRestart.accepted, false);
+assert.equal(replayAfterRestart.reason, 'duplicate-training-sample');
+
+// Staging is side-effect-free; an ordinary training update invalidates a stale proposal.
+const staged = new ParametricPolicyLearner();
+const stagedInput = {
+  sampleId: 'train-staged-001',
+  features: vector(0),
+  action: 'respond',
+  target01: 1,
+  learningRate01: .25,
+};
+const stagedBefore = staged.snapshot();
+const stagedProposal = staged.proposeFeaturesElastic(
+  stagedInput,
+  options({ trainingSampleId: stagedInput.sampleId }),
+);
+assert.equal(stagedProposal.eligible, true);
+assert.ok(stagedProposal.proposalId);
+assert.deepEqual(staged.snapshot().weights, stagedBefore.weights, 'prepare must not mutate live policy weights');
+const regularTraining = staged.trainFeatures({
+  features: vector(1),
+  action: 'respond',
+  target01: .8,
+  learningRate01: .1,
+});
+const afterRegularTraining = staged.snapshot();
+assert.notDeepEqual(afterRegularTraining.weights, stagedBefore.weights);
+const staleCommit = staged.commitFeaturesElastic(stagedProposal.proposalId);
+assert.equal(staleCommit.accepted, false);
+assert.equal(staleCommit.reason, 'stale-policy-base');
+assert.deepEqual(staged.snapshot().weights, afterRegularTraining.weights,
+  'stale candidate must not overwrite a newer policy generation');
+
+
 const frozen = new ParametricPolicyLearner();
 frozen.setFrozen(true);
 const frozenBefore = frozen.snapshot();
@@ -187,6 +230,10 @@ assert.equal(rolledBack.rolledBack, true);
 assert.equal(p26.snapshot().policy.weights.respond[0], 0);
 assert.notEqual(beforeRollback, 0);
 assert.equal(p29.snapshot().provenance.at(-1).reason, 'elastic-plasticity-rollback');
+const secondRollback = p26.rollbackElasticPlasticity('respond', p29);
+assert.equal(secondRollback.rolledBack, false, 'rollback receipt must be consumed once');
+assert.equal(secondRollback.reason, 'rollback-not-available');
+
 
 // P29 exhaustion must fail closed before candidate weights mutate.
 const deniedGovernance = new P29LearningGovernanceEngine();
