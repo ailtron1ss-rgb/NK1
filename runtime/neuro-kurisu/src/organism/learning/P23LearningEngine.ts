@@ -1390,6 +1390,26 @@ export class P23LearningEngine {
         importedAt,
       },
     };
+    // Native Synaptic materialization is idempotent for the exact artifact,
+    // local outcome set and proposal. A repeated request must not mint another
+    // candidate/version or silently reactivate a superseded/rolled-back revision.
+    const priorNativeCandidate = this.verifiedSkillStore.snapshot().candidates.find(candidate => {
+      if (candidate.skillId !== skill.id) return false;
+      const prior = candidate.payload as Partial<PolicySkillRecord> | null;
+      const provenance = prior?.synapticCommonsProvenance;
+      return provenance?.schemaVersion === 1 &&
+        provenance.artifactFingerprint === artifactFingerprint &&
+        provenance.localProposalId === proposal.proposalId &&
+        provenance.localManifestFingerprint === proposal.manifestFingerprint &&
+        provenance.localOutcomeFingerprint === proposal.outcomeFingerprint &&
+        provenance.localDatasetFingerprint === proposal.datasetFingerprint &&
+        prior?.contextKey === skill.contextKey &&
+        prior?.action === skill.action &&
+        prior?.validationUses === skill.validationUses &&
+        prior?.validationSuccess01 === skill.validationSuccess01 &&
+        prior?.confidence01 === skill.confidence01;
+    });
+    if (priorNativeCandidate) return structuredClone(priorNativeCandidate);
     return this.stageVerifiedSkillCandidate(proposal, skill);
   }
 
