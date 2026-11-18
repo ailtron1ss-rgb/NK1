@@ -1,0 +1,42 @@
+name: developmental-genome
+
+on:
+  push:
+    branches:
+      - aspect/developmental-genome-20261117
+    paths:
+      - '.github/workflows/developmental-genome.yml'
+      - 'runtime/neuro-kurisu/**'
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - '.github/workflows/developmental-genome.yml'
+      - 'runtime/neuro-kurisu/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: developmental-genome-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  genome-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install pinned runtime TypeScript compiler
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Run Developmental Genome behavioral tests
+        run: npm --prefix runtime/neuro-kurisu run test:developmental-genome
+      - name: Runtime TypeScript check
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Architecture audit
+        run: npm --prefix runtime/neuro-kurisu run audit:architecture

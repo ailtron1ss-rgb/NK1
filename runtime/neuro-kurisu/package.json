@@ -1867,6 +1867,10 @@
     "test:will:voluntary-attention-budget": "node --experimental-strip-types tests/will-voluntary-attention-budget-workpass.mjs",
     "test:cognitive-immune-health": "node --experimental-strip-types tests/cognitive-immune-health-monitor.mjs",
     "test:p25:adaptive-synaptic-matrix": "node --experimental-strip-types tests/p25-adaptive-synaptic-matrix.mjs",
-    "test:p25:adaptive-synaptic-matrix:runtime": "node --experimental-strip-types tests/p25-adaptive-synaptic-matrix-runtime.mjs"
+    "test:p25:adaptive-synaptic-matrix:runtime": "node --experimental-strip-types tests/p25-adaptive-synaptic-matrix-runtime.mjs",
+    "test:developmental-genome": "node --experimental-strip-types tests/developmental-genome.mjs && node --experimental-strip-types tests/developmental-genome-p53-p63-bridge.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   }
 }
