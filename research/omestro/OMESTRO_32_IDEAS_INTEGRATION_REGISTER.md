@@ -123,10 +123,10 @@
 - `workpass70-source`: `bee2b133fdedd48723bc49b3eedae5f0df929c1c`.
 - Последний Release по-прежнему `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, опубликован 19 октября 2026, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 - #901 и #913 остаются единственными подтверждёнными merged PR из этого каталога.
-- #930 Neuro-Plastic Core получил новые коммиты 18 ноября и находится на HEAD `913ffc8edca3bea6aa35d17fddb9f6ae58574a21`; base SHA обновлён до merge commit #901 `2676da93eda716313345d37700612de638fcbe76`, но PR остаётся Draft.
+- #930 Neuro-Plastic Core закрыт без слияния и помечен как superseded. Его source-synchronized replacement #936 остаётся Draft на HEAD `05ba70cc7e2c7aec2d84de1b609b548c59c0c918`, base SHA `bee2b133fdedd48723bc49b3eedae5f0df929c1c`.
 - #922 Cognitive-to-Neural Bridge обновлён 18 ноября до `4ffa92dee1f461903982d3a2fd213c6a03088dfb`, base остаётся `1e83a011fc677ff20f2348570322bd562181d9ff`.
 - #926 Neural JIT обновлён 18 ноября до `ab75af47ab8c47bf82a2822e3c6861d818021f48`, base остаётся `1e83a011fc677ff20f2348570322bd562181d9ff`.
-- #931 Layer Force обновлён 18 ноября тестами на hook-laziness/low precision; проверяется текущий новый HEAD `38edc6c0c28e44df029205e08b5c168338888f83`. PR остаётся Draft и stacked на #925.
+- #931 Layer Force обновлён 18 ноября до PR HEAD `661827ad6eb1eb636d4f8bcad7f1d351f51756eb`; кодовый HEAD `06a52dea266e3f23b77c41fcfc7ebdf81abeaef3` прошёл точный Python + Node CI в run `44239599893` (38 Python tests, runtime typecheck, Neural Prosthesis/P40 regression). PR остаётся Draft и stacked на #925.
 - #925 по-прежнему HEAD `8ae6445642f52f9eef06fb1a3070682129764558`, base SHA `1e83a011fc677ff20f2348570322bd562181d9ff`.
 - #934 этот реестр остаётся Draft и имеет актуальную для момента создания базу `bee2b133fdedd48723bc49b3eedae5f0df929c1c`.
 
@@ -141,7 +141,7 @@
 1. Профиль загружается/валидируется без установки PyTorch hooks; hooks ставятся лениво только при входе в явный request-scoped `activate(profile_id)`. Это убирает hook overhead в выключенном режиме и при preloading профилей без default selection.
 2. Низкоточная FP16/BF16 запись должна строго соблюдать per-token delta cap после округления к dtype модели, а не только до округления в FP32.
 
-На HEAD `38edc6c0c28e44df029205e08b5c168338888f83` GitHub Actions run `44238241640` для новых проверок находится в очереди; до завершения не считать эти два новых свойства подтверждёнными.
+На HEAD `06a52dea266e3f23b77c41fcfc7ebdf81abeaef3` run `44239599893` завершился `success` для обеих job. Дополнительно проверены lazy hooks, zero-strength no-hook, atomic rollback/retry, пост-cast FP16/BF16 cap и sidecar opt-in. Последний PR HEAD `661827ad6eb1eb636d4f8bcad7f1d351f51756eb` после успешной проверки менял только документацию.
 
 
 ## 9. Обнаруженные пересечения файлов между aspect PR
@@ -150,9 +150,9 @@
 
 | Пересечение | Общие runtime-файлы | Риск / решение |
 |---|---|---|
-| #922 Cognitive-to-Neural Bridge ↔ #930 Neuro-Plastic Core | `OpenAICompatibleLocalChatProvider.ts`, `LanguageOrgan.ts`, `server.mjs` | Оба меняют local-provider path и передачу control/adapter metadata. Нельзя принимать оба PR независимо от старых баз; объединять как одну серию совместимых изменений и сохранять оба набора контрактных тестов. |
+| #922 Cognitive-to-Neural Bridge ↔ #936 Neuro-Plastic Core | `OpenAICompatibleLocalChatProvider.ts`, `LanguageOrgan.ts`, `server.mjs` | Оба меняют local-provider path и передачу control/adapter metadata. Нельзя принимать оба PR независимо от старых баз; объединять как одну серию совместимых изменений и сохранять оба набора контрактных тестов. |
 | #922 Cognitive-to-Neural Bridge ↔ #926 Neural JIT | `OrganismRuntime.ts`, `LanguageOrgan.ts`, `server.mjs` | Оба расширяют runtime orchestration. Согласовать один lifecycle/owner и event boundary; Neural JIT остаётся shadow-only, не должен напрямую менять policy/параметры. |
-| #930 Neuro-Plastic Core ↔ #926 Neural JIT | `LanguageOrgan.ts`, `server.mjs` | Общая точка регистрации/маршрутизации local inference; проверить fallback и не допустить скрытого включения экспериментальных артефактов. |
+| #936 Neuro-Plastic Core ↔ #926 Neural JIT | `LanguageOrgan.ts`, `server.mjs` | Общая точка регистрации/маршрутизации local inference; проверить fallback и не допустить скрытого включения экспериментальных артефактов. |
 | #925 Neural Prosthesis ↔ #931 Layer Force | Один Python sidecar и общая decoder layer stack; #931 stacked на #925 | Слияние строго в порядке родитель → ребёнок после синхронизации #925 с актуальным source. |
 | #903 → #916 → #928 | Отдельная stacked-цепочка | Не поднимать #928 на source напрямую; сначала проверить весь граф сценариев → world model → causal consequence. |
 | #902 → #912 | Отдельная stacked-цепочка | Morphogenesis должен собираться поверх Developmental Genome, не обходить его контракты. |
@@ -160,11 +160,11 @@
 
 ### Рекомендуемая координация по runtime-пересечениям
 
-1. Сначала согласовать #922 как cognitive-control contract для `OrganismRuntime` и local provider; отдельно проверить, что пользовательское решение, approval и safety gate нельзя обойти через metadata.
-2. Затем адаптировать #930 к этому provider contract: единый маршрут загрузки артефактов, один host allowlist, точная model/revision binding, доказательства обучения и fallback на базовую модель.
-3. После этого интегрировать #926 как shadow-only observer/compiler, который может предлагать оптимизации только после измерения и не получает право на self-promotion.
-4. После слияния этой тройки повторно проверить #921 Adaptive Synaptic Matrix как единый selector, а не оставить три конкурирующих adapter registries.
-5. #925/#931 держать отдельно до согласования того, как residual adapters и LoRA/QLoRA артефакты сосуществуют на одном decoder/model lifecycle.
+1. Сначала синхронизировать #922 с актуальным `workpass70-source` и сохранить cognitive-control контракт в `OrganismRuntime`/provider; metadata не должна обходить user consent, approval или safety gates.
+2. Интегрировать #936 как единственный canonical владелец LoRA/QLoRA artifact admission, independent evaluation, approval, activation and fallback.
+3. Перестроить #921 поверх #936 как policy/router facade, а не второй подписанный adapter registry.
+4. Перестроить #926 поверх общей capture/decision boundary, сохраняя strict shadow-only execution и no-live-promotion.
+5. #925/#931 держать в отдельной цепочке до согласования model revision/config, residual adapter lifecycle, hook order and resource budgets.
 
 Это рекомендуемая последовательность ревью, а не подтверждение совместимости: для каждого перехода ещё нужны exact-base diff, re-run тестов, fallback/rollback тесты и holdout результаты.
 
@@ -198,7 +198,7 @@
 | #922 | `bc4b975387f9200c2db62a40e3af1903815ec482` | `1e83a011fc677ff20f2348570322bd562181d9ff` | Draft, stale source base |
 | #925 | `8ae6445642f52f9eef06fb1a3070682129764558` | `1e83a011fc677ff20f2348570322bd562181d9ff` | Draft, stale parent base |
 | #926 | `a2e7b6a77d02a146a4bd8c30aa82195a34504b07` | `1e83a011fc677ff20f2348570322bd562181d9ff` | Draft, stale source base; shadow-only |
-| #931 | `ff4672d476ebb8ec2bb746a0647196c55f5ab79f` | #925 head `8ae6445642f52f9eef06fb1a3070682129764558` | Draft, stacked; hardened CI pending |
+| #931 | PR HEAD `661827ad6eb1eb636d4f8bcad7f1d351f51756eb` (code CI head `06a52dea266e3f23b77c41fcfc7ebdf81abeaef3`) | #925 head `8ae6445642f52f9eef06fb1a3070682129764558` | Draft, stacked; Python/Node CI success on code head |
 | #936 | `05ba70cc7e2c7aec2d84de1b609b548c59c0c918` | `bee2b133fdedd48723bc49b3eedae5f0df929c1c` | Draft, source-synchronized #23 implementation |
 
 Recommended next sequence: synchronize #922 with current source; retarget #936 onto the approved cognitive-control contract if integration is needed; retarget #921 onto #936 and replace its duplicate artifact lifecycle with a P25 routing facade; keep #926 shadow-only and connect only through a host-owned capture/decision interface. #925 must be synchronized before #931 can leave its stacked state.
