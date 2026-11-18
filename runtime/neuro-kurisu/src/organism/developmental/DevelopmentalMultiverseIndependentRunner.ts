@@ -110,7 +110,7 @@ export interface DevelopmentalMultiverseScenarioCorpusRow {
 }
 
 export interface DevelopmentalMultiverseScenarioCorpusSnapshot {
-  schemaVersion: 1;
+  schemaVersion: 2;
   rows: DevelopmentalMultiverseScenarioCorpusRow[];
   manifest: TaskManifestEntry[];
   ledgerSnapshot: ReturnType<VerifiedOutcomeLedger['snapshot']>;
@@ -119,7 +119,7 @@ export interface DevelopmentalMultiverseScenarioCorpusSnapshot {
 }
 
 export interface DevelopmentalMultiverseRunnerCheckpoint {
-  schemaVersion: 1;
+  schemaVersion: 2;
   universe: DevelopmentalMultiverseSnapshot;
   bindings: {
     environmentFingerprint: string;
@@ -260,10 +260,9 @@ function restoreScenarioCorpus(
   let detached: unknown;
   try { detached = snapshotPlainData(raw); }
   catch { throw new Error('developmental-multiverse-checkpoint-corpus-data-invalid'); }
-  if (!plainRecord(detached) || detached.schemaVersion !== 1 ||
+  if (!plainRecord(detached) || detached.schemaVersion !== 2 ||
       !Array.isArray(detached.rows) || !Array.isArray(detached.manifest) ||
       detached.rows.length < 1 || detached.rows.length > MAX_SCENARIOS_PER_SPLIT * 2 ||
-      detached.rows.length !== detached.manifest.length ||
       !plainRecord(detached.validationPlan) || !plainRecord(detached.holdoutPlan)) {
     throw new Error('developmental-multiverse-checkpoint-corpus-invalid');
   }
@@ -303,6 +302,8 @@ function restoreScenarioCorpus(
   const byKey = new Map<string, DevelopmentalMultiverseScenarioCorpusRow>();
   const rows: DevelopmentalMultiverseScenarioCorpusRow[] = [];
   const seenTaskIds = new Set<string>();
+  const seenTrialIds = new Set<string>();
+  const scenarioDefinitionFingerprints = new Map<string, string>();
   let nonce: string | null = null;
   for (const rawRow of detached.rows) {
     if (!plainRecord(rawRow) || !['validation', 'holdout'].includes(String(rawRow.phase)) ||
@@ -317,7 +318,7 @@ function restoreScenarioCorpus(
         !nonEmpty(scenario.id) || scenario.id.length > 96 ||
         !Number.isSafeInteger(scenario.seed) || scenario.seed < 0 ||
         task.split !== phase || task.seed !== scenario.seed ||
-        !nonEmpty(task.taskId) || !nonEmpty(task.trialId) || seenTaskIds.has(task.taskId) ||
+        !nonEmpty(task.taskId) || !nonEmpty(task.trialId) || seenTrialIds.has(task.trialId) ||
         !plainRecord(task.input) || typeof task.input.prompt !== 'string' ||
         !task.input.prompt.trim() || task.input.prompt.length > 8192 ||
         !Array.isArray(task.requiredCapabilityIds) || task.requiredCapabilityIds.length < 1 ||
@@ -328,7 +329,7 @@ function restoreScenarioCorpus(
     }
 
     const metadata = task.input.developmentalMultiverse;
-    if (!plainRecord(metadata) || metadata.schemaVersion !== 1 ||
+    if (!plainRecord(metadata) || metadata.schemaVersion !== 2 ||
         metadata.runId !== session.runId || metadata.phase !== phase ||
         metadata.scenarioId !== scenario.id || metadata.seed !== scenario.seed ||
         metadata.sourceRevision !== session.sourceRevision ||
@@ -343,7 +344,7 @@ function restoreScenarioCorpus(
     }
     nonce = evaluationNonce;
 
-    const expectedTaskId = scenario.id + ':' + String(scenario.seed) + ':' + evaluationNonce;
+    const expectedTaskId = scenario.id + ':' + evaluationNonce;
     const expectedTrialId = digest({
       runId: session.runId, phase, scenarioId: scenario.id, seed: scenario.seed,
     });
@@ -364,15 +365,31 @@ function restoreScenarioCorpus(
         new Set(task.expectedStepIds).size !== task.expectedStepIds.length) {
       throw new Error('developmental-multiverse-checkpoint-task-identity-mismatch');
     }
+    const { developmentalMultiverse: _metadata, ...baseInput } = task.input;
+    const family = task.taskFamily ?? 'developmental-multiverse';
+    const scenarioFingerprint = digest({
+      input: baseInput,
+      taskFamily: family,
+      requiredCapabilityIds: task.requiredCapabilityIds,
+      expectedStepIds: task.expectedStepIds,
+    });
+    if (metadata.scenarioFingerprint !== scenarioFingerprint) {
+      throw new Error('developmental-multiverse-checkpoint-scenario-fingerprint-mismatch');
+    }
+    const scenarioKey = JSON.stringify([phase, scenario.id]);
+    const previousScenarioFingerprint = scenarioDefinitionFingerprints.get(scenarioKey);
+    if (previousScenarioFingerprint !== undefined && previousScenarioFingerprint !== scenarioFingerprint) {
+      throw new Error('developmental-multiverse-checkpoint-scenario-drift');
+    }
+    scenarioDefinitionFingerprints.set(scenarioKey, scenarioFingerprint);
     inspectScenarioData(task.input);
     if (new TextEncoder().encode(canonical(task.input)).byteLength > MAX_SCENARIO_INPUT_BYTES + 2048) {
       throw new Error('developmental-multiverse-checkpoint-task-size-limit');
     }
     const manifestEntry = manifestByTask.get(task.taskId);
-    const family = task.taskFamily ?? 'developmental-multiverse';
     if (!manifestEntry || manifestEntry.split !== phase ||
         manifestEntry.family !== family ||
-        manifestEntry.version !== 'dm19-independent-run-v1' ||
+        manifestEntry.version !== 'dm19-independent-run-v2' ||
         manifestEntry.verifierId !== verifierId ||
         manifestEntry.promptFingerprint !== VerifiedOutcomeLedger.fingerprintPrompt(task.input.prompt)) {
       throw new Error('developmental-multiverse-checkpoint-task-manifest-mismatch');
@@ -384,10 +401,17 @@ function restoreScenarioCorpus(
       task: structuredClone(task),
     };
     seenTaskIds.add(task.taskId);
+    seenTrialIds.add(task.trialId);
     rows.push(row);
     byKey.set(key, row);
   }
-  if (byKey.size !== expected.size || manifest.some(entry => !seenTaskIds.has(entry.taskId))) {
+  const expectedManifestTaskIds = new Set<string>();
+  if (nonce === null) throw new Error('developmental-multiverse-checkpoint-corpus-nonce-missing');
+  for (const scenario of session.validationScenarios) expectedManifestTaskIds.add(scenario.id + ':' + nonce);
+  for (const scenario of session.holdoutScenarios) expectedManifestTaskIds.add(scenario.id + ':' + nonce);
+  if (byKey.size !== expected.size || manifestByTask.size !== expectedManifestTaskIds.size ||
+      [...expectedManifestTaskIds].some(taskId => !manifestByTask.has(taskId)) ||
+      manifest.some(entry => !seenTaskIds.has(entry.taskId))) {
     throw new Error('developmental-multiverse-checkpoint-corpus-coverage-incomplete');
   }
 
@@ -404,7 +428,7 @@ function validateRunnerCheckpoint(raw: unknown): DevelopmentalMultiverseRunnerCh
   let detached: unknown;
   try { detached = snapshotPlainData(raw); }
   catch { throw new Error('developmental-multiverse-checkpoint-data-invalid'); }
-  if (!plainRecord(detached) || detached.schemaVersion !== 1 ||
+  if (!plainRecord(detached) || detached.schemaVersion !== 2 ||
       !plainRecord(detached.universe) || !plainRecord(detached.bindings) ||
       !plainRecord(detached.bindings.authorityIdentity)) {
     throw new Error('developmental-multiverse-checkpoint-invalid');
@@ -617,7 +641,7 @@ export class DevelopmentalMultiverseIndependentRunner {
     const corpus = this.requireCorpus();
     if (!universe) throw new Error('developmental-multiverse-session-not-created');
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       universe,
       bindings: {
         environmentFingerprint: this.options.environmentFingerprint,
@@ -625,7 +649,7 @@ export class DevelopmentalMultiverseIndependentRunner {
         authorityIdentity: { ...this.options.services.authorityIdentity },
       },
       corpus: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         rows: structuredClone(corpus.rows),
         manifest: structuredClone(corpus.manifest),
         ledgerSnapshot: corpus.ledger.snapshot(),
@@ -731,9 +755,25 @@ export class DevelopmentalMultiverseIndependentRunner {
     const snapshot = this.universe.snapshot();
     if (!snapshot) throw new Error('developmental-multiverse-session-not-created');
     const session = snapshot.session;
-    const definitions: Array<{ phase: DevelopmentalMultiversePhase; scenario: DevelopmentalScenarioSeed }> = [
-      ...session.validationScenarios.map(scenario => ({ phase: 'validation' as const, scenario })),
-      ...session.holdoutScenarios.map(scenario => ({ phase: 'holdout' as const, scenario })),
+    const groupScenarios = (
+      phase: DevelopmentalMultiversePhase,
+      scenarios: DevelopmentalScenarioSeed[],
+    ): Array<{ phase: DevelopmentalMultiversePhase; scenario: DevelopmentalScenarioSeed; seeds: DevelopmentalScenarioSeed[] }> => {
+      const grouped = new Map<string, DevelopmentalScenarioSeed[]>();
+      for (const scenario of scenarios) {
+        const values = grouped.get(scenario.id) ?? [];
+        values.push(scenario);
+        grouped.set(scenario.id, values);
+      }
+      return [...grouped.values()].map(seeds => ({
+        phase,
+        scenario: structuredClone(seeds[0]!),
+        seeds: structuredClone(seeds),
+      }));
+    };
+    const definitions = [
+      ...groupScenarios('validation', session.validationScenarios),
+      ...groupScenarios('holdout', session.holdoutScenarios),
     ];
     const manifest: TaskManifestEntry[] = [];
     const rows: DevelopmentalMultiverseScenarioCorpusRow[] = [];
@@ -741,6 +781,8 @@ export class DevelopmentalMultiverseIndependentRunner {
     for (const definition of definitions) {
       let raw: DevelopmentalMultiverseScenarioTask;
       try {
+        // The scenario factory is invoked once per scenario. Seed is an execution
+        // dimension, not permission to regenerate different task inputs.
         raw = snapshotPlainData(
           this.options.buildScenarioTask(structuredClone(definition.scenario)),
         ) as DevelopmentalMultiverseScenarioTask;
@@ -757,6 +799,9 @@ export class DevelopmentalMultiverseIndependentRunner {
         throw new Error('developmental-multiverse-runner-scenario-task-invalid');
       }
       const baseInput = structuredClone(raw.input) as Record<string, unknown>;
+      if (Object.prototype.hasOwnProperty.call(baseInput, 'developmentalMultiverse')) {
+        throw new Error('developmental-multiverse-runner-scenario-metadata-reserved');
+      }
       inspectScenarioData(baseInput);
       const encoded = canonical(baseInput);
       if (new TextEncoder().encode(encoded).byteLength > MAX_SCENARIO_INPUT_BYTES) {
@@ -770,59 +815,70 @@ export class DevelopmentalMultiverseIndependentRunner {
           new Set(raw.expectedStepIds).size !== raw.expectedStepIds.length) {
         throw new Error('developmental-multiverse-runner-rubric-invalid');
       }
-      const taskId = definition.scenario.id + ':' + String(definition.scenario.seed) + ':' + nonce;
-      const pairFingerprint = digest({
-        runId: session.runId,
-        phase: definition.phase,
-        scenarioId: definition.scenario.id,
-        seed: definition.scenario.seed,
-        sourceRevision: session.sourceRevision,
-        environmentFingerprint: session.environmentFingerprint,
-        initialStateFingerprint: snapshot.initialStateFingerprint,
-      });
-      const input = {
-        ...baseInput,
-        developmentalMultiverse: {
-          schemaVersion: 1,
-          runId: session.runId,
-          phase: definition.phase,
-          scenarioId: definition.scenario.id,
-          seed: definition.scenario.seed,
-          pairFingerprint,
-          sourceRevision: session.sourceRevision,
-          environmentFingerprint: session.environmentFingerprint,
-          initialStateFingerprint: snapshot.initialStateFingerprint,
-          evaluationNonce: nonce,
-        },
-      };
-      const task: IndependentCandidateTask = {
-        taskId,
-        trialId: digest({
-          runId: session.runId,
-          phase: definition.phase,
-          scenarioId: definition.scenario.id,
-          seed: definition.scenario.seed,
-        }),
+      const taskId = definition.scenario.id + ':' + nonce;
+      const scenarioFingerprint = digest({
+        input: baseInput,
         taskFamily: family,
-        seed: definition.scenario.seed,
-        split: definition.phase,
-        input,
-        requiredCapabilityIds: [...raw.requiredCapabilityIds],
-        expectedStepIds: [...raw.expectedStepIds],
-      };
+        requiredCapabilityIds: raw.requiredCapabilityIds,
+        expectedStepIds: raw.expectedStepIds,
+      });
       manifest.push({
         taskId,
         family,
         split: definition.phase,
         promptFingerprint: VerifiedOutcomeLedger.fingerprintPrompt(baseInput.prompt as string),
         verifierId: this.options.verifierId,
-        version: 'dm19-independent-run-v1',
+        version: 'dm19-independent-run-v2',
       });
-      const row: DevelopmentalMultiverseScenarioCorpusRow = {
-        phase: definition.phase, scenario: structuredClone(definition.scenario), task,
-      };
-      rows.push(row);
-      byKey.set(JSON.stringify([definition.phase, definition.scenario.id, definition.scenario.seed]), row);
+      for (const scenarioSeed of definition.seeds) {
+        const pairFingerprint = digest({
+          runId: session.runId,
+          phase: definition.phase,
+          scenarioId: scenarioSeed.id,
+          seed: scenarioSeed.seed,
+          sourceRevision: session.sourceRevision,
+          environmentFingerprint: session.environmentFingerprint,
+          initialStateFingerprint: snapshot.initialStateFingerprint,
+        });
+        const input = {
+          ...structuredClone(baseInput),
+          developmentalMultiverse: {
+            schemaVersion: 2,
+            runId: session.runId,
+            phase: definition.phase,
+            scenarioId: scenarioSeed.id,
+            seed: scenarioSeed.seed,
+            pairFingerprint,
+            scenarioFingerprint,
+            sourceRevision: session.sourceRevision,
+            environmentFingerprint: session.environmentFingerprint,
+            initialStateFingerprint: snapshot.initialStateFingerprint,
+            evaluationNonce: nonce,
+          },
+        };
+        const task: IndependentCandidateTask = {
+          taskId,
+          trialId: digest({
+            runId: session.runId,
+            phase: definition.phase,
+            scenarioId: scenarioSeed.id,
+            seed: scenarioSeed.seed,
+          }),
+          taskFamily: family,
+          seed: scenarioSeed.seed,
+          split: definition.phase,
+          input,
+          requiredCapabilityIds: [...raw.requiredCapabilityIds],
+          expectedStepIds: [...raw.expectedStepIds],
+        };
+        const row: DevelopmentalMultiverseScenarioCorpusRow = {
+          phase: definition.phase,
+          scenario: structuredClone(scenarioSeed),
+          task,
+        };
+        rows.push(row);
+        byKey.set(JSON.stringify([definition.phase, scenarioSeed.id, scenarioSeed.seed]), row);
+      }
     }
     const ledger = new VerifiedOutcomeLedger(manifest);
     const makePlan = (split: 'validation' | 'holdout') => {
@@ -942,7 +998,6 @@ export class DevelopmentalMultiverseIndependentRunner {
         method,
         attempt: 1,
         evaluationScope,
-        allowPartialSchedule: true,
       },
     });
     if (ledgerCommit.accepted !== tasks.length) {
