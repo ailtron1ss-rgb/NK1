@@ -7,7 +7,7 @@ import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.t
 import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
 import { cognitiveNeuralProfileFingerprint } from '../src/organism/cognition/CognitiveToNeuralBridge.ts';
 
-async function runRuntime(enabled) {
+async function runRuntime(enabled, receiptEnabled = true) {
   const dir = await mkdtemp(path.join(tmpdir(), 'nk-cognitive-neural-bridge-'));
   const requests = [];
   const responses = [];
@@ -22,7 +22,7 @@ async function runRuntime(enabled) {
         backend: 'llama.cpp:bridge-test-model',
         latencyMs: 1,
         providerUsage: { promptTokens:90, completionTokens:32, totalTokens:122 },
-        ...(request.cognitiveControl && request.cognitiveControlRequestId ? {
+        ...(request.cognitiveControl && request.cognitiveControlRequestId && receiptEnabled ? {
           providerControlReceipt: {
             provider: 'llama.cpp',
             templateKwargsSent: true,
@@ -46,7 +46,7 @@ async function runRuntime(enabled) {
     await runtime.init();
     await runtime.step('Please reason about this controlled test observation.', { deliberate: true });
     assert.ok(requests.length > 0, 'the runtime must reach its injected LanguageInvoker');
-    if (enabled) {
+    if (enabled && receiptEnabled) {
       const request = requests.find(value => value.cognitiveControl);
       assert.ok(request, 'enabled runtime must attach cognitive control to LanguageRequest');
       assert.equal(request.cognitiveControl.version, 2);
@@ -165,6 +165,17 @@ async function runRuntime(enabled) {
       assert.equal(afterUsageOverrun.providerUsageDuplicates,1);
       assert.equal(afterUsageOverrun.providerUsageUnavailable,1);
       assert.equal(afterUsageOverrun.providerUsageInvalid,1);
+    } else if (enabled) {
+      const request=requests.find(value=>value.cognitiveControl);
+      assert.ok(request,'bridge projection must remain active when template controls are disabled');
+      assert.ok(request.cognitiveControlRequestId,'request correlation remains available for token usage');
+      const diagnostics=runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.ok(diagnostics.providerUsageObservations>0,
+        'actual llama.cpp token usage must be counted independently of Jinja template-control receipts');
+      assert.ok(diagnostics.providerCompletionTokensTotal>0);
+      assert.equal(diagnostics.llamaCppTemplateKwargsSent,0);
+      assert.equal(diagnostics.providerControlReceiptsAccepted,0);
+      assert.equal(diagnostics.providerUsageUnavailable,0);
     } else {
       assert.ok(requests.every(value => value.cognitiveControl === undefined),
         'emergency bypass must pass requests to the provider without mutation');
@@ -181,5 +192,6 @@ async function runRuntime(enabled) {
 }
 
 await runRuntime(true);
+await runRuntime(true,false);
 await runRuntime(false);
 console.log('COGNITIVE_TO_NEURAL_RUNTIME_INTEGRATION_PASS');
