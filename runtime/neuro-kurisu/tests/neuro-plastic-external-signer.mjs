@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { chmod, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
-import { generateKeyPairSync, verify as cryptoVerify } from 'node:crypto';
+import { generateKeyPairSync } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -65,7 +65,7 @@ try {
 
   const tamperedRequestPath = path.join(root, 'approval-tampered-request.json');
   await writeFile(tamperedRequestPath, JSON.stringify({ ...request, canonicalPayload: 'tampered' }));
-  run(['--input', tamperedRequestPath, '--key-file', privateKeyPath, '--key-id': signerKeyId,
+  run(['--input', tamperedRequestPath, '--key-file', privateKeyPath, '--key-id', signerKeyId,
     '--output', path.join(root, 'tampered-signed.json')], 1);
 
   await chmod(privateKeyPath, 0o644);
