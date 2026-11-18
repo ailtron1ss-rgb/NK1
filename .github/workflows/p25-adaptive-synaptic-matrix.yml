@@ -1,6 +1,7 @@
 name: P25 Adaptive Synaptic Matrix
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - workpass70-source
@@ -9,7 +10,11 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveSynapticMatrix.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/index.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/local/NeuroPlasticInferenceAdapter.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/docs/adaptive-synaptic-matrix.md"
       - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs"
+      - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix-runtime.mjs"
       - "runtime/neuro-kurisu/tests/neuro-plastic-core.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/p25-adaptive-synaptic-matrix.yml"
