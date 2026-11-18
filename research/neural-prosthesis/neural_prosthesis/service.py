@@ -201,36 +201,37 @@ class TransformersRuntime:
             model_revision=revision,
             layer_path=self.layer_path,
         )
-        self._approved_manifest_digests = set(_json_list("NEURO_NP_ALLOWED_MANIFESTS_JSON", maximum=128))
-        for value in self._approved_manifest_digests:
-            if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
-                raise RuntimeError("NEURO_NP_ALLOWED_MANIFESTS_JSON-contains-invalid-sha256")
-        self._adapter_manifest_digests: dict[str, str] = {}
-        adapter_dirs = _json_list("NEURO_NP_ADAPTER_DIRS_JSON", maximum=32)
-        if revision == "unversioned-local" and adapter_dirs:
-            raise RuntimeError("NEURO_NP_MODEL_REVISION-is-required-to-load-adapters")
-        for raw_dir in adapter_dirs:
-            artifact_dir = Path(raw_dir).expanduser()
-            adapter_id = self.bank.load_adapter(artifact_dir)
-            manifest = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
-            self._adapter_manifest_digests[adapter_id] = str(manifest["manifest_sha256"])
-        self.bank.eval()
-
-        self.default_adapter = str(os.environ.get("NEURO_NP_DEFAULT_ADAPTER", "")).strip() or None
-        if self.default_adapter is not None and not self._is_approved(self.default_adapter):
-            self.bank.close()
-            raise RuntimeError("NEURO_NP_DEFAULT_ADAPTER-must-be-host-allowlisted")
-        self.max_context_tokens = _context_window(
-            self.model.config,
-            os.environ.get("NEURO_NP_MAX_CONTEXT_TOKENS", "8192"),
-        )
-        self._generation_lock = threading.Lock()
-        self.model_id = model_id
-        self.model_revision = revision
-
-        # Construct the optional steering controller last. Profile admission has
-        # no hooks until activate(), and failures cannot strand residual hooks.
+        self.layer_force: LayerForceBank | None = None
+        self.default_layer_force_profile: str | None = None
         try:
+            self._approved_manifest_digests = set(_json_list("NEURO_NP_ALLOWED_MANIFESTS_JSON", maximum=128))
+            for value in self._approved_manifest_digests:
+                if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
+                    raise RuntimeError("NEURO_NP_ALLOWED_MANIFESTS_JSON-contains-invalid-sha256")
+            self._adapter_manifest_digests: dict[str, str] = {}
+            adapter_dirs = _json_list("NEURO_NP_ADAPTER_DIRS_JSON", maximum=32)
+            if revision == "unversioned-local" and adapter_dirs:
+                raise RuntimeError("NEURO_NP_MODEL_REVISION-is-required-to-load-adapters")
+            for raw_dir in adapter_dirs:
+                artifact_dir = Path(raw_dir).expanduser()
+                adapter_id = self.bank.load_adapter(artifact_dir)
+                manifest = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
+                self._adapter_manifest_digests[adapter_id] = str(manifest["manifest_sha256"])
+            self.bank.eval()
+
+            self.default_adapter = str(os.environ.get("NEURO_NP_DEFAULT_ADAPTER", "")).strip() or None
+            if self.default_adapter is not None and not self._is_approved(self.default_adapter):
+                raise RuntimeError("NEURO_NP_DEFAULT_ADAPTER-must-be-host-allowlisted")
+            self.max_context_tokens = _context_window(
+                self.model.config,
+                os.environ.get("NEURO_NP_MAX_CONTEXT_TOKENS", "8192"),
+            )
+            self._generation_lock = threading.Lock()
+            self.model_id = model_id
+            self.model_revision = revision
+
+            # Construct the optional steering controller last. Profile admission
+            # is inert until activation; failures cannot strand model hooks.
             self.layer_force, self.default_layer_force_profile = _load_layer_force_bank(
                 self.model,
                 model_id=model_id,
@@ -238,6 +239,8 @@ class TransformersRuntime:
                 layer_path=self.layer_path,
             )
         except Exception:
+            if self.layer_force is not None:
+                self.layer_force.close()
             self.bank.close()
             raise
 
