@@ -1,6 +1,6 @@
 # OmeStro №32 — NeuroCore Neural JIT
 
-Дата: 2026-11-17
+Дата обновления: 2026-11-18
 Статус: **интегрированная Shadow Mode ступень; live inference и изменение весов выключены**
 Основа PR: `workpass70-source` SHA `1e83a011fc677ff20f2348570322bd562181d9ff`.
 
@@ -34,6 +34,17 @@
 - Dedicated Neural JIT workflow устанавливает pinned TypeScript из `app/package-lock.json` перед runtime typecheck; semantic `tsc --noEmit` теперь является обязательной частью этого узкого gate, а не только Node strip-only syntax fallback.
 - Дополнительно создан отдельный `.github/workflows/neural-jit-validation.yml`: самостоятельный PR gate с runtime typecheck и четырьмя проверками engine / wiring / verified ActionGateway bridge / local-language HTTP fake provider.
 
+## Усиление evidence gate — 2026-11-18
+
+- **Holdout теперь одноразовый.** После окончательной оценки расходуются все task fingerprints, использованные в этой оценке. В следующей версии кандидата те же canonical task fingerprints исключаются независимо от model revision или task-family alias — повторный просмотр одной тестовой задачи больше не повышает шанс пройти gate.
+- **Окончательные оценки immutable.** Для кандидата со статусом `eligible` или `rejected` повторный вызов evaluate возвращает зафиксированный результат и его исходный holdout-набор. Новые train-данные создают новую детерминированную версию кандидата, а не перепроверяют старую версию на тех же тестовых задачах.
+- **Компиляция идемпотентна.** Повторная компиляция неизменного training evidence возвращает уже существующий candidate, не сбрасывая его evaluation/status.
+- **Защита сохраняется после рестарта.** Sidecar хранит только SHA-256 ключи из canonical task fingerprints (лимит 8192); restore фильтрует некорректные/дублирующиеся значения и восстанавливает spent-set. Сырые task IDs, prompts и activation vectors не сохраняются.
+- **Restore quarantine не обходится holdout-only данными.** Persisted candidate остаётся `quarantined`; вызов evaluate возвращает `candidate-quarantined-after-restore` и не меняет статус. Для повторной допускаемой оценки надо собрать новые train captures и получить новый candidate из текущего процесса.
+- Добавлены regression assertions: immutable first evaluation after later data arrival; disjoint holdout-task sets across candidate versions; spent-evidence persistence; persisted candidate cannot escape quarantine; corrupted candidates are still rejected.
+- Кодовые коммиты этой ступени: `3a41b156e49ef7bd4510f878057a80f4620bcbbc` и `972e358bddcef9c363236b72579a314c4c8f9026`; тестовые коммиты: `c5ce1208f34f45a8528871ce1c4e1389db02c9d6`, `8bd37e348f4b767602dbe75e0898ab8338df4366`, `cf2dbb42b2f1a803be2ebe9f4770a22ea22b31c4`.
+- **Текущая проверка:** после этих коммитов GitHub не вернул новых Actions runs; local checkout недоступен в этой сессии. Поэтому перечисленные выше пять green runs относятся к `33365436`, а новые holdout/quarantine regressions пока считаются добавленными, но не подтверждёнными исполнением. Не объявлять текущий HEAD зелёным до нового запуска CI.
+
 ## Host adapter contract
 
 Модуль на стороне локального model host должен получать настоящие активации из instrumented model runtime, а не синтезировать их из текста, количества токенов или latency. Он реализует:
@@ -57,7 +68,7 @@ Runtime и сервер теперь имеют реальный интегра�
 - Ранее эти же workflows блокировались из-за отсутствующей декларации `randomBytes`; причина исправлена в `src/node-shims.d.ts`.
 - Commit `a3728a4d6e23ff28d9f53cf785ff65b3b2c4508d` добавил три dedicated Neural JIT regression tests в основной `workpass71-validation.yml`; commit `1fad131a35c855e1d57b8979f253fb5f062c9521` добавил проверку истечения TTL во время асинхронной host verification; `cc2df1009d28d3d787a1d7973c1774f0d060d4ad` добавил post-verifier TTL recheck. После этого отдельные CI workflow и status doc также были обновлены; выводы по тестам относятся только к конкретному head и не переносятся автоматически на последующие коммиты.
 - На HEAD `ab75af47ab8c47bf82a2822e3c6861d818021f48` отдельный JIT workflow выполнил pinned semantic TypeScript check (`TYPECHECK=PASS mode=tsc compiler=app-lock`), Engine regression и Runtime wiring regression прошли. Bridge test выявил ошибку именно тестового host fixture: он возвращал один `captureId`/opaque handle для нескольких разных inference turns; новый replay guard закономерно отклонил последующие образцы. Fixture исправлен на генерацию уникального handle/capture ID для каждого inference, а отдельный test всё ещё проверяет отказ от повторного source capture.
-- После исправления fixture текущий HEAD `3336543657fc81e89973d67a7b409255fe2ea652` получил свежие Actions: dedicated Neural JIT validation `44238438929`, NeuroCore core regression `44238439030`, Unified organism runtime `44238438973`, Action Gateway governance `44238439027` и P26 Learning Validation `44238439124`. При последней проверке эти job находились в очереди; их результат нельзя заранее считать успешным. Предыдущие проверки на `ab75af47` не относятся автоматически к `33365436`.
+- После исправления fixture пять повторно запущенных Actions на кодовом HEAD `3336543657fc81e89973d67a7b409255fe2ea652` завершились успешно: dedicated Neural JIT validation `44238438929` (semantic TypeScript check + Engine + Runtime wiring + verified ActionGateway bridge + HTTP fake provider), NeuroCore core regression `44238439030`, Unified organism runtime `44238438973`, Action Gateway governance `44238439027` и P26 Learning Validation `44238439124`. Все пять job имеют conclusion `success`; это подтверждает именно код на `33365436`, а не последующие holdout-hardening коммиты.
 - На HEAD `ab75af47` Action Gateway governance (run `44238101555`) и P26 Learning Validation (run `44238101489`) завершились успешно. Unified organism и core regression на том же HEAD были отменены при последующем обновлении PR, а не завершились проверкой.
 - Непосредственный локальный checkout в этой сессии отсутствовал; изменения внесены через GitHub API. Локальный red-green цикл не заявляется.
 - Базовый ранее известный дефект `tests/p22-chat-routing.mjs` (cognitive-proposal expectation) был воспроизведён до этой серии изменений на исходном baseline; если он встретится в широком regression run, его следует классифицировать отдельно, а не скрывать.
