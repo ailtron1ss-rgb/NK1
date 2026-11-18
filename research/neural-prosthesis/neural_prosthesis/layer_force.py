@@ -332,23 +332,26 @@ class LayerForceBank:
                 or not -1.0 <= float(strength) <= 1.0
             ):
                 raise LayerForceError("steering-strength-out-of-range")
-            # Register each selected decoder hook once, on explicit activation.
-            # Roll back only hooks created by this attempt if registration fails.
-            with self._hook_lock:
-                if self._closed:
-                    raise LayerForceError("controller-closed")
-                profile = self._profiles[profile_id]
-                new_handles: dict[int, Any] = {}
-                try:
-                    for index in profile.layers:
-                        if index not in self._handles:
-                            new_handles[index] = self._layers[index].register_forward_hook(self._make_hook(index))
-                except Exception:
-                    for handle in new_handles.values():
-                        handle.remove()
-                    raise
-                self._handles.update(new_handles)
-            active = (profile_id, float(strength))
+            # Register each non-zero selected decoder hook once, on explicit
+            # non-zero activation. Roll back only hooks created by this attempt.
+            if float(strength) == 0.0:
+                active = (profile_id, 0.0)
+            else:
+                with self._hook_lock:
+                    if self._closed:
+                        raise LayerForceError("controller-closed")
+                    profile = self._profiles[profile_id]
+                    new_handles: dict[int, Any] = {}
+                    try:
+                        for index, layer in profile.layers.items():
+                            if layer.strength != 0.0 and index not in self._handles:
+                                new_handles[index] = self._layers[index].register_forward_hook(self._make_hook(index))
+                    except Exception:
+                        for handle in new_handles.values():
+                            handle.remove()
+                        raise
+                    self._handles.update(new_handles)
+                active = (profile_id, float(strength))
         token = self._active.set(active)
         try:
             yield
