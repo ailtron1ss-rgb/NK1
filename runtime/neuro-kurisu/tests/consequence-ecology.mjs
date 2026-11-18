@@ -570,6 +570,31 @@ const calibrationAnalysis = calibrationSimulator.analyzeConsequences({
 });
 assert.equal(calibrationAnalysis.analysis.options[0].decisionId, calibrationDecisionId,
   'the analysis must retain the exact accepted action-decision binding');
+assert.throws(() => calibrationSimulator.analyzeConsequences({
+  id: 'duplicate-decision-option-binding',
+  scenarioId: calibrationScenario.id,
+  horizonDays: 30,
+  options: [
+    { ...option('duplicate-option-a', 'first representation of one accepted action', [
+      node('context-a', 'neutral', 0.2, 0.1, 0.9),
+    ], [edge('context-edge-a', '__action__', 'context-a')]), decisionId: calibrationDecisionId },
+    { ...option('duplicate-option-b', 'second representation of the same accepted action', [
+      node('context-b', 'neutral', 0.3, 0.1, 0.9),
+    ], [edge('context-edge-b', '__action__', 'context-b')]), decisionId: calibrationDecisionId },
+  ],
+}), /consequence-action-decision-bound-to-multiple-options/,
+'one accepted action decision cannot ambiguously calibrate multiple alternatives');
+assert.throws(() => calibrationSimulator.analyzeConsequences({
+  id: 'scenario-node-substitution',
+  scenarioId: calibrationScenario.id,
+  horizonDays: 30,
+  options: [{
+    ...option('substituted-scenario-option', 'change the event after it was bound', [
+      node('verified-calibration-consequence', 'harm', 0.73, 0.9, 0.95, { delayDays: 3 }),
+    ], [edge('scenario-substitution-edge', '__action__', 'verified-calibration-consequence')]),
+  }],
+}), /consequence-scenario-node-conflict/,
+'a canonical scenario consequence cannot be silently redefined by an option payload');
 assert.equal(typeof calibrationSimulator.recordVerifiedConsequenceOutcome, 'function',
   'FutureSimulator must reconcile canonical verified outcomes with stored model forecasts');
 const independentlyRecorded = calibrationSimulator.sharedFuture.recordVerifiedExternalOutcome({
