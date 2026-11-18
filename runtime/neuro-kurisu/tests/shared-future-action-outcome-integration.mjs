@@ -135,6 +135,18 @@ try {
       scenarioId: 'shared-future-action-integration',
     });
     assert.equal(restored.result.outcomes.length, 1);
+    const restoredOutcomeForDiagnostics = restored.result.outcomes[0];
+    const restoredProjection = restarted.outcomeCognitionSnapshot().records.find(
+      (row) => row.executionId === restoredOutcomeForDiagnostics.executionId && row.tool === restoredOutcomeForDiagnostics.actionToolId,
+    );
+    console.log('SHARED_FUTURE_RESTORE_DIAGNOSTICS', JSON.stringify({
+      validator: (restarted)['validateSharedFutureOutcomeEvidence'](restoredOutcomeForDiagnostics),
+      outcome: restoredOutcomeForDiagnostics,
+      binding: restarted.snapshot().system.sharedFutureActionBindings?.records?.filter((row) => row.executionId === restoredOutcomeForDiagnostics.executionId),
+      sharedDecision: restarted.snapshot().facets.advanced.futureSimulator?.sharedFuture?.decisions?.find((row) => row.id === restoredOutcomeForDiagnostics.sharedFutureDecisionId),
+      trace: restarted.snapshot().traces?.find((row) => row.id === restoredOutcomeForDiagnostics.actionDecisionId),
+      projection: restoredProjection,
+    }));
     assert.equal(restored.result.outcomes[0].independentlyVerified, true,
       'independent verification must survive only after it is revalidated against the canonical outcome projection');
 
