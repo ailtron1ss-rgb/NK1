@@ -301,4 +301,24 @@ assert.equal(restoredRuntime.p29Learning.snapshot().acceptedUpdates, 1);
 const runtimeRollback = restoredRuntime.rollbackElasticNeuralPolicy('respond');
 assert.equal(runtimeRollback.rolledBack, true);
 assert.equal(restoredRuntime.p26TrueLearning.snapshot().policy.weights.respond[0], 0);
+// The P26 public learning boundary must fail closed when its canonical P29 governor is absent or forged.
+const ungated = new P26TrueLearningEngine();
+const ungatedBefore = ungated.snapshot();
+const missingGovernorInput = { ...p26Input, sampleId: 'p26-elastic-missing-governor' };
+const missingGovernor = ungated.trainFeaturesElastic(
+  missingGovernorInput,
+  options({ trainingSampleId: missingGovernorInput.sampleId }),
+  {},
+);
+assert.equal(missingGovernor.accepted, false);
+assert.equal(missingGovernor.eligible, false);
+assert.equal(missingGovernor.reason, 'learning-governance-required');
+assert.deepEqual(ungated.snapshot(), ungatedBefore,
+  'missing or caller-forged governance must not mutate policy, metrics or persistence state');
+const missingGovernorRollback = ungated.rollbackElasticPlasticity('respond', {});
+assert.equal(missingGovernorRollback.rolledBack, false);
+assert.equal(missingGovernorRollback.reason, 'learning-governance-required');
+assert.deepEqual(ungated.snapshot(), ungatedBefore,
+  'rollback without the canonical governor must remain side-effect-free');
+
 console.log('ELASTIC_NEURAL_PLASTICITY=PASS sparse=1 protected=3 retentionGate=PASS leakageGate=PASS persistence=PASS frozen=PASS');
