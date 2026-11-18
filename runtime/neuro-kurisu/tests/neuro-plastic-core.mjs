@@ -276,7 +276,7 @@ const provider = new OpenAICompatibleLocalChatProvider({
     }), { status: 200, headers: { 'content-type': 'application/json' } });
   },
 });
-const inference = new NeuroPlasticInferenceAdapter(inferenceRegistry, (backendId) => backendId === 'llama.cpp', provider);
+const inference = new NeuroPlasticInferenceAdapter(inferenceRegistry, (backendId) => backendId === 'llama.cpp', provider, async (artifact) => artifact.adapterId === 'kurisu-runtime-v1');
 const adaptedResponse = await inference.generate({ system: 'system', user: 'prompt' }, {
   domain: 'reasoning',
   backendId: 'llama.cpp',
@@ -321,7 +321,7 @@ const fallbackProvider = new OpenAICompatibleLocalChatProvider({
   },
 });
 let registryPersistCalls = 0;
-const fallback = await new NeuroPlasticInferenceAdapter(failedRegistry, (backendId) => backendId === 'llama.cpp', fallbackProvider, () => { registryPersistCalls++; }).generate(
+const fallback = await new NeuroPlasticInferenceAdapter(failedRegistry, (backendId) => backendId === 'llama.cpp', fallbackProvider, async (artifact) => artifact.adapterId === 'kurisu-runtime-fallback-v1', () => { registryPersistCalls++; }).generate(
   { system: 'system', user: 'prompt' },
   {
     domain: 'reasoning',
@@ -339,6 +339,56 @@ assert.equal(fallback.model, 'kurisu-base');
 assert.deepEqual(fallbackCalls, ['kurisu-reasoning-lora', 'kurisu-base']);
 assert.equal(failedRegistry.snapshot().adapters[0].status, 'disabled', 'runtime adapter faults must disable the adapter');
 assert.equal(registryPersistCalls, 1, 'runtime adapter faults must persist the disable transition');
+
+const artifactFailureRegistry = new NeuroPlasticAdapterRegistry();
+artifactFailureRegistry.stage(manifest('kurisu-runtime-corrupt-v1'));
+signedEvaluate(artifactFailureRegistry, 'kurisu-runtime-corrupt-v1', {
+  holdoutFingerprint: hash('d'),
+  baseline: observations(0.62),
+  candidate: observations(0.82),
+  evaluatedAt: 1_800_000_000_100,
+});
+const artifactFailureReport = artifactFailureRegistry.snapshot().adapters[0].evaluation;
+await artifactFailureRegistry.activate(
+  'kurisu-runtime-corrupt-v1',
+  signedApproval('kurisu-runtime-corrupt-v1', artifactFailureReport.reportId, 'approval-corrupt'),
+  verifyApproval,
+);
+const integrityCalls = [];
+const integrityProvider = new OpenAICompatibleLocalChatProvider({
+  baseUrl: 'http://127.0.0.1:43123/v1',
+  model: 'kurisu-base',
+  fetchImpl: async (_url, init) => {
+    const body = JSON.parse(String(init.body));
+    integrityCalls.push(body.model);
+    return new Response(JSON.stringify({
+      model: body.model,
+      choices: [{ message: { content: 'baseline after artifact rejection' } }],
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  },
+});
+let integrityPersistCalls = 0;
+const integrityFallback = await new NeuroPlasticInferenceAdapter(
+  artifactFailureRegistry,
+  (backendId) => backendId === 'llama.cpp',
+  integrityProvider,
+  async () => false,
+  () => { integrityPersistCalls++; },
+).generate({ system: 'system', user: 'prompt' }, {
+  domain: 'reasoning',
+  backendId: 'llama.cpp',
+  baseModelFingerprint: hash('a'),
+  baseModelAlias: 'kurisu-base',
+  backendSupportsModelAliases: true,
+  confidence01: 0.9,
+  risk01: 0.1,
+});
+assert.equal(integrityFallback.adapter.fallbackReason, 'adapter-artifact-integrity-failure');
+assert.equal(integrityFallback.model, 'kurisu-base');
+assert.deepEqual(integrityCalls, ['kurisu-base'], 'corrupt artifact must be rejected before an adapter request is sent');
+assert.equal(artifactFailureRegistry.snapshot().adapters[0].status, 'disabled');
+assert.equal(integrityPersistCalls, 1);
+
 
 const activeSnapshot = inferenceRegistry.snapshot();
 const restoredRegistry = new NeuroPlasticAdapterRegistry();
@@ -446,4 +496,4 @@ assert.equal(conflictRestoreRegistry.select({
 await inferenceRegistry.rollback('kurisu-runtime-v1', 'operator requested rollback');
 assert.equal(inferenceRegistry.snapshot().adapters[0].status, 'disabled');
 
-console.log('NEURO_PLASTIC_CORE=PASS registry=7 pairedHoldout=7 safetyGate=PASS explicitApproval=PASS corpus=9 holdoutLeakage=0 inferenceFallback=PASS restartFailClosed=PASS');
+console.log('NEURO_PLASTIC_CORE=PASS registry=8 pairedHoldout=7 safetyGate=PASS signedEvidence=PASS explicitApproval=PASS corpus=9 holdoutLeakage=0 artifactIntegrity=PASS inferenceFallback=PASS restartFailClosed=PASS');
