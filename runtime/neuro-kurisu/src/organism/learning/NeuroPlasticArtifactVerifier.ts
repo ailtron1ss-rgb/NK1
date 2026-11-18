@@ -128,7 +128,11 @@ export async function verifyNeuroPlasticAdapterArtifact(
         metadata.governance?.evidenceCount !== manifest.governance.evidenceCount ||
         metadata.governance?.attestedBy !== manifest.governance.attestedBy ||
         metadata.governance?.attestedAt !== manifest.governance.attestedAt ||
-        metadata.governance?.licenseId !== manifest.governance.licenseId) return false;
+        metadata.governance?.licenseId !== manifest.governance.licenseId ||
+        metadata.trainer?.name !== manifest.trainer.name ||
+        metadata.trainer?.version !== manifest.trainer.version ||
+        metadata.trainer?.seed !== manifest.trainer.seed ||
+        metadata.trainer?.completedAt !== manifest.trainer.completedAt) return false;
 
     const artifacts = metadata.artifacts;
     if (!artifacts ||
