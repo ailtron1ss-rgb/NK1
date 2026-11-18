@@ -89,9 +89,10 @@ export async function verifyNeuroPlasticAdapterArtifact(
     ]);
     const postReadInfo = await Promise.all([lstat(configPath), lstat(weightsPath), lstat(metadataPath)]);
     const initialInfo = [configInfo, weightsInfo, metadataInfo];
-    if (postReadInfo.some((info, index) => info.ino !== initialInfo[index].ino ||
-        info.size !== initialInfo[index].size || info.mtimeMs !== initialInfo[index].mtimeMs ||
-        info.ctimeMs !== initialInfo[index].ctimeMs || info.nlink !== 1)) return false;
+    if (postReadInfo.some((info, index) => info.isSymbolicLink() || !info.isFile() ||
+        info.ino !== initialInfo[index].ino || info.size !== initialInfo[index].size ||
+        info.mtimeMs !== initialInfo[index].mtimeMs || info.ctimeMs !== initialInfo[index].ctimeMs ||
+        info.nlink !== 1)) return false;
     if (configSha !== manifest.artifact.configSha256.toLowerCase() ||
         weightsSha !== manifest.artifact.weightsSha256.toLowerCase()) return false;
     const metadata = JSON.parse(rawMetadata);
