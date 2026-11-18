@@ -305,7 +305,7 @@ export class OrganismRuntime {
       }
       const cadenceTicks = research.cadenceTicks ?? 16;
       const minNovelty01 = research.minNovelty01 ?? 0.55;
-      if (!Number.isSafeInteger(cadenceTicks) || cadenceTicks < 8 || cadenceTicks > 4096 ||
+      if (!Number.isSafeInteger(cadenceTicks) || cadenceTicks < 8 || cadenceTicks > 4096 || cadenceTicks % 2 !== 0 ||
           !Number.isFinite(minNovelty01) || minNovelty01 < 0 || minNovelty01 > 1) {
         throw new Error('ome26-runtime-cadence-or-novelty-invalid');
       }
@@ -638,6 +638,8 @@ export class OrganismRuntime {
         cycle.state.tick % config.cadenceTicks !== 0 ||
         cycle.state.needs.novelty < config.minNovelty01) return undefined;
     const b292 = this.core.b292CognitiveStateBusSnapshot();
+    // Core rebuilds B292 on even ticks; do not propose from a stale snapshot.
+    if (b292.version !== 1 || b292.tick !== cycle.state.tick) return undefined;
     const budgetManager = hyperPlasticBudgetPortFromCore(this.core);
     const taskType: HyperPlasticTaskType = hasExternalInput || action === 'communicate'
       ? 'dialogue' : action === 'collect' ? 'retrieval'
@@ -651,7 +653,9 @@ export class OrganismRuntime {
     return bridge.propose({
       state: b292, taskType, strategy,
       confidence01: Number(cycle.decision.selected?.confidence ?? 0.5),
-      baseModelFingerprint: config.baseModelFingerprint, budgetManager,
+      baseModelFingerprint: config.baseModelFingerprint,
+      expectedTick: cycle.state.tick,
+      budgetManager,
     });
   }
 

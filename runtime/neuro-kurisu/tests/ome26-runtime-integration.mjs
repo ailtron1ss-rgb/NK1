@@ -13,6 +13,9 @@ assert.match(core, /b292CognitiveStateBusSnapshot\(\)/);
 assert.match(runtime, /hyperPlasticResearch\?\.enabled === true/);
 assert.match(runtime, /ome26-requires-real-sha256-base-model-fingerprint/);
 assert.match(runtime, /cadenceTicks < 8/);
+assert.match(runtime, /cadenceTicks % 2 !== 0/);
+assert.match(runtime, /b292\.tick !== cycle\.state\.tick/);
+assert.match(runtime, /expectedTick: cycle\.state\.tick/);
 assert.match(runtime, /minNovelty01/);
 console.log('OME26_RUNTIME_INTEGRATION=PASS', JSON.stringify({
   canonicalB292:true, canonicalBudgetOwner:true, disabledByDefault:true, cycleHook:true, liveActivation:false,
