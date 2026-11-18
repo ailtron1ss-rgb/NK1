@@ -391,8 +391,11 @@ export class RepositoryCodingContextEngine {
   async recordApplyReceipt(proposalId: string, idempotencyKey: string, receipt: RepositoryApplyReceipt): Promise<RepositoryPatchProposalSummary> {
     const item = this.proposals.get(proposalId);
     if (!item) throw new Error('repository-coding-proposal-not-found');
-    const eligibility = this.canApply(proposalId);
-    if (!eligibility.allowed) throw new Error('repository-coding-apply-not-eligible:' + eligibility.reason);
+    const statusAllowsReceipt = item.summary.status === 'verified-awaiting-approval' || item.summary.status === 'reconciliation-required';
+    if (!statusAllowsReceipt || item.summary.testStatus !== 'passed' || !item.verification ||
+        this.now() - item.verification.primary.finishedAt > MAX_VERIFICATION_AGE_MS) {
+      throw new Error('repository-coding-apply-not-eligible:verified-tests-required');
+    }
     if (receipt.proposalId !== proposalId || receipt.repository !== item.summary.repository || receipt.baseRevision !== item.summary.baseRevision || receipt.idempotencyKey !== idempotencyKey) {
       item.summary.status = 'reconciliation-required'; item.applyReceipt = clone(receipt);
       item.summary.warnings.push('apply-receipt-binding-mismatch'); await this.persist(); return clone(item.summary);
