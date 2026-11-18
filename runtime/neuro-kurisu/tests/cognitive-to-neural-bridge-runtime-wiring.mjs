@@ -111,7 +111,7 @@ async function runRuntime(enabled) {
         ...request,cognitiveControlRequestId:request.cognitiveControlRequestId+':over-budget',
       };
       const overBudgetCompletionTokens=request.cognitiveControl.maxTokens+3;
-      runtime.recordCognitiveProviderControlReceipt(overBudgetRequest,{
+      const overBudgetResponse={
         ...selectedResponse,
         providerUsage:{
           promptTokens:100,
@@ -122,7 +122,9 @@ async function runRuntime(enabled) {
           ...selectedResponse.providerControlReceipt,
           requestId:overBudgetRequest.cognitiveControlRequestId,
         },
-      });
+      };
+      runtime.recordCognitiveProviderUsage(overBudgetRequest,overBudgetResponse);
+      runtime.recordCognitiveProviderControlReceipt(overBudgetRequest,overBudgetResponse);
       const afterUsageOverrun=runtime.cognitiveToNeuralBridgeDiagnostics();
       assert.equal(afterUsageOverrun.providerCompletionBudgetExceeded,1,
         'actual provider usage above the requested token budget must be observable');
