@@ -56,7 +56,7 @@ export interface CognitiveHealthSample {
   metrics:Record<CognitiveHealthMetricKey,CognitiveHealthMetric>;
 }
 export interface CognitiveHealthState {
-  version:1; inspections:number; lastTick:number; lastAt:number; score01:number;
+  version:2; inspections:number; lastTick:number; lastAt:number; score01:number;
   coverage01:number; healthStatus:CognitiveHealthStatus;
   samples:CognitiveHealthSample[]; signals:CognitiveHealthSignal[];
   events:CognitiveHealthEvent[];
@@ -414,7 +414,7 @@ export class CognitiveImmuneSystem {
       :activeSignals.length||score01<.65&&coverage01>=.5?'degraded'
       :coverage01<.5?'unknown':'healthy';
     const next:CognitiveHealthState={
-      version:1,inspections:this.state.health.inspections+1,lastTick:tick,lastAt:at,
+      version:2,inspections:this.state.health.inspections+1,lastTick:tick,lastAt:at,
       score01,coverage01,healthStatus,
       samples:[...this.state.health.samples,{tick,at,score01,coverage01,healthStatus,metrics}].slice(-64),
       signals:signals.slice(0,64),events:events.slice(0,128),highStreaks,lowStreaks
