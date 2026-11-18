@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, neuroPlasticAdapterManifestFingerprint, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature, neuroPlasticAdapterManifestFingerprint } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
@@ -8,6 +8,27 @@ import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/l
 const hash = (char) => char.repeat(64);
 const approvalSecret = 'neuro-plastic-test-approval-secret-32-bytes-minimum';
 const evaluatorSecret = 'neuro-plastic-test-evaluator-secret-held-outside-the-runtime';
+const hmacProbe = { approvalId: 'hmac-probe', actorId: 'test-operator', approvedAt: 1_800_000_000_000 };
+const hmacContext = {
+  adapterId: 'hmac-probe-adapter',
+  reportId: hash('7'),
+  baseModelFingerprint: hash('a'),
+  manifestFingerprint: hash('b'),
+};
+const hmacPayload = JSON.stringify({
+  approvalId: hmacProbe.approvalId,
+  actorId: hmacProbe.actorId,
+  approvedAt: hmacProbe.approvedAt,
+  adapterId: hmacContext.adapterId,
+  reportId: hmacContext.reportId,
+  baseModelFingerprint: hmacContext.baseModelFingerprint,
+  manifestFingerprint: hmacContext.manifestFingerprint,
+});
+assert.equal(
+  createNeuroPlasticApprovalSignature(hmacProbe, hmacContext, approvalSecret),
+  createHmac('sha256', approvalSecret).update(hmacPayload, 'utf8').digest('hex'),
+  'approval signatures must match the standard HMAC-SHA256 implementation',
+);
 function signedEvaluate(registry, adapterId, payload) {
   const boundPayload = {
     ...payload,
