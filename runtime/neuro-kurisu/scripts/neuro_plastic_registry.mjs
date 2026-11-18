@@ -132,6 +132,8 @@ async function main() {
     }
     registry.stage(manifest);
     await atomicWrite(registryFile, registry.snapshot());
+    process.stdout.write('NEURO_PLASTIC_MANIFEST_FINGERPRINT=' +
+      neuroPlasticAdapterManifestFingerprint(manifest) + '\n');
   } else if (options.operation === 'evaluate') {
     if (!options.input) throw new Error('--input-holdout-evaluation-required');
     const input = await readJson(path.resolve(options.input));
