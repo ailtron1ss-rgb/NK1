@@ -1007,6 +1007,7 @@ export class ConsequenceEcologyEngine {
       }
       const scenarioConsequences = context.scenario?.consequences ?? [];
       const decisionBindings: Array<{ optionId: string; decisionId: string; sharedFutureDecisionId: string; scenarioId: string; consequenceId: string; toolId: string; expectedPostcondition: string }> = [];
+      const seenActionDecisionIds = new Set<string>();
       const preparedOptions = request.options.map(option => {
         const nodes = [...(Array.isArray(option.nodes) ? option.nodes : [])];
         const edges = [...(Array.isArray(option.edges) ? option.edges : [])];
@@ -1014,14 +1015,14 @@ export class ConsequenceEcologyEngine {
         const decisionId = clean(option?.decisionId, 180);
         if (decisionId) {
           if (!scenarioId || !context.scenario || !context.resolveDecision) throw new Error('consequence-decision-binding-context-required');
+          if (seenActionDecisionIds.has(decisionId)) throw new Error('consequence-action-decision-bound-to-multiple-options');
           const decision = context.resolveDecision(decisionId);
           const binding = decision?.actionBinding;
           if (!decision || decision.status !== 'accepted') throw new Error('consequence-action-decision-not-accepted');
           if (decision.scenarioId !== scenarioId || binding?.decisionId !== decisionId) throw new Error('consequence-action-decision-scenario-mismatch');
-          if (!nodes.some(node => clean(node?.id, 96) === binding.consequenceId) &&
-              !scenarioConsequences.some(consequence => consequence.id === binding.consequenceId)) {
-            throw new Error('consequence-action-binding-node-not-found');
-          }
+          const canonicalConsequence = scenarioConsequences.find(consequence => consequence.id === binding.consequenceId);
+          if (!canonicalConsequence) throw new Error('consequence-action-binding-node-not-found');
+          seenActionDecisionIds.add(decisionId);
           decisionBindings.push({
             optionId: clean(option.id, 96),
             decisionId,
@@ -1033,7 +1034,17 @@ export class ConsequenceEcologyEngine {
           });
         }
         for (const consequence of scenarioConsequences) {
-          if (existingIds.has(consequence.id)) continue;
+          if (existingIds.has(consequence.id)) {
+            const supplied = nodes.find(node => clean(node?.id, 96) === consequence.id);
+            if (!supplied || supplied.effect !== 'harm' ||
+                supplied.probability01 !== consequence.probability01 ||
+                supplied.impact01 !== consequence.impact01 ||
+                supplied.delayDays !== consequence.horizonDays ||
+                supplied.reversible !== consequence.reversible) {
+              throw new Error('consequence-scenario-node-conflict');
+            }
+            continue;
+          }
           nodes.push({
             id: consequence.id,
             description: consequence.description,
