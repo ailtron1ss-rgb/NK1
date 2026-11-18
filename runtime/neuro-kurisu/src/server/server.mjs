@@ -161,6 +161,7 @@ async function verifyNeuroPlasticArtifact(manifest) {
             weightsSha256 !== String(manifest.artifact.weightsSha256).toLowerCase()) return false;
         const metadata = JSON.parse(rawMetadata);
         if (metadata.schemaVersion !== 1 || metadata.automaticActivation !== false ||
+            metadata.adapterId !== manifest.adapterId ||
             metadata.domain !== manifest.domain || metadata.method !== manifest.method ||
             metadata.baseModelFingerprint !== manifest.baseModel.fingerprint ||
             metadata.tokenizerFingerprint !== manifest.tokenizerFingerprint ||
