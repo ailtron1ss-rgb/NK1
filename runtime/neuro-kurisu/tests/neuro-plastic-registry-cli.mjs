@@ -217,6 +217,26 @@ try {
   const tamperedApprovalPath = path.join(runtimeRoot, 'state', adapterId + '.approval-tampered.json');
   await writeFile(tamperedApprovalPath, JSON.stringify(tamperedSignedRequest));
   run(['activate', '--adapter', adapterId, '--input', tamperedApprovalPath], 1);
+  const unknownSignerApproval = {
+    ...approvalRequest.approval,
+    signerKeyId: 'untrusted-signer-key',
+  };
+  const unknownSignerPayload = canonicalNeuroPlasticApprovalPayload(unknownSignerApproval, {
+    adapterId: approvalRequest.adapterId,
+    reportId: approvalRequest.reportId,
+    baseModelFingerprint: approvalRequest.baseModelFingerprint,
+    manifestFingerprint: approvalRequest.manifestFingerprint,
+  });
+  const unknownSignerPath = path.join(runtimeRoot, 'state', adapterId + '.approval-unknown-signer.json');
+  await writeFile(unknownSignerPath, JSON.stringify({
+    ...approvalRequest,
+    approval: {
+      ...unknownSignerApproval,
+      signature: sign(null, Buffer.from(unknownSignerPayload, 'utf8'), approvalSigner.privateKey).toString('base64'),
+    },
+    canonicalPayload: unknownSignerPayload,
+  }));
+  run(['activate', '--adapter', adapterId, '--input', unknownSignerPath], 1);
   run(['activate', '--adapter', adapterId, '--input', signedApprovalPath]);
 
   const registryPath = path.join(runtimeRoot, 'state', 'neuro-plastic-adapters.json');
