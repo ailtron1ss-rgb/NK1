@@ -143,3 +143,27 @@
 
 На HEAD `38edc6c0c28e44df029205e08b5c168338888f83` GitHub Actions run `44238241640` для новых проверок находится в очереди; до завершения не считать эти два новых свойства подтверждёнными.
 
+
+## 9. Обнаруженные пересечения файлов между aspect PR
+
+Повторно проверенные changed-file sets на 18 ноября показывают реальные конфликты интеграции, которые раньше не были явно отражены в очередности:
+
+| Пересечение | Общие runtime-файлы | Риск / решение |
+|---|---|---|
+| #922 Cognitive-to-Neural Bridge ↔ #930 Neuro-Plastic Core | `OpenAICompatibleLocalChatProvider.ts`, `LanguageOrgan.ts`, `server.mjs` | Оба меняют local-provider path и передачу control/adapter metadata. Нельзя принимать оба PR независимо от старых баз; объединять как одну серию совместимых изменений и сохранять оба набора контрактных тестов. |
+| #922 Cognitive-to-Neural Bridge ↔ #926 Neural JIT | `OrganismRuntime.ts`, `LanguageOrgan.ts`, `server.mjs` | Оба расширяют runtime orchestration. Согласовать один lifecycle/owner и event boundary; Neural JIT остаётся shadow-only, не должен напрямую менять policy/параметры. |
+| #930 Neuro-Plastic Core ↔ #926 Neural JIT | `LanguageOrgan.ts`, `server.mjs` | Общая точка регистрации/маршрутизации local inference; проверить fallback и не допустить скрытого включения экспериментальных артефактов. |
+| #925 Neural Prosthesis ↔ #931 Layer Force | Один Python sidecar и общая decoder layer stack; #931 stacked на #925 | Слияние строго в порядке родитель → ребёнок после синхронизации #925 с актуальным source. |
+| #903 → #916 → #928 | Отдельная stacked-цепочка | Не поднимать #928 на source напрямую; сначала проверить весь граф сценариев → world model → causal consequence. |
+| #902 → #912 | Отдельная stacked-цепочка | Morphogenesis должен собираться поверх Developmental Genome, не обходить его контракты. |
+| #907 → #911 | Отдельная stacked-цепочка | Science Republic использует Invention Loop как процессный родитель. |
+
+### Рекомендуемая координация по runtime-пересечениям
+
+1. Сначала согласовать #922 как cognitive-control contract для `OrganismRuntime` и local provider; отдельно проверить, что пользовательское решение, approval и safety gate нельзя обойти через metadata.
+2. Затем адаптировать #930 к этому provider contract: единый маршрут загрузки артефактов, один host allowlist, точная model/revision binding, доказательства обучения и fallback на базовую модель.
+3. После этого интегрировать #926 как shadow-only observer/compiler, который может предлагать оптимизации только после измерения и не получает право на self-promotion.
+4. После слияния этой тройки повторно проверить #921 Adaptive Synaptic Matrix как единый selector, а не оставить три конкурирующих adapter registries.
+5. #925/#931 держать отдельно до согласования того, как residual adapters и LoRA/QLoRA артефакты сосуществуют на одном decoder/model lifecycle.
+
+Это рекомендуемая последовательность ревью, а не подтверждение совместимости: для каждого перехода ещё нужны exact-base diff, re-run тестов, fallback/rollback тесты и holdout результаты.
