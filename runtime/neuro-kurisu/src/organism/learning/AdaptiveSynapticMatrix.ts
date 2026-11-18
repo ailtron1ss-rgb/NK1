@@ -510,12 +510,12 @@ export class AdaptiveSynapticMatrixEngine {
         const hasPersistedReportHistory = Array.isArray(item.acceptedReportSha256s);
         const rawReportHistory = hasPersistedReportHistory ? item.acceptedReportSha256s : [];
         // Never scan an unbounded attacker-controlled history array during restore.
-        const boundedReportHistory = rawReportHistory.slice(0, MAX_ACCEPTED_REPORTS_PER_ADAPTER);
+        const boundedReportHistory = rawReportHistory.slice(0, MAX_ACCEPTED_SYNAPTIC_REPORTS_PER_ADAPTER);
         const validReportHistory = boundedReportHistory
           .filter((digest): digest is string => typeof digest === 'string' && HASH_PATTERN.test(digest))
           .map(digest => digest.toLowerCase());
         const uniqueReportHistory = [...new Set(validReportHistory)];
-        const reportHistoryCorrupt = rawReportHistory.length > MAX_ACCEPTED_REPORTS_PER_ADAPTER
+        const reportHistoryCorrupt = rawReportHistory.length > MAX_ACCEPTED_SYNAPTIC_REPORTS_PER_ADAPTER
           || rawReportHistory.length !== validReportHistory.length
           || uniqueReportHistory.length !== validReportHistory.length;
         const persistedReportCount = typeof item.acceptedReportCount === 'number'
@@ -566,7 +566,7 @@ export class AdaptiveSynapticMatrixEngine {
                 if (hasPersistedReportHistory) {
                   restored.activationHistorySaturated = true;
                 }
-                if (restored.acceptedReportSha256s.length < MAX_ACCEPTED_REPORTS_PER_ADAPTER) {
+                if (restored.acceptedReportSha256s.length < MAX_ACCEPTED_SYNAPTIC_REPORTS_PER_ADAPTER) {
                   restored.acceptedReportSha256s.push(priorDigest);
                 } else {
                   restored.activationHistorySaturated = true;
