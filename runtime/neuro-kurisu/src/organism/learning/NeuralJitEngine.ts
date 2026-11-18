@@ -325,9 +325,11 @@ export class NeuralJitEngine {
     const observationId = String(verification.observationId ?? '').trim();
     if (!observationId || observationId.length > 180) return this.reject('missing-observation-id');
     const observationFingerprint = digest(observationId);
+    // The host capture ID identifies the source activation itself. Keep the replay key
+    // independent of any later execution/decision wrapper so one activation cannot be
+    // rebound to a second verified action and counted as a fresh sample.
     const captureFingerprint = digest([
       capture.captureId, capture.taskFingerprint, capture.modelFingerprint,
-      capture.toolId, capture.executionId, capture.decisionId, capture.inputFingerprint,
     ].join(String.fromCharCode(0)));
     if (this.seenObservationFingerprints.has(observationFingerprint)) return this.reject('duplicate-outcome-observation');
     if (this.seenCaptureFingerprints.has(captureFingerprint)) return this.reject('duplicate-activation-capture');
