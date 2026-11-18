@@ -131,6 +131,8 @@ async function verifyArtifact(manifest) {
       metadata.domain !== manifest.domain || metadata.method !== manifest.method ||
       metadata.baseModelFingerprint !== manifest.baseModel?.fingerprint ||
       metadata.tokenizerFingerprint !== manifest.tokenizerFingerprint ||
+      metadata.sourceDatasetFingerprint !== manifest.sourceDatasetFingerprint ||
+      metadata.holdoutPlanFingerprint !== manifest.holdoutPlanFingerprint ||
       metadata.corpusFingerprint !== manifest.corpusFingerprint) {
     throw new Error('adapter-training-metadata-does-not-match-manifest');
   }
