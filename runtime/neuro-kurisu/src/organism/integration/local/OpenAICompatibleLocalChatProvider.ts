@@ -17,6 +17,7 @@ export interface LocalChatCompletionResponse {
   backend: string;
   model: string;
   latencyMs: number;
+  providerUsage?: { promptTokens:number; completionTokens:number; totalTokens:number };
   providerControlReceipt?: {
     provider:'llama.cpp'; templateKwargsSent:true; featureSchema:string;
     requestId:string; profileFingerprint:string;
@@ -213,16 +214,37 @@ export class OpenAICompatibleLocalChatProvider {
       if (deadlineSignal.aborted) throw new Error('llama.cpp-timeout');
       throw error;
     }
-    let payload: { choices?: Array<{ message?: { content?: unknown } }>; model?: unknown; error?: unknown };
+    let payload: {
+      choices?: Array<{ message?: { content?: unknown } }>;
+      model?: unknown;
+      error?: unknown;
+      usage?: { prompt_tokens?: unknown; completion_tokens?: unknown; total_tokens?: unknown };
+    };
     try { payload = JSON.parse(rawPayload) as typeof payload; } catch { throw new Error('llama.cpp-invalid-json'); }
     const text = extractText(payload?.choices?.[0]?.message?.content);
     if (!text) throw new Error('llama.cpp-empty-response');
     const model = String(payload?.model ?? this.model).slice(0, 160);
+    const usageCount=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0&&value<=1_000_000?value:null;
+    const promptTokens=usageCount(payload?.usage?.prompt_tokens);
+    const completionTokens=usageCount(payload?.usage?.completion_tokens);
+    const reportedTotalTokens=usageCount(payload?.usage?.total_tokens);
+    const computedTotalTokens=promptTokens!==null&&completionTokens!==null
+      ? promptTokens+completionTokens
+      : null;
+    const totalTokens=reportedTotalTokens!==null
+      && computedTotalTokens!==null
+      && reportedTotalTokens>=computedTotalTokens
+      ? reportedTotalTokens
+      : reportedTotalTokens===null ? computedTotalTokens : null;
+    const providerUsage=promptTokens!==null&&completionTokens!==null&&totalTokens!==null
+      ? {promptTokens,completionTokens,totalTokens}
+      : undefined;
     return {
       text,
       backend: `llama.cpp:${model}`,
       model,
       latencyMs: Math.max(0, Date.now() - startedAt),
+      ...(providerUsage ? {providerUsage} : {}),
       ...(templateKwargs && request.cognitiveControlRequestId && profileFingerprint ? {
         providerControlReceipt:{
           provider:'llama.cpp' as const,
