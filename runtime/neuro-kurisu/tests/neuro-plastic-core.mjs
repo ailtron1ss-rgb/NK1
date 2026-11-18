@@ -32,7 +32,7 @@ assert.equal(
 function signedEvaluate(registry, adapterId, payload) {
   const boundPayload = {
     ...payload,
-    manifestFingerprint: payload.manifestFingerprint || neuroPlasticAdapterManifestFingerprint(registry.getManifest(adapterId)),
+    manifestFingerprint: neuroPlasticAdapterManifestFingerprint(registry.getManifest(adapterId)),
   };
   const receipt = createNeuroPlasticEvaluationReceipt(
     adapterId, boundPayload, 'independent-evaluator-v1', 'evaluation-' + adapterId, evaluatorSecret,
