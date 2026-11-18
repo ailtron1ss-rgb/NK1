@@ -23,7 +23,13 @@ import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
-import { NeuroPlasticAdapterRegistry, verifyNeuroPlasticApprovalSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
+import {
+    NeuroPlasticAdapterRegistry,
+    parseTrustedNeuroPlasticApprovalKeys,
+    parseTrustedNeuroPlasticEvaluatorKeys,
+    verifyNeuroPlasticApprovalSignature,
+    verifyNeuroPlasticEvaluationReceiptSignature,
+} from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { verifyNeuroPlasticAdapterArtifact } from '../organism/learning/NeuroPlasticArtifactVerifier.ts';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
@@ -146,17 +152,21 @@ try {
 catch (error) {
     if (error?.code !== 'ENOENT') throw error;
 }
-const NEURO_PLASTIC_APPROVAL_SECRET = String(process.env.NEURO_PLASTIC_APPROVAL_SECRET || '');
-const NEURO_PLASTIC_EVALUATOR_SECRET = String(process.env.NEURO_PLASTIC_EVALUATOR_SECRET || '');
+const NEURO_PLASTIC_APPROVAL_KEYS = parseTrustedNeuroPlasticApprovalKeys(
+    process.env.NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON,
+);
+const NEURO_PLASTIC_EVALUATOR_KEYS = parseTrustedNeuroPlasticEvaluatorKeys(
+    process.env.NEURO_PLASTIC_EVALUATOR_PUBLIC_KEYS_JSON,
+);
 try {
     const registrySnapshot = JSON.parse(await readFile(NEURO_PLASTIC_REGISTRY_PATH, 'utf8'));
     await NEURO_PLASTIC_REGISTRY.restore(
         registrySnapshot,
         (approval, context) => verifyNeuroPlasticApprovalSignature(
-            approval, context, NEURO_PLASTIC_APPROVAL_SECRET,
+            approval, context, NEURO_PLASTIC_APPROVAL_KEYS.get(approval.actorId) || '',
         ),
         (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(
-            context.adapterId, receipt, NEURO_PLASTIC_EVALUATOR_SECRET,
+            context.adapterId, receipt, NEURO_PLASTIC_EVALUATOR_KEYS.get(receipt.evaluatorId) || '',
         ),
         (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
     );
