@@ -15,7 +15,7 @@ An invalid or unsupported outer snapshot fails closed. Restore reads only own da
 - Candidate diagnostics separate surfacing eligibility from suppression, exposing `snoozed`, `reservation`, `quiet-hours` and `cooldown` so the UI can explain why an item is currently hidden.
 - Completion, cancellation and reopening are explicit operations. Completion requires evidence; cancellation and reopening require a reason.
 - Optional idempotency keys deduplicate retried creates for 24 hours while retained; reusing a key for different content is a conflict.
-- At capacity, only unreferenced terminal history may be pruned. Active obligations and the full transitive prerequisite ancestry of active obligations are never silently evicted.
+- At capacity, only unreferenced terminal leaves may be pruned. Dependency ancestry referenced by any retained record, as well as prerequisites supplied by the new obligation being admitted, is protected before pruning so the persisted graph remains restorable.
 - Per-obligation snoozing requires a future wake timestamp and a reason. It suppresses reminder delivery until the wake time, survives restart and releases any in-flight initiative reservation.
 - Dependency lists can be explicitly repaired when a prerequisite is cancelled or superseded. Changes require a reason, reject missing/cancelled prerequisites and reject cycles before mutating the graph.
 

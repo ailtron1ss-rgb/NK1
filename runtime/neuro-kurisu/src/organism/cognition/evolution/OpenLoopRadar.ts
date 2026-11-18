@@ -311,14 +311,15 @@ export class OpenLoopRadar {
       if (typeof value !== 'string' || !value.trim()) throw new TypeError('dependency ids must be non-empty strings');
       return value.trim().slice(0, 128);
     }))];
-    // Protect the full dependency ancestry of every active obligation. A terminal
-    // prerequisite can itself depend on another terminal record; pruning that
-    // transitive ancestor would make the active obligation unrestorable.
+    // Preserve dependency closure for every retained record and for the new
+    // obligation being admitted. Terminal leaves are eligible for pruning, but a
+    // prerequisite referenced by any surviving record (or its ancestry) is not.
     const recordsById = new Map(this.state.records.map(record => [record.id, record]));
     const protectedDependencyIds = new Set<string>();
-    const dependencyQueue = this.state.records
-      .filter(record => !TERMINAL.has(record.status))
-      .flatMap(record => record.dependencies);
+    const dependencyQueue = [
+      ...this.state.records.flatMap(record => record.dependencies),
+      ...dependencies,
+    ];
     while (dependencyQueue.length > 0) {
       const dependencyId = dependencyQueue.pop()!;
       if (protectedDependencyIds.has(dependencyId)) continue;

@@ -421,6 +421,59 @@ transitiveRestored.restore(transitiveAfterPrune);
 assert.equal(transitiveRestored.snapshot().records.length, 512,
   'capacity pruning must preserve a snapshot that can be restored without losing active dependency chains');
 
+// A new item and all of its terminal prerequisite ancestry must be protected
+// before capacity pruning. Only an unrelated terminal leaf may be evicted.
+const referencedTerminalCapacityRadar = new OpenLoopRadar(() => now);
+const referencedTerminalRoot = referencedTerminalCapacityRadar.register({
+  title: 'Root of retained terminal prerequisite chain', kind: 'task', owner: 'system',
+  accepted: true, source: 'incoming-dependency-capacity-test',
+});
+const referencedTerminalMiddle = referencedTerminalCapacityRadar.register({
+  title: 'Terminal prerequisite that depends on the root', kind: 'task', owner: 'system',
+  accepted: true, source: 'incoming-dependency-capacity-test',
+  dependencies: [referencedTerminalRoot.id],
+});
+referencedTerminalCapacityRadar.fulfill(referencedTerminalRoot.id, {
+  kind: 'execution-receipt', reference: 'incoming-chain-root-receipt', verifiedAt: now,
+});
+referencedTerminalCapacityRadar.fulfill(referencedTerminalMiddle.id, {
+  kind: 'execution-receipt', reference: 'incoming-chain-middle-receipt', verifiedAt: now,
+});
+const unrelatedTerminalLeaf = referencedTerminalCapacityRadar.register({
+  title: 'Unrelated terminal leaf may be pruned', kind: 'task', owner: 'system',
+  accepted: true, source: 'incoming-dependency-capacity-test',
+});
+referencedTerminalCapacityRadar.fulfill(unrelatedTerminalLeaf.id, {
+  kind: 'execution-receipt', reference: 'unrelated-terminal-leaf-receipt', verifiedAt: now,
+});
+for (let index = 0; index < 509; index += 1) {
+  referencedTerminalCapacityRadar.register({
+    title: 'Fill capacity without consuming retained ancestry ' + index,
+    kind: 'task', owner: 'system', accepted: true, source: 'incoming-dependency-capacity-test',
+  });
+}
+assert.equal(referencedTerminalCapacityRadar.snapshot().records.length, 512);
+const admittedWithTerminalPrerequisite = referencedTerminalCapacityRadar.register({
+  title: 'New obligation depending on completed work', kind: 'project_step', owner: 'system',
+  accepted: true, source: 'incoming-dependency-capacity-test',
+  dependencies: [referencedTerminalMiddle.id],
+});
+const referencedTerminalSnapshot = referencedTerminalCapacityRadar.snapshot();
+const referencedTerminalIds = new Set(referencedTerminalSnapshot.records.map(record => record.id));
+assert.equal(referencedTerminalSnapshot.records.length, 512);
+assert.equal(referencedTerminalIds.has(admittedWithTerminalPrerequisite.id), true);
+assert.equal(referencedTerminalIds.has(referencedTerminalMiddle.id), true,
+  'capacity admission must retain a terminal prerequisite referenced by the new obligation');
+assert.equal(referencedTerminalIds.has(referencedTerminalRoot.id), true,
+  'capacity admission must retain the transitive ancestry of the new prerequisite');
+assert.equal(referencedTerminalIds.has(unrelatedTerminalLeaf.id), false,
+  'capacity admission may prune an unrelated terminal leaf');
+const referencedTerminalRestored = new OpenLoopRadar(() => now);
+referencedTerminalRestored.restore(referencedTerminalSnapshot);
+assert.equal(referencedTerminalRestored.snapshot().records.length, 512,
+  'capacity pruning must leave a fully restorable dependency graph');
+assert.equal(referencedTerminalRestored.snapshot().records.some(record => record.id === admittedWithTerminalPrerequisite.id), true);
+
 const lifecycleRadar = new OpenLoopRadar(() => now);
 const snoozed = lifecycleRadar.register({
   title: 'Review the deferred milestone', kind: 'task', owner: 'user',
