@@ -173,6 +173,24 @@ try {
       await downgradedBinding.flush();
     }
 
+    const controlCharacterBinding = structuredClone(persisted);
+    controlCharacterBinding.system.sharedFutureActionBindings.records[0].expectedPostcondition = 'state=ready\nforged';
+    const downgradedControlCharacter = new OrganismCore(new MemoryStateStore({ initial: controlCharacterBinding }), config);
+    await downgradedControlCharacter.init();
+    try {
+      const bindingState = downgradedControlCharacter.snapshot().system.sharedFutureActionBindings;
+      assert.equal(bindingState.quarantined, true,
+        'migration must quarantine control characters in persisted postconditions instead of retaining ambiguous correlation');
+      assert.equal(bindingState.records.length, 0);
+      const downgradedForControlCharacter = await downgradedControlCharacter.executeTool('organism.future.outcomes.list', {
+        scenarioId: 'shared-future-action-integration',
+      });
+      assert.equal(downgradedForControlCharacter.result.outcomes[0].independentlyVerified, false,
+        'a malformed persisted action binding must not preserve independent verification');
+    } finally {
+      await downgradedControlCharacter.flush();
+    }
+
     const duplicateActionLink = structuredClone(persisted);
     duplicateActionLink.system.sharedFutureActionBindings.records.push({
       ...actionBindingReceipt,
