@@ -406,7 +406,7 @@ export class WorldForge {
     next.events=next.events.slice(-64);
     session.trace.push({...action,cost:actionCost,risk01:actionRisk,accepted});
     session.state=next;
-    return{accepted,state:structuredClone(next),reward01:Number(reward01.toFixed(3)),eventsApplied,reason,syntheticOnly:true};
+    return{accepted,state:structuredClone(next),reward01:Number(reward01.toFixed(3)),eventsApplied,...(reason?{reason}:{}),syntheticOnly:true};
   }
 
   releaseSession(sessionId:string):void {
