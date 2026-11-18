@@ -23,11 +23,12 @@ Verification expires after 30 minutes. Any base revision drift blocks verify/app
 
 A host composes:
 
-- snapshot(): return candidate file paths and contents for one immutable revision; do not follow symlinks.
-- verifySandbox(payload): run only supplied allowlisted test commands in an ephemeral, isolated, network-disabled workspace. Compute attestations outside repository-controlled code.
+- snapshot(): return candidate file paths and contents for one immutable revision, with complete=true only when the inventory is exhaustive; do not follow symlinks. The engine checks each modified/deleted pre-image against this snapshot and requires create targets to be absent.
+- verifySandbox(payload): run only supplied allowlisted test commands in an ephemeral, isolated, network-disabled workspace. Compute repositorySandboxAttestationSha256 from the proposal id, repository, base revision, exact test set and runner facts outside repository-controlled code. Critical changes additionally require distinct primary, independent and holdout run/sandbox identities; holdout evidence is bound with repositorySandboxHoldoutAttestationSha256 and repositorySandboxSuiteSha256.
 - applyPatch(payload, idempotencyKey): atomically apply to the working tree only, preserving a rollback snapshot. Never push, merge, tag, release, deploy, or write outside the selected workspace.
+- reconcilePatch(payload, idempotencyKey): authoritative, read-only lookup for the exact prior idempotent provider operation. It must never retry or execute the patch. A provider receipt is accepted only after proposal/repository/base/idempotency bindings, atomicity, resulting revision, rollback digest and exact changed-file digest set match.
 
-The host is a trusted adapter boundary. A plain boolean in an untrusted runner response is not a security proof; production hosts must derive sandbox identity, isolation, network policy and output digests from their own trusted runner control plane.
+The host is a trusted adapter boundary. A plain boolean in an untrusted runner response is not a security proof; production hosts must derive sandbox identity, isolation, network policy, run identity, test completion, output digests and attestations from their own trusted runner control plane. The host must not allow repository content to control the isolation boundary or attestations.
 
 ## Enable in runtime
 
