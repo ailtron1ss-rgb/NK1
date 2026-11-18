@@ -202,6 +202,21 @@ test('action tools route apply through self-modification permission and idempote
   assert.equal(engine.getProposal(proposal.proposalId).status, 'applied');
 });
 
+test('adapter binds patch pre-images to a complete host snapshot', async () => {
+  const engine = new RepositoryCodingContextEngine();
+  const sample = sampleHost();
+  const tools = createRepositoryCodingActionTools(engine, sample.host);
+  const propose = tools.find(tool => tool.id === 'organism.project.patch.propose');
+  const invented = 'export const invented = true;';
+  await assert.rejects(() => propose.execute({
+    baseRevision: REVISION,
+    rationale: 'Propose a feature change using a forged source pre-image',
+    requiredTests: ['node --experimental-strip-types tests/repository-coding-context-engine.mjs'],
+    changes: [{ path: 'src/organism/Feature.ts', operation: 'modify', baseContent: invented,
+      expectedSha256: await sha256(invented), content: 'export const replacement = true;' }],
+  }), /repository-coding-host-preimage-mismatch/);
+});
+
 test('adapter rejects stale base revisions before sandbox or mutation', async () => {
   const engine = new RepositoryCodingContextEngine();
   const sample = sampleHost();
