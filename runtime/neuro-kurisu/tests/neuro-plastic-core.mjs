@@ -690,4 +690,54 @@ assert.equal(conflictRestoreRegistry.select({
 await inferenceRegistry.rollback('kurisu-runtime-v1', 'operator requested rollback');
 assert.equal(inferenceRegistry.snapshot().adapters[0].status, 'disabled');
 
+
+const p25PinnedRegistry = new NeuroPlasticAdapterRegistry();
+p25PinnedRegistry.stage(manifest('kurisu-p25-pinned-v1'));
+signedEvaluate(p25PinnedRegistry, 'kurisu-p25-pinned-v1', evaluationPayload);
+const p25PinnedReport = p25PinnedRegistry.snapshot().adapters[0].evaluation;
+await p25PinnedRegistry.activate(
+  'kurisu-p25-pinned-v1',
+  signedApproval('kurisu-p25-pinned-v1', p25PinnedReport.reportId, 'approval-p25-pinned', p25PinnedRegistry),
+  verifyApproval,
+);
+const p25PinnedCalls = [];
+const p25PinnedProvider = new OpenAICompatibleLocalChatProvider({
+  baseUrl: 'http://127.0.0.1:43124/v1',
+  model: 'kurisu-base',
+  fetchImpl: async (_url, init) => {
+    const body = JSON.parse(String(init.body));
+    p25PinnedCalls.push(body.model);
+    return new Response(JSON.stringify({
+      model: body.model,
+      choices: [{ message: { content: body.model === 'kurisu-base' ? 'base after p25 deny' : 'specialist must not run' } }],
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  },
+});
+const p25PinnedInference = new NeuroPlasticInferenceAdapter(
+  p25PinnedRegistry,
+  backendId => backendId === 'llama.cpp',
+  p25PinnedProvider,
+  async () => true,
+);
+const p25PinnedFallback = await p25PinnedInference.generate(
+  { system: 'system', user: 'prompt' },
+  {
+    domain: 'reasoning',
+    backendId: 'llama.cpp',
+    baseModelAlias: 'kurisu-base',
+    baseModelFingerprint: hash('a'),
+    backendSupportsModelAliases: true,
+    confidence01: 0.9,
+    risk01: 0.1,
+    expectedAdapterId: 'different-p25-policy-selection',
+  },
+);
+assert.equal(p25PinnedFallback.adapter.used, false,
+  'the canonical registry must not substitute another active adapter for the exact P25-selected adapter');
+assert.equal(p25PinnedFallback.adapter.fallbackReason, 'p25-canonical-selection-mismatch');
+assert.deepEqual(p25PinnedCalls, ['kurisu-base'],
+  'a canonical/P25 adapter ID mismatch must call only the unchanged base-model alias');
+assert.equal(p25PinnedRegistry.snapshot().adapters[0].status, 'active',
+  'a policy/registry selection mismatch is not an adapter integrity fault and must not disable the canonical artifact');
+
 console.log('NEURO_PLASTIC_CORE=PASS registry=8 pairedHoldout=7 safetyGate=PASS signedEvidence=PASS explicitApproval=PASS corpus=9 holdoutLeakage=0 artifactIntegrity=PASS aliasBinding=PASS inferenceFallback=PASS restartFailClosed=PASS');

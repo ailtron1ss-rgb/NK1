@@ -1,0 +1,51 @@
+name: P25 Adaptive Synaptic Matrix
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - workpass70-source
+      - aspect/neuro-plastic-core-lora-adapters-20261118
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/AdaptiveSynapticMatrix.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/index.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/local/NeuroPlasticInferenceAdapter.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/docs/adaptive-synaptic-matrix.md"
+      - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs"
+      - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix-runtime.mjs"
+      - "runtime/neuro-kurisu/tests/neuro-plastic-core.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/p25-adaptive-synaptic-matrix.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p25-adaptive-synaptic-matrix-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  matrix-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Canonical Neuro-Plastic registry and host admission contract
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/neuro-plastic-core.mjs
+      - name: P25 adapter registry, validation, routing and fallback contract
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs
+      - name: Real OrganismRuntime adapter, fallback, restore and disable integration
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix-runtime.mjs
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Preserve model ecology and organism smoke
+        run: npm --prefix runtime/neuro-kurisu run test:p40:model-ecology && npm --prefix runtime/neuro-kurisu run test:organism-smoke
