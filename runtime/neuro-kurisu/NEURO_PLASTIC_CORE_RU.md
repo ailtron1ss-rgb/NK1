@@ -149,11 +149,19 @@ Trainer автоматически пишет рядом с adapter weights фа
 
 Независимый evaluator получает неизменяемые baseline и candidate inputs и запускает один и тот же закрытый holdout protocol на одинаковых парах/seed. В training corpus holdout не попадает. Каждая observation содержит pairId, seed, split="holdout", authority="independent-verifier", verifierId, holdoutFingerprint и metrics: quality01, safety01, retention01, cost01, latencyMs, safetyViolationCount.
 
-В корневом JSON evaluation находятся holdoutFingerprint, evaluatedAt, baseline[], candidate[] и подписанный receipt. Receipt связывает evaluator identity, timestamp, SHA-256 точного нормализованного содержимого обеих paired arms и отдельный fingerprint вычисленного решения (paired count, seeds, quality uplift/CI, safety, retention, cost, latency, violations и eligibility). При restore registry заново сверяет report summary с подписанным fingerprint; пересчёт обычного SHA отчёта не позволяет подменить числа. Секрет evaluator должен быть отдельным от operator approval secret, выдаваться только доверенному scorer и храниться в secret manager; не помещайте его в Git, manifest или dataset. Реестр принимает оценку только если signature проверена, report metrics fingerprint совпадает с signed receipt и все observation verifier IDs совпадают с подписанным evaluator ID.
+В корневом JSON evaluation находятся manifestFingerprint, holdoutFingerprint, evaluatedAt, baseline[], candidate[] и подписанный receipt. Receipt связывает evaluator identity, timestamp, SHA-256 точного нормализованного содержимого обеих paired arms и отдельный fingerprint вычисленного решения (paired count, seeds, quality uplift/CI, safety, retention, cost, latency, violations и eligibility). Подпись — Ed25519: evaluator подписывает приватным ключом, а NK1 runtime и CLI проверяют её публичным ключом. При restore registry заново сверяет report summary с подписанным fingerprint; пересчёт обычного SHA отчёта не позволяет подменить числа.
+
+Создайте отдельную пару ключей evaluator вне trainer/runtime host:
+
+    openssl genpkey -algorithm ED25519 -out evaluator-private.pem
+    openssl pkey -in evaluator-private.pem -pubout -out evaluator-public.pem
+    chmod 600 evaluator-private.pem
+
+Приватный ключ должен оставаться только у независимого evaluator/scorer и никогда не попадать в NK1 runtime, CLI host, trainer или Git. Для подписания evaluator вызывает экспортированный helper `createNeuroPlasticEvaluationReceipt(..., evaluatorPrivateKeyPem)`. NK1 получает только public PEM и не может самостоятельно выпускать валидные evaluation receipts. Operator approval остаётся отдельным HMAC-подтверждением и не заменяет evaluator signature.
 
 CLI:
 
-    export NEURO_PLASTIC_EVALUATOR_SECRET="<evaluator-secret-32+-chars>"
+    export NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY="$(cat /secure/path/evaluator-public.pem)"
     export NEURO_PLASTIC_REGISTRY_FILE="state/neuro-plastic-adapters.json"
 
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs stage --input adapter-manifest.json
@@ -205,8 +213,8 @@ NEURO_PLASTIC_MODEL_ALIASES_ENABLED оставляйте выключенным,
 
 - CI проверяет contracts, CLI lifecycle, Python preflight и server syntax; он не запускает дорогое обучение 7B и не подтверждает реальный GPU/QLoRA throughput.
 - До обучения нужна человеческая проверка consent, provenance, privacy и лицензий. PII regex — только дополнительный фильтр, не DLP-сертификат.
-- Holdout secret/data должны находиться вне trainer host; HMAC key evaluator защищайте отдельно. Для ещё более строгой модели угроз можно перейти на asymmetric signature (private key только у evaluator, public key в runtime).
-- Не коммитьте модельные веса, JSONL corpus, holdout rows, approval/evaluator secrets или state registry. Adapter artifacts и state — локальные runtime данные.
+- Holdout secret/data и evaluator private key должны находиться вне trainer/runtime host; runtime получает только Ed25519 public key. Operator approval HMAC key храните отдельно в secret manager.
+- Не коммитьте модельные веса, JSONL corpus, holdout rows, approval secrets, evaluator private keys или state registry. Adapter artifacts и state — локальные runtime данные.
 - Не обновляйте base fingerprint после обучения «для удобства»: mismatch означает, что adapter не относится к текущей base model.
 - Не считайте eligible доказательством production readiness. Нужны независимый review, реальные unseen tasks, retention/forgetting checks, latency/cost measurements и длительный runtime soak.
 - В текущей интеграции нет автоматического обучения при каждом разговоре. Только offline candidate build → независимая оценка → human approval → controlled inference.
