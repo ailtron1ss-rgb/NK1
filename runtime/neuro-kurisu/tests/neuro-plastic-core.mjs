@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, neuroPlasticAdapterManifestFingerprint, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature, neuroPlasticAdapterManifestFingerprint } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature, neuroPlasticAdapterManifestFingerprint } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
