@@ -895,9 +895,9 @@ export class ConsequenceEcologyEngine {
   private restoreCalibrationRecords(
     raw: unknown,
     analyses: ConsequenceEcologyAnalysis[],
-    validateOutcome?: (outcomeId: string) => boolean,
+    resolveVerifiedOutcome?: (outcomeId: string) => SharedFutureOutcomeRecord | null,
   ): ConsequenceOutcomeCalibrationRecord[] {
-    if (!Array.isArray(raw) || typeof validateOutcome !== 'function') return [];
+    if (!Array.isArray(raw) || typeof resolveVerifiedOutcome !== 'function') return [];
     const accepted: ConsequenceOutcomeCalibrationRecord[] = [];
     const seen = new Set<string>();
     const allowedClasses = new Set(['os', 'device', 'user', 'external-api', 'world']);
@@ -928,14 +928,35 @@ export class ConsequenceEcologyEngine {
       const analysis = analyses.find(item => item.id === row.analysisId);
       const option = analysis?.options.find(item => item.id === row.optionId);
       const node = option?.nodes.find(item => item.id === row.nodeId);
+      const binding = option?.decisionBinding;
+      let canonicalOutcome: SharedFutureOutcomeRecord | null = null;
+      try { canonicalOutcome = resolveVerifiedOutcome(row.outcomeId); } catch { canonicalOutcome = null; }
       if (!analysis || analysis.scenarioId !== row.scenarioId ||
           analysis.createdAt >= row.observedAt ||
           option?.decisionId !== row.actionDecisionId ||
-          !node || Math.abs(node.propagatedProbability01 - row.forecastProbability01) > 1e-9) continue;
-
-      let independentlyRevalidated = false;
-      try { independentlyRevalidated = validateOutcome(row.outcomeId) === true; } catch { independentlyRevalidated = false; }
-      if (!independentlyRevalidated) continue;
+          !binding || binding.actionDecisionId !== row.actionDecisionId ||
+          binding.sharedFutureDecisionId !== canonicalOutcome?.sharedFutureDecisionId ||
+          binding.scenarioId !== row.scenarioId || binding.consequenceId !== row.nodeId ||
+          binding.toolId !== canonicalOutcome?.actionToolId ||
+          this.canonicalPostcondition(binding.expectedPostcondition) !==
+            this.canonicalPostcondition(canonicalOutcome?.expectedPostcondition ?? '') ||
+          !node || Math.abs(node.propagatedProbability01 - row.forecastProbability01) > 1e-9 ||
+          !canonicalOutcome || canonicalOutcome.id !== row.outcomeId ||
+          canonicalOutcome.authority !== 'independent-external' || canonicalOutcome.independentlyVerified !== true ||
+          canonicalOutcome.scenarioId !== row.scenarioId || canonicalOutcome.consequenceId !== row.nodeId ||
+          canonicalOutcome.actionDecisionId !== row.actionDecisionId ||
+          canonicalOutcome.observedAt !== row.observedAt ||
+          canonicalOutcome.occurred !== row.observed ||
+          Math.abs(canonicalOutcome.forecastProbability01 - row.sharedFutureForecastProbability01) > 1e-9 ||
+          canonicalOutcome.evidenceRef !== row.evidenceRef ||
+          canonicalOutcome.independentSourceCount !== row.independentSourceCount ||
+          JSON.stringify([...new Set(canonicalOutcome.evidenceObservationIds ?? [])].slice(0, 16)) !==
+            JSON.stringify(row.evidenceObservationIds)) continue;
+      const canonicalSourceClasses = [...new Set([
+        ...(canonicalOutcome.sourceClasses ?? []),
+        ...(canonicalOutcome.sourceClass ? [canonicalOutcome.sourceClass] : []),
+      ])].slice(0, 5);
+      if (JSON.stringify(canonicalSourceClasses) !== JSON.stringify(row.sourceClasses)) continue;
 
       const target = row.observed ? 1 : 0;
       const recomputedBrier = Math.round(((row.forecastProbability01 - target) ** 2) * 1e12) / 1e12;
