@@ -11336,6 +11336,10 @@ export class OrganismCore {
         this.developmentalNeural.p23Learning.configureLearningFitnessJournalIfAbsent(sinks.fitness);
         this.developmentalNeural.p23Learning.configureLearningLifecycleJournalIfAbsent(sinks.lifecycle);
     }
+    /** Bind native Synaptic P23 policies to the live durable Commons trust/revocation catalogue. */
+    configureSynapticCommonsArtifactUsabilityLookup(lookup: (fingerprint: string) => boolean): void {
+        this.developmentalNeural.p23Learning.configureSynapticCommonsArtifactUsabilityLookup(lookup);
+    }
     /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
     verifiedSkillCandidateSnapshot() {
         return this.developmentalNeural.p23Learning.verifiedSkillCandidateSnapshot();

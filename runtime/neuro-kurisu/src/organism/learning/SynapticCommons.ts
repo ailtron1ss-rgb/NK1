@@ -764,6 +764,27 @@ export class SynapticCommons {
     return record ? clone(record) : null;
   }
 
+  /**
+   * Live resolver guard for native P23 policy records. Missing, rejected, revoked,
+   * expired or no-longer-trusted source artifacts suppress the policy immediately.
+   * The durable P23 candidate remains untouched for audit and approval lineage.
+   */
+  isNativePolicyArtifactUsable(fingerprint: string): boolean {
+    if (!HEX_64.test(fingerprint)) return false;
+    const record = this.state.records.find(item => item.artifactFingerprint === fingerprint);
+    if (!record || record.status !== 'attested' || !record.compatibility?.compatible ||
+        !record.attestation || record.attestation.expiresAt <= this.safeNow()) return false;
+    try {
+      this.assertLicenseReviewTrusted(record.artifact);
+      const publisherKey = this.publisherKeys.get(record.artifact.signature.keyId);
+      if (!publisherKey || !verifyEd25519(fingerprint, record.artifact.signature.value, publisherKey)) return false;
+      this.verifyAttestation(record.artifact, fingerprint, record.attestation, record.compatibility);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   diagnostics() {
     const records = this.state.records;
     return {

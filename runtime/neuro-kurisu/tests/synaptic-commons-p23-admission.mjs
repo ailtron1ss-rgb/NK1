@@ -268,6 +268,7 @@ await assert.rejects(
 let proposalMode = 'valid';
 let localProposalCalls = 0;
 let hostDrift = false;
+let runtimeStopped = false;
 let activeOutcomeBundleMethod = 'synaptic-commons:' + fingerprint;
 const runtime = new OrganismRuntime({
   stateFile: path.join(root, 'organism.json'),
@@ -600,10 +601,48 @@ try {
   assert.equal((await runtime.synapticCommonsDiagnostics()).executableCount, 0,
     'native policy activation must not make the portable artifact executable');
 
+  const biasBeforeRevoke = runtime.core.p23SkillBias('verify');
+  assert.ok(biasBeforeRevoke > biasBeforeActivation);
+  const revokedNative = await runtime.revokeSynapticSkill(liveNativeFingerprint, 'publisher withdrawal test');
+  assert.equal(revokedNative.status, 'revoked');
+  assert.ok(runtime.core.verifiedSkillCandidateSnapshot().active.some(item =>
+    item.skillId === 'synaptic-commons:portable-verify-bias-live'),
+  'the P23 active version and detached approval remain available for audit');
+  assert.equal(runtime.core.p23TopSkills().some(item =>
+    item.id === 'synaptic-commons:portable-verify-bias-live'),
+  false, 'a revoked source artifact must be removed from the live P23 resolver immediately');
+  assert.ok(runtime.core.p23SkillBias('verify') <= biasBeforeActivation + 1e-9,
+    'revocation must remove the native preference bias without mutating unrelated P23 state');
+  assert.equal((await runtime.synapticCommonsDiagnostics()).revoked, 1);
+  assert.equal((await runtime.synapticCommonsDiagnostics()).executableCount, 0);
+
+  await runtime.stop();
+  runtimeStopped = true;
+  const restartedRuntime = new OrganismRuntime({
+    stateFile: path.join(root, 'organism.json'),
+    autoRun: false,
+    enableLanguage: false,
+  });
+  try {
+    await restartedRuntime.init();
+    assert.ok(restartedRuntime.core.verifiedSkillCandidateSnapshot().active.some(item =>
+      item.skillId === 'synaptic-commons:portable-verify-bias-live'),
+    'the promoted P23 row remains in durable history after restart');
+    assert.equal(restartedRuntime.core.p23TopSkills().some(item =>
+      item.id === 'synaptic-commons:portable-verify-bias-live'),
+    false, 'the restored revoked Commons tombstone must still suppress the native P23 policy');
+    assert.ok(restartedRuntime.core.p23SkillBias('verify') <= biasBeforeActivation + 1e-9);
+    assert.equal((await restartedRuntime.synapticCommonsDiagnostics()).revoked, 1);
+    assert.equal((await restartedRuntime.synapticCommonsDiagnostics()).executableCount, 0);
+  } finally {
+    await restartedRuntime.stop().catch(() => {});
+  }
+
   console.log('SYNAPTIC_COMMONS_P23_ADMISSION=PASS authenticated-review canonical-core durable-stage');
   console.log('SYNAPTIC_COMMONS_NATIVE_P23_ADAPTER=PASS allowlisted-policy-only signed-outcomes signed-shadow detached-approval live-bias idempotent');
+  console.log('SYNAPTIC_COMMONS_NATIVE_P23_REVOCATION=PASS active-version-auditable immediate-resolver-suppression durable-restart');
 } finally {
-  await runtime.stop().catch(() => {});
+  if (!runtimeStopped) await runtime.stop().catch(() => {});
   await rm(root, { recursive: true, force: true });
   if (previous.publisher === undefined) delete process.env.NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON;
   else process.env.NEURO_SYNAPTIC_COMMONS_PUBLISHER_KEYS_JSON = previous.publisher;

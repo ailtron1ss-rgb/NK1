@@ -374,6 +374,8 @@ export class OrganismRuntime {
       trustedAttestorKeys: parseSynapticPublicKeyMap(process.env.NEURO_SYNAPTIC_COMMONS_ATTESTOR_KEYS_JSON),
       trustedLicenseReviewFingerprints: parseSynapticLicenseReviewAllowlist(process.env.NEURO_SYNAPTIC_COMMONS_LICENSE_REVIEW_FINGERPRINTS_JSON),
     });
+    this.core.configureSynapticCommonsArtifactUsabilityLookup(fingerprint =>
+      this.synapticCommons.isNativePolicyArtifactUsable(fingerprint));
     this.synapticCommonsStore = new FileStateStore<SynapticCommonsState>(`${config.stateFile}.synaptic-commons.json`);
     this.synapticP23Admission = config.synapticP23Admission ?? null;
     if (this.synapticP23Admission) {

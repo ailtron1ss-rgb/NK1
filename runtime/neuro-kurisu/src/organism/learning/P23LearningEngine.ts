@@ -602,8 +602,19 @@ export class P23LearningEngine {
   private correctionRuleMemory = new CorrectionRuleMemory();
   private replaySelectionOptions: ReplaySelectionOptions = { maxBatchSize:64, recentQuota:32 };
   private verifiedSkillStore: VersionedSkillCandidateStore | null = null;
+  private synapticCommonsArtifactUsabilityLookup: ((fingerprint: string) => boolean) | null = null;
   private learningFitnessJournal: LearningFitnessJournalSink | null = null;
   private learningLifecycleJournal: LearningLifecycleJournalSink | null = null;
+
+  /**
+   * Host-owned resolver guard for native Synaptic P23 policy records. A missing
+   * guard, revoked source, expired receipt or trust-root removal suppresses the
+   * bias without deleting the durable candidate/approval history.
+   */
+  configureSynapticCommonsArtifactUsabilityLookup(lookup: (fingerprint: string) => boolean): void {
+    if (typeof lookup !== 'function') throw new TypeError('synaptic Commons artifact usability lookup required');
+    this.synapticCommonsArtifactUsabilityLookup = lookup;
+  }
 
   /** Configure a bounded replay ablation; defaults remain 64 total / 32 recent. */
   configureReplaySelection(options: ReplaySelectionOptions):void {
@@ -2008,6 +2019,16 @@ export class P23LearningEngine {
          !ACTIONS.includes(value.action as ActionKind) || !Number.isFinite(value.confidence01) ||
          !Number.isFinite(value.validationSuccess01) || !Number.isSafeInteger(value.validationUses) ||
          (value.validationUses as number)<1) return [];
+      const synapticProvenance = value.synapticCommonsProvenance;
+      if (synapticProvenance !== undefined) {
+        const isUsable = this.synapticCommonsArtifactUsabilityLookup;
+        if (!isUsable) return [];
+        try {
+          if (isUsable(synapticProvenance.artifactFingerprint) !== true) return [];
+        } catch {
+          return [];
+        }
+      }
       return [{...(value as PolicySkillRecord),status:'promoted' as const,updatedAt:active.activatedAt}];
     });
   }
