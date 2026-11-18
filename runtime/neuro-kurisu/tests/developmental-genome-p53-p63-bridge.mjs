@@ -157,7 +157,7 @@ const makeInput = (overrides = {}) => {
     evidence: makeEvidence(parent, candidate),
     ...overrides,
   };
-  return withSignedOutcomes(base);
+  return base.evidence ? withSignedOutcomes(base) : base;
 };
 
 const evaluate = input => evaluateDevelopmentalGenomeExperiment(input, trustedVerifierKeys);
@@ -294,9 +294,14 @@ test('incomplete rollback and weak identity continuity block review', () => {
 
 test('untrusted evaluator key and altered signed artifacts are rejected', () => {
   const input = makeInput();
-  const untrusted = evaluateDevelopmentalGenomeExperiment(input, new Map());
-  assert.equal(untrusted.status, 'BLOCKED');
-  assert.ok(untrusted.issues.some(issue => issue.code === 'signed-outcome-untrusted-verifier'));
+  const unconfigured = evaluateDevelopmentalGenomeExperiment(input, new Map());
+  assert.equal(unconfigured.status, 'NEEDS_REVIEW');
+  assert.ok(unconfigured.issues.some(issue => issue.code === 'trusted-evaluator-keys-not-configured'));
+  const wrongTrustRoot = evaluateDevelopmentalGenomeExperiment(input, new Map([
+    ['different-evaluator', trustedVerifierKeys.get(evaluatorId)],
+  ]));
+  assert.equal(wrongTrustRoot.status, 'NEEDS_REVIEW');
+  assert.ok(wrongTrustRoot.issues.some(issue => issue.code === 'signed-outcome-untrusted-verifier'));
 
   const tampered = structuredClone(input);
   tampered.signedOutcomes.artifacts[0].payload.passed = !tampered.signedOutcomes.artifacts[0].payload.passed;
