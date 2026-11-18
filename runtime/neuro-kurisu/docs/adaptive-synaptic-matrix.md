@@ -43,15 +43,20 @@ A candidate records its artifact reference and SHA-256, format/rank, exact base
 model identity/revision, task capabilities, competence scores, conflict group,
 resource/context limits, maximum uncertainty, training dataset reference, and owner.
 
-Each P25 adapter also stores a bounded ledger of up to 64 accepted validation
-report SHA-256 digests. Every signed P25 report is single-use across activation,
+Each P25 adapter stores an ordered, bounded ledger of up to 64 accepted validation
+report SHA-256 digests, a monotonic accepted-report count, and a SHA-256 commitment
+to the complete ordered digest sequence. Restore checks all three together, so
+truncation, reordering, duplicate entries, malformed entries and over-capacity
+history fail closed. Every signed P25 report is single-use across activation,
 disable/enable, cooldown recovery, quarantine recovery and process restarts.
-Entries are never evicted; once full, further P25 activation fails closed.
-A snapshot missing its prior report ledger is treated as incomplete: its last
-manifest digest is recovered as deny-only evidence and future activations remain
-blocked until an explicit trusted state migration. The P25 sidecar must be
-protected by host filesystem/storage integrity controls; an administrator able
-to rewrite this sidecar can otherwise rewrite local anti-replay metadata.
+Entries are never evicted; once full, further P25 activation fails closed. A
+snapshot from the earlier ledger format cannot prove historical completeness and
+is conservatively marked saturated; its current manifest digest is retained only
+as deny-only evidence. The unkeyed sequence commitment detects partial corruption
+and accidental edits, not a fully rewritten malicious snapshot. The P25 sidecar
+must still be protected by host filesystem/storage integrity controls; an
+administrator able to rewrite the sidecar and all commitment fields can rewrite
+local anti-replay metadata.
 
 Activation requires a signed offline validation manifest. The matrix checks:
 - the manifest matches the registered candidate and its artifact digest;

@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 /**
  * P25 Adaptive Synaptic Matrix.
  *
@@ -67,6 +69,10 @@ export interface SynapticAdapterRecord {
   quarantineReportSha256?: string;
   /** All accepted validation reports for this adapter; entries are never evicted. */
   acceptedReportSha256s: string[];
+  /** Monotonic total number of accepted reports represented by the history. */
+  acceptedReportCount: number;
+  /** SHA-256 commitment to the ordered acceptedReportSha256s sequence. */
+  acceptedReportHistorySha256: string;
   /** Incomplete/corrupt legacy history disables future activation until migration. */
   activationHistorySaturated?: boolean;
 }
@@ -137,6 +143,13 @@ function canonicalJson(value: unknown): string {
     .filter(key => record[key] !== undefined)
     .map(key => JSON.stringify(key) + ':' + canonicalJson(record[key]))
     .join(',') + '}';
+}
+
+function reportHistoryCommitment(digests: readonly string[]): string {
+  return createHash('sha256')
+    .update('nk1-p25-report-history:v1:')
+    .update(canonicalJson(digests.map(digest => digest.toLowerCase())))
+    .digest('hex');
 }
 
 function normalizeCandidate(raw: SynapticAdapterCandidate): SynapticAdapterCandidate {
@@ -272,6 +285,8 @@ export class AdaptiveSynapticMatrixEngine {
       candidate, status: 'candidate', cooldownUntil: 0, consecutiveFailures: 0,
       selections: 0, failures: 0, averageLatencyMs: 0, lastErrorAt: 0,
       acceptedReportSha256s: [],
+      acceptedReportCount: 0,
+      acceptedReportHistorySha256: reportHistoryCommitment([]),
     };
     this.state.adapters.push(record);
     return structuredClone(record);
@@ -310,6 +325,8 @@ export class AdaptiveSynapticMatrixEngine {
     record.status = 'active';
     record.manifest = structuredClone(manifest);
     record.acceptedReportSha256s.push(reportSha256);
+    record.acceptedReportCount = record.acceptedReportSha256s.length;
+    record.acceptedReportHistorySha256 = reportHistoryCommitment(record.acceptedReportSha256s);
     delete record.quarantineReportSha256;
     record.cooldownUntil = 0;
     record.consecutiveFailures = 0;
@@ -472,13 +489,26 @@ export class AdaptiveSynapticMatrixEngine {
         if (next.adapters.some(entry => entry.candidate.id === candidate.id)) continue;
         const hasPersistedReportHistory = Array.isArray(item.acceptedReportSha256s);
         const rawReportHistory = hasPersistedReportHistory ? item.acceptedReportSha256s : [];
-        const validReportHistory = rawReportHistory
+        // Never scan an unbounded attacker-controlled history array during restore.
+        const boundedReportHistory = rawReportHistory.slice(0, MAX_ACCEPTED_REPORTS_PER_ADAPTER);
+        const validReportHistory = boundedReportHistory
           .filter((digest): digest is string => typeof digest === 'string' && HASH_PATTERN.test(digest))
           .map(digest => digest.toLowerCase());
         const uniqueReportHistory = [...new Set(validReportHistory)];
-        const reportHistoryCorrupt = rawReportHistory.length !== validReportHistory.length
-          || uniqueReportHistory.length !== validReportHistory.length
-          || validReportHistory.length > MAX_ACCEPTED_REPORTS_PER_ADAPTER;
+        const reportHistoryCorrupt = rawReportHistory.length > MAX_ACCEPTED_REPORTS_PER_ADAPTER
+          || rawReportHistory.length !== validReportHistory.length
+          || uniqueReportHistory.length !== validReportHistory.length;
+        const persistedReportCount = typeof item.acceptedReportCount === 'number'
+          && Number.isSafeInteger(item.acceptedReportCount) && item.acceptedReportCount >= 0
+          ? item.acceptedReportCount : null;
+        const persistedHistoryCommitment = typeof item.acceptedReportHistorySha256 === 'string'
+          && HASH_PATTERN.test(item.acceptedReportHistorySha256)
+          ? item.acceptedReportHistorySha256.toLowerCase() : null;
+        const currentHistoryCommitment = reportHistoryCommitment(uniqueReportHistory);
+        const reportHistoryIntegrityMissing = (rawReportHistory.length > 0 || Boolean(item.manifest))
+          && (persistedReportCount === null || persistedHistoryCommitment === null
+            || persistedReportCount !== uniqueReportHistory.length
+            || persistedHistoryCommitment !== currentHistoryCommitment);
         const restored: SynapticAdapterRecord = {
           candidate,
           status: item.status === 'disabled' || item.status === 'quarantined' ? item.status : 'candidate',
@@ -488,8 +518,10 @@ export class AdaptiveSynapticMatrixEngine {
           failures: Number.isSafeInteger(item.failures) ? Math.max(0, item.failures) : 0,
           averageLatencyMs: Number.isFinite(Number(item.averageLatencyMs)) ? Math.max(0, Number(item.averageLatencyMs)) : 0,
           lastErrorAt: Number.isFinite(Number(item.lastErrorAt)) ? Math.max(0, Number(item.lastErrorAt)) : 0,
-          acceptedReportSha256s: uniqueReportHistory.slice(0, MAX_ACCEPTED_REPORTS_PER_ADAPTER),
-          ...(item.activationHistorySaturated === true || reportHistoryCorrupt ||
+          acceptedReportSha256s: uniqueReportHistory,
+          acceptedReportCount: persistedReportCount ?? uniqueReportHistory.length,
+          acceptedReportHistorySha256: persistedHistoryCommitment ?? currentHistoryCommitment,
+          ...(item.activationHistorySaturated === true || reportHistoryCorrupt || reportHistoryIntegrityMissing ||
               (!hasPersistedReportHistory && Boolean(item.manifest))
             ? { activationHistorySaturated: true }
             : {}),
@@ -525,6 +557,12 @@ export class AdaptiveSynapticMatrixEngine {
               restored.activationHistorySaturated = true;
             }
           }
+        }
+        // Snapshots from the first P25 ledger release lack a count/commitment.
+        // Carry their observed entries forward, but do not claim their history is complete.
+        if (persistedReportCount === null || persistedHistoryCommitment === null) {
+          restored.acceptedReportCount = restored.acceptedReportSha256s.length;
+          restored.acceptedReportHistorySha256 = reportHistoryCommitment(restored.acceptedReportSha256s);
         }
         if (item.status === 'quarantined' && !restored.quarantineReportSha256) {
           // Without the last accepted receipt the quarantine cannot be cleared safely.

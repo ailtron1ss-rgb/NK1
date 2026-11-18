@@ -296,6 +296,8 @@ const request = (overrides = {}) => ({
 
   const legacyState = repeatedFailure.snapshot();
   delete legacyState.adapters[0].acceptedReportSha256s;
+  delete legacyState.adapters[0].acceptedReportCount;
+  delete legacyState.adapters[0].acceptedReportHistorySha256;
   const restoredLegacy = new AdaptiveSynapticMatrixEngine();
   restoredLegacy.restore(legacyState, () => true);
   assert.equal(restoredLegacy.snapshot().adapters[0].status, 'quarantined');
@@ -388,6 +390,31 @@ const request = (overrides = {}) => ({
   assert.throws(() => restored.activateValidated(firstReport, () => true),
     /history-capacity/i,
     'an older consumed report must not become reusable after partial history truncation');
+}
+
+
+{
+  const matrix = new AdaptiveSynapticMatrixEngine();
+  matrix.registerCandidate(candidate());
+  const reports = ['4', '5', '6'].map((value, index) => manifest(candidate(), {
+    validation: {
+      ...manifest().validation,
+      reportId: `ordered-history-report-${index}`,
+      reportSha256: hash(value),
+      holdoutDatasetRef: `dataset://physics/ordered-history-${index}`,
+    },
+  }));
+  for (const report of reports) matrix.activateValidated(report, () => true);
+
+  const reorderedSnapshot = matrix.snapshot();
+  reorderedSnapshot.adapters[0].acceptedReportSha256s.reverse();
+  const restored = new AdaptiveSynapticMatrixEngine();
+  restored.restore(reorderedSnapshot, () => true);
+  assert.equal(restored.snapshot().adapters[0].activationHistorySaturated, true,
+    'reordering an accepted report history must invalidate its persisted sequence commitment');
+  assert.throws(() => restored.activateValidated(reports[0], () => true),
+    /history-capacity/i,
+    'a history with a changed sequence must fail closed instead of authorizing an old report');
 }
 
 console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX=PASS');
