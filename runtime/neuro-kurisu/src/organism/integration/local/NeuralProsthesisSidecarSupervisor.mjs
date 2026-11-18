@@ -140,6 +140,16 @@ export class NeuralProsthesisSidecarSupervisor {
     child.once('exit', (code, signal) => {
       exitInfo = { code, signal };
       this.ready = false;
+      // Clear the owned process immediately on an unexpected exit. During an
+      // intentional stop(), the supervisor detaches the child before sending
+      // SIGTERM/SIGKILL, so this branch cannot claim a normal shutdown as a crash.
+      if (this.child === child && this.managed) {
+        this.child = null;
+        this.managed = false;
+        if (!this.stopRequested) {
+          this.lastError = `sidecar-exited-unexpectedly:code=${code};signal=${signal}`;
+        }
+      }
     });
 
     const deadline = Date.now() + this.startupTimeoutMs;
