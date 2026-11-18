@@ -887,6 +887,12 @@ function analyzeOption(
 
 export class ConsequenceEcologyEngine {
   private state: ConsequenceEcologyState = emptyState();
+  private verifiedOutcomeResolver: ((outcomeId: string) => SharedFutureOutcomeRecord | null) | null = null;
+
+  /** Only FutureSimulator may attach the canonical Shared Future outcome resolver. */
+  setVerifiedOutcomeResolver(resolver: ((outcomeId: string) => SharedFutureOutcomeRecord | null) | null): void {
+    this.verifiedOutcomeResolver = typeof resolver === 'function' ? resolver : null;
+  }
 
   snapshot(): ConsequenceEcologyState {
     return structuredClone(this.state);
@@ -1179,13 +1185,17 @@ export class ConsequenceEcologyEngine {
   }
 
   recordVerifiedOutcome(input: {
-    outcome: SharedFutureOutcomeRecord;
+    outcomeId: string;
     analysisId: string;
     optionId: string;
   }): { recorded: boolean; replayed: boolean; independentlyVerified: true; calibration: ConsequenceOutcomeCalibrationRecord } {
     try {
-      const outcome = input?.outcome;
-      if (!outcome || outcome.authority !== 'independent-external' || outcome.independentlyVerified !== true) {
+      const outcomeId = clean(input?.outcomeId, 180);
+      if (!outcomeId) throw new Error('consequence-outcome-id-required');
+      if (!this.verifiedOutcomeResolver) throw new Error('consequence-outcome-resolver-unavailable');
+      let outcome: SharedFutureOutcomeRecord | null = null;
+      try { outcome = this.verifiedOutcomeResolver(outcomeId); } catch { outcome = null; }
+      if (!outcome || outcome.id !== outcomeId || outcome.authority !== 'independent-external' || outcome.independentlyVerified !== true) {
         throw new Error('consequence-outcome-not-independently-verified');
       }
       if (!outcome.actionDecisionId || !outcome.sharedFutureDecisionId || !outcome.actionToolId ||
