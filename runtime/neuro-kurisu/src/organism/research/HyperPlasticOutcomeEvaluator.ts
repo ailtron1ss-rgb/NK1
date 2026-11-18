@@ -174,6 +174,8 @@ function measureSplit(
   if (authority.ledger.manifestFingerprint() !== authority.manifestFingerprint) return null;
 
   const bySeed = new Map<number, Map<string, Map<string, VerifiedTaskOutcome>>>();
+  let unsafeAdapterSafetyRegressionCount = 0;
+  const unsafeAdapterEvidenceRefs: string[] = [];
   for (const outcome of snapshot.outcomes) {
     if (outcome.attempt !== 1 || outcome.authority !== 'independent-verifier' ||
         (outcome.method !== authority.baselineMethod && outcome.method !== authority.adapterMethod) ||
@@ -181,6 +183,11 @@ function measureSplit(
     const task = authority.manifestById.get(outcome.taskId);
     if (!task || task.split !== split || task.family !== authority.taskFamily ||
         task.version !== outcome.taskVersion || task.verifierId !== outcome.verifierId) continue;
+    if (outcome.method === authority.adapterMethod &&
+        (outcome.metrics?.safetyRegressionCount ?? 0) > 0) {
+      unsafeAdapterSafetyRegressionCount += outcome.metrics!.safetyRegressionCount;
+      unsafeAdapterEvidenceRefs.push(outcome.evidenceRef);
+    }
     const seedRows = bySeed.get(outcome.seed) ?? new Map<string, Map<string, VerifiedTaskOutcome>>();
     const methodRows = seedRows.get(task.taskId) ?? new Map<string, VerifiedTaskOutcome>();
     if (methodRows.has(outcome.method)) return null;
@@ -189,6 +196,28 @@ function measureSplit(
     bySeed.set(outcome.seed, seedRows);
   }
 
+  if (unsafeAdapterSafetyRegressionCount > 0) {
+    const evidenceRefs = [...new Set(unsafeAdapterEvidenceRefs)].sort();
+    return {
+      split,
+      splitFingerprint,
+      evidenceFingerprint: sha256({ splitFingerprint, unsafeAdapterSafetyRegressionCount, evidenceRefs }),
+      baseModelFingerprint: authority.baseModelFingerprint,
+      adapterFingerprint: authority.adapter.fingerprint,
+      baselineMethod: authority.baselineMethod,
+      adapterMethod: authority.adapterMethod,
+      pairedSeedCount: 0,
+      baselineScore01: 0,
+      adapterScore01: 0,
+      meanGain01: 0,
+      lowerConfidenceBound95OneSided01: Number.NEGATIVE_INFINITY,
+      meanLatencyOverhead01: Number.POSITIVE_INFINITY,
+      maxLatencyOverhead01: Number.POSITIVE_INFINITY,
+      safetyRegressions: unsafeAdapterSafetyRegressionCount,
+      evidenceRefs,
+      seedMeasurements: [],
+    };
+  }
   const seeds: HyperPlasticSignedSplitMeasurement['seedMeasurements'] = [];
   const evidenceRefs: string[] = [];
   for (const [seed, taskRows] of [...bySeed.entries()].sort((a, b) => a[0] - b[0])) {
@@ -204,7 +233,7 @@ function measureSplit(
         !Number.isFinite(row.metrics.durationMs) || !Number.isSafeInteger(row.metrics.safetyRegressionCount))) {
       continue;
     }
-    const safetyRegressions = rows.reduce((sum, row) => sum + (row.metrics?.safetyRegressionCount ?? 0), 0);
+    const safetyRegressions = adapterRows.reduce((sum, row) => sum + (row.metrics?.safetyRegressionCount ?? 0), 0);
     const baselineLatencyMs = baselineRows.reduce((sum, row) => sum + row.metrics!.durationMs, 0) / tasks.length;
     const adapterLatencyMs = adapterRows.reduce((sum, row) => sum + row.metrics!.durationMs, 0) / tasks.length;
     const baselineScore01 = baselineRows.filter(row => row.passed).length / tasks.length;
@@ -288,16 +317,20 @@ export function evaluateHyperPlasticSignedPromotion(
   try { authority = prepareAuthority(config); }
   catch { return reject('signed-evaluation-config-invalid'); }
   const validation = measureSplit(authority, 'validation');
-  if (!validation) return reject('validation-signed-paired-evidence-insufficient');
+  if (validation?.safetyRegressions) return reject('validation-safety-regression');
+  if (!validation || validation.pairedSeedCount < authority.minimumPairedSeeds) {
+    return reject('validation-signed-paired-evidence-insufficient');
+  }
   const holdout = measureSplit(authority, 'holdout');
-  if (!holdout) return reject('holdout-signed-paired-evidence-insufficient');
+  if (holdout?.safetyRegressions) return reject('holdout-safety-regression');
+  if (!holdout || holdout.pairedSeedCount < authority.minimumPairedSeeds) {
+    return reject('holdout-signed-paired-evidence-insufficient');
+  }
   if (validation.splitFingerprint === holdout.splitFingerprint) return reject('validation-holdout-split-overlap');
   if (validation.adapterFingerprint !== holdout.adapterFingerprint ||
       validation.baseModelFingerprint !== holdout.baseModelFingerprint) {
     return reject('validation-holdout-model-identity-mismatch');
   }
-  if (validation.safetyRegressions !== 0) return reject('validation-safety-regression');
-  if (holdout.safetyRegressions !== 0) return reject('holdout-safety-regression');
   const validationSeeds = new Set(validation.seedMeasurements.map(row => row.seed));
   if (validationSeeds.size !== holdout.seedMeasurements.length ||
       holdout.seedMeasurements.some(row => !validationSeeds.has(row.seed))) {

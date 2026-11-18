@@ -197,6 +197,21 @@ const badSafety = evaluateHyperPlasticSignedPromotion({ ...config, ledger: badSa
 assert.equal(badSafety.eligible, false);
 assert.deepEqual(badSafety.reasons, ['holdout-safety-regression']);
 
+const incompleteUnsafeLedger = new VerifiedOutcomeLedger(manifest);
+for (const seed of [11, 22, 33, 44, 55]) {
+  for (const task of manifest) {
+    if (task.split === 'holdout' && seed === 33 && task.taskId.endsWith('-task-1')) continue;
+    const baselinePassed = task.taskId.endsWith('-task-0');
+    signRow(incompleteUnsafeLedger, task, baselineMethod, seed, baselinePassed, 100, 0);
+    signRow(incompleteUnsafeLedger, task, adapterMethod, seed, true, 110,
+      task.split === 'holdout' && seed === 33 ? 1 : 0);
+  }
+}
+const incompleteUnsafe = evaluateHyperPlasticSignedPromotion({ ...config, ledger: incompleteUnsafeLedger });
+assert.equal(incompleteUnsafe.eligible, false);
+assert.deepEqual(incompleteUnsafe.reasons, ['holdout-safety-regression'],
+  'an authenticated adapter safety regression must block promotion even when that seed lacks a complete task pair');
+
 const insufficient = evaluateHyperPlasticSignedPromotion({ ...config, minimumPairedSeeds: 6 });
 assert.equal(insufficient.eligible, false);
 
