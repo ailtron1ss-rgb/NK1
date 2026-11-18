@@ -21,6 +21,7 @@ async function runRuntime(enabled) {
         text: 'Verified local language response.',
         backend: 'llama.cpp:bridge-test-model',
         latencyMs: 1,
+        providerUsage: { promptTokens:90, completionTokens:32, totalTokens:122 },
         ...(request.cognitiveControl && request.cognitiveControlRequestId ? {
           providerControlReceipt: {
             provider: 'llama.cpp',
@@ -66,6 +67,14 @@ async function runRuntime(enabled) {
       assert.ok(diagnostics.providerControlReceiptsAccepted > 0);
       assert.equal(diagnostics.providerControlReceiptsRejected,0);
       assert.equal(diagnostics.providerControlReceiptsDuplicate,0);
+      assert.ok(diagnostics.providerUsageObservations>0);
+      assert.equal(diagnostics.providerUsageUnavailable,0);
+      assert.equal(diagnostics.providerUsageInvalid,0);
+      assert.ok(diagnostics.providerPromptTokensTotal>=90);
+      assert.ok(diagnostics.providerCompletionTokensTotal>=32);
+      assert.ok(diagnostics.providerTotalTokensTotal>=122);
+      assert.ok(diagnostics.providerCompletionBudgetUtilizationMean>=0);
+      assert.equal(diagnostics.providerCompletionBudgetExceeded,0);
       assert.equal(diagnostics.lastTemplateControlSchema, 'nk1-cognitive-neural-43-v2');
       assert.match(request.cognitiveControlRequestId,/^[a-f0-9-]{36}:\d+:\d+$/i);
       assert.equal(responses[requests.indexOf(request)].providerControlReceipt.requestId,
@@ -97,6 +106,27 @@ async function runRuntime(enabled) {
       assert.equal(afterTampering.providerControlReceiptsRejected,3,
         'stale IDs, mismatched fingerprints and non-llama.cpp responses must be rejected');
       assert.equal(afterTampering.llamaCppTemplateKwargsSent,acceptedBeforeReplay);
+
+      const overBudgetRequest={
+        ...request,cognitiveControlRequestId:request.cognitiveControlRequestId+':over-budget',
+      };
+      const overBudgetCompletionTokens=request.cognitiveControl.maxTokens+3;
+      runtime.recordCognitiveProviderControlReceipt(overBudgetRequest,{
+        ...selectedResponse,
+        providerUsage:{
+          promptTokens:100,
+          completionTokens:overBudgetCompletionTokens,
+          totalTokens:100+overBudgetCompletionTokens,
+        },
+        providerControlReceipt:{
+          ...selectedResponse.providerControlReceipt,
+          requestId:overBudgetRequest.cognitiveControlRequestId,
+        },
+      });
+      const afterUsageOverrun=runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.equal(afterUsageOverrun.providerCompletionBudgetExceeded,1,
+        'actual provider usage above the requested token budget must be observable');
+      assert.ok(afterUsageOverrun.providerCompletionBudgetUtilizationMean>1);
     } else {
       assert.ok(requests.every(value => value.cognitiveControl === undefined),
         'emergency bypass must pass requests to the provider without mutation');
