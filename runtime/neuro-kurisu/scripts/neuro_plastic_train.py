@@ -569,6 +569,11 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
             "adapterId": validated["adapterId"],
             "method": method,
             "domain": validated["domain"],
+            "baseModelId": validated["baseModelId"],
+            "backendId": validated["backendId"],
+            "baseModelAlias": validated["baseModelAlias"],
+            "servedModelAlias": validated["servedModelAlias"],
+            "governance": validated["governance"],
             "baseModelFingerprint": validated["baseFingerprint"],
             "tokenizerFingerprint": validated["tokenizerFingerprint"],
             "sourceDatasetFingerprint": validated["sourceDatasetFingerprint"],
@@ -614,6 +619,43 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
             json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + "\n",
             encoding="utf-8",
         )
+        registry_manifest = {
+            "schemaVersion": 1,
+            "adapterId": validated["adapterId"],
+            "domain": validated["domain"],
+            "method": method,
+            "baseModel": {
+                "id": validated["baseModelId"],
+                "backendId": validated["backendId"],
+                "servedModelAlias": validated["baseModelAlias"],
+                "fingerprint": validated["baseFingerprint"],
+            },
+            "tokenizerFingerprint": validated["tokenizerFingerprint"],
+            "sourceDatasetFingerprint": validated["sourceDatasetFingerprint"],
+            "holdoutPlanFingerprint": validated["holdoutPlanFingerprint"],
+            "corpusFingerprint": validated["corpusFingerprint"],
+            "artifact": {
+                "directory": manifest["outputDirectory"],
+                "configSha256": artifact_hashes["adapter_config.json"]["sha256"],
+                "weightsSha256": artifact_hashes["adapter_model.safetensors"]["sha256"],
+                "totalBytes": (
+                    artifact_hashes["adapter_config.json"]["bytes"] +
+                    artifact_hashes["adapter_model.safetensors"]["bytes"]
+                ),
+            },
+            "trainer": {
+                "name": "neuro-plastic-trainer",
+                "version": "1.1.0",
+                "seed": manifest["seed"],
+                "completedAt": int(time.time() * 1000),
+            },
+            "governance": validated["governance"],
+            "servedModelAlias": validated["servedModelAlias"],
+        }
+        (staging / "neuro-plastic-registry-manifest.json").write_text(
+            json.dumps(registry_manifest, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + "\n",
+            encoding="utf-8",
+        )
         validated["output"].parent.mkdir(parents=True, exist_ok=True)
         if validated["output"].exists():
             raise RuntimeError("adapter-output-appeared-during-training")
@@ -649,6 +691,11 @@ def main(argv: list[str] | None = None) -> int:
                 "method": validated["method"],
                 "domain": validated["domain"],
                 "adapterId": validated["adapterId"],
+                "baseModelId": validated["baseModelId"],
+                "backendId": validated["backendId"],
+                "baseModelAlias": validated["baseModelAlias"],
+                "servedModelAlias": validated["servedModelAlias"],
+                "governance": validated["governance"],
                 "baseModelFingerprint": validated["baseFingerprint"],
                 "sourceDatasetFingerprint": validated["sourceDatasetFingerprint"],
                 "holdoutPlanFingerprint": validated["holdoutPlanFingerprint"],
