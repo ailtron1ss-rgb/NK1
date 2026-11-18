@@ -60,12 +60,29 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _reject_symlink_ancestors(path: Path) -> None:
+    absolute = path.absolute()
+    cursor = Path(absolute.anchor)
+    for part in absolute.parts[1:]:
+        cursor = cursor / part
+        try:
+            info = cursor.lstat()
+        except FileNotFoundError:
+            raise PreflightError("path-component-missing")
+        if cursor.is_symlink():
+            raise PreflightError("symlink-path-component-rejected")
+
+
 def fingerprint_files(root: Path, predicate=lambda _relative: True) -> str:
+    _reject_symlink_ancestors(root)
     root = root.resolve(strict=True)
     if not root.is_dir():
         raise PreflightError("base-model-directory-invalid")
     entries: list[tuple[str, Path]] = []
     for current, directories, filenames in os.walk(root, followlinks=False):
+        for name in directories:
+            if (Path(current) / name).is_symlink():
+                raise PreflightError("model-snapshot-directory-symlink-rejected")
         directories[:] = sorted(name for name in directories if name not in {".cache", "__pycache__"})
         for filename in sorted(filenames):
             path = Path(current) / filename
@@ -102,6 +119,20 @@ def _safe_child(root: Path, relative: Any, label: str, must_exist: bool) -> Path
     if candidate.is_absolute() or any(part in {"", ".", ".."} for part in candidate.parts):
         raise PreflightError(label + "-path-traversal-rejected")
     root_resolved = root.resolve(strict=True)
+    cursor = root_resolved
+    parts = candidate.parts
+    for index, part in enumerate(parts):
+        cursor = cursor / part
+        try:
+            cursor_info = cursor.lstat()
+        except FileNotFoundError:
+            if must_exist:
+                raise PreflightError(label + "-path-component-missing")
+            break
+        if cursor.is_symlink():
+            raise PreflightError(label + "-symlink-path-component-rejected")
+        if index < len(parts) - 1 and not cursor.is_dir():
+            raise PreflightError(label + "-path-parent-not-directory")
     result = (root_resolved / candidate).resolve(strict=must_exist)
     if not result.is_relative_to(root_resolved):
         raise PreflightError(label + "-path-escapes-manifest-root")
