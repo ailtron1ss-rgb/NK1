@@ -209,6 +209,7 @@ import { AdvancedResilienceEngine, defaultAdvancedResilience } from '../learning
 import { P23LearningEngine, defaultP23Learning, type PolicySkillRecord } from '../learning/P23LearningEngine.ts';
 import type { VerifiedSkillPromotionProposal } from '../learning/VerifiedSkillPromotion.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../learning/VerifiedSkillLifecycleBootstrap.ts';
+import { skillCompetenceRuntimeFingerprint } from '../learning/SkillCompetenceProof.ts';
 import { runTrustedShadowLearningProcess as executeTrustedShadowLearningProcess, type TrustedShadowLearningRunInput } from '../learning/TrustedShadowLearningRunCoordinator.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from '../learning/TrustedSkillShadowRunRegistry.ts';
 import type { TrustedShadowExecutionContext } from '../learning/VerifiedSkillShadowEvidence.ts';
@@ -418,6 +419,16 @@ export interface OrganismConfig {
     enableSocialDevelopment?: boolean;
     enablePerception?: boolean;
     enableLifelongLearning?: boolean;
+    /** Immutable build/runtime identity, e.g. NK1 git SHA plus runtime version. */
+    skillCompetenceRuntimeVersion?: string;
+    /** SHA-256 fingerprint of deployment configuration / privilege boundary. */
+    skillCompetenceEnvironmentFingerprint?: string;
+    /** Trusted host evaluator for stable condition IDs included in a signed skill contract. */
+    skillCompetenceConditionEvaluator?: (
+        conditionId: string,
+        input: Record<string, unknown>,
+        context: { toolId: string; kind: 'precondition' | 'constraint' },
+    ) => boolean;
     checkpointMinIntervalMs?: number;
     checkpointMaxDirtyCycles?: number;
     includeAdvancedCycleSnapshot?: boolean;
@@ -1260,6 +1271,28 @@ export class OrganismCore {
         const verifiedSkillLifecycle = createVerifiedSkillLifecycleBootstrap(candidateStorePath, trustedRunRegistryPath);
         this.developmentalNeural.p23Learning.configureVerifiedSkillLifecycle(verifiedSkillLifecycle.store);
         this.verifiedSkillShadowRunRegistry = verifiedSkillLifecycle.registry;
+        const competenceRuntimeVersion = String(
+            config.skillCompetenceRuntimeVersion ?? process.env.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION ?? '',
+        ).trim();
+        const competenceEnvironmentFingerprint = String(
+            config.skillCompetenceEnvironmentFingerprint ??
+            process.env.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT ?? '',
+        ).trim().toLowerCase();
+        this.cognitiveRuntime.actionGateway.configureSkillCompetenceProofVerifier({
+            skillCompetenceVerifierKeys: verifiedSkillLifecycle.trustedCompetenceAttestorKeys,
+            currentSkillCompetenceRuntimeFingerprint: () => {
+                if (!competenceRuntimeVersion || competenceRuntimeVersion.length > 240) return null;
+                try { return skillCompetenceRuntimeFingerprint(competenceRuntimeVersion); }
+                catch { return null; }
+            },
+            currentSkillCompetenceEnvironmentFingerprint: () =>
+                /^[a-f0-9]{64}$/.test(competenceEnvironmentFingerprint) ? competenceEnvironmentFingerprint : null,
+            resolveActiveSkillCompetenceSubject: skillId =>
+                verifiedSkillLifecycle.store.resolveActiveSkillCompetenceSubject(skillId),
+            resolveActiveSkillCompetenceProof: skillId =>
+                verifiedSkillLifecycle.store.resolveActiveSkillCompetenceProof(skillId),
+            evaluateSkillCompetenceCondition: config.skillCompetenceConditionEvaluator,
+        });
         if (store instanceof FileStateStore) {
             this.actionExecutionLedgerArchive = new FileActionExecutionLedgerArchive(store.siblingPath('action-ledger.jsonl'));
             this.cognitiveRuntime.actionGateway.setExecutionLedgerArchive(this.actionExecutionLedgerArchive);
@@ -4933,6 +4966,7 @@ export class OrganismCore {
             this.recordIdentityLineage({ tick: state.tick, fromKind: 'observation', fromLabel: `${claimId}:${content.slice(0, 84)}`, strength01: .24, evidence01: confidence, reason: 'vision-observation-bound-to-self-life-context', relation: 'about', source: 'p65' });
         }
         this.memorySubsystem.p65EpistemicLedger.expireBeliefs(state.at);
+        this.persisted.facets.advanced.p65EpistemicLedger = this.memorySubsystem.p65EpistemicLedger.snapshot();
         const cognitiveHealth = this.cognitiveRuntime.cognitiveImmune.inspectHealth({
             tick: state.tick,
             at: state.at,
@@ -4955,7 +4989,6 @@ export class OrganismCore {
         );
         this.persisted.facets.cognition.skills = this.cognitiveRuntime.skillLibrary.snapshot();
         this.persisted.facets.cognition.immune = this.cognitiveRuntime.cognitiveImmune.snapshot();
-        this.persisted.facets.advanced.p65EpistemicLedger = this.memorySubsystem.p65EpistemicLedger.snapshot();
         const p36SelfDevelopmentDue = cognitiveSpinePlan.run.research || (!hasExternalSignal && state.tick % 8 === 0);
         const p36Investment = p36SelfDevelopmentDue && !hasExternalSignal ? this.developmentalNeural.p36SelfDevelopment.decideLearningInvestment(state, {
             worldError01: this.worldSubsystem.p27NeuralWorld.snapshot().metrics.holdoutAfter01,
@@ -11348,7 +11381,31 @@ export class OrganismCore {
      * the registrar: this Core instance records provenance before child spawn.
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
-        return executeTrustedShadowLearningProcess({ ...input, core: { registerTrustedSkillShadowRun: context => { this.registerTrustedSkillShadowRun(context); } } });
+        const configuredRuntimeVersion = String(
+            this.config.skillCompetenceRuntimeVersion ?? process.env.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION ?? '',
+        ).trim();
+        const runtimeVersion = configuredRuntimeVersion || String(input.runtimeVersion ?? '').trim();
+        if (!runtimeVersion || (configuredRuntimeVersion && String(input.runtimeVersion ?? '').trim() !== configuredRuntimeVersion)) {
+            throw new Error('trusted shadow runtime version does not match the configured organism runtime');
+        }
+        const environmentFingerprint = String(
+            this.config.skillCompetenceEnvironmentFingerprint ??
+            process.env.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT ?? '',
+        ).trim().toLowerCase();
+        const commandEnv: Record<string, string> = { ...(input.command.env ?? {}) };
+        commandEnv.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION = runtimeVersion;
+        if (/^[a-f0-9]{64}$/.test(environmentFingerprint)) {
+            commandEnv.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT = environmentFingerprint;
+        } else {
+            delete commandEnv.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT;
+        }
+        const command = { ...input.command, env: commandEnv };
+        return executeTrustedShadowLearningProcess({
+            ...input,
+            runtimeVersion,
+            command,
+            core: { registerTrustedSkillShadowRun: context => { this.registerTrustedSkillShadowRun(context); } },
+        });
     }
     /** Attach the single durable P23 journal pair to the organism's actual in-process learner. */
     configureP23LearningJournals(sinks: {
@@ -11369,10 +11426,44 @@ export class OrganismCore {
     stageVerifiedSkillCandidate(proposal: VerifiedSkillPromotionProposal, skill: PolicySkillRecord) {
         return this.developmentalNeural.p23Learning.stageVerifiedSkillCandidate(proposal, skill);
     }
+    /** Produce a candidate/evidence-bound payload for a separate competence attestor. */
+    createVerifiedSkillCompetenceProofPayload(
+        candidateId: string,
+        proposal: VerifiedSkillPromotionProposal,
+        contract: import('../learning/SkillCompetenceProof.ts').SkillCompetenceContract,
+        attestorId: string,
+        issuedAt: number,
+        expiresAt: number,
+    ) {
+        return this.developmentalNeural.p23Learning.createVerifiedSkillCompetenceProofPayload(
+            candidateId, proposal, contract, attestorId, issuedAt, expiresAt,
+        );
+    }
+    /** Accept only the externally signed artifact; P23 store verifies it before attachment. */
+    attachVerifiedSkillCompetenceProof(
+        candidateId: string,
+        proof: import('../learning/SkillCompetenceProof.ts').SignedSkillCompetenceProof,
+    ) {
+        return this.developmentalNeural.p23Learning.attachVerifiedSkillCompetenceProof(candidateId, proof);
+    }
     /** Trusted execution supervisor hook: persist run context before accepting any signed shadow receipt. */
     registerTrustedSkillShadowRun(context: TrustedShadowExecutionContext) {
         if (!this.verifiedSkillShadowRunRegistry) throw new Error('trusted skill shadow registry is not configured');
-        return this.verifiedSkillShadowRunRegistry.register(context);
+        const configuredRuntimeVersion = String(
+            this.config.skillCompetenceRuntimeVersion ?? process.env.NEURO_SKILL_COMPETENCE_RUNTIME_VERSION ?? '',
+        ).trim();
+        if (configuredRuntimeVersion && context.runtimeVersion !== configuredRuntimeVersion) {
+            throw new Error('trusted shadow run runtime version does not match the configured organism runtime');
+        }
+        const environmentFingerprint = String(
+            this.config.skillCompetenceEnvironmentFingerprint ??
+            process.env.NEURO_SKILL_COMPETENCE_ENVIRONMENT_FINGERPRINT ?? '',
+        ).trim().toLowerCase();
+        const trustedContext = {
+            ...context,
+            environmentFingerprint: /^[a-f0-9]{64}$/.test(environmentFingerprint) ? environmentFingerprint : undefined,
+        };
+        return this.verifiedSkillShadowRunRegistry.register(trustedContext);
     }
     /** Promotion is possible only with a valid detached signature from a configured trusted authority. */
     approveVerifiedSkillCandidate(candidateId: string, approval: SkillPromotionApproval, minShadowRuns = 3) {

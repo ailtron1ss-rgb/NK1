@@ -1,9 +1,36 @@
-import { createPublicKey } from 'node:crypto';
+import { createHash, createPublicKey } from 'node:crypto';
 import { AtomicFileSkillStorePersistence } from './AtomicFileSkillStorePersistence.ts';
 import { createAuthenticatedSkillPromotionApprovalVerifier, createAuthenticatedSkillRollbackApprovalVerifier, parseTrustedSkillPromotionApprovalKeys } from './AuthenticatedSkillPromotionApproval.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from './TrustedSkillShadowRunRegistry.ts';
 import { VersionedSkillCandidateStore } from './VersionedSkillCandidateStore.ts';
 import { createContextBoundSkillShadowEvidenceVerifier } from './VerifiedSkillShadowEvidence.ts';
+import { createSkillCompetenceProofVerifier, parseTrustedSkillCompetenceAttestorKeys } from './SkillCompetenceProof.ts';
+
+function publicKeyFingerprint(pem: string): string {
+  const key = createPublicKey(pem) as unknown as {
+    export(options: { type: 'spki'; format: 'der' }): Uint8Array;
+  };
+  return createHash('sha256').update(key.export({ type: 'spki', format: 'der' })).digest('hex');
+}
+
+function assertIndependentCompetenceAttestors(
+  shadowVerifierKeys: ReadonlyMap<string, string>,
+  promotionApprovalKeys: ReadonlyMap<string, string>,
+  competenceAttestorKeys: ReadonlyMap<string, string>,
+): void {
+  const otherAuthorityFingerprints = new Set<string>();
+  for (const pem of [...shadowVerifierKeys.values(), ...promotionApprovalKeys.values()]) {
+    otherAuthorityFingerprints.add(publicKeyFingerprint(pem));
+  }
+  const seenAttestors = new Set<string>();
+  for (const pem of competenceAttestorKeys.values()) {
+    const fingerprint = publicKeyFingerprint(pem);
+    if (otherAuthorityFingerprints.has(fingerprint) || seenAttestors.has(fingerprint)) {
+      throw new Error('competence attestor public keys must be cryptographically independent from shadow verifiers, promotion approvers, and each other');
+    }
+    seenAttestors.add(fingerprint);
+  }
+}
 
 function loadTrustedVerifierKeys(raw: string | undefined): ReadonlyMap<string, string> {
   if (raw === undefined || raw.trim() === '') return new Map();
@@ -36,6 +63,8 @@ export interface VerifiedSkillLifecycleBootstrap {
   registry: AtomicFileTrustedSkillShadowRunRegistry;
   trustedVerifierCount: number;
   trustedApprovalCount: number;
+  trustedCompetenceAttestorCount: number;
+  trustedCompetenceAttestorKeys: ReadonlyMap<string, string>;
 }
 
 /**
@@ -50,12 +79,16 @@ export function createVerifiedSkillLifecycleBootstrap(
   trustedRunRegistryPath: string,
   rawVerifierKeys = process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
   rawApprovalKeys = process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON,
+  rawCompetenceAttestorKeys = process.env.NEURO_SKILL_COMPETENCE_ATTESTOR_KEYS_JSON,
 ): VerifiedSkillLifecycleBootstrap {
   if (!candidateStorePath.trim() || !trustedRunRegistryPath.trim()) {
     throw new Error('verified skill lifecycle persistence paths are required');
   }
   const trustedVerifierKeys = loadTrustedVerifierKeys(rawVerifierKeys);
   const trustedApprovalKeys = parseTrustedSkillPromotionApprovalKeys(rawApprovalKeys);
+  const trustedCompetenceAttestorKeys = parseTrustedSkillCompetenceAttestorKeys(rawCompetenceAttestorKeys);
+  assertIndependentCompetenceAttestors(trustedVerifierKeys, trustedApprovalKeys, trustedCompetenceAttestorKeys);
+  const verifyCompetenceProof = createSkillCompetenceProofVerifier(trustedCompetenceAttestorKeys);
   const verifyPromotionApproval = createAuthenticatedSkillPromotionApprovalVerifier(trustedApprovalKeys);
   const verifyRollbackApproval = createAuthenticatedSkillRollbackApprovalVerifier(trustedApprovalKeys);
   const registry = new AtomicFileTrustedSkillShadowRunRegistry(trustedRunRegistryPath);
@@ -68,6 +101,8 @@ export function createVerifiedSkillLifecycleBootstrap(
     verifyPromotionApproval,
     verifyShadowEvidence,
     verifyRollbackApproval,
+    verifyCompetenceProof,
   );
-  return { store, registry, trustedVerifierCount: trustedVerifierKeys.size, trustedApprovalCount: trustedApprovalKeys.size };
+  return { store, registry, trustedVerifierCount: trustedVerifierKeys.size, trustedApprovalCount: trustedApprovalKeys.size,
+    trustedCompetenceAttestorCount: trustedCompetenceAttestorKeys.size, trustedCompetenceAttestorKeys };
 }
