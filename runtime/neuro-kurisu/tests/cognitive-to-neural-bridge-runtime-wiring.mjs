@@ -67,7 +67,7 @@ async function runRuntime(enabled) {
       assert.equal(diagnostics.providerControlReceiptsRejected,0);
       assert.equal(diagnostics.providerControlReceiptsDuplicate,0);
       assert.equal(diagnostics.lastTemplateControlSchema, 'nk1-cognitive-neural-43-v2');
-      assert.match(request.cognitiveControlRequestId,/^[a-f0-9-]{36}:\\d+:\\d+$/i);
+      assert.match(request.cognitiveControlRequestId,/^[a-f0-9-]{36}:\d+:\d+$/i);
       assert.equal(responses[requests.indexOf(request)].providerControlReceipt.requestId,
         request.cognitiveControlRequestId);
 
