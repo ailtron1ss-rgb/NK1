@@ -83,6 +83,7 @@ Trainer не скачивает модели: base model и tokenizer должн
       "schemaVersion": 1,
       "method": "lora",
       "domain": "reasoning",
+      "adapterId": "kurisu-reasoning-v1",
       "baseModelDirectory": "/absolute/path/to/base-model",
       "baseModelFingerprint": "<sha256-from-fingerprint-model>",
       "tokenizerFingerprint": "<sha256-from-fingerprint-tokenizer>",
