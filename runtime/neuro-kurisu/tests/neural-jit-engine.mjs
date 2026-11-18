@@ -428,6 +428,56 @@ assert.equal(sparseResult.accepted, false);
 assert.equal(sparseResult.reason, 'invalid-activation-vector',
   'sparse activation vectors must be rejected rather than silently training on missing values');
 
+// A saturated bounded ledger must fail closed rather than evicting old spent
+// holdout fingerprints and silently allowing those tasks to be tested again.
+const fullLedgerEngine = new NeuralJitEngine({ activationCaptureVerifier: verifier });
+const fullSpentLedger = Array.from({ length: 8_192 }, (_, index) => digest(`spent-holdout-${index}`));
+fullLedgerEngine.restore({
+  version: 1,
+  splitSalt: 'b'.repeat(64),
+  candidates: [],
+  acceptedTraces: 0,
+  rejectedTraces: 0,
+  lastDecision: 'restored',
+  lastDecisionAt: Date.now(),
+  spentHoldoutTaskFingerprints: fullSpentLedger,
+});
+for (let i = 0; i < 120; i += 1) {
+  const trace = await makeTrace(12_000 + i);
+  const result = await fullLedgerEngine.recordVerifiedTrace(trace);
+  assert.equal(result.accepted, true);
+}
+const fullLedgerCandidate = fullLedgerEngine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint });
+assert.ok(fullLedgerCandidate);
+const fullLedgerEvaluation = fullLedgerEngine.evaluateCandidate(fullLedgerCandidate.id);
+assert.equal(fullLedgerEvaluation.status, 'rejected');
+assert.ok(fullLedgerEvaluation.reasons.includes('holdout-evidence-ledger-capacity-exceeded'));
+assert.equal(fullLedgerEngine.diagnostics().holdoutProtection.spentTaskFingerprints, 8_192,
+  'the saturated ledger must not evict old fingerprints to make room for a new evaluation');
+assert.equal(fullLedgerEngine.diagnostics().holdoutProtection.healthy, false);
+
+// A rejected candidate is part of the experiment record. Later candidate
+// compilation must not silently delete it from diagnostics or persistence.
+const historyEngine = new NeuralJitEngine({ activationCaptureVerifier: verifier });
+for (let i = 0; i < 120; i += 1) {
+  const trace = await makeTrace(13_000 + i, { targetResidual: [0, 0] });
+  assert.equal((await historyEngine.recordVerifiedTrace(trace)).accepted, true);
+}
+const rejectedHistoryCandidate = historyEngine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint });
+assert.ok(rejectedHistoryCandidate);
+assert.equal(historyEngine.evaluateCandidate(rejectedHistoryCandidate.id).status, 'rejected');
+for (let i = 0; i < 120; i += 1) {
+  const trace = await makeTrace(14_000 + i, { targetResidual: [0, 0] });
+  assert.equal((await historyEngine.recordVerifiedTrace(trace)).accepted, true);
+}
+const nextHistoryCandidate = historyEngine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint });
+assert.ok(nextHistoryCandidate);
+assert.notEqual(nextHistoryCandidate.id, rejectedHistoryCandidate.id);
+assert.ok(historyEngine.diagnostics().candidates.some(row =>
+  row.id === rejectedHistoryCandidate.id && row.status === 'rejected'),
+  'candidate history must retain rejected experiments until normal bounded eviction');
+assert.equal(historyEngine.persistenceSnapshot().candidates.some(row => row.id === rejectedHistoryCandidate.id), true);
+
 console.log('NEURAL_JIT_ENGINE=PASS');
 console.log(JSON.stringify({
   admittedTraces: engine.diagnostics().acceptedTraces,
