@@ -84,6 +84,20 @@ Trainer не скачивает модели: base model и tokenizer должн
       "method": "lora",
       "domain": "reasoning",
       "adapterId": "kurisu-reasoning-v1",
+      "baseModelId": "kurisu-7b",
+      "backendId": "llama.cpp",
+      "baseModelAlias": "kurisu-base",
+      "servedModelAlias": "kurisu-reasoning-lora",
+      "governance": {
+        "trainingOptIn": true,
+        "privacyReviewed": true,
+        "licenseApproved": true,
+        "piiScreening": "passed",
+        "evidenceCount": 9,
+        "attestedBy": "reviewed-by-operator",
+        "attestedAt": 1800000000000,
+        "licenseId": "documented-approved-license-id"
+      },
       "baseModelDirectory": "/absolute/path/to/base-model",
       "baseModelFingerprint": "<sha256-from-fingerprint-model>",
       "tokenizerFingerprint": "<sha256-from-fingerprint-tokenizer>",
@@ -114,18 +128,22 @@ Trainer не скачивает модели: base model и tokenizer должн
 
 Результат записывается в отдельный adapter-store/<adapterId>: adapter_config.json, adapter_model.safetensors и neuro-plastic-artifact.json. Исходная base model не перезаписывается; её fingerprint вычисляется повторно после тренировки. QLoRA использует 4-bit NF4 и PEFT target_modules="all-linear"; LoRA использует найденные поддерживаемые attention/MLP projection modules.
 
-## 3. Подготовить adapter manifest
+## 3. Зарегистрировать готовый adapter manifest
 
-Создайте отдельный manifest для реестра (не путайте его с trainer input manifest). Скопируйте hashes из neuro-plastic-artifact.json:
+Trainer автоматически пишет рядом с adapter weights файл `neuro-plastic-registry-manifest.json`. В нём уже согласованы base-model ID/backend/base alias, LoRA method/domain, tokenizer/dataset/holdout/corpus fingerprints, registry governance attestation, trainer version/seed, served-model alias и реальные SHA-256/размеры `adapter_config.json` и `adapter_model.safetensors`.
 
-- artifact.configSha256 = artifacts["adapter_config.json"].sha256;
-- artifact.weightsSha256 = artifacts["adapter_model.safetensors"].sha256;
-- artifact.totalBytes = сумма bytes этих двух файлов;
-- baseModel.fingerprint, tokenizerFingerprint, sourceDatasetFingerprint, holdoutPlanFingerprint, corpusFingerprint должны совпадать с исходными inputs; эти значения записываются и в neuro-plastic-artifact.json;
-- artifact.directory должен быть строго adapter-store/<adapterId>;
-- servedModelAlias — alias, который вы реально предварительно загрузили в локальном llama.cpp-compatible server.
+После успешного обучения проверьте этот manifest и убедитесь, что:
 
-Governance поля подтверждаются отдельно. Не ставьте trainingOptIn/privacyReviewed/licenseApproved в true автоматически и не подменяйте реальную лицензионную проверку тестовыми значениями.
+- `baseModel.servedModelAlias` — тот же alias, который реально обслуживает выбранную базовую модель в локальном backend;
+- `servedModelAlias` — заранее загруженный adapter alias, а не alias, который backend должен автоматически угадать;
+- все governance поля подтверждают реальный opt-in, privacy review, license review и screening. Trainer требует эти поля до обучения и копирует их в отдельный registry manifest и artifact metadata;
+- output каталог совпадает с `adapter-store/<adapterId>`, а hashes совпадают с реальными файлами.
+
+Вместо ручной сборки JSON выполните stage:
+
+    node --experimental-strip-types scripts/neuro_plastic_registry.mjs stage --input adapter-store/kurisu-reasoning-v1/neuro-plastic-registry-manifest.json
+
+Команда повторно хеширует файлы и проверяет metadata перед созданием записи `staged`. Она не оценивает candidate и не активирует его. Следом передайте подписанные независимым evaluator результаты holdout по инструкции ниже.
 
 ## 4. Независимая оценка и подписание результата
 
