@@ -10,7 +10,7 @@ assert.match(runtime, /proposeHyperPlasticShadowCandidate\(cycle, internalAction
 assert.match(runtime, /activation: 'shadow-only'/);
 assert.match(core, /cognitiveBudgetEstimateCost\(/);
 assert.match(core, /b292CognitiveStateBusSnapshot\(\)/);
-assert.match(runtime, /enabled: true;/);
+assert.match(runtime, /hyperPlasticResearch\?\.enabled === true/);
 assert.match(runtime, /ome26-requires-real-sha256-base-model-fingerprint/);
 assert.match(runtime, /cadenceTicks < 8/);
 assert.match(runtime, /minNovelty01/);
