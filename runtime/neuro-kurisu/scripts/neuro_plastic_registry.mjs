@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { verifyNeuroPlasticAdapterArtifact } from '../src/organism/learning/NeuroPlasticArtifactVerifier.ts';
 import {
   NeuroPlasticAdapterRegistry,
   createNeuroPlasticApprovalSignature,
@@ -92,52 +93,6 @@ async function assertNoSymlinkAncestors(targetPath) {
   }
 }
 
-async function verifyArtifact(manifest) {
-  const directory = String(manifest?.artifact?.directory || '');
-  if (!directory.startsWith('adapter-store/') || directory.includes('\\') ||
-      directory.split('/').some(part => !part || part === '.' || part === '..')) {
-    throw new Error('adapter-artifact-path-invalid');
-  }
-  const storeRoot = path.resolve(ROOT, 'adapter-store');
-  const adapterDirectory = path.resolve(ROOT, directory);
-  const relative = path.relative(storeRoot, adapterDirectory);
-  if (relative !== manifest.adapterId) throw new Error('adapter-artifact-directory-must-match-adapter-id');
-  await assertNoSymlinkAncestors(adapterDirectory);
-  const storeStat = await lstat(storeRoot);
-  if (storeStat.isSymbolicLink() || !storeStat.isDirectory()) throw new Error('adapter-store-root-not-regular');
-  const directoryStat = await lstat(adapterDirectory);
-  if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) throw new Error('adapter-artifact-directory-not-regular');
-  const configPath = path.join(adapterDirectory, 'adapter_config.json');
-  const weightsPath = path.join(adapterDirectory, 'adapter_model.safetensors');
-  const metadataPath = path.join(adapterDirectory, 'neuro-plastic-artifact.json');
-  for (const filePath of [configPath, weightsPath, metadataPath]) {
-    const info = await lstat(filePath);
-    if (info.isSymbolicLink() || !info.isFile()) throw new Error('adapter-artifact-file-not-regular');
-  }
-  const [config, weights, metadata] = await Promise.all([
-    readFile(configPath),
-    readFile(weightsPath),
-    readJson(metadataPath),
-  ]);
-  const configSha256 = createHash('sha256').update(config).digest('hex');
-  const weightsSha256 = createHash('sha256').update(weights).digest('hex');
-  const totalBytes = config.byteLength + weights.byteLength;
-  if (configSha256 !== String(manifest.artifact.configSha256).toLowerCase() ||
-      weightsSha256 !== String(manifest.artifact.weightsSha256).toLowerCase() ||
-      totalBytes !== manifest.artifact.totalBytes) {
-    throw new Error('adapter-artifact-hash-or-size-mismatch');
-  }
-  if (metadata.schemaVersion !== 1 || metadata.automaticActivation !== false ||
-      metadata.adapterId !== manifest.adapterId ||
-      metadata.domain !== manifest.domain || metadata.method !== manifest.method ||
-      metadata.baseModelFingerprint !== manifest.baseModel?.fingerprint ||
-      metadata.tokenizerFingerprint !== manifest.tokenizerFingerprint ||
-      metadata.sourceDatasetFingerprint !== manifest.sourceDatasetFingerprint ||
-      metadata.holdoutPlanFingerprint !== manifest.holdoutPlanFingerprint ||
-      metadata.corpusFingerprint !== manifest.corpusFingerprint) {
-    throw new Error('adapter-training-metadata-does-not-match-manifest');
-  }
-}
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
@@ -170,7 +125,9 @@ async function main() {
   if (options.operation === 'stage') {
     if (!options.input) throw new Error('--input-manifest-required');
     const manifest = await readJson(path.resolve(options.input));
-    await verifyArtifact(manifest);
+    if (!await verifyNeuroPlasticAdapterArtifact(ROOT, manifest)) {
+      throw new Error('adapter-artifact-integrity-verification-failed');
+    }
     registry.stage(manifest);
     await atomicWrite(registryFile, registry.snapshot());
   } else if (options.operation === 'evaluate') {
