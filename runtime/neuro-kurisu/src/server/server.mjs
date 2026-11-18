@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { URL } from 'node:url';
-import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename, unlink, lstat } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -122,6 +122,10 @@ function consumeRateLimit(req, pathName) {
 }
 const VISION_BACKEND = VISION_ENABLED && process.env.GEMINI_API_KEY ? new GeminiVisionSemanticBackend({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash', timeoutMs: Number(process.env.GEMINI_VISION_TIMEOUT_MS || 12000), maxImageBytes: Number(process.env.GEMINI_VISION_MAX_IMAGE_BYTES || 8000000) }) : undefined;
 await mkdir(STATE, { recursive: true });
+const stateDirectoryInfo = await lstat(STATE);
+if (stateDirectoryInfo.isSymbolicLink() || !stateDirectoryInfo.isDirectory()) {
+    throw new Error('neuro-state-directory-must-be-a-regular-directory');
+}
 const lock = new ProcessLock(path.join(STATE, 'organism-runtime.lock'));
 await lock.acquire();
 
@@ -132,6 +136,15 @@ const NEURO_PLASTIC_REGISTRY_PATH = path.resolve(
 const registryRelativePath = path.relative(STATE, NEURO_PLASTIC_REGISTRY_PATH);
 if (registryRelativePath === '..' || registryRelativePath.startsWith('..' + path.sep) || path.isAbsolute(registryRelativePath)) {
     throw new Error('neuro-plastic-registry-file-must-remain-under-state-dir');
+}
+try {
+    const registryFileInfo = await lstat(NEURO_PLASTIC_REGISTRY_PATH);
+    if (registryFileInfo.isSymbolicLink() || !registryFileInfo.isFile()) {
+        throw new Error('neuro-plastic-registry-file-must-be-regular');
+    }
+}
+catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
 }
 const NEURO_PLASTIC_APPROVAL_SECRET = String(process.env.NEURO_PLASTIC_APPROVAL_SECRET || '');
 const NEURO_PLASTIC_EVALUATOR_SECRET = String(process.env.NEURO_PLASTIC_EVALUATOR_SECRET || '');
@@ -157,12 +170,18 @@ let neuroPlasticPersistQueue = Promise.resolve();
 async function persistNeuroPlasticRegistry() {
     const write = async () => {
         const temporaryPath = NEURO_PLASTIC_REGISTRY_PATH + '.' + process.pid + '.' + randomUUID() + '.tmp';
-        await writeFile(temporaryPath, JSON.stringify(NEURO_PLASTIC_REGISTRY.snapshot(), null, 2) + '\n', {
-            encoding: 'utf8',
-            mode: 0o600,
-            flag: 'wx',
-        });
-        await rename(temporaryPath, NEURO_PLASTIC_REGISTRY_PATH);
+        try {
+            await writeFile(temporaryPath, JSON.stringify(NEURO_PLASTIC_REGISTRY.snapshot(), null, 2) + '\n', {
+                encoding: 'utf8',
+                mode: 0o600,
+                flag: 'wx',
+            });
+            await rename(temporaryPath, NEURO_PLASTIC_REGISTRY_PATH);
+        }
+        catch (error) {
+            try { await unlink(temporaryPath); } catch { /* Temporary file already absent. */ }
+            throw error;
+        }
     };
     neuroPlasticPersistQueue = neuroPlasticPersistQueue.catch(() => {}).then(write);
     return neuroPlasticPersistQueue;
