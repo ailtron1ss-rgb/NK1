@@ -198,6 +198,17 @@ export class OrganismRuntime {
     providerControlReceiptsAccepted:0,
     providerControlReceiptsRejected:0,
     providerControlReceiptsDuplicate:0,
+    providerUsageObservations:0,
+    providerUsageUnavailable:0,
+    providerUsageInvalid:0,
+    providerPromptTokensTotal:0,
+    providerCompletionTokensTotal:0,
+    providerTotalTokensTotal:0,
+    providerCompletionBudgetUtilizationMean:0,
+    providerCompletionBudgetExceeded:0,
+    lastProviderPromptTokens:null as number|null,
+    lastProviderCompletionTokens:null as number|null,
+    lastProviderTotalTokens:null as number|null,
     templateConsumptionVerified:false as const,
     lastTemplateControlSchema:null as string|null,
     lastTemplateProfileFingerprint:null as string|null,
@@ -679,6 +690,33 @@ export class OrganismRuntime {
     this.cognitiveToNeuralBridgeMetrics.llamaCppTemplateKwargsSent+=1;
     this.cognitiveToNeuralBridgeMetrics.lastTemplateControlSchema=receipt.featureSchema;
     this.cognitiveToNeuralBridgeMetrics.lastTemplateProfileFingerprint=expectedFingerprint;
+    const usage=response.providerUsage;
+    let usageEvidence:Record<string,number>|undefined;
+    if(!usage) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageUnavailable+=1;
+    } else if(
+      Number.isSafeInteger(usage.promptTokens) && usage.promptTokens>=0 &&
+      Number.isSafeInteger(usage.completionTokens) && usage.completionTokens>=0 &&
+      Number.isSafeInteger(usage.totalTokens) && usage.totalTokens>=usage.promptTokens+usage.completionTokens
+    ) {
+      const observations=this.cognitiveToNeuralBridgeMetrics.providerUsageObservations;
+      this.cognitiveToNeuralBridgeMetrics.providerUsageObservations+=1;
+      this.cognitiveToNeuralBridgeMetrics.providerPromptTokensTotal+=usage.promptTokens;
+      this.cognitiveToNeuralBridgeMetrics.providerCompletionTokensTotal+=usage.completionTokens;
+      this.cognitiveToNeuralBridgeMetrics.providerTotalTokensTotal+=usage.totalTokens;
+      this.cognitiveToNeuralBridgeMetrics.lastProviderPromptTokens=usage.promptTokens;
+      this.cognitiveToNeuralBridgeMetrics.lastProviderCompletionTokens=usage.completionTokens;
+      this.cognitiveToNeuralBridgeMetrics.lastProviderTotalTokens=usage.totalTokens;
+      const utilization=usage.completionTokens/Math.max(1,profile.maxTokens);
+      this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean=
+        (this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean*observations+utilization)/(observations+1);
+      if(usage.completionTokens>profile.maxTokens)
+        this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetExceeded+=1;
+      usageEvidence={promptTokens:usage.promptTokens,completionTokens:usage.completionTokens,totalTokens:usage.totalTokens,
+        configuredMaxTokens:profile.maxTokens,completionBudgetUtilization:utilization};
+    } else {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
+    }
     this.evidenceBus.publish({
       tick:profile.tick,
       kind:'model',
@@ -690,6 +728,7 @@ export class OrganismRuntime {
         requestId,
         profileFingerprint:expectedFingerprint,
         featureSchema:receipt.featureSchema,
+        ...(usageEvidence ? {providerUsage:usageEvidence} : {}),
         templateConsumptionVerified:false,
         activationSteeringApplied:false,
         residualBlockApplied:false,
