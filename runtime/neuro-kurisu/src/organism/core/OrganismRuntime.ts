@@ -1469,8 +1469,19 @@ export class OrganismRuntime {
         try {
           expectedAnchor = await replayAnchorStore.read(manifest.id);
         } catch {
-          this.synapticMatrix.markReplayAnchorUntrusted(manifest.id);
-          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+          const currentRecord = this.synapticMatrix.snapshot().adapters.find(
+            entry => entry.candidate.id === manifest.id,
+          );
+          const hasPriorActivationEvidence = Boolean(currentRecord && (
+            currentRecord.status === 'active' ||
+            currentRecord.status === 'quarantined' ||
+            Boolean(currentRecord.manifest) ||
+            (currentRecord.acceptedReportCount ?? 0) > 0
+          ));
+          if (hasPriorActivationEvidence) {
+            this.synapticMatrix.markReplayAnchorUntrusted(manifest.id);
+            await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+          }
           throw new Error('synaptic-adapter-replay-anchor-unavailable');
         }
         if (!this.synapticMatrix.reconcileReplayAnchor(manifest.id, expectedAnchor)) {
