@@ -159,6 +159,15 @@ assert.equal(registry.select({
   confidence01: 0.9,
   risk01: 0.1,
 }).useAdapter, false, 'unsupported backends must use the base model');
+assert.equal(registry.select({
+  domain: 'reasoning',
+  backendId: 'llama.cpp',
+  baseModelAlias: 'different-base-alias',
+  baseModelFingerprint: hash('a'),
+  backendSupportsModelAliases: true,
+  confidence01: 0.9,
+  risk01: 0.1,
+}).useAdapter, false, 'an adapter must never attach to an alias other than its attested base-model alias');
 
 const unsafeRegistry = new NeuroPlasticAdapterRegistry();
 unsafeRegistry.stage(manifest('kurisu-unsafe-v1'));
