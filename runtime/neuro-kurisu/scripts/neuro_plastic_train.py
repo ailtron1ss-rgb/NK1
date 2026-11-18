@@ -385,6 +385,46 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
     }
 
 
+def build_registry_manifest(
+    validated: dict[str, Any],
+    artifact_hashes: dict[str, dict[str, Any]],
+    completed_at: int,
+) -> dict[str, Any]:
+    manifest = validated["manifest"]
+    config = artifact_hashes["adapter_config.json"]
+    weights = artifact_hashes["adapter_model.safetensors"]
+    return {
+        "schemaVersion": 1,
+        "adapterId": validated["adapterId"],
+        "domain": validated["domain"],
+        "method": validated["method"],
+        "baseModel": {
+            "id": validated["baseModelId"],
+            "backendId": validated["backendId"],
+            "servedModelAlias": validated["baseModelAlias"],
+            "fingerprint": validated["baseFingerprint"],
+        },
+        "tokenizerFingerprint": validated["tokenizerFingerprint"],
+        "sourceDatasetFingerprint": validated["sourceDatasetFingerprint"],
+        "holdoutPlanFingerprint": validated["holdoutPlanFingerprint"],
+        "corpusFingerprint": validated["corpusFingerprint"],
+        "artifact": {
+            "directory": manifest["outputDirectory"],
+            "configSha256": config["sha256"],
+            "weightsSha256": weights["sha256"],
+            "totalBytes": config["bytes"] + weights["bytes"],
+        },
+        "trainer": {
+            "name": "neuro-plastic-trainer",
+            "version": "1.1.0",
+            "seed": manifest["seed"],
+            "completedAt": completed_at,
+        },
+        "governance": validated["governance"],
+        "servedModelAlias": validated["servedModelAlias"],
+    }
+
+
 def _tokenize_rows(rows: list[dict[str, str]], tokenizer: Any, max_length: int) -> Any:
     from datasets import Dataset
 
@@ -619,39 +659,7 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
             json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + "\n",
             encoding="utf-8",
         )
-        registry_manifest = {
-            "schemaVersion": 1,
-            "adapterId": validated["adapterId"],
-            "domain": validated["domain"],
-            "method": method,
-            "baseModel": {
-                "id": validated["baseModelId"],
-                "backendId": validated["backendId"],
-                "servedModelAlias": validated["baseModelAlias"],
-                "fingerprint": validated["baseFingerprint"],
-            },
-            "tokenizerFingerprint": validated["tokenizerFingerprint"],
-            "sourceDatasetFingerprint": validated["sourceDatasetFingerprint"],
-            "holdoutPlanFingerprint": validated["holdoutPlanFingerprint"],
-            "corpusFingerprint": validated["corpusFingerprint"],
-            "artifact": {
-                "directory": manifest["outputDirectory"],
-                "configSha256": artifact_hashes["adapter_config.json"]["sha256"],
-                "weightsSha256": artifact_hashes["adapter_model.safetensors"]["sha256"],
-                "totalBytes": (
-                    artifact_hashes["adapter_config.json"]["bytes"] +
-                    artifact_hashes["adapter_model.safetensors"]["bytes"]
-                ),
-            },
-            "trainer": {
-                "name": "neuro-plastic-trainer",
-                "version": "1.1.0",
-                "seed": manifest["seed"],
-                "completedAt": int(time.time() * 1000),
-            },
-            "governance": validated["governance"],
-            "servedModelAlias": validated["servedModelAlias"],
-        }
+        registry_manifest = build_registry_manifest(validated, artifact_hashes, int(time.time() * 1000))
         (staging / "neuro-plastic-registry-manifest.json").write_text(
             json.dumps(registry_manifest, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + "\n",
             encoding="utf-8",
