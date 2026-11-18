@@ -15,6 +15,8 @@ on:
       - "runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
+      - "app/package.json"
+      - "app/package-lock.json"
       - ".github/workflows/neural-jit-validation.yml"
       - ".nvmrc"
   workflow_dispatch:
@@ -38,7 +40,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+          cache-dependency-path: |
+            app/package-lock.json
+            runtime/neuro-kurisu/package-lock.json
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Install locked runtime dependencies
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Runtime semantic and syntax typecheck
