@@ -18,6 +18,7 @@ export interface LocalChatCompletionResponse {
   model: string;
   latencyMs: number;
   providerUsage?: { promptTokens:number; completionTokens:number; totalTokens:number };
+  providerFinishReason?: 'stop'|'length'|'tool_calls'|'content_filter'|'function_call';
   providerControlReceipt?: {
     provider:'llama.cpp'; templateKwargsSent:true; featureSchema:string;
     requestId:string; profileFingerprint:string;
@@ -215,7 +216,7 @@ export class OpenAICompatibleLocalChatProvider {
       throw error;
     }
     let payload: {
-      choices?: Array<{ message?: { content?: unknown } }>;
+      choices?: Array<{ message?: { content?: unknown }; finish_reason?: unknown }>;
       model?: unknown;
       error?: unknown;
       usage?: { prompt_tokens?: unknown; completion_tokens?: unknown; total_tokens?: unknown };
@@ -223,6 +224,11 @@ export class OpenAICompatibleLocalChatProvider {
     try { payload = JSON.parse(rawPayload) as typeof payload; } catch { throw new Error('llama.cpp-invalid-json'); }
     const text = extractText(payload?.choices?.[0]?.message?.content);
     if (!text) throw new Error('llama.cpp-empty-response');
+    const rawFinishReason=payload?.choices?.[0]?.finish_reason;
+    const providerFinishReason=rawFinishReason==='stop'||rawFinishReason==='length'
+      ||rawFinishReason==='tool_calls'||rawFinishReason==='content_filter'
+      ||rawFinishReason==='function_call'
+      ? rawFinishReason : undefined;
     const model = String(payload?.model ?? this.model).slice(0, 160);
     const usageCount=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0&&value<=1_000_000?value:null;
     const usagePayload=payload?.usage && typeof payload.usage==='object' ? payload.usage : undefined;
@@ -247,6 +253,7 @@ export class OpenAICompatibleLocalChatProvider {
       model,
       latencyMs: Math.max(0, Date.now() - startedAt),
       ...(providerUsage ? {providerUsage} : {}),
+      ...(providerFinishReason ? {providerFinishReason} : {}),
       ...(templateKwargs && request.cognitiveControlRequestId && profileFingerprint ? {
         providerControlReceipt:{
           provider:'llama.cpp' as const,
