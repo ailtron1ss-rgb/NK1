@@ -209,6 +209,13 @@ const P25_EXECUTOR_ENABLED =
     /^[a-f0-9]{64}$/.test(P25_BASE_MODEL_SHA256) &&
     P25_POLICY_SECRET.length >= 32 &&
     /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(P25_POLICY_KEY_ID);
+const P25_TASK_TO_CANONICAL_DOMAIN = Object.freeze({
+    language: 'language',
+    reasoning: 'reasoning',
+    planning: 'planning',
+    vision: 'vision',
+    audio: 'audio',
+});
 
 function verifyP25SynapticPolicy(canonicalPayload, signature, signerKeyId) {
     if (!P25_EXECUTOR_ENABLED || signerKeyId !== P25_POLICY_KEY_ID ||
@@ -248,7 +255,10 @@ async function invokeCanonicalSynapticAdapter(request, candidate, routing) {
         return baseFallback('canonical-adapter-not-registered');
     }
 
+    const expectedDomain = P25_TASK_TO_CANONICAL_DOMAIN[routing.task];
     const manifestMatchesP25 =
+        typeof expectedDomain === 'string' &&
+        manifest.domain === expectedDomain &&
         manifest.adapterId === candidate.id &&
         manifest.baseModel.id === candidate.baseModelId &&
         manifest.baseModel.fingerprint.toLowerCase() === candidate.baseModelRevisionSha256.toLowerCase() &&
@@ -266,7 +276,7 @@ async function invokeCanonicalSynapticAdapter(request, candidate, routing) {
     }
 
     const response = await NEURO_PLASTIC_INFERENCE.generate(request, {
-        domain: manifest.domain,
+        domain: expectedDomain,
         backendId: manifest.baseModel.backendId,
         baseModelFingerprint: manifest.baseModel.fingerprint,
         baseModelAlias: manifest.baseModel.servedModelAlias,
