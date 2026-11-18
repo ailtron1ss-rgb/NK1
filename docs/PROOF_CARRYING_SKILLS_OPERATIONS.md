@@ -51,7 +51,7 @@ The contract is included in the candidate payload fingerprint. A code, schema, t
 5. Send the payload to the external competence attestor. The external authority signs the canonical payload. NK1 does not hold or expose a production signing helper or private key.
 6. Return the signed artifact through OrganismCore.attachVerifiedSkillCompetenceProof(...). The P23 facade forwards it to the same canonical store, which verifies the signature and exact candidate/evidence bindings.
 7. Promote only through the existing authenticated human/approval authority. approveAndPromote refuses proof-carrying candidates without a current valid proof.
-8. Register the resulting active skill/tool with requiresSkillCompetenceProof=true and the signed proof. The ActionGateway resolver must point to the same versioned P23 store used by OrganismCore.
+8. Register the resulting active skill/tool with requiresSkillCompetenceProof=true and skillCompetenceSkillId set to the canonical P23 skill ID. OrganismCore wires ActionGateway to the same versioned P23 store, so the gateway resolves the latest active signed proof at invocation time. Static skillCompetenceProof attachment remains supported for explicitly version-pinned integrations; live resolution is preferred for continuously maintained skills.
 
 A new shadow receipt changes the evidence-set digest and automatically invalidates the previous proof. Rebuild and re-attest; never silently renew or reuse it.
 

@@ -156,6 +156,8 @@ export interface ActionGatewayConfig {
   currentSkillCompetenceEnvironmentFingerprint?: () => string | null;
   /** Must resolve the currently active P23 subject. Missing resolver means deny. */
   resolveActiveSkillCompetenceSubject?: (skillId: string) => SkillCompetenceActiveSubject | null;
+  /** Resolve the latest certificate directly from the canonical P23 store at invocation time. */
+  resolveActiveSkillCompetenceProof?: (skillId: string) => SignedSkillCompetenceProof | null;
   /** Host-owned evaluator for stable precondition/constraint IDs in the signed contract. */
   evaluateSkillCompetenceCondition?: (conditionId: string, input: Record<string, unknown>, context: SkillCompetenceConditionContext) => boolean;
   skillCompetenceNow?: () => number;
@@ -201,6 +203,8 @@ export interface ToolDefinition {
   skillCompetenceProof?: SignedSkillCompetenceProof;
   /** Opt-in fail-closed admission for tools invoked by learned skills. */
   requiresSkillCompetenceProof?: boolean;
+  /** P23 skill ID for live proof resolution; avoids embedding a stale certificate in tool registration. */
+  skillCompetenceSkillId?: string;
 }
 export interface ToolExecution {
   ok:boolean; verified:boolean; executionId:string; tool:string; capability:string;
@@ -317,6 +321,7 @@ export class ActionGateway {
   private currentSkillCompetenceRuntimeFingerprint?: () => string | null;
   private currentSkillCompetenceEnvironmentFingerprint?: () => string | null;
   private resolveActiveSkillCompetenceSubject?: (skillId: string) => SkillCompetenceActiveSubject | null;
+  private resolveActiveSkillCompetenceProof?: (skillId: string) => SignedSkillCompetenceProof | null;
   private evaluateSkillCompetenceCondition?: (conditionId: string, input: Record<string, unknown>, context: SkillCompetenceConditionContext) => boolean;
   private skillCompetenceNow: () => number;
   private skillCompetenceVerifierConfigured = false;
@@ -337,19 +342,20 @@ export class ActionGateway {
     this.currentSkillCompetenceRuntimeFingerprint = config.currentSkillCompetenceRuntimeFingerprint;
     this.currentSkillCompetenceEnvironmentFingerprint = config.currentSkillCompetenceEnvironmentFingerprint;
     this.resolveActiveSkillCompetenceSubject = config.resolveActiveSkillCompetenceSubject;
+    this.resolveActiveSkillCompetenceProof = config.resolveActiveSkillCompetenceProof;
     this.evaluateSkillCompetenceCondition = config.evaluateSkillCompetenceCondition;
     this.skillCompetenceNow = config.skillCompetenceNow ?? (() => Date.now());
     this.skillCompetenceVerifierConfigured = Boolean(
       config.skillCompetenceVerifierKeys || config.currentSkillCompetenceRuntimeFingerprint ||
       config.currentSkillCompetenceEnvironmentFingerprint || config.resolveActiveSkillCompetenceSubject ||
-      config.evaluateSkillCompetenceCondition || config.skillCompetenceNow,
+      config.resolveActiveSkillCompetenceProof || config.evaluateSkillCompetenceCondition || config.skillCompetenceNow,
     );
   }
 
   configureSkillCompetenceProofVerifier(config: Pick<ActionGatewayConfig,
     'skillCompetenceVerifierKeys' | 'currentSkillCompetenceRuntimeFingerprint' |
     'currentSkillCompetenceEnvironmentFingerprint' | 'resolveActiveSkillCompetenceSubject' |
-    'evaluateSkillCompetenceCondition' | 'skillCompetenceNow'>): void {
+    'resolveActiveSkillCompetenceProof' | 'evaluateSkillCompetenceCondition' | 'skillCompetenceNow'>): void {
     if (this.skillCompetenceVerifierConfigured) throw new Error('skill-competence-verifier-already-configured');
     this.skillCompetenceVerifierKeys = new Map(config.skillCompetenceVerifierKeys ?? []);
     this.currentSkillCompetenceRuntimeFingerprint = config.currentSkillCompetenceRuntimeFingerprint;
@@ -636,7 +642,7 @@ export class ActionGateway {
       id:t.id,capability:t.capability,destructive:t.destructive,projectAllowed:Boolean(t.projectAllowed),
       hasInputContract:Boolean(t.inputContract),inputSchema:t.inputContract?structuredClone(t.inputContract):undefined,
       hasOutputContract:Boolean(t.outputContract),outputSchema:t.outputContract?structuredClone(t.outputContract):undefined,
-      permissionClass:t.permissionClass??inferPermissionClass(t.id,t.capability)??'none',requiresApproval:Boolean(t.permissionClass??inferPermissionClass(t.id,t.capability)),hasAvailabilityGate:Boolean(t.availability),hasCompetenceGate:Boolean(t.competence),hasOutcomeVerifier:Boolean(t.verify),hasReceiptReconciliation:Boolean(t.reconcile),requiresIdempotencyKey:requiresDurableIdempotency(t),hasSkillCompetenceProof:Boolean(t.skillCompetenceProof),requiresSkillCompetenceProof:Boolean(t.requiresSkillCompetenceProof),
+      permissionClass:t.permissionClass??inferPermissionClass(t.id,t.capability)??'none',requiresApproval:Boolean(t.permissionClass??inferPermissionClass(t.id,t.capability)),hasAvailabilityGate:Boolean(t.availability),hasCompetenceGate:Boolean(t.competence),hasOutcomeVerifier:Boolean(t.verify),hasReceiptReconciliation:Boolean(t.reconcile),requiresIdempotencyKey:requiresDurableIdempotency(t),hasSkillCompetenceProof:Boolean(t.skillCompetenceProof),requiresSkillCompetenceProof:Boolean(t.requiresSkillCompetenceProof || t.skillCompetenceSkillId),skillCompetenceSkillId:t.skillCompetenceSkillId,
     }));
   }
 
@@ -649,7 +655,7 @@ export class ActionGateway {
     const tools=[...this.tools.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(tool=>{
       const permissionClass=tool.permissionClass??inferPermissionClass(tool.id,tool.capability)??null;
       const durableReceiptRequired=requiresDurableIdempotency(tool);
-      const skillCompetenceRequired=Boolean(tool.requiresSkillCompetenceProof || tool.skillCompetenceProof);
+      const skillCompetenceRequired=Boolean(tool.requiresSkillCompetenceProof || tool.skillCompetenceProof || tool.skillCompetenceSkillId);
       const highRisk=tool.destructive || durableReceiptRequired || skillCompetenceRequired ||
         (permissionClass!==null && ['device','filesystem','code','system','self-modification'].includes(permissionClass));
       const required={
@@ -668,8 +674,9 @@ export class ActionGateway {
         durableReceipt:Boolean(this.executionLedgerPersister),
         independentVerifier:Boolean(tool.verify),
         providerReconciliation:Boolean(tool.reconcile),
-        skillCompetenceProof:Boolean(tool.skillCompetenceProof) && this.skillCompetenceVerifierKeys.size > 0 &&
-          Boolean(this.currentSkillCompetenceRuntimeFingerprint && this.currentSkillCompetenceEnvironmentFingerprint && this.resolveActiveSkillCompetenceSubject),
+        skillCompetenceProof:(Boolean(tool.skillCompetenceProof) || Boolean(tool.skillCompetenceSkillId && this.resolveActiveSkillCompetenceProof)) &&
+          this.skillCompetenceVerifierKeys.size > 0 && Boolean(this.currentSkillCompetenceRuntimeFingerprint &&
+          this.currentSkillCompetenceEnvironmentFingerprint && this.resolveActiveSkillCompetenceSubject),
       };
       const gaps=Object.keys(required).filter(key=>required[key as keyof typeof required] && !present[key as keyof typeof present]);
       return {
@@ -1093,14 +1100,17 @@ export class ActionGateway {
     // A proof-required skill is not authorized by heuristic confidence alone. The
     // signed certificate must match the active P23 subject, exact tool/contracts,
     // host runtime/environment identities, and the requested execution mode.
-    if (tool.requiresSkillCompetenceProof === true || tool.skillCompetenceProof !== undefined) {
+    if (tool.requiresSkillCompetenceProof === true || tool.skillCompetenceProof !== undefined || tool.skillCompetenceSkillId !== undefined) {
+      let competenceProof: SignedSkillCompetenceProof | null = tool.skillCompetenceProof ?? null;
+      const skillId = tool.skillCompetenceSkillId ?? tool.skillCompetenceProof?.payload?.skillId ?? '';
       let runtimeFingerprint: string | null = null;
       let environmentFingerprint: string | null = null;
       let activeSubject: SkillCompetenceActiveSubject | null = null;
       try {
         runtimeFingerprint = this.currentSkillCompetenceRuntimeFingerprint?.() ?? null;
         environmentFingerprint = this.currentSkillCompetenceEnvironmentFingerprint?.() ?? null;
-        activeSubject = this.resolveActiveSkillCompetenceSubject?.(tool.skillCompetenceProof?.payload?.skillId ?? '') ?? null;
+        if (!competenceProof && skillId) competenceProof = this.resolveActiveSkillCompetenceProof?.(skillId) ?? null;
+        activeSubject = skillId ? this.resolveActiveSkillCompetenceSubject?.(skillId) ?? null : null;
       } catch {
         return this.result(id, tool.capability, 'skill-competence-context-unavailable', 'competence-insufficient', executionId,
           { error: 'skill-competence-context-unavailable' }, 'trusted current skill/runtime/environment context is unavailable');
@@ -1111,7 +1121,7 @@ export class ActionGateway {
         return this.result(id, tool.capability, 'skill-competence-clock-unavailable', 'competence-insufficient', executionId,
           { error: 'skill-competence-clock-unavailable' }, 'trusted competence clock is unavailable');
       }
-      const proofCheck = verifySkillCompetenceProofForTool(tool.skillCompetenceProof, {
+      const proofCheck = verifySkillCompetenceProofForTool(competenceProof, {
         trustedAttestorKeys: this.skillCompetenceVerifierKeys,
         toolId: id,
         capability: tool.capability,

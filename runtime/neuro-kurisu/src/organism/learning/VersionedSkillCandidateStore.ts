@@ -255,6 +255,18 @@ export class VersionedSkillCandidateStore {
 
   snapshot(): VersionedSkillStoreSnapshot { return clone(this.readTrustedSnapshot()); }
 
+  /** Return a detached proof only for the exact current active candidate and its verified live evidence set. */
+  resolveActiveSkillCompetenceProof(skillId: string): SignedSkillCompetenceProof | null {
+    if (typeof skillId !== 'string' || !skillId.trim()) return null;
+    const current = this.readTrustedSnapshot();
+    const active = current.candidates.find(item => item.skillId === skillId && item.status === 'active');
+    if (!active?.competenceProof) return null;
+    let verified = false;
+    try { verified = this.verifyCompetenceProof(clone(active.competenceProof), clone(active), 'promotion'); }
+    catch { verified = false; }
+    return verified === true ? clone(active.competenceProof) : null;
+  }
+
   /** Resolve only the current, unexpired, signed active P23 candidate. */
   resolveActiveSkillCompetenceSubject(skillId: string): { candidateId: string; version: number; payloadFingerprint: string; proofId: string } | null {
     const current = this.readTrustedSnapshot();

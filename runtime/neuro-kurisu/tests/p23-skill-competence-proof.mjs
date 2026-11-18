@@ -366,6 +366,7 @@ function buildGateway(options = {}) {
     currentSkillCompetenceRuntimeFingerprint: () => options.runtimeFingerprint === undefined ? runtimeFingerprint : options.runtimeFingerprint,
     currentSkillCompetenceEnvironmentFingerprint: () => options.environmentFingerprint === undefined ? environmentFingerprint : options.environmentFingerprint,
     resolveActiveSkillCompetenceSubject: () => options.activeSubject ?? store.resolveActiveSkillCompetenceSubject(skillId),
+    resolveActiveSkillCompetenceProof: requestedSkillId => requestedSkillId === skillId ? store.resolveActiveSkillCompetenceProof(requestedSkillId) : null,
     evaluateSkillCompetenceCondition: (conditionId, _input, context) =>
       options.rejectCondition ? false :
         (context.kind === 'precondition' && conditionId === 'precondition.safe-read') ||
@@ -393,6 +394,36 @@ const valid = buildGateway();
 const validResult = await valid.gateway.executeTool(skillId, { query: 'memory' }, 'proof-admission-valid');
 assert.equal(validResult.outcomeClass, 'executed-unverified');
 assert.equal(valid.executorCalls(), 1, 'only a correctly attested in-scope proof reaches the executor');
+
+// Canonical integration: do not embed a certificate in ToolDefinition. At the
+// execution boundary the gateway resolves the latest active proof from P23 itself.
+const liveProofGateway = new ActionGateway();
+liveProofGateway.configureSkillCompetenceProofVerifier({
+  skillCompetenceVerifierKeys: trustedAttestorKeys,
+  currentSkillCompetenceRuntimeFingerprint: () => runtimeFingerprint,
+  currentSkillCompetenceEnvironmentFingerprint: () => environmentFingerprint,
+  resolveActiveSkillCompetenceSubject: requestedSkillId => store.resolveActiveSkillCompetenceSubject(requestedSkillId),
+  resolveActiveSkillCompetenceProof: requestedSkillId => store.resolveActiveSkillCompetenceProof(requestedSkillId),
+  evaluateSkillCompetenceCondition: () => true,
+});
+let liveProofExecutorCalls = 0;
+liveProofGateway.registerTool({
+  id: skillId,
+  capability: contract.capability,
+  permissionClass: 'none',
+  destructive: false,
+  requiresSkillCompetenceProof: true,
+  skillCompetenceSkillId: skillId,
+  inputContract,
+  outputContract,
+  execute: async () => { liveProofExecutorCalls += 1; return { ok: true }; },
+});
+const liveProofResult = await liveProofGateway.executeTool(skillId, { query: 'memory' }, 'proof-admission-live-p23');
+assert.equal(liveProofResult.outcomeClass, 'executed-unverified');
+assert.equal(liveProofExecutorCalls, 1, 'the gateway obtains the current signed proof directly from the canonical active P23 store');
+const liveReport = liveProofGateway.toolGovernanceReport().tools[0];
+assert.equal(liveReport.present.skillCompetenceProof, true,
+  'the governance report recognises a configured live P23 proof resolver');
 
 const deniedCases = [
   ['autonomous-mode', { autonomous: true }],

@@ -1289,6 +1289,8 @@ export class OrganismCore {
                 /^[a-f0-9]{64}$/.test(competenceEnvironmentFingerprint) ? competenceEnvironmentFingerprint : null,
             resolveActiveSkillCompetenceSubject: skillId =>
                 verifiedSkillLifecycle.store.resolveActiveSkillCompetenceSubject(skillId),
+            resolveActiveSkillCompetenceProof: skillId =>
+                verifiedSkillLifecycle.store.resolveActiveSkillCompetenceProof(skillId),
             evaluateSkillCompetenceCondition: config.skillCompetenceConditionEvaluator,
         });
         if (store instanceof FileStateStore) {
