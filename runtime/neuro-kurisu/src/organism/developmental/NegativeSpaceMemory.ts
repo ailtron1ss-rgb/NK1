@@ -253,28 +253,30 @@ export class NegativeSpaceMemory {
     const previousVerification01 = record.outcomeVerified01 ?? 0;
     const incomingVerification01 = input.verified01 === undefined
       ? previousVerification01 : clamp01(input.verified01);
+    const previousIndependence01 = record.outcomeIndependent01 ?? 0;
+    const incomingIndependence01 = input.independent01 === undefined
+      ? previousIndependence01 : clamp01(input.independent01);
     const verificationImproved = incomingVerification01 > previousVerification01;
+    const independenceImproved = incomingIndependence01 > previousIndependence01;
     record.outcomeVerified01 = Math.max(previousVerification01, incomingVerification01);
-
-    if (input.reward01 !== undefined && (record.chosenActualReward01 === null || verificationImproved)) {
-      record.chosenActualReward01 = clamp01(input.reward01);
-    }
-    if (input.surprise01 !== undefined && (record.chosenSurprise01 === null || verificationImproved)) {
-      record.chosenSurprise01 = clamp01(input.surprise01);
-    }
-    if (input.independent01 !== undefined) {
-      record.outcomeIndependent01 = Math.max(record.outcomeIndependent01 ?? 0, clamp01(input.independent01));
-    }
+    record.outcomeIndependent01 = Math.max(previousIndependence01, incomingIndependence01);
 
     const source = input.source;
     const validSource = source === 'external-evidence' || source === 'world-transition' || source === 'internal' || source === 'unknown';
-    if (validSource) {
-      const sourceRank = (value: NegativeSpaceOutcomeSource): number =>
-        value === 'external-evidence' ? 3 : value === 'world-transition' ? 2 : value === 'internal' ? 1 : 0;
-      if (verificationImproved || sourceRank(source) > sourceRank(record.outcomeSource)) {
-        record.outcomeSource = source;
-      }
+    const sourceRank = (value: NegativeSpaceOutcomeSource): number =>
+      value === 'external-evidence' ? 3 : value === 'world-transition' ? 2 : value === 'internal' ? 1 : 0;
+    const sourceImproved = validSource && sourceRank(source) > sourceRank(record.outcomeSource);
+    const evidenceQualityImproved = verificationImproved || independenceImproved || sourceImproved;
+
+    if (input.reward01 !== undefined && (record.chosenActualReward01 === null || evidenceQualityImproved)) {
+      record.chosenActualReward01 = clamp01(input.reward01);
     }
+    if (input.surprise01 !== undefined && (record.chosenSurprise01 === null || evidenceQualityImproved)) {
+      record.chosenSurprise01 = clamp01(input.surprise01);
+    }
+    // Evidence provenance is monotonic: a stronger verification source can replace a weaker
+    // source, but a later internal observation cannot downgrade an external confirmation.
+    if (validSource && sourceImproved) record.outcomeSource = source;
 
     const mergedEvidence = [...new Set([
       ...record.outcomeEvidence,

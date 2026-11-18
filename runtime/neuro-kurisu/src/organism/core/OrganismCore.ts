@@ -1250,6 +1250,8 @@ export class OrganismCore {
     private lastClosedCognitiveCycleTick = -1;
     private persisted: PersistedOrganism = defaultPersisted();
     private ready = false;
+    /** Serializes Negative Space mutations across durable checkpoints and rollback. */
+    private negativeSpaceMutationTail: Promise<void> = Promise.resolve();
     constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
         this.store = store;
         const candidateStorePath = store instanceof FileStateStore
@@ -11291,6 +11293,11 @@ export class OrganismCore {
         if (this.persistence.persistenceDepth > 0)
             throw new Error('negative-space-memory-persistence-busy');
     }
+    private enqueueNegativeSpaceMemoryMutation<T>(operation: () => Promise<T>): Promise<T> {
+        const result = this.negativeSpaceMutationTail.then(operation, operation);
+        this.negativeSpaceMutationTail = result.then(() => undefined, () => undefined);
+        return result;
+    }
     private async persistNegativeSpaceMemoryMutation(
         previous: ReturnType<RegretEngine['snapshot']>,
     ): Promise<void> {
@@ -11309,23 +11316,27 @@ export class OrganismCore {
             throw error;
         }
     }
-    async negativeSpaceMemoryMarkReopened(decisionId: string, action: string, reason: string, at?: number): Promise<boolean> {
-        this.assertNegativeSpaceMemoryMutationBoundary();
-        const previous = this.cognitiveRuntime.regretEngine.snapshot();
-        const changed = this.cognitiveRuntime.regretEngine.markNegativeSpaceAlternativeReopened(decisionId, action, reason, at);
-        if (!changed)
-            return false;
-        await this.persistNegativeSpaceMemoryMutation(previous);
-        return true;
+    negativeSpaceMemoryMarkReopened(decisionId: string, action: string, reason: string, at?: number): Promise<boolean> {
+        return this.enqueueNegativeSpaceMemoryMutation(async () => {
+            this.assertNegativeSpaceMemoryMutationBoundary();
+            const previous = this.cognitiveRuntime.regretEngine.snapshot();
+            const changed = this.cognitiveRuntime.regretEngine.markNegativeSpaceAlternativeReopened(decisionId, action, reason, at);
+            if (!changed)
+                return false;
+            await this.persistNegativeSpaceMemoryMutation(previous);
+            return true;
+        });
     }
-    async negativeSpaceMemoryRecordOutcome(input: NegativeSpaceOutcomeInput): Promise<NegativeSpaceRecord | null> {
-        this.assertNegativeSpaceMemoryMutationBoundary();
-        const previous = this.cognitiveRuntime.regretEngine.snapshot();
-        const updated = this.cognitiveRuntime.regretEngine.recordNegativeSpaceOutcome(input);
-        if (!updated)
-            return null;
-        await this.persistNegativeSpaceMemoryMutation(previous);
-        return updated;
+    negativeSpaceMemoryRecordOutcome(input: NegativeSpaceOutcomeInput): Promise<NegativeSpaceRecord | null> {
+        return this.enqueueNegativeSpaceMemoryMutation(async () => {
+            this.assertNegativeSpaceMemoryMutationBoundary();
+            const previous = this.cognitiveRuntime.regretEngine.snapshot();
+            const updated = this.cognitiveRuntime.regretEngine.recordNegativeSpaceOutcome(input);
+            if (!updated)
+                return null;
+            await this.persistNegativeSpaceMemoryMutation(previous);
+            return updated;
+        });
     }
     cognitiveOrganismContinuitySnapshot() { return this.developmentalNeural.cognitiveOrganismContinuity.snapshot(); }
     cognitiveOrganismContinuityBenchmark() { return this.developmentalNeural.cognitiveOrganismContinuity.benchmark(); }
