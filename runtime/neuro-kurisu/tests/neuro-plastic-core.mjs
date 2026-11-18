@@ -479,6 +479,7 @@ tamperedMetricRegistry.restore(
   tamperedMetricSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  () => true,
 );
 assert.equal(tamperedMetricRegistry.snapshot().adapters[0].status, 'staged',
   'changing a signed quality result and recomputing the plain report hash must still be rejected');
@@ -487,6 +488,7 @@ signedRestoreRegistry.restore(
   activeSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  () => true,
 );
 assert.equal(signedRestoreRegistry.select({
   domain: 'reasoning',
@@ -521,6 +523,7 @@ duplicateRestoreRegistry.restore(
   duplicatedSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  () => true,
 );
 assert.equal(duplicateRestoreRegistry.snapshot().adapters.length, 1,
   'duplicate persisted adapter IDs must be collapsed during restore');
@@ -546,6 +549,7 @@ conflictRestoreRegistry.restore(
   conflictSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  () => true,
 );
 assert.ok(conflictRestoreRegistry.snapshot().adapters.every(adapter => adapter.status === 'eligible'),
   'multiple active adapters for the same domain and base model must be demoted');
