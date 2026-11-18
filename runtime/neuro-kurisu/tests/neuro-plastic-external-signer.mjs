@@ -101,7 +101,7 @@ try {
   run(['--input', requestPath, '--key-file', rsaPrivatePath, '--key-id', signerKeyId,
     '--output', path.join(root, 'rsa-output.json')], 1);
 
-  console.log('NEURO_PLASTIC_EXTERNAL_SIGNER=PASS canonicalBinding=1 publicKeyVerification=1 noPrivateKeyLeak=1 symlinkRejected=1 permissivePermissionsRejected=1 wrongKeyIdRejected=1 overwriteRejected=1');
+  console.log('NEURO_PLASTIC_EXTERNAL_SIGNER=PASS canonicalBinding=1 publicKeyVerification=1 noPrivateKeyLeak=1 symlinkRejected=1 parentSymlinkRejected=1 permissivePermissionsRejected=1 wrongKeyIdRejected=1 overwriteRejected=1');
 } finally {
   await rm(root, { recursive: true, force: true });
 }
