@@ -57,7 +57,7 @@ for(let index=5;index<=8;index+=1){
     requestId:`session:tick:${index}`,
     mode:'deep',
     completionTokens:90,
-    maxTokens:100,
+    maxTokens:96,
     finishReason:'stop',
   }).accepted,true);
 }
