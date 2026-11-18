@@ -38,7 +38,7 @@ Resolver должен возвращать для каждой train/validation 
 - domain, prompt, completion;
 - outcome: verified-success или verified-correction;
 - consent: trainingOptIn=true, privacyReviewed=true, licenseApproved=true, piiScreening="passed";
-- аттестацию: attestedBy, attestedAt, licenseId, provenanceDigest.
+- аттестацию: attestedBy, attestedAt, licenseId, provenanceDigest; последний должен в точности совпадать с evidenceRefDigest текущего P23 outcome.
 
 Не передавайте в resolver для обучения holdout-записи. Не используйте self-report. Не обучайте correction-примеры, если correction не подтверждён human-review с тем же verifier identity. Builder не включает raw evidence refs, identities, holdout aggregate scores или holdout examples в JSONL. Встроенная PII-фильтрация — дополнительная защита, а не замена privacy review и consent.
 
@@ -60,7 +60,7 @@ Resolver должен возвращать для каждой train/validation 
 
     {"exampleId":"stable-id","domain":"reasoning","prompt":"...","completion":"..."}
 
-Для одного corpus требуется минимум 5 train и 2 validation примера, независимые train/validation seeds и отсутствие task overlap. Это только технический минимум для подготовки: для реального вывода о качестве используйте существенно более крупный и репрезентативный набор.
+Для одного corpus требуется минимум 5 train и 2 validation примера, независимые train/validation seeds, отсутствие task/example overlap и отсутствие одинаковых prompt fingerprints между train и validation. Это только технический минимум для подготовки: для реального вывода о качестве используйте существенно более крупный и репрезентативный набор.
 
 ## 2. Подготовить локальную модель и запустить trainer
 
