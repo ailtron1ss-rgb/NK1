@@ -56,6 +56,8 @@ export interface LanguageRequest {
   contextLedger?: ContextBudgetLedgerReport;
   /** Structured, bounded organism-to-provider control profile; neural steering remains adapter-specific. */
   cognitiveControl?: CognitiveNeuralControlProfile;
+  /** Per-runtime unique correlation ID; never rendered into model prompt content. */
+  cognitiveControlRequestId?: string;
 }
 
 export interface LanguageResponse {
@@ -67,6 +69,8 @@ export interface LanguageResponse {
     provider:'llama.cpp';
     templateKwargsSent:true;
     featureSchema:string;
+    requestId:string;
+    profileFingerprint:string;
   };
 }
 
