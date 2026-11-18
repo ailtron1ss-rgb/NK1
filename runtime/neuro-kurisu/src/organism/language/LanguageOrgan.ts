@@ -70,6 +70,8 @@ export interface LanguageResponse {
     completionTokens:number;
     totalTokens:number;
   };
+  /** Normalized local-provider completion reason; used only for bounded token-budget feedback. */
+  providerFinishReason?: 'stop'|'length'|'tool_calls'|'content_filter'|'function_call';
   /** Receipt that a compatible adapter sent NK1 hints to its template engine; not proof that the template used them. */
   providerControlReceipt?: {
     provider:'llama.cpp';
