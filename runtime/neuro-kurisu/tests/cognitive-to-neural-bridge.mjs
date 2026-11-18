@@ -32,10 +32,15 @@ const fingerprint=cognitiveNeuralProfileFingerprint(profile);
 assert.match(fingerprint,/^[a-f0-9]{64}$/);
 assert.equal(cognitiveNeuralProfileFingerprint(structuredClone(profile)),fingerprint,
   'profile fingerprint must be stable across JSON-equivalent cloned profiles');
-const changedProfile=structuredClone(profile);
-changedProfile.featureVector01[7]=.81;
+const changedProfile=bridge.project({ ...input,motivation01:.81 });
 assert.notEqual(cognitiveNeuralProfileFingerprint(changedProfile),fingerprint,
-  'the fingerprint must bind the complete feature vector');
+  'a valid changed cognitive state must produce a different profile fingerprint');
+const tamperedProfile=structuredClone(profile);
+tamperedProfile.featureVector01[7]=.81;
+assert.equal(isValidCognitiveNeuralControlProfile(tamperedProfile),false,
+  'a mutated feature vector with stale derived controls must fail semantic validation');
+assert.throws(()=>cognitiveNeuralProfileFingerprint(tamperedProfile),
+  'fingerprinting a semantically inconsistent profile must fail closed');
 assert.equal(profile.neuralSnapshotAgeTicks, 1);
 assert.equal(profile.featureKeys.length, 43);
 assert.equal(profile.featureVector01.length, 43);
