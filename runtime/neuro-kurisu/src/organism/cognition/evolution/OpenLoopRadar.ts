@@ -200,6 +200,7 @@ export class OpenLoopRadar {
 
     const byId = new Map<string, OpenLoopRecord>();
     const idempotencyKeys = new Set<string>();
+    const initiativeReservations = new Set<string>();
     for (const raw of rawRecords) {
       const record = normalizeRecord(raw);
       if (!record || byId.has(record.id)) continue;
@@ -207,6 +208,17 @@ export class OpenLoopRadar {
         throw new Error('open-loop-idempotency-key-conflict');
       }
       if (record.idempotencyKey !== null) idempotencyKeys.add(record.idempotencyKey);
+      // Initiative IDs are single-record lease owners. If an older or tampered
+      // snapshot contains duplicates, keep the first (newest durable record) and
+      // release the duplicate reservation without dropping either obligation.
+      if (record.pendingSurfacingInitiativeId !== null) {
+        if (initiativeReservations.has(record.pendingSurfacingInitiativeId)) {
+          record.pendingSurfacingInitiativeId = null;
+          record.pendingSurfacingLeaseUntil = 0;
+        } else {
+          initiativeReservations.add(record.pendingSurfacingInitiativeId);
+        }
+      }
       byId.set(record.id, record);
     }
 

@@ -141,6 +141,34 @@ cycleRadar.restore({ version: 1, sequence: 0, records: [cycleA, cycleB, downstre
 assert.equal(cycleRadar.snapshot().records.length, 0,
   'restore must reject cyclic dependency components and records that depend on rejected nodes');
 
+const duplicateLeaseRadar = new OpenLoopRadar(() => now);
+const duplicateLeasePrimary = duplicateLeaseRadar.register({
+  title: 'Primary reservation record', kind: 'task', owner: 'system',
+  accepted: true, source: 'duplicate-lease-restore-contract', dueAt: now - 1,
+});
+const primaryLeaseId = 'soc:open-loop:duplicate-restore:001';
+duplicateLeaseRadar.reserveForInitiative(duplicateLeasePrimary.id, primaryLeaseId);
+const duplicateLeaseSnapshot = duplicateLeaseRadar.snapshot();
+const primaryLeaseRecord = duplicateLeaseSnapshot.records[0];
+const duplicateLeaseRecord = {
+  ...primaryLeaseRecord,
+  id: 'open-loop-duplicate-reservation-record',
+  title: 'Second record with duplicated lease owner',
+  createdAt: primaryLeaseRecord.createdAt - 1,
+  updatedAt: primaryLeaseRecord.updatedAt - 1,
+};
+const duplicateLeaseRestored = new OpenLoopRadar(() => now);
+duplicateLeaseRestored.restore({
+  ...duplicateLeaseSnapshot,
+  records: [primaryLeaseRecord, duplicateLeaseRecord],
+});
+const duplicateLeaseRows = duplicateLeaseRestored.snapshot().records
+  .filter(record => record.pendingSurfacingInitiativeId === primaryLeaseId);
+assert.equal(duplicateLeaseRows.length, 1,
+  'restoring a duplicated initiative lease must retain only one owner');
+assert.equal(duplicateLeaseRestored.snapshot().records.length, 2,
+  'duplicate lease repair must preserve both accepted obligations');
+
 const oversizedRadar = new OpenLoopRadar(() => now);
 assert.throws(() => oversizedRadar.restore({
   version: 1, sequence: 0, records: new Array(2049).fill(null),
