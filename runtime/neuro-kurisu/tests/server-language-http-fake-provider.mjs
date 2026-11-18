@@ -27,6 +27,7 @@ const fakeProvider = createServer(async (req, res) => {
     object: 'chat.completion',
     model: 'neurocore-http-smoke-model',
     choices: [{ index: 0, message: { role: 'assistant', content: 'FAKE_LOCAL_PROVIDER_OK' }, finish_reason: 'stop' }],
+    usage: { prompt_tokens:84, completion_tokens:19, total_tokens:103 },
   }));
 });
 await new Promise((resolve, reject) => {
@@ -59,6 +60,7 @@ const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server
     NK_MEM0_COGNITIVE_RECALL: '1',
     NK_MEM0_USER_ID: 'mem0-http-smoke-user',
     LLAMA_CPP_MODEL: 'neurocore-http-smoke-model',
+    LLAMA_CPP_NK1_TEMPLATE_CONTROLS: '1',
     LLM_TIMEOUT_MS: '5000',
     NEURO_REQUEST_TIMEOUT_MS: '20000',
   },
@@ -92,6 +94,12 @@ try {
   assert.equal(unauthDiagnosticsResponse.status, 401);
   assert.equal(unauthDiagnostics.reason, 'missing-bearer-token');
   assert.equal(Object.prototype.hasOwnProperty.call(unauthDiagnostics, 'diagnostics'), false);
+
+  const unauthBridgeDiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/cognition/neural-bridge/diagnostics`);
+  const unauthBridgeDiagnostics = await unauthBridgeDiagnosticsResponse.json();
+  assert.equal(unauthBridgeDiagnosticsResponse.status, 401,
+    'neural bridge diagnostics must remain behind the existing API authorization boundary');
+  assert.equal(Object.prototype.hasOwnProperty.call(unauthBridgeDiagnostics, 'diagnostics'), false);
 
   const authHeaders = { authorization: 'Bearer mem0-http-smoke-only-token' };
   const mem0DiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/diagnostics`, { headers: authHeaders });
@@ -143,10 +151,53 @@ try {
   assert.equal(body.language?.backend, 'llama.cpp:neurocore-http-smoke-model', 'reported backend must identify the provider that actually answered');
   assert.equal(body.language?.preferredBackend, 'llama.cpp', 'configured local provider should be preferred while healthy');
   assert.ok(Number.isFinite(body.language?.latencyMs) && body.language.latencyMs >= 0, 'language invocation must report finite non-negative latency');
+  assert.deepEqual(body.language?.providerUsage,{promptTokens:84,completionTokens:19,totalTokens:103},
+    'llama.cpp usage counters must survive the server language adapter');
   assert.equal(providerRequests, 1, 'one chat request should reach the local provider exactly once');
   assert.equal(lastProviderPayload?.model, 'neurocore-http-smoke-model', 'configured model identity must reach the provider');
   assert.ok(Array.isArray(lastProviderPayload?.messages) && lastProviderPayload.messages.some(message => message.role === 'user' && message.content.includes('configured local model')), 'user prompt must reach the local provider');
   assert.equal(lastProviderPayload?.stream, false, 'smoke provider request should use the bounded non-streaming response path');
+  assert.equal(lastProviderPayload?.chat_template_kwargs?.nk1_control_version, 2,
+    'opt-in llama.cpp template controls must reach the actual chat-completions payload');
+  assert.equal(lastProviderPayload?.chat_template_kwargs?.nk1_feature_schema, 'nk1-cognitive-neural-43-v2');
+  assert.ok(['reflex', 'shallow', 'retrieve', 'deep', 'simulate', 'defer', 'sleep'].includes(
+    lastProviderPayload?.chat_template_kwargs?.nk1_mode,
+  ));
+  assert.ok(Number.isSafeInteger(lastProviderPayload?.chat_template_kwargs?.nk1_neural_snapshot_version));
+  assert.ok(lastProviderPayload?.chat_template_kwargs?.nk1_neural_snapshot_freshness01 >= 0
+    && lastProviderPayload.chat_template_kwargs.nk1_neural_snapshot_freshness01 <= 1);
+
+  const bridgeDiagnosticsResponse = await fetch(
+    `http://127.0.0.1:${appPort}/api/organism/cognition/neural-bridge/diagnostics`,
+    { headers: authHeaders },
+  );
+  const bridgeDiagnosticsBody = await bridgeDiagnosticsResponse.json();
+  assert.equal(bridgeDiagnosticsResponse.status, 200);
+  assert.equal(bridgeDiagnosticsBody.ok, true);
+  assert.equal(bridgeDiagnosticsBody.readOnly, true);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.enabled, true);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.projected > 0);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.neuralSnapshotsAvailable > 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.lastFeatureDimensions, 43);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.llamaCppTemplateKwargsSent > 0,
+    'the runtime must preserve the provider receipt and count the real local-template hand-off');
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsAccepted > 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsRejected, 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsDuplicate, 0);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.providerUsageObservations > 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageDuplicates, 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageUnavailable, 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageInvalid, 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageRequestIdUnavailable, 0);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.providerPromptTokensTotal >= 84);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.providerCompletionTokensTotal >= 19);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageInvalid, 0);
+  assert.match(bridgeDiagnosticsBody.diagnostics?.lastTemplateProfileFingerprint ?? '', /^[a-f0-9]{64}$/);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.templateConsumptionVerified, false,
+    'sending kwargs does not prove the selected Jinja template consumed them');
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.activationSteeringApplied, 0);
+  assert.equal(bridgeDiagnosticsBody.diagnostics?.residualBlockApplied, 0);
+
   console.log('SERVER_LANGUAGE_HTTP_FAKE_PROVIDER=PASS', JSON.stringify({
     status: response.status,
     backend: body.language.backend,

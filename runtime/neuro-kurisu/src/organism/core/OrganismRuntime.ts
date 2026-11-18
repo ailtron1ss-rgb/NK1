@@ -9,8 +9,9 @@ import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '.
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
-import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
+import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageRequest, type LanguageResponse } from '../language/LanguageOrgan.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
+import { CognitiveToNeuralBridge, cognitiveNeuralProfileFingerprint, prepareCognitiveNeuralRequest, type CognitiveNeuralControlProfile, type CognitiveNeuralBridgeNeuralInput } from '../cognition/CognitiveToNeuralBridge.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
@@ -95,6 +96,8 @@ export interface RuntimeConfig extends OrganismConfig {
   sensorIntervalMs?: number;
   phonePolicy?: Partial<PhonePolicyConfig>;
   languageInvoker?: LanguageInvoker;
+  /** Default-on bounded organism-to-language controls; false is the immediate emergency bypass. */
+  cognitiveToNeuralBridge?: { enabled?: boolean };
   stateStore?: JsonStateStore<PersistedOrganism>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
@@ -171,6 +174,58 @@ export class OrganismRuntime {
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
+  private readonly cognitiveToNeuralBridge = new CognitiveToNeuralBridge();
+  private readonly cognitiveToNeuralBridgeMetrics = {
+    version:1 as const,
+    projected:0,
+    bypassed:0,
+    samplingControlsConfigured:0,
+    neuralSnapshotsAvailable:0,
+    neuralSnapshotsUnavailable:0,
+    adapterHintsIssued:0,
+    activationSteeringApplied:0,
+    residualBlockApplied:0,
+    lastTick:-1,
+    lastNeuralSnapshotVersion:null as number|null,
+    lastNeuralSnapshotTick:null as number|null,
+    lastNeuralSnapshotAgeTicks:null as number|null,
+    lastMode:'uninitialized' as CognitiveNeuralControlProfile['mode']|'uninitialized',
+    lastAdapterHint:null as CognitiveNeuralControlProfile['adapterHint']|null,
+    lastFeatureDimensions:0,
+    lastTemperature:null as number|null,
+    lastMaxTokens:null as number|null,
+    llamaCppTemplateKwargsSent:0,
+    providerControlReceiptsAccepted:0,
+    providerControlReceiptsRejected:0,
+    providerControlReceiptsDuplicate:0,
+    providerUsageObservations:0,
+    providerUsageUnavailable:0,
+    providerUsageInvalid:0,
+    providerUsageDuplicates:0,
+    providerUsageRequestIdUnavailable:0,
+    providerPromptTokensTotal:0,
+    providerCompletionTokensTotal:0,
+    providerTotalTokensTotal:0,
+    providerCompletionBudgetUtilizationMean:0,
+    providerCompletionBudgetUtilizationMax:0,
+    providerCompletionBudgetExceeded:0,
+    lastProviderPromptTokens:null as number|null,
+    lastProviderCompletionTokens:null as number|null,
+    lastProviderTotalTokens:null as number|null,
+    templateConsumptionVerified:false as const,
+    lastTemplateControlSchema:null as string|null,
+    lastTemplateProfileFingerprint:null as string|null,
+  };
+  private readonly cognitiveToNeuralBridgeSessionId=randomUUID();
+  private cognitiveToNeuralBridgeRequestSequence=0;
+  private readonly cognitiveToNeuralBridgeReceiptIds=new Set<string>();
+  private readonly cognitiveToNeuralBridgeReceiptOrder:string[]=[];
+  private readonly cognitiveToNeuralBridgeUsageIds=new Set<string>();
+  private readonly cognitiveToNeuralBridgeUsageOrder:string[]=[];
+  /** Immutable pre-invocation facts, insulated from async provider mutation of LanguageRequest. */
+  private readonly cognitiveToNeuralBridgeExpectedRequests=new WeakMap<LanguageRequest,{
+    requestId:string; profileFingerprint:string; featureSchema:string; tick:number; maxTokens:number;
+  }>();
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
@@ -600,13 +655,265 @@ export class OrganismRuntime {
     }
   }
 
-  private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
+  cognitiveToNeuralBridgeDiagnostics() {
+    return structuredClone({
+      ...this.cognitiveToNeuralBridgeMetrics,
+      enabled:this.config.cognitiveToNeuralBridge?.enabled !== false,
+    });
+  }
+
+  private recordCognitiveProviderControlReceipt(request: LanguageRequest, response: LanguageResponse): void {
+    const receipt=response.providerControlReceipt;
+    if(!receipt) return;
+    const profile=request.cognitiveControl;
+    const expected=this.cognitiveToNeuralBridgeExpectedRequests.get(request);
+    let actualFingerprint:string;
+    try {
+      if(!profile || !expected) throw new Error('missing-pre-invocation-control-snapshot');
+      actualFingerprint=cognitiveNeuralProfileFingerprint(profile);
+    } catch {
+      this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsRejected+=1;
+      return;
+    }
+    if(actualFingerprint!==expected.profileFingerprint ||
+       receipt.provider!=='llama.cpp' || !String(response.backend??'').startsWith('llama.cpp:') ||
+       receipt.templateKwargsSent!==true ||
+       receipt.featureSchema!==expected.featureSchema ||
+       request.cognitiveControlRequestId!==expected.requestId ||
+       receipt.requestId!==expected.requestId ||
+       receipt.profileFingerprint!==expected.profileFingerprint) {
+      this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsRejected+=1;
+      return;
+    }
+    const requestId=expected.requestId;
+    const expectedFingerprint=expected.profileFingerprint;
+    if(this.cognitiveToNeuralBridgeReceiptIds.has(requestId)) {
+      this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsDuplicate+=1;
+      return;
+    }
+
+    this.cognitiveToNeuralBridgeReceiptIds.add(requestId);
+    this.cognitiveToNeuralBridgeReceiptOrder.push(requestId);
+    if(this.cognitiveToNeuralBridgeReceiptOrder.length>512) {
+      const expired=this.cognitiveToNeuralBridgeReceiptOrder.shift();
+      if(expired) this.cognitiveToNeuralBridgeReceiptIds.delete(expired);
+    }
+    this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsAccepted+=1;
+    this.cognitiveToNeuralBridgeMetrics.llamaCppTemplateKwargsSent+=1;
+    this.cognitiveToNeuralBridgeMetrics.lastTemplateControlSchema=receipt.featureSchema;
+    this.cognitiveToNeuralBridgeMetrics.lastTemplateProfileFingerprint=expectedFingerprint;
+    this.evidenceBus.publish({
+      tick:profile.tick,
+      kind:'model',
+      source:'llama.cpp-template-control-handoff',
+      confidence01:.99,
+      payload:{
+        provider:'llama.cpp',
+        templateKwargsSent:true,
+        requestId,
+        profileFingerprint:expectedFingerprint,
+        featureSchema:receipt.featureSchema,
+        templateConsumptionVerified:false,
+        activationSteeringApplied:false,
+        residualBlockApplied:false,
+      },
+    });
+  }
+
+  /** Record provider consumption independently of optional Jinja template controls. */
+  private recordCognitiveProviderUsage(request: LanguageRequest, response: LanguageResponse): void {
+    const profile=request.cognitiveControl;
+    if(!profile || !String(response.backend??'').startsWith('llama.cpp:')) return;
+    const expected=this.cognitiveToNeuralBridgeExpectedRequests.get(request);
+    if(!expected) {
+      if(typeof request.cognitiveControlRequestId!=='string' || request.cognitiveControlRequestId.length<1)
+        this.cognitiveToNeuralBridgeMetrics.providerUsageRequestIdUnavailable+=1;
+      else
+        this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
+      return;
+    }
+    let actualFingerprint:string;
+    try {
+      actualFingerprint=cognitiveNeuralProfileFingerprint(profile);
+    } catch {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
+      return;
+    }
+    if(actualFingerprint!==expected.profileFingerprint ||
+      profile.maxTokens!==expected.maxTokens ||
+      request.cognitiveControlRequestId!==expected.requestId) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
+      return;
+    }
+    const requestId=expected.requestId;
+    if(typeof requestId!=='string' || requestId.length<1 || requestId.length>128 ||
+      !/^[a-z0-9][a-z0-9._:-]*$/i.test(requestId)) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageRequestIdUnavailable+=1;
+      return;
+    }
+    if(this.cognitiveToNeuralBridgeUsageIds.has(requestId)) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageDuplicates+=1;
+      return;
+    }
+    this.cognitiveToNeuralBridgeUsageIds.add(requestId);
+    this.cognitiveToNeuralBridgeUsageOrder.push(requestId);
+    if(this.cognitiveToNeuralBridgeUsageOrder.length>512) {
+      const expired=this.cognitiveToNeuralBridgeUsageOrder.shift();
+      if(expired) this.cognitiveToNeuralBridgeUsageIds.delete(expired);
+    }
+    const usage=response.providerUsage;
+    if(!usage) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageUnavailable+=1;
+      return;
+    }
+    if(
+      !Number.isSafeInteger(usage.promptTokens) || usage.promptTokens<0 || usage.promptTokens>1_000_000 ||
+      !Number.isSafeInteger(usage.completionTokens) || usage.completionTokens<0 || usage.completionTokens>1_000_000 ||
+      !Number.isSafeInteger(usage.totalTokens) || usage.totalTokens<usage.promptTokens+usage.completionTokens ||
+      usage.totalTokens>1_000_000
+    ) {
+      this.cognitiveToNeuralBridgeMetrics.providerUsageInvalid+=1;
+      return;
+    }
+    const observations=this.cognitiveToNeuralBridgeMetrics.providerUsageObservations;
+    this.cognitiveToNeuralBridgeMetrics.providerUsageObservations+=1;
+    this.cognitiveToNeuralBridgeMetrics.providerPromptTokensTotal+=usage.promptTokens;
+    this.cognitiveToNeuralBridgeMetrics.providerCompletionTokensTotal+=usage.completionTokens;
+    this.cognitiveToNeuralBridgeMetrics.providerTotalTokensTotal+=usage.totalTokens;
+    this.cognitiveToNeuralBridgeMetrics.lastProviderPromptTokens=usage.promptTokens;
+    this.cognitiveToNeuralBridgeMetrics.lastProviderCompletionTokens=usage.completionTokens;
+    this.cognitiveToNeuralBridgeMetrics.lastProviderTotalTokens=usage.totalTokens;
+    const utilization=usage.completionTokens/Math.max(1,expected.maxTokens);
+    this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean=
+      (this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMean*observations+utilization)/(observations+1);
+    this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax=
+      Math.max(this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetUtilizationMax,utilization);
+    if(usage.completionTokens>expected.maxTokens)
+      this.cognitiveToNeuralBridgeMetrics.providerCompletionBudgetExceeded+=1;
+    this.evidenceBus.publish({
+      tick:profile.tick,
+      kind:'resource',
+      source:'llama.cpp-token-usage',
+      confidence01:.99,
+      payload:{
+        requestId:expected.requestId,
+        promptTokens:usage.promptTokens,
+        completionTokens:usage.completionTokens,
+        totalTokens:usage.totalTokens,
+        configuredMaxTokens:expected.maxTokens,
+        completionBudgetUtilization:utilization,
+        overBudget:usage.completionTokens>expected.maxTokens,
+      },
+    });
+  }
+
+  private applyCognitiveToNeuralControl(
+    request: LanguageRequest,
+    cycle: OrganismCycleResult,
+    neuralSnapshot: ReturnType<OrganismCore['b365UnifiedNeuroCausalDiagnostics']>,
+  ): LanguageRequest {
+    const budget = this.core.cognitiveBudgetOperationalSnapshot();
+    const selected = cycle.decision.selected;
+    const selectedGoal = cycle.goals.find(goal => goal.id === selected?.goalId);
+    const needs = cycle.state.needs;
+    const neuralInput:CognitiveNeuralBridgeNeuralInput = {
+      version:neuralSnapshot.version,
+      tick:neuralSnapshot.tick,
+      predictionError01:neuralSnapshot.predictionError01,
+      plasticity01:neuralSnapshot.plasticity01,
+      neuromodulation01:neuralSnapshot.neuromodulation01,
+      sparseActivity01:neuralSnapshot.sparseActivity01,
+      recurrentCoherence01:neuralSnapshot.recurrentCoherence01,
+      neuralConfidence01:neuralSnapshot.neuralConfidence01,
+      modelAgreement01:neuralSnapshot.modelAgreement01,
+      counterfactualDivergence01:neuralSnapshot.counterfactualDivergence01,
+      goalField01:neuralSnapshot.goalField01,
+      actionEntropy01:neuralSnapshot.actionEntropy01,
+      allostatic:neuralSnapshot.allostatic,
+      selfModel:neuralSnapshot.selfModel,
+      goalAuthorship:neuralSnapshot.goalAuthorship,
+    };
+    const prepared=prepareCognitiveNeuralRequest(
+      request,
+      this.cognitiveToNeuralBridge,
+      {
+        tick:cycle.state.tick,
+        action:selected?.action??cycle.state.lastAction,
+        mode:budget?.mode??'shallow',
+        motivation01:needs.goalPressure*.50+needs.novelty*.25+needs.socialNeed*.15+cycle.state.autonomyScore*.10,
+        uncertainty01:needs.uncertainty*.55+cycle.state.predictionError*.30+cycle.state.selfPredictionError*.15,
+        urgency01:selectedGoal?Math.max(selectedGoal.urgency,selectedGoal.importance*.5):0,
+        budgetRemaining01:budget?.remaining01??budget?.available01??.5,
+        attention01:cycle.state.attentionBudget,
+        neural:neuralInput,
+      },
+      this.config.cognitiveToNeuralBridge?.enabled !== false,
+    );
+    if(prepared.bypassed){
+      this.cognitiveToNeuralBridgeMetrics.bypassed+=1;
+      return prepared.request;
+    }
+
+    const profile=prepared.profile;
+    this.cognitiveToNeuralBridgeMetrics.projected+=1;
+    this.cognitiveToNeuralBridgeMetrics.samplingControlsConfigured+=1;
+    this.cognitiveToNeuralBridgeMetrics.adapterHintsIssued+=1;
+    if(profile.neuralSnapshotAvailable)this.cognitiveToNeuralBridgeMetrics.neuralSnapshotsAvailable+=1;
+    else this.cognitiveToNeuralBridgeMetrics.neuralSnapshotsUnavailable+=1;
+    this.cognitiveToNeuralBridgeMetrics.lastTick=profile.tick;
+    this.cognitiveToNeuralBridgeMetrics.lastNeuralSnapshotVersion=profile.neuralSnapshotVersion;
+    this.cognitiveToNeuralBridgeMetrics.lastNeuralSnapshotTick=profile.neuralSnapshotTick;
+    this.cognitiveToNeuralBridgeMetrics.lastNeuralSnapshotAgeTicks=profile.neuralSnapshotAgeTicks;
+    this.cognitiveToNeuralBridgeMetrics.lastMode=profile.mode;
+    this.cognitiveToNeuralBridgeMetrics.lastAdapterHint=profile.adapterHint;
+    this.cognitiveToNeuralBridgeMetrics.lastFeatureDimensions=profile.featureVector01.length;
+    this.cognitiveToNeuralBridgeMetrics.lastTemperature=profile.temperature;
+    this.cognitiveToNeuralBridgeMetrics.lastMaxTokens=profile.maxTokens;
+    const cognitiveControlRequestId=`${this.cognitiveToNeuralBridgeSessionId}:${profile.tick}:${++this.cognitiveToNeuralBridgeRequestSequence}`;
+    const controlledRequest={...prepared.request,cognitiveControlRequestId};
+    this.cognitiveToNeuralBridgeExpectedRequests.set(controlledRequest,{
+      requestId:cognitiveControlRequestId,
+      profileFingerprint:cognitiveNeuralProfileFingerprint(profile),
+      featureSchema:profile.featureSchema,
+      tick:profile.tick,
+      maxTokens:profile.maxTokens,
+    });
+    this.evidenceBus.publish({
+      tick:profile.tick,
+      kind:'resource',
+      source:'cognitive-to-neural-bridge',
+      confidence01:.99,
+      payload:{
+        version:profile.version,
+        featureSchema:profile.featureSchema,
+        mode:profile.mode,
+        action:profile.action,
+        adapterHint:profile.adapterHint,
+        neuralSource:profile.neuralSource,
+        neuralSnapshotAvailable:profile.neuralSnapshotAvailable,
+        neuralSnapshotVersion:profile.neuralSnapshotVersion,
+        neuralSnapshotTick:profile.neuralSnapshotTick,
+        neuralSnapshotAgeTicks:profile.neuralSnapshotAgeTicks,
+        temperature:profile.temperature,
+        maxTokens:profile.maxTokens,
+        featureDimensions:profile.featureVector01.length,
+        steeringIntent01:profile.steeringIntent01,
+        samplingParametersConfigured:true,
+        adapterSelectionApplied:false,
+        activationSteeringApplied:false,
+        residualBlockApplied:false,
+      },
+    });
+    return controlledRequest;
+  }
+
+  private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, neuralSnapshot: ReturnType<OrganismCore['b365UnifiedNeuroCausalDiagnostics']>, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
     if (!this.config.enableLanguage || !this.config.languageInvoker) return null;
     const current = this.core.operationalStatusSnapshot();
     const budgetSnapshot = this.core.cognitiveBudgetOperationalSnapshot();
     const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
     if (!shouldAsk) return null;
-    const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.userModelPromptContext());
+    let request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.userModelPromptContext());
     if(signal) request.signal=signal;
     this.lastContextBudgetLedger = request.contextLedger ?? null;
     const budgetMode = budgetSnapshot?.mode ?? 'shallow';
@@ -615,8 +922,11 @@ export class OrganismRuntime {
     const tierCost=budgetMode==='deep' ? .42 : budgetMode==='simulate' ? .30 : .20;
     const spend=this.core.cognitiveBudgetSpend(budgetMode==='deep'?'llm-deep':'llm-fast',tierCost,infoGain,'cognitive-proposal');
     if(!spend.accepted) return parseCognitiveProposal('budget constrained: preserve resources and verify supplied evidence before changing course','local-fallback');
+    request = this.applyCognitiveToNeuralControl(request, cycle, neuralSnapshot);
     try {
       const response=await this.config.languageInvoker(request);
+      this.recordCognitiveProviderUsage(request,response);
+      this.recordCognitiveProviderControlReceipt(request, response);
       await this.core.recordLanguageBackend(response.backend, response.latencyMs, true);
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
       return parseCognitiveProposal(response.text,'llm');
@@ -735,7 +1045,7 @@ export class OrganismRuntime {
     const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
     const slowCognitionAllowed = executionPlan?.run?.['slow-cognition'] !== false;
     const cognitiveProposal = slowCognitionAllowed
-      ? await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal)
+      ? await this.generateCognitiveProposal(cycle, fusedObservation, previousNeural, Boolean(options.deliberate), !externalText, options.signal)
       : null;
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
@@ -822,13 +1132,16 @@ export class OrganismRuntime {
     if (languageInvoker && shouldInvokeLanguageForRuntimeStep({ enabled:this.config.enableLanguage, hasInvoker:true, languageBudgetAllows, hasExternalText:Boolean(externalText), hasAutonomousAgenda:Boolean(autonomousAgenda), suppressResponse:options.suppressResponse })) {
       const mem0Query = externalText || autonomousAgenda?.topic || '';
       const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
-      const request = externalText
+      let request = externalText
         ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
         : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext());
+      request = this.applyCognitiveToNeuralControl(request, cycle, previousNeural);
       if(options.signal) request.signal=options.signal;
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
         language = await languageInvoker(request);
+        this.recordCognitiveProviderUsage(request,language);
+        this.recordCognitiveProviderControlReceipt(request, language);
         if (!externalText && autonomousAgenda && !this.core.stageAutonomousSocialInitiativeMessage(autonomousAgenda.id, language?.text ?? '', Date.now())) {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
         }

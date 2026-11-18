@@ -1,4 +1,5 @@
 import type { ActionKind } from '../core/types.ts';
+import { B365_STATE_SCHEMA_VERSION } from './B365DiagnosticsSchema.ts';
 import { BalancedReservoirSampler, PrioritizedReplaySampler, robustPercentileNormalize, type ReservoirState } from '../system/UpstreamReplayPrimitives.ts';
 import { NeuroCoreAdaptiveOperators, type NeuroCoreAdaptiveOperatorState } from '../system/NeuroCoreAdaptiveOperators.ts';
 
@@ -98,7 +99,7 @@ export interface B365GoalEcologyMemory {
 }
 
 export interface B365State {
-  version: 14;
+  version: typeof B365_STATE_SCHEMA_VERSION;
   tick: number;
   cycles: number;
   learningUpdates: number;
@@ -391,7 +392,7 @@ const makeActionForecasts = (): Record<ActionKind, B365ActionForecast> => Object
 ) as Record<ActionKind, B365ActionForecast>;
 
 export const defaultB365State = (): B365State => ({
-  version: 14,
+  version: B365_STATE_SCHEMA_VERSION,
   tick: 0,
   cycles: 0,
   learningUpdates: 0,
@@ -553,7 +554,7 @@ export class B365UnifiedNeuroCausalCore {
     this.state = {
       ...defaults,
       ...source,
-      version: 14,
+      version: B365_STATE_SCHEMA_VERSION,
       areas: source.areas ? structuredClone({ ...defaults.areas, ...source.areas }) : structuredClone(defaults.areas),
       synapses: Array.isArray(source.synapses) ? structuredClone(source.synapses) : defaults.synapses,
       actionReadout: Array.isArray(source.actionReadout) ? structuredClone(source.actionReadout) : defaults.actionReadout,
@@ -2110,6 +2111,7 @@ export class B365UnifiedNeuroCausalCore {
     const forecastConfidence = ACTIONS.reduce((sum, action) => sum + this.state.actionForecasts[action]!.confidence01, 0) / ACTIONS.length;
     return {
       version: this.state.version,
+      tick: this.state.tick,
       neuronCount: N,
       cycles: this.state.cycles,
       learningUpdates: this.state.learningUpdates,

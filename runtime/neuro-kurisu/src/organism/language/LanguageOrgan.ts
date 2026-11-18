@@ -2,6 +2,7 @@ import { kurisuCanonPrompt } from './KurisuCanonProfile.ts';
 import { buildBudgetedLanguageContext, type ContextBudgetLedgerReport, type ContextSectionInput } from './ContextBudgetLedger.ts';
 
 import type { OrganismDecisionTrace, OrganismCycleResult, CognitiveProposal } from '../core/types.ts';
+import type { CognitiveNeuralControlProfile } from '../cognition/CognitiveToNeuralBridge.ts';
 import type { KnownEntityPromptContext } from '../system/KnownEntityDossier.ts';
 import { sanitizeAutonomousTopicText, type SocialInitiative } from '../system/AutonomousSocialInitiativeEngine.ts';
 
@@ -53,12 +54,30 @@ export interface LanguageRequest {
   /** Optional host cancellation signal for bounded inference. */
   signal?: AbortSignal;
   contextLedger?: ContextBudgetLedgerReport;
+  /** Structured, bounded organism-to-provider control profile; neural steering remains adapter-specific. */
+  cognitiveControl?: CognitiveNeuralControlProfile;
+  /** Per-runtime unique correlation ID; never rendered into model prompt content. */
+  cognitiveControlRequestId?: string;
 }
 
 export interface LanguageResponse {
   text: string;
   backend: string;
   latencyMs: number;
+  /** Token usage returned by a provider; absent when unsupported or not supplied. */
+  providerUsage?: {
+    promptTokens:number;
+    completionTokens:number;
+    totalTokens:number;
+  };
+  /** Receipt that a compatible adapter sent NK1 hints to its template engine; not proof that the template used them. */
+  providerControlReceipt?: {
+    provider:'llama.cpp';
+    templateKwargsSent:true;
+    featureSchema:string;
+    requestId:string;
+    profileFingerprint:string;
+  };
 }
 
 export type LanguageInvoker = (request: LanguageRequest) => Promise<LanguageResponse>;
