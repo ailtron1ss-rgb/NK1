@@ -1,8 +1,8 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { URL } from 'node:url';
-import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
-import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
+import { mkdir, readFile, writeFile, rename, lstat } from 'node:fs/promises';
+import { createReadStream, existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
@@ -124,6 +124,55 @@ await mkdir(STATE, { recursive: true });
 const lock = new ProcessLock(path.join(STATE, 'organism-runtime.lock'));
 await lock.acquire();
 
+const verifiedNeuroPlasticArtifacts = new Map();
+async function hashNeuroPlasticFile(filePath) {
+    const digest = createHash('sha256');
+    for await (const chunk of createReadStream(filePath)) digest.update(chunk);
+    return digest.digest('hex');
+}
+async function verifyNeuroPlasticArtifact(manifest) {
+    try {
+        if (!manifest || !/^[a-z0-9][a-z0-9._-]{2,79}$/.test(String(manifest.adapterId || ''))) return false;
+        const directory = String(manifest.artifact?.directory || '');
+        if (directory !== 'adapter-store/' + manifest.adapterId || directory.includes('\\')) return false;
+        const storeRoot = path.join(ROOT, 'adapter-store');
+        const adapterDirectory = path.resolve(ROOT, directory);
+        if (path.relative(storeRoot, adapterDirectory) !== manifest.adapterId) return false;
+        const storeInfo = await lstat(storeRoot);
+        const directoryInfo = await lstat(adapterDirectory);
+        if (storeInfo.isSymbolicLink() || !storeInfo.isDirectory() ||
+            directoryInfo.isSymbolicLink() || !directoryInfo.isDirectory()) return false;
+        const configPath = path.join(adapterDirectory, 'adapter_config.json');
+        const weightsPath = path.join(adapterDirectory, 'adapter_model.safetensors');
+        const metadataPath = path.join(adapterDirectory, 'neuro-plastic-artifact.json');
+        const fileInfo = await Promise.all([configPath, weightsPath, metadataPath].map(filePath => lstat(filePath)));
+        if (fileInfo.some(info => info.isSymbolicLink() || !info.isFile())) return false;
+        const cacheKey = fileInfo.map(info => String(info.ino) + ':' + String(info.size) + ':' + String(info.mtimeMs)).join('|') +
+            '|' + manifest.artifact.configSha256 + '|' + manifest.artifact.weightsSha256 + '|' + manifest.corpusFingerprint;
+        if (verifiedNeuroPlasticArtifacts.get(manifest.adapterId) === cacheKey) return true;
+        if (fileInfo[0].size + fileInfo[1].size !== manifest.artifact.totalBytes) return false;
+        const [configSha256, weightsSha256, rawMetadata] = await Promise.all([
+            hashNeuroPlasticFile(configPath),
+            hashNeuroPlasticFile(weightsPath),
+            readFile(metadataPath, 'utf8'),
+        ]);
+        if (configSha256 !== String(manifest.artifact.configSha256).toLowerCase() ||
+            weightsSha256 !== String(manifest.artifact.weightsSha256).toLowerCase()) return false;
+        const metadata = JSON.parse(rawMetadata);
+        if (metadata.schemaVersion !== 1 || metadata.automaticActivation !== false ||
+            metadata.domain !== manifest.domain || metadata.method !== manifest.method ||
+            metadata.baseModelFingerprint !== manifest.baseModel.fingerprint ||
+            metadata.tokenizerFingerprint !== manifest.tokenizerFingerprint ||
+            metadata.corpusFingerprint !== manifest.corpusFingerprint ||
+            metadata.artifacts?.['adapter_config.json']?.sha256 !== configSha256 ||
+            metadata.artifacts?.['adapter_model.safetensors']?.sha256 !== weightsSha256) return false;
+        verifiedNeuroPlasticArtifacts.set(manifest.adapterId, cacheKey);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
 const NEURO_PLASTIC_REGISTRY = new NeuroPlasticAdapterRegistry();
 const NEURO_PLASTIC_REGISTRY_PATH = path.resolve(
     process.env.NEURO_PLASTIC_REGISTRY_FILE || path.join(STATE, 'neuro-plastic-adapters.json'),
@@ -170,6 +219,7 @@ const NEURO_PLASTIC_INFERENCE = new NeuroPlasticInferenceAdapter(
         LLAMA_CPP_PROVIDER.configured() &&
         !LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown,
     LLAMA_CPP_PROVIDER,
+    verifyNeuroPlasticArtifact,
     persistNeuroPlasticRegistry,
 );
 
