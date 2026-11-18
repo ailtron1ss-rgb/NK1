@@ -67,7 +67,24 @@ export class FutureSimulator {
     const scenarioId = typeof request?.scenarioId === 'string' ? request.scenarioId.trim() : '';
     const scenario = scenarioId ? this.sharedFuture.getScenario(scenarioId) : null;
     if (scenarioId && !scenario) throw new Error('consequence-scenario-not-found');
-    return this.consequenceEcology.analyze(request, { ...context, scenario });
+    return this.consequenceEcology.analyze(request, {
+      ...context,
+      scenario,
+      // Decision identity must come from the canonical Shared Future action-binding ledger.
+      resolveDecision: decisionId => this.sharedFuture.getDecisionByActionBindingDecisionId(decisionId),
+    });
+  }
+
+  recordVerifiedConsequenceOutcome(input: { outcomeId: string; analysisId: string; optionId: string }) {
+    const outcomeId = typeof input?.outcomeId === 'string' ? input.outcomeId.trim() : '';
+    if (!outcomeId) throw new Error('consequence-outcome-id-required');
+    const outcome = this.sharedFuture.listOutcomes().find(row => row.id === outcomeId);
+    if (!outcome) throw new Error('consequence-outcome-not-found');
+    return this.consequenceEcology.recordVerifiedOutcome({
+      outcome,
+      analysisId: input.analysisId,
+      optionId: input.optionId,
+    });
   }
 
   restore(
