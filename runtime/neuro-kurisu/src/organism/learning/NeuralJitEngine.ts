@@ -68,11 +68,14 @@ export interface NeuralJitPersistedSnapshot {
   /** Bounded one-way replay guards; raw provider IDs are never persisted. */
   seenObservationFingerprints?: string[];
   seenCaptureFingerprints?: string[];
+  /** One-way task evidence keys for holdout sets already consumed by a final candidate evaluation. */
+  spentHoldoutTaskFingerprints?: string[];
 }
 
 const MAX_TRACE_COUNT = 1024;
 const MAX_CANDIDATES = 16;
 const MAX_REPLAY_FINGERPRINTS = 4096;
+const MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS = 8192;
 const MAX_CAPTURE_AGE_MS = 10 * 60_000;
 const MIN_TRAIN_TRACES = 12;
 const MIN_HOLDOUT_TRACES = 8;
@@ -85,20 +88,24 @@ const SAFE_FAMILY = /^[a-z0-9][a-z0-9._:-]{1,79}$/i;
 const clamp = (value: number) => Math.max(-8, Math.min(8, value));
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 
-function restoreFingerprintSet(raw: unknown): string[] {
+function restoreFingerprintSet(raw: unknown, maximum = MAX_REPLAY_FINGERPRINTS): string[] {
   if (!Array.isArray(raw)) return [];
-  const recent = raw.slice(-MAX_REPLAY_FINGERPRINTS * 2);
+  const recent = raw.slice(-maximum * 2);
   const valid = recent.filter((value): value is string => typeof value === 'string' && HEX_256.test(value));
-  return Array.from(new Set(valid)).slice(-MAX_REPLAY_FINGERPRINTS);
+  return Array.from(new Set(valid)).slice(-maximum);
 }
 
-function rememberFingerprint(set: Set<string>, value: string): void {
+function rememberFingerprint(set: Set<string>, value: string, maximum = MAX_REPLAY_FINGERPRINTS): void {
   set.add(value);
-  while (set.size > MAX_REPLAY_FINGERPRINTS) {
+  while (set.size > maximum) {
     const oldest = set.values().next().value;
     if (typeof oldest !== 'string') break;
     set.delete(oldest);
   }
+}
+
+function holdoutTaskEvidenceKey(taskFamily: string, modelFingerprint: string, taskFingerprint: string): string {
+  return digest([taskFamily, modelFingerprint, taskFingerprint].join(String.fromCharCode(0)));
 }
 
 /** Stable, complete request identity shared by the runtime capture adapter and the JIT gate. */
@@ -218,6 +225,7 @@ export class NeuralJitEngine {
   private rejectedTraces = 0;
   private readonly seenObservationFingerprints = new Set<string>();
   private readonly seenCaptureFingerprints = new Set<string>();
+  private readonly spentHoldoutTaskFingerprints = new Set<string>();
   private lastDecision = 'idle';
   private lastDecisionAt = 0;
 
@@ -366,6 +374,13 @@ export class NeuralJitEngine {
     const meanInput = mean(train.map(trace => trace.inputFeatures), inputDimension);
     const meanOutput = mean(train.map(trace => trace.targetResidual), outputDimension);
     const trainingEvidenceFingerprint = digest(train.map(trace => trace.id).sort().join('\n'));
+    const candidateId = digest(['neural-jit-rank1-v1', modelFingerprint, taskFamily, trainingEvidenceFingerprint].join('|'));
+    const existingCandidate = this.candidates.find(row => row.id === candidateId);
+    if (existingCandidate) {
+      this.lastDecision = 'candidate-compile-idempotent:existing-evidence';
+      this.lastDecisionAt = Date.now();
+      return structuredClone(existingCandidate);
+    }
     // A deterministic hash-seeded direction avoids a systematic null projection
     // when the principal component is orthogonal to an all-ones initializer.
     const initialDirection = Array.from({ length: inputDimension }, (_, index) => {
@@ -404,7 +419,6 @@ export class NeuralJitEngine {
       return null;
     }
     const trainingTaskFingerprints = Array.from(new Set(train.map(trace => trace.taskFingerprint))).sort();
-    const candidateId = digest(['neural-jit-rank1-v1', modelFingerprint, taskFamily, trainingEvidenceFingerprint].join('|'));
     const candidate: NeuralJitCandidate = {
       id: candidateId,
       status: 'shadow', taskFamily, modelFingerprint, rank: 1, inputDimension, outputDimension,
@@ -420,11 +434,19 @@ export class NeuralJitEngine {
   evaluateCandidate(candidateId: string): NeuralJitHoldoutEvaluation {
     const candidate = this.candidates.find(row => row.id === candidateId);
     if (!candidate) return this.emptyEvaluation(['candidate-not-found']);
+    if (candidate.evaluation && (candidate.evaluation.status === 'eligible' || candidate.evaluation.status === 'rejected')) {
+      // Final results are immutable. A later training batch must compile a new candidate
+      // and use only fresh, unspent holdout tasks rather than querying this set again.
+      return structuredClone(candidate.evaluation);
+    }
     if (candidate.status === 'rejected') return candidate.evaluation ?? this.emptyEvaluation(['candidate-already-rejected']);
     const trained = new Set(candidate.trainingTaskFingerprints);
     const holdout = this.traces.filter(trace => trace.split === 'holdout' &&
       trace.taskFamily === candidate.taskFamily && trace.modelFingerprint === candidate.modelFingerprint &&
-      !trained.has(trace.taskFingerprint));
+      !trained.has(trace.taskFingerprint) &&
+      !this.spentHoldoutTaskFingerprints.has(holdoutTaskEvidenceKey(
+        candidate.taskFamily, candidate.modelFingerprint, trace.taskFingerprint,
+      )));
     const tasks = new Set(holdout.map(trace => trace.taskFingerprint));
     const seeds = new Set(holdout.map(trace => trace.seed));
     const reasons: string[] = [];
@@ -465,6 +487,15 @@ export class NeuralJitEngine {
       baselineMse, candidateMse, relativeGain01, improvedSamples01,
       holdoutTaskFingerprints: Array.from(tasks).sort(), evaluatedAt: Date.now(),
     };
+    // An adequately sized holdout is a consumable independent test set. Persist
+    // only one-way context-bound task fingerprints, never raw task IDs or activations.
+    for (const taskFingerprint of tasks) {
+      rememberFingerprint(
+        this.spentHoldoutTaskFingerprints,
+        holdoutTaskEvidenceKey(candidate.taskFamily, candidate.modelFingerprint, taskFingerprint),
+        MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS,
+      );
+    }
     candidate.status = eligible ? 'eligible' : 'rejected';
     candidate.evaluation = result;
     this.lastDecision = eligible ? 'candidate-eligible:shadow-only' : 'candidate-rejected:holdout-regression';
@@ -502,6 +533,7 @@ export class NeuralJitEngine {
       lastDecision: this.lastDecision, lastDecisionAt: this.lastDecisionAt,
       seenObservationFingerprints: Array.from(this.seenObservationFingerprints),
       seenCaptureFingerprints: Array.from(this.seenCaptureFingerprints),
+      spentHoldoutTaskFingerprints: Array.from(this.spentHoldoutTaskFingerprints),
     };
   }
 
@@ -509,6 +541,7 @@ export class NeuralJitEngine {
     if (!raw || raw.version !== 1 || typeof raw.splitSalt !== 'string' || !HEX_256.test(raw.splitSalt)) {
       this.traces = []; this.candidates = [];
       this.seenObservationFingerprints.clear(); this.seenCaptureFingerprints.clear();
+      this.spentHoldoutTaskFingerprints.clear();
       this.acceptedTraces = 0; this.rejectedTraces = 0;
       this.lastDecision = 'restore-empty-or-invalid-snapshot'; this.lastDecisionAt = Date.now();
       return;
@@ -516,8 +549,12 @@ export class NeuralJitEngine {
     this.splitSalt = raw.splitSalt;
     this.traces = [];
     this.seenObservationFingerprints.clear(); this.seenCaptureFingerprints.clear();
+    this.spentHoldoutTaskFingerprints.clear();
     for (const value of restoreFingerprintSet(raw.seenObservationFingerprints)) this.seenObservationFingerprints.add(value);
     for (const value of restoreFingerprintSet(raw.seenCaptureFingerprints)) this.seenCaptureFingerprints.add(value);
+    for (const value of restoreFingerprintSet(raw.spentHoldoutTaskFingerprints, MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS)) {
+      this.spentHoldoutTaskFingerprints.add(value);
+    }
     this.acceptedTraces = Number.isSafeInteger(raw.acceptedTraces) ? Math.max(0, Number(raw.acceptedTraces)) : 0;
     this.rejectedTraces = Number.isSafeInteger(raw.rejectedTraces) ? Math.max(0, Number(raw.rejectedTraces)) : 0;
     this.candidates = Array.isArray(raw.candidates)
@@ -537,6 +574,10 @@ export class NeuralJitEngine {
         observationFingerprints: this.seenObservationFingerprints.size,
         captureFingerprints: this.seenCaptureFingerprints.size,
         maximumPerKind: MAX_REPLAY_FINGERPRINTS,
+      },
+      holdoutProtection: {
+        spentTaskFingerprints: this.spentHoldoutTaskFingerprints.size,
+        maximumSpentTaskFingerprints: MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS,
       },
       splitCounts: {
         train: this.traces.filter(row => row.split === 'train').length,
