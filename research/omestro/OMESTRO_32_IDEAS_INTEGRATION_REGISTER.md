@@ -288,3 +288,13 @@ No real model-task quality gain, target-device latency/memory or independent hol
 4. Разделять merged base #936, открытые #937/#942 и эксперименты #920–#931; не создавать второй PR на тот же owner/contract.
 5. Не готовить Release publisher без human license review и повторного ZIP provenance/parity gate.
 
+### Addendum — P29 authority hardening in OmeStro #30 (18 ноября 2026)
+
+- #923 branch HEAD advanced from `3df5fd7` to `9c253b2031f0ce03a7f61a30b311fad0cab59ab3`.
+- Reproduced a concrete fail-closed defect: `Object.create(P29LearningGovernanceEngine.prototype)` passed `instanceof`, reached `beginCycle()` with no initialized governance state and threw `TypeError`.
+- Fixed by branding actual P29 instances in a module-private `WeakSet`; P26 training and rollback now reject prototype-forged objects before staging or mutating state. Regression confirms both forged training and forged rollback return `learning-governance-required` with unchanged snapshots.
+- Exact Actions on `9c253b2`: **44/44 SUCCESS**, including P26 Learning Validation, Action Gateway governance and Unified Organism Runtime.
+- Local focused regressions passed: elastic-neural-plasticity, P26 true learning, P26 holdout provenance, P29 governance, P29 integration and P29 core integration. Local runtime typecheck is Node strip-syntax-only; semantic `tsc` is not claimed.
+- #923 remains Draft. Its local paired holdouts are not independent generalization evidence; no promotion or merge is implied.
+- This addendum supersedes the earlier live-refresh note that recorded #923 at `3df5fd7` with Actions still running.
+
