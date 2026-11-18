@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { createNeuroPlasticEvaluationReceipt, neuroPlasticAdapterManifestFingerprint } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { canonicalNeuroPlasticApprovalPayload, canonicalNeuroPlasticEvaluationReceiptPayload, createNeuroPlasticEvaluationReceiptPayload, neuroPlasticAdapterManifestFingerprint } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { fileURLToPath } from 'node:url';
 
 const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'neuro-plastic-cli-'));
 const cliPath = fileURLToPath(new URL('../scripts/neuro_plastic_registry.mjs', import.meta.url));
-const secret = 'neuro-plastic-cli-test-secret-with-more-than-32-bytes';
-const evaluatorSecret = 'neuro-plastic-cli-evaluator-secret-held-outside-runtime';
+const evaluatorSigner = generateKeyPairSync('ed25519');
+const approvalSigner = generateKeyPairSync('ed25519');
+const evaluatorPublicPem = evaluatorSigner.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+const approvalPublicPem = approvalSigner.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const adapterId = 'kurisu-reasoning-cli-v1';
 const baseFingerprint = 'a'.repeat(64);
 const tokenizerFingerprint = 'b'.repeat(64);
@@ -27,9 +29,9 @@ function run(args, expectedStatus = 0) {
       ...process.env,
       NEURO_PLASTIC_RUNTIME_ROOT: runtimeRoot,
       NEURO_PLASTIC_REGISTRY_FILE: 'state/neuro-plastic-adapters.json',
-      NEURO_PLASTIC_APPROVAL_SECRET: secret,
+      NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON: JSON.stringify({ 'cli-test-operator': approvalPublicPem }),
       NEURO_PLASTIC_APPROVER_ID: 'cli-test-operator',
-      NEURO_PLASTIC_EVALUATOR_SECRET: evaluatorSecret,
+      NEURO_PLASTIC_EVALUATOR_PUBLIC_KEYS_JSON: JSON.stringify({ 'independent-verifier-v1': evaluatorPublicPem }),
     },
   });
   assert.equal(result.status, expectedStatus, result.stderr || result.stdout);
@@ -135,13 +137,20 @@ try {
       metrics: { ...pair.metrics, quality01: 0.82 },
     });
   }
-  const receipt = createNeuroPlasticEvaluationReceipt(
+  const unsignedReceipt = createNeuroPlasticEvaluationReceiptPayload(
     adapterId,
     evaluation,
     'independent-verifier-v1',
     'cli-holdout-evaluation-1',
-    evaluatorSecret,
   );
+  const receipt = {
+    ...unsignedReceipt,
+    signature: sign(
+      null,
+      Buffer.from(canonicalNeuroPlasticEvaluationReceiptPayload(adapterId, unsignedReceipt), 'utf8'),
+      evaluatorSigner.privateKey,
+    ).toString('base64'),
+  };
   const evaluationPath = path.join(runtimeRoot, 'holdout-evaluation.json');
   await writeFile(evaluationPath, JSON.stringify({ ...evaluation, receipt }));
   const tamperedPath = path.join(runtimeRoot, 'tampered-holdout-evaluation.json');
@@ -155,13 +164,26 @@ try {
   run(['evaluate', '--adapter', adapterId, '--input', tamperedPath], 1);
   run(['evaluate', '--adapter', adapterId, '--input', evaluationPath]);
 
-  const approvalPath = path.join(runtimeRoot, 'state', adapterId + '.approval.json');
+  const approvalRequestPath = path.join(runtimeRoot, 'state', adapterId + '.approval-request.json');
   run(['approve', '--adapter', adapterId]);
-  const approval = JSON.parse(await readFile(approvalPath, 'utf8'));
-  assert.equal(approval.approval.actorId, 'cli-test-operator');
-  assert.equal(approval.manifestFingerprint, neuroPlasticAdapterManifestFingerprint(manifest),
-    'operator approval must bind the exact staged adapter manifest');
-  assert.equal(typeof approval.approval.signature, 'string');
+  const approvalRequest = JSON.parse(await readFile(approvalRequestPath, 'utf8'));
+  assert.equal(approvalRequest.approvalRequest.actorId, 'cli-test-operator');
+  assert.equal(approvalRequest.manifestFingerprint, neuroPlasticAdapterManifestFingerprint(manifest),
+    'operator approval request must bind the exact staged adapter manifest');
+  const approvalSignature = sign(
+    null,
+    Buffer.from(approvalRequest.canonicalPayload, 'utf8'),
+    approvalSigner.privateKey,
+  ).toString('base64');
+  const approval = {
+    adapterId,
+    reportId: approvalRequest.reportId,
+    baseModelFingerprint: approvalRequest.baseModelFingerprint,
+    manifestFingerprint: approvalRequest.manifestFingerprint,
+    approval: { ...approvalRequest.approvalRequest, signature: approvalSignature },
+  };
+  const approvalPath = path.join(runtimeRoot, 'state', adapterId + '.approval.json');
+  await writeFile(approvalPath, JSON.stringify(approval));
   run(['activate', '--adapter', adapterId, '--input', approvalPath]);
 
   const registryPath = path.join(runtimeRoot, 'state', 'neuro-plastic-adapters.json');
@@ -169,12 +191,12 @@ try {
   assert.equal(snapshot.adapters[0].status, 'active');
   assert.equal(snapshot.adapters[0].activationApproval.approvalId, approval.approval.approvalId);
 
-  // A fresh process must preserve ACTIVE only when the stored HMAC matches the configured key.
+  // A fresh process preserves ACTIVE only when evaluator and operator Ed25519 signatures both verify.
   run(['rollback', '--adapter', adapterId, '--reason', 'exercise rollback and registry persistence']);
   snapshot = JSON.parse(await readFile(registryPath, 'utf8'));
   assert.equal(snapshot.adapters[0].status, 'disabled');
 
-  console.log('NEURO_PLASTIC_REGISTRY_CLI=PASS artifactTamperRejected=1 evaluatorTamperRejected=1 holdoutPairs=7 approvalSigned=1 activation=1 rollback=1');
+  console.log('NEURO_PLASTIC_REGISTRY_CLI=PASS artifactTamperRejected=1 evaluatorTamperRejected=1 holdoutPairs=7 approvalEd25519=1 evaluatorEd25519=1 activation=1 rollback=1');
 } finally {
   await rm(runtimeRoot, { recursive: true, force: true });
 }
