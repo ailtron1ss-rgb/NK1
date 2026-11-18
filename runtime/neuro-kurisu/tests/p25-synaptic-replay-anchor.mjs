@@ -204,7 +204,9 @@ try {
     /replay-anchor-unavailable/i,
   );
   assert.equal(unavailable.synapticMatrixSnapshot().adapters[0].acceptedReportCount, 0);
-  assert.notEqual(unavailable.synapticMatrixSnapshot().adapters[0].status, 'active');
+  assert.equal(unavailable.synapticMatrixSnapshot().adapters[0].status, 'candidate',
+    'anchor outage before first activation must not poison an unused candidate');
+  assert.notEqual(unavailable.synapticMatrixSnapshot().adapters[0].activationHistorySaturated, true);
   await stop(unavailable);
 
   console.log('P25_SYNAPTIC_MONOTONIC_REPLAY_ANCHOR=PASS rollbackDetected=1 replayRejected=1 casFailClosed=1');
