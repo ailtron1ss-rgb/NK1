@@ -124,7 +124,7 @@ const unavailableResponse = await enabledProvider.generate({
   cognitiveControl:unavailableProfile,
   cognitiveControlRequestId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:25:2',
 });
-const unavailableKwargs = payloads[2].chat_template_kwargs;
+const unavailableKwargs = payloads[payloads.length-1].chat_template_kwargs;
 assert.equal(unavailableResponse.text,'local provider response');
 assert.equal(unavailableKwargs.nk1_neural_snapshot_available,false);
 assert.equal(unavailableKwargs.nk1_neural_snapshot_version,null);
