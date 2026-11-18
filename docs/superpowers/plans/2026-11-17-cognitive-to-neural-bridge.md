@@ -8,7 +8,7 @@ Branch: `aspect/cognitive-to-neural-bridge-20261117`
 
 - Add `src/organism/cognition/CognitiveToNeuralBridge.ts`.
 - Export the action/mode types, 43-feature B365-aware projection, versioned profile, provider request adapter and explicit emergency-bypass helper.
-- Normalize organism inputs; accept only complete B365 snapshots with positive integer state version/tick and all 23 normalized signals; reject partial, future and stale (>8 tick) snapshots as a whole.
+- Normalize organism inputs; accept only complete B365 v14 diagnostic snapshots with valid ticks and all 23 normalized signals; reject unknown versions, partial, future and stale (>8 tick) snapshots as a whole.
 - Expose feature keys and exact B365 version/tick provenance, use an explicit neutral unavailable-state encoding, bound steering intent to 0.15, and scale temperature/token budgets using mode, reserve and allostatic preservation.
 - Validate one-hot/action/mode consistency, adapter hint mapping, snapshot version/age/freshness arithmetic and all provider control bounds again at the llama.cpp hand-off.
 - Test B365 diagnostics projection, exact 43-channel order, freshness rejection, immutability, malformed input, caps and request pass-through.
@@ -18,7 +18,7 @@ Expected focused command:
 
 ## Task 2 — LanguageRequest contract
 
-- Add optional typed `cognitiveControl` to `LanguageRequest` and a typed provider-delivery receipt on `LanguageResponse`.
+- Add optional typed `cognitiveControl` and per-session unique request ID to `LanguageRequest`; bind provider receipts to that ID, the exact profile's SHA-256 fingerprint and schema.
 - Keep the control contract type-only to avoid runtime import cycles.
 - Typecheck the runtime and test request adaptation preserves system/user/signal/context fields while configuring bounded sampling parameters.
 
@@ -28,6 +28,7 @@ Expected focused command:
 - Create one bridge instance per runtime and derive input from the existing cycle state, selected goal/action and existing cognitive-budget snapshot.
 - Apply the same helper before both cognitive-proposal and regular/autonomous `LanguageInvoker` calls.
 - Publish telemetry that explicitly marks adapter selection, activation steering and residual execution as not applied.
+- Validate receipt request ID/profile fingerprint/schema before counting it; suppress duplicate IDs in a bounded 512-entry ledger and expose accepted/rejected/duplicate counters.
 - Reuse the existing per-cycle B365 diagnostics snapshot (no second neural run), apply the bridge to both cognitive-proposal and response/autonomous call paths, expose runtime counters, and verify the real LanguageInvoker boundary for enabled/bypassed modes.
 - Publish an authenticated read-only HTTP diagnostics endpoint; test authorization, 43-channel visibility, snapshot provenance, successful llama.cpp kwargs hand-off and explicit unverified template consumption.
 
