@@ -70,6 +70,8 @@ export interface NeuralJitPersistedSnapshot {
   seenCaptureFingerprints?: string[];
   /** One-way task evidence keys for holdout sets already consumed by a final candidate evaluation. */
   spentHoldoutTaskFingerprints?: string[];
+  spentHoldoutLedgerFingerprint?: string;
+  holdoutEvidenceGateHealthy?: boolean;
 }
 
 const MAX_TRACE_COUNT = 1024;
@@ -108,6 +110,10 @@ function holdoutTaskEvidenceKey(taskFingerprint: string): string {
   // The same canonical task must not be re-queried as holdout evidence for
   // another candidate, task-family alias, model revision or process lifetime.
   return digest(taskFingerprint);
+}
+
+function fingerprintSetDigest(values: Iterable<string>): string {
+  return digest(Array.from(values).sort().join('\\n'));
 }
 
 /** Stable, complete request identity shared by the runtime capture adapter and the JIT gate. */
@@ -228,6 +234,7 @@ export class NeuralJitEngine {
   private readonly seenObservationFingerprints = new Set<string>();
   private readonly seenCaptureFingerprints = new Set<string>();
   private readonly spentHoldoutTaskFingerprints = new Set<string>();
+  private holdoutEvidenceGateHealthy = true;
   private lastDecision = 'idle';
   private lastDecisionAt = 0;
 
@@ -427,7 +434,9 @@ export class NeuralJitEngine {
       meanInput, inputBasis, meanOutput, outputDirection, trainTraceCount: train.length,
       trainingTaskFingerprints, trainingEvidenceFingerprint, evaluation: null, createdAt: Date.now(),
     };
-    this.candidates = [...this.candidates.filter(row => row.id !== candidateId && row.status !== 'rejected'), candidate].slice(-MAX_CANDIDATES);
+    // Keep rejected candidate records as experiment history; bounded FIFO eviction
+    // is preferable to silently erasing failed evidence whenever a new version compiles.
+    this.candidates = [...this.candidates.filter(row => row.id !== candidateId), candidate].slice(-MAX_CANDIDATES);
     this.lastDecision = 'candidate-compiled:shadow';
     this.lastDecisionAt = Date.now();
     return structuredClone(candidate);
@@ -466,6 +475,22 @@ export class NeuralJitEngine {
       return structuredClone(result);
     }
 
+    // This ledger is deliberately fail-closed at capacity. Evicting old fingerprints
+    // would eventually permit an already-consumed holdout task to be tested again.
+    if (!this.holdoutEvidenceGateHealthy ||
+        this.spentHoldoutTaskFingerprints.size >= MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS ||
+        this.spentHoldoutTaskFingerprints.size + tasks.size > MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS) {
+      this.holdoutEvidenceGateHealthy = false;
+      const reason = 'holdout-evidence-ledger-capacity-exceeded';
+      const result = this.emptyEvaluation([reason], holdout, tasks, seeds);
+      result.status = 'rejected';
+      candidate.status = 'rejected';
+      candidate.evaluation = result;
+      this.lastDecision = 'candidate-rejected:holdout-evidence-ledger-unavailable';
+      this.lastDecisionAt = Date.now();
+      return structuredClone(result);
+    }
+
     let baselineTotal = 0, candidateTotal = 0, improved = 0;
     for (const trace of holdout) {
       const baseline = mse(Array(candidate.outputDimension).fill(0), trace.targetResidual);
@@ -493,11 +518,7 @@ export class NeuralJitEngine {
     // An adequately sized holdout is a consumable independent test set. Persist
     // only one-way context-bound task fingerprints, never raw task IDs or activations.
     for (const taskFingerprint of tasks) {
-      rememberFingerprint(
-        this.spentHoldoutTaskFingerprints,
-        holdoutTaskEvidenceKey(taskFingerprint),
-        MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS,
-      );
+      this.spentHoldoutTaskFingerprints.add(holdoutTaskEvidenceKey(taskFingerprint));
     }
     candidate.status = eligible ? 'eligible' : 'rejected';
     candidate.evaluation = result;
@@ -536,7 +557,9 @@ export class NeuralJitEngine {
       lastDecision: this.lastDecision, lastDecisionAt: this.lastDecisionAt,
       seenObservationFingerprints: Array.from(this.seenObservationFingerprints),
       seenCaptureFingerprints: Array.from(this.seenCaptureFingerprints),
-      spentHoldoutTaskFingerprints: Array.from(this.spentHoldoutTaskFingerprints),
+      spentHoldoutTaskFingerprints: Array.from(this.spentHoldoutTaskFingerprints).sort(),
+      spentHoldoutLedgerFingerprint: fingerprintSetDigest(this.spentHoldoutTaskFingerprints),
+      holdoutEvidenceGateHealthy: this.holdoutEvidenceGateHealthy,
     };
   }
 
@@ -545,6 +568,7 @@ export class NeuralJitEngine {
       this.traces = []; this.candidates = [];
       this.seenObservationFingerprints.clear(); this.seenCaptureFingerprints.clear();
       this.spentHoldoutTaskFingerprints.clear();
+      this.holdoutEvidenceGateHealthy = true;
       this.acceptedTraces = 0; this.rejectedTraces = 0;
       this.lastDecision = 'restore-empty-or-invalid-snapshot'; this.lastDecisionAt = Date.now();
       return;
@@ -553,10 +577,29 @@ export class NeuralJitEngine {
     this.traces = [];
     this.seenObservationFingerprints.clear(); this.seenCaptureFingerprints.clear();
     this.spentHoldoutTaskFingerprints.clear();
+    this.holdoutEvidenceGateHealthy = raw.holdoutEvidenceGateHealthy !== false;
     for (const value of restoreFingerprintSet(raw.seenObservationFingerprints)) this.seenObservationFingerprints.add(value);
     for (const value of restoreFingerprintSet(raw.seenCaptureFingerprints)) this.seenCaptureFingerprints.add(value);
-    for (const value of restoreFingerprintSet(raw.spentHoldoutTaskFingerprints, MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS)) {
-      this.spentHoldoutTaskFingerprints.add(value);
+    const rawSpent = raw.spentHoldoutTaskFingerprints;
+    if (rawSpent !== undefined) {
+      if (!Array.isArray(rawSpent) || rawSpent.length > MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS ||
+          rawSpent.some(value => typeof value !== 'string' || !HEX_256.test(value))) {
+        this.holdoutEvidenceGateHealthy = false;
+      }
+      for (const value of restoreFingerprintSet(rawSpent, MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS)) {
+        this.spentHoldoutTaskFingerprints.add(value);
+      }
+    } else if (raw.spentHoldoutLedgerFingerprint !== undefined) {
+      this.holdoutEvidenceGateHealthy = false;
+    }
+    if (raw.spentHoldoutLedgerFingerprint !== undefined &&
+        (typeof raw.spentHoldoutLedgerFingerprint !== 'string' ||
+         !HEX_256.test(raw.spentHoldoutLedgerFingerprint) ||
+         raw.spentHoldoutLedgerFingerprint !== fingerprintSetDigest(this.spentHoldoutTaskFingerprints))) {
+      this.holdoutEvidenceGateHealthy = false;
+    }
+    if (this.spentHoldoutTaskFingerprints.size >= MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS) {
+      this.holdoutEvidenceGateHealthy = false;
     }
     this.acceptedTraces = Number.isSafeInteger(raw.acceptedTraces) ? Math.max(0, Number(raw.acceptedTraces)) : 0;
     this.rejectedTraces = Number.isSafeInteger(raw.rejectedTraces) ? Math.max(0, Number(raw.rejectedTraces)) : 0;
@@ -581,6 +624,8 @@ export class NeuralJitEngine {
       holdoutProtection: {
         spentTaskFingerprints: this.spentHoldoutTaskFingerprints.size,
         maximumSpentTaskFingerprints: MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS,
+        healthy: this.holdoutEvidenceGateHealthy,
+        saturated: this.spentHoldoutTaskFingerprints.size >= MAX_SPENT_HOLDOUT_TASK_FINGERPRINTS,
       },
       splitCounts: {
         train: this.traces.filter(row => row.split === 'train').length,
