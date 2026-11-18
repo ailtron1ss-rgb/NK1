@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { ActionGateway, ToolDefinition } from '../system/ActionGateway.ts';
 import type { ToolOutputContract, ToolInputNodeContract } from '../system/ToolInputContract.ts';
 import type { FutureSimulator } from './FutureSimulator.ts';
-import type { WorldForgeAction, WorldForgeCase } from './WorldForge.ts';
+import type { WorldForgeAction, WorldForgeAdversarialFocus, WorldForgeCase } from './WorldForge.ts';
 
 const MAX_SCENARIOS = 512;
 const MAX_SESSIONS = 2048;
@@ -120,17 +120,33 @@ function resultEnvelope(value: Record<string, unknown>): Record<string, unknown>
   return { ok: true, syntheticOnly: true, independentlyVerified: false, ...value };
 }
 
+function publicScenario(s: WorldForgeCase): Record<string, unknown> {
+  return {
+    id: s.id,
+    split: s.split,
+    domain: s.domain,
+    difficulty01: s.difficulty01,
+    task: s.task,
+    observations: [...s.observations],
+    goalOptions: [...s.goalOptions],
+    availableActions: [...s.availableActions],
+    constraints: { ...s.constraints },
+    strategyFamilies: [...s.strategyFamilies],
+    syntheticOnly: true,
+  };
+}
+
 export class WorldForgeToolAdapter {
   readonly #scenarios = new Map<string, ScenarioEntry>();
   readonly #sessions = new Map<string, SessionEntry>();
   readonly #simulator: Pick<FutureSimulator,
-    'generateWorldForgeScenarios' | 'startWorldForgeScenario' | 'stepWorldForgeScenario' |
+    'generateWorldForgeScenarios' | 'generateAdversarialWorldForgeScenarios' | 'startWorldForgeScenario' | 'stepWorldForgeScenario' |
     'evaluateWorldForgeSession' | 'releaseWorldForgeScenario'>;
   readonly #now: () => number;
 
   constructor(
     simulator: Pick<FutureSimulator,
-      'generateWorldForgeScenarios' | 'startWorldForgeScenario' | 'stepWorldForgeScenario' |
+      'generateWorldForgeScenarios' | 'generateAdversarialWorldForgeScenarios' | 'startWorldForgeScenario' | 'stepWorldForgeScenario' |
       'evaluateWorldForgeSession' | 'releaseWorldForgeScenario'>,
     now: () => number = () => Date.now(),
   ) {
@@ -223,21 +239,55 @@ export class WorldForgeToolAdapter {
         const scenarios = this.#simulator.generateWorldForgeScenarios({ split, seed, count, difficulty01 });
         for (const scenario of scenarios) this.rememberScenario(scenario);
         return resultEnvelope({
-          scenarios: scenarios.map(s => ({
-            id: s.id,
-            split: s.split,
-            domain: s.domain,
-            difficulty01: s.difficulty01,
-            task: s.task,
-            observations: [...s.observations],
-            goalOptions: [...s.goalOptions],
-            availableActions: [...s.availableActions],
-            constraints: { ...s.constraints },
-            strategyFamilies: [...s.strategyFamilies],
-            syntheticOnly: true,
-          })),
+          scenarios: scenarios.map(publicScenario),
           count: scenarios.length,
           note: 'Perturbations are hidden. Their effects become observable only as the synthetic environment changes.',
+        });
+      },
+    });
+
+    register({
+      id: 'organism.worldforge.scenarios.generate-adversarial',
+      outputContract: outputContract({
+        scenarios: { type: 'array', minItems: 1, maxItems: 16, items: worldForgeScenarioOutput },
+        count: { type: 'integer', minimum: 1, maximum: 16 },
+        candidateCount: { type: 'integer', minimum: 2, maximum: 128 },
+        focus: { type: 'string', enum: ['balanced','resource-shock','route-block','signal-noise','deadline-shift'] },
+        note: boundedString(512),
+      }, ['scenarios','count','candidateCount','focus','note']),
+      capability: 'planning.simulation.read',
+      destructive: false,
+      projectAllowed: true,
+      inputContract: {
+        type: 'object',
+        properties: {
+          count: { type: 'integer', minimum: 1, maximum: 16 },
+          difficulty01: { type: 'number', minimum: 0.2, maximum: 0.95 },
+          focus: { type: 'string', enum: ['balanced','resource-shock','route-block','signal-noise','deadline-shift'] },
+          candidateMultiplier: { type: 'integer', minimum: 2, maximum: 8 },
+        },
+        required: ['count','difficulty01','focus','candidateMultiplier'],
+        additionalProperties: false,
+        maxProperties: 4,
+        maxSerializedBytes: 1024,
+      },
+      execute: async (input) => {
+        this.prune();
+        const count = input.count as number;
+        const difficulty01 = input.difficulty01 as number;
+        const focus = input.focus as WorldForgeAdversarialFocus;
+        const candidateMultiplier = input.candidateMultiplier as number;
+        const seed = Number.parseInt(randomUUID().replace(/-/g, '').slice(0, 8), 16);
+        const scenarios = this.#simulator.generateAdversarialWorldForgeScenarios({
+          seed, count, difficulty01, focus, candidateMultiplier,
+        });
+        for (const scenario of scenarios) this.rememberScenario(scenario);
+        return resultEnvelope({
+          scenarios: scenarios.map(publicScenario),
+          count: scenarios.length,
+          candidateCount: count * candidateMultiplier,
+          focus,
+          note: 'Adversarial candidates are ranked inside the evaluator; selection scores, seed and hidden perturbation schedules are never exposed.',
         });
       },
     });
@@ -381,7 +431,7 @@ export class WorldForgeToolAdapter {
 export function registerWorldForgeTools(
   gateway: Pick<ActionGateway, 'registerTool'>,
   simulator: Pick<FutureSimulator,
-    'generateWorldForgeScenarios' | 'startWorldForgeScenario' | 'stepWorldForgeScenario' |
+    'generateWorldForgeScenarios' | 'generateAdversarialWorldForgeScenarios' | 'startWorldForgeScenario' | 'stepWorldForgeScenario' |
     'evaluateWorldForgeSession' | 'releaseWorldForgeScenario'>,
 ): WorldForgeToolAdapter {
   const adapter = new WorldForgeToolAdapter(simulator);
