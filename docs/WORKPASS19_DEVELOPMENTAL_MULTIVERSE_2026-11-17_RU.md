@@ -8,12 +8,12 @@ The implementation extends the existing P55 developmental-fork concept through `
 
 ## Lifecycle
 
-1. `createSession()` accepts one source revision, one environment fingerprint, a five-knob baseline policy profile, candidate deltas, matched validation scenario/seed pairs, and a disjoint holdout scenario set.
+1. `createSession()` accepts one source revision, one environment fingerprint, a five-knob baseline policy profile, candidate deltas, and a complete scenario × seed matrix in each phase. Every scenario appears once for every seed; validation and holdout seed values are disjoint.
 2. `validationWorkPlan()` emits the baseline control plus every candidate for every validation pair. The work items share the same initial-state fingerprint and pair fingerprint. The only mutable state exported is the explicit five-number policy profile; memory, conversations, identity records, credentials, and executable code are not copied.
 3. The host evaluator records bounded metrics (`quality01`, `cost01`, `safety01`, `stability01`) against the exact work-item fingerprints. Duplicate measurements, unplanned scenarios, changed environments, altered policy profiles, and mismatched source/state bindings are rejected.
-4. `selectValidationFinalist()` uses validation pairs only. It enforces non-regressing safety, zero candidate safety violations, bounded cost/stability regressions, and a minimum utility gain. At most one candidate is selected.
+4. `selectValidationFinalist()` uses validation pairs only. Scenario measurements are first averaged within each seed; the statistical sample size is the number of independent seeds, not the number of scenario × seed cells. It enforces non-regressing safety, zero candidate safety violations, bounded cost/stability regressions, and a minimum utility gain. At most one candidate is selected.
 5. `holdoutWorkPlan()` then exposes the untouched holdout pairs to baseline + finalist only. Non-finalists never receive holdout items.
-6. `finalize()` requires at least five paired holdout observations and a positive lower 95% paired confidence bound, while enforcing the safety/cost/stability gates again. The result is `eligible-for-independent-review` or `rejected`.
+6. `finalize()` requires at least five independent holdout seed clusters and a positive lower 95% confidence bound calculated over seed-level means. The output reports both matched scenario × seed cell count and independent seed count, while enforcing the safety/cost/stability gates again. The result is `eligible-for-independent-review` or `rejected`.
 
 Utility is a transparent comparison aid: 0.45 × quality + 0.25 × safety + 0.20 × stability + 0.10 × (1 − normalized cost). Safety violations are a hard veto, not something that can be offset by quality.
 
@@ -68,12 +68,12 @@ Runner не применяет предложенный профиль к live P
 
 ### Канонический P23 outcome ledger
 
-Каждый arm теперь после проверки evaluation digest и run bindings отдельно коммитит свои validation-only либо holdout-only outcomes через `recordIndependentEvaluationOutcomes()` в `VerifiedOutcomeLedger`. Этот метод повторно сверяет план/manifest/trial/run ID, отклоняет повторную запись ячейки и принимает batch атомарно. Для observation фиксируются fingerprint snapshot ledger и число принятых outcome rows. Ledger в этой реализации ограничен текущей фазой/процессом; в checkpoint сохраняется fingerprint его snapshot, а не сам ledger. Это provenance trace, а не подписанный verifier certificate и не замена host-controlled signed evidence/anti-rollback storage.
+Каждый arm теперь после проверки evaluation digest и run bindings отдельно коммитит свои validation-only либо holdout-only outcomes через `recordIndependentEvaluationOutcomes()` в `VerifiedOutcomeLedger`. Этот метод повторно сверяет полный schedule конкретного method/phase, manifest/trial/run ID, отклоняет повторную запись ячейки и принимает batch атомарно без разрешения partial schedule. Для observation фиксируются fingerprint snapshot ledger и число принятых outcome rows; сам полный snapshot P23 ledger также сохраняется в checkpoint schema v2 и проходит повторную проверку при restore. Это provenance trace, а не подписанный verifier certificate и не замена host-controlled signed evidence/anti-rollback storage.
 
 
 ### Независимость статистических выборок
 
-Входной контракт теперь требует не только минимум 3 validation и 5 holdout пар, но и столько же различных seed в каждой фазе. Перед запуском runner дополнительно вызывает P23 `validateResearchGradeLearningExperimentPlan()` для holdout: минимум пять независимых seed и полное покрытие всех holdout task families. Повтор одного seed на разных сценариях больше не увеличивает искусственно размер выборки для confidence interval.
+Входной контракт требует минимум 3 независимых validation seed и 5 независимых holdout seed. Каждый scenario ID должен иметь полный декартов продукт со всеми seed своей фазы; повторный запуск того же сценария на другом seed сохраняет task ID и входные данные, но получает отдельный trial ID. Seed values validation и holdout не пересекаются. Перед запуском runner вызывает P23 `validateResearchGradeLearningExperimentPlan()` для holdout: минимум пять независимых seed и полное покрытие всех holdout task families. `pairedN` теперь означает seed clusters; `matchedScenarioSeedPairs` отдельно считает scenario × seed cells. Confidence interval строится по средним на уровне seed, поэтому повторные сценарии не искусственно увеличивают N.
 
 
 ### P55 snapshot adapter
@@ -83,6 +83,6 @@ Runner не применяет предложенный профиль к live P
 
 ### Checkpoint continuity fix
 
-После рестарта runner использует не повторно сгенерированные задачи, а сохранённый корпус: immutable scenario-task inputs, manifest, validation/holdout plans и полный snapshot P23 `VerifiedOutcomeLedger`. Checkpoint также привязывает environment, verifier и три host authority executable identities. Restore перепроверяет task IDs/trial IDs, split, seeds, fingerprints, prompt manifest, оба плана и ledger. Если конфигурация или authority не совпадают — запуск отклоняется. Это устраняет дрейф holdout prompts при рестарте.
+После рестарта runner использует не повторно сгенерированные задачи, а сохранённый корпус schema v2: одну immutable task definition на сценарий, отдельные trial rows для каждого seed, manifest, validation/holdout plans и полный snapshot P23 `VerifiedOutcomeLedger`. Checkpoint также привязывает environment, verifier и три host authority executable identities. Restore перепроверяет task IDs/trial IDs, split, seeds, fingerprints, prompt manifest, оба плана и ledger. Если конфигурация или authority не совпадают — запуск отклоняется. Это устраняет дрейф holdout prompts при рестарте.
 
 P23 evaluator также фиксирует `evaluationScope` в момент создания. Последующая мутация исходного config не может переписать phase label уже выполненного evaluation.

@@ -148,6 +148,10 @@ try {
   assert.equal(result.automaticPromotion, false);
   assert.equal(result.evidence.verifiedObservationCount, 38,
     'verified evidence count must include 18 validation and 20 finalist-only holdout observations');
+  assert.equal(result.evidence.holdoutPairCount, 10,
+    'the final comparison must contain ten matched scenario × seed cells');
+  assert.equal(result.evidence.holdoutSeedCount, 5,
+    'the final comparison confidence interval must use five independent holdout seeds');
   assert.ok(/^[a-f0-9]{64}$/.test(result.evidence.verifiedEvidenceFingerprint));
   assert.ok(restoredBeforeHoldout.snapshot().holdoutObservations.every(row =>
     /^[a-f0-9]{64}$/.test(row.verifiedEvidence?.outcomeLedgerFingerprint ?? '') &&
@@ -210,6 +214,10 @@ try {
   const checkpointAfterValidation = await frozenStore.load();
   assert.equal(checkpointAfterValidation.corpus.rows.length, 16,
     'the checkpoint must retain the exact frozen validation + holdout task corpus');
+  assert.equal(checkpointAfterValidation.schemaVersion, 2,
+    'checkpoint schema v2 must mark the scenario × seed corpus contract');
+  assert.equal(checkpointAfterValidation.corpus.schemaVersion, 2,
+    'the durable corpus must use the versioned seed-invariant task representation');
   assert.equal(checkpointAfterValidation.corpus.manifest.length, 4,
     'P23 manifest must contain one immutable task definition per scenario, not one per seed');
   const repeatedScenarioRows = checkpointAfterValidation.corpus.rows.filter(row =>

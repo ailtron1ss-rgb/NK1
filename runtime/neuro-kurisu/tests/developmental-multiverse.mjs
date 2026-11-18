@@ -95,6 +95,10 @@ for (const item of validationPlan) {
 assert.throws(() => universe.recordValidationObservation({ ...validationPlan[0], measurementId: `val:baseline:validation-1:101`, metrics: baselineMetrics, safetyViolationCount: 0 }), /measurement-id-duplicate/);
 const selection = universe.selectValidationFinalist();
 assert.equal(selection.selectedVariantId, 'verification-plus', 'selection must use matched validation pairs and hard safety constraints');
+assert.equal(selection.comparisons[0].pairedN, 3,
+  'validation pairedN must count three independent seed clusters');
+assert.equal(selection.comparisons[0].matchedScenarioSeedPairs, 6,
+  'validation must also report all six matched scenario × seed cells');
 assert.equal(universe.snapshot().status, 'holding-out');
 
 const holdoutPlan = universe.holdoutWorkPlan();
@@ -114,6 +118,10 @@ assert.equal(result.status, 'eligible-for-independent-review');
 assert.equal(result.selectedVariantId, 'verification-plus');
 assert.equal(result.comparison.pairedN, 5, 'confidence interval N must count independent seeds, not scenario-seed rows');
 assert.equal(result.comparison.matchedScenarioSeedPairs, 10, 'all 10 paired scenario-seed cells must be reported separately');
+assert.equal(result.evidence.holdoutPairCount, 10,
+  'final evidence must report matched scenario × seed cells, not only seed clusters');
+assert.equal(result.evidence.holdoutSeedCount, 5,
+  'final evidence must report the actual number of independent holdout seeds');
 assert.ok(result.comparison.utilityDelta01 > 0);
 assert.ok(result.comparison.utilityCi95[0] > 0, 'holdout lower confidence bound must be positive');
 assert.equal(result.automaticPromotion, false, 'the multiverse must never mutate live policy by itself');

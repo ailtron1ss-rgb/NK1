@@ -100,6 +100,11 @@ export interface DevelopmentalMultiverseScenarioTask {
   expectedStepIds: string[];
   taskFamily?: string;
 }
+/**
+ * Called once for each unique scenario ID. The returned immutable task input
+ * and rubric are replicated across that phase's seed set; seed-specific behavior
+ * belongs in the evaluator's execution seed, not in regenerated scenario input.
+ */
 export type DevelopmentalMultiverseScenarioTaskFactory =
   (scenario: Readonly<DevelopmentalScenarioSeed>) => DevelopmentalMultiverseScenarioTask;
 
