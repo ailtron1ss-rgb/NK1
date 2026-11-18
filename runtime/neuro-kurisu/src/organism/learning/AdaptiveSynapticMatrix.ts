@@ -505,7 +505,11 @@ export class AdaptiveSynapticMatrixEngine {
           && HASH_PATTERN.test(item.acceptedReportHistorySha256)
           ? item.acceptedReportHistorySha256.toLowerCase() : null;
         const currentHistoryCommitment = reportHistoryCommitment(uniqueReportHistory);
-        const reportHistoryIntegrityMissing = (rawReportHistory.length > 0 || Boolean(item.manifest))
+        const reportHistoryEvidencePresent = rawReportHistory.length > 0 || Boolean(item.manifest)
+          || (persistedReportCount !== null && persistedReportCount > 0)
+          || (persistedHistoryCommitment !== null
+            && persistedHistoryCommitment !== reportHistoryCommitment([]));
+        const reportHistoryIntegrityMissing = reportHistoryEvidencePresent
           && (persistedReportCount === null || persistedHistoryCommitment === null
             || persistedReportCount !== uniqueReportHistory.length
             || persistedHistoryCommitment !== currentHistoryCommitment);

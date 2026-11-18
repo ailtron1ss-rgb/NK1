@@ -417,4 +417,30 @@ const request = (overrides = {}) => ({
     'a history with a changed sequence must fail closed instead of authorizing an old report');
 }
 
+
+{
+  const matrix = new AdaptiveSynapticMatrixEngine();
+  matrix.registerCandidate(candidate());
+  const consumed = manifest(candidate(), {
+    validation: {
+      ...manifest().validation,
+      reportId: 'metadata-only-history-report',
+      reportSha256: hash('7'),
+      holdoutDatasetRef: 'dataset://physics/metadata-only-history',
+    },
+  });
+  matrix.activateValidated(consumed, () => true);
+
+  const strippedSnapshot = matrix.snapshot();
+  delete strippedSnapshot.adapters[0].acceptedReportSha256s;
+  delete strippedSnapshot.adapters[0].manifest;
+  const restored = new AdaptiveSynapticMatrixEngine();
+  restored.restore(strippedSnapshot, () => true);
+  assert.equal(restored.snapshot().adapters[0].activationHistorySaturated, true,
+    'the monotonic count and commitment must expose history removal even if the current manifest is also missing');
+  assert.throws(() => restored.activateValidated(consumed, () => true),
+    /history-capacity/i,
+    'metadata proving prior use must fail closed when both the receipt list and manifest are stripped');
+}
+
 console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX=PASS');
