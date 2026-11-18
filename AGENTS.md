@@ -1,8 +1,12 @@
 # NeuroCore — repository working rules
 
-> **Current continuation checkpoint — 2026-11-01:** start with [README.md](README.md) and [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions. The source baseline at this checkpoint is `735b83d525c0d53c91e2e5a6587fb3529a08d13b`; never assume this SHA remains current. `main` is release/metadata and is not the direct source merge target. The historical WorkPass126/127 and PR #11/#12 notes formerly below were stale and have been removed from the active entry point; older WorkPass records later in the repository remain archival.
+> **Current continuation checkpoint — 2026-11-18:** start with [README.md](README.md), [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) and [the 100% completion program](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md), then refresh the live source SHA, every page of open PRs and exact-head Actions. Confirmed source baseline for this checkpoint: `bee2b133fdedd48723bc49b3eedae5f0df929c1c`; never assume it remains current. PR #913 is merged; 19 push-triggered Actions runs on that exact SHA concluded SUCCESS. This does not prove real-device, independent holdout, long-soak or Release readiness. `main` remains release/metadata and is not the direct source merge target. Historical WorkPass checkpoints remain archival.
+>
+> **Release gate:** latest published ZIP including prerelease remains the 2026-10-19 WorkPass70 Hotfix asset; human license review is still pending and redistribution approval is false. Do not claim November source changes are released.
+>
+> **Registry freshness:** `engineering-os/aspects.v1.json` is a 2026-11-06 snapshot tied to an older source SHA. Its status counts are not current readiness evidence until each aspect is reviewed against the live tree and new evidence.
 
-## Current checkpoint
+## Historical checkpoint — 2026-11-01 (archival snapshot)
 
 - PR #594 merged: missing/corrupt-primary recovery, unchanged restore recreation and backup preservation; 11/11 exact-head checks.
 - PR #603 merged: terminal/unknown speech lifecycle clears stale mouth channels; 9/9 exact-head checks.
@@ -33,6 +37,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 - `docs/WORKPASS93_CHECKPOINT_2026-10-20.md`: latest continuation snapshot, CI evidence and prioritized unresolved queue.
 - `docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` plus its JSON manifest: exact content-duplicate audit; candidates are not deletion instructions.
 - `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: repository inventory, audit findings and open-work register.
+- `docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md`: current cross-cutting completion plan; 20 workstreams, 305 work units, hard acceptance gates and release criteria. The machine registry remains the source of aspect statuses.
 - `runtime/neuro-kurisu/`: canonical organism/runtime implementation.
 - `runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts`: canonical memory store and retrieval owner.
 - `runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts`: offline BM25-vs-candidate evaluation; it must not mutate or promote live state.
