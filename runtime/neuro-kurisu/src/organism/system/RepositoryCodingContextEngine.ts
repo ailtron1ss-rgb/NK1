@@ -93,7 +93,7 @@ const MAX_PATCH_BYTES = 128 * 1024;
 const MAX_PROPOSALS = 64;
 const MAX_ENGINE_STATE_BYTES = 12 * 1024 * 1024;
 const MAX_VERIFICATION_AGE_MS = 30 * 60 * 1000;
-const SECRET_PATH_RE = /(^|\/)(?:\.env(?:\..*)?|\.npmrc|\.pypirc|\.netrc|secrets?(?:\/|$)|credentials?(?:\/|$)|tokens?(?:\/|$)|passwords?(?:\/|$)|pass-secrets?(?:\/|$)|id_rsa|id_ed25519)(?:$|\/)/i;
+const SECRET_PATH_RE = /(^|\/)(?:\.env(?:\..*)?|\.npmrc|\.pypirc|\.netrc|secrets?|credentials?|tokens?|passwords?|pass-secrets?|id_rsa|id_ed25519)(?:$|\/)/i;
 const SECRET_CONTENT_PATTERNS: RegExp[] = [
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
   /\bgh[pousr]_[A-Za-z0-9]{20,}\b/, /\bgithub_pat_[A-Za-z0-9_]{20,}\b/,
