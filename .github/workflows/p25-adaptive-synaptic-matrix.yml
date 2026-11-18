@@ -1,17 +1,6 @@
 name: P25 Adaptive Synaptic Matrix
 
 on:
-  push:
-    branches: ["aspect/**"]
-    paths:
-      - "runtime/neuro-kurisu/src/organism/learning/AdaptiveSynapticMatrix.ts"
-      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
-      - "runtime/neuro-kurisu/src/organism/index.ts"
-      - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs"
-      - "runtime/neuro-kurisu/tests/neuro-plastic-core.mjs"
-      - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix-runtime.mjs"
-      - "runtime/neuro-kurisu/package.json"
-      - ".github/workflows/p25-adaptive-synaptic-matrix.yml"
   pull_request:
     branches:
       - workpass70-source
