@@ -349,7 +349,7 @@ export function cognitiveNeuralProfileFingerprint(profile:CognitiveNeuralControl
     profile.controlsConfigured.samplingParameters,profile.controlsConfigured.adapterSelection,
     profile.controlsConfigured.activationSteering,profile.controlsConfigured.residualBlock,
   ]);
-  return createHash('sha256').update(canonical,'utf8').digest('hex');
+  return createHash('sha256').update(canonical).digest('hex');
 }
 
 /** Apply only the provider contract's supported, bounded sampling parameters. */
