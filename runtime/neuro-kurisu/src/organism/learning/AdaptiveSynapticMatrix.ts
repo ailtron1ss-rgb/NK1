@@ -524,11 +524,11 @@ export class AdaptiveSynapticMatrixEngine {
         const persistedHistoryCommitment = typeof item.acceptedReportHistorySha256 === 'string'
           && HASH_PATTERN.test(item.acceptedReportHistorySha256)
           ? item.acceptedReportHistorySha256.toLowerCase() : null;
-        const currentHistoryCommitment = reportHistoryCommitment(uniqueReportHistory);
+        const currentHistoryCommitment = synapticReplayHistoryCommitment(uniqueReportHistory);
         const reportHistoryEvidencePresent = rawReportHistory.length > 0 || Boolean(item.manifest)
           || (persistedReportCount !== null && persistedReportCount > 0)
           || (persistedHistoryCommitment !== null
-            && persistedHistoryCommitment !== reportHistoryCommitment([]));
+            && persistedHistoryCommitment !== synapticReplayHistoryCommitment([]));
         const reportHistoryIntegrityMissing = reportHistoryEvidencePresent
           && (persistedReportCount === null || persistedHistoryCommitment === null
             || persistedReportCount !== uniqueReportHistory.length
@@ -586,7 +586,7 @@ export class AdaptiveSynapticMatrixEngine {
         // Carry their observed entries forward, but do not claim their history is complete.
         if (persistedReportCount === null || persistedHistoryCommitment === null) {
           restored.acceptedReportCount = restored.acceptedReportSha256s.length;
-          restored.acceptedReportHistorySha256 = reportHistoryCommitment(restored.acceptedReportSha256s);
+          restored.acceptedReportHistorySha256 = synapticReplayHistoryCommitment(restored.acceptedReportSha256s);
         }
         if (item.status === 'quarantined' && !restored.quarantineReportSha256) {
           // Without the last accepted receipt the quarantine cannot be cleared safely.
@@ -604,7 +604,6 @@ export class AdaptiveSynapticMatrixEngine {
             } else {
               restored.status = 'quarantined';
               restored.manifest = manifest;
-              restored.quarantineReportSha256 ??= manifest.validation.reportSha256;
               restored.quarantineReportSha256 ??= manifest.validation.reportSha256;
             }
           } catch {
