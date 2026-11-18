@@ -11,7 +11,8 @@ Branch: `aspect/cognitive-to-neural-bridge-20261117`
 - Export the action/mode types, 43-feature B365-aware projection, versioned profile, provider request adapter and explicit emergency-bypass helper.
 - Normalize organism inputs; accept only complete B365 v14 diagnostic snapshots with valid ticks and all 23 normalized signals; reject unknown versions, partial, future and stale (>8 tick) snapshots as a whole.
 - Expose feature keys and exact B365 version/tick provenance, use an explicit neutral unavailable-state encoding, bound steering intent to 0.15, and scale temperature/token budgets using mode, reserve and allostatic preservation.
-- Validate one-hot/action/mode consistency, adapter hint mapping, snapshot version/age/freshness arithmetic and all provider control bounds again at the llama.cpp hand-off.
+- Validate one-hot/action/mode consistency, adapter hint mapping, snapshot version/age/freshness arithmetic and all provider control bounds again at the llama.cpp hand-off; independently recompute sampling and steering values from the canonical vector.
+- Deduplicate provider usage observations with runtime request IDs in a separate bounded 512-entry ledger, independent of optional template-control receipts.
 - Test B365 diagnostics projection, exact 43-channel order, freshness rejection, immutability, malformed input, caps and request pass-through.
 
 Expected focused command:
