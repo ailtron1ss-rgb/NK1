@@ -36,6 +36,7 @@ const fetchImpl = async (_url, init) => {
   return new Response(JSON.stringify({
     model: 'fake-llama-template',
     choices: [{ message: { content: 'local provider response' } }],
+    usage: { prompt_tokens:12, completion_tokens:8, total_tokens:20 },
   }), { status:200, headers:{'content-type':'application/json'} });
 };
 
@@ -57,6 +58,7 @@ const defaultProvider = new OpenAICompatibleLocalChatProvider({
 });
 const defaultResponse = await defaultProvider.generate(baseRequest);
 assert.equal(defaultResponse.text,'local provider response');
+assert.deepEqual(defaultResponse.providerUsage,{promptTokens:12,completionTokens:8,totalTokens:20});
 assert.equal(Object.hasOwn(payloads[0],'chat_template_kwargs'),false,
   'unknown Jinja controls must remain disabled by default');
 assert.equal(Object.hasOwn(defaultResponse,'providerControlReceipt'),false);
@@ -98,6 +100,22 @@ assert.deepEqual(enabledResponse.providerControlReceipt,{
 });
 assert.equal(payloads[1].temperature,profile.temperature);
 assert.equal(payloads[1].max_tokens,profile.maxTokens);
+assert.deepEqual(enabledResponse.providerUsage,{promptTokens:12,completionTokens:8,totalTokens:20});
+
+// Malformed usage must not fail an otherwise successful language response.
+const invalidUsageProvider = new OpenAICompatibleLocalChatProvider({
+  baseUrl:'http://127.0.0.1:1234/v1',
+  fetchImpl:async()=>new Response(JSON.stringify({
+    model:'fake-invalid-usage',
+    choices:[{message:{content:'response without trusted usage'}}],
+    usage:{prompt_tokens:-1,completion_tokens:8,total_tokens:7},
+  }),{status:200,headers:{'content-type':'application/json'}}),
+});
+const invalidUsageResponse=await invalidUsageProvider.generate({
+  system:'system',user:'user',
+});
+assert.equal(invalidUsageResponse.text,'response without trusted usage');
+assert.equal(Object.hasOwn(invalidUsageResponse,'providerUsage'),false);
 
 // No request correlation means no template-control hand-off or receipt.
 const noIdResponse=await enabledProvider.generate({
