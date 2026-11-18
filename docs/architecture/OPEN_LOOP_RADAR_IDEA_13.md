@@ -12,6 +12,7 @@ An invalid or unsupported outer snapshot fails closed. Restore reads only own da
 - Each record tracks owner, type, provenance, due/expiry timestamps, bounded dependencies, priority, lifecycle status and surfacing history.
 - A dependency is satisfied only by a fulfilled record with timestamped closure evidence. Blocked obligations cannot be marked complete or surfaced as actionable overdue tasks.
 - Blocked → open transitions receive a distinct `dependency-unblocked` surfacing reason.
+- Candidate diagnostics separate surfacing eligibility from suppression, exposing `snoozed`, `reservation`, `quiet-hours` and `cooldown` so the UI can explain why an item is currently hidden.
 - Completion, cancellation and reopening are explicit operations. Completion requires evidence; cancellation and reopening require a reason.
 - Optional idempotency keys deduplicate retried creates for 24 hours while retained; reusing a key for different content is a conflict.
 - At capacity, only unreferenced terminal history may be pruned. Active obligations and the full transitive prerequisite ancestry of active obligations are never silently evicted.
@@ -22,7 +23,7 @@ An invalid or unsupported outer snapshot fails closed. Restore reads only own da
 The radar is connected to the existing `OrganismRuntime` spontaneous-dialogue path; it does not create a competing scheduler or force a new conversation by itself.
 - When an existing autonomous social initiative is selected, the runtime scans for one actionable accepted obligation and reserves at most one item for that initiative.
 - The reservation is persisted before language generation, suppresses duplicate surfacing, and carries a bounded 15-minute default lease.
-- A generated message receives only a privacy-sanitized title/type/reason/owner projection. User-owned items are framed as user-accepted follow-ups; system-owned items are framed as the organism's own previously accepted intentions, never falsely attributed to the user. The prompt frames either as an optional check-in, not authorization or evidence of completion.
+- A generated message receives only a privacy-sanitized title/type/reason/owner projection. User-owned items are framed as user-accepted follow-ups; system-owned items are framed as the organism's own previously accepted intentions, never falsely attributed to the user. The prompt frames either as an optional check-in, not authorization or evidence of completion. The default compatibility behavior for older callers that omit owner is `user`.
 - If generation or message staging fails, the reservation is released. An abandoned reservation expires after its lease so the obligation becomes eligible again after restart.
 - The existing `POST /api/organism/proactive-message/ack` delivery acknowledgement also acknowledges the matching open-loop reservation and starts its reminder cooldown.
 - Fulfilling, cancelling, reopening or snoozing a reserved obligation clears the reservation.
