@@ -107,7 +107,7 @@ async function main() {
   const registry = new NeuroPlasticAdapterRegistry();
   try {
     const snapshot = await readJson(registryFile);
-    registry.restore(
+    await registry.restore(
       snapshot,
       (approval, context) => verifyNeuroPlasticApprovalSignature(approval, context, SECRET),
       (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, EVALUATOR_SECRET),
