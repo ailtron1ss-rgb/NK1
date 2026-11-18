@@ -294,6 +294,7 @@ export function isValidCognitiveNeuralControlProfile(value:unknown):value is Cog
   const vector=profile.featureVector01;
   const keys=profile.featureKeys;
   const steering=profile.steeringIntent01;
+  const providerFeedback=profile.providerFeedback;
   if(profile.version!==2 || profile.featureSchema!=='nk1-cognitive-neural-43-v2'
     || !Number.isSafeInteger(profile.tick) || Number(profile.tick)<0
     || !(profile.action==='none' || isAction(profile.action))
@@ -315,20 +316,20 @@ export function isValidCognitiveNeuralControlProfile(value:unknown):value is Cog
     || profile.controlsConfigured?.adapterSelection!==false
     || profile.controlsConfigured?.activationSteering!==false
     || profile.controlsConfigured?.residualBlock!==false
-    || profile.providerFeedback?.version!==1
-    || profile.providerFeedback?.mode!==profile.mode
-    || !Number.isSafeInteger(profile.providerFeedback.sampleCount)
-    || profile.providerFeedback.sampleCount<0 || profile.providerFeedback.sampleCount>32
-    || !Number.isSafeInteger(profile.providerFeedback.truncatedCount)
-    || profile.providerFeedback.truncatedCount<0 || profile.providerFeedback.truncatedCount>profile.providerFeedback.sampleCount
-    || !Number.isSafeInteger(profile.providerFeedback.nearLimitCount)
-    || profile.providerFeedback.nearLimitCount<0 || profile.providerFeedback.nearLimitCount>profile.providerFeedback.sampleCount
-    || !isNormalizedSignal(profile.providerFeedback.truncationPressure01)) return false;
-  const expectedFeedbackPressure=profile.providerFeedback.sampleCount<4?0:Number(clamp(
-    (profile.providerFeedback.truncatedCount/profile.providerFeedback.sampleCount)*.8
-    +(profile.providerFeedback.nearLimitCount/profile.providerFeedback.sampleCount)*.2,
+    || !providerFeedback || providerFeedback.version!==1
+    || providerFeedback?.mode!==profile.mode
+    || !Number.isSafeInteger(providerFeedback.sampleCount)
+    || providerFeedback.sampleCount<0 || providerFeedback.sampleCount>32
+    || !Number.isSafeInteger(providerFeedback.truncatedCount)
+    || providerFeedback.truncatedCount<0 || providerFeedback.truncatedCount>providerFeedback.sampleCount
+    || !Number.isSafeInteger(providerFeedback.nearLimitCount)
+    || providerFeedback.nearLimitCount<0 || providerFeedback.nearLimitCount>providerFeedback.sampleCount
+    || !isNormalizedSignal(providerFeedback.truncationPressure01)) return false;
+  const expectedFeedbackPressure=providerFeedback.sampleCount<4?0:Number(clamp(
+    (providerFeedback.truncatedCount/providerFeedback.sampleCount)*.8
+    +(providerFeedback.nearLimitCount/providerFeedback.sampleCount)*.2,
   ).toFixed(3));
-  if(profile.providerFeedback.truncationPressure01!==expectedFeedbackPressure) return false;
+  if(providerFeedback.truncationPressure01!==expectedFeedbackPressure) return false;
 
   const actionsMatch=ACTIONS.every((action,index)=>vector[index]===(profile.action===action?1:0));
   const modeOffset=36;
@@ -359,7 +360,7 @@ export function isValidCognitiveNeuralControlProfile(value:unknown):value is Cog
   ).toFixed(3));
   const budgetFactor=.4+budgetRemaining01*.6;
   const adaptiveBudgetFactor=budgetFactor
-    +profile.providerFeedback.truncationPressure01*.15*(1-budgetFactor);
+    +providerFeedback.truncationPressure01*.15*(1-budgetFactor);
   const preservationFactor=1-preservation01*.35;
   const expectedMaxTokens=Math.max(96,Math.min(768,
     Math.round((TOKENS_BY_MODE[profile.mode!]*adaptiveBudgetFactor*preservationFactor)/16)*16,
@@ -413,9 +414,9 @@ export function cognitiveNeuralProfileFingerprint(profile:CognitiveNeuralControl
     profile.steeringIntent01.persistence01,profile.steeringIntent01.verification01,
     profile.controlsConfigured.samplingParameters,profile.controlsConfigured.adapterSelection,
     profile.controlsConfigured.activationSteering,profile.controlsConfigured.residualBlock,
-    profile.providerFeedback.version,profile.providerFeedback.mode,profile.providerFeedback.sampleCount,
-    profile.providerFeedback.truncatedCount,profile.providerFeedback.nearLimitCount,
-    profile.providerFeedback.truncationPressure01,
+    profile.providerFeedback.version,profile.providerFeedback.mode,providerFeedback.sampleCount,
+    providerFeedback.truncatedCount,providerFeedback.nearLimitCount,
+    providerFeedback.truncationPressure01,
   ]);
   return createHash('sha256').update(canonical).digest('hex');
 }
