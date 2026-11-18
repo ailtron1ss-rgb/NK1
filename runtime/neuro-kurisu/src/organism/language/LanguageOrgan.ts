@@ -1,7 +1,7 @@
 import { kurisuCanonPrompt } from './KurisuCanonProfile.ts';
 import { buildBudgetedLanguageContext, type ContextBudgetLedgerReport, type ContextSectionInput } from './ContextBudgetLedger.ts';
 
-import type { OrganismDecisionTrace, OrganismCycleResult, CognitiveProposal } from '../core/types.ts';
+import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismCycleResult, OrganismState, CognitiveProposal } from '../core/types.ts';
 import type { KnownEntityPromptContext } from '../system/KnownEntityDossier.ts';
 import { sanitizeAutonomousTopicText, type SocialInitiative } from '../system/AutonomousSocialInitiativeEngine.ts';
 
@@ -53,6 +53,10 @@ export interface LanguageRequest {
   /** Optional host cancellation signal for bounded inference. */
   signal?: AbortSignal;
   contextLedger?: ContextBudgetLedgerReport;
+  /** Typed route derived from the canonical decision, never from raw prompt text. */
+  neuroPlasticDomain?: string;
+  neuroPlasticConfidence01?: number;
+  neuroPlasticRisk01?: number;
 }
 
 export interface LanguageResponse {
@@ -63,8 +67,44 @@ export interface LanguageResponse {
 
 export type LanguageInvoker = (request: LanguageRequest) => Promise<LanguageResponse>;
 
+
+export interface NeuroPlasticLanguageRoute {
+  domain: 'language' | 'reasoning' | 'exploration';
+  confidence01: number;
+  risk01: number;
+}
+
+/** Maps only canonical selected actions into adapter domains; unsafe or unsupported
+ * decisions remain on the base model. No raw user text participates in this route.
+ */
+export function neuroPlasticRouteForDecision(
+  selected: IntentCandidate | null | undefined,
+  state: OrganismState,
+): NeuroPlasticLanguageRoute | null {
+  if (!selected || !Number.isFinite(selected.confidence)) return null;
+  const domainByAction: Partial<Record<ActionKind, NeuroPlasticLanguageRoute['domain']>> = {
+    respond: 'language',
+    verify: 'reasoning',
+    reflect: 'reasoning',
+    explore: 'exploration',
+  };
+  const domain = domainByAction[selected.action];
+  if (!domain) return null;
+  const clamp01 = (value: unknown): number => Math.max(0, Math.min(1,
+    typeof value === 'number' && Number.isFinite(value) ? value : 1));
+  const uncertainty = clamp01(state.needs?.uncertainty);
+  const cognitiveLoad = clamp01(state.needs?.cognitiveLoad);
+  const selfPredictionError = clamp01(state.selfPredictionError);
+  return {
+    domain,
+    confidence01: clamp01(selected.confidence),
+    risk01: Math.max(uncertainty, selfPredictionError, cognitiveLoad * 0.65),
+  };
+}
+
 export function buildCognitivePrompt(cycle: OrganismCycleResult, worldFacts: string[] = [], externalText = '', entityContext?: KnownEntityPromptContext, personalityContext = '', externalMem0Memories: Array<{ content?: unknown; score?: unknown }> = [], userModelContext = ''): LanguageRequest {
   const selected = cycle.decision.selected;
+  const neuroPlasticRoute = neuroPlasticRouteForDecision(selected, cycle.state);
   const candidates = cycle.decision.candidates.slice(0, 5)
     .map(c => `${c.action} score=${c.score.toFixed(2)} confidence=${c.confidence.toFixed(2)}`).join('\n');
   const at = Date.now();
@@ -100,6 +140,7 @@ export function buildCognitivePrompt(cycle: OrganismCycleResult, worldFacts: str
     system: [kurisuCanonPrompt(), dynamic.system].filter(Boolean).join('\n'),
     user: dynamic.user,
     contextLedger: dynamic.ledger,
+    ...(neuroPlasticRoute ? { neuroPlasticDomain: neuroPlasticRoute.domain, neuroPlasticConfidence01: neuroPlasticRoute.confidence01, neuroPlasticRisk01: neuroPlasticRoute.risk01 } : {}),
     maxTokens: 512,
     temperature: 0.7,
   };
@@ -128,6 +169,7 @@ export function buildAutonomousDialoguePrompt(
   openLoopContext?: AutonomousOpenLoopPromptContext,
 ): LanguageRequest {
   const selected = cycle.decision.selected;
+  const neuroPlasticRoute = neuroPlasticRouteForDecision(selected, cycle.state);
   const localTime = new Date().toLocaleString();
   const safeRecentMemories = safeRecalledSummaries(cycle.memories, 3);
   const safeTopic = sanitizeAutonomousTopicText(initiative.topic, 360);
@@ -207,6 +249,7 @@ ${safeOpenLoopOwnershipGuidance}\nNever claim the item is complete, do not press
     system: [kurisuCanonPrompt(), dynamic.system].filter(Boolean).join('\n'),
     user: dynamic.user,
     contextLedger: dynamic.ledger,
+    ...(neuroPlasticRoute ? { neuroPlasticDomain: neuroPlasticRoute.domain, neuroPlasticConfidence01: neuroPlasticRoute.confidence01, neuroPlasticRisk01: neuroPlasticRoute.risk01 } : {}),
     maxTokens: 360,
     temperature: 0.78,
   };
