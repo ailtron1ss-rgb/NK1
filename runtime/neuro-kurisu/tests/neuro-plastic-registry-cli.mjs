@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { createNeuroPlasticEvaluationReceipt } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { createNeuroPlasticEvaluationReceipt, neuroPlasticAdapterManifestFingerprint } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { fileURLToPath } from 'node:url';
 
 const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'neuro-plastic-cli-'));
@@ -158,6 +158,8 @@ try {
   run(['approve', '--adapter', adapterId]);
   const approval = JSON.parse(await readFile(approvalPath, 'utf8'));
   assert.equal(approval.approval.actorId, 'cli-test-operator');
+  assert.equal(approval.manifestFingerprint, neuroPlasticAdapterManifestFingerprint(manifest),
+    'operator approval must bind the exact staged adapter manifest');
   assert.equal(typeof approval.approval.signature, 'string');
   run(['activate', '--adapter', adapterId, '--input', approvalPath]);
 
