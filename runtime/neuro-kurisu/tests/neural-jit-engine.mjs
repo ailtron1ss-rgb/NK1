@@ -263,6 +263,27 @@ assert.equal(agingResult.accepted, false,
   'capture freshness must be checked again after asynchronous host verification');
 assert.equal(agingResult.reason, 'activation-capture-expired');
 
+// An unresponsive host verifier must be bounded and receive a cancellation signal.
+let verificationAbortObserved = false;
+const timeoutEngine = new NeuralJitEngine({
+  activationCaptureVerificationTimeoutMs: 25,
+  activationCaptureVerifier: {
+    verifyCapture(_capture, _expected, options) {
+      options?.signal?.addEventListener('abort', () => { verificationAbortObserved = true; }, { once: true });
+      return new Promise(() => {});
+    },
+  },
+});
+const timeoutTrace = await makeTrace(996, {
+  inputFeatures: [0.25, 0.5],
+  targetResidual: [0.05, -0.02],
+});
+const timeoutResult = await timeoutEngine.recordVerifiedTrace(timeoutTrace);
+assert.equal(timeoutResult.accepted, false);
+assert.equal(timeoutResult.reason, 'activation-capture-verification-timeout');
+assert.equal(verificationAbortObserved, true,
+  'a host verifier that exceeds its budget must receive an abort signal');
+
 const malformedTrace = await makeTrace(999);
 malformedTrace.capture.inputFeatures = Array(257).fill(0.1);
 const malformed = await engine.recordVerifiedTrace(malformedTrace);
