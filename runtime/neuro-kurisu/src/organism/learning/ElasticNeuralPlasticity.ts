@@ -211,6 +211,20 @@ export class ElasticNeuralPlasticityController {
 
   snapshot():ElasticNeuralPlasticityState{return structuredClone(this.state);}
 
+  private pruneExpiredProposals():void {
+    const timestamp=now();
+    for(const [proposalId,proposal] of this.pending){
+      if(timestamp-proposal.createdAt<=PROPOSAL_TTL_MS)continue;
+      this.pending.delete(proposalId);
+      this.state.attempts++;
+      this.state.rejectedUpdates++;
+      this.state.lastProposalId=proposalId;
+      this.state.lastReason='proposal-expired';
+      this.state.lastUpdatedParameterNames=[];
+      this.state.lastUpdatedAt=timestamp;
+    }
+  }
+
   private rejected(reason:string,action:ActionKind,sampleId:string,metrics?:Partial<ElasticNeuralPlasticityProposal>):ElasticNeuralPlasticityProposal {
     this.state.attempts++;
     this.state.rejectedUpdates++;
@@ -249,6 +263,7 @@ export class ElasticNeuralPlasticityController {
     if(!options||typeof options!=='object'||Array.isArray(options))throw new TypeError('plasticity-options-invalid');
     if(!validId(options.trainingSampleId)||options.trainingSampleId!==input.sampleId)
       throw new TypeError('plasticity-training-sample-id-mismatch');
+    this.pruneExpiredProposals();
     if(this.state.processedSampleIds.includes(input.sampleId)||
       [...this.pending.values()].some(row=>row.sampleId===input.sampleId))
       return this.rejected('duplicate-training-sample',input.action,input.sampleId);

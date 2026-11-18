@@ -235,6 +235,38 @@ assert.equal(secondRollback.rolledBack, false, 'rollback receipt must be consume
 assert.equal(secondRollback.reason, 'rollback-not-available');
 
 
+// Expired staged candidates are evicted before capacity is checked.
+const expiring = new ParametricPolicyLearner();
+const expiredProposalIds = [];
+for (let i = 0; i < 16; i++) {
+  const sampleId = 'train-expiring-' + i;
+  const proposal = expiring.proposeFeaturesElastic({
+    sampleId,
+    features: vector(0),
+    action: 'respond',
+    target01: 1,
+    learningRate01: .25,
+  }, options({ trainingSampleId: sampleId }));
+  assert.equal(proposal.eligible, true, 'pending proposal ' + i + ' should fit the bounded queue');
+  expiredProposalIds.push(proposal.proposalId);
+}
+const originalDateNow = Date.now;
+try {
+  Date.now = () => originalDateNow() + 5 * 60_000 + 1;
+  const freshSampleId = 'train-after-expiry-001';
+  const freshProposal = expiring.proposeFeaturesElastic({
+    sampleId: freshSampleId,
+    features: vector(0),
+    action: 'respond',
+    target01: 1,
+    learningRate01: .25,
+  }, options({ trainingSampleId: freshSampleId }));
+  assert.equal(freshProposal.eligible, true, 'expired candidates must not permanently exhaust the proposal queue');
+  assert.equal(expiring.commitFeaturesElastic(expiredProposalIds[0]).accepted, false);
+} finally {
+  Date.now = originalDateNow;
+}
+
 // P29 exhaustion must fail closed before candidate weights mutate.
 const deniedGovernance = new P29LearningGovernanceEngine();
 deniedGovernance.setResourceBudget(0, 0);
