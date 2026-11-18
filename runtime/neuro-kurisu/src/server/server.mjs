@@ -154,8 +154,8 @@ try {
     const registrySnapshot = JSON.parse(await readFile(NEURO_PLASTIC_REGISTRY_PATH, 'utf8'));
     await NEURO_PLASTIC_REGISTRY.restore(
         registrySnapshot,
-        (approval, context) => verifyNeuroPlasticApprovalSignature(
-            approval, context, NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS,
+        (approval, context, purpose) => verifyNeuroPlasticApprovalSignature(
+            approval, context, NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS, { purpose },
         ),
         (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(
             context.adapterId, receipt, NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY,
