@@ -124,6 +124,45 @@ for (const version of [13,15]) {
   assert.equal(incompatible.neuralSnapshotVersion,null);
 }
 
+const ageEight=bridge.project({ tick:24, neural:{ ...neural,tick:16 } });
+assert.equal(ageEight.neuralSnapshotAvailable,true,'the configured eight-tick freshness boundary is inclusive');
+assert.equal(ageEight.neuralSnapshotAgeTicks,8);
+assert.equal(ageEight.featureVector01[35],0);
+const ageNine=bridge.project({ tick:24, neural:{ ...neural,tick:15 } });
+assert.equal(ageNine.neuralSnapshotAvailable,false,'a nine-tick-old B365 snapshot must be rejected');
+assert.equal(ageNine.neuralSnapshotAgeTicks,null);
+assert.equal(ageNine.neuralSnapshotVersion,null);
+
+let randomSeed=0x36531;
+const random01=()=> {
+  randomSeed=(Math.imul(randomSeed,1664525)+1013904223)>>>0;
+  return randomSeed/0x1_0000_0000;
+};
+const actions=['respond','explore','verify','rest','reflect','wait','defer'];
+const modes=['reflex','shallow','retrieve','deep','simulate','defer','sleep'];
+for(let index=0;index<256;index+=1) {
+  const value=()=>Number(random01().toFixed(6));
+  const randomNeural={
+    version:14,tick:1000+index-(index%9),
+    predictionError01:value(),plasticity01:value(),neuromodulation01:value(),sparseActivity01:value(),
+    recurrentCoherence01:value(),neuralConfidence01:value(),modelAgreement01:value(),
+    counterfactualDivergence01:value(),goalField01:value(),actionEntropy01:value(),
+    allostatic:{drive01:value(),arousal01:value(),exploration01:value(),preservation01:value(),reflection01:value(),socialApproach01:value()},
+    selfModel:{agency01:value(),continuity01:value(),growthReadiness01:value(),identityConflict01:value()},
+    goalAuthorship:{ownership01:value(),commitment01:value(),revisionPressure01:value()},
+  };
+  const randomInput={
+    tick:1000+index,action:actions[index%actions.length],mode:modes[index%modes.length],
+    motivation01:value(),uncertainty01:value(),urgency01:value(),budgetRemaining01:value(),attention01:value(),
+    neural:randomNeural,
+  };
+  const randomProfile=bridge.project(randomInput);
+  assert.equal(isValidCognitiveNeuralControlProfile(randomProfile),true,
+    `randomized valid profile ${index} must satisfy canonical semantic validation`);
+  assert.deepEqual(bridge.project(randomInput),randomProfile,
+    `randomized profile ${index} must be deterministic`);
+}
+
 const lowBudget=bridge.project({ tick:17, mode:'deep', budgetRemaining01:.2, neural });
 const highBudget=bridge.project({ tick:17, mode:'deep', budgetRemaining01:.8, neural });
 assert.ok(highBudget.maxTokens>lowBudget.maxTokens,
