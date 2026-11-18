@@ -120,6 +120,7 @@ class LayerForceTests(unittest.TestCase):
 
         with self.bank.activate(profile_id, strength=0.0):
             zero_strength, _ = self.model(sample)
+            self.assertEqual(self.bank.snapshot()["registered_hook_count"], 0)
         self.assertTrue(torch.equal(baseline, zero_strength))
 
         with self.bank.activate(None):
