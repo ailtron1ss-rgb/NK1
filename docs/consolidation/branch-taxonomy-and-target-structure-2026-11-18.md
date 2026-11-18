@@ -24,7 +24,17 @@ Total: 1,033 branch refs.
 | architecture/ | 2 |
 | optimization/ | 2 |
 | rebase/ | 2 |
-| Other individual/root names | 244 |
+| Root-level names (no prefix) | 334 |
+| ci/ | 1 |
+| compat/ | 1 |
+| consolidation/ | 1 |
+| automation/ | 1 |
+| experiment/ | 1 |
+| jules-generated | 1 |
+| nk1 | 1 |
+| perf/ | 1 |
+| typescript/ | 1 |
+| verify/ | 1 |
 
 The largest structural issue is not only duplicates. It is the coexistence of several naming systems: aspect, fix, work, feature, workpassNN, generated branches, and root-level names. A final taxonomy should reduce these to a small number of persistent aspect branches plus short-lived task branches.
 
