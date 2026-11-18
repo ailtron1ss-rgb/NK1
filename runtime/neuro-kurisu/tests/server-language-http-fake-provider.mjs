@@ -153,6 +153,8 @@ try {
   assert.ok(Number.isFinite(body.language?.latencyMs) && body.language.latencyMs >= 0, 'language invocation must report finite non-negative latency');
   assert.deepEqual(body.language?.providerUsage,{promptTokens:84,completionTokens:19,totalTokens:103},
     'llama.cpp usage counters must survive the server language adapter');
+  assert.equal(body.language?.providerFinishReason,'stop',
+    'llama.cpp finish reason must survive the server language adapter');
   assert.equal(providerRequests, 1, 'one chat request should reach the local provider exactly once');
   assert.equal(lastProviderPayload?.model, 'neurocore-http-smoke-model', 'configured model identity must reach the provider');
   assert.ok(Array.isArray(lastProviderPayload?.messages) && lastProviderPayload.messages.some(message => message.role === 'user' && message.content.includes('configured local model')), 'user prompt must reach the local provider');
@@ -185,6 +187,8 @@ try {
   assert.equal(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsRejected, 0);
   assert.equal(bridgeDiagnosticsBody.diagnostics?.providerControlReceiptsDuplicate, 0);
   assert.ok(bridgeDiagnosticsBody.diagnostics?.providerUsageObservations > 0);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.providerBudgetFeedbackObservations > 0);
+  assert.ok(bridgeDiagnosticsBody.diagnostics?.providerBudgetFeedback?.some(item=>item.sampleCount>0));
   assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageDuplicates, 0);
   assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageUnavailable, 0);
   assert.equal(bridgeDiagnosticsBody.diagnostics?.providerUsageInvalid, 0);
