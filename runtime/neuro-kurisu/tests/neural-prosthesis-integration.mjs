@@ -201,6 +201,19 @@ await assert.rejects(
   fetch(new URL('/health', supervisorBaseUrl), { signal: AbortSignal.timeout(500) }),
 );
 
+// An unexpected post-start child exit must clear stale ownership, PID and readiness.
+const restartedManaged = await managedSupervisor.start();
+assert.equal(restartedManaged.started, true);
+const unexpectedlyExitedChild = managedSupervisor.child;
+assert.ok(unexpectedlyExitedChild?.pid > 0);
+const unexpectedExit = once(unexpectedlyExitedChild, 'exit');
+unexpectedlyExitedChild.kill('SIGTERM');
+await unexpectedExit;
+assert.equal(managedSupervisor.snapshot().managed, false, 'unexpected child exit must clear managed ownership');
+assert.equal(managedSupervisor.snapshot().ready, false, 'unexpected child exit must clear readiness');
+assert.equal(managedSupervisor.snapshot().pid, null, 'unexpected child exit must clear the stale PID');
+assert.match(managedSupervisor.snapshot().lastError ?? '', /^sidecar-exited-unexpectedly/);
+
 const timeoutPort = await reserveLoopbackPort();
 const timeoutBaseUrl = `http://127.0.0.1:${timeoutPort}/v1`;
 const timeoutSupervisor = new NeuralProsthesisSidecarSupervisor({
