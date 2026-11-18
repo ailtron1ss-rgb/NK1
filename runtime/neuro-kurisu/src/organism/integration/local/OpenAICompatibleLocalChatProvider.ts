@@ -1,4 +1,4 @@
-import { isValidCognitiveNeuralControlProfile, type CognitiveNeuralControlProfile } from '../../cognition/CognitiveToNeuralBridge.ts';
+import { cognitiveNeuralProfileFingerprint, isValidCognitiveNeuralControlProfile, type CognitiveNeuralControlProfile } from '../../cognition/CognitiveToNeuralBridge.ts';
 
 export interface LocalChatCompletionRequest {
   system: string;
@@ -9,13 +9,18 @@ export interface LocalChatCompletionRequest {
   signal?: AbortSignal;
   /** Optional NK1 control profile; forwarded only when custom llama.cpp Jinja controls are explicitly enabled. */
   cognitiveControl?: CognitiveNeuralControlProfile;
+  /** Per-runtime unique correlation ID; required for a deliverable control receipt. */
+  cognitiveControlRequestId?: string;
 }
 export interface LocalChatCompletionResponse {
   text: string;
   backend: string;
   model: string;
   latencyMs: number;
-  providerControlReceipt?: { provider:'llama.cpp'; templateKwargsSent:true; featureSchema:string };
+  providerControlReceipt?: {
+    provider:'llama.cpp'; templateKwargsSent:true; featureSchema:string;
+    requestId:string; profileFingerprint:string;
+  };
 }
 export interface LocalChatProviderOptions {
   baseUrl?: string;
@@ -40,8 +45,11 @@ function canonicalBaseUrl(raw: string | undefined): string | null {
   if (!url.pathname || url.pathname === '/') url.pathname = '/v1';
   return url.toString().replace(/\/+$/, '');
 }
-function cognitiveTemplateKwargs(profile:CognitiveNeuralControlProfile|undefined):Record<string,unknown>|null {
-  if(!isValidCognitiveNeuralControlProfile(profile)) return null;
+function cognitiveTemplateKwargs(profile:CognitiveNeuralControlProfile|undefined,requestId:string|undefined):Record<string,unknown>|null {
+  if(!isValidCognitiveNeuralControlProfile(profile)
+    || typeof requestId!=='string'
+    || requestId.length<1 || requestId.length>128
+    || !/^[a-z0-9][a-z0-9._:-]*$/i.test(requestId)) return null;
   const f=profile.featureVector01;
   const clamp01=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(1,value)):0;
   const clampIntent=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(.15,value)):0;
@@ -160,7 +168,10 @@ export class OpenAICompatibleLocalChatProvider {
       ? AbortSignal.any([deadlineSignal, request.signal])
       : deadlineSignal;
     const templateKwargs = this.enableCognitiveTemplateControls
-      ? cognitiveTemplateKwargs(request.cognitiveControl)
+      ? cognitiveTemplateKwargs(request.cognitiveControl,request.cognitiveControlRequestId)
+      : null;
+    const profileFingerprint = templateKwargs && request.cognitiveControl
+      ? cognitiveNeuralProfileFingerprint(request.cognitiveControl)
       : null;
     const completionBody:Record<string,unknown> = {
       model: this.model,
@@ -212,7 +223,15 @@ export class OpenAICompatibleLocalChatProvider {
       backend: `llama.cpp:${model}`,
       model,
       latencyMs: Math.max(0, Date.now() - startedAt),
-      ...(templateKwargs ? { providerControlReceipt:{provider:'llama.cpp' as const,templateKwargsSent:true as const,featureSchema:request.cognitiveControl!.featureSchema} } : {}),
+      ...(templateKwargs && request.cognitiveControlRequestId && profileFingerprint ? {
+        providerControlReceipt:{
+          provider:'llama.cpp' as const,
+          templateKwargsSent:true as const,
+          featureSchema:request.cognitiveControl!.featureSchema,
+          requestId:request.cognitiveControlRequestId,
+          profileFingerprint,
+        },
+      } : {}),
     };
   }
 }
