@@ -1331,31 +1331,53 @@ export class OrganismRuntime {
     toolId:string; input:Record<string,unknown>; result:ToolExecution;
     options:ActionGatewayExecutionOptions; decisionId:string;
   }):Promise<void> {
-    return this.withNeuralJitMutation(async()=>{
     const adapter=this.config.neuralJitCaptureAdapter;
     const pending=this.neuralJitPendingCaptures.get(context.decisionId);
     if(!adapter || !pending) return;
+    // Consume synchronously before the first await so concurrent finalizers cannot bind one handle twice.
     this.neuralJitPendingCaptures.delete(context.decisionId);
     if(Date.now()-pending.capturedAt>10*60_000) { this.neuralJitCaptureDrops++; return; }
     if(pending.traceContext.decisionId!==context.decisionId) { this.neuralJitCaptureDrops++; return; }
     const binding={toolId:context.toolId,input:context.input,executionId:context.result.executionId,decisionId:context.decisionId};
-    if(!isTrustedDecisionLinkedExternalPostcondition(context.result.verification,binding)) return;
+    if(!isTrustedDecisionLinkedExternalPostcondition(context.result.verification,binding)) { this.neuralJitCaptureDrops++; return; }
     let inputFingerprint:string;
     try { inputFingerprint=neuralJitInputFingerprint(binding); }
     catch { this.neuralJitCaptureDrops++; return; }
-    let boundCapture;
-    try {
-      boundCapture=await adapter.bindVerifiedOutcome(pending.capture,{
-        binding,inputFingerprint,taskFamily:pending.traceContext.taskFamily,tick:pending.traceContext.tick,
-        verification:context.result.verification,
-        outcome:{ok:context.result.ok,outcomeClass:context.result.outcomeClass,confidence01:context.result.verification.confidence01},
-      });
-    } catch { this.neuralJitCaptureDrops++; return; }
-    if(!boundCapture) { this.neuralJitCaptureDrops++; return; }
-    const admitted=await this.neuralJitEngine.recordVerifiedTrace({capture:boundCapture,verification:context.result.verification,binding});
-    if(admitted.accepted) await this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot());
-    else this.neuralJitCaptureDrops++;
+
+    // Shadow capture is optional work. A slow host adapter must not hold the canonical
+    // ActionGateway finalizer indefinitely or serialize every other verified outcome.
+    const bindingAbort=new AbortController();
+    let bindingTimedOut=false;
+    let bindingTimer:ReturnType<typeof setTimeout>|undefined;
+    let boundCapture:Awaited<ReturnType<NeuralJitLocalCaptureAdapter['bindVerifiedOutcome']>>=null;
+    const bindingTimeout=new Promise<never>((_resolve,reject)=>{
+      bindingTimer=setTimeout(()=>{
+        bindingTimedOut=true;
+        bindingAbort.abort();
+        reject(new Error('neural-jit-outcome-binding-timeout'));
+      },250);
     });
+    try {
+      boundCapture=await Promise.race([
+        Promise.resolve().then(()=>adapter.bindVerifiedOutcome(pending.capture,{
+          binding,inputFingerprint,taskFamily:pending.traceContext.taskFamily,tick:pending.traceContext.tick,
+          verification:context.result.verification,
+          outcome:{ok:context.result.ok,outcomeClass:context.result.outcomeClass,confidence01:context.result.verification.confidence01},
+          signal:bindingAbort.signal,
+        })),
+        bindingTimeout,
+      ]);
+      if(bindingTimedOut) { this.neuralJitCaptureDrops++; return; }
+    } catch { this.neuralJitCaptureDrops++; return; }
+    finally { if(bindingTimer!==undefined) clearTimeout(bindingTimer); }
+    if(!boundCapture) { this.neuralJitCaptureDrops++; return; }
+
+    // Engine admission is atomic after the asynchronous verifier resolves. Only the small
+    // durable snapshot write is serialized, so a slow host verifier cannot block other binds.
+    const admitted=await this.neuralJitEngine.recordVerifiedTrace({capture:boundCapture,verification:context.result.verification,binding});
+    if(admitted.accepted) {
+      await this.withNeuralJitMutation(()=>this.neuralJitStore.save(this.neuralJitEngine.persistenceSnapshot()));
+    } else this.neuralJitCaptureDrops++;
   }
 
   /**
