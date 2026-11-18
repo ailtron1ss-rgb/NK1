@@ -12599,62 +12599,56 @@ export class OrganismCore {
         const normalizedAction: IntentBoundAction = { ...action, toolId };
         if (evidence.toolId !== toolId || evidence.reason !== action.reason ||
             ((evidence.source === 'project-executor' || evidence.source === 'compound-skill') &&
-             (!evidence.inputHash || evidence.inputHash !== sha256Stable({ input: action.input, expectedOutputKeys: action.options?.expectedOutputKeys ?? [] })))) {
+                (!evidence.inputHash || evidence.inputHash !== sha256Stable({ input: action.input, expectedOutputKeys: action.options?.expectedOutputKeys ?? [] })))) {
             return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
                 toolId, 'intent-action-binding-mismatch', { intentContractId: contract.id },
             ) };
         }
+
         let approved = this.getIntentContract(contract.id);
         let intentApprovalConsumed = false;
-        const intentApprovalId = typeof action.intentApprovalId === 'string' && action.intentApprovalId
-            ? action.intentApprovalId
+        const intentApprovalId = typeof action.intentApprovalId === 'string' && action.intentApprovalId.trim()
+            ? action.intentApprovalId.trim()
             : undefined;
-        if (intentApprovalId && !approvalRow) {
+        const approvalRequests = this.cognitiveRuntime.actionGateway.toolPermissionSnapshot().requests;
+        const approvalRow = intentApprovalId
+            ? approvalRequests.find(row => row.id === intentApprovalId && row.toolId === INTENT_APPROVAL_TOOL_ID &&
+                row.operation === 'direct' && row.inputPreview.intentContractId === contract.id)
+            : [...approvalRequests].reverse().find(row => row.toolId === INTENT_APPROVAL_TOOL_ID &&
+                row.operation === 'direct' && row.inputPreview.intentContractId === contract.id);
+
+        if (intentApprovalId && !approvalRow && !approved) {
             return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
-                toolId, 'intent-approval-ticket-not-found', { intentContractId: contract.id },
+                toolId, 'intent-approval-ticket-not-found-or-contract-mismatch', { intentContractId: contract.id },
             ) };
         }
-        if (approvalRow && ['declined', 'expired'].includes(approvalRow.status)) {
+        if (!approved && approvalRow && ['declined', 'expired'].includes(approvalRow.status)) {
             return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
                 toolId, 'intent-approval-ticket-' + approvalRow.status, { intentContractId: contract.id },
             ) };
         }
-        const approvalRow = intentApprovalId
-            ? this.cognitiveRuntime.actionGateway.toolPermissionSnapshot().requests.find(row =>
-                row.id === intentApprovalId && row.toolId === INTENT_APPROVAL_TOOL_ID && row.operation === 'direct',
-            )
-            : undefined;
-
         if (!approved && approvalRow?.status === 'pending') {
             return { contractId: contract.id, approvalRequest: approvalRow };
         }
         if (!approved && approvalRow?.status === 'approved') {
             try {
                 approved = await this.approveIntent(contract, {
-                    ...scope,
-                    userConfirmed: true,
-                    evidenceRef: intentApprovalId!,
+                    ...scope, userConfirmed: true, evidenceRef: approvalRow.id,
                 });
                 intentApprovalConsumed = true;
             } catch (error) {
                 const message = String((error as Error)?.message ?? 'intent-approval-consumption-failed')
                     .replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
-                return {
-                    contractId: contract.id,
-                    result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
-                        toolId, 'intent-approval-refused:' + message,
-                        { intentContractId: contract.id, riskLevel: contract.risk.level },
-                    ),
-                };
+                return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                    toolId, 'intent-approval-refused:' + message,
+                    { intentContractId: contract.id, riskLevel: contract.risk.level },
+                ) };
             }
         } else if (!approved && approvalRow?.status === 'consumed') {
-            return {
-                contractId: contract.id,
-                result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
-                    toolId, 'intent-approval-consumed-without-restored-contract',
-                    { intentContractId: contract.id, riskLevel: contract.risk.level },
-                ),
-            };
+            return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                toolId, 'intent-approval-consumed-without-restored-contract',
+                { intentContractId: contract.id, riskLevel: contract.risk.level },
+            ) };
         }
 
         if (!approved) {
@@ -12663,13 +12657,10 @@ export class OrganismCore {
             if (requiresHumanApproval) {
                 const ticket = await this.requestIntentApproval(contract, scope, action.reason);
                 if (!ticket.request) {
-                    return {
-                        contractId: contract.id,
-                        result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
-                            toolId, 'intent-approval-ticket-unavailable',
-                            { intentContractId: contract.id, riskLevel: contract.risk.level },
-                        ),
-                    };
+                    return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                        toolId, 'intent-approval-ticket-unavailable',
+                        { intentContractId: contract.id, riskLevel: contract.risk.level },
+                    ) };
                 }
                 return { contractId: contract.id, approvalRequest: ticket.request };
             }
@@ -12680,29 +12671,33 @@ export class OrganismCore {
             } catch (error) {
                 const message = String((error as Error)?.message ?? 'trusted-intent-evidence-rejected')
                     .replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
-                return {
-                    contractId: contract.id,
-                    result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
-                        toolId, 'intent-governance-refused:' + message,
-                        { intentContractId: contract.id, riskLevel: contract.risk.level },
-                    ),
-                };
+                return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                    toolId, 'intent-governance-refused:' + message,
+                    { intentContractId: contract.id, riskLevel: contract.risk.level },
+                ) };
             }
         }
 
         const dispatchAction: IntentBoundAction = { ...normalizedAction, intentApprovalId: undefined };
         const dispatch = await this.executeIntent(approved, dispatchAction);
-        if (dispatch.executed) {
-            return { contractId: contract.id, result: dispatch.result, intentApprovalConsumed };
+        if (dispatch.executed) return { contractId: contract.id, result: dispatch.result, intentApprovalConsumed };
+        const refusal = this.cognitiveRuntime.actionGateway.refuseToolExecution(
+            toolId, 'intent-gate:' + dispatch.reason,
+            { intentContractId: contract.id, riskLevel: contract.risk.level },
+        );
+        if (dispatch.reason === 'intent-execution-outcome-uncertain' ||
+            dispatch.reason === 'intent-execution-reconciliation-required') {
+            return {
+                contractId: contract.id,
+                result: {
+                    ...refusal, ok: false, verified: false, outcomeClass: 'idempotency-recovery-required',
+                    idempotencyStatus: 'recovery-required',
+                    result: { ...refusal.result, error: 'intent-execution-reconciliation-required', intentContractId: contract.id, reason: dispatch.reason },
+                },
+                intentApprovalConsumed,
+            };
         }
-        return {
-            contractId: contract.id,
-            result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
-                toolId, 'intent-gate:' + dispatch.reason,
-                { intentContractId: contract.id, riskLevel: contract.risk.level },
-            ),
-            intentApprovalConsumed,
-        };
+        return { contractId: contract.id, result: refusal, intentApprovalConsumed };
     }
     /** New side effects must pass the intent gate and then the canonical Core/ActionGateway wrapper. */
     async executeIntent(contract: IntentContract, action: IntentBoundAction): Promise<IntentBridgeResult> {
@@ -13169,8 +13164,13 @@ export class OrganismCore {
                 });
                 result = reconciliation.attempted
                     ? reconciliation.result
-                    : this.cognitiveRuntime.actionGateway.refuseToolExecution(canonicalProjectToolId,
-                        `intent-reconciliation-blocked:${reconciliation.reason}`, { intentContractId: approvedProjectIntent.id });
+                    : {
+                        ...this.cognitiveRuntime.actionGateway.refuseToolExecution(canonicalProjectToolId,
+                            `intent-reconciliation-blocked:${reconciliation.reason}`, { intentContractId: approvedProjectIntent.id }),
+                        ok: false, verified: false, outcomeClass: 'idempotency-recovery-required',
+                        idempotencyStatus: 'recovery-required',
+                        result: { error: 'intent-reconciliation-blocked', intentContractId: approvedProjectIntent.id, reason: reconciliation.reason },
+                    };
             } else {
                 // Compatibility for pre-Intent checkpoints: this path is read-only and cannot dispatch.
                 result = await this.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);

@@ -420,58 +420,58 @@ export class IntentExecutionRuntime {
     }
     const keyHash = this.idempotencyKeyHash(action);
     if (!keyHash) return { attempted: false, contractId: contract.id, reason: 'original-idempotency-key-required' };
-    const pending = this.pendingIntentExecution(contract.id, gate.action);
-    if (!pending || pending.idempotencyKeyHash !== keyHash) {
-      return { attempted: false, contractId: contract.id, reason: 'matching-pending-intent-execution-not-found' };
+    const lock = contract.id + String.fromCharCode(0) + gate.action;
+    if (this.inFlightExecutions.has(lock)) {
+      return { attempted: false, contractId: contract.id, reason: 'intent-execution-in-progress' };
     }
-    pending.phase = 'reconciliation-attempted';
-    pending.at = this.clock();
-    const link: IntentExecutionLink = {
-      at: this.clock(),
-      contractId: contract.id,
-      toolId: gate.action,
-      operation: 'reconcile',
-      phase: 'reconciliation-attempted',
-      idempotencyKeyHash: keyHash,
-      ...(action.options?.decisionId ? { decisionId: action.options.decisionId } : {}),
-    };
-    this.pushExecutionLink(link);
-    await beforeLookup?.();
-    const result = await this.bridge.reconcile(contract, action, gateway);
-    if (result.attempted) {
-      const outcome = result.result;
-      link.at = this.clock();
-      link.executionId = outcome.executionId;
-      link.outcomeClass = outcome.outcomeClass;
-      link.idempotencyStatus = outcome.idempotencyStatus;
-      const noGatewayReceipt = outcome.result?.error === 'no-pending-receipt-to-reconcile';
-      const resolved = outcome.idempotencyStatus === 'reconciled' ||
-        outcome.idempotencyStatus === 'confirmed-not-executed' ||
-        outcome.outcomeClass === 'reconciled-not-executed' ||
-        outcome.verified === true;
-      if (noGatewayReceipt) {
-        // No local ActionGateway receipt is not an authoritative provider
-        // assertion that the side effect never happened. The durable ledger may
-        // have been lost or become inconsistent after an external action; keep
-        // the intent blocked for manual/external reconciliation, never auto-retry.
-        link.phase = 'pending-reconciliation';
-        pending.phase = 'pending-reconciliation';
-        pending.at = this.clock();
-        pending.outcomeClass = outcome.outcomeClass;
-        pending.executionId = undefined;
-        pending.idempotencyStatus = outcome.idempotencyStatus;
-      } else if (resolved) {
-        link.phase = 'completed';
-        pending.phase = 'completed';
-        pending.at = this.clock();
-        pending.outcomeClass = outcome.outcomeClass;
-        pending.executionId = outcome.executionId;
-        pending.idempotencyStatus = outcome.idempotencyStatus;
+    this.inFlightExecutions.add(lock);
+    try {
+      const pending = this.pendingIntentExecution(contract.id, gate.action);
+      if (!pending || pending.idempotencyKeyHash !== keyHash) {
+        return { attempted: false, contractId: contract.id, reason: 'matching-pending-intent-execution-not-found' };
       }
+      pending.phase = 'reconciliation-attempted';
+      pending.at = this.clock();
+      const link: IntentExecutionLink = {
+        at: this.clock(), contractId: contract.id, toolId: gate.action, operation: 'reconcile',
+        phase: 'reconciliation-attempted', idempotencyKeyHash: keyHash,
+        ...(action.options?.decisionId ? { decisionId: action.options.decisionId } : {}),
+      };
+      this.pushExecutionLink(link);
+      await beforeLookup?.();
+      const result = await this.bridge.reconcile(contract, action, gateway);
+      if (result.attempted) {
+        const outcome = result.result;
+        link.at = this.clock();
+        link.executionId = outcome.executionId;
+        link.outcomeClass = outcome.outcomeClass;
+        link.idempotencyStatus = outcome.idempotencyStatus;
+        const noGatewayReceipt = outcome.result?.error === 'no-pending-receipt-to-reconcile';
+        const resolved = outcome.idempotencyStatus === 'reconciled' ||
+          outcome.idempotencyStatus === 'confirmed-not-executed' ||
+          outcome.outcomeClass === 'reconciled-not-executed' || outcome.verified === true;
+        if (noGatewayReceipt || !resolved) {
+          // Missing/unknown receipts and non-final provider lookups are not proof of non-execution.
+          link.phase = 'pending-reconciliation';
+          pending.phase = 'pending-reconciliation';
+          pending.at = this.clock();
+          pending.outcomeClass = outcome.outcomeClass;
+          pending.executionId = outcome.executionId;
+          pending.idempotencyStatus = outcome.idempotencyStatus;
+        } else {
+          link.phase = 'completed';
+          pending.phase = 'completed';
+          pending.at = this.clock();
+          pending.outcomeClass = outcome.outcomeClass;
+          pending.executionId = outcome.executionId;
+          pending.idempotencyStatus = outcome.idempotencyStatus;
+        }
+      }
+      return result;
+    } finally {
+      this.inFlightExecutions.delete(lock);
     }
-    return result;
   }
-
   snapshot(): IntentExecutionRuntimeSnapshot {
     return {
       version: 1,
