@@ -386,6 +386,34 @@ export class AdaptiveSynapticMatrixEngine {
     };
   }
 
+  /**
+   * Record a policy/canonical-registry disagreement without treating the
+   * canonical fallback as a failed adapter execution. The canonical provider
+   * has already returned the base-model response, so the caller must not retry
+   * the base invoker a second time.
+   */
+  recordCanonicalFallback(
+    task: SynapticAdapterTask,
+    adapterId: string,
+    reason: string,
+    now = Date.now(),
+  ): void {
+    const safeAdapterId = String(adapterId ?? '').trim().slice(0, 80);
+    const safeReason = String(reason ?? 'canonical-selection-mismatch').trim().slice(0, 120)
+      || 'canonical-selection-mismatch';
+    this.state.metrics.routeDecisions += 1;
+    this.state.metrics.baseFallbacks += 1;
+    this.state.decisions.unshift({
+      task,
+      mode: 'base-fallback',
+      reason: 'canonical-registry:' + safeReason,
+      ...(safeAdapterId ? { adapterId: safeAdapterId } : {}),
+      score01: 0,
+      at: now,
+    });
+    this.trimDecisions();
+  }
+
   observe(id: string, success: boolean, latencyMs: number, now = Date.now()): void {
     const record = this.state.adapters.find(entry => entry.candidate.id === id && entry.status === 'active');
     if (!record) return;
