@@ -13,14 +13,14 @@ The feature is an extension of the existing optional Neural Prosthesis sidecar (
 
 ## Goals
 
-- Attach a small, independently owned forward-hook controller to the same decoder layer stack already validated by Neural Prosthesis.
+- Attach a small, independently owned forward-hook controller to the same decoder layer stack already validated by Neural Prosthesis, but only when the selected profile is explicitly activated for a non-zero-strength request.
 - Apply an explicitly loaded, host-approved direction vector to selected layers only.
-- Bound every per-token steering delta by a configured fraction of that token's current hidden-state norm (hard ceiling 10%; conservative default 5%).
+- Bound every per-token steering delta by a configured fraction of that token's current hidden-state norm (hard ceiling 10%; conservative default 5%), checking the actual cast output tensor so FP16/BF16 rounding cannot exceed the bound.
 - Keep steering disabled unless an operator supplies a profile path, allowlists its exact SHA-256, and selects it as the default profile.
 - Bind every profile to exact model ID, immutable model revision, model-config digest, decoder-layer path and hidden width.
 - Preserve tuple/list layer outputs and all non-hidden-state outputs.
 - Expose aggregate diagnostic metadata only; never expose prompts, hidden states, direction vectors or weights.
-- Preserve exact no-op behavior when steering is disabled.
+- Preserve exact no-op behavior when steering is disabled; profile preloading must not register hooks or add model-forward overhead.
 
 ## Non-goals
 
@@ -37,7 +37,9 @@ The feature is an extension of the existing optional Neural Prosthesis sidecar (
 - The profile must match the exact model/revision/config/layer path/hidden size used by the running sidecar.
 - At most eight target layers are allowed; every direction vector must have exactly the model hidden width and finite non-zero values, with a separate finite per-layer strength in [-1, 1].
 - The request-level and per-layer strengths are finite and bounded to [-1, 1]; the per-token delta norm is capped at 10% of the current activation norm.
+- Profile loading validates and stores inert data without registering hooks. Non-zero activation lazily installs each required layer hook exactly once; zero-strength activation and profile preloading remain hook-free.
 - Steering is request-scoped through a ContextVar and reset in a finally block. Shared-model generation remains serialized by the existing sidecar lock.
+- The output is re-measured after casting to the model activation dtype. If quantization overshoots, one rescaling attempt is made; if the cast still violates the limit, the affected token is left unchanged.
 - Errors do not silently fall through to an unbounded or partially applied profile. Invalid profiles prevent the service from starting with that configuration; no profile configured means the base model path remains untouched.
 
 ## Approaches considered
@@ -62,7 +64,9 @@ The feature is an extension of the existing optional Neural Prosthesis sidecar (
 5. Activation context is reset after success and exception; one request cannot leak steering into the next.
 6. The existing Neural Prosthesis tests and runtime checks remain green.
 7. Diagnostics disclose profile IDs/digests and bounded counters only.
-8. Real model quality, latency, memory and safety impact remain unmeasured until a fresh independent evaluation and target-device soak are run.
+8. Profiles loaded without a default must leave the model hook-free; zero strength must not attach hooks.
+9. FP16/BF16 rounding must never produce a per-token activation delta above the configured cap.
+10. Real model quality, latency, memory and safety impact remain unmeasured until a fresh independent evaluation and target-device soak are run.
 
 ## Integration boundary
 
