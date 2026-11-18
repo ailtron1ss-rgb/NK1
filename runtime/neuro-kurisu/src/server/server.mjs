@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
 import { URL } from 'node:url';
 import { mkdir, readFile, writeFile, rename, unlink, lstat } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
@@ -196,6 +196,94 @@ const NEURO_PLASTIC_INFERENCE = new NeuroPlasticInferenceAdapter(
     persistNeuroPlasticRegistry,
 );
 
+// P25 is an opt-in context/policy router. The canonical Neuro-Plastic registry
+// remains the final authority over signed model artifacts and actual inference.
+const P25_BASE_MODEL_ID = String(process.env.NEURO_PLASTIC_BASE_MODEL_ID || '').trim();
+const P25_BASE_MODEL_SHA256 = String(process.env.NEURO_PLASTIC_BASE_MODEL_SHA256 || '').trim().toLowerCase();
+const P25_POLICY_SECRET = String(process.env.NEURO_PLASTIC_P25_POLICY_SECRET || '');
+const P25_POLICY_KEY_ID = String(process.env.NEURO_PLASTIC_P25_POLICY_KEY_ID || '').trim();
+const P25_EXECUTOR_ENABLED =
+    process.env.NEURO_PLASTIC_MODEL_ALIASES_ENABLED === '1' &&
+    LLAMA_CPP_PROVIDER.configured() &&
+    P25_BASE_MODEL_ID.length > 0 &&
+    /^[a-f0-9]{64}$/.test(P25_BASE_MODEL_SHA256) &&
+    P25_POLICY_SECRET.length >= 32 &&
+    /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(P25_POLICY_KEY_ID);
+
+function verifyP25SynapticPolicy(canonicalPayload, signature, signerKeyId) {
+    if (!P25_EXECUTOR_ENABLED || signerKeyId !== P25_POLICY_KEY_ID ||
+        typeof canonicalPayload !== 'string' ||
+        typeof signature !== 'string' || !/^[a-f0-9]{64}$/i.test(signature)) {
+        return false;
+    }
+    const expected = createHmac('sha256', P25_POLICY_SECRET)
+        .update(canonicalPayload, 'utf8')
+        .digest();
+    const supplied = Buffer.from(signature, 'hex');
+    return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+async function invokeCanonicalSynapticAdapter(request, candidate, routing) {
+    const baseAlias = process.env.LLAMA_CPP_MODEL || 'local-model';
+    const baseModel = {
+        modelId: candidate.baseModelId,
+        modelRevisionSha256: candidate.baseModelRevisionSha256,
+    };
+    const baseFallback = async (reason) => {
+        const response = await LLAMA_CPP_PROVIDER.generate({ ...request, model: baseAlias });
+        return {
+            ...response,
+            ...baseModel,
+            appliedAdapterSha256: null,
+            adapterApplied: false,
+            adapterFallbackReason: String(reason || 'canonical-admission-unavailable').slice(0, 120),
+        };
+    };
+
+    let manifest;
+    try {
+        manifest = NEURO_PLASTIC_REGISTRY.getManifest(candidate.id);
+    }
+    catch {
+        return baseFallback('canonical-adapter-not-registered');
+    }
+
+    const manifestMatchesP25 =
+        manifest.adapterId === candidate.id &&
+        manifest.baseModel.id === candidate.baseModelId &&
+        manifest.baseModel.fingerprint.toLowerCase() === candidate.baseModelRevisionSha256.toLowerCase() &&
+        manifest.artifact.weightsSha256.toLowerCase() === candidate.artifactSha256.toLowerCase() &&
+        manifest.method === candidate.adapterFormat &&
+        manifest.baseModel.backendId === 'llama.cpp' &&
+        manifest.baseModel.servedModelAlias === baseAlias &&
+        candidate.baseModelId === P25_BASE_MODEL_ID &&
+        candidate.baseModelRevisionSha256.toLowerCase() === P25_BASE_MODEL_SHA256;
+
+    if (!P25_EXECUTOR_ENABLED || !manifestMatchesP25) {
+        return baseFallback(!P25_EXECUTOR_ENABLED
+            ? 'p25-host-executor-not-explicitly-enabled'
+            : 'p25-canonical-manifest-binding-mismatch');
+    }
+
+    const response = await NEURO_PLASTIC_INFERENCE.generate(request, {
+        domain: manifest.domain,
+        backendId: manifest.baseModel.backendId,
+        baseModelFingerprint: manifest.baseModel.fingerprint,
+        baseModelAlias: manifest.baseModel.servedModelAlias,
+        backendSupportsModelAliases: true,
+        confidence01: routing.confidence01,
+        risk01: Math.max(routing.resourceRisk01, routing.uncertainty01),
+        expectedAdapterId: candidate.id,
+    });
+    return {
+        ...response,
+        ...baseModel,
+        appliedAdapterSha256: response.adapter.used ? manifest.artifact.weightsSha256 : null,
+        adapterApplied: response.adapter.used,
+        adapterFallbackReason: response.adapter.fallbackReason,
+    };
+}
+
 async function invokeLanguage(request) {
     const started = Date.now();
     const ecologyPreferredBackend = runtime.core.p40SelectModel('language', PHONE_MODE === false, request.maxTokens && request.maxTokens > 900 ? .82 : .72);
@@ -242,6 +330,12 @@ const runtime = new OrganismRuntime({
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
+    ...(P25_EXECUTOR_ENABLED ? {
+        synapticBaseModelId: P25_BASE_MODEL_ID,
+        synapticBaseModelRevisionSha256: P25_BASE_MODEL_SHA256,
+        synapticAdapterManifestVerifier: verifyP25SynapticPolicy,
+        synapticAdapterInvoker: invokeCanonicalSynapticAdapter,
+    } : {}),
     mem0Adapter: MEM0_MEMORY_ADAPTER,
     mem0CognitiveRecall: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
     autoRun: true,
