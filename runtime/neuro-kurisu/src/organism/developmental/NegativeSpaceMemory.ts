@@ -36,7 +36,7 @@ export interface NegativeSpaceAlternative {
   reopenReason?: string;
 }
 
-export type NegativeSpaceReviewStatus = 'awaiting-outcome' | 'retained' | 'review-eligible' | 'reopened';
+export type NegativeSpaceReviewStatus = 'awaiting-outcome' | 'awaiting-independent-evidence' | 'retained' | 'review-eligible' | 'reopened';
 export type NegativeSpaceOutcomeSource = 'external-evidence' | 'world-transition' | 'internal' | 'unknown';
 
 export interface NegativeSpaceRecord {
@@ -97,6 +97,7 @@ const MAX_ALTERNATIVES = 4;
 const MAX_CONTEXT_RESULTS = 24;
 const SIGNIFICANCE_THRESHOLD01 = 0.72;
 const MIN_REVIEW_VERIFICATION01 = 0.5;
+const MIN_REVIEW_INDEPENDENCE01 = 0.5;
 const OUTCOME_RECONCILIATION_TOLERANCE01 = 0.02;
 const DEFAULT_REOPEN_CONDITION: NegativeSpaceReopenCondition = {
   signal: 'outcome.confidenceAdjustedAlternativeAdvantage01',
@@ -147,8 +148,20 @@ function normalizeAlternative(input: NegativeSpaceAlternativeInput, chosen: stri
   };
 }
 
-function hasVerifiedOutcome(record: NegativeSpaceRecord): boolean {
+function hasVerifiedOutcome(record: Pick<NegativeSpaceRecord, 'outcomeVerified01'>): boolean {
   return (record.outcomeVerified01 ?? 0) >= MIN_REVIEW_VERIFICATION01;
+}
+
+function hasIndependentOutcome(record: Pick<NegativeSpaceRecord, 'outcomeIndependent01'>): boolean {
+  return (record.outcomeIndependent01 ?? 0) >= MIN_REVIEW_INDEPENDENCE01;
+}
+
+function hasReviewGradeOutcome(
+  record: Pick<NegativeSpaceRecord, 'chosenActualOutcome01' | 'outcomeVerified01' | 'outcomeIndependent01'>,
+): boolean {
+  return record.chosenActualOutcome01 !== null
+    && hasVerifiedOutcome(record)
+    && hasIndependentOutcome(record);
 }
 
 function conditionMatches(condition: NegativeSpaceReopenCondition, signals: Record<string, number>): boolean {
@@ -296,12 +309,13 @@ export class NegativeSpaceMemory {
   evaluateReviewConditions(decisionId: string, signals: Record<string, number>, at = Date.now()): string[] {
     const record = this.state.records.find(candidate => candidate.decisionId === decisionId);
     if (!record || record.chosenActualOutcome01 === null) return [];
-    if (!hasVerifiedOutcome(record)) {
+    if (!hasReviewGradeOutcome(record)) {
       for (const alternative of record.alternatives) {
-        if (alternative.reopenedAt === undefined) alternative.reviewEligible = false;
+        alternative.reviewEligible = false;
       }
-      record.reviewStatus = record.alternatives.some(alternative => alternative.reopenedAt !== undefined)
-        ? 'reopened' : 'retained';
+      record.reviewStatus = hasVerifiedOutcome(record)
+        ? 'awaiting-independent-evidence'
+        : 'retained';
       this.state.lastAt = Math.max(this.state.lastAt, finite(at, Date.now()));
       return [];
     }
@@ -330,7 +344,7 @@ export class NegativeSpaceMemory {
     const record = this.state.records.find(candidate => candidate.decisionId === decisionId);
     const alternative = record?.alternatives.find(candidate => candidate.action === action);
     const normalizedReason = cleanText(reason);
-    if (!record || !hasVerifiedOutcome(record) || !alternative || !alternative.reviewEligible || !normalizedReason) return false;
+    if (!record || !hasReviewGradeOutcome(record) || !alternative || !alternative.reviewEligible || !normalizedReason) return false;
     alternative.reviewEligible = false;
     alternative.reopenedAt = Math.max(record.at, record.outcomeAt ?? 0, 0, finite(at, Date.now()));
     alternative.reopenReason = normalizedReason;
@@ -340,13 +354,16 @@ export class NegativeSpaceMemory {
   }
 
   reviewQueue(): Array<{ decisionId: string; chosen: string; alternative: NegativeSpaceAlternative; outcomeShortfall01: number }> {
-    return this.state.records.flatMap(record => hasVerifiedOutcome(record) ? record.alternatives
+    return this.state.records.flatMap(record => hasReviewGradeOutcome(record) ? record.alternatives
       .filter(alternative => alternative.reviewEligible)
       .map(alternative => ({
         decisionId: record.decisionId,
         chosen: record.chosen,
         alternative: structuredClone(alternative),
         outcomeShortfall01: record.outcomeShortfall01 ?? 0,
+        outcomeVerified01: record.outcomeVerified01 ?? 0,
+        outcomeIndependent01: record.outcomeIndependent01 ?? 0,
+        outcomeSource: record.outcomeSource,
       })) : []);
   }
 
@@ -366,6 +383,14 @@ export class NegativeSpaceMemory {
         ? null : clamp01(raw.chosenActualOutcome01);
       const verifiedOutcome01 = raw.outcomeVerified01 === null || raw.outcomeVerified01 === undefined
         ? null : clamp01(raw.outcomeVerified01);
+      const independentOutcome01 = raw.outcomeIndependent01 === null || raw.outcomeIndependent01 === undefined
+        ? null : clamp01(raw.outcomeIndependent01);
+      const evidenceQuality = {
+        chosenActualOutcome01: actual,
+        outcomeVerified01: verifiedOutcome01,
+        outcomeIndependent01: independentOutcome01,
+      };
+      const reviewGradeOutcome = hasReviewGradeOutcome(evidenceQuality);
       const alternatives: NegativeSpaceAlternative[] = [];
       for (const sourceValue of raw.alternatives.slice(0, MAX_ALTERNATIVES)) {
         const source = sourceValue && typeof sourceValue === 'object' ? sourceValue as Record<string, any> : null;
@@ -375,11 +400,10 @@ export class NegativeSpaceMemory {
         const reopenAtIsValid = source.reopenedAt !== null && source.reopenedAt !== undefined
           && Number.isFinite(Number(source.reopenedAt)) && Number(source.reopenedAt) >= 0;
         const reopenReason = cleanText(source.reopenReason);
-        const reopened = reopenAtIsValid && Boolean(reopenReason);
+        const reopened = reviewGradeOutcome && reopenAtIsValid && Boolean(reopenReason);
         alternatives.push({
           ...normalized,
-          reviewEligible: actual !== null && (verifiedOutcome01 ?? 0) >= MIN_REVIEW_VERIFICATION01
-            && source.reviewEligible === true && !reopened,
+          reviewEligible: reviewGradeOutcome && source.reviewEligible === true && !reopened,
           ...(reopened ? { reopenedAt: finite(source.reopenedAt), reopenReason } : {}),
         });
       }
@@ -388,7 +412,10 @@ export class NegativeSpaceMemory {
       const hasEligible = alternatives.some(alternative => alternative.reviewEligible);
       const hasReopened = alternatives.some(alternative => alternative.reopenedAt !== undefined);
       const status: NegativeSpaceReviewStatus = actual === null
-        ? 'awaiting-outcome' : hasEligible ? 'review-eligible' : hasReopened ? 'reopened' : 'retained';
+        ? 'awaiting-outcome'
+        : !hasVerifiedOutcome(evidenceQuality) ? 'retained'
+          : !hasIndependentOutcome(evidenceQuality) ? 'awaiting-independent-evidence'
+            : hasEligible ? 'review-eligible' : hasReopened ? 'reopened' : 'retained';
       restored.push({
         id: cleanText(raw.id, 128) || decisionId,
         decisionId,
@@ -403,7 +430,7 @@ export class NegativeSpaceMemory {
         chosenActualReward01: raw.chosenActualReward01 === null || raw.chosenActualReward01 === undefined ? null : clamp01(raw.chosenActualReward01),
         chosenSurprise01: raw.chosenSurprise01 === null || raw.chosenSurprise01 === undefined ? null : clamp01(raw.chosenSurprise01),
         outcomeVerified01: verifiedOutcome01,
-        outcomeIndependent01: raw.outcomeIndependent01 === null || raw.outcomeIndependent01 === undefined ? null : clamp01(raw.outcomeIndependent01),
+        outcomeIndependent01: independentOutcome01,
         outcomeSource: ['external-evidence', 'world-transition', 'internal', 'unknown'].includes(raw.outcomeSource) ? raw.outcomeSource : 'unknown',
         significance: {
           cost01: clamp01(significance.cost01), risk01: clamp01(significance.risk01),
@@ -438,7 +465,7 @@ export class NegativeSpaceMemory {
     const boundedLimit = Math.max(1, Math.min(MAX_CONTEXT_RESULTS, Math.floor(finite(limit, 8))));
     return this.state.records
       .filter(record => record.contextKey === key
-        && (includeUnverified || (record.chosenActualOutcome01 !== null && hasVerifiedOutcome(record))))
+        && (includeUnverified || hasReviewGradeOutcome(record)))
       .flatMap(record => record.alternatives.map(alternative => ({
         decisionId: record.decisionId,
         recordAt: record.at,
@@ -448,7 +475,9 @@ export class NegativeSpaceMemory {
         outcomeShortfall01: record.outcomeShortfall01,
         outcomeVerified01: record.outcomeVerified01,
         evidenceStatus: record.chosenActualOutcome01 === null ? 'awaiting-outcome' as const
-          : hasVerifiedOutcome(record) ? 'verified' as const : 'unverified' as const,
+          : !hasVerifiedOutcome(record) ? 'unverified' as const
+            : !hasIndependentOutcome(record) ? 'awaiting-independent-evidence' as const
+              : 'verified' as const,
         outcomeIndependent01: record.outcomeIndependent01,
         outcomeSource: record.outcomeSource,
         outcomeEvidence: [...record.outcomeEvidence],
@@ -476,8 +505,10 @@ export class NegativeSpaceMemory {
       contextIndexedRecords: records.filter(record => Boolean(record.contextKey)).length,
       distinctContextKeys: new Set(records.map(record => record.contextKey).filter(Boolean)).size,
       reviewEligible: alternatives.filter(alternative => alternative.reviewEligible).length,
-      verifiedOutcomes: records.filter(record => (record.outcomeVerified01 ?? 0) >= 0.5).length,
-      independentOutcomes: records.filter(record => (record.outcomeIndependent01 ?? 0) >= 0.5).length,
+      verifiedOutcomes: records.filter(hasVerifiedOutcome).length,
+      independentOutcomes: records.filter(hasIndependentOutcome).length,
+      reviewGradeOutcomes: records.filter(hasReviewGradeOutcome).length,
+      awaitingIndependentEvidence: records.filter(record => hasVerifiedOutcome(record) && !hasIndependentOutcome(record)).length,
       reopened: alternatives.filter(alternative => alternative.reopenedAt !== undefined).length,
       totalRecorded: this.state.totalRecorded,
       pruned: this.state.pruned,
