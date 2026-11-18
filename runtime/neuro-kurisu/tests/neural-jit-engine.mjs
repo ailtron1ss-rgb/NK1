@@ -284,6 +284,24 @@ assert.equal(timeoutResult.reason, 'activation-capture-verification-timeout');
 assert.equal(verificationAbortObserved, true,
   'a host verifier that exceeds its budget must receive an abort signal');
 
+// The stable host capture identity is one-shot even if a verifier wraps it in
+// a new execution/decision envelope and the external observation ID changes.
+const captureReuseEngine = new NeuralJitEngine({ activationCaptureVerifier: verifier });
+const sourceCaptureTrace = await makeTrace(9_700, {
+  inputFeatures: [0.25, 0.5], targetResidual: [0.05, -0.02],
+});
+const sourceCaptureAdmission = await captureReuseEngine.recordVerifiedTrace(sourceCaptureTrace);
+assert.equal(sourceCaptureAdmission.accepted, true);
+const wrappedReplayTrace = await makeTrace(9_701, {
+  captureId: sourceCaptureTrace.capture.captureId,
+  taskFingerprint: sourceCaptureTrace.capture.taskFingerprint,
+  inputFeatures: [0.3, 0.6], targetResidual: [0.04, -0.01],
+});
+const wrappedReplay = await captureReuseEngine.recordVerifiedTrace(wrappedReplayTrace);
+assert.equal(wrappedReplay.accepted, false,
+  'the same underlying activation capture must not be admitted under a new action receipt');
+assert.equal(wrappedReplay.reason, 'duplicate-activation-capture');
+
 const malformedTrace = await makeTrace(999);
 malformedTrace.capture.inputFeatures = Array(257).fill(0.1);
 const malformed = await engine.recordVerifiedTrace(malformedTrace);
