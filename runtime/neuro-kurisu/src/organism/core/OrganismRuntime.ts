@@ -696,9 +696,9 @@ export class OrganismRuntime {
     if(!usage) {
       this.cognitiveToNeuralBridgeMetrics.providerUsageUnavailable+=1;
     } else if(
-      Number.isSafeInteger(usage.promptTokens) && usage.promptTokens>=0 &&
-      Number.isSafeInteger(usage.completionTokens) && usage.completionTokens>=0 &&
-      Number.isSafeInteger(usage.totalTokens) && usage.totalTokens>=usage.promptTokens+usage.completionTokens
+      Number.isSafeInteger(usage.promptTokens) && usage.promptTokens>=0 && usage.promptTokens<=1_000_000 &&
+      Number.isSafeInteger(usage.completionTokens) && usage.completionTokens>=0 && usage.completionTokens<=1_000_000 &&
+      Number.isSafeInteger(usage.totalTokens) && usage.totalTokens>=usage.promptTokens+usage.completionTokens && usage.totalTokens<=1_000_000
     ) {
       const observations=this.cognitiveToNeuralBridgeMetrics.providerUsageObservations;
       this.cognitiveToNeuralBridgeMetrics.providerUsageObservations+=1;
