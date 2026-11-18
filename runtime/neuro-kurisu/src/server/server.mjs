@@ -147,7 +147,7 @@ catch (error) {
     if (error?.code !== 'ENOENT') throw error;
 }
 const NEURO_PLASTIC_APPROVAL_SECRET = String(process.env.NEURO_PLASTIC_APPROVAL_SECRET || '');
-const NEURO_PLASTIC_EVALUATOR_SECRET = String(process.env.NEURO_PLASTIC_EVALUATOR_SECRET || '');
+const NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY = String(process.env.NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY || '');
 try {
     const registrySnapshot = JSON.parse(await readFile(NEURO_PLASTIC_REGISTRY_PATH, 'utf8'));
     await NEURO_PLASTIC_REGISTRY.restore(
@@ -156,7 +156,7 @@ try {
             approval, context, NEURO_PLASTIC_APPROVAL_SECRET,
         ),
         (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(
-            context.adapterId, receipt, NEURO_PLASTIC_EVALUATOR_SECRET,
+            context.adapterId, receipt, NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY,
         ),
         (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
     );
