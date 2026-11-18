@@ -524,6 +524,32 @@ assert.deepEqual(aliasMismatchCalls, ['kurisu-reasoning-lora', 'kurisu-base'],
 assert.equal(aliasMismatchRegistry.snapshot().adapters[0].status, 'disabled');
 
 const activeSnapshot = inferenceRegistry.snapshot();
+const activeRecordForRestore = activeSnapshot.adapters[0];
+assert.equal(activeRecordForRestore.status, 'active');
+assert.equal(
+  verifyNeuroPlasticEvaluationReceiptSignature(
+    'kurisu-runtime-v1',
+    {
+      evaluationId: activeRecordForRestore.evaluation.evaluationId,
+      evaluatorId: activeRecordForRestore.evaluation.evaluatorId,
+      evaluatedAt: activeRecordForRestore.evaluation.evaluatedAt,
+      evaluationFingerprint: activeRecordForRestore.evaluation.evaluationFingerprint,
+      reportFingerprint: activeRecordForRestore.evaluation.reportFingerprint,
+      signature: activeRecordForRestore.evaluation.evaluatorSignature,
+    },
+    evaluatorPublicPem,
+  ),
+  true,
+  'persisted evaluator receipt must remain verifiable after activation',
+);
+assert.equal(
+  verifyApproval(
+    activeRecordForRestore.activationApproval,
+    approvalContext('kurisu-runtime-v1', activeRecordForRestore.evaluation.reportId, inferenceRegistry),
+  ),
+  true,
+  'persisted operator approval must remain verifiable after activation',
+);
 const restoredRegistry = new NeuroPlasticAdapterRegistry();
 await restoredRegistry.restore(activeSnapshot, undefined, undefined, () => true);
 assert.equal(restoredRegistry.select({
@@ -595,6 +621,8 @@ await signedRestoreRegistry.restore(
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorPublicPem),
   () => true,
 );
+assert.equal(signedRestoreRegistry.snapshot().adapters[0].status, 'active',
+  'restore must preserve active status when artifact, evaluator and operator signatures all validate');
 assert.equal(signedRestoreRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
@@ -602,7 +630,7 @@ assert.equal(signedRestoreRegistry.select({
   backendSupportsModelAliases: true,
   confidence01: 0.9,
   risk01: 0.1,
-}).useAdapter, true, 'restart restore must preserve an active adapter only with a valid signed approval');
+}).useAdapter, true, 'restart restore must preserve an active adapter only with valid Ed25519 receipts');
 const artifactRejectedRestoreRegistry = new NeuroPlasticAdapterRegistry();
 await artifactRejectedRestoreRegistry.restore(
   activeSnapshot,
