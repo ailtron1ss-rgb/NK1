@@ -187,7 +187,8 @@ const stored = engine.persistenceSnapshot();
 assert.ok(stored.spentHoldoutTaskFingerprints?.length >= evaluation.holdoutTaskFingerprints.length,
   'used holdout task fingerprints must be persisted to prevent cross-restart reuse');
 assert.equal(stored.traces, undefined, 'raw activation traces must not be persisted as trusted evidence');
-assert.equal(stored.candidates.length, 1);
+assert.equal(stored.candidates.length, 2,
+  'separate training evidence must retain separately identified candidate versions');
 assert.ok(stored.seenObservationFingerprints?.length > 0,
   'the durable sidecar must retain bounded replay protection across process restarts');
 assert.ok(stored.seenCaptureFingerprints?.length > 0,
@@ -219,7 +220,7 @@ assert.equal(restored.diagnostics().activeCandidates, 0);
 assert.equal(restored.projectShadowResidual(candidate.id,candidate.meanInput), null,
   'restored candidates remain quarantined and cannot feed a local inference shadow branch');
 const wideWeights = structuredClone(stored);
-wideWeights.candidates[0].outputDirection[0] = 128;
+for (const persistedCandidate of wideWeights.candidates) persistedCandidate.outputDirection[0] = 128;
 const restoredWideWeights = new NeuralJitEngine({ activationCaptureVerifier: verifier });
 restoredWideWeights.restore(wideWeights);
 assert.equal(restoredWideWeights.persistenceSnapshot().candidates.length, 0,
