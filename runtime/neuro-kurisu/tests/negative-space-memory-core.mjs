@@ -318,8 +318,11 @@ try {
   const restoredReviewQueue = restarted.core.negativeSpaceMemoryReviewQueue();
   assert.deepEqual(
     restoredReviewQueue.map(item => ({ decisionId: item.decisionId, action: item.alternative.action })),
-    [{ decisionId: 'core-negative-space-batch-reopen-002', action: 'verify' }],
-    'restart must preserve unrelated review-eligible decisions',
+    [
+      { decisionId: 'core-negative-space-batch-reopen-002', action: 'verify' },
+      { decisionId: 'core-negative-space-concurrent-success-006', action: 'verify' },
+    ],
+    'restart must preserve unrelated review-eligible decisions, including the concurrent write that survived rollback',
   );
 
   console.log('NEGATIVE_SPACE_MEMORY_CORE_PERSISTENCE=PASS', JSON.stringify({
