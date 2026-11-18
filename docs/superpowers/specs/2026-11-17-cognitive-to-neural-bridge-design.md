@@ -13,7 +13,7 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 
 - Produce a deterministic 43-value feature vector: seven action indicators, five organism-state scalars, 23 read-only B365 neural/allostatic/self-model/goal-authorship signals, one neural-snapshot freshness channel, and seven cognitive-mode indicators.
 - Normalize malformed/non-finite organism inputs, reject future or more-than-eight-tick-old neural snapshots, and clamp every numeric channel to [0, 1].
-- Accept a B365 snapshot only when it uses the currently supported diagnostic schema version 14, has a valid tick, and all 23 neural/allostatic/self-model/goal-authorship channels are finite normalized values. Older/newer unknown versions and partial snapshots are rejected as a whole; they are never blended with neutral-looking defaults.
+- Accept a B365 snapshot only when it uses the canonical schema constant from `B365DiagnosticsSchema.ts` (currently v14), has a valid tick, and all 23 neural/allostatic/self-model/goal-authorship channels are finite normalized values. The B365 core and bridge share this one constant; older/newer unknown versions and partial snapshots are rejected as a whole.
 - Revalidate the full provider hand-off: action and mode one-hots, mode-to-adapter hint, B365 version/provenance, tick-age arithmetic, freshness scalar, neutral unavailable-state encoding and all control bounds must agree.
 - Apply bounded sampling controls (`temperature`, `maxTokens`) and attach the structured profile to `LanguageRequest`.
 - Route both cognitive-proposal generation and user/autonomous language generation through the same bridge.
@@ -47,6 +47,7 @@ Project the existing NeuroCore organism state into a small, versioned, bounded c
 
 ## Integration points
 
+- Shared `B365DiagnosticsSchema.ts` contract, consumed by both B365 state/diagnostics and the bridge so schema version cannot drift independently.
 - Existing `OrganismState` and `OrganismGoal` from `core/types.ts`.
 - Existing `CognitiveBudgetManager` snapshot and the already-computed `b365UnifiedNeuroCausalDiagnostics()` read-only signal snapshot exposed by `OrganismCore`; Runtime reuses its per-cycle B365 snapshot rather than running B365 a second time.
 - Existing `LanguageRequest` / `LanguageInvoker` boundary; the local llama.cpp adapter's `chat_template_kwargs` opt-in adds an explicit template-variable route while non-local providers continue to receive supported sampling parameters and ignore unsupported neural controls.
