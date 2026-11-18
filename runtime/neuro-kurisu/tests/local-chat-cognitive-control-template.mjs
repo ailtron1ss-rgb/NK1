@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
-import { CognitiveToNeuralBridge, isValidCognitiveNeuralControlProfile } from '../src/organism/cognition/CognitiveToNeuralBridge.ts';
+import { CognitiveToNeuralBridge, cognitiveNeuralProfileFingerprint, isValidCognitiveNeuralControlProfile } from '../src/organism/cognition/CognitiveToNeuralBridge.ts';
 
 const profile = new CognitiveToNeuralBridge().project({
   tick: 24,
@@ -48,6 +48,7 @@ const baseRequest = {
   temperature:profile.temperature,
   maxTokens:profile.maxTokens,
   cognitiveControl:profile,
+  cognitiveControlRequestId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:24:1',
 };
 
 const defaultProvider = new OpenAICompatibleLocalChatProvider({
@@ -88,9 +89,24 @@ assert.deepEqual(enabledResponse.providerControlReceipt,{
   provider:'llama.cpp',
   templateKwargsSent:true,
   featureSchema:'nk1-cognitive-neural-43-v2',
+  requestId:baseRequest.cognitiveControlRequestId,
+  profileFingerprint:cognitiveNeuralProfileFingerprint(profile),
 });
 assert.equal(payloads[1].temperature,profile.temperature);
 assert.equal(payloads[1].max_tokens,profile.maxTokens);
+
+// No request correlation means no template-control hand-off or receipt.
+const noIdResponse=await enabledProvider.generate({
+  ...baseRequest, cognitiveControlRequestId:undefined,
+});
+assert.equal(noIdResponse.text,'local provider response');
+assert.equal(Object.hasOwn(payloads[payloads.length-1],'chat_template_kwargs'),false);
+assert.equal(Object.hasOwn(noIdResponse,'providerControlReceipt'),false);
+const unsafeIdResponse=await enabledProvider.generate({
+  ...baseRequest, cognitiveControlRequestId:'not a safe request id'.repeat(12),
+});
+assert.equal(unsafeIdResponse.text,'local provider response');
+assert.equal(Object.hasOwn(payloads[payloads.length-1],'chat_template_kwargs'),false);
 
 // A missing/invalid B365 snapshot must be explicit and still produce a valid,
 // conservative hand-off instead of failing the whole local language request.
@@ -104,7 +120,9 @@ assert.equal(unavailableProfile.neuralSnapshotAgeTicks,null);
 assert.ok(unavailableProfile.featureVector01.slice(12,35).every(value=>value===.5));
 assert.equal(isValidCognitiveNeuralControlProfile(unavailableProfile),true);
 const unavailableResponse = await enabledProvider.generate({
-  ...baseRequest, cognitiveControl:unavailableProfile,
+  ...baseRequest,
+  cognitiveControl:unavailableProfile,
+  cognitiveControlRequestId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:25:2',
 });
 const unavailableKwargs = payloads[2].chat_template_kwargs;
 assert.equal(unavailableResponse.text,'local provider response');
@@ -129,6 +147,8 @@ const invalidProfiles = [
   { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index === 35 ? 0.5 : value) },
   { ...profile, neuralSnapshotAgeTicks: 2 },
   { ...profile, neuralSnapshotVersion: null },
+  { ...profile, neuralSnapshotVersion: 13 },
+  { ...profile, neuralSnapshotVersion: 15 },
   { ...profile, neuralSource: 'unavailable' },
   { ...profile, maxTokens: 97 },
   { ...profile, featureVector01: profile.featureVector01.map((value,index)=>index === 22 ? -0.1 : value) },
