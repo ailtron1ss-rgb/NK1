@@ -1,4 +1,4 @@
-import type { CognitiveBridgeMode } from './CognitiveToNeuralBridge.ts';
+import { COGNITIVE_MODE_TOKEN_CEILINGS, type CognitiveBridgeMode } from './CognitiveToNeuralBridge.ts';
 
 export const COGNITIVE_PROVIDER_FEEDBACK_MODES:readonly CognitiveBridgeMode[]=[
   'reflex','shallow','retrieve','deep','simulate','defer','sleep',
@@ -7,11 +7,8 @@ export const COGNITIVE_PROVIDER_FEEDBACK_MODES:readonly CognitiveBridgeMode[]=[
 const WINDOW_SIZE=32;
 const REQUEST_LEDGER_SIZE=512;
 const MIN_SAMPLES_FOR_ADAPTATION=4;
-const MAX_TOKENS=768;
+const MAX_TOKENS=Math.max(...Object.values(COGNITIVE_MODE_TOKEN_CEILINGS));
 const MIN_TOKENS=96;
-const MAX_TOKENS_BY_MODE:Record<CognitiveBridgeMode,number>={
-  reflex:256,shallow:384,retrieve:512,deep:768,simulate:768,defer:128,sleep:128,
-};
 const NEAR_LIMIT_UTILIZATION=.9;
 
 export type CognitiveProviderFinishReason='stop'|'length'|'tool_calls'|'content_filter'|'function_call';
@@ -99,7 +96,7 @@ export class CognitiveProviderFeedbackController {
     if(!Number.isSafeInteger(input.completionTokens)||Number(input.completionTokens)<0
       ||Number(input.completionTokens)>1_000_000) return {accepted:false,reason:'invalid-completion-token-count'};
     if(!Number.isSafeInteger(input.maxTokens)||Number(input.maxTokens)<MIN_TOKENS
-      ||Number(input.maxTokens)>Math.min(MAX_TOKENS,MAX_TOKENS_BY_MODE[input.mode])||Number(input.maxTokens)%16!==0)
+      ||Number(input.maxTokens)>Math.min(MAX_TOKENS,COGNITIVE_MODE_TOKEN_CEILINGS[input.mode])||Number(input.maxTokens)%16!==0)
       return {accepted:false,reason:'invalid-configured-token-budget'};
     if(Number(input.completionTokens)>Number(input.maxTokens))
       return {accepted:false,reason:'completion-exceeds-configured-budget'};
