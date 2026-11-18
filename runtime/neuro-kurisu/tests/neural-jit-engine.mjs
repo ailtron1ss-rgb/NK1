@@ -246,7 +246,10 @@ const agingEngine = new NeuralJitEngine({
     },
   },
 });
-const agingTrace = await makeTrace(997);
+const agingTrace = await makeTrace(997, {
+  inputFeatures: [0.25, 0.5],
+  targetResidual: [0.05, -0.02],
+});
 const realDateNow = Date.now;
 let simulatedNow = agingTrace.capture.capturedAt + 9 * 60_000;
 let agingResult;
