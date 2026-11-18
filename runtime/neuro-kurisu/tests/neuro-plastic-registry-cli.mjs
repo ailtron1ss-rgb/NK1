@@ -67,6 +67,12 @@ try {
     sourceDatasetFingerprint,
     holdoutPlanFingerprint: holdoutFingerprint,
     corpusFingerprint,
+    trainer: {
+      name: 'fixture-trainer',
+      version: '1.0',
+      seed: 7,
+      completedAt: 1_800_000_000_000,
+    },
     automaticActivation: false,
     artifacts: {
       'adapter_config.json': { sha256: sha(configBytes), bytes: configBytes.byteLength },
