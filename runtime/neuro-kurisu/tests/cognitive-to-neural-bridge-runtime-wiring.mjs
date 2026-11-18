@@ -5,28 +5,34 @@ import { tmpdir } from 'node:os';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
+import { cognitiveNeuralProfileFingerprint } from '../src/organism/cognition/CognitiveToNeuralBridge.ts';
 
 async function runRuntime(enabled) {
   const dir = await mkdtemp(path.join(tmpdir(), 'nk-cognitive-neural-bridge-'));
   const requests = [];
+  const responses = [];
   const runtime = new OrganismRuntime({
     stateFile: path.join(dir, 'state.json'),
     worldStateFile: path.join(dir, 'world.json'),
     enableLanguage: true,
     languageInvoker: async request => {
       requests.push(request);
-      return {
+      const response = {
         text: 'Verified local language response.',
         backend: 'cognitive-bridge-test',
         latencyMs: 1,
-        ...(request.cognitiveControl ? {
+        ...(request.cognitiveControl && request.cognitiveControlRequestId ? {
           providerControlReceipt: {
             provider: 'llama.cpp',
             templateKwargsSent: true,
             featureSchema: request.cognitiveControl.featureSchema,
+            requestId: request.cognitiveControlRequestId,
+            profileFingerprint: cognitiveNeuralProfileFingerprint(request.cognitiveControl),
           },
         } : {}),
       };
+      responses.push(response);
+      return response;
     },
     stateStore: new MemoryStateStore(),
     worldStateStore: new MemoryStateStore(),
@@ -57,7 +63,36 @@ async function runRuntime(enabled) {
       assert.equal(diagnostics.activationSteeringApplied, 0);
       assert.equal(diagnostics.residualBlockApplied, 0);
       assert.ok(diagnostics.llamaCppTemplateKwargsSent > 0);
+      assert.ok(diagnostics.providerControlReceiptsAccepted > 0);
+      assert.equal(diagnostics.providerControlReceiptsRejected,0);
+      assert.equal(diagnostics.providerControlReceiptsDuplicate,0);
       assert.equal(diagnostics.lastTemplateControlSchema, 'nk1-cognitive-neural-43-v2');
+      assert.match(request.cognitiveControlRequestId,/^[a-f0-9-]{36}:\\d+:\\d+$/i);
+      assert.equal(responses[requests.indexOf(request)].providerControlReceipt.requestId,
+        request.cognitiveControlRequestId);
+
+      const acceptedBeforeReplay=diagnostics.providerControlReceiptsAccepted;
+      const selectedResponse=responses[requests.indexOf(request)];
+      runtime.recordCognitiveProviderControlReceipt(request,selectedResponse);
+      const afterReplay=runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.equal(afterReplay.providerControlReceiptsAccepted,acceptedBeforeReplay,
+        'replaying the same request receipt must not increment the hand-off counter');
+      assert.equal(afterReplay.providerControlReceiptsDuplicate,1);
+
+      runtime.recordCognitiveProviderControlReceipt({
+        ...request, cognitiveControlRequestId: request.cognitiveControlRequestId + ':stale',
+      },selectedResponse);
+      runtime.recordCognitiveProviderControlReceipt(request,{
+        ...selectedResponse,
+        providerControlReceipt:{
+          ...selectedResponse.providerControlReceipt,
+          profileFingerprint:'0'.repeat(64),
+        },
+      });
+      const afterTampering=runtime.cognitiveToNeuralBridgeDiagnostics();
+      assert.equal(afterTampering.providerControlReceiptsRejected,2,
+        'stale request IDs and mismatched profile fingerprints must be rejected');
+      assert.equal(afterTampering.llamaCppTemplateKwargsSent,acceptedBeforeReplay);
     } else {
       assert.ok(requests.every(value => value.cognitiveControl === undefined),
         'emergency bypass must pass requests to the provider without mutation');
@@ -65,6 +100,7 @@ async function runRuntime(enabled) {
       assert.equal(diagnostics.projected, 0);
       assert.ok(diagnostics.bypassed > 0);
       assert.equal(diagnostics.llamaCppTemplateKwargsSent, 0, 'provider receipts must not be attributed when the bridge was bypassed');
+      assert.equal(diagnostics.providerControlReceiptsAccepted,0);
     }
   } finally {
     await runtime.stop();
