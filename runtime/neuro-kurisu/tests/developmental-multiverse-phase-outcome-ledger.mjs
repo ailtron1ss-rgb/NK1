@@ -84,8 +84,8 @@ assert.throws(
 assert.equal(recordIndependentEvaluationOutcomes(validationResult, {
   ...authority, evaluationScope: 'validation-only',
 }).accepted, 4,
-  'only planned validation runs should be committed to the canonical P23 ledger');
-assert.deepEqual(ledger.snapshot().outcomes.map(row => row.taskId).sort(), ['validation-a', 'validation-b']);
+  'every candidate validation task × seed cell should be committed');
+assert.deepEqual(ledger.snapshot().outcomes.map(row => row.taskId).sort(), ['validation-a', 'validation-a', 'validation-b', 'validation-b']);
 assert.throws(
   () => recordIndependentEvaluationOutcomes(validationResult, {
     ...authority, evaluationScope: 'validation-only',

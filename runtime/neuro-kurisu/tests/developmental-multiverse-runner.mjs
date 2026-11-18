@@ -203,8 +203,8 @@ try {
     { ...input, runId: 'dm19-frozen-corpus' },
     frozenOptions,
   );
-  assert.equal(frozenFactoryCalls, 16,
-    'all 16 validation/holdout scenario-seed rows must be frozen before the first checkpoint');
+  assert.equal(frozenFactoryCalls, 4,
+    'the four base scenarios must be built once and expanded into 16 immutable scenario-seed tasks');
   await frozenRunner.runValidation();
   const validationEvidence = frozenRunner.snapshot().validationObservations[0].verifiedEvidence;
   const checkpointAfterValidation = await frozenStore.load();

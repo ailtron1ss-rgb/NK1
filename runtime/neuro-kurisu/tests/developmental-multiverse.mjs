@@ -32,6 +32,7 @@ assert.throws(() => new DevelopmentalMultiverse().createSession({
     { id: 'validation-1', seed: 101 },
     { id: 'validation-2', seed: 101 },
     { id: 'validation-1', seed: 102 },
+    { id: 'validation-2', seed: 103 },
   ],
 }), /validation-scenario-seed-matrix-incomplete/,
 'P23 paired-seed statistics require every validation scenario on every validation seed');
