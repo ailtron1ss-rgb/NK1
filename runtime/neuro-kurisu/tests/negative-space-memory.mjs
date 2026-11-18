@@ -199,11 +199,12 @@ assert.equal(conflicting?.chosenActualOutcome01, 0.2, 'later evidence must not s
 assert.ok(!conflicting?.outcomeEvidence.includes('conflicting-outcome-must-not-replace-canonical'));
 
 // Small decisions must not create a permanent counterfactual-memory trail.
+const negativeSpaceCountBeforeSmallDecision = engine.snapshot().negativeSpace.records.length;
 engine.observe('wait', 0.6, [{ action: 'rest', estimated: 0.7 }], {
   decisionId: 'decision-negative-space-small',
   significance: { cost01: 0.1, risk01: 0.1, futureImportance01: 0.1 },
 });
-assert.equal(engine.snapshot().negativeSpace.records.length, 1);
+assert.equal(engine.snapshot().negativeSpace.records.length, negativeSpaceCountBeforeSmallDecision);
 
 // Restarts retain the ledger. Pre-feature saves without this optional field remain valid.
 const restored = new RegretEngine();
