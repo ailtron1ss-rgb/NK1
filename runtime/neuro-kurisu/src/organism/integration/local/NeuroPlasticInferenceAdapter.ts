@@ -72,6 +72,7 @@ export class NeuroPlasticInferenceAdapter {
     const selection = this.registry.select({
       domain: route.domain,
       backendId: route.backendId,
+      baseModelAlias,
       baseModelFingerprint: route.baseModelFingerprint,
       backendSupportsModelAliases: route.backendSupportsModelAliases && localBackendReady,
       confidence01: route.confidence01,
