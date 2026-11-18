@@ -37,7 +37,7 @@ export interface RepositorySandboxRun {
 }
 export interface RepositorySandboxTestReceipt {
   primary: RepositorySandboxRun; independent?: RepositorySandboxRun;
-  holdout?: { runId: string; passed: boolean; suiteSha256: string; outputSha256: string; };
+  holdout?: { runId: string; sandboxId: string; passed: boolean; suiteSha256: string; outputSha256: string; attestationSha256: string; };
 }
 export interface RepositoryApplyReceipt {
   status: 'applied' | 'conflict' | 'partial' | 'failed';
@@ -196,16 +196,44 @@ function sameSet(a: string[], b: string[]): boolean {
   const left = [...a].sort(), right = [...b].sort();
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
-function validRun(run: RepositorySandboxRun, tests: string[], now: number): boolean {
+export interface RepositorySandboxAttestationBinding { proposalId: string; repository: string; baseRevision: string; requiredTests: string[]; }
+
+function runAttestationMaterial(run: RepositorySandboxRun) {
+  return { runId: run.runId, sandboxId: run.sandboxId, networkDisabled: run.networkDisabled,
+    workspaceIsolated: run.workspaceIsolated, startedAt: run.startedAt, finishedAt: run.finishedAt,
+    commands: [...run.commands].sort((a, b) => a.command.localeCompare(b.command)) };
+}
+
+export function repositorySandboxSuiteSha256(requiredTests: string[]): string {
+  return sha256Stable([...requiredTests].sort());
+}
+
+export function repositorySandboxAttestationSha256(binding: RepositorySandboxAttestationBinding, run: RepositorySandboxRun): string {
+  return sha256Stable({ kind: 'nk1-repository-coding-sandbox-v1', binding: {
+    proposalId: binding.proposalId, repository: binding.repository, baseRevision: binding.baseRevision,
+    requiredTests: [...binding.requiredTests].sort(),
+  }, run: runAttestationMaterial(run) });
+}
+
+export function repositorySandboxHoldoutAttestationSha256(binding: RepositorySandboxAttestationBinding, holdout: NonNullable<RepositorySandboxTestReceipt['holdout']>): string {
+  return sha256Stable({ kind: 'nk1-repository-coding-holdout-v1', binding: {
+    proposalId: binding.proposalId, repository: binding.repository, baseRevision: binding.baseRevision,
+    requiredTests: [...binding.requiredTests].sort(),
+  }, holdout: { runId: holdout.runId, sandboxId: holdout.sandboxId, passed: holdout.passed,
+    suiteSha256: holdout.suiteSha256, outputSha256: holdout.outputSha256 } });
+}
+
+function validRun(run: RepositorySandboxRun, tests: string[], now: number, binding: RepositorySandboxAttestationBinding): boolean {
   if (!run || typeof run.runId !== 'string' || run.runId.trim().length < 3 || run.runId.length > 180 ||
       typeof run.sandboxId !== 'string' || run.sandboxId.trim().length < 3 || run.sandboxId.length > 180 ||
       run.networkDisabled !== true || run.workspaceIsolated !== true) return false;
   if (!Number.isFinite(run.startedAt) || !Number.isFinite(run.finishedAt) || run.startedAt <= 0 ||
       run.finishedAt < run.startedAt || run.finishedAt > now + 300_000 || !isSha(run.attestationSha256)) return false;
   if (!Array.isArray(run.commands) || run.commands.length !== tests.length || !sameSet(run.commands.map(row => row.command), tests)) return false;
-  return run.commands.every(row => row.exitCode === 0 && isSha(row.outputSha256) &&
+  if (!run.commands.every(row => row.exitCode === 0 && isSha(row.outputSha256) &&
     Number.isFinite(row.startedAt) && Number.isFinite(row.finishedAt) &&
-    row.startedAt >= run.startedAt && row.finishedAt <= run.finishedAt && row.finishedAt >= row.startedAt);
+    row.startedAt >= run.startedAt && row.finishedAt <= run.finishedAt && row.finishedAt >= row.startedAt)) return false;
+  return run.attestationSha256.toLowerCase() === repositorySandboxAttestationSha256(binding, run);
 }
 function clone<T>(value: T): T { return structuredClone(value); }
 
@@ -365,14 +393,20 @@ export class RepositoryCodingContextEngine {
       return clone(item.summary);
     };
     const now = this.now();
-    if (!validRun(receipt?.primary, item.summary.requiredTests, now)) return reject();
+    const binding: RepositorySandboxAttestationBinding = { proposalId, repository: item.summary.repository,
+      baseRevision: item.summary.baseRevision, requiredTests: item.summary.requiredTests };
+    if (!validRun(receipt?.primary, item.summary.requiredTests, now, binding)) return reject();
     if (item.summary.risk === 'critical') {
       const independent = receipt.independent, holdout = receipt.holdout;
-      if (!independent || !validRun(independent, item.summary.requiredTests, now) ||
+      if (!independent || !validRun(independent, item.summary.requiredTests, now, binding) ||
           independent.runId === receipt.primary.runId || independent.sandboxId === receipt.primary.sandboxId ||
           !holdout || typeof holdout.runId !== 'string' || holdout.runId.trim().length < 3 ||
+          typeof holdout.sandboxId !== 'string' || holdout.sandboxId.trim().length < 3 ||
           holdout.runId === receipt.primary.runId || holdout.runId === independent.runId ||
-          holdout.passed !== true || !isSha(holdout.suiteSha256) || !isSha(holdout.outputSha256)) return reject();
+          holdout.sandboxId === receipt.primary.sandboxId || holdout.sandboxId === independent.sandboxId ||
+          holdout.passed !== true || !isSha(holdout.suiteSha256) || !isSha(holdout.outputSha256) ||
+          holdout.suiteSha256 !== repositorySandboxSuiteSha256(item.summary.requiredTests) ||
+          !isSha(holdout.attestationSha256) || holdout.attestationSha256 !== repositorySandboxHoldoutAttestationSha256(binding, holdout)) return reject();
     }
     item.verification = clone(receipt);
     item.summary.status = 'verified-awaiting-approval'; item.summary.testStatus = 'passed';
