@@ -54,7 +54,10 @@ try {
     holdoutPlanFingerprint: holdoutFingerprint,
     corpusFingerprint,
     automaticActivation: false,
-    artifacts: {},
+    artifacts: {
+      'adapter_config.json': { sha256: sha(configBytes), bytes: configBytes.byteLength },
+      'adapter_model.safetensors': { sha256: sha(weightBytes), bytes: weightBytes.byteLength },
+    },
   }));
 
   const manifest = {
