@@ -9,6 +9,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts"
       - "runtime/neuro-kurisu/tests/shared-future-scenarios.mjs"
       - "runtime/neuro-kurisu/tests/shared-future-action-outcome-integration.mjs"
+      - "docs/SHARED_FUTURE_IMPLEMENTATION.md"
       - ".github/workflows/shared-future-scenarios.yml"
 permissions:
   contents: read
