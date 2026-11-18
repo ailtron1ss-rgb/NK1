@@ -59,7 +59,7 @@ assert.doesNotMatch(`${systemOwnedPrompt.system}\\n${systemOwnedPrompt.user}`,
   /This is a user-owned commitment|user-owned commitment the user explicitly accepted/i,
   'system-owned obligations must not be falsely attributed to the user');
 assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
-  /must not claim it is complete|never claim it is complete/i,
+  /must not claim (?:it|the item) is complete|never claim (?:it|the item) is complete/i,
   'the prompt must not imply an unfinished commitment was completed');
 
 const unsafeOpenLoopPrompt = buildAutonomousDialoguePrompt(
