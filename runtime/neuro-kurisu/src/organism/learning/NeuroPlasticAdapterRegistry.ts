@@ -106,6 +106,7 @@ export interface NeuroPlasticApproval {
   approvalId: string;
   actorId: string;
   approvedAt: number;
+  signerKeyId: string;
   signature: string;
 }
 
@@ -651,72 +652,136 @@ function isValidEvaluationReport(
 }
 
 
+const TRUSTED_KEY_ID = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}$/;
+
+export function parseTrustedNeuroPlasticPublicKeys(
+  raw: string | undefined,
+  envName = 'NEURO_PLASTIC_PUBLIC_KEYS_JSON',
+): ReadonlyMap<string, string> {
+  if (raw === undefined || raw.trim() === '') return new Map();
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); }
+  catch { throw new Error(envName + ' must be valid JSON'); }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(envName + ' must be an object keyed by signer ID');
+  }
+  const keys = new Map<string, string>();
+  for (const [keyId, pem] of Object.entries(parsed as Record<string, unknown>)) {
+    if (!TRUSTED_KEY_ID.test(keyId) || typeof pem !== 'string' || pem.length > 8192
+      || !pem.includes('PUBLIC KEY') || pem.includes('PRIVATE KEY')) {
+      throw new Error(envName + ' entries must contain Ed25519 public PEM keys only');
+    }
+    if (keys.size >= 64) throw new Error(envName + ' exceeds the 64-key trust limit');
+    let key;
+    try { key = createPublicKey(pem); }
+    catch { throw new Error(envName + ' contains an invalid public key'); }
+    if (key.asymmetricKeyType !== 'ed25519') {
+      throw new Error(envName + ' accepts Ed25519 public keys only');
+    }
+    keys.set(keyId, pem);
+  }
+  return keys;
+}
+
+export function parseTrustedNeuroPlasticApprovalKeys(raw: string | undefined): ReadonlyMap<string, string> {
+  return parseTrustedNeuroPlasticPublicKeys(raw, 'NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON');
+}
+
+export function verifyNeuroPlasticDetachedEd25519Signature(
+  canonicalPayload: string,
+  signature: string,
+  signerKeyId: string,
+  trustedKeys: ReadonlyMap<string, string>,
+): boolean {
+  try {
+    if (typeof canonicalPayload !== 'string' || canonicalPayload.length === 0 || canonicalPayload.length > 262_144
+      || typeof signerKeyId !== 'string' || !TRUSTED_KEY_ID.test(signerKeyId)
+      || !trustedKeys || typeof trustedKeys.get !== 'function') return false;
+    const pem = trustedKeys.get(signerKeyId);
+    if (typeof pem !== 'string' || !pem.includes('PUBLIC KEY') || pem.includes('PRIVATE KEY')) return false;
+    const publicKey = createPublicKey(pem);
+    if (publicKey.asymmetricKeyType !== 'ed25519') return false;
+    if (typeof signature !== 'string' || signature.length !== 88) return false;
+    const signatureBytes = Buffer.from(signature, 'base64');
+    if (signatureBytes.byteLength !== 64 || signatureBytes.toString('base64') !== signature) return false;
+    // The runtime's minimal Node crypto type shim intentionally accepts PEM here.
+    return cryptoVerify(null, Buffer.from(canonicalPayload, 'utf8'), pem, signatureBytes);
+  } catch {
+    return false;
+  }
+}
+
 function normalizeApproval(raw: unknown): NeuroPlasticApproval {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('neuro-plastic-approval-invalid');
   const value = snapshotPlainData(raw) as Record<string, unknown>;
+  const signature = safeText(value.signature, 'approval-signature', 128);
+  if (signature.length !== 88 || Buffer.from(signature, 'base64').toString('base64') !== signature
+    || Buffer.from(signature, 'base64').byteLength !== 64) {
+    throw new Error('neuro-plastic-approval-signature-invalid');
+  }
+  const signerKeyId = safeText(value.signerKeyId, 'approval-signer-key-id', 128);
+  if (!TRUSTED_KEY_ID.test(signerKeyId)) throw new Error('neuro-plastic-approval-signer-key-id-invalid');
   return {
     approvalId: safeText(value.approvalId, 'approval-id'),
     actorId: safeText(value.actorId, 'approval-actor-id'),
     approvedAt: safeCounter(value.approvedAt, 'approval-time', 1),
-    signature: safeHash(value.signature, 'approval-signature'),
+    signerKeyId,
+    signature,
   };
 }
 
-function approvalPayload(
-  approval: Pick<NeuroPlasticApproval, 'approvalId' | 'actorId' | 'approvedAt'>,
+export function canonicalNeuroPlasticApprovalPayload(
+  approval: Pick<NeuroPlasticApproval, 'approvalId' | 'actorId' | 'approvedAt' | 'signerKeyId'>,
   context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
 ): string {
+  if (!approval || typeof approval !== 'object') throw new Error('neuro-plastic-approval-invalid');
+  const signerKeyId = safeText(approval.signerKeyId, 'approval-signer-key-id', 128);
+  if (!TRUSTED_KEY_ID.test(signerKeyId)) throw new Error('neuro-plastic-approval-signer-key-id-invalid');
   return JSON.stringify({
-    approvalId: approval.approvalId,
-    actorId: approval.actorId,
-    approvedAt: approval.approvedAt,
-    adapterId: context.adapterId,
-    reportId: context.reportId,
-    baseModelFingerprint: context.baseModelFingerprint.toLowerCase(),
+    schemaVersion: 1,
+    approvalId: safeText(approval.approvalId, 'approval-id'),
+    actorId: safeText(approval.actorId, 'approval-actor-id'),
+    approvedAt: safeCounter(approval.approvedAt, 'approval-time', 1),
+    signerKeyId,
+    adapterId: safeText(context.adapterId, 'approval-adapter-id', 80),
+    reportId: safeText(context.reportId, 'approval-report-id', 160),
+    baseModelFingerprint: safeHash(context.baseModelFingerprint, 'approval-base-model-fingerprint'),
     manifestFingerprint: safeHash(context.manifestFingerprint, 'approval-manifest-fingerprint'),
   });
 }
 
-export function createNeuroPlasticApprovalSignature(
-  approval: Pick<NeuroPlasticApproval, 'approvalId' | 'actorId' | 'approvedAt'>,
-  context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
-  secret: string,
-): string {
-  if (typeof secret !== 'string' || secret.length < 32) throw new Error('neuro-plastic-approval-secret-too-short');
-  const blockSize = 64;
-  const keyBytes = Buffer.from(secret, 'utf8');
-  const normalizedKey = keyBytes.length > blockSize
-    ? Buffer.from(createHash('sha256').update(keyBytes).digest())
-    : keyBytes;
-  const keyBlock = Buffer.alloc(blockSize);
-  for (let index = 0; index < normalizedKey.length; index++) keyBlock[index] = normalizedKey[index];
-  const innerPad = Buffer.alloc(blockSize);
-  const outerPad = Buffer.alloc(blockSize);
-  for (let index = 0; index < blockSize; index++) {
-    innerPad[index] = keyBlock[index] ^ 0x36;
-    outerPad[index] = keyBlock[index] ^ 0x5c;
-  }
-  const innerDigest = createHash('sha256')
-    .update(innerPad)
-    .update(approvalPayload(approval, context), 'utf8')
-    .digest();
-  return createHash('sha256').update(outerPad).update(innerDigest).digest('hex');
+export interface NeuroPlasticApprovalVerificationOptions {
+  purpose?: 'activation' | 'restore';
+  maxAgeMs?: number;
+  allowedClockSkewMs?: number;
+  now?: () => number;
 }
 
 export function verifyNeuroPlasticApprovalSignature(
   approval: NeuroPlasticApproval,
   context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
-  secret: string,
+  trustedKeys: ReadonlyMap<string, string>,
+  options: NeuroPlasticApprovalVerificationOptions = {},
 ): boolean {
   try {
-    const expected = createNeuroPlasticApprovalSignature(approval, context, secret);
-    const actual = safeHash(approval.signature, 'approval-signature');
-    if (actual.length !== expected.length) return false;
-    let difference = 0;
-    for (let index = 0; index < expected.length; index++) {
-      difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
+    const normalized = normalizeApproval(approval);
+    const maxAgeMs = options.maxAgeMs ?? 15 * 60_000;
+    const allowedClockSkewMs = options.allowedClockSkewMs ?? 30_000;
+    if (!Number.isSafeInteger(maxAgeMs) || maxAgeMs < 1_000 || maxAgeMs > 24 * 60 * 60_000
+      || !Number.isSafeInteger(allowedClockSkewMs) || allowedClockSkewMs < 0 || allowedClockSkewMs > 5 * 60_000) {
+      return false;
     }
-    return difference === 0;
+    const purpose = options.purpose ?? 'activation';
+    if (purpose !== 'activation' && purpose !== 'restore') return false;
+    const now = (options.now ?? Date.now)();
+    if (!Number.isFinite(now) || normalized.approvedAt > now + allowedClockSkewMs) return false;
+    if (purpose === 'activation' && now - normalized.approvedAt > maxAgeMs) return false;
+    return verifyNeuroPlasticDetachedEd25519Signature(
+      canonicalNeuroPlasticApprovalPayload(normalized, context),
+      normalized.signature,
+      normalized.signerKeyId,
+      trustedKeys,
+    );
   } catch {
     return false;
   }
@@ -739,6 +804,7 @@ export class NeuroPlasticAdapterRegistry {
     verifyRestoredApproval?: (
       approval: NeuroPlasticApproval,
       context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string },
+      purpose: 'restore',
     ) => boolean,
     verifyRestoredEvaluation?: (
       receipt: NeuroPlasticEvaluationReceipt,
@@ -794,7 +860,7 @@ export class NeuroPlasticAdapterRegistry {
               reportId: evaluation!.reportId,
               baseModelFingerprint: manifest.baseModel.fingerprint,
               manifestFingerprint: neuroPlasticAdapterManifestFingerprint(manifest),
-            }) === true;
+            }, 'restore') === true;
           } catch {
             restoredApprovalTrusted = false;
             activationApproval = null;
@@ -934,21 +1000,37 @@ export class NeuroPlasticAdapterRegistry {
   async activate(
     adapterId: string,
     approval: NeuroPlasticApproval,
-    verifyApproval: (approval: NeuroPlasticApproval, context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string }) => boolean | Promise<boolean>,
+    verifyApproval: (approval: NeuroPlasticApproval, context: { adapterId: string; reportId: string; baseModelFingerprint: string; manifestFingerprint: string }, purpose: 'activation') => boolean | Promise<boolean>,
   ): Promise<NeuroPlasticAdapterRecord> {
     const record = this.find(adapterId);
     if (record.status !== 'eligible' || !record.evaluation?.eligible) {
       throw new Error('neuro-plastic-candidate-not-eligible-for-activation');
     }
     const normalized = normalizeApproval(approval);
-    if (typeof verifyApproval !== 'function' || !await verifyApproval(normalized, {
+    const approvalContext = {
       adapterId,
       reportId: record.evaluation.reportId,
       baseModelFingerprint: record.manifest.baseModel.fingerprint,
       manifestFingerprint: neuroPlasticAdapterManifestFingerprint(record.manifest),
-    })) {
+    };
+    if (typeof verifyApproval !== 'function' ||
+        !await verifyApproval(normalized, approvalContext, 'activation')) {
       throw new Error('neuro-plastic-human-approval-required');
     }
+
+    // Approval verification is an asynchronous trust boundary. The operator
+    // may roll back the candidate, or another lifecycle operation may replace
+    // its record, while the signer is deciding. Revalidate the exact candidate
+    // after the await so a late valid signature cannot resurrect revoked state.
+    const currentRecord = this.find(adapterId);
+    if (currentRecord !== record ||
+        currentRecord.status !== 'eligible' ||
+        !currentRecord.evaluation?.eligible ||
+        currentRecord.evaluation.reportId !== approvalContext.reportId ||
+        neuroPlasticAdapterManifestFingerprint(currentRecord.manifest) !== approvalContext.manifestFingerprint) {
+      throw new Error('neuro-plastic-candidate-changed-during-approval');
+    }
+
     for (const other of this.state.adapters) {
       if (other.status === 'active' && other.manifest.domain === record.manifest.domain &&
           other.manifest.baseModel.fingerprint === record.manifest.baseModel.fingerprint) {

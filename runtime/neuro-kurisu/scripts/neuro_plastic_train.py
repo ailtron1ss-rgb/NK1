@@ -13,6 +13,7 @@ import inspect
 import importlib.metadata
 import math
 import platform
+import random
 import json
 import os
 import re
@@ -266,6 +267,10 @@ def validate_identifier(value: Any, label: str) -> str:
 
 
 def validate_manifest(manifest_path: Path) -> dict[str, Any]:
+    # Inspect the caller-supplied path before resolving it: resolve() would erase
+    # symlink components and make the later lstat walk unable to detect them.
+    manifest_path = Path(os.path.abspath(manifest_path))
+    _reject_symlink_ancestors(manifest_path)
     manifest_path = manifest_path.resolve(strict=True)
     if not manifest_path.is_file():
         raise PreflightError("manifest-file-invalid")
@@ -471,6 +476,20 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
 
     manifest = validated["manifest"]
     method = validated["method"]
+
+    # Seed before model/adapter construction. Trainer also seeds its data loader,
+    # but that happens after PEFT has initialized its trainable adapter tensors.
+    seed = manifest["seed"]
+    random.seed(seed)
+    try:
+        import numpy as np
+        np.random.seed(seed)
+    except ImportError:
+        pass
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
     quantization_config = None
     if method == "qlora":
         if not torch.cuda.is_available():
@@ -535,6 +554,14 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
         inference_mode=False,
     ))
 
+    # Fail closed if a future PEFT/config change accidentally unfreezes base
+    # parameters or leaves the adapter with nothing trainable.
+    trainable_names = [
+        name for name, parameter in model.named_parameters() if parameter.requires_grad
+    ]
+    if not trainable_names or any("lora_" not in name for name in trainable_names):
+        raise RuntimeError("non-adapter-parameters-trainable")
+
     training_data = _tokenize_rows(validated["training"], tokenizer, manifest["maxSequenceLength"])
     validation_data = _tokenize_rows(validated["validation"], tokenizer, manifest["maxSequenceLength"])
     collator = DataCollatorForSeq2Seq(
@@ -578,6 +605,15 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
         )
         train_result = trainer.train()
         evaluation = trainer.evaluate()
+        global_step = int(trainer.state.global_step)
+        if global_step < 1:
+            raise RuntimeError("adapter-training-produced-zero-optimization-steps")
+        training_metrics = json_safe(train_result.metrics)
+        if not isinstance(training_metrics, dict):
+            raise RuntimeError("trainer-training-metrics-invalid")
+        # Trainer's metrics dictionary does not consistently include global_step
+        # across Transformers versions; persist the authoritative trainer state.
+        training_metrics["globalStep"] = global_step
         trainer.model.save_pretrained(staging, safe_serialization=True)
         required_config = staging / "adapter_config.json"
         weight_file = staging / "adapter_model.safetensors"
@@ -627,7 +663,7 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
             "learningRate": manifest["learningRate"],
             "lora": manifest["lora"],
             "targetModules": target_modules,
-            "trainingMetrics": json_safe(train_result.metrics),
+            "trainingMetrics": training_metrics,
             "validationMetrics": json_safe(evaluation),
             "trainingEnvironment": {
                 "python": platform.python_version(),

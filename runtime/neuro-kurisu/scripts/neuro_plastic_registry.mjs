@@ -5,17 +5,19 @@ import path from 'node:path';
 import { verifyNeuroPlasticAdapterArtifact } from '../src/organism/learning/NeuroPlasticArtifactVerifier.ts';
 import {
   NeuroPlasticAdapterRegistry,
-  createNeuroPlasticApprovalSignature,
+  canonicalNeuroPlasticApprovalPayload,
   neuroPlasticAdapterManifestFingerprint,
+  parseTrustedNeuroPlasticApprovalKeys,
   verifyNeuroPlasticApprovalSignature,
   verifyNeuroPlasticEvaluationSignature,
   verifyNeuroPlasticEvaluationReceiptSignature,
 } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 
 const ROOT = path.resolve(process.env.NEURO_PLASTIC_RUNTIME_ROOT || process.cwd());
-const SECRET = String(process.env.NEURO_PLASTIC_APPROVAL_SECRET || '');
+const APPROVAL_PUBLIC_KEYS = parseTrustedNeuroPlasticApprovalKeys(process.env.NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON);
 const EVALUATOR_PUBLIC_KEY = String(process.env.NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY || '');
 const APPROVER = String(process.env.NEURO_PLASTIC_APPROVER_ID || '').trim();
+const APPROVER_KEY_ID = String(process.env.NEURO_PLASTIC_APPROVER_KEY_ID || '').trim();
 
 function usage() {
   process.stdout.write([
@@ -27,7 +29,8 @@ function usage() {
     '  node --experimental-strip-types scripts/neuro_plastic_registry.mjs rollback --adapter ID --reason "reason"',
     '',
     'Set NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY (Ed25519 public PEM) for receipt verification.',
-    'Set NEURO_PLASTIC_APPROVAL_SECRET (32+ chars) and NEURO_PLASTIC_APPROVER_ID for approval commands.',
+    'Set NEURO_PLASTIC_APPROVER_ID, NEURO_PLASTIC_APPROVER_KEY_ID and NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON for approval requests.',
+    'The approve command emits an unsigned canonical payload; an external Ed25519 signer must add a base64 signature.',
     '',
   ].join('\n'));
 }
@@ -110,7 +113,7 @@ async function main() {
     const snapshot = await readJson(registryFile);
     await registry.restore(
       snapshot,
-      (approval, context) => verifyNeuroPlasticApprovalSignature(approval, context, SECRET),
+      (approval, context, purpose) => verifyNeuroPlasticApprovalSignature(approval, context, APPROVAL_PUBLIC_KEYS, { purpose }),
       (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, EVALUATOR_PUBLIC_KEY),
       (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
     );
@@ -142,16 +145,13 @@ async function main() {
     process.stdout.write(JSON.stringify(report, null, 2) + '\n');
     return;
   } else if (options.operation === 'approve') {
-    if (SECRET.length < 32 || !APPROVER) throw new Error('approval-secret-and-approver-id-required');
+    if (!APPROVER || !APPROVER_KEY_ID || !APPROVAL_PUBLIC_KEYS.has(APPROVER_KEY_ID)) {
+      throw new Error('trusted-approval-public-key-and-approver-identities-required');
+    }
     const record = registry.snapshot().adapters.find(item => item.manifest.adapterId === adapterId);
     if (!record || record.status !== 'eligible' || !record.evaluation?.eligible) {
       throw new Error('only-an-independently-eligible-candidate-can-be-approved');
     }
-    const unsigned = {
-      approvalId: randomUUID(),
-      actorId: APPROVER,
-      approvedAt: Date.now(),
-    };
     const context = {
       adapterId,
       reportId: record.evaluation.reportId,
@@ -159,20 +159,45 @@ async function main() {
       manifestFingerprint: neuroPlasticAdapterManifestFingerprint(record.manifest),
     };
     const approval = {
-      ...unsigned,
-      signature: createNeuroPlasticApprovalSignature(unsigned, context, SECRET),
+      approvalId: randomUUID(),
+      actorId: APPROVER,
+      approvedAt: Date.now(),
+      signerKeyId: APPROVER_KEY_ID,
     };
-    const outputPath = path.resolve(options.output || ('state/' + adapterId + '.approval.json'));
+    const canonicalPayload = canonicalNeuroPlasticApprovalPayload(approval, context);
+    const outputPath = path.resolve(options.output || ('state/' + adapterId + '.approval-request.json'));
     const safeOutput = insideRoot(path.relative(ROOT, outputPath), 'approval-output-path');
-    await atomicWrite(safeOutput, { adapterId, ...context, approval });
-    process.stdout.write('NEURO_PLASTIC_APPROVAL_CREATED=' + safeOutput + '\n');
+    await atomicWrite(safeOutput, {
+      schemaVersion: 1,
+      adapterId,
+      ...context,
+      approval,
+      canonicalPayload,
+      signing: { algorithm: 'Ed25519', encoding: 'base64', privateKeyLocation: 'external-signer-only' },
+    });
+    process.stdout.write('NEURO_PLASTIC_APPROVAL_REQUEST=' + safeOutput + '\n');
     return;
   } else if (options.operation === 'activate') {
-    if (!SECRET || !options.input) throw new Error('approval-secret-and---input-approval-required');
+    if (!options.input) throw new Error('--input-signed-approval-required');
     const input = await readJson(path.resolve(options.input));
     if (input.adapterId !== adapterId) throw new Error('approval-adapter-id-mismatch');
-    await registry.activate(adapterId, input.approval, (approval, context) =>
-      verifyNeuroPlasticApprovalSignature(approval, context, SECRET));
+    const record = registry.snapshot().adapters.find(item => item.manifest.adapterId === adapterId);
+    if (!record || record.status !== 'eligible' || !record.evaluation?.eligible) {
+      throw new Error('only-an-eligible-candidate-can-be-activated');
+    }
+    const context = {
+      adapterId,
+      reportId: record.evaluation.reportId,
+      baseModelFingerprint: record.manifest.baseModel.fingerprint,
+      manifestFingerprint: neuroPlasticAdapterManifestFingerprint(record.manifest),
+    };
+    for (const key of ['reportId', 'baseModelFingerprint', 'manifestFingerprint']) {
+      if (input[key] !== context[key]) throw new Error('approval-context-mismatch-' + key);
+    }
+    const canonicalPayload = canonicalNeuroPlasticApprovalPayload(input.approval, context);
+    if (input.canonicalPayload !== canonicalPayload) throw new Error('approval-canonical-payload-mismatch');
+    await registry.activate(adapterId, input.approval, (approval, verifiedContext, purpose) =>
+      verifyNeuroPlasticApprovalSignature(approval, verifiedContext, APPROVAL_PUBLIC_KEYS, { purpose }));
     await atomicWrite(registryFile, registry.snapshot());
   } else if (options.operation === 'rollback') {
     const reason = String(options.reason || '').trim();
