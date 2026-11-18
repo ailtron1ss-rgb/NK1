@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
+import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 import { RepositoryCodingContextEngine, createRepositoryCodingActionTools } from '../src/organism/system/RepositoryCodingContextEngine.ts';
 
 const REVISION = '1e83a011fc677ff20f2348570322bd562181d9ff';
@@ -20,7 +21,7 @@ function sampleHost() {
     base, next,
     host: {
       snapshot: async () => ({
-        repository: 'ailtron1ss-rgb/NK1', revision: REVISION,
+        repository: 'ailtron1ss-rgb/NK1', revision: REVISION, complete: true,
         files: [
           { path: 'src/organism/Feature.ts', content: base },
           { path: '.env.production', content: 'API_KEY=not-for-context' },
@@ -30,6 +31,7 @@ function sampleHost() {
         ],
       }),
       verifySandbox: async () => ({ primary: runReceipt() }),
+      reconcilePatch: async () => ({ status: 'not-found', authoritative: true, reason: 'no-provider-receipt' }),
       applyPatch: async (payload, idempotencyKey) => {
         applied = { payload, idempotencyKey };
         return {
@@ -171,9 +173,23 @@ test('action tools route apply through self-modification permission and idempote
   assert.equal(apply.destructive, true);
   assert.equal(apply.permissionClass, 'self-modification');
   assert.equal(apply.requiresIdempotencyKey, true);
-  await assert.rejects(() => apply.execute({ proposalId: proposal.proposalId }, {}), /idempotency-key-required/);
-  const result = await apply.execute({ proposalId: proposal.proposalId }, { idempotencyKey: 'approved-request-001' });
-  assert.equal(result.status, 'applied');
+  assert.equal(typeof apply.verify, 'function', 'destructive gateway tools require a verifier');
+  assert.equal(typeof apply.reconcile, 'function', 'keyed mutation tools require provider reconciliation');
+  const gateway = new ActionGateway({ live: true });
+  gateway.setExecutionLedgerPersister(async () => {});
+  gateway.registerTool(apply);
+  const input = { proposalId: proposal.proposalId };
+  const options = { idempotencyKey: 'approved-request-001', decisionId: 'decision:repository-coding-test' };
+  const denied = await gateway.executeTool(apply.id, input, 'test-without-owner-approval', options);
+  assert.equal(denied.outcomeClass, 'approval-required');
+  assert.equal(sample.applied, null, 'the ActionGateway must refuse application before a one-shot approval');
+  const request = await gateway.requestToolApproval(apply.id, input, 'repository-coding-test', options, 'execute');
+  assert.equal(request.created, true);
+  assert.equal((await gateway.resolveToolApproval(request.request.id, true, 'test-owner')).ok, true);
+  const execution = await gateway.executeTool(apply.id, input, 'approved-repository-coding-test', { ...options, approvalId: request.request.id });
+  assert.equal(execution.ok, true);
+  assert.equal(execution.verified, true);
+  assert.equal(execution.result.status, 'applied');
   assert.equal(sample.applied.idempotencyKey, 'approved-request-001');
   assert.equal(engine.getProposal(proposal.proposalId).status, 'applied');
 });
@@ -184,7 +200,7 @@ test('adapter rejects stale base revisions before sandbox or mutation', async ()
   const proposal = await createProposal(engine);
   const tools = createRepositoryCodingActionTools(engine, {
     ...sample.host,
-    snapshot: async () => ({ repository: 'ailtron1ss-rgb/NK1', revision: 'ffffffffffffffffffffffffffffffffffffffff', files: [] }),
+    snapshot: async () => ({ repository: 'ailtron1ss-rgb/NK1', revision: 'ffffffffffffffffffffffffffffffffffffffff', complete: true, files: [] }),
   });
   const verify = tools.find(tool => tool.id === 'organism.project.patch.verify');
   await assert.rejects(() => verify.execute({ proposalId: proposal.proposalId }), /stale-base-revision/);
