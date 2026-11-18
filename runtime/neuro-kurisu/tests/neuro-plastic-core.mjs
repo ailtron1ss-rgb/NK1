@@ -523,6 +523,53 @@ assert.deepEqual(aliasMismatchCalls, ['kurisu-reasoning-lora', 'kurisu-base'],
   'the runtime must verify the backend actually served the requested adapter alias');
 assert.equal(aliasMismatchRegistry.snapshot().adapters[0].status, 'disabled');
 
+const missingModelRegistry = new NeuroPlasticAdapterRegistry();
+missingModelRegistry.stage(manifest('kurisu-runtime-missing-model-v1'));
+signedEvaluate(missingModelRegistry, 'kurisu-runtime-missing-model-v1', {
+  holdoutFingerprint: hash('d'),
+  baseline: observations(0.62),
+  candidate: observations(0.82),
+  evaluatedAt: 1_800_000_000_100,
+});
+const missingModelReport = missingModelRegistry.snapshot().adapters[0].evaluation;
+await missingModelRegistry.activate(
+  'kurisu-runtime-missing-model-v1',
+  signedApproval('kurisu-runtime-missing-model-v1', missingModelReport.reportId, 'approval-missing-model', missingModelRegistry),
+  verifyApproval,
+);
+const missingModelCalls = [];
+const missingModelProvider = new OpenAICompatibleLocalChatProvider({
+  baseUrl: 'http://127.0.0.1:43123/v1',
+  model: 'kurisu-base',
+  fetchImpl: async (_url, init) => {
+    const body = JSON.parse(String(init.body));
+    missingModelCalls.push(body.model);
+    const payload = body.model === 'kurisu-reasoning-lora'
+      ? { choices: [{ message: { content: 'model alias omitted by backend' } }] }
+      : { model: body.model, choices: [{ message: { content: 'base model recovery' } }] };
+    return new Response(JSON.stringify(payload), { status: 200, headers: { 'content-type': 'application/json' } });
+  },
+});
+const missingModelFallback = await new NeuroPlasticInferenceAdapter(
+  missingModelRegistry,
+  (backendId) => backendId === 'llama.cpp',
+  missingModelProvider,
+  async () => true,
+).generate({ system: 'system', user: 'prompt' }, {
+  domain: 'reasoning',
+  backendId: 'llama.cpp',
+  baseModelFingerprint: hash('a'),
+  baseModelAlias: 'kurisu-base',
+  backendSupportsModelAliases: true,
+  confidence01: 0.9,
+  risk01: 0.1,
+});
+assert.equal(missingModelFallback.adapter.fallbackReason, 'adapter-runtime-failure',
+  'a backend response without an actual model identity must not count as adapter success');
+assert.equal(missingModelFallback.model, 'kurisu-base');
+assert.deepEqual(missingModelCalls, ['kurisu-reasoning-lora', 'kurisu-base']);
+assert.equal(missingModelRegistry.snapshot().adapters[0].status, 'disabled');
+
 const activeSnapshot = inferenceRegistry.snapshot();
 const activeRecordForRestore = activeSnapshot.adapters[0];
 assert.equal(activeRecordForRestore.status, 'active');
