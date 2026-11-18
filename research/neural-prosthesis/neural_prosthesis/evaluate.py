@@ -11,6 +11,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from .engine import NeuralProsthesisBank
 from .training import (
     MAX_EVALUATION_EXAMPLES,
+    MIN_HOLDOUT_EXAMPLES_FOR_REVIEW,
     dataset_fingerprint,
     encode_example,
     ensure_holdout_is_distinct,
@@ -130,8 +131,10 @@ def main() -> None:
             review_ineligibility.append("split-is-not-holdout")
         if training_dataset_sha256 is None:
             review_ineligibility.append("training-provenance-missing")
-        if len(paired) < 5:
-            review_ineligibility.append("fewer-than-five-paired-examples")
+        if len(paired) < MIN_HOLDOUT_EXAMPLES_FOR_REVIEW:
+            review_ineligibility.append(
+                f"fewer-than-{MIN_HOLDOUT_EXAMPLES_FOR_REVIEW}-paired-examples"
+            )
         if mean_delta >= 0:
             review_ineligibility.append("mean-loss-did-not-improve")
         if interval is None or float(interval["upper"]) >= 0:

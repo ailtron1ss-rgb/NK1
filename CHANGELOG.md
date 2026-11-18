@@ -46,6 +46,12 @@
 - Refuse to reuse the recorded validation dataset as the final holdout; validation evaluation must match the recorded validation fingerprint.
 - Report requested/completed epochs, best validation epoch/loss and early-stop status without storing example text. Fixed-epoch behavior remains available when no validation dataset is supplied.
 
+## [NK1][OmeStro #28] Neural Prosthesis — validation and holdout review floor (2026-11-18)
+
+- Add regression coverage for validation early-stopping patience, material-improvement reset, non-finite validation loss and restoration of the best adapter-only checkpoint.
+- Raise the minimum paired holdout size for human-review eligibility from 5 to 30 examples; loss/CI gates remain necessary and are still not proof of improved task quality.
+- Keep training, validation and final holdout as separate data roles; the report continues to mark local evaluation as independently unverified and promotion-disallowed.
+
 ## [NK1][OmeStro #28] Neural Prosthesis — bounded inference admission (2026-11-18)
 
 - Cap sidecar HTTP handler workers to a validated 2–64 pool (default 16), preventing unbounded thread growth under concurrent or slow requests.

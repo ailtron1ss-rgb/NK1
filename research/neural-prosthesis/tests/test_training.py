@@ -3,9 +3,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import torch
+from torch import nn
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from neural_prosthesis.training import (  # noqa: E402
     MAX_DATASET_BYTES,
+    MIN_HOLDOUT_EXAMPLES_FOR_REVIEW,
+    ValidationEarlyStopping,
     dataset_fingerprint,
     ensure_holdout_is_distinct,
     paired_bootstrap_mean_interval,
@@ -14,6 +19,42 @@ from neural_prosthesis.training import (  # noqa: E402
 
 
 class NeuralProsthesisTrainingUtilityTests(unittest.TestCase):
+    def test_validation_early_stopping_restores_the_best_adapter_checkpoint(self):
+        module = nn.Linear(2, 2, bias=False)
+        stopping = ValidationEarlyStopping(patience=2, min_delta=0.01)
+        original = module.weight.detach().clone()
+
+        self.assertFalse(stopping.update(1, 1.0, module))
+        with torch.no_grad():
+            module.weight.add_(2.0)
+        # Improvement smaller than min_delta is not considered progress.
+        self.assertFalse(stopping.update(2, 0.995, module))
+        with torch.no_grad():
+            module.weight.add_(3.0)
+        self.assertTrue(stopping.update(3, 0.996, module))
+        self.assertEqual(stopping.best_epoch, 1)
+        self.assertEqual(stopping.restore(module), 1)
+        self.assertTrue(torch.equal(module.weight, original))
+
+    def test_validation_early_stopping_resets_patience_on_material_improvement(self):
+        module = nn.Linear(1, 1)
+        stopping = ValidationEarlyStopping(patience=2, min_delta=0.01)
+        self.assertFalse(stopping.update(1, 1.0, module))
+        self.assertFalse(stopping.update(2, 0.8, module))
+        self.assertFalse(stopping.update(3, 0.81, module))
+        self.assertTrue(stopping.update(4, 0.82, module))
+        self.assertEqual(stopping.best_epoch, 2)
+        self.assertEqual(stopping.restore(module), 2)
+
+    def test_validation_early_stopping_rejects_non_finite_validation_loss(self):
+        module = nn.Linear(1, 1)
+        stopping = ValidationEarlyStopping(patience=2)
+        with self.assertRaisesRegex(ValueError, "validation-loss-must-be-finite"):
+            stopping.update(1, float("nan"), module)
+
+    def test_human_review_requires_a_minimum_holdout_sample_count(self):
+        self.assertEqual(MIN_HOLDOUT_EXAMPLES_FOR_REVIEW, 30)
+
     def test_training_and_holdout_file_fingerprints_must_differ(self):
         digest = "a" * 64
         with self.assertRaisesRegex(ValueError, "holdout-dataset-matches-training-dataset"):

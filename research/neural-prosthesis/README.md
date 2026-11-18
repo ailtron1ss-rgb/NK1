@@ -131,8 +131,8 @@ The evaluator performs paired baseline/candidate completion-token loss measureme
 on the same examples and computes a deterministic paired-bootstrap 95% interval
 for the mean loss delta. It rejects exact reuse of either the training or recorded
 validation file as a final holdout. Review eligibility requires a holdout split,
-bound training provenance, at least five pairs, lower mean loss and an upper
-confidence bound below zero. Exact-file separation cannot detect partial example
+bound training provenance, at least 30 paired examples, lower mean loss and an
+upper confidence bound below zero. Exact-file separation cannot detect partial example
 overlap, so keep the datasets disjoint by construction. The report records
 independently_verified=false and promotion_allowed=false; this is not an independent
 attestation and does not activate the adapter.
