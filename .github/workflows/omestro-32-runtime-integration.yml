@@ -1,0 +1,51 @@
+name: NK1 OmeStro 32-concept runtime integration
+
+on:
+  push:
+    branches: [aspect/omestro-32-runtime-integration-20261118]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/types.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OmeStro*.ts"
+      - "runtime/neuro-kurisu/tests/omestro-core-runtime.mjs"
+      - ".github/workflows/omestro-32-runtime-integration.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/types.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OmeStro*.ts"
+      - "runtime/neuro-kurisu/tests/omestro-core-runtime.mjs"
+      - ".github/workflows/omestro-32-runtime-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omestro-32-runtime-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  omestro-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: OmeStro core runtime and persistence contract
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/omestro-core-runtime.mjs
+      - name: OmeStro foundations and canonical adapter regressions
+        run: |
+          npm --prefix runtime/neuro-kurisu run test:omestro
+          npm --prefix runtime/neuro-kurisu run test:cognitive-immune-health
+          npm --prefix runtime/neuro-kurisu run test:p25:adaptive-synaptic-matrix
+          npm --prefix runtime/neuro-kurisu run test:p25:adaptive-synaptic-matrix:runtime
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
