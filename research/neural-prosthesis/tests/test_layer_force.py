@@ -257,6 +257,40 @@ class LayerForceTests(unittest.TestCase):
         with self.assertRaisesRegex(LayerForceError, "profile-symlink-not-allowed"):
             self.bank.load_profile(parent_link / valid_path.name, [valid_digest])
 
+
+    def test_profiles_do_not_register_hooks_until_explicit_activation(self):
+        path, digest, _ = self.write_profile()
+        profile_id = self.bank.load_profile(path, [digest])
+
+        self.assertEqual(self.bank.snapshot()["registered_hook_count"], 0)
+        sample = torch.randn(1, 2, 8)
+        baseline, _ = self.model(sample)
+        self.assertTrue(torch.equal(baseline, self.model(sample)[0]))
+        self.assertEqual(self.bank.snapshot()["registered_hook_count"], 0)
+
+        with self.bank.activate(profile_id):
+            steered, _ = self.model(sample)
+            self.assertFalse(torch.equal(baseline, steered))
+        self.assertEqual(self.bank.snapshot()["registered_hook_count"], 1)
+
+    def test_low_precision_rounding_never_exceeds_the_per_token_delta_cap(self):
+        path, digest, _ = self.write_profile()
+        profile_id = self.bank.load_profile(path, [digest])
+
+        for dtype in (torch.float16, torch.bfloat16):
+            with self.subTest(dtype=dtype):
+                sample = torch.tensor([[[0.265625, 0, 0, 0, 0, 0, 0, 0]]], dtype=dtype)
+                baseline, _ = self.model(sample)
+                with torch.inference_mode(), self.bank.activate(profile_id):
+                    steered, _ = self.model(sample)
+
+                actual_delta = (steered.float() - baseline.float()).norm(dim=-1)
+                allowed_delta = baseline.float().norm(dim=-1) * 0.10
+                self.assertTrue(
+                    torch.all(actual_delta <= allowed_delta),
+                    f"{dtype} rounding exceeded the strict per-token cap: {actual_delta} > {allowed_delta}",
+                )
+
     def test_snapshot_redacts_activation_directions(self):
         path, digest, _ = self.write_profile()
         self.bank.load_profile(path, [digest])
