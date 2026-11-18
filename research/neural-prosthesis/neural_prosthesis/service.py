@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hmac
-from contextlib import nullcontext
 import json
 import math
 import os
@@ -12,6 +11,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 import torch
+from contextlib import nullcontext
+
 from .engine import ArtifactError, NeuralProsthesisBank, _resolve_layer_stack
 from .layer_force import LayerForceBank
 
@@ -214,21 +215,10 @@ class TransformersRuntime:
             manifest = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
             self._adapter_manifest_digests[adapter_id] = str(manifest["manifest_sha256"])
         self.bank.eval()
-        try:
-            self.layer_force, self.default_layer_force_profile = _load_layer_force_bank(
-                self.model,
-                model_id=model_id,
-                model_revision=revision,
-                layer_path=self.layer_path,
-            )
-        except Exception:
-            # The residual bank already owns forward hooks on this model. Do not
-            # leave those hooks alive when an opt-in steering profile fails closed.
-            self.bank.close()
-            raise
 
         self.default_adapter = str(os.environ.get("NEURO_NP_DEFAULT_ADAPTER", "")).strip() or None
         if self.default_adapter is not None and not self._is_approved(self.default_adapter):
+            self.bank.close()
             raise RuntimeError("NEURO_NP_DEFAULT_ADAPTER-must-be-host-allowlisted")
         self.max_context_tokens = _context_window(
             self.model.config,
@@ -237,6 +227,19 @@ class TransformersRuntime:
         self._generation_lock = threading.Lock()
         self.model_id = model_id
         self.model_revision = revision
+
+        # Construct the optional steering controller last. Profile admission has
+        # no hooks until activate(), and failures cannot strand residual hooks.
+        try:
+            self.layer_force, self.default_layer_force_profile = _load_layer_force_bank(
+                self.model,
+                model_id=model_id,
+                model_revision=revision,
+                layer_path=self.layer_path,
+            )
+        except Exception:
+            self.bank.close()
+            raise
 
     def _is_approved(self, adapter_id: str) -> bool:
         digest = self._adapter_manifest_digests.get(adapter_id)
@@ -260,11 +263,23 @@ class TransformersRuntime:
             "layer_path": self.layer_path,
             "loaded_adapters": adapters,
             "default_adapter": self.default_adapter,
-            "layer_force": {
-                "enabled": bool(self.layer_force is not None and self.default_layer_force_profile),
-                "default_profile": self.default_layer_force_profile,
-                "loaded_profiles": self.layer_force.snapshot()["loaded_profiles"] if self.layer_force is not None else [],
-            },
+            "layer_force": (
+                {
+                    **self.layer_force.snapshot(),
+                    "enabled": bool(self.default_layer_force_profile),
+                    "default_profile": self.default_layer_force_profile,
+                }
+                if self.layer_force is not None
+                else {
+                    "enabled": False,
+                    "default_profile": None,
+                    "loaded_profiles": [],
+                    "registered_hook_count": 0,
+                    "applied_hook_calls": 0,
+                    "applied_token_count": 0,
+                    "precision_fallback_tokens": 0,
+                }
+            ),
             "max_context_tokens": self.max_context_tokens,
             "remote_model_downloads": False,
         }
