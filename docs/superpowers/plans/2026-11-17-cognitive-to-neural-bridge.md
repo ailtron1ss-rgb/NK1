@@ -11,9 +11,11 @@ Branch: `aspect/cognitive-to-neural-bridge-20261117`
 - Export the action/mode types, 43-feature B365-aware projection, versioned profile, provider request adapter and explicit emergency-bypass helper.
 - Normalize organism inputs; accept only complete B365 v14 diagnostic snapshots with valid ticks and all 23 normalized signals; reject unknown versions, partial, future and stale (>8 tick) snapshots as a whole.
 - Expose feature keys and exact B365 version/tick provenance, use an explicit neutral unavailable-state encoding, bound steering intent to 0.15, and scale temperature/token budgets using mode, reserve and allostatic preservation.
-- Validate one-hot/action/mode consistency, adapter hint mapping, snapshot version/age/freshness arithmetic and all provider control bounds again at the llama.cpp hand-off; independently recompute sampling and steering values from the canonical vector.
+- Validate one-hot/action/mode consistency, adapter hint mapping, snapshot version/age/freshness arithmetic, provider-feedback counters/pressure and all provider control bounds again at the llama.cpp hand-off; independently recompute sampling and steering values from canonical inputs.
+- Add a per-mode provider-feedback controller with a bounded 32-observation window, a minimum four-sample threshold and a separate 512-ID replay ledger. Calibrate token allocation only from valid llama.cpp usage and finish reasons; cap reallocation to 15% of unused per-mode headroom.
 - Deduplicate provider usage observations with runtime request IDs in a separate bounded 512-entry ledger, independent of optional template-control receipts.
 - Test B365 diagnostics projection, exact 43-channel order, freshness rejection, immutability, malformed input, caps and request pass-through.
+- Test provider feedback warm-up threshold, per-mode isolation, deduplication, invalid observations, rolling-window eviction, deterministic pressure and bounded token-budget effect.
 
 Expected focused command:
 `node --experimental-strip-types tests/cognitive-to-neural-bridge.mjs`
@@ -38,7 +40,7 @@ Expected focused command:
 
 ## Task 4 — exact-head verification and handover
 
-- Run the B365 snapshot, 43-channel projector, real OrganismRuntime/LanguageInvoker integration, local llama.cpp template opt-in and fake-server HTTP end-to-end tests plus runtime typecheck under Node 24.
+- Run the B365 snapshot, 43-channel projector, provider-feedback controller, real OrganismRuntime/LanguageInvoker integration, local llama.cpp template opt-in and fake-server HTTP end-to-end tests plus runtime typecheck under Node 24.
 - Review the final branch diff and preserve the base/release boundary.
 - Open/update a Draft PR into `workpass70-source`; do not merge or claim a Release ZIP update.
 - Record exact branch/commit/PR/Actions status and clearly list deferred direct-steering work.
