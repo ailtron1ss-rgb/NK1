@@ -220,12 +220,13 @@ test('adapter binds patch pre-images to a complete host snapshot', async () => {
   const tools = createRepositoryCodingActionTools(engine, sample.host);
   const propose = tools.find(tool => tool.id === 'organism.project.patch.propose');
   const invented = 'export const invented = true;';
+  const inventedHash = await sha256(invented);
   await assert.rejects(() => propose.execute({
     baseRevision: REVISION,
     rationale: 'Propose a feature change using a forged source pre-image',
     requiredTests: ['node --experimental-strip-types tests/repository-coding-context-engine.mjs'],
     changes: [{ path: 'src/organism/Feature.ts', operation: 'modify', baseContent: invented,
-      expectedSha256: await sha256(invented), content: 'export const replacement = true;' }],
+      expectedSha256: inventedHash, content: 'export const replacement = true;' }],
   }), /repository-coding-host-preimage-mismatch/);
 });
 
