@@ -299,7 +299,6 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
         raise PreflightError("tokenizer-fingerprint-mismatch")
     source_dataset_fingerprint = _safe_hash(manifest.get("sourceDatasetFingerprint"), "source-dataset")
     holdout_plan_fingerprint = _safe_hash(manifest.get("holdoutPlanFingerprint"), "holdout-plan")
-    governance = validate_governance(manifest.get("governance"), len(training) + len(validation))
 
     train_path = _safe_child(root, manifest.get("trainingFile"), "training", True)
     validation_path = _safe_child(root, manifest.get("validationFile"), "validation", True)
@@ -328,6 +327,7 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
         raise PreflightError("training-domain-invalid")
     training = _read_jsonl(train_path, "training", domain)
     validation = _read_jsonl(validation_path, "validation", manifest.get("domain", ""))
+    governance = validate_governance(manifest.get("governance"), len(training) + len(validation))
     if len(training) < 5 or len(validation) < 2:
         raise PreflightError("minimum-training-or-validation-example-count-not-met")
     all_ids = [row["exampleId"] for row in training + validation]
