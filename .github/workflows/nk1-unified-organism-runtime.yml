@@ -5,6 +5,7 @@ on:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts"
       - "runtime/neuro-kurisu/src/organism/system/**"
       - "runtime/neuro-kurisu/src/organism/cognition/**"
       - "runtime/neuro-kurisu/src/organism/world/**"
@@ -16,6 +17,7 @@ on:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts"
       - "runtime/neuro-kurisu/src/organism/system/**"
       - "runtime/neuro-kurisu/src/organism/cognition/**"
       - "runtime/neuro-kurisu/src/organism/world/**"
