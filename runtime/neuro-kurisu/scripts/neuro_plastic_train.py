@@ -467,6 +467,7 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
         }
         metadata = {
             "schemaVersion": 1,
+            "adapterId": Path(manifest["outputDirectory"]).name,
             "method": method,
             "domain": validated["domain"],
             "baseModelFingerprint": validated["baseFingerprint"],
