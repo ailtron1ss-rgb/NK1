@@ -602,10 +602,33 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
         applyAllowed: { type: 'boolean', enum: [false] },
       }, required: ['proposalId', 'status', 'testStatus', 'applyAllowed'], additionalProperties: true, maxProperties: 20 },
       verify: async ({ input, result }) => {
-        const verified = result?.status === 'applied' && result?.proposalId === input?.proposalId &&
-          result?.testStatus === 'passed' && result?.applyAllowed === false;
-        return { verified, basis: 'tool-contract', confidence01: verified ? 0.99 : 0,
-          notes: verified ? 'engine-validated-atomic-working-tree-receipt' : 'apply-receipt-not-verified-by-engine' };
+        const id = String(input.proposalId), proposal = engine.getProposal(id);
+        if (result?.status !== 'applied' || result?.proposalId !== id ||
+            result?.testStatus !== 'passed' || result?.applyAllowed !== false ||
+            proposal?.status !== 'applied' || !proposal.appliedRevision) {
+          return { verified: false, basis: 'none', confidence01: 0, notes: 'apply-receipt-not-verified-by-engine' };
+        }
+        // Independent read-back after the mutation: verify the live working tree,
+        // not only the executor's own success receipt.
+        const snapshot = await host.snapshot();
+        if (snapshot.complete !== true || revision(snapshot.revision) !== proposal.appliedRevision) {
+          return { verified: false, basis: 'none', confidence01: 0, notes: 'post-apply-snapshot-or-revision-mismatch' };
+        }
+        const files = new Map<string, RepositoryFileInput>();
+        for (const file of snapshot.files) {
+          try { files.set(safePath(file.path), file); } catch { /* unsafe paths cannot satisfy a patch receipt */ }
+        }
+        for (const change of proposal.changes) {
+          const actual = files.get(change.path);
+          if (change.operation === 'delete') {
+            if (actual) return { verified: false, basis: 'none', confidence01: 0, notes: 'deleted-path-still-present' };
+          } else if (!actual || actual.symlink === true || typeof actual.content !== 'string' ||
+                     digest(actual.content) !== change.nextSha256) {
+            return { verified: false, basis: 'none', confidence01: 0, notes: 'post-apply-file-digest-mismatch' };
+          }
+        }
+        return { verified: true, basis: 'tool-contract', confidence01: 1,
+          notes: 'independent-complete-host-snapshot-confirms-revision-and-every-changed-file' };
       },
       reconcile: async (input, context) => {
         const id = String(input.proposalId), payload = engine.hostPayload(id), key = context.idempotencyKey;
@@ -628,6 +651,10 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
         const snapshot = await host.snapshot();
         if (snapshot.complete !== true) throw new Error('repository-coding-incomplete-snapshot');
         if (revision(snapshot.revision) !== payload.baseRevision) throw new Error('repository-coding-stale-base-revision');
+        const approvedTests = await host.allowedTestCommands();
+        if (!Array.isArray(approvedTests) || payload.requiredTests.some(command => !approvedTests.includes(command))) {
+          throw new Error('repository-coding-test-command-not-host-approved');
+        }
         const receipt = await host.applyPatch(payload, key);
         return await engine.recordApplyReceipt(id, key, receipt) as unknown as Record<string, unknown>;
       },
