@@ -46,6 +46,13 @@
 - Refuse to reuse the recorded validation dataset as the final holdout; validation evaluation must match the recorded validation fingerprint.
 - Report requested/completed epochs, best validation epoch/loss and early-stop status without storing example text. Fixed-epoch behavior remains available when no validation dataset is supplied.
 
+## [NK1][OmeStro #28] Neural Prosthesis — bounded inference admission (2026-11-18)
+
+- Cap sidecar HTTP handler workers to a validated 2–64 pool (default 16), preventing unbounded thread growth under concurrent or slow requests.
+- Make the shared local model single-flight and reject overlapping generation with HTTP 429 before prompt tokenization, avoiding an unbounded backlog of token tensors.
+- Expose only concurrency limits in protected runtime diagnostics; preserve the existing NK1 provider fallback behavior on overload.
+- Add an HTTP regression proving the first inference completes while an overlapping request receives 429, plus bounds tests for invalid worker budgets.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.

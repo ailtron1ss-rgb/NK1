@@ -33,6 +33,11 @@ llama.cpp backend.
   keeps the newest turns, and generation reserves context space for output tokens.
   The sidecar returns token usage and reports finish_reason=length when the output
   budget is reached.
+- HTTP handler concurrency is capped by NEURO_NP_MAX_HTTP_WORKERS (2–64, default 16).
+  Model inference is single-flight by design: overlapping generation requests receive
+  HTTP 429 inference-busy before tokenization rather than waiting in an unbounded queue.
+  NK1 can then use its existing fallback chain. This is a protective default for a
+  shared local GPU/CPU model, not a claim of parallel inference throughput.
 - The Python environment is isolated from the Node runtime. It adds no PyTorch or
   Transformers dependency to NK1's production npm dependency graph.
 
@@ -192,6 +197,7 @@ completion text are never copied into these diagnostics. Malformed or internally
 inconsistent usage counters are ignored without rejecting the text response.
 
 Read-only liveness at GET /health and GET /api/health is intentionally minimal.
+Detailed status reports max_parallel_inference=1 and the configured HTTP worker cap.
 The detailed status reports the effective max_context_tokens limit and the
 sidecar supervisor's enabled/managed/ready state; token usage is returned on each
 completion so the host can observe prompt/output budgets.

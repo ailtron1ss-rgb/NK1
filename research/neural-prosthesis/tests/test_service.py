@@ -4,21 +4,45 @@ import unittest
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
+from queue import Queue
 
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from neural_prosthesis.service import RequestError, _context_window, _output_token_limit, create_handler
+from neural_prosthesis.service import (
+    BoundedThreadingHTTPServer,
+    RequestError,
+    _context_window,
+    _output_token_limit,
+    create_handler,
+)
 
 
 class FakeRuntime:
     api_token = None
 
+    def __init__(self):
+        self._slot = threading.BoundedSemaphore(1)
+        self.block_completion = False
+        self.completion_started = threading.Event()
+        self.release_completion = threading.Event()
+        self.release_completion.set()
+
+    def try_acquire_inference(self):
+        return self._slot.acquire(blocking=False)
+
+    def release_inference(self):
+        self._slot.release()
+
     def status(self):
         return {"ready": True, "backend": "neural-prosthesis", "loaded_adapters": []}
 
     def complete(self, request):
+        if self.block_completion:
+            self.completion_started.set()
+            if not self.release_completion.wait(timeout=5):
+                raise RequestError(503, "fixture-timeout")
         if request.get("adapter_id") == "quarantined":
             raise RequestError(403, "adapter-quarantined")
         return {
@@ -52,7 +76,11 @@ class NeuralProsthesisHttpTests(unittest.TestCase):
 
     def setUp(self):
         self.runtime = FakeRuntime()
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), create_handler(self.runtime))
+        self.server = BoundedThreadingHTTPServer(
+            ("127.0.0.1", 0),
+            create_handler(self.runtime),
+            max_workers=4,
+        )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.base = "http://127.0.0.1:" + str(self.server.server_address[1])
@@ -82,6 +110,51 @@ class NeuralProsthesisHttpTests(unittest.TestCase):
         with urllib.request.urlopen(request, timeout=3) as response:
             payload = json.loads(response.read())
             self.assertEqual(payload["choices"][0]["message"]["content"], "fixture response")
+
+    def test_overlapping_generation_is_rejected_before_entering_model_runtime(self):
+        self.runtime.block_completion = True
+        self.runtime.release_completion.clear()
+        body = json.dumps({
+            "messages": [{"role": "user", "content": "hold the model slot"}],
+            "max_tokens": 8,
+        }).encode("utf-8")
+        request = urllib.request.Request(
+            self.base + "/v1/chat/completions",
+            data=body,
+            headers={"content-type": "application/json"},
+            method="POST",
+        )
+        first_result = Queue()
+
+        def first_request():
+            try:
+                with urllib.request.urlopen(request, timeout=4) as response:
+                    first_result.put((response.status, json.loads(response.read())))
+            except Exception as error:
+                first_result.put(error)
+
+        worker = threading.Thread(target=first_request, daemon=True)
+        worker.start()
+        self.assertTrue(self.runtime.completion_started.wait(timeout=2))
+
+        with self.assertRaises(urllib.error.HTTPError) as busy:
+            urllib.request.urlopen(request, timeout=3)
+        self.assertEqual(busy.exception.code, 429)
+        self.assertEqual(json.loads(busy.exception.read())["error"], "inference-busy")
+
+        self.runtime.release_completion.set()
+        worker.join(timeout=4)
+        self.assertFalse(worker.is_alive())
+        result = first_result.get_nowait()
+        if isinstance(result, Exception):
+            raise result
+        self.assertEqual(result[0], 200)
+
+    def test_bounded_http_server_rejects_invalid_worker_budgets(self):
+        with self.assertRaisesRegex(ValueError, "http-worker-limit-out-of-range"):
+            BoundedThreadingHTTPServer(("127.0.0.1", 0), create_handler(self.runtime), max_workers=1)
+        with self.assertRaisesRegex(ValueError, "http-worker-limit-out-of-range"):
+            BoundedThreadingHTTPServer(("127.0.0.1", 0), create_handler(self.runtime), max_workers=65)
 
     def test_optional_bearer_auth_protects_inference_and_detailed_status(self):
         self.runtime.api_token = "t" * 48

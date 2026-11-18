@@ -18,6 +18,9 @@ MAX_REQUEST_BYTES = 1024 * 1024
 MAX_MESSAGE_CHARS = 64_000
 MAX_MESSAGES = 32
 MAX_CONTEXT_TOKENS = 65_536
+DEFAULT_MAX_HTTP_WORKERS = 16
+MIN_MAX_HTTP_WORKERS = 2
+MAX_MAX_HTTP_WORKERS = 64
 
 
 def _context_window(model_config: Any, configured: str | int) -> int:
@@ -183,8 +186,24 @@ class TransformersRuntime:
             os.environ.get("NEURO_NP_MAX_CONTEXT_TOKENS", "8192"),
         )
         self._generation_lock = threading.Lock()
+        # A shared local model is deliberately single-flight. Reject overload
+        # before tokenization so waiting requests do not accumulate large tensors.
+        self._inference_slot = threading.BoundedSemaphore(1)
+        try:
+            self.max_http_workers = int(os.environ.get("NEURO_NP_MAX_HTTP_WORKERS", str(DEFAULT_MAX_HTTP_WORKERS)))
+        except ValueError as error:
+            raise RuntimeError("NEURO_NP_MAX_HTTP_WORKERS-must-be-an-integer") from error
+        if not MIN_MAX_HTTP_WORKERS <= self.max_http_workers <= MAX_MAX_HTTP_WORKERS:
+            raise RuntimeError("NEURO_NP_MAX_HTTP_WORKERS-out-of-range")
         self.model_id = model_id
         self.model_revision = revision
+
+    def try_acquire_inference(self) -> bool:
+        """Reserve the single generation slot without building a request queue."""
+        return self._inference_slot.acquire(blocking=False)
+
+    def release_inference(self) -> None:
+        self._inference_slot.release()
 
     def _is_approved(self, adapter_id: str) -> bool:
         digest = self._adapter_manifest_digests.get(adapter_id)
@@ -209,6 +228,8 @@ class TransformersRuntime:
             "loaded_adapters": adapters,
             "default_adapter": self.default_adapter,
             "max_context_tokens": self.max_context_tokens,
+            "max_parallel_inference": 1,
+            "max_http_workers": self.max_http_workers,
             "remote_model_downloads": False,
         }
 
@@ -372,8 +393,14 @@ def create_handler(runtime: TransformersRuntime):
                 payload = json.loads(raw.decode("utf-8"))
                 if not isinstance(payload, dict):
                     raise RequestError(400, "request-object-required")
-                response = runtime.complete(payload)
-                _send_json(self, 200, response)
+                if not runtime.try_acquire_inference():
+                    _send_json(self, 429, {"error": "inference-busy", "retry_after_ms": 1000})
+                    return
+                try:
+                    response = runtime.complete(payload)
+                    _send_json(self, 200, response)
+                finally:
+                    runtime.release_inference()
             except RequestError as error:
                 _send_json(self, error.status, {"error": error.code})
             except (UnicodeDecodeError, json.JSONDecodeError):
@@ -381,6 +408,37 @@ def create_handler(runtime: TransformersRuntime):
             except Exception:
                 _send_json(self, 503, {"error": "inference-failed"})
     return Handler
+
+
+class BoundedThreadingHTTPServer(ThreadingHTTPServer):
+    """Bound request-handler threads so slow clients cannot create unbounded workers."""
+
+    daemon_threads = True
+    block_on_close = False
+
+    def __init__(self, server_address, RequestHandlerClass, *, max_workers: int = DEFAULT_MAX_HTTP_WORKERS):
+        if type(max_workers) is not int or not MIN_MAX_HTTP_WORKERS <= max_workers <= MAX_MAX_HTTP_WORKERS:
+            raise ValueError("http-worker-limit-out-of-range")
+        self.max_workers = max_workers
+        self._worker_slots = threading.BoundedSemaphore(max_workers)
+        super().__init__(server_address, RequestHandlerClass)
+
+    def process_request(self, request, client_address) -> None:
+        if not self._worker_slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self._worker_slots.release()
+            self.shutdown_request(request)
+            raise
+
+    def process_request_thread(self, request, client_address) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._worker_slots.release()
 
 
 def main() -> None:
@@ -391,8 +449,11 @@ def main() -> None:
     if not 1 <= port <= 65535:
         raise RuntimeError("NEURO_NP_PORT-out-of-range")
     runtime = TransformersRuntime()
-    server = ThreadingHTTPServer((host, port), create_handler(runtime))
-    server.daemon_threads = True
+    server = BoundedThreadingHTTPServer(
+        (host, port),
+        create_handler(runtime),
+        max_workers=runtime.max_http_workers,
+    )
     print(f"NEURAL_PROSTHESIS_READY http://{host}:{port} model={runtime.model_id} device={runtime.device}")
     try:
         server.serve_forever(poll_interval=0.5)
