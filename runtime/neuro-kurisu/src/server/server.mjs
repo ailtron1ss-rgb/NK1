@@ -1,7 +1,7 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
 import { URL } from 'node:url';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename, unlink, lstat } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -22,6 +22,9 @@ import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
+import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
+import { NeuroPlasticAdapterRegistry, verifyNeuroPlasticApprovalSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { verifyNeuroPlasticAdapterArtifact } from '../organism/learning/NeuroPlasticArtifactVerifier.ts';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
@@ -119,8 +122,178 @@ function consumeRateLimit(req, pathName) {
 }
 const VISION_BACKEND = VISION_ENABLED && process.env.GEMINI_API_KEY ? new GeminiVisionSemanticBackend({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash', timeoutMs: Number(process.env.GEMINI_VISION_TIMEOUT_MS || 12000), maxImageBytes: Number(process.env.GEMINI_VISION_MAX_IMAGE_BYTES || 8000000) }) : undefined;
 await mkdir(STATE, { recursive: true });
+const stateDirectoryInfo = await lstat(STATE);
+if (stateDirectoryInfo.isSymbolicLink() || !stateDirectoryInfo.isDirectory()) {
+    throw new Error('neuro-state-directory-must-be-a-regular-directory');
+}
 const lock = new ProcessLock(path.join(STATE, 'organism-runtime.lock'));
 await lock.acquire();
+
+const NEURO_PLASTIC_REGISTRY = new NeuroPlasticAdapterRegistry();
+const NEURO_PLASTIC_REGISTRY_PATH = path.resolve(
+    process.env.NEURO_PLASTIC_REGISTRY_FILE || path.join(STATE, 'neuro-plastic-adapters.json'),
+);
+const registryRelativePath = path.relative(STATE, NEURO_PLASTIC_REGISTRY_PATH);
+if (registryRelativePath === '..' || registryRelativePath.startsWith('..' + path.sep) || path.isAbsolute(registryRelativePath)) {
+    throw new Error('neuro-plastic-registry-file-must-remain-under-state-dir');
+}
+try {
+    const registryFileInfo = await lstat(NEURO_PLASTIC_REGISTRY_PATH);
+    if (registryFileInfo.isSymbolicLink() || !registryFileInfo.isFile()) {
+        throw new Error('neuro-plastic-registry-file-must-be-regular');
+    }
+}
+catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+}
+const NEURO_PLASTIC_APPROVAL_SECRET = String(process.env.NEURO_PLASTIC_APPROVAL_SECRET || '');
+const NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY = String(process.env.NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY || '');
+try {
+    const registrySnapshot = JSON.parse(await readFile(NEURO_PLASTIC_REGISTRY_PATH, 'utf8'));
+    await NEURO_PLASTIC_REGISTRY.restore(
+        registrySnapshot,
+        (approval, context) => verifyNeuroPlasticApprovalSignature(
+            approval, context, NEURO_PLASTIC_APPROVAL_SECRET,
+        ),
+        (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(
+            context.adapterId, receipt, NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY,
+        ),
+        (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
+    );
+}
+catch (error) {
+    if (error?.code !== 'ENOENT') {
+        console.error('[Neuro-Plastic] registry snapshot rejected; starting with no active adapters:', error?.message || error);
+    }
+}
+let neuroPlasticPersistQueue = Promise.resolve();
+async function persistNeuroPlasticRegistry() {
+    const write = async () => {
+        const temporaryPath = NEURO_PLASTIC_REGISTRY_PATH + '.' + process.pid + '.' + randomUUID() + '.tmp';
+        try {
+            await writeFile(temporaryPath, JSON.stringify(NEURO_PLASTIC_REGISTRY.snapshot(), null, 2) + '\n', {
+                encoding: 'utf8',
+                mode: 0o600,
+                flag: 'wx',
+            });
+            await rename(temporaryPath, NEURO_PLASTIC_REGISTRY_PATH);
+        }
+        catch (error) {
+            try { await unlink(temporaryPath); } catch { /* Temporary file already absent. */ }
+            throw error;
+        }
+    };
+    neuroPlasticPersistQueue = neuroPlasticPersistQueue.catch(() => {}).then(write);
+    return neuroPlasticPersistQueue;
+}
+const NEURO_PLASTIC_INFERENCE = new NeuroPlasticInferenceAdapter(
+    NEURO_PLASTIC_REGISTRY,
+    (backendId) => backendId === 'llama.cpp' &&
+        LLAMA_CPP_PROVIDER.configured() &&
+        !LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown,
+    LLAMA_CPP_PROVIDER,
+    (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
+    persistNeuroPlasticRegistry,
+);
+
+// P25 is an opt-in context/policy router. The canonical Neuro-Plastic registry
+// remains the final authority over signed model artifacts and actual inference.
+const P25_BASE_MODEL_ID = String(process.env.NEURO_PLASTIC_BASE_MODEL_ID || '').trim();
+const P25_BASE_MODEL_SHA256 = String(process.env.NEURO_PLASTIC_BASE_MODEL_SHA256 || '').trim().toLowerCase();
+const P25_POLICY_SECRET = String(process.env.NEURO_PLASTIC_P25_POLICY_SECRET || '');
+const P25_POLICY_KEY_ID = String(process.env.NEURO_PLASTIC_P25_POLICY_KEY_ID || '').trim();
+const P25_EXECUTOR_ENABLED =
+    process.env.NEURO_PLASTIC_MODEL_ALIASES_ENABLED === '1' &&
+    LLAMA_CPP_PROVIDER.configured() &&
+    P25_BASE_MODEL_ID.length > 0 &&
+    /^[a-f0-9]{64}$/.test(P25_BASE_MODEL_SHA256) &&
+    P25_POLICY_SECRET.length >= 32 &&
+    /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(P25_POLICY_KEY_ID);
+const P25_TASK_TO_CANONICAL_DOMAIN = Object.freeze({
+    language: 'language',
+    reasoning: 'reasoning',
+    planning: 'planning',
+    vision: 'vision',
+    audio: 'audio',
+});
+
+function verifyP25SynapticPolicy(canonicalPayload, signature, signerKeyId) {
+    if (!P25_EXECUTOR_ENABLED || signerKeyId !== P25_POLICY_KEY_ID ||
+        typeof canonicalPayload !== 'string' ||
+        typeof signature !== 'string' || !/^[a-f0-9]{64}$/i.test(signature)) {
+        return false;
+    }
+    const expected = createHmac('sha256', P25_POLICY_SECRET)
+        .update(canonicalPayload, 'utf8')
+        .digest();
+    const supplied = Buffer.from(signature, 'hex');
+    return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+async function invokeCanonicalSynapticAdapter(request, candidate, routing) {
+    const baseAlias = process.env.LLAMA_CPP_MODEL || 'local-model';
+    const baseModel = {
+        modelId: candidate.baseModelId,
+        modelRevisionSha256: candidate.baseModelRevisionSha256,
+    };
+    const baseFallback = async (reason) => {
+        const response = await LLAMA_CPP_PROVIDER.generate({ ...request, model: baseAlias });
+        return {
+            ...response,
+            ...baseModel,
+            appliedAdapterSha256: null,
+            adapterApplied: false,
+            adapterFallbackReason: String(reason || 'canonical-admission-unavailable').slice(0, 120),
+        };
+    };
+
+    let manifest;
+    try {
+        manifest = NEURO_PLASTIC_REGISTRY.getManifest(candidate.id);
+    }
+    catch {
+        return baseFallback('canonical-adapter-not-registered');
+    }
+
+    const expectedDomain = P25_TASK_TO_CANONICAL_DOMAIN[routing.task];
+    const manifestMatchesP25 =
+        typeof expectedDomain === 'string' &&
+        manifest.domain === expectedDomain &&
+        manifest.adapterId === candidate.id &&
+        manifest.baseModel.id === candidate.baseModelId &&
+        manifest.baseModel.fingerprint.toLowerCase() === candidate.baseModelRevisionSha256.toLowerCase() &&
+        manifest.artifact.weightsSha256.toLowerCase() === candidate.artifactSha256.toLowerCase() &&
+        manifest.method === candidate.adapterFormat &&
+        manifest.baseModel.backendId === 'llama.cpp' &&
+        manifest.baseModel.servedModelAlias === baseAlias &&
+        candidate.baseModelId === P25_BASE_MODEL_ID &&
+        candidate.baseModelRevisionSha256.toLowerCase() === P25_BASE_MODEL_SHA256;
+
+    if (!P25_EXECUTOR_ENABLED || !manifestMatchesP25) {
+        return baseFallback(!P25_EXECUTOR_ENABLED
+            ? 'p25-host-executor-not-explicitly-enabled'
+            : 'p25-canonical-manifest-binding-mismatch');
+    }
+
+    const response = await NEURO_PLASTIC_INFERENCE.generate(request, {
+        domain: expectedDomain,
+        backendId: manifest.baseModel.backendId,
+        baseModelFingerprint: manifest.baseModel.fingerprint,
+        baseModelAlias: manifest.baseModel.servedModelAlias,
+        backendSupportsModelAliases: true,
+        confidence01: routing.confidence01,
+        risk01: Math.max(routing.resourceRisk01, routing.uncertainty01),
+        expectedAdapterId: candidate.id,
+    });
+    return {
+        ...response,
+        ...baseModel,
+        appliedAdapterSha256: response.adapter.used ? manifest.artifact.weightsSha256 : null,
+        adapterApplied: response.adapter.used,
+        adapterFallbackReason: response.adapter.fallbackReason,
+    };
+}
+
 async function invokeLanguage(request) {
     const started = Date.now();
     const ecologyPreferredBackend = runtime.core.p40SelectModel('language', PHONE_MODE === false, request.maxTokens && request.maxTokens > 900 ? .82 : .72);
@@ -167,6 +340,12 @@ const runtime = new OrganismRuntime({
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
+    ...(P25_EXECUTOR_ENABLED ? {
+        synapticBaseModelId: P25_BASE_MODEL_ID,
+        synapticBaseModelRevisionSha256: P25_BASE_MODEL_SHA256,
+        synapticAdapterManifestVerifier: verifyP25SynapticPolicy,
+        synapticAdapterInvoker: invokeCanonicalSynapticAdapter,
+    } : {}),
     mem0Adapter: MEM0_MEMORY_ADAPTER,
     mem0CognitiveRecall: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
     autoRun: true,
@@ -313,7 +492,28 @@ async function tryLlamaCpp(request, failures) {
     if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     if (!LLAMA_CPP_PROVIDER.configured() || LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown) return null;
     try {
-        return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature, signal: request.signal });
+        const completionRequest = {
+            system: request.system,
+            user: request.user,
+            maxTokens: request.maxTokens,
+            temperature: request.temperature,
+            signal: request.signal,
+        };
+        const plasticDomain = String(request.neuroPlasticDomain || '').trim().toLowerCase();
+        const baseModelFingerprint = String(process.env.NEURO_PLASTIC_BASE_MODEL_SHA256 || '').trim();
+        if (plasticDomain && /^[a-f0-9]{64}$/i.test(baseModelFingerprint) &&
+            process.env.NEURO_PLASTIC_MODEL_ALIASES_ENABLED === '1') {
+            return await NEURO_PLASTIC_INFERENCE.generate(completionRequest, {
+                domain: plasticDomain,
+                backendId: 'llama.cpp',
+                baseModelFingerprint,
+                baseModelAlias: process.env.LLAMA_CPP_MODEL || 'local-model',
+                backendSupportsModelAliases: true,
+                confidence01: Number(request.neuroPlasticConfidence01 ?? 0.5),
+                risk01: Number(request.neuroPlasticRisk01 ?? 0.5),
+            });
+        }
+        return await LLAMA_CPP_PROVIDER.generate(completionRequest);
     }
     catch (error) {
         if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');

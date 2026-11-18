@@ -10,6 +10,7 @@ import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
 import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
+import { AdaptiveSynapticMatrixEngine, type AdaptiveSynapticMatrixState, type SynapticAdapterActivationManifest, type SynapticAdapterCandidate, type SynapticAdapterManifestVerifier, type SynapticAdapterRoutingInput, type SynapticAdapterTask } from '../learning/AdaptiveSynapticMatrix.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
@@ -86,6 +87,17 @@ function bodyActionCost(body: ReturnType<EmbodimentRuntime['snapshot']>, action:
   return Math.max(0, Math.min(1, base + (1-body.cognitiveCapacity01)*0.25 + body.thermalStrain01*0.15));
 }
 
+export type SynapticAdapterLanguageResponse = LanguageResponse & {
+  /** Executor attests the exact base model and adapter digest used for this response. */
+  modelId: string;
+  modelRevisionSha256: string;
+  appliedAdapterSha256: string | null;
+  /** False means the host canonical registry already returned the base-model fallback. */
+  adapterApplied?: boolean;
+  /** Bounded reason supplied by the host canonical adapter executor when it fell back. */
+  adapterFallbackReason?: string | null;
+};
+
 export interface RuntimeConfig extends OrganismConfig {
   stateFile: string;
   worldStateFile?: string;
@@ -95,6 +107,19 @@ export interface RuntimeConfig extends OrganismConfig {
   sensorIntervalMs?: number;
   phonePolicy?: Partial<PhonePolicyConfig>;
   languageInvoker?: LanguageInvoker;
+  /** Exact base-model identity required before any task adapter can route. */
+  synapticBaseModelId?: string;
+  synapticBaseModelRevisionSha256?: string;
+  /** Trusted host verifies signed offline holdout reports; absent means candidate-only. */
+  synapticAdapterManifestVerifier?: SynapticAdapterManifestVerifier;
+  /** Hard wall-clock bound for specialist inference before falling back to the base model. */
+  synapticAdapterTimeoutMs?: number;
+  /** Host-owned inference port that actually loads/applies the selected adapter. */
+  synapticAdapterInvoker?: (
+    request: Parameters<LanguageInvoker>[0],
+    adapter: SynapticAdapterCandidate,
+    routing: SynapticAdapterRoutingInput,
+  ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
@@ -188,6 +213,9 @@ export class OrganismRuntime {
   private consecutiveActiveCycles = 0;
   private queue: Promise<unknown> = Promise.resolve();
   private initialized = false;
+  private readonly synapticMatrix = new AdaptiveSynapticMatrixEngine();
+  private readonly synapticMatrixStore: JsonStateStore<AdaptiveSynapticMatrixState>;
+  private readonly synapticAdapterTimeoutMs: number;
   private lastContextBudgetLedger: ContextBudgetLedgerReport | null = null;
   contextBudgetDiagnostics() {
     return this.lastContextBudgetLedger ? structuredClone(this.lastContextBudgetLedger) : {
@@ -342,6 +370,11 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
+    this.synapticMatrixStore = new FileStateStore<AdaptiveSynapticMatrixState>(`${config.stateFile}.synaptic-matrix.json`);
+    this.synapticAdapterTimeoutMs = config.synapticAdapterTimeoutMs ?? 15_000;
+    if (!Number.isSafeInteger(this.synapticAdapterTimeoutMs) || this.synapticAdapterTimeoutMs < 100 || this.synapticAdapterTimeoutMs > 120_000) {
+      throw new Error('synaptic-adapter-timeout-invalid');
+    }
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -391,6 +424,10 @@ export class OrganismRuntime {
       }
       await this.compoundRepairRevisionCoordinator?.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
+      this.synapticMatrix.restore(await this.synapticMatrixStore.load() ?? undefined, this.config.synapticAdapterManifestVerifier);
+      // Active records are re-verified on every restore. Without the trusted host verifier
+      // a previously active adapter is quarantined and the base model remains authoritative.
+      await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -600,6 +637,151 @@ export class OrganismRuntime {
     }
   }
 
+  /**
+   * Adapter selection is a second-stage route above the host's base-model/backend
+   * choice. The host callback is the only component allowed to load real weights.
+   * Any adapter execution failure returns to the unchanged base LanguageInvoker.
+   */
+  private async invokeLanguageWithSynapticMatrix(
+    task: SynapticAdapterTask,
+    request: Parameters<LanguageInvoker>[0],
+    cycle: OrganismCycleResult,
+    baseInvoker: LanguageInvoker,
+  ): Promise<LanguageResponse> {
+    const needs = cycle.state.needs;
+    const energy01 = clamp01(Number(needs.energy ?? 0));
+    const cognitiveLoad01 = clamp01(Number(needs.cognitiveLoad ?? 1));
+    const uncertainty01 = clamp01(Number(needs.uncertainty ?? 1));
+    const resourceRisk01 = clamp01((1 - energy01) * 0.45 + cognitiveLoad01 * 0.35 + uncertainty01 * 0.20);
+    const promptText = String(request.system ?? '') + '\n' + String(request.user ?? '');
+    // UTF-8 bytes are a conservative upper bound for byte-tokenized prompt pieces.
+    // Prefer overestimating adapter context use to silently exceeding a profile limit.
+    const utf8ByteTokenUpperBound = new TextEncoder().encode(promptText).length;
+    const ledgerTokenEstimate = Number(request.contextLedger?.estimatedRenderedTokens);
+    const promptTokenEstimate = Number.isFinite(ledgerTokenEstimate) && ledgerTokenEstimate >= 0
+      ? Math.max(utf8ByteTokenUpperBound, Math.ceil(ledgerTokenEstimate))
+      : utf8ByteTokenUpperBound;
+    const contextTokens = promptTokenEstimate + Math.max(0, Math.floor(Number(request.maxTokens ?? 0) || 0));
+    const routingInput: SynapticAdapterRoutingInput = {
+      task,
+      baseModelId: this.config.synapticBaseModelId,
+      baseModelRevisionSha256: this.config.synapticBaseModelRevisionSha256,
+      contextTokens,
+      confidence01: clamp01(Number(cycle.decision.selected?.confidence ?? (1 - uncertainty01))),
+      uncertainty01,
+      resourceRisk01,
+      executorAvailable: typeof this.config.synapticAdapterInvoker === 'function',
+    };
+    const selection = this.synapticMatrix.select(routingInput);
+    // Persist bounded fallback diagnostics periodically without forcing a disk write
+    // on every phone inference cycle.
+    if (selection.mode === 'base-fallback') {
+      const snapshot = this.synapticMatrix.snapshot();
+      if (snapshot.metrics.routeDecisions % 8 === 0) {
+        await this.synapticMatrixStore.save(snapshot).catch(() => {});
+      }
+    }
+    if (selection.mode === 'adapter' && this.config.synapticAdapterInvoker) {
+      const startedAt = Date.now();
+      const adapterController = new AbortController();
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      let onParentAbort: (() => void) | undefined;
+      try {
+        if (request.signal?.aborted) throw request.signal.reason ?? new Error('synaptic-adapter-request-aborted');
+        const adapterRequest = { ...request, signal: adapterController.signal };
+        const timeoutPromise = new Promise<never>((_resolve, reject) => {
+          timeoutHandle = setTimeout(() => {
+            const timeoutError = new Error('synaptic-adapter-timeout');
+            adapterController.abort(timeoutError);
+            reject(timeoutError);
+          }, this.synapticAdapterTimeoutMs);
+        });
+        const parentAbortPromise = request.signal
+          ? new Promise<never>((_resolve, reject) => {
+              onParentAbort = () => {
+                const reason = request.signal?.reason ?? new Error('synaptic-adapter-request-aborted');
+                adapterController.abort(reason);
+                reject(reason);
+              };
+              // AbortSignal does not replay an abort event to listeners added late.
+              if (request.signal?.aborted) onParentAbort?.();
+              else request.signal?.addEventListener('abort', onParentAbort, { once: true });
+            })
+          : new Promise<never>(() => {});
+        const response = await Promise.race([
+          this.config.synapticAdapterInvoker(adapterRequest, selection.adapter, routingInput),
+          timeoutPromise,
+          parentAbortPromise,
+        ]);
+        if (request.signal?.aborted) {
+          throw request.signal.reason ?? new Error('synaptic-adapter-request-aborted');
+        }
+        if (!response || typeof response.text !== 'string' || !response.text.trim()
+          || typeof response.backend !== 'string' || !response.backend.trim()
+          || !Number.isFinite(response.latencyMs) || response.latencyMs < 0 || response.latencyMs > 300_000) {
+          throw new Error('synaptic-adapter-response-invalid');
+        }
+        if (response.modelId !== this.config.synapticBaseModelId
+          || typeof response.modelRevisionSha256 !== 'string'
+          || response.modelRevisionSha256.toLowerCase() !== String(this.config.synapticBaseModelRevisionSha256).toLowerCase()) {
+          throw new Error('synaptic-adapter-base-model-attestation-mismatch');
+        }
+        if (response.adapterApplied === false) {
+          if (response.appliedAdapterSha256 !== null && response.appliedAdapterSha256 !== undefined) {
+            throw new Error('synaptic-canonical-fallback-must-not-attest-applied-adapter');
+          }
+          const fallbackReason = typeof response.adapterFallbackReason === 'string'
+            ? response.adapterFallbackReason.slice(0, 120)
+            : 'canonical-selection-mismatch';
+          this.synapticMatrix.recordCanonicalFallback(task, selection.adapterId, fallbackReason);
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+          await this.journal.write('info', 'runtime.synaptic-adapter.canonical-base-fallback', {
+            adapterId: selection.adapterId, task, fallbackReason,
+            baseModelId: this.config.synapticBaseModelId,
+            baseModelRevisionSha256: response.modelRevisionSha256,
+          }).catch(() => {});
+          // The canonical executor already returned the base response. Do not
+          // invoke baseInvoker a second time and do not penalize a healthy P25
+          // candidate for a registry/policy disagreement.
+          return response;
+        }
+        if (typeof response.appliedAdapterSha256 !== 'string'
+          || response.appliedAdapterSha256.toLowerCase() !== selection.adapter.artifactSha256) {
+          throw new Error('synaptic-adapter-weight-attestation-mismatch');
+        }
+        this.synapticMatrix.observe(selection.adapterId, true, Date.now() - startedAt);
+        await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+        await this.journal.write('info', 'runtime.synaptic-adapter.selected', {
+          adapterId: selection.adapterId, task, score01: selection.score01,
+          baseModelId: this.config.synapticBaseModelId,
+          baseModelRevisionSha256: response.modelRevisionSha256,
+          artifactSha256: selection.adapter.artifactSha256,
+          appliedAdapterSha256: response.appliedAdapterSha256,
+        }).catch(() => {});
+        return response;
+      } catch (error) {
+        // Caller cancellation is not a model/adapter fault and must not poison
+        // the specialist's reliability score or trigger cooldown/quarantine.
+        if (request.signal?.aborted) {
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+          await this.journal.write('info', 'runtime.synaptic-adapter.cancelled', {
+            adapterId: selection.adapterId, task,
+          }).catch(() => {});
+          throw error;
+        }
+        this.synapticMatrix.observe(selection.adapterId, false, Date.now() - startedAt);
+        await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+        await this.journal.write('warn', 'runtime.synaptic-adapter.base-fallback', {
+          adapterId: selection.adapterId, task, reason: String((error as any)?.message ?? error).slice(0, 180),
+        }).catch(() => {});
+      } finally {
+        if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+        if (onParentAbort && request.signal) request.signal.removeEventListener('abort', onParentAbort);
+      }
+    }
+    return baseInvoker(request);
+  }
+
   private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
     if (!this.config.enableLanguage || !this.config.languageInvoker) return null;
     const current = this.core.operationalStatusSnapshot();
@@ -616,7 +798,7 @@ export class OrganismRuntime {
     const spend=this.core.cognitiveBudgetSpend(budgetMode==='deep'?'llm-deep':'llm-fast',tierCost,infoGain,'cognitive-proposal');
     if(!spend.accepted) return parseCognitiveProposal('budget constrained: preserve resources and verify supplied evidence before changing course','local-fallback');
     try {
-      const response=await this.config.languageInvoker(request);
+      const response=await this.invokeLanguageWithSynapticMatrix('reasoning', request, cycle, this.config.languageInvoker);
       await this.core.recordLanguageBackend(response.backend, response.latencyMs, true);
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
       return parseCognitiveProposal(response.text,'llm');
@@ -828,7 +1010,7 @@ export class OrganismRuntime {
       if(options.signal) request.signal=options.signal;
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
-        language = await languageInvoker(request);
+        language = await this.invokeLanguageWithSynapticMatrix('language', request, cycle, languageInvoker);
         if (!externalText && autonomousAgenda && !this.core.stageAutonomousSocialInitiativeMessage(autonomousAgenda.id, language?.text ?? '', Date.now())) {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
         }
@@ -1228,6 +1410,41 @@ export class OrganismRuntime {
     });
   }
   proceduralSkillLibrarySnapshot(){ return this.proceduralSkillLibrary.snapshot(); }
+  synapticMatrixSnapshot(){ return this.synapticMatrix.snapshot(); }
+
+  async registerSynapticAdapterCandidate(candidate: SynapticAdapterCandidate) {
+    return this.enqueue(async () => {
+      if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+      const record = this.synapticMatrix.registerCandidate(candidate);
+      await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+      return record;
+    });
+  }
+
+  async activateSynapticAdapter(manifest: SynapticAdapterActivationManifest) {
+    return this.enqueue(async () => {
+      if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+      if (typeof this.config.synapticAdapterManifestVerifier !== 'function') {
+        throw new Error('synaptic-adapter-manifest-verifier-not-configured');
+      }
+      const record = this.synapticMatrix.activateValidated(manifest, this.config.synapticAdapterManifestVerifier);
+      await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+      await this.journal.write('info', 'runtime.synaptic-adapter.activated', {
+        adapterId: record.candidate.id, artifactSha256: record.candidate.artifactSha256,
+        baseModelId: record.candidate.baseModelId, validationReportId: record.manifest?.validation.reportId,
+      }).catch(() => {});
+      return record;
+    });
+  }
+
+  async disableSynapticAdapter(id: string) {
+    return this.enqueue(async () => {
+      if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+      const record = this.synapticMatrix.disable(String(id ?? '').trim());
+      await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+      return record;
+    });
+  }
   /**
    * Return generator-ready repair evidence from actual persisted compound executions.
    * Holdout observations are excluded; evidence is descriptive and never authorizes activation.
