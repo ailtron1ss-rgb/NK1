@@ -51,6 +51,7 @@ export interface RepositoryCodingEngineSnapshot {
 }
 export interface RepositoryPatchProposalSummary {
   proposalId: string; repository: string; baseRevision: string; status: RepositoryProposalStatus;
+  appliedRevision?: string;
   risk: RepositoryCodingRisk;
   changes: Array<{ path: string; operation: RepositoryPatchOperation; baseSha256: string | null; nextSha256: string | null; risk: RepositoryCodingRisk; preview: string; }>;
   requiredTests: string[]; verificationId?: string; testStatus: 'not-run' | 'passed' | 'failed';
@@ -70,6 +71,8 @@ export interface RepositoryCodingStateStore {
 }
 export interface RepositoryCodingHost {
   snapshot(): Promise<RepositorySnapshot>;
+  /** Trusted, repository-owned allowlist. Model-supplied commands outside this exact list are rejected. */
+  allowedTestCommands(): Promise<string[]>;
   verifySandbox(payload: RepositoryCodingHostPayload): Promise<RepositorySandboxTestReceipt>;
   /** Atomic working-tree write only. Must never push, merge, release, deploy, or mutate external systems. */
   applyPatch(payload: RepositoryCodingHostPayload, idempotencyKey: string): Promise<RepositoryApplyReceipt>;
@@ -444,7 +447,7 @@ export class RepositoryCodingContextEngine {
       item.summary.status = 'reconciliation-required'; item.applyReceipt = clone(receipt);
       item.summary.warnings.push('apply-receipt-file-set-mismatch'); await this.persist(); return clone(item.summary);
     }
-    item.applyReceipt = clone(receipt); item.summary.status = 'applied'; item.summary.applyAllowed = false;
+    item.applyReceipt = clone(receipt); item.summary.status = 'applied'; item.summary.appliedRevision = receipt.headRevision; item.summary.applyAllowed = false;
     item.summary.warnings.push('working-tree-only-no-push-no-merge-no-release');
     await this.persist(); return clone(item.summary);
   }
@@ -507,7 +510,7 @@ export class RepositoryCodingContextEngine {
         const expectedFiles = proposal.changes.map(change => ({ path: change.path, sha256: change.nextSha256 }));
         if (!receipt || receipt.status !== 'applied' || receipt.proposalId !== summary.proposalId ||
             receipt.repository !== summary.repository || receipt.baseRevision !== summary.baseRevision ||
-            receipt.atomic !== true || !REVISION_RE.test(String(receipt.headRevision ?? '')) ||
+            receipt.atomic !== true || !REVISION_RE.test(String(receipt.headRevision ?? '')) || summary.appliedRevision !== receipt.headRevision ||
             !isSha(receipt.rollbackSnapshotSha256) || !Array.isArray(receipt.changedFiles) ||
             receipt.changedFiles.length !== expectedFiles.length ||
             expectedFiles.some(row => !receipt.changedFiles!.some(actual => actual.path === row.path && actual.sha256 === row.sha256))) {
@@ -564,8 +567,13 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
             }
           }
         }
+        const requiredTests = input.requiredTests as string[];
+        const approvedTests = await host.allowedTestCommands();
+        if (!Array.isArray(approvedTests) || requiredTests.some(command => !approvedTests.includes(command))) {
+          throw new Error('repository-coding-test-command-not-host-approved');
+        }
         return await engine.proposePatch({ repository: snapshot.repository, baseRevision: base, rationale: String(input.rationale),
-          requiredTests: input.requiredTests as string[], changes }) as unknown as Record<string, unknown>;
+          requiredTests, changes }) as unknown as Record<string, unknown>;
       },
     },
     {
@@ -577,6 +585,10 @@ export function createRepositoryCodingActionTools(engine: RepositoryCodingContex
         const snapshot = await host.snapshot();
         if (snapshot.complete !== true) throw new Error('repository-coding-incomplete-snapshot');
         if (revision(snapshot.revision) !== payload.baseRevision) throw new Error('repository-coding-stale-base-revision');
+        const approvedTests = await host.allowedTestCommands();
+        if (!Array.isArray(approvedTests) || payload.requiredTests.some(command => !approvedTests.includes(command))) {
+          throw new Error('repository-coding-test-command-not-host-approved');
+        }
         return await engine.recordSandboxVerification(id, await host.verifySandbox(payload)) as unknown as Record<string, unknown>;
       },
     },
