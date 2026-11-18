@@ -36,7 +36,7 @@ const services = {
     async verify({ execution, context }) {
       return {
         bindingVerified: execution.runId === context.plannedRunId,
-        passed: true,
+        passed: execution.observedStepIds.includes('step-core'),
         coveredCapabilityIds: ['cap-core'],
       };
     },
