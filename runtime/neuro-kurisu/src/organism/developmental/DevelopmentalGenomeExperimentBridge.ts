@@ -2,6 +2,13 @@ import { createHash } from 'node:crypto';
 import { snapshotPlainData } from '../learning/LearningTrustBoundary.ts';
 import { bootstrapMeanConfidenceInterval, type BootstrapMeanInterval } from '../learning/PairedSeedConfidence.ts';
 import {
+  hasAuthenticatedOutcomeEvidence,
+  ingestSignedOutcomeArtifact,
+  outcomePayloadFingerprint,
+  type SignedOutcomeArtifact,
+} from '../learning/VerifiedOutcomeArtifact.ts';
+import { VerifiedOutcomeLedger, type TaskManifestEntry } from '../learning/VerifiedOutcomeLedger.ts';
+import {
   evaluateDevelopmentalGenome,
   inheritDevelopmentalGenome,
   type DevelopmentalGenome,
@@ -42,6 +49,13 @@ export type DevelopmentalGenomeExperimentStatus =
   | 'NEEDS_REVIEW'
   | 'BLOCKED';
 
+export interface DevelopmentalGenomeSignedOutcomes {
+  manifest: TaskManifestEntry[];
+  artifacts: SignedOutcomeArtifact[];
+  baselineMethod: string;
+  candidateMethod: string;
+}
+
 export interface DevelopmentalGenomeExperimentInput {
   parent: DevelopmentalGenome;
   ancestors?: readonly DevelopmentalGenome[];
@@ -50,6 +64,7 @@ export interface DevelopmentalGenomeExperimentInput {
   p63Plan: P63Plan;
   p60Decision: 'allow' | 'caution' | 'veto';
   evidence?: DevelopmentalGenomeExperimentEvidence | null;
+  signedOutcomes?: DevelopmentalGenomeSignedOutcomes;
 }
 
 export interface DevelopmentalGenomeExperimentReceipt {
@@ -106,6 +121,34 @@ function isSha256(value: unknown): value is string {
 
 function isHexDigest(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
+}
+
+/**
+ * The family key binds the exact experiment envelope to the exact parent/child
+ * pair, P53 candidate, P63 plan, P60 decision and ancestor chain. A trusted
+ * verifier signs the manifest fingerprint containing this family key.
+ */
+export function developmentalGenomeExperimentFamilyKey(
+  input: DevelopmentalGenomeExperimentInput,
+  candidate: DevelopmentalGenome,
+): string {
+  const binding = {
+    schema: DEVELOPMENTAL_GENOME_EXPERIMENT_EVIDENCE_SCHEMA,
+    parentDigest: input.parent.digest,
+    candidateDigest: candidate.digest,
+    ancestors: (input.ancestors ?? []).map(genome => genome.digest),
+    evidenceDigest: input.evidence?.digest ?? null,
+    p53CandidateId: input.p53Candidate?.id ?? null,
+    p63PlanDigest: sha256(canonicalJson(input.p63Plan)),
+    p60Decision: input.p60Decision,
+  };
+  return 'nk1-genome-' + createHash('sha256').update(canonicalJson(binding)).digest('hex');
+}
+
+export function developmentalGenomeExperimentTaskFingerprint(family: string, taskId: string): string {
+  return createHash('sha256')
+    .update('nk1-developmental-genome-holdout-task:v1\\u0000' + family + '\\u0000' + taskId)
+    .digest('hex');
 }
 
 function boundedIdentifier(value: unknown, maxLength = 180): value is string {
@@ -303,26 +346,187 @@ function validateEvidenceEnvelope(
     addIssue(issues, 'paired-seed-coverage-insufficient', 'evidence.pairedSeedIds', 'At least five matched seed pairs are required before review');
     return { valid: false, needsMore: true, interval: null, digest };
   }
-  const regressions = evidence.pairedSeedDeltas01.filter(delta => delta < 0).length;
-  if (regressions > 0) {
-    addIssue(issues, 'paired-seed-regressions-detected', 'evidence.pairedSeedDeltas01', 'A genome candidate with any negative paired-seed delta is blocked');
-    return { valid: false, needsMore: false, interval: null, digest };
+  // These declared deltas are only claims. Statistical analysis is deliberately
+  // deferred until the exact outcomes have been authenticated by VerifiedOutcomeArtifact.
+  return { valid: true, needsMore: false, interval: null, digest };
+}
+
+interface SignedOutcomeValidationResult {
+  valid: boolean;
+  needsMore: boolean;
+  interval: BootstrapMeanInterval | null;
+  digest: string | null;
+}
+
+/**
+ * Rebuild the paired holdout sample from Ed25519-authenticated ledger rows.
+ * The self-reported deltas in the envelope are compared with, never used instead
+ * of, the independently signed task outcomes.
+ */
+function validateSignedOutcomeSet(
+  input: DevelopmentalGenomeExperimentInput,
+  candidate: DevelopmentalGenome,
+  evidence: DevelopmentalGenomeExperimentEvidence,
+  trustedVerifierKeys: ReadonlyMap<string, string>,
+  issues: GenomeGateIssue[],
+): SignedOutcomeValidationResult {
+  const signed = input.signedOutcomes;
+  if (!signed || typeof signed !== 'object' || !Array.isArray(signed.manifest) || !Array.isArray(signed.artifacts)) {
+    addIssue(issues, 'signed-independent-outcomes-required', 'signedOutcomes', 'Only signed, manifest-bound independent holdout outcomes can authorize human review');
+    return { valid: false, needsMore: true, interval: null, digest: null };
   }
+  if (!(trustedVerifierKeys instanceof Map) || trustedVerifierKeys.size === 0) {
+    addIssue(issues, 'trusted-evaluator-keys-not-configured', 'trustedVerifierKeys', 'Host must configure trusted evaluator public keys before genome evidence can be admitted');
+    return { valid: false, needsMore: true, interval: null, digest: null };
+  }
+  const family = developmentalGenomeExperimentFamilyKey(input, candidate);
+  if (!boundedIdentifier(signed.baselineMethod, 120) ||
+      !boundedIdentifier(signed.candidateMethod, 120) ||
+      signed.baselineMethod === signed.candidateMethod ||
+      signed.manifest.length === 0) {
+    addIssue(issues, 'signed-outcome-manifest-invalid', 'signedOutcomes', 'Signed outcome methods and manifest are invalid');
+    return { valid: false, needsMore: false, interval: null, digest: null };
+  }
+  let ledger: VerifiedOutcomeLedger;
   try {
-    const seedHex = createHash('sha256').update(evidence.runId).digest('hex').slice(0, 8);
-    const interval = bootstrapMeanConfidenceInterval(evidence.pairedSeedDeltas01, {
+    ledger = new VerifiedOutcomeLedger(signed.manifest);
+  } catch (error) {
+    addIssue(issues, 'signed-outcome-manifest-rejected', 'signedOutcomes.manifest', String((error as any)?.message ?? error).slice(0, 180));
+    return { valid: false, needsMore: false, interval: null, digest: null };
+  }
+  for (const task of signed.manifest) {
+    if (task.family !== family || task.split !== 'holdout' ||
+        task.verifierId !== evidence.evaluatorId || task.version !== evidence.evaluatorVersion ||
+        task.promptFingerprint !== developmentalGenomeExperimentTaskFingerprint(family, task.taskId)) {
+      addIssue(issues, 'signed-outcome-manifest-binding-mismatch', 'signedOutcomes.manifest', 'Every holdout task must be bound to this exact genome experiment and trusted evaluator version');
+      return { valid: false, needsMore: false, interval: null, digest: null };
+    }
+  }
+
+  const seedIds: number[] = [];
+  for (const label of evidence.pairedSeedIds) {
+    const match = /^seed-([1-9][0-9]*)$/.exec(label);
+    const seed = match ? Number(match[1]) : NaN;
+    if (!Number.isSafeInteger(seed) || seed < 1 || seedIds.includes(seed)) {
+      addIssue(issues, 'signed-outcome-seed-identity-invalid', 'evidence.pairedSeedIds', 'Seed labels must uniquely encode positive safe-integer seeds');
+      return { valid: false, needsMore: false, interval: null, digest: null };
+    }
+    seedIds.push(seed);
+  }
+  const expectedCount = signed.manifest.length * seedIds.length * 2;
+  if (signed.artifacts.length < expectedCount) {
+    addIssue(issues, 'signed-outcome-pair-incomplete', 'signedOutcomes.artifacts', 'Signed evidence does not contain every task/method/seed cell');
+    return { valid: false, needsMore: true, interval: null, digest: null };
+  }
+  if (signed.artifacts.length > expectedCount) {
+    addIssue(issues, 'signed-outcome-extra-artifacts', 'signedOutcomes.artifacts', 'Unexpected signed artifacts are not admitted into this experiment');
+    return { valid: false, needsMore: false, interval: null, digest: null };
+  }
+
+  const fingerprints: string[] = [];
+  const runIds = new Map<string, Set<string>>([
+    [signed.baselineMethod, new Set<string>()],
+    [signed.candidateMethod, new Set<string>()],
+  ]);
+  for (const artifact of signed.artifacts) {
+    const payload = artifact?.payload;
+    if (!payload || typeof payload !== 'object' ||
+        (payload.method !== signed.baselineMethod && payload.method !== signed.candidateMethod) ||
+        !seedIds.includes(payload.seed) || payload.attempt !== 1 ||
+        payload.verifierId !== evidence.evaluatorId ||
+        payload.taskVersion !== evidence.evaluatorVersion ||
+        !signed.manifest.some(task => task.taskId === payload.taskId) ||
+        payload.runId !== evidence.runId + ':' + payload.method) {
+      addIssue(issues, 'signed-outcome-artifact-context-mismatch', 'signedOutcomes.artifacts', 'Signed artifact method, seed, task, evaluator, version or run identity is outside the evidence envelope');
+      return { valid: false, needsMore: false, interval: null, digest: null };
+    }
+    const accepted = ingestSignedOutcomeArtifact(ledger, signed.manifest, artifact, trustedVerifierKeys);
+    if (!accepted.accepted) {
+      const needsMore = accepted.rejection === 'untrusted-verifier-key';
+      addIssue(issues, needsMore ? 'signed-outcome-untrusted-verifier' : 'signed-outcome-artifact-rejected',
+        'signedOutcomes.artifacts', accepted.rejection ?? 'signed-outcome-rejected');
+      return { valid: false, needsMore, interval: null, digest: null };
+    }
+    const outcome = ledger.snapshot().outcomes.find(row =>
+      row.taskId === payload.taskId && row.method === payload.method &&
+      row.seed === payload.seed && row.attempt === 1,
+    );
+    if (!outcome || outcome.authority !== 'independent-verifier' ||
+        outcome.verifierId !== evidence.evaluatorId ||
+        !hasAuthenticatedOutcomeEvidence(ledger, outcome.evidenceRef)) {
+      addIssue(issues, 'signed-outcome-authentication-receipt-missing', 'signedOutcomes.artifacts', 'Accepted outcome has no process-local authenticated evidence receipt');
+      return { valid: false, needsMore: false, interval: null, digest: null };
+    }
+    runIds.get(payload.method)!.add(payload.runId);
+    fingerprints.push(accepted.artifactFingerprint);
+  }
+  if (runIds.get(signed.baselineMethod)!.size !== 1 ||
+      runIds.get(signed.candidateMethod)!.size !== 1 ||
+      [...runIds.get(signed.baselineMethod)!][0] === [...runIds.get(signed.candidateMethod)!][0]) {
+    addIssue(issues, 'signed-outcome-run-separation-invalid', 'signedOutcomes.artifacts', 'Baseline and candidate must have distinct, internally consistent run identities');
+    return { valid: false, needsMore: false, interval: null, digest: null };
+  }
+
+  const manifestTasks = signed.manifest.map(task => task.taskId);
+  const outcomes = ledger.snapshot().outcomes;
+  const bySeed = new Map<number, Map<string, Map<string, boolean>>>();
+  for (const outcome of outcomes) {
+    const rows = bySeed.get(outcome.seed) ?? new Map<string, Map<string, boolean>>();
+    const methods = rows.get(outcome.taskId) ?? new Map<string, boolean>();
+    methods.set(outcome.method, outcome.passed);
+    rows.set(outcome.taskId, methods);
+    bySeed.set(outcome.seed, rows);
+  }
+  const derivedDeltas: number[] = [];
+  for (const seed of seedIds) {
+    const taskRows = bySeed.get(seed);
+    if (!taskRows || manifestTasks.some(taskId => {
+      const methods = taskRows.get(taskId);
+      return !methods?.has(signed.baselineMethod) || !methods?.has(signed.candidateMethod);
+    })) {
+      addIssue(issues, 'signed-outcome-pair-incomplete', 'signedOutcomes.artifacts', 'Every seed must contain both methods for every manifest task');
+      return { valid: false, needsMore: true, interval: null, digest: null };
+    }
+    const baselineRate = manifestTasks.reduce((sum, taskId) =>
+      sum + Number(taskRows.get(taskId)!.get(signed.baselineMethod)!), 0) / manifestTasks.length;
+    const candidateRate = manifestTasks.reduce((sum, taskId) =>
+      sum + Number(taskRows.get(taskId)!.get(signed.candidateMethod)!), 0) / manifestTasks.length;
+    derivedDeltas.push(candidateRate - baselineRate);
+  }
+  if (evidence.pairedSeedIds.some((label, index) => label !== 'seed-' + seedIds[index]) ||
+      evidence.pairedSeedDeltas01.some((delta, index) =>
+        Math.abs(delta - (derivedDeltas[index] ?? Number.NaN)) > 1e-9)) {
+    addIssue(issues, 'signed-outcome-delta-mismatch', 'evidence.pairedSeedDeltas01', 'Declared seed IDs/deltas do not exactly match authenticated holdout task outcomes');
+    return { valid: false, needsMore: false, interval: null, digest: null };
+  }
+  if (derivedDeltas.some(delta => delta < 0)) {
+    addIssue(issues, 'paired-seed-regressions-detected', 'signedOutcomes.artifacts', 'A candidate with any negative authenticated paired-seed delta is blocked');
+    return { valid: false, needsMore: false, interval: null, digest: null };
+  }
+
+  try {
+    const seedHex = createHash('sha256').update(family + ':' + ledger.manifestFingerprint()).digest('hex').slice(0, 8);
+    const interval = bootstrapMeanConfidenceInterval(derivedDeltas, {
       seed: Number.parseInt(seedHex, 16),
       resamples: 4000,
       confidenceLevel: 0.95,
     });
     if (interval.mean <= 0 || interval.lower <= 0) {
-      addIssue(issues, 'paired-seed-confidence-bound-not-positive', 'evidence.pairedSeedDeltas01', 'The 95% paired bootstrap lower confidence bound must be positive');
-      return { valid: false, needsMore: false, interval, digest };
+      addIssue(issues, 'paired-seed-confidence-bound-not-positive', 'signedOutcomes.artifacts', 'The 95% bootstrap lower confidence bound from authenticated outcomes must be positive');
+      return { valid: false, needsMore: false, interval, digest: null };
     }
+    const digest = sha256(canonicalJson({
+      family,
+      manifestFingerprint: ledger.manifestFingerprint(),
+      artifactFingerprints: fingerprints.sort(),
+      pairedSeedIds: evidence.pairedSeedIds,
+      pairedSeedDeltas01: derivedDeltas,
+      confidenceInterval: interval,
+    }));
     return { valid: true, needsMore: false, interval, digest };
   } catch (error) {
-    addIssue(issues, 'paired-seed-confidence-evaluation-failed', 'evidence.pairedSeedDeltas01', String((error as any)?.message ?? error).slice(0, 180));
-    return { valid: false, needsMore: false, interval: null, digest };
+    addIssue(issues, 'signed-outcome-confidence-evaluation-failed', 'signedOutcomes.artifacts', String((error as any)?.message ?? error).slice(0, 180));
+    return { valid: false, needsMore: false, interval: null, digest: null };
   }
 }
 
@@ -332,6 +536,7 @@ function validateEvidenceEnvelope(
  */
 export function evaluateDevelopmentalGenomeExperiment(
   rawInput: DevelopmentalGenomeExperimentInput,
+  trustedVerifierKeys: ReadonlyMap<string, string> = new Map<string, string>(),
 ): DevelopmentalGenomeExperimentReport {
   const context: ReceiptContext = {
     parentDigest: null,
@@ -400,12 +605,18 @@ export function evaluateDevelopmentalGenomeExperiment(
 
     const evidence = input.evidence as DevelopmentalGenomeExperimentEvidence;
     const evidenceResult = validateEvidenceEnvelope(evidence, input.parent, candidate, issues);
-    context.evidenceDigest = evidenceResult.digest;
     if (!evidenceResult.valid) {
+      context.evidenceDigest = evidenceResult.digest;
       return createReport(evidenceResult.needsMore ? 'NEEDS_REVIEW' : 'BLOCKED',
         candidate, genomeGate, issues, evidenceResult.interval, context);
     }
-    return createReport('READY_FOR_HUMAN_REVIEW', candidate, genomeGate, issues, evidenceResult.interval, context);
+    const signedResult = validateSignedOutcomeSet(input, candidate, evidence, trustedVerifierKeys, issues);
+    context.evidenceDigest = signedResult.digest ?? evidenceResult.digest;
+    if (!signedResult.valid) {
+      return createReport(signedResult.needsMore ? 'NEEDS_REVIEW' : 'BLOCKED',
+        candidate, genomeGate, issues, signedResult.interval, context);
+    }
+    return createReport('READY_FOR_HUMAN_REVIEW', candidate, genomeGate, issues, signedResult.interval, context);
   } catch (error) {
     addIssue(issues, 'experiment-input-rejected', 'input', 'Experiment input failed the plain-data or validation boundary: ' +
       String((error as any)?.message ?? error).slice(0, 180));
