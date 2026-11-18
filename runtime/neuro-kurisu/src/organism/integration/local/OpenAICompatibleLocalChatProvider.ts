@@ -1,3 +1,5 @@
+import { createUnsupportedHyperPlasticAdapterCapabilities } from '../../research/HyperPlasticBackendCapabilities.ts';
+
 export interface LocalChatCompletionRequest {
   system: string;
   user: string;
@@ -88,6 +90,10 @@ export class OpenAICompatibleLocalChatProvider {
   readonly model: string;
   readonly timeoutMs: number;
   private readonly fetchImpl: typeof fetch;
+  private readonly adapterCapabilities = createUnsupportedHyperPlasticAdapterCapabilities(
+    'llama.cpp-openai-compatible-chat',
+    'chat-completions-endpoint-has-no-adapter-loader',
+  );
 
   constructor(options: LocalChatProviderOptions = {}) {
     this.baseUrl = canonicalBaseUrl(options.baseUrl);
@@ -98,6 +104,8 @@ export class OpenAICompatibleLocalChatProvider {
 
   configured(): boolean { return Boolean(this.baseUrl); }
   endpoint(): string | null { return this.baseUrl ? `${this.baseUrl}/chat/completions` : null; }
+  /** The OpenAI-compatible chat endpoint has no LoRA loader; expose this honestly. */
+  hyperPlasticAdapterCapabilities() { return this.adapterCapabilities; }
 
   async generate(request: LocalChatCompletionRequest): Promise<LocalChatCompletionResponse> {
     const endpoint = this.endpoint();
