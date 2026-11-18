@@ -225,17 +225,19 @@ export class OpenAICompatibleLocalChatProvider {
     if (!text) throw new Error('llama.cpp-empty-response');
     const model = String(payload?.model ?? this.model).slice(0, 160);
     const usageCount=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0&&value<=1_000_000?value:null;
-    const promptTokens=usageCount(payload?.usage?.prompt_tokens);
-    const completionTokens=usageCount(payload?.usage?.completion_tokens);
-    const reportedTotalTokens=usageCount(payload?.usage?.total_tokens);
+    const usagePayload=payload?.usage && typeof payload.usage==='object' ? payload.usage : undefined;
+    const promptTokens=usageCount(usagePayload?.prompt_tokens);
+    const completionTokens=usageCount(usagePayload?.completion_tokens);
+    const hasReportedTotalTokens=Boolean(usagePayload &&
+      Object.prototype.hasOwnProperty.call(usagePayload,'total_tokens'));
+    const reportedTotalTokens=usageCount(usagePayload?.total_tokens);
     const computedTotalTokens=promptTokens!==null&&completionTokens!==null
       ? promptTokens+completionTokens
       : null;
-    const totalTokens=reportedTotalTokens!==null
-      && computedTotalTokens!==null
-      && reportedTotalTokens>=computedTotalTokens
-      ? reportedTotalTokens
-      : reportedTotalTokens===null ? computedTotalTokens : null;
+    const totalTokens=computedTotalTokens!==null
+      ? (!hasReportedTotalTokens ? computedTotalTokens
+        : reportedTotalTokens!==null&&reportedTotalTokens>=computedTotalTokens ? reportedTotalTokens : null)
+      : null;
     const providerUsage=promptTokens!==null&&completionTokens!==null&&totalTokens!==null
       ? {promptTokens,completionTokens,totalTokens}
       : undefined;
