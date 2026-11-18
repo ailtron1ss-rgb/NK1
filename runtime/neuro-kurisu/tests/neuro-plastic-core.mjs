@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, neuroPlasticAdapterManifestFingerprint, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
@@ -15,9 +15,9 @@ function signedEvaluate(registry, adapterId, payload) {
   return registry.evaluateCandidate(adapterId, { ...payload, receipt }, (verifiedReceipt) =>
     verifyNeuroPlasticEvaluationSignature(adapterId, payload, verifiedReceipt, evaluatorSecret));
 }
-function signedApproval(adapterId, reportId, approvalId) {
+function signedApproval(adapterId, reportId, approvalId, registry) {
   const unsigned = { approvalId, actorId: 'operator', approvedAt: 1_800_000_000_200 };
-  const context = { adapterId, reportId, baseModelFingerprint: hash('a') };
+  const context = { adapterId, reportId, baseModelFingerprint: hash('a'), manifestFingerprint: neuroPlasticAdapterManifestFingerprint(registry.getManifest(adapterId)) };
   return { ...unsigned, signature: createNeuroPlasticApprovalSignature(unsigned, context, approvalSecret) };
 }
 function verifyApproval(approval, context) {
@@ -99,7 +99,7 @@ assert.equal(report.pairedN, 7);
 assert.equal(report.eligible, true);
 assert.ok(report.qualityCi95[0] > 0, 'promotion evidence must have a positive lower confidence bound');
 assert.equal(registry.snapshot().adapters[0].status, 'eligible', 'holdout success must not activate weights');
-const approval = signedApproval('kurisu-reasoning-v1', report.reportId, 'approval-1');
+const approval = signedApproval('kurisu-reasoning-v1', report.reportId, 'approval-1', registry);
 assert.equal(verifyApproval(approval, { adapterId: 'kurisu-reasoning-v1', reportId: report.reportId, baseModelFingerprint: hash('a') }), true);
 assert.equal(verifyNeuroPlasticApprovalSignature(approval, { adapterId: 'kurisu-reasoning-v1', reportId: report.reportId, baseModelFingerprint: hash('a') }, 'wrong-secret'), false);
 await assert.rejects(
@@ -260,7 +260,7 @@ signedEvaluate(inferenceRegistry, 'kurisu-runtime-v1', {
 const inferenceReport = inferenceRegistry.snapshot().adapters[0].evaluation;
 await inferenceRegistry.activate(
   'kurisu-runtime-v1',
-  signedApproval('kurisu-runtime-v1', inferenceReport.reportId, 'approval-runtime'),
+  signedApproval('kurisu-runtime-v1', inferenceReport.reportId, 'approval-runtime', inferenceRegistry),
   verifyApproval,
 );
 const inferenceCalls = [];
@@ -301,7 +301,7 @@ signedEvaluate(failedRegistry, 'kurisu-runtime-fallback-v1', {
 const failedReport = failedRegistry.snapshot().adapters[0].evaluation;
 await failedRegistry.activate(
   'kurisu-runtime-fallback-v1',
-  signedApproval('kurisu-runtime-fallback-v1', failedReport.reportId, 'approval-fallback'),
+  signedApproval('kurisu-runtime-fallback-v1', failedReport.reportId, 'approval-fallback', failedRegistry),
   verifyApproval,
 );
 const fallbackCalls = [];
@@ -351,7 +351,7 @@ signedEvaluate(artifactFailureRegistry, 'kurisu-runtime-corrupt-v1', {
 const artifactFailureReport = artifactFailureRegistry.snapshot().adapters[0].evaluation;
 await artifactFailureRegistry.activate(
   'kurisu-runtime-corrupt-v1',
-  signedApproval('kurisu-runtime-corrupt-v1', artifactFailureReport.reportId, 'approval-corrupt'),
+  signedApproval('kurisu-runtime-corrupt-v1', artifactFailureReport.reportId, 'approval-corrupt', artifactFailureRegistry),
   verifyApproval,
 );
 const integrityCalls = [];
@@ -401,7 +401,7 @@ signedEvaluate(aliasMismatchRegistry, 'kurisu-runtime-alias-mismatch-v1', {
 const aliasMismatchReport = aliasMismatchRegistry.snapshot().adapters[0].evaluation;
 await aliasMismatchRegistry.activate(
   'kurisu-runtime-alias-mismatch-v1',
-  signedApproval('kurisu-runtime-alias-mismatch-v1', aliasMismatchReport.reportId, 'approval-alias-mismatch'),
+  signedApproval('kurisu-runtime-alias-mismatch-v1', aliasMismatchReport.reportId, 'approval-alias-mismatch', aliasMismatchRegistry),
   verifyApproval,
 );
 const aliasMismatchCalls = [];
@@ -534,7 +534,7 @@ signedEvaluate(conflictRegistry, 'kurisu-reasoning-v2', evaluationPayload);
 const conflictReport = conflictRegistry.snapshot().adapters[0].evaluation;
 await conflictRegistry.activate(
   'kurisu-reasoning-v2',
-  signedApproval('kurisu-reasoning-v2', conflictReport.reportId, 'approval-conflict'),
+  signedApproval('kurisu-reasoning-v2', conflictReport.reportId, 'approval-conflict', conflictRegistry),
   verifyApproval,
 );
 const conflictSnapshot = {
