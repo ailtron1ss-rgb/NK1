@@ -655,7 +655,8 @@ export class OrganismRuntime {
       this.cognitiveToNeuralBridgeMetrics.providerControlReceiptsRejected+=1;
       return;
     }
-    if(receipt.provider!=='llama.cpp' || receipt.templateKwargsSent!==true ||
+    if(receipt.provider!=='llama.cpp' || !String(response.backend??'').startsWith('llama.cpp:') ||
+       receipt.templateKwargsSent!==true ||
        receipt.featureSchema!==profile.featureSchema ||
        typeof requestId!=='string' || requestId.length<1 ||
        receipt.requestId!==requestId ||
