@@ -173,6 +173,17 @@ for(let index=0;index<256;index+=1) {
 
 const lowBudget=bridge.project({ tick:17, mode:'deep', budgetRemaining01:.2, neural });
 const highBudget=bridge.project({ tick:17, mode:'deep', budgetRemaining01:.8, neural });
+const sameStateWithFeedback=bridge.project({
+  tick:17,mode:'deep',budgetRemaining01:.3,neural,
+  providerFeedback:{version:1,mode:'deep',sampleCount:8,truncatedCount:6,nearLimitCount:8},
+});
+const sameStateWithoutFeedback=bridge.project({
+  tick:17,mode:'deep',budgetRemaining01:.3,neural,
+});
+assert.notEqual(cognitiveNeuralProfileFingerprint(sameStateWithFeedback),
+  cognitiveNeuralProfileFingerprint(sameStateWithoutFeedback),
+  'the receipt fingerprint must bind adaptive feedback counters, not only the neural vector');
+
 assert.ok(highBudget.maxTokens>lowBudget.maxTokens,
   'more remaining cognitive reserve must not reduce the configured token budget');
 const noFeedback=bridge.project({tick:17,mode:'deep',budgetRemaining01:.3,neural});
