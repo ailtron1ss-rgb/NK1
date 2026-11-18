@@ -154,6 +154,7 @@ class NeuralProsthesisEngineTests(unittest.TestCase):
                 "example_count": 12,
                 "epochs": 2,
                 "seed": 42,
+                "validation_dataset_sha256": "c" * 64,
             }
             manifest = self.bank.save_adapter(
                 "kurisu-reasoning-v1",
@@ -171,6 +172,23 @@ class NeuralProsthesisEngineTests(unittest.TestCase):
                 self.assertEqual(second.load_adapter(artifact), "kurisu-reasoning-v1")
             finally:
                 second.close()
+
+    def test_validation_dataset_cannot_match_training_dataset_in_manifest(self):
+        digest = "d" * 64
+        invalid = {
+            "dataset_sha256": digest,
+            "example_count": 12,
+            "epochs": 2,
+            "seed": 42,
+            "validation_dataset_sha256": digest,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(ArtifactError, "validation-dataset-matches-training-dataset"):
+                self.bank.save_adapter(
+                    "kurisu-reasoning-v1",
+                    Path(tmp) / "adapter",
+                    training_evidence=invalid,
+                )
 
     def test_training_provenance_rejects_noncanonical_values(self):
         invalid = {
