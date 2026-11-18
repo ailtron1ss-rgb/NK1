@@ -49,6 +49,9 @@ jobs:
       - name: Cognitive-to-Neural Bridge bounded feature projection
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/cognitive-to-neural-bridge.mjs
+      - name: Cognitive provider truncation feedback controller
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/cognitive-provider-feedback.mjs
       - name: Cognitive-to-Neural Bridge runtime wiring
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/cognitive-to-neural-bridge-runtime-wiring.mjs
