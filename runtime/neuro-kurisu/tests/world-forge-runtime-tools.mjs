@@ -61,7 +61,7 @@ const baselineWait=await gateway.executeTool('organism.worldforge.sessions.step'
  scenarioId:scenario.id,sessionId:baselineState.sessionId,tick:baselineState.tick,
  action:{action:'wait'},
 },'worldforge-baseline-wait');
-assert.equal(baselineWait.ok,true);
+assert.equal(baselineWait.ok,true,JSON.stringify(baselineWait.result));
 
 const beforeResources=state.resourcesRemaining;
 const collect=await gateway.executeTool('organism.worldforge.sessions.step',{
