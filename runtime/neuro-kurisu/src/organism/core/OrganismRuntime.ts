@@ -10,7 +10,7 @@ import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
 import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
-import { AdaptiveSynapticMatrixEngine, type AdaptiveSynapticMatrixState, type SynapticAdapterActivationManifest, type SynapticAdapterCandidate, type SynapticAdapterManifestVerifier, type SynapticAdapterRoutingInput, type SynapticAdapterTask } from '../learning/AdaptiveSynapticMatrix.ts';
+import { AdaptiveSynapticMatrixEngine, type AdaptiveSynapticMatrixState, type SynapticAdapterActivationManifest, type SynapticAdapterCandidate, type SynapticAdapterManifestVerifier, type SynapticAdapterRoutingInput, type SynapticAdapterTask, type SynapticReplayAnchorState, type SynapticReplayAnchorStore } from '../learning/AdaptiveSynapticMatrix.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
@@ -112,6 +112,10 @@ export interface RuntimeConfig extends OrganismConfig {
   synapticBaseModelRevisionSha256?: string;
   /** Trusted host verifies signed offline holdout reports; absent means candidate-only. */
   synapticAdapterManifestVerifier?: SynapticAdapterManifestVerifier;
+  /** Host-owned monotonic anti-rollback store. Must be backed by an atomic, rollback-resistant CAS service. */
+  synapticReplayAnchorStore?: SynapticReplayAnchorStore;
+  /** Require the external replay anchor before activation; when absent, activation fails closed. */
+  synapticReplayAnchorRequired?: boolean;
   /** Hard wall-clock bound for specialist inference before falling back to the base model. */
   synapticAdapterTimeoutMs?: number;
   /** Host-owned inference port that actually loads/applies the selected adapter. */
@@ -425,8 +429,33 @@ export class OrganismRuntime {
       await this.compoundRepairRevisionCoordinator?.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       this.synapticMatrix.restore(await this.synapticMatrixStore.load() ?? undefined, this.config.synapticAdapterManifestVerifier);
-      // Active records are re-verified on every restore. Without the trusted host verifier
-      // a previously active adapter is quarantined and the base model remains authoritative.
+      // Reconcile every persisted adapter against the host-owned monotonic anchor before
+      // the runtime can route to it. A local JSON hash chain is not a rollback-resistant store.
+      const replayAnchorStore = this.config.synapticReplayAnchorStore;
+      for (const record of this.synapticMatrix.snapshot().adapters) {
+        if (replayAnchorStore) {
+          try {
+            const anchor = await replayAnchorStore.read(record.candidate.id);
+            if (!this.synapticMatrix.reconcileReplayAnchor(record.candidate.id, anchor)) {
+              await this.journal.write('warn', 'runtime.synaptic-adapter.replay-anchor-mismatch', {
+                adapterId: record.candidate.id,
+                localCount: this.synapticMatrix.replayAnchorState(record.candidate.id)?.acceptedReportCount ?? 0,
+              }).catch(() => {});
+            }
+          } catch {
+            this.synapticMatrix.markReplayAnchorUntrusted(record.candidate.id);
+            await this.journal.write('warn', 'runtime.synaptic-adapter.replay-anchor-unavailable', {
+              adapterId: record.candidate.id,
+            }).catch(() => {});
+          }
+        } else if (this.config.synapticReplayAnchorRequired === true &&
+            (record.status === 'active' || Boolean(record.manifest) ||
+             (record.acceptedReportCount ?? 0) > 0)) {
+          this.synapticMatrix.markReplayAnchorUntrusted(record.candidate.id);
+        }
+      }
+      // Re-verified active records and quarantined replay mismatches are persisted before
+      // any cognitive step can use the language adapter path.
       await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
@@ -1427,11 +1456,56 @@ export class OrganismRuntime {
       if (typeof this.config.synapticAdapterManifestVerifier !== 'function') {
         throw new Error('synaptic-adapter-manifest-verifier-not-configured');
       }
-      const record = this.synapticMatrix.activateValidated(manifest, this.config.synapticAdapterManifestVerifier);
-      await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+      const replayAnchorStore = this.config.synapticReplayAnchorStore;
+      if (this.config.synapticReplayAnchorRequired === true && !replayAnchorStore) {
+        throw new Error('synaptic-adapter-monotonic-replay-anchor-required');
+      }
+
+      let expectedAnchor: SynapticReplayAnchorState | null = null;
+      if (replayAnchorStore) {
+        try {
+          expectedAnchor = await replayAnchorStore.read(manifest.id);
+        } catch {
+          this.synapticMatrix.markReplayAnchorUntrusted(manifest.id);
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+          throw new Error('synaptic-adapter-replay-anchor-unavailable');
+        }
+        if (!this.synapticMatrix.reconcileReplayAnchor(manifest.id, expectedAnchor)) {
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+          throw new Error('synaptic-adapter-replay-anchor-mismatch');
+        }
+      }
+
+      let record: ReturnType<AdaptiveSynapticMatrixEngine['activateValidated']>;
+      try {
+        record = this.synapticMatrix.activateValidated(manifest, this.config.synapticAdapterManifestVerifier);
+        if (replayAnchorStore) {
+          const nextAnchor = this.synapticMatrix.replayAnchorState(record.candidate.id);
+          const latestReportSha256 = record.manifest?.validation.reportSha256;
+          if (!nextAnchor || !latestReportSha256 || !await replayAnchorStore.compareAndSwap(
+            record.candidate.id,
+            expectedAnchor,
+            { ...nextAnchor, latestReportSha256 },
+          )) {
+            this.synapticMatrix.markReplayAnchorUntrusted(record.candidate.id);
+            await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+            throw new Error('synaptic-adapter-replay-anchor-compare-and-swap-failed');
+          }
+        }
+        await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+      } catch (error) {
+        // Never leave an in-memory ACTIVE adapter after a failed anchor or persistence
+        // operation. The accepted report remains consumed locally and cannot be replayed.
+        this.synapticMatrix.disable(manifest.id);
+        await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+        throw error;
+      }
+
       await this.journal.write('info', 'runtime.synaptic-adapter.activated', {
         adapterId: record.candidate.id, artifactSha256: record.candidate.artifactSha256,
         baseModelId: record.candidate.baseModelId, validationReportId: record.manifest?.validation.reportId,
+        replayAnchorRequired: this.config.synapticReplayAnchorRequired === true,
+        replayAnchorBacked: Boolean(replayAnchorStore),
       }).catch(() => {});
       return record;
     });
