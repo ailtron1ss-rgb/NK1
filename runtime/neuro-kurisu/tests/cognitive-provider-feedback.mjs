@@ -3,13 +3,14 @@ import { CognitiveProviderFeedbackController } from '../src/organism/cognition/C
 
 const feedback = new CognitiveProviderFeedbackController();
 const empty = feedback.snapshot('deep');
+const modeCeilingController = new CognitiveProviderFeedbackController();
 for(const [mode,ceiling] of Object.entries({
   reflex:256,shallow:384,retrieve:512,deep:768,simulate:768,defer:128,sleep:128,
 })){
-  assert.equal(feedback.record({
+  assert.equal(modeCeilingController.record({
     requestId:`mode-cap:${mode}:valid`,mode,completionTokens:10,maxTokens:ceiling,finishReason:'stop',
   }).accepted,true,`the exact ${mode} token ceiling must be accepted`);
-  assert.equal(feedback.record({
+  assert.equal(modeCeilingController.record({
     requestId:`mode-cap:${mode}:invalid`,mode,completionTokens:10,maxTokens:ceiling+16,finishReason:'stop',
   }).reason,'invalid-configured-token-budget',
     `the ${mode} feedback controller must reject budgets above its canonical mode ceiling`);
