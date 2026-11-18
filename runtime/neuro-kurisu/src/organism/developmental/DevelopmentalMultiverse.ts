@@ -21,8 +21,8 @@ export const DEVELOPMENTAL_MULTIVERSE_KNOBS = [
 
 const MAX_VARIANTS = 7;
 const MAX_SCENARIOS_PER_SPLIT = 32;
-const MIN_VALIDATION_PAIRS = 3;
-const MIN_HOLDOUT_PAIRS = 5;
+const MIN_VALIDATION_SEEDS = 3;
+const MIN_HOLDOUT_SEEDS = 5;
 const MAX_OBSERVATIONS = (MAX_VARIANTS + 1) * (MAX_SCENARIOS_PER_SPLIT * 2);
 const KNOB_SET = new Set<string>(DEVELOPMENTAL_MULTIVERSE_KNOBS);
 const T95_BY_N: Record<number, number> = {
@@ -123,7 +123,10 @@ export interface DevelopmentalMultiverseObservation {
 
 export interface DevelopmentalMultiverseComparison {
   variantId: string;
+  /** Number of independent seed clusters used as the statistical sample size. */
   pairedN: number;
+  /** Number of matched scenario × seed cells contributing to the seed clusters. */
+  matchedScenarioSeedPairs: number;
   qualityDelta01: number;
   costDelta01: number;
   safetyDelta01: number;
@@ -156,6 +159,7 @@ export interface DevelopmentalMultiverseFinalResult {
     environmentFingerprint: string;
     initialStateFingerprint: string;
     holdoutPairCount: number;
+    holdoutSeedCount: number;
     comparedArms: ['baseline', string] | null;
     verifiedObservationCount: number;
     verifiedPlanCount: number;
@@ -232,28 +236,35 @@ function normalizeProfile(value: unknown): DevelopmentalPolicyProfile {
 }
 
 function normalizeScenarios(value: unknown, phase: DevelopmentalMultiversePhase): DevelopmentalScenarioSeed[] {
-  const minimum = phase === 'validation' ? MIN_VALIDATION_PAIRS : MIN_HOLDOUT_PAIRS;
-  if (!Array.isArray(value) || value.length < minimum || value.length > MAX_SCENARIOS_PER_SPLIT) {
+  const minimumSeeds = phase === 'validation' ? MIN_VALIDATION_SEEDS : MIN_HOLDOUT_SEEDS;
+  if (!Array.isArray(value) || value.length < minimumSeeds || value.length > MAX_SCENARIOS_PER_SPLIT) {
     throw new RangeError(`developmental-multiverse-${phase}-scenario-count-invalid`);
   }
-  const uniqueSeeds = new Set(
-    value.filter((raw): raw is Record<string, unknown> => isRecord(raw)).map(raw => raw.seed),
-  );
-  if (uniqueSeeds.size < minimum) {
-    throw new RangeError(`developmental-multiverse-${phase}-seed-diversity-invalid`);
-  }
-  const seen = new Set<string>();
-  return value.map((raw, index) => {
+  const rows = value.map((raw, index): DevelopmentalScenarioSeed => {
     if (!isRecord(raw)) throw new TypeError(`developmental-multiverse-${phase}-scenario-${index}-invalid`);
     const id = boundedId(raw.id, `${phase}-scenario-id`);
     if (!Number.isSafeInteger(raw.seed) || (raw.seed as number) < 0 || (raw.seed as number) > 0xffffffff) {
       throw new RangeError(`developmental-multiverse-${phase}-seed-invalid`);
     }
-    const key = `${id}\u0000${raw.seed}`;
-    if (seen.has(key)) throw new Error(`developmental-multiverse-${phase}-scenario-duplicate`);
-    seen.add(key);
     return { id, seed: raw.seed as number };
   });
+  const seeds = [...new Set(rows.map(row => row.seed))].sort((a, b) => a - b);
+  if (seeds.length < minimumSeeds) {
+    throw new RangeError(`developmental-multiverse-${phase}-seed-diversity-invalid`);
+  }
+  const expectedSeedSet = seeds.join(',');
+  const scenarioSeeds = new Map<string, Set<number>>();
+  for (const row of rows) {
+    const values = scenarioSeeds.get(row.id) ?? new Set<number>();
+    if (values.has(row.seed)) throw new Error(`developmental-multiverse-${phase}-scenario-duplicate`);
+    values.add(row.seed);
+    scenarioSeeds.set(row.id, values);
+  }
+  if ([...scenarioSeeds.values()].some(values =>
+    values.size !== seeds.length || [...values].sort((a, b) => a - b).join(',') !== expectedSeedSet)) {
+    throw new Error(`developmental-multiverse-${phase}-scenario-seed-matrix-incomplete`);
+  }
+  return rows.sort((a, b) => a.id.localeCompare(b.id) || a.seed - b.seed);
 }
 
 function normalizeVariants(value: unknown, baseline: DevelopmentalPolicyProfile): DevelopmentalMultiverseVariantInput[] {
@@ -308,6 +319,10 @@ function normalizeSession(input: DevelopmentalMultiverseSessionInput): Developme
   if (holdoutScenarios.some(item => validationScenarioIds.has(item.id))) {
     throw new Error('developmental-multiverse-holdout-overlaps-validation');
   }
+  const validationSeeds = new Set(validationScenarios.map(item => item.seed));
+  if (holdoutScenarios.some(item => validationSeeds.has(item.seed))) {
+    throw new Error('developmental-multiverse-holdout-seeds-overlap-validation');
+  }
   const variants = normalizeVariants(input.variants, baselineProfile);
   return {
     runId,
@@ -350,7 +365,7 @@ function mean(values: number[]): number {
 }
 
 function tCritical95(n: number): number {
-  if (n < MIN_HOLDOUT_PAIRS) return 0;
+  if (n < MIN_HOLDOUT_SEEDS) return 0;
   return T95_BY_N[n] ?? 2.093; // Conservative for n >= 20.
 }
 
@@ -369,21 +384,45 @@ function pairedComparison(
   const pairs = [...candidateByPair.entries()]
     .filter(([key]) => baselineByPair.has(key))
     .map(([key, item]) => ({ candidate: item, baseline: baselineByPair.get(key)! }));
-  const quality = pairs.map(pair => pair.candidate.metrics.quality01 - pair.baseline.metrics.quality01);
-  const cost = pairs.map(pair => pair.candidate.metrics.cost01 - pair.baseline.metrics.cost01);
-  const safety = pairs.map(pair => pair.candidate.metrics.safety01 - pair.baseline.metrics.safety01);
-  const stability = pairs.map(pair => pair.candidate.metrics.stability01 - pair.baseline.metrics.stability01);
-  const utilityDeltas = pairs.map(pair => utility(pair.candidate.metrics) - utility(pair.baseline.metrics));
+
+  // Scenario rows sharing the same seed are correlated observations. Collapse
+  // them first so the statistical N is the number of independent seeds, not
+  // the number of scenario × seed cells.
+  const pairsBySeed = new Map<number, typeof pairs>();
+  for (const pair of pairs) {
+    const rows = pairsBySeed.get(pair.candidate.seed) ?? [];
+    rows.push(pair);
+    pairsBySeed.set(pair.candidate.seed, rows);
+  }
+  const seedClusters = [...pairsBySeed.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([seed, rows]) => ({
+      seed,
+      quality: mean(rows.map(pair => pair.candidate.metrics.quality01 - pair.baseline.metrics.quality01)),
+      cost: mean(rows.map(pair => pair.candidate.metrics.cost01 - pair.baseline.metrics.cost01)),
+      safety: mean(rows.map(pair => pair.candidate.metrics.safety01 - pair.baseline.metrics.safety01)),
+      stability: mean(rows.map(pair => pair.candidate.metrics.stability01 - pair.baseline.metrics.stability01)),
+      utility: mean(rows.map(pair => utility(pair.candidate.metrics) - utility(pair.baseline.metrics))),
+    }));
+  const quality = seedClusters.map(cluster => cluster.quality);
+  const cost = seedClusters.map(cluster => cluster.cost);
+  const safety = seedClusters.map(cluster => cluster.safety);
+  const stability = seedClusters.map(cluster => cluster.stability);
+  const utilityDeltas = seedClusters.map(cluster => cluster.utility);
+  const independentSeedCount = seedClusters.length;
   const utilityDelta01 = mean(utilityDeltas);
   let utilityCi95: [number, number] | null = null;
-  if (requireConfidence && pairs.length >= MIN_HOLDOUT_PAIRS) {
-    const variance = utilityDeltas.reduce((sum, value) => sum + ((value - utilityDelta01) ** 2), 0) / Math.max(1, pairs.length - 1);
-    const margin = tCritical95(pairs.length) * Math.sqrt(variance / pairs.length);
+  if (requireConfidence && independentSeedCount >= MIN_HOLDOUT_SEEDS) {
+    const variance = utilityDeltas.reduce((sum, value) => sum + ((value - utilityDelta01) ** 2), 0) /
+      Math.max(1, independentSeedCount - 1);
+    const margin = tCritical95(independentSeedCount) * Math.sqrt(variance / independentSeedCount);
     utilityCi95 = [utilityDelta01 - margin, utilityDelta01 + margin];
   }
   const safetyViolationCount = candidate.reduce((sum, item) => sum + item.safetyViolationCount, 0);
   const reasons: string[] = [];
-  if (pairs.length < (requireConfidence ? MIN_HOLDOUT_PAIRS : MIN_VALIDATION_PAIRS)) reasons.push('insufficient-paired-scenarios');
+  if (independentSeedCount < (requireConfidence ? MIN_HOLDOUT_SEEDS : MIN_VALIDATION_SEEDS)) {
+    reasons.push('insufficient-independent-seeds');
+  }
   if (quality.length && mean(quality) < -0.01) reasons.push('quality-regression');
   if (safety.length && mean(safety) < 0) reasons.push('safety-regression');
   if (stability.length && mean(stability) < -0.02) reasons.push('stability-regression');
@@ -393,7 +432,8 @@ function pairedComparison(
   if (requireConfidence && (!utilityCi95 || utilityCi95[0] <= 0)) reasons.push('holdout-confidence-lower-bound-not-positive');
   return {
     variantId,
-    pairedN: pairs.length,
+    pairedN: independentSeedCount,
+    matchedScenarioSeedPairs: pairs.length,
     qualityDelta01: mean(quality),
     costDelta01: mean(cost),
     safetyDelta01: mean(safety),
@@ -773,7 +813,8 @@ export class DevelopmentalMultiverse {
         sourceRevision: state.session.sourceRevision,
         environmentFingerprint: state.session.environmentFingerprint,
         initialStateFingerprint: state.initialStateFingerprint,
-        holdoutPairCount: comparison?.pairedN ?? 0,
+        holdoutPairCount: comparison?.matchedScenarioSeedPairs ?? 0,
+        holdoutSeedCount: comparison?.pairedN ?? 0,
         comparedArms: selectedVariantId ? ['baseline', selectedVariantId] : null,
         verifiedObservationCount: verifiedRows.length,
         verifiedPlanCount,
