@@ -6,6 +6,7 @@ import { verifyNeuroPlasticAdapterArtifact } from '../src/organism/learning/Neur
 import {
   NeuroPlasticAdapterRegistry,
   createNeuroPlasticApprovalSignature,
+  neuroPlasticAdapterManifestFingerprint,
   verifyNeuroPlasticApprovalSignature,
   verifyNeuroPlasticEvaluationSignature,
   verifyNeuroPlasticEvaluationReceiptSignature,
@@ -155,6 +156,7 @@ async function main() {
       adapterId,
       reportId: record.evaluation.reportId,
       baseModelFingerprint: record.manifest.baseModel.fingerprint,
+      manifestFingerprint: neuroPlasticAdapterManifestFingerprint(record.manifest),
     };
     const approval = {
       ...unsigned,
