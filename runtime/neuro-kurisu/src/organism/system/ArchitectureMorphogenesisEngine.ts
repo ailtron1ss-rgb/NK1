@@ -398,10 +398,12 @@ export function validateArchitectureMorphogenesisGraph(input: unknown): {
       continue;
     }
     declaredSharedPaths.add(declaration.path);
-    if (!Array.isArray(declaration.moduleIds) || declaration.moduleIds.length < 2
-      || declaration.moduleIds.length > MAX_MODULES) {
-      add('shared-source-module-ids-invalid', path + '.moduleIds', 'A shared source path must list at least two bounded subsystem IDs');
+    if (!Array.isArray(declaration.moduleIds) || declaration.moduleIds.length > MAX_MODULES) {
+      add('shared-source-module-ids-invalid', path + '.moduleIds', 'Shared source owner IDs must be a bounded array');
       continue;
+    }
+    if (declaration.moduleIds.length < 2) {
+      add('shared-source-module-ids-invalid', path + '.moduleIds', 'A shared source path must list at least two subsystem IDs');
     }
     const listedOwners = new Set<string>();
     for (const moduleId of declaration.moduleIds) {
