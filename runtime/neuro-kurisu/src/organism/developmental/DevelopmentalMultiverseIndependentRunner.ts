@@ -449,11 +449,11 @@ function validateRunnerCheckpoint(raw: unknown): DevelopmentalMultiverseRunnerCh
   }
   const corpus = restoreScenarioCorpus(detached.corpus, snapshot, detached.bindings.verifierId as string);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     universe: snapshot,
     bindings: structuredClone(detached.bindings) as DevelopmentalMultiverseRunnerCheckpoint['bindings'],
     corpus: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       rows: corpus.rows,
       manifest: corpus.manifest,
       ledgerSnapshot: corpus.ledger.snapshot(),
