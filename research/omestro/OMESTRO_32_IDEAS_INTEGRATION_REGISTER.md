@@ -42,7 +42,7 @@
 | 20 | Constitution Evolution | [#915](https://github.com/ailtron1ss-rgb/NK1/pull/915) | DRAFT | `aspect/omestro-20-constitution-evolution-20261117` |
 | 21 | Consequence Ecology | [#928](https://github.com/ailtron1ss-rgb/NK1/pull/928) | STACKED | Базируется на #916 |
 | 22 | Substrate Independence | [#927](https://github.com/ailtron1ss-rgb/NK1/pull/927) | DRAFT | `aspect/omestro-22-substrate-independence-20261117` |
-| 23 | Neuro-Plastic Core | [#930](https://github.com/ailtron1ss-rgb/NK1/pull/930) | DRAFT | Локальный LoRA/QLoRA pipeline |
+| 23 | Neuro-Plastic Core | [#936](https://github.com/ailtron1ss-rgb/NK1/pull/936) | DRAFT | Source-synchronized LoRA/QLoRA pipeline; supersedes closed unmerged #930 |
 | 24 | Layer Force | [#931](https://github.com/ailtron1ss-rgb/NK1/pull/931) | STACKED | Базируется на #925 |
 | 25 | Adaptive Synaptic Matrix | [#921](https://github.com/ailtron1ss-rgb/NK1/pull/921) | DRAFT | Валидация и маршрутизация адаптеров |
 | 26 | Hyper-Plastic Network | [#920](https://github.com/ailtron1ss-rgb/NK1/pull/920) | DRAFT | `aspect/ome26-hyper-plastic-network` |
@@ -167,3 +167,38 @@
 5. #925/#931 держать отдельно до согласования того, как residual adapters и LoRA/QLoRA артефакты сосуществуют на одном decoder/model lifecycle.
 
 Это рекомендуемая последовательность ревью, а не подтверждение совместимости: для каждого перехода ещё нужны exact-base diff, re-run тестов, fallback/rollback тесты и holdout результаты.
+
+## 10. Canonical artifact-owner decision (18 November 2026)
+
+Последняя проверка PR подтвердила, что #930 закрыт без слияния и прямо помечен superseded by #936. #936 — текущая source-synchronized ветка Neuro-Plastic Core: head `05ba70cc7e2c7aec2d84de1b609b548c59c0c918`, base `workpass70-source` at `bee2b133fdedd48723bc49b3eedae5f0df929c1c`. Это единственный актуальный PR для идеи #23; старый #930 больше не включать в merge queue.
+
+### Единственный владелец artifact lifecycle
+
+#936 `NeuroPlasticAdapterRegistry` + `NeuroPlasticArtifactVerifier` + `NeuroPlasticInferenceAdapter` уже реализуют signed manifest admission, независимые paired-holdout receipts, human approval, active/disabled state, exact base-model binding, artifact integrity verification, domain/model-aware selection и base-model retry при отказе артефакта.
+
+#921 `AdaptiveSynapticMatrix` независимо реализует второй candidate/manifest/activation/verification/selection/disable/restore state machine. Его changed files не пересекаются с #936 напрямую, но его доменная ответственность частично дублирует authority #936. Интеграционное решение:
+
+1. **#936 становится единственным canonical owner** подписанных артефактов, training/evaluation provenance, human approval, activation state, quarantine/disable, exact base-model identity и фактического adapter execution/fallback.
+2. **#921 остаётся P25 policy/router layer**: вычисляет task/context/confidence/uncertainty/resource-risk, conflict resolution и route-decision telemetry; не хранит вторую независимую копию manifests, подписи, eligibility и activation state. Решение о конкретном артефакте подтверждается canonical #936 registry непосредственно перед inference.
+3. Когда #921 retarget/rebase будет построен поверх #936, его runtime API должен использовать narrow selector/registry port к #936. Сохранённый P25 route должен содержать adapter ID + base model fingerprint + reason; provider повторно проверяет текущий active status и artifact digest, а не доверяет сохранённому P25 snapshot.
+4. Любое несоответствие identity, model alias, backend support, confidence/risk/context budget или artifact digest возвращает base-model path. Никакой P25/JIT/cognitive metadata не может самостоятельно активировать веса.
+
+### Точные границы трёх когнитивно-нейронных PR
+
+- **#922 Cognitive-to-Neural Bridge** создаёт валидируемый cognitive control profile и ограниченные sampling hints. В профиле `controlsConfigured.adapterSelection`, `activationSteering` и `residualBlock` остаются `false`; это означает, что profile сам по себе не включает адаптер или скрытые-state steering. Provider forwarding в llama.cpp включается отдельным operator option и снабжён receipt/fingerprint.
+- **#936 Neuro-Plastic Core** — единственный путь для реального LoRA/QLoRA model-alias selection; модельные артефакты проходят проверку подписи/holdout/human approval и integrity проверки до запроса, с возвратом к base alias при ошибке.
+- **#926 Neural JIT** принимает только host-verified, decision-linked activation captures; отдельно разделяет train/holdout, требует не менее 12 train traces, 8 holdout traces, 8 independent holdout task fingerprints и 5 seeds, а candidate/projected residual остаётся `shadow` с `appliedToInference=false` и `base-inference-path` fallback. Promotion/live inference этим PR не разрешены.
+- **#925/#931 Neural Prosthesis/Layer Force** — отдельная residual/activation hook подсистема на том же model lifecycle. Она должна согласовать точный model revision/config и очистку hooks с #936 before any sidecar is enabled; Layer Force остаётся disabled-by-default и проверяет post-cast FP16/BF16 bounds.
+
+### Актуальные exact refs
+
+| PR | Head | Base SHA | Состояние |
+|---:|---|---|---|
+| #921 | `48d1a63d93f8851bb4feee901f3e04cda13a27d0` | `1e83a011fc677ff20f2348570322bd562181d9ff` | Draft, needs canonical-registry integration |
+| #922 | `bc4b975387f9200c2db62a40e3af1903815ec482` | `1e83a011fc677ff20f2348570322bd562181d9ff` | Draft, stale source base |
+| #925 | `8ae6445642f52f9eef06fb1a3070682129764558` | `1e83a011fc677ff20f2348570322bd562181d9ff` | Draft, stale parent base |
+| #926 | `a2e7b6a77d02a146a4bd8c30aa82195a34504b07` | `1e83a011fc677ff20f2348570322bd562181d9ff` | Draft, stale source base; shadow-only |
+| #931 | `ff4672d476ebb8ec2bb746a0647196c55f5ab79f` | #925 head `8ae6445642f52f9eef06fb1a3070682129764558` | Draft, stacked; hardened CI pending |
+| #936 | `05ba70cc7e2c7aec2d84de1b609b548c59c0c918` | `bee2b133fdedd48723bc49b3eedae5f0df929c1c` | Draft, source-synchronized #23 implementation |
+
+Recommended next sequence: synchronize #922 with current source; retarget #936 onto the approved cognitive-control contract if integration is needed; retarget #921 onto #936 and replace its duplicate artifact lifecycle with a P25 routing facade; keep #926 shadow-only and connect only through a host-owned capture/decision interface. #925 must be synchronized before #931 can leave its stacked state.
