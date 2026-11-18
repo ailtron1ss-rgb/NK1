@@ -124,6 +124,20 @@ class NeuroPlasticTrainerPreflightTests(unittest.TestCase):
         self.assertEqual(result["method"], "qlora")
         self.assertEqual(TRAINER.base_model_fingerprint(self.base), self.manifest["baseModelFingerprint"])
 
+    def test_preflight_rejects_symlinked_corpus_input(self):
+        linked = self.root / "train-linked.jsonl"
+        linked.symlink_to(self.train_file)
+        self.manifest["trainingFile"] = "train-linked.jsonl"
+        self._write_manifest()
+        with self.assertRaisesRegex(TRAINER.PreflightError, "symlink-path-component-rejected"):
+            TRAINER.validate_manifest(self.manifest_path)
+
+    def test_model_fingerprint_rejects_symlinked_snapshot_directory(self):
+        linked = self.base / "external-weights"
+        linked.symlink_to(self.root, target_is_directory=True)
+        with self.assertRaisesRegex(TRAINER.PreflightError, "directory-symlink-rejected"):
+            TRAINER.base_model_fingerprint(self.base)
+
 
 if __name__ == "__main__":
     unittest.main()
