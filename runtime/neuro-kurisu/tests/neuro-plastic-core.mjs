@@ -122,6 +122,7 @@ assert.equal(registry.snapshot().adapters[0].status, 'active');
 const selected = registry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   backendSupportsModelAliases: true,
   confidence01: 0.9,
@@ -134,6 +135,7 @@ assert.deepEqual(
 assert.equal(registry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('9'),
   backendSupportsModelAliases: true,
   confidence01: 0.9,
@@ -142,6 +144,7 @@ assert.equal(registry.select({
 assert.equal(registry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   backendSupportsModelAliases: true,
   confidence01: 0.2,
@@ -150,6 +153,7 @@ assert.equal(registry.select({
 assert.equal(registry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   backendSupportsModelAliases: false,
   confidence01: 0.9,
@@ -318,6 +322,7 @@ const inference = new NeuroPlasticInferenceAdapter(inferenceRegistry, (backendId
 const adaptedResponse = await inference.generate({ system: 'system', user: 'prompt' }, {
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   baseModelAlias: 'kurisu-base',
   backendSupportsModelAliases: true,
@@ -415,6 +420,7 @@ const integrityFallback = await new NeuroPlasticInferenceAdapter(
 ).generate({ system: 'system', user: 'prompt' }, {
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   baseModelAlias: 'kurisu-base',
   backendSupportsModelAliases: true,
@@ -464,6 +470,7 @@ const aliasMismatchFallback = await new NeuroPlasticInferenceAdapter(
 ).generate({ system: 'system', user: 'prompt' }, {
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   baseModelAlias: 'kurisu-base',
   backendSupportsModelAliases: true,
@@ -481,6 +488,7 @@ await restoredRegistry.restore(activeSnapshot, undefined, undefined, () => true)
 assert.equal(restoredRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   backendSupportsModelAliases: true,
   confidence01: 0.9,
@@ -491,6 +499,7 @@ await approvalOnlyRestoreRegistry.restore(activeSnapshot, verifyApproval, undefi
 assert.equal(approvalOnlyRestoreRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   backendSupportsModelAliases: true,
   confidence01: 0.9,
@@ -535,6 +544,7 @@ assert.equal(tamperedManifestRegistry.snapshot().adapters[0].status, 'eligible',
 assert.equal(tamperedManifestRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   backendSupportsModelAliases: true,
   confidence01: 0.9,
@@ -550,6 +560,7 @@ await signedRestoreRegistry.restore(
 assert.equal(signedRestoreRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   backendSupportsModelAliases: true,
   confidence01: 0.9,
@@ -567,6 +578,7 @@ assert.equal(artifactRejectedRestoreRegistry.snapshot().adapters[0].status, 'dis
 assert.equal(artifactRejectedRestoreRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   backendSupportsModelAliases: true,
   confidence01: 0.9,
@@ -613,6 +625,7 @@ assert.ok(conflictRestoreRegistry.snapshot().adapters.every(adapter => adapter.s
 assert.equal(conflictRestoreRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
+  baseModelAlias: 'kurisu-base',
   baseModelFingerprint: hash('a'),
   backendSupportsModelAliases: true,
   confidence01: 0.9,
