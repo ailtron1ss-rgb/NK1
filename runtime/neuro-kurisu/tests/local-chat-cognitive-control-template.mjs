@@ -116,6 +116,31 @@ const invalidUsageResponse=await invalidUsageProvider.generate({
 });
 assert.equal(invalidUsageResponse.text,'response without trusted usage');
 assert.equal(Object.hasOwn(invalidUsageResponse,'providerUsage'),false);
+const inconsistentTotalProvider = new OpenAICompatibleLocalChatProvider({
+  baseUrl:'http://127.0.0.1:1234/v1',
+  fetchImpl:async()=>new Response(JSON.stringify({
+    model:'fake-inconsistent-usage',
+    choices:[{message:{content:'valid text, inconsistent totals'}}],
+    usage:{prompt_tokens:12,completion_tokens:8,total_tokens:19},
+  }),{status:200,headers:{'content-type':'application/json'}}),
+});
+const inconsistentTotalResponse=await inconsistentTotalProvider.generate({
+  system:'system',user:'user',
+});
+assert.equal(inconsistentTotalResponse.text,'valid text, inconsistent totals');
+assert.equal(Object.hasOwn(inconsistentTotalResponse,'providerUsage'),false,
+  'an explicitly inconsistent total_tokens field must not be silently recomputed');
+const nullTotalProvider = new OpenAICompatibleLocalChatProvider({
+  baseUrl:'http://127.0.0.1:1234/v1',
+  fetchImpl:async()=>new Response(JSON.stringify({
+    model:'fake-null-total',
+    choices:[{message:{content:'valid text, null total'}}],
+    usage:{prompt_tokens:12,completion_tokens:8,total_tokens:null},
+  }),{status:200,headers:{'content-type':'application/json'}}),
+});
+const nullTotalResponse=await nullTotalProvider.generate({system:'system',user:'user'});
+assert.equal(nullTotalResponse.text,'valid text, null total');
+assert.equal(Object.hasOwn(nullTotalResponse,'providerUsage'),false);
 
 // No request correlation means no template-control hand-off or receipt.
 const noIdResponse=await enabledProvider.generate({
