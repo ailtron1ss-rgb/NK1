@@ -176,8 +176,12 @@ async function runRuntime(enabled, receiptEnabled = true, mutateProfileAfterRece
       assert.ok(diagnostics.providerUsageObservations>0);
       assert.ok(diagnostics.providerBudgetFeedbackTruncations>0,
         'valid length finish reasons at the configured cap must drive bounded feedback');
-      assert.ok(diagnostics.providerBudgetFeedback.some(item=>item.sampleCount>0
-        &&item.truncatedCount>0&&item.truncationPressure01>0));
+      const truncationFeedback=diagnostics.providerBudgetFeedback.find(item=>item.sampleCount>0&&item.truncatedCount>0);
+      assert.ok(truncationFeedback,'valid finish_reason=length usage must enter the per-mode feedback window');
+      if(truncationFeedback.sampleCount<4)
+        assert.equal(truncationFeedback.truncationPressure01,0,'adaptive pressure must remain dormant during the four-sample warm-up');
+      else
+        assert.ok(truncationFeedback.truncationPressure01>0,'adaptive pressure activates only after the minimum evidence window');
 
     } else if (enabled) {
       const request=requests.find(value=>value.cognitiveControl);
