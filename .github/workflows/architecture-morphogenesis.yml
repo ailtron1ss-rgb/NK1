@@ -32,14 +32,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+          cache-dependency-path: |
+            runtime/neuro-kurisu/package-lock.json
+            app/package-lock.json
       - name: Install locked runtime dependencies
         working-directory: runtime/neuro-kurisu
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install pinned application TypeScript compiler
+        working-directory: app
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Exercise Morphogenesis contracts and four structural operations
         working-directory: runtime/neuro-kurisu
