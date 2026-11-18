@@ -40,7 +40,7 @@ TOKENIZER_NAMES = {
     "added_tokens.json", "chat_template.jinja",
 }
 MANIFEST_KEYS = {
-    "schemaVersion", "method", "domain", "baseModelDirectory", "baseModelFingerprint",
+    "schemaVersion", "method", "domain", "adapterId", "baseModelDirectory", "baseModelFingerprint",
     "tokenizerFingerprint", "sourceDatasetFingerprint", "holdoutPlanFingerprint",
     "trainingFile", "validationFile",
     "corpusFingerprint", "outputDirectory", "seed", "maxSequenceLength",
@@ -238,6 +238,11 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
     if not isinstance(output_raw, str) or not output_raw.startswith("adapter-store/"):
         raise PreflightError("adapter-output-must-use-adapter-store")
     output_path = _safe_child(root, output_raw, "adapter-output", False)
+    adapter_id = manifest.get("adapterId")
+    if not isinstance(adapter_id, str) or not re.fullmatch(r"[a-z0-9][a-z0-9._-]{2,79}", adapter_id):
+        raise PreflightError("adapter-id-invalid")
+    if output_path.name != adapter_id:
+        raise PreflightError("adapter-output-directory-must-match-adapter-id")
     if output_path.exists():
         raise PreflightError("adapter-output-already-exists")
     if output_path.is_relative_to(base) or base.is_relative_to(output_path):
@@ -289,6 +294,7 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
         "training": training,
         "validation": validation,
         "output": output_path,
+        "adapterId": adapter_id,
         "baseFingerprint": actual_base,
         "tokenizerFingerprint": actual_tokenizer,
         "sourceDatasetFingerprint": source_dataset_fingerprint,
@@ -467,7 +473,7 @@ def train_adapter(validated: dict[str, Any]) -> dict[str, Any]:
         }
         metadata = {
             "schemaVersion": 1,
-            "adapterId": Path(manifest["outputDirectory"]).name,
+            "adapterId": validated["adapterId"],
             "method": method,
             "domain": validated["domain"],
             "baseModelFingerprint": validated["baseFingerprint"],
