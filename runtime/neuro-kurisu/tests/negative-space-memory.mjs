@@ -497,6 +497,8 @@ monotonic.observe('act', 0.3, [{ action: 'defer', estimated: 0.9, confidence01: 
   chosenExpectedOutcome01: 0.8,
   significance: { cost01: 0.9, risk01: 0.1, futureImportance01: 0.1 },
   outcomeVerified01: 1,
+  outcomeIndependent01: 1,
+  outcomeSource: 'world-transition',
 });
 assert.equal(monotonic.markNegativeSpaceAlternativeReopened(
   'decision-time-monotonic-001', 'defer', 'reviewed', 100,
@@ -510,6 +512,8 @@ monotonic.observe('act', 0.3, [{ action: 'rest', estimated: 0.9, confidence01: 1
   chosenExpectedOutcome01: 0.8,
   significance: { cost01: 0.9, risk01: 0.1, futureImportance01: 0.1 },
   outcomeVerified01: 1,
+  outcomeIndependent01: 1,
+  outcomeSource: 'world-transition',
 });
 assert.equal(monotonic.snapshot().negativeSpace.lastAt, 510,
   'out-of-order events must not move the ledger clock backwards');
