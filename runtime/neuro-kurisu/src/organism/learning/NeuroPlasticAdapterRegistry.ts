@@ -128,6 +128,7 @@ export interface NeuroPlasticRegistrySnapshot {
 export interface NeuroPlasticSelectInput {
   domain: string;
   backendId: string;
+  baseModelAlias: string;
   baseModelFingerprint: string;
   backendSupportsModelAliases: boolean;
   confidence01: number;
@@ -947,6 +948,7 @@ export class NeuroPlasticAdapterRegistry {
 
   select(input: NeuroPlasticSelectInput): NeuroPlasticSelection {
     const domain = safeText(input.domain, 'selection-domain', 64).toLowerCase();
+    const baseAlias = safeText(input.baseModelAlias, 'selection-base-model-alias', 160);
     const baseFingerprint = safeHash(input.baseModelFingerprint, 'selection-base-fingerprint');
     const confidence = finiteUnit(input.confidence01, 'selection-confidence');
     const risk = finiteUnit(input.risk01, 'selection-risk');
@@ -957,6 +959,7 @@ export class NeuroPlasticAdapterRegistry {
       .filter(item => item.status === 'active' &&
         item.manifest.domain === domain &&
         item.manifest.baseModel.backendId === input.backendId &&
+        item.manifest.baseModel.servedModelAlias === baseAlias &&
         item.manifest.baseModel.fingerprint === baseFingerprint)
       .sort((a, b) => (b.evaluation?.qualityDeltaMean01 ?? 0) - (a.evaluation?.qualityDeltaMean01 ?? 0))[0];
     if (!match) return { useAdapter: false, adapterId: null, modelAlias: null, reason: 'no-approved-domain-adapter' };
