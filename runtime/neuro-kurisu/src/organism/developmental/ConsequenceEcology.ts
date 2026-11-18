@@ -228,6 +228,7 @@ export interface ConsequenceEcologyState {
 
 const ACTION_NODE = '__action__';
 const MAX_ANALYSES = 128;
+const MAX_OUTCOME_CALIBRATIONS = 512;
 const MAX_OPTIONS = 8;
 const MAX_NODES = 64;
 const MAX_EDGES = 128;
@@ -869,6 +870,39 @@ export class ConsequenceEcologyEngine {
     return structuredClone(this.state);
   }
 
+  private restoreCalibrationRecords(raw: unknown): ConsequenceOutcomeCalibrationRecord[] {
+    if (!Array.isArray(raw)) return [];
+    const accepted: ConsequenceOutcomeCalibrationRecord[] = [];
+    const seen = new Set<string>();
+    for (const row of raw.slice(-MAX_OUTCOME_CALIBRATIONS)) {
+      if (!isRecord(row)) continue;
+      const allowedClasses = new Set(['os', 'device', 'user', 'external-api', 'world']);
+      const classes = row.sourceClasses;
+      const evidenceIds = row.evidenceObservationIds;
+      const skill = row.brierSkillScore;
+      if (!boundedString(row.id, 180, false) || !boundedString(row.outcomeId, 180, false) ||
+          !boundedString(row.analysisId, 96, false) || !boundedString(row.optionId, 96, false) ||
+          !boundedString(row.nodeId, 96, false) || !boundedString(row.scenarioId, 160, false) ||
+          !boundedString(row.actionDecisionId, 180, false) ||
+          !boundedNumber(row.observedAt, 0, Number.MAX_SAFE_INTEGER) ||
+          !boundedNumber(row.forecastProbability01, 0, 1) || typeof row.observed !== 'boolean' ||
+          !boundedNumber(row.brierScore01, 0, 1) ||
+          !boundedNumber(row.sharedFutureForecastProbability01, 0, 1) ||
+          !boundedNumber(row.sharedFutureBrierScore01, 0, 1) ||
+          !(skill === null || boundedNumber(skill, -100, 1)) ||
+          !boundedString(row.evidenceRef, 500, false) ||
+          !boundedInteger(row.independentSourceCount, 1, 16) ||
+          !boundedStringArray(evidenceIds, 16, 180) || evidenceIds.length < 1 ||
+          !Array.isArray(classes) || classes.length > 5 ||
+          !classes.every(value => typeof value === 'string' && allowedClasses.has(value)) ||
+          row.authority !== 'independent-external' || row.independentlyVerified !== true ||
+          seen.has(row.outcomeId)) continue;
+      seen.add(row.outcomeId);
+      accepted.push(structuredClone(row) as unknown as ConsequenceOutcomeCalibrationRecord);
+    }
+    return accepted;
+  }
+
   restore(raw?: Partial<ConsequenceEcologyState> | null): void {
     const source = isRecord(raw) ? raw : {};
     const rows = Array.isArray(source.analyses) ? source.analyses.slice(-MAX_ANALYSES) : [];
@@ -1033,6 +1067,102 @@ export class ConsequenceEcologyEngine {
     }
   }
 
+  recordVerifiedOutcome(input: {
+    outcome: SharedFutureOutcomeRecord;
+    analysisId: string;
+    optionId: string;
+  }): { recorded: boolean; replayed: boolean; independentlyVerified: true; calibration: ConsequenceOutcomeCalibrationRecord } {
+    try {
+      const outcome = input?.outcome;
+      if (!outcome || outcome.authority !== 'independent-external' || outcome.independentlyVerified !== true) {
+        throw new Error('consequence-outcome-not-independently-verified');
+      }
+      if (!outcome.actionDecisionId || !outcome.sharedFutureDecisionId || !outcome.actionToolId ||
+          typeof outcome.occurred !== 'boolean' ||
+          !boundedNumber(outcome.observedAt, 0, Number.MAX_SAFE_INTEGER) ||
+          !boundedNumber(outcome.forecastProbability01, 0, 1) ||
+          !boundedInteger(outcome.independentSourceCount, 1, 16) ||
+          !Array.isArray(outcome.evidenceObservationIds) || outcome.evidenceObservationIds.length < 1 ||
+          !outcome.evidenceRef?.trim()) {
+        throw new Error('consequence-outcome-evidence-incomplete');
+      }
+      const analysisId = clean(input.analysisId, 96);
+      const optionId = clean(input.optionId, 96);
+      const analysisRow = this.state.analyses.find(row => row.analysis.id === analysisId)?.analysis;
+      if (!analysisRow) throw new Error('consequence-calibration-analysis-not-found');
+      if (!analysisRow.scenarioId || analysisRow.scenarioId !== outcome.scenarioId) {
+        throw new Error('consequence-calibration-scenario-mismatch');
+      }
+      if (outcome.observedAt <= analysisRow.createdAt) throw new Error('consequence-calibration-outcome-not-after-forecast');
+      const option = analysisRow.options.find(row => row.id === optionId);
+      if (!option) throw new Error('consequence-calibration-option-not-found');
+      if (!option.decisionId || option.decisionId !== outcome.actionDecisionId) {
+        throw new Error('consequence-calibration-action-decision-mismatch');
+      }
+      const node = option.nodes.find(row => row.id === outcome.consequenceId);
+      if (!node) throw new Error('consequence-calibration-node-not-found');
+
+      const existing = this.state.outcomeCalibrations.find(row => row.outcomeId === outcome.id);
+      if (existing) {
+        if (existing.analysisId !== analysisId || existing.optionId !== optionId ||
+            existing.actionDecisionId !== outcome.actionDecisionId || existing.nodeId !== outcome.consequenceId) {
+          throw new Error('consequence-calibration-outcome-already-bound');
+        }
+        return { recorded: true, replayed: true, independentlyVerified: true, calibration: structuredClone(existing) };
+      }
+      if (this.state.outcomeCalibrations.length >= MAX_OUTCOME_CALIBRATIONS) {
+        throw new Error('consequence-calibration-capacity-reached');
+      }
+
+      const observed = outcome.occurred;
+      const target = observed ? 1 : 0;
+      const forecastProbability01 = node.propagatedProbability01;
+      const brierScore01 = Math.round(((forecastProbability01 - target) ** 2) * 1e12) / 1e12;
+      const sharedFutureForecastProbability01 = outcome.forecastProbability01;
+      const sharedFutureBrierScore01 = Math.round(((sharedFutureForecastProbability01 - target) ** 2) * 1e12) / 1e12;
+      const brierSkillScore = sharedFutureBrierScore01 > 0
+        ? Math.max(-100, Math.min(1, 1 - brierScore01 / sharedFutureBrierScore01))
+        : null;
+      const sourceClasses = [...new Set([
+        ...(outcome.sourceClasses ?? []),
+        ...(outcome.sourceClass ? [outcome.sourceClass] : []),
+      ])].slice(0, 5);
+      const calibration: ConsequenceOutcomeCalibrationRecord = {
+        id: outcome.id,
+        outcomeId: outcome.id,
+        analysisId,
+        optionId,
+        nodeId: outcome.consequenceId,
+        scenarioId: outcome.scenarioId,
+        actionDecisionId: outcome.actionDecisionId,
+        observedAt: outcome.observedAt,
+        forecastProbability01,
+        observed,
+        brierScore01,
+        sharedFutureForecastProbability01,
+        sharedFutureBrierScore01,
+        brierSkillScore,
+        evidenceRef: outcome.evidenceRef,
+        independentSourceCount: outcome.independentSourceCount,
+        evidenceObservationIds: [...new Set(outcome.evidenceObservationIds)].slice(0, 16),
+        sourceClasses,
+        authority: 'independent-external',
+        independentlyVerified: true,
+      };
+      this.state.outcomeCalibrations = [...this.state.outcomeCalibrations, calibration];
+      this.state.lastCalibrationAt = Math.max(this.state.lastCalibrationAt, outcome.observedAt);
+      return { recorded: true, replayed: false, independentlyVerified: true, calibration: structuredClone(calibration) };
+    } catch (error) {
+      this.state.rejectedCalibrations++;
+      throw error;
+    }
+  }
+
+  listCalibrations(limit = 32): ConsequenceOutcomeCalibrationRecord[] {
+    const bounded = Math.max(1, Math.min(64, Math.floor(finite(limit, 32))));
+    return this.state.outcomeCalibrations.slice(-bounded).reverse().map(row => structuredClone(row));
+  }
+
   get(id: string): ConsequenceEcologyAnalysis | null {
     const row = this.state.analyses.find(item => item.analysis.id === id);
     return row ? structuredClone(row.analysis) : null;
@@ -1046,6 +1176,32 @@ export class ConsequenceEcologyEngine {
   diagnostics() {
     const analyses = this.state.analyses.map(row => row.analysis);
     const options = analyses.flatMap(row => row.options);
+    const calibrations = this.state.outcomeCalibrations;
+    const calibrationScenarioCount = new Set(calibrations.map(row => row.scenarioId)).size;
+    const calibrationDecisionCount = new Set(calibrations.map(row => row.actionDecisionId)).size;
+    const meanCalibrationBrier01 = calibrations.length
+      ? calibrations.reduce((sum, row) => sum + row.brierScore01, 0) / calibrations.length
+      : null;
+    const meanSharedFutureBaselineBrier01 = calibrations.length
+      ? calibrations.reduce((sum, row) => sum + row.sharedFutureBrierScore01, 0) / calibrations.length
+      : null;
+    const calibrationBins = Array.from({ length: 5 }, (_, index) => {
+      const lower = index / 5;
+      const upper = (index + 1) / 5;
+      const rows = calibrations.filter(row => row.forecastProbability01 >= lower &&
+        (index === 4 ? row.forecastProbability01 <= upper : row.forecastProbability01 < upper));
+      return {
+        lower01: lower,
+        upper01: upper,
+        count: rows.length,
+        meanForecastProbability01: rows.length ? rows.reduce((sum, row) => sum + row.forecastProbability01, 0) / rows.length : null,
+        observedFrequency01: rows.length ? rows.filter(row => row.observed).length / rows.length : null,
+      };
+    });
+    const expectedCalibrationError01 = calibrations.length
+      ? calibrationBins.reduce((sum, bin) => sum + (bin.count / calibrations.length) *
+        Math.abs((bin.meanForecastProbability01 ?? 0) - (bin.observedFrequency01 ?? 0)), 0)
+      : null;
     return {
       version: 1 as const,
       retainedAnalyses: analyses.length,
@@ -1054,6 +1210,21 @@ export class ConsequenceEcologyEngine {
       comparedOptions: options.length,
       feedbackLoopsObserved: this.state.feedbackLoopsObserved,
       truncatedAnalyses: this.state.truncatedAnalyses,
+      verifiedCalibrationSamples: calibrations.length,
+      rejectedCalibrations: this.state.rejectedCalibrations,
+      calibrationScenarioCount,
+      calibrationDecisionCount,
+      meanCalibrationBrier01,
+      meanSharedFutureBaselineBrier01,
+      brierSkillScore: meanCalibrationBrier01 !== null && meanSharedFutureBaselineBrier01 !== null &&
+        meanSharedFutureBaselineBrier01 > 0
+        ? 1 - meanCalibrationBrier01 / meanSharedFutureBaselineBrier01
+        : null,
+      expectedCalibrationError01,
+      calibrationBins,
+      calibrationSampleSufficient: calibrations.length >= 5 && calibrationScenarioCount >= 3 && calibrationDecisionCount >= 3,
+      modelWeightsUpdated: false as const,
+      lastCalibrationAt: this.state.lastCalibrationAt,
       meanUncertainty01: options.length
         ? options.reduce((sum, option) => sum + option.uncertainty01, 0) / options.length
         : 0,
