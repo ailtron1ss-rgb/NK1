@@ -203,10 +203,11 @@ catch (error) {
 let neuroPlasticPersistQueue = Promise.resolve();
 async function persistNeuroPlasticRegistry() {
     const write = async () => {
-        const temporaryPath = NEURO_PLASTIC_REGISTRY_PATH + '.' + process.pid + '.tmp';
+        const temporaryPath = NEURO_PLASTIC_REGISTRY_PATH + '.' + process.pid + '.' + randomUUID() + '.tmp';
         await writeFile(temporaryPath, JSON.stringify(NEURO_PLASTIC_REGISTRY.snapshot(), null, 2) + '\n', {
             encoding: 'utf8',
             mode: 0o600,
+            flag: 'wx',
         });
         await rename(temporaryPath, NEURO_PLASTIC_REGISTRY_PATH);
     };
