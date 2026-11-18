@@ -14,6 +14,7 @@ export interface CognitiveHealthClaim {
 export interface CognitiveHealthSkill {
   id?:string; uses?:number; successes?:number; failures?:number; successRate?:number;
   status?:string; validatedUses?:number; independentEvidenceUses?:number;
+  nonHoldoutUses?:number; nonHoldoutSuccesses?:number;
 }
 export interface CognitiveHealthInput {
   tick:number; at?:number;
@@ -21,8 +22,8 @@ export interface CognitiveHealthInput {
     claimsData?:CognitiveHealthClaim[]; resolvedPredictions?:number;
     meanPredictionError01?:number; meanConfidence01?:number;
   };
-  contradictions?:{claims?:Array<{status?:string}>; unresolvedCount?:number};
-  skills?:{skills?:CognitiveHealthSkill[]};
+  contradictions?:{claims?:Array<{id?:string;status?:string}>; unresolvedCount?:number};
+  skills?:{skills?:CognitiveHealthSkill[];compoundSkills?:CognitiveHealthSkill[]};
 }
 export type CognitiveHealthSeverity='review'|'critical';
 export type CognitiveHealthStatus='unknown'|'healthy'|'degraded'|'critical';
@@ -39,8 +40,16 @@ export interface CognitiveHealthSignal {
   status:CognitiveHealthSignalStatus; value01:number; threshold01:number;
   baseline01:number; consecutiveSamples:number; occurrences:number;
   firstSeenAt:number; lastSeenAt:number; recoveredAt?:number;
-  reason:string; recommendedAction:string;
+  reason:string; recommendedAction:string; evidenceRefs:string[];
   review?:{verdict:'confirmed'|'false-positive'|'recovered';reviewer:string;evidenceRef?:string;at:number};
+}
+export type CognitiveHealthEventType=
+  |'signal-opened'|'signal-escalated'|'signal-recovered'
+  |'signal-acknowledged'|'signal-dismissed'|'signal-manually-recovered';
+export interface CognitiveHealthEvent {
+  id:string; type:CognitiveHealthEventType; tick:number; at:number;
+  signalId:string; metric:CognitiveHealthMetricKey; severity:CognitiveHealthSeverity;
+  evidenceRefs:string[]; reviewer?:string; evidenceRef?:string;
 }
 export interface CognitiveHealthSample {
   tick:number; at:number; score01:number; coverage01:number;
@@ -48,9 +57,10 @@ export interface CognitiveHealthSample {
   metrics:Record<CognitiveHealthMetricKey,CognitiveHealthMetric>;
 }
 export interface CognitiveHealthState {
-  version:1; inspections:number; lastTick:number; lastAt:number; score01:number;
+  version:2; inspections:number; lastTick:number; lastAt:number; score01:number;
   coverage01:number; healthStatus:CognitiveHealthStatus;
   samples:CognitiveHealthSample[]; signals:CognitiveHealthSignal[];
+  events:CognitiveHealthEvent[];
   highStreaks:Partial<Record<CognitiveHealthMetricKey,number>>;
   lowStreaks:Partial<Record<CognitiveHealthMetricKey,number>>;
 }
@@ -87,8 +97,8 @@ const HEALTH_METRICS:CognitiveHealthMetricKey[]=[
   'procedural-skill-degradation','unsupported-confidence','confidence-instability'
 ];
 export const defaultCognitiveHealthState=():CognitiveHealthState=>({
-  version:1,inspections:0,lastTick:0,lastAt:0,score01:1,coverage01:0,
-  healthStatus:'unknown',samples:[],signals:[],highStreaks:{},lowStreaks:{}
+  version:2,inspections:0,lastTick:0,lastAt:0,score01:1,coverage01:0,
+  healthStatus:'unknown',samples:[],signals:[],events:[],highStreaks:{},lowStreaks:{}
 });
 export const defaultCognitiveImmune=():CognitiveImmuneState=>({
   trustedSources:{system:.98,user:.72,world:.82,model:.55,tool:.68},
@@ -118,6 +128,9 @@ function restoreHealth(raw?:Partial<CognitiveHealthState>):CognitiveHealthState 
       recoveredAt:s.recoveredAt==null?undefined:Math.max(0,finiteNumber(s.recoveredAt,0)),
       reason:String(s.reason??'').slice(0,240),
       recommendedAction:String(s.recommendedAction??'').slice(0,180),
+      evidenceRefs:Array.isArray(s.evidenceRefs)
+        ?Array.from(new Set(s.evidenceRefs.map((v:any)=>String(v).slice(0,180)).filter(Boolean))).slice(0,12)
+        :[],
       review:s.review&&typeof s.review==='object'?{
         verdict:['confirmed','false-positive','recovered'].includes(s.review.verdict)?s.review.verdict:'confirmed',
         reviewer:String(s.review.reviewer??'').slice(0,80),
@@ -144,17 +157,33 @@ function restoreHealth(raw?:Partial<CognitiveHealthState>):CognitiveHealthState 
         metrics
       };
     });
+  const events=(Array.isArray(r.events)?r.events:[]).slice(0,128)
+    .filter((e:any)=>e&&typeof e==='object'&&!Array.isArray(e)
+      &&['signal-opened','signal-escalated','signal-recovered','signal-acknowledged','signal-dismissed','signal-manually-recovered'].includes(e.type)
+      &&HEALTH_METRICS.includes(e.metric))
+    .map((e:any)=>({
+      id:String(e.id??'').slice(0,180),type:e.type as CognitiveHealthEventType,
+      tick:finiteCount(e.tick),at:Math.max(0,finiteNumber(e.at,0)),
+      signalId:String(e.signalId??'').slice(0,180),metric:e.metric,
+      severity:e.severity==='critical'?'critical':'review',
+      evidenceRefs:Array.isArray(e.evidenceRefs)
+        ?Array.from(new Set(e.evidenceRefs.map((v:any)=>String(v).slice(0,180)).filter(Boolean))).slice(0,12)
+        :[],
+      reviewer:e.reviewer?String(e.reviewer).slice(0,80):undefined,
+      evidenceRef:e.evidenceRef?String(e.evidenceRef).slice(0,160):undefined
+    })).filter((e:any)=>Boolean(e.id&&e.signalId));
   const streaks=(rawValue:any)=>Object.fromEntries(HEALTH_METRICS.map(k=>[
     k,finiteCount(rawValue?.[k],128)
   ]));
   return {
-    ...d,...r,version:1,
+    ...d,...r,version:2,
     inspections:finiteCount(r.inspections),
     lastTick:finiteCount(r.lastTick),
     lastAt:Math.max(0,finiteNumber(r.lastAt,0)),
     score01:clamp(r.score01??1),coverage01:clamp(r.coverage01),
     healthStatus:['unknown','healthy','degraded','critical'].includes(r.healthStatus)?r.healthStatus:'unknown',
-    samples,signals,highStreaks:streaks(r.highStreaks),lowStreaks:streaks(r.lowStreaks)
+    samples,signals,events,
+    highStreaks:streaks(r.highStreaks),lowStreaks:streaks(r.lowStreaks)
   };
 }
 const emptyMetrics=():Record<CognitiveHealthMetricKey,CognitiveHealthMetric>=>Object.fromEntries(HEALTH_METRICS.map(key=>[key,{
@@ -246,10 +275,19 @@ export class CognitiveImmuneSystem {
     const predictionError01=recentPredictionErrors.length>=3
       ?recentPredictionErrors.reduce((sum,error)=>sum+error,0)/recentPredictionErrors.length
       :clamp(input.epistemic?.meanPredictionError01);
-    const skills=(Array.isArray(input.skills?.skills)?input.skills!.skills!:[])
-      .filter(s=>s.status!=='disabled'&&Number(s.uses??0)>=6);
-    const skillUses=skills.reduce((n,s)=>n+Math.max(0,Number(s.uses??0)),0);
-    const skillFailures=skills.reduce((n,s)=>n+Math.max(0,Number(s.failures??Math.round((1-clamp(s.successRate))*Number(s.uses??0)))),0);
+    const primitiveSkills=(Array.isArray(input.skills?.skills)?input.skills!.skills!:[])
+      .filter(s=>s.status!=='disabled'&&Number(s.uses??0)>=6)
+      .map(s=>({...s,healthUses:Math.max(0,Number(s.uses??0)),healthFailures:Math.max(0,Number(s.failures??Math.round((1-clamp(s.successRate))*Number(s.uses??0))))}));
+    const compoundSkills=(Array.isArray(input.skills?.compoundSkills)?input.skills!.compoundSkills!:[])
+      .filter(s=>s.status!=='disabled'&&Number(s.nonHoldoutUses??0)>=6)
+      .map(s=>{
+        const uses=Math.max(0,Number(s.nonHoldoutUses??0));
+        const successes=Math.max(0,Math.min(uses,Number(s.nonHoldoutSuccesses??0)));
+        return {...s,healthUses:uses,healthFailures:Math.max(0,uses-successes)};
+      });
+    const skills=[...primitiveSkills,...compoundSkills];
+    const skillUses=skills.reduce((n,s)=>n+Math.max(0,Number((s as any).healthUses??0)),0);
+    const skillFailures=skills.reduce((n,s)=>n+Math.max(0,Number((s as any).healthFailures??0)),0);
     const beliefEligible=beliefs.length>=3;
     const contradictionEligible=contradictionTotal>=2;
     const predictionEligible=predictions>=3;
@@ -269,6 +307,27 @@ export class CognitiveImmuneSystem {
     const instabilityEligible=recentConfidences.length===8&&previousConfidences.length===8;
     const confidenceDrift=instabilityEligible?clamp(Math.abs(meanRecent-meanPrevious)*2):0;
     const metrics=emptyMetrics();
+    const refs=(rows:Array<{id?:string}>):string[]=>Array.from(new Set(rows
+      .map(row=>String(row.id??'').trim().slice(0,180)).filter(Boolean))).slice(0,12);
+    const failureRate=(skill:CognitiveHealthSkill)=>{
+      const uses=Math.max(1,Number(skill.nonHoldoutUses??skill.uses??0));
+      const failures=skill.nonHoldoutUses!=null
+        ?Math.max(0,uses-Number(skill.nonHoldoutSuccesses??0))
+        :Math.max(0,Number(skill.failures??Math.round((1-clamp(skill.successRate))*uses)));
+      return failures/uses;
+    };
+    const predictionEvidence=retainedPredictions
+      ?.slice().sort((a,b)=>clamp(b.error01)-clamp(a.error01)).slice(0,8)??[];
+    const skillEvidence=skills
+      .slice().sort((a,b)=>failureRate(b)-failureRate(a)).filter(s=>failureRate(s)>0).slice(0,8);
+    const evidenceRefsByMetric:Record<CognitiveHealthMetricKey,string[]>={
+      'belief-staleness':refs(beliefs.filter(c=>c.status==='stale'||c.status==='expired')),
+      'contradiction-pressure':refs((input.contradictions?.claims??[]).filter(c=>c.status==='open')),
+      'prediction-calibration':refs(predictionEvidence),
+      'procedural-skill-degradation':refs(skillEvidence),
+      'unsupported-confidence':refs(certaintyClaims.filter(c=>clamp(c.confidence01)>=.85&&Number(c.supportCount??1)<=1)),
+      'confidence-instability':refs([...confidenceClaims.slice(0,8),...confidenceClaims.slice(8,16)])
+    };
     const raw:Record<CognitiveHealthMetricKey,{value:number;threshold:number;count:number;eligible:boolean}>={
       'belief-staleness':{value:beliefEligible?staleBeliefs/beliefs.length:0,threshold:.35,count:beliefs.length,eligible:beliefEligible},
       'contradiction-pressure':{value:contradictionEligible?openContradictions/Math.max(3,contradictionTotal):0,threshold:.25,count:contradictionTotal,eligible:contradictionEligible},
@@ -300,6 +359,15 @@ export class CognitiveImmuneSystem {
     const coverage01=clamp(weightTotal);
     const newSignals:CognitiveHealthSignal[]=[],recoveredSignals:CognitiveHealthSignal[]=[];
     const signals=[...this.state.health.signals];
+    const events=[...this.state.health.events];
+    const appendEvent=(type:CognitiveHealthEventType,signal:CognitiveHealthSignal,review?:{reviewer?:string;evidenceRef?:string})=>{
+      events.unshift({
+        id:randomUUID(),type,tick,at,signalId:signal.id,metric:signal.metric,
+        severity:signal.severity,evidenceRefs:(signal.evidenceRefs??[]).slice(0,12),
+        reviewer:review?.reviewer,evidenceRef:review?.evidenceRef
+      });
+      if(events.length>128)events.length=128;
+    };
     const highStreaks={...this.state.health.highStreaks},lowStreaks={...this.state.health.lowStreaks};
     const reasons:Record<CognitiveHealthMetricKey,string>={
       'belief-staleness':'A sustained share of active beliefs is stale or expired; verify supporting evidence before reuse.',
@@ -333,21 +401,25 @@ export class CognitiveImmuneSystem {
       if(high&&streak>=2){
         const severity:CognitiveHealthSeverity=streak>=4&&metric.value01>=metric.threshold01+.25?'critical':'review';
         if(existing){
+          const priorSeverity=existing.severity;
           existing.value01=metric.value01;existing.baseline01=metric.baseline01;
           existing.lastSeenAt=at;existing.consecutiveSamples=streak;existing.occurrences++;
           existing.severity=severity;existing.reason=reasons[key];existing.recommendedAction=actions[key];
+          existing.evidenceRefs=evidenceRefsByMetric[key];
+          if(priorSeverity!=='critical'&&severity==='critical')appendEvent('signal-escalated',existing);
         }else{
           const signal:CognitiveHealthSignal={
             id:`cognitive-health:${key}:${tick}:${this.state.health.inspections+1}`,
             metric:key,severity,status:'open',value01:metric.value01,threshold01:metric.threshold01,
             baseline01:metric.baseline01,consecutiveSamples:streak,occurrences:1,
-            firstSeenAt:at,lastSeenAt:at,reason:reasons[key],recommendedAction:actions[key]
+            firstSeenAt:at,lastSeenAt:at,reason:reasons[key],recommendedAction:actions[key],
+            evidenceRefs:evidenceRefsByMetric[key]
           };
-          signals.unshift(signal);newSignals.push(signal);
+          signals.unshift(signal);newSignals.push(signal);appendEvent('signal-opened',signal);
         }
       }else if(existing&&lowStreaks[key]>=3){
         existing.status='recovered';existing.recoveredAt=at;existing.lastSeenAt=at;
-        recoveredSignals.push(existing);
+        recoveredSignals.push(existing);appendEvent('signal-recovered',existing);
       }
     }
     const activeSignals=signals.filter(s=>s.status==='open'||s.status==='acknowledged');
@@ -355,10 +427,10 @@ export class CognitiveImmuneSystem {
       :activeSignals.length||score01<.65&&coverage01>=.5?'degraded'
       :coverage01<.5?'unknown':'healthy';
     const next:CognitiveHealthState={
-      version:1,inspections:this.state.health.inspections+1,lastTick:tick,lastAt:at,
+      version:2,inspections:this.state.health.inspections+1,lastTick:tick,lastAt:at,
       score01,coverage01,healthStatus,
       samples:[...this.state.health.samples,{tick,at,score01,coverage01,healthStatus,metrics}].slice(-64),
-      signals:signals.slice(0,64),highStreaks,lowStreaks
+      signals:signals.slice(0,64),events:events.slice(0,128),highStreaks,lowStreaks
     };
     this.state.health=next;
     const result:CognitiveHealthInspectionResult={
@@ -380,6 +452,14 @@ export class CognitiveImmuneSystem {
     signal.review={verdict,reviewer:cleanReviewer,evidenceRef:evidenceRef?String(evidenceRef).slice(0,160):undefined,at};
     signal.status=verdict==='false-positive'?'dismissed':verdict==='recovered'?'recovered':'acknowledged';
     if(verdict==='recovered')signal.recoveredAt=at;
+    const type:CognitiveHealthEventType=verdict==='false-positive'?'signal-dismissed'
+      :verdict==='recovered'?'signal-manually-recovered':'signal-acknowledged';
+    this.state.health.events=[
+      {id:randomUUID(),type,tick:this.state.health.lastTick,at,signalId:signal.id,
+        metric:signal.metric,severity:signal.severity,evidenceRefs:(signal.evidenceRefs??[]).slice(0,12),
+        reviewer:cleanReviewer,evidenceRef:evidenceRef?String(evidenceRef).slice(0,160):undefined},
+      ...this.state.health.events
+    ].slice(0,128);
     return true;
   }
   healthSnapshot(){return structuredClone(this.state.health);}
@@ -391,7 +471,9 @@ export class CognitiveImmuneSystem {
       reviewedCount:this.state.reviewedCount,trustedSources:{...this.state.trustedSources},
       cognitiveHealth01:health.score01,cognitiveHealthCoverage01:health.coverage01,
       cognitiveHealthStatus:health.healthStatus,healthInspections:health.inspections,
-      activeHealthSignals:active.length,criticalHealthSignals:active.filter(s=>s.severity==='critical').length
+      activeHealthSignals:active.length,criticalHealthSignals:active.filter(s=>s.severity==='critical').length,
+      cognitiveHealthEvents:health.events.length,lastHealthEventAt:health.events[0]?.at??0,
+      evidenceLinkedSignals:active.filter(s=>(s.evidenceRefs?.length??0)>0).length
     };
   }
   snapshot(){return structuredClone(this.state);}
