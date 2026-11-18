@@ -1,6 +1,6 @@
 import type { WorldModel2 } from './WorldModel2.ts';
 import { SharedFutureEngine, defaultSharedFutureState, type SharedFutureState, type SharedFutureOutcomeRecord } from './SharedFutureEngine.ts';
-import { WorldForge, type WorldForgeCase, type WorldForgeEvaluation, type WorldForgeState, type WorldForgeStepResult } from './WorldForge.ts';
+import { WorldForge, type WorldForgeAdversarialFocus, type WorldForgeCase, type WorldForgeEvaluation, type WorldForgeState, type WorldForgeStepResult } from './WorldForge.ts';
 import {
   ConsequenceEcologyEngine,
   defaultConsequenceEcologyState,
@@ -49,6 +49,16 @@ export class FutureSimulator {
 
   generateWorldForgeScenarios(input: { split: 'train' | 'validation'; seed: number; count?: number; difficulty01?: number }): WorldForgeCase[] {
     return this.#worldForge.generateRuntimeScenarios(input);
+  }
+
+  generateAdversarialWorldForgeScenarios(input: {
+    seed: number;
+    count: number;
+    difficulty01: number;
+    focus: WorldForgeAdversarialFocus;
+    candidateMultiplier?: number;
+  }): WorldForgeCase[] {
+    return this.#worldForge.generateAdversarialRuntimeScenarios(input);
   }
 
   startWorldForgeScenario(scenario: WorldForgeCase): WorldForgeState | null {
