@@ -104,7 +104,7 @@ const SECRET_CONTENT_PATTERNS: RegExp[] = [
 const OMIT_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage', '.cache', '.next', 'vendor', 'target']);
 const STOP_WORDS = new Set(['the','and','for','with','that','this','from','into','about','what','when','where','how','для','или','что','это','как','при','над','под','его','её','они','она']);
 
-function digest(value: string): string { return createHash('sha256').update(value, 'utf8').digest('hex'); }
+function digest(value: string): string { return createHash('sha256').update(value).digest('hex'); }
 function isSha(value: unknown): value is string { return typeof value === 'string' && SHA256_RE.test(value); }
 function revision(value: unknown): string {
   const result = String(value ?? '').trim().toLowerCase();
@@ -479,7 +479,7 @@ export class RepositoryCodingContextEngine {
 }
 
 export function createRepositoryCodingActionTools(engine: RepositoryCodingContextEngine, host: RepositoryCodingHost): ToolDefinition[] {
-  const proposalIdContract = { type: 'object' as const, properties: { proposalId: { type: 'string', minLength: 64, maxLength: 64 } }, required: ['proposalId'], additionalProperties: false, maxProperties: 1 };
+  const proposalIdContract = { type: 'object', properties: { proposalId: { type: 'string', minLength: 64, maxLength: 64 } }, required: ['proposalId'], additionalProperties: false, maxProperties: 1 } as const;
   return [
     {
       id: 'organism.project.repository-context.read', capability: 'project.repository.read', destructive: false, projectAllowed: true,
