@@ -449,7 +449,7 @@ assert.equal(restoredRegistry.select({
   risk01: 0.1,
 }).useAdapter, false, 'restart restore without an approval verifier must fail closed');
 const approvalOnlyRestoreRegistry = new NeuroPlasticAdapterRegistry();
-approvalOnlyRestoreRegistry.restore(activeSnapshot, verifyApproval);
+approvalOnlyRestoreRegistry.restore(activeSnapshot, verifyApproval, (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret), () => true);
 assert.equal(approvalOnlyRestoreRegistry.select({
   domain: 'reasoning',
   backendId: 'llama.cpp',
@@ -465,6 +465,7 @@ tamperedRestoreRegistry.restore(
   tamperedEvaluationSnapshot,
   verifyApproval,
   (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  () => true,
 );
 assert.equal(tamperedRestoreRegistry.snapshot().adapters[0].status, 'staged', 'tampered evaluator evidence must be demoted on restore');
 const tamperedMetricSnapshot = structuredClone(activeSnapshot);
@@ -495,6 +496,23 @@ assert.equal(signedRestoreRegistry.select({
   confidence01: 0.9,
   risk01: 0.1,
 }).useAdapter, true, 'restart restore must preserve an active adapter only with a valid signed approval');
+const artifactRejectedRestoreRegistry = new NeuroPlasticAdapterRegistry();
+artifactRejectedRestoreRegistry.restore(
+  activeSnapshot,
+  verifyApproval,
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  () => false,
+);
+assert.equal(artifactRejectedRestoreRegistry.snapshot().adapters[0].status, 'disabled',
+  'an artifact whose files no longer match the signed manifest must be disabled during restore');
+assert.equal(artifactRejectedRestoreRegistry.select({
+  domain: 'reasoning',
+  backendId: 'llama.cpp',
+  baseModelFingerprint: hash('a'),
+  backendSupportsModelAliases: true,
+  confidence01: 0.9,
+  risk01: 0.1,
+}).useAdapter, false);
 
 const duplicatedSnapshot = structuredClone(activeSnapshot);
 duplicatedSnapshot.adapters.push(structuredClone(duplicatedSnapshot.adapters[0]));
