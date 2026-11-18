@@ -1007,14 +1007,30 @@ export class NeuroPlasticAdapterRegistry {
       throw new Error('neuro-plastic-candidate-not-eligible-for-activation');
     }
     const normalized = normalizeApproval(approval);
-    if (typeof verifyApproval !== 'function' || !await verifyApproval(normalized, {
+    const approvalContext = {
       adapterId,
       reportId: record.evaluation.reportId,
       baseModelFingerprint: record.manifest.baseModel.fingerprint,
       manifestFingerprint: neuroPlasticAdapterManifestFingerprint(record.manifest),
-    }, 'activation')) {
+    };
+    if (typeof verifyApproval !== 'function' ||
+        !await verifyApproval(normalized, approvalContext, 'activation')) {
       throw new Error('neuro-plastic-human-approval-required');
     }
+
+    // Approval verification is an asynchronous trust boundary. The operator
+    // may roll back the candidate, or another lifecycle operation may replace
+    // its record, while the signer is deciding. Revalidate the exact candidate
+    // after the await so a late valid signature cannot resurrect revoked state.
+    const currentRecord = this.find(adapterId);
+    if (currentRecord !== record ||
+        currentRecord.status !== 'eligible' ||
+        !currentRecord.evaluation?.eligible ||
+        currentRecord.evaluation.reportId !== approvalContext.reportId ||
+        neuroPlasticAdapterManifestFingerprint(currentRecord.manifest) !== approvalContext.manifestFingerprint) {
+      throw new Error('neuro-plastic-candidate-changed-during-approval');
+    }
+
     for (const other of this.state.adapters) {
       if (other.status === 'active' && other.manifest.domain === record.manifest.domain &&
           other.manifest.baseModel.fingerprint === record.manifest.baseModel.fingerprint) {
