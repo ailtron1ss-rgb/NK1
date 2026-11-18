@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash, createHmac } from 'node:crypto';
+import { createHash, createHmac, generateKeyPairSync } from 'node:crypto';
 import { NeuroPlasticAdapterRegistry, createNeuroPlasticApprovalSignature, verifyNeuroPlasticApprovalSignature, neuroPlasticAdapterManifestFingerprint, createNeuroPlasticEvaluationReceipt, verifyNeuroPlasticEvaluationSignature, verifyNeuroPlasticEvaluationReceiptSignature } from '../src/organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { buildVerifiedNeuroPlasticCorpus, toNeuroPlasticJsonl } from '../src/organism/learning/NeuroPlasticCorpusBuilder.ts';
 import { NeuroPlasticInferenceAdapter } from '../src/organism/integration/local/NeuroPlasticInferenceAdapter.ts';
@@ -7,7 +7,9 @@ import { OpenAICompatibleLocalChatProvider } from '../src/organism/integration/l
 
 const hash = (char) => char.repeat(64);
 const approvalSecret = 'neuro-plastic-test-approval-secret-32-bytes-minimum';
-const evaluatorSecret = 'neuro-plastic-test-evaluator-secret-held-outside-the-runtime';
+const evaluatorKeyPair = generateKeyPairSync('ed25519');
+const evaluatorPrivateKeyPem = evaluatorKeyPair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const evaluatorPublicKeyPem = evaluatorKeyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const hmacProbe = { approvalId: 'hmac-probe', actorId: 'test-operator', approvedAt: 1_800_000_000_000 };
 const hmacContext = {
   adapterId: 'hmac-probe-adapter',
@@ -35,10 +37,10 @@ function signedEvaluate(registry, adapterId, payload) {
     manifestFingerprint: neuroPlasticAdapterManifestFingerprint(registry.getManifest(adapterId)),
   };
   const receipt = createNeuroPlasticEvaluationReceipt(
-    adapterId, boundPayload, 'independent-evaluator-v1', 'evaluation-' + adapterId, evaluatorSecret,
+    adapterId, boundPayload, 'independent-evaluator-v1', 'evaluation-' + adapterId, evaluatorPrivateKeyPem,
   );
   return registry.evaluateCandidate(adapterId, { ...boundPayload, receipt }, (verifiedReceipt) =>
-    verifyNeuroPlasticEvaluationSignature(adapterId, boundPayload, verifiedReceipt, evaluatorSecret));
+    verifyNeuroPlasticEvaluationSignature(adapterId, boundPayload, verifiedReceipt, evaluatorPublicKeyPem));
 }
 function signedApproval(adapterId, reportId, approvalId, registry) {
   const unsigned = { approvalId, actorId: 'operator', approvedAt: 1_800_000_000_200 };
@@ -113,12 +115,12 @@ const evaluationPayload = {
   evaluatedAt: 1_800_000_000_100,
 };
 const evaluationReceipt = createNeuroPlasticEvaluationReceipt(
-  'kurisu-reasoning-v1', evaluationPayload, 'independent-evaluator-v1', 'evaluation-main', evaluatorSecret,
+  'kurisu-reasoning-v1', evaluationPayload, 'independent-evaluator-v1', 'evaluation-main', evaluatorPrivateKeyPem,
 );
 const tamperedEvaluation = { ...evaluationPayload, candidate: observations(0.91) };
 assert.throws(() => registry.evaluateCandidate(
   'kurisu-reasoning-v1', { ...tamperedEvaluation, receipt: evaluationReceipt },
-  (receipt) => verifyNeuroPlasticEvaluationSignature('kurisu-reasoning-v1', tamperedEvaluation, receipt, evaluatorSecret),
+  (receipt) => verifyNeuroPlasticEvaluationSignature('kurisu-reasoning-v1', tamperedEvaluation, receipt, evaluatorPublicKeyPem),
 ), /fingerprint|signature|receipt/i, 'changing holdout outcomes after evaluator signing must be rejected');
 const report = signedEvaluate(registry, 'kurisu-reasoning-v1', evaluationPayload);
 assert.equal(report.pairedN, 7);
@@ -564,7 +566,7 @@ const tamperedRestoreRegistry = new NeuroPlasticAdapterRegistry();
 await tamperedRestoreRegistry.restore(
   tamperedEvaluationSnapshot,
   verifyApproval,
-  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorPublicKeyPem),
   () => true,
 );
 assert.equal(tamperedRestoreRegistry.snapshot().adapters[0].status, 'staged', 'tampered evaluator evidence must be demoted on restore');
@@ -578,7 +580,7 @@ const tamperedMetricRegistry = new NeuroPlasticAdapterRegistry();
 await tamperedMetricRegistry.restore(
   tamperedMetricSnapshot,
   verifyApproval,
-  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorPublicKeyPem),
   () => true,
 );
 assert.equal(tamperedMetricRegistry.snapshot().adapters[0].status, 'staged',
@@ -589,7 +591,7 @@ const tamperedManifestRegistry = new NeuroPlasticAdapterRegistry();
 await tamperedManifestRegistry.restore(
   tamperedManifestSnapshot,
   verifyApproval,
-  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorPublicKeyPem),
   () => true,
 );
 assert.equal(tamperedManifestRegistry.snapshot().adapters[0].status, 'staged',
@@ -607,7 +609,7 @@ const signedRestoreRegistry = new NeuroPlasticAdapterRegistry();
 await signedRestoreRegistry.restore(
   activeSnapshot,
   verifyApproval,
-  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorPublicKeyPem),
   () => true,
 );
 assert.equal(signedRestoreRegistry.select({
@@ -623,7 +625,7 @@ const artifactRejectedRestoreRegistry = new NeuroPlasticAdapterRegistry();
 await artifactRejectedRestoreRegistry.restore(
   activeSnapshot,
   verifyApproval,
-  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorPublicKeyPem),
   () => false,
 );
 assert.equal(artifactRejectedRestoreRegistry.snapshot().adapters[0].status, 'disabled',
@@ -644,7 +646,7 @@ const duplicateRestoreRegistry = new NeuroPlasticAdapterRegistry();
 await duplicateRestoreRegistry.restore(
   duplicatedSnapshot,
   verifyApproval,
-  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorPublicKeyPem),
   () => true,
 );
 assert.equal(duplicateRestoreRegistry.snapshot().adapters.length, 1,
@@ -670,7 +672,7 @@ const conflictRestoreRegistry = new NeuroPlasticAdapterRegistry();
 await conflictRestoreRegistry.restore(
   conflictSnapshot,
   verifyApproval,
-  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorSecret),
+  (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(context.adapterId, receipt, evaluatorPublicKeyPem),
   () => true,
 );
 assert.ok(conflictRestoreRegistry.snapshot().adapters.every(adapter => adapter.status === 'eligible'),
