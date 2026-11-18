@@ -153,7 +153,7 @@ Promotion gate требует не менее 5 matched pairs и 5 незави�
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs approve --adapter kurisu-reasoning-v1
     node --experimental-strip-types scripts/neuro_plastic_registry.mjs activate --adapter kurisu-reasoning-v1 --input state/kurisu-reasoning-v1.approval.json
 
-Signature оператора связана с adapter ID, evaluation report ID, base-model fingerprint, actor ID и timestamp. При каждом восстановлении сервер и CLI отдельно перепроверяют обе подписи — evaluator receipt и operator approval. Для восстановления требуется NEURO_PLASTIC_EVALUATOR_SECRET наряду с NEURO_PLASTIC_APPROVAL_SECRET. Если любая подпись отсутствует, неверна или секрет недоступен, состояние понижается до staged/eligible и адаптер не вызывается (fail closed).
+Signature оператора связана с adapter ID, evaluation report ID, base-model fingerprint, fingerprint полного нормализованного adapter manifest (артефакт, tokenizer, source dataset, holdout plan, domain, method, served alias и governance), actor ID и timestamp. Любое изменение manifest после approval требует нового разрешения. При каждом восстановлении сервер и CLI отдельно перепроверяют обе подписи — evaluator receipt и operator approval. Для восстановления требуется NEURO_PLASTIC_EVALUATOR_SECRET наряду с NEURO_PLASTIC_APPROVAL_SECRET. Если любая подпись отсутствует, неверна или секрет недоступен, состояние понижается до staged/eligible и адаптер не вызывается (fail closed).
 
 Откат:
 
