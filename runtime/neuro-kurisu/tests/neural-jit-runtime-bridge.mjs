@@ -16,25 +16,31 @@ class Journal { async write() { return undefined; } }
 const digest = value => createHash('sha256').update(value).digest('hex');
 const dir = await mkdtemp(path.join(tmpdir(), 'nk-neural-jit-bridge-'));
 try {
-  const pendingCapture = Object.freeze({ captureHandle: 'host-local-activation-1' });
+  let captureHandleSequence = 0;
+  const pendingCaptures = new WeakSet();
+  const createPendingCapture = () => {
+    const handle = Object.freeze({ captureHandle: `host-local-activation-${++captureHandleSequence}` });
+    pendingCaptures.add(handle);
+    return handle;
+  };
   const authenticBoundCaptures = new WeakSet();
   const bindings = [];
   let hangNextBinding = false;
   let bindAbortObserved = false;
   const adapter = {
-    captureLocalInference: async () => pendingCapture,
+    captureLocalInference: async () => createPendingCapture(),
     bindVerifiedOutcome: async (pending, context) => {
       if (hangNextBinding) {
         hangNextBinding = false;
         context.signal?.addEventListener('abort', () => { bindAbortObserved = true; }, { once: true });
         return await new Promise(() => {});
       }
-      assert.equal(pending, pendingCapture, 'the exact opaque capture handle must survive until the verified outcome');
+      assert.ok(pendingCaptures.has(pending), 'only an opaque handle issued by the current host adapter may be bound');
       assert.equal(context.taskFamily, 'language-response');
       assert.ok(context.verification && context.verification.externalObservation === true);
       const capture = {
-        captureId: 'capture-live-1', taskFamily: context.taskFamily,
-        taskFingerprint: digest('neural-jit-runtime-bridge-task-1'),
+        captureId: `capture-live-${bindings.length + 1}`, taskFamily: context.taskFamily,
+        taskFingerprint: digest(`neural-jit-runtime-bridge-task-${bindings.length + 1}`),
         modelFingerprint: 'a'.repeat(64), toolId: context.binding.toolId,
         executionId: context.binding.executionId, decisionId: context.binding.decisionId,
         inputFingerprint: context.inputFingerprint, seed: 17, capturedAt: Date.now(),
@@ -57,7 +63,7 @@ try {
     neuralJitCaptureAdapter: adapter,
     languageInvoker: async request => {
       languageCalls.push(request);
-      return { text: 'A grounded response.', backend: 'llama.cpp:fixture', latencyMs: 3, neuralJitCapture: pendingCapture };
+      return { text: 'A grounded response.', backend: 'llama.cpp:fixture', latencyMs: 3, neuralJitCapture: createPendingCapture() };
     },
     phonePolicy: { mode: 'eco', baseIntervalMs: 30000, samplerIntervalMs: 60000,
       checkpointMinIntervalMs: 60000, checkpointMaxDirtyCycles: 3,
