@@ -5,6 +5,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -273,6 +274,38 @@ class LayerForceTests(unittest.TestCase):
             steered, _ = self.model(sample)
             self.assertFalse(torch.equal(baseline, steered))
         self.assertEqual(self.bank.snapshot()["registered_hook_count"], 1)
+
+
+    def test_partial_hook_registration_rolls_back_and_retry_does_not_duplicate(self):
+        path, digest, _ = self.write_profile(layers=[
+            {
+                "index": index,
+                "direction": [1.0] + [0.0] * 7,
+                "strength": 1.0,
+            }
+            for index in (1, 2)
+        ])
+        profile_id = self.bank.load_profile(path, [digest])
+
+        with patch.object(
+            self.model.layers[2],
+            "register_forward_hook",
+            side_effect=RuntimeError("hook-registration-failed"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "hook-registration-failed"):
+                with self.bank.activate(profile_id):
+                    self.model(torch.randn(1, 2, 8))
+
+        self.assertEqual(self.bank.snapshot()["registered_hook_count"], 0)
+        self.assertFalse(self.model.layers[1]._forward_hooks)
+        self.assertFalse(self.model.layers[2]._forward_hooks)
+
+        with self.bank.activate(profile_id):
+            self.model(torch.randn(1, 2, 8))
+            self.assertEqual(self.bank.snapshot()["registered_hook_count"], 2)
+        with self.bank.activate(profile_id):
+            self.model(torch.randn(1, 2, 8))
+            self.assertEqual(self.bank.snapshot()["registered_hook_count"], 2)
 
     def test_low_precision_rounding_never_exceeds_the_per_token_delta_cap(self):
         path, digest, _ = self.write_profile()
