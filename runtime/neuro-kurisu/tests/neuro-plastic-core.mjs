@@ -268,6 +268,7 @@ const validationRows = Array.from({ length: 3 }, (_, index) => ({
   exampleId: 'validation-' + index,
   taskId: 'validation-task-' + index,
   split: 'validation',
+  promptFingerprint: hash('7'),
   seed: index + 20,
 }));
 const verifiedDataset = {
@@ -292,7 +293,7 @@ const resolver = (row) => ({
     attestedBy: 'reviewer',
     attestedAt: 1_800_000_000_000,
     licenseId: 'approved-fixture',
-    provenanceDigest: hash('6'),
+    provenanceDigest: row.evidenceRefDigest,
   },
 });
 const corpus = buildVerifiedNeuroPlasticCorpus(verifiedDataset, resolver, 'reasoning');
@@ -321,6 +322,22 @@ assert.throws(() => buildVerifiedNeuroPlasticCorpus(
   }),
   'reasoning',
 ), /consent|opt-in|governance/i, 'training without explicit opt-in must be rejected');
+
+assert.throws(() => buildVerifiedNeuroPlasticCorpus(
+  verifiedDataset,
+  (row) => ({
+    ...resolver(row),
+    consent: { ...resolver(row).consent, provenanceDigest: hash('6') },
+  }),
+  'reasoning',
+), /provenance-evidence-mismatch/i, 'consent must be bound to the exact verified evidence reference');
+
+const duplicatePromptFingerprintDataset = {
+  ...verifiedDataset,
+  validation: validationRows.map(row => ({ ...row, promptFingerprint: trainingRows[0].promptFingerprint })),
+};
+assert.throws(() => buildVerifiedNeuroPlasticCorpus(duplicatePromptFingerprintDataset, resolver, 'reasoning'),
+  /prompt-fingerprint-overlap/i, 'matching prompt fingerprints across splits must be rejected');
 assert.throws(() => buildVerifiedNeuroPlasticCorpus(
   verifiedDataset,
   (row) => ({ ...resolver(row), prompt: 'Contact admin@example.com for credentials.' }),
