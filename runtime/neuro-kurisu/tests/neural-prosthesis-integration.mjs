@@ -213,6 +213,10 @@ assert.equal(managedSupervisor.snapshot().managed, false, 'unexpected child exit
 assert.equal(managedSupervisor.snapshot().ready, false, 'unexpected child exit must clear readiness');
 assert.equal(managedSupervisor.snapshot().pid, null, 'unexpected child exit must clear the stale PID');
 assert.match(managedSupervisor.snapshot().lastError ?? '', /^sidecar-exited-unexpectedly/);
+const recoveredAfterCrash = await managedSupervisor.start();
+assert.equal(recoveredAfterCrash.started, true, 'supervisor must restart after an unexpected child exit');
+assert.equal(managedSupervisor.snapshot().lastError, null, 'successful restart must clear the previous crash error');
+assert.equal(await managedSupervisor.stop(), true);
 
 const timeoutPort = await reserveLoopbackPort();
 const timeoutBaseUrl = `http://127.0.0.1:${timeoutPort}/v1`;
