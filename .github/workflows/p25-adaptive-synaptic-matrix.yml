@@ -8,6 +8,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/index.ts"
       - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs"
+      - "runtime/neuro-kurisu/tests/neuro-plastic-core.mjs"
       - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix-runtime.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/p25-adaptive-synaptic-matrix.yml"
@@ -20,6 +21,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/index.ts"
       - "runtime/neuro-kurisu/tests/p25-adaptive-synaptic-matrix.mjs"
+      - "runtime/neuro-kurisu/tests/neuro-plastic-core.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/p25-adaptive-synaptic-matrix.yml"
 
