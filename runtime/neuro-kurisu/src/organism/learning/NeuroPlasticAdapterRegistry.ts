@@ -692,6 +692,7 @@ export class NeuroPlasticAdapterRegistry {
       receipt: NeuroPlasticEvaluationReceipt,
       context: { adapterId: string; holdoutFingerprint: string },
     ) => boolean,
+    verifyRestoredArtifact?: (manifest: NeuroPlasticAdapterManifest) => boolean,
   ): void {
     this.state = { schemaVersion: 1, adapters: [] };
     if (!raw) return;
@@ -709,7 +710,8 @@ export class NeuroPlasticAdapterRegistry {
         const row = item as Record<string, unknown>;
         const manifest = normalizeManifest(row.manifest);
         if (restoredAdapterIds.has(manifest.adapterId)) continue;
-        restoredAdapterIds.add(manifest.adapterId);
+        const artifactTrusted = typeof verifyRestoredArtifact === 'function' &&
+          verifyRestoredArtifact(manifest) === true;
         const evaluation = row.evaluation as NeuroPlasticEvaluationReport | null;
         const persistedReceipt: NeuroPlasticEvaluationReceipt | null = evaluation ? {
           evaluationId: evaluation.evaluationId,
@@ -744,21 +746,23 @@ export class NeuroPlasticAdapterRegistry {
             activationApproval = null;
           }
         }
-        const status: NeuroPlasticAdapterStatus = storedStatus === 'disabled' ? 'disabled'
-          : storedStatus === 'rejected' ? 'rejected'
-            : restoredApprovalTrusted ? 'active'
-              : validReport && evaluation!.eligible ? 'eligible'
-                : 'staged';
+        const status: NeuroPlasticAdapterStatus = !artifactTrusted ? 'disabled'
+          : storedStatus === 'disabled' ? 'disabled'
+            : storedStatus === 'rejected' ? 'rejected'
+              : restoredApprovalTrusted ? 'active'
+                : validReport && evaluation!.eligible ? 'eligible'
+                  : 'staged';
         restored.push({
           manifest,
           status,
           stagedAt: safeCounter(row.stagedAt, 'restored-staged-at'),
           updatedAt: safeCounter(row.updatedAt, 'restored-updated-at'),
-          evaluation: validReport ? structuredClone(evaluation!) : null,
+          evaluation: artifactTrusted && validReport ? structuredClone(evaluation!) : null,
           activationApprovalId: status === 'active' ? activationApproval!.approvalId : null,
           activationApproval: status === 'active' ? activationApproval : null,
-          disabledReason: status === 'disabled' ? 'restored-disabled' : null,
+          disabledReason: !artifactTrusted ? 'restored-artifact-integrity-failed' : status === 'disabled' ? 'restored-disabled' : null,
         });
+        restoredAdapterIds.add(manifest.adapterId);
       } catch {
         // Invalid persisted candidates are discarded individually; one corrupt row does not block safe recovery.
       }
