@@ -35,7 +35,7 @@ const fetchImpl = async (_url, init) => {
   payloads.push(JSON.parse(init.body));
   return new Response(JSON.stringify({
     model: 'fake-llama-template',
-    choices: [{ message: { content: 'local provider response' } }],
+    choices: [{ message: { content: 'local provider response' }, finish_reason:'length' }],
     usage: { prompt_tokens:12, completion_tokens:8, total_tokens:20 },
   }), { status:200, headers:{'content-type':'application/json'} });
 };
@@ -58,6 +58,7 @@ const defaultProvider = new OpenAICompatibleLocalChatProvider({
 });
 const defaultResponse = await defaultProvider.generate(baseRequest);
 assert.equal(defaultResponse.text,'local provider response');
+assert.equal(defaultResponse.providerFinishReason,'length');
 assert.deepEqual(defaultResponse.providerUsage,{promptTokens:12,completionTokens:8,totalTokens:20});
 assert.equal(Object.hasOwn(payloads[0],'chat_template_kwargs'),false,
   'unknown Jinja controls must remain disabled by default');
@@ -107,6 +108,7 @@ assert.deepEqual(enabledResponse.providerControlReceipt,{
 assert.equal(payloads[1].temperature,profile.temperature);
 assert.equal(payloads[1].max_tokens,profile.maxTokens);
 assert.deepEqual(enabledResponse.providerUsage,{promptTokens:12,completionTokens:8,totalTokens:20});
+assert.equal(enabledResponse.providerFinishReason,'length');
 
 // Malformed usage must not fail an otherwise successful language response.
 const invalidUsageProvider = new OpenAICompatibleLocalChatProvider({
