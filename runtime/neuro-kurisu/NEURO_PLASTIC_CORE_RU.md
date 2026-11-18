@@ -173,6 +173,12 @@ Promotion gate требует не менее 5 matched pairs и 5 незави�
 
 Оценка переводит адаптер максимум в eligible; она никогда не активирует его автоматически.
 
+    openssl genpkey -algorithm ED25519 -out operator-private.pem
+    openssl pkey -in operator-private.pem -pubout -out operator-public.pem
+    chmod 600 operator-private.pem
+
+Положите operator public PEM в отдельный JSON trust map (например, { "operator-key-2026": "<PEM>" }); этот map можно безопасно передавать runtime, а приватный ключ не должен попадать в проект или на inference host.
+
     # Публичные ключи: JSON object { "operator-key-2026": "<Ed25519 public PEM>" }
     export NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON="$(cat /secure/path/neuro-plastic-approval-public-keys.json)"
     export NEURO_PLASTIC_APPROVER_ID="operator-id"
