@@ -216,6 +216,12 @@ class NeuroPlasticTrainerPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(TRAINER.PreflightError, "symlink-path-component-rejected"):
             TRAINER.validate_manifest(self.manifest_path)
 
+    def test_preflight_rejects_training_without_explicit_governance_attestation(self):
+        self.manifest["governance"]["licenseApproved"] = False
+        self._write_manifest()
+        with self.assertRaisesRegex(TRAINER.PreflightError, "governance-explicit-consent-and-review-required"):
+            TRAINER.validate_manifest(self.manifest_path)
+
     def test_preflight_rejects_adapter_directory_identity_mismatch(self):
         self.manifest["adapterId"] = "different-adapter-id"
         self._write_manifest()
