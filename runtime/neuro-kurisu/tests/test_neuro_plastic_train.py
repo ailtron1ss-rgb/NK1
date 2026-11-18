@@ -70,6 +70,19 @@ class NeuroPlasticTrainerPreflightTests(unittest.TestCase):
     def _write_manifest(self):
         self.manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
 
+    def test_json_safe_converts_nonfinite_training_metrics_for_strict_json(self):
+        payload = {
+            "loss": float("nan"),
+            "eval_loss": float("inf"),
+            "nested": [1.5, float("-inf"), {"score": 0.8}],
+        }
+        safe = TRAINER.json_safe(payload)
+        self.assertIsNone(safe["loss"])
+        self.assertIsNone(safe["eval_loss"])
+        self.assertIsNone(safe["nested"][1])
+        self.assertEqual(safe["nested"][2]["score"], 0.8)
+        json.dumps(safe, allow_nan=False)
+
     def test_preflight_accepts_local_lora_corpus_and_keeps_holdout_out(self):
         result = TRAINER.validate_manifest(self.manifest_path)
         self.assertEqual(result["method"], "lora")
