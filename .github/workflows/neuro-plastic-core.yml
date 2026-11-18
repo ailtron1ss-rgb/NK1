@@ -3,7 +3,7 @@ name: Neuro-Plastic Core offline adapter gate
 on:
   push:
     branches:
-      - aspect/neuro-plastic-core-lora-adapters-20261117
+      - 'aspect/neuro-plastic-core-lora-adapters-*'
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/NeuroPlastic*.ts'
       - 'runtime/neuro-kurisu/src/organism/integration/local/NeuroPlastic*.ts'
