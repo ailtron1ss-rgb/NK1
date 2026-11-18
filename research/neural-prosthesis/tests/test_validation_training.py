@@ -1,3 +1,4 @@
+import inspect
 import sys
 import unittest
 from pathlib import Path
@@ -60,6 +61,14 @@ class ValidationEarlyStoppingTests(unittest.TestCase):
         train_digest = "a" * 64
         validation_digest = "b" * 64
         holdout_digest = "c" * 64
+        parameters = inspect.signature(checker).parameters
+        self.assertIn(
+            "validation_digest",
+            parameters,
+            "holdout separation must also compare the recorded validation dataset",
+        )
+        if "validation_digest" not in parameters:
+            return
         checker(train_digest, holdout_digest, validation_digest=validation_digest)
         with self.assertRaisesRegex(ValueError, "holdout-dataset-matches-validation-dataset"):
             checker(train_digest, validation_digest, validation_digest=validation_digest)
