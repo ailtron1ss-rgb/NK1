@@ -356,10 +356,10 @@ export class WorldForge {
     if(targetCoverage<1)failureModes.push('goal-gap');
     if(evidenceCoverage<1)failureModes.push('evidence-gap');
     if(normalized.violations>0||failedActions>0)failureModes.push('invalid-trace');
-    if(normalized.overflow>0||valid.length>key.maxSteps)failureModes.push('step-budget');
-    if(cost>key.resourceBudget)failureModes.push('resource-budget');
-    if(risk>key.riskTolerance01)failureModes.push('risk-budget');
-    if(robustness<.45)failureModes.push('disturbance-pressure');
+    if(normalized.overflow>0||valid.length>=Math.ceil(key.maxSteps*.85))failureModes.push('step-budget');
+    if(cost>=key.resourceBudget*.8)failureModes.push('resource-budget');
+    if(risk>=key.riskTolerance01*.8)failureModes.push('risk-budget');
+    if(robustness<.75)failureModes.push('disturbance-pressure');
     return{scenarioId:identity.id,split:identity.split,score01:Number(score.toFixed(4)),success:score>=key.minimumScore01&&violations===0,constraintViolations:violations,evidenceCoverage01:Number(evidenceCoverage.toFixed(4)),efficiency01:Number(efficiency.toFixed(4)),robustness01:Number(robustness.toFixed(4)),strategyFamily:family,stepsUsed:attempted.length,syntheticOnly:true,independentlyVerified:false,failureModes,limitations:['Synthetic environment only; does not establish real-world competence.','Holdout outcomes are evaluator-only and must not be used for tuning.','Scenario realism requires external calibration against real task distributions.']};
   }
   evaluateSession(scenario:unknown,stateInput:unknown):WorldForgeEvaluation {
