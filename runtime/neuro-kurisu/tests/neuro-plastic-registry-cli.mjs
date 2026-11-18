@@ -106,6 +106,7 @@ try {
 
   run(['stage', '--input', manifestPath]);
   const evaluation = {
+    manifestFingerprint: neuroPlasticAdapterManifestFingerprint(manifest),
     holdoutFingerprint,
     evaluatedAt: 1_800_000_000_100,
     baseline: [],
