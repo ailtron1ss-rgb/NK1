@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { CognitiveToNeuralBridge, applyCognitiveNeuralControl } from '../src/organism/cognition/CognitiveToNeuralBridge.ts';
+import { B365_DIAGNOSTICS_SCHEMA_VERSION, CognitiveToNeuralBridge, applyCognitiveNeuralControl, cognitiveNeuralProfileFingerprint, isValidCognitiveNeuralControlProfile } from '../src/organism/cognition/CognitiveToNeuralBridge.ts';
 
 const bridge = new CognitiveToNeuralBridge();
 const neural = {
-  version: 1, tick: 16,
+  version: 14, tick: 16,
   predictionError01: .3, plasticity01: .4, neuromodulation01: .5, sparseActivity01: .6,
   recurrentCoherence01: .7, neuralConfidence01: .8, modelAgreement01: .9,
   counterfactualDivergence01: .25, goalField01: .35, actionEntropy01: .45,
@@ -24,7 +24,18 @@ assert.equal(profile.action, 'verify');
 assert.equal(profile.mode, 'deep');
 assert.equal(profile.adapterHint, 'deep');
 assert.equal(profile.neuralSnapshotAvailable, true);
+assert.equal(B365_DIAGNOSTICS_SCHEMA_VERSION,14);
+assert.equal(profile.neuralSnapshotVersion,14);
 assert.equal(profile.neuralSnapshotTick, 16);
+assert.equal(isValidCognitiveNeuralControlProfile(profile),true);
+const fingerprint=cognitiveNeuralProfileFingerprint(profile);
+assert.match(fingerprint,/^[a-f0-9]{64}$/);
+assert.equal(cognitiveNeuralProfileFingerprint(structuredClone(profile)),fingerprint,
+  'profile fingerprint must be stable across JSON-equivalent cloned profiles');
+const changedProfile=structuredClone(profile);
+changedProfile.featureVector01[7]=.81;
+assert.notEqual(cognitiveNeuralProfileFingerprint(changedProfile),fingerprint,
+  'the fingerprint must bind the complete feature vector');
 assert.equal(profile.neuralSnapshotAgeTicks, 1);
 assert.equal(profile.featureKeys.length, 43);
 assert.equal(profile.featureVector01.length, 43);
@@ -106,5 +117,30 @@ const missingCurrentTick = bridge.project({
 });
 assert.equal(missingCurrentTick.neuralSnapshotAvailable,false,
   'freshness cannot be established without the current organism tick');
+for (const version of [13,15]) {
+  const incompatible = bridge.project({ tick:17, neural:{ ...neural, version } });
+  assert.equal(incompatible.neuralSnapshotAvailable,false,
+    'unknown B365 diagnostic versions must not be silently interpreted as v14');
+  assert.equal(incompatible.neuralSnapshotVersion,null);
+}
+
+const lowBudget=bridge.project({ tick:17, mode:'deep', budgetRemaining01:.2, neural });
+const highBudget=bridge.project({ tick:17, mode:'deep', budgetRemaining01:.8, neural });
+assert.ok(highBudget.maxTokens>lowBudget.maxTokens,
+  'more remaining cognitive reserve must not reduce the configured token budget');
+const lowPreservation=bridge.project({
+  tick:17,mode:'deep',budgetRemaining01:.8,
+  neural:{ ...neural, allostatic:{ ...neural.allostatic, preservation01:0 } },
+});
+const highPreservation=bridge.project({
+  tick:17,mode:'deep',budgetRemaining01:.8,
+  neural:{ ...neural, allostatic:{ ...neural.allostatic, preservation01:1 } },
+});
+assert.ok(lowPreservation.maxTokens>highPreservation.maxTokens,
+  'higher allostatic preservation pressure must not increase token expenditure');
+const lowUncertainty=bridge.project({ tick:17,mode:'deep',uncertainty01:.1,neural });
+const highUncertainty=bridge.project({ tick:17,mode:'deep',uncertainty01:.9,neural });
+assert.ok(lowUncertainty.temperature>highUncertainty.temperature,
+  'higher uncertainty must not increase exploratory sampling temperature');
 
 console.log('COGNITIVE_TO_NEURAL_BRIDGE_V2_PASS');
