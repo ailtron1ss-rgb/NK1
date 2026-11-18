@@ -31,6 +31,8 @@ export interface NeuralJitVerifiedOutcomeBinding {
   tick: number;
   verification: OutcomeVerification;
   outcome: { ok: boolean; outcomeClass: string; confidence01: number };
+  /** Cancellation is signalled when the runtime's bounded outcome-binding budget expires. */
+  signal?: AbortSignal;
 }
 
 export interface NeuralJitLocalCaptureAdapter extends NeuralJitActivationCaptureVerifier {
