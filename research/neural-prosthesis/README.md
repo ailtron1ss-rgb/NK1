@@ -294,10 +294,11 @@ overhead. Hooks are removed when the sidecar closes.
 
 The steering limit is checked on the actual output tensor after casting back to
 the model's activation dtype, not merely on the FP32 intermediate. If FP16/BF16
-rounding would push a token over its configured limit, the controller rescales
-once and, when no representable in-bound value exists, leaves that token
-unchanged. The strict bound therefore takes priority over applying a steering
-delta. Diagnostics expose profile IDs, raw-file digests, selected layer indexes,
+rounding would push a token over its configured limit, the controller
+iteratively backs off only those tokens until the actual cast tensor is within
+the bound. When no non-zero representable in-bound value is found, only that
+token is left unchanged. The strict bound therefore takes priority over
+applying a steering delta. Diagnostics expose profile IDs, raw-file digests, selected layer indexes,
 registered-hook count, applied hook/token counters and low-precision fallback
 count only; they never expose direction vectors, hidden states, prompts or
 completions.
