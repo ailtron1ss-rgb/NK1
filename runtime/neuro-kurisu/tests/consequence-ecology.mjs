@@ -613,12 +613,33 @@ const replayedCalibration = calibrationSimulator.recordVerifiedConsequenceOutcom
   optionId: 'verified-selected-option',
 });
 assert.equal(replayedCalibration.replayed, true, 'calibration must be idempotent');
+const calibrationRoundTrip = new FutureSimulator();
+calibrationRoundTrip.restore(calibrationSimulator.snapshot());
+assert.deepEqual(calibrationRoundTrip.consequenceEcology.listCalibrations(), calibrationSimulator.consequenceEcology.listCalibrations(),
+  'verified calibration records must survive the canonical FutureSimulator snapshot');
+const calibrationGateway = new ActionGateway({ live: false });
+calibrationGateway.setExecutionLedgerPersister(async () => {});
+registerConsequenceEcologyTools(calibrationGateway, calibrationSimulator);
+assert.equal(calibrationGateway.listTools().find(row => row.id === 'organism.consequences.outcomes.calibrate')?.requiresIdempotencyKey, true,
+  'calibration writes must be idempotent at the ActionGateway boundary');
+const gatewayCalibration = await calibrationGateway.executeTool('organism.consequences.outcomes.calibrate', {
+  outcomeId: independentlyRecorded.outcome.id,
+  analysisId: calibrationAnalysis.analysis.id,
+  optionId: 'verified-selected-option',
+}, 'consequence-ecology-calibration-test', { idempotencyKey: 'verified-consequence-calibration-1' });
+assert.equal(gatewayCalibration.ok, true, JSON.stringify(gatewayCalibration));
+assert.equal(gatewayCalibration.result.replayed, true);
+const listedCalibrations = await calibrationGateway.executeTool('organism.consequences.outcomes.list', { limit: 8 });
+assert.equal(listedCalibrations.ok, true);
+assert.equal(listedCalibrations.result.calibrations.length, 1);
 assert.equal(
   calibrationSimulator.consequenceEcology.diagnostics().verifiedCalibrationSamples,
   1,
 );
-assert.equal(calibrationSimulator.consequenceEcology.diagnostics().calibrationReady, false,
+assert.equal(calibrationSimulator.consequenceEcology.diagnostics().calibrationSampleSufficient, false,
   'a single verified outcome is not enough to declare model calibration reliable');
+assert.equal(calibrationSimulator.consequenceEcology.diagnostics().modelWeightsUpdated, false,
+  'observed outcomes must not silently update model weights or confidence');
 
 const unverifiedSimulator = new FutureSimulator();
 const unverifiedScenario = unverifiedSimulator.sharedFuture.createScenario({
