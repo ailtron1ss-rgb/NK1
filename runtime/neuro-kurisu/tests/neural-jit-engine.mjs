@@ -142,6 +142,11 @@ assert.ok(candidate.trainingTaskFingerprints.every(x => /^[a-f0-9]{64}$/.test(x)
 const evaluation = engine.evaluateCandidate(candidate.id);
 assert.equal(evaluation.eligible, true);
 assert.equal(evaluation.status, 'eligible');
+const recompilationAfterEvaluation = engine.compileCandidate({ taskFamily: 'memory-retrieval', modelFingerprint });
+assert.equal(recompilationAfterEvaluation.id, candidate.id);
+assert.equal(recompilationAfterEvaluation.status, 'eligible',
+  'recompiling identical training evidence must not reset an evaluated candidate');
+assert.deepEqual(recompilationAfterEvaluation.evaluation, evaluation);
 assert.ok(evaluation.holdoutTraceCount >= 8);
 assert.ok(evaluation.uniqueHoldoutSeeds >= 5);
 assert.ok(evaluation.relativeGain01 >= 0.05);
