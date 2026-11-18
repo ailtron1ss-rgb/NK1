@@ -97,15 +97,14 @@ export class FutureSimulator {
       last: Array.isArray(s?.last) ? s!.last.slice(-32) : [],
     };
     // Older snapshots do not have this field; restore() deliberately keeps them valid.
+    // SharedFuture.restore has already revalidated each independent outcome against the supplied
+    // external verifier. Reuse that canonical admitted record; do not invoke an external verifier twice.
     this.sharedFuture.restore(s?.sharedFuture, options.validateIndependentlyVerifiedOutcome);
     this.consequenceEcology.restore(s?.consequenceEcology, outcomeId => {
       const outcome = this.sharedFuture.listOutcomes().find(row => row.id === outcomeId);
-      if (!outcome || outcome.authority !== 'independent-external' || outcome.independentlyVerified !== true) return null;
-      try {
-        return options.validateIndependentlyVerifiedOutcome?.(outcome) === true ? outcome : null;
-      } catch {
-        return null;
-      }
+      return outcome?.authority === 'independent-external' && outcome.independentlyVerified === true
+        ? outcome
+        : null;
     });
   }
 
