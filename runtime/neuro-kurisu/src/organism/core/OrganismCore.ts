@@ -273,6 +273,7 @@ import { defaultP41NativePerception } from '../cognition/P41NativePerception.ts'
 import { P41TemporalPerceptionModel, defaultP41TemporalPerception } from '../cognition/P41TemporalPerceptionModel.ts';
 import { PerceptualEvidenceCompiler, defaultPerceptualEvidence } from '../body/PerceptualEvidenceCompiler.ts';
 import { GroundedWorldState, defaultGroundedWorldState } from '../world/GroundedWorldState.ts';
+import { synchronizeGroundedSpatialMemories } from '../memory/GroundedSpatialMemoryBridge.ts';
 import { defaultUnifiedLatentWorldState } from '../world/UnifiedLatentWorldState.ts';
 import { defaultP83PersistentRealityModel } from '../world/P83PersistentRealityModel.ts';
 import { defaultP84 } from '../developmental/P84AutobiographicalContinuityFabric.ts';
@@ -4278,6 +4279,20 @@ export class OrganismCore {
         this.persisted.facets.embodiment.p41NativePerception = nativeP41;
         const groundingSignal = Boolean(normalizedObservation.worldContext || observation.vision || observation.audio || observation.text || observation.worldEvent);
         const groundedWorldContext = groundingSignal ? this.worldSubsystem.groundedWorld.integrate({ at: state.at, base: normalizedObservation.worldContext ?? null, perception: semanticP41, evidence: this.organismSystems.embodiment.perceptualEvidence.snapshot() }) : null;
+        // Project only fresh, visible, producer-marked observed spatial evidence.
+        // Model output, conflicts, unresolved or mixed-provenance positions remain
+        // hypotheses and never become canonical spatial memories.
+        const groundedSpatialMemorySync = groundedWorldContext ? synchronizeGroundedSpatialMemories({
+            fabric: this.memorySubsystem.fabric,
+            memoryOS: this.memorySubsystem.memoryOS,
+            snapshot: this.worldSubsystem.groundedWorld.snapshot(),
+            at: state.at,
+            tick: state.tick,
+        }) : null;
+        if (groundedSpatialMemorySync?.written) {
+            this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
+            this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+        }
         const effectiveWorldContext = groundedWorldContext ?? (normalizedObservation.worldContext || undefined);
         if (groundedWorldContext)
             this.cognitiveRuntime.lastGroundedWorldContext = groundedWorldContext;
