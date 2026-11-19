@@ -66,6 +66,7 @@ export const defaultP40ModelEcology = ():P40ModelEcologyState => ({
     profile({id:'local-fallback',kind:'deterministic',tasks:['language','reasoning','planning','local-fallback'],local:true,quality01:.42,latency01:.12,reliability01:.92}),
     profile({id:'kobold',kind:'local-llm',tasks:['language','reasoning','planning'],local:true,quality01:.72,latency01:.68,cost01:.18,reliability01:.62}),
     profile({id:'llama.cpp',kind:'openai-compatible-local',tasks:['language','reasoning','planning'],local:true,quality01:.7,latency01:.52,cost01:.06,reliability01:.68,configured:false,available:false}),
+    profile({id:'neural-prosthesis',kind:'transformer-residual-local',tasks:['language','reasoning','planning'],local:true,quality01:.5,latency01:.5,cost01:.12,reliability01:.5,continuity01:1,configured:false,available:false}),
     profile({id:'gemini',kind:'cloud-llm',tasks:['language','reasoning','planning','vision','audio'],local:false,quality01:.88,latency01:.52,cost01:.64,reliability01:.78}),
   ],
   decisions:[],
@@ -137,17 +138,21 @@ export class P40ModelEcologyEngine {
       );
       return {p,score};
     }).sort((a,b) => b.score-a.score);
-    const selected = scored[0]?.p;
+    const preferred = typeof input.preferredBackend === 'string'
+      ? scored.find(item => item.p.id === input.preferredBackend)
+      : undefined;
+    const winner = preferred ?? scored[0];
+    const selected = winner?.p;
     if(selected && this.state.current !== selected.id) this.state.metrics.switches++;
     this.state.current = selected?.id ?? 'local-fallback';
     this.state.metrics.decisions++;
-    this.state.metrics.avgScore01 = clamp(this.state.metrics.avgScore01*.97 + (scored[0]?.score ?? 0)*.03);
+    this.state.metrics.avgScore01 = clamp(this.state.metrics.avgScore01*.97 + (winner?.score ?? 0)*.03);
     this.state.decisions.unshift({
       task:input.task,
       selected:this.state.current,
-      alternatives:scored.slice(1,4).map(x => x.p.id),
-      score01:scored[0]?.score ?? 0,
-      reason:`qualityFit/resource/reliability;cloud=${input.allowCloud}`,
+      alternatives:scored.filter(item => item.p.id !== selected?.id).slice(0,3).map(item => item.p.id),
+      score01:winner?.score ?? 0,
+      reason:`qualityFit/resource/reliability;cloud=${input.allowCloud};preferred=${preferred ? preferred.p.id : 'none'}`,
       at:Date.now(),
     });
     this.state.decisions = this.state.decisions.slice(0,128);

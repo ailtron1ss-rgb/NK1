@@ -1,3 +1,76 @@
+## [NK1][OmeStro #28] Bound Neural Prosthesis HTTP client idle time (2026-11-18)
+- Apply a validated per-socket idle-I/O timeout to accepted sidecar connections; close stalled header/body reads and release bounded worker capacity.
+- Add NEURO_NP_HTTP_REQUEST_TIMEOUT_SECONDS (0.1–120 seconds, default 15) with finite-value validation and regression coverage for slow clients.
+- Keep model inference single-flight and independent of the socket timeout; no change to host-model generation budgets or fallback routing.
+
+## [NK1][OmeStro #28] Harden Neural Prosthesis sidecar crash recovery (2026-11-18)
+- Clear managed-child ownership, PID and readiness immediately when an owned sidecar exits unexpectedly; retain a bounded diagnostic reason.
+- Keep intentional shutdown distinct: the supervisor detaches its child before signalling it, so normal stop does not create a crash error.
+- Verify restart recovery after an unexpected exit and clear the previous crash diagnostic only after successful startup.
+- Include the supervisor source itself in both pull-request and feature-branch CI path filters.
+- This verifies process lifecycle recovery; it does not establish real-model quality, hardware latency or production readiness.
+
+## [NK1][OmeStro #28] Neural Prosthesis — hardened draft implementation (2026-11-17)
+
+- Add an optional PyTorch/Transformers residual-bottleneck backend with selected decoder-layer hooks, zero-start identity, request-scoped adapter activation and bounded per-token residual norm.
+- Keep the base model frozen; train only separate adapter parameters and export safetensors schema-v2 artifacts bound to an immutable model revision, model-config digest, exact layer layout and training-dataset fingerprint/count/epochs/seed.
+- Reject exact reuse of the training JSONL as validation/holdout; report paired-baseline loss deltas with deterministic bootstrap 95% intervals and reasons when human-review eligibility is not met. This is a conservative local gate, not proof of independent evaluation or task-quality improvement.
+- Keep artifacts quarantined until the host allowlists their exact manifest SHA-256; local evaluation cannot self-promote.
+- Protect sidecar inference and detailed status with optional bearer-token authentication, minimal public health checks and loopback Host-header validation; pass the server-only token through NK1's provider.
+- Integrate the optional sidecar through the existing local language provider boundary and P40 Model Ecology; preserve llama.cpp/Kobold/Gemini fallback.
+- Add isolated train/evaluate/service commands, focused Node/Python regressions and a dedicated GitHub Actions workflow.
+- **Draft PR #925 only.** The prior exact-head Node/Python CI passed before this hardening pass; latest-head CI remains to be checked. No real host model, device latency/memory or independent task-quality uplift has yet been measured. No merge or Release ZIP change is claimed.
+
+## [NK1][OmeStro #28] Neural Prosthesis — context-window safety (2026-11-17)
+
+- Cap sidecar context by both the operator limit and the model's advertised positional window; reserve space for generation tokens instead of overrunning model context.
+- Truncate the oldest prompt content first so the newest user turn is preserved.
+- Return prompt/completion token usage and a length finish reason for measurable inference budgets.
+- Add regression coverage for model/host context intersections and invalid host limits; no model-specific latency or memory claim is implied.
+
+## [NK1][OmeStro #28] Neural Prosthesis — opt-in sidecar lifecycle (2026-11-17)
+
+- Add an opt-in NK1 sidecar supervisor that starts the configured local Python interpreter without a shell, injects the research package into PYTHONPATH, and waits for an authenticated-boundary-safe loopback liveness response.
+- Reuse an already healthy manually-started sidecar without taking ownership; stop only the child process NK1 itself launched.
+- Bound startup and shutdown, terminate a child that fails to become healthy, keep failures non-fatal so existing language-provider fallbacks remain available, and expose supervisor status in NK1 diagnostics.
+- Keep automatic startup disabled by default; no model downloads or dependency installation are performed by NK1.
+
+## [NK1][OmeStro #28] Neural Prosthesis — cancellable sidecar startup (2026-11-17)
+
+- Make managed startup cancellable during NK1 shutdown: a stop request received while the liveness probe is pending prevents a later child spawn.
+- Ensure the server startup path does not call organism runtime initialization after shutdown has already begun.
+- Add a regression that holds the health probe, requests stop, releases the probe and verifies the Python process was never spawned.
+- Preserve the existing 3-second shutdown bound when autostart is disabled; allow up to 10 seconds when the explicitly managed model process needs termination.
+
+## [NK1][OmeStro #28] Neural Prosthesis — inference usage telemetry (2026-11-17)
+
+- Parse OpenAI-compatible prompt/completion/total token counts and finish reason from the sidecar response.
+- Require safe non-negative integer counters whose total exactly matches prompt plus completion and remains within the sidecar's 65,536-token context cap; ignore malformed telemetry without rejecting valid generated text.
+- Extend NK1's optional `LanguageResponse` metadata so token usage and finish reason survive into `RuntimeStep.language`.
+- Expose only the last sidecar usage counters, finish reason and timestamp through the read-only Neural Prosthesis diagnostic; do not store prompt or generated text in this metric snapshot.
+- Preserve backward compatibility for providers that do not report usage.
+
+## [NK1][OmeStro #28] Neural Prosthesis — validation-aware adapter training (2026-11-18)
+
+- Add an optional, separately fingerprinted validation JSONL dataset to offline residual-adapter training; training and validation fingerprints must differ and the source must remain unchanged while loading.
+- Measure adapter validation loss after every epoch, checkpoint the best residual-only state, stop after configurable patience/min-delta and restore the best checkpoint before exporting the candidate.
+- Bind the validation dataset fingerprint into training provenance while retaining backward compatibility with earlier schema-v2 manifests that do not contain it.
+- Refuse to reuse the recorded validation dataset as the final holdout; validation evaluation must match the recorded validation fingerprint.
+- Report requested/completed epochs, best validation epoch/loss and early-stop status without storing example text. Fixed-epoch behavior remains available when no validation dataset is supplied.
+
+## [NK1][OmeStro #28] Neural Prosthesis — validation and holdout review floor (2026-11-18)
+
+- Add regression coverage for validation early-stopping patience, material-improvement reset, non-finite validation loss and restoration of the best adapter-only checkpoint.
+- Raise the minimum paired holdout size for human-review eligibility from 5 to 30 examples; loss/CI gates remain necessary and are still not proof of improved task quality.
+- Keep training, validation and final holdout as separate data roles; the report continues to mark local evaluation as independently unverified and promotion-disallowed.
+
+## [NK1][OmeStro #28] Neural Prosthesis — bounded inference admission (2026-11-18)
+
+- Cap sidecar HTTP handler workers to a validated 2–64 pool (default 16), preventing unbounded thread growth under concurrent or slow requests.
+- Make the shared local model single-flight and reject overlapping generation with HTTP 429 before prompt tokenization, avoiding an unbounded backlog of token tensors.
+- Expose only concurrency limits in protected runtime diagnostics; preserve the existing NK1 provider fallback behavior on overload.
+- Add an HTTP regression proving the first inference completes while an overlapping request receives 429, plus bounds tests for invalid worker budgets.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.

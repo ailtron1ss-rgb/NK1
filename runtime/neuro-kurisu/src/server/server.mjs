@@ -25,6 +25,8 @@ import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local
 import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
 import { NeuroPlasticAdapterRegistry, parseTrustedNeuroPlasticApprovalKeys, parseTrustedNeuroPlasticPublicKeys, verifyNeuroPlasticApprovalSignature, verifyNeuroPlasticDetachedEd25519Signature, verifyNeuroPlasticEvaluationReceiptSignature } from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
 import { verifyNeuroPlasticAdapterArtifact } from '../organism/learning/NeuroPlasticArtifactVerifier.ts';
+import { NeuralProsthesisChatProvider } from '../organism/integration/local/NeuralProsthesisChatProvider.ts';
+import { NeuralProsthesisSidecarSupervisor } from '../organism/integration/local/NeuralProsthesisSidecarSupervisor.mjs';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
@@ -38,12 +40,11 @@ function loadNeuroPlasticTrustMap(raw, envName, approval = false) {
             : parseTrustedNeuroPlasticPublicKeys(raw, envName);
     }
     catch (error) {
-        // An invalid optional trust map disables only its promotion path.
-        // The base local-language provider remains available as a safe fallback.
         console.error('[Neuro-Plastic] invalid ' + envName + '; related adapter promotion is disabled:', error?.message || error);
         return new Map();
     }
 }
+const PROJECT_ROOT = path.resolve(ROOT, '../..');
 const PUBLIC = path.join(ROOT, 'public');
 const STATE = path.resolve(process.env.STATE_DIR || path.join(ROOT, 'state'));
 const stateFile = path.join(STATE, 'organism-core.json');
@@ -53,6 +54,25 @@ const PORT = Number(process.env.PORT || 3000);
 const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').replace(/\/$/, '');
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
+const NEURAL_PROSTHESIS_PROVIDER = new NeuralProsthesisChatProvider({ baseUrl: process.env.NEURO_NP_URL, model: process.env.NEURO_NP_MODEL || process.env.NEURO_NP_MODEL_ID || 'local-transformer', adapterId: process.env.NEURO_NP_ADAPTER_ID, apiToken: process.env.NEURO_NP_API_TOKEN, timeoutMs: LLM_TIMEOUT_MS });
+const NEURAL_PROSTHESIS_PREFER = process.env.NEURO_NP_PREFER === '1';
+const NEURAL_PROSTHESIS_AUTOSTART = process.env.NEURO_NP_AUTOSTART === '1';
+const NEURAL_PROSTHESIS_PYTHON = String(
+  process.env.NEURO_NP_PYTHON || (process.platform === 'win32' ? 'python' : 'python3'),
+).trim();
+const NEURAL_PROSTHESIS_PACKAGE_PATH = path.join(PROJECT_ROOT, 'research', 'neural-prosthesis');
+const NEURAL_PROSTHESIS_SIDECAR = new NeuralProsthesisSidecarSupervisor({
+  enabled: NEURAL_PROSTHESIS_AUTOSTART,
+  command: NEURAL_PROSTHESIS_PYTHON,
+  args: ['-m', 'neural_prosthesis.service'],
+  cwd: PROJECT_ROOT,
+  env: {
+    ...process.env,
+    PYTHONPATH: [NEURAL_PROSTHESIS_PACKAGE_PATH, process.env.PYTHONPATH || ''].filter(Boolean).join(path.delimiter),
+  },
+  baseUrl: NEURAL_PROSTHESIS_PROVIDER.baseUrl,
+  startupTimeoutMs: Number(process.env.NEURO_NP_AUTOSTART_TIMEOUT_MS || 120000),
+});
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 // Optional provider: configuration is server-only and disabled unless NK_MEM0_ENABLED=1.
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
@@ -115,6 +135,9 @@ let languageCallCount = 0;
 let lastUserModelPreferenceEventTick = 0;
 let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
+let lastNeuralProsthesisUsage = null;
+let lastNeuralProsthesisFinishReason = null;
+let lastNeuralProsthesisCompletedAt = 0;
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
 const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
 const rateBuckets = new Map();
@@ -314,7 +337,11 @@ async function invokeCanonicalSynapticAdapter(request, candidate, routing) {
 async function invokeLanguage(request) {
     const started = Date.now();
     const ecologyPreferredBackend = runtime.core.p40SelectModel('language', PHONE_MODE === false, request.maxTokens && request.maxTokens > 900 ? .82 : .72);
-    const preferredBackend = LOCAL_LANGUAGE_BACKEND_POLICY.select({ localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(), ecologyPreferredBackend });
+    const preferredBackend = NEURAL_PROSTHESIS_PROVIDER.configured() && NEURAL_PROSTHESIS_PREFER
+        ? 'neural-prosthesis'
+        : ecologyPreferredBackend === 'neural-prosthesis' && NEURAL_PROSTHESIS_PROVIDER.configured()
+            ? 'neural-prosthesis'
+            : LOCAL_LANGUAGE_BACKEND_POLICY.select({ localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(), ecologyPreferredBackend });
     const effectiveBackend = preferredBackend === 'local-fallback'
         ? 'deterministic-policy-fallback'
         : preferredBackend;
@@ -324,6 +351,11 @@ async function invokeLanguage(request) {
     const backend = String(response.backend ?? effectiveBackend ?? 'unknown');
     const provider = backend.split(':')[0];
     const model = backend.includes(':') ? backend.split(':').slice(1).join(':') : undefined;
+    if (provider === 'neural-prosthesis') {
+        lastNeuralProsthesisUsage = response.usage ?? null;
+        lastNeuralProsthesisFinishReason = response.finishReason ?? null;
+        lastNeuralProsthesisCompletedAt = finishedAt;
+    }
     languageCallCount++;
     lastLanguageBackend = backend;
     // Completion accounting is a synchronous best-effort state update. Keep telemetry
@@ -345,7 +377,7 @@ async function invokeLanguage(request) {
     for (const failure of response.failures || []) {
         const text = String(failure);
         const match = /^(kobold|gemini|llama\.cpp):/i.exec(text);
-        const failedProvider = match?.[1] || (text.startsWith('kobold') ? 'kobold' : text.startsWith('gemini') ? 'gemini' : text.startsWith('llama.cpp') ? 'llama.cpp' : undefined);
+        const failedProvider = match?.[1] || (text.startsWith('kobold') ? 'kobold' : text.startsWith('gemini') ? 'gemini' : text.startsWith('llama.cpp') ? 'llama.cpp' : text.startsWith('neural-prosthesis') ? 'neural-prosthesis' : undefined);
         if (failedProvider)
             await runtime.core.recordLanguageFailure(failedProvider, finishedAt - started, false).catch(() => { });
     }
@@ -538,6 +570,24 @@ async function tryLlamaCpp(request, failures) {
         return null;
     }
 }
+async function tryNeuralProsthesis(request, failures) {
+    if (request.signal?.aborted) throw new Error('neural-prosthesis-request-aborted');
+    if (!NEURAL_PROSTHESIS_PROVIDER.configured()) return null;
+    try {
+        return await NEURAL_PROSTHESIS_PROVIDER.generate({
+            system: request.system,
+            user: request.user,
+            maxTokens: request.maxTokens,
+            temperature: request.temperature,
+            signal: request.signal,
+        });
+    }
+    catch (error) {
+        if (request.signal?.aborted) throw new Error('neural-prosthesis-request-aborted');
+        failures.push(`neural-prosthesis:${error?.message || error}`);
+        return null;
+    }
+}
 async function tryKobold(request, failures) {
     try {
         const response = await fetch(`${KOBOLD_URL}/api/v1/generate`, {
@@ -597,14 +647,16 @@ async function generateLanguage(request) {
     if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     if (request.preferredBackend === 'deterministic-policy-fallback')
         return { ...localFallback(request), failures };
-    const preferred = ['llama.cpp', 'kobold', 'gemini'].includes(request.preferredBackend) ? request.preferredBackend : 'gemini';
-    const order = preferred === 'llama.cpp' ? ['llama.cpp', 'kobold', 'gemini']
-        : preferred === 'kobold' ? ['kobold', 'llama.cpp', 'gemini']
-            : ['gemini', 'llama.cpp', 'kobold'];
+    const preferred = ['neural-prosthesis', 'llama.cpp', 'kobold', 'gemini'].includes(request.preferredBackend) ? request.preferredBackend : 'gemini';
+    const order = preferred === 'neural-prosthesis' ? ['neural-prosthesis', 'llama.cpp', 'kobold', 'gemini']
+        : preferred === 'llama.cpp' ? ['llama.cpp', 'neural-prosthesis', 'kobold', 'gemini']
+            : preferred === 'kobold' ? ['kobold', 'neural-prosthesis', 'llama.cpp', 'gemini']
+                : ['gemini', 'llama.cpp', 'neural-prosthesis', 'kobold'];
     for (const provider of order) {
         if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
         let result = null;
-        if (provider === 'llama.cpp') result = await tryLlamaCpp(request, failures);
+        if (provider === 'neural-prosthesis') result = await tryNeuralProsthesis(request, failures);
+        else if (provider === 'llama.cpp') result = await tryLlamaCpp(request, failures);
         else if (provider === 'kobold') result = await tryKobold(request, failures);
         else result = await tryGemini(request, failures);
         if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
@@ -2010,6 +2062,24 @@ async function route(req, res) {
             if (status === 428) result.note = 'Supply a stable Idempotency-Key for the whole logical skill invocation. Reuse it for approval continuation and retries; no skill step was executed.';
             return json(res, status, result);
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/neural-prosthesis') {
+            return json(res, 200, {
+                ok: true,
+                configured: NEURAL_PROSTHESIS_PROVIDER.configured(),
+                endpoint: NEURAL_PROSTHESIS_PROVIDER.endpoint(),
+                model: NEURAL_PROSTHESIS_PROVIDER.model,
+                adapterId: NEURAL_PROSTHESIS_PROVIDER.adapterId,
+                preferredByHost: NEURAL_PROSTHESIS_PREFER,
+                sidecarSupervisor: NEURAL_PROSTHESIS_SIDECAR.snapshot(),
+                lastCompletion: {
+                    usage: lastNeuralProsthesisUsage,
+                    finishReason: lastNeuralProsthesisFinishReason,
+                    completedAt: lastNeuralProsthesisCompletedAt || null,
+                },
+                modelEcology: runtime.core.p40ModelEcologySnapshot(),
+                note: 'Optional loopback-only Transformers residual backend. Adapter artifacts remain inactive unless the host allowlists the exact manifest digest.',
+            });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/semantic-intelligence') {
             return json(res, 200, { ok: true, semanticIntelligence: runtime.core.p40SemanticSnapshot(), summary: runtime.core.p40SemanticSummary(), note: 'P40 semantic intelligence state and summary; not evidence of subjective consciousness.' });
         }
@@ -2604,16 +2674,36 @@ async function shutdown() {
         await runtime.core.endTemporalSession('shutdown', true).catch(() => { });
     await runtime.flush().catch(() => { });
     runtime.stop();
+    await NEURAL_PROSTHESIS_SIDECAR.stop().catch(() => false);
     await lock.release().catch(() => { });
     server.close(() => process.exit(0));
-    setTimeout(() => process.exit(0), 3000).unref();
+    setTimeout(() => process.exit(0), NEURAL_PROSTHESIS_AUTOSTART ? 10000 : 3000).unref();
 }
 process.on('SIGINT', () => void shutdown());
 process.on('SIGTERM', () => void shutdown());
 try {
-    await runtime.init();
-    await runtime.core.p40ConfigureModelBackend('llama.cpp', LLAMA_CPP_PROVIDER.configured());
-    runtimeReady = true;
+    if (NEURAL_PROSTHESIS_AUTOSTART) {
+        try {
+            const sidecar = await NEURAL_PROSTHESIS_SIDECAR.start();
+            console.log(
+                '[Neuro-Kurisu Neural Prosthesis] sidecar ready',
+                sidecar.reusedExisting ? '(reused existing local process)' : '(managed child process)',
+            );
+        }
+        catch (error) {
+            // The backend is optional; an unavailable sidecar must not prevent NK1 boot.
+            console.warn(
+                '[Neuro-Kurisu Neural Prosthesis] auto-start failed; provider fallbacks remain active:',
+                String(error?.message || error),
+            );
+        }
+    }
+    if (!shuttingDown) {
+        await runtime.init();
+        await runtime.core.p40ConfigureModelBackend('llama.cpp', LLAMA_CPP_PROVIDER.configured());
+        await runtime.core.p40ConfigureModelBackend('neural-prosthesis', NEURAL_PROSTHESIS_PROVIDER.configured());
+        runtimeReady = true;
+    }
 }
 catch (error) {
     console.error('[Neuro-Kurisu Evolution] runtime init failed:', error?.stack || error);

@@ -59,10 +59,20 @@ export interface LanguageRequest {
   neuroPlasticRisk01?: number;
 }
 
+export interface LanguageTokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 export interface LanguageResponse {
   text: string;
   backend: string;
   latencyMs: number;
+  /** Present only when the inference provider reports validated token counters. */
+  usage?: LanguageTokenUsage;
+  /** Provider completion reason, such as stop or length. */
+  finishReason?: string;
 }
 
 export type LanguageInvoker = (request: LanguageRequest) => Promise<LanguageResponse>;
