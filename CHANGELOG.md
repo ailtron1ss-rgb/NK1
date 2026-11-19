@@ -1,3 +1,9 @@
+## [NK1][Governance] Make ActionGateway machine-token classification locale-neutral (2026-11-19)
+- Use locale-independent `toLowerCase()` for permission, risk and idempotency classification; protocol identifiers must not depend on the host's language locale.
+- Preserve the adversarial regression proving uppercase `FILESYSTEM.WRITE` remains classified as filesystem/elevated and retains required governance-gate reporting when `toLocaleLowerCase()` is unavailable or throws.
+- Include `test:tool-input-contracts-workpass624` in the dedicated ActionGateway governance workflow.
+- Current-source implementation and regression were selectively integrated by PR #992. Historical donor PR #646 was superseded; its stale progress snapshot and old base metadata were not copied. No Release ZIP or `main` change is implied.
+
 ## [NK1][World] Resolve ensemble outcomes by exact canonical prediction ticket (2026-11-19)
 - Resolve action outcomes against the ensemble ticket stored in the canonical decision frame, not the oldest pending ticket sharing the same action.
 - When a canonical prediction ID is supplied but its stored frame/ticket is unavailable, fail closed for ensemble calibration; retain action-only FIFO compatibility only for callers without a prediction ID.
