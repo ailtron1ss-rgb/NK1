@@ -250,7 +250,7 @@ export class HexisHmxCanonicalMemoryBridge {
       }
     }
 
-    const intent = doc.export_intent as HexisHmxIntent;
+    const intent = (input.intent ?? doc.export_intent) as HexisHmxIntent;
     const stage = this.adaptation.stageHmx({ document: doc, intent, strategy: 'additive' });
     if (stage.conflicts.length) {
       return { ok: false, memoryCount: 0, episodeCount: 0, relationshipCount: 0, clusterCount: 0,
@@ -280,6 +280,9 @@ export class HexisHmxCanonicalMemoryBridge {
     }
     if (stage.status === 'rejected') {
       return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, linksApplied: 0, refMap: {}, warnings: [], error: 'stage-rejected' };
+    }
+    if (stage.status !== 'accepted') {
+      return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, linksApplied: 0, refMap: {}, warnings: [], error: 'stage-not-accepted' };
     }
 
     const rawMemories = stage.stagedSections.memories ?? [];
@@ -573,13 +576,6 @@ export class HexisHmxCanonicalMemoryBridge {
       record.input.contradictionLinks = [...new Set(relation.contradiction)];
       if (relation.edges.length && record.input.context) {
         record.input.context.hmxRelationshipEdges = JSON.stringify(relation.edges).slice(0, 4000);
-      }
-    }
-
-    if (stage.status === 'staged') {
-      const accepted = this.adaptation.decideHmx(stagingId, 'accept');
-      if (!accepted || accepted.status !== 'accepted') {
-        return { ok: false, stagingId, exportId: stage.exportId, inserted: 0, replayed: 0, relationshipsApplied: 0, clustersApplied: 0, linksApplied: 0, refMap: {}, warnings, error: 'stage-acceptance-failed' };
       }
     }
 

@@ -62,6 +62,12 @@ const adaptation = new HexisAdaptationFabric();
 const memory = new MemoryFabricFake();
 const bridge = new HexisHmxCanonicalMemoryBridge(adaptation, memory);
 
+function acceptAndCommit(targetBridge, targetAdaptation, stage) {
+  const accepted = targetAdaptation.decideHmx(stage.stagingId, 'accept');
+  assert.equal(accepted?.status, 'accepted', 'canonical apply must follow a distinct accepted stage');
+  return targetBridge.commit(stage.stagingId);
+}
+
 const staged = bridge.stage({ document: document() });
 assert.equal(staged.ok, true);
 assert.equal(staged.memoryCount, 2);
@@ -71,7 +77,11 @@ assert.equal(staged.clusterCount, 1);
 assert.deepEqual(staged.deferredSections, []);
 assert.ok(staged.stagingId);
 
-const committed = bridge.commit(staged.stagingId);
+const unacceptedCommit = bridge.commit(staged.stagingId);
+assert.equal(unacceptedCommit.ok, false, 'a staged HMX document must not write canonical memory before explicit acceptance');
+assert.equal(unacceptedCommit.error, 'stage-not-accepted');
+assert.equal(memory.rows.size, 0, 'rejected pre-acceptance apply must leave the canonical memory owner unchanged');
+const committed = acceptAndCommit(bridge, adaptation, staged);
 assert.equal(committed.ok, true);
 assert.equal(committed.inserted, 4);
 assert.equal(committed.replayed, 0);
@@ -131,7 +141,7 @@ const orphanCluster = bridge.stage({ document: document({
 }) });
 assert.equal(orphanCluster.ok, true);
 assert.equal(orphanCluster.clusterCount, 2, 'stage reports named cluster candidates');
-const orphanCommit = bridge.commit(orphanCluster.stagingId);
+const orphanCommit = acceptAndCommit(bridge, adaptation, orphanCluster);
 assert.equal(orphanCommit.ok, true);
 assert.equal(orphanCommit.clustersApplied, 0, 'cluster without imported members must not create a ghost anchor');
 assert.equal(orphanCommit.linksApplied, 0);
@@ -148,7 +158,7 @@ const dangling = bridge.stage({ document: document({
   },
 }) });
 assert.equal(dangling.ok, true);
-const danglingCommit = bridge.commit(dangling.stagingId);
+const danglingCommit = acceptAndCommit(bridge, adaptation, dangling);
 assert.equal(danglingCommit.ok, true);
 assert.equal(danglingCommit.relationshipsApplied, 0);
 assert.equal(danglingCommit.linksApplied, 0);
@@ -192,7 +202,7 @@ const normalizedStage = bridge.stage({ document: document({
   }] },
 }) });
 assert.equal(normalizedStage.ok, true);
-const normalizedCommit = bridge.commit(normalizedStage.stagingId);
+const normalizedCommit = acceptAndCommit(bridge, adaptation, normalizedStage);
 assert.equal(normalizedCommit.ok, true);
 assert.ok(normalizedCommit.warnings.some(w => w.code === 'memory-kind-normalized'));
 assert.ok(normalizedCommit.warnings.some(w => w.code === 'future-source-time-ignored'));
@@ -232,7 +242,7 @@ const integratedStage = systems.memory.hexisHmxCanonicalMemoryBridge.stage({
 assert.equal(integratedStage.ok, true);
 assert.equal(systems.hexisAdaptation.getHmxStage(integratedStage.stagingId).sourceSubjectId, 'donor-instance-1',
   'the staged record must preserve the donor instance identity');
-const integratedCommit = systems.memory.hexisHmxCanonicalMemoryBridge.commit(integratedStage.stagingId);
+const integratedCommit = acceptAndCommit(systems.memory.hexisHmxCanonicalMemoryBridge, systems.hexisAdaptation, integratedStage);
 assert.equal(integratedCommit.ok, true, JSON.stringify(integratedCommit));
 const canonicalId = integratedCommit.refMap['memory:runtime'];
 const canonical = systems.memory.fabric.getCanonicalMemory(canonicalId);
@@ -252,7 +262,7 @@ const sameContentDifferentExport = systems.memory.hexisHmxCanonicalMemoryBridge.
   }),
 });
 assert.equal(sameContentDifferentExport.ok, true);
-const secondImport = systems.memory.hexisHmxCanonicalMemoryBridge.commit(sameContentDifferentExport.stagingId);
+const secondImport = acceptAndCommit(systems.memory.hexisHmxCanonicalMemoryBridge, systems.hexisAdaptation, sameContentDifferentExport);
 assert.equal(secondImport.ok, true);
 assert.notEqual(secondImport.refMap['memory:runtime-copy'], canonicalId,
   'a distinct HMX export must preserve its own deterministic provenance reference even when content is identical');
@@ -276,7 +286,7 @@ const graphStage = systems.memory.hexisHmxCanonicalMemoryBridge.stage({
   }),
 });
 assert.equal(graphStage.ok, true);
-const graphCommit = systems.memory.hexisHmxCanonicalMemoryBridge.commit(graphStage.stagingId);
+const graphCommit = acceptAndCommit(systems.memory.hexisHmxCanonicalMemoryBridge, systems.hexisAdaptation, graphStage);
 assert.equal(graphCommit.ok, true, JSON.stringify(graphCommit));
 assert.equal(graphCommit.linksApplied, 4);
 const g1 = systems.memory.fabric.getCanonicalMemory(graphCommit.refMap['memory:g1']);
@@ -327,7 +337,7 @@ const redactionStage = systems.memory.hexisHmxCanonicalMemoryBridge.stage({
   }),
 });
 assert.equal(redactionStage.ok, true);
-const redactionCommit = systems.memory.hexisHmxCanonicalMemoryBridge.commit(redactionStage.stagingId);
+const redactionCommit = acceptAndCommit(systems.memory.hexisHmxCanonicalMemoryBridge, systems.hexisAdaptation, redactionStage);
 assert.equal(redactionCommit.ok, true, JSON.stringify(redactionCommit));
 const redactedMemory = systems.memory.fabric.getCanonicalMemory(redactionCommit.refMap['memory:sensitive']);
 const redactedEpisode = systems.memory.fabric.getCanonicalMemory(redactionCommit.refMap['episode:sensitive']);
