@@ -15,6 +15,14 @@ export interface AvatarMotorIntentInput {
   hasFreshTurn: boolean;
   turnText: string;
   awake: boolean;
+  energy?: number;
+  cognitiveLoad?: number;
+  uncertainty?: number;
+  socialNeed?: number;
+  novelty?: number;
+  goalPressure?: number;
+  predictionError?: number;
+  traits?: Readonly<Record<string, number>>;
 }
 
 export interface AvatarMotorIntentPlan {
@@ -54,24 +62,43 @@ export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMoto
   const action = typeof input.action === "string" ? input.action : "wait";
   const valence = clamp(input.valence, 0, 1);
   const arousal = clamp(input.arousal, 0, 1);
+  const energy = clamp(input.energy ?? 0.72, 0, 1);
+  const cognitiveLoad = clamp(input.cognitiveLoad ?? 0.22, 0, 1);
+  const uncertainty = clamp(input.uncertainty ?? 0.4, 0, 1);
+  const socialNeed = clamp(input.socialNeed ?? 0.35, 0, 1);
+  const novelty = clamp(input.novelty ?? 0.45, 0, 1);
+  const goalPressure = clamp(input.goalPressure ?? 0.2, 0, 1);
+  const predictionError = clamp(input.predictionError ?? 0.3, 0, 1);
+  const traits = input.traits ?? {};
+  const trait = (name: string, fallback: number): number => clamp(traits[name] ?? fallback, 0, 1);
+  const curiosityTrait = trait("curiosity", 0.7);
+  const warmthTrait = trait("warmth", 0.63);
+  const playfulnessTrait = trait("playfulness", 0.45);
+  const composureTrait = trait("composure", 0.7);
+  const guardednessTrait = trait("guardedness", 0.5);
   const text = (typeof input.turnText === "string" ? input.turnText : "").normalize("NFKC").trim();
+  // `action` is the last selected organism option, not a conversation lifecycle signal.
+  // A stale `respond` must not keep an exhausted, silent avatar in the active turn.
+  const activeConversation = input.speaking || input.hasFreshTurn;
+  const cognitivePressure = cognitiveLoad >= 0.82 || uncertainty >= 0.84 || predictionError >= 0.84;
 
   let intent: AvatarMotorAction;
   let reason: string;
 
-  if (!input.awake || action === "rest") {
+  if (!input.awake || action === "rest" || (!activeConversation && energy <= 0.12)) {
     intent = "rest";
-    reason = "low-activity-or-rest-state";
-  } else if (input.thinking || action === "reflect") {
+    reason = !input.awake || action === "rest" ? "low-activity-or-rest-state" : "low-energy-homeostatic-rest";
+  } else if (input.thinking || action === "reflect" || (!activeConversation && cognitivePressure)) {
     intent = "reflect";
-    reason = input.thinking ? "active-cognitive-workspace" : "organism-selected-reflection";
-  } else if (input.speaking || input.hasFreshTurn || action === "respond") {
-    if (COMFORT_CUES.test(text) || (emotion === "sadness" || emotion === "anxiety") && valence < 0.48) {
+    reason = cognitivePressure ? "high-cognitive-load-or-uncertainty" : input.thinking ? "active-cognitive-workspace" : "organism-selected-reflection";
+  } else if (activeConversation) {
+    if (COMFORT_CUES.test(text) || ((emotion === "sadness" || emotion === "anxiety") && valence < 0.48)
+      || (socialNeed >= 0.82 && warmthTrait >= 0.62)) {
       intent = "comfort";
-      reason = "affective-support-context";
-    } else if (EXPLANATION_CUES.test(text)) {
+      reason = socialNeed >= 0.82 ? "social-need-and-warmth-trait" : "affective-support-context";
+    } else if (EXPLANATION_CUES.test(text) || goalPressure >= 0.84) {
       intent = "explain";
-      reason = "explanatory-language-and-response-context";
+      reason = goalPressure >= 0.84 ? "high-goal-pressure-explanatory-intent" : "explanatory-language-and-response-context";
     } else if (QUESTION_CUES.test(text) || emotion === "curiosity") {
       intent = "reflect";
       reason = "question-or-curiosity-cue";
@@ -79,9 +106,10 @@ export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMoto
       intent = "respond";
       reason = "new-or-active-response";
     }
-  } else if (action === "explore" || action === "verify") {
+  } else if (action === "explore" || action === "verify" || (novelty >= 0.82 && curiosityTrait >= 0.68)) {
     intent = "inspect";
-    reason = action === "explore" ? "organism-selected-exploration" : "organism-selected-verification";
+    reason = novelty >= 0.82 && curiosityTrait >= 0.68 ? "novelty-and-curiosity-trait" :
+      action === "explore" ? "organism-selected-exploration" : "organism-selected-verification";
   } else {
     intent = "listen";
     reason = "no-active-motor-goal";
@@ -92,21 +120,27 @@ export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMoto
     intent === "reflect" ? "TapHead" :
     intent === "inspect" || intent === "explain" || intent === "comfort" ? "TapBody" : "Special";
 
-  // The bundled model has exactly two Special motions; other groups have one each.
-  const motionIndex: 0 | 1 = motionGroup === "Special" &&
-    (emotion === "joy" || valence >= 0.68 || /(?:\b(?:great|excellent|excited|happy)\b|отлично|прекрасно|здорово|ура)/iu.test(text))
-      ? 1 : 0;
+  const positiveCue = emotion === "joy" || valence >= 0.68
+    || /(?:\b(?:great|excellent|excited|happy)\b|отлично|прекрасно|здорово|ура)/iu.test(text);
+  const motionIndex: 0 | 1 = motionGroup === "Special" && positiveCue && playfulnessTrait >= 0.35 ? 1 : 0;
 
   const actionTilt =
     intent === "reflect" ? -0.016 :
     intent === "inspect" ? -0.008 :
     intent === "comfort" ? 0.018 : 0;
-  const headTilt = clamp(EMOTION_TILT[emotion] + actionTilt, -0.15, 0.15);
+  const traitTilt = (novelty - 0.45) * (curiosityTrait - 0.5) * 0.035
+    + (socialNeed - 0.35) * (warmthTrait - 0.5) * -0.025
+    + (uncertainty - 0.4) * (guardednessTrait - 0.5) * 0.018;
+  const headTilt = clamp((EMOTION_TILT[emotion] + actionTilt + traitTilt) * (1 - composureTrait * 0.12), -0.15, 0.15);
+  const regulationDamping = energy < 0.2 || cognitiveLoad >= 0.9 || uncertainty >= 0.92;
   const gesture =
-    intent === "inspect" || intent === "explain" ||
-    (intent === "reflect" && arousal >= 0.28) ||
-    (intent === "comfort" && arousal >= 0.2) ||
-    (intent === "respond" && arousal >= 0.45);
+    !regulationDamping && (
+      (intent === "inspect" && (novelty >= 0.55 || action === "explore")) ||
+      intent === "explain" ||
+      (intent === "reflect" && arousal >= 0.28 && cognitiveLoad < 0.82) ||
+      (intent === "comfort" && (arousal >= 0.2 || socialNeed >= 0.82) && warmthTrait >= 0.5) ||
+      (intent === "respond" && (arousal >= 0.45 || (socialNeed >= 0.72 && warmthTrait >= 0.7)))
+    );
 
   return { action: intent, motionGroup, motionIndex, headTilt, gesture, reason };
 }
