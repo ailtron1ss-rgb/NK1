@@ -115,9 +115,12 @@ Those paths are not present in current source. However, the existing P23 store, 
 
 ### PR #969 — N.E.K.O. ASR current-source port
 
-- 10 changed paths, 1 current-source adapter port, focused tests and workflow.
-- At the queried exact PR head, many repository-wide workflows had completed with failures; only a subset succeeded. This is not a passing gate and must not be merged until the failures are triaged and the exact head is revalidated against the then-current source SHA.
-- The older donor PR #811 remains separate; do not merge its 342-commit-old branch wholesale.
+- 10 changed paths; host-injected provider boundary, transcript adapter, runtime wiring, focused tests, dedicated workflow and Russian contract.
+- The first inspected interim head `92a189a1...` had numerous failed repository-wide workflows. This was superseded by the rebased/final head `5a57c0285d5bec879e818ddbcbcf217c35e4de57`.
+- Final exact-head Actions: **48/48 success**, 0 failures, 0 pending.
+- PR #969 was merged in parallel at `d7b8bd3f82e342509a2a0bc75e28af685cf21321`; current source includes its 10-file port.
+- The older donor PR #811 remains untouched as provenance; its 342-commit-old branch was not merged wholesale.
+- No ASR sidecar, VAD, microphone transport or external provider was deployed; no release/readiness promotion is implied.
 
 ## Existing consolidation work from parallel sessions
 
@@ -144,3 +147,11 @@ Use a small number of long-lived aspect branches and short task branches. Do not
 - Completed: one small validated runtime hardening PR merged (#970); 74 exact upstream source/reference files selectively transferred from #91; live branch/PR census refreshed; duplicate-HEAD aliases and open dependencies rechecked; old HeXis, Hermes and HMX branches compared at path/blob level.
 - Not completed: global reduction to a few dozen branch refs, full line-by-line review of every branch, full October 19 ZIP byte parity, and deletion/retirement of branch refs.
 - No project runtime behavior was claimed from the archived Python/SQL references, and no old runtime implementation was blindly replaced.
+
+
+## Concurrent source update verified after the initial report draft
+
+- PR #969 advanced after the first workflow read; the initially failing interim head `92a189a1...` is not the merged head.
+- Final PR head `5a57c0285d5bec879e818ddbcbcf217c35e4de57`: **48/48 successful Actions runs**.
+- PR #969 merge commit: `d7b8bd3f82e342509a2a0bc75e28af685cf21321`.
+- The report was added after the #970 squash merge and after the 74-file HeXis archive transfer. Its commit is `1c569f3d857da35aa710516de59e3f50fb743b13`; the source state at that point already included the N.E.K.O. port.
