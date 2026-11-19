@@ -1,3 +1,8 @@
+## [NK1][World] Resolve ensemble outcomes by exact canonical prediction ticket (2026-11-19)
+- Resolve action outcomes against the ensemble ticket stored in the canonical decision frame, not the oldest pending ticket sharing the same action.
+- When a canonical prediction ID is supplied but its stored frame/ticket is unavailable, fail closed for ensemble calibration; retain action-only FIFO compatibility only for callers without a prediction ID.
+- Bound ephemeral decision-frame storage, remove consumed frames, and test reverse completion order for two outstanding same-action predictions.
+
 ## [NK1][Code Assimilation] Harden authenticated license receipt immutability and candidate scoping (2026-11-02)
 - Deep-freeze the nested license decision and its permitted-use array before registering an authenticated process-local receipt, preventing post-verification permission mutation.
 - Require every `isCodeAssimilationUseAllowed` check to supply the expected exact candidate fingerprint; receipts cannot authorize a different component even when the signer is trusted.
