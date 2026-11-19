@@ -138,3 +138,34 @@ A fresh full paginated read returned **1,001 branch refs**, **985 unique HEAD co
 A full open-PR read returned **348 open PRs**. Four of the 17 equal-HEAD aliases are still used as bases by open PRs: #109 (`nk1-all-branches-merge-2026-10-23`), #91 and #86 (`rebuild`), and #124 (`workpass206-runtime-evaluator-wiring`). The other 13 names were not found as head/base refs of open PRs at this snapshot; their historical PR, tag/release, workflow, documentation and external-consumer dependencies are not yet exhaustively cleared.
 
 This census is newer than the earlier 972/998/999 snapshots in this log. The branch ref total has increased with parallel work while consolidation has been underway; merges alone do not reduce refs. No branch ref was deleted or force-repointed. The available GitHub actions for this session expose no branch deletion operation.
+
+
+## Selective consolidation — ActionGateway identifiers and Affect → Voice (PRs #992 / #997)
+
+### ActionGateway locale-neutral machine-token handling
+
+PR [#992](https://github.com/ailtron1ss-rgb/NK1/pull/992) is merged into `workpass70-source`.
+
+- Current-source integration branch: `consolidation/action-gateway-locale-neutral-current-source-20261119`.
+- Exact PR head: `97528b736972525be3a8ed58fa71931c37b3a2e3`; merge commit: `45215c5f5a4e494570d9251b128a48929ced0785`.
+- PR changed 3 files (+35/-3). It normalizes machine tool IDs, capability and idempotency classification with locale-independent `toLowerCase()`, preserving the real uppercase `FILESYSTEM.WRITE` elevated-risk / required-gate regression and registering the existing tool input/output contract test in the current governance workflow.
+- Exact-head Actions read: **8/8 SUCCESS** (Action Gateway governance, action input-boundary contract, unified organism runtime, WorkPass79, NeuroCore core regression and supporting gates).
+- Historical donor PR [#646](https://github.com/ailtron1ss-rgb/NK1/pull/646) was reviewed as a five-path change and closed unmerged on 2026-11-19. Its implementation/test/workflow behavior is superseded by #992; its old `PROJECT_PROGRESS_RU.md` snapshot was not copied because it is dated 2026-11-01 and still says the change is unmerged/CI-pending. A current changelog record was re-authored in commit `404617afd7efba7966809a8b19d2c2861c64f9b6`. The old donor branch remains for provenance; no branch ref was deleted.
+
+### Canonical Affect → Voice projection
+
+PR [#997](https://github.com/ailtron1ss-rgb/NK1/pull/997) is merged into `workpass70-source`.
+
+- Consolidated donor scope: #653 (affective dominance → voice prosody) and #895 (latest canonical appraisal episode / aggregate fallback).
+- Exact PR head: `c1bb9abeb582521d3d37774643879c47860eb9c4`; merge commit: `448db881a9c2117b5633a7e058bd7e5a64450e7c`.
+- Five changed files: `OrganismRuntime.ts`, `VoiceEmbodiment.ts`, the shared voice-context regression, runtime package script and unified runtime workflow.
+- Behavior: latest canonical appraisal episode → validated aggregate fallback → affect-specific cognitive-field fallback. Dominance remains separate from cognitive coherence; missing dominance uses a neutral value. Low/high appraisal control drives bounded rate/pause/emphasis adjustments.
+- Exact-head Actions read: **51/51 SUCCESS**. All five changed Git blob SHAs were independently compared between the donor branch and `workpass70-source`; all five matched exactly.
+- No old donor implementation was merged wholesale, no donor branch was deleted, and no `main` or 2026-10-19 Release ZIP change was included.
+- A durable changelog entry was added in commit `68afb9908c998db6214016d4d8ddb4ae5f9180e3`.
+
+## Census refresh after parallel consolidation
+
+A fresh complete paginated read during this pass returned **1,001 branch refs**: ten pages of 100 plus one final page of 1; the following cursor page was empty. This independently confirms the 1,001-ref snapshot recorded above. The branch total is not a count of unique content: the earlier full tree/HEAD census recorded 985 unique HEAD commits and one shared-HEAD group of 17 branch names.
+
+No branch refs were deleted or force-repointed in this pass. PR closure/merge status is tracked separately from ref retirement; closing or merging a PR does not itself remove its source branch. The 1001 refs remain above the desired few-dozen target, and a full historical/tag/workflow/deployment/external-reference clearance is still required before any branch deletion.
