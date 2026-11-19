@@ -112,3 +112,29 @@ The test/restore logic explicitly rejects root/nested Proxy inputs using Node's 
 - `workpass70-source` was re-read after merge; do not infer the current branch count from the prior census.
 - PR #980 is merged; #666 and #668 are closed as superseded. Donor branch refs remain present pending a separate exhaustive ref-retirement audit.
 - This B299 merge adds no evidence that the complete 972-branch repository has been line-by-line reviewed or that October 19 release ZIP contents match source bytes.
+
+
+## Selective consolidation — P2702 persistent personality restore (PR #998)
+
+PR [#998](https://github.com/ailtron1ss-rgb/NK1/pull/998) was merged into `workpass70-source`.
+
+- Donor #669: canonical invariant/adaptive/value names must remain aligned with their numeric vectors; the old patch was based on `608435493b4af3b4a222d385f1b77d978d18583b`.
+- Donor #676: harden persistence restoration against accessors, proxies, sparse arrays, malformed vectors/counters and invalid action/trust records; it shares the same old base and overlapping `P2702PersistentPersonalityDynamics.ts` restore block.
+- Current source already contained most of the old donor hardening. The new integration did not replay either obsolete restore implementation; it added the remaining missing transparent-Proxy guard and canonical name-to-vector alignment.
+- Transparent root, nested-record and array Proxies are rejected via `node:util.types.isProxy` before prototype, key or property-descriptor operations. The regression asserts zero Proxy traps.
+- Invariant, adaptive and value vectors are now restored only if their accompanying name arrays exactly equal the canonical profile order; mismatched labels restore the canonical priors rather than silently reinterpret dimensions.
+- Malformed numeric fixtures retain canonical names, so the existing finite/range clamps and fallback rules remain independently tested.
+- TDD evidence: red #44513467627 showed 25 Proxy traps (expected 0); red #44546259378 showed reversed invariant names reinterpreted vector positions. Fixture setup defects were corrected before counting these as behavioral REDs.
+- Green pre-rebase run #44547203427: SUCCESS.
+- Rebased exact head `30dbc823a736274c1d73cf3d9930b5dbafee5c4f`: 7/7 PR checks SUCCESS, no failures; an additional earlier exact-head pass on its parent candidate also completed.
+- Merge commit: `b36046146c056abbf11ca280bc7d1eb2ea2c4105`, parent `448db881a9c2117b5633a7e058bd7e5a64450e7c`.
+- Files: 3; additions 81; deletions 6. No package manifest, lockfile, dependency, Release ZIP or `main` changes.
+- Donor PRs #669/#676 were closed as superseded with comments pointing to #998; both donor branches remain present for provenance.
+
+## Fresh branch census after P2702 merge
+
+A fresh full paginated read returned **1,001 branch refs**, **985 unique HEAD commits**, and **16 excess names** beyond one branch name per unique HEAD. The 16 excess refs remain one exact group of 17 names all at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`. No new duplicate-HEAD group was identified in that census.
+
+A full open-PR read returned **348 open PRs**. Four of the 17 equal-HEAD aliases are still used as bases by open PRs: #109 (`nk1-all-branches-merge-2026-10-23`), #91 and #86 (`rebuild`), and #124 (`workpass206-runtime-evaluator-wiring`). The other 13 names were not found as head/base refs of open PRs at this snapshot; their historical PR, tag/release, workflow, documentation and external-consumer dependencies are not yet exhaustively cleared.
+
+This census is newer than the earlier 972/998/999 snapshots in this log. The branch ref total has increased with parallel work while consolidation has been underway; merges alone do not reduce refs. No branch ref was deleted or force-repointed. The available GitHub actions for this session expose no branch deletion operation.
