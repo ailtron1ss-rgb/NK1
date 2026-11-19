@@ -70,22 +70,64 @@ export class PerceptualEvidenceCompiler{
     const records:PerceptualEvidenceRecord[]=[];
     if(semantic){
       const entities=semantic.entities.filter(e=>e.present01>.3).slice(0,16);
-      for(const e of entities){records.push({id:`pe-${stableHash(`entity:${e.id}:${e.lastSeenAt}`)}`,at:e.lastSeenAt,modality:e.modalities[0]??'world',claim:`entity:${e.label}`,confidence01:clamp(e.confidence01),uncertainty01:1-clamp(e.confidence01),kind:e.modalities.includes('sensor')?'observed':e.modalities.includes('vision')||e.modalities.includes('audio')?'model-output':'derived',parents:[]});}
-      for(const r of semantic.relations.slice(0,16)){records.push({id:`pe-${stableHash(`relation:${r.id}:${r.at}`)}`,at:r.at,modality:r.modality,claim:`relation:${r.from}:${r.relation}:${r.to}`,confidence01:clamp(r.confidence01),uncertainty01:1-clamp(r.confidence01),kind:r.evidenceKind==='observed'?'observed':r.evidenceKind==='model-output'?'model-output':'derived',parents:[...semantic.entities.filter(e=>e.id===r.from||e.id===r.to).slice(0,2).map(e=>e.id)]});}
-      if(semantic.scene.label!=='unknown') records.push({id:`pe-${stableHash(`scene:${semantic.scene.label}:${semantic.scene.at}`)}`,at:semantic.scene.at,modality:'fusion',claim:`scene:${semantic.scene.label}`,confidence01:semantic.scene.confidence01,uncertainty01:1-semantic.scene.confidence01,kind:'derived',parents:[]});
+      for(const e of entities){
+        const modalities=e.modalities.length?e.modalities:['world' as const];
+        for(const modality of modalities){
+          const evidenceKind=e.modalityEvidenceKinds?.[modality]??'unresolved';
+          const observedAt=e.modalityLastSeenAt?.[modality]??e.lastSeenAt;
+          records.push({
+            id:`pe-${stableHash(`entity:${e.id}:${modality}:${observedAt}`)}`,
+            at:observedAt,
+            modality,
+            claim:`entity:${e.id}:${e.label}`,
+            confidence01:clamp(e.confidence01),
+            uncertainty01:1-clamp(e.confidence01),
+            kind:evidenceKind,
+            parents:[e.id],
+          });
+        }
+      }
+      for(const r of semantic.relations.slice(0,16)){
+        records.push({
+          id:`pe-${stableHash(`relation:${r.id}:${r.at}`)}`,
+          at:r.at,modality:r.modality,
+          claim:`relation:${r.id}:${r.from}:${r.relation}:${r.to}`,
+          confidence01:clamp(r.confidence01),uncertainty01:1-clamp(r.confidence01),
+          kind:r.evidenceKind,
+          parents:[r.fromEntityId,r.toEntityId].filter((x):x is string=>Boolean(x)),
+        });
+      }
+      for(const event of semantic.events.slice(0,16)){
+        const modalities=event.modalities.length?event.modalities:['world' as const];
+        for(const modality of modalities){
+          const evidenceKind=event.modalityEvidenceKinds?.[modality]??'unresolved';
+          const observedAt=event.modalityLastSeenAt?.[modality]??event.lastAt;
+          records.push({
+            id:`pe-${stableHash(`event:${event.id}:${modality}:${observedAt}`)}`,
+            at:observedAt,modality,
+            claim:`event:${event.id}:${event.label}`,
+            confidence01:clamp(event.confidence01),
+            uncertainty01:1-clamp(event.confidence01),
+            kind:evidenceKind,
+            parents:[event.id],
+          });
+        }
+      }
+      if(semantic.scene.label!=='unknown') records.push({id:`pe-${stableHash(`scene:${semantic.scene.label}:${semantic.scene.at}`)}`,at:semantic.scene.at,modality:'fusion',claim:`scene:${semantic.scene.label}`,confidence01:semantic.scene.confidence01,uncertainty01:1-semantic.scene.confidence01,kind:semantic.sceneEvidenceKind??'unresolved',parents:[]});
     }
     if(native){
       for(const cue of native.semanticCues.slice(0,12)) records.push({id:`pe-${stableHash(`cue:${cue.id}`)}`,at:cue.at,modality:cue.modality,claim:`cue:${cue.label}`,confidence01:clamp(cue.confidence01),uncertainty01:1-clamp(cue.confidence01),kind:'derived',parents:[]});
     }
     const dedup=new Map<string,PerceptualEvidenceRecord>();
-    for(const r of records){const key=r.claim;const prev=dedup.get(key);if(!prev||r.confidence01>prev.confidence01)dedup.set(key,r);}
-    for(const r of this.state.evidence){const key=r.claim;if(!dedup.has(key))dedup.set(key,r);}
+    const identity=(r:PerceptualEvidenceRecord)=>`${r.modality}:${r.claim}`;
+    for(const r of records){const key=identity(r);const prev=dedup.get(key);if(!prev||r.at>prev.at)dedup.set(key,r);}
+    for(const r of this.state.evidence){const key=identity(r);if(!dedup.has(key))dedup.set(key,r);}
     this.state.evidence=[...dedup.values()].sort((a,b)=>b.at-a.at).slice(0,96);
     const modalityReliability=semantic?Object.values(semantic.modalityReliability).map(x=>x.reliability01):[];
     const spread=modalityReliability.length?Math.max(...modalityReliability)-Math.min(...modalityReliability):0;
     const unresolved=semantic?semantic.pending.filter(x=>x.status==='pending').length:0;
     const coverage=semantic?Math.min(1,(semantic.entities.filter(e=>e.present01>.3).length/8))*0.72 + Math.min(1,(semantic.relations.length/8))*0.28:0;
-    const externalLike=records.length?records.filter(r=>r.kind==='observed'||r.modality==='vision'||r.modality==='audio'||r.modality==='sensor').length/records.length:0;
+    const externalLike=records.length?records.filter(r=>r.kind==='observed').length/records.length:0;
     this.state.scene=semantic?.scene.label??this.state.scene;
     this.state.metrics.grounding01=clamp(this.state.metrics.grounding01*.9+coverage*.1);
     this.state.metrics.semanticCoverage01=clamp(this.state.metrics.semanticCoverage01*.85+coverage*.15);

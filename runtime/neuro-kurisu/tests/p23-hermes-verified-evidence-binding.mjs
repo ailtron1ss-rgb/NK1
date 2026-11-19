@@ -83,7 +83,7 @@ assert.equal(versionRejected.accepted, false);
 assert.ok(versionRejected.reasons.includes('signed-shadow-evidence-not-trusted'));
 
 const tampered = structuredClone(validObservation);
-tampered.artifact.signature = 'tampered-signature';
+tampered.artifact.payload.runtimeVersion = 'tampered-runtime';
 const tamperRejected = engine.bindReflectiveCandidateEvidence([report()], [tampered], candidate, verifier);
 assert.equal(tamperRejected.accepted, false);
 assert.ok(tamperRejected.reasons.includes('signed-shadow-evidence-not-trusted'));

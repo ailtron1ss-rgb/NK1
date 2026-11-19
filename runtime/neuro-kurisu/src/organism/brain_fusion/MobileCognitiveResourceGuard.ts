@@ -6,7 +6,11 @@ export interface ResourceState {
 }
 
 export class MobileCognitiveResourceGuard {
-  constructor(private readonly limits: Partial<ResourceState> = {}) {}
+  private readonly limits: Partial<ResourceState>;
+
+  constructor(limits: Partial<ResourceState> = {}) {
+    this.limits = limits;
+  }
 
   check(state: ResourceState): boolean {
     return (

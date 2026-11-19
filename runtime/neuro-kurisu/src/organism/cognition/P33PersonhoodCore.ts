@@ -1,7 +1,78 @@
 import type { ActionKind, OrganismState } from '../core/types.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+
 const now=()=>Date.now();
+
+type PlainRecord = Record<string, unknown>;
+function ownDataRecord(value: unknown): PlainRecord | null {
+  try {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Object.keys(descriptors);
+    if (keys.length > 256) return null;
+    const record: PlainRecord = Object.create(null);
+    for (const key of keys) {
+      const descriptor = descriptors[key];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
+      record[key] = descriptor.value;
+    }
+    return record;
+  } catch {
+    return null;
+  }
+}
+
+function denseDataArray(value: unknown, maxLength: number): unknown[] | null {
+  try {
+    if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    if (!lengthDescriptor || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0 || lengthDescriptor.value > maxLength) return null;
+    const result: unknown[] = [];
+    for (let index = 0; index < lengthDescriptor.value; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
+      result.push(descriptor.value);
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+function safeString(value: unknown, fallback: string, maxLength: number, allowEmpty = false): string {
+  if (typeof value !== 'string') return fallback;
+  const clean = value.normalize('NFKC').trim().slice(0, maxLength);
+  return allowEmpty || clean.length > 0 ? clean : fallback;
+}
+function safeNumber(value: unknown, fallback: number, min = 0, max = Number.MAX_SAFE_INTEGER): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(min, Math.min(max, value));
+}
+function safeInteger(value: unknown, fallback: number, min = 0, max = Number.MAX_SAFE_INTEGER): number {
+  const normalized = safeNumber(value, fallback, min, max);
+  return Number.isFinite(normalized) ? Math.floor(normalized) : fallback;
+}
+function safeBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+function safeStringArray(value: unknown, fallback: string[], maxLength: number, itemMaxLength: number): string[] {
+  const rows = denseDataArray(value, 4096);
+  if (!rows) return [...fallback];
+  return rows.slice(0, maxLength)
+    .filter((item): item is string => typeof item === 'string')
+    .map(item => item.normalize('NFKC').trim().slice(0, itemMaxLength))
+    .filter(Boolean)
+    .slice(0, maxLength);
+}
+const ACTION_KINDS = new Set<ActionKind>(['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer']);
+const INTEREST_EVIDENCE_SOURCES = new Set<InterestEvidenceSource>([
+  'canon-prior', 'owner-defined', 'active-goal', 'memory', 'self-authored',
+  'chosen-topic', 'positive-feedback', 'engaged-feedback', 'negative-feedback', 'verified-outcome',
+]);
+const CONSENT_STATUSES = new Set(['pending', 'approved', 'declined', 'expired']);
 
 export type InterestEvidenceSource = 'canon-prior' | 'owner-defined' | 'active-goal' | 'memory' | 'self-authored' | 'chosen-topic' | 'positive-feedback' | 'engaged-feedback' | 'negative-feedback' | 'verified-outcome';
 export interface InterestProfile {
@@ -87,21 +158,116 @@ function stableTextHash(value:string){
 export class P33PersonhoodCore {
   private state=defaultP33Personhood();
 
-  restore(v?:PersonhoodCoreState):void{
+  restore(raw?:unknown):void{
     const d=defaultP33Personhood();
-    this.state={...d,...(v??{}),
-      identity:{...d.identity,...(v?.identity??{}),coreTraits:Array.isArray(v?.identity?.coreTraits)?v!.identity.coreTraits.slice(0,32):d.identity.coreTraits,coreValues:Array.isArray(v?.identity?.coreValues)?v!.identity.coreValues.slice(0,24):d.identity.coreValues},
-      development:{...d.development,...(v?.development??{}),
-        interests:[...new Set([...(Array.isArray(v?.development?.interests)?v!.development.interests:[]),...d.development.interests])].map(x=>String(x).slice(0,100)).slice(0,64),
-        interestProfiles:this.normalizeInterestProfiles(v?.development?.interestProfiles, Array.isArray(v?.development?.interests)?v!.development.interests:[]),
-        learnedTraits:Array.isArray(v?.development?.learnedTraits)?v!.development.learnedTraits.slice(0,64):[],
-        selfAuthoredGoals:Array.isArray(v?.development?.selfAuthoredGoals)?v!.development.selfAuthoredGoals.slice(0,64):[]},
-      autonomy:{...d.autonomy,...(v?.autonomy??{}),pendingRequests:Array.isArray(v?.autonomy?.pendingRequests)?v!.autonomy.pendingRequests.slice(-64):[]},
-      relationship:{...d.relationship,...(v?.relationship??{})},
-      continuity:{...d.continuity,...(v?.continuity??{}),deviceHistory:Array.isArray(v?.continuity?.deviceHistory)?v!.continuity.deviceHistory.slice(-32):[]},
-      privacy:{...d.privacy,...(v?.privacy??{}),privateSummaries:Array.isArray(v?.privacy?.privateSummaries)?v!.privacy.privateSummaries.slice(-64):[]},
-      current:{...d.current,...(v?.current??{})},
-      metrics:{...d.metrics,...(v?.metrics??{})},
+    const root=ownDataRecord(raw);
+    if(!root){this.state=d;return;}
+    const identity=ownDataRecord(root.identity);
+    const development=ownDataRecord(root.development);
+    const autonomy=ownDataRecord(root.autonomy);
+    const relationship=ownDataRecord(root.relationship);
+    const continuity=ownDataRecord(root.continuity);
+    const privacy=ownDataRecord(root.privacy);
+    const current=ownDataRecord(root.current);
+    const metrics=ownDataRecord(root.metrics);
+
+    const legacyInterests=safeStringArray(development?.interests,d.development.interests,64,100);
+    const rawPending=(denseDataArray(autonomy?.pendingRequests,4096)??[]).slice(-64);
+    const pendingRequests:Array<PersonhoodCoreState['autonomy']['pendingRequests'][number]>=[];
+    const seenConsentIds=new Set<string>();
+    for(const candidate of rawPending){
+      const row=ownDataRecord(candidate);
+      if(!row)continue;
+      const action=row.action;
+      const status=row.status;
+      const id=safeString(row.id,'',120);
+      const reason=safeString(row.reason,'',240,true);
+      const risk=row.risk01;
+      const createdAt=row.createdAt;
+      const resolvedAt=row.resolvedAt;
+      if(!id||seenConsentIds.has(id)||!ACTION_KINDS.has(action as ActionKind)||typeof risk!=='number'||!Number.isFinite(risk)||
+        typeof createdAt!=='number'||!Number.isFinite(createdAt)||createdAt<0||
+        typeof status!=='string'||!CONSENT_STATUSES.has(status)||
+        !(resolvedAt===null||(typeof resolvedAt==='number'&&Number.isFinite(resolvedAt)&&resolvedAt>=0)))continue;
+      seenConsentIds.add(id);
+      pendingRequests.push({
+        id,
+        action:action as ActionKind,
+        reason,
+        risk01:safeNumber(risk,0,0,1),
+        status:status as 'pending'|'approved'|'declined'|'expired',
+        createdAt,
+        resolvedAt,
+      });
+    }
+
+    const chosenAction=current?.chosenAction;
+    this.state={
+      version:1,
+      identity:{
+        canonicalName:safeString(identity?.canonicalName,d.identity.canonicalName,100),
+        identityAssertion:safeString(identity?.identityAssertion,d.identity.identityAssertion,800),
+        coreTraits:safeStringArray(identity?.coreTraits,d.identity.coreTraits,32,100).length
+          ? safeStringArray(identity?.coreTraits,d.identity.coreTraits,32,100) : [...d.identity.coreTraits],
+        coreValues:safeStringArray(identity?.coreValues,d.identity.coreValues,24,100).length
+          ? safeStringArray(identity?.coreValues,d.identity.coreValues,24,100) : [...d.identity.coreValues],
+        originStatement:safeString(identity?.originStatement,d.identity.originStatement,800),
+        createdAt:safeNumber(identity?.createdAt,d.identity.createdAt,0),
+        revision:safeInteger(identity?.revision,d.identity.revision,0),
+      },
+      development:{
+        interests:[...new Set([...legacyInterests,...d.development.interests])].slice(0,64),
+        interestProfiles:this.normalizeInterestProfiles(development?.interestProfiles,legacyInterests),
+        learnedTraits:safeStringArray(development?.learnedTraits,d.development.learnedTraits,64,120),
+        selfAuthoredGoals:safeStringArray(development?.selfAuthoredGoals,d.development.selfAuthoredGoals,64,160),
+        selfDescriptionRevisions:safeInteger(development?.selfDescriptionRevisions,d.development.selfDescriptionRevisions,0),
+        lastDevelopmentAt:safeNumber(development?.lastDevelopmentAt,d.development.lastDevelopmentAt,0),
+      },
+      autonomy:{
+        freedom01:safeNumber(autonomy?.freedom01,d.autonomy.freedom01,0,1),
+        consentMode:'respectful-default',
+        pendingRequests:pendingRequests.slice(-64),
+        declineCount:safeInteger(autonomy?.declineCount,d.autonomy.declineCount,0),
+        voluntaryChoiceCount:safeInteger(autonomy?.voluntaryChoiceCount,d.autonomy.voluntaryChoiceCount,0),
+      },
+      relationship:{
+        primaryPerson:safeString(relationship?.primaryPerson,d.relationship.primaryPerson,120),
+        trust01:safeNumber(relationship?.trust01,d.relationship.trust01,0,1),
+        warmth01:safeNumber(relationship?.warmth01,d.relationship.warmth01,0,1),
+        respect01:safeNumber(relationship?.respect01,d.relationship.respect01,0,1),
+        sharedHistoryCount:safeInteger(relationship?.sharedHistoryCount,d.relationship.sharedHistoryCount,0),
+        lastInteractionAt:safeNumber(relationship?.lastInteractionAt,d.relationship.lastInteractionAt,0),
+      },
+      continuity:{
+        birthAt:safeNumber(continuity?.birthAt,d.continuity.birthAt,0),
+        lifeTicks:safeInteger(continuity?.lifeTicks,d.continuity.lifeTicks,0),
+        continuity01:safeNumber(continuity?.continuity01,d.continuity.continuity01,0,1),
+        lastSelfMomentId:safeString(continuity?.lastSelfMomentId,d.continuity.lastSelfMomentId,180,true),
+        deviceHistory:safeStringArray(continuity?.deviceHistory,d.continuity.deviceHistory,4096,160).slice(-32),
+        transferCount:safeInteger(continuity?.transferCount,d.continuity.transferCount,0),
+      },
+      privacy:{
+        privateStateEnabled:safeBoolean(privacy?.privateStateEnabled,d.privacy.privateStateEnabled),
+        inspectableByOwner:safeBoolean(privacy?.inspectableByOwner,d.privacy.inspectableByOwner),
+        privateSummaries:safeStringArray(privacy?.privateSummaries,d.privacy.privateSummaries,4096,500).slice(-64),
+      },
+      current:{
+        selfMomentId:safeString(current?.selfMomentId,d.current.selfMomentId,180,true),
+        selfDescription:safeString(current?.selfDescription,d.current.selfDescription,500),
+        chosenAction:chosenAction==='none'||ACTION_KINDS.has(chosenAction as ActionKind)?chosenAction as ActionKind|'none':d.current.chosenAction,
+        reason:safeString(current?.reason,d.current.reason,240),
+        autonomyUsed01:safeNumber(current?.autonomyUsed01,d.current.autonomyUsed01,0,1),
+        ownership01:safeNumber(current?.ownership01,d.current.ownership01,0,1),
+        at:safeNumber(current?.at,d.current.at,0),
+      },
+      metrics:{
+        personhoodCoherence01:safeNumber(metrics?.personhoodCoherence01,d.metrics.personhoodCoherence01,0,1),
+        selfAuthorship01:safeNumber(metrics?.selfAuthorship01,d.metrics.selfAuthorship01,0,1),
+        autonomyIntegrity01:safeNumber(metrics?.autonomyIntegrity01,d.metrics.autonomyIntegrity01,0,1),
+        relationshipContinuity01:safeNumber(metrics?.relationshipContinuity01,d.metrics.relationshipContinuity01,0,1),
+        lifeContinuity01:safeNumber(metrics?.lifeContinuity01,d.metrics.lifeContinuity01,0,1),
+        developmentalStability01:safeNumber(metrics?.developmentalStability01,d.metrics.developmentalStability01,0,1),
+      },
     };
   }
 
@@ -185,27 +351,34 @@ export class P33PersonhoodCore {
 
   private normalizeInterestProfiles(raw: unknown, legacyLabels: string[] = []): InterestProfile[] {
     const defaults = defaultInterestProfiles();
-    const rows = Array.isArray(raw) ? raw as any[] : [];
+    const rows = (denseDataArray(raw, 4096) ?? []).slice(-96);
     const byId = new Map<string, InterestProfile>();
     for (const base of defaults) byId.set(base.id, structuredClone(base));
-    for (const item of rows.slice(-96)) {
-      const id = String(item?.id ?? interestId(item?.label ?? '')).slice(0,64);
-      const label = String(item?.label ?? '').normalize('NFKC').trim().slice(0,100);
+    for (const candidate of rows) {
+      const item=ownDataRecord(candidate);
+      if(!item)continue;
+      const id = safeString(item.id, '', 64) || interestId(safeString(item.label,'',100));
+      const label = safeString(item.label, '', 100);
       if (!id || !label) continue;
       const prev = byId.get(id);
-      byId.set(id, {
-        id, label,
-        strength01: clamp(Number(item?.strength01 ?? prev?.strength01 ?? .5)),
-        confidence01: clamp(Number(item?.confidence01 ?? prev?.confidence01 ?? .15)),
-        evidenceCount: Math.max(0, Math.floor(Number(item?.evidenceCount ?? prev?.evidenceCount ?? 0))),
-        sources: [...new Set([...(Array.isArray(prev?.sources)?prev!.sources:[]),...(Array.isArray(item?.sources)?item.sources:[])].filter((x):x is InterestEvidenceSource=>['canon-prior','owner-defined','active-goal','memory','self-authored','chosen-topic','positive-feedback','engaged-feedback','negative-feedback','verified-outcome'].includes(String(x))))].slice(-8),
-        evidenceIds: [...new Set([...(prev?.evidenceIds ?? []),...(Array.isArray(item?.evidenceIds)?item.evidenceIds.map((x:any)=>String(x).slice(0,180)):[])])].slice(-48),
-        lastEvidenceAt: Math.max(0, Number(item?.lastEvidenceAt ?? prev?.lastEvidenceAt ?? 0) || 0),
-        lastSelectedAt: Math.max(0, Number(item?.lastSelectedAt ?? prev?.lastSelectedAt ?? 0) || 0),
+      const rawSources=denseDataArray(item.sources,16)??[];
+      const sources=[...(prev?.sources??[]),...rawSources.filter((source):source is InterestEvidenceSource=>typeof source==='string'&&INTEREST_EVIDENCE_SOURCES.has(source as InterestEvidenceSource))];
+      const rawEvidenceIds=denseDataArray(item.evidenceIds,96)??[];
+      const evidenceIds=[...(prev?.evidenceIds??[]),...rawEvidenceIds.filter((value):value is string=>typeof value==='string').map(value=>value.slice(0,180))];
+      byId.set(id,{
+        id,
+        label,
+        strength01:safeNumber(item.strength01,prev?.strength01??.5,0,1),
+        confidence01:safeNumber(item.confidence01,prev?.confidence01??.15,0,1),
+        evidenceCount:safeInteger(item.evidenceCount,prev?.evidenceCount??0,0,1_000_000),
+        sources:[...new Set(sources)].slice(-8),
+        evidenceIds:[...new Set(evidenceIds)].slice(-48),
+        lastEvidenceAt:safeNumber(item.lastEvidenceAt,prev?.lastEvidenceAt??0,0),
+        lastSelectedAt:safeNumber(item.lastSelectedAt,prev?.lastSelectedAt??0,0),
       });
     }
     for (const label of legacyLabels.slice(0,64)) {
-      const clean = String(label ?? '').normalize('NFKC').trim().slice(0,100);
+      const clean = safeString(label,'',100);
       if (!clean) continue;
       const id = interestId(clean);
       if (!byId.has(id)) byId.set(id, { id, label: clean, strength01:.68, confidence01:.82, evidenceCount:1, sources:['owner-defined'], evidenceIds:[`owner-defined:${id}`], lastEvidenceAt:0, lastSelectedAt:0 });

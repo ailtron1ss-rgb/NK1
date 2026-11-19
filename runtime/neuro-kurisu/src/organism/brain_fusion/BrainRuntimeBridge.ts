@@ -20,7 +20,8 @@ export type BrainRuntimeAssessment = {
  */
 export class BrainRuntimeBridge {
   private readonly events:BrainRuntimeEvent[]=[];
-  constructor(private readonly maxEvents=2048){}
+  private readonly maxEvents:number;
+  constructor(maxEvents=2048){this.maxEvents=maxEvents;}
 
   ingest(event:BrainRuntimeEvent):BrainRuntimeAssessment{
     const normalized={...event,

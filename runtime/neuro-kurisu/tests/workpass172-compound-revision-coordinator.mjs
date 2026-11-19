@@ -118,7 +118,7 @@ const noEvidenceCoordinator = new P23CompoundRepairRevisionCoordinator(
 assert.deepEqual(await noEvidenceCoordinator.reviseFromObservedRepairs('skill-a'), {
   status: 'no-eligible-repair-evidence', skillId: 'skill-a', repairEvidenceCount: 0,
 });
-assert.throws(() => coordinator.reviseFromObservedRepairs('   '), /compound skill id is required/);
+await assert.rejects(() => coordinator.reviseFromObservedRepairs('   '), /compound skill id is required/);
 // Exercise the public runtime entry point without constructing unrelated Core subsystems.
 const runtimeFacade = Object.create(OrganismRuntime.prototype);
 runtimeFacade.initialized = true;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
-import { runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
+import { fingerprintMemoryRetrievalDataset, runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
 
 const now = 2_000_000_000_000;
 const memory = new MemoryOS2();
@@ -23,12 +23,14 @@ const options = {
     datasetVersion: 'fixture-v1',
     sourceRef: 'runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs',
     labelingProtocol: 'Explicit hand-authored synthetic test labels; not production evidence.',
+    licenseId: 'LicenseRef-NK1-Synthetic-Fixture',
+    contentSha256: fingerprintMemoryRetrievalDataset(examples),
   },
 };
 const before = memory.snapshot();
 const report = runMemoryOS2RetrievalBenchmark(before, examples, options);
 const after = memory.snapshot();
-assert.equal(report.schemaVersion, 3);
+assert.equal(report.schemaVersion, 6);
 assert.equal(report.benchmark, 'memoryos2-retrieval-vs-bm25-baseline');
 assert.equal(report.retrievalAlgorithmVersion, 'memoryos2-hybrid-v5-bilingual-concept-recall');
 assert.equal(report.baselineConfigurationFingerprint.length, 64);
@@ -149,7 +151,11 @@ const missingProvenance = runMemoryOS2RetrievalBenchmark(before, examples, { now
 assert.equal(missingProvenance.promotion.allowed, false);
 assert.equal(missingProvenance.promotion.reason, 'dataset-provenance-incomplete');
 
-const insufficient = runMemoryOS2RetrievalBenchmark(before, examples.slice(0, 3), options);
+const insufficientExamples = examples.slice(0, 3);
+const insufficient = runMemoryOS2RetrievalBenchmark(before, insufficientExamples, {
+  ...options,
+  datasetProvenance: { ...options.datasetProvenance, contentSha256: fingerprintMemoryRetrievalDataset(insufficientExamples) },
+});
 assert.equal(insufficient.promotion.allowed, false);
 assert.equal(insufficient.promotion.reason, 'insufficient-labelled-holdout-or-corpus');
 console.log('BIG_PASS_126_MEMORY_RETRIEVAL_BENCHMARK=PASS', JSON.stringify({ corpus: report.corpusSize, train: report.trainQueries, holdout: report.holdoutQueries, recallDelta: report.deltas.recallAtK01, ci: report.confidence.recallAtK01, promotion: report.promotion.status, reason: report.promotion.reason, injectedExactLeakageProbeCount: leakReport.datasetIntegrity.crossSplitQueryLeakageCount, injectedNearDuplicateLeakageProbeCount: nearDuplicateLeakReport.datasetIntegrity.nearDuplicateCrossSplitPairCount }));

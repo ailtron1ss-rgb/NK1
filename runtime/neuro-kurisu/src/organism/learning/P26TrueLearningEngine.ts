@@ -8,10 +8,12 @@ export interface P26LearningMetrics {
   outcomeSamples:number;
   onlineUpdates:number;
   replayUpdates:number;
-  trainingExposure01:number;
-  independentHoldoutSamples:number;
   learningDelta01:number;
   recentLoss01:number;
+  /** Exposure is a normalized count of actual online/replay training updates, not evidence of generalization. */
+  trainingExposure01:number;
+  /** Number of unique independently verified holdout evidence identities accepted. */
+  independentHoldoutSamples:number;
   generalizationEvidence01:number;
   holdoutBaseline01:number;
   holdoutLearned01:number;
@@ -24,13 +26,15 @@ export interface P26TrueLearningState {
   policy:ParametricPolicyState;
   metrics:P26LearningMetrics;
   processedTraceIds:string[];
+  /** Deduplication identities for accepted independent holdout evidence. */
   verifiedHoldoutEvidenceIds:string[];
 }
 
 export const defaultP26TrueLearning=():P26TrueLearningState=>({
   version:1,policy:defaultParametricPolicy(),
-  metrics:{outcomeSamples:0,onlineUpdates:0,replayUpdates:0,trainingExposure01:0,independentHoldoutSamples:0,learningDelta01:0,recentLoss01:0,generalizationEvidence01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0,lastUpdatedAt:0},
-  processedTraceIds:[],verifiedHoldoutEvidenceIds:[],
+  metrics:{outcomeSamples:0,onlineUpdates:0,replayUpdates:0,learningDelta01:0,recentLoss01:0,trainingExposure01:0,independentHoldoutSamples:0,generalizationEvidence01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0,lastUpdatedAt:0},
+  processedTraceIds:[],
+  verifiedHoldoutEvidenceIds:[],
 });
 
 export interface BodyExtras { external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number; }
@@ -40,22 +44,46 @@ export class P26TrueLearningEngine{
   private state=defaultP26TrueLearning();
   restore(raw?:Partial<P26TrueLearningState>|null){
     const d=defaultP26TrueLearning();
-    const ids=Array.isArray(raw?.verifiedHoldoutEvidenceIds)
-      ? [...new Set(raw!.verifiedHoldoutEvidenceIds.filter(id=>typeof id==='string'&&id.trim().length>0&&id.length<=180))].slice(0,2048)
+    const sourceMetrics:Partial<P26LearningMetrics>=raw?.metrics??{};
+    const safeCounter=(value:unknown):number=>
+      typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+    const verifiedHoldoutEvidenceIds=Array.isArray(raw?.verifiedHoldoutEvidenceIds)
+      ? [...new Set(raw!.verifiedHoldoutEvidenceIds.filter((value):value is string=>
+          typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&
+          !/[\u0000-\u001f\u007f-\u009f]/.test(value)))].slice(-4096)
       : [];
-    const safeCount=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,1_000_000):0;
-    const metrics={...d.metrics,...(raw?.metrics??{})};
-    metrics.onlineUpdates=safeCount(metrics.onlineUpdates);
-    metrics.replayUpdates=safeCount(metrics.replayUpdates);
-    metrics.independentHoldoutSamples=ids.length;
-    metrics.generalizationEvidence01=clamp(Math.min(1,ids.length*.05));
-    metrics.trainingExposure01=clamp((metrics.onlineUpdates+metrics.replayUpdates)/160);
-    this.state={...d,...(raw??{}),metrics,processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.filter(id=>typeof id==='string').slice(0,4096):[],verifiedHoldoutEvidenceIds:ids};
+    const onlineUpdates=safeCounter(sourceMetrics.onlineUpdates);
+    const replayUpdates=safeCounter(sourceMetrics.replayUpdates);
+    const totalTrainingExposure=onlineUpdates+replayUpdates;
+    const metrics:P26LearningMetrics={
+      ...d.metrics,
+      ...sourceMetrics,
+      onlineUpdates,
+      replayUpdates,
+      outcomeSamples:safeCounter(sourceMetrics.outcomeSamples),
+      independentHoldoutSamples:verifiedHoldoutEvidenceIds.length,
+      trainingExposure01:clamp(totalTrainingExposure/(totalTrainingExposure+64)),
+      // Restore this maturity signal from accepted evidence identities, never from
+      // a stale scalar or from the number of parameter updates.
+      generalizationEvidence01:clamp(verifiedHoldoutEvidenceIds.length*.05),
+    };
+    this.state={
+      ...d,
+      ...(raw??{}),
+      metrics,
+      processedTraceIds:Array.isArray(raw?.processedTraceIds)
+        ? raw!.processedTraceIds.filter((value):value is string=>typeof value==='string'&&value.length>0&&value.length<=512).slice(-4096)
+        : [],
+      verifiedHoldoutEvidenceIds,
+    };
     this.learner.restore(this.state.policy);
-    this.sync();
   }
   snapshot():P26TrueLearningState{ this.sync(); return structuredClone(this.state); }
-  sync(){ this.state.policy=this.learner.snapshot(); this.state.metrics.trainingExposure01=clamp((this.state.metrics.onlineUpdates+this.state.metrics.replayUpdates)/160); }
+  sync(){ this.state.policy=this.learner.snapshot(); }
+  private refreshTrainingExposure():void{
+    const total=this.state.metrics.onlineUpdates+this.state.metrics.replayUpdates;
+    this.state.metrics.trainingExposure01=clamp(total/(total+64));
+  }
   predict(state:OrganismState,extras?:BodyExtras){return this.learner.predict(state,extras);}
   bias(state:OrganismState,action:ActionKind,baseUtility:number,extras?:BodyExtras){
     const p=this.learner.value(state,action,extras);
@@ -76,6 +104,7 @@ export class P26TrueLearningEngine{
     this.state.metrics.onlineUpdates++;
     this.state.metrics.learningDelta01=clamp(this.state.metrics.learningDelta01*.97 + (r.predictionAfter-r.predictionBefore)*.03 + Math.abs(r.tdError01)*.02*shared);
     this.state.metrics.recentLoss01=clamp(r.loss01);
+    this.refreshTrainingExposure();
     this.state.metrics.lastUpdatedAt=Date.now();
     this.state.processedTraceIds=[trace.id,...this.state.processedTraceIds].slice(0,4096);
     this.sync();
@@ -90,132 +119,10 @@ export class P26TrueLearningEngine{
       updates++; loss+=r.loss01;
     }
     this.state.metrics.replayUpdates+=updates;
-    if(updates){this.state.metrics.recentLoss01=clamp(loss/updates);this.state.metrics.lastUpdatedAt=Date.now();}
+    if(updates){this.state.metrics.recentLoss01=clamp(loss/updates);this.refreshTrainingExposure();this.state.metrics.lastUpdatedAt=Date.now();}
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
-  /**
-   * Bounded online/replay interleaving with same-context contradiction screening.
-   * Replay labels that contradict recent feedback for near-identical states are
-   * quarantined for this cycle rather than allowed to overwrite fresh learning.
-   */
-  trainInterleaved(
-    currentRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
-    replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
-    options:{
-      replayEveryNCurrent:number;
-      maxReplayUpdates:number;
-      targetMode:'reward'|'td';
-      currentLearningRate01:number;
-      replayLearningRate01?:number;
-      conflictCandidateCap?:number;
-    },
-  ):{
-    onlineUpdates:number;replayUpdates:number;blockedReplayRows:number;eligibleReplayRows:number;
-    conflictComparisons:number;conflictCandidateCap:number;
-  }{
-    if(!Array.isArray(currentRows)||!Array.isArray(replayRows))throw new Error('interleaved-rows-must-be-arrays');
-    if(!options||!Number.isSafeInteger(options.replayEveryNCurrent)||options.replayEveryNCurrent<1)throw new Error('replay-interval-invalid');
-    if(!Number.isSafeInteger(options.maxReplayUpdates)||options.maxReplayUpdates<0)throw new Error('replay-update-limit-invalid');
-    if(options.targetMode!=='reward'&&options.targetMode!=='td')throw new Error('interleaved-target-mode-invalid');
-    const validRate=(rate:unknown)=>typeof rate==='number'&&Number.isFinite(rate)&&rate>=0&&rate<=1;
-    if(!validRate(options.currentLearningRate01))throw new Error('current-learning-rate-invalid');
-    const replayRate=options.replayLearningRate01??.035;
-    if(!validRate(replayRate))throw new Error('replay-learning-rate-invalid');
-    const conflictCandidateCap=Math.max(8,Math.min(128,Math.floor(options.conflictCandidateCap??64)));
-    const validState=(state:OrganismState)=>{
-      if(!state||typeof state!=='object'||!state.needs||typeof state.needs!=='object')throw new Error('interleaved-state-invalid');
-      const needs=state.needs;
-      const values=[needs.energy,needs.cognitiveLoad,needs.uncertainty,needs.socialNeed,needs.novelty,
-        needs.identityCoherence,needs.goalPressure,state.predictionError,state.attentionBudget,
-        state.selfPredictionError,state.autonomyScore,state.lastPredictionConfidence];
-      if(values.some(value=>typeof value!=='number'||!Number.isFinite(value)||value<0||value>1))throw new Error('interleaved-state-invalid');
-    };
-    const validRows=(rows:typeof currentRows)=>{
-      for(const row of rows){
-        if(!row||typeof row!=='object'||!ACTIONS.includes(row.action)||
-          typeof row.reward!=='number'||!Number.isFinite(row.reward)||row.reward<0||row.reward>1||
-          (row.surprise!==undefined&&(typeof row.surprise!=='number'||!Number.isFinite(row.surprise)||row.surprise<0||row.surprise>1))){
-          throw new Error('interleaved-row-invalid');
-        }
-        validState(row.state);
-        validState(row.nextState);
-      }
-    };
-    // Validate the whole input before the first update so malformed later rows
-    // cannot leave a partially-mutated policy snapshot behind.
-    validRows(currentRows);
-    validRows(replayRows);
-    const stateFeatures=new Map<OrganismState,number[]>();
-    const features=(state:OrganismState)=>{
-      let value=stateFeatures.get(state);
-      if(!value){value=this.learner.features(state);stateFeatures.set(state,value);}
-      return value;
-    };
-    const closeState=(a:OrganismState,b:OrganismState)=>{
-      const x=features(a),y=features(b),n=Math.min(x.length,y.length);
-      if(!n||x.length!==y.length)return false;
-      let square=0;
-      for(let i=0;i<n;i++)square+=(x[i]!-y[i]!)**2;
-      return Math.sqrt(square/n)<=.065;
-    };
-    const targetFor=(row:typeof currentRows[number])=>{
-      if(options.targetMode==='reward')return row.reward;
-      const next=Math.max(.5,...this.learner.predict(row.nextState).map(prediction=>prediction.value));
-      return clamp(row.reward+.78*next);
-    };
-    let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,lossTotal=0;
-    let replayCursor=0;
-    for(let index=0;index<currentRows.length;index++){
-      const row=currentRows[index]!;
-      const current=this.learner.train({
-        state:row.state,action:row.action,target01:targetFor(row),
-        learningRate01:options.currentLearningRate01,
-      });
-      onlineUpdates++;
-      lossTotal+=current.loss01;
-      this.state.metrics.outcomeSamples++;
-      this.state.metrics.onlineUpdates++;
-      this.state.metrics.learningDelta01=clamp(
-        this.state.metrics.learningDelta01*.97+(current.predictionAfter-current.predictionBefore)*.03+
-        Math.abs(current.tdError01)*.02,
-      );
-      this.state.metrics.recentLoss01=clamp(current.loss01);
-      this.state.metrics.lastUpdatedAt=Date.now();
-
-      if(!replayRows.length||replayUpdates>=options.maxReplayUpdates||(index+1)%options.replayEveryNCurrent!==0)continue;
-      const replay=replayRows[replayCursor++%replayRows.length]!;
-      let conflict=false;
-      const start=Math.max(0,index-conflictCandidateCap+1);
-      for(let candidateIndex=start;candidateIndex<=index;candidateIndex++){
-        const fresh=currentRows[candidateIndex]!;
-        conflictComparisons++;
-        if(fresh.action===replay.action&&Math.abs(fresh.reward-replay.reward)>=.35&&closeState(fresh.state,replay.state)){
-          conflict=true;
-          break;
-        }
-      }
-      if(conflict){
-        blockedReplayRows++;
-        continue;
-      }
-      eligibleReplayRows++;
-      const replayResult=this.learner.train({
-        state:replay.state,action:replay.action,target01:targetFor(replay),
-        learningRate01:replayRate,
-      });
-      replayUpdates++;
-      lossTotal+=replayResult.loss01;
-    }
-    this.state.metrics.replayUpdates+=replayUpdates;
-    if(onlineUpdates+replayUpdates){
-      this.state.metrics.recentLoss01=clamp(lossTotal/(onlineUpdates+replayUpdates));
-      this.state.metrics.lastUpdatedAt=Date.now();
-    }
-    this.sync();
-    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap};
-  }
-
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
     if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};
@@ -228,41 +135,161 @@ export class P26TrueLearningEngine{
       loss+=this.learner.trainFeatures({features:r.policyFeatures01!,action:r.action,target01:target,learningRate01:.022+clamp(r.surprise01)*.028+priority*.018,sampleWeight01:weight}).loss01;
     }
     const learned=score(holdout); this.state.metrics.replayUpdates+=train.length; this.state.metrics.recentLoss01=clamp(train.length?loss/train.length:0);
+    this.refreshTrainingExposure();
     this.state.metrics.holdoutBaseline01=baseline; this.state.metrics.holdoutLearned01=learned; this.state.metrics.holdoutDelta01=learned-baseline; this.state.metrics.lastUpdatedAt=Date.now(); this.sync();
     return {updates:train.length,meanLoss01:train.length?loss/train.length:0,holdoutBaseline01:baseline,holdoutLearned01:learned,holdoutDelta01:learned-baseline};
   }
 
+  trainInterleaved(
+    fresh:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    options:{
+      replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'reward'|'td';
+      currentLearningRate01?:number;replayLearningRate01?:number;conflictCandidateCap?:number;maxReplayFraction01?:number;
+    }={},
+  ):{
+    onlineUpdates:number;replayUpdates:number;blockedReplayRows:number;eligibleReplayRows:number;
+    conflictComparisons:number;conflictCandidateCap:number;effectiveReplayEveryNCurrent:number;maxReplayFraction01:number;
+  }{
+    if(!Array.isArray(fresh)||!Array.isArray(replayRows))throw new TypeError('interleaved-experiences-must-be-arrays');
+    if(fresh.length>20_000||replayRows.length>20_000)throw new RangeError('interleaved-experience-limit-exceeded');
+    const requestedEvery=options.replayEveryNCurrent??16;
+    const maxReplayFraction01=options.maxReplayFraction01??.25;
+    const maxReplayUpdates=options.maxReplayUpdates??160;
+    const mode=options.targetMode??'td';
+    const currentRate=options.currentLearningRate01??.06;
+    const replayRate=options.replayLearningRate01??.06;
+    if(!Number.isSafeInteger(requestedEvery)||requestedEvery<1||requestedEvery>10_000)throw new RangeError('replay-every-n-current-invalid');
+    if(typeof maxReplayFraction01!=='number'||!Number.isFinite(maxReplayFraction01)||maxReplayFraction01<0||maxReplayFraction01>1)throw new RangeError('max-replay-fraction-out-of-range');
+    // Replay cadence is capped independently from the absolute per-call budget.
+    // Requested cadence is a minimum interval, not a way to bypass the
+    // replay/current ratio guard. At 0.25, at most one replay update is scheduled
+    // per four current rows. Zero disables replay; higher values opt into more.
+    const fractionBoundedEvery=maxReplayFraction01===0?Number.MAX_SAFE_INTEGER:Math.min(Number.MAX_SAFE_INTEGER,Math.ceil(1/maxReplayFraction01));
+    const every=Math.max(requestedEvery,fractionBoundedEvery);
+    if(!Number.isSafeInteger(maxReplayUpdates)||maxReplayUpdates<0||maxReplayUpdates>100_000)throw new RangeError('max-replay-updates-invalid');
+    if(mode!=='reward'&&mode!=='td')throw new TypeError('interleaved-target-mode-invalid');
+    for(const [name,rate] of [['current',currentRate],['replay',replayRate]] as const){
+      if(typeof rate!=='number'||!Number.isFinite(rate)||rate<=0||rate>.3)throw new RangeError(name+'-learning-rate-out-of-range');
+    }
+    const validState=(state:OrganismState):boolean=>{
+      if(!state||typeof state!=='object'||!state.needs)return false;
+      const values=[state.needs.energy,state.needs.cognitiveLoad,state.needs.uncertainty,state.needs.socialNeed,
+        state.needs.novelty,state.needs.identityCoherence,state.needs.goalPressure,state.predictionError,
+        state.attentionBudget,state.selfPredictionError];
+      return values.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+    };
+    const validateRows=(rows:typeof fresh):void=>{
+      for(const row of rows){
+        if(!row||!ACTIONS.includes(row.action)||!validState(row.state)||!validState(row.nextState)||
+           typeof row.reward!=='number'||!Number.isFinite(row.reward)||row.reward<0||row.reward>1||
+           (row.surprise!==undefined&&(typeof row.surprise!=='number'||!Number.isFinite(row.surprise)||row.surprise<0||row.surprise>1))){
+          throw new TypeError('interleaved-experience-invalid');
+        }
+      }
+    };
+    // Validate both streams before the first weight change; malformed replay rows
+    // must not leave a partially trained current-task policy.
+    validateRows(fresh);
+    validateRows(replayRows);
+    const requestedCandidateCap=options.conflictCandidateCap??64;
+    if(!Number.isSafeInteger(requestedCandidateCap)||requestedCandidateCap<8||requestedCandidateCap>128)
+      throw new RangeError('conflict-candidate-cap-out-of-range');
+    const conflictCandidateCap=Math.min(requestedCandidateCap,fresh.length);
+    const context=(state:OrganismState)=>[
+      state.needs.energy,state.needs.cognitiveLoad,state.needs.uncertainty,state.needs.novelty,
+      state.needs.socialNeed,state.needs.goalPressure,state.needs.identityCoherence,
+    ];
+    const freshContexts=fresh.map(row=>({row,features:context(row.state)}));
+    const replayContext=(row:typeof replayRows[number])=>context(row.state);
+    const nextValue=(row:typeof fresh[number])=>Math.max(.5,...this.learner.predict(row.nextState).map(prediction=>prediction.value));
+    const targetFor=(row:typeof fresh[number])=>mode==='reward'?clamp(row.reward):clamp(row.reward+.78*nextValue(row));
+    const policyFrozen=this.learner.snapshot().frozen;
+    let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0;
+    let totalLoss=0,candidateIndex=0,attempts=0;
+    const isConflicting=(historical:typeof replayRows[number]):boolean=>{
+      if(conflictCandidateCap===0)return false;
+      const historicalFeatures=replayContext(historical);
+      for(let n=0;n<conflictCandidateCap;n++){
+        // Evenly spread the bounded candidate sample across the current stream.
+        const index=Math.min(freshContexts.length-1,Math.floor(n*freshContexts.length/conflictCandidateCap));
+        const current=freshContexts[index];
+        conflictComparisons++;
+        if(current.row.action!==historical.action)continue;
+        const distance=Math.max(...historicalFeatures.map((value,i)=>Math.abs(value-current.features[i])));
+        if(distance<=.12&&Math.abs(current.row.reward-historical.reward)>.25)return true;
+      }
+      return false;
+    };
+    for(let i=0;i<fresh.length;i++){
+      const row=fresh[i];
+      // On replay boundaries, rehearse historical data first and apply the current
+      // outcome last. This protects latest-task plasticity at high replay cadence.
+      if((i+1)%every===0&&replayRows.length&&replayUpdates<maxReplayUpdates&&attempts<maxReplayUpdates){
+        const historical=replayRows[candidateIndex%replayRows.length];
+        candidateIndex++;attempts++;
+        if(isConflicting(historical)){
+          blockedReplayRows++;
+        }else{
+          eligibleReplayRows++;
+          const replayResult=this.learner.train({
+            state:historical.state,action:historical.action,target01:targetFor(historical),
+            learningRate01:replayRate,
+          });
+          totalLoss+=replayResult.loss01;
+          if(!policyFrozen){replayUpdates++;this.state.metrics.replayUpdates++;}
+        }
+      }
+      const current=this.learner.train({state:row.state,action:row.action,target01:targetFor(row),learningRate01:currentRate});
+      totalLoss+=current.loss01;
+      if(!policyFrozen){onlineUpdates++;this.state.metrics.onlineUpdates++;}
+    }
+    const actualUpdates=onlineUpdates+replayUpdates;
+    if(actualUpdates){
+      this.state.metrics.recentLoss01=clamp(totalLoss/actualUpdates);
+      this.refreshTrainingExposure();
+      this.state.metrics.lastUpdatedAt=Date.now();
+    }
+    this.sync();
+    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap,effectiveReplayEveryNCurrent:every,maxReplayFraction01};
+  }
+
   recordHoldout(baseline01:number,learned01:number){
-    // Diagnostic-only legacy path: aggregate scores without independent provenance
-    // must never advance the generalization maturity signal.
-    this.state.metrics.holdoutBaseline01=clamp(baseline01);this.state.metrics.holdoutLearned01=clamp(learned01);this.state.metrics.holdoutDelta01=learned01-baseline01;this.sync();
+    // Legacy score reporting is diagnostic only; it does not establish provenance.
+    this.state.metrics.holdoutBaseline01=clamp(baseline01);
+    this.state.metrics.holdoutLearned01=clamp(learned01);
+    this.state.metrics.holdoutDelta01=learned01-baseline01;
+    this.sync();
     return this.state.metrics.holdoutDelta01;
   }
+
   recordVerifiedHoldout(evidence:{
     evidenceId:string;taskId:string;protocolId:string;verifierId:string;sampleSetHash:string;
     baseline01:number;learned01:number;verified:boolean;independent:boolean;
-  }):{accepted:boolean;reason?:string}{
-    if(!evidence||typeof evidence!=='object')return {accepted:false,reason:'malformed-holdout-evidence'};
-    const identity=[evidence.evidenceId,evidence.taskId,evidence.protocolId,evidence.verifierId,evidence.sampleSetHash];
-    if(identity.some(value=>typeof value!=='string'||value.trim().length===0||value.length>512)||
-      !Number.isFinite(evidence.baseline01)||!Number.isFinite(evidence.learned01)||
-      evidence.baseline01<0||evidence.baseline01>1||evidence.learned01<0||evidence.learned01>1){
-      return {accepted:false,reason:'malformed-holdout-evidence'};
-    }
-    if(evidence.verified!==true||evidence.independent!==true)return {accepted:false,reason:'holdout-evidence-not-verified-and-independent'};
-    if(this.state.verifiedHoldoutEvidenceIds.includes(evidence.evidenceId))return {accepted:false,reason:'duplicate-holdout-evidence'};
-    this.state.verifiedHoldoutEvidenceIds=[evidence.evidenceId,...this.state.verifiedHoldoutEvidenceIds].slice(0,2048);
+  }):{accepted:boolean;reason:string}{
+    const identityFields=[evidence?.evidenceId,evidence?.taskId,evidence?.protocolId,evidence?.verifierId,evidence?.sampleSetHash];
+    const validIdentity=identityFields.every(value=>
+      typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&
+      !/[\u0000-\u001f\u007f-\u009f]/.test(value));
+    const validScores=typeof evidence?.baseline01==='number'&&Number.isFinite(evidence.baseline01)&&evidence.baseline01>=0&&evidence.baseline01<=1&&
+      typeof evidence?.learned01==='number'&&Number.isFinite(evidence.learned01)&&evidence.learned01>=0&&evidence.learned01<=1;
+    if(!validIdentity||!validScores)return {accepted:false,reason:'invalid-holdout-evidence'};
+    if(evidence.verified!==true||evidence.independent!==true)
+      return {accepted:false,reason:'holdout-evidence-not-independent-verified'};
+    if(this.state.verifiedHoldoutEvidenceIds.includes(evidence.evidenceId))
+      return {accepted:false,reason:'duplicate-holdout-evidence'};
+    this.state.verifiedHoldoutEvidenceIds=[...this.state.verifiedHoldoutEvidenceIds,evidence.evidenceId].slice(-4096);
     this.state.metrics.independentHoldoutSamples=this.state.verifiedHoldoutEvidenceIds.length;
-    this.state.metrics.generalizationEvidence01=clamp(Math.min(1,this.state.metrics.independentHoldoutSamples*.05));
+    this.state.metrics.generalizationEvidence01=clamp(this.state.metrics.independentHoldoutSamples*.05);
     this.state.metrics.holdoutBaseline01=evidence.baseline01;
     this.state.metrics.holdoutLearned01=evidence.learned01;
     this.state.metrics.holdoutDelta01=evidence.learned01-evidence.baseline01;
     this.state.metrics.lastUpdatedAt=Date.now();
     this.sync();
-    return {accepted:true};
+    return {accepted:true,reason:'accepted-independent-holdout'};
   }
   freeze(){this.learner.setFrozen(true);this.sync();}
   unfreeze(){this.learner.setFrozen(false);this.sync();}
-  metrics():P26LearningMetrics{this.sync();return {...this.state.metrics};}
+  metrics():P26LearningMetrics{return {...this.state.metrics};}
   actionList(){return [...ACTIONS];}
 }

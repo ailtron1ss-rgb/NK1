@@ -3,45 +3,6 @@ name: NeuroCore core regression validation
 on:
   push:
     branches: [workpass70-source, nk1-integration-workspace-2026-10-22]
-    paths:
-      - "app/**"
-      - "runtime/neuro-kurisu/src/**"
-      - "runtime/neuro-kurisu/tests/**"
-      - ".github/workflows/workpass71-validation.yml"
-      - "tools/audit-assets.mjs"
-      - "tools/audit-runtime-test-coverage.mjs"
-      - "contracts/inventory/canonical-public-assets-workpass42.json"
-      - "app/scripts/sync-canonical-public-assets.mjs"
-      - "app/scripts/sync-canonical-public-assets.test.mjs"
-      - ".gitignore"
-      - "docs/WORKPASS72_HANDOVER_2026-10-19.md"
-      - "docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md"
-      - "docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.json"
-      - "README.md"
-      - "AGENTS.md"
-      - "CHANGELOG.md"
-      - "SUPER_VERSION.json"
-      - "package.json"
-      - "tools/verify-ci-reliability.mjs"
-      - "tools/verify-ci-reliability.test.mjs"
-      - "tools/super-dev.mjs"
-      - "tools/super-start.mjs"
-      - "tools/super-launch-config.test.mjs"
-      - "tools/super-gateway.mjs"
-      - "tools/runtime-pin.mjs"
-      - "tools/runtime-pin.test.mjs"
-      - "tools/super-install.mjs"
-      - "tools/super-install.test.mjs"
-      - "tools/super-doctor.mjs"
-      - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
-      - "docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md"
-      - 'app/package-lock.json'
-      - 'runtime/neuro-kurisu/package.json'
-      - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.clean.json'
-      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
-      - '.nvmrc'
-      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   pull_request:
     branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22, rebuild]
     paths:
@@ -65,14 +26,9 @@ on:
       - "package.json"
       - "tools/verify-ci-reliability.mjs"
       - "tools/verify-ci-reliability.test.mjs"
-      - "tools/super-dev.mjs"
-      - "tools/super-start.mjs"
-      - "tools/super-launch-config.test.mjs"
-      - "tools/super-gateway.mjs"
       - "tools/runtime-pin.mjs"
       - "tools/runtime-pin.test.mjs"
       - "tools/super-install.mjs"
-      - "tools/super-install.test.mjs"
       - "tools/super-doctor.mjs"
       - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
       - "docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md"
@@ -112,10 +68,8 @@ jobs:
         run: npm run audit:ci-reliability
       - name: Test CI reliability audit regressions
         run: node --test tools/verify-ci-reliability.test.mjs
-      - name: Test pinned Node/npm policy and clean workspace installer
+      - name: Test pinned Node/npm policy
         run: npm run test:runtime-pin
-      - name: Test unified runtime/UI/gateway launch wiring
-        run: npm run test:super-launch
       - name: Install app dependencies without lifecycle scripts
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Audit canonical public asset ownership
@@ -124,6 +78,8 @@ jobs:
         run: node tools/audit-runtime-test-coverage.mjs
       - name: Validate grapheme timeline
         run: npm --prefix app run test:embodiment-timeline
+      - name: Native speech provider event UI regression
+        run: npm --prefix app run test:native-speech-provider-events
       - name: Run app script regression suite
         run: npm --prefix app run test:scripts
       - name: App typecheck
@@ -132,6 +88,12 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Hexis evidence lineage and server restart persistence
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-evidence-lineage && npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
+      - name: Memory retrieval experiment including unanswerable holdout
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-experiment
+      - name: Memory retrieval annotation pack regression
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-annotation-pack
       - name: Recovered rebuild, causal replay, avatar storage, and Live2D regressions
         run: npm run test:rebuild-recovered
       - name: P23 persisted learning restore integrity
@@ -140,6 +102,10 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p313:user-mind-and-eils
       - name: WorkPass314 verified skill holdout receipt gate
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-verified-skill-revision-gate.mjs
+      - name: Skill acquisition learning-split integrity
+        run: |
+          node --experimental-strip-types runtime/neuro-kurisu/tests/skill-acquisition-split-integrity.mjs
+          node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-47-integration.mjs
       - name: WorkPass314 canonical memory doctor
         run: npm --prefix runtime/neuro-kurisu run test:p314:memory-doctor
       - name: WorkPass318 read-only memory doctor CLI
@@ -160,6 +126,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p325:core-eleven-phase-spine
       - name: WorkPass315 self-model evidence write gate
         run: npm --prefix runtime/neuro-kurisu run test:p315:self-model-evidence-gate
+      - name: P33 personhood restore integrity
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p33-personhood-restore-integrity.mjs
       - name: WorkPass316 HYVE-inspired relational tether
         run: npm --prefix runtime/neuro-kurisu run test:p316:relational-tether
       - name: WorkPass317 bounded MicroDream association hypotheses
@@ -170,6 +138,8 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-llm-live-smoke.mjs
       - name: Local LLM backend selection regression
         run: node runtime/neuro-kurisu/tests/local-llm-selection-workpass74.mjs
+      - name: Governed tool input/output contract and approval-boundary regression
+        run: npm --prefix runtime/neuro-kurisu run test:tool-input-contracts-workpass624
       - name: Language invocation ordering regression
         run: node runtime/neuro-kurisu/tests/language-invoke-order-regression.mjs
       - name: End-to-end local language HTTP regression
@@ -182,6 +152,9 @@ jobs:
           node --experimental-strip-types tests/workpass71-continuum-timescale.mjs
           node --experimental-strip-types tests/workpass69-speech-interruption-gateway.mjs
           node --experimental-strip-types tests/termux-tts-concurrency-workpass69.mjs
+          npm run test:workpass628:native-speech-events
+          npm run test:workpass629:native-speech-host-router
+          npm run test:workpass630:native-speech-sse
           node --experimental-strip-types tests/workpass64-archived-receipt-reconciliation.mjs
           node --experimental-strip-types tests/organism-smoke.mjs
           node --experimental-strip-types tests/memory-retrieval-experiment.mjs

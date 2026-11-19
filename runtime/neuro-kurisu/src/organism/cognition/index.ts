@@ -106,3 +106,5 @@ export * from './P2805StabilityPlasticityArbiter.ts';
 export * from './P2820SelfKnowledgeCoresetBridge.ts';
 export * from './P2835TransferSafetySynergyController.ts';
 export * from './BoundedRecurrentStateSubstrate.ts';
+
+export * from './CognitiveImmuneSystem.ts';

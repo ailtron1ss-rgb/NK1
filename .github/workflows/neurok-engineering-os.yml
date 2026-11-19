@@ -1,0 +1,45 @@
+name: NeuroK Engineering OS
+
+on:
+  pull_request:
+    paths:
+      - "engineering-os/**"
+      - "tools/neurok-os*.mjs"
+      - "tools/neurok-os*.test.mjs"
+      - "docs/engineering/NEUROK_ENGINEERING_OS_2026-11-03.md"
+      - "docs/research/NEUROK_MULTI_AGENT_COORDINATION_RESEARCH_2026-11-03.md"
+      - ".github/workflows/neurok-engineering-os.yml"
+  push:
+    paths:
+      - "engineering-os/**"
+      - "tools/neurok-os*.mjs"
+      - "tools/neurok-os*.test.mjs"
+      - ".github/workflows/neurok-engineering-os.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Validate capability registry
+        run: npm run neurok-os:validate
+      - name: Run registry and coordinator safety tests
+        run: npm run neurok-os:test
+      - name: Print control-plane status
+        run: npm run neurok-os
+      - name: Check coordinator CLI
+        env:
+          NEUROK_OS_STATE_DIR: ${{ runner.temp }}/neurok-os-claims
+        run: npm run neurok-os:claims -- list
+
+      - name: Verify read-set snapshot CLI
+        run: |
+          npm run neurok-os:snapshot -- --paths package.json --out "$RUNNER_TEMP/neurok-os-read-set.json"
+          node -e "const fs=require('node:fs'); const data=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/neurok-os-read-set.json','utf8')); if (data.length !== 1 || data[0].path !== 'package.json' || !/^[a-f0-9]{64}$/.test(data[0].sha256)) process.exit(1)"

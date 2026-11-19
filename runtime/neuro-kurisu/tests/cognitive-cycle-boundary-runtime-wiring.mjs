@@ -6,10 +6,14 @@ const boundary = await readFile(new URL('../src/organism/core/CognitiveCycleBoun
 
 assert.match(runtime, /import\s+\{\s*assertCognitiveCycleBoundaryInput\s*\}\s+from\s+['"]\.\/CognitiveCycleBoundary\.ts['"]/,
   'OrganismRuntime must import the runtime boundary validator');
-const observationAt = runtime.indexOf('const observation = this.environment.toOrganismObservation();');
-assert.notEqual(observationAt, -1, 'runtime must materialize an observation before invoking Core');
+const rawObservationAt = runtime.indexOf('const rawObservation = this.environment.toOrganismObservation();');
+assert.notEqual(rawObservationAt, -1, 'runtime must materialize an observation before invoking Core');
+const normalizeAt = runtime.indexOf('normalizeWorldContext(rawObservation.worldContext', rawObservationAt);
+assert.ok(normalizeAt > rawObservationAt, 'runtime must normalize the materialized world observation before Core');
+const observationAt = runtime.indexOf('const observation = { ...rawObservation, worldContext: normalizedWorldContext };', normalizeAt);
+assert.ok(observationAt > normalizeAt, 'Core input must be the normalized observation, not the raw one');
 const validateAt = runtime.indexOf("assertCognitiveCycleBoundaryInput(observation, 'full');", observationAt);
-assert.ok(validateAt > observationAt, 'observation must be checked immediately after creation');
+assert.ok(validateAt > observationAt, 'normalized observation must be checked before it is consumed');
 const laterNestedRead = runtime.indexOf('observation.worldContext.facts', observationAt);
 assert.ok(laterNestedRead === -1 || validateAt < laterNestedRead,
   'boundary validation must happen before dereferencing nested observation fields');

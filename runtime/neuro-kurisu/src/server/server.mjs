@@ -1,11 +1,12 @@
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { URL } from 'node:url';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename, unlink, lstat } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
@@ -14,17 +15,35 @@ import { createSkillPromotionApprovalPayload, createSkillRollbackApprovalPayload
 import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
 import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
+import { hexisEvidenceHttpStatus } from './hexis-evidence-http-status.mjs';
 import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs';
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
+import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
+import { NeuroPlasticAdapterRegistry, parseTrustedNeuroPlasticApprovalKeys, parseTrustedNeuroPlasticPublicKeys, verifyNeuroPlasticApprovalSignature, verifyNeuroPlasticDetachedEd25519Signature, verifyNeuroPlasticEvaluationReceiptSignature } from '../organism/learning/NeuroPlasticAdapterRegistry.ts';
+import { verifyNeuroPlasticAdapterArtifact } from '../organism/learning/NeuroPlasticArtifactVerifier.ts';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
+import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
+function loadNeuroPlasticTrustMap(raw, envName, approval = false) {
+    try {
+        return approval
+            ? parseTrustedNeuroPlasticApprovalKeys(raw)
+            : parseTrustedNeuroPlasticPublicKeys(raw, envName);
+    }
+    catch (error) {
+        // An invalid optional trust map disables only its promotion path.
+        // The base local-language provider remains available as a safe fallback.
+        console.error('[Neuro-Plastic] invalid ' + envName + '; related adapter promotion is disabled:', error?.message || error);
+        return new Map();
+    }
+}
 const PUBLIC = path.join(ROOT, 'public');
 const STATE = path.resolve(process.env.STATE_DIR || path.join(ROOT, 'state'));
 const stateFile = path.join(STATE, 'organism-core.json');
@@ -35,6 +54,8 @@ const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').rep
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
+// Optional provider: configuration is server-only and disabled unless NK_MEM0_ENABLED=1.
+const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
@@ -89,6 +110,9 @@ const WORLD_CHECKPOINT_MAX_CYCLES = PHONE_POLICY.worldCheckpointMaxDirtyCycles;
 const BACKUP_EVERY_SAVES = Math.max(1, Number(process.env.NEURO_BACKUP_EVERY_SAVES || (PHONE_MODE ? 4 : 1)));
 const VISION_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.GEMINI_VISION_ENABLED || '0'));
 let languageCallCount = 0;
+// UserModel event ticks represent ingress time, not the slower cognitive scheduler tick.
+// Keep them strictly increasing within the process; epoch milliseconds remain ordered across restarts.
+let lastUserModelPreferenceEventTick = 0;
 let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
@@ -111,8 +135,182 @@ function consumeRateLimit(req, pathName) {
 }
 const VISION_BACKEND = VISION_ENABLED && process.env.GEMINI_API_KEY ? new GeminiVisionSemanticBackend({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash', timeoutMs: Number(process.env.GEMINI_VISION_TIMEOUT_MS || 12000), maxImageBytes: Number(process.env.GEMINI_VISION_MAX_IMAGE_BYTES || 8000000) }) : undefined;
 await mkdir(STATE, { recursive: true });
+const stateDirectoryInfo = await lstat(STATE);
+if (stateDirectoryInfo.isSymbolicLink() || !stateDirectoryInfo.isDirectory()) {
+    throw new Error('neuro-state-directory-must-be-a-regular-directory');
+}
 const lock = new ProcessLock(path.join(STATE, 'organism-runtime.lock'));
 await lock.acquire();
+
+const NEURO_PLASTIC_REGISTRY = new NeuroPlasticAdapterRegistry();
+const NEURO_PLASTIC_REGISTRY_PATH = path.resolve(
+    process.env.NEURO_PLASTIC_REGISTRY_FILE || path.join(STATE, 'neuro-plastic-adapters.json'),
+);
+const registryRelativePath = path.relative(STATE, NEURO_PLASTIC_REGISTRY_PATH);
+if (registryRelativePath === '..' || registryRelativePath.startsWith('..' + path.sep) || path.isAbsolute(registryRelativePath)) {
+    throw new Error('neuro-plastic-registry-file-must-remain-under-state-dir');
+}
+try {
+    const registryFileInfo = await lstat(NEURO_PLASTIC_REGISTRY_PATH);
+    if (registryFileInfo.isSymbolicLink() || !registryFileInfo.isFile()) {
+        throw new Error('neuro-plastic-registry-file-must-be-regular');
+    }
+}
+catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+}
+const NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS = loadNeuroPlasticTrustMap(
+    process.env.NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON,
+    'NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS_JSON',
+    true,
+);
+const NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY = String(process.env.NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY || '');
+try {
+    const registrySnapshot = JSON.parse(await readFile(NEURO_PLASTIC_REGISTRY_PATH, 'utf8'));
+    await NEURO_PLASTIC_REGISTRY.restore(
+        registrySnapshot,
+        (approval, context, purpose) => verifyNeuroPlasticApprovalSignature(
+            approval, context, NEURO_PLASTIC_APPROVAL_PUBLIC_KEYS, { purpose },
+        ),
+        (receipt, context) => verifyNeuroPlasticEvaluationReceiptSignature(
+            context.adapterId, receipt, NEURO_PLASTIC_EVALUATOR_PUBLIC_KEY,
+        ),
+        (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
+    );
+}
+catch (error) {
+    if (error?.code !== 'ENOENT') {
+        console.error('[Neuro-Plastic] registry snapshot rejected; starting with no active adapters:', error?.message || error);
+    }
+}
+let neuroPlasticPersistQueue = Promise.resolve();
+async function persistNeuroPlasticRegistry() {
+    const write = async () => {
+        const temporaryPath = NEURO_PLASTIC_REGISTRY_PATH + '.' + process.pid + '.' + randomUUID() + '.tmp';
+        try {
+            await writeFile(temporaryPath, JSON.stringify(NEURO_PLASTIC_REGISTRY.snapshot(), null, 2) + '\n', {
+                encoding: 'utf8',
+                mode: 0o600,
+                flag: 'wx',
+            });
+            await rename(temporaryPath, NEURO_PLASTIC_REGISTRY_PATH);
+        }
+        catch (error) {
+            try { await unlink(temporaryPath); } catch { /* Temporary file already absent. */ }
+            throw error;
+        }
+    };
+    neuroPlasticPersistQueue = neuroPlasticPersistQueue.catch(() => {}).then(write);
+    return neuroPlasticPersistQueue;
+}
+const NEURO_PLASTIC_INFERENCE = new NeuroPlasticInferenceAdapter(
+    NEURO_PLASTIC_REGISTRY,
+    (backendId) => backendId === 'llama.cpp' &&
+        LLAMA_CPP_PROVIDER.configured() &&
+        !LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown,
+    LLAMA_CPP_PROVIDER,
+    (manifest) => verifyNeuroPlasticAdapterArtifact(ROOT, manifest),
+    persistNeuroPlasticRegistry,
+);
+
+// P25 is an opt-in context/policy router. The canonical Neuro-Plastic registry
+// remains the final authority over signed model artifacts and actual inference.
+const P25_BASE_MODEL_ID = String(process.env.NEURO_PLASTIC_BASE_MODEL_ID || '').trim();
+const P25_BASE_MODEL_SHA256 = String(process.env.NEURO_PLASTIC_BASE_MODEL_SHA256 || '').trim().toLowerCase();
+const P25_POLICY_PUBLIC_KEYS = loadNeuroPlasticTrustMap(
+    process.env.NEURO_PLASTIC_P25_POLICY_PUBLIC_KEYS_JSON,
+    'NEURO_PLASTIC_P25_POLICY_PUBLIC_KEYS_JSON',
+);
+const P25_POLICY_KEY_ID = String(process.env.NEURO_PLASTIC_P25_POLICY_KEY_ID || '').trim();
+const P25_EXECUTOR_ENABLED =
+    process.env.NEURO_PLASTIC_MODEL_ALIASES_ENABLED === '1' &&
+    LLAMA_CPP_PROVIDER.configured() &&
+    P25_BASE_MODEL_ID.length > 0 &&
+    /^[a-f0-9]{64}$/.test(P25_BASE_MODEL_SHA256) &&
+    /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(P25_POLICY_KEY_ID) &&
+    P25_POLICY_PUBLIC_KEYS.has(P25_POLICY_KEY_ID);
+const P25_TASK_TO_CANONICAL_DOMAIN = Object.freeze({
+    language: 'language',
+    reasoning: 'reasoning',
+    planning: 'planning',
+    vision: 'vision',
+    audio: 'audio',
+});
+
+function verifyP25SynapticPolicy(canonicalPayload, signature, signerKeyId) {
+    if (!P25_EXECUTOR_ENABLED || signerKeyId !== P25_POLICY_KEY_ID) return false;
+    return verifyNeuroPlasticDetachedEd25519Signature(
+        canonicalPayload,
+        signature,
+        signerKeyId,
+        P25_POLICY_PUBLIC_KEYS,
+    );
+}
+
+async function invokeCanonicalSynapticAdapter(request, candidate, routing) {
+    const baseAlias = process.env.LLAMA_CPP_MODEL || 'local-model';
+    const baseModel = {
+        modelId: candidate.baseModelId,
+        modelRevisionSha256: candidate.baseModelRevisionSha256,
+    };
+    const baseFallback = async (reason) => {
+        const response = await LLAMA_CPP_PROVIDER.generate({ ...request, model: baseAlias });
+        return {
+            ...response,
+            ...baseModel,
+            appliedAdapterSha256: null,
+            adapterApplied: false,
+            adapterFallbackReason: String(reason || 'canonical-admission-unavailable').slice(0, 120),
+        };
+    };
+
+    let manifest;
+    try {
+        manifest = NEURO_PLASTIC_REGISTRY.getManifest(candidate.id);
+    }
+    catch {
+        return baseFallback('canonical-adapter-not-registered');
+    }
+
+    const expectedDomain = P25_TASK_TO_CANONICAL_DOMAIN[routing.task];
+    const manifestMatchesP25 =
+        typeof expectedDomain === 'string' &&
+        manifest.domain === expectedDomain &&
+        manifest.adapterId === candidate.id &&
+        manifest.baseModel.id === candidate.baseModelId &&
+        manifest.baseModel.fingerprint.toLowerCase() === candidate.baseModelRevisionSha256.toLowerCase() &&
+        manifest.artifact.weightsSha256.toLowerCase() === candidate.artifactSha256.toLowerCase() &&
+        manifest.method === candidate.adapterFormat &&
+        manifest.baseModel.backendId === 'llama.cpp' &&
+        manifest.baseModel.servedModelAlias === baseAlias &&
+        candidate.baseModelId === P25_BASE_MODEL_ID &&
+        candidate.baseModelRevisionSha256.toLowerCase() === P25_BASE_MODEL_SHA256;
+
+    if (!P25_EXECUTOR_ENABLED || !manifestMatchesP25) {
+        return baseFallback(!P25_EXECUTOR_ENABLED
+            ? 'p25-host-executor-not-explicitly-enabled'
+            : 'p25-canonical-manifest-binding-mismatch');
+    }
+
+    const response = await NEURO_PLASTIC_INFERENCE.generate(request, {
+        domain: expectedDomain,
+        backendId: manifest.baseModel.backendId,
+        baseModelFingerprint: manifest.baseModel.fingerprint,
+        baseModelAlias: manifest.baseModel.servedModelAlias,
+        backendSupportsModelAliases: true,
+        confidence01: routing.confidence01,
+        risk01: Math.max(routing.resourceRisk01, routing.uncertainty01),
+        expectedAdapterId: candidate.id,
+    });
+    return {
+        ...response,
+        ...baseModel,
+        appliedAdapterSha256: response.adapter.used ? manifest.artifact.weightsSha256 : null,
+        adapterApplied: response.adapter.used,
+        adapterFallbackReason: response.adapter.fallbackReason,
+    };
+}
+
 async function invokeLanguage(request) {
     const started = Date.now();
     const ecologyPreferredBackend = runtime.core.p40SelectModel('language', PHONE_MODE === false, request.maxTokens && request.maxTokens > 900 ? .82 : .72);
@@ -159,6 +357,14 @@ const runtime = new OrganismRuntime({
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
+    ...(P25_EXECUTOR_ENABLED ? {
+        synapticBaseModelId: P25_BASE_MODEL_ID,
+        synapticBaseModelRevisionSha256: P25_BASE_MODEL_SHA256,
+        synapticAdapterManifestVerifier: verifyP25SynapticPolicy,
+        synapticAdapterInvoker: invokeCanonicalSynapticAdapter,
+    } : {}),
+    mem0Adapter: MEM0_MEMORY_ADAPTER,
+    mem0CognitiveRecall: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
     autoRun: true,
     intervalMs: INTERVAL_MS,
     sensorIntervalMs: SENSOR_INTERVAL_MS,
@@ -303,7 +509,28 @@ async function tryLlamaCpp(request, failures) {
     if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     if (!LLAMA_CPP_PROVIDER.configured() || LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown) return null;
     try {
-        return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature, signal: request.signal });
+        const completionRequest = {
+            system: request.system,
+            user: request.user,
+            maxTokens: request.maxTokens,
+            temperature: request.temperature,
+            signal: request.signal,
+        };
+        const plasticDomain = String(request.neuroPlasticDomain || '').trim().toLowerCase();
+        const baseModelFingerprint = String(process.env.NEURO_PLASTIC_BASE_MODEL_SHA256 || '').trim();
+        if (plasticDomain && /^[a-f0-9]{64}$/i.test(baseModelFingerprint) &&
+            process.env.NEURO_PLASTIC_MODEL_ALIASES_ENABLED === '1') {
+            return await NEURO_PLASTIC_INFERENCE.generate(completionRequest, {
+                domain: plasticDomain,
+                backendId: 'llama.cpp',
+                baseModelFingerprint,
+                baseModelAlias: process.env.LLAMA_CPP_MODEL || 'local-model',
+                backendSupportsModelAliases: true,
+                confidence01: Number(request.neuroPlasticConfidence01 ?? 0.5),
+                risk01: Number(request.neuroPlasticRisk01 ?? 0.5),
+            });
+        }
+        return await LLAMA_CPP_PROVIDER.generate(completionRequest);
     }
     catch (error) {
         if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
@@ -399,6 +626,15 @@ async function route(req, res) {
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null });
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/evaluation/evidence') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            return json(res, 200, {
+                ok: true,
+                evidence: runtime.independentEvaluationEvidenceSnapshot(),
+                note: 'Read-only, hashed and payload-free independent-evaluation projection.',
+            });
+        }
         if (req.method === 'POST' && url.pathname === '/api/organism/learning/compound-repair-revision') {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
@@ -416,6 +652,211 @@ async function route(req, res) {
             return json(res, 200, embodimentAssetStatus());
         if (req.method === 'GET' && url.pathname === '/api/organism/avatar')
             return json(res, 200, { ok: true, avatar: embodimentAssetStatus(), note: 'Read-only Live2D embodiment asset surface.' });
+        if (req.method === 'POST' && url.pathname === '/api/organism/user-model/preferences') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
+            const action = ['record', 'correct', 'forget'].includes(input.action) ? input.action : '';
+            if (!action)
+                return json(res, 400, { ok: false, error: 'action-must-be-record-correct-or-forget' });
+            if (input.confirmed !== true)
+                return json(res, 400, { ok: false, error: 'explicit-user-confirmation-required' });
+            const value = typeof input.value === 'string' ? input.value : '';
+            if (action !== 'forget' && !['concise', 'balanced', 'detailed'].includes(value))
+                return json(res, 400, { ok: false, error: 'unsupported-response-style' });
+            // The host owns provenance and classification. Never accept client-supplied
+            // evidence references, sensitivity labels, keys, domains, or tick counters.
+            lastUserModelPreferenceEventTick = Math.max(Date.now(), lastUserModelPreferenceEventTick + 1);
+            const evidence = {
+                key: 'response.style',
+                domain: 'interaction-style',
+                value,
+                tick: lastUserModelPreferenceEventTick,
+                evidenceRef: `http-user-preference:${randomUUID()}`,
+                explicit: true,
+                sensitivity: 'low-risk',
+            };
+            const result = action === 'correct'
+                ? await runtime.correctExplicitUserPreference(evidence)
+                : action === 'forget'
+                    ? await runtime.forgetExplicitUserPreference({
+                        key: evidence.key, domain: evidence.domain, tick: evidence.tick,
+                        evidenceRef: evidence.evidenceRef, explicit: true,
+                    })
+                    : await runtime.recordExplicitUserPreference(evidence);
+            if (!result.accepted) {
+                const status = result.reason === 'duplicate-evidence' ? 409 : 400;
+                return json(res, status, { ok: false, error: result.reason || 'user-model-write-rejected' });
+            }
+            if (action === 'forget') {
+                return json(res, 200, {
+                    ok: true, action, forgotten: result.removed,
+                    preference: { key: 'response.style', domain: 'interaction-style', present: false },
+                    note: 'The explicitly confirmed response-style preference was removed from the canonical UserModel projection.',
+                });
+            }
+            return json(res, 200, {
+                ok: true,
+                action,
+                requestedValue: value,
+                preference: {
+                    key: 'response.style',
+                    domain: 'interaction-style',
+                    value: result.claim.value,
+                    status: result.status,
+                    source: 'user-explicit',
+                },
+                note: 'Only an explicitly confirmed, allowlisted low-risk response style is stored.',
+            });
+        }
+
+        // Open Loop Radar — authenticated, explicit-consent HTTP surface.
+        if (req.method === 'GET' && url.pathname === '/api/organism/open-loops') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const limitValue = Number(url.searchParams.get('limit') || 64);
+            const limit = Number.isSafeInteger(limitValue) ? Math.max(1, Math.min(128, limitValue)) : 64;
+            const options = {};
+            for (const key of ['dueSoonMs', 'reminderCooldownMs', 'quietUntil']) {
+                const raw = url.searchParams.get(key);
+                if (raw === null || raw === '') continue;
+                const value = Number(raw);
+                if (Number.isSafeInteger(value) && value >= 0) options[key] = value;
+            }
+            const [diagnostics, snapshot, candidates] = await Promise.all([
+                runtime.openLoopDiagnostics(),
+                runtime.openLoopSnapshot(),
+                runtime.scanOpenLoops(options),
+            ]);
+            return json(res, 200, {
+                ok: true, readOnly: true, diagnostics,
+                records: snapshot.records.slice(0, limit),
+                candidates: candidates.slice(0, limit),
+                totalRecords: snapshot.records.length,
+            });
+        }
+
+        if (req.method === 'POST' && url.pathname === '/api/organism/open-loops') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
+            if (input.confirmed !== true)
+                return json(res, 400, { ok: false, error: 'explicit-open-loop-confirmation-required' });
+            const title = typeof input.title === 'string' ? input.title.trim().slice(0, 180) : '';
+            const description = input.description === undefined ? '' :
+                typeof input.description === 'string' ? input.description.trim().slice(0, 500) : null;
+            const kind = input.kind;
+            const owner = input.owner;
+            const allowedKinds = ['promise', 'task', 'waiting', 'project_step', 'dependency'];
+            if (!title || description === null || !allowedKinds.includes(kind) || !['user', 'system'].includes(owner))
+                return json(res, 400, { ok: false, error: 'invalid-open-loop-fields' });
+            if (input.dependencies !== undefined &&
+                (!Array.isArray(input.dependencies) || input.dependencies.length > 32 ||
+                 input.dependencies.some(value => typeof value !== 'string' || !value.trim() || value.length > 128)))
+                return json(res, 400, { ok: false, error: 'invalid-open-loop-dependencies' });
+            const parseTimestamp = value => value === undefined || value === null
+                ? null : typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : NaN;
+            const dueAt = parseTimestamp(input.dueAt);
+            const expiresAt = parseTimestamp(input.expiresAt);
+            const priority = input.priority === undefined ? 0.5 : input.priority;
+            const idempotencyKey = input.idempotencyKey === undefined
+                ? null
+                : typeof input.idempotencyKey === 'string' && input.idempotencyKey.trim().length > 0 && input.idempotencyKey.trim().length <= 128
+                    ? input.idempotencyKey.trim() : '';
+            if (input.idempotencyKey !== undefined && !idempotencyKey)
+                return json(res, 400, { ok: false, error: 'invalid-open-loop-idempotency-key' });
+            if (Number.isNaN(dueAt) || Number.isNaN(expiresAt) ||
+                typeof priority !== 'number' || !Number.isFinite(priority) || priority < 0 || priority > 1)
+                return json(res, 400, { ok: false, error: 'invalid-open-loop-temporal-or-priority-field' });
+            try {
+                const record = await runtime.registerOpenLoop({
+                    title, description, kind, owner, accepted: true,
+                    source: 'http-api:explicit-user-confirmation',
+                    dueAt, expiresAt, dependencies: input.dependencies || [], priority, idempotencyKey,
+                });
+                return json(res, 201, { ok: true, record, accepted: true });
+            } catch (error) {
+                const message = String(error?.message || error).slice(0, 180);
+                const status = /capacity|unknown-dependency|sequence-exhausted|idempotency-conflict/.test(message) ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+
+        const openLoopAction = new RegExp('^/api/organism/open-loops/([^/]+)/(complete|cancel|reopen|surface|snooze|dependencies)$').exec(url.pathname);
+        if (req.method === 'POST' && openLoopAction) {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            let id;
+            try {
+                id = decodeURIComponent(openLoopAction[1]).slice(0, 128);
+            } catch {
+                return json(res, 400, { ok: false, error: 'invalid-open-loop-id-encoding' });
+            }
+            const action = openLoopAction[2];
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
+            if (action === 'surface') {
+                if (input.displayed !== true)
+                    return json(res, 400, { ok: false, error: 'explicit-display-acknowledgement-required' });
+            } else if (input.confirmed !== true) {
+                return json(res, 400, { ok: false, error: 'explicit-open-loop-confirmation-required' });
+            }
+            try {
+                if (action === 'complete') {
+                    // The server owns closure provenance; any client-supplied evidence is ignored.
+                    const record = await runtime.fulfillOpenLoop(id, {
+                        kind: 'user-confirmation',
+                        reference: 'http-open-loop-confirmation:' + randomUUID(),
+                        verifiedAt: Date.now(),
+                    });
+                    return json(res, 200, { ok: true, record });
+                }
+                if (action === 'cancel') {
+                    const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 240) : '';
+                    if (!reason) return json(res, 400, { ok: false, error: 'cancellation-reason-required' });
+                    const record = await runtime.cancelOpenLoop(id, reason);
+                    return json(res, 200, { ok: true, record });
+                }
+                if (action === 'reopen') {
+                    const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 240) : '';
+                    if (!reason) return json(res, 400, { ok: false, error: 'reopen-reason-required' });
+                    const record = await runtime.reopenOpenLoop(id, reason);
+                    return json(res, 200, { ok: true, record });
+                }
+                if (action === 'snooze') {
+                    const until = input.until;
+                    const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 240) : '';
+                    if (!Number.isSafeInteger(until) || until <= Date.now())
+                        return json(res, 400, { ok: false, error: 'snooze-requires-future-integer-timestamp' });
+                    if (!reason) return json(res, 400, { ok: false, error: 'snooze-reason-required' });
+                    const record = await runtime.snoozeOpenLoop(id, until, reason);
+                    return json(res, 200, { ok: true, record });
+                }
+                if (action === 'dependencies') {
+                    const dependencies = input.dependencies;
+                    const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 240) : '';
+                    if (!Array.isArray(dependencies) || dependencies.length > 32 ||
+                        dependencies.some(value => typeof value !== 'string' || !value.trim() || value.length > 128))
+                        return json(res, 400, { ok: false, error: 'invalid-open-loop-dependencies' });
+                    if (!reason) return json(res, 400, { ok: false, error: 'dependency-change-reason-required' });
+                    const record = await runtime.updateOpenLoopDependencies(id, dependencies, reason);
+                    return json(res, 200, { ok: true, record });
+                }
+                await runtime.acknowledgeOpenLoopSurfaced(id);
+                return json(res, 200, { ok: true, acknowledged: true, id });
+            } catch (error) {
+                const message = String(error?.message || error).slice(0, 180);
+                const status = /not-found/.test(message) ? 404
+                    : /already-closed|blocked|capacity|not-reopenable|not-ready-to-surface|dependency-cycle|unknown-dependency|dependency-cancelled/.test(message) ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+
         if (req.method === 'GET' && url.pathname === '/api/organism/time') {
             const temporal = runtime.core.temporalContinuitySnapshot();
             return json(res, 200, { ok: true, current: runtime.core.temporalContext(), continuity: temporal, offlineSinceLastCheckpointMs: temporal.gapSincePreviousMs, lastSeenAt: temporal.lastCheckpointAt, lastSessionEndedAt: temporal.lastSessionEndedAt, sessionCount: temporal.sessionCount, interruptionCount: temporal.interruptionCount });
@@ -864,6 +1305,21 @@ async function route(req, res) {
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/reviews') {
             return json(res, 200, { ok: true, reviews: runtime.core.hexisListLearningReviews() });
         }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/evidence/lineage') {
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input)) {
+                return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
+            }
+            const result = runtime.core.hexisIngestEvidenceLineage(input);
+            if (result.accepted) {
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, result });
+            }
+            if (result.reason === 'source-trace-id-conflict') await runtime.core.flush();
+            // Reusing an immutable trace ID with different provenance is a resource conflict.
+            const status = hexisEvidenceHttpStatus(result.reason);
+            return json(res, status, { ok: false, result });
+        }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/create') {
             const input = await body(req);
             const result = runtime.core.hexisCreateLearningReview();
@@ -1298,6 +1754,9 @@ async function route(req, res) {
         if (req.method === 'GET' && url.pathname === '/api/organism/voice/status') {
             return json(res, 200, { ok: true, voice: runtime.embodiment.voiceSnapshot(), body: runtime.embodiment.snapshot(), multimodal: runtime.core.multimodalSnapshot() });
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/voice/events') {
+            return startNativeSpeechSseStream(req, res, runtime.embodiment);
+        }
         if (req.method === 'POST' && url.pathname === '/api/organism/voice/interrupt') {
             const input=await body(req);
             const reason=String(input.reason||'operator-ui-stop').replace(/[\r\n\t]+/g,' ').slice(0,120);
@@ -1557,6 +2016,32 @@ async function route(req, res) {
             }
             const memories = q ? (temporalMode === 'current' && asOfAt === undefined ? runtime.core.memoryInspectorSearch(q, limit) : runtime.core.memoryRetrieveTemporal(q, limit, temporalMode, asOfAt)) : runtime.core.memoryInspectorSnapshot(limit);
             return json(res, 200, { ok: true, query: q, temporalMode, asOfAt: asOfAt ?? Date.now(), memories, embeddingMaintenance: runtime.core.memoryEmbeddingMaintenanceDiagnostics(), note: 'Read-only diagnostic view of canonical MemoryOS2 memories plus derived experience tier; this endpoint does not mutate memory.' });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/memory/mem0/diagnostics') {
+            return json(res, 200, { ok: true, readOnly: true, diagnostics: MEM0_MEMORY_ADAPTER.diagnostics(), canonicalMemory: 'MemoryOS2' });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/memory/mem0/search') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input)) {
+                return json(res, 400, { ok: false, error: 'invalid-request-body' });
+            }
+            const query = String(input.query ?? '').trim().slice(0, 500);
+            if (!query) return json(res, 400, { ok: false, error: 'missing-query' });
+            const rawLimit = Number(input.limit ?? 5);
+            const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(10, Math.floor(rawLimit))) : 5;
+            // Local MemoryOS2 remains authoritative. External candidates stay separate and untrusted.
+            const canonicalMemories = runtime.core.memoryInspectorSearch(query, limit);
+            const external = await MEM0_MEMORY_ADAPTER.search(query, limit);
+            return json(res, 200, {
+                ok: true,
+                query,
+                canonical: { source: 'MemoryOS2', authoritative: true, memories: canonicalMemories },
+                externalCandidates: external.memories,
+                mem0: { status: external.status, errorCode: external.errorCode, diagnostics: external.diagnostics },
+                policy: { autoPromotion: false, canonicalWrite: false, instructionExecution: false, userScopeFromServerEnvironment: true, cognitiveRecallRequiresSeparateOptIn: true },
+                note: 'Remote Mem0 results are untrusted recall candidates. Verify provenance before adopting; NK1 canonical memory is unchanged.',
+            });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/experience-continuum') {
             const query = url.searchParams.get('q') || '';

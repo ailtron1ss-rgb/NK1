@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "denyPrefixes": [
+    ".git/"
+  ],
+  "denyExactPaths": [
+    ".env",
+    ".env.local",
+    ".npmrc",
+    "id_rsa",
+    "id_ed25519"
+  ],
+  "humanApprovalPrefixes": [
+    ".github/workflows/",
+    "engineering-os/",
+    "tools/neurok-os",
+    "docs/evaluation/",
+    "tests/holdout/"
+  ],
+  "humanApprovalExactPaths": [
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "description": "Fail-closed preflight policy. Human approval is required for policy, evaluator, workflow, release and project-authority changes.",
+  "denySegments": [
+    ".git",
+    ".ssh"
+  ],
+  "denyBasenames": [
+    ".env",
+    ".npmrc",
+    "id_rsa",
+    "id_ed25519",
+    "credentials.json",
+    "service-account.json"
+  ],
+  "denyBasenamePrefixes": [
+    ".env."
+  ],
+  "denyBasenameSuffixes": [
+    ".pem",
+    ".p12",
+    ".pfx",
+    ".key"
+  ]
+}

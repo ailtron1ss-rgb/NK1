@@ -1,0 +1,41 @@
+name: NK1 B306 decision-bound outcome attribution
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/B306AutonomousInitiativeVerificationLedger.ts"
+      - "runtime/neuro-kurisu/tests/b306-outcome-attribution.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-b306-outcome-attribution.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/B306AutonomousInitiativeVerificationLedger.ts"
+      - "runtime/neuro-kurisu/tests/b306-outcome-attribution.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-b306-outcome-attribution.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: b306-outcome-attribution-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: B306 decision-bound causal outcome regression
+        run: npm --prefix runtime/neuro-kurisu run test:b306:outcome-attribution

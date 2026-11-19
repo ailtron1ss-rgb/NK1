@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { groundInteractionTarget } from '../src/organism/body/GroundedInteractionBridge.ts';
+const now=20_000;
+const entity={id:'gw-cup',label:'ceramic cup',kind:'object',confidence01:.92,present01:.98,firstSeenAt:now-1000,lastSeenAt:now,modalities:['camera'],presenceStatus:'visible',persistence01:.4,absenceEvidence01:0,observationCount:4};
+const world={version:1,revision:4,lastAt:now,location:'desk',uncertainty01:.1,confidence01:.9,entities:[entity],relations:[],events:[],facts:[],provenanceIds:[],lastHash:'x'};
+const safetyAuthorization={decision:'allow',targetId:'camera-cup-1',worldEntityId:'gw-cup',frameId:'avatar-root-m',kind:'grasp',issuedAt:now,expiresAt:now+4000,issuer:'trusted-safety-classifier',provenanceId:'safety-check-01'};
+const detection={id:'camera-cup-1',label:'  CERAMIC   CUP  ',safetyAuthorization,position:{x:.3,y:1,z:.2},frameId:'avatar-root-m',confidence01:.96,visible:true,observedAt:now,source:'camera',safeToTouch:true,affordances:['grasp','grasp','unsupported'],radiusM:.05};
+const result=groundInteractionTarget({detection,world,now});
+assert.equal(result.accepted,true,'labels must normalize Unicode, case and repeated whitespace');
+if(result.accepted){assert.equal(result.target.confidence01,.9);assert.equal(result.target.frameId,'avatar-root-m');assert.equal(result.target.worldEntityId,'gw-cup');assert.equal(result.target.groundedWorldRevision,4);assert.deepEqual(result.target.affordances,['grasp']);assert.deepEqual(result.target.safetyAuthorization,safetyAuthorization);}
+assert.equal(groundInteractionTarget({detection:{...detection,observedAt:now-5000},world,now}).reason,'stale-camera-detection');
+assert.equal(groundInteractionTarget({detection:{...detection,label:'unknown bowl'},world,now}).reason,'object-not-present-in-canonical-world');
+assert.equal(groundInteractionTarget({detection,world:{...world,entities:[]},now}).accepted,false);
+assert.equal(groundInteractionTarget({detection:{...detection,visible:false},world,now}).reason,'camera-detection-not-grounded');
+assert.equal(groundInteractionTarget({detection,world:{...world,entities:[{...entity,presenceStatus:'fading'}]},now}).reason,'canonical-world-does-not-confirm-presence');
+assert.equal(groundInteractionTarget({detection,world:{...world,lastAt:now-5000},now}).reason,'canonical-world-snapshot-stale-or-future');
+assert.equal(groundInteractionTarget({detection,world:{...world,confidence01:.1},now}).reason,'canonical-world-confidence-insufficient');
+assert.equal(groundInteractionTarget({detection,world:{...world,entities:[entity,{...entity,id:'gw-cup-2'}]},now}).reason,'ambiguous-semantic-object-identity');
+assert.equal(groundInteractionTarget({detection,world:{...world,entities:[null,entity]},now}).accepted,true);
+assert.equal(groundInteractionTarget({detection,world:{...world,entities:[{...entity,present01:NaN}]},now}).reason,'canonical-world-does-not-confirm-presence');
+assert.equal(groundInteractionTarget({detection:{...detection,source:'user'},world,now}).reason,'unsupported-detection-source');
+console.log(JSON.stringify({pass:true,tests:13,coverage:['camera-to-world-join','whitespace-normalization','confidence-fusion','fresh-detection','stale-detection','unknown-object','missing-world','visibility','presence-status','stale-world-snapshot','world-confidence','ambiguous-identity','malformed-entity-resilience','source-validation','affordance-allowlist','world-entity-binding']}));

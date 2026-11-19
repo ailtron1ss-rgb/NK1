@@ -1,0 +1,127 @@
+name: NK1 embodiment switch contract
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/avatar/embodimentSwitch.ts"
+      - "app/src/components/avatar/embodimentTimeline.ts"
+      - "app/src/components/avatar/motorFrameMapper.ts"
+      - "app/scripts/motor-frame-mapper.test.mjs"
+      - "app/src/components/avatar/embodimentCoordinator.ts"
+      - "app/src/components/avatar/embodimentUiBridge.ts"
+      - "app/scripts/embodiment-coordinator.test.mjs"
+      - "app/scripts/embodiment-timeline.test.mjs"
+      - "app/scripts/embodiment-ui-bridge.test.mjs"
+      - "app/scripts/live2d-intent-ack.test.mjs"
+      - "runtime/neuro-kurisu/public/live2d/viewer.html"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/threeToonMaterials.ts"
+      - "app/src/types/three.d.ts"
+      - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/src/components/avatar/avatarModelStore.ts"
+      - "app/src/components/avatar/avatarModelLimits.ts"
+      - "app/src/components/avatar/avatarModelPreflight.ts"
+      - "app/scripts/avatar-model-preflight.test.mjs"
+      - "app/scripts/verify-hosted-kurisu-model.mjs"
+      - "app/src/components/avatar/avatarModelCatalog.ts"
+      - "app/scripts/three-toon-materials.test.mjs"
+      - "app/scripts/embodiment-switch.test.mjs"
+      - "app/src/components/avatar/motionArbitration.ts"
+      - "app/src/components/avatar/motionLibrary.ts"
+      - "app/src/components/avatar/semanticGestureIntent.ts"
+      - "app/scripts/semantic-gesture-intent.test.mjs"
+      - "app/scripts/motion-arbitration.test.mjs"
+      - "app/src/components/avatar/rendererCapabilityManifest.ts"
+      - "app/src/components/avatar/rendererRegistryDefaults.ts"
+      - "app/src/components/avatar/originalStageChannels.ts"
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/scripts/body-systems.test.mjs"
+      - "app/package.json"
+      - ".github/workflows/nk1-embodiment-switch.yml"
+  workflow_dispatch:
+
+  push:
+    branches:
+      - workpass70-source
+      - work/nk1-embodiment-ui-bridge-source-sync-2026-11-01
+    paths:
+      - "app/src/components/avatar/embodimentSwitch.ts"
+      - "app/src/components/avatar/embodimentTimeline.ts"
+      - "app/src/components/avatar/motorFrameMapper.ts"
+      - "app/scripts/motor-frame-mapper.test.mjs"
+      - "app/src/components/avatar/embodimentCoordinator.ts"
+      - "app/src/components/avatar/embodimentUiBridge.ts"
+      - "app/scripts/embodiment-coordinator.test.mjs"
+      - "app/scripts/embodiment-timeline.test.mjs"
+      - "app/scripts/embodiment-ui-bridge.test.mjs"
+      - "app/scripts/live2d-intent-ack.test.mjs"
+      - "runtime/neuro-kurisu/public/live2d/viewer.html"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/threeToonMaterials.ts"
+      - "app/src/types/three.d.ts"
+      - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/src/components/avatar/avatarModelStore.ts"
+      - "app/src/components/avatar/avatarModelLimits.ts"
+      - "app/src/components/avatar/avatarModelPreflight.ts"
+      - "app/scripts/avatar-model-preflight.test.mjs"
+      - "app/scripts/verify-hosted-kurisu-model.mjs"
+      - "app/src/components/avatar/avatarModelCatalog.ts"
+      - "app/scripts/three-toon-materials.test.mjs"
+      - "app/scripts/embodiment-switch.test.mjs"
+      - "app/src/components/avatar/motionArbitration.ts"
+      - "app/src/components/avatar/motionLibrary.ts"
+      - "app/src/components/avatar/semanticGestureIntent.ts"
+      - "app/scripts/semantic-gesture-intent.test.mjs"
+      - "app/scripts/motion-arbitration.test.mjs"
+      - "app/src/components/avatar/rendererCapabilityManifest.ts"
+      - "app/src/components/avatar/rendererRegistryDefaults.ts"
+      - "app/src/components/avatar/originalStageChannels.ts"
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/scripts/body-systems.test.mjs"
+      - "app/package.json"
+      - ".github/workflows/nk1-embodiment-switch.yml"
+
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-embodiment-switch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned app dependencies
+        run: npm ci --prefix app --ignore-scripts
+      - name: Test renderer-neutral body handoff
+        run: npm --prefix app run test:embodiment-switch
+      - name: Test cognitive motion arbitration and renderer capability contracts
+        run: npm --prefix app run test:body-systems
+      - name: Test N.E.K.O.-derived semantic gesture cards and NK1 motion programs
+        run: npm --prefix app run test:semantic-gesture-intent
+      - name: Test shared grapheme-to-viseme articulation
+        run: npm --prefix app run test:embodiment-timeline
+      - name: Test body-switch UI integration bridge
+        run: npm --prefix app run test:embodiment-ui-bridge
+      - name: Test GLB/VRM binary preflight
+        run: npm --prefix app run test:avatar-model-preflight
+      - name: Test procedural and VRM 3D avatar contract
+        run: node --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Test real Three.js toon material lifecycle
+        run: npm --prefix app run test:three-toon-materials
+      - name: Verify hosted Kurisu asset hash and GLB structure
+        run: npm --prefix app run verify:hosted-kurisu-model
+      - name: App typecheck
+        run: npm --prefix app run typecheck

@@ -96,6 +96,19 @@ export class CognitiveFieldEngine {
     p.level = clamp(p.level * (1 - clamp(reduction)));
   }
 
+  resolvePressureBySource(sourceId:string,reduction=0.92):number {
+    const clean=String(sourceId??'').trim();
+    if(!clean)return 0;
+    let released=0;
+    this.state.pressures=this.state.pressures.map((pressure)=>{
+      if(!pressure.sourceIds.includes(clean))return pressure;
+      released++;
+      const sourceIds=pressure.sourceIds.filter(id=>id!==clean);
+      return {...pressure,sourceIds,level:sourceIds.length?pressure.level:clamp(pressure.level*(1-clamp(reduction)))};
+    }).filter((pressure)=>pressure.level>0.03);
+    return released;
+  }
+
   private decayPressures(): void {
     this.state.pressures = this.state.pressures.map((p) => ({ ...p, level: clamp(p.level * (1 - p.decayRate)) })).filter((p) => p.level > 0.03);
   }

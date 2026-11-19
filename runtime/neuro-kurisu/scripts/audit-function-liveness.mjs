@@ -1,8 +1,6 @@
-import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
-const require=createRequire(import.meta.url);
-const ts=require('/opt/nvm/versions/node/v22.16.0/lib/node_modules/typescript/lib/typescript.js');
+import { ts } from './lib/resolve-typescript.mjs';
 const root=process.cwd();
 const files=[];
 function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(['node_modules','legacy-original','.git','state'].includes(e.name))continue;const p=path.join(d,e.name);if(e.isDirectory())walk(p);else if(/\.(ts|tsx|mjs)$/.test(e.name))files.push(p)}}

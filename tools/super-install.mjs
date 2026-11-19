@@ -6,13 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { matchesNodePin, versionAtLeast, MIN_NPM_VERSION } from './runtime-pin.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-let nodePin;
-try {
-  nodePin = readFileSync(path.join(root, '.nvmrc'), 'utf8').trim();
-} catch (error) {
-  console.error(`SUPER_INSTALL=FAIL reason=node-pin-missing file=.nvmrc message=${error instanceof Error ? error.message : String(error)}`);
-  process.exit(1);
-}
+const nodePin = readFileSync(path.join(root, '.nvmrc'), 'utf8').trim();
 if (!matchesNodePin(nodePin, process.versions.node)) {
   console.error(`SUPER_INSTALL=FAIL reason=node-version-mismatch expected=${nodePin || 'valid .nvmrc pin'} actual=${process.version}`);
   process.exit(1);

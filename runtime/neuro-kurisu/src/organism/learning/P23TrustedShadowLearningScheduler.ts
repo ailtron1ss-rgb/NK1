@@ -159,7 +159,6 @@ const safeInteger = (v: unknown, min: number, max: number): v is number =>
  * correctness, signed skill evidence, or promotion authorization.
  */
 export class P23TrustedShadowLearningScheduler {
-  private readonly core: TrustedShadowLearningCore;
   private inFlight: Promise<LearningProcessResult> | null = null;
   private state: TrustedShadowLearningSchedulerSnapshot = {
     enabled: true, runsStarted: 0, inFlight: false, lastRunId: null,
@@ -170,6 +169,8 @@ export class P23TrustedShadowLearningScheduler {
   readonly intervalMs: number;
   readonly initialDelayMs: number;
   private readonly config: TrustedShadowLearningScheduleConfig;
+  private readonly core: TrustedShadowLearningCore;
+
   constructor(core: TrustedShadowLearningCore, config: TrustedShadowLearningScheduleConfig) {
     this.core = core;
     if (!config || config.enabled !== true) throw new Error('trusted shadow runtime schedule requires explicit enablement');

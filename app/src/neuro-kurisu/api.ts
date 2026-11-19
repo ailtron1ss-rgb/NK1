@@ -3,6 +3,10 @@ import { waitForActionApproval } from "./action-approval-broker.ts";
 
 const API_BASE = String(import.meta.env?.VITE_NEURO_KURISU_API_BASE ?? "").replace(/\/$/, "");
 
+export function neuroApiUrl(path: string): string {
+  return API_BASE + (path.startsWith("/") ? path : "/" + path);
+}
+
 type ApprovalChallenge = {
   id: string;
   toolId: string;
@@ -18,7 +22,7 @@ type ApprovalChallenge = {
 type ApiFailure = Error & { status?: number; data?: unknown };
 
 async function sendRequest(path: string, init?: RequestInit): Promise<{ response: Response; data: unknown }> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(neuroApiUrl(path), {
     ...init,
     headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
     cache: "no-store",

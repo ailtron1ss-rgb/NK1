@@ -1,0 +1,39 @@
+name: NK1 75-aspect registry
+
+on:
+  pull_request:
+    paths:
+      - "engineering-os/aspects.v1.json"
+      - "tools/neurok-aspects.mjs"
+      - "tools/neurok-aspects.test.mjs"
+      - "docs/NK1_75_ASPECTS_EXECUTION_BACKLOG_RU.md"
+      - ".github/workflows/nk1-aspects-registry.yml"
+  push:
+    branches:
+      - workpass70-source
+    paths:
+      - "engineering-os/aspects.v1.json"
+      - "tools/neurok-aspects.mjs"
+      - "tools/neurok-aspects.test.mjs"
+      - ".github/workflows/nk1-aspects-registry.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Validate the 75-aspect registry
+        run: npm run aspects:validate
+      - name: Run registry safety tests
+        run: npm run aspects:test
+      - name: Print aspect progress
+        run: npm run aspects
+      - name: Compute the next actionable aspect
+        run: npm run aspects:next

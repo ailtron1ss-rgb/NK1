@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from '/opt/nvm/versions/node/v22.16.0/lib/node_modules/typescript/lib/typescript.js';
+import { ts } from './lib/resolve-typescript.mjs';
 import { spawnSync } from 'node:child_process';
 const root=process.cwd();
 const skip=new Set(['legacy-original','node_modules','state','.git']);

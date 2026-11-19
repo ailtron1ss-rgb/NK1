@@ -5,6 +5,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import os from 'node:os';
 import type { BodyTelemetry, SensorSource } from './EmbodiedBody.ts';
+import { nativeSpeechEventChannel } from './NativeSpeechEventChannel.ts';
 
 const execFileAsync = promisify(execFile);
 let capabilityCache: { at:number; value:TermuxCapabilities } | null = null;
@@ -193,6 +194,7 @@ export async function speakViaTermuxWithOutcome(text: string, options: TermuxTts
   if(Number.isFinite(options.pitch)) args.push('-p',String(clamp(Number(options.pitch))));
   if(Number.isFinite(options.rate)) args.push('-r',String(clamp(Number(options.rate))));
   if(options.stream) args.push('-s',String(options.stream));
+  nativeSpeechEventChannel.publish(operationId, { phase:'command-requested' });
   return await new Promise<TermuxSpeechOutcome>((resolve) => {
     let settled=false;
     let timedOut=false;
@@ -210,6 +212,7 @@ export async function speakViaTermuxWithOutcome(text: string, options: TermuxTts
     const child=spawn('termux-tts-speak',[...args,clean],{ windowsHide:true, stdio:'ignore' });
     activeTtsProcess=child;
     activeTtsOperationId=operationId;
+    child.once('spawn',()=>nativeSpeechEventChannel.publish(operationId,{phase:'process-spawned'}));
     deadline=setTimeout(()=>{
       timedOut=true;
       try { child.kill('SIGTERM'); } catch { /* process may already have exited */ }
@@ -222,9 +225,11 @@ export async function speakViaTermuxWithOutcome(text: string, options: TermuxTts
     child.once('error',(error:{code?:string})=>{
       // The Node spawn error event is emitted when process creation failed, so no
       // Termux command could have accepted the utterance.
+      nativeSpeechEventChannel.publish(operationId,{phase:'process-error',errorCode:error.code??'spawn-error'});
       finish({status:'not-started',command:'termux-tts-speak',reason:error.code==='ENOENT'?'termux-tts-unavailable':'termux-tts-process-not-started'},true);
     });
     child.once('close',(code: number | null, signal: string | null)=>{
+      nativeSpeechEventChannel.publish(operationId,{phase:'process-exited',exitCode:code,signal,reason:timedOut?'process-timeout':'process-closed'});
       if(timedOut) finish({status:'unknown',command:'termux-tts-speak',reason:'tts-timeout-after-process-start',operationId},true);
       else if(code===0 && signal==null) finish({status:'completed',command:'termux-tts-speak',operationId},true);
       else finish({status:'unknown',command:'termux-tts-speak',reason:'termux-tts-process-ended-with-uncertain-playback',operationId},true);
@@ -253,9 +258,11 @@ export async function interruptTermuxTtsWithOutcome(operationIdInput:string, tim
   });
   let signalled=false;
   try { signalled=child.kill('SIGTERM'); } catch { signalled=false; }
+  if(signalled) nativeSpeechEventChannel.publish(operationId,{phase:'interrupt-requested'});
   if(!signalled){ if(timer)clearTimeout(timer); return {status:'unknown',command:'termux-tts-speak',operationId,reason:'termination-signal-not-confirmed'}; }
   if(await closePromise) return {status:'requested',command:'termux-tts-speak',operationId,processExited:true,playbackVerified:false};
   try { child.kill('SIGKILL'); } catch { /* process state remains unresolved */ }
+  nativeSpeechEventChannel.publish(operationId,{phase:'interrupt-unconfirmed',reason:closed?'process-closed-without-playback-proof':'process-exit-not-confirmed-after-interrupt'});
   return {status:'unknown',command:'termux-tts-speak',operationId,reason:closed?'process-closed-without-playback-proof':'process-exit-not-confirmed-after-interrupt'};
 }
 

@@ -1,0 +1,36 @@
+name: NK1 action gateway input-boundary contract
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/ActionGateway.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/ToolInputContract.ts'
+      - 'runtime/neuro-kurisu/tests/tool-input-contracts-workpass624.mjs'
+      - '.github/workflows/nk1-action-gateway-bounds.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-action-gateway-bounds-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  action-gateway-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Verify action gateway contracts
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/tool-input-contracts-workpass624.mjs
+      - name: Verify runtime TypeScript
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

@@ -1,6 +1,5 @@
-import { createRequire } from 'node:module';
 import fs from 'node:fs'; import path from 'node:path';
-const require=createRequire(import.meta.url); const ts=require('/opt/nvm/versions/node/v22.16.0/lib/node_modules/typescript/lib/typescript.js');
+import { ts } from './lib/resolve-typescript.mjs';
 const root=process.cwd(), ignored=new Set(['node_modules','legacy-original','.git','state','history']), files=[];
 function walk(dir){for(const ent of fs.readdirSync(dir,{withFileTypes:true})){if(ignored.has(ent.name))continue;const p=path.join(dir,ent.name);if(ent.isDirectory())walk(p);else if(/\.(ts|tsx|mjs)$/.test(ent.name))files.push(p);}}
 walk(path.join(root,'src')); for(const r of ['tests','research','scripts'])if(fs.existsSync(path.join(root,r)))walk(path.join(root,r));

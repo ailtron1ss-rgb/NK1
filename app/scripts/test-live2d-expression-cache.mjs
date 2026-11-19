@@ -2,11 +2,21 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
+import { EXPRESSION_TEXT } from "../src/components/avatar/embodimentUiBridge.ts";
+
 const source = await readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8");
 const mapMatch = source.match(/const EXPR_MAP=(\{[\s\S]*?\});/);
 const fnMatch = source.match(/function applyExpression\(expr\)\{([\s\S]*?)\n  \}/);
 assert.ok(mapMatch, "Live2D expression map must exist");
 assert.ok(fnMatch, "Live2D expression applier must exist");
+
+const viewerExprKeys = new Set(Object.keys(vm.runInNewContext(`(${mapMatch[1]})`)));
+
+// The viewer validates `d.expression` against EXPR_MAP and rejects the entire intent
+// frame when it is unknown, so every expression the stage can send must be a known key.
+for (const [label, expression] of Object.entries(EXPRESSION_TEXT)) {
+  assert.ok(viewerExprKeys.has(expression), `emotion ${label} sends expression "${expression}", which the Live2D viewer does not know`);
+}
 
 const calls = [];
 const context = {

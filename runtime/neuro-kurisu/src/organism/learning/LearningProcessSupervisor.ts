@@ -189,8 +189,8 @@ export async function runLearningProcess(
     explicitEnv: explicitEnvKeys.map(key => [key, env[key] ?? null]),
   }));
 
-  let stdout: Buffer<ArrayBufferLike> = Buffer.alloc(0);
-  let stderr: Buffer<ArrayBufferLike> = Buffer.alloc(0);
+  let stdout = Buffer.alloc(0);
+  let stderr = Buffer.alloc(0);
   let stdoutBytes = 0;
   let stderrBytes = 0;
   let outputTruncated = false;
@@ -225,7 +225,7 @@ export async function runLearningProcess(
     }
     try { child.kill('SIGKILL'); } catch { /* the child may already have exited */ }
   };
-  const append = (current: Buffer<ArrayBufferLike>, chunk: Buffer<ArrayBufferLike>, isStdout: boolean): Buffer<ArrayBufferLike> => {
+  const append = (current: Buffer, chunk: Buffer, isStdout: boolean): Buffer => {
     if (isStdout) stdoutBytes += chunk.length;
     else stderrBytes += chunk.length;
     const combined = Buffer.concat([current, chunk]);
@@ -247,7 +247,7 @@ export async function runLearningProcess(
     if (!terminalStatus) terminalStatus = 'timed-out';
     terminateRun();
   }, timeoutMs);
-  timeout.unref?.();
+  (timeout as unknown as { unref?: () => void }).unref?.();
   const onAbort = () => {
     if (childClosed || terminalStatus) return;
     terminalStatus = 'cancelled';
@@ -257,14 +257,14 @@ export async function runLearningProcess(
   if (command.signal?.aborted) onAbort();
 
   await new Promise<void>(resolve => {
-    child.once('error', error => {
+    child.once('error', (error: Error) => {
       if (!childClosed) {
         spawnFailure = error.message;
         terminalStatus = 'spawn-error';
       }
       resolve();
     });
-    child.once('close', (code, childSignal) => {
+    child.once('close', (code: number | null, childSignal: NodeJS.Signals | null) => {
       childClosed = true;
       exitCode = code;
       signal = childSignal;

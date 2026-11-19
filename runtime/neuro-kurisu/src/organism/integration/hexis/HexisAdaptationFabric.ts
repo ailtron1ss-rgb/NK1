@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { snapshotPlainData } from '../../core/PlainDataSnapshot.ts';
 import { sha256Stable } from '../../core/StableSerialization.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
@@ -192,6 +193,250 @@ const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, N
 const digest = (value: unknown) => sha256Stable(value, 'legacy');
 const sourceKey = (source: HexisEvidenceSource) => String(source.ref || source.label || source.contentHash || digest(source));
 const nowMs = () => Date.now();
+
+const HEXIS_POLICY_MAX_ENTRIES = 256;
+const HEXIS_POLICY_MAX_TARGETS = 256;
+const HEXIS_POLICY_MAX_WINDOW_MS = 31_536_000_000;
+const HEXIS_POLICY_MAX_RATE = 1_000_000;
+
+function isHexisPolicyRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isHexisPolicyText(value: unknown, maxLength: number): value is string {
+    return typeof value === 'string' && value.trim().length > 0 &&
+        value.length <= maxLength && !/[\u0000-\u001f\u007f]/.test(value);
+}
+
+function normalizeHexisPolicyStringList(
+    value: unknown,
+    maxEntries: number,
+    maxStringLength: number,
+    lowercase = false,
+): string[] | null {
+    if (!Array.isArray(value) || value.length > maxEntries) return null;
+    const result: string[] = [];
+    const seen = new Set<string>();
+    for (const item of value) {
+        if (!isHexisPolicyText(item, maxStringLength)) return null;
+        const normalized = (lowercase ? item.trim().toLowerCase() : item.trim()).normalize('NFKC');
+        if (!normalized) return null;
+        if (!seen.has(normalized)) {
+            seen.add(normalized);
+            result.push(normalized);
+        }
+    }
+    return result;
+}
+
+/** Persisted connector policy is an authorization boundary; malformed rows never survive restore. */
+function normalizeHexisConnectorPolicy(value: unknown): HexisConnectorPolicy | null {
+    if (!isHexisPolicyRecord(value)) return null;
+    const row = value;
+    if (!isHexisPolicyText(row.id, 256) || !isHexisPolicyText(row.connectorId, 128) ||
+        !isHexisPolicyText(row.actionKind, 128) ||
+        typeof row.allowAutonomous !== 'boolean' || typeof row.requiresApproval !== 'boolean' ||
+        (row.status !== 'active' && row.status !== 'revoked')) return null;
+    const contexts = normalizeHexisPolicyStringList(row.contexts, 32, 128);
+    const allowedTargets = normalizeHexisPolicyStringList(row.allowedTargets, HEXIS_POLICY_MAX_TARGETS, 512);
+    const deniedTargets = normalizeHexisPolicyStringList(row.deniedTargets, HEXIS_POLICY_MAX_TARGETS, 512);
+    if (!contexts || contexts.length === 0 || !allowedTargets || !deniedTargets) return null;
+    if (typeof row.windowMs !== 'number' || !Number.isSafeInteger(row.windowMs) ||
+        row.windowMs < 1000 || row.windowMs > HEXIS_POLICY_MAX_WINDOW_MS ||
+        typeof row.windowStartedAt !== 'number' || !Number.isSafeInteger(row.windowStartedAt) || row.windowStartedAt < 0 ||
+        typeof row.windowCount !== 'number' || !Number.isSafeInteger(row.windowCount) ||
+        row.windowCount < 0 || row.windowCount > HEXIS_POLICY_MAX_RATE ||
+        typeof row.grantedAt !== 'number' || !Number.isSafeInteger(row.grantedAt) || row.grantedAt < 0) return null;
+    if (row.maxPerWindow !== undefined &&
+        (typeof row.maxPerWindow !== 'number' || !Number.isSafeInteger(row.maxPerWindow) ||
+            row.maxPerWindow < 1 || row.maxPerWindow > HEXIS_POLICY_MAX_RATE)) return null;
+    if (row.expiresAt !== undefined &&
+        (typeof row.expiresAt !== 'number' || !Number.isSafeInteger(row.expiresAt) || row.expiresAt < 0)) return null;
+    return {
+        id: row.id.trim().normalize('NFKC'),
+        connectorId: row.connectorId.trim().normalize('NFKC').toLowerCase(),
+        actionKind: row.actionKind.trim().normalize('NFKC').toLowerCase(),
+        contexts,
+        allowAutonomous: row.allowAutonomous,
+        requiresApproval: row.requiresApproval,
+        allowedTargets,
+        deniedTargets,
+        ...(row.maxPerWindow === undefined ? {} : { maxPerWindow: row.maxPerWindow }),
+        windowMs: row.windowMs,
+        ...(row.expiresAt === undefined ? {} : { expiresAt: row.expiresAt }),
+        windowStartedAt: row.windowStartedAt,
+        windowCount: row.windowCount,
+        status: row.status,
+        grantedAt: row.grantedAt,
+    };
+}
+
+function normalizeHexisConnectorPolicies(value: unknown): HexisConnectorPolicy[] {
+    if (!Array.isArray(value)) return [];
+    const candidates = value.slice(-HEXIS_POLICY_MAX_ENTRIES)
+        .map(normalizeHexisConnectorPolicy)
+        .filter((policy): policy is HexisConnectorPolicy => policy !== null);
+    const counts = new Map<string, number>();
+    for (const policy of candidates) counts.set(policy.id, (counts.get(policy.id) ?? 0) + 1);
+    // Duplicate IDs are ambiguous for revocation; fail closed by dropping every duplicate.
+    return candidates.filter(policy => counts.get(policy.id) === 1);
+}
+
+const HEXIS_SAFE_TEXT_CONTROL = /[\u0000-\u001f\u007f-\u009f]/u;
+function isHexisSafeText(value: unknown, maxLength: number, allowEmpty = false): value is string {
+    return typeof value === 'string' && value.length <= maxLength &&
+        (allowEmpty || value.trim().length > 0) && !HEXIS_SAFE_TEXT_CONTROL.test(value);
+}
+function isHexisUnit(value: unknown): value is number {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+function isHexisSafeInteger(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+function isHexisTime(value: unknown): value is number {
+    return isHexisSafeInteger(value) && value <= 8_640_000_000_000_000;
+}
+function isHexisStringList(value: unknown, maxItems: number, maxText: number): value is string[] {
+    return Array.isArray(value) && value.length <= maxItems &&
+        value.every(item => isHexisSafeText(item, maxText));
+}
+function isHexisDigest(value: unknown): value is string {
+    return typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value);
+}
+function isHexisRecordOfCounts(value: unknown): value is Record<string, number> {
+    if (!isHexisPolicyRecord(value)) return false;
+    const entries = Object.entries(value);
+    return entries.length <= 128 && entries.every(([key, count]) =>
+        isHexisSafeText(key, 128) && isHexisSafeInteger(count) && count <= 100_000);
+}
+function isHexisEvidenceSource(value: unknown): value is HexisEvidenceSource {
+    if (!isHexisPolicyRecord(value)) return false;
+    return (value.ref === undefined || isHexisSafeText(value.ref, 512)) &&
+        (value.label === undefined || isHexisSafeText(value.label, 256)) &&
+        (value.contentHash === undefined || isHexisSafeText(value.contentHash, 256)) &&
+        (value.trust01 === undefined || isHexisUnit(value.trust01)) &&
+        (value.note === undefined || isHexisSafeText(value.note, 2_000, true));
+}
+function isHexisBelief(value: unknown): value is HexisBeliefState {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.memoryId, 192) && isHexisUnit(value.confidence01) &&
+        isHexisUnit(value.trust01) && isHexisStringList(value.sourceKeys, 256, 512) &&
+        isHexisStringList(value.contradictingSourceKeys, 256, 512) && isHexisTime(value.updatedAt);
+}
+function isHexisBeliefAudit(value: unknown): value is HexisBeliefRevisionAudit {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisSafeText(value.memoryId, 192) &&
+        (value.stance === 'supports' || value.stance === 'contradicts') &&
+        isHexisEvidenceSource(value.evidence) && isHexisUnit(value.priorConfidence01) &&
+        isHexisUnit(value.posteriorConfidence01) && isHexisUnit(value.priorTrust01) &&
+        isHexisUnit(value.posteriorTrust01) && typeof value.independent === 'boolean' &&
+        typeof value.applied === 'boolean' && isHexisSafeText(value.reason, 256) &&
+        value.policy === 'residual_v1' &&
+        (value.context === undefined || isHexisSafeText(value.context, 2_000, true)) &&
+        isHexisTime(value.at) && isHexisDigest(value.digest);
+}
+function isHexisTemporalAssertion(value: unknown): value is HexisTemporalAssertion {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisSafeText(value.memoryId, 192) &&
+        isHexisDigest(value.valueHash) && isHexisSafeText(value.summary, 2_000, true) &&
+        isHexisUnit(value.confidence01) && isHexisTime(value.validFrom) &&
+        (value.validUntil === null || isHexisTime(value.validUntil)) &&
+        (value.supersedesId === undefined || isHexisSafeText(value.supersedesId, 128)) &&
+        isHexisSafeText(value.source, 256) && isHexisTime(value.at);
+}
+function isHexisLearningReviewItem(value: unknown): value is HexisLearningReviewItem {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) &&
+        ['semantic_belief', 'new_procedure', 'revised_strategy', 'proposed_skill'].includes(String(value.kind)) &&
+        isHexisSafeText(value.title, 256) && isHexisSafeText(value.content, 8_000, true) &&
+        (value.sourceMemoryId === undefined || isHexisSafeText(value.sourceMemoryId, 192)) &&
+        isHexisPolicyRecord(value.evidence) &&
+        ['pending', 'approved', 'corrected', 'forgotten'].includes(String(value.status)) &&
+        (value.correction === undefined || isHexisSafeText(value.correction, 2_000, true)) &&
+        isHexisTime(value.createdAt) &&
+        (value.decidedAt === undefined || isHexisTime(value.decidedAt));
+}
+function isHexisLearningReview(value: unknown): value is HexisLearningReview {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisTime(value.periodStart) &&
+        isHexisTime(value.periodEnd) && value.periodEnd >= value.periodStart &&
+        isHexisSafeText(value.summary, 2_000, true) &&
+        (value.status === 'pending' || value.status === 'completed') &&
+        Array.isArray(value.items) && value.items.length <= 50 &&
+        value.items.every(isHexisLearningReviewItem) && isHexisTime(value.createdAt) &&
+        (value.completedAt === undefined || isHexisTime(value.completedAt));
+}
+function isHexisRetentionProposal(value: unknown): value is HexisRetentionProposal {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisSafeText(value.memoryId, 192) &&
+        ['compress', 'archive', 'forget'].includes(String(value.action)) &&
+        isHexisSafeText(value.reason, 500, true) &&
+        isHexisSafeInteger(value.sourceBytes) && isHexisSafeInteger(value.projectedBytes) &&
+        isHexisUnit(value.estimatedFidelity01) && isHexisUnit(value.estimatedRegret01) &&
+        ['proposed', 'accepted', 'rejected'].includes(String(value.status)) && isHexisTime(value.createdAt);
+}
+function isHexisFidelityReceipt(value: unknown): value is HexisFidelityReceipt {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) &&
+        ['compression', 'archive', 'forget', 'hmx-import'].includes(String(value.operation)) &&
+        isHexisSafeInteger(value.sourceCount) && isHexisSafeInteger(value.retainedCount) &&
+        isHexisSafeInteger(value.sourceBytes) && isHexisSafeInteger(value.retainedBytes) &&
+        isHexisUnit(value.fidelity01) && isHexisUnit(value.regret01) &&
+        isHexisTime(value.at) && isHexisDigest(value.digest);
+}
+function isHexisHmxConflict(value: unknown): boolean {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.path, 512) && isHexisSafeText(value.kind, 128) &&
+        isHexisSafeText(value.detail, 2_000, true);
+}
+function isHexisHmxStage(value: unknown): value is HexisHmxStage {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.stagingId, 128) && isHexisSafeText(value.exportId, 256) &&
+        ['port', 'duplicate', 'telepathy', 'analysis'].includes(String(value.intent)) &&
+        ['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(String(value.strategy)) &&
+        (value.sourceSubjectId === undefined || isHexisSafeText(value.sourceSubjectId, 256)) &&
+        isHexisRecordOfCounts(value.sectionCounts) &&
+        isHexisStringList(value.protectedSections, 128, 128) &&
+        Array.isArray(value.conflicts) && value.conflicts.length <= 256 &&
+        value.conflicts.every(isHexisHmxConflict) &&
+        ['staged', 'accepted', 'rejected'].includes(String(value.status)) &&
+        isHexisTime(value.createdAt) && isHexisDigest(value.digest) &&
+        isHexisPolicyRecord(value.stagedSections);
+}
+function isHexisOutboxEntry(value: unknown): value is HexisOutboxEntry {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisSafeText(value.idempotencyKey, 160) &&
+        isHexisSafeText(value.kind, 128) && isHexisSafeText(value.channel, 128) &&
+        Object.prototype.hasOwnProperty.call(value, 'payload') &&
+        ['pending', 'publishing', 'published', 'failed'].includes(String(value.status)) &&
+        isHexisSafeInteger(value.attempts) && value.attempts <= 1_000_000 &&
+        isHexisTime(value.createdAt) && isHexisTime(value.updatedAt) &&
+        (value.publishedAt === undefined || isHexisTime(value.publishedAt)) &&
+        (value.lastError === undefined || isHexisSafeText(value.lastError, 1_000, true));
+}
+function isHexisExecutionPlan(value: unknown): value is HexisExecutionPlan {
+    if (!isHexisPolicyRecord(value)) return false;
+    return isHexisSafeText(value.id, 128) && isHexisSafeText(value.actionKind, 128) &&
+        ['local', 'sandbox', 'remote', 'companion'].includes(String(value.requestedPlacement)) &&
+        ['local', 'sandbox', 'remote', 'companion'].includes(String(value.resolvedPlacement)) &&
+        isHexisUnit(value.risk01) && typeof value.requiresApproval === 'boolean' &&
+        isHexisSafeText(value.rationale, 2_000, true) && isHexisTime(value.at);
+}
+function normalizeHexisRows<T>(
+    value: unknown,
+    limit: number,
+    validate: (candidate: unknown) => candidate is T,
+    identityKeys: (row: T) => string[],
+): T[] {
+    if (!Array.isArray(value)) return [];
+    const valid = value.slice(-limit).filter(validate);
+    const counts = new Map<string, number>();
+    for (const row of valid) {
+        for (const key of identityKeys(row)) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return valid.filter(row => identityKeys(row).every(key => counts.get(key) === 1));
+}
+
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
 export function defaultHexisAdaptationState(): HexisAdaptationState {
     return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
@@ -200,33 +445,46 @@ export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
     restore(raw?: Partial<HexisAdaptationState> | null): void {
         const defaults = defaultHexisAdaptationState();
-        const value = raw ?? {};
-        const normalizedPolicies = Array.isArray(value.connectorPolicies)
-            ? value.connectorPolicies.slice(-256).map((policy: any) => ({
-                ...policy,
-                windowStartedAt: Number(policy?.windowStartedAt ?? policy?.grantedAt ?? 0),
-                windowCount: Math.max(0, Math.floor(Number(policy?.windowCount ?? 0))),
-              }))
-            : [];
+        let value: Record<string, unknown>;
+        try {
+            // Persisted state is untrusted input. Copy only bounded inert own-data
+            // properties before reading any field; never execute accessors or retain
+            // proxies/class instances in the live organism state.
+            const detached = snapshotPlainData(raw ?? {}, { allowNonFiniteNumbers: true });
+            if (!isHexisPolicyRecord(detached)) throw new Error('hexis-snapshot-root-invalid');
+            value = detached;
+        } catch {
+            this.state = defaults;
+            return;
+        }
+
+        const normalizedPolicies = normalizeHexisConnectorPolicies(value.connectorPolicies);
+        const metricInput = isHexisPolicyRecord(value.metrics)
+            ? value.metrics
+            : Object.create(null) as Record<string, unknown>;
+        const metrics = Object.fromEntries(
+            Object.entries(defaults.metrics).map(([key, fallback]) => {
+                const candidate = metricInput[key];
+                return [key, Number.isSafeInteger(candidate) && (candidate as number) >= 0
+                    ? candidate as number
+                    : fallback];
+            }),
+        ) as HexisAdaptationState['metrics'];
+
         this.state = {
-            ...defaults, ...value,
-            source: { ...defaults.source, ...(value.source ?? {}) },
-            beliefs: Array.isArray(value.beliefs) ? value.beliefs.slice(-1024) : [],
-            beliefAudit: Array.isArray(value.beliefAudit) ? value.beliefAudit.slice(-2048) : [],
-            temporal: Array.isArray(value.temporal) ? value.temporal.slice(-4096) : [],
-            learningReviews: Array.isArray(value.learningReviews) ? value.learningReviews.slice(-96) : [],
-            retentionProposals: Array.isArray(value.retentionProposals) ? value.retentionProposals.slice(-512) : [],
-            fidelityReceipts: Array.isArray(value.fidelityReceipts) ? value.fidelityReceipts.slice(-512) : [],
-            hmxStages: Array.isArray(value.hmxStages)
-                ? value.hmxStages.slice(-32).map((stage: any) => ({
-                    ...stage,
-                    stagedSections: stage?.stagedSections && typeof stage.stagedSections === 'object' ? stage.stagedSections : {},
-                  }))
-                : [],
-            outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
+            version: defaults.version,
+            source: defaults.source,
+            beliefs: normalizeHexisRows(value.beliefs, 1024, isHexisBelief, row => [row.memoryId]),
+            beliefAudit: normalizeHexisRows(value.beliefAudit, 2048, isHexisBeliefAudit, row => [row.id]),
+            temporal: normalizeHexisRows(value.temporal, 4096, isHexisTemporalAssertion, row => [row.id]),
+            learningReviews: normalizeHexisRows(value.learningReviews, 96, isHexisLearningReview, row => [row.id]),
+            retentionProposals: normalizeHexisRows(value.retentionProposals, 512, isHexisRetentionProposal, row => [row.id]),
+            fidelityReceipts: normalizeHexisRows(value.fidelityReceipts, 512, isHexisFidelityReceipt, row => [row.id]),
+            hmxStages: normalizeHexisRows(value.hmxStages, 32, isHexisHmxStage, row => [row.stagingId]),
+            outbox: normalizeHexisRows(value.outbox, 512, isHexisOutboxEntry, row => [row.id, row.idempotencyKey]),
             connectorPolicies: normalizedPolicies,
-            executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
-            metrics: { ...defaults.metrics, ...(value.metrics ?? {}) },
+            executions: normalizeHexisRows(value.executions, 512, isHexisExecutionPlan, row => [row.id]),
+            metrics,
         };
     }
     snapshot(): HexisAdaptationState { return structuredClone(this.state); }
@@ -285,13 +543,16 @@ export class HexisAdaptationFabric {
     else {
         posteriorConfidence01 = Math.max(0.05, priorConfidence01 * (1 - 0.35 * evidenceTrust));
         applied = true;
-    } if (independent) {
+    } if (independent && applied) {
         if (input.stance === 'supports')
             belief.sourceKeys = [...new Set([...belief.sourceKeys, key])].slice(-256);
         else
             belief.contradictingSourceKeys = [...new Set([...belief.contradictingSourceKeys, key])].slice(-256);
-    } if (applied)
-        belief.confidence01 = posteriorConfidence01; belief.trust01 = clamp(Math.max(priorTrust01, evidenceTrust * 0.5)); belief.updatedAt = at; const base = { id: randomUUID(), memoryId: input.memoryId, stance: input.stance, evidence: structuredClone(input.evidence), priorConfidence01, posteriorConfidence01, priorTrust01, posteriorTrust01: belief.trust01, independent, applied, reason, policy: 'residual_v1' as const, context: input.context, at }; const audit: HexisBeliefRevisionAudit = { ...base, digest: digest(base) }; this.state.beliefAudit.push(audit); this.state.beliefAudit = this.state.beliefAudit.slice(-2048); this.state.metrics.beliefRevisions += 1; return structuredClone(audit); }
+    } if (applied) {
+        belief.confidence01 = posteriorConfidence01;
+        belief.trust01 = clamp(Math.max(priorTrust01, evidenceTrust * 0.5));
+        belief.updatedAt = at;
+    } const base = { id: randomUUID(), memoryId: input.memoryId, stance: input.stance, evidence: structuredClone(input.evidence), priorConfidence01, posteriorConfidence01, priorTrust01, posteriorTrust01: belief.trust01, independent, applied, reason, policy: 'residual_v1' as const, context: input.context, at }; const audit: HexisBeliefRevisionAudit = { ...base, digest: digest(base) }; this.state.beliefAudit.push(audit); this.state.beliefAudit = this.state.beliefAudit.slice(-2048); this.state.metrics.beliefRevisions += 1; return structuredClone(audit); }
     recordTemporalAssertion(input: {
         memoryId: string;
         summary: string;
@@ -346,7 +607,7 @@ export class HexisAdaptationFabric {
         conflicts.push({ path: 'sections', kind: 'protected-by-intent', detail: `protected sections require explicit replacement protocol: ${blocked.join(', ')}` }); const sectionCounts: Record<string, number> = {}; const stagedSections: Record<string, unknown> = {}; for (const [name, records] of Object.entries(sections)) {
         sectionCounts[name] = Array.isArray(records) ? records.length : 1;
         stagedSections[name] = Array.isArray(records) ? structuredClone(records.slice(0, 64)) : structuredClone(records);
-    } const base = { exportId: String(document.export_id ?? randomUUID()), intent: input.intent, strategy: input.strategy, sourceSubjectId: document.source_subject_id ? String(document.source_subject_id) : undefined, sectionCounts, protectedSections: names.filter((name) => protectedSections.has(name)), conflicts, stagedSections }; const stage: HexisHmxStage = { ...base, stagingId: randomUUID(), status: 'staged', createdAt: nowMs(), digest: digest(base) }; this.state.hmxStages.push(stage); this.state.hmxStages = this.state.hmxStages.slice(-32); this.state.metrics.hmxStaged += 1; return structuredClone(stage); }
+    } const base = { exportId: String(document.export_id ?? randomUUID()), intent: input.intent, strategy: input.strategy, sourceSubjectId: document.source_subject_id ? String(document.source_subject_id) : (isHexisPolicyRecord(document.source) && typeof document.source.instance_id === 'string' ? document.source.instance_id : undefined), sectionCounts, protectedSections: names.filter((name) => protectedSections.has(name)), conflicts, stagedSections }; const stage: HexisHmxStage = { ...base, stagingId: randomUUID(), status: 'staged', createdAt: nowMs(), digest: digest(base) }; this.state.hmxStages.push(stage); this.state.hmxStages = this.state.hmxStages.slice(-32); this.state.metrics.hmxStaged += 1; return structuredClone(stage); }
     decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length))
         return stage ? structuredClone(stage) : null; stage.status = decision === 'accept' ? 'accepted' : 'rejected'; if (decision === 'accept')
         this.state.metrics.hmxAccepted += 1; return structuredClone(stage); }
@@ -398,19 +659,48 @@ export class HexisAdaptationFabric {
         windowMs?: number;
         expiresAt?: number;
     }): HexisConnectorPolicy {
+        if (typeof input.connectorId !== 'string' || typeof input.actionKind !== 'string') {
+            throw new TypeError('connector policy identity must be strings');
+        }
+        if (!isHexisPolicyText(input.connectorId, 128) || !isHexisPolicyText(input.actionKind, 128)) {
+            throw new TypeError('connector policy identity must be non-empty and bounded');
+        }
+        if (input.allowAutonomous !== undefined && typeof input.allowAutonomous !== 'boolean') {
+            throw new TypeError('allowAutonomous must be a boolean');
+        }
+        if (input.requiresApproval !== undefined && typeof input.requiresApproval !== 'boolean') {
+            throw new TypeError('requiresApproval must be a boolean');
+        }
+        const contexts = normalizeHexisPolicyStringList(input.contexts ?? ['chat'], 32, 128);
+        const allowedTargets = normalizeHexisPolicyStringList(input.allowedTargets ?? [], HEXIS_POLICY_MAX_TARGETS, 512);
+        const deniedTargets = normalizeHexisPolicyStringList(input.deniedTargets ?? [], HEXIS_POLICY_MAX_TARGETS, 512);
+        if (!contexts || contexts.length === 0) throw new TypeError('contexts must be a bounded non-empty string list');
+        if (!allowedTargets || !deniedTargets) throw new TypeError('connector targets must be bounded string lists');
+        if (input.maxPerWindow !== undefined &&
+            (!Number.isSafeInteger(input.maxPerWindow) || input.maxPerWindow < 1 || input.maxPerWindow > HEXIS_POLICY_MAX_RATE)) {
+            throw new TypeError('maxPerWindow must be a positive safe integer');
+        }
+        const windowMs = input.windowMs ?? 86400000;
+        if (!Number.isSafeInteger(windowMs) || windowMs < 1000 || windowMs > HEXIS_POLICY_MAX_WINDOW_MS) {
+            throw new TypeError('windowMs must be a safe integer between 1000 and one year');
+        }
+        if (input.expiresAt !== undefined &&
+            (!Number.isSafeInteger(input.expiresAt) || input.expiresAt < 0)) {
+            throw new TypeError('expiresAt must be a non-negative safe integer');
+        }
         const at = nowMs();
         const policy: HexisConnectorPolicy = {
             id: randomUUID(),
-            connectorId: String(input.connectorId).toLowerCase(),
-            actionKind: String(input.actionKind).toLowerCase(),
-            contexts: [...new Set((input.contexts ?? ['chat']).map(String))],
-            allowAutonomous: Boolean(input.allowAutonomous),
-            requiresApproval: input.requiresApproval !== false,
-            allowedTargets: [...new Set((input.allowedTargets ?? []).map(String))],
-            deniedTargets: [...new Set((input.deniedTargets ?? []).map(String))],
-            maxPerWindow: input.maxPerWindow === undefined ? undefined : Math.max(1, Math.floor(input.maxPerWindow)),
-            windowMs: Math.max(1000, Math.floor(input.windowMs ?? 86400000)),
-            expiresAt: input.expiresAt,
+            connectorId: input.connectorId.trim().normalize('NFKC').toLowerCase(),
+            actionKind: input.actionKind.trim().normalize('NFKC').toLowerCase(),
+            contexts,
+            allowAutonomous: input.allowAutonomous ?? false,
+            requiresApproval: input.requiresApproval ?? true,
+            allowedTargets,
+            deniedTargets,
+            ...(input.maxPerWindow === undefined ? {} : { maxPerWindow: input.maxPerWindow }),
+            windowMs,
+            ...(input.expiresAt === undefined ? {} : { expiresAt: input.expiresAt }),
             windowStartedAt: at,
             windowCount: 0,
             status: 'active',

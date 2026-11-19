@@ -142,7 +142,9 @@ export function createAuthenticatedSkillPromotionApprovalVerifier(
       // re-verified across restart without expiring just because 15 minutes passed.
       if (purpose === 'promotion' && timestamp - payload.approvedAt > maxAgeMs) return false;
       const key = createPublicKey(keyPem);
-      return verifySignature(null, Buffer.from(canonicalSkillPromotionApprovalPayload(payload), 'utf8'), key,
+      if (key.asymmetricKeyType !== 'ed25519') return false;
+      // Pass the validated PEM through the minimal Node shim's supported verify() overload.
+      return verifySignature(null, Buffer.from(canonicalSkillPromotionApprovalPayload(payload), 'utf8'), keyPem,
         Buffer.from(approval.artifact.signature, 'base64'));
     } catch {
       return false;
@@ -242,8 +244,11 @@ export function createAuthenticatedSkillRollbackApprovalVerifier(
       const timestamp = now();
       if (!Number.isFinite(timestamp) || payload.approvedAt > timestamp + allowedClockSkewMs) return false;
       if (purpose === 'rollback' && timestamp - payload.approvedAt > maxAgeMs) return false;
+      const key = createPublicKey(keyPem);
+      if (key.asymmetricKeyType !== 'ed25519') return false;
+      // Keep runtime key-type validation while using the supported PEM verifier input.
       return verifySignature(null, Buffer.from(canonicalSkillRollbackApprovalPayload(payload), 'utf8'),
-        createPublicKey(keyPem), Buffer.from(approval.artifact.signature, 'base64'));
+        keyPem, Buffer.from(approval.artifact.signature, 'base64'));
     } catch {
       return false;
     }

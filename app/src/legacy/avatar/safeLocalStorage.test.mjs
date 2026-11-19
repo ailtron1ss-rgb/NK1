@@ -36,15 +36,14 @@ test("avatar preference reads and writes tolerate storage exceptions", () => {
 });
 
 test("avatar preference persists when storage works", () => {
+  /** @type {Map<string, string>} */
   const values = new Map();
   try {
     setWindow({ localStorage: {
       /** @param {string} key */
       getItem(key) { return values.get(key) ?? null; },
-      /** @param {string} key
-       * @param {string} value
-       */
-      setItem(key, value) { values.set(key, String(value)); },
+      /** @param {string} key @param {string} value */
+      setItem(key, value) { values.set(key, value); },
     } });
     assert.equal(readAvatarPreference("profile"), null);
     assert.equal(writeAvatarPreference("profile", "formal"), true);
