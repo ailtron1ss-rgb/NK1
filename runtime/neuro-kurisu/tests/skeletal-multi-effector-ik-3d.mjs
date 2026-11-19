@@ -3,7 +3,7 @@ import test from "node:test";
 import { solveMultiEffectorIK3D } from "../src/organism/system/SkeletalMultiEffectorIK3D.ts";
 
 const skeleton = () => [
-  { id: "root", offset: { x: 0, y: 0, z: 0 }, axis: { x: 0, y: 0, z: 1 }, minAngleRad: -0.2, maxAngleRad: 0.2 },
+  { id: "root", offset: { x: 0, y: 0, z: 0 }, axis: { x: 0, y: 0, z: 1 }, minAngleRad: 0, maxAngleRad: 0 },
   { id: "left.shoulder", parentId: "root", offset: { x: -1, y: 0, z: 0 }, axis: { x: 0, y: 0, z: 1 }, minAngleRad: -2.8, maxAngleRad: 2.8 },
   { id: "left.elbow", parentId: "left.shoulder", offset: { x: -1, y: 0, z: 0 }, axis: { x: 0, y: 0, z: 1 }, minAngleRad: -2.8, maxAngleRad: 2.8 },
   { id: "right.shoulder", parentId: "root", offset: { x: 1, y: 0, z: 0 }, axis: { x: 0, y: 0, z: 1 }, minAngleRad: -2.8, maxAngleRad: 2.8 },
@@ -11,8 +11,14 @@ const skeleton = () => [
 ];
 
 const effectors = () => [
-  { id: "left-hand", chain: ["root", "left.shoulder", "left.elbow"], target: { x: -1.5, y: 0.75, z: 0 } },
-  { id: "right-hand", chain: ["root", "right.shoulder", "right.elbow"], target: { x: 1.5, y: 0.75, z: 0 } },
+  {
+    id: "left-hand", chain: ["root", "left.shoulder", "left.elbow"],
+    target: { x: -2.791886, y: 0.179833, z: 0 }, endEffectorOffset: { x: -1, y: 0, z: 0 },
+  },
+  {
+    id: "right-hand", chain: ["root", "right.shoulder", "right.elbow"],
+    target: { x: 2.791886, y: 0.179833, z: 0 }, endEffectorOffset: { x: 1, y: 0, z: 0 },
+  },
 ];
 
 test("multi-effector IK coordinates two branches sharing the same root", () => {
