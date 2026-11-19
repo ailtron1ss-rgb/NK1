@@ -169,3 +169,40 @@ PR [#997](https://github.com/ailtron1ss-rgb/NK1/pull/997) is merged into `workpa
 A fresh complete paginated read during this pass returned **1,001 branch refs**: ten pages of 100 plus one final page of 1; the following cursor page was empty. This independently confirms the 1,001-ref snapshot recorded above. The branch total is not a count of unique content: the earlier full tree/HEAD census recorded 985 unique HEAD commits and one shared-HEAD group of 17 branch names.
 
 No branch refs were deleted or force-repointed in this pass. PR closure/merge status is tracked separately from ref retirement; closing or merging a PR does not itself remove its source branch. The 1001 refs remain above the desired few-dozen target, and a full historical/tag/workflow/deployment/external-reference clearance is still required before any branch deletion.
+
+
+## Selective consolidation — HMX review-only acceptance + explicit canonical apply (PR #1001)
+
+PR [#1001](https://github.com/ailtron1ss-rgb/NK1/pull/1001) was merged into `workpass70-source`.
+
+- Donor #995 was a two-file Draft containing the real-server regression and CI path wiring, but no production implementation. The useful contract was salvaged rather than treating the donor as a ready feature.
+- TDD red run #44550773096 reproduced the defect on current production code: after `decision=accept`, canonical MemoryOS2 count rose from 3 to 4, proving acceptance itself wrote memory.
+- `OrganismCore.hexisDecideHmx` now only records the review decision and persists the review state.
+- A new `hexisApplyHmx(stagingId, confirmed)` delegates to the current `MemorySubsystemRuntime.hexisHmxCanonicalMemoryBridge.commit()`. It does not create a second importer or memory owner.
+- New `POST /api/organism/integration/hexis/hmx/apply` requires `confirmed: true`; unconfirmed requests return HTTP 403. `/hmx/decide` now rejects anything except exact `accept` or `reject` with HTTP 400 rather than silently treating unknown actions as rejection.
+- The app API and Hexis control UI expose separate **Accept review** and **Apply to canonical memory** actions. The explicit checkbox guards only the second action.
+- The canonical bridge remains responsible for HMX schema checks, sensitive-text redaction, low-authority `hypothesis` provenance, graph-link validation and idempotent MemoryFabric command receipts.
+- Green push run #44552604527: HMX canonical bridge workflow SUCCESS on exact candidate head `a0327376590c79e8ffce1f1ea14b9ac896ba921a`.
+- PR #1001 exact-head checks: **25/25 SUCCESS**, 0 failures, 0 pending, including NeuroCore core regression, unified organism runtime, memory/evidence, Hexis and WorkPass cognitive regressions.
+- Merge commit: `8c7eca314b5713f43e95a24926929efd30a5d7bc`, parent `38c6b14fec573399863f61778cf99d2574239bd3`. Current `workpass70-source` was verified exactly at the merge commit immediately afterward.
+- Six files changed: 204 additions, 58 deletions.
+- Donor PR #995 was closed as superseded with a comment referencing #1001 and the test/merge evidence. Donor branch `consolidation/hexis-hmx-apply-consent-20261119` was retained; no ref deletion occurred.
+
+## Latest branch census after PR #1001
+
+A fresh complete paginated read after the merge returned:
+
+- **1,003 branch refs** (10 pages of 100 plus 3 on page 11).
+- **987 unique HEAD commits**.
+- **16 excess names** beyond one branch name per unique HEAD.
+- The 16 excess refs still form one exact group of **17 aliases** at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`.
+- **339 open PRs** in the same snapshot.
+
+The current open-PR head/base scan finds four live references to aliases in that duplicate group:
+- #109 uses `nk1-all-branches-merge-2026-10-23` as base.
+- #91 and #86 use `rebuild` as base.
+- #124 uses `workpass206-runtime-evaluator-wiring` as base.
+
+The other 13 names are not referenced as a head or base by the current open-PR list. That is not yet sufficient to retire them: closed/merged PR provenance, tags/releases, workflow filters, deployment references, documentation and external consumers still require separate review.
+
+The branch count did **not** decrease when PR #1001 merged because the aspect/donor refs are preserved. This is intentional until the reference/dependency audit authorizes branch retirement. The available GitHub operations in this session still expose no branch-ref deletion operation.
