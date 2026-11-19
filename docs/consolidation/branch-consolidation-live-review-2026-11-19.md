@@ -100,3 +100,12 @@ Current live state at review time:
 - No branch deleted or force-updated.
 - No open PR merged or closed.
 - This report is documentation-only and records the live evidence and review disposition above.
+
+### Additional PR #953 code-review note
+
+- File: `runtime/neuro-kurisu/src/organism/memory/MemorySemanticRetrievalBenchmark.ts:22`.
+- `normalizeQuery` uses doubled regex escapes (`\\\\p` and `\\\\s` in the source literal), unlike the correct single-backslash Unicode property and whitespace escapes in `MemoryRetrievalBenchmark.ts:124`.
+- Impact is limited to the optional query-evidence HMAC digest normalization; it does not change retrieval ranking or the benchmark result metrics. Query-equivalent strings with punctuation/spacing differences may receive different digests.
+- A top-level review checkpoint was posted to PR #953 (comment ID `7000561568`) asking for the single-backslash regex form and a test.
+- A separate concern that the 1,600-row corpus cap silently caused a false fingerprint was investigated and **not** retained as a finding: the underlying `runMemoryOS2RetrievalBenchmark` marks truncation as `corpusIntegrity.validForPromotion=false`, which makes `structurallyValid` false and rejects the semantic benchmark before either arm is run.
+
