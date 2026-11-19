@@ -30,11 +30,11 @@
     {
       "path": "runtime/neuro-kurisu/src/organism/core/types.ts",
       "maxOutDegree": 210,
-      "maxRuntimeOutDegree": 0,
+      "maxRuntimeOutDegree": 1,
       "maxTypeOutDegree": 210,
       "maxProductionRuntimeInDegree": 2,
       "maxProductionTypeOnlyInDegree": 260,
-      "reason": "Shared type contract hotspot. ReleaseContract is consumed only in a type query and must stay type-only; runtime imports from this module are forbidden. Incoming type-only fan-in is tracked independently."
+      "reason": "Shared type contract hotspot; keep implementation imports out of the common type surface. One runtime edge is deliberately permitted for RELEASE_CONTRACT.stateSchema so OrganismState.version is tied to the canonical versioned schema constant rather than a duplicated literal."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts",
