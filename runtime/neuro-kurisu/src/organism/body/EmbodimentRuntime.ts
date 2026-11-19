@@ -5,6 +5,8 @@ import { defaultBodyState, synthesizeBody, type OrganismBodyEvent, type Organism
 import type { OrganismState } from '../core/types.ts';
 import type { AndroidSamplingPlan } from './AndroidEmbodimentBridge.ts';
 import { nativeSpeechEventChannel, type NativeSpeechProviderEventV1 } from './NativeSpeechEventChannel.ts';
+import { projectAvatarBrainState, type AvatarBrainProjection, type AvatarAffectInput, type AvatarRenderProfile, type AvatarPersonalityVector } from './AvatarBrainAffectBridge.ts';
+import { mapAvatarProjectionToRenderer, type AvatarRendererCapabilities, type AvatarRendererMapping } from './AvatarRendererAdapter.ts';
 import { NekoAsrTranscriptAdapter, type NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
 import type { NekoSpeechAdmissionSnapshotV1 } from '../integration/neko/NekoSpeechAdmissionGate.ts';
 import type { NekoSmartTurnEvaluationResult } from '../integration/neko/NekoSmartTurnCoordinator.ts';
@@ -44,6 +46,7 @@ export type SpeechInterruptGatewayDispatcher = (speechEventId:string, reason:str
 
 export class EmbodimentRuntime {
   private body: OrganismBodyState = defaultBodyState();
+  private lastAvatarProjection:AvatarBrainProjection|null=null;
   private events: OrganismBodyEvent[] = [];
   private capabilities: TermuxCapabilities = { battery:false, sensors:false, tts:false, stt:false, camera:false, wifi:false };
   private lastSampleAt = 0;
@@ -78,6 +81,37 @@ export class EmbodimentRuntime {
   }
 
   snapshot(): OrganismBodyState { return structuredClone(this.body); }
+  /** Project canonical organism/body state into one renderer-neutral avatar frame. */
+  avatarProjection(
+    state:OrganismState,
+    options?:{affect?:AvatarAffectInput;personality?:AvatarPersonalityVector;profile?:AvatarRenderProfile;now?:number},
+  ):AvatarBrainProjection {
+    this.lastAvatarProjection=projectAvatarBrainState({
+      state,
+      body:this.body,
+      affect:options?.affect,
+      personality:options?.personality,
+      profile:options?.profile,
+      now:options?.now,
+      previous:this.lastAvatarProjection??undefined,
+    });
+    return structuredClone(this.lastAvatarProjection);
+  }
+
+  /** Map that same canonical frame to controls declared by the currently loaded renderer. */
+  avatarRendererMapping(
+    state:OrganismState,
+    capabilities:AvatarRendererCapabilities,
+    options?:{affect?:AvatarAffectInput;personality?:AvatarPersonalityVector;now?:number},
+  ):AvatarRendererMapping {
+    const projection=this.avatarProjection(state,{
+      affect:options?.affect,
+      personality:options?.personality,
+      profile:capabilities.profile,
+      now:options?.now,
+    });
+    return mapAvatarProjectionToRenderer(projection,capabilities);
+  }
   eventLog(): OrganismBodyEvent[] { return structuredClone(this.events.slice(0, 200)); }
   capabilitiesSnapshot(): TermuxCapabilities { return { ...this.capabilities }; }
   voiceSnapshot(): { state: VoiceRuntimeState; plan: VoicePlan | null } { return { state: structuredClone(this.voice), plan: structuredClone(this.lastVoicePlan) }; }
