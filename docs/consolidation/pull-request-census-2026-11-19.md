@@ -3,8 +3,8 @@
 ## Live result
 
 - Total PRs: **942**
-- Open: **413**
-- Merged: **312**
+- Open: **412**
+- Merged: **313**
 - Closed without merge: **217**
 - Distinct PR head refs: **926**
 - Distinct open PR head refs: **412**
@@ -51,3 +51,10 @@
 - #952 is merged: N.E.K.O. policy reconciliation and Russian manifest-policy documentation were added; the file-level report identifies old gateway/ingress branches whose useful code is already superseded by stronger merged code.
 - #951 and #953 remain Draft. Review every changed file and exact-head CI before integration; neither is treated as disposable or safe to merge merely by similar naming.
 - No branch deletion is authorized by this census. Preserve head/base refs and provenance until dependency and code-level review completes.
+
+## Post-merge refresh — PR #951
+
+- #951 now **MERGED** at `2026-11-19T05:14:52Z`; merge commit `aa2b385153ddc316eadf61f87e2c0803d7d59d98` is the current `workpass70-source` HEAD. It introduced three renderer-neutral kinematics modules plus tests and package-script wiring.
+- #953 remains Draft. Current comparison against source `aa2b385…` is diverged: PR head is 22 commits ahead, source is 2 commits ahead of merge-base `9742b5a…`. It should be rebased/revalidated after #951.
+- #953 has 22 changed files (+2,668/-113) in the latest PR metadata. Workflow runs associated with its head include two pending jobs (`Hexis HMX canonical memory bridge`, `WorkPass81 memory restore integrity`); the other listed runs were completed successfully at the time checked.
+- #950 and #952 remain merged; #949 remains Draft/audit-only.
