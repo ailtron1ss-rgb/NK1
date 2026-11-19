@@ -200,13 +200,24 @@ export class EmotionAppraisalEngine {
     const feelings=ownDataArray(r.feelings);
     const restoredHistory=history ? history.map(validEmotionEpisode) : null;
     const restoredFeelings=feelings ? feelings.map(validFeelingEpisode) : null;
-    const validHistory = restoredHistory && restoredHistory.every(Boolean)
-      ? restoredHistory as EmotionEpisode[]
-      : [];
-    const validFeelings = restoredFeelings && restoredFeelings.every(Boolean)
-      ? (restoredFeelings as FeelingEpisode[]).filter(feeling =>
-          validHistory.some(episode => episode.id === feeling.causeEmotionId))
-      : [];
+    const validHistory:EmotionEpisode[]=[];
+    if(restoredHistory && restoredHistory.every(Boolean)){
+      const seenEpisodeIds=new Set<string>();
+      for(const episode of restoredHistory as EmotionEpisode[]){
+        if(seenEpisodeIds.has(episode.id))continue;
+        seenEpisodeIds.add(episode.id);
+        validHistory.push(episode);
+      }
+    }
+    const validFeelings:FeelingEpisode[]=[];
+    if(restoredFeelings && restoredFeelings.every(Boolean)){
+      const seenFeelingIds=new Set<string>();
+      for(const feeling of restoredFeelings as FeelingEpisode[]){
+        if(seenFeelingIds.has(feeling.id)||!validHistory.some(episode=>episode.id===feeling.causeEmotionId))continue;
+        seenFeelingIds.add(feeling.id);
+        validFeelings.push(feeling);
+      }
+    }
     this.state={
       version:2,
       episodes:validCounter(r.episodes,0),
