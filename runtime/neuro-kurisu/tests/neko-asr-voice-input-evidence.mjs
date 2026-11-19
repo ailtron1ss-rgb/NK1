@@ -58,6 +58,13 @@ const providerInput = {
     reason: 'speech_window',
     voicedAudioMs: 256,
   },
+  smartTurnEvaluation: {
+    status: 'ok',
+    decision: 'complete',
+    probability01: 0.88,
+    modelId: 'pipecat-smart-turn-v3.2-cpu',
+    modelVersion: 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93',
+  },
 };
 
 {
@@ -74,6 +81,10 @@ const providerInput = {
     'speech-admission:admit',
     'speech-admission-reason:speech_window',
     'speech-admission-voiced-ms:256',
+    'smart-turn-status:ok',
+    'smart-turn-decision:complete',
+    'smart-turn-probability:0.880',
+    'smart-turn-model:pipecat-smart-turn-v3.2-cpu',
   ]);
 }
 
@@ -88,6 +99,8 @@ const providerInput = {
   assert.ok(observations[0].evidence.includes('asr-event:evt-asr-41'));
   assert.ok(observations[0].evidence.includes('speech-admission:admit'));
   assert.ok(observations[0].evidence.includes('speech-admission-reason:speech_window'));
+  assert.ok(observations[0].evidence.includes('smart-turn-status:ok'));
+  assert.ok(observations[0].evidence.includes('smart-turn-decision:complete'));
 }
 
 {
