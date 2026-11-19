@@ -1378,10 +1378,28 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/decide') {
             const input = await body(req);
-            const decision = input.decision === 'accept' ? 'accept' : 'reject';
-            const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
+            if (input.decision !== 'accept' && input.decision !== 'reject') {
+                return json(res, 400, { ok: false, error: 'invalid-hmx-review-decision' });
+            }
+            const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), input.decision);
+            if (!result) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
             await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), stage: result });
+            return json(res, 200, { ok: true, stage: result });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/apply') {
+            const input = await body(req);
+            if (input.confirmed !== true) {
+                return json(res, 403, { ok: false, error: 'explicit-confirmation-required' });
+            }
+            const application = runtime.core.hexisApplyHmx(String(input.stagingId || ''), true);
+            if (!application.ok) {
+                const status = application.error === 'stage-not-found' ? 404
+                    : application.error === 'stage-not-accepted' || application.error === 'stage-rejected' ? 409
+                    : 400;
+                return json(res, status, { ok: false, application, error: application.error });
+            }
+            await runtime.core.flush();
+            return json(res, 200, { ok: true, application });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });

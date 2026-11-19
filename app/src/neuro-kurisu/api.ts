@@ -258,6 +258,7 @@ export const neuroApi = {
   hexisHmxExport: () => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/export"),
   hexisHmxStage: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/stage", { method: "POST", body: JSON.stringify(payload) }),
   hexisHmxDecide: (stagingId: string, decision: "accept"|"reject") => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/decide", { method: "POST", body: JSON.stringify({ stagingId, decision }) }),
+  hexisHmxApply: (stagingId: string, confirmed: boolean) => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/apply", { method: "POST", body: JSON.stringify({ stagingId, confirmed }) }),
   hexisOutbox: () => request<Record<string, unknown>>("/api/organism/integration/hexis/outbox"),
   hexisOutboxEnqueue: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/integration/hexis/outbox/enqueue", { method: "POST", body: JSON.stringify(payload) }),
   hexisOutboxClaim: (id: string) => request<Record<string, unknown>>("/api/organism/integration/hexis/outbox/claim", { method: "POST", body: JSON.stringify({ id }) }),
