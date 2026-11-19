@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { MemorySubstrateCoordinator } from '../src/organism/developmental/MemorySubstrateCoordinator.ts';
@@ -275,7 +276,7 @@ console.log('PROTECTED_MEMORY_FORGET_BOUNDARY=PASS');
     new MultiTimescaleMemory(),
     new MemorySubstrateCoordinator(),
     new UnifiedMemorySystem(),
-    new P62MemoryFabric(),
+    orphanP62,
     graph,
   );
   const first = fabric.encode(input(
@@ -564,9 +565,20 @@ console.log('CANONICAL_MAINTENANCE_DORMANCY_PROJECTION_SYNC=PASS');
 {
   const orphanId = 'graph-only-orphaned-canonical-row';
   const graph = new SemanticMemoryGraph();
+  const graphNodeId = `memoryos2:${createHash('sha256').update(orphanId).digest('hex').slice(0,32)}`;
+  const orphanP62 = new P62MemoryFabric();
+  orphanP62.recall({
+    query: 'orphaned canonical graph projection',
+    memoryOS: [], multiTimescale: [],
+    semanticNodes: [{ id: graphNodeId, label: 'orphaned canonical graph projection', type: 'concept', salience: 0.8 }],
+    beliefs: [], maxItems: 8,
+  });
+  const aliasId = `semantic:${graphNodeId}`;
+  assert.ok(orphanP62.snapshot().lastFrame?.hits.some(hit => hit.id === aliasId),
+    'P62 fixture must retain the canonical graph alias before forget');
   graph.restore({
     nodes: [{
-      id: 'memoryos2:orphaned-row',
+      id: graphNodeId,
       label: 'orphaned canonical graph projection',
       type: 'concept',
       salience: 0.8,
@@ -596,6 +608,13 @@ console.log('CANONICAL_MAINTENANCE_DORMANCY_PROJECTION_SYNC=PASS');
     false,
     'the stale graph-only projection must be removed',
   );
+  const p62AfterForget = orphanP62.snapshot();
+  assert.equal(p62AfterForget.history.some(frame => frame.hits.some(hit => hit.id === aliasId)), false,
+    'forgotten graph aliases must be removed from P62 recall history');
+  assert.equal(p62AfterForget.lastFrame?.hits.some(hit => hit.id === aliasId), false,
+    'the latest P62 frame must not retain a forgotten semantic alias');
+  assert.equal(p62AfterForget.lastFrame?.hits.some(hit => hit.content === 'orphaned canonical graph projection'), false,
+    'forgotten semantic text must not remain in the latest recall frame');
   assert.equal(
     orphanFabric.applyLifecycleCommand({ action: 'forget', id: orphanId, reason: 'graph-only-orphan-cleanup' }),
     false,
@@ -604,3 +623,4 @@ console.log('CANONICAL_MAINTENANCE_DORMANCY_PROJECTION_SYNC=PASS');
 }
 
 console.log('GRAPH_ONLY_ORPHAN_FORGET_RESULT=PASS');
+console.log('P62_SEMANTIC_ALIAS_FORGET=PASS');
