@@ -100,4 +100,16 @@ Do not merge until the remaining exact-head check completes successfully and mer
 
 ## Current result
 
-The memory/HMX family has one verified integrated path (#954); seven redundant review requests were closed without deleting refs. The next safe merge candidate is #948 after its outstanding exact-head check completes. #866 and #109 are retained for selective integration because they contain distinct functionality.
+The memory/HMX family has one verified integrated path (#954), and the P25 monotonic anti-replay anchor is now integrated through #948. Seven redundant review requests were closed without deleting refs. #866 and #109 remain open for selective integration because they contain distinct functionality.
+
+## Subsequent verified integration — PR #948
+
+Merged 2026-11-19 at 05:53:40 UTC into `workpass70-source`:
+- Merge commit: `2d8a71cd937ed7196f69b6cef68f4fa016b508ee`.
+- Exact tested PR head: `9372c5e90dc2124f08251a14170283dba6ade020`.
+- Base before merge: `ab4cc42101dcbd30a51c39f840490a6a2f642639`.
+- 7 changed paths, +622 / −30 lines; 19/19 exact-head checks passed; mergeability was clean.
+- Added the host-owned monotonic replay-anchor contract, atomic compare-and-swap semantics, fail-closed restore/reconcile and activation checks, plus regression tests.
+- Scope limitation: the PR adds the interface/runtime integration and tests, not a production durable anchor-store implementation. Production activation requires a host-supplied protected implementation and `synapticReplayAnchorRequired` configuration.
+
+Source HEAD immediately after merge: `2d8a71cd937ed7196f69b6cef68f4fa016b508ee`.
