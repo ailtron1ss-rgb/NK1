@@ -557,3 +557,50 @@ console.log('RUNTIME_RESTORE_RECONCILES_CANONICAL_SEMANTIC_GRAPH=PASS');
 }
 
 console.log('CANONICAL_MAINTENANCE_DORMANCY_PROJECTION_SYNC=PASS');
+
+// A graph-only stale projection is still a derived copy. When canonical and all
+// other read surfaces are already absent, purging that graph node is a real forget
+// operation and must be reflected in the lifecycle result/event.
+{
+  const orphanId = 'graph-only-orphaned-canonical-row';
+  const graph = new SemanticMemoryGraph();
+  graph.restore({
+    nodes: [{
+      id: 'memoryos2:orphaned-row',
+      label: 'orphaned canonical graph projection',
+      type: 'concept',
+      salience: 0.8,
+      lastSeen: now,
+      sourceKey: 'memoryOS2:graph-only-orphan',
+      canonicalProjection: { owner: 'memoryOS2', itemId: orphanId, schemaVersion: 1 },
+    }],
+    edges: [],
+    updates: 1,
+  });
+  const orphanFabric = new MemoryFabric(
+    new MemoryOS2({ embeddingProvider: null }),
+    new EventLog(),
+    new MultiTimescaleMemory(),
+    new MemorySubstrateCoordinator(),
+    new UnifiedMemorySystem(),
+    new P62MemoryFabric(),
+    graph,
+  );
+  assert.equal(
+    orphanFabric.applyLifecycleCommand({ action: 'forget', id: orphanId, reason: 'graph-only-orphan-cleanup' }),
+    true,
+    'removing the only remaining canonical graph projection must report an applied forget',
+  );
+  assert.equal(
+    graph.snapshot().nodes.some(node => node.canonicalProjection?.itemId === orphanId),
+    false,
+    'the stale graph-only projection must be removed',
+  );
+  assert.equal(
+    orphanFabric.applyLifecycleCommand({ action: 'forget', id: orphanId, reason: 'graph-only-orphan-cleanup' }),
+    false,
+    'repeating forget after all copies are gone must be a no-op',
+  );
+}
+
+console.log('GRAPH_ONLY_ORPHAN_FORGET_RESULT=PASS');
