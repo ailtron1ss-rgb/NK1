@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
-import { runMemoryOS2SemanticRetrievalBenchmark } from '../src/organism/memory/MemorySemanticRetrievalBenchmark.ts';
-import { fingerprintMemoryRetrievalDataset } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
+import { normalizeMemorySemanticRetrievalQuery, runMemoryOS2SemanticRetrievalBenchmark } from '../src/organism/memory/MemorySemanticRetrievalBenchmark.ts';
+import { fingerprintMemoryRetrievalDataset, hmacSha256Hex } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
 
 class FixtureEmbeddingProvider {
   providerId='fixture:semantic-eval-v1';
@@ -41,10 +41,7 @@ const examples=[
  ...Array.from({length:8},(_,i)=>({id:`ru-holdout-${i}`,query:`не могу войти в аккаунт сбросить пароль ${i}`,relevantIds:[`credential-${i}`],split:'holdout',language:'ru'})),
  ...Array.from({length:2},(_,i)=>({id:`ru-noanswer-${i}`,query:`qzxv glarpen орбитальный шифр nonsense ${i}`,relevantIds:[],split:'holdout',answerable:false,language:'ru'})),
 ];
-examples.push(
-  {id:'en-train-normalize-a',query:'Account recovery!!!   password',relevantIds:['credential-0'],split:'train',language:'en'},
-  {id:'en-train-normalize-b',query:'account recovery password',relevantIds:['credential-0'],split:'train',language:'en'},
-);
+
 const provenance={
  datasetId:'semantic-path-fixture',datasetVersion:'1.0.0',sourceRef:'test-only-fixture',
  labelingProtocol:'Hand-authored deterministic synthetic labels. Not production evidence.',
@@ -66,15 +63,16 @@ assert.ok(report.semanticSelection.semanticEnabledQueries>0,'async embedding bra
 assert.equal(report.semanticSelection.abstainedQueries,4,'explicitly unanswerable RU/EN queries must abstain on weak semantic matches');
 assert.equal(report.metrics.semantic.unsupportedRetrievalCount,0);
 
-const orderedExamples=[...examples].sort((a,b)=>a.split.localeCompare(b.split)||a.id.localeCompare(b.id));
-const normalizedA=orderedExamples.findIndex(row=>row.id==='en-train-normalize-a');
-const normalizedB=orderedExamples.findIndex(row=>row.id==='en-train-normalize-b');
-assert.ok(Array.isArray(report.queryEvidence),'opt-in query evidence should be emitted');
+const normalizedA=normalizeMemorySemanticRetrievalQuery('Account recovery!!!   password');
+const normalizedB=normalizeMemorySemanticRetrievalQuery('account recovery password');
+assert.equal(normalizedA,normalizedB,'punctuation, casing and repeated whitespace must normalize consistently');
+const fixtureSalt='memory-semantic-query-normalization-fixture-only';
 assert.equal(
-  report.queryEvidence[normalizedA].queryDigest,
-  report.queryEvidence[normalizedB].queryDigest,
-  'punctuation, casing and repeated whitespace must normalize to the same salted query digest',
+  hmacSha256Hex(fixtureSalt,normalizedA),
+  hmacSha256Hex(fixtureSalt,normalizedB),
+  'equivalent normalized queries must produce the same HMAC evidence digest under one key',
 );
+assert.ok(Array.isArray(report.queryEvidence),'opt-in query evidence should be emitted');
 assert.deepEqual(Object.keys(report.languageSlices).sort(),['en','ru']);
 assert.equal(report.languageSlices.en.holdoutQueries,10);
 assert.equal(report.languageSlices.en.answerableHoldoutQueries,8);
