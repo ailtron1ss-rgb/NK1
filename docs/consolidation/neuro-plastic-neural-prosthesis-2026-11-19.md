@@ -141,3 +141,17 @@ The count is live and can move while other chats operate on the repository. It c
 - All new source integration/branch decisions in this pass target `workpass70-source`.
 - No destructive branch-ref operation was performed.
 - The 998 refs have not each been audited file-by-file; this report covers the named Neuro-Plastic/P25/Neural Prosthesis family only.
+
+
+## 9. Concurrent recount after the report commit
+
+Immediately after the report commit, the repository was enumerated again through all branch-search pages:
+
+- Returned branch rows: **999**
+- Unique branch names: **999**
+- Duplicate names in the returned pages: **0**
+- Pagination completed: **yes** (11 pages; final page returned zero rows)
+- `consolidation/*`: **34** (was 33 at the prior checkpoint)
+- All other prefix counts remained the same in this recount.
+
+This +1 delta occurred while parallel work was active and is not attributed to the Neuro-Plastic consolidation or the two PR closures. The prior 998 figure remains the earlier checkpoint; **999 is the later observed count**.
