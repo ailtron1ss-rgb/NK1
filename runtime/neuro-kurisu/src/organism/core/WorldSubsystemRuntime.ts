@@ -190,6 +190,7 @@ export class WorldSubsystemRuntime {
       confidence:integrated.confidence01,
       uncertainty:integrated.uncertainty01,
       predictionId:integrated.predictionId,
+      sourcePredictionId:integrated.sourcePredictionId,
       modelAgreement01:integrated.modelAgreement01,
       reasons:['integrated-world-model'],
       next: organismState ? ({energy:organismState.needs.energy,uncertainty:organismState.needs.uncertainty,cognitiveLoad:organismState.needs.cognitiveLoad,novelty:organismState.needs.novelty} satisfies InternalWorldState) : {energy:.5,uncertainty:.5,cognitiveLoad:.5,novelty:.5},
@@ -227,7 +228,11 @@ export class WorldSubsystemRuntime {
       : this.worldModelEnsemble.observeOutcomeForAction(String(transition.action),actual);
     if(predictionId) this.canonicalPredictionFrames.delete(predictionId);
     const candidates=resolution.candidates;
-    const worldModelResolution=this.worldModel2.observeTransition(transition, predictionId);
+    const worldModelPredictionId=decisionFrame?.sourcePredictionId;
+    const worldModelTicketRef=predictionId
+      ? (typeof worldModelPredictionId === 'string' ? worldModelPredictionId : null)
+      : undefined;
+    const worldModelResolution=this.worldModel2.observeTransition(transition, worldModelTicketRef);
     if(beforeState){
       this.contextualWorld.observe(beforeState, transition.action as ActionKind, {
         reward01:actual,
