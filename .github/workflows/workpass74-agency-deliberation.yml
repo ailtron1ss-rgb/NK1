@@ -1,0 +1,39 @@
+name: NK1 WorkPass74 agency deliberation integrity
+
+on:
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/cognition/evolution/AgencyDeliberationEngine.ts'
+      - 'runtime/neuro-kurisu/tests/agency-deliberation-engine-contract.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/workpass74-agency-deliberation.yml'
+  push:
+    branches:
+      - workpass79-agency-deliberation-rebase-2026-10-31
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-workpass74-agency-deliberation-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  agency-deliberation-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Verify package manifest and registered contract
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node -e "const p = JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')); if (!p.scripts['test:workpass74:agency-deliberation-integrity']) process.exit(1)"
+      - name: Run AgencyDeliberation integrity contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass74:agency-deliberation-integrity

@@ -231,11 +231,14 @@ const makeNested=(rows:number,cols:number,fn:(r:number,c:number)=>number)=>Array
 
 export const defaultNeuralExperienceBranch=():NeuralExperienceBranchState=>{
   const neurons=96, input=64, edges=12, memory=16;
+  const edgeTargets=Array.from({length:neurons},(_,i)=>Array.from({length:edges},(_,q)=>(i*17+q*29+3)%neurons));
+  const edgeWeights=makeNested(neurons,edges,(i,q)=>((prand(7100+i*13+q*31)*2)-1)*.035);
+  const recurrent=Array.from({length:neurons},(_,i)=>{const row=new Array(neurons).fill(0);for(let q=0;q<edges;q++)row[edgeTargets[i]![q]!]=edgeWeights[i]![q]!;return row;});
   return {
     version:32,contractVersion:1,enabled:true,tick:0,cycles:0,learningUpdates:0,neurons,areas:8,
     populationKinds:Array.from({length:neurons},(_,i)=>i%12<9?'E':'I'),areaOf:Array.from({length:neurons},(_,i)=>Math.floor(i/12)),
-    edgeTargets:Array.from({length:neurons},(_,i)=>Array.from({length:edges},(_,q)=>(i*17+q*29+3)%neurons)),
-    edgeWeights:makeNested(neurons,edges,(i,q)=>((prand(7100+i*13+q*31)*2)-1)*.035),
+    edgeTargets,
+    edgeWeights,
     edgeDelays:Array.from({length:neurons},(_,i)=>Array.from({length:edges},(_,q)=>1+Math.floor(prand(8100+i*7+q*19)*3))),
     delayHistory:Array.from({length:neurons},()=>new Array(4).fill(0)),
     edgeEligibility:Array.from({length:neurons},()=>new Array(edges).fill(0)),
@@ -249,7 +252,7 @@ export const defaultNeuralExperienceBranch=():NeuralExperienceBranchState=>{
     excitatoryFraction01:.75,inhibition01:.2,areaPrediction01:new Array(8).fill(.5),
     state:new Array(neurons).fill(0),velocity:new Array(neurons).fill(0),thresholds:new Array(neurons).fill(.22),activityEma:new Array(neurons).fill(.10),
     gains:new Array(neurons).fill(.8),plasticity:new Array(neurons).fill(.35),
-    recurrent:makeMatrix(neurons,neurons,101,.035),inputProjection:makeMatrix(neurons,input,303,.055),
+    recurrent,inputProjection:makeMatrix(neurons,input,303,.055),
     actionReadout:defaultActionReadout(neurons),predictionReadout:Array.from({length:neurons},(_,i)=>((prand(9300+i*17)*2)-1)*.05),
     delayLearningUpdates:0,eligibilityUpdates:0,sensoryLearningUpdates:0,memoryLearningUpdates:0,metaplasticityUpdates:0,
     pressure:new Array(6).fill(.15),pressureNames:['prediction','homeostasis','identity','goal','novelty','uncertainty'],
@@ -537,6 +540,11 @@ export class NeuralExperienceBranch {
       this.state.astroGate[i]=clamp(Number(this.state.astroGate[i]??.72),.20,1);
       this.state.edgeUncertainty[i]![q]=clamp(Number(this.state.edgeUncertainty[i]?.[q]??.65));
     }
+    // The dense recurrent matrix is a derived mirror of the canonical sparse
+    // 12-edge graph. Rebuild it from the sparse edges so a restored snapshot
+    // matches what the next cycle will compute; a snapshot taken before the
+    // first cycle would otherwise keep the constructor's random dense weights
+    // while the edges are sparse, breaking the round-trip.
     this.syncDenseReference();
   }
 

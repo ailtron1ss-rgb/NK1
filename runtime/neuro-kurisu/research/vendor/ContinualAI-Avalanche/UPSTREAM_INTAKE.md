@@ -9,3 +9,8 @@
 - Not copied: Avalanche's Python/PyTorch plugin, data loader, or training framework. They are not directly runnable in this TypeScript/phone-oriented runtime and would add a large incompatible dependency surface.
 - Boundaries: this is a mechanism adaptation, not a claim of Avalanche algorithm parity. The buffer stores feature/target experiences, not raw conversations or personal text. Production integration still needs an explicit caller that supplies independently verified targets and a persistence/retention policy.
 - Validation: the deterministic regression is wired into the existing P26 GitHub Actions workflow. Do not call it passed until a live run reports success.
+
+
+## License evidence clarification — 2026-10-31
+
+The upstream [Avalanche LICENSE](https://github.com/ContinualAI/avalanche/blob/master/LICENSE) declares MIT. The local copy is not byte-identical, but the complete texts match after whitespace normalization; the observed difference is line wrapping/spacing only. No Avalanche source code is recorded as copied into NK1; only methodology was adapted. Human review remains pending; this note is evidence, not approval.

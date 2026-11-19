@@ -8,7 +8,7 @@ import { sha256Stable } from '../core/StableSerialization.ts';
  * world or goals. It only records the causal spine of an operational cycle:
  * observation -> prediction -> action -> outcome -> learning/self update.
  */
-export type CognitiveStage = 'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update'|'tool-action'|'tool-outcome'|'tool-evidence'|'external-evidence'|'tool-reconciliation';
+export type CognitiveStage = 'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update'|'tool-action'|'tool-outcome'|'tool-evidence'|'external-evidence'|'tool-reconciliation'|'metacognition';
 
 export interface CognitiveEventNode {
   id: string;
@@ -28,11 +28,21 @@ type OperationalCyclePhaseInput = { source?:string; external?:boolean; confidenc
 
 export interface OperationalCycleLineageCheck {
   tick: number | null;
+  /** Legacy-compatible six-stage verdict. */
   complete: boolean;
+  coreComplete: boolean;
+  /** Strict eleven-stage verdict. */
+  fullComplete: boolean;
   integrity01: number;
+  coreIntegrity01: number;
+  fullIntegrity01: number;
   missingStages: string[];
+  coreMissingStages: string[];
+  fullMissingStages: string[];
   invalidStages: string[];
   missingEdges: string[];
+  coreMissingEdges: string[];
+  fullMissingEdges: string[];
 }
 
 export interface ExternalObservationProjectionRef { observationId:string; eventId:string; projectionHash:string; projectedAt:number; }
@@ -61,6 +71,8 @@ export interface CognitiveEventFabricSnapshot {
   danglingParentLinks: number;
   lineageIntegrity01: number;
   cycleCoverage01: number;
+  coreCycleCoverage01?: number;
+  fullCycleCoverage01?: number;
   causalDensity01: number;
   recentTicks: number;
   recent: CognitiveEventNode[];
@@ -72,8 +84,50 @@ export interface CognitiveEventFabricSnapshot {
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
-const cleanPayload=(x:unknown):Record<string,unknown>=>isRecord(x)?{...x}:{};
-const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
+/** Read persisted snapshot fields without invoking accessor properties. */
+const ownData=(value:unknown,key:string):unknown=>{
+  if(!value||typeof value!=='object')return undefined;
+  const descriptor=Object.getOwnPropertyDescriptor(value,key);
+  return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;
+};
+const ownArray=(value:unknown,max:number):unknown[]=>{
+  if(!Array.isArray(value))return [];
+  const length=ownData(value,'length');
+  if(typeof length!=='number'||!Number.isSafeInteger(length)||length<0)return [];
+  const result:unknown[]=[];
+  for(let index=0;index<Math.min(length,max);index++){
+    const descriptor=Object.getOwnPropertyDescriptor(value,String(index));
+    if(descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value'))result.push(descriptor.value);
+  }
+  return result;
+};
+const cleanPayload=(value:unknown):Record<string,unknown>=>isRecord(value)?{...value}:{};
+/** Copy only own data properties; snapshot accessors are never evaluated. */
+function cleanRestoredValue(value:unknown,depth=0):unknown {
+  if(value===null||typeof value==='string'||typeof value==='boolean'||(typeof value==='number'&&Number.isFinite(value)))return value;
+  if(depth>=4)return undefined;
+  if(Array.isArray(value)){
+    return ownArray(value,64).flatMap(item=>{
+      const clean=cleanRestoredValue(item,depth+1);
+      return clean===undefined?[]:[clean];
+    });
+  }
+  if(isRecord(value))return cleanRestoredPayload(value,depth);
+  return undefined;
+}
+function cleanRestoredPayload(value:unknown,depth=0):Record<string,unknown> {
+  if(!isRecord(value)||depth>=4)return {};
+  const result:Record<string,unknown>={};
+  for(const key of Object.keys(value).slice(0,128)){
+    if(key.length>128||key==='__proto__'||key==='prototype'||key==='constructor')continue;
+    const item=ownData(value,key);
+    if(item===undefined)continue;
+    const clean=cleanRestoredValue(item,depth+1);
+    if(clean!==undefined)result[key]=clean;
+  }
+  return result;
+}
+const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation','metacognition']);
 
 export class CognitiveEventFabric {
   private readonly capacity:number;
@@ -84,64 +138,86 @@ export class CognitiveEventFabric {
   constructor(capacity=512){this.capacity=Math.max(128,Math.min(4096,Math.floor(capacity)));}
 
   restore(raw?:Partial<CognitiveEventFabricSnapshot>|null):void{
-    const recentRows=Array.isArray(raw?.recent)?raw!.recent:[];
-    const receiptEvents=Array.isArray((raw as CognitiveEventFabricSnapshot | undefined)?.receiptEvents)
-      ? (raw as CognitiveEventFabricSnapshot).receiptEvents! : [];
+    const recentRows=ownArray(ownData(raw,'recent'),this.capacity);
+    const receiptEvents=ownArray(ownData(raw,'receiptEvents'),this.capacity);
     const rows=[...recentRows,...receiptEvents];
     const seen=new Set<string>();
     const restored:CognitiveEventNode[]=[];
     for(const value of rows){
       if(!isRecord(value))continue;
-      const id=typeof value.id==='string'?value.id.trim().slice(0,180):'';
-      const stage=typeof value.stage==='string'?value.stage as CognitiveStage:undefined;
-      // Restore strictly typed ticks; do not coerce null/strings into valid causal time.
-      const tick=value.tick;
+      const rawId=ownData(value,'id'),rawStage=ownData(value,'stage'),tick=ownData(value,'tick');
+      const id=typeof rawId==='string'?rawId.trim().slice(0,180):'';
+      const stage=typeof rawStage==='string'?rawStage as CognitiveStage:undefined;
+      // Causal ticks must be actual finite JSON numbers, never numeric-string coercions.
       if(!id||!COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isFinite(tick)||tick<0||seen.has(id))continue;
       seen.add(id);
-      const at=Number(value.at);
-      const parentIds=Array.isArray(value.parentIds)?value.parentIds.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).map(parent=>parent.trim().slice(0,180)).slice(0,12):[];
+      const rawAt=ownData(value,'at');
+      const at=typeof rawAt==='number'&&Number.isFinite(rawAt)&&rawAt>=0?rawAt:0;
+      const parentIds=ownArray(ownData(value,'parentIds'),12)
+        .filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim()))
+        .map(parent=>parent.trim().slice(0,180));
+      const rawSource=ownData(value,'source'),rawExternal=ownData(value,'external'),rawConfidence=ownData(value,'confidence01');
       restored.push({
-        id, stage:stage as CognitiveStage, tick:Math.floor(tick),
-        at:Number.isFinite(at)&&at>=0?at:0,
-        source:typeof value.source==='string'?value.source.slice(0,120):'restored-unknown',
-        parentIds, external:Boolean(value.external), confidence01:clamp01(Number(value.confidence01??.5)),
-        payload:cleanPayload(value.payload),
+        id,stage:stage as CognitiveStage,tick:Math.floor(tick),at,
+        source:typeof rawSource==='string'?rawSource.slice(0,120):'restored-unknown',
+        parentIds,external:typeof rawExternal==='boolean'?rawExternal:false,
+        confidence01:clamp01(typeof rawConfidence==='number'&&Number.isFinite(rawConfidence)?rawConfidence:.5),
+        payload:cleanRestoredPayload(ownData(value,'payload')),
       });
       if(restored.length>=this.capacity)break;
     }
     this.events=restored;
     this.receiptProjectionIndex.clear();
     const restoredById=new Map(this.events.map(event=>[event.id,event] as const));
-    const receiptRows=Array.isArray((raw as CognitiveEventFabricSnapshot | undefined)?.receiptProjectionIndex)
-      ? (raw as CognitiveEventFabricSnapshot).receiptProjectionIndex! : [];
-    for(const entry of receiptRows) {
-      if(!entry || typeof entry.executionId!=='string' || !entry.executionId.trim() || entry.executionId.length>180) continue;
-      if(typeof entry.actionEventId!=='string' || typeof entry.outcomeEventId!=='string' || typeof entry.evidenceEventId!=='string') continue;
-      const projectedAt=Number(entry.projectedAt);
-      if(!Number.isFinite(projectedAt) || projectedAt<0) continue;
-      const action=restoredById.get(entry.actionEventId), outcome=restoredById.get(entry.outcomeEventId), evidence=restoredById.get(entry.evidenceEventId);
+    const receiptRows=ownArray(ownData(raw,'receiptProjectionIndex'),256);
+    for(const rawEntry of receiptRows) {
+      if(!isRecord(rawEntry))continue;
+      const executionId=ownData(rawEntry,'executionId');
+      const actionEventId=ownData(rawEntry,'actionEventId');
+      const outcomeEventId=ownData(rawEntry,'outcomeEventId');
+      const evidenceEventId=ownData(rawEntry,'evidenceEventId');
+      const projectedAt=ownData(rawEntry,'projectedAt');
+      if(typeof executionId!=='string'||!executionId.trim()||executionId.length>180)continue;
+      if(typeof actionEventId!=='string'||typeof outcomeEventId!=='string'||typeof evidenceEventId!=='string')continue;
+      if(typeof projectedAt!=='number'||!Number.isFinite(projectedAt)||projectedAt<0)continue;
+      const action=restoredById.get(actionEventId),outcome=restoredById.get(outcomeEventId),evidence=restoredById.get(evidenceEventId);
       // Never restore a replay guard whose three referenced nodes have aged out,
       // been truncated or no longer match the execution identity/stage contract.
-      if(action?.stage!=='tool-action' || outcome?.stage!=='tool-outcome' || evidence?.stage!=='tool-evidence') continue;
-      if(action.payload.executionId!==entry.executionId || outcome.payload.executionId!==entry.executionId || evidence.payload.executionId!==entry.executionId) continue;
-      if(!outcome.parentIds.includes(action.id) || !evidence.parentIds.includes(outcome.id)) continue;
-      const externalObservations=Array.isArray(entry.externalObservations)?entry.externalObservations.slice(-32).filter((ref:any)=>{
-        if(!ref||typeof ref.observationId!=='string'||!ref.observationId.trim()||ref.observationId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
-        const event=restoredById.get(String(ref.eventId));
-        return event?.stage==='external-evidence'&&event.payload.executionId===entry.executionId&&event.payload.observationId===ref.observationId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase();
-      }).map((ref:any)=>({observationId:String(ref.observationId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt)})):[];
-      const receiptRevisions=Array.isArray((entry as ToolReceiptProjectionIndexEntry).receiptRevisions)?(entry as ToolReceiptProjectionIndexEntry).receiptRevisions!.slice(-32).filter((ref:any)=>{
-        if(!ref||typeof ref.revisionId!=='string'||!ref.revisionId.trim()||ref.revisionId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
-        const event=restoredById.get(String(ref.eventId));
-        return event?.stage==='tool-reconciliation'&&event.payload.executionId===entry.executionId&&event.payload.revisionId===ref.revisionId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase();
-      }).map((ref:any)=>({revisionId:String(ref.revisionId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt)})):[];
-      this.receiptProjectionIndex.set(entry.executionId,{executionId:entry.executionId,actionEventId:entry.actionEventId.slice(0,180),outcomeEventId:entry.outcomeEventId.slice(0,180),evidenceEventId:entry.evidenceEventId.slice(0,180),projectedAt,...(/^[a-f0-9]{64}$/i.test(String(entry.projectionHash??''))?{projectionHash:String(entry.projectionHash).toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
-      if(this.receiptProjectionIndex.size>=256) break;
+      if(action?.stage!=='tool-action'||outcome?.stage!=='tool-outcome'||evidence?.stage!=='tool-evidence')continue;
+      if(action.payload.executionId!==executionId||outcome.payload.executionId!==executionId||evidence.payload.executionId!==executionId)continue;
+      if(!outcome.parentIds.includes(action.id)||!evidence.parentIds.includes(outcome.id))continue;
+      const cleanRefs=(field:'externalObservations'|'receiptRevisions',kind:'observation'|'revision')=>{
+        const rows=ownArray(ownData(rawEntry,field),32);
+        const clean:{observationId:string;eventId:string;projectionHash:string;projectedAt:number}[]=[];
+        for(const ref of rows){
+          if(!isRecord(ref))continue;
+          const identity=ownData(ref,kind==='observation'?'observationId':'revisionId');
+          const eventId=ownData(ref,'eventId'),projectionHash=ownData(ref,'projectionHash'),refAt=ownData(ref,'projectedAt');
+          if(typeof identity!=='string'||!identity.trim()||identity.length>180||typeof eventId!=='string'||eventId.length>180)continue;
+          if(typeof projectionHash!=='string'||!/^[a-f0-9]{64}$/i.test(projectionHash)||typeof refAt!=='number'||!Number.isFinite(refAt)||refAt<0)continue;
+          const event=restoredById.get(eventId);
+          const expectedStage=kind==='observation'?'external-evidence':'tool-reconciliation';
+          if(event?.stage!==expectedStage||event.payload.executionId!==executionId)continue;
+          const expectedIdentity=kind==='observation'?'observationId':'revisionId';
+          if(event.payload[expectedIdentity]!==identity||event.payload.projectionHash!==projectionHash.toLowerCase())continue;
+          clean.push({observationId:identity,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt:refAt});
+        }
+        return clean;
+      };
+      const externalObservations=cleanRefs('externalObservations','observation');
+      const receiptRevisions=cleanRefs('receiptRevisions','revision');
+      const rawHash=ownData(rawEntry,'projectionHash');
+      this.receiptProjectionIndex.set(executionId,{
+        executionId,actionEventId:actionEventId.slice(0,180),outcomeEventId:outcomeEventId.slice(0,180),
+        evidenceEventId:evidenceEventId.slice(0,180),projectedAt,
+        ...(typeof rawHash==='string'&&/^[a-f0-9]{64}$/i.test(rawHash)?{projectionHash:rawHash.toLowerCase()}:{}),
+        ...(externalObservations.length?{externalObservations:externalObservations.map(ref=>({observationId:ref.observationId,eventId:ref.eventId,projectionHash:ref.projectionHash,projectedAt:ref.projectedAt}))}:{}),
+        ...(receiptRevisions.length?{receiptRevisions:receiptRevisions.map(ref=>({revisionId:ref.observationId,eventId:ref.eventId,projectionHash:ref.projectionHash,projectedAt:ref.projectedAt}))}:{}),
+      });
     }
-    const rawTotal=Number(raw?.total??this.events.length);
-    this.total=Math.max(this.events.length,Number.isFinite(rawTotal)?Math.max(0,Math.floor(rawTotal)):this.events.length);
+    const rawTotal=ownData(raw,'total');
+    this.total=Math.max(this.events.length,typeof rawTotal==='number'&&Number.isFinite(rawTotal)?Math.max(0,Math.floor(rawTotal)):this.events.length);
   }
-
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
     const at=Number.isFinite(input.at)?Number(input.at):Date.now();
     const suppliedId=typeof input.id==='string'?input.id.trim():'';
@@ -391,6 +467,88 @@ export class CognitiveEventFabric {
     return ids;
   }
 
+
+  /**
+   * Record one privacy-minimised metacognitive episode in the canonical causal
+   * ledger. This is deliberately not a second memory store: it links the
+   * prediction/action/outcome/learning events already owned by this fabric.
+   * Only hashes and bounded categorical diagnostics are persisted, never raw
+   * user content, model chain-of-thought or free-form reflection text.
+   */
+  recordMetacognitiveEpisode(input:{
+    tick:number;cycleId:string;actionEventId:string;outcomeEventId:string;learningEventId:string;observationEventId?:string;predictionEventId?:string;
+    predictedOutcomeHash:string;observedOutcomeHash:string;decisionRationaleHash:string;
+    predictionError01:number;confidence01:number;
+    reflectionKind:'none'|'calibration'|'contradiction'|'limitation'|'insight';
+    correctionDisposition:'none'|'staged'|'accepted'|'rejected'|'rolled-back';
+    at?:number;cycleStageIds?:OperationalCycleStageIds;
+  }):{resolved:boolean;replayed:boolean;eventId?:string;projectionHash?:string;reason?:string}{
+    if(!Number.isSafeInteger(input.tick)||input.tick<0)return{resolved:false,replayed:false,reason:'tick-invalid'};
+    const cycleId=String(input.cycleId??'').trim().slice(0,180);
+    if(!cycleId)return{resolved:false,replayed:false,reason:'cycle-id-required'};
+    const hashes=[input.predictedOutcomeHash,input.observedOutcomeHash,input.decisionRationaleHash];
+    if(hashes.some(value=>typeof value!=='string'||!/^[a-f0-9]{64}$/i.test(value)))return{resolved:false,replayed:false,reason:'evidence-hash-invalid'};
+    if(typeof input.predictionError01!=='number'||!Number.isFinite(input.predictionError01)||input.predictionError01<0||input.predictionError01>1)return{resolved:false,replayed:false,reason:'prediction-error-invalid'};
+    if(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01)||input.confidence01<0||input.confidence01>1)return{resolved:false,replayed:false,reason:'confidence-invalid'};
+    const reflectionKinds=new Set(['none','calibration','contradiction','limitation','insight']);
+    const dispositions=new Set(['none','staged','accepted','rejected','rolled-back']);
+    if(!reflectionKinds.has(input.reflectionKind)||!dispositions.has(input.correctionDisposition))return{resolved:false,replayed:false,reason:'reflection-disposition-invalid'};
+    const byId=new Map(this.events.map(event=>[event.id,event] as const));
+    const action=byId.get(String(input.actionEventId??''));
+    const outcome=byId.get(String(input.outcomeEventId??''));
+    const learning=byId.get(String(input.learningEventId??''));
+    const observation=input.observationEventId?byId.get(String(input.observationEventId)):undefined;
+    const prediction=input.predictionEventId?byId.get(String(input.predictionEventId)):undefined;
+    if(!action||!outcome||!learning)return{resolved:false,replayed:false,reason:'causal-parent-missing'};
+    if(input.observationEventId&&(!observation||observation.stage!=='observation'||observation.tick!==input.tick))return{resolved:false,replayed:false,reason:'observation-parent-invalid'};
+    if(input.predictionEventId&&(!prediction||prediction.stage!=='prediction'||prediction.tick!==input.tick))return{resolved:false,replayed:false,reason:'prediction-parent-invalid'};
+    if(observation&&prediction&&!prediction.parentIds.includes(observation.id))return{resolved:false,replayed:false,reason:'prediction-observation-lineage-broken'};
+    if(prediction&&!action.parentIds.includes(prediction.id))return{resolved:false,replayed:false,reason:'action-prediction-lineage-broken'};
+    if(observation&&!prediction&&!action.parentIds.includes(observation.id))return{resolved:false,replayed:false,reason:'action-observation-lineage-broken'};
+    if(action.stage!=='action'||outcome.stage!=='outcome'||learning.stage!=='learning')return{resolved:false,replayed:false,reason:'causal-parent-stage-invalid'};
+    if(action.tick!==input.tick||outcome.tick!==input.tick||learning.tick!==input.tick)return{resolved:false,replayed:false,reason:'causal-parent-tick-mismatch'};
+    if(!outcome.parentIds.includes(action.id)||!learning.parentIds.includes(outcome.id))return{resolved:false,replayed:false,reason:'causal-lineage-broken'};
+    let cycleParentIds:string[]|null=null;
+    if(input.cycleStageIds){
+      const cycle=this.verifyOperationalCycle(input.cycleStageIds);
+      if(!cycle.fullComplete||cycle.tick!==input.tick)return{resolved:false,replayed:false,reason:'cycle-lineage-incomplete'};
+      const orderedStages:readonly OperationalCycleStageName[]=['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update'];
+      const ordered=orderedStages.map(stage=>input.cycleStageIds?.[stage]);
+      if(ordered.some(id=>typeof id!=='string'||!id.trim())||new Set(ordered).size!==orderedStages.length)return{resolved:false,replayed:false,reason:'cycle-parent-set-invalid'};
+      if(ordered[0]!==observation?.id||ordered[1]!==prediction?.id||ordered[7]!==action.id||ordered[8]!==outcome.id||ordered[9]!==learning.id)return{resolved:false,replayed:false,reason:'cycle-parent-anchor-mismatch'};
+      cycleParentIds=ordered as string[];
+    }
+    const normalized={
+      tick:input.tick,cycleIdHash:sha256Stable(cycleId),actionEventId:action.id,outcomeEventId:outcome.id,learningEventId:learning.id,
+      observationEventId:observation?.id??null,predictionEventId:prediction?.id??null,
+      predictedOutcomeHash:input.predictedOutcomeHash.toLowerCase(),observedOutcomeHash:input.observedOutcomeHash.toLowerCase(),
+      decisionRationaleHash:input.decisionRationaleHash.toLowerCase(),predictionError01:input.predictionError01,
+      confidence01:input.confidence01,reflectionKind:input.reflectionKind,correctionDisposition:input.correctionDisposition,
+      ...(cycleParentIds?{cycleParentIds}:{}),
+    };
+    const projectionHash=sha256Stable(normalized);
+    const eventId='cef:metacognitive:'+sha256Stable({cycleIdHash:normalized.cycleIdHash,tick:input.tick,action:action.id}).slice(0,48);
+    const prior=byId.get(eventId);
+    if(prior){
+      if(prior.stage!=='metacognition')throw new Error('metacognitive-episode-id-conflict');
+      if(prior.payload.projectionHash===projectionHash)return{resolved:true,replayed:true,eventId,projectionHash};
+      // Pre-full-cycle snapshots used the same deterministic episode ID but did not
+      // include cycleParentIds. Preserve replay compatibility without rewriting history.
+      if(!Array.isArray(prior.payload.cycleParentIds)){
+        const legacyNormalized={...normalized};
+        delete (legacyNormalized as {cycleParentIds?:string[]}).cycleParentIds;
+        const legacyProjectionHash=sha256Stable(legacyNormalized);
+        if(prior.payload.projectionHash===legacyProjectionHash){
+          return{resolved:true,replayed:true,eventId,projectionHash:legacyProjectionHash};
+        }
+      }
+      throw new Error('metacognitive-episode-id-conflict');
+    }
+    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+    const event=this.append({id:eventId,tick:input.tick,stage:'metacognition',source:'metacognitive-episode-ledger',parentIds:cycleParentIds??[learning.id,outcome.id,...(prediction?[prediction.id]:[]),...(observation?[observation.id]:[])],external:false,confidence01:input.confidence01,at,payload:{...normalized,projectionHash}});
+    return{resolved:true,replayed:false,eventId:event.id,projectionHash};
+  }
+
   verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
     const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
     const optional = ['appraisal','attention','memory','goal','plan'] as const;
@@ -475,10 +633,64 @@ export class CognitiveEventFabric {
     const edgeCoverage = validEdges / Math.max(1, requiredEdges.length + extendedEdgeCount);
     const integrity01 = clamp01(.50 * stageCoverage + .32 * edgeCoverage + .18 * optionalCoverage);
     const complete = missingStages.length === 0 && invalidStages.length === 0 && missingEdges.length === 0;
-    return { tick: cycleTick, complete, integrity01: complete ? 1 : integrity01, missingStages, invalidStages, missingEdges };
+
+    // Keep the legacy six-stage verdict while calculating a separate strict
+    // eleven-stage result. Optional stages are mandatory only for fullComplete.
+    const coreMissingEdges = missingEdges.filter(label => requiredEdges.some(edge => edge[2] === label));
+    const coreInvalid = invalidStages.some(label => required.some(stage => label.startsWith(stage + ':')));
+    const coreIntegrity01 = clamp01(.65 * stageCoverage + .35 * ((requiredEdges.length - coreMissingEdges.length) / requiredEdges.length));
+    const fullMissingStages = [
+      ...missingStages,
+      ...optional.filter(stage => !found.has(stage)),
+    ];
+    const fullEdges: Array<[string, string, string]> = [
+      ...requiredEdges,
+      ...optional.flatMap(child => extendedParents[child].map(parent => [child, parent, child + '->' + parent] as [string, string, string])),
+      ['action','plan','action->plan'],
+      ['outcome','prediction','outcome->prediction'],
+      ['learning','action','learning->action'],
+      ['self-update','outcome','self-update->outcome'],
+    ];
+    const fullMissingEdges: string[] = [];
+    let fullValidEdges = 0;
+    for (const [childStage, parentStage, label] of fullEdges) {
+      const child = found.get(childStage);
+      const parent = found.get(parentStage);
+      if (child && parent && child.parentIds.includes(parent.id)) fullValidEdges += 1;
+      else fullMissingEdges.push(label);
+    }
+    const fullStageCoverage = (11 - fullMissingStages.length) / 11;
+    const fullEdgeCoverage = fullValidEdges / fullEdges.length;
+    const fullIntegrity01 = clamp01(.50 * fullStageCoverage + .50 * fullEdgeCoverage);
+    const coreComplete = missingStages.length === 0 && !coreInvalid && coreMissingEdges.length === 0;
+    const fullComplete = fullMissingStages.length === 0 && invalidStages.length === 0 && fullMissingEdges.length === 0;
+
+    return {
+      tick: cycleTick,
+      complete,
+      coreComplete,
+      fullComplete,
+      integrity01: complete ? 1 : integrity01,
+      coreIntegrity01,
+      fullIntegrity01: fullComplete ? 1 : fullIntegrity01,
+      missingStages,
+      coreMissingStages: missingStages,
+      fullMissingStages,
+      invalidStages,
+      missingEdges,
+      coreMissingEdges,
+      fullMissingEdges,
+    };
   }
 
   recent(limit=64):CognitiveEventNode[]{return structuredClone(this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
+
+  /** Exact lookup used to anchor replay decisions to a retained canonical event. */
+  findById(id:string):CognitiveEventNode|undefined{
+    if(typeof id!=='string'||!id)return undefined;
+    const event=this.events.find(candidate=>candidate.id===id);
+    return event?structuredClone(event):undefined;
+  }
 
   snapshot():CognitiveEventFabricSnapshot{
     const known=new Set(this.events.map(e=>e.id));
@@ -492,8 +704,12 @@ export class CognitiveEventFabric {
       if(!operationalStages.has(e.stage)) continue;
       const s=byTick.get(e.tick)??new Set<CognitiveStage>();s.add(e.stage);byTick.set(e.tick,s);
     }
-    const complete=[...byTick.values()].filter(s=>s.has('observation')&&s.has('prediction')&&s.has('action')&&s.has('outcome')).length;
-    const coverage=byTick.size?clamp01(complete/byTick.size):0;
+    const coreStages=['observation','prediction','action','outcome','learning','self-update'] as const;
+    const fullStages=['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update'] as const;
+    const coreCompleteTicks=[...byTick.values()].filter(stages=>coreStages.every(stage=>stages.has(stage))).length;
+    const fullCompleteTicks=[...byTick.values()].filter(stages=>fullStages.every(stage=>stages.has(stage))).length;
+    const coreCoverage=byTick.size?clamp01(coreCompleteTicks/byTick.size):0;
+    const fullCoverage=byTick.size?clamp01(fullCompleteTicks/byTick.size):0;
     const totalParentRefs=linked+dangling;
     const allTicks=this.events.map(e=>e.tick);
     const recentTicks=allTicks.length?Math.max(...allTicks)-Math.min(...allTicks):0;
@@ -504,6 +720,6 @@ export class CognitiveEventFabric {
     // sanitized receipt nodes that still have live replay guards so restart restore
     // can retain exact causal links even when a receipt falls outside that window.
     const receiptEvents=this.events.filter(event=>receiptIds.has(event.id)&&!recentIds.has(event.id)).map(event=>({...event,parentIds:[...event.parentIds],payload:{...event.payload}}));
-    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
+    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coreCoverage,coreCycleCoverage01:coreCoverage,fullCycleCoverage01:fullCoverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
   }
 }

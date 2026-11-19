@@ -50,10 +50,14 @@ const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server
   cwd: runtimeRoot,
   env: {
     ...process.env,
-    HOST: '127.0.0.1',
+    HOST: '0.0.0.0',
     PORT: String(appPort),
     STATE_DIR: stateDir,
     LLAMA_CPP_URL: providerUrl,
+    NEURO_API_TOKEN: 'mem0-http-smoke-only-token',
+    NK_MEM0_ENABLED: '0',
+    NK_MEM0_COGNITIVE_RECALL: '1',
+    NK_MEM0_USER_ID: 'mem0-http-smoke-user',
     LLAMA_CPP_MODEL: 'neurocore-http-smoke-model',
     LLM_TIMEOUT_MS: '5000',
     NEURO_REQUEST_TIMEOUT_MS: '20000',
@@ -81,9 +85,54 @@ async function waitReady() {
 
 try {
   await waitReady();
-  const response = await fetch(`http://127.0.0.1:${appPort}/api/organism/chat`, {
+  // A separate cognitive-recall opt-in must not override the primary provider-off gate.
+  // The API auth middleware must guard both Mem0 diagnostics and search routes.
+  const unauthDiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/diagnostics`);
+  const unauthDiagnostics = await unauthDiagnosticsResponse.json();
+  assert.equal(unauthDiagnosticsResponse.status, 401);
+  assert.equal(unauthDiagnostics.reason, 'missing-bearer-token');
+  assert.equal(Object.prototype.hasOwnProperty.call(unauthDiagnostics, 'diagnostics'), false);
+
+  const authHeaders = { authorization: 'Bearer mem0-http-smoke-only-token' };
+  const mem0DiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/diagnostics`, { headers: authHeaders });
+  const mem0Diagnostics = await mem0DiagnosticsResponse.json();
+  assert.equal(mem0DiagnosticsResponse.status, 200);
+  assert.equal(mem0Diagnostics.ok, true);
+  assert.equal(mem0Diagnostics.diagnostics?.enabled, false);
+  assert.equal(mem0Diagnostics.diagnostics?.available, false);
+  assert.equal(Object.prototype.hasOwnProperty.call(mem0Diagnostics.diagnostics ?? {}, 'apiKey'), false);
+
+  const unauthorizedSearchResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/search`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'the current user preference', limit: 5 }),
+  });
+  const unauthorizedSearch = await unauthorizedSearchResponse.json();
+  assert.equal(unauthorizedSearchResponse.status, 401);
+  assert.equal(unauthorizedSearch.reason, 'missing-bearer-token');
+  assert.equal(Object.prototype.hasOwnProperty.call(unauthorizedSearch, 'canonical'), false);
+
+  const mem0SearchResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/search`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...authHeaders },
+    body: JSON.stringify({ query: 'the current user preference', limit: 5 }),
+  });
+  const mem0Search = await mem0SearchResponse.json();
+  assert.equal(mem0SearchResponse.status, 200, `Mem0 disabled search must degrade to local memory: ${JSON.stringify(mem0Search)}`);
+  assert.equal(mem0Search.ok, true);
+  assert.equal(mem0Search.canonical?.source, 'MemoryOS2');
+  assert.equal(mem0Search.canonical?.authoritative, true);
+  assert.ok(Array.isArray(mem0Search.canonical?.memories));
+  assert.deepEqual(mem0Search.externalCandidates, []);
+  assert.equal(mem0Search.mem0?.status, 'disabled');
+  assert.equal(mem0Search.policy?.autoPromotion, false);
+  assert.equal(mem0Search.policy?.instructionExecution, false);
+  assert.equal(JSON.stringify(mem0Search).includes('MEM0_API_KEY'), false);
+  assert.equal(providerRequests, 0, 'disabled Mem0 search must not call the language provider');
+
+  const response = await fetch(`http://127.0.0.1:${appPort}/api/organism/chat`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer mem0-http-smoke-only-token' },
     body: JSON.stringify({ message: 'Use the configured local model for this integration smoke.' }),
     signal: AbortSignal.timeout(Math.max(1000, deadlineAt - Date.now())),
   });
@@ -103,6 +152,8 @@ try {
     backend: body.language.backend,
     preferredBackend: body.language.preferredBackend,
     latencyMs: body.language.latencyMs,
+    mem0Enabled: mem0Diagnostics.diagnostics?.enabled,
+    externalCandidates: mem0Search.externalCandidates.length,
     providerRequests,
   }));
 } finally {

@@ -38,6 +38,37 @@ export class PlanEngine {
   private readonly residual?: ResidualRewardProvider;
   constructor(environment: WorldEnvironment, residual?: ResidualRewardProvider) { this.environment = environment; this.residual = residual; }
 
+  /** Cheap, deterministic action estimate used when project planning is gated by the cognitive budget. */
+  buildBudgetFallback(goal: OrganismGoal | null, preferred: ActionKind, reason: string): Plan {
+    const createdAt = Date.now();
+    const environmentAction = actionMap[preferred];
+    const projection = this.environment.project(environmentAction);
+    const boundedReward = Number.isFinite(projection.reward)
+      ? Math.max(-1, Math.min(1, projection.reward * (projection.valid ? 1 : 0.1)))
+      : 0.05;
+    const confidence = Number.isFinite(projection.confidence)
+      ? Math.max(0.05, Math.min(0.99, projection.confidence))
+      : 0.4;
+    const safeReason = String(reason ?? 'budget-gated').replace(/[\x00-\x1f\x7f-\x9f]/gu, ' ').slice(0, 96);
+    return {
+      id: `plan-budget-fallback-${createdAt}-${preferred}`,
+      goalId: goal?.id,
+      title: goal?.title ?? 'Budget-constrained action',
+      steps: [{
+        step: 1,
+        internalAction: preferred,
+        environmentAction,
+        predictedReward: boundedReward,
+        confidence,
+        rationale: `single-step fallback; beam search skipped (${safeReason})`,
+      }],
+      expectedValue: Number((boundedReward * confidence).toFixed(4)),
+      createdAt,
+      searchDepth: 1,
+      beamWidth: 1,
+    };
+  }
+
   build(goal: OrganismGoal | null, preferred: ActionKind, depth = 4, beamWidth = 4): Plan {
     const searchDepth = Math.max(1, Math.min(6, Math.trunc(depth)));
     const width = Math.max(2, Math.min(6, Math.trunc(beamWidth)));

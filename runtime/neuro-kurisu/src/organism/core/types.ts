@@ -84,7 +84,7 @@ export interface WorldContext {
   attention: number;
   uncertainty: number;
   facts: string[];
-  objects: Array<{ id: string; label: string; location: string; value: number; visible: boolean; collected: boolean; confidence01?: number; evidenceKind?: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'; sourceId?: string }>;
+  objects: Array<{ id: string; label: string; location: string; value: number; valueKnown?: boolean; visible: boolean; visibilityKnown?: boolean; collected: boolean; collectionKnown?: boolean; confidence01?: number; evidenceKind?: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'; sourceId?: string; x?: number; y?: number; z?: number; coordinateFrameId?: string; bbox2D?: { x: number; y: number; width: number; height: number }; bboxCameraId?: number; bboxAt?: number; bboxConfidence01?: number }>;
   events: string[];
 }
 
@@ -152,6 +152,8 @@ export interface OrganismDecisionTrace {
   agencyEvidence?: DecisionAgencyEvidence;
   userRequestedAction: ActionKind | null;
   autonomousOverride: boolean;
+  /** Canonical self-agency admission for the endogenous goal authored in this cycle. */
+  goalAuthorshipAdmitted?: boolean;
   predictedOutcomes: PredictedActionOutcome[];
   outcome?: { success:number; reward?:number; surprise?:number; notes?:string; at:number };
 }
@@ -349,6 +351,8 @@ export interface AdvancedDevelopmentFacet {
   memoryLifecycleAuthority?: import('../memory/CanonicalMemoryLifecycleAuthority.ts').CanonicalMemoryLifecycleState;
   memoryResidencyDiagnostics?: { counts:{hot:number;warm:number;cold:number}; targetItems:number; materializedVectors:number };
   memoryOS: import('../developmental/MemoryOS2.ts').MemoryOSState2;
+  /** Hexis-specific source lineage, distinct from cognition.sources. */
+  hexisSourceMonitor?: import('../memory/SourceMonitor.ts').SourceMonitorState;
   worldModel2: import('../developmental/WorldModel2.ts').WorldModel2State;
   unifiedLatentWorldState: import('../world/UnifiedLatentWorldState.ts').UnifiedLatentWorldStateSnapshot;
   groundedWorld: import('../world/GroundedWorldState.ts').GroundedWorldStateSnapshot;
@@ -410,6 +414,8 @@ export interface AdvancedDevelopmentFacet {
   p78AutobiographicalSelfContinuity: import('../developmental/P78AutobiographicalSelfContinuity.ts').P78State;
   p79EmbodiedSituationModel: import('../world/P79EmbodiedSituationModel.ts').P79State;
   p80UnifiedSelfState: import('../cognition/P80UnifiedSelfState.ts').P80State;
+  /** Explicit low-risk user interaction facts; hypotheses remain unconfirmed. */
+  userModelEvidence?: import('../cognition/UserModelEvidenceModel.ts').UserModelState;
   p81PredictiveAttention: import('../cognition/P81PredictiveAttention.ts').P81State;
   p82RealityProgress: import('../system/P82RealityProgressController.ts').P82State;
   p83PersistentRealityModel: import('../world/P83PersistentRealityModel.ts').PersistentRealityModelState;

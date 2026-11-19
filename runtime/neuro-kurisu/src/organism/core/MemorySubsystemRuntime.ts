@@ -14,9 +14,14 @@ import { P47TemporalMemoryMind } from '../developmental/P47TemporalMemoryMind.ts
 import { P59MemoryOperatingSystem } from '../developmental/P59MemoryOperatingSystem.ts';
 import { P62MemoryFabric } from '../memory/P62MemoryFabric.ts';
 import { P65EpistemicLedger } from '../memory/P65EpistemicLedger.ts';
+import { SourceMonitor } from '../memory/SourceMonitor.ts';
+import { HexisCanonicalEvidenceBridge } from '../integration/hexis/HexisCanonicalEvidenceBridge.ts';
+import { HexisAdaptationFabric } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { HexisHmxCanonicalMemoryBridge } from '../integration/hexis/HexisHmxCanonicalMemoryBridge.ts';
 import { P70MemoryLifecycleGovernor } from '../developmental/P70MemoryLifecycleGovernor.ts';
 import { P75MemoryContinuumOS } from '../developmental/P75MemoryContinuumOS.ts';
 import { MemoryFabric } from '../memory/MemoryFabric.ts';
+import { NekoKnowledgePackImporter } from '../integration/neko/NekoKnowledgePackImporter.ts';
 import { ExperienceContinuumFabric } from '../memory/ExperienceContinuumFabric.ts';
 import { HippocampalMemorySubstrate } from '../memory/HippocampalMemorySubstrate.ts';
 import { HippocampalFormationCircuit } from '../memory/HippocampalFormationCircuit.ts';
@@ -49,9 +54,17 @@ export class MemorySubsystemRuntime {
   readonly p59MemoryOperatingSystem = new P59MemoryOperatingSystem();
   readonly p62MemoryFabric = new P62MemoryFabric();
   readonly p65EpistemicLedger = new P65EpistemicLedger();
+  readonly sourceMonitor = new SourceMonitor();
   readonly p70MemoryLifecycleGovernor = new P70MemoryLifecycleGovernor();
   readonly p75MemoryContinuumOS = new P75MemoryContinuumOS();
   readonly fabric = new MemoryFabric(this.memoryOS,this.events,this.memories,this.memorySubstrate,this.unifiedMemory,this.p62MemoryFabric,this.semanticMemory);
+  /** Bounded N.E.K.O. schema-v1 importer; MemoryFabric remains the sole write owner. */
+  readonly nekoKnowledgePackImporter = new NekoKnowledgePackImporter(this.fabric);
+  /** One-way OMEGA/Hexis provenance bridge; MemoryFabric remains the canonical write boundary. */
+  readonly hexisCanonicalEvidenceBridge = new HexisCanonicalEvidenceBridge(this.fabric, this.sourceMonitor, this.p65EpistemicLedger);
+  /** Explicitly accepted HMX portable memories enter only the canonical MemoryFabric owner. */
+  hexisHmxCanonicalMemoryBridge: HexisHmxCanonicalMemoryBridge;
+  private hexisAdaptation: HexisAdaptationFabric;
   readonly experienceContinuum = new ExperienceContinuumFabric();
   readonly hippocampal = new HippocampalMemorySubstrate();
   readonly hippocampalFormation = new HippocampalFormationCircuit();
@@ -67,6 +80,16 @@ export class MemorySubsystemRuntime {
   readonly causalLifeGraph = new CausalLifeGraph();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly memoryWorldCausalBridge = new MemoryWorldCausalBridge(96);
+
+  constructor(hexisAdaptation: HexisAdaptationFabric = new HexisAdaptationFabric()) {
+    this.hexisAdaptation = hexisAdaptation;
+    this.hexisHmxCanonicalMemoryBridge = new HexisHmxCanonicalMemoryBridge(this.hexisAdaptation, this.fabric);
+  }
+
+  connectHexisAdaptation(adaptation: HexisAdaptationFabric): void {
+    this.hexisAdaptation = adaptation;
+    this.hexisHmxCanonicalMemoryBridge = new HexisHmxCanonicalMemoryBridge(adaptation, this.fabric);
+  }
   restoreFromPersisted(input: { memory?: any; advanced?: any }) {
     const memory=input.memory ?? {}; const advanced=input.advanced ?? {};
     this.events.restore(memory.eventLog);
@@ -78,12 +101,12 @@ export class MemorySubsystemRuntime {
     this.semanticMemory.restore(memory.semanticGraph);
     this.memoryOS.restore(advanced.memoryOS);
     this.fabric.restore(advanced.memoryFabric);
-    this.fabric.consolidateCompatibility(this.memories.snapshot({clone:false}), 96, this.memoryLifecycleAuthority.snapshot().lastTick >= 0 ? this.memoryLifecycleAuthority.snapshot().lastTick : 0);
     this.unifiedMemory.restore(advanced.unifiedMemory);
     this.p47MemoryMind.restore(advanced.p47);
     this.p59MemoryOperatingSystem.restore(advanced.p59MemoryOperatingSystem);
     this.p62MemoryFabric.restore(advanced.p62MemoryFabric);
     this.p65EpistemicLedger.restore(advanced.p65EpistemicLedger);
+    this.sourceMonitor.restore(advanced.hexisSourceMonitor ?? advanced.sourceMonitor);
     this.p70MemoryLifecycleGovernor.restore(advanced.p70MemoryLifecycleGovernor);
     this.p75MemoryContinuumOS.restore(advanced.p75MemoryContinuumOS);
     this.experienceContinuum.restore(advanced.experienceContinuum);
@@ -91,6 +114,18 @@ export class MemorySubsystemRuntime {
     this.hippocampalFormation.restore(advanced.hippocampalFormation);
     this.consolidationController.restore(advanced.consolidationController);
     this.memoryLifecycleAuthority.restore(advanced.memoryLifecycleAuthority);
+    // Import legacy rows using the persisted lifecycle tick; doing this before restore
+    // would silently reset compatibility timestamps to tick zero on every restart.
+    const restoredLifecycleTick=this.memoryLifecycleAuthority.snapshot().lastTick;
+    this.fabric.consolidateCompatibility(this.memories.snapshot({clone:false}), 96, restoredLifecycleTick >= 0 ? restoredLifecycleTick : 0);
+    // Preserve learned memory policy and causal life continuity across process restarts.
+    this.memoryRetentionEconomy.restore(advanced.memoryRetentionEconomy);
+    this.memoryCausalEconomy.restore(advanced.memoryCausalEconomy);
+    this.causalLifeGraph.restore(advanced.causalLifeGraph);
+    this.memoryWorldCausalBridge.restore(advanced.memoryWorldCausalBridge);
+    // Canonical MemoryOS2 state is authoritative after restore. Rebuild only
+    // canonical graph projections, preserving independent source-keyed nodes.
+    this.fabric.reconcileSemanticGraph();
   }
 
   /** Read-only memory hygiene report; destructive repair remains an explicit separate operation. */
@@ -101,7 +136,9 @@ export class MemorySubsystemRuntime {
     selfModel:this.selfModel.snapshot(), socialModel:this.socialModel.snapshot(), adaptiveValues:this.valuePlasticity.snapshot(),
     workspace:this.workspaceV2.snapshot(), semanticGraph:this.semanticMemory.snapshot(), memoryOS:this.memoryOS.snapshot(),
     unifiedMemory:this.unifiedMemory.snapshot(), p47:this.p47MemoryMind.snapshot(), p59:this.p59MemoryOperatingSystem.snapshot(),
-    p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
+    p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), hexisSourceMonitor:this.sourceMonitor.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
     p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(),
+    memoryRetentionEconomy:this.memoryRetentionEconomy.snapshot(), memoryCausalEconomy:this.memoryCausalEconomy.snapshot(),
+    causalLifeGraph:this.causalLifeGraph.snapshot(), memoryWorldCausalBridge:this.memoryWorldCausalBridge.snapshot(),
   }; }
 }

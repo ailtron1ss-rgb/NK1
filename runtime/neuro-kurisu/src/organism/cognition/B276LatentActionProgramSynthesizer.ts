@@ -182,7 +182,14 @@ export class B276LatentActionProgramSynthesizer{
       const indexed=this.state.executionPlan.map((primitive,index)=>({primitive,index,credit:p.stepCredits01[index]??.5}));
       const min=Math.min(...indexed.map(x=>x.credit));
       const max=Math.max(...indexed.map(x=>x.credit));
-      if(max-min>=.055){
+      // Materiality must be scale-invariant. Step credits are learned from reward
+      // evidence whose absolute magnitude depends on the upstream learning gate
+      // (raw vs gated rewards differ ~2x), so a fixed absolute spread threshold
+      // silently disables revision whenever evidence arrives pre-gated. Judge the
+      // spread relative to the current credit level, with an absolute floor.
+      const spread=max-min;
+      const meanCredit=indexed.reduce((a,x)=>a+x.credit,0)/indexed.length;
+      if(spread>=.055 || (meanCredit>=.1 && spread/meanCredit>=.05)){
         const sorted=indexed.slice().sort((a,b)=>b.credit-a.credit || a.index-b.index);
         const changed=sorted.some((x,i)=>x.primitive!==indexed[i]?.primitive);
         if(changed){

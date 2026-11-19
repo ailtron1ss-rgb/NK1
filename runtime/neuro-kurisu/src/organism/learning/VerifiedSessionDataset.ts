@@ -82,13 +82,13 @@ export function buildVerifiedSessionDataset(
       outcome.passed, outcome.verifierId, evidenceRefDigest,
     ]);
     const example: VerifiedSessionTrainingExample = {
-      schemaVersion: 1,
+      schemaVersion: 1 as const,
       exampleId: createHash('sha256').update(identity).digest('hex'),
       taskId: task.taskId,
       taskVersion: task.version,
       family: task.family,
       promptFingerprint: task.promptFingerprint,
-      split: task.split,
+      split: task.split as 'train' | 'validation',
       method: outcome.method,
       seed: outcome.seed,
       attempt: outcome.attempt,

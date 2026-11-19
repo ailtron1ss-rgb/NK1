@@ -1,187 +1,99 @@
-## Current source-stack checkpoint — WorkPass347 (2026-10-25)
+## Актуальный инженерный checkpoint — 13 ноября 2026
 
-- The trusted shadow run registry now uses an explicit path field to remain executable under Node 24's strip-only TypeScript loader.
-- Poisoned CausalExperienceStream snapshot counters no longer expect retained external rows to become trusted outcomes or consolidations; restoration derives these totals only from grounded runtime-origin records.
-- WorkPass346 added full-batch learner preflight and converted the file-backed candidate store away from constructor parameter properties.
-- The last exact-head run confirmed WorkPass99, 102, 105, 287–288, 291, 292 and 294 pass. P26/Core/WorkPass108/293 need exact-head results. Release ZIP unchanged.
+**Каноническая рабочая ветка:** `workpass70-source`  
+**Source HEAD до этого README checkpoint:** `e6bab97d014c9911cddc3746725b39c635018f43` (следующий HEAD после этого commit следует брать из live branch).  
+**`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
 
----
+> **WorkPass71 (2026-11-03, ветка `workpass71-body-systems`):** добавлены версионированный capability manifest с fail-closed реестром, renderer-neutral motion library и арбитр движений с bounded cross-fade; 3D VRM и Original 2D тела теперь управляются одними и теми же каналами. См. [docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md](docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md). Это IMPLEMENTED/OBSERVED на синтетических тестах; device E2E, soak и visual verification ещё не проведены.
 
-## Current source-stack checkpoint — WorkPass346 (2026-10-25)
+### Интеграции и исправления 13 ноября 2026
 
-- P26 learner batch training now validates every item before mutating parameters, preserving atomicity when a later batch item contains malformed state.
-- Atomic file skill-store persistence uses explicit fields/assignment so Node 24's strip-only TypeScript runtime can import it without a transform.
-- WorkPass345 restored finite learner diagnostics, rejects invalid training controls, aligned adaptive replay tests with a hard maximum budget, and registered WorkPass293's test command.
-- WorkPass291, WorkPass99, WorkPass102, WorkPass105, WorkPass287, WorkPass292, and WorkPass294 passed on the prior exact head. P26 and Core/WorkPass108/293 require a fresh run after these changes. Release ZIP unchanged.
+| PR | Реальное изменение | Проверка |
+|---|---|---|
+| [#838](https://github.com/ailtron1ss-rgb/NK1/pull/838) | Снижение пиковых аллокаций при remote VRM/GLB import: bounded Blob chunks без второго полноразмерного Uint8Array | 5/5 exact-head checks до merge; device RSS/WebGL soak ещё не измерен |
+| [#869](https://github.com/ailtron1ss-rgb/NK1/pull/869) | Hexis HMX 1.x portable-memory bridge: explicit staged accept → canonical MemoryFabric/MemoryOS2, low-trust hypotheses, deterministic replay, protected-section rejection | HMX, Hexis lineage, memory integrity, unified organism, core и WorkPass79 checks PASS |
+| [#878](https://github.com/ailtron1ss-rgb/NK1/pull/878) | HMX episode summaries → episodic memories; direction-aware semantic/temporal/causal/contradiction relationships; dangling refs skipped with warnings; stable forceDistinct refs | 10/10 exact-head workflows PASS |
+| [#871](https://github.com/ailtron1ss-rgb/NK1/pull/871) | Pin `agent-client-protocol<1.0.0` для Inspect AI 0.3.286; smoke check `acp.helpers` | 4/4 exact-head workflows; cognitive + bilingual memory Inspect tasks PASS |
+| [#874](https://github.com/ailtron1ss-rgb/NK1/pull/874) | Will voluntary attention effort встроен в существующий CognitiveResourceEconomy; action intent, vitals veto, per-tick homeostasis, backward-compatible restore | 44/44 exact-head workflows PASS; измерение качества/energy cost ещё открыто |
 
----
+- **1000 work-unit backlog:** 5/1,000 PASS (0.5%), 995 PLANNED/UNVERIFIED. Пять PASS относятся только к HMX portable-memory provenance slice; merged PR count не подменяет work-unit evidence.
+- **External source assimilation:** 21 уникальный донор инвентаризирован; глубокое сравнение механизмов 6/21; human legal clearance 0/21; Release ZIP parity 0/21.
+- Полный HMX importer пока не заявляется: episodes/relationships/clusters остаются deferred. Donor trust/embeddings/permissions/identity/goals не применяются.
+- Ни одна из этих интеграций не доказывает субъективное сознание. Целевой критерий остаётся измеряемая agency, coherent memory, самостоятельная инициатива и проверяемая адаптация.
 
-## Current source-stack checkpoint — WorkPass345 (2026-10-25)
+### Изменения после checkpoint 13 ноября — 17 ноября 2026
 
-- Parametric policy restoration sanitizes all scalar diagnostics, update count, timestamp and freeze state; non-finite learner control values are rejected before mutation.
-- The P26 existing learning regression aligns with the atomic-rejection contract and complements the dedicated input-integrity test.
-- P23 replay config regression now verifies its configured maximum as a hard cap while preserving adaptive batch sizing and the newest/history selection invariants.
-- Added the missing npm entrypoint for the existing WorkPass293 autonomous P23 revision test; prior workflow failure was solely “Missing script”.
-- WorkPass344 also fixed JSON-serialized payload budgeting, causal replay fixture identity/post-state grounding and the B272 candidate-order reward saturation. Exact-head CI must confirm the expanded regression set. Release ZIP unchanged.
+| PR | Статус | Содержание | Проверка |
+|---|---|---|---|
+| [#901](https://github.com/ailtron1ss-rgb/NK1/pull/901) | DRAFT, отдельная ветка | ChronoTruth: отдельные valid-time и transaction-time координаты, ограниченная история знаний, ретроактивные исправления, knowledge-time retrieval в MemoryOS2/MemoryFabric | Exact-head Actions и typecheck выполняются; до PASS не считать готовым, до merge не считать интегрированным в canonical source, ZIP не обновлён |
 
----
+### Реально интегрировано и проверено
 
-## Current source-stack checkpoint — WorkPass344 (2026-10-25)
+| PR | Что вошло в проект | Проверки на точном PR HEAD |
+|---|---|---:|
+| [#516](https://github.com/ailtron1ss-rgb/NK1/pull/516) | Read-only Inspect AI evaluator: 11 стадий причинной линии, receipts, privacy-reduced evidence, deterministic no-model scoring | 10/10 |
+| [#520](https://github.com/ailtron1ss-rgb/NK1/pull/520) | LongMemEval-S adapter: изолированный MemoryOS2 corpus на вопрос, сравнение canonical retrieval/BM25, source-session clustered metrics | 30/30 |
+| [#524](https://github.com/ailtron1ss-rgb/NK1/pull/524) | SemanticBodyState bridge, переключение существующих 2D/3D renderer modes, bounded 220 ms crossfade, diagnostics неподдерживаемых каналов | 14/14 |
+| [#533](https://github.com/ailtron1ss-rgb/NK1/pull/533) | Единый normalized VRM humanoid motor, expressions/visemes, bounded `vrm.update`, корректное освобождение ресурсов | 11/11 |
 
-- Parametric policy training rejects invalid inputs atomically: non-finite target/rate/sample weight, invalid action and non-finite feature vector.
-- Payload-budget test measures canonical JSON bytes, including the quotes added around string values.
-- Cause-linked replay fixtures now provide a matching pre-action tick and explicit attributed post-action/success fields, so records should satisfy the strict runtime grounding contract instead of being silently rejected.
-- B272 goal value no longer adds a reward solely because a candidate was generated later in the enumeration order; calibrated intrinsic drive has more headroom to affect the bounded score.
-- WorkPass343 fail-closed cycle restore, Node strip-only compatibility, and the corrected WorkPass294 static contract assertion remain in place. Exact-head CI is still required; Release ZIP unchanged.
+- **VRM:** управление идёт через normalized humanoid proxy bones; включён `autoUpdateHumanBones`; существующий NK1 arm intent сохраняется; raw-targeted GLTF mixer не перезаписывает VRM pose. GLB fallback остаётся отдельным.
+- **Memory evaluation:** Inspect AI экспортирует только ограниченные доказательные записи, не сырые диалоги. LongMemEval-S — English-only benchmark; CI использует синтетическую фикстуру, а не реальный 500-вопросный датасет. Ни один из этих тестов пока не доказывает retrieval uplift.
+- **Embodiment UI:** переходы между существующими 2D-классом и Three.js 3D mode связаны с общим semantic handoff. **Отдельный 2.5D depth-rig ещё не подключён.**
+- **Live2D:** 21 asset manifest entries (16,690,663 bytes) имеют SHA-256 lock. `with-app-env.mjs` гидратирует их из канонического `runtime/neuro-kurisu/public` в app public до Vite dev/build. Модель и motions существуют в проекте; это не означает, что у NK1 уже есть лицензированная 3D VRM-модель Курису.
+- **3D assets:** в текущем дереве нет готового `.vrm` или `.glb` персонажа. Сейчас есть procedural fallback и локальная загрузка пользовательской модели с preflight; готовый лицензированный Kurisu 3D asset остаётся отдельной задачей.
 
----
+### Release и лицензирование
 
-## Current source-stack checkpoint — WorkPass343 (2026-10-25)
+- **Последний stable Release:** tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- **Последний опубликованный ZIP с учётом prerelease — рабочий артефакт по правилу проекта:** tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- **Новый Release ZIP на 13 ноября не собран и не опубликован.** Ни один из ZIP от 19 октября не содержит интеграции 1–13 ноября.
+- `RELEASE_LICENSE_REVIEW.json` остаётся `pending`: root project — `NOASSERTION`, runtime — `LicenseRef-NK1-Private-All-Rights-Reserved`, redistributionApproved=false. На review gate: 477 locked npm components, 8 source archives, 11 repository LICENSE/NOTICE records. Наличие лицензии у отдельного пакета не является разрешением на перераспространение всего проекта.
 
-- Cycle restore now verifies persisted aggregate counter coherence before trusting the last-cycle completion flag; inconsistent counters fail closed.
-- The versioned skill candidate store no longer uses constructor parameter properties that Node 24's strip-only TypeScript runtime cannot execute.
-- WorkPass294's source-contract assertion matches the current gateway syntax and still checks transmission of the execution ID plus optional decision ID.
-- WorkPass342 added missing runtime test script aliases; WorkPass292 has passed on that head. WorkPass287/291/294 fixes need exact-head CI confirmation. Release ZIP unchanged.
+### Что всё ещё НЕ доказано
 
----
+- Browser/WebGL E2E: реальная загрузка/замена/reset/reload VRM/GLB, visual pose validation, renderer.info/GPU residency и длительный soak.
+- Полная 2.5D depth-сцена, полноценная IK/VRMA locomotion и калибровка конкретной Kurisu-модели.
+- Android/Termux audio sync, speech interruption, viseme/audio drift и real-phone soak.
+- Независимый лицензированный bilingual RU/EN retrieval uplift на immutable holdout, минимум 5 paired seeds; критерий `recallDelta > 0` ещё не закрыт. LongMemEval-S не заменяет RU/EN gate.
+- Подтверждённая автономная инициатива из внутреннего состояния, а не только scripted/background scheduler. Субъективное сознание не заявляется как доказанный факт.
+- Human license decisions и безопасный exact-SHA Release publisher gate.
+- Полная HMX 1.7 schema/import parity и projection clusters/in-flight work/audit records/raw units/config; текущий мост применяет memories, episode summaries и typed relationships.
+- Sustained-focus energy cost, ablation и target-device calibration для Will voluntary attention effort.
 
-## Current source-stack checkpoint — WorkPass342 (2026-10-25)
+### Следующие P0
 
-- Added the npm scripts already referenced by P26 Learning Validation and WorkPass291/292/294 workflows, so they invoke the actual checked-in test files instead of failing with “Missing script”.
-- Replay-diversity test fixtures now explicitly report `lastAction: 'explore'` and matching `lastActionSuccess`, matching the causal stream's trusted post-state grounding rule.
-- WorkPass287 now expects fail-closed reconstruction of all required phases when a persisted missing-stage list is malformed.
-- WorkPass341 strict typing fixes remain in place. The latest exact-head workflows still need to verify these changes; no green claim yet. Release ZIP unchanged.
+1. Закрыть human license review и проверить exact-SHA publisher trigger; не публиковать ZIP при readiness=false.
+2. Browser/WebGL E2E для VRM/GLB с повторной загрузкой, reset, заменой модели, GPU counters и memory soak.
+3. Реальный телефон: speech interruption, viseme/audio clock drift, background/foreground и длительный soak.
+4. Независимая RU/EN memory evaluation с source-clustered paired seeds; promotion запрещён без подтверждённого uplift.
+5. Довести 2.5D depth-rig и подключить лицензированную 3D-модель после отдельной проверки прав.
+6. Проверить инициативный цикл Perceive → Appraise → Plan → Act → Reflect → Consolidate на длительном soak с объяснимыми внутренними причинами действий.
 
----
+### Дополнение после интеграций 1 ноября 2026
 
-## Current source-stack checkpoint — WorkPass341 (2026-10-25)
+**Новые изменения, уже объединённые в `workpass70-source`:**
 
-- Runtime type declarations are pinned and installed through the runtime lockfile; the WorkPass294 workflow installs those dependencies before typecheck.
-- Core's nullable external causal record is guarded without invalid control flow; learning-process buffers and optional skill-retrieval query numbers now use strict-compatible types; trusted registration is awaited explicitly.
-- Imported external causal events remain ungrounded and do not increment the trusted outcome counter. Regression expectations encode that epistemic boundary.
-- Latest WorkPass340 CI exposed these concrete failures. Exact-head rerun is required; runtime typecheck is not yet claimed green. Release ZIP unchanged.
+| PR / commit | Реальное изменение | Подтверждение |
+|---|---|---|
+| [#571](https://github.com/ailtron1ss-rgb/NK1/pull/571) / `6db887b` | Исправлен перевёрнутый cadence gate автономного runtime: внутренние действия ждут `nextWakeAt`, внешние сигналы остаются реактивными; исправлен учёт продолжения после тишины | `test:big-pass-224` добавлен в unified runtime workflow; точный PR-head workflow прошёл |
+| [#574](https://github.com/ailtron1ss-rgb/NK1/pull/574) / `c039f84` | Статусы reached/blocked в motor frame теперь обязаны ссылаться на суставы того же кадра и не могут противоречить друг другу | `nk1-embodiment-switch` и все связанные PR checks прошли |
+| `efb7693` | UserModel v2: durable deletion watermarks, strict fail-closed restore, replay protection, 256-entry tombstone capacity and v1 migration | `explicit-forget` regression passed on the subsequent exact PR head |
+| [#594](https://github.com/ailtron1ss-rgb/NK1/pull/594) / `619ec5d` | FileStateStore recovers missing/corrupt primary from verified backup, recreates unchanged restored state and preserves the known-good backup | 11/11 exact-head checks passed before merge |
+| [#603](https://github.com/ailtron1ss-rgb/NK1/pull/603) / `9b36efb` | Semantic mouth channels are driven only during active speech; terminal/unknown phases reset stale mouth pose; missing sensor samples normalize safely | 9/9 exact-head checks passed before merge |
+| [#607](https://github.com/ailtron1ss-rgb/NK1/pull/607) / `735b83d` | Backup rotation writes a sibling temp, fsyncs it and atomically renames it over `.bak`; SIGKILL regression proves prior backup survives interruption before rename | 11/11 exact-head checks passed before merge |
 
----
+**Что эти изменения не доказывают:** они закрывают конкретные логические и контрактные дефекты, но не доказывают самостоятельное мышление, часовую автономную инициативу, визуальное применение позы, Android soak или субъективное сознание.
 
-## Current source-stack checkpoint — WorkPass340 (2026-10-25)
+**Проверка подключённых внешних хранилищ (read-only, 2026-11-01):**
+- MongoDB Atlas: доступен проект `Project 0` и свободный кластер `Cluster0` (AWS `AP_SOUTH_1`, MongoDB 8.0.36, состояние `IDLE`). В кластере сейчас присутствует только `sample_mflix`; базы/коллекции NK1 и runtime-адаптера к Atlas ещё нет.
+- Supabase: организация существует, но список проектов пуст. Следовательно, Supabase runtime/database integration пока отсутствует.
+- Redis Agent Memory: доступен skill/reference по SDK и протоколу, но подключённого Redis RAM data-plane/store и секретов `AGENT_MEMORY_*` не обнаружено. Redis нельзя объявлять интегрированным только по наличию SDK guidance.
+- Новые базы, платные сервисы, внешние схемы и секреты не создавались. Следующий правильный шаг — выбрать каноническую роль каждого хранилища и согласовать секреты/окружение; Redis RAM допустим только как shadow/session layer до проверки provenance, forgetting и independent holdout.
 
-- Runtime typecheck has a pinned, runtime-local `@types/node` package and matching lockfile, and no longer includes the incomplete ambient Node shims in the semantic program. Strict TypeScript checking remains enabled.
-- Fixed several confirmed type errors in retention configuration, skill retrieval/context indexing, intrinsic experiment filters, compound-skill base-variant counters, cognitive dependency restore typing and runtime clock registration.
-- Core skips learning ingestion when an external causal record is rejected (null), and the causal-learning regression fixture now meets the explicit post-action grounding contract.
-- WorkPass336–339 fixes remain in place: correlation ID regex, duplicate cognitive-cycle verifier, replay option import, and a dedicated boundary regression wired into CI.
-- Exact-head workflows must confirm these changes; runtime typecheck is not yet claimed green. Release ZIP unchanged.
+**Release:** оба PR объединены только в исходную ветку. Release ZIP от 19 октября не обновлён; новый ZIP не собран и не опубликован. Правило лицензирования и exact-SHA publisher gate остаётся в силе.
 
----
+**Глобальный процент готовности не повышаю:** новые интеграции прошли targeted CI, но это не закрывает browser/device soak, bilingual retrieval uplift, 3D assets и legal release gates.
 
-## Current source-stack checkpoint — WorkPass339 (2026-10-25)
-
-- A focused correlation-ID regression is being added and wired to execute before broader typecheck steps. It checks that malformed IDs are dropped and valid execution identity survives.
-- WorkPass336 fixed the actual broken regex and duplicate cycle verifier; WorkPass337 updated runtime Node.js type discovery; WorkPass338 hardened optional causal features and verified dataset literal schema types.
-- Exact-head runtime typecheck still requires a completed run. Release ZIP unchanged.
-
----
-
-## Current source-stack checkpoint — WorkPass338 (2026-10-25)
-
-- Hardened causal experience restore by guarding optional policy feature arrays before access.
-- Preserved the declared literal schema for verified training datasets and holdout aggregates.
-- WorkPass336 fixes the malformed correlation-ID regex, removes the duplicate cognitive-cycle verifier, and corrects the learning replay-options import.
-- WorkPass337 changes runtime type discovery to load pinned Node.js ambient declarations while preserving strict mode; awaiting completed exact-head CI to establish the effect. Release ZIP unchanged.
-
----
-
-## Current source-stack checkpoint — WorkPass337 (2026-10-25)
-
-- Fixed runtime type discovery: `tsconfig.clean.json` now explicitly loads the pinned Node.js ambient package from the runtime-local or installed app workspace type root, without loading unrelated React globals.
-- This specifically targets the observed missing Node built-in module/global declarations; strict checking remains enabled, and remaining real type errors still need to be addressed rather than suppressed.
-- WorkPass336 also fixed the malformed correlation-ID regex and duplicate cycle verifier; exact-head validation is pending. Release ZIP unchanged.
-
----
-
-## Current source-stack checkpoint — WorkPass336 (2026-10-25)
-
-- Fixed a malformed correlation-ID control-character regex that prevented the memory-to-action regression from loading its imported verification module.
-- Removed duplicate `verifyOperationalCycle` implementation; the retained implementation validates required lineage plus optional cognitive phases.
-- Corrected the learning replay-options type import so it comes from `ReplaySelectionPolicy.ts`.
-- Previous exact-head Actions confirmed the universal interpreter, app typecheck/build, and verified-outcome ledger were green; the broader runtime typecheck remained red with other type/declaration errors. New-head verification is pending. Release ZIP unchanged.
-
----
-
-## Current source-stack checkpoint — WorkPass335 (2026-10-24)
-
-- Filled the new `audio` modality into both the situation-model reliability defaults and Core's initial persisted multimodal state.
-- The universal interpreter now typechecks its embodiment fallback record explicitly. Cached P41 perception remains age-bounded and current semantic data take precedence.
-- Situation-level confidence spread now increases uncertainty rather than falsely incrementing semantic conflict; only explicit conflict markers count as conflict.
-- The independent-evaluator test's duplicate declaration is repaired; the focused interpreter regression covers audio migration and conflict semantics.
-- Full runtime typecheck still reports older errors in unrelated modules; new-head targeted tests must verify this change. Release ZIP unchanged.
-
----
-
-## Current source-stack checkpoint — WorkPass334 (2026-10-24)
-
-- The core CI workflow now runs the universal input interpreter regression directly before app typecheck, so its own result is visible even if a separate app check fails later.
-- WorkPass333 addressed observed app typecheck errors and updated signed-artifact idempotency expectations; exact-head rerun is required to confirm both.
-- Interpreter now consumes fresh P41 perception, marks epistemic provenance, persists fusion state, and avoids treating confidence spread alone as semantic contradiction.
-- Release ZIP remains unchanged and PR stays draft until current-head gates are validated.
-
----
-
-## Current source-stack checkpoint — WorkPass333 (2026-10-24)
-
-- Fixed the app TypeScript test errors reported by Actions: typed the storage fixture callbacks and used `Reflect.deleteProperty` for optional test setup/restore.
-- Aligned signed-outcome test expectations with the implementation: exact signed artifact replay is idempotent; conflicting signed outcomes for the same attempt still fail closed.
-- WorkPass328–332 interpreter changes remain: canonical fusion, persisted conflict evidence, epistemic source tags, and fresh P41 perception input with age-bounded cache.
-- New-head CI must confirm the two fixed gates and run the interpreter regression. Release ZIP remains unchanged.
-
----
-
-## Current source-stack checkpoint — WorkPass332 (2026-10-24)
-
-- The interpreter consumes recent cached P41 vision entities/relations and audio event labels only when evidence timestamps are within a 120-second age bound, allowing at most 30 seconds of future clock skew.
-- A corrected presence gate excludes entity residues with `present01 <= 0.25`.
-- Current semantic vision/audio data take precedence over cached records of the same modality to avoid duplicate evidence.
-- Existing unresolved P41 vision/audio requests remain explicit; stale/malformed cached records are not promoted.
-- The targeted test is expanded, but exact-head execution/typecheck remains unverified. Published release ZIP unchanged.
-
----
-
-## Current source-stack checkpoint — WorkPass331 (2026-10-24)
-
-- The universal interpreter now receives the canonical P41 semantic-perception snapshot from runtime, covering cached vision entities/relations and audio events that are absent from the current environment observation.
-- Cached P41 evidence is age-bounded to 120 seconds and marked as prior perception, not a current-frame fact; stale/malformed records are omitted.
-- Active vision/audio perception requests are surfaced as unresolved.
-- Regression source covers fresh and stale perception memory.
-- Exact-head tests/typecheck remain unverified; published release ZIP unchanged.
-
----
-
-## Current source-stack checkpoint — WorkPass330 (2026-10-24)
-
-- Interpreted text, vision labels, audio event labels, caller goals and incoming world events now carry explicit machine-readable epistemic markers.
-- These markers separate received claims/model output from independent verification and are carried through the canonical multimodal evidence records.
-- WorkPass329 also persists post-fusion state and no longer counts confidence spread alone as semantic conflict.
-- Exact-head tests/typecheck remain unverified; release asset unchanged.
-
----
-
-## Current source-stack checkpoint — WorkPass329 (2026-10-24)
-
-- Fusion-state persistence is now explicit: `OrganismCore.fuseMultimodalObservations()` persists the owner snapshot after the canonical fuser updates its counters.
-- Confidence dispersion is no longer misreported as a semantic contradiction. Conflict metrics require explicit source/interpreter conflict evidence.
-- World objects explicitly marked conflicting preserve a `world-object-conflict` evidence marker into the fused record.
-- Regressions now cover durable fusion wiring and the confidence-spread-vs-conflict distinction.
-- Exact-head test/typecheck is still awaiting runnable Actions evidence; release ZIP remains unchanged.
-
----
-
-## Current source-stack checkpoint — WorkPass328 (2026-10-24)
-
-- The canonical runtime now builds a bounded interpretation digest across text, vision, audio, device telemetry, world context/events, goal/appraisal signals and unverified outcome claims.
-- The existing multimodal owner receives normalized per-modality evidence and performs explicit per-tick fusion; audio is an additive modality with a default-state migration for older snapshots.
-- Semantic limits are explicit: raw audio samples are not a transcript, low-level visual features are not semantic scene interpretation, and success/reward fields are not independently verified evidence.
-- New regression command: `npm --prefix runtime/neuro-kurisu run test:universal-input-interpreter`; it is also included in the runtime rebuild-recovered suite.
-- Exact-head CI/typecheck is not yet verified. Recent Actions runner-startup failures must not be treated as a code-test failure or a pass.
-- Branch `workpass328-universal-interpreter` is a source-stack change, not a release archive. The published `Neuro` asset remains WorkPass70 until a refreshed ZIP can be built, hashed, and uploaded.
 
 ---
 

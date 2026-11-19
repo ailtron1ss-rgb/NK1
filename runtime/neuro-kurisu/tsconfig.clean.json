@@ -6,17 +6,11 @@
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "skipLibCheck": true,
-    "types": [
-      "node"
-    ],
-    "typeRoots": [
-      "./node_modules/@types",
-      "../../app/node_modules/@types"
-    ]
+    "skipLibCheck": true
   },
   "include": [
     "src/organism/**/*.ts",
-    "src/server/**/*.ts"
+    "src/server/**/*.ts",
+    "src/**/*.d.ts"
   ]
 }

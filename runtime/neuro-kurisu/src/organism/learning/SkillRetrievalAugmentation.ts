@@ -16,7 +16,10 @@ export interface RetrievedSkill extends RetrievableSkill {
   score01: number; transferBias01: number; reasons: string[];
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-const n=(x:number|undefined,d=0):number=>typeof x==='number'&&Number.isFinite(x)?x:d;
+const n=(x:unknown,d=0):number=>typeof x==='number'&&Number.isFinite(x)?x:d;
+
+/** Shared transfer threshold: retrieved skills may be inspected below this floor, but cannot bias execution. */
+export const MIN_TRANSFER_SIMILARITY01 = 5 / 6;
 
 /** Six-bucket organism contexts are compared by feature position, not substring. */
 export function contextSimilarity01(a:string,b:string):number {
@@ -24,9 +27,7 @@ export function contextSimilarity01(a:string,b:string):number {
   if(left.length!==6||right.length!==6) return a===b?1:0;
   let distance=0, valid=0;
   for(let i=0;i<6;i++){
-    const leftField=left[i],rightField=right[i];
-    if(typeof leftField!=='string'||typeof rightField!=='string')continue;
-    const av=Number(leftField.slice(1)),bv=Number(rightField.slice(1));
+    const av=Number(left[i].slice(1)),bv=Number(right[i].slice(1));
     if(!Number.isFinite(av)||!Number.isFinite(bv)) continue;
     distance+=Math.min(1,Math.abs(av-bv)/3);valid++;
   }
@@ -75,6 +76,7 @@ export function retrievedSkillBias(query:SkillRetrievalQuery,skills:readonly Ret
   // same-action failure evidence. Aggregate only qualified, action-matched
   // evidence and clamp the result so retrieval can nudge, never dominate policy.
   const relevant=rows.filter(s=>
+    s.similarity01>=MIN_TRANSFER_SIMILARITY01 &&
     (query.action===undefined||s.action===query.action) &&
     ((s.status==='promoted'&&s.validationSuccess01>=.7) ||
      (s.status==='rejected'&&s.validationSuccess01<=.42)));

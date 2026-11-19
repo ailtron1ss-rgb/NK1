@@ -1,0 +1,115 @@
+import assert from 'node:assert/strict';
+import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabric.ts';
+
+const source = new CognitiveEventFabric();
+source.append({ id: 'obs:1', tick: 1, at: 100, stage: 'observation', source: 'fixture', payload: { label: 'safe' } });
+const valid = source.snapshot();
+const validRestore = new CognitiveEventFabric();
+validRestore.restore(valid);
+assert.equal(validRestore.recent(1)[0]?.at, 100);
+assert.equal(validRestore.recent(1)[0]?.payload.label, 'safe');
+
+const appendCompatibility = new CognitiveEventFabric();
+appendCompatibility.append({
+  id: 'append:1', tick: 1, stage: 'observation', source: 'fixture',
+  payload: { rows: [{ nested: 'append-contract-preserved' }] },
+});
+assert.deepEqual(appendCompatibility.recent(1)[0].payload.rows, [{ nested: 'append-contract-preserved' }],
+  'restore hardening must not change the live append payload contract');
+
+let getterCalls = 0;
+const hostileEvent = {
+  id: 'hostile:1',
+  tick: 2,
+  stage: 'observation',
+  parentIds: [],
+  external: 'true',
+  confidence01: '0.99',
+  payload: { rows: [{ label: 'safe nested row' }] },
+};
+Object.defineProperty(hostileEvent, 'at', { enumerable: true, get() { getterCalls++; return 999; } });
+Object.defineProperty(hostileEvent, 'source', { enumerable: true, get() { getterCalls++; return 'getter-source'; } });
+Object.defineProperty(hostileEvent.payload, 'secret', { enumerable: true, get() { getterCalls++; return 'getter-value'; } });
+const accessorRow = {};
+Object.defineProperty(accessorRow, 'id', { enumerable: true, get() { getterCalls++; return 'accessor:1'; } });
+Object.assign(accessorRow, { tick: 3, stage: 'observation', parentIds: [] });
+const accessorArray = [];
+Object.defineProperty(accessorArray, '0', { enumerable: true, get() { getterCalls++; return hostileEvent; } });
+accessorArray.length = 1;
+const hostileSnapshot = { receiptEvents: [], total: '100', receiptProjectionIndex: [] };
+Object.defineProperty(hostileSnapshot, 'recent', { enumerable: true, get() { getterCalls++; return [hostileEvent]; } });
+const safe = new CognitiveEventFabric();
+safe.restore(hostileSnapshot);
+assert.equal(getterCalls, 0, 'snapshot restore must never execute root/row/array/payload getters');
+assert.equal(safe.snapshot().total, 0, 'numeric-string totals must not become trusted counters');
+assert.equal(safe.recent(1).length, 0, 'accessor-backed recent arrays must be ignored');
+
+const coercionSnapshot = {
+  total: 12,
+  recent: [
+    hostileEvent,
+    { id: 'numeric-tick', tick: '4', stage: 'observation', at: 123, parentIds: [], source: 'fixture' },
+  ],
+  receiptEvents: [],
+  receiptProjectionIndex: [],
+};
+const coercionSafe = new CognitiveEventFabric();
+coercionSafe.restore(coercionSnapshot);
+const restored = coercionSafe.recent(4);
+assert.equal(restored.length, 1, 'numeric-string ticks must be rejected');
+assert.equal(restored[0].at, 0, 'numeric-string timestamps must use the conservative fallback');
+assert.equal(restored[0].external, false, 'string booleans must not be truth-coerced');
+assert.equal(restored[0].confidence01, 0.5, 'numeric-string confidence must not be trusted');
+assert.equal(restored[0].source, 'restored-unknown', 'accessor-backed source must be ignored');
+assert.deepEqual(restored[0].payload, { rows: [{ label: 'safe nested row' }] }, 'accessor-backed fields must be omitted while bounded nested data survives');
+
+let deeplyNested = { leaf: 'bounded' };
+for (let index = 0; index < 1000; index++) deeplyNested = { child: deeplyNested };
+const boundedPayload = new CognitiveEventFabric();
+boundedPayload.restore({
+  total: 1,
+  recent: [{ id: 'deep:1', tick: 1, stage: 'observation', at: 1, parentIds: [], payload: deeplyNested }],
+  receiptEvents: [],
+  receiptProjectionIndex: [],
+});
+assert.equal(boundedPayload.recent(1).length, 1, 'deep but valid event should restore without recursive overflow');
+assert.doesNotThrow(() => boundedPayload.snapshot(), 'payload sanitization must remain depth-bounded');
+
+const receiptSource = new CognitiveEventFabric();
+receiptSource.appendToolReceiptTrace({
+  tick: 7, executionId: 'exec:7', toolId: 'test-tool', ok: true, verified: true,
+  outcomeClass: 'success', confidence01: 0.9, verificationBasis: 'external-receipt',
+  externalObservation: false, observationIntegrated: false,
+});
+const tamperedReceipt = receiptSource.snapshot();
+assert.equal(tamperedReceipt.receiptProjectionIndex?.length, 1);
+tamperedReceipt.receiptProjectionIndex[0].projectedAt = '1700000000000';
+const receiptRestore = new CognitiveEventFabric();
+receiptRestore.restore(tamperedReceipt);
+assert.equal(receiptRestore.hasToolReceiptTrace('exec:7'), false,
+  'a receipt replay guard with a numeric-string timestamp must not be restored');
+
+
+const metacognition = new CognitiveEventFabric(128);
+const action = metacognition.append({ tick: 91, stage: 'action', source: 'test-action' });
+const outcome = metacognition.append({ tick: 91, stage: 'outcome', source: 'test-outcome', parentIds: [action.id] });
+const learning = metacognition.append({ tick: 91, stage: 'learning', source: 'test-learning', parentIds: [outcome.id] });
+const episodeInput = {
+  tick: 91, cycleId: 'cycle-91', actionEventId: action.id, outcomeEventId: outcome.id, learningEventId: learning.id,
+  predictedOutcomeHash: 'a'.repeat(64), observedOutcomeHash: 'b'.repeat(64), decisionRationaleHash: 'c'.repeat(64),
+  predictionError01: 0.35, confidence01: 0.8, reflectionKind: 'calibration', correctionDisposition: 'staged',
+};
+const firstEpisode = metacognition.recordMetacognitiveEpisode(episodeInput);
+assert.equal(firstEpisode.resolved, true);
+assert.equal(firstEpisode.replayed, false);
+const replayEpisode = metacognition.recordMetacognitiveEpisode(episodeInput);
+assert.equal(replayEpisode.replayed, true);
+assert.equal(replayEpisode.eventId, firstEpisode.eventId);
+assert.equal(metacognition.recent(128).filter(event => event.stage === 'metacognition').length, 1);
+const restoredMetacognition = new CognitiveEventFabric(128);
+restoredMetacognition.restore(metacognition.snapshot());
+assert.equal(restoredMetacognition.recent(128).filter(event => event.stage === 'metacognition').length, 1);
+assert.equal(restoredMetacognition.recordMetacognitiveEpisode(episodeInput).replayed, true);
+assert.throws(() => metacognition.recordMetacognitiveEpisode({ ...episodeInput, predictionError01: 0.9 }), /metacognitive-episode-id-conflict/);
+
+console.log('COGNITIVE_EVENT_FABRIC_SNAPSHOT_RESTORE=PASS');

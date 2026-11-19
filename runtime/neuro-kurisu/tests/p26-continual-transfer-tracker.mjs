@@ -15,7 +15,7 @@ assert.deepEqual(tracker.result(), {
 // before it was explicitly trained; subsequent training later improved it again.
 tracker.recordBaseline('task-a', 0.2, 0);
 const before = tracker.recordBeforeTaskTraining('task-a', 0.35, 2);
-assert.equal(before.forwardTransfer01, 0.15);
+assert.ok(Math.abs(before.forwardTransfer01 - 0.15) < 1e-12, 'forward transfer must match within floating-point tolerance');
 assert.equal(before.backwardTransfer01, null);
 const first = tracker.recordAfterTaskTraining('task-a', 0.6, 3);
 assert.equal(first.firstPostTrainingScore01, 0.6);

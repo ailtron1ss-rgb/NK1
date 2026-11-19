@@ -37,8 +37,8 @@ export class MultimodalPerception {
     const avg=(key:'confidence'|'salience')=>valid.reduce((s,x)=>s+x[key],0)/valid.length;
     const summaries=valid.map(x=>`[${x.modality}] ${x.summary}`).join(' | ');
     const spread=Math.max(...valid.map(x=>x.confidence))-Math.min(...valid.map(x=>x.confidence));
-    // A difference in confidence is not itself a semantic contradiction.
-    // Count only explicit conflict markers supplied by a source-specific interpreter.
+    // Confidence dispersion is uncertainty, not proof of semantic disagreement.
+    // Only explicit contradiction evidence increments the conflict counter.
     const explicitConflict = valid.some(event => event.evidence.some(
       marker => marker === 'world-object-conflict' || marker === 'cross-modal-conflict' || marker === 'source-conflict'
     ));

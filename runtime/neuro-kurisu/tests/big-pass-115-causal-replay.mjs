@@ -7,10 +7,9 @@ for(let i=0;i<24;i++){
   const action=i%2?'verify':'explore';
   const success01=i%2?.82:.38;
   const trace={id:`replay-trace-${i}`,tick:i,stateBefore:{...structuredClone(state),tick:i},selected:{action,goalId:'replay-goal'},predictedOutcomes:[],userRequestedAction:false};
-  const after=structuredClone(state);
-  after.tick=i+1;
-  after.lastAction=action;
-  after.lastActionSuccess=success01;
+  // The post-action state must explicitly bind its tick, action and observed outcome;
+  // otherwise strict causal admission correctly refuses to mint replay evidence.
+  const after={...structuredClone(state),tick:i+1,lastAction:action,lastActionSuccess:success01};
   after.needs.uncertainty=Math.max(.05,state.needs.uncertainty-(i%3===0?.08:.015));
   after.needs.novelty=Math.min(1,state.needs.novelty+(i%4===0?.04:0));
   cx.observe(trace);

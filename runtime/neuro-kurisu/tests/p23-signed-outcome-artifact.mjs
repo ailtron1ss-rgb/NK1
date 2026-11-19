@@ -30,15 +30,16 @@ const accepted = ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(valid
 assert.equal(accepted.accepted, true);
 assert.match(accepted.artifactFingerprint, /^[a-f0-9]{64}$/);
 assert.equal(ledger.snapshot().acceptedOutcomes, 1);
-// Re-ingesting the exact signed artifact is idempotent, including trust-receipt restoration after restart.
-const replayed = ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(validPayload), keys);
-assert.equal(replayed.accepted, true);
-assert.equal(replayed.artifactFingerprint, accepted.artifactFingerprint);
-assert.equal(ledger.snapshot().acceptedOutcomes, 1, 'an identical signed replay must not create a duplicate row');
+const exactRetry = ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(validPayload), keys);
+assert.equal(exactRetry.accepted, true, 'an exact signed-artifact retry is idempotent and can re-establish in-memory trust');
+assert.equal(exactRetry.artifactFingerprint, accepted.artifactFingerprint);
+assert.equal(ledger.snapshot().acceptedOutcomes, 1, 'an exact retry must not duplicate the ledger outcome');
 
-// A different signed payload for the same task/method/seed/attempt must still fail closed.
-const conflicting = artifactFor(makePayload({ artifactId: 'artifact-conflict', passed: false }));
-assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, conflicting, keys).rejection, 'conflicting-existing-outcome');
+const conflictingRetry = ingestSignedOutcomeArtifact(
+  ledger, manifest, artifactFor(makePayload({ artifactId: 'artifact-099', passed: false })), keys,
+);
+assert.equal(conflictingRetry.rejection, 'conflicting-existing-outcome', 'a valid signature cannot overwrite an existing attempt with a different outcome');
+assert.equal(ledger.snapshot().acceptedOutcomes, 1, 'a conflicting retry must not mutate the ledger');
 
 const changed = makePayload({ artifactId: 'artifact-002', passed: false });
 const forged = artifactFor(changed);

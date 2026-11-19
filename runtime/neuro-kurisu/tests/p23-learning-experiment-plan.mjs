@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createLearningExperimentPlan, recordPlannedLearningOutcome, validateLearningExperimentPlan } from '../src/organism/learning/LearningExperimentPlan.ts';
+import { createLearningExperimentPlan, recordPlannedLearningOutcome, validateLearningExperimentPlan, validateResearchGradeLearningExperimentPlan } from '../src/organism/learning/LearningExperimentPlan.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 
 const manifest = [
@@ -18,6 +18,15 @@ assert.deepEqual(plan.seedIds, [3, 9, 17]);
 assert.ok(plan.runs.every(run => run.split === 'holdout'));
 assert.equal(new Set(plan.runs.map(run => run.runId)).size, plan.runs.length);
 assert.deepEqual(validateLearningExperimentPlan(plan, manifest), { valid: true, runCount: 24 });
+const unsupportedEmptyPlan = {
+  ...plan,
+  split: 'external',
+  counts: { ...plan.counts, tasks: 0, runs: 0 },
+  runs: [],
+};
+assert.throws(() => validateLearningExperimentPlan(unsupportedEmptyPlan, manifest),
+  /plan split must be train, validation or holdout/,
+  'an empty schedule must not make an unsupported split appear valid');
 assert.deepEqual(createLearningExperimentPlan(manifest, options), plan, 'plan must be reproducible byte-for-byte');
 assert.notDeepEqual(createLearningExperimentPlan(manifest, { ...options, seeds: [17, 3, 10] }), plan, 'changing seeds must change plan identity');
 assert.throws(() => validateLearningExperimentPlan({ ...plan, runs: plan.runs.slice(1) }, manifest), /run count mismatch|incomplete matched coverage/);
@@ -30,6 +39,24 @@ assert.throws(() => createLearningExperimentPlan(leaked, options), /cross-split 
 assert.throws(() => validateLearningExperimentPlan({ ...plan, counts: { ...plan.counts, tasks: 999 } }, manifest), /summary counts/);
 assert.throws(() => validateLearningExperimentPlan({ ...plan, seedIds: [17, 3, 9] }, manifest), /sorted/);
 assert.throws(() => validateLearningExperimentPlan({ ...plan, arms: [...plan.arms, plan.arms[0]] }, manifest), /prior, continuous and reset arms|unique labels/);
+const fiveSeedPlan = createLearningExperimentPlan(manifest, { ...options, seeds: [29, 7, 41, 13, 3] });
+assert.deepEqual(validateResearchGradeLearningExperimentPlan(fiveSeedPlan, manifest), {
+  valid: true, runCount: 40, seedCount: 5, familyCount: 2, minimumSeeds: 5,
+});
+assert.throws(
+  () => validateResearchGradeLearningExperimentPlan(plan, manifest),
+  /at least five paired seeds/,
+  'three-seed smoke plans must not qualify as research-grade evidence',
+);
+const validationOnlyPlan = createLearningExperimentPlan(manifest.map(task =>
+  task.split === 'holdout' ? { ...task, split: 'validation' } : task
+), { ...options, seeds: [1, 2, 3, 4, 5], split: 'validation' });
+assert.throws(
+  () => validateResearchGradeLearningExperimentPlan(validationOnlyPlan, manifest.map(task =>
+    task.split === 'holdout' ? { ...task, split: 'validation' } : task
+  )),
+  /independent holdout split/,
+);
 console.log('P23_LEARNING_EXPERIMENT_PLAN=PASS');
 
 const ledger = new VerifiedOutcomeLedger(manifest);

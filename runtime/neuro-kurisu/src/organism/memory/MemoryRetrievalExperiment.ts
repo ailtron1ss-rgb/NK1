@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   runMemoryOS2RetrievalBenchmark,
   type MemoryRetrievalBenchmarkExample,
@@ -19,6 +20,13 @@ const boundedSeed = (value: unknown): number | null => {
 function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchmark>) {
   const metrics = (value: typeof report.metrics.candidate) => ({
     queries: value.queries,
+    answerableQueries: value.answerableQueries,
+    unanswerableQueries: value.unanswerableQueries,
+    unsupportedRetrievalCount: value.unsupportedRetrievalCount,
+    unsupportedRetrievalRate01: value.unsupportedRetrievalRate01,
+    correctAbstentionRate01: value.correctAbstentionRate01,
+    falseAbstentionCount: value.falseAbstentionCount,
+    falseAbstentionRate01: value.falseAbstentionRate01,
     recallAtK01: value.recallAtK01,
     mrr01: value.mrr01,
     precisionAtK01: value.precisionAtK01,
@@ -31,7 +39,25 @@ function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchma
     duplicateResultCount: value.duplicateResultCount,
     invalidResultRate01: value.invalidResultRate01,
   });
-  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas });
+  const languageSlices: Record<string, unknown> = {};
+  for (const language of ['en', 'ru', 'other'] as const) {
+    const slice = report.languageStratification.slices[language];
+    if (!slice) continue;
+    languageSlices[language] = {
+      trainQueries: slice.trainQueries,
+      holdoutQueries: slice.holdoutQueries,
+      answerableHoldoutQueries: slice.answerableHoldoutQueries,
+      unanswerableHoldoutQueries: slice.unanswerableHoldoutQueries,
+      independentAnswerableHoldoutGroups: slice.independentAnswerableHoldoutGroups,
+      independentUnanswerableHoldoutGroups: slice.independentUnanswerableHoldoutGroups,
+      baseline: metrics(slice.metrics.baseline),
+      candidate: metrics(slice.metrics.candidate),
+      trainBaseline: metrics(slice.metrics.train.baseline),
+      trainCandidate: metrics(slice.metrics.train.candidate),
+      deltas: slice.deltas,
+    };
+  }
+  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices }, queryEvidence: report.queryEvidence ?? null });
 }
 
 /**
@@ -51,6 +77,14 @@ export function runMemoryOS2RetrievalExperiment(
   if (seeds.length < 3) throw new Error('experiment-requires-at-least-3-distinct-bootstrap-seeds');
 
   const benchmarkOptions: MemoryRetrievalBenchmarkOptions = { ...options, now, maxExamples: Math.max(64, Math.min(512, Math.floor(Number(options.maxExamples ?? 512)))) };
+  // One ephemeral key is shared across paired bootstrap seeds. It is never placed
+  // into the report; the exported query/memory pseudonyms are useful only inside it.
+  if (benchmarkOptions.includeQueryEvidence === true) {
+    benchmarkOptions.evidenceHashSalt = typeof benchmarkOptions.evidenceHashSalt === 'string'
+      && /^[a-f0-9]{64}$/i.test(benchmarkOptions.evidenceHashSalt)
+      ? benchmarkOptions.evidenceHashSalt.toLowerCase()
+      : randomUUID().replace(/-/g,'') + randomUUID().replace(/-/g,'');
+  }
   delete (benchmarkOptions as MemoryRetrievalExperimentOptions).seeds;
   const runs = seeds.map(seed => runMemoryOS2RetrievalBenchmark(snapshot, examples, { ...benchmarkOptions, seed }));
   const signatures = runs.map(qualitySignature);
@@ -80,6 +114,7 @@ export function runMemoryOS2RetrievalExperiment(
     recallConfidence: run.confidence.recallAtK01,
     mrrConfidence: run.confidence.mrr01,
     candidateHoldout: run.metrics.candidate,
+    languageStratification: run.languageStratification,
     singleRunPromotionStatus: run.promotion.status,
     singleRunPromotionReason: run.promotion.reason,
     mrrConfidenceNonInferioritySupported: run.promotion.mrrNonInferioritySupported,
@@ -104,6 +139,17 @@ export function runMemoryOS2RetrievalExperiment(
     corpusIntegrity: runs[0]?.corpusIntegrity ?? null,
     datasetIntegrity: runs[0]?.datasetIntegrity ?? null,
     datasetProvenance: runs[0]?.datasetProvenance ?? null,
+    evaluationThresholds: {
+      k: runs[0]?.k ?? 5,
+      minimumHoldoutQueries: runs[0]?.promotion.minimumHoldoutQueries ?? 8,
+      minimumUnanswerableHoldoutQueries: runs[0]?.promotion.minimumUnanswerableHoldoutQueries ?? 4,
+      minimumTrainQueriesPerLanguage: runs[0]?.promotion.minimumLanguageTrainQueries ?? 2,
+      minimumAnswerableHoldoutQueriesPerLanguage: runs[0]?.promotion.minimumLanguageAnswerableHoldoutQueries ?? 8,
+      minimumUnanswerableHoldoutQueriesPerLanguage: runs[0]?.promotion.minimumLanguageUnanswerableHoldoutQueries ?? 2,
+      minimumRecallUplift01: runs[0]?.promotion.minimumRecallUplift01 ?? .02,
+      maximumMrrRegression01: runs[0]?.promotion.maximumMrrRegression01 ?? .01,
+      maximumUnsupportedRetrievalRegression01: runs[0]?.promotion.maximumUnsupportedRetrievalRegression01 ?? 0,
+    },
     determinism: {
       retrievalQualityMetricsStableAcrossSeeds: metricsDeterministic,
       datasetCorpusAndRetrievalConfigurationFingerprintsStableAcrossSeeds: provenanceConsistent,
@@ -121,6 +167,7 @@ export function runMemoryOS2RetrievalExperiment(
       maximumMrrRegression01: maximumMrrRegression,
     },
     runs: perSeed,
+    ...(runs[0]?.queryEvidence ? { queryEvidence: runs[0].queryEvidence } : {}),
     promotion: {
       allowed: false,
       status: independentReviewEligible ? 'candidate-eligible-for-independent-review' : 'not-promoted',

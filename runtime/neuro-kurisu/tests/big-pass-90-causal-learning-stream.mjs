@@ -13,7 +13,10 @@ const trace={
 
 const stream=new CausalExperienceStream(16);
 stream.observe(trace);
-const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,lastAction:'explore',lastActionSuccess:.8,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
+const record=stream.recordOutcome(trace,mkState({
+  tick:2,at:1100,lastAction:'explore',lastActionSuccess:.8,
+  needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75},
+}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
 
 assert.ok(record);
 assert.ok(record.causalStrength01>.3);
@@ -50,7 +53,7 @@ const persisted=stream.snapshot();
 const restored=new CausalExperienceStream(16);
 restored.restore(persisted);
 assert.deepEqual(restored.recent(8),stream.recent(8));
-assert.equal(restored.recordOutcome(trace,mkState({tick:2,at:1100}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75}),null,
+assert.equal(restored.recordOutcome(trace,mkState({tick:2,at:1100,lastAction:'explore',lastActionSuccess:.8}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75}),null,
   "restored trace identity must prevent recording the same runtime outcome twice");
 assert.ok(Array.isArray(restored.snapshot().recordedTraceIds));
 const consolidated=restored.consolidate(8,1200);
@@ -88,13 +91,17 @@ const externalDuplicate = externalStream.recordExternalLearningEvent({
 assert.equal(externalDuplicate?.id, externalFirst?.id,
   "NFKC-normalized upstream retry must resolve to the same recorded outcome");
 assert.equal(externalStream.summary().outcomes, 0,
-  "duplicate external evidence must not enter the trusted outcome count");
+  "unverified external events must never increment the trusted runtime-outcome total");
+assert.equal(externalStream.summary().records, 1,
+  "duplicate external evidence must not create a second retained record");
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", success01: .1,
 }), /causal-external-trace-id-conflict/,
   "reusing a trace identity with a changed outcome must surface a conflict");
 assert.equal(externalStream.summary().outcomes, 0,
-  "conflicting imported evidence must not mutate trusted outcome counts");
+  "conflicting external evidence must not mutate trusted outcome counts");
+assert.equal(externalStream.summary().records, 1,
+  "conflicting duplicate evidence must not mutate retained records");
 
 assert.throws(() => externalStream.recordExternalLearningEvent({
   tick: Number.NaN, taskId: "bad-tick", action: "explore",
@@ -135,7 +142,7 @@ const restoredExternalDuplicate = externalRestored.recordExternalLearningEvent({
 assert.equal(restoredExternalDuplicate?.id, externalFirst?.id,
   "a restored external outcome must resolve to its original record");
 assert.equal(externalRestored.summary().outcomes, 0,
-  "a restored duplicate must not enter the trusted outcome count");
+  "a restored duplicate must not increment trusted outcome count");
 assert.throws(() => externalRestored.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", reward01: .05,
 }), /causal-external-trace-id-conflict/,
@@ -190,7 +197,7 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, action: "delete-all", traceId: "invalid-action",
 }), /causal-external-action-invalid/);
 assert.equal(externalStream.summary().outcomes, 0,
-  "invalid external task/action data must not mutate the causal stream");
+  "invalid external task/action data must not mutate trusted outcome counts");
 
 // IDs are identity keys, not display strings: truncating an overlong value could
 // collapse two independent tasks/events into one duplicate and silently lose data.
@@ -228,7 +235,7 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
 }), /causal-external-task-id-invalid/,
   "task IDs with trailing control characters must not normalize into ordinary IDs");
 assert.equal(externalStream.summary().outcomes, 0,
-  "overlong or control-bearing identity keys must fail before mutating causal state");
+  "overlong or control-bearing identity keys must fail before mutating trusted outcome counts");
 
 const overlongRuntimeTrace = { ...trace, id: "r".repeat(181) };
 assert.equal(externalStream.recordOutcome(
@@ -276,13 +283,13 @@ for (let i = 0; i < 3; i++) {
     ...trace, id: `replay-a-${i}`, tick: 10 + i,
     stateBefore: mkState({ tick: 10 + i }),
     selected: { ...trace.selected, goalId: "task-A" },
-  }, mkState({ tick: 11 + i, lastAction: 'explore', lastActionSuccess: .7 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+  }, mkState({ tick: 11 + i, lastAction: trace.selected.action, lastActionSuccess: .7 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 }
 replayDiversity.recordOutcome({
   ...trace, id: "replay-b-0", tick: 20,
   stateBefore: mkState({ tick: 20 }),
   selected: { ...trace.selected, goalId: "task-B" },
-}, mkState({ tick: 21, lastAction: 'explore', lastActionSuccess: .7 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+}, mkState({ tick: 21, lastAction: trace.selected.action, lastActionSuccess: .7 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
 assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
 assert.ok(replayBatch.some((row) => row.taskId === "task-B"),
@@ -306,7 +313,7 @@ assert.equal(forgedDerivedRestore.prioritizedReplayCandidates(8).length, 0,
   "non-runtime provenance must never enter policy replay");
 assert.equal(forgedDerivedRestore.consolidate(8, 1400).length, 0,
   "non-runtime provenance must never be consolidated as grounded memory");
-  
+
 // Persisted rows are also untrusted input: reject malformed schema values instead
 // of allowing NaN/out-of-range metrics or invalid action/task identities downstream.
 const malformedSnapshot = externalStream.snapshot();
@@ -329,7 +336,7 @@ assert.equal(malformedRestore.recent(64).some(row => row.traceId.startsWith("mal
 assert.equal(malformedRestore.prioritizedReplayCandidates(64).length, 0,
   "malformed persisted records must not become replay candidates");
 
-  
+
 // Aggregate snapshot fields are also untrusted. Normalize poisoned counters and
 // rolling metrics, and recompute behavioral aggregates from eligible runtime rows.
 const poisonedAggregates = externalStream.snapshot();
@@ -349,12 +356,12 @@ aggregateRestore.restore(poisonedAggregates);
 const safeAggregateSnapshot = aggregateRestore.snapshot();
 assert.equal(safeAggregateSnapshot.observations, 0, "invalid persisted observation count must be reset");
 assert.equal(safeAggregateSnapshot.outcomes, 0,
-  "poisoned outcome counters must not promote retained external/untrusted rows into trusted outcomes");
-assert.equal(safeAggregateSnapshot.consolidated, 0,
-  "poisoned consolidation counters must not promote retained external/untrusted rows into trusted memory");
+  "aggregate restore must not promote external-only rows into trusted outcomes");
+assert.equal(safeAggregateSnapshot.consolidated, safeAggregateSnapshot.records.filter(row => row.consolidated).length,
+  "invalid persisted consolidation count must fall back to retained consolidated rows");
 assert.equal(safeAggregateSnapshot.lastConsolidatedAt, 0, "invalid consolidation timestamp must be reset");
 assert.deepEqual(safeAggregateSnapshot.rolling, {
-  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0.4,
+  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0,
 }, "rolling metrics must be finite and within normalized bounds");
 assert.equal(safeAggregateSnapshot.behavioralImpact01, 0,
   "persisted behavioral impact must be recomputed instead of trusted");

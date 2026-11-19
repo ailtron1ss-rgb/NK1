@@ -14,11 +14,12 @@ const embodiedConsequenceLearning = index('this.core.b365LearnEmbodiedConsequenc
 const continuousMemory = index('const continuousFabric = this.continuousCognitiveFabric.step({');
 const neuralTrace = index('const neuralTrace = this.neuralCausalTrace.record({');
 const lifeCourseUpdate = index('this.core.closeB380TemporalLife({');
-const embodimentPersist = index('await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());');
+const embodimentPersist = runtime.indexOf('await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());', lifeCourseUpdate);
+assert.notEqual(embodimentPersist, -1, 'cycle embodiment persistence must occur after the life-course update');
 const cycleLedger = index('const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({');
 const cycleEvaluation = index('const cycleVerification = this.unifiedCycle.evaluate({');
 const completenessEvidence = index("claim:'cognitive-cycle-completeness'");
-const cycleEvidencePersist = runtime.indexOf('this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());', completenessEvidence);
+const cycleEvidencePersist = runtime.indexOf('this.core.setRealityEvidenceLedger(this.core.realityEvidenceLedgerSnapshot());', completenessEvidence);
 
 assert.ok(feedback < groundedTransitionLearning, 'feedback must execute before the cycle claims learning completed');
 assert.ok(groundedTransitionLearning < embodiedConsequenceLearning, 'world and embodied consequence learning must precede cycle closure');
@@ -34,6 +35,6 @@ assert.ok(completenessEvidence < cycleEvidencePersist, 'cycle completeness evide
 const cycleBlock = runtime.slice(cycleLedger, completenessEvidence);
 assert.match(cycleBlock, /learning:\s*\{?\s*source:'core\.feedback'/);
 assert.match(cycleBlock, /selfUpdate:\s*\{?\s*source:'core\.lifecycle'/);
-assert.match(cycleBlock, /this\.core\.setUnifiedCognitiveCycle\(this\.unifiedCycle\.snapshot\(\)\)/);
+assert.match(cycleBlock, /this\.core\.setRuntimeUnifiedCognitiveCycle\(this\.unifiedCycle\.snapshot\(\)\)/, 'the verified cycle snapshot must be persisted through the runtime-owned Core contract');
 
 console.log('WorkPass319 cognitive-cycle causal ordering: PASS');

@@ -15,7 +15,7 @@ export class MultimodalSituationModel{
   const weighted=valid.reduce((s,e)=>s+e.confidence*(this.state.modalityReliability[e.modality]??.5),0); const weight=valid.reduce((s,e)=>s+(this.state.modalityReliability[e.modality]??.5),0)||1;
   const confidence=c(weighted/weight);
   const spread=Math.max(...valid.map(e=>e.confidence))-Math.min(...valid.map(e=>e.confidence));
-  // Different confidence values describe certainty dispersion, not semantic disagreement.
+  // Confidence spread contributes to uncertainty, not semantic contradiction.
   const explicitConflict=valid.some(e=>e.evidence.some(marker =>
    marker==='world-object-conflict'||marker==='cross-modal-conflict'||marker==='source-conflict'));
   const conflict=explicitConflict ? 0.7 : 0;

@@ -53,8 +53,8 @@ export class AtomicFileTrustedSkillShadowRunRegistry {
   private readonly lockPath: string;
 
   constructor(filePath: string) {
-    if (!nonEmpty(filePath)) throw new Error('trusted run registry path is required');
     this.filePath = filePath;
+    if (!nonEmpty(filePath)) throw new Error('trusted run registry path is required');
     this.lockPath = `${filePath}.lock`;
   }
 
