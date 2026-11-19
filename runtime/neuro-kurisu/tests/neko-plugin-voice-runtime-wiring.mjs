@@ -10,6 +10,7 @@ function makeRuntime(transcript, observer) {
     nekoPluginVoiceTranscriptBridge: observer ?? null,
     queue: Promise.resolve(),
     embodiment: {
+      speechInputProviderId: 'termux-speech-to-text',
       async listen() { return transcript; },
       userActivity() {},
       voiceSnapshot() { return { state: { speaking: false, listening: false }, plan: null }; },
