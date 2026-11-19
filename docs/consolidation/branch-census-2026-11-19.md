@@ -7,7 +7,7 @@
 - Unique HEAD SHA: **947**
 - Duplicate-HEAD groups: **12**
 - Duplicate ref excess: **91**
-- Canonical source: `workpass70-source` @ `0a3e4c4e51d7c2ec154a87cc0912e4a1cd6752e0`
+- Canonical source: `workpass70-source` @ `aa2b385153ddc316eadf61f87e2c0803d7d59d98`
 - `main`: `9a789ee1af8fdaa3826dbc734d18e2fc00cde5bf` (release/report metadata; not a substitute for source)
 
 ## Delta from 2026-11-18
@@ -16,7 +16,7 @@
 - Current census: 1038 refs / 947 unique HEADs.
 - Added refs: 5: `aspect/embodiment-skeletal-3d-kinematics-20261119`, `aspect/kurisu-embodiment-assets-20261118`, `aspect/memory-hmx-semantic-integrity-20261119`, `aspect/tooling-neko-plugin-integrity-20261119`, `consolidation/nk1-branch-census-20261118`.
 - Removed refs: 0.
-- Source compare from previous checkpoint `7547f5287b84a7d9b7109c0e5fdbe20bf95c9e33`: 3 ahead / 0 behind (3 commits in compare).
+- Source compare from previous checkpoint `7547f5287b84a7d9b7109c0e5fdbe20bf95c9e33`: 4 ahead / 0 behind (4 commits in compare).
 
 ## Prefix distribution
 
@@ -183,3 +183,10 @@
 - Equal HEAD proves identical tip commit/tree; it does not prove there is no historical or PR-base significance.
 - No branch refs were deleted or merged in this census update. Review PR heads/bases, tags, workflows, rulesets and deployments first.
 - The Oct 19 Release ZIP has not been materialized, extracted or compared file-by-file / byte-by-byte.
+
+
+## Post-census fast refresh
+
+- PR #951 was merged after the first snapshot; current source is now `aa2b385153ddc316eadf61f87e2c0803d7d59d98`.
+- Branch ref count and duplicate-HEAD group counts remain 1038 / 12; no branch name disappeared.
+- This refresh updates the source branch tip and its exact SHA; full historical PR reference analysis remains separate.
