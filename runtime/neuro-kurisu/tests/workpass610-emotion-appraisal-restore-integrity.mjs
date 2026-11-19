@@ -78,7 +78,7 @@ assert.equal(numeric.episodes,0);
 assert.equal(numeric.lastTick,-1);
 assert.equal(numeric.lastAt,0);
 assert.equal(numeric.meanStress01,.2);
-assert.equal(numeric.meanValence01,1);
+assert.equal(numeric.meanValence01,.5,'out-of-range scalar metrics must fall back to the validated state default');
 assert.equal(numeric.interoception.cycles,0);
 assert.equal(numeric.interoception.regulationPressure01,0);
 assert.equal(numeric.interoception.lastObserved.energy01,.68);
