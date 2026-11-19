@@ -260,7 +260,7 @@ export class WorldModel2 {
      ? predictionId
      : undefined;
    const ticketId=predictionId === undefined ? ticketIds[0] : exactTicketId;
-   const ticket=ticketId?this.state.pendingPredictions[ticketId]:undefined;
+   const ticket=ticketId === undefined ? undefined : this.state.pendingPredictions[ticketId];
    let resolvedAccuracy:number|null=null;
    if(ticket){
      const accuracy=clamp(1-Math.abs(reward-ticket.predictedReward)*2);
