@@ -296,8 +296,9 @@ export class MemoryFabric {
         let recallFramesRemoved=0;
         if(forgotten||!canonicalRemains){
           projectionRemoved=this.multiTimescale.removeCanonicalProjection(command.id);
-          this.semanticMemory.removeCanonicalProjection(command.id);
+          const graphProjectionRemoved=this.semanticMemory.removeCanonicalProjection(command.id);
           recallFramesRemoved=this.p62.forgetMemory(command.id);
+          projectionRemoved=projectionRemoved||graphProjectionRemoved;
         }
         const applied=Boolean(forgotten||(!canonicalRemains&&(projectionRemoved||recallFramesRemoved>0)));
         result=applied;booleanValue=applied;memoryId=command.id;outcome=applied?'applied':'noop';
