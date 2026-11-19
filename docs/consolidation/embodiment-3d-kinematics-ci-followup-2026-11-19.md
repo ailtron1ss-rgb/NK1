@@ -27,3 +27,8 @@ This supersedes the red result on the previous head. The multi-effector fixture 
 The previous multi-effector failure is resolved on the new head for the covered regression fixture. Keep the PR Draft until the remaining exact-head workflow completes and the PR is reviewed for dependency, API, numerical-stability and runtime-integration boundaries. The modules remain a bounded kinematics library and are not yet connected to OrganismBus, OrganismState, the cognitive planner, production actuators or a renderer.
 
 No source branch was changed, no PR merged/closed, and no branch deleted.
+
+
+## Final status correction — merge completed
+
+After the successful exact-head regression run, PR #951 was merged at `2026-11-19T05:14:52Z`. The merge commit is `aa2b385153ddc316eadf61f87e2c0803d7d59d98`, now the `workpass70-source` HEAD. A subsequent exact-head workflow query returned 44/44 runs completed successfully for the donor head `0a289c1…`. The former “keep Draft” disposition is superseded. Runtime wiring remains a distinct follow-up, as stated above.
