@@ -121,3 +121,22 @@ The squash merge commit `7818b5ad785a33f1e3af81428d3aaf4ccf212f3f` is the live `
 ## Shared-tip ancestry verification
 
 GitHub compare confirms `workpass70-source` at `7818b5ad785a33f1e3af81428d3aaf4ccf212f3f` is **1,036 commits ahead and 0 behind** the shared duplicate tip `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`. Thus the 17 current refs all point to an old commit already in canonical source ancestry; they do not identify a distinct current code tree. Their remaining value is PR-base/historical provenance, so the open dependent PRs must be reconciled before removing their aliases.
+
+
+## Live refresh after PR #138 and PR #131 — 2026-11-19
+
+A fresh paginated GitHub branch read returned **953 refs**, **937 unique HEADs**, one exact duplicate-head group and **16 excess alias names**. The group remains SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` with 17 names. Exact current inventory: `branch-inventory-2026-11-19-live-after-pr131-pr138.jsonl` (953 rows).
+
+Compared with the prior 963-row post-#954 inventory, **10 names are absent** and **zero new names appeared**. The names are listed in `branch-consolidation-checkpoint-after-pr131-pr138-2026-11-19.md`. This records observed ref absence only and does not attribute deletion to this session or any specific actor.
+
+Current open-PR base dependencies:
+
+- `nk1-all-branches-merge-2026-10-23`: open PR #109.
+- `rebuild`: open PRs #112, #91 and #86.
+- `workpass206-runtime-evaluator-wiring`: open PR #124.
+
+That is **5 open PRs across 3 old base refs**. PR #131 and PR #138 are merged into `workpass70-source`; their former base aliases are no longer needed for these two PRs, but their donor branch refs remain present.
+
+PR #131 and #138 are independently verified merges: #131 merge commit `3a185b341e85ca9a8d3f3d1679a1f4464416b6c2`, six-file selective diff, 7/7 exact-head Actions successful; #138 merge commit `08053819c8fb91861703736d63f1459ad4be121b`, four-file selective diff, 22/22 exact-head Actions successful. Donor refs are retained.
+
+No branch refs were deleted or force-updated. SHA equality alone is not permission to delete the remaining 17 refs; PR history, tags/releases, workflow triggers, rulesets, deployments and external references still need review.

@@ -62,3 +62,16 @@ The earlier table is the disposition of the earlier 12-group snapshot. On the la
 The other 13 names are not bases of open PRs in the current 943-record census, but several remain heads/bases in historical merged or closed PR records. The full 17-ref ledger is in `live-branch-consolidation-delta-2026-11-19-after-pr954.md`. Keep the active base refs until the eight dependent PRs are reviewed and safely retargeted or otherwise resolved. Do not use equal SHA alone as permission to delete.
 
 Current state: 963 branch refs, 947 unique HEADs, one duplicate-head group, 16 excess refs. The earlier 1,038 / 12 / 91 values above are the preceding snapshot, not current values.
+
+
+## Live dependency refresh after PR #131 and #138 — 2026-11-19
+
+The current census is **953 refs / 937 unique HEADs / one duplicate group / 16 excess aliases**. The 17 refs at SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` still exist. Earlier #131, #138 and #121 entries above are historical and superseded for current open-base dependencies by this refresh:
+
+- `nk1-all-branches-merge-2026-10-23`: open PR #109.
+- `rebuild`: open PRs #112, #91 and #86.
+- `workpass206-runtime-evaluator-wiring`: open PR #124.
+
+That is **5 open PRs across 3 old base refs**. PR #131 and PR #138 are merged into `workpass70-source`; their former base aliases are no longer needed for these two PRs, but their donor branch refs remain present.
+
+PR #131 merged at `3a185b341e85ca9a8d3f3d1679a1f4464416b6c2`; PR #138 merged at `08053819c8fb91861703736d63f1459ad4be121b`. Both donor branch refs remain visible. Keep all 17 duplicate-tip refs until ancestry, historical PRs, tags/releases, workflows, rulesets and external references are fully resolved.

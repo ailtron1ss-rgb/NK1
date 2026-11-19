@@ -160,3 +160,13 @@
 - PR #951 is merged (not Draft). Its exact donor head `0a289c1ddc4c19da4def7409b4e28ef85cb6854c` has 44/44 workflow runs completed successfully; merge commit and current source checkpoint are `aa2b385153ddc316eadf61f87e2c0803d7d59d98`. This remains a bounded library port, not end-to-end embodiment wiring.
 - PR #953 remains open / Draft at `fbab11da4e07a09282b8cb043904a05a4f638663`, 22 files (+2,668/-113). A later exact-head Actions read returned 50/50 completed successful runs (0 pending, 0 failure). The current source vs PR compare is still diverged: 22 commits on the PR side and 2 on the source side after merge-base `9742b5a82966e11ba9c913074615b2420736bcee`. Keep the PR Draft pending code-level review and source rebase/revalidation.
 - The earlier note that #953 had two pending jobs is a historical intermediate observation and is superseded by the 50/50 final run result.
+
+
+## 2026-11-19 execution update — selective source migrations
+
+- **PR #138 MERGED** into `workpass70-source`: merge commit `08053819c8fb91861703736d63f1459ad4be121b`. Its original 38-file donor patch was reduced to four files: operational micro-cycle runtime, finite-input regression test, runtime package manifest and WorkPass296 workflow. Exact-head CI: **22/22 successful**. The new boundary validates malformed observations before host-state access, accepts own sensor properties only, fails closed on inherited/throwing/malformed sensor values, and shares one normalized snapshot across homeostasis, life continuity and neural input.
+- **PR #131 MERGED** into `workpass70-source`: merge commit `3a185b341e85ca9a8d3f3d1679a1f4464416b6c2`. Its original 67-file donor patch was reduced to six files: shared Node/npm policy, tests, installer, doctor, root package scripts and WorkPass71 workflow. The source's tracked-artifact guard in `super-doctor` was preserved. Exact final-head CI: **7/7 successful**.
+- The 17-ref duplicate-tip group was not deleted or force-updated. Current active old-base dependencies: #109 on `nk1-all-branches-merge-2026-10-23`; #112/#91/#86 on `rebuild`; #124 on `workpass206-runtime-evaluator-wiring` — five open PRs over three old refs.
+- Fresh live census: **953 refs**, 937 unique HEADs, one 17-name duplicate group, 16 excess aliases. Ten names in the previous 963-ref inventory are absent; no new names appeared. This is not attributed to this session.
+- PR #949 audit branch is being refreshed to the post-#131/#138 source and current census; it remains Draft pending review of its complete documentation bundle.
+- No branch refs were deleted; no force push was used.
