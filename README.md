@@ -38,6 +38,8 @@ SHA-256 полного архива:
 
 ## Стратегический мастер-план и трекер прогресса
 
+- **Масштабный мастер-план интеграции и завершения проекта (30 фаз, 300 шагов):** [docs/NK1_FINAL_MASTER_PLAN_2026-10-28_RU.md](docs/NK1_FINAL_MASTER_PLAN_2026-10-28_RU.md)
+
 - **Мастер-план до полного завершения (160 шагов · 16 фаз):** [docs/NK1_COMPLETE_MASTER_PLAN_16_PHASES_RU.md](docs/NK1_COMPLETE_MASTER_PLAN_16_PHASES_RU.md)
 - **Единая архитектура мозга (Unified Brain Architecture):** [docs/NK1_UNIFIED_BRAIN_ARCHITECTURE_2026-11-03_RU.md](docs/NK1_UNIFIED_BRAIN_ARCHITECTURE_2026-11-03_RU.md) (нейроанатомическое картирование и 11-фазный цикл)
 - **Мастер-план (10 жизненно важных этапов):** [docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md](docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md)
