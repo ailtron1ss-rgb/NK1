@@ -48,3 +48,10 @@ This is a concrete reproducible failure, not a stylistic concern. The donor is u
 - After CI passes, review whether the library should be ported as a bounded capability into the embodiment aspect branch. Runtime wiring remains a separate follow-up with its own integration tests.
 
 No source files or branch refs were changed during this review. No PR was merged or closed.
+
+
+## Final status correction — PR #951 subsequently merged
+
+The earlier Draft recommendation above describes the state before the follow-up head was merged. PR #951 was later merged at `2026-11-19T05:14:52Z` with merge commit `aa2b385153ddc316eadf61f87e2c0803d7d59d98`. On exact head `0a289c1ddc4c19da4def7409b4e28ef85cb6854c`, the latest Actions query returned 44 workflow runs, all completed successfully. The corrected fixture removed the fully extended starting-pose singularity from the multi-effector test; the solver's singularity behavior itself was not redesigned. The three modules and all three test files are now in `workpass70-source`.
+
+This merge confirms a tested, bounded 3D kinematics library, not complete embodiment: runtime wiring to OrganismBus/OrganismState, planner/actuator, renderer, balance/contact/collision handling and device movement remains separate work.
