@@ -55,6 +55,15 @@ export interface SocialInitiativeState {
   startedAt: number;
   lastExternalInputAt: number;
   lastInitiativeAt: number;
+  /** Explicit user consent for unsolicited user-visible messages. Internal activity is unaffected. */
+  consentGranted: boolean;
+  /** Optional wall-clock do-not-disturb window for user-visible delivery only. */
+  quietHoursEnabled: boolean;
+  quietStartHourUtc: number;
+  quietEndHourUtc: number;
+  /** Counters separate internal suppression reasons from ordinary deferral. */
+  suppressedByConsent: number;
+  suppressedByQuietHours: number;
 }
 
 export interface SocialTopicCandidate { topic: string; source?: SocialInitiativeTopicSource; salience01?: number; freshness01?: number; interestFit01?: number; affectFit01?: number; interestDomain?: string; interestContext?: SocialInterestContext; }
@@ -62,7 +71,26 @@ export const defaultAutonomousSocialInitiative = (): SocialInitiativeState => ({
   version: 1, cycles: 0, planned: 0, executed: 0, deferred: 0,
   reciprocity01: .54, initiative01: .34, initiatives: [],
   startedAt: 0, lastExternalInputAt: 0, lastInitiativeAt: 0,
+  // Consent defaults to granted so existing behavior is unchanged until a user
+  // explicitly revokes it; quiet hours are opt-in (disabled by default).
+  consentGranted: true, quietHoursEnabled: false, quietStartHourUtc: 22, quietEndHourUtc: 8,
+  suppressedByConsent: 0, suppressedByQuietHours: 0,
 });
+
+const HOUR_MS = 60 * 60 * 1000;
+const normalizeHour = (value: unknown, fallback: number): number => {
+  const n = Math.floor(Number(value));
+  return Number.isFinite(n) && n >= 0 && n <= 23 ? n : fallback;
+};
+/** True when `at` falls inside the [start, end) UTC window; handles windows that wrap midnight. */
+export const withinQuietHoursUtc = (at: number, startHour: number, endHour: number): boolean => {
+  if (!Number.isFinite(at) || at <= 0) return false;
+  const start = normalizeHour(startHour, 22);
+  const end = normalizeHour(endHour, 8);
+  if (start === end) return false;
+  const hour = new Date(at).getUTCHours();
+  return start < end ? hour >= start && hour < end : hour >= start || hour < end;
+};
 
 const validSource = (value: unknown): SocialInitiativeTopicSource =>
   value === 'active-goal' || value === 'memory' || value === 'reflection' ? value : 'curiosity';
@@ -178,8 +206,49 @@ export class AutonomousSocialInitiativeEngine {
       startedAt: Math.max(0, Number(r.startedAt ?? 0) || 0),
       lastExternalInputAt: Math.max(0, Number(r.lastExternalInputAt ?? 0) || 0),
       lastInitiativeAt: Math.max(0, Number(r.lastInitiativeAt ?? 0) || 0),
+      // Consent is only false when explicitly persisted as false; a missing field
+      // restores to the granted default so older snapshots keep working.
+      consentGranted: r.consentGranted === undefined ? d.consentGranted : r.consentGranted !== false,
+      quietHoursEnabled: r.quietHoursEnabled === true,
+      quietStartHourUtc: normalizeHour(r.quietStartHourUtc, d.quietStartHourUtc),
+      quietEndHourUtc: normalizeHour(r.quietEndHourUtc, d.quietEndHourUtc),
+      suppressedByConsent: Math.max(0, Math.floor(Number(r.suppressedByConsent ?? 0) || 0)),
+      suppressedByQuietHours: Math.max(0, Math.floor(Number(r.suppressedByQuietHours ?? 0) || 0)),
       initiatives,
     };
+  }
+
+  /** Grant or revoke consent for unsolicited user-visible messages. Internal activity is unaffected. */
+  setConsent(granted: boolean): void { this.state.consentGranted = Boolean(granted); }
+
+  /** Configure the optional wall-clock do-not-disturb window (UTC hours, [start, end)). */
+  setQuietHours(input: { enabled: boolean; startHourUtc?: number; endHourUtc?: number }): void {
+    this.state.quietHoursEnabled = Boolean(input.enabled);
+    if (input.startHourUtc !== undefined) this.state.quietStartHourUtc = normalizeHour(input.startHourUtc, this.state.quietStartHourUtc);
+    if (input.endHourUtc !== undefined) this.state.quietEndHourUtc = normalizeHour(input.endHourUtc, this.state.quietEndHourUtc);
+  }
+
+  /** Read-only view of the user-visible delivery policy. */
+  deliveryPolicy() {
+    return {
+      consentGranted: this.state.consentGranted,
+      quietHoursEnabled: this.state.quietHoursEnabled,
+      quietStartHourUtc: this.state.quietStartHourUtc,
+      quietEndHourUtc: this.state.quietEndHourUtc,
+      suppressedByConsent: this.state.suppressedByConsent,
+      suppressedByQuietHours: this.state.suppressedByQuietHours,
+    };
+  }
+
+  /**
+   * Whether a user-visible message may be delivered right now. This gates only
+   * the outbound conversational turn; internal initiative still runs when the
+   * window is closed, so reflection and planning are never blocked by consent.
+   */
+  mayDeliverUserVisible(at: number): boolean {
+    if (!this.state.consentGranted) return false;
+    if (this.state.quietHoursEnabled && withinQuietHoursUtc(at, this.state.quietStartHourUtc, this.state.quietEndHourUtc)) return false;
+    return true;
   }
 
   snapshot(): SocialInitiativeState { return structuredClone(this.state); }
@@ -229,6 +298,15 @@ export class AutonomousSocialInitiativeEngine {
     this.state.cycles++;
     if (!this.state.startedAt) this.state.startedAt = at;
     if (input.externalInput) this.state.lastExternalInputAt = at;
+
+    // This engine owns only user-visible proactive intent. Consent and quiet
+    // hours gate the outbound turn; internal initiative (B272/B273, reflection)
+    // is a separate owner and continues to run when delivery is suppressed.
+    if (!this.mayDeliverUserVisible(at)) {
+      if (!this.state.consentGranted) this.state.suppressedByConsent++;
+      else this.state.suppressedByQuietHours++;
+      return { shouldInitiate: false, initiative: null };
+    }
 
     // An old unresolved plan cannot permanently block initiative after a provider failure.
     for (const item of this.state.initiatives) {
@@ -428,6 +506,10 @@ export class AutonomousSocialInitiativeEngine {
       engagedFeedback: this.state.initiatives.filter(i => i.feedbackSignal === 'engaged').length,
       negativeFeedback: this.state.initiatives.filter(i => i.feedbackSignal === 'negative').length,
       lastInitiativeAt: this.state.lastInitiativeAt,
+      consentGranted: this.state.consentGranted,
+      quietHoursEnabled: this.state.quietHoursEnabled,
+      suppressedByConsent: this.state.suppressedByConsent,
+      suppressedByQuietHours: this.state.suppressedByQuietHours,
     };
   }
 }

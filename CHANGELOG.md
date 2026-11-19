@@ -1,3 +1,12 @@
+## [NK1][Self/Motivation/Autonomy] Add evidence-derived decision receipts and a delivery-consent gate (2026-11-04)
+
+- Add `system/AutonomousDecisionReceipt.ts`: the canonical owner for "why did you decide this?" answers. Each receipt is assembled from records the organism actually produced this cycle — trigger, drive snapshot, admitted goal, ranked candidates, rejected alternatives, selected action, confidence, resource cost, safety authorization — and is closed with the observed outcome and the B273 goal-learning consequence.
+- `explain()` derives the answer strictly from stored fields; it never invents an outcome or learning consequence it does not have, and returns `null` for an unknown tick instead of fabricating a narrative. Restore is fail-closed: structurally invalid receipts are dropped, not trusted.
+- Extend the existing `AutonomousSocialInitiativeEngine` owner (no new memory owner) with an explicit consent flag and an optional wall-clock quiet-hours window (UTC, `[start, end)`, wrap-aware) that gate only user-visible delivery. Internal initiative (B272/B273, reflection) is unaffected, and suppression is counted separately for consent vs quiet hours.
+- Consent and quiet-hours policy persist with the system facet, are fail-closed on restore, and keep backward compatibility: a legacy snapshot restores to granted consent and disabled quiet hours rather than silently revoking consent.
+- Add behavioral regressions (`self-motivation-autonomy-receipt.mjs`, `self-motivation-autonomy-runtime.mjs`), `npm run test:self-motivation-autonomy`, and the `nk1-self-motivation-autonomy.yml` exact-head workflow. Existing motivation coupling, anti-repeat, dialogue, persistence and organism smoke suites remain green.
+- Evidence: IMPLEMENTED and TESTED on the local runtime; no recall, autonomy-rate or release claim is made from these tests.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
