@@ -85,3 +85,30 @@ The branch metadata marks both `main` and `workpass70-source` as not protected. 
 ## Snapshot caveat
 
 The branch census and open-PR counts are time-stamped snapshots. The source branch continued to advance through parallel work during this session. At the time the report was committed, re-read the live branch head rather than treating an earlier observed SHA as current.
+
+
+## Selective consolidation — B299 personality evidence + restore integrity (PR #980)
+
+PR [#980](https://github.com/ailtron1ss-rgb/NK1/pull/980) was merged into `workpass70-source`.
+
+- Donor PR #666: trait-specific evidence gate; its code change made matured action phenotypes contribute to trait influence without requiring that trait's own evidence.
+- Donor PR #668: B299 restore integrity; its changes blocked accessor-backed state and hardened numeric, action, history and trait-vector restoration.
+- Both donors modified `B299CausalPersonalityDevelopmentLoop.ts` and were based on the same obsolete source head `608435493b4af3b4a222d385f1b77d978d18583b`. They were therefore consolidated together rather than merged independently.
+- New current-source branch: `aspect/b299-personality-consolidation-20261119`.
+- Tested/rebased candidate head: `0b2fdc326dbc5a927903f7286a7b1811bbbc80c0`.
+- TDD red run #44510431851: the new real-component test observed `verify` bias `0.0248475586` with zero trait evidence; expected zero.
+- Full unified runtime push run #44511701708: SUCCESS on the exact candidate head.
+- PR exact-head Actions: **48/48 SUCCESS**, 0 failed, 0 cancelled, 0 pending. This includes NeuroCore core regression validation, app build/typecheck, runtime checks, memory, Hexis, Emotion Restore, cognition and organism smoke.
+- Merge commit: `a7d9919671c4479a7e30c306f52450a63b61af08`; its parent is the then-current source head `3a4492b40f1dde3648acd7f907ceceea0598584d`.
+- Four files changed: B299 runtime, one consolidated integration test, runtime package script, unified runtime workflow. No dependency-lock, release ZIP, `main`, or unrelated personality module change.
+- Current-source compare immediately after merge: identical to merge commit (no ahead/behind commits).
+
+The old donor PRs #666 and #668 were closed as superseded/completed, each with a comment linking the replacement PR #980. Their source branches were deliberately retained as historical provenance; no branch refs were deleted.
+
+The test/restore logic explicitly rejects root/nested Proxy inputs using Node's `util.types.isProxy` before descriptor traversal, rejects getter/setter descriptors, rebuilds the canonical seven-action B299 state field by field, validates numeric values without string coercion, bounds history to 192 valid entries, and gates each trait's action influence by its own `traitEvidence01 / 0.32`. Valid version-1 B299 snapshots retain round-trip behavior.
+
+## Snapshot after PR #980
+
+- `workpass70-source` was re-read after merge; do not infer the current branch count from the prior census.
+- PR #980 is merged; #666 and #668 are closed as superseded. Donor branch refs remain present pending a separate exhaustive ref-retirement audit.
+- This B299 merge adds no evidence that the complete 972-branch repository has been line-by-line reviewed or that October 19 release ZIP contents match source bytes.
