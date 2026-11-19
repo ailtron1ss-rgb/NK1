@@ -110,3 +110,9 @@ The duplicate-tip branch group remains 17 refs at SHA `82ea7a8b7c9b036e65c8b056a
 - A reversible trial retarget to current `workpass70-source` produced GitHub `mergeable_state=dirty` / `rebaseable=false`; therefore the base was restored unchanged. The latest PR snapshot again reports mergeable=true but state `unstable` and `rebaseable=false` on the original base. This PR is not approved for merge.
 - Its dedicated `NK1 Module Dependency Audit` exact-head workflow passed historically, but several other old WorkPass regressions on this head failed. The exact current-source integration still requires manual reconciliation of its dependency audit scripts, `DevelopmentalNeuralRuntime`, `StateMigrations`, package changes and newly introduced persistence/core modules, followed by fresh CI.
 - The attempted base change made no code edits and did not alter its head commit. Keep the old base reference until the patch is reconciled and a safe retarget can be validated.
+
+
+## Post-merge source-head verification
+
+The squash merge commit `7818b5ad785a33f1e3af81428d3aaf4ccf212f3f` is the live `workpass70-source` HEAD. GitHub ran **20 Actions/check-runs directly on this merge SHA**; all 20 completed successfully, with zero failures or cancellations. This is separate from the 50/50 passing checks on the PR head `7a6a68fc9cbe5968b0b5d5253138e6c5e9ad5700`.
+
