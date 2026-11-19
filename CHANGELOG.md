@@ -1,3 +1,25 @@
+## [NK1][Code Assimilation] Harden authenticated license receipt immutability and candidate scoping (2026-11-02)
+- Deep-freeze the nested license decision and its permitted-use array before registering an authenticated process-local receipt, preventing post-verification permission mutation.
+- Require every `isCodeAssimilationUseAllowed` check to supply the expected exact candidate fingerprint; receipts cannot authorize a different component even when the signer is trusted.
+- Add adversarial regressions for nested permission mutation, wrong-candidate reuse and the positive same-candidate allow path.
+- Re-run the Node 24 signed-evidence workflow, semantic runtime typecheck, cadence regression and full WorkPass110 verified-learning suite on exact candidate head; all 3 PR checks pass.
+- This remains evidence verification only. It does not create a production component registry or execute untrusted code.
+
+## [NK1][Code Assimilation] Verify signed provenance, SBOM, build and license evidence (2026-11-02)
+- Add a typed Ed25519 evidence envelope for source provenance, SBOM, build output and license decisions, each bound to the immutable candidate ID/fingerprint, source fingerprint and exact material digests.
+- Require role-specific trusted issuers (source verifier, SBOM scanner, builder and license reviewer); the host supplies the public-key trust map and private signing keys remain outside NK1.
+- Keep license permissions separate for study, execute, modify and redistribute; reject inconsistent decisions, unknown/empty approved license expressions, declared-license mismatches and attempts to infer one permission from another.
+- Make verified receipts process-local: JSON snapshots and restart-restored receipt objects do not retain authentication and require signature re-verification.
+- Add adversarial signature, issuer-role, candidate/material binding, SBOM/build linkage, license scope, future-clock and getter-boundary regressions; run them on Node 24 with a pinned semantic TypeScript compiler check.
+- This adds verification of signed evidence only. It does not generate SBOMs, independently crawl license texts, establish a legal conclusion, configure production signing keys, run external source code, or grant sandbox/runtime execution authority.
+
+## [NK1][Code Assimilation] Add source-bound intake and guarded lifecycle contracts (2026-11-02)
+- Add a typed metadata contract for immutable external source revisions, source/tree digests, component manifests and exact base-runtime binding.
+- Add a deterministic candidate identity and evidence-linked transition graph from discovery through quarantine, independent verification, shadow, approval, activation and rollback.
+- Reject mutable source references, floating package versions, malformed digests, accessor-backed/cyclic/sparse snapshots, invalid state histories, skipped transitions and unauthorized actor classes.
+- Add an isolated Node 24 workflow and adversarial lifecycle regressions.
+- This is metadata/lifecycle groundwork only: no external source is fetched or executed; no sandbox, SBOM automation, signature verifier, durable store, runtime registry or automatic promotion is claimed.
+
 ## [NK1][Memory] Make MemoryOS2 normalization locale-neutral (2026-11-19)
 - Replace implicit host-locale lowercasing in query intent, tokenization, character-gram keys, evidence/source keys, context comparisons and query/content caches with deterministic Unicode `toLowerCase()`.
 - Add a regression simulating Turkish-style `I/İ` casing while indexing and retrieving an English identity memory; retrieval must remain stable without consulting the host locale.
