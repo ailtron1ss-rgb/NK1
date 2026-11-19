@@ -85,3 +85,19 @@ The archive bytes were not materialized in this execution environment. The diges
 - Records the completed #954 merge and #953 supersession.
 - Does not claim all 963 refs have been exhaustively reviewed at line/blob/dependency level.
 - Does not authorize deletion of the remaining 17 identical-tip refs.
+
+
+## Subsequent live PR refresh — after duplicate PR #121 disposition
+
+A new complete PR-list read after closing duplicate #121 reports:
+
+- PR records: **943**
+- Open: **406**
+- Merged: **315**
+- Closed without merge: **222**
+- Distinct open PR head refs: **406** (no identical open head SHA groups remain)
+- Distinct open PR base refs: **87**
+
+PR #121 was closed with title `[SUPERSEDED by #102]...`. Both used the exact same head ref and SHA `typescript/runtime-typecheck-truth-2026-10-24` / `832e44bd5b59e698dc5a829d9982f31b3ed4b03d`. The only extra file shown by the older-base diff was `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`, and its blob is identical to current source. PR #102 remains the single open review path. No unique code was discarded.
+
+The duplicate-tip branch group remains 17 refs at SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`. The open-base dependencies now total seven PRs across four branch names: #109 (`nk1-all-branches-merge-2026-10-23`), #131 (`nk1-integration-workspace-2026-10-22`), #112/#91/#86 (`rebuild`), and #138/#124 (`workpass206-runtime-evaluator-wiring`).
