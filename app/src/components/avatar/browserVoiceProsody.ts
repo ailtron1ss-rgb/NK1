@@ -1,5 +1,4 @@
-import { buildVoicePlan, inferVoiceLanguage } from "../../../../runtime/neuro-kurisu/src/organism/body/VoiceEmbodiment.ts";
-import type { OrganismBodyState } from "../../../../runtime/neuro-kurisu/src/organism/body/EmbodiedBody.ts";
+import { buildVoicePlan, inferVoiceLanguage } from "../../../../runtime/neuro-kurisu/src/organism/contracts/VoicePlan.ts";
 
 export type BrowserVoiceEmotion = "curiosity" | "calm" | "joy" | "anxiety" | "frustration" | "sadness" | "anger" | "protective";
 export interface BrowserVoiceAffectSnapshot { emotion: BrowserVoiceEmotion; arousal: number; valence: number; }
@@ -38,7 +37,7 @@ export interface BrowserVoiceProsody {
 /**
  * Browser adapter for the organism's canonical VoicePlan.
  * The web client has no trusted Android thermal/circadian telemetry, so it supplies
- * a neutral body baseline; the runtime uses its measured OrganismBodyState instead.
+ * a neutral structural body baseline; the runtime uses the same public contract with measured telemetry.
  * All affect/action-to-prosody decisions remain in VoiceEmbodiment.buildVoicePlan.
  */
 export function inferBrowserVoiceLanguage(text: string): string {
@@ -50,7 +49,7 @@ export function buildBrowserVoiceProsody(input: BrowserVoiceProsodyInput): Brows
     thermalStrain01: 0,
     cognitiveCapacity01: 1,
     circadian01: 1,
-  } as unknown as OrganismBodyState;
+  };
   const plan = buildVoicePlan({
     text: String(input.text ?? ""),
     action: input.action,
