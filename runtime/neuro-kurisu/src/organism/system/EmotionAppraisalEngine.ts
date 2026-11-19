@@ -224,12 +224,15 @@ export class EmotionAppraisalEngine {
         validFeelings.push(feeling);
       }
     }
+    // History is newest-first. Its newest validated row is authoritative for the last-event fields.
+    // The lifetime episode counter may exceed retained history, but cannot be smaller than it.
+    const latest=validHistory[0];
     this.state={
       version:2,
-      episodes:validCounter(r.episodes,0),
-      lastTick:validCounter(r.lastTick,-1,-1),
-      lastAt:typeof r.lastAt==='number' && Number.isFinite(r.lastAt) && r.lastAt>=0 ? r.lastAt : 0,
-      lastLabel:EMOTION_LABELS.has(r.lastLabel as EmotionLabel) ? r.lastLabel as EmotionLabel : d.lastLabel,
+      episodes:Math.max(validHistory.length,validCounter(r.episodes,0)),
+      lastTick:latest?.tick ?? validCounter(r.lastTick,-1,-1),
+      lastAt:latest?.at ?? (typeof r.lastAt==='number' && Number.isFinite(r.lastAt) && r.lastAt>=0 ? r.lastAt : 0),
+      lastLabel:latest?.label ?? (EMOTION_LABELS.has(r.lastLabel as EmotionLabel) ? r.lastLabel as EmotionLabel : d.lastLabel),
       meanArousal01:boundedNumber(r.meanArousal01,d.meanArousal01),
       meanValence01:boundedNumber(r.meanValence01,d.meanValence01),
       meanStress01:boundedNumber(r.meanStress01,d.meanStress01),
