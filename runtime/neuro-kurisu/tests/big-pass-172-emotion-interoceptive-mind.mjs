@@ -125,7 +125,7 @@ assert.equal(restoreProbe.snapshot().history.length, 0, 'sparse histories must b
 const invalidMetrics = { ...es, episodes: Number.POSITIVE_INFINITY, meanStress01: 4,
   interoception: { ...es.interoception, cycles: -3, lastObserved: { ...es.interoception.lastObserved, energy01: Number.NaN } } };
 restoreProbe.restore(invalidMetrics);
-assert.equal(restoreProbe.snapshot().episodes, 0, 'non-finite counters must not be restored');
+assert.equal(restoreProbe.snapshot().episodes, es.history.length, 'invalid lifetime counters must not undercount validated retained history');
 assert.equal(restoreProbe.snapshot().meanStress01, .2, 'out-of-range aggregate metrics must use defaults');
 assert.equal(restoreProbe.snapshot().interoception.cycles, 0, 'invalid body metrics must use defaults');
 assert.equal(restoreProbe.snapshot().interoception.lastObserved.energy01, .68, 'invalid body metrics must use defaults');
