@@ -8,6 +8,26 @@ source.inferFeeling(episode,{energy01:.31,cognitiveLoad01:.68,uncertainty01:.52,
 for(let i=0;i<4;i++) source.recordOutcome({action:'rest',success01:.82,surprise01:.14,regulationCost01:.2});
 const valid=source.snapshot();
 
+// Transparent proxies are rejected too; reflective reads alone cannot distinguish them.
+const transparentRootRestore=new EmotionAppraisalEngine();
+transparentRootRestore.restore(new Proxy(structuredClone(valid),{}));
+assert.deepEqual(transparentRootRestore.snapshot(),defaultEmotionAppraisalState(),
+  'transparent proxy roots must fail closed');
+
+const transparentRowSnapshot=structuredClone(valid);
+transparentRowSnapshot.history=[new Proxy(structuredClone(valid.history[0]),{})];
+const transparentRowRestore=new EmotionAppraisalEngine();
+transparentRowRestore.restore(transparentRowSnapshot);
+assert.equal(transparentRowRestore.snapshot().history.length,0,
+  'transparent proxy history records must not be restored');
+
+const transparentArraySnapshot=structuredClone(valid);
+transparentArraySnapshot.history=new Proxy([structuredClone(valid.history[0])],{});
+const transparentArrayRestore=new EmotionAppraisalEngine();
+transparentArrayRestore.restore(transparentArraySnapshot);
+assert.equal(transparentArrayRestore.snapshot().history.length,0,
+  'transparent proxy arrays must not be traversed');
+
 const restored=new EmotionAppraisalEngine();
 restored.restore(valid);
 assert.deepEqual(restored.snapshot(),valid,'valid v2 snapshots must round-trip without structural drift');
@@ -146,7 +166,7 @@ const outcomeRestore=new EmotionAppraisalEngine(); outcomeRestore.restore(outcom
 assert.ok(Object.keys(outcomeRestore.snapshot().outcomes).length<=8,'only registered action keys are restored');
 
 console.log(JSON.stringify({pass:'workpass610',status:'PASS',checks:{
-  validV2RoundTrip:true,rootGetterRejected:true,nestedGetterRejected:true,inheritedAndHostileRecordsRejected:true,
+  validV2RoundTrip:true,transparentProxyRejected:true,rootGetterRejected:true,nestedGetterRejected:true,inheritedAndHostileRecordsRejected:true,
   sparseAndAccessorArraysRejected:true,revokedProxySafe:true,finiteCountersAndClampedMetrics:true,
   unknownLabelsActionsAndBrokenLinksRejected:true,repeatedRestoreDeterministic:true,historyBounded:true,outcomesAllowlisted:true,boundedRecordKeys:true
 }},null,2));
