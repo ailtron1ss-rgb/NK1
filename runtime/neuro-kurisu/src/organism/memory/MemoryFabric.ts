@@ -295,9 +295,16 @@ export class MemoryFabric {
         let projectionRemoved=false;
         let recallFramesRemoved=0;
         if(forgotten||!canonicalRemains){
+          // P62 stores canonical graph rows under `semantic:<nodeId>` aliases.
+          // Capture those aliases before removing the graph projection so explicit
+          // forget also purges every derived recall frame, not only the source ID.
+          const graphAliasIds=this.semanticMemory.snapshot().nodes
+            .filter(node=>node.canonicalProjection?.owner==='memoryOS2'&&node.canonicalProjection.itemId===command.id)
+            .map(node=>`semantic:${node.id}`);
           projectionRemoved=this.multiTimescale.removeCanonicalProjection(command.id);
           const graphProjectionRemoved=this.semanticMemory.removeCanonicalProjection(command.id);
           recallFramesRemoved=this.p62.forgetMemory(command.id);
+          for(const aliasId of graphAliasIds)recallFramesRemoved+=this.p62.forgetMemory(aliasId);
           projectionRemoved=projectionRemoved||graphProjectionRemoved;
         }
         const applied=Boolean(forgotten||(!canonicalRemains&&(projectionRemoved||recallFramesRemoved>0)));
