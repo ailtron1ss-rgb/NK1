@@ -60,6 +60,13 @@ Changes made on top of the observed live source:
 
 The old PR #665 source implementation was **not** copied over the evolved live implementation.
 
+
+## Source synchronization during this pass
+
+While the aspect branch was being prepared, `workpass70-source` advanced by four commits from `1fc8446d95e4e1d64547b853224250248c965a29` to `c7473db869cc8bcf9a8045de898afe0d3168f20e`. The four-commit comparison showed changes only in the cognitive network bus and interoceptive estimator paths, plus their tests/workflows/docs; none overlapped the five files in this affect restore consolidation.
+
+To avoid opening a stale PR, a two-parent merge commit `4078e4031a0df4d997fe88330f46b8822ccacee9` was created with the new source head as first parent and the original consolidation head as second parent. This preserves both histories and carries the five affect-specific paths on top of the latest source tree. No changes from the parallel source advance were dropped.
+
 ## Cleanup decision
 
 No historical branch ref was deleted in this pass. The exact duplicate v2/v3/rebased group is now documented, but deleting Git refs is deferred until the full repository-wide branch/PR/commit dependency inventory is complete. PR #667 is already closed and unmerged. PR #665 remains open until the successor's exact-head CI is observed; no historical source or release artifact was rewritten.
