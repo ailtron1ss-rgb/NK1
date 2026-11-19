@@ -59,6 +59,16 @@ These are the strongest branch-ref cleanup candidates by commit ancestry, but no
 
 The remaining 77 names in this family are represented in historical PR head/base relationships. A closed PR does not erase that history; preserve the PR record and validate all references before ref cleanup.
 
+#### Four unreferenced refs: secondary safety checks
+
+The live branch objects report `protected=false` for all four unreferenced names, and all four point to the same ancestor SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`. The current tag list contains only `Neuro` and `workpass70-hotfix1-2026-10-19`; neither tag points to this SHA. A branch-filtered Actions query returned:
+- `feature/useful-functions`: 0 workflow runs.
+- `workpass73-audit-fixes`: one historical failed WorkPass287-288 cognitive-contract run (#39910421546, 2026-10-23).
+- `workpass94-avatar-voice-live2d-audit`: one historical failed WorkPass287-288 cognitive-contract run (#39910502386, 2026-10-23).
+- `workpass168-hermes-runtime-compound-skill-bridge-test`: one historical failed WorkPass287-288 cognitive-contract run (#39910638918, 2026-10-23).
+
+The old Actions run records are evidence to retain, not evidence of a unique branch tree. Together with the exact-ancestor and PR-reference checks, these four are **high-confidence branch-ref cleanup candidates**. They are not marked deletion-approved here: the workflow-run history, any external automation not visible through the repository APIs, and the ability to recreate refs from the recorded SHA still need explicit final sign-off. No branch-ref deletion was performed.
+
 ### Same-tip aliases whose shared commit still has material not proven present in source
 
 For these families, the paired names point to the same commit, so the two refs do not represent two different code versions. The commit itself, however, has a substantial branch-only history relative to its merge base. The canonical name below is only a retention preference based on current PR relationships, not a merge decision.
