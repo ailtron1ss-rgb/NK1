@@ -8,6 +8,14 @@ import { nativeSpeechEventChannel, type NativeSpeechProviderEventV1 } from './Na
 import { projectAvatarBrainState, type AvatarBrainProjection, type AvatarAffectInput, type AvatarRenderProfile, type AvatarPersonalityVector } from './AvatarBrainAffectBridge.ts';
 import { mapAvatarProjectionToRenderer, type AvatarRendererCapabilities, type AvatarRendererMapping } from './AvatarRendererAdapter.ts';
 import { NekoAsrTranscriptAdapter, type NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
+import {
+  NekoVoiceTurnCoordinator,
+  type NekoAudioInputPort,
+  type NekoVoiceActivityPort,
+  type NekoTurnBoundaryPort,
+  type NekoVoiceTurnBoundaryMode,
+  type NekoVoiceTurnCaptureRequest,
+} from '../integration/neko/NekoVoiceTurnCoordinator.ts';
 import type { NekoSpeechAdmissionSnapshotV1 } from '../integration/neko/NekoSpeechAdmissionGate.ts';
 import type { NekoSmartTurnEvaluationResult } from '../integration/neko/NekoSmartTurnCoordinator.ts';
 import type { NekoSmartTurnCaptureError } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
@@ -23,6 +31,23 @@ export interface VoiceInputResult {
   readonly speechAdmissionError?: string;
   readonly smartTurnEvaluation?: NekoSmartTurnEvaluationResult;
   readonly smartTurnError?: NekoSmartTurnCaptureError;
+}
+
+export type NekoVoiceCaptureRequestProvider = () =>
+  NekoVoiceTurnCaptureRequest | null | Promise<NekoVoiceTurnCaptureRequest | null>;
+
+export interface NekoStreamingAudioOptions {
+  readonly voiceActivity?: NekoVoiceActivityPort;
+  readonly turnBoundary?: NekoTurnBoundaryPort;
+  readonly boundaryMode?: NekoVoiceTurnBoundaryMode;
+}
+
+interface NekoStreamingAudioConfiguration {
+  readonly audioInput: NekoAudioInputPort;
+  readonly captureRequestProvider: NekoVoiceCaptureRequestProvider;
+  readonly voiceActivity?: NekoVoiceActivityPort;
+  readonly turnBoundary?: NekoTurnBoundaryPort;
+  readonly boundaryMode: NekoVoiceTurnBoundaryMode;
 }
 
 type OrganismNeedsLike = { energy:number; cognitiveLoad:number; uncertainty:number; socialNeed:number; novelty:number; identityCoherence:number; goalPressure:number; };
@@ -60,9 +85,50 @@ export class EmbodimentRuntime {
   private speechInterruptGatewayDispatcher:SpeechInterruptGatewayDispatcher|null=null;
   private activeSpeechEventId:string|null=null;
   private nekoAsrAdapter:NekoAsrTranscriptAdapter|null=null;
+  private nekoVoiceTurnCoordinator:NekoVoiceTurnCoordinator|null=null;
+  private nekoStreamingAudioConfiguration:NekoStreamingAudioConfiguration|null=null;
 
   /** Inject a host-owned N.E.K.O./local ASR provider; null preserves the Termux STT fallback. */
-  setNekoAsrProvider(provider:NekoAsrProviderPort|null):void { this.nekoAsrAdapter=provider?new NekoAsrTranscriptAdapter(provider):null; }
+  setNekoAsrProvider(provider:NekoAsrProviderPort|null):void {
+    if(this.nekoVoiceTurnCoordinator?.isCapturing) throw new Error('cannot-replace-asr-provider-during-voice-turn');
+    this.nekoAsrAdapter=provider?new NekoAsrTranscriptAdapter(provider):null;
+    this.rebuildNekoVoiceTurnCoordinator();
+  }
+
+  /** Opt into host-owned streaming capture; every capture needs a fresh host grant and token. */
+  setNekoStreamingAudioInput(
+    audioInput:NekoAudioInputPort|null,
+    captureRequestProvider:NekoVoiceCaptureRequestProvider|null,
+    options:NekoStreamingAudioOptions={},
+  ):void {
+    if(this.nekoVoiceTurnCoordinator?.isCapturing) throw new Error('cannot-reconfigure-audio-input-during-voice-turn');
+    if(!audioInput){
+      this.nekoStreamingAudioConfiguration=null;
+      this.rebuildNekoVoiceTurnCoordinator();
+      return;
+    }
+    if(!this.nekoAsrAdapter) throw new Error('neko-asr-provider-required-before-streaming-audio-input');
+    if(typeof captureRequestProvider!=='function') throw new TypeError('host-capture-request-provider-required');
+    this.nekoStreamingAudioConfiguration={
+      audioInput,
+      captureRequestProvider,
+      ...(options.voiceActivity?{voiceActivity:options.voiceActivity}:{}),
+      ...(options.turnBoundary?{turnBoundary:options.turnBoundary}:{}),
+      boundaryMode:options.boundaryMode??'provider',
+    };
+    this.rebuildNekoVoiceTurnCoordinator();
+  }
+
+  private rebuildNekoVoiceTurnCoordinator():void {
+    const config=this.nekoStreamingAudioConfiguration;
+    if(!config||!this.nekoAsrAdapter){this.nekoVoiceTurnCoordinator=null;return;}
+    this.nekoVoiceTurnCoordinator=new NekoVoiceTurnCoordinator({
+      audioInput:config.audioInput, asrAdapter:this.nekoAsrAdapter,
+      ...(config.voiceActivity?{voiceActivity:config.voiceActivity}:{}),
+      ...(config.turnBoundary?{turnBoundary:config.turnBoundary}:{}),
+      boundaryMode:config.boundaryMode,
+    });
+  }
   get speechInputProviderId():string { return this.nekoAsrAdapter?.providerId ?? 'termux-speech-to-text'; }
 
   /** The only permitted routes to physical TTS and interruption are ActionGateway-backed dispatchers. */
@@ -276,6 +342,27 @@ export class EmbodimentRuntime {
     if(!this.body.sttAvailable) { this.voice.lastError='stt-unavailable'; this.voice.lastAt=Date.now(); return null; }
     this.voice.listening=true; this.voice.listenCount+=1; this.voice.lastAt=Date.now(); this.voice.lastError=null;
     try {
+      if(this.nekoVoiceTurnCoordinator){
+        const captureRequest=await this.nekoStreamingAudioConfiguration?.captureRequestProvider()??null;
+        if(!captureRequest||captureRequest.authorization===null||captureRequest.authorization===undefined){
+          this.voice.lastError='voice-capture-authorization-required';
+          return null;
+        }
+        const coordinated=await this.nekoVoiceTurnCoordinator.captureFinal(captureRequest);
+        if(coordinated.status==='accepted'){
+          const result=coordinated.transcript;
+          return {
+            text:result.transcript, providerId:result.provider,
+            ...(result.confidence01!==undefined?{confidence01:result.confidence01}:{}),
+            ...(result.language?{language:result.language}:{}),
+            eventId:result.eventId, turnId:result.turnId,
+          };
+        }
+        if(coordinated.status==='rejected') this.voice.lastError='voice-capture-'+coordinated.reason;
+        else if(coordinated.status==='error') this.voice.lastError='voice-turn-failed:'+coordinated.reason;
+        else this.voice.lastError='asr-capture-cancelled';
+        return null;
+      }
       if(this.nekoAsrAdapter){
         const result=await this.nekoAsrAdapter.captureFinal();
         if(result.status==='accepted') {
@@ -319,6 +406,13 @@ export class EmbodimentRuntime {
     const speechEventId=this.activeSpeechEventId;
     if(!speechEventId){
       if(!this.voice.listening) return false;
+      if(this.nekoVoiceTurnCoordinator?.isCapturing){
+        const verified=await this.nekoVoiceTurnCoordinator.cancel(reason);
+        this.voice.lastAt=Date.now();
+        if(verified){this.voice.interruptionCount+=1;this.voice.lastError='asr-interruption-verified';return true;}
+        this.voice.lastError='voice-turn-interruption-unverified';
+        return false;
+      }
       if(this.nekoAsrAdapter?.isListening){
         const result=await this.nekoAsrAdapter.interrupt(reason);
         this.voice.lastAt=Date.now();
