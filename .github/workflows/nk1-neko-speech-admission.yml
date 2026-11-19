@@ -1,0 +1,67 @@
+name: NK1 N.E.K.O. sample-scoped speech admission
+
+on:
+  pull_request:
+    branches: [aspect/neko-voice-perception-adapters-20261104]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSpeechAdmissionGate.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/neko-speech-admission-gate.mjs"
+      - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/docs/NEKO_ASR_PROVIDER_ADAPTER_RU.md"
+      - ".github/workflows/nk1-neko-speech-admission.yml"
+  push:
+    branches: [aspect/neko-speech-admission-gate-20261104]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSpeechAdmissionGate.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/neko-speech-admission-gate.mjs"
+      - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/docs/NEKO_ASR_PROVIDER_ADAPTER_RU.md"
+      - ".github/workflows/nk1-neko-speech-admission.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-speech-admission-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Sample-scoped speech admission gate
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-speech-admission-gate
+      - name: ASR transcript admission and replay boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-transcript-adapter
+      - name: Embodiment detailed ASR metadata
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-embodiment-wiring
+      - name: ASR to cognitive evidence propagation
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-asr-voice-input-evidence.mjs
+      - name: Existing voice/cognitive context regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:embodiment-voice-cognitive-context
+      - name: Runtime typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

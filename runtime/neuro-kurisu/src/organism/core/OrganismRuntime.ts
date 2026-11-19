@@ -63,6 +63,12 @@ function speechObservationEvidence(input: VoiceInputResult, suffix?: string): st
   if (input.eventId) evidence.push(`asr-event:${input.eventId}`);
   if (input.turnId) evidence.push(`asr-turn:${input.turnId}`);
   if (input.language) evidence.push(`asr-language:${input.language}`);
+  if (input.speechAdmission) {
+    evidence.push(`speech-admission:${input.speechAdmission.decision}`);
+    evidence.push(`speech-admission-reason:${input.speechAdmission.reason}`);
+    evidence.push(`speech-admission-voiced-ms:${Math.round(input.speechAdmission.voicedAudioMs)}`);
+  }
+  if (input.speechAdmissionError) evidence.push('speech-admission-error');
   if (suffix) evidence.push(suffix);
   return evidence;
 }

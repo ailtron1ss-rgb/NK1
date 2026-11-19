@@ -17,6 +17,37 @@ The host implements `NekoAsrProviderPort`:
 
 The host owns process startup, audio capture, provider credentials, microphone permissions, VAD, endpointing and transport. The adapter does not execute shell commands or create a sidecar.
 
+## Sample-scoped speech admission evidence
+
+The provider may additionally submit local Silero probability windows through
+`observeSileroProbabilityWindow`. The v1 contract is a mono 16 kHz sample
+timeline with fixed 512-sample (32 ms) frames and a probability in [0, 1].
+The provider still owns model inference and audio decoding; this adapter does
+not download, load, or execute ONNX models.
+
+The NK1 gate preserves candidate-local evidence with these initial N.E.K.O.
+defaults: onset probability 0.5, at least 224 ms of voiced samples inside a
+480 ms rolling window, minimum voiced occupancy 0.65, maximum continuous gap
+96 ms, and maximum candidate span 640 ms. It also rejects overlapping or
+malformed sample windows, treats missing sample ranges as gaps rather than
+voice/silence, and keeps bounded rolling state.
+
+**This is shadow evidence only.** `pending`, `admit`, and `reject` snapshots
+are attached to the accepted ASR result and may be recorded by cognitive
+evidence; none of them may accept, reject, truncate, or delay a canonical
+transcript. A malformed VAD frame produces a bounded diagnostic marker but
+does not invalidate an otherwise valid ASR envelope. The callback is fenced
+when capture completes or is cancelled.
+
+Speech activity admission is not semantic turn completion. Silero-style
+probability windows indicate local speech activity; Smart Turn / endpointing
+remains a separate provider responsibility for deciding whether the user has
+finished a thought. The initial thresholds are not promoted to production
+gating until target-device latency, multilingual holdout calibration, false
+admission/rejection rates, and interrupted/resumed speech tests have passed.
+
+
+
 ## Admission boundary
 
 The adapter accepts only plain data objects with the exact v1 envelope fields, a current host-generated session ID, the configured provider ID, `phase: final`, and `speakerRole: user`. Partial hypotheses and assistant output are rejected. Accessors, proxies, exotic prototypes, unknown keys, invalid confidence/language, empty text and oversized transcripts are rejected before the transcript reaches NK1. The default transcript limit is 4,000 characters / 16 KiB.
@@ -33,7 +64,7 @@ This is a boundary and wiring pass, not a claim of complete voice integration. I
 
 ## Verification
 
-- `tests/neko-asr-transcript-adapter.mjs`: final-user admission, session binding, malformed/accessor objects, size/confidence limits, replay conflicts, single-capture lock and verified/unverified cancellation.
+- `tests/neko-asr-transcript-adapter.mjs`: final-user admission, session binding, malformed/accessor objects, size/confidence limits, replay conflicts, single-capture lock, verified/unverified cancellation and sample-scoped VAD shadow evidence.
 - `tests/neko-asr-embodiment-wiring.mjs`: provider routing, detailed metadata retention, backward-compatible `listen()` and truthful interruption state.
 - `tests/neko-asr-voice-input-evidence.mjs`: ASR confidence, event/turn/language provenance through `OrganismRuntime.listen()` and `voiceTurn()`, plus legacy fallback behavior.
 - `tests/embodiment-voice-cognitive-context.mjs`: existing voice-to-cognition regression.

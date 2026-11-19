@@ -19,6 +19,16 @@ function transcript(overrides = {}) {
   };
 }
 
+function sileroFrame(index, probability01 = 0.9, patch = {}) {
+  return {
+    sampleRateHz: 16_000,
+    startSample: index * 512,
+    endSample: (index + 1) * 512,
+    probability01,
+    ...patch,
+  };
+}
+
 function provider(result, overrides = {}) {
   const calls = { capture: [], cancel: [] };
   const port = {
@@ -41,6 +51,76 @@ test('accepts only a final user transcript bound to the active host session', as
   assert.equal(calls.capture.length, 1);
   assert.equal(calls.capture[0].signal instanceof AbortSignal, true);
   assert.equal(calls.capture[0].sessionId.length > 0, true);
+});
+
+test('collects sample-scoped VAD admission as shadow evidence without owning transcript admission', async () => {
+  let lastSnapshot = null;
+  const { port } = provider(async input => {
+    for (let index = 0; index < 8; index += 1) {
+      lastSnapshot = input.observeSileroProbabilityWindow(sileroFrame(index));
+    }
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.speechAdmission?.decision, 'admit');
+  assert.equal(result.speechAdmission?.reason, 'speech_window');
+  assert.equal(result.speechAdmission?.sampleRateHz, 16_000);
+  assert.equal(result.speechAdmission?.voicedAudioMs, 256);
+  assert.equal(result.speechAdmission?.terminalAudioEndSample, 7 * 512);
+  assert.equal(lastSnapshot, result.speechAdmission);
+  assert.equal(Object.isFrozen(result.speechAdmission), true);
+});
+
+test('pending speech activity evidence never delays or rejects the final ASR transcript', async () => {
+  const { port } = provider(async input => {
+    input.observeSileroProbabilityWindow(sileroFrame(0));
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.speechAdmission?.decision, 'pending');
+  assert.equal(result.speechAdmission?.reason, 'collecting');
+});
+
+test('rejected speech activity evidence remains diagnostic and cannot reject a valid ASR transcript', async () => {
+  const { port } = provider(async input => {
+    input.observeSileroProbabilityWindow(sileroFrame(0, 0.9));
+    for (let index = 1; index <= 4; index += 1) {
+      input.observeSileroProbabilityWindow(sileroFrame(index, 0.1));
+    }
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.speechAdmission?.decision, 'reject');
+  assert.equal(result.speechAdmission?.reason, 'speech_gap');
+});
+
+test('malformed local VAD evidence is diagnostic only and never rejects a valid ASR transcript', async () => {
+  const { port } = provider(async input => {
+    assert.equal(input.observeSileroProbabilityWindow(sileroFrame(0, Number.NaN)), null);
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.speechAdmission, undefined);
+  assert.equal(result.speechAdmissionError, 'invalid-speech-probability-window');
+});
+
+test('late VAD probability callbacks are fenced after the ASR capture completes', async () => {
+  let lateObserver;
+  const { port } = provider(async input => {
+    lateObserver = input.observeSileroProbabilityWindow;
+    lateObserver(sileroFrame(0));
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  const before = result.speechAdmission;
+  assert.ok(before);
+  assert.equal(lateObserver(sileroFrame(1)), null);
+  assert.equal(result.speechAdmission, before);
+  assert.equal(result.speechAdmission?.audioEndSample, 512);
 });
 
 test('rejects partial and non-user transcripts before exposing text', async () => {
