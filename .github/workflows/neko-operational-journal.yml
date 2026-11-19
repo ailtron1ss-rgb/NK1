@@ -11,7 +11,7 @@ on:
       - '.github/workflows/neko-operational-journal.yml'
   push:
     branches:
-      - 'aspect/neko-operational-journal-durability-rebased-20261105'
+      - workpass70-source
     paths:
       - 'runtime/neuro-kurisu/src/organism/persistence/OperationalJournal.ts'
       - 'runtime/neuro-kurisu/tests/operational-journal-durability.mjs'
