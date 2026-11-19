@@ -2,7 +2,7 @@ name: NK1 current-source N.E.K.O. streaming audio contracts
 
 on:
   pull_request:
-    branches: [consolidation/neko-smart-turn-current-source-20261119]
+    branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAudioStreamContract.ts"
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAudioFrameBuffer.ts"
