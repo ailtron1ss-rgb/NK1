@@ -182,8 +182,8 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
     "const intent=sanitizeIntent(d);\n    if(!intent){window.__w70RejectedCount=(window.__w70RejectedCount||0)+1;return;}"
   );
   script = script.replace(
-    "applyEmbodiment(intent);\n  });\n  boot();",
-    "applyEmbodiment(intent);\n    window.__w70AppliedCount=(window.__w70AppliedCount||0)+1;\n    window.__w70LastApplied={stateVersion:intent.stateVersion,speechEventId:intent.speechEventId,audioClockId:intent.audioClockId,speechPhase:intent.speechPhase,audioTimeMs:intent.audioTimeMs,speaking:intent.speaking,mouthOpen:lipTarget,mouthForm:lipFormTarget};\n  });\n  boot();"
+    "applyEmbodiment(intent,pendingIntentReadback);\n  });\n  boot();",
+    "applyEmbodiment(intent,pendingIntentReadback);\n    window.__w70AppliedCount=(window.__w70AppliedCount||0)+1;\n    window.__w70LastApplied={stateVersion:intent.stateVersion,speechEventId:intent.speechEventId,audioClockId:intent.audioClockId,speechPhase:intent.speechPhase,audioTimeMs:intent.audioTimeMs,speaking:intent.speaking,mouthOpen:lipTarget,mouthForm:lipFormTarget};\n  });\n  boot();"
   );
   const listeners = new Map();
   const parent = { postMessage() {} };
