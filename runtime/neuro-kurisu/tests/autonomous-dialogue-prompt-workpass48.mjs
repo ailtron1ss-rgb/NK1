@@ -34,6 +34,41 @@ assert.match(prompt.system, /TEMPORARY AFFECT-TO-EXPRESSION MODULATION/);
 assert.match(prompt.system, /Current tone tendency: curious/);
 assert.ok(prompt.maxTokens >= 200 && prompt.maxTokens <= 500);
 assert.ok(prompt.contextLedger);
+
+const openLoopPrompt = buildAutonomousDialoguePrompt(
+  cycle, initiative, [], undefined, '', [], '',
+  { title: 'Revisit the NK1 causal-memory validation', owner: 'user', kind: 'task', surfaceReason: 'overdue', overdueMs: 86_400_000 },
+);
+assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
+  /Revisit the NK1 causal-memory validation/,
+  'the existing autonomous-dialogue prompt must receive one accepted, actionable open obligation');
+assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
+  /ask whether it is still relevant|ask whether the user still wants to revisit/i,
+  'the model must treat the obligation as a gentle check-in, not an order');
+assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
+  /user-owned commitment the user explicitly accepted/i,
+  'user-owned commitments must be framed as user-agreed follow-ups');
+const systemOwnedPrompt = buildAutonomousDialoguePrompt(
+  cycle, initiative, [], undefined, '', [], '',
+  { title: 'Revisit the internal predictive-memory experiment', owner: 'system', kind: 'project_step', surfaceReason: 'dependency-unblocked' },
+);
+assert.match(`${systemOwnedPrompt.system}\\n${systemOwnedPrompt.user}`,
+  /your own system-owned follow-up/i,
+  'system-owned obligations must be framed as the organism own accepted follow-up');
+assert.doesNotMatch(`${systemOwnedPrompt.system}\\n${systemOwnedPrompt.user}`,
+  /This is a user-owned commitment|user-owned commitment the user explicitly accepted/i,
+  'system-owned obligations must not be falsely attributed to the user');
+assert.match(`${openLoopPrompt.system}\\n${openLoopPrompt.user}`,
+  /must not claim (?:it|the item) is complete|never claim (?:it|the item) is complete/i,
+  'the prompt must not imply an unfinished commitment was completed');
+
+const unsafeOpenLoopPrompt = buildAutonomousDialoguePrompt(
+  cycle, initiative, [], undefined, '', [], '',
+  { title: 'Revisit the API key sk-abcdefghijklmnopqrstuvwxyz123456', kind: 'task', surfaceReason: 'overdue' },
+);
+assert.doesNotMatch(`${unsafeOpenLoopPrompt.system}\\n${unsafeOpenLoopPrompt.user}`,
+  /sk-abcdefghijklmnopqrstuvwxyz123456/,
+  'sensitive open-loop titles must fail closed before being forwarded to the language model');
 const fullCycle = {
   ...cycle,
   state: { ...cycle.state, selfPredictionError: .1, worldContextVersion: 1, needs: { ...cycle.state.needs, cognitiveLoad: .2 } },
