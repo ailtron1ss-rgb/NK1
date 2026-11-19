@@ -78,3 +78,18 @@ A branch may be deleted only after its complete content and ancestry are preserv
 - 19 October archive byte verification: not complete.
 - Family branch creation/integration: not yet performed in this checkpoint.
 - Branch deletion: none performed.
+
+
+## Status correction — after PR #951 merged (2026-11-19)
+
+This addendum supersedes earlier live values above where they differ:
+
+- Current `workpass70-source` HEAD is `aa2b385153ddc316eadf61f87e2c0803d7d59d98`. Relative to checkpoint `7547f5287b84a7d9b7109c0e5fdbe20bf95c9e33`, GitHub compare is 4 ahead / 0 behind.
+- Branch refs remain **1,038**, unique HEADs **947**, duplicate-HEAD groups **12**, excess names **91**. Current full inventory is in `branch-census-2026-11-19.json` and `.md`.
+- Full PR pagination now returns **942 PRs: 412 open, 313 merged, 217 closed without merge**. The open PR head refs are 411 distinct values; one head ref is used by two open PRs. Current full register is `pull-request-census-2026-11-19.json` and `.md`.
+- PR #951 is **merged** at `2026-11-19T05:14:52Z`, merge commit `aa2b385…`. Exact-head Actions query for its tested head `0a289c1…` returned 44 workflow runs, all 44 completed successfully. The multi-effector test had previously failed on a fully extended singular fixture; the follow-up changed the fixture to a nonsingular configuration, not the solver algorithm. The modules are now in source, but remain a standalone kinematics capability—not production planner/actuator/renderer wiring.
+- PR #953 remains Draft at head `fbab11da4e07a09282b8cb043904a05a4f638663`, 22 files (+2,668/-113). Its exact-head workflow query later returned **50 completed successful runs and 0 pending/failed**. Nevertheless, its compare with current source `aa2b385…` is diverged (PR head 22 ahead, source 2 ahead from merge-base `9742b5a…`). Rebase/revalidate and review the full patch before considering merge; the Draft state remains intentional.
+- PR #949 remains Draft and report-only. The audit branch now contains the refreshed census records and this status correction, but its PR base is still the old source checkpoint; compare against current source is diverged (26 ahead / 4 behind at the time checked). Rebase/revalidate before merge.
+- PR #950 and #952 remain merged; #950 stores visual assets and evidence without renderer wiring, while #952 documents the N.E.K.O. plugin family.
+
+The 19 October Release ZIP remains the hard parity gate; its bytes have not been materialized, and no byte-level comparison is claimed. No branch refs were deleted in this pass.
