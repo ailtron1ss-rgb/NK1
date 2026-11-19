@@ -1,3 +1,10 @@
+## [NK1][Code Assimilation] Add source-bound intake and guarded lifecycle contracts (2026-11-02)
+- Add a typed metadata contract for immutable external source revisions, source/tree digests, component manifests and exact base-runtime binding.
+- Add a deterministic candidate identity and evidence-linked transition graph from discovery through quarantine, independent verification, shadow, approval, activation and rollback.
+- Reject mutable source references, floating package versions, malformed digests, accessor-backed/cyclic/sparse snapshots, invalid state histories, skipped transitions and unauthorized actor classes.
+- Add an isolated Node 24 workflow and adversarial lifecycle regressions.
+- This is metadata/lifecycle groundwork only: no external source is fetched or executed; no sandbox, SBOM automation, signature verifier, durable store, runtime registry or automatic promotion is claimed.
+
 ## [NK1][Memory] Make MemoryOS2 normalization locale-neutral (2026-11-19)
 - Replace implicit host-locale lowercasing in query intent, tokenization, character-gram keys, evidence/source keys, context comparisons and query/content caches with deterministic Unicode `toLowerCase()`.
 - Add a regression simulating Turkish-style `I/İ` casing while indexing and retrieving an English identity memory; retrieval must remain stable without consulting the host locale.
