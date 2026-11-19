@@ -242,6 +242,7 @@ import { MemoryOS2, defaultMemoryOS2 } from '../developmental/MemoryOS2.ts';
 import { MemorySubstrateCoordinator } from '../developmental/MemorySubstrateCoordinator.ts';
 import { WorldModel2, defaultWorldModel2 } from '../developmental/WorldModel2.ts';
 import { RegretEngine, defaultRegretState } from '../developmental/RegretEngine.ts';
+import type { NegativeSpaceOutcomeInput, NegativeSpaceRecord } from '../developmental/NegativeSpaceMemory.ts';
 import { SemanticScarEngine, defaultSemanticScarState } from '../developmental/SemanticScarEngine.ts';
 import { ValueProvenance, defaultValueProvenance } from '../developmental/ValueProvenance.ts';
 import { CommitmentRepair, defaultCommitmentRepair } from '../developmental/CommitmentRepair.ts';
@@ -1249,6 +1250,8 @@ export class OrganismCore {
     private lastClosedCognitiveCycleTick = -1;
     private persisted: PersistedOrganism = defaultPersisted();
     private ready = false;
+    /** Serializes Negative Space mutations across durable checkpoints and rollback. */
+    private negativeSpaceMutationTail: Promise<void> = Promise.resolve();
     constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
         this.store = store;
         const candidateStorePath = store instanceof FileStateStore
@@ -9517,8 +9520,68 @@ export class OrganismCore {
         }
         if (trace?.selected) {
             this.cognitiveRuntime.neuromodulatoryPlasticity.learnFromOutcome(gatedSuccess01, clamp((gatedSuccess01 - .5) - gatedSurprise01 * .15));
-            const alternatives = trace.predictedOutcomes.map(p => ({ action: p.action, estimated: p.utility }));
-            this.cognitiveRuntime.regretEngine.observe(trace.selected.action, gatedSuccess01, alternatives);
+            const chosenGoalForNegativeSpace = trace.selected.goalId
+                ? this.persisted.goals.find(goal => goal.id === trace.selected?.goalId) ?? null
+                : null;
+            const alternatives = trace.predictedOutcomes.map(prediction => {
+                const candidate = trace.candidates.find(item => item.action === prediction.action) ?? null;
+                const rankingMargin01 = clamp(trace.selected!.score - (candidate?.score ?? 0));
+                return {
+                    action: prediction.action,
+                    expectedOutcome01: prediction.utility,
+                    confidence01: prediction.confidence,
+                    rejectionReason: [
+                        ...(prediction.reasons ?? []).slice(0, 3),
+                        `ranking-margin01:${rankingMargin01.toFixed(3)}`,
+                    ].join('; ') || 'ranked-below-selected-action',
+                    constraints: [
+                        `ranking-margin01:${rankingMargin01.toFixed(3)}`,
+                        `available-energy01:${clamp(trace.stateBefore.needs.energy).toFixed(3)}`,
+                        `predicted-cost01:${clamp(candidate?.predictedCost ?? 0).toFixed(3)}`,
+                        `cognitive-load01:${clamp(trace.stateBefore.needs.cognitiveLoad).toFixed(3)}`,
+                    ],
+                    expectedConsequences: [
+                        `utility01:${clamp(prediction.utility).toFixed(3)}`,
+                        `confidence01:${clamp(prediction.confidence).toFixed(3)}`,
+                        `energy-after01:${clamp(prediction.nextState.energy).toFixed(3)}`,
+                        `cognitive-load-after01:${clamp(prediction.nextState.cognitiveLoad).toFixed(3)}`,
+                        `uncertainty-after01:${clamp(prediction.nextState.uncertainty).toFixed(3)}`,
+                        `novelty-after01:${clamp(prediction.nextState.novelty).toFixed(3)}`,
+                    ],
+                    reopenWhen: [
+                        { signal: 'outcome.confidenceAdjustedAlternativeAdvantage01', operator: 'gte' as const, value: 0.15 },
+                    ],
+                };
+            });
+            this.cognitiveRuntime.regretEngine.observe(trace.selected.action, gatedSuccess01, alternatives, {
+                decisionId: trace.id,
+                contextKey: trace.worldContextKey ?? [
+                    `goal:${trace.selected.goalId ?? 'none'}`,
+                    `energy:${Math.round(clamp(trace.stateBefore.needs.energy) * 4)}`,
+                    `uncertainty:${Math.round(clamp(trace.stateBefore.needs.uncertainty) * 4)}`,
+                    `load:${Math.round(clamp(trace.stateBefore.needs.cognitiveLoad) * 4)}`,
+                    `novelty:${Math.round(clamp(trace.stateBefore.needs.novelty) * 4)}`,
+                ].join('|'),
+                decisionAt: trace.createdAt,
+                outcomeAt: state.at,
+                chosenExpectedOutcome01: trace.selected.predictedUtility,
+                significance: {
+                    cost01: clamp(trace.selected.predictedCost),
+                    risk01: 1 - clamp(trace.selected.confidence),
+                    futureImportance01: clamp(chosenGoalForNegativeSpace?.importance ?? 0),
+                },
+                outcomeEvidence: [
+                    `gated-success01:${clamp(gatedSuccess01).toFixed(3)}`,
+                    `gated-reward01:${clamp(gatedReward01).toFixed(3)}`,
+                    `gated-surprise01:${clamp(gatedSurprise01).toFixed(3)}`,
+                    `verified-policy-outcome:${verifiedPolicyOutcome}`,
+                ],
+                outcomeReward01: gatedReward01,
+                outcomeSurprise01: gatedSurprise01,
+                outcomeVerified01: verifiedPolicyOutcome ? 1 : clamp(learning.verified01),
+                outcomeIndependent01: clamp(learning.independent01 ?? 0),
+                outcomeSource: projectEvidenceExternal ? 'external-evidence' : outcome.worldTransition ? 'world-transition' : 'internal',
+            });
             const provenanceAttribution = this.cognitiveRuntime.valueEvolution.attributeExperience({
                 action: trace.selected.action,
                 goalTitle: selectedGoalTitle,
@@ -11251,6 +11314,61 @@ export class OrganismCore {
         };
     }
     cognitiveOrganismContinuityDiagnostics() { return this.developmentalNeural.cognitiveOrganismContinuity.diagnostics(); }
+    negativeSpaceMemorySnapshot() { return this.cognitiveRuntime.regretEngine.snapshot().negativeSpace; }
+    negativeSpaceMemoryDiagnostics() { return this.cognitiveRuntime.regretEngine.negativeSpaceDiagnostics(); }
+    negativeSpaceMemoryReviewQueue() { return this.cognitiveRuntime.regretEngine.negativeSpaceReviewQueue(); }
+    negativeSpaceMemoryRelatedAlternatives(contextKey: string, limit = 8, includeUnverified = false) { return this.cognitiveRuntime.regretEngine.negativeSpaceRelatedAlternatives(contextKey, limit, includeUnverified); }
+    private assertNegativeSpaceMemoryMutationBoundary(): void {
+        if (!this.ready)
+            throw new Error('OrganismCore.init() must be called first');
+        if (this.persistence.persistenceDepth > 0)
+            throw new Error('negative-space-memory-persistence-busy');
+    }
+    private enqueueNegativeSpaceMemoryMutation<T>(operation: () => Promise<T>): Promise<T> {
+        const result = this.negativeSpaceMutationTail.then(operation, operation);
+        this.negativeSpaceMutationTail = result.then(() => undefined, () => undefined);
+        return result;
+    }
+    private async persistNegativeSpaceMemoryMutation(
+        previous: ReturnType<RegretEngine['snapshot']>,
+    ): Promise<void> {
+        this.assertNegativeSpaceMemoryMutationBoundary();
+        this.persisted.facets.advanced.regret = this.cognitiveRuntime.regretEngine.snapshot();
+        this.markPersistenceDirty();
+        try {
+            await this.checkpoint(true);
+        }
+        catch (error) {
+            // Keep the in-memory owner and the canonical persisted facet aligned when the
+            // durability boundary fails. The dirty marker remains set so a later checkpoint
+            // can safely retry the restored state.
+            this.cognitiveRuntime.regretEngine.restore(previous);
+            this.persisted.facets.advanced.regret = structuredClone(previous);
+            throw error;
+        }
+    }
+    negativeSpaceMemoryMarkReopened(decisionId: string, action: string, reason: string, at?: number): Promise<boolean> {
+        return this.enqueueNegativeSpaceMemoryMutation(async () => {
+            this.assertNegativeSpaceMemoryMutationBoundary();
+            const previous = this.cognitiveRuntime.regretEngine.snapshot();
+            const changed = this.cognitiveRuntime.regretEngine.markNegativeSpaceAlternativeReopened(decisionId, action, reason, at);
+            if (!changed)
+                return false;
+            await this.persistNegativeSpaceMemoryMutation(previous);
+            return true;
+        });
+    }
+    negativeSpaceMemoryRecordOutcome(input: NegativeSpaceOutcomeInput): Promise<NegativeSpaceRecord | null> {
+        return this.enqueueNegativeSpaceMemoryMutation(async () => {
+            this.assertNegativeSpaceMemoryMutationBoundary();
+            const previous = this.cognitiveRuntime.regretEngine.snapshot();
+            const updated = this.cognitiveRuntime.regretEngine.recordNegativeSpaceOutcome(input);
+            if (!updated)
+                return null;
+            await this.persistNegativeSpaceMemoryMutation(previous);
+            return updated;
+        });
+    }
     cognitiveOrganismContinuitySnapshot() { return this.developmentalNeural.cognitiveOrganismContinuity.snapshot(); }
     cognitiveOrganismContinuityBenchmark() { return this.developmentalNeural.cognitiveOrganismContinuity.benchmark(); }
     cognitiveOrganismContinuitySelfAudit() { return this.developmentalNeural.cognitiveOrganismContinuity.selfAudit(); }

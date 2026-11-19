@@ -1,0 +1,523 @@
+export type NegativeSpaceConditionOperator = 'gte' | 'lte';
+
+export interface NegativeSpaceReopenCondition {
+  signal: string;
+  operator: NegativeSpaceConditionOperator;
+  value: number;
+}
+
+export interface NegativeSpaceSignificance {
+  cost01: number;
+  risk01: number;
+  futureImportance01: number;
+  score01: number;
+}
+
+export interface NegativeSpaceAlternativeInput {
+  action: string;
+  expectedOutcome01: number;
+  confidence01?: number;
+  rejectionReason?: string;
+  constraints?: string[];
+  expectedConsequences?: string[];
+  reopenWhen?: NegativeSpaceReopenCondition[];
+}
+
+export interface NegativeSpaceAlternative {
+  action: string;
+  expectedOutcome01: number;
+  confidence01: number;
+  rejectionReason: string;
+  constraints: string[];
+  expectedConsequences: string[];
+  reopenWhen: NegativeSpaceReopenCondition[];
+  reviewEligible: boolean;
+  reopenedAt?: number;
+  reopenReason?: string;
+}
+
+export type NegativeSpaceReviewStatus = 'awaiting-outcome' | 'awaiting-independent-evidence' | 'retained' | 'review-eligible' | 'reopened';
+export type NegativeSpaceOutcomeSource = 'external-evidence' | 'world-transition' | 'internal' | 'unknown';
+
+export interface NegativeSpaceRecord {
+  id: string;
+  decisionId: string;
+  contextKey?: string;
+  at: number;
+  chosen: string;
+  chosenExpectedOutcome01: number;
+  chosenActualOutcome01: number | null;
+  outcomeAt: number | null;
+  outcomePredictionError01: number | null;
+  outcomeShortfall01: number | null;
+  chosenActualReward01: number | null;
+  chosenSurprise01: number | null;
+  outcomeVerified01: number | null;
+  outcomeIndependent01: number | null;
+  outcomeSource: NegativeSpaceOutcomeSource;
+  significance: NegativeSpaceSignificance;
+  alternatives: NegativeSpaceAlternative[];
+  outcomeEvidence: string[];
+  reviewStatus: NegativeSpaceReviewStatus;
+}
+
+export interface NegativeSpaceMemoryState {
+  version: 1;
+  records: NegativeSpaceRecord[];
+  totalRecorded: number;
+  pruned: number;
+  lastAt: number;
+}
+
+export interface NegativeSpaceDecisionInput {
+  decisionId: string;
+  contextKey?: string;
+  at?: number;
+  chosen: string;
+  chosenExpectedOutcome01: number;
+  significance: Omit<NegativeSpaceSignificance, 'score01'>;
+  alternatives: NegativeSpaceAlternativeInput[];
+}
+
+export interface NegativeSpaceOutcomeInput {
+  decisionId: string;
+  actualOutcome01: number;
+  at?: number;
+  evidence?: string[];
+  reward01?: number;
+  surprise01?: number;
+  verified01?: number;
+  independent01?: number;
+  source?: NegativeSpaceOutcomeSource;
+  signals?: Record<string, number>;
+}
+
+const MAX_RECORDS = 128;
+const MAX_ALTERNATIVES = 4;
+const MAX_CONTEXT_RESULTS = 24;
+const SIGNIFICANCE_THRESHOLD01 = 0.72;
+const MIN_REVIEW_VERIFICATION01 = 0.5;
+const MIN_REVIEW_INDEPENDENCE01 = 0.5;
+const OUTCOME_RECONCILIATION_TOLERANCE01 = 0.02;
+const DEFAULT_REOPEN_CONDITION: NegativeSpaceReopenCondition = {
+  signal: 'outcome.confidenceAdjustedAlternativeAdvantage01',
+  operator: 'gte',
+  value: 0.15,
+};
+
+const clamp01 = (value: unknown): number => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.max(0, Math.min(1, numeric)) : 0;
+};
+const finite = (value: unknown, fallback = 0): number => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+const cleanText = (value: unknown, max = 240): string =>
+  typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').slice(0, max) : '';
+const cleanList = (value: unknown, limit: number, maxLength: number): string[] =>
+  Array.isArray(value)
+    ? value.map(item => cleanText(item, maxLength)).filter(Boolean).slice(0, limit)
+    : [];
+
+function normalizeCondition(value: unknown): NegativeSpaceReopenCondition | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  const signal = cleanText(row.signal, 96);
+  const operator = row.operator === 'lte' ? 'lte' : row.operator === 'gte' ? 'gte' : null;
+  if (!signal || !operator || !Number.isFinite(Number(row.value))) return null;
+  return { signal, operator, value: clamp01(row.value) };
+}
+
+function normalizeAlternative(input: NegativeSpaceAlternativeInput, chosen: string): NegativeSpaceAlternative | null {
+  if (!input || typeof input !== 'object') return null;
+  const action = cleanText(input?.action, 96);
+  if (!action || action === chosen) return null;
+  const suppliedConditions = Array.isArray(input.reopenWhen)
+    ? input.reopenWhen.map(normalizeCondition).filter((row): row is NegativeSpaceReopenCondition => Boolean(row)).slice(0, 4)
+    : [];
+  return {
+    action,
+    expectedOutcome01: clamp01(input.expectedOutcome01),
+    confidence01: clamp01(input.confidence01 ?? 0.5),
+    rejectionReason: cleanText(input.rejectionReason) || 'ranked-below-selected-action',
+    constraints: cleanList(input.constraints, 6, 120),
+    expectedConsequences: cleanList(input.expectedConsequences, 8, 160),
+    reopenWhen: suppliedConditions.length ? suppliedConditions : [{ ...DEFAULT_REOPEN_CONDITION }],
+    reviewEligible: false,
+  };
+}
+
+function hasVerifiedOutcome(record: Pick<NegativeSpaceRecord, 'outcomeVerified01'>): boolean {
+  return (record.outcomeVerified01 ?? 0) >= MIN_REVIEW_VERIFICATION01;
+}
+
+function hasIndependentOutcome(record: Pick<NegativeSpaceRecord, 'outcomeIndependent01'>): boolean {
+  return (record.outcomeIndependent01 ?? 0) >= MIN_REVIEW_INDEPENDENCE01;
+}
+
+function hasReviewGradeOutcome(
+  record: Pick<NegativeSpaceRecord, 'chosenActualOutcome01' | 'outcomeVerified01' | 'outcomeIndependent01'>,
+): boolean {
+  return record.chosenActualOutcome01 !== null
+    && hasVerifiedOutcome(record)
+    && hasIndependentOutcome(record);
+}
+
+function conditionMatches(condition: NegativeSpaceReopenCondition, signals: Record<string, number>): boolean {
+  const observed = signals[condition.signal];
+  if (!Number.isFinite(observed)) return false;
+  return condition.operator === 'gte' ? observed >= condition.value : observed <= condition.value;
+}
+
+export function defaultNegativeSpaceMemoryState(): NegativeSpaceMemoryState {
+  return { version: 1, records: [], totalRecorded: 0, pruned: 0, lastAt: 0 };
+}
+
+/**
+ * Bounded memory of consequential rejected options. It records review evidence;
+ * it never chooses or executes an alternative on behalf of the canonical arbiter.
+ */
+export class NegativeSpaceMemory {
+  private state = defaultNegativeSpaceMemoryState();
+
+  recordDecision(input: NegativeSpaceDecisionInput): NegativeSpaceRecord | null {
+    const decisionId = cleanText(input?.decisionId, 128);
+    const chosen = cleanText(input?.chosen, 96);
+    if (!decisionId || !chosen) return null;
+    const existing = this.state.records.find(record => record.decisionId === decisionId);
+    if (existing) return structuredClone(existing);
+
+    const cost01 = clamp01(input.significance?.cost01);
+    const risk01 = clamp01(input.significance?.risk01);
+    const futureImportance01 = clamp01(input.significance?.futureImportance01);
+    const score01 = Math.max(cost01, risk01, futureImportance01);
+    if (score01 < SIGNIFICANCE_THRESHOLD01) return null;
+
+    const alternatives: NegativeSpaceAlternative[] = [];
+    const seen = new Set<string>();
+    for (const raw of Array.isArray(input.alternatives) ? input.alternatives : []) {
+      const normalized = normalizeAlternative(raw, chosen);
+      if (!normalized || seen.has(normalized.action)) continue;
+      seen.add(normalized.action);
+      alternatives.push(normalized);
+    }
+    alternatives.sort((a, b) => b.expectedOutcome01 - a.expectedOutcome01 || b.confidence01 - a.confidence01);
+    alternatives.length = Math.min(alternatives.length, MAX_ALTERNATIVES);
+    if (!alternatives.length) return null;
+
+    const at = Math.max(0, finite(input.at, Date.now()));
+    const row: NegativeSpaceRecord = {
+      id: decisionId,
+      decisionId,
+      ...(cleanText(input.contextKey, 160) ? { contextKey: cleanText(input.contextKey, 160) } : {}),
+      at,
+      chosen,
+      chosenExpectedOutcome01: clamp01(input.chosenExpectedOutcome01),
+      chosenActualOutcome01: null,
+      outcomeAt: null,
+      outcomePredictionError01: null,
+      outcomeShortfall01: null,
+      chosenActualReward01: null,
+      chosenSurprise01: null,
+      outcomeVerified01: null,
+      outcomeIndependent01: null,
+      outcomeSource: 'unknown',
+      significance: { cost01, risk01, futureImportance01, score01 },
+      alternatives,
+      outcomeEvidence: [],
+      reviewStatus: 'awaiting-outcome',
+    };
+    const records = [...this.state.records, row];
+    const pruned = Math.max(0, records.length - MAX_RECORDS);
+    this.state = {
+      ...this.state,
+      records: records.slice(-MAX_RECORDS),
+      totalRecorded: this.state.totalRecorded + 1,
+      pruned: this.state.pruned + pruned,
+      lastAt: Math.max(this.state.lastAt, at),
+    };
+    return structuredClone(row);
+  }
+
+  recordOutcome(input: NegativeSpaceOutcomeInput): NegativeSpaceRecord | null {
+    const decisionId = cleanText(input?.decisionId, 128);
+    const record = this.state.records.find(candidate => candidate.decisionId === decisionId);
+    if (!record) return null;
+
+    if (!Number.isFinite(input.actualOutcome01)) return null;
+    const actualOutcome01 = clamp01(input.actualOutcome01);
+    const at = Math.max(record.at, 0, finite(input.at, Date.now()));
+    const hasCanonicalOutcome = record.chosenActualOutcome01 !== null;
+    if (hasCanonicalOutcome && Math.abs(record.chosenActualOutcome01! - actualOutcome01) > OUTCOME_RECONCILIATION_TOLERANCE01) {
+      // A conflicting report cannot silently replace the first canonical outcome.
+      return structuredClone(record);
+    }
+
+    if (!hasCanonicalOutcome) {
+      const predictionError01 = Math.abs(record.chosenExpectedOutcome01 - actualOutcome01);
+      const shortfall01 = Math.max(0, record.chosenExpectedOutcome01 - actualOutcome01);
+      record.chosenActualOutcome01 = actualOutcome01;
+      record.outcomeAt = at;
+      record.outcomePredictionError01 = predictionError01;
+      record.outcomeShortfall01 = shortfall01;
+    }
+
+    const previousVerification01 = record.outcomeVerified01 ?? 0;
+    const incomingVerification01 = input.verified01 === undefined
+      ? previousVerification01 : clamp01(input.verified01);
+    const previousIndependence01 = record.outcomeIndependent01 ?? 0;
+    const incomingIndependence01 = input.independent01 === undefined
+      ? previousIndependence01 : clamp01(input.independent01);
+    const verificationImproved = incomingVerification01 > previousVerification01;
+    const independenceImproved = incomingIndependence01 > previousIndependence01;
+    record.outcomeVerified01 = Math.max(previousVerification01, incomingVerification01);
+    record.outcomeIndependent01 = Math.max(previousIndependence01, incomingIndependence01);
+
+    const source = input.source;
+    const validSource = source === 'external-evidence' || source === 'world-transition' || source === 'internal' || source === 'unknown';
+    const sourceRank = (value: NegativeSpaceOutcomeSource): number =>
+      value === 'external-evidence' ? 3 : value === 'world-transition' ? 2 : value === 'internal' ? 1 : 0;
+    const sourceImproved = validSource && sourceRank(source) > sourceRank(record.outcomeSource);
+    const evidenceQualityImproved = verificationImproved || independenceImproved || sourceImproved;
+
+    if (input.reward01 !== undefined && (record.chosenActualReward01 === null || evidenceQualityImproved)) {
+      record.chosenActualReward01 = clamp01(input.reward01);
+    }
+    if (input.surprise01 !== undefined && (record.chosenSurprise01 === null || evidenceQualityImproved)) {
+      record.chosenSurprise01 = clamp01(input.surprise01);
+    }
+    // Evidence provenance is monotonic: a stronger verification source can replace a weaker
+    // source, but a later internal observation cannot downgrade an external confirmation.
+    if (validSource && sourceImproved) record.outcomeSource = source;
+
+    const mergedEvidence = [...new Set([
+      ...record.outcomeEvidence,
+      ...cleanList(input.evidence, 8, 180),
+    ])];
+    record.outcomeEvidence = mergedEvidence.slice(-8);
+    this.evaluateReviewConditions(decisionId, {
+      ...input.signals,
+      'outcome.actual01': record.chosenActualOutcome01!,
+      'outcome.expected01': record.chosenExpectedOutcome01,
+      'outcome.predictionError01': record.outcomePredictionError01 ?? 0,
+      'outcome.shortfall01': record.outcomeShortfall01 ?? 0,
+    }, at);
+    return structuredClone(record);
+  }
+
+  evaluateReviewConditions(decisionId: string, signals: Record<string, number>, at = Date.now()): string[] {
+    const record = this.state.records.find(candidate => candidate.decisionId === decisionId);
+    if (!record || record.chosenActualOutcome01 === null) return [];
+    if (!hasReviewGradeOutcome(record)) {
+      for (const alternative of record.alternatives) {
+        alternative.reviewEligible = false;
+      }
+      record.reviewStatus = hasVerifiedOutcome(record)
+        ? 'awaiting-independent-evidence'
+        : 'retained';
+      this.state.lastAt = Math.max(this.state.lastAt, finite(at, Date.now()));
+      return [];
+    }
+    const eligible: string[] = [];
+    for (const alternative of record.alternatives) {
+      if (alternative.reopenedAt !== undefined) continue;
+      const confidenceAdjustedOutcome01 = alternative.expectedOutcome01 * alternative.confidence01
+        + 0.5 * (1 - alternative.confidence01);
+      const alternativeSignals = {
+        ...signals,
+        'outcome.alternativeAdvantage01': Math.max(0, alternative.expectedOutcome01 - record.chosenActualOutcome01),
+        'outcome.confidenceAdjustedAlternativeAdvantage01': Math.max(0, confidenceAdjustedOutcome01 - record.chosenActualOutcome01),
+      };
+      alternative.reviewEligible = alternative.reopenWhen.some(condition => conditionMatches(condition, alternativeSignals));
+      if (alternative.reviewEligible) eligible.push(alternative.action);
+    }
+    record.reviewStatus = record.alternatives.some(alternative => alternative.reviewEligible)
+      ? 'review-eligible'
+      : record.alternatives.some(alternative => alternative.reopenedAt !== undefined) ? 'reopened' : 'retained';
+    this.state.lastAt = Math.max(this.state.lastAt, finite(at, Date.now()));
+    return eligible;
+  }
+
+  /** Mark a human/agent-reviewed option as reopened; this is not an execution request. */
+  markReopened(decisionId: string, action: string, reason: string, at = Date.now()): boolean {
+    const record = this.state.records.find(candidate => candidate.decisionId === decisionId);
+    const alternative = record?.alternatives.find(candidate => candidate.action === action);
+    const normalizedReason = cleanText(reason);
+    if (!record || !hasReviewGradeOutcome(record) || !alternative || !alternative.reviewEligible || !normalizedReason) return false;
+    alternative.reviewEligible = false;
+    alternative.reopenedAt = Math.max(record.at, record.outcomeAt ?? 0, 0, finite(at, Date.now()));
+    alternative.reopenReason = normalizedReason;
+    record.reviewStatus = record.alternatives.some(candidate => candidate.reviewEligible) ? 'review-eligible' : 'reopened';
+    this.state.lastAt = Math.max(this.state.lastAt, alternative.reopenedAt);
+    return true;
+  }
+
+  reviewQueue(): Array<{ decisionId: string; chosen: string; alternative: NegativeSpaceAlternative; outcomeShortfall01: number }> {
+    return this.state.records.flatMap(record => hasReviewGradeOutcome(record) ? record.alternatives
+      .filter(alternative => alternative.reviewEligible)
+      .map(alternative => ({
+        decisionId: record.decisionId,
+        chosen: record.chosen,
+        alternative: structuredClone(alternative),
+        outcomeShortfall01: record.outcomeShortfall01 ?? 0,
+        outcomeVerified01: record.outcomeVerified01 ?? 0,
+        outcomeIndependent01: record.outcomeIndependent01 ?? 0,
+        outcomeSource: record.outcomeSource,
+      })) : []);
+  }
+
+  restore(snapshot?: Partial<NegativeSpaceMemoryState> | null): void {
+    const input = (snapshot ?? {}) as Record<string, unknown>;
+    const restored: NegativeSpaceRecord[] = [];
+    const allRawRecords = Array.isArray(input.records) ? input.records : [];
+    const overflowCount = Math.max(0, allRawRecords.length - MAX_RECORDS);
+    const rawRecords = allRawRecords.slice(-MAX_RECORDS);
+    for (const rawValue of rawRecords) {
+      if (!rawValue || typeof rawValue !== 'object') continue;
+      const raw = rawValue as Record<string, any>;
+      const decisionId = cleanText(raw.decisionId, 128);
+      const chosen = cleanText(raw.chosen, 96);
+      if (!decisionId || !chosen || !Array.isArray(raw.alternatives)) continue;
+      const actual = raw.chosenActualOutcome01 === null || raw.chosenActualOutcome01 === undefined
+        ? null : clamp01(raw.chosenActualOutcome01);
+      const verifiedOutcome01 = raw.outcomeVerified01 === null || raw.outcomeVerified01 === undefined
+        ? null : clamp01(raw.outcomeVerified01);
+      const independentOutcome01 = raw.outcomeIndependent01 === null || raw.outcomeIndependent01 === undefined
+        ? null : clamp01(raw.outcomeIndependent01);
+      const evidenceQuality = {
+        chosenActualOutcome01: actual,
+        outcomeVerified01: verifiedOutcome01,
+        outcomeIndependent01: independentOutcome01,
+      };
+      const reviewGradeOutcome = hasReviewGradeOutcome(evidenceQuality);
+      const alternatives: NegativeSpaceAlternative[] = [];
+      for (const sourceValue of raw.alternatives.slice(0, MAX_ALTERNATIVES)) {
+        const source = sourceValue && typeof sourceValue === 'object' ? sourceValue as Record<string, any> : null;
+        if (!source) continue;
+        const normalized = normalizeAlternative(source as NegativeSpaceAlternativeInput, chosen);
+        if (!normalized || alternatives.some(existing => existing.action === normalized.action)) continue;
+        const reopenAtIsValid = source.reopenedAt !== null && source.reopenedAt !== undefined
+          && Number.isFinite(Number(source.reopenedAt)) && Number(source.reopenedAt) >= 0;
+        const reopenReason = cleanText(source.reopenReason);
+        const reopened = reviewGradeOutcome && reopenAtIsValid && Boolean(reopenReason);
+        alternatives.push({
+          ...normalized,
+          reviewEligible: reviewGradeOutcome && source.reviewEligible === true && !reopened,
+          ...(reopened ? { reopenedAt: finite(source.reopenedAt), reopenReason } : {}),
+        });
+      }
+      if (!alternatives.length) continue;
+      const significance = raw.significance && typeof raw.significance === 'object' ? raw.significance : {};
+      const hasEligible = alternatives.some(alternative => alternative.reviewEligible);
+      const hasReopened = alternatives.some(alternative => alternative.reopenedAt !== undefined);
+      const status: NegativeSpaceReviewStatus = actual === null
+        ? 'awaiting-outcome'
+        : !hasVerifiedOutcome(evidenceQuality) ? 'retained'
+          : !hasIndependentOutcome(evidenceQuality) ? 'awaiting-independent-evidence'
+            : hasEligible ? 'review-eligible' : hasReopened ? 'reopened' : 'retained';
+      restored.push({
+        id: cleanText(raw.id, 128) || decisionId,
+        decisionId,
+        ...(cleanText(raw.contextKey, 160) ? { contextKey: cleanText(raw.contextKey, 160) } : {}),
+        at: Math.max(0, finite(raw.at)),
+        chosen,
+        chosenExpectedOutcome01: clamp01(raw.chosenExpectedOutcome01),
+        chosenActualOutcome01: actual,
+        outcomeAt: raw.outcomeAt === null || raw.outcomeAt === undefined ? null : finite(raw.outcomeAt),
+        outcomePredictionError01: raw.outcomePredictionError01 === null || raw.outcomePredictionError01 === undefined ? null : clamp01(raw.outcomePredictionError01),
+        outcomeShortfall01: raw.outcomeShortfall01 === null || raw.outcomeShortfall01 === undefined ? null : clamp01(raw.outcomeShortfall01),
+        chosenActualReward01: raw.chosenActualReward01 === null || raw.chosenActualReward01 === undefined ? null : clamp01(raw.chosenActualReward01),
+        chosenSurprise01: raw.chosenSurprise01 === null || raw.chosenSurprise01 === undefined ? null : clamp01(raw.chosenSurprise01),
+        outcomeVerified01: verifiedOutcome01,
+        outcomeIndependent01: independentOutcome01,
+        outcomeSource: ['external-evidence', 'world-transition', 'internal', 'unknown'].includes(raw.outcomeSource) ? raw.outcomeSource : 'unknown',
+        significance: {
+          cost01: clamp01(significance.cost01), risk01: clamp01(significance.risk01),
+          futureImportance01: clamp01(significance.futureImportance01), score01: clamp01(significance.score01),
+        },
+        alternatives,
+        outcomeEvidence: cleanList(raw.outcomeEvidence, 8, 180),
+        reviewStatus: status,
+      });
+    }
+    const newestByDecisionId = new Map<string, NegativeSpaceRecord>();
+    for (const record of restored) newestByDecisionId.set(record.decisionId, record);
+    const deduplicated = [...newestByDecisionId.values()]
+      .sort((a, b) => a.at - b.at || a.decisionId.localeCompare(b.decisionId))
+      .slice(-MAX_RECORDS);
+    const duplicateCount = Math.max(0, restored.length - deduplicated.length);
+    const restoredPruned = Math.max(0, Math.floor(finite(input.pruned))) + duplicateCount + overflowCount;
+    const minimumTotalRecorded = deduplicated.length + restoredPruned;
+    const maximumRecordAt = deduplicated.reduce((maximum, record) => Math.max(maximum, record.at), 0);
+    this.state = {
+      version: 1,
+      records: deduplicated,
+      totalRecorded: Math.max(minimumTotalRecorded, Math.floor(finite(input.totalRecorded, minimumTotalRecorded))),
+      pruned: restoredPruned,
+      lastAt: Math.max(0, finite(input.lastAt), maximumRecordAt),
+    };
+  }
+
+  relatedAlternatives(contextKey: string, limit = 8, includeUnverified = false) {
+    const key = cleanText(contextKey, 160);
+    if (!key) return [];
+    const boundedLimit = Math.max(1, Math.min(MAX_CONTEXT_RESULTS, Math.floor(finite(limit, 8))));
+    return this.state.records
+      .filter(record => record.contextKey === key
+        && (includeUnverified || hasReviewGradeOutcome(record)))
+      .flatMap(record => record.alternatives.map(alternative => ({
+        decisionId: record.decisionId,
+        recordAt: record.at,
+        chosen: record.chosen,
+        chosenActualOutcome01: record.chosenActualOutcome01,
+        chosenActualReward01: record.chosenActualReward01,
+        outcomeShortfall01: record.outcomeShortfall01,
+        outcomeVerified01: record.outcomeVerified01,
+        evidenceStatus: record.chosenActualOutcome01 === null ? 'awaiting-outcome' as const
+          : !hasVerifiedOutcome(record) ? 'unverified' as const
+            : !hasIndependentOutcome(record) ? 'awaiting-independent-evidence' as const
+              : 'verified' as const,
+        outcomeIndependent01: record.outcomeIndependent01,
+        outcomeSource: record.outcomeSource,
+        outcomeEvidence: [...record.outcomeEvidence],
+        reviewStatus: record.reviewStatus,
+        alternative: structuredClone(alternative),
+      })))
+      .sort((a, b) => (b.outcomeVerified01 ?? 0) - (a.outcomeVerified01 ?? 0)
+        || (b.outcomeIndependent01 ?? 0) - (a.outcomeIndependent01 ?? 0)
+        || b.recordAt - a.recordAt
+        || b.alternative.expectedOutcome01 - a.alternative.expectedOutcome01)
+      .slice(0, boundedLimit);
+  }
+
+  snapshot(): NegativeSpaceMemoryState {
+    return structuredClone(this.state);
+  }
+
+  diagnostics() {
+    const records = this.state.records;
+    const alternatives = records.flatMap(record => record.alternatives);
+    return {
+      version: 1 as const,
+      records: records.length,
+      alternatives: alternatives.length,
+      contextIndexedRecords: records.filter(record => Boolean(record.contextKey)).length,
+      distinctContextKeys: new Set(records.map(record => record.contextKey).filter(Boolean)).size,
+      reviewEligible: alternatives.filter(alternative => alternative.reviewEligible).length,
+      verifiedOutcomes: records.filter(hasVerifiedOutcome).length,
+      independentOutcomes: records.filter(hasIndependentOutcome).length,
+      reviewGradeOutcomes: records.filter(hasReviewGradeOutcome).length,
+      awaitingIndependentEvidence: records.filter(record => hasVerifiedOutcome(record) && !hasIndependentOutcome(record)).length,
+      reopened: alternatives.filter(alternative => alternative.reopenedAt !== undefined).length,
+      totalRecorded: this.state.totalRecorded,
+      pruned: this.state.pruned,
+      lastAt: this.state.lastAt,
+      reviewPolicy: {
+        minimumVerification01: MIN_REVIEW_VERIFICATION01,
+        minimumIndependence01: MIN_REVIEW_INDEPENDENCE01,
+      },
+      bounded: records.length <= MAX_RECORDS && records.every(record => record.alternatives.length <= MAX_ALTERNATIVES),
+    };
+  }
+}
