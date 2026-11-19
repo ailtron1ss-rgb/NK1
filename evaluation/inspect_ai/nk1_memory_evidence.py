@@ -60,6 +60,65 @@ def _interval(values: list[float], samples: int, seed: int) -> dict[str, float |
     }
 
 
+def _cluster_interval(
+    values: list[float],
+    group_digests: list[str],
+    samples: int,
+    seed: int,
+) -> dict[str, float | int | str]:
+    """Paired bootstrap that resamples complete source groups, not correlated queries."""
+    if len(values) != len(group_digests):
+        raise ValueError("memory-cluster-bootstrap-pair-length-mismatch")
+    groups: dict[str, list[float]] = {}
+    for value, group_digest in zip(values, group_digests):
+        if not _valid_digest(group_digest):
+            raise ValueError("memory-cluster-bootstrap-group-digest-invalid")
+        groups.setdefault(group_digest, []).append(float(value))
+    group_rows = list(groups.values())
+    cluster_count = len(group_rows)
+    if not cluster_count:
+        return {
+            "samples": 0,
+            "clusterCount": 0,
+            "resamplingUnit": "independenceGroupDigest",
+            "lowerBound01": 0.0,
+            "medianDelta01": 0.0,
+            "upperBound01": 0.0,
+        }
+
+    count = max(200, min(5000, int(samples)))
+    state = (int(seed) & 0xFFFFFFFF) or 0x6D2B79F5
+    deltas: list[float] = []
+    for _ in range(count):
+        total = 0.0
+        rows_drawn = 0
+        for _ in range(cluster_count):
+            state ^= (state << 13) & 0xFFFFFFFF
+            state ^= state >> 17
+            state ^= (state << 5) & 0xFFFFFFFF
+            state &= 0xFFFFFFFF
+            index = int((state / 4294967296.0) * cluster_count)
+            for value in group_rows[index]:
+                total += value
+                rows_drawn += 1
+        deltas.append(total / rows_drawn if rows_drawn else 0.0)
+
+    deltas.sort()
+
+    def at(percentile: float) -> float:
+        index = min(len(deltas) - 1, max(0, int((len(deltas) - 1) * percentile)))
+        return round(deltas[index], 4)
+
+    return {
+        "samples": count,
+        "clusterCount": cluster_count,
+        "resamplingUnit": "independenceGroupDigest",
+        "lowerBound01": at(0.025),
+        "medianDelta01": at(0.5),
+        "upperBound01": at(0.975),
+    }
+
+
 def _rank_metrics(rows: list[dict[str, Any]], arm_key: str, corpus_ids: set[str]) -> dict[str, Any]:
     answerable_outcomes: list[tuple[float, float]] = []
     unsupported: list[float] = []
@@ -199,20 +258,25 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         return {"valid": False, "promotionEligible": False, "reason": "memory-thresholds-invalid"}
 
     train_keys: dict[str, set[str]] = {language: set() for language in LANGUAGES}
+    train_independence_group_digests: set[str] = set()
+    holdout_independence_group_digests: set[str] = set()
+    holdout_groups_by_language: dict[str, dict[str, set[str]]] = {
+        language: {"answerable": set(), "unanswerable": set()} for language in LANGUAGES
+    }
     train_ids: set[str] = set()
     rows_by_language: dict[str, list[dict[str, Any]]] = {language: [] for language in LANGUAGES}
+    valid_holdout_rows: list[dict[str, Any]] = []
     all_train_query_digests: set[str] = set()
     all_holdout_query_digests: set[str] = set()
     all_example_ids: set[str] = set()
-    train_duplicate_query = False
-    holdout_duplicate_query = False
     malformed = 0
 
     for row in train:
         if not isinstance(row, dict) or row.get("split") != "train" or row.get("language") not in LANGUAGES:
             malformed += 1
             continue
-        if not _valid_digest(row.get("queryDigest")) or not _valid_digest(row.get("exampleIdDigest")):
+        if not _valid_digest(row.get("queryDigest")) or not _valid_digest(row.get("exampleIdDigest")) \
+            or not _valid_digest(row.get("independenceGroupDigest")):
             malformed += 1
             continue
         query_digest = row["queryDigest"]
@@ -225,12 +289,14 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         all_example_ids.add(example_id)
         train_ids.add(example_id)
         train_keys[row["language"]].add(query_digest)
+        train_independence_group_digests.add(row["independenceGroupDigest"])
 
     for row in holdout:
         if not isinstance(row, dict) or row.get("split") != "holdout" or row.get("language") not in LANGUAGES:
             malformed += 1
             continue
-        if not _valid_digest(row.get("queryDigest")) or not _valid_digest(row.get("exampleIdDigest")):
+        if not _valid_digest(row.get("queryDigest")) or not _valid_digest(row.get("exampleIdDigest")) \
+            or not _valid_digest(row.get("independenceGroupDigest")):
             malformed += 1
             continue
         query_digest = row["queryDigest"]
@@ -270,10 +336,18 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         if not valid_row:
             malformed += 1
             continue
+        group_digest = row["independenceGroupDigest"]
+        holdout_independence_group_digests.add(group_digest)
+        group_class = "answerable" if answerable else "unanswerable"
+        holdout_groups_by_language[row["language"]][group_class].add(group_digest)
         rows_by_language[row["language"]].append(row)
+        valid_holdout_rows.append(row)
 
     train_holdout_query_leakage = bool(all_train_query_digests.intersection(all_holdout_query_digests))
-    if train_holdout_query_leakage:
+    train_holdout_independence_group_leakage = bool(
+        train_independence_group_digests.intersection(holdout_independence_group_digests)
+    )
+    if train_holdout_query_leakage or train_holdout_independence_group_leakage:
         malformed += 1
 
     language_reports: dict[str, Any] = {}
@@ -286,6 +360,8 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         candidate = _rank_metrics(rows, "candidateRankedMemory", corpus_ids)
         answerable_count = candidate["answerableQueries"]
         unanswerable_count = candidate["unanswerableQueries"]
+        independent_answerable_groups = len(holdout_groups_by_language[language]["answerable"])
+        independent_unanswerable_groups = len(holdout_groups_by_language[language]["unanswerable"])
         recall_delta = round(candidate["recallAtK01"] - baseline["recallAtK01"], 4)
         mrr_delta = round(candidate["mrr01"] - baseline["mrr01"], 4)
         unsupported_delta = round(candidate["unsupportedRetrievalRate01"] - baseline["unsupportedRetrievalRate01"], 4)
@@ -301,18 +377,20 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
             candidate["unsupportedOutcomes"][index] - baseline["unsupportedOutcomes"][index]
             for index in range(min(len(candidate["unsupportedOutcomes"]), len(baseline["unsupportedOutcomes"])))
         ]
+        recall_group_digests = [row["independenceGroupDigest"] for row in rows if row["answerable"]]
+        unsupported_group_digests = [row["independenceGroupDigest"] for row in rows if not row["answerable"]]
 
-        # Match NK1's separate EN/RU bootstrap streams, while recomputing them
-        # from the hashed per-query paired outcomes rather than trusting report gates.
+        # Match NK1's separate EN/RU bootstrap streams, while independently resampling
+        # complete HMAC-identified source groups rather than correlated individual queries.
         language_seed_xor = 0x13579BDF if language == "en" else 0x2468ACE0
         recall_intervals = []
         mrr_intervals = []
         unsupported_intervals = []
         for seed in seeds:
             language_seed = ((seed ^ language_seed_xor) & 0xFFFFFFFF) or 1
-            recall_intervals.append(_interval(recall_deltas, bootstrap_samples, language_seed))
-            mrr_intervals.append(_interval(mrr_deltas, bootstrap_samples, language_seed ^ 0x9E3779B9))
-            unsupported_intervals.append(_interval(unsupported_deltas, bootstrap_samples, language_seed ^ 0x85EBCA6B))
+            recall_intervals.append(_cluster_interval(recall_deltas, recall_group_digests, bootstrap_samples, language_seed))
+            mrr_intervals.append(_cluster_interval(mrr_deltas, recall_group_digests, bootstrap_samples, language_seed ^ 0x9E3779B9))
+            unsupported_intervals.append(_cluster_interval(unsupported_deltas, unsupported_group_digests, bootstrap_samples, language_seed ^ 0x85EBCA6B))
 
         recall_confident = all(float(interval["lowerBound01"]) > 0 for interval in recall_intervals)
         mrr_noninferior = all(float(interval["lowerBound01"]) >= -max_mrr_regression for interval in mrr_intervals)
@@ -326,6 +404,9 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
             "sufficientTrainQueries": train_unique >= min_train,
             "sufficientAnswerableHoldoutQueries": answerable_count >= min_answerable,
             "sufficientUnanswerableHoldoutQueries": unanswerable_count >= min_unanswerable,
+            "sufficientIndependentAnswerableHoldoutGroups": independent_answerable_groups >= min_answerable,
+            "sufficientIndependentUnanswerableHoldoutGroups": independent_unanswerable_groups >= min_unanswerable,
+            "noTrainHoldoutIndependenceGroupLeakage": not train_holdout_independence_group_leakage,
             "minimumRecallUplift": recall_delta >= min_uplift,
             "recallUpliftConfidenceSupported": recall_confident,
             "mrrPointEstimateNonInferior": mrr_delta >= -max_mrr_regression,
@@ -338,15 +419,23 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         }
         language_eligible = all(gates.values())
         all_single_run_eligible = all_single_run_eligible and language_eligible
-        all_language_structural = all_language_structural and paired_valid and not language_leakage
+        all_language_structural = (
+            all_language_structural and paired_valid and not language_leakage
+            and not train_holdout_independence_group_leakage
+        )
         language_reports[language] = {
             "trainQueries": train_unique,
             "answerableHoldoutQueries": answerable_count,
             "unanswerableHoldoutQueries": unanswerable_count,
+            "independentAnswerableHoldoutGroups": independent_answerable_groups,
+            "independentUnanswerableHoldoutGroups": independent_unanswerable_groups,
             "baseline": {key: baseline[key] for key in ("recallAtK01", "mrr01", "unsupportedRetrievalRate01")},
             "candidate": {key: candidate[key] for key in ("recallAtK01", "mrr01", "unsupportedRetrievalRate01")},
             "deltas": {"recallAtK01": recall_delta, "mrr01": mrr_delta, "unsupportedRetrievalRate01": unsupported_delta},
             "pairedBootstrap": {
+                "resamplingUnit": "independenceGroupDigest",
+                "recallClusterCount": recall_intervals[0]["clusterCount"],
+                "unsupportedClusterCount": unsupported_intervals[0]["clusterCount"],
                 "recallLowerBoundMin01": min(float(value["lowerBound01"]) for value in recall_intervals),
                 "recallPracticalUpliftAcrossSeeds": all(float(value["lowerBound01"]) >= min_uplift for value in recall_intervals),
                 "mrrLowerBoundMin01": min(float(value["lowerBound01"]) for value in mrr_intervals),
@@ -358,8 +447,8 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
             "promotionEligible": language_eligible,
         }
 
-    baseline_all = _rank_metrics(holdout, "baselineRankedMemory", corpus_ids)
-    candidate_all = _rank_metrics(holdout, "candidateRankedMemory", corpus_ids)
+    baseline_all = _rank_metrics(valid_holdout_rows, "baselineRankedMemory", corpus_ids)
+    candidate_all = _rank_metrics(valid_holdout_rows, "candidateRankedMemory", corpus_ids)
     aggregate_recall_deltas = [
         candidate_all["recallOutcomes"][index] - baseline_all["recallOutcomes"][index]
         for index in range(min(len(candidate_all["recallOutcomes"]), len(baseline_all["recallOutcomes"])))
@@ -372,9 +461,20 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         candidate_all["unsupportedOutcomes"][index] - baseline_all["unsupportedOutcomes"][index]
         for index in range(min(len(candidate_all["unsupportedOutcomes"]), len(baseline_all["unsupportedOutcomes"])))
     ]
-    aggregate_recall_intervals = [_interval(aggregate_recall_deltas, bootstrap_samples, seed) for seed in seeds]
-    aggregate_mrr_intervals = [_interval(aggregate_mrr_deltas, bootstrap_samples, seed ^ 0x9E3779B9) for seed in seeds]
-    aggregate_unsupported_intervals = [_interval(aggregate_unsupported_deltas, bootstrap_samples, seed ^ 0x85EBCA6B) for seed in seeds]
+    aggregate_recall_group_digests = [row["independenceGroupDigest"] for row in valid_holdout_rows if row["answerable"]]
+    aggregate_unsupported_group_digests = [row["independenceGroupDigest"] for row in valid_holdout_rows if not row["answerable"]]
+    aggregate_recall_intervals = [
+        _cluster_interval(aggregate_recall_deltas, aggregate_recall_group_digests, bootstrap_samples, seed)
+        for seed in seeds
+    ]
+    aggregate_mrr_intervals = [
+        _cluster_interval(aggregate_mrr_deltas, aggregate_recall_group_digests, bootstrap_samples, seed ^ 0x9E3779B9)
+        for seed in seeds
+    ]
+    aggregate_unsupported_intervals = [
+        _cluster_interval(aggregate_unsupported_deltas, aggregate_unsupported_group_digests, bootstrap_samples, seed ^ 0x85EBCA6B)
+        for seed in seeds
+    ]
 
     answerable_total = candidate_all["answerableQueries"]
     unanswerable_total = candidate_all["unanswerableQueries"]
@@ -394,6 +494,7 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         "abstentionConfidenceNonInferioritySupported": all(float(value["upperBound01"]) <= max_unsupported_regression for value in aggregate_unsupported_intervals),
         "pairedArmsAreStructurallyValid": baseline_all["valid"] and candidate_all["valid"],
         "noTrainHoldoutQueryLeakage": not train_holdout_query_leakage,
+        "noTrainHoldoutIndependenceGroupLeakage": not train_holdout_independence_group_leakage,
     }
     all_single_run_eligible = all_single_run_eligible and all(aggregate_gates.values())
 
@@ -410,12 +511,19 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         "retrievalMetricsDeterministicAcrossSeeds": deterministic,
         "datasetCorpusAndRetrievalConfigurationFingerprintsStableAcrossSeeds": fingerprints_stable,
         "englishAndRussianHoldoutEligible": all_single_run_eligible and all_language_structural,
+        "independentHoldoutSourceGroups": all(
+            language_reports[language]["gates"]["sufficientIndependentAnswerableHoldoutGroups"]
+            and language_reports[language]["gates"]["sufficientIndependentUnanswerableHoldoutGroups"]
+            for language in LANGUAGES
+        ),
+        "noTrainHoldoutIndependenceGroupLeakage": not train_holdout_independence_group_leakage,
     }
     valid = (
         malformed == 0
         and all_language_structural
         and aggregate_gates["pairedArmsAreStructurallyValid"]
         and aggregate_gates["noTrainHoldoutQueryLeakage"]
+        and not train_holdout_independence_group_leakage
     )
     promotion_eligible = valid and all(gates.values())
     return {
@@ -431,6 +539,9 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
             "candidate": {key: candidate_all[key] for key in ("recallAtK01", "mrr01", "unsupportedRetrievalRate01")},
             "deltas": {"recallAtK01": aggregate_recall_delta, "mrr01": aggregate_mrr_delta, "unsupportedRetrievalRate01": aggregate_unsupported_delta},
             "pairedBootstrap": {
+                "resamplingUnit": "independenceGroupDigest",
+                "recallClusterCount": aggregate_recall_intervals[0]["clusterCount"],
+                "unsupportedClusterCount": aggregate_unsupported_intervals[0]["clusterCount"],
                 "recallLowerBoundMin01": min(float(value["lowerBound01"]) for value in aggregate_recall_intervals),
                 "practicalUpliftSupportedAcrossAllSeeds": aggregate_gates["practicalRecallUpliftAcrossSeeds"],
                 "mrrLowerBoundMin01": min(float(value["lowerBound01"]) for value in aggregate_mrr_intervals),
@@ -525,6 +636,7 @@ def build_ci_fixture_report() -> dict[str, Any]:
         for index in range(4):
             train.append({
                 "exampleIdDigest": fixture_digest(f"{language}-train-id-{index}"),
+                "independenceGroupDigest": fixture_digest(f"{language}-train-source-{index}"),
                 "queryDigest": fixture_digest(f"{language}-train-query-{index}"),
                 "language": language,
                 "split": "train",
@@ -533,6 +645,7 @@ def build_ci_fixture_report() -> dict[str, Any]:
             target = corpus_ids[index + (0 if language == "en" else 20)]
             holdout.append({
                 "exampleIdDigest": fixture_digest(f"{language}-answerable-id-{index}"),
+                "independenceGroupDigest": fixture_digest(f"{language}-answerable-source-{index}"),
                 "queryDigest": fixture_digest(f"{language}-answerable-query-{index}"),
                 "language": language,
                 "split": "holdout",
@@ -551,6 +664,7 @@ def build_ci_fixture_report() -> dict[str, Any]:
         for index in range(8):
             holdout.append({
                 "exampleIdDigest": fixture_digest(f"{language}-unanswerable-id-{index}"),
+                "independenceGroupDigest": fixture_digest(f"{language}-unanswerable-source-{index}"),
                 "queryDigest": fixture_digest(f"{language}-unanswerable-query-{index}"),
                 "language": language,
                 "split": "holdout",
