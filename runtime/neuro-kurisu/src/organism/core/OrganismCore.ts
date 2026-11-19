@@ -1173,7 +1173,14 @@ export class OrganismCore {
     private readonly adaptiveMemoryStrategyReadout = new AdaptiveMemoryStrategyReadout();
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
     /** Owns general cognitive/runtime services; Core remains the orchestration spine. */
-    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272 });
+    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({
+        organismSystems: this.organismSystems,
+        p61IntegratedMind: this.organismSystems.self.p61IntegratedMind,
+        p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics,
+        endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272,
+        resolveCanonicalGoal: (goalId) => this.persisted.goals.some((goal) => goal.id === goalId),
+        resolveCanonicalDecision: (decisionId) => this.persisted.traces.some((trace) => trace.id === decisionId && Boolean(trace.selected)),
+    });
     /** Owns mutable persistence/continuity machinery; Core supplies orchestration decisions. */
     private readonly persistence = new PersistenceRuntime();
     /** Selected WILL contracts are owned by the composition fabric; Core only orchestrates them. */
@@ -1497,7 +1504,12 @@ export class OrganismCore {
         this.cognitiveRuntime.developmentalForks.restore(this.persisted.facets.advanced.developmentalForks);
         this.cognitiveRuntime.relationshipSelf.restore(this.persisted.facets.advanced.relationshipSelf);
         this.cognitiveRuntime.multiHypothesisPersonality.restore(this.persisted.facets.advanced.multiHypothesisPersonality);
-        this.cognitiveRuntime.futureSimulator.restore(this.persisted.facets.advanced.futureSimulator);
+        this.cognitiveRuntime.futureSimulator.restore(this.persisted.facets.advanced.futureSimulator, {
+             validateIndependentlyVerifiedOutcome: (outcome) => this.validateSharedFutureOutcomeEvidence(outcome),
+         });
+        // Persist the sanitized/downgraded Shared Future snapshot, never keep a stale
+        // independentlyVerified claim that failed revalidation during restore.
+        this.persisted.facets.advanced.futureSimulator = this.cognitiveRuntime.futureSimulator.snapshot();
         this.cognitiveRuntime.longTermSocialMind.restore(this.persisted.facets.advanced.longTermSocialMind);
         this.cognitiveRuntime.futureSelf.restore(this.persisted.facets.advanced.futureSelf);
         this.cognitiveRuntime.socialDevelopment.restore(this.persisted.facets.advanced.socialDevelopment);
@@ -5118,6 +5130,7 @@ export class OrganismCore {
         if (socialPredictionState.socialPredictionError > 0.55) {
             this.cognitiveRuntime.cognitiveField.addPressure('social', 'social prediction uncertainty requires clarification', socialPredictionState.socialPredictionError, ['social-development'], 0.04);
         }
+        this.cognitiveRuntime.futureSimulator.sharedFuture.refresh(state.at);
         const derivedPreview = this.organismSystems.world.derivedWorldPreviewCache.getOrRefresh(this.worldSubsystem.worldModel2, this.cognitiveRuntime.futureSimulator, {
             tick: state.tick,
             worldContextVersion: state.worldContextVersion,
@@ -11853,7 +11866,172 @@ export class OrganismCore {
     externalObserverSnapshot() { return this.evidenceResearchSubsystem.externalObserver.snapshot(); }
     externalObserverSummary() { return this.evidenceResearchSubsystem.externalObserver.summary(); }
     reconcileExternalClaim(claimKey: string, expectedPostcondition?: string) { return structuredClone(this.evidenceResearchSubsystem.externalObserver.reconcileClaim(claimKey, expectedPostcondition)); }
-    async ingestExternalObservation(input: Parameters<import('../system/ExternalObserverFabric.ts').ExternalObserverFabric['observe']>[0] & {
+        private recordSharedFutureActionExecutionBinding(input: {
+        executionId: string;
+        toolId: string;
+        actionDecisionId: string;
+        sharedFutureDecisionId: string;
+        scenarioId: string;
+        consequenceId: string;
+        expectedPostcondition: string;
+        inputHash: string;
+        outcomeClass: string;
+        autonomous: boolean;
+        recordedAt: number;
+    }): void {
+        const system = this.persisted.system as any;
+        const prior = system.sharedFutureActionBindings;
+        const records: any[] = Array.isArray(prior?.records) && prior.records.length <= 512
+            ? prior.records.filter((row: any) => row && typeof row === 'object' && typeof row.executionId === 'string')
+            : [];
+        if (Array.isArray(prior?.records) && prior.records.length > 512) {
+            // Corrupt/oversized correlation state fails closed; do not trim evidence
+            // and accidentally keep a later claimant while losing an earlier link.
+            system.sharedFutureActionBindings = {
+                version: 1,
+                records: [],
+                overflow: Math.max(0, Math.floor(Number(prior?.overflow) || 0)) + 1,
+                quarantined: true,
+            };
+            return;
+        }
+        const existing = records.filter((row) => row.executionId === input.executionId);
+        if (existing.length) {
+            // Replays are idempotent. A second decision/tool may never rebind the same
+            // execution receipt; conflicting rows make lookup fail closed.
+            return;
+        }
+        if (records.length >= 512) {
+            system.sharedFutureActionBindings = {
+                version: 1,
+                records,
+                overflow: Math.max(0, Math.floor(Number(prior?.overflow) || 0)) + 1,
+            };
+            return;
+        }
+        const row = {
+            ...input,
+            id: 'sf-action-link:' + sha256Stable({
+                executionId: input.executionId,
+                toolId: input.toolId,
+                actionDecisionId: input.actionDecisionId,
+                sharedFutureDecisionId: input.sharedFutureDecisionId,
+            }).slice(0, 48),
+        };
+        system.sharedFutureActionBindings = {
+            version: 1,
+            records: [...records, row],
+            overflow: Math.max(0, Math.floor(Number(prior?.overflow) || 0)),
+        };
+    }
+
+    private findSharedFutureActionExecutionBinding(
+        executionId: string,
+        toolId: string,
+        actionDecisionId: string,
+    ): {
+        sharedFutureDecisionId: string;
+        scenarioId: string;
+        consequenceId: string;
+        expectedPostcondition: string;
+        inputHash: string;
+        outcomeClass: string;
+        autonomous: boolean;
+    } | null {
+        const state = (this.persisted.system as any)?.sharedFutureActionBindings;
+        if (state?.quarantined === true || !Array.isArray(state?.records) || state.records.length > 512) return null;
+        // Execution IDs are unique identities. A second row for the same
+        // execution is a conflict even when only one row matches the caller's
+        // requested decision/tool pair.
+        const rows = state.records.filter((row: any) =>
+            row && typeof row === 'object' && row.executionId === executionId
+        );
+        if (rows.length !== 1) return null;
+        const row = rows[0];
+        if (row.toolId !== toolId || row.actionDecisionId !== actionDecisionId) return null;
+        if (!row.sharedFutureDecisionId || !row.scenarioId || !row.consequenceId ||
+            !row.expectedPostcondition || !/^[a-f0-9]{64}$/i.test(String(row.inputHash ?? '')) ||
+            !['executed-unverified', 'executed-verified'].includes(String(row.outcomeClass)) ||
+            typeof row.autonomous !== 'boolean') return null;
+        return {
+            sharedFutureDecisionId: row.sharedFutureDecisionId,
+            scenarioId: row.scenarioId,
+            consequenceId: row.consequenceId,
+            expectedPostcondition: row.expectedPostcondition,
+            inputHash: row.inputHash,
+            outcomeClass: row.outcomeClass,
+            autonomous: row.autonomous,
+        };
+    }
+
+private validateSharedFutureOutcomeEvidence(
+         outcome: import('../developmental/SharedFutureEngine.ts').SharedFutureOutcomeRecord,
+     ): boolean {
+         try {
+             if (outcome.authority !== 'independent-external') return false;
+             const actionDecisionId = String(outcome.actionDecisionId ?? '');
+             const toolId = String(outcome.actionToolId ?? '');
+             const executionId = String(outcome.executionId ?? '');
+             const observationId = String(outcome.observationId ?? '');
+             const expectedPostcondition = String(outcome.expectedPostcondition ?? '');
+             const observedPostcondition = String(outcome.observedPostcondition ?? '');
+             const direction = outcome.outcomeDirection;
+             if (!actionDecisionId || !toolId || !executionId || !observationId || !expectedPostcondition || !observedPostcondition) return false;
+             if (direction !== 'confirmed' && direction !== 'contradicted') return false;
+             if (outcome.evidenceRef !== 'external-observation:' + observationId) return false;
+             const actionLink = this.findSharedFutureActionExecutionBinding(executionId, toolId, actionDecisionId);
+             if (!actionLink || actionLink.sharedFutureDecisionId !== outcome.sharedFutureDecisionId ||
+                 actionLink.scenarioId !== outcome.scenarioId || actionLink.consequenceId !== outcome.consequenceId ||
+                 actionLink.expectedPostcondition !== expectedPostcondition) return false;
+
+             const normalize = (value: unknown) => String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+             const savedFuture = (this.persisted.facets.advanced.futureSimulator as any)?.sharedFuture;
+             const sharedDecision = Array.isArray(savedFuture?.decisions)
+                 ? savedFuture.decisions.find((row: any) => row.id === outcome.sharedFutureDecisionId)
+                 : undefined;
+             if (!sharedDecision || sharedDecision.status !== 'accepted' || sharedDecision.scenarioId !== outcome.scenarioId) return false;
+             const binding = sharedDecision.actionBinding;
+             if (!binding || binding.decisionId !== actionDecisionId || binding.toolId !== toolId ||
+                 binding.consequenceId !== outcome.consequenceId ||
+                 normalize(binding.expectedPostcondition) !== normalize(expectedPostcondition)) return false;
+             if (!this.persisted.traces.some((trace) => trace.id === actionDecisionId && Boolean(trace.selected))) return false;
+
+             const projection = this.cognitiveRuntime.outcomeCognition.snapshot().records.find(
+                 (row) => row.executionId === executionId && row.tool === toolId,
+             );
+             if (!projection || !Array.isArray(projection.externalObservations)) return false;
+             const allowed = new Set(['os', 'device', 'user', 'external-api', 'world']);
+             const evidenceIds = [...new Set(outcome.evidenceObservationIds ?? [])];
+             if (!evidenceIds.includes(observationId) || evidenceIds.length < (direction === 'confirmed' ? 1 : 2)) return false;
+             const evidence = evidenceIds.map((id) => projection.externalObservations!.find((row) => row.observationId === id));
+             if (evidence.some((row) => !row)) return false;
+             const verifiedRows = evidence.filter((row): row is NonNullable<typeof row> => {
+                 if (!row || !allowed.has(String(row.sourceClass)) || !row.independenceKey || !row.sourceId) return false;
+                 if (normalize(row.expectedPostcondition) !== normalize(expectedPostcondition) ||
+                     normalize(row.observedPostcondition) !== normalize(observedPostcondition) ||
+                     Number(row.confidence01) < 0.72) return false;
+                 return direction === 'confirmed'
+                     ? row.assessment === 'match' && row.verified === true
+                     : row.assessment === 'mismatch' && row.verified === false;
+             });
+             const independenceKeys = new Set(verifiedRows.map((row) => row.independenceKey));
+             const minimum = direction === 'confirmed' ? 1 : 2;
+             if (independenceKeys.size < minimum || independenceKeys.size !== outcome.independentSourceCount) return false;
+             if (outcome.confidence01 === undefined || outcome.confidence01 < 0.68 ||
+                 outcome.independent01 === undefined || outcome.independent01 < (direction === 'confirmed' ? 0.5 : 1)) return false;
+             if (verifiedRows.some((row) => !(outcome.sourceIds ?? []).includes(String(row.sourceId)) ||
+                 !(outcome.sourceClasses ?? []).includes(row.sourceClass as any) ||
+                 !(outcome.independenceKeys ?? []).includes(String(row.independenceKey)))) return false;
+             if (outcome.occurred !== (direction === 'confirmed')) return false;
+             const expectedBrier = Math.round(((outcome.forecastProbability01 - (outcome.occurred ? 1 : 0)) ** 2) * 1e12) / 1e12;
+             if (Math.abs(outcome.brierScore01 - expectedBrier) > 1e-12) return false;
+             return true;
+         } catch {
+             return false;
+         }
+     }
+
+     async ingestExternalObservation(input: Parameters<import('../system/ExternalObserverFabric.ts').ExternalObserverFabric['observe']>[0] & {
         expectedPostcondition?: string;
         /** Exact OrganismDecisionTrace.id; deliberately never inferred from actionRef/executionId. */
         decisionId?: string;
@@ -11873,6 +12051,10 @@ export class OrganismCore {
             eligible: boolean; reason: string; direction?: 'confirmed' | 'contradicted';
             decisionId?: string; assignments?: number; appliedDelayedAssignments?: number;
         } = null;
+        let sharedFutureOutcome: import('../developmental/SharedFutureEngine.ts').SharedFutureVerifiedExternalOutcomeResult | null = null;
+        const sharedFutureActionLink = input.actionRef && input.decisionId
+            ? this.findSharedFutureActionExecutionBinding(String(input.actionRef), input.tool ?? 'external-observation', input.decisionId)
+            : null;
         if (assessment && input.actionRef) {
             resolution = this.cognitiveRuntime.outcomeCognition.resolveExternalObservation({ tick: input.tick ?? this.persisted.state.tick, executionId: input.actionRef, tool: input.tool ?? 'external-observation', observationId: observation.id, verified: assessment.verified, confidence01: Math.min(assessment.confidence01, observation.confidence01), expectedPostcondition: assessment.expectedPostcondition, observedPostcondition: assessment.observedPostcondition, reason: assessment.reason, predictionId: observation.predictionId, assessment: assessment.assessment, sourceId: observation.sourceId, sourceClass: observation.sourceClass, independenceKey: observation.independenceKey });
             if (resolution.resolved) {
@@ -11922,9 +12104,57 @@ export class OrganismCore {
                 independenceKey: observation.independenceKey,
                 assessment,
                 reconciliation,
-                autonomous: input.autonomous,
+                autonomous: sharedFutureActionLink ? sharedFutureActionLink.autonomous : input.autonomous,
             });
             temporalReafference = { eligible: signal.eligible, reason: signal.reason, ...(signal.direction ? { direction: signal.direction } : {}), ...(signal.decisionId ? { decisionId: signal.decisionId } : {}) };
+            if (signal.eligible && signal.decisionId && signal.direction && sharedFutureActionLink &&
+                 sharedFutureActionLink.expectedPostcondition === assessment.expectedPostcondition &&
+                 this.persisted.traces.some((trace) => trace.id === signal.decisionId && Boolean(trace.selected))) {
+                const actionToolId = input.tool ?? 'external-observation';
+                const actionProjection = this.cognitiveRuntime.outcomeCognition.snapshot().records.find(
+                    (row) => row.executionId === input.actionRef && row.tool === actionToolId,
+                );
+                const sourceClassAllowed = (value: unknown): value is import('../developmental/SharedFutureEngine.ts').SharedFutureEvidenceSourceClass =>
+                    value === 'os' || value === 'device' || value === 'user' || value === 'external-api' || value === 'world';
+                const expectedCanonical = String(assessment.expectedPostcondition ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+                const observedCanonical = String(assessment.observedPostcondition ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+                const verifiedEvidence = (actionProjection?.externalObservations ?? []).filter((row) =>
+                    sourceClassAllowed(row.sourceClass) && Boolean(row.sourceId) && Boolean(row.independenceKey) &&
+                    Number(row.confidence01) >= 0.72 &&
+                    String(row.expectedPostcondition ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase() === expectedCanonical &&
+                    String(row.observedPostcondition ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase() === observedCanonical &&
+                    (signal.direction === 'confirmed' ? row.assessment === 'match' && row.verified === true : row.assessment === 'mismatch' && row.verified === false),
+                );
+                const independentKeys = new Set(verifiedEvidence.map((row) => String(row.independenceKey)));
+                const minimumEvidence = signal.direction === 'confirmed' ? 1 : 2;
+                if (verifiedEvidence.length > 0 && independentKeys.size >= minimumEvidence) {
+                    sharedFutureOutcome = this.cognitiveRuntime.futureSimulator.sharedFuture.recordVerifiedExternalOutcome({
+                        id: 'sf-outcome:' + sha256Stable({ decisionId: signal.decisionId, executionId: input.actionRef, observationId: observation.id, direction: signal.direction }).slice(0, 48),
+                        actionDecisionId: signal.decisionId,
+                        toolId: actionToolId,
+                        executionId: String(input.actionRef),
+                        observationId: observation.id,
+                        expectedPostcondition: assessment.expectedPostcondition,
+                        observedPostcondition: assessment.observedPostcondition,
+                        direction: signal.direction,
+                        confidence01: signal.verified01 ?? 0,
+                        independent01: signal.independent01 ?? 0,
+                        evidence: verifiedEvidence.map((row) => ({
+                            observationId: row.observationId,
+                            sourceId: row.sourceId ?? '',
+                            sourceClass: row.sourceClass as import('../developmental/SharedFutureEngine.ts').SharedFutureEvidenceSourceClass,
+                            independenceKey: row.independenceKey ?? '',
+                            confidence01: row.confidence01,
+                            assessment: row.assessment as 'match' | 'mismatch',
+                            verified: row.verified,
+                        })),
+                        at: observation.observedAt,
+                    });
+                    if (sharedFutureOutcome.recorded) {
+                        this.persisted.facets.advanced.futureSimulator = this.cognitiveRuntime.futureSimulator.snapshot();
+                    }
+                }
+            }
             if (signal.eligible && signal.decisionId) {
                 const temporal = this.cognitiveRuntime.canonicalTemporalCredit.resolveOutcome({
                     decisionId: signal.decisionId,
@@ -12095,7 +12325,7 @@ export class OrganismCore {
             changeSummary: `external-observation:${observation.id}`
         });
         if (options.checkpoint !== false) await this.checkpoint(true);
-        return { observation, assessment, reconciliation, predictionResolution, resolution, temporalReafference };
+        return { observation, assessment, reconciliation, predictionResolution, resolution, temporalReafference, sharedFutureOutcome };
     }
     private async finalizeToolOutcome(
         id: string,
@@ -12130,6 +12360,27 @@ export class OrganismCore {
         if (!wasToolExecutorEntered(result.outcomeClass) && result.outcomeClass !== 'reconciled-not-executed') {
             this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
             return;
+        }
+        // Record the canonical action/decision relation only at the trusted
+        // ActionGateway finalization boundary, never from external-observation input.
+        if ((result.outcomeClass === 'executed-unverified' || result.outcomeClass === 'executed-verified') &&
+            suppliedDecisionId && matchingDecisionTrace && result.executionId && result.tool === id) {
+            const sharedBinding = this.cognitiveRuntime.futureSimulator.sharedFuture.findActionBindingForCanonicalDecision(suppliedDecisionId);
+            if (sharedBinding) {
+                this.recordSharedFutureActionExecutionBinding({
+                    executionId: result.executionId,
+                    toolId: id,
+                    actionDecisionId: suppliedDecisionId,
+                    sharedFutureDecisionId: sharedBinding.sharedFutureDecisionId,
+                    scenarioId: sharedBinding.scenarioId,
+                    consequenceId: sharedBinding.binding.consequenceId,
+                    expectedPostcondition: sharedBinding.binding.expectedPostcondition,
+                    inputHash: sha256Stable(input),
+                    outcomeClass: result.outcomeClass,
+                    autonomous: options.autonomous === true,
+                    recordedAt: result.audit.at,
+                });
+            }
         }
         // A provider-authoritative receipt can prove that a pending command never
         // crossed the provider's acceptance boundary. Record that reconciliation,

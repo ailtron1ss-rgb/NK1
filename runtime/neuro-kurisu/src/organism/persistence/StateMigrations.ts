@@ -68,6 +68,10 @@ import { defaultB286State } from '../cognition/B286SelfConflictContinuityCore.ts
 import { defaultB287State } from '../cognition/B287RelationshipValueDevelopmentCore.ts';
 import { defaultB288State } from '../cognition/B288SocialPredictiveSelfOtherBrain.ts';
 import { defaultFutureSimulator } from '../developmental/FutureSimulator.ts';
+import type {
+  SharedFutureActionBindingsState,
+  SharedFutureActionExecutionBindingRecord,
+} from '../developmental/SharedFutureEngine.ts';
 import { defaultLongTermSocialMind } from '../developmental/LongTermSocialMind.ts';
 import { defaultSelfGovernance } from '../cognition/evolution/SelfGovernanceEngine.ts';
 import { defaultFutureSelf } from '../cognition/evolution/FutureSelfModel.ts';
@@ -194,6 +198,8 @@ export interface PersistedShapeCurrent {
     replaySignature: string;
     lastReplayAt: number;
     actionExecutionLedger?: import('../system/ActionGateway.ts').ActionExecutionLedgerSnapshot;
+    /** Durable, bounded linkage required to revalidate independent Shared Future outcomes after restart. */
+    sharedFutureActionBindings?: SharedFutureActionBindingsState;
     subjectIdentity: import('../core/types.ts').SubjectIdentityRecord;
     externalObserver?: import('../system/ExternalObserverFabric.ts').ExternalObserverState;
     evolution: any;
@@ -484,6 +490,85 @@ function normalizeAdvancedResilienceState(raw:any, fallback:any) {
     timeCapsules:{...fallback.timeCapsules,...(raw?.timeCapsules??{}),capsules:Array.isArray(raw?.timeCapsules?.capsules)?raw.timeCapsules.capsules.slice(0,52):[]},
     counterfactualForks:{...fallback.counterfactualForks,...(raw?.counterfactualForks??{}),forks:Array.isArray(raw?.counterfactualForks?.forks)?raw.counterfactualForks.forks.slice(0,128):[]},
   };
+}
+
+
+const MAX_SHARED_FUTURE_ACTION_BINDINGS = 512;
+
+function migrateSharedFutureActionBindings(value: unknown): SharedFutureActionBindingsState {
+  const empty = (): SharedFutureActionBindingsState => ({ version: 1, records: [], overflow: 0 });
+  const finiteOverflow = (candidate: unknown): number =>
+    Number.isSafeInteger(candidate) && Number(candidate) >= 0
+      ? Math.min(Number(candidate), 1_000_000_000)
+      : 0;
+  const quarantined = (overflow: number): SharedFutureActionBindingsState => ({
+    version: 1,
+    records: [],
+    overflow: Math.min(1_000_000_000, overflow + 1),
+    quarantined: true,
+  });
+
+  // Snapshots predating Shared Future execution bindings remain valid; they
+  // simply cannot independently verify an outcome whose correlation is absent.
+  if (value === undefined || value === null) return empty();
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return quarantined(0);
+  const source = value as Record<string, unknown>;
+  const overflow = finiteOverflow(source.overflow);
+  if (source.version !== 1 || !Array.isArray(source.records)) return quarantined(overflow);
+  if (source.quarantined === true) return { version: 1, records: [], overflow, quarantined: true };
+  if (source.records.length > MAX_SHARED_FUTURE_ACTION_BINDINGS) return quarantined(overflow);
+
+  const records: SharedFutureActionExecutionBindingRecord[] = [];
+  const seenExecutionIds = new Set<string>();
+  for (const raw of source.records) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return quarantined(overflow);
+    const row = raw as Record<string, unknown>;
+    const text = (key: string, max: number): string | null => {
+      const candidate = row[key];
+      if (typeof candidate !== 'string') return null;
+      const clean = candidate.trim();
+      return clean.length > 0 && clean.length <= max && !/[\u0000-\u001f\u007f]/.test(clean)
+        ? clean
+        : null;
+    };
+    const id = text('id', 128);
+    const executionId = text('executionId', 180);
+    const toolId = text('toolId', 64);
+    const actionDecisionId = text('actionDecisionId', 180);
+    const sharedFutureDecisionId = text('sharedFutureDecisionId', 96);
+    const scenarioId = text('scenarioId', 96);
+    const consequenceId = text('consequenceId', 96);
+    const expectedPostcondition = text('expectedPostcondition', 1024);
+    const inputHash = text('inputHash', 64);
+    const outcomeClass = row.outcomeClass;
+    const recordedAt = Number(row.recordedAt);
+    if (!id || !executionId || !toolId || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{1,63}$/.test(toolId) ||
+        !actionDecisionId || !sharedFutureDecisionId || !scenarioId || !consequenceId ||
+        !expectedPostcondition || !inputHash || !/^[a-f0-9]{64}$/i.test(inputHash) ||
+        (outcomeClass !== 'executed-unverified' && outcomeClass !== 'executed-verified') ||
+        typeof row.autonomous !== 'boolean' || !Number.isFinite(recordedAt) || recordedAt < 0) {
+      return quarantined(overflow);
+    }
+    // A duplicate execution identity is ambiguous, even when the two rows
+    // claim different tools or decisions. Do not silently choose a winner.
+    if (seenExecutionIds.has(executionId)) return quarantined(overflow);
+    seenExecutionIds.add(executionId);
+    records.push({
+      id,
+      executionId,
+      toolId,
+      actionDecisionId,
+      sharedFutureDecisionId,
+      scenarioId,
+      consequenceId,
+      expectedPostcondition,
+      inputHash: inputHash.toLowerCase(),
+      outcomeClass,
+      autonomous: row.autonomous,
+      recordedAt: Math.floor(recordedAt),
+    });
+  }
+  return { version: 1, records, overflow };
 }
 
 export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent {
@@ -1204,6 +1289,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
       actionExecutionLedger: raw.system?.actionExecutionLedger && Array.isArray(raw.system.actionExecutionLedger.records)
         ? { version:1, records:raw.system.actionExecutionLedger.records.slice(-128), ...(raw.system.actionExecutionLedger.permissions && typeof raw.system.actionExecutionLedger.permissions==='object' ? { permissions:raw.system.actionExecutionLedger.permissions } : {}) }
         : { version:1, records:[] },
+      sharedFutureActionBindings: migrateSharedFutureActionBindings(raw.system?.sharedFutureActionBindings),
       subjectIdentity: ensureSubjectIdentity({ subjectIdentity: raw.system?.subjectIdentity } as any),
       evolution:raw.system?.evolution ?? {version:1,stage:'emergence',intrinsicProjectCycles:0,selfAuthoredActions:0,valueRevisionCycles:0,identitySamples:0,replaySignature:'',lastReplayAt:0},
       advancedProjectionSchedule: raw.system?.advancedProjectionSchedule,

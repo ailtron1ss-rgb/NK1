@@ -70,6 +70,7 @@ import { DevelopmentalForks, defaultDevelopmentalForks } from '../developmental/
 import { RelationshipSelf, defaultRelationshipSelf } from '../developmental/RelationshipSelf.ts';
 import { MultiHypothesisPersonality, defaultMultiHypothesisPersonality } from '../developmental/MultiHypothesisPersonality.ts';
 import { FutureSimulator, defaultFutureSimulator } from '../developmental/FutureSimulator.ts';
+import { registerSharedFutureTools } from '../developmental/SharedFutureEngine.ts';
 import { LongTermSocialMind, defaultLongTermSocialMind } from '../developmental/LongTermSocialMind.ts';
 import { FutureSelfModel, defaultFutureSelf } from '../cognition/evolution/FutureSelfModel.ts';
 import { SocialDevelopmentSystem, defaultSocialDevelopment } from '../developmental/SocialDevelopmentSystem.ts';
@@ -180,6 +181,8 @@ export class CognitiveRuntimeCluster {
     p61IntegratedMind: P61IntegratedMindKernel;
     p64IntegratedOrganismDynamics: P64IntegratedOrganismDynamics;
     endogenousGoalGenesisB272: B272EndogenousGoalGenesis;
+    resolveCanonicalGoal?: (goalId: string) => boolean;
+    resolveCanonicalDecision?: (decisionId: string) => boolean;
   }) {
     this.intrinsicMotivationGoalCoupling = new IntrinsicMotivationGoalCoupling(
       this.intrinsicMotivation,
@@ -187,5 +190,11 @@ export class CognitiveRuntimeCluster {
     );
     this.cognitiveKernelCoordinator = new CognitiveKernelCoordinator(input.p61IntegratedMind, input.p64IntegratedOrganismDynamics);
     this.cognitiveSubsystemRegistry = new CognitiveSubsystemRegistry(input.organismSystems);
+    registerSharedFutureTools(
+      this.actionGateway,
+      this.futureSimulator,
+      input.resolveCanonicalGoal,
+      input.resolveCanonicalDecision,
+    );
   }
 }
