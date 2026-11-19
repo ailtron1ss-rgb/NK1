@@ -48,3 +48,17 @@ A ref can be proposed for removal only after all of the following are attached t
 - Open PR dependencies are identified for every affected group.
 - Three old shared tips are confirmed ancestors of current source.
 - No branch ref is deleted or force-updated by this review.
+
+
+## Live refresh after PR #954 — 2026-11-19
+
+The earlier table is the disposition of the earlier 12-group snapshot. On the latest current listing, the only remaining exact duplicate group is SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` with 17 refs. Current open PR base dependencies are:
+
+- `nk1-all-branches-merge-2026-10-23`: open PR #109.
+- `nk1-integration-workspace-2026-10-22`: open PR #131.
+- `rebuild`: open PRs #121, #112, #91, #86.
+- `workpass206-runtime-evaluator-wiring`: open PRs #138, #124.
+
+The other 13 names are not bases of open PRs in the current 943-record census, but several remain heads/bases in historical merged or closed PR records. The full 17-ref ledger is in `live-branch-consolidation-delta-2026-11-19-after-pr954.md`. Keep the active base refs until the eight dependent PRs are reviewed and safely retargeted or otherwise resolved. Do not use equal SHA alone as permission to delete.
+
+Current state: 963 branch refs, 947 unique HEADs, one duplicate-head group, 16 excess refs. The earlier 1,038 / 12 / 91 values above are the preceding snapshot, not current values.
