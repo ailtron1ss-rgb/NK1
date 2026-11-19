@@ -53,6 +53,11 @@ const providerInput = {
   language: 'ru-RU',
   eventId: 'evt-asr-41',
   turnId: 'turn-asr-19',
+  speechAdmission: {
+    decision: 'admit',
+    reason: 'speech_window',
+    voicedAudioMs: 256,
+  },
 };
 
 {
@@ -66,6 +71,9 @@ const providerInput = {
     'asr-event:evt-asr-41',
     'asr-turn:turn-asr-19',
     'asr-language:ru-RU',
+    'speech-admission:admit',
+    'speech-admission-reason:speech_window',
+    'speech-admission-voiced-ms:256',
   ]);
 }
 
@@ -78,6 +86,8 @@ const providerInput = {
     'voiceTurn must not discard calibrated ASR confidence');
   assert.ok(observations[0].evidence.includes('voice-turn'));
   assert.ok(observations[0].evidence.includes('asr-event:evt-asr-41'));
+  assert.ok(observations[0].evidence.includes('speech-admission:admit'));
+  assert.ok(observations[0].evidence.includes('speech-admission-reason:speech_window'));
 }
 
 {

@@ -19,6 +19,16 @@ function transcript(overrides = {}) {
   };
 }
 
+function sileroFrame(index, probability01 = 0.9, patch = {}) {
+  return {
+    sampleRateHz: 16_000,
+    startSample: index * 512,
+    endSample: (index + 1) * 512,
+    probability01,
+    ...patch,
+  };
+}
+
 function provider(result, overrides = {}) {
   const calls = { capture: [], cancel: [] };
   const port = {
@@ -41,6 +51,56 @@ test('accepts only a final user transcript bound to the active host session', as
   assert.equal(calls.capture.length, 1);
   assert.equal(calls.capture[0].signal instanceof AbortSignal, true);
   assert.equal(calls.capture[0].sessionId.length > 0, true);
+});
+
+
+test('sample-scoped VAD admission is retained as shadow evidence without owning transcript admission', async () => {
+  let lastSnapshot = null;
+  const { port } = provider(async input => {
+    for (let index = 0; index < 8; index += 1) {
+      lastSnapshot = input.observeSileroProbabilityWindow(sileroFrame(index));
+    }
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.speechAdmission?.decision, 'admit');
+  assert.equal(result.speechAdmission?.reason, 'speech_window');
+  assert.equal(result.speechAdmission?.sampleRateHz, 16_000);
+  assert.equal(result.speechAdmission?.voicedAudioMs, 256);
+  assert.equal(lastSnapshot, result.speechAdmission);
+  assert.equal(Object.isFrozen(result.speechAdmission), true);
+});
+
+test('pending, rejected, and malformed speech evidence never blocks a valid final ASR transcript', async () => {
+  const pending = provider(async input => {
+    input.observeSileroProbabilityWindow(sileroFrame(0));
+    return transcript({ sessionId: input.sessionId });
+  });
+  const pendingResult = await new NekoAsrTranscriptAdapter(pending.port).captureFinal();
+  assert.equal(pendingResult.status, 'accepted');
+  assert.equal(pendingResult.speechAdmission?.decision, 'pending');
+
+  const rejected = provider(async input => {
+    input.observeSileroProbabilityWindow(sileroFrame(0));
+    for (let index = 1; index <= 4; index += 1) {
+      input.observeSileroProbabilityWindow(sileroFrame(index, 0.1));
+    }
+    return transcript({ sessionId: input.sessionId });
+  });
+  const rejectedResult = await new NekoAsrTranscriptAdapter(rejected.port).captureFinal();
+  assert.equal(rejectedResult.status, 'accepted');
+  assert.equal(rejectedResult.speechAdmission?.decision, 'reject');
+  assert.equal(rejectedResult.speechAdmission?.reason, 'speech_gap');
+
+  const malformed = provider(async input => {
+    assert.equal(input.observeSileroProbabilityWindow(sileroFrame(0, Number.NaN)), null);
+    return transcript({ sessionId: input.sessionId });
+  });
+  const malformedResult = await new NekoAsrTranscriptAdapter(malformed.port).captureFinal();
+  assert.equal(malformedResult.status, 'accepted');
+  assert.equal(malformedResult.speechAdmission, undefined);
+  assert.equal(malformedResult.speechAdmissionError, 'invalid-speech-probability-window');
 });
 
 test('rejects partial and non-user transcripts before exposing text', async () => {
