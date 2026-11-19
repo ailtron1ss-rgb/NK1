@@ -1886,6 +1886,11 @@
     "test:workpass328:operational-microcycle-sensors": "node --experimental-strip-types tests/operational-microcycle-finite-input.mjs",
     "test:universal-input-interpreter": "node --experimental-strip-types tests/universal-input-interpreter.mjs",
     "test:b299:personality-boundary-consolidation": "node --experimental-strip-types tests/b299-personality-boundary-consolidation.mjs",
-    "test:b299:restore-integrity": "node --experimental-strip-types tests/b299-personality-restore-integrity.mjs"
+    "test:b299:restore-integrity": "node --experimental-strip-types tests/b299-personality-restore-integrity.mjs",
+    "test:neko-audio-stream-contract": "node --experimental-strip-types --test tests/neko-audio-stream-contract.mjs",
+    "test:neko-audio-frame-buffer": "node --experimental-strip-types --test tests/neko-audio-frame-buffer.mjs",
+    "test:neko-asr-stream-admission": "node --experimental-strip-types --test tests/neko-asr-stream-admission.mjs",
+    "test:neko-voice-turn-coordinator": "node --experimental-strip-types --test tests/neko-voice-turn-coordinator.mjs",
+    "test:neko-voice-embodiment-streaming-wiring": "node --experimental-strip-types --test tests/neko-voice-embodiment-streaming-wiring.mjs"
   }
 }

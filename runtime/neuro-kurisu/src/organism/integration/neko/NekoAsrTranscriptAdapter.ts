@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { types as nodeUtilTypes } from 'node:util';
+import { normalizeVoiceTurnToken, type NekoPcm16FrameV1, type VoiceTurnToken } from './NekoAudioStreamContract.ts';
 import {
   NekoSpeechAdmissionGate,
   type NekoSpeechAdmissionSnapshotV1,
@@ -36,12 +37,24 @@ export interface NekoAsrCancelResponse {
   reason?: string;
 }
 
+export interface NekoAsrStreamCaptureRequest {
+  readonly sessionId: string;
+  readonly turnId: string;
+  readonly token: VoiceTurnToken;
+  readonly frames: AsyncIterable<NekoPcm16FrameV1>;
+  readonly signal: AbortSignal;
+}
+
+export interface NekoAsrStreamProviderRequest extends NekoAsrStreamCaptureRequest {}
+
 /** Host-owned port implemented by an N.E.K.O. ASR sidecar or a local ASR host. */
 export interface NekoAsrProviderPort {
   readonly providerId: string;
   isAvailable(): boolean | Promise<boolean>;
   /** Resolves only when the provider has produced a complete transcript envelope. */
   captureFinal(request: NekoAsrCaptureRequest): Promise<unknown | null>;
+  /** Optional host-owned PCM streaming endpoint. Must resolve only with a final envelope. */
+  transcribeStream?(request: NekoAsrStreamProviderRequest): Promise<unknown | null>;
   /** verified=true is allowed only after independent confirmation that capture stopped. */
   /** Optional host-owned Smart Turn v3.x semantic endpoint predictor. */
   readonly smartTurnProvider?: NekoSmartTurnProviderPort;
@@ -57,7 +70,7 @@ export type NekoSmartTurnCaptureError =
 export type NekoAsrCaptureResult =
   | { status: 'accepted'; sessionId: string; eventId: string; turnId: string; provider: string; transcript: string; confidence01?: number; language?: string; speechAdmission?: NekoSpeechAdmissionSnapshotV1; speechAdmissionError?: string; smartTurnEvaluation?: NekoSmartTurnEvaluationResult; smartTurnError?: NekoSmartTurnCaptureError }
   | { status: 'replayed'; sessionId: string; eventId: string }
-  | { status: 'rejected'; reason: 'session-already-active' | 'provider-unavailable' | 'invalid-envelope' | 'session-mismatch' | 'provider-mismatch' | 'not-final' | 'not-user' | 'empty-transcript' | 'transcript-too-large' | 'invalid-confidence' | 'low-confidence' | 'event-id-conflict' }
+  | { status: 'rejected'; reason: 'session-already-active' | 'provider-unavailable' | 'invalid-envelope' | 'session-mismatch' | 'turn-mismatch' | 'provider-mismatch' | 'not-final' | 'not-user' | 'empty-transcript' | 'transcript-too-large' | 'invalid-confidence' | 'low-confidence' | 'event-id-conflict' | 'stream-not-supported' | 'invalid-stream-request' }
   | { status: 'cancelled'; sessionId: string }
   | { status: 'error'; reason: string };
 
@@ -123,17 +136,43 @@ function normalizeTranscript(value: unknown): string | null {
   if (normalized.length > MAX_TRANSCRIPT_CHARS || Buffer.byteLength(normalized, 'utf8') > MAX_TRANSCRIPT_BYTES) return null;
   return normalized;
 }
+
+const STREAM_REQUEST_KEYS = new Set(['sessionId', 'turnId', 'token', 'frames', 'signal']);
+function ownStreamRequestRecord(value: unknown): Record<string, unknown> | null {
+  try {
+    if (value === null || typeof value !== 'object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) return null;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.length !== STREAM_REQUEST_KEYS.size) return null;
+    const output: Record<string, unknown> = Object.create(null);
+    for (const key of keys) {
+      if (typeof key !== 'string' || !STREAM_REQUEST_KEYS.has(key)) return null;
+      const descriptor = descriptors[key];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+          descriptor.get !== undefined || descriptor.set !== undefined || !descriptor.enumerable) return null;
+      output[key] = descriptor.value;
+    }
+    return output;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeEnvelope(
   value: unknown,
   sessionId: string,
   providerId: string,
   minConfidence01: number,
-): { ok: true; value: NormalizedTranscript } | { ok: false; reason: 'invalid-envelope' | 'session-mismatch' | 'provider-mismatch' | 'not-final' | 'not-user' | 'empty-transcript' | 'transcript-too-large' | 'invalid-confidence' | 'low-confidence' } {
+  expectedTurnId?: string,
+): { ok: true; value: NormalizedTranscript } | { ok: false; reason: 'invalid-envelope' | 'session-mismatch' | 'turn-mismatch' | 'provider-mismatch' | 'not-final' | 'not-user' | 'empty-transcript' | 'transcript-too-large' | 'invalid-confidence' | 'low-confidence' } {
   const raw = ownDataRecord(value);
   if (!raw || raw.protocol !== 'neko.asr.transcript' || raw.version !== 1 ||
       Object.keys(raw).some(key => !ALLOWED_KEYS.has(key))) return { ok: false, reason: 'invalid-envelope' };
   if (!safeId(raw.eventId) || !safeId(raw.sessionId) || !safeId(raw.turnId)) return { ok: false, reason: 'invalid-envelope' };
   if (raw.sessionId !== sessionId) return { ok: false, reason: 'session-mismatch' };
+  if (expectedTurnId !== undefined && raw.turnId !== expectedTurnId) return { ok: false, reason: 'turn-mismatch' };
   if (raw.provider !== providerId) return { ok: false, reason: 'provider-mismatch' };
   if (raw.phase !== 'final') return { ok: false, reason: 'not-final' };
   if (raw.speakerRole !== 'user') return { ok: false, reason: 'not-user' };
@@ -342,6 +381,98 @@ export class NekoAsrTranscriptAdapter {
       admissionOpen = false;
       semanticEndpointOpen = false;
       smartTurnCoordinator?.close();
+      if (this.active === active) this.active = null;
+    }
+  }
+
+
+  /**
+   * Streams host-owned PCM frames through the current final-user transcript,
+   * provider identity, expected-turn, confidence and replay boundary.
+   * A configured stream never falls back to one-shot captureFinal().
+   */
+  async captureFinalFromStream(request: NekoAsrStreamCaptureRequest): Promise<NekoAsrCaptureResult> {
+    const rawRequest = ownStreamRequestRecord(request);
+    if (!rawRequest) return { status: 'rejected', reason: 'invalid-stream-request' };
+    const sessionId = rawRequest.sessionId;
+    const turnId = rawRequest.turnId;
+    const token = normalizeVoiceTurnToken(rawRequest.token);
+    const frames = rawRequest.frames;
+    const signal = rawRequest.signal;
+    let iteratorValid = false;
+    let signalValid = false;
+    try {
+      iteratorValid = frames !== null && typeof frames === 'object' &&
+        !nodeUtilTypes.isProxy(frames) && typeof (frames as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function';
+      signalValid = signal !== null && typeof signal === 'object' &&
+        !nodeUtilTypes.isProxy(signal) &&
+        typeof (signal as AbortSignal).addEventListener === 'function' &&
+        typeof (signal as AbortSignal).removeEventListener === 'function' &&
+        typeof (signal as AbortSignal).aborted === 'boolean';
+    } catch {
+      return { status: 'rejected', reason: 'invalid-stream-request' };
+    }
+    if (!safeId(sessionId) || !safeId(turnId) || !token || token.turnId !== turnId ||
+        !iteratorValid || !signalValid) {
+      return { status: 'rejected', reason: 'invalid-stream-request' };
+    }
+    const transcribeStream = this.provider.transcribeStream;
+    if (typeof transcribeStream !== 'function') return { status: 'rejected', reason: 'stream-not-supported' };
+    const hostSignal = signal as AbortSignal;
+    if (hostSignal.aborted) return { status: 'cancelled', sessionId };
+    if (this.active) return { status: 'rejected', reason: 'session-already-active' };
+    if (!(await this.isAvailable())) return { status: 'rejected', reason: 'provider-unavailable' };
+    if (this.active) return { status: 'rejected', reason: 'session-already-active' };
+    if (hostSignal.aborted) return { status: 'cancelled', sessionId };
+
+    const active: ActiveCapture = {
+      sessionId,
+      controller: new AbortController(),
+      cancelled: false,
+    };
+    const abortFromHost = () => {
+      active.cancelled = true;
+      if (!active.controller.signal.aborted) active.controller.abort(hostSignal.reason ?? 'host-stream-aborted');
+    };
+    hostSignal.addEventListener('abort', abortFromHost, { once: true });
+    this.active = active;
+    try {
+      let raw: unknown | null;
+      try {
+        raw = await transcribeStream.call(this.provider, {
+          sessionId, turnId, token,
+          frames: frames as AsyncIterable<NekoPcm16FrameV1>,
+          signal: active.controller.signal,
+        });
+      } catch (error) {
+        if (active.cancelled || active.controller.signal.aborted || hostSignal.aborted) {
+          return { status: 'cancelled', sessionId };
+        }
+        return { status: 'error', reason: String((error as Error)?.message ?? error).replace(/[\\r\\n\\t]+/gu, ' ').slice(0, 160) || 'provider-stream-failed' };
+      }
+      if (active.cancelled || active.controller.signal.aborted || hostSignal.aborted || this.active !== active) {
+        return { status: 'cancelled', sessionId };
+      }
+      if (raw === null) return { status: 'rejected', reason: 'empty-transcript' };
+      const normalized = normalizeEnvelope(raw, sessionId, this.provider.providerId, this.minConfidence01, turnId);
+      if (!normalized.ok) return { status: 'rejected', reason: normalized.reason };
+      const item = normalized.value;
+      const digest = createHash('sha256').update(JSON.stringify({
+        provider: item.provider, turnId: item.turnId, transcript: item.transcript,
+      })).digest('hex');
+      const previous = this.delivered.get(item.eventId);
+      if (previous !== undefined) {
+        if (previous !== digest) return { status: 'rejected', reason: 'event-id-conflict' };
+        return { status: 'replayed', sessionId: item.sessionId, eventId: item.eventId };
+      }
+      this.delivered.set(item.eventId, digest);
+      while (this.delivered.size > this.replayCapacity) {
+        const oldest = this.delivered.keys().next().value as string | undefined;
+        if (oldest) this.delivered.delete(oldest); else break;
+      }
+      return { status: 'accepted', ...item };
+    } finally {
+      hostSignal.removeEventListener('abort', abortFromHost);
       if (this.active === active) this.active = null;
     }
   }
