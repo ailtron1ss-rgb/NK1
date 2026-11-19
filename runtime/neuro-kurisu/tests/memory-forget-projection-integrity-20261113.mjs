@@ -276,7 +276,7 @@ console.log('PROTECTED_MEMORY_FORGET_BOUNDARY=PASS');
     new MultiTimescaleMemory(),
     new MemorySubstrateCoordinator(),
     new UnifiedMemorySystem(),
-    orphanP62,
+    new P62MemoryFabric(),
     graph,
   );
   const first = fabric.encode(input(
@@ -595,7 +595,7 @@ console.log('CANONICAL_MAINTENANCE_DORMANCY_PROJECTION_SYNC=PASS');
     new MultiTimescaleMemory(),
     new MemorySubstrateCoordinator(),
     new UnifiedMemorySystem(),
-    new P62MemoryFabric(),
+    orphanP62,
     graph,
   );
   assert.equal(
