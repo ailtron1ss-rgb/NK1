@@ -179,6 +179,7 @@ function restoreOutcomes(value: unknown): Record<string,EmotionOutcomeCalibratio
   if(!row) return {};
   const output: Record<string,EmotionOutcomeCalibration> = {};
   for(const [key,raw] of Object.entries(row)) {
+    if(!ACTION_TENDENCIES.has(key as EmotionActionTendency)) continue;
     if(!key || key.length>64) return {};
     const item=ownDataRecord(raw);
     if(!item || !Number.isSafeInteger(item.attempts) || (item.attempts as number)<0) return {};
