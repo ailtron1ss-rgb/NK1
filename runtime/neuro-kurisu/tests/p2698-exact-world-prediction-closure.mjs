@@ -91,6 +91,38 @@ assert.equal(Object.values(pending).filter(ticket => ticket.action === 'explore'
 assert.equal(Object.values(pendingWorldModel2).filter(ticket => ticket.action === 'explore').length,0,
   'both same-action WorldModel2 tickets must be closed independently');
 
+// An explicit but missing WorldModel2 source ticket must not fabricate a
+// calibration sample from the observed transition. The unrelated pending
+// ticket remains available for its own later outcome.
+const missingTicketRuntime = new WorldSubsystemRuntime();
+const missingTicketBefore = {
+  tick:30, location:'home', energy:.82, attention:.74, uncertainty:.35,
+  facts:[], objects:[], events:[],
+};
+const missingTicketAfter = {...missingTicketBefore,tick:31,energy:.70};
+const unrelatedPrediction = missingTicketRuntime.worldModel2.predict('explore',.65,.4,missingTicketBefore);
+const calibrationBeforeMissingTicket = missingTicketRuntime.worldModel2.snapshot().calibration;
+assert.ok(missingTicketRuntime.worldModel2.snapshot().pendingPredictions[unrelatedPrediction.predictionId]);
+const missingTicketResolution = missingTicketRuntime.worldModel2.observeTransition({
+  action:'explore', before:missingTicketBefore, after:missingTicketAfter,
+  reward:.2, surprise:.1, at:Date.now(),
+}, 'wm2-explicit-ticket-not-found');
+assert.equal(missingTicketResolution.resolved,false);
+assert.deepEqual(missingTicketRuntime.worldModel2.snapshot().calibration,calibrationBeforeMissingTicket,
+  'an explicit unresolved ticket must not fabricate a calibration observation');
+assert.ok(missingTicketRuntime.worldModel2.snapshot().pendingPredictions[unrelatedPrediction.predictionId],
+  'an unrelated pending prediction must remain untouched');
+
+// Legacy callers without a prediction ID retain the documented observation-only
+// calibration path when no stored prediction ticket is available.
+const legacyCalibrationRuntime = new WorldSubsystemRuntime();
+legacyCalibrationRuntime.worldModel2.observeTransition({
+  action:'explore', before:missingTicketBefore, after:missingTicketAfter,
+  reward:.2, surprise:.1, at:Date.now(),
+});
+assert.ok(legacyCalibrationRuntime.worldModel2.snapshot().calibration.some(row=>row.samples===1),
+  'legacy action-only feedback must retain its fallback calibration behavior');
+
 console.log(JSON.stringify({
   test:'P2698 exact world prediction closure',
   predictionId:prediction.predictionId,

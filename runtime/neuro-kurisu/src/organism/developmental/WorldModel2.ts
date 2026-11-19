@@ -267,10 +267,10 @@ export class WorldModel2 {
      resolvedAccuracy=accuracy;
      this.updateCalibration(ticket.confidence01, accuracy);
      delete this.state.pendingPredictions[ticketId];
-   } else {
-     // Feedback can arrive without a preceding explicit predict() call. Keep
-     // calibration alive in that path as observed confidence vs. surprise-based
-     // outcome consistency rather than silently leaving the calibration table empty.
+   } else if (predictionId === undefined) {
+     // Preserve observation-only calibration for legacy callers that supplied no
+     // prediction reference. An explicit missing/null ticket is not evidence: do
+     // not manufacture a confidence/accuracy pair from the post-action surprise.
      const fallbackConfidence=clamp(existing.confidence01);
      const observedConsistency=clamp(1-transition.surprise);
      this.updateCalibration(fallbackConfidence, observedConsistency);
