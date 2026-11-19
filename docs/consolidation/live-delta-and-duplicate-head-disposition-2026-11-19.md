@@ -2,45 +2,43 @@
 
 ## Purpose and evidence boundary
 
-This addendum updates the 2026-11-18 census in this PR using a fresh paginated GitHub API read on 2026-11-19. It is an inventory and triage record, not authorization to merge, close, or delete anything. No production source files were edited in this pass.
+This addendum updates the 2026-11-18 census in this PR using fresh paginated GitHub API reads on 2026-11-19. It is an inventory and triage record, not authorization to delete anything. During this period, PRs #950, #951 and #952 were merged into the canonical source by their own integration paths; those merges are explicitly reconciled below. This audit branch did not itself modify production source.
 
-Canonical working source remains `workpass70-source` at `7547f5287b84a7d9b7109c0e5fdbe20bf95c9e33`. `main` remains a separate release/report line at `9a789ee1af8fdaa3826dbc734d18e2fc00cde5bf`.
+Canonical working source is `workpass70-source` at `aa2b385153ddc316eadf61f87e2c0803d7d59d98`. `main` remains a separate release/report line at `9a789ee1af8fdaa3826dbc734d18e2fc00cde5bf`. The historical source tree used for the original 12-path comparison remains pinned to `7547f528...`; this is not the live branch tip.
 
 ## Fresh live census
 
 | Measure | 2026-11-18 register | Live 2026-11-19 |
 |---|---:|---:|
-| Branch refs | 1,033 | **1,035** |
-| Unique branch HEAD SHAs | 942 | **944** |
+| Branch refs | 1,033 | **1,039** |
+| Unique branch HEAD SHAs | 942 | **948** |
 | Exact duplicate-HEAD groups | 12 | **12** |
 | Excess refs inside duplicate-HEAD groups | 91 | **91** |
-| PR records | 937 | **939** |
-| Open PRs | 414 | **412** |
-| Merged PRs | 310 | **310** |
+| PR records | 937 | **943** |
+| Open PRs | 414 | **413** |
+| Merged PRs | 310 | **313** |
 | Closed without merge | 213 | **217** |
-| Open Draft PRs | — | **282** |
-| Distinct PR head refs | 921 | **923** |
-| Distinct open PR head refs | 413 | **411** |
+| Open Draft PRs | — | **283** |
+| Distinct PR head refs | 921 | **927** |
+| Distinct open PR head refs | 413 | **412** |
 
-Branch pagination was 100 × 10 pages plus 35 on page 11. Pull-request pagination was 100 × 9 pages plus 39 on page 10. The two added branch refs are not to be backdated into the Nov 18 snapshot. Prefix counts changed from 225 to 226 for `aspect/` and from 1 to 2 for `consolidation/`; other major counts remain as recorded in the original census.
+Branch pagination is 100 × 10 pages plus 39 on page 11. Pull-request pagination is 100 × 9 pages plus 43 on page 10. Compared with the Nov 18 snapshot, six additional branch refs have accumulated; the live branch prefix counts are 230 under `aspect/` and 2 under `consolidation/`.
 
-Among currently open PRs, **205 target `workpass70-source` and 65 target `main`**; the remaining **142** target intermediate integration/aspect branches. This is why merging all open PRs directly into one branch would be unsafe.
+Among currently open PRs, **206 target `workpass70-source` and 65 target `main`**; the remaining **142** target intermediate integration/aspect branches. This is why merging all open PRs directly into one branch would be unsafe.
 
-### PR-state reconciliation after the Nov 18 snapshot
+### PR-state reconciliation, 2026-11-19 live snapshot
 
-A fresh read of all ten live PR pages (100 × 9 plus 39 on page 10; 939 unique PR numbers) found **412 open, 310 merged, and 217 closed without merge**. Of the open PRs, 282 are Draft; 411 distinct head refs are used by the 412 open PRs (one head ref is shared by two open PRs).
+A fresh read of all ten live PR pages (100 × 9 plus 43 on page 10; 943 unique PR numbers) found **413 open, 313 merged, and 217 closed without merge**. Of the open PRs, **283 are Draft**. There are 927 distinct head refs overall and 412 distinct head refs among open PRs.
 
-Relative to the Nov 18 register, two new open PRs appeared:
-- #949 — branch census/consolidation audit, based on `workpass70-source`.
-- #950 — asset-only preservation of Kurisu sprites and render evidence, based on `workpass70-source`.
+Relevant state transitions after the Nov 18 register:
+- #845, #849, #850 and #851 were closed without merge; these are duplicate master-plan candidates described below.
+- #950 merged at 05:08:41Z as commit `0a3e4c4e51d7c2ec154a87cc0912e4a1cd6752e0`. It preserves eight Kurisu sprite PNGs and four render/screenshot evidence assets; 13 files, no runtime code.
+- #952 merged at 05:05:40Z as commit `9742b5a82966e11ba9c913074615b2420736bcee`. It preserves the N.E.K.O. manifest policy and branch provenance; two documentation files, no runtime code.
+- #951 merged at 05:14:52Z as commit `aa2b385153ddc316eadf61f87e2c0803d7d59d98`. All eight changed paths were compared against the resulting `workpass70-source` tree and matched byte-for-byte by Git blob SHA. The exact source commit has 19/19 GitHub check-runs SUCCESS. The closed PR is therefore not a duplicate source of new content; its branch ref remains a separate cleanup candidate.
+- #953 remains an open Draft predecessor, based on the older `9742b5...` source head.
+- #954 is the rebased open Draft replacement, based exactly on current source `aa2b385...`; its 22-file diff is 22 commits ahead and zero behind. Its exact-head CI is still running at the time of this snapshot and must pass before #953 can be closed as superseded.
 
-Four PRs that were open in the Nov 18 register were closed without merge on 2026-11-19:
-- #845 at 04:42:00Z.
-- #849 at 04:42:03Z.
-- #850 at 04:42:07Z.
-- #851 at 04:42:10Z.
-
-These four belong to the exact duplicate master-plan PR clusters already described below. They were closed, not merged; the remaining duplicate candidates must be treated separately. Consequently, the open count is 412 (not 416), and the closed-without-merge count is 217 (not 213). The merged count remains 310. This reconciles the live count without rewriting the Nov 18 historical snapshot.
+This reconciles the live PR counts without rewriting the historical Nov 18 register.
 
 ## Exact duplicate HEAD families: what the identical SHA does and does not prove
 
@@ -48,9 +46,9 @@ The 12 groups account for 103 branch names but only 12 commit objects. The 91 ex
 
 ### Old tips already contained in the current source ancestry
 
-- SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: 81 branch names share this exact tip. Comparing it to `workpass70-source` shows it is the common ancestor and the source has advanced by 982 commits. This group contributes no branch-only commits beyond the current source history.
-- SHA `ad564d1879028f00549be41ec5172a2f72e25897`: `work/aspect07-autonomy-liveness-2026-10-30` and `work/nk1-aspect12-true-3d-humanoid-foundation-2026-10-30` share a tip that is already an ancestor of source (source is 641 commits ahead). Neither name appeared as a PR head/base in the current PR census.
-- SHA `d179446c48a2a99eae64cfa8681707a455d22b01`: `work/nk1-big-pass-current-source-unified-2026-10-30` and `work/nk1-depth-rig-scene-runtime-2026-10-30` share a tip already ancestral to source (source is 449 commits ahead). Neither name appeared as a PR head/base in the current PR census.
+- SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: 81 branch names share this exact tip. Comparing it to the live `workpass70-source` shows it remains an ancestor; the source has advanced by 986 commits. This group contributes no branch-only commits beyond the current source history.
+- SHA `ad564d1879028f00549be41ec5172a2f72e25897`: `work/aspect07-autonomy-liveness-2026-10-30` and `work/nk1-aspect12-true-3d-humanoid-foundation-2026-10-30` share a tip that is already an ancestor of source (source is 645 commits ahead). Neither name appeared as a PR head/base in the current PR census.
+- SHA `d179446c48a2a99eae64cfa8681707a455d22b01`: `work/nk1-big-pass-current-source-unified-2026-10-30` and `work/nk1-depth-rig-scene-runtime-2026-10-30` share a tip already ancestral to source (source is 453 commits ahead). Neither name appeared as a PR head/base in the current PR census.
 
 These are the strongest branch-ref cleanup candidates by commit ancestry, but no ref was deleted: before deletion the external references, tags, Actions usage, repository links and PR timeline dependencies still need a final check. In the 81-ref family, four refs have no PR head/base occurrence in the census: `feature/useful-functions`, `workpass73-audit-fixes`, `workpass94-avatar-voice-live2d-audit`, and `workpass168-hermes-runtime-compound-skill-bridge-test`. Other names in the family are referenced historically; four names are bases for currently open PRs and must be retained while those PRs remain open:
 
@@ -91,7 +89,7 @@ These are exact duplicate outcomes, not independent implementation candidates. R
 
 Avatar/unified-brain PRs #848, #856 and #844 are a different case: they share many paths and eight sprite blobs, but several code/docs/demo/render files differ. The existing `avatar-cluster-source-gap-analysis-2026-11-18.md` describes source implementations that are already stronger than some candidates. Review those PRs per file; do not select a whole PR by recency.
 
-PR #950 is a separate asset-only preservation candidate: eight Kurisu sprite PNGs and four render/screenshot evidence variants, copied as unchanged Git blobs with source SHA provenance. Runtime code is unchanged and the sprites are not yet connected to UI. Keep it separate from runtime consolidation until the visual assets and licensing/provenance are reviewed.
+PR #950 is now merged into `workpass70-source` as asset-only preservation: eight Kurisu sprite PNGs and four render/screenshot evidence variants, copied as unchanged Git blobs with source SHA provenance. Runtime code is unchanged and the sprites are not yet connected to UI. The asset files are preserved; UI wiring and licensing/provenance review remain separate.
 
 ## Target long-lived branch taxonomy
 
@@ -125,9 +123,10 @@ The archive bytes were not available to this execution environment for extractio
 - Rechecked all 12 duplicate HEAD groups against the current working source or their shared merge bases; established which duplicate refs are old ancestors and which shared commits still contain substantial donor histories.
 - Reconciled duplicate refs with PR head/base relationships, including open and historical PRs.
 - Preserved the original census and added this dated delta rather than silently rewriting its Nov 18 timestamp.
-- No application/runtime source file changed.
-- No branch was deleted or force-updated; no PR was merged or closed.
-- No claim of tests passing, archive parity, or completed per-line audit of all 1,035 branches is made.
+- The canonical source advanced to `aa2b385...` through PR integrations #950, #951 and #952; the exact #951 source commit has 19/19 check-runs SUCCESS.
+- No branch was deleted or force-updated by this audit. #951 is merged and closed; #950 and #952 are merged; #953 remains Draft while rebased #954 is tested.
+- Two new working aspect PRs are being maintained separately: #951's content is already present in source; #954 is the rebased HMX candidate. No release ZIP was changed.
+- No claim of Oct 19 archive parity or completed per-line audit of all 1,039 branch refs is made.
 
 ## Next review sequence
 
