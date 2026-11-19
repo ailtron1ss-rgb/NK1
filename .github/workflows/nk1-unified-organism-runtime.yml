@@ -2,7 +2,7 @@ name: NK1 Unified organism runtime
 
 on:
   push:
-    branches: [workpass70-source, aspect/b299-personality-consolidation-20261119]
+    branches: [workpass70-source, aspect/p2702-proxy-restore-guard-20261119]
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
       - "runtime/neuro-kurisu/src/organism/system/**"
@@ -78,5 +78,7 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:b299:restore-integrity
       - name: Affective dominance projection and voice embodiment
         run: npm --prefix runtime/neuro-kurisu run test:voice
+      - name: P2702 persistent personality restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:p2702:personality
       - name: Organism runtime smoke
         run: npm --prefix runtime/neuro-kurisu run test:organism-smoke

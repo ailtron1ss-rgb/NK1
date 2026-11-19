@@ -1,4 +1,5 @@
 import type { ActionKind } from '../core/types.ts';
+import { types } from 'node:util';
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
@@ -44,7 +45,7 @@ const boundedNumberArray=(value:unknown,fallback:number[],limit:number,min=0,max
 type PlainRecord = Record<string, unknown>;
 function ownDataRecord(value: unknown): PlainRecord | null {
   try {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    if (!value || typeof value !== 'object' || types.isProxy(value) || Array.isArray(value)) return null;
     const prototype = Object.getPrototypeOf(value);
     if (prototype !== Object.prototype && prototype !== null) return null;
     const descriptors = Object.getOwnPropertyDescriptors(value);
@@ -63,7 +64,7 @@ function ownDataRecord(value: unknown): PlainRecord | null {
 }
 function denseDataArray(value: unknown, maxLength: number): unknown[] | null {
   try {
-    if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+    if (types.isProxy(value) || !Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
     const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
     if (!lengthDescriptor || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0 || lengthDescriptor.value > maxLength) return null;
     const result: unknown[] = [];
@@ -77,6 +78,23 @@ function denseDataArray(value: unknown, maxLength: number): unknown[] | null {
     return null;
   }
 }
+
+function sameCanonicalNames(value: unknown, expected: string[]): boolean {
+  const names = denseDataArray(value, expected.length);
+  return names !== null && names.length === expected.length &&
+    names.every((name, index) => name === expected[index]);
+}
+function namedNumberArray(
+  namesValue: unknown,
+  valuesValue: unknown,
+  names: string[],
+  fallback: number[],
+): number[] {
+  return sameCanonicalNames(namesValue, names)
+    ? boundedNumberArray(valuesValue, fallback, fallback.length)
+    : fallback.slice();
+}
+
 const deep=<T>(x:T):T=>structuredClone(x);
 
 /** P2702: persistent personality dynamics. Canon is an initialization prior; experience changes
@@ -130,11 +148,11 @@ export class P2702PersistentPersonalityDynamics{
    experienceCount:nonNegativeInteger(r.experienceCount,d.experienceCount),
    learningUpdates:nonNegativeInteger(r.learningUpdates,d.learningUpdates),
    invariantNames:d.invariantNames.slice(),
-   invariantValues:boundedNumberArray(r.invariantValues,d.invariantValues,32),
+   invariantValues:namedNumberArray(r.invariantNames,r.invariantValues,d.invariantNames,d.invariantValues),
    adaptiveNames:d.adaptiveNames.slice(),
-   adaptiveValues:boundedNumberArray(r.adaptiveValues,d.adaptiveValues,32),
+   adaptiveValues:namedNumberArray(r.adaptiveNames,r.adaptiveValues,d.adaptiveNames,d.adaptiveValues),
    valueNames:d.valueNames.slice(),
-   valueWeights:boundedNumberArray(r.valueWeights,d.valueWeights,32),
+   valueWeights:namedNumberArray(r.valueNames,r.valueWeights,d.valueNames,d.valueWeights),
    relationshipTrust,
    selfBeliefs:boundedNumberArray(r.selfBeliefs,d.selfBeliefs,16),
    selfUncertainty:boundedNumberArray(r.selfUncertainty,d.selfUncertainty,16,.03,.97),
