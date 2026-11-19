@@ -5,6 +5,8 @@ on:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSmartTurnCoordinator.ts"
+      - "runtime/neuro-kurisu/tests/neko-smart-turn-semantic-endpoint.mjs"
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSpeechAdmissionGate.ts"
       - "runtime/neuro-kurisu/tests/neko-speech-admission-gate.mjs"
       - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
@@ -16,6 +18,8 @@ on:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSmartTurnCoordinator.ts"
+      - "runtime/neuro-kurisu/tests/neko-smart-turn-semantic-endpoint.mjs"
       - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
@@ -49,6 +53,9 @@ jobs:
       - name: Sample-scoped speech admission gate
         working-directory: runtime/neuro-kurisu
         run: npm run test:neko-speech-admission-gate
+      - name: Smart Turn semantic endpoint coordinator
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-smart-turn-semantic-endpoint
       - name: Embodiment ASR provider wiring
         working-directory: runtime/neuro-kurisu
         run: npm run test:neko-asr-embodiment-wiring
