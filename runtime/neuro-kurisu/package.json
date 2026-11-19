@@ -13,6 +13,7 @@
     "test:neko-asr-transcript-adapter": "node --experimental-strip-types --test tests/neko-asr-transcript-adapter.mjs",
     "test:neko-asr-embodiment-wiring": "node --experimental-strip-types --test tests/neko-asr-embodiment-wiring.mjs",
     "test:neko-speech-admission-gate": "node --experimental-strip-types --test tests/neko-speech-admission-gate.mjs",
+    "test:neko-smart-turn-semantic-endpoint": "node --experimental-strip-types --test tests/neko-smart-turn-semantic-endpoint.mjs",
     "test:adaptive-experience-consolidator": "node --experimental-strip-types tests/adaptive-experience-consolidator-boundary.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
