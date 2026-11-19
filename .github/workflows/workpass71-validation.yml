@@ -92,6 +92,8 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Universal input interpretation and evidence-fusion regression
+        run: npm --prefix runtime/neuro-kurisu run test:universal-input-interpreter
       - name: Hexis evidence lineage and server restart persistence
         run: npm --prefix runtime/neuro-kurisu run test:hexis-evidence-lineage && npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
       - name: Memory retrieval experiment including unanswerable holdout

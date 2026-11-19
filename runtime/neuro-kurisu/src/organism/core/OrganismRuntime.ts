@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPluginVoiceTranscriptBridge.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
+import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
@@ -910,10 +911,36 @@ export class OrganismRuntime {
     const observation = { ...rawObservation, worldContext: normalizedWorldContext };
     // Validate the normalized observation before any nested fields are consumed.
     assertCognitiveCycleBoundaryInput(observation, 'full');
-    const modalityEvents = [];
-    if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:externalPluginSource ? [`plugin:${externalPluginSource.pluginId}:${externalPluginSource.messageId}`] : ['user-input'], content:externalText }));
-    modalityEvents.push(this.core.recordMultimodalObservation({ modality:'sensor', summary:this.embodiment.resourceSummary(), confidence:body.sensoryFreshness01*.82, salience:Math.max(.18,Math.abs(body.telemetry.motion01 ?? 0)+.15), evidence:['device-telemetry'] }));
-    modalityEvents.push(this.core.recordMultimodalObservation({ modality:'world', summary:observation.worldContext.facts.slice(-8).join(' | '), confidence:.7, salience:Math.max(.15,observation.surprise ?? .2), evidence:['world-model'] }));
+    const interpretation = buildUniversalInputInterpretation({
+      userText: externalText,
+      observation,
+      // P41 owns semantic perception memory; cached outputs are age-bounded by the interpreter.
+      perception: this.core.p41PerceptionSnapshot(),
+      body: {
+        bodyEnergy01: body.bodyEnergy01,
+        cognitiveCapacity01: body.cognitiveCapacity01,
+        thermalStrain01: body.thermalStrain01,
+        sensoryFreshness01: body.sensoryFreshness01,
+        battery01: body.telemetry.battery01,
+        cpuLoad01: body.telemetry.cpuLoad01,
+        ramPressure01: body.telemetry.ramPressure01,
+        motion01: body.telemetry.motion01,
+      },
+      at: Date.now(),
+    });
+    // Keep existing plugin provenance while retaining the interpreter's untrusted-text labels.
+    if (externalPluginSource) {
+      const textInput = interpretation.modalityInputs.find(input => input.modality === 'text');
+      if (textInput) {
+        textInput.evidence = [...new Set([...textInput.evidence,
+          `plugin:${externalPluginSource.pluginId}:${externalPluginSource.messageId}`
+        ])].slice(0, 12);
+      }
+    }
+    const modalityEvents = interpretation.modalityInputs.map(event =>
+      this.core.recordMultimodalObservation(event)
+    );
+    const fused = this.core.fuseMultimodalObservations(modalityEvents);
     // OrganismCore owns the canonical PerceptionEngine and persists its snapshot.
     // Observe the event counter around the single core.observe call; never run
     // a second runtime-local perception engine against the same raw sample.
@@ -948,13 +975,20 @@ export class OrganismRuntime {
       if (canonicalPerceptionEvent.source !== 'social') {
         modalityEvents.push({
           modality: canonicalPerceptionEvent.source === 'android' ? 'sensor' : 'world',
+          at: Date.now(),
           summary: (canonicalPerceptionEvent.kind + ': ' + canonicalPerceptionEvent.detail).slice(0, 500),
+          confidence: canonicalPerceptionEvent.confidence,
+          salience: canonicalPerceptionEvent.salience,
+          evidence: canonicalPerceptionEvent.evidence.slice(0, 8),
         });
       }
     }
     const activePerceptionRequestId = this.core.activePerceptionPendingId();
     const executionPlan = this.core.cognitiveExecutionPlanSnapshot();
-    const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
+    const fusedObservation = [
+      formatUniversalInterpretationContext(interpretation, fused),
+      ...modalityEvents.slice(interpretation.modalityInputs.length).map(event => `[${event.modality}] ${event.summary}`)
+    ].filter(Boolean).join('\n');
     const slowCognitionAllowed = executionPlan?.run?.['slow-cognition'] !== false;
     const cognitiveProposal = slowCognitionAllowed
       ? await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal)

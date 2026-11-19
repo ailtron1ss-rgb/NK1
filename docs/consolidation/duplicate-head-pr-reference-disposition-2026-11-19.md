@@ -75,3 +75,18 @@ The current census is **953 refs / 937 unique HEADs / one duplicate group / 16 e
 That is **5 open PRs across 3 old base refs**. PR #131 and PR #138 are merged into `workpass70-source`; their former base aliases are no longer needed for these two PRs, but their donor branch refs remain present.
 
 PR #131 merged at `3a185b341e85ca9a8d3f3d1679a1f4464416b6c2`; PR #138 merged at `08053819c8fb91861703736d63f1459ad4be121b`. Both donor branch refs remain visible. Keep all 17 duplicate-tip refs until ancestry, historical PRs, tags/releases, workflows, rulesets and external references are fully resolved.
+
+
+## Live dependency refresh after PR #112 — 2026-11-19
+
+The live census remains **953 refs / 937 unique HEADs / one duplicate group / 16 excess aliases**. The 17 refs at SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` still exist and remain protected from cleanup until reference analysis is complete.
+
+The previous dependency list that included PR #112 is superseded. Current open-PR base dependencies are:
+
+- `nk1-all-branches-merge-2026-10-23`: open PR #109.
+- `rebuild`: open PRs #91 and #86.
+- `workpass206-runtime-evaluator-wiring`: open PR #124.
+
+That is **4 open PRs across 3 old base refs**. PR #112 was selectively rebased and merged into `workpass70-source`; its old base dependency is cleared. PR #131 and #138 are also merged. Donor refs remain present.
+
+PR #112 merged at `f8f70ad88a219dcdfb613136e4ca20a51f1f052f`, following the earlier selective integrations #131 and #138. The original donor branch still exists; only its tip was fast-forwarded to the rebased selected commit. No alias refs in the 17-name group were removed.

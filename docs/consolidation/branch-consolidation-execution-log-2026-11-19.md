@@ -170,3 +170,14 @@
 - Fresh live census: **953 refs**, 937 unique HEADs, one 17-name duplicate group, 16 excess aliases. Ten names in the previous 963-ref inventory are absent; no new names appeared. This is not attributed to this session.
 - PR #949 audit branch is being refreshed to the post-#131/#138 source and current census; it remains Draft pending review of its complete documentation bundle.
 - No branch refs were deleted; no force push was used.
+
+
+## 2026-11-19 execution update — universal input merge and current census
+
+- **PR #112 MERGED** into `workpass70-source`: merge commit `f8f70ad88a219dcdfb613136e4ca20a51f1f052f`. Original 45-file mixed patch reduced to eight selected files: universal input interpreter, focused regression test, multimodal perception and situation model, durable fusion in OrganismCore, wiring in OrganismRuntime, runtime package script and CI step. Preserved P41 semantic-perception snapshot, external-goal policy, plugin source attribution, world normalization and canonical PerceptionEngine flow. Exact-head Actions: **25/25 successful**.
+- PR #131 merge commit: `3a185b341e85ca9a8d3f3d1679a1f4464416b6c2`; six selected files; **7/7** exact-head Actions successful.
+- PR #138 merge commit: `08053819c8fb91861703736d63f1459ad4be121b`; four selected files; **22/22** exact-head Actions successful.
+- Current live census remains **953 refs / 937 unique HEADs / one duplicate group of 17 names / 16 excess aliases**. Since the immediately preceding 953-row inventory, names added: 0; names removed: 0; three branch tips advanced (canonical source, universal interpreter donor, audit branch).
+- Current open old-base dependencies: #109 on `nk1-all-branches-merge-2026-10-23`; #91 and #86 on `rebuild`; #124 on `workpass206-runtime-evaluator-wiring` — four open PRs across three old base refs.
+- PR #949 remains Draft and its updated inventory/checkpoint record current source and PR dependencies.
+- No branch refs deleted; no force push used.

@@ -202,3 +202,22 @@ This establishes ancestry, not an assertion that every merged change is fully ex
 The current source is substantially newer than the October 19 Release ZIP. The archive remains the designated immutable baseline at 135,290,615 bytes and published SHA-256 metadata `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. Archive bytes still could not be materialized here, so ZIP member inventory, CRC verification, independently recomputed SHA-256 and path-by-path source parity remain **UNKNOWN / NOT DONE**.
 
 No branch was deleted or force-updated in this refresh. No claim is made that all 953 refs have been audited file-by-file. The exact duplicate group is a cleanup candidate only after all five open dependent PRs and historical references have been reconciled.
+
+
+## Live refresh after PR #112 — 2026-11-19
+
+After merge of PR #112, a fresh paginated GitHub branch read still returns **953 refs**, **937 unique HEADs**, one exact duplicate-head group and **16 excess alias names**. The duplicate group is SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` with 17 refs. The new exact snapshot is `branch-inventory-2026-11-19-live-after-pr112.jsonl` (953 rows).
+
+Compared with the preceding 953-row snapshot, no branch names were added or removed. Three tips changed as expected: `workpass70-source` advanced to the #112 merge commit `f8f70ad88a219dcdfb613136e4ca20a51f1f052f`; `workpass328-universal-interpreter` advanced to the selectively rebased head `46fb8ac8fada7e89c184a651032e21571aae5093`; the audit branch advanced as this report was refreshed. No count reduction is claimed for this step.
+
+Current open-PR base dependencies:
+
+- `nk1-all-branches-merge-2026-10-23`: open PR #109.
+- `rebuild`: open PRs #91 and #86.
+- `workpass206-runtime-evaluator-wiring`: open PR #124.
+
+That is **4 open PRs across 3 old base refs**. PR #112 was selectively rebased and merged into `workpass70-source`; its old base dependency is cleared. PR #131 and #138 are also merged. Donor refs remain present.
+
+PR #112 merge commit is `f8f70ad88a219dcdfb613136e4ca20a51f1f052f`; selective diff 8 files; exact-head Actions **25/25 successful**. The interpreter, audio modality, durable fusion and runtime wiring are now in the canonical source. The donor's old mixed 45-file patch was not merged wholesale.
+
+No branch refs were deleted or force-updated. Keep the 17 duplicate-tip refs until historical PRs, tags/releases, workflows, rulesets, deployment and external references are reconciled.
