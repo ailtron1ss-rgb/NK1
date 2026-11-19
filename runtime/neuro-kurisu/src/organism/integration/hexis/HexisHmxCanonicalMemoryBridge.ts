@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { MemoryLifecycleEncodeInput, MemoryFabric } from '../../memory/MemoryFabric.ts';
 import { snapshotPlainData } from '../../core/PlainDataSnapshot.ts';
 import type { HexisAdaptationFabric, HexisHmxIntent } from './HexisAdaptationFabric.ts';
+import { redactHmxImportedText } from './HmxImportRedactor.ts';
 
 export type HmxBridgeWarning = {
   code: string;
@@ -354,9 +355,12 @@ export class HexisHmxCanonicalMemoryBridge {
         warnings.push({ code: 'future-source-time-ignored', ref, detail: 'Future donor timestamp was ignored to prevent freshness inflation' });
       }
       const relation = links.get(ref)!;
+      const content = redactHmxImportedText(record.content as string, MAX_CONTENT_LENGTH);
+      if (content !== record.content) warnings.push({ code: 'hmx-sensitive-pattern-redacted', section: 'memories', ref,
+        detail: 'Known credential/contact patterns were redacted before canonical write; this heuristic screen is not a universal PII detector' });
       const memoryInput: MemoryLifecycleEncodeInput = {
         id: memoryId,
-        content: record.content as string,
+        content,
         kind,
         salience: typeof record.importance === 'number' && Number.isFinite(record.importance)
           ? Math.max(0, Math.min(1, record.importance)) : 0.35,
@@ -411,9 +415,12 @@ export class HexisHmxCanonicalMemoryBridge {
         warnings.push({ code: 'future-episode-time-ignored', section: 'episodes', ref,
           detail: 'Future episode start timestamp was ignored' });
       }
+      const content = redactHmxImportedText(raw.summary as string, MAX_CONTENT_LENGTH);
+      if (content !== raw.summary) warnings.push({ code: 'hmx-sensitive-pattern-redacted', section: 'episodes', ref,
+        detail: 'Known credential/contact patterns were redacted before canonical write; this heuristic screen is not a universal PII detector' });
       const memoryInput: MemoryLifecycleEncodeInput = {
         id: refToId.get(ref)!,
-        content: raw.summary as string,
+        content,
         kind: 'episodic',
         salience: 0.45,
         emotionalWeight: 0,
@@ -484,9 +491,12 @@ export class HexisHmxCanonicalMemoryBridge {
         continue;
       }
       const sourceInstance = stage.sourceSubjectId || 'external-unknown';
+      const content = redactHmxImportedText(raw.name as string, 256);
+      if (content !== raw.name) warnings.push({ code: 'hmx-sensitive-pattern-redacted', section: 'clusters', ref,
+        detail: 'Known credential/contact patterns were redacted before canonical write; this heuristic screen is not a universal PII detector' });
       const clusterInput: MemoryLifecycleEncodeInput = {
         id: refToId.get(ref)!,
-        content: raw.name as string,
+        content,
         kind: 'semantic',
         salience: 0.4,
         emotionalWeight: 0,
