@@ -785,7 +785,7 @@ function defaultEmbodimentFacet(): EmbodimentFacet {
         body: defaultBodyState(), bodyEvents: [], sleepSessions: [], lastSensorAt: 0, sensorFailures: 0,
         perceptionRouting: { version: 1, lastRoutedAt: 0, routedCount: 0, droppedCount: 0, lastRoute: 'none' },
         multimodal: { version: 1, events: 0, fused: 0, lastFusionAt: 0, lastConfidence: .25, lastSalience: .15,
-            modalities: { text: 0, speech: 0, vision: 0, sensor: 0, world: 0 }, recent: [], visionCaptures: 0, speechTurns: 0, fusionConflicts: 0 },
+            modalities: { text: 0, speech: 0, audio: 0, vision: 0, sensor: 0, world: 0 }, recent: [], visionCaptures: 0, speechTurns: 0, fusionConflicts: 0 },
         toolAudit: [], p35: defaultP35SemanticWorldBody(), p37: defaultP37EmbodiedSensorium(),
         p40SemanticIntelligence: defaultP40SemanticIntelligence(), p41SemanticPerception: defaultP41SemanticPerception(),
         p41NativePerception: defaultP41NativePerception(), p41TemporalPerception: defaultP41TemporalPerception(),
@@ -11500,6 +11500,26 @@ export class OrganismCore {
         const ev = 'at' in input ? this.embodimentSubsystem.multimodal.observe(input as any) : this.embodimentSubsystem.multimodal.observe({ ...input, evidence: input.evidence ?? [] });
         this.persisted.facets.embodiment.multimodal = this.embodimentSubsystem.multimodal.snapshot();
         return ev;
+    }
+    /** Fuse only current runtime tick's canonical, already-recorded modality observations. */
+    fuseMultimodalObservations(events: Array<import('../body/MultimodalPerception.ts').ModalityObservation>) {
+        if (!Array.isArray(events) || events.length > 12) throw new RangeError('multimodal-fusion-event-count-invalid');
+        for (const event of events) {
+            if (!event || typeof event !== 'object' ||
+                !['text', 'speech', 'audio', 'vision', 'sensor', 'world'].includes(event.modality) ||
+                typeof event.at !== 'number' || !Number.isFinite(event.at) || event.at < 0 ||
+                typeof event.summary !== 'string' || event.summary.length > 500 ||
+                typeof event.confidence !== 'number' || !Number.isFinite(event.confidence) || event.confidence < 0 || event.confidence > 1 ||
+                typeof event.salience !== 'number' || !Number.isFinite(event.salience) || event.salience < 0 || event.salience > 1 ||
+                !Array.isArray(event.evidence) || event.evidence.length > 12 ||
+                !event.evidence.every(marker => typeof marker === 'string' && marker.length <= 80)) {
+                throw new TypeError('multimodal-fusion-event-invalid');
+            }
+        }
+        const fused = this.embodimentSubsystem.multimodal.fuse(events);
+        // Persist fusion counters and confidence with the canonical modality state.
+        this.persisted.facets.embodiment.multimodal = this.embodimentSubsystem.multimodal.snapshot();
+        return fused;
     }
     multimodalSnapshot() { return this.embodimentSubsystem.multimodal.snapshot(); }
     skillLibrarySnapshot() { return this.cognitiveRuntime.skillLibrary.snapshot(); }
