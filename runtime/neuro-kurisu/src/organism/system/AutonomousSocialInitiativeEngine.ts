@@ -328,8 +328,52 @@ export class AutonomousSocialInitiativeEngine {
     }).sort((a, b) => b.score - a.score || a.candidate.topic.localeCompare(b.candidate.topic));
     const topScore = ranked[0]!.score;
     const nearTop = ranked.filter(item => item.score >= topScore - .16);
-    // Novelty selects among strong candidates, while ranking remains deterministic for replay.
-    const selected = nearTop[Math.floor(clamp(input.novelty01) * Math.max(0, nearTop.length - 1))]!.candidate;
+
+    // Borrow N.E.K.O.'s round-robin source fairness without introducing a second
+    // scheduler or corpus: count only the eight most recent host-acknowledged
+    // deliveries already retained by this canonical initiative owner.
+    const deliveredSourceUse = new Map<SocialInitiativeTopicSource, number>();
+    const recentDelivered = this.state.initiatives
+      .filter(item => item.status === 'executed'
+        && typeof item.resolvedAt === 'number'
+        && Number.isFinite(item.resolvedAt)
+        && item.resolvedAt > 0
+        && item.resolvedAt <= at
+        && at - item.resolvedAt <= recentWindowMs)
+      .sort((left, right) => Number(right.resolvedAt ?? 0) - Number(left.resolvedAt ?? 0))
+      .slice(0, 8);
+    for (const item of recentDelivered) {
+      const source = validSource(item.topicSource);
+      deliveredSourceUse.set(source, (deliveredSourceUse.get(source) ?? 0) + 1);
+    }
+
+    // Source fairness is a soft tie-break between near-equal candidates, not
+    // an absolute quota: an unavailable or materially weaker source is never
+    // forced, and a sole eligible source always remains selectable.
+    const candidatesBySource = new Map<SocialInitiativeTopicSource, typeof nearTop>();
+    for (const item of nearTop) {
+      const source = validSource(item.candidate.source);
+      const group = candidatesBySource.get(source) ?? [];
+      group.push(item);
+      candidatesBySource.set(source, group);
+    }
+    const sourcePools = [...candidatesBySource.entries()]
+      .map(([source, items]) => ({
+        source,
+        recentUse: deliveredSourceUse.get(source) ?? 0,
+        bestScore: items[0]!.score,
+        items,
+      }))
+      .sort((left, right) => left.recentUse - right.recentUse
+        || right.bestScore - left.bestScore
+        || left.source.localeCompare(right.source));
+    const selectedPool = sourcePools[0]!.items
+      .sort((left, right) => right.score - left.score
+        || left.candidate.topic.localeCompare(right.candidate.topic));
+    // Novelty continues to select within the chosen source lane; replay stays deterministic.
+    const selected = selectedPool[
+      Math.floor(clamp(input.novelty01) * Math.max(0, selectedPool.length - 1))
+    ]!.candidate;
     const topic = selected.topic;
     const source = validSource(selected.source);
     const emotionLabel = validEmotion(input.emotionLabel);

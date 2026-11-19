@@ -1,0 +1,40 @@
+name: NK1 N.E.K.O. proactive source diversity
+
+on:
+  push:
+    branches:
+      - "aspect/neko-proactive-source-fairness-20261104"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts"
+      - "runtime/neuro-kurisu/tests/neko-proactive-source-diversity.mjs"
+      - ".github/workflows/nk1-neko-proactive-source-diversity.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts"
+      - "runtime/neuro-kurisu/tests/neko-proactive-source-diversity.mjs"
+      - ".github/workflows/nk1-neko-proactive-source-diversity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-proactive-source-diversity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-diversity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Run canonical source diversity behavioral contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-proactive-source-diversity.mjs
+      - name: Runtime typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
