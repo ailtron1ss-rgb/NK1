@@ -70,5 +70,7 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:b1701-b2200:continuity && npm --prefix runtime/neuro-kurisu run test:p29:core-integration && npm --prefix runtime/neuro-kurisu run test:pcontinuity:integration
       - name: B299 personality evidence and restore boundary
         run: npm --prefix runtime/neuro-kurisu run test:b299:personality-boundary-consolidation && npm --prefix runtime/neuro-kurisu run test:big-pass-299:personality
+      - name: B299 hostile snapshot restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:b299:restore-integrity
       - name: Organism runtime smoke
         run: npm --prefix runtime/neuro-kurisu run test:organism-smoke
