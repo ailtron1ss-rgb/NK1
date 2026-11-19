@@ -80,7 +80,7 @@ assert.equal(numeric.lastAt,0);
 assert.equal(numeric.meanStress01,.2);
 assert.equal(numeric.meanValence01,.5,'out-of-range scalar metrics must fall back to the validated state default');
 assert.equal(numeric.interoception.cycles,0);
-assert.equal(numeric.interoception.regulationPressure01,0);
+assert.equal(numeric.interoception.regulationPressure01,.18,'invalid interoceptive vectors must restore to the complete safe default');
 assert.equal(numeric.interoception.lastObserved.energy01,.68);
 for(const value of [numeric.meanArousal01,numeric.meanValence01,numeric.meanStress01,numeric.interoception.regulationPressure01,numeric.interoception.lastObserved.energy01]){
   assert.ok(Number.isFinite(value) && value>=0 && value<=1);
