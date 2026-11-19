@@ -58,3 +58,10 @@
 - #953 remains Draft. Current comparison against source `aa2b385…` is diverged: PR head is 22 commits ahead, source is 2 commits ahead of merge-base `9742b5a…`. It should be rebased/revalidated after #951.
 - #953 has 22 changed files (+2,668/-113) in the latest PR metadata. Workflow runs associated with its head include two pending jobs (`Hexis HMX canonical memory bridge`, `WorkPass81 memory restore integrity`); the other listed runs were completed successfully at the time checked.
 - #950 and #952 remain merged; #949 remains Draft/audit-only.
+
+
+## Latest exact-head workflow refresh
+
+- #951 is merged. Its donor head `0a289c1…` has 44/44 completed successful workflow runs.
+- #953 remains Draft (22 files, +2,668/-113). Its latest exact-head workflow query returned 50/50 completed successful runs, with no pending or failed runs. The earlier two-pending note above records a prior sample and is superseded.
+- #953 still has a source divergence: 22 PR commits ahead and 2 source commits ahead of merge-base `9742b5a…`. A green CI run does not remove the need to reconcile that base and review the complete patch.
