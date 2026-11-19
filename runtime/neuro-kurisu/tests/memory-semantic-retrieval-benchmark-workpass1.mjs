@@ -41,6 +41,10 @@ const examples=[
  ...Array.from({length:8},(_,i)=>({id:`ru-holdout-${i}`,query:`не могу войти в аккаунт сбросить пароль ${i}`,relevantIds:[`credential-${i}`],split:'holdout',language:'ru'})),
  ...Array.from({length:2},(_,i)=>({id:`ru-noanswer-${i}`,query:`qzxv glarpen орбитальный шифр nonsense ${i}`,relevantIds:[],split:'holdout',answerable:false,language:'ru'})),
 ];
+examples.push(
+  {id:'en-train-normalize-a',query:'Account recovery!!!   password',relevantIds:['credential-0'],split:'train',language:'en'},
+  {id:'en-train-normalize-b',query:'account recovery password',relevantIds:['credential-0'],split:'train',language:'en'},
+);
 const provenance={
  datasetId:'semantic-path-fixture',datasetVersion:'1.0.0',sourceRef:'test-only-fixture',
  labelingProtocol:'Hand-authored deterministic synthetic labels. Not production evidence.',
@@ -51,7 +55,7 @@ const report=await runMemoryOS2SemanticRetrievalBenchmark(snapshot,examples,{
  now,k:5,seed:31,bootstrapSamples:200,maxExamples:512,
  minHoldoutQueries:8,minUnanswerableHoldoutQueries:4,minLanguageTrainQueries:2,
  minLanguageAnswerableHoldoutQueries:8,minLanguageUnanswerableHoldoutQueries:2,
- datasetProvenance:provenance,embeddingProvider:provider,minSimilarity01:.72,
+ datasetProvenance:provenance,embeddingProvider:provider,minSimilarity01:.72,includeQueryEvidence:true,
 });
 assert.equal(report.skipped,false,'complete deterministic local fixture should be indexable');
 assert.equal(report.semanticIndex.indexedItems,16,'all eligible documents must be indexed before paired comparison');
@@ -61,6 +65,16 @@ assert.equal(report.metrics.semantic.queries,20);
 assert.ok(report.semanticSelection.semanticEnabledQueries>0,'async embedding branch must be exercised');
 assert.equal(report.semanticSelection.abstainedQueries,4,'explicitly unanswerable RU/EN queries must abstain on weak semantic matches');
 assert.equal(report.metrics.semantic.unsupportedRetrievalCount,0);
+
+const orderedExamples=[...examples].sort((a,b)=>a.split.localeCompare(b.split)||a.id.localeCompare(b.id));
+const normalizedA=orderedExamples.findIndex(row=>row.id==='en-train-normalize-a');
+const normalizedB=orderedExamples.findIndex(row=>row.id==='en-train-normalize-b');
+assert.ok(Array.isArray(report.queryEvidence),'opt-in query evidence should be emitted');
+assert.equal(
+  report.queryEvidence[normalizedA].queryDigest,
+  report.queryEvidence[normalizedB].queryDigest,
+  'punctuation, casing and repeated whitespace must normalize to the same salted query digest',
+);
 assert.deepEqual(Object.keys(report.languageSlices).sort(),['en','ru']);
 assert.equal(report.languageSlices.en.holdoutQueries,10);
 assert.equal(report.languageSlices.en.answerableHoldoutQueries,8);
@@ -82,6 +96,7 @@ const failed=await runMemoryOS2SemanticRetrievalBenchmark(snapshot,examples,{
 });
 assert.equal(failed.skipped,true,'provider/index failure must fail closed instead of comparing a partial semantic index');
 assert.equal(failed.promotion.allowed,false);
+console.log('NORMALIZED_QUERY_DIGEST_EQUIVALENCE=PASS');
 console.log('MEMORY_SEMANTIC_RETRIEVAL_BENCHMARK_WORKPASS1=PASS',JSON.stringify({
  indexed:report.semanticIndex.indexedItems,queries:report.semanticSelection.queries,
  semanticEnabled:report.semanticSelection.semanticEnabledQueries,abstained:report.semanticSelection.abstainedQueries,
