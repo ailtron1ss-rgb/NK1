@@ -55,7 +55,7 @@ The adapter passes an AbortSignal to the provider and requests provider cancella
 
 ## Not included yet
 
-This is a boundary and wiring pass, not a claim of complete voice integration. It does not yet connect N.E.K.O.'s Silero VAD, Smart Turn / endpointing, transcript aggregation, speaker identity, streaming partials, ONNX assets, or any external ASR engine. Those are separate provider/runtime tasks and must be integrated behind this contract with their own holdout, latency, cancellation and mobile soak evidence.
+This is a provider boundary and integration pass, not a claim of complete voice integration. Sample-scoped Silero speech admission and the Smart Turn semantic endpoint coordinator are connected as host-fed advisory evidence. The host owns Silero/Smart Turn inference and model asset acquisition; NK1 does not download, load or execute the ONNX weights in this integration. Smart Turn results do not finalize or reject the ASR transcript. Transcript aggregation, speaker identity, streaming partials and a production host inference provider remain separate tasks requiring holdout, latency, cancellation and mobile soak evidence.
 
 ## Verification
 
