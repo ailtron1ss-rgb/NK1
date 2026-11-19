@@ -155,3 +155,18 @@ Use a small number of long-lived aspect branches and short task branches. Do not
 - Final PR head `5a57c0285d5bec879e818ddbcbcf217c35e4de57`: **48/48 successful Actions runs**.
 - PR #969 merge commit: `d7b8bd3f82e342509a2a0bc75e28af685cf21321`.
 - The report was added after the #970 squash merge and after the 74-file HeXis archive transfer. Its commit is `1c569f3d857da35aa710516de59e3f50fb743b13`; the source state at that point already included the N.E.K.O. port.
+
+
+## Final live refresh — 2026-11-19
+
+After both PR merges and the report correction, a fresh paginated read returned:
+
+- **970 branch refs / 954 unique HEADs / 1 exact duplicate group / 16 excess refs**.
+- The one 17-name group remains at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`; the four currently open PR base dependents remain #91, #86, #109 and #124.
+- **366 open PRs** at the final read.
+- `workpass70-source` HEAD: `f8542e653b60c92d129b88f20b0f51f02c69837c`.
+- `main` HEAD: `202b180631bf74cbf9f733a2081cf78f75b36e8c`.
+- PR #970 remains merged at `879a883f59439c8bdab3e4d7d9b171d6d4659780`.
+- PR #969 remains merged at `d7b8bd3f82e342509a2a0bc75e28af685cf21321`; its final head has 48/48 successful workflow runs.
+
+The branch count changed from 969 to 970 during the concurrent work window; no cause is attributed without a before/after ref identity diff. This reinforces that a single census is a time-stamped snapshot, not a stable final count.
