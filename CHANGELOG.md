@@ -1,3 +1,95 @@
+## NK1 Architecture — split advanced state defaults into bounded domains (2026-10-24)
+
+- [REFACTOR] Split the former 40-edge `AdvancedFacetDefaults.ts` into a stable 3-edge facade and three explicit domain builders: context/memory/governance (17 edges), developmental P49–P79 (20 edges), and research/learning (3 edges). The returned state keys and external `defaultAdvancedFacet()` factory remain unchanged.
+- [PASS] Focused workflow [40130701739](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40130701739) succeeded on commit `a995fdd1e7ee1f7bbb5ac028a3073f2a0e2c95ef`: server import graph 583 files/1,252 edges, 0 unresolved imports and 6/6 server/scanner tests; architecture graph 2,233 source files, 641 canonical-organism files, 4,668 edges (3,962 runtime/dual-kind and 706 type-only), 0 missing imports, runtime cycles, legacy leakage or boundary violations; 100/100 dependency budget checks and 6/6 architecture tests passed.
+- [BUDGET] Added five-dimensional limits to each new advanced builder and reduced the advanced facade cap to 5 total / 4 runtime outgoing edges.
+- [ARTIFACT] Graph schema-v3 artifact `nk1-module-dependency-graph`, ID `12574034831`, SHA-256 `5f2023912b7c3bb57b9f28231cecdee9a44a0ff8b824f8a1c58d0e4509fc2e7c`, expires 2026-11-07.
+
+## NK1 Architecture — domain budgets and single-owner regression gate (2026-10-24)
+
+- [PASS] Workflow [40130445101](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40130445101) passed on commit `8cf0b1fdd2d35b40708afd33901f5ebf89891330`: server graph 580 files/1,249 edges, 6/6 tests; architecture graph 2,230 source files, 638 canonical files, 4,665 edges (3,959 runtime/dual-kind; 706 type-only), 0 missing imports/cycles/legacy leakage/boundary violations, 85/85 dependency budget checks and 6/6 architecture tests.
+- [REGRESSION] Added a static ownership test confirming `StateMigrations.ts` consumes the stable `StateFacetDefaults.ts` facade, each of the seven domain-specific builders has exactly one file owner, and duplicate default-factory declarations are not left in the migration coordinator.
+- [BUDGET] Reduced the tracked `StateMigrations.ts` fan-out ceilings to reflect the measured reduction (max total 205, runtime 105, type 116). Added five-dimensional budgets for the facade and all seven children; the largest remaining builder, `AdvancedFacetDefaults.ts`, is limited to 42 total/41 runtime outgoing edges.
+- [BASELINE] `contracts/module-dependency-budgets.json` now records commit `8cf0b1fdd2d35b40708afd33901f5ebf89891330` and run `40130445101`.
+- [ARTIFACT] Graph artifact ID `12574029467`, SHA-256 `ac53303103112223a777ea9ad70c762af17837312b62c56752800d7bf2dfa4e8`, expires 2026-11-07.
+
+## NK1 Architecture — domain-owned persistence defaults (2026-10-24)
+
+- [REFACTOR] Extracted the eight initial-facet builders from `StateMigrations.ts` into `StateFacetDefaults.ts` plus seven domain-specific modules under `persistence/state-defaults/`. The migration coordinator now retains only a narrow stable import from the facade.
+- [MEASURED] Focused graph run [40129832572](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40129832572) succeeded on commit `0aefbbeda6a3e078e9b66e4ccd788d0bf944f024`: 2,230 source files, 638 canonical-organism files, 4,665 graph relationships (3,959 runtime/dual-kind, 706 type-only), zero missing imports, runtime cycles, legacy leakage, or boundary/budget violations.
+- [MEASURED] `StateMigrations.ts` now has 199 outgoing edges (100 runtime, 114 type-only), down from 246 total edges in the earlier schema-v2 graph. New facade and per-domain modules remain individually bounded; the largest is `AdvancedFacetDefaults.ts` with 40 outgoing runtime edges.
+- [PASS] Server audit in that run: 580 reachable files, 1,249 edges, zero unresolved imports; server/scanner tests 6/6 and architecture tests 5/5 passed.
+- [BUDGET] Expanded `contracts/module-dependency-budgets.json` to baseline the migration reduction and guard the facade plus seven child builders against unreviewed fan-out growth. The latest added static regression test asserts that each builder has one domain owner; it was committed after the measured run and needs its own new CI result.
+- [ARTIFACT] Graph schema-v3 artifact `nk1-module-dependency-graph`, ID `12574248803`, SHA-256 `fba14c70be40c6154810254da2da61280e6008efd2cca762bbb3cdc3c00ef2be` (expires 2026-11-07).
+
+## NK1 Architecture — schema v3 dependency graph and type-only cycle separation (2026-10-24)
+
+- [PASS] Focused dependency workflow [40129470402](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40129470402) completed successfully on commit `19862298626b60ceb809d801920df4b2b7ca6bb1`.
+- [PASS] Server runtime-import graph: 572 reachable files, 1,186 edges, zero unresolved local imports; scanner/server suite: 6/6 passed.
+- [PASS] Full architecture graph: 2,222 source files, 630 canonical-organism files, 4,595 unique relationships: 3,896 runtime/dual-kind edges plus 699 type-only edges. No missing imports, runtime cycles, legacy leakage, boundary violations, or budget violations.
+- [PASS] All 45 dependency budget checks passed, including separate limits for runtime fan-out, type fan-out, production runtime incoming links, and production type-only incoming links.
+- [FIXED] `core/types.ts` now imports `RELEASE_CONTRACT` with `import type`, removing its only runtime import edge. The enforced budget now requires `core/types.ts` to have zero runtime out-degree.
+- [ARTIFACT] Updated schema v3 graph artifact `nk1-module-dependency-graph` (artifact ID `12574162498`, SHA-256 `e8f0954d4aef8c18e30cd85aa6754d67b1ac4f141090fe70c303e88ca5b77485`, expires 2026-11-07).
+- [BASELINE] Updated `contracts/module-dependency-budgets.json` to reference the passing run and the separate runtime/type-only metrics.
+
+## NK1 Architecture — JSON dependency graph export (2026-10-24)
+
+- [ADDED] The architecture audit can now export a schema-versioned JSON graph through `NK1_DEPENDENCY_GRAPH_REPORT`: nodes, source layers, relative-import edges, layer-to-layer coupling counts, and summary metrics.
+- [TESTED] The architecture regression suite validates the generated JSON structure, node/edge counts, no unresolved imports/cycles/boundary violations, and automatically cleans up temporary files in local runs.
+- [ARTIFACT] Dedicated workflow run [40128498140](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40128498140) succeeded and uploaded artifact `nk1-module-dependency-graph` (artifact ID `12574340739`, SHA-256 `c3967255c8336f7db5e4f4f5bedd5d7598e1968d3c844bb1880b4b0cf8fb5913`, expires 2026-11-07).
+- [METRICS] That run validated 2,222 source files, 630 canonical-organism files, and 4,210 dependency edges with zero unresolved imports, cycles, legacy leakage, or boundary violations; the server graph reported 574 files and 1,868 edges.
+- [SCOPE] Evidence is tied to the audited code commit `264665af51b19685875483392cfc8b1a0ad62829`; run a new CI check after any subsequent code change.
+
+## NK1 Architecture — focused dependency CI results (2026-10-24)
+
+- [PASS] Dedicated workflow run [40128282695](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40128282695) completed successfully on code commit `a248aabe41953a074483ebcbede923c2758fe6c2`.
+- [PASS] Transitive server import audit: 574 files, 1,868 local dependency edges, zero unresolved imports; all five combined scanner/server-audit tests passed.
+- [PASS] Full architecture audit: 2,222 source files, 630 canonical-organism files, 4,210 dependency edges; missing=0, cycles=0, legacy leakage=0, boundary violations=0; all five architecture-boundary tests passed.
+- [SCOPE] The successful run validates the code at `a248aabe`; this changelog-only evidence entry does not change audited runtime or scanner code.
+
+## NK1 Architecture — focused dependency CI gate (2026-10-24)
+
+- [ADDED] Added `.github/workflows/nk1-module-dependency-audit.yml`, a path-filtered PR workflow using Node.js 24 and first-party Actions v7.
+- [GATE] The focused job runs the transitive server import audit and the architecture dependency-boundary test suite, avoiding the unrelated long-running cognitive/replay benchmarks.
+- [LIMITATION] The workflow definition is committed, but a run result for this workflow has not yet been returned by the GitHub workflow-run query. Do not treat the gate as passed until its job completes.
+
+## NK1 Architecture — dependency-policy false-positive guard (2026-10-24)
+
+- [REGRESSION] Added a fifth fixture test ensuring the policy does not confuse sibling path prefixes or similarly named directories (`app/source-archive`, `research-adapter`, `legacy-code`) with forbidden target roots.
+- [MAINTENANCE] Normalized import-resolver formatting without changing behavior.
+
+## NK1 Architecture — dependency graph observability (2026-10-24)
+
+- [OBSERVABILITY] The architecture audit success line now reports `dependencyEdges` and `boundaryViolations=0` alongside source-file and cycle/missing-import counts.
+- [REGRESSION] The full-tree test asserts the graph metrics are present and that the boundary violation count is zero.
+
+## NK1 Architecture — enforce dependency directions (2026-10-24)
+
+- [ADDED] Extracted a pure, testable dependency boundary policy in `runtime/neuro-kurisu/scripts/dependency-boundary-policy.mjs`.
+- [ENFORCED] The architecture audit now rejects canonical organism imports into UI/app source, app server routing, runtime server routing, research trees, or legacy trees. It also rejects app source imports directly into private runtime source.
+- [REGRESSION] Expanded `tests/architecture-dependency-boundaries.test.mjs` with fixture-based policy tests for allowed contract dependencies and each forbidden edge, plus a full-tree audit invocation. The existing `audit:architecture` command now runs this gate.
+- [LIMITATION] Policy fixtures and saved sources were verified, but the full source-tree audit and the integrated Node test have not been executed locally or in CI in this pass. Existing imports that violate the newly formalized target rules may still need migration.
+
+## NK1 Architecture — complete dependency-edge parsing (2026-10-24)
+
+- [HARDENED] Updated `runtime/neuro-kurisu/scripts/audit-architecture.mjs` to include side-effect imports and literal CommonJS requires in the dependency graph, in addition to static imports, re-exports, and literal dynamic imports.
+- [RESOLUTION] Added NodeNext-style emitted-JavaScript-to-TypeScript source resolution and indexed-file lookup via `Set` to avoid repeated linear scans during edge resolution.
+- [LIMITATION] This updates the static analysis path; the architecture audit has not been executed on the current commit in this environment.
+
+## NK1 Architecture — transitive server dependency audit (2026-10-24)
+
+- [HARDENED] Expanded `runtime/neuro-kurisu/scripts/audit-server-imports.mjs` from checking only direct imports of `src/server/server.mjs` to traversing the reachable relative-import graph.
+- [COVERAGE] The scanner covers static imports, re-exports, literal dynamic imports, and literal CommonJS requires; it resolves common JS/TS extensions, index modules, imported assets, and NodeNext-style `.js` specifiers mapped to local TypeScript sources.
+- [REGRESSION] Added `tests/server-import-graph-audit.test.mjs`, asserting transitive traversal, graph connectivity, and zero unresolved local edges. The existing `audit:server-imports` command now runs this regression test and the scanner.
+- [LIMITATION] The changes are committed to the architecture work branch and source-verified via GitHub; the audit/test have not been executed in a local checkout or CI in this pass, so runtime PASS is not claimed.
+
+## NK1 Architecture — module dependency contracts (2026-10-24)
+
+- [ADDED] Added `docs/architecture/module-dependency-contracts-ru.md` with a target dependency map, module ownership matrix, integration invariants, and a staged plan for enforcing boundaries.
+- [DOCUMENTED] Recorded the existing integration seams verified from the manifests and integration verifier: runtime server, UI API client, research bridge, integration manifest, server-import audit, UI/API linkage audit, runtime architecture/contract/integrity audits.
+- [BOUNDARY] Defined one cognitive-cycle owner; mandatory policy + ActionGateway path for external actions; UI/research bridge access through public contracts; single-writer ownership for persistent state; candidate/holdout/promotion separation for learning.
+- [LIMITATION] This pass added architecture contracts and a verified implementation map, not runtime refactors. The complete import graph and audit results have not yet been generated or executed on this branch; no test pass is claimed.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

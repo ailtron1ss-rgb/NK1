@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Prevent unreviewed growth of central modules while separating runtime dependency coupling from compile-time type coupling.",
+  "metric": "unique relative-import graph edges; runtime and TypeScript type-only edges are classified separately",
+  "baseline": {
+    "branch": "architecture/dependency-contracts-2026-10-24",
+    "auditedCommit": "2a00c8d9ff262b789a66ea2bdbc724f13739c8c8",
+    "workflowRun": "40130921912",
+    "note": "Passing schema-v3 baseline after domain split of StateMigrations and AdvancedFacetDefaults and strict hot-spot growth budgets for OrganismCore, DevelopmentalNeuralRuntime, and CognitiveRuntimeCluster. Runtime/type edges are measured separately; 100 checks pass with zero missing imports, runtime cycles, boundary violations, or budget violations."
+  },
+  "modules": [
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "maxOutDegree": 420,
+      "maxRuntimeOutDegree": 382,
+      "maxTypeOutDegree": 218,
+      "maxProductionRuntimeInDegree": 8,
+      "maxProductionTypeOnlyInDegree": 6,
+      "reason": "Largest canonical runtime dependency hub (417 total / 379 runtime outgoing edges in schema-v3 graph). Keep a small, explicit budget while future extraction reduces this composition root; do not add production inbound owners."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts",
+      "maxOutDegree": 205,
+      "maxRuntimeOutDegree": 105,
+      "maxTypeOutDegree": 116,
+      "maxProductionRuntimeInDegree": 2,
+      "maxProductionTypeOnlyInDegree": 1,
+      "reason": "Migration coordinator delegates eight initial-facet builders through a narrow facade; preserve the measured reduction and split normalization/migration logic further only behind stable contracts."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/types.ts",
+      "maxOutDegree": 176,
+      "maxRuntimeOutDegree": 0,
+      "maxTypeOutDegree": 176,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 235,
+      "reason": "Shared type contract hotspot; avoid importing implementation modules from the common type surface. The high incoming type-only fan-in is tracked independently."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts",
+      "maxOutDegree": 21,
+      "maxRuntimeOutDegree": 4,
+      "maxTypeOutDegree": 17,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 1,
+      "reason": "Compatibility facade owns the public field surface; constructor objects are created in four bounded instance groups. Keep the facade at 21 total edges (4 runtime factory edges plus 17 type-only contracts)."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/cognition/index.ts",
+      "maxOutDegree": 86,
+      "maxRuntimeOutDegree": 86,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 0,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Broad cognition barrel; production modules should import narrow leaf modules rather than re-importing the full barrel."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts",
+      "maxOutDegree": 72,
+      "maxRuntimeOutDegree": 67,
+      "maxTypeOutDegree": 7,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 1,
+      "reason": "Runtime wiring cluster (70 total / 65 runtime outgoing edges). Avoid adding more direct wiring; new capabilities should use existing subsystem owner contracts."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/index.ts",
+      "maxOutDegree": 64,
+      "maxRuntimeOutDegree": 64,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 0,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Public package barrel; internal production code should not depend on the package root barrel."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/cognition/NeuralExperienceBranch.ts",
+      "maxOutDegree": 45,
+      "maxRuntimeOutDegree": 44,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 2,
+      "maxProductionTypeOnlyInDegree": 2,
+      "reason": "Complex cognition integration branch; isolate independent capabilities behind specific contracts."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts",
+      "maxOutDegree": 45,
+      "maxRuntimeOutDegree": 38,
+      "maxTypeOutDegree": 9,
+      "maxProductionRuntimeInDegree": 4,
+      "maxProductionTypeOnlyInDegree": 2,
+      "reason": "Runtime entry seam; new behavior should be delegated to existing owned runtimes."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/StateFacetDefaults.ts",
+      "maxOutDegree": 8,
+      "maxRuntimeOutDegree": 8,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Stable state-default facade only; domain logic belongs in the seven facet-specific builders."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/MemoryFacetDefaults.ts",
+      "maxOutDegree": 6,
+      "maxRuntimeOutDegree": 4,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default memory facet and its narrow dependencies."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/EmbodimentFacetDefaults.ts",
+      "maxOutDegree": 16,
+      "maxRuntimeOutDegree": 14,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default embodiment facet; new behavior should remain in body/perception modules."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/LearningFacetDefaults.ts",
+      "maxOutDegree": 26,
+      "maxRuntimeOutDegree": 24,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default learning facet; avoid turning the builder into an execution coordinator."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/ConsciousnessFacetDefaults.ts",
+      "maxOutDegree": 13,
+      "maxRuntimeOutDegree": 11,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default consciousness/evidence facet."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/EvolutionFacetDefaults.ts",
+      "maxOutDegree": 9,
+      "maxRuntimeOutDegree": 7,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default evolution facet."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/AdvancedFacetDefaults.ts",
+      "maxOutDegree": 5,
+      "maxRuntimeOutDegree": 4,
+      "maxTypeOutDegree": 1,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Stable composition facade only. Domain-specific advanced initial-state dependencies are owned by context, evolution and research builder modules."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/CognitionFacetDefaults.ts",
+      "maxOutDegree": 13,
+      "maxRuntimeOutDegree": 12,
+      "maxTypeOutDegree": 1,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default cognition facet."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/AdvancedContextFacetDefaults.ts",
+      "maxOutDegree": 19,
+      "maxRuntimeOutDegree": 18,
+      "maxTypeOutDegree": 1,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own context, memory/governance, and future-self defaults; do not absorb evolutionary or experimental defaults."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/AdvancedEvolutionFacetDefaults.ts",
+      "maxOutDegree": 22,
+      "maxRuntimeOutDegree": 21,
+      "maxTypeOutDegree": 1,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the developmental identity/world/agency default fields P49–P79."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/AdvancedResearchFacetDefaults.ts",
+      "maxOutDegree": 5,
+      "maxRuntimeOutDegree": 4,
+      "maxTypeOutDegree": 1,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own causal experience and research/learning default fields only."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupLearning.ts",
+      "maxOutDegree": 42,
+      "maxRuntimeOutDegree": 42,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own the first 42 developmental learning and neural-substrate constructors."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupCausal.ts",
+      "maxOutDegree": 51,
+      "maxRuntimeOutDegree": 51,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own the B261–B349 causal cognition and organism integration constructors."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupPredictive.ts",
+      "maxOutDegree": 27,
+      "maxRuntimeOutDegree": 27,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own B365 and the B2501–B2525 predictive/replay field constructors."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupLifeCourse.ts",
+      "maxOutDegree": 15,
+      "maxRuntimeOutDegree": 15,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own B385–B2500 life-course, continuity, and long-horizon development constructors."
+    }
+  ]
+}

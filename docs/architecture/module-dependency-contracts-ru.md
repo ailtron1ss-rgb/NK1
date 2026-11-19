@@ -1,0 +1,137 @@
+# NK1 — контракты зависимостей и карта связей модулей
+
+**Дата:** 2026-10-24  
+**Ветка:** architecture/dependency-contracts-2026-10-24  
+**Назначение:** уменьшить скрытую связанность между когнитивным runtime, API, интерфейсом, исследовательским мостом, долговременным состоянием и интеграционными инструментами. Это архитектурный контракт для следующих изменений, а не заявление, что все существующие импорты уже соответствуют ему.
+
+## 1. Что подтверждено в текущем дереве
+
+Корневой package.json содержит отдельные команды audit:server-imports, audit:ui-api-linkage, test:integration и audit:quick. Runtime-пакет содержит собственные audit:architecture, audit:contract, audit:integrity, audit:hygiene и типизированные тесты когнитивного цикла. tools/verify-integration.mjs явно проверяет существование runtime server, UI API-клиента, legacy avatar, Live2D-ресурса, research bridge и contracts/integration-manifest.json, затем поднимает runtime и bridge и обращается к их HTTP endpoints.
+
+Это означает, что интеграционные точки уже существуют, но сами по себе проверки наличия файлов и smoke-тесты не доказывают корректность всех направлений импортов, отсутствие циклов или единственность владельца состояния.
+
+## 2. Целевая карта слоёв
+
+```text
+app / UI / avatar
+      │ typed HTTP contract; DTO only
+      ▼
+API boundary / server routes
+      │ use-case ports
+      ▼
+cognitive orchestrator (single cycle owner)
+      ├──> perception adapters
+      ├──> appraisal / drives / goals
+      ├──> planning
+      ├──> policy + EthicalGate
+      ├──> ActionGateway -> tools / actuators
+      ├──> memory ports -> memory implementations
+      ├──> learning ports -> candidate/evaluation/promotion lifecycle
+      └──> reflection / observability
+research bridge ──> documented runtime API (never private in-process state)
+persistence adapters ──> owned schemas + migration/version boundaries
+```
+
+Стрелка означает разрешённое направление зависимости. Это целевая схема; перед массовым переносом нужно сверить реальные пути модулей и закрепить каждый запрет исполняемым аудитом.
+
+## 3. Жёсткие правила зависимостей
+
+1. **Владение когнитивным циклом — одно.** Perceive → Appraise → Plan → Gate → Act → Reflect → Consolidate вызывается одним оркестратором. UI, scheduler, research bridge и отдельные подсистемы не должны обходить его и самостоятельно запускать побочные действия.
+2. **Все внешние действия проходят через один шлюз.** Planner формирует намерение; policy/EthicalGate проверяет его; ActionGateway исполняет; receipt/result возвращается обратно в цикл. Нельзя вызывать tool/actuator напрямую из планировщика, памяти, UI или обучающего модуля.
+3. **Зависимости направлены к контрактам, а не к реализациям.** Core объявляет узкие интерфейсы/ports; файловая БД, HTTP, модели и внешние библиотеки подключаются адаптерами на внешнем крае. Core не импортирует UI, web-server framework, research bridge или конкретный storage driver.
+4. **UI зависит только от публичного API.** Клиент не импортирует серверные модули, внутренние классы памяти, прямые пути к БД или внутренние типы runtime. DTO и ошибки API версионируются и проверяются контрактными тестами.
+5. **Research bridge — внешний клиент.** Он обращается к runtime по документированному API и не редактирует состояние организма напрямую. Таймаут, недоступность bridge и повтор запроса не должны блокировать основной когнитивный цикл.
+6. **Подсистемы памяти не владеют идентичностью/циклом.** Они предоставляют операции записи, извлечения, консолидации и происхождения фактов. Решение о том, когда вспоминать/записывать, принимает оркестратор через memory ports.
+7. **Обучение не меняет активную политику напрямую.** Ошибка/траектория → диагностика → кандидат → изолированная оценка → независимый holdout → gate → явная promotion. Нельзя создавать циклическую зависимость runtime → learner → runtime через импорт внутренних реализаций.
+8. **Общее состояние имеет одного владельца.** Для каждой сущности (identity, drives, goals, memory index, action receipts, skill candidates) определить owner, schema/version и единственный путь записи. Остальные модули используют команды/события или read-only проекции.
+9. **События не заменяют контракты.** Event payload имеет версию, correlation ID, source, timestamp и idempotency key для повторяемых операций. Ошибки и неизвестные версии должны быть явными, а не молча превращаться в пустое состояние.
+10. **Никаких скрытых циклов импортов.** Общие типы переносятся в узкие contract-пакеты, а не в универсальный utils или barrel, который повторно экспортирует реализации.
+11. **Не добавлять второй путь для той же операции.** Перед созданием нового gateway, scheduler, memory facade или API-клиента нужно найти действующего владельца и расширить его контракт.
+12. **Ошибки деградации локализованы.** Отказ voice/avatar/research/optional model не должен обрушать память, безопасность или основной цикл; отказ policy/action receipt, напротив, должен fail closed для внешнего действия.
+
+## 4. Матрица владения и разрешённых связей
+
+| Узел | Владелец | Разрешено зависеть от | Запрещено |
+|---|---|---|---|
+| Cognitive orchestrator | Порядок цикла и корреляция шага | ports, policy, DTO | UI, concrete DB, research internals |
+| Perception adapters | Нормализация наблюдений | sensor interfaces, schema | Прямое действие, запись identity |
+| Drives / goals / appraisal | Оценка состояния и приоритетов | core types, clock, state ports | HTTP/UI, tool execution |
+| Planner | Кандидаты планов/намерений | world model, goal snapshot, action descriptions | Прямой вызов tools, обход policy |
+| EthicalGate / policy | Разрешение/запрет | policy facts, intent schema | Исполнение действия, скрытая запись в память |
+| ActionGateway | Исполнение и receipts | tool adapters, policy decision, idempotency | UI и planner-specific internals |
+| Memory subsystem | Хранение/поиск/консолидация | memory contracts, persistence adapter | Управление полным циклом, прямое действие |
+| Learning subsystem | Кандидаты и оценка изменений | trajectories, evaluator contracts, holdout | Самостоятельная активация кандидата |
+| API/server | Внешняя граница | use cases, DTO, auth | UI implementation imports, прямые обходы gateway |
+| App/avatar | Отображение и пользовательский ввод | versioned API DTO | DB/runtime private imports |
+| Research bridge | Исследовательские запросы | public runtime API | Импорт private runtime state |
+| Observability | Метрики/журналы | redacted events | Авторитетное изменение доменного состояния |
+
+## 5. Обязательные инварианты интеграции
+
+- **Один путь действия:** любой action intent заканчивается разрешением policy и проверяемым receipt; при неопределённом исходе повтор ограничен idempotency.
+- **Один владелец состояния:** два модуля не пишут один доменный объект независимо.
+- **Без обратных импортов:** UI/API и adapters не становятся зависимостью когнитивного ядра.
+- **Контракт прежде реализации:** schema/API/event версии тестируются отдельно от реализации.
+- **Неизвестное — не успех:** отсутствующий receipt, пропущенный gate, несовпадающая версия схемы или непроверенный результат не засчитываются как успешная операция.
+- **Изоляция необязательных возможностей:** сбой внешнего голоса/аватара/исследовательского сервиса не должен менять решение policy и не должен уничтожать накопленное состояние.
+- **Наблюдаемая причинность:** correlation ID связывает вход, appraisal, plan, gate, action receipt, memory write и итоговую оценку без записи секретов.
+
+## 6. Практический план внедрения
+
+### P0 — сначала закрыть обходы
+- Составить машинно-читаемый список владельцев и импортных границ для core, memory, motivation, learning, embodiment, self, API, research и persistence.
+- Усилить существующие audit:server-imports, audit:ui-api-linkage и runtime audit:architecture: проверять реальные относительные imports, циклы и запрещённые server/client направления, а не только наличие маркеров.
+- Проверить, что все tool execution paths сходятся в ActionGateway и что ни один planner/legacy adapter не выполняет действие напрямую.
+
+### P1 — закрепить API и состояние
+- Версионировать DTO/event schemas; добавить contract tests для success, timeout, malformed payload, stale version и duplicate request.
+- Выделить узкие ports для memory, clock, action execution, learning evaluation и observability.
+- Зафиксировать миграции и одного владельца записи для каждого persistable aggregate.
+
+### P2 — уменьшить связанность
+- Разрывать циклы через ports/events и переносить только типы в contract-модули.
+- Заменять широкие imports точечными интерфейсами; не создавать общий barrel с побочными эффектами.
+- Считать долю межслойных imports, циклы, число обходов gateway и контрактные нарушения в CI.
+
+### P3 — проверять поведение, а не только граф
+- Интеграционные тесты: отказ memory store, timeout research bridge, повтор action request, отказ policy, устаревший DTO, restart с восстановлением receipts.
+- Регрессии: цикл не запускается дважды из UI и scheduler; ошибка avatar не ломает ответ; learner не продвигает кандидата без holdout.
+- Не объявлять архитектуру готовой до фактического запуска аудитов на текущем дереве.
+
+## 7. Команды для проверки в рабочем клоне
+
+Для отдельного CI-прогона добавлен `.github/workflows/nk1-module-dependency-audit.yml`: он запускается при push в рабочую ветку этой задачи и при изменении аудиторских файлов в pull request. На Node.js 24 workflow запускает обе команды ниже. Это позволяет проверить gate до слияния PR.
+
+Из корня проекта:
+
+```bash
+npm run audit:server-imports
+npm run audit:ui-api-linkage
+npm --prefix runtime/neuro-kurisu run audit:architecture
+npm --prefix runtime/neuro-kurisu run audit:contract
+npm --prefix runtime/neuro-kurisu run audit:integrity
+npm run test:integration
+```
+
+Примечание к первой команде: `audit:server-imports` теперь обходит транзитивный граф относительных импортов от серверной точки входа, а не только её непосредственные импорты. Скрипт проверяет реальное разрешение локальных рёбер и печатает JSON-отчёт; регрессионный тест подключён к той же команде. Это усиливает проверку полноты графа, но само по себе ещё не доказывает отсутствие всех запрещённых архитектурных направлений. `audit:architecture` дополнительно включает побочные импорты и строковый `require()`, а также умеет разрешать NodeNext-импорты `.js` к исходникам TypeScript. `audit:architecture` теперь использует отдельную тестируемую policy: она блокирует зависимости canonical organism → app/UI, app-server, runtime-server, research и legacy, а также app/src → private runtime source. `tests/architecture-dependency-boundaries.test.mjs` содержит fixture-тесты этих запретов и запускает проверку полного дерева. При успехе аудитор печатает число `dependencyEdges` и `boundaryViolations=0`, чтобы отчёт показывал измеримый размер графа и результат проверки границ. Для получения JSON-файла графа задай переменную `NK1_DEPENDENCY_GRAPH_REPORT`, например:
+
+```bash
+NK1_DEPENDENCY_GRAPH_REPORT=/tmp/nk1-dependency-graph.json npm --prefix runtime/neuro-kurisu run audit:architecture
+```
+
+Файл содержит список узлов, импортных рёбер и агрегированную связанность между слоями. В CI он загружается как артефакт `nk1-module-dependency-graph` на 14 дней.
+
+Актуальный проверенный проход — run [40130701739](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40130701739), commit `a995fdd1e7ee1f7bbb5ac028a3073f2a0e2c95ef`. Серверный граф: 583 файла, 1 252 рёбра, 0 неразрешённых импортов; серверные тесты 6/6. Общий граф (schema v3): 2 233 исходных файла, 641 canonical-organism файлов, 4 668 связей — 3 962 runtime/dual-kind и 706 type-only; 0 отсутствующих импортов, runtime-циклов, утечек в legacy и нарушений границ. Все 100 бюджетных проверок и 6/6 архитектурных тестов прошли. `StateMigrations.ts` имеет 199 исходящих рёбер (100 runtime и 114 type-only); восемь фабрик начальных facet-состояний выделены в стабильный facade и семь доменных модулей. `AdvancedFacetDefaults.ts` уменьшен с 40 исходящих рёбер до 3 через три доменные фабрики: context (17), evolution (20), research (3). JSON-артефакт: ID `12574034831`, SHA-256 `5f2023912b7c3bb57b9f28231cecdee9a44a0ff8b824f8a1c58d0e4509fc2e7c`, срок хранения до 7 ноября 2026 года. Этот аудит подтверждает граф зависимостей, но не является TypeScript typecheck или полным runtime/production тестированием.
+
+## 8. Definition of Done для области «зависимости и связи»
+
+- [x] Граф относительных импортов построен и опубликован как JSON-артефакт schema v3.
+- [x] Runtime-import cycles проверяются отдельно от TypeScript type-only edges; актуальный граф не содержит runtime-циклов.
+- [ ] Нет прямого исполнения tool/actuator в обход ActionGateway и policy gate — требуется отдельная проверка всех execution paths.
+- [x] UI source не импортирует private runtime source; запрещённые направления проверяются в CI.
+- [ ] Для каждой записи состояния указан единственный владелец.
+- [ ] Контрактные тесты покрывают отказ, повтор, stale schema и restart.
+- [x] Аудиты зависимостей запущены на одном commit; SHA и результаты зафиксированы в CHANGELOG.
+- [x] Нарушения направлений зависимостей и бюджетов блокируют focused CI gate.
+
+**Статус:** граф и бюджеты проверяются в CI; у `core/types.ts` нулевой runtime out-degree; `StateMigrations.ts` отделён от семи доменных builder-файлов; `AdvancedFacetDefaults.ts` делегирует в три ограниченные фабрики. Все 100 бюджетных проверок и регрессионные тесты владения фасадами прошли run 40130701739. Полная декомпозиция крупнейших runtime-hotspots (`OrganismCore`, `DevelopmentalNeuralRuntime`) и проверка всех execution paths остаются следующими этапами.
