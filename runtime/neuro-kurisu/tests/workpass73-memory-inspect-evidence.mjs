@@ -11,6 +11,7 @@ const memory = new MemoryOS2();
 const examples = [];
 const expectedRawQueries = [];
 const expectedRawIds = [];
+const expectedRawGroupIds = [];
 
 function addMemory(id, content) {
   expectedRawIds.push(id);
@@ -50,7 +51,9 @@ for (const language of ['en', 'ru']) {
       ? 'training concept ' + index + ' silver comet atlas'
       : 'обучающий концепт ' + index + ' серебряная комета атлас';
     addMemory(id, query + ' stored context for training label ' + index);
-    examples.push({ id:'example-' + language + '-train-' + index, query, relevantIds:[id], split:'train', language });
+    const independenceGroupId = 'source-' + language + '-train-' + index;
+    expectedRawGroupIds.push(independenceGroupId);
+    examples.push({ id:'example-' + language + '-train-' + index, query, relevantIds:[id], split:'train', language, independenceGroupId });
     expectedRawQueries.push(query);
   }
 
@@ -60,7 +63,9 @@ for (const language of ['en', 'ru']) {
       ? 'holdout concept ' + index + ' amber telescope orchard'
       : 'контрольный концепт ' + index + ' янтарный телескоп сад';
     addMemory(id, query + ' immutable labelled fact ' + index);
-    examples.push({ id:'example-' + language + '-answerable-' + index, query, relevantIds:[id], split:'holdout', language });
+    const independenceGroupId = 'source-' + language + '-answerable-' + index;
+    expectedRawGroupIds.push(independenceGroupId);
+    examples.push({ id:'example-' + language + '-answerable-' + index, query, relevantIds:[id], split:'holdout', language, independenceGroupId });
     expectedRawQueries.push(query);
   }
 
@@ -68,6 +73,8 @@ for (const language of ['en', 'ru']) {
     const query = language === 'en'
       ? 'unanswerable query ' + index + ' lunar velvet gearbox'
       : 'безответный запрос ' + index + ' лунный бархатный редуктор';
+    const independenceGroupId = 'source-' + language + '-unanswerable-' + index;
+    expectedRawGroupIds.push(independenceGroupId);
     examples.push({
       id:'example-' + language + '-unanswerable-' + index,
       query,
@@ -75,6 +82,7 @@ for (const language of ['en', 'ru']) {
       split:'holdout',
       answerable:false,
       language,
+      independenceGroupId,
     });
     expectedRawQueries.push(query);
   }
@@ -106,7 +114,7 @@ const experiment = runMemoryOS2RetrievalExperiment(snapshot, examples, {
 });
 
 assert.equal(experiment.mode, 'offline-clone; no-live-state-mutation; no-automatic-promotion');
-assert.equal(experiment.queryEvidence?.schemaVersion, 1);
+assert.equal(experiment.queryEvidence?.schemaVersion, 2);
 assert.equal(experiment.queryEvidence?.digestAlgorithm, 'hmac-sha256-ephemeral-per-experiment');
 assert.equal(experiment.queryEvidence?.train.length, 8);
 assert.equal(experiment.queryEvidence?.holdout.length, 56);
@@ -122,12 +130,15 @@ assert.equal(experiment.promotion.candidateAutomaticallyPromoted, false);
 assert.deepEqual(snapshot, before, 'the benchmark must not mutate the supplied MemoryOS2 snapshot');
 
 const serialized = JSON.stringify(experiment.queryEvidence);
-for (const raw of [...expectedRawQueries, ...expectedRawIds, 'stored context for training label', 'immutable labelled fact']) {
+for (const raw of [...expectedRawQueries, ...expectedRawIds, ...expectedRawGroupIds, 'stored context for training label', 'immutable labelled fact']) {
   assert.equal(serialized.includes(raw), false, 'raw memory/query content leaked into Inspect evidence: ' + raw);
 }
-for (const row of experiment.queryEvidence.holdout) {
+for (const row of [...experiment.queryEvidence.train, ...experiment.queryEvidence.holdout]) {
+  assert.match(row.independenceGroupDigest, /^[a-f0-9]{64}$/);
   assert.match(row.queryDigest, /^[a-f0-9]{64}$/);
   assert.match(row.exampleIdDigest, /^[a-f0-9]{64}$/);
+}
+for (const row of experiment.queryEvidence.holdout) {
   assert.ok(row.baselineRankedMemory.length <= 5);
   assert.ok(row.candidateRankedMemory.length <= 5);
   for (const item of [...row.baselineRankedMemory, ...row.candidateRankedMemory]) {

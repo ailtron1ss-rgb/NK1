@@ -186,6 +186,8 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
     """Independently re-score the bilingual, hashed, paired-query holdout."""
     if not isinstance(record, dict) or record.get("kind") != "memory-holdout-bilingual":
         return {"valid": False, "promotionEligible": False, "reason": "memory-sample-kind-invalid"}
+    if record.get("evidenceSchemaVersion") != 2:
+        return {"valid": False, "promotionEligible": False, "reason": "memory-evidence-schema-version-unsupported"}
     dataset = record.get("dataset")
     corpus = record.get("corpus")
     integrity = record.get("integrity")
@@ -559,8 +561,8 @@ def samples_from_memory_report(report: dict[str, Any]) -> list[dict[str, str]]:
     if report.get("mode") != "offline-clone; no-live-state-mutation; no-automatic-promotion":
         raise ValueError("memory-experiment-mode-invalid")
     query_evidence = report.get("queryEvidence")
-    if not isinstance(query_evidence, dict) or query_evidence.get("schemaVersion") != 1:
-        raise ValueError("hashed-memory-query-evidence-required")
+    if not isinstance(query_evidence, dict) or query_evidence.get("schemaVersion") != 2:
+        raise ValueError("hashed-memory-query-evidence-v2-required")
     if query_evidence.get("digestAlgorithm") != "hmac-sha256-ephemeral-per-experiment":
         raise ValueError("memory-query-evidence-must-use-ephemeral-hmac")
     if query_evidence.get("queryNormalization") != "NFKC-lower-punctuation-symbol-and-whitespace-normalization":
@@ -582,6 +584,7 @@ def samples_from_memory_report(report: dict[str, Any]) -> list[dict[str, str]]:
     }
     sample = {
         "kind": "memory-holdout-bilingual",
+        "evidenceSchemaVersion": 2,
         "dataset": {
             "fingerprint": report.get("datasetFingerprint"),
             "provenance": {
@@ -676,7 +679,7 @@ def build_ci_fixture_report() -> dict[str, Any]:
     dataset_fingerprint = fixture_digest("workpass73-synthetic-ci-dataset")
     corpus_fingerprint = fixture_digest("workpass73-synthetic-ci-corpus")
     query_evidence = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "digestAlgorithm": "hmac-sha256-ephemeral-per-experiment",
         "queryNormalization": "NFKC-lower-punctuation-symbol-and-whitespace-normalization",
         "k": 5,
