@@ -68,6 +68,7 @@ assert.ok(unverifiedLearner.snapshot().selfUncertainty[0] > unverifiedBefore.sel
 
 const restored=new P2702PersistentPersonalityDynamics();restored.restore(after);assert.deepEqual(restored.snapshot(),after);
 
+const canonicalDefaults = new P2702PersistentPersonalityDynamics().snapshot();
 const corruptedRestore = new P2702PersistentPersonalityDynamics();
 corruptedRestore.restore({
   tick: -4,
@@ -82,6 +83,9 @@ corruptedRestore.restore({
   autobiographicalStrength01: Number.NaN,
   lastReward01: 3,
   relationshipTrust: { trusted: 0.8, malformed: Number.NaN, numericString: "0.7" },
+  invariantNames: canonicalDefaults.invariantNames,
+  adaptiveNames: canonicalDefaults.adaptiveNames,
+  valueNames: canonicalDefaults.valueNames,
   actionPreference: { respond: Number.NaN, explore: 0.9, unknownAction: 1 },
   adaptiveValues: [Number.NaN, 2],
   selfUncertainty: [Number.NaN, 2],
@@ -153,6 +157,57 @@ const hostileProxy=new Proxy({}, { ownKeys(){throw new Error('hostile-proxy'); }
 assert.doesNotThrow(()=>proxyRestored.restore(hostileProxy),'hostile snapshot proxy must fail closed');
 assert.deepEqual(proxyRestored.snapshot(),new P2702PersistentPersonalityDynamics().snapshot(),
   'hostile snapshot proxy must not partially alter personality state');
+
+
+const transparentProxyTraps = { count: 0 };
+const transparentProxyHandler = {
+  getPrototypeOf(target) { transparentProxyTraps.count++; return Reflect.getPrototypeOf(target); },
+  ownKeys(target) { transparentProxyTraps.count++; return Reflect.ownKeys(target); },
+  getOwnPropertyDescriptor(target, key) {
+    transparentProxyTraps.count++;
+    return Reflect.getOwnPropertyDescriptor(target, key);
+  },
+};
+const proxyRoot = new Proxy({ ...canonicalDefaults, tick: 17 }, transparentProxyHandler);
+const proxyRootRestore = new P2702PersistentPersonalityDynamics();
+proxyRootRestore.restore(proxyRoot);
+assert.equal(transparentProxyTraps.count, 0,
+  'P2702 restore must reject transparent root proxies before invoking any proxy trap');
+assert.deepEqual(proxyRootRestore.snapshot(), canonicalDefaults,
+  'a proxy-backed root snapshot must restore canonical defaults');
+
+const proxyNestedTrust = new Proxy({ 'user:primary': .99 }, transparentProxyHandler);
+const nestedTrustRestore = new P2702PersistentPersonalityDynamics();
+nestedTrustRestore.restore({ ...canonicalDefaults, relationshipTrust: proxyNestedTrust });
+assert.equal(transparentProxyTraps.count, 0,
+  'P2702 restore must reject nested relationship-trust proxies without invoking traps');
+assert.deepEqual(nestedTrustRestore.snapshot().relationshipTrust, {},
+  'proxy-backed relationship trust must fail closed');
+
+const proxyAdaptiveValues = new Proxy(canonicalDefaults.adaptiveValues.slice(), transparentProxyHandler);
+const proxyArrayRestore = new P2702PersistentPersonalityDynamics();
+proxyArrayRestore.restore({ ...canonicalDefaults, adaptiveValues: proxyAdaptiveValues });
+assert.equal(transparentProxyTraps.count, 0,
+  'P2702 restore must reject proxy-backed arrays before invoking array proxy traps');
+assert.deepEqual(proxyArrayRestore.snapshot().adaptiveValues, canonicalDefaults.adaptiveValues,
+  'proxy-backed personality vectors must fall back to canonical priors');
+
+
+const misalignedSnapshot = structuredClone(canonicalDefaults);
+misalignedSnapshot.invariantNames.reverse();
+misalignedSnapshot.invariantValues = canonicalDefaults.invariantValues.map(() => 0);
+misalignedSnapshot.adaptiveNames = canonicalDefaults.adaptiveNames.slice().reverse();
+misalignedSnapshot.adaptiveValues = canonicalDefaults.adaptiveValues.map(() => 0);
+misalignedSnapshot.valueNames = canonicalDefaults.valueNames.slice().reverse();
+misalignedSnapshot.valueWeights = canonicalDefaults.valueWeights.map(() => 0);
+const misalignedRestore = new P2702PersistentPersonalityDynamics();
+misalignedRestore.restore(misalignedSnapshot);
+assert.deepEqual(misalignedRestore.snapshot().invariantValues, canonicalDefaults.invariantValues,
+  'misaligned invariant labels must not remap canonical identity dimensions');
+assert.deepEqual(misalignedRestore.snapshot().adaptiveValues, canonicalDefaults.adaptiveValues,
+  'misaligned adaptive trait labels must not remap personality dimensions');
+assert.deepEqual(misalignedRestore.snapshot().valueWeights, canonicalDefaults.valueWeights,
+  'misaligned value labels must not remap canonical value dimensions');
 
 const b=new NeuralExperienceBranch();
 let s=defaultNeuralExperienceBranch();b.restore(s);
