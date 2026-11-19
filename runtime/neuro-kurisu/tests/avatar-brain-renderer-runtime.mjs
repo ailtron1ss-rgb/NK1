@@ -35,6 +35,8 @@ assert.equal(projection.source, 'organism-state');
 assert.equal(projection.profile, '3d');
 assert.equal(projection.affect.memoryRecall01, .7,
   'only bounded memory salience, not memory content or identifiers, reaches the projection');
+assert.ok(!JSON.stringify(projection).includes('private-memory-marker'));
+assert.ok(!JSON.stringify(projection).includes('private-id-marker'));
 assert.ok(projection.affect.warmth01 > .5,
   'canonical adaptive personality traits must influence rendered affect');
 for (const value of Object.values(projection.channels)) {
@@ -64,14 +66,14 @@ assert.equal(incomplete.commands.length, 1,
   'an absent model parameter must never be invented or sent to the renderer');
 assert.equal(incomplete.skipped, 10);
 
-const incompatible = runtime.avatarRendererMapping?.(
+const layered = runtime.avatarRendererMapping?.(
   state,
-  { profile: '2.5d', controlIds: ['headYaw'] },
-  { now: 10_200 },
+  { profile: '2.5d', controlIds: ['parallaxX', 'parallaxY', 'depthBreath01', 'faceRig01'] },
+  { personality, now: 10_200 },
 );
-assert.equal(incompatible.compatible, false);
-assert.deepEqual(incompatible.commands, [],
-  'a projection for another renderer profile must fail closed without commands');
+assert.equal(layered.compatible, true);
+assert.equal(layered.commands.length, 4,
+  'the 2.5D adapter must emit only the four supported layered controls');
 
 runtime.sleep('avatar-renderer-contract-test');
 const asleep = runtime.avatarProjection?.(state, { profile: '2d', now: 10_300 });
