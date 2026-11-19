@@ -193,10 +193,11 @@ export function HexisControlConsole() {
             <Button disabled={busy} onClick={() => void exportHmx()}>Export HMX</Button>
             <Button variant="outline" disabled={busy} onClick={() => void stageCurrentHmx()}>Stage current HMX</Button>
             <input value={stageId} onChange={e => setStageId(e.target.value)} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
-            <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void run("Accept HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"))}>Accept staged</Button>
+            <Button disabled={busy || !stageId} onClick={() => void run("Accept HMX review", () => neuroApi.hexisHmxDecide(stageId, "accept"))}>Accept review</Button>
             <Button variant="outline" disabled={busy || !stageId} onClick={() => void run("Reject HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"))}>Reject</Button>
+            <Button disabled={busy || !stageId || !hmxConfirmed} onClick={async () => { const result = await run("Apply HMX to canonical memory", () => neuroApi.hexisHmxApply(stageId, true)); if (result) setHmxConfirmed(false); }}>Apply to canonical memory</Button>
           </div>
-          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX import.</label>
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly confirm writing this accepted HMX stage into canonical MemoryOS2.</label>
         </Panel>
 
         <Panel title="Transactional outbox" icon={<Send className="size-4" />}>

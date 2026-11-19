@@ -3060,64 +3060,41 @@ export class OrganismCore {
     }
     hexisStageHmx(document: unknown, intent: HexisHmxIntent, strategy: HexisHmxStrategy) { const stage = this.hexisAdaptation.stageHmx({ document, intent, strategy }); this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot(); return stage; }
     hexisDecideHmx(stagingId: string, decision: 'accept' | 'reject') {
+        // Acceptance is a review-state transition only. Canonical MemoryOS2 writes
+        // require the separate hexisApplyHmx confirmation boundary below.
         const stage = this.hexisAdaptation.decideHmx(stagingId, decision);
-        if (stage?.status === 'accepted' && stage.intent === 'port' && stage.strategy !== 'analysis_only') {
-            const memories = Array.isArray(stage.stagedSections?.memories) ? stage.stagedSections.memories : [];
-            let created = 0, reused = 0;
-            const beforeItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
-            const beforeKeys = new Set(beforeItems.map((m) => `${m.kind}|${m.content}`));
-            for (const row of memories.slice(0, 96)) {
-                const record = row && typeof row === 'object' ? row as Record<string, unknown> : {};
-                const content = String(record.content ?? record.summary ?? '').trim().slice(0, 12000);
-                if (!content)
-                    continue;
-                const requestedKind = String(record.kind);
-                const safeKind = (['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream'].includes(requestedKind) ? requestedKind : 'semantic') as any;
-                const key = `${safeKind}|${content}`;
-                const wasPresent = beforeKeys.has(key);
-                const importedMemory = {
-                    content,
-                    kind: safeKind,
-                    source: 'hexis-hmx-import',
-                    tags: Array.isArray(record.tags)
-                        ? record.tags.map(String).slice(0, 24)
-                        : ['hexis', 'hmx'],
-                    context: record.context && typeof record.context === 'object'
-                        ? Object.fromEntries(Object.entries(record.context).slice(0, 12).map(([k, v]) => [String(k), String(v)]))
-                        : undefined,
-                    salience: Number(record.salience ?? 0.55),
-                    emotionalWeight: Number(record.emotionalWeight ?? 0.1),
-                    identityRelevance: 0,
-                    goalRelevance: Number(record.goalRelevance ?? 0),
-                    socialRelevance: Number(record.socialRelevance ?? 0),
-                    predictionError: Number(record.predictionError ?? 0),
-                    confidence: Number(record.confidence ?? 0.55),
-                    epistemicStatus: 'belief' as const,
-                    entities: Array.isArray(record.entities) ? record.entities.map(String).slice(0, 12) : [],
-                    semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
-                    provenanceClass: 'external' as const,
-                    sourceAuthority01: 0.55,
-                    independenceKey: `hexis:${stage.sourceSubjectId ?? stage.exportId}`,
-                    evidenceFreshnessAt: Date.now(),
-                    dormant: false,
-                    retrievalCount: 0,
-                    semanticVector: [],
-                };
-                this.memorySubsystem.fabric.encode(importedMemory, { tick: this.persisted.state.tick });
-                if (wasPresent)
-                    reused += 1;
-                else {
-                    created += 1;
-                    beforeKeys.add(key);
-                }
-            }
-            this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
-            (stage as any).importResult = { created, reused };
-        }
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return stage;
     }
-    hexisEnqueueOutbox(input: {
+    hexisApplyHmx(stagingId: string, confirmed = false) {
+        if (confirmed !== true) {
+            return {
+                ok: false,
+                stagingId,
+                exportId: '',
+                inserted: 0,
+                replayed: 0,
+                relationshipsApplied: 0,
+                clustersApplied: 0,
+                linksApplied: 0,
+                refMap: {},
+                warnings: [],
+                error: 'explicit-confirmation-required',
+            };
+        }
+        // The dedicated HMX bridge is the only canonical write path. It applies
+        // redaction, hypothesis provenance, graph-link validation and idempotent
+        // MemoryFabric command receipts before MemoryOS2 is persisted.
+        const application = this.memorySubsystem.hexisHmxCanonicalMemoryBridge.commit(stagingId);
+        if (application.ok) {
+            this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
+            this.persisted.facets.advanced.memoryLifecycleAuthority = this.memorySubsystem.memoryLifecycleAuthority.snapshot();
+            this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
+        }
+        this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+        return application;
+    }
+        hexisEnqueueOutbox(input: {
         idempotencyKey: string;
         kind: string;
         channel: string;
