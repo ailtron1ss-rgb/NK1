@@ -1,0 +1,38 @@
+name: NK1 B272 action-outcome credit contract
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-272-*.mjs'
+      - '.github/workflows/nk1-b272-action-credit.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-b272-action-credit-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  b272-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Verify B272 unit contract
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs
+      - name: Verify B272 live Core integration
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs
+      - name: Verify runtime TypeScript
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

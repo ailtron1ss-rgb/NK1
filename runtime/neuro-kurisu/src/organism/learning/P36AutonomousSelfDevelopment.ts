@@ -1,8 +1,24 @@
+import { isTrustedDecisionLinkedExternalPostcondition, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import type { ActionKind, OrganismState } from '../core/types.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const now=()=>Date.now();
+
+/** Restore bounded identifier caches as plain, typed data; persisted IDs never restore verifier authority. */
+function restorePersistedIdentifiers(value:unknown,maxLength:number,limit:number):string[]{
+  if(!Array.isArray(value))return [];
+  const identifiers:string[]=[];
+  const seen=new Set<string>();
+  for(const candidate of value as unknown[]){
+    if(typeof candidate!=='string'||candidate.length===0||candidate.length>maxLength||candidate.trim()!==candidate)continue;
+    if(Array.from(candidate).some(character=>{const code=character.charCodeAt(0);return code<32||(code>=127&&code<=159);}))continue;
+    if(seen.has(candidate))continue;
+    seen.add(candidate);
+    identifiers.push(candidate);
+  }
+  return identifiers.slice(-limit);
+}
 
 export type DevelopmentArea = 'memory'|'learning'|'world-model'|'self-model'|'relationship'|'agency'|'resource-discipline'|'perception';
 export type DevelopmentStatus = 'proposed'|'running'|'completed'|'rejected'|'rolled-back'|'preview-only'|'awaiting-evidence';
@@ -82,7 +98,103 @@ export interface DevelopmentEvidenceRecord {
   protocolId?:string;
   sessionId?:string;
   trialId?:string;
+  baselineMethod?:string;
+  treatmentMethod?:string;
+  taskFamily?:string;
+  manifestFingerprint?:string;
+  /** ActionGateway execution tuple that the verifier receipt is bound to. */
+  toolId?:string;
+  executionId?:string;
+  decisionId?:string;
+  /** Opaque process-local verifier output ID; this alone is never a trust token. */
+  observationId?:string;
   at:number;
+}
+
+export interface DevelopmentEvidenceVerificationBinding {
+  hypothesisId:string;
+  contextKey:string;
+  control01:number;
+  treatment01:number;
+  holdout:boolean;
+  delayMs:number;
+  evaluatorVersion:string;
+  evidenceSource:'external-evaluator'|'manual-observer';
+  protocolId?:string;
+  sessionId?:string;
+  trialId?:string;
+  /** Optional canonical verified-outcome-ledger comparison provenance. */
+  baselineMethod?:string;
+  treatmentMethod?:string;
+  taskFamily?:string;
+  manifestFingerprint?:string;
+}
+
+export interface NormalizedDevelopmentEvidenceVerificationBinding extends Omit<DevelopmentEvidenceVerificationBinding,'evidenceSource'> {
+  evidenceSource:DevelopmentEvidenceVerificationBinding['evidenceSource']|'invalid';
+  [key:string]:unknown;
+}
+
+function canonicalEvidenceText(value:unknown,max:number):string|undefined{
+  if(typeof value!=='string')return undefined;
+  const normalized=value.normalize('NFKC').trim();
+  if(!normalized||normalized.length>max||Array.from(normalized).some(character=>{
+    const code=character.codePointAt(0)??0;
+    return code<=0x1f||(code>=0x7f&&code<=0x9f);
+  }))return undefined;
+  return normalized;
+}
+
+/** Exact, normalized tuple that the canonical external verifier must bind its receipt to. */
+export function developmentEvidenceVerificationInput(input:DevelopmentEvidenceVerificationBinding):NormalizedDevelopmentEvidenceVerificationBinding{
+  const binding:NormalizedDevelopmentEvidenceVerificationBinding={
+    hypothesisId:canonicalEvidenceText(input.hypothesisId,180)??'',
+    contextKey:canonicalEvidenceText(input.contextKey,96)??'',
+    control01:clamp(input.control01),
+    treatment01:clamp(input.treatment01),
+    holdout:input.holdout===true,
+    delayMs:Number.isFinite(input.delayMs)?Math.max(0,Math.floor(input.delayMs)):0,
+    evaluatorVersion:canonicalEvidenceText(input.evaluatorVersion,64)??'',
+    evidenceSource:input.evidenceSource==='external-evaluator'||input.evidenceSource==='manual-observer'?input.evidenceSource:'invalid',
+  };
+  for(const key of ['protocolId','sessionId','trialId','baselineMethod','treatmentMethod','taskFamily','manifestFingerprint'] as const){
+    const value=input[key];
+    if(value!==undefined){
+      const max=key==='baselineMethod'||key==='treatmentMethod'?180:key==='taskFamily'?96:key==='manifestFingerprint'?64:96;
+      binding[key]=canonicalEvidenceText(value,max)??'';
+    }
+  }
+  return binding;
+}
+
+export interface DevelopmentalOutcomeVerificationBinding {
+  /** Discriminant consumed by OrganismCore.finalizeToolOutcome; never inferred from a score. */
+  kind?:'developmental-outcome';
+  area?:DevelopmentArea|null;
+  outcome01:number;
+  delayed?:boolean;
+  transfer?:boolean;
+}
+
+export interface NormalizedDevelopmentalOutcomeVerificationBinding extends Omit<DevelopmentalOutcomeVerificationBinding,'area'|'delayed'|'transfer'> {
+  kind:'developmental-outcome';
+  area:DevelopmentArea|null;
+  outcome01:number;
+  delayed:boolean;
+  transfer:boolean;
+  [key:string]:unknown;
+}
+
+/** Bind an outcome receipt to its exact normalized score, domain, retention and transfer claims. */
+export function developmentalOutcomeVerificationInput(input:DevelopmentalOutcomeVerificationBinding):NormalizedDevelopmentalOutcomeVerificationBinding{
+  const areas:DevelopmentArea[]=['memory','learning','world-model','self-model','relationship','agency','resource-discipline','perception'];
+  return {
+    kind:'developmental-outcome',
+    area:input.area===null||input.area===undefined?null:(areas.includes(input.area)?input.area:null),
+    outcome01:clamp(input.outcome01),
+    delayed:input.delayed===true,
+    transfer:input.transfer===true,
+  };
 }
 
 export interface LearningInvestmentDecision {
@@ -126,7 +238,7 @@ export interface DevelopmentalMaturityRecord {
 }
 
 export interface SelfDevelopmentState {
-  version:5;
+  version:6;
   cycles:number;
   lastCycleAt:number;
   agenda:DevelopmentAgendaRecord;
@@ -135,6 +247,10 @@ export interface SelfDevelopmentState {
   experiments:DevelopmentExperiment[];
   developmentCycles:DevelopmentCycleRecord[];
   externalEvidence:DevelopmentEvidenceRecord[];
+  /** Bounded idempotency ledger; stored IDs never grant verification authority. */
+  developmentalEvidenceReceiptIds:string[];
+  /** Cross-path observation IDs prevent the same verifier observation from being counted twice. */
+  developmentalEvidenceObservationIds:string[];
   investmentDecisions:LearningInvestmentDecision[];
   learningBudget01:number;
   spentBudget01:number;
@@ -142,6 +258,9 @@ export interface SelfDevelopmentState {
   acceptedChanges:number;
   rejectedChanges:number;
   rollbackCount:number;
+  /** Count attempts that supplied caller data or failed canonical proof checks. */
+  unverifiedEvidenceAttempts:number;
+  rejectedMaturityReceipts:number;
   metrics:{
     selfDevelopmentCoherence01:number;
     experimentSuccess01:number;
@@ -169,7 +288,7 @@ export interface SelfDevelopmentState {
 }
 
 const defaultState=():SelfDevelopmentState=>({
-  version:5,
+  version:6,
   cycles:0,
   lastCycleAt:0,
   agenda:{version:1,selectedArea:null,selectedHypothesisId:null,score01:0,expectedGain01:0,estimatedCost01:0,reason:'no-development-decision',lastSelectedAt:0,selectionCount:0,lastDecisionTick:0},
@@ -178,6 +297,8 @@ const defaultState=():SelfDevelopmentState=>({
   experiments:[],
   developmentCycles:[],
   externalEvidence:[],
+  developmentalEvidenceReceiptIds:[],
+  developmentalEvidenceObservationIds:[],
   investmentDecisions:[],
   learningBudget01:.82,
   spentBudget01:0,
@@ -185,6 +306,8 @@ const defaultState=():SelfDevelopmentState=>({
   acceptedChanges:0,
   rejectedChanges:0,
   rollbackCount:0,
+  unverifiedEvidenceAttempts:0,
+  rejectedMaturityReceipts:0,
   metrics:{selfDevelopmentCoherence01:.28,experimentSuccess01:.5,autonomy01:.82,developmentalReadiness01:.35,longHorizonImprovement01:.5},
   developmentalMaturity:{stage:'seed',score01:0,verifiedOutcomeCount:0,retainedOutcomeCount:0,transferredOutcomeCount:0,regressionCount:0,lastTransitionAt:0,history:[]},
   curriculum:{
@@ -225,21 +348,110 @@ function focusFromState(state:OrganismState, extras:{worldError01?:number; selfE
   return (Object.entries(scores).sort((a,b)=>b[1]-a[1])[0]?.[0] ?? 'learning') as DevelopmentArea;
 }
 
+/** Reserved ActionGateway tool ID for host-owned independent P36 evaluation. */
+export const P36_EXTERNAL_EVIDENCE_TOOL_ID = 'organism.learning.p36.evaluate-evidence';
+/** Separate host authority for longitudinal maturity/retention observations. */
+export const P36_DEVELOPMENTAL_OUTCOME_TOOL_ID = 'organism.learning.p36.evaluate-maturity';
+
 export class P36AutonomousSelfDevelopmentEngine{
   private state=defaultState();
   restore(raw?:Partial<SelfDevelopmentState>|null){
     const d=defaultState(); const r=raw??{};
-    this.state={...d,...r,version:5,
-      developmentalMaturity:{...d.developmentalMaturity,...((r as any).developmentalMaturity??{}),history:Array.isArray((r as any).developmentalMaturity?.history)?(r as any).developmentalMaturity.history.slice(-64):[]},
-      agenda:{...d.agenda,...((r as any).agenda??{})},
-      hypotheses:Array.isArray(r.hypotheses)?r.hypotheses.slice(-96):[],
-      experiments:Array.isArray(r.experiments)?r.experiments.slice(-128):[],
-      developmentCycles:Array.isArray((r as any).developmentCycles)?(r as any).developmentCycles.slice(-64):[],
-      externalEvidence:Array.isArray(r.externalEvidence)?r.externalEvidence.slice(-512):[],
+    const sourceHypotheses=Array.isArray(r.hypotheses)?r.hypotheses.slice(-96):[];
+    const revokedHypothesisIds=new Set<string>();
+    const seenHypothesisIds=new Set<string>();
+    const safeTimestamp=(value:unknown)=>Number.isSafeInteger(value)&&Number(value)>=0?Number(value):0;
+    const areas:DevelopmentArea[]=['memory','learning','world-model','self-model','relationship','agency','resource-discipline','perception'];
+    const statuses:DevelopmentStatus[]=['proposed','running','completed','rejected','rolled-back','preview-only','awaiting-evidence'];
+    const evidenceGates=new Set(['none','external-verified','holdout-verified','replicated']);
+    const restoredHypotheses=sourceHypotheses.map((rawHypothesis:any)=>{
+      let h:any;
+      try { h=structuredClone(rawHypothesis); } catch { return null; }
+      if(!h||typeof h!=='object'||Array.isArray(h))return null;
+      const id=canonicalEvidenceText(h.id,180);
+      const title=canonicalEvidenceText(h.title,180);
+      const hypothesis=canonicalEvidenceText(h.hypothesis,800);
+      if(!id||!title||!hypothesis||seenHypothesisIds.has(id)||!areas.includes(h.area))return null;
+      seenHypothesisIds.add(id);
+      const status:DevelopmentStatus=statuses.includes(h.status)?h.status:'proposed';
+      const gate=evidenceGates.has(h.evidenceGate)?h.evidenceGate:'none';
+      const hasUnreplayablePromotion=status==='completed'||gate==='external-verified'||gate==='holdout-verified'||gate==='replicated';
+      if(hasUnreplayablePromotion)revokedHypothesisIds.add(id);
+      const score=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+      return {
+        id,area:h.area,title,hypothesis,
+        evidence:Array.isArray(h.evidence)?h.evidence.filter((value:unknown):value is string=>typeof value==='string'&&Boolean(canonicalEvidenceText(value,160))).slice(0,8).map((value:string)=>canonicalEvidenceText(value,160)!):[],
+        expectedGain01:score(h.expectedGain01,.2),
+        estimatedCost01:score(h.estimatedCost01,.2),
+        priority01:score(h.priority01,.2),
+        status:hasUnreplayablePromotion?'awaiting-evidence':status,
+        createdAt:safeTimestamp(h.createdAt),
+        completedAt:hasUnreplayablePromotion?0:safeTimestamp(h.completedAt),
+        result01:hasUnreplayablePromotion?null:(h.result01===null?null:score(h.result01,.5)),
+        evidenceGate:hasUnreplayablePromotion?'none':gate,
+      } as DevelopmentHypothesis;
+    }).filter((hypothesis):hypothesis is DevelopmentHypothesis=>hypothesis!==null);
+    const validActions=new Set<ActionKind>(ACTIONS);
+    const restoredCycles=Array.isArray((r as any).developmentCycles)?(r as any).developmentCycles.slice(-64).map((rawCycle:any)=>{
+      let cycle:any;
+      try { cycle=structuredClone(rawCycle); } catch { return null; }
+      if(!cycle||typeof cycle!=='object'||Array.isArray(cycle)||
+         typeof cycle.id!=='string'||cycle.id.length>180||typeof cycle.hypothesisId!=='string'||
+         !restoredHypotheses.some(hypothesis=>hypothesis.id===cycle.hypothesisId))return null;
+      const stageValues=['proposed','task-ready','awaiting-evidence','holdout-verified','replicated','closed'];
+      const stage=stageValues.includes(cycle.stage)?cycle.stage:'awaiting-evidence';
+      const revoke=revokedHypothesisIds.has(cycle.hypothesisId)||stage==='replicated'||stage==='holdout-verified';
+      return {
+        id:cycle.id.slice(0,180),hypothesisId:cycle.hypothesisId,
+        ...(typeof cycle.goalId==='string'&&cycle.goalId.length<=96?{goalId:cycle.goalId}:{}),
+        objective:canonicalEvidenceText(cycle.objective,240)??'Re-evaluate prior self-development hypothesis',
+        origin:['autonomous-gap','goal-pressure','user-directed'].includes(cycle.origin)?cycle.origin:'autonomous-gap',
+        requestedAction:validActions.has(cycle.requestedAction)?cycle.requestedAction:'verify',
+        requiredContexts:Number.isSafeInteger(cycle.requiredContexts)?Math.max(2,Math.min(8,cycle.requiredContexts)):2,
+        requiredPositiveDelays:Number.isSafeInteger(cycle.requiredPositiveDelays)?Math.max(2,Math.min(8,cycle.requiredPositiveDelays)):2,
+        requiredHoldout:Number.isSafeInteger(cycle.requiredHoldout)?Math.max(4,Math.min(16,cycle.requiredHoldout)):4,
+        stage:revoke?'awaiting-evidence':stage,createdAt:safeTimestamp(cycle.createdAt),
+        taskCount:Number.isSafeInteger(cycle.taskCount)?Math.max(0,Math.min(1024,cycle.taskCount)):0,
+        verifiedEvidenceCount:0,lastEvidenceAt:0,
+      } as DevelopmentCycleRecord;
+    }).filter((cycle:DevelopmentCycleRecord|null):cycle is DevelopmentCycleRecord=>cycle!==null):[];
+    this.state={...d,...r,version:6,
+      currentHypothesisId:typeof r.currentHypothesisId==='string'&&restoredHypotheses.some(hypothesis=>
+        hypothesis.id===r.currentHypothesisId&&['proposed','running','awaiting-evidence'].includes(hypothesis.status))
+        ?r.currentHypothesisId:null,
+      lastCycleAt:Number.isSafeInteger(r.lastCycleAt)&&Number(r.lastCycleAt)>=0?Number(r.lastCycleAt):0,
+      cycles:Number.isSafeInteger(r.cycles)&&Number(r.cycles)>=0?Math.min(1_000_000_000,Number(r.cycles)):0,
+      // Cached maturity aggregates and promotion effects cannot be re-authenticated from a snapshot alone.
+      developmentalMaturity:{...d.developmentalMaturity,history:Array.isArray((r as any).developmentalMaturity?.history)?(r as any).developmentalMaturity.history.slice(-64).map((x:any)=>({...x,verified01:0,retention01:0,transfer01:0,failed01:0})):[]},
+      agenda:{...d.agenda},
+      hypotheses:restoredHypotheses,
+      experiments:Array.isArray(r.experiments)?r.experiments.slice(-128).map((x:any)=>({...x,replicated:false,status:'insufficient',evidenceGate:'sandbox-preview'})):[],
+      developmentCycles:restoredCycles,
+      // Verifier receipts are WeakMap-backed capabilities and do not survive JSON snapshots.
+      // Preserve observations for audit, but never restore serialized trust booleans.
+      externalEvidence:Array.isArray(r.externalEvidence)?(r.externalEvidence as unknown[]).slice(-512)
+        .filter((e):e is DevelopmentEvidenceRecord=>Boolean(e&&typeof e==='object'&&!Array.isArray(e)&&
+          typeof (e as DevelopmentEvidenceRecord).id==='string'&&
+          typeof (e as DevelopmentEvidenceRecord).hypothesisId==='string'&&
+          typeof (e as DevelopmentEvidenceRecord).contextKey==='string'&&
+          typeof (e as DevelopmentEvidenceRecord).control01==='number'&&Number.isFinite((e as DevelopmentEvidenceRecord).control01)&&
+          typeof (e as DevelopmentEvidenceRecord).treatment01==='number'&&Number.isFinite((e as DevelopmentEvidenceRecord).treatment01)&&
+          typeof (e as DevelopmentEvidenceRecord).delta01==='number'&&Number.isFinite((e as DevelopmentEvidenceRecord).delta01)&&
+          typeof (e as DevelopmentEvidenceRecord).at==='number'&&Number.isFinite((e as DevelopmentEvidenceRecord).at)&&
+          typeof (e as DevelopmentEvidenceRecord).evaluatorVersion==='string'&&
+          ((e as DevelopmentEvidenceRecord).evidenceSource==='external-evaluator'||(e as DevelopmentEvidenceRecord).evidenceSource==='manual-observer')))
+        .map(e=>({...e,independentVerified:false,observationId:undefined})):[],
+      developmentalEvidenceReceiptIds:restorePersistedIdentifiers((r as any).developmentalEvidenceReceiptIds,256,512),
+      developmentalEvidenceObservationIds:restorePersistedIdentifiers((r as any).developmentalEvidenceObservationIds,180,512),
       investmentDecisions:Array.isArray((r as any).investmentDecisions)?(r as any).investmentDecisions.slice(-96):[],
-      metrics:{...d.metrics,...(r.metrics??{})},
-      curriculum:{...d.curriculum,...(r.curriculum??{}),mastery:{...d.curriculum.mastery,...(r.curriculum?.mastery??{})}},
-      actionBias:{...d.actionBias,...(r.actionBias??{})},
+      learningBudget01:d.learningBudget01,spentBudget01:0,recovery01:d.recovery01,
+      // Outcome-derived metrics, learned policy weights and mastery are not re-authenticated by JSON.
+      metrics:{...d.metrics},
+      curriculum:{...d.curriculum},
+      actionBias:{...d.actionBias},
+      acceptedChanges:0,
+      unverifiedEvidenceAttempts:Number.isSafeInteger(r.unverifiedEvidenceAttempts)?Math.max(0,Math.min(1_000_000_000,r.unverifiedEvidenceAttempts!)):0,
+      rejectedMaturityReceipts:Number.isSafeInteger(r.rejectedMaturityReceipts)?Math.max(0,Math.min(1_000_000_000,r.rejectedMaturityReceipts!)):0,
     };
   }
   snapshot(){return structuredClone(this.state);}
@@ -433,29 +645,82 @@ export class P36AutonomousSelfDevelopmentEngine{
     const baseline=this.baseline(state,h.area);
     const treatment=this.safeTreatment(state,h.area,seed);
     const delta=treatment-baseline;
-    const replicated=Math.abs(delta)>.045;
-    const runs=replicated?3:2;
     const informationGain=clamp(Math.abs(delta)*.82+(1-(this.state.curriculum.mastery[h.area]??.3))*.18);
     const result:DevelopmentExperiment={id:`p36-x-${hash(`${hypothesisId}:${seed}`)}-${now().toString(36)}`,hypothesisId,control01:baseline,treatment01:treatment,delta01:delta,replicated:false,safeSandbox:true,runs:1,informationGain01:informationGain,status:'insufficient',at:now(),evidenceGate:'sandbox-preview'};
     this.state.experiments=[result,...this.state.experiments].slice(0,128);
     this.state.spentBudget01=clamp(this.state.spentBudget01+h.estimatedCost01*.04);
-    this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.97+.03*.5);
+    // A sandbox preview is not an observed organism outcome; it must not move outcome-derived metrics.
     h.completedAt=now(); h.result01=null; h.status='preview-only'; h.evidenceGate='none';
-    this.state.metrics.selfDevelopmentCoherence01=clamp(this.state.metrics.selfDevelopmentCoherence01*.98+.02*.28);
-    this.state.metrics.autonomy01=clamp(this.state.metrics.autonomy01*.995+.005*this.state.metrics.autonomy01);
-    this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.995+.005*.5);
     this.state.currentHypothesisId=null;
     return structuredClone(result);
   }
 
-  recordExternalEvidence(input:{hypothesisId:string;contextKey:string;control01:number;treatment01:number;independentVerified:boolean;holdout:boolean;delayMs:number;evaluatorVersion:string;evidenceSource:'external-evaluator'|'manual-observer';protocolId?:string;sessionId?:string;trialId?:string;at?:number}):{eligible:boolean;evidenceCount:number;distinctContexts:number;distinctDelays:number;holdoutCount:number;independentCount:number;meanDelta01:number|null;ci95Low01:number|null;ci95High01:number|null;status:'insufficient'|'holdout-verified'|'replicated';promoted:boolean} {
-    const h=this.state.hypotheses.find(x=>x.id===String(input.hypothesisId));
+  recordExternalEvidence(input:{hypothesisId:string;contextKey:string;control01:number;treatment01:number;independentVerified?:boolean;verification?:OutcomeVerification;toolId?:string;executionId?:string;decisionId?:string;holdout:boolean;delayMs:number;evaluatorVersion:string;evidenceSource:'external-evaluator'|'manual-observer';protocolId?:string;sessionId?:string;trialId?:string;baselineMethod?:string;treatmentMethod?:string;taskFamily?:string;manifestFingerprint?:string;at?:number}):{eligible:boolean;evidenceCount:number;distinctContexts:number;distinctDelays:number;holdoutCount:number;independentCount:number;meanDelta01:number|null;ci95Low01:number|null;ci95High01:number|null;status:'insufficient'|'holdout-verified'|'replicated';promoted:boolean} {
+    // The legacy independentVerified boolean is caller-controlled data and has no authority.
+    const binding=developmentEvidenceVerificationInput(input);
+    if(typeof input.control01!=='number'||!Number.isFinite(input.control01)||input.control01<0||input.control01>1||
+       typeof input.treatment01!=='number'||!Number.isFinite(input.treatment01)||input.treatment01<0||input.treatment01>1||
+       typeof input.holdout!=='boolean'||typeof input.delayMs!=='number'||!Number.isSafeInteger(input.delayMs)||input.delayMs<0||input.delayMs>604_800_000||
+       !binding.hypothesisId||!binding.contextKey||!binding.evaluatorVersion||
+       (input.evidenceSource!=='external-evaluator'&&input.evidenceSource!=='manual-observer')||
+       (input.protocolId!==undefined&&!binding.protocolId)||(input.sessionId!==undefined&&!binding.sessionId)||
+       (input.trialId!==undefined&&!binding.trialId)||
+       (input.baselineMethod!==undefined&&!binding.baselineMethod)||(input.treatmentMethod!==undefined&&!binding.treatmentMethod)||
+       (input.taskFamily!==undefined&&!binding.taskFamily)||(input.manifestFingerprint!==undefined&&!/^[a-f0-9]{64}$/i.test(binding.manifestFingerprint??'')))throw new Error('invalid-development-evidence');
+    const h=this.state.hypotheses.find(x=>x.id===binding.hypothesisId);
     if(!h) throw new Error('unknown-development-hypothesis');
-    if(!input.contextKey || !input.evaluatorVersion) throw new Error('invalid-development-evidence');
-    const row:DevelopmentEvidenceRecord={id:`p36-e-${hash(`${h.id}:${input.contextKey}:${input.at??now()}`)}-${now().toString(36)}`,hypothesisId:h.id,contextKey:String(input.contextKey).slice(0,96),control01:clamp(input.control01),treatment01:clamp(input.treatment01),delta01:clamp(input.treatment01)-clamp(input.control01),independentVerified:Boolean(input.independentVerified),holdout:Boolean(input.holdout),delayMs:Math.max(0,Math.floor(Number(input.delayMs)||0)),evaluatorVersion:String(input.evaluatorVersion).slice(0,64),evidenceSource:input.evidenceSource,protocolId:input.protocolId?String(input.protocolId).slice(0,96):undefined,sessionId:input.sessionId?String(input.sessionId).slice(0,96):undefined,trialId:input.trialId?String(input.trialId).slice(0,96):undefined,at:input.at??now()};
-    const dup=this.state.externalEvidence.some(x=>x.hypothesisId===row.hypothesisId&&x.contextKey===row.contextKey&&x.evaluatorVersion===row.evaluatorVersion&&x.holdout===row.holdout&&x.delayMs===row.delayMs);
-    if(!dup)this.state.externalEvidence=[row,...this.state.externalEvidence].slice(0,512);
-    const rows=this.state.externalEvidence.filter(x=>x.hypothesisId===h.id&&x.independentVerified);
+
+    const actionBinding=typeof input.toolId==='string'&&typeof input.executionId==='string'&&typeof input.decisionId==='string'
+      ? {toolId:input.toolId,input:binding,executionId:input.executionId,decisionId:input.decisionId}
+      : null;
+    const exactReceipt=input.evidenceSource==='external-evaluator'&&input.toolId===P36_EXTERNAL_EVIDENCE_TOOL_ID&&Boolean(actionBinding)&&
+      isTrustedDecisionLinkedExternalPostcondition(input.verification,actionBinding!);
+    const observationId=exactReceipt?input.verification?.observationId:undefined;
+    const sameProtocol=(x:DevelopmentEvidenceRecord)=>x.hypothesisId===binding.hypothesisId&&
+      x.evaluatorVersion===binding.evaluatorVersion&&x.evidenceSource===input.evidenceSource&&
+      x.protocolId===binding.protocolId&&x.baselineMethod===binding.baselineMethod&&
+      x.treatmentMethod===binding.treatmentMethod&&x.taskFamily===binding.taskFamily&&
+      x.manifestFingerprint===binding.manifestFingerprint;
+    const sameEvidenceKey=(x:DevelopmentEvidenceRecord)=>sameProtocol(x)&&
+      x.contextKey===binding.contextKey&&x.holdout===binding.holdout&&x.delayMs===binding.delayMs;
+    // One observation ID cannot be reused across contexts/splits to inflate replication.
+    const duplicateVerifiedReceipt=Boolean(observationId&&this.state.externalEvidence.some(x=>
+      sameEvidenceKey(x)&&x.independentVerified&&x.observationId===observationId));
+    const receiptReused=Boolean(observationId&&this.state.developmentalEvidenceObservationIds.includes(observationId)&&!duplicateVerifiedReceipt);
+    const independentVerified=Boolean(exactReceipt&&!receiptReused);
+    if(!independentVerified)this.state.unverifiedEvidenceAttempts=Math.min(1_000_000_000,this.state.unverifiedEvidenceAttempts+1);
+    const acceptedAt=now();
+    const row:DevelopmentEvidenceRecord={
+      id:`p36-e-${hash(`${binding.hypothesisId}:${binding.contextKey}:${acceptedAt}`)}-${acceptedAt.toString(36)}`,
+      hypothesisId:binding.hypothesisId,contextKey:binding.contextKey,control01:binding.control01,treatment01:binding.treatment01,
+      delta01:binding.treatment01-binding.control01,independentVerified,holdout:binding.holdout,delayMs:binding.delayMs,
+      evaluatorVersion:binding.evaluatorVersion,evidenceSource:input.evidenceSource,
+      ...(binding.protocolId?{protocolId:binding.protocolId}:{}),
+      ...(binding.sessionId?{sessionId:binding.sessionId}:{}),
+      ...(binding.trialId?{trialId:binding.trialId}:{}),
+      ...(binding.baselineMethod?{baselineMethod:binding.baselineMethod}:{}),
+      ...(binding.treatmentMethod?{treatmentMethod:binding.treatmentMethod}:{}),
+      ...(binding.taskFamily?{taskFamily:binding.taskFamily}:{}),
+      ...(binding.manifestFingerprint?{manifestFingerprint:binding.manifestFingerprint}:{}),
+      ...(independentVerified&&input.toolId?{toolId:input.toolId}:{}),
+      ...(independentVerified&&input.executionId?{executionId:input.executionId}:{}),
+      ...(independentVerified&&input.decisionId?{decisionId:input.decisionId}:{}),
+      ...(independentVerified&&observationId?{observationId}:{}),at:acceptedAt,
+    };
+    const duplicateIndex=this.state.externalEvidence.findIndex(sameEvidenceKey);
+    let storedOrExactDuplicate=false;
+    if(duplicateIndex<0){this.state.externalEvidence=[row,...this.state.externalEvidence].slice(0,512);storedOrExactDuplicate=independentVerified;}
+    else if(independentVerified&&!this.state.externalEvidence[duplicateIndex].independentVerified){
+      // A forged first attempt cannot poison the idempotency slot for a later verified receipt.
+      const next=[...this.state.externalEvidence];next[duplicateIndex]=row;this.state.externalEvidence=next;storedOrExactDuplicate=true;
+    }else if(independentVerified&&this.state.externalEvidence[duplicateIndex].observationId===observationId){
+      storedOrExactDuplicate=true;
+    }
+    if(storedOrExactDuplicate&&observationId&&!this.state.developmentalEvidenceObservationIds.includes(observationId)){
+      this.state.developmentalEvidenceObservationIds=[...this.state.developmentalEvidenceObservationIds,observationId].slice(-512);
+    }
+    // Never combine counts from different evaluator versions, manifests, task families or method pairs.
+    const rows=this.state.externalEvidence.filter(x=>sameProtocol(x)&&x.independentVerified);
     const contexts=new Set(rows.map(x=>x.contextKey));
     const holdoutCount=rows.filter(x=>x.holdout).length;
     const independentCount=rows.length;
@@ -466,26 +731,24 @@ export class P36AutonomousSelfDevelopmentEngine{
     const repeatedContexts=new Set(rows.filter(x=>x.holdout).map(x=>x.contextKey)).size;
     const replicated=hasHoldout&&holdoutCount>=4&&repeatedContexts>=3&&mean!==null&&mean>.03&&ci.low!==null&&ci.low>0;
     const status=replicated?'replicated':hasHoldout?'holdout-verified':'insufficient';
-    const cycle=this.state.developmentCycles.find(c=>c.hypothesisId===h.id && c.stage!=='closed');
+    const cycle=this.state.developmentCycles.find(c=>c.hypothesisId===h.id&&c.stage!=='closed');
     if(cycle){cycle.verifiedEvidenceCount=independentCount;cycle.lastEvidenceAt=row.at;cycle.stage=replicated?'replicated':hasHoldout?'holdout-verified':'awaiting-evidence';}
     let promoted=false;
-    if(status==='replicated' && h.evidenceGate==='holdout-verified'){
-      h.evidenceGate='replicated';
-      this.state.agenda.selectedHypothesisId=null;
-      this.state.agenda.selectedArea=null;
-      promoted=true;
-      this.state.curriculum.completedSteps+=1;
-      this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+.92*.1);
-      this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+.62*.06);
-    } else if(status!=='insufficient' && (!h.evidenceGate || h.evidenceGate==='none')){
-      h.status='completed'; h.evidenceGate=status; h.completedAt=now(); h.result01=clamp(.5+(mean??0));
-      const gain=Math.min(.08,Math.max(0,mean??0)*.12); this.state.curriculum.mastery[h.area]=clamp((this.state.curriculum.mastery[h.area]??.3)+gain);
-      this.state.curriculum.completedSteps+=replicated?1:0;
-      this.state.acceptedChanges++;
-      promoted=true;
-      const preferred=this.preferredAction(h.area); const signed=(mean??0)>=0?1:-1; this.state.actionBias[preferred]=Math.max(-.12,Math.min(.12,this.state.actionBias[preferred]+signed*Math.min(.035,Math.abs(mean??0)*.08)));
-      this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+(replicated?.92:.75)*.1);
-      this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+(replicated?.62:.56)*.06);
+    if(status==='replicated'&&h.evidenceGate==='holdout-verified'){
+      // Holdout passage is provisional; only independently replicated evidence changes the organism.
+      h.evidenceGate='replicated';h.status='completed';h.completedAt=now();h.result01=clamp(.5+(mean??0));
+      this.state.agenda.selectedHypothesisId=null;this.state.agenda.selectedArea=null;
+      const gain=Math.min(.08,Math.max(0,mean??0)*.12);
+      this.state.curriculum.mastery[h.area]=clamp((this.state.curriculum.mastery[h.area]??.3)+gain);
+      this.state.curriculum.completedSteps+=1;this.state.acceptedChanges++;promoted=true;
+      const preferred=this.preferredAction(h.area);const signed=(mean??0)>=0?1:-1;
+      this.state.actionBias[preferred]=Math.max(-.12,Math.min(.12,this.state.actionBias[preferred]+signed*Math.min(.035,Math.abs(mean??0)*.08)));
+      const positiveRate=rows.filter(x=>x.delta01>0).length/Math.max(1,rows.length);
+      this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+positiveRate*.1);
+      this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+clamp(.5+(mean??0))*.06);
+    }else if(status==='holdout-verified'&&(!h.evidenceGate||h.evidenceGate==='none')){
+      // Preserve the holdout gate and continue collecting delayed evidence without changing skill weights.
+      h.evidenceGate='holdout-verified';h.status='awaiting-evidence';
     }
     return {eligible:status!=='insufficient',evidenceCount:independentCount,distinctContexts:contexts.size,distinctDelays:delays.size,holdoutCount,independentCount,meanDelta01:mean,ci95Low01:ci.low,ci95High01:ci.high,status,promoted};
   }
@@ -495,15 +758,33 @@ export class P36AutonomousSelfDevelopmentEngine{
   recordRollback(reason:string){this.state.rollbackCount++;this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.9+.1*.35);const h=this.state.hypotheses.find(x=>x.id===this.state.currentHypothesisId);if(h)h.status='rolled-back';this.state.currentHypothesisId=null;return reason;}
 
 
-  observeDevelopmentalOutcome(input:{area?:DevelopmentArea|null;outcome01:number;verified?:boolean;delayed?:boolean;transfer?:boolean;at?:number}){
-    const outcome=clamp(input.outcome01);
-    const verified=Boolean(input.verified);
-    const delayed=Boolean(input.delayed);
-    const transfer=Boolean(input.transfer);
-    if(verified)this.state.developmentalMaturity.verifiedOutcomeCount++;
-    if(verified&&delayed&&outcome>=.62)this.state.developmentalMaturity.retainedOutcomeCount++;
-    if(verified&&transfer&&outcome>=.62)this.state.developmentalMaturity.transferredOutcomeCount++;
-    const failure=verified&&outcome<.4?1:0;
+  observeDevelopmentalOutcome(input:{kind?:'developmental-outcome';area?:DevelopmentArea|null;outcome01:number;verified?:boolean;verification?:OutcomeVerification;toolId?:string;executionId?:string;decisionId?:string;delayed?:boolean;transfer?:boolean;at?:number}){
+    // The legacy verified boolean is descriptive only; certification needs a verifier-minted receipt.
+    const binding=developmentalOutcomeVerificationInput(input);
+    if(typeof input.outcome01!=='number'||!Number.isFinite(input.outcome01)||input.outcome01<0||input.outcome01>1||
+       (input.delayed!==undefined&&typeof input.delayed!=='boolean')||(input.transfer!==undefined&&typeof input.transfer!=='boolean'))throw new Error('invalid-developmental-outcome');
+    if(input.area!==undefined&&input.area!==null&&binding.area===null)throw new Error('invalid-developmental-outcome-area');
+    const actionBinding=typeof input.toolId==='string'&&typeof input.executionId==='string'&&typeof input.decisionId==='string'
+      ? {toolId:input.toolId,input:binding,executionId:input.executionId,decisionId:input.decisionId}
+      : null;
+    const verified=Boolean(input.kind==='developmental-outcome'&&input.toolId===P36_DEVELOPMENTAL_OUTCOME_TOOL_ID&&actionBinding&&isTrustedDecisionLinkedExternalPostcondition(input.verification,actionBinding));
+    const outcome=binding.outcome01;
+    const delayed=binding.delayed;
+    const transfer=binding.transfer;
+    const observationId=verified?input.verification?.observationId:undefined;
+    const receiptKey=observationId?`${observationId}:${hash(JSON.stringify(binding)??'')}`:undefined;
+    const alreadyApplied=Boolean(receiptKey&&this.state.developmentalEvidenceReceiptIds.includes(receiptKey));
+    const observationAlreadyUsed=Boolean(observationId&&this.state.developmentalEvidenceObservationIds.includes(observationId));
+    const applyVerified=Boolean(verified&&receiptKey&&!alreadyApplied&&!observationAlreadyUsed);
+    if(!alreadyApplied&&(!verified||observationAlreadyUsed))this.state.rejectedMaturityReceipts=Math.min(1_000_000_000,this.state.rejectedMaturityReceipts+1);
+    if(applyVerified){
+      this.state.developmentalEvidenceReceiptIds=[...this.state.developmentalEvidenceReceiptIds,receiptKey!].slice(-512);
+      if(observationId)this.state.developmentalEvidenceObservationIds=[...this.state.developmentalEvidenceObservationIds,observationId].slice(-512);
+      this.state.developmentalMaturity.verifiedOutcomeCount++;
+      if(delayed&&outcome>=.62)this.state.developmentalMaturity.retainedOutcomeCount++;
+      if(transfer&&outcome>=.62)this.state.developmentalMaturity.transferredOutcomeCount++;
+    }
+    const failure=applyVerified&&outcome<.4?1:0;
     if(failure)this.state.developmentalMaturity.regressionCount++;
     const evidenceRate=clamp(this.state.developmentalMaturity.verifiedOutcomeCount/Math.max(1,this.state.cycles));
     const retentionRate=clamp(this.state.developmentalMaturity.retainedOutcomeCount/Math.max(1,this.state.developmentalMaturity.verifiedOutcomeCount));
@@ -517,15 +798,15 @@ export class P36AutonomousSelfDevelopmentEngine{
     else if(retentionRate<.45)next='integration';
     else if(transferRate<.40)next='transfer';
     else if(retentionRate<.72)next='consolidation';
-    else if(this.state.developmentalMaturity.verifiedOutcomeCount>=12 && regressionRate<.18)next='stable';
+    else if(this.state.developmentalMaturity.verifiedOutcomeCount>=12&&regressionRate<.18)next='stable';
     const rank:Record<DevelopmentalMaturityStage,number>={seed:0,acquisition:1,integration:2,transfer:3,consolidation:4,stable:5};
-    if(rank[next]<rank[current] && failure===0)next=current;
-    if(failure>0 && current==='stable' && regressionRate>.25)next='consolidation';
+    if(rank[next]<rank[current]&&failure===0)next=current;
+    if(failure>0&&current==='stable'&&regressionRate>.25)next='consolidation';
     this.state.developmentalMaturity.score01=score;
     if(next!==current){
       this.state.developmentalMaturity.stage=next;
       this.state.developmentalMaturity.lastTransitionAt=input.at??now();
-      this.state.developmentalMaturity.history=[{cycle:this.state.cycles,stage:next,area:input.area??this.state.curriculum.focus,verified01:verified?1:0,retention01:delayed&&outcome>=.62?1:0,transfer01:transfer&&outcome>=.62?1:0,failed01:failure,at:input.at??now()},...this.state.developmentalMaturity.history].slice(0,64);
+      this.state.developmentalMaturity.history=[{cycle:this.state.cycles,stage:next,area:binding.area??this.state.curriculum.focus,verified01:applyVerified?1:0,retention01:applyVerified&&delayed&&outcome>=.62?1:0,transfer01:applyVerified&&transfer&&outcome>=.62?1:0,failed01:failure,at:input.at??now()},...this.state.developmentalMaturity.history].slice(0,64);
     }
     return structuredClone(this.state.developmentalMaturity);
   }
@@ -559,6 +840,8 @@ export class P36AutonomousSelfDevelopmentEngine{
       acceptedChanges:this.state.acceptedChanges,
       rejectedChanges:this.state.rejectedChanges,
       rollbackCount:this.state.rollbackCount,
+      unverifiedEvidenceAttempts:this.state.unverifiedEvidenceAttempts,
+      rejectedMaturityReceipts:this.state.rejectedMaturityReceipts,
       metrics:{...this.state.metrics},
       developmentalMaturity:this.developmentalCertification(),
       curriculum:{...this.state.curriculum,mastery:{...this.state.curriculum.mastery}},

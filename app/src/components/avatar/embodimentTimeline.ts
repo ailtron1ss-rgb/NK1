@@ -69,9 +69,11 @@ export function poseForGrapheme(grapheme: string): MouthPose {
   if (/^[.,!?;:…—–-]$/u.test(char)) return { ...CLOSED_MOUTH };
   if (/[мбп]/u.test(char) || /[bmp]/u.test(char)) return { open: 0.025, form: -0.05, viseme: "closed" };
   if (/[фв]/u.test(char) || /[fv]/u.test(char)) return { open: 0.14, form: 0.18, viseme: "teeth" };
-  if (/[оуёю]/u.test(char) || /[ouw]/u.test(char)) return { open: 0.34, form: -0.46, viseme: "round" };
+  if (/[оoё]/iu.test(char)) return { open: 0.38, form: -0.32, viseme: "round" };
+  if (/[ууюuw]/iu.test(char)) return { open: 0.30, form: -0.48, viseme: "round" };
   if (/[аяaæɑɒ]/iu.test(char)) return { open: 0.60, form: 0.10, viseme: "open" };
-  if (/[иыиеэ]/u.test(char) || /[eiy]/iu.test(char)) return { open: 0.25, form: 0.32, viseme: "wide" };
+  if (/[иiy]/iu.test(char)) return { open: 0.22, form: 0.22, viseme: "wide" };
+  if (/[ыэеe]/iu.test(char)) return { open: 0.26, form: 0.34, viseme: "wide" };
   if (/^[\p{L}\p{M}\p{N}]$/u.test(char)) return { open: 0.16, form: 0.02, viseme: "neutral" };
   return { ...CLOSED_MOUTH };
 }
@@ -271,4 +273,69 @@ export function isEmbodimentIntentV1(value: unknown): value is EmbodimentIntentV
   if (typeof intent.body.gesture !== "boolean" || typeof intent.body.motionGroup !== "string" || !/^[a-zA-Z0-9_-]{1,32}$/.test(intent.body.motionGroup)) return false;
   if (!Number.isInteger(intent.body.motionIndex) || intent.body.motionIndex < 0 || intent.body.motionIndex > 32 || !Number.isSafeInteger(intent.body.motionToken) || intent.body.motionToken < 0) return false;
   return Number.isFinite(intent.voiceEmphasis) && Number(intent.voiceEmphasis) >= 0 && Number(intent.voiceEmphasis) <= 1;
+}
+
+
+/**
+ * Provider-neutral lifecycle envelope for one speech utterance.
+ * Times are relative to the named monotonic clock; sequence is strictly increasing
+ * within an utterance. Optional boundaries are provider observations, not phonemes.
+ */
+export type SpeechLifecyclePhaseV1 = "queued" | "started" | "boundary" | "ended" | "cancelled" | "error";
+export interface SpeechLifecycleEventV1 {
+  protocol: "nk1.speech-event";
+  version: 1;
+  eventId: string;
+  utteranceId: string;
+  sequence: number;
+  provider: "browser-speech-synthesis" | "native-tts";
+  clockId: string;
+  monotonicTimeMs: number;
+  phase: SpeechLifecyclePhaseV1;
+  charIndex?: number;
+  errorCode?: string;
+}
+
+export function createSpeechLifecycleEventV1(
+  input: Omit<SpeechLifecycleEventV1, "protocol" | "version">,
+): SpeechLifecycleEventV1 {
+  const event: SpeechLifecycleEventV1 = { protocol: "nk1.speech-event", version: 1, ...input };
+  if (!isSpeechLifecycleEventV1(event)) throw new TypeError("Invalid NK1 speech lifecycle event");
+  return Object.freeze(event);
+}
+
+export function isSpeechLifecycleEventV1(value: unknown): value is SpeechLifecycleEventV1 {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const event = value as Partial<SpeechLifecycleEventV1>;
+  const phases: SpeechLifecyclePhaseV1[] = ["queued", "started", "boundary", "ended", "cancelled", "error"];
+  if (event.protocol !== "nk1.speech-event" || event.version !== 1) return false;
+  if (typeof event.eventId !== "string" || event.eventId.length < 1 || event.eventId.length > 220) return false;
+  if (typeof event.utteranceId !== "string" || event.utteranceId.length < 1 || event.utteranceId.length > 180) return false;
+  if (!Number.isSafeInteger(event.sequence) || Number(event.sequence) < 1) return false;
+  if (event.provider !== "browser-speech-synthesis" && event.provider !== "native-tts") return false;
+  if (typeof event.clockId !== "string" || event.clockId.length < 1 || event.clockId.length > 220) return false;
+  if (!Number.isFinite(event.monotonicTimeMs) || Number(event.monotonicTimeMs) < 0) return false;
+  if (!phases.includes(event.phase as SpeechLifecyclePhaseV1)) return false;
+  if (event.phase === "boundary" && (!Number.isSafeInteger(event.charIndex) || Number(event.charIndex) < 0)) return false;
+  if (event.charIndex !== undefined && (!Number.isSafeInteger(event.charIndex) || Number(event.charIndex) < 0)) return false;
+  if (event.errorCode !== undefined && (typeof event.errorCode !== "string" || event.errorCode.length > 64)) return false;
+  return true;
+}
+
+/** Reject duplicate, stale, cross-utterance and backwards-clock events. */
+export function acceptsSpeechLifecycleEventV1(
+  previous: SpeechLifecycleEventV1 | null,
+  next: SpeechLifecycleEventV1,
+): boolean {
+  if (!isSpeechLifecycleEventV1(next)) return false;
+  if (!previous) return next.sequence === 1 && next.phase === "queued";
+  if (next.utteranceId !== previous.utteranceId || next.clockId !== previous.clockId
+    || next.provider !== previous.provider || next.sequence !== previous.sequence + 1
+    || next.monotonicTimeMs < previous.monotonicTimeMs) return false;
+  if (["ended", "cancelled", "error"].includes(previous.phase)) return false;
+  if (next.phase === "queued" || next.phase === "started" && previous.phase !== "queued"
+    || next.phase === "boundary" && !["started", "boundary"].includes(previous.phase)) return false;
+  if (next.phase === "boundary" && previous.phase === "boundary"
+    && Number(next.charIndex) < Number(previous.charIndex)) return false;
+  return true;
 }

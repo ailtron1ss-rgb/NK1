@@ -35,6 +35,55 @@ assert.ok(snapshot.facets.embodiment.p41NativePerception.imageFrames >= 1);
 assert.ok(snapshot.facets.embodiment.p41NativePerception.audioFrames >= 1);
 assert.ok(snapshot.facets.embodiment.p41SemanticPerception.snapshots.length >= 1);
 assert.ok(snapshot.facets.embodiment.p41SemanticPerception.entities.length >= 1);
+const terminalTracks = snapshot.facets.embodiment.p41SemanticPerception.entities.filter(entity => entity.label === 'terminal' && entity.kind === 'object');
+assert.equal(terminalTracks.length, 1, 'vision and canonical world IDs must associate a single observed terminal');
+assert.ok(terminalTracks[0].modalities.includes('vision') && terminalTracks[0].modalities.includes('world'));
+assert.ok(terminalTracks[0].trackId?.includes('t1'), 'canonical world object identity must survive semantic fusion');
+
+const calibrationReceiptId = 'p41-human-annotation-receipt-0001';
+const calibrationInput = {
+  modality:'vision',
+  predictedConfidence01:.9,
+  correctness01:.8,
+  evidenceId:calibrationReceiptId,
+  evidenceSource:'human-annotation',
+};
+const calibrationReceipt = {
+  version: 2,
+  capacity: 128,
+  total: 1,
+  externalCount: 1,
+  byKind: { observation:0, prediction:0, action:0, outcome:1, resource:0, model:0, goal:0, contradiction:0 },
+  recent: [{
+    id: calibrationReceiptId,
+    at: Date.now(),
+    tick: snapshot.state.tick,
+    kind: 'outcome',
+    source: 'human-annotation',
+    confidence01: 1,
+    external01: true,
+    parentIds: [],
+    payload: { modality:'vision', predictedConfidence01:.9, correctness01:.8, evidenceSource:'human-annotation' },
+  }],
+  linkedParentEvents: 0,
+  danglingParentLinks: 0,
+  lineageIntegrity01: 1,
+  coverage01: 1,
+  recentWindowTicks: 32,
+};
+runtime.core.setRuntimeEvidence({
+  ...calibrationReceipt,
+  externalCount: 0,
+  recent: [{ ...calibrationReceipt.recent[0], id:'internal-outcome-not-independent', external01:false }],
+});
+assert.equal(runtime.core.p41ObserveModalityOutcome({ ...calibrationInput, evidenceId:'internal-outcome-not-independent' }), false, 'an internal outcome is not an independent calibration receipt');
+runtime.core.setRuntimeEvidence(calibrationReceipt);
+assert.equal(runtime.core.p41ObserveModalityOutcome(calibrationInput), true, 'Core accepts calibration backed by an exact external receipt');
+assert.equal(runtime.core.p41ObserveModalityOutcome(calibrationInput), false, 'calibration evidence cannot be replayed');
+assert.equal(runtime.core.p41ObserveModalityOutcome({ ...calibrationInput, evidenceId:'unbacked-model-claim' }), false, 'a source label without a Core-owned receipt is not trusted');
+await runtime.core.flush();
+const calibratedSnapshot = runtime.core.snapshot();
+assert.equal(calibratedSnapshot.facets.embodiment.p41SemanticPerception.modalityReliability.vision.calibrationSamples, 1);
 const persisted = JSON.parse(await readFile(stateFile,'utf8'));
 assert.ok(persisted.facets.embodiment.p41NativePerception);
 assert.ok(persisted.facets.embodiment.p41SemanticPerception);

@@ -104,6 +104,14 @@ Create a row or linked detail page with all fields below before treating the can
 | [in-toto Attestation Statement v1](https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md) and [framework spec](https://github.com/in-toto/attestation/blob/main/spec/README.md) | An authenticated statement binds a claim to an explicit subject and typed predicate; consumers evaluate the binding, not just the existence of an envelope/signature. | Extended the existing signed shadow-evidence verifier so a receipt must match independently resolved run ID, task ID, seed, manifest fingerprint and runtime version, in addition to candidate/version/payload identity and Ed25519 signature. No upstream code or dependency was copied; this is a narrow contract adaptation. | **IMPLEMENTED; execution unverified** — regression covers each mismatched context field after durable-store reconstruction. Production resolver still must be wired to the trusted supervisor/run ledger. |
 | [The Update Framework security model](https://theupdateframework.github.io/security.html) | Freshness and rollback protection require state/context beyond a valid signature. | Reinforces that cryptographic authenticity alone is insufficient; NK1 continues to require durable state and revalidation before promotion. No TUF client or metadata protocol was imported. | **DESIGN INPUT** — no claim of full TUF conformance. |
 
+## Embodiment / co-speech gesture research (2026-11-03)
+
+| Candidate / source | Evidence / license | NK1 adaptation | Decision |
+|---|---|---|---|
+| StreamTalk — Streaming Co-Speech Gesture Generation with Key-Pose Anchoring (ECCV 2026) | https://arxiv.org/html/2608.01643v1 ; reports that streaming gesture drift is caused by the absence of forward constraints, and that supplying a single plausible key pose at each clip tail as a destination anchor dramatically suppresses long-horizon drift (BEAT2, real-time). Verify upstream LICENSE and code release before any reuse. | Mechanism to inspect, not code to vendor: NK1's motion arbiter cross-fades whole programs but has no forward "destination anchor" constraint, so stacked live-IK over clips (§17 pass 4.3) could drift. Candidate experiment: add an optional anchor target the arbiter eases toward and measure overshoot/settling against the current unanchored blend on the same intent stream. Do not import the diffusion model or BEAT2 data. | **RESEARCH-ONLY** — isolated experiment + license review required before integration |
+| LiveGesture — Streamable Co-Speech Gesture Generation (CVPR 2026) | https://github.com/zhaoyang97/Paper-Notes-en (paper note; code TBD) | Region-expert streaming tokenizer; relevant only as a research target for a future learned motion backend. NK1 keeps its deterministic keyframed library as the single motion owner. | **RESEARCH-ONLY** — no code available yet |
+| GlobalDiff — Mitigating Error Accumulation in Co-Speech Motion (AAAI 2026) | https://github.com/Kedreamix/Awesome-Talking-Head-Synthesis (index) | Confirms error-accumulation is a known failure mode of streaming motion; validates the NK1 §18 finding that per-frame writes must be reset rather than accumulated. No code copied. | **DESIGN INPUT** — supports existing reset-per-frame invariant |
+
 ## Next research pass
 
 1. Build a source-level call graph for the canonical runtime and identify one actual bottleneck from traces/tests before selecting a new architecture.
@@ -208,3 +216,73 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - Research relationship: manifest-bound, controlled evaluation and signed-provenance principles; protocol adaptation only, no upstream code or dataset copied.
 - **Verification boundary:** code and tests committed; runtime execution, typecheck and exact-head Actions are still unverified. No learning uplift is claimed.
 - Report: `docs/WORKPASS134_MANIFEST_BOUND_OUTCOME_EVIDENCE_2026-10-21.md`.
+
+
+
+## WorkPass — agent memory, action grounding and continual-learning evaluation (2026-11-01)
+
+**Decision:** adapt the evaluation protocols, not upstream runtime code. The cited AgentCL, Evo-Memory and retrieval-reconsolidation papers are arXiv preprints; their reported results are research claims, not NK1 measurements. The existing [Mem2ActBench ACL 2026 entry](#) already records the memory-to-tool-argument task family; this section adds the cross-task and continual-learning controls without duplicating that benchmark entry.
+
+| Research candidate | What was inspected | NK1 adaptation | Status |
+|---|---|---|---|
+| [AgentCL: Toward Rigorous Evaluation of Continual Learning in Language Agents](https://arxiv.org/abs/2606.02461) (2026 preprint) | Separates compositional/dependent task streams from unrelated tasks and frozen read-only holdout; reports plasticity, stability and generalization separately. | Extend P26 with dependent vs unrelated task families and a frozen second-pass holdout. Report three gains separately; no score increase from acquisition-only improvement. | EVALUATION DESIGN INPUT |
+| [Evo-Memory: Benchmarking LLM Agent Test-time Learning with Self-Evolving Memory](https://arxiv.org/abs/2511.20857) (2025 preprint) | Studies sequential task streams where an agent retrieves, adapts and updates memory during deployment. | Compare memoryless baseline, canonical MemoryOS2 and any candidate policy on the same task stream and budget. Separate read/write learning from read-only evaluation. | RESEARCH-ONLY / ADAPT PROTOCOL |
+| [Retrieval-Driven Memory Reconsolidation for Long-Term LLM Agents](https://arxiv.org/abs/2609.16053) (2026 preprint) | Proposes retrieval-triggered local reconsolidation and memory graph reorganization. | Test as a reversible experiment only; measure downstream task utility, graph churn, retrieval latency, stale-memory interference and forgetting before any topology change. | RESEARCH-ONLY / NO PRODUCTION ADOPTION |
+
+### Proposed NK1 acceptance protocol
+
+1. Freeze the corpus, model/configuration, task manifest, budget and evaluator before the run. Split tasks into compositional/dependent acquisition, unrelated controls and a read-only independent holdout. Holdout data must never enter memory writes, consolidation, prompt tuning or policy selection.
+2. Include at least one memory-to-action case where a required tool argument is absent from the final request and exists only in a prior verified event; score exact tool+arguments, parameter F1, task success, correct abstention and stale/forgotten-fact misuse. Keep the leakage check independent.
+3. Compare memoryless baseline with canonical MemoryOS2 under equal token/storage/latency budgets. Use at least five paired seeds for each confirmatory holdout comparison; report per-seed outcomes, paired effect, uncertainty, plasticity, stability and generalization separately.
+4. Add explicit correction/forget, contradiction, delayed retrieval and unrelated-task negative controls. A forgotten or stale claim must not be reintroduced by consolidation or retrieval.
+5. Require positive independent holdout task utility, no material regression on unrelated controls, bounded latency/cost and reproducible results before promotion. Recall-only uplift or a synthetic fixture is not sufficient. Keep rollback available.
+
+**Evidence boundary:** this is a research-to-test translation, not an implemented continual-learning algorithm, not a real RU/EN retrieval uplift and not a license approval for upstream code/data. No external benchmark dataset or runtime dependency was imported.
+
+---
+
+## WorkPass71 — avatar/body donor intake: rigs, retargeting and co-speech gesture (2026-11-03)
+
+**Decision:** adopt a small number of mechanisms behind isolated adapters; do not vendor runtime engines. These are candidate mechanisms for the body (2D/2.5D/3D) and motorics. No upstream code was copied or installed in this pass; each row records a candidate, not an integrated dependency. Base SHA for this pass: `608435493b4af3b4a222d385f1b77d978d18583b` (`workpass70-source`).
+
+| Candidate / source | Revision / access | License | Mechanism to inspect | NK1 integration target | Downside / boundary | Decision |
+|---|---|---|---|---|---|---|
+| [Meta MHR (Momentum Human Rig)](https://github.com/facebookresearch/MHR) | upstream main, inspected 2026-11-03 | Apache-2.0 (verify model-weight terms) | Decoupled skeleton/shape, pose correctives, face blendshapes, 60 Hz | Offline reference for NK1 retarget rig and joint naming | Not a browser runtime; do not vendor weights without license review | ADAPT (offline reference) |
+| [VRM Animation `.vrma` (VRMC_vrm_animation)](https://vrm.dev/en/vrma) | spec, inspected 2026-11-03 | Open spec (VRM Consortium) | Cross-model humanoid clip + expression animation | Motion-library clip format consumed by `vrmRuntimeAdapter` | Needs a runtime importer; keep one mixer owner | ADOPT format |
+| [GMR — General Motion Retargeting](https://github.com/YanjieZe/GMR) | upstream main, inspected 2026-11-03 | MIT | Human→humanoid retarget, CPU IK (mink/mujoco), BVH/SMPL-X/LAFAN1 | Offline retarget of donor clips into NK1 `.vrma` | Solver is offline only; never in the browser | ADAPT (offline) |
+| [Kalidokit](https://github.com/yeemachine/kalidokit) | upstream main (deprecated) | MIT | Blendshape/kinematics solver for MediaPipe → VRM/Live2D | Reference for solver logic only | Deprecated; superseded by MediaPipe tasks | REFERENCE ONLY |
+| [MediaPipe Tasks (face/pose/hand)](https://ai.google.dev/edge/mediapipe/solutions/vision) | current docs, inspected 2026-11-03 | Apache-2.0 | Landmarks → face/pose/hand rig | Opt-in camera-tracking input adapter | Separate input adapter; not a state owner; privacy-gated | ADAPT (opt-in) |
+| [EMAGE (CVPR 2024)](https://pantomatrix.github.io/EMAGE) | paper + project page | Verify code; BEAT2 dataset license separate | Audio → holistic gesture (body+face+hands), SMPL-X/BEAT2 | Offline gesture-quality reference | Dataset license blocks training without review | RESEARCH-ONLY |
+| [LiveGesture (CVPR 2026)](https://openaccess.thecvf.com/) | paper | Verify code license | Streamable zero-look-ahead full-body gesture from speech | Real-time gesture candidate; compare offline first | No reproduced result on NK1 corpus yet | RESEARCH-ONLY |
+| [3D Gaussian Splatting / Spark](https://github.com/sparkjsdev/spark) | upstream main | MIT (verify) | Real-time splat render; `KHR_gaussian_splatting` | Future photoreal head; separate renderer | Not a rig replacement | RESEARCH-ONLY |
+
+### Acceptance rule for this pass
+
+Promote a candidate only when it removes a named failure of the canonical owner, survives an isolated adapter test, and beats the current clip-based baseline on a frozen comparison without unbounded latency, memory or privacy cost. Keep the donor's license and attribution; never ship model weights or datasets whose license is unreviewed. Record the result and the rollback in the handover.
+
+**Evidence boundary:** this is a candidate queue. Nothing here is an integrated dependency, a measured quality uplift or a license approval for upstream code, weights or datasets.
+
+---
+
+## WorkPass71 addendum — additional co-speech / full-body gesture candidates (2026-11-03)
+
+**Decision:** extend the candidate queue only; adopt nothing in this pass. These supplement the
+StreamTalk / LiveGesture / GlobalDiff rows above with further recent mechanisms for §17 pass 4
+(full motorics) and pass 5 (world interaction). All rows are `RESEARCH-ONLY`: no upstream code,
+weights or datasets were downloaded or installed.
+
+| Candidate / source | Revision / access | License | Mechanism | NK1 target | Boundary |
+|---|---|---|---|---|---|
+| [DIDiffGes (AAAI 2025)](https://arxiv.org/html/2503.17059v1) | paper, inspected 2026-11-03 | verify code license | Decoupled semi-implicit diffusion, 10-step sampling, 88 frames in ~0.4 s | Offline gesture-quality reference | Diffusion sampling cost; not a browser runtime |
+| [SemTalk (ICCV 2025)](https://openaccess.thecvf.com/content/ICCV2025/papers/) | paper, inspected 2026-11-03 | verify code license | Holistic co-speech motion with frame-level semantic emphasis | Semantics-to-gesture mapping reference | Offline; dataset license separate |
+| [PRIMAL (ICCV 2025)](https://github.com/Kedreamix/Awesome-Talking-Head-Synthesis) | index, inspected 2026-11-03 | verify code license | Physically reactive interactive motor model | Reference for reactive whole-body response (pass 5) | Not a web runtime; weights unreviewed |
+
+### Acceptance rule (unchanged)
+
+Promote only on measured benefit against the frozen baseline with invariants preserved
+(one canonical owner per capability; derived channels not overridden; unsupported channels
+reported, never faked). Record donor URL/revision, license, mechanism, test, resource cost,
+result and rollback. Never ship unreviewed weights or datasets.
+
+**Evidence boundary:** this is a candidate queue. Nothing here is an integrated dependency, a
+measured quality uplift or a license approval for upstream code, weights or datasets.

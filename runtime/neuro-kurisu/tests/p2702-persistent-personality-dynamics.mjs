@@ -12,7 +12,147 @@ const after=p.snapshot();
 assert(after.learningUpdates>before.learningUpdates);
 assert(after.autobiographicalStrength01>before.autobiographicalStrength01);
 assert(after.adaptiveValues.some((v,i)=>Math.abs(v-(before.adaptiveValues[i]??v))>1e-6));
+
+const respondLearner = new P2702PersistentPersonalityDynamics();
+const respondBefore = respondLearner.snapshot();
+respondLearner.afterOutcome({ reward01: .95, verified01: 1, predictionError01: .05, identityGap01: .1, action: 'respond', identityVector: new Array(24).fill(.95) });
+const respondAfter = respondLearner.snapshot();
+const traitIndex = (state, name) => state.adaptiveNames.indexOf(name);
+const valueIndex = (state, name) => state.valueNames.indexOf(name);
+assert.ok(respondAfter.adaptiveValues[traitIndex(respondAfter, 'warmth')] > respondBefore.adaptiveValues[traitIndex(respondBefore, 'warmth')],
+  'verified successful responses should train warmth, not whichever trait happens to be index zero');
+assert.equal(respondAfter.adaptiveValues[traitIndex(respondAfter, 'sarcasm')], respondBefore.adaptiveValues[traitIndex(respondBefore, 'sarcasm')],
+  'respond outcomes must not accidentally train sarcasm through enum-position coupling');
+assert.ok(respondAfter.valueWeights[valueIndex(respondAfter, 'relationship')] > respondBefore.valueWeights[valueIndex(respondBefore, 'relationship')],
+  'respond outcomes should provide targeted evidence about relationship value');
+assert.equal(respondAfter.valueWeights[valueIndex(respondAfter, 'science')], respondBefore.valueWeights[valueIndex(respondBefore, 'science')],
+  'a social response must not globally rewrite unrelated science value weights');
+assert.ok(respondAfter.selfBeliefs[0] > respondBefore.selfBeliefs[0],
+  'verified identity evidence should update the self belief anchor');
+assert.ok(respondAfter.selfUncertainty[0] < respondBefore.selfUncertainty[0],
+  'verified low-error evidence should reduce self uncertainty');
+
+const exploreLearner = new P2702PersistentPersonalityDynamics();
+const exploreBefore = exploreLearner.snapshot();
+exploreLearner.afterOutcome({ reward01: .95, verified01: 1, predictionError01: .05, identityGap01: .1, action: 'explore' });
+const exploreAfter = exploreLearner.snapshot();
+assert.ok(exploreAfter.adaptiveValues[traitIndex(exploreAfter, 'playfulness')] > exploreBefore.adaptiveValues[traitIndex(exploreBefore, 'playfulness')],
+  'successful exploration should train playfulness');
+assert.equal(exploreAfter.adaptiveValues[traitIndex(exploreAfter, 'warmth')], exploreBefore.adaptiveValues[traitIndex(exploreBefore, 'warmth')],
+  'exploration must not update the response-warmth trait');
+
+const verifyLearner = new P2702PersistentPersonalityDynamics();
+const verifyBefore = verifyLearner.snapshot();
+verifyLearner.afterOutcome({ reward01: .95, verified01: 1, predictionError01: .05, identityGap01: .1, action: 'verify' });
+const verifyAfter = verifyLearner.snapshot();
+assert.ok(verifyAfter.adaptiveValues[traitIndex(verifyAfter, 'composure')] > verifyBefore.adaptiveValues[traitIndex(verifyBefore, 'composure')],
+  'successful verification should train composure');
+assert.ok(verifyAfter.valueWeights[valueIndex(verifyAfter, 'truth')] > verifyBefore.valueWeights[valueIndex(verifyBefore, 'truth')],
+  'verified checks should reinforce truth-seeking value evidence');
+assert.ok(verifyAfter.valueWeights[valueIndex(verifyAfter, 'science')] > verifyBefore.valueWeights[valueIndex(verifyBefore, 'science')],
+  'verified checks should reinforce science value evidence');
+
+const unverifiedLearner = new P2702PersistentPersonalityDynamics();
+const unverifiedBefore = unverifiedLearner.snapshot();
+unverifiedLearner.afterOutcome({ reward01: .95, verified01: 0, predictionError01: .05, identityGap01: .1, action: 'respond', identityVector: new Array(24).fill(.99), relationshipId: 'unverified-relationship' });
+assert.deepEqual(unverifiedLearner.snapshot().adaptiveValues, unverifiedBefore.adaptiveValues,
+  'unverified rewards must not rewrite adaptive character traits');
+assert.deepEqual(unverifiedLearner.snapshot().valueWeights, unverifiedBefore.valueWeights,
+  'unverified rewards must not rewrite enduring values');
+assert.equal(unverifiedLearner.snapshot().relationshipTrust['unverified-relationship'], undefined,
+  'unverified observations must not create relationship-trust evidence');
+assert.equal(unverifiedLearner.snapshot().selfBeliefs[0], unverifiedBefore.selfBeliefs[0],
+  'unverified latent identity hints must not rewrite autobiographical self-belief');
+assert.ok(unverifiedLearner.snapshot().selfUncertainty[0] > unverifiedBefore.selfUncertainty[0],
+  'unverified outcome should increase uncertainty');
+
 const restored=new P2702PersistentPersonalityDynamics();restored.restore(after);assert.deepEqual(restored.snapshot(),after);
+
+const corruptedRestore = new P2702PersistentPersonalityDynamics();
+corruptedRestore.restore({
+  tick: -4,
+  experienceCount: -2,
+  learningUpdates: 2.5,
+  stability01: Number.NaN,
+  coherence01: 4,
+  identityContinuity01: -1,
+  contradiction01: Number.POSITIVE_INFINITY,
+  plasticity01: Number.NaN,
+  drift01: -1,
+  autobiographicalStrength01: Number.NaN,
+  lastReward01: 3,
+  relationshipTrust: { trusted: 0.8, malformed: Number.NaN, numericString: "0.7" },
+  actionPreference: { respond: Number.NaN, explore: 0.9, unknownAction: 1 },
+  adaptiveValues: [Number.NaN, 2],
+  selfUncertainty: [Number.NaN, 2],
+  tensionState: new Array(2),
+});
+const restoredSafe = corruptedRestore.snapshot();
+assert.equal(restoredSafe.tick, 0, 'restored tick must be a non-negative integer');
+assert.equal(restoredSafe.experienceCount, 0, 'restored experience count must be a non-negative integer');
+assert.equal(restoredSafe.learningUpdates, 2, 'restored update count must be floored and non-negative');
+for (const metric of ['stability01', 'coherence01', 'identityContinuity01', 'contradiction01', 'plasticity01', 'drift01', 'autobiographicalStrength01', 'lastReward01']) {
+  assert.ok(Number.isFinite(restoredSafe[metric]) && restoredSafe[metric] >= 0 && restoredSafe[metric] <= 1,
+    'restored ' + metric + ' must be finite and bounded');
+}
+assert.deepEqual(restoredSafe.relationshipTrust, { trusted: 0.8 },
+  'restore must discard non-finite and non-numeric relationship trust entries');
+assert.equal(restoredSafe.actionPreference.respond, 0,
+  'malformed action preferences must fall back to the canonical default');
+assert.equal(restoredSafe.actionPreference.explore, 0.9,
+  'finite action preferences must be retained');
+assert.equal(Object.keys(restoredSafe.actionPreference).length, Object.keys(actions).length,
+  'restore must not retain unknown action keys');
+const defaultPersonalityState = new P2702PersistentPersonalityDynamics().snapshot();
+assert.equal(restoredSafe.adaptiveValues.length, defaultPersonalityState.adaptiveValues.length,
+  'restore must preserve the canonical adaptive vector width');
+assert.equal(restoredSafe.adaptiveValues[0], defaultPersonalityState.adaptiveValues[0],
+  'non-finite vector entries must fall back to their canonical prior');
+assert.equal(restoredSafe.adaptiveValues[1], 1,
+  'out-of-range vector entries must be clamped');
+assert.equal(restoredSafe.selfUncertainty[0], defaultPersonalityState.selfUncertainty[0],
+  'invalid uncertainty entries must fall back to the prior uncertainty');
+assert.equal(restoredSafe.selfUncertainty[1], 0.97,
+  'restored uncertainty must respect its narrower safety range');
+assert.equal(restoredSafe.tensionState.length, defaultPersonalityState.tensionState.length,
+  'sparse restored vectors must be padded to the canonical tension width');
+assert.deepEqual(restoredSafe.tensionState, defaultPersonalityState.tensionState,
+  'holes in restored vectors must use canonical prior values rather than remain sparse');
+
+// P2702 restore is a persistence boundary: own data only, no accessors or sparse vectors.
+let rootGetterInvoked=false;
+const getterSnapshot={};
+Object.defineProperty(getterSnapshot,'tick',{enumerable:true,get(){rootGetterInvoked=true;throw new Error('getter must not run');}});
+getterSnapshot.adaptiveValues=[.2,.3];
+const getterRestored=new P2702PersistentPersonalityDynamics();
+getterRestored.restore(getterSnapshot);
+assert.equal(rootGetterInvoked,false,'restore must inspect descriptors without invoking root getters');
+assert.equal(getterRestored.snapshot().tick,0,'accessor-backed root field must fall back to canonical default');
+
+let trustGetterInvoked=false;
+const trustSnapshot={relationshipTrust:{}};
+Object.defineProperty(trustSnapshot.relationshipTrust,'trusted',{enumerable:true,get(){trustGetterInvoked=true;throw new Error('nested getter must not run');}});
+const trustRestored=new P2702PersistentPersonalityDynamics();
+trustRestored.restore(trustSnapshot);
+assert.equal(trustGetterInvoked,false,'restore must not invoke nested relationship-trust getters');
+assert.deepEqual(trustRestored.snapshot().relationshipTrust,{},'invalid nested record must be discarded');
+
+let arrayGetterInvoked=false;
+const accessorArray=[.2,.3];
+Object.defineProperty(accessorArray,'0',{enumerable:true,configurable:true,get(){arrayGetterInvoked=true;throw new Error('array getter must not run');}});
+const arrayRestored=new P2702PersistentPersonalityDynamics();
+arrayRestored.restore({adaptiveValues:accessorArray,tensionState:new Array(2)});
+assert.equal(arrayGetterInvoked,false,'restore must not invoke array index getters');
+assert.deepEqual(arrayRestored.snapshot().adaptiveValues,new P2702PersistentPersonalityDynamics().snapshot().adaptiveValues,
+  'accessor-backed vector must fall back to canonical priors');
+assert.deepEqual(arrayRestored.snapshot().tensionState,new P2702PersistentPersonalityDynamics().snapshot().tensionState,
+  'sparse vector must fall back to canonical priors');
+
+const proxyRestored=new P2702PersistentPersonalityDynamics();
+const hostileProxy=new Proxy({}, { ownKeys(){throw new Error('hostile-proxy'); } });
+assert.doesNotThrow(()=>proxyRestored.restore(hostileProxy),'hostile snapshot proxy must fail closed');
+assert.deepEqual(proxyRestored.snapshot(),new P2702PersistentPersonalityDynamics().snapshot(),
+  'hostile snapshot proxy must not partially alter personality state');
 
 const b=new NeuralExperienceBranch();
 let s=defaultNeuralExperienceBranch();b.restore(s);
@@ -20,7 +160,7 @@ const d=b.beforeDecision({tick:1,input:new Array(64).fill(.15),baseUtilities:act
 b.commitAction('explore',actions);
 b.afterOutcome({tick:1,action:'explore',reward01:.9,predictionError01:.1,verified01:1,nextInput:new Array(64).fill(.25),identityGap01:.15,goalPressure01:.7,identityVector:new Array(24).fill(.4)});
 const snap=b.snapshot();
-assert.equal(snap. version,25);
+assert.equal(snap.version,32,'NeuralExperienceBranch snapshot contract is version 32');
 assert(snap.persistentPersonality.learningUpdates>0);
 const b2=new NeuralExperienceBranch();b2.restore(snap);assert.deepEqual(b2.snapshot().persistentPersonality,snap.persistentPersonality);
 console.log(JSON.stringify({pass:true,learningUpdates:snap.persistentPersonality.learningUpdates,drift01:snap.persistentPersonality.drift01,coherence01:snap.persistentPersonality.coherence01,identityContinuity01:snap.persistentPersonality.identityContinuity01}));

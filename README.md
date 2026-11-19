@@ -1,3 +1,102 @@
+## Актуальный инженерный checkpoint — 13 ноября 2026
+
+**Каноническая рабочая ветка:** `workpass70-source`  
+**Source HEAD до этого README checkpoint:** `e6bab97d014c9911cddc3746725b39c635018f43` (следующий HEAD после этого commit следует брать из live branch).  
+**`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
+
+> **WorkPass71 (2026-11-03, ветка `workpass71-body-systems`):** добавлены версионированный capability manifest с fail-closed реестром, renderer-neutral motion library и арбитр движений с bounded cross-fade; 3D VRM и Original 2D тела теперь управляются одними и теми же каналами. См. [docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md](docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md). Это IMPLEMENTED/OBSERVED на синтетических тестах; device E2E, soak и visual verification ещё не проведены.
+
+### Интеграции и исправления 13 ноября 2026
+
+| PR | Реальное изменение | Проверка |
+|---|---|---|
+| [#838](https://github.com/ailtron1ss-rgb/NK1/pull/838) | Снижение пиковых аллокаций при remote VRM/GLB import: bounded Blob chunks без второго полноразмерного Uint8Array | 5/5 exact-head checks до merge; device RSS/WebGL soak ещё не измерен |
+| [#869](https://github.com/ailtron1ss-rgb/NK1/pull/869) | Hexis HMX 1.x portable-memory bridge: explicit staged accept → canonical MemoryFabric/MemoryOS2, low-trust hypotheses, deterministic replay, protected-section rejection | HMX, Hexis lineage, memory integrity, unified organism, core и WorkPass79 checks PASS |
+| [#878](https://github.com/ailtron1ss-rgb/NK1/pull/878) | HMX episode summaries → episodic memories; direction-aware semantic/temporal/causal/contradiction relationships; dangling refs skipped with warnings; stable forceDistinct refs | 10/10 exact-head workflows PASS |
+| [#871](https://github.com/ailtron1ss-rgb/NK1/pull/871) | Pin `agent-client-protocol<1.0.0` для Inspect AI 0.3.286; smoke check `acp.helpers` | 4/4 exact-head workflows; cognitive + bilingual memory Inspect tasks PASS |
+| [#874](https://github.com/ailtron1ss-rgb/NK1/pull/874) | Will voluntary attention effort встроен в существующий CognitiveResourceEconomy; action intent, vitals veto, per-tick homeostasis, backward-compatible restore | 44/44 exact-head workflows PASS; измерение качества/energy cost ещё открыто |
+
+- **1000 work-unit backlog:** 5/1,000 PASS (0.5%), 995 PLANNED/UNVERIFIED. Пять PASS относятся только к HMX portable-memory provenance slice; merged PR count не подменяет work-unit evidence.
+- **External source assimilation:** 21 уникальный донор инвентаризирован; глубокое сравнение механизмов 6/21; human legal clearance 0/21; Release ZIP parity 0/21.
+- Полный HMX importer пока не заявляется: episodes/relationships/clusters остаются deferred. Donor trust/embeddings/permissions/identity/goals не применяются.
+- Ни одна из этих интеграций не доказывает субъективное сознание. Целевой критерий остаётся измеряемая agency, coherent memory, самостоятельная инициатива и проверяемая адаптация.
+
+### Изменения после checkpoint 13 ноября — 17 ноября 2026
+
+| PR | Статус | Содержание | Проверка |
+|---|---|---|---|
+| [#901](https://github.com/ailtron1ss-rgb/NK1/pull/901) | DRAFT, отдельная ветка | ChronoTruth: отдельные valid-time и transaction-time координаты, ограниченная история знаний, ретроактивные исправления, knowledge-time retrieval в MemoryOS2/MemoryFabric | Exact-head Actions и typecheck выполняются; до PASS не считать готовым, до merge не считать интегрированным в canonical source, ZIP не обновлён |
+
+### Реально интегрировано и проверено
+
+| PR | Что вошло в проект | Проверки на точном PR HEAD |
+|---|---|---:|
+| [#516](https://github.com/ailtron1ss-rgb/NK1/pull/516) | Read-only Inspect AI evaluator: 11 стадий причинной линии, receipts, privacy-reduced evidence, deterministic no-model scoring | 10/10 |
+| [#520](https://github.com/ailtron1ss-rgb/NK1/pull/520) | LongMemEval-S adapter: изолированный MemoryOS2 corpus на вопрос, сравнение canonical retrieval/BM25, source-session clustered metrics | 30/30 |
+| [#524](https://github.com/ailtron1ss-rgb/NK1/pull/524) | SemanticBodyState bridge, переключение существующих 2D/3D renderer modes, bounded 220 ms crossfade, diagnostics неподдерживаемых каналов | 14/14 |
+| [#533](https://github.com/ailtron1ss-rgb/NK1/pull/533) | Единый normalized VRM humanoid motor, expressions/visemes, bounded `vrm.update`, корректное освобождение ресурсов | 11/11 |
+
+- **VRM:** управление идёт через normalized humanoid proxy bones; включён `autoUpdateHumanBones`; существующий NK1 arm intent сохраняется; raw-targeted GLTF mixer не перезаписывает VRM pose. GLB fallback остаётся отдельным.
+- **Memory evaluation:** Inspect AI экспортирует только ограниченные доказательные записи, не сырые диалоги. LongMemEval-S — English-only benchmark; CI использует синтетическую фикстуру, а не реальный 500-вопросный датасет. Ни один из этих тестов пока не доказывает retrieval uplift.
+- **Embodiment UI:** переходы между существующими 2D-классом и Three.js 3D mode связаны с общим semantic handoff. **Отдельный 2.5D depth-rig ещё не подключён.**
+- **Live2D:** 21 asset manifest entries (16,690,663 bytes) имеют SHA-256 lock. `with-app-env.mjs` гидратирует их из канонического `runtime/neuro-kurisu/public` в app public до Vite dev/build. Модель и motions существуют в проекте; это не означает, что у NK1 уже есть лицензированная 3D VRM-модель Курису.
+- **3D assets:** в текущем дереве нет готового `.vrm` или `.glb` персонажа. Сейчас есть procedural fallback и локальная загрузка пользовательской модели с preflight; готовый лицензированный Kurisu 3D asset остаётся отдельной задачей.
+
+### Release и лицензирование
+
+- **Последний stable Release:** tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- **Последний опубликованный ZIP с учётом prerelease — рабочий артефакт по правилу проекта:** tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- **Новый Release ZIP на 13 ноября не собран и не опубликован.** Ни один из ZIP от 19 октября не содержит интеграции 1–13 ноября.
+- `RELEASE_LICENSE_REVIEW.json` остаётся `pending`: root project — `NOASSERTION`, runtime — `LicenseRef-NK1-Private-All-Rights-Reserved`, redistributionApproved=false. На review gate: 477 locked npm components, 8 source archives, 11 repository LICENSE/NOTICE records. Наличие лицензии у отдельного пакета не является разрешением на перераспространение всего проекта.
+
+### Что всё ещё НЕ доказано
+
+- Browser/WebGL E2E: реальная загрузка/замена/reset/reload VRM/GLB, visual pose validation, renderer.info/GPU residency и длительный soak.
+- Полная 2.5D depth-сцена, полноценная IK/VRMA locomotion и калибровка конкретной Kurisu-модели.
+- Android/Termux audio sync, speech interruption, viseme/audio drift и real-phone soak.
+- Независимый лицензированный bilingual RU/EN retrieval uplift на immutable holdout, минимум 5 paired seeds; критерий `recallDelta > 0` ещё не закрыт. LongMemEval-S не заменяет RU/EN gate.
+- Подтверждённая автономная инициатива из внутреннего состояния, а не только scripted/background scheduler. Субъективное сознание не заявляется как доказанный факт.
+- Human license decisions и безопасный exact-SHA Release publisher gate.
+- Полная HMX 1.7 schema/import parity и projection clusters/in-flight work/audit records/raw units/config; текущий мост применяет memories, episode summaries и typed relationships.
+- Sustained-focus energy cost, ablation и target-device calibration для Will voluntary attention effort.
+
+### Следующие P0
+
+1. Закрыть human license review и проверить exact-SHA publisher trigger; не публиковать ZIP при readiness=false.
+2. Browser/WebGL E2E для VRM/GLB с повторной загрузкой, reset, заменой модели, GPU counters и memory soak.
+3. Реальный телефон: speech interruption, viseme/audio clock drift, background/foreground и длительный soak.
+4. Независимая RU/EN memory evaluation с source-clustered paired seeds; promotion запрещён без подтверждённого uplift.
+5. Довести 2.5D depth-rig и подключить лицензированную 3D-модель после отдельной проверки прав.
+6. Проверить инициативный цикл Perceive → Appraise → Plan → Act → Reflect → Consolidate на длительном soak с объяснимыми внутренними причинами действий.
+
+### Дополнение после интеграций 1 ноября 2026
+
+**Новые изменения, уже объединённые в `workpass70-source`:**
+
+| PR / commit | Реальное изменение | Подтверждение |
+|---|---|---|
+| [#571](https://github.com/ailtron1ss-rgb/NK1/pull/571) / `6db887b` | Исправлен перевёрнутый cadence gate автономного runtime: внутренние действия ждут `nextWakeAt`, внешние сигналы остаются реактивными; исправлен учёт продолжения после тишины | `test:big-pass-224` добавлен в unified runtime workflow; точный PR-head workflow прошёл |
+| [#574](https://github.com/ailtron1ss-rgb/NK1/pull/574) / `c039f84` | Статусы reached/blocked в motor frame теперь обязаны ссылаться на суставы того же кадра и не могут противоречить друг другу | `nk1-embodiment-switch` и все связанные PR checks прошли |
+| `efb7693` | UserModel v2: durable deletion watermarks, strict fail-closed restore, replay protection, 256-entry tombstone capacity and v1 migration | `explicit-forget` regression passed on the subsequent exact PR head |
+| [#594](https://github.com/ailtron1ss-rgb/NK1/pull/594) / `619ec5d` | FileStateStore recovers missing/corrupt primary from verified backup, recreates unchanged restored state and preserves the known-good backup | 11/11 exact-head checks passed before merge |
+| [#603](https://github.com/ailtron1ss-rgb/NK1/pull/603) / `9b36efb` | Semantic mouth channels are driven only during active speech; terminal/unknown phases reset stale mouth pose; missing sensor samples normalize safely | 9/9 exact-head checks passed before merge |
+| [#607](https://github.com/ailtron1ss-rgb/NK1/pull/607) / `735b83d` | Backup rotation writes a sibling temp, fsyncs it and atomically renames it over `.bak`; SIGKILL regression proves prior backup survives interruption before rename | 11/11 exact-head checks passed before merge |
+
+**Что эти изменения не доказывают:** они закрывают конкретные логические и контрактные дефекты, но не доказывают самостоятельное мышление, часовую автономную инициативу, визуальное применение позы, Android soak или субъективное сознание.
+
+**Проверка подключённых внешних хранилищ (read-only, 2026-11-01):**
+- MongoDB Atlas: доступен проект `Project 0` и свободный кластер `Cluster0` (AWS `AP_SOUTH_1`, MongoDB 8.0.36, состояние `IDLE`). В кластере сейчас присутствует только `sample_mflix`; базы/коллекции NK1 и runtime-адаптера к Atlas ещё нет.
+- Supabase: организация существует, но список проектов пуст. Следовательно, Supabase runtime/database integration пока отсутствует.
+- Redis Agent Memory: доступен skill/reference по SDK и протоколу, но подключённого Redis RAM data-plane/store и секретов `AGENT_MEMORY_*` не обнаружено. Redis нельзя объявлять интегрированным только по наличию SDK guidance.
+- Новые базы, платные сервисы, внешние схемы и секреты не создавались. Следующий правильный шаг — выбрать каноническую роль каждого хранилища и согласовать секреты/окружение; Redis RAM допустим только как shadow/session layer до проверки provenance, forgetting и independent holdout.
+
+**Release:** оба PR объединены только в исходную ветку. Release ZIP от 19 октября не обновлён; новый ZIP не собран и не опубликован. Правило лицензирования и exact-SHA publisher gate остаётся в силе.
+
+**Глобальный процент готовности не повышаю:** новые интеграции прошли targeted CI, но это не закрывает browser/device soak, bilingual retrieval uplift, 3D assets и legal release gates.
+
+
+---
+
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.

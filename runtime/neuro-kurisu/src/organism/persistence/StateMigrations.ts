@@ -300,6 +300,9 @@ export interface PersistedShapeCurrent {
     b335AutonomousProjectHoldout?: import('../system/B335AutonomousProjectHoldoutGate.ts').B335State;
     cognitiveEventFabric?: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot;
     cognitiveResourceEconomy?: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState;
+    runtimeCognitiveEventFabric?: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot;
+    runtimeCognitiveResourceEconomy?: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState;
+    runtimeUnifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
     runtimePerformance?: import('../system/RuntimePerformanceGovernor.ts').RuntimePerformanceGovernorState;
     interoceptiveState?: any;
     autonomousPersonhood?: any;
@@ -325,6 +328,7 @@ export interface PersistedShapeCurrent {
     hybridNeuroCognitiveLoop?: any;
     neuroDigitalEvolution?: ReturnType<import('../system/NeuroDigitalEvolutionEngine.ts').NeuroDigitalEvolutionEngine['snapshot']>;
     realityEvidenceLedger?: import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedgerState;
+    cognitiveCycleDuplicateFeedback?: { tick:number; lastClosedTick:number; at:number };
     unifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
     continuousCognitiveFabric?: import('../system/ContinuousCognitiveFabric.ts').ContinuousCognitiveSnapshot;
     runtimeClosure?: import('../system/RuntimeClosureLedger.ts').RuntimeClosureSnapshot;
@@ -1358,6 +1362,9 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
       b335AutonomousProjectHoldout: raw.system?.b335AutonomousProjectHoldout ?? undefined,
       cognitiveEventFabric: raw.system?.cognitiveEventFabric ?? undefined,
       cognitiveResourceEconomy: raw.system?.cognitiveResourceEconomy ?? undefined,
+      runtimeCognitiveEventFabric: raw.system?.runtimeCognitiveEventFabric ?? undefined,
+      runtimeCognitiveResourceEconomy: raw.system?.runtimeCognitiveResourceEconomy ?? undefined,
+      runtimeUnifiedCognitiveCycle: raw.system?.runtimeUnifiedCognitiveCycle ?? undefined,
       runtimePerformance: raw.system?.runtimePerformance ?? undefined,
       interoceptiveState: raw.system?.interoceptiveState ?? undefined,
       autonomousPersonhood: raw.system?.autonomousPersonhood ?? undefined,
@@ -1383,6 +1390,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
       hybridNeuroCognitiveLoop: raw.system?.hybridNeuroCognitiveLoop ?? undefined,
       neuroDigitalEvolution: raw.system?.neuroDigitalEvolution ?? undefined,
       realityEvidenceLedger: raw.system?.realityEvidenceLedger ?? undefined,
+      cognitiveCycleDuplicateFeedback: raw.system?.cognitiveCycleDuplicateFeedback ?? undefined,
       unifiedCognitiveCycle: raw.system?.unifiedCognitiveCycle ?? undefined,
       continuousCognitiveFabric: raw.system?.continuousCognitiveFabric ?? undefined,
       runtimeClosure: raw.system?.runtimeClosure ?? undefined,

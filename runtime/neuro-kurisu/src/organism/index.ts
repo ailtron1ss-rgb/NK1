@@ -26,6 +26,7 @@ export * from './language/KurisuCanonProfile.ts';
 export * from './persistence/FileStateStore.ts';
 export * from './persistence/StateMigrations.ts';
 export * from './learning/AdvancedResilienceEngine.ts';
+export * from './learning/AdaptiveSynapticMatrix.ts';
 
 export * from './cognition/P41NativePerception.ts';
 export * from './cognition/P41TemporalPerceptionModel.ts';
@@ -68,5 +69,12 @@ export * from './brain_fusion/ContinuityVerificationSuite.ts';
 
 export * from './brain_fusion/ClosedLoopRuntimeOrchestrator.ts';
 export * from './brain_fusion/BehaviourChangeEvaluator.ts';
+export * from './brain_fusion/UnifiedCognitiveLoop.ts';
+export * from './brain_fusion/FullCognitiveOrganismLoop.ts';
+export * from './brain_fusion/CognitiveRuntimeBridge.ts';
+export * from './brain_fusion/BrainRuntimeBridge.ts';
+export * from './brain_fusion/MobileCognitiveResourceGuard.ts';
 export * from './cognition/BoundedRecurrentStateSubstrate.ts';
 export * from './memory/MemoryBudgetCausalHarness.ts';
+
+export * from './integration/mem0/index.ts';

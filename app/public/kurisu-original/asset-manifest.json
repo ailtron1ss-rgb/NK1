@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "characterContract": "nk1-kurisu-original-2d",
+  "manifestStatus": "planning-inventory",
+  "updatedAt": "2026-10-30",
+  "root": "kurisu-original/production",
+  "statusVocabulary": [
+    "not-authored",
+    "in-progress",
+    "review",
+    "approved",
+    "exported"
+  ],
+  "hashPolicy": "sha256-required-for-review-approved-exported",
+  "assetCount": 24,
+  "assets": [
+    {
+      "id": "master:character",
+      "kind": "master",
+      "variant": "full-character",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "turnaround-view:front-neutral",
+      "kind": "turnaround-view",
+      "variant": "front-neutral",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "turnaround-view:front-three-quarter-left",
+      "kind": "turnaround-view",
+      "variant": "front-three-quarter-left",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "turnaround-view:front-three-quarter-right",
+      "kind": "turnaround-view",
+      "variant": "front-three-quarter-right",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "turnaround-view:profile-left",
+      "kind": "turnaround-view",
+      "variant": "profile-left",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "turnaround-view:profile-right",
+      "kind": "turnaround-view",
+      "variant": "profile-right",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "turnaround-view:back",
+      "kind": "turnaround-view",
+      "variant": "back",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "expression:neutral",
+      "kind": "expression",
+      "variant": "neutral",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "expression:curiosity",
+      "kind": "expression",
+      "variant": "curiosity",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "expression:thinking",
+      "kind": "expression",
+      "variant": "thinking",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "expression:joy",
+      "kind": "expression",
+      "variant": "joy",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "expression:embarrassment",
+      "kind": "expression",
+      "variant": "embarrassment",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "expression:anxiety",
+      "kind": "expression",
+      "variant": "anxiety",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "expression:sadness",
+      "kind": "expression",
+      "variant": "sadness",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "expression:frustration",
+      "kind": "expression",
+      "variant": "frustration",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "expression:anger",
+      "kind": "expression",
+      "variant": "anger",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "expression:protective",
+      "kind": "expression",
+      "variant": "protective",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "outfit:laboratory",
+      "kind": "outfit",
+      "variant": "laboratory",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "outfit:casual",
+      "kind": "outfit",
+      "variant": "casual",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "outfit:nightwear",
+      "kind": "outfit",
+      "variant": "nightwear",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "accessory:hair-clip",
+      "kind": "accessory",
+      "variant": "hair-clip",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "accessory:ear-accessories",
+      "kind": "accessory",
+      "variant": "ear-accessories",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "accessory:neck-accessory",
+      "kind": "accessory",
+      "variant": "neck-accessory",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    },
+    {
+      "id": "accessory:handheld-prop",
+      "kind": "accessory",
+      "variant": "handheld-prop",
+      "status": "not-authored",
+      "sourceFile": null,
+      "previewFile": null,
+      "sha256": null
+    }
+  ]
+}

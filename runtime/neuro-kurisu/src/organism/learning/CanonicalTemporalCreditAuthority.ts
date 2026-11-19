@@ -210,25 +210,33 @@ export class CanonicalTemporalCreditAuthority {
         return structuredClone({assignments:[],openDecisions:this.state.pending.filter(x=>!x.resolved).length,expiredDecisions:0,at,replayed:true as const});
       }
     }
-    this.state.outcomes=[...this.state.outcomes,{...(outcomeId?{outcomeId}:{}),...(targetId?{decisionId:targetId}:{}),tick,reward01,predictionError01,verified01,independent01,autonomous01,at}].slice(-128);
+    const currentOutcome:TemporalOutcomeRecord={...(outcomeId?{outcomeId}:{}),...(targetId?{decisionId:targetId}:{}),tick,reward01,predictionError01,verified01,independent01,autonomous01,at};
+    this.state.outcomes=[...this.state.outcomes,currentOutcome].slice(-128);
+    // An explicit decisionId is an exact correlation anchor. The addressed decision is
+    // always resolved, and the configured temporal horizon co-resolves the open decisions
+    // that lie in the anchor's causal past (tick <= anchor.tick). Decisions newer than the
+    // anchor stay open: an outcome for one decision cannot credit a later decision, and a
+    // later untargeted outcome resolves them separately through the horizon rule.
+    const inHorizon=(d:TemporalDecisionRecord)=>d.tick<=tick&&tick-d.tick<=this.state.maxHorizonTicks;
+    const anchor=targetId?this.state.pending.find(d=>d.decisionId===targetId):undefined;
     const candidates=this.state.pending.filter(d=>{
       if(d.resolved)return false;
-      // Explicit decision IDs are exact correlation keys. Falling through to
-      // the horizon rule here incorrectly credited every recent open decision
-      // from a single targeted external outcome.
-      if(targetId)return d.decisionId===targetId;
-      return d.tick<=tick && tick-d.tick<=this.state.maxHorizonTicks;
+      if(targetId)return d.decisionId===targetId || (inHorizon(d) && Boolean(anchor) && d.tick<=anchor!.tick);
+      return inHorizon(d);
     });
+    // Expired bookkeeping: decisions older than the horizon. A targeted outcome may
+    // expire the aged neighbours of its anchor, but must never expire the anchor itself.
     const expired=this.state.pending.filter(d=>!d.resolved && d.tick<tick-this.state.maxHorizonTicks && d.decisionId!==targetId);
     for(const d of expired)d.resolved=true;
 
     const assignments:TemporalCreditAssignment[]=[];
     for(const decision of [...candidates,...expired]){
       const delayTicks=Math.max(0,tick-decision.tick);
-      // A targeted external event may affect only its exact decision. Untargeted
-      // temporal events remain horizon evidence; addressed events for neighbours
-      // must not leak into this decision's n-step return.
-      const relevant=this.state.outcomes.filter(o=>o.tick>=decision.tick && o.tick<=tick && (!o.decisionId || o.decisionId===decision.decisionId)).slice(-this.state.maxHorizonTicks);
+      // An untargeted temporal event is horizon evidence for every decision in its window.
+      // A targeted event is exact evidence for its anchor and, because credit flows
+      // backwards in time, for the anchor's causal past; it must never leak forward into a
+      // decision that happened after the anchor.
+      const relevant=this.state.outcomes.filter(o=>o.tick>=decision.tick && o.tick<=tick && (!o.decisionId || o.decisionId===decision.decisionId || (o===currentOutcome && Boolean(anchor) && decision.tick<=anchor!.tick))).slice(-this.state.maxHorizonTicks);
       let weighted=0;
       let weightSum=0;
       for(let i=0;i<relevant.length;i++){

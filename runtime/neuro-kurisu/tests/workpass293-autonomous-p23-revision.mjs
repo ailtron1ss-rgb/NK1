@@ -153,6 +153,25 @@ assert.equal(diagnostics.lastSkillId, 'skill-b');
 assert.equal(diagnostics.lastCandidateId, 'staged-only');
 assert.equal(diagnostics.schedule.intervalMs, 900_000);
 
+// A staged status without a stable candidate ID must fail closed: it cannot
+// increment the staged counter, must surface an anomaly, and is journaled as error.
+const stagedBeforeMissingId = runtime.compoundRepairRevisionMetrics.staged;
+const failuresBeforeMissingId = runtime.compoundRepairRevisionMetrics.failures;
+runtime.reviseCompoundSkillsFromObservedRepairs = async skillId => ({
+  status: 'candidate-staged', skillId, repairEvidenceCount: 1,
+});
+await task.task();
+assert.equal(runtime.compoundRepairRevisionMetrics.staged, stagedBeforeMissingId,
+  'candidate staging must not be counted without a non-empty candidate ID');
+assert.equal(runtime.compoundRepairRevisionMetrics.failures, failuresBeforeMissingId + 1);
+assert.equal(runtime.compoundRepairRevisionMetrics.lastStatus, 'error');
+assert.equal(runtime.compoundRepairRevisionMetrics.lastFailureCategory, 'candidate-staged-without-candidate-id');
+assert.equal(runtime.compoundRepairRevisionMetrics.lastCandidateId, null);
+assert.ok(events.some(event => event[0] === 'anomaly' &&
+  String(event[1]).includes('candidate-staged-without-candidate-id')));
+assert.equal(events.at(-1)[2].status, 'error',
+  'journal must not advertise a malformed staged response as successful');
+
 const disabled = Object.create(OrganismRuntime.prototype);
 disabled.config = { compoundRepairRevision: { backgroundRevision: { enabled: false } } };
 disabled.compoundRepairRevisionCoordinator = {};

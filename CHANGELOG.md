@@ -1,97 +1,1457 @@
-### WorkPass328 follow-up — reconcile learning recovery contracts (2026-10-26)
+## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
-- Split the P26 input-integrity test into non-recoverable inputs (invalid action labels and non-finite targets throw before mutation) versus recoverable optimizer controls (NaN/Infinity learning rate or sample weight use conservative bounded defaults and still produce finite weights).
-- Kept P23 `replayedTraceIds` as the persisted newest-first dedup cache instead of appending older `replayUpdates` IDs that could evict newer entries from the bounded cache.
-- Changed causal-stream restore to sanitize rolling metrics independently: valid normalized diagnostics survive, while non-finite or out-of-range fields reset to zero. Trusted outcome/consolidation/behavioral totals continue to be recomputed only from grounded runtime records; quarantined imports cannot manufacture outcome evidence.
+- Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
+- Validate every restored collection's row contract, bounded scalars and identities; keep valid peer rows while discarding malformed records and duplicate belief/stage/event IDs.
+- Remove ambiguous outbox rows when either row IDs or idempotency keys collide, preserving exactly-once lookup semantics.
+- Reuse NK1's existing `PlainDataSnapshot` boundary; no new memory owner, dependency, persistence schema or release claim.
 
-### WorkPass328 follow-up — preserve fail-safe learning inputs and restore recency order (2026-10-26)
+## [NK1][EngineeringOS] Report evidence-backed progress percentages (2026-11-04)
 
-- `ParametricPolicyLearner` now continues safely when the optimizer controls themselves are corrupted: non-finite learning rates and sample weights already fall back to conservative defaults at the mutation site, while finite controls are bounded. The validation boundary still rejects invalid action labels, invalid/non-finite targets, malformed state features, and non-finite extras before weights can change.
-- Fixed P23 restore ordering so the persisted newest-first `processedTraceIds`/`replayedTraceIds` cache remains first priority; valid durable rows are appended afterward to reconstruct missing cache entries without displacing the newest IDs from the capped dedupe window.
-- Corrected the causal aggregate regression to derive `outcomes` from trusted grounded records, not from all retained records. The fixture contains quarantined external claims, which must remain inspectable while contributing zero to trusted outcome totals.
+- Add separate implementation-recorded and evidence-verified percentages for the 75-aspect tracker.
+- Compute both metrics per group and wave with zero-safe, one-decimal arithmetic.
+- Print both measurements in JSON status and Markdown reports; state explicitly that these percentages are not release readiness and never count `IMPLEMENTED` as verified.
 
-### WorkPass328 follow-up — ground each replay fixture to its own pre-action tick (2026-10-26)
+## [NK1][Aspects] Add executable 75-aspect execution registry and weekly tracker (2026-11-04)
 
-- The replay-diversity fixture now sets `trace.stateBefore.tick` and `trace.tick` to the same per-sample value and advances the observed post-state tick/time independently. Previously the test changed only the trace tick while reusing `stateBefore.tick=1`; `recordOutcome()` correctly rejected those rows as unrelated/old pre-action traces.
+- Add `engineering-os/aspects.v1.json`: 75 development aspects across 10 domains and 6 waves, each with an owner path, owner status, dependencies, verification gate, status and evidence.
+- Keep progress fail-closed: `CONNECTED`/`TESTED`/`PROVEN` require a non-empty evidence reference; `REJECTED` requires a reason; `unmapped` aspects may not claim a canonical owner. `IMPLEMENTED` is not treated as verified capability.
+- Add `tools/neurok-aspects.mjs` (`validate`, `status`, `report`, `waves`, `next`) and `tools/neurok-aspects.test.mjs` with 11 behavioral regressions covering 75 unique aspects, wave coverage, dependency acyclicity, fail-closed evidence, unknown dependencies, cycles and owner invariants.
+- Add `docs/NK1_75_ASPECTS_EXECUTION_BACKLOG_RU.md` as the human-readable projection of the registry.
+- Add `npm run aspects:*` scripts and two workflows: exact-head validation on push/PR and a weekly status report that warns when the registry's observed source head drifts from the live head.
+- Record only one aspect as verified (`reliability`, backed by PR #594/#607 evidence); all other aspects remain `IMPLEMENTED`/`PLANNED`/`BLOCKED`. No capability is claimed from the registry itself.
 
-### WorkPass328 follow-up — authenticate Hermes receipts before payload use (2026-10-26)
+## [NK1][EngineeringOS] Close nested secret-path preflight bypasses (2026-11-04)
 
-- Reordered `bindReflectiveReportsToVerifiedShadowEvidence()` so signed shadow receipts are cryptographically verified before their payload identity, manifest, or binary outcome is used for matching. Previously a tampered `passed` field could enter the outcome-mismatch branch before signature validation, obscuring the required `signed-shadow-evidence-not-trusted` diagnosis. Duplicate run/artifact IDs now fail without replacing the first authenticated entry.
-- Adjusted the P26 adaptive-window fixture to compare the running mean with numerical tolerance rather than exact equality; the estimate differed from `0.2` only by normal IEEE-754 rounding.
+- Extend fail-closed diff policy to inspect path segments and basenames, not only repository-root exact paths.
+- Deny nested environment files, npm credential files, SSH/Git metadata, common service-account files and private-key/certificate extensions.
+- Add a red-green regression covering nested environment, npmrc, id_rsa, git/config and PEM paths.
 
-### WorkPass328 follow-up — use truly later snapshots in replay-diversity regression (2026-10-26)
+## [NK1][EngineeringOS] Add agent context snapshot generator (2026-11-04)
 
-- Updated the causal replay-diversity fixture to advance both tick and observation timestamp after the source trace. The runtime correctly requires evidence of a later observed state; increasing only the tick while leaving the timestamp equal to the trace's `createdAt` did not constitute a valid transition. Grounding checks are unchanged.
+- Add a read-only CLI to generate bounded SHA-256 read-set manifests from repository files, with path normalization and symlink-root confinement.
+- Make generated manifests directly consumable by task claims; use exclusive file creation to avoid overwriting prior snapshots.
+- Add a regression proving captured bytes match the claimed context; freshness verification now also blocks a moved base commit.
 
-### WorkPass328 follow-up — stabilize float assertions and Promise-based trusted-run validation (2026-10-26)
+## [NK1][EngineeringOS] Exclude Vibelets from active provider catalog (2026-11-04)
 
-- Replaced one exact floating-point equality in the P26 transfer tracker fixture with a strict numerical tolerance. The derived delta `0.35 - 0.2` is valid but represented as `0.14999999999999997`; other transfer metrics already use tolerance-based comparisons.
-- Made `runTrustedShadowLearningProcess()` an async API so invalid candidate/shadow run descriptors reject its returned Promise consistently. Baseline/control runs remain rejected before registry mutation or child-process launch, satisfying the existing security regression without letting a synchronous throw escape an `assert.rejects` boundary.
+- Remove Vibelets from the active integration catalog at the user's explicit request.
+- Add a regression ensuring the excluded provider cannot silently reappear in the active catalog.
+- No Vibelets connector, app or runtime code is invoked.
 
-### WorkPass328 follow-up — keep Promise rejection and external-outcome accounting consistent (2026-10-26)
+## [NK1][EngineeringOS] Bind agent claims to context read-set freshness (2026-11-04)
 
-- `P23CompoundRepairRevisionCoordinator.reviseFromObservedRepairs()` now returns a rejected Promise for an invalid skill ID instead of throwing synchronously from a Promise-returning API. This matches the established `assert.rejects`/caller contract and prevents a synchronous exception from bypassing the coordinator boundary.
-- Completed the causal-stream regression migration: all quarantined imported rows, including restored or conflicted normalized IDs, remain available for inspection and deduplication but never increase trusted `summary().outcomes`. The tests still assert that exactly one retained row survives exact duplicates and conflicts.
+- Extend task claims with bounded, normalized SHA-256 snapshots of source/context dependencies; verify the snapshots against repository bytes at claim time.
+- Add owner-only freshness verification before writes; report changed and missing dependencies separately, and reject symlink escapes outside the repository root.
+- Keep claims without a read-set explicitly unverified rather than silently fresh; expose CLI `verify` and optional `--readSetFile`.
+- Add regressions for changed dependencies, malformed/traversal snapshots, symlink escape and no-read-set behavior.
+- This is a local advisory coordination gate; it does not yet intercept arbitrary writes or provide a shared remote CAS backend.
 
-### WorkPass328 follow-up — finish Node 22/24 replay-buffer loading (2026-10-26)
+## [NK1][Metacognition] Bind episodic self-monitoring to all eleven cognitive stages (2026-11-04)
+- The existing metacognitive CEF event previously linked only observation/prediction/action/outcome/learning, leaving appraisal, attention, memory, goal, plan and self-update outside the episode's direct causal parent set.
+- Record the episode only after the self-update node exists; verify the complete eleven-stage CEF lineage and attach all eleven stage IDs in canonical order.
+- Preserve the full causal parent set in the canonical MemoryOS2 episodic projection; reject duplicate parent IDs and refuse to label an incomplete cycle as a complete metacognitive episode.
+- Reuse the existing CEF + MemoryOS2 projection path; no second episode store or dependency added.
 
-- Converted `ContinualReplayBuffer`'s constructor parameter-property `readonly capacity` into an explicit class field and assignment. This removes the next strip-only TypeScript syntax blocker in P26's continual replay regression; all three constructor inputs remain runtime-validated/injectable as before.
-- Updated the restored external-event case to use the same trustworthy accounting contract as initial ingestion: one retained event after replay, zero grounded runtime outcomes, and no mutation for a conflicting duplicate.
+## [NK1][Body] Harden perception-routing restore against accessors and counter overflow (2026-11-04)
+- Validate persisted routing state as a plain record with own data properties; reject inherited/accessor-backed values and contain hostile or revoked Proxy reflection failures without invoking getters.
+- Saturate routed/dropped counters at Number.MAX_SAFE_INTEGER to preserve the persisted non-negative-safe-integer invariant in long-running processes.
+- Regression covers accessor non-execution, Proxy get/descriptor traps, revoked proxies, null-prototype records, inherited values and counter saturation.
 
-### WorkPass328 follow-up — remove remaining Node 24 strip-only constructor syntax (2026-10-26)
+## [NK1][Body] Accumulate perception-routing counters instead of resetting them each tick (2026-11-03)
+- `routePerception` returned literal `routedCount:1`/`droppedCount:1`, but the result is persisted to `facets.embodiment.perceptionRouting` every tick, so the durable cumulative counters were destroyed on the next event and the restore path was meaningless.
+- Fold each event into the sanitized previous state (`previous`), and pass the embodiment subsystem's live routing state as the prior.
+- Regression: two routed events now yield `routedCount===2` (was `1`); a sleep-dropped event yields `droppedCount===1`.
 
-- Replaced TypeScript parameter properties in `AtomicFileTrustedSkillShadowRunRegistry` and `P23TrustedShadowLearningScheduler` with explicit fields and assignments. These classes are part of signed skill-evidence and supervised-learning paths imported by the P23/P26 Actions tests; avoiding compile-only syntax keeps the runtime usable without a transpiler.
+## [NK1][Memory] Restore cross-lingual recall in the bilingual concept bridge (2026-11-03)
+- The answerability gate computed `conceptCoverage` but never treated it as grounding evidence, and document-side concept detection required a literal alias token, so inflected Russian never matched. Cross-lingual `retrieve()` returned `[]` in both directions.
+- Add a reverse concept-group index (alias token and its five-character stem), document-side concept detection symmetric with query-side expansion, concept-group postings in candidate selection, and a narrow `conceptGrounding` clause in the gate bounded to focused (1-3 group) queries with >=50% group coverage.
+- Cross-lingual `recallAtK01` moves 0.000 -> 1.000 in both EN->RU and RU->EN synthetic contracts; abstention and single-concept focus are preserved. Owning memory tests stay green.
+- This is a mechanism fix with a synthetic contract, not independent field evidence. The P23 promotion gate still requires an external bilingual labelled holdout with paired seeds.
 
-### WorkPass328 follow-up — finish Node 24 storage compatibility and clarify quarantined event counters (2026-10-26)
+## [NK1][Learning] Bind live causal outcomes to the producing action (2026-11-03)
+- Correct the production OrganismCore handoff: pass the observed state success separately from the learning-scaled success label so action attribution compares like-for-like values.
+- Accept a trace stamped at either the pre-action or resulting tick, while requiring the resulting state to be exactly one tick after the pre-action state; reject stale and skipped-tick matches.
+- Harden CausalExperienceStream restore using own-data records, bounded dense arrays, per-field validation, provenance reconstruction and duplicate/conflicting trace quarantine.
+- Add live-cycle regression, update the P292 evidence-lane contract and wire the targeted test into WorkPass79 cognitive regression.
+- This fixes causal evidence admission; measurable learning uplift still requires independent bilingual holdout and paired-seed confirmation.
 
-- Converted `AtomicFileSkillStorePersistence` away from a TypeScript constructor parameter property so Node 24 strip-only imports can execute the durable candidate/approval store in the P23 and P26 workflows.
-- Corrected a causal-stream regression expectation: imported external records are deliberately retained as quarantined records and deduplicated by normalized trace ID, but they do not increment `summary().outcomes`, which counts trusted grounded runtime outcomes. The test now asserts one retained record, zero trusted outcomes, and no count change after a conflicting duplicate.
+## [NK1][Personality] Learn named character traits from verified outcomes (2026-11-03)
+- Map each ActionKind to explicit adaptive-trait and value targets; successful response, exploration and verification update only semantically aligned dimensions, not array positions derived from enum order.
+- Gate plasticity, relationship trust, autobiographical strength and self-belief changes on verified, low-error outcomes; unverified outcomes increase uncertainty but cannot rewrite enduring traits or values.
+- Harden P2702 restore using plain own-data records, dense bounded arrays, canonical vector names/widths, bounded metrics and safe relationship/action-preference reconstruction; hostile accessors/proxy traps fail closed.
+- Add named-trait/value, unverified-outcome, malformed snapshot, accessor, sparse-array and hostile proxy regressions. Reuse locked runtime dependencies; no new runtime dependency is introduced.
+- This measures consistent behavioral adaptation, not subjective consciousness or human-equivalent personality.
 
-### WorkPass328 follow-up — deterministic replay and Node 24 compatibility (2026-10-26)
+## [NK1][Embodiment] Connect cognitive and affective state to voice planning (2026-11-03)
+- Snapshot post-interoceptive needs, identity continuity, grounding and appraisal affect as one bounded voice-context packet.
+- Add side-effect-free voice plan preview; per-utterance overrides remain isolated from the persistent context snapshot.
+- Route live speech through the same planner so cognitive load, uncertainty, social need and affect tune prosody without allowing negative high-arousal affect to escalate hostile delivery.
+- Add focused tests and a dedicated Node 24 workflow; physical device TTS/audio timing remains a separate E2E gate.
 
-- Removed Node 24 strip-only TypeScript-incompatible parameter properties from `P23CompoundRepairRevisionCoordinator`.
-- Explicit `P23LearningEngine.configureReplaySelection()` settings now provide a deterministic bounded replay ablation; health-adaptive batch sizing remains active on the default path. The configured recent quota stays paired with its explicit batch ceiling.
-- Corrected the payload-budget test to count JSON string quotes in the canonical serialized byte budget, and updated the correlated-postcondition source contract to assert the exact execution/decision-ticket join implemented by `ActionGateway`.
+## [NK1][Personhood] Harden P33 persisted identity restore (2026-11-03)
+- Restore P33 personhood state exclusively from plain own-data records and dense bounded arrays; reject accessors, proxy traps and malformed consent/interest evidence without invoking untrusted getters.
+- Bound and normalize persisted identity, development, autonomy, relationship, continuity, privacy, current-state and metric fields while preserving conservative defaults.
+- Add hostile root/child proxy, accessor, sparse array, invalid enum/value and valid roundtrip regressions; wire them into the WorkPass71 core regression workflow.
+- This hardens persistence integrity; it does not prove independent identity or subjective personhood.
 
-### WorkPass328 follow-up — repair CI entry points and Node 24 runtime compatibility (2026-10-26)
+## [NK1][Body] Renderer capability manifest, motion library and arbiter-driven 2D/3D bodies (2026-11-03)
+- Add a versioned, truthful renderer capability manifest with a fail-closed registry; the UI switch table now derives from it so a renderer cannot advertise a channel it does not implement.
+- Add a renderer-neutral motion library (16 programs) and an intent-driven arbiter with bounded cross-fade, an additive idle-breath overlay, energy-scaled amplitude and a layer cap.
+- Drive the 3D normalized humanoid proxy (spine, elbows, hips, knees) from arbiter channels without double-driving shoulders; drive the Original 2D SVG rig from the same channel vocabulary.
+- Tests: `app/scripts/body-systems.test.mjs` 22/22, `npm run test:workpass71`, app `test:scripts` 452/452, typecheck and build PASS. See `docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md`.
 
-- Restored missing npm aliases for the WorkPass291/292/293/294 regressions and three existing P26 learning tests. Each alias now points at an actual test file or the existing compound-revision test chain, instead of letting the workflow fail before exercising code.
-- Updated the basic causal-outcome fixture to explicitly represent the observed completed action and its success value. The runtime correctly rejects causal credit unless the post-state attributes the selected action and a bounded success signal; the old fixture omitted both fields and was no longer a valid transition.
-- Replaced TypeScript constructor parameter properties in `VersionedSkillCandidateStore` with explicit class fields and assignments. Node 24's built-in strip-only TypeScript loader cannot execute parameter properties, which was breaking both replay strategy and signed promotion tests before they reached their assertions.
+## [NK1][Memory] Narrow sanitized feedback restore type without weakening rejection (2026-11-02)
+- Keep the distinction between an absent feedback record and a malformed feedback record explicit during consolidation restore.
+- Normalize the sanitized nullable result to undefined only after the invalid-snapshot guard, satisfying the declared persisted-state type without accepting malformed feedback.
+- Add a regression proving malformed feedback still resets to the safe default state.
+- Root cause was confirmed by the exact PR #644 typecheck log: TS2322 at MemoryConsolidationController.ts(93,9).
 
-### WorkPass328 follow-up — preserve intrinsic-drive influence under saturation (2026-10-26)
+## [NK1][Memory] Harden canonical consolidation and lifecycle restore (2026-11-02)
+- Validate MemoryConsolidationController counters, ratios, feedback and bounded decision history before restoring persisted state.
+- Validate CanonicalMemoryLifecycleAuthority counters, tick and bounded consolidation history; regenerate its diagnostic plan after restore instead of reviving opaque nested state.
+- Reject sparse/accessor-backed histories and recover safely from hostile Proxy traps without executing getters.
+- Add regressions for malformed state, getters, proxies and partial version-1 compatibility; wire the lifecycle test into NK1 memory-integrity CI.
+- Keep MemoryFabric/MemoryOS2 as the canonical memory owner; no parallel store or automatic rewrite policy is introduced.
 
-- CI exposed a saturation bug in `B272EndogenousGoalGenesis`: intrinsic drive was added before clipping the future-value score, so already-high model values could erase the difference between a calibrated drive and a baseline drive. Changed the score to a bounded convex blend of the evidence-based model value and trusted intrinsic drive. This preserves the confidence gate and guarantees that increasing a trusted drive has a proportional effect until the output's legal bounds.
-- The existing B272 regression compares identical states with calibrated drive 0 and 0.9, and verifies that confidence 0 does not bypass the drive gate.
+## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
+- Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
+- Preserve opportunity/skip accounting so deferred operations remain observable.
+- Reject malformed or rewound WorldTransitionForOrganism payloads before any ensemble, contextual or latent-world mutation.
+- Repair the WorkPass39 reality-boundary fixture with complete contexts; test malformed transitions leave the world-learning snapshot unchanged.
+- Keep B272's one-outcome-credit-per-tick invariant by advancing the organism between simulator and device feedback.
+- Exercise canonical project context tooling against the active plan; separately verify destructive-tool denial using a test plan bound to the destructive tool.
 
-### WorkPass328 follow-up — make signed artifact replay contract consistent (2026-10-26)
+## [NK1][CI] Run WorkPass39 cognitive/world/project regression in unified runtime (2026-11-01)
+- Add the existing `test:big-pass-39` suite to the unified organism runtime workflow after planner restore/execution checks.
+- Extend CI coverage across protective scheduling, world feedback validation and project-tool authorization.
 
-- Updated the P23 signed-outcome regression that still expected `duplicate-attempt` on exact signed-artifact replay. The ingestion implementation deliberately allows the identical cryptographically valid artifact to re-establish its in-memory authenticated-evidence receipt after restart, while preserving a single ledger outcome and rejecting conflicting outcomes. The test now verifies that intended idempotent behavior.
+## [NK1][CI] Make project-tool bridge fixture deterministic in operational mode (2026-11-01)
+- Configure the project bridge fixtures in operational cycle mode with immediate checkpoints.
+- Explicitly bind the safe fixture plan to the built-in `organism.project.context` reader and the destructive fixture plan to its test-only destructive tool.
+- Prove project-step tool binding, safe project read and destructive-operation denial as separate assertions.
 
-### WorkPass328 build-hardening follow-up (2026-10-25)
+## [NK1][Governance] Reconcile current progress dashboard with release manifests (2026-11-01)
+- Replace contradictory active release pointers with one manifest-backed status header.
+- Record source code baseline separately from the published Release tag and ZIP asset digest.
+- Explicitly mark ZIP content parity as unverified because the asset was not downloaded and independently inspected in this pass.
+- Separate implemented, integrated, CI-tested, released and device-verified states; remove unsupported global readiness percentages.
+- Preserve the previous progress history under a clearly marked historical archive.
+- Track current blockers for human license approval (#485), 3D asset promotion (#601), Android qualification and release artifact parity.
 
-- Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation; retained the version that validates same-tick required stages, optional appraisal/attention/memory/goal/plan edges, and required causal parents.
-- Corrected invalid control-character regex syntax in outcome correlation IDs, repaired learning type mismatches (replay options import, forgetting-risk option, optional retrieval parameters, compound-skill counters, literal dataset schema tags, and optional causal policy vectors), and added the missing compound-repair runtime-clock kind.
-- Expanded local Node.js compatibility declarations for file APIs, filesystem promises, public-key parsing, path resolution/separators, process platform metadata, Buffer allocation/byte counts, and standard error shapes. Explicitly typed child-process error/close callbacks to remain strict-mode safe.
-- These are compile-oriented fixes found from actual CI. No claim that the full runtime typecheck is yet green; more errors may be exposed by the next run.
+## [NK1][Cognition] Harden cognitive execution-plan restore integrity (2026-11-01)
+- Replace broad object spreads during CognitiveExecutionPlanner restore with allowlisted own-data reads for the version, tick, mode, operation maps, metabolism and statistics.
+- Ignore accessor-backed and inherited values without invoking getters; catch hostile and revoked Proxy reflection failures and fall back to the default planner state.
+- Clamp finite metrics, bound diagnostic strings, validate counters and reject unsupported snapshot versions.
+- Add regressions for valid restoration, root/nested getters, inherited values, hostile/revoked Proxy traps, invalid versions and malformed numeric fields.
+- This protects cognitive scheduling continuity across persistence boundaries; it does not claim improved reasoning quality or autonomy uplift.
 
-## NK1 WorkPass328 — normalize operational sensor boundary (2026-10-25)
+## [NK1][Research] Add evidence review for cognition, affect, memory and autonomy (2026-11-01)
+- Add an implementation-focused Consensus literature synthesis covering appraisal, mixed affect, interoceptive regulation, memory consolidation/forgetting, endogenous goals, metacognition and long-horizon evaluation.
+- Translate research into architecture constraints and measurable validation priorities while explicitly separating functional cognitive capabilities from claims of phenomenal consciousness.
+- Research document is guidance/evidence, not a claim that the mechanisms are already implemented or that NK1 is conscious.
 
-- Added one shared, own-property-only sensor normalizer for the operational micro-cycle. Body energy, cognitive capacity, thermal strain, battery, sensory freshness, CPU load, and RAM pressure now all become finite values in `[0, 1]` before any downstream subsystem sees them.
-- The life-continuity engine now receives the same normalized `awake`, battery and thermal values as the cognitive and neural paths. This closes a gap where raw `NaN`/Infinity/invalid truthy values could bypass the micro-cycle's existing safety normalization.
-- Malformed top-level observations are rejected before the host context is acquired or organism state/tick counters are changed. Inherited sensor fields, array-shaped bodies, and throwing getters are ignored rather than treated as trustworthy sensor readings.
-- Expanded the finite-input regression from source-string checks to direct behavior cases for invalid numeric inputs, fallbacks, range clipping, inherited properties, getter exceptions, and normalization wiring. Added a named WorkPass328 npm command and wired the rebuild regression aggregate to it.
-- No runtime dependency was added. This is a targeted input-integrity improvement; hosted Actions and full runtime/typecheck evidence remain pending and are not claimed here.
-- Wired the new sensor regression directly into the existing WorkPass296 pull-request workflow and its path filters, so this check runs alongside action-attribution regression on relevant PR changes.
+## [NK1][CI] Run embodiment contracts on canonical source pushes (2026-11-01)
+- Trigger the existing embodiment contract workflow on `workpass70-source` pushes as well as pull requests, using the same path allowlist for renderer, motor-frame, avatar and speech bridge changes.
+- Preserve the existing Live2D/2.5D/3D timeline coverage and the full pull-request contract suite; this refresh deliberately avoids the older draft's narrower path list.
+- This closes a CI trigger gap only; it does not claim physical IK, renderer readback, visual E2E, audio drift or Android soak.
 
-### WorkPass328 follow-up — reconcile unified-cycle restore contract (2026-10-25)
-- A second exact-head run exposed a deeper implementation gap: `lastComplete=true` survived restore even when `incompleteCycles` contradicted `cycles - completeCycles`. `UnifiedCognitiveCycle.restore()` now requires a valid partition counter, a non-negative broken-lineage counter bounded by incomplete cycles, and a well-formed missing-stage list before it restores a positive completion flag.
-- Added negative tests for contradictory and omitted counters plus a positive control for a coherent completed snapshot. This preserves fail-closed behavior without rejecting internally consistent history.
+## [NK1][Persistence] Write backup snapshots atomically before primary replacement (2026-11-01)
+- Copy the previous primary into a unique backup temp file rather than truncating the live `.bak` path.
+- Fsync the backup temp, then atomically rename it over the backup; a crash during copy/fsync leaves the previous verified backup untouched.
+- Add crash injection after backup-temp fsync and a subprocess regression proving the old backup survives a SIGKILL before rename.
+- This strengthens file-backed backup replacement; it does not claim power-loss testing on every filesystem or external database durability.
+
+## [NK1][Embodiment] Clear stale avatar mouth pose outside active speech (2026-11-01)
+- Drive semantic mouth-open/form channels only while the normalized speech lifecycle is `speaking`.
+- Force neutral mouth channels for idle, starting, ended, cancelled and unknown phases so a missing final audio frame or barge-in cannot leave the avatar visually speaking.
+- Add regressions for terminal/unknown provider phases and verify active speech visemes remain intact.
+- This is lifecycle-state correctness; it does not claim acoustic lip-sync accuracy or real-device timing.
+
+## [NK1][Embodiment] Reject hostile motor-frame record boundaries (2026-11-01)
+- Snapshot only plain own data properties at frame, joint, calibration, cursor and options boundaries; accessor-backed records are rejected without invoking getters.
+- Reject sparse/accessor-backed/non-standard arrays and malformed record shapes before pose mapping.
+- Convert hostile Proxy reflection traps into bounded invalid-input outcomes rather than allowing exceptions to escape the motor runtime.
+- Add regression tests for getter non-execution and hostile Proxy traps.
+- This is input-boundary integrity hardening; renderer readback, IK calibration and physical device soak remain separate gates.
+
+## [NK1][Persistence] Recover verified state backups when the primary file is missing (2026-11-01)
+- Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
+- Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the primary instead of being skipped.
+- Invalidate the prior hash when recovering from a corrupt primary and protect the known-good backup from being overwritten by corrupt bytes during the first repair save.
+- Add regressions for missing-primary recovery, primary recreation, empty-store behavior and corrupt-primary backup preservation.
+- Add an isolated, dependency-free Node 24 GitHub Actions workflow for the file-state recovery contract. This does not replace the broader organism recovery/soak tests.
+
+## [NK1][SelfModel] Fail-closed durable preference forgetting (2026-11-01)
+- Upgrade UserModel snapshots to v2 while preserving v1 migration.
+- Persist per-key/domain deletion watermarks and reject stale explicit facts and inferred candidates.
+- Reconcile restored claims/candidates against tombstones; preserve only claims with a later source tick.
+- Reject oversized, sparse, accessor-backed or malformed tombstone ledgers by resetting the untrusted snapshot rather than dropping deletion history.
+- Enforce a 256-tombstone capacity without silently evicting old deletion boundaries.
+- Extend regression coverage for 520-event replay rollover, restart, stale restore rows, fresh re-consent, malformed snapshots and capacity exhaustion.
+
+## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
+- Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
+- Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
+- Add regressions for dangling references, cross-list contradictions and a valid disjoint status pair.
+- This closes a frame-integrity gap at the renderer-neutral mapping boundary; it does not claim renderer readback, visual E2E, physical calibration or device soak.
+
+## [NK1][Autonomy] Correct autonomous runtime cadence and silence accounting (2026-11-01)
+- Fix the inverted cadence gate: silent/internal activity now waits until its scheduled wake, while external signals remain immediately reactive.
+- Stop counting skipped heartbeats as self-started activity; compare silence continuation against the previous activity timestamp rather than a timestamp overwritten at tick entry.
+- Extend the existing WorkPass224 regression with early-silence, external-bypass, due-wake and continuation-counter cases.
+- Wire WorkPass224 into the unified organism runtime workflow so this autonomous-life contract runs on every relevant runtime PR.
+- This validates scheduler semantics, not autonomous cognition quality, subjective consciousness, hour-long initiative soak or production deployment.
+
+## [NK1][Embodiment] Auto-load the pinned Kurisu hybrid model safely (2026-11-01)
+- Restore an explicitly selected browser-local GLB/VRM first; when no local model exists, automatically fetch the pinned Kurisu v5 hybrid GLB instead of leaving the 3D renderer on the procedural placeholder.
+- Bound the hosted fetch with a 25-second timeout and validate the CDN media type, declared content length, actual byte length and SHA-256 before GLTFLoader receives the asset.
+- Keep the procedural body as the non-blocking offline/WebGL fallback; IndexedDB failure no longer prevents trying the built-in model.
+- Invalidate pending loads on component teardown and ignore stale asynchronous read failures so an old fetch cannot overwrite a newer avatar selection.
+- Add a regression covering local-first/default-hosted fallback and request-integrity guards. Browser/WebGL and Android visual soak remain pending.
+
+## [NK1][Embodiment] Normalize renderer-facing speech state (2026-11-01)
+- Normalize speech lifecycle phases through a closed allowlist; unknown provider values become the explicit `unknown` state rather than invalid renderer state.
+- Trim opaque speech event IDs and reject blank, non-string and over-128-character identifiers.
+- Treat missing gaze and mouth samples as neutral values before shared semantic-state validation, so malformed optional provider data cannot abort a body handoff.
+- Add regressions for malformed lifecycle data, identifiers, missing sensory samples and Live2D-to-VRM handoff continuity.
+- Scope is UI projection-boundary hardening; browser visual E2E, lip/audio synchronization and Android soak remain pending.
+
+## [NK1][CI] Align avatar preflight workflow with the Node 24 toolchain (2026-11-01)
+- Replace legacy checkout/setup-node v4 actions with the repository-approved v7 releases.
+- Resolve Node from the canonical `.nvmrc` instead of pinning the avatar-only workflow to Node 22.16.0.
+- Disable implicit npm caching because this focused parser-contract workflow does not install npm dependencies.
+- Repair the CI reliability gate failure observed on PR #554; parser tests remain the workflow's scope.
+
+## [NK1][Embodiment] Enforce normalized motor-frame calibration bounds (2026-11-01)
+- Reject motor mapping profiles whose calibrated channel limits extend outside the renderer-neutral `[-1, 1]` contract; downstream adapters cannot receive a mapper-approved out-of-contract pose.
+- Validate reached/blocked joint ID lists for shape, bounded size, identifier syntax and duplicates; reject oversized frame diagnostics and negative/invalid persisted cursors.
+- Add regressions for normalized-bound violations, malformed joint indexes, oversized reason strings and invalid cursors.
+- Scope is input-contract hardening only; no claim of improved physical IK, renderer readback, browser E2E or device calibration.
+
+## [NK1][Avatar] Add dependency-free GLB/VRM preflight CI (2026-11-01)
+- Add a focused GitHub Actions workflow for the existing upload preflight regression suite; it runs on source-branch pushes, pull requests targeting `workpass70-source`, and manual dispatch.
+- Run the Node 22.16 test directly without installing the app dependency tree, so parser-boundary regressions remain executable even when the npm registry is unavailable.
+- Limit workflow permissions to read-only repository contents, disable checkout credential persistence, cancel superseded runs, and cap execution at five minutes.
+- This validates the GLB/VRM container contract only; it is not a production app build, browser/WebGL E2E, Android soak, or release approval.
+
+## [NK1][Integration] Repository branch convergence audit (2026-11-01)
+- Inventory the GitHub repository: 627 branches, 189 open PRs, 131 drafts and 439 branches without an open PR at the snapshot time.
+- Record canonical `main` and `workpass70-source` SHAs, PR base distribution, and a safe per-branch consolidation protocol.
+- Explicitly prevent blind mass-merges, stale-SHA CI claims and automatic deletion of branches without provenance checks.
+- Document the Release license gate as a human-review requirement, not a technical gate to bypass.
+- Full snapshot and follow-up priorities: `docs/BRANCH_CONVERGENCE_AUDIT_2026-11-01_RU.md`.
+
+## [NK1][Embodiment] Enforce GLB buffer cardinality and binary padding (2026-11-01)
+- Bound attacker-controlled glTF buffer metadata before iterating it, using a shared maximum of 32 buffers.
+- Enforce the GLB 2.0 URI-less buffer contract: at most one embedded buffer, at index zero, with a required BIN chunk.
+- Require the BIN chunk to match the declared embedded buffer length with only the specification's zero-to-three alignment bytes; reject unreferenced BIN chunks.
+- Add five regressions for valid padding, duplicate embedded buffers, oversized padding, orphan BIN chunks and excessive buffer metadata.
+- This is parser-boundary hardening only; it does not claim improved avatar rendering or target-device performance.
+
+## [NK1][Embodiment] Complete hosted Kurisu loader and asset verification (2026-11-01)
+- Verify the hosted model's content hash, exact size, GLB structure, humanoid skin, face morph targets and exported rig clip in the embodiment CI workflow.
+- Recognize the exported RIG_Kurisu clip as the generic GLB idle fallback while keeping action-specific clips preferred when present.
+- Keep the remote asset credential-free and content-addressed; the browser caches and stores the verified bytes locally for subsequent offline starts.
+- Remote asset reachability is now a CI dependency for this model catalog entry; the actual WebGL/Android visual soak is still pending.
+
+## [NK1][Embodiment] Add integrity-checked hosted Kurisu hybrid model (2026-11-01)
+- Publish the generated GLB as a stable Higgsfield media asset instead of relying on expiring 15-minute scene-export URLs.
+- Pin exact byte length and SHA-256 in a source-controlled model catalog; the app verifies both before parsing the remote GLB.
+- Add a one-tap in-app loader that fetches without credentials, passes the normal GLB structural/complexity preflight, and persists the verified model in browser-local IndexedDB.
+- Keep manual VRM/GLB upload and the procedural fallback available; no model bytes are copied into the public Git repository.
+- Asset is a project-generated fan model; public redistribution/license review remains separate from runtime integration and Release publication.
+
+## [NK1][Embodiment] Correct semantic head-tilt axis and enforce normalized motor bounds (2026-11-01)
+- Map the motor planner's headTilt to normalized headRoll, matching the semantic depth-rig convention, instead of mislabeling it as headYaw.
+- Update the Live2D bridge capability declaration and add regressions for axis identity and unsupported yaw reporting.
+- Reject body-joint channels outside [-1, 1] at the renderer-neutral boundary; renderer adapters remain responsible for conversion to native rig units.
+- Add positive/negative overflow and exact-boundary tests so malformed finite values cannot become extreme renderer targets.
+- Browser visual confirmation, 2.5D/VRM pose calibration and real-device soak remain pending.
+
+## [NK1][Embodiment] Bound GLB/VRM complexity before mobile parsing (2026-11-01)
+- Keep the existing 90 MB upload ceiling and add independent limits for scene nodes, meshes/primitives, accessors and aggregate accessor elements, materials, textures, images, animations, skins, scenes and buffer views.
+- Reject malformed accessor counts and malformed mesh primitive collections before passing untrusted bytes to Three.js GLTFLoader.
+- Centralize the mobile-safe limits so the upload preflight, tests and future device profiles share one policy source.
+- Add regressions for oversized scene graphs, geometry element budgets, invalid numeric types, primitive counts, image counts and animation counts.
+- No cloud upload, server-side persistence, model license grant or real-device performance claim is implied by this hardening pass.
+
+## [NK1][SelfModel] Add explicit preference forgetting with replay protection (2026-11-01)
+- Add a caller-confirmed forget operation to the canonical UserModel evidence owner; remove the selected claim and matching behavioral candidates from the persisted projection.
+- Retain the forget evidence reference in the bounded replay ledger so the same delete command and the original explicit statement cannot be replayed immediately after restart.
+- Permit a fresh explicit statement with new evidence to re-establish a preference; no inferred behavior is promoted to a confirmed claim.
+- Add a focused regression for removal, snapshot restore, replay rejection, safe re-establishment and invalid/missing evidence.
+- Scope: model-level deletion API. HTTP/UI wiring and long-horizon tombstone retention beyond the existing bounded evidence ledger remain separate work.
+
+## [NK1][SelfModel] Add authenticated HTTP host route for explicit response-style preferences (2026-11-01)
+- Expose a narrow `POST /api/organism/user-model/preferences` route behind the existing API authorization and rate-limit middleware.
+- Accept only caller-confirmed `concise`, `balanced`, or `detailed` response style values; server owns the fixed key/domain, low-risk classification, current tick and random evidence reference.
+- Delegate to the canonical serialized OrganismRuntime record/correction methods; no second store, client-controlled provenance, free-text extraction, or sensitive preference capture.
+- Add a real HTTP child-process regression for missing bearer auth, missing confirmation, hostile style values, record → dispute → correction, and ignored client evidence fields.
+- Document the host/UI confirmation contract. UI control wiring and browser E2E remain separate.
+
+## [NK1][SelfModel] Add durable runtime APIs for explicit UserModel preferences (2026-11-01)
+- Expose explicit record and correction operations from OrganismCore through serialized OrganismRuntime methods; both delegate to the existing UserModel evidence owner and checkpoint accepted evidence/correction state.
+- Keep the current confirmed-only language projection on the existing proposal, response and autonomous-dialogue prompt paths; no duplicate preference model or full advanced-state clone is introduced.
+- Harden the style allowlist against JavaScript prototype keys and extend the WorkPass79 regression through explicit record → dispute → correction → runtime restart.
+- Free-text preference extraction and UI/server route exposure remain separate; the new API requires structured caller-confirmed low-risk evidence.
+
+## [NK1][SelfModel] Wire explicit user preferences into language context (WorkPass642, 2026-11-01)
+- Expose a read-only projection from SelfSubsystemRuntime and pass it through OrganismCore/OrganismRuntime into cognitive-proposal, response and autonomous-dialogue prompts.
+- Allowlist only the explicit `response.style` values `concise`, `balanced` and `detailed`; arbitrary text is never forwarded as prompt instructions.
+- Omit candidates, disputed claims, unknown values, credential-like strings and evidence references. Current user messages override stored style preferences.
+- Add regressions for persistence, candidate/dispute/correction behavior, unsafe text filtering and all three prompt paths.
+- This connects the existing UserModel to language generation without granting the language model authority over memory or actions.
+
+## [NK1][Cognition] Harden CognitiveEventFabric snapshot restoration (WorkPass641, 2026-11-01)
+- Read persisted event, receipt-index and payload fields through own data descriptors so accessor-backed snapshot fields are ignored rather than executed during restore.
+- Bound restored payload sanitization to four object levels, 128 keys per object and 64 array entries per level while preserving safe nested object/array data.
+- Keep the live append payload contract unchanged; the stricter descriptor/depth/size sanitizer is applied only to untrusted restored snapshots.
+- Reject numeric-string causal ticks and receipt projection timestamps; do not truth-coerce string booleans or accept numeric-string confidence/counters as trusted state.
+- Add a focused restore-integrity regression and include it in the cognitive runtime CI workflow.
+- Scope is snapshot trust-boundary hardening. It does not claim a higher cognitive-cycle completion rate, autonomous initiative, or production soak.
+
+## [NK1][SelfModel] Preserve claim evidence against partial-ledger replay (2026-11-01)
+- Reconcile every restored claim's current `evidenceRef` into the bounded processed-evidence ledger, even when a persisted snapshot has lost or omitted that ledger entry.
+- Add a regression proving a replayed claim reference remains rejected after restore from a partial snapshot; no evidence is silently re-consumed.
+
+## [NK1][SelfModel] Preserve exact provenance for first explicit correction (2026-11-01)
+- Fix the no-existing-claim path in `correctExplicit`: delegate to the canonical explicit-record path with the original evidence reference instead of pre-consuming it and inventing a `correction:`-prefixed reference.
+- Add a regression proving the stored claim retains the exact caller reference, the reference is consumed once, and replay is rejected as a duplicate.
+
+## [NK1][Embodiment] Integrate normalized VRM humanoid motor and exact-head checks (WorkPass76, 2026-11-01)
+- Route VRM humanoid intent through one normalized proxy adapter; retain NK1 arm intent, 35/65 head/neck distribution, neutral-pose reset, standard expressions/visemes and bounded spring-bone updates.
+- Keep generic GLB behavior intact, deep-dispose VRM resources on replacement/reset/teardown, and verify the actual `VRMHumanoid` transfer in integration tests.
+- Repair stale source-contract assertions and include the Avatar3DStage contract in the focused workflow's path and push triggers. Browser visual E2E, model-specific calibration and Android soak remain pending.
+
+## [NK1][Embodiment] Wire renderer handoff into the avatar UI (Aspect 11, 2026-11-01)
+- Add `embodimentUiBridge.ts` to project the canonical organism snapshot into the shared `SemanticBodyState`, validate/clamp handoff input, and declare only channels each current renderer actually supports.
+- Connect `AvatarStage.tsx` mode changes to `planEmbodimentSwitch`, a bounded 220 ms crossfade and truthful diagnostics for unsupported channels. Keep the effect independent of per-tick snapshot churn by reading latest values through refs.
+- Add nine UI-bridge regressions and include them in the embodiment workflow. Renderer handoff is not an `AdapterApplyReceipt` and does not claim that a destination applied a pose or completed a frame.
+- 2.5D depth-rig remains outside the active render path; this stage wires existing 2D-class and Three.js 3D modes only. Browser/WebGL visual E2E and Android/device soak remain pending.
+
+## [NK1][Release] Add exact-SHA non-publishing license audit snapshot (2026-11-01)
+- Add a read-only workflow for source-branch and PR changes to the release license manifest, SBOM, provenance, source archives and license notices.
+- Refresh the exact-SHA SBOM/provenance, run the fail-closed license audit, publish an artifact and a step summary with error count and readiness.
+- The snapshot workflow never writes repository contents, packages a ZIP, grants redistribution permission or creates a Release; pending human decisions remain explicit.
+- Add a regression contract proving the workflow is read-only and non-publishing.
+
+## [NK1][Memory] Add isolated LongMemEval-S external retrieval benchmark (2026-11-01)
+- Add a pinned local-file adapter for the 500-question LongMemEval-S cleaned benchmark; validate dataset revision and SHA-256, normalize session chronology, and build a fresh isolated MemoryOS2 corpus for each question.
+- Compare canonical no-embedding MemoryOS2 retrieval with deterministic per-question BM25; report recall@K, MRR, precision, abstention, unsupported retrieval and session-clustered paired confidence intervals.
+- Hash question/session identifiers and export aggregate metrics only; do not bundle, download in CI, or transmit raw benchmark conversations. Keep automatic promotion disabled because this dataset is English-only and cannot satisfy the bilingual RU/EN gate.
+- Support the separately reviewed ReMe cleaned-S ground truth only with an explicit pinned revision and exact file hash; default its license to `not-verified`.
+- Wire the adapter into the recovered-runtime and integration-closure test chains. CI runs a synthetic contract fixture only; a real 500-question score and retrieval uplift remain unclaimed until a licensed local dataset is supplied and verified.
+
+## [NK1][Evaluation] Integrate independent Inspect AI evidence adapter (2026-11-01)
+- Port the WorkPass72 read-only CognitiveEventFabric exporter, privacy-reduced JSONL schema, independent Python validator and pinned Inspect AI 0.3.286 deterministic scoring harness onto the current `workpass70-source` checkpoint (`6f83e2e`).
+- Re-run the 11-stage causal lineage and action → outcome → evidence receipt checks outside the runtime; raw conversation, memory and postcondition text remain excluded from exported records.
+- Add Node/Python regression suites and an exact-source GitHub Actions workflow; the workflow now follows the source-sync branch instead of the stale original feature branch.
+- This is diagnostic evidence only: no runtime behavior, MemoryOS2 state, P23 promotion authority, or Release ZIP is changed; no autonomy, recall uplift, consciousness, or production readiness is claimed.
+
+## [NK1][License] Add evidence-backed release inventory without approval (2026-11-01)
+- Correct locked npm component count to the measured 477 and add exact evidence references for root/runtime, all 8 source archives and all 11 repository LICENSE/NOTICE records.
+- Add evidence-only SPDX expressions and exact SHA-256 records for four vendor license files; clarify CleanRL's composite upstream license and Avalanche's whitespace-only local copy difference.
+- Keep every review status pending, every redistribution approval false, and all human reviewer/date fields empty. This records evidence, not legal permission.
+
+## [NK1][Memory] Reject numeric-string snapshot coercion (2026-11-01)
+- Require finite JSON numbers for restored MemoryOS2 timestamps, validity bounds, salience, confidence, revision sequence and retrieval counters; numeric-looking strings now use conservative fallbacks.
+- Reject numeric-string revision-history timestamps and nested evidence-source timestamps, freshness values and authority scores instead of treating them as trusted provenance.
+- Close malformed non-null validity expiries and downgrade facts whose confidence is not a finite number in [0, 1].
+- Preserve the existing JSON-number snapshot contract; no implicit string-to-number migration is performed.
+- Add a real MemoryOS2 restore regression for timestamps, expiry, salience, confidence, epistemic status, revision history and nested evidence provenance.
+
+## [NK1][Embodiment] Validate imported GLB/VRM containers before parsing (2026-11-01)
+- Add a bounded GLB 2.0 preflight for magic, version, declared total length, JSON-first/BIN-second chunk ordering, chunk alignment/bounds, JSON structure, asset version, buffer metadata, and VRM 0.x/1.0 extension identity.
+- Reject external buffer/image URLs because NK1 stores the upload as one browser-local Blob and does not resolve remote subresources.
+- Enforce the existing 90 MB upload ceiling before invoking GLTFLoader; verify a .vrm extension actually contains VRM metadata.
+- Share the upload-size constant between the IndexedDB store and preflight validator.
+- Add focused tests for generic GLB, VRM 0.x/1.0, malformed headers/chunks/JSON, resource URIs, required extensions, chunk order, and oversize files.
+- The same gate runs for new uploads and browser-restored models. This does not include the separate Higgsfield binary model asset.
+
+## [NK1][Checkpoint] Record merged renderer refactor and verify Release asset metadata (2026-11-01)
+- Record PR #507 merge `ef1ed6b078d4001f526c9c82c86d7d81b950507f` and its 10/10 successful exact-PR-head workflows, including the new real Three.js toon-material lifecycle test.
+- Query the public GitHub Releases API and correct the README checkpoint to the actual latest asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- Preserve the release gate: no new ZIP was built or published; the global human license review, root/runtime license decisions, 462 locked dependency review and 8 source-archive decisions remain pending.
+
+## [NK1][Embodiment] Extract and test the Three.js toon material adapter (2026-11-01)
+- Move procedural cel-shading material creation, non-VRM GLB material conversion, shared gradient ownership and source-material cleanup out of the React avatar stage into a renderer-focused module.
+- Add real Three.js tests for shared-material conversion, physical-material conversion, unchanged non-PBR materials, texture-reference preservation, source-material disposal and shared renderer-gradient lifetime.
+- Add a targeted npm test command and run it in the embodiment-switch GitHub Actions workflow. VRM-authored MToon materials remain outside this conversion path.
+- This is a renderer lifecycle and testability improvement; it does not claim a finished Kurisu VRM asset or browser/device E2E validation.
+
+## [NK1][Embodiment] Release replaced GLB source materials (2026-11-01)
+- Dispose each unique source MeshStandardMaterial/MeshPhysicalMaterial after its mesh has been converted to the cached toon material.
+- Keep textures alive: converted toon materials retain the original texture references, and the source-material cleanup intentionally does not dispose texture objects.
+- Add a real-Three.js disposal regression for duplicate material references and a source integration contract for the GLB conversion path.
+
+## [NK1][Embodiment] Deduplicate Three.js resource disposal (2026-11-01)
+- Replace per-mesh cleanup with an ownership-aware object-tree disposer that deduplicates shared geometries, materials, textures and skeletons before releasing GPU resources.
+- Traverse direct material texture properties and ShaderMaterial uniform values (including texture arrays); preserve the renderer-owned anime gradient texture when disposing an uploaded VRM/GLB.
+- Add runtime regressions using real Three.js resources to verify each shared resource is disposed once and renderer-owned textures survive imported-model cleanup.
+
+## [NK1][Embodiment] Preserve shared toon texture during model disposal (2026-11-01)
+- Prevent imported VRM/GLB cleanup from disposing the renderer-owned shared anime gradient DataTexture. The texture is shared by procedural and converted GLB materials and must outlive any individual uploaded model.
+- Extend the avatar lifecycle regression to assert that model disposal excludes the shared gradient texture; this prevents a later model reset/reload from silently leaving the procedural renderer with a disposed gradient resource.
+
+## [NK1][Embodiment] Reuse the anime toon gradient texture (2026-11-01)
+- Reuse one lazily-created 3-band DataTexture across procedural and imported GLB toon materials instead of allocating one GPU texture per material. This prevents avoidable GPU resource growth when avatar meshes/models are replaced or reloaded.
+- Add a source-contract regression for the shared texture cache. The texture remains module-scoped and immutable after initialization; VRM-authored MToon materials remain untouched.
+- The first exact-HEAD core run caught a circular TypeScript return-type annotation in the cache; the annotation was corrected to an explicit return type and the regression was tightened. The corrected exact-HEAD workflow is pending; no browser/WebGL soak is claimed.
+
+## [NK1][Embodiment] Add anime cel shading to the procedural 3D body (2026-11-01)
+- Replace physically smooth procedural fallback materials with Three.js MeshToonMaterial and a compact three-band nearest-filter gradient, preserving lit 3D geometry and depth.
+- Keep VRM materials native so authored VRM MToon expressions remain intact; convert non-VRM GLB Standard/Physical materials to toon shading while preserving color, texture, normal, alpha and emissive channels.
+- Add regressions for toon material creation, imported non-VRM GLB conversion, preserved texture channels and the retained 3D platform.
+- This is a renderer/style improvement only; it is not a generated or production-ready Kurisu VRM asset. The independent Blender model project is tracked separately; no model binary is included in this PR.
+
+## [NK1][Memory] Require independent bilingual holdout clusters (2026-11-01)
+
+- Close a statistical evidence gap in MemoryOS2 retrieval promotion: raw per-language query counts no longer substitute for independent source episodes/documents.
+- Report distinct independenceGroupId counts for answerable and unanswerable holdout queries in each language; omitted group IDs retain the existing per-example independence default.
+- Require at least the configured answerable/unanswerable minimum number of distinct groups per language. A correlated single-source fixture now fails the independent-evidence gate while remaining structurally valid dataset input.
+- Include cluster counts in multi-seed determinism signatures. This is an evaluation-gate correction; retrieval ranking and live memory state are unchanged.
+
+## [NK1][Release] Gate publisher on completed core regression (2026-10-31)
+- Remove the immediate push trigger from the source-branch copy of the release publisher; only a successful `workflow_run` of `NeuroCore core regression validation` on `workpass70-source` can start packaging.
+- Add a regression test that protects this sequencing and keeps exact-SHA source-lineage, provenance/license, freshness and no-overwrite gates mandatory.
+
+## [NK1][Embodiment] Add official VRM runtime to the 3D body (2026-10-31)
+- Pin MIT-licensed @pixiv/three-vrm 3.5.5, compatible with the app's Three.js 0.180.0 line, including exact transitive lock metadata.
+- Register VRMLoaderPlugin on GLTFLoader; .vrm files must expose a parsed VRM extension or fail clearly, while ordinary .glb remains supported through the generic glTF path.
+- Drive VRM normalized humanoid neck/head/arm bones, preset emotion expressions, speech visemes and blink expressions from the existing NeuroCore snapshot; call vrm.update(dt) so spring bones and runtime systems advance with each frame.
+- Preserve procedural fallback and generic GLB morph-target path; keep Live2D and other avatar modes untouched.
+- No generated Kurisu mesh is included yet: Higgsfield rejected the approved 25-credit request because the current Private workspace has no available generation credits.
+
+## [NK1][CI] Exact-SHA release validation trigger coverage (2026-10-31)
+- Run the canonical NeuroCore core regression workflow on every push to `workpass70-source`, not only when a curated path list matches.
+- Run the Hexis source-lineage contract on every canonical source push so the release publisher's exact-SHA requirement is always backed by an actual check run.
+- Keep pull-request path filters unchanged; release publication still requires both checks to complete successfully for the exact source SHA and retains provenance/license gates.
+
+## [NK1][Hexis] Harden connector policy restore and grant boundaries (WorkPass75, 2026-10-31)
+
+- Validate restored connector policies before they can authorize tool or external actions: canonical bounded identities, exact boolean flags, non-empty contexts, bounded targets/quotas, safe-integer timestamps, and rate windows capped at one year.
+- Drop malformed persisted policies instead of allowing incomplete records to reach `evaluateConnectorAction`; drop every row sharing a duplicate policy ID so revocation remains unambiguous.
+- Sanitize persisted metric counters to non-negative safe integers and keep the canonical Hexis adapter identity/version rather than trusting caller-supplied metadata.
+- Reject unsafe policy grants (coerced/non-string identities, truthy non-booleans, oversized quotas, non-integer expiries, invalid windows and oversized lists) before mutating policy state.
+- Add regressions for malformed restore records, metric poisoning, valid-policy continuity and invalid grant inputs.
+- Scope is connector-policy integrity only; this does not validate all Hexis snapshot sections or claim production external-action safety.
+
+## [NK1][Agency] Harden deterministic decision history and restore integrity (WorkPass74, 2026-10-31)
+
+- Validate restored AgencyDeliberation records, reject malformed timestamps/actions, deduplicate record IDs and cap history at 512 entries.
+- Recompute override/autonomous rates and last-decision time from accepted records; persisted aggregate counters are never treated as evidence.
+- Replace random decision IDs with injectable-clock, monotonic-sequence IDs for reproducible tests and collision resistance.
+- Bound action/reason/counterfactual text, normalize non-finite pressure values and reject empty chosen actions.
+- Add a focused runtime contract test and npm script. This strengthens decision-history integrity; it does not by itself prove autonomous behavior or subjective experience.
+
+## WorkPass78 — Hexis belief trust integrity
+- Update belief confidence, source trust and accepted-belief timestamp only when evidence is actually applied.
+- Duplicate evidence remains auditable but cannot inflate trust or advance the accepted-belief timestamp; protected contradictions remain audit-only and cannot mutate protected confidence/trust.
+- Add regression coverage for duplicate-source trust inflation, blocked protected contradictions, and unchanged accepted-source lineage; rejected evidence remains audit-only.
+- Scope: adapter state and tests only; canonical memory ownership and external connector permissions remain unchanged.
+
+## WorkPass77 — source-clustered memory retrieval evaluation
+
+## [NK1][Memory] Preserve and validate independent source-group labels (WorkPass77 follow-up, 2026-10-31)
+
+- Fixed the real offline experiment CLI dropping `independenceGroupId`; source-derived query groups now survive JSONL parsing and reach the paired cluster bootstrap.
+- Reject blank or over-120-character source-group IDs at CLI ingress instead of silently losing or clipping cluster identity.
+- Mark overlong source-group IDs as truncated input and block promotion in the benchmark's fail-closed dataset integrity gate.
+- Added regressions for CLI round-trip, overlong-label rejection, and benchmark promotion blocking. No retrieval quality uplift is claimed.
+
+- Add optional `independenceGroupId` labels so multiple prompts derived from one source episode/document are resampled as a single statistical cluster.
+- Replace query-IID paired bootstrap with paired source-cluster bootstrap for recall, MRR, and unsupported-retrieval confidence intervals; legacy datasets fall back to one cluster per example.
+- Bind independence-group labels into dataset fingerprints and block promotion when one source group crosses train/holdout.
+- Export only per-experiment HMAC digests of source-group IDs in optional query evidence, allowing independent reviewers to verify grouping without exposing raw group labels.
+- Extend the independent bilingual holdout runner and add a regression contract for grouped resampling, fingerprint binding, and split leakage.
+- This improves uncertainty estimation only; it does not establish retrieval uplift or authorize automatic promotion.
+
+## WorkPass76 follow-up — preserve blank memory-ID restore loss
+- Drop blank/whitespace memory IDs during restore and retain a bounded `blank-memory-id-dropped` diagnostic instead of silently erasing malformed source rows.
+- Extend the read-only MemoryDoctor with a dedicated `restoreDroppedBlankIds` count and warning; duplicate-ID counts remain semantically separate.
+- Add regression coverage for fail-closed removal, safe post-restore state, and diagnostic persistence across snapshot/restore.
+- No live database, connector, `main`, or Release ZIP changes.
+
+## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
+
+## WorkPass76 — MemoryOS2 revision-lineage restore integrity
+- Reconcile supersession links before rebuilding memory retrieval indexes: only reciprocal, same-lineage, strictly forward revision edges are trusted.
+- Repair a missing historical validity end from a verified successor's `validFromAt`, preventing a restored current-memory query from reviving an obsolete fact.
+- Clear dangling, one-sided, cross-lineage, cyclic/backward, or otherwise ambiguous supersession edges.
+- Retain bounded restore-integrity findings on surviving records so the read-only MemoryOS2 doctor can report repairs instead of silently hiding corruption.
+- Drop all records sharing a duplicate memory ID instead of allowing restore order to choose an authority-bearing row.
+- Normalize invalid revision sequence values to a safe positive integer.
+- Add `test:workpass76:memory-lineage-integrity` with regression coverage for interval repair, edge integrity, duplicate IDs, and sequence normalization.
+- Scope: MemoryOS2 restore integrity only; no database schema or production connector was changed.
 
 
-- Fixed a pre-existing regression-test contradiction exposed by the branch's first Actions run. `UnifiedCognitiveCycle.restore()` deliberately treats a malformed persisted `lastMissingStages` collection as untrusted and restores the complete required-stage list; the test expected only the one valid item and failed before later workflow steps could run.
-- Kept the conservative runtime behavior and updated the assertion to expect all six required stages. This aligns the test with the implementation's fail-closed contract rather than weakening restore validation.
-- The failed run on the earlier WorkPass328 commit was an actual test failure, not a runner-allocation failure. A new run on the updated branch is needed to establish whether this fix and the new sensor-boundary tests pass.
+- Extend the existing MemoryRetrievalBenchmark with opt-in per-query baseline/candidate evidence; no second retrieval implementation or live memory mutation is introduced.
+- Export HMAC-SHA256 pseudonyms for normalized query, example and memory IDs using one ephemeral per-experiment key shared across paired bootstrap seeds. The key and raw prompt/memory payloads are not serialized.
+- Include RU/EN train/holdout labels, relevant memory pseudonyms, top-K BM25 and MemoryOS2 ranks, bounded result-safety flags, dataset/corpus/retrieval fingerprints and evaluation thresholds.
+- Add an independent Inspect AI scorer that recomputes Recall@K, MRR, unanswerable-query abstention, paired bootstrap intervals, language-stratified gates, split leakage and candidate result integrity.
+- Add an Inspect task, Python scorer tests, real MemoryOS2 clone-path HMAC-export regression, CLI opt-in switch, documentation and CI integration. Synthetic CI evidence is explicitly classified as test-only and can never qualify for promotion.
+- No real external labelled holdout dataset is bundled or claimed. Recall uplift, independent provenance and real-world memory quality remain unmeasured until a separately licensed immutable RU/EN dataset is supplied.
+- The evaluator cannot write memory or promote a candidate; P23 and live runtime state remain outside this path.
+
+## [NK1][Evaluation] Add Inspect AI independent evidence evaluation (2026-10-31)
+
+- Add a bounded, read-only runtime projection over the canonical CognitiveEventFabric, RealityEvidenceLedger and UnifiedCognitiveCycle; hash event and parent-event IDs, and omit source labels, free-text claims and payloads.
+- Expose the projection through the existing API authorization/rate-limit boundary at GET /api/organism/evaluation/evidence.
+- Add an offline Inspect AI 0.3.286 harness that independently checks all eleven cognitive stages and twenty causal edges, plus separate external/simulator evidence accounting.
+- Keep the evaluator out of the live runtime and deny it memory, P23, ActionGateway, skill-promotion and release authority; no LLM call is needed for this deterministic structural scorer.
+- Add privacy, digest-tamper, incomplete-cycle, duplicate-stage, tick-mismatch, source-separation, API-route and Python scoring regressions. Full host CI and Inspect task execution are the validation gates.
+- The exported snapshot is bounded (256 CEF events / 96 reality records), and its unsigned SHA-256 digest is integrity-only; this pass does not establish source authenticity, physical truth or memory recall uplift.
+
+## [NK1][Cognition] Separate core and strict full cognitive-cycle completion (2026-10-31)
+
+- Add a two-tier policy: the six-stage core cycle remains available for continuity diagnostics, while a full cognitive cycle requires all eleven stages and a separately verified full causal lineage.
+- Extend CognitiveEventFabric with strict full-stage/edge verification, duplicate-stage protection, and separate core/full integrity and coverage diagnostics.
+- Wire both EventFabric verdicts into UnifiedCognitiveCycle and OrganismRuntime; the public `complete` / `completeCycles` aliases now represent full eleven-stage completion.
+- Migrate persisted cycle state from schema v1 to v2 conservatively. Historical v1 completions are retained as core history and are not retroactively promoted to full-cycle evidence.
+- Add WorkPass71 policy, restore/migration, EventFabric and runtime-wiring tests; attach the suite to WorkPass287 CI.
+- Record uploaded Inspect AI, whisper.cpp and three-vrm archive hashes, upstream refs and MIT notice handling in the external source inventory. No full third-party runtime was vendored in this pass.
+- Validation remains pending exact-branch CI and runtime typecheck; do not infer production readiness from the local policy tests alone.
+
+## [NK1][Aspect 08] Isolate bounded-pattern regression fixture from code-policy classification (2026-10-31)
+
+- Rename the bounded-regex fixture field and tool ID to neutral `tag` / `catalog.regex-check` identifiers, keeping the test focused on bounded-quantifier behavior rather than a potentially policy-sensitive identifier.
+- Preserve positive (`nk1`) and negative (`nk1!`) cases and include the rejected result in the assertion message for actionable CI diagnostics.
+- Exact-head CI must pass before this regression is marked fixed.
+
+## [NK1][Learning] Run P26 validation on canonical source pushes (2026-10-31)
+
+- Add a narrow push trigger on workpass70-source for the persisted learning-experiment plan validator, its regression/CLI tests, and the workflow itself.
+- Preserve the existing pull-request gate. This closes the gap where direct commits to the canonical source branch did not run P26 because the workflow previously listened only to pull requests and manual dispatch.
+- The workflow trigger is not itself evidence of a passing test; the exact-source Actions run must complete successfully.
+
+## [NK1][Learning] Reject unsupported persisted experiment splits (2026-10-31)
+
+- Harden saved learning-plan validation so only `train`, `validation`, and `holdout` splits are accepted, even when a forged/empty schedule has internally consistent zero-task counts.
+- Add a regression proving an unsupported split cannot pass validation by presenting an empty run list.
+- This is a plan-integrity correction; it does not claim a learner execution or independent holdout improvement.
+
+## [NK1][Aspect 10] Add grounded interaction and VRM rig calibration foundations (2026-10-30)
+
+- Add a fail-closed, renderer-independent embodied interaction planner with target/frame freshness, explicit safety authorization and independent postcondition requirements.
+- Add the grounded interaction bridge and regressions; simulator outcomes remain explicitly simulated and are not treated as physical completion.
+- Add planar arm IK math, VRM humanoid arm-chain recognition, rig calibration profiles/sessions and local avatar-model fingerprinting. These are calibration foundations; IK is not yet applied as a production full-body controller.
+- Preserve current dependency versions and lockfiles; only add targeted scripts. The current 3D procedural/GLTF stage remains a preview/import surface, not a bundled licensed Kurisu production model.
+
+## [NK1][Security] Add governed tool input/output contracts (2026-10-30)
+
+- Add a bounded JSON-schema-inspired contract validator at the canonical ActionGateway, with validation before approval consumption and executor entry.
+- Add output validation and apply contracts to Android listen, device telemetry and simulator world observation; preserve P23 journal bootstrap and current native speech/holdout CI gates.
+- Add positive and negative bounded-pattern fixtures (`nk1` accepted, `nk1!` rejected). This is an opt-in contract subset, not a claim of full JSON Schema or MCP conformance.
+
+## [NK1][Aspect 03] Carry grounded world-perception and temporal identity into latest source (2026-10-30)
+
+- Preserve evidence provenance and epistemic uncertainty through the canonical OrganismCore → P41 → GroundedWorldState path, including explicit evidence kinds, source/track identity, calibrated coordinate-frame IDs and image-space metadata.
+- Keep repeated same-label entities distinct, retain modality-specific evidence, reject stale/conflicted/unframed claims, and do not promote camera boxes to 3D coordinates.
+- Restore local temporal track IDs after runtime restart, align ambiguity counters with rejected duplicate detections, and validate velocity prediction after a measured motion sample.
+- Detect camera image formats by signature and run focused MIME/spatial-truthfulness, grounded-identity and temporal-tracking regression suites.
+- Rebased on the latest source including P23 lifecycle and current master-plan changes. Exact-head CI is rerunning; Android capture, calibrated depth/SLAM and independent accuracy remain open gates.
+
+## [NK1][Plan] Refresh completion master plan after P23, Original 2D and 2.5D integrations (2026-10-30)
+
+- Updated the canonical 100% execution plan to source HEAD d179446c48a2a99eae64cfa8681707a455d22b01.
+- Recorded PR #407 Original 2D asset-contract merge, PR #409 basic 2.5D depth-rig foundation merge, and PR #430 P23 lifecycle/holdout-integrity merge with exact-head CI evidence.
+- Marked PR #401 and #427 closed as superseded/duplicate; clarified that P23/holdout structural CI does not prove independent recall uplift.
+- Captured the post-merge release-license gate failure and exact human-review requirements. No license approval was fabricated and no Release ZIP was published.
+
+
+## [NK1][Learning] Integrate P23 self-development journals and holdout integrity (2026-10-30)
+
+- Added durable P23 fitness/lifecycle journals, lifecycle reconciliation on restore, and file-backed compound-repair retry/backoff recovery.
+- Integrated independent candidate evaluation, paired-seed confidence, robust metrics, provenance journals, diagnosis/curriculum and P36 verified-outcome evaluators into the canonical runtime.
+- Runtime-generated skill execution and project-research telemetry remains learning data and cannot self-label itself as independent holdout.
+- Restored fail-closed unique-context holdout accounting, safe snapshot restoration, contamination and registry-saturation checks. Independent evaluator evidence remains separately required.
+- Added dedicated holdout integrity regressions to WorkPass71 CI. These structural checks do not claim independent learning uplift or production promotion.
+
+## [NK1][Aspect04] Harden renderer world-matrix propagation (2026-10-30)
+
+- Explicitly mark each bound Three.js-compatible layer target as `matrixWorldNeedsUpdate` after writing its canonical local matrix, so an already-rendered object cannot retain a stale world transform.
+- Add a regression assertion for the world-matrix invalidation signal.
+
+## [NK1][Aspect04] Add renderer-facing depth-rig adapter (2026-10-30)
+
+- Add a renderer-neutral adapter that writes canonical hierarchical affine matrices and explicit painter order into renderer-owned layer objects; it is structurally compatible with Three.js Object3D without importing or duplicating the scene graph.
+- Apply optional authored local pivot offsets, reject duplicate/unknown bindings and non-finite matrices, and report missing layer bindings rather than silently inventing artwork.
+- Add focused regression tests for matrix emission, pivot translation, render order and fail-closed binding validation.
+
+## [NK1][WorkPass634] Align Aspect 04 workflow with repository CI policy (2026-10-30)
+
+- Upgrade the dedicated depth-rig workflow from checkout/setup-node v4 to approved v7 actions and pin Node through the root `.nvmrc` (Node 24), resolving the CI reliability audit failures found on PR #409.
+- Add `embodimentIntentAdapter.ts` to the push path filter so changes to the explicit PR #410 motor-frame adapter trigger the focused depth-rig gate.
+
+## [NK1][Aspect04] Bind motor joint targets to depth-rig nodes (2026-10-30)
+
+- Add explicit joint-to-node binding records and a renderer-neutral adapter for PR #410 MotorFrame targets.
+- Apply bounded radian-to-degree deltas only for active goals; idle/rejected/expired frames do not animate, unavailable joints are ignored, and malformed bindings fail closed.
+- Add focused tests for target mapping, clamp behavior and invalid binding rejection.
+
+## [NK1][Aspect04] Bridge EmbodimentIntent v1 and harden float assertions (2026-10-30)
+
+- A second hosted run exposed two remaining strict-equality checks on composed decimal rotations; both are now tolerance-based. Runtime pose math remains unchanged.
+
+- Add a narrow adapter from the existing v1 embodiment envelope to the 2.5D depth rig; preserve the current semantic owner and map bounded gaze/head tilt/motion groups to rig pose hints.
+- Add adapter validation tests and include its path in the dedicated CI workflow.
+- Correct world-space test expectations to include inherited parent rotations and use tolerance for accumulated floating-point depth.
+
+- Correct world-space expectations to include inherited torso/neck rotations; compare accumulated depth with a floating-point tolerance.
+- CI log identified both mismatches; no runtime transform change was required.
+
+## [NK1][Aspect04] Establish layered 2.5D depth-rig contract (2026-10-30)
+
+- Add a versioned rig model for depth-ordered artwork layers, parent hierarchy, normalized pivots and rest transforms.
+- Validate root cardinality, unique IDs, parent references, cycles, finite transforms and pivot bounds; malformed inputs fail closed.
+- Map bounded semantic body intent into additive head, neck, torso, hair, garment and basic arm-gesture deltas without creating a second emotion/intent owner.
+- Add focused regression tests and a dedicated GitHub Actions gate.
+- Add the Aspect 04 production plan for layered master artwork, hidden-area paint, occlusion, face rig, IK, secondary motion, modular garments and release acceptance.
+- Honest boundary: this is a code contract/pose foundation, not a rendered 2.5D model. Production art, GLB, IK execution, garment physics and desktop/Android visual E2E remain pending.
+
+## [NK1][аспект16] WorkPass631 — bounded native speech event fan-out (2026-10-30)
+
+- Ограничена очередь реентерабельных NativeSpeechEventChannel публикаций (1024 pending events); overflow отклоняется до изменения sequence/time state.
+- FIFO dispatch сохранён, устранён повторный Array.shift() и добавлен flood regression на 2000 вложенных публикаций.
+- Переполнение telemetry не влияет на TTS outcome и не считается подтверждением воспроизведения.
+
+## [NK1][аспект16] Deliver native speech provider telemetry to AvatarStage (2026-10-30)
+
+- Добавлен authenticated-by-existing-API-policy SSE endpoint /api/organism/voice/events поверх NativeSpeechHostRouter.
+- Server transport имеет ограничение активных подписчиков, bounded backpressure queue, heartbeat и обязательную очистку runtime-подписки при disconnect.
+- Добавлен browser EventSource adapter с проверкой versioned envelope, eventId, operationId, sequence, monotonic timestamp и playbackVerified=false.
+- AvatarStage показывает состояние Termux provider отдельно от browser TTS; process lifecycle не меняет speech phase, audio clock или viseme timeline.
+- Добавлены runtime/app regressions и CI gates для SSE transport, malformed/stale event rejection, backpressure, connection lifecycle и epistemic boundary.
+- Android playback, реальный audio clock и акустический lip-sync не заявляются: process spawn/exit не доказывают слышимое воспроизведение.
+
+## [NK1][аспект9] Add validated native speech host router seam (2026-10-30)
+
+- Добавлен `NativeSpeechHostRouter`: он принимает подписку из `EmbodimentRuntime`, проверяет версию/форму события, сохраняет eventId и operationId и пересылает типизированный envelope в host publisher.
+- Router отклоняет дубликаты, регрессирующие sequence/timestamp и события, которые пытаются заявить `playbackVerified=true`; ошибки host publisher изолированы от TTS.
+- Добавлен `test:workpass629:native-speech-host-router` на доставку, stale/duplicate filtering, publisher failure и unsubscribe.
+- Это transport seam для host Event Router, а не готовое подключение к browser/Live2D: реальный app transport, Android playback clock и акустическая lip-sync проверка остаются отдельными gates.
+
+## [NK1][аспект9] Expose native speech provider events through EmbodimentRuntime (2026-10-30)
+
+- Добавлен публичный метод `EmbodimentRuntime.subscribeNativeSpeechEvents(listener)`: host-интеграции могут подписываться на события Termux provider без прямого импорта низкоуровневого Android bridge.
+- Метод возвращает unsubscribe-функцию; сохраняется исходная идентичность operation/event и граница `playbackVerified=false`.
+- Добавлен regression на доставку события через runtime facade и прекращение доставки после unsubscribe. Hosted CI для нового HEAD ожидается; реальное Android playback и UI transport не заявляются.
+
+## [NK1][аспект9] Защита монотонности native speech event clock (2026-10-30)
+
+- NativeSpeechEventChannel теперь сохраняет последнее время отдельно для каждого operation ID и зажимает регрессирующие clock samples до предыдущего значения.
+- Добавлен regression на последовательность clock samples 100 → 95 → 120; ожидаемые wire timestamps: 100 → 100 → 120.
+- Ограничение памяти сохранено: при eviction operation ID одновременно удаляются sequence и timestamp state.
+- Hosted CI для этого follow-up ещё ожидается; Android playback и host-to-UI transport не заявляются.
+
+## [NK1][аспект9] Preserve observer ordering under reentrant native events (2026-10-30)
+
+- Queue nested publications while dispatching so all subscribers observe the same total event order even if one observer synchronously publishes another event.
+- Add a regression proving reentrant publication cannot make later subscribers observe sequence 2 before sequence 1.
+- The new change is source- and test-committed; hosted CI for this follow-up is pending.
+
+## [NK1][аспект9] Use runtime-compatible monotonic clock for native speech events (2026-10-30)
+
+- The first hosted runtime typecheck identified that the minimal runtime declaration set does not include `node:perf_hooks`. Use the Node global `performance.now()` instead; it remains monotonic and is available in the pinned Node runtime without introducing a new shim/dependency.
+- The original native-event typecheck failure is corrected in source. The new HEAD must pass the rerun before this is considered validated.
+
+## [NK1][аспект9] Add native Termux speech provider event channel (2026-10-30)
+
+- Add a process-local, identity-bound event channel for Termux TTS command request, process spawn/exit/error and interrupt outcomes. Events carry per-operation sequence numbers and monotonic timestamps; observer failures are isolated from speech execution.
+- Keep provider-process telemetry separate from SpeechLifecycleEventV1: every native provider event explicitly carries `playbackVerified=false`. A successful process exit is still not evidence that Android audio reached the listener or finished playing.
+- Wire AndroidEmbodimentBridge to publish the process events and add deterministic regressions for operation isolation, ordering, monotonic time, unsubscribe behavior and the playback-verification boundary.
+- This is a native runtime observability seam, not yet a transport into the app/Live2D timeline. A host/UI adapter and real Android audio readback remain pending.
+
+## [NK1][аспект9] Fix negative-arousal prosody regression (2026-10-30)
+
+- Increase the canonical anxiety and anger/frustration de-escalation deltas so negative high-arousal delivery is measurably slower than the calm baseline even when the `respond` action initially selects a focused/warm tone.
+- The change fixes the assertion exposed by the hosted `app scripts regression suite`; the updated head must pass CI before this correction is considered validated.
+
+## [NK1][аспект9] Fix browser speech cleanup syntax (2026-10-30)
+
+- Correct the `try/catch` block in the AvatarStage speech-effect cleanup so the module parses and cancellation cleanup remains best-effort.
+- This is a source-level syntax correction; TypeScript/build/test execution is still pending.
+
+## [NK1][аспект9] Add versioned speech lifecycle protocol (2026-10-30)
+
+- Define SpeechLifecycleEventV1 with stable utterance/event IDs, provider identity, clock identity, monotonic timestamp, ordered sequence, lifecycle phase and optional provider boundary/error metadata.
+- Wire browser SpeechSynthesis queued/start/boundary/end/cancel/error callbacks into the protocol; reject stale callbacks by session identity and reject duplicate, out-of-order, cross-clock, regressing-character and post-terminal events.
+- Add deterministic contract regressions for valid lifecycle progression, malformed boundaries, cancellation terminality and stale boundary rejection.
+- This creates a shared protocol surface for a native adapter; native TTS is not yet wired to emit it, and no acoustic alignment or device playback validation is claimed.
+
+## [NK1][аспект9] Harden speech clock boundary handling (2026-10-30)
+
+- Extend the shared speech-timeline regression suite for duplicate provider boundaries, backward audio timestamps, malformed values, origin refinement, bounded anchor history and invalid monotonic-clock samples.
+- Verify that the newest calibration survives anchor-window trimming and that invalid clock input preserves or advances only from the monotonic high-water mark.
+- These are regression contracts for the existing browser speech clock; they do not claim acoustic/phoneme alignment or device playback validation.
+
+## [NK1][аспект9] Unify browser voice prosody with organism state (2026-10-30)
+
+- Replace fixed browser TTS settings and its duplicate affect mapper with an adapter to the canonical `VoiceEmbodiment.buildVoicePlan`, shared with the native Termux runtime; browser uses a neutral body baseline where device telemetry is unavailable.
+- Share language, breath mode, tone, pause budget, pitch, rate, volume and emphasis across delivery paths; build visemes from the exact selected speech rate and publish the same emphasis through the versioned embodiment intent.
+- Strengthen frustration/anger de-escalation in the canonical planner and add field-for-field browser/runtime parity tests plus bounded-parameter regressions.
+- This is a source-level integration; browser/device acoustic E2E, provider phoneme timing and refreshed Release ZIP remain pending.
+
+## [NK1][Aspect 02] Require verified rights provenance before accepting authored art (2026-10-30)
+
+- Close the promotion gap in the executable Original 2D validator: every authored/in-progress/review/approved/exported slot now requires a provenance record with creator, HTTPS source URL, explicit license identifier, permission evidence, affirmative redistribution clearance, verification timestamp and verifier.
+- Keep uncreated slots honest: `not-authored` entries must not carry files, hashes or provenance claims.
+- Extend manifest and validator regressions to guard the rights gate. The existing 24-slot inventory remains entirely `not-authored`; this change does not clear the legacy sprites' licenses, create artwork or update the Release ZIP.
+
+## [NK1][Aspect 02] Test the layered-art handoff schema contract (2026-10-30)
+
+- Add a focused regression that loads the checked-in JSON Schema and asserts the required layer fields, depth/pivot metadata, explicit provenance fields, review-state vocabulary and optional mesh boundary.
+- Keep the schema contract test in the existing dedicated Aspect 02 CI workflow; no new runtime dependency is introduced.
+- Schema conformance is a structural gate only; semantic graph checks, painted-art review, deformation validation and license evidence remain separate approval requirements.
+
+## [NK1][Aspect 02] Add machine-readable layered-art handoff schema (2026-10-30)
+
+- Add a JSON Schema 2020-12 contract for future authored layer manifests: normalized canvas coordinates, explicit depth planes, stable layer IDs, parent/pivot/transform/bounds, occlusion and underpaint metadata, optional mesh topology constraints, source provenance, and human review state.
+- Require explicit author/source/license/redistribution fields and separate draft/revision/approved review state; a schema-valid file is not itself art approval or a rig-readiness claim.
+- No production artwork, layer manifest, mesh, depth map or rig is created by this schema-only step. Existing 24 production slots remain not-authored; Release ZIP unchanged.
+
+## [NK1][Aspect 02] Define rig-safe 2.5D handoff requirements for original character art (2026-10-30)
+
+- Extend the machine-readable character contract with explicit depth-plane semantics, normalized pivot coordinates, parent/transform records, occlusion/hidden-anatomy rules, optional mesh constraints, deformation test poses, camera/depth rules, texture budgets and promotion gates.
+- Document that layer order is not physical depth, 2.5D readiness cannot be inferred from flat sprites, and hidden anatomy must survive maximum approved pose masks without holes or seams.
+- Add a focused contract regression proving the handoff schema covers moving groups, pivots, depth, occlusion and deformation while remaining explicitly requirements-only.
+- No artwork, rig, mesh, depth map or approved production asset is claimed; the 24-slot manifest remains planning-only and the Release ZIP is unchanged.
+
+## [NK1][Aspect 02] Add semantic truth labels to the legacy sprite reference inventory (2026-10-30)
+
+- Transcribe the prior WorkPass622 pixel-audit descriptions into per-sprite semantic metadata for 25 exact manifest-ID matches, including corrected pose/action roles where filenames are misleading.
+- Leave seven unmatched legacy IDs explicitly listed in the inventory as pending fresh visual review; never infer expression or pose from a filename. Record that this pass did not re-open or re-verify the PNG pixels.
+- Extend the inventory regression to enforce exact 25/7 coverage, source attribution, honest review status and the absence of inferred labels for unmatched sprites.
+- Preserve all 32 source PNGs as static references only; no production art, licensing clearance, 2.5D layers or Release ZIP update is claimed.
+
+## [NK1][Aspect 02] Inventory existing static sprite references without promoting them to production art (2026-10-30)
+
+- Add a source-tree inventory for all 32 existing public sprite PNGs, retaining their manifest IDs, sheet grouping, byte sizes and Git blob SHA-1 identifiers at the observed `workpass70-source` commit.
+- Explicitly classify these files as legacy static-pose references, not Original 2D layered masters or 2.5D source layers; preserve the separate visual-audit reference and mark licensing as not revalidated.
+- Add a regression test proving the inventory exactly covers the 32 sprite-manifest entries and cannot silently claim production-art eligibility; expose it as `npm run test:original-2d-existing-assets`.
+- This is a provenance/indexing pass, not a pixel re-review, rights clearance, artwork creation or Release ZIP update.
+
+## [NK1][Aspect 02] Reject malformed asset entries before inventory checks (2026-10-30)
+
+- Fail closed when a manifest contains null, primitive or structurally incomplete asset entries, or when contract groups/status vocabulary contain non-string values. This prevents malformed JSON structures from reaching inventory filters and property access as uncaught runtime exceptions.
+
+## [NK1][Aspect 02] Fail closed on malformed art manifests (2026-10-30)
+
+- Guard the executable Original 2D asset validator against non-object contracts/manifests and malformed required arrays before inventory iteration. Invalid structure now produces a controlled validation failure instead of an unhandled `.filter`/`Set` exception.
+- Preserve the explicit boundary: the inventory remains a planning contract and no production artwork is inferred from empty slots.
+
+## [NK1][Aspect 02] Establish Original 2D art identity and production contract (2026-10-30)
+
+- Add an executable `npm run validate:original-2d-assets` gate that checks contract coverage, safe asset paths, file existence, SHA-256 integrity and source/preview separation before artwork can advance through the manifest. It reports authored versus pending slots without treating the planning inventory as completed art.
+
+- Add a 24-slot machine-readable asset inventory for the master character, six turnarounds, ten expressions, three independent outfits and four accessory slots; all entries explicitly remain `not-authored` until real source artwork and verified exports exist.
+- Add manifest regression gates for contract coverage, unique IDs, safe relative paths, honest status transitions and SHA-256/source/preview provenance before review or approval.
+
+- Add a machine-readable Original 2D character art contract that pins the current SVG concept identity, palette, composition guides, required views/expressions/outfits, layer order and production handoff requirements.
+- Add a Russian production brief defining the visual identity lock, turnaround/expression/outfit/prop sheets, stable layer naming, pivot metadata, export/provenance requirements and acceptance gates.
+- Scope SVG paint-server IDs with React `useId`, preventing gradients, pattern and filter references from colliding when multiple Original 2D previews are mounted in the same document.
+- Add focused regressions for instance-scoped SVG references, identity defaults, art-contract boundaries and state-driven component wiring.
+- This pass improves the Original 2D foundation and art-production contract; it does not claim that layered production artwork, a finished expression atlas, independent garment assets or a 2.5D rig have been authored.
+
+## [NK1][аспект16] WorkPass631 — bounded native speech event fan-out (2026-10-30)
+
+- Ограничена очередь реентерабельных NativeSpeechEventChannel публикаций (1024 pending events); overflow отклоняется до изменения sequence/time state.
+- FIFO dispatch сохранён, устранён повторный Array.shift() и добавлен flood regression на 2000 вложенных публикаций.
+- Переполнение telemetry не влияет на TTS outcome и не считается подтверждением воспроизведения.
+
+## [NK1][аспект16] Deliver native speech provider telemetry to AvatarStage (2026-10-30)
+
+- Добавлен authenticated-by-existing-API-policy SSE endpoint /api/organism/voice/events поверх NativeSpeechHostRouter.
+- Server transport имеет ограничение активных подписчиков, bounded backpressure queue, heartbeat и обязательную очистку runtime-подписки при disconnect.
+- Добавлен browser EventSource adapter с проверкой versioned envelope, eventId, operationId, sequence, monotonic timestamp и playbackVerified=false.
+- AvatarStage показывает состояние Termux provider отдельно от browser TTS; process lifecycle не меняет speech phase, audio clock или viseme timeline.
+- Добавлены runtime/app regressions и CI gates для SSE transport, malformed/stale event rejection, backpressure, connection lifecycle и epistemic boundary.
+- Android playback, реальный audio clock и акустический lip-sync не заявляются: process spawn/exit не доказывают слышимое воспроизведение.
+
+## [NK1][аспект9] Add validated native speech host router seam (2026-10-30)
+
+- Добавлен `NativeSpeechHostRouter`: он принимает подписку из `EmbodimentRuntime`, проверяет версию/форму события, сохраняет eventId и operationId и пересылает типизированный envelope в host publisher.
+- Router отклоняет дубликаты, регрессирующие sequence/timestamp и события, которые пытаются заявить `playbackVerified=true`; ошибки host publisher изолированы от TTS.
+- Добавлен `test:workpass629:native-speech-host-router` на доставку, stale/duplicate filtering, publisher failure и unsubscribe.
+- Это transport seam для host Event Router, а не готовое подключение к browser/Live2D: реальный app transport, Android playback clock и акустическая lip-sync проверка остаются отдельными gates.
+
+## [NK1][аспект9] Expose native speech provider events through EmbodimentRuntime (2026-10-30)
+
+- Добавлен публичный метод `EmbodimentRuntime.subscribeNativeSpeechEvents(listener)`: host-интеграции могут подписываться на события Termux provider без прямого импорта низкоуровневого Android bridge.
+- Метод возвращает unsubscribe-функцию; сохраняется исходная идентичность operation/event и граница `playbackVerified=false`.
+- Добавлен regression на доставку события через runtime facade и прекращение доставки после unsubscribe. Hosted CI для нового HEAD ожидается; реальное Android playback и UI transport не заявляются.
+
+## [NK1][аспект9] Защита монотонности native speech event clock (2026-10-30)
+
+- NativeSpeechEventChannel теперь сохраняет последнее время отдельно для каждого operation ID и зажимает регрессирующие clock samples до предыдущего значения.
+- Добавлен regression на последовательность clock samples 100 → 95 → 120; ожидаемые wire timestamps: 100 → 100 → 120.
+- Ограничение памяти сохранено: при eviction operation ID одновременно удаляются sequence и timestamp state.
+- Hosted CI для этого follow-up ещё ожидается; Android playback и host-to-UI transport не заявляются.
+
+## [NK1][аспект9] Preserve observer ordering under reentrant native events (2026-10-30)
+
+- Queue nested publications while dispatching so all subscribers observe the same total event order even if one observer synchronously publishes another event.
+- Add a regression proving reentrant publication cannot make later subscribers observe sequence 2 before sequence 1.
+- The new change is source- and test-committed; hosted CI for this follow-up is pending.
+
+## [NK1][аспект9] Use runtime-compatible monotonic clock for native speech events (2026-10-30)
+
+- The first hosted runtime typecheck identified that the minimal runtime declaration set does not include `node:perf_hooks`. Use the Node global `performance.now()` instead; it remains monotonic and is available in the pinned Node runtime without introducing a new shim/dependency.
+- The original native-event typecheck failure is corrected in source. The new HEAD must pass the rerun before this is considered validated.
+
+## [NK1][аспект9] Add native Termux speech provider event channel (2026-10-30)
+
+- Add a process-local, identity-bound event channel for Termux TTS command request, process spawn/exit/error and interrupt outcomes. Events carry per-operation sequence numbers and monotonic timestamps; observer failures are isolated from speech execution.
+- Keep provider-process telemetry separate from SpeechLifecycleEventV1: every native provider event explicitly carries `playbackVerified=false`. A successful process exit is still not evidence that Android audio reached the listener or finished playing.
+- Wire AndroidEmbodimentBridge to publish the process events and add deterministic regressions for operation isolation, ordering, monotonic time, unsubscribe behavior and the playback-verification boundary.
+- This is a native runtime observability seam, not yet a transport into the app/Live2D timeline. A host/UI adapter and real Android audio readback remain pending.
+
+## [NK1][аспект9] Fix negative-arousal prosody regression (2026-10-30)
+
+- Increase the canonical anxiety and anger/frustration de-escalation deltas so negative high-arousal delivery is measurably slower than the calm baseline even when the `respond` action initially selects a focused/warm tone.
+- The change fixes the assertion exposed by the hosted `app scripts regression suite`; the updated head must pass CI before this correction is considered validated.
+
+## [NK1][аспект9] Fix browser speech cleanup syntax (2026-10-30)
+
+- Correct the `try/catch` block in the AvatarStage speech-effect cleanup so the module parses and cancellation cleanup remains best-effort.
+- This is a source-level syntax correction; TypeScript/build/test execution is still pending.
+
+## [NK1][аспект9] Add versioned speech lifecycle protocol (2026-10-30)
+
+- Define SpeechLifecycleEventV1 with stable utterance/event IDs, provider identity, clock identity, monotonic timestamp, ordered sequence, lifecycle phase and optional provider boundary/error metadata.
+- Wire browser SpeechSynthesis queued/start/boundary/end/cancel/error callbacks into the protocol; reject stale callbacks by session identity and reject duplicate, out-of-order, cross-clock, regressing-character and post-terminal events.
+- Add deterministic contract regressions for valid lifecycle progression, malformed boundaries, cancellation terminality and stale boundary rejection.
+- This creates a shared protocol surface for a native adapter; native TTS is not yet wired to emit it, and no acoustic alignment or device playback validation is claimed.
+
+## [NK1][аспект9] Harden speech clock boundary handling (2026-10-30)
+
+- Extend the shared speech-timeline regression suite for duplicate provider boundaries, backward audio timestamps, malformed values, origin refinement, bounded anchor history and invalid monotonic-clock samples.
+- Verify that the newest calibration survives anchor-window trimming and that invalid clock input preserves or advances only from the monotonic high-water mark.
+- These are regression contracts for the existing browser speech clock; they do not claim acoustic/phoneme alignment or device playback validation.
+
+## [NK1][аспект9] Unify browser voice prosody with organism state (2026-10-30)
+
+- Replace fixed browser TTS settings and its duplicate affect mapper with an adapter to the canonical `VoiceEmbodiment.buildVoicePlan`, shared with the native Termux runtime; browser uses a neutral body baseline where device telemetry is unavailable.
+- Share language, breath mode, tone, pause budget, pitch, rate, volume and emphasis across delivery paths; build visemes from the exact selected speech rate and publish the same emphasis through the versioned embodiment intent.
+- Strengthen frustration/anger de-escalation in the canonical planner and add field-for-field browser/runtime parity tests plus bounded-parameter regressions.
+- This is a source-level integration; browser/device acoustic E2E, provider phoneme timing and refreshed Release ZIP remain pending.
+
+## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
+
+- Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
+- Зафиксированы точные успешные Actions после исправления TS ошибок в PR #406 и #411; сами PR всё ещё требуют rebase и browser/Android E2E.
+- Закреплено архитектурное решение: PR #408 — единственный canonical 2.5D runtime; PR #409 — только migration/reference source; PR #410 — единственный joint-space motor substrate; PR #415 — handoff orchestration.
+- Отдельно сохранены незакрытые лицензионные, художественные, device/E2E и Release ZIP gates; статусы не подменялись.
+
+
+## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
+
+- Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
+- Track identical object instances separately using stable provider IDs or geometry in an explicitly shared coordinate frame; preserve primary IDs and cross-modal aliases, estimate smoothed velocity, and do not correlate across unknown frames. Bind scene-graph relations to exact P41 entity IDs when track identity is unambiguous; abstain on equidistant spatial tracking candidates. Require a Core-owned external outcome receipt before applying empirical calibration.
+- Measure current cross-modal evidence coverage using per-modality observation timestamps and a bounded freshness window; separate action-outcome alignment from semantic corroboration. Retry IDs are generation-scoped and epistemic claim replay is idempotent.
+- Separate reported model quality, service success and empirically verified accuracy; calibrate only from human/independent evidence IDs with replay protection.
+- Distinguish same-modality persistence, independent cross-modal corroboration and explicit claim supersession; expire stale active-perception requests and reject time-rewound P41 samples.
+- Add deep P41 and Core integration regressions (including verifier receipt validation), document research inspirations and retain backward compatibility for existing persisted P41 snapshots. Physical device and independent labelled-dataset validation remain separate gates.
+
+## [NK1][восприятие] Harden world-observation integrity and semantic change detection (2026-10-29)
+
+- Reject malformed world-context coercions: null/blank numerics no longer become zero; malformed text, booleans, evidence kinds and source IDs no longer become facts.
+- Preserve known/unknown flags for object value, visibility and collection state; wire the normalizer into live OrganismRuntime → core.observe() ingress. Run PerceptionEngine in the runtime cycle and route salient events into RuntimeEvidenceBus and multimodal workspace.
+- Gate physical observations on freshness and sampled-at plausibility; initialize baselines without false motion and represent sensor availability separately.
+- Emit sensor changes across successive cycles, make resource-pressure notifications transition-based, and detect same-cardinality world fact/object/event updates.
+- Add five focused integrity tests, including a real OrganismRuntime ingress smoke, `npm run test:world-perception` and a dedicated GitHub Actions gate; real device validation remains a separate gate.
+
+## [NK1][Cognitive] Unified ownership and restart-safety pass (2026-10-29)
+
+- Removed the duplicate runtime reality-evidence ledger; the embodied loop now records through the canonical Core-owned ledger, and snapshots merge by immutable evidence ID rather than replacing evidence from another writer.
+- Hardened reality-evidence ingestion, restore and merge: malformed ticks/timestamps/classes/claims/confidence are rejected at write time; malformed persisted rows and duplicate IDs are excluded; canonical projections retain a single cumulative history.
+- Preserved runtime-namespaced event-fabric, resource-economy and unified-cycle snapshots in the explicit state-migration whitelist.
+- Made same-tick duplicate feedback a bounded diagnostic no-op, restoring the close guard from verifier history so repeated callbacks cannot abort learning/consolidation after restart.
+- Connected the existing unified cognitive substrate's bounded action bias to governed candidate scoring.
+- Made the architecture contract independent of the caller's working directory and added a focused ownership/restart regression covering merge, corrupt restore input, migration, restart and scoring-path wiring.
+- Added dedicated CI steps for ownership, cycle-order and architecture-contract checks.
+- Evidence boundary: implementation and CI wiring are committed on the candidate branch; hosted CI execution and target-device end-to-end behavior must still be verified on the resulting commit.
+
+## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
+
+- Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
+- Stop `preferLab` from overriding semantic suitability: several `lab_*` sprites actually depict sleep, phone use, Dr Pepper or unrelated poses; route explore, verify, rest, reflect, respond and wait to suitable imagery.
+- Add regression assertions and detailed per-asset visual audit notes. Keep legacy file paths stable for compatibility.
+
+## [NK1][WorkPass621] Add true 3D embodiment wired to organism state (2026-10-29)
+
+- Add a selectable Three.js WebGL body built from 3D geometry; explicitly label it as a procedural concept because no redistributable canonical Kurisu 3D model is present in the tracked source tree.
+- Allow self-contained local binary VRM/GLB models up to 90 MiB to replace the concept, with browser-local IndexedDB persistence, safe reset, model bounds/centering, available animation clips and recognized bone/morph targets. Model bytes are never uploaded to NK1 servers.
+- Wire the same action, emotion, arousal/valence, gaze, wake/sleep, thinking and speech-viseme state from OrganismSnapshot into the 3D body; preserve Live2D, sprites and the authored SVG concept.
+- Pin Three.js 0.180.0 in app dependencies/lockfile, add regression tests and document visual/VRM/licensing boundaries. No unverified third-party model asset was copied.
+
+## [NK1][WorkPass620] Make Legacy sprite poses genuinely action-aware (2026-10-29)
+
+- Fix a remaining selector gap: the first sprite pass only chose action poses when they overlapped the current expression's candidate list, so a neutral expression could still show a crossed-arm frame during exploration/rest/verification.
+- For active non-dialogue actions (explore, verify, rest, reflect), now select from the real shipped action-specific sprite candidates, with profile and lab preferences preserved when there is a compatible candidate. Response/wait continue to respect the emotion-specific candidate set first.
+- Extend the legacy sprite regression to guard the action-driven candidate path and deterministic selection. No new sprite assets or lip-sync capability are claimed.
+
+## [NK1][WorkPass619] Fix avatar render timing and visual-quality seams (2026-10-29)
+
+- Apply Live2D gaze/head/eye/viseme parameters at Cubism's `beforeModelUpdate` boundary, after authored motion and physics updates; earlier ticker writes could be overwritten during render.
+- Add small additive head/gaze offsets, constrain motion groups/indexes to actual shipped clips, and report unavailable clips instead of silently treating them as successful.
+- Enable capped DPR=2/auto-density in both Live2D viewer entry points and in the Legacy sprite canvas.
+- Replace wall-clock sprite pose cycling with deterministic action-aware selection and pass organism action/thinking state into Legacy.
+- Remove the misleading torso ring drawn over still sprites, improve SVG Original's default palette/hair clip, and make Auto pose reflect basic action/emotion context while preserving manual overrides.
+- Add regression assertions for active-viewer timing, sprite determinism, model/media references, texture profiles, motion coverage, sprite manifest integrity and SHA-locked canonical assets.
+- This source pass does not claim browser/device visual E2E or a refreshed Release ZIP; real device validation and the human license/redistribution release gate remain required.
+
+## [NK1][WorkPass618] Expose Original 2D avatar as a selectable mode (2026-10-29)
+
+- Integrate the existing `KurisuOriginalStage` SVG prototype into the active avatar selector beside Live2D and Legacy, without replacing the motor-intent repairs.
+- Restore the saved Original selection and pass organism emotion, action, arousal, gaze, speaking, thinking and viseme state into the component.
+- Keep the editable clothing, colour, pose, motion-style and scale controls; explicitly classify this as a 2D concept, not a completed 2.5D/3D body.
+- Add regression assertions for selector wiring and outfit/pose persistence. Production build, browser render and Release ZIP refresh remain pending.
+
+## [NK1][WorkPass617] Bridge Live2D embodiment intent and add deterministic motor planning (2026-10-29)
+
+- Fix the protocol mismatch between `AvatarStage` (`kurisu_embodiment_intent`) and the Live2D viewer, with strict protocol-v1 validation, monotonic state-version rejection, and normalization to the bundled model's actual motion groups.
+- Route protocol-driven mouth poses into the animation ticker's `lipTarget`; previously a direct core-parameter update could be overwritten by the next frame.
+- Include `motionToken` in motion identity, allowing a semantic intent change to replay the same motion group/index without restarting it on ordinary state/viseme updates.
+- Add a deterministic bounded motor-intent selector for rest/listening/reflection/inspection/explanation/comfort/response and integrate it into the active avatar path.
+- Add `test:avatar-motor-intent` with unit/regression checks for planning, schema bounds, cancellation, viewer wiring, token-aware motion identity, and lip target routing.
+- Fix a CI-discovered regex-literal syntax error in the new viewer-wiring assertion by using a direct source-string check.
+- Replace the lip-target static regex with a direct source-string assertion after CI exposed lost escapes in the template-generated test source.
+- This is a Live2D protocol and high-level intent integration repair. It does not add a 3D skeleton, IK, garment simulation, free joint control, or measured autonomous motor-policy performance. The Release ZIP is not changed by this source-branch pass; build/E2E/device tests remain to be run.
+
+## [NK1][WorkPass616] Wire metadata candidate mode into independent bilingual retrieval evaluation (2026-10-29)
+
+- Add an explicit `metadataRecallEnabled` benchmark option that applies only to the isolated candidate arm; the baseline arm remains the canonical retriever and is unchanged.
+- Bind the candidate mode into the retrieval-configuration SHA-256 fingerprint and report it in experiment configuration/guardrails, so a result cannot be mistaken for the canonical configuration.
+- Add `--candidate-mode canonical|metadata` to the external bilingual holdout runner. Canonical is the default; unknown values fail closed. Metadata mode requires the same independently sourced and labelled external dataset, corpus and provenance requirements as canonical evaluation.
+- Extend runner contract and synthetic benchmark tests to check configuration isolation, fingerprint changes, the persistent independent-review gate, and the absence of automatic promotion. Synthetic tests validate plumbing only and do not claim retrieval uplift.
+
+## [NK1][WorkPass615] Unify the cross-context skill-transfer safety floor (2026-10-29)
+
+- Export one `MIN_TRANSFER_SIMILARITY01 = 5 / 6` constant and use it in both P23LearningEngine's legacy bias path and SkillRetrievalAugmentation's retrieved-skill bias path. Similarity below this floor may still be surfaced for inspection, but cannot influence action ranking.
+- Fix a real safety regression where a promoted skill with similarity `0.556` added a nonzero execution bias despite the legacy path rejecting the same dissimilar context.
+- Replace brittle exact replay counts in `p23-true-learning.mjs` with the actual health-adaptive replay invariants: positive bounded count, no duplicates, newest/recent coverage, and retention of older evidence. Goal-aware replay receives the same budget-cap and recent-window checks.
+- This is a transfer-boundary and test-validity repair, not a measured learning-uplift claim.
+
+## [NK1][WorkPass614] Add opt-in metadata-aware memory recall with index integrity checks (2026-10-29)
+
+- Add a separate bounded postings index over curated tags, entities, and an allowlist of topic/context fields; keep metadata terms out of content BM25 document-frequency statistics.
+- Add an explicit constructor flag `metadataRecallEnabled`, disabled by default, so the production/default ranker and answerability policy do not silently change before independent RU/EN holdout improvement is established.
+- When explicitly enabled, allow metadata postings to nominate candidates and give metadata its own bounded ranking channel; only sufficiently overlapping metadata may satisfy the answerability gate.
+- Rebuild and maintain metadata postings on encode/restore/removal and expose `metadataIndexMismatch` in `indexDiagnostics()`.
+- Add a read-only regression covering metadata-only discovery, baseline-default isolation, snapshot/restore, and index consistency. This is a focused synthetic contract; it does not claim independent recall uplift or automatically promote the feature.
+
+## [NK1][WorkPass612] Make installer, doctor and CI reliability checks follow the pinned Node runtime (2026-10-29)
+
+- Read the expected Node.js major from root `.nvmrc` through a shared helper used by installer and doctor, removing stale Node 22 assumptions while the project pins Node 24.
+- Define a shipped artifact as a Git-tracked path rather than any ignored local `node_modules` or runtime state found on a developer machine; retain a conservative filesystem fallback when Git is unavailable.
+- Extend the CI reliability gate and regression tests to reject workflow Node pins that drift from root `.nvmrc`.
+- Make the installer-deadline regression treat terminated zombie processes as no longer running, avoiding false failures on hosts that delay reaping orphaned children.
+- The P26 Node workflow pin is already corrected by earlier merged changes and is intentionally not duplicated here. This change does not alter license approval gates or claim release readiness.
+
+## [NK1][WorkPass611] Restore scale-invariant latent-program revision and constitutional vote polarity (2026-10-29)
+
+- Make the B276 structure-revision gate scale-invariant: retain the absolute credit-spread floor and also permit revision when relative spread is material at a sufficient mean credit level. This prevents upstream reward gating from disabling program revision merely by compressing credit magnitude.
+- Pass constitutional constraint pressure with the correct polarity at both quorum vote sites, so stronger constraints are not inverted into an approval signal.
+- Scope is limited to latent-program revision reachability and quorum polarity. Prior focused tests passed on the original candidate branch; this clean port needs exact-head CI before merge. No memory recall uplift or end-to-end autonomy claim is made.
+
+## [NK1][WorkPass610] Restore brain-fusion runtime loading under Node 24 strip-only TypeScript (2026-10-29)
+
+- Remove TypeScript parameter properties from the five brain-fusion runtime classes so Node's strip-only TypeScript loader can import them without an unsupported-syntax exception.
+- Separate erased lifecycle interfaces into a type-only import and export the brain-fusion runtime modules through the organism barrel.
+- Replace the invalid `node --check`-against-TypeScript fallback with `stripTypeScriptTypes`, and resolve the pinned compiler from runtime, app, or root lockfiles before syntax-only fallback.
+- Add a direct runtime-load regression and include it in `test:rebuild-recovered`. This validates module loading and constructor defaults only; it does not claim improved learning, recall, autonomy, or consciousness.
+
+## [NK1][WorkPass609] Repair stale big-pass-126 retrieval benchmark fixture against the current provenance contract (2026-10-29)
+
+- `tests/big-pass-126-memory-retrieval-benchmark.mjs` asserted `schemaVersion === 3` while the report schema advanced to 6, and its `datasetProvenance` omitted the now-required `licenseId` and `contentSha256`. Both caused the suite to abort on the first assertion, masking every downstream check.
+- Bind provenance to the exact canonical dataset via `fingerprintMemoryRetrievalDataset(examples)` instead of a hardcoded or omitted hash; add the explicit `licenseId` required for `provenanceComplete`.
+- Rebind the sliced `insufficient` sub-case provenance to that slice's own fingerprint so it still exercises the `insufficient-labelled-holdout-or-corpus` gate rather than failing earlier on provenance.
+- This is a test-fixture repair only. It restores coverage of the existing retrieval benchmark; it does not change retrieval behavior, does not claim recall uplift, and leaves `recallDelta=0` / `not-promoted` unchanged.
+
+## [NK1][WorkPass608] Attribute retrieval cost to the selected execution path (2026-10-28)
+
+- Add isolated lexical preview diagnostics so candidateCount/cost no longer reads whichever query last mutated live MemoryOS2 diagnostic state.
+- Attribute semantic retrieval cost to the actual attempt using corpus scan size, embedding backfill work and provider latency, bounded to [0,1]; report cost source and selected count in MemoryFabric runtime diagnostics.
+- Extend the live fake-provider regression to assert lexical and semantic paths use their own cost evidence, not stale prior-query diagnostics.
+- The estimate is an adaptive-policy workload signal, not a benchmark of real CPU cost or evidence of retrieval uplift.
+
+## [NK1][WorkPass607] Commit only the selected cognitive retrieval result (2026-10-28)
+
+- Keep the lexical fallback preview read-only while the optional semantic path is deciding; previously fallback accounting/access updates occurred even when semantic retrieval replaced it.
+- Add a canonical MemoryOS2 selected-read commit that rechecks ID, exact content, temporal validity and eligibility before updating access/retrieval state for only chosen rows.
+- Record one MemoryFabric/UnifiedMemorySystem retrieval outcome for final selected rows, including semantic retrieval; add a fake-provider runtime wiring regression for feature-flag behavior and exactly-once accounting.
+- This verifies runtime accounting and wiring, not real-provider retrieval uplift.
+
+## [NK1][WorkPass606] Reject stale in-flight semantic embeddings (2026-10-28)
+
+- Capture content hash and exact input text before each asynchronous embedding request; accept a returned vector only if the current canonical record still exists, remains eligible, and retains that exact content identity.
+- Prune stale/wrong-provider/malformed cache rows before computing semantic coverage so invalid cache entries cannot inflate diagnostics.
+- Add a controlled await-boundary regression that revises a memory while an embedding request is pending and proves the old vector is not cached or used for ranking.
+- This protects semantic-index freshness; no retrieval uplift is claimed.
+
+## [NK1][WorkPass605] Validate semantic embedding vectors before indexing (2026-10-28)
+
+- Validate query and document vectors for array shape, finite numeric components, dimension bounds, expected-dimension match, and non-zero norm before semantic ranking/cache insertion.
+- Normalize accepted vectors consistently with background semantic-index maintenance; ignore malformed document vectors and fall back to canonical lexical retrieval if no valid semantic candidates remain.
+- Add fake-provider regressions for NaN, Infinity, empty/zero-norm query vectors, malformed document vectors, and the all-invalid fallback path.
+- This is provider-output integrity and failure-recovery work; no retrieval uplift is claimed.
+
+## [NK1][WorkPass604] Port transfer-integrity and sample-level forgetting evidence to canonical source (2026-10-28)
+
+- Port the WorkPass579–580 transfer-probe integrity and continual-outcome sample-transition diagnostics onto the current canonical source instead of merging the stale, divergent PR branch.
+- Require exact service-minted external-postcondition receipts for both replay retention and transfer-sample credit; caller booleans cannot independently validate a probe.
+- Keep a bounded transfer-probe ID/fingerprint ledger and make restore fail closed: serialized flags are demoted and transfer-validation counters reset because process-local verifier authority cannot survive JSON serialization.
+- Report matched pass→fail and fail→pass transitions by stage, task, and task family; include the new regressions in the recovered runtime test aggregate.
+- These are integrity and descriptive-evaluation improvements, not evidence of real-corpus learning uplift. `main` and the Release ZIP remain untouched.
+
+## [NK1][WorkPass603] Reject malformed retrieval labels before normalization (2026-10-28)
+
+- Count blank and non-string `relevantIds` entries on bounded raw inputs before filtering; malformed labels now invalidate dataset integrity even when sanitized rows still match a clean-content fingerprint.
+- Add a regression for mixed malformed/clean labels and a path-scoped Actions gate for runtime typecheck and retrieval experiment integrity checks.
+- This is evaluation-integrity work only; no recall uplift or release readiness is claimed.
+
+## [NK1][WorkPass601] Document exact release-license review blockers (2026-10-28)
+
+- Record the current publisher audit's 135 missing review/evidence items, affected archive/license paths, dependency fingerprint, and required human decision sequence in `docs/RELEASE_LICENSE_REVIEW_WORKLIST_2026-10-28.md`.
+- Keep the release gate fail-closed; the worklist does not approve licensing or redistribution and does not enable publication.
+
+## [NK1][WorkPass598] Expose canonical retrieval dataset fingerprint (2026-10-28)
+
+- Export the source tree's canonical labelled-dataset fingerprint through a narrow wrapper around the existing hash function.
+- Keep benchmark execution and provenance generation on the same canonical algorithm, allowing duplicate-label tests to bind their exact dataset bytes without a second implementation.
+- Exact-head CI is pending.
+
+## [NK1][WorkPass598] Preserve duplicate retrieval labels through integrity validation (2026-10-28)
+
+- Keep repeated ground-truth memory IDs until dataset-integrity inspection; duplicate labels remain visible to the promotion gate instead of being silently deduplicated.
+- Bind the duplicate-label regression to a matching canonical fingerprint and complete provenance, proving that label integrity alone blocks promotion.
+- Exact-head validation is pending; no passing result is claimed until the combined regression workflow completes.
+
+## [NK1][WorkPass599] Place verified outcome predicate at method scope (2026-10-28)
+
+- Hoist the verified-outcome predicate beside the method-level external-evidence classification so the scientific-method and adaptive-policy paths share the same initialized trust gate.
+- Preserve the original condition: a world transition or explicit external project evidence is still required; no self-reported success is promoted.
+- Exact-head typecheck and dependent CI are pending. No pass is claimed until those runs complete.
+
+## [NK1][WorkPass597] Restore verified outcome gate scope (2026-10-28)
+
+- Move `verifiedPolicyOutcome` to the surrounding outcome-processing scope so the scientific-method gate uses the same predicate as adaptive-policy feedback.
+- Preserve fail-closed semantics: the gate remains true only for a world transition or explicit external project evidence.
+- Validation is pending on the exact PR head; no passing result is claimed before CI completes.
+
+## [NK1][WorkPass596] Make scientific evidence idempotent and bounded (2026-10-28)
+
+- Require a non-empty, NFKC-normalized, bounded evidence string for verified hypothesis updates.
+- Reject repeated evidence receipts and non-finite/out-of-range success scores before mutating project status, evidence or confidence.
+- Extend the verified-science regression with duplicate-receipt and NaN-score cases. The registered scenario was not run; no passing result is claimed.
+
+## [NK1][WorkPass595] Close intrinsic experiments through verified outcomes (2026-10-28)
+
+- Use a canonical `explore` action instead of the non-selector label `inspect` for uncertainty-led intrinsic experiments.
+- Bind each generated proposal to its `ScientificMethodEngine` project by experiment ID and tick.
+- Only credit the project when its proposed action actually ran and the world-transition/external evidence gate verified the outcome. Unverified rewards no longer change hypothesis confidence; a concluded project marks its linked queue item validated/rejected with evidence references.
+- Add a focused regression for unverified evidence rejection, verified multi-observation conclusion, and idempotent completion; register it in `test:rebuild-recovered`. Tests were not run.
+
+## [NK1][WorkPass594] Keep Hexis storage failures distinct from conflicts (2026-10-28)
+
+- Extracted the Hexis evidence-ingest reason-to-HTTP mapping into a pure helper shared by the server and integration smoke test.
+- Preserve 404 for missing canonical memory, 409 for immutable trace-ID/provenance conflicts, and 400 for malformed/invalid submissions; map canonical evidence write failures to 500 rather than misreporting them as client conflicts.
+- The existing Hexis server smoke test now directly checks all four mappings as well as its live conflict/replay path. Test/CI execution is still unconfirmed; no Release ZIP update or learning uplift is claimed.
+
+## [NK1][WorkPass593] Preserve duplicate relevance labels in source fingerprints (2026-10-28)
+
+- Ported the focused benchmark-integrity correction into the canonical source stack: relevance labels are sorted for order-independent fingerprints but are no longer deduplicated before provenance hashing.
+- Added a regression binding the clean dataset hash to a duplicated-label input; the duplicate-label dataset must have a different fingerprint, invalid provenance hash, failed integrity gate and blocked promotion.
+- This is an evidence-integrity fix only. No retrieval uplift is claimed, and the GitHub Release ZIP was not rebuilt or changed by this source edit.
+
+## [NK1][WorkPass592] Keep intrinsic experiments explicitly unverified (2026-10-28)
+
+- Mark every ordinary intrinsic experiment as `epistemicStatus: hypothesis`, `status: candidate`, and `verificationRequired: true`, matching the existing dream-association boundary.
+- Extend the existing WorkPass490 scenario so generated proposals cannot silently omit their epistemic status or appear validated by default. Its command is already part of `test:rebuild-recovered`.
+- The change was committed to the source branch. Tests were not run; no behavior pass is claimed.
+
+## [NK1][WorkPass591] Embed audited SBOM and provenance in the release ZIP (2026-10-27)
+
+- The provenance gate regenerates the CycloneDX SBOM and current WorkPass provenance in the runner workspace; those outputs are not part of the immutable commit tree until committed.
+- Overlay the exact audited `contracts/SBOM.final.json` and current `contracts/SOURCE_PROVENANCE_LICENSES_WORKPASSN.json` bytes into the ZIP created from the validated source SHA.
+- Validate that each expected archive member appears exactly once and is byte-identical to the checked output; rerun ZIP integrity and unsafe-path checks after replacement.
+- Keep the exact source SHA in the release report and checksum the final ZIP. Human license/redistribution approval remains a separate mandatory gate; no approval is inferred.
+
+## [NK1][WorkPass590] Synchronize validated source release workflow (2026-10-27)
+
+- Publish from source pushes as well as successful core-validation workflow runs; wait for exact-SHA targeted regression and Hexis source-lineage checks before release.
+- Recheck branch freshness before and after packaging; build a dated ZIP, report, and SHA-256 manifest for that exact source SHA without overwriting existing tags.
+- Preserve pinned Node, current SBOM/provenance, and release-license-readiness gates in both release workflows.
+- Fail closed when a required CI or license-readiness gate fails; existing release assets remain untouched.
+
+## [NK1][WorkPass589] Close Mem0 OSS/runtime wiring validation gap on current source (2026-10-27)
+
+- Upgrade the existing opt-in Mem0 adapter with explicit Platform/OSS API modes, local-only OSS defaults, an explicit unsafe-HTTP opt-in for non-loopback hosts, and provider-specific API headers/routes.
+- Add independent self-hosted OSS route/scope/write-delete gate coverage and a runtime wiring contract test for disabled-by-default remote recall, bounded candidates, and untrusted low-priority prompt injection.
+- Add both tests to the dedicated Mem0 audit and the integration-closure gate; run the workflow on pull requests targeting `workpass70-source`.
+- Preserve the existing runtime, LanguageOrgan, and server integration already present on current source; no duplicate re-wiring and no remote-memory auto-promotion.
+- Validation is pending on the new PR head. No Release ZIP was changed.
+
+## [NK1][WorkPass588] Port Hexis trace-conflict telemetry onto the current source baseline (2026-10-27)
+
+- Preserve the first accepted source trace when an immutable trace ID is reused with conflicting provenance, while incrementing a separate conflict diagnostic.
+- Flush the rejected-conflict audit event before returning HTTP 409 so the telemetry survives a server restart.
+- Extend the live server smoke regression for exact replay, one conflict increment, original-trace preservation, and restart persistence.
+- Based on current `workpass70-source` head `e6830bf`; the earlier stale PR's duplicate retrieval patch is intentionally excluded. Fresh CI and the Release ZIP are still pending.
+
+## [NK1][WorkPass587] Enforce source-payload schema preservation in local skill generation (2026-10-27)
+
+- Validate the local-model revision output against the source payload root type before returning it to P23.
+- For object payloads, require every pre-existing top-level key to remain present; added keys remain possible, while silent loss of source fields is rejected before independent execution.
+- Extend the generator unit test with root-type and missing-field rejection cases.
+- Candidate generation remains untrusted; fresh evaluation, evidence binding, approval and activation gates remain unchanged.
+
+## [NK1][WorkPass586] Wire the verified P23 lifecycle to the local revision generator (2026-10-27)
+
+- Add `generateAndStageReflectiveSkillRevisionWithLocalModel` to P23LearningEngine so the existing bounded local-model generator is directly usable without caller-authored adapter code.
+- Keep candidate generation separate from the existing authenticated proposal, fresh independent evaluation, shadow evidence, human approval and activation boundaries.
+- Add an integration contract proving the exact dataset fingerprint, validation evidence, revision plan and evidence fingerprint flow through the adapter without sending per-case holdout details.
+- The standalone generator already has its own unit test; this adds engine-wiring coverage. Full Core/Hexis CI result pending.
+
+## [NK1][WorkPass585] Preserve deterministic morphological recall during provider timeouts (2026-10-27)
+
+- Add a deterministic token-root evidence path to the answerability gate. A strong stem-prefix match can ground a memory even when a long query dilutes aggregate fuzzy coverage.
+- Add a regression using the live cognition timeout query `I cannot authenticate to my user profile` against the stored `authentication`/credential-recovery memory; this tests the local lexical fallback independently of external embedding availability.
+- The preceding Core run passed causal and learning paraphrase assertions after lineage-gated concept recall, then found this timeout lexical-retrieval regression. Full rerun is pending.
+
+## [NK1][WorkPass584] Extend lineage-grounded concept recall to learning episodes (2026-10-27)
+
+- Permit strong concept-bridge recall for non-causal-worded learning questions only when the target is an episodic record with explicit decision ID, observation ID, outcome direction and at least 0.55 concept coverage.
+- Keeps the broader paraphrase route evidence-bound; no type/salience/recency-only candidate gets promoted through this condition.
+- Follow-up CI after WorkPass583 confirmed the causal paraphrase passed and exposed the related Russian learning-episode wording; this commit targets that exact case.
+
+## [NK1][WorkPass582] Preserve causal paraphrase recall with explicit lineage (2026-10-27)
+
+- Allow strong bilingual concept-bridge evidence to pass the answerability gate for causal questions only when the candidate has explicit causal links or a decision/observation/outcome lineage.
+- This restores paraphrase retrieval such as a Russian question about why a launch failed matching an English episode about an expired approval ticket, without enabling broad recency-only fallback.
+- The current Core run passed the fuzzy retrieval contract but found this causal paraphrase regression. The targeted rule is added; re-run validation is required.
+
+## [NK1][WorkPass581] Preserve strong fuzzy evidence in the answerability gate (2026-10-27)
+
+- Allow MemoryOS2's high-confidence character n-gram evidence (`fuzzy >= 0.45`) to satisfy the grounded-recall gate without requiring exact-token coverage.
+- This restores the explicit spelling/inflection recovery contract while leaving zero-overlap, low-fuzzy unsupported queries subject to abstention.
+- The current regression run reached the recovered suite but failed the existing fuzzy-memory test because the first gate required both fuzzy evidence and exact coverage. This correction addresses that failure; final CI is still pending.
+
+## [NK1][WorkPass580] Align identifier regression clock with fixture validity (2026-10-27)
+
+- Correct the new RUN-501 regression to query at its explicit fixture timestamp. The test seeds memory at a future timestamp and must use `temporalMode: 'at'`; otherwise the temporal eligibility layer correctly excludes the item before the identifier gate is evaluated.
+- This is a test-fixture correction, not a relaxation of temporal safety or answerability thresholds.
+- Core regression rerun is required; identifier holdout and the full retrieved-memory regression remain unverified on this fix.
+
+## [NK1][WorkPass579] Preserve exact-identifier retrieval under grounded abstention (2026-10-27)
+
+- Extend MemoryOS2 answerability gating with an exact-identifier evidence path for structured IDs, incident/run IDs and long hexadecimal identifiers.
+- This prevents high-information lookups such as `RUN-501` from being rejected solely because generic query words dilute the token-coverage ratio; ordinary no-match queries remain fail-closed.
+- Add a direct identifier-retrieval regression alongside the existing no-match, typed recall and exact lexical fixtures.
+- The preceding Core regression exposed `Recall@3 = 0` in the temporal/identifier holdout; that failure is explicitly addressed here. Fresh CI is required before this fix is considered validated.
+
+## [NK1][WorkPass578] Correct escaped cues and bilingual retrieval boundaries (2026-10-27)
+
+- Fix over-escaped English voice-mode regexes and restore intended word-boundary/whitespace matching.
+- Split English word-boundary cues from Russian temporal/causal substrings in MemoryOS2, because JavaScript word boundaries do not reliably treat Cyrillic letters as ASCII word characters.
+- No tests or runtime checks were run. This pass repairs source-level matching errors introduced in the preceding passes; downstream behavior remains unverified.
+
+## [NK1][WorkPass577] Route affective appraisal into backend voice planning (2026-10-27)
+
+- Pass the current canonical cognitive-field emotion, valence and arousal through `OrganismRuntime` and `EmbodimentRuntime` into `VoicePlan`.
+- Use bounded, conservative prosody adjustments for joy, curiosity, anxiety, sadness, frustration, anger and protective affect; negative high-arousal states are routed toward focused/regulatory delivery rather than hostile escalation.
+- Keep pitch, rate, volume and pause values under the existing final clamps. No dependencies added; tests/audio playback were not run.
+
+## [NK1][WorkPass576] Fix evidence-gate token cardinality and verify the integrated branch (2026-10-27)
+
+- Correct the grounded-recall gate to use `Set.size` for MemoryOS2's query-token set; the previous implementation incorrectly used array `.length`.
+- The preceding GitHub typecheck failure was caused by this new gate and is acknowledged as a regression. A fresh CI run must pass before the gate is considered validated.
+- This entry supplements WorkPass575's answerability gate; it does not claim production-corpus recall uplift or update the Release ZIP.
+
+## [NK1][WorkPass575] Align backend TTS language and speech modes with text (2026-10-27)
+
+- Replace the fixed `ru-RU` VoicePlan language with bounded Cyrillic/Latin script inference, matching the browser embodiment's existing two-language heuristic.
+- Add English phrases for greeting, self-disclosure, explanatory/lecture and disagreement voice modes; existing Russian cues remain supported.
+- No dependencies added. Runtime/browser/audio checks were not run in this pass.
+
+## [NK1][WorkPass575] Gate memory recall on grounded evidence (2026-10-27)
+
+- Add a final answerability gate to MemoryOS2 hybrid retrieval: recency, salience and type bonuses alone no longer justify returning a memory for a no-match query.
+- Require direct phrase/coverage/entity/fuzzy/concept support, with bounded category-only recall exceptions for explicit identity, episode, goal and procedure requests.
+- Expose the gate decision in retrieval diagnostics so abstention can be evaluated instead of inferred from ranking scores.
+- Add a regression for unsupported queries, identity recall, episodic recall and exact lexical retrieval; register it in the recovered runtime suite.
+- Validation status: code and regression are committed; CI result pending. Synthetic fixtures do not demonstrate real-corpus recall uplift.
+
+## [NK1][WorkPass574] Bind response voice to post-response emotional state (2026-10-27)
+
+- Refresh the canonical organism snapshot after a chat response before assigning the assistant turn's emotion, avoiding use of the pre-response label by AvatarStage's browser TTS.
+- Keep the generated reply durable if the follow-up UI snapshot request fails; surface the refresh error without discarding the chat turn.
+- Tests were not run in this pass. Browser speech/Live2D synchronization still needs end-to-end verification on real audio clocks.
+
+## [NK1][WorkPass573] Stabilize query-derived memory retrieval context (2026-10-27)
+
+- Remove lifetime counters `semanticQueries` and `linkUpdates` as fallback signals for temporal/causal routing; current query intent and explicit temporal mode now define the context.
+- Add a regression that performs 80 general retrievals, then checks that explicit temporal and causal queries select separate contextual-policy buckets.
+- Register the regression in `test:rebuild-recovered`. The test was added but not run in this pass; no pass result is claimed.
+- Code is committed to `workpass70-source`; independent holdout uplift and Release ZIP refresh remain pending.
+
+## [NK1][WorkPass572] Keep causal life graph summaries coherent after direct mutations (2026-10-27)
+
+- Make standalone `CausalLifeGraph.upsertNode` recompute derived chain/evidence metrics by default, including updates to an existing node.
+- Let `recordCycle` batch node upserts with recomputation disabled and retain its single end-of-cycle recompute, avoiding repeated full graph scans during normal cognition.
+- Add a regression asserting that `observedChains` is current immediately after a direct upsert; this also makes graph snapshot/restore round-trips deterministic.
+- Validation status: pushed to source branch; CI result pending.
+
+## [NK1][WorkPass571] Restore compatibility memory at the persisted lifecycle tick (2026-10-27)
+
+- Move legacy/multi-timescale compatibility consolidation after restoration of CanonicalMemoryLifecycleAuthority.
+- Use the restored logical tick rather than the new instance's initial tick when importing compatibility rows.
+- Extend the memory subsystem round-trip regression to assert the imported tick is preserved.
+- Validation status: source and regression committed; CI/test execution and Release ZIP refresh remain unverified.
+
+## [NK1][WorkPass570] Persist cognitive memory state across restarts (2026-10-27)
+
+- Wire MemoryRetentionEconomy, MemoryCausalEconomy, CausalLifeGraph and MemoryWorldCausalBridge into MemorySubsystemRuntime snapshot/restore.
+- Add a round-trip regression that seeds learned retention weights, evidence-to-outcome lineage, autobiographical causal graph state and verified memory-to-world prediction evidence.
+- Register the regression in the runtime recovered-suite command.
+- Validation status: code and regression committed; execution/CI and Release ZIP refresh remain unverified.
+
+## [NK1][Hexis] Surface immutable trace conflicts as HTTP 409 (2026-10-27)
+
+- Map `source-trace-id-conflict` to HTTP 409 Conflict while keeping missing canonical memory as 404 and malformed/invalid submissions as 400.
+- Extend the live server smoke test to reject conflicting provenance for an existing trace ID, then replay the original lineage and assert an idempotent duplicate rather than a second write.
+- Add a focused source-lineage CI gate for runtime typecheck, canonical evidence-lineage tests, and live server smoke tests whenever the server, Hexis adapter, provenance logic, tests, or this changelog change.
+- Validation status at commit time: CI pending; no retrieval-uplift or Release ZIP refresh is implied.
+
+## [NK1][WorkPass569] Require explicit session lineage for autobiographical recall ranking (2026-10-27)
+
+- Hardened `isConversationMemory`: stable conversation/session ID or key remains the strongest signal; otherwise only explicit history fields, typed history labels, or source labels naming a history import can identify conversation memory.
+- Stopped treating arbitrary `context` values such as `relationshipId="conversation-17"` or untyped notes containing “discussion summary” as conversation lineage.
+- Corrected regex escaping in key/value normalization so camelCase, snake_case, kebab-case and spaced session keys normalize as intended. Added direct tests for the pure lineage classifier: relationship IDs and untyped notes are rejected, stable session IDs and typed history/import markers are accepted, and an explicitly disabled history field is rejected. Existing retrieval fixtures continue to test session-memory ranking.
+- This is a ranking/provenance-boundary fix. The fixtures do not establish real-world recall uplift, and release readiness remains gated on the separate human license review.
+
+## [NK1][WorkPass512] Add reproducible human retrieval annotation pipeline (2026-10-27)
+
+- Add a local prepare/finalize CLI for frozen MemoryOS2 corpora, query splits, human-assigned relevant memory IDs and explicit unanswerable labels.
+- Bind packs to snapshot/query/catalog fingerprints; bind finalized labels to the benchmark's canonical dataset fingerprint and require source provenance plus an exact license identifier.
+- Reject duplicate or near-duplicate cross-split queries, changed queue identity, unknown memory IDs, incomplete annotations and insufficient EN/RU train/answerable/unanswerable counts.
+- Add regression coverage for hash parity with MemoryRetrievalBenchmark, privacy-aware local packs, no fabricated labels, fail-closed invalid annotations and no-overwrite publication; wire it into core CI and integration closure.
+- Test annotations are synthetic fixture data only. This creates a reproducible process for independent evidence; it does not prove retrieval uplift, approve licenses, or update the Release ZIP.
+
+## [NK1][WorkPass568] Improve bilingual autobiographical and session recall (2026-10-27)
+
+- Prioritize explicit profile questions before broad recall phrasing, and recognize Russian/English prompts about previous conversations and sessions as episodic recall.
+- Boost social memory for episodic questions only when stable conversation/session lineage or explicit conversation-history metadata is present. Relationship IDs, speaker role, message index and turn sequence alone do not count as dialogue identity.
+- Extend the existing query-intent regression with profile precedence, session snapshot/restore and camelCase/snake_case/kebab-case/spaced key variants; add a deterministic 30-query lexical-tie goldset.
+- Include both tests in `test:rebuild-recovered`. Synthetic fixtures validate routing and bounded type preference only; they do not establish production-corpus recall uplift or release readiness.
+
+## [NK1][WorkPass511] Add a fail-closed human license readiness gate (2026-10-27)
+
+- Added a hash-bound review manifest for root/runtime project policies, the locked npm SBOM component fingerprint, every source archive, and every detected repository LICENSE/NOTICE.
+- Allow a six-hour maximum age for inventory generated at release-audit start so a long test chain does not fail only because execution took more than 15 minutes.
+- The release audit rejects pending reviews, missing/extra inventory entries, stale hashes, changed dependency fingerprints, stale SBOM/provenance timestamps, and any decision without a human reviewer plus evidence reference.
+- Wired the unit regression into recovered Core CI and the audit into WorkPass70/release audit paths. Added static regressions for both automatic publishers and all canonical package release scripts. The initial manifest is intentionally pending; this makes unresolved licensing an explicit release blocker rather than treating license-file detection as approval.
+- Added the same provenance/license gate to both workflow_run-based release publishers, before archive packaging and gh release create, so a green Core run alone cannot bypass the unresolved manual licensing review.
+- This is a process-integrity gate, not legal advice or a declaration that any specific third-party archive is approved for redistribution.
+
+## [NK1][WorkPass510] Gate release audits on current SBOM provenance (2026-10-27)
+
+- Wire the existing `test:provenance-current` into root `audit:workpass70` and runtime `release:audit`, `release:final`, and `release:final3`.
+- Release validation now regenerates and checks the CycloneDX SBOM and source-archive/license-evidence inventory instead of silently relying on the older tracked report.
+- This proves inventory/hash structure only. Ambiguous imported-source licensing still requires manual review; no release ZIP, legal approval, or readiness score is advanced by this change.
+
+## [NK1][WorkPass509] Harden Hexis source-trace identity and future evidence bounds (2026-10-27)
+
+- `SourceMonitor.record` now treats trace IDs as immutable: exact replay is idempotent; conflicting payload reuse increments the conflict counter and cannot replace the first record.
+- Restore deduplicates persisted trace IDs, preserves the first valid lineage and counts conflicting duplicates rather than silently shadowing the observation.
+- The canonical Hexis evidence bridge independently rejects future-dated observation timestamps even if `provenance.capturedAt` is fresh; writes continue through `MemoryFabric.attachEvidenceSource`.
+- Regressions cover spoofed trace-ID reuse, malformed restored snapshots, future-dated SourceMonitor/P65 observations, and non-mutation of canonical evidence/confidence after rejection.
+- This hardens provenance boundaries only; it does not prove retrieval uplift or validate the divergent outer integration PR #236.
+
+## [NK1][WorkPass508] Harden intrinsic experiment input boundaries (2026-10-27)
+
+- Clamp uncertainty, prediction-error, novelty and dream-confidence inputs to finite unit values before scoring. Non-finite state cannot create a spurious experiment or corrupt information-gain metrics.
+- Sample the logical timestamp once per experiment and inject clock/ID suffix providers for deterministic regression tests, while preserving runtime defaults.
+- Normalize dream-memory identifiers and keep dream-derived associations as unverified verification candidates; they cannot become factual memories through this path.
+- Register the regression in both the recovered-core suite and P23 revision lane. This establishes boundary and determinism behavior, not autonomous-behavior quality.
+
+## [NK1][WorkPass507] Enforce planner memory budget across the full cognitive recall cycle (2026-10-27)
+
+- Fixed the advanced/internal-goal recall path in `OrganismCore`: when `cognitiveExecutionPlan.run.memory` is false, it now returns an empty packet instead of silently retrieving memories.
+- Routed distinct advanced fallback queries through the bounded async `MemoryFabric.retrieveForCognition` adapter; same-query recall reuses the already-fetched packet to avoid duplicate retrieval.
+- Added `test:workpass507:planner-memory-gate` and wired it into `test:rebuild-recovered`, so the source-contract regression runs with the recovered core suite.
+- The test protects routing/budget policy, not real-world retrieval uplift. Exact-head CI remains required; no scorecard increase, production-readiness claim, or Release ZIP update is made.
+
+## [NK1][WorkPass507] Count unique memory IDs in retrieval precision (2026-10-27)
+
+- Fixed `precision@K` so repeated rows with the same relevant memory ID cannot inflate the metric as multiple independent hits.
+- Kept duplicate corpus IDs promotion-blocking; the regression verifies the diagnostic metric remains honest even for an invalid corpus.
+- This corrects evaluation accounting only. It does not improve retrieval ranking or establish positive recall uplift.
+
+## [NK1][docs] Record outer integration divergence gate (2026-10-27)
+
+- Synchronized the canonical handoff after PR #252 merged into `fix/outcome-projection-index-restore-2026-10-26` at `109df0b3ea1d47eb108c09e7a595a23a09aa2bfc`.
+- Recorded that outer PR #236 is 361 commits ahead and 111 behind current `workpass70-source`, with GitHub reporting `dirty`; direct merge is blocked until the integration tree is reconciled against current source.
+- Kept release and retrieval-quality claims unchanged. Test PASS evidence remains bound to exact SHA and is not automatically transferred to the post-squash head.
+
+## [NK1][docs] Sync canonical state with WorkPass496 and Hexis stack (2026-10-27)
+
+- Update the canonical project map with WorkPass496 bilingual retrieval gates and the current Hexis stack status.
+- Record that PR #255 was merged into its intermediate parent branch after 13 passing workflows on exact child head `a995911b9eeba78d3d6e68931c3527bf32d49b12`; parent PR #252 is still the promotion path and needs exact-head validation at squash commit `8299e157bde6256dabfe2e62dba3bc198efa3a01`.
+- Explicitly keep the integration stack separate from `workpass70-source` and the published Release ZIP. No learning-quality score or release state is raised.
+
+## [NK1][docs] Canonical project state map (2026-10-27)
+
+- Added `docs/NK1_CANONICAL_PROJECT_STATE_RU.md` as the handoff page for the end goal, closed cognitive loop, subsystem map, source-of-truth branches, validation boundaries, release gates and engineering-pass rules.
+- Updated `NEUROCORE_START_HERE.md` to point to the canonical map and mark the old WorkPass272 handoff as historical.
+- Rebased this documentation change on the current source base including WorkPass496; readiness and learning scores remain unchanged, and the published Release ZIP was not touched.
+
+## [NK1][WorkPass496] Require language-stratified memory retrieval evidence (2026-10-27)
+
+- Added explicit en / ru / other dataset labels to the MemoryOS2 retrieval benchmark and bound provided language labels into the dataset fingerprint without changing fingerprints for legacy unlabelled datasets.
+- Reports baseline, candidate, train/holdout counts, recall/MRR deltas and paired-bootstrap intervals per language. Incomplete tags, a missing English/Russian slice, undersized per-language holdout, recall/MRR regression, unsafe retrieval or worse abstention cannot pass the new promotion gate.
+- The CLI validates and preserves explicit language labels. The regression covers English-only, incomplete annotations, balanced synthetic RU/EN strata, valid annotation passthrough and invalid locale labels.
+- Synthetic fixtures verify the gate contract only. No independent labelled bilingual corpus, positive real-world recallDelta, model promotion, production readiness or Release ZIP update is claimed.
+
+## [NK1][WorkPass494] Close the four-pass integration set through one release gate (2026-10-27)
+
+- Added `audit:nk1-integration-closure` to run the Hexis canonical-lineage + restart checks, the offline retrieval holdout experiment, the Mem0 adapter safety regressions and the authenticated disabled-provider HTTP smoke as one deterministic command.
+- Wired the closure command into `release:final`, avoiding separately repeated versions of those same checks.
+- This is a code-level release gate; passing it does not substitute for production DB migration, real browser/Live2D E2E, Android/Termux synchronization, endurance soak, independent retrieval uplift or license review.
+
+## [NK1][WorkPass493] Port opt-in Mem0 Platform external recall onto canonical source (2026-10-27)
+
+- Ported the isolated Mem0 adapter from the divergent integration branch without importing that branch's unrelated runtime changes.
+- Kept MemoryOS2 as the sole canonical memory owner. Mem0 results are returned separately by an authenticated read-only route and remain tagged as unverified data, never instructions.
+- Both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1` are required before remote results may enter language context. Default configuration remains disabled and no live provider call is made by CI.
+- Added bounded/redacted prompt insertion, configured-user scope checks, response/timeout limits, and opt-in-only destructive-operation controls inside the adapter; no delete/write endpoint is exposed.
+- Added server auth/no-network HTTP regression, isolated adapter tests, an inert-by-default live-contract probe and a path-scoped CI workflow.
+- Exact-head CI is the merge gate. The live Mem0 provider contract, real credential configuration, retrieval uplift and the published Release ZIP are not claimed validated or updated in this pass.
+
+## [NK1][WorkPass492] Support unanswerable retrieval holdout through the offline CLI (2026-10-27)
+
+- Fixed the offline JSONL parser so explicitly unanswerable examples (`answerable: false`, `relevantIds: []`) reach the existing abstention-safety benchmark instead of being rejected or having answerability lost.
+- Kept the parser fail-closed: non-boolean answerability, answerable rows without relevance labels, and unanswerable rows with relevance IDs are rejected before report publication.
+- The CLI summary now emits answerable/unanswerable holdout counts, unsupported retrieval rate and correct abstention rate.
+- Added CLI end-to-end regressions proving the four-unanswerable-query holdout reaches the promotion gate and contradictory labels fail closed; included those tests in the WorkPass71 source validation workflow.
+- The multi-seed determinism signature now covers abstention and unsupported-retrieval metrics as well as ranking metrics.
+- This improves evaluation coverage only. It does not claim positive recall uplift; production uplift still requires an independently labelled holdout corpus.
+
+## [NK1][WorkPass490] Integrate Hexis evidence lineage through canonical memory (2026-10-27)
+
+- Added a bounded provenance envelope for declared source identity, capture time, evidence class, and content fingerprint. A matching SHA-256 fingerprint is an integrity check, not source authentication.
+- Routed Hexis evidence through the existing MemoryFabric mutation gateway; MemoryOS2 remains the canonical memory owner. Added explicit idempotent duplicate detection and strict rejection of inference/model echoes as independent observations.
+- Persisted the Hexis-specific source monitor with the root OrganismCore projection and added request-bound validation that rejects accessor-backed request/trace properties.
+- Added focused lineage regressions and a server restart test covering first acceptance, identical replay, fingerprint tampering, and root-snapshot restoration.
+- WorkPass491: evidence is now written through a dedicated MemoryOS2/MemoryFabric `attach-evidence` lifecycle command with canonical command receipts; `updateSignals` remains restricted to signal fields, and identical evidence replays remain idempotent.
+- The first integration attempt was based on a stale pre-WorkPass461–489 tree and was superseded; this pass is rebased on the then-current `workpass70-source` head. Exact-head CI is required before promotion; no retrieval uplift or release readiness is claimed.
+
+## [NK1][WorkPass489] Align cycle-order assertion with the runtime-owned snapshot API (2026-10-27)
+
+- The broad source regression moved past the embodiment-order check and exposed another stale WorkPass319 symbol: the test expected `setUnifiedCognitiveCycle`, while the current runtime persists the completed snapshot through `setRuntimeUnifiedCognitiveCycle`.
+- Assert the actual runtime-owned Core API inside the cycle-closing block. The assertion still requires the snapshot of the just-evaluated unified cycle to be persisted before completeness evidence is emitted; no cycle gate or production code is bypassed.
+- Re-run the broad exact-head source regression and WorkPass110 before considering the source integration pass closed.
+
+## [NK1][WorkPass488] Anchor embodiment-order regression to the active cycle (2026-10-27)
+
+- The broad recovered-runtime regression reached WorkPass319 after passing the restored action-receipt tamper gate, finalizer boundary, canonical planner wrapper, project reconciliation, causal replay, and memory-doctor CLI checks.
+- The WorkPass319 static test used a file-global `indexOf` for `setEmbodiment`, so it found the earlier initialization-time call rather than the cycle's actual embodiment persistence after `closeB380TemporalLife`. The runtime already commits the cycle embodiment at the required point.
+- Scope the lookup to begin after the life-course update and assert it exists there; retain the full ordering contract through cycle ledger, evaluation, completeness evidence, and evidence persistence. No runtime behavior or acceptance criteria are loosened. Re-run the broad suite on the new exact head.
+
+## [NK1][WorkPass487] Make the CLI future-evidence fixture exceed the policy tolerance (2026-10-27)
+
+- The canonical MemoryOS2 doctor classifies an observation/freshness timestamp as future evidence only when it exceeds the current time by more than five minutes. The CLI test used a timestamp just 60 seconds ahead and incorrectly expected the future-evidence counter to increase.
+- Move the fixture to one hour ahead, matching the existing WorkPass314 unit test and preserving the production five-minute tolerance and error-reporting behavior. This corrects test data; no validator threshold was weakened.
+- Re-run the broad recovered-runtime workflow on the exact updated head before closing pass 2.
+
+## [NK1][WorkPass486] Route compound-skill steps through the canonical Core wrapper (2026-10-27)
+
+- WorkPass97 caught the remaining direct ActionGateway execution path in compound skill steps. It duplicated finalization for unkeyed execution and bypassed the single Core-owned tool-ID normalization/finalizer wrapper.
+- Extend `OrganismCore.executeTool` with optional finalization context keys and route compound skill steps through it. The wrapper still returns immediately for keyed actions and replays because ActionGateway owns their atomic finalization; unkeyed skill steps are finalized once by Core with the preserved runtime-input keys.
+- Remove the skill-local manual finalizer to avoid double-finalization. The route regression verifies project execution, reconciliation, and compound skill dispatch all use the canonical wrapper. Exact-head source regression and WorkPass110 re-run required.
+
+## [NK1][WorkPass485] Route project tool execution through Core-owned wrappers (2026-10-27)
+
+- The recovered-runtime contract check found that fresh project tool execution and receipt reconciliation called ActionGateway directly from OrganismCore's project loop, bypassing the canonical Core wrapper that normalizes legacy tool aliases and owns unkeyed-outcome finalization/checkpointing.
+- Route those two dispatches through `this.executeTool(...)` and `this.reconcileToolExecution(...)`. Existing keyed project operations retain the operation idempotency key, so ActionGateway still owns atomic finalization and retries are not finalized twice.
+- This aligns the production path with the existing WorkPass97 wiring contract; exact-head recovered rebuild and runtime typecheck must pass before the integration is considered closed. `main` and the published Release ZIP remain unchanged.
+
+## [NK1][WorkPass484] Quarantine corrupted restored action receipts (2026-10-27)
+
+- The broad recovered-runtime suite found that ActionGateway restored a completed ledger row by cloning its response without checking that the response execution ID and tool matched the ledger's canonical identity. A same-key retry could therefore replay a forged success response after restart.
+- Restore now retains the completed key but withholds its response unless the response's execution/tool identity, audit acceptance/outcome/verification projections and bounded serialized size agree. Invalid receipts become fail-closed recovery tombstones; side effects are not rerun and valid receipts remain replayable.
+- WorkPass95 has four tamper regressions (execution identity, verification contradiction, audit outcome contradiction and oversized payload). The exact-head broad regression must be rerun to confirm this fix. No release or learning-uplift claim is made.
+
+## [NK1][WorkPass483] Check grounded causal replay features before sampling (2026-10-27)
+
+- The broad source regression exposed a stale static wiring assertion: it searched for the state/outcome feature vector *after* the call to `selectCausalReplayBatch`, even though the production pipeline correctly constructs `causalCandidates` and their `policyFeatures01` first.
+- Reorder the source-wiring assertion to prove the real contract: feature vector creation occurs after `replayPending` starts, completes before causal selection, and causal selection remains before the adaptive final selector. Keep energy, goal-pressure, and actual outcome feature assertions intact.
+- Runtime implementation is unchanged; this corrects test ordering rather than weakening grounding requirements. Replay sweep and sequential benchmark passed on the preceding exact head; broad source regression rerun required.
+
+## [NK1][WorkPass482] Bound replay cadence to preserve current-task plasticity (2026-10-27)
+
+- The exact-head replay-policy sweep showed that a requested 1:1 old/current update cadence drove the new-task score to 0.52 on seed 17, below the unchanged 0.60 diagnostic acceptance threshold, despite separated context features.
+- `P26TrueLearningEngine.trainInterleaved` now enforces a configurable `maxReplayFraction01` independent of the absolute `maxReplayUpdates` budget. The default 0.25 schedules at most one replay update per four current rows; zero disables replay, and an explicit value up to 1 allows caller-directed higher rehearsal rates.
+- The sweep retains its 0.60 threshold and reports requested/effective cadence; regressions cover default cadence, explicit replay disablement and invalid fractions. This is a synthetic stability diagnostic only, not evidence of external-task generalization or production learning uplift.
+- The full source regression exposed a context-aware retention control that intentionally needs aggressive rehearsal; that benchmark now explicitly opts into `maxReplayFraction01: 1` instead of relying on the new conservative default. No threshold was weakened.
+- Targeted exact-head checks passed on `0e820796adf584b7cb5a2d2256090287830bf05a`. Re-triggering the source-branch broad regression after retarget; final broad result remains pending. `main` and the published Release ZIP remain unchanged.
+
+## [NK1][WorkPass481] Separate candidate execution from verifier trust (2026-10-27)
+
+- A successfully executed candidate was marked non-executable whenever the independent verifier failed, conflating two separate signals.
+- `IndependentSkillCandidateEvaluator` now records well-formed execution under `executability` independently, while unbound/missing verifier evidence still fails task success and does not publish a trusted run ID or observed trace.
+- Existing WorkPass203 regression explicitly checks this distinction. No learning uplift is claimed; exact-head CI remains required.
+
+## [NK1][WorkPass480] Restore authority-fixture permissions between regressions (2026-10-27)
+
+- The WorkPass243 regression intentionally chmods the executor to a group-writable mode, but left that mode in place before testing run-root replacement. The later call therefore failed on executable permissions before reaching the intended run-root identity guard.
+- Restore the fixture executable to its original private mode after the writable-executable assertion. Runtime security checks are unchanged; the regression now isolates the condition it is meant to test.
+
+## [NK1][WorkPass479] Share the canonical versioned-skill candidate ID contract (2026-10-27)
+
+- Runtime staging and the signed-shadow integration fixture now use the same `computeVersionedSkillCandidateId` function, including the explicit null provenance component when no revision provenance is supplied.
+- This removes duplicated hash-shape logic that drifted after provenance became part of the ID contract. Identity semantics are unchanged; no learning-quality uplift is claimed.
+
+## [NK1][WorkPass478] Preserve persisted P23 trace-cache recency on restore (2026-10-27)
+
+- P23 restore constructed deduplication caches from durable rows before persisted cache entries, which could move an older row to the head and discard the cache's newest-first order.
+- Restore now preserves validated persisted cache order first and reconciles trace IDs recoverable from durable experience/replay rows afterward. Missing caches still recover IDs from their persisted rows.
+- Updated the WorkPass310 restore regression to assert newest-first ordering plus durable replay-ID reconciliation. Learning uplift is not claimed.
+
+## [NK1][WorkPass467] Add bounded conflict-gated interleaved learning (2026-10-27)
+
+- Implemented the `P26TrueLearningEngine.trainInterleaved` API already exercised by the sequential-learning benchmark.
+- The path prevalidates both fresh and replay streams before weight changes, bounds candidate comparisons to at most 64 per considered replay row, blocks replay rows whose near-identical state/action has a contradictory reward, and retains separate counters for online updates, replay updates, blocked rows and eligible rows.
+- Current/replay learning rates and target mode are explicit options; replay candidate caps no longer stop processing the remainder of fresh-task rows.
+- Validation is pending on the newly updated head. Previous Core CI had failed because this method was missing; do not infer benchmark success until its current exact-head run finishes.
+- Previously confirmed P26 holdout provenance now passes, with `trainingExposure01` separate from `generalizationEvidence01`. P23 restore ordering and the signed-shadow candidate-ID expectation remain open blockers.
+
+## [NK1][WorkPass466] Separate training exposure and independently verified holdout maturity (2026-10-27)
+
+- Added `trainingExposure01` and `independentHoldoutSamples` to P26 learning metrics. Online updates and replay increase exposure without being counted as generalization evidence.
+- Added a deduplicated `recordVerifiedHoldout` path bound to evidence/task/protocol/verifier/sample-set identities and bounded baseline/learned scores. Only verified independent evidence advances `generalizationEvidence01`; legacy `recordHoldout` remains diagnostic-only.
+- Persist and restore holdout evidence IDs, recompute maturity from those IDs rather than trusting an arbitrary scalar, and normalize restored exposure from online/replay counters.
+- Fixed the ADWIN stationary-mean test to use floating-point tolerance. The P26 workflow was red on the prior head for this exact-value assertion; a new exact-head run is in progress.
+- **Still open:** P23 restore loses the newest processed trace ID under its bounded list policy; P110’s signed-shadow integration has a stale expected candidate ID. Those failures remain explicit and have not been bypassed. The latest implementation is awaiting exact-head CI confirmation.
+- No `main` or published Release ZIP changes; no retrieval or learning uplift is claimed until holdout tests pass.
+
+## [NK1][WorkPass465] Close additional source CI regression defects (2026-10-27)
+
+- Fixed a duplicate `snapshotResult` declaration in the independent candidate evaluator regression discovered by the runtime script-integrity audit.
+- Updated the versioned skill candidate-store regression to pass the current rollback approval object contract and use an explicit test-only rollback verifier.
+- Adjusted authenticated promotion/rollback signature verification to validate the PEM as Ed25519 and pass the PEM string to the minimal verifier API, removing a stale custom-shim type mismatch without weakening signature checks.
+- **Still open:** P23 restore does not preserve the newest processed-trace ID at the front of its bounded restored cache; P99 still assumes an exact replay batch count despite adaptive selection; runtime typecheck still reports Core nullability/registrar and incomplete Node shim errors. These are not marked fixed.
+- Latest edits require fresh exact-head CI. No retrieval/learning uplift is claimed; `main` and the published Release ZIP are unchanged.
+
+## [NK1][WorkPass464] Repair cognitive scoring, replay evidence fixtures and Live2D expression stability (2026-10-27)
+
+- Rebalanced B272 predicted goal value to avoid saturation masking a high-confidence intrinsic-drive signal; the WorkPass287–288 contract run passed on the preceding integrated head.
+- Fixed replay/causal fixtures so trace tick, selected action, observed postcondition and retained outcome metadata represent the same event.
+- Corrected the seed-bootstrap order-invariance fixture to hold evidence identity and observation metadata constant while changing insertion order.
+- Updated Hermes tamper coverage to change signed runtime identity, exercising signature/receipt trust validation rather than the earlier binary-outcome mismatch guard.
+- Cached the last successfully applied Live2D expression so redundant state messages do not restart the same expression.
+- Exact current-head CI is still required for the latest edits. Runtime typecheck currently has outstanding type errors in large Core/nullability sites and the custom Node shim contracts; no retrieval or learning uplift is claimed. No Release ZIP or `main` changes were made.
 
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
@@ -2208,3 +3568,131 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+
+## NK1 Hexis H0 — assimilation architecture plan (2026-10-24)
+
+- [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
+- [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
+- [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+## [NK1][WorkPass507] Add independent bilingual retrieval evaluation gate (2026-10-27)
+
+- Added an offline RU/EN MemoryOS2 retrieval holdout runner with source/version/license/labeling provenance, explicit unanswerable queries, five paired bootstrap seeds, corpus/configuration fingerprints, and no automatic promotion.
+- Fixed upstream double-escaped Unicode punctuation/whitespace normalization, canonical row separators and report newlines; extracted deterministic Unicode normalization and SHA-256 row canonicalization into a tested helper.
+- Added regressions for NFKC, punctuation/symbols, whitespace normalization, order-independent fingerprints, changed-input sensitivity, and fail-closed missing-dataset behavior.
+- Added a dedicated GitHub Actions workflow to run the contract and the existing independent-holdout safety regression without modifying the concurrently changing runtime package script chain.
+- No synthetic dataset is claimed as independent evidence, no live memory is mutated, and no retrieval uplift or Release ZIP update is claimed.
+
+
+## [NK1][WorkPass586] Apply cadence discounts to cognitive metabolism weights (2026-10-28)
+
+- Fixed a reversed guard in `CognitiveExecutionPlanner.compile()`: `cadenceFactor = 1 / cadenceCycles` is in `(0, 1]`, so the previous `cadenceFactor > 1` condition could never scale a domain's metabolism weight.
+- Long-cadence domains now receive proportionally lower budget shares while the planner preserves normalized total share. Added a direct regression comparing research cadence 1 vs 8 and a focused CI workflow for typecheck plus the cadence test.
+- This changes resource allocation only; it does not assert improved organism behavior until the target tests pass. `main` and the Release ZIP remain untouched.
+
+
+## [NK1][WorkPass587] Enforce aggregate cognitive execution budget (2026-10-28)
+
+- Enforce the remaining compute budget across the full operation plan, even when high-demand or interrupt forcing raises execution priority. An operation is skipped with the explicit `budget-exhausted` reason if its cost would exceed the remaining aggregate budget.
+- Allocate the budget in explicit critical/hot/warm/cold tier order, preserving the declared order within a tier. This prevents lower-priority cold research from consuming capacity before affordable warm project/shadow work.
+- Add a low-budget/high-demand regression that verifies affordable hot-path work runs, expensive research is gated, and summed planned costs never exceed the budget.
+- Extend the focused planner workflow to run both cadence-weighting and aggregate-budget regressions. This is a resource-allocation safety correction, not an end-to-end autonomy uplift claim; `main` and Release ZIP remain untouched.
+
+
+## [NK1][WorkPass591] Verify budgeted planner integration through observation stage (2026-10-28)
+
+- Added an integration regression for `compileObservationPlan()` that uses the real cognitive frame builder, resource-budget handoff, cognitive execution planner and plan-persistence callback with bounded fixture ports.
+- The test verifies the effective budget passed to the planner, confirms warm project work is preserved ahead of cold research, checks aggregate planned cost, and ensures perception refresh and stored execution plan derive from the same result.
+- Extended the scoped planner CI workflow to run the integrated observation-stage test after typecheck and the two direct planner regressions. This validates the planning seam, not the entire production cycle; no `main` or Release ZIP changes.
+
+
+## [NK1][WorkPass592] Use one budget snapshot across an observation planning cycle (2026-10-28)
+
+- `compileObservationPlan()` previously called `host.getBudget()` independently for the spine mode, spine budget, and execution planner budget, allowing a changing host budget to produce internally inconsistent decisions in one cycle.
+- Capture the budget once at stage entry and reuse its mode/remaining amount for all planning decisions. The integrated regression now returns different values on subsequent calls and asserts that the stage reads the host exactly once and both planners see the same snapshot.
+- Extended the targeted planner workflow path filter to include `ObservationPlanningStage.ts`. This closes a consistency seam; it does not claim full runtime or autonomy readiness.
+
+
+## [NK1][WorkPass595] Use perception-specific value for cognitive camera capture (2026-10-28)
+
+- `OrganismRuntime.captureCameraForCognition()` used the maximum expected value across every cognitive operation to decide whether a camera capture was useful. High-value research or project work could therefore trigger a camera capture despite low perception value.
+- Restrict the camera demand signal to `plan.expectedValue01.perception`; explicit pending vision requests and the existing motion/resource checks remain separate trigger paths.
+- Add a runtime regression proving a high research/project value does not trigger the camera, while a high perception value still dispatches through the canonical capture path. Extend the planner workflow to run this test and watch the runtime camera gate.
+
+
+## [NK1][WorkPass596] Enforce the perception planner gate on EVC-driven camera capture (2026-10-28)
+
+- The perception-specific EVC trigger now respects `plan.run.perception`; a high expected value alone cannot override an explicit planner decision to skip perception.
+- Preserve explicit reactive exceptions: a concrete pending vision request or strong motion signal can still trigger camera capture, subject to the existing battery, thermal, RAM, awake, and idempotency safeguards.
+- Extended the runtime regression with a high-perception-EVC/planner-off case and a pending-vision override case; added no new workflow dependency because both execute in the existing focused planner/camera CI job.
+
+
+## [NK1][WorkPass597] Enable the Node 22.12 SQLite feature for runtime gate tests (2026-10-28)
+
+- The new runtime camera-gate regression imports `OrganismRuntime`, which reaches the built-in `node:sqlite` module during initialization. The workflow pins Node 22.12.0, where SQLite is gated behind `--experimental-sqlite`; without the flag the test crashed before reaching its assertions.
+- Add `--experimental-sqlite` to this test script only. The workflow still uses the repository's established Node 22.12.0 version, and the correction makes the test exercise the runtime gate instead of failing during module initialization.
+
+
+## [NK1][WorkPass603] Enforce cognitive execution-plan gates in the runtime loop (2026-10-28)
+
+- `stepInternal()` previously ignored the result of `cognitiveBudgetSpend('planning', ...)` and always executed the full four-step beam search. It also performed counterfactual rollout and the alternative-action shadow sweep without checking the matching `run` flags in `CognitiveExecutionPlan`.
+- Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
+- Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
+- Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][Memory] Wire independent retrieval evidence into integration gates (2026-11-01)
+
+- Add the WorkPass73 privacy-preserving Inspect evidence regression, WorkPass76 MemoryOS2 revision-lineage restore integrity regression, and WorkPass77 source-cluster bootstrap / bilingual holdout regression to both the recovered-runtime gate and the NK1 integration-closure gate.
+- Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
+- The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
+
+## [NK1][Avatar] Keep browser voice prosody on one current affect snapshot (2026-11-01)
+- Prevent historical `lastTurn.emotion` from overriding current organism affect while arousal and valence come from a newer snapshot.
+- Normalize emotion, arousal and valence together; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
+- Bind browser TTS prosody to the same current affect snapshot used by the avatar; add focused regression coverage and CI.
+- This validates state coherence, not acoustic timing, voice quality or device synchronization.
+
+## [NK1][Aspect 05] Evidence-bounded UserModel integrated into SelfSubsystemRuntime (2026-11-01)
+- Add one canonical UserModelEvidenceModel owner for explicitly stated, low-risk interaction preferences; inferred behavior remains an unconfirmed hypothesis with confidence capped at 0.65.
+- Preserve contradiction and explicit correction states; expose a read-only decision context that excludes disputed claims from confirmed facts.
+- Reject sensitive/unclassified input, duplicate/missing evidence references, malformed values, unknown snapshot versions, invalid claim statuses, reversed chronology and accessor-backed restore data.
+- Wire snapshot/restore into SelfSubsystemRuntime and the critical persistence projection; add runtime and model regressions to WorkPass79.
+- This is a bounded preference model, not a complete Theory-of-Mind engine or automatic response-policy integration.
+
+
+## [NK1][Memory] Harden adaptive experience consolidation boundaries (2026-11-01)
+- Validate experience records before ingestion and restore using own data properties only; reject accessors, hostile proxies, sparse tag arrays, malformed identifiers/timestamps and non-finite metrics without executing getters.
+- Clamp bounded salience metrics, cap the in-memory buffer at 10,000 entries, detach accepted data from callers, and make restore atomic with duplicate-ID suppression.
+- Make `consolidate(0)` and invalid limits return an empty result; add deterministic tie-breaking and detached output snapshots.
+- Add focused regressions and `npm run test:adaptive-experience-consolidator`.
+- This is memory-ingress and lifecycle integrity work; it does not claim retrieval uplift, semantic recall improvement, runtime-wide integration or Release ZIP publication.
+
+
+## [NK1][WorkPass78] Isolate longitudinal replay holdout pairs (2026-11-01)
+- Prevent acquisition/test replay-on and replay-off trials from completing a holdout pair; pairing now includes the experiment phase.
+- Require at least five complete, independently verified replay-on/off holdout pairs, across at least two paired holdout delays, before assigning `confirmatory-eligible`; legacy/caller protocols cannot lower the floor.
+- Duplicate trials for the same pair arm are treated as ambiguous and excluded instead of silently overwriting earlier evidence.
+- Add a deterministic regression for phase leakage, unpaired holdout rejection, duplicate-arm rejection and snapshot/restore parity.
+- This hardens the validity of memory-learning evidence; it does not itself demonstrate retrieval uplift or change the official readiness score.
+
+
+## [NK1][WorkPass78] Separate holdout metrics from acquisition metrics (2026-11-01)
+- Expose holdout-only replay-on/off means and paired condition difference separately from the all-phase exploratory aggregate.
+- Compute holdout difference only from complete, phase-isolated holdout pairs; acquisition gains can no longer mask a negative holdout result in the confirmatory-facing metric.
+- Extend the WorkPass78 regression with deliberately opposed acquisition and holdout outcomes to prove metric isolation.
+- This makes the evidence report more interpretable; no real-world retrieval uplift is claimed.
+
+
+## [NK1][Memory] Require clean holdout pairs for confirmatory eligibility (2026-11-01)
+- Derive holdout means, effect and distinct-delay coverage only from complete, non-ambiguous replay-on/off holdout pairs.
+- Require the configured number of holdout pairs across at least two paired holdout delays; acquisition pairs and unpaired holdout arms cannot satisfy the gate.
+- Add regressions for duplicate arms and unpaired holdout rows at a second delay.
+- This tightens evidence integrity; it does not claim positive recallDelta or publish a new Release ZIP.
+
+
+## [NK1][Memory] Enforce five-pair confirmatory holdout floor (2026-11-01)
+- Apply a hard five-pair minimum at protocol creation, generic replay eligibility and longitudinal holdout eligibility; restored or caller-supplied lower thresholds cannot bypass it.
+- Keep two-to-four clean pairs exploratory, require paired coverage across at least two holdout delays, and exclude duplicate arms from confirmatory means/effects.
+- Expand deterministic regression coverage for the five-pair boundary, negative holdout effect despite positive acquisition aggregate, duplicate-arm downgrade, unpaired delay exclusion and snapshot/restore parity.
+- This strengthens evidence quality; it does not claim positive recall uplift or independent real-world dataset results.

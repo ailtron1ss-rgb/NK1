@@ -63,6 +63,23 @@ assert.ok(drivenValue>baselineValue+0.1,'calibrated intrinsic drive did not infl
 const untrustedDriveNet=new B272EndogenousGoalGenesis(); untrustedDriveNet.restore(comparisonState);
 const untrustedValue=untrustedDriveNet.step({...comparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:0}).predictedFutureValue01;
 assert.ok(Math.abs(untrustedValue-baselineValue)<1e-9,'untrusted intrinsic drive bypassed confidence weighting');
+// A governed action may differ from the endogenous proposal. Credit the admitted
+// goal, but train the action prototype for the action that actually executed.
+const mismatchNet=new B272EndogenousGoalGenesis(); mismatchNet.restore(comparisonState);
+const mismatchGoal=mismatchNet.step({...comparisonInput,tick:360});
+const executedAction=mismatchGoal.action==='verify'?'explore':'verify';
+const proposedIndex=['respond','explore','verify','rest','reflect','wait','defer'].indexOf(mismatchGoal.action);
+const executedIndex=['respond','explore','verify','rest','reflect','wait','defer'].indexOf(executedAction);
+const beforeMismatch=mismatchNet.snapshot();
+const mismatchResult=mismatchNet.learnFromOutcome({tick:360,action:mismatchGoal.action,executedAction,reward01:.95,predictionError01:.05,externalEvidence01:1,independentEvaluatorGain01:.8,acceptedExternalGoal:true});
+const afterMismatch=mismatchNet.snapshot();
+assert.equal(mismatchResult.proposedAction,mismatchGoal.action);
+assert.equal(mismatchResult.executedAction,executedAction);
+assert.equal(afterMismatch.outcomeHistory.at(-1).action,executedAction,'outcome ledger must record the action that actually executed');
+assert.equal(afterMismatch.outcomeHistory.at(-1).proposedAction,mismatchGoal.action,'outcome ledger must preserve the generated proposal');
+assert.ok(afterMismatch.actionPrototypeWeights[executedIndex].some((v,i)=>v!==beforeMismatch.actionPrototypeWeights[executedIndex][i]),'executed action prototype did not receive outcome credit');
+assert.deepEqual(afterMismatch.actionPrototypeWeights[proposedIndex],beforeMismatch.actionPrototypeWeights[proposedIndex],'unexecuted proposal prototype must not receive execution credit');
+
 const actionCounts=new Map();
 for(const g of goals.slice(-120))actionCounts.set(g,(actionCounts.get(g)||0)+1);
 assert.ok(actionCounts.size>3,'goal identities collapsed');

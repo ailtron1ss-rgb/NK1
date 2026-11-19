@@ -1,5 +1,8 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPluginVoiceTranscriptBridge.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
+import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
+import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
@@ -7,9 +10,11 @@ import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
 import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
+import { AdaptiveSynapticMatrixEngine, type AdaptiveSynapticMatrixState, type SynapticAdapterActivationManifest, type SynapticAdapterCandidate, type SynapticAdapterManifestVerifier, type SynapticAdapterRoutingInput, type SynapticAdapterTask, type SynapticReplayAnchorState, type SynapticReplayAnchorStore } from '../learning/AdaptiveSynapticMatrix.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
+import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
@@ -18,8 +23,8 @@ import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/Runt
 import { ContinuityLedger } from '../system/ContinuityLedger.ts';
 import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
-import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
-import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
+import { buildIndependentEvaluationEvidenceBundle } from '../system/IndependentEvaluationEvidence.ts';
+import { CognitiveResourceEconomy, cognitiveAttentionIntentFromAction } from '../system/CognitiveResourceEconomy.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
 import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
@@ -29,8 +34,11 @@ import { cameraEvidenceFromResult, inspectCameraFile, type CameraEvidence } from
 import { EmbodiedActionExecutor, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
 import { EmbodiedRecoveryController } from '../body/EmbodiedRecoveryController.ts';
 import type { VisionSemanticBackend } from '../body/VisionSemanticBackend.ts';
+import { TemporalObjectTracker } from '../body/TemporalObjectTracker.ts';
 import { RealityGroundingController, type RealityGroundingMode } from '../system/RealityGroundingController.ts';
 import { NeuralCausalTraceLedger } from '../system/NeuralCausalTraceLedger.ts';
+import { OpenLoopRadar, type OpenLoopRadarState, type OpenLoopScanOptions } from '../cognition/evolution/OpenLoopRadar.ts';
+import { sanitizeAutonomousTopicText } from '../system/AutonomousSocialInitiativeEngine.ts';
 import { RealityLearningGate } from '../system/RealityLearningGate.ts';
 import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
 import { ExternalPostconditionVerifier } from '../system/ExternalPostconditionVerifier.ts';
@@ -39,7 +47,8 @@ import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/Act
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
-import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
+import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
+import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
@@ -80,6 +89,17 @@ function bodyActionCost(body: ReturnType<EmbodimentRuntime['snapshot']>, action:
   return Math.max(0, Math.min(1, base + (1-body.cognitiveCapacity01)*0.25 + body.thermalStrain01*0.15));
 }
 
+export type SynapticAdapterLanguageResponse = LanguageResponse & {
+  /** Executor attests the exact base model and adapter digest used for this response. */
+  modelId: string;
+  modelRevisionSha256: string;
+  appliedAdapterSha256: string | null;
+  /** False means the host canonical registry already returned the base-model fallback. */
+  adapterApplied?: boolean;
+  /** Bounded reason supplied by the host canonical adapter executor when it fell back. */
+  adapterFallbackReason?: string | null;
+};
+
 export interface RuntimeConfig extends OrganismConfig {
   stateFile: string;
   worldStateFile?: string;
@@ -89,6 +109,23 @@ export interface RuntimeConfig extends OrganismConfig {
   sensorIntervalMs?: number;
   phonePolicy?: Partial<PhonePolicyConfig>;
   languageInvoker?: LanguageInvoker;
+  /** Exact base-model identity required before any task adapter can route. */
+  synapticBaseModelId?: string;
+  synapticBaseModelRevisionSha256?: string;
+  /** Trusted host verifies signed offline holdout reports; absent means candidate-only. */
+  synapticAdapterManifestVerifier?: SynapticAdapterManifestVerifier;
+  /** Host-owned monotonic anti-rollback store. Must be backed by an atomic, rollback-resistant CAS service. */
+  synapticReplayAnchorStore?: SynapticReplayAnchorStore;
+  /** Require the external replay anchor before activation; when absent, activation fails closed. */
+  synapticReplayAnchorRequired?: boolean;
+  /** Hard wall-clock bound for specialist inference before falling back to the base model. */
+  synapticAdapterTimeoutMs?: number;
+  /** Host-owned inference port that actually loads/applies the selected adapter. */
+  synapticAdapterInvoker?: (
+    request: Parameters<LanguageInvoker>[0],
+    adapter: SynapticAdapterCandidate,
+    routing: SynapticAdapterRoutingInput,
+  ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
@@ -104,8 +141,30 @@ export interface RuntimeConfig extends OrganismConfig {
     /** Optional background repair-to-P23 loop. Opt-in and independently evaluated; never auto-activates candidates. */
     backgroundRevision?: { enabled: boolean; initialDelayMs?: number; intervalMs?: number };
   };
+  /** Optional shared Mem0 adapter; disabled-by-default adapter is created if omitted. */
+  mem0Adapter?: Mem0PlatformAdapter;
+  /** Separate explicit opt-in before remote recall is allowed into live language context. */
+  mem0CognitiveRecall?: boolean;
+  /** Explicitly injected, consent-gated observer for final user ASR transcripts; absent by default. */
+  nekoPluginVoiceTranscriptBridge?: Pick<NekoPluginVoiceTranscriptBridge, 'publishFinal'>;
+  /** Host-selected session key so the consent store can bind approval to this voice session. */
+  voiceTranscriptObserverSessionId?: string;
+  /** Character label sent with explicitly consented voice observations. */
+  voiceTranscriptCharacterName?: string;
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
+}
+
+export interface RuntimeStepOptions {
+  deliberate?: boolean;
+  spontaneous?: boolean;
+  signal?: AbortSignal;
+  /** Suppress immediate language generation while still processing the observation. */
+  suppressResponse?: boolean;
+  /** External plugin observations must not be promoted to direct user goals. */
+  externalGoalPolicy?: RuntimeExternalGoalPolicy;
+  /** Provenance bound by the authenticated N.E.K.O. host adapter. */
+  externalSource?: RuntimeExternalPluginSource;
 }
 
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
@@ -143,6 +202,12 @@ export class OrganismRuntime {
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
+  private readonly temporalObjectTracker = new TemporalObjectTracker();
+  private readonly mem0Adapter: Mem0PlatformAdapter;
+  private readonly mem0CognitiveRecallEnabled: boolean;
+  private readonly nekoPluginVoiceTranscriptBridge: Pick<NekoPluginVoiceTranscriptBridge, 'publishFinal'> | null;
+  private readonly voiceTranscriptObserverSessionId: string;
+  private readonly voiceTranscriptCharacterName: string;
   private stepsSinceConsolidation = 0;
   private readonly worldStore: JsonStateStore<PersistedWorld>;
   private readonly journal: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
@@ -154,6 +219,9 @@ export class OrganismRuntime {
   private consecutiveActiveCycles = 0;
   private queue: Promise<unknown> = Promise.resolve();
   private initialized = false;
+  private readonly synapticMatrix = new AdaptiveSynapticMatrixEngine();
+  private readonly synapticMatrixStore: JsonStateStore<AdaptiveSynapticMatrixState>;
+  private readonly synapticAdapterTimeoutMs: number;
   private lastContextBudgetLedger: ContextBudgetLedgerReport | null = null;
   contextBudgetDiagnostics() {
     return this.lastContextBudgetLedger ? structuredClone(this.lastContextBudgetLedger) : {
@@ -166,8 +234,8 @@ export class OrganismRuntime {
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
+  private readonly openLoopRadar = new OpenLoopRadar();
   private readonly resourceEconomy = new CognitiveResourceEconomy();
-  private readonly realityEvidence = new RealityEvidenceLedger(384);
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
   private readonly realityGrounding = new RealityGroundingController();
@@ -203,6 +271,7 @@ export class OrganismRuntime {
   };
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
+  private readonly openLoopStore: JsonStateStore<OpenLoopRadarState>;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -216,6 +285,16 @@ export class OrganismRuntime {
 
   constructor(config: RuntimeConfig) {
     this.config = { intervalMs: 30_000, enableLanguage: false, autoRun: false, ...config };
+    this.mem0Adapter = config.mem0Adapter ?? Mem0PlatformAdapter.fromEnvironment();
+    this.mem0CognitiveRecallEnabled = config.mem0CognitiveRecall === true;
+    this.nekoPluginVoiceTranscriptBridge = config.nekoPluginVoiceTranscriptBridge ?? null;
+    const suppliedVoiceSessionId = config.voiceTranscriptObserverSessionId;
+    if (suppliedVoiceSessionId !== undefined &&
+        (typeof suppliedVoiceSessionId !== 'string' || !/^[a-z0-9][a-z0-9._:-]{0,127}$/i.test(suppliedVoiceSessionId.trim()))) {
+      throw new Error('invalid-neko-plugin-voice-session-id');
+    }
+    this.voiceTranscriptObserverSessionId = suppliedVoiceSessionId?.trim() || randomUUID();
+    this.voiceTranscriptCharacterName = String(config.voiceTranscriptCharacterName ?? 'Kurisu').trim().slice(0, 80) || 'Kurisu';
     const defaultSensorCadenceMs = config.performanceProfile === 'mobile' ? 60_000 : 60_000;
     const inheritedSensorCadenceMs = config.intervalMs == null ? defaultSensorCadenceMs : Math.max(30_000, Number(config.intervalMs) * 2);
     this.sensorIntervalMs = Math.max(10_000, Number(config.sensorIntervalMs ?? inheritedSensorCadenceMs));
@@ -232,6 +311,8 @@ export class OrganismRuntime {
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
     this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
+    const learningJournals = createDefaultLearningJournals(config.stateFile);
+    this.core.configureP23LearningJournals(learningJournals);
     this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
       ? new P23TrustedShadowLearningScheduler(this.core, config.trustedShadowLearning)
       : null;
@@ -270,8 +351,12 @@ export class OrganismRuntime {
             config.compoundRepairRevision.independentEvaluationConfigForRepair,
           )
         : config.compoundRepairRevision.provideInputs;
+      configureLearningJournals(config.compoundRepairRevision.engine, learningJournals);
       this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
-        this, config.compoundRepairRevision.engine, provideInputs,
+        this,
+        config.compoundRepairRevision.engine,
+        provideInputs,
+        new FileStateStore<CompoundRepairRetryBackoffSnapshot>(`${config.stateFile}.p23-retry-backoff.json`),
       );
     } else {
       this.compoundRepairRevisionCoordinator = null;
@@ -293,6 +378,12 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
+    this.synapticMatrixStore = new FileStateStore<AdaptiveSynapticMatrixState>(`${config.stateFile}.synaptic-matrix.json`);
+    this.synapticAdapterTimeoutMs = config.synapticAdapterTimeoutMs ?? 15_000;
+    if (!Number.isSafeInteger(this.synapticAdapterTimeoutMs) || this.synapticAdapterTimeoutMs < 100 || this.synapticAdapterTimeoutMs > 120_000) {
+      throw new Error('synaptic-adapter-timeout-invalid');
+    }
+    this.openLoopStore = new FileStateStore<OpenLoopRadarState>(`${config.stateFile}.open-loops.json`);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -304,18 +395,84 @@ export class OrganismRuntime {
     return run;
   }
 
+  /**
+   * Best-effort fan-out after successful ASR finalization. This is deliberately
+   * synchronous and isolated: plugin transport failures cannot delay or steer the
+   * current cognitive turn, and no plugin action result is consumed here.
+   */
+  private publishNekoPluginVoiceTranscriptFinal(text: string): void {
+    const bridge = this.nekoPluginVoiceTranscriptBridge;
+    const transcript = typeof text === 'string' ? text.trim().slice(0, 4000) : '';
+    if (!bridge || !transcript) return;
+    try {
+      bridge.publishFinal({
+        sessionId: this.voiceTranscriptObserverSessionId,
+        turnId: 'asr-' + randomUUID(),
+        characterName: this.voiceTranscriptCharacterName,
+        provider: 'termux-speech-to-text',
+        speakerRole: 'user',
+        final: true,
+        transcript,
+      });
+    } catch {
+      // External observers are strictly non-authoritative and never fail ASR delivery.
+    }
+  }
+
   async init(): Promise<void> {
     return this.enqueue(async () => {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      const restoredTemporalTracks=this.temporalObjectTracker.restoreFromPerception(
+        this.core.p41PerceptionSnapshot().entities,
+        Date.now(),
+      );
+      if(restoredTemporalTracks.restored>0){
+        await this.journal.write('info','runtime.perception.tracks-restored',restoredTemporalTracks);
+      }
+      await this.compoundRepairRevisionCoordinator?.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
+      this.synapticMatrix.restore(await this.synapticMatrixStore.load() ?? undefined, this.config.synapticAdapterManifestVerifier);
+      // Reconcile every persisted adapter against the host-owned monotonic anchor before
+      // the runtime can route to it. A local JSON hash chain is not a rollback-resistant store.
+      const replayAnchorStore = this.config.synapticReplayAnchorStore;
+      for (const record of this.synapticMatrix.snapshot().adapters) {
+        if (replayAnchorStore) {
+          try {
+            const anchor = await replayAnchorStore.read(record.candidate.id);
+            if (!this.synapticMatrix.reconcileReplayAnchor(record.candidate.id, anchor)) {
+              await this.journal.write('warn', 'runtime.synaptic-adapter.replay-anchor-mismatch', {
+                adapterId: record.candidate.id,
+                localCount: this.synapticMatrix.replayAnchorState(record.candidate.id)?.acceptedReportCount ?? 0,
+              }).catch(() => {});
+            }
+          } catch {
+            if (record.status === 'active' || Boolean(record.manifest) || (record.acceptedReportCount ?? 0) > 0) {
+              this.synapticMatrix.markReplayAnchorUntrusted(record.candidate.id);
+            }
+            await this.journal.write('warn', 'runtime.synaptic-adapter.replay-anchor-unavailable', {
+              adapterId: record.candidate.id,
+              hadActivationEvidence: record.status === 'active' || Boolean(record.manifest) || (record.acceptedReportCount ?? 0) > 0,
+            }).catch(() => {});
+          }
+        } else if (this.config.synapticReplayAnchorRequired === true &&
+            (record.status === 'active' || Boolean(record.manifest) ||
+             (record.acceptedReportCount ?? 0) > 0)) {
+          this.synapticMatrix.markReplayAnchorUntrusted(record.candidate.id);
+        }
+      }
+      // Re-verified active records and quarantined replay mismatches are persisted before
+      // any cognitive step can use the language adapter path.
+      await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+      const restoredOpenLoopState = await this.openLoopStore.load();
+      this.openLoopRadar.restore(restoredOpenLoopState ?? undefined);
+      if (!restoredOpenLoopState) await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
       this.resourceEconomy.restore(systemSnapshot.runtimeCognitiveResourceEconomy ?? systemSnapshot.cognitiveResourceEconomy ?? undefined);
       this.runtimePerformance.restore(systemSnapshot.runtimePerformance ?? undefined);
-      this.realityEvidence.restore(systemSnapshot.realityEvidenceLedger ?? undefined);
       this.unifiedCycle.restore(systemSnapshot.runtimeUnifiedCognitiveCycle ?? systemSnapshot.unifiedCognitiveCycle ?? undefined);
       this.continuousCognitiveFabric.restore(systemSnapshot.continuousCognitiveFabric ?? undefined);
       this.realityGrounding.restore(systemSnapshot.realityGrounding ?? undefined);
@@ -342,9 +499,9 @@ export class OrganismRuntime {
       const snap = this.core.snapshot();
       await this.embodiment.init(snap.facets.embodiment?.body);
       this.embodiedRecovery.restore(snap.facets.embodiment?.embodiedRecovery);
-      this.core.registerActionTool({ id:'android.listen', capability:'android.stt', destructive:false, execute:async()=>{ const text=await this.embodiment.listen(); return {ok:text!=null,text:text?.slice(0,4000) ?? null}; } });
-      this.core.registerActionTool({ id:'organism.project.device', capability:'project.device.read', destructive:false, projectAllowed:true, execute:async()=>{ const b=this.embodiment.snapshot(); const fresh= b.telemetry.source==='android-termux' && b.telemetry.staleMs===0; return {ok:fresh,verified:fresh,evidenceSource:fresh?'device':'host-fallback',independenceKey:`device:${b.telemetry.sampledAt}`,battery01:b.telemetry.battery01,thermal01:b.telemetry.thermalPressure01,cpuLoad01:b.telemetry.cpuLoad01,ramPressure01:b.telemetry.ramPressure01,awake:b.awake,sampledAt:b.telemetry.sampledAt,staleMs:b.telemetry.staleMs,error:fresh?undefined:'android-telemetry-not-fresh'}; } });
-      this.core.registerActionTool({ id:'organism.project.world', capability:'project.world.read', destructive:false, projectAllowed:true, execute:async()=>{ const c=this.environment.observationContext(); return {ok:true,evidenceSource:'simulator',independenceKey:`sim-world:${c.tick}`,tick:c.tick,location:c.location,energy:c.energy,attention:c.attention,uncertainty:c.uncertainty,facts:c.facts.slice(-12),objects:c.objects.slice(-12),events:c.events.slice(-12)}; } });
+      this.core.registerActionTool({ id:'android.listen', capability:'android.stt', destructive:false, inputContract:{type:'object',properties:{},required:[],additionalProperties:false,maxProperties:0}, outputContract:{type:'object',properties:{ok:{type:'boolean'}},required:['ok'],additionalProperties:true,maxProperties:2}, execute:async()=>{ const text=await this.embodiment.listen(); return {ok:text!=null,text:text?.slice(0,4000) ?? null}; } });
+      this.core.registerActionTool({ id:'organism.project.device', capability:'project.device.read', destructive:false, projectAllowed:true, inputContract:{type:'object',properties:{},required:[],additionalProperties:false,maxProperties:0}, outputContract:{type:'object',properties:{ok:{type:'boolean'},verified:{type:'boolean'},evidenceSource:{type:'string',enum:['device','host-fallback']},independenceKey:{type:'string',minLength:1,maxLength:180},battery01:{type:'number',minimum:0,maximum:1},thermal01:{type:'number',minimum:0,maximum:1},cpuLoad01:{type:'number',minimum:0,maximum:1},ramPressure01:{type:'number',minimum:0,maximum:1},awake:{type:'boolean'},sampledAt:{type:'number',minimum:0},staleMs:{type:'number',minimum:0},error:{type:'string',minLength:1,maxLength:80}},required:['ok','verified','evidenceSource','independenceKey'],additionalProperties:false,maxProperties:12}, execute:async()=>{ const b=this.embodiment.snapshot(); const sampleAt=b.telemetry.sampledAt; const fresh=b.telemetry.source==='android-termux' && b.telemetry.staleMs===0 && Number.isFinite(sampleAt) && sampleAt>0; return {ok:fresh,verified:fresh,evidenceSource:fresh?'device':'host-fallback',independenceKey:`device:${Number.isFinite(sampleAt)?sampleAt:'unavailable'}`,...(Number.isFinite(b.telemetry.battery01)?{battery01:b.telemetry.battery01}:{}),...(Number.isFinite(b.telemetry.thermalPressure01)?{thermal01:b.telemetry.thermalPressure01}:{}),...(Number.isFinite(b.telemetry.cpuLoad01)?{cpuLoad01:b.telemetry.cpuLoad01}:{}),...(Number.isFinite(b.telemetry.ramPressure01)?{ramPressure01:b.telemetry.ramPressure01}:{}),...(typeof b.awake==='boolean'?{awake:b.awake}:{}),...(Number.isFinite(sampleAt)?{sampledAt:sampleAt}:{}),...(Number.isFinite(b.telemetry.staleMs)?{staleMs:b.telemetry.staleMs}:{}),...(fresh?{}:{error:'android-telemetry-not-fresh'})}; } });
+      this.core.registerActionTool({ id:'organism.project.world', capability:'project.world.read', destructive:false, projectAllowed:true, inputContract:{type:'object',properties:{},required:[],additionalProperties:false,maxProperties:0}, outputContract:{type:'object',properties:{ok:{type:'boolean',enum:[true]},evidenceSource:{type:'string',enum:['simulator']},independenceKey:{type:'string',minLength:1,maxLength:180},tick:{type:'integer',minimum:0}},required:['ok','evidenceSource','independenceKey','tick'],additionalProperties:true,maxProperties:16}, execute:async()=>{ const c=this.environment.observationContext(); return {ok:true,evidenceSource:'simulator',independenceKey:`sim-world:${c.tick}`,tick:c.tick,location:c.location,energy:c.energy,attention:c.attention,uncertainty:c.uncertainty,facts:c.facts.slice(-12),objects:c.objects.slice(-12),events:c.events.slice(-12)}; } });
       this.embodiment.setSpeechGatewayDispatcher(async(text,ttsOptions,speechEventId)=>{
         const idempotencyKey=`tts-${createHash('sha256').update(speechEventId).digest('hex')}`;
         const execution=await this.core.executeTool('organism.device.speak',{text,speechEventId,language:ttsOptions.language,region:ttsOptions.region,pitch:ttsOptions.pitch,rate:ttsOptions.rate,volume:ttsOptions.volume,stream:ttsOptions.stream},'embodiment-runtime-voice-output',{idempotencyKey,decisionId:speechEventId,autonomous:true});
@@ -383,7 +540,7 @@ export class OrganismRuntime {
     return {cycles:total,actions,worldTicks:this.environment.snapshot().tick,neuralLearningUpdates:Number(neural.learningUpdates??0),temporalUpdates:Number(neural.temporalUpdates??0),externalCommands:0};
   }
 
-  async step(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean; signal?: AbortSignal } = { deliberate: true }): Promise<RuntimeStep> {
+  async step(externalText?: string, options: RuntimeStepOptions = { deliberate: true }): Promise<RuntimeStep> {
     return this.enqueue(async () => {
       const stepStartedAt=Date.now();
       let stepCpuStart:any=null;
@@ -508,13 +665,170 @@ export class OrganismRuntime {
     });
   }
 
+  /** Remote recall is a separately gated, best-effort source. It never writes to canonical MemoryOS2. */
+  private async retrieveMem0Context(query: string): Promise<Mem0Candidate[]> {
+    if (!this.mem0CognitiveRecallEnabled || !query.trim() || !this.mem0Adapter.diagnostics().available) return [];
+    try {
+      const result = await this.mem0Adapter.search(query, 3);
+      return result.status === 'ok' ? result.memories.slice(0, 3) : [];
+    } catch {
+      // External memory must never prevent a local-first response.
+      return [];
+    }
+  }
+
+  /**
+   * Adapter selection is a second-stage route above the host's base-model/backend
+   * choice. The host callback is the only component allowed to load real weights.
+   * Any adapter execution failure returns to the unchanged base LanguageInvoker.
+   */
+  private async invokeLanguageWithSynapticMatrix(
+    task: SynapticAdapterTask,
+    request: Parameters<LanguageInvoker>[0],
+    cycle: OrganismCycleResult,
+    baseInvoker: LanguageInvoker,
+  ): Promise<LanguageResponse> {
+    const needs = cycle.state.needs;
+    const energy01 = clamp01(Number(needs.energy ?? 0));
+    const cognitiveLoad01 = clamp01(Number(needs.cognitiveLoad ?? 1));
+    const uncertainty01 = clamp01(Number(needs.uncertainty ?? 1));
+    const resourceRisk01 = clamp01((1 - energy01) * 0.45 + cognitiveLoad01 * 0.35 + uncertainty01 * 0.20);
+    const promptText = String(request.system ?? '') + '\n' + String(request.user ?? '');
+    // UTF-8 bytes are a conservative upper bound for byte-tokenized prompt pieces.
+    // Prefer overestimating adapter context use to silently exceeding a profile limit.
+    const utf8ByteTokenUpperBound = new TextEncoder().encode(promptText).length;
+    const ledgerTokenEstimate = Number(request.contextLedger?.estimatedRenderedTokens);
+    const promptTokenEstimate = Number.isFinite(ledgerTokenEstimate) && ledgerTokenEstimate >= 0
+      ? Math.max(utf8ByteTokenUpperBound, Math.ceil(ledgerTokenEstimate))
+      : utf8ByteTokenUpperBound;
+    const contextTokens = promptTokenEstimate + Math.max(0, Math.floor(Number(request.maxTokens ?? 0) || 0));
+    const routingInput: SynapticAdapterRoutingInput = {
+      task,
+      baseModelId: this.config.synapticBaseModelId,
+      baseModelRevisionSha256: this.config.synapticBaseModelRevisionSha256,
+      contextTokens,
+      confidence01: clamp01(Number(cycle.decision.selected?.confidence ?? (1 - uncertainty01))),
+      uncertainty01,
+      resourceRisk01,
+      executorAvailable: typeof this.config.synapticAdapterInvoker === 'function',
+    };
+    const selection = this.synapticMatrix.select(routingInput);
+    // Persist bounded fallback diagnostics periodically without forcing a disk write
+    // on every phone inference cycle.
+    if (selection.mode === 'base-fallback') {
+      const snapshot = this.synapticMatrix.snapshot();
+      if (snapshot.metrics.routeDecisions % 8 === 0) {
+        await this.synapticMatrixStore.save(snapshot).catch(() => {});
+      }
+    }
+    if (selection.mode === 'adapter' && this.config.synapticAdapterInvoker) {
+      const startedAt = Date.now();
+      const adapterController = new AbortController();
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      let onParentAbort: (() => void) | undefined;
+      try {
+        if (request.signal?.aborted) throw request.signal.reason ?? new Error('synaptic-adapter-request-aborted');
+        const adapterRequest = { ...request, signal: adapterController.signal };
+        const timeoutPromise = new Promise<never>((_resolve, reject) => {
+          timeoutHandle = setTimeout(() => {
+            const timeoutError = new Error('synaptic-adapter-timeout');
+            adapterController.abort(timeoutError);
+            reject(timeoutError);
+          }, this.synapticAdapterTimeoutMs);
+        });
+        const parentAbortPromise = request.signal
+          ? new Promise<never>((_resolve, reject) => {
+              onParentAbort = () => {
+                const reason = request.signal?.reason ?? new Error('synaptic-adapter-request-aborted');
+                adapterController.abort(reason);
+                reject(reason);
+              };
+              // AbortSignal does not replay an abort event to listeners added late.
+              if (request.signal?.aborted) onParentAbort?.();
+              else request.signal?.addEventListener('abort', onParentAbort, { once: true });
+            })
+          : new Promise<never>(() => {});
+        const response = await Promise.race([
+          this.config.synapticAdapterInvoker(adapterRequest, selection.adapter, routingInput),
+          timeoutPromise,
+          parentAbortPromise,
+        ]);
+        if (request.signal?.aborted) {
+          throw request.signal.reason ?? new Error('synaptic-adapter-request-aborted');
+        }
+        if (!response || typeof response.text !== 'string' || !response.text.trim()
+          || typeof response.backend !== 'string' || !response.backend.trim()
+          || !Number.isFinite(response.latencyMs) || response.latencyMs < 0 || response.latencyMs > 300_000) {
+          throw new Error('synaptic-adapter-response-invalid');
+        }
+        if (response.modelId !== this.config.synapticBaseModelId
+          || typeof response.modelRevisionSha256 !== 'string'
+          || response.modelRevisionSha256.toLowerCase() !== String(this.config.synapticBaseModelRevisionSha256).toLowerCase()) {
+          throw new Error('synaptic-adapter-base-model-attestation-mismatch');
+        }
+        if (response.adapterApplied === false) {
+          if (response.appliedAdapterSha256 !== null && response.appliedAdapterSha256 !== undefined) {
+            throw new Error('synaptic-canonical-fallback-must-not-attest-applied-adapter');
+          }
+          const fallbackReason = typeof response.adapterFallbackReason === 'string'
+            ? response.adapterFallbackReason.slice(0, 120)
+            : 'canonical-selection-mismatch';
+          this.synapticMatrix.recordCanonicalFallback(task, selection.adapterId, fallbackReason);
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+          await this.journal.write('info', 'runtime.synaptic-adapter.canonical-base-fallback', {
+            adapterId: selection.adapterId, task, fallbackReason,
+            baseModelId: this.config.synapticBaseModelId,
+            baseModelRevisionSha256: response.modelRevisionSha256,
+          }).catch(() => {});
+          // The canonical executor already returned the base response. Do not
+          // invoke baseInvoker a second time and do not penalize a healthy P25
+          // candidate for a registry/policy disagreement.
+          return response;
+        }
+        if (typeof response.appliedAdapterSha256 !== 'string'
+          || response.appliedAdapterSha256.toLowerCase() !== selection.adapter.artifactSha256) {
+          throw new Error('synaptic-adapter-weight-attestation-mismatch');
+        }
+        this.synapticMatrix.observe(selection.adapterId, true, Date.now() - startedAt);
+        await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+        await this.journal.write('info', 'runtime.synaptic-adapter.selected', {
+          adapterId: selection.adapterId, task, score01: selection.score01,
+          baseModelId: this.config.synapticBaseModelId,
+          baseModelRevisionSha256: response.modelRevisionSha256,
+          artifactSha256: selection.adapter.artifactSha256,
+          appliedAdapterSha256: response.appliedAdapterSha256,
+        }).catch(() => {});
+        return response;
+      } catch (error) {
+        // Caller cancellation is not a model/adapter fault and must not poison
+        // the specialist's reliability score or trigger cooldown/quarantine.
+        if (request.signal?.aborted) {
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+          await this.journal.write('info', 'runtime.synaptic-adapter.cancelled', {
+            adapterId: selection.adapterId, task,
+          }).catch(() => {});
+          throw error;
+        }
+        this.synapticMatrix.observe(selection.adapterId, false, Date.now() - startedAt);
+        await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+        await this.journal.write('warn', 'runtime.synaptic-adapter.base-fallback', {
+          adapterId: selection.adapterId, task, reason: String((error as any)?.message ?? error).slice(0, 180),
+        }).catch(() => {});
+      } finally {
+        if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+        if (onParentAbort && request.signal) request.signal.removeEventListener('abort', onParentAbort);
+      }
+    }
+    return baseInvoker(request);
+  }
+
   private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
     if (!this.config.enableLanguage || !this.config.languageInvoker) return null;
     const current = this.core.operationalStatusSnapshot();
     const budgetSnapshot = this.core.cognitiveBudgetOperationalSnapshot();
     const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
     if (!shouldAsk) return null;
-    const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext());
+    const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.userModelPromptContext());
     if(signal) request.signal=signal;
     this.lastContextBudgetLedger = request.contextLedger ?? null;
     const budgetMode = budgetSnapshot?.mode ?? 'shallow';
@@ -524,7 +838,7 @@ export class OrganismRuntime {
     const spend=this.core.cognitiveBudgetSpend(budgetMode==='deep'?'llm-deep':'llm-fast',tierCost,infoGain,'cognitive-proposal');
     if(!spend.accepted) return parseCognitiveProposal('budget constrained: preserve resources and verify supplied evidence before changing course','local-fallback');
     try {
-      const response=await this.config.languageInvoker(request);
+      const response=await this.invokeLanguageWithSynapticMatrix('reasoning', request, cycle, this.config.languageInvoker);
       await this.core.recordLanguageBackend(response.backend, response.latencyMs, true);
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
       return parseCognitiveProposal(response.text,'llm');
@@ -536,9 +850,10 @@ export class OrganismRuntime {
     }
   }
 
-  private async stepInternal(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean; signal?: AbortSignal } = {}): Promise<RuntimeStep> {
+  private async stepInternal(externalText?: string, options: RuntimeStepOptions = {}): Promise<RuntimeStep> {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
     if (externalText) this.embodiment.userActivity();
+    const externalPluginSource = normalizeRuntimeExternalPluginSource(options.externalSource);
     let body = await this.embodiment.sample();
     const resourceAllocation = this.resourceEconomy.allocate({
       tick: this.core.operationalStatusSnapshot().tick,
@@ -552,8 +867,9 @@ export class OrganismRuntime {
       ramPressure01: clamp01((1-body.cognitiveCapacity01)*.65 + (1-body.cognitiveCapacity01)*.35),
       performancePressure01: 0,
       awake: body.awake,
+      attentionIntent: cognitiveAttentionIntentFromAction(this.core.operationalStatusSnapshot().lastAction),
     });
-    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
+    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,attentionEffort01:resourceAllocation.attentionEffort01,attentionEffortIntent:resourceAllocation.attentionEffortIntent,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
     this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
     const previousNeural = this.core.b365UnifiedNeuroCausalDiagnostics();
     const perceptionPlan = this.core.b365PlanActivePerception({
@@ -582,32 +898,86 @@ export class OrganismRuntime {
       await this.consolidateInternal();
     await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());
     }
-    const observation = this.environment.toOrganismObservation();
-    // Validate the actual runtime-to-core observation boundary before nested fields are read.
+    const rawObservation = this.environment.toOrganismObservation();
+    // Normalize world data at the actual runtime-to-core boundary. The helper
+    // preserves "unknown" instead of coercing malformed observations to facts.
+    const normalizedWorldContext = normalizeWorldContext(rawObservation.worldContext, {
+      tick: this.core.operationalStatusSnapshot().tick,
+    });
+    if (!normalizedWorldContext) {
+      throw new Error('World context normalization failed at OrganismRuntime boundary');
+    }
+    const observation = { ...rawObservation, worldContext: normalizedWorldContext };
+    // Validate the normalized observation before any nested fields are consumed.
     assertCognitiveCycleBoundaryInput(observation, 'full');
     const modalityEvents = [];
-    if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:['user-input'], content:externalText }));
+    if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:externalPluginSource ? [`plugin:${externalPluginSource.pluginId}:${externalPluginSource.messageId}`] : ['user-input'], content:externalText }));
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'sensor', summary:this.embodiment.resourceSummary(), confidence:body.sensoryFreshness01*.82, salience:Math.max(.18,Math.abs(body.telemetry.motion01 ?? 0)+.15), evidence:['device-telemetry'] }));
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'world', summary:observation.worldContext.facts.slice(-8).join(' | '), confidence:.7, salience:Math.max(.15,observation.surprise ?? .2), evidence:['world-model'] }));
-    const fused = this.core.multimodalSnapshot();
+    // OrganismCore owns the canonical PerceptionEngine and persists its snapshot.
+    // Observe the event counter around the single core.observe call; never run
+    // a second runtime-local perception engine against the same raw sample.
+    const perceptionBefore = this.core.perceptionSnapshot();
     const cycle = await this.core.observe({
       ...observation,
       text: externalText,
-      externalGoal: externalText ? { title: externalText.slice(0, 160), importance: 0.65, urgency: 0.4 } : undefined,
+      externalGoal: externalGoalForRuntimeInput(externalText, options.externalGoalPolicy),
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
     });
+    const perceptionAfter = this.core.perceptionSnapshot();
+    const canonicalPerceptionEvent = perceptionAfter.eventCount > perceptionBefore.eventCount
+      ? perceptionAfter.lastEvent
+      : null;
+    if (canonicalPerceptionEvent && canonicalPerceptionEvent.kind !== 'quiet') {
+      this.evidenceBus.publish({
+        tick: cycle.state.tick,
+        kind: 'observation',
+        source: 'perception-engine',
+        confidence01: canonicalPerceptionEvent.confidence,
+        payload: {
+          eventId: canonicalPerceptionEvent.id,
+          eventKind: canonicalPerceptionEvent.kind,
+          eventSource: canonicalPerceptionEvent.source,
+          salience01: canonicalPerceptionEvent.salience,
+          novelty01: canonicalPerceptionEvent.novelty,
+          detail: canonicalPerceptionEvent.detail,
+          evidence: canonicalPerceptionEvent.evidence.slice(0, 8),
+          owner: 'OrganismCore',
+        },
+      });
+      if (canonicalPerceptionEvent.source !== 'social') {
+        modalityEvents.push({
+          modality: canonicalPerceptionEvent.source === 'android' ? 'sensor' : 'world',
+          summary: (canonicalPerceptionEvent.kind + ': ' + canonicalPerceptionEvent.detail).slice(0, 500),
+        });
+      }
+    }
     const activePerceptionRequestId = this.core.activePerceptionPendingId();
+    const executionPlan = this.core.cognitiveExecutionPlanSnapshot();
     const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
-    const cognitiveProposal = await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal);
+    const slowCognitionAllowed = executionPlan?.run?.['slow-cognition'] !== false;
+    const cognitiveProposal = slowCognitionAllowed
+      ? await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal)
+      : null;
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
     const internalAction = cycle.decision.selected?.action ?? 'wait';
     const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
-    this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning');
-    const plan = this.plans.build(cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null, internalAction, 4, 4);
-    const simBudget=this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout');
-    const branches = simBudget.accepted
+    const projectAllowed = executionPlan?.run?.project !== false;
+    const planningBudget = projectAllowed
+      ? this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning')
+      : { accepted: false };
+    const selectedGoal = cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null;
+    const plan = planningBudget.accepted && projectAllowed
+      ? this.plans.build(selectedGoal, internalAction, 4, 4)
+      : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated');
+    const worldRolloutAllowed = executionPlan?.run?.['world-rollout'] !== false;
+    const shadowPassAllowed = executionPlan?.run?.shadow !== false;
+    const simBudget = worldRolloutAllowed && shadowPassAllowed
+      ? this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout')
+      : { accepted: false };
+    const branches = simBudget.accepted && worldRolloutAllowed && shadowPassAllowed
       ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, resourceAllocation.maxCounterfactualBranches, 4)
       : [];
     await this.core.recordCounterfactuals(branches);
@@ -619,8 +989,12 @@ export class OrganismRuntime {
     // after reality arbitration decides that no authoritative external outcome exists.
     const shadowTransition = this.environment.simulate(worldAction, before);
     const transition = shadowTransition;
-    const matchedCandidates: import('../world/WorldEnvironment.ts').EnvironmentAction[] = ['observe','inspect','move','collect','rest','communicate'].filter((a): a is import('../world/WorldEnvironment.ts').EnvironmentAction => a !== worldAction);
-    const matchedProjections = matchedCandidates.map(action => ({ action, projection: this.environment.project(action, before) }));
+    const matchedCandidates: import('../world/WorldEnvironment.ts').EnvironmentAction[] = shadowPassAllowed
+      ? ['observe','inspect','move','collect','rest','communicate'].filter((a): a is import('../world/WorldEnvironment.ts').EnvironmentAction => a !== worldAction)
+      : [];
+    const matchedProjections = shadowPassAllowed
+      ? matchedCandidates.map(action => ({ action, projection: this.environment.project(action, before) }))
+      : [];
     const matched = matchedProjections.filter(x => x.projection.valid).sort((a,b) => b.projection.reward-a.projection.reward)[0] ?? null;
     if (matched) {
       const matchedAction = matched.action;
@@ -655,8 +1029,8 @@ export class OrganismRuntime {
       parentIds:[predictionEvidence.id],payload:{action:worldAction,internalAction,deviceActionPending:true},
     });
     const bodyIsPhysical = body.telemetry.source === 'android-termux' && body.telemetry.staleMs === 0;
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:bodyIsPhysical?'device-observation':'derived',claim:bodyIsPhysical?'device-resource-sample':'host-resource-sample-derived',confidence01:bodyIsPhysical ? body.sensoryFreshness01*.82 : body.sensoryFreshness01*.25,independenceKey:`${bodyIsPhysical?'device':'host'}:${body.telemetry.sampledAt}`,parentIds:[observationEvidence.id]});
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:'simulator',claim:'shadow-world-transition-outcome',confidence01:.72,independenceKey:`sim-shadow:${transition.at}`,parentIds:[predictionEvidence.id]});
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:bodyIsPhysical?'device-observation':'derived',claim:bodyIsPhysical?'device-resource-sample':'host-resource-sample-derived',confidence01:bodyIsPhysical ? body.sensoryFreshness01*.82 : body.sensoryFreshness01*.25,independenceKey:`${bodyIsPhysical?'device':'host'}:${body.telemetry.sampledAt}`,parentIds:[observationEvidence.id]});
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'simulator',claim:'shadow-world-transition-outcome',confidence01:.72,independenceKey:`sim-shadow:${transition.at}`,parentIds:[predictionEvidence.id]});
 
     const selectedCandidate = cycle.decision.selected;
     const expectedReward01 = Math.max(0, Math.min(1, selectedCandidate?.predictedUtility ?? expectedReward));
@@ -666,18 +1040,47 @@ export class OrganismRuntime {
       ? this.core.autonomousSocialInitiativeForGeneration()
       : null;
     const languageBudgetAllows = currentBudgetAllowsLanguage(this.core.cognitiveBudgetOperationalSnapshot()?.mode);
-    if (this.config.enableLanguage && this.config.languageInvoker && languageBudgetAllows && (Boolean(externalText) || Boolean(autonomousAgenda))) {
-      const request = externalText
-        ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext())
-        : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext());
-      if(options.signal) request.signal=options.signal;
-      this.lastContextBudgetLedger = request.contextLedger ?? null;
+    const languageInvoker = this.config.languageInvoker;
+    if (languageInvoker && shouldInvokeLanguageForRuntimeStep({ enabled:this.config.enableLanguage, hasInvoker:true, languageBudgetAllows, hasExternalText:Boolean(externalText), hasAutonomousAgenda:Boolean(autonomousAgenda), suppressResponse:options.suppressResponse })) {
+      let openLoopReservation: { id: string; initiativeId: string } | null = null;
       try {
-        language = await this.config.languageInvoker(request);
+        let openLoopPromptContext: import('../language/LanguageOrgan.ts').AutonomousOpenLoopPromptContext | undefined;
+        if (!externalText && autonomousAgenda) {
+          const dueCandidate = this.openLoopRadar.scan({ reminderCooldownMs: 0 }).find(item =>
+            item.shouldSurface && sanitizeAutonomousTopicText(item.record.title, 180) !== null);
+          if (dueCandidate) {
+            const reserved = await this.persistOpenLoopMutation(() =>
+              this.openLoopRadar.reserveForInitiative(dueCandidate.record.id, autonomousAgenda.id));
+            openLoopReservation = { id: reserved.id, initiativeId: autonomousAgenda.id };
+            openLoopPromptContext = {
+              title: reserved.title,
+              owner: reserved.owner,
+              kind: reserved.kind,
+              surfaceReason: dueCandidate.surfaceReason ?? undefined,
+              overdueMs: dueCandidate.overdueMs,
+            };
+          }
+        }
+        const mem0Query = externalText || openLoopPromptContext?.title || autonomousAgenda?.topic || '';
+        const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
+        const request = externalText
+          ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
+          : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext(), openLoopPromptContext);
+        if(options.signal) request.signal=options.signal;
+        this.lastContextBudgetLedger = request.contextLedger ?? null;
+        language = await this.invokeLanguageWithSynapticMatrix('language', request, cycle, languageInvoker);
         if (!externalText && autonomousAgenda && !this.core.stageAutonomousSocialInitiativeMessage(autonomousAgenda.id, language?.text ?? '', Date.now())) {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
+          if (openLoopReservation) {
+            await this.persistOpenLoopMutation(() => this.openLoopRadar.releaseInitiative(openLoopReservation!.initiativeId));
+            openLoopReservation = null;
+          }
         }
       } catch (error) {
+        if (openLoopReservation) {
+          await this.persistOpenLoopMutation(() => this.openLoopRadar.releaseInitiative(openLoopReservation!.initiativeId)).catch(() => {});
+          openLoopReservation = null;
+        }
         if(options.signal?.aborted) {
           this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'language-cancelled',confidence01:.95,payload:{reason:'caller-aborted',role:'response-generation'}});
         } else if (!externalText && autonomousAgenda) {
@@ -860,9 +1263,8 @@ export class OrganismRuntime {
     });
 
     const embodiedLedgerClass = embodiedAction.realityClass === 'device-observation' ? 'device-observation' : 'derived';
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:embodiedLedgerClass,claim:`embodied-action:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`embodied:${embodiedAction.at}:${embodiedAction.source}`,parentIds:[actionEvidence.id]});
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:grounded.source==='external' ? 'device-observation' : 'simulator',claim:`action-consequence:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`consequence:${cycle.state.tick}:${embodiedAction.source}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
-    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:embodiedLedgerClass,claim:`embodied-action:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`embodied:${embodiedAction.at}:${embodiedAction.source}`,parentIds:[actionEvidence.id]});
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:grounded.source==='external' ? 'device-observation' : 'simulator',claim:`action-consequence:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`consequence:${cycle.state.tick}:${embodiedAction.source}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
     if(grounded.source==='external') {
       this.core.recordExternalPerceptualEvidence({
         at:cycle.state.at,
@@ -927,8 +1329,7 @@ export class OrganismRuntime {
       reason:`${grounded.source==='external'?'external-grounded':'simulation-fallback'}-neural-loop;learningScale=${learningGate.learningScale01.toFixed(3)};worldScale=${learningGate.worldModelUpdateScale01.toFixed(3)};identityScale=${learningGate.identityUpdateScale01.toFixed(3)};shadowDivergence=${shadowResolution.divergence01.toFixed(3)};causalHoldout=${holdoutReadiness01.toFixed(3)};intervention/lesion-still-required-for-causal-attribution`,
     });
     this.core.setNeuralCausalTrace(this.neuralCausalTrace.snapshot());
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:grounded.source==='external'?'device-observation':'simulator',claim:'neural-learning-input-provenance',confidence01:grounded.evidence01,independenceKey:`neural-input:${cycle.state.tick}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
-    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:grounded.source==='external'?'device-observation':'simulator',claim:'neural-learning-input-provenance',confidence01:grounded.evidence01,independenceKey:`neural-input:${cycle.state.tick}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
 
     this.core.closeB380TemporalLife({tick:cycle.state.tick,at:cycle.state.at,action:embodiedAction.action,goalId:cycle.decision.selected?.goalId??null,reward01:grounded.reward01,success01:grounded.success01,surprise01:grounded.surprise01,predictionError01:clamp01(Math.max(resolvedPrediction?.error01??cycle.state.predictionError,grounded.consequenceError01)),physicalVerified01:grounded.verified01,independent01:grounded.independent01,evidenceQuality01:grounded.evidence01,recoveryEvent01:(embodiedAction.status!=='executed'||recoveryRecord.recovered)?1:0,sleepBoundary01:body.awake?0:1,external01:grounded.source==='external'?1:0});
     const b380Token=this.core.b380TemporalLifeSnapshot().lastToken;
@@ -938,7 +1339,7 @@ export class OrganismRuntime {
     // Record causal-cycle completion only after feedback, model updates, and embodiment state updates have actually run.
     const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({
       tick:cycle.state.tick,
-      observation:{source:'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id}},
+      observation:{source:externalPluginSource ? `neko-plugin:${externalPluginSource.pluginId}` : 'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id,...(externalPluginSource ? {externalSourceKind:externalPluginSource.kind,externalMessageId:externalPluginSource.messageId} : {})}},
       prediction:{source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
       appraisal:{source:'homeostatic-appraisal',confidence01:clamp01(1-cycle.state.needs.uncertainty),payload:{energy01:cycle.state.needs.energy,cognitiveLoad01:cycle.state.needs.cognitiveLoad,uncertainty01:cycle.state.needs.uncertainty,novelty01:cycle.state.needs.novelty,socialNeed01:cycle.state.needs.socialNeed,goalPressure01:cycle.state.needs.goalPressure,predictionError01:cycle.state.predictionError}},
       attention:{source:'global-workspace',confidence01:clamp01(cycle.workspace.selected.length/Math.max(1,cycle.decision.candidates.length)),payload:{broadcastId:cycle.workspace.broadcastId,selectedCandidateIds:cycle.workspace.selected.slice(0,16),recurrentCycles:cycle.workspace.recurrentCycles,attentionBudget01:cycle.state.attentionBudget}},
@@ -955,10 +1356,9 @@ export class OrganismRuntime {
     this.core.setRuntimeCognitiveEventFabric(fabricSnapshot);
     const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,appraisal:cycleStageIds.appraisal,attention:cycleStageIds.attention,memory:cycleStageIds.memory,goal:cycleStageIds.goal,plan:cycleStageIds.plan,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
     const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
-    const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
+    const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.coreIntegrity01,coreLineageComplete:cycleLineage.coreComplete,fullLineageComplete:cycleLineage.fullComplete,fullIntegrity01:cycleLineage.fullIntegrity01});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
-    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
 
 
     // B364: severe embodied resource pressure is now a real durability event, not only a
@@ -984,7 +1384,7 @@ export class OrganismRuntime {
     if(cycle.state.tick % 8 === 0 || Boolean(externalText)) this.core.setRuntimeEvidence(this.evidenceBus.snapshot());
     this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
     this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
-    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+    this.core.setRealityEvidenceLedger(this.core.realityEvidenceLedgerSnapshot());
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
 
     this.stepsSinceConsolidation += 1;
@@ -1018,6 +1418,22 @@ export class OrganismRuntime {
       if(gate.run) await this.consolidateInternal(false);
     }
     return { cycle: { ...cycle, multimodal: this.core.multimodalSnapshot(), cognitiveProposal }, worldAction, language, embodiedAction };
+  }
+
+  /**
+   * Read-only privacy-minimal snapshot for independent external evaluation.
+   * The adapter hashes identifiers and drops raw payloads before leaving runtime.
+   */
+  independentEvaluationEvidenceSnapshot() {
+    const eventSnapshot = this.cognitiveEventFabric.snapshot();
+    return buildIndependentEvaluationEvidenceBundle({
+      events: this.cognitiveEventFabric.recent(256),
+      eventTotal: eventSnapshot.total,
+      eventBuffered: eventSnapshot.buffered,
+      realityEvidence: this.core.realityEvidenceLedgerSnapshot(),
+      cycleCounters: this.unifiedCycle.snapshot(),
+      exportedAtMs: Date.now(),
+    });
   }
 
   realityGroundingSnapshot(){ return this.realityGrounding.snapshot(); }
@@ -1060,6 +1476,101 @@ export class OrganismRuntime {
     });
   }
   proceduralSkillLibrarySnapshot(){ return this.proceduralSkillLibrary.snapshot(); }
+  synapticMatrixSnapshot(){ return this.synapticMatrix.snapshot(); }
+
+  async registerSynapticAdapterCandidate(candidate: SynapticAdapterCandidate) {
+    return this.enqueue(async () => {
+      if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+      const record = this.synapticMatrix.registerCandidate(candidate);
+      await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+      return record;
+    });
+  }
+
+  async activateSynapticAdapter(manifest: SynapticAdapterActivationManifest) {
+    return this.enqueue(async () => {
+      if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+      if (typeof this.config.synapticAdapterManifestVerifier !== 'function') {
+        throw new Error('synaptic-adapter-manifest-verifier-not-configured');
+      }
+      const replayAnchorStore = this.config.synapticReplayAnchorStore;
+      if (this.config.synapticReplayAnchorRequired === true && !replayAnchorStore) {
+        throw new Error('synaptic-adapter-monotonic-replay-anchor-required');
+      }
+
+      let expectedAnchor: SynapticReplayAnchorState | null = null;
+      if (replayAnchorStore) {
+        try {
+          expectedAnchor = await replayAnchorStore.read(manifest.id);
+        } catch {
+          const currentRecord = this.synapticMatrix.snapshot().adapters.find(
+            entry => entry.candidate.id === manifest.id,
+          );
+          const hasPriorActivationEvidence = Boolean(currentRecord && (
+            currentRecord.status === 'active' ||
+            currentRecord.status === 'quarantined' ||
+            Boolean(currentRecord.manifest) ||
+            (currentRecord.acceptedReportCount ?? 0) > 0
+          ));
+          if (hasPriorActivationEvidence) {
+            this.synapticMatrix.markReplayAnchorUntrusted(manifest.id);
+            await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+          }
+          throw new Error('synaptic-adapter-replay-anchor-unavailable');
+        }
+        if (!this.synapticMatrix.reconcileReplayAnchor(manifest.id, expectedAnchor)) {
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+          throw new Error('synaptic-adapter-replay-anchor-mismatch');
+        }
+      }
+
+      let record: ReturnType<AdaptiveSynapticMatrixEngine['activateValidated']>;
+      let activationCommitted = false;
+      try {
+        record = this.synapticMatrix.activateValidated(manifest, this.config.synapticAdapterManifestVerifier);
+        activationCommitted = true;
+        if (replayAnchorStore) {
+          const nextAnchor = this.synapticMatrix.replayAnchorState(record.candidate.id);
+          const latestReportSha256 = record.manifest?.validation.reportSha256;
+          if (!nextAnchor || !latestReportSha256 || !await replayAnchorStore.compareAndSwap(
+            record.candidate.id,
+            expectedAnchor,
+            { ...nextAnchor, latestReportSha256 },
+          )) {
+            this.synapticMatrix.markReplayAnchorUntrusted(record.candidate.id);
+            await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+            throw new Error('synaptic-adapter-replay-anchor-compare-and-swap-failed');
+          }
+        }
+        await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+      } catch (error) {
+        // Only compensate after the local registry accepted the report. A rejected
+        // signature/replay attempt must not be able to disable a currently active adapter.
+        if (activationCommitted) {
+          this.synapticMatrix.disable(manifest.id);
+          await this.synapticMatrixStore.save(this.synapticMatrix.snapshot()).catch(() => {});
+        }
+        throw error;
+      }
+
+      await this.journal.write('info', 'runtime.synaptic-adapter.activated', {
+        adapterId: record.candidate.id, artifactSha256: record.candidate.artifactSha256,
+        baseModelId: record.candidate.baseModelId, validationReportId: record.manifest?.validation.reportId,
+        replayAnchorRequired: this.config.synapticReplayAnchorRequired === true,
+        replayAnchorBacked: Boolean(replayAnchorStore),
+      }).catch(() => {});
+      return record;
+    });
+  }
+
+  async disableSynapticAdapter(id: string) {
+    return this.enqueue(async () => {
+      if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+      const record = this.synapticMatrix.disable(String(id ?? '').trim());
+      await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+      return record;
+    });
+  }
   /**
    * Return generator-ready repair evidence from actual persisted compound executions.
    * Holdout observations are excluded; evidence is descriptive and never authorizes activation.
@@ -1162,7 +1673,7 @@ export class OrganismRuntime {
   toolSnapshot(){ return this.core.actionToolsSnapshot(); }
   cognitiveResourceEconomySnapshot(){ return this.resourceEconomy.snapshot(); }
   runtimePerformanceSnapshot(){ return this.runtimePerformance.snapshot(); }
-  realityEvidenceLedgerSnapshot(){ return this.realityEvidence.snapshot(); }
+  realityEvidenceLedgerSnapshot(){ return this.core.realityEvidenceLedgerSnapshot(); }
   unifiedCognitiveCycleSnapshot(){ return this.unifiedCycle.snapshot(); }
   activeProjectSnapshot(){ return this.core.activeProjectSnapshot(); }
   runtimeDecisionSnapshot(){ const p=this.runtimeDecision(); return { ...p, body:this.embodiment.snapshot(), clocks:this.clockScheduler.snapshot() }; }
@@ -1187,8 +1698,9 @@ export class OrganismRuntime {
       ramPressure01: body.telemetry.ramPressure01,
       performancePressure01: this.runtimePerformance.decision().performancePressure01,
       awake: body.awake,
+      attentionIntent: cognitiveAttentionIntentFromAction(this.core.operationalStatusSnapshot().lastAction),
     });
-    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
+    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,attentionEffort01:resourceAllocation.attentionEffort01,attentionEffortIntent:resourceAllocation.attentionEffortIntent,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
     this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
       if (before.awake && !body.awake && this.sleepStartedAt == null) { this.sleepStartedAt = Date.now(); this.sleepReason = body.wakeReason || 'resource-pressure'; }
       const sensorDiagnostics = this.embodiment.sensorDiagnosticsSnapshot();
@@ -1297,6 +1809,7 @@ export class OrganismRuntime {
     }
     const state = this.core.recordCameraEvidence(evidence);
     let semantic = null as Awaited<ReturnType<VisionSemanticBackend['analyze']>> | null;
+    let trackingMetrics: ReturnType<TemporalObjectTracker['update']>['metrics'] | null = null;
     if (this.config.visionBackend) this.core.setSemanticVisionAvailability(true);
     if (this.config.visionBackend && evidence.path) {
       const started = Date.now();
@@ -1307,8 +1820,16 @@ export class OrganismRuntime {
         });
         semantic = { ...semantic, latencyMs: Math.max(0, Date.now()-started) };
         if (semantic.semantic) {
+          const trackedFrame=this.temporalObjectTracker.update({
+            cameraId:normalizedCameraId,
+            at:evidence.at,
+            frameId:toolExecution.executionId, // execution identity, not image hash: identical static frames are still new captures.
+            objects:semantic.objects??[],
+          });
+          trackingMetrics=trackedFrame.metrics;
+          semantic={...semantic,objects:trackedFrame.objects};
           this.core.recordSemanticVisionFrame();
-          this.core.p41PerceptionIngest({ vision: { sceneLabel: semantic.sceneLabel, confidence01: semantic.confidence01, objects: semantic.objects, relations: semantic.relations, events: semantic.events, latencyMs: semantic.latencyMs, semantic: true }, at: evidence.at });
+          this.core.p41PerceptionIngest({ vision: { cameraId: normalizedCameraId, sceneLabel: semantic.sceneLabel, confidence01: semantic.confidence01, objects: semantic.objects, relations: semantic.relations, events: semantic.events, latencyMs: semantic.latencyMs, semantic: true }, at: evidence.at });
           const pendingVision=this.core.p41NextPerception();
           if(pendingVision?.modality==='vision') this.core.p41FulfillPerception(pendingVision.id,true);
         }
@@ -1326,7 +1847,7 @@ export class OrganismRuntime {
       ...successResult, ok: true, verified: toolExecution.verified, executionId: toolExecution.executionId,
       providerReceiptId: toolExecution.providerReceiptId ?? (typeof result.providerReceiptId === 'string' ? result.providerReceiptId : undefined),
       evidence, cameraEvidence: this.core.cameraEvidenceSnapshot(), semanticVision: semantic?.semantic === true,
-      semanticBackend: semantic?.backend ?? null, semanticResult: semantic,
+      semanticBackend: semantic?.backend ?? null, semanticResult: semantic, tracking: trackingMetrics,
     };
   }
 
@@ -1334,16 +1855,34 @@ export class OrganismRuntime {
     return this.enqueue(async () => {
       const body = this.embodiment.snapshot();
       const plan = this.core.cognitiveExecutionPlanSnapshot();
-      const demand = plan ? Math.max(...Object.values(plan.expectedValue01).map(Number), 0) : 0;
+      // Camera capture demand is modality-specific; a high-value research/project operation must not wake the camera by accident.
+      const demand = plan ? clamp01(Number(plan.expectedValue01?.perception ?? 0)) : 0;
       const next = this.core.p41NextPerception();
       const motion01 = Number(body.telemetry.motion01 ?? 0);
-      const visionNeeded = next?.modality === 'vision' || demand > .62 || motion01 > .5;
+      const plannerAllowsPerception = plan?.run?.perception !== false;
+      // EVC-driven camera work obeys the planner; queued vision requests and strong motion remain explicit reactive triggers.
+      const visionNeeded = next?.modality === 'vision' || motion01 > .5 || (plannerAllowsPerception && demand > .62);
       const resourceBlocked = body.telemetry.battery01 < .12 || body.thermalStrain01 > .82 || body.telemetry.ramPressure01 > .88 || !body.awake;
       if (!visionNeeded || resourceBlocked) return { ok:false, skipped:true, reason:resourceBlocked?'resource-gate':'low-vision-utility', demand01:demand, nextPerception:next, resourceGate:resourceBlocked };
       if (!options.idempotencyKey) return { ok:false, skipped:false, error:'camera-capture-idempotency-key-required' };
       return this.captureCameraDirect(cameraId, retain, options);
     });
   }
+  /** Read the current affective appraisal from the canonical cognitive snapshot. */
+  private voiceEmotionContext(): {label:string;valence01:number;arousal01:number;dominance01:number} {
+    const snapshot=this.core.snapshot() as any;
+    const field=snapshot?.facets?.cognition?.cognitiveField;
+    const finite=(value:unknown,fallback:number)=>Number.isFinite(Number(value))?Number(value):fallback;
+    const known=new Set(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective']);
+    const rawLabel=String(field?.dominantEmotion??'calm').toLocaleLowerCase();
+    return {
+      label:known.has(rawLabel)?rawLabel:'calm',
+      valence01:Math.max(0,Math.min(1,finite(field?.valence01,.5))),
+      arousal01:Math.max(0,Math.min(1,finite(field?.arousal01,.22))),
+      dominance01:Math.max(0,Math.min(1,finite(field?.coherence01,.5))),
+    };
+  }
+
   async speak(text: string): Promise<boolean> {
     return this.enqueue(async () => {
       const snapshot=this.core.operationalStatusSnapshot();
@@ -1356,6 +1895,7 @@ export class OrganismRuntime {
         continuity01:subject.continuity01,
         grounding01:subject.embodiedGrounding01,
         uncertainty01:snapshot.needs.uncertainty,
+        emotion:this.voiceEmotionContext(),
         speechEventId:stableSpeechEventId('api',snapshot.tick,text),
       });
     });
@@ -1366,6 +1906,7 @@ export class OrganismRuntime {
       if(text){
         this.embodiment.userActivity();
         const clean=text.trim().slice(0,4000);
+        this.publishNekoPluginVoiceTranscriptFinal(clean);
         this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.68,evidence:['termux-speech-to-text'],content:clean});
       }
       return text;
@@ -1380,6 +1921,7 @@ export class OrganismRuntime {
       if(!text) return {text:null,step:null,spoken:false,voice:this.embodiment.voiceSnapshot()};
       this.embodiment.userActivity();
       const clean=text.trim().slice(0,4000);
+      this.publishNekoPluginVoiceTranscriptFinal(clean);
       this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.74,evidence:['termux-speech-to-text','voice-turn'],content:clean});
       await this.core.beginBatch();
       try {
@@ -1397,7 +1939,7 @@ export class OrganismRuntime {
         let spoken=false;
         if(options.speak && step.language?.text){
           const subject=this.core.subjectContinuitySnapshot();
-          const voicePlanContext={action:step.cycle.state.lastAction,mode:this.core.p64Snapshot().lastFrame?.mode??null,needs:step.cycle.state.needs,continuity01:subject.continuity01,grounding01:subject.embodiedGrounding01,uncertainty01:step.cycle.state.needs.uncertainty,speechEventId:stableSpeechEventId('voice-turn',step.cycle.state.tick,step.language.text)};
+          const voicePlanContext={action:step.cycle.state.lastAction,mode:this.core.p64Snapshot().lastFrame?.mode??null,needs:step.cycle.state.needs,continuity01:subject.continuity01,grounding01:subject.embodiedGrounding01,uncertainty01:step.cycle.state.needs.uncertainty,emotion:this.voiceEmotionContext(),speechEventId:stableSpeechEventId('voice-turn',step.cycle.state.tick,step.language.text)};
           spoken=await this.embodiment.speak(step.language.text,voicePlanContext);
         }
         return {text:clean,step,spoken,voice:this.embodiment.voiceSnapshot()};
@@ -1569,19 +2111,27 @@ export class OrganismRuntime {
         // Candidate staging is not activation: shadow evidence + explicit approval
         // and rollback remain required in the versioned-skill lifecycle.
         const result = await this.reviseCompoundSkillsFromObservedRepairs(skillId);
-        this.compoundRepairRevisionMetrics.lastStatus = result.status;
-        if (result.status === 'candidate-staged') {
+        const stagedCandidateId = typeof result.candidateId === 'string' && result.candidateId.trim().length > 0
+          ? result.candidateId
+          : null;
+        const reportedStatus = result.status === 'candidate-staged' && stagedCandidateId === null ? 'error' : result.status;
+        this.compoundRepairRevisionMetrics.lastStatus = reportedStatus;
+        if (result.status === 'candidate-staged' && stagedCandidateId !== null) {
           this.compoundRepairRevisionMetrics.staged++;
-          this.compoundRepairRevisionMetrics.lastCandidateId = result.candidateId;
+          this.compoundRepairRevisionMetrics.lastCandidateId = stagedCandidateId;
+        } else if (result.status === 'candidate-staged') {
+          this.compoundRepairRevisionMetrics.failures++;
+          this.compoundRepairRevisionMetrics.lastFailureCategory = 'candidate-staged-without-candidate-id';
+          this.core.markRuntimeAnomaly('p23-compound-repair-revision:candidate-staged-without-candidate-id');
         } else if (result.status === 'already-staged-for-evidence') {
           this.compoundRepairRevisionMetrics.deduplicated++;
         } else if (result.status === 'retry-backoff-active') {
           this.compoundRepairRevisionMetrics.backoffSkipped++;
         }
-        await this.journal.write(result.status === 'candidate-staged' ? 'info' : 'warn',
+        await this.journal.write(reportedStatus === 'candidate-staged' ? 'info' : 'warn',
           'runtime.p23.compound-repair-revision.background',
-          { skillId, status: result.status, repairEvidenceCount: result.repairEvidenceCount,
-            ...(result.status === 'candidate-staged' ? { candidateId: result.candidateId } : {}),
+          { skillId, status: reportedStatus, repairEvidenceCount: result.repairEvidenceCount,
+            ...(stagedCandidateId !== null ? { candidateId: stagedCandidateId } : {}),
             ...(result.status === 'retry-backoff-active' ? { retryInMs: result.retryInMs, attempts: result.attempts } : {}) },
         ).catch(() => {});
       },
@@ -1696,6 +2246,118 @@ export class OrganismRuntime {
     this.lastWorldCheckpointAt = Date.now();
   }
 
+
+
+  /**
+   * Persist every obligation mutation before exposing its result. If the durable
+   * write fails, restore the in-memory snapshot so callers never observe an
+   * uncommitted lifecycle transition.
+   */
+  private async persistOpenLoopMutation<T>(mutation: () => T): Promise<T> {
+    const previous = this.openLoopRadar.snapshot();
+    try {
+      const result = mutation();
+      await this.openLoopStore.save(this.openLoopRadar.snapshot());
+      return result;
+    } catch (error) {
+      this.openLoopRadar.restore(previous);
+      throw error;
+    }
+  }
+
+  registerOpenLoop(input: Parameters<OpenLoopRadar['register']>[0]) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.register(input)));
+  }
+
+  fulfillOpenLoop(id: string, evidence: Parameters<OpenLoopRadar['fulfill']>[1]) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.fulfill(id, evidence)));
+  }
+
+  cancelOpenLoop(id: string, reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.cancel(id, reason)));
+  }
+
+  reopenOpenLoop(id: string, reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.reopen(id, reason)));
+  }
+
+  acknowledgeOpenLoopSurfaced(id: string): Promise<void> {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.markSurfaced(id)));
+  }
+
+  snoozeOpenLoop(id: string, until: number, reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.snooze(id, until, reason)));
+  }
+
+  updateOpenLoopDependencies(id: string, dependencies: string[], reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() =>
+      this.openLoopRadar.updateDependencies(id, dependencies, reason)));
+  }
+
+  reserveOpenLoopForAutonomousInitiative(id: string, initiativeId: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() =>
+      this.openLoopRadar.reserveForInitiative(id, initiativeId)));
+  }
+
+  releaseOpenLoopForAutonomousInitiative(id: string, initiativeId: string): Promise<boolean> {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => {
+      const record = this.openLoopRadar.snapshot().records.find(item => item.id === id);
+      return record?.pendingSurfacingInitiativeId === initiativeId
+        ? this.openLoopRadar.releaseInitiative(initiativeId)
+        : false;
+    }));
+  }
+
+  scanOpenLoops(options: OpenLoopScanOptions = {}) {
+    return this.enqueue(async () => this.openLoopRadar.scan(options));
+  }
+
+  openLoopSnapshot() {
+    return this.enqueue(async () => this.openLoopRadar.snapshot());
+  }
+
+  openLoopDiagnostics() {
+    return this.enqueue(async () => {
+      const state = this.openLoopRadar.snapshot();
+      const candidates = this.openLoopRadar.scan();
+      const active = state.records.filter(record => record.status === 'open' || record.status === 'blocked');
+      const at = Date.now();
+      const reservedCount = active.filter(record =>
+        record.pendingSurfacingInitiativeId !== null && record.pendingSurfacingLeaseUntil > at).length;
+      const expiredReservationCount = active.filter(record =>
+        record.pendingSurfacingInitiativeId !== null && record.pendingSurfacingLeaseUntil <= at).length;
+      return {
+        version: state.version,
+        total: state.records.length,
+        activeCount: active.length,
+        openCount: active.filter(record => record.status === 'open').length,
+        blockedCount: active.filter(record => record.status === 'blocked').length,
+        snoozedCount: active.filter(record => record.snoozedUntil > at).length,
+        reservedCount,
+        expiredReservationCount,
+        fulfilledCount: state.records.filter(record => record.status === 'fulfilled').length,
+        cancelledCount: state.records.filter(record => record.status === 'cancelled').length,
+        overdueCount: candidates.filter(candidate => candidate.overdueMs > 0 && candidate.effectiveStatus === 'open').length,
+        expiredCount: candidates.filter(candidate => candidate.effectiveStatus === 'expired').length,
+        readyToSurface: candidates.filter(candidate => candidate.shouldSurface).length,
+      };
+    });
+  }
+
+  /** Record only caller-confirmed low-risk preferences through the canonical evidence owner. */
+  async recordExplicitUserPreference(input: Parameters<OrganismCore['recordExplicitUserModelEvidence']>[0]) {
+    return this.enqueue(() => this.core.recordExplicitUserModelEvidence(input));
+  }
+
+  /** Correct an explicit preference without bypassing provenance, deduplication or persistence. */
+  async correctExplicitUserPreference(input: Parameters<OrganismCore['correctExplicitUserModelEvidence']>[0]) {
+    return this.enqueue(() => this.core.correctExplicitUserModelEvidence(input));
+  }
+  /** Forget an explicit preference through the serialized organism command queue. */
+  async forgetExplicitUserPreference(input: Parameters<OrganismCore['forgetExplicitUserModelEvidence']>[0]) {
+    return this.enqueue(() => this.core.forgetExplicitUserModelEvidence(input));
+  }
+
   /** Pending self-initiated chat turn for the UI; no tool/device side effects occur here. */
   async autonomousDialogueReady() {
     return this.enqueue(async () => this.core.pendingAutonomousSocialInitiativeMessage());
@@ -1705,14 +2367,31 @@ export class OrganismRuntime {
   async acknowledgeAutonomousDialogue(id: string): Promise<boolean> {
     return this.enqueue(async () => {
       const acknowledged = this.core.acknowledgeAutonomousSocialInitiative(id, Date.now());
-      if (acknowledged) await this.core.flush();
+      if (acknowledged) {
+        await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(id));
+        await this.core.flush();
+      }
       return acknowledged;
     });
+  }
+
+  previewNekoKnowledgePack(rawBytes: Uint8Array) {
+    const ownedBytes = new Uint8Array(rawBytes);
+    return this.enqueue(async () => this.core.previewNekoKnowledgePack(ownedBytes));
+  }
+
+  importNekoKnowledgePack(
+    rawBytes: Uint8Array,
+    approval: import('../integration/neko/NekoKnowledgePackImporter.ts').NekoKnowledgePackImportApproval,
+  ) {
+    const ownedBytes = new Uint8Array(rawBytes);
+    return this.enqueue(() => this.core.importNekoKnowledgePack(ownedBytes, approval));
   }
 
   async flush(): Promise<void> {
     return this.enqueue(async () => {
       await this.core.flush();
+      await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const view = this.core.runtimeClosureOperationalSnapshot();
       this.runtimeClosure.durable({ at: Date.now(), tick: view.tick, stateTick: view.tick, replaySignature: view.replaySignature, continuousTick: view.continuous?.tick, continuityProcessed: view.continuous?.processed, memoryCount: view.memoryCount });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());

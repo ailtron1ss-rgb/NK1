@@ -1,13 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+// A terminated-but-unreaped descendant keeps a PID slot and still answers `kill(pid, 0)`.
+// Treat it as gone; only a running/blocked process means the group kill failed.
+function processIsRunning(pid) {
+  try {
+    const state = readFileSync(`/proc/${pid}/stat`, 'utf8');
+    return state.slice(state.lastIndexOf(')') + 2, state.lastIndexOf(')') + 3) !== 'Z';
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false;
+    try { process.kill(pid, 0); return true; } catch (probeError) { return probeError?.code !== 'ESRCH'; }
+  }
+}
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const installerSource = path.join(repoRoot, 'tools/super-install.mjs');
+const helperSource = path.join(repoRoot, 'tools/lib/node-runtime.mjs');
 
 async function createFixture(t) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'nk-super-install-'));
@@ -16,8 +30,10 @@ async function createFixture(t) {
   const app = path.join(root, 'app');
   const runtime = path.join(root, 'runtime/neuro-kurisu');
   const fakeBin = path.join(root, 'fake-bin');
-  for (const dir of [tools, app, runtime, fakeBin]) await mkdir(dir, { recursive: true });
+  for (const dir of [tools, path.join(tools, 'lib'), app, runtime, fakeBin]) await mkdir(dir, { recursive: true });
   await writeFile(path.join(tools, 'super-install.mjs'), await readFile(installerSource));
+  await writeFile(path.join(tools, 'lib/node-runtime.mjs'), await readFile(helperSource));
+  await writeFile(path.join(root, '.nvmrc'), '24\n');
   for (const [dir, name, version] of [[app, 'app-builder-workspace', '1.0.0'], [runtime, 'neuro-kurisu-organism-evolution', '1.0.0']]) {
     await writeFile(path.join(dir, 'package.json'), JSON.stringify({ name, version }, null, 2));
     await writeFile(path.join(dir, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { '': { name, version } } }, null, 2));
@@ -105,7 +121,7 @@ test('installer deadline kills the complete npm process group and exits fail-fas
   assert.ok(Number.isInteger(pid) && pid > 0, 'fake npm child PID should have been captured');
   let stillAlive = true;
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    try { process.kill(pid, 0); } catch (error) { if (error?.code === 'ESRCH') { stillAlive = false; break; } else throw error; }
+    if (!processIsRunning(pid)) { stillAlive = false; break; }
     await new Promise(resolve => setTimeout(resolve, 50));
   }
   assert.equal(stillAlive, false, `npm descendant ${pid} must not survive installer timeout`);

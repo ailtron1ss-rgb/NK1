@@ -22,6 +22,39 @@ import { WorldCausalCalibration, defaultWorldCausalCalibration } from '../system
 import { WorldAgencyLearningCausalBridge, defaultWorldAgencyLearning } from '../system/WorldAgencyLearningCausalBridge.ts';
 import { DerivedWorldPreviewCache } from '../system/DerivedWorldPreviewCache.ts';
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+
+function isWorldContext(value: unknown): value is WorldContext {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const context = value as Partial<WorldContext>;
+  const strings = (items: unknown): items is string[] =>
+    Array.isArray(items) && items.length <= 1024
+      && Array.from(items).every(item => typeof item === 'string');
+  const objects = (items: unknown): items is WorldContext['objects'] =>
+    Array.isArray(items) && items.length <= 512 && Array.from(items).every(item =>
+      Boolean(item) && typeof item === 'object' && !Array.isArray(item)
+      && typeof item.id === 'string' && typeof item.label === 'string'
+      && typeof item.location === 'string' && typeof item.value === 'number'
+      && Number.isFinite(item.value) && typeof item.visible === 'boolean'
+      && typeof item.collected === 'boolean');
+  return Number.isSafeInteger(context.tick) && (context.tick as number) >= 0
+    && typeof context.location === 'string' && context.location.length <= 256
+    && typeof context.energy === 'number' && Number.isFinite(context.energy)
+    && typeof context.attention === 'number' && Number.isFinite(context.attention)
+    && typeof context.uncertainty === 'number' && Number.isFinite(context.uncertainty)
+    && strings(context.facts) && objects(context.objects) && strings(context.events);
+}
+
+function isWorldTransitionForOrganism(value: unknown): value is WorldTransitionForOrganism {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const transition = value as Partial<WorldTransitionForOrganism>;
+  return typeof transition.action === 'string' && transition.action.length > 0
+    && transition.action.length <= 128
+    && typeof transition.reward === 'number' && Number.isFinite(transition.reward)
+    && typeof transition.surprise === 'number' && Number.isFinite(transition.surprise)
+    && typeof transition.at === 'number' && Number.isFinite(transition.at) && transition.at >= 0
+    && isWorldContext(transition.before) && isWorldContext(transition.after)
+    && transition.after.tick >= transition.before.tick;
+}
 import { WorldModelEnsembleController } from '../system/WorldModelEnsembleController.ts';
 import { UnifiedLatentWorldState } from '../world/UnifiedLatentWorldState.ts';
 
@@ -174,6 +207,9 @@ export class WorldSubsystemRuntime {
   }
 
   observeActionOutcome(transition:WorldTransitionForOrganism, organismState?:import('./types.ts').OrganismState, predictionId?:string){
+    // Validate the complete transition before mutating any predictor or learner.
+    if (!isWorldTransitionForOrganism(transition)) throw new TypeError('invalid-world-transition');
+
     // Calibration must use the prediction made before the transition. Never feed
     // the observed reward back into a fresh prediction call before scoring it.
     const beforeState=organismState;

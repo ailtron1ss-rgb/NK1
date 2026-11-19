@@ -1,13 +1,25 @@
 # NeuroCore — repository working rules
 
-> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md) and [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), then refresh the live branch head, stacked PR state, exact-head Actions status and open-work register. The active learning stack is WorkPass124 on top of WorkPass123; PR #12 is draft and unmerged. WorkPass126 hardens durable skill-store schema and payload-integrity validation; its tests and exact-head CI remain unverified. The release/metadata `main` branch is not the direct merge target for the source stack. The mission is persistent across chats; do not ask the user to restate it.
+> **Current continuation checkpoint — 2026-11-01:** start with [README.md](README.md) and [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions. The source baseline at this checkpoint is `735b83d525c0d53c91e2e5a6587fb3529a08d13b`; never assume this SHA remains current. `main` is release/metadata and is not the direct source merge target. The historical WorkPass126/127 and PR #11/#12 notes formerly below were stale and have been removed from the active entry point; older WorkPass records later in the repository remain archival.
 
-## Latest checkpoint
+## Current checkpoint
 
-Read [WorkPass127 proposal authenticity report](docs/WORKPASS127_PROMOTION_PROPOSAL_AUTHENTICITY_2026-10-21.md) first. The candidate store now rejects copied or fabricated proposal objects using a module-private same-process issuance registry; successful lifecycle fixtures use signed manifest-bound artifacts. Runtime test/typecheck/CI are not yet verified, and the broader activation call-graph audit remains open.
+- PR #594 merged: missing/corrupt-primary recovery, unchanged restore recreation and backup preservation; 11/11 exact-head checks.
+- PR #603 merged: terminal/unknown speech lifecycle clears stale mouth channels; 9/9 exact-head checks.
+- PR #607 merged: backup temp + fsync + atomic rename, with SIGKILL-before-rename regression; 11/11 exact-head checks.
+- UserModel v2 durable forgetting is already integrated at `efb7693`; motor-frame integrity is integrated at `c039f84`.
+- Latest published Release ZIP is still the 2026-10-19 WorkPass70 Hotfix prerelease. November source commits are not in the ZIP; license review and exact-SHA release gate remain blocking.
 
+## Non-negotiable engineering workflow
 
-Read [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md), then [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), before resuming. Inspect the exact-head CI and run the owning tests. Active learning work is `workpass124-learning-evidence-hardening` (PR #12, draft/unmerged), stacked on `workpass123-authenticated-skill-lifecycle` (PR #11). The full source stack is based on `workpass70-source`; `main` is a separate release/metadata branch with no common ancestor reported by GitHub compare. Do not merge directly to `main`.
+1. Read the current README, handoff, owning implementation and narrowest relevant tests.
+2. Reproduce the failure mode and make the smallest effective behavior change; avoid broad refactors that obscure attribution.
+3. Add a regression that fails before the fix and passes after it. Prefer behavioral assertions.
+4. Run owning tests, typecheck and exact-head GitHub Actions. Report the SHA and conclusions.
+5. Inspect the final diff and update the handoff/changelog. Distinguish implemented, connected, tested and released.
+6. Never claim recall uplift, device performance, autonomous initiative, production readiness, external grounding or release parity without the corresponding independent evidence.
+7. Preserve useful branches and history. Do not delete branches as part of cleanup without explicit user direction.
+8. Do not create external databases, paid services, secrets or schemas without an explicit architecture/credential decision.
 
 ## Project objective
 
@@ -27,6 +39,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 - `runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts`: deterministic multi-seed bootstrap sensitivity check; seeds do not train the retriever.
 - `runtime/neuro-kurisu/tests/`: runtime regression tests.
 - `docs/RESEARCH_INTAKE_LEDGER.md`: persistent upstream research and integration queue; update it when candidates are evaluated.
+- `engineering-os/aspects.v1.json`: canonical machine-readable registry of the 75 development aspects (10 domains, 6 waves) with owners, dependencies, verification gates and fail-closed status; `docs/NK1_75_ASPECTS_EXECUTION_BACKLOG_RU.md` is its human-readable projection; `npm run aspects:validate` / `npm run aspects:next` / `npm run aspects:report` operate it.
 - `app/`: client/UI shell; do not implement a second organism or canonical memory owner here.
 - `research/`: isolated experiments; `legacy/`: preserved historical source and provenance.
 - `docs/history/`: archived reports and source records. Old `WORKPASS*`, `ROADMAP*`, and numbered pass files are historical unless a current status page links to them.
@@ -89,3 +102,11 @@ Before a substantial pass, read:
 **Brain analogy rule:** human brain mappings are explanatory analogies only. A software memory store is not a hippocampus, a language model is not a neocortex, and a scheduler is not a hypothalamus. Evaluate functions and observable behaviors, not anthropomorphic labels. Subjective consciousness remains UNKNOWN / UNRESOLVED absent independent evidence.
 
 **Release discipline:** the product is not release-ready until real local inference, memory quality on independent holdouts, learning transfer, action verification/restart recovery, real embodiment E2E, security/privacy, target-device performance, soak, clean-room packaging and rollback gates have evidence. Passing CI on synthetic fixtures is necessary but insufficient.
+
+## NeuroK agent write-freshness gate
+
+- Before an agent edits a claimed file, capture SHA-256 snapshots for every source/context file it relied on and include them in the coordinator claim read-set. The CLI accepts this manifest with `--readSetFile FILE`.
+- Immediately before patch creation/application, run `npm run neurok-os:claims -- verify --task TASK_ID --agent AGENT_ID`. A stale, missing, or unverified read-set blocks the write; refresh context and reacquire/renew the claim.
+- Claims without read-sets are not freshness-verified. The coordinator is advisory until the isolated patch executor enforces this gate; never bypass it on protected or shared files.
+
+- Generate the dependency manifest with `npm run neurok-os:snapshot -- --paths src/a.ts,src/b.ts --out .neurok-os/read-set.json`; then include it in `npm run neurok-os:claims -- claim ... --readSetFile .neurok-os/read-set.json`. Re-run `verify` immediately before editing; a moved base SHA also invalidates the claim.

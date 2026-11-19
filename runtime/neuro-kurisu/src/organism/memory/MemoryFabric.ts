@@ -1,7 +1,7 @@
 import type { OrganismEvent } from './EventSourcing.ts';
 import { EventLog, makeEvent } from './EventSourcing.ts';
 import { createHash } from 'node:crypto';
-import { MemoryOS2, type MemoryItem2, type MemoryOSState2, type MemoryTemporalQueryOptions, type SemanticIndexMaintenanceResult } from '../developmental/MemoryOS2.ts';
+import { MemoryOS2, type MemoryEvidenceSource, type MemoryItem2, type MemoryOSState2, type MemoryTemporalQueryOptions, type SemanticIndexMaintenanceResult } from '../developmental/MemoryOS2.ts';
 import { MultiTimescaleMemory, type MemoryRecord } from './MultiTimescaleMemory.ts';
 import { MemorySubstrateCoordinator } from '../developmental/MemorySubstrateCoordinator.ts';
 import { UnifiedMemorySystem, type MemoryDevelopmentState } from '../developmental/UnifiedMemorySystem.ts';
@@ -12,13 +12,15 @@ import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type Memor
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
 
-export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
+export type MemoryLifecycleAction = 'encode'|'link'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'attach-evidence'|'forget';
 export type MemoryLifecycleCommand =
-  | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean }
+  | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean; forceDistinct?:boolean }
+  | { action:'link'; id:string; patch:Parameters<MemoryOS2['addLinks']>[1]; reason?:string; commandId?:string; tick?:number }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
+  | { action:'attach-evidence'; id:string; source:MemoryEvidenceSource; reason?:string; commandId?:string; tick?:number }
   | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number };
 
 interface MemoryLifecycleReceipt {
@@ -142,6 +144,13 @@ export class MemoryFabric {
   private lastSemanticMaintenanceStartedAt=0;
   private lastCognitiveMemoryQueryAt=0;
   private lastPolicyDecisionId:string|undefined;
+  private lastRetrievalOutcome:{
+    evidenceMode:'none'|'retrieval-audit'|'semantic-cognitive-retrieval';
+    costSource:'uninitialized'|'isolated-lexical-preview'|'semantic-runtime-estimate'|'live-lexical-runtime';
+    computeCost01:number;
+    selectedCount:number;
+    at:number;
+  }={evidenceMode:'none',costSource:'uninitialized',computeCost01:0,selectedCount:0,at:0};
   private readonly maxMutationReceipts=512;
 
   constructor(
@@ -205,7 +214,7 @@ export class MemoryFabric {
       case 'encode': {
         this.statsData.encodes++;
         const before=this.memoryOS.size();
-        const item=this.memoryOS.encode(command.input,{clone:false});
+        const item=this.memoryOS.encode(command.input,{clone:false,forceDistinct:command.forceDistinct});
         const created=this.memoryOS.size()>before;
         if(created)this.statsData.newItems++; else this.statsData.reconsolidations++;
         this.touchHot(item.id);
@@ -213,6 +222,20 @@ export class MemoryFabric {
         eventPayload={memoryId:item.id,kind:item.kind,source:item.source,created,action:created?'encode':'reconsolidate',commandId:commandId||undefined};
         if(command.syncCompatibility)this.projectCompatibility(32);
         if(command.emitEvent===false)eventPayload=undefined;
+        break;
+      }
+      case 'link': {
+        const before=this.findCanonical(command.id);
+        if(!before){result=null;break;}
+        const item=this.memoryOS.addLinks(command.id,command.patch,command.reason??'relationship-import');
+        if(!item){result=null;break;}
+        const fields=(['semanticLinks','temporalLinks','causalLinks','contradictionLinks'] as const)
+          .filter(key=>JSON.stringify(before[key]??[])!==JSON.stringify(item[key]??[]));
+        result=item;memoryId=item.id;outcome=fields.length?'applied':'noop';
+        if(fields.length){
+          this.touchHot(item.id);
+          eventPayload={action,memoryId:item.id,fields,reason:String(command.reason??'relationship-import').slice(0,240),commandId:commandId||undefined};
+        }
         break;
       }
       case 'revise-status': {
@@ -254,11 +277,56 @@ export class MemoryFabric {
         if(context)eventPayload={action,memoryId:before.id,fields:changedEntries.map(([key])=>key),commandId:commandId||undefined};
         break;
       }
+      case 'attach-evidence': {
+        const before=this.findCanonical(command.id);
+        if(!before){result=null;break;}
+        const item=this.memoryOS.attachEvidenceSource(command.id,command.source,command.reason??'evidence-lineage');
+        result=item;memoryId=item?.id;
+        const changed=Boolean(before&&item&&(JSON.stringify(before.evidenceSources??[])!==JSON.stringify(item.evidenceSources??[])||JSON.stringify(before.evidenceLineageKeys??[])!==JSON.stringify(item.evidenceLineageKeys??[])));
+        outcome=changed?'applied':'noop';
+        if(changed&&item){this.touchHot(item.id);eventPayload={action,memoryId:item.id,fields:['evidenceSources','evidenceLineageKeys'],reason:String(command.reason??'evidence-lineage').slice(0,240),commandId:commandId||undefined};}
+        break;
+      }
       case 'forget': {
         const forgotten=this.memoryOS.forgetById(command.id,command.reason??'memory-knockout');
-        result=forgotten; booleanValue=forgotten;memoryId=command.id;outcome=forgotten?'applied':'noop';
-        if(forgotten){this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));eventPayload={action,memoryId:command.id,reason:String(command.reason??'memory-knockout').slice(0,240),commandId:commandId||undefined};}
+        // A protected canonical row must remain visible in its derived recall surfaces.
+        // Purge derived state only after canonical deletion or when it was already absent.
+        const canonicalRemains=this.findCanonical(command.id)!==null;
+        let projectionRemoved=false;
+        let recallFramesRemoved=0;
+        if(forgotten||!canonicalRemains){
+          // P62 stores canonical graph rows under `semantic:<nodeId>` aliases.
+          // Capture those aliases before removing the graph projection so explicit
+          // forget also purges every derived recall frame, not only the source ID.
+          const graphAliasIds=this.semanticMemory.snapshot().nodes
+            .filter(node=>node.canonicalProjection?.owner==='memoryOS2'&&node.canonicalProjection.itemId===command.id)
+            .map(node=>`semantic:${node.id}`);
+          projectionRemoved=this.multiTimescale.removeCanonicalProjection(command.id);
+          const graphProjectionRemoved=this.semanticMemory.removeCanonicalProjection(command.id);
+          recallFramesRemoved=this.p62.forgetMemory(command.id);
+          for(const aliasId of graphAliasIds)recallFramesRemoved+=this.p62.forgetMemory(aliasId);
+          projectionRemoved=projectionRemoved||graphProjectionRemoved;
+        }
+        const applied=Boolean(forgotten||(!canonicalRemains&&(projectionRemoved||recallFramesRemoved>0)));
+        result=applied;booleanValue=applied;memoryId=command.id;outcome=applied?'applied':'noop';
+        if(applied)this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));
+        if(applied)eventPayload={action,memoryId:command.id,reason:String(command.reason??'memory-knockout').slice(0,240),commandId:commandId||undefined};
         break;
+      }
+    }
+
+    if(outcome==='applied'&&action==='encode'&&memoryId){
+      this.syncSemanticGraphProjection(memoryId);
+    }
+    if(outcome==='applied'&&action!=='encode'&&action!=='forget'){
+      if(action==='revise-content'){
+        const sourceId=(command as Extract<MemoryLifecycleCommand,{action:'revise-content'}>).id;
+        this.syncCompatibilityProjection(sourceId);
+        this.syncSemanticGraphProjection(sourceId);
+      }
+      if(memoryId){
+        this.syncCompatibilityProjection(memoryId);
+        this.syncSemanticGraphProjection(memoryId);
       }
     }
 
@@ -281,6 +349,84 @@ export class MemoryFabric {
     return result;
   }
 
+  /** Keep the bounded secondary read model aligned with the current canonical revision. */
+  private syncCompatibilityProjection(id:string):boolean {
+    const key=String(id??'').trim().slice(0,160);
+    if(!key)return false;
+    const snapshot=this.memoryOS.snapshot({clone:false});
+    const item=snapshot.items.find(row=>row.id===key);
+    if(!item){this.multiTimescale.removeCanonicalProjection(key);return false;}
+    const projected=this.substrate.projectCompatibilityRecords({...snapshot,items:[item]},1)[0];
+    if(!projected){this.multiTimescale.removeCanonicalProjection(key);return false;}
+    this.multiTimescale.add(projected,false);
+    return true;
+  }
+
+  private activeSemanticProjectionItems() {
+    const now=Date.now();
+    return this.memoryOS.snapshot({clone:false}).items
+      .filter(item=>{
+        const validFromAt=item.validFromAt??item.createdAt;
+        const validUntilAt=item.validUntilAt;
+        return !item.dormant&&item.epistemicStatus!=='quarantined'&&
+          Number.isFinite(validFromAt)&&validFromAt<=now&&
+          (validUntilAt==null||(Number.isFinite(validUntilAt)&&validUntilAt>now));
+      })
+      .slice()
+      .sort((left,right)=>
+        (right.salience+right.identityRelevance+right.goalRelevance)-
+        (left.salience+left.identityRelevance+left.goalRelevance))
+      .slice(0,1_000);
+  }
+
+  /** Rebuild the graph read-model exclusively from active canonical rows. */
+  reconcileSemanticGraph():number {
+    const rows=this.activeSemanticProjectionItems();
+    this.semanticMemory.reconcileCanonicalProjection(rows);
+    return this.semanticMemory.snapshot().nodes.filter(node=>node.canonicalProjection?.owner==='memoryOS2').length;
+  }
+
+  /** Incrementally sync one canonical row and any rows that link to it. */
+  private syncSemanticGraphProjection(id:string):boolean {
+    const key=String(id??'').trim().slice(0,160);
+    if(!key)return false;
+    const rows=this.activeSemanticProjectionItems();
+    const availableIds=new Set(rows.map(row=>row.id));
+    this.semanticMemory.retainCanonicalProjection(availableIds);
+    const item=rows.find(row=>row.id===key);
+    if(!item){this.semanticMemory.removeCanonicalProjection(key);return false;}
+    this.semanticMemory.syncCanonicalProjection(item,availableIds);
+    for(const candidate of rows){
+      if(candidate.id===key)continue;
+      const linked=[...(candidate.semanticLinks??[]),...(candidate.temporalLinks??[]),...(candidate.causalLinks??[]),...(candidate.contradictionLinks??[])];
+      if(linked.includes(key))this.semanticMemory.syncCanonicalProjection(candidate,availableIds);
+    }
+    return true;
+  }
+
+  /** Read-only canonical lookup for idempotent adapters; never mutates retrieval or policy state. */
+  getCanonicalMemory(id:string):MemoryItem2|null {
+    return this.findCanonical(id);
+  }
+
+  addLinks(id:string,patch:Parameters<MemoryOS2['addLinks']>[1],context:{tick?:number;commandId?:string;reason?:string}={}):MemoryItem2|null {
+    return this.applyLifecycleCommand({action:'link',id,patch,...context}) as MemoryItem2|null;
+  }
+
+  /** Bitemporal lookup through the canonical MemoryOS2 owner. */
+  temporalBitemporalAt(id:string,validAt:number,knowledgeAtAt:number):MemoryItem2|null {
+    return this.memoryOS.temporalBitemporalAt(id,validAt,knowledgeAtAt);
+  }
+
+  /** Complete bounded valid-time / transaction-time history for one revision chain. */
+  temporalBitemporalHistory(id:string):MemoryItem2[] {
+    return this.memoryOS.temporalBitemporalHistory(id);
+  }
+
+  temporalBitemporalDiff(id:string,validAt:number,fromKnowledgeAt:number,toKnowledgeAt:number) {
+    return this.memoryOS.temporalBitemporalDiff(id,validAt,fromKnowledgeAt,toKnowledgeAt);
+  }
+
   private findCanonical(id:string):MemoryItem2|null {
     const item=this.memoryOS.snapshot({clone:false}).items.find(row=>row.id===String(id));
     return item?structuredClone(item):null;
@@ -294,17 +440,17 @@ export class MemoryFabric {
     return undefined;
   }
 
-  encode(input:EncodeInput, context:{tick?:number;emitEvent?:boolean;syncCompatibility?:boolean;commandId?:string}={}) {
+  encode(input:EncodeInput, context:{tick?:number;emitEvent?:boolean;syncCompatibility?:boolean;commandId?:string;forceDistinct?:boolean}={}) {
     return this.applyLifecycleCommand({action:'encode',input,...context}) as MemoryItem2;
   }
 
   /** Non-mutating search for inspectors and diagnostics; it must not train policy or heat live memories. */
-  previewRetrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
-    return this.memoryOS.previewRetrieve(query,Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt});
+  previewRetrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}) {
+    return this.memoryOS.previewRetrieve(query,Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt});
   }
 
   /** Read-only semantic inspector path; serialize it with cognitive retrieval and background indexing. */
-  async previewRetrieveWithEmbeddings(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
+  async previewRetrieveWithEmbeddings(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}) {
     // Inspector requests are explicit and may do more work than live cognition, but they
     // must still use the same local embedding provider serially. Wait for already-running
     // work, then claim the shared foreground slot before yielding to another operation.
@@ -318,7 +464,7 @@ export class MemoryFabric {
       Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8))),
       goalRelevance,
       identityRelevance,
-      {temporalMode:context.temporalMode,asOfAt:context.asOfAt},
+      {temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt},
     );
     const tracked=work.finally(()=>{if(this.cognitionSemanticInFlight===tracked)this.cognitionSemanticInFlight=null;});
     this.cognitionSemanticInFlight=tracked;
@@ -332,20 +478,36 @@ export class MemoryFabric {
    * immediately keeps the lexical result while the single in-flight job may warm the
    * derived vector index for subsequent turns.
    */
-  async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}):Promise<MemoryItem2[]> {
+  async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}):Promise<MemoryItem2[]> {
     this.lastCognitiveMemoryQueryAt=Date.now();
     const safeLimit=Math.max(1,Math.min(16,Math.floor(Number.isFinite(limit)?limit:8)));
-    const fallback=this.retrieve(query,safeLimit,goalRelevance,identityRelevance,{...context,emitEvent:false});
+    const temporalContext={temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt};
+    // Preview read-only until the runtime chooses the actual result. Otherwise the
+    // lexical fallback is counted even when semantic retrieval replaces it.
+    const fallbackPreview=this.memoryOS.previewRetrieveWithDiagnostics(query,safeLimit,goalRelevance,identityRelevance,temporalContext);
+    const fallback=fallbackPreview.items;
+    const fallbackCost01=Math.max(0,Math.min(1,fallbackPreview.diagnostics.candidateCount/192));
+    const finish=(selected:MemoryItem2[],semantic=false,computeCost01=fallbackCost01,costSource:'isolated-lexical-preview'|'semantic-runtime-estimate'='isolated-lexical-preview')=>{
+      const rows=this.memoryOS.commitSelectedRetrieval(query,selected.map(row=>({id:row.id,content:row.content})),goalRelevance,identityRelevance,temporalContext);
+      return this.recordRetrievalResult(query,rows,{
+        tick:context.tick,
+        emitEvent:semantic&&context.tick!==undefined,
+        evidenceMode:semantic?'semantic-cognitive-retrieval':'retrieval-audit',
+        computeCost01,
+        costSource,
+      });
+    };
     const runtimeEnabled=/^(1|true|yes|on)$/i.test(String(process.env.NK_EMBEDDINGS_RUNTIME_ENABLED??''));
-    if(!runtimeEnabled||!String(query??'').trim()||!this.memoryOS.embeddingConfigured()) return fallback;
+    if(!runtimeEnabled||!String(query??'').trim()||!this.memoryOS.embeddingConfigured()) return finish(fallback);
 
     // Foreground cognition must not compete with low-priority background indexing;
-    // lexical retrieval stays available while a bounded maintenance batch warms the index.
-    if(this.cognitionSemanticInFlight||this.semanticMaintenanceInFlight) return fallback;
+    // lexical recall stays available while a bounded maintenance batch warms the index.
+    if(this.cognitionSemanticInFlight||this.semanticMaintenanceInFlight) return finish(fallback);
     const providerTimeout=Math.max(500,Math.min(20000,Number(process.env.NK_EMBEDDINGS_TIMEOUT_MS??5000)||5000));
+    const configuredSimilarity=Number(process.env.NK_EMBEDDINGS_MIN_SIMILARITY01??0.72);
+    const minSimilarity01=Number.isFinite(configuredSimilarity)?Math.max(0.60,Math.min(0.95,configuredSimilarity)):0.72;
     const work=this.memoryOS.previewRetrieveWithEmbeddings(query,safeLimit,goalRelevance,identityRelevance,
-      {temporalMode:context.temporalMode,asOfAt:context.asOfAt},
-      {maxIndexItems:12,maxLexicalPool:24,providerTimeoutMs:providerTimeout});
+      temporalContext,{maxIndexItems:12,maxLexicalPool:24,providerTimeoutMs:providerTimeout,minSimilarity01});
     const tracked=work.finally(()=>{if(this.cognitionSemanticInFlight===tracked)this.cognitionSemanticInFlight=null;});
     this.cognitionSemanticInFlight=tracked;
     let timer:ReturnType<typeof setTimeout>|undefined;
@@ -355,35 +517,49 @@ export class MemoryFabric {
       new Promise<{kind:'timeout'}>(resolve=>{timer=setTimeout(()=>resolve({kind:'timeout'}),budgetMs);}),
     ]);
     if(timer)clearTimeout(timer);
-    if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return fallback;
-    const rows=outcome.result.items.slice(0,safeLimit);
-    for(const row of rows)this.touchHot(row.id);
-    const policy=this.memoryOS.adaptivePolicyDiagnostics();
-    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:this.memoryOS.retrievalDiagnostics().candidateCount/192});
-    this.lastPolicyDecisionId=decision.id;
-    if(context.tick!==undefined) this.events.append(makeEvent('attention',context.tick,{source:'memory-fabric',query:query.slice(0,120),hits:rows.length,touchedMemoryIds:rows.slice(0,8).map(row=>row.id),evidenceMode:'semantic-cognitive-retrieval'} as any));
-    return rows;
+    if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return finish(fallback);
+    // Bounded workload estimate: corpus scan fraction, index-backfill batch fraction,
+    // or provider latency relative to timeout, whichever best reflects this attempt.
+    const semanticCost01=Math.max(
+      outcome.result.semantic.corpusItems/1600,
+      outcome.result.semantic.newlyIndexed/12,
+      outcome.result.semantic.lastLatencyMs/Math.max(1,providerTimeout),
+    );
+    return finish(outcome.result.items.slice(0,safeLimit),true,semanticCost01,'semantic-runtime-estimate');
   }
 
-  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
-    const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt},false);
+  private recordRetrievalResult(
+    query:string,
+    rows:MemoryItem2[],
+    context:{tick?:number;emitEvent?:boolean;evidenceMode?:'retrieval-audit'|'semantic-cognitive-retrieval';computeCost01?:number;costSource?:'isolated-lexical-preview'|'semantic-runtime-estimate'|'live-lexical-runtime'}={}
+  ):MemoryItem2[]{
     this.statsData.retrievals++;
     this.statsData.retrievalHits+=rows.length;
+    const rawCost=Number(context.computeCost01??(this.memoryOS.retrievalDiagnostics().candidateCount/192));
+    const computeCost01=Math.max(0,Math.min(1,Number.isFinite(rawCost)?rawCost:1));
+    const costSource=context.costSource??'live-lexical-runtime';
+    const evidenceMode=context.evidenceMode??'retrieval-audit';
+    const at=Date.now();
+    this.lastRetrievalOutcome={evidenceMode,costSource,computeCost01,selectedCount:rows.length,at};
     const policy=this.memoryOS.adaptivePolicyDiagnostics();
-    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:this.memoryOS.retrievalDiagnostics().candidateCount/192});
+    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at,hit01:rows.length?1:0,computeCost01});
     this.lastPolicyDecisionId=decision.id;
     for(const row of rows)this.touchHot(row.id);
     if(context.emitEvent){
+      const semantic=context.evidenceMode==='semantic-cognitive-retrieval';
       this.events.append(makeEvent('attention',context.tick??0,{
-        source:'memory-fabric',
-        query:query.slice(0,160),
-        hits:rows.length,
-        touchedMemoryIds:rows.slice(0,12).map(row=>row.id),
-        evidenceMode:'retrieval-audit',
+        source:'memory-fabric',query:query.slice(0,semantic?120:160),hits:rows.length,
+        touchedMemoryIds:rows.slice(0,semantic?8:12).map(row=>row.id),
+        evidenceMode:context.evidenceMode??'retrieval-audit',
       }));
     }
     this.unifiedMemory.recordRetrieval(query,rows.length);
     return rows;
+  }
+
+  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number;knowledgeAtAt?:number}={}) {
+    const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt,knowledgeAtAt:context.knowledgeAtAt},false);
+    return this.recordRetrievalResult(query,rows,{tick:context.tick,emitEvent:context.emitEvent,evidenceMode:'retrieval-audit'});
   }
 
   recall(query:string,limit=8):P62Frame {
@@ -403,6 +579,7 @@ export class MemoryFabric {
   maintain(options:{pressure01?:number;maxItems?:number;tick?:number;force?:boolean;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number;byteBudget?:number;protectedIds?:string[]}={}) {
     const tick=Number.isFinite(options.tick)?Number(options.tick):-1;
     if(!options.force && tick>=0 && tick===this.lastMaintenanceTick)return {skipped:true,changed:0};
+    const beforeSemanticIds=new Set(this.activeSemanticProjectionItems().map(item=>item.id));
     const before=this.memoryOS.size();
     this.memoryOS.maintain({pressure01:options.pressure01,maxItems:options.maxItems});
     const byteBudget=Math.max(262144,Math.min(1048576,Math.floor(options.byteBudget??Math.max(262144,Math.min(1048576,Math.floor((options.maxItems??768)*720))))));
@@ -413,6 +590,13 @@ export class MemoryFabric {
     this.scheduleSemanticIndexMaintenance();
     const changed=Math.max(0,before-this.memoryOS.size());
     const totalChanged=changed;
+    const activeSemanticItems=this.activeSemanticProjectionItems();
+    const activeSemanticIds=new Set(activeSemanticItems.map(item=>item.id));
+    const membershipChanged=beforeSemanticIds.size!==activeSemanticIds.size||activeSemanticItems.some(item=>!beforeSemanticIds.has(item.id));
+    if(membershipChanged){
+      this.semanticMemory.retainCanonicalProjection(activeSemanticIds);
+      for(const item of activeSemanticItems)if(!beforeSemanticIds.has(item.id))this.syncSemanticGraphProjection(item.id);
+    }
     if(totalChanged||options.force)this.events.append(makeEvent('memory-lifecycle',tick,{source:'memory-fabric',before,after:this.memoryOS.size(),changed:totalChanged,capacityChanged:changed,byteBudget,byteBudgetEvictions:byteBudgetResult.evicted.length,estimatedBytes:byteBudgetResult.usedBytes,pressure01:options.pressure01??0} as Record<string,unknown>));
     return {skipped:false,changed:totalChanged,byteBudget:byteBudgetResult};
   }
@@ -523,7 +707,7 @@ export class MemoryFabric {
       this.retiredMutationReceiptBloomCorrupt=true;
     }
     for(const row of (raw.mutationReceipts??[]).slice(-this.maxMutationReceipts)){
-      if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||!['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
+      if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','link','revise-status','revise-content','update-signals','update-context','attach-evidence','forget'].includes(row.action)||!['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
       this.mutationReceipts.set(row.commandId.slice(0,128),{...row,commandId:row.commandId.trim().slice(0,128),fingerprint:row.fingerprint.slice(0,64).toLowerCase(),at:Math.floor(Number(row.at))});
     }
   }
@@ -560,6 +744,10 @@ export class MemoryFabric {
     return this.applyLifecycleCommand({action:'update-context',id,patch,...context}) as Record<string,string> | null;
   }
 
+  attachEvidenceSource(id:string, source:MemoryEvidenceSource, reason='evidence-lineage', context:{tick?:number;commandId?:string}={}){
+    return this.applyLifecycleCommand({action:'attach-evidence',id,source,reason,...context}) as MemoryItem2|null;
+  }
+
   markDormant(id:string,dormant=true,reason='memory-economy',context:{tick?:number;commandId?:string}={}){
     return this.updateSignals(id,{dormant},reason,context);
   }
@@ -580,6 +768,7 @@ export class MemoryFabric {
       compatibilityItems:compatibility.length,
       hotItems:this.hotIds.length,
       stats:{...this.statsData},
+      retrievalAccounting:{...this.lastRetrievalOutcome},
       eventWindow:this.compactRecentEvents(),
       mutationReceiptJournal:{count:this.mutationReceipts.size,capacity:this.maxMutationReceipts,retiredCount:this.retiredMutationReceiptCount,tombstoneBytes:this.retiredMutationReceiptCount?RETIRED_RECEIPT_BLOOM_BYTES:0,corrupt:this.retiredMutationReceiptBloomCorrupt},
     };

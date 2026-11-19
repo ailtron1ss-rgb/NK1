@@ -37,6 +37,26 @@ export class P62MemoryFabric{
    const sources=new Set(hits.flatMap(h=>h.provenance)); const coverage=clamp(hits.reduce((s,h)=>s+h.relevance01,0)/Math.max(1,hits.length)); const redundancy=clamp(hits.length<=1?0:hits.reduce((s,h,i)=>s+(hits.slice(0,i).some(p=>tokenOverlap(p.content,h.content)>.72)?1:0),0)/Math.max(1,hits.length)); const conflict=clamp(hits.reduce((s,h)=>s+h.conflict01,0)/Math.max(1,hits.length)); const diversity=clamp(sources.size/4); const quality=clamp(coverage*.42+diversity*.16+(1-redundancy)*.16+(1-conflict)*.16+Math.min(1,hits.length/8)*.1);
    const frame:P62Frame={query,hits,sourcesUsed:[...sources],sourceDiversity01:diversity,semanticCoverage01:coverage,conflictPressure01:conflict,redundancy01:redundancy,retrievalQuality01:quality,at:Date.now()}; this.state.queries++;this.state.hits+=hits.length; if(conflict>.25)this.state.conflictEvents++;this.state.meanQuality01=clamp(this.state.meanQuality01*.94+quality*.06);this.state.meanCoverage01=clamp(this.state.meanCoverage01*.94+coverage*.06);this.state.meanConflict01=clamp(this.state.meanConflict01*.94+conflict*.06);this.state.lastFrame=frame;this.state.history=[frame,...this.state.history].slice(0,16); return structuredClone(frame);
  }
+ /** Remove cached recall frames containing a canonical memory that was explicitly forgotten. */
+ forgetMemory(memoryId:string):number {
+  const id=String(memoryId??'').trim().slice(0,160);
+  if(!id)return 0;
+  const contains=(frame:P62Frame|null)=>Boolean(frame?.hits.some(hit=>hit.id===id));
+  let removed=0;
+  const lastFrame=this.state.lastFrame;
+  const lastFrameInHistory=Boolean(lastFrame&&this.state.history.includes(lastFrame));
+  const retained=this.state.history.filter(frame=>{
+   if(!contains(frame))return true;
+   removed++;
+   return false;
+  });
+  this.state.history=retained;
+  if(contains(lastFrame)){
+   this.state.lastFrame=null;
+   if(!lastFrameInHistory)removed++;
+  }
+  return removed;
+ }
  summary(){return {queries:this.state.queries,hits:this.state.hits,conflictEvents:this.state.conflictEvents,meanQuality01:this.state.meanQuality01,meanCoverage01:this.state.meanCoverage01,meanConflict01:this.state.meanConflict01};}
 }
 function tokenOverlap(a:string,b:string){return sim(tokenise(a),tokenise(b));}

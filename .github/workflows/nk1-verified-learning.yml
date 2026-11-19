@@ -1,0 +1,58 @@
+name: NK1 Verified learning and skill lifecycle
+
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/**"
+      - "runtime/neuro-kurisu/tests/p23-*"
+      - "runtime/neuro-kurisu/tests/workpass383-*"
+      - "runtime/neuro-kurisu/tests/workpass40*"
+      - "runtime/neuro-kurisu/tests/workpass41*"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/nk1-verified-learning.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/**"
+      - "runtime/neuro-kurisu/tests/p23-*"
+      - "runtime/neuro-kurisu/tests/workpass383-*"
+      - "runtime/neuro-kurisu/tests/workpass40*"
+      - "runtime/neuro-kurisu/tests/workpass41*"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/nk1-verified-learning.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-verified-learning-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verified-learning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Experience replay and learning governance
+        run: npm --prefix runtime/neuro-kurisu run test:p23:learning
+      - name: Authenticated outcome evidence and promotion gates
+        run: npm --prefix runtime/neuro-kurisu run test:p23:verified-outcomes:full
+      - name: Versioned skill lifecycle and human approval
+        run: npm --prefix runtime/neuro-kurisu run test:p23:verified-skill-lifecycle && npm --prefix runtime/neuro-kurisu run test:p23:hermes-production-promotion-gate
+      - name: Local revision generator and independent evaluation
+        run: npm --prefix runtime/neuro-kurisu run test:p23:local-model-skill-revision-integration && npm --prefix runtime/neuro-kurisu run test:learning-evidence-transfer
+      - name: Learning experiment execution audit
+        run: npm --prefix runtime/neuro-kurisu run test:p23:continual-learning:full

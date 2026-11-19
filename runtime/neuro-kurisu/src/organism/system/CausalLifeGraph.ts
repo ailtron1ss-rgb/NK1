@@ -58,7 +58,7 @@ export class CausalLifeGraph {
     confidence01?: number;
     external01?: number;
     metadata?: Record<string, unknown>;
-  }, options: { clone?: boolean } = {}): LifeNode | undefined {
+  }, options: { clone?: boolean; recompute?: boolean } = {}): LifeNode | undefined {
     const ref = clean(input.refId, 180) || `${input.kind}:${input.tick}`;
     const key = `${input.kind}:${ref}`;
     const existingId = this.nodeByRef.get(key);
@@ -73,6 +73,7 @@ export class CausalLifeGraph {
         n.external01 = clamp(input.external01 ?? n.external01);
         n.metadata = { ...n.metadata, ...(input.metadata ?? {}) };
         this.state.lastAt = at;
+        if (options.recompute !== false) this.recompute();
         return options.clone === false ? undefined : structuredClone(n);
       }
     }
@@ -91,6 +92,7 @@ export class CausalLifeGraph {
     if (this.state.nodes.length > 768) { this.state.nodes = this.state.nodes.slice(0, 768); this.rebuildIndex(); } else { this.nodeByRef.set(key, node.id); this.nodeById.set(node.id, node); }
     this.state.totalNodes += 1;
     this.state.lastAt = at;
+    if (options.recompute !== false) this.recompute();
     return options.clone === false ? undefined : structuredClone(node);
   }
 
@@ -179,7 +181,7 @@ export class CausalLifeGraph {
         confidence01: r.confidence01,
         external01: r.external01,
         metadata: r.metadata,
-      }, { clone: false });
+      }, { clone: false, recompute: false });
     }
     const pairs: Array<[LifeNodeKind, LifeNodeKind, LifeEdgeKind]> = [
       ['experience', 'emotion', 'evoked'],

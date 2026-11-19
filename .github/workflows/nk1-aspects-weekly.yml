@@ -1,0 +1,63 @@
+name: NK1 75-aspect weekly tracker
+
+# NOTE: GitHub only fires scheduled workflows from the repository default branch
+# (here: main). This repo keeps source work on workpass70-source and reserves main
+# for release/metadata, so the cron schedule below will not run until this file is
+# present on the default branch. Until then use "Run workflow" (workflow_dispatch)
+# or the OpenHands weekly tracker automation. The push trigger keeps validation on
+# workpass70-source current.
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: workpass70-source
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Validate the registry (fail closed on drift)
+        run: npm run aspects:validate
+      - name: Run registry safety tests
+        run: npm run aspects:test
+      - name: Write the weekly aspect report
+        run: |
+          {
+            echo "## NK1 75-aspect weekly status"
+            echo ""
+            echo "Source head at this run: \`$(git rev-parse HEAD)\`"
+            echo ""
+            echo '```json'
+            npm run --silent aspects
+            echo '```'
+            echo ""
+            echo "### Next actionable aspect"
+            echo '```json'
+            npm run --silent aspects:next
+            echo '```'
+            echo ""
+            echo "### Full report"
+            echo '```markdown'
+            npm run --silent aspects:report
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Check the registry source SHA is not stale
+        run: |
+          REGISTRY_SHA=$(node -e "console.log(require('./engineering-os/aspects.v1.json').observedSourceHead)")
+          LIVE_SHA=$(git rev-parse HEAD)
+          echo "registry observedSourceHead: $REGISTRY_SHA"
+          echo "live source head:           $LIVE_SHA"
+          if [ "$REGISTRY_SHA" != "$LIVE_SHA" ]; then
+            echo "::warning::The registry observedSourceHead ($REGISTRY_SHA) differs from the live head ($LIVE_SHA). Refresh evidence before relying on it; this is a reminder, not a failure."
+          fi

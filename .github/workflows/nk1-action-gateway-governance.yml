@@ -1,0 +1,58 @@
+name: NK1 Action Gateway governance
+
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/**"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/nk1-action-gateway-governance.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/**"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/nk1-action-gateway-governance.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-action-gateway-governance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  action-governance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Action runtime architecture audit
+        run: npm --prefix runtime/neuro-kurisu run audit:actions-runtime
+      - name: Approval and idempotency policy
+        run: npm --prefix runtime/neuro-kurisu run test:workpass54-approval-center && npm --prefix runtime/neuro-kurisu run test:workpass57-action-idempotency-policy
+      - name: Outcome and uncertainty firewall
+        run: npm --prefix runtime/neuro-kurisu run test:workpass57-outcome-hardening && npm --prefix runtime/neuro-kurisu run test:workpass59-preexecution-outcome-firewall && npm --prefix runtime/neuro-kurisu run test:workpass59-nonexecution-learning-firewall && npm --prefix runtime/neuro-kurisu run test:workpass63:action-uncertainty-skill-firewall
+      - name: Receipt recovery and reconciliation
+        run: npm --prefix runtime/neuro-kurisu run test:workpass64:archived-receipt-reconciliation && npm --prefix runtime/neuro-kurisu run test:workpass95:receipt-integrity && npm --prefix runtime/neuro-kurisu run test:workpass96:finalizer-boundary
+      - name: Core planner and project routing
+        run: npm --prefix runtime/neuro-kurisu run test:workpass97:planner-route && npm --prefix runtime/neuro-kurisu run test:workpass98:project-reconciliation-route
+      - name: Decision-linked external postconditions
+        run: npm --prefix runtime/neuro-kurisu run test:workpass294:correlated-postcondition

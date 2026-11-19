@@ -13,7 +13,10 @@ assert.ok(p);
 let result = await core.executeNextProjectStep('integration-test');
 assert.equal(result.tool,'organism.project.context');
 assert.equal(result.ok,true);
-assert.ok(core.skillAcquisitionBenchmarkSnapshot().samples > before);
+const runtimeSkill = core.skillAcquisitionBenchmarkSnapshot();
+assert.ok(runtimeSkill.samples > before);
+assert.ok(Object.keys(runtimeSkill.contextPhaseByKey).length > 0);
+assert.equal(Object.values(runtimeSkill.contextPhaseByKey).includes('holdout'), false, 'runtime project/action telemetry cannot self-label as independent holdout');
 const subs=core.cognitiveSubsystemManifest();
 assert.deepEqual(subs.map(x=>x.name),['self','world','memory','agency','embodiment','research','governance']);
 
@@ -23,10 +26,14 @@ assert.ok(migrated.schemaVersion>=90);
 assert.equal(migrated.system.skillAcquisitionBenchmark,undefined);
 
 const skill = new SkillAcquisitionBenchmark();
-for(let i=0;i<12;i++) skill.observe({action:'explore',contextKey:`holdout-${i}`,outcome01:i<4?.4:.86});
+for(let i=0;i<4;i++) skill.observe({action:'explore',contextKey:'baseline-' + i,outcome01:.4,phase:'baseline'});
+for(let i=0;i<8;i++) skill.observe({action:'explore',contextKey:'holdout-' + i,outcome01:.86,phase:'holdout'});
 const ss=skill.summary();
 assert.equal(ss.samples,12);
 assert.ok(ss.novelContexts>=12);
+assert.equal(ss.holdoutEligible,true);
+assert.equal(ss.eligibilityBasis,'unique-context-floor-only');
+assert.equal(ss.independentEvaluatorRequired,true);
 assert.ok(ss.holdoutMean01>ss.baselineMean01);
 assert.ok(ss.gain01>=0);
 

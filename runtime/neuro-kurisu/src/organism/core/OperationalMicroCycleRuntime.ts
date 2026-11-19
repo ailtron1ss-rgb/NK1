@@ -100,7 +100,7 @@ export class OperationalMicroCycleRuntime {
   }
 
   async run(observation: OrganismObservation): Promise<OrganismCycleResult> {
-    // Reject malformed top-level observations before acquiring host state or ticking clocks.
+    // Validate before acquiring host state or advancing the micro-cycle clock.
     assertCognitiveCycleBoundaryInput(observation, 'operational');
     const host = this.contextProvider();
     const { persisted: persistedState, cognitiveRuntime, organismSystems, developmentalNeural, worldSubsystem, persistence } = host;
@@ -167,7 +167,7 @@ export class OperationalMicroCycleRuntime {
     // Treat incoming reward/success as claims, not verified credit. Keep the
     // neutral baseline until the full-cycle verifier can pass its evidence here.
     const microReward = 0.5;
-    const microError = clamp(finiteOr(observation.surprise, state.predictionError));
+    const microError = clamp(finiteOr(ownSensorValue(observation, 'surprise'), state.predictionError));
     const microVerified = false;
     const microSeed = [
       state.needs.energy,
