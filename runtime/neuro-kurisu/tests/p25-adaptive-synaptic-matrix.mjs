@@ -74,6 +74,12 @@ const request = (overrides = {}) => ({
       && keyId === 'nk1-offline-adapter-validator',
   );
   assert.equal(activated.status, 'active');
+  assert.throws(() => matrix.activateValidated(manifest(), () => true), /report-replay/i,
+    'a signed holdout report is single-use even while the adapter remains active');
+  assert.throws(() => matrix.activateValidated(manifest(candidate(), {
+    validation: { ...manifest().validation, reportId: 'different-id-same-digest' },
+  }), () => true), /report-replay/i,
+    'report identity changes cannot bypass digest-level replay protection');
 
   const selected = matrix.select(request());
   assert.equal(selected.mode, 'adapter');
@@ -253,9 +259,19 @@ const request = (overrides = {}) => ({
   explicitlyDisabled.activateValidated(manifest(), () => true);
   explicitlyDisabled.disable('physics-lora-v1');
   assert.equal(explicitlyDisabled.select(request()).mode, 'base-fallback');
-  explicitlyDisabled.activateValidated(manifest(), () => true);
+  assert.throws(() => explicitlyDisabled.activateValidated(manifest(), () => true), /report-replay/i,
+    'manual disable must not make a consumed report reusable');
+  const disabledFreshManifest = manifest(candidate(), {
+    validation: {
+      ...manifest().validation,
+      reportId: 'holdout-physics-reenabled-2026-11',
+      reportSha256: hash('9'),
+      holdoutDatasetRef: 'dataset://physics/holdout-reenabled-v2',
+    },
+  });
+  explicitlyDisabled.activateValidated(disabledFreshManifest, () => true);
   assert.equal(explicitlyDisabled.select(request()).mode, 'adapter',
-    'an operator may explicitly reactivate a disabled profile using a fresh verified activation');
+    'a disabled profile can be reactivated only with a fresh signed holdout report');
 
   const repeatedFailure = new AdaptiveSynapticMatrixEngine();
   repeatedFailure.registerCandidate(candidate());
@@ -295,6 +311,94 @@ const request = (overrides = {}) => ({
     'a fresh signed holdout report may reactivate the quarantined adapter after restart');
   assert.equal(repeatedFailure.activateValidated(freshManifest, () => true).status, 'active',
     'a new signed holdout report can explicitly revalidate a quarantined specialist');
+}
+
+
+{
+  const matrix = new AdaptiveSynapticMatrixEngine();
+  matrix.registerCandidate(candidate());
+  for (let index = 0; index < 64; index += 1) {
+    const report = manifest(candidate(), {
+      validation: {
+        ...manifest().validation,
+        reportId: 'capacity-report-' + index,
+        reportSha256: String(index + 1).padStart(64, '0'),
+        holdoutDatasetRef: 'dataset://physics/capacity-holdout-' + index,
+      },
+    });
+    matrix.activateValidated(report, () => true);
+  }
+  assert.equal(matrix.snapshot().adapters[0].acceptedReportSha256s.length, 64);
+  const overflow = manifest(candidate(), {
+    validation: {
+      ...manifest().validation,
+      reportId: 'capacity-overflow',
+      reportSha256: hash('f'),
+      holdoutDatasetRef: 'dataset://physics/capacity-overflow',
+    },
+  });
+  assert.throws(() => matrix.activateValidated(overflow, () => true), /history-capacity/i,
+    'the bounded ledger must never evict prior accepted digests');
+  const restored = new AdaptiveSynapticMatrixEngine();
+  restored.restore(matrix.snapshot(), () => true);
+  assert.throws(() => restored.activateValidated(overflow, () => true), /history-capacity/i,
+    'capacity exhaustion remains fail-closed after process restart');
+}
+
+{
+  const matrix = new AdaptiveSynapticMatrixEngine();
+  matrix.registerCandidate(candidate());
+  matrix.activateValidated(manifest(), () => true);
+  const tampered = matrix.snapshot();
+  tampered.adapters[0].acceptedReportSha256s = [];
+  const restored = new AdaptiveSynapticMatrixEngine();
+  restored.restore(tampered, () => true);
+  assert.equal(restored.snapshot().adapters[0].status, 'quarantined',
+    'a truncated report ledger must never restore an active adapter');
+  assert.equal(restored.snapshot().adapters[0].activationHistorySaturated, true);
+  assert.equal(restored.select(request()).mode, 'base-fallback');
+  assert.throws(() => restored.activateValidated(manifest(candidate(), {
+    validation: { ...manifest().validation, reportId: 'fresh-but-untrusted-history', reportSha256: hash('8') },
+  }), () => true), /history-capacity/i,
+  'incomplete report history cannot be repaired by simply presenting a fresh report');
+}
+
+{
+  const matrix = new AdaptiveSynapticMatrixEngine();
+  matrix.registerCandidate(candidate());
+  const legacy = matrix.snapshot();
+  delete legacy.adapters[0].acceptedReportSha256s;
+  delete legacy.adapters[0].acceptedReportCount;
+  delete legacy.adapters[0].acceptedReportHistorySha256;
+  const restored = new AdaptiveSynapticMatrixEngine();
+  restored.restore(legacy, () => true);
+  assert.equal(restored.snapshot().adapters[0].activationHistorySaturated, undefined,
+    'a never-activated legacy candidate can be safely migrated with an empty history');
+  restored.activateValidated(manifest(), () => true);
+  const usedLegacy = restored.snapshot();
+  delete usedLegacy.adapters[0].acceptedReportSha256s;
+  delete usedLegacy.adapters[0].acceptedReportCount;
+  delete usedLegacy.adapters[0].acceptedReportHistorySha256;
+  const restoredUsedLegacy = new AdaptiveSynapticMatrixEngine();
+  restoredUsedLegacy.restore(usedLegacy, () => true);
+  assert.equal(restoredUsedLegacy.snapshot().adapters[0].status, 'quarantined',
+    'a legacy snapshot with activation evidence but no complete ledger must fail closed');
+  assert.equal(restoredUsedLegacy.snapshot().adapters[0].activationHistorySaturated, true);
+}
+
+{
+  const matrix = new AdaptiveSynapticMatrixEngine();
+  matrix.registerCandidate(candidate());
+  assert.equal(matrix.reconcileReplayAnchor('physics-lora-v1', null), true,
+    'a never-used candidate may start without an external anchor row');
+  matrix.activateValidated(manifest(), () => true);
+  const anchor = matrix.replayAnchorState('physics-lora-v1');
+  assert.equal(matrix.reconcileReplayAnchor('physics-lora-v1', anchor), true);
+  assert.equal(matrix.reconcileReplayAnchor('physics-lora-v1', {
+    ...anchor,
+    acceptedReportCount: anchor.acceptedReportCount - 1,
+  }), false, 'a stale external monotonic anchor must quarantine local history');
+  assert.equal(matrix.snapshot().adapters[0].status, 'quarantined');
 }
 
 console.log('P25_ADAPTIVE_SYNAPTIC_MATRIX=PASS');
