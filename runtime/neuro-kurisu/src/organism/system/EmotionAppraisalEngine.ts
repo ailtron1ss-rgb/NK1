@@ -66,17 +66,20 @@ const INTERO_KEYS = ['meanMismatch01','lastMismatch01','regulationPressure01','s
 const BODY_KEYS = ['energy01','thermal01','capacity01','load01'] as const;
 
 /** Copy own data properties only; accessors and hostile Proxy traps fail closed. */
+const MAX_SNAPSHOT_RECORD_KEYS = 256;
+
 function ownDataRecord(value: unknown): Record<string, unknown> | null {
   if (value === null || typeof value !== 'object') return null;
   try {
     if (Array.isArray(value)) return null;
     const prototype = Object.getPrototypeOf(value);
     if (prototype !== Object.prototype && prototype !== null) return null;
-    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(value);
+    if (keys.length > MAX_SNAPSHOT_RECORD_KEYS) return null;
     const output: Record<string, unknown> = Object.create(null);
-    for (const key of Reflect.ownKeys(descriptors)) {
+    for (const key of keys) {
       if (typeof key !== 'string') return null;
-      const descriptor = (descriptors as Record<string, PropertyDescriptor>)[key];
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
           descriptor.get !== undefined || descriptor.set !== undefined) return null;
       output[key] = descriptor.value;
