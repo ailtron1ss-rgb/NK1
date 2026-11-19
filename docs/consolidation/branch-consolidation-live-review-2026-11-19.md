@@ -109,3 +109,13 @@ Current live state at review time:
 - A top-level review checkpoint was posted to PR #953 (comment ID `7000561568`) asking for the single-backslash regex form and a test.
 - A separate concern that the 1,600-row corpus cap silently caused a false fingerprint was investigated and **not** retained as a finding: the underlying `runMemoryOS2RetrievalBenchmark` marks truncation as `corpusIntegrity.validForPromotion=false`, which makes `structurallyValid` false and rejects the semantic benchmark before either arm is run.
 
+### PR #953 recheck after head advanced (2026-11-19)
+
+A later recheck found that PR #953 advanced from `fbab11da4e07a09282b8cb043904a05a4f638663` to `aea2581db1323c447d1e2fa2fb495ce443552a34`, adding the graph-only orphan forget regression. The source remains `aa2b385153ddc316eadf61f87e2c0803d7d59d98`; compare is now 23 commits ahead / 2 behind from merge-base `9742b5a82966e11ba9c913074615b2420736bcee`.
+
+The updated head's Actions query returned 50 completed runs: **49 success, 1 failure**. Failed run `44464420507` job `memory-projection-integrity` fails at the test step `Explicit forget and source-isolated projection integrity`; later steps are skipped. The new test fails because `MemoryFabric.applyLifecycleCommand()` calls `this.semanticMemory.removeCanonicalProjection(command.id)` but discards its boolean return. The `applied` predicate considers only canonical MemoryOS deletion, MultiTimescale projection deletion, and P62 recall-frame deletion. If the graph projection is the only remaining copy, it is removed but the command returns `false`. Fix by retaining that return value (e.g. `semanticProjectionRemoved`) and including it in the `applied` predicate; preserve the repeat-forget no-op assertion.
+
+A second PR comment was posted with this exact finding (comment ID `7000580175`). The PR remains Draft and must not merge until the fix is committed and the focused workflow passes on the new exact head. The earlier 50/50-green CI evidence applies only to the previous head `fbab11d...`, not to this newer revision.
+
+The PR body still says production implementation is not included, although the 22-file diff contains production runtime changes. Its scope description should be corrected before review/merge.
+
