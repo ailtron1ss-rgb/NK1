@@ -53,7 +53,7 @@ export class EmbodimentRuntime {
 
   /** Inject a host-owned N.E.K.O./local ASR provider; null preserves the Termux STT fallback. */
   setNekoAsrProvider(provider:NekoAsrProviderPort|null):void { this.nekoAsrAdapter=provider?new NekoAsrTranscriptAdapter(provider):null; }
-  get speechInputProviderId:string { return this.nekoAsrAdapter?.providerId ?? 'termux-speech-to-text'; }
+  get speechInputProviderId():string { return this.nekoAsrAdapter?.providerId ?? 'termux-speech-to-text'; }
 
   /** The only permitted routes to physical TTS and interruption are ActionGateway-backed dispatchers. */
   setSpeechGatewayDispatcher(dispatcher:SpeechGatewayDispatcher|null):void { this.speechGatewayDispatcher=dispatcher; }
