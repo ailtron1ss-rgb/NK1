@@ -1,3 +1,11 @@
+## [NK1][Embodiment] Bind voice prosody to canonical affect appraisal and dominance (2026-11-19)
+- Project voice emotion from the latest canonical `EmotionAppraisalEngine` episode, falling back to validated appraisal aggregates and then the affect-specific cognitive field.
+- Keep perceived affective dominance separate from cognitive coherence; missing dominance uses a neutral fallback and never borrows `coherence01`.
+- Apply bounded low/high appraisal-control adjustments to speech rate, pause and emphasis.
+- Add a shared voice-context regression and run it with the existing voice contract in the unified organism runtime workflow.
+- Merged by PR #997; exact head `c1bb9abeb582521d3d37774643879c47860eb9c4` had 51/51 returned workflow runs succeed. Five changed file blobs were verified identical between the merged branch and `workpass70-source`.
+- This is a deterministic affect-to-prosody wiring contract; it does not establish psychological validity, improved emotional intelligence or user-perceived voice quality.
+
 ## [NK1][Governance] Make ActionGateway machine-token classification locale-neutral (2026-11-19)
 - Use locale-independent `toLowerCase()` for permission, risk and idempotency classification; protocol identifiers must not depend on the host's language locale.
 - Preserve the adversarial regression proving uppercase `FILESYSTEM.WRITE` remains classified as filesystem/elevated and retains required governance-gate reporting when `toLocaleLowerCase()` is unavailable or throws.
