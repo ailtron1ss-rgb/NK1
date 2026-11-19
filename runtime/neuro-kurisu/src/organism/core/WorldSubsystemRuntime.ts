@@ -216,7 +216,16 @@ export class WorldSubsystemRuntime {
     // Calibration is resolved only against a genuine pre-outcome ensemble ticket.
     // Never synthesize a fresh prediction after the outcome just to manufacture evidence.
     const actual=Math.max(0,Math.min(1,transition.reward));
-    const resolution=this.worldModelEnsemble.observeOutcomeForAction(String(transition.action),actual);
+    const decisionFrame=predictionId ? this.canonicalPredictionFrames.get(predictionId) : undefined;
+    const ensemblePredictionId=decisionFrame?.ensemble?.predictionId;
+    // A supplied canonical decision ID must resolve only its own ensemble ticket.
+    // Never fall back to FIFO-by-action when that exact frame has expired or is absent.
+    const resolution=predictionId
+      ? (typeof ensemblePredictionId === 'string'
+        ? this.worldModelEnsemble.resolvePredictionOutcome(ensemblePredictionId,actual)
+        : {resolved:false,predictionId:null,candidates:[]})
+      : this.worldModelEnsemble.observeOutcomeForAction(String(transition.action),actual);
+    if(predictionId) this.canonicalPredictionFrames.delete(predictionId);
     const candidates=resolution.candidates;
     const worldModelResolution=this.worldModel2.observeTransition(transition, predictionId);
     if(beforeState){
