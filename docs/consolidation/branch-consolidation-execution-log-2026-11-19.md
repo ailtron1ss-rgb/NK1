@@ -125,3 +125,31 @@
 7. После materialization Release ZIP выполнить extraction manifest + per-file SHA256 + binary/text diff и проверить происхождение/лицензии assets.
 
 **Итог:** в этом проходе подтверждены 4 точных PR-дубликата и безопасно закрыты; число веток осталось 1 035. Полная веточная консолидация и побайтовый аудит архива ещё не завершены.
+
+## Live refresh — 2026-11-19 (после merge #950)
+
+### Актуальная перепись refs и PR
+
+- Branch refs: **1 038**; уникальных HEAD SHA: **947**; групп одинаковых HEAD: **12**; избыточных имён поверх уникальных commit tips: **91**.
+- Ветка `workpass70-source`: `0a3e4c4e51d7c2ec154a87cc0912e4a1cd6752e0`.
+- От контрольной точки `7547f5287b84a7d9b7109c0e5fdbe20bf95c9e33` GitHub compare показывает **3 commits ahead / 0 behind**. Последний коммит — merge #950.
+- Branch census files: `branch-census-2026-11-19.json/.md`.
+- Pull requests: **942 total / 413 open / 312 merged / 217 closed without merge**; **926** distinct PR head refs, **412** distinct open head refs.
+- PR census files: `pull-request-census-2026-11-19.json/.md`.
+- По сравнению с реестром 2026-11-18 обнаружены пять новых refs и ни одного исчезнувшего: `aspect/embodiment-skeletal-3d-kinematics-20261119`, `aspect/kurisu-embodiment-assets-20261118`, `aspect/memory-hmx-semantic-integrity-20261119`, `aspect/tooling-neko-plugin-integrity-20261119`, `consolidation/nk1-branch-census-20261118`. Полный перечень и HEAD SHA находится в новом JSON.
+
+### Движение PR в текущем окне
+
+- **#950 — MERGED** (2026-11-19 05:08:41 UTC): 13 файлов, +33/-0. В source сохранены 8 PNG спрайтов Курису, provenance-документ и 4 изображения visual evidence. Это сохранение ресурсов; подключение их к renderer/UI отдельно не доказано.
+- **#952 — MERGED** (2026-11-19 05:05:40 UTC): 2 Markdown-файла, +209/-0. Добавлены русская спецификация manifest policy и file-level reconciliation N.E.K.O. plugin веток. Merge commit #952 — `9742b5a82966e11ba9c913074615b2420736bcee`; затем source продвинут merge #950 до `0a3e4c4…`.
+- **#951 — OPEN / Draft**: 8 файлов, +672/-1, 3D skeletal kinematics. Полный diff, зависимости и exact-head CI должны быть проверены до интеграции.
+- **#953 — OPEN / Draft**: 17 файлов, +2 551/-112, HMX / bitemporal MemoryOS2. Требует построчной сверки с актуальной временной семантикой MemoryOS2 и полного CI.
+- **#949 — OPEN / Draft, audit-only**. PR создан относительно `7547f528…`; source теперь `0a3e4c4…`. Перед merge требуется заново проверить merge-base и отсутствие конфликтов; это не runtime PR.
+
+### Границы и безопасность
+
+- В этом обновлении изменяются только отчёты на ветке консолидации. Рабочие runtime-файлы, `main` и Release ZIP не редактируются.
+- Ни один runtime PR не был объединён этим обновлением; #950 и #952 уже были merged в GitHub на момент проверки.
+- Ветки не удалялись. Совпадающий HEAD не равен доказательству ненужности ref: исторические PR, head/base refs, workflows, tags, rulesets и deployment references нужно учитывать отдельно.
+- Основной архив 19 октября: tag `Neuro`, `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135 290 615 bytes, release metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`, tag commit `c2e8e4a78431734612f89318e79d3491643f24f3`. ZIP-байты не удалось получить в текущем runtime; состав архива, extraction manifest и побайтовая сверка остаются невыполненными gate.
+- GitHub compare между tag `Neuro` и текущим source сообщает `No common ancestor`; нормальный merge ancestry и parity нельзя предполагать.
