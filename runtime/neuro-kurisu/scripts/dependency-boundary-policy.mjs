@@ -70,11 +70,13 @@ export function collectDependencyBoundaryViolations({
     }
   }
 
-  // Browser/application implementation must use the public API rather than
-  // directly importing runtime source. Tests are not included in appSourceRoot.
+  // Browser/application implementation may depend on explicit organism contracts,
+  // but must not import private runtime implementation modules. Tests are not included
+  // in appSourceRoot; the allow-list is restricted to the canonical contracts subtree.
+  const publicContractRoot = path.join(canonicalRoot, "contracts");
   for (const from of files.filter(file => isWithin(file, appSourceRoot))) {
     for (const dep of graph.get(from) ?? []) {
-      if (isWithin(dep, path.join(root, "src"))) {
+      if (isWithin(dep, path.join(root, "src")) && !isWithin(dep, publicContractRoot)) {
         violations.push({
           rule: "app-source-to-runtime-private-import",
           from: path.relative(root, from),
