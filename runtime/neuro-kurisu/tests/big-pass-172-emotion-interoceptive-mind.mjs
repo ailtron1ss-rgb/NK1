@@ -26,6 +26,52 @@ assert.ok((e.outcomeCalibration('rest')?.attempts??0)===4);
 assert.ok(e.actionBias('rest')>e.actionBias('explore'),'high interoceptive pressure plus good rest outcomes should favor regulation');
 const es=e.snapshot(); const er=new EmotionAppraisalEngine(); er.restore(es); assert.deepEqual(er.snapshot(),es);
 
+// Restore is a trust boundary: accessor/proxy-backed data must fail closed.
+const emptyAffect = new EmotionAppraisalEngine().snapshot();
+const corruptRoot = Object.create(null);
+Object.defineProperty(corruptRoot, 'episodes', {
+  enumerable: true,
+  get() { throw new Error('getter-must-not-run'); },
+});
+corruptRoot.lastTick = Infinity;
+const hostileRootRestore = new EmotionAppraisalEngine();
+hostileRootRestore.restore(corruptRoot);
+assert.deepEqual(hostileRootRestore.snapshot(), emptyAffect,
+  'a root accessor must be rejected without executing its getter');
+
+const hostileHistory = structuredClone(es);
+Object.defineProperty(hostileHistory.history[0], 'label', {
+  enumerable: true,
+  get() { throw new Error('episode-getter-must-not-run'); },
+});
+const hostileHistoryRestore = new EmotionAppraisalEngine();
+hostileHistoryRestore.restore(hostileHistory);
+assert.equal(hostileHistoryRestore.snapshot().history.length, 0,
+  'an accessor-backed history record invalidates the untrusted history');
+
+const hostileInteroception = structuredClone(es);
+hostileInteroception.interoception.predicted.energy01 = Infinity;
+const hostileInteroceptionRestore = new EmotionAppraisalEngine();
+hostileInteroceptionRestore.restore(hostileInteroception);
+assert.deepEqual(hostileInteroceptionRestore.snapshot().interoception, emptyAffect.interoception,
+  'non-finite interoceptive vectors must restore to the safe default');
+
+const hostileOutcomes = structuredClone(es);
+hostileOutcomes.outcomes = {
+  rest: { attempts: -1, meanSuccess01: 4, meanSurprise01: NaN, meanBenefit01: -2 },
+};
+const hostileOutcomeRestore = new EmotionAppraisalEngine();
+hostileOutcomeRestore.restore(hostileOutcomes);
+assert.deepEqual(hostileOutcomeRestore.snapshot().outcomes, {},
+  'malformed outcome calibration must not survive restore');
+
+const revokedProxy = Proxy.revocable({}, {});
+revokedProxy.revoke();
+const revokedRestore = new EmotionAppraisalEngine();
+revokedRestore.restore(revokedProxy.proxy);
+assert.deepEqual(revokedRestore.snapshot(), emptyAffect,
+  'revoked proxy input must restore the safe default');
+
 const h = new P66InteroceptiveHomeostasis();
 const high = h.observe({tick:1,at:1,energy01:.2,thermal01:.9,capacity01:.25,load01:.9,awake:true,uncertainty01:.8,predictionError01:.8,novelty01:.2});
 assert.equal(high.mode,'recover'); assert.ok(high.pressure01>.5);
