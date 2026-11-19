@@ -19,7 +19,7 @@ type ArmResult={items:MemoryItem2[];latencyMs:number;isolationSetupMs:number};
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const isCurrent=(item:MemoryItem2,now:number)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&Number.isFinite(Number(item.validFromAt??item.createdAt))&&Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||Number(item.validUntilAt)>now);
 
-const normalizeQuery=(value:string)=>String(value).normalize('NFKC').toLowerCase().replace(/[\\p{P}\\p{S}]+/gu,' ').replace(/\\s+/g,' ').trim();
+export const normalizeMemorySemanticRetrievalQuery=(value:string)=>String(value).normalize('NFKC').toLowerCase().replace(/[\p{P}\p{S}]+/gu,' ').replace(/\s+/g,' ').trim();
 const p95=(values:number[])=>{if(!values.length)return 0;const sorted=[...values].sort((a,b)=>a-b);return sorted[Math.min(sorted.length-1,Math.ceil(sorted.length*.95)-1)]??0;};
 function evaluateArm(examples:MemoryRetrievalBenchmarkExample[],retrieve:(query:string)=>ArmResult,k:number,now:number){
   let answerableQueries=0,unanswerableQueries=0,unsupportedRetrievalCount=0,falseAbstentionCount=0;
@@ -277,7 +277,7 @@ const minimumUnanswerablePerLanguage=(options:MemorySemanticRetrievalBenchmarkOp
     const ephemeralSalt=randomUUID().replace(/-/g,'')+randomUUID().replace(/-/g,'');
     return rows.map(row=>({
       exampleIdDigest:hmacSha256Hex(ephemeralSalt,row.id),
-      queryDigest:hmacSha256Hex(ephemeralSalt,normalizeQuery(row.query)),
+      queryDigest:hmacSha256Hex(ephemeralSalt,normalizeMemorySemanticRetrievalQuery(row.query)),
       groupDigest:hmacSha256Hex(ephemeralSalt,row.independenceGroupId??row.id),
       split:row.split,language:row.language??'other',answerable:row.answerable!==false,
       relevantIdDigests:row.relevantIds.map(id=>hmacSha256Hex(ephemeralSalt,id)).sort(),
