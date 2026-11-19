@@ -1875,6 +1875,7 @@
     "test:open-loop-radar": "node --experimental-strip-types tests/open-loop-radar-contract.mjs",
     "test:open-loop-radar-runtime": "node --experimental-strip-types tests/open-loop-radar-runtime-integration.mjs",
     "test:open-loop-radar-http": "node tests/open-loop-radar-http-route.mjs",
-    "test:open-loop-radar-dialogue": "node --experimental-strip-types tests/autonomous-dialogue-prompt-workpass48.mjs"
+    "test:open-loop-radar-dialogue": "node --experimental-strip-types tests/autonomous-dialogue-prompt-workpass48.mjs",
+    "test:workpass328:operational-microcycle-sensors": "node --experimental-strip-types tests/operational-microcycle-finite-input.mjs"
   }
 }
