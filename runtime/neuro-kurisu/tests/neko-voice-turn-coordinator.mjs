@@ -209,7 +209,13 @@ test('rejects Proxy-backed host sessions before reading session fields', async (
       async openSession() {
         return new Proxy({}, {
           getPrototypeOf() { trapInvoked = true; return Object.prototype; },
-          get() { trapInvoked = true; return undefined; },
+          // Promise resolution probes "then" before the host result reaches the coordinator.
+          // Keep that language-level assimilation probe inert; identity traps must remain untouched.
+          get(_target, property) {
+            if (property === 'then') return undefined;
+            trapInvoked = true;
+            return undefined;
+          },
           ownKeys() { trapInvoked = true; return []; },
         });
       },
