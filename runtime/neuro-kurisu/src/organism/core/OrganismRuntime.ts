@@ -37,6 +37,8 @@ import type { VisionSemanticBackend } from '../body/VisionSemanticBackend.ts';
 import { TemporalObjectTracker } from '../body/TemporalObjectTracker.ts';
 import { RealityGroundingController, type RealityGroundingMode } from '../system/RealityGroundingController.ts';
 import { NeuralCausalTraceLedger } from '../system/NeuralCausalTraceLedger.ts';
+import { OpenLoopRadar, type OpenLoopRadarState, type OpenLoopScanOptions } from '../cognition/evolution/OpenLoopRadar.ts';
+import { sanitizeAutonomousTopicText } from '../system/AutonomousSocialInitiativeEngine.ts';
 import { RealityLearningGate } from '../system/RealityLearningGate.ts';
 import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
 import { ExternalPostconditionVerifier } from '../system/ExternalPostconditionVerifier.ts';
@@ -228,6 +230,7 @@ export class OrganismRuntime {
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
+  private readonly openLoopRadar = new OpenLoopRadar();
   private readonly resourceEconomy = new CognitiveResourceEconomy();
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
@@ -264,6 +267,7 @@ export class OrganismRuntime {
   };
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
+  private readonly openLoopStore: JsonStateStore<OpenLoopRadarState>;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -375,6 +379,7 @@ export class OrganismRuntime {
     if (!Number.isSafeInteger(this.synapticAdapterTimeoutMs) || this.synapticAdapterTimeoutMs < 100 || this.synapticAdapterTimeoutMs > 120_000) {
       throw new Error('synaptic-adapter-timeout-invalid');
     }
+    this.openLoopStore = new FileStateStore<OpenLoopRadarState>(`${config.stateFile}.open-loops.json`);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -428,6 +433,9 @@ export class OrganismRuntime {
       // Active records are re-verified on every restore. Without the trusted host verifier
       // a previously active adapter is quarantined and the base model remains authoritative.
       await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
+      const restoredOpenLoopState = await this.openLoopStore.load();
+      this.openLoopRadar.restore(restoredOpenLoopState ?? undefined);
+      if (!restoredOpenLoopState) await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -1002,19 +1010,45 @@ export class OrganismRuntime {
     const languageBudgetAllows = currentBudgetAllowsLanguage(this.core.cognitiveBudgetOperationalSnapshot()?.mode);
     const languageInvoker = this.config.languageInvoker;
     if (languageInvoker && shouldInvokeLanguageForRuntimeStep({ enabled:this.config.enableLanguage, hasInvoker:true, languageBudgetAllows, hasExternalText:Boolean(externalText), hasAutonomousAgenda:Boolean(autonomousAgenda), suppressResponse:options.suppressResponse })) {
-      const mem0Query = externalText || autonomousAgenda?.topic || '';
-      const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
-      const request = externalText
-        ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
-        : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext());
-      if(options.signal) request.signal=options.signal;
-      this.lastContextBudgetLedger = request.contextLedger ?? null;
+      let openLoopReservation: { id: string; initiativeId: string } | null = null;
       try {
+        let openLoopPromptContext: import('../language/LanguageOrgan.ts').AutonomousOpenLoopPromptContext | undefined;
+        if (!externalText && autonomousAgenda) {
+          const dueCandidate = this.openLoopRadar.scan({ reminderCooldownMs: 0 }).find(item =>
+            item.shouldSurface && sanitizeAutonomousTopicText(item.record.title, 180) !== null);
+          if (dueCandidate) {
+            const reserved = await this.persistOpenLoopMutation(() =>
+              this.openLoopRadar.reserveForInitiative(dueCandidate.record.id, autonomousAgenda.id));
+            openLoopReservation = { id: reserved.id, initiativeId: autonomousAgenda.id };
+            openLoopPromptContext = {
+              title: reserved.title,
+              owner: reserved.owner,
+              kind: reserved.kind,
+              surfaceReason: dueCandidate.surfaceReason ?? undefined,
+              overdueMs: dueCandidate.overdueMs,
+            };
+          }
+        }
+        const mem0Query = externalText || openLoopPromptContext?.title || autonomousAgenda?.topic || '';
+        const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
+        const request = externalText
+          ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
+          : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext(), openLoopPromptContext);
+        if(options.signal) request.signal=options.signal;
+        this.lastContextBudgetLedger = request.contextLedger ?? null;
         language = await this.invokeLanguageWithSynapticMatrix('language', request, cycle, languageInvoker);
         if (!externalText && autonomousAgenda && !this.core.stageAutonomousSocialInitiativeMessage(autonomousAgenda.id, language?.text ?? '', Date.now())) {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
+          if (openLoopReservation) {
+            await this.persistOpenLoopMutation(() => this.openLoopRadar.releaseInitiative(openLoopReservation!.initiativeId));
+            openLoopReservation = null;
+          }
         }
       } catch (error) {
+        if (openLoopReservation) {
+          await this.persistOpenLoopMutation(() => this.openLoopRadar.releaseInitiative(openLoopReservation!.initiativeId)).catch(() => {});
+          openLoopReservation = null;
+        }
         if(options.signal?.aborted) {
           this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'language-cancelled',confidence01:.95,payload:{reason:'caller-aborted',role:'response-generation'}});
         } else if (!externalText && autonomousAgenda) {
@@ -2121,6 +2155,103 @@ export class OrganismRuntime {
   }
 
 
+
+  /**
+   * Persist every obligation mutation before exposing its result. If the durable
+   * write fails, restore the in-memory snapshot so callers never observe an
+   * uncommitted lifecycle transition.
+   */
+  private async persistOpenLoopMutation<T>(mutation: () => T): Promise<T> {
+    const previous = this.openLoopRadar.snapshot();
+    try {
+      const result = mutation();
+      await this.openLoopStore.save(this.openLoopRadar.snapshot());
+      return result;
+    } catch (error) {
+      this.openLoopRadar.restore(previous);
+      throw error;
+    }
+  }
+
+  registerOpenLoop(input: Parameters<OpenLoopRadar['register']>[0]) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.register(input)));
+  }
+
+  fulfillOpenLoop(id: string, evidence: Parameters<OpenLoopRadar['fulfill']>[1]) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.fulfill(id, evidence)));
+  }
+
+  cancelOpenLoop(id: string, reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.cancel(id, reason)));
+  }
+
+  reopenOpenLoop(id: string, reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.reopen(id, reason)));
+  }
+
+  acknowledgeOpenLoopSurfaced(id: string): Promise<void> {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.markSurfaced(id)));
+  }
+
+  snoozeOpenLoop(id: string, until: number, reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => this.openLoopRadar.snooze(id, until, reason)));
+  }
+
+  updateOpenLoopDependencies(id: string, dependencies: string[], reason: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() =>
+      this.openLoopRadar.updateDependencies(id, dependencies, reason)));
+  }
+
+  reserveOpenLoopForAutonomousInitiative(id: string, initiativeId: string) {
+    return this.enqueue(() => this.persistOpenLoopMutation(() =>
+      this.openLoopRadar.reserveForInitiative(id, initiativeId)));
+  }
+
+  releaseOpenLoopForAutonomousInitiative(id: string, initiativeId: string): Promise<boolean> {
+    return this.enqueue(() => this.persistOpenLoopMutation(() => {
+      const record = this.openLoopRadar.snapshot().records.find(item => item.id === id);
+      return record?.pendingSurfacingInitiativeId === initiativeId
+        ? this.openLoopRadar.releaseInitiative(initiativeId)
+        : false;
+    }));
+  }
+
+  scanOpenLoops(options: OpenLoopScanOptions = {}) {
+    return this.enqueue(async () => this.openLoopRadar.scan(options));
+  }
+
+  openLoopSnapshot() {
+    return this.enqueue(async () => this.openLoopRadar.snapshot());
+  }
+
+  openLoopDiagnostics() {
+    return this.enqueue(async () => {
+      const state = this.openLoopRadar.snapshot();
+      const candidates = this.openLoopRadar.scan();
+      const active = state.records.filter(record => record.status === 'open' || record.status === 'blocked');
+      const at = Date.now();
+      const reservedCount = active.filter(record =>
+        record.pendingSurfacingInitiativeId !== null && record.pendingSurfacingLeaseUntil > at).length;
+      const expiredReservationCount = active.filter(record =>
+        record.pendingSurfacingInitiativeId !== null && record.pendingSurfacingLeaseUntil <= at).length;
+      return {
+        version: state.version,
+        total: state.records.length,
+        activeCount: active.length,
+        openCount: active.filter(record => record.status === 'open').length,
+        blockedCount: active.filter(record => record.status === 'blocked').length,
+        snoozedCount: active.filter(record => record.snoozedUntil > at).length,
+        reservedCount,
+        expiredReservationCount,
+        fulfilledCount: state.records.filter(record => record.status === 'fulfilled').length,
+        cancelledCount: state.records.filter(record => record.status === 'cancelled').length,
+        overdueCount: candidates.filter(candidate => candidate.overdueMs > 0 && candidate.effectiveStatus === 'open').length,
+        expiredCount: candidates.filter(candidate => candidate.effectiveStatus === 'expired').length,
+        readyToSurface: candidates.filter(candidate => candidate.shouldSurface).length,
+      };
+    });
+  }
+
   /** Record only caller-confirmed low-risk preferences through the canonical evidence owner. */
   async recordExplicitUserPreference(input: Parameters<OrganismCore['recordExplicitUserModelEvidence']>[0]) {
     return this.enqueue(() => this.core.recordExplicitUserModelEvidence(input));
@@ -2144,7 +2275,10 @@ export class OrganismRuntime {
   async acknowledgeAutonomousDialogue(id: string): Promise<boolean> {
     return this.enqueue(async () => {
       const acknowledged = this.core.acknowledgeAutonomousSocialInitiative(id, Date.now());
-      if (acknowledged) await this.core.flush();
+      if (acknowledged) {
+        await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(id));
+        await this.core.flush();
+      }
       return acknowledged;
     });
   }
@@ -2165,6 +2299,7 @@ export class OrganismRuntime {
   async flush(): Promise<void> {
     return this.enqueue(async () => {
       await this.core.flush();
+      await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const view = this.core.runtimeClosureOperationalSnapshot();
       this.runtimeClosure.durable({ at: Date.now(), tick: view.tick, stateTick: view.tick, replaySignature: view.replaySignature, continuousTick: view.continuous?.tick, continuityProcessed: view.continuous?.processed, memoryCount: view.memoryCount });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
