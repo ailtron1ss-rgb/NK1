@@ -1,3 +1,12 @@
+## [NK1][Architecture] Developmental Genome v1 (2026-11-17, unreleased)
+
+- Add a deterministic architecture genome derived from the seven live `OrganismSystemContract` records and expose it through `OrganismSystemFabric.developmentalGenome()` and fabric diagnostic snapshots.
+- Export the immutable `InvariantEngine` rule manifest; bind the genome to `ReleaseContract` and the existing `StateMigrations.migratePersistedOrganism` owner/path without changing state schema.
+- Add SHA-256 canonical content addressing, deterministic dependency topology, bounded inheritance for only `estimatedCost01` and `cadenceCycles`, and a fail-closed Evolution Gate (`APPROVED` / `BLOCKED` / `NEEDS_REVIEW`).
+- Keep module identity, contract version, purpose, phase, snapshot weights, execution ranks, dependencies, capabilities, invariants, runtime compatibility and migration ownership immutable.
+- Require parent/ancestor lineage evidence for multi-generation candidates. Treat missing ancestry as `NEEDS_REVIEW`; reject malformed, cyclic, hostile or tampered candidates.
+- Candidate approval never activates or mutates the runtime (`NOT_APPLIED`). No state-schema bump, dependency addition, merge or Release publication is included.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.

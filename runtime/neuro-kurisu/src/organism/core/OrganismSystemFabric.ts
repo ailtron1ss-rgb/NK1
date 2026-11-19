@@ -12,11 +12,14 @@ import { HexisAdaptationFabric } from '../integration/hexis/HexisAdaptationFabri
 import { LettaGovernanceAdaptationFabric } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import { buildCognitiveArchitectureSnapshot } from './CognitiveArchitectureMap.ts';
+import { buildDevelopmentalGenome, type DevelopmentalGenome } from '../system/DevelopmentalGenome.ts';
+import { evaluateDevelopmentalGenomeExperiment as evaluateGenomeExperiment, type DevelopmentalGenomeExperimentInput, type DevelopmentalGenomeExperimentReport } from '../developmental/DevelopmentalGenomeExperimentBridge.ts';
 
 export type OrganismSystemName = 'self'|'governance'|'memory'|'world'|'embodiment'|'agency'|'research';
 
 export interface OrganismSystemFabricSnapshot {
   version: 1;
+  developmentalGenome: DevelopmentalGenome;
   systems: Record<OrganismSystemName, unknown> & { willIntegration: unknown; luminaAdaptation: unknown; hexisAdaptation: unknown; lettaGovernanceAdaptation: unknown; conscioAdaptation: unknown };
   capturedAt: number;
 }
@@ -52,6 +55,8 @@ export class OrganismSystemFabric {
   /** Conscio-derived retrieval, federated-skill, liaison, calibration and metabolic adapters. */
   readonly conscioAdaptation: ConscioAdaptationFabric;
   private readonly resolvedContracts: ResolvedOrganismSystemContract[];
+  /** Public keys are injected by the host; an empty set keeps experiment staging review-only. */
+  private readonly trustedGenomeEvaluatorKeys: ReadonlyMap<string, string>;
 
   constructor(input: Partial<{
     self: SelfSubsystemRuntime;
@@ -66,6 +71,7 @@ export class OrganismSystemFabric {
     hexisAdaptation: HexisAdaptationFabric;
     lettaGovernanceAdaptation: LettaGovernanceAdaptationFabric;
     conscioAdaptation: ConscioAdaptationFabric;
+    trustedGenomeEvaluatorKeys: ReadonlyMap<string, string>;
   }> = {}) {
     this.self=input.self ?? new SelfSubsystemRuntime();
     this.governance=input.governance ?? new GovernanceSubsystemRuntime();
@@ -80,6 +86,13 @@ export class OrganismSystemFabric {
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
     this.conscioAdaptation=input.conscioAdaptation ?? new ConscioAdaptationFabric();
+    const trustedGenomeKeys = [...(input.trustedGenomeEvaluatorKeys ?? new Map<string, string>()).entries()];
+    if (trustedGenomeKeys.some(([keyId, publicKey]) =>
+      typeof keyId !== 'string' || !keyId.trim() || keyId.length > 180 ||
+      typeof publicKey !== 'string' || !publicKey.includes('PUBLIC KEY'))) {
+      throw new Error('developmental-genome-trusted-evaluator-public-keys-invalid');
+    }
+    this.trustedGenomeEvaluatorKeys = new Map(trustedGenomeKeys);
     this.resolvedContracts = organismSystemContracts().map(contract => {
       const runtime = this[contract.name!];
       return { ...contract, systemName: runtime.systemName, dependencies:[...runtime.dependencies], capabilityNames:[...contract.capabilityNames], capabilities:[...contract.capabilityNames], snapshot:()=>runtime.snapshot(), health:()=>runtimeHealth(runtime) };
@@ -90,9 +103,18 @@ export class OrganismSystemFabric {
 
   get(name: OrganismSystemName) { return this[name]; }
 
+  /** Deterministic architecture genome derived from the resolved live system contracts. */
+  developmentalGenome(): DevelopmentalGenome { return buildDevelopmentalGenome(this.resolvedContracts); }
+
+  /** Stage a P53/P63-governed genome experiment for review; never applies it to live systems. */
+  stageDevelopmentalGenomeExperiment(input: DevelopmentalGenomeExperimentInput): DevelopmentalGenomeExperimentReport {
+    return evaluateGenomeExperiment(input, this.trustedGenomeEvaluatorKeys);
+  }
+
   snapshot(): OrganismSystemFabricSnapshot {
     return {
       version:1,
+      developmentalGenome:this.developmentalGenome(),
       systems:{
         self:this.self.snapshot(),
         governance:this.governance.snapshot(),
