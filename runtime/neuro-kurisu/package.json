@@ -1883,6 +1883,7 @@
     "test:open-loop-radar-http": "node tests/open-loop-radar-http-route.mjs",
     "test:open-loop-radar-dialogue": "node --experimental-strip-types tests/autonomous-dialogue-prompt-workpass48.mjs",
     "test:workpass328:operational-microcycle-sensors": "node --experimental-strip-types tests/operational-microcycle-finite-input.mjs",
-    "test:universal-input-interpreter": "node --experimental-strip-types tests/universal-input-interpreter.mjs"
+    "test:universal-input-interpreter": "node --experimental-strip-types tests/universal-input-interpreter.mjs",
+    "test:b299:personality-boundary-consolidation": "node --experimental-strip-types tests/b299-personality-boundary-consolidation.mjs"
   }
 }
