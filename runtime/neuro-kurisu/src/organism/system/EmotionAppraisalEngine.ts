@@ -1,3 +1,4 @@
+import { types } from 'node:util';
 /**
  * BIG PASS 164 — Appraisal-based emotion episodes.
  *
@@ -67,7 +68,7 @@ const BODY_KEYS = ['energy01','thermal01','capacity01','load01'] as const;
 
 /** Copy own data properties only; accessors and hostile Proxy traps fail closed. */
 function ownDataRecord(value: unknown): Record<string, unknown> | null {
-  if (value === null || typeof value !== 'object') return null;
+  if (value === null || typeof value !== 'object' || types.isProxy(value)) return null;
   try {
     if (Array.isArray(value)) return null;
     const prototype = Object.getPrototypeOf(value);
@@ -87,7 +88,7 @@ function ownDataRecord(value: unknown): Record<string, unknown> | null {
 
 function ownDataArray(value: unknown, max = 128): unknown[] | null {
   try {
-    if (!Array.isArray(value)) return null;
+    if (types.isProxy(value) || !Array.isArray(value)) return null;
     const descriptors = Object.getOwnPropertyDescriptors(value);
     const length = (descriptors as Record<string, PropertyDescriptor>).length?.value;
     if (!Number.isSafeInteger(length) || length < 0 || length > max) return null;
