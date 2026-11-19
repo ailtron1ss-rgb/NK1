@@ -1,3 +1,9 @@
+## [NK1][Memory] Make MemoryOS2 normalization locale-neutral (2026-11-19)
+- Replace implicit host-locale lowercasing in query intent, tokenization, character-gram keys, evidence/source keys, context comparisons and query/content caches with deterministic Unicode `toLowerCase()`.
+- Add a regression simulating Turkish-style `I/İ` casing while indexing and retrieving an English identity memory; retrieval must remain stable without consulting the host locale.
+- Reuse the existing metadata-retrieval test and memory-integrity workflow; no duplicate dependency or workflow is introduced.
+- This improves cross-device determinism; it does not claim recall uplift or independent holdout improvement.
+
 ## [NK1][Motor] Add bounded 3D joint trajectory limits (2026-11-19)
 
 - Add `runtime/neuro-kurisu/src/organism/system/SkeletalTrajectoryLimiter3D.ts`: analytic quintic per-joint trajectories with duration solved so sampled peak velocity, acceleration and jerk stay inside each joint's limits, and monotone approach preferred so a joint commanded from rest does not overshoot.
