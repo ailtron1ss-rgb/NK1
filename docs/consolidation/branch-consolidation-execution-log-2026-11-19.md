@@ -153,3 +153,10 @@
 - Ветки не удалялись. Совпадающий HEAD не равен доказательству ненужности ref: исторические PR, head/base refs, workflows, tags, rulesets и deployment references нужно учитывать отдельно.
 - Основной архив 19 октября: tag `Neuro`, `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135 290 615 bytes, release metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`, tag commit `c2e8e4a78431734612f89318e79d3491643f24f3`. ZIP-байты не удалось получить в текущем runtime; состав архива, extraction manifest и побайтовая сверка остаются невыполненными gate.
 - GitHub compare между tag `Neuro` и текущим source сообщает `No common ancestor`; нормальный merge ancestry и parity нельзя предполагать.
+
+
+## Final live CI / source correction after the last refresh
+
+- PR #951 is merged (not Draft). Its exact donor head `0a289c1ddc4c19da4def7409b4e28ef85cb6854c` has 44/44 workflow runs completed successfully; merge commit and current source checkpoint are `aa2b385153ddc316eadf61f87e2c0803d7d59d98`. This remains a bounded library port, not end-to-end embodiment wiring.
+- PR #953 remains open / Draft at `fbab11da4e07a09282b8cb043904a05a4f638663`, 22 files (+2,668/-113). A later exact-head Actions read returned 50/50 completed successful runs (0 pending, 0 failure). The current source vs PR compare is still diverged: 22 commits on the PR side and 2 on the source side after merge-base `9742b5a82966e11ba9c913074615b2420736bcee`. Keep the PR Draft pending code-level review and source rebase/revalidation.
+- The earlier note that #953 had two pending jobs is a historical intermediate observation and is superseded by the 50/50 final run result.
