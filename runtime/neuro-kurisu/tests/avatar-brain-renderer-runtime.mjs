@@ -25,7 +25,7 @@ const runtime = new EmbodimentRuntime();
 const projection = runtime.avatarProjection?.(state, {
   profile: '3d',
   personality,
-  affect: { memoryRecall01: .7, sampledAt: 10_000 },
+  affect: { memoryRecall01: .7, sampledAt: 10_000, memoryText: 'private-memory-marker', memoryId: 'private-id-marker' },
   now: 10_000,
 });
 assert.ok(projection && typeof projection === 'object',
