@@ -101,3 +101,12 @@ A new complete PR-list read after closing duplicate #121 reports:
 PR #121 was closed with title `[SUPERSEDED by #102]...`. Both used the exact same head ref and SHA `typescript/runtime-typecheck-truth-2026-10-24` / `832e44bd5b59e698dc5a829d9982f31b3ed4b03d`. The only extra file shown by the older-base diff was `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`, and its blob is identical to current source. PR #102 remains the single open review path. No unique code was discarded.
 
 The duplicate-tip branch group remains 17 refs at SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`. The open-base dependencies now total seven PRs across four branch names: #109 (`nk1-all-branches-merge-2026-10-23`), #131 (`nk1-integration-workspace-2026-10-22`), #112/#91/#86 (`rebuild`), and #138/#124 (`workpass206-runtime-evaluator-wiring`).
+
+
+## Legacy-base migration probe: PR #109
+
+- PR #109 carries a distinct 31-file architecture/dependency-boundary patch (2,210 additions / 418 deletions in its original base view). It is not a duplicate and remains Draft.
+- Its original base `nk1-all-branches-merge-2026-10-23` is the shared old tip `82ea7a8...`; its head remains `architecture/dependency-contracts-2026-10-24` @ `862472baba4b898cd0095230b5e0628aa460b411`.
+- A reversible trial retarget to current `workpass70-source` produced GitHub `mergeable_state=dirty` / `rebaseable=false`; therefore the base was restored unchanged. The latest PR snapshot again reports mergeable=true but state `unstable` and `rebaseable=false` on the original base. This PR is not approved for merge.
+- Its dedicated `NK1 Module Dependency Audit` exact-head workflow passed historically, but several other old WorkPass regressions on this head failed. The exact current-source integration still requires manual reconciliation of its dependency audit scripts, `DevelopmentalNeuralRuntime`, `StateMigrations`, package changes and newly introduced persistence/core modules, followed by fresh CI.
+- The attempted base change made no code edits and did not alter its head commit. Keep the old base reference until the patch is reconciled and a safe retarget can be validated.
