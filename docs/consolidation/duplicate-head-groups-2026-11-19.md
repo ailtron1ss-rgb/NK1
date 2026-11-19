@@ -177,3 +177,30 @@ Open PR references found on inspected page: none on page 1; remaining pages/hist
 ## Interpretation
 
 An identical HEAD means the branch refs currently point to the same commit object. It does not prove the refs are safe to delete: a ref can be a base of an open PR, a head of a closed/unmerged PR, a workflow input, a release/audit pointer, or a human workflow anchor. Before deletion, every group must pass: all PR pages (open/closed/merged), branch protection, workflow and documentation reference scan, dependent-branch scan, and a retained canonical ref selection. Do not use branch-name similarity as evidence of equivalence.
+
+
+## Live refresh after PR #954 — 2026-11-19, approx. 05:40 UTC
+
+The 12-group / 81-ref family listed in the original snapshot is historical. A fresh complete paginated GitHub read now finds **one** exact duplicate-HEAD group, with **17** current refs and **16** excess aliases. The one group is:
+
+- SHA: `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`
+- Refs:
+  - `nk1-all-branches-merge-2026-10-23`
+  - `nk1-integration-workspace-2026-10-22`
+  - `rebuild`
+  - `workpass79-cognitive-rebuild`
+  - `workpass116-seed-clustered-learning-eval`
+  - `workpass117-verified-replay-admission`
+  - `workpass118-multi-source-learning-integration`
+  - `workpass119-skill-retrieval-feedback-curriculum`
+  - `workpass120-verified-skill-revision-gate`
+  - `workpass121-ledger-bound-promotion-proposals`
+  - `workpass122-promotion-gate-coverage-hardening`
+  - `workpass123-authenticated-skill-lifecycle`
+  - `workpass124-learning-evidence-hardening`
+  - `workpass135-durable-shadow-run-registry`
+  - `workpass203-independent-candidate-evaluator`
+  - `workpass206-runtime-evaluator-wiring`
+  - `workpass313-actions-history-audit`
+
+This is a fresh live state, not a rewrite of the earlier snapshot. The complete branch-name/SHA list is in `branch-inventory-2026-11-19-after-pr954.jsonl`. The exact dependency intersection is in `live-branch-consolidation-delta-2026-11-19-after-pr954.md`. A shared tip remains a ref-alias candidate, not an automatic deletion instruction.
