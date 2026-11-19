@@ -116,3 +116,8 @@ The duplicate-tip branch group remains 17 refs at SHA `82ea7a8b7c9b036e65c8b056a
 
 The squash merge commit `7818b5ad785a33f1e3af81428d3aaf4ccf212f3f` is the live `workpass70-source` HEAD. GitHub ran **20 Actions/check-runs directly on this merge SHA**; all 20 completed successfully, with zero failures or cancellations. This is separate from the 50/50 passing checks on the PR head `7a6a68fc9cbe5968b0b5d5253138e6c5e9ad5700`.
 
+
+
+## Shared-tip ancestry verification
+
+GitHub compare confirms `workpass70-source` at `7818b5ad785a33f1e3af81428d3aaf4ccf212f3f` is **1,036 commits ahead and 0 behind** the shared duplicate tip `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`. Thus the 17 current refs all point to an old commit already in canonical source ancestry; they do not identify a distinct current code tree. Their remaining value is PR-base/historical provenance, so the open dependent PRs must be reconciled before removing their aliases.
