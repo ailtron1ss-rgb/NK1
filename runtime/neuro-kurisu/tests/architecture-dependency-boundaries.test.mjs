@@ -37,8 +37,21 @@ function makePolicyFixture() {
     appServerRoot,
     runtimeServerRoot,
   });
+  const inspectAppEdges = edges => collectDependencyBoundaryViolations({
+    root,
+    files: [core, safeContract, ui],
+    graph: new Map([
+      [core, []],
+      [safeContract, []],
+      [ui, edges],
+    ]),
+    canonicalRoot,
+    appSourceRoot,
+    appServerRoot,
+    runtimeServerRoot,
+  });
 
-  return { inspect, core, safeContract, ui, runtimeServer, appServer, research, legacy };
+  return { inspect, inspectAppEdges, core, safeContract, ui, runtimeServer, appServer, research, legacy };
 }
 
 test("dependency boundary policy permits core-to-contract imports", () => {
@@ -64,25 +77,14 @@ test("dependency boundary policy reports each forbidden core edge", () => {
   assert.ok(signatures.has("canonical-core-to-legacy:"));
 });
 
-test("dependency boundary policy rejects UI imports into private runtime source", () => {
+test("app source can depend on explicit public organism contracts but not private runtime implementations", () => {
   const fixture = makePolicyFixture();
-  const graph = new Map([
-    [fixture.core, []],
-    [fixture.safeContract, []],
-    [fixture.ui, [fixture.core]],
-  ]);
-  const root = path.resolve("/fixture/repository/runtime/neuro-kurisu");
-  const violations = collectDependencyBoundaryViolations({
-    root,
-    files: [fixture.core, fixture.safeContract, fixture.ui],
-    graph,
-    canonicalRoot: path.join(root, "src", "organism"),
-    appSourceRoot: path.resolve(root, "../../app/src"),
-    appServerRoot: path.resolve(root, "../../app/server"),
-    runtimeServerRoot: path.join(root, "src", "server"),
-  });
-  assert.equal(violations.length, 1);
-  assert.equal(violations[0].rule, "app-source-to-runtime-private-import");
+  const privateViolations = fixture.inspectAppEdges([fixture.core]);
+  assert.equal(privateViolations.length, 1);
+  assert.equal(privateViolations[0].rule, "app-source-to-runtime-private-import");
+
+  const publicContractViolations = fixture.inspectAppEdges([fixture.safeContract]);
+  assert.deepEqual(publicContractViolations, []);
 });
 
 test("dependency boundary policy ignores similarly named directories and sibling prefixes", () => {
