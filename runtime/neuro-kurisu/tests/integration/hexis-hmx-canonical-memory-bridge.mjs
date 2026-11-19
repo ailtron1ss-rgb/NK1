@@ -342,6 +342,7 @@ for (const [row, secret] of [
   assert.equal(row.content.includes(secret), false, 'known sensitive HMX text must be redacted before canonical memory writes');
 }
 assert.ok(redactedMemory.content.includes('[redacted:email-address]'));
+assert.ok(redactedMemory.content.startsWith('Contact '), 'ordinary surrounding text must survive sensitive-pattern redaction');
 assert.ok(redactedMemory.content.includes('[redacted:bearer-token]'));
 assert.ok(redactedEpisode.content.includes('[redacted:credential-url]'));
 assert.ok(redactedCluster.content.includes('[redacted:phone-number]'));
