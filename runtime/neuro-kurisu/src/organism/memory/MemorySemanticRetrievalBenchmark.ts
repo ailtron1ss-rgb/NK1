@@ -142,7 +142,7 @@ export async function runMemoryOS2SemanticRetrievalBenchmark(
     integrity.truncatedFieldRows===0&&integrity.malformedRelevantLabelCount===0&&integrity.duplicateExampleIdCount===0&&
     integrity.duplicateQueryGroupCount===0&&integrity.duplicateRelevantLabelCount===0&&integrity.unknownRelevantMemoryIdCount===0&&
     integrity.crossSplitQueryLeakageCount===0&&integrity.nearDuplicateCrossSplitPairCount===0&&integrity.independenceGroupSplitLeakageCount===0&&integrity.languageAnnotationComplete);
-  if(!structurallyValid||rawExamples.length>maxExamples)throw new Error('semantic-benchmark-dataset-integrity-failed');
+  if(!structurallyValid||rawExamples.length>maxExamples){const diagnostics={corpusIntegrity:reference.corpusIntegrity,datasetIntegrity:integrity,rawExampleCount:rawExamples.length,maxExamples};throw new Error('semantic-benchmark-dataset-integrity-failed:'+JSON.stringify(diagnostics));}
   const rows=rawExamples.map(row=>({...row,independenceGroupId:row.independenceGroupId??row.id,answerable:row.answerable!==false}))
     .sort((a,b)=>a.split.localeCompare(b.split)||a.id.localeCompare(b.id));
   const corpusItems=(snapshot.items??[]).slice(0,1600).filter(item=>item&&typeof item.id==='string'&&item.id.trim()&&typeof item.content==='string');
