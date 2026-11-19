@@ -83,6 +83,22 @@ it does not update task competence. Competence changes require a new offline
 validation manifest, so routing success cannot silently train or promote a
 specialization.
 
+## Persistent single-use report ledger and rollback anchor
+
+Every accepted validation report digest is recorded in a per-adapter ordered ledger. The ledger has a hard limit of 64 reports; entries are never evicted. A digest cannot be reused after activation, disable, cooldown recovery, quarantine recovery or process restart. Once the ledger reaches capacity, additional activation fails closed and requires a separately reviewed migration rather than dropping old evidence.
+
+The local snapshot stores the ordered report digests, a monotonic count and a SHA-256 sequence commitment. This detects truncation, reordering, duplicate entries and accidental corruption. **It is not an authentication mechanism**: an attacker able to rewrite the complete local snapshot can recompute an unkeyed SHA-256 commitment. Legacy snapshots that contain activation evidence but lack a complete history are therefore restored quarantined and marked saturated.
+
+For deployments that require protection against full-snapshot rollback, inject \`synapticReplayAnchorStore\` into \`OrganismRuntime\`. Its contract is:
+
+- \`read(adapterId)\` returns the authoritative \`acceptedReportCount\` and \`acceptedReportHistorySha256\`, or \`null\` before the first accepted report;
+- \`compareAndSwap(adapterId, expected, next)\` atomically accepts only the exact prior state and a single monotonic increment, recording the latest report digest;
+- the implementation must live in a separately protected durable service (for example a transactional database with atomic compare-and-swap and backup/restore controls), not in another JSON file on the same writable disk.
+
+Set \`synapticReplayAnchorRequired: true\` to make the external anchor mandatory for activation. If it is missing, unavailable, stale, rolled back or inconsistent with the local ledger, the adapter is quarantined and the unchanged base model remains authoritative. When the option is false and no store is injected, only local anti-replay is provided; full-snapshot rollback resistance is **not** claimed. The default is deliberately non-strict for existing installations, so production hosts must opt in explicitly.
+
+The host adapter must make the CAS durable before returning success. If the local snapshot write then fails, the accepted report remains consumed in the external anchor; the next restore detects the mismatch and fails closed. A failed CAS never leaves an in-memory adapter active.
+
 ## Non-goals in this increment
 
 - No training, fine-tuning, LoRA/QLoRA generation, or weight files are included.
