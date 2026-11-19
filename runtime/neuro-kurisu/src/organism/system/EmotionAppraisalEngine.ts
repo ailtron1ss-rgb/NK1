@@ -6,6 +6,8 @@
  * a single scalar. It does not claim phenomenal feeling; it produces causal
  * control signals that can alter attention, memory salience and action tendency.
  */
+import { types } from 'node:util';
+
 export type EmotionLabel = 'curiosity'|'calm'|'joy'|'anxiety'|'frustration'|'sadness'|'anger'|'protective';
 export type EmotionActionTendency = 'explore'|'engage'|'verify'|'reflect'|'rest'|'protect'|'withdraw'|'approach';
 
@@ -69,7 +71,7 @@ const BODY_KEYS = ['energy01','thermal01','capacity01','load01'] as const;
 const MAX_SNAPSHOT_RECORD_KEYS = 256;
 
 function ownDataRecord(value: unknown): Record<string, unknown> | null {
-  if (value === null || typeof value !== 'object') return null;
+  if (value === null || typeof value !== 'object' || types.isProxy(value)) return null;
   try {
     if (Array.isArray(value)) return null;
     const prototype = Object.getPrototypeOf(value);
@@ -90,7 +92,7 @@ function ownDataRecord(value: unknown): Record<string, unknown> | null {
 
 function ownDataArray(value: unknown, max = 128): unknown[] | null {
   try {
-    if (!Array.isArray(value)) return null;
+    if (types.isProxy(value) || !Array.isArray(value)) return null;
     const descriptors = Object.getOwnPropertyDescriptors(value);
     const length = (descriptors as Record<string, PropertyDescriptor>).length?.value;
     if (!Number.isSafeInteger(length) || length < 0 || length > max) return null;
