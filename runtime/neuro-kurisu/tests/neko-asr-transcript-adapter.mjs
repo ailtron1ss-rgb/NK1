@@ -145,6 +145,57 @@ test('deduplicates replayed final event IDs and rejects conflicting replay paylo
   assert.equal(third.reason, 'event-id-conflict');
 });
 
+
+function smartTurnAudioFrame(samples = 1600, value = 0) {
+  const pcm16 = new Uint8Array(samples * 2);
+  const view = new DataView(pcm16.buffer);
+  for (let i = 0; i < samples; i += 1) view.setInt16(i * 2, value, true);
+  return { sampleRateHz: 16_000, pcm16 };
+}
+
+test('Smart Turn result is exposed as advisory evidence without owning ASR finalization', async () => {
+  const smartTurnProvider = {
+    modelId: 'pipecat-smart-turn-v3.2-cpu',
+    modelVersion: 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93',
+    isAvailable: () => true,
+    async evaluate(input) {
+      assert.equal(input.sampleRateHz, 16_000);
+      assert.equal(input.channels, 1);
+      assert.equal(input.encoding, 'pcm_s16le');
+      assert.equal(input.audioPcm16.byteLength, 32_000);
+      return { probability01: 0.84 };
+    },
+  };
+  const { port } = provider(async input => {
+    input.observeSpeechActivity('speech-started');
+    for (let index = 0; index < 10; index += 1) {
+      assert.equal(input.pushSmartTurnAudioFrame(smartTurnAudioFrame()), true);
+    }
+    input.observeSpeechActivity('candidate-pause');
+    const evaluation = await input.evaluateSemanticEndpoint();
+    assert.equal(evaluation?.status, 'ok');
+    assert.equal(evaluation?.decision, 'complete');
+    return transcript({ sessionId: input.sessionId });
+  }, { smartTurnProvider });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted', result.status === 'error' ? result.reason : undefined);
+  assert.equal(result.smartTurnEvaluation?.status, 'ok');
+  assert.equal(result.smartTurnEvaluation?.decision, 'complete');
+  assert.equal(result.smartTurnEvaluation?.probability01, 0.84);
+  assert.equal(result.smartTurnEvaluation?.modelId, 'pipecat-smart-turn-v3.2-cpu');
+});
+
+test('missing Smart Turn provider is fail-open for valid final ASR', async () => {
+  const { port } = provider(async input => {
+    assert.equal(input.pushSmartTurnAudioFrame(smartTurnAudioFrame()), false);
+    assert.equal(await input.evaluateSemanticEndpoint(), null);
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.smartTurnEvaluation, undefined);
+});
+
 test('allows only one active provider capture at a time', async () => {
   let release;
   const { port } = provider(() => new Promise(resolve => { release = resolve; }));
