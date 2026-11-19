@@ -1,3 +1,28 @@
+## Unreleased — [NK1][Cognition] P27 predictive-gain-gated reversible adaptation (2026-11-17)
+
+- Validate P27 decision/outcome inputs before mutating state or consuming a pending decision; reject sparse/accessor-backed/non-finite feature vectors, invalid ticks/actions and malformed scalar/action-utility data.
+- Add bounded backtracking across four candidate step scales; accept a temporary fast residual only when the same pre-update one-step latent prediction error strictly decreases, otherwise restore the exact previous overlay.
+- Relax accepted fast residuals continuously with tick-based decay (0.992 per tick) and a 10-minute wall-clock half-life, while retaining the existing 30-minute/256-tick hard idle expiry.
+- Expose decay, backtracking, no-gain rejection and before/after prediction-error telemetry through the existing neural-branch diagnostics; no persistent residual promotion or LLM weight mutation is added.
+- Extend P27 regressions for fail-closed malformed inputs, retry-safe outcome matching, measured prediction-error reduction and reversible decay.
+- Bind each P27 update to an explicitly committed action for the exact pending context and tick; wire both the spine-only commit path and full OrganismCore outcome path. Missing bindings disable the fast overlay; action mismatches fail before branch-level outcome learning.
+- Prevent outcomes from implicitly inheriting the globally active fast context, and expose action-mismatch counts in diagnostics.
+
+## Unreleased — [NK1][Runtime] Optional conversation-scoped P27 adaptation (2026-11-17)
+
+- Add optional `RuntimeStepOptions.conversationId`; normalize and SHA-256 hash it before passing an opaque scope into OrganismCore.
+- Key ephemeral P27 overlays by runtime temporal session + optional host conversation scope + causal-world/slow-memory context.
+- Preserve compatibility when hosts omit conversation IDs; never infer conversation identity from raw text.
+- Extend real runtime lifecycle regression to verify two conversations remain isolated inside one process and are both cleared on runtime stop.
+
+## Unreleased — [NK1][Cognition] P27 session lifecycle and outcome replay hardening (2026-11-17)
+
+- Bind ephemeral fast adapters to an opaque in-memory scope derived from the Core temporal session, then combine that scope with causal-world and slow-memory context.
+- Clear one session on `endTemporalSession`, clear all ephemeral scopes on process start/restore, and close the session during `OrganismRuntime.stop()`'s existing final flush.
+- Keep raw session IDs and opaque adapter keys out of durable NeuralExperienceToken/replay/snapshot state.
+- Accept fast updates only for a matching pending decision tick; duplicate, stale, out-of-order and orphan outcomes cannot train the fast overlay.
+- Add a real OrganismRuntime stop/restart lifecycle regression. PR #924 remains Draft and source-only.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.

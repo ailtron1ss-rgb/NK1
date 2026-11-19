@@ -1,0 +1,56 @@
+name: NK1 P27 test-time neuroplasticity
+
+on:
+  push:
+    branches: [feature/test-time-neuroplasticity-idea27]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/EmbodiedCausalWorldBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/NeuralExperienceBranch.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/p27-test-time-neuroplasticity.mjs"
+      - "runtime/neuro-kurisu/tests/p27-neuroplasticity-session-lifecycle.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-2599-2612-online-adaptation.mjs"
+      - ".github/workflows/p27-test-time-neuroplasticity.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/EmbodiedCausalWorldBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/NeuralExperienceBranch.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/p27-test-time-neuroplasticity.mjs"
+      - "runtime/neuro-kurisu/tests/p27-neuroplasticity-session-lifecycle.mjs"
+      - ".github/workflows/p27-test-time-neuroplasticity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p27-test-time-neuroplasticity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-time-neuroplasticity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Verify bounded-context test-time adaptation and runtime wiring
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p27-test-time-neuroplasticity.mjs
+      - name: Verify real runtime session teardown clears ephemeral adaptation
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p27-neuroplasticity-session-lifecycle.mjs
+      - name: Verify online embodied adaptation remains compatible
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-2599-2612-online-adaptation.mjs
+      - name: Verify existing P28 plasticity substrate remains compatible
+        run: npm --prefix runtime/neuro-kurisu run test:p28:plasticity

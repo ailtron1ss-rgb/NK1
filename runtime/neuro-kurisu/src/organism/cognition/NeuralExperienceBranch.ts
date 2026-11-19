@@ -292,6 +292,9 @@ function developmentalBiasForLearning(m:any):Record<ActionKind,number>{const z=O
 
 export class NeuralExperienceBranch {
   private state=defaultNeuralExperienceBranch();
+  private readonly sessionAdaptationScopes=new Map<string,string>();
+  private pendingAdaptationContextId:string|undefined;
+  private pendingAdaptationTick:number|undefined;
   private readonly offlineConsolidation=new P2852OfflineConsolidationController();
   private readonly slowMemoryConsolidation=new P2853SlowMemoryConsolidationController();
   private readonly hierarchicalSlowMemory=new P2854HierarchicalSlowMemoryController();
@@ -336,6 +339,23 @@ export class NeuralExperienceBranch {
   private transferSafetySynergy=new P2835TransferSafetySynergyController();
   private globalWorkspaceConvergence=new P2703GlobalWorkspaceConvergence();
   readonly systemName='cognition:neural-experience-branch' as const;
+
+  private sessionAdaptationScope(sessionId?:string):string{
+    const rawId=String(sessionId??'runtime').trim();
+    const id=rawId&&rawId.length<=128?rawId:`invalid-session-${Math.random().toString(36).slice(2)}`;
+    let scope=this.sessionAdaptationScopes.get(id);
+    if(!scope){
+      if(this.sessionAdaptationScopes.size>=8){
+        const oldest=this.sessionAdaptationScopes.entries().next().value as [string,string]|undefined;
+        if(oldest){this.sessionAdaptationScopes.delete(oldest[0]);this.embodiedBridge.resetTestTimeAdaptationPrefix(`session:${oldest[1]}:`);}
+      }
+      scope=`ephemeral-${Array.from({length:4},()=>Math.floor(Math.random()*0x100000000).toString(36)).join('-')}`;
+    }
+    this.sessionAdaptationScopes.delete(id);
+    this.sessionAdaptationScopes.set(id,scope);
+    return scope;
+  }
+
   snapshot(options:{clone?:boolean}={}){
     // Each managed subsystem is snapshotted exactly once per branch snapshot.
     // The previous implementation repeated several expensive snapshots and then
@@ -383,6 +403,10 @@ export class NeuralExperienceBranch {
   }
 
   restore(raw?:Partial<NeuralExperienceBranchState>|null){
+    this.sessionAdaptationScopes.clear();
+    this.pendingAdaptationContextId=undefined;
+    this.pendingAdaptationTick=undefined;
+    this.embodiedBridge.resetTestTimeAdaptation();
     const d=defaultNeuralExperienceBranch(),r:any=raw??{};
     const n=Math.max(32,Math.min(160,Math.floor(Number(r.neurons??d.neurons))));
     const arr=(v:any,len:number,fill=0)=>Array.isArray(v)?v.slice(0,len).concat(new Array(Math.max(0,len-v.length)).fill(fill)).slice(0,len):new Array(len).fill(fill);
@@ -744,7 +768,7 @@ export class NeuralExperienceBranch {
   }
 
   beforeDecision(i:{
-    tick:number; input:number[]; baseUtilities:Record<ActionKind,number>;
+    tick:number; sessionId?:string; input:number[]; baseUtilities:Record<ActionKind,number>;
     predictionError01:number; novelty01:number; uncertainty01:number;
     homeostasis01:number; identityGap01:number; goalPressure01:number;
     reward01?:number; personalityVector?:number[]; identityVector?:number[];
@@ -773,11 +797,15 @@ export class NeuralExperienceBranch {
     const computeBudgetHint=this.continuity.metrics().computeBudget01;
     this.state.novelty01=i.novelty01;this.state.uncertainty01=i.uncertainty01;
     const slowContextId=this.deriveSlowContextId(input,activeWorldContext,i.novelty01);
+    const sessionScope=this.sessionAdaptationScope(i.sessionId);
+    const adaptationContextId=`session:${sessionScope}:world:${activeWorldContext}:slow:${slowContextId}`;
+    this.pendingAdaptationContextId=adaptationContextId;
+    this.pendingAdaptationTick=i.tick;
     this.selectiveSlowMemory(input,pressure,slowContextId,computeBudgetHint);
     const continuity=this.continuity.beforeDecision(input,this.state.state.slice(0,8),{novelty01:i.novelty01,uncertainty01:i.uncertainty01,predictionError01:i.predictionError01,goalPressure01:i.goalPressure01,homeostasis01:i.homeostasis01,identityGap01:i.identityGap01,reward01:i.reward01??.5},null);
     const device=this.deviceScheduler.beforeDecision({tick:i.tick,continuityBudget01:continuity.computeBudget01,thermalStrain01:i.embodied?.thermalStrain01,battery01:i.embodied?.battery01,cpuLoad01:i.embodied?.cpuLoad01,ramPressure01:i.embodied?.ramPressure01,sensorFreshness01:i.embodied?.sensorFreshness01,predictionError01:i.predictionError01,novelty01:i.novelty01});
     const computeBudget01=device.budget01;
-    const embodied=this.embodiedBridge.beforeDecision({tick:i.tick,features:(i.embodied?.sensorFeatures??input).slice(0,64),actionUtilities:i.baseUtilities,novelty01:i.novelty01,uncertainty01:i.uncertainty01,predictionError01:i.predictionError01,computeBudget01:computeBudget01,sensors:i.embodied?.sensors as any});
+    const embodied=this.embodiedBridge.beforeDecision({tick:i.tick,contextId:adaptationContextId,features:(i.embodied?.sensorFeatures??input).slice(0,64),actionUtilities:i.baseUtilities,novelty01:i.novelty01,uncertainty01:i.uncertainty01,predictionError01:i.predictionError01,computeBudget01:computeBudget01,sensors:i.embodied?.sensors as any});
     const causal=this.causalPlanner.beforeDecision({
       tick:i.tick,
       context:[...this.state.state.slice(0,16),i.novelty01,i.uncertainty01,i.predictionError01,i.goalPressure01],
@@ -1142,10 +1170,33 @@ export class NeuralExperienceBranch {
     return {enabled:true,learningScale01:outcome.learningScale01,prediction01:prediction,phase:deepDecision.phase,plasticUpdates,protectedMass01:deepMetrics.protectedMass01,delayConsensus01:deepMetrics.delayConsensus01};
   }
 
-  commitAction(action:ActionKind,utilities:Record<ActionKind,number>){this.continuity.commitAction(action);if(this.state.lastExperience){this.state.lastExperience.action=action;this.state.lastExperience.actionUtilities={...utilities};}}
+  bindPendingAdaptationAction(action:ActionKind,tick?:number){
+    const contextId=this.pendingAdaptationContextId;
+    const pendingTick=this.pendingAdaptationTick;
+    if(contextId===undefined||pendingTick===undefined)return false;
+    if(tick!==undefined&&tick!==pendingTick)return false;
+    return this.embodiedBridge.commitAction(contextId,pendingTick,action);
+  }
+
+  commitAction(action:ActionKind,utilities:Record<ActionKind,number>){
+    this.bindPendingAdaptationAction(action);
+    this.continuity.commitAction(action);
+    if(this.state.lastExperience){this.state.lastExperience.action=action;this.state.lastExperience.actionUtilities={...utilities};}
+  }
 
   afterOutcome(i:{tick:number;action:ActionKind;reward01:number;predictionError01:number;verified01:number;nextInput:number[];holdout01?:number;identityGap01?:number;goalPressure01?:number;identityVector?:number[];embodied?:{nextFeatures?:number[];sensorFreshness01?:number;sensors?:Record<string,{tick:number;values:number[];freshness01:number;confidence01:number;ageTicks:number;source:string}>}}){
-    if(!this.state.enabled)return;const token=this.state.lastExperience;if(!token)return;
+    if(!this.state.enabled){this.pendingAdaptationContextId=undefined;this.pendingAdaptationTick=undefined;return;}const token=this.state.lastExperience;if(!token){this.pendingAdaptationContextId=undefined;this.pendingAdaptationTick=undefined;return;}
+    let adaptationContextId=this.pendingAdaptationContextId;
+    const adaptationTick=this.pendingAdaptationTick;
+    if(adaptationContextId!==undefined&&adaptationTick===i.tick){
+      // Validate the executed action before any outcome learner mutates state.
+      // Missing binding disables only the fast overlay; an actual mismatch throws.
+      if(!this.embodiedBridge.assertCommittedAction(adaptationContextId,i.tick,i.action))adaptationContextId=undefined;
+    }else{
+      adaptationContextId=undefined;
+    }
+    this.pendingAdaptationContextId=undefined;
+    this.pendingAdaptationTick=undefined;
     const error=clamp(i.predictionError01),reward=clamp(i.reward01),verified=clamp(i.verified01),surprise=clamp(Math.abs(reward-token.prediction01)*.7+error*.3);
     const syntheticPromotions=this.verifiedSyntheticTrajectoryGate.observeOutcome({tick:i.tick,action:i.action,reward01:reward,nextLatent:i.nextInput,verified01:verified,holdout01:clamp(i.holdout01??0),contextId:Number(token.contextId??0)});
     for(const promotion of syntheticPromotions){
@@ -1172,7 +1223,7 @@ export class NeuralExperienceBranch {
     this.continuity.afterOutcome({tick:i.tick,input:token.input,latent:token.neuralBefore,nextLatent:i.nextInput.slice(0,8),action:i.action,reward01:reward,predictionError01:error,verified01:verified,novelty01:token.novelty01,uncertainty01:token.uncertainty01,goalPressure01:i.goalPressure01??.5,identityGap01:i.identityGap01??.5,homeostasis01:1});
     const causalOutcome=this.causalPlanner.afterOutcome({tick:i.tick,context:[...token.neuralBefore.slice(0,16),token.novelty01,token.uncertainty01,error,i.goalPressure01??.5],latent:token.neuralBefore.slice(0,8),nextLatent:i.nextInput.slice(0,8),action:i.action,reward01:reward,predictionError01:error,verified01:verified,retrievedMemoryIds:token.retrievedMemoryIds??[],counterfactualReward:this.causalPlanner.metrics().lastCounterfactualReward??new Array(ACTIONS.length).fill(.5),forecastConfidence01:this.causalPlanner.metrics().lastSelectedConfidence01,disagreement01:this.causalPlanner.metrics().selectiveForesight01});
     for(const [id,credit] of causalOutcome.memoryCredit)this.continuity.applyMemoryCredit(id,credit);
-    this.embodiedBridge.afterOutcome({tick:i.tick,action:i.action,nextFeatures:(i.embodied?.nextFeatures??i.nextInput).slice(0,64),reward01:reward,verified01:verified,predictionError01:error,sensorFreshness01:i.embodied?.sensorFreshness01});
+    this.embodiedBridge.afterOutcome({tick:i.tick,contextId:adaptationContextId,action:i.action,nextFeatures:(i.embodied?.nextFeatures??i.nextInput).slice(0,64),reward01:reward,verified01:verified,predictionError01:error,sensorFreshness01:i.embodied?.sensorFreshness01});
     const embodiedPostMetrics=this.embodiedBridge.metrics();
     this.unifiedCausalWorldLoop.observeEmbodiedOutcome({action:i.action,reward01:reward,verified01:verified,predictionError01:error,sensorimotorError01:embodiedPostMetrics.sensorimotorError01,sensorFreshness01:clamp(1-embodiedPostMetrics.asyncSensorPenalty01)});
     const transferableOutcome=this.transferableSkills.afterOutcome({tick:i.tick,context:sharedContext16,latent:token.neuralBefore.slice(0,8),nextLatent:i.nextInput.slice(0,8),action:i.action,reward01:reward,predictionError01:error,verified01:verified});
@@ -1831,12 +1882,42 @@ export class NeuralExperienceBranch {
   transferSafetySynergyMetricsLite(){return this.transferSafetySynergy.metricsLite();}
   mobileRetentionDiagnostics(){return {replayBufferLength:this.state.replayBuffer.length,embodiedTransitionsLogLength:this.state.embodiedBridge.transitionsLog.length};}
   causalPlannerDiagnostics(){return this.causalPlanner.diagnostics();}
+  resetTestTimeAdaptation(sessionId?:string){
+    if(sessionId===undefined){this.embodiedBridge.resetTestTimeAdaptation();this.sessionAdaptationScopes.clear();this.pendingAdaptationContextId=undefined;this.pendingAdaptationTick=undefined;return;}
+    const rawId=String(sessionId).trim();
+    if(!rawId||rawId.length>128)return;
+    const id=rawId;
+    const scope=this.sessionAdaptationScopes.get(id);
+    if(!scope)return;
+    this.embodiedBridge.resetTestTimeAdaptationPrefix(`session:${scope}:`);
+    this.sessionAdaptationScopes.delete(id);
+    if(this.pendingAdaptationContextId?.startsWith(`session:${scope}:`)){this.pendingAdaptationContextId=undefined;this.pendingAdaptationTick=undefined;}
+  }
+
   diagnostics(){
     // snapshot() already performs the required subsystem synchronization and deep clone.
     // Re-cloning this.state here doubled allocation/GC cost for every diagnostics call.
     const out:any=this.snapshot();
     out.hierarchicalSlowMemory=this.hierarchicalSlowMemory.metrics();
     out.contextualActionPolicy=this.contextualActionPolicy.metrics();
+    const fast=this.embodiedBridge.metrics();
+    out.testTimeNeuroplasticity={
+      sessionScopeCount:this.sessionAdaptationScopes.size,
+      pendingOutcome:Boolean(this.pendingAdaptationContextId),
+      activeAdapterNorm:fast.fastAdapterNorm,
+      contextCount:fast.fastContextCount,
+      acceptedUpdates:fast.fastAcceptedUpdates,
+      rejectedUpdates:fast.fastRejectedUpdates,
+      unmatchedOutcomes:fast.fastUnmatchedOutcomes,
+      actionMismatchOutcomes:fast.fastActionMismatchOutcomes,
+      expiredContexts:fast.fastExpiredContexts,
+      evictedContexts:fast.fastEvictedContexts,
+      decayedContexts:fast.fastDecayedContexts,
+      backtrackedUpdates:fast.fastBacktrackedUpdates,
+      noGainRejections:fast.fastNoGainRejections,
+      lastPredictionErrorBefore01:fast.fastLastPredictionErrorBefore01,
+      lastPredictionErrorAfter01:fast.fastLastPredictionErrorAfter01,
+    };
     return out;
   }
 }

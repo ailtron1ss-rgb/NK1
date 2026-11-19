@@ -13,6 +13,7 @@ for(let t=1;t<=520;t++){
   });
   const r=b.beforeDecision({tick:t,features,actionUtilities:base,novelty01:shifted?.62:.28,uncertainty01:shifted?.72:.34,predictionError01:shifted?.58:.16,computeBudget01:shifted?.80:.62});
   const action=r.selectedActionHint;
+  b.commitAction(undefined,t,action);
   const shock=t===420;
   const next=shock ? Array.from({length:64},(_,i)=>i%2?1:0) : features.map((v,i)=>Math.max(0,Math.min(1,v+(i%5===0?(shifted?.18:.06):-0.015))));
   b.afterOutcome({tick:t,action,nextFeatures:next,reward01:shock?.18:(action==='explore'?.74:.63),verified01:shock?.25:(t%3===0?1:.72),predictionError01:shock?.92:(shifted?.55:.14)});
