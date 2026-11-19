@@ -1,3 +1,12 @@
+## [NK1][Motor] Add bounded 3D joint trajectory limits (2026-11-19)
+
+- Add `runtime/neuro-kurisu/src/organism/system/SkeletalTrajectoryLimiter3D.ts`: analytic quintic per-joint trajectories with duration solved so sampled peak velocity, acceleration and jerk stay inside each joint's limits, and monotone approach preferred so a joint commanded from rest does not overshoot.
+- Honour nonzero start velocity and acceleration by chaining a quartic brake to rest with a fresh quintic, because a fixed-endpoint quintic cannot satisfy an arbitrary moving start.
+- Keep plans as plain data so sampling is frame-cadence independent, deterministic and resumable; expose transport rows matching the app-side `MotorFrameJointSample` contract with measured angle kept separate from target angle.
+- Fail closed on invalid `dt`, limits, targets, joint IDs, state rows, tolerances and plan durations; never mutate caller-owned joints, state, targets or plan.
+- Add 15 behavioral regressions in `tests/skeletal-trajectory-limiter-3d.mjs` and wire `test:skeletal-trajectory-3d` into `test:rebuild-recovered`, which the WorkPass71 validation workflow already executes.
+- Scope: renderer-neutral planner only. No OrganismCore/actuator wiring, no physics, contact or collision avoidance, no device/Live2D/VRM end-to-end evidence, and no presentation claim.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
