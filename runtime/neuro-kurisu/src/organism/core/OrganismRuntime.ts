@@ -205,6 +205,42 @@ export interface RuntimeStepOptions {
   externalSource?: RuntimeExternalPluginSource;
 }
 
+export interface VoiceEmotionContext {
+  label:string;
+  valence01:number;
+  arousal01:number;
+  dominance01:number;
+}
+
+/** Project the latest canonical affect appraisal into a bounded voice context. */
+export function projectVoiceEmotionContext(snapshot:unknown, appraisalSnapshot?:unknown):VoiceEmotionContext {
+  const record=(value:unknown):Record<string,unknown> =>
+    value!==null && typeof value==='object' && !Array.isArray(value)
+      ? value as Record<string,unknown>
+      : {};
+  const source=record(snapshot);
+  const facets=record(source.facets);
+  const cognition=record(facets.cognition);
+  const field=record(cognition.cognitiveField);
+  const appraisal=record(appraisalSnapshot);
+  const history=Array.isArray(appraisal.history)?appraisal.history:[];
+  const episode=record(history[0]);
+  const finite=(value:unknown,fallback:number):number => {
+    const parsed=Number(value);
+    return Number.isFinite(parsed)?parsed:fallback;
+  };
+  const unit=(value:number):number => Math.max(0,Math.min(1,value));
+  const known=new Set(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective']);
+  const rawLabel=String(episode.label??appraisal.lastLabel??field.dominantEmotion??'calm').toLocaleLowerCase();
+  return {
+    label:known.has(rawLabel)?rawLabel:'calm',
+    valence01:unit(finite(episode.valence01,finite(appraisal.meanValence01,finite(field.valence01,.5)))),
+    arousal01:unit(finite(episode.arousal01,finite(appraisal.meanArousal01,finite(field.arousal01,.22)))),
+    // Appraisal dominance is perceived control; cognitive coherence is not a substitute.
+    dominance01:unit(finite(episode.dominance01,finite(field.dominance01,.5))),
+  };
+}
+
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
 
 export class OrganismRuntime {
@@ -1940,19 +1976,9 @@ export class OrganismRuntime {
       return this.captureCameraDirect(cameraId, retain, options);
     });
   }
-  /** Read the current affective appraisal from the canonical cognitive snapshot. */
-  private voiceEmotionContext(): {label:string;valence01:number;arousal01:number;dominance01:number} {
-    const snapshot=this.core.snapshot() as any;
-    const field=snapshot?.facets?.cognition?.cognitiveField;
-    const finite=(value:unknown,fallback:number)=>Number.isFinite(Number(value))?Number(value):fallback;
-    const known=new Set(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective']);
-    const rawLabel=String(field?.dominantEmotion??'calm').toLocaleLowerCase();
-    return {
-      label:known.has(rawLabel)?rawLabel:'calm',
-      valence01:Math.max(0,Math.min(1,finite(field?.valence01,.5))),
-      arousal01:Math.max(0,Math.min(1,finite(field?.arousal01,.22))),
-      dominance01:Math.max(0,Math.min(1,finite(field?.coherence01,.5))),
-    };
+  /** Read the current affective appraisal from the canonical cognition owner. */
+  private voiceEmotionContext(): VoiceEmotionContext {
+    return projectVoiceEmotionContext(this.core.snapshot(),this.core.emotionAppraisalSnapshot());
   }
 
   async speak(text: string): Promise<boolean> {
