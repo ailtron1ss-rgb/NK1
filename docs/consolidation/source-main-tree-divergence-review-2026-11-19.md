@@ -15,7 +15,7 @@ The comparison uses recursive Git tree entries and Git blob SHA equality. It doe
 |---|---:|---:|
 | Blob/file entries | 10,083 | 95 |
 | Aggregate blob bytes | 278,824,359 | 3,313,864 |
-| Shared paths | `\` | 49 |
+| Shared paths | — | 49 |
 | Same blob SHA among shared paths | — | 37 |
 | Different blob SHA among shared paths | — | 12 |
 | Paths only on this tree | 10,034 | 46 |
@@ -98,6 +98,15 @@ These files are a priority donor cluster for the embodiment / motor-coupling asp
 - `test_avatar.html` — blob `b575e6540bf954d712cb6f66e7a25574a79f92c3`, 23,707 bytes.
 
 The plan/progress files are historical source material and should not all be pasted into the source tree as simultaneous competing master plans. Select a single current canonical plan after content reconciliation; preserve prior editions with clear historical labels or an archive index. The three verification scripts should be examined for overlap/coverage before choosing canonical scripts. The two PNG render assets are distinct evidence, not duplicates.
+
+## Follow-up review of the merged PR #862 motor donor
+
+PR #862's description implies the 3D motor stack was integrated, but the static import closure does not substantiate a complete runtime port:
+- `OrganismMotorRuntime.ts` imports `../system/MotorFrameChannel.ts` and `../system/MotorRigProfile.ts`.
+- `MotorRigProfileBootstrap.ts` imports `../system/MotorRigProfile.ts`.
+- Both exact repository paths return 404 in the pinned #862 merge tree (`9a789ee1af8fdaa3826dbc734d18e2fc00cde5bf`) and in pinned `workpass70-source` (`7547f5287b84a7d9b7109c0e5fdbe20bf95c9e33`).
+
+The #862 PR head `6202661ad1dcfa37d314765b45e6d63852053e2d` returned no PR-triggered Actions runs and no combined commit status entries from GitHub. This is missing verification evidence, not proof every individual donor algorithm is incorrect. Accordingly, do not port the motor runtime composition as-is. The isolated quaternion FK/DLS, multi-effector and pose-IK math modules have a separate donor intake in PR #951 with explicit tests; that intake is intentionally not wired to production organism execution.
 
 ## Consolidation decisions from this comparison
 
