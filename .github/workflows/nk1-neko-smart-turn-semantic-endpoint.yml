@@ -1,0 +1,75 @@
+name: NK1 N.E.K.O. Smart Turn semantic endpoint
+
+on:
+  pull_request:
+    branches: [aspect/neko-speech-admission-gate-20261104]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSmartTurnCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/neko-smart-turn-semantic-endpoint.mjs"
+      - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md"
+      - "runtime/neuro-kurisu/docs/NEKO_ASR_PROVIDER_ADAPTER_RU.md"
+      - ".github/workflows/nk1-neko-smart-turn-semantic-endpoint.yml"
+  push:
+    branches: [aspect/neko-smart-turn-semantic-endpoint-20261105]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoSmartTurnCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/neko-smart-turn-semantic-endpoint.mjs"
+      - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md"
+      - "runtime/neuro-kurisu/docs/NEKO_ASR_PROVIDER_ADAPTER_RU.md"
+      - ".github/workflows/nk1-neko-smart-turn-semantic-endpoint.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-smart-turn-semantic-endpoint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semantic-endpoint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Verify pinned Smart Turn artifact metadata
+        working-directory: runtime/neuro-kurisu
+        run: |
+          grep -Fq "f766f81d3cfdf7737ac64aad813d91bbfd56bf93" docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md
+          grep -Fq "2bb026316b14a660486a75b1733cd3fbab8c2fd0314dc9af7be49f8cca967e4f" docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md
+          grep -Fq "BSD-2-Clause" docs/NEKO_SMART_TURN_SEMANTIC_ENDPOINT_RU.md
+      - name: Smart Turn semantic endpoint coordinator
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-smart-turn-semantic-endpoint
+      - name: ASR transcript and capture-scoped endpoint boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-transcript-adapter
+      - name: Embodiment detailed voice input
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-embodiment-wiring
+      - name: Cognitive voice evidence
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-asr-voice-input-evidence.mjs
+      - name: Existing voice/cognitive context regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:embodiment-voice-cognitive-context
+      - name: Runtime typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

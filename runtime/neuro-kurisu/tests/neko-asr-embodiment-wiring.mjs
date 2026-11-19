@@ -74,6 +74,36 @@ test('EmbodimentRuntime preserves ASR confidence and event metadata while keepin
   assert.equal(await compatible.listen(), 'Проверка входящей речи');
 });
 
+test('EmbodimentRuntime preserves Smart Turn semantic endpoint evidence in detailed voice input', async () => {
+  const runtime = new EmbodimentRuntime();
+  runtime.setNekoAsrProvider({
+    providerId: 'faster-whisper-local',
+    smartTurnProvider: {
+      modelId: 'pipecat-smart-turn-v3.2-cpu',
+      modelVersion: 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93',
+      isAvailable: () => true,
+      async evaluate() { return { probability01: 0.88 }; },
+    },
+    isAvailable: () => true,
+    async captureFinal(request) {
+      request.observeSpeechActivity('speech-started');
+      request.pushSmartTurnAudioFrame({
+        sampleRateHz: 16_000,
+        pcm16: new Uint8Array(16_000 * 2),
+      });
+      request.observeSpeechActivity('candidate-pause');
+      await request.evaluateSemanticEndpoint();
+      return envelope(request.sessionId);
+    },
+  });
+  runtime.body.sttAvailable = true;
+  const result = await runtime.listenDetailed();
+  assert.equal(result?.text, 'Проверка входящей речи');
+  assert.equal(result?.smartTurnEvaluation?.status, 'ok');
+  assert.equal(result?.smartTurnEvaluation?.decision, 'complete');
+  assert.equal(result?.smartTurnEvaluation?.probability01, 0.88);
+});
+
 test('EmbodimentRuntime does not claim ASR interruption when provider cancellation is unverified', async () => {
   let release;
   let captureStarted;
