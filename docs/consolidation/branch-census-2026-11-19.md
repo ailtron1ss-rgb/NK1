@@ -190,3 +190,22 @@
 - PR #951 was merged after the first snapshot; current source is now `aa2b385153ddc316eadf61f87e2c0803d7d59d98`.
 - Branch ref count and duplicate-HEAD group counts remain 1038 / 12; no branch name disappeared.
 - This refresh updates the source branch tip and its exact SHA; full historical PR reference analysis remains separate.
+
+
+## Live refresh after PR #954 — 2026-11-19, approx. 05:40 UTC
+
+The earlier 1,038-ref / 12-group figure above is retained as the earlier snapshot, not the latest repository state. A new independently paginated branch listing after the #954 merge now returns:
+
+- Branch refs: **963** (pages: 9 × 100 + 63)
+- Unique HEAD SHAs: **947**
+- Exact duplicate-HEAD groups: **1**
+- Duplicate excess refs: **16**
+- Canonical source: `workpass70-source` @ `7818b5ad785a33f1e3af81428d3aaf4ccf212f3f`
+- Full current listing: `branch-inventory-2026-11-19-after-pr954.jsonl`
+- Current group details: `duplicate-head-groups-2026-11-19.md` live-refresh section and `live-branch-consolidation-delta-2026-11-19-after-pr954.md`.
+
+Compared to the earlier saved 1,038-name inventory, 75 old branch names are absent and one new ref is present (net −74). This is an observed API delta only; this refresh does not infer the actor or exact time of those changes. The current single duplicate group has 17 names at SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`. Four names in that group remain bases of eight open PRs; do not delete or retarget them without dependency review.
+
+PR census after #954 merged and #953 closed: **943 total; 410 open; 315 merged; 218 closed unmerged**. Distinct branch refs used by open PRs: 409 heads and 87 bases. These figures replace the older PR state counts for current-status reporting; the original census JSON remains an immutable prior snapshot.
+
+The October 19 Release ZIP has still not been materialized or checked file-by-file. No release-parity claim is made.
