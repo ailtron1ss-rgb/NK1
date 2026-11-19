@@ -226,7 +226,7 @@ export class WorldModel2 {
    return {predictionId,reward,confidence,uncertainty:clamp(uncertainty*(1-confidence*.35)),predictedDelta:reward-baseReward,predictedState,modelReady:true};
  }
 
- observeTransition(transition:WorldTransitionForOrganism, predictionId?:string):{predictionId:string|null;resolved:boolean;accuracy01:number|null} {
+ observeTransition(transition:WorldTransitionForOrganism, predictionId?:string | null):{predictionId:string|null;resolved:boolean;accuracy01:number|null} {
    const before=worldToLatent(transition.before); const after=worldToLatent(transition.after);
    this.state.latentState=after;
    this.state.latent={energy:after.features.energy,uncertainty:after.features.uncertainty,novelty:clamp(after.features.visibleObjects+after.features.hiddenObjects),load:clamp(1-after.features.attention)};
@@ -254,11 +254,15 @@ export class WorldModel2 {
    const ticketIds=Object.keys(this.state.pendingPredictions).filter(id=>{
      const t=this.state.pendingPredictions[id]; return t?.action===action && t?.stateKey===sk;
    }).sort((a,b)=>this.state.pendingPredictions[a].createdAt-this.state.pendingPredictions[b].createdAt);
-   const exactTicketId=predictionId && this.state.pendingPredictions[predictionId]?predictionId:undefined;
-   const ticketId=exactTicketId ?? ticketIds[0];
-   const ticket=ticketId?this.state.pendingPredictions[ticketId]:undefined;
+   // Undefined preserves the legacy action-only path. An explicit string or null
+   // forbids FIFO substitution: calibration must consume only the supplied source ticket.
+   const exactTicketId=typeof predictionId === 'string' && this.state.pendingPredictions[predictionId]
+     ? predictionId
+     : undefined;
+   const ticketId=predictionId === undefined ? ticketIds[0] : exactTicketId;
+   const ticket=ticketId === undefined ? undefined : this.state.pendingPredictions[ticketId];
    let resolvedAccuracy:number|null=null;
-   if(ticket){
+   if(ticket && ticketId !== undefined){
      const accuracy=clamp(1-Math.abs(reward-ticket.predictedReward)*2);
      resolvedAccuracy=accuracy;
      this.updateCalibration(ticket.confidence01, accuracy);

@@ -190,6 +190,7 @@ export class WorldSubsystemRuntime {
       confidence:integrated.confidence01,
       uncertainty:integrated.uncertainty01,
       predictionId:integrated.predictionId,
+      sourcePredictionId:integrated.sourcePredictionId,
       modelAgreement01:integrated.modelAgreement01,
       reasons:['integrated-world-model'],
       next: organismState ? ({energy:organismState.needs.energy,uncertainty:organismState.needs.uncertainty,cognitiveLoad:organismState.needs.cognitiveLoad,novelty:organismState.needs.novelty} satisfies InternalWorldState) : {energy:.5,uncertainty:.5,cognitiveLoad:.5,novelty:.5},
@@ -216,9 +217,22 @@ export class WorldSubsystemRuntime {
     // Calibration is resolved only against a genuine pre-outcome ensemble ticket.
     // Never synthesize a fresh prediction after the outcome just to manufacture evidence.
     const actual=Math.max(0,Math.min(1,transition.reward));
-    const resolution=this.worldModelEnsemble.observeOutcomeForAction(String(transition.action),actual);
+    const decisionFrame=predictionId ? this.canonicalPredictionFrames.get(predictionId) : undefined;
+    const ensemblePredictionId=decisionFrame?.ensemble?.predictionId;
+    // A supplied canonical decision ID must resolve only its own ensemble ticket.
+    // Never fall back to FIFO-by-action when that exact frame has expired or is absent.
+    const resolution=predictionId
+      ? (typeof ensemblePredictionId === 'string'
+        ? this.worldModelEnsemble.resolvePredictionOutcome(ensemblePredictionId,actual)
+        : {resolved:false,predictionId:null,candidates:[]})
+      : this.worldModelEnsemble.observeOutcomeForAction(String(transition.action),actual);
+    if(predictionId) this.canonicalPredictionFrames.delete(predictionId);
     const candidates=resolution.candidates;
-    const worldModelResolution=this.worldModel2.observeTransition(transition, predictionId);
+    const worldModelPredictionId=decisionFrame?.sourcePredictionId;
+    const worldModelTicketRef=predictionId
+      ? (typeof worldModelPredictionId === 'string' ? worldModelPredictionId : null)
+      : undefined;
+    const worldModelResolution=this.worldModel2.observeTransition(transition, worldModelTicketRef);
     if(beforeState){
       this.contextualWorld.observe(beforeState, transition.action as ActionKind, {
         reward01:actual,
