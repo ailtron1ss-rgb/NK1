@@ -147,6 +147,43 @@ assert.deepEqual(oversizedNestedRestore.snapshot().interoception,defaultEmotionA
 assert.deepEqual(oversizedNestedRestore.snapshot().history,valid.history,
   'a rejected nested record must not discard independent valid history');
 
+// Aggregate last-event fields are reconciled from the newest validated history row.
+const inconsistentAggregate=structuredClone(valid);
+inconsistentAggregate.episodes='many';
+inconsistentAggregate.lastTick='18';
+inconsistentAggregate.lastAt=Infinity;
+inconsistentAggregate.lastLabel='invented';
+const reconciledRestore=new EmotionAppraisalEngine();
+reconciledRestore.restore(inconsistentAggregate);
+assert.equal(reconciledRestore.snapshot().episodes,valid.history.length,
+  'episode count must not fall below the number of retained unique valid episodes');
+assert.equal(reconciledRestore.snapshot().lastTick,valid.history[0].tick,
+  'lastTick must be reconciled from the newest validated history row');
+assert.equal(reconciledRestore.snapshot().lastAt,valid.history[0].at,
+  'lastAt must be reconciled from the newest validated history row');
+assert.equal(reconciledRestore.snapshot().lastLabel,valid.history[0].label,
+  'lastLabel must be reconciled from the newest validated history row');
+
+const largerLifetimeCount=structuredClone(valid);
+largerLifetimeCount.episodes=77;
+const lifetimeRestore=new EmotionAppraisalEngine();
+lifetimeRestore.restore(largerLifetimeCount);
+assert.equal(lifetimeRestore.snapshot().episodes,77,
+  'a valid lifetime counter larger than retained history must be preserved');
+
+const emptyHistorySnapshot=structuredClone(valid);
+emptyHistorySnapshot.history=[];
+emptyHistorySnapshot.feelings=[];
+emptyHistorySnapshot.lastTick=29;
+emptyHistorySnapshot.lastAt=29000;
+emptyHistorySnapshot.lastLabel='curiosity';
+const emptyHistoryRestore=new EmotionAppraisalEngine();
+emptyHistoryRestore.restore(emptyHistorySnapshot);
+assert.equal(emptyHistoryRestore.snapshot().lastTick,29,
+  'valid aggregate fallback remains available when no valid history row exists');
+assert.equal(emptyHistoryRestore.snapshot().lastAt,29000);
+assert.equal(emptyHistoryRestore.snapshot().lastLabel,'curiosity');
+
 // Repeated restoration remains deterministic and history/calibration limits remain bounded.
 const replayA=new EmotionAppraisalEngine(); replayA.restore(valid);
 const replayB=new EmotionAppraisalEngine(); replayB.restore(replayA.snapshot());
@@ -166,7 +203,7 @@ const outcomeRestore=new EmotionAppraisalEngine(); outcomeRestore.restore(outcom
 assert.ok(Object.keys(outcomeRestore.snapshot().outcomes).length<=8,'only registered action keys are restored');
 
 console.log(JSON.stringify({pass:'workpass610',status:'PASS',checks:{
-  validV2RoundTrip:true,transparentProxyRejected:true,rootGetterRejected:true,nestedGetterRejected:true,inheritedAndHostileRecordsRejected:true,
+  validV2RoundTrip:true,historyAggregateReconciliation:true,transparentProxyRejected:true,rootGetterRejected:true,nestedGetterRejected:true,inheritedAndHostileRecordsRejected:true,
   sparseAndAccessorArraysRejected:true,revokedProxySafe:true,finiteCountersAndClampedMetrics:true,
   unknownLabelsActionsAndBrokenLinksRejected:true,repeatedRestoreDeterministic:true,historyBounded:true,outcomesAllowlisted:true,boundedRecordKeys:true
 }},null,2));
