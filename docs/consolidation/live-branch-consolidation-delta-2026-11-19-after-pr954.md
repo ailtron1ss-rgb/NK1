@@ -140,3 +140,65 @@ That is **5 open PRs across 3 old base refs**. PR #131 and PR #138 are merged in
 PR #131 and #138 are independently verified merges: #131 merge commit `3a185b341e85ca9a8d3f3d1679a1f4464416b6c2`, six-file selective diff, 7/7 exact-head Actions successful; #138 merge commit `08053819c8fb91861703736d63f1459ad4be121b`, four-file selective diff, 22/22 exact-head Actions successful. Donor refs are retained.
 
 No branch refs were deleted or force-updated. SHA equality alone is not permission to delete the remaining 17 refs; PR history, tags/releases, workflow triggers, rulesets, deployments and external references still need review.
+
+
+## Live consolidation refresh — 2026-11-19 (after PR #950, #951, #954 and #131)
+
+This addendum supersedes the earlier live counts above where they differ. A new paginated read of GitHub's branch and open-pull-request APIs was completed during this refresh.
+
+### Current refs and PR shape
+
+| Measure | Current observed value |
+|---|---:|
+| Branch refs | **953** |
+| Unique HEAD commit SHAs | **937** |
+| Exact duplicate-HEAD groups | **1** |
+| Extra refs inside exact duplicate groups | **16** |
+| Open PRs | **390** |
+| Distinct open PR head refs | **390** |
+| Distinct open PR base refs | **86** |
+| Open PRs targeting `workpass70-source` | **194** |
+
+The only exact duplicate-tip family still present is the 17-ref group at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`, with 16 aliases beyond one representative. The names are the 17 already listed in the earlier section above. Exact equality proves the refs currently name the same commit/tree; it does not remove historical PR provenance or downstream base dependencies.
+
+### Current open PRs still based on duplicate-tip aliases
+
+Five live open PRs still use three names from the identical-tip family as their base:
+
+| PR | Head branch | Existing base branch | Files | Additions / deletions | State |
+|---|---|---|---:|---:|---|
+| #109 | `architecture/dependency-contracts-2026-10-24` | `nk1-all-branches-merge-2026-10-23` | 31 | +2,210 / -418 | Draft |
+| #112 | `workpass328-universal-interpreter` | `rebuild` | 45 | +1,684 / -142 | Draft |
+| #91 | `operation-omega-hexis-2026-10-24` | `rebuild` | 108 | +44,896 / -115 | Open, non-Draft |
+| #86 | `workpass328-upstream-donor-gate` | `rebuild` | 33 | +3,031 / -67 | Draft |
+| #124 | `nk1-ready-unified-cycle-restore-integrity-20261025` | `workpass206-runtime-evaluator-wiring` | 66 | +1,017 / -360 | Draft |
+
+PR #109's earlier reversible retarget probe to current source produced a dirty/non-rebaseable result, so its original base was restored. No base change or head rewrite is authorized by this census. The other four PRs remain separate review targets; their unique patch sets must be compared against current source before any retarget or merge.
+
+PRs #131 and #138 were previously shown in older snapshots as dependent on duplicate-tip names; both are now closed/merged and are not current open dependencies. PR #131 is verified as the current source HEAD merge commit. Do not use the previous seven-PR base-dependency count as a live count.
+
+### Confirmed integrations now present in current source ancestry
+
+Current `workpass70-source` HEAD is `3a185b341e85ca9a8d3f3d1679a1f4464416b6c2`.
+
+The following merged PR commits are ancestors of the current source HEAD, verified with GitHub compare (current source is ahead and zero commits behind):
+
+| PR | Selective change | Merge commit | Changed files | Diff stats |
+|---|---|---|---:|---:|
+| #950 | Kurisu sprites and render-evidence asset provenance | `0a3e4c4e51d7c2ec154a87cc0912e4a1cd6752e0` | 13 | +33 / -0 |
+| #951 | Isolated renderer-neutral 3D skeletal-kinematics modules and tests | `aa2b385153ddc316eadf61f87e2c0803d7d59d98` | 8 | +672 / -1 |
+| #954 | HMX projections and semantic-retrieval gates with bitemporal MemoryOS2 | `7818b5ad785a33f1e3af81428d3aaf4ccf212f3f` | 22 | +2,756 / -113 |
+| #131 | Node 24 installer/doctor shared runtime pin and regression tests | `3a185b341e85ca9a8d3f3d1679a1f4464416b6c2` | 6 | +134 / -13 |
+
+Compare results:
+- #950 merge commit `0a3e4c4e...`: current source is 236 commits ahead, zero behind.
+- #951 merge commit `aa2b3851...`: current source is 235 commits ahead, zero behind.
+- #954 merge commit `7818b5ad...`: current source is 185 commits ahead, zero behind.
+
+This establishes ancestry, not an assertion that every merged change is fully exercised on a physical device. The connector's combined-status endpoint returned no status contexts for the four commit SHAs during this refresh; use exact commit check-runs/Actions evidence separately before making a new verification claim.
+
+### Current-source comparisons and release boundary
+
+The current source is substantially newer than the October 19 Release ZIP. The archive remains the designated immutable baseline at 135,290,615 bytes and published SHA-256 metadata `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. Archive bytes still could not be materialized here, so ZIP member inventory, CRC verification, independently recomputed SHA-256 and path-by-path source parity remain **UNKNOWN / NOT DONE**.
+
+No branch was deleted or force-updated in this refresh. No claim is made that all 953 refs have been audited file-by-file. The exact duplicate group is a cleanup candidate only after all five open dependent PRs and historical references have been reconciled.
