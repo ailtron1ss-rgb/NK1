@@ -71,6 +71,10 @@ assert.equal(staged.clusterCount, 1);
 assert.deepEqual(staged.deferredSections, []);
 assert.ok(staged.stagingId);
 
+const unacceptedCommit = bridge.commit(staged.stagingId);
+assert.equal(unacceptedCommit.ok, false, 'a staged HMX document must not write canonical memory before explicit acceptance');
+assert.equal(unacceptedCommit.error, 'stage-not-accepted');
+assert.equal(memory.rows.size, 0, 'rejected pre-acceptance apply must leave the canonical memory owner unchanged');
 const committed = bridge.commit(staged.stagingId);
 assert.equal(committed.ok, true);
 assert.equal(committed.inserted, 4);
