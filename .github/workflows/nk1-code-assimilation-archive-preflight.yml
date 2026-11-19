@@ -1,0 +1,34 @@
+name: NK1 code assimilation archive preflight
+
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationContracts.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchivePreflight.ts'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-preflight-workpass657.mjs'
+      - '.github/workflows/nk1-code-assimilation-archive-preflight.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-code-assimilation-archive-preflight-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  archive-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate revision
+        uses: actions/checkout@v7
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install pinned app toolchain without lifecycle scripts
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Runtime TypeScript semantic check
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Validate archive preflight hostile-input matrix
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-archive-preflight-workpass657.mjs
