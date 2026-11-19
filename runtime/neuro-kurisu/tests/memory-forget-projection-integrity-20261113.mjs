@@ -611,9 +611,9 @@ console.log('CANONICAL_MAINTENANCE_DORMANCY_PROJECTION_SYNC=PASS');
   const p62AfterForget = orphanP62.snapshot();
   assert.equal(p62AfterForget.history.some(frame => frame.hits.some(hit => hit.id === aliasId)), false,
     'forgotten graph aliases must be removed from P62 recall history');
-  assert.equal(p62AfterForget.lastFrame?.hits.some(hit => hit.id === aliasId), false,
+  assert.equal((p62AfterForget.lastFrame?.hits.some(hit => hit.id === aliasId) ?? false), false,
     'the latest P62 frame must not retain a forgotten semantic alias');
-  assert.equal(p62AfterForget.lastFrame?.hits.some(hit => hit.content === 'orphaned canonical graph projection'), false,
+  assert.equal((p62AfterForget.lastFrame?.hits.some(hit => hit.content === 'orphaned canonical graph projection') ?? false), false,
     'forgotten semantic text must not remain in the latest recall frame');
   assert.equal(
     orphanFabric.applyLifecycleCommand({ action: 'forget', id: orphanId, reason: 'graph-only-orphan-cleanup' }),
