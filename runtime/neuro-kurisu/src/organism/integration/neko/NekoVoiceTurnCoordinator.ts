@@ -1,3 +1,4 @@
+import { types as nodeUtilTypes } from 'node:util';
 import {
   NekoPcm16FrameSequenceGuard,
   type NekoPcm16FrameV1,
@@ -193,15 +194,16 @@ export class NekoVoiceTurnCoordinator {
         if (active.cancelled || controller.signal.aborted) return { status: 'cancelled' };
         return { status: 'error', reason: this.cleanError(error, 'audio-session-open-failed') };
       }
+      // Validate the input-host session before reading or retaining any of its fields.
+      if (!this.validSession(session, request.token)) {
+        if (!controller.signal.aborted) controller.abort('audio-session-identity-invalid');
+        return { status: 'error', reason: 'audio-session-identity-invalid' };
+      }
       active.session = session;
       active.sessionId = session.sessionId;
       if (active.cancelled || controller.signal.aborted) {
         await this.closeActiveSession(active, 'capture-cancelled');
         return { status: 'cancelled', sessionId: session.sessionId };
-      }
-      if (!this.validSession(session, request.token)) {
-        await this.closeActiveSession(active, 'audio-session-identity-invalid');
-        return { status: 'error', reason: 'audio-session-identity-invalid' };
       }
 
       channel = new NekoBoundedAudioFrameChannel(this.channelOptions);
@@ -416,31 +418,74 @@ export class NekoVoiceTurnCoordinator {
 
   private validToken(value: unknown): value is VoiceTurnToken {
     try {
-      if (value === null || typeof value !== 'object' || Array.isArray(value) ||
-          (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)) return false;
-      const token = value as Record<string, unknown>;
-      return Number.isSafeInteger(token.sessionEpoch) && Number(token.sessionEpoch) >= 0 &&
-        typeof token.connectionId === 'string' && /^[a-z0-9][a-z0-9._:-]{0,159}$/i.test(token.connectionId) &&
-        Number.isSafeInteger(token.leaseGeneration) && Number(token.leaseGeneration) >= 0 &&
-        Number.isSafeInteger(token.routeGeneration) && Number(token.routeGeneration) >= 0 &&
-        Number.isSafeInteger(token.audioGeneration) && Number(token.audioGeneration) >= 0 &&
-        typeof token.turnId === 'string' && token.turnId.length > 0 && token.turnId.length <= 160 &&
-        /^[a-z0-9][a-z0-9._:-]{0,159}$/i.test(token.turnId);
+      if (value === null || typeof value !== 'object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) return false;
+      const prototype = Object.getPrototypeOf(value);
+      if (prototype !== Object.prototype && prototype !== null) return false;
+      const allowed = ['sessionEpoch','connectionId','leaseGeneration','routeGeneration','audioGeneration','turnId'];
+      const keys = Reflect.ownKeys(value);
+      if (keys.length !== allowed.length || keys.some(key => typeof key !== 'string' || !allowed.includes(key))) return false;
+      const fields: Record<string, unknown> = Object.create(null);
+      for (const key of allowed) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) return false;
+        fields[key] = descriptor.value;
+      }
+      return Number.isSafeInteger(fields.sessionEpoch) && Number(fields.sessionEpoch) >= 0 &&
+        typeof fields.connectionId === 'string' && /^[a-z0-9][a-z0-9._:-]{0,159}$/i.test(fields.connectionId) &&
+        Number.isSafeInteger(fields.leaseGeneration) && Number(fields.leaseGeneration) >= 0 &&
+        Number.isSafeInteger(fields.routeGeneration) && Number(fields.routeGeneration) >= 0 &&
+        Number.isSafeInteger(fields.audioGeneration) && Number(fields.audioGeneration) >= 0 &&
+        typeof fields.turnId === 'string' && fields.turnId.length > 0 && fields.turnId.length <= 160 &&
+        /^[a-z0-9][a-z0-9._:-]{0,159}$/i.test(fields.turnId);
     } catch { return false; }
   }
 
   private validSession(session: NekoAudioInputSession, token: VoiceTurnToken): boolean {
-    if (!session || typeof session !== 'object' ||
-        typeof session.sessionId !== 'string' || !/^[a-z0-9][a-z0-9._:-]{0,159}$/i.test(session.sessionId) ||
-        session.turnId !== token.turnId || !this.validToken(session.token) ||
-        typeof session.frames?.[Symbol.asyncIterator] !== 'function') return false;
-    const candidate = session.token;
-    return candidate.sessionEpoch === token.sessionEpoch &&
-      candidate.connectionId === token.connectionId &&
-      candidate.leaseGeneration === token.leaseGeneration &&
-      candidate.routeGeneration === token.routeGeneration &&
-      candidate.audioGeneration === token.audioGeneration &&
-      candidate.turnId === token.turnId;
+    try {
+      // Never invoke Proxy traps or accessor-backed fields from an input host.
+      if (!session || typeof session !== 'object' || Array.isArray(session) || nodeUtilTypes.isProxy(session)) return false;
+      const prototype = Object.getPrototypeOf(session);
+      if (prototype !== Object.prototype && prototype !== null) return false;
+      const allowed = ['sessionId','turnId','token','frames','close'];
+      const keys = Reflect.ownKeys(session);
+      if (keys.some(key => typeof key !== 'string' || !allowed.includes(key))) return false;
+      const read = (key: string): unknown => {
+        const descriptor = Object.getOwnPropertyDescriptor(session, key);
+        if (!descriptor) return undefined;
+        if (!('value' in descriptor) || !descriptor.enumerable) throw new TypeError('audio-session-accessor-rejected');
+        return descriptor.value;
+      };
+      const sessionId = read('sessionId');
+      const turnId = read('turnId');
+      const candidateToken = read('token');
+      const frames = read('frames');
+      const close = read('close');
+      if (keys.length < 4 || typeof sessionId !== 'string' ||
+          !/^[a-z0-9][a-z0-9._:-]{0,159}$/i.test(sessionId) ||
+          turnId !== token.turnId || !this.validToken(candidateToken) ||
+          frames === null || typeof frames !== 'object' || nodeUtilTypes.isProxy(frames) ||
+          (close !== undefined && typeof close !== 'function')) return false;
+      // Find the async-iterator method through data descriptors only. This keeps
+      // a hostile frame iterable from running a getter during host-session validation.
+      let cursor: object | null = frames;
+      let iteratorAvailable = false;
+      while (cursor !== null) {
+        if (nodeUtilTypes.isProxy(cursor)) return false;
+        const iteratorDescriptor = Object.getOwnPropertyDescriptor(cursor, Symbol.asyncIterator);
+        if (iteratorDescriptor) {
+          iteratorAvailable = 'value' in iteratorDescriptor && typeof iteratorDescriptor.value === 'function';
+          break;
+        }
+        cursor = Object.getPrototypeOf(cursor);
+      }
+      if (!iteratorAvailable) return false;
+      return candidateToken.sessionEpoch === token.sessionEpoch &&
+        candidateToken.connectionId === token.connectionId &&
+        candidateToken.leaseGeneration === token.leaseGeneration &&
+        candidateToken.routeGeneration === token.routeGeneration &&
+        candidateToken.audioGeneration === token.audioGeneration &&
+        candidateToken.turnId === token.turnId;
+    } catch { return false; }
   }
 
   private sequenceReason(reason: string): string {

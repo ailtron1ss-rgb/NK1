@@ -185,4 +185,44 @@ test('rejects a source sequence gap and never sends partial PCM as a valid final
   assert.equal(calls.asr.length, 0);
 });
 
+test('rejects Proxy-backed turn tokens without executing traps or opening the audio host', async () => {
+  const { coordinator, calls } = createCoordinator();
+  let trapInvoked = false;
+  const hostileToken = new Proxy(token(), {
+    getPrototypeOf() { trapInvoked = true; return Object.prototype; },
+    get() { trapInvoked = true; return undefined; },
+  });
+  const result = await coordinator.captureFinal({
+    authorization: { grantId: 'host-grant-proxy-token' },
+    token: hostileToken,
+    signal: new AbortController().signal,
+  });
+  assert.deepEqual(result, { status: 'rejected', reason: 'voice-turn-token-invalid' });
+  assert.equal(trapInvoked, false);
+  assert.equal(calls.open.length, 0);
+});
+
+test('rejects Proxy-backed host sessions before reading session fields', async () => {
+  let trapInvoked = false;
+  const { coordinator, calls } = createCoordinator({
+    audioInput: {
+      async openSession() {
+        return new Proxy({}, {
+          getPrototypeOf() { trapInvoked = true; return Object.prototype; },
+          get() { trapInvoked = true; return undefined; },
+          ownKeys() { trapInvoked = true; return []; },
+        });
+      },
+    },
+  });
+  const result = await coordinator.captureFinal({
+    authorization: { grantId: 'host-grant-proxy-session' },
+    token: token(),
+    signal: new AbortController().signal,
+  });
+  assert.deepEqual(result, { status: 'error', reason: 'audio-session-identity-invalid' });
+  assert.equal(trapInvoked, false);
+  assert.equal(calls.asr.length, 0);
+});
+
 console.log('NEKO_VOICE_TURN_COORDINATOR=PASS');
