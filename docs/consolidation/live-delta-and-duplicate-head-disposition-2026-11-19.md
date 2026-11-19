@@ -15,16 +15,32 @@ Canonical working source remains `workpass70-source` at `7547f5287b84a7d9b7109c0
 | Exact duplicate-HEAD groups | 12 | **12** |
 | Excess refs inside duplicate-HEAD groups | 91 | **91** |
 | PR records | 937 | **939** |
-| Open PRs | 414 | **416** |
+| Open PRs | 414 | **412** |
 | Merged PRs | 310 | **310** |
-| Closed without merge | 213 | **213** |
+| Closed without merge | 213 | **217** |
 | Open Draft PRs | — | **282** |
 | Distinct PR head refs | 921 | **923** |
-| Distinct open PR head refs | 413 | **415** |
+| Distinct open PR head refs | 413 | **411** |
 
 Branch pagination was 100 × 10 pages plus 35 on page 11. Pull-request pagination was 100 × 9 pages plus 39 on page 10. The two added branch refs are not to be backdated into the Nov 18 snapshot. Prefix counts changed from 225 to 226 for `aspect/` and from 1 to 2 for `consolidation/`; other major counts remain as recorded in the original census.
 
-Among currently open PRs, 205 target `workpass70-source` and 69 target `main`. The remaining open PRs target intermediate integration/aspect branches. This is why merging all open PRs directly into one branch would be unsafe.
+Among currently open PRs, **205 target `workpass70-source` and 65 target `main`**; the remaining **142** target intermediate integration/aspect branches. This is why merging all open PRs directly into one branch would be unsafe.
+
+### PR-state reconciliation after the Nov 18 snapshot
+
+A fresh read of all ten live PR pages (100 × 9 plus 39 on page 10; 939 unique PR numbers) found **412 open, 310 merged, and 217 closed without merge**. Of the open PRs, 282 are Draft; 411 distinct head refs are used by the 412 open PRs (one head ref is shared by two open PRs).
+
+Relative to the Nov 18 register, two new open PRs appeared:
+- #949 — branch census/consolidation audit, based on `workpass70-source`.
+- #950 — asset-only preservation of Kurisu sprites and render evidence, based on `workpass70-source`.
+
+Four PRs that were open in the Nov 18 register were closed without merge on 2026-11-19:
+- #845 at 04:42:00Z.
+- #849 at 04:42:03Z.
+- #850 at 04:42:07Z.
+- #851 at 04:42:10Z.
+
+These four belong to the exact duplicate master-plan PR clusters already described below. They were closed, not merged; the remaining duplicate candidates must be treated separately. Consequently, the open count is 412 (not 416), and the closed-without-merge count is 217 (not 213). The merged count remains 310. This reconciles the live count without rewriting the Nov 18 historical snapshot.
 
 ## Exact duplicate HEAD families: what the identical SHA does and does not prove
 
