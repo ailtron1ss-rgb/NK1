@@ -1305,7 +1305,32 @@ export class MemoryOS2{
     existing.contentHash=existing.contentHash||memoContentHash(existing.content);
     existing.tags=mergeMemoTags(existing.tags,input.tags);
     this.spatialIndex.remove(existing.id);
-    existing.context=mergeMemoContext(existing.context,input.context);
+    const incomingObservedAt=Number(input.observedAt);
+    const existingObservedAt=Number(existing.observedAt??existing.createdAt);
+    // Spatial coordinates are point-in-time evidence. Only a strictly newer
+    // observation may move the canonical point or refresh its validity window.
+    const hasNewerObservation=Number.isFinite(incomingObservedAt)&&incomingObservedAt>existingObservedAt;
+    const hasSpatialObservation=Boolean(input.context&&
+      typeof input.context.spatialFrameId==='string'&&
+      typeof input.context.spatialX==='string'&&
+      typeof input.context.spatialY==='string');
+    let contextPatch=input.context;
+    if(hasSpatialObservation&&!hasNewerObservation&&contextPatch){
+      contextPatch={...contextPatch};
+      for(const key of Object.keys(contextPatch)){
+        if(key.startsWith('spatial')||key.startsWith('grounded'))delete contextPatch[key];
+      }
+    }
+    existing.context=mergeMemoContext(existing.context,contextPatch);
+    if(hasNewerObservation){
+      existing.observedAt=incomingObservedAt;
+      if(Object.prototype.hasOwnProperty.call(input,'validFromAt')&&Number.isFinite(input.validFromAt))existing.validFromAt=Number(input.validFromAt);
+      if(Object.prototype.hasOwnProperty.call(input,'validUntilAt')){
+        if(input.validUntilAt===null)existing.validUntilAt=null;
+        else if(Number.isFinite(input.validUntilAt))existing.validUntilAt=Number(input.validUntilAt);
+      }
+      if(Object.prototype.hasOwnProperty.call(input,'evidenceFreshnessAt')&&Number.isFinite(input.evidenceFreshnessAt))existing.evidenceFreshnessAt=Number(input.evidenceFreshnessAt);
+    }
     this.spatialIndex.upsert(existing.id,existing.context);
     const nextBitemporal=this.bitemporalIntervalFor(existing);
     const bitemporalChanged=!this.sameBitemporalState(previousBitemporal,nextBitemporal);
