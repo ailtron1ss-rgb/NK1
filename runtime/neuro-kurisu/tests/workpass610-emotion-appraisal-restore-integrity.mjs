@@ -104,6 +104,29 @@ assert.equal(duplicateRestore.snapshot().history.length,1,'duplicate episode ide
 assert.ok(invalidRestore.snapshot().feelings.every(row=>row.causeEmotionId===valid.history[0].id));
 assert.deepEqual(Object.keys(invalidRestore.snapshot().outcomes),['rest']);
 
+// Snapshot records with excessive own keys fail closed, at both root and nested boundaries.
+const oversizedRoot = {
+  ...valid,
+  ...Object.fromEntries(Array.from({length:256},(_,i)=>[`extra-root-${i}`,i])),
+  episodes:77,
+};
+const oversizedRootRestore=new EmotionAppraisalEngine();
+oversizedRootRestore.restore(oversizedRoot);
+assert.deepEqual(oversizedRootRestore.snapshot(),defaultEmotionAppraisalState(),
+  'records with more than 256 own fields must fail closed');
+
+const oversizedNested=structuredClone(valid);
+oversizedNested.interoception={
+  ...valid.interoception,
+  ...Object.fromEntries(Array.from({length:256},(_,i)=>[`extra-interoception-${i}`,i])),
+};
+const oversizedNestedRestore=new EmotionAppraisalEngine();
+oversizedNestedRestore.restore(oversizedNested);
+assert.deepEqual(oversizedNestedRestore.snapshot().interoception,defaultEmotionAppraisalState().interoception,
+  'oversized nested records must restore the complete safe default');
+assert.deepEqual(oversizedNestedRestore.snapshot().history,valid.history,
+  'a rejected nested record must not discard independent valid history');
+
 // Repeated restoration remains deterministic and history/calibration limits remain bounded.
 const replayA=new EmotionAppraisalEngine(); replayA.restore(valid);
 const replayB=new EmotionAppraisalEngine(); replayB.restore(replayA.snapshot());
@@ -125,5 +148,5 @@ assert.ok(Object.keys(outcomeRestore.snapshot().outcomes).length<=8,'only regist
 console.log(JSON.stringify({pass:'workpass610',status:'PASS',checks:{
   validV2RoundTrip:true,rootGetterRejected:true,nestedGetterRejected:true,inheritedAndHostileRecordsRejected:true,
   sparseAndAccessorArraysRejected:true,revokedProxySafe:true,finiteCountersAndClampedMetrics:true,
-  unknownLabelsActionsAndBrokenLinksRejected:true,repeatedRestoreDeterministic:true,historyBounded:true,outcomesAllowlisted:true
+  unknownLabelsActionsAndBrokenLinksRejected:true,repeatedRestoreDeterministic:true,historyBounded:true,outcomesAllowlisted:true,boundedRecordKeys:true
 }},null,2));
