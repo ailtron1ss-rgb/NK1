@@ -28,7 +28,7 @@ A fresh paginated read of GitHub branch refs was performed after the #954 merge.
 | Distinct branches used as open PR heads | **409** |
 | Distinct branches used as open PR bases | **87** |
 
-The previous branch inventory in this PR records 1,038 refs, 947 unique heads, 12 duplicate-head groups and 91 excess refs. Comparing its saved names with the current paginated list yields **75 old names no longer present** and one current new name, `aspect/memory-hmx-semantic-integrity-rebased-20261119`, for a net reduction of 74 refs. The exact current list has 963 entries. This report records the observed delta; it does not attribute the 75 absent refs to a particular actor or claim that this session deleted them.
+The previous branch inventory in this PR records 1,038 refs, 947 unique heads, 12 duplicate-head groups and 91 excess refs. Comparing its saved names with the current paginated list yields **76 old names no longer present** and one current new name, `aspect/memory-hmx-semantic-integrity-rebased-20261119`, for a net reduction of **75 refs** (1,038 − 76 + 1 = 963). The exact current list has 963 entries. This report records the observed delta; it does not attribute the 75 absent refs to a particular actor or claim that this session deleted them.
 
 ## The one remaining exact duplicate-head group
 

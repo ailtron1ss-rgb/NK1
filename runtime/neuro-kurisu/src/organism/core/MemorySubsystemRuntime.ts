@@ -123,6 +123,9 @@ export class MemorySubsystemRuntime {
     this.memoryCausalEconomy.restore(advanced.memoryCausalEconomy);
     this.causalLifeGraph.restore(advanced.causalLifeGraph);
     this.memoryWorldCausalBridge.restore(advanced.memoryWorldCausalBridge);
+    // Canonical MemoryOS2 state is authoritative after restore. Rebuild only
+    // canonical graph projections, preserving independent source-keyed nodes.
+    this.fabric.reconcileSemanticGraph();
   }
 
   /** Read-only memory hygiene report; destructive repair remains an explicit separate operation. */

@@ -76,4 +76,52 @@ assert.equal(fallback.semantic.enabled, false);
 assert.match(fallback.semantic.fallbackReason, /local-model-offline/);
 assert.ok(Array.isArray(fallback.items), 'provider failures should return deterministic hybrid fallback results');
 
+// Embedding-only recall must abstain when the best vector is weak. A configured
+// provider can return mathematically valid but irrelevant vectors for out-of-domain
+// text; cosine ranking alone must never turn those into memory answers.
+class OutOfDomainProvider extends SemanticFixtureProvider {
+  providerId = 'fixture:ood-abstention-v1';
+  modelId = 'ood-abstention-v1';
+  async embedBatch(texts) {
+    return texts.map(raw => {
+      const text = String(raw).toLocaleLowerCase();
+      if (/qzxv|glarpen|unikora|orbital|semantic-fail/.test(text)) return [0, 0, 1];
+      if (/authenticate|sign.in|login|credential recovery|account access/.test(text)) return [1, 0, 0];
+      return [0, 1, 0];
+    });
+  }
+}
+const grounded = new MemoryOS2({ embeddingProvider: new OutOfDomainProvider() });
+const addGrounded = (id, content) => grounded.encode({
+  id, content, kind: 'semantic', source: 'semantic-embedding-workpass33', tags: [], context: {},
+  salience: .55, emotionalWeight: .1, identityRelevance: .1, goalRelevance: .1,
+  socialRelevance: .1, predictionError: .1, confidence: .9, epistemicStatus: 'fact', entities: [],
+  semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+  validFromAt: now - 1000, observedAt: now - 500, createdAt: now,
+});
+addGrounded('semantic-credential', 'Login credential recovery restores account access when authentication is lost.');
+addGrounded('semantic-network', 'Network socket routing and database endpoint configuration for server maintenance.');
+addGrounded('semantic-general', 'The avatar palette uses a blue background and compact interface controls.');
+const groundedBefore = grounded.snapshot();
+const unsupportedEmbedding = await grounded.previewRetrieveWithEmbeddings(
+  'qzxv glarpen unikora orbital', 3, 0, 0, { temporalMode: 'current', asOfAt: now },
+);
+assert.equal(unsupportedEmbedding.semantic.enabled, false,
+  'weak semantic-only matches must fall back instead of overriding an empty grounded lexical result');
+assert.equal(unsupportedEmbedding.semantic.fallbackReason, 'semantic-similarity-below-grounding-threshold');
+assert.equal(unsupportedEmbedding.semantic.abstained, true);
+assert.ok(unsupportedEmbedding.semantic.topSimilarity01 < unsupportedEmbedding.semantic.minSimilarity01);
+assert.deepEqual(unsupportedEmbedding.items, [], 'an out-of-domain query must remain unanswered');
+assert.deepEqual(grounded.snapshot(), groundedBefore, 'semantic abstention must not mutate canonical memory');
+
+// A rejected semantic override must preserve an already-grounded lexical result.
+const lexicalFallback = await grounded.previewRetrieveWithEmbeddings(
+  'login credential recovery semantic-fail', 3, 0, 0, { temporalMode: 'current', asOfAt: now },
+);
+assert.equal(lexicalFallback.semantic.enabled, false);
+assert.equal(lexicalFallback.semantic.abstained, true);
+assert.equal(lexicalFallback.items[0]?.id, 'semantic-credential',
+  'a below-threshold embedding result must never discard a valid lexical fallback');
+assert.deepEqual(grounded.snapshot(), groundedBefore, 'fallback retrieval must remain read-only');
+
 console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason }));
