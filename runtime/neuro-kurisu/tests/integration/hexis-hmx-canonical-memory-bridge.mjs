@@ -303,4 +303,50 @@ assert.equal(graphReplay.inserted, 0);
 assert.equal(graphReplay.replayed, 4);
 assert.equal(systems.memory.memoryOS.size(), 6, 'real canonical graph replay must remain idempotent');
 
+
+const redactionStage = systems.memory.hexisHmxCanonicalMemoryBridge.stage({
+  document: document({
+    export_id: 'exp_runtime_sensitive_text',
+    sections: {
+      memories: [{
+        ref: 'memory:sensitive',
+        type: 'semantic',
+        content: 'Contact security@example.invalid with Bearer nk1-fixture-token-0123456789abcdef.',
+      }],
+      episodes: [{
+        ref: 'episode:sensitive',
+        summary: 'Database https://fixture-user:fixture-pass@example.invalid/db',
+        memory_refs: [],
+      }],
+      clusters: [{
+        ref: 'cluster:sensitive',
+        name: 'Call +1 (555) 123-4567',
+        member_refs: ['memory:sensitive'],
+      }],
+    },
+  }),
+});
+assert.equal(redactionStage.ok, true);
+const redactionCommit = systems.memory.hexisHmxCanonicalMemoryBridge.commit(redactionStage.stagingId);
+assert.equal(redactionCommit.ok, true, JSON.stringify(redactionCommit));
+const redactedMemory = systems.memory.fabric.getCanonicalMemory(redactionCommit.refMap['memory:sensitive']);
+const redactedEpisode = systems.memory.fabric.getCanonicalMemory(redactionCommit.refMap['episode:sensitive']);
+const redactedCluster = systems.memory.fabric.getCanonicalMemory(redactionCommit.refMap['cluster:sensitive']);
+assert.ok(redactedMemory && redactedEpisode && redactedCluster);
+for (const [row, secret] of [
+  [redactedMemory, 'security@example.invalid'],
+  [redactedMemory, 'nk1-fixture-token-0123456789abcdef'],
+  [redactedEpisode, 'fixture-user:fixture-pass'],
+  [redactedCluster, '+1 (555) 123-4567'],
+]) {
+  assert.equal(row.content.includes(secret), false, 'known sensitive HMX text must be redacted before canonical memory writes');
+}
+assert.ok(redactedMemory.content.includes('[redacted:email-address]'));
+assert.ok(redactedMemory.content.startsWith('Contact '), 'ordinary surrounding text must survive sensitive-pattern redaction');
+assert.ok(redactedMemory.content.includes('[redacted:bearer-token]'));
+assert.ok(redactedEpisode.content.includes('[redacted:credential-url]'));
+assert.ok(redactedCluster.content.includes('[redacted:phone-number]'));
+assert.ok(redactionCommit.warnings.some(w => w.code === 'hmx-sensitive-pattern-redacted'),
+  'the import result must disclose that known sensitive-text patterns were redacted');
+
 console.log('HEXIS_HMX_CANONICAL_MEMORY_BRIDGE_PASS');
