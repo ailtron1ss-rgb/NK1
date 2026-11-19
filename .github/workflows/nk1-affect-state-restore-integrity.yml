@@ -7,6 +7,7 @@ on:
     paths:
       - runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts
       - runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs
+      - runtime/neuro-kurisu/tests/workpass610-emotion-appraisal-restore-integrity.mjs
       - .github/workflows/nk1-affect-state-restore-integrity.yml
 permissions:
   contents: read
@@ -29,6 +30,9 @@ jobs:
       - name: Verify affect, interoception and persistence
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/big-pass-172-emotion-interoceptive-mind.mjs
+      - name: Verify extended hostile snapshot restore contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass610-emotion-appraisal-restore-integrity.mjs
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
