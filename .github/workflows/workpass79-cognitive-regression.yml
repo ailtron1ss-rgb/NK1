@@ -50,6 +50,10 @@ jobs:
         run: node --test tools/verify-ci-reliability.test.mjs
       - name: Install pinned TypeScript compiler from app lockfile
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Typecheck the existing app and Dyadic Mind workspace panel
+        run: npm --prefix app run typecheck
+      - name: Run the existing app regression suite
+        run: npm --prefix app test
       - name: Verify signed verifier outcome artifacts and reject tampering
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs
@@ -68,6 +72,9 @@ jobs:
       - name: Test authenticated HTTP UserModel preference host route
         working-directory: runtime/neuro-kurisu
         run: npm run test:user-model-http-route
+      - name: Test Dyadic Mind shared context, consent and restore boundaries
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:dyadic-collaboration
       - name: Verify CognitiveEventFabric snapshot restore rejects accessor and coercion payloads
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass641:cef-restore-integrity

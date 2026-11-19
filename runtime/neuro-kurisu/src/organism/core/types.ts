@@ -416,6 +416,8 @@ export interface AdvancedDevelopmentFacet {
   p80UnifiedSelfState: import('../cognition/P80UnifiedSelfState.ts').P80State;
   /** Explicit low-risk user interaction facts; hypotheses remain unconfirmed. */
   userModelEvidence?: import('../cognition/UserModelEvidenceModel.ts').UserModelState;
+  /** Human + system shared-work artifacts; separate from personal memory and inferred user facts. */
+  dyadicCollaboration?: import('../system/DyadicCollaborationWorkspace.ts').DyadicCollaborationStateV1;
   p81PredictiveAttention: import('../cognition/P81PredictiveAttention.ts').P81State;
   p82RealityProgress: import('../system/P82RealityProgressController.ts').P82State;
   p83PersistentRealityModel: import('../world/P83PersistentRealityModel.ts').PersistentRealityModelState;

@@ -2749,7 +2749,45 @@ export class OrganismCore {
     }
     /** Read-only explicit low-risk user preferences; inferred/disputed data never becomes prompt fact. */
     userModelPromptContext() {
-        return this.selfSubsystem.userModelPromptContext();
+        const personal = this.selfSubsystem.userModelPromptContext();
+        const shared = this.selfSubsystem.dyadicCollaborationPromptContext();
+        return [personal, shared].filter(Boolean).join('\n\n');
+    }
+
+    private async persistDyadicCollaborationResult(result: import('../system/DyadicCollaborationWorkspace.ts').DyadicCollaborationResult) {
+        if (result.accepted) {
+            this.markPersistenceDirty();
+            await this.checkpoint(true);
+        }
+        return result;
+    }
+    async recordDyadicCollaborationItem(input: Parameters<import('../system/DyadicCollaborationWorkspace.ts').DyadicCollaborationWorkspace['recordItem']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        if (this.persistence.persistenceDepth > 0) throw new Error('dyadic-collaboration-write-during-active-cycle');
+        return this.persistDyadicCollaborationResult(this.selfSubsystem.dyadicCollaboration.recordItem(input));
+    }
+    async confirmDyadicCollaborationProposal(input: Parameters<import('../system/DyadicCollaborationWorkspace.ts').DyadicCollaborationWorkspace['confirmProposal']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        if (this.persistence.persistenceDepth > 0) throw new Error('dyadic-collaboration-write-during-active-cycle');
+        return this.persistDyadicCollaborationResult(this.selfSubsystem.dyadicCollaboration.confirmProposal(input));
+    }
+    async rejectDyadicCollaborationProposal(input: Parameters<import('../system/DyadicCollaborationWorkspace.ts').DyadicCollaborationWorkspace['rejectProposal']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        if (this.persistence.persistenceDepth > 0) throw new Error('dyadic-collaboration-write-during-active-cycle');
+        return this.persistDyadicCollaborationResult(this.selfSubsystem.dyadicCollaboration.rejectProposal(input));
+    }
+    async updateDyadicCollaborationTaskProgress(input: Parameters<import('../system/DyadicCollaborationWorkspace.ts').DyadicCollaborationWorkspace['updateTaskProgress']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        if (this.persistence.persistenceDepth > 0) throw new Error('dyadic-collaboration-write-during-active-cycle');
+        return this.persistDyadicCollaborationResult(this.selfSubsystem.dyadicCollaboration.updateTaskProgress(input));
+    }
+    async correctDyadicCollaborationItem(input: Parameters<import('../system/DyadicCollaborationWorkspace.ts').DyadicCollaborationWorkspace['correctItem']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        if (this.persistence.persistenceDepth > 0) throw new Error('dyadic-collaboration-write-during-active-cycle');
+        return this.persistDyadicCollaborationResult(this.selfSubsystem.dyadicCollaboration.correctItem(input));
+    }
+    dyadicCollaborationSnapshot() {
+        return this.selfSubsystem.dyadicCollaboration.snapshot();
     }
 
     /** Persist a caller-confirmed, low-risk preference through the canonical self subsystem. */

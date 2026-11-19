@@ -1,0 +1,48 @@
+name: NK1 Dyadic Mind app integration
+
+on:
+  push:
+    branches:
+      - aspect/dyadic-mind-collaboration-layer-20261117
+    paths:
+      - "app/src/neuro-kurisu/api.ts"
+      - "app/src/components/DyadicCollaborationPanel.tsx"
+      - "app/src/routes/index.tsx"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/nk1-dyadic-mind-app.yml"
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - "app/src/neuro-kurisu/api.ts"
+      - "app/src/components/DyadicCollaborationPanel.tsx"
+      - "app/src/routes/index.tsx"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/nk1-dyadic-mind-app.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-dyadic-mind-app-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned app dependencies
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Typecheck the authenticated React app and Dyadic Mind API client
+        run: npm --prefix app run typecheck
+      - name: Run app contract and regression tests
+        run: npm --prefix app test

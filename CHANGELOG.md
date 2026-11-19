@@ -1,3 +1,22 @@
+- Add a collapsible Dyadic Mind panel to the existing Kurisu home route, using the shared neuroApi transport for create/approve/reject/edit/progress actions and explicit completion confirmation.
+- Retry one transient app mutation once with the exact same idempotency key and payload; do not retry deterministic 4xx responses. Add 3 app client tests for dropped responses, 409 conflicts and missing keys.
+## [NK1][Dyadic Mind] Add authenticated collaboration workspace and host API (2026-11-17)
+
+- Implement a bounded, evidence-bound human/system workspace for shared goals, tasks, agreements, questions, success criteria and decisions.
+- Keep system-created artifacts as proposals until explicit human confirmation; restrict corrections and task completion to the human participant.
+- Persist through the canonical self subsystem and critical persistence projection; expose checkpointed Core and serialized Runtime operations.
+- Add the bearer-authenticated /api/organism/dyadic-collaboration host endpoint with redacted reads and server-owned actor, evidence, tick and sensitivity metadata.
+- Feed a bounded, data-labelled shared context into existing cognitive prompt paths without creating a second memory or project executor.
+- Add behavioral and HTTP tests for consent, provenance, persistence, redaction, secret rejection and task-state boundaries. WorkPass79 and Unified Organism Runtime passed at exact HEAD ca2af1eb; no merge or release is claimed.
+- Make HTTP writes idempotent: exact retries return the prior item, same-key/different-payload requests conflict, and concurrent identical/conflicting requests are covered by live-server regressions.
+
+## [NK1][Dyadic Mind] Introduce evidence-bound shared collaboration workspace (2026-11-17)
+
+- Add a bounded human/system collaboration record for goals, tasks, agreements, questions, success criteria and decisions, with actor, source reference, lifecycle status and an append-only bounded event trail.
+- Keep system-authored items as proposals until explicit human confirmation; require a human for corrections and task completion; reject sensitive/unclassified data, duplicate evidence and stale state transitions.
+- Persist through the canonical SelfSubsystemRuntime and critical persistence projection; expose serialized runtime commands and a labelled collaboration context to existing cognitive prompts.
+- Reuse MemoryOS2 and existing project/task execution owners; no second memory, database, planner, public route, UI, merge or release is introduced.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
