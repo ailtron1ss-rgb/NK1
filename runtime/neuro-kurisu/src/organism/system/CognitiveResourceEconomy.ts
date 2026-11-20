@@ -159,3 +159,6 @@ export class CognitiveResourceEconomy {
   planningSnapshot():CognitiveResourceEconomyState { return { ...this.state }; }
   externalInteractionBudget01():number { return this.state.externalInteractionBudget01; }
 }
+// Resource budgeting and optional cognitive-spine cadence share one runtime-facing subsystem boundary.
+export { CognitiveSpineScheduler } from './CognitiveSpineScheduler.ts';
+export type { CognitiveSpineScheduleState } from './CognitiveSpineScheduler.ts';
