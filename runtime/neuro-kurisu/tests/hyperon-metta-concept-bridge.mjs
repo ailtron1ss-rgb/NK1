@@ -141,3 +141,32 @@ assert.equal(
   'restore caps vector dimensions',
 );
 console.log('PASS: bounded concept count, vector dimensions and restored counters');
+
+
+// Protocol output must not retain C1 controls or depend on the host's locale.
+const controlLabelCompiler = new NeuroSymbolicConceptCompiler();
+controlLabelCompiler.compile({
+  label: 'c1\u0085next\u009f',
+  latent: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+  outcome01: 0.5,
+  novelty01: 0,
+});
+const controlFact = controlLabelCompiler.exportMeTTaFacts().facts[0];
+assert.ok(controlFact.includes('"c1 next"'), 'C1 controls are normalized to spaces');
+assert.ok(!/[\u007f-\u009f]/.test(controlFact), 'serialized facts contain no DEL/C1 controls');
+
+const localeOrderCompiler = new NeuroSymbolicConceptCompiler();
+for (const [index, label] of ['ä', 'Z', 'a', 'Å', '_'].entries()) {
+  localeOrderCompiler.compile({
+    label,
+    latent: Array.from({ length: index + 1 }, (_, dimension) => (dimension + 1) / (index + 2)),
+    outcome01: 0.5,
+    novelty01: 0,
+  });
+}
+const exportedLabels = localeOrderCompiler.exportMeTTaFacts().facts
+  .filter((fact) => fact.startsWith('(NK1Concept '))
+  .map((fact) => fact.match(/^\(NK1Concept "([^"]+)"/)?.[1]);
+assert.deepEqual(exportedLabels, ['Z', '_', 'a', 'Å', 'ä'],
+  'fact order is stable code-unit order, independent of locale');
+console.log('PASS: locale-independent MeTTa serialization and C1 control sanitization');

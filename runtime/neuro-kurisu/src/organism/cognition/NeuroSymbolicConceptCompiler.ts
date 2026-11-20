@@ -5,7 +5,7 @@ import { cosineSimilarity } from '../core/NumericPrimitives.ts';
 const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 const safeLabel = (value: unknown): string => {
   const raw = typeof value === 'string' ? value : 'unknown';
-  const normalized = raw.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 96);
+  const normalized = raw.normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 96);
   return normalized || 'unknown';
 };
 const quoteMeTTa = (value: string): string => '"' + value.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
@@ -174,7 +174,11 @@ export class NeuroSymbolicConceptCompiler {
     const limit = Number.isFinite(maxConcepts) ? Math.max(0, Math.min(128, Math.floor(maxConcepts))) : 128;
     const concepts = Object.values(this.state.concepts)
       .filter((concept) => concept && Array.isArray(concept.centroid))
-      .sort((a, b) => safeLabel(a.label).localeCompare(safeLabel(b.label)))
+      .sort((a, b) => {
+        const left = safeLabel(a.label);
+        const right = safeLabel(b.label);
+        return left < right ? -1 : left > right ? 1 : 0;
+      })
       .slice(0, limit);
     const facts: string[] = [];
     for (const concept of concepts) {
