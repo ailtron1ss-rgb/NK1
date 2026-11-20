@@ -1,6 +1,6 @@
 # CURRENT HANDOFF — 2026-11-20
 
-**Canonical source:** `workpass70-source` @ `960a2d540ef952486a0271a0e5332caec601b36a`  
+**Canonical runtime/source baseline after PR #1031:** `workpass70-source` @ `950989fe0081e3760471d44beb6e95bb9e0bc82b` (before the documentation-only refresh in PR #1032).  
 **main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).
 
 ## Exact-source evidence
@@ -8,9 +8,9 @@
 - External/observed PR #868 merge: `960a2d540ef952486a0271a0e5332caec601b36a`; bounded MeTTa concept serializer integrated, but no Hyperon worker is connected.
 - Exact source Actions: 11/11 SUCCESS on `960a2d540ef952486a0271a0e5332caec601b36a`.
 - Core [44743562538](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562538), Hexis lineage [44743562613](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562613), affect restore [44743561933](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743561933), ActionGateway [44743562053](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562053), UserModel forget [44743562348](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562348).
-- Last full census before PR #1031: 1,032 refs / 1,016 unique heads / 306 open PRs; #1031 adds one known branch and one open PR. See [delta](docs/consolidation/branch-census-delta-2026-11-20.md).
-- Draft PR #1031: concept restore hardening at head `46d4179171ae16a2b9fb2876efc7db0a815eef03`; all 8/8 exact-head Actions SUCCESS, including focused MeTTa/restore workflow [44747501282](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44747501282). It also covers C1 control sanitization and locale-independent fact ordering. Draft docs PR #1032 had 5/5 Actions SUCCESS at its prior head. Neither PR was merged.
-- Source branch is unprotected. No PR was merged/closed and no branch deleted/force-updated by this run.
+- Last full census before PR #1031: 1,032 refs / 1,016 unique heads / 306 open PRs. PRs #1031 and #1032 add two known refs; #1031 is now merged, while #1032 is the current documentation change set. Derived known minimum after #1031: 1,034 refs / 1,018 unique heads / 307 open PRs. This is not a new full pagination. See [delta](docs/consolidation/branch-census-delta-2026-11-20.md).
+- PR [#1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) is merged into `workpass70-source` as `950989fe0081e3760471d44beb6e95bb9e0bc82b` (squash). Its head `46d4179171ae16a2b9fb2876efc7db0a815eef03` passed 8/8 exact-head Actions, including [focused MeTTa/restore workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44747501282), C1-control sanitization and locale-independent fact ordering. PR #1032 refreshes the documentation checkpoint against this runtime baseline; its prior head `dcdac4cebfedd451f89406ba0eec3357cb58179f` passed 5/5 Actions before this refresh.
+- `workpass70-source` remains unprotected. PR #1031 was merged; no branch was deleted or force-updated. This merge did not update `main` or the published Release ZIP.
 
 ## Release truth
 
@@ -22,9 +22,9 @@
 
 ## Next P0
 
-1. Review the tested PR #1031 diff and keep it Draft pending explicit merge authorization.
-2. Obtain the October 19 ZIP bytes through a supported artifact path; this runtime cannot resolve GitHub hosts, so byte-level hash/extraction remains blocked.
-3. Continue non-source-base PR dependency and duplicate-tip reference audit.
+1. Reconcile remaining stacked PRs in dependency order; start with the #903 → #916 → #928 → #947 chain, comparing each child against the live source before promotion.
+2. Obtain the October 19 ZIP bytes through a supported artifact path; byte-level hash/extraction remains blocked until the asset is materialized.
+3. Continue non-source-base PR dependency and duplicate-tip reference audit; preserve refs until PR/tag/workflow/ruleset/deployment references are resolved.
 4. Run independent RU/EN holdout with five paired seeds.
 5. Run browser/WebGL and Android/Termux soak; obtain human license review.
 
