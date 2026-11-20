@@ -48,9 +48,9 @@ import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor
 import type { ActionGatewayExecutionOptions, ToolDefinition, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
-import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
+import type { P23LearningEngine, ValidationOnlyCandidateEvaluationConfig, ValidationOnlyCandidateEvaluator, P23PopulationSearchBudget, P23PopulationCandidateGenerator } from '../learning/P23LearningEngine.ts';
 import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
-import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
+import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider, type CompoundRepairRevisionGenerator } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
@@ -176,6 +176,10 @@ export interface RuntimeConfig extends OrganismConfig {
     provideInputs: CompoundRepairRevisionInputProvider;
     /** When supplied, replaces provider-supplied candidate evaluation with exact-payload independent execution. */
     independentEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => IndependentCandidateEvaluationConfig;
+    /** Optional host-owned validation-only plan for bounded candidate population search. */
+    validationOnlyEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => ValidationOnlyCandidateEvaluationConfig;
+    /** Hard-capped search budget; omitted capability preserves the legacy single-candidate path. */
+    populationSearchBudget?: P23PopulationSearchBudget;
     /** Optional background repair-to-P23 loop. Opt-in and independently evaluated; never auto-activates candidates. */
     backgroundRevision?: { enabled: boolean; initialDelayMs?: number; intervalMs?: number };
   };
@@ -426,10 +430,16 @@ export class OrganismRuntime {
       if (!config.compoundRepairRevision.engine.verifiedSkillCandidateSnapshot()) {
         throw new Error('compound-repair-revision requires a configured verified P23 candidate store');
       }
+      if (config.compoundRepairRevision.validationOnlyEvaluationConfigForRepair &&
+          !config.compoundRepairRevision.independentEvaluationConfigForRepair) {
+        throw new Error('validation-only-population-search-requires-independent-final-evaluation-authority');
+      }
       const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
         ? withIndependentCandidateEvaluation(
             config.compoundRepairRevision.provideInputs,
             config.compoundRepairRevision.independentEvaluationConfigForRepair,
+            config.compoundRepairRevision.validationOnlyEvaluationConfigForRepair,
+            config.compoundRepairRevision.populationSearchBudget,
           )
         : config.compoundRepairRevision.provideInputs;
       configureLearningJournals(config.compoundRepairRevision.engine, learningJournals);
@@ -1791,10 +1801,10 @@ export class OrganismRuntime {
     sourceCandidateId:string;
     baseline:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[3];
     candidateEvaluation:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[4];
-    generate:(request:Parameters<Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[5]>[0] & {
-      repairEvidence:ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>;
-    })=>Promise<unknown>|unknown;
+    generate:CompoundRepairRevisionGenerator;
     evaluateRevisedCandidate:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[6];
+    evaluateValidationCandidate?:ValidationOnlyCandidateEvaluator['evaluate'];
+    populationSearchBudget?:P23PopulationSearchBudget;
     options?:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[7];
     sourceEvidenceFingerprint?: string;
   }){
@@ -1810,15 +1820,72 @@ export class OrganismRuntime {
     if(input.sourceEvidenceFingerprint!==undefined && input.sourceEvidenceFingerprint!==computedEvidenceFingerprint) {
       throw new Error('compound repair evidence changed before revision provenance could be bound');
     }
-    const result=await input.engine.generateAndStageReflectiveSkillRevision(
-      input.proposal,input.skillId,input.sourceCandidateId,input.baseline,input.candidateEvaluation,
-      request=>input.generate({...request,repairEvidence:structuredClone(repairEvidence)}),
-      input.evaluateRevisedCandidate,input.options,computedEvidenceFingerprint,
-    );
+    let result:
+      | Awaited<ReturnType<P23LearningEngine['generateAndStageReflectiveSkillRevision']>> & { repairEvidenceCount?: number }
+      | Awaited<ReturnType<P23LearningEngine['generateAndStageReflectiveSkillRevisionWithPopulationGenerator']>>;
+
+    try {
+      if (input.evaluateValidationCandidate) {
+        const validationEvaluator:ValidationOnlyCandidateEvaluator={
+          evaluate:input.evaluateValidationCandidate,
+        };
+        const generateCandidate:P23PopulationCandidateGenerator=searchRequest =>
+          input.generate({
+            ...searchRequest,
+            repairEvidence:structuredClone(repairEvidence),
+          });
+        result=await input.engine.generateAndStageReflectiveSkillRevisionWithPopulationGenerator(
+          validationEvaluator,
+          input.proposal,
+          input.skillId,
+          input.sourceCandidateId,
+          input.baseline,
+          input.candidateEvaluation,
+          generateCandidate,
+          input.evaluateRevisedCandidate,
+          input.options,
+          computedEvidenceFingerprint,
+          input.populationSearchBudget,
+        );
+      } else {
+        // Compatibility path: without the host-owned validation-only evaluator,
+        // preserve the existing single-candidate reflective revision lifecycle.
+        result=await input.engine.generateAndStageReflectiveSkillRevision(
+          input.proposal,input.skillId,input.sourceCandidateId,input.baseline,input.candidateEvaluation,
+          request=>input.generate({...request,repairEvidence:structuredClone(repairEvidence)}),
+          input.evaluateRevisedCandidate,input.options,computedEvidenceFingerprint,
+        );
+      }
+    } catch (error) {
+      const failure=error&&typeof error==='object'?error as Record<string,unknown>:{};
+      if(failure.populationSearchDiagnostics&&typeof failure.populationSearchDiagnostics==='object') {
+        await this.journal.write('warn','runtime.p23.compound-repair-revision.population-search-failed',{
+          skillId:input.skillId,
+          sourceCandidateId:input.sourceCandidateId,
+          repairEvidenceCount:repairEvidence.length,
+          sourceEvidenceFingerprint:computedEvidenceFingerprint,
+          populationSearch:failure.populationSearchDiagnostics,
+          ...(Array.isArray(failure.populationSearchArchive)
+            ? { populationSearchArchive:failure.populationSearchArchive }
+            : {}),
+          error:error instanceof Error?error.message:'population-search-failed',
+          note:'validation-only search failed or found no improvement; no candidate was staged',
+        }).catch(()=>{});
+      }
+      throw error;
+    }
+    const populationDiagnostics='populationSearch' in result
+      ? result.populationSearch.diagnostics
+      : undefined;
+    const populationArchive='populationSearch' in result
+      ? result.populationSearch.archive
+      : undefined;
     await this.journal.write('info','runtime.p23.compound-repair-revision.staged',{
       skillId:input.skillId,sourceCandidateId:input.sourceCandidateId,candidateId:result.candidate.candidateId,
       repairEvidenceCount:repairEvidence.length,repairFingerprints:repairEvidence.map(row=>row.failureFingerprint),
       sourceEvidenceFingerprint:computedEvidenceFingerprint,
+      ...(populationDiagnostics ? { populationSearch:populationDiagnostics } : {}),
+      ...(populationArchive ? { populationSearchArchive:populationArchive } : {}),
       note:'staged candidate only; independent shadow evidence and explicit promotion approval remain required',
     }).catch(()=>{});
     return {...result,repairEvidenceCount:repairEvidence.length};

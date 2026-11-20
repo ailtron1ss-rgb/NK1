@@ -1,5 +1,6 @@
-import type { CompoundRepairRevisionInputProvider } from './P23CompoundRepairRevisionCoordinator.ts';
+import type { CompoundRepairRevisionInputProvider, P23PopulationSearchBudget, ValidationOnlyCandidateEvaluationConfig } from './P23CompoundRepairRevisionCoordinator.ts';
 import { createIndependentSkillCandidateEvaluator, type IndependentCandidateEvaluationConfig } from './IndependentSkillCandidateEvaluator.ts';
+import { createValidationOnlySkillCandidateEvaluator } from './ValidationOnlySkillCandidateEvaluator.ts';
 
 /**
  * Wraps the trusted repair-input provider and replaces its evaluator with one
@@ -12,8 +13,13 @@ export function withIndependentCandidateEvaluation(
   evaluationConfigForRepair: (
     input: Parameters<CompoundRepairRevisionInputProvider>[0],
   ) => IndependentCandidateEvaluationConfig,
+  validationOnlyEvaluationConfigForRepair?: (
+    input: Parameters<CompoundRepairRevisionInputProvider>[0],
+  ) => ValidationOnlyCandidateEvaluationConfig,
+  populationSearchBudget?: P23PopulationSearchBudget,
 ): CompoundRepairRevisionInputProvider {
-  if (typeof provider !== 'function' || typeof evaluationConfigForRepair !== 'function') {
+  if (typeof provider !== 'function' || typeof evaluationConfigForRepair !== 'function' ||
+      (validationOnlyEvaluationConfigForRepair !== undefined && typeof validationOnlyEvaluationConfigForRepair !== 'function')) {
     throw new Error('independent-candidate-evaluation-provider-config-invalid');
   }
   return async input => {
@@ -49,6 +55,9 @@ export function withIndependentCandidateEvaluation(
     }
 
     const config = evaluationConfigForRepair(configInput);
+    const validationOnlyConfig = validationOnlyEvaluationConfigForRepair
+      ? validationOnlyEvaluationConfigForRepair(structuredClone(configInput))
+      : null;
     // In production, a factory's existence alone is not sufficient: require the
     // canonical manifest + validation/holdout plans + verified-outcome ledger so
     // evaluation evidence is bound to scheduled runs before P23 can stage a revision.
@@ -62,6 +71,10 @@ export function withIndependentCandidateEvaluation(
       candidateEvaluation,
       generate: prepared.generate,
       evaluateRevisedCandidate: createIndependentSkillCandidateEvaluator(config),
+      ...(validationOnlyConfig === null ? {} : {
+        evaluateValidationCandidate: createValidationOnlySkillCandidateEvaluator(validationOnlyConfig).evaluate,
+      }),
+      ...(populationSearchBudget === undefined ? {} : { populationSearchBudget: structuredClone(populationSearchBudget) }),
       ...(options === undefined ? {} : { options }),
     };
   };
