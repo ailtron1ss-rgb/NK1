@@ -13,6 +13,7 @@ on:
   push:
     branches:
       - 'aspect/neko-knowledge-pack-ingest-20261104'
+      - 'aspect/neko-knowledge-pack-approval-integrity-20261104'
     paths:
       - '.github/workflows/nk1-neko-knowledge-pack-import.yml'
       - 'runtime/neuro-kurisu/src/organism/integration/neko/**'

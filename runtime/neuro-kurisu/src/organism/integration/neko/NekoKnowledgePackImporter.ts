@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { types as nodeUtilTypes } from 'node:util';
 import type { MemoryFabric } from '../../memory/MemoryFabric.ts';
 
 const MAX_PACK_BYTES = 10 * 1024 * 1024;
@@ -33,6 +34,8 @@ export interface NekoKnowledgePackPreview {
 export interface NekoKnowledgePackImportApproval {
   approved: boolean;
   licenseAccepted: boolean;
+  /** Exact SHA-256 from the read-only preview the operator approved. */
+  packDigest: string;
   /** Zero-based entry positions. Omission means all entries only when the pack fits one bounded batch. */
   entryIndices?: number[];
 }
@@ -192,31 +195,87 @@ function parsePack(rawBytes: Uint8Array): NormalizedPack {
     packDigest: digest(byteCopy),
   };
 }
-function selectIndices(pack: NormalizedPack, approval: NekoKnowledgePackImportApproval): number[] {
-  if (!isRecord(approval)) return fail('invalid-approval');
-  assertExactKeys(approval, ['approved', 'licenseAccepted', 'entryIndices'], 'unknown-approval-field');
-  for (const key of Reflect.ownKeys(approval)) {
-    if (typeof key !== 'string') return fail('invalid-approval-field');
-    const descriptor = Object.getOwnPropertyDescriptor(approval, key);
-    if (!descriptor || !('value' in descriptor)) return fail('approval-accessor-rejected');
+function copyApprovalData(value: unknown): PlainRecord {
+  if (value === null || typeof value !== 'object' || nodeUtilTypes.isProxy(value) || Array.isArray(value)) {
+    return fail('invalid-approval');
   }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return fail('invalid-approval');
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(descriptors);
+  if (keys.some(key => typeof key !== 'string')) return fail('invalid-approval-field');
+  if (keys.length > 8) return fail('invalid-approval');
+  const result: PlainRecord = Object.create(null);
+  for (const key of keys as string[]) {
+    if (key === '__proto__' || key === 'prototype' || key === 'constructor') {
+      return fail('invalid-approval-field');
+    }
+    if (!Object.prototype.hasOwnProperty.call(descriptors, key)) return fail('invalid-approval-field');
+    const descriptor = descriptors[key];
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      return fail('approval-accessor-rejected');
+    }
+    if (!descriptor.enumerable) return fail('invalid-approval-field');
+    result[key] = descriptor.value;
+  }
+  return result;
+}
+
+/** Copies a small ordinary dense array without executing indexed accessors or Proxy traps. */
+function ownDenseArray(value: unknown, maxLength: number): unknown[] | null {
+  try {
+    if (nodeUtilTypes.isProxy(value) || !Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    // Read the intrinsic own data slot only after rejecting Proxy values.
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    const length = lengthDescriptor && Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value')
+      ? lengthDescriptor.value
+      : undefined;
+    if (!Number.isSafeInteger(length) || length < 0 || length > maxLength || keys.length !== length + 1) return null;
+    const output: unknown[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = descriptors[String(index)];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+          descriptor.get !== undefined || descriptor.set !== undefined || !descriptor.enumerable) return null;
+      output.push(descriptor.value);
+    }
+    return output;
+  } catch {
+    return null;
+  }
+}
+
+function selectIndices(pack: NormalizedPack, rawApproval: NekoKnowledgePackImportApproval): number[] {
+  const approval = copyApprovalData(rawApproval);
+  assertExactKeys(approval, ['approved', 'licenseAccepted', 'packDigest', 'entryIndices'], 'unknown-approval-field');
   if (approval.approved !== true) return fail('explicit-approval-required');
   if (approval.licenseAccepted !== true) return fail('license-acceptance-required');
   if (!pack.source.license?.trim()) return fail('source-license-required');
+  if (typeof approval.packDigest !== 'string' || !/^[0-9a-f]{64}$/u.test(approval.packDigest)) {
+    return fail('approval-pack-digest-required');
+  }
+  if (approval.packDigest !== pack.packDigest) return fail('approval-pack-digest-mismatch');
+
   const raw = approval.entryIndices;
   if (raw === undefined) {
     if (pack.entries.length > MAX_SELECTED_ENTRIES) return fail('entry-selection-required');
     return pack.entries.map((_, index) => index);
   }
-  if (!Array.isArray(raw) || raw.length === 0) return fail('entry-selection-required');
-  if (Object.getPrototypeOf(raw) !== Array.prototype) return fail('invalid-entry-selection');
+  if (nodeUtilTypes.isProxy(raw) || !Array.isArray(raw) || Object.getPrototypeOf(raw) !== Array.prototype) {
+    return fail('invalid-entry-selection');
+  }
+  if (raw.length === 0) return fail('entry-selection-required');
   if (raw.length > MAX_SELECTED_ENTRIES) return fail('selection-limit-exceeded');
+  const indices = ownDenseArray(raw, MAX_SELECTED_ENTRIES);
+  if (!indices) return fail('invalid-entry-selection');
+
   const seen = new Set<number>();
-  for (let position = 0; position < raw.length; position += 1) {
-    const descriptor = Object.getOwnPropertyDescriptor(raw, String(position));
-    if (!descriptor || !('value' in descriptor)) return fail('invalid-entry-selection');
-    const index = descriptor.value;
-    if (!Number.isSafeInteger(index) || index < 0 || index >= pack.entries.length) return fail('entry-index-out-of-range');
+  for (const value of indices) {
+    if (!Number.isSafeInteger(value) || (value as number) < 0 || (value as number) >= pack.entries.length) {
+      return fail('entry-index-out-of-range');
+    }
+    const index = value as number;
     if (seen.has(index)) return fail('duplicate-entry-index');
     seen.add(index);
   }
