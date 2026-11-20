@@ -9,3 +9,22 @@ test("rejects invalid limb lengths",()=>assert.deepEqual(solvePlanarArmIK({...ba
 test("rejects non-finite targets",()=>assert.deepEqual(solvePlanarArmIK({...base,target:{x:NaN,y:0}}),{accepted:false,reason:"non-finite-kinematics-input"}));
 test("clamps unreachable targets to conservative reach boundary",()=>{const r=solvePlanarArmIK({...base,target:{x:2,y:0}});assert.equal(r.accepted,true);if(r.accepted)assert.ok(r.clampedDistance<.6);});
 test("rejects target at shoulder origin",()=>assert.deepEqual(solvePlanarArmIK({...base,target:{x:0,y:0}}),{accepted:false,reason:"target-at-shoulder-origin"}));
+
+test("reports the true end effector and flags limits when a joint is clamped",()=>{
+  const free=solvePlanarArmIK(base);
+  assert.equal(free.accepted,true);
+  if(free.accepted){
+    // An unclamped solve must reproduce the requested target exactly.
+    assert.ok(Math.abs(free.endEffector.x-base.target.x)<1e-9);
+    assert.ok(Math.abs(free.endEffector.y-base.target.y)<1e-9);
+    assert.equal(free.limitsApplied,false);
+  }
+  const bound=solvePlanarArmIK({...base,shoulderLimit:{min:-.05,max:.05}});
+  assert.equal(bound.accepted,true);
+  if(bound.accepted){
+    // The requested point is unreachable once the joint is clamped; the result
+    // must report where the hand actually lands and flag the limit, not echo the target.
+    assert.equal(bound.limitsApplied,true);
+    assert.ok(Math.hypot(bound.endEffector.x-base.target.x,bound.endEffector.y-base.target.y)>.05);
+  }
+});
