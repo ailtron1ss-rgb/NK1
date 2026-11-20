@@ -6,6 +6,8 @@ import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
 
+process.env.NEURO_CONSTITUTION_HMAC_KEY = 'p69-p73-constitution-persistence-key-32-bytes';
+
 const dir=await mkdtemp(join(tmpdir(),'neuro-p69-p73-'));
 const file=join(dir,'state.json');
 try{
@@ -28,6 +30,8 @@ try{
  assert.ok(snap.facets.advanced.p72LifeCycle.cycles>=10);
  assert.ok(snap.facets.advanced.p73CapabilityLedger.cycles>=10);
  assert.ok(snap.facets.advanced.p73CapabilityLedger.evidenceEvents>=1);
+ assert.equal(snap.facets.advanced.constitutionEvolution.active.version,'1.0.0');
+ assert.match(snap.facets.advanced.constitutionEvolution.integrityMac,/^[a-f0-9]{64}$/);
  assert.ok(['protect','respond','explore','verify','reflect','rest','observe'].includes(snap.facets.advanced.p69ConstitutionalArbiter.lastMode));
  const light=core.snapshotLight();
  assert.ok(Object.keys(light).length<=24);
@@ -40,5 +44,6 @@ try{
  assert.ok(restored.facets.advanced.p71SelfConsistency.cycles>=snap.facets.advanced.p71SelfConsistency.cycles);
  assert.ok(restored.facets.advanced.p72LifeCycle.cycles>=snap.facets.advanced.p72LifeCycle.cycles);
  assert.ok(restored.facets.advanced.p73CapabilityLedger.evidenceEvents>=snap.facets.advanced.p73CapabilityLedger.evidenceEvents);
+ assert.equal(restored.facets.advanced.constitutionEvolution.active.digest,snap.facets.advanced.constitutionEvolution.active.digest);
  console.log('P69_P73_GIANT_RUNTIME_PERSISTENCE=PASS');
 } finally { await rm(dir,{recursive:true,force:true}); }

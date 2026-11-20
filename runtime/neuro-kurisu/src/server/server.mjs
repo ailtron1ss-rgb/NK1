@@ -29,6 +29,7 @@ import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
 import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
+import { parseTrustedConstitutionReviewKeys, createAuthenticatedConstitutionReviewVerifier, constitutionReviewAuthoritySnapshot } from '../organism/cognition/evolution/ConstitutionReviewAuthority.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 function loadNeuroPlasticTrustMap(raw, envName, approval = false) {
@@ -100,6 +101,8 @@ async function configureCompoundRepairRevision() {
 }
 const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
 const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
+const TRUSTED_CONSTITUTION_REVIEW_KEYS = parseTrustedConstitutionReviewKeys(process.env.NEURO_CONSTITUTION_REVIEW_KEYS_JSON);
+const CONSTITUTION_REVIEW_VERIFIER = createAuthenticatedConstitutionReviewVerifier(TRUSTED_CONSTITUTION_REVIEW_KEYS);
 const PHONE_MODE = PHONE_POLICY.mode !== 'research';
 const INTERVAL_MS = PHONE_POLICY.baseIntervalMs;
 const SENSOR_INTERVAL_MS = PHONE_POLICY.samplerIntervalMs;
@@ -2478,6 +2481,95 @@ async function route(req, res) {
         if (req.method === 'GET' && url.pathname === '/api/organism/action-recovery') {
             const limit = Math.max(1, Math.min(64, Number(url.searchParams.get('limit') || 32)));
             return json(res, 200, { ok:true, recovery:runtime.core.actionRecoveryQueueSnapshot(limit), note:'Read-only, redacted queue of durable actions whose external outcome needs reconciliation. This endpoint does not execute or retry actions.' });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/constitution') {
+            if (!runtimeReady) return json(res, 503, { ok:false, error:'organism-runtime-not-ready' });
+            const snapshot = runtime.core.constitutionEvolutionSnapshot();
+            return json(res, 200, { ok:true, ...snapshot, reviewAuthority:constitutionReviewAuthoritySnapshot(TRUSTED_CONSTITUTION_REVIEW_KEYS) });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/constitution/proposals') {
+            if (!runtimeReady) return json(res, 503, { ok:false, error:'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input)) return json(res, 400, { ok:false, error:'constitution-proposal-object-required' });
+            // The author identity is derived from the server's authenticated API mode, never from request JSON.
+            const authorId = auth.reason === 'authenticated' ? 'api-token-owner' : 'loopback-owner';
+            try {
+                const proposal = await runtime.core.constitutionEvolutionPropose({ ...input, authorId, submittedAt:Date.now() });
+                return json(res, 201, { ok:true, proposal });
+            } catch (error) {
+                const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
+                return json(res, message.includes('signing key') ? 503 : 409, { ok:false, error:'constitution-proposal-denied', reason:message });
+            }
+        }
+        const constitutionProposalMatch = url.pathname.match(/^\/api\/organism\/constitution\/proposals\/([A-Za-z0-9._:-]{3,120})\/(review|ratify|activate)$/);
+        if (req.method === 'POST' && constitutionProposalMatch) {
+            if (!runtimeReady) return json(res, 503, { ok:false, error:'organism-runtime-not-ready' });
+            const proposalId=constitutionProposalMatch[1], action=constitutionProposalMatch[2];
+            const proposal=runtime.core.constitutionEvolutionProposal(proposalId);
+            if (!proposal) return json(res, 404, { ok:false, error:'constitution-proposal-not-found' });
+            const input=await body(req);
+            if (action === 'review') {
+                if (TRUSTED_CONSTITUTION_REVIEW_KEYS.size===0) return json(res, 503, { ok:false, error:'constitution-review-authority-not-configured' });
+                const review=CONSTITUTION_REVIEW_VERIFIER(input?.artifact, {
+                    proposalId:proposal.id,
+                    candidateDigest:proposal.candidateDigest,
+                    authorId:proposal.authorId,
+                    testPlanCount:proposal.testPlan.length,
+                });
+                if (!review) return json(res, 403, { ok:false, error:'constitution-review-attestation-invalid' });
+                try {
+                    // The engine independently verifies the detached signature too; Core never receives an unsigned review DTO.
+                    const updated=await runtime.core.constitutionEvolutionReview(proposalId,input?.artifact);
+                    return json(res, 200, { ok:true, proposal:updated });
+                } catch (error) {
+                    const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
+                    return json(res, 409, { ok:false, error:'constitution-review-denied', reason:message });
+                }
+            }
+            if (action === 'ratify') {
+                const approvalId=typeof input?.approvalId==='string'?input.approvalId.slice(0,120):undefined;
+                try {
+                    if (approvalId) {
+                        const updated=await runtime.core.constitutionEvolutionRatify(proposalId,approvalId);
+                        return json(res, 200, { ok:true, proposal:updated });
+                    }
+                    const request=await runtime.core.constitutionEvolutionRequestRatification(proposalId);
+                    const approvalRequest=runtime.core.actionToolPermissionsSnapshot().requests.find(row=>row.id===request.approvalRequestId);
+                    if (!approvalRequest) return json(res, 503, { ok:false, error:'constitution-ratification-ticket-not-persisted' });
+                    return json(res, 403, { ok:false, approvalRequired:true, error:'user-approval-required', approvalRequest });
+                } catch (error) {
+                    const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
+                    return json(res, 409, { ok:false, error:'constitution-ratification-denied', reason:message });
+                }
+            }
+            try {
+                const revision=await runtime.core.constitutionEvolutionActivate(proposalId);
+                return json(res, 200, { ok:true, revision });
+            } catch (error) {
+                const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
+                return json(res, 409, { ok:false, error:'constitution-activation-denied', reason:message });
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/constitution/rollback') {
+            if (!runtimeReady) return json(res, 503, { ok:false, error:'organism-runtime-not-ready' });
+            const input=await body(req);
+            const targetVersion=String(input?.targetVersion||'').trim().slice(0,40);
+            const reason=String(input?.reason||'').trim().slice(0,1200);
+            const approvalId=typeof input?.approvalId==='string'?input.approvalId.slice(0,120):undefined;
+            if (!targetVersion || !reason) return json(res, 400, { ok:false, error:'rollback-target-and-reason-required' });
+            try {
+                if (approvalId) {
+                    const revision=await runtime.core.constitutionEvolutionRollback(targetVersion,reason,approvalId);
+                    return json(res, 200, { ok:true, revision });
+                }
+                const request=await runtime.core.constitutionEvolutionRequestRollback(targetVersion,reason);
+                const approvalRequest=runtime.core.actionToolPermissionsSnapshot().requests.find(row=>row.id===request.approvalRequestId);
+                if (!approvalRequest) return json(res, 503, { ok:false, error:'constitution-rollback-ticket-not-persisted' });
+                return json(res, 403, { ok:false, approvalRequired:true, error:'user-approval-required', approvalRequest });
+            } catch (error) {
+                const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
+                return json(res, 409, { ok:false, error:'constitution-rollback-denied', reason:message });
+            }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/tools/permissions') {
             return json(res, 200, { ok:true, permissions:runtime.core.actionToolPermissionsSnapshot(), tools:runtime.core.actionToolsSnapshot().filter(tool=>tool.requiresApproval) });

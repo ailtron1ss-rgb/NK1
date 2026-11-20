@@ -12,6 +12,7 @@ import { HexisControlConsole } from "@/components/HexisControlConsole";
 import { RuntimeAtlas } from "@/components/RuntimeAtlas";
 import { LettaGovernanceConsole } from "@/components/LettaGovernanceConsole";
 import { ConscioControlConsole } from "@/components/ConscioControlConsole";
+import { ConstitutionEvolutionConsole } from "@/components/ConstitutionEvolutionConsole";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -75,6 +76,7 @@ function Home() {
         <RuntimeAtlas />
         <LettaGovernanceConsole />
         <ConscioControlConsole />
+        <ConstitutionEvolutionConsole />
       </div>
 
       <footer className="mx-auto mt-6 max-w-7xl text-xs text-subtle">

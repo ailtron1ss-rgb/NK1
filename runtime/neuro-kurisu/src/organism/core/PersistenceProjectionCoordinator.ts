@@ -157,6 +157,7 @@ export class PersistenceProjectionCoordinator {
       }
       if(materialize.has('critical')) {
       target.facets.advanced.p69ConstitutionalArbiter=this.snapshotOnce('snap:governanceSubsystem.p69ConstitutionalArbiter', ctx.governanceSubsystem.p69ConstitutionalArbiter);
+      target.facets.advanced.constitutionEvolution=this.snapshotOnce('snap:governanceSubsystem.constitutionEvolution', ctx.governanceSubsystem.constitutionEvolution);
       }
       if(materialize.has('critical')) {
       target.facets.advanced.p70MemoryLifecycleGovernor=this.snapshotOnce('snap:memorySubsystem.p70MemoryLifecycleGovernor', ctx.memorySubsystem.p70MemoryLifecycleGovernor);
@@ -306,6 +307,7 @@ export class PersistenceProjectionCoordinator {
     target.facets.consciousness.p31=this.snapshotOnce('snap:selfSubsystem.p31Consciousness', ctx.selfSubsystem.p31Consciousness);
     target.facets.advanced.p48Awareness=this.snapshotOnce('snap:p48Awareness', ctx.p48Awareness);
     target.facets.advanced.p69ConstitutionalArbiter=this.snapshotOnce('snap:governanceSubsystem.p69ConstitutionalArbiter', ctx.governanceSubsystem.p69ConstitutionalArbiter);
+    target.facets.advanced.constitutionEvolution=this.snapshotOnce('snap:governanceSubsystem.constitutionEvolution', ctx.governanceSubsystem.constitutionEvolution);
     target.facets.advanced.p70MemoryLifecycleGovernor=this.snapshotOnce('snap:memorySubsystem.p70MemoryLifecycleGovernor', ctx.memorySubsystem.p70MemoryLifecycleGovernor);
     target.facets.advanced.p71SelfConsistency=this.snapshotOnce('snap:selfSubsystem.p71SelfConsistency', ctx.selfSubsystem.p71SelfConsistency);
     target.facets.advanced.p72LifeCycle=this.snapshotOnce('snap:governanceSubsystem.p72LifeCycle', ctx.governanceSubsystem.p72LifeCycle);

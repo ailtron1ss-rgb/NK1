@@ -100,6 +100,7 @@ function approvalChallenge(data: unknown): ApprovalChallenge | null {
 }
 
 function apiLabel(path: string): string {
+  if (path.includes("/constitution/")) return "Approve a constitutional change or rollback";
   if (path.includes("/projects/step")) return "Advance the active project by one step";
   if (path.includes("/projects/tool")) return "Execute a tool for the active project";
   if (path.includes("/tools/reconcile")) return "Reconcile an uncertain external action";
@@ -191,6 +192,12 @@ export const neuroApi = {
   researchStatus: () => request<Record<string, unknown>>("/api/research/status"),
   researchProbe: (kind: "neurocore" | "nomega-registry" | "deepcode", approvalId?: string) => request<Record<string, unknown>>(`/api/research/probe/${kind}`, { method: "POST", body: JSON.stringify({ ...(approvalId ? { approvalId } : {}) }) }),
   toolPermissions: () => request<Record<string, unknown>>("/api/organism/tools/permissions"),
+  constitution: () => request<Record<string, unknown>>("/api/organism/constitution"),
+  proposeConstitution: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/constitution/proposals", { method: "POST", body: JSON.stringify(payload) }),
+  reviewConstitution: (proposalId: string, artifact: Record<string, unknown>) => request<Record<string, unknown>>(`/api/organism/constitution/proposals/${encodeURIComponent(proposalId)}/review`, { method: "POST", body: JSON.stringify({ artifact }) }),
+  ratifyConstitution: (proposalId: string) => request<Record<string, unknown>>(`/api/organism/constitution/proposals/${encodeURIComponent(proposalId)}/ratify`, { method: "POST", body: "{}" }),
+  activateConstitution: (proposalId: string) => request<Record<string, unknown>>(`/api/organism/constitution/proposals/${encodeURIComponent(proposalId)}/activate`, { method: "POST", body: "{}" }),
+  rollbackConstitution: (targetVersion: string, reason: string) => request<Record<string, unknown>>("/api/organism/constitution/rollback", { method: "POST", body: JSON.stringify({ targetVersion, reason }) }),
   actionRecovery: (limit = 32) => request<Record<string, unknown>>(`/api/organism/action-recovery?limit=${Math.max(1, Math.min(64, Math.floor(limit)))}`),
   resolveToolPermission: (requestId: string, approved: boolean) => request<Record<string, unknown>>("/api/organism/tools/permissions/resolve", { method: "POST", body: JSON.stringify({ requestId, approved }) }),
   requestToolPermission: (id: string, toolInput: Record<string, unknown>, reason: string, operation: "execute" | "reconcile" | "direct" = "direct") => request<Record<string, unknown>>("/api/organism/tools/permissions/request", { method: "POST", body: JSON.stringify({ id, toolInput, reason, operation }) }),
