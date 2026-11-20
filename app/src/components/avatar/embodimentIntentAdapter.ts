@@ -213,7 +213,7 @@ export function resolveDepthRigPoseFromMotorFrame(
     });
   }
 
-  const deltas: Record<string, { rotation: number }> = {};
+  const deltas: Record<string, { rotation: number }> = Object.create(null);
   if (goalId === null || phase === "idle" || phase === "rejected" || phase === "expired") {
     return { rigId: rig.id, deltas };
   }
