@@ -1,3 +1,9 @@
+## [NK1][P30] Elastic Neural Plasticity — canonical CI closure (2026-11-20)
+
+- Record the already-integrated opt-in sparse P26 policy update path: explicit parameter allowlists, protected coordinates, bounded L2/update budget, retention preflight, P29 arbitration and one-shot stale-checked rollback.
+- The canonical source already contained the implementation and regression test; the selective consolidation adds the missing P26 workflow path triggers and executes `test:elastic-neural-plasticity` (PR #1049).
+- Local holdouts remain preflight only, not independent generalization evidence. This does not enable automatic production learning, arbitrary LLM tensor fine-tuning or release promotion.
+
 ## [NK1][Learning] Keep P23 holdout results outside revision prompts (2026-11-13)
 
 - Build revision targets, rationale and fitness summaries exclusively from validation reports; the holdout contributes only the hard safety stop.
