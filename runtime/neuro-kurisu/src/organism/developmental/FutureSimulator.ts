@@ -1,6 +1,13 @@
 import type { WorldModel2 } from './WorldModel2.ts';
 import { SharedFutureEngine, defaultSharedFutureState, type SharedFutureState, type SharedFutureOutcomeRecord } from './SharedFutureEngine.ts';
 import { WorldForge, type WorldForgeAdversarialFocus, type WorldForgeCase, type WorldForgeEvaluation, type WorldForgeState, type WorldForgeStepResult } from './WorldForge.ts';
+import {
+  ConsequenceEcologyEngine,
+  defaultConsequenceEcologyState,
+  type ConsequenceEcologyContext,
+  type ConsequenceEcologyRequest,
+  type ConsequenceEcologyState,
+} from './ConsequenceEcology.ts';
 
 export interface FutureSimulationResult {
   path: Array<{ action: string; reward: number; uncertainty: number; confidence: number }>;
@@ -14,25 +21,43 @@ export interface FutureSimulatorState {
   version: number;
   /** Optional for backward compatibility with pre-Shared-Future snapshots. */
   sharedFuture?: SharedFutureState;
+  /** Optional for backward compatibility with snapshots written before Consequence Ecology. */
+  consequenceEcology?: ConsequenceEcologyState;
 }
 export const defaultFutureSimulator = (): FutureSimulatorState => ({
   runs: 0,
   last: [],
   version: 1,
   sharedFuture: defaultSharedFutureState(),
+  consequenceEcology: defaultConsequenceEcologyState(),
 });
 
 export class FutureSimulator {
   private state = defaultFutureSimulator();
   readonly sharedFuture = new SharedFutureEngine();
+  /** Consequence Ecology is an analysis/evidence ledger, never an action executor. */
+  readonly consequenceEcology = new ConsequenceEcologyEngine();
   /** Ephemeral synthetic laboratory; evaluator state is never persisted. */
   readonly #worldForge = new WorldForge();
+
+  constructor() {
+    // Bind calibration to the canonical Shared Future outcome ledger. Callers cannot submit
+    // a caller-constructed object with `independentlyVerified: true` to enter the trust ledger.
+    this.consequenceEcology.setVerifiedOutcomeResolver(outcomeId =>
+      this.sharedFuture.listOutcomes().find(row => row.id === outcomeId) ?? null);
+  }
 
   generateWorldForgeScenarios(input: { split: 'train' | 'validation'; seed: number; count?: number; difficulty01?: number }): WorldForgeCase[] {
     return this.#worldForge.generateRuntimeScenarios(input);
   }
 
-  generateAdversarialWorldForgeScenarios(input: { seed: number; count: number; difficulty01: number; focus: WorldForgeAdversarialFocus; candidateMultiplier?: number }): WorldForgeCase[] {
+  generateAdversarialWorldForgeScenarios(input: {
+    seed: number;
+    count: number;
+    difficulty01: number;
+    focus: WorldForgeAdversarialFocus;
+    candidateMultiplier?: number;
+  }): WorldForgeCase[] {
     return this.#worldForge.generateAdversarialRuntimeScenarios(input);
   }
 
@@ -52,6 +77,31 @@ export class FutureSimulator {
     this.#worldForge.releaseEvaluator(scenarioId);
   }
 
+  analyzeConsequences(
+    request: ConsequenceEcologyRequest,
+    context: Omit<ConsequenceEcologyContext, 'scenario'> = {},
+  ) {
+    const scenarioId = typeof request?.scenarioId === 'string' ? request.scenarioId.trim() : '';
+    const scenario = scenarioId ? this.sharedFuture.getScenario(scenarioId) : null;
+    if (scenarioId && !scenario) throw new Error('consequence-scenario-not-found');
+    return this.consequenceEcology.analyze(request, {
+      ...context,
+      scenario,
+      // Decision identity must come from the canonical Shared Future action-binding ledger.
+      resolveDecision: decisionId => this.sharedFuture.getDecisionByActionBindingDecisionId(decisionId),
+    });
+  }
+
+  recordVerifiedConsequenceOutcome(input: { outcomeId: string; analysisId: string; optionId: string }) {
+    const outcomeId = typeof input?.outcomeId === 'string' ? input.outcomeId.trim() : '';
+    if (!outcomeId) throw new Error('consequence-outcome-id-required');
+    return this.consequenceEcology.recordVerifiedOutcome({
+      outcomeId,
+      analysisId: input.analysisId,
+      optionId: input.optionId,
+    });
+  }
+
   restore(
     s: FutureSimulatorState | undefined,
     options: { validateIndependentlyVerifiedOutcome?: (outcome: SharedFutureOutcomeRecord) => boolean } = {},
@@ -62,7 +112,15 @@ export class FutureSimulator {
       last: Array.isArray(s?.last) ? s!.last.slice(-32) : [],
     };
     // Older snapshots do not have this field; restore() deliberately keeps them valid.
+    // SharedFuture.restore has already revalidated each independent outcome against the supplied
+    // external verifier. Reuse that canonical admitted record; do not invoke an external verifier twice.
     this.sharedFuture.restore(s?.sharedFuture, options.validateIndependentlyVerifiedOutcome);
+    this.consequenceEcology.restore(s?.consequenceEcology, outcomeId => {
+      const outcome = this.sharedFuture.listOutcomes().find(row => row.id === outcomeId);
+      return outcome?.authority === 'independent-external' && outcome.independentlyVerified === true
+        ? outcome
+        : null;
+    });
   }
 
   simulate(model: WorldModel2, actions: string[], baseReward: number): FutureSimulationResult {
@@ -88,6 +146,7 @@ export class FutureSimulator {
     return {
       ...structuredClone(this.state),
       sharedFuture: this.sharedFuture.snapshot(),
+      consequenceEcology: this.consequenceEcology.snapshot(),
     };
   }
 }

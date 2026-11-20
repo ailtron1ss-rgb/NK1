@@ -519,7 +519,9 @@ export class SharedFutureEngine {
         evidenceRef,
         reportedBy: row.reportedBy === 'user' ? 'user' : 'system',
         authority: claimedAuthority,
-        independentlyVerified: false,
+        // Preserve the persisted bit only as an untrusted claim for the independent validator.
+        // The candidate is promoted to trusted below only when the caller revalidates it.
+        independentlyVerified: row.independentlyVerified === true,
         ...(typeof row.sharedFutureDecisionId === 'string' ? { sharedFutureDecisionId: restoredId(row.sharedFutureDecisionId, '') } : {}),
         ...(typeof row.actionDecisionId === 'string' ? { actionDecisionId: restoredId(row.actionDecisionId, '') } : {}),
         ...(typeof row.actionToolId === 'string' ? { actionToolId: restoredText(row.actionToolId, '', 64) } : {}),
@@ -903,6 +905,14 @@ export class SharedFutureEngine {
     return decision ? structuredClone(decision) : null;
   }
 
+  /** Resolve the canonical Shared Future decision bound to an exact OrganismCore decision trace. */
+  getDecisionByActionBindingDecisionId(actionDecisionId: string): SharedFutureDecision | null {
+    const key = String(actionDecisionId ?? '').trim();
+    if (!key) return null;
+    const decision = this.state.decisions.find((row) => row.actionBinding?.decisionId === key);
+    return decision ? structuredClone(decision) : null;
+  }
+
   confirmDecision(input: { decisionId: string; confirmIrreversible?: boolean; at?: number }, actor: 'user' | 'system'): SharedFutureDecision {
     try {
       const decisionId = idField(input.decisionId, 'decision-id');
@@ -1193,6 +1203,16 @@ export class SharedFutureEngine {
       }
 
       const normalizedEvidence = [...independentByKey.values()].sort((a, b) => a.independenceKey.localeCompare(b.independenceKey));
+      // A caller must not manufacture apparent independence by assigning multiple keys
+      // to the same provider or reusing one observation under several identities.
+      const distinctSourceIds = new Set(normalizedEvidence.map(row => textField(row.sourceId, 'verified-source-id', 180)));
+      if (distinctSourceIds.size !== normalizedEvidence.length) {
+        throw new Error('verified-outcome-source-reused-across-independence-keys');
+      }
+      const distinctObservationIds = new Set(normalizedEvidence.map(row => textField(row.observationId, 'verified-evidence-observation-id', 180)));
+      if (distinctObservationIds.size !== normalizedEvidence.length) {
+        throw new Error('verified-outcome-observation-reused-across-independence-keys');
+      }
       const existingById = this.state.outcomes.find((row) => row.id === id);
       if (existingById) {
         const same = existingById.authority === 'independent-external' &&
