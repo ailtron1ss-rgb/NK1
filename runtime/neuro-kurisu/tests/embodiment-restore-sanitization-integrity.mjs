@@ -311,4 +311,18 @@ recordProxyRestore.restore(proxyRecord);
 assert.deepEqual(recordProxyRestore.snapshot(), defaultP35SemanticWorldBody(), 'Proxy-backed records fail closed');
 assert.equal(recordProxyTrapCalls, 0, 'record Proxy is rejected before reflective traps run');
 
+// Arrays with a custom prototype are not plain persisted arrays: overridden
+// methods could otherwise run inside the restore boundary.
+let customFilterCalls = 0;
+const customArrayPrototype = Object.create(Array.prototype);
+Object.defineProperty(customArrayPrototype, 'filter', {
+  value() { customFilterCalls += 1; return [{ id: 'injected' }]; },
+});
+const customPrototypeArray = [{ id: 'persisted' }];
+Object.setPrototypeOf(customPrototypeArray, customArrayPrototype);
+const customPrototypeRestore = new MultimodalPerception();
+customPrototypeRestore.restore({ ...defaultMultimodalState(), recent: customPrototypeArray });
+assert.deepEqual(customPrototypeRestore.snapshot().recent, [], 'arrays with custom prototypes fail closed');
+assert.equal(customFilterCalls, 0, 'custom array methods are never invoked during restore');
+
 console.log('EMBODIMENT_RESTORE_SANITIZATION_INTEGRITY=PASS');
