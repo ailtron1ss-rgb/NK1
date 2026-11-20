@@ -491,15 +491,49 @@ The ref total rose by one from the prior 1,008 snapshot because this current-sou
 - Canonical source implements the intended boundary: `accept` changes only the staged review decision; a separate `POST /api/organism/integration/hexis/hmx/apply` requires `confirmed: true`; unknown decisions are rejected; writes use the existing `HexisHmxCanonicalMemoryBridge` / MemoryFabric owner. The bridge retains external-hypothesis provenance, sensitive-text redaction and idempotent command receipts. The real-server regression and focused workflow are present in canonical source.
 - This family is complete at source/CI level; do not re-implement or re-merge #995. Release ZIP inclusion remains unverified.
 
-### P23 bounded candidate population — active parallel PR, not merged
+### P23 bounded candidate population — merged by this session
 
-- PR [#1048](https://github.com/ailtron1ss-rgb/NK1/pull/1048), head `85ace0e04f10dc410b9519f49f5bc427f0d1457e`, remains open. It adds bounded validation-only candidate population search while preserving the existing full validation/holdout, signed approval, activation and rollback authorities.
-- Exact PR-head checks: **30/31 success**; `Import graph and layer boundaries` failed on merge commit `35aef03b5f61edac493fcb1897974136589d0f42`. The failure is concrete: `OrganismRuntime.ts` exceeded dependency budgets (outDegree 56 > 55; typeOutDegree 15 > 12). Five other tests in that architecture job passed; later audit/typecheck steps were skipped after the failure.
-- At the last comparison against source `55ea78a03f77be7bb98070f4283d1814f84d737b`, PR #1048 was 68 commits ahead / 104 behind. The source has since advanced to the census SHA above; repeat the comparison and exact-head checks before integration. This is useful active parallel work, but it must be rebased and its dependency budget fixed rather than merged as-is. This session made no changes to #1048.
+- Existing PR [#1048](https://github.com/ailtron1ss-rgb/NK1/pull/1048) was rebased and integrated without creating a duplicate PR or branch. Original feature head: `85ace0e04f10dc410b9519f49f5bc427f0d1457e`.
+- Current-source integration commit: `d356f6a0839347579d964b876349da1c9034417e`, with parents `fce3b110c7b70a89c14e0171a63cab04aafbe796` (canonical source) and the original feature head. Existing PR branch was advanced fast-forward; no force-push.
+- PR #1048 merged at `2026-11-20T15:58:55Z`; merge commit `821dbf95ffd2b1e2150541c3ce0adfe3d4e5cde6`. The PR source branch remains at `d356f6a0839347579d964b876349da1c9034417e`; it was not deleted.
+- Integrated 15 paths: 11 new files (bounded Pareto archive, validation-only evaluator, search orchestration, workflow, five regression tests and implementation docs) plus four current-source files updated. The feature defaults to 3 candidates, hard-caps at 4, evaluates on one immutable validation cohort, rejects safety violations, suppresses duplicate payload fingerprints and selects deterministically. Only one selected payload enters the existing canonical full validation + fresh holdout gate; no approval, activation or promotion authority was added.
+- The earlier exact-head architecture failure was fixed without raising budgets: P23 type contracts are re-exported through existing module edges; `OrganismRuntime` reuses its existing P23 imports; coordinator/provider reuse existing type-contract edges.
+- Exact-head checks on `d356f6a0839347579d964b876349da1c9034417e`: **30/30 SUCCESS**, zero failures. The dedicated `candidate-population` workflow passed all five contracts: Pareto archive, validation-only evaluator, bounded search, canonical P23 handoff and runtime wiring.
+- Exact architecture evidence: `DEPENDENCY_BUDGET=PASS checks=65 violations=0`; `CLEAN_ARCHITECTURE=PASS` with 2,579 source files, 718 canonical files, 5,474 dependency edges, 4,687 runtime edges, 787 type-only edges, zero missing dependencies, zero cycles, zero legacy leakage, zero boundary violations and zero budget violations. Runtime typecheck passed.
+- This is an integrated source capability, not a measured improvement in live learning/recall and not a released feature. No release ZIP was modified.
 
 ### This-session disposition
 
-- Branches merged by this session: **0**.
+- Branch/feature families integrated by this session: **1** (PR #1048, bounded P23 candidate population).
 - PRs closed as superseded by this session: **0**.
 - Branch refs deleted by this session: **0**.
-- No retirement was attempted: equal HEAD is not sufficient; historical PRs, tags/releases, workflows, rulesets, deployments, documentation and external consumers still require clearance.
+- No force-push was used. The existing P23 integration branch was advanced through a two-parent commit and retained after merge.
+- Documentation-only census updates and the P23 merge moved `workpass70-source` from `7918d0c1ad974ede0e5dd4796457e41c8d1641bd` through `fce3b110c7b70a89c14e0171a63cab04aafbe796` to merge SHA `821dbf95ffd2b1e2150541c3ce0adfe3d4e5cde6`.
+- The donor HMX PR #995 was closed unmerged and PR #1001 was merged by parallel work; neither action is attributed to this session.
+
+
+## Final census, branch-family history and release-artifact verification attempt (2026-11-20)
+
+### End-of-run branch census
+
+- Full branch pagination ended with empty page 12. Snapshot source HEAD: `821dbf95ffd2b1e2150541c3ce0adfe3d4e5cde6`; `main` HEAD: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
+- **1,042 branch refs; 1,026 unique HEAD commits; 16 excess names; one shared-HEAD group of 17 refs.**
+- Full final manifest: `docs/consolidation/branch-census-2026-11-20-post-merge.csv` (1,042 rows, name/HEAD/protection metadata). The earlier `branch-census-2026-11-20.csv` remains the pre-merge snapshot.
+- Comparing the final manifest with the prior full manifest: **0 new names, 0 vanished names, 2 HEAD changes**: `integrate/p23-bounded-candidate-population-20261120` changed from `85ace0e04f10dc410b9519f49f5bc427f0d1457e` to `d356f6a0839347579d964b876349da1c9034417e`; `workpass70-source` changed from `7918d0c1ad974ede0e5dd4796457e41c8d1641bd` to `821dbf95ffd2b1e2150541c3ce0adfe3d4e5cde6`. Unique HEAD count and excess names stayed unchanged; the 17-name shared group did not change.
+- Final PR census (all 1,036 PR records): **284 open, 432 merged, 320 closed unmerged**. Compared with the prior 286/430/320 snapshot, open PRs decreased by 2 and merged PRs increased by 2; #1048 is one of those merges, and one additional merge occurred in parallel. Do not attribute that parallel merge to this session.
+- The shared-HEAD group at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` has **43 historical PR references: 4 open, 37 merged, 2 closed unmerged**. Its four live dependencies remain: [#124](https://github.com/ailtron1ss-rgb/NK1/pull/124), [#109](https://github.com/ailtron1ss-rgb/NK1/pull/109), [#91](https://github.com/ailtron1ss-rgb/NK1/pull/91) and [#86](https://github.com/ailtron1ss-rgb/NK1/pull/86). The two closed-unmerged references are #216 and #121. These refs are not cleared for retirement.
+- Branch API reports `protected=false` for all 1,042 refs, including the shared-head group. This does **not** prove that no repository rulesets apply. The available GitHub connector could not read rulesets, deployment references or the full tag-ref namespace, and exposes no branch-ref deletion action. External consumers/links also remain unverified. Preserve all refs; do not retire by name or equal HEAD.
+
+### Stable release ZIP attempt
+
+- Latest stable release is [NeuroKurisu0.1](https://github.com/ailtron1ss-rgb/NK1/releases/tag/Neuro), tag `Neuro`, dated 2026-10-19. Its asset is `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` (129 MB); GitHub release metadata reports SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- A browser attempt navigated to the exact asset URL but received no binary bytes. The matching digest was metadata-only; the actual ZIP hash, archive entry count and contents remain **unverified**.
+- The Git tag tree (not the ZIP) contains only WorkPass64 audit/report/checksum documents, README, WORKPASS65 plan and `scripts/`; it has no top-level `app/` or `runtime/`. This is a packaging warning, not proof of the ZIP's contents.
+- Exact asset URL: https://github.com/ailtron1ss-rgb/NK1/releases/download/Neuro/Neuro_Kurisu_WORKPASS70_2026-10-19.zip. Do not claim the current source or PR #1048 is included in this release until the binary is actually inspected.
+
+### Remaining completion blockers
+
+- Retrieve and inspect the actual stable ZIP bytes; verify its SHA-256, archive paths, file count and reproducible correspondence to the intended source commit.
+- Complete device/phone soak, real voice/avatar latency measurements, independent memory holdout with at least five paired seeds, memory-search latency and 10k-tick performance measurements. No target metric is considered met without reproducible evidence.
+- Branch retirement remains blocked by the four live PR dependencies, 43 PR references, unverified rulesets/deployments/tags/external consumers and lack of a delete-ref action.
+- No global completion percentage is assigned from stale aspect/backlog counters. NK1 is not declared complete or released.
