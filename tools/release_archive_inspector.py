@@ -56,20 +56,33 @@ def _source_paths(root: Path) -> tuple[set[str], str | None]:
         ref = None
     return paths, ref
 
-def _casefold_path_collisions(paths: set[str]) -> list[dict[str, str]]:
+def _casefold_file_path_collisions(paths: set[str]) -> list[dict[str, str]]:
     seen: dict[str, str] = {}
     collisions: set[tuple[str, str]] = set()
     for path in sorted(paths):
+        key = unicodedata.normalize("NFC", path).casefold()
+        previous = seen.get(key)
+        if previous is not None and previous != path:
+            collisions.add(tuple(sorted((previous, path))))
+        else:
+            seen[key] = path
+    return [{"first": first, "second": second} for first, second in sorted(collisions)]
+
+
+def _casefold_directory_aliases(paths: set[str]) -> list[dict[str, str]]:
+    seen: dict[str, str] = {}
+    aliases: set[tuple[str, str]] = set()
+    for path in sorted(paths):
         parts = PurePosixPath(path).parts
-        for index in range(1, len(parts) + 1):
+        for index in range(1, len(parts)):
             prefix = "/".join(parts[:index])
             key = unicodedata.normalize("NFC", prefix).casefold()
             previous = seen.get(key)
             if previous is not None and previous != prefix:
-                collisions.add(tuple(sorted((previous, prefix))))
+                aliases.add(tuple(sorted((previous, prefix))))
             else:
                 seen[key] = prefix
-    return [{"first": first, "second": second} for first, second in sorted(collisions)]
+    return [{"first": first, "second": second} for first, second in sorted(aliases)]
 
 
 def _choose_prefix(paths: list[str], source_paths: set[str], requested: str) -> str:
@@ -125,10 +138,11 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
     entries: list[dict[str, Any]] = []
     archive_paths: list[str] = []
     source_path_set, source_ref = _source_paths(root)
-    source_path_collisions = _casefold_path_collisions(source_path_set)
-    for collision in source_path_collisions:
+    source_file_collisions = _casefold_file_path_collisions(source_path_set)
+    source_directory_aliases = _casefold_directory_aliases(source_path_set)
+    for collision in source_file_collisions:
         errors.append(
-            f"case-insensitive source path collision: {collision['first']!r} conflicts with {collision['second']!r}"
+            f"case-insensitive source file path collision: {collision['first']!r} conflicts with {collision['second']!r}"
         )
     archive_sha = None
     archive_size = archive.stat().st_size if archive.is_file() else None
@@ -151,8 +165,8 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
                 infos = zipped.infolist()
                 if len(infos) > MAX_MEMBERS:
                     errors.append("archive exceeds the maximum member count")
-                seen: dict[str, bool] = {}
-                seen_portable: dict[str, str] = {}
+                seen_exact: dict[str, bool] = {}
+                seen_portable: dict[str, tuple[str, bool]] = {}
                 total_size = 0
                 valid_infos: list[tuple[zipfile.ZipInfo, str]] = []
                 for info in infos:
@@ -166,21 +180,30 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
                         errors.append(f"symbolic-link member is not accepted: {member_path}")
                         continue
                     is_directory = info.is_dir()
-                    if member_path in seen:
-                        if seen[member_path] != is_directory:
+                    if member_path in seen_exact:
+                        if seen_exact[member_path] != is_directory:
                             errors.append(f"file/directory ZIP path collision: {member_path}")
-                        else:
+                        elif not is_directory:
                             errors.append(f"duplicate ZIP member: {member_path}")
                         continue
+                    seen_exact[member_path] = is_directory
                     portable_path = unicodedata.normalize("NFC", member_path).casefold()
-                    previous_path = seen_portable.get(portable_path)
-                    if previous_path is not None:
-                        errors.append(
-                            f"case-insensitive duplicate ZIP member: {previous_path!r} conflicts with {member_path!r}"
-                        )
+                    previous = seen_portable.get(portable_path)
+                    if previous is not None:
+                        previous_path, previous_is_directory = previous
+                        if previous_is_directory and is_directory:
+                            # Directory aliases can safely merge when their file paths are disjoint.
+                            continue
+                        if previous_is_directory != is_directory:
+                            errors.append(
+                                f"file/directory ZIP path collision: {previous_path!r} conflicts with {member_path!r}"
+                            )
+                        else:
+                            errors.append(
+                                f"case-insensitive duplicate ZIP member: {previous_path!r} conflicts with {member_path!r}"
+                            )
                         continue
-                    seen[member_path] = is_directory
-                    seen_portable[portable_path] = member_path
+                    seen_portable[portable_path] = (member_path, is_directory)
                     if is_directory:
                         continue
                     if info.file_size > MAX_MEMBER_BYTES:
@@ -277,7 +300,10 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
             "archivePrefixApplied": prefix, "files": sorted(entries, key=lambda entry: entry["path"]),
         },
         "source": {"ref": source_ref, "trackedFileCount": len(source_path_set), "versions": _read_source_versions(root)},
-        "sourcePathCollisions": source_path_collisions,
+        "sourceFilePathCollisions": source_file_collisions,
+        "sourceDirectoryAliases": source_directory_aliases,
+        "archiveDirectoryAliases": _casefold_directory_aliases(set(archive_paths)),
+        "archiveFilePathCollisions": _casefold_file_path_collisions(set(archive_paths)),
         "archiveVersions": archive_versions, "comparison": comparison, "errors": errors, "ok": integrity_ok,
     }
 
@@ -301,6 +327,10 @@ def main(argv: list[str] | None = None) -> int:
         "archiveBytes": archive["sizeBytes"], "archiveFiles": archive["fileCount"],
         "identicalFiles": comparison["identicalFileCount"], "changedFiles": comparison["changedFileCount"],
         "archiveOnlyFiles": comparison["archiveOnlyFileCount"], "sourceOnlyFiles": comparison["sourceOnlyFileCount"],
+        "sourceFilePathCollisions": len(source_file_collisions),
+        "sourceDirectoryAliases": len(source_directory_aliases),
+        "archiveDirectoryAliases": len(report["archiveDirectoryAliases"]),
+        "archiveFilePathCollisions": len(report["archiveFilePathCollisions"]),
         "errors": report["errors"], "report": str(output),
     }, indent=2))
     return 0 if report["ok"] else 2
