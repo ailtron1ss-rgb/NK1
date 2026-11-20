@@ -14,7 +14,81 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export const defaultP80=():P80State=>({version:1,cycles:0,continuity01:.9,coherence01:.8,agency01:.5,realityAlignment01:.5,currentMode:'wait',recentModes:[],recentActions:[],modeStreak:0,noveltyPressure01:.2,lastTick:0,lastAction:'wait',lastReason:''});
 export class P80UnifiedSelfState {
   private state=defaultP80();
-  restore(raw:Partial<P80State>|undefined){if(!raw)return;const d=defaultP80();this.state={...d,...raw,recentModes:Array.isArray(raw.recentModes)?raw.recentModes.slice(-32) as P80Mode[]:[],recentActions:Array.isArray(raw.recentActions)?raw.recentActions.slice(-32):[]};}
+  restore(raw:Partial<P80State>|undefined){
+    // Persistence input is untrusted: use own data descriptors and rebuild an
+    // allow-listed state rather than spreading caller-controlled objects.
+    const defaults=defaultP80();
+    const container=(value:unknown):Record<string,unknown>|null=>{
+      try {
+        if(!value || typeof value!=='object' || Array.isArray(value)) return null;
+        const proto=Object.getPrototypeOf(value);
+        return proto===Object.prototype || proto===null ? value as Record<string,unknown> : null;
+      } catch { return null; }
+    };
+    const record=(value:unknown):Record<string,unknown>|null=>{
+      const row=container(value);
+      if(!row) return null;
+      try {
+        for(const key of Reflect.ownKeys(row)){
+          const descriptor=Object.getOwnPropertyDescriptor(row,key);
+          if(!descriptor || !('value' in descriptor)) return null;
+        }
+        return row;
+      } catch { return null; }
+    };
+    const source=record(raw);
+    if(!source){ this.state=defaults; return; }
+    const read=(row:unknown,key:string):unknown=>{
+      const safe=container(row);
+      if(!safe) return undefined;
+      try {
+        const descriptor=Object.getOwnPropertyDescriptor(safe,key);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+      } catch { return undefined; }
+    };
+    const bounded=(value:unknown,fallback:number):number=>
+      typeof value==='number' && Number.isFinite(value) ? clamp(value) : fallback;
+    const count=(value:unknown,fallback=0):number=>
+      typeof value==='number' && Number.isSafeInteger(value) ? Math.max(0,Math.min(1_000_000_000,value)) : fallback;
+    const values=(value:unknown):unknown[]=>{
+      try {
+        if(!Array.isArray(value)) return [];
+        const descriptor=Object.getOwnPropertyDescriptor(value,'length');
+        const length=descriptor && 'value' in descriptor && typeof descriptor.value==='number'
+          ? Math.max(0,Math.min(128,Math.floor(descriptor.value))) : 0;
+        const result:unknown[]=[];
+        for(let i=0;i<length;i++){
+          const item=Object.getOwnPropertyDescriptor(value,String(i));
+          if(item && 'value' in item) result.push(item.value);
+        }
+        return result;
+      } catch { return []; }
+    };
+    const modes:readonly P80Mode[]=['respond','explore','verify','reflect','rest','wait','defer'];
+    const recentModes=values(read(source,'recentModes')).filter((item):item is P80Mode=>
+      typeof item==='string' && modes.includes(item as P80Mode)).slice(-32);
+    const recentActions=values(read(source,'recentActions')).filter((item):item is string=>
+      typeof item==='string' && item.trim().length>0 && item.length<=120).map(item=>item.trim()).slice(-32);
+    const current=read(source,'currentMode');
+    const lastAction=read(source,'lastAction');
+    const lastReason=read(source,'lastReason');
+    this.state={
+      version:1,
+      cycles:count(read(source,'cycles'),defaults.cycles),
+      continuity01:bounded(read(source,'continuity01'),defaults.continuity01),
+      coherence01:bounded(read(source,'coherence01'),defaults.coherence01),
+      agency01:bounded(read(source,'agency01'),defaults.agency01),
+      realityAlignment01:bounded(read(source,'realityAlignment01'),defaults.realityAlignment01),
+      currentMode:typeof current==='string' && modes.includes(current as P80Mode)?current as P80Mode:defaults.currentMode,
+      recentModes,
+      recentActions,
+      modeStreak:count(read(source,'modeStreak'),defaults.modeStreak),
+      noveltyPressure01:bounded(read(source,'noveltyPressure01'),defaults.noveltyPressure01),
+      lastTick:count(read(source,'lastTick'),defaults.lastTick),
+      lastAction:typeof lastAction==='string' && lastAction.trim().length>0 && lastAction.length<=80?lastAction.trim():defaults.lastAction,
+      lastReason:typeof lastReason==='string'?lastReason.slice(0,240):defaults.lastReason,
+    };
+  }
   snapshot(){return JSON.parse(JSON.stringify(this.state)) as P80State;}
   summary(){return{version:1,cycles:this.state.cycles,continuity01:this.state.continuity01,coherence01:this.state.coherence01,agency01:this.state.agency01,realityAlignment01:this.state.realityAlignment01,currentMode:this.state.currentMode,noveltyPressure01:this.state.noveltyPressure01,lastTick:this.state.lastTick,lastAction:this.state.lastAction};}
   update(i:P80Input){

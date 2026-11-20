@@ -1,0 +1,29 @@
+name: NK1 P80 Self State Restore Integrity
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/cognition/P80UnifiedSelfState.ts'
+      - 'runtime/neuro-kurisu/tests/p80-self-state-restore-integrity.mjs'
+      - '.github/workflows/nk1-p80-self-state-restore-integrity.yml'
+  push:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/cognition/P80UnifiedSelfState.ts'
+      - 'runtime/neuro-kurisu/tests/p80-self-state-restore-integrity.mjs'
+      - '.github/workflows/nk1-p80-self-state-restore-integrity.yml'
+permissions:
+  contents: read
+jobs:
+  p80-self-state-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Verify P80 restore integrity
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p80-self-state-restore-integrity.mjs
