@@ -198,7 +198,7 @@ test("idle motor frames do not animate and duplicate or unsafe bindings fail clo
   const idle = resolveDepthRigPoseFromMotorFrame(rig, {
     version: 1, goalId: null, phase: "idle", joints: {},
   }, [{ nodeId: "head", jointId: "head" }]);
-  assert.deepEqual(idle.deltas, {});
+  assert.equal(Object.keys(idle.deltas).length, 0);
   const frame = { version: 1, goalId: "g", phase: "moving", joints: {} };
   assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, frame, [
     { nodeId: "head", jointId: "a" }, { nodeId: "head", jointId: "b" },
@@ -245,4 +245,39 @@ test("renderer adapter rejects duplicate bindings and non-finite pivots", () => 
   assert.throws(() => applyDepthRigWorldPoseToLayers(rig, [
     { nodeId: "head", target: target(), pivotOffset: { x: Number.NaN, y: 0 } },
   ]), /pivot/);
+});
+
+test("node ids that collide with Object.prototype keys keep their pose and world transform", () => {
+  // A rig node named "__proto__" (or "constructor") is a legal id; a plain {}
+  // accumulator would drop it silently, so the layer would never move.
+  const protoRig = {
+    version: 1,
+    id: "kurisu-depth-rig-proto-test",
+    coordinateSystem: "normalized-y-down",
+    nodes: [
+      node("root", "root", null, 0),
+      node("__proto__", "head", "root", 1),
+      node("constructor", "torso", "root", 2),
+    ],
+  };
+  const pose = resolveDepthRigPose(protoRig, {
+    headYaw: 1, headPitch: 0.5, headRoll: 0, torsoYaw: 1, torsoLean: 0, breath: 0, gesture: "none", gestureIntensity: 0,
+  });
+  assert.ok(Object.prototype.hasOwnProperty.call(pose.deltas, "__proto__"));
+  assert.equal(pose.deltas["__proto__"].x, 0.018);
+  assert.ok(Object.prototype.hasOwnProperty.call(pose.deltas, "constructor"));
+  assert.equal(pose.deltas.constructor.rotation, 4);
+
+  const world = resolveDepthRigWorldPose(protoRig, pose).transforms;
+  assert.ok(Object.prototype.hasOwnProperty.call(world, "__proto__"));
+  assert.equal(world["__proto__"].rotation, pose.deltas["__proto__"].rotation);
+  assert.equal(world.constructor.rotation, 4);
+
+  // The motor-frame path must preserve such ids too.
+  const motor = resolveDepthRigPoseFromMotorFrame(protoRig, {
+    version: 1, goalId: "goal.proto", phase: "moving",
+    joints: { headYaw: { id: "headYaw", angleRad: 0.5, targetAngleRad: 0.5, velocityRadPerSec: 0, available: true } },
+  }, [{ nodeId: "__proto__", jointId: "headYaw" }]);
+  assert.ok(Object.prototype.hasOwnProperty.call(motor.deltas, "__proto__"));
+  assert.ok(Math.abs(motor.deltas["__proto__"].rotation - 0.5 * 180 / Math.PI) < 1e-9);
 });
