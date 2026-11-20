@@ -7,9 +7,10 @@
  * would leak NaN, strings, out-of-range numbers and non-plain objects into the
  * running organism and poison every later metric that reads them.
  *
- * These helpers never invoke accessors: a persisted record is read through own
- * data descriptors only, so a hostile getter or Proxy trap cannot execute during
- * restore. They fail closed to a caller-supplied fallback.
+ * Persisted properties are read through own data descriptors only, so user
+ * getters are never invoked. Proxy reflection traps may run when the runtime
+ * inspects an object, but thrown traps are contained and cause a safe fallback.
+ * They fail closed to a caller-supplied default.
  */
 
 /** Read an own *data* property without triggering accessors; undefined otherwise. */
@@ -28,8 +29,9 @@ export function ownDataValue(record: unknown, key: string): unknown {
 
 /** True only for a plain data record (Object.prototype or null prototype). */
 export function isPlainDataRecord(value: unknown): value is Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  if (!value || typeof value !== 'object') return false;
   try {
+    if (Array.isArray(value)) return false;
     const prototype = Object.getPrototypeOf(value);
     return prototype === Object.prototype || prototype === null;
   } catch {
