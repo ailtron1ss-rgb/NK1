@@ -492,6 +492,7 @@ class LayerForceSidecarConfigurationTests(unittest.TestCase):
         runtime.bank = InertAdapterBank()
         runtime.layer_force = controller
         runtime.default_layer_force_profile = default_profile
+        runtime.max_http_workers = 16
 
         try:
             sample = torch.ones((1, 2, 4))
