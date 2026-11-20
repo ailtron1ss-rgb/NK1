@@ -36,10 +36,10 @@ assert.match(runtimeSource,
   /const executionPlan = this\.core\.cognitiveExecutionPlanSnapshot\(\);/,
   'the runtime step must read the execution plan produced by core cognition');
 assert.match(runtimeSource,
-  /const slowCognitionAllowed = executionPlan\?\.run\?\.\['slow-cognition'\] !== false;/,
+  /const slowCognitionAllowed = executionPlan\?\.run\?\.\['slow-cognition'\] !== false && \(Boolean\(externalText\) \|\| spineDecision\.run\.research\);/,
   'slow cognition must obey the same plan');
 assert.match(runtimeSource,
-  /const projectAllowed = executionPlan\?\.run\?\.project !== false;/,
+  /const projectAllowed = executionPlan\?\.run\?\.project !== false && spineDecision\.run\.project;/,
   'project gating must be driven by the execution plan');
 assert.match(runtimeSource,
   /const planningBudget = projectAllowed\s*\?\s*this\.core\.cognitiveBudgetSpend\('planning',[\s\S]*?:\s*\{ accepted: false \};/,
@@ -48,10 +48,10 @@ assert.match(runtimeSource,
   /const plan = planningBudget\.accepted && projectAllowed\s*\?\s*this\.plans\.build\([\s\S]*?:\s*this\.plans\.buildBudgetFallback\(/,
   'failed or gated planning must choose the one-step fallback rather than beam search');
 assert.match(runtimeSource,
-  /const worldRolloutAllowed = executionPlan\?\.run\?\.\['world-rollout'\] !== false;/,
+  /const worldRolloutAllowed = executionPlan\?\.run\?\.\['world-rollout'\] !== false && spineDecision\.run\['world-rollout'\];/,
   'optional world rollout must obey its explicit execution-plan gate');
 assert.match(runtimeSource,
-  /const shadowPassAllowed = executionPlan\?\.run\?\.shadow !== false;/,
+  /const shadowPassAllowed = executionPlan\?\.run\?\.shadow !== false && spineDecision\.run\.shadow;/,
   'shadow evaluation must obey its explicit execution-plan gate');
 assert.match(runtimeSource,
   /const branches = simBudget\.accepted && worldRolloutAllowed && shadowPassAllowed/,
