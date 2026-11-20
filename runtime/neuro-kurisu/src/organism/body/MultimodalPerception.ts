@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { countOr, isPlainDataRecord, ownDataValue, timestampOr, unitOr } from './RestoreSanitizers.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 
@@ -21,9 +22,38 @@ export const defaultMultimodalState=():MultimodalState=>({version:1,events:0,fus
 
 function hashText(value:string){return createHash('sha256').update(value).digest('hex').slice(0,16)}
 
+const MODALITIES:ReadonlySet<Modality>=new Set(['text','speech','audio','vision','sensor','world']);
+
+function sanitizeModalities(raw:unknown):Record<Modality,number>{
+  const base=defaultMultimodalState().modalities;
+  const out:Record<Modality,number>={...base};
+  for(const modality of MODALITIES){
+    const value=ownDataValue(raw,modality);
+    if(value!==undefined) out[modality]=countOr(value,base[modality]);
+  }
+  return out;
+}
+
 export class MultimodalPerception {
   private state=defaultMultimodalState();
-  restore(value?:Partial<MultimodalState>|null){this.state={...defaultMultimodalState(),...(value??{}),modalities:{...defaultMultimodalState().modalities,...(value?.modalities??{})},recent:Array.isArray(value?.recent)?value!.recent.slice(0,64):[]};}
+  restore(value?:Partial<MultimodalState>|null){
+    const d=defaultMultimodalState();
+    const raw=isPlainDataRecord(value)?value:{};
+    const recent=ownDataValue(raw,'recent');
+    this.state={
+      version:1,
+      events:countOr(ownDataValue(raw,'events'),d.events),
+      fused:countOr(ownDataValue(raw,'fused'),d.fused),
+      lastFusionAt:timestampOr(ownDataValue(raw,'lastFusionAt'),d.lastFusionAt),
+      lastConfidence:unitOr(ownDataValue(raw,'lastConfidence'),d.lastConfidence),
+      lastSalience:unitOr(ownDataValue(raw,'lastSalience'),d.lastSalience),
+      modalities:sanitizeModalities(ownDataValue(raw,'modalities')),
+      recent:Array.isArray(recent)?recent.filter((row)=>isPlainDataRecord(row)).slice(0,64) as unknown as ModalityObservation[]:[],
+      visionCaptures:countOr(ownDataValue(raw,'visionCaptures'),d.visionCaptures),
+      speechTurns:countOr(ownDataValue(raw,'speechTurns'),d.speechTurns),
+      fusionConflicts:countOr(ownDataValue(raw,'fusionConflicts'),d.fusionConflicts),
+    };
+  }
   snapshot(){return structuredClone(this.state)}
   observe(input:Omit<ModalityObservation,'at'|'contentHash'> & {at?:number; content?:string}):ModalityObservation{
     const at=input.at??Date.now(); const content=input.content??input.summary; const hash=content?hashText(content):undefined;
