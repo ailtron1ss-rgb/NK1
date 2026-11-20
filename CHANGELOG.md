@@ -1,3 +1,9 @@
+## [NK1][Body] Harden persisted body-subsystem restores (2026-11-20)
+- Rebuild persisted multimodal, situation, perceptual-evidence, device-evidence, recovery, P35/P37 world-model and camera-evidence state from bounded validated primitives instead of spreading raw snapshots.
+- Reject Proxy-backed records, accessor-backed object fields, sparse arrays and Proxy/accessor arrays before enumerating untrusted persisted collections.
+- Preserve the current audio modality, explicit semantic cross-modal conflict markers, existing depth-rig/IK behavior and source-owned world/perception logic.
+- Add the focused body restore regression to the current perception-routing/embodied-interaction workflow. Valid snapshots remain round-trippable; invalid fields fail closed.
+
 ## [NK1][Embodiment] Motor honesty: prototype-safe depth rig and measured planar IK (2026-11-20)
 
 - Use null-prototype maps for depth-rig pose deltas, MotorFrame pose deltas and composed world transforms so legal node IDs such as `__proto__` and `constructor` survive as ordinary own keys.
