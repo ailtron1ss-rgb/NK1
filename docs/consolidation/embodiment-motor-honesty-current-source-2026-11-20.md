@@ -4,7 +4,8 @@
 
 - Repository: `ailtron1ss-rgb/NK1`
 - Target: `workpass70-source`
-- Starting source SHA: `05090fb5634c434245f0f055af6506e21a47d1d2`
+- Original source SHA at branch creation: `05090fb5634c434245f0f055af6506e21a47d1d2`
+- Synchronized source SHA before final validation: `ab3611758c5bd19c8deb4c0ed856d2dc6817cdaf`
 - New consolidation branch: `consolidation/embodiment-motor-honesty-current-20261120`
 
 ## Donor lineage and reconciliation
@@ -33,12 +34,17 @@ At intake the donor was **45 commits ahead and 441 behind** the current source, 
    - Verifies an unconstrained solution reaches the requested point.
    - Verifies a tight shoulder limit reports the actual end-effector shortfall and flags the applied limit.
 
-The donor blobs were compared line-by-line with the current source file contents before selection. The donor versions of these four files differ only by the described additions/replacements.
-
 5. `app/src/components/avatar/embodimentIntentAdapter.ts`
-   - `resolveDepthRigPoseFromMotorFrame()` now builds its node-keyed `deltas` dictionary with a null prototype as well.
-   - This closes the third path that the new end-to-end regression exposed: the pose and world-transform maps were safe, but the motor-frame adapter still dropped the legal `__proto__` node ID.
+   - The latest source branch had added defensive snapshotting of MotorFrame payloads, which this consolidation preserves.
+   - Only the node-keyed `deltas` dictionary in `resolveDepthRigPoseFromMotorFrame()` is changed to a null-prototype map.
+   - This closes the third path exposed by CI: pose and world-transform maps were safe, but the MotorFrame adapter still dropped the legal `__proto__` node ID.
    - The first CI run failed on this precise assertion (19/20 depth-rig tests passed); the runtime fix is included rather than weakening the test.
+
+The four original depth-rig / IK donor files were compared line-by-line with their corresponding source versions before selection; their diffs are limited to the described additions/replacements.
+
+## Source synchronization before final validation
+
+The PR was rebased as a merge commit on the then-current `workpass70-source` SHA `ab3611758c5bd19c8deb4c0ed856d2dc6817cdaf`. This retained the intervening repository-coding-context engine integration and its expanded adapter and regression tests. The final tree includes both parents; the PR compares as 11 commits ahead and 0 behind at the time of synchronization.
 
 ## Deliberately not copied from the 19-path donor
 
