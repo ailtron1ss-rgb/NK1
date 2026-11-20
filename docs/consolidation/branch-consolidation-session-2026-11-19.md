@@ -312,3 +312,41 @@ Fresh complete pagination returned:
 - `main` HEAD: `fd57e9f161e4bbc1f6522e7b6272bb01358fa70b`.
 
 The branch count increased by one from the previous 1,006 snapshot because the ASR regression port created one new aspect branch. No refs were deleted. This census is a timestamped snapshot; parallel sessions may continue to move refs.
+
+
+## Selective consolidation — Kurisu Avatar / Unified Brain donor family (PR #1006)
+
+PR [#1006](https://github.com/ailtron1ss-rgb/NK1/pull/1006) merged into `main` on 2026-11-20.
+
+- Base `main`: `fd57e9f161e4bbc1f6522e7b6272bb01358fa70b`.
+- Integration branch: `consolidation/avatar-2d3d-preview-ecosystem-current-20261120`.
+- Exact PR head: `5e03f7fa5e8c0968da309b20911432169cd4e690`.
+- Merge commit / resulting `main` HEAD: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
+- Two files changed (+60/-0): `test_avatar.html` and `docs/NK1_ECOSYSTEM_ANALYSIS_AND_ADAPTATION_RU.md`. No production runtime, dependency, release ZIP or `workpass70-source` change.
+- `test_avatar.html` current preview now has an Embodiment Mode switch between the existing 3D procedural rig and four canonical 2D Kurisu sprites; `setEmotion` maps the current emotion to the corresponding sprite while preserving the existing 3D emotion/gesture behavior. Mode visibility also synchronizes `aria-hidden`.
+- Verified canonical sprite asset paths and Git blobs in `main`:
+  - `embarrassed.png`: `785cfafb9db647a4bf964d1323b488b7d665479a`
+  - `thinking_chin.png`: `0260c52532a5bbb5a52fc80c2bcc421d3d1de4e0`
+  - `whiteboard.png`: `a22e435e6a8ee60d4707645f61ded06290652963`
+  - `neutral_front.png`: `cfb0299b54de52340f0af4f92b4435bd6a37a374`
+- Ecosystem analysis retained the additional Letta/MemGPT, Coqui/OpenVoice/StyleTTS2 and Active Inference/FEP research candidates, but rewrote outdated claims with explicit evidence boundaries. Letta is not introduced as a second memory owner; no TTS engine integration or sub-150ms quality claim is made; the standalone `UnifiedBrainSystem` remains a research prototype, not a second production cognition owner alongside `OrganismCore`.
+- Exact GitHub Actions/check-runs were not triggered for this static HTML/docs PR (0 runs); no CI PASS is claimed. The branch was re-read before merge: exactly two paths, three commits ahead/zero behind; structural verification confirmed the two mode buttons, sprite overlay, mode function, emotion mapping and `aria-hidden` synchronization. The PR was mergeable and its exact head was pinned in the squash merge.
+- Ten overlapping donor PRs #765/#816/#832/#833/#839/#843/#844/#848/#855/#856 were closed with individual provenance comments after full recursive Git tree/blob comparison.
+- Current `workpass70-source` already contained the 3D/embodiment module family from the large donors; some blobs were exact matches, the remaining implementations were newer source-owned variants (Avatar3DStage/AvatarStage, model preflight/limits, voice/motor intent, timeline/UI bridge, VRM runtime). The 8 canonical sprite assets, avatar model catalog/fingerprint/store and fingerprint/preflight tests were already present.
+- Old `KurisuAnime3DAvatar.ts` remains a primitive geometry demo; old `vrmLoaderAdapter.ts` is a direct URL/IndexedDB loader without the current model fingerprint/preflight trust boundary. Neither was promoted into current production source.
+- The old donor `UnifiedBrainSystem` has its own memory/drive state and cognitive loop; the current main version is still a prototype and is not added as a second owner beside OrganismCore.
+- Historical docs, screenshots and alternate render files stay in their donor branches. No branch ref or binary was deleted or force-moved.
+
+## Branch census after PR #1006 and Avatar donor closures (2026-11-20)
+
+A new full pagination read returned:
+
+- **1,008 branch refs** (10 full pages plus 1 page with 8 refs).
+- **992 unique HEAD commits**.
+- **16 excess names** beyond one branch name per unique HEAD.
+- One exact shared-HEAD group of 17 names at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`.
+- **315 open PRs**.
+- `main` HEAD: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
+- `workpass70-source` HEAD: `4516878122fbeb61c97cc97d201ab257f8a130f5`.
+
+The refs grew from 1,007 to 1,008 because one consolidation branch was created for #1006. Closing ten donor PRs and merging #1006 did not delete source refs. No branch refs have been deleted in this pass. The repository remains far above the few-dozen target. The common 17-branch alias group and the remaining unique branch families still need open/closed PR dependencies, tags/releases, workflow filters, rulesets, deployment and external-documentation reference clearance before retirement.
