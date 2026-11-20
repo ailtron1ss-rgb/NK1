@@ -121,7 +121,7 @@ assert.equal(le.probes, 0);
 assert.equal(le.verifiedProbes, 0, 'a hostile snapshot must not inflate verified probes');
 assert.equal(le.hostProbes, 0);
 assert.equal(le.lastStatus, defaultDeviceEvidence().lastStatus, 'unknown status falls back');
-assert.equal(le.records.length, 1, 'only plain-record ledger rows survive');
+assert.equal(le.records.length, 0, 'invalid top-level counters reset the complete ledger snapshot');
 assert.equal(ledger.certification().status, 'unavailable', 'a corrupted snapshot must not certify a device');
 
 // --- EmbodimentSubsystemRuntime camera evidence -------------------------------
