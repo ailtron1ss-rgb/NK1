@@ -1,15 +1,16 @@
 ## Актуальный live checkpoint — 20 ноября 2026
 
 **Каноническая исходная ветка:** `workpass70-source`  
-**Проверенный source HEAD:** `960a2d540ef952486a0271a0e5332caec601b36a`.  
+**Проверенная runtime/source база после PR #1031:** `950989fe0081e3760471d44beb6e95bb9e0bc82b` (до этого документационного обновления).  
 **Текущий `main`:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; release/metadata only.
 
 ### Live source и проверки
 
-- PR [#868](https://github.com/ailtron1ss-rgb/NK1/pull/868) был объединён внешним действием в source на `960a2d540ef952486a0271a0e5332caec601b36a`: bounded MeTTa concept export. Это external/observed, не merge данного цикла; Hyperon worker и исполнение MeTTa не подключены.
+- PR [#868](https://github.com/ailtron1ss-rgb/NK1/pull/868) был объединён внешним действием в source на `960a2d540ef952486a0271a0e5332caec601b36a`: bounded MeTTa concept export. Это external/observed; Hyperon worker и исполнение MeTTa не подключены.
+- В этом цикле PR [#1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) объединён в `workpass70-source` squash-коммитом `950989fe0081e3760471d44beb6e95bb9e0bc82b`: hostile-state restore hardening, prototype-safe concept keys, bounded restore и locale-neutral MeTTa serialization. Все 8/8 exact-head Actions прошли на исходном PR HEAD `46d4179171ae16a2b9fb2876efc7db0a815eef03`.
 - На точном source SHA все **11/11 push-triggered Actions SUCCESS**. Основные: [core](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562538), [Hexis lineage](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562613), [affect restore](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743561933), [ActionGateway](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562053), [UserModel forget](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562348).
-- Последняя полная пагинация до PR #1031: 1,032 refs / 1,016 unique HEADs / 1 duplicate-tip group / 16 aliases; 306 open PRs (155 source-base, 151 other-base). PR #1031 добавляет один известный branch ref и один open PR; delta зафиксирована в [census delta](docs/consolidation/branch-census-delta-2026-11-20.md).
-- [PR #1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) — Draft restore-hardening at head `46d4179171ae16a2b9fb2876efc7db0a815eef03`; 8/8 exact-head Actions SUCCESS, including C1-control sanitization and locale-independent MeTTa fact ordering. Не merged.
+- Последняя полная пагинация до PR #1031: 1,032 refs / 1,016 unique HEADs / 1 duplicate-tip group / 16 aliases; 306 open PRs (155 source-base, 151 other-base). После добавления refs #1031 и #1032 и merge #1031 известный минимум составляет 1,034 refs / 1,018 unique HEADs / 307 open PRs; это derived delta, не новая полная пагинация. См. [census delta](docs/consolidation/branch-census-delta-2026-11-20.md).
+- [PR #1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) — MERGED; 8/8 exact-head Actions SUCCESS on `46d4179171ae16a2b9fb2876efc7db0a815eef03`. No Release ZIP change.
 - `workpass70-source` не защищена; required checks не enforced. Aspect registry 6 ноября — исторический snapshot, не текущая readiness оценка.
 
 ### Release и юридический gate
