@@ -468,3 +468,38 @@ Fresh full pagination returned:
 - `main` HEAD: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
 
 The ref total rose by one from the prior 1,008 snapshot because this current-source consolidation created one new branch. PR #1007 merge and closure of #860 did not delete its source ref. No refs were deleted. The desired few-dozen target remains unmet; the exact shared-HEAD alias group is still awaiting full open/closed PR, tags/releases, workflows, rulesets, deployments, docs and external-consumer clearance.
+
+
+## Branch census and HMX consent integration update (2026-11-20)
+
+### Full branch-ref snapshot
+
+- Snapshot source HEAD: `7918d0c1ad974ede0e5dd4796457e41c8d1641bd`; `main` HEAD: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
+- Full paginated branch enumeration ended with empty page 12: **1,042 branch refs**, **1,026 unique HEAD commits**, **16 excess names** beyond one per unique HEAD.
+- One exact shared-HEAD group remains: 17 names at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
+- Full name→HEAD manifest saved at `docs/consolidation/branch-census-2026-11-20.csv` (1,042 rows; protection metadata included).
+- GitHub Search API counts (`incomplete_results=false`): **286 open PRs**, **430 merged PRs**, **320 closed unmerged PRs**. PR counts are distinct from branch-ref counts.
+- Compared with the previous saved census (1,009 refs / 993 unique HEAD / 16 excess names / 314 open PRs): refs **+33**, unique HEADs **+33**, excess names **unchanged**, open PRs **−28**. The same 17-name shared-HEAD group remains; no new shared-HEAD group appeared.
+- Exact new/vanished names and per-name HEAD changes cannot be calculated against the previous snapshot because the prior journal stored aggregate counts only; the Library preliminary inventory contains 606 refs, not the full 1,009. Do not infer name deltas from that partial inventory. This full manifest establishes a baseline for exact comparison on subsequent runs.
+- `main` and `workpass70-source` are still `protected=false`. No branch was deleted or force-moved in this run.
+- Parallel activity observed: the source advanced from `55ea78a03f77be7bb98070f4283d1814f84d737b` to `7918d0c1ad974ede0e5dd4796457e41c8d1641bd` via `Restore schema-v7 project-executor snapshot own-key identity (#428)`. This merge was observed, not created by this session.
+
+### HMX explicit review/apply family — already integrated by parallel work
+
+- Donor PR [#995](https://github.com/ailtron1ss-rgb/NK1/pull/995), branch `consolidation/hexis-hmx-apply-consent-20261119`, exact head `1ee0895851cc233160ce5cc9d4d43bbb1fe43fa4`, closed unmerged. It contributed the real-server regression and CI path wiring, not the production implementation.
+- Current-source PR [#1001](https://github.com/ailtron1ss-rgb/NK1/pull/1001) merged at `8c7eca314b5713f43e95a24926929efd30a5d7bc` from exact tested head `a0327376590c79e8ffce1f1ea14b9ac896ba921a`. Exact HMX workflow run #44552604527 succeeded; red run #44550773096 reproduced the pre-fix defect (canonical memory grew immediately after `accept`).
+- Canonical source implements the intended boundary: `accept` changes only the staged review decision; a separate `POST /api/organism/integration/hexis/hmx/apply` requires `confirmed: true`; unknown decisions are rejected; writes use the existing `HexisHmxCanonicalMemoryBridge` / MemoryFabric owner. The bridge retains external-hypothesis provenance, sensitive-text redaction and idempotent command receipts. The real-server regression and focused workflow are present in canonical source.
+- This family is complete at source/CI level; do not re-implement or re-merge #995. Release ZIP inclusion remains unverified.
+
+### P23 bounded candidate population — active parallel PR, not merged
+
+- PR [#1048](https://github.com/ailtron1ss-rgb/NK1/pull/1048), head `85ace0e04f10dc410b9519f49f5bc427f0d1457e`, remains open. It adds bounded validation-only candidate population search while preserving the existing full validation/holdout, signed approval, activation and rollback authorities.
+- Exact PR-head checks: **30/31 success**; `Import graph and layer boundaries` failed on merge commit `35aef03b5f61edac493fcb1897974136589d0f42`. The failure is concrete: `OrganismRuntime.ts` exceeded dependency budgets (outDegree 56 > 55; typeOutDegree 15 > 12). Five other tests in that architecture job passed; later audit/typecheck steps were skipped after the failure.
+- At the last comparison against source `55ea78a03f77be7bb98070f4283d1814f84d737b`, PR #1048 was 68 commits ahead / 104 behind. The source has since advanced to the census SHA above; repeat the comparison and exact-head checks before integration. This is useful active parallel work, but it must be rebased and its dependency budget fixed rather than merged as-is. This session made no changes to #1048.
+
+### This-session disposition
+
+- Branches merged by this session: **0**.
+- PRs closed as superseded by this session: **0**.
+- Branch refs deleted by this session: **0**.
+- No retirement was attempted: equal HEAD is not sufficient; historical PRs, tags/releases, workflows, rulesets, deployments, documentation and external consumers still require clearance.
