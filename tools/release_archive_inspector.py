@@ -137,6 +137,7 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
     errors: list[str] = []
     entries: list[dict[str, Any]] = []
     archive_paths: list[str] = []
+    archive_member_paths: list[tuple[str, bool]] = []
     source_path_set, source_ref = _source_paths(root)
     source_file_collisions = _casefold_file_path_collisions(source_path_set)
     source_directory_aliases = _casefold_directory_aliases(source_path_set)
@@ -193,6 +194,7 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
                         previous_path, previous_is_directory = previous
                         if previous_is_directory and is_directory:
                             # Directory aliases can safely merge when their file paths are disjoint.
+                            archive_member_paths.append((member_path, True))
                             continue
                         if previous_is_directory != is_directory:
                             errors.append(
@@ -205,6 +207,7 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
                         continue
                     seen_portable[portable_path] = (member_path, is_directory)
                     if is_directory:
+                        archive_member_paths.append((member_path, True))
                         continue
                     if info.file_size > MAX_MEMBER_BYTES:
                         errors.append(f"member exceeds the size limit: {member_path}")
@@ -237,11 +240,36 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
                         errors.append(f"member read/CRC failure for {member_path}: {str(error)[:220]}")
                         continue
                     archive_paths.append(member_path)
+                    archive_member_paths.append((member_path, False))
                     entries.append({"path": member_path, "sizeBytes": info.file_size, "compressedBytes": info.compress_size, "crc32": f"{info.CRC:08x}", "sha256": digest.hexdigest()})
         except (OSError, zipfile.BadZipFile, RuntimeError, ValueError) as error:
             errors.append(f"ZIP container invalid: {str(error)[:300]}")
 
     prefix = _choose_prefix(archive_paths, source_path_set, archive_prefix)
+    mapped_member_index: dict[str, tuple[str, bool]] = {}
+    mapped_path_collisions: set[tuple[str, str, str]] = set()
+    for member_path, is_directory in archive_member_paths:
+        source_name = member_path[len(prefix):] if prefix and member_path.startswith(prefix) else member_path
+        portable_path = unicodedata.normalize("NFC", source_name).casefold()
+        previous = mapped_member_index.get(portable_path)
+        if previous is None:
+            mapped_member_index[portable_path] = (source_name, is_directory)
+            continue
+        previous_path, previous_is_directory = previous
+        if previous_is_directory and is_directory:
+            # Distinct directory spellings may coexist when their file members remain disjoint.
+            continue
+        kind = "file-directory" if previous_is_directory != is_directory else "case-insensitive duplicate"
+        mapped_path_collisions.add((previous_path, source_name, kind))
+    mapped_path_collision_report = [
+        {"first": first, "second": second, "kind": kind}
+        for first, second, kind in sorted(mapped_path_collisions)
+    ]
+    for collision in mapped_path_collision_report:
+        errors.append(
+            f"{collision['kind']} archive path collision after prefix mapping: "
+            f"{collision['first']!r} conflicts with {collision['second']!r}"
+        )
     name_map: dict[str, str] = {}
     mapped_entries: dict[str, dict[str, Any]] = {}
     for entry in entries:
@@ -304,6 +332,7 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
         "sourceDirectoryAliases": source_directory_aliases,
         "archiveDirectoryAliases": _casefold_directory_aliases(set(archive_paths)),
         "archiveFilePathCollisions": _casefold_file_path_collisions(set(archive_paths)),
+        "archiveMappedPathCollisions": mapped_path_collision_report,
         "archiveVersions": archive_versions, "comparison": comparison, "errors": errors, "ok": integrity_ok,
     }
 
@@ -331,6 +360,7 @@ def main(argv: list[str] | None = None) -> int:
         "sourceDirectoryAliases": len(report["sourceDirectoryAliases"]),
         "archiveDirectoryAliases": len(report["archiveDirectoryAliases"]),
         "archiveFilePathCollisions": len(report["archiveFilePathCollisions"]),
+        "archiveMappedPathCollisions": len(report["archiveMappedPathCollisions"]),
         "errors": report["errors"], "report": str(output),
     }, indent=2))
     return 0 if report["ok"] else 2
