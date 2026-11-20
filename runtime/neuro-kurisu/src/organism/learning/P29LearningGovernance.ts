@@ -51,8 +51,12 @@ export const defaultP29Governance=():LearningGovernanceState=>({
 
 type SnapshotBundle={p26:any;p27:any;p28:any};
 
+const TRUSTED_P29_GOVERNANCE_INSTANCES=new WeakSet<object>();
+
 export class P29LearningGovernanceEngine {
   private state=defaultP29Governance();
+  constructor(){TRUSTED_P29_GOVERNANCE_INSTANCES.add(this);}
+  static isTrustedInstance(value:unknown):value is P29LearningGovernanceEngine{return typeof value==='object'&&value!==null&&TRUSTED_P29_GOVERNANCE_INSTANCES.has(value);}
   private currentGood:SnapshotBundle|null=null;
   private previousGood:SnapshotBundle|null=null;
 
@@ -92,7 +96,7 @@ export class P29LearningGovernanceEngine {
     const reject = rows.length>1 && conflict>.78 && trustFloor<.9;
     const net=reject?0:Math.max(-maxMagnitude,Math.min(maxMagnitude,raw*maxMagnitude*1.9*budgetScale));
     if(conflict>.65)this.state.conflictEvents++;
-    if(reject)this.state.rejectedUpdates++; else if(Math.abs(net)>.0005)this.state.acceptedUpdates++;
+    if(reject||(rows.length>0&&Math.abs(net)<=.0005))this.state.rejectedUpdates++; else if(Math.abs(net)>.0005)this.state.acceptedUpdates++;
     const result={netBias:net,accepted:!reject && Math.abs(net)>.0005,conflict01:conflict,budgetScale01:budgetScale,dominantSource:dominant,weightedContributions:rows};
     this.state.lastArbitration=result;
     if(action) this.state.lastByAction[action]=result;
