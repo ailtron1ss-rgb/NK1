@@ -147,18 +147,19 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self.assertTrue(any("archive path collision after prefix mapping" in error for error in result["errors"]))
 
 
-    def test_casefold_collision_reports_both_original_zip_names(self):
+    def test_casefold_directory_aliases_are_reported_without_failing(self):
         with zipfile.ZipFile(self.archive, "w") as zipped:
             zipped.writestr("research/", "")
             zipped.writestr("Research/", "")
+            zipped.writestr("research/lower.md", "lower")
+            zipped.writestr("Research/upper.md", "upper")
         result = audit_release_archive(self.archive, self.source)
-        self.assertFalse(result["ok"])
-        collision = next(error for error in result["errors"] if "case-insensitive duplicate ZIP member" in error)
-        self.assertIn("'research'", collision)
-        self.assertIn("'Research'", collision)
+        self.assertTrue(result["ok"], result["errors"])
+        aliases = {(item["first"], item["second"]) for item in result["archiveDirectoryAliases"]}
+        self.assertIn(("Research", "research"), aliases)
 
 
-    def test_reports_casefolded_source_directory_collisions(self):
+    def test_reports_source_directory_aliases_without_rejecting_disjoint_files(self):
         upper = self.source / "RESEARCH" / "2026-09-20"
         lower = self.source / "research" / "2026-09-20"
         upper.mkdir(parents=True)
@@ -167,11 +168,28 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         (lower / "lower-only.md").write_text("lower\n", encoding="utf-8")
         self._write_archive({"README.md": b"root\n"})
         result = audit_release_archive(self.archive, self.source)
-        self.assertFalse(result["ok"])
-        self.assertTrue(any("case-insensitive source path collision" in error for error in result["errors"]))
-        pairs = {(item["first"], item["second"]) for item in result["sourcePathCollisions"]}
+        self.assertTrue(result["ok"], result["errors"])
+        pairs = {(item["first"], item["second"]) for item in result["sourceDirectoryAliases"]}
         self.assertIn(("RESEARCH", "research"), pairs)
         self.assertIn(("RESEARCH/2026-09-20", "research/2026-09-20"), pairs)
+
+
+    def test_rejects_file_directory_case_collision(self):
+        with zipfile.ZipFile(self.archive, "w") as zipped:
+            zipped.writestr("Research/", "")
+            zipped.writestr("research", "file")
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("file/directory ZIP path collision" in error for error in result["errors"]))
+
+    def test_reports_source_file_case_collision_as_error(self):
+        (self.source / "Case.md").write_text("upper\n", encoding="utf-8")
+        (self.source / "case.md").write_text("lower\n", encoding="utf-8")
+        self._write_archive({"README.md": b"root\n"})
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("case-insensitive source file path collision" in error for error in result["errors"]))
+        self.assertEqual(len(result["sourceFilePathCollisions"]), 1)
 
 if __name__ == "__main__":
     unittest.main()
