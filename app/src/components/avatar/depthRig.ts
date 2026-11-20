@@ -153,8 +153,6 @@ export function resolveDepthRigPose(rig: DepthRigDefinition, intent: DepthRigInt
   const lean = clamp(intent.torsoLean, -1, 1);
   const breath = clamp(intent.breath, 0, 1);
   const intensity = clamp(intent.gestureIntensity, 0, 1);
-  // Null prototype so a node id that collides with an Object.prototype key
-  // ("__proto__", "constructor", ...) is stored and read as an ordinary key.
   const deltas: Record<string, Partial<DepthRigTransform>> = Object.create(null);
 
   for (const node of rig.nodes) {

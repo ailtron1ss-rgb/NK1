@@ -41,9 +41,6 @@ export function solvePlanarArmIK(input:PlanarArmKinematicsInput):PlanarArmKinema
  const shoulderAngle=limit(rawShoulder,shoulderLimit);
  const elbowFlexion=limit(rawElbow,elbowLimit);
  if(!finite(shoulderAngle)||!finite(elbowFlexion))return {accepted:false,reason:"ik-solution-non-finite"};
- // Report where the hand actually lands after joint limits, not the requested
- // point: a clamped joint cannot reach the requested target, and callers must
- // not treat a bound solution as a full-reach solution.
  const endEffector={x:shoulder.x+l1*Math.cos(shoulderAngle)+l2*Math.cos(shoulderAngle+elbowFlexion),y:shoulder.y+l1*Math.sin(shoulderAngle)+l2*Math.sin(shoulderAngle+elbowFlexion)};
  const limitsApplied=Math.abs(shoulderAngle-rawShoulder)>1e-9||Math.abs(elbowFlexion-rawElbow)>1e-9;
  return {accepted:true,shoulderAngle,elbowFlexion,target:{...target},endEffector,limitsApplied,clampedDistance:distance,reachRatio:clamp(rawDistance/(l1+l2),0,1),frameId:input.frameId};
