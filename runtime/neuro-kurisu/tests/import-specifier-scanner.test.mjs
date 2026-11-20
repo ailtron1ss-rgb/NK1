@@ -79,13 +79,13 @@ test("scanner does not treat division as a regex or let comment quotes leak into
   const division = [
     "const ratio = numerator / denominator;",
     "const example = \"from './not-an-import.ts'\";",
-  ].join("\\n");
+  ].join("\n");
   assert.deepEqual(collectRelativeImportSpecifiers(division), []);
 
   const commentQuote = [
     "// it's fine; this quote must not open a string",
     "import value from './after-comment.ts';",
-  ].join("\\n");
+  ].join("\n");
   assert.deepEqual(collectRelativeImportSpecifiers(commentQuote), ["./after-comment.ts"]);
 });
 
