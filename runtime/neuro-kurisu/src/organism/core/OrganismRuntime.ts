@@ -27,6 +27,7 @@ import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
 import { buildIndependentEvaluationEvidenceBundle } from '../system/IndependentEvaluationEvidence.ts';
 import { CognitiveResourceEconomy, cognitiveAttentionIntentFromAction } from '../system/CognitiveResourceEconomy.ts';
+import { CognitiveSpineScheduler, type CognitiveSpineScheduleState } from '../system/CognitiveSpineScheduler.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
 import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
@@ -163,6 +164,8 @@ export interface RuntimeConfig extends OrganismConfig {
     routing: SynapticAdapterRoutingInput,
   ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
+  /** Optional injected durable sidecar for event/budget-aware cognitive-spine cadence. */
+  cognitiveSpineStore?: JsonStateStore<CognitiveSpineScheduleState>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
   visionBackend?: VisionSemanticBackend;
@@ -312,6 +315,8 @@ export class OrganismRuntime {
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
   private readonly openLoopRadar = new OpenLoopRadar();
   private readonly resourceEconomy = new CognitiveResourceEconomy();
+  private readonly cognitiveSpineScheduler = new CognitiveSpineScheduler();
+  private readonly cognitiveSpineStore: JsonStateStore<CognitiveSpineScheduleState>;
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
   private readonly realityGrounding = new RealityGroundingController();
@@ -455,6 +460,7 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
+    this.cognitiveSpineStore = config.cognitiveSpineStore ?? new FileStateStore<CognitiveSpineScheduleState>(`${config.stateFile}.cognitive-spine.json`);
     this.synapticMatrixStore = new FileStateStore<AdaptiveSynapticMatrixState>(`${config.stateFile}.synaptic-matrix.json`);
     this.synapticAdapterTimeoutMs = config.synapticAdapterTimeoutMs ?? 15_000;
     if (!Number.isSafeInteger(this.synapticAdapterTimeoutMs) || this.synapticAdapterTimeoutMs < 100 || this.synapticAdapterTimeoutMs > 120_000) {
@@ -546,6 +552,15 @@ export class OrganismRuntime {
       this.openLoopRadar.restore(restoredOpenLoopState ?? undefined);
       if (!restoredOpenLoopState) await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
+      try {
+        this.cognitiveSpineScheduler.restore(await this.cognitiveSpineStore.load() ?? undefined);
+      } catch (error) {
+        // The optional cadence sidecar must never prevent the canonical organism from booting.
+        this.cognitiveSpineScheduler.restore();
+        await this.journal.write('warn', 'runtime.cognitive-spine.restore-failed', {
+          message: String((error as any)?.message ?? error).slice(0, 180),
+        }).catch(() => {});
+      }
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
       this.resourceEconomy.restore(systemSnapshot.runtimeCognitiveResourceEconomy ?? systemSnapshot.cognitiveResourceEconomy ?? undefined);
@@ -1031,6 +1046,38 @@ export class OrganismRuntime {
       externalGoal: externalGoalForRuntimeInput(externalText, options.externalGoalPolicy),
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
     });
+    const priorSpineMode = this.cognitiveSpineScheduler.snapshot().mode;
+    const spineDecision = this.cognitiveSpineScheduler.decide({
+      tick: cycle.state.tick,
+      surprise01: clamp01(cycle.state.predictionError),
+      predictionError01: clamp01(previousNeural.predictionError01),
+      novelty01: clamp01(cycle.state.needs.novelty),
+      goalPressure01: clamp01(cycle.state.needs.goalPressure),
+      budgetMode: !body.awake || resourceAllocation.mode === 'critical'
+        ? 'sleep'
+        : resourceAllocation.mode === 'scarce' ? 'defer' : 'balanced',
+      remainingBudget01: clamp01(resourceAllocation.totalBudget01),
+      externalInput: Boolean(externalText),
+      awake: body.awake,
+    });
+    this.evidenceBus.publish({
+      tick: cycle.state.tick,
+      kind: 'resource',
+      source: 'cognitive-spine-scheduler',
+      confidence01: .95,
+      payload: {
+        mode: spineDecision.mode,
+        reason: spineDecision.reason,
+        run: spineDecision.run,
+        cadence: spineDecision.cadence,
+        remainingBudget01: clamp01(resourceAllocation.totalBudget01),
+        externalInput: Boolean(externalText),
+      },
+    });
+    // The tiny sidecar avoids rewriting the canonical multi-megabyte organism snapshot.
+    if (Boolean(externalText) || priorSpineMode !== spineDecision.mode || cycle.state.tick % 8 === 0) {
+      await this.persistCognitiveSpineSchedule();
+    }
     const perceptionAfter = this.core.perceptionSnapshot();
     const canonicalPerceptionEvent = perceptionAfter.eventCount > perceptionBefore.eventCount
       ? perceptionAfter.lastEvent
@@ -1069,7 +1116,7 @@ export class OrganismRuntime {
       formatUniversalInterpretationContext(interpretation, fused),
       ...modalityEvents.slice(interpretation.modalityInputs.length).map(event => `[${event.modality}] ${event.summary}`)
     ].filter(Boolean).join('\n');
-    const slowCognitionAllowed = executionPlan?.run?.['slow-cognition'] !== false;
+    const slowCognitionAllowed = executionPlan?.run?.['slow-cognition'] !== false && (Boolean(externalText) || spineDecision.run.research);
     const cognitiveProposal = slowCognitionAllowed
       ? await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal)
       : null;
@@ -1078,7 +1125,7 @@ export class OrganismRuntime {
     }
     const internalAction = cycle.decision.selected?.action ?? 'wait';
     const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
-    const projectAllowed = executionPlan?.run?.project !== false;
+    const projectAllowed = executionPlan?.run?.project !== false && spineDecision.run.project;
     const planningBudget = projectAllowed
       ? this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning')
       : { accepted: false };
@@ -1086,8 +1133,8 @@ export class OrganismRuntime {
     const plan = planningBudget.accepted && projectAllowed
       ? this.plans.build(selectedGoal, internalAction, 4, 4)
       : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated');
-    const worldRolloutAllowed = executionPlan?.run?.['world-rollout'] !== false;
-    const shadowPassAllowed = executionPlan?.run?.shadow !== false;
+    const worldRolloutAllowed = executionPlan?.run?.['world-rollout'] !== false && spineDecision.run['world-rollout'];
+    const shadowPassAllowed = executionPlan?.run?.shadow !== false && spineDecision.run.shadow;
     const simBudget = worldRolloutAllowed && shadowPassAllowed
       ? this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout')
       : { accepted: false };
@@ -1495,7 +1542,7 @@ export class OrganismRuntime {
       this.pendingEmergencyCheckpointTick = cycle.state.tick;
     }
 
-    if(cycle.state.tick % 8 === 0 || Boolean(externalText)) this.core.setRuntimeEvidence(this.evidenceBus.snapshot());
+    if(cycle.state.tick % 8 === 0 || Boolean(externalText) || priorSpineMode !== spineDecision.mode) this.core.setRuntimeEvidence(this.evidenceBus.snapshot());
     this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
     this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
     this.core.setRealityEvidenceLedger(this.core.realityEvidenceLedgerSnapshot());
@@ -1786,6 +1833,7 @@ export class OrganismRuntime {
   async executeNextProjectStep(reason='project-step', input:Record<string,unknown>={}, options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.executeNextProjectStep(reason,input,options)); }
   toolSnapshot(){ return this.core.actionToolsSnapshot(); }
   cognitiveResourceEconomySnapshot(){ return this.resourceEconomy.snapshot(); }
+  cognitiveSpineSchedulerSnapshot(): CognitiveSpineScheduleState { return this.cognitiveSpineScheduler.snapshot(); }
   runtimePerformanceSnapshot(){ return this.runtimePerformance.snapshot(); }
   realityEvidenceLedgerSnapshot(){ return this.core.realityEvidenceLedgerSnapshot(); }
   unifiedCognitiveCycleSnapshot(){ return this.unifiedCycle.snapshot(); }
@@ -2108,6 +2156,7 @@ export class OrganismRuntime {
       });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
       await this.core.flush();
+      await this.persistCognitiveSpineSchedule();
       await this.checkpointWorld(true);
       await this.journal.write('info', 'runtime.stop.durable', {
         tick: runtimeView.tick,
@@ -2117,6 +2166,17 @@ export class OrganismRuntime {
 
     await this.continuityLedger.flush().catch(() => {});
     await this.continuityLedger.close();
+  }
+
+  private async persistCognitiveSpineSchedule(): Promise<void> {
+    try {
+      await this.cognitiveSpineStore.save(this.cognitiveSpineScheduler.snapshot());
+    } catch (error) {
+      await this.journal.write('warn', 'runtime.cognitive-spine.persist-failed', {
+        tick: this.cognitiveSpineScheduler.snapshot().lastTick,
+        message: String((error as any)?.message ?? error).slice(0, 180),
+      }).catch(() => {});
+    }
   }
 
   private runtimeDecision(): ReturnType<typeof choosePhonePolicyDelay> {
