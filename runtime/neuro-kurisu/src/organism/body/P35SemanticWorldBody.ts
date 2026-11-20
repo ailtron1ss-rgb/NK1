@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { countOr, finiteOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
+import { countOr, finiteOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 const now = () => Date.now();
@@ -120,9 +120,9 @@ export class P35SemanticWorldBodyEngine {
     this.state={
       version:1,
       tick:countOr(ownDataValue(raw,'tick'),d.tick),
-      entities:Array.isArray(ownDataValue(raw,'entities'))?(ownDataValue(raw,'entities') as unknown[]).filter((row)=>isPlainDataRecord(row)).slice(-160) as unknown as P35Entity[]:[],
-      relations:Array.isArray(ownDataValue(raw,'relations'))?(ownDataValue(raw,'relations') as unknown[]).filter((row)=>isPlainDataRecord(row)).slice(-320) as unknown as P35RelationRecord[]:[],
-      claims:Array.isArray(ownDataValue(raw,'claims'))?(ownDataValue(raw,'claims') as unknown[]).filter((row)=>isPlainDataRecord(row)).slice(-256) as unknown as P35PerceptionClaim[]:[],
+      entities:isPlainDataArray(ownDataValue(raw,'entities'),1024)?(ownDataValue(raw,'entities') as unknown[]).filter((row)=>isPlainDataRecord(row)).slice(-160) as unknown as P35Entity[]:[],
+      relations:isPlainDataArray(ownDataValue(raw,'relations'),2048)?(ownDataValue(raw,'relations') as unknown[]).filter((row)=>isPlainDataRecord(row)).slice(-320) as unknown as P35RelationRecord[]:[],
+      claims:isPlainDataArray(ownDataValue(raw,'claims'),2048)?(ownDataValue(raw,'claims') as unknown[]).filter((row)=>isPlainDataRecord(row)).slice(-256) as unknown as P35PerceptionClaim[]:[],
       scene:{
         label:stringOr(ownDataValue(scene,'label'),d.scene.label,120),
         confidence01:unitOr(ownDataValue(scene,'confidence01'),d.scene.confidence01),

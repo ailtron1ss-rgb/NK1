@@ -1,7 +1,7 @@
 export type PhysicalReliabilityClass = 'unverified'|'actuation-receipt'|'artifact-verified'|'independently-observed';
 export type RecoveryMode = 'normal'|'probe'|'cooldown'|'degraded'|'blocked';
 
-import { countOr, enumOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
+import { countOr, enumOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
 
 const RECOVERY_MODES:ReadonlySet<RecoveryMode>=new Set(['normal','probe','cooldown','degraded','blocked']);
 const RELIABILITY_CLASSES:ReadonlySet<PhysicalReliabilityClass>=new Set(['unverified','actuation-receipt','artifact-verified','independently-observed']);
@@ -98,7 +98,7 @@ export function sanitizeRecoveryState(value:unknown):EmbodiedRecoveryState{
     }
   }
   const rawEpisodes=ownDataValue(value,'episodes');
-  const episodes=Array.isArray(rawEpisodes)?(rawEpisodes.filter((row)=>isPlainDataRecord(row)).slice(0,192).map(sanitizeEpisode) as unknown as EmbodiedRecoveryEpisode[]):[];
+  const episodes=isPlainDataArray(rawEpisodes,1024)?(rawEpisodes.filter((row)=>isPlainDataRecord(row)).slice(0,192).map(sanitizeEpisode) as unknown as EmbodiedRecoveryEpisode[]):[];
   return {
     version:1,
     enabled:ownDataValue(value,'enabled')!==false,

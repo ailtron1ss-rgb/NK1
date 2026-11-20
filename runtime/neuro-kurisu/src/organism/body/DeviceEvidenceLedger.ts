@@ -1,6 +1,7 @@
 /** B202 — physical-device evidence provenance ledger. */
 import type { AndroidTelemetrySample, TermuxCapabilities } from './AndroidEmbodimentBridge.ts';
 import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
+import { isPlainDataArray } from './RestoreSanitizers.ts';
 
 export interface DeviceEvidenceRecord { id:string; at:number; status:'REAL_DEVICE_VERIFIED'|'HOST_PROBE'|'UNAVAILABLE'; capabilityDigest:string; telemetryFresh:boolean; commandSuccessRate01:number; source:string; }
 export interface DeviceEvidenceState { version:1; probes:number; verifiedProbes:number; hostProbes:number; unavailableProbes:number; lastStatus:DeviceEvidenceRecord['status']; records:DeviceEvidenceRecord[]; }
@@ -57,7 +58,7 @@ export class DeviceEvidenceLedger {
       this.state=defaults;
       return;
     }
-    const records=Array.isArray(candidate.records)?candidate.records.slice(0,64).map(restoreRecord).filter((item):item is DeviceEvidenceRecord=>item!==null):[];
+    const records=isPlainDataArray(candidate.records,64)?candidate.records.slice(0,64).map(restoreRecord).filter((item):item is DeviceEvidenceRecord=>item!==null):[];
     this.state={version:1,probes,verifiedProbes,hostProbes,unavailableProbes,lastStatus:lastStatus as DeviceEvidenceRecord['status'],records};
   }
 

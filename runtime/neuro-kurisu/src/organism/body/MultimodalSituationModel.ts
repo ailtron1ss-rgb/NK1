@@ -1,5 +1,5 @@
 import type { ModalityObservation, Modality } from './MultimodalPerception.ts';
-import { countOr, isPlainDataRecord, ownDataValue, timestampOr, unitOr } from './RestoreSanitizers.ts';
+import { countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, timestampOr, unitOr } from './RestoreSanitizers.ts';
 export interface SituationVector{version:1;at:number;modalities:Modality[];features:number[];confidence01:number;uncertainty01:number;conflict01:number;novelty01:number;summary:string;}
 export interface MultimodalSituationState{version:1;situations:number;last:SituationVector|null;modalityReliability:Record<Modality,number>;crossModalAgreements:number;crossModalConflicts:number;}
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -32,8 +32,8 @@ function sanitizeLastSituation(raw:unknown):SituationVector|null{
   const vector:SituationVector={
     version:1,
     at:timestampOr(ownDataValue(raw,'at'),0),
-    modalities:Array.isArray(modalities)?modalities.filter((m):m is Modality=>MODALITIES.includes(m as Modality)).slice(0,8):[],
-    features:Array.isArray(features)?features.filter((n):n is number=>typeof n==='number'&&Number.isFinite(n)).slice(0,32):[],
+    modalities:isPlainDataArray(modalities,32)?modalities.filter((m):m is Modality=>MODALITIES.includes(m as Modality)).slice(0,8):[],
+    features:isPlainDataArray(features,256)?features.filter((n):n is number=>typeof n==='number'&&Number.isFinite(n)).slice(0,32):[],
     confidence01:unitOr(ownDataValue(raw,'confidence01'),0),
     uncertainty01:unitOr(ownDataValue(raw,'uncertainty01'),1),
     conflict01:unitOr(ownDataValue(raw,'conflict01'),0),
