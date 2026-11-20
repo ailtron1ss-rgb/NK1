@@ -2,6 +2,38 @@ import { createHash, sign as signSignature, verify as verifySignature } from 'no
 import type { TaskManifestEntry, VerifiedTaskOutcome } from './VerifiedOutcomeLedger.ts';
 import { VerifiedOutcomeLedger } from './VerifiedOutcomeLedger.ts';
 
+export interface SignedInventionOutcomeContext {
+  contextType: 'invention-outcome';
+  experimentId: string;
+  phase: 'primary' | 'replication' | 'holdout';
+  protocolFingerprint: string;
+  prototypeSha256: string;
+  testFingerprint: string;
+  environmentId: string;
+  observed: number;
+  evidenceSha256: string;
+}
+
+export interface SignedInventionCritiqueContext {
+  contextType: 'invention-critique';
+  experimentId: string;
+  protocolFingerprint: string;
+  prototypeSha256: string;
+  testFingerprint: string;
+  reviewRef: string;
+  reviewSha256: string;
+  blockers: string[];
+  limitations: string[];
+}
+
+/**
+ * Optional for generic evaluation artifacts; required by The Invention Loop.
+ * All fields are included in the Ed25519-signed canonical payload.
+ */
+export type SignedOutcomeMeasurement =
+  | SignedInventionOutcomeContext
+  | SignedInventionCritiqueContext;
+
 export interface SignedOutcomePayload {
   schemaVersion: 1;
   artifactId: string;
@@ -15,6 +47,7 @@ export interface SignedOutcomePayload {
   passed: boolean;
   verifierId: string;
   observedAt: number;
+  measurement?: SignedOutcomeMeasurement;
 }
 
 export interface SignedOutcomeArtifact {
@@ -23,6 +56,33 @@ export interface SignedOutcomeArtifact {
 }
 
 function isNonEmptyString(value: unknown): value is string { return typeof value === 'string' && value.trim().length > 0; }
+function isDigest(value: unknown): value is string { return typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value); }
+function isBoundedText(value: unknown, max: number): value is string {
+  return isNonEmptyString(value) && value.length <= max && value.trim() === value &&
+    !Array.from(value).some(character => (character.codePointAt(0) ?? 0) < 0x20);
+}
+function validInventionMeasurement(value: unknown): value is SignedOutcomeMeasurement {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const context = value as Record<string, unknown>;
+  if (context.contextType === 'invention-outcome') {
+    return isBoundedText(context.experimentId, 120) &&
+      ['primary', 'replication', 'holdout'].includes(String(context.phase)) &&
+      isDigest(context.protocolFingerprint) && isDigest(context.prototypeSha256) &&
+      isDigest(context.testFingerprint) && isBoundedText(context.environmentId, 180) &&
+      typeof context.observed === 'number' && Number.isFinite(context.observed) &&
+      isDigest(context.evidenceSha256);
+  }
+  if (context.contextType === 'invention-critique') {
+    const validList = (items: unknown): items is string[] => Array.isArray(items) &&
+      items.length <= 32 && items.every(item => isBoundedText(item, 300));
+    return isBoundedText(context.experimentId, 120) &&
+      isDigest(context.protocolFingerprint) && isDigest(context.prototypeSha256) &&
+      isDigest(context.testFingerprint) && isBoundedText(context.reviewRef, 512) &&
+      isDigest(context.reviewSha256) && validList(context.blockers) &&
+      validList(context.limitations);
+  }
+  return false;
+}
 
 function canonical(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -80,8 +140,11 @@ export function ingestSignedOutcomeArtifact(
   }
 
   const payload = artifact?.payload;
-  if (!payload || typeof payload !== 'object' || payload.schemaVersion !== 1) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload) || payload.schemaVersion !== 1) {
     return { accepted: false, artifactFingerprint: '', rejection: 'invalid-artifact-schema' };
+  }
+  if (payload.measurement !== undefined && !validInventionMeasurement(payload.measurement)) {
+    return { accepted: false, artifactFingerprint: '', rejection: 'invalid-artifact-measurement' };
   }
   const fingerprint = outcomePayloadFingerprint(payload);
   if (!/^[a-f0-9]{64}$/i.test(payload.manifestFingerprint) ||
