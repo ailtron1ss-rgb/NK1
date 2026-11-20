@@ -131,7 +131,7 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
                 if len(infos) > MAX_MEMBERS:
                     errors.append("archive exceeds the maximum member count")
                 seen: dict[str, bool] = {}
-                seen_portable: set[str] = set()
+                seen_portable: dict[str, str] = {}
                 total_size = 0
                 valid_infos: list[tuple[zipfile.ZipInfo, str]] = []
                 for info in infos:
@@ -152,11 +152,14 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
                             errors.append(f"duplicate ZIP member: {member_path}")
                         continue
                     portable_path = unicodedata.normalize("NFC", member_path).casefold()
-                    if portable_path in seen_portable:
-                        errors.append(f"case-insensitive duplicate ZIP member: {member_path}")
+                    previous_path = seen_portable.get(portable_path)
+                    if previous_path is not None:
+                        errors.append(
+                            f"case-insensitive duplicate ZIP member: {previous_path!r} conflicts with {member_path!r}"
+                        )
                         continue
                     seen[member_path] = is_directory
-                    seen_portable.add(portable_path)
+                    seen_portable[portable_path] = member_path
                     if is_directory:
                         continue
                     if info.file_size > MAX_MEMBER_BYTES:
