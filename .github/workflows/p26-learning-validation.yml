@@ -11,6 +11,11 @@ on:
       - "runtime/neuro-kurisu/tests/p23-learning-experiment-plan.mjs"
       - "runtime/neuro-kurisu/tests/p23-learning-experiment-plan-cli.mjs"
       - "runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryTaskConditionedUtilityLedger.ts"
+      - "runtime/neuro-kurisu/tests/memory-task-conditioned-utility-*.mjs"
+      - "runtime/neuro-kurisu/tests/memory-action-grounded-utility-benchmark.mjs"
+      - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/p26-learning-validation.yml"
   pull_request:
     paths:
@@ -71,6 +76,10 @@ on:
       - "runtime/neuro-kurisu/research/vendor/CleanRL/**"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryTaskConditionedUtilityLedger.ts"
+      - "runtime/neuro-kurisu/tests/memory-task-conditioned-utility-*.mjs"
+      - "runtime/neuro-kurisu/tests/memory-action-grounded-utility-benchmark.mjs"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
 
@@ -100,6 +109,9 @@ jobs:
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
+      - name: Run task-conditioned memory utility regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-task-conditioned-utility
       - name: Verify bounded P23 background revision and fail-closed staging
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass293:p23-revision
