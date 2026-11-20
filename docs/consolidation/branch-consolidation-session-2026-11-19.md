@@ -572,3 +572,62 @@ The ref total rose by one from the prior 1,008 snapshot because this current-sou
 ### Honest outcome
 
 This was a live inventory and selective donor review, **not a successful merge pass**: no candidate met both freshness/integration safety and exact-head verification. Next useful work is to rebase/fix #1046's gateway readiness failure as a selective change, and selectively port #654's avatar timeline only after path-level duplicate review. Branch count remains 1,042; open PRs remain 284. This session made no claim of reducing refs.
+
+
+## Follow-up selective P30 reconciliation and post-parallel census — 2026-11-20
+
+### Canonical baseline, Release and parallel-session reconciliation
+
+- Repository: `ailtron1ss-rgb/NK1`; source branch: `workpass70-source`.
+- Current source after this census artifact commit: `3697d0c68abe3f217a7aca3aea7a4df757ac6776`; its parent incorporates the parallel P30 merge `16d8c9eb491a59ea481bcaf29cc7e99057847b6c`.
+- Parallel-session attribution: PR #1055 (`integrate/p30-elastic-neural-plasticity-ci-20261120`) was merged by another session, not by this pass. Its merge commit is `16d8c9eb491a59ea481bcaf29cc7e99057847b6c`; source commit message records PR #1055.
+- Stable release remains tag `Neuro` / `NeuroKurisu0.1`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, GitHub metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. The actual ZIP bytes were not accessible through the current GitHub fetch tool (UTF-8 text only); digest not recomputed and no archive/source parity claim is made.
+
+### P30 donor family — selective integration and disposition
+
+- Donor [PR #923](https://github.com/ailtron1ss-rgb/NK1/pull/923), branch `aspect/elastic-neural-plasticity-20261117`, exact implementation HEAD `9c253b2031f0ce03a7f61a30b311fad0cab59ab3`, had 44/44 exact-head Actions runs SUCCESS. It was an old Draft donor, 800 commits behind current source at comparison time; it was not merged wholesale.
+- Current canonical source already contained the P30 owner, P26/P29 entry points, policy persistence/rollback and runtime wiring before this pass. Verified current blobs:
+  - `ElasticNeuralPlasticity.ts`: `82e28e5f40e73278723ed4e256c9a0dbd3130c91` (same blob as donor).
+  - `P26TrueLearningEngine.ts`: `838fcd06ac6ff52948a95a00b6ceb272d3c9928a`.
+  - `ParametricPolicyLearner.ts`: `74f53899a2ca0ca8e3854da85bf87a8767c2c70b`.
+  - `DevelopmentalNeuralRuntime.ts`: `ad6c46f0c0002ac125756a705ce97e04216433ac`.
+  - `tests/elastic-neural-plasticity.mjs`: `1d82b105f2821529ef3fe0807d7c7258f8074a0e`.
+  - Runtime package manifest: `32e3884b0cc8ed98395dc255166c7a056973fa14`, with `test:elastic-neural-plasticity`.
+- The real gap was CI reachability: canonical `.github/workflows/p26-learning-validation.yml` did not watch the P30 owner/test paths and did not execute the existing test. Donor's unique Russian design/limitations note was also not in canonical source.
+- This pass created PR #1049, branch `consolidation/p30-elastic-neural-plasticity-ci-wiring-20261120`, to add the P30 regression to both canonical PR and source-push triggers, run `npm run test:elastic-neural-plasticity`, and preserve the Russian design note/changelog. During the work source moved in parallel; the feature branch was safely joined with current source (no force-push) and exact HEAD `b9dce2e8bf106ee35e46c447bb5a88cbf684e5f5` passed 9/9 Actions runs. The P30 regression, five-paired-seed plan, WorkPass79, WorkPass110 and NeuroCore core regression were all SUCCESS.
+- Before #1049 could be merged, another session independently merged equivalent PR #1055. Its exact head was `405c05aa483a07b68a10f98f59bee6e6aeabd1db`; all 9/9 Actions runs succeeded, including P26 Learning Validation. Its merge commit `16d8c9eb491a59ea481bcaf29cc7e99057847b6c` introduced the exact same three blobs as #1049: workflow `3b63363e1c88ab7940ca116825596ec80be900c1`, Russian P30 document `eab92ce8b00cdaad027b0942d7b554510848e81f`, and CHANGELOG `9b5dadc26f7ae3f577d6d1f74633a3b4f282bc44`.
+- Correct attribution: #1055 merge was performed by the parallel session; this pass did not perform that merge. This pass closed #1049 as superseded by #1055 and closed donor #923 as superseded after verifying its implementation/test and the previously missing CI/docs were present in canonical source. Both closures were unmerged closures, not branch deletions.
+- P30 limitations remain: local target/retention holdouts are bounded preflight, not independently authenticated generalization/retention evidence. No automatic production activation, generalization uplift or Release ZIP publication is claimed.
+
+### Other donor dispositions
+
+- PR #1046 (quickstart/startup health gates) remains open; its exact clean-start workflow failed when gateway readiness returned `fetch failed` after runtime, research bridge and UI preview started. It was not merged.
+- PR #654 avatar cross-fade already overlaps substantially with current source. The donor's extra real-GLB test pins a different v7 asset (1,876,476 bytes, SHA-256 `9eb90244...`) while the current model catalog pins v5 (2,035,768 bytes, SHA-256 `4cc4c34a...`). The v7 test was not copied unchanged; PR #654 remains unmerged.
+- PRs #386 and #391 remain broad, stale donor families; no wholesale merge was made.
+
+### Complete branch census and PR counts
+
+- REST pagination: pages 1–10 returned 100 each, page 11 returned 50, page 12 returned empty. Total: **1,050 branch refs**.
+- Unique HEAD commits: **1,032**. Extra names beyond one per unique HEAD: **18**.
+- Compared with `branch-census-2026-11-20-post-merge.csv` (blob `d576190c3574d2c85600badcac25b50426f12b60`, 1,042 rows): **8 new branch names**, **0 vanished names**, and **4 moved HEADs**:
+  - `aspect/consequence-ecology-20261117`: `5e9b15faead9c7a9a61c4713cfa92cf3e81872a0` → `f9621bf3e4411ce17bc809922a5f90126001f4fd`.
+  - `aspect/shared-future-scenario-space-20261117`: `a71735252f5092ea3c549ad2a75b896492f47c90` → `490dd0132e017b09c81a053b5d62ce28f6e22c60`.
+  - `aspect/world-forge-integrated-20261117`: `89d0b8f58af3fbf8e115242f058a1618c1d6ed20` → `68a03799ca0c9f18e4c6e19399ed8018e0215e60`.
+  - `workpass70-source`: `821dbf95ffd2b1e2150541c3ce0adfe3d4e5cde6` → `16d8c9eb491a59ea481bcaf29cc7e99057847b6c` (before the current census artifact commit).
+- New branch names observed: `consolidation/p30-elastic-neural-plasticity-ci-wiring-20261120`, `fix/p26-elastic-plasticity-pr-paths-20261120`, `integrate/affect-proxy-restore-ancestry-20261120`, `integrate/consequence-calibration-lineage-20261120`, `integrate/consequence-calibration-lineage-followup-20261120`, `integrate/governed-autonomy-self-restore-ancestry-20261120`, `integrate/p30-elastic-neural-plasticity-ci-20261120`, `integrate/worldforge-to-sharedfuture-after-calibration-20261120`. Only the `consolidation/p30...` branch was created in this pass; the other names are observed parallel/external refs and their creator is not inferred.
+- Three shared-HEAD groups:
+  1. 17 refs at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
+  2. 2 refs at `f9621bf3e4411ce17bc809922a5f90126001f4fd`: `aspect/consequence-ecology-20261117`, `integrate/consequence-calibration-lineage-followup-20261120`.
+  3. 2 refs at `68a03799ca0c9f18e4c6e19399ed8018e0215e60`: `aspect/world-forge-integrated-20261117`, `integrate/worldforge-to-sharedfuture-after-calibration-20261120`.
+- Current PR counts: **275 open**, **445 merged**, **323 closed unmerged**. PR counts are not branch counts.
+- Full immutable-per-snapshot branch inventory (name, HEAD SHA, protected flag): `docs/consolidation/branch-census-2026-11-20-post-p30-parallel-integration.csv`, 1,050 rows. Snapshot commit: `3697d0c68abe3f217a7aca3aea7a4df757ac6776`.
+
+### Operations and honest cleanup status
+
+- PR merged by this pass: **0**.
+- PRs closed as superseded by this pass: **2** (#1049 duplicate proposal, #923 donor already superseded by parallel #1055).
+- Branch refs deleted: **0**.
+- PR #1055 merged by parallel session; this is the canonical P30 CI/docs integration, not an action of this pass.
+- No force-push or overwrite of a pre-existing source branch was performed. This pass created one feature branch, one PR, and one census snapshot commit. The feature branch remains as provenance.
+- The connected GitHub tools do not expose a branch-ref DELETE operation; repository metadata also reports `delete_branch_on_merge=false`, and source branch is not protected. No branch is declared safe for retirement based only on name or shared HEAD. Full historical PR, tag/release, workflow, ruleset/protection, deployment, documentation and external-consumer clearance is still incomplete.
+- Current target is 10 refs from 1,050 (1,040 retirements). Scenario estimates only: 104 requests at 10 safe retirements/request; **70** at 15/request; 52 at 20/request; 35 at 30/request. These are not guarantees, and the currently connected GitHub interface cannot perform branch-ref deletion, so actual reduction to 10 is blocked until a permitted deletion workflow is available.
