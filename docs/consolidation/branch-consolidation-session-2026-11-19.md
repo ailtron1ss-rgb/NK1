@@ -350,3 +350,39 @@ A new full pagination read returned:
 - `workpass70-source` HEAD: `4516878122fbeb61c97cc97d201ab257f8a130f5`.
 
 The refs grew from 1,007 to 1,008 because one consolidation branch was created for #1006. Closing ten donor PRs and merging #1006 did not delete source refs. No branch refs have been deleted in this pass. The repository remains far above the few-dozen target. The common 17-branch alias group and the remaining unique branch families still need open/closed PR dependencies, tags/releases, workflow filters, rulesets, deployment and external-documentation reference clearance before retirement.
+
+
+## Selective consolidation — Neuro-Plastic Core / P25 dependency chain (2026-11-20)
+
+This family is deliberately a sequence of separate security/ownership layers, not one duplicate implementation. The canonical source chain is already integrated:
+
+- **#936 — Neuro-Plastic offline LoRA/QLoRA core**: merge `d84e4ed6d9531f2af913256ae56012f565b73770`; canonical registry, P23 corpus builder, artifact verifier, offline trainer, signed-evidence promotion gates, P40/local-language routing and base fallback.
+- **#939 — P25 canonical registry-backed routing**: child of #936; merged into #936's current parent head `f4b5b7638810bc2127524e2f402b01c04e504d00`. P25 supplies bounded task/context routing but does not become artifact/inference authority; exact expected adapter ID is bound to the canonical registry.
+- **#940 — separate external Ed25519 trust**: merge `24a7a05abea0b904c9b543af8ec4ff55dcd7dd17`; evaluator, operator and P25 policy trust keys remain separate, private keys stay external, signer inputs/outputs receive symlink/path/TOCTOU protections. The PR reports 13/13 exact-head workflows successful.
+- **#943 — trainer hardening and real CPU LoRA round-trip**: merge `7a22979b4d4214522510e899f860e60bb77a5b64`; rejects symlinked manifest paths before resolution, seeds initialization, permits trainable parameters only in LoRA modules, persists a positive optimizer step count, and runs tiny local CPU train/export/hash/reload/inference. Exact-head checks: 12/12 SUCCESS. This does not establish production model quality or QLoRA GPU performance.
+- **#944 — activation/rollback race guard**: merge `07452517bc1d7c4635d54ca31eb4d5b488e743e5`; a delayed valid approval cannot resurrect an adapter after an intervening rollback.
+- **#948 — host-owned monotonic P25 anti-replay anchor**: merge `2d8a71cd937ed7196f69b6cef68f4fa016b508ee`; strict host CAS anchor, replay rejection across restart/rollback/quarantine recovery and fail-closed behavior for missing/unavailable/stale anchor state. The contract does not create a production backend; deployment must inject a protected durable host CAS provider.
+
+### Superseded donor PRs
+
+- #930 (initial LoRA/QLoRA implementation) closed unmerged; current behavior is carried by #936 and security follow-ups #940/#943/#944/#948.
+- #937 (trainer hardening draft) closed unmerged; its 18-path donor shares the same pipeline, but it required every OpenAI-compatible response to include `payload.model`. Current source intentionally supports model-less provider responses and falls back to the explicitly requested model; that behavior is covered by current tests. The stricter donor requirement was not reintroduced as an unreviewed breaking change.
+- #942 (initial P25 single-use ledger) closed unmerged; its 64-entry ordered ledger is included in #948, which adds a host-owned atomic CAS anchor and strict restore/activation reconciliation.
+- #925 (Neural Prosthesis Transformer residual sidecar) remains Draft because real local-model inference, hardware and independent task-quality/holdout evidence are still absent. It is a distinct experimental adapter and was not rolled into the basic LoRA registry.
+- #933 (32-concept OmeStro integration) remains Draft/diverged and must be reconciled concept-by-concept; P25/Neuro-Plastic overlaps already present in the canonical chain must not be replayed.
+
+No duplicate trainer, registry, artifact authority or adapter activation path was added. No Release ZIP or `main` change resulted from this family review. Donor refs remain intact; no branch deletion or force update was performed.
+
+## Branch census after Neuro-Plastic review (2026-11-20)
+
+A fresh full paginated read returned:
+
+- **1,008 branch refs**.
+- **992 unique HEAD commits**.
+- **16 excess names** beyond one branch name per unique HEAD.
+- One exact shared-HEAD alias group of 17 names at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`.
+- **315 open PRs**.
+- `main` HEAD: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
+- `workpass70-source` HEAD: `3376ccb15aeb37866699f868859d1426d9f3df3c` (journal update for this session).
+
+This read is a full 11-page branch enumeration (10 pages × 100 plus 8 refs) and a full 4-page open-PR enumeration. No refs were removed. The repository is not yet at the requested few-dozen branch target.
