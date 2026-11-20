@@ -14,6 +14,7 @@ import { defaultPerceptionRoutingState, routePerception, sanitizePerceptionRouti
 import type { PerceptionEvent } from '../cognition/PerceptionEngine.ts';
 import type { OrganismBodyState } from '../body/EmbodiedBody.ts';
 import { defaultCameraEvidenceState, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
+import { countOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from '../body/RestoreSanitizers.ts';
 import { InteroceptiveStateEstimator } from '../system/InteroceptiveStateEstimator.ts';
 import { ActivePerceptionExecutor, defaultActivePerceptionExecutor, type ActivePerceptionModality } from '../system/ActivePerceptionExecutor.ts';
 import { ActivePerceptionNeuralSubstrate } from '../cognition/ActivePerceptionNeuralSubstrate.ts';
@@ -52,7 +53,22 @@ export class EmbodimentSubsystemRuntime {
   readonly cameraEvidence = {
     state: defaultCameraEvidenceState(),
     snapshot: () => structuredClone(this.cameraEvidence.state),
-    restore: (raw:any) => { this.cameraEvidence.state = { ...defaultCameraEvidenceState(), ...(raw ?? {}), last: raw?.last ?? null }; },
+    restore: (raw:any) => {
+      const d=defaultCameraEvidenceState();
+      const r=isPlainDataRecord(raw)?raw:{};
+      const last=ownDataValue(r,'last');
+      this.cameraEvidence.state={
+        version:1,
+        captures:countOr(ownDataValue(r,'captures'),d.captures),
+        lastAt:timestampOr(ownDataValue(r,'lastAt'),d.lastAt),
+        last:isPlainDataRecord(last)?last as unknown as CameraEvidence:null,
+        previousHash:stringOr(ownDataValue(r,'previousHash'),d.previousHash,128),
+        semanticVisionAvailable:ownDataValue(r,'semanticVisionAvailable')===true,
+        semanticFrames:countOr(ownDataValue(r,'semanticFrames'),d.semanticFrames),
+        unresolvedSemanticRequests:countOr(ownDataValue(r,'unresolvedSemanticRequests'),d.unresolvedSemanticRequests),
+        cumulativeNovelty01:unitOr(ownDataValue(r,'cumulativeNovelty01'),d.cumulativeNovelty01),
+      };
+    },
     record: (e:CameraEvidence) => { const st=this.cameraEvidence.state; st.captures++; st.lastAt=e.at; st.previousHash=st.last?.sha256 ?? st.previousHash; st.last=e; st.cumulativeNovelty01=Math.max(0,Math.min(1,Number.isFinite(st.cumulativeNovelty01*.9+e.novelty01*.1)?st.cumulativeNovelty01*.9+e.novelty01*.1:0)); }
   };
 
