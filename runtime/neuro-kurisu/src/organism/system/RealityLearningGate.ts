@@ -1,4 +1,7 @@
 import type { RealityOutcomeSource } from './RealityGroundingController.ts';
+import type { EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
+import { isTrustedEmbodiedOutcomeVerification } from './ExternalPostconditionVerifier.ts';
+import type { OutcomeVerification } from './OutcomeVerificationService.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
@@ -81,6 +84,8 @@ export class RealityLearningGate {
     success01:number;
     actuation:boolean;
     resource01:number;
+    embodiedAction?:EmbodiedActionResult|null;
+    postconditionVerification?:OutcomeVerification;
   }):RealityLearningDecision{
     const evidence=clamp(input.evidence01);
     const verified=clamp(input.verified01);
@@ -90,6 +95,8 @@ export class RealityLearningGate {
     const surprise=clamp(input.surprise01);
     const resource=clamp(input.resource01);
     const external=input.source==='external';
+    const trustedExternalPostcondition=isTrustedEmbodiedOutcomeVerification(input.postconditionVerification,input.embodiedAction);
+    const suppressExternalLearning=external && !trustedExternalPostcondition;
 
     const evidenceStrength=clamp(.46*evidence+.26*verified+.18*independent+.10*consequence);
     const surpriseValue=clamp(.65*surprise+.35*predictionError);
@@ -120,19 +127,26 @@ export class RealityLearningGate {
       memory*=.58;
       identity*=.35;
     }
+    if(suppressExternalLearning){
+      // External receipts without the exact OutcomeVerificationService token are
+      // diagnostic only. They cannot enter replay/policy/world/identity learning.
+      neural=0; world=0; memory=0; identity=0;
+    }
 
     neural=clamp(neural); world=clamp(world); memory=clamp(memory); identity=clamp(identity);
     const learning=clamp(.44*neural+.30*world+.18*memory+.08*identity);
-    const reward=clamp(.5+(clamp(input.reward01)-.5)*learning);
-    const gatedSurprise=clamp(surprise*(.45+.55*learning));
-    const success=clamp(.5+(clamp(input.success01)-.5)*learning);
+    const reward=suppressExternalLearning ? 0.5 :clamp(.5+(clamp(input.reward01)-.5)*learning);
+    const gatedSurprise=suppressExternalLearning ? 0 :clamp(surprise*(.45+.55*learning));
+    const success=suppressExternalLearning ? 0.5 :clamp(.5+(clamp(input.success01)-.5)*learning);
     const reason=!external
       ? 'simulation-teaches-predictive-substrate-with-reduced-cross-reality-promotion'
-      : input.actuation&&verified<.5
-        ? 'external-actuation-receipt-without-independent-effect-proof;identity-and-memory-updates-attenuated'
-        : verified>.5&&independent>.5
-          ? 'externally-grounded-and-independently-verified-learning-path'
-          : 'external-grounding-present-but-verification-strength-is-partial';
+      : suppressExternalLearning
+        ? 'external-action-receipt-without-exact-outcome-verification-token;learning-suppressed'
+        : input.actuation&&verified<.5
+          ? 'external-actuation-receipt-without-independent-effect-proof;identity-and-memory-updates-attenuated'
+          : verified>.5&&independent>.5
+            ? 'externally-grounded-and-independently-verified-learning-path'
+            : 'external-grounding-present-but-verification-strength-is-partial';
     const row:RealityLearningDecision={source:input.source,evidence01:evidence,verified01:verified,independent01:independent,consequence01:consequence,learningScale01:learning,neuralUpdateScale01:neural,worldModelUpdateScale01:world,memoryPromotionScale01:memory,identityUpdateScale01:identity,reward01:reward, surprise01:gatedSurprise, success01:success, reason};
     this.state.decisions++;
     if(external)this.state.externalDecisions++;else this.state.simulationDecisions++;

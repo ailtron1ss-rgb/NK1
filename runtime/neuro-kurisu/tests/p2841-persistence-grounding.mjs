@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { createTrustedEmbodiedActionFixture } from './helpers/trusted-embodied-action-fixture.mjs';
 
 const dir=await fs.mkdtemp(path.join(os.tmpdir(),'neuro-kurisu-p2841-persist-'));
 const stateFile=path.join(dir,'state.json');
@@ -17,26 +18,19 @@ const makeRuntime=()=>new OrganismRuntime({
 
 const runtime=makeRuntime();
 await runtime.init();
-runtime.embodiedActions.execute=async(action)=>({
-  version:1,action,status:'executed',realityClass:'device-observation',source:'android-termux',at:Date.now(),
-  before:{battery01:.8,thermal01:.2,cognitiveCapacity01:.9,awake:true,source:'android-termux'},
-  after:{battery01:.79,thermal01:.21,cognitiveCapacity01:.9,awake:true,source:'android-termux'},
-  stateDelta:{battery01:-.01,thermal01:.01,cognitiveCapacity01:0,awakeChanged:false},
-  effect01:.72,reason:'p2841-persistence-observation',capability:'android.sensors',
-  consequenceVerification:{attempted:true,independent:true,verified:true,sourceStable:true,freshBefore01:1,freshAfter01:1,changed01:.64,reason:'p2841-independent-observation',verificationMode:'independent-observation'}
-});
+runtime.embodiedActions.execute=async(_action,input={})=>createTrustedEmbodiedActionFixture('explore',{decisionId:input.decisionId});
 await runtime.step();
 const before=runtime.core.groundedWorldSnapshot();
-assert.ok(before.facts.some(x=>x.startsWith('external-observed:')));
-assert.ok(before.events.some(x=>x.label.startsWith('external:')));
+assert.equal(before.facts.some(x=>x.startsWith('external-observed:')),false,'telemetry-only execution must not create external world facts');
+assert.equal(before.events.some(x=>x.label.startsWith('external-observed:')),false,'telemetry-only execution must not create verified observation events');
 await runtime.stop();
 
 const restored=makeRuntime();
 await restored.init();
 const after=restored.core.groundedWorldSnapshot();
-assert.ok(after.facts.some(x=>x.startsWith('external-observed:')));
-assert.ok(after.events.some(x=>x.label.startsWith('external:')));
+assert.equal(after.facts.some(x=>x.startsWith('external-observed:')),false,'restore must not invent external world facts');
+assert.equal(after.events.some(x=>x.label.startsWith('external-observed:')),false,'restore must preserve the absence of verified world observations');
 assert.ok(after.revision>=before.revision);
 assert.ok(after.lastHash);
-console.log(JSON.stringify({ok:true,beforeRevision:before.revision,afterRevision:after.revision,afterHash:after.lastHash,externalFacts:after.facts.filter(x=>x.startsWith('external-observed:')).slice(-2)}));
+console.log(JSON.stringify({ok:true,beforeRevision:before.revision,afterRevision:after.revision,afterHash:after.lastHash,externalFacts:after.facts.filter(x=>x.startsWith('external-observed:')).slice(-2),telemetryOnly:true}));
 await restored.stop();

@@ -1259,6 +1259,7 @@ export class OrganismRuntime {
     const embodiedAction = await this.embodiedActions.execute(physicalAction, {
       spokenText: options.spontaneous ? '' : (language?.text || externalText || ''),
       speechEventId:language?.text ? stableSpeechEventId('cycle',cycle.state.tick,language.text) : undefined,
+      decisionId:cycle.decision.id,
       allowCamera: process.env.NEURO_ALLOW_AUTONOMOUS_CAMERA === '1',
       captureCamera: async (cameraId, retain) => {
         const keepForVision = retain || Boolean(this.config.visionBackend);
@@ -1280,7 +1281,7 @@ export class OrganismRuntime {
     });
     this.core.setEmbodiedRecoverySnapshot(this.embodiedRecovery.snapshot());
 
-    const postcondition = this.postconditionVerifier.assess(embodiedAction);
+    const postcondition = await this.postconditionVerifier.assess(embodiedAction);
     const grounded = this.realityGrounding.resolve({
       tick:cycle.state.tick,
       action:(embodiedAction.action as import('../core/types.ts').ActionKind) ?? selectedCandidate?.action ?? null,
@@ -1293,14 +1294,8 @@ export class OrganismRuntime {
       novelty01:clamp01(Math.max(transition.surprise,cycle.state.needs.novelty)),
       resource01:clamp01(resourceAllocation.learning01),
       contextKey:causalContextKey,
+      postcondition,
     });
-    if (grounded.source==='external') {
-      grounded.verified01 = Math.min(grounded.verified01, postcondition.verified01);
-      grounded.independent01 = Math.min(grounded.independent01, postcondition.independent01);
-      grounded.evidence01 = Math.min(grounded.evidence01, Math.max(postcondition.evidence01, .18));
-      grounded.consequence01 = Math.min(grounded.consequence01, postcondition.consequence01 + .35*(1-postcondition.verified01));
-      grounded.reason = `${grounded.reason};postcondition=${postcondition.proofClass}`;
-    }
     this.realityGrounding.refineLatest({verified01:grounded.verified01,independent01:grounded.independent01,evidence01:grounded.evidence01,consequence01:grounded.consequence01,reason:grounded.reason});
     this.core.setRealityGrounding(this.realityGrounding.snapshot());
 
@@ -1312,9 +1307,9 @@ export class OrganismRuntime {
     });
     if (grounded.source==='external') {
       this.core.recordGroundedExternalOutcome({
-        at:cycle.state.at, action:String(embodiedAction.action), status:embodiedAction.status, proofClass:postcondition.proofClass,
+        at:cycle.state.at, action:String(embodiedAction.action), status:embodiedAction.status, proofClass:grounded.proofClass,
         verified01:grounded.verified01, independent01:grounded.independent01, evidence01:grounded.evidence01,
-        consequence01:grounded.consequence01, claim:postcondition.reason, provenanceId:`outcome:${cycle.state.tick}:${embodiedAction.at}`,
+        consequence01:grounded.consequence01, claim:postcondition.notes??grounded.reason, provenanceId:`outcome:${cycle.state.tick}:${embodiedAction.executionId}`,
         divergence01:shadowResolution.divergence01,
       });
     }
@@ -1334,6 +1329,8 @@ export class OrganismRuntime {
       reward01:grounded.reward01, success01:grounded.success01,
       actuation:Boolean(embodiedAction.action==='respond'||embodiedAction.action==='rest'),
       resource01:clamp01(resourceAllocation.learning01),
+      embodiedAction,
+      postconditionVerification:postcondition,
     });
     if(grounded.source==='external') {
       const combinedCausalReadiness01=clamp01(.62*holdoutReadiness01+.38*calibrationReadiness01);
