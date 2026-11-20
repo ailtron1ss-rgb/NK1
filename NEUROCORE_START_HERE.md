@@ -9,7 +9,7 @@
 - Exact source Actions: 11/11 SUCCESS on `960a2d540ef952486a0271a0e5332caec601b36a`.
 - Core [44743562538](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562538), Hexis lineage [44743562613](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562613), affect restore [44743561933](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743561933), ActionGateway [44743562053](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562053), UserModel forget [44743562348](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562348).
 - Last full census before PR #1031: 1,032 refs / 1,016 unique heads / 306 open PRs; #1031 adds one known branch and one open PR. See [delta](docs/consolidation/branch-census-delta-2026-11-20.md).
-- Draft PR #1031: concept restore hardening. Focused workflow [44744691480](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44744691480) passed; three broad regressions were still running at checkpoint.
+- Draft PR #1031: concept restore hardening at head `da4bc27c716d9207de1343e9d2d3aac7efa364c2`; all 8/8 exact-head Actions passed, including focused workflow [44745839885](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44745839885). Draft docs PR #1032 has 5/5 Actions SUCCESS. Neither PR was merged.
 - Source branch is unprotected. No PR was merged/closed and no branch deleted/force-updated by this run.
 
 ## Release truth

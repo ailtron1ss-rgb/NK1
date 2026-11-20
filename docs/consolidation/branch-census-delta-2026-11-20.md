@@ -30,3 +30,11 @@ The 17-ref family remains at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`; its ful
 ## Safety interpretation
 
 Equal HEAD is not sufficient for branch deletion. Every alias still requires joins against open and closed PR heads/bases, tags, workflows, downstream branch ancestry, deployments, rulesets and external references. Keep the 17-ref family intact until a complete disposition ledger exists.
+
+
+## Second known delta — PR #1032
+
+- Draft documentation PR [#1032](https://github.com/ailtron1ss-rgb/NK1/pull/1032) adds `maintenance/nk1-live-checkpoint-2026-11-20` as a second new ref after the 1,032/1,016/306 full snapshot.
+- Its exact head `0e8ea75638a3b51f10131e08f5a966e2f7350f22` passed 5/5 Actions.
+- Together with PR #1031, the known minimum after the last full pagination is **1,034 branch refs / 1,018 unique HEADs / 308 open PRs** (157 source-base, 151 other-base). This remains a delta, not a new complete pagination.
+- PR #1031 advanced to `da4bc27c716d9207de1343e9d2d3aac7efa364c2`; all 8/8 exact-head Actions passed, including explicit cap/counter restore regressions.

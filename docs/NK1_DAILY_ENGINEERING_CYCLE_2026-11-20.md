@@ -40,7 +40,7 @@ This run then implemented a narrow restore-integrity fix on isolated Draft PR [#
 
 - Last fully paginated snapshot before PR #1031: **1,032 refs / 1,016 unique HEADs / 1 duplicate group / 16 excess aliases**.
 - Same snapshot: **306 open PRs**, 155 based on `workpass70-source`, 151 on other refs.
-- PR #1031 adds one known branch ref and one open PR. Derived known minimum: **1,033 refs / 1,017 unique HEADs / 307 open PRs**; this is a delta from the last full snapshot, not a second full pagination.
+- PR #1031 adds one known branch ref and one open PR. Derived known minimum: **1,034 refs / 1,018 unique HEADs / 308 known-minimum open PRs**; this is a delta from the last full snapshot, not a second full pagination.
 - [Branch census delta](consolidation/branch-census-delta-2026-11-20.md) preserves the distinction.
 - No PR merge/close, branch deletion, force-push or direct source write.
 
