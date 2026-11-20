@@ -22,12 +22,12 @@ multimodal.restore({
   fused: -3,
   lastConfidence: 7,
   lastSalience: null,
-  modalities: { text: 'corrupt', speech: null, vision: 5 },
+  modalities: { text: 'corrupt', speech: null, audio: 3, vision: 5 },
   visionCaptures: -5,
   recent: 'not-an-array',
 });
 const mm = multimodal.snapshot();
-assert.deepEqual(mm.modalities, { ...defaultMultimodalState().modalities, vision: 5 }, 'only valid counts survive; string/null counters fall back');
+assert.deepEqual(mm.modalities, { ...defaultMultimodalState().modalities, audio: 3, vision: 5 }, 'valid current-source audio/vision counts survive; string/null counters fall back');
 assert.equal(mm.events, 0);
 assert.equal(mm.fused, 0);
 assert.equal(mm.visionCaptures, 0);
