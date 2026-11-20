@@ -94,13 +94,14 @@ assert.deepEqual(evidenceRestored.snapshot(), evidenceSnapshot, 'valid evidence 
 
 // --- DeviceEvidenceLedger -----------------------------------------------------
 const ledger = new DeviceEvidenceLedger();
-ledger.restore({ probes: 'x', verifiedProbes: -9, hostProbes: 1.5, lastStatus: 'TOTALLY_VERIFIED', records: [{ bogus: true }, 7] });
+ledger.restore({ probes: 'x', verifiedProbes: -9, hostProbes: 1.5, lastStatus: 'TOTALLY_VERIFIED', records: [{ id: 'valid-ledger-row', at: 1, status: 'HOST_PROBE', capabilityDigest: '', telemetryFresh: false, commandSuccessRate01: 0, source: 'host' }, { bogus: true }, 7] });
 const le = ledger.snapshot();
 assert.equal(le.probes, 0);
 assert.equal(le.verifiedProbes, 0, 'a hostile snapshot must not inflate verified probes');
 assert.equal(le.hostProbes, 0);
 assert.equal(le.lastStatus, defaultDeviceEvidence().lastStatus, 'unknown status falls back');
 assert.equal(le.records.length, 1, 'only plain-record ledger rows survive');
+assert.equal(le.records[0].id, 'valid-ledger-row', 'a schema-valid evidence row survives while malformed rows are dropped');
 assert.equal(ledger.certification().status, 'unavailable', 'a corrupted snapshot must not certify a device');
 
 // --- EmbodimentSubsystemRuntime camera evidence -------------------------------
