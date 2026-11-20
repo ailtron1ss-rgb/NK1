@@ -1,9 +1,9 @@
 # NeuroCore — repository working rules
 
-> **Current continuation checkpoint — 2026-11-18:** start with [README.md](README.md), [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) and [the 100% completion program](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md), then refresh the live source SHA, every page of open PRs and exact-head Actions. Confirmed source baseline for this checkpoint: `bee2b133fdedd48723bc49b3eedae5f0df929c1c`; never assume it remains current. PR #913 is merged; 19 push-triggered Actions runs on that exact SHA concluded SUCCESS. This does not prove real-device, independent holdout, long-soak or Release readiness. `main` remains release/metadata and is not the direct source merge target. Historical WorkPass checkpoints remain archival.
->
-> **Release gate:** latest published ZIP including prerelease remains the 2026-10-19 WorkPass70 Hotfix asset; human license review is still pending and redistribution approval is false. Do not claim November source changes are released.
->
+> **Verified runtime-source baseline — 2026-11-20:** use [README.md](README.md), [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) and [the 100% completion program](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md), then refresh the live source SHA, every page of open PRs and exact-head Actions. Runtime/source baseline after PR #1031: `950989fe0081e3760471d44beb6e95bb9e0bc82b` (squash merge into `workpass70-source`; later documentation-only commits may advance the branch). Parent source `960a2d540ef952486a0271a0e5332caec601b36a` had 11/11 push-triggered Actions SUCCESS. PR #1031 was merged after 8/8 exact-head Actions passed on `46d4179171ae16a2b9fb2876efc7db0a815eef03`. These checks do not prove real-device, independent holdout, long-soak or Release readiness.
+
+> **Release gate:** latest published ZIP including prerelease remains the 2026-10-19 WorkPass70 Hotfix asset (136,354,713 bytes; GitHub metadata SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`). ZIP bytes have not been materialized in this environment, so the digest is metadata-only and archive extraction/source parity remain UNVERIFIED. Human license review is pending and redistribution approval is false. Do not claim November source changes are released.
+
 > **Registry freshness:** `engineering-os/aspects.v1.json` is a 2026-11-06 snapshot tied to an older source SHA. Its status counts are not current readiness evidence until each aspect is reviewed against the live tree and new evidence.
 
 ## Historical checkpoint — 2026-11-01 (archival snapshot)

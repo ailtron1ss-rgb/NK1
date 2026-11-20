@@ -1,30 +1,29 @@
-## Актуальный live checkpoint — 18 ноября 2026
+## Актуальный live checkpoint — 20 ноября 2026
 
 **Каноническая исходная ветка:** `workpass70-source`  
-**Проверенный source HEAD:** `bee2b133fdedd48723bc49b3eedae5f0df929c1c` (17 ноября 2026, после merge PR #913).  
-**Релизная линия:** `main` остаётся release/metadata-веткой; source changes не направляются напрямую в `main`.
+**Проверенная runtime/source база после PR #1031:** `950989fe0081e3760471d44beb6e95bb9e0bc82b` (до этого документационного обновления).  
+**Текущий `main`:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; release/metadata only.
 
-### Проверенные изменения и evidence на live source HEAD
+### Live source и проверки
 
-- PR [#913](https://github.com/ailtron1ss-rgb/NK1/pull/913) Cognitive Immune health monitor уже merged в `workpass70-source`.
-- Для SHA `bee2b133fdedd48723bc49b3eedae5f0df929c1c` GitHub Actions вернул 19 push-triggered workflow runs; все 19 завершились SUCCESS. Это подтверждает подключённые проверки, но не заменяет real device/browser E2E, independent holdout, local-model smoke или длительный soak.
-- Основные evidence: [core regression](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153691143), [unified organism runtime](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153691079), [memory integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153690888), [ActionGateway governance](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153691295), [verified learning](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153690962).
-- На момент snapshot API вернул 100 открытых PR на каждой из первых четырёх страниц: обнаружено не менее 400 открытых PR. Это нижняя граница выборки; полная пагинация и граф зависимостей обязательны до массовой интеграции.
-- Branch protection для `workpass70-source` на момент проверки отключена (`protected=false`, required status checks отсутствуют). Требуется подготовить и проверить безопасную policy обязательных checks.
-- Реестр `engineering-os/aspects.v1.json` и его human projection датированы 6 ноября и привязаны к старому observedSourceHead `bcd48b1fd408a1539ac537813730669c35cfb3a2`. Его status counts — исторический snapshot, не текущий процент готовности; повторно проверять аспекты на live SHA перед изменением статусов.
+- PR [#868](https://github.com/ailtron1ss-rgb/NK1/pull/868) был объединён внешним действием в source на `960a2d540ef952486a0271a0e5332caec601b36a`: bounded MeTTa concept export. Это external/observed; Hyperon worker и исполнение MeTTa не подключены.
+- В этом цикле PR [#1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) объединён в `workpass70-source` squash-коммитом `950989fe0081e3760471d44beb6e95bb9e0bc82b`: hostile-state restore hardening, prototype-safe concept keys, bounded restore и locale-neutral MeTTa serialization. Все 8/8 exact-head Actions прошли на исходном PR HEAD `46d4179171ae16a2b9fb2876efc7db0a815eef03`.
+- На точном source SHA все **11/11 push-triggered Actions SUCCESS**. Основные: [core](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562538), [Hexis lineage](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562613), [affect restore](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743561933), [ActionGateway](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562053), [UserModel forget](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562348).
+- Последняя полная пагинация до PR #1031: 1,032 refs / 1,016 unique HEADs / 1 duplicate-tip group / 16 aliases; 306 open PRs (155 source-base, 151 other-base). После добавления refs #1031 и #1032 и merge #1031 известный минимум составляет 1,034 refs / 1,018 unique HEADs / 307 open PRs; это derived delta, не новая полная пагинация. См. [census delta](docs/consolidation/branch-census-delta-2026-11-20.md).
+- [PR #1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) — MERGED; 8/8 exact-head Actions SUCCESS on `46d4179171ae16a2b9fb2876efc7db0a815eef03`. No Release ZIP change.
+- `workpass70-source` не защищена; required checks не enforced. Aspect registry 6 ноября — исторический snapshot, не текущая readiness оценка.
 
 ### Release и юридический gate
 
-- Последний stable Release, видимый в API: tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
-- Последний опубликованный ZIP с учётом prerelease: tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- Более новый ZIP в проверенном Release inventory не обнаружен. Ноябрьские source changes нельзя считать включёнными в этот ZIP.
-- `contracts/RELEASE_LICENSE_REVIEW.json` остаётся pending: root project `NOASSERTION`, runtime private/all-rights-reserved, redistribution approval отсутствует; 477 locked npm components и 8 source archives требуют human review. Новый Release запрещён до закрытия обязательного license gate.
+- Stable ZIP: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- Последний опубликованный ZIP с prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, metadata SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- ZIP bytes не материализованы; independent hash, extraction manifest и source/ZIP parity не подтверждены. Ноябрьские source changes не считаются released.
+- `contracts/RELEASE_LICENSE_REVIEW.json` pending: root `NOASSERTION`, runtime private/all-rights-reserved, 477 locked npm components и 8 source archives требуют human review; redistribution approval=false.
+- [Daily engineering cycle 20 Nov](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-20.md); [20 streams / 305 work units](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md).
 
-### Единая программа завершения
+> Исторические checkpoint-и ниже не являются live truth. Перед каждым действием заново считывай source SHA, PR, exact-SHA Actions и Release metadata.
 
-Интегрированная программа из 20 потоков и 305 work units: [NK1 — программа функционального завершения до 100%](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md). Она использует `engineering-os/aspects.v1.json` как машинный источник статусов и не повышает готовность сама по себе.
-
-> Предыдущие checkpoint-и ниже сохранены как исторические записи. Для новых работ всегда получать live branch SHA, PR state и exact-head Actions заново.
+---
 
 ---
 
