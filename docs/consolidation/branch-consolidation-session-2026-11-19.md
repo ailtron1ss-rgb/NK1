@@ -206,3 +206,33 @@ The current open-PR head/base scan finds four live references to aliases in that
 The other 13 names are not referenced as a head or base by the current open-PR list. That is not yet sufficient to retire them: closed/merged PR provenance, tags/releases, workflow filters, deployment references, documentation and external consumers still require separate review.
 
 The branch count did **not** decrease when PR #1001 merged because the aspect/donor refs are preserved. This is intentional until the reference/dependency audit authorizes branch retirement. The available GitHub operations in this session still expose no branch-ref deletion operation.
+
+
+## Selective consolidation — ten-stage master-plan donor family (PR #1003)
+
+PR [#1003](https://github.com/ailtron1ss-rgb/NK1/pull/1003) was merged into `main` on 2026-11-20.
+
+- Current `main` base: `202b180631bf74cbf9f733a2081cf78f75b36e8c`.
+- Consolidation branch: `consolidation/master-plan-10stage-checklist-current-20261120`.
+- Merge commit / current `main` HEAD at verification: `27f54b33c4b3b9cf243a422c406d3e18d7dae40b`.
+- Donor PR family reviewed: #859, #847, #842, #837, #829, #825 and #750. All changed the same legacy 10-stage master-plan document; their variants contained 71 checklist items and two wording-level differences. #859 also added a validator. Exact donor blob SHA groups and content were inspected.
+- Current-base port preserves the dated document and the original Status Progression Protocol from current `main` (the donor rewrites had removed it); reconciles both wording variants; adds 10 mandatory-work and 10 exit-criteria sections; preserves all 71 checklist items; and links the separate 30-phase / 300-step plan so their roles remain explicit.
+- Added `scripts/verify-ten-stage-master-plan.sh` under a new path. Existing `scripts/verify-master-plan-completeness.sh` was not overwritten because it validates the 16-phase plan.
+- Actual proposed document was inspected: 10/10 stages, 10/10 mandatory sections, 10/10 exit sections, 71 checklist entries, 6 non-negotiable rules, status protocol present, detailed-plan link present.
+- Validator was syntax-checked with `bash -n` and executed against a generated structural fixture: PASS. GitHub Actions / check-runs were not triggered for this docs-only PR (0 check-runs; no Actions conclusion claimed).
+- After merge, PRs #859/#847/#842/#837/#829/#825/#750 were closed as superseded with individual provenance comments. Their branch refs and historical diffs remain intact; no branch deletion or force-move was performed.
+- Scope: docs + standalone validator only; no runtime source, dependency, release ZIP, `workpass70-source` or release-tag change.
+
+## Branch census after ten-stage plan consolidation (2026-11-20)
+
+A fresh full pagination read after the merge and PR closures returned:
+
+- **1,005 branch refs**.
+- **989 unique HEAD commits**.
+- **16 excess names** beyond one branch name per unique HEAD.
+- One exact shared-HEAD group of 17 aliases at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`.
+- **331 open PRs**.
+- `workpass70-source` HEAD: `25fc8bb46d23e595160f8eed30df6c9aefd8baa1`.
+- `main` HEAD: `27f54b33c4b3b9cf243a422c406d3e18d7dae40b`.
+
+The ref count increased by one from the preceding 1,004 snapshot because this consolidation created one new branch. Merging PR #1003 and closing seven superseded PRs did not delete their source refs. No branch refs were deleted. The repository remains well above the requested few-dozen target; old branch families still require file/blob/path, unique-commit, active-PR, tags/releases, workflow, ruleset, deployment, documentation and external-reference review before safe retirement.
