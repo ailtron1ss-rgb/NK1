@@ -1,3 +1,12 @@
+## [NK1][Branch consolidation] Current-source integrations and verification (2026-11-20)
+
+- PR #1010 (f62c36d): hardened measured motor-frame input boundaries in the 2.5D embodiment adapter; own-data snapshots, bounded dense arrays, accessor rejection without getter invocation, and no fallback from an invalid measured angle to the target. Six exact-head Actions checks passed.
+- PR #1012 (1a88268): added the versioned 2.5D asset manifest/schema, filesystem inventory, validator/CLI and 22 regressions. Inventory skips symlinks, bounds total entries/depth/files/bytes, reads bounded PNG headers and checks opened-file identity. Eleven exact-head workflows passed. This is an asset-admission contract, not a production Kurisu art pack.
+- PR #1013 (918118e): connected the Original 2D renderer to the shared organism avatar motor planner while retaining renderer-local styling, body channels and manual pose overrides. Nine exact-head workflows passed.
+- PR #1014 (c932a37): restored 48 projection and renderer-mapping assertions plus app bridge/VRM regression wiring; the runtime bridge implementations were already present in current source. Eight exact-head workflows passed.
+- PR #1021 (30f64b7): hardened persisted-state restoration across multimodal perception/situation, evidence compilation, semantic world body, sensorium, recovery and camera evidence. Added bounded own-data sanitizers, revoked-Proxy fail-closed handling, 91 adversarial assertions and retained the newer DeviceEvidenceLedger PlainDataSnapshot implementation/test. All 50/50 exact-head Actions workflows passed, including runtime typecheck, Unified organism runtime and Core regression.
+- Historical donor PRs #671, #673, #675 and #683 were closed as superseded only after their unique contributions were carried forward or confirmed already present. Their source branches were retained; no branch-ref deletion is implied by PR closure.
+- main and the October 19 Release ZIP were not modified by these integrations. These merges do not prove byte-for-byte parity between the Release ZIP and workpass70-source.
 ## [NK1][Embodiment] Motor honesty: prototype-safe depth rig and measured planar IK (2026-11-20)
 
 - Use null-prototype maps for depth-rig pose deltas, MotorFrame pose deltas and composed world transforms so legal node IDs such as `__proto__` and `constructor` survive as ordinary own keys.
