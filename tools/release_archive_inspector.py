@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Inspect a published NK1 ZIP without extracting it; report source drift separately."""
 from __future__ import annotations
-import argparse, hashlib, json, os, re, stat, subprocess, zipfile
+import argparse, hashlib, json, os, re, stat, subprocess, unicodedata, zipfile
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -130,7 +130,8 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
                 infos = zipped.infolist()
                 if len(infos) > MAX_MEMBERS:
                     errors.append("archive exceeds the maximum member count")
-                seen: set[str] = set()
+                seen: dict[str, bool] = {}
+                seen_portable: set[str] = set()
                 total_size = 0
                 valid_infos: list[tuple[zipfile.ZipInfo, str]] = []
                 for info in infos:
@@ -143,12 +144,21 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
                     if stat.S_ISLNK(mode):
                         errors.append(f"symbolic-link member is not accepted: {member_path}")
                         continue
-                    if info.is_dir():
-                        continue
+                    is_directory = info.is_dir()
                     if member_path in seen:
-                        errors.append(f"duplicate ZIP member: {member_path}")
+                        if seen[member_path] != is_directory:
+                            errors.append(f"file/directory ZIP path collision: {member_path}")
+                        else:
+                            errors.append(f"duplicate ZIP member: {member_path}")
                         continue
-                    seen.add(member_path)
+                    portable_path = unicodedata.normalize("NFC", member_path).casefold()
+                    if portable_path in seen_portable:
+                        errors.append(f"case-insensitive duplicate ZIP member: {member_path}")
+                        continue
+                    seen[member_path] = is_directory
+                    seen_portable.add(portable_path)
+                    if is_directory:
+                        continue
                     if info.file_size > MAX_MEMBER_BYTES:
                         errors.append(f"member exceeds the size limit: {member_path}")
                         continue
