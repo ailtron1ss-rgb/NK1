@@ -435,3 +435,36 @@ Last full paginated census at this point:
 - `workpass70-source` HEAD at the last snapshot before this journal append: `3376ccb15aeb37866699f868859d1426d9f3df3c`.
 
 No branch refs were deleted in these passes. Closing/squash-merging PRs leaves source refs intact. The 1008 refs are still far above the desired few-dozen target; the 17 aliases must be checked against active PR bases, historical PRs, releases/tags, workflows, rulesets, deployments, docs and external consumers before any retirement.
+
+
+## Selective consolidation — immutable trusted holdout manifest on schema-v2 scorer (PR #1007)
+
+PR [#1007](https://github.com/ailtron1ss-rgb/NK1/pull/1007) merged into `workpass70-source` on 2026-11-20.
+
+- Current-source base: `b8cf3005eede4361bfcddc1f24a4c93520c162e4`.
+- Branch: `consolidation/memory-trusted-holdout-manifest-current-20261120`.
+- Exact tested PR head: `89fbb1612a69b4a7cc442dd69cec95d6c4789181`.
+- Merge commit / resulting source HEAD: `f0824bc4d88c3b4068dd5986f148559e584a883e`.
+- Six files changed: workflow, current scorer, current scorer tests, new trust verifier, empty manifest, Russian operations guide. No runtime memory store, ranking algorithm, dependency, `main` or Release ZIP change.
+- Current schema-v2 scorer `nk1_memory_evidence.py` blob `58b843cbe126ddaab168a4d6fe2dbea8fa4354e1` remains based on the source-group/cluster-bootstrap scorer. It imports the new verifier, adds `trustedImmutableHoldoutManifest` to global promotion gates and returns trust status separately. The old donor scorer was not used as a replacement.
+- New `nk1_memory_trust.py` blob `42218f2f5a147c4ac712b80810e19c31e8f23b81`: exact dataset fingerprint + provenance match, out-of-band SHA-256 pin, timestamped reviewer receipt, HTTPS approval reference, regular-file/symlink guard, `O_NOFOLLOW` where supported, and 1 MiB maximum manifest size.
+- Checked-in `trusted_memory_holdouts.json` blob `2c8f962fb62c8a27cde95cbbe6aff9fa63621863` contains an empty `approvedDatasets` array. No real dataset was approved; no Actions variable was configured. An unset pin therefore keeps real promotion fail-closed. Positive test uses only a temporary fixture manifest and cannot change the repository allowlist.
+- Four new focused tests: self-asserted provenance rejected, exact out-of-band pinned temporary manifest accepted, changed digest/unlisted dataset rejected, symlinked manifest rejected. The prior source-group schema-v2 tests remain intact.
+- Existing workflow passes `vars.NK1_TRUSTED_HOLDOUT_MANIFEST_SHA256`. If absent it resolves empty and fails closed.
+- Exact-head workflows: WorkPass72-73 Inspect (**all steps PASS**: scorer unit suite, isolated MemoryOS2 experiment, HMAC-only evidence export, pinned Inspect install, ACP compatibility import, cognitive and memory mock Inspect tasks, runtime route contract and runtime typecheck); UserModel explicit-forget PASS; WorkPass79 PASS; original 2D asset contract PASS. **4/4 returned workflow runs SUCCESS**.
+- Historical donor PR #860 was closed as superseded with provenance comment. Its old ACP base (#853) had itself been replaced by #871. The current scorer source groups (#755/#960) and the trusted-manifest gate (#1007) are independent layers: source-group independence does not establish who reviewed/approved the dataset, and a pinned manifest does not substitute for auditing actual source independence.
+- Historical #744/#769/#770 donor PRs are already closed; #755 and #960 are merged canonical source-group layers. Donor branches remain intact; no refs deleted.
+
+## Branch census after trusted holdout gate merge (2026-11-20)
+
+Fresh full pagination returned:
+
+- **1,009 branch refs**.
+- **993 unique HEAD commits**.
+- **16 excess names** beyond one branch name per unique HEAD.
+- One exact shared-HEAD group of 17 branch names at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`.
+- **314 open PRs**.
+- `workpass70-source` HEAD: `f0824bc4d88c3b4068dd5986f148559e584a883e`.
+- `main` HEAD: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
+
+The ref total rose by one from the prior 1,008 snapshot because this current-source consolidation created one new branch. PR #1007 merge and closure of #860 did not delete its source ref. No refs were deleted. The desired few-dozen target remains unmet; the exact shared-HEAD alias group is still awaiting full open/closed PR, tags/releases, workflows, rulesets, deployments, docs and external-consumer clearance.
