@@ -6,6 +6,14 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/body/PerceptionRouter.ts"
       - "runtime/neuro-kurisu/src/organism/body/DeviceEvidenceLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/body/RestoreSanitizers.ts"
+      - "runtime/neuro-kurisu/src/organism/body/MultimodalPerception.ts"
+      - "runtime/neuro-kurisu/src/organism/body/MultimodalSituationModel.ts"
+      - "runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts"
+      - "runtime/neuro-kurisu/src/organism/body/P35SemanticWorldBody.ts"
+      - "runtime/neuro-kurisu/src/organism/body/P37EmbodiedSensorium.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodiedRecoveryController.ts"
+      - "runtime/neuro-kurisu/tests/embodiment-restore-sanitization-integrity.mjs"
       - "runtime/neuro-kurisu/src/organism/core/EmbodimentSubsystemRuntime.ts"
       - "runtime/neuro-kurisu/tests/embodiment-perception-routing-restore-integrity.mjs"
       - "runtime/neuro-kurisu/tests/device-evidence-ledger-restore-integrity.mjs"
@@ -16,6 +24,14 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/body/PerceptionRouter.ts"
       - "runtime/neuro-kurisu/src/organism/body/DeviceEvidenceLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/body/RestoreSanitizers.ts"
+      - "runtime/neuro-kurisu/src/organism/body/MultimodalPerception.ts"
+      - "runtime/neuro-kurisu/src/organism/body/MultimodalSituationModel.ts"
+      - "runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts"
+      - "runtime/neuro-kurisu/src/organism/body/P35SemanticWorldBody.ts"
+      - "runtime/neuro-kurisu/src/organism/body/P37EmbodiedSensorium.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodiedRecoveryController.ts"
+      - "runtime/neuro-kurisu/tests/embodiment-restore-sanitization-integrity.mjs"
       - "runtime/neuro-kurisu/src/organism/core/EmbodimentSubsystemRuntime.ts"
       - "runtime/neuro-kurisu/tests/embodiment-perception-routing-restore-integrity.mjs"
       - "runtime/neuro-kurisu/tests/device-evidence-ledger-restore-integrity.mjs"
@@ -46,5 +62,7 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Perception-routing restore integrity
         run: npm --prefix runtime/neuro-kurisu run test:embodiment-perception-routing-restore
+      - name: Body subsystem restore sanitization integrity
+        run: npm --prefix runtime/neuro-kurisu run test:embodiment-restore-sanitization
       - name: Embodied interaction boundary (aspect 10)
         run: npm --prefix runtime/neuro-kurisu run test:aspect10:interaction
