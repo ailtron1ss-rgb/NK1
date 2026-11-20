@@ -38,6 +38,27 @@ assert.deepEqual(mm.recent, []);
 multimodal.observe({ modality: 'text', summary: 'hello', confidence: 0.5, salience: 0.5, evidence: [] });
 assert.equal(multimodal.snapshot().events, 1, 'counter must be a finite integer after restore');
 
+// A revoked Proxy can throw even during Array.isArray(); restore must fail closed.
+{
+  const revoked = Proxy.revocable({ events: 7 }, {});
+  revoked.revoke();
+  const safe = new MultimodalPerception();
+  assert.doesNotThrow(() => safe.restore(revoked.proxy));
+  assert.deepEqual(safe.snapshot(), defaultMultimodalState(), 'revoked Proxy restores to safe defaults');
+}
+
+// A throwing reflection trap is contained; ordinary accessors are never invoked.
+{
+  const trap = new Proxy({ events: 7 }, {
+    getOwnPropertyDescriptor() {
+      throw new Error('hostile descriptor trap');
+    },
+  });
+  const safe = new MultimodalPerception();
+  assert.doesNotThrow(() => safe.restore(trap));
+  assert.deepEqual(safe.snapshot(), defaultMultimodalState(), 'throwing Proxy traps restore to safe defaults');
+}
+
 // A valid snapshot round-trips exactly.
 const multimodalSource = new MultimodalPerception();
 multimodalSource.observe({ modality: 'vision', summary: 'frame', confidence: 0.7, salience: 0.6, evidence: ['cam'] });
