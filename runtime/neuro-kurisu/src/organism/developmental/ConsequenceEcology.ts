@@ -326,6 +326,48 @@ function boundedStringArray(value: unknown, maxItems: number, maxLength: number)
     value.every(item => boundedString(item, maxLength, false));
 }
 
+/**
+ * Conservatively merges calibration rows that reuse any evidence lineage token.
+ * Repeated source IDs, independence keys, observations, or exact evidence references
+ * are treated as potentially correlated; distinct outcome IDs alone do not prove independence.
+ */
+function countIndependentCalibrationEvidenceClusters(
+  rows: readonly ConsequenceOutcomeCalibrationRecord[],
+): number {
+  if (rows.length === 0) return 0;
+  const parent = rows.map((_, index) => index);
+  const find = (value: number): number => {
+    let root = value;
+    while (parent[root] !== root) root = parent[root]!;
+    while (parent[value] !== value) {
+      const next = parent[value]!;
+      parent[value] = root;
+      value = next;
+    }
+    return root;
+  };
+  const join = (left: number, right: number): void => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot !== rightRoot) parent[Math.max(leftRoot, rightRoot)] = Math.min(leftRoot, rightRoot);
+  };
+  const ownerByToken = new Map<string, number>();
+  rows.forEach((row, index) => {
+    const tokens = new Set([
+      ...row.sourceIds.map(value => `source:${value}`),
+      ...row.independenceKeys.map(value => `independence:${value}`),
+      ...row.evidenceObservationIds.map(value => `observation:${value}`),
+      `evidence-ref:${row.evidenceRef}`,
+    ]);
+    for (const token of tokens) {
+      const owner = ownerByToken.get(token);
+      if (owner === undefined) ownerByToken.set(token, index);
+      else join(index, owner);
+    }
+  });
+  return new Set(rows.map((_, index) => find(index))).size;
+}
+
 function isRestorableContext(value: unknown): boolean {
   if (!isRecord(value)) return false;
   const goal = value.goalEcology;
@@ -1345,6 +1387,12 @@ export class ConsequenceEcologyEngine {
     const effectiveCalibrationSampleSize = squaredCalibrationWeight > 0
       ? totalCalibrationWeight ** 2 / squaredCalibrationWeight
       : 0;
+    const calibrationIndependentEvidenceClusterCount =
+      countIndependentCalibrationEvidenceClusters(calibrations);
+    const lineageAdjustedEffectiveSampleSize = Math.min(
+      effectiveCalibrationSampleSize,
+      calibrationIndependentEvidenceClusterCount,
+    );
     const meanCalibrationBrier01 = calibrations.length
       ? calibrations.reduce((sum, row) => sum + row.brierScore01, 0) / calibrations.length
       : null;
@@ -1407,6 +1455,7 @@ export class ConsequenceEcologyEngine {
       ...(calibrationObservationCount < 20 ? ['need-at-least-20-distinct-observations'] : []),
       ...(calibrationEvidenceObservationCount < 20 ? ['need-at-least-20-distinct-evidence-observations'] : []),
       ...(effectiveCalibrationSampleSize < 15 ? ['effective-sample-size-below-15'] : []),
+      ...(calibrationIndependentEvidenceClusterCount < 15 ? ['independent-evidence-clusters-below-15'] : []),
       ...(calibrationSourceIds.size < 3 ? ['need-at-least-3-distinct-evidence-sources'] : []),
       ...(calibrationIndependenceKeys.size < 3 ? ['need-at-least-3-distinct-independence-keys'] : []),
       ...(calibrationSourceClasses.size < 2 ? ['need-at-least-2-evidence-source-classes'] : []),
@@ -1446,6 +1495,8 @@ export class ConsequenceEcologyEngine {
         ? 1 - weightedMeanCalibrationBrier01 / weightedMeanSharedFutureBaselineBrier01
         : null,
       effectiveCalibrationSampleSize,
+      calibrationIndependentEvidenceClusterCount,
+      lineageAdjustedEffectiveSampleSize,
       expectedCalibrationError01,
       weightedExpectedCalibrationError01,
       calibrationBins,
