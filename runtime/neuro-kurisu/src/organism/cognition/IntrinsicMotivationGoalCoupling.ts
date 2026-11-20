@@ -1,5 +1,6 @@
 import { B272EndogenousGoalGenesis, type B272StepInput, type B272StepResult } from './B272EndogenousGoalGenesis.ts';
 import { IntrinsicMotivationEngine, type IntrinsicDriveState } from './IntrinsicMotivationEngine.ts';
+import { SelfPriorDensityModel, type SelfPriorObservation } from './SelfPriorDensityModel.ts';
 
 export type IntrinsicDriveSignals = Parameters<IntrinsicMotivationEngine['update']>[0];
 export type EndogenousCycleInput = Omit<B272StepInput, 'intrinsicDrive01' | 'intrinsicDriveConfidence01'>;
@@ -9,6 +10,9 @@ export interface IntrinsicMotivationGoalStepInput {
   drive: IntrinsicDriveSignals;
   /** Caller-calibrated trust in the drive estimate, independent of drive magnitude. */
   driveConfidence01: number;
+  /** Current self-latent observation; scored before it updates the learned prior. */
+  selfObservation?: readonly number[];
+  at?: number;
 }
 
 export interface IntrinsicMotivationGoalStepResult {
@@ -16,23 +20,24 @@ export interface IntrinsicMotivationGoalStepResult {
   driveGoal: ReturnType<IntrinsicMotivationEngine['proposeGoal']>;
   goal: B272StepResult;
   effectiveDrive01: number;
+  selfPrior: SelfPriorObservation;
 }
 
 /**
- * Couples six intrinsic drives to endogenous goal valuation without introducing
- * another goal owner. B272 remains the canonical goal generator and receives
- * drive magnitude only after the caller supplies an independent confidence.
- *
- * The two stateful engines advance as one unit: a rejected cognitive tick rolls
- * both snapshots back, preventing drive history from drifting ahead of goals.
+ * Couples intrinsic drives, a learned self-state familiarity prior and B272 goal
+ * valuation without introducing another goal owner. The prior is scored before
+ * update, and its bounded mismatch contributes only to the homeostatic channel.
+ * A rejected cognitive tick rolls all three stateful components back together.
  */
 export class IntrinsicMotivationGoalCoupling {
   readonly motivation: IntrinsicMotivationEngine;
   readonly goals: B272EndogenousGoalGenesis;
+  readonly selfPrior: SelfPriorDensityModel;
 
-  constructor(motivation: IntrinsicMotivationEngine, goals: B272EndogenousGoalGenesis) {
+  constructor(motivation: IntrinsicMotivationEngine, goals: B272EndogenousGoalGenesis, selfPrior = new SelfPriorDensityModel()) {
     this.motivation = motivation;
     this.goals = goals;
+    this.selfPrior = selfPrior;
   }
 
   step(input: IntrinsicMotivationGoalStepInput): IntrinsicMotivationGoalStepResult {
@@ -45,8 +50,16 @@ export class IntrinsicMotivationGoalCoupling {
 
     const priorMotivation = this.motivation.snapshot();
     const priorGoals = this.goals.snapshot();
+    const priorSelfPrior = this.selfPrior.snapshot();
     try {
-      const driveState = this.motivation.update(input.drive);
+      const selfPrior = input.selfObservation
+        ? this.selfPrior.observe(input.selfObservation, input.at)
+        : { mismatch01: 0, confidence01: 0, rmsZ: 0, sampleCount: priorSelfPrior.sampleCount };
+      const driveState = this.motivation.update({
+        ...input.drive,
+        selfPriorMismatch01: selfPrior.mismatch01,
+        selfPriorConfidence01: selfPrior.confidence01,
+      });
       const driveGoal = this.motivation.proposeGoal();
       const goal = this.goals.step({
         ...input.cycle,
@@ -58,10 +71,12 @@ export class IntrinsicMotivationGoalCoupling {
         driveGoal,
         goal,
         effectiveDrive01: driveState.overall * input.driveConfidence01,
+        selfPrior,
       };
     } catch (error) {
       this.motivation.restore(priorMotivation);
       this.goals.restore(priorGoals);
+      this.selfPrior.restore(priorSelfPrior);
       throw error;
     }
   }
@@ -70,6 +85,7 @@ export class IntrinsicMotivationGoalCoupling {
     return {
       motivation: this.motivation.snapshot(),
       goals: this.goals.snapshot(),
+      selfPrior: this.selfPrior.snapshot(),
     };
   }
 }

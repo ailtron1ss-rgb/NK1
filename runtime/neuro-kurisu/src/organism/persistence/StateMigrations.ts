@@ -10,6 +10,7 @@ import { defaultPerceptionRoutingState } from '../body/PerceptionRouter.ts';
 import { defaultSelfAuthorship } from '../cognition/SelfAuthorship.ts';
 import { defaultSensorimotorState } from '../cognition/SensorimotorLoop.ts';
 import { defaultIntrinsicDriveState } from '../cognition/IntrinsicMotivationEngine.ts';
+import { defaultSelfPriorDensityState } from '../cognition/SelfPriorDensityModel.ts';
 import { defaultActiveInferenceState } from '../world/ActiveInferenceEngine.ts';
 import { defaultIdentityContinuity } from '../cognition/IdentityContinuity.ts';
 import { defaultMetaCognitiveState } from '../cognition/MetaCognitiveMonitor.ts';
@@ -401,7 +402,7 @@ const defaultLearningFacet = (): LearningFacet => ({
   cognitiveOrganismContinuity: defaultCognitiveOrganismContinuity(),
   operationalLife: defaultOperationalLife(),
 });
-const defaultConsciousnessFacet = (): ConsciousnessFacet => ({ intrinsic:defaultIntrinsicDriveState(), activeInference:defaultActiveInferenceState(), identityContinuity:defaultIdentityContinuity(), metacognition:defaultMetaCognitiveState(), workspaceIgnition:defaultWorkspaceIgnition(), consciousnessEvidence:defaultConsciousnessEvidence(), p31:defaultP31Consciousness(), p32:defaultP32CausalSelfModel(), p33:defaultP33Personhood(), p34:defaultP34CausalPersonhood(), causalExperiments:[], researchQuestionsCompleted:[] });
+const defaultConsciousnessFacet = (): ConsciousnessFacet => ({ intrinsic:defaultIntrinsicDriveState(), selfPrior:defaultSelfPriorDensityState(), activeInference:defaultActiveInferenceState(), identityContinuity:defaultIdentityContinuity(), metacognition:defaultMetaCognitiveState(), workspaceIgnition:defaultWorkspaceIgnition(), consciousnessEvidence:defaultConsciousnessEvidence(), p31:defaultP31Consciousness(), p32:defaultP32CausalSelfModel(), p33:defaultP33Personhood(), p34:defaultP34CausalPersonhood(), causalExperiments:[], researchQuestionsCompleted:[] });
 
 const defaultEvolutionFacet = (): EvolutionFacet => ({ selfProjects:defaultSelfProjectState(), agency:defaultAgencyDeliberation(), valueEvolution:defaultValueEvolution(), identityTrajectory:defaultIdentityTrajectory(), narrative:defaultNarrative(), network:{tick:0,capacity:3,lastBroadcast:null,history:[],totalIgnitions:0}, developmentalAttractors:defaultDevelopmentalAttractorField(), authoredProjectHistory:[], longitudinalMilestones:[] });
 
