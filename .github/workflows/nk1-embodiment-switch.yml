@@ -26,6 +26,8 @@ on:
       - "app/scripts/avatar-model-preflight.test.mjs"
       - "app/scripts/verify-hosted-kurisu-model.mjs"
       - "app/src/components/avatar/avatarModelCatalog.ts"
+      - "app/src/components/avatar/avatarAnimationRuntime.ts"
+      - "app/scripts/avatar-animation-runtime.test.mjs"
       - "app/scripts/three-toon-materials.test.mjs"
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/src/components/avatar/motionArbitration.ts"
@@ -69,6 +71,8 @@ on:
       - "app/scripts/avatar-model-preflight.test.mjs"
       - "app/scripts/verify-hosted-kurisu-model.mjs"
       - "app/src/components/avatar/avatarModelCatalog.ts"
+      - "app/src/components/avatar/avatarAnimationRuntime.ts"
+      - "app/scripts/avatar-animation-runtime.test.mjs"
       - "app/scripts/three-toon-materials.test.mjs"
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/src/components/avatar/motionArbitration.ts"
@@ -119,6 +123,8 @@ jobs:
         run: npm --prefix app run test:avatar-model-preflight
       - name: Test procedural and VRM 3D avatar contract
         run: node --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Test deterministic GLB action resolution and clip crossfades
+        run: npm --prefix app run test:avatar-animation-runtime
       - name: Test real Three.js toon material lifecycle
         run: npm --prefix app run test:three-toon-materials
       - name: Verify hosted Kurisu asset hash and GLB structure
