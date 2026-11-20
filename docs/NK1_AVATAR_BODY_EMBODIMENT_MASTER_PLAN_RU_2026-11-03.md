@@ -917,3 +917,44 @@ production-ready. Рисовать плейсхолдер и заявлять г
   корректно; класса «литерал вместо инкремента» больше не найдено в `runtime/.../body/`.
 - Следующий приоритет по §20: `B3` (2.5D рендер-путь, блокер — production-арт), `C3` (live-IK рук,
   `planarArmIK` пока только типизирован, не вызывается), `F3`/`G1` (визуальная E2E и soak).
+## 22. Интеграционный проход 5 — консолидация 2.5D, Original 2D и restore integrity (2026-11-20)
+
+> Источник сравнения — актуальный workpass70-source, а не старые слепки веток. Из исторических PR переносились только уникальные изменения; более новые реализации и параллельные изменения сохранялись.
+
+### 22.1 Измеренное моторное состояние и входные границы (IMPLEMENTED, exact-head CI PASS)
+
+- PR #1010: resolveDepthRigPoseFromMotorFrame принимает ограниченные snapshots собственных data-дескрипторов для frame/joints/bindings; accessor-backed поля отклоняются без вызова getter, массив bindings должен быть плотным и ограниченным.
+- Рендерится наблюдаемое angleRad, не targetAngleRad. Невалидное измерение не заменяется желаемой целью.
+- Ограничение Proxy сформулировано точно: reflection trap может выполниться при инспекции объекта, но исключение перехватывается и приводит к fail-closed результату; обещания «trap не выполняется» нет.
+
+### 22.2 Приёмка 2.5D asset pack (IMPLEMENTED, контракт и тесты; реальный арт — UNRESOLVED)
+
+- PR #1012: DepthRigAssetManifest v1, JSON Schema, filesystem-derived inventory, validator и CLI.
+- Проверяются фактическое наличие слоёв/масок/evidence, безопасные относительные пути, геометрия canvas, alpha, hidden-area paint, occlusion и provenance.
+- Сканер ограничивает количество файлов, глубину, общий бюджет directory entries и размер; пропускает symlink; PNG header читается ограниченно, с O_NOFOLLOW там, где поддерживается, и сверкой identity открытого файла.
+- Не добавлены художественные слои Курису и hidden-area paint; PSD/WEBP не разбираются. Успешный preflight не является визуальным E2E, Android soak, юридическим одобрением или production readiness.
+
+### 22.3 Когнитивная связь Original 2D (IMPLEMENTED, exact-head CI PASS)
+
+- PR #1013: Original 2D stage использует общий planAvatarMotorIntent и получает energy, cognitive load, uncertainty, social need, novelty, goal pressure, prediction error, traits, awake/fresh-turn state.
+- SVG renderer переводит смысловой motor plan в собственную позу/дыхание, сохраняя bodyChannels, визуальные настройки и ручной pose override.
+- Это закрывает gap state-to-motor wiring; не доказывает физическое движение Live2D/2.5D/3D модели и не подтверждает синхронизацию речи/viseme на устройстве.
+
+### 22.4 Контракт проекции мозга в рендереры (IMPLEMENTED, тестовое покрытие восстановлено)
+
+- PR #1014: текущие AvatarBrainAffectBridge и AvatarRendererAdapter уже присутствовали в базовой линии и не заменялись историческими копиями.
+- В current source восстановлены 22 projection assertions и 26 renderer-mapping assertions, плюс workflow запускает app embodiment bridge и VRM adapter regressions.
+- Это регрессионное покрытие контракта, а не доказательство полного device/render soak.
+
+### 22.5 Целостность persisted body state (IMPLEMENTED, 50/50 Actions PASS)
+
+- PR #1021: восемь restore-границ пересобирают состояние из ограниченных и валидированных значений: MultimodalPerception, MultimodalSituationModel, PerceptualEvidenceCompiler, P35SemanticWorldBodyEngine, P37EmbodiedSensoriumEngine, EmbodiedRecoveryController, camera evidence в EmbodimentSubsystemRuntime, а также общие RestoreSanitizers.
+- Сохранена более новая реализация DeviceEvidenceLedger через snapshotPlainData и её отдельный restore test; invalid top-level counters сбрасывают весь ledger snapshot, чтобы не сертифицировать устройство повреждённым состоянием.
+- Тесты проверяют NaN/строки/выход за диапазон, prototype keys, accessors, активный throwing Proxy и revoked Proxy. Accessor getters не вызываются; Proxy reflection traps могут выполниться, но ошибки локализованы и приводят к безопасному default.
+- Exact-head PR #1021: runtime typecheck, perception/device evidence restore, sanitizer suite, Aspect 10, Unified organism runtime, Core regression и все остальные связанные Actions — 50/50 success.
+
+### 22.6 Текущее состояние и честные границы
+
+- Runtime restore integrity и Original 2D state-to-motor wiring усилены; контракт приёмки 2.5D assets добавлен.
+- Наличие production 2.5D art pack, визуальная правильность деформаций, реальный Android/phone soak, device performance и полная avatar speech/viseme synchronization остаются UNRESOLVED и не повышаются автоматически от прохождения unit/CI.
+- PR merges изменили только рабочую линию workpass70-source. main и October 19 Release ZIP не менялись; перед выпуском по-прежнему требуется отдельная сверка и упаковка проверенного source в Release artifact.
