@@ -272,3 +272,43 @@ A fresh complete paginated read returned:
 - `main` HEAD: `fd57e9f161e4bbc1f6522e7b6272bb01358fa70b`.
 
 The branch count rose by two from the prior 1,004 snapshot as two short-lived consolidation branches were created (#1003 / #1004). The previous 1,005 snapshot included the first of them. Merges and PR closures did not delete any source refs. No branch deletion was performed. The shared-HEAD alias group remains to be checked against open PR bases, closed/merged PR history, tags/releases, workflows, rulesets, deployments, documentation and external consumers before any retirement.
+
+
+## Selective salvage — N.E.K.O. ASR / streaming negative-path evidence (PR #1005)
+
+PR [#1005](https://github.com/ailtron1ss-rgb/NK1/pull/1005) was merged into `workpass70-source` on 2026-11-20.
+
+- Base: `903e20c78325af951f2ed839281d842e62a42e01`.
+- Branch: `aspect/neko-asr-shadow-boundary-regressions-20261120`.
+- Exact tested PR head: `b3e25fb215a4f605660cf9b42d36c0bd418b0a84`.
+- Merge commit / resulting `workpass70-source` HEAD at verification: `65a4b588a916c744136fa35115a9bb6baeea9381`.
+- Files: `runtime/neuro-kurisu/tests/neko-asr-transcript-adapter.mjs` and `runtime/neuro-kurisu/docs/NEKO_ASR_PROVIDER_ADAPTER_RU.md`. No runtime production implementation or package script changed.
+- Restored two donor-derived negative-path regressions not independently present in the current test suite:
+  1. A late Silero/VAD callback after final ASR capture returns `null` and leaves the accepted speech-admission snapshot / audio end sample unchanged.
+  2. A malformed 48 kHz Smart Turn PCM frame is rejected diagnostically (`invalid-smart-turn-audio-frame`) while the valid final ASR transcript remains accepted.
+- Exact-head focused `NK1 N.E.K.O. ASR provider adapter` run #44696426388: PASS. Job logs confirm ASR adapter **17/17**, speech admission **10/10**, Smart Turn endpoint **10/10**, ASR wiring **4/4**, ASR evidence 3 cases, existing voice/cognitive-context regression PASS, runtime Node strip-only syntax typecheck PASS.
+- Exact-head broad runs #44696426362 (NeuroCore core regression) and #44696426313 (Unified organism runtime) both SUCCESS; full unified runtime reached `CLEAN_ORGANISM_SMOKE=PASS`. The other returned checks (WorkPass79, ActionGateway governance, UserModel explicit forget, module dependency audit and original 2D asset contract) also completed SUCCESS: 8/8 returned workflow runs.
+- ASR workflow's runtime typecheck notes that semantic `tsc` compiler checking was unavailable in that job; no semantic compiler PASS is attributed to that step.
+- Merged PR #1005 after exact-head verification; no Release ZIP, `main`, dependency, external service or device state changed.
+
+### Donor-family disposition
+
+- #811 (old ASR provider boundary): useful current-source implementation and contract already carried by merged #969. PR #1005 restored the two uncovered negative-path cases above. Comment added to #811 with final provenance.
+- #820 (legacy bounded streaming coordinator): implementation selectively ported by merged #994; Proxy-safe token/session validation by #996. The old branch was not merged wholesale; comment added.
+- #985 (stacked streaming contract): 12 of 18 donor file blobs exactly matched current source; the remaining six were older workflow/package/runtime/test variants superseded by #969/#994/#996. Comment added.
+- #989 (streaming RED/test stage): five focused test suites are present in current source; the voice-turn test has since been expanded with Proxy-hostile token/session cases. Actual runtime implementation is carried by #994 and #996. Comment added.
+- No donor branch was deleted, force-moved, or used to overwrite the canonical source. Closed donor PR branches remain preserved.
+
+## Branch census after N.E.K.O. ASR salvage (2026-11-20)
+
+Fresh complete pagination returned:
+
+- **1,007 branch refs**.
+- **991 unique HEAD commits**.
+- **16 excess names** beyond one name per unique HEAD.
+- One exact shared-HEAD alias group of 17 names at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`.
+- **325 open PRs**.
+- `workpass70-source` HEAD: `65a4b588a916c744136fa35115a9bb6baeea9381`.
+- `main` HEAD: `fd57e9f161e4bbc1f6522e7b6272bb01358fa70b`.
+
+The branch count increased by one from the previous 1,006 snapshot because the ASR regression port created one new aspect branch. No refs were deleted. This census is a timestamped snapshot; parallel sessions may continue to move refs.
