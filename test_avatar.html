@@ -488,6 +488,7 @@ window.setEmbodimentMode = function(mode) {
   document.getElementById('btn-mode-3d')?.classList.toggle('active', !spriteMode);
   document.getElementById('btn-mode-sprite')?.classList.toggle('active', spriteMode);
   spriteOverlay.style.display = spriteMode ? 'flex' : 'none';
+  spriteOverlay.setAttribute('aria-hidden', spriteMode ? 'false' : 'true');
   kurisuRoot.visible = !spriteMode;
   return true;
 };
