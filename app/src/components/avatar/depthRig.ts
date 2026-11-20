@@ -153,7 +153,9 @@ export function resolveDepthRigPose(rig: DepthRigDefinition, intent: DepthRigInt
   const lean = clamp(intent.torsoLean, -1, 1);
   const breath = clamp(intent.breath, 0, 1);
   const intensity = clamp(intent.gestureIntensity, 0, 1);
-  const deltas: Record<string, Partial<DepthRigTransform>> = {};
+  // Null prototype so a node id that collides with an Object.prototype key
+  // ("__proto__", "constructor", ...) is stored and read as an ordinary key.
+  const deltas: Record<string, Partial<DepthRigTransform>> = Object.create(null);
 
   for (const node of rig.nodes) {
     switch (node.role) {
@@ -237,7 +239,7 @@ export function resolveDepthRigWorldPose(
   const ordered = orderDepthRigNodes(rig);
   if (pose && pose.rigId !== rig.id) throw new Error("Depth rig pose belongs to another rig.");
   const byId = new Map(ordered.map((node) => [node.id, node]));
-  const transforms: Record<string, DepthRigWorldTransform> = {};
+  const transforms: Record<string, DepthRigWorldTransform> = Object.create(null);
   const resolve = (id: string): DepthRigWorldTransform => {
     const cached = transforms[id];
     if (cached) return cached;
