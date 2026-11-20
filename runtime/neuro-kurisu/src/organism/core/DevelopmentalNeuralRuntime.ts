@@ -225,6 +225,10 @@ export class DevelopmentalNeuralRuntime {
    */
   snapshotHotNeuralPersistenceState(b365Snapshot?: ReturnType<B365UnifiedNeuroCausalCore['snapshot']>){
     return {
+      p26TrueLearning:this.p26TrueLearning.snapshot(),
+      p28Plasticity:this.p28Plasticity.snapshot(),
+      p29Learning:this.p29Learning.snapshot(),
+      p30Continual:this.p30Continual.snapshot(),
       b385B390AutonomousDevelopmentalOrganism:this.b385B390AutonomousDevelopmentalOrganism.snapshot(),
       b391B400NeuralDevelopmentalIntegration:this.b391B400NeuralDevelopmentalIntegration.snapshot(),
       b401B420AdaptiveCognitiveResearch:this.b401B420AdaptiveCognitiveResearch.snapshot(),
@@ -245,6 +249,22 @@ export class DevelopmentalNeuralRuntime {
       unifiedNeuroCausalCoreB365:b365Snapshot ?? this.unifiedNeuroCausalCoreB365.snapshot(),
     };
   }
+  trainElasticNeuralPolicy(
+    input:{sampleId:string;features:number[];action:import('../core/types.ts').ActionKind;target01:number;learningRate01:number;sampleWeight01?:number},
+    options:import('../learning/ElasticNeuralPlasticity.ts').ElasticNeuralPlasticityOptions,
+  ){ return this.p26TrueLearning.trainFeaturesElastic(input,options,this.p29Learning); }
+
+  rollbackElasticNeuralPolicy(action:import('../core/types.ts').ActionKind){
+    return this.p26TrueLearning.rollbackElasticPlasticity(action,this.p29Learning);
+  }
+
+  restoreHotNeuralLearningState(raw?:Partial<ReturnType<DevelopmentalNeuralRuntime['snapshotHotNeuralPersistenceState']>>){
+    if(raw?.p26TrueLearning)this.p26TrueLearning.restore(raw.p26TrueLearning);
+    if(raw?.p28Plasticity)this.p28Plasticity.restore(raw.p28Plasticity);
+    if(raw?.p29Learning)this.p29Learning.restore(raw.p29Learning);
+    if(raw?.p30Continual)this.p30Continual.restore(raw.p30Continual);
+  }
+
   readonly recurrentCausalMemory: createDevelopmentalCausalInstancesResult["recurrentCausalMemory"] = undefined as unknown as createDevelopmentalCausalInstancesResult["recurrentCausalMemory"];
   /** B261: single action-conditioned world dynamics path around the shared latent/recurrent state. */
   readonly unifiedWorldModelB261: createDevelopmentalCausalInstancesResult["unifiedWorldModelB261"] = undefined as unknown as createDevelopmentalCausalInstancesResult["unifiedWorldModelB261"];

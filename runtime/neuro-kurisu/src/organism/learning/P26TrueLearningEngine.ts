@@ -1,5 +1,7 @@
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import { ParametricPolicyLearner, defaultParametricPolicy, type ParametricPolicyState } from './ParametricPolicyLearner.ts';
+import { P29LearningGovernanceEngine } from './P29LearningGovernance.ts';
+import type { ElasticNeuralPlasticityOptions, ElasticNeuralPlasticityResult } from './ElasticNeuralPlasticity.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
@@ -123,6 +125,77 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
+  /**
+   * Explicit P26 entry point for sparse, holdout-gated adaptation. The paired
+   * local holdouts are not counted as independently authenticated generalization
+   * evidence; that metric remains owned by the verified-outcome admission path.
+   */
+  trainFeaturesElastic(
+    input:{sampleId:string;features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number},
+    options:ElasticNeuralPlasticityOptions,
+    governance:P29LearningGovernanceEngine,
+  ):ElasticNeuralPlasticityResult & {predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    const blocked=(reason:string)=>({
+      eligible:false,accepted:false,reason,proposalId:null,action:input.action,sampleId:input.sampleId,
+      candidateParameterNames:[],updatedParameterNames:[],targetLossBefore01:0,targetLossAfter01:0,
+      retentionLossBefore01:0,retentionLossAfter01:0,targetLossImprovement01:0,retentionLossIncrease01:0,
+      rollbackAvailable:this.learner.snapshot().elasticNeuralPlasticity.rollbackByAction[input.action]!==undefined,
+      predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0,
+    });
+    if(!P29LearningGovernanceEngine.isTrustedInstance(governance))return blocked('learning-governance-required');
+    const proposal=this.learner.proposeFeaturesElastic(input,options);
+    const cost01=clamp(options.governanceCost01??.25);
+    if(!proposal.eligible||!proposal.proposalId){
+      governance.recordProvenance('p26-policy',input.action,proposal.reason,[input.sampleId],governance.sourceTrust('p26-policy'),cost01,false);
+      this.sync();
+      return {...proposal,eligible:false,accepted:false,updatedParameterNames:[],rollbackAvailable:this.learner.snapshot().elasticNeuralPlasticity.rollbackByAction[input.action]!==undefined,predictionAfter:proposal.predictionBefore};
+    }
+    governance.beginCycle();
+    const confidence01=clamp(.55+Math.min(.35,(options.targetHoldout.length+options.retentionHoldout.length)/256));
+    const arbitration=governance.arbitrate([{
+      source:'p26-policy',
+      bias:clamp(proposal.targetLossImprovement01*64),
+      confidence01,
+      cost01,
+      kind:'plasticity',
+    }],1,.11,input.action);
+    if(!arbitration.accepted){
+      const rejected=this.learner.rejectFeaturesElastic(proposal.proposalId,'governance-budget-rejected');
+      governance.recordOutcome('p26-policy',.5,0,cost01,false);
+      governance.recordProvenance('p26-policy',input.action,'governance-budget-rejected',[input.sampleId,proposal.proposalId],governance.sourceTrust('p26-policy'),cost01,false);
+      this.sync();
+      return {...rejected,accepted:false,eligible:false,updatedParameterNames:[],rollbackAvailable:this.learner.snapshot().elasticNeuralPlasticity.rollbackByAction[input.action]!==undefined,predictionBefore:proposal.predictionBefore,predictionAfter:proposal.predictionBefore,loss01:proposal.loss01,tdError01:proposal.tdError01};
+    }
+    const result=this.learner.commitFeaturesElastic(proposal.proposalId);
+    if(result.accepted){
+      this.state.metrics.outcomeSamples++;
+      this.state.metrics.onlineUpdates++;
+      this.state.metrics.learningDelta01=clamp(this.state.metrics.learningDelta01*.97+
+        (result.predictionAfter-result.predictionBefore)*.03+Math.abs(result.tdError01)*.02);
+      this.state.metrics.recentLoss01=clamp(result.loss01);
+      this.refreshTrainingExposure();
+      this.state.metrics.lastUpdatedAt=Date.now();
+      governance.recordOutcome('p26-policy',clamp(.5+result.targetLossImprovement01*4),result.targetLossImprovement01,cost01,true);
+      governance.recordProvenance('p26-policy',input.action,'elastic-neural-plasticity-committed',[input.sampleId,proposal.proposalId,...result.updatedParameterNames],governance.sourceTrust('p26-policy'),cost01,true);
+    }else{
+      governance.recordOutcome('p26-policy',.5,result.targetLossImprovement01,cost01,false);
+      governance.recordProvenance('p26-policy',input.action,result.reason,[input.sampleId,proposal.proposalId],governance.sourceTrust('p26-policy'),cost01,false);
+    }
+    this.sync();
+    return result;
+  }
+
+  rollbackElasticPlasticity(action:ActionKind,governance:P29LearningGovernanceEngine){
+    if(!P29LearningGovernanceEngine.isTrustedInstance(governance))return {rolledBack:false,reason:'learning-governance-required',sampleId:null};
+    const result=this.learner.rollbackElasticPlasticity(action);
+    if(result.rolledBack){
+      governance.recordProvenance('p26-policy',action,'elastic-plasticity-rollback',[result.sampleId??'unknown'],governance.sourceTrust('p26-policy'),0,false);
+      this.state.metrics.lastUpdatedAt=Date.now();
+      this.sync();
+    }
+    return result;
+  }
+
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
     if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};
