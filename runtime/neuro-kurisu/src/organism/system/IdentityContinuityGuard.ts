@@ -1,3 +1,4 @@
+import { readRestorablePlainRecord, restoredCounter, restoredMetric, restoredTimestamp, restoredText } from '../core/RestorableState.ts';
 /** BIG PASS 228 — identity continuity and autonomous boundary guard. */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export interface IdentityContinuityState{
@@ -10,7 +11,23 @@ export const defaultIdentityContinuityGuard=():IdentityContinuityState=>({
 });
 export class IdentityContinuityGuard {
   private state=defaultIdentityContinuityGuard();
-  restore(raw?:Partial<IdentityContinuityState>|null){this.state={...defaultIdentityContinuityGuard(),...(raw??{}),version:1};}
+  restore(raw?:Partial<IdentityContinuityState>|null){
+    const r=readRestorablePlainRecord(raw);
+    if(!r||(r.version!==undefined&&r.version!==1)){this.state=defaultIdentityContinuityGuard();return;}
+    const reasons=['initial','identity-coherent','identity-protection'];
+    const lastReason=restoredText(r.lastReason,'initial',96);
+    this.state={
+      version:1,
+      checks:restoredCounter(r.checks),
+      stable:restoredCounter(r.stable),
+      rejected:restoredCounter(r.rejected),
+      revisionWindows:restoredCounter(r.revisionWindows),
+      meanContinuity01:restoredMetric(r.meanContinuity01,.78),
+      meanBoundarySafety01:restoredMetric(r.meanBoundarySafety01,.9),
+      lastReason:reasons.includes(lastReason)?lastReason:'initial',
+      lastAt:restoredTimestamp(r.lastAt),
+    };
+  }
   snapshot(){return structuredClone(this.state);}
   evaluate(input:{
     at:number;identity01:number;valueStability01:number;narrative01:number;projectContinuity01:number;

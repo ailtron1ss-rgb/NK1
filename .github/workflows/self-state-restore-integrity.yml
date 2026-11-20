@@ -1,0 +1,45 @@
+name: NK1 self-state restore integrity
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - ".github/workflows/self-state-restore-integrity.yml"
+      - "runtime/neuro-kurisu/src/organism/cognition/P71SelfConsistencyModel.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P80UnifiedSelfState.ts"
+      - "runtime/neuro-kurisu/src/organism/core/RestorableState.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P78AutobiographicalSelfContinuity.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P84AutobiographicalContinuityFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/IdentityContinuityGuard.ts"
+      - "runtime/neuro-kurisu/src/organism/system/P76IdentityLifeOS.ts"
+      - "runtime/neuro-kurisu/tests/self-state-restore-integrity-workpass80.mjs"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - ".github/workflows/self-state-restore-integrity.yml"
+      - "runtime/neuro-kurisu/src/organism/cognition/P71SelfConsistencyModel.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P80UnifiedSelfState.ts"
+      - "runtime/neuro-kurisu/src/organism/core/RestorableState.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P78AutobiographicalSelfContinuity.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P84AutobiographicalContinuityFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/IdentityContinuityGuard.ts"
+      - "runtime/neuro-kurisu/src/organism/system/P76IdentityLifeOS.ts"
+      - "runtime/neuro-kurisu/tests/self-state-restore-integrity-workpass80.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: nk1-self-state-restore-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  self-state-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts
+      - run: npm --prefix runtime/neuro-kurisu run typecheck
+      - run: node --experimental-strip-types runtime/neuro-kurisu/tests/self-state-restore-integrity-workpass80.mjs
