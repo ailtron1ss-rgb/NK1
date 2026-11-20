@@ -36,6 +36,7 @@ export class CapabilityRegistry {
     const core=(id:string,owner:string,reason:string):CapabilityRecord=>({id,available:true,status:'implemented',evidence:'source-code',owner,source:'core',reason,refreshedAt:now});
     const features: CapabilityRecord[] = [
       core('core.persistence','OrganismCore','canonical state store'),
+      core('core.neuroforge_donor_analysis','NeuroForgeEngine','offline donor inventory, source provenance and blocked capability-gap proposals; no donor execution or automatic code reuse'),
       core('core.replay','BoundedOperationalJournal','bounded operational replay/journal available'),
       core('core.continuous_life','OrganismRuntime','persistent lifecycle, recovery and host-lineage engine'),
       core('core.semantic_intelligence','CognitiveEventFabric','temporal semantic situations, provenance and action-relevant semantic state'),
