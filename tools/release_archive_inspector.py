@@ -56,6 +56,22 @@ def _source_paths(root: Path) -> tuple[set[str], str | None]:
         ref = None
     return paths, ref
 
+def _casefold_path_collisions(paths: set[str]) -> list[dict[str, str]]:
+    seen: dict[str, str] = {}
+    collisions: set[tuple[str, str]] = set()
+    for path in sorted(paths):
+        parts = PurePosixPath(path).parts
+        for index in range(1, len(parts) + 1):
+            prefix = "/".join(parts[:index])
+            key = unicodedata.normalize("NFC", prefix).casefold()
+            previous = seen.get(key)
+            if previous is not None and previous != prefix:
+                collisions.add(tuple(sorted((previous, prefix))))
+            else:
+                seen[key] = prefix
+    return [{"first": first, "second": second} for first, second in sorted(collisions)]
+
+
 def _choose_prefix(paths: list[str], source_paths: set[str], requested: str) -> str:
     if requested != "auto":
         prefix = requested.strip("/")
@@ -109,6 +125,11 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
     entries: list[dict[str, Any]] = []
     archive_paths: list[str] = []
     source_path_set, source_ref = _source_paths(root)
+    source_path_collisions = _casefold_path_collisions(source_path_set)
+    for collision in source_path_collisions:
+        errors.append(
+            f"case-insensitive source path collision: {collision['first']!r} conflicts with {collision['second']!r}"
+        )
     archive_sha = None
     archive_size = archive.stat().st_size if archive.is_file() else None
     if not archive.is_file():
@@ -256,6 +277,7 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
             "archivePrefixApplied": prefix, "files": sorted(entries, key=lambda entry: entry["path"]),
         },
         "source": {"ref": source_ref, "trackedFileCount": len(source_path_set), "versions": _read_source_versions(root)},
+        "sourcePathCollisions": source_path_collisions,
         "archiveVersions": archive_versions, "comparison": comparison, "errors": errors, "ok": integrity_ok,
     }
 
