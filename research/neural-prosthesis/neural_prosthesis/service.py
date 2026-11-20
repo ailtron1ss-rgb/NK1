@@ -5,6 +5,7 @@ import json
 import math
 import os
 import threading
+from contextlib import nullcontext
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from urllib.parse import urlparse
 
 import torch
 from .engine import ArtifactError, NeuralProsthesisBank, _resolve_layer_stack
+from .layer_force import LayerForceBank
 
 
 MAX_REQUEST_BYTES = 1024 * 1024
@@ -127,6 +129,42 @@ def _find_layer_path(model: torch.nn.Module) -> str:
     raise RuntimeError("unsupported-transformer-layer-layout-set-NEURO_NP_LAYER_PATH")
 
 
+def _load_layer_force_bank(
+    model: torch.nn.Module,
+    *,
+    model_id: str,
+    model_revision: str,
+    layer_path: str,
+) -> tuple[LayerForceBank | None, str | None]:
+    profile_paths = _json_list("NEURO_NP_LAYER_FORCE_PROFILE_PATHS_JSON", maximum=16)
+    approved_digests = _json_list("NEURO_NP_ALLOWED_LAYER_FORCE_PROFILES_JSON", maximum=128)
+    default_profile = str(os.environ.get("NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE", "")).strip() or None
+
+    if not profile_paths:
+        if default_profile is not None:
+            raise RuntimeError("NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE-requires-a-local-profile")
+        return None, None
+    if model_revision == "unversioned-local":
+        raise RuntimeError("NEURO_NP_MODEL_REVISION-is-required-for-layer-force-profiles")
+
+    controller = LayerForceBank(
+        model,
+        model_id=model_id,
+        model_revision=model_revision,
+        layer_path=layer_path,
+    )
+    try:
+        loaded: set[str] = set()
+        for profile_path in profile_paths:
+            loaded.add(controller.load_profile(profile_path, approved_digests))
+        if default_profile is not None and default_profile not in loaded:
+            raise RuntimeError("NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE-not-loaded-or-approved")
+        return controller, default_profile
+    except Exception:
+        controller.close()
+        raise
+
+
 class TransformersRuntime:
     def __init__(self) -> None:
         api_token = str(os.environ.get("NEURO_NP_API_TOKEN", ""))
@@ -176,40 +214,56 @@ class TransformersRuntime:
             model_revision=revision,
             layer_path=self.layer_path,
         )
-        self._approved_manifest_digests = set(_json_list("NEURO_NP_ALLOWED_MANIFESTS_JSON", maximum=128))
-        for value in self._approved_manifest_digests:
-            if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
-                raise RuntimeError("NEURO_NP_ALLOWED_MANIFESTS_JSON-contains-invalid-sha256")
-        self._adapter_manifest_digests: dict[str, str] = {}
-        adapter_dirs = _json_list("NEURO_NP_ADAPTER_DIRS_JSON", maximum=32)
-        if revision == "unversioned-local" and adapter_dirs:
-            raise RuntimeError("NEURO_NP_MODEL_REVISION-is-required-to-load-adapters")
-        for raw_dir in adapter_dirs:
-            artifact_dir = Path(raw_dir).expanduser()
-            adapter_id = self.bank.load_adapter(artifact_dir)
-            manifest = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
-            self._adapter_manifest_digests[adapter_id] = str(manifest["manifest_sha256"])
-        self.bank.eval()
-
-        self.default_adapter = str(os.environ.get("NEURO_NP_DEFAULT_ADAPTER", "")).strip() or None
-        if self.default_adapter is not None and not self._is_approved(self.default_adapter):
-            raise RuntimeError("NEURO_NP_DEFAULT_ADAPTER-must-be-host-allowlisted")
-        self.max_context_tokens = _context_window(
-            self.model.config,
-            os.environ.get("NEURO_NP_MAX_CONTEXT_TOKENS", "8192"),
-        )
-        self._generation_lock = threading.Lock()
-        # A shared local model is deliberately single-flight. Reject overload
-        # before tokenization so waiting requests do not accumulate large tensors.
-        self._inference_slot = threading.BoundedSemaphore(1)
+        self.layer_force: LayerForceBank | None = None
+        self.default_layer_force_profile: str | None = None
         try:
-            self.max_http_workers = int(os.environ.get("NEURO_NP_MAX_HTTP_WORKERS", str(DEFAULT_MAX_HTTP_WORKERS)))
-        except ValueError as error:
-            raise RuntimeError("NEURO_NP_MAX_HTTP_WORKERS-must-be-an-integer") from error
-        if not MIN_MAX_HTTP_WORKERS <= self.max_http_workers <= MAX_MAX_HTTP_WORKERS:
-            raise RuntimeError("NEURO_NP_MAX_HTTP_WORKERS-out-of-range")
-        self.model_id = model_id
-        self.model_revision = revision
+            self._approved_manifest_digests = set(_json_list("NEURO_NP_ALLOWED_MANIFESTS_JSON", maximum=128))
+            for value in self._approved_manifest_digests:
+                if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
+                    raise RuntimeError("NEURO_NP_ALLOWED_MANIFESTS_JSON-contains-invalid-sha256")
+            self._adapter_manifest_digests: dict[str, str] = {}
+            adapter_dirs = _json_list("NEURO_NP_ADAPTER_DIRS_JSON", maximum=32)
+            if revision == "unversioned-local" and adapter_dirs:
+                raise RuntimeError("NEURO_NP_MODEL_REVISION-is-required-to-load-adapters")
+            for raw_dir in adapter_dirs:
+                artifact_dir = Path(raw_dir).expanduser()
+                adapter_id = self.bank.load_adapter(artifact_dir)
+                manifest = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
+                self._adapter_manifest_digests[adapter_id] = str(manifest["manifest_sha256"])
+            self.bank.eval()
+    
+            self.default_adapter = str(os.environ.get("NEURO_NP_DEFAULT_ADAPTER", "")).strip() or None
+            if self.default_adapter is not None and not self._is_approved(self.default_adapter):
+                raise RuntimeError("NEURO_NP_DEFAULT_ADAPTER-must-be-host-allowlisted")
+            self.max_context_tokens = _context_window(
+                self.model.config,
+                os.environ.get("NEURO_NP_MAX_CONTEXT_TOKENS", "8192"),
+            )
+            self._generation_lock = threading.Lock()
+            # A shared local model is deliberately single-flight. Reject overload
+            # before tokenization so waiting requests do not accumulate large tensors.
+            self._inference_slot = threading.BoundedSemaphore(1)
+            try:
+                self.max_http_workers = int(os.environ.get("NEURO_NP_MAX_HTTP_WORKERS", str(DEFAULT_MAX_HTTP_WORKERS)))
+            except ValueError as error:
+                raise RuntimeError("NEURO_NP_MAX_HTTP_WORKERS-must-be-an-integer") from error
+            if not MIN_MAX_HTTP_WORKERS <= self.max_http_workers <= MAX_MAX_HTTP_WORKERS:
+                raise RuntimeError("NEURO_NP_MAX_HTTP_WORKERS-out-of-range")
+            self.model_id = model_id
+            self.model_revision = revision
+            # Construct the optional steering controller last. Profile admission
+            # is inert until activation; failures cannot strand model hooks.
+            self.layer_force, self.default_layer_force_profile = _load_layer_force_bank(
+                self.model,
+                model_id=model_id,
+                model_revision=revision,
+                layer_path=self.layer_path,
+            )
+        except Exception:
+            if self.layer_force is not None:
+                self.layer_force.close()
+            self.bank.close()
+            raise
 
     def try_acquire_inference(self) -> bool:
         """Reserve the single generation slot without building a request queue."""
@@ -239,6 +293,23 @@ class TransformersRuntime:
             "device": str(self.device),
             "layer_path": self.layer_path,
             "loaded_adapters": adapters,
+            "layer_force": (
+                {
+                    **self.layer_force.snapshot(),
+                    "enabled": bool(self.default_layer_force_profile),
+                    "default_profile": self.default_layer_force_profile,
+                }
+                if self.layer_force is not None
+                else {
+                    "enabled": False,
+                    "default_profile": None,
+                    "loaded_profiles": [],
+                    "registered_hook_count": 0,
+                    "applied_hook_calls": 0,
+                    "applied_token_count": 0,
+                    "precision_fallback_tokens": 0,
+                }
+            ),
             "default_adapter": self.default_adapter,
             "max_context_tokens": self.max_context_tokens,
             "max_parallel_inference": 1,
@@ -308,8 +379,13 @@ class TransformersRuntime:
         if attention_mask is not None:
             generation_kwargs["attention_mask"] = attention_mask
 
+        steering_context = (
+            self.layer_force.activate(self.default_layer_force_profile)
+            if self.layer_force is not None and self.default_layer_force_profile is not None
+            else nullcontext()
+        )
         with self._generation_lock, torch.inference_mode():
-            with self.bank.activate(adapter_id):
+            with self.bank.activate(adapter_id), steering_context:
                 generated = self.model.generate(input_ids=input_ids, **generation_kwargs)
         completion_tokens = generated[0, input_ids.shape[-1]:]
         generated_token_count = int(completion_tokens.shape[-1])
@@ -330,6 +406,8 @@ class TransformersRuntime:
         }
 
     def close(self) -> None:
+        if self.layer_force is not None:
+            self.layer_force.close()
         self.bank.close()
 
 
