@@ -273,4 +273,42 @@ const recoverySnapshot = recoverySource.snapshot();
 const recoveryRestored = new EmbodiedRecoveryController(recoverySnapshot);
 assert.deepEqual(recoveryRestored.snapshot(), recoverySnapshot, 'valid recovery snapshot must round-trip');
 
+// Native arrays used by persistence restores must be dense data-only arrays.
+// Proxy, sparse and accessor-backed arrays are rejected before filter/slice.
+let arrayTrapCalls = 0;
+const proxyArray = new Proxy([], {
+  getOwnPropertyDescriptor(target, key) { arrayTrapCalls += 1; return Reflect.getOwnPropertyDescriptor(target, key); },
+  ownKeys(target) { arrayTrapCalls += 1; return Reflect.ownKeys(target); },
+});
+const proxyArrayRestore = new MultimodalPerception();
+proxyArrayRestore.restore({ ...defaultMultimodalState(), recent: proxyArray });
+assert.deepEqual(proxyArrayRestore.snapshot().recent, [], 'Proxy arrays fail closed');
+assert.equal(arrayTrapCalls, 0, 'types.isProxy rejects the array before invoking any traps');
+
+let slotGetterCalls = 0;
+const accessorArray = [{ id: 'safe' }];
+Object.defineProperty(accessorArray, '0', { enumerable: true, configurable: true, get() { slotGetterCalls += 1; return { id: 'injected' }; } });
+const accessorArrayRestore = new MultimodalPerception();
+accessorArrayRestore.restore({ ...defaultMultimodalState(), recent: accessorArray });
+assert.deepEqual(accessorArrayRestore.snapshot().recent, [], 'accessor-backed array slots are rejected');
+assert.equal(slotGetterCalls, 0, 'array getter is not invoked');
+
+const sparseArray = new Array(2);
+const sparseArrayRestore = new P37EmbodiedSensoriumEngine();
+sparseArrayRestore.restore({ ...defaultP37EmbodiedSensorium(), entities: sparseArray });
+assert.deepEqual(sparseArrayRestore.snapshot().entities, [], 'sparse persisted arrays fail closed');
+
+const p35ProxyArray = new Proxy([], { getPrototypeOf() { arrayTrapCalls += 1; return Array.prototype; } });
+const p35ArrayRestore = new P35SemanticWorldBodyEngine();
+p35ArrayRestore.restore({ ...defaultP35SemanticWorldBody(), entities: p35ProxyArray });
+assert.deepEqual(p35ArrayRestore.snapshot().entities, [], 'P35 rejects proxy-backed entity arrays');
+assert.equal(arrayTrapCalls, 0, 'P35 array proxy traps are not invoked');
+
+let recordProxyTrapCalls = 0;
+const proxyRecord = new Proxy({}, { getPrototypeOf() { recordProxyTrapCalls += 1; return Object.prototype; } });
+const recordProxyRestore = new P35SemanticWorldBodyEngine();
+recordProxyRestore.restore(proxyRecord);
+assert.deepEqual(recordProxyRestore.snapshot(), defaultP35SemanticWorldBody(), 'Proxy-backed records fail closed');
+assert.equal(recordProxyTrapCalls, 0, 'record Proxy is rejected before reflective traps run');
+
 console.log('EMBODIMENT_RESTORE_SANITIZATION_INTEGRITY=PASS');

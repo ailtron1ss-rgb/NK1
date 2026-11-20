@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { countOr, enumOr, finiteOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
+import { countOr, enumOr, finiteOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 const now = () => Date.now();
@@ -114,7 +114,7 @@ function nullableFinite(value:unknown):number|null{
 
 /** Keep only plain data rows from a persisted array, bounded to the most recent `keep`. */
 function filterRecords(value:unknown, keep:number):Record<string,unknown>[]{
-  if(!Array.isArray(value)) return [];
+  if(!isPlainDataArray(value,2048)) return [];
   const rows=value.filter((row)=>isPlainDataRecord(row)) as Record<string,unknown>[];
   return keep<0?rows.slice(keep):rows.slice(0,keep);
 }
@@ -133,7 +133,7 @@ function sanitizeEntity(row:Record<string,unknown>):Record<string,unknown>{
     x:nullableFinite(ownDataValue(row,'x')),
     y:nullableFinite(ownDataValue(row,'y')),
     z:nullableFinite(ownDataValue(row,'z')),
-    modalities:Array.isArray(ownDataValue(row,'modalities'))?(ownDataValue(row,'modalities') as unknown[]).filter((m):m is P37Modality=>typeof m==='string'&&P37_MODALITIES.has(m as P37Modality)):[],
+    modalities:isPlainDataArray(ownDataValue(row,'modalities'),32)?(ownDataValue(row,'modalities') as unknown[]).filter((m):m is P37Modality=>typeof m==='string'&&P37_MODALITIES.has(m as P37Modality)):[],
     presenceStatus:enumOr(ownDataValue(row,'presenceStatus'),P37_PRESENCE,'unknown'),
     persistence01:unitOr(ownDataValue(row,'persistence01'),0),
     absenceEvidence01:unitOr(ownDataValue(row,'absenceEvidence01'),0),
@@ -147,7 +147,7 @@ function sanitizeEvent(row:Record<string,unknown>):Record<string,unknown>{
     confidence01:unitOr(ownDataValue(row,'confidence01'),0),
     at:timestampOr(ownDataValue(row,'at'),0),
     persistence01:unitOr(ownDataValue(row,'persistence01'),0),
-    sources:Array.isArray(ownDataValue(row,'sources'))?(ownDataValue(row,'sources') as unknown[]).filter((m):m is P37Modality=>typeof m==='string'&&P37_MODALITIES.has(m as P37Modality)):[],
+    sources:isPlainDataArray(ownDataValue(row,'sources'),32)?(ownDataValue(row,'sources') as unknown[]).filter((m):m is P37Modality=>typeof m==='string'&&P37_MODALITIES.has(m as P37Modality)):[],
   };
 }
 

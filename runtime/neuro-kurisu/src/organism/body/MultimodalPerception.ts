@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { countOr, isPlainDataRecord, ownDataValue, timestampOr, unitOr } from './RestoreSanitizers.ts';
+import { countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, timestampOr, unitOr } from './RestoreSanitizers.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 
@@ -45,7 +45,7 @@ export class MultimodalPerception {
   restore(value?:Partial<MultimodalState>|null){
     const d=defaultMultimodalState();
     const raw=isPlainDataRecord(value)?value:{};
-    const recent=Array.isArray(ownDataValue(raw,'recent'))?ownDataValue(raw,'recent') as unknown[]:[];
+    const recent=isPlainDataArray(ownDataValue(raw,'recent'),64)?ownDataValue(raw,'recent') as unknown[]:[];
     this.state={
       version:1,
       events:countOr(ownDataValue(raw,'events'),d.events),
