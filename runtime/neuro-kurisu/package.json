@@ -495,7 +495,7 @@
     "test:big-pass-81": "node --experimental-strip-types tests/big-pass-81-motive-epistemic-integration.mjs",
     "test:big-pass-81:adversarial": "node --experimental-strip-types tests/big-pass-81-adversarial-consciousness.mjs",
     "test:mobile:10000": "node --experimental-strip-types tests/mobile-horizon-10000.mjs",
-    "test:organism-smoke": "node --experimental-strip-types tests/organism-smoke.mjs && npm run test:open-loop-radar && npm run test:open-loop-radar-runtime && npm run test:open-loop-radar-http && npm run test:open-loop-radar-dialogue",
+    "test:organism-smoke": "node --experimental-strip-types tests/organism-smoke.mjs && npm run test:neuroforge",
     "test:mobile:1000": "node --experimental-strip-types tests/mobile-horizon-1000.mjs",
     "test:developmental-attractor": "node --experimental-strip-types tests/developmental-attractor-field.mjs",
     "test:p37:episode": "node --experimental-strip-types tests/p37-episode-binding.mjs",
@@ -1897,6 +1897,8 @@
     "test:neko-asr-stream-admission": "node --experimental-strip-types --test tests/neko-asr-stream-admission.mjs",
     "test:neko-voice-turn-coordinator": "node --experimental-strip-types --test tests/neko-voice-turn-coordinator.mjs",
     "test:neko-voice-embodiment-streaming-wiring": "node --experimental-strip-types --test tests/neko-voice-embodiment-streaming-wiring.mjs",
-    "test:device-evidence-ledger-restore": "node --experimental-strip-types tests/device-evidence-ledger-restore-integrity.mjs"
+    "test:device-evidence-ledger-restore": "node --experimental-strip-types tests/device-evidence-ledger-restore-integrity.mjs",
+    "test:neuroforge": "node --experimental-strip-types tests/neuroforge-engine.mjs",
+    "neuroforge": "node --experimental-strip-types scripts/neuroforge.mjs"
   }
 }
