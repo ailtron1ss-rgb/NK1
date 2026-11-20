@@ -122,3 +122,16 @@ test("generic GLB speech drives all available Kurisu viseme morph targets",async
  assert.match(adapter,/if \(!speaking\) return result/);
  assert.match(adapter,/case "open"/);assert.match(adapter,/case "round"/);assert.match(adapter,/case "wide"/);assert.match(adapter,/case "teeth"/);
 });
+
+
+test("3D GLB clip playback uses semantic resolution and crossfades without stopping the mixer", async () => {
+ const stage = await readFile(stagePath, "utf8");
+ const animation = await readFile(path.join(root, "src/components/avatar/avatarAnimationRuntime.ts"), "utf8");
+ assert.match(stage, /import \{ applyAvatarAnimationFrame \} from "\.\/avatar\/avatarAnimationRuntime"/);
+ assert.match(stage, /previousAction:rt\.activeClipAction/);
+ assert.match(stage, /rt\.activeClipAction=animation\.activeAction/);
+ assert.match(stage, /rt\.activeClipAction=null/);
+ assert.doesNotMatch(stage, /rt\.mixer\.stopAllAction\(\);const a=rt\.mixer\.clipAction/);
+ assert.match(animation, /crossFadeTo\(next, fadeSeconds, false\)/);
+ assert.match(animation, /const requestedAction = input\.awake \? input\.action : "rest"/);
+});
