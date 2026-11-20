@@ -201,4 +201,4 @@
 ### Current blockers / safety boundary
 - The GitHub connector exposes merge/update-ref and file operations but no branch-ref deletion operation. The only available TinyFish browser profile has no GitHub sign-in recorded, so branch deletion through the website is not currently authorized or available. No branch ref was deleted or force-updated in this pass.
 - The 19-Oct `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` remains the immutable baseline. Its published metadata digest is `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`; archive bytes still have not been materialized here, so no member inventory or byte-level source parity is claimed.
-- Current canonical source HEAD after PR #1030 is `bc0b50305fa247e5555bcf5b171fe827c531f9ba`. `main` and the Release ZIP were not changed.
+- PR #1030's squash merge commit is `bc0b50305fa247e5555bcf5b171fe827c531f9ba`; the subsequent update to this existing execution log was committed to `workpass70-source` as `06d24b60205b2c6911d98db49c71f734fc7d3837`. `main` and the Release ZIP were not changed.
