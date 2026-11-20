@@ -9,7 +9,7 @@
 - Exact source Actions: 11/11 SUCCESS on `960a2d540ef952486a0271a0e5332caec601b36a`.
 - Core [44743562538](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562538), Hexis lineage [44743562613](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562613), affect restore [44743561933](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743561933), ActionGateway [44743562053](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562053), UserModel forget [44743562348](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562348).
 - Last full census before PR #1031: 1,032 refs / 1,016 unique heads / 306 open PRs; #1031 adds one known branch and one open PR. See [delta](docs/consolidation/branch-census-delta-2026-11-20.md).
-- Draft PR #1031: concept restore hardening at head `da4bc27c716d9207de1343e9d2d3aac7efa364c2`; all 8/8 exact-head Actions passed, including focused workflow [44745839885](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44745839885). Draft docs PR #1032 has 5/5 Actions SUCCESS. Neither PR was merged.
+- Draft PR #1031: concept restore hardening at head `46d4179171ae16a2b9fb2876efc7db0a815eef03`; all 8/8 exact-head Actions SUCCESS, including focused MeTTa/restore workflow [44747501282](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44747501282). It also covers C1 control sanitization and locale-independent fact ordering. Draft docs PR #1032 had 5/5 Actions SUCCESS at its prior head. Neither PR was merged.
 - Source branch is unprotected. No PR was merged/closed and no branch deleted/force-updated by this run.
 
 ## Release truth
@@ -22,8 +22,8 @@
 
 ## Next P0
 
-1. Finish exact-head Actions on PR #1031 and keep it Draft.
-2. Materialize/hash/extract the October 19 ZIP.
+1. Review the tested PR #1031 diff and keep it Draft pending explicit merge authorization.
+2. Obtain the October 19 ZIP bytes through a supported artifact path; this runtime cannot resolve GitHub hosts, so byte-level hash/extraction remains blocked.
 3. Continue non-source-base PR dependency and duplicate-tip reference audit.
 4. Run independent RU/EN holdout with five paired seeds.
 5. Run browser/WebGL and Android/Termux soak; obtain human license review.

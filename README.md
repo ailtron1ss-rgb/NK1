@@ -9,7 +9,7 @@
 - PR [#868](https://github.com/ailtron1ss-rgb/NK1/pull/868) был объединён внешним действием в source на `960a2d540ef952486a0271a0e5332caec601b36a`: bounded MeTTa concept export. Это external/observed, не merge данного цикла; Hyperon worker и исполнение MeTTa не подключены.
 - На точном source SHA все **11/11 push-triggered Actions SUCCESS**. Основные: [core](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562538), [Hexis lineage](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562613), [affect restore](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743561933), [ActionGateway](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562053), [UserModel forget](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562348).
 - Последняя полная пагинация до PR #1031: 1,032 refs / 1,016 unique HEADs / 1 duplicate-tip group / 16 aliases; 306 open PRs (155 source-base, 151 other-base). PR #1031 добавляет один известный branch ref и один open PR; delta зафиксирована в [census delta](docs/consolidation/branch-census-delta-2026-11-20.md).
-- [PR #1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) — Draft restore-hardening, не merged; focused workflow PASS, три broader Actions были в процессе.
+- [PR #1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) — Draft restore-hardening at head `46d4179171ae16a2b9fb2876efc7db0a815eef03`; 8/8 exact-head Actions SUCCESS, including C1-control sanitization and locale-independent MeTTa fact ordering. Не merged.
 - `workpass70-source` не защищена; required checks не enforced. Aspect registry 6 ноября — исторический snapshot, не текущая readiness оценка.
 
 ### Release и юридический gate

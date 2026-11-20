@@ -4,7 +4,7 @@
 
 The canonical source advanced during this run because PR #868 was merged externally. The change was observed and verified, not attributed to this run. The new bounded MeTTa serializer is integrated into the existing concept compiler, but does not execute Hyperon or connect an external worker.
 
-This run then implemented a narrow restore-integrity fix on isolated Draft PR [#1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031). It uses own data descriptors, rejects proxies, avoids accessor execution, bounds restored state and uses null-prototype dictionaries for concept labels such as `__proto__`. The focused MeTTa workflow passed; three broader regressions were still running at checkpoint.
+This run then extended isolated Draft PR [#1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031): restore uses own data descriptors, rejects proxies, avoids accessor execution, bounds restored state and uses null-prototype dictionaries; follow-up fixes also sanitize C1 controls and remove locale-sensitive fact ordering. All 8/8 exact-head Actions passed on the final PR head.
 
 ## Live source
 
@@ -28,12 +28,12 @@ This run then implemented a narrow restore-integrity fix on isolated Draft PR [#
 ## Current work on PR #1031
 
 - Branch: `fix/neurosymbolic-concept-restore-integrity-20261120`
-- Head: `f52212a9fea1ab1fdc2c0aec3bf4dfdbfd2ab280`
+- Head: `46d4179171ae16a2b9fb2876efc7db0a815eef03`
 - Changed files:
   - `runtime/neuro-kurisu/src/organism/cognition/NeuroSymbolicConceptCompiler.ts`
   - `runtime/neuro-kurisu/tests/hyperon-metta-concept-bridge.mjs`
-- Focused workflow [44744691480](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44744691480) SUCCESS.
-- At the last poll, 5/8 PR Actions were complete SUCCESS and 3 were still in progress. PR remains Draft; no merge was performed.
+- Focused workflow [44747501282](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44747501282) SUCCESS; C1 sanitization and locale-independent ordering regressions included.
+- All 8/8 exact-head Actions completed SUCCESS on `46d4179171ae16a2b9fb2876efc7db0a815eef03`: 44747501282, 44747503305, 44747500374, 44747500230, 44747500558, 44747500255, 44747500426, 44747500260. PR remains Draft; no merge was performed.
 - No source branch file was modified by this run.
 
 ## Branch and PR census
@@ -55,11 +55,11 @@ This run then implemented a narrow restore-integrity fix on isolated Draft PR [#
 
 - generated: 18
 - attempted: 11 (01, 03, 05, 07, 08, 09, 10, 11, 13, 14, 18)
-- completed: 5 (01, 03, 05, 08, 11)
-- partially_completed: 3 (10, 13, 18)
+- completed: 6 (01, 03, 05, 08, 10, 11)
+- partially_completed: 2 (13, 18)
 - blocked: 7 (04, 06, 07, 09, 14, 15, 16)
 - deferred: 3 (02, 12, 17)
-- verified: 5 (01, 03, 05, 08, 11)
+- verified: 6 (01, 03, 05, 08, 10, 11)
 
 ## 18-direction adaptive task package
 
@@ -74,7 +74,7 @@ This run then implemented a narrow restore-integrity fix on isolated Draft PR [#
 | NK1-D2026-11-20-07 | Planning / consequence model | Reconcile Consequence Ecology PR stack #928 → #947 | P1 | #928 parent; #947 child | High; no policy promotion | 15 independent evidence clusters and exact-head CI | blocked | #947 remains Draft/stacked; synthetic fixture is not independent evidence |
 | NK1-D2026-11-20-08 | ActionGateway / tools | Verify permission and idempotency governance on source | P1 | Canonical ActionGateway | Low; verification only | Exact-head gateway governance passes | done | 44743562053 SUCCESS |
 | NK1-D2026-11-20-09 | Reflection / learning credit | Verify credit requires independent postcondition receipts | P1 | OutcomeVerificationService | High; reversible tests | ACK/caller boolean cannot create credit | blocked | No independent outcome dataset |
-| NK1-D2026-11-20-10 | SelfModel / continuity | Harden concept compiler restore against prototype keys, getters, proxies and oversized state | P1 | PR #1031 | Medium; reversible code/test change | Focused MeTTa test and all cross-regressions pass | partially_completed | PR #1031 Draft; focused 44744691480 SUCCESS, three broad checks still in progress |
+| NK1-D2026-11-20-10 | SelfModel / continuity | Harden concept restore and deterministic MeTTa export against hostile state, C1 controls and locale drift | P1 | PR #1031 | Medium; reversible code/test change | Restore/export regressions and all exact-head cross-checks pass | done | PR #1031 head 46d4179; 8/8 Actions SUCCESS |
 | NK1-D2026-11-20-11 | UserModel / forgetting | Verify explicit-forget integrity on current source | P1 | UserModel v2 | Low; verification only | Exact-head forget workflow passes | done | 44743562348 SUCCESS |
 | NK1-D2026-11-20-12 | EthicalGate / PEA | No policy change until a reproducible privacy/refusal failure appears | P2 | Existing safety contracts | Low; no mutation | New work only from adversarial regression | no-new-work | No new failure surfaced |
 | NK1-D2026-11-20-13 | Embodiment / MotorFrame | Verify Original 2D and avatar affect coupling; keep visual E2E separate | P1 | MotorFrame + renderers | Medium; verification only | Contract checks pass; visual/device E2E remains separate | partially_completed | 44743562052, 44743561955, 44743562009 SUCCESS |
@@ -95,13 +95,13 @@ This run then implemented a narrow restore-integrity fix on isolated Draft PR [#
 | ActionGateway | Permission/idempotency contracts | Governance path | 44743562053 SUCCESS | Not released |
 | UserModel | Explicit-forget v2 | Tombstone/projection path | 44743562348 SUCCESS | Not released |
 | MeTTa bridge | Bounded serializer from external PR #868 | Connected to concept compiler only | 44744691480 SUCCESS on PR #1031 head | Not released |
-| Concept restore hardening | Implemented on PR #1031 branch | Not merged to source | Focused workflow passed; broader checks pending | Not released |
+| Concept restore + MeTTa output hardening | Implemented on PR #1031 branch | Not merged to source | 8/8 exact-head Actions SUCCESS on 46d4179 | Not released |
 | Avatar/MotorFrame | MotorFrame and affect coupling | 2D/renderer contract path | 44743562052, 44743561955, 44743562009 SUCCESS | Visual/device E2E open |
 | Retrieval, initiative, speech, mobile | Harnesses/contracts exist | Full evaluation/device wiring unproven | No holdout/device soak claimed | Not released |
 
 ## Adaptive goals and next steps
 
 - Closed five exact-source verification slices: core, Hexis lineage, affect restore, ActionGateway governance and UserModel explicit forget.
-- Raised concept compiler restore safety after the externally merged MeTTa export introduced a new serialized state boundary.
+- Raised concept compiler restore/export safety after the externally merged MeTTa serializer exposed a persisted-state boundary; added C1 sanitization and locale-independent ordering, then verified 8/8 exact-head Actions.
 - Kept P0: ZIP bytes/parity, human license review, independent RU/EN holdout and target-device E2E/soak.
-- Next: finish PR #1031 CI while Draft; obtain ZIP bytes; continue non-source-base PR graph; run independent holdout; complete browser/WebGL and Android/Termux soak.
+- Next: review PR #1031 and keep it Draft pending explicit merge authorization; obtain ZIP bytes through a supported artifact path; continue non-source-base PR dependency graph; run independent RU/EN holdout; complete browser/WebGL and Android/Termux soak.
