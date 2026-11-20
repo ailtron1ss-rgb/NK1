@@ -20,6 +20,11 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ElasticNeuralPlasticity.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P26TrueLearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P29LearningGovernance.ts"
+      - "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts"
+      - "runtime/neuro-kurisu/tests/elastic-neural-plasticity.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts"
@@ -163,6 +168,9 @@ jobs:
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
+      - name: Verify sparse elastic neural plasticity and anti-forgetting gate
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:elastic-neural-plasticity
       - name: Validate research-grade matched holdout experiment plan (five paired seeds)
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:learning-experiment-plan
