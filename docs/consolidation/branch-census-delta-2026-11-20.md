@@ -16,13 +16,13 @@ The 17-ref family remains at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`; its ful
 ## Known delta after that snapshot
 
 - PR [#1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) added one new branch ref: `fix/neurosymbolic-concept-restore-integrity-20261120`.
-- PR #1031 is open, Draft, and targets `workpass70-source` at `960a2d540ef952486a0271a0e5332caec601b36a`.
-- By this known delta, the observed minimum is **1,033 refs / 1,017 unique HEADs / 307 open PRs**. This is a derived delta, not a claim that a second full pagination was completed after PR #1031; concurrent external changes remain possible.
-- No branch was deleted or force-updated. No PR was merged or closed.
+- PR #1031 targeted `workpass70-source` at `960a2d540ef952486a0271a0e5332caec601b36a` and is now merged as `950989fe0081e3760471d44beb6e95bb9e0bc82b`.
+- PR #1032 adds the second known ref. After #1031 merged and #1032 remained open, the derived known minimum is **1,034 refs / 1,018 unique HEADs / 307 open PRs**. This is a derived delta, not a claim that a second full pagination was completed; concurrent external changes remain possible.
+- PR #1031 was squash-merged. No branch was deleted or force-updated.
 
 ## Current source
 
-- `workpass70-source`: `960a2d540ef952486a0271a0e5332caec601b36a`
+- `workpass70-source` runtime baseline after #1031: `950989fe0081e3760471d44beb6e95bb9e0bc82b` (before the documentation-only update in #1032).
 - `main`: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`
 - Exact source Actions for `960a2d540ef952486a0271a0e5332caec601b36a`: 11/11 SUCCESS.
 - External/observed source integration: PR #868, bounded MeTTa concept export bridge, merge commit `960a2d540ef952486a0271a0e5332caec601b36a`. It serializes bounded facts only; no Hyperon execution worker is connected.
@@ -34,7 +34,7 @@ Equal HEAD is not sufficient for branch deletion. Every alias still requires joi
 
 ## Second known delta — PR #1032
 
-- Draft documentation PR [#1032](https://github.com/ailtron1ss-rgb/NK1/pull/1032) adds `maintenance/nk1-live-checkpoint-2026-11-20` as a second new ref after the 1,032/1,016/306 full snapshot.
-- Its exact head `0e8ea75638a3b51f10131e08f5a966e2f7350f22` passed 5/5 Actions.
-- Together with PR #1031, the known minimum after the last full pagination is **1,034 branch refs / 1,018 unique HEADs / 308 open PRs** (157 source-base, 151 other-base). This remains a delta, not a new complete pagination.
-- PR #1031 advanced to `da4bc27c716d9207de1343e9d2d3aac7efa364c2`; all 8/8 exact-head Actions passed, including explicit cap/counter restore regressions.
+- Documentation PR [#1032](https://github.com/ailtron1ss-rgb/NK1/pull/1032) uses `maintenance/nk1-live-checkpoint-2026-11-20` as the second new ref after the 1,032/1,016/306 full snapshot.
+- Its prior exact head `dcdac4cebfedd451f89406ba0eec3357cb58179f` passed 5/5 Actions; this checkpoint refresh adds a new head that must be revalidated before merge.
+- After #1031 merged, the known minimum was **1,034 branch refs / 1,018 unique HEADs / 307 open PRs**. This remains a delta, not a new complete pagination; no second full PR-base pagination was performed.
+- PR #1031 final head `46d4179171ae16a2b9fb2876efc7db0a815eef03` passed all 8/8 exact-head Actions and was merged as `950989fe0081e3760471d44beb6e95bb9e0bc82b`.
