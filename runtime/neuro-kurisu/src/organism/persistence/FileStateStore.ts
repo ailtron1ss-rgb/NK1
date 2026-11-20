@@ -152,12 +152,32 @@ export class FileStateStore<T> implements JsonStateStore<T> {
       try { await handle.sync(); this.stats.fsyncs += 1; } finally { await handle.close(); }
       crashInject('after-backup-file-fsync');
       await rename(tmp, this.backupPath);
+      if (this.strictDirectoryFsync) {
+        try {
+          // Make the previous primary durable as a backup before replacing primary.
+          await this.syncParentDirectory();
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          throw new Error('backup-directory-fsync-required:' + reason, { cause: error });
+        }
+      }
       crashInject('after-backup-rename');
       this.stats.backupCopies += 1;
     } finally {
       try { await unlink(tmp); } catch (error: any) { if (error?.code !== 'ENOENT') throw error; }
     }
   }
+  /** Persist the directory entry changes created by backup/primary rename. */
+  private async syncParentDirectory(): Promise<void> {
+    const dirHandle = await open(dirname(this.filePath), 'r');
+    try {
+      await dirHandle.sync();
+      this.stats.fsyncs += 1;
+    } finally {
+      await dirHandle.close();
+    }
+  }
+
   private async saveInternal(value: T): Promise<void> {
     const startedAt = now();
     await mkdir(dirname(this.filePath), { recursive: true });
@@ -200,9 +220,15 @@ export class FileStateStore<T> implements JsonStateStore<T> {
     crashInject('after-rename');
     if (this.strictDirectoryFsync || this.saveCount % this.directoryFsyncEverySaves === 0 || shouldBackup) {
       try {
-      const dirHandle = await open(dirname(this.filePath), 'r');
-      try { await dirHandle.sync(); this.stats.fsyncs += 1; } finally { await dirHandle.close(); }
-      } catch { /* directory fsync is not available on every filesystem */ }
+        await this.syncParentDirectory();
+      } catch (error) {
+        // Best-effort mode remains portable, but strict mode must never report a
+        // durable save when the parent directory entry could not be fsynced.
+        if (this.strictDirectoryFsync) {
+          const reason = error instanceof Error ? error.message : String(error);
+          throw new Error(`directory-fsync-required:${reason}`, { cause: error });
+        }
+      }
     }
 
     const elapsed = now() - startedAt;
