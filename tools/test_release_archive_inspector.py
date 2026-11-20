@@ -146,5 +146,16 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertTrue(any("archive path collision after prefix mapping" in error for error in result["errors"]))
 
+
+    def test_casefold_collision_reports_both_original_zip_names(self):
+        with zipfile.ZipFile(self.archive, "w") as zipped:
+            zipped.writestr("research/", "")
+            zipped.writestr("Research/", "")
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        collision = next(error for error in result["errors"] if "case-insensitive duplicate ZIP member" in error)
+        self.assertIn("'research'", collision)
+        self.assertIn("'Research'", collision)
+
 if __name__ == "__main__":
     unittest.main()
