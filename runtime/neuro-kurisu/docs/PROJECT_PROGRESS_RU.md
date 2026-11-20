@@ -282,3 +282,9 @@ P84 теперь связывает autobiographical moments с canonical EventL
 > Release truth marker: 35.6.54 / 79.7.0-memory-self-consolidation-b2512-b2514. The historical material in this document is retained; this marker identifies the current release context.
 
 **Актуальный кодовый release:** `35.30.0` — R16 multi-system closure: temporal memory, autonomy, continuity and mobile durability (2026-09-25). Source-of-truth следует проверять по исполняемому коду, тестам и manifest этого release.
+
+## Реестр runtime-тестов — защита от повторных вызовов
+
+- Статический аудит `tools/audit-runtime-test-coverage.mjs` проверяет, что одна составная команда `test:*` не запускает одну и ту же дочернюю `test:*` несколько раз.
+- Отдельные сценарии подтверждают обнаружение повторов, отсутствие ложного срабатывания на общий тест между разными командами и игнорирование release/audit-команд.
+- Проверка зарегистрирована в корневом `package.json` и unified organism workflow. Это защита реестра команд, а не доказательство выполнения всех runtime-тестов.
