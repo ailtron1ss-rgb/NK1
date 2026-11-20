@@ -5413,6 +5413,26 @@ export class OrganismCore {
         const broadcast = this.config.enableCognitiveNetwork ? this.cognitiveRuntime.cognitiveNetwork.stimulate(networkSignals, state.tick, state.attentionBudget * neuromod.attentionGain01) : null;
         // Cognitive network is projected by PersistenceProjectionCoordinator at checkpoint boundaries.
         // Keeping the hot-path copy only in the live bus avoids cloning the 64-entry broadcast history each cycle.
+        // Perception-level disagreement between independent evidence claims reaches
+        // the same canonical contradiction owner as prediction-error divergence.
+        // Registering here keeps one contradiction owner instead of a parallel ledger.
+        if (this.config.enableContradictions && semanticP41?.metrics?.epistemicContradictions > 0) {
+            for (const pair of this.embodimentSubsystem.p41SemanticPerception.epistemicConflicts(4)) {
+                const registered = this.cognitiveRuntime.contradictions.register(
+                    `Evidence disagreement: ${pair.claim.modality}:${pair.claim.claim}`,
+                    [`${pair.opposing.modality}:${pair.opposing.claim}`],
+                    pair.claim.confidence01,
+                );
+                this.cognitiveRuntime.cognitiveField.addPressure(
+                    'contradiction',
+                    registered.claim,
+                    clamp(registered.confidence * .5),
+                    [registered.id],
+                    0.02,
+                );
+            }
+            this.persisted.facets.cognition.contradictions = this.cognitiveRuntime.contradictions.snapshot();
+        }
         if (this.config.enableContradictions && state.predictionError > 0.62) {
             const c = this.cognitiveRuntime.contradictions.register('Наблюдаемый исход существенно расходится с текущим прогнозом', [String(activeGoalPressureFallback(this.persisted.goals) || 'goal-model'), 'world-transition'], state.predictionError);
             this.cognitiveRuntime.cognitiveField.addPressure('contradiction', c.claim, c.confidence, [c.id], 0.03);

@@ -433,15 +433,15 @@
       "wave": "2",
       "titleRu": "Reasoning",
       "titleEn": "Reasoning",
-      "owner": "UNKNOWN",
-      "ownerStatus": "unmapped",
+      "owner": "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts",
+      "ownerStatus": "candidate",
       "dependsOn": [
         "cognitive-kernel"
       ],
       "verificationGate": "cognitive",
-      "status": "IMPLEMENTED",
-      "evidence": null,
-      "notes": "No single reasoning owner; deductive/inductive/abductive/probabilistic capability is scattered (NeuroSymbolicConceptCompiler.ts is partial). Confirm the owner before changing."
+      "status": "CONNECTED",
+      "evidence": "PerceptualEpistemicGraph contradiction detection (claimPolarity + antonym pairing) is wired through P41SemanticPerception.metrics.epistemicContradictions into ContradictionReservoir.register and CognitiveImmuneSystem contradiction pressure. tests/epistemic-contradiction-integrity.mjs covers polarity, pairing, replay idempotency, restore/migration, bounded flood, supersedes resolution and an end-to-end P41 -> reservoir -> immune control/lesion check.",
+      "notes": "Partial coverage only. Contradiction detection over perceptual evidence claims now exists and is wired; deductive/inductive/abductive/probabilistic reasoning remains scattered and has no single owner. The epistemic graph owns evidence-claim conflict, not general inference."
     },
     {
       "n": 10,

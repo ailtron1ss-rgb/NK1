@@ -1,3 +1,15 @@
+## [NK1][Reasoning] Detect and surface contradictory perceptual evidence (2026-11-19)
+- Count `PerceptualEpistemicGraph.contradictionPairs` for real: it was declared, initialised and reported in `summary()` but never incremented, so the epistemic graph could not represent disagreement at all. `door is open` plus `door is closed` previously produced `0`.
+- Add `claimPolarity()` with bilingual (EN/RU) negation tokens, double-negation cancellation, and scalar phrases such as `not only` / `не только` excluded so they cannot manufacture phantom conflicts.
+- Pair claims by identical core with opposite polarity, or by a shared subject with an antonym and the same polarity. Unrelated claims never pair.
+- Make `contradictionPairs` a gauge over the retained window rather than a lifetime counter: a witness is `(modality, claim)`, so restating one side is persistence, not a new conflict, and window trimming cannot freeze a stale figure.
+- Resolve conflicts only through an explicit `supersedes` edge, which increments `resolvedPairs` and keeps both claims in the audit trail.
+- Expose `contestedPairs()` and wire it through `P41SemanticPerception.metrics.epistemicContradictions` into the existing canonical `ContradictionReservoir` and cognitive-field `contradiction` pressure. No second contradiction owner was added.
+- Harden `add()` against untrusted perception receipts: non-string, empty, over-long, non-finite and malformed inputs are refused or clamped instead of throwing. Restore recomputes the gauge and refuses hostile saved counters.
+- Add `test:epistemic-contradiction` covering polarity, pairing, replay idempotency, legacy migration, a bounded 600-claim flood, `supersedes` resolution and an end-to-end P41 -> reservoir -> immune control/lesion check; chain it into `test:rebuild-recovered`.
+- Aspect #9 (`reasoning`) moves from an `UNKNOWN` owner to a candidate owner with recorded evidence, and is explicitly scoped to evidence-claim conflict rather than general inference.
+- This is deterministic conflict detection over perceptual evidence claims. It is lexical, not world-knowledge reasoning, does not perform belief revision, and implies no Release ZIP or `main` change.
+
 ## [NK1][Embodiment] Bind voice prosody to canonical affect appraisal and dominance (2026-11-19)
 - Project voice emotion from the latest canonical `EmotionAppraisalEngine` episode, falling back to validated appraisal aggregates and then the affect-specific cognitive field.
 - Keep perceived affective dominance separate from cognitive coherence; missing dominance uses a neutral fallback and never borrows `coherence01`.

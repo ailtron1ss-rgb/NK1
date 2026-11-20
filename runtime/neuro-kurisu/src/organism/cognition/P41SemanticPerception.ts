@@ -150,7 +150,9 @@ export interface P41PerceptionState {
   /** Monotonic IDs for anonymous spatial tracks. */
   nextTrackSequence:number;
   actionBias:Record<ActionKind,number>;
-  metrics:{grounding01:number;temporalBinding01:number;objectPermanence01:number;crossModalAgreement01:number;crossModalEvidenceCoverage01:number;outcomeAlignment01:number;activePerceptionUtility01:number;unresolvedRate01:number;updates:number;sceneContinuity01:number;temporalGrounding01:number;evidenceTraceability01:number};
+  metrics:{grounding01:number;temporalBinding01:number;objectPermanence01:number;crossModalAgreement01:number;crossModalEvidenceCoverage01:number;outcomeAlignment01:number;activePerceptionUtility01:number;unresolvedRate01:number;updates:number;sceneContinuity01:number;temporalGrounding01:number;evidenceTraceability01:number;
+    /** Distinct opposing evidence-witness pairs currently retained. Not a confidence penalty. */
+    epistemicContradictions:number};
   continuity?:ContinuityState;
   epistemic?:EpistemicState;
   lastCheckpointAt:number;
@@ -171,7 +173,7 @@ export const defaultP41SemanticPerception = ():P41PerceptionState => ({
     world:{reliability01:.66,observations:0,conflict01:0,latency01:.14,reportedQuality01:.66,serviceSuccess01:.5,calibrationSamples:0,calibrationMae01:0,calibrationBias01:0,lastVerifiedAt:0},
   },
   actionBias:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,
-  metrics:{grounding01:.18,temporalBinding01:.12,objectPermanence01:.05,crossModalAgreement01:.5,crossModalEvidenceCoverage01:0,outcomeAlignment01:.5,activePerceptionUtility01:.1,unresolvedRate01:0,updates:0,sceneContinuity01:.1,temporalGrounding01:.1,evidenceTraceability01:.1},
+  metrics:{grounding01:.18,temporalBinding01:.12,objectPermanence01:.05,crossModalAgreement01:.5,crossModalEvidenceCoverage01:0,outcomeAlignment01:.5,activePerceptionUtility01:.1,unresolvedRate01:0,updates:0,sceneContinuity01:.1,temporalGrounding01:.1,evidenceTraceability01:.1,epistemicContradictions:0},
   continuity:defaultPerceptualContinuityState(),
   epistemic:defaultEpistemicState(),
   calibrationEvidenceIds:[],
@@ -266,6 +268,7 @@ export class P41SemanticPerceptionEngine {
     this.state.metrics.temporalGrounding01=this.state.continuity.temporalGrounding01;
     this.state.epistemic=this.epistemic.snapshot();
     this.state.metrics.evidenceTraceability01=clamp(Math.min(1,this.state.epistemic.claims.length/32));
+    this.state.metrics.epistemicContradictions=this.state.epistemic.contradictionPairs;
     this.state.snapshots.unshift({
       id:stableId('snapshot',`${this.state.tick}:${at}:${this.state.scene.label}`),tick:this.state.tick,at,
       scene:this.state.scene.label,entityIds:this.state.entities.filter(e=>e.present01>.25).slice(0,32).map(e=>e.id),
@@ -584,6 +587,8 @@ export class P41SemanticPerceptionEngine {
     return true;
   }
   observeOutcome(success01:number,surprise01:number){const s=clamp(success01),u=clamp(surprise01);this.state.metrics.outcomeAlignment01=clamp(this.state.metrics.outcomeAlignment01*.93+s*.04-u*.03);return this.snapshot();}
+  /** Retained evidence claims that a newer claim currently opposes, as explicit pairs. */
+  epistemicConflicts(limit=8){return this.epistemic.contestedPairs(limit);}
   semanticSummary(){return {scene:this.state.scene,entities:this.state.entities.slice(0,12),events:this.state.events.slice(0,8),relations:this.state.relations.slice(0,16),nextPerception:this.nextPerception(),metrics:this.state.metrics,continuity:this.continuity.snapshot(),epistemic:this.epistemic.summary()};}
 }
 function clampSigned(n:number){return Math.max(-1,Math.min(1,Number.isFinite(n)?n:0));}
