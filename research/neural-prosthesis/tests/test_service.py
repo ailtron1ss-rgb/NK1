@@ -1,22 +1,34 @@
+import hashlib
 import json
+import os
+import tempfile
 import socket
 import threading
+from contextlib import nullcontext
 import unittest
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import torch
+from torch import nn
 from queue import Queue
 
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from neural_prosthesis.engine import ArtifactError, _config_digest, _model_config
 from neural_prosthesis.service import (
     BoundedThreadingHTTPServer,
     RequestError,
+    TransformersRuntime,
     _context_window,
     _output_token_limit,
     _http_request_timeout_seconds,
+    _load_layer_force_bank,
     create_handler,
 )
 
@@ -293,3 +305,210 @@ class NeuralProsthesisHttpTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+class LayerForceSidecarConfigurationTests(unittest.TestCase):
+    class TinyModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.config = SimpleNamespace(
+                to_dict=lambda: {"model_type": "layer-force-service-test", "hidden_size": 4}
+            )
+            self.layers = nn.ModuleList([nn.Identity(), nn.Identity(), nn.Identity()])
+            self.anchor = nn.Parameter(torch.zeros(1))
+
+        def forward(self, hidden):
+            for layer in self.layers:
+                hidden = layer(hidden)
+            return hidden
+
+    def setUp(self):
+        self.model = self.TinyModel()
+        self.model_id = "nk1/layer-force-service-test"
+        self.revision = "a" * 40
+        self.layer_path = "layers"
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.profile_path = Path(self.temp.name) / "profile.json"
+        payload = {
+            "schema_version": 1,
+            "profile_id": "service-steering-v1",
+            "model": {
+                "model_id": self.model_id,
+                "model_revision": self.revision,
+                "config_sha256": _config_digest(_model_config(self.model)),
+                "layer_path": self.layer_path,
+                "hidden_size": 4,
+            },
+            "layers": [{"index": 1, "direction": [1.0, 0.0, 0.0, 0.0], "strength": 1.0}],
+            "max_delta_ratio": 0.05,
+        }
+        self.profile_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        self.profile_digest = hashlib.sha256(self.profile_path.read_bytes()).hexdigest()
+
+    def _configure(self, *, paths=None, allowlist=None, default=""):
+        return patch.dict(os.environ, {
+            "NEURO_NP_LAYER_FORCE_PROFILE_PATHS_JSON": json.dumps(
+                paths if paths is not None else [str(self.profile_path)]
+            ),
+            "NEURO_NP_ALLOWED_LAYER_FORCE_PROFILES_JSON": json.dumps(
+                allowlist if allowlist is not None else [self.profile_digest]
+            ),
+            "NEURO_NP_DEFAULT_LAYER_FORCE_PROFILE": default,
+        })
+
+    def test_layer_force_is_disabled_without_operator_profile(self):
+        with self._configure(paths=[], allowlist=[], default=""):
+            controller, default_profile = _load_layer_force_bank(
+                self.model,
+                model_id=self.model_id,
+                model_revision=self.revision,
+                layer_path=self.layer_path,
+            )
+        self.assertIsNone(controller)
+        self.assertIsNone(default_profile)
+
+    def test_default_layer_force_profile_is_loaded_and_changes_generate_path_activations(self):
+        with self._configure(default="service-steering-v1"):
+            controller, default_profile = _load_layer_force_bank(
+                self.model,
+                model_id=self.model_id,
+                model_revision=self.revision,
+                layer_path=self.layer_path,
+            )
+        self.assertIsNotNone(controller)
+        self.assertEqual(default_profile, "service-steering-v1")
+        self.assertEqual(controller.snapshot()["loaded_profiles"][0]["profile_id"], default_profile)
+        try:
+            sample = torch.ones(1, 2, 4)
+            baseline = self.model(sample)
+            with torch.inference_mode(), controller.activate(default_profile):
+                steered = self.model(sample)
+            self.assertFalse(torch.equal(baseline, steered))
+        finally:
+            controller.close()
+
+
+    def test_preloaded_profile_without_default_keeps_sidecar_hooks_disabled(self):
+        with self._configure(default=""):
+            controller, default_profile = _load_layer_force_bank(
+                self.model,
+                model_id=self.model_id,
+                model_revision=self.revision,
+                layer_path=self.layer_path,
+            )
+        self.assertIsNotNone(controller)
+        self.assertIsNone(default_profile)
+        try:
+            diagnostic = controller.snapshot()
+            self.assertTrue(diagnostic["loaded_profiles"])
+            self.assertEqual(diagnostic["registered_hook_count"], 0)
+            self.assertTrue(all(not layer._forward_hooks for layer in self.model.layers))
+        finally:
+            controller.close()
+
+    def test_layer_force_refuses_unapproved_profiles_and_unversioned_models(self):
+        with self._configure(allowlist=["0" * 64], default="service-steering-v1"):
+            with self.assertRaisesRegex(ArtifactError, "not-host-approved"):
+                _load_layer_force_bank(
+                    self.model,
+                    model_id=self.model_id,
+                    model_revision=self.revision,
+                    layer_path=self.layer_path,
+                )
+        with self._configure(default="service-steering-v1"):
+            with self.assertRaisesRegex(RuntimeError, "MODEL_REVISION"):
+                _load_layer_force_bank(
+                    self.model,
+                    model_id=self.model_id,
+                    model_revision="unversioned-local",
+                    layer_path=self.layer_path,
+                )
+
+    def test_layer_force_default_must_reference_an_loaded_profile(self):
+        with self._configure(paths=[], allowlist=[], default="missing-profile"):
+            with self.assertRaisesRegex(RuntimeError, "requires-a-local-profile"):
+                _load_layer_force_bank(
+                    self.model,
+                    model_id=self.model_id,
+                    model_revision=self.revision,
+                    layer_path=self.layer_path,
+                )
+
+    def test_transformers_runtime_applies_only_the_operator_selected_profile(self):
+        with self._configure(default="service-steering-v1"):
+            controller, default_profile = _load_layer_force_bank(
+                self.model,
+                model_id=self.model_id,
+                model_revision=self.revision,
+                layer_path=self.layer_path,
+            )
+
+        class FakeTokenizer:
+            pad_token_id = 0
+
+            def apply_chat_template(self, _messages, *, tokenize, add_generation_prompt):
+                return "user: fixture"
+
+            def __call__(self, _prompt, *, return_tensors, truncation, max_length):
+                return {
+                    "input_ids": torch.tensor([[1, 2]], dtype=torch.long),
+                    "attention_mask": torch.ones((1, 2), dtype=torch.long),
+                }
+
+            def decode(self, _tokens, *, skip_special_tokens):
+                return "fixture completion"
+
+        class FakeGenerator:
+            def __init__(self, layer_model):
+                self.layer_model = layer_model
+                self.last_hidden = None
+
+            def generate(self, *, input_ids, **_kwargs):
+                self.last_hidden = self.layer_model(torch.ones((1, 2, 4)))
+                return torch.cat([input_ids, torch.tensor([[3]], dtype=torch.long)], dim=-1)
+
+        class InertAdapterBank:
+            def activate(self, _adapter_id):
+                return nullcontext()
+
+            def close(self):
+                return None
+
+            def snapshot(self):
+                return {"loaded_adapters": []}
+
+        runtime = object.__new__(TransformersRuntime)
+        runtime.tokenizer = FakeTokenizer()
+        runtime.model = FakeGenerator(self.model)
+        runtime.device = torch.device("cpu")
+        runtime.model_id = self.model_id
+        runtime.model_revision = self.revision
+        runtime.layer_path = self.layer_path
+        runtime.default_adapter = None
+        runtime._adapter_manifest_digests = {}
+        runtime._approved_manifest_digests = set()
+        runtime.max_context_tokens = 32
+        runtime._generation_lock = threading.Lock()
+        runtime.bank = InertAdapterBank()
+        runtime.layer_force = controller
+        runtime.default_layer_force_profile = default_profile
+        runtime.max_http_workers = 16
+
+        try:
+            sample = torch.ones((1, 2, 4))
+            baseline = self.model(sample)
+            response = runtime.complete({
+                "messages": [{"role": "user", "content": "fixture"}],
+                "max_tokens": 8,
+                "temperature": 0,
+            })
+            self.assertEqual(response["choices"][0]["message"]["content"], "fixture completion")
+            self.assertIsNotNone(runtime.model.last_hidden)
+            self.assertFalse(torch.equal(baseline, runtime.model.last_hidden))
+            self.assertTrue(torch.equal(baseline, self.model(sample)))
+            diagnostic = runtime.status()
+            self.assertTrue(diagnostic["layer_force"]["enabled"])
+            self.assertNotIn("direction", json.dumps(diagnostic))
+        finally:
+            runtime.close()
+        self.assertTrue(all(not layer._forward_hooks for layer in self.model.layers))
