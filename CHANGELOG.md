@@ -1,3 +1,11 @@
+## [NK1][Persistence] Recover verified state backups when the primary is missing (2026-11-01)
+- Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
+- Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the missing primary instead of being skipped.
+- Invalidate the prior hash when recovering from a corrupt primary and preserve the known-good backup during repair.
+- Keep the backup-preservation guard active until the primary rename succeeds; clean up temporary files after ordinary failed writes/renames so a retry cannot rotate corrupt primary bytes over the verified backup.
+- Add regressions for missing-primary recovery, primary recreation, empty-store behavior, corrupt-primary preservation, failed-rename retry and temp-file cleanup.
+- Add an isolated, dependency-free Node 24 GitHub Actions workflow for the file-state recovery contract. This does not replace broader organism recovery/soak tests.
+
 ## [NK1][Cognition] Wire cognitive spine cadence into the production runtime (2026-11-02)
 - Connect the event/budget-aware scheduler to the actual OrganismRuntime cycle instead of leaving it as an isolated utility.
 - Compose its research/project/world-rollout/shadow decisions with the existing CognitiveExecutionPlanner gates; external user input retains the responsive slow-cognition path while protected resource states stop optional secondary work.

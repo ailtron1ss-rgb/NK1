@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, unlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -123,6 +123,31 @@ await store.save({tick:3,identity:'interrupted-next-primary'});`;
   bestEffortStore.syncParentDirectory=async()=>{ throw new Error('injected-directory-fsync-unsupported'); };
   await bestEffortStore.save({tick:2,identity:'best-effort'});
   assert.deepEqual(JSON.parse(await readFile(bestEffortPath,'utf8')),{tick:2,identity:'best-effort'});
+
+  // A failed primary replacement must not consume the backup-preservation guard.
+  const retryPath=join(dir,'retry-primary.json');
+  const retryWriter=new FileStateStore(retryPath,{backupEverySaves:1,encoding:'json'});
+  await retryWriter.save({tick:20,identity:'verified-backup'});
+  await retryWriter.save({tick:21,identity:'newer-primary'});
+  await writeFile(retryPath,'{broken','utf8');
+  const retryReader=new FileStateStore(retryPath,{backupEverySaves:1,encoding:'json'});
+  const retryRecovered=await retryReader.load();
+  assert.deepEqual(retryRecovered,{tick:20,identity:'verified-backup'});
+  await unlink(retryPath);
+  await mkdir(retryPath);
+  await assert.rejects(retryReader.save(retryRecovered), error =>
+    error?.code === 'EISDIR' || error?.code === 'EPERM' || error?.code === 'EEXIST',
+    'a directory at the primary path must make the replacement fail');
+  const leftoverTemps=(await readdir(dir)).filter(name =>
+    name.startsWith('retry-primary.json.') && name.endsWith('.tmp'));
+  assert.deepEqual(leftoverTemps,[],'a failed rename must remove its temporary file');
+  await rm(retryPath,{recursive:true,force:true});
+  await writeFile(retryPath,'{still-broken','utf8');
+  await retryReader.save(retryRecovered);
+  await unlink(retryPath);
+  const retryVerifier=new FileStateStore(retryPath,{encoding:'json'});
+  assert.deepEqual(await retryVerifier.load(),{tick:20,identity:'verified-backup'},
+    'a retry after failed replacement must still preserve the verified backup');
 
   console.log(JSON.stringify({pass:true,backupAtomicCrash:true,jsonBytes:(await readFile(jsonPath)).byteLength,v8Bytes:(await readFile(v8Path)).byteLength,migratedEncoding:'v8'}));
 } finally { await rm(dir,{recursive:true,force:true}); }

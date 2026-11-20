@@ -195,40 +195,52 @@ export class FileStateStore<T> implements JsonStateStore<T> {
         // The state file disappeared externally; recreate it even though the payload is unchanged.
       }
     }
-    await writeFile(tmp, payload as unknown as string, 'utf8');
-    crashInject('after-tmp-write');
-    const handle = await open(tmp, 'r+');
-    try { await handle.sync(); this.stats.fsyncs += 1; } finally { await handle.close(); }
-    crashInject('after-file-fsync');
+    let renamed = false;
+    let skipBackupForRecovery = false;
+    try {
+      await writeFile(tmp, payload as unknown as string, 'utf8');
+      crashInject('after-tmp-write');
+      const handle = await open(tmp, 'r+');
+      try { await handle.sync(); this.stats.fsyncs += 1; } finally { await handle.close(); }
+      crashInject('after-file-fsync');
 
-    this.saveCount += 1;
-    const shouldBackup = this.saveCount === 1 || (this.saveCount % this.backupEverySaves === 0);
-    if (shouldBackup && this.skipNextBackupCopy) {
-      this.skipNextBackupCopy = false;
-    } else if (shouldBackup) {
-      try {
-        await access(this.filePath);
-        await this.copyBackupAtomically();
-      } catch (error: any) {
-        if (error?.code !== 'ENOENT') throw error;
-      }
-    }
-    crashInject('after-backup');
-
-    crashInject('before-rename');
-    await rename(tmp, this.filePath);
-    crashInject('after-rename');
-    if (this.strictDirectoryFsync || this.saveCount % this.directoryFsyncEverySaves === 0 || shouldBackup) {
-      try {
-        await this.syncParentDirectory();
-      } catch (error) {
-        // Best-effort mode remains portable, but strict mode must never report a
-        // durable save when the parent directory entry could not be fsynced.
-        if (this.strictDirectoryFsync) {
-          const reason = error instanceof Error ? error.message : String(error);
-          throw new Error(`directory-fsync-required:${reason}`, { cause: error });
+      this.saveCount += 1;
+      const shouldBackup = this.saveCount === 1 || (this.saveCount % this.backupEverySaves === 0);
+      // Do not rotate an unreadable/missing primary over the last verified backup.
+      // Consume the guard only after the replacement rename actually commits.
+      skipBackupForRecovery = shouldBackup && this.skipNextBackupCopy;
+      if (shouldBackup && !skipBackupForRecovery) {
+        try {
+          await access(this.filePath);
+          await this.copyBackupAtomically();
+        } catch (error: any) {
+          if (error?.code !== 'ENOENT') throw error;
         }
       }
+      crashInject('after-backup');
+
+      crashInject('before-rename');
+      await rename(tmp, this.filePath);
+      renamed = true;
+      if (skipBackupForRecovery) this.skipNextBackupCopy = false;
+      crashInject('after-rename');
+
+      if (this.strictDirectoryFsync || this.saveCount % this.directoryFsyncEverySaves === 0 || shouldBackup) {
+        try {
+          await this.syncParentDirectory();
+        } catch (error) {
+          // Best-effort mode remains portable, but strict mode must never report a
+          // durable save when the parent directory entry could not be fsynced.
+          if (this.strictDirectoryFsync) {
+            const reason = error instanceof Error ? error.message : String(error);
+            throw new Error(`directory-fsync-required:${reason}`, { cause: error });
+          }
+        }
+      }
+    } finally {
+      // A normal write/backup/rename failure must not accumulate orphaned temp files.
+      // SIGKILL crash injection intentionally bypasses finally, modeling abrupt process death.
+      if (!renamed) await unlink(tmp).catch(() => {});
     }
 
     const elapsed = now() - startedAt;
