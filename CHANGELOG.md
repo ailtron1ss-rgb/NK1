@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Motor honesty: prototype-safe depth rig and measured planar IK (2026-11-20)
+
+- Use null-prototype maps for depth-rig pose deltas and composed world transforms so legal node IDs such as `__proto__` and `constructor` survive as ordinary own keys.
+- Report the planar IK end-effector position after joint-limit clamping and expose `limitsApplied`; preserve the requested target separately.
+- Add regressions for prototype-key node IDs across pose/world/motor-frame paths and for reachable versus joint-limited IK solutions.
+- Selectively adapted from historical PR #768 onto the current `workpass70-source`; the stale 19-file donor was not merged wholesale.
+
 ## [NK1][Reasoning] Detect and surface contradictory perceptual evidence (2026-11-19)
 - Count `PerceptualEpistemicGraph.contradictionPairs` for real: it was declared, initialised and reported in `summary()` but never incremented, so the epistemic graph could not represent disagreement at all. `door is open` plus `door is closed` previously produced `0`.
 - Add `claimPolarity()` with bilingual (EN/RU) negation tokens, double-negation cancellation, and scalar phrases such as `not only` / `не только` excluded so they cannot manufacture phantom conflicts.
