@@ -108,7 +108,7 @@ function outputContract(properties: Record<string, ToolInputNodeContract>, requi
     },
     required: ['ok', 'syntheticOnly', 'independentlyVerified', ...required],
     additionalProperties: false,
-    maxProperties: 8,
+    maxProperties: 9,
     maxSerializedBytes: 65_536,
   };
 }
