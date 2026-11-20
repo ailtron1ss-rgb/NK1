@@ -1,3 +1,10 @@
+## [NK1][Persistence] Enforce strict directory fsync failures (2026-11-01)
+- Extract parent-directory syncing into a single helper after primary/backup rename.
+- Preserve best-effort behavior when strict mode is disabled.
+- In strict mode, propagate directory open/fsync/close failures as `directory-fsync-required`; a rename may already be visible, but the save is not counted as durability-confirmed.
+- In strict mode, fsync the backup directory entry before replacing the primary file, preserving a durable recovery point across the primary rename window.
+- Add regressions for strict failure propagation and non-strict fallback. This is a contract test, not a physical power-loss or filesystem hardware test.
+
 ## [NK1][Branch consolidation] Current-source integrations and verification (2026-11-20)
 
 - PR #1010 (f62c36d): hardened measured motor-frame input boundaries in the 2.5D embodiment adapter; own-data snapshots, bounded dense arrays, accessor rejection without getter invocation, and no fallback from an invalid measured angle to the target. Six exact-head Actions checks passed.
