@@ -1,0 +1,118 @@
+name: NK1 Release Archive Inspection
+
+on:
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - tools/release_archive_inspector.py
+      - tools/test_release_archive_inspector.py
+      - docs/superpowers/specs/2026-11-03-release-archive-reconciliation-design.md
+      - docs/superpowers/plans/2026-11-03-release-archive-reconciliation.md
+      - .github/workflows/nk1-release-archive-inspection.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-release-archive-inspection-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  inspect-published-archives:
+    name: Verify published ZIP bytes and compare source manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact PR source revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Run archive inspector contract tests
+        run: python3 -m unittest tools.test_release_archive_inspector -v
+
+      - name: Download and inspect stable + prerelease ZIPs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p "$RUNNER_TEMP/nk1-release-assets" "$GITHUB_WORKSPACE/artifacts/release-audit"
+
+          inspect_release() {
+            local tag="$1"
+            local asset="$2"
+            local safe_tag download_dir metadata digest size archive report audit_status
+            safe_tag="$(printf '%s' "$tag" | tr '/:' '--')"
+            download_dir="$RUNNER_TEMP/nk1-release-assets/$safe_tag"
+            mkdir -p "$download_dir" || return 1
+
+            metadata="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" | ASSET_NAME="$asset" python3 -c 'import json, os, sys; data=json.load(sys.stdin); item=next((row for row in data.get("assets", []) if row.get("name") == os.environ["ASSET_NAME"]), None); print(((item.get("digest") or "") + "\t" + str(item.get("size") if item else "")) if item else "")')" || return 1
+            if [[ -z "$metadata" ]]; then
+              echo "::error::Release asset not found: $tag / $asset"
+              return 1
+            fi
+            IFS=$'\t' read -r digest size <<< "$metadata"
+            if [[ -z "$digest" || -z "$size" ]]; then
+              echo "::error::GitHub release metadata is missing asset digest or size: $tag / $asset"
+              return 1
+            fi
+
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$asset" --dir "$download_dir" || return 1
+            archive="$download_dir/$asset"
+            if [[ ! -f "$archive" ]]; then
+              echo "::error::Downloaded asset is missing: $archive"
+              return 1
+            fi
+
+            report="$GITHUB_WORKSPACE/artifacts/release-audit/$safe_tag.json"
+            audit_status=0
+            python3 tools/release_archive_inspector.py \
+              --archive "$archive" \
+              --source-root "$GITHUB_WORKSPACE" \
+              --expected-sha256 "$digest" \
+              --expected-size "$size" \
+              --archive-prefix auto \
+              --release-tag "$tag" \
+              --out "$report" || audit_status=$?
+
+            if [[ -f "$report" ]]; then
+              echo "### Release: $tag" >> "$GITHUB_STEP_SUMMARY"
+              python3 - "$report" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              report = json.load(stream)
+          archive = report["archive"]
+          comparison = report["comparison"]
+          print(f"- Integrity / GitHub digest: {'PASS' if report['ok'] else 'FAIL'}")
+          print(f"- SHA-256: {archive['sha256']}")
+          print(f"- Size: {archive['sizeBytes']:,} bytes; members: {archive['fileCount']:,}")
+          print(f"- Source-identical: {comparison['identicalFileCount']:,}")
+          print(f"- Same-path changed: {comparison['changedFileCount']:,}")
+          print(f"- Archive-only: {comparison['archiveOnlyFileCount']:,}")
+          print(f"- Source-only: {comparison['sourceOnlyFileCount']:,}")
+          print(f"- Source ref: {report['source']['ref']}")
+          print()
+          PY
+            fi
+            return "$audit_status"
+          }
+
+          audit_failures=0
+          if ! inspect_release "Neuro" "Neuro_Kurisu_WORKPASS70_2026-10-19.zip"; then audit_failures=1; fi
+          if ! inspect_release "workpass70-hotfix1-2026-10-19" "Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip"; then audit_failures=1; fi
+          if [[ "$audit_failures" -ne 0 ]]; then
+            echo "::error::One or more published release archives failed inspection"
+            exit 1
+          fi
+
+      - name: Upload JSON manifests and source-drift reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nk1-release-archive-inspection-${{ github.run_id }}
+          path: artifacts/release-audit/*.json
+          if-no-files-found: warn
+          retention-days: 30
