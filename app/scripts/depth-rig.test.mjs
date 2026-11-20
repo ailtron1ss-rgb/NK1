@@ -194,6 +194,69 @@ test("a joint already at rest emits no rotation even when its target is far away
   assert.equal(pose.deltas.head?.rotation ?? 0, 0);
 });
 
+test("accessor-backed motor frame and joint records are rejected without invoking getters", () => {
+  let getterCalls = 0;
+  const joint = {
+    id: "headYaw",
+    targetAngleRad: 0.5,
+    velocityRadPerSec: 0,
+    available: true,
+  };
+  Object.defineProperty(joint, "angleRad", {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      throw new Error("motor getter must not execute");
+    },
+  });
+  const frame = {
+    version: 1,
+    goalId: "goal.accessor.01",
+    phase: "moving",
+    joints: { headYaw: joint },
+  };
+  assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, frame, [
+    { nodeId: "head", jointId: "headYaw" },
+  ]), /Invalid motor frame/);
+  assert.equal(getterCalls, 0);
+});
+
+test("accessor-backed binding properties and sparse binding arrays fail closed", () => {
+  let getterCalls = 0;
+  const binding = { jointId: "headYaw" };
+  Object.defineProperty(binding, "nodeId", {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return "head";
+    },
+  });
+  const frame = {
+    version: 1,
+    goalId: "goal.binding.01",
+    phase: "moving",
+    joints: {},
+  };
+  assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, frame, [binding]), /Invalid or duplicate depth-rig/);
+  assert.equal(getterCalls, 0);
+
+  const sparse = [];
+  sparse.length = 1;
+  assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, frame, sparse), /Invalid motor frame/);
+});
+
+test("a non-finite measured joint angle never falls back to the finite target", () => {
+  const pose = resolveDepthRigPoseFromMotorFrame(rig, {
+    version: 1,
+    goalId: "goal.unobserved.01",
+    phase: "moving",
+    joints: {
+      headYaw: { id: "headYaw", angleRad: Number.NaN, targetAngleRad: 0.9, velocityRadPerSec: 0, available: true },
+    },
+  }, [{ nodeId: "head", jointId: "headYaw" }]);
+  assert.deepEqual(pose.deltas, {});
+});
+
 test("idle motor frames do not animate and duplicate or unsafe bindings fail closed", () => {
   const idle = resolveDepthRigPoseFromMotorFrame(rig, {
     version: 1, goalId: null, phase: "idle", joints: {},
