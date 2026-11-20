@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { OrganismRuntime } from '../core/OrganismRuntime.ts';
 import type { P23LearningEngine } from './P23LearningEngine.ts';
+import type { P23PopulationSearchBudget } from './P23ReflectiveCandidatePopulationSearch.ts';
+import type { ValidationOnlyCandidateEvaluator } from './ValidationOnlySkillCandidateEvaluator.ts';
 import { isSafeLearningIdentity, snapshotPlainData, snapshotPlainDataEnvelope } from './LearningTrustBoundary.ts';
 
 type RevisionArgs = Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>;
@@ -10,14 +12,27 @@ type CandidateEvaluation = RevisionArgs[4];
 type Generator = RevisionArgs[5];
 type Evaluator = RevisionArgs[6];
 type Options = RevisionArgs[7];
+type BaseGeneratorRequest = Parameters<Generator>[0];
+
+/** Trusted repair generator. Population metadata and cancellation are optional so legacy providers remain compatible. */
+export type CompoundRepairRevisionGenerator = (
+  request: BaseGeneratorRequest & {
+    repairEvidence: ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>;
+    variation?: import('./P23ReflectiveCandidatePopulationSearch.ts').P23PopulationSearchVariation;
+    signal?: AbortSignal;
+  },
+) => Promise<unknown> | unknown;
 
 export interface CompoundRepairRevisionInputs {
   proposal: Proposal;
   sourceCandidateId: string;
   baseline: Baseline;
   candidateEvaluation: CandidateEvaluation;
-  generate: Generator;
+  generate: CompoundRepairRevisionGenerator;
   evaluateRevisedCandidate: Evaluator;
+  /** Optional independent validation-only capability for bounded multi-candidate search. */
+  evaluateValidationCandidate?: ValidationOnlyCandidateEvaluator['evaluate'];
+  populationSearchBudget?: P23PopulationSearchBudget;
   options?: Options;
 }
 
@@ -413,10 +428,10 @@ export class P23CompoundRepairRevisionCoordinator {
     });
     // Read provider-owned fields only from descriptors. structuredClone() can invoke
     // getters, so it is not a safe boundary for a provider that the coordinator treats
-    // as mutable/untrusted data. Keep exactly two function-valued capabilities.
+    // as mutable/untrusted data. Keep only the three explicitly typed host capabilities.
     let prepared: CompoundRepairRevisionInputs;
     try {
-      const envelope = snapshotPlainDataEnvelope(rawPrepared, ['generate', 'evaluateRevisedCandidate']);
+      const envelope = snapshotPlainDataEnvelope(rawPrepared, ['generate', 'evaluateRevisedCandidate', 'evaluateValidationCandidate']);
       prepared = {
         proposal: envelope.data.proposal as Proposal,
         sourceCandidateId: envelope.data.sourceCandidateId as string,
@@ -424,6 +439,12 @@ export class P23CompoundRepairRevisionCoordinator {
         candidateEvaluation: envelope.data.candidateEvaluation as CandidateEvaluation,
         generate: envelope.capabilities.generate as Generator,
         evaluateRevisedCandidate: envelope.capabilities.evaluateRevisedCandidate as Evaluator,
+        ...(envelope.capabilities.evaluateValidationCandidate === undefined ? {} : {
+          evaluateValidationCandidate: envelope.capabilities.evaluateValidationCandidate as ValidationOnlyCandidateEvaluator['evaluate'],
+        }),
+        ...(envelope.data.populationSearchBudget !== undefined ? {
+          populationSearchBudget: envelope.data.populationSearchBudget as P23PopulationSearchBudget,
+        } : {}),
         ...(envelope.data.options !== undefined ? { options: envelope.data.options as Options } : {}),
       };
     } catch {
@@ -433,7 +454,8 @@ export class P23CompoundRepairRevisionCoordinator {
       throw new Error('trusted revision input provider must return a source candidate id');
     }
     if (!prepared.proposal || !prepared.baseline || !prepared.candidateEvaluation ||
-        typeof prepared.generate !== 'function' || typeof prepared.evaluateRevisedCandidate !== 'function') {
+        typeof prepared.generate !== 'function' || typeof prepared.evaluateRevisedCandidate !== 'function' ||
+        (prepared.evaluateValidationCandidate !== undefined && typeof prepared.evaluateValidationCandidate !== 'function')) {
       throw new Error('trusted revision input provider returned incomplete proposal/evaluation/generator inputs');
     }
     const proposal = prepared.proposal;
@@ -443,6 +465,8 @@ export class P23CompoundRepairRevisionCoordinator {
     const sourceCandidateId = prepared.sourceCandidateId;
     const generate = prepared.generate;
     const evaluateRevisedCandidate = prepared.evaluateRevisedCandidate;
+    const evaluateValidationCandidate = prepared.evaluateValidationCandidate;
+    const populationSearchBudget = prepared.populationSearchBudget;
 
     // The provider may perform asynchronous work. Re-read the runtime ledger before
     // staging so the proposal/evaluation cannot silently drift away from the repairs
@@ -463,6 +487,8 @@ export class P23CompoundRepairRevisionCoordinator {
       candidateEvaluation,
       generate,
       evaluateRevisedCandidate,
+      ...(evaluateValidationCandidate ? { evaluateValidationCandidate } : {}),
+      ...(populationSearchBudget ? { populationSearchBudget } : {}),
       ...(options ? { options } : {}),
       sourceEvidenceFingerprint: initialEvidenceDigest,
     });

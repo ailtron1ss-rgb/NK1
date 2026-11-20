@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
+export { P23CandidateParetoArchive } from './P23CandidateParetoArchive.ts';
+export { runP23ReflectiveCandidatePopulationSearch } from './P23ReflectiveCandidatePopulationSearch.ts';
 import { CorrectionRuleMemory, emptyCorrectionRuleMemorySnapshot, type CorrectionReviewVerifier, type CorrectionRuleAssessment, type CorrectionRuleMemorySnapshot, type ReviewedCorrectionObservation } from './CorrectionRuleMemory.ts';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
@@ -17,6 +19,8 @@ import type { LearningLifecycleEventEntry, LearningLifecycleJournalDiagnostics, 
 import type { LearningRobustMetricSummary } from './LearningRobustMetrics.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import { generateLocalSkillRevision, type SkillRevisionChatProvider } from './P23LocalModelSkillRevisionGenerator.ts';
+import { runP23ReflectiveCandidatePopulationSearch, type P23PopulationCandidateGenerator, type P23PopulationSearchBudget, type P23PopulationSearchResult } from './P23ReflectiveCandidatePopulationSearch.ts';
+import type { ValidationOnlyCandidateEvaluator } from './ValidationOnlySkillCandidateEvaluator.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
@@ -1070,6 +1074,137 @@ export class P23LearningEngine {
       request=>generateLocalSkillRevision(provider,request),
       evaluateRevisedCandidate,options,sourceEvidenceFingerprint,
     );
+  }
+
+  /**
+   * Population-search variant of the canonical reflective revision route.
+   * All exploratory candidates are evaluated on validation-only data. The selected
+   * payload is then handed exactly once to generateAndStageReflectiveSkillRevision,
+   * which owns the fresh validation+holdout evaluation, fitness journal and staging.
+   * This method never approves, shadows or activates a candidate.
+   */
+  async generateAndStageReflectiveSkillRevisionWithPopulation(
+    provider:SkillRevisionChatProvider,
+    validationEvaluator:ValidationOnlyCandidateEvaluator,
+    proposal:VerifiedSkillPromotionProposal,
+    skillId:string,
+    sourceCandidateId:string,
+    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    evaluateRevisedCandidate:RevisedCandidateEvaluator,
+    options:SkillLearnBenchCandidateGateOptions={},
+    sourceEvidenceFingerprint?:string,
+    populationBudget:P23PopulationSearchBudget={},
+  ):Promise<{
+    candidate:VersionedSkillCandidate;
+    fitness:SkillLearnBenchCandidateGateReport;
+    plan:SkillRevisionPlan;
+    populationSearch:P23PopulationSearchResult;
+  }> {
+    if(!provider) throw new Error('p23-population-local-provider-required');
+    const generateCandidate:P23PopulationCandidateGenerator=searchRequest=>{
+      const scopedProvider:SkillRevisionChatProvider={
+        configured:()=>provider.configured(),
+        generate:localRequest=>provider.generate({
+          ...localRequest,
+          signal:searchRequest.signal,
+        }),
+      };
+      return generateLocalSkillRevision(scopedProvider,{
+        sourcePayload:searchRequest.sourcePayload,
+        datasetFingerprint:searchRequest.datasetFingerprint,
+        optimizerInstruction:[
+          searchRequest.optimizerInstruction,
+          'POPULATION_VARIATION_ID: '+searchRequest.variation.id,
+          'POPULATION_VARIATION_INSTRUCTION: '+searchRequest.variation.instruction,
+          'POPULATION_VARIATION_SEED: '+searchRequest.variation.seed,
+        ].join('\n\n'),
+        validationEvidence:searchRequest.validationEvidence,
+        targets:searchRequest.targets,
+        holdoutPolicy:searchRequest.holdoutPolicy,
+      });
+    };
+    return this.generateAndStageReflectiveSkillRevisionWithPopulationGenerator(
+      validationEvaluator,proposal,skillId,sourceCandidateId,baseline,candidateEvaluation,
+      generateCandidate,evaluateRevisedCandidate,options,sourceEvidenceFingerprint,populationBudget,
+    );
+  }
+
+  async generateAndStageReflectiveSkillRevisionWithPopulationGenerator(
+    validationEvaluator:ValidationOnlyCandidateEvaluator,
+    proposal:VerifiedSkillPromotionProposal,
+    skillId:string,
+    sourceCandidateId:string,
+    rawBaseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    rawCandidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    generateCandidate:P23PopulationCandidateGenerator,
+    evaluateRevisedCandidate:RevisedCandidateEvaluator,
+    options:SkillLearnBenchCandidateGateOptions={},
+    sourceEvidenceFingerprint?:string,
+    rawPopulationBudget:P23PopulationSearchBudget={},
+  ):Promise<{
+    candidate:VersionedSkillCandidate;
+    fitness:SkillLearnBenchCandidateGateReport;
+    plan:SkillRevisionPlan;
+    populationSearch:P23PopulationSearchResult;
+  }> {
+    if(typeof generateCandidate!=='function' || !validationEvaluator) {
+      throw new Error('p23-population-generator-and-validation-evaluator-required');
+    }
+    let baseline:typeof rawBaseline;
+    let candidateEvaluation:typeof rawCandidateEvaluation;
+    let budget:P23PopulationSearchBudget;
+    try {
+      baseline=snapshotPlainData(rawBaseline) as typeof rawBaseline;
+      candidateEvaluation=snapshotPlainData(rawCandidateEvaluation) as typeof rawCandidateEvaluation;
+      budget=snapshotPlainData(rawPopulationBudget) as P23PopulationSearchBudget;
+    } catch {
+      throw new Error('p23-population-p23-input-data-boundary-rejected');
+    }
+    if(!baseline||typeof baseline!=='object'||Array.isArray(baseline)||
+       !candidateEvaluation||typeof candidateEvaluation!=='object'||Array.isArray(candidateEvaluation)||
+       !Array.isArray(candidateEvaluation.validation)||candidateEvaluation.validation.length===0||
+       !budget||typeof budget!=='object'||Array.isArray(budget)) {
+      throw new Error('p23-population-p23-input-data-boundary-rejected');
+    }
+    const sourceValidationReports=snapshotPlainData(candidateEvaluation.validation) as SkillLearnBenchCandidateEvaluation['reports'];
+    const populationSearchState:{result:P23PopulationSearchResult|null}={result:null};
+    const staged=await this.generateAndStageReflectiveSkillRevision(
+      proposal,
+      skillId,
+      sourceCandidateId,
+      baseline,
+      candidateEvaluation,
+      async request => {
+        const result=await runP23ReflectiveCandidatePopulationSearch({
+          sourcePayload:request.sourcePayload,
+          datasetFingerprint:request.datasetFingerprint,
+          optimizerInstruction:request.optimizerInstruction,
+          validationEvidence:request.validationEvidence,
+          targets:request.targets,
+          holdoutPolicy:request.holdoutPolicy,
+          sourceValidationReports,
+          validationEvaluator,
+          budget,
+          generateCandidate,
+        });
+        populationSearchState.result=result;
+        if(result.status!=='selected'||result.selectedPayload===null) {
+          const error=new Error('p23-population-no-improving-candidate');
+          Object.assign(error,{populationSearchDiagnostics:result.diagnostics,populationSearchArchive:result.archive});
+          throw error;
+        }
+        return result.selectedPayload;
+      },
+      evaluateRevisedCandidate,
+      options,
+      sourceEvidenceFingerprint,
+    );
+    const completedPopulationSearch=populationSearchState.result as P23PopulationSearchResult|null;
+    if(!completedPopulationSearch||completedPopulationSearch.status!=='selected') {
+      throw new Error('p23-population-selected-result-missing-after-canonical-stage');
+    }
+    return {...staged,populationSearch:completedPopulationSearch};
   }
 
   /**
