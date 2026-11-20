@@ -1,0 +1,56 @@
+name: NK1 Hexis-derived action consequence gate
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/ActionConsequenceCostPolicy.ts"
+      - "runtime/neuro-kurisu/src/organism/system/AutonomousResourceToolLifeController.ts"
+      - "runtime/neuro-kurisu/tests/hexis-action-consequence-cost-policy.mjs"
+      - ".github/workflows/hexis-action-consequence-cost-policy.yml"
+  push:
+    branches:
+      - "aspect/hexis-consequence-cost-policy-20261113"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/ActionConsequenceCostPolicy.ts"
+      - "runtime/neuro-kurisu/src/organism/system/AutonomousResourceToolLifeController.ts"
+      - "runtime/neuro-kurisu/tests/hexis-action-consequence-cost-policy.mjs"
+      - "docs/WORKPASS_HEXIS_ACTION_CONSEQUENCE_COST_2026-11-13_RU.md"
+      - ".github/workflows/hexis-action-consequence-cost-policy.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-hexis-consequence-policy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  consequence-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Verify Node runtime
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Run consequence policy and autonomous-selection regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/hexis-action-consequence-cost-policy.mjs
+      - name: Preserve BIG_PASS_223 autonomous tool lifecycle regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-223-autonomous-resource-tool-life.mjs
+      - name: Preserve existing action-cost unification regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/action-cost-unification-workpass36.mjs
+      - name: Preserve ActionGateway durable approval and redaction boundary
+        if: always()
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass53-action-approval-boundary.mjs
