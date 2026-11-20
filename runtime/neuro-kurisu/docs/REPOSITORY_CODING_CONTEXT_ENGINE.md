@@ -34,7 +34,7 @@ The host is a trusted adapter boundary. A plain boolean in an untrusted runner r
 
 ## Enable in runtime
 
-Pass an engine and trusted host adapter in RuntimeConfig.repositoryCoding. This capability is disabled by default. Runtime initialization registers the four tools through OrganismCore.registerActionTool, so mutation remains under the existing ActionGateway. Do not implement host methods by calling arbitrary model-authored shell commands.
+Compose the engine and trusted host adapter outside OrganismRuntime, then provide a host-owned `RuntimeConfig.repositoryCoding.createTools` callback. The callback initialises the engine and returns `createRepositoryCodingActionTools(engine, host)`. This capability is disabled by default; the runtime only registers the returned tools through `OrganismCore.registerActionTool`, keeping host composition out of the central runtime dependency graph. Do not implement host methods by calling arbitrary model-authored shell commands.
 
 ## Status semantics
 

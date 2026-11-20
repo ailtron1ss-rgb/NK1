@@ -45,8 +45,7 @@ import { RealityLearningGate } from '../system/RealityLearningGate.ts';
 import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
 import { ExternalPostconditionVerifier } from '../system/ExternalPostconditionVerifier.ts';
 import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor.ts';
-import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
-import { createRepositoryCodingActionTools, type RepositoryCodingContextEngine, type RepositoryCodingHost } from '../system/RepositoryCodingContextEngine.ts';
+import type { ActionGatewayExecutionOptions, ToolDefinition, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
@@ -190,8 +189,8 @@ export interface RuntimeConfig extends OrganismConfig {
   voiceTranscriptObserverSessionId?: string;
   /** Character label sent with explicitly consented voice observations. */
   voiceTranscriptCharacterName?: string;
-  /** Opt-in repository context, isolated verification and ActionGateway-gated patch proposals. */
-  repositoryCoding?: { engine: RepositoryCodingContextEngine; host: RepositoryCodingHost };
+  /** Host-composed, opt-in repository coding tools; composition owns engine initialisation and host adapter wiring. */
+  repositoryCoding?: { createTools: () => Promise<ToolDefinition[]> | ToolDefinition[] };
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
 }
@@ -595,10 +594,8 @@ export class OrganismRuntime {
         return {ok:execution.ok===true,uncertain,outcomeClass:execution.outcomeClass,reason:String(result.error??execution.audit?.reason??'')};
       });
       if (this.config.repositoryCoding) {
-        await this.config.repositoryCoding.engine.init();
-        for (const tool of createRepositoryCodingActionTools(this.config.repositoryCoding.engine, this.config.repositoryCoding.host)) {
-          this.core.registerActionTool(tool);
-        }
+        const tools = await this.config.repositoryCoding.createTools();
+        for (const tool of tools) this.core.registerActionTool(tool);
       }
       await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog(), { sensorFailures: snap.facets.embodiment?.sensorFailures ?? 0 });
       this.initialized = true;
