@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { countOr, enumOr, finiteOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 const now = () => Date.now();
@@ -103,24 +104,138 @@ export function defaultP37EmbodiedSensorium():P37SemanticWorldState {
 function fastHash(input:string){let h=2166136261;for(let i=0;i<input.length;i++){h^=input.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');}
 function id(prefix:string,seed:string){return `${prefix}-${fastHash(seed)}`;}
 
+const P37_MODALITIES:ReadonlySet<P37Modality>=new Set(['text','vision','audio','sensor','world']);
+const P37_PRESENCE:ReadonlySet<'visible'|'fading'|'unknown'>=new Set(['visible','fading','unknown']);
+
+/** Finite number or null; a corrupted coordinate must not become NaN or 0. */
+function nullableFinite(value:unknown):number|null{
+  return typeof value==='number'&&Number.isFinite(value)?value:null;
+}
+
+/** Keep only plain data rows from a persisted array, bounded to the most recent `keep`. */
+function filterRecords(value:unknown, keep:number):Record<string,unknown>[]{
+  if(!Array.isArray(value)) return [];
+  const rows=value.filter((row)=>isPlainDataRecord(row)) as Record<string,unknown>[];
+  return keep<0?rows.slice(keep):rows.slice(0,keep);
+}
+
+function sanitizeEntity(row:Record<string,unknown>):Record<string,unknown>{
+  return {
+    id:stringOr(ownDataValue(row,'id'),'entity-unknown',64),
+    label:stringOr(ownDataValue(row,'label'),'unknown',160),
+    kind:stringOr(ownDataValue(row,'kind'),'unknown',32),
+    confidence01:unitOr(ownDataValue(row,'confidence01'),0),
+    salience01:unitOr(ownDataValue(row,'salience01'),0),
+    firstSeenAt:timestampOr(ownDataValue(row,'firstSeenAt'),0),
+    lastSeenAt:timestampOr(ownDataValue(row,'lastSeenAt'),0),
+    seenCount:Math.max(1,countOr(ownDataValue(row,'seenCount'),1)),
+    present01:unitOr(ownDataValue(row,'present01'),0),
+    x:nullableFinite(ownDataValue(row,'x')),
+    y:nullableFinite(ownDataValue(row,'y')),
+    z:nullableFinite(ownDataValue(row,'z')),
+    modalities:Array.isArray(ownDataValue(row,'modalities'))?(ownDataValue(row,'modalities') as unknown[]).filter((m):m is P37Modality=>typeof m==='string'&&P37_MODALITIES.has(m as P37Modality)):[],
+    presenceStatus:enumOr(ownDataValue(row,'presenceStatus'),P37_PRESENCE,'unknown'),
+    persistence01:unitOr(ownDataValue(row,'persistence01'),0),
+    absenceEvidence01:unitOr(ownDataValue(row,'absenceEvidence01'),0),
+  };
+}
+
+function sanitizeEvent(row:Record<string,unknown>):Record<string,unknown>{
+  return {
+    id:stringOr(ownDataValue(row,'id'),'event-unknown',64),
+    label:stringOr(ownDataValue(row,'label'),'unknown',160),
+    confidence01:unitOr(ownDataValue(row,'confidence01'),0),
+    at:timestampOr(ownDataValue(row,'at'),0),
+    persistence01:unitOr(ownDataValue(row,'persistence01'),0),
+    sources:Array.isArray(ownDataValue(row,'sources'))?(ownDataValue(row,'sources') as unknown[]).filter((m):m is P37Modality=>typeof m==='string'&&P37_MODALITIES.has(m as P37Modality)):[],
+  };
+}
+
+function sanitizeRelation(row:Record<string,unknown>):{from:string;relation:string;to:string;confidence01:number;at:number}{
+  return {
+    from:stringOr(ownDataValue(row,'from'),'unknown',64),
+    relation:stringOr(ownDataValue(row,'relation'),'associated-with',48),
+    to:stringOr(ownDataValue(row,'to'),'unknown',64),
+    confidence01:unitOr(ownDataValue(row,'confidence01'),0),
+    at:timestampOr(ownDataValue(row,'at'),0),
+  };
+}
+
+function sanitizePerceptionRequest(row:Record<string,unknown>):Record<string,unknown>{
+  return {
+    modality:enumOr(ownDataValue(row,'modality'),P37_MODALITIES,'text'),
+    reason:stringOr(ownDataValue(row,'reason'),'unknown',160),
+    expectedInformationGain01:unitOr(ownDataValue(row,'expectedInformationGain01'),0),
+    estimatedCost01:unitOr(ownDataValue(row,'estimatedCost01'),0),
+    priority01:unitOr(ownDataValue(row,'priority01'),0),
+    createdAt:timestampOr(ownDataValue(row,'createdAt'),0),
+  };
+}
+
+/** Rebuild every sensor-health row from validated primitives; unknown modalities are dropped. */
+function sanitizeSensors(raw:unknown, fallback:Record<P37Modality,P37SensorHealth>):Record<P37Modality,P37SensorHealth>{
+  const out={} as Record<P37Modality,P37SensorHealth>;
+  for(const modality of P37_MODALITIES){
+    const d=fallback[modality];
+    const row=ownDataValue(raw,modality);
+    out[modality]={
+      reliability01:unitOr(ownDataValue(row,'reliability01'),d.reliability01),
+      freshness01:unitOr(ownDataValue(row,'freshness01'),d.freshness01),
+      conflict01:unitOr(ownDataValue(row,'conflict01'),d.conflict01),
+      samples:countOr(ownDataValue(row,'samples'),d.samples),
+    };
+  }
+  return out;
+}
+
+/** Keep only the known affordance keys with finite unit weights. */
+function sanitizeAffordanceMap(raw:unknown, fallback:P37SemanticWorldState['affordance']):P37SemanticWorldState['affordance']{
+  return {
+    respond:unitOr(ownDataValue(raw,'respond'),fallback.respond),
+    explore:unitOr(ownDataValue(raw,'explore'),fallback.explore),
+    verify:unitOr(ownDataValue(raw,'verify'),fallback.verify),
+    rest:unitOr(ownDataValue(raw,'rest'),fallback.rest),
+    reflect:unitOr(ownDataValue(raw,'reflect'),fallback.reflect),
+    wait:unitOr(ownDataValue(raw,'wait'),fallback.wait),
+    defer:unitOr(ownDataValue(raw,'defer'),fallback.defer),
+  };
+}
+
 export class P37EmbodiedSensoriumEngine {
   private state=defaultP37EmbodiedSensorium();
 
   restore(raw?:P37SemanticWorldState|null){
     const d=defaultP37EmbodiedSensorium();
+    const r=isPlainDataRecord(raw)?raw:{};
+    const scene=ownDataValue(r,'scene');
+    const spatialSelf=ownDataValue(r,'spatialSelf');
+    const body=ownDataValue(r,'body');
+    const sensors=ownDataValue(r,'sensors');
+    const affordance=ownDataValue(r,'affordance');
+    const rows=(key:string)=>ownDataValue(r,key);
     this.state={
-      ...d, ...(raw??{}),
-      claims:Array.isArray(raw?.claims)?raw!.claims.slice(-384):[],
-      entities:Array.isArray(raw?.entities)?raw!.entities.slice(-192).map((e:any)=>({
-        ...e, presenceStatus:['visible','fading','unknown'].includes(e?.presenceStatus)?e.presenceStatus:'unknown',
-        persistence01:clamp(Number(e?.persistence01??0)), absenceEvidence01:clamp(Number(e?.absenceEvidence01??0)),
-        seenCount:Math.max(1,Math.floor(Number(e?.seenCount??1))),
-      })):[],
-      events:Array.isArray(raw?.events)?raw!.events.slice(-128):[],
-      relationEdges:Array.isArray(raw?.relationEdges)?raw!.relationEdges.slice(-384):[],
-      activePerception:Array.isArray(raw?.activePerception)?raw!.activePerception.slice(-16):[],
-      scene:{...d.scene,...(raw?.scene??{})}, spatialSelf:{...d.spatialSelf,...(raw?.spatialSelf??{})},
-      body:{...d.body,...(raw?.body??{})}, sensors:{...d.sensors,...(raw?.sensors??{})}, affordance:{...d.affordance,...(raw?.affordance??{})},
+      version:1,
+      tick:countOr(ownDataValue(r,'tick'),d.tick),
+      scene:{label:stringOr(ownDataValue(scene,'label'),d.scene.label,160),confidence01:unitOr(ownDataValue(scene,'confidence01'),d.scene.confidence01),stability01:unitOr(ownDataValue(scene,'stability01'),d.scene.stability01),at:timestampOr(ownDataValue(scene,'at'),d.scene.at)},
+      claims:filterRecords(rows('claims'),-384) as unknown as P37ObservationClaim[],
+      entities:filterRecords(rows('entities'),-192).map(sanitizeEntity) as unknown as P37EntityTrack[],
+      events:filterRecords(rows('events'),-128).map(sanitizeEvent) as unknown as P37EventTrack[],
+      relationEdges:filterRecords(rows('relationEdges'),-384).map(sanitizeRelation) as unknown as Array<{from:string;relation:string;to:string;confidence01:number;at:number}>,
+      spatialSelf:{location:stringOr(ownDataValue(spatialSelf,'location'),d.spatialSelf.location,160),x:finiteOr(ownDataValue(spatialSelf,'x'),d.spatialSelf.x,-1000,1000),y:finiteOr(ownDataValue(spatialSelf,'y'),d.spatialSelf.y,-1000,1000),z:finiteOr(ownDataValue(spatialSelf,'z'),d.spatialSelf.z,-1000,1000),orientationDeg:finiteOr(ownDataValue(spatialSelf,'orientationDeg'),d.spatialSelf.orientationDeg,-720,720),confidence01:unitOr(ownDataValue(spatialSelf,'confidence01'),d.spatialSelf.confidence01),at:timestampOr(ownDataValue(spatialSelf,'at'),d.spatialSelf.at)},
+      body:{energy01:unitOr(ownDataValue(body,'energy01'),d.body.energy01),thermal01:unitOr(ownDataValue(body,'thermal01'),d.body.thermal01),capacity01:unitOr(ownDataValue(body,'capacity01'),d.body.capacity01),awake:ownDataValue(body,'awake')!==false,motion01:unitOr(ownDataValue(body,'motion01'),d.body.motion01),sensoryFreshness01:unitOr(ownDataValue(body,'sensoryFreshness01'),d.body.sensoryFreshness01),at:timestampOr(ownDataValue(body,'at'),d.body.at)},
+      sensors:sanitizeSensors(sensors,d.sensors),
+      activePerception:filterRecords(rows('activePerception'),-16).map(sanitizePerceptionRequest) as unknown as P37ActivePerceptionRequest[],
+      affordance:sanitizeAffordanceMap(affordance,d.affordance),
+      semanticMemoryBudget01:unitOr(ownDataValue(r,'semanticMemoryBudget01'),d.semanticMemoryBudget01),
+      worldTransitionError01:unitOr(ownDataValue(r,'worldTransitionError01'),d.worldTransitionError01),
+      crossModalAgreement01:unitOr(ownDataValue(r,'crossModalAgreement01'),d.crossModalAgreement01),
+      objectPermanence01:unitOr(ownDataValue(r,'objectPermanence01'),d.objectPermanence01),
+      selfLocationConfidence01:unitOr(ownDataValue(r,'selfLocationConfidence01'),d.selfLocationConfidence01),
+      bodyWorldCoherence01:unitOr(ownDataValue(r,'bodyWorldCoherence01'),d.bodyWorldCoherence01),
+      episodeKey:stringOr(ownDataValue(r,'episodeKey'),d.episodeKey,160),
+      episodeBoundary01:unitOr(ownDataValue(r,'episodeBoundary01'),d.episodeBoundary01),
+      crossModalEntityBinding01:unitOr(ownDataValue(r,'crossModalEntityBinding01'),d.crossModalEntityBinding01),
+      lastHash:typeof ownDataValue(r,'lastHash')==='string'?(ownDataValue(r,'lastHash') as string).slice(0,64):d.lastHash,
     };
   }
 
