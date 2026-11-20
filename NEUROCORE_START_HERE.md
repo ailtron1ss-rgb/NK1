@@ -1,29 +1,36 @@
-# CURRENT HANDOFF — 2026-11-18
+# CURRENT HANDOFF — 2026-11-20
 
-**Canonical source branch:** `workpass70-source`  
-**Confirmed source HEAD:** `bee2b133fdedd48723bc49b3eedae5f0df929c1c`  
-**Latest merged integration at this checkpoint:** PR [#913](https://github.com/ailtron1ss-rgb/NK1/pull/913), Cognitive Immune health monitor.
+**Canonical source:** `workpass70-source` @ `960a2d540ef952486a0271a0e5332caec601b36a`  
+**main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).
 
-## Current verified evidence
+## Exact-source evidence
 
-- 19 push-triggered GitHub Actions runs for the exact source HEAD above; all 19 concluded SUCCESS.
-- Representative runs: [core regression](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153691143), [unified organism runtime](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153691079), [memory integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153690888), [ActionGateway governance](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153691295), [verified learning](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44153690962).
-- At least 400 open PRs were returned across the first four pages of GitHub's open-PR listing; this is a lower bound. Enumerate every page and build a dependency graph before bulk integration.
-- `workpass70-source` branch protection was disabled at the time of inspection. Required status checks need a safe, explicitly verified policy.
-- The 75-aspect registry snapshot is dated 2026-11-06 and points at an older source SHA. Do not use its status counts as a current readiness percentage until each aspect is refreshed against live code and evidence.
+- External/observed PR #868 merge: `960a2d540ef952486a0271a0e5332caec601b36a`; bounded MeTTa concept serializer integrated, but no Hyperon worker is connected.
+- Exact source Actions: 11/11 SUCCESS on `960a2d540ef952486a0271a0e5332caec601b36a`.
+- Core [44743562538](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562538), Hexis lineage [44743562613](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562613), affect restore [44743561933](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743561933), ActionGateway [44743562053](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562053), UserModel forget [44743562348](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562348).
+- Last full census before PR #1031: 1,032 refs / 1,016 unique heads / 306 open PRs; #1031 adds one known branch and one open PR. See [delta](docs/consolidation/branch-census-delta-2026-11-20.md).
+- Draft PR #1031: concept restore hardening. Focused workflow [44744691480](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44744691480) passed; three broad regressions were still running at checkpoint.
+- Source branch is unprotected. No PR was merged/closed and no branch deleted/force-updated by this run.
 
 ## Release truth
 
-- Latest stable Release visible in the API: tag `Neuro`, 2026-10-19.
-- Latest published ZIP including prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- No newer ZIP was found in the checked Release inventory. November source changes must not be described as released.
-- License review remains pending and redistribution approval is false. Do not publish until human review and exact-SHA publisher gates pass.
+- Stable ZIP metadata SHA-256: `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- Latest prerelease ZIP metadata SHA-256: `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- ZIP bytes not materialized; independent hash/extraction/source parity UNVERIFIED.
+- License review pending; redistribution approval false. Do not publish.
+- Aspect registry is a 2026-11-06 snapshot, not current readiness.
 
-## Canonical completion program
+## Next P0
 
-Read [NK1 — 100% functional completion program](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md) before choosing the next workstream. It decomposes completion into 20 streams and 305 work units, maps them to the existing 75-aspect registry, and defines evidence/exit criteria without creating a duplicate status registry.
+1. Finish exact-head Actions on PR #1031 and keep it Draft.
+2. Materialize/hash/extract the October 19 ZIP.
+3. Continue non-source-base PR dependency and duplicate-tip reference audit.
+4. Run independent RU/EN holdout with five paired seeds.
+5. Run browser/WebGL and Android/Termux soak; obtain human license review.
 
-**Immediate P0:** finish Release ZIP/source parity inspection; fully paginate PRs and stacked dependencies; refresh 75-aspect evidence; close human license review; run independent RU/EN memory evaluation and target-device/browser tests.
+**Current cycle report:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-20.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-20.md).
+
+---
 
 ---
 
