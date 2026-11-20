@@ -181,3 +181,24 @@
 - Current open old-base dependencies: #109 on `nk1-all-branches-merge-2026-10-23`; #91 and #86 on `rebuild`; #124 on `workpass206-runtime-evaluator-wiring` — four open PRs across three old base refs.
 - PR #949 remains Draft and its updated inventory/checkpoint record current source and PR dependencies.
 - No branch refs deleted; no force push used.
+
+
+## 2026-11-20 live consolidation pass — PR #1030
+
+### Verified branch census
+- Fresh pagination across GitHub branch pages 1–11 returns **1,032 refs**, **1,016 unique HEAD SHAs**, **one duplicate-HEAD group**, and **16 excess aliases**.
+- The only exact duplicate group is 17 refs at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
+- Four refs in that exact-tip family are still bases of open PRs: #109, #91, #86 and #124. They are not deletion-eligible until each dependent PR is retargeted or intentionally closed after its unique payload is preserved.
+- The branch count has risen by 79 relative to the 953-ref census captured in the prior 19-Nov live delta; the unique-tip count has risen from 937 to 1,016. This is a count delta, not an attribution of who created the refs.
+
+### Work performed
+- **PR #1030 MERGED** into `workpass70-source` at `2026-11-20T13:02:57Z`; squash merge commit `bc0b50305fa247e5555bcf5b171fe827c531f9ba`.
+- Exact PR head `18a4d883c8affbe3b08c50a1ec5fb2876a6c9369` passed 8/8 exact-head GitHub Actions checks. The 1-file, +54/-0 change adds scanner regressions for division-vs-regex handling, apostrophes inside line comments, and the two real architecture fixtures. The shared import scanner and production implementation were left unchanged.
+- PR #1021 (body restore), #1022 (cognitive-spine scheduler restore) and #1024 (final body restore sanitization current-source port) were verified as already merged into the source line before this pass; their exact-head runs reported 50/50, 7/7 and 12/12 successful checks respectively. No duplicate re-merge was attempted.
+- Architecture PR #999 already salvaged the useful current-source module-boundary policy, graph audit and tests from historical PR #109. The remaining PR #109 payload is not a safe wholesale merge: it also contains a stale 13-file persistence-default extraction / StateMigrations rewrite and a historical DevelopmentalNeuralRuntime rewrite. Those files are absent or diverged on current source; the source now has a 1,422-line StateMigrations implementation and a 424-line DevelopmentalNeuralRuntime. Keep the old persistence modularization as a separately reviewed candidate; do not overwrite current files.
+- PR #1000 is closed unmerged and repeats a subset of the module-boundary contract payload now preserved in merged PR #999. It is not a merge candidate.
+
+### Current blockers / safety boundary
+- The GitHub connector exposes merge/update-ref and file operations but no branch-ref deletion operation. The only available TinyFish browser profile has no GitHub sign-in recorded, so branch deletion through the website is not currently authorized or available. No branch ref was deleted or force-updated in this pass.
+- The 19-Oct `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` remains the immutable baseline. Its published metadata digest is `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`; archive bytes still have not been materialized here, so no member inventory or byte-level source parity is claimed.
+- Current canonical source HEAD after PR #1030 is `bc0b50305fa247e5555bcf5b171fe827c531f9ba`. `main` and the Release ZIP were not changed.
