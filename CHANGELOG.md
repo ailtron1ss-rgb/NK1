@@ -1,3 +1,10 @@
+## [NK1][Learning] Keep P23 holdout results outside revision prompts (2026-11-13)
+
+- Build revision targets, rationale and fitness summaries exclusively from validation reports; the holdout contributes only the hard safety stop.
+- Remove holdout-derived aggregate direction, task/trial identities, gate reasons and evaluator feedback from the revision plan; a safety-blocked plan emits no optimizer instruction.
+- Add an adversarial regression proving that holdout sentinels and holdout-only regressions cannot influence generator-facing content, and run it in the verified-learning workflow.
+- This is an evaluation-integrity correction, not a measured learning or retrieval uplift. Fresh independent holdout evaluation remains mandatory.
+
 ## [NK1][Persistence] Restore project-executor snapshot own-key identity (2026-10-30)
 - Make the default schema-v7 executor state explicitly own `lastOutcomeId: undefined`, matching the normalized state produced by `restore()` and preserving exact snapshot key identity across restart.
 - Extend the subsystem-runtime regression to compare sorted own-key sets before and after restore and assert the undefined outcome identifier.
