@@ -237,7 +237,7 @@ test("accessor-backed binding properties and sparse binding arrays fail closed",
     phase: "moving",
     joints: {},
   };
-  assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, frame, [binding]), /Invalid depth-rig/);
+  assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, frame, [binding]), /Invalid or duplicate depth-rig/);
   assert.equal(getterCalls, 0);
 
   const sparse = [];
