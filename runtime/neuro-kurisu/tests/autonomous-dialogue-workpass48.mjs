@@ -24,9 +24,9 @@ assert.ok(selected.initiative.topic.length > 20);
 assert.equal(engine.latestPlanned(2001)?.id, selected.initiative.id);
 assert.equal(engine.cycle(inputs(2002)).initiative, null, 'a pending item must prevent duplicate initiatives');
 
-assert.equal(engine.stageMessage(selected.initiative.id, 'Есть любопытная связь между намерением, причиной и доказанным результатом.'), true);
+assert.equal(engine.stageMessage(selected.initiative.id, 'Есть любопытная связь между намерением, причиной и доказанным результатом.', 2002), true);
 assert.equal(engine.stageMessage(selected.initiative.id, 'duplicate'), false, 'a message can only be staged once');
-assert.equal(engine.latestReady()?.message, 'Есть любопытная связь между намерением, причиной и доказанным результатом.');
+assert.equal(engine.latestReady(2002)?.message, 'Есть любопытная связь между намерением, причиной и доказанным результатом.');
 assert.equal(engine.acknowledge(selected.initiative.id, 2100), true);
 assert.equal(engine.acknowledge(selected.initiative.id, 2101), false, 'ack must be idempotent');
 assert.equal(engine.summary().executed, 1);
@@ -48,8 +48,8 @@ assert.equal(migration.summary().deferred, 1);
 const repeated = new AutonomousSocialInitiativeEngine();
 const repeatedInput = inputs(1, { startupGraceMs: 0, quietPeriodMs: 0, cooldownMs: 0, emotionLabel: 'curiosity', emotionConfidence01: .9, topics: [{ topic: 'How causal evidence changes a scientific model over time', source: 'curiosity' }] });
 assert.equal(repeated.cycle(repeatedInput).initiative?.toneHint, 'curious');
-repeated.stageMessage(repeated.latestPlanned(1).id, 'Похоже, это стоит обсудить.');
-repeated.acknowledge(repeated.latestReady().id, 2);
+repeated.stageMessage(repeated.latestPlanned(1).id, 'Похоже, это стоит обсудить.', 2);
+repeated.acknowledge(repeated.latestReady(2).id, 3);
 const noRepeat = repeated.cycle({ ...repeatedInput, at: 3, topics: [{ topic: 'A scientific model changes over time when new causal evidence appears', source: 'curiosity' }] });
 assert.equal(noRepeat.initiative, null, 'near-duplicate topics must not be emitted as fresh thoughts');
 
