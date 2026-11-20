@@ -1,5 +1,5 @@
 from __future__ import annotations
-import hashlib, json, tempfile, unittest, warnings, zipfile
+import hashlib, json, stat, tempfile, unittest, warnings, zipfile
 from pathlib import Path
 from tools.release_archive_inspector import audit_release_archive
 
@@ -100,6 +100,51 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         result = audit_release_archive(self.archive, self.source)
         self.assertFalse(result["ok"])
         self.assertTrue(any("ZIP container invalid" in error for error in result["errors"]))
+
+
+    def test_rejects_case_insensitive_duplicate_members(self):
+        self._write_archive({"README.md": b"first\n", "readme.MD": b"second\n"})
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("case-insensitive duplicate ZIP member" in error for error in result["errors"]))
+
+    def test_rejects_unicode_normalization_duplicate_members(self):
+        composed = "caf\u00e9.txt"
+        decomposed = "cafe\u0301.txt"
+        self._write_archive({composed: b"first", decomposed: b"second"})
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("case-insensitive duplicate ZIP member" in error for error in result["errors"]))
+
+    def test_rejects_symbolic_link_members(self):
+        info = zipfile.ZipInfo("linked.txt")
+        info.create_system = 3
+        info.external_attr = (stat.S_IFLNK | 0o777) << 16
+        with zipfile.ZipFile(self.archive, "w") as zipped:
+            zipped.writestr(info, "target.txt")
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("symbolic-link member is not accepted" in error for error in result["errors"]))
+
+    def test_rejects_unsafe_member_path_variants(self):
+        for name in ("/absolute.txt", "folder\\\\escape.txt", "C:/drive.txt"):
+            with self.subTest(name=name):
+                self._write_archive({name: b"unsafe"})
+                result = audit_release_archive(self.archive, self.source)
+                self.assertFalse(result["ok"])
+                self.assertTrue(any("unsafe member" in error for error in result["errors"]))
+
+    def test_rejects_path_collisions_after_auto_prefix_mapping(self):
+        (self.source / "foo.txt").write_text("foo\n", encoding="utf-8")
+        (self.source / "bar.txt").write_text("bar\n", encoding="utf-8")
+        self._write_archive({
+            "Neuro_Kurisu/foo.txt": b"foo\n",
+            "Neuro_Kurisu/bar.txt": b"bar\n",
+            "foo.txt": b"shadow\n",
+        })
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("archive path collision after prefix mapping" in error for error in result["errors"]))
 
 if __name__ == "__main__":
     unittest.main()
