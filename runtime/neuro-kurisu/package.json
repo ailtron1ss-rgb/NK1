@@ -1899,6 +1899,7 @@
     "test:neko-voice-embodiment-streaming-wiring": "node --experimental-strip-types --test tests/neko-voice-embodiment-streaming-wiring.mjs",
     "test:device-evidence-ledger-restore": "node --experimental-strip-types tests/device-evidence-ledger-restore-integrity.mjs",
     "test:neuroforge": "node --experimental-strip-types tests/neuroforge-engine.mjs",
-    "neuroforge": "node --experimental-strip-types scripts/neuroforge.mjs"
+    "neuroforge": "node --experimental-strip-types scripts/neuroforge.mjs",
+    "test:invention-loop": "node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs && node --experimental-strip-types tests/the-invention-loop.mjs"
   }
 }

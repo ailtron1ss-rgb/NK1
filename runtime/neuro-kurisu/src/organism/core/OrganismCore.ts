@@ -394,6 +394,12 @@ import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 import type { ExternalProjectResearchResult } from '../system/ExternalProjectResearchTool.ts';
 const now = () => Date.now();
 export interface OrganismConfig {
+    /** Host-owned verifier key lookup; private keys must remain outside NK1. */
+    inventionVerifierKeyResolver?: import('../research/TheInventionLoop.ts').InventionVerifierKeyResolver;
+    /** Optional host evaluator policy for preregistering each newly generated hypothesis. */
+    inventionEvaluationPlanProvider?: (
+        experiment: import('../cognition/IntrinsicExperimentGenerator.ts').IntrinsicExperiment,
+    ) => import('./EvidenceResearchSubsystemRuntime.ts').InventionEvaluationPlan | null;
     enableHomeostasis?: boolean;
     enableIntrinsicGoals?: boolean;
     enableWorldModel?: boolean;
@@ -1243,7 +1249,14 @@ export class OrganismCore {
     private get p67AutonomousGoalGenesis() { return this.agencySubsystem.p67AutonomousGoalGenesis; }
     private get p68GoalEcology() { return this.agencySubsystem.p68GoalEcology; }
     private get p38Research() { return this.evidenceResearchSubsystem.p38Research; }
-    private get evidenceResearchSubsystem() { return this.organismSystems.research; }
+    private get evidenceResearchSubsystem() {
+        const research = this.organismSystems.research;
+        research.bindCognitiveSubsystems({
+            scientificMethod: this.cognitiveRuntime.scientificMethod,
+            scientificBrain: this.developmentalNeural.autonomousScientificBrain,
+        });
+        return research;
+    }
     private cognitiveSubsystemFacadeB297!: CognitiveSubsystemFacade;
     private b297FacadeCache = { identity01: .5, agency01: .5, budget01: .5, memoryPressure01: .2, embodimentCapacity01: .75 };
     private cognitiveCycleAnchors: Partial<Record<'observation' | 'prediction' | 'appraisal' | 'attention' | 'memory' | 'goal' | 'plan' | 'action', string>> = {};
@@ -1342,6 +1355,8 @@ export class OrganismCore {
             enableB2523MultiHorizonCounterfactualVerifier: config.enableB2523MultiHorizonCounterfactualVerifier ?? true,
             ...config,
         } as Required<OrganismConfig>;
+        if (config.inventionVerifierKeyResolver)
+            this.organismSystems.configureInventionVerifierKeyResolver(config.inventionVerifierKeyResolver);
         this.cognitiveSubsystemFacadeB297 = new CognitiveSubsystemFacade(this as any);
         this.persistence.configure(this.config.checkpointMinIntervalMs, this.config.checkpointMaxDirtyCycles);
         this.cognitiveRuntime.actionGateway.registerTool({ id: 'organism.inspect', capability: 'core.read', destructive: false, projectAllowed: true, execute: async () => ({ ok: true, verified: true, tick: this.persisted.state.tick, lastAction: this.persisted.state.lastAction, energy: this.persisted.state.needs.energy }) });
@@ -5480,8 +5495,32 @@ export class OrganismCore {
         }
         if (this.config.enableScientificMethod && experiment) {
             const experimentSources = ['intrinsic-experiment', `tick:${state.tick}`, `experiment:${experiment.id}`, ...(experiment.source === 'dream-association' ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)] : [])];
-            const project = this.cognitiveRuntime.scientificMethod.create(experiment.question, experiment.hypothesis, experiment.action, experimentSources);
-            this.persisted.facets.memory.experiments = this.persisted.facets.memory.experiments.map((row: any) => row?.id === experiment.id ? { ...row, scientificProjectId: project.id, createdTick: state.tick } : row);
+            const research = this.evidenceResearchSubsystem;
+            const existingCapture = research.findCapturedExperiment(experiment);
+            const existingProject = existingCapture
+                ? this.cognitiveRuntime.scientificMethod.snapshot().projects.find(project => project.id === existingCapture.scientificProjectId)
+                : undefined;
+            const project = existingProject ?? this.cognitiveRuntime.scientificMethod.create(
+                experiment.question, experiment.hypothesis, experiment.action, experimentSources);
+            const capturedInvention = existingCapture ??
+                research.captureGeneratedExperiment(experiment, project.id, state.tick);
+            const evaluationPlanProvider = this.config.inventionEvaluationPlanProvider;
+            if (evaluationPlanProvider && capturedInvention.status === 'awaiting-preregistration') {
+                try {
+                    const evaluationPlan = evaluationPlanProvider(experiment);
+                    if (evaluationPlan)
+                        research.preregisterCapturedExperiment(capturedInvention.id, evaluationPlan);
+                }
+                catch (error) {
+                    research.markCapturePreregistrationFailure(capturedInvention.id, error);
+                }
+            }
+            this.persisted.facets.memory.experiments = this.persisted.facets.memory.experiments.map((row: any) => row?.id === experiment.id ? {
+                ...row,
+                scientificProjectId: project.id,
+                inventionCandidateId: capturedInvention.id,
+                createdTick: state.tick,
+            } : row);
             this.persisted.facets.cognition.scientific = this.cognitiveRuntime.scientificMethod.snapshot();
             if (project.uncertainty > 0.6)
                 this.cognitiveRuntime.cognitiveField.addPressure('curiosity', `scientific question: ${project.question}`, 0.44, [project.id]);
