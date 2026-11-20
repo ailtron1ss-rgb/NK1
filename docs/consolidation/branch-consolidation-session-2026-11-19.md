@@ -537,3 +537,38 @@ The ref total rose by one from the prior 1,008 snapshot because this current-sou
 - Complete device/phone soak, real voice/avatar latency measurements, independent memory holdout with at least five paired seeds, memory-search latency and 10k-tick performance measurements. No target metric is considered met without reproducible evidence.
 - Branch retirement remains blocked by the four live PR dependencies, 43 PR references, unverified rulesets/deployments/tags/external consumers and lack of a delete-ref action.
 - No global completion percentage is assigned from stale aspect/backlog counters. NK1 is not declared complete or released.
+
+
+## Follow-up consolidation pass — 2026-11-20 (evening)
+
+### Live census and snapshot comparison
+
+- Repository: `ailtron1ss-rgb/NK1`; canonical source branch: `workpass70-source`.
+- Current source HEAD before this journal update: `a98bfa122eab016c25d10a49a23ae356f0485856`.
+- Full REST pagination: pages 1–11 returned 100,100,100,100,100,100,100,100,100,100,42 refs; page 12 returned an empty array. Total: **1,042 branch refs**.
+- Unique HEAD commits: **1,026**; excess names beyond one name per unique HEAD: **16**.
+- Comparison with saved `branch-census-2026-11-20-post-merge.csv` (blob `d576190c3574d2c85600badcac25b50426f12b60`, 1,042 records): no new branch names, no vanished names, and one changed HEAD: `workpass70-source` moved from `821dbf95ffd2b1e2150541c3ce0adfe3d4e5cde6` to `a98bfa122eab016c25d10a49a23ae356f0485856`. No branch count change.
+- One exact shared-HEAD family has 17 names at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
+- Current live dependencies on this family were re-fetched: PR #109 and #91/#86 use aliases as their base; PR #124 uses `workpass206-runtime-evaluator-wiring` as its base. Thus the shared HEAD is not sufficient evidence to retire the family.
+- PR counts from GitHub Search API: **284 open**, **432 merged**, **320 closed unmerged**. The open pull list was fully paginated (100 + 100 + 84).
+
+### Donor review and disposition
+
+- PR #1046 (`integrate/prototype-startup-health-gates-20261120`) is a useful quickstart/startup donor: 35 commits, 8 changed paths, exact head `2f1cd92a68fc4000786384eba11e52fd0f42107c`, but it is **239 commits behind** the current source by compare. Its exact-head clean-start workflow run `44764134920` failed: runtime, research bridge and UI preview became ready; gateway readiness then failed with `fetch failed`. It was not merged; it remains open for a targeted fix and rebase.
+- PR #654 (avatar action crossfade) has 9 successful exact-head Actions runs, but its head is **811 commits behind** the current source and the PR is reported non-mergeable. Its 8 changed app paths are a possible selective-port family, not a safe wholesale merge.
+- PR #386 (experiment quality / holdout) and #391 (P23 evidence-based learning) are respectively 1,393 and 1,477 commits behind current source and touch many already-evolving files. Neither was merged wholesale; selective path-level review is required.
+- These donor PRs were not closed as superseded: their unique content and provenance have not been fully reconciled.
+
+### Actions and branch-retirement accounting
+
+- PRs merged in this follow-up pass: **0**.
+- PRs closed as superseded: **0**.
+- Branch refs deleted: **0**.
+- No force push, ref overwrite, or destructive operation performed.
+- The connected GitHub actions in this session provide GET/contents/ref-update and PR merge operations but do not expose a branch-ref DELETE operation. Repository metadata also reports `delete_branch_on_merge=false`; merging alone therefore does not reduce branch count. Do not claim branch retirement without an actual verified DELETE and post-delete census.
+- A path to 10 refs requires retiring 1,032 of the current 1,042 refs after preserving all unique code/provenance and clearing PR, release/tag, workflow, protection/ruleset, deployment, documentation and external-consumer references. That clearance is not complete.
+- Stable Release remains tag `Neuro` / `NeuroKurisu0.1`, ZIP `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. ZIP bytes were not available through the connected GitHub fetch (UTF-8 only); no archive-level SHA recomputation or source-to-release parity claim is made.
+
+### Honest outcome
+
+This was a live inventory and selective donor review, **not a successful merge pass**: no candidate met both freshness/integration safety and exact-head verification. Next useful work is to rebase/fix #1046's gateway readiness failure as a selective change, and selectively port #654's avatar timeline only after path-level duplicate review. Branch count remains 1,042; open PRs remain 284. This session made no claim of reducing refs.
