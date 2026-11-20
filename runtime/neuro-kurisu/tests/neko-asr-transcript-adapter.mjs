@@ -110,6 +110,21 @@ test('pending, rejected, and malformed speech evidence never blocks a valid fina
   assert.equal(malformedResult.speechAdmissionError, 'invalid-speech-probability-window');
 });
 
+test('late VAD probability callbacks are fenced after the ASR capture completes', async () => {
+  let lateObserver;
+  const { port } = provider(async input => {
+    lateObserver = input.observeSileroProbabilityWindow;
+    lateObserver(sileroFrame(0));
+    return transcript({ sessionId: input.sessionId });
+  });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  const before = result.speechAdmission;
+  assert.ok(before);
+  assert.equal(lateObserver(sileroFrame(1)), null);
+  assert.equal(result.speechAdmission, before);
+  assert.equal(result.speechAdmission?.audioEndSample, 512);
+});
+
 test('rejects partial and non-user transcripts before exposing text', async () => {
   for (const patch of [{ phase: 'partial' }, { speakerRole: 'assistant' }, { speakerRole: 'unknown' }]) {
     const { port } = provider(input => transcript({ sessionId: input.sessionId, ...patch }));
@@ -218,6 +233,25 @@ test('Smart Turn inference errors remain diagnostic and do not reject valid ASR'
   const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
   assert.equal(result.status, 'accepted');
   assert.equal(result.smartTurnEvaluation?.status, 'error');
+});
+
+test('malformed Smart Turn PCM frames fail open without rejecting the ASR transcript', async () => {
+  const smartTurnProvider = {
+    modelId: 'pipecat-smart-turn-v3.2-cpu',
+    modelVersion: 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93',
+    isAvailable: () => true,
+    async evaluate() { return { probability01: 0.9 }; },
+  };
+  const { port } = provider(async input => {
+    assert.equal(input.pushSmartTurnAudioFrame({
+      sampleRateHz: 48_000,
+      pcm16: new Uint8Array(3200),
+    }), false);
+    return transcript({ sessionId: input.sessionId });
+  }, { smartTurnProvider });
+  const result = await new NekoAsrTranscriptAdapter(port).captureFinal();
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.smartTurnError, 'invalid-smart-turn-audio-frame');
 });
 
 test('invalid optional Smart Turn provider config is diagnostic and leaves ASR operational', async () => {
