@@ -282,6 +282,7 @@ export class PersistenceProjectionCoordinator {
     target.facets.embodiment.p41NativePerception=this.snapshotOnce('snap:embodimentSubsystem.p41NativePerception', ctx.embodimentSubsystem.p41NativePerception);
     target.facets.embodiment.p41TemporalPerception=this.snapshotOnce('snap:embodimentSubsystem.p41TemporalPerception', ctx.embodimentSubsystem.p41TemporalPerception);
     target.facets.embodiment.perceptualEvidence=this.snapshotOnce('snap:perceptualEvidence', ctx.perceptualEvidence);
+    target.facets.embodiment.observationIntake=this.snapshotOnce('snap:observationIntake', ctx.observationIntake);
     target.facets.advanced.groundedWorld=this.snapshotOnce('snap:worldSubsystem.groundedWorld', ctx.worldSubsystem.groundedWorld);
     target.facets.embodiment.p42Experience=this.snapshotOnce('snap:embodimentSubsystem.p42Experience', ctx.embodimentSubsystem.p42Experience);
     target.facets.embodiment.p43Imagery=this.snapshotOnce('snap:embodimentSubsystem.p43Imagery', ctx.embodimentSubsystem.p43Imagery);

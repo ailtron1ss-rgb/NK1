@@ -65,12 +65,64 @@ export interface GroundedWorldStateSnapshot {
   events:GroundedEvent[];
   facts:string[];
   provenanceIds:string[];
+  /** Contradictions surfaced by observation intake; bounded, newest last. */
+  observationConflicts?:ObservationConflict[];
+  /** Latest claim per subject, so cross-modality disagreement is still detectable after a restart. */
+  subjectClaims?:Array<{subject:string;claim:string;modality:string;sourceId:string;provenance:string}>;
   lastHash:string;
 }
 export const defaultGroundedWorldState=():GroundedWorldStateSnapshot=>({version:1,revision:0,lastAt:0,location:'unknown',uncertainty01:.5,confidence01:0,entities:[],relations:[],events:[],facts:[],provenanceIds:[],lastHash:''});
 
+export type GroundedEvidenceKind='observed'|'model-output'|'derived'|'conflict'|'unresolved';
+
+/**
+ * Map an observation's provenance onto the world model's evidence vocabulary.
+ *
+ * This is the rule that keeps the system honest: only a real capture or a real host
+ * interface produces `observed`. A provider's inference is `model-output` and a
+ * synthetic fixture is `unresolved`, no matter how confident the caller is.
+ */
+export function observationEvidenceKind(provenance:string):GroundedEvidenceKind{
+  switch(provenance){
+    case 'device-capture':return 'observed';
+    case 'host-interface':return 'observed';
+    case 'provider-model-output':return 'model-output';
+    case 'derived':return 'derived';
+    default:return 'unresolved';
+  }
+}
+
+const EVIDENCE_RANK:Record<GroundedEvidenceKind,number>={observed:3,'model-output':2,derived:1,conflict:0,unresolved:-1};
+
+/**
+ * Keep the stronger of two evidence kinds for one modality.
+ *
+ * Trust is monotone: a later, weaker source must not erase the fact that this
+ * modality already observed the entity directly.
+ */
+export function strongerEvidenceKind(previous:string|undefined,incoming:GroundedEvidenceKind):GroundedEvidenceKind{
+  const prior=EVIDENCE_RANK[(previous as GroundedEvidenceKind)??'unresolved']??-1;
+  const next=EVIDENCE_RANK[incoming]??-1;
+  return next>=prior?incoming:(previous as GroundedEvidenceKind);
+}
+
+export interface ObservationConflict {
+  at:number;
+  entityId:string;
+  subject:string;
+  modality:string;
+  previousClaim:string;
+  incomingClaim:string;
+  incomingProvenance:string;
+  previousProvenance:string;
+}
+
 export class GroundedWorldState {
   private state=defaultGroundedWorldState();
+  /** Contradictions found by observation intake; bounded, never used to overwrite a value. */
+  private conflicts:ObservationConflict[]=[];
+  /** Latest claim per subject, used to detect cross-modality disagreement. */
+  private subjectClaims=new Map<string,{claim:string;modality:string;sourceId:string;provenance:string}>();
   restore(raw?:Partial<GroundedWorldStateSnapshot>|null){
     const d=defaultGroundedWorldState(); const r=raw??{};
     this.state={...d,...r,
@@ -101,8 +153,18 @@ export class GroundedWorldState {
       facts:Array.isArray(r.facts)?r.facts.slice(0,192):[],
       provenanceIds:Array.isArray(r.provenanceIds)?r.provenanceIds.slice(0,128):[],
     };
+    // Contradictions and the subject index are part of the world model's honesty: if they
+    // are not restored, a disagreement recorded before a restart silently disappears and
+    // the next observation looks like the first one. Rebuild both defensively.
+    this.conflicts=Array.isArray(r.observationConflicts)?r.observationConflicts.slice(-64).filter((c:any)=>c&&typeof c==='object'
+      &&typeof c.subject==='string'&&typeof c.previousClaim==='string'&&typeof c.incomingClaim==='string'&&Number.isFinite(c.at)):[];
+    this.subjectClaims=new Map();
+    if(Array.isArray(r.subjectClaims))for(const row of r.subjectClaims.slice(-256)){
+      if(!row||typeof row!=='object'||typeof row.subject!=='string'||typeof row.claim!=='string')continue;
+      this.subjectClaims.set(row.subject,{claim:row.claim,modality:typeof row.modality==='string'?row.modality:'world',sourceId:typeof row.sourceId==='string'?row.sourceId:'unknown',provenance:typeof row.provenance==='string'?row.provenance:'unresolved'});
+    }
   }
-  snapshot(){return structuredClone(this.state);}
+  snapshot(){return structuredClone({...this.state,observationConflicts:this.conflicts,subjectClaims:[...this.subjectClaims.entries()].map(([subject,c])=>({subject,...c}))});}
 
   /** P2841: commit only externally evidenced consequences into the canonical grounded world. */
   integrateExternalOutcome(input:{
@@ -381,5 +443,177 @@ export class GroundedWorldState {
       events:eventList.slice(0,32).map(x=>x.label),
     };
   }
-  summary(){return {revision:this.state.revision,location:this.state.location,confidence01:this.state.confidence01,uncertainty01:this.state.uncertainty01,entities:this.state.entities.length,relations:this.state.relations.length,events:this.state.events.length,facts:this.state.facts.length,lastHash:this.state.lastHash,objectPermanence01:clamp(this.state.entities.length?this.state.entities.reduce((s,e)=>s+e.persistence01,0)/this.state.entities.length:0),liveEntities:this.state.entities.filter(e=>e.presenceStatus==='visible').length,fadingEntities:this.state.entities.filter(e=>e.presenceStatus==='fading').length,unknownPresenceEntities:this.state.entities.filter(e=>e.presenceStatus==='unknown').length};}
+  /**
+   * Integrate one canonical observation into the grounded world.
+   *
+   * This is the bridge from the observation contract into the world model. It exists
+   * so that grounded state is driven by *admitted* observations with known provenance
+   * rather than by whatever shape a caller passed to `integrate`. Two properties are
+   * preserved that the generic path cannot express:
+   *
+   * - provenance decides the evidence kind (`device-capture`/`host-interface` →
+   *   `observed`; a provider's inference stays `model-output`; a fixture stays
+   *   `unresolved`). A model's inference never becomes an observed fact here.
+   * - an observation that contradicts an existing same-subject claim from a different
+   *   source is recorded as `conflict` on that entity, and both values are kept.
+   */
+  integrateObservation(input: {
+    at: number;
+    observation: {
+      id: string;
+      sourceId: string;
+      sourceKind: string;
+      modality: string;
+      capturedAt: number;
+      confidence01: number;
+      reliability01: number;
+      coordinateFrameId?: string;
+      sessionId: string;
+      provenance: string;
+      isRealCapture: boolean;
+      expiresAt: number;
+      evidenceRefs?: string[];
+      payload: Record<string, unknown>;
+      contentHash: string;
+    };
+  }): { accepted: boolean; reason?: string; entityId?: string; evidenceKind: string; revision: number } {
+    const { at, observation } = input;
+    if (!Number.isFinite(at) || at < 0) return { accepted: false, reason: 'invalid-timestamp', evidenceKind: 'unresolved', revision: this.state.revision };
+    if (observation.expiresAt < at) return { accepted: false, reason: 'expired-observation', evidenceKind: 'unresolved', revision: this.state.revision };
+
+    const evidenceKind = observationEvidenceKind(observation.provenance);
+    const subject = typeof observation.payload.subject === 'string' && observation.payload.subject.trim()
+      ? observation.payload.subject.trim()
+      : typeof observation.payload.label === 'string' && observation.payload.label.trim()
+        ? observation.payload.label.trim()
+        : '';
+    if (!subject) return { accepted: false, reason: 'no-subject', evidenceKind, revision: this.state.revision };
+
+    const claim = typeof observation.payload.claim === 'string' ? observation.payload.claim.trim() : subject;
+    // Identity: a caller-supplied track id is a strong identity and wins. Otherwise the
+    // subject is the identity, which is what lets a lamp seen by vision and heard by
+    // audio resolve to one entity. Two distinct objects that share a label must supply
+    // distinct track ids to stay separate.
+    const trackKey = typeof observation.payload.trackId === 'string' && observation.payload.trackId.trim()
+      ? observation.payload.trackId.trim().slice(0, 120)
+      : null;
+    const subjectKey = norm(subject) || subject.toLowerCase();
+    const entityId = `obs-${stableHash(trackKey ? `track:${trackKey}` : `subject:${subjectKey}`)}`;
+    const rows = this.state.entities.map((row) => ({
+      ...row,
+      modalities: [...row.modalities],
+      trackAliases: [...(row.trackAliases ?? [])],
+      sourceIds: [...(row.sourceIds ?? [])],
+      modalityEvidenceKinds: { ...(row.modalityEvidenceKinds ?? {}) },
+    }));
+    const existing = rows.find((row) => row.id === entityId);
+    const modalityKey = observation.modality;
+
+    // Contradiction detection is subject-scoped, not entity-scoped: two modalities
+    // describing the same subject differently is the case worth surfacing, and it must
+    // be caught even when the sources have no shared track identity. Both claims are
+    // kept; nothing is settled by majority vote.
+    const prior = this.subjectClaims.get(subjectKey);
+    const contradicted = Boolean(prior && prior.claim !== claim && prior.modality !== modalityKey);
+    if (contradicted && prior) {
+      this.conflicts = [...this.conflicts, {
+        at,
+        entityId,
+        subject,
+        modality: modalityKey,
+        previousClaim: prior.claim,
+        incomingClaim: claim,
+        incomingProvenance: observation.provenance,
+        previousProvenance: prior.provenance,
+      }].slice(-64);
+    }
+    this.subjectClaims.set(subjectKey, {
+      claim,
+      modality: modalityKey,
+      sourceId: observation.sourceId,
+      provenance: observation.provenance,
+    });
+
+    const confidence = clamp(observation.confidence01 * observation.reliability01);
+    if (existing) {
+      existing.lastSeenAt = Math.max(existing.lastSeenAt, at);
+      existing.present01 = clamp(existing.present01 * 0.7 + observation.confidence01 * 0.3);
+      existing.confidence01 = clamp(existing.confidence01 * 0.7 + confidence * 0.3);
+      existing.modalities = [...new Set([...existing.modalities, modalityKey])];
+      existing.sourceIds = [...new Set([...existing.sourceIds, observation.sourceId])].slice(-16);
+      // Provenance per modality is monotone in trust: once a modality is `observed`
+      // for this entity, a later model inference cannot demote it back.
+      const previousKind = existing.modalityEvidenceKinds?.[modalityKey];
+      existing.modalityEvidenceKinds = {
+        ...(existing.modalityEvidenceKinds ?? {}),
+        [modalityKey]: contradicted ? 'conflict' : strongerEvidenceKind(previousKind, evidenceKind),
+      };
+      existing.observationCount += 1;
+      if (observation.coordinateFrameId && existing.positionFrameId && existing.positionFrameId !== observation.coordinateFrameId) {
+        // A frame change invalidates the previous spatial estimate rather than
+        // silently reinterpreting the same numbers in a new frame.
+        existing.position = null;
+        existing.velocity = null;
+        existing.positionFrameId = observation.coordinateFrameId;
+      } else if (observation.coordinateFrameId) {
+        existing.positionFrameId = observation.coordinateFrameId;
+      }
+    } else {
+      rows.push({
+        id: entityId,
+        label: norm(subject) || 'unknown',
+        kind: typeof observation.payload.kind === 'string' ? observation.payload.kind : 'object',
+        confidence01: confidence,
+        present01: clamp(observation.confidence01),
+        firstSeenAt: at,
+        lastSeenAt: at,
+        modalities: [modalityKey],
+        trackAliases: trackKey ? [trackKey] : [],
+        ...(observation.coordinateFrameId ? { positionFrameId: observation.coordinateFrameId } : {}),
+        position: null,
+        velocity: null,
+        modalityEvidenceKinds: { [modalityKey]: evidenceKind },
+        sourceIds: [observation.sourceId],
+        presenceStatus: observation.isRealCapture ? 'visible' : 'unknown',
+        visibilityKnown: observation.isRealCapture,
+        persistence01: 0.12,
+        absenceEvidence01: 0,
+        observationCount: 1,
+      });
+    }
+
+    const fact = `${evidenceKind}-observation:${observation.sourceKind}:${subject}:${claim}`;
+    const facts = [...new Set([...this.state.facts, norm(fact)].filter(Boolean))].slice(-192);
+    // The world model is defensive at this boundary: it accepts an admitted
+    // observation's shape but never assumes the caller supplied every optional field.
+    const evidenceRefs = Array.isArray(observation.evidenceRefs) ? observation.evidenceRefs.filter((ref) => typeof ref === 'string') : [];
+    const provenanceIds = [...new Set([observation.id, ...evidenceRefs, ...this.state.provenanceIds])].slice(0, 128);
+    // Only real captures may raise grounded confidence; a model's output cannot.
+    const groundingDelta = observation.isRealCapture ? confidence * 0.12 : 0;
+    const nextConfidence = clamp(this.state.confidence01 * 0.94 + groundingDelta);
+    const entities = rows
+      .sort((a, b) => b.confidence01 - a.confidence01 || b.lastSeenAt - a.lastSeenAt)
+      .slice(0, 128);
+    this.state = {
+      ...this.state,
+      revision: this.state.revision + 1,
+      lastAt: at,
+      entities,
+      facts,
+      provenanceIds,
+      confidence01: nextConfidence,
+      uncertainty01: clamp(1 - nextConfidence),
+    };
+    this.state.lastHash = stableHash(
+      `${this.state.revision}|${entityId}|${evidenceKind}|${observation.contentHash}|${this.conflicts.length}`,
+    );
+    return { accepted: true, entityId, evidenceKind, revision: this.state.revision };
+  }
+
+  /** Contradictions surfaced by `integrateObservation`, newest last, bounded. */
+  observationConflicts(limit = 32) {
+    return structuredClone(this.conflicts.slice(-limit));
+  }
+
+  summary(){return {revision:this.state.revision,location:this.state.location,confidence01:this.state.confidence01,uncertainty01:this.state.uncertainty01,entities:this.state.entities.length,relations:this.state.relations.length,events:this.state.events.length,facts:this.state.facts.length,lastHash:this.state.lastHash,objectPermanence01:clamp(this.state.entities.length?this.state.entities.reduce((s,e)=>s+e.persistence01,0)/this.state.entities.length:0),liveEntities:this.state.entities.filter(e=>e.presenceStatus==='visible').length,fadingEntities:this.state.entities.filter(e=>e.presenceStatus==='fading').length,unknownPresenceEntities:this.state.entities.filter(e=>e.presenceStatus==='unknown').length,observationConflicts:this.conflicts.length};}
 }
