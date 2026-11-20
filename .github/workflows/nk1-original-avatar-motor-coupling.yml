@@ -3,8 +3,7 @@ on:
   push:
     branches: [consolidation/original-2d-cognitive-motor-20261120, workpass70-source]
   pull_request:
-    # The Original 2D work is intentionally stacked on the cognitive-affect
-    # bridge PR until its parent is integrated into the canonical source branch.
+    # The cognitive-affect motor planner is already in the canonical source branch.
     branches: [workpass70-source]
     paths:
       - app/src/components/AvatarStage.tsx
