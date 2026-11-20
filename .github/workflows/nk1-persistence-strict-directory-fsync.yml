@@ -1,0 +1,39 @@
+name: NK1 Strict directory fsync persistence
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/persistence/FileStateStore.ts"
+      - "runtime/neuro-kurisu/tests/pass17-file-state-codec.mjs"
+      - ".github/workflows/nk1-persistence-strict-directory-fsync.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/persistence/FileStateStore.ts"
+      - "runtime/neuro-kurisu/tests/pass17-file-state-codec.mjs"
+      - ".github/workflows/nk1-persistence-strict-directory-fsync.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-strict-directory-fsync-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: FileStateStore persistence codec and strict directory fsync
+        run: npm --prefix runtime/neuro-kurisu run test:pass17:file-codec
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
