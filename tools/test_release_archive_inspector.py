@@ -1,7 +1,7 @@
 from __future__ import annotations
-import hashlib, json, stat, tempfile, unittest, warnings, zipfile
+import contextlib, hashlib, io, json, stat, tempfile, unittest, warnings, zipfile
 from pathlib import Path
-from tools.release_archive_inspector import audit_release_archive
+from tools.release_archive_inspector import audit_release_archive, main
 
 class ReleaseArchiveInspectorTests(unittest.TestCase):
     def setUp(self):
@@ -190,6 +190,27 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertTrue(any("case-insensitive source file path collision" in error for error in result["errors"]))
         self.assertEqual(len(result["sourceFilePathCollisions"]), 1)
+
+
+    def test_cli_summary_reports_path_metrics_without_scope_errors(self):
+        self._write_archive({
+            "README.md": b"NK1 source\n",
+            "runtime/neuro-kurisu/package.json": (json.dumps({"name": "neuro-kurisu", "version": "35.90.0"}) + "\n").encode(),
+        })
+        output = io.StringIO()
+        report_path = self.root / "audit.json"
+        with contextlib.redirect_stdout(output):
+            status = main([
+                "--archive", str(self.archive),
+                "--source-root", str(self.source),
+                "--out", str(report_path),
+            ])
+        self.assertEqual(status, 0)
+        summary = json.loads(output.getvalue())
+        self.assertEqual(summary["sourceFilePathCollisions"], 0)
+        self.assertEqual(summary["archiveFilePathCollisions"], 0)
+        self.assertEqual(summary["sourceDirectoryAliases"], 0)
+        self.assertEqual(summary["archiveDirectoryAliases"], 0)
 
 if __name__ == "__main__":
     unittest.main()
