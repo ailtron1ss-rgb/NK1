@@ -794,6 +794,97 @@ assert.throws(() => calibrationSimulator.consequenceEcology.recordVerifiedOutcom
 }), /consequence-outcome-not-independently-verified/,
 'callers cannot inject a self-asserted independently verified outcome directly into the calibration engine');
 
+const lineageSimulator = new FutureSimulator();
+lineageSimulator.sharedFuture.setCanonicalDecisionResolver(id => id.startsWith('organism-decision-lineage-'));
+const lineageStartAt = Date.now();
+for (let index = 0; index < 5; index++) {
+  const scenarioId = `lineage-scenario-${index}`;
+  const consequenceId = `lineage-consequence-${index}`;
+  const actionDecisionId = `organism-decision-lineage-${index}`;
+  const decisionRecordId = `shared-future-lineage-decision-${index}`;
+  const expectedPostcondition = `lineage sample ${index} is healthy`;
+  const at = lineageStartAt + index * 1_000;
+  lineageSimulator.sharedFuture.createScenario({
+    id: scenarioId,
+    title: `Evidence lineage scenario ${index}`,
+    owner: 'system',
+    confidence01: 0.95,
+    consequences: [{
+      id: consequenceId,
+      description: `Observed consequence for lineage sample ${index}`,
+      probability01: 0.64,
+      impact01: 0.7,
+      horizonDays: 3,
+      reversible: true,
+    }],
+  });
+  const decision = lineageSimulator.sharedFuture.proposeDecision({
+    id: decisionRecordId,
+    scenarioId,
+    title: `Execute lineage sample ${index}`,
+    owner: 'system',
+    at,
+    actionBinding: {
+      decisionId: actionDecisionId,
+      toolId: 'runtime.execute',
+      consequenceId,
+      expectedPostcondition,
+    },
+  });
+  lineageSimulator.sharedFuture.confirmDecision({ decisionId: decision.id, at: at + 1 }, 'system');
+  const analysisId = `lineage-analysis-${index}`;
+  const optionId = `lineage-option-${index}`;
+  lineageSimulator.analyzeConsequences({
+    id: analysisId,
+    scenarioId,
+    horizonDays: 30,
+    at: at + 2,
+    options: [{
+      ...option(optionId, `execute lineage sample ${index}`, [
+        node(`lineage-context-${index}`, 'neutral', 0.2, 0.1, 0.9),
+      ], [edge(`lineage-context-edge-${index}`, '__action__', `lineage-context-${index}`)]),
+      decisionId: actionDecisionId,
+    }],
+  });
+  const observationId = `lineage-observation-${index}`;
+  const sourceId = index < 2 ? 'lineage-shared-source-a' : index < 4 ? `lineage-source-b-${index}` : 'lineage-unique-source';
+  const independenceKey = index < 2 ? `lineage-key-a-${index}` : index < 4 ? 'lineage-shared-key-b' : 'lineage-unique-key';
+  const outcome = lineageSimulator.sharedFuture.recordVerifiedExternalOutcome({
+    id: `lineage-outcome-${index}`,
+    actionDecisionId,
+    toolId: 'runtime.execute',
+    executionId: `lineage-execution-${index}`,
+    observationId,
+    expectedPostcondition,
+    observedPostcondition: expectedPostcondition,
+    direction: 'confirmed',
+    confidence01: 0.93,
+    independent01: 0.82,
+    evidence: [{
+      observationId,
+      sourceId,
+      sourceClass: 'external-api',
+      independenceKey,
+      confidence01: 0.95,
+      assessment: 'match',
+      verified: true,
+    }],
+    at: at + 100,
+  });
+  assert.equal(outcome.recorded, true, `lineage sample ${index} must be admitted by Shared Future`);
+  lineageSimulator.recordVerifiedConsequenceOutcome({ outcomeId: outcome.outcome.id, analysisId, optionId });
+}
+const lineageDiagnostics = lineageSimulator.consequenceEcology.diagnostics();
+assert.equal(lineageDiagnostics.verifiedCalibrationSamples, 5);
+assert.equal(lineageDiagnostics.calibrationSourceCount, 4);
+assert.equal(lineageDiagnostics.calibrationIndependenceKeyCount, 4);
+assert.equal(lineageDiagnostics.calibrationIndependentEvidenceClusterCount, 3,
+  'outcomes sharing a source ID or independence key must collapse into conservative evidence clusters');
+assert.equal(lineageDiagnostics.lineageAdjustedEffectiveSampleSize, 3,
+  'effective calibration size must not exceed the number of independent evidence clusters');
+assert.ok(lineageDiagnostics.calibrationReadinessReasons.includes('independent-evidence-clusters-below-15'),
+  'reused evidence lineage must block calibration readiness even when record count is high');
+
 const unverifiedSimulator = new FutureSimulator();
 const unverifiedScenario = unverifiedSimulator.sharedFuture.createScenario({
   id: 'unverified-calibration-scenario',
