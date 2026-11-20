@@ -2,25 +2,25 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { RealityGroundingController } from '../src/organism/system/RealityGroundingController.ts';
+import { ExternalPostconditionVerifier } from '../src/organism/system/ExternalPostconditionVerifier.ts';
 import { NeuralCausalTraceLedger } from '../src/organism/system/NeuralCausalTraceLedger.ts';
 import { P2820SelfKnowledgeCoresetBridge } from '../src/organism/cognition/P2820SelfKnowledgeCoresetBridge.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { createTrustedEmbodiedActionFixture } from './helpers/trusted-embodied-action-fixture.mjs';
 
 const clamp=v=>Math.max(0,Math.min(1,Number(v)||0));
 
-const fakeEmbodied={
-  version:1, action:'explore', status:'executed', realityClass:'device-observation', source:'android-termux', at:Date.now(),
-  before:{battery01:.9,thermal01:.1,cognitiveCapacity01:.9,awake:true,source:'android-termux'},
-  after:{battery01:.9,thermal01:.1,cognitiveCapacity01:.9,awake:true,source:'android-termux'},
-  stateDelta:{battery01:0,thermal01:0,cognitiveCapacity01:0,awakeChanged:false},
-  effect01:.7, reason:'test', capability:'android.sensors', consequenceVerification:{attempted:true,independent:true,verified:true,sourceStable:true,freshBefore01:1,freshAfter01:1,changed01:.35,reason:'test-independent',verificationMode:'independent-observation'}
-};
+const fakeEmbodied=await createTrustedEmbodiedActionFixture('explore');
 
 const controller=new RealityGroundingController();
+const postconditionVerifier=new ExternalPostconditionVerifier();
 controller.setMode('external-first');
-const external=controller.resolve({tick:1,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:fakeEmbodied,novelty01:.6,resource01:.8});
-if(external.source!=='external' || external.verified01!==1 || external.independent01!==1 || !controller.snapshot().externalPrimary) throw new Error(`external grounding failed: ${JSON.stringify(external)}`);
-const unavailable=controller.resolve({tick:2,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:{...fakeEmbodied,status:'unavailable',source:'node-host',realityClass:'derived'},novelty01:.3,resource01:.8});
+const externalVerification=await postconditionVerifier.assess(fakeEmbodied);
+const external=controller.resolve({tick:1,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:fakeEmbodied,postcondition:externalVerification,novelty01:.6,resource01:.8});
+if(external.source!=='simulation' || external.verified01!==0 || external.independent01!==0 || controller.snapshot().externalPrimary!==0 || !external.reason.includes('device-telemetry-is-not-world-observation')) throw new Error(`telemetry was incorrectly promoted to external grounding: ${JSON.stringify(external)}`);
+const unavailableResult={...fakeEmbodied,status:'unavailable',source:'node-host',realityClass:'derived'};
+const unavailableVerification=await postconditionVerifier.assess(unavailableResult);
+const unavailable=controller.resolve({tick:2,action:'explore',expectedReward01:.55,predictionConfidence01:.7,simulatedReward01:.2,simulatedSurprise01:.4,simulatedSuccess01:.8,embodiedAction:unavailableResult,postcondition:unavailableVerification,novelty01:.3,resource01:.8});
 if(unavailable.source!=='simulation') throw new Error('safe simulation fallback failed');
 
 const replayBridge=new P2820SelfKnowledgeCoresetBridge();
