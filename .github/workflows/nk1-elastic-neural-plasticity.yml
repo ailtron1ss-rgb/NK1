@@ -1,0 +1,36 @@
+name: NK1 elastic neural plasticity
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/**"
+      - "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts"
+      - "runtime/neuro-kurisu/tests/elastic-neural-plasticity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-elastic-neural-plasticity.yml"
+  push:
+    branches: [consolidation/elastic-neural-plasticity-current-source-20261120]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/**"
+      - "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts"
+      - "runtime/neuro-kurisu/tests/elastic-neural-plasticity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+permissions:
+  contents: read
+concurrency:
+  group: nk1-elastic-neural-plasticity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  elastic-neural-plasticity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - run: npm --prefix runtime/neuro-kurisu run typecheck
+      - run: npm --prefix runtime/neuro-kurisu run test:elastic-neural-plasticity
