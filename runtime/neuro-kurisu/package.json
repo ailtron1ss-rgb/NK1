@@ -1881,6 +1881,7 @@
     "test:cognitive-immune-health": "node --experimental-strip-types tests/cognitive-immune-health-monitor.mjs",
     "test:p25:adaptive-synaptic-matrix": "node --experimental-strip-types tests/p25-adaptive-synaptic-matrix.mjs",
     "test:p25:adaptive-synaptic-matrix:runtime": "node --experimental-strip-types tests/p25-adaptive-synaptic-matrix-runtime.mjs",
+    "test:elastic-neural-plasticity": "node --experimental-strip-types tests/elastic-neural-plasticity.mjs",
     "test:open-loop-radar": "node --experimental-strip-types tests/open-loop-radar-contract.mjs",
     "test:open-loop-radar-runtime": "node --experimental-strip-types tests/open-loop-radar-runtime-integration.mjs",
     "test:open-loop-radar-http": "node tests/open-loop-radar-http-route.mjs",
