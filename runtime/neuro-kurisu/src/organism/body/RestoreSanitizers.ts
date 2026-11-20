@@ -32,6 +32,9 @@ export function isPlainDataRecord(value: unknown): value is Record<string, unkno
 export function isPlainDataArray(value: unknown, maxLength = 4096): value is unknown[] {
   if (types.isProxy(value) || !Array.isArray(value)) return false;
   try {
+    // JSON persistence produces arrays with the realm's native prototype; rejecting
+    // custom prototypes prevents overridden filter/slice methods from running.
+    if (Object.getPrototypeOf(value) !== Array.prototype) return false;
     const length = Object.getOwnPropertyDescriptor(value, 'length')?.value;
     if (!Number.isSafeInteger(length) || length < 0 || length > maxLength) return false;
     const keys = Reflect.ownKeys(value);
