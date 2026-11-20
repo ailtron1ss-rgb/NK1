@@ -236,3 +236,39 @@ A fresh full pagination read after the merge and PR closures returned:
 - `main` HEAD: `27f54b33c4b3b9cf243a422c406d3e18d7dae40b`.
 
 The ref count increased by one from the preceding 1,004 snapshot because this consolidation created one new branch. Merging PR #1003 and closing seven superseded PRs did not delete their source refs. No branch refs were deleted. The repository remains well above the requested few-dozen target; old branch families still require file/blob/path, unique-commit, active-PR, tags/releases, workflow, ruleset, deployment, documentation and external-reference review before safe retirement.
+
+
+## Selective consolidation — 30-phase master-plan validator (PR #1004)
+
+PR [#1004](https://github.com/ailtron1ss-rgb/NK1/pull/1004) was merged into `main` on 2026-11-20.
+
+- Donor: PR #836 / branch `nk1-master-plan-300-steps-integration-16996934559425978287`; related earlier donor #858 was already closed as superseded by #955.
+- Canonical document `docs/NK1_FINAL_MASTER_PLAN_2026-10-28_RU.md` was already byte-identical in donor #836 and current `main`: blob `8569ab87252f1ca618f34f787557272abb025ea6`, 115,868 bytes. No second document copy was created.
+- The donor's unique 30-phase validator conflicted by path with the already-canonical 16-phase validator `scripts/verify-master-plan-completeness.sh`. It was re-authored as `scripts/verify-thirty-phase-master-plan.sh`; the 16-phase validator remains unchanged.
+- README adds a separate invocation for the 30-phase validator.
+- Current-base branch: `consolidation/master-plan-30phase-validator-current-20261120`; base `main` at `27f54b33c4b3b9cf243a422c406d3e18d7dae40b`; exact head `74c9e5b9581438d39e80f005f2a1fc8fbb417388`.
+- Merge commit / resulting `main` HEAD: `fd57e9f161e4bbc1f6522e7b6272bb01358fa70b`.
+- Final validator blob: `ae6908e9ee09cba8f29a54060c63956678f66787`; 2,432 bytes. Sixteen-phase validator blob retained: `48cb4f382d9ba72f35d43d4c2bb16966fd5e7fda`; ten-stage validator blob retained: `3e4d06641415546e16a4d67ef45ec9d60a5a4e2c`.
+- Validation on the actual canonical plan: 30/30 phases in order, 300/300 structured steps in order, all four required step fields non-empty, 30 phase gates, 15 final criteria and 20 upstream candidates. `bash -n` on the exact proposed script text passed.
+- No GitHub Actions/check-runs were triggered for this docs-only change; no Actions PASS is claimed. Exact content/pattern validation and shell syntax were checked directly.
+- PR #836 was closed as superseded after merge, with a comment documenting the preserved unique validator. #858 remained closed as superseded by #955. Source branches remain intact; no refs were deleted.
+
+## Additional donor dispositions — master-plan families (2026-11-20)
+
+- PRs #840/#835/#827/#823 were closed as superseded after full Git tree check. All four donor commits share exact tree SHA `1bbd25f24f33372f3458c67ecec4b014553054d9`; the 16-phase document, progress tracker and 16-phase validator already match current `main` blobs exactly. Their README link edits were stale compared with current `main`.
+- PR #777 was closed as superseded. Its ten bullet items for each of phases 1–15 match the canonical numbered step content in `docs/NK1_COMPLETE_MASTER_PLAN_16_PHASES_RU.md`; phase 16 and final gates are represented there with more detailed structured checks. The PR attempted to replace the separate ten-stage plan path with the 16-phase plan and rolled the README/tracker back to older content. No unique current content needed to be carried over.
+- PR #859/#847/#842/#837/#829/#825/#750 were previously closed after their 10-stage plan variants were consolidated by #1003. PR #857 was already closed unmerged and does not introduce changes beyond the 16-phase content already in `main`.
+
+## Branch census after PR #1004 (2026-11-20)
+
+A fresh complete paginated read returned:
+
+- **1,006 branch refs**.
+- **990 unique HEAD commits**.
+- **16 excess names** beyond one branch name per unique HEAD.
+- One exact shared-HEAD group of 17 aliases at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`.
+- **325 open PRs**.
+- `workpass70-source` HEAD: `76083f6050de65dc79382c8ab48b3175640e58c0`.
+- `main` HEAD: `fd57e9f161e4bbc1f6522e7b6272bb01358fa70b`.
+
+The branch count rose by two from the prior 1,004 snapshot as two short-lived consolidation branches were created (#1003 / #1004). The previous 1,005 snapshot included the first of them. Merges and PR closures did not delete any source refs. No branch deletion was performed. The shared-HEAD alias group remains to be checked against open PR bases, closed/merged PR history, tags/releases, workflows, rulesets, deployments, documentation and external consumers before any retirement.
