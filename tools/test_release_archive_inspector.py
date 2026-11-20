@@ -192,6 +192,25 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self.assertEqual(len(result["sourceFilePathCollisions"]), 1)
 
 
+    def test_rejects_casefold_collision_after_auto_prefix_mapping(self):
+        self._write_archive({
+            "Neuro_Kurisu/README.md": b"NK1 source\\n",
+            "readme.md": b"shadow\\n",
+        })
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertEqual(len(result["archiveMappedPathCollisions"]), 1)
+        self.assertTrue(any("case-insensitive duplicate archive path collision after prefix mapping" in error for error in result["errors"]))
+
+    def test_rejects_file_directory_collision_after_auto_prefix_mapping(self):
+        with zipfile.ZipFile(self.archive, "w") as zipped:
+            zipped.writestr("Neuro_Kurisu/README.md", "NK1 source\\n")
+            zipped.writestr("README.md/", "")
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("file-directory archive path collision after prefix mapping" in error for error in result["errors"]))
+        self.assertEqual(result["archiveMappedPathCollisions"][0]["kind"], "file-directory")
+
     def test_cli_summary_reports_path_metrics_without_scope_errors(self):
         self._write_archive({
             "README.md": b"NK1 source\n",
@@ -211,6 +230,7 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self.assertEqual(summary["archiveFilePathCollisions"], 0)
         self.assertEqual(summary["sourceDirectoryAliases"], 0)
         self.assertEqual(summary["archiveDirectoryAliases"], 0)
+        self.assertEqual(summary["archiveMappedPathCollisions"], 0)
 
 if __name__ == "__main__":
     unittest.main()
