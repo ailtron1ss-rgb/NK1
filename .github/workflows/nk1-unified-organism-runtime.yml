@@ -92,5 +92,7 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:voice
       - name: P2702 persistent personality restore integrity
         run: npm --prefix runtime/neuro-kurisu run test:p2702:personality
+      - name: Self-model and identity-state restore integrity
+        run: node --experimental-strip-types --test runtime/neuro-kurisu/tests/self-state-restore-integrity-workpass80.mjs
       - name: Organism runtime smoke
         run: npm --prefix runtime/neuro-kurisu run test:organism-smoke
