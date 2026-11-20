@@ -263,3 +263,19 @@ This run closed **2 PRs as superseded**, without deleting their branches:
 - Current source commit check-runs: **27 total; 27 success; 0 failure; 0 pending**.
 - Stable Release remains tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. The binary could not be materialized in this runtime; no extraction manifest or per-file source/release parity claim is made.
 - Branch retirement remains blocked by incomplete per-ref historical PR head/base review, tags/releases, workflow filters, rulesets/protection, deployments, documentation and external-consumer clearance. The connected GitHub operations in this run do not expose a branch-ref deletion action. All remaining refs are preserved.
+
+
+## Post-PR #1043 live census — 2026-11-20
+
+A second complete pagination was performed after creating the release-inspector consolidation branch. Pages 1–10 returned 100 refs each, page 11 returned 37, and page 12 was empty.
+
+- **Branch refs: 1,037; unique HEAD SHAs: 1,021; excess names: 16; shared-HEAD groups: 1.**
+- Compared with the latest saved full aggregate snapshot (1,032 / 1,016 / 16): **+5 refs, +5 unique HEADs, no change in excess aliases**. One of these new refs is the branch created by this run for PR #1043; the other four are observed changes and are not attributed to this run.
+- The only shared-HEAD group remains SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`, with the same 17 names listed above. No new shared-HEAD group appeared.
+- Current PR census: **296 open / 415 merged / 320 closed unmerged**. This includes newly opened [PR #1043](https://github.com/ailtron1ss-rgb/NK1/pull/1043).
+- Branch created by this run: `consolidation/release-archive-inspector-portability-20261120` @ `d4ac4f8dd4067e4c57f1151ced8a856daece4c2e`.
+- PR #1043 is Draft and intentionally unmerged while exact-head tests and real published-archive inspection are investigated.
+- **This run: merged 0 PRs; closed 2 superseded PRs (#1040 and #1038); deleted 0 branch refs.** Both superseded source branches remain intact.
+- The first real archive-inspection attempt on PR #1043 head `f3b7e55dc218a7939485cb454e711730b0a8f02f` ran the inspector contract suite successfully, then failed on both published ZIPs. The second exact-head run identified the two case-folded directory collisions precisely: `runtime/neuro-kurisu/RESEARCH` vs `runtime/neuro-kurisu/research`, and `runtime/neuro-kurisu/RESEARCH/2026-09-20` vs `runtime/neuro-kurisu/research/2026-09-20`. The same two prefix collisions exist in current `workpass70-source`. The uppercase tree has 18 files, the lowercase tree contains separate subdirectories, and their relative file-name sets do not overlap; both must be preserved. The inspector now reports both original ZIP member names and source-tree path collisions.
+- The report recorded 9,112 identical / 213 changed / 21 archive-only / 1,088 source-only files for Stable, and 9,119 / 209 / 21 / 1,085 respectively for Hotfix 1. The 21 archive-only files include the existing Live2D model, textures, expressions, motions and `PROVENANCE.json`; preserve them until provenance and source packaging are reconciled.
+- No published release was changed. A passing ZIP integrity check would still not prove source parity; the 213/209 same-path differences and 1,088/1,085 source-only files remain release-reconciliation work.

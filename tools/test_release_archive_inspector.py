@@ -1,7 +1,7 @@
 from __future__ import annotations
-import hashlib, json, tempfile, unittest, warnings, zipfile
+import contextlib, hashlib, io, json, stat, tempfile, unittest, warnings, zipfile
 from pathlib import Path
-from tools.release_archive_inspector import audit_release_archive
+from tools.release_archive_inspector import audit_release_archive, main
 
 class ReleaseArchiveInspectorTests(unittest.TestCase):
     def setUp(self):
@@ -100,6 +100,137 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         result = audit_release_archive(self.archive, self.source)
         self.assertFalse(result["ok"])
         self.assertTrue(any("ZIP container invalid" in error for error in result["errors"]))
+
+
+    def test_rejects_case_insensitive_duplicate_members(self):
+        self._write_archive({"README.md": b"first\n", "readme.MD": b"second\n"})
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("case-insensitive duplicate ZIP member" in error for error in result["errors"]))
+
+    def test_rejects_unicode_normalization_duplicate_members(self):
+        composed = "caf\u00e9.txt"
+        decomposed = "cafe\u0301.txt"
+        self._write_archive({composed: b"first", decomposed: b"second"})
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("case-insensitive duplicate ZIP member" in error for error in result["errors"]))
+
+    def test_rejects_symbolic_link_members(self):
+        info = zipfile.ZipInfo("linked.txt")
+        info.create_system = 3
+        info.external_attr = (stat.S_IFLNK | 0o777) << 16
+        with zipfile.ZipFile(self.archive, "w") as zipped:
+            zipped.writestr(info, "target.txt")
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("symbolic-link member is not accepted" in error for error in result["errors"]))
+
+    def test_rejects_unsafe_member_path_variants(self):
+        for name in ("/absolute.txt", "folder\\\\escape.txt", "C:/drive.txt"):
+            with self.subTest(name=name):
+                self._write_archive({name: b"unsafe"})
+                result = audit_release_archive(self.archive, self.source)
+                self.assertFalse(result["ok"])
+                self.assertTrue(any("unsafe member" in error for error in result["errors"]))
+
+    def test_rejects_path_collisions_after_auto_prefix_mapping(self):
+        (self.source / "foo.txt").write_text("foo\n", encoding="utf-8")
+        (self.source / "bar.txt").write_text("bar\n", encoding="utf-8")
+        self._write_archive({
+            "Neuro_Kurisu/foo.txt": b"foo\n",
+            "Neuro_Kurisu/bar.txt": b"bar\n",
+            "foo.txt": b"shadow\n",
+        })
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("archive path collision after prefix mapping" in error for error in result["errors"]))
+
+
+    def test_casefold_directory_aliases_are_reported_without_failing(self):
+        with zipfile.ZipFile(self.archive, "w") as zipped:
+            zipped.writestr("research/", "")
+            zipped.writestr("Research/", "")
+            zipped.writestr("research/lower.md", "lower")
+            zipped.writestr("Research/upper.md", "upper")
+        result = audit_release_archive(self.archive, self.source)
+        self.assertTrue(result["ok"], result["errors"])
+        aliases = {(item["first"], item["second"]) for item in result["archiveDirectoryAliases"]}
+        self.assertIn(("Research", "research"), aliases)
+
+
+    def test_reports_source_directory_aliases_without_rejecting_disjoint_files(self):
+        upper = self.source / "RESEARCH" / "2026-09-20"
+        lower = self.source / "research" / "2026-09-20"
+        upper.mkdir(parents=True)
+        lower.mkdir(parents=True)
+        (upper / "upper-only.md").write_text("upper\n", encoding="utf-8")
+        (lower / "lower-only.md").write_text("lower\n", encoding="utf-8")
+        self._write_archive({"README.md": b"root\n"})
+        result = audit_release_archive(self.archive, self.source)
+        self.assertTrue(result["ok"], result["errors"])
+        pairs = {(item["first"], item["second"]) for item in result["sourceDirectoryAliases"]}
+        self.assertIn(("RESEARCH", "research"), pairs)
+        self.assertIn(("RESEARCH/2026-09-20", "research/2026-09-20"), pairs)
+
+
+    def test_rejects_file_directory_case_collision(self):
+        with zipfile.ZipFile(self.archive, "w") as zipped:
+            zipped.writestr("Research/", "")
+            zipped.writestr("research", "file")
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("file/directory ZIP path collision" in error for error in result["errors"]))
+
+    def test_reports_source_file_case_collision_as_error(self):
+        (self.source / "Case.md").write_text("upper\n", encoding="utf-8")
+        (self.source / "case.md").write_text("lower\n", encoding="utf-8")
+        self._write_archive({"README.md": b"root\n"})
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("case-insensitive source file path collision" in error for error in result["errors"]))
+        self.assertEqual(len(result["sourceFilePathCollisions"]), 1)
+
+
+    def test_rejects_casefold_collision_after_auto_prefix_mapping(self):
+        self._write_archive({
+            "Neuro_Kurisu/README.md": b"NK1 source\\n",
+            "readme.md": b"shadow\\n",
+        })
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertEqual(len(result["archiveMappedPathCollisions"]), 1)
+        self.assertTrue(any("case-insensitive duplicate archive path collision after prefix mapping" in error for error in result["errors"]))
+
+    def test_rejects_file_directory_collision_after_auto_prefix_mapping(self):
+        with zipfile.ZipFile(self.archive, "w") as zipped:
+            zipped.writestr("Neuro_Kurisu/README.md", "NK1 source\\n")
+            zipped.writestr("README.md/", "")
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("file-directory archive path collision after prefix mapping" in error for error in result["errors"]))
+        self.assertEqual(result["archiveMappedPathCollisions"][0]["kind"], "file-directory")
+
+    def test_cli_summary_reports_path_metrics_without_scope_errors(self):
+        self._write_archive({
+            "README.md": b"NK1 source\n",
+            "runtime/neuro-kurisu/package.json": (json.dumps({"name": "neuro-kurisu", "version": "35.90.0"}) + "\n").encode(),
+        })
+        output = io.StringIO()
+        report_path = self.root / "audit.json"
+        with contextlib.redirect_stdout(output):
+            status = main([
+                "--archive", str(self.archive),
+                "--source-root", str(self.source),
+                "--out", str(report_path),
+            ])
+        self.assertEqual(status, 0)
+        summary = json.loads(output.getvalue())
+        self.assertEqual(summary["sourceFilePathCollisions"], 0)
+        self.assertEqual(summary["archiveFilePathCollisions"], 0)
+        self.assertEqual(summary["sourceDirectoryAliases"], 0)
+        self.assertEqual(summary["archiveDirectoryAliases"], 0)
+        self.assertEqual(summary["archiveMappedPathCollisions"], 0)
 
 if __name__ == "__main__":
     unittest.main()
