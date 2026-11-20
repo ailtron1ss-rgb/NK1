@@ -157,5 +157,21 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self.assertIn("'research'", collision)
         self.assertIn("'Research'", collision)
 
+
+    def test_reports_casefolded_source_directory_collisions(self):
+        upper = self.source / "RESEARCH" / "2026-09-20"
+        lower = self.source / "research" / "2026-09-20"
+        upper.mkdir(parents=True)
+        lower.mkdir(parents=True)
+        (upper / "upper-only.md").write_text("upper\n", encoding="utf-8")
+        (lower / "lower-only.md").write_text("lower\n", encoding="utf-8")
+        self._write_archive({"README.md": b"root\n"})
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("case-insensitive source path collision" in error for error in result["errors"]))
+        pairs = {(item["first"], item["second"]) for item in result["sourcePathCollisions"]}
+        self.assertIn(("RESEARCH", "research"), pairs)
+        self.assertIn(("RESEARCH/2026-09-20", "research/2026-09-20"), pairs)
+
 if __name__ == "__main__":
     unittest.main()
