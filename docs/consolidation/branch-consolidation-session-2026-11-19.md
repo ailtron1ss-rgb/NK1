@@ -386,3 +386,52 @@ A fresh full paginated read returned:
 - `workpass70-source` HEAD: `3376ccb15aeb37866699f868859d1426d9f3df3c` (journal update for this session).
 
 This read is a full 11-page branch enumeration (10 pages × 100 plus 8 refs) and a full 4-page open-PR enumeration. No refs were removed. The repository is not yet at the requested few-dozen branch target.
+
+
+## Selective consolidation — Spatial Memory family (PRs #963 / #987)
+
+The spatial-memory donor family has been reconciled into the canonical `workpass70-source` path.
+
+- **#963 — strict spatial freshness/replay guard**: merged at `b3d01a6f391fd804cbdbccada9590311914be953`. A position changes only when `incomingObservedAt > existingObservedAt`; stale/equal-time context is stripped before merge so coordinates, validity and freshness cannot rewind or be rewritten by arrival order. Exact-head workflows: **17/17 SUCCESS**, including spatial freshness, holdout/retrieval, unified runtime and NeuroCore core regression.
+- **#987 — grounded spatial bridge current-source port**: merged at `c7a08278e4d2d8e85037cc2879986b0854c45ae6`. Adds the bridge and connects it after `GroundedWorldState.integrate()` in real `OrganismCore.observe()`. It writes only recent, visible, producer-marked observed positions with a frame ID, finite bounded coordinates and sufficient confidence; rejects model-output, conflict, unresolved, mixed-provenance and stale data; writes through the existing MemoryFabric lifecycle path to the single canonical MemoryOS2 owner. Newer points reconsolidate the same entity record; stale/equal-time replays are rejected. Exact-head workflows: **20/20 SUCCESS**, including focused bridge, real Core tick, spatial replay guard, unified runtime and NeuroCore core regression.
+- **#730** original frame-aware MemorySpatialIndex donor was not replayed over newer MemoryOS2. Full recursive tree comparison found no donor paths missing from current source (9,966 donor blobs; 9,850 exact blob matches and 116 current-source files with evolved blobs). The derived index and spatial retrieval logic are carried by the later canonical source chain.
+- **#735/#746** earlier grounded bridge children were superseded by #987's current-source port. #746's broader vision/world modality checks and real Core tick integration are present in #987.
+- **#747** strict equal-timestamp fix was selectively ported by #963; the parent branch was not merged wholesale.
+- Per-PR provenance comments were added to #730/#735/#746/#747. Original source branches and diffs remain intact. No refs were deleted.
+
+## Neuro-Plastic Core / P25 integration chain (PRs #936 / #939 / #940 / #943 / #944 / #948)
+
+This is a layered dependency chain; the layers are not duplicate branches and must not be collapsed into one authority.
+
+- #936 merged offline LoRA/QLoRA training, P23 corpus builder, artifact verifier, canonical registry, signed promotion, P40/local language routing and fail-closed base fallback (`d84e4ed6d9531f2af913256ae56012f565b73770`).
+- #939 adds P25 routing over the canonical #936 registry, exact expected-adapter binding and fallback accounting; merged into the #936 parent head `f4b5b7638810bc2127524e2f402b01c04e504d00`.
+- #940 separates evaluator/operator/P25 Ed25519 trust keys, adds external signer CLIs and symlink/TOCTOU protection (`24a7a05abea0b904c9b543af8ec4ff55dcd7dd17`); 13/13 latest-head workflows passed.
+- #943 hardens trainer symlink preflight, deterministic initialization, LoRA-only trainable parameter validation and a tiny CPU PEFT train/export/hash/reload/inference smoke (`7a22979b4d4214522510e899f860e60bb77a5b64`); 12/12 exact-head workflows passed. This is technical CPU compatibility evidence, not production model-quality evidence.
+- #944 prevents delayed approval verification from resurrecting a candidate after rollback (`07452517bc1d7c4635d54ca31eb4d5b488e743e5`).
+- #948 ports a bounded single-use report ledger and adds a host-owned monotonic compare-and-swap anti-replay anchor (`2d8a71cd937ed7196f69b6cef68f4fa016b508ee`). It does not implement the production anchor-store backend; deployment must supply a protected durable CAS service.
+- #930/#937 old trainer donors and #942 the pre-anchor P25 ledger were closed unmerged with provenance comments. Their useful behavior is represented in the chain above. For #937, a stricter requirement that every OpenAI-compatible response contain `payload.model` was intentionally not replayed because current source supports model-less responses and falls back to the explicitly requested model.
+- #925 Neural Prosthesis remains Draft for lack of real local-model/hardware and independent task-quality evidence. #933 OmeStro-32 remains Draft/diverged and must be reconciled concept-by-concept; do not replay P25/Neuro-Plastic work already integrated above.
+
+## World Forge / Shared Future dependency hold (PRs #903 / #908 / #916 / #928)
+
+These are related but not yet current-source-integrated features; they remain explicitly blocked rather than being merged on a stale stack.
+
+- #903 Shared Future is still Draft. Latest head `a71735252f5092ea3c549ad2a75b896492f47c90`; compare against current `workpass70-source` is **44 ahead / 405 behind, diverged**. The meaningful code changes span `OrganismCore.ts`, `CognitiveRuntimeCluster.ts`, `FutureSimulator.ts`, new `SharedFutureEngine.ts`, and `StateMigrations.ts`, plus a large end-to-end test suite. The latest head's 19 workflow runs succeeded on its old base, but this does not validate compatibility with present source.
+- #916 World Forge is Draft and stacked on an intermediate Shared Future branch head, not the current source. Current `workpass70-source` does not yet contain `SharedFutureEngine.ts` or `WorldForge.ts`; the existing `FutureSimulator.ts` is a smaller legacy implementation. Rebase #903 first; then port/rebase World Forge with current-source OrganismCore/StateMigrations/FutureSimulator review and fresh exact-head CI.
+- #928 Consequence Ecology is a child of #916 and must remain Draft until the same parent chain is re-based and verified. Its older targeted workflows are evidence only for their recorded earlier exact heads, not the current source.
+- #908 early World Forge branch is superseded by broader #916 and remains preserved for provenance.
+- Per-PR comments document this dependency and the no-stale-merge rule. No branch refs were moved or deleted.
+
+## Branch census following Spatial Memory / Neuro-Plastic review (2026-11-20)
+
+Last full paginated census at this point:
+
+- **1,008 branch refs**.
+- **992 unique HEAD commits**.
+- **16 excess names** beyond one name per unique HEAD.
+- One 17-name shared-HEAD alias group at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`.
+- **315 open PRs**.
+- `main` HEAD at the last snapshot: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
+- `workpass70-source` HEAD at the last snapshot before this journal append: `3376ccb15aeb37866699f868859d1426d9f3df3c`.
+
+No branch refs were deleted in these passes. Closing/squash-merging PRs leaves source refs intact. The 1008 refs are still far above the desired few-dozen target; the 17 aliases must be checked against active PR bases, historical PRs, releases/tags, workflows, rulesets, deployments, docs and external consumers before any retirement.
