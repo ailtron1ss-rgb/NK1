@@ -47,7 +47,8 @@
     "test:semantic-gesture-intent": "node --experimental-strip-types --test scripts/semantic-gesture-intent.test.mjs scripts/motion-arbitration.test.mjs",
     "test:avatar-remote-source": "node --experimental-strip-types --test scripts/avatar-remote-source.test.mjs",
     "validate:2p5d-assets": "node --experimental-strip-types scripts/validate-depth-rig-assets.mjs",
-    "test:2p5d-asset-inventory": "node --experimental-strip-types --test scripts/depth-rig-asset-inventory.test.mjs"
+    "test:2p5d-asset-inventory": "node --experimental-strip-types --test scripts/depth-rig-asset-inventory.test.mjs",
+    "test:avatar-animation-runtime": "node --experimental-strip-types --test scripts/avatar-animation-runtime.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

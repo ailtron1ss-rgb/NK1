@@ -21,7 +21,7 @@ test("the 3D body consumes organism emotion, action, arousal/valence, gaze, slee
  assert.match(parent,/emotion=\{snap\.emotion\.label\} action=\{snap\.lastOption\}/);assert.match(parent,/arousal=\{snap\.emotion\.arousal\} valence=\{snap\.emotion\.valence\}/);assert.match(parent,/cognitiveLoad=\{snap\.needs\.cognitiveLoad\}/);assert.match(parent,/traits=\{snap\.identity\.traits\}/);assert.match(parent,/predictionError=\{snap\.predictionError\}/);assert.match(parent,/mouthPose=\{mouthPose\} thinking=\{thinking\} awake=\{snap\.awake\}/);
 });
 test("renderer resources and animation loops are disposed and high-DPI rendering is capped",async()=>{
- const stage=await readFile(stagePath,"utf8");assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,2\)\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/return clips\.find\(\(clip\)=>rules\[action\]\.test/);assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.match(stage,/rig_kurisu/i);assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\);disposeThreeObjectTree\(root,gradient\?\[gradient\]:\[\]\)/);
+ const stage=await readFile(stagePath,"utf8"),animation=await readFile(path.join(root,"src/components/avatar/avatarAnimationRuntime.ts"),"utf8");assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,2\)\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/applyAvatarAnimationFrame/);assert.match(stage,/rt\.activeClipAction/);assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.ok(animation.includes("rig[_-]?kurisu"),"semantic rig fallback must remain in the extracted resolver");assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\);disposeThreeObjectTree\(root,gradient\?\[gradient\]:\[\]\)/);
 });
 test("Three.js lock metadata is pinned consistently",async()=>{
  const pkg=JSON.parse(await readFile(path.join(root,"package.json"),"utf8")),lock=JSON.parse(await readFile(path.join(root,"package-lock.json"),"utf8"));
@@ -92,7 +92,7 @@ test("uploaded model bytes are structurally preflighted before GLTFLoader parses
 });
 
 test("a pinned hosted Kurisu hybrid GLB can be loaded without a manual file download",async()=>{
- const stage=await readFile(stagePath,"utf8"),catalog=await readFile(path.join(root,"src/components/avatar/avatarModelCatalog.ts"),"utf8");
+ const stage=await readFile(stagePath,"utf8"),catalog=await readFile(path.join(root,"src/components/avatar/avatarModelCatalog.ts"),"utf8"),animation=await readFile(path.join(root,"src/components/avatar/avatarAnimationRuntime.ts"),"utf8");
  assert.match(catalog,/NeuroKurisu_3D_v5\.glb/);
  assert.match(catalog,/sha256:4cc4c34a62f72122b34c1d896d42bf10eddcba6f10f66563e4fc5e213a37e743/);
  assert.match(catalog,/sizeBytes:\s*2_035_768/);
@@ -102,7 +102,7 @@ test("a pinned hosted Kurisu hybrid GLB can be loaded without a manual file down
  assert.match(stage,/KURISU_HYBRID_MODEL\.sha256/);
  assert.match(stage,/loadModel\(blob,KURISU_HYBRID_MODEL\.filename,true\)/);
  assert.match(stage,/Загрузить модель Курису v5/);
- assert.match(stage,/rig_kurisu/i);
+ assert.ok(animation.includes("rig[_-]?kurisu"),"semantic rig fallback must remain in the extracted resolver");
 });
 
 test("3D mode restores the user's local model first and auto-loads the pinned Kurisu model otherwise",async()=>{
@@ -121,4 +121,17 @@ test("generic GLB speech drives all available Kurisu viseme morph targets",async
  for(const key of ["visemeaa","visemeih","visemeee","visemeoh","visemeou"])assert.ok(adapter.includes(key),"Missing GLB viseme target: "+key);
  assert.match(adapter,/if \(!speaking\) return result/);
  assert.match(adapter,/case "open"/);assert.match(adapter,/case "round"/);assert.match(adapter,/case "wide"/);assert.match(adapter,/case "teeth"/);
+});
+
+
+test("3D GLB clip playback uses semantic resolution and crossfades without stopping the mixer", async () => {
+ const stage = await readFile(stagePath, "utf8");
+ const animation = await readFile(path.join(root, "src/components/avatar/avatarAnimationRuntime.ts"), "utf8");
+ assert.match(stage, /import \{ applyAvatarAnimationFrame \} from "\.\/avatar\/avatarAnimationRuntime"/);
+ assert.match(stage, /previousAction:rt\.activeClipAction/);
+ assert.match(stage, /rt\.activeClipAction=animation\.activeAction/);
+ assert.match(stage, /rt\.activeClipAction=null/);
+ assert.doesNotMatch(stage, /rt\.mixer\.stopAllAction\(\);const a=rt\.mixer\.clipAction/);
+ assert.match(animation, /crossFadeTo\(next, fadeSeconds, false\)/);
+ assert.match(animation, /const requestedAction = input\.awake \? input\.action : "rest"/);
 });
