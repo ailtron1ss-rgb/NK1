@@ -48,7 +48,7 @@ The PR was rebased as a merge commit on the then-current `workpass70-source` SHA
 
 ## Deliberately not copied from the 19-path donor
 
-The remaining 15 changed paths (the old body restore sanitizer family, its new helper and integration test, the historical workflow, package-script edits, master-plan document and old changelog text) were not replayed in this batch. They span more subsystems and a 441-commit divergence; each requires a separate current-source semantic and test comparison. In particular, the donor-only `RestoreSanitizers.ts` and restore regression are not represented as merged or verified by this consolidation.
+The remaining 14 changed paths (the old body restore sanitizer family, its new helper and integration test, the historical workflow, package-script edits, master-plan document and old changelog text) were not replayed in this batch. They span more subsystems and a 441-commit divergence; each requires a separate current-source semantic and test comparison. In particular, the donor-only `RestoreSanitizers.ts` and restore regression are not represented as merged or verified by this consolidation.
 
 ## Existing related source work retained
 
