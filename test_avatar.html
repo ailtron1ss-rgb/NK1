@@ -23,6 +23,8 @@
   .state-readout { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; color: #d8dee9; line-height: 1.6; }
   .state-val { color: #ebcb8b; font-weight: 600; }
   .badge-tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; background: rgba(136, 192, 208, 0.15); color: #88c0d0; margin-right: 4px; }
+  #sprite-overlay { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; pointer-events: none; z-index: 5; }
+  #sprite-overlay img { max-height: 85%; max-width: 80%; object-fit: contain; filter: drop-shadow(0 15px 30px rgba(0,0,0,0.6)); transition: opacity 0.3s ease; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -40,9 +42,19 @@
         <span class="badge-tag">Dynamic Affect</span>
       </p>
     </div>
+    <div id="sprite-overlay" aria-hidden="true">
+      <img id="kurisu-sprite-img" src="app/public/sprites/kurisu/thinking_chin.png" alt="Makise Kurisu — canonical 2D sprite" />
+    </div>
     <div id="canvas-container" style="width: 100%; height: 100%;"></div>
   </div>
   <div id="controls-panel">
+    <div class="control-group">
+      <label>Режим воплощения (Embodiment Mode)</label>
+      <div class="btn-grid">
+        <button id="btn-mode-3d" class="active" onclick="setEmbodimentMode('3d')">3D Procedural Rig</button>
+        <button id="btn-mode-sprite" onclick="setEmbodimentMode('sprite')">2D Канонический спрайт</button>
+      </div>
+    </div>
     <div class="control-group">
       <label>Гардероб / Сменная одежда</label>
       <div class="btn-grid">
@@ -465,6 +477,33 @@ window.setEmotion = function(emotionId) {
     eyeBrows[1].rotation.z = 0.05;
     window.setGesture('neutral');
   }
+};
+
+window.embodimentMode = '3d';
+window.setEmbodimentMode = function(mode) {
+  if (mode !== '3d' && mode !== 'sprite') return false;
+  window.embodimentMode = mode;
+  const spriteMode = mode === 'sprite';
+  const spriteOverlay = document.getElementById('sprite-overlay');
+  document.getElementById('btn-mode-3d')?.classList.toggle('active', !spriteMode);
+  document.getElementById('btn-mode-sprite')?.classList.toggle('active', spriteMode);
+  spriteOverlay.style.display = spriteMode ? 'flex' : 'none';
+  kurisuRoot.visible = !spriteMode;
+  return true;
+};
+
+const emotionSpriteMap = {
+  tsundere: 'app/public/sprites/kurisu/embarrassed.png',
+  curiosity: 'app/public/sprites/kurisu/thinking_chin.png',
+  focus: 'app/public/sprites/kurisu/whiteboard.png',
+  joy: 'app/public/sprites/kurisu/neutral_front.png'
+};
+const originalSetEmotion = window.setEmotion;
+window.setEmotion = function(emotionId) {
+  originalSetEmotion.call(this, emotionId);
+  const sprite = emotionSpriteMap[emotionId];
+  const image = document.getElementById('kurisu-sprite-img');
+  if (sprite && image) image.src = sprite;
 };
 
 window.setGesture = function(gestureId) {
