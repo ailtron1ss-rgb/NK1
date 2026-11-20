@@ -42,3 +42,74 @@ assert.ok(hostileExport.facts[0].includes('0.0000 0 0.0000'));
 assert.ok(hostileExport.facts[1].includes('(Vector 0.0000 0.0000 0.5000)'));
 
 console.log('PASS: bounded deterministic MeTTa export, escaping, state isolation and malformed-state clamping');
+
+
+const reservedKeys = new NeuroSymbolicConceptCompiler();
+reservedKeys.compile({ label: '__proto__', latent: [0.1], outcome01: 0.8, novelty01: 0.2 });
+reservedKeys.compile({ label: 'constructor', latent: [0.2, 0.3], outcome01: 0.7, novelty01: 0.1 });
+assert.deepEqual(Object.keys(reservedKeys.snapshot().concepts).sort(), ['__proto__', 'constructor'],
+  'prototype-shaped labels must remain ordinary concept keys');
+assert.equal(reservedKeys.exportMeTTaFacts().conceptCount, 2);
+const reservedRoundTrip = new NeuroSymbolicConceptCompiler();
+reservedRoundTrip.restore(reservedKeys.snapshot());
+assert.deepEqual(Object.keys(reservedRoundTrip.snapshot().concepts).sort(), ['__proto__', 'constructor'],
+  'reserved concept keys must survive a sanitized restore');
+
+let rootGetterCalls = 0;
+const rootGetterSnapshot = Object.defineProperty({}, 'concepts', {
+  enumerable: true,
+  get() { rootGetterCalls++; return { hidden: { label: 'hidden', centroid: [0.1] } }; },
+});
+const rootGetterRestore = new NeuroSymbolicConceptCompiler();
+rootGetterRestore.restore(rootGetterSnapshot);
+assert.equal(rootGetterCalls, 0, 'restore must inspect own descriptors instead of executing root getters');
+assert.equal(rootGetterRestore.summary().concepts, 0, 'accessor-backed root snapshots fail closed');
+
+let nestedGetterCalls = 0;
+const nestedGetterConcept = Object.defineProperties({}, {
+  label: { value: 'nested-getter', enumerable: true },
+  centroid: { value: [0.2], enumerable: true },
+  confidence01: { enumerable: true, get() { nestedGetterCalls++; return 1; } },
+  uses: { value: 1, enumerable: true },
+  success01: { value: 0.5, enumerable: true },
+});
+const nestedGetterConcepts = Object.create(null);
+nestedGetterConcepts['nested-getter'] = nestedGetterConcept;
+const nestedGetterRestore = new NeuroSymbolicConceptCompiler();
+nestedGetterRestore.restore({ concepts: nestedGetterConcepts });
+assert.equal(nestedGetterCalls, 0, 'restore must not execute nested concept getters');
+assert.equal(nestedGetterRestore.summary().concepts, 0, 'accessor-backed concept rows are rejected');
+
+let vectorGetterCalls = 0;
+const accessorVector = [0.2];
+Object.defineProperty(accessorVector, '0', {
+  enumerable: true,
+  configurable: true,
+  get() { vectorGetterCalls++; return 0.9; },
+});
+const accessorVectorConcepts = Object.create(null);
+accessorVectorConcepts.safe = {
+  label: 'safe',
+  centroid: accessorVector,
+  confidence01: 0.8,
+  uses: 1,
+  success01: 0.5,
+};
+const accessorVectorRestore = new NeuroSymbolicConceptCompiler();
+accessorVectorRestore.restore({ concepts: accessorVectorConcepts });
+assert.equal(vectorGetterCalls, 0, 'restore must not execute centroid element getters');
+assert.equal(accessorVectorRestore.summary().concepts, 0, 'accessor-backed centroid rows are rejected');
+
+let proxyTrapCalls = 0;
+const hostileProxy = new Proxy({}, {
+  get() { proxyTrapCalls++; throw new Error('proxy get trap executed'); },
+  ownKeys() { proxyTrapCalls++; throw new Error('proxy ownKeys trap executed'); },
+  getOwnPropertyDescriptor() { proxyTrapCalls++; throw new Error('proxy descriptor trap executed'); },
+});
+const proxyRestore = new NeuroSymbolicConceptCompiler();
+proxyRestore.restore(hostileProxy);
+assert.equal(proxyTrapCalls, 0, 'restore must reject proxies before invoking traps');
+assert.equal(proxyRestore.summary().cycles, 0);
+assert.equal(proxyRestore.summary().concepts, 0);
+
+console.log('PASS: bounded, prototype-safe and accessor-free concept restore');

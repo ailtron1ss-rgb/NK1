@@ -1,3 +1,4 @@
+import { types as utilTypes } from 'node:util';
 import { cosineSimilarity } from '../core/NumericPrimitives.ts';
 
 /** BIG PASS 239 — compiler between continuous neural traces and symbolic concepts. */
@@ -9,6 +10,27 @@ const safeLabel = (value: unknown): string => {
 };
 const quoteMeTTa = (value: string): string => '"' + value.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
 const numberAtom = (value: unknown): string => clamp(typeof value === 'number' ? value : 0).toFixed(4);
+const MAX_RESTORED_CONCEPTS = 512;
+const MAX_RESTORED_VECTOR_DIMENSIONS = 16;
+const MAX_RESTORED_COUNTER = 1_000_000_000;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value) && !utilTypes.isProxy(value);
+
+const ownDataValue = (record: Record<string, unknown>, key: string): unknown => {
+  const descriptor = Object.getOwnPropertyDescriptor(record, key);
+  return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+};
+
+const hasOwnAccessor = (record: Record<string, unknown>, key: string): boolean => {
+  const descriptor = Object.getOwnPropertyDescriptor(record, key);
+  return descriptor !== undefined && !('value' in descriptor);
+};
+
+const safeCounter = (value: unknown): number =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? Math.min(value, MAX_RESTORED_COUNTER)
+    : 0;
 
 export interface ConceptPrototype {
   label: string;
@@ -32,7 +54,7 @@ export interface MeTTaConceptExport {
   text: string;
 }
 export const defaultNeuroSymbolicCompiler = (): NeuroSymbolicCompilerState => ({
-  version: 1, cycles: 0, compiled: 0, concepts: {}, mappingCoherence01: .5, lastConcept: 'none',
+  version: 1, cycles: 0, compiled: 0, concepts: Object.create(null) as Record<string, ConceptPrototype>, mappingCoherence01: .5, lastConcept: 'none',
 });
 const cosine = (a: number[], b: number[]) => clamp((cosineSimilarity(a, b) + 1) / 2);
 
@@ -40,8 +62,78 @@ export class NeuroSymbolicConceptCompiler {
   private state = defaultNeuroSymbolicCompiler();
 
   restore(raw?: Partial<NeuroSymbolicCompilerState> | null) {
-    const d = defaultNeuroSymbolicCompiler(), r = raw ?? {};
-    this.state = { ...d, ...r, concepts: { ...d.concepts, ...(r.concepts ?? {}) }, version: 1 };
+    const defaults = defaultNeuroSymbolicCompiler();
+    try {
+      if (!isRecord(raw)) {
+        this.state = defaults;
+        return;
+      }
+
+      const rootFields = ['cycles', 'compiled', 'concepts', 'mappingCoherence01', 'lastConcept'];
+      if (rootFields.some((field) => hasOwnAccessor(raw, field))) {
+        this.state = defaults;
+        return;
+      }
+
+      const concepts = Object.create(null) as Record<string, ConceptPrototype>;
+      const rawConcepts = ownDataValue(raw, 'concepts');
+      if (isRecord(rawConcepts)) {
+        const keys = Object.getOwnPropertyNames(rawConcepts).sort().slice(0, MAX_RESTORED_CONCEPTS);
+        for (const key of keys) {
+          const descriptor = Object.getOwnPropertyDescriptor(rawConcepts, key);
+          if (!descriptor || !('value' in descriptor) || !isRecord(descriptor.value)) continue;
+          const rawConcept = descriptor.value;
+          const conceptFields = ['label', 'centroid', 'confidence01', 'uses', 'success01'];
+          if (conceptFields.some((field) => hasOwnAccessor(rawConcept, field))) continue;
+
+          const rawLabel = ownDataValue(rawConcept, 'label');
+          const label = safeLabel(typeof rawLabel === 'string' ? rawLabel : key);
+          if (Object.prototype.hasOwnProperty.call(concepts, label)) continue;
+
+          const rawCentroid = ownDataValue(rawConcept, 'centroid');
+          if (!Array.isArray(rawCentroid) || utilTypes.isProxy(rawCentroid)) continue;
+          const dimensions = Math.min(rawCentroid.length, MAX_RESTORED_VECTOR_DIMENSIONS);
+          const centroid: number[] = [];
+          let hasAccessor = false;
+          for (let index = 0; index < dimensions; index++) {
+            const vectorDescriptor = Object.getOwnPropertyDescriptor(rawCentroid, String(index));
+            if (vectorDescriptor && !('value' in vectorDescriptor)) {
+              hasAccessor = true;
+              break;
+            }
+            const value = vectorDescriptor && 'value' in vectorDescriptor ? vectorDescriptor.value : 0;
+            centroid.push(typeof value === 'number' ? clamp(value) : 0);
+          }
+          if (hasAccessor) continue;
+
+          const rawConfidence = ownDataValue(rawConcept, 'confidence01');
+          const rawUses = ownDataValue(rawConcept, 'uses');
+          const rawSuccess = ownDataValue(rawConcept, 'success01');
+          concepts[label] = {
+            label,
+            centroid,
+            confidence01: typeof rawConfidence === 'number' && Number.isFinite(rawConfidence) ? clamp(rawConfidence) : 0,
+            uses: safeCounter(rawUses),
+            success01: typeof rawSuccess === 'number' && Number.isFinite(rawSuccess) ? clamp(rawSuccess) : 0,
+          };
+        }
+      }
+
+      const rawCoherence = ownDataValue(raw, 'mappingCoherence01');
+      const rawLastConcept = ownDataValue(raw, 'lastConcept');
+      this.state = {
+        version: 1,
+        cycles: safeCounter(ownDataValue(raw, 'cycles')),
+        compiled: safeCounter(ownDataValue(raw, 'compiled')),
+        concepts,
+        mappingCoherence01: typeof rawCoherence === 'number' && Number.isFinite(rawCoherence)
+          ? clamp(rawCoherence)
+          : defaults.mappingCoherence01,
+        lastConcept: typeof rawLastConcept === 'string' ? safeLabel(rawLastConcept) : defaults.lastConcept,
+      };
+    } catch {
+      this.state = defaults;
+    }
   }
 
   snapshot() {
