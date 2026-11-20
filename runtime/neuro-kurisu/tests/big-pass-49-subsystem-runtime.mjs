@@ -8,7 +8,11 @@ assert.ok(p);
 const before=agency.snapshot();
 const restored=new AgencySubsystemRuntime(); restored.restore(before);
 assert.equal(restored.selfProjects.snapshot().projects.length,1);
-assert.equal(restored.projectExecutor.snapshot().version,6); // WorkPass 20 qualified-attempt persistence
+const initialExecutorState = before.projectExecutor;
+const restoredExecutorState = restored.projectExecutor.snapshot();
+assert.deepEqual(Object.keys(restoredExecutorState).sort(), Object.keys(initialExecutorState).sort(), 'snapshot and restored snapshot must preserve the exact own-key contract');
+assert.equal(restoredExecutorState.lastOutcomeId, undefined);
+assert.equal(restoredExecutorState.version,7); // WorkPass 20 qualified-attempt persistence plus schema-v7 operation checkpoints
 
 const research=new EvidenceResearchSubsystemRuntime();
 const at=Date.now();

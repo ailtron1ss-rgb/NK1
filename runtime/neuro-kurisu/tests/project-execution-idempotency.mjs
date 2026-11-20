@@ -37,7 +37,7 @@ try {
   assert(serialized.processedOutcomeIds.includes('exec-second-source'));
   assert(serialized.processedOutcomeIds.includes('exec-third-source'));
   const restored=new AutonomousProjectExecutor(); restored.restore(serialized);
-  assert.equal(restored.snapshot().version,6);
+  assert.equal(restored.snapshot().version,7);
   assert.equal(restored.completeToolStep({tick:6,tool:repeat.preferredTool,verified:true,evidence01:1,externalResearchVerified:true,researchPromoted:true,executionId:'exec-third-source',stepId:'consolidate'}),null,'receipt dedupe survives restart and cannot jump into another step');
   assert.equal(restored.currentStep()?.id,'consolidate');
 } finally {

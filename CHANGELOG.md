@@ -1,3 +1,9 @@
+## [NK1][Persistence] Restore project-executor snapshot own-key identity (2026-10-30)
+- Make the default schema-v7 executor state explicitly own `lastOutcomeId: undefined`, matching the normalized state produced by `restore()` and preserving exact snapshot key identity across restart.
+- Extend the subsystem-runtime regression to compare sorted own-key sets before and after restore and assert the undefined outcome identifier.
+- Align executor idempotency and persistence regressions with schema v7; target the active step's declared `preferredTool` rather than a retired hard-coded tool ID.
+- This is a focused persistence-contract repair, not evidence of learning uplift, end-to-end autonomy, or a refreshed Release ZIP.
+
 ## [NK1][Persistence] Recover verified state backups when the primary is missing (2026-11-01)
 - Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
 - Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the missing primary instead of being skipped.
