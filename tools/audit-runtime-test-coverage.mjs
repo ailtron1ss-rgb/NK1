@@ -7,7 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export function findDuplicateTestScriptInvocations(scripts) {
   const duplicates = [];
-  const invocationPattern = /\\bnpm(?:\\s+--prefix\\s+(?:"[^"]+"|'[^']+'|[^\\s&|;]+))?\\s+run\\s+(test:[\\w:.-]+)/g;
+  const invocationPattern = /\bnpm(?:\s+--prefix\s+(?:"[^"]+"|'[^']+'|[^\s&|;]+))?\s+run\s+(test:[\w:.-]+)/g;
 
   for (const [scriptName, command] of Object.entries(scripts ?? {})) {
     if (!scriptName.startsWith('test:') || typeof command !== 'string') continue;
