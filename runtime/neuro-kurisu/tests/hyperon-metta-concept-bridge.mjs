@@ -113,3 +113,31 @@ assert.equal(proxyRestore.summary().cycles, 0);
 assert.equal(proxyRestore.summary().concepts, 0);
 
 console.log('PASS: bounded, prototype-safe and accessor-free concept restore');
+
+
+const oversizedConcepts = Object.create(null);
+for (let index = 0; index < 513; index++) {
+  const label = `concept-${String(index).padStart(4, '0')}`;
+  oversizedConcepts[label] = {
+    label,
+    centroid: Array.from({ length: 24 }, (_, dimension) => dimension / 24),
+    confidence01: 0.5,
+    uses: 1,
+    success01: 0.5,
+  };
+}
+const boundedRestore = new NeuroSymbolicConceptCompiler();
+boundedRestore.restore({
+  cycles: Number.MAX_SAFE_INTEGER,
+  compiled: -1,
+  concepts: oversizedConcepts,
+});
+assert.equal(boundedRestore.summary().concepts, 512, 'restore caps concept count');
+assert.equal(boundedRestore.summary().cycles, 1_000_000_000, 'restore caps persisted counters');
+assert.equal(boundedRestore.summary().compiled, 0, 'negative counters fail closed');
+assert.equal(
+  Object.values(boundedRestore.snapshot().concepts)[0].centroid.length,
+  16,
+  'restore caps vector dimensions',
+);
+console.log('PASS: bounded concept count, vector dimensions and restored counters');
