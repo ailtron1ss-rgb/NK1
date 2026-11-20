@@ -13,7 +13,7 @@ Historical donor: PR [#768](https://github.com/ailtron1ss-rgb/NK1/pull/768), bra
 
 At intake the donor was **45 commits ahead and 441 behind** the current source, with a common ancestor at `d8902d765ef218a32125567f24345fea77f1c902`. It changes 19 paths. A wholesale merge would reintroduce a substantially stale tree; therefore only byte-reviewed, still-missing behavior is carried forward.
 
-## Selected behavior — four paths
+## Selected behavior — five paths
 
 1. `app/src/components/avatar/depthRig.ts`
    - `resolveDepthRigPose()` now builds its `deltas` record with a null prototype.
@@ -34,6 +34,11 @@ At intake the donor was **45 commits ahead and 441 behind** the current source, 
    - Verifies a tight shoulder limit reports the actual end-effector shortfall and flags the applied limit.
 
 The donor blobs were compared line-by-line with the current source file contents before selection. The donor versions of these four files differ only by the described additions/replacements.
+
+5. `app/src/components/avatar/embodimentIntentAdapter.ts`
+   - `resolveDepthRigPoseFromMotorFrame()` now builds its node-keyed `deltas` dictionary with a null prototype as well.
+   - This closes the third path that the new end-to-end regression exposed: the pose and world-transform maps were safe, but the motor-frame adapter still dropped the legal `__proto__` node ID.
+   - The first CI run failed on this precise assertion (19/20 depth-rig tests passed); the runtime fix is included rather than weakening the test.
 
 ## Deliberately not copied from the 19-path donor
 
