@@ -205,7 +205,10 @@
     "aspects:report": "node tools/neurok-aspects.mjs report",
     "aspects:next": "node tools/neurok-aspects.mjs next",
     "aspects:test": "node --test tools/neurok-aspects.test.mjs",
-    "test:runtime-pin": "node --test tools/runtime-pin.test.mjs"
+    "test:runtime-pin": "node --test tools/runtime-pin.test.mjs",
+    "quickstart": "node tools/super-quickstart.mjs",
+    "start:prebuilt": "node tools/super-start.mjs",
+    "test:startup": "node --test tools/super-startup.test.mjs"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
