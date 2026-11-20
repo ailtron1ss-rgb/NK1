@@ -59,7 +59,7 @@ This is a provider boundary and integration pass, not a claim of complete voice 
 
 ## Verification
 
-- `tests/neko-asr-transcript-adapter.mjs`: final-user admission, session binding, malformed/accessor objects, size/confidence limits, replay conflicts, single-capture lock, verified/unverified cancellation and capture-scoped VAD shadow evidence.
+- `tests/neko-asr-transcript-adapter.mjs`: final-user admission, session binding, malformed/accessor objects, size/confidence limits, replay conflicts, single-capture lock, verified/unverified cancellation, capture-scoped VAD shadow evidence, late-VAD callback fencing and fail-open handling of malformed Smart Turn PCM frames.
 - `tests/neko-speech-admission-gate.mjs`: fixed 16 kHz / 512-sample windows, occupancy, gaps, candidate timeout, overlap, bounded rolling state and hostile input rejection.
 - `tests/neko-asr-embodiment-wiring.mjs`: provider routing, detailed metadata retention, backward-compatible `listen()` and truthful interruption state.
 - `tests/neko-asr-voice-input-evidence.mjs`: ASR confidence, event/turn/language provenance through `OrganismRuntime.listen()` and `voiceTurn()`, plus legacy fallback behavior.
