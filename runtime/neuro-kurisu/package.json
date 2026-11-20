@@ -1866,7 +1866,7 @@
     "test:workpass641:cef-restore-integrity": "node --experimental-strip-types tests/workpass641-cognitive-event-fabric-restore-integrity.mjs",
     "test:user-model-http-route": "node tests/user-model-http-route.mjs",
     "test:user-model-explicit-forget": "node --experimental-strip-types tests/user-model-explicit-forget.mjs",
-    "test:embodiment-perception-routing-restore": "node --experimental-strip-types tests/embodiment-perception-routing-restore-integrity.mjs",
+    "test:embodiment-perception-routing-restore": "node --experimental-strip-types tests/embodiment-perception-routing-restore-integrity.mjs && npm run test:device-evidence-ledger-restore",
     "test:workpass667:causal-live-binding": "node --experimental-strip-types tests/workpass667-causal-live-binding.mjs",
     "test:b306:outcome-attribution": "node --experimental-strip-types tests/b306-outcome-attribution.mjs",
     "test:workpass642:metacognitive-memory-projection": "node --experimental-strip-types tests/workpass642-metacognitive-memory-projection.mjs && node --experimental-strip-types tests/metacognitive-full-cycle-runtime.mjs",
@@ -1893,6 +1893,7 @@
     "test:neko-audio-frame-buffer": "node --experimental-strip-types --test tests/neko-audio-frame-buffer.mjs",
     "test:neko-asr-stream-admission": "node --experimental-strip-types --test tests/neko-asr-stream-admission.mjs",
     "test:neko-voice-turn-coordinator": "node --experimental-strip-types --test tests/neko-voice-turn-coordinator.mjs",
-    "test:neko-voice-embodiment-streaming-wiring": "node --experimental-strip-types --test tests/neko-voice-embodiment-streaming-wiring.mjs"
+    "test:neko-voice-embodiment-streaming-wiring": "node --experimental-strip-types --test tests/neko-voice-embodiment-streaming-wiring.mjs",
+    "test:device-evidence-ledger-restore": "node --experimental-strip-types tests/device-evidence-ledger-restore-integrity.mjs"
   }
 }
