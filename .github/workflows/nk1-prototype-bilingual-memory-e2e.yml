@@ -1,0 +1,54 @@
+name: NK1 prototype bilingual memory E2E
+
+on:
+  push:
+    branches: [aspect/prototype-bilingual-memory-e2e-20261121]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/prototype-0-1-bilingual-memory-e2e.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-cross-lingual-bridge.mjs"
+      - "runtime/neuro-kurisu/tests/memory-restore-duplicate-identity.mjs"
+      - "runtime/neuro-kurisu/tests/memory-restore-shape-hardening.mjs"
+      - "runtime/neuro-kurisu/tests/memory-forget-projection-integrity-20261113.mjs"
+      - ".github/workflows/nk1-prototype-bilingual-memory-e2e.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/prototype-0-1-bilingual-memory-e2e.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-cross-lingual-bridge.mjs"
+      - "runtime/neuro-kurisu/tests/memory-restore-duplicate-identity.mjs"
+      - "runtime/neuro-kurisu/tests/memory-restore-shape-hardening.mjs"
+      - "runtime/neuro-kurisu/tests/memory-forget-projection-integrity-20261113.mjs"
+      - ".github/workflows/nk1-prototype-bilingual-memory-e2e.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-prototype-bilingual-memory-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bilingual-memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Verify RU/EN cross-lingual bridge
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-cross-lingual-bridge
+      - name: Verify persistence, correction, forget and grounded abstention
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/prototype-0-1-bilingual-memory-e2e.mjs
+      - name: Verify memory restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:memory-restore-integrity
+      - name: Verify canonical forget projection integrity
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/memory-forget-projection-integrity-20261113.mjs

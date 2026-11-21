@@ -1,3 +1,9 @@
+## [NK1][Prototype] Add bilingual persistent-memory E2E contract (2026-11-21)
+
+- Add a focused RU/EN end-to-end regression for cross-language recall in both directions, persisted snapshot/restore, bitemporal correction, explicit forget, provenance, and grounded abstention.
+- Reuse canonical MemoryOS2; no parallel memory store, retrieval index, or evaluation dataset is introduced.
+- Keep the fixture explicitly synthetic. Independent bilingual holdout remains a separate, externally supplied dataset gate and is not claimed by this test.
+
 ## [NK1][Prototype] Expose optional language-model degradation in launch health (2026-11-21)
 
 - Extend `/health` and `/api/health` with a bounded language-capability snapshot: explicitly configured provider booleans, active backend, whether a model-generated response has been observed, and `degraded` / `unverified` / `available` status.
