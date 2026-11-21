@@ -6,7 +6,7 @@
 
 **Architecture:** Reuse the canonical `runtime/neuro-kurisu` OrganismCore, cognitive-cycle, MemoryOS2/MemoryFabric, ActionGateway, and existing embodiment/audio adapters. Do not create parallel schedulers, memory stores, executors, or identity systems. Integrate through existing OrganismCore state and ActionGateway permission/idempotency/undo contracts; keep evaluation evidence separate from production memory and synthetic fixtures separate from independent holdout data.
 
-**Tech Stack:** Node.js >=22.12.0, npm >=10.8.0, TypeScript/ES modules, existing runtime test harnesses, GitHub Actions, existing app/renderer and voice adapters.
+**Tech Stack:** Node.js 24.x (pinned by `.nvmrc`), npm >=10.8.0, Python 3.11.x (pinned by `.python-version`), TypeScript/ES modules, existing runtime test harnesses, GitHub Actions, existing app/renderer and voice adapters.
 
 ## Global Constraints
 
@@ -26,17 +26,32 @@
 
 ## Repository Evidence and Current Baseline
 
-Observed on 2026-11-21:
+Live refresh — 2026-11-21, after the latest source integrations
 
-- Source branch HEAD: `5ebec445ce729a4e372f273080138aa3cbeab778`.
-- Repository default branch: `main`; root README states `workpass70-source` is the canonical source branch.
-- Root scripts include `npm run typecheck`, `npm run test:runtime:smoke`, `npm run test:integration`, `npm run audit:quick`, `npm run test:release-license-readiness`, and `npm run audit:release-license-readiness`.
-- Runtime package version: `35.90.0`; observed scripts include `npm run typecheck`, `npm run test:smoke`, `npm run test:cognitive-cycle-boundary`, `npm run test:cognitive-cycle-boundary-runtime-wiring`, `npm run test:autonomy`, `npm run test:restart`, `npm run test:memory-retrieval-benchmark`, `npm run test:neko-asr-transcript-adapter`, and `npm run test:neko-asr-embodiment-wiring`.
-- Existing checkpoint documentation records 9/9 exact-SHA Actions success on an earlier source SHA `f1cbaa9492ea297d67d8c7461642a75de92b677e`. Those checks must not be attributed to the newer HEAD without re-reading its check-runs.
-- Branch census recorded 1,053 refs / 1,035 unique HEADs / 3 duplicate-tip groups / 18 excess aliases and 275 open PRs at its recorded snapshot. Recount before making branch-retirement or merge decisions.
-- Latest stable Release metadata: tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. Archive bytes and source parity have not been independently verified.
-- License review is pending; root license is `NOASSERTION`, runtime is marked private/all-rights-reserved, and redistribution is not approved.
-- Recent open PR candidates include #1071 (Undo-First ActionGateway recovery), #1072 (Negative Space Memory), #1069 (five paired-seed confirmatory gate), #1068 (legacy skill-candidate identity compatibility), and #1067 (atomic HMX section staging). Their PR descriptions report passing exact-head checks, but each still needs live ancestry, current base/head, changed-file, and mergeability review before integration.
+- Canonical source branch: `workpass70-source` @ `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`.
+- Repository default branch: `main` @ `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; runtime implementation remains on `workpass70-source`.
+- Runtime package version at this checkpoint: `35.90.0`. Toolchain: Node.js 24.x, npm >=10.8.0, Python 3.11.x.
+- PR #1075 merged matched-baseline B261 holdout integrity; exact-head checks 9/9 passed before merge.
+- PR #1078 merged an early-startup health readiness probe guard; exact-head workflows 3/3 passed before merge.
+- PR #1081 merged a selective Mechanism Serendipity integration; exact-head workflows 28/28 passed before merge, including runtime typecheck, module dependency audit, clean-startup, unified-organism, and core regression. Discovery is bounded and read-only; generated candidates remain verify-only. Scientific evidence credit requires a locked five-paired-seed protocol and an independent holdout receipt; no empirical mechanism gain is claimed.
+- PR #1076 merged a synthetic RU/EN persistent-memory lifecycle E2E; exact-head workflows 16/16 passed before merge. It proves the tested fixture path for reciprocal cross-language retrieval, file-backed restore, correction, explicit forget, provenance and abstention; it does not establish independent bilingual retrieval uplift.
+- The latest exact-head CI results above belong to their pre-merge PR heads. No post-merge workflow runs have yet been observed on the current merge SHA `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`.
+- Root/package scripts and the existing runtime harness remain the source of truth; do not add parallel memory stores, schedulers, executors, or identity systems.
+- The latest GitHub Release remains tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. Archive bytes were not independently downloaded and hashed in this pass; extraction manifest and source/ZIP parity remain **UNVERIFIED**.
+- License review remains pending: root license is `NOASSERTION`, runtime is private/all-rights-reserved, and redistribution approval is false. Do not publish a new ZIP before human review and exact-source archive validation.
+
+### Prototype workstream status at this refresh
+
+| Workstream | Current evidence | Remaining gate |
+|---|---|---|
+| Launch/runtime | Clean install/startup and 30-tick organism smoke pass exact-head CI; invalid early health response is retryable | Configured real LLM, full user-turn/restart acceptance, target-host soak and recovery evidence |
+| Persistent bilingual memory | Canonical MemoryOS2 synthetic RU/EN lifecycle E2E merged and tested | Immutable independent RU/EN holdout, at least five paired seeds and positive confidence-supported uplift |
+| Mechanism discovery | Bounded read-only cross-domain discovery, canonical persistence and verify-only queue integrated; paired-holdout evidence receipt gate tested | Empirical validation that discovered hypotheses are causal/useful and improve a pre-registered outcome |
+| Endogenous autonomy | Current cognitive/runtime and ActionGateway regression gates pass on tested PR heads | 24-hour host telemetry, useful initiative rate, undo/recovery outcomes and false-positive analysis |
+| Speech/avatar | Existing 2D/3D, affect, voice and browser contracts have CI coverage | Real browser/WebGL visual E2E, Android/Termux interruption, audio-viseme drift measurement and device soak |
+| Release/legal | Release metadata/readiness contracts exist | Human license/asset decisions, independent ZIP hash/extraction manifest and exact-SHA source parity |
+
+Status labels remain separate: IMPLEMENTED, CONNECTED, TESTED, DEVICE-VERIFIED, INDEPENDENTLY-PROVEN and RELEASED. A green CI run must not be promoted into device, independent-evaluation or release evidence.
 
 ## Task 1: Establish a reproducible prototype launch and health contract
 

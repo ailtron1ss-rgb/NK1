@@ -1,28 +1,33 @@
-## Актуальный live checkpoint — 21 ноября 2026
+## Актуальный live checkpoint — 21 ноября 2026 (после интеграционных проходов)
 
-**Каноническая исходная ветка:** `workpass70-source` @ `f1cbaa9492ea297d67d8c7461642a75de92b677e`.  
-**Текущий `main`:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; release/metadata only.
+**Каноническая исходная ветка:** `workpass70-source` @ `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`.  
+**Текущий `main`:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; release/metadata only.  
+**Последний merge в source:** PR #1076, synthetic RU/EN persistent-memory lifecycle E2E.
 
-### Live source и проверки
+### Последние интеграции и exact-head CI
 
-- На точном source SHA `f1cbaa9492ea297d67d8c7461642a75de92b677e` завершились **9/9 Actions SUCCESS**: targeted/regression, local-language resilience, explicit-forget, source-lineage, original-avatar motor, affect restore, avatar cognitive-affect, import graph/layer boundaries и browser-affect. [Полный отчёт цикла](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md).
-- Source HEAD commit `f1cbaa9492ea297d67d8c7461642a75de92b677e` датирован 2026-11-21T07:53:04Z; parent `8d98f271e1374376cc81a9ba0c6e77c014f13ca8`.
-- Draft [PR #1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059) предлагает отдельную locale-neutral нормализацию BM25 benchmark; branch `fix/memory-benchmark-locale-neutral-20261121`. Он не merged и не released. Первая exact-head CI волна была 16/17 из-за fixture без `independenceGroupId`; исправление сохранено в commit `396e1241226820a0dcd64ea92dbaaf33eaba024f`. Code/test head `67460ab86ca25179b2d4125cc7dbe1d692b60f80` затем прошёл **18/18 exact-head Actions SUCCESS**; synthetic benchmark recallDelta=0 и не promoted.
-- Полная пагинация: 1,053 branch refs / 1,035 unique HEADs / 3 duplicate-tip groups / 18 excess aliases; 275 open PRs. Ветки и история сохранены.
-- PR #903 остаётся Draft/open и diverged от live source (180 ahead / 893 behind); #916/#928/#947 merged только в вложенные parent branches. Никакого автоматического rebase/merge не выполнялось.
-- Source ветка не защищена; required checks не enforced. Machine aspect registry 6 ноября остаётся историческим snapshot, не текущей readiness оценкой.
+- [PR #1075](https://github.com/ailtron1ss-rgb/NK1/pull/1075) — matched-baseline gate для B261 holdout deltas; squash merge `a9141a085431de7a5bda3873f913ea4b4c1efab2`; **9/9 exact-head checks SUCCESS** до merge.
+- [PR #1078](https://github.com/ailtron1ss-rgb/NK1/pull/1078) — startup health probe treats empty/malformed early responses as retryable not-ready; merge `331eb11ff9d12cdf470788a3464ccecef4412d48`; **3/3 exact-head workflows SUCCESS** до merge.
+- [PR #1081](https://github.com/ailtron1ss-rgb/NK1/pull/1081) — selective OmeStro #10 Mechanism Serendipity port into current research owner/Core; merge `2657da158e02988eed59ed5f174c736ba3152cf6`; **28/28 exact-head workflows SUCCESS** до merge. Discovery is read-only and bounded; candidates enter the ordinary experiment queue as verify-only hypotheses. Scientific evidence credit requires five distinct paired seeds plus independent holdout receipt, rollback availability, one variant and no auto-apply.
+- [PR #1076](https://github.com/ailtron1ss-rgb/NK1/pull/1076) — RU/EN persistent-memory lifecycle E2E; merge `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`; **16/16 exact-head workflows SUCCESS** до merge. It covers synthetic reciprocal cross-language retrieval, file-backed restart, bitemporal correction, explicit forget, provenance and grounded abstention.
+- Последний опубликованный source HEAD: `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`. У всех четырёх указанных PR проверки относились к их собственным exact HEAD перед слиянием; post-merge Actions на самом последнем merge SHA пока не зарегистрированы. Не приписывать pre-merge проверки merge SHA.
+
+### Доказательные границы и оставшаяся работа
+
+- **Memory:** RU/EN synthetic E2E — TESTED; независимое bilingual holdout, пять paired seeds и положительный confidence-supported uplift — не заявляются.
+- **Mechanism Serendipity:** структурное discovery, persistence/dedupe, verify-only intake и receipt gate интегрированы и покрыты CI; реальное научное улучшение, причинная валидность внешней гипотезы и recall/decision uplift ещё не доказаны.
+- **Runtime/launch:** clean-install/startup и 30-tick organism smoke проходят CI; наличие настроенной реальной LLM, целевой-host soak и recovery под длительной нагрузкой не подтверждены.
+- **Speech/avatar/mobile:** CI-контракты не заменяют реальный Android/Termux audio test, browser/WebGL visual E2E, lip-sync измерения и device soak.
+- `workpass70-source` не имеет enforced required status checks; зелёный exact-head CI — наблюдаемое свидетельство только для проверенного commit, не гарантия защиты ветки.
 
 ### Release и юридический gate
 
-- Stable ZIP: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
-- Последний опубликованный ZIP с prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, metadata SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- ZIP bytes не материализованы; независимый hash, extraction manifest и source/ZIP parity **UNVERIFIED**. Ноябрьские source changes не считаются released.
-- `contracts/RELEASE_LICENSE_REVIEW.json` pending: root `NOASSERTION`, runtime private/all-rights-reserved, 477 locked npm components и 8 source archives требуют human review; redistribution approval=false.
-- [Daily engineering cycle 21 Nov](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md); [20 streams / 305 work units](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md).
+- Текущий latest GitHub Release: tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- ZIP bytes не скачивались и не хешировались независимо в этом проходе; extraction manifest и source/ZIP parity остаются **UNVERIFIED**. Ноябрьские source changes не считаются RELEASED.
+- `contracts/RELEASE_LICENSE_REVIEW.json` остаётся pending: root license `NOASSERTION`, runtime private/all-rights-reserved, components и source archives требуют human review; redistribution approval=false.
+- Перед release нужны human legal/asset review, independent archive hash, extraction manifest и точная source/ZIP parity.
 
-> Исторические checkpoint-и ниже не являются live truth. Перед каждым действием заново считывай source SHA, PR, exact-SHA Actions и Release metadata.
-
----
+> Исторические checkpoint-и ниже — архивный контекст, не live truth. Перед каждым merge/release действием заново считывай source SHA, PR, exact-SHA Actions и Release metadata.
 
 ---
 
