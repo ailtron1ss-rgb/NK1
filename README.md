@@ -1,28 +1,28 @@
 ## Актуальный live checkpoint — 21 ноября 2026
 
-**Каноническая исходная ветка:** `workpass70-source` @ `f1cbaa9492ea297d67d8c7461642a75de92b677e`.  
+**Каноническая исходная ветка:** `workpass70-source` @ `8fb945d190d08e313da98c19ac7c8dcd6b16af7d`.  
 **Текущий `main`:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; release/metadata only.
 
 ### Live source и проверки
 
-- На точном source SHA `f1cbaa9492ea297d67d8c7461642a75de92b677e` завершились **9/9 Actions SUCCESS**: targeted/regression, local-language resilience, explicit-forget, source-lineage, original-avatar motor, affect restore, avatar cognitive-affect, import graph/layer boundaries и browser-affect. [Полный отчёт цикла](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md).
-- Source HEAD commit `f1cbaa9492ea297d67d8c7461642a75de92b677e` датирован 2026-11-21T07:53:04Z; parent `8d98f271e1374376cc81a9ba0c6e77c014f13ca8`.
-- Draft [PR #1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059) предлагает отдельную locale-neutral нормализацию BM25 benchmark; branch `fix/memory-benchmark-locale-neutral-20261121`. Он не merged и не released. Первая exact-head CI волна была 16/17 из-за fixture без `independenceGroupId`; исправление сохранено в commit `396e1241226820a0dcd64ea92dbaaf33eaba024f`. Code/test head `67460ab86ca25179b2d4125cc7dbe1d692b60f80` затем прошёл **18/18 exact-head Actions SUCCESS**; synthetic benchmark recallDelta=0 и не promoted.
-- Полная пагинация: 1,053 branch refs / 1,035 unique HEADs / 3 duplicate-tip groups / 18 excess aliases; 275 open PRs. Ветки и история сохранены.
-- PR #903 остаётся Draft/open и diverged от live source (180 ahead / 893 behind); #916/#928/#947 merged только в вложенные parent branches. Никакого автоматического rebase/merge не выполнялось.
-- Source ветка не защищена; required checks не enforced. Machine aspect registry 6 ноября остаётся историческим snapshot, не текущей readiness оценкой.
+- На точном source SHA `8fb945d190d08e313da98c19ac7c8dcd6b16af7d` завершились **10/10 Actions check-runs SUCCESS**: Hexis source lineage, module dependency audit, B261 matched holdout, UserModel explicit-forget, WorkPass79 cognitive runtime, avatar cognitive-affect, browser affect snapshot, affect-state restore, Original 2D motor и NeuroCore core regression.
+- На родительском source SHA `a9141a085431de7a5bda3873f913ea4b4c1efab2` ранее завершились **13/13 check-runs SUCCESS**, включая clean prototype startup smoke и ActionGateway governance. Текущий SHA `8fb945d` — документационная интеграция PR #596 поверх этого проверенного runtime-состояния; отсутствие трёх path-filtered checks на новом SHA не трактуется как их повторное прохождение.
+- Quickstart требует Node.js **24.x**, npm **10.8.0+**, Python **3.11.x**, Git, доступ к npm registry и свободные порты 8080, 8081, 3310 и 8765. `npm run quickstart` выполняет проверку окружения, сборку UI, doctor и запуск runtime/research bridge/UI/gateway с health checks. Это не подтверждает наличие реальной LLM, работу Android audio, лицензированную 3D-модель или длительный device soak.
+- Полная пагинация: **1,065 branch refs / 1,047 unique HEADs / 18 excess aliases across 3 duplicate-tip groups**. Все ветки и история сохранены; одинаковый HEAD не является разрешением удалять ветки.
+- Open PR census: **272 open PRs — 206 Draft и 66 ready for review**; 247 PRs не обновлялись более семи дней. Большинство старых PR требуют проверки ancestry/base/head и changed files; bulk merge запрещён.
+- `workpass70-source` не защищена и required status checks не enforced. Зелёные Actions — наблюдаемое доказательство конкретного SHA, но не гарантия branch protection.
+- [PR #1076](https://github.com/ailtron1ss-rgb/NK1/pull/1076) — synthetic RU/EN persistent-memory lifecycle E2E, **16/16 exact-head Actions SUCCESS**. Остаётся Draft; не доказывает независимый retrieval uplift и не объединён.
+- [PR #1077](https://github.com/ailtron1ss-rgb/NK1/pull/1077) — документационное обновление этого live checkpoint; Draft, не merged. Его базовый source SHA может продвинуться независимо, поэтому перед интеграцией нужно повторно сверить diff и exact-head checks.
 
 ### Release и юридический gate
 
-- Stable ZIP: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
-- Последний опубликованный ZIP с prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, metadata SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- ZIP bytes не материализованы; независимый hash, extraction manifest и source/ZIP parity **UNVERIFIED**. Ноябрьские source changes не считаются released.
-- `contracts/RELEASE_LICENSE_REVIEW.json` pending: root `NOASSERTION`, runtime private/all-rights-reserved, 477 locked npm components и 8 source archives требуют human review; redistribution approval=false.
-- [Daily engineering cycle 21 Nov](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md); [20 streams / 305 work units](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md).
+- Stable Release: `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- Последний опубликованный ZIP по времени — prerelease `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, metadata SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- ZIP bytes не были независимо скачаны и захешированы в этом проходе; extraction manifest и source/ZIP parity остаются **UNVERIFIED**. Ноябрьские source changes не считаются released.
+- `contracts/RELEASE_LICENSE_REVIEW.json` остаётся pending: root license `NOASSERTION`, runtime private/all-rights-reserved, 477 locked npm components и source archives требуют human review; `redistributionApproved=false`.
+- [План NeuroCore 0.1 и live workstream status](docs/plans/2026-11-21-neurocore-prototype-0-1.md).
 
-> Исторические checkpoint-и ниже не являются live truth. Перед каждым действием заново считывай source SHA, PR, exact-SHA Actions и Release metadata.
-
----
+> Исторические checkpoint-и ниже — архивный контекст, не live truth. Перед каждым merge/release действием заново считывай source SHA, PR, exact-SHA Actions и Release metadata.
 
 ---
 
@@ -659,3 +659,14 @@ The active cognitive branch now uses `actions/checkout@v7` and `actions/setup-no
 ## WorkPass98 — multi-timescale continual replay (2026-10-20)
 
 P23 consolidation now reserves 32 of each 64-item large replay batch for recent experiences and 32 for older experiences, selecting historical representatives across context/action strata before filling by surprise and deterministic age tie-break. This adapts the design principles of [ARROW / WMAR](https://arxiv.org/abs/2401.16650), [Task-Agnostic Continual RL](https://arxiv.org/abs/2205.14495), and [Forget-and-Grow](https://proceedings.mlr.press/v267/kang25c.html) to NK1's existing TypeScript symbolic/context-action learner; no framework-specific upstream code or new Python/PyTorch dependencies were imported. Regression tests assert the 64-item budget, exact recent quota, retention of older experiences, and unique replay selections. The same pass fixes Node.js 24 CI setup by disabling setup-node's implicit npm cache in workflows without a root lockfile and removes a duplicate YAML cache key. See [continual-learning research notes](docs/CONTINUAL_SKILL_LEARNING_RESEARCH_2026-10-20.md) and [WorkPass97/98 implementation note](docs/WORKPASS97_NODE24_LEARNING_RETENTION_2026-10-20.md). CI on the newest head has passed Node 24 setup, runtime contract audit, Actions compatibility audit, core ownership audit and runtime smoke; remaining learning/regression jobs are still running, so the whole pass is not yet CI-verified.
+
+
+## WorkPass80 — durable UserModel forgetting and restore integrity (2026-11-01)
+
+- [PR #580](https://github.com/ailtron1ss-rgb/NK1/pull/580) merged as `efb7693df564512ed653f8bafc772d97e2c36e32`. UserModel snapshots are now v2 with per-key/domain deletion watermarks, v1 migration, strict fail-closed tombstone restore, stale-claim/candidate reconciliation, and a 256-entry cap that never silently evicts deletion history.
+- Explicit facts, corrections and behavioral candidates at or before the immutable source-event tick are rejected after forgetting. A later explicit statement can re-establish the preference. Tombstones retain only key/domain, watermark and opaque evidence reference—not the forgotten value.
+- The HTTP preference route now uses strictly increasing ingress event ticks rather than the slower cognitive scheduler tick. Client-supplied provenance/tick values remain ignored.
+- Exact PR HEAD `b824c8917a63815f7a4d91da2e9edadd22a42c7d`: **12/12 GitHub Actions workflows passed**, including UserModel focused/runtime-persistence/HTTP-route checks, MemoryOS2 restore lineage, Hexis lineage, Action Gateway governance, unified runtime, planner cadence, continual-learning metrics, Mem0 safety and core regression.
+- [PR #584](https://github.com/ailtron1ss-rgb/NK1/pull/584) merged as `6952584f4e55c2b616d201618c392ac98902f044`, upgrading the remaining longitudinal holdout workflow to `actions/checkout@v7` and `actions/setup-node@v7`; the repository-wide Node.js 24 Actions compatibility audit now passes.
+- **Evidence boundary:** this closes the UserModel explicit-forget path and its tested runtime routes; it does not prove every external import pipeline preserves original source-event ticks, physical erasure from every external index, independent RU/EN retrieval uplift, autonomous initiative, or release readiness. MemoryOS2 remains the canonical writable memory owner.
+- **Release:** no new Release ZIP was built or published. The latest published artifact remains the 2026-10-19 hotfix prerelease until a separate release build, license review and exact-SHA publisher gate pass.
