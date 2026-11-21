@@ -38,7 +38,7 @@ export interface IntrinsicInventionInput extends InventionEvaluationPlan {
 export interface CapturedInventionCandidate {
   id: string;
   experimentId: string;
-  source: 'intrinsic' | 'dream-association' | 'mechanism-serendipity';
+  source: 'intrinsic' | 'dream-association';
   question: string;
   hypothesis: string;
   prediction: string;
