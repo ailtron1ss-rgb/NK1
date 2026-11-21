@@ -1,3 +1,10 @@
+## [NK1][Prototype] Expose optional language-model degradation in launch health (2026-11-21)
+
+- Extend `/health` and `/api/health` with a bounded language-capability snapshot: explicitly configured provider booleans, active backend, whether a model-generated response has been observed, and `degraded` / `unverified` / `available` status.
+- Keep core runtime readiness independent from optional model availability; a missing provider degrades language capability without marking the organism runtime failed.
+- Extend the server smoke to verify the initial pre-inference degraded state and that deterministic fallback responses remain marked `generated=false`.
+- Add a focused exact-head runtime typecheck + server-smoke workflow. This does not prove a live model provider is available on a target device.
+
 ## [NK1][Memory] Require five paired bootstrap seeds for confirmatory review (2026-11-21)
 
 - Keep three-seed retrieval experiments available for exploratory sensitivity analysis, but block `candidate-eligible-for-independent-review` unless at least five distinct paired bootstrap seeds were evaluated.

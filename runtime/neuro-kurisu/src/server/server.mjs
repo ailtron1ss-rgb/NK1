@@ -391,6 +391,24 @@ function json(res, status, body) {
     });
     res.end(payload);
 }
+function languageCapabilitySnapshot() {
+    const configuredProviders = {
+        llamaCpp: LLAMA_CPP_PROVIDER.configured(),
+        kobold: Boolean(String(process.env.KOBOLD_URL || '').trim()),
+        gemini: Boolean(String(process.env.GEMINI_API_KEY || '').trim()),
+    };
+    const hasConfiguredProvider = Object.values(configuredProviders).some(Boolean);
+    const activeBackend = lastLanguageBackend;
+    const generated = activeBackend !== 'none' && activeBackend !== 'deterministic-policy-fallback';
+    const degraded = activeBackend === 'deterministic-policy-fallback' || (activeBackend === 'none' && !hasConfiguredProvider);
+    return {
+        status: degraded ? 'degraded' : generated ? 'available' : 'unverified',
+        degraded,
+        generated,
+        activeBackend,
+        configuredProviders,
+    };
+}
 function fileExists(file) { try {
     return fsExistsSync(file);
 }
@@ -627,7 +645,7 @@ async function route(req, res) {
             return json(res, 429, { ok: false, error: 'rate-limit-exceeded', retryAfterSec: rate.retryAfterSec });
         }
         if (url.pathname === '/health' || url.pathname === '/api/health') {
-            return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null });
+            return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null, language: languageCapabilitySnapshot() });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/evaluation/evidence') {
             if (!runtimeReady)
