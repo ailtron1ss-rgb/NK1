@@ -631,3 +631,52 @@ This was a live inventory and selective donor review, **not a successful merge p
 - No force-push or overwrite of a pre-existing source branch was performed. This pass created one feature branch, one PR, and one census snapshot commit. The feature branch remains as provenance.
 - The connected GitHub tools do not expose a branch-ref DELETE operation; repository metadata also reports `delete_branch_on_merge=false`, and source branch is not protected. No branch is declared safe for retirement based only on name or shared HEAD. Full historical PR, tag/release, workflow, ruleset/protection, deployment, documentation and external-consumer clearance is still incomplete.
 - Current target is 10 refs from 1,050 (1,040 retirements). Scenario estimates only: 104 requests at 10 safe retirements/request; **70** at 15/request; 52 at 20/request; 35 at 30/request. These are not guarantees, and the currently connected GitHub interface cannot perform branch-ref deletion, so actual reduction to 10 is blocked until a permitted deletion workflow is available.
+
+
+## Continuation run — 2026-11-21 (published archive reconciliation + memory confirmatory gate)
+
+### Canonical source and release boundary
+
+- Canonical repository: `ailtron1ss-rgb/NK1`; working source before this documentation pass: `workpass70-source` @ `f977402e2717f78f1487271c9549ae57e3aa3482`.
+- `main` remains `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
+- The latest stable Release remains tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- The published Hotfix 1 asset remains `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- Neither published asset nor `main` was modified.
+
+### Exact published ZIP inspection
+
+- GitHub Actions run [44918000338](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44918000338), exact PR head `23c0a6c377547901c2d46a9aae4395959b0939e7`, ran the existing `NK1 Release Archive Inspection` workflow successfully. Artifact ID: `14712299091`.
+- Stable `Neuro`: GitHub digest and size both match; 9,346 ZIP file members / 288,038,387 uncompressed bytes; 9,087 source-identical, 238 same-path changed, 21 archive-only, 1,133 source-only. No inspector errors, file-path collisions, or mapped-path collisions.
+- Hotfix 1: GitHub digest and size both match; 9,349 ZIP file members; 9,094 source-identical, 234 same-path changed, 21 archive-only, 1,130 source-only. No inspector errors, file-path collisions, or mapped-path collisions.
+- Inspection source snapshot: `23c0a6c` (the source at the time of PR #1064, before the memory-gate port in PR #1065). It had 10,458 tracked files. The subsequent #1065 port changes only three paths that were already classified as changed against the Release; the final-source hash-level comparison has not been recomputed.
+- Compared with the earlier inspector snapshot at `7de628b833f49ff7d7ad5cd9262288a6cdf010dd`, the current-source snapshot has 45 additional source-only paths and 25 additional same-path changed paths for both published ZIPs. Do not attribute all drift to this run: several source integrations were performed by parallel sessions.
+- The 21 archive-only paths are existing Live2D model/configuration, texture, expression and motion assets plus `app/public/live2d/PROVENANCE.json`. Preserve them; do not delete or silently omit them during source packaging.
+- Source has three case-only directory aliases (`docs/INTEGRATION` / `docs/integration`, plus the `runtime/neuro-kurisu/RESEARCH` / `research` tree and its dated subdirectory); the archive has the two runtime aliases. The inspector confirmed disjoint file paths and zero file collisions. Do not collapse these directories by name alone.
+- Archive integrity is confirmed; source/release parity is **not**. No new Release is claimed.
+
+### Selective memory integration and superseded donor
+
+- PR [#1064](https://github.com/ailtron1ss-rgb/NK1/pull/1064) added one positive-path assertion for `archive.sizeMatches`; exact-head Actions completed successfully, including the real Stable and Hotfix ZIP inspections. Squash merge: `e22a19e65aa03fd240303951f831a497d342f197`; merge tree `66a1c8d9c17408971cc92cf526068ed900c1f6a7` exactly equals reviewed head tree.
+- Parallel Draft donor PR [#1062](https://github.com/ailtron1ss-rgb/NK1/pull/1062), head `ce0c9f6f4f2b31497bcea55002ebb525ddd1f933), had 16/16 exact-head Actions success but diverged after #1064 moved the source base. A direct merge was not used.
+- A fresh source-based branch selectively ported exactly three donor blobs: `CHANGELOG.md` `b8779d46113b3c254b13eabf37acdbf600094638`; `MemoryRetrievalExperiment.ts` `0792308af658f8a4aae08104aedc3bb170c5760a`; `memory-retrieval-experiment.mjs` `ccd940603a24cfc32a2099d740ecc7c362372080`.
+- The HMX staging changes visible in #1062 against its old base were already in current source: `HexisAdaptationFabric.ts` blob `bbbc222f8c3d42cc49a0e4420d7b786e526f0811` and `tests/integration/hexis-adaptation.mjs` blob `87b9bb72e2d1f03044439fc9adc1f90c16a22caa` are byte-identical between donor and current source. No duplicate HMX patch was carried.
+- PR [#1065](https://github.com/ailtron1ss-rgb/NK1/pull/1065) exact-head Actions: **16/16 SUCCESS** at `0247d5c898b2740b15623becef4b4ceba09a6252`. Squash merge: `f977402e2717f78f1487271c9549ae57e3aa3482`; merge tree `e225f55579eb09d64c14caa85fc88d93fa4468d5` exactly equals reviewed head tree.
+- PR #1062 was closed as **superseded**, not merged, after the three useful memory files were ported and the HMX blobs were proven identical. Donor branch `aspect/memory-confirmatory-five-seed-gate-20261121` remains intact.
+- Behavior: three-seed exploratory sensitivity runs remain available; at least five distinct paired-bootstrap resamples are now required for confirmatory-review eligibility, and positive recall confidence across all seeds is also required. The gate does not promote candidates or mutate live memory.
+- Honest result: `BIG_PASS_126` still reports `recallDelta=0`, confidence interval `[0, 0]`, promotion `not-promoted`, reason `insufficient-unanswerable-holdout`. WorkPass73 CI evidence used 5 seeds and 56 holdout queries in a no-external-model-call test, not a production recall-uplift claim.
+- The runtime typecheck step in these workflows reports `node-strip-syntax-only`; semantic `tsc` validation is not claimed because the TypeScript compiler is not installed in that CI environment.
+
+### Work performed in this run
+
+- PRs merged: **2** (#1064 release-inspector size assertion; #1065 selective five-seed memory gate).
+- PRs closed as superseded: **1** (#1062; donor branch retained).
+- Branch refs deleted: **0**. No force-push, Release update, or destructive cleanup.
+- Other merges visible during this run (#1058–#1063) were parallel-session results and are not attributed to this run.
+- The full branch census and detailed release-drift path inventory are appended to `docs/consolidation/branch-census-delta-2026-11-20.md`; the live JSONL snapshot is maintained at `docs/consolidation/branch-census-2026-11-21-live.jsonl`.
+
+### Next engineering priority
+
+1. Reconcile the 45 source-only paths and 25 changed paths against the published Release without dropping the 21 archive-only Live2D/provenance assets; build a reproducible packaging/restoration manifest before any release.
+2. Restore a semantic TypeScript compiler check in CI and resolve its real diagnostics rather than treating syntax stripping as a full typecheck.
+3. Supply an independently sourced RU/EN holdout with sufficient answerable and unanswerable independent groups; the current recall uplift remains zero and promotion remains blocked.
+4. Keep browser/Live2D playback, lip-sync p95, physical Android TTS, provider/device recovery, rollback and soak as unverified until measured on the target devices.
