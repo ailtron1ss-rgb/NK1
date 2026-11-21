@@ -299,3 +299,42 @@ A second complete pagination was performed after creating the release-inspector 
 - Current source check-runs: **9/9 SUCCESS, 0 failures, 0 pending**.
 - **Merged by this pass: 0; PRs closed as superseded by this pass: 0; branch refs deleted by this pass: 0.** No source branch or Release ZIP was changed by this pass; #1043's integration was performed by the parallel session.
 - Retirement remains blocked by incomplete per-ref joins against all historical PR heads/bases, tags/releases, workflow filters, rulesets/protection, deployments, docs and external consumers. The connected GitHub tools expose no branch-ref deletion operation. Keep all donor refs intact.
+
+
+## Complete live census and selective integration — 2026-11-21
+
+### Branch / PR inventory
+
+- Complete GitHub REST branch pagination: pages 1–10 returned 100 refs each; page 11 returned 53; page 12 was empty.
+- **1,053 branch refs; 1035 unique HEAD commits; 3 exact duplicate-tip groups; 18 excess refs; 0 protected refs.**
+- Compared with the preceding complete live census (2026-11-20: 1,039 refs / 1,023 unique HEADs / 16 excess aliases): **+14 refs, +12 unique HEADs, +2 excess aliases**. Do not attribute the net changes to this run except the PR branch noted below.
+- Full name→HEAD SHA→protection manifest: [branch-census-2026-11-21-live.jsonl](branch-census-2026-11-21-live.jsonl), 1,053 rows. Census was taken after PR #1058 merged, with source at `31acbe30b6901236ab818687ce62b41fc40992e1`.
+- Open PRs: **275** (100 + 100 + 75 across complete pagination). Previous complete census: 292; net −17. This run merged one PR (#1058); the remaining net change is not attributed here.
+
+### Exact duplicate-tip families
+
+1. `f9621bf3e4411ce17bc809922a5f90126001f4fd` — tree `7711398fa119a30218f44f2d2049cbe985a1d20b`: `aspect/consequence-ecology-20261117`, `integrate/consequence-calibration-lineage-followup-20261120`.
+2. `68a03799ca0c9f18e4c6e19399ed8018e0215e60` — tree `513c63b24385ce4dedc793200052e3f29b84bf78`: `aspect/world-forge-integrated-20261117`, `integrate/worldforge-to-sharedfuture-after-calibration-20261120`.
+3. `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` — tree `4525cefe9efccd05c897846b1c806b783feb3002`: 17 refs — `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
+
+All three families are exact same-commit groups (not merely similar file contents); all refs in these groups are unprotected. Exhaustive open-PR head/base joins found four active base dependencies: #109 uses `nk1-all-branches-merge-2026-10-23`; #91 and #86 use `rebuild`; #124 uses `workpass206-runtime-evaluator-wiring`. No duplicate-family ref is an open PR head. Therefore **zero refs are cleared for deletion yet**: historical closed/merged PR references, tags, workflow/docs references, downstream ancestry and external consumers still require a complete join. Keep the three active base refs until those PRs are retargeted or closed.
+
+### Selective integration completed in this run
+
+- PR [#1058](https://github.com/ailtron1ss-rgb/NK1/pull/1058), `consolidation/undo-first-intelligence-current-source-20261121` @ `638cd286702917aca7fcdb4aa3eefb87d0670d86`, was selectively ported from historical Draft PR #910 onto the exact current source `886d05b09056575f4275b662c74849e9eabc7d24`.
+- Exact-head CI: **30/30 completed SUCCESS**; PR had no reviews or inline comments; mergeable/clean; source base was current; no unresolved conflicts.
+- Merged by this run using squash: **`31acbe30b6901236ab818687ce62b41fc40992e1`**. Merge result tree `523e524227b4cdfd5b044c14bc0233fb7e40e17f` is byte-identical at Git tree level to the reviewed PR head tree. Source now points to this merge before this census documentation update.
+- 8 files, +1,616 / −20: canonical ActionGateway Undo-First preparation/receipt/reconciliation contracts; create-only private workspace adapter with path/symlink checks, no-overwrite hard-link creation, fsync, SHA-256 readback and durable manual recovery artifact; OrganismRuntime registration only for FileStateStore; FileStateStore re-export; 2 regression suites; workflow; technical contract documentation. Memory-only stores do not receive filesystem write capability. The adapter explicitly does **not** claim automatic deletion/rollback; manual recovery is required because portable Node filesystem APIs cannot atomically unlink only an unchanged content hash.
+- Provenance: donor PR #910 remains open Draft, head `d3d13029d840ed89ec76920ad4ba7937baf5e10f`, 46 commits behind its old base. Its full branch was not merged. Exact blob equality was found for `runtime/neuro-kurisu/tests/undo-first-action-gateway.mjs` (blob `dbc74540d16880a8d28f74f2ff7a21be8e38c696`). Donor tree `1b84d2ceec15febb337d5347e1d063c0fca92a77` differs from the merged tree; the other overlapping files were adapted (different blob SHAs), including moving old Core-constructor wiring to the OrganismRuntime/FileStateStore boundary and adding 12 lines of filesystem hardening/integration coverage. Keep #910 and its branch until the complete donor-to-port line-level disposition and all historical references are recorded.
+- The merged head branch still exists. Its tree exactly equals the squash merge tree and it has no open PR head/base reference; it is a cleanup candidate after historical-reference scanning, not deleted.
+
+### Release boundary
+
+- Latest published Release remains tag `Neuro`, published `2026-10-19T14:21:35Z`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, GitHub metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- `main` remains `06e01cdd0a8e60ed70991f22e842887f544d1ebf`. This run changed `workpass70-source` only; the Release ZIP and `main` were not modified. No source/release byte-parity claim is made.
+
+### Cleanup / tool limitation
+
+- Exact duplicate refs: 18 excess aliases across three families. Four refs have active open-PR base dependencies; 14 other refs in the large family and the two smaller families still require historical PR/tag/workflow/docs/dependent-branch scans. The merged #1058 head is an additional exact-tree cleanup candidate.
+- **Fully safe deletion candidates: 0** until those remaining references are cleared. The connected GitHub actions expose branch listing and ref updates but no branch-ref deletion operation; no branch was deleted or force-updated.
+- This run: **1 new real PR merge; 0 branch deletions; 0 Release ZIP changes.**
