@@ -492,6 +492,6 @@ tools/super-start.mjs
 
 ### Final report-branch and PR-count note
 
-- The report branch `docs/branch-census-and-consolidation-2026-11-21` was at `9fd6a124e3ce9142e383b69a42a5859745d160e5` when the live branch census was collected. The JSONL commit that stores this census advances that branch by one commit; its row is therefore the pre-snapshot head by design.
+- The report branch `docs/branch-census-and-consolidation-2026-11-21` was at `the pre-snapshot documentation-branch HEAD (recorded in the JSONL census)` when the live branch census was collected. The JSONL commit that stores this census advances that branch by one commit; its row is therefore the pre-snapshot head by design.
 - The census includes 1,061 refs, 1,043 unique HEADs, 18 excess names and all three shared-tip groups. The source ref in the snapshot is `workpass70-source` @ `f977402e2717f78f1487271c9549ae57e3aa3482`; the report PR merge advances it afterward.
 - PR census at collection time: 1,053 all-state records (271 open / 454 merged / 328 closed unmerged). The report PR is opened after collection; once merged, the live total is 1,054 (271 / 455 / 328).
