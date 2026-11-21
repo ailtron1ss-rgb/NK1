@@ -42,7 +42,7 @@
 
 | generated | attempted | completed | partially_completed | blocked | deferred | verified |
 |---:|---:|---:|---:|---:|---:|---:|
-| 18 | 5 | 1 | 4 | 5 | 8 | 1 |
+| 18 | 5 | 2 | 3 | 5 | 8 | 2 |
 
 Счётчики не аддитивны между attempted и результатными статусами: attempted включает completed/partially_completed.
 
@@ -53,7 +53,7 @@
 | NK1-D2026-11-21-01 | Core: синхронизировать source HEAD и проверить exact-SHA runtime checks | P1 | Live branch | Низкий, read-only | SHA подтверждён; все прикреплённые check-runs завершены успешно | Branch API + check-runs | **done / verified** — f1cbaa…, 9/9 SUCCESS |
 | NK1-D2026-11-21-02 | Perception/world model: не расширять MeTTa serializer в сенсорный worker без реального provenance defect | P2 | Canonical concept compiler | Низкий, no-op | Новый work только при воспроизводимом provenance failure | PR #1031 + source checkpoint | **deferred / no-new-work** — serializer остаётся bounded export, worker не подключён |
 | NK1-D2026-11-21-03 | Memory ingest/admission: не дублировать уже интегрированную locale-neutral нормализацию MemoryOS2 | P2 | PR #964 | Низкий, no-op | Сверить canonical owner и не создавать второй tokenizer в MemoryOS2 | PR #964 + live MemoryOS2.ts | **deferred / no-new-work** — MemoryOS2 уже использует toLowerCase |
-| NK1-D2026-11-21-04 | Retrieval: сделать BM25 document tokenization locale-neutral и добавить Turkish-I regression | P1 | MemoryOS2 normalization; benchmark harness | Низкий, локальный reversible patch | Одинаковые hashed query evidence при default и Turkish casing; benchmark + experiment + typecheck проходят | MemoryRetrievalBenchmark.ts: tokenSequence; existing memory workflow | **partially_completed** — PR #1059: source fix + regression + changelog; первая CI 16/17, memory-integrity остановился на fixture без independenceGroupId; исправление в commit `396e1241226820a0dcd64ea92dbaaf33eaba024f`, rerun pending |
+| NK1-D2026-11-21-04 | Retrieval: сделать BM25 document tokenization locale-neutral и добавить Turkish-I regression | P1 | MemoryOS2 normalization; benchmark harness | Низкий, локальный reversible patch | Одинаковые hashed query evidence при default и Turkish casing; benchmark + experiment + typecheck проходят | MemoryRetrievalBenchmark.ts: tokenSequence; existing memory workflow | **done / verified** — PR #1059 exact code/test head `67460ab86ca25179b2d4125cc7dbe1d692b60f80`: 18/18 SUCCESS; memory-integrity run `44908870023` подтвердил benchmark PASS. Synthetic recallDelta=0, promotion не разрешена |
 | NK1-D2026-11-21-05 | Consolidation/restore: не менять snapshot/restore без новой регрессии | P2 | MemoryOS2 restore owner | Низкий, no-op | Только воспроизводимый дефект с failing-before/passing-after regression | Source exact-head checks + текущий backlog | **deferred / no-new-work** — нового restore failure не выявлено |
 | NK1-D2026-11-21-06 | Motivation: получить 24h initiative cadence telemetry на целевом runtime | P1 | Scheduler + реальный host/device | Высокий, hardware/soak | ≥1 объяснимая инициатива/час без interrupt/permission violation | 20-Nov handoff; отсутствие soak artifact | **blocked** — нет доступного 24h telemetry artifact |
 | NK1-D2026-11-21-07 | Planning: безопасно оценить #903 → #916 → #928 → #947 stack | P1 | Exact parent/child refs | Средний/высокий; rebase не выполнялся | Подтвердить ancestry и source delta; не переписывать историю | PR API + compare_commits | **partially_completed** — child PRs merged only into stacked parents; #903 180 ahead/893 behind live; оставлен нетронутым |
@@ -83,7 +83,7 @@ Draft PR: [#1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059)
 ## Проверки и ограничения
 
 - Live source HEAD f1cbaa…: 9/9 check-runs SUCCESS.
-- PR #1059 first exact-head run: 16/17 SUCCESS; `memory-integrity` failed only at the newly added benchmark test because `includeQueryEvidence=true` requires every example to have `independenceGroupId`. All preceding memory restore/lineage/lifecycle/retrieval checks and runtime strip-syntax typecheck passed. The fixture correction is committed; final rerun is pending in this handoff.
+- PR #1059 first run was 16/17: the new fixture omitted required `independenceGroupId`; this was corrected in commit `396e1241226820a0dcd64ea92dbaaf33eaba024f`. Final exact code/test head `67460ab86ca25179b2d4125cc7dbe1d692b60f80` passed **18/18 SUCCESS**. Memory integrity [run 44908870023](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44908870023): `TYPECHECK=PASS` in Node strip-syntax mode (719 files), `BIG_PASS_126_MEMORY_RETRIEVAL_BENCHMARK=PASS`, `MEMORY_RETRIEVAL_EXPERIMENT=PASS`. Benchmark recallDelta=0 and remains not-promoted; experiment has three seeds (13, 29, 53), not the five-pair confirmatory gate.
 - Runtime typecheck mode: `node-strip-syntax-only`, 719 files; semantic `tsc` was unavailable in that workflow.
 - No local test execution is claimed. No recall uplift, holdout improvement, device performance, initiative cadence, visual quality, release parity or legal approval is claimed.
 - ZIP bytes could not be materialized; only GitHub metadata digest/size were verified.
@@ -93,7 +93,7 @@ Draft PR: [#1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059)
 | Component | Implemented | Connected | Tested | Released |
 |---|---|---|---|---|
 | MemoryOS2 locale-neutral normalization | Yes, existing source | Canonical MemoryOS2 path | PR #964 integrated; current source checks pass | October ZIP only; November source not released |
-| BM25 benchmark locale-neutral fix | Yes, PR #1059 branch | Existing benchmark harness | Initial run exposed fixture defect; fix committed; final rerun pending | No |
+| BM25 benchmark locale-neutral fix | Yes, PR #1059 branch | Existing benchmark harness | 18/18 exact-head checks SUCCESS; synthetic fixture PASS, recallDelta=0, not promoted | No |
 | Core / OrganismBus | Existing canonical source | Unified runtime | Source exact-head Actions 9/9 | No November source release |
 | UserModel explicit forget | Existing v2 | Canonical tombstone path | 44882282643 SUCCESS | No |
 | Avatar 2D/affect | Existing renderer contracts | Shared motor/affect path | Relevant source check-runs SUCCESS | Visual/device E2E not released |
@@ -108,7 +108,7 @@ Draft PR: [#1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059)
 
 ## Следующие 5 действий
 
-1. Проверить exact-head Actions PR #1059 после fixture fix; при провале исправить только конкретную regression, не менять baseline ranking.
+1. Оставить PR #1059 Draft до отдельного решения пользователя; перед любым продвижением перечитать live head/Actions и проверить, что base не сдвинулся.
 2. Обновить PR #1059 verification notes; оставить Draft до отдельного решения пользователя.
 3. Продолжить source-based salvage audit #903 без rebase, force-push или merge.
 4. Получить ZIP bytes через поддерживаемый artifact path и выполнить независимый SHA-256 + extraction manifest + source/ZIP parity.
