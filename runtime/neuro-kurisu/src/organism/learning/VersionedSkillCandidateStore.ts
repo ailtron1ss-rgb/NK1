@@ -197,13 +197,14 @@ export function computeVersionedSkillCandidateId(input: {
       !/^[a-f0-9]{64}$/.test(input.payloadFingerprint)) {
     throw new Error('invalid-versioned-skill-candidate-identity');
   }
-  return createHash('sha256').update(JSON.stringify([
+  const identity: unknown[] = [
     input.skillId,
     input.version,
     input.proposalId,
     input.payloadFingerprint,
-    input.revisionProvenance ? fingerprint(input.revisionProvenance) : null,
-  ])).digest('hex');
+  ];
+  if (input.revisionProvenance) identity.push(fingerprint(input.revisionProvenance));
+  return createHash('sha256').update(JSON.stringify(identity)).digest('hex');
 }
 
 function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): ActiveSkillVersion | null {

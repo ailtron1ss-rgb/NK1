@@ -4,6 +4,13 @@
 - Report the seed-count gate and other confirmatory gates explicitly; this does not change retrieval results, train a model, or permit automatic promotion.
 - Add regression coverage for both the three-seed rejection and five-seed gate passage using synthetic data that remains non-promotable.
 
+## [NK1][Memory] Make retrieval benchmark tokenization locale-neutral (2026-11-21)
+
+- Replace host-locale-dependent lowercasing in BM25 document tokenization with deterministic Unicode `toLowerCase()`, matching query normalization.
+- Add a regression that simulates Turkish `I/İ` casing and compares hashed baseline/candidate query evidence.
+- Reuse the existing memory-integrity workflow; no dependency or promotion-policy change.
+- This is a cross-host reproducibility fix, not a measured recall uplift.
+
 ## [NK1][P30] Elastic Neural Plasticity — canonical CI closure (2026-11-20)
 
 - Record the already-integrated opt-in sparse P26 policy update path: explicit parameter allowlists, protected coordinates, bounded L2/update budget, retention preflight, P29 arbitration and one-shot stale-checked rollback.

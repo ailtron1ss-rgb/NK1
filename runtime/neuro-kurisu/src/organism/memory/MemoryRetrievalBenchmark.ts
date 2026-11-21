@@ -120,7 +120,7 @@ const finiteOption=(value:unknown,fallback:number,min:number,max:number)=>{
   const n=Number(value);
   return Math.max(min,Math.min(max,Number.isFinite(n)?n:fallback));
 };
-const tokenSequence=(text:string)=>String(text).normalize('NFKC').toLocaleLowerCase().match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
+const tokenSequence=(text:string)=>String(text).normalize('NFKC').toLowerCase().match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
 const normalizeQuery=(query:string)=>String(query).normalize('NFKC').toLowerCase().replace(/[\p{P}\p{S}]+/gu,' ').replace(/\s+/g,' ').trim();
 const queryTokens=(query:string)=>normalizeQuery(query).match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
 const queryTrigrams=(tokens:string[])=>{

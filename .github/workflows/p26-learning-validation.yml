@@ -33,6 +33,9 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
+      - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts"
       - "runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs"
       - "runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs"
@@ -183,3 +186,6 @@ jobs:
       - name: Run P23 independent learning, promotion governance, lifecycle recovery and P36 evidence suite
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:learning
+      - name: Validate stable four-field identity for candidates without revision provenance
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:versioned-skill-candidate-store
