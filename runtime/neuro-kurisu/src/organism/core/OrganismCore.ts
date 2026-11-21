@@ -5595,7 +5595,7 @@ export class OrganismCore {
             this.agencySubsystem.selfProjects.linkGoal(proposedProject.id, projectGoal.id);
             this.memorySubsystem.events.append(makeEvent('self-project', state.tick, { ...proposedProject, linkedGoalId: projectGoal.id } as any));
         }
-        let activeProject: ReturnType<typeof this.agencySubsystem.selfProjects.activeProject> = null;
+        let activeProject: import('../cognition/evolution/SelfProjectEngine.ts').SelfProject | null = null;
         if (this.config.enableSelfProjects) {
             const projectContext = this.agencySubsystem.budget.snapshot();
             const projects = this.agencySubsystem.selfProjects.activeProjects({ clone: false });
