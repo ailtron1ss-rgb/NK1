@@ -62,6 +62,7 @@
 {"branch":"aspect/grounded-spatial-memory-bridge-20261103","head_sha":"1e454ea31b09a4a8086b599dc1071c2a5026e10c","protected":false}
 {"branch":"aspect/grounded-spatial-memory-source-20261103","head_sha":"c588f54a361e8b4bcec78a0d1c1a1ddceefe4363","protected":false}
 {"branch":"aspect/hexis-accept-apply-20261119","head_sha":"d68862709bc815f2cddf75a0e4ff2f9b6bed55a6","protected":false}
+{"branch":"aspect/hexis-atomic-stage-sections-20261121","head_sha":"46c30b29902d817ee0e1744d2ad0d66498413e7b","protected":false}
 {"branch":"aspect/hexis-consequence-cost-policy-20261113","head_sha":"3acc648b652837224f9fbf2a660a6fcbab343fee","protected":false}
 {"branch":"aspect/hexis-explicit-apply-consent-20261119","head_sha":"a0327376590c79e8ffce1f1ea14b9ac896ba921a","protected":false}
 {"branch":"aspect/hexis-hmx-canonical-apply-20261113","head_sha":"928b85b981e887f595d7fb2cb6a1cec5611f7c40","protected":false}
@@ -97,6 +98,7 @@
 {"branch":"aspect/memory-affect-context-reranking-20261102","head_sha":"ff568f6bde3b41dca02ae51fc2e3cec0a0845faa","protected":false}
 {"branch":"aspect/memory-and-retrieval","head_sha":"c7473db869cc8bcf9a8045de898afe0d3168f20e","protected":false}
 {"branch":"aspect/memory-concept-index-integrity-20261103","head_sha":"c31ae99dd69c380abd3f0309f8f2e3699e27a82c","protected":false}
+{"branch":"aspect/memory-confirmatory-five-seed-gate-20261121","head_sha":"ce0c9f6f4f2b31497bcea55002ebb525ddd1f933","protected":false}
 {"branch":"aspect/memory-evidence-freshness-20261102","head_sha":"3fd273dce5a48feef09037b3b6428a81dcd8f443","protected":false}
 {"branch":"aspect/memory-hmx-semantic-integrity-20261119","head_sha":"879a883f59439c8bdab3e4d7d9b171d6d4659780","protected":false}
 {"branch":"aspect/memory-hmx-semantic-integrity-rebased-20261119","head_sha":"7a6a68fc9cbe5968b0b5d5253138e6c5e9ad5700","protected":false}
@@ -224,6 +226,7 @@
 {"branch":"aspect/self-state-restore-integrity-20261114","head_sha":"818752ff4baafee79f450e78612beee0d0736a00","protected":false}
 {"branch":"aspect/semantic-embedding-abstention-20261115","head_sha":"08eebeafe6e035f580e02fb2d80a7204c4ae3fe0","protected":false}
 {"branch":"aspect/shared-future-scenario-space-20261117","head_sha":"490dd0132e017b09c81a053b5d62ce28f6e22c60","protected":false}
+{"branch":"aspect/skill-candidate-identity-compat-20261121","head_sha":"9e383369ff30b291d688fad176ea5ca028403a03","protected":false}
 {"branch":"aspect/source-archive-review-20261103","head_sha":"83ffc954d10514827574b4012f2d86d59a834c4c","protected":false}
 {"branch":"aspect/source-archive-review-current-20261103","head_sha":"be7b68293a9f8a46676bd994a91670530638d4e9","protected":false}
 {"branch":"aspect/source-archive-review-rebased-20261103","head_sha":"837d583dee93653fd36724121b61dbf98dd09e1f","protected":false}
@@ -337,6 +340,7 @@
 {"branch":"docs-integrate-canonical-160-steps-master-plan-11987500118237445758","head_sha":"c6398e549ef16bdc23d6ddce049ec918e833ed81","protected":false}
 {"branch":"docs-nk1-final-master-plan-1921370029563671868","head_sha":"cefd88834b8ef7055448da6b7a2796f5a8ca3f94","protected":false}
 {"branch":"docs/archive-engineering-cycles-2026-11-10-to-15","head_sha":"615d7bf58c078abd841be58c0891809f6a5ce56e","protected":false}
+{"branch":"docs/branch-census-and-consolidation-2026-11-21","head_sha":"02e87fdbd9cfd17605a8892a606c42b38b093679","protected":false}
 {"branch":"docs/branch-consolidation-status-20261120","head_sha":"092dcd9be431634ff0f3227a90d5911c513638cf","protected":false}
 {"branch":"docs/master-plan-open-source-integrations-20261029-14828014251465918336","head_sha":"0d3e570ba546ad221008e13cbddd5ac7b7c58b82","protected":false}
 {"branch":"docs/neko-nk1-adaptation-tree-20261104","head_sha":"7afd3f3db91b40241de6f8c62b11af18b3e0b1e6","protected":false}
@@ -508,7 +512,7 @@
 {"branch":"fix/mega-cognitive-progress-tracking-2026-10-26-r2","head_sha":"5ba5088d4e97bf45211eb367c88325290bed27c1","protected":false}
 {"branch":"fix/mega-cognitive-progress-tracking-2026-10-26-r3","head_sha":"c4c4438f7307fa1df358dbbb0a3600f7e044eb0c","protected":false}
 {"branch":"fix/mem0-oss-adapter-current-source-workpass589-2026-10-27","head_sha":"a8a4bfb785aeb5624850acd3f27a30f838635cc0","protected":false}
-{"branch":"fix/memory-benchmark-locale-neutral-20261121","head_sha":"5ca66479cf8e98f3296bc23529fb1856d763b58b","protected":false}
+{"branch":"fix/memory-benchmark-locale-neutral-20261121","head_sha":"36ba214868d134cbc55c806fa2f6230e113026e1","protected":false}
 {"branch":"fix/memory-command-snapshot-boundary-2026-10-27","head_sha":"aac1011a6055eec1c192b8e3e015c1f3f04d13fc","protected":false}
 {"branch":"fix/memory-embedding-vector-integrity-2026-10-27","head_sha":"92c4dd0d2b27ebaed639ec5e35806fef5cd36da5","protected":false}
 {"branch":"fix/memory-exact-identifier-grounding-2026-10-27","head_sha":"d55f0477a25c63d370d0463ab25fa327006d3ec3","protected":false}
@@ -620,6 +624,7 @@
 {"branch":"integrate/embodied-postcondition-receipts-20261120","head_sha":"679a4b54fcf6fadb5dda1b497679bfdec41c89b4","protected":false}
 {"branch":"integrate/evidence-gated-invention-loop-20261120","head_sha":"5390829ee2b18868196d1741ca563206c24ccab3","protected":false}
 {"branch":"integrate/governed-autonomy-self-restore-ancestry-20261120","head_sha":"11e83c7b21a8301ced68612c28bcbe07cbd7596d","protected":false}
+{"branch":"integrate/memory-confirmatory-five-seed-current-source-20261121","head_sha":"0247d5c898b2740b15623becef4b4ceba09a6252","protected":false}
 {"branch":"integrate/neuroforge-donor-analysis-20261120","head_sha":"01e236992a186f12b7f40bf0f2f539f9cf322601","protected":false}
 {"branch":"integrate/p23-bounded-candidate-population-20261120","head_sha":"d356f6a0839347579d964b876349da1c9034417e","protected":false}
 {"branch":"integrate/p30-elastic-neural-plasticity-ci-20261120","head_sha":"405c05aa483a07b68a10f98f59bee6e6aeabd1db","protected":false}
@@ -729,6 +734,7 @@
 {"branch":"rebuild","head_sha":"82ea7a8b7c9b036e65c8b056acedd1176952dd8f","protected":false}
 {"branch":"research/donor-source-intake-20261103","head_sha":"a27578adc025fdab978f121c49dec823102ec656","protected":false}
 {"branch":"research/omestro-32-idea-integration-register-20261117","head_sha":"304f91fa35ceca94de87ea1ee2ff1ffc8202ddc2","protected":false}
+{"branch":"research/release-archive-inspection-current-source-20261121","head_sha":"23c0a6c377547901c2d46a9aae4395959b0939e7","protected":false}
 {"branch":"research/source-assimilation-20261113","head_sha":"8e8dcbcd1bff2a5c649f125000b0c164ced06821","protected":false}
 {"branch":"research/source-assimilation-register-20261113-final","head_sha":"5fd0c96eb19faa0ddc5cdc97254d74d001d932a9","protected":false}
 {"branch":"salvage/negative-space-memory-current-source-20261121","head_sha":"c07d7c6e8534765171722f58c144f868c492c069","protected":false}
@@ -1008,7 +1014,7 @@
 {"branch":"workpass622-learning-evidence-integrity-v2-2026-10-29","head_sha":"97c56e698ea3ed4c3e4c42ff5aee8c37a3d6c527","protected":false}
 {"branch":"workpass631-cross-lingual-concept-bridge","head_sha":"5033ff05eb883c4a098c726cd395e7d393c72896","protected":false}
 {"branch":"workpass634-affect-action-priors","head_sha":"83b201eeacd3f03b14094ea6b87018d62c134591","protected":false}
-{"branch":"workpass70-source","head_sha":"e2d61f9c8ce17508d3d747248d94daf375db16c3","protected":false}
+{"branch":"workpass70-source","head_sha":"f977402e2717f78f1487271c9549ae57e3aa3482","protected":false}
 {"branch":"workpass71-body-systems","head_sha":"94cf04d7e536b5f5566896f4c42059a4ee1a28e0","protected":false}
 {"branch":"workpass71-learning-integrity","head_sha":"c89532bc3d64dfac09c8dd670fcb4aada5debf3c","protected":false}
 {"branch":"workpass72-completion-mega-architecture","head_sha":"e2c44024cc4a08fc2acb8802fac7eb8c88c6abc1","protected":false}

@@ -360,3 +360,138 @@ All three families are exact same-commit groups (not merely similar file content
 - This run: **1 new real merge (#1060); 0 branch deletions; 0 Release ZIP changes**. `main` remains `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
 - Latest published Release remains tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. ZIP bytes were not materialized or independently re-hashed; November source changes are **not** claimed as released.
 - Safe branch-deletion candidates: **0**. No branch-ref deletion operation is exposed by the connected GitHub actions; preserve #900 and #1059 donor branches and all duplicate-tip refs.
+
+
+## Full REST census and release reconciliation — 2026-11-21 (post-PR #1065)
+
+### Branch census
+
+The complete REST pagination for the live refs returned pages 1–10 with 100 refs each, page 11 with 60 refs, and page 12 empty. The report branch for this census is created separately; its own final snapshot commit advances that branch by one commit after the census moment.
+
+- **1,060 live branch refs / 1,042 unique HEAD SHAs / 18 excess names / 3 shared-HEAD groups** before the documentation-report branch was created.
+- The documentation-report branch adds one ref and, after its first content commits, one unique HEAD: expected snapshot **1,061 refs / 1,043 unique HEADs / 18 excess names**.
+- Relative to the saved 2026-11-21 JSONL snapshot (1,055 / 1,037 / 18): **+6 refs / +6 unique HEADs / no change in excess aliases** after the documentation branch is included. No branch names disappeared.
+- New refs observed since that snapshot:
+  - Parallel-session branches: `aspect/hexis-atomic-stage-sections-20261121` @ `46c30b29902d817ee0e1744d2ad0d66498413e7b`; `aspect/memory-confirmatory-five-seed-gate-20261121` @ `ce0c9f6f4f2b31497bcea55002ebb525ddd1f933`; `aspect/skill-candidate-identity-compat-20261121` @ `9e383369ff30b291d688fad176ea5ca028403a03`.
+  - Created in this run: `research/release-archive-inspection-current-source-20261121` @ `23c0a6c377547901c2d46a9aae4395959b0939e7`; `integrate/memory-confirmatory-five-seed-current-source-20261121` @ `0247d5c898b2740b15623becef4b4ceba09a6252`; documentation branch `docs/branch-census-and-consolidation-2026-11-21` (its recorded SHA is the pre-snapshot head; the final census-file commit advances that branch).
+- Moved HEADs relative to the saved snapshot: `fix/memory-benchmark-locale-neutral-20261121` `5ca66479cf8e98f3296bc23529fb1856d763b58b` → `36ba214868d134cbc55c806fa2f6230e113026e1`; `workpass70-source` `e2d61f9c8ce17508d3d747248d94daf375db16c3` → `f977402e2717f78f1487271c9549ae57e3aa3482` at the pre-documentation-merge snapshot. The documentation PR merge advances the source ref once more; this snapshot is intentionally pre-merge.
+- The three shared-HEAD groups are unchanged:
+  1. SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` — `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
+  2. SHA `f9621bf3e4411ce17bc809922a5f90126001f4fd` — `aspect/consequence-ecology-20261117`, `integrate/consequence-calibration-lineage-followup-20261120`.
+  3. SHA `68a03799ca0c9f18e4c6e19399ed8018e0215e60` — `aspect/world-forge-integrated-20261117`, `integrate/worldforge-to-sharedfuture-after-calibration-20261120`.
+- No branch is retired. Historical PR ancestry, tags/releases, workflows, rulesets/protection, deployments, documentation and external-consumer clearance remain incomplete; connected GitHub actions still expose no branch-ref DELETE operation.
+
+### PR census
+
+- Full all-state REST pagination returned **1,053 PR records before this documentation PR**: 271 open, 454 merged, 328 closed unmerged. Pages 1–10 returned 100 each; page 11 returned 53; page 12 was empty.
+- The documentation report PR is opened after this census; after it merges, the live totals become 1,054 records: 271 open, 455 merged, 328 closed unmerged.
+- Relative to the last saved full all-state snapshot (1,046 records) the current pre-documentation snapshot is +7 records. The saved post-#1060 report recorded 276 open PRs; current open count is 271. Do not attribute the entire change to this run or to any single parallel session.
+- This run merged #1064 and #1065, closed #1062 as superseded, and deleted zero branches. The source branches for #1064, #1065 and #1062 remain present.
+
+### Stable and Hotfix 1 archive/source comparison
+
+Exact workflow evidence: [run 44918000338](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44918000338), artifact `14712299091`, source ref `23c0a6c377547901c2d46a9aae4395959b0939e7`.
+
+| Published asset | Size / SHA-256 | ZIP members | Identical | Changed | Archive-only | Source-only |
+|---|---|---:|---:|---:|---:|---:|
+| `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` | 135,290,615 / `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286` | 9,346 | 9,087 | 238 | 21 | 1,133 |
+| `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` | 136,354,713 / `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb` | 9,349 | 9,094 | 234 | 21 | 1,130 |
+
+Both SHA-256 digests and byte sizes match GitHub release metadata; both archives read completely with zero inspector errors. Source-file collisions, archive-file collisions and post-prefix mapped collisions are all zero. There are three source directory aliases and two archive directory aliases; the file sets are disjoint and must be preserved.
+
+The 21 archive-only members are the existing Live2D model and mobile model JSON, textures, CDI/physics files, seven expressions, five motions and `app/public/live2d/PROVENANCE.json`. They are not safe to delete or omit merely because they are absent from the source checkout.
+
+Compared with the prior inspection source `7de628b833f49ff7d7ad5cd9262288a6cdf010dd`, the `Neuro` comparison changed from 9,112 / 213 / 21 / 1,088 to 9,087 / 238 / 21 / 1,133; Hotfix 1 changed from 9,119 / 209 / 21 / 1,085 to 9,094 / 234 / 21 / 1,130. In both cases this is **−25 identical, +25 changed, +45 source-only**, with archive-only unchanged. The newer source snapshot has 10,458 tracked files versus 10,413 in the earlier inspection. This is a source/release drift signal, not proof that the Release ZIP is corrupt.
+
+#### 45 new source-only paths relative to the previous inspector snapshot
+
+```text
+.github/workflows/nk1-embodied-telemetry-proof-boundary.yml
+.github/workflows/nk1-undo-first-intelligence.yml
+.github/workflows/p23-candidate-population.yml
+.github/workflows/prototype-startup-smoke.yml
+.github/workflows/self-state-restore-integrity.yml
+.github/workflows/the-invention-loop.yml
+docs/NEGATIVE_SPACE_MEMORY_RU.md
+docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md
+docs/OMESTRO_30_ELASTIC_NEURAL_PLASTICITY_RU.md
+docs/OMESTRO_UNDO_FIRST.md
+docs/PROTOTYPE_QUICKSTART_RU.md
+docs/consolidation/branch-ancestry-consolidation-2026-11-20-15.md
+docs/consolidation/branch-census-2026-11-20-post-merge.csv
+docs/consolidation/branch-census-2026-11-20-post-p30-parallel-integration.csv
+docs/consolidation/branch-census-2026-11-20.csv
+docs/consolidation/branch-census-2026-11-21-live.jsonl
+docs/research/DONOR_SOURCE_INTAKE_2026-11-03_RU.md
+docs/research/ENGINEERING_SCORECARD_2026-11-03_RU.md
+docs/research/NK1_MULTIPASS_EXECUTION_2026-11-03_RU.md
+docs/specs/2026-11-13-self-improvement-population-engine-design.md
+docs/superpowers/plans/2026-11-13-self-improvement-population-engine.md
+runtime/neuro-kurisu/docs/THE_INVENTION_LOOP_RU.md
+runtime/neuro-kurisu/src/organism/core/RestorableState.ts
+runtime/neuro-kurisu/src/organism/developmental/NegativeSpaceMemory.ts
+runtime/neuro-kurisu/src/organism/learning/P23CandidateParetoArchive.ts
+runtime/neuro-kurisu/src/organism/learning/P23ReflectiveCandidatePopulationSearch.ts
+runtime/neuro-kurisu/src/organism/learning/ValidationOnlySkillCandidateEvaluator.ts
+runtime/neuro-kurisu/src/organism/persistence/UndoFirstFileSystemAdapter.ts
+runtime/neuro-kurisu/src/organism/research/TheInventionLoop.ts
+runtime/neuro-kurisu/tests/filesystem-undo-first-integration.mjs
+runtime/neuro-kurisu/tests/helpers/trusted-embodied-action-fixture.mjs
+runtime/neuro-kurisu/tests/negative-space-memory-core.mjs
+runtime/neuro-kurisu/tests/negative-space-memory.mjs
+runtime/neuro-kurisu/tests/p23-candidate-pareto-archive.mjs
+runtime/neuro-kurisu/tests/p23-population-p23-integration.mjs
+runtime/neuro-kurisu/tests/p23-population-runtime-wiring.mjs
+runtime/neuro-kurisu/tests/p23-reflective-candidate-population-search.mjs
+runtime/neuro-kurisu/tests/p23-validation-only-candidate-evaluator.mjs
+runtime/neuro-kurisu/tests/p2841-telemetry-proof-boundary.mjs
+runtime/neuro-kurisu/tests/self-state-restore-integrity-workpass80.mjs
+runtime/neuro-kurisu/tests/the-invention-loop.mjs
+runtime/neuro-kurisu/tests/undo-first-action-gateway.mjs
+tools/lib/super-startup.mjs
+tools/super-quickstart.mjs
+tools/super-startup.test.mjs
+```
+
+#### 25 additional same-path changed files relative to the previous inspector snapshot
+
+```text
+runtime/neuro-kurisu/src/organism/body/EmbodiedActionExecutor.ts
+runtime/neuro-kurisu/src/organism/cognition/P71SelfConsistencyModel.ts
+runtime/neuro-kurisu/src/organism/cognition/P80UnifiedSelfState.ts
+runtime/neuro-kurisu/src/organism/core/EvidenceResearchSubsystemRuntime.ts
+runtime/neuro-kurisu/src/organism/developmental/P78AutobiographicalSelfContinuity.ts
+runtime/neuro-kurisu/src/organism/developmental/P84AutobiographicalContinuityFabric.ts
+runtime/neuro-kurisu/src/organism/developmental/RegretEngine.ts
+runtime/neuro-kurisu/src/organism/system/AutonomousProjectExecutor.ts
+runtime/neuro-kurisu/src/organism/system/ExternalPostconditionVerifier.ts
+runtime/neuro-kurisu/src/organism/system/IdentityContinuityGuard.ts
+runtime/neuro-kurisu/src/organism/system/P76IdentityLifeOS.ts
+runtime/neuro-kurisu/src/organism/system/RealityGroundingController.ts
+runtime/neuro-kurisu/src/organism/system/RealityLearningGate.ts
+runtime/neuro-kurisu/tests/big-pass-49-subsystem-runtime.mjs
+runtime/neuro-kurisu/tests/p2836-reality-first-loop.mjs
+runtime/neuro-kurisu/tests/p2840-reality-boundary.mjs
+runtime/neuro-kurisu/tests/p2840-reality-learning-gate.mjs
+runtime/neuro-kurisu/tests/p2841-persistence-grounding.mjs
+runtime/neuro-kurisu/tests/p2841-postcondition-grounded-world.mjs
+runtime/neuro-kurisu/tests/p2841-runtime-external-grounding.mjs
+runtime/neuro-kurisu/tests/p2842-active-perception-runtime.mjs
+runtime/neuro-kurisu/tests/project-execution-idempotency.mjs
+runtime/neuro-kurisu/tests/project-execution-persistence.mjs
+tools/super-dev.mjs
+tools/super-start.mjs
+```
+
+### Honest operations
+
+- This run: **2 PR merges (#1064, #1065); 1 PR closed as superseded (#1062); 0 branch deletions; 0 Release ZIP changes**.
+- Parallel-session merges #1058–#1063 are observed repository state, not attributed to this run.
+- Do not retire branches from name or shared HEAD alone. Historical PR/tag/workflow/ruleset/deployment/documentation/external-consumer clearance is incomplete, and the connected GitHub actions expose no branch-ref DELETE operation.
+
+
+### Final report-branch and PR-count note
+
+- The report branch `docs/branch-census-and-consolidation-2026-11-21` was at `the pre-snapshot documentation-branch HEAD (recorded in the JSONL census)` when the live branch census was collected. The JSONL commit that stores this census advances that branch by one commit; its row is therefore the pre-snapshot head by design.
+- The census includes 1,061 refs, 1,043 unique HEADs, 18 excess names and all three shared-tip groups. The source ref in the snapshot is `workpass70-source` @ `f977402e2717f78f1487271c9549ae57e3aa3482`; the report PR merge advances it afterward.
+- PR census at collection time: 1,053 all-state records (271 open / 454 merged / 328 closed unmerged). The report PR is opened after collection; once merged, the live total is 1,054 (271 / 455 / 328).
