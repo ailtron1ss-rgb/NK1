@@ -338,3 +338,12 @@ All three families are exact same-commit groups (not merely similar file content
 - Exact duplicate refs: 18 excess aliases across three families. Four open-PR base dependencies span three refs; 14 other refs in the large family and the two smaller families still require historical PR/tag/workflow/docs/dependent-branch scans. The merged #1058 head is an additional exact-tree cleanup candidate.
 - **Fully safe deletion candidates: 0** until those remaining references are cleared. The connected GitHub actions expose branch listing and ref updates but no branch-ref deletion operation; no branch was deleted or force-updated.
 - This run: **1 new real PR merge; 0 branch deletions; 0 Release ZIP changes.**
+
+
+### Historical PR-reference sweep — 2026-11-21
+
+- All-state GitHub PR pagination returned 1,046 records (pages 1–10: 100 each; page 11: 46). This is a head/base reference join, not just the current open-PR list.
+- The two new 2-ref duplicate families are not orphaned: the consequence-ecology refs occur in PRs #928, #947, #1051 and #1052; the world-forge refs occur in #916, #928, #1052 and #1054. Those PRs include merged history and one closed-unmerged calibration attempt (#1051). Preserve their PR provenance.
+- The 17-ref shared HEAD has four current open base dependencies (#109, #91, #86 and #124) across three base refs, plus historical head/base references across the merged WorkPass chain (including #4–#78 and #12/#22/#23). No open PR uses these duplicate-family refs as a head, but that does not clear historical ancestry or documentation dependencies.
+- The merged #1058 source-port branch is the head of merged PR #1058; its reviewed tree equals the squash merge tree. The workflow also still contains a branch-specific push filter. It is a post-merge cleanup candidate only after that workflow reference is reconciled.
+- Result after the historical PR sweep: **0 fully safe branch deletions**. Keep every duplicate-tip ref for now; no branch deletion endpoint is exposed by the connected GitHub operations.
