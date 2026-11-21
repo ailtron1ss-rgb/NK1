@@ -19,6 +19,8 @@ on:
       - "tools/super-install.mjs"
       - "tools/super-doctor.mjs"
       - "tools/super-gateway.mjs"
+      - "tools/prototype-health-readiness-probe.mjs"
+      - "tools/prototype-health-readiness-probe.test.mjs"
       - ".github/workflows/prototype-startup-smoke.yml"
   pull_request:
     branches: [workpass70-source]
@@ -93,6 +95,9 @@ jobs:
 
       - name: Exercise the launch guard regressions
         run: npm run test:startup
+
+      - name: Verify health readiness probe handles startup races
+        run: node tools/prototype-health-readiness-probe.test.mjs
 
       - name: First launch from a clean dependency state
         shell: bash
@@ -178,7 +183,7 @@ jobs:
             fi
             runtime_ready=0
             if curl --fail --silent http://127.0.0.1:3310/health \
-              | node --input-type=module -e 'let body=""; for await (const chunk of process.stdin) body += chunk; process.exit(JSON.parse(body).ready === true ? 0 : 1)'; then
+              | node tools/prototype-health-readiness-probe.mjs; then
               runtime_ready=1
             fi
             if [[ "$runtime_ready" == "1" ]] \
