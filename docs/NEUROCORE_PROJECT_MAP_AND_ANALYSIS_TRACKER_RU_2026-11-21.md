@@ -293,3 +293,218 @@ Next update format: date; exact baseline; files/PRs/Actions examined; new risks 
 
 
 Project map review PR: https://github.com/ailtron1ss-rgb/NK1/pull/1084 (Draft; not merged). The branch is isolated from the canonical source branch.
+
+
+---
+
+## 12. Углублённый проход №2 — 2026-11-21
+
+**Статус прохода:** read-only анализ исходников и PR, обновление только этого навигационного документа. Runtime source, Releases, `main`, существующие feature branches и PR не изменялись. Тесты в этой сессии не запускались.
+
+### 12.1 Новая оценка глубины анализа
+
+**Текущее покрытие анализа: 42%** (предыдущий зафиксированный срез: 39%). Это глубина исследовательского покрытия, а не готовность продукта, объём реализации или процент пройденных тестов.
+
+| Поток | Было | Сейчас | Что добавлено в анализ |
+|---|---:|---:|---|
+| 00 Truth / provenance | 75 | 75 | Без изменения |
+| 01 Branches / PR convergence | 65 | 75 | Проверены 100 открытых PR-результатов, точные SHA и расхождение шести крупных архитектурных PR |
+| 02 Release ZIP parity | 35 | 35 | Архив по-прежнему не скачан и не сверён побайтно |
+| 03 Toolchain / CI | 40 | 40 | Без новых запусков CI/build |
+| 04 Runtime / cycle | 50 | 55 | Дополнительно просмотрен импортный слой OrganismRuntime и связка Core/World/Plan/Embodiment/Evidence |
+| 05 Persistence / recovery | 25 | 30 | Дополнительно изучен StateMigrations и память/replay restore contracts; crash matrix не выполнена |
+| 06 MemoryOS2 / retrieval | 75 | 82 | Подтверждены фактический предел 1 600 записей, bitemporal path, retrieval limit, residency governor и единая mutation boundary |
+| 07 Evaluation science | 55 | 55 | Без нового независимого holdout результата |
+| 08 Continual learning | 25 | 30 | Разобраны границы P27/P28/Neural Prosthesis/Neural JIT и research-vs-production gates |
+| 09 World / perception | 15 | 25 | Изучена архитектура Observation Intake Gate из PR #821 и Shared Future / World Forge PR #903 |
+| 10 Self / identity / affect | 20 | 20 | Новые данные недостаточны для изменения оценки |
+| 11 Motivation / autonomy / actions | 60 | 65 | Проверены ActionGateway execution semantics и Shared Future external outcome binding |
+| 12 LLM / model ecology | 25 | 30 | Разобраны границы Neural Prosthesis/JIT и offline adapter promotion; реальный target inference не проверен |
+| 13 Speech / audio | 20 | 20 | Без изменения |
+| 14 Avatar / embodiment | 20 | 20 | Без изменения |
+| 15 App / UI | 10 | 10 | Без изменения |
+| 16 Integrations / portability | 35 | 45 | Проверены HMX export/staging path, старый accept/apply donor и граница canonical memory |
+| 17 Security / privacy / governance | 45 | 50 | Дополнительно проверены accessor-safe memory/export patterns, approval, provenance, fail-closed candidate gates |
+| 18 Reliability / performance / device | 35 | 38 | Уточнены bounded-ledger и residency limits; измерения на устройстве не проводились |
+| 19 Research / legal / release | 40 | 40 | Без нового legal approval или ZIP parity evidence |
+| **Среднее** | **39%** | **42%** | 20 потоков с равным весом 5%; сумма глубин 840 / 20 |
+
+Историческое значение 39% сохраняется как контрольная точка. Нельзя задним числом переписывать прошлый срез.
+
+### 12.2 Обновлённое дерево архитектуры — runtime truth
+
+```text
+NeuroCore / NK1
+│
+├── A. Runtime composition & state
+│   ├── OrganismRuntime                 [orchestration / host boundary]
+│   │   ├── RuntimeInputPolicy
+│   │   ├── WorldContextNormalizer
+│   │   ├── FileStateStore
+│   │   ├── OperationalJournal
+│   │   ├── CognitiveEventFabric
+│   │   ├── UnifiedCognitiveCycle
+│   │   ├── RuntimeEvidenceBus
+│   │   ├── EmbodimentRuntime
+│   │   └── OrganismCore                [canonical cognitive state/decisions]
+│   │
+│   ├── Persistence
+│   │   ├── StateMigrations
+│   │   ├── FileStateStore
+│   │   └── OperationalJournal
+│   │
+│   └── Rule: one runtime, one canonical OrganismState, one owner per mutable facet
+│
+├── B. Cognitive loop
+│   ├── Perception / Observation admission
+│   ├── Appraisal / affect / attention
+│   ├── Goal genesis / motivation
+│   ├── PlanEngine / WorldModel
+│   ├── ActionGateway
+│   ├── OutcomeVerificationService
+│   ├── CognitiveEventFabric / evidence
+│   └── Reflection / consolidation / learning
+│
+├── C. Memory & learning
+│   ├── MemoryOS2                   [canonical memory record owner]
+│   ├── MemoryFabric                [single mutation/retrieval lifecycle]
+│   ├── MemoryResidencyGovernor     [hot/warm/cold budget policy]
+│   ├── EvidenceLineage / bitemporal history
+│   ├── ContinualReplayBuffer / P23
+│   ├── P27 ephemeral context adaptation
+│   ├── P28 plasticity substrate
+│   └── P25 / adapter registry     [candidate/host-approved model adapters]
+│
+├── D. World & agency
+│   ├── ObservationIntakeGate (PR #821 donor; verify current integration)
+│   ├── GroundedWorldState
+│   ├── WorldModel / WorldModel2
+│   ├── PlanEngine / FutureSimulator
+│   ├── SharedFutureEngine (PR #903 donor)
+│   └── ActionGateway → external postcondition → outcome evidence
+│
+├── E. Model & interaction
+│   ├── LanguageOrgan / provider ecology
+│   ├── Local OpenAI-compatible provider
+│   ├── optional Neural Prosthesis sidecar (PR #925)
+│   ├── optional Neural JIT shadow capture (PR #926)
+│   ├── ASR / TTS / voice observer
+│   ├── EmbodimentRuntime
+│   └── Live2D / 2.5D / VRM / app UI
+│
+└── F. Cross-cutting trust planes
+    ├── Consent / permissions / approvals
+    ├── Provenance / independent evidence / holdout isolation
+    ├── Idempotency / reconciliation / undo
+    ├── Observability / budgets / fault recovery
+    ├── Dependency and license provenance
+    └── Reproducible release / SBOM / ZIP hash
+```
+
+Это дерево — карта фактических импортов и контрактов, частично подтверждённая исходниками; это не утверждение, что каждый узел уже подключён к production flow. PR-доноры явно отмечены отдельно.
+
+### 12.3 Важные исходные контракты, подтверждённые чтением кода
+
+**MemoryOS2**
+- Реальный путь создания записи добавляет запись в `state.items`, обновляет индексы и при превышении 1 600 элементов удаляет последний элемент из resident-массива.
+- Retrieval формирует выборку кандидатов и возвращает не более 32 выбранных записей до последующей фильтрации/материализации.
+- В запросе есть temporal mode, valid-time и knowledge-time, защита от устаревших/квартинированных записей, bilingual intent routing и semantic/lexical ranking signals.
+- Bitemporal revision сохраняет прежнее состояние и различает время действия факта и время, когда система узнала о нём.
+- Это сильная база для temporal memory, но текущий 1 600-record cap — прямой блокер критерия 10k searchable memories в текущем виде.
+
+**MemoryResidencyGovernor**
+- Политика делит бюджет на hot/warm/cold, но её `targetItems` ограничен максимумом 1 600.
+- Комментарий говорит, что governor не удаляет canonical memory, однако сам MemoryOS2 resident array имеет отдельный hard cap и удаляет запись при encode. Нужно доказать, где физически сохраняется cold tier и как он повторно индексируется/поисково доступен. Пока нельзя трактовать три названия tiers как реализованное долговременное 10k-хранилище.
+
+**MemoryFabric**
+- Документирована и реализована единая mutation boundary: MemoryOS2 остаётся единственным writable store.
+- Команды encode/link/revise/update/evidence/forget получают fingerprint; повтор с тем же commandId и другим payload отклоняется.
+- Горячие receipts ограничены, а retired receipt Bloom tombstones заставляют неоднозначный повтор требовать reconciliation вместо повторного выполнения. Это fail-closed дизайн; нужно измерить false-positive/recovery behavior и проверить crash points.
+
+**ActionGateway**
+- Execution context связывает tool с decisionId, idempotency key и автономным контекстом.
+- Отличаются no-effect, partial, uncertain и verified outcomes; неопределённый сетевой результат не должен превращаться в ложный failure/no-op.
+- Undo plan подготавливается до исполнения; внешнее состояние должно быть reconciled, прежде чем outcome станет обучающим сигналом.
+- Следующий обязательный gate — интеграционная fault matrix, а не ещё один изолированный unit test.
+
+**StateMigrations**
+- Файл импортирует широкий набор canonical state owners и default-state factories. Это подтверждает, что миграции — центральный узел совместимости, поэтому каждый новый facet/ledger требует allowlist, schema-version, restore test и старый snapshot fixture.
+- Масштаб import list — риск сложности и частоты конфликтов, но не самостоятельное доказательство дефекта.
+
+### 12.4 Branch / PR convergence — проверенные решения
+
+| PR | Изменения / ветка | Состояние относительно source checkpoint 4a46… | Рекомендация |
+|---|---|---|---|
+| #1084 | Живая карта, docs-only, 1 файл | Base ровно 4a46…; Draft; mergeable=true | Оставить отдельным Draft до review |
+| #1083 | HMX export/staging, 6 файлов, +141/-4 | Base ровно 4a46…; Draft; mergeable=true | Лучший текущий integration candidate, но добавить route-level tests и UI flow |
+| #902 | Developmental Genome, 57 файлов в PR metadata, +11 009/-140 | Draft; mergeable=false; compare 43 ahead / 987 behind | Не сливать целиком; переносить только genome bridge после diff по актуальным owners |
+| #903 | Shared Future / World Forge, 29 файлов, +7 391/-13 | Draft; mergeable=false; compare 180 ahead / 993 behind | Сохранить как донор; проверить state migration и core changes отдельно |
+| #924 | P27 test-time plasticity, 12 файлов, +997/-35 | Draft; mergeable=false; compare 29 ahead / 993 behind | Наиболее узкий research candidate; сверить exact owner path и preserve session isolation |
+| #925 | Neural Prosthesis, 26 файлов, +4 993/-19 | Draft; mergeable=false; compare 75 ahead / 986 behind | Только offline/sidecar research; не подключать к primary inference без model/device evidence |
+| #926 | Neural JIT, 13 файлов, +1 966/-4 | Draft; mergeable=false; compare 44 ahead / 993 behind | Оставить shadow-only; primary inference и веса не менять |
+| #933 | OmeStro integration kernel, 11 файлов, +2 284/-1 | Draft; mergeable=false; compare 23 ahead / 991 behind | Использовать как карту идей/контрактов; не считать объединённой интеграцией |
+
+**Метод сравнения:** PR refs сопоставлены с контрольным source SHA 4a46…; ahead/behind относится к истории Git и не равно числу уникальных полезных изменений. У PR #902/#903/#924/#925/#926/#933 большая история расхождения; GitHub mergeable=false. Патчи просмотрены выборочно по файлам и ключевым участкам, не каждый изменённый символ.
+
+**Новый риск:** PR #902 содержит не только Developmental Genome, но также изменения workflow, package manifests, P25/Neuro-Plastic и других контуров. Его размер и пересекающиеся owners делают прямое объединение особенно опасным. PR #903 затрагивает OrganismCore, CognitiveRuntimeCluster, StateMigrations, FutureSimulator, WorldForge и shared-future ledgers — это широкое изменение нескольких критических владельцев сразу. Сохранять полезные тесты и отдельные функции, но портировать на свежих aspect branches.
+
+### 12.5 Матрица зависимостей и конфликтных швов
+
+| Шов | Источник истины | Главный риск | Что доказать |
+|---|---|---|---|
+| Runtime ↔ Core | OrganismRuntime / OrganismCore | Второй lifecycle или двойное обновление состояния | Один полный cycle trace и persisted snapshot |
+| Core ↔ Memory | MemoryFabric → MemoryOS2 | Прямые обходные записи, 1 600 cap, потеря cold tier | Все write paths + 10k searchable + restore/forget |
+| Core ↔ World | GroundedWorldState / WorldModel | Модельный вывод выдаётся за наблюдение | Provenance admission, conflict preservation, point-in-time restore |
+| Planner ↔ Action | ActionGateway | Исполнение без decision/approval/undo | Crash-before/after effect, timeout, replay, compensation |
+| Action ↔ Learning | OutcomeVerificationService / evidence ledger | Reward от ACK или self-report | Только exact decision-linked independent postcondition |
+| Learning ↔ Model | P23/P25/P27/P28 adapters | Research candidate попадает в live inference | Host attestation, exact model revision, immutable holdout, rollback |
+| Core ↔ Embodiment | EmbodimentRuntime / MotorFrame | Avatar показывает эмоцию/действие, не совпадающее с Core | State-to-expression-to-rendered-frame E2E |
+| HMX ↔ Memory | Hexis bridge → MemoryFabric | accept/stage вызывает canonical write до explicit apply | Stage non-mutation, explicit consent, idempotent apply, restart |
+| Engineering OS ↔ repo | Manifest / evidence ledger | Manifest считает connector подключённым без runtime integration | Contract test + exact-SHA receipt + runtime smoke |
+| Source ↔ Release ZIP | release manifest / artifact | ZIP отстаёт от source или содержит непроверенные лицензии | ZIP SHA, extraction, source parity, SBOM, human legal approval |
+
+### 12.6 Новый план следующих проходов
+
+**P0 — Истина и ограничители**
+1. Зафиксировать текущий source HEAD и отделить его от docs PR base/head.
+2. Достроить PR topology: branch tip SHA, merge base, duplicate tips, overlap по файлам, зависимые stacked PR.
+3. Проверить все current open PR страницы; 100 результатов последнего поиска — это лимит возвращённой выборки, не утверждение о полном количестве открытых PR.
+4. Проверить актуальность 75-aspect registry и его schema/evidence references.
+5. Скачать latest Release ZIP, независимо посчитать SHA-256, извлечь в отдельный read-only каталог, сравнить manifest/critical paths с source. Не публиковать новый ZIP до legal approval.
+
+**P0 — Memory 10k contract**
+1. Построить полный data lifecycle: encode → dedupe → index → residency → evict/archive → retrieve → revise → forget → restore.
+2. Найти и доказать storage backend cold tier; если его нет — зафиксировать архитектурный gap.
+3. Разделить capacity: canonical durable count, resident RAM count, indexed searchable count, vector-materialized count.
+4. Зафиксировать retrieval SLO по hot/warm/cold, RU/EN, temporal, identity, causal, contradiction и abstention queries.
+5. Добавить 10k/100k load, restart, corruption, migration, deletion/forget, latency/memory budget tests.
+
+**P0 — Один сквозной цикл**
+1. Проследить один наблюдаемый факт через Observation Intake → World State → Core appraisal → goal/plan → ActionGateway → external postcondition → reflection → MemoryFabric.
+2. Перезапустить процесс на каждом durable boundary и проверить, что система не повторяет side effect и не теряет причинную связь.
+3. Снять fault matrix: crash before write, after write/before receipt, timeout, partial provider effect, duplicate idempotency key, changed payload, compensation failure.
+
+**P1 — Safe agency / self / world**
+1. Верифицировать initiative scheduler: кто создал цель, почему она допустима, как учитывается cooldown, user consent и suppression.
+2. Проверить независимость observation provenance и derived/model output.
+3. Проверить identity continuity и forgetting across snapshots, migrations, HMX, exports и user corrections.
+
+**P1 — Model / voice / avatar**
+1. Подтвердить реальный локальный inference и точную модель/ревизию, не только loopback endpoint.
+2. Развести ASR provider, voice observer, TTS output и consent lifecycle.
+3. Пройти browser/Android E2E: Core state → affect → speech prosody → viseme/motion → rendered frame; измерить lip drift и interruption.
+
+**P0 — Release gate**
+1. Human license decision и provenance по всем lockfile/source archives.
+2. Clean build и tests на exact candidate SHA.
+3. SBOM, reproducible archive, SHA-256, clean-room boot, upgrade/rollback.
+4. Отдельно подписать IMPLEMENTED / CONNECTED / TESTED / DEVICE-VERIFIED / INDEPENDENTLY-PROVEN / RELEASED.
+
+### 12.7 Источники и ограничения этого прохода
+
+- Основная база — `workpass70-source`; исторический code checkpoint, указанный в живой карте, — `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`; docs checkpoint — `4a46e724686814dc69b00acaeca530399d9b0910`.
+- Проверены исходные фрагменты MemoryOS2, MemoryFabric, MemoryResidencyGovernor, ActionGateway, StateMigrations, OrganismRuntime; большой OrganismCore не удалось получить целиком через file-content response, поэтому Core import graph остаётся неполным.
+- Проверены PR metadata и выборочные patches #902, #903, #924, #925, #926, #933, #1083, #1084; PR #821 рассмотрен по описанию/архитектурной схеме.
+- 100 PR — только возвращённая поиском выборка. 1 072 branch refs — ранее завершённая полная пагинация branch search; SHA всех 1 072 tips и дубликаты пока не вычислены.
+- Никакие тесты, build, device soak, release ZIP extraction/hash или legal review в этом проходе не запускались.
+- Следующий процент увеличивать только после фактического изучения новых owner files, branch topology, test receipts и/или release artifact evidence.
