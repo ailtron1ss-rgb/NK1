@@ -169,8 +169,14 @@ localeProbeMemory.encode({
   validFromAt: now - 10000, provenanceClass: 'external', sourceAuthority01: .9, observedAt: now - 1000,
 });
 const localeProbeExamples = [
-  ...examples,
-  { id: 'locale-probe-istanbul', query: 'Istanbul', relevantIds: ['m-turkish-case'], split: 'holdout' },
+  ...examples.map(row => ({ ...row, independenceGroupId: row.independenceGroupId ?? row.id })),
+  {
+    id: 'locale-probe-istanbul',
+    query: 'Istanbul',
+    relevantIds: ['m-turkish-case'],
+    split: 'holdout',
+    independenceGroupId: 'locale-probe-istanbul',
+  },
 ];
 const localeProbeOptions = {
   ...options,
