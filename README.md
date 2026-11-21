@@ -29,6 +29,8 @@
 
 > Исторические checkpoint-и ниже — архивный контекст, не live truth. Перед каждым merge/release действием заново считывай source SHA, PR, exact-SHA Actions и Release metadata.
 
+---
+
 ## Актуальный инженерный checkpoint — 13 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
