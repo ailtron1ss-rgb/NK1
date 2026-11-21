@@ -18,6 +18,7 @@ import { ExternalObserverFabric } from '../system/ExternalObserverFabric.ts';
 import { P77RealityExperimentOS, defaultP77 } from '../system/P77RealityExperimentOS.ts';
 import { P82RealityProgressController, defaultP82 } from '../system/P82RealityProgressController.ts';
 import { createHash } from 'node:crypto';
+import { MechanismSerendipityRuntime } from '../research/MechanismSerendipityRuntime.ts';
 import { TheInventionLoop, type InventionProtocol, type InventionRecord, type InventionVerifierKeyResolver } from '../research/TheInventionLoop.ts';
 import { IntrinsicExperimentGenerator, type IntrinsicExperiment } from '../cognition/IntrinsicExperimentGenerator.ts';
 import { ScientificMethodEngine } from '../learning/ScientificMethodEngine.ts';
@@ -37,7 +38,7 @@ export interface IntrinsicInventionInput extends InventionEvaluationPlan {
 export interface CapturedInventionCandidate {
   id: string;
   experimentId: string;
-  source: 'intrinsic' | 'dream-association';
+  source: 'intrinsic' | 'dream-association' | 'mechanism-serendipity';
   question: string;
   hypothesis: string;
   prediction: string;
@@ -87,6 +88,8 @@ export class EvidenceResearchSubsystemRuntime {
   readonly longHorizonPrediction = new LongHorizonPredictionBenchmark();
   readonly p38Research = new P38AutonomousCausalResearchEngine();
   readonly p53DevelopmentalSelfModification = new P53DevelopmentalSelfModificationLab();
+  /** Read-only cross-domain mechanism discovery; candidates never execute here. */
+  readonly mechanismSerendipity = new MechanismSerendipityRuntime();
   readonly externalObserver = new ExternalObserverFabric();
   /** Stateful scientific proposal and prediction-learning owners. */
   readonly intrinsicExperimentGenerator = new IntrinsicExperimentGenerator();
@@ -116,14 +119,19 @@ export class EvidenceResearchSubsystemRuntime {
   }
 
   private capturedCandidateFingerprint(experiment: IntrinsicExperiment): string {
-    const source = experiment.source === 'dream-association' ? 'dream-association' : 'intrinsic';
+    const source = experiment.source === 'mechanism-serendipity' ? 'mechanism-serendipity' : experiment.source === 'dream-association' ? 'dream-association' : 'intrinsic';
     return createHash('sha256').update([
       source,
       experiment.question.normalize('NFKC').trim(),
       experiment.hypothesis.normalize('NFKC').trim(),
       experiment.linkedGoal ?? '',
       experiment.dreamId ?? '',
+      experiment.mechanismDiscoveryId ?? '',
+      experiment.mechanismSourceDomain ?? '',
+      experiment.mechanismTargetDomain ?? '',
+      experiment.mechanismFlowEvidenceClass ?? '',
       ...(experiment.sourceMemoryIds ?? []).slice().sort(),
+      ...(experiment.mechanismCorrespondences ?? []).slice().sort(),
     ].join('\u0000')).digest('hex');
   }
 
@@ -471,6 +479,7 @@ export class EvidenceResearchSubsystemRuntime {
       p38Research: this.p38Research.snapshot(),
       p53DevelopmentalSelfModification: this.p53DevelopmentalSelfModification.snapshot(),
       externalObserver: this.externalObserver.snapshot(),
+      mechanismSerendipity: this.mechanismSerendipity.snapshot(),
       scientificMethod: this.scientificMethod.snapshot(),
       scientificBrain: this.scientificBrain.snapshot(),
       capturedInventions: this.capturedInventionsSnapshot(),
@@ -491,6 +500,7 @@ export class EvidenceResearchSubsystemRuntime {
       modelOlympics:system?.modelOlympics, predictionDebt:system?.predictionDebt, shadowOrganism:system?.shadowOrganism,
       identityCausality:system?.identityCausality, longHorizonPrediction:system?.longHorizonPrediction,
       p38Research:learning?.p38, p53DevelopmentalSelfModification:advanced?.p53DevelopmentalSelfModification, externalObserver:system?.externalObserver,
+      mechanismSerendipity:system?.mechanismSerendipity,
       scientificMethod:system?.scientificMethod, scientificBrain:system?.scientificBrain,
       capturedInventions:system?.capturedInventions, inventionLoop:system?.inventionLoop,
     });
@@ -512,6 +522,7 @@ export class EvidenceResearchSubsystemRuntime {
     this.p38Research.restore((raw as any).p38Research);
     this.p53DevelopmentalSelfModification.restore((raw as any).p53DevelopmentalSelfModification);
     this.externalObserver.restore((raw as any).externalObserver);
+    this.mechanismSerendipity.restore((raw as any).mechanismSerendipity);
     this.scientificMethod.restore((raw as any).scientificMethod);
     this.scientificBrain.restore((raw as any).scientificBrain);
     const captured = (raw as any).capturedInventions;
