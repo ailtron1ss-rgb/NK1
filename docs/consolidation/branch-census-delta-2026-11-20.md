@@ -335,6 +335,6 @@ All three families are exact same-commit groups (not merely similar file content
 
 ### Cleanup / tool limitation
 
-- Exact duplicate refs: 18 excess aliases across three families. Four refs have active open-PR base dependencies; 14 other refs in the large family and the two smaller families still require historical PR/tag/workflow/docs/dependent-branch scans. The merged #1058 head is an additional exact-tree cleanup candidate.
+- Exact duplicate refs: 18 excess aliases across three families. Four open-PR base dependencies span three refs; 14 other refs in the large family and the two smaller families still require historical PR/tag/workflow/docs/dependent-branch scans. The merged #1058 head is an additional exact-tree cleanup candidate.
 - **Fully safe deletion candidates: 0** until those remaining references are cleared. The connected GitHub actions expose branch listing and ref updates but no branch-ref deletion operation; no branch was deleted or force-updated.
 - This run: **1 new real PR merge; 0 branch deletions; 0 Release ZIP changes.**
