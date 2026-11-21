@@ -680,3 +680,12 @@ This was a live inventory and selective donor review, **not a successful merge p
 2. Restore a semantic TypeScript compiler check in CI and resolve its real diagnostics rather than treating syntax stripping as a full typecheck.
 3. Supply an independently sourced RU/EN holdout with sufficient answerable and unanswerable independent groups; the current recall uplift remains zero and promotion remains blocked.
 4. Keep browser/Live2D playback, lip-sync p95, physical Android TTS, provider/device recovery, rollback and soak as unverified until measured on the target devices.
+
+
+### Census close-out for this documentation snapshot
+
+- Live REST branch pages: pages 1–10 = 100 each, page 11 = 61, page 12 = empty.
+- **1,061 branch refs / 1,043 unique HEADs / 18 excess names / 3 shared-HEAD groups**. The six refs added since the saved 1,055-row snapshot are the three parallel-session branches, the two integration/research branches created by this run, and this documentation branch.
+- The documentation branch head at the census moment was `9fd6a124e3ce9142e383b69a42a5859745d160e5`; the final JSONL snapshot commit advances that branch once. The source row records `workpass70-source` at `f977402e2717f78f1487271c9549ae57e3aa3482`; merging this documentation PR advances the source ref once after the census.
+- Full all-state PR REST pagination before opening this documentation PR: **1,053 records — 271 open, 454 merged, 328 closed unmerged**. After this report PR is merged: **1,054 records — 271 open, 455 merged, 328 closed unmerged**.
+- This run's final operation totals remain **3 PR merges** when the documentation report is included (#1064, #1065, and this report PR); **1 PR closed as superseded** (#1062); **0 branch deletions**.
