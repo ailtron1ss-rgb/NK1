@@ -1,0 +1,35 @@
+name: NK1 Kurisu v7 candidate GLB contract
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/scripts/verify-hosted-kurisu-v7-candidate.mjs"
+      - ".github/workflows/nk1-kurisu-v7-candidate-verification.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "app/scripts/verify-hosted-kurisu-v7-candidate.mjs"
+      - ".github/workflows/nk1-kurisu-v7-candidate-verification.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-kurisu-v7-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Verify hosted v7 candidate hash, rig, NLA clips and face morphs
+        run: node app/scripts/verify-hosted-kurisu-v7-candidate.mjs
