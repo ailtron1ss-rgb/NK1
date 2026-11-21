@@ -77,6 +77,33 @@ const stage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e1',sectio
 assert.equal(stage.status,'staged');
 assert.equal(fabric.decideHmx(stage.stagingId,'accept')?.status,'accepted');
 
+// Oversized sections must be omitted atomically, not retained as a truncated prefix.
+const oversizedMemories = Array.from({length:65}, (_, index) => ({id:'oversized-' + index}));
+const oversizedStage = fabric.stageHmx({
+  document:{hmx_version:'1.7',export_id:'e-oversized-65',sections:{memories:oversizedMemories}},
+  intent:'port',
+  strategy:'additive',
+});
+assert.equal(oversizedStage.sectionCounts.memories,65,'diagnostics retain the original section count');
+assert.ok(oversizedStage.conflicts.some(conflict => conflict.kind === 'size-limit'),
+  'oversized HMX sections must carry an explicit size conflict');
+assert.equal(oversizedStage.stagedSections.memories,undefined,
+  'an oversized section must not leave a truncated prefix available for application');
+assert.equal(fabric.decideHmx(oversizedStage.stagingId,'accept')?.status,'staged',
+  'a size-conflicted HMX stage must remain ineligible for acceptance');
+
+const malformedStage = fabric.stageHmx({
+  document:{hmx_version:'1.7',export_id:'e-malformed-row',sections:{memories:[{id:'valid-prefix'},null]}},
+  intent:'port',
+  strategy:'additive',
+});
+assert.equal(malformedStage.sectionCounts.memories,2);
+assert.ok(malformedStage.conflicts.some(conflict => conflict.kind === 'schema'),
+  'a malformed record must reject the whole HMX section');
+assert.equal(malformedStage.stagedSections.memories,undefined,
+  'malformed HMX arrays must not stage a valid-looking prefix');
+assert.equal(fabric.decideHmx(malformedStage.stagingId,'accept')?.status,'staged');
+
 const protectedStage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e2',sections:{identity:[{id:'self'}]}},intent:'telepathy',strategy:'analysis_only'});
 assert.equal(fabric.decideHmx(protectedStage.stagingId,'accept')?.status,'staged');
 

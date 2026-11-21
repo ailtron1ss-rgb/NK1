@@ -606,7 +606,31 @@ export class HexisAdaptationFabric {
         conflicts.push({ path: 'sections', kind: 'schema', detail: 'sections must be a non-empty object' }); const names = Object.keys(sections); const blocked = (input.intent === 'telepathy' || input.intent === 'analysis') ? names.filter((name) => protectedSections.has(name)) : []; if (blocked.length)
         conflicts.push({ path: 'sections', kind: 'protected-by-intent', detail: `protected sections require explicit replacement protocol: ${blocked.join(', ')}` }); const sectionCounts: Record<string, number> = {}; const stagedSections: Record<string, unknown> = {}; for (const [name, records] of Object.entries(sections)) {
         sectionCounts[name] = Array.isArray(records) ? records.length : 1;
-        stagedSections[name] = Array.isArray(records) ? structuredClone(records.slice(0, 64)) : structuredClone(records);
+        if (Array.isArray(records)) {
+            // Keep the source count for review diagnostics, but never expose a partial
+            // prefix of an oversized section to a later canonical apply.
+            if (records.length > 64) {
+                conflicts.push({
+                    path: `sections.${name}`,
+                    kind: 'size-limit',
+                    detail: 'section exceeds the 64-record staging limit; the entire section was omitted',
+                });
+                continue;
+            }
+            // HMX collection sections are arrays of records. A malformed member poisons
+            // the whole section so a valid-looking prefix cannot be accepted on its own.
+            if (records.some((record) => !isHexisPolicyRecord(record))) {
+                conflicts.push({
+                    path: `sections.${name}`,
+                    kind: 'schema',
+                    detail: 'each section entry must be an object; the entire section was omitted',
+                });
+                continue;
+            }
+            stagedSections[name] = structuredClone(records);
+            continue;
+        }
+        stagedSections[name] = structuredClone(records);
     } const base = { exportId: String(document.export_id ?? randomUUID()), intent: input.intent, strategy: input.strategy, sourceSubjectId: document.source_subject_id ? String(document.source_subject_id) : (isHexisPolicyRecord(document.source) && typeof document.source.instance_id === 'string' ? document.source.instance_id : undefined), sectionCounts, protectedSections: names.filter((name) => protectedSections.has(name)), conflicts, stagedSections }; const stage: HexisHmxStage = { ...base, stagingId: randomUUID(), status: 'staged', createdAt: nowMs(), digest: digest(base) }; this.state.hmxStages.push(stage); this.state.hmxStages = this.state.hmxStages.slice(-32); this.state.metrics.hmxStaged += 1; return structuredClone(stage); }
     decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length))
         return stage ? structuredClone(stage) : null; stage.status = decision === 'accept' ? 'accepted' : 'rejected'; if (decision === 'accept')
