@@ -40,6 +40,8 @@ on:
       - "tools/super-install.mjs"
       - "tools/super-doctor.mjs"
       - "tools/super-gateway.mjs"
+      - "tools/prototype-health-readiness-probe.mjs"
+      - "tools/prototype-health-readiness-probe.test.mjs"
       - ".github/workflows/prototype-startup-smoke.yml"
 
 permissions:
