@@ -1,3 +1,9 @@
+## [NK1][Memory] Require five paired bootstrap seeds for confirmatory review (2026-11-21)
+
+- Keep three-seed retrieval experiments available for exploratory sensitivity analysis, but block `candidate-eligible-for-independent-review` unless at least five distinct paired bootstrap seeds were evaluated.
+- Report the seed-count gate and other confirmatory gates explicitly; this does not change retrieval results, train a model, or permit automatic promotion.
+- Add regression coverage for both the three-seed rejection and five-seed gate passage using synthetic data that remains non-promotable.
+
 ## [NK1][Memory] Make retrieval benchmark tokenization locale-neutral (2026-11-21)
 
 - Replace host-locale-dependent lowercasing in BM25 document tokenization with deterministic Unicode `toLowerCase()`, matching query normalization.

@@ -54,6 +54,10 @@ const experiment = runMemoryOS2RetrievalExperiment(snapshot, examples, options);
 assert.equal(experiment.schemaVersion, 1);
 assert.equal(experiment.seedCount, 3);
 assert.equal(experiment.seeds.join(','), '13,29,53');
+assert.equal(experiment.evaluationThresholds.minimumPairedBootstrapSeeds, 5);
+assert.equal(experiment.promotion.gates.minimumPairedBootstrapSeeds, false,
+  'three exploratory bootstrap seeds must never qualify an experiment for confirmatory review');
+assert.equal(experiment.promotion.reason, 'insufficient-paired-bootstrap-seeds');
 assert.equal(experiment.corpusFingerprint.length, 64);
 assert.equal(experiment.retrievalConfigurationFingerprint.length, 64);
 assert.equal(experiment.datasetFingerprint.length, 64);
@@ -103,6 +107,18 @@ assert.equal(experiment.promotion.candidateAutomaticallyPromoted, false);
 assert.deepEqual(snapshot, before, 'experiment must not mutate supplied snapshot');
 assert.equal(experiment.runs.length, 3);
 assert.equal(new Set(experiment.runs.map(row => row.recallDelta01)).size, 1, 'retrieval point estimate should be seed invariant');
+const fiveSeedExperiment = runMemoryOS2RetrievalExperiment(snapshot, examples, {
+  ...options,
+  seeds: [11, 29, 47, 71, 101],
+});
+assert.equal(fiveSeedExperiment.seedCount, 5);
+assert.equal(fiveSeedExperiment.promotion.gates.minimumPairedBootstrapSeeds, true);
+assert.equal(fiveSeedExperiment.promotion.gates.positiveRecallConfidenceAcrossAllSeeds, false,
+  'five seeds cannot qualify when the lower recall confidence bound is not positive');
+assert.notEqual(fiveSeedExperiment.promotion.reason, 'insufficient-paired-bootstrap-seeds');
+assert.equal(fiveSeedExperiment.promotion.allowed, false,
+  'five bootstrap seeds alone cannot promote synthetic retrieval evidence');
+assert.equal(fiveSeedExperiment.promotion.candidateAutomaticallyPromoted, false);
 assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: [1, 1, 2] }), /at-least-3-distinct-bootstrap-seeds/);
 
 // Language-stratified regression: explicit labels must keep RU/EN quality separate.
