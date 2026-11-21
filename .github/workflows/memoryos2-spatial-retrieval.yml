@@ -4,22 +4,39 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemorySpatialIndex.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts"
+      - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
       - "runtime/neuro-kurisu/tests/memoryos2-spatial-retrieval-workpass.mjs"
+      - "runtime/neuro-kurisu/tests/neko-memoryos2-ranked-channel-preview.mjs"
+      - "runtime/neuro-kurisu/tests/neko-memory-holdout-shadow-evaluation.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs"
+      - "runtime/neuro-kurisu/tests/workpass83-retrieval-benchmark-truth.mjs"
+      - "integrations/neko-memory-shadow/**"
       - ".github/workflows/memoryos2-spatial-retrieval.yml"
   push:
     branches:
       - "aspect/memory-spatial-foundation-rebased-20261103"
+      - "aspect/neko-memory-shadow-rrf-20261104"
     paths:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemorySpatialIndex.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts"
+      - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
       - "runtime/neuro-kurisu/tests/memoryos2-spatial-retrieval-workpass.mjs"
+      - "runtime/neuro-kurisu/tests/neko-memoryos2-ranked-channel-preview.mjs"
+      - "runtime/neuro-kurisu/tests/neko-memory-holdout-shadow-evaluation.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs"
+      - "runtime/neuro-kurisu/tests/workpass83-retrieval-benchmark-truth.mjs"
+      - "integrations/neko-memory-shadow/**"
       - ".github/workflows/memoryos2-spatial-retrieval.yml"
 permissions:
   contents: read
 jobs:
   spatial-memory:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -32,6 +49,12 @@ jobs:
       - name: Run spatial-memory regressions
         run: node --experimental-strip-types tests/memoryos2-spatial-retrieval-workpass.mjs
         working-directory: runtime/neuro-kurisu
+      - name: Run real MemoryOS2 shadow-channel preview
+        run: node --experimental-strip-types tests/neko-memoryos2-ranked-channel-preview.mjs
+        working-directory: runtime/neuro-kurisu
+      - name: Run shadow RRF adapter tests
+        run: npm test
+        working-directory: integrations/neko-memory-shadow
       - name: Typecheck runtime
         run: npm run typecheck
         working-directory: runtime/neuro-kurisu
