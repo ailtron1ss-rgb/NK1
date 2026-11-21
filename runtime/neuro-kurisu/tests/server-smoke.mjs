@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir=await mkdtemp(path.join(tmpdir(),'nk-server-')); const port=32000 + Math.floor(Math.random()*3000);
-const env={...process.env,HOST:'127.0.0.1',PORT:String(port),STATE_DIR:dir};
+const env={...process.env,HOST:'127.0.0.1',PORT:String(port),STATE_DIR:dir,LLAMA_CPP_URL:'',GEMINI_API_KEY:'',KOBOLD_URL:''};
 const rawFetch=globalThis.fetch;
 const totalTimeoutCandidate = Number(process.env.NK_SERVER_SMOKE_TOTAL_TIMEOUT_MS);
 const totalTimeoutMs = Number.isFinite(totalTimeoutCandidate)
@@ -68,6 +68,9 @@ try {
     const exit = childExit ? `child-exit=${childExit.code ?? 'null'}/${childExit.signal ?? 'none'}` : 'child-still-running';
     throw new Error(`server did not become healthy within ${readiness.elapsedMs}ms after ${readiness.attempts} probes (${exit}; lastProbe=${readiness.lastError || 'none'}): ${output.slice(-500)}`);
   }
+  const startupHealthResponse=await fetch(`http://127.0.0.1:${port}/api/health`);
+  const startupHealth=await startupHealthResponse.json();
+  if(!startupHealthResponse.ok || startupHealth.language?.status!=='degraded' || startupHealth.language?.degraded!==true || startupHealth.language?.activeBackend!=='none' || startupHealth.language?.generated!==false) throw new Error(`health must expose an initially degraded optional language capability without claiming model inference: ${JSON.stringify(startupHealth.language)}`);
   const root=await (await fetch(`http://127.0.0.1:${port}/`)).text(); if(!root.includes('Neuro‑Kurisu') && root.includes('Unified Organism')) throw new Error('UI release marker mismatch');
   const memoryInspectorStartedAt=Date.now();
   const memoryInspectorResponse=await fetch(`http://127.0.0.1:${port}/api/organism/memory-inspector?q=workpass26-temporal-inspector&limit=0`);
@@ -107,6 +110,7 @@ try {
   const chatResponse=await fetch(`http://127.0.0.1:${port}/api/organism/chat`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'Reply briefly with a greeting for the server smoke test.'})});
   const chat=await chatResponse.json();
   if(!chatResponse.ok || chat.ok!==true || typeof chat.language?.text!=='string') throw new Error(`organism chat completion failed: HTTP ${chatResponse.status} ${chat.error ?? ''}`);
+  if(chat.language?.backend!=='deterministic-policy-fallback' || chat.language?.generated!==false || chat.language?.degraded!==true) throw new Error(`missing model provider must remain an explicit degraded fallback, not a generated model answer: ${JSON.stringify(chat.language)}`);
   const lite=await (await fetch(`http://127.0.0.1:${port}/api/organism/status-lite`)).json(); if(!lite.ok || !lite.voice?.state || !Object.prototype.hasOwnProperty.call(lite.voice,'plan')) throw new Error('status-lite voice surface missing');
   const will=await (await fetch(`http://127.0.0.1:${port}/api/organism/will`)).json(); if(!will.ok || will.integration?.schemaVersion!==1) throw new Error('will integration endpoint mismatch');
   const willEnvelopeUrl=`http://127.0.0.1:${port}/api/organism/will/envelope`;
