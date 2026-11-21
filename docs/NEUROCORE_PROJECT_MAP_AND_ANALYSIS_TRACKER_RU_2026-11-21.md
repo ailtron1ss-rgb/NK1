@@ -516,3 +516,237 @@ NeuroCore / NK1
 - PR #1084, exact documentation head `8dd658c0fdf78856c4cd66dedeb09b73b19f7f32`: на момент последнего опроса 3 PR-triggered runs — **2 SUCCESS, 1 IN_PROGRESS** (WorkPass79 cognitive runtime regression). Успешные: UserModel explicit-forget integrity и Aspect 02 original 2D asset contract.
 - Нельзя объявлять #1084 CI завершённым, пока WorkPass79 не перешёл в terminal conclusion. Этот workflow относится к тестам, запускаемым GitHub на docs PR, а не к новому runtime code change.
 - PR #1084 остаётся Draft, не merged; base `workpass70-source` @ `4a46e724686814dc69b00acaeca530399d9b0910`, 3 commits ahead / 0 behind, 1 docs file (+510 lines). Runtime source не менялся.
+
+
+---
+
+## 13. Углублённый проход №3 — 2026-11-21
+
+### 13.1 Контрольная оценка анализа
+
+**Покрытие анализа: 44%** (предыдущий срез: 42%; исторически 39%). Это экспертная оценка глубины изучения 20 потоков, не project readiness и не implementation completion.
+
+| Поток | Было | Сейчас | Новая доказательная работа |
+|---|---:|---:|---|
+| 00 Truth / provenance | 75 | 77 | Live README, merge SHA, exact-head Actions и сверка счётчиков |
+| 01 Branches / PR convergence | 75 | 78 | Полная пагинация: 1,073 refs / 12 страниц; PR search непригоден для точного open count |
+| 02 Release ZIP parity | 35 | 35 | ZIP не скачан/не хеширован |
+| 03 Toolchain / CI | 40 | 43 | Root/runtime package scripts и exact-head CI #1075/#1076/#1078/#1081/#1084 |
+| 04 Runtime / cycle | 55 | 58 | MechanismSerendipity через OrganismSystemFabric / EvidenceResearchSubsystemRuntime |
+| 05 Persistence / recovery | 30 | 30 | File-backed restart подтверждён в synthetic E2E; crash matrix открыта |
+| 06 MemoryOS2 / retrieval | 82 | 86 | RU/EN E2E, hard-cap, maintenance, restore и vector-index limits |
+| 07 Evaluation science | 55 | 60 | B261 matched baseline и граница synthetic vs independent evidence |
+| 08 Continual learning | 30 | 33 | Verify-only experiment → ScientificMethodEngine contract |
+| 09 World / perception | 25 | 30 | Declared-dependency provenance, confidence cap <=0.65 |
+| 10 Self / identity / affect | 20 | 20 | Новых owner-level данных недостаточно |
+| 11 Motivation / autonomy / actions | 65 | 65 | Новых soak-доказательств нет |
+| 12 LLM / model ecology | 30 | 30 | Реальный configured provider/device inference не проверен |
+| 13 Speech / audio | 20 | 20 | Без изменения |
+| 14 Avatar / embodiment | 20 | 20 | Без изменения |
+| 15 App / UI | 10 | 10 | Без изменения |
+| 16 Integrations / portability | 45 | 50 | 48 connector entries в manifest unverified/disabled |
+| 17 Security / privacy / governance | 50 | 55 | Fail-closed policy, explicit forget, evidence gates |
+| 18 Reliability / performance / device | 38 | 38 | Нет новых device/soak measurements |
+| 19 Research / legal / release | 40 | 40 | License/ZIP gates без изменений |
+| **Среднее** | **42.0%** | **43.9% → 44%** | Сумма глубин 878 / 20 |
+
+### 13.2 Веточная картина
+
+- Повторная полная пагинация search_branches: **1,073 branch refs / 12 pages / no remaining cursor**. В предыдущем snapshot было 1,072. Это число refs, а не уникальных реализаций.
+- Branch search API возвращает только имена, не tip SHAs. Уникальные HEADs, duplicate-tip groups и ancestry 1,073 веток в этом проходе не вычислены.
+- Последняя PR search выборка вернула 100 элементов, но в неё попали PR, отдельные get_pr_info которых подтверждают merged=true (#1075/#1076/#1078/#1081). Следовательно, search result set нельзя использовать как достоверный open-PR census.
+- Исторические 275 open PR нельзя считать текущим числом без корректной полной пагинации.
+- Новые полезные доноры: #900 Negative Space Memory, #904 Mechanism Serendipity donor, #920 Hyper-Plastic Network, #927 Substrate Independence, #929 Teacher-Student Distillation, #901 ChronoTruth (merged), #866 HMX canonical apply (Draft), #109 dependency contracts (Draft, но основан на старой nk1-all-branches-merge-2026-10-23, не на canonical source).
+
+### 13.3 75-aspect registry: исправление предыдущей ошибки
+
+Текущий engineering-os/aspects.v1.json: blob SHA 09c1ae368d070d873efe5925d792e42067f1443e, дата 2026-11-06, recorded source SHA bcd48b1fd408a1539ac537813730669c35cfb3a2. Счётчики: 61 IMPLEMENTED, 1 CONNECTED, 1 TESTED, 11 PLANNED, 1 BLOCKED.
+
+**Исправление:** прошлое утверждение, что reasoning и reliability не имеют evidence refs, было ошибочным. Реальное поле JSON называется evidence; у обоих оно заполнено. Reasoning описывает частичное contradiction detection wiring, а не универсальную дедукцию/индукцию/абдукцию. Reliability ссылается на PR #594/#607 exact-head evidence и ограничивает доказательство deterministic process-kill coverage.
+
+Открытые registry gates:
+- license-review (72) — BLOCKED, redistributionApproved=false.
+- autonomy-soak (65) — PLANNED, owner UNKNOWN.
+- device-e2e (66) — PLANNED, owner UNKNOWN.
+- independent-holdout (68) — PLANNED, immutable RU/EN holdout, >=5 paired seeds не закрыты, recallDelta=0.
+- 2.5D, speech, android имеют статус IMPLEMENTED, но notes указывают на незавершённые production art/IK, voice fallback validation и real-phone soak. IMPLEMENTED означает наличие основы/кода, не device-proven completion.
+
+### 13.4 Engineering OS manifest: catalog ≠ runtime integration
+
+engineering-os/manifest.v1.json blob SHA 79a8962a38a069db3f437922683e625f91c0974f.
+
+Политика manifest: default trust=untrusted; credentials только environment/secret manager; no automatic production writes; no self-approval; immutable holdouts; exact-SHA evidence; branch isolation; promotion requires independent verification.
+
+Все 48 connector entries имеют connectionStatus=unverified, runtimeIntegrated=false, enabled=false. Это fail-closed и должно оставаться честным. Наличие записи GitHub/Replit/Supabase/Firecrawl/Context7/TinyFish/Redis или установленного плагина не доказывает adapter integration в runtime NK1. Для включения нужны contract tests, security review, exact-SHA evidence и promotion.
+
+### 13.5 Memory lifecycle E2E — точная граница
+
+Файл runtime/neuro-kurisu/tests/prototype-0-1-bilingual-memory-e2e.mjs: blob SHA 932a18f3d37a3b6b849ec49f7a3a574701db6ef3.
+
+Проверяет:
+1. RU memory → EN query и EN memory → RU query.
+2. FileStateStore snapshot, reopen и restore в новый MemoryOS2.
+3. Сохранение sessionId, provenanceClass, independenceKey.
+4. Bitemporal correction с supersedesId/revisionGroupId.
+5. Повторный save/restore после correction и отсутствие superseded revision в current retrieval.
+6. Explicit forget, согласованность concept index.
+7. Повторный restart после forget и отсутствие resurrection.
+8. Grounded abstention на отсутствующем концепте.
+
+Ограничения:
+- embeddingProvider=null: тест проверяет lexical/hybrid cross-language path, не semantic embedding provider.
+- Synthetic fixture из двух специально подобранных записей.
+- Не нагрузочный тест 1,600/10,000/100,000 записей.
+- FileStateStore проверяется через временный JSON snapshot и новые instances, не через power-loss/SIGKILL на каждом write boundary, filesystem corruption или Android storage.
+- Не доказывает независимый RU/EN retrieval uplift.
+
+Статус: **TESTED — narrow synthetic E2E**, не INDEPENDENTLY-PROVEN.
+
+### 13.6 MemoryOS2: реальный hard-cap lifecycle
+
+Просмотр полного исходника подтвердил:
+- Encode добавляет запись в state.items; при length > 1600 удаляет последнюю запись, чистит индексы и dedup projections.
+- Restore принимает sourceItems.slice(0,1600); лишнее отражается в truncatedRows.
+- Maintenance hard cap ограничен максимумом 1,600; удаление выполняется через forgetById(..., 'capacity') и pressure eviction.
+- После maintenance список снова обрезается slice(0,1600).
+- Semantic embedding index также ограничен 1,600 и очищается по LRU; это не cold durable store.
+- Hybrid retrieval candidateSelectionLimit=192; это лимит candidate pool, отдельный от result top-k.
+- MemoryResidencyGovernor назначает hot/warm/cold labels и budget, но targetItems тоже capped at 1,600. Класс описывает residency policy, а не отдельную durable cold database.
+
+**Следствие:** текущий canonical MemoryOS2 не поддерживает 10,000 durable searchable memories. Нужен RFC по cold storage/partitioned index и migration strategy, а не увеличение одной константы. Нужно разделить capacity eviction и explicit forget: maintenance использует forgetById для capacity/pressure, что может уничтожать запись вместо её архивирования. Cold tiers должны сохранять user forget semantics, lineage и audit receipts.
+
+### 13.7 B261 holdout integrity
+
+PR #1075 exact head 8d7ffb3a8ee3ca03259be97e288c50f8c640d1b0: **10/10 completed SUCCESS** associated PR workflows.
+
+Исправлен серьёзный дефект: прежний holdoutBefore01=0.5 мог трактоваться как измеренный baseline и давать неподтверждённый положительный gain в transferGain01.
+
+Новый контракт:
+- frozen baseline snapshot до candidate training/adaptation;
+- один и тот же holdout сравнивается с baseline и candidate;
+- без baseline: baselineAvailable=false, delta01=null;
+- максимум 256 samples;
+- валидация dimensions, finite values, action, reward range, baseline version;
+- holdout evaluation не изменяет prediction counters/model weights;
+- invalid baseline отклоняется до candidate mutation.
+
+Это исправляет корректность измерений, но не доказывает uplift. Локальный тест использует 80 synthetic training steps и synthetic holdout; это regression contract, не independent multi-seed evaluation.
+
+### 13.8 Mechanism Serendipity — граница интеграции
+
+PR #1081 exact head aa56e0df9ef67eead23a4134ea0c8703bf29d021: **28/28 SUCCESS**.
+
+Путь:
+OrganismSystemFabric.systemGraph()
+→ MechanismProblemAdapter
+→ MechanismSerendipityEngine
+→ IntrinsicExperimentGenerator
+→ ScientificMethodEngine
+→ persisted research state.
+
+Физический subsystem graph содержит declared dependencies, не observed causal effects. Runtime test проверяет flowEvidenceClass='declared-dependency'; confidence topology-only input capped at 0.65. Discovery read-only; candidates verify-only. Protocol требует 5 paired seeds, baseline, independent holdout, одну variant, rollback и no auto-apply.
+
+Это интегрированный research intake, но не доказанные механизмы и не автоматические улучшения организма.
+
+### 13.9 Exact-head CI refresh
+
+| PR | Exact HEAD | Completed workflows | SUCCESS |
+|---|---|---:|---:|
+| #1075 | 8d7ffb3a8ee3ca03259be97e288c50f8c640d1b0 | 10 | 10 |
+| #1076 | d5832aa145b65be83cda3f481996626b8664715e | 16 | 16 |
+| #1078 | 0a26d98783b5e27a80deb62ab071cb0349ba7960 | 4 | 4 |
+| #1081 | aa56e0df9ef67eead23a4134ea0c8703bf29d021 | 28 | 28 |
+| #1084 | 26557bb4b3b971a13f4aa384bc9df09cf6470e5e | 3 | 3 |
+
+Это PR-head runs, не post-merge SHA validation. README содержит заниженные значения 9/9 для #1075 и 3/3 для #1078; direct exact-head query вернул 10/10 и 4/4. README в этом проходе не менялся.
+
+### 13.10 Дерево архитектуры и доказательств
+
+```text
+NeuroCore
+├── Runtime truth
+│   ├── OrganismRuntime / OrganismCore
+│   ├── OrganismSystemFabric
+│   ├── CognitiveCycle / CognitiveEventFabric
+│   └── PersistenceProjectionCoordinator / StateMigrations
+├── Cognition
+│   ├── Perception / observation provenance
+│   ├── Epistemic graph (partial contradiction reasoning)
+│   ├── Appraisal / attention / affect
+│   ├── Motivation / goal coupling
+│   ├── WorldModel / B261 matched baseline
+│   ├── PlanEngine / FutureSimulator
+│   └── ActionGateway / outcome verification
+├── Memory authority
+│   ├── MemoryOS2 (single canonical owner; 1,600 cap)
+│   ├── MemoryFabric (mutation commands + replay receipts)
+│   ├── Retrieval / lexical-hybrid / optional embeddings
+│   ├── Bitemporal revisions / provenance / explicit forget
+│   ├── Residency labels (not durable cold storage)
+│   └── Missing: scalable archive + 10k index + independent benchmark
+├── Learning / science
+│   ├── ContinualReplayBuffer
+│   ├── IntrinsicExperimentGenerator
+│   ├── MechanismSerendipity (read-only declared-dependency discovery)
+│   ├── ScientificMethodEngine (paired-holdout protocol)
+│   └── Missing: independent effect replication and safe promotion receipts
+├── Embodiment / interfaces
+│   ├── Local/cloud model providers
+│   ├── Voice / ASR / TTS
+│   ├── Live2D / depth-rig / VRM
+│   └── Missing: target-device audio, visual and latency proof
+└── Governance / delivery
+    ├── Engineering OS manifest (connectors unverified/disabled)
+    ├── Aspect registry (75 aspects; 6 Nov snapshot)
+    ├── CI exact-SHA receipts
+    ├── License review (BLOCKED)
+    └── Release ZIP parity (UNVERIFIED)
+```
+
+### 13.11 Обновлённые P0/P1
+
+**P0-A — Memory capacity and semantics**
+1. RFC: canonical durable store vs resident cache vs searchable index vs embedding cache.
+2. Разделить capacity eviction и explicit forget.
+3. Persistent cold tier, compaction, restore ordering, index rebuild, archive integrity.
+4. Проверить tombstone/forget propagation через tiers, HMX, snapshots, migrations.
+5. Нагрузки 1.6k/10k/100k, lexical/semantic, RU/EN, restart, corruption, forget, bitemporal correction.
+6. SLO p50/p95/p99, peak RSS, index memory, disk footprint, maintenance CPU на desktop и Android.
+
+**P0-B — Evidence and evaluation**
+1. Immutable independent RU/EN holdout, source-session clustered.
+2. Исключить пересечение source sessions между train/dev/holdout.
+3. >=5 paired seeds с frozen baseline.
+4. Одна variant per experiment; preregister metric/stopping rule.
+5. Confidence interval, negative results, ablations, no auto-apply.
+6. Exact data/seed/model/runtime version в evidence receipts.
+
+**P0-C — Branch convergence**
+1. Получить 1,073 branch tip SHAs через endpoint, который отдаёт SHA.
+2. Группировать identical tips, ancestry clusters, merge-base age, stacked PR relations.
+3. Сопоставить changed files всех open PR, исключить merged PR.
+4. Проверить #109: base — историческая mega-branch, не canonical source.
+5. Не удалять ветки до доказательства отсутствия уникальных commits/artifacts.
+
+**P1-A — Runtime connectors**
+1. Сохранить manifest fail-closed.
+2. Для каждого нужного connector выбрать один owner и adapter.
+3. Capability contract, auth boundary, timeout/retry, idempotency, audit/revoke.
+4. Enable only after exact-SHA contract/security evidence.
+
+**P1-B — Full cycle and device**
+1. Trace observation → world → appraisal → goal → plan → action → external verification → learning.
+2. Crash at every durable boundary.
+3. Real Android/Termux and desktop/browser E2E.
+4. 24-hour autonomy soak.
+5. Lip drift <=80 ms, interrupt <=200 ms, phone tick <=50 ms at 10k seeded ticks.
+
+### 13.12 Ограничения прохода
+
+- Runtime code не менялся; ветки не сливались и не удалялись.
+- Build/test suite/device soak вручную не запускались; CI факты выше получены из GitHub Actions exact-head runs.
+- Release ZIP не скачивался и не проверялся; legal review не выполнялся.
+- Unique tip SHA 1,073 веток не получены.
+- Полный open PR census не получен: search возвращает 100 элементов и смешивает состояния; его нельзя трактовать как число открытых PR.
+
+Следующий проход: получить все branch tip SHAs через подходящий GitHub refs/branches endpoint, затем оформить RFC 10k memory architecture и сквозной fault trace.
