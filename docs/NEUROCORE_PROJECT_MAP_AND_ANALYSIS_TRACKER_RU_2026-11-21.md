@@ -508,3 +508,11 @@ NeuroCore / NK1
 - 100 PR — только возвращённая поиском выборка. 1 072 branch refs — ранее завершённая полная пагинация branch search; SHA всех 1 072 tips и дубликаты пока не вычислены.
 - Никакие тесты, build, device soak, release ZIP extraction/hash или legal review в этом проходе не запускались.
 - Следующий процент увеличивать только после фактического изучения новых owner files, branch topology, test receipts и/или release artifact evidence.
+
+
+### 12.8 CI refresh после обновления карты — 2026-11-21
+
+- PR #1083, exact head `e8343114e3a369d38a487425b5a2fd9613fea257`: GitHub Actions association returned **31 completed / 31 SUCCESS** in the latest check. Это подтверждает CI на данном PR head, но не закрывает явно записанные route-level integration, UI file-selection/staging, exact production build/typecheck и human review gaps.
+- PR #1084, exact documentation head `8dd658c0fdf78856c4cd66dedeb09b73b19f7f32`: на момент последнего опроса 3 PR-triggered runs — **2 SUCCESS, 1 IN_PROGRESS** (WorkPass79 cognitive runtime regression). Успешные: UserModel explicit-forget integrity и Aspect 02 original 2D asset contract.
+- Нельзя объявлять #1084 CI завершённым, пока WorkPass79 не перешёл в terminal conclusion. Этот workflow относится к тестам, запускаемым GitHub на docs PR, а не к новому runtime code change.
+- PR #1084 остаётся Draft, не merged; base `workpass70-source` @ `4a46e724686814dc69b00acaeca530399d9b0910`, 3 commits ahead / 0 behind, 1 docs file (+510 lines). Runtime source не менялся.
