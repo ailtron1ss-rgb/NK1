@@ -6,6 +6,7 @@ import { buildUniversalInputInterpretation, formatUniversalInterpretationContext
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
+import { UndoFirstFileSystemAdapter } from '../persistence/UndoFirstFileSystemAdapter.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
@@ -276,6 +277,7 @@ export class OrganismRuntime {
     });
   }
   readonly core: OrganismCore;
+  private readonly undoFirstWorkspaceRoot: string | null;
   readonly environment = new WorldEnvironment();
   readonly plans: PlanEngine;
   readonly consolidation = new OfflineConsolidation();
@@ -395,7 +397,9 @@ export class OrganismRuntime {
     this.phonePolicy.checkpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.checkpointMaxDirtyCycles));
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
-    this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
+    const stateStore = config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile);
+    this.core = new OrganismCore(stateStore, { ...config, cycleResultMode:'operational' });
+    this.undoFirstWorkspaceRoot = stateStore instanceof FileStateStore ? stateStore.siblingPath('workspace') : null;
     const learningJournals = createDefaultLearningJournals(config.stateFile);
     this.core.configureP23LearningJournals(learningJournals);
     this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
@@ -516,6 +520,12 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      // Register through the Core public boundary so the tools share the canonical ActionGateway.
+      if (this.undoFirstWorkspaceRoot) {
+        new UndoFirstFileSystemAdapter(this.undoFirstWorkspaceRoot).register(
+          tool => this.core.registerActionTool(tool as any),
+        );
+      }
       const restoredTemporalTracks=this.temporalObjectTracker.restoreFromPerception(
         this.core.p41PerceptionSnapshot().entities,
         Date.now(),
