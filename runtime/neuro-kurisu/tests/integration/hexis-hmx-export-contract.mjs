@@ -7,8 +7,8 @@ const source = {
   sections: {
     identity: [{ content: 'Keep the Kurisu research identity label, but remove Contact privacy@example.invalid' }],
     memories: [{
-      content: 'Bearer nk1-fixture-bearer-token-0123456789; api_key=sk-test-0123456789abcdefghijklmnop',
-      notes: ['Database https://fixture-user:fixture-pass@example.invalid/db'],
+      content: 'Bearer nk1-fixture-bearer-token-0123456789; api_key=assignment-secret-value-0123456789',
+      notes: ['Database https://fixture-user:fixture-pass@example.invalid/db', 'Provider key sk-test-0123456789abcdefghijklmnop'],
     }],
     episodes: [{ summary: 'Private key -----BEGIN PRIVATE KEY-----fixture-material-----END PRIVATE KEY-----' }],
     clusters: [{ name: 'Call +1 (555) 123-4567' }],
