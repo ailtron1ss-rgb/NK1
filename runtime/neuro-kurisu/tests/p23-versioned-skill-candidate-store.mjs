@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { generateKeyPairSync, sign } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -64,6 +64,11 @@ assert.throws(() => store.stageCandidate(forgedProposal, 'memory-repair', { inst
 const c1 = store.stageCandidate(p1, 'memory-repair', { instruction: 'version one', schemaVersion: 1 });
 assert.equal(c1.version, 1);
 assert.equal(c1.status, 'staged');
+const legacyCandidateId = createHash('sha256').update(JSON.stringify([
+  c1.skillId, c1.version, c1.proposalId, c1.payloadFingerprint,
+])).digest('hex');
+assert.equal(c1.candidateId, legacyCandidateId,
+  'a candidate without revision provenance must retain the original four-field identity');
 assert.equal(store.stageCandidate(p1, 'memory-repair', { instruction: 'version one', schemaVersion: 1 }).candidateId, c1.candidateId,
   'repeating the same stage request is idempotent');
 assert.throws(() => store.stageCandidate(proposal('c', false), 'memory-repair', { instruction: 'bad' }), /accepted proposal/);
