@@ -1,0 +1,39 @@
+name: NK1 B261 matched world-model holdout integrity
+
+on:
+  push:
+    branches:
+      - workpass70-source
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - runtime/neuro-kurisu/src/organism/cognition/B261UnifiedWorldModel.ts
+      - runtime/neuro-kurisu/tests/big-pass-261-unified-world-model.mjs
+      - .github/workflows/nk1-b261-matched-holdout-integrity.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matched-holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Verify Node version pin
+        run: |
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) exit 1 ;; esac ;;
+          esac
+      - name: Run B261 matched baseline holdout and replay regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-261-unified-world-model.mjs
