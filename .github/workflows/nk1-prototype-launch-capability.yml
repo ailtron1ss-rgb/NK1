@@ -1,0 +1,40 @@
+name: NK1 prototype launch capability contract
+
+on:
+  push:
+    branches: [aspect/prototype-launch-health-20261121]
+    paths:
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/server-smoke.mjs"
+      - ".github/workflows/nk1-prototype-launch-capability.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/server-smoke.mjs"
+      - ".github/workflows/nk1-prototype-launch-capability.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-prototype-launch-capability-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  launch-capability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Verify startup health and explicit degraded-model behavior
+        run: npm --prefix runtime/neuro-kurisu run test:server-smoke
