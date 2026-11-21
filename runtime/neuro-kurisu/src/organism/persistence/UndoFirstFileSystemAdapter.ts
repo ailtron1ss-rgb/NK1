@@ -569,3 +569,12 @@ export class UndoFirstFileSystemAdapter {
     }
   }
 }
+
+
+/** Re-exportable bootstrap for file-backed runtime composition roots. */
+export function registerFileWorkspaceUndoFirstTools(
+  workspaceRoot: string,
+  registerTool: (tool: Parameters<ActionGateway['registerTool']>[0]) => void,
+): void {
+  new UndoFirstFileSystemAdapter(workspaceRoot).register(registerTool);
+}

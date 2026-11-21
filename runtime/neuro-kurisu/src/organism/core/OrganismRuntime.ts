@@ -5,8 +5,7 @@ import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
-import { FileStateStore } from '../persistence/FileStateStore.ts';
-import { UndoFirstFileSystemAdapter } from '../persistence/UndoFirstFileSystemAdapter.ts';
+import { FileStateStore, registerFileWorkspaceUndoFirstTools } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
@@ -522,7 +521,8 @@ export class OrganismRuntime {
       await this.core.init();
       // Register through the Core public boundary so the tools share the canonical ActionGateway.
       if (this.undoFirstWorkspaceRoot) {
-        new UndoFirstFileSystemAdapter(this.undoFirstWorkspaceRoot).register(
+        registerFileWorkspaceUndoFirstTools(
+          this.undoFirstWorkspaceRoot,
           tool => this.core.registerActionTool(tool as any),
         );
       }

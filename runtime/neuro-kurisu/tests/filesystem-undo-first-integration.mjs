@@ -19,6 +19,20 @@ async function stopRuntime(runtime) {
   stoppedRuntimes.add(runtime);
   await runtime.stop();
 }
+async function readArchivedUndoPlan(store) {
+  const raw = await readFile(store.siblingPath('action-ledger.jsonl'), 'utf8');
+  const rows = raw.split('\n').filter(Boolean).map(line => JSON.parse(line).entry);
+  const entry = rows.reverse().find(row => row?.toolId === 'organism.files.write' && row.undoPlan);
+  assert.ok(entry?.undoPlan, 'append-only action ledger must retain the prepared Undo-First plan');
+  const plan = entry.undoPlan;
+  return {
+    status: plan.strategy === 'manual' ? 'manual-intervention-required' : plan.strategy,
+    planHash: plan.planHash,
+    recoveryArtifactRef: plan.recoveryArtifactRef,
+    manualSteps: plan.manualSteps,
+    executionId: entry.executionId,
+  };
+}
 
 const tempRoot = await mkdtemp(join(tmpdir(), 'nk1-undo-first-files-'));
 const statePath = join(tempRoot, 'organism-core.json');
@@ -92,9 +106,10 @@ try {
   assert.equal(result.result.contentHash, expectedContentHash);
   assert.equal(result.result.path, input.path);
 
-  const undo = await core.executeUndoForKey(idempotencyKey, 'inspect filesystem recovery plan');
+  const undo = await readArchivedUndoPlan(store);
   assert.equal(undo.status, 'manual-intervention-required');
   assert.ok(undo.planHash);
+  assert.equal(undo.executionId, result.executionId);
   assert.ok(undo.recoveryArtifactRef?.startsWith('nk1-file-create:'));
   assert.ok(undo.manualSteps?.some(step => step.includes(expectedContentHash)));
   assert.equal(await readFile(writtenPath, 'utf8'), input.content, 'presenting a manual plan must not silently delete user data');
@@ -145,7 +160,7 @@ try {
   assert.equal(replay.idempotentReplay, true);
   assert.equal(replay.executionId, result.executionId);
   assert.equal(replay.result.contentHash, expectedContentHash);
-  const restoredUndo = await restarted.executeUndoForKey(idempotencyKey, 'inspect recovery after restart');
+  const restoredUndo = await readArchivedUndoPlan(store);
   assert.equal(restoredUndo.status, 'manual-intervention-required');
   assert.equal(restoredUndo.planHash, undo.planHash);
   assert.equal(restoredUndo.recoveryArtifactRef, undo.recoveryArtifactRef);

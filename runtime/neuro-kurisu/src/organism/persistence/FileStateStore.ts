@@ -255,3 +255,5 @@ export class FileStateStore<T> implements JsonStateStore<T> {
     };
   }
 }
+
+export { registerFileWorkspaceUndoFirstTools } from './UndoFirstFileSystemAdapter.ts';
