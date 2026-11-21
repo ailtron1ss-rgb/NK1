@@ -6,7 +6,7 @@
 
 **Architecture:** Reuse the canonical `runtime/neuro-kurisu` OrganismCore, cognitive-cycle, MemoryOS2/MemoryFabric, ActionGateway, and existing embodiment/audio adapters. Do not create parallel schedulers, memory stores, executors, or identity systems. Integrate through existing OrganismCore state and ActionGateway permission/idempotency/undo contracts; keep evaluation evidence separate from production memory and synthetic fixtures separate from independent holdout data.
 
-**Tech Stack:** Node.js >=22.12.0, npm >=10.8.0, TypeScript/ES modules, existing runtime test harnesses, GitHub Actions, existing app/renderer and voice adapters.
+**Tech Stack:** Node.js 24.x (pinned by `.nvmrc`), npm >=10.8.0, Python 3.11.x (pinned by `.python-version`), TypeScript/ES modules, existing runtime test harnesses, GitHub Actions, existing app/renderer and voice adapters.
 
 ## Global Constraints
 
@@ -26,17 +26,34 @@
 
 ## Repository Evidence and Current Baseline
 
-Observed on 2026-11-21:
+The plan was initially authored against source SHA `5ebec445ce729a4e372f273080138aa3cbeab778`. That is a historical planning baseline, not the current branch head.
 
-- Source branch HEAD: `5ebec445ce729a4e372f273080138aa3cbeab778`.
-- Repository default branch: `main`; root README states `workpass70-source` is the canonical source branch.
-- Root scripts include `npm run typecheck`, `npm run test:runtime:smoke`, `npm run test:integration`, `npm run audit:quick`, `npm run test:release-license-readiness`, and `npm run audit:release-license-readiness`.
-- Runtime package version: `35.90.0`; observed scripts include `npm run typecheck`, `npm run test:smoke`, `npm run test:cognitive-cycle-boundary`, `npm run test:cognitive-cycle-boundary-runtime-wiring`, `npm run test:autonomy`, `npm run test:restart`, `npm run test:memory-retrieval-benchmark`, `npm run test:neko-asr-transcript-adapter`, and `npm run test:neko-asr-embodiment-wiring`.
-- Existing checkpoint documentation records 9/9 exact-SHA Actions success on an earlier source SHA `f1cbaa9492ea297d67d8c7461642a75de92b677e`. Those checks must not be attributed to the newer HEAD without re-reading its check-runs.
-- Branch census recorded 1,053 refs / 1,035 unique HEADs / 3 duplicate-tip groups / 18 excess aliases and 275 open PRs at its recorded snapshot. Recount before making branch-retirement or merge decisions.
-- Latest stable Release metadata: tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. Archive bytes and source parity have not been independently verified.
-- License review is pending; root license is `NOASSERTION`, runtime is marked private/all-rights-reserved, and redistribution is not approved.
-- Recent open PR candidates include #1071 (Undo-First ActionGateway recovery), #1072 (Negative Space Memory), #1069 (five paired-seed confirmatory gate), #1068 (legacy skill-candidate identity compatibility), and #1067 (atomic HMX section staging). Their PR descriptions report passing exact-head checks, but each still needs live ancestry, current base/head, changed-file, and mergeability review before integration.
+### Live refresh — 2026-11-21 18:40 UTC
+
+- Canonical source branch: `workpass70-source` @ `a9141a085431de7a5bda3873f913ea4b4c1efab2`.
+- Repository default branch: `main`; runtime implementation continues to target `workpass70-source`, while `main` remains release/metadata-only.
+- Exact source-head Actions evidence: **13/13 check-runs SUCCESS** on `a9141a0...`, including clean install/build/start, NeuroCore core regression, unified organism runtime, memory explicit-forget, matched B261 holdout, ActionGateway governance, local-language resilience, Hexis lineage, module dependency audit, affect restore, browser affect and avatar motor coupling. This is the current CI snapshot, not device/soak evidence.
+- Quickstart contract requires Node.js **24.x**, npm **10.8.0+**, Python **3.11.x**, Git, registry access and free ports 8080, 8081, 3310 and 8765. `npm run quickstart` builds the UI, runs doctor and starts the runtime, research bridge, UI preview and gateway with health checks. Successful startup does not prove a real LLM, Android audio, licensed 3D avatar, device soak or release parity.
+- Branch census: **1,065 branch refs / 1,047 unique HEADs / 18 excess aliases across 3 duplicate-tip groups**. One group contains 17 branch names pointing at the same SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`; two other groups each contain two names. Preserve all refs/history; this is an inventory finding, not deletion authorization.
+- Open PR census: **272 open PRs: 206 Draft and 66 ready for review**. 247 had not been updated in the preceding seven days. The 66 ready PRs include many old, stacked or `main`-targeted changes; do not bulk-merge them.
+- Current source branch is not protected and has no required status checks enforced. The 13/13 green Actions result is observed evidence, not a branch-protection guarantee.
+- Prototype PR #1076 (`aspect/prototype-bilingual-memory-e2e-20261121`) has **16/16 exact-head Actions runs SUCCESS** for bilingual RU/EN retrieval, snapshot/restore, correction, explicit forget, abstention and regression checks. It remains Draft by its own explicit boundary; its branch is 3 commits ahead and 2 behind the current source from merge base `35e31d259f9141103e04ba109f782fa57fac3196`. It adds test/workflow/changelog coverage only and does not claim independent retrieval uplift.
+- PR #861's older B261 branch is not a safe duplicate merge candidate: its 2026-11-12 head had failing checks, while the matched-baseline implementation and passing B261 workflow are now present on the current source line.
+- Stable Release: tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- Latest published ZIP by timestamp is prerelease `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, metadata digest `sha256:9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Neither archive's bytes have been independently downloaded and hashed in this refresh; source/ZIP parity remains **UNVERIFIED**.
+- `contracts/RELEASE_LICENSE_REVIEW.json` remains pending: root license is `NOASSERTION`, runtime is private/all-rights-reserved, 477 locked npm components and source archives require human review, and redistribution approval is false.
+
+### Prototype workstream status at this refresh
+
+| Workstream | Current evidence | Remaining gate |
+|---|---|---|
+| Launch/runtime | Quickstart contract and clean startup smoke are present; source CI passes | Real configured LLM, full user-turn/restart acceptance and target-host soak |
+| Persistent bilingual memory | PR #1076 synthetic RU/EN lifecycle E2E passes 16/16 on its exact head | Integrate only after current-base review; independent immutable RU/EN holdout, five paired seeds and positive confidence-supported uplift |
+| Endogenous autonomy | ActionGateway, unified-organism and cognitive regression checks pass on source | 24-hour host telemetry, verified useful initiative rate, recovery/undo and false-positive analysis |
+| Speech/avatar | 2D/3D motor, affect coupling and browser snapshot checks pass in CI | Real browser/WebGL visual E2E, Android/Termux speech interruption, audio-viseme drift and device soak |
+| Release/legal | Release metadata and readiness contracts exist | Human license/asset decisions, independent ZIP hash/extraction manifest and exact-SHA source parity |
+
+The original five-task plan below remains the execution structure. Status labels must remain distinct: IMPLEMENTED, CONNECTED, TESTED, DEVICE-VERIFIED, INDEPENDENTLY-PROVEN and RELEASED. A green CI run must not be promoted into a device, independent-evaluation or release claim.
 
 ## Task 1: Establish a reproducible prototype launch and health contract
 
