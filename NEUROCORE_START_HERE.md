@@ -1,34 +1,34 @@
-# CURRENT HANDOFF — 2026-11-20
+# CURRENT HANDOFF — 2026-11-21
 
-**Canonical runtime/source baseline after PR #1031:** `workpass70-source` @ `950989fe0081e3760471d44beb6e95bb9e0bc82b` (before the documentation-only refresh in PR #1032).  
+**Canonical source baseline:** `workpass70-source` @ `f1cbaa9492ea297d67d8c7461642a75de92b677e`.  
 **main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).
 
 ## Exact-source evidence
 
-- External/observed PR #868 merge: `960a2d540ef952486a0271a0e5332caec601b36a`; bounded MeTTa concept serializer integrated, but no Hyperon worker is connected.
-- Exact source Actions: 11/11 SUCCESS on `960a2d540ef952486a0271a0e5332caec601b36a`.
-- Core [44743562538](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562538), Hexis lineage [44743562613](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562613), affect restore [44743561933](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743561933), ActionGateway [44743562053](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562053), UserModel forget [44743562348](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562348).
-- Last full census before PR #1031: 1,032 refs / 1,016 unique heads / 306 open PRs. PRs #1031 and #1032 add two known refs; #1031 is now merged, while #1032 is the current documentation change set. Derived known minimum after #1031: 1,034 refs / 1,018 unique heads / 307 open PRs. This is not a new full pagination. See [delta](docs/consolidation/branch-census-delta-2026-11-20.md).
-- PR [#1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) is merged into `workpass70-source` as `950989fe0081e3760471d44beb6e95bb9e0bc82b` (squash). Its head `46d4179171ae16a2b9fb2876efc7db0a815eef03` passed 8/8 exact-head Actions, including [focused MeTTa/restore workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44747501282), C1-control sanitization and locale-independent fact ordering. PR #1032 refreshes the documentation checkpoint against this runtime baseline; its prior head `dcdac4cebfedd451f89406ba0eec3357cb58179f` passed 5/5 Actions before this refresh.
-- `workpass70-source` remains unprotected. PR #1031 was merged; no branch was deleted or force-updated. This merge did not update `main` or the published Release ZIP.
+- Source HEAD commit time: 2026-11-21T07:53:04Z; parent `8d98f271e1374376cc81a9ba0c6e77c014f13ca8`.
+- Exact source Actions: **9/9 SUCCESS** on `f1cbaa9492ea297d67d8c7461642a75de92b677e`; see [daily report](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md) for all nine run links.
+- Full branch census: 1,053 refs / 1,035 unique heads / 3 duplicate-tip groups / 18 excess aliases. Open PR count: 275.
+- [PR #1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059) is Draft, based on the live source SHA. It carries a benchmark-only locale-neutral BM25 tokenization fix and Turkish-I regression. First exact-head Actions: 16/17 SUCCESS; the memory-integrity failure was a fixture contract issue (missing explicit `independenceGroupId` with query evidence enabled), corrected in commit `396e1241226820a0dcd64ea92dbaaf33eaba024f`. Code/test head `67460ab86ca25179b2d4125cc7dbe1d692b60f80` then passed **18/18 exact-head Actions SUCCESS**. The synthetic benchmark remains not-promoted (recallDelta=0); recheck the current PR head after this documentation-only update.
+- PR #903 remains open/Draft; stacked children #916/#928/#947 are merged only into parent branches. Compare live source to #903: 180 ahead / 893 behind; do not rebase, merge or rewrite without a deliberate source-based salvage pass.
+- No PR was merged by this cycle. No branch was deleted or force-pushed.
 
 ## Release truth
 
 - Stable ZIP metadata SHA-256: `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 - Latest prerelease ZIP metadata SHA-256: `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- ZIP bytes not materialized; independent hash/extraction/source parity UNVERIFIED.
-- License review pending; redistribution approval false. Do not publish.
-- Aspect registry is a 2026-11-06 snapshot, not current readiness.
+- ZIP bytes were not materialized; independent hash, extraction manifest and source parity remain UNVERIFIED.
+- Human license review remains pending; redistribution approval is false.
+- The 75-aspect registry is a 2026-11-06 snapshot, not current readiness evidence.
 
-## Next P0
+## Next P0 / P1
 
-1. Reconcile remaining stacked PRs in dependency order; start with the #903 → #916 → #928 → #947 chain, comparing each child against the live source before promotion.
-2. Obtain the October 19 ZIP bytes through a supported artifact path; byte-level hash/extraction remains blocked until the asset is materialized.
-3. Continue non-source-base PR dependency and duplicate-tip reference audit; preserve refs until PR/tag/workflow/ruleset/deployment references are resolved.
-4. Run independent RU/EN holdout with five paired seeds.
-5. Run browser/WebGL and Android/Termux soak; obtain human license review.
+1. Re-read PR #1059 current head and exact-SHA Actions; fix only any reproduced failure and keep Draft.
+2. Continue #903 source-based salvage analysis without rewriting branch history.
+3. Materialize the October 19 ZIP through a supported path; independently hash/extract and compare to source.
+4. Run immutable RU/EN holdout with at least five paired seeds.
+5. Complete browser/WebGL and Android/Termux soak; obtain human license review.
 
-**Current cycle report:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-20.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-20.md).
+**Current cycle report:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md).
 
 ---
 

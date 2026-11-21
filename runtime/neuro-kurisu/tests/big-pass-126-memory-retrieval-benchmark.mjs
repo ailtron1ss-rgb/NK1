@@ -158,4 +158,56 @@ const insufficient = runMemoryOS2RetrievalBenchmark(before, insufficientExamples
 });
 assert.equal(insufficient.promotion.allowed, false);
 assert.equal(insufficient.promotion.reason, 'insufficient-labelled-holdout-or-corpus');
+// BM25 document tokenization must match the locale-neutral query normalization path.
+const localeProbeMemory = new MemoryOS2();
+localeProbeMemory.restore(structuredClone(before));
+localeProbeMemory.encode({
+  id: 'm-turkish-case', content: 'Istanbul', kind: 'semantic', source: 'benchmark-fixture', tags: ['memory-benchmark'],
+  context: { fixture: 'locale-probe' }, salience: .6, emotionalWeight: .2, identityRelevance: .2,
+  goalRelevance: .2, socialRelevance: .1, predictionError: .1, confidence: .9, epistemicStatus: 'fact',
+  entities: [], semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+  validFromAt: now - 10000, provenanceClass: 'external', sourceAuthority01: .9, observedAt: now - 1000,
+});
+const localeProbeExamples = [
+  ...examples.map(row => ({ ...row, independenceGroupId: row.independenceGroupId ?? row.id })),
+  {
+    id: 'locale-probe-istanbul',
+    query: 'Istanbul',
+    relevantIds: ['m-turkish-case'],
+    split: 'holdout',
+    independenceGroupId: 'locale-probe-istanbul',
+  },
+];
+const localeProbeOptions = {
+  ...options,
+  includeQueryEvidence: true,
+  evidenceHashSalt: 'a'.repeat(64),
+  datasetProvenance: {
+    ...options.datasetProvenance,
+    contentSha256: fingerprintMemoryRetrievalDataset(localeProbeExamples),
+  },
+};
+const localeProbeSnapshot = localeProbeMemory.snapshot();
+const localeNeutralReport = runMemoryOS2RetrievalBenchmark(localeProbeSnapshot, localeProbeExamples, localeProbeOptions);
+const localeMethodDescriptor = Object.getOwnPropertyDescriptor(String.prototype, 'toLocaleLowerCase');
+assert.ok(localeMethodDescriptor, 'runtime must expose the standard String locale method for the adversarial simulation');
+let turkishLocaleReport;
+try {
+  Object.defineProperty(String.prototype, 'toLocaleLowerCase', {
+    configurable: true,
+    writable: true,
+    value: function () {
+      return String(this).replace(/I/g, 'ı').replace(/İ/g, 'i').toLowerCase();
+    },
+  });
+  turkishLocaleReport = runMemoryOS2RetrievalBenchmark(localeProbeSnapshot, localeProbeExamples, localeProbeOptions);
+} finally {
+  Object.defineProperty(String.prototype, 'toLocaleLowerCase', localeMethodDescriptor);
+}
+assert.deepEqual(
+  turkishLocaleReport.queryEvidence.holdout,
+  localeNeutralReport.queryEvidence.holdout,
+  'BM25 evidence must remain identical when the host locale applies Turkish I casing',
+);
+
 console.log('BIG_PASS_126_MEMORY_RETRIEVAL_BENCHMARK=PASS', JSON.stringify({ corpus: report.corpusSize, train: report.trainQueries, holdout: report.holdoutQueries, recallDelta: report.deltas.recallAtK01, ci: report.confidence.recallAtK01, promotion: report.promotion.status, reason: report.promotion.reason, injectedExactLeakageProbeCount: leakReport.datasetIntegrity.crossSplitQueryLeakageCount, injectedNearDuplicateLeakageProbeCount: nearDuplicateLeakReport.datasetIntegrity.nearDuplicateCrossSplitPairCount }));
