@@ -1,25 +1,24 @@
-## Актуальный live checkpoint — 20 ноября 2026
+## Актуальный live checkpoint — 21 ноября 2026
 
-**Каноническая исходная ветка:** `workpass70-source`  
-**Проверенная runtime/source база после PR #1031:** `950989fe0081e3760471d44beb6e95bb9e0bc82b` (до этого документационного обновления).  
+**Каноническая исходная ветка:** `workpass70-source` @ `f1cbaa9492ea297d67d8c7461642a75de92b677e`.  
 **Текущий `main`:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; release/metadata only.
 
 ### Live source и проверки
 
-- PR [#868](https://github.com/ailtron1ss-rgb/NK1/pull/868) был объединён внешним действием в source на `960a2d540ef952486a0271a0e5332caec601b36a`: bounded MeTTa concept export. Это external/observed; Hyperon worker и исполнение MeTTa не подключены.
-- В этом цикле PR [#1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) объединён в `workpass70-source` squash-коммитом `950989fe0081e3760471d44beb6e95bb9e0bc82b`: hostile-state restore hardening, prototype-safe concept keys, bounded restore и locale-neutral MeTTa serialization. Все 8/8 exact-head Actions прошли на исходном PR HEAD `46d4179171ae16a2b9fb2876efc7db0a815eef03`.
-- На точном source SHA все **11/11 push-triggered Actions SUCCESS**. Основные: [core](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562538), [Hexis lineage](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562613), [affect restore](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743561933), [ActionGateway](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562053), [UserModel forget](https://github.com/ailtron1ss-rgb/NK1/actions/runs/44743562348).
-- Последняя полная пагинация до PR #1031: 1,032 refs / 1,016 unique HEADs / 1 duplicate-tip group / 16 aliases; 306 open PRs (155 source-base, 151 other-base). После добавления refs #1031 и #1032 и merge #1031 известный минимум составляет 1,034 refs / 1,018 unique HEADs / 307 open PRs; это derived delta, не новая полная пагинация. См. [census delta](docs/consolidation/branch-census-delta-2026-11-20.md).
-- [PR #1031](https://github.com/ailtron1ss-rgb/NK1/pull/1031) — MERGED; 8/8 exact-head Actions SUCCESS on `46d4179171ae16a2b9fb2876efc7db0a815eef03`. No Release ZIP change.
-- `workpass70-source` не защищена; required checks не enforced. Aspect registry 6 ноября — исторический snapshot, не текущая readiness оценка.
+- На точном source SHA `f1cbaa9492ea297d67d8c7461642a75de92b677e` завершились **9/9 Actions SUCCESS**: targeted/regression, local-language resilience, explicit-forget, source-lineage, original-avatar motor, affect restore, avatar cognitive-affect, import graph/layer boundaries и browser-affect. [Полный отчёт цикла](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md).
+- Source HEAD commit `f1cbaa9492ea297d67d8c7461642a75de92b677e` датирован 2026-11-21T07:53:04Z; parent `8d98f271e1374376cc81a9ba0c6e77c014f13ca8`.
+- Draft [PR #1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059) предлагает отдельную locale-neutral нормализацию BM25 benchmark; branch `fix/memory-benchmark-locale-neutral-20261121`. Он не merged и не released. Первая exact-head CI волна была 16/17: новая regression выявила недостающий `independenceGroupId` в fixture; исправление сохранено в commit `396e1241226820a0dcd64ea92dbaaf33eaba024f`, финальная проверка требует обновлённого live PR head.
+- Полная пагинация: 1,053 branch refs / 1,035 unique HEADs / 3 duplicate-tip groups / 18 excess aliases; 275 open PRs. Ветки и история сохранены.
+- PR #903 остаётся Draft/open и diverged от live source (180 ahead / 893 behind); #916/#928/#947 merged только в вложенные parent branches. Никакого автоматического rebase/merge не выполнялось.
+- Source ветка не защищена; required checks не enforced. Machine aspect registry 6 ноября остаётся историческим snapshot, не текущей readiness оценкой.
 
 ### Release и юридический gate
 
 - Stable ZIP: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 - Последний опубликованный ZIP с prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, metadata SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- ZIP bytes не материализованы; independent hash, extraction manifest и source/ZIP parity не подтверждены. Ноябрьские source changes не считаются released.
+- ZIP bytes не материализованы; независимый hash, extraction manifest и source/ZIP parity **UNVERIFIED**. Ноябрьские source changes не считаются released.
 - `contracts/RELEASE_LICENSE_REVIEW.json` pending: root `NOASSERTION`, runtime private/all-rights-reserved, 477 locked npm components и 8 source archives требуют human review; redistribution approval=false.
-- [Daily engineering cycle 20 Nov](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-20.md); [20 streams / 305 work units](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md).
+- [Daily engineering cycle 21 Nov](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md); [20 streams / 305 work units](docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md).
 
 > Исторические checkpoint-и ниже не являются live truth. Перед каждым действием заново считывай source SHA, PR, exact-SHA Actions и Release metadata.
 
