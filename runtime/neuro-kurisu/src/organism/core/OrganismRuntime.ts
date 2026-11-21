@@ -45,7 +45,7 @@ import { RealityLearningGate } from '../system/RealityLearningGate.ts';
 import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
 import { ExternalPostconditionVerifier } from '../system/ExternalPostconditionVerifier.ts';
 import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor.ts';
-import type { ActionGatewayExecutionOptions, ToolDefinition, ToolExecution } from '../system/ActionGateway.ts';
+import type { ActionGatewayExecutionOptions, ToolDefinition, ToolExecution, ActionUndoExecutionResult } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine, ValidationOnlyCandidateEvaluationConfig, ValidationOnlyCandidateEvaluator, P23PopulationSearchBudget, P23PopulationCandidateGenerator } from '../learning/P23LearningEngine.ts';
@@ -277,6 +277,17 @@ export class OrganismRuntime {
   }
   readonly core: OrganismCore;
   private readonly undoFirstWorkspaceRoot: string | null;
+  /** Public runtime facade for the canonical ActionGateway's durable undo/recovery operation. */
+  executeUndoForKey(idempotencyKey: string, reason: string): Promise<ActionUndoExecutionResult> {
+    const internals = this.core as unknown as {
+      cognitiveRuntime: {
+        actionGateway: {
+          executeUndoForKey: (key: string, explanation: string) => Promise<ActionUndoExecutionResult>;
+        };
+      };
+    };
+    return internals.cognitiveRuntime.actionGateway.executeUndoForKey(idempotencyKey, reason);
+  }
   readonly environment = new WorldEnvironment();
   readonly plans: PlanEngine;
   readonly consolidation = new OfflineConsolidation();
