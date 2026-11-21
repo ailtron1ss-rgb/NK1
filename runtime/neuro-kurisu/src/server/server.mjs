@@ -1378,8 +1378,12 @@ async function route(req, res) {
             }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/hmx/export') {
+            const intent = String(url.searchParams.get('intent') || 'port');
+            if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(intent)) {
+                return json(res, 400, { ok: false, error: 'hmx-export-intent-invalid' });
+            }
             try {
-                const document = runtime.core.hexisExportHmx();
+                const document = runtime.core.hexisExportHmx(intent);
                 return json(res, 200, { ok: true, document });
             }
             catch (error) {
