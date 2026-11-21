@@ -1,3 +1,9 @@
+## [NK1][Memory] Require five paired bootstrap seeds for confirmatory review (2026-11-21)
+
+- Keep three-seed retrieval experiments available for exploratory sensitivity analysis, but block `candidate-eligible-for-independent-review` unless at least five distinct paired bootstrap seeds were evaluated.
+- Report the seed-count gate and other confirmatory gates explicitly; this does not change retrieval results, train a model, or permit automatic promotion.
+- Add regression coverage for both the three-seed rejection and five-seed gate passage using synthetic data that remains non-promotable.
+
 ## [NK1][P30] Elastic Neural Plasticity — canonical CI closure (2026-11-20)
 
 - Record the already-integrated opt-in sparse P26 policy update path: explicit parameter allowlists, protected coordinates, bounded L2/update budget, retention preflight, P29 arbitration and one-shot stale-checked rollback.
