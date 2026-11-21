@@ -12,6 +12,10 @@ export interface MemoryRetrievalExperimentOptions extends MemoryRetrievalBenchma
 }
 
 const DEFAULT_SEEDS = [11, 29, 47, 71, 101];
+// Three seeds are enough for exploratory interval-sensitivity runs, but confirmatory
+// eligibility requires at least five paired bootstrap resamples. These are not
+// training seeds: retrieval itself remains deterministic and no model is trained here.
+const MIN_CONFIRMATORY_PAIRED_BOOTSTRAP_SEEDS = 5;
 const boundedSeed = (value: unknown): number | null => {
   const number = Number(value);
   return Number.isSafeInteger(number) && number > 0 && number <= 0xffffffff ? number : null;
@@ -98,7 +102,8 @@ export function runMemoryOS2RetrievalExperiment(
   const allMrrIntervalsNonInferior = mrrIntervals.every(interval => interval.lowerBound01 >= -maximumMrrRegression);
   const allSingleRunsEligible = runs.every(run => run.promotion.allowed);
   const provenanceConsistent = runs.every(run => run.datasetFingerprint === runs[0]?.datasetFingerprint && run.corpusFingerprint === runs[0]?.corpusFingerprint && run.retrievalConfigurationFingerprint === runs[0]?.retrievalConfigurationFingerprint);
-  const independentReviewEligible = metricsDeterministic && provenanceConsistent && allSingleRunsEligible && allRecallIntervalsSupportPracticalUplift && allMrrIntervalsNonInferior;
+  const minimumPairedBootstrapSeedsMet = seeds.length >= MIN_CONFIRMATORY_PAIRED_BOOTSTRAP_SEEDS;
+  const independentReviewEligible = minimumPairedBootstrapSeedsMet && metricsDeterministic && provenanceConsistent && allSingleRunsEligible && allRecallIntervalsPositive && allRecallIntervalsSupportPracticalUplift && allMrrIntervalsNonInferior;
 
   const min = (values: number[]) => Number(Math.min(...values).toFixed(4));
   const max = (values: number[]) => Number(Math.max(...values).toFixed(4));
@@ -141,6 +146,7 @@ export function runMemoryOS2RetrievalExperiment(
     datasetProvenance: runs[0]?.datasetProvenance ?? null,
     evaluationThresholds: {
       k: runs[0]?.k ?? 5,
+      minimumPairedBootstrapSeeds: MIN_CONFIRMATORY_PAIRED_BOOTSTRAP_SEEDS,
       minimumHoldoutQueries: runs[0]?.promotion.minimumHoldoutQueries ?? 8,
       minimumUnanswerableHoldoutQueries: runs[0]?.promotion.minimumUnanswerableHoldoutQueries ?? 4,
       minimumTrainQueriesPerLanguage: runs[0]?.promotion.minimumLanguageTrainQueries ?? 2,
@@ -171,7 +177,16 @@ export function runMemoryOS2RetrievalExperiment(
     promotion: {
       allowed: false,
       status: independentReviewEligible ? 'candidate-eligible-for-independent-review' : 'not-promoted',
-      reason: !metricsDeterministic ? 'retrieval-metrics-not-deterministic' : !provenanceConsistent ? 'fingerprint-instability' : !allRecallIntervalsPositive ? 'recall-uplift-not-confidence-supported-across-seeds' : !allRecallIntervalsSupportPracticalUplift ? 'practical-recall-uplift-not-supported-across-seeds' : !allMrrIntervalsNonInferior ? 'mrr-regression-not-confidence-bounded-across-seeds' : !allSingleRunsEligible ? 'one-or-more-seed-runs-failed-existing-gates' : 'all-experiment-gates-passed-independent-review-still-required',
+      reason: !minimumPairedBootstrapSeedsMet ? 'insufficient-paired-bootstrap-seeds' : !metricsDeterministic ? 'retrieval-metrics-not-deterministic' : !provenanceConsistent ? 'fingerprint-instability' : !allRecallIntervalsPositive ? 'recall-uplift-not-confidence-supported-across-seeds' : !allRecallIntervalsSupportPracticalUplift ? 'practical-recall-uplift-not-supported-across-seeds' : !allMrrIntervalsNonInferior ? 'mrr-regression-not-confidence-bounded-across-seeds' : !allSingleRunsEligible ? 'one-or-more-seed-runs-failed-existing-gates' : 'all-experiment-gates-passed-independent-review-still-required',
+      gates: {
+        minimumPairedBootstrapSeeds: minimumPairedBootstrapSeedsMet,
+        deterministicRetrievalMetrics: metricsDeterministic,
+        stableDatasetCorpusAndConfigurationProvenance: provenanceConsistent,
+        everySingleSeedRunPassedExistingGates: allSingleRunsEligible,
+        positiveRecallConfidenceAcrossAllSeeds: allRecallIntervalsPositive,
+        practicalRecallUpliftAcrossAllSeeds: allRecallIntervalsSupportPracticalUplift,
+        mrrNonInferiorityAcrossAllSeeds: allMrrIntervalsNonInferior,
+      },
       requiresIndependentHumanOrCIReview: true,
       liveStateChanged: false,
       candidateAutomaticallyPromoted: false,
