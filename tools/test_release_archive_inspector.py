@@ -33,6 +33,7 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         result = audit_release_archive(self.archive, self.source, expected_sha256=archive_hash, expected_size=self.archive.stat().st_size)
         self.assertTrue(result["ok"], result["errors"])
         self.assertTrue(result["archive"]["digestMatches"])
+        self.assertTrue(result["archive"]["sizeMatches"])
         self.assertEqual(result["archive"]["fileCount"], 2)
         self.assertEqual(result["archive"]["archivePrefixApplied"], "Neuro_Kurisu/")
         self.assertEqual(result["comparison"]["identicalFileCount"], 2)
