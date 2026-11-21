@@ -16,6 +16,7 @@ import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAda
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
+import { UndoFirstFileSystemAdapter } from '../persistence/UndoFirstFileSystemAdapter.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
 import { WorldModel, type PredictedOutcome, type InternalWorldState, type WorldModelSnapshot } from '../world/WorldModel.ts';
 import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../persistence/StateMigrations.ts';
@@ -1278,6 +1279,10 @@ export class OrganismCore {
         if (store instanceof FileStateStore) {
             this.actionExecutionLedgerArchive = new FileActionExecutionLedgerArchive(store.siblingPath('action-ledger.jsonl'));
             this.cognitiveRuntime.actionGateway.setExecutionLedgerArchive(this.actionExecutionLedgerArchive);
+            // Keep filesystem writes on the same canonical ActionGateway as every
+            // other organism action. MemoryStateStore/test cores intentionally do
+            // not receive a persistent workspace mutation capability.
+            new UndoFirstFileSystemAdapter(store.siblingPath('workspace')).register(this.cognitiveRuntime.actionGateway);
         }
         this.cognitiveRuntime.actionGateway.setExecutionLedgerPersister(async (snapshot) => {
             if (!this.ready) throw new Error('organism-not-initialized');
