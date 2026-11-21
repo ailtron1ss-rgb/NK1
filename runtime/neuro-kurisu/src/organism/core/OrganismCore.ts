@@ -11,6 +11,7 @@ import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, t
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
 import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
 import { normalizeEvidenceLineageProvenance } from '../memory/EvidenceLineageProvenance.ts';
+import { redactHmxExportValue } from '../integration/hexis/HmxImportRedactor.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
@@ -3082,7 +3083,10 @@ export class OrganismCore {
         this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
         return { ok: true, proposal: updated ?? proposal, receipt };
     }
-    hexisExportHmx() {
+    hexisExportHmx(intent: HexisHmxIntent = 'port') {
+        if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(intent)) {
+            throw new TypeError('hmx-export-intent-invalid');
+        }
         const pma = this.exportWillPma();
         const state = this.persisted;
         const memorySummary = Array.isArray(pma.memorySummary) ? pma.memorySummary : [];
@@ -3090,7 +3094,26 @@ export class OrganismCore {
         const competence = Array.isArray(pma.competence) ? pma.competence : [];
         const conversationAims = Array.isArray(pma.conversationAims) ? pma.conversationAims : [];
         const goals = Array.isArray(pma.goals) ? pma.goals : [];
-        return { hmx_version: '1.7', record_type: 'document', export_id: randomUUID(), source_subject_id: String(state.system.subjectIdentity?.subjectId ?? ''), created_at: new Date().toISOString(), intent: 'port', strategy: 'additive', sections: { identity: [pma.identity], goals: goals.slice(0, 32), memories: memorySummary.slice(-96), relationships: knownEntities.slice(0, 32), skills: competence.slice(0, 48), in_flight_work: conversationAims.slice(0, 48), audit_records: this.hexisAdaptation.snapshot().beliefAudit.slice(-64) } };
+        const document = {
+            hmx_version: '1.7',
+            record_type: 'document',
+            export_id: randomUUID(),
+            export_intent: intent,
+            source_subject_id: String(state.system.subjectIdentity?.subjectId ?? ''),
+            created_at: new Date().toISOString(),
+            intent,
+            strategy: 'additive',
+            sections: {
+                identity: [pma.identity],
+                goals: goals.slice(0, 32),
+                memories: memorySummary.slice(-96),
+                relationships: knownEntities.slice(0, 32),
+                skills: competence.slice(0, 48),
+                in_flight_work: conversationAims.slice(0, 48),
+                audit_records: this.hexisAdaptation.snapshot().beliefAudit.slice(-64),
+            },
+        };
+        return redactHmxExportValue(document);
     }
     hexisStageHmx(document: unknown, intent: HexisHmxIntent, strategy: HexisHmxStrategy) { const stage = this.hexisAdaptation.stageHmx({ document, intent, strategy }); this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot(); return stage; }
     hexisDecideHmx(stagingId: string, decision: 'accept' | 'reject') {
