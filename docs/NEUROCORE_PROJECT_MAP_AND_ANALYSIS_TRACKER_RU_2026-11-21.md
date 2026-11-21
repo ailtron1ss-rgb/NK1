@@ -290,3 +290,6 @@ A work unit is complete only when:
 | 2026-11-21 | Baseline, runtime, memory, actions, cycle, HMX, scripts, aspect registry | 1,072 branch refs; source doc HEAD 4a46 is one commit after code checkpoint ef356; MemoryOS2 active cap 1,600; semantic retrieval opt-in; registry is stale; license blocked | 39% |
 
 Next update format: date; exact baseline; files/PRs/Actions examined; new risks closed/opened; per-stream coverage deltas; revised weighted total; work not performed. Never count the same file or evidence twice.
+
+
+Project map review PR: https://github.com/ailtron1ss-rgb/NK1/pull/1084 (Draft; not merged). The branch is isolated from the canonical source branch.
