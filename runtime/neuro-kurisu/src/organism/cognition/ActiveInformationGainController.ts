@@ -148,7 +148,12 @@ export class ActiveInformationGainController {
   }
   afterOutcome(i:{tick:number;action:ActionKind;reward01:number;predictionError01:number;verified01:number;observedChange01?:number;contradiction01?:number;hypothesisId?:string|null}):boolean{
     const pending=this.state.pendingDecision;
-    if(!pending||!Number.isSafeInteger(i?.tick)||i.tick!==pending.tick||!ACTIONS.includes(i?.action)){
+    const requiredSignals=[i?.reward01,i?.predictionError01,i?.verified01];
+    const optionalSignals=[i?.observedChange01,i?.contradiction01];
+    const finiteOutcome=requiredSignals.every(value=>typeof value==='number'&&Number.isFinite(value))&&
+      optionalSignals.every(value=>value===undefined||(typeof value==='number'&&Number.isFinite(value)))&&
+      (i?.hypothesisId===undefined||i.hypothesisId===null||typeof i.hypothesisId==='string');
+    if(!pending||!Number.isSafeInteger(i?.tick)||i.tick!==pending.tick||!ACTIONS.includes(i?.action)||!finiteOutcome){
       this.state.rejectedOutcomes=Math.min(1_000_000_000,this.state.rejectedOutcomes+1);
       return false;
     }

@@ -36,6 +36,15 @@ assert.equal(mismatchMetrics.observations,1);
 assert.equal(mismatchMetrics.modelUpdates,0);
 assert.equal(mismatchMetrics.hypotheses[0].evidence,0);
 
+// Non-finite receipts are rejected without consuming the pending decision.
+const malformed=new ActiveInformationGainController();
+const malformedPick=decision(malformed,7);
+assert.equal(malformed.afterOutcome({...outcome(7,malformedPick.selectedAction,malformedPick.selectedHypothesis),reward01:NaN}),false);
+assert.equal(malformed.metrics().observations,0);
+assert.equal(malformed.snapshot().pendingDecision.tick,7);
+assert.equal(malformed.afterOutcome(outcome(7,malformedPick.selectedAction,malformedPick.selectedHypothesis)),true);
+assert.equal(malformed.metrics().observations,1);
+
 // Late and duplicate outcomes cannot change policy evidence or action counts.
 const replay=new ActiveInformationGainController();
 const selected=decision(replay,10);
