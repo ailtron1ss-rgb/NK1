@@ -58,6 +58,7 @@ import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndepe
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const COGNITIVE_HEALTH_PROVIDER_TIMEOUT_MS=750;
 // External repair hints are advisory only and must be fresh; stale/future timestamps cannot bias autonomous revision order.
 const EXTERNAL_REPAIR_HINT_TTL_MS=7*24*60*60*1000;
 const EXTERNAL_REPAIR_HINT_MAX_FUTURE_SKEW_MS=5*60*1000;
@@ -1665,12 +1666,29 @@ export class OrganismRuntime {
   private async inspectRuntimeCognitiveHealth(tick: number): Promise<void> {
     const provider = this.config.cognitiveHealthInputProvider;
     if (!provider) return;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let timedOut = false;
     try {
-      const input = await provider(tick);
+      const input = await Promise.race<CognitiveHealthInput | null>([
+        Promise.resolve().then(() => provider(tick)),
+        new Promise<null>(resolve => {
+          timeout = setTimeout(() => { timedOut = true; resolve(null); }, COGNITIVE_HEALTH_PROVIDER_TIMEOUT_MS);
+          timeout.unref?.();
+        }),
+      ]);
+      if (timeout) clearTimeout(timeout);
+      if (timedOut) {
+        await this.journal.write('warn', 'runtime.cognitive-health.provider-timeout', { tick, timeoutMs: COGNITIVE_HEALTH_PROVIDER_TIMEOUT_MS }).catch(() => {});
+        return;
+      }
       if (!input) return; // Missing evidence is unknown, never a healthy/recovery sample.
       const result = this.cognitiveImmuneSystem.inspectHealth({ ...input, tick });
       if (!result.observationAccepted) return;
-      await this.cognitiveImmuneStore.save(this.cognitiveImmuneSystem.snapshot());
+      // Avoid an fsync on every mobile tick. Persist immediately on lifecycle changes,
+      // otherwise checkpoint the bounded observation stream every eighth organism tick.
+      if (result.newSignals.length || result.recoveredSignals.length || tick % 8 === 0) {
+        await this.cognitiveImmuneStore.save(this.cognitiveImmuneSystem.snapshot());
+      }
       if (result.newSignals.length || result.recoveredSignals.length) {
         await this.journal.write(result.healthStatus === 'critical' ? 'error' : 'warn', 'runtime.cognitive-health.changed', {
           tick, status: result.healthStatus, score01: result.score01, coverage01: result.coverage01,
@@ -1682,6 +1700,8 @@ export class OrganismRuntime {
     } catch (error) {
       // A failed observer is isolated from the cognitive cycle and cannot change learning/action authority.
       await this.journal.write('warn', 'runtime.cognitive-health.provider-failed', { tick, message: String((error as any)?.message ?? error).slice(0, 180) }).catch(() => {});
+    } finally {
+      if (timeout) clearTimeout(timeout);
     }
   }
 
