@@ -178,7 +178,7 @@ export class P34CausalPersonhoodEngine {
   snapshot(){return structuredClone(this.state);}
 
   hasEvidence(id:string){ return this.state.evidence.some(e=>e.id===id); }
-  validEvidenceCount(ids:string[]){ return ids.filter(id=>this.hasEvidence(id)).length; }
+  validEvidenceCount(ids:string[]){ return reconcileEvidenceRefs(ids,new Set(this.state.evidence.map(row=>row.id))).length; }
   recordEvidence(input:{kind:P34EvidenceKind;summary:string;weight01?:number;sourceId?:string}){
     if(!input||typeof input!=='object'||!P34_EVIDENCE_KINDS.has(input.kind))return null;
     const summary=typeof input.summary==='string'?input.summary.trim().slice(0,240):'';
@@ -206,7 +206,7 @@ export class P34CausalPersonhoodEngine {
     const s=String(subject).trim().slice(0,100); const p=String(predicate).trim().slice(0,160); if(!s||!p)return null;
     const id=idFor('claim',`${s}:${p}`);
     const existing=this.state.claims.find(c=>c.id===id);
-    const validEvidence=evidenceIds.filter(e=>this.state.evidence.some(x=>x.id===e));
+    const validEvidence=reconcileEvidenceRefs(evidenceIds,new Set(this.state.evidence.map(row=>row.id)));
     if(existing){
       existing.confidence01=clamp(existing.confidence01*.84+Math.min(1,validEvidence.length/3)*.16);
       existing.stable01=clamp(existing.stable01*.9+.1);
@@ -223,7 +223,7 @@ export class P34CausalPersonhoodEngine {
 
   authorGoal(title:string,reason:string,evidenceIds:string[]=[],source:'self-authored'|'derived'|'creator-request'='self-authored'){
     const clean=String(title).trim().slice(0,160); if(!clean)return null;
-    const row:PersonhoodGoalRecord={id:idFor('goal',clean),title:clean,reason:String(reason).trim().slice(0,220),source,autonomy01:source==='self-authored'?1:.55,status:'active',progress01:0,evidenceIds:evidenceIds.filter(e=>this.state.evidence.some(x=>x.id===e)).slice(0,12),createdAt:now(),updatedAt:now()};
+    const row:PersonhoodGoalRecord={id:idFor('goal',clean),title:clean,reason:String(reason).trim().slice(0,220),source,autonomy01:source==='self-authored'?1:.55,status:'active',progress01:0,evidenceIds:reconcileEvidenceRefs(evidenceIds,new Set(this.state.evidence.map(row=>row.id))),createdAt:now(),updatedAt:now()};
     this.state.goals=[row,...this.state.goals].slice(0,96);
     this.state.current.activeGoalId=row.id;
     this.state.metrics.selfAuthorship01=clamp(this.state.metrics.selfAuthorship01*.9+(source==='self-authored'?1:.5)*.1);
@@ -250,7 +250,7 @@ export class P34CausalPersonhoodEngine {
   proposeIdentityChange(input:{field:string;before:string;proposed:string;reason:string;identityImpact01:number;evidenceIds?:string[]}):IdentityChangeRequest{
     const impact=clamp(input.identityImpact01);
     const row:IdentityChangeRequest={
-      id:idFor('identity-change',`${input.field}:${input.proposed}`),field:String(input.field).slice(0,100),before:String(input.before).slice(0,220),proposed:String(input.proposed).slice(0,220),reason:String(input.reason).slice(0,260),identityImpact01:impact,requiredApprovals:impact>=.72?2:1,selfDecision:'pending',creatorDecision:impact>=.72?'pending':'approved',status:impact>=.72?'awaiting-consent':'proposed',createdAt:now(),resolvedAt:null,evidenceIds:(input.evidenceIds??[]).filter(e=>this.state.evidence.some(x=>x.id===e)).slice(0,12),
+      id:idFor('identity-change',`${input.field}:${input.proposed}`),field:String(input.field).slice(0,100),before:String(input.before).slice(0,220),proposed:String(input.proposed).slice(0,220),reason:String(input.reason).slice(0,260),identityImpact01:impact,requiredApprovals:impact>=.72?2:1,selfDecision:'pending',creatorDecision:impact>=.72?'pending':'approved',status:impact>=.72?'awaiting-consent':'proposed',createdAt:now(),resolvedAt:null,evidenceIds:reconcileEvidenceRefs(input.evidenceIds??[],new Set(this.state.evidence.map(row=>row.id))),
     };
     this.state.changeRequests=[row,...this.state.changeRequests].slice(0,96);
     return structuredClone(row);
