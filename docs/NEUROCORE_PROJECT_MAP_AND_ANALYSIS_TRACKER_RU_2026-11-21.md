@@ -2,8 +2,8 @@
 
 > Тип документа: живой инженерный навигатор и реестр покрытия анализа.
 > Срез: 2026-11-21.
-> Каноническая кодовая база: workpass70-source; последний кодовый checkpoint ef3564c519e9f39f6d6e95834a2fcde202cdc8fa.
-> Текущий HEAD ветки документации: 4a46e724686814dc69b00acaeca530399d9b0910 — на 1 commit впереди кодового checkpoint; изменения затрагивают только README.md и docs/plans/2026-11-21-neurocore-prototype-0-1.md.
+> Каноническая кодовая база: workpass70-source; актуальный кодовый checkpoint после HMX integration — a98dbfe858be2df19fa01a78639a23f962920aa0.
+> Документационная ветка docs/neurocore-project-map-analysis-20261121 синхронизирована с source checkpoint a98dbfe858be2df19fa01a78639a23f962920aa0; актуальный HEAD отслеживается в PR #1084.
 > main: 06e01cdd0a8e60ed70991f22e842887f544d1ebf (release/metadata lineage; не подменяет runtime source).
 > Назначение: карта отражает структуру, зависимости, подтверждённые факты, неизвестные области и очередность проверки. Она не объявляет функции готовыми.
 
@@ -179,7 +179,9 @@ ActionGateway содержит permission contracts, idempotency, durable execut
 UnifiedCognitiveCycle разделяет core cycle и full cycle; CognitiveEventFabric проверяет стадии и причинные связи. Event buffer ограничен, поэтому долговременные receipts и operational journal должны быть независимы от оперативного кольцевого буфера.
 
 ### 5.5 HMX / privacy
-PR #1083 — Draft, base SHA 4a46e724686814dc69b00acaeca530399d9b0910, head SHA e8343114e3a369d38a487425b5a2fd9613fea257, 6 files. В предыдущем проверенном exact-head срезе было 30/30 workflow success. Это не закрывает API/staging/apply/restart integration и не доказывает универсальную DLP-защиту. Нужны export allowlist, privacy preview, явное подтверждение и проверка, что staging не меняет canonical memory до apply.
+PR #1083 merged 2026-11-22 into workpass70-source: exact head b99838bf795ad01051847f6c6ab0b2a4e0594613, merge commit a98dbfe858be2df19fa01a78639a23f962920aa0, 8 files (+417/-24). Merge tree 77f6e904b81443f4f0d79dce62773dfeb9c29db9 is byte-for-byte the same Git tree as the reviewed PR head. Exact-head Actions: 34/34 check runs and 30/30 workflow runs succeeded. The change adds intent-aware HMX 1.7 export, bounded accessor-safe nested snapshots with heuristic redaction, external-file staging, separate accept/apply confirmation and a 2 MiB upload cap aligned with the canonical bridge. Redaction is not universal DLP. Remaining work: allowlisted privacy preview, broader adversarial PII/secret cases, explicit auth-boundary tests and independent verification that staging alone cannot mutate canonical memory.
+
+PR #866 remains a separate Draft donor: 21 files, head 928b85b981e887f595d7fb2cb6a1cec5611f7c40, based on old f6f8720b02748ac229635d56e81c115e83c96a62; current-source compare is diverged (79 donor-side commits / 1,008 source-side commits). Two donor files, HexisCanonicalMemoryProjector.ts and HmxExportRedactor.ts, are absent from current source. Preserve the branch and review those unique contributions selectively; do not merge the stale branch tree.
 
 ### 5.6 Local model and body
 Local OpenAI-compatible provider существует и ограничивает endpoint loopback; это не подтверждает реальное локальное inference на целевом устройстве. EmbodimentRuntime координирует body, voice и native events; требуется проверить реальный audio path и UI/renderer связь с тем же organism state.
@@ -235,11 +237,11 @@ Produces: replay/reconciliation matrix with zero duplicate irreversible side eff
 Tests: crash before effect, after effect/before receipt, provider timeout, unknown result, repeated request, same key/different payload, repeated recovery, compensation failure.
 
 ### P0-E. HMX privacy + integration closure
-Files: PR #1083 six-file diff plus API/staging/apply tests.
-Consumes: export intent, redactor, staging, canonical memory apply.
-Produces: allowlisted preview and explicit apply receipt.
-Tests: unauthenticated request, forged ID, reject-then-apply, replay, restart, source mutation, nested personal data, secrets in unusual structures, staging non-mutation.
-Exit: explicit user approval and verified canonical apply; no privacy guarantee inferred from regex alone.
+Files: merged PR #1083 eight-file diff plus the existing canonical HMX bridge.
+Consumes: export intent, bounded snapshot/redactor, external-file staging, explicit accept/apply gates.
+Produces: bounded redacted HMX export and a staged external document that must pass the existing canonical apply boundary.
+Tests added in #1083: nested redaction contract, accessor/cycle rejection, supported-intent validation, stage/accept/reject route path and a 300 KiB request above the general 256 KiB API limit. Existing canonical-apply/restart/replay coverage remains a separate source gate.
+Still required: allowlisted privacy preview, adversarial PII/secret fixtures, auth/forged-ID checks and a direct proof that staging alone never mutates canonical memory. No universal privacy guarantee is inferred from regex alone.
 
 ### P0-F. Release truth and reproducibility
 Files: release workflow, manifest, license review, archive parity tooling.
@@ -279,7 +281,7 @@ A work unit is complete only when:
 3. Refresh 75-aspect registry against current source and attach evidence refs.
 4. Close MemoryOS2 capacity/retrieval contract before adding new memory architecture.
 5. Run targeted runtime/memory/action tests in isolated environment; no claims of pass until outputs are observed.
-6. Close #1083 API/staging/privacy gaps without auto-merging.
+6. #1083 is merged; close the remaining HMX privacy and non-mutation gaps, then selectively review the stale #866 donor without merging its branch tree.
 7. Materialize and independently verify latest Release ZIP; keep license blocker explicit.
 8. Only then promote the prototype acceptance matrix.
 
@@ -433,10 +435,10 @@ NeuroCore / NK1
 
 ### 12.4 Branch / PR convergence — проверенные решения
 
-| PR | Изменения / ветка | Состояние относительно source checkpoint 4a46… | Рекомендация |
+| PR | Изменения / ветка | Состояние относительно source checkpoint a98… | Рекомендация |
 |---|---|---|---|
-| #1084 | Живая карта, docs-only, 1 файл | Base ровно 4a46…; Draft; mergeable=true | Оставить отдельным Draft до review |
-| #1083 | HMX export/staging, 6 файлов, +141/-4 | Base ровно 4a46…; Draft; mergeable=true | Лучший текущий integration candidate, но добавить route-level tests и UI flow |
+| #1084 | Живая карта и машинные реестры, docs-only, 4 файла | Синхронизирован с source @ a98…; Draft; 0 commits behind; после обновления реестров нужен новый exact-head CI | Оставить Draft до проверки актуального snapshot и CI |
+| #1083 | HMX export/staging, 8 файлов, +417/-24 | Merged 2026-11-22; head b998…; merge a98…; 34/34 checks | Интегрировано в source; не считать выпущенным в Release ZIP |
 | #902 | Developmental Genome, 57 файлов в PR metadata, +11 009/-140 | Draft; mergeable=false; compare 43 ahead / 987 behind | Не сливать целиком; переносить только genome bridge после diff по актуальным owners |
 | #903 | Shared Future / World Forge, 29 файлов, +7 391/-13 | Draft; mergeable=false; compare 180 ahead / 993 behind | Сохранить как донор; проверить state migration и core changes отдельно |
 | #924 | P27 test-time plasticity, 12 файлов, +997/-35 | Draft; mergeable=false; compare 29 ahead / 993 behind | Наиболее узкий research candidate; сверить exact owner path и preserve session isolation |
@@ -777,18 +779,18 @@ The equality of a HEAD SHA proves that refs currently point at the same commit; 
 
 ### 13.2 Current open-PR topology
 
-A full three-page enumeration returned **271 open PRs** (100 + 100 + 71). All 271 current PR heads have distinct branch names. The current base distribution is:
+A full three-page enumeration returned **270 open PRs** (100 + 100 + 70). All 270 current PR heads have distinct branch names. The current base distribution is:
 
 | Base branch | Open PRs |
 |---|---:|
-| `workpass70-source` | 126 |
+| `workpass70-source` | 125 |
 | `main` | 32 |
 | `integration` | 13 |
 | `work/nk1-final-release-gate-2026-10-26-r3` | 9 |
 | `aspect/neurok-engineering-os-20261103` | 5 |
 | `audit/repository-wiring-contracts-2026-10-25` | 5 |
 | Other historical/stacked bases | 81 |
-| **Total** | **271** |
+| **Total** | **270** |
 
 The four dependencies on the 17-name shared-HEAD group are:
 
@@ -803,7 +805,7 @@ This is an actual dependency graph, not a collection of independent PRs. These h
 Current pointers on this snapshot:
 
 - `main`: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
-- `workpass70-source`: `4a46e724686814dc69b00acaeca530399d9b0910`.
+- `workpass70-source`: `a98dbfe858be2df19fa01a78639a23f962920aa0`.
 
 GitHub compare reports **no common ancestor** between these refs. Keep their operational roles separate:
 
@@ -847,9 +849,9 @@ From this snapshot forward:
 
 ### 13.7 Scope and limitations of this pass
 
-- Two machine-readable manifests were added to this existing documentation PR: 1,073 branch refs with exact tip SHAs and 271 open PRs with exact head/base pointers.
+- Two machine-readable manifests were added to this existing documentation PR: 1,073 branch refs with exact tip SHAs and 270 open PRs with exact head/base pointers plus current head/base branch-tip pointers.
 - No branch ref was deleted, renamed or force-moved.
-- No runtime PR was merged in this pass. The available snapshot did not establish a candidate with both current-source compatibility and all exact-head acceptance evidence.
+- At the original 13.7 snapshot, no runtime PR had yet been merged; this historical statement is superseded by 13.9, where PR #1083 was merged after exact-head verification.
 - The GitHub connector available to this session exposes branch creation/ref updates but no branch-ref deletion action; the browser profile also has no saved GitHub sign-in. Thus it was possible to create an auditable retirement register but not to execute branch deletions in this session.
 - The latest release asset was not downloaded; its SHA remains metadata-only. No current-source change is claimed as RELEASED.
 
@@ -878,3 +880,49 @@ The rulesets endpoint returned zero rulesets, and the branch API reports all 1,0
 **Updated deletion decision:** none of the three shared-HEAD groups is approved for deletion. The two 2-name pairs have no current open-PR dependency, but they are part of merged historical PR chains and their closed-PR records must remain traceable. The 17-name group has both open and closed PR dependencies. Workflows/deployments and external consumers are not fully audited. Preserve all refs until those blockers are resolved and a branch-delete operation is available.
 
 This section supersedes any earlier wording in §13.1 or §13.5 that described the two 2-name pairs as possible retirement candidates. They are now classified as **preserve pending complete historical/operational reference audit**, not as deletion candidates.
+
+### 13.9 Post-integration refresh — 2026-11-22
+
+#### Реальная интеграция
+
+- PR #1083 merged в `workpass70-source`: PR head `b99838bf795ad01051847f6c6ab0b2a4e0594613`, результат `a98dbfe858be2df19fa01a78639a23f962920aa0`, tree `77f6e904b81443f4f0d79dce62773dfeb9c29db9`.
+- До merge: base `4a46e724686814dc69b00acaeca530399d9b0910`, compare 16 ahead / 0 behind, mergeable=true, 34/34 check runs SUCCESS, 30/30 workflow runs SUCCESS, 0 unresolved review threads.
+- Tree SHA PR-head и merge commit совпадает точно; merge commit имеет единственного родителя `4a46e724...`. Вошли 8 файлов: 417 additions / 24 deletions. Это одно новое PR-слияние данного запуска.
+- Внешний HMX import ограничен 2 MiB; route получает отдельный лимит 2 MiB + 64 KiB, общий API body limit не увеличен. Тест проверяет 300 KiB request выше общего 256 KiB лимита.
+- Ветка PR #1083 остаётся в списке refs; ветки не удалялись. `main` и Release ZIP не изменялись.
+
+#### Live branch / PR census
+
+- Branches: **1,073 refs / 1,055 unique HEADs / 3 exact duplicate groups / 18 excess refs**. Предыдущий snapshot: 1,061 / 1,043 / 3 / 18. Изменение: **+12 refs, 0 удалено, +12 unique HEADs**; две существующие refs продвинулись.
+- 12 новых refs относительно предыдущего census: `aspect/b261-matched-holdout-baseline-20261121`, `aspect/hexis-hmx-export-import-contract-20261121`, `aspect/omestro10-mechanism-serendipity-current-20261121`, `aspect/prototype-bilingual-memory-e2e-20261121`, `aspect/prototype-health-readiness-probe-guard-20261121`, `aspect/prototype-launch-health-20261121`, `aspect/startup-probe-pr-path-filter-20261121`, `docs/neurocore-live-checkpoint-current-20261121`, `docs/neurocore-project-map-analysis-20261121`, `docs/neurocore-prototype-live-checkpoint-20261121`, `integrate/branch-ancestry-consolidation-20261121-15`, `prototype/neurocore-0.1-execution-plan-20261121`. Это наблюдаемая динамика между snapshot, не атрибуция всех 12 данному запуску.
+- Open PRs: **270** (предыдущий snapshot 271; −1 вследствие merge #1083), все 270 head SHA уникальны; 205 Draft / 65 Ready. Base distribution: `workpass70-source` 125, `main` 32, `integration` 13, release-gate 9, engineering-OS 5, repository-wiring audit 5, прочие stacked/historical bases 81.
+- Текущие основные refs: `workpass70-source` @ `a98dbfe858be2df19fa01a78639a23f962920aa0`; `main` @ `06e01cdd0a8e60ed70991f22e842887f544d1ebf`. Разделение source/main сохранено.
+- Обновлённые JSONL manifests снимают post-merge snapshot: branch census — 1,073 rows; open-PR census — 270 rows. Добавлены `head_ref_tip_sha` и `base_ref_tip_sha`, чтобы различать SHA, сохранённые в PR metadata, и текущие tip SHA соответствующих branch refs. Для строки текущей docs-ветки и PR #1084 зафиксирован pre-manifest-update head `8d7dddb2a78fb4ed167207631f6013bf668eb091`; сам отчёт продвигается отдельным commit после snapshot.
+- PR #1084 синхронизирован с новым source через двухродительский merge commit `8d7dddb2a78fb4ed167207631f6013bf668eb091` (parents: source `a98dbfe...`, прежний docs head `f135891...`). Он остаётся Draft; diff ограничен четырьмя документальными файлами, 0 commits behind до обновления manifests. После обновления manifests требуется новый exact-head CI.
+
+#### Exact duplicate HEAD/tree groups
+
+| Shared commit | Exact tree SHA | Refs | Current-source ancestry / dependencies |
+|---|---|---:|---|
+| `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` | `4525cefe9efccd05c897846b1c806b783feb3002` | 17 | Source 1,968 ahead / 0 behind; open base dependencies #109, #124, #91, #86; 39 closed-PR references (37 merged, 2 closed-unmerged). |
+| `f9621bf3e4411ce17bc809922a5f90126001f4fd` | `7711398fa119a30218f44f2d2049cbe985a1d20b` | 2 | No open head/base dependency; 4 closed-PR references (3 merged, 1 closed-unmerged); source diverged 993 ahead / 154 behind. |
+| `68a03799ca0c9f18e4c6e19399ed8018e0215e60` | `513c63b24385ce4dedc793200052e3f29b84bf78` | 2 | No open head/base dependency; 4 closed-PR references (all merged); source diverged 993 ahead / 157 behind. |
+
+- Two 2-ref groups are historical Shared Future / World Forge / Consequence chains; equal commit/tree does not erase PR history. The 17-ref group is already an ancestor of source but remains a base for four open PRs.
+- **Safe branch-cleanup candidates: 0.** All three groups remain preserved; closed-PR references exist, four open base dependencies remain in the 17-ref group, and workflow/deployment/external-consumer references are not fully audited. No branch deletion operation was executed.
+
+#### HMX donor disposition
+
+- PR #866 remains Draft and unmerged. It has 21 changed files and is 79 commits ahead / 1,008 behind current source by compare; its full diff is not safe to merge as a unit. `HexisCanonicalMemoryProjector.ts` and `HmxExportRedactor.ts` are absent from current source, while the corresponding current HMX bridge/redactor path is different. Preserve #866 and selectively review unique behavior and blob-level dependencies later.
+
+#### Release boundary
+
+- Latest Release remains tag `Neuro`, published 2026-10-19 14:21:35Z, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, GitHub metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- The ZIP bytes were not materialized in this run; the digest above is GitHub release metadata, not a newly computed local hash. No archive-content parity is claimed. No code change in this run is marked RELEASED.
+
+#### Next controlled work
+
+1. Review #866's two absent HMX donor files and its MemoryOS2 / MemoryFabric differences against current `HexisHmxCanonicalMemoryBridge` and current memory owners; port only unique, dependency-complete changes.
+2. Resolve or preserve the four open PRs based on the 17-ref legacy group (#109, #124, #91, #86) before any alias retirement.
+3. Keep all three shared-tip groups intact until closed-PR, workflow, deployment, ruleset and external-consumer references are cleared.
+4. Finish the remaining HMX privacy-preview, adversarial redaction and staging non-mutation gates before treating the HMX path as fully closed.
