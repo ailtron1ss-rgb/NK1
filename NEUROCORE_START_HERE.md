@@ -9,16 +9,18 @@
 - PR #1059 was merged externally on 2026-11-21; locale-neutral BM25 benchmark tokenization is now in the source line. It fixes host-locale variance only; synthetic recallDelta=0, so no retrieval uplift is claimed.
 - PR #1079 merged externally and preserved 15 already-integrated branch histories as additional ancestry without deleting refs.
 - PR #1083 merged externally on 2026-11-22 at the current source HEAD. HMX 1.7 export and bounded external-file staging are present. Current source also exposes stage/decide/apply; explicit apply requires confirmed=true and an accepted stage.
+- PR #1085 adds a file-backed HMX process-restart regression; exact head `4288d530d16e476d0e83ee3df3cbbb48134fa328` passed 14/14. Restart replay returned `inserted=0`, `replayed=1`.
 - Draft PR [#1085](https://github.com/ailtron1ss-rgb/NK1/pull/1085) adds a process-restart persistence regression to the existing HMX explicit-apply consent test. Exact head `4288d530d16e476d0e83ee3df3cbbb48134fa328` passed **14/14** checks; HMX workflow log confirms restart replay `inserted=0`, `replayed=1`. Test-only; no runtime source behavior changed.
 
 ## Live repository census
 
-- Full branch census before PR #1085: 1,073 refs / 1,055 unique HEADs / 3 exact duplicate-tip groups / 18 excess aliases. The new PR branch adds one distinct ref/HEAD; derived current total 1,074 / 1,056, with duplicate groups unchanged. No branch was deleted.
-- Open PRs after PR #1085: 271, all with unique heads; 206 Draft / 65 Ready (confirmed by three REST pages).
+- Current full branch census: 1,074 refs / 1,056 unique HEADs / 3 exact duplicate-tip groups / 18 excess aliases (11 pages). No branch was deleted.
+- Current open PR census: 271, all with unique heads; 206 Draft / 65 Ready (three pages).
 - [PR #903](https://github.com/ailtron1ss-rgb/NK1/pull/903): 180 ahead / 994 behind current source, merge base 1e83a011fc677ff20f2348570322bd562181d9ff. Preserve it; no rebase/merge. Next step is selective source-based salvage only.
-- [PR #866](https://github.com/ailtron1ss-rgb/NK1/pull/866): 79 ahead / 1,009 behind current source. One of 30 checks fails because the old branch environment cannot import acp.helpers. Current source already has explicit HMX apply/consent behavior and dedicated tests. Treat as potentially superseded, but do not close or delete it.
+- [PR #866](https://github.com/ailtron1ss-rgb/NK1/pull/866): 79 ahead / 1,009 behind current source; 29/30 exact-head checks pass, with `independent-evidence-evaluation` failing on `ModuleNotFoundError: No module named 'acp.helpers'`. It contains the HMX `hmxBoundary` guard and regression that are absent from current `MemoryOS2.ts` / `p2887` test. Do not merge/rebase/close/delete; preserve as a selective-salvage donor and do not create a duplicate PR.
 - [PR #1084](https://github.com/ailtron1ss-rgb/NK1/pull/1084): existing Draft documentation branch; this handoff/report refresh is included there. No merge was performed.
 - [PR #1085](https://github.com/ailtron1ss-rgb/NK1/pull/1085): Draft test-only HMX persistence regression; 14/14 exact-head checks SUCCESS. Keep unmerged pending user decision.
+- Live HMX conflict-boundary gap remains open: current MemoryOS2 can use text-only polarity/identifier heuristics against imported `hmx:` hypotheses; the guard exists only on stale #866. Runtime reproduction and owner-approved selective transfer are next; no duplicate PR was created.
 
 ## Release truth
 
@@ -29,7 +31,9 @@
 
 ## Current P0 / P1
 
-1. Re-read PR #1085 live head/Actions and preserve Draft state; then continue source-based salvage of #903 and #866 without rewriting their history.
+1. Preserve PR #866 and reproduce the HMX implicit-conflict boundary gap on current source; prepare a narrow selective-transfer proposal without merging/rebasing #866 or creating a duplicate PR.
+2. Continue source-based salvage of #903 without rewriting history.
+3. Re-read PR #1085 exact head/Actions; keep it Draft and unmerged.
 2. Obtain an immutable independent RU/EN holdout with at least five paired seeds; do not promote on synthetic fixtures.
 3. Complete browser/WebGL visual E2E and Android/Termux offline/background soak; measure phone tick and recovery.
 4. Run physical speech tests for lip-sync drift ≤80 ms and interrupt latency ≤200 ms.
