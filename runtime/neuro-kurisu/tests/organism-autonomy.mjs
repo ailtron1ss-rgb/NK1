@@ -10,6 +10,21 @@ try {
   await r.init(); let autonomous=0;
   for(let i=0;i<80;i++){const x=await r.step(); if(x.cycle.decision.selected?.action && x.cycle.decision.selected.action!=='wait') autonomous++;}
   if(autonomous<5) throw new Error(`autonomy too low: ${autonomous}`);
-  console.log(`CLEAN_AUTONOMY=PASS ${autonomous}/80`);
+
+  const tickBeforeAbort = r.core.operationalStatusSnapshot().tick;
+  const cancelled = new AbortController();
+  cancelled.abort();
+  const aborted = await r.runAutonomousCycles(2, { signal: cancelled.signal });
+  if (aborted.cycles !== 0 || aborted.stopReason !== 'aborted') {
+    throw new Error(`pre-aborted autonomous batch must complete zero cycles: ${JSON.stringify(aborted)}`);
+  }
+  if (r.core.operationalStatusSnapshot().tick !== tickBeforeAbort) {
+    throw new Error('pre-aborted autonomous batch must not mutate organism state');
+  }
+  const batch = await r.runAutonomousCycles(2, { yieldEvery: 1 });
+  if (batch.cycles !== 2 || batch.requestedCycles !== 2 || batch.stopReason !== 'completed') {
+    throw new Error(`autonomous batch must report actual completed cycles: ${JSON.stringify(batch)}`);
+  }
+  console.log(`CLEAN_AUTONOMY=PASS ${autonomous}/80; cooperative-batch=PASS`);
   await r.stop();
 } finally {await rm(dir,{recursive:true,force:true});}
