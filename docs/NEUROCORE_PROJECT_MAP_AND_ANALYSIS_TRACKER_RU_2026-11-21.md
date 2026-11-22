@@ -1,11 +1,21 @@
 # NeuroCore / NK1 — карта проекта и трекер глубины анализа
 
 > Тип документа: живой инженерный навигатор и реестр покрытия анализа.
-> Срез: 2026-11-21.
+> Срез: 2026-11-22.
 > Каноническая кодовая база: workpass70-source; актуальный кодовый checkpoint после HMX integration — a98dbfe858be2df19fa01a78639a23f962920aa0.
 > Документационная ветка docs/neurocore-project-map-analysis-20261121 синхронизирована с source checkpoint a98dbfe858be2df19fa01a78639a23f962920aa0; актуальный HEAD отслеживается в PR #1084.
 > main: 06e01cdd0a8e60ed70991f22e842887f544d1ebf (release/metadata lineage; не подменяет runtime source).
 > Назначение: карта отражает структуру, зависимости, подтверждённые факты, неизвестные области и очередность проверки. Она не объявляет функции готовыми.
+
+## Live evidence delta — 2026-11-22
+
+- Canonical source: workpass70-source @ a98dbfe858be2df19fa01a78639a23f962920aa0; main @ 06e01cdd0a8e60ed70991f22e842887f544d1ebf. Exact-SHA source Actions: 18/18 completed SUCCESS, all check-runs bound to the same source SHA.
+- PR #1083 merged externally and is the current source HEAD: bounded HMX 1.7 export/external-file staging. The canonical HMX bridge exposes stage → decide → explicit apply; acceptance alone does not mutate MemoryOS2, and apply requires separate confirmation. The dedicated workflow includes runtime typecheck, canonical HMX bridge regression and explicit-apply consent regression.
+- PR #1059 merged externally: locale-neutral BM25 document tokenization. It removes host-locale variance but does not demonstrate recall uplift (synthetic recallDelta=0).
+- Branch census: 1,073 refs / 1,055 unique HEADs / 3 duplicate-tip groups / 18 excess aliases. Open PR census: 270 PRs / 270 unique heads / 205 Draft / 65 Ready. PR #1079 preserved 15 already-integrated histories as ancestry.
+- PR #903 is 180 ahead / 994 behind current source; PR #866 is 79 ahead / 1,009 behind. Neither is safe for blind rebase/merge. #866 has an ACP import failure in its old environment; equivalent explicit HMX apply/consent behavior is present in current source, so compare only remaining unique behavior before recommending closure.
+- Stable and prerelease ZIP metadata remain October 19. Archive bytes, independent hash, extraction manifest and source parity are not verified. Human license review remains pending; redistributionApproved=false.
+- No independent RU/EN holdout, target-device soak, physical audio measurement or release approval was added in this cycle. Analysis coverage is an audit-depth estimate only, not product readiness.
 
 ## 1. Как читать прогресс
 
@@ -17,14 +27,14 @@
 
 ### Текущий прогресс анализа
 
-**Оценка покрытия анализа: 39% (ориентир, не измерение готовности продукта).**
+**Оценка покрытия анализа: 40% (ориентир, не измерение готовности продукта).**
 
 Метод: проект разделён на 20 потоков программы завершения; каждому потоку назначена одинаковая доля 5%. Для каждого потока выставлена глубина анализа 0–100% по четырём признакам: прочитана архитектурная документация; определены владельцы и границы; проверены ключевые исходники/контракты; сверены тесты и evidence gaps. Итог — среднее значение по 20 потокам. Это экспертная оценка покрытия текущего аудита, не процент написанного кода и не процент готовности NeuroCore.
 
 | Поток | Глубина анализа | Основание / пробел |
 |---|---:|---|
 | 00. Truth, inventory, provenance | 75% | README, baseline, release/license и источники истины сверены; полный file/dependency inventory ещё нет |
-| 01. Branches, PR, convergence | 65% | 1 072 branch refs просканированы с полной пагинацией; текущий полный PR census и уникальные tips ещё не построены |
+| 01. Branches, PR, convergence | 75% | Полная пагинация: 1 073 refs / 1 055 unique HEADs / 3 duplicate-tip groups; 270 open PRs / 270 unique heads; stale #903 и #866 измерены, полный file-level salvage ещё не завершён |
 | 02. Release ZIP parity | 35% | release metadata и юридический gate изучены; ZIP не материализован, extraction/hash/parity не проверены |
 | 03. Toolchain, CI, build | 40% | package scripts и exact-head evidence изучены частично; clean build/test не запускались |
 | 04. Cognitive runtime | 50% | Runtime/Core/cycle/event trace исследованы; полный import/call graph и реальный end-to-end не проверены |
@@ -39,11 +49,11 @@
 | 13. Speech/audio | 20% | Voice/embodiment interfaces частично просмотрены; реальные ASR/TTS/audio lifecycle tests не запускались |
 | 14. Embodiment/avatar | 20% | EmbodimentRuntime и aspect owners инвентаризированы; renderer source, visual E2E, lip-sync и device soak не проверены |
 | 15. App/UI | 10% | Владельцы app/avatar найдены; screen flows, API wiring, accessibility и browser E2E не изучены |
-| 16. External integrations/portability | 35% | HMX export/staging и integration manifest просмотрены; все адаптеры, import/apply и portability не проверены |
+| 16. External integrations/portability | 55% | HMX 1.7 export/staging, canonical stage/decide/apply, explicit consent, replay-idempotency и workflow/tests просмотрены на live source; остальные адаптеры и полный portable-state E2E не проверены |
 | 17. Security/privacy/governance | 45% | API policy, ActionGateway и HMX redaction изучены; threat model, full tool inventory и penetration/fuzz testing отсутствуют |
 | 18. Reliability/performance/device | 35% | Метрики и ключевые ограничения определены; 10k/phone/soak/latency benchmarks не запускались |
 | 19. Research/legal/release/handoff | 40% | Research intake и license blocker проверены; upstream provenance, human legal decision и release parity открыты |
-| **Итого** | **39%** | Средняя глубина по 20 потокам |
+| **Итого** | **40%** | Средняя глубина по 20 потокам |
 
 Правило пересчёта: менять процент только после записи новых проверенных файлов, интерфейсов, тестов и evidence. Простое чтение ещё одного README не должно резко повышать покрытие. После каждого крупного прохода сохранять дату, baseline и изменения по потокам.
 
@@ -51,10 +61,10 @@
 
 | Источник | Назначение | Состояние на этом срезе |
 |---|---|---|
-| README.md | Live checkpoint и текущие ограничения | Обновлён на HEAD 4a46; указывает кодовый checkpoint ef356 |
-| NEUROCORE_START_HERE.md | Handoff | Содержит исторический baseline f1cbaa; не использовать SHA без refresh |
-| AGENTS.md | Правила разработки | Содержит baseline 950989; часть инструкций полезна, checkpoint устарел |
-| docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md | Главный исполняемый backlog | 20 потоков / 305 work units; актуализировать live evidence |
+| README.md | Live checkpoint и текущие ограничения | Обновлён на live source checkpoint a98dbfe858be2df19fa01a78639a23f962920aa0; exact-SHA Actions 18/18 SUCCESS |
+| NEUROCORE_START_HERE.md | Handoff | Обновлён на live source checkpoint a98dbfe858be2df19fa01a78639a23f962920aa0; PR #903/#866 divergence и Release gates зафиксированы |
+| AGENTS.md | Правила разработки | Обновлён на live source checkpoint a98dbfe858be2df19fa01a78639a23f962920aa0; branch/PR census и Release/license gates указаны |
+| docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md | Главный исполняемый backlog | 20 потоков / 305 work units; source baseline 2026-11-18 исторический, ежедневные evidence обновляются отдельными checkpoint reports |
 | docs/plans/2026-11-21-neurocore-prototype-0-1.md | Узкий план Prototype 0.1 | Пять сквозных задач; использовать как release-oriented subset |
 | docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md | Стратегия и архитектурные границы | Содержательный план; требует синхронизации с последними source changes |
 | engineering-os/aspects.v1.json | 75-aspect machine registry | Snapshot от 2026-11-06, observed SHA bcd48b1; не текущий статус |
