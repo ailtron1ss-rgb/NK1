@@ -59,6 +59,8 @@ const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
+// External HMX 1.7 imports have a dedicated bounded payload budget; other API routes keep the smaller default.
+const HMX_STAGE_MAX_BODY_BYTES = 4 * 1024 * 1024 + 64 * 1024;
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
@@ -488,16 +490,17 @@ function embodimentAssetStatus() {
         provenance
     };
 }
-async function body(req) {
+async function body(req, maxBytes = MAX_BODY_BYTES) {
+    const limit = Number.isSafeInteger(maxBytes) && maxBytes >= 4096 ? maxBytes : MAX_BODY_BYTES;
     const declared = Number(req.headers['content-length'] || 0);
-    if (Number.isFinite(declared) && declared > MAX_BODY_BYTES)
+    if (Number.isFinite(declared) && declared > limit)
         throw new Error('request-too-large');
     const chunks = [];
     let bytes = 0;
     for await (const chunk of req) {
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         bytes += buffer.byteLength;
-        if (bytes > MAX_BODY_BYTES)
+        if (bytes > limit)
             throw new Error('request-too-large');
         chunks.push(buffer);
     }
@@ -1391,7 +1394,7 @@ async function route(req, res) {
             }
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/stage') {
-            const input = await body(req);
+            const input = await body(req, HMX_STAGE_MAX_BODY_BYTES);
             try {
                 const result = runtime.core.hexisStageHmx(input.document, input.intent || 'analysis', input.strategy || 'analysis_only');
                 await runtime.core.flush();
