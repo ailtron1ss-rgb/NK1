@@ -49,4 +49,15 @@ assert.deepEqual(restoredSnapshot.claims[0].contradictingEvidenceIds,[],'contrad
 assert.deepEqual(restoredSnapshot.goals[0].evidenceIds,['restore-evidence'],'goals must not retain dangling evidence references');
 assert.deepEqual(restoredSnapshot.changeRequests[0].evidenceIds,['restore-evidence'],'identity changes must not retain dangling evidence references');
 
+const evictionEngine=new P34CausalPersonhoodEngine();
+const evictedEvidence=evictionEngine.recordEvidence({kind:'experience',summary:'evidence that will leave the bounded window',sourceId:'eviction'});
+const evictionClaim=evictionEngine.observeSelfClaim('self','retains only live evidence',[evictedEvidence.id]);
+const evictionGoal=evictionEngine.authorGoal('bounded evidence goal','must not retain dangling references',[evictedEvidence.id]);
+const evictionChange=evictionEngine.proposeIdentityChange({field:'adaptive-trait:bounded-evidence',before:'',proposed:'bounded-evidence',reason:'bounded evidence lifecycle',identityImpact01:.2,evidenceIds:[evictedEvidence.id]});
+for(let index=0;index<256;index++)evictionEngine.recordEvidence({kind:'experience',summary:`window-fill-${index}`,sourceId:`window-${index}`});
+assert.equal(evictionEngine.hasEvidence(evictedEvidence.id),false,'oldest evidence must be evicted from the bounded ledger');
+assert.deepEqual(evictionEngine.snapshot().claims.find(row=>row.id===evictionClaim.id).supportingEvidenceIds,[],'claim references must be pruned when evidence is evicted');
+assert.deepEqual(evictionEngine.snapshot().goals.find(row=>row.id===evictionGoal.id).evidenceIds,[],'goal references must be pruned when evidence is evicted');
+assert.deepEqual(evictionEngine.snapshot().changeRequests.find(row=>row.id===evictionChange.id).evidenceIds,[],'identity-change references must be pruned when evidence is evicted');
+
 console.log('P34_CAUSAL_PERSONHOOD=PASS',JSON.stringify(diag));
