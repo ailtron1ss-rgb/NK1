@@ -19,11 +19,12 @@ This aspect hardens the existing `P34CausalPersonhoodEngine` evidence lifecycle.
 - Recording new evidence prunes references to records that leave the 256-entry window.
 - Invalid evidence input is rejected without mutating the ledger.
 - Duplicate references to one evidence ID are deduplicated before claim confidence, goal provenance, or identity-change provenance is calculated; one source cannot be counted multiple times by repeating its ID.
+- Repeated observations for the same subject/predicate update one canonical claim instead of creating a new claim ID on every observation.
 - The existing unified-organism Actions workflow now runs P34 personhood, migration, and OrganismCore integration contracts.
 
 ## Verification
 
-- New regression coverage: 64 repeated evidence events must receive distinct IDs; malformed and duplicate restore entries are rejected; dangling references are removed; bounded eviction prunes dependent references; repeated references to one ID cannot inflate support or confidence.
+- New regression coverage: 64 repeated evidence events must receive distinct IDs; malformed and duplicate restore entries are rejected; dangling references are removed; bounded eviction prunes dependent references; repeated references to one ID cannot inflate support or confidence; repeated observations update a single canonical claim.
 - The new tests were added before the production change. The initial test-only PR head triggered GitHub Actions, but the focused unified-organism workflow remained queued while other repository workflows occupied runners. Therefore a red execution was **not observed** before implementation.
 - Exact-head verification for the final PR head must complete before this change is considered tested. Do not infer success from the test code or from unrelated passing workflows.
 
