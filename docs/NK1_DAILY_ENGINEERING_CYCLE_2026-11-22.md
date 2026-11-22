@@ -4,13 +4,13 @@
 
 Live source продвинулся до a98dbfe858be2df19fa01a78639a23f962920aa0. Этот SHA имеет 18/18 завершённых GitHub Actions check-runs SUCCESS. После предыдущего checkpoint PR #1059 и PR #1083 были слиты внешним образом; PR #1079 сохранил 15 уже интегрированных branch histories. Эти merges не приписываются текущему циклу.
 
-В этом запуске новый runtime-код не менялся: предыдущий BM25-дефект уже исправлен и интегрирован, а HMX stage/decide/apply с отдельным consent и replay-idempotency уже реализован и покрыт текущим workflow. Нового воспроизводимого runtime-дефекта, оправдывающего ещё один PR, не найдено. Обновлены handoff и branch/PR census в существующем Draft PR #1084; canonical source не изменялся.
+Runtime production code не менялся. При проверке HMX persistence найден конкретный пробел в тестовом покрытии: replay проверялся только в одном процессе. Расширен существующий real-server consent regression: после explicit apply сервер останавливается и запускается заново с тем же STATE_DIR; проверяются восстановление accepted stage и canonical hypothesis, сохранение redaction и replay без повторной вставки. Создан Draft PR #1085; его HMX workflow и все 14 exact-head check-runs прошли SUCCESS. Handoff/census сохранены в существующем Draft PR #1084; canonical workpass70-source не изменялся.
 
 ## Счётчики
 
 | generated | attempted | completed | partially_completed | blocked | deferred | verified |
 |---:|---:|---:|---:|---:|---:|---:|
-| 18 | 14 | 5 | 3 | 6 | 4 | 5 |
+| 18 | 15 | 6 | 3 | 6 | 3 | 6 |
 
 attempted включает завершённые, частично выполненные и заблокированные задачи. completed не означает released.
 
@@ -19,8 +19,8 @@ attempted включает завершённые, частично выполн
 - Repository: https://github.com/ailtron1ss-rgb/NK1
 - workpass70-source: a98dbfe858be2df19fa01a78639a23f962920aa0; main: 06e01cdd0a8e60ed70991f22e842887f544d1ebf.
 - Source exact-SHA Actions: 18/18 SUCCESS; все check-runs завершены и привязаны к source SHA.
-- Branch census: 1,073 refs / 1,055 unique HEADs / 3 duplicate-tip groups / 18 excess aliases.
-- Open PR census: 270 open PRs / 270 unique heads / 205 Draft / 65 Ready.
+- Branch census before PR #1085: 1,073 refs / 1,055 unique HEADs / 3 duplicate-tip groups / 18 excess aliases. The new PR branch adds one distinct ref/HEAD: derived current total 1,074 / 1,056, with duplicate groups and excess aliases unchanged; full branch pagination was not repeated after branch creation.
+- Open PR census at full-pagination snapshot: 270 open PRs / 270 unique heads / 205 Draft / 65 Ready. After PR #1085, live API confirms 271 open PRs / 271 unique heads / 206 Draft / 65 Ready.
 - workpass70-source protected=false; main protected=false. Не полагаться на branch protection вместо exact-SHA checks.
 
 ### Важные внешние интеграции, наблюдавшиеся в GitHub
@@ -36,6 +36,13 @@ attempted включает завершённые, частично выполн
 - Workflow .github/workflows/nk1-hexis-hmx-canonical-memory-bridge.yml runs npm ci, runtime typecheck, canonical HMX bridge regression, explicit-apply consent regression and Hexis adaptation test. Current source exact Actions include canonical-hmx-memory and action-governance SUCCESS.
 - This proves the tested local server/adapter path, not trustworthiness of every external donor or full interoperability with all Hexis deployments.
 
+### Дополнительное доказательство persistence после process restart
+
+- До изменения текущий HMX consent test доказывал idempotency только в одном server process; это не закрывало crash/restart границу.
+- PR #1085 останавливает server после первого apply, запускает новый process на том же временном STATE_DIR, проверяет единственную восстановленную canonical hypothesis и повторяет apply.
+- После restart: `inserted=0`, `replayed=1`, количество canonical memory rows не меняется. Известный fixture token остаётся redacted.
+- Exact PR HEAD `4288d530d16e476d0e83ee3df3cbbb48134fa328`: **14/14 SUCCESS**, включая HMX canonical-memory workflow. Это подтверждает текущий file-backed server path, но не заменяет power-loss/hardware soak.
+
 ## 18 направлений и задачи цикла
 
 | ID | Домен / конкретный результат | P | Зависимости | Риск / обратимость | Критерий приёмки | Источник факта | Статус / доказательство |
@@ -44,7 +51,7 @@ attempted включает завершённые, частично выполн
 | NK1-D2026-11-22-02 | Perception / world model: проверить новый provenance/calibration defect | P2 | 01 | Низкий, no-op | Новый work только при воспроизводимом дефекте admission/provenance | world-perception-integrity check | **deferred / no-new-work** — check SUCCESS, нового failing case нет |
 | NK1-D2026-11-22-03 | Memory ingest/admission: подтвердить, что HMX stage/accept не пишет в canonical memory | P1 | HMX bridge, MemoryOS2 | Средний, обратимый | Stage и accept не меняют MemoryOS2; только explicit apply пишет | HMX bridge + explicit-apply consent workflow | **done / verified** — текущий source workflow и regression присутствуют |
 | NK1-D2026-11-22-04 | Retrieval: проверить интеграцию locale-neutral BM25 tokenizer | P1 | MemoryOS2 benchmark | Низкий, обратимый | Единая case-normalization policy; Turkish-I regression; exact source checks | PR #1059 merge + current source | **done / verified** — merged externally; uplift не доказан, recallDelta=0 |
-| NK1-D2026-11-22-05 | Consolidation/MemFS: не менять restore без новой crash/restore регрессии | P2 | MemoryOS2/FileStateStore | Низкий, no-op | Failing-before/passing-after regression на новом дефекте | Current source restore checks | **deferred / no-new-work** — нового restore failure не найдено |
+| NK1-D2026-11-22-05 | Consolidation/MemFS: доказать сохранение accepted HMX stage и replay receipt после перезапуска сервера | P1 | HMX bridge, durable organism state, MemoryFabric receipts | Средний, тестовое изменение обратимо | После restart stage и hypothesis остаются; повторный apply вставляет 0 строк и возвращает replay=1 | `hexis-hmx-explicit-apply-consent.mjs`; exact-head HMX workflow | **done / verified** — PR #1085 HMX workflow SUCCESS; `HEXIS_HMX_EXPLICIT_APPLY_CONSENT=PASS` после restart |
 | NK1-D2026-11-22-06 | Motivation/drives: получить 24h initiative cadence telemetry | P1 | Scheduler + target host | Высокий, hardware/soak | ≥1 объяснимая инициатива/час без interrupt/permission violation | Нет 24h telemetry artifact | **blocked** — нет целевого runtime soak |
 | NK1-D2026-11-22-07 | Planning/selector: оценить source divergence для Shared Future stack #903 | P1 | Current source + PR head | Средний/высокий, read-only | File-level salvage без rebase/merge/force-push | GitHub compare API | **partially_completed** — 180 ahead / 994 behind, merge-base 1e83a011; salvage не выполнялся |
 | NK1-D2026-11-22-08 | ActionGateway/tools: подтвердить consent/idempotency boundary HMX apply | P1 | 03, OrganismCore | Средний, обратимый | Unconfirmed или не accepted stage не меняет memory; replay не дублирует | server.mjs + HMX tests/workflow | **done / verified** — explicit confirmed=true + accepted stage, current CI green |
@@ -61,10 +68,10 @@ attempted включает завершённые, частично выполн
 
 ## Реальные изменения этого цикла
 
-- Runtime/source code: **не менялся** — новый воспроизводимый дефект не найден, а дублирующий HMX work уже присутствует в canonical source. Не создавал второй PR на тот же контракт.
+- Runtime production code: не менялся. Test-only persistence regression добавлен в Draft PR [#1085](https://github.com/ailtron1ss-rgb/NK1/pull/1085), branch `test/hexis-hmx-restart-idempotency-20261122`, head `4288d530d16e476d0e83ee3df3cbbb48134fa328`. HMX workflow [run 45030481553](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45030481553) SUCCESS; logs подтвердили typecheck (723 files, Node strip-syntax mode), canonical bridge, consent/restart regression и Hexis adaptation PASS. Все 14 exact-head check-runs на PR #1085 завершились SUCCESS.
 - Документация и handoff обновлены в существующей ветке docs/neurocore-project-map-analysis-20261121 через Draft PR #1084; canonical workpass70-source не изменялся.
 - Обновлены AGENTS.md, README.md, NEUROCORE_START_HERE.md, living project map, branch census и open-PR census; добавлен этот daily report.
-- PR #1084 остаётся Draft и не слит. Ветки, PR и история не удалялись; force-push не выполнялся.
+- PR #1084 и PR #1085 остаются Draft и не слиты. Ветки, PR и история не удалялись; force-push и Release publication не выполнялись.
 
 ## Implemented / connected / tested / released
 
@@ -94,12 +101,12 @@ attempted включает завершённые, частично выполн
 
 ## Следующие 5 действий
 
-1. Re-read PR #1084 exact head and Actions after this documentation update; keep it Draft.
-2. Compare #866 against current HMX bridge file-by-file and record only unique behavior; do not rebase/merge/close automatically.
+1. Re-read PR #1085 live head and Actions before any further edit; it is Draft and 14/14 exact-head checks currently pass.
+2. Compare #866 against current HMX bridge file-by-file; preserve it and record only genuinely unique behavior.
 3. Perform source-based selective salvage of #903; preserve its branch history and avoid force-push.
 4. Run independent RU/EN holdout with at least five paired seeds and immutable split manifest.
-5. Materialize the October 19 ZIP through a supported path; independently hash/extract and obtain human license/asset review. In parallel, schedule browser/WebGL and Android/Termux device soak.
+5. Materialize the October 19 ZIP through a supported path; independently hash/extract and obtain human license/asset review; schedule browser/WebGL and Android/Termux device soak.
 
 ## Handoff
 
-Next cycle must start from live workpass70-source @ a98dbfe858be2df19fa01a78639a23f962920aa0, not the old 2026-11-21 handoff. First inspect PR #1084 head/Actions and current branch/PR census; then continue #866/#903 salvage analysis. No PR merge, branch deletion, force-push or Release publication was performed.
+Next cycle must start from live workpass70-source @ a98dbfe858be2df19fa01a78639a23f962920aa0, not the old 2026-11-21 handoff. First inspect PR #1085 head/Actions and PR #1084 documentation head; then continue #866/#903 source-based salvage. No PR merge, branch deletion, force-push or Release publication was performed.
