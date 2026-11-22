@@ -41,7 +41,7 @@ def _validate(payload: Any) -> tuple[CognitiveSignal, list[float], list[float], 
     tick = payload.get("tick")
     if isinstance(tick, bool) or not isinstance(tick, int) or tick < 0:
         raise ValueError("invalid tick")
-    if payload.get("low_power") not in (True, False):
+    if not isinstance(payload.get("low_power"), bool):
         raise ValueError("invalid low_power")
     vectors: dict[str, list[float]] = {}
     for name, expected in VECTOR_DIMENSIONS.items():
