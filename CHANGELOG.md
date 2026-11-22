@@ -4,7 +4,8 @@
 - Consume NMCN compute recommendations only as advisory requests for extra language deliberation, and only when NK1's existing slow-cognition plan, awake state, resource allocation and cognitive budget allow it.
 - Keep MemoryOS2, P23/P26, world state, ActionGateway and external postcondition verification as the sole canonical owners; NMCN cannot write memories, promote learning candidates or execute actions.
 - Fail closed on malformed output, timeout or transport errors; preserve the canonical cycle and journal bounded unavailability events.
-- Add a focused bridge regression, workflow and integration contract. A real Python sidecar/device deployment and NMCN verified-outcome learning remain unverified.
+- Add a loopback-only HTTP client and Python sidecar host for the actual NMCN 0.4.x `NeuroCoreRuntime.evaluate()` API, plus focused transport/input regressions and a Python syntax check.
+- Device deployment and NMCN verified-outcome learning remain unverified.
 
 ## [NK1][Avatar] Stop stale gestures when no idle clip exists (2026-11-22)
 
