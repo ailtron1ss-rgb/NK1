@@ -119,3 +119,23 @@ attempted включает завершённые, частично выполн
 ## Handoff
 
 Next cycle must start from live workpass70-source @ a98dbfe858be2df19fa01a78639a23f962920aa0, not the old 2026-11-21 handoff. First inspect PR #1085 and #1084 exact heads/Actions; then reproduce the HMX implicit-conflict boundary gap and prepare selective salvage without duplicating #866. No PR merge, branch deletion, force-push or Release publication was performed.
+
+## Follow-up: exact current HMX provenance contract mapping — 2026-11-22
+
+A second source-level inspection refined the selective-salvage requirement. **The donor guard in PR #866 must not be transplanted unchanged.**
+
+- Current canonical importer: `runtime/neuro-kurisu/src/organism/integration/hexis/HexisHmxCanonicalMemoryBridge.ts` writes `source: 'hmx:' + sourceInstance`, `provenanceClass: 'external'`, `sourceAuthority01: 0.2`, `confidence: 0.25`, and `epistemicStatus: 'hypothesis'`.
+- Its current context keys are `hmxExportId`, `hmxSourceInstance`, `hmxSourceRef`, `hmxOriginalType`, `hmxAcquisition`, and optional `hmxRelationshipEdges`. It does **not** set `hmxSourceLineageId`.
+- The stale #866 guard checks `source.startsWith('hexis:')` or `context.hmxSourceLineageId`. Neither condition matches the current importer contract, whose prefix is `hmx:` and whose context uses `hmxSourceInstance`. Copying that predicate verbatim would leave the current HMX hypotheses unprotected.
+- The donor's context-metadata exclusion pattern `/^hmx(?:$|[A-Z])/u` does match the current `hmx*` metadata keys and is still a relevant idea; keep it separate from the source-boundary predicate.
+- The current `MemorySubstrateCoordinator.projectCompatibilityRecords()` adds `canonicalProjection.owner='memoryOS2'`, and `compatibilityInputs()` rejects that marker. The duplicate compatibility-read-model safeguard is therefore already present in the live path; do not re-port the donor's broader compatibility changes without a new failing case.
+
+### Required narrow current-source reproduction before any code port
+
+1. Build a real HMX-import-shaped row using the exact current bridge fields above, including `source='hmx:<donor>'`, external provenance, low source authority, hypothesis status and current context keys.
+2. Add a later local device/user record with overlapping entities and opposite polarity; invoke `adjudicateImplicitConflicts()` through the same maintenance path used by runtime.
+3. Assert the HMX row remains current (no `validUntilAt`, no `supersededById`) and the local row does not gain `supersedesId` solely from text heuristics.
+4. Retain the existing local-to-local supersession control. Separately verify that explicit, independently grounded reconciliation can still revise the HMX hypothesis; do not turn the guard into permanent immunity from evidence.
+5. Only after a failing-before/passing-after reproduction, prepare a minimal source-based patch. Keep #866 untouched and open; do not create a duplicate PR while that donor remains unresolved.
+
+**Execution limitation:** this run performed static source/diff inspection only. The runtime reproduction was not executed: the container has no GitHub network access and no checked-out source workspace. No source code or test was changed in this follow-up.
