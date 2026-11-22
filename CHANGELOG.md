@@ -1,3 +1,9 @@
+## [NK1][Autonomy] Attribute social feedback only to the relevant initiative (2026-11-22)
+
+- Prevent unrelated negative/positive conversational remarks from being recorded as feedback for the most recent proactive thought.
+- Require topic relevance for feedback attribution, while preserving a clear standalone stop command as an immediate negative signal.
+- Extend the existing autonomous social initiative integrity suite with unrelated-negative and explicit-stop regressions.
+
 ## [NK1][Avatar] Stop stale gestures when no idle clip exists (2026-11-22)
 
 - When a loaded GLB has no compatible idle/breathing clip, sleep now clears the currently active gesture instead of leaving its last talk/explore animation running.
