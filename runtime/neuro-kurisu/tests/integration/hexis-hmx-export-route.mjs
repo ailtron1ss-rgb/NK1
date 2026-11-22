@@ -3,8 +3,9 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(process.cwd());
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-hmx-export-route-'));
 const port = 37200 + Math.floor(Math.random() * 700);
 const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: stateDir };
