@@ -13,6 +13,7 @@ export interface AvatarAnimationClipLike {
 
 export interface AvatarAnimationActionLike {
   reset(): this;
+  stop?(): this;
   play(): this;
   fadeIn(durationSeconds: number): this;
   crossFadeTo(nextAction: AvatarAnimationActionLike, durationSeconds: number, warp: boolean): this;
@@ -166,6 +167,20 @@ export function applyAvatarAnimationFrame(input: ApplyAvatarAnimationInput): App
   const previous = input.previousAction;
 
   if (!resolved.clip) {
+    // A sleeping avatar must not keep an arbitrary last gesture running when
+    // its model has no semantically valid idle clip. Clear the mixer action
+    // once; subsequent sleeping frames receive previousAction=null.
+    if (!input.awake && previous) {
+      previous.setEffectiveWeight(0);
+      previous.stop?.();
+      return {
+        activeAction: null,
+        clipName: "",
+        changed: true,
+        resolved,
+        timeScale,
+      };
+    }
     return {
       activeAction: previous,
       clipName: input.previousClipName,
