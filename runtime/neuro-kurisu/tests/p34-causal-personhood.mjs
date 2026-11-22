@@ -49,6 +49,17 @@ assert.deepEqual(restoredSnapshot.claims[0].contradictingEvidenceIds,[],'contrad
 assert.deepEqual(restoredSnapshot.goals[0].evidenceIds,['restore-evidence'],'goals must not retain dangling evidence references');
 assert.deepEqual(restoredSnapshot.changeRequests[0].evidenceIds,['restore-evidence'],'identity changes must not retain dangling evidence references');
 
+const duplicateRefEngine=new P34CausalPersonhoodEngine();
+const singleEvidence=duplicateRefEngine.recordEvidence({kind:'experience',summary:'one source must count once',sourceId:'single-source'});
+const duplicateClaim=duplicateRefEngine.observeSelfClaim('self','does not inflate evidence',[singleEvidence.id,singleEvidence.id,singleEvidence.id]);
+assert.equal(duplicateClaim.supportingEvidenceIds.length,1,'repeated references to one evidence ID must not become independent support');
+assert.ok(Math.abs(duplicateClaim.confidence01-.57)<1e-9,'claim confidence must reflect one evidence record, not three duplicate references');
+assert.equal(duplicateRefEngine.validEvidenceCount([singleEvidence.id,singleEvidence.id,singleEvidence.id]),1);
+const duplicateGoal=duplicateRefEngine.authorGoal('deduplicated evidence goal','evidence references are canonical',[singleEvidence.id,singleEvidence.id]);
+assert.equal(duplicateGoal.evidenceIds.length,1);
+const duplicateChange=duplicateRefEngine.proposeIdentityChange({field:'adaptive-trait:dedupe',before:'',proposed:'dedupe',reason:'dedupe evidence references',identityImpact01:.2,evidenceIds:[singleEvidence.id,singleEvidence.id]});
+assert.equal(duplicateChange.evidenceIds.length,1);
+
 const evictionEngine=new P34CausalPersonhoodEngine();
 const evictedEvidence=evictionEngine.recordEvidence({kind:'experience',summary:'evidence that will leave the bounded window',sourceId:'eviction'});
 const evictionClaim=evictionEngine.observeSelfClaim('self','retains only live evidence',[evictedEvidence.id]);
