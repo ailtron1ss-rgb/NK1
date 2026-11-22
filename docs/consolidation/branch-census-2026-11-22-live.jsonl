@@ -353,7 +353,7 @@
 {"branch":"docs/neko-nk1-adaptation-tree-20261104","head_sha":"7afd3f3db91b40241de6f8c62b11af18b3e0b1e6","protected":false}
 {"branch":"docs/neurocore-2026-11-01-durable-forget-checkpoint","head_sha":"1629b363053739fdc62ec0b5d9c6127f48e47cbe","protected":false}
 {"branch":"docs/neurocore-live-checkpoint-current-20261121","head_sha":"e0c7ac2c19efbcf8ca7f7560addfb03069598fd9","protected":false}
-{"branch":"docs/neurocore-project-map-analysis-20261121","head_sha":"0f3d4ade4b286fda5f8552d37c9cfab95641ace7","protected":false}
+{"branch":"docs/neurocore-project-map-analysis-20261121","head_sha":"d640865ef77ec874a8cd27ef86c023096afbc2b6","protected":false}
 {"branch":"docs/neurocore-prototype-live-checkpoint-20261121","head_sha":"a52580430597b3c12c2e64ac704303a73c2f71e3","protected":false}
 {"branch":"docs/nk1-branch-divergence-gate-2026-10-27","head_sha":"3fb979df5d87b5cc1b376c36262177b1004a5e84","protected":false}
 {"branch":"docs/nk1-canonical-project-state-2026-10-27","head_sha":"822455b1ececeea40a197237becb4eaf16e33322","protected":false}
@@ -750,6 +750,7 @@
 {"branch":"research/source-assimilation-20261113","head_sha":"8e8dcbcd1bff2a5c649f125000b0c164ced06821","protected":false}
 {"branch":"research/source-assimilation-register-20261113-final","head_sha":"5fd0c96eb19faa0ddc5cdc97254d74d001d932a9","protected":false}
 {"branch":"salvage/negative-space-memory-current-source-20261121","head_sha":"c07d7c6e8534765171722f58c144f868c492c069","protected":false}
+{"branch":"test/hexis-hmx-restart-idempotency-20261122","head_sha":"4288d530d16e476d0e83ee3df3cbbb48134fa328","protected":false}
 {"branch":"typescript/runtime-typecheck-truth-2026-10-24","head_sha":"832e44bd5b59e698dc5a829d9982f31b3ed4b03d","protected":false}
 {"branch":"update-nk1-final-master-plan-13680694691250830677","head_sha":"473e43d39c55aaab5ba0d88a49cb10e5e80d009d","protected":false}
 {"branch":"verify/workpass622-learning-evidence-integrity-2026-10-29","head_sha":"c2161ee8b5e8bd03e34db3baef26135c0b47b8f5","protected":false}

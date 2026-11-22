@@ -192,3 +192,20 @@ This suggests two relatively isolated research candidates (`WorldForge` and `Sha
 7. Re-run exact-head CI on a current-source branch before any PR is proposed.
 
 **Disposition:** PR #903 and its stacked children remain untouched. No rebase, merge, force-push, branch deletion or duplicate PR was performed. This is a dependency-aware salvage proposal, not an integration claim.
+
+
+## Exact release-publication gate — 2026-11-22
+
+- Latest stable Release: `Neuro`, published 2026-10-19 14:21:35Z, ZIP `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes; GitHub metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- Latest chronologically published Release is prerelease `workpass70-hotfix1-2026-10-19`, published 2026-10-19 14:40:04Z, ZIP `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes; GitHub metadata digest `sha256:9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Both digests are GitHub metadata only: ZIP bytes were not materialized, independently hashed or extracted in this runtime.
+- Release tag `Neuro` resolves to `c2e8e4a78431734612f89318e79d3491643f24f3`. It is an ancestor of `main` (main is 35 commits ahead, 0 behind), but GitHub Compare reports no common ancestor with current `workpass70-source` @ `a98dbfe858be2df19fa01a78639a23f962920aa0`. Direct source/Release comparison is unavailable; no ZIP parity claim is made.
+- Release publication workflow [run 45000884988](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45000884988) failed at `Run source provenance and release-license gates`: `test:provenance-current` passed, but `audit:release-license-readiness` returned `releaseRedistributionReady=false` and **116 errors**. Packaging, ZIP verification and publication were skipped. Missing human approval covers the root/runtime projects and multiple vendored/source archives. This is a fail-closed legal gate; do not bypass it or infer redistribution rights from a LICENSE file.
+- The exact-source CI for `a98dbfe858be2df19fa01a78639a23f962920aa0` is 18/18 SUCCESS, but that does not override the legal gate. November source changes remain **not released**.
+
+## Post-snapshot machine-readable census correction — 2026-11-22
+
+- The branch JSONL companion now reflects **1,074** live refs / **1,056** unique HEADs / **18** excess names. It adds `test/hexis-hmx-restart-idempotency-20261122` and refreshes `docs/neurocore-project-map-analysis-20261121` to pre-update head `d640865ef77ec874a8cd27ef86c023096afbc2b6`; no branch disappeared.
+- The open-PR JSONL companion now reflects **271** open PRs / **271** unique heads / **206** Draft / **65** Ready. It adds #1085 and refreshes #1084 to pre-update head `d640865ef77ec874a8cd27ef86c023096afbc2b6`.
+- Full PR accounting remains **1,073 total / 271 open / 330 closed-unmerged / 472 merged**. Shared-tip groups remain 3. No open PR directly targets the three shared-HEAD branch families.
+- Both JSONL snapshots intentionally capture the pre-refresh documentation head `d640865ef77ec874a8cd27ef86c023096afbc2b6`; the commit writing them is outside its own census. Documentation only; no runtime source, branch ancestry or Release asset is changed.
+- In this run: merges **0**, PRs closed as superseded **0**, branch refs deleted **0**. Branch retirement remains blocked pending full tree/blob/path, ancestry, PR-history, tag/release, deployment, external-consumer and branch-protection/ruleset clearance. Source/main refs report `protected=false`, repository rulesets are empty, but the branch-protection detail endpoint returned 403.
