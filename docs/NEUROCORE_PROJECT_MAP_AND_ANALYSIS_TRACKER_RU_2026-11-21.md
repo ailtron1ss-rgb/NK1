@@ -750,3 +750,105 @@ NeuroCore
 - Полный open PR census не получен: search возвращает 100 элементов и смешивает состояния; его нельзя трактовать как число открытых PR.
 
 Следующий проход: получить все branch tip SHAs через подходящий GitHub refs/branches endpoint, затем оформить RFC 10k memory architecture и сквозной fault trace.
+
+
+## 13. Branch topology, PR dependency graph and consolidation rules (2026-11-22)
+
+This section supersedes earlier incomplete branch-tip notes in this document. It is a live snapshot, not a claim that branches have been deleted or that all PRs have been integrated.
+
+### 13.1 Exact live census
+
+The GitHub REST branch endpoint was fully paginated on 2026-11-22:
+
+- Pages 1–10: 100 refs each; page 11: 73 refs; page 12: empty.
+- **1,073 branch refs**, **1,055 distinct HEAD commits**, **18 excess branch names** beyond one ref per distinct HEAD.
+- The full name → exact HEAD SHA → protected flag snapshot is stored in `docs/consolidation/branch-census-2026-11-22-live.jsonl`.
+- The open-PR manifest is stored in `docs/consolidation/open-pr-census-2026-11-22.jsonl`.
+
+The 18 excess names form exactly three shared-HEAD groups:
+
+| Shared HEAD | Ref count | Names | Current disposition |
+|---|---:|---|---|
+| `f9621bf3e4411ce17bc809922a5f90126001f4fd` | 2 | `aspect/consequence-ecology-20261117`; `integrate/consequence-calibration-lineage-followup-20261120` | Same commit; no open PR currently uses either name as head or base. Not yet cleared for deletion because closed-PR, tag, workflow, ruleset, deployment and external-consumer references were not all verified. |
+| `68a03799ca0c9f18e4c6e19399ed8018e0215e60` | 2 | `aspect/world-forge-integrated-20261117`; `integrate/worldforge-to-sharedfuture-after-calibration-20261120` | Same commit; no open PR currently uses either name as head or base. Same deletion blockers as above. |
+| `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` | 17 | `nk1-all-branches-merge-2026-10-23`; `nk1-integration-workspace-2026-10-22`; `rebuild`; `workpass79-cognitive-rebuild`; `workpass116-seed-clustered-learning-eval`; `workpass117-verified-replay-admission`; `workpass118-multi-source-learning-integration`; `workpass119-skill-retrieval-feedback-curriculum`; `workpass120-verified-skill-revision-gate`; `workpass121-ledger-bound-promotion-proposals`; `workpass122-promotion-gate-coverage-hardening`; `workpass123-authenticated-skill-lifecycle`; `workpass124-learning-evidence-hardening`; `workpass135-durable-shadow-run-registry`; `workpass203-independent-candidate-evaluator`; `workpass206-runtime-evaluator-wiring`; `workpass313-actions-history-audit` | **Blocked from retirement.** Four open PRs still depend on these names as base refs: #109, #124, #91 and #86. |
+
+The equality of a HEAD SHA proves that refs currently point at the same commit; it does not prove that every name is unused or that its historical PR/deployment/workflow role can be removed.
+
+### 13.2 Current open-PR topology
+
+A full three-page enumeration returned **271 open PRs** (100 + 100 + 71). All 271 current PR heads have distinct branch names. The current base distribution is:
+
+| Base branch | Open PRs |
+|---|---:|
+| `workpass70-source` | 126 |
+| `main` | 32 |
+| `integration` | 13 |
+| `work/nk1-final-release-gate-2026-10-26-r3` | 9 |
+| `aspect/neurok-engineering-os-20261103` | 5 |
+| `audit/repository-wiring-contracts-2026-10-25` | 5 |
+| Other historical/stacked bases | 81 |
+| **Total** | **271** |
+
+The four dependencies on the 17-name shared-HEAD group are:
+
+- #109 uses `nk1-all-branches-merge-2026-10-23` as base.
+- #124 uses `workpass206-runtime-evaluator-wiring` as base.
+- #91 and #86 use `rebuild` as base.
+
+This is an actual dependency graph, not a collection of independent PRs. These historical base refs must remain available until each dependent PR has been migrated, selectively ported, or explicitly closed with its unique work preserved.
+
+### 13.3 Keep the two principal histories separate
+
+Current pointers on this snapshot:
+
+- `main`: `06e01cdd0a8e60ed70991f22e842887f544d1ebf`.
+- `workpass70-source`: `4a46e724686814dc69b00acaeca530399d9b0910`.
+
+GitHub compare reports **no common ancestor** between these refs. Keep their operational roles separate:
+
+- `workpass70-source` is the canonical runtime/application development line.
+- `main` is the release/metadata/documentation lineage and default branch.
+
+Do not force-merge one entire tree into the other, change the default branch, or infer runtime release status from files on `main`. Promote only reviewed, path-scoped changes across this boundary when a concrete delivery requirement exists.
+
+The avatar inspection confirms why this matters: `main` contains an older procedural demo under `app/src/components/avatar/KurisuAnime3DAvatar.ts` and its loader, while `workpass70-source` already has a broader embodiment subsystem: `Avatar3DStage`, `depthRig`, `embodimentSwitch`, `embodimentCoordinator`, `vrmRuntimeAdapter`, motion arbitration and renderer capability contracts. The same Kurisu sprite assets are already present in both lines. Do not import the old demo wholesale as a second rendering authority; only port an isolated capability after comparing it with the current avatar owners and their tests.
+
+### 13.4 Prior convergence already completed
+
+PR #1079, merged on 2026-11-21, joined 15 already-integrated donor HEADs as additional parents of the current source line. Its integration report records 253/253 successful exact-head Actions runs across those donor PRs. The merge was ancestry/provenance reconciliation only: the tree delta was the provenance report, with no runtime files copied, no Release ZIP changed and no branch refs deleted. This demonstrates the right way to preserve provenance; it does not reduce the number of branch names.
+
+PR #999 also selectively ported the useful current-source module dependency contracts from historical PR #109. The old persistence-default refactor and its `StateMigrations.ts` rewrite were deliberately excluded because they require separate ownership and migration review. Therefore #109 is **partially superseded, not fully redundant**; do not close it or discard its branch until those remaining files have a salvage/retirement decision.
+
+### 13.5 Consolidation decisions
+
+| Candidate/family | Decision | Reason |
+|---|---|---|
+| Two 2-ref shared-HEAD groups above | Retirement candidates only | Exact same HEAD and no live open-PR dependency found, but all historical and operational references are not cleared. |
+| 17-ref shared-HEAD group | Preserve | Four live PR base dependencies remain. |
+| #109 historical dependency-boundary PR | Selective salvage / rebase review | #999 covers only the current-source dependency-contract subset; historical state-default work remains outside it. |
+| Stacked `Shared Future → World Forge → Consequence Ecology` chain (#903/#916/#928 and related refs) | Keep isolated; rebase/port in dependency order | The chain is materially divergent and touches current core, migrations and world-model owners. Old-base CI is not proof of current-source compatibility. |
+| HMX canonical-apply/export donors (#866/#995 and newer current-source work) | No wholesale replay | The current source already has the canonical apply boundary and newer HMX export/staging work; any remaining UI/route work must be ported narrowly and tested. |
+| Old main-target avatar/plan PRs | Compare against current tree; close only after all unique content is accounted for | Repeated files do not prove semantic equivalence; preserve unique plan text, scripts and asset provenance. |
+| Latest Release ZIP | Keep immutable until independently inspected | Metadata SHA is not proof of the actual bytes or source/ZIP parity; legal review remains pending. |
+
+### 13.6 Required lifecycle policy
+
+From this snapshot forward:
+
+1. Every feature branch must declare its exact base SHA, owner/aspect, PR, changed paths, dependency PRs and verification commands.
+2. Prefer one aspect branch → one PR → current `workpass70-source`. Use a stacked PR only when the parent change is a real technical prerequisite; keep the stack short and record parent/child IDs.
+3. A PR is merge-ready only after reviewing the exact head SHA, file-level overlap with current owners, migration compatibility, clean merge state, required exact-head CI, and any device/independent-evaluation gates relevant to the feature.
+4. Use a normal merge when additional parent ancestry is the purpose (as in #1079); use squash only when the feature is intentionally a single logical change and losing donor commit ancestry is acceptable. Never replay a historical branch snapshot over current source merely because GitHub offers a merge button.
+5. A branch is eligible for deletion only after its unique content is integrated or explicitly archived, no open or closed PR references require it, no tag/release/workflow/ruleset/deployment/external consumer points to it, a fresh backup/census exists, and the deletion operation is available.
+6. Equal HEAD, old date, prefix, closed PR state or a successful earlier workflow is not sufficient deletion evidence.
+7. After a confirmed merge, enable automatic branch deletion only when repository policy and dependent-PR handling are understood. The current repository setting reports `delete_branch_on_merge=false`; this session did not change repository settings.
+8. Keep `main` and `workpass70-source` separate until a deliberate release/packaging design defines a reviewed promotion path.
+
+### 13.7 Scope and limitations of this pass
+
+- Two machine-readable manifests were added to this existing documentation PR: 1,073 branch refs with exact tip SHAs and 271 open PRs with exact head/base pointers.
+- No branch ref was deleted, renamed or force-moved.
+- No runtime PR was merged in this pass. The available snapshot did not establish a candidate with both current-source compatibility and all exact-head acceptance evidence.
+- The GitHub connector available to this session exposes branch creation/ref updates but no branch-ref deletion action; the browser profile also has no saved GitHub sign-in. Thus it was possible to create an auditable retirement register but not to execute branch deletions in this session.
+- The latest release asset was not downloaded; its SHA remains metadata-only. No current-source change is claimed as RELEASED.
