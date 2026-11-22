@@ -48,10 +48,12 @@ try {
   assert.equal(health.inspections, 5, 'one health observation must be recorded for each completed cognitive tick');
   assert.ok(health.signals.length >= 4, 'persistent degradation across real runtime cycles must open evidence-linked review signals');
   assert.ok(health.signals.every(signal => signal.evidenceRefs.length > 0), 'runtime alerts must retain source evidence references');
-  assert.ok((await new FileStateStore(healthFile).load())?.health?.inspections === 5, 'health observations must be durably checkpointed in a dedicated sidecar');
   const target = health.signals.find(signal => signal.status === 'open');
   assert.ok(target);
   assert.equal(await runtime.reviewCognitiveHealthSignal(target.id, 'confirmed', 'runtime-integration-reviewer', 'fixture:review'), true);
+  // Explicit review forces an immediate durable checkpoint of the latest bounded sample history.
+  assert.equal((await new FileStateStore(healthFile).load())?.health?.inspections, 5,
+    'health observations and review must be durably checkpointed in a dedicated sidecar');
   await runtime.stop();
   runtime = null;
 
