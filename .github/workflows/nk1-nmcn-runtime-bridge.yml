@@ -6,6 +6,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/integration/nmcn/**"
       - "runtime/neuro-kurisu/scripts/nmcn_sidecar.py"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/tests/nmcn-runtime-bridge.mjs"
       - ".github/workflows/nk1-nmcn-runtime-bridge.yml"
   workflow_dispatch:
@@ -29,5 +30,7 @@ jobs:
           package-manager-cache: false
       - name: Validate Python sidecar syntax
         run: python -m py_compile runtime/neuro-kurisu/scripts/nmcn_sidecar.py
+      - name: Validate NK1 server composition syntax
+        run: node --check runtime/neuro-kurisu/src/server/server.mjs
       - name: Validate NMCN bridge boundary
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/nmcn-runtime-bridge.mjs
