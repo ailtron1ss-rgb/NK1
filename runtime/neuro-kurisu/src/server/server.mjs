@@ -6,6 +6,7 @@ import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsRe
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { NmcNLocalHttpPort } from '../organism/integration/nmcn/NmcNLocalHttpPort.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
@@ -356,12 +357,16 @@ async function invokeLanguage(request) {
     }
     return { ...response, preferredBackend, latencyMs: finishedAt - started };
 }
+const NMCN_SIDECAR_URL = String(process.env.NK1_NMCN_SIDECAR_URL ?? '').trim();
+const NMCN_SIDECAR_TIMEOUT_MS = Number(process.env.NK1_NMCN_SIDECAR_TIMEOUT_MS ?? 80);
+const NMCN_RUNTIME_PORT = NMCN_SIDECAR_URL ? new NmcNLocalHttpPort(NMCN_SIDECAR_URL) : null;
 const runtime = new OrganismRuntime({
     stateFile,
     worldStateFile: worldFile,
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
+    ...(NMCN_RUNTIME_PORT ? { nmcnRuntime: NMCN_RUNTIME_PORT, nmcnTimeoutMs: NMCN_SIDECAR_TIMEOUT_MS } : {}),
     ...(P25_EXECUTOR_ENABLED ? {
         synapticBaseModelId: P25_BASE_MODEL_ID,
         synapticBaseModelRevisionSha256: P25_BASE_MODEL_SHA256,
