@@ -10,6 +10,7 @@ on:
       - "runtime/neuro-kurisu/tests/**memory*"
       - "runtime/neuro-kurisu/tests/**retrieval*"
       - "runtime/neuro-kurisu/tests/**restore*"
+      - "runtime/neuro-kurisu/tests/p2887-implicit-stale-conflict-closure.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - ".github/workflows/nk1-memory-integrity.yml"
@@ -52,6 +53,9 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:memory-restore-integrity && npm --prefix runtime/neuro-kurisu run test:workpass76:memory-lineage-integrity
       - name: Memory lifecycle persistence
         run: npm --prefix runtime/neuro-kurisu run test:memory-subsystem-state-roundtrip && npm --prefix runtime/neuro-kurisu run test:memory-semantic-vector-integrity
+      - name: Preserve unverified HMX hypotheses during implicit conflict scans
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2887-implicit-stale-conflict-closure.mjs
       - name: Consolidation and canonical lifecycle restore integrity
         run: npm --prefix runtime/neuro-kurisu run test:r5:memory-lifecycle
       - name: Retrieval safety and metadata contracts
