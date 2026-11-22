@@ -108,10 +108,10 @@ export function HexisControlConsole() {
     setStageId("");
     setHmxAccepted(false);
     setHmxConfirmed(false);
-    if (file.size <= 0 || file.size > 4 * 1024 * 1024) {
+    if (file.size <= 0 || file.size > 2 * 1024 * 1024) {
       setHmxImportDocument(null);
       setHmxImportFileName("");
-      setMessage("HMX file rejected: expected a non-empty JSON file no larger than 4 MiB.");
+      setMessage("HMX file rejected: expected a non-empty JSON file no larger than 2 MiB.");
       return;
     }
     try {
