@@ -139,3 +139,56 @@ A second source-level inspection refined the selective-salvage requirement. **Th
 5. Only after a failing-before/passing-after reproduction, prepare a minimal source-based patch. Keep #866 untouched and open; do not create a duplicate PR while that donor remains unresolved.
 
 **Execution limitation:** this run performed static source/diff inspection only. The runtime reproduction was not executed: the container has no GitHub network access and no checked-out source workspace. No source code or test was changed in this follow-up.
+
+
+## Follow-up: PR #903 selective-salvage dependency graph — 2026-11-22
+
+Fresh comparison against live source confirms PR #903 is **180 commits ahead / 994 behind**, merge-base `1e83a011fc677ff20f2348570322bd562181d9ff`. Its current PR head is `490dd0132e017b09c81a053b5d62ce28f6e22c60`; the Actions API returns **0 runs for this exact head**, so the older 18-success / 1-cancelled report in its body is not current-head verification.
+
+### File-level boundary
+
+The PR adds these implementation paths that are absent from current `workpass70-source`:
+
+- `ConsequenceEcology.ts`
+- `ConsequenceEcologyTools.ts`
+- `SharedFutureEngine.ts`
+- `WorldForge.ts`
+- `WorldForgeTools.ts`
+
+The PR also changes the existing `FutureSimulator.ts`; this file **already exists in current source** and is a direct integration collision, not a safe new-file copy. In the PR it grows from the current ~1 KiB WorldModel2-only simulator to a ~6.4 KiB coordinator importing SharedFutureEngine, WorldForge and ConsequenceEcology.
+
+### Observed dependency graph
+
+```
+ActionGateway
+├── SharedFutureEngine
+│   └── ConsequenceEcology
+├── WorldForge                 (Node crypto/util only at module boundary)
+└── FutureSimulator (PR variant)
+    ├── current WorldModel2
+    ├── SharedFutureEngine
+    ├── WorldForge
+    └── ConsequenceEcology
+
+ConsequenceEcologyTools
+├── ActionGateway
+├── FutureSimulator
+└── ConsequenceEcology
+
+WorldForgeTools
+└── WorldForge / runtime tool adapter
+```
+
+This suggests two relatively isolated research candidates (`WorldForge` and `SharedFutureEngine`), but it does **not** authorize copying them: their tests, state ownership, runtime registration, ActionGateway contracts and migration boundaries still need review. `ConsequenceEcology` depends on Shared Future; tool adapters and the expanded FutureSimulator sit above those modules. PR #903 also changes `OrganismCore.ts`, `StateMigrations.ts`, four workflow files and many tests, so a wholesale transplant would cross canonical ownership and persistence boundaries.
+
+### Safe salvage order (proposal only)
+
+1. Reconstruct each candidate's public contracts and invariants against current ActionGateway / WorldModel2; reject duplicate owners.
+2. Review WorldForge independently with its own adversarial curriculum/evaluator tests and bounded resource assumptions.
+3. Review SharedFutureEngine's decision/outcome evidence boundary and persistence schema separately.
+4. Port ConsequenceEcology only after its SharedFuture inputs and independent-outcome rules are mapped.
+5. Adapt the existing current-source FutureSimulator through a minimal adapter; do not replace it with the PR branch version wholesale.
+6. Integrate state through current OrganismCore + StateMigrations only after migration, restore, replay and rollback regressions exist.
+7. Re-run exact-head CI on a current-source branch before any PR is proposed.
+
+**Disposition:** PR #903 and its stacked children remain untouched. No rebase, merge, force-push, branch deletion or duplicate PR was performed. This is a dependency-aware salvage proposal, not an integration claim.
