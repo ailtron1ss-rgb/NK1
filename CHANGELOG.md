@@ -1,9 +1,9 @@
-## [NK1][Avatar] Stop stale gestures when no idle clip exists (2026-11-22)
+## [NK1][Health] Integrate cognitive health supervision into runtime (2026-11-22)
 
-- When a loaded GLB has no compatible idle/breathing clip, sleep now clears the currently active gesture instead of leaving its last talk/explore animation running.
-- The transition zeroes the previous action weight and stops it, then clears the controller's active-action reference so subsequent sleep frames do not repeatedly restart the transition.
-- Awake behavior is unchanged: if no compatible clip exists, the current action is preserved.
-- Add one focused regression and wire the existing real Three.js animation lifecycle test into the avatar model-preflight workflow.
+- Connect the existing evidence-based CognitiveImmuneSystem to completed OrganismRuntime cycles through an optional host adapter for canonical epistemic, contradiction, and procedural-skill snapshots.
+- Persist bounded health samples, evidence-linked signals, and independent review events in a dedicated crash-safe FileStateStore sidecar; restore the timeline after restart.
+- Missing provider data remains unknown, provider failures are isolated from the cognitive cycle, and recommendations remain advisory rather than bypassing memory ownership or ActionGateway governance.
+- Add a focused runtime integration regression and exact-PR Actions workflow.
 
 ## [NK1][Prototype] Add bilingual persistent-memory E2E contract (2026-11-21)
 
