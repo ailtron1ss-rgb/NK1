@@ -107,8 +107,8 @@ assert.equal(graphAfter.edges.some(edge =>
   'canonical semantic graph edges touching the target must be removed');
 
 const p62After = p62.snapshot();
-const staleP62Hit = frame => frame?.hits.some(hit =>
-  hit.id === target.id || hit.id === semanticAlias);
+const staleP62Hit = frame => Boolean(frame?.hits.some(hit =>
+  hit.id === target.id || hit.id === semanticAlias));
 assert.equal(staleP62Hit(p62After.lastFrame), false, 'P62 lastFrame must not retain the evicted row');
 assert.equal(p62After.history.some(staleP62Hit), false, 'P62 history must not retain the evicted row');
 assert.equal(fabric.hotIdsSnapshot().includes(target.id), false, 'hot-ID cache must not retain the evicted row');
