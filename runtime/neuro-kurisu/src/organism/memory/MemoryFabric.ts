@@ -304,14 +304,9 @@ export class MemoryFabric {
           // P62 stores canonical graph rows under `semantic:<nodeId>` aliases.
           // Capture those aliases before removing the graph projection so explicit
           // forget also purges every derived recall frame, not only the source ID.
-          const graphAliasIds=this.semanticMemory.snapshot().nodes
-            .filter(node=>node.canonicalProjection?.owner==='memoryOS2'&&node.canonicalProjection.itemId===command.id)
-            .map(node=>`semantic:${node.id}`);
-          projectionRemoved=this.multiTimescale.removeCanonicalProjection(command.id);
-          const graphProjectionRemoved=this.semanticMemory.removeCanonicalProjection(command.id);
-          recallFramesRemoved=this.p62.forgetMemory(command.id);
-          for(const aliasId of graphAliasIds)recallFramesRemoved+=this.p62.forgetMemory(aliasId);
-          projectionRemoved=projectionRemoved||graphProjectionRemoved;
+          const cleanup=this.purgeDerivedProjectionsForCanonicalId(command.id);
+          projectionRemoved=cleanup.projectionRemoved;
+          recallFramesRemoved=cleanup.recallFramesRemoved;
         }
         const applied=Boolean(forgotten||(!canonicalRemains&&(projectionRemoved||recallFramesRemoved>0)));
         result=applied;booleanValue=applied;memoryId=command.id;outcome=applied?'applied':'noop';
@@ -366,6 +361,25 @@ export class MemoryFabric {
     if(!projected){this.multiTimescale.removeCanonicalProjection(key);return false;}
     this.multiTimescale.add(projected,false);
     return true;
+  }
+
+  /**
+   * Purge every derived read-side copy after a canonical MemoryOS2 deletion.
+   * Capture semantic aliases before removing graph nodes because P62 frames use
+   * those aliases rather than the original canonical item ID.
+   */
+  private purgeDerivedProjectionsForCanonicalId(id:string):{projectionRemoved:boolean;recallFramesRemoved:number} {
+    const key=String(id??'').trim().slice(0,160);
+    if(!key)return {projectionRemoved:false,recallFramesRemoved:0};
+    const graphAliasIds=this.semanticMemory.snapshot().nodes
+      .filter(node=>node.canonicalProjection?.owner==='memoryOS2'&&node.canonicalProjection.itemId===key)
+      .map(node=>`semantic:${node.id}`);
+    const compatibilityRemoved=this.multiTimescale.removeCanonicalProjection(key);
+    const graphRemoved=this.semanticMemory.removeCanonicalProjection(key);
+    let recallFramesRemoved=this.p62.forgetMemory(key);
+    for(const aliasId of graphAliasIds)recallFramesRemoved+=this.p62.forgetMemory(aliasId);
+    this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(candidate=>candidate!==key));
+    return {projectionRemoved:compatibilityRemoved||graphRemoved,recallFramesRemoved};
   }
 
   private activeSemanticProjectionItems() {
@@ -586,10 +600,16 @@ export class MemoryFabric {
     const tick=Number.isFinite(options.tick)?Number(options.tick):-1;
     if(!options.force && tick>=0 && tick===this.lastMaintenanceTick)return {skipped:true,changed:0};
     const beforeSemanticIds=new Set(this.activeSemanticProjectionItems().map(item=>item.id));
+    const beforeCanonicalIds=new Set(this.memoryOS.snapshot({clone:false}).items.map(item=>item.id));
     const before=this.memoryOS.size();
     this.memoryOS.maintain({pressure01:options.pressure01,maxItems:options.maxItems});
     const byteBudget=Math.max(262144,Math.min(1048576,Math.floor(options.byteBudget??Math.max(262144,Math.min(1048576,Math.floor((options.maxItems??768)*720))))));
     const byteBudgetResult=this.memoryOS.enforceByteBudget({maxBytes:byteBudget,tick,protectedIds:options.protectedIds,reason:'memory-fabric-byte-budget'});
+    const afterCanonicalIds=new Set(this.memoryOS.snapshot({clone:false}).items.map(item=>item.id));
+    const evictedIds=[...beforeCanonicalIds].filter(id=>!afterCanonicalIds.has(id));
+    // Capacity/pressure and byte-budget paths mutate MemoryOS2 directly. Reconcile
+    // every derived read surface from the exact canonical before/after delta.
+    for(const id of evictedIds)this.purgeDerivedProjectionsForCanonicalId(id);
     if(options.hotBudget!==undefined||options.warmBudget!==undefined||options.coldBudget!==undefined||options.identityTension01!==undefined) this.memoryOS.applyResidencyPlan({hotBudget:options.hotBudget,warmBudget:options.warmBudget,coldBudget:options.coldBudget,pressure01:options.pressure01,identityTension01:options.identityTension01});
     this.lastMaintenanceTick=tick;
     this.statsData.maintenanceRuns++;
