@@ -1,3 +1,10 @@
+## [NK1][Health] Integrate cognitive health supervision into runtime (2026-11-22)
+
+- Connect the existing evidence-based CognitiveImmuneSystem to completed OrganismRuntime cycles through an optional host adapter for canonical epistemic, contradiction, and procedural-skill snapshots.
+- Persist bounded health samples, evidence-linked signals, and independent review events in a dedicated crash-safe FileStateStore sidecar; restore the timeline after restart.
+- Missing provider data remains unknown, provider failures are isolated from the cognitive cycle, and recommendations remain advisory rather than bypassing memory ownership or ActionGateway governance.
+- Add a focused runtime integration regression and exact-PR Actions workflow.
+
 ## [NK1][Prototype] Add bilingual persistent-memory E2E contract (2026-11-21)
 
 - Add a focused RU/EN end-to-end regression for cross-language recall in both directions, persisted snapshot/restore, bitemporal correction, explicit forget, provenance, and grounded abstention.
