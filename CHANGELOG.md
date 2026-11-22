@@ -1,3 +1,10 @@
+## [NK1][Avatar] Stop stale gestures when no idle clip exists (2026-11-22)
+
+- When a loaded GLB has no compatible idle/breathing clip, sleep now clears the currently active gesture instead of leaving its last talk/explore animation running.
+- The transition zeroes the previous action weight and stops it, then clears the controller's active-action reference so subsequent sleep frames do not repeatedly restart the transition.
+- Awake behavior is unchanged: if no compatible clip exists, the current action is preserved.
+- Add one focused regression and wire the existing real Three.js animation lifecycle test into the avatar model-preflight workflow.
+
 ## [NK1][Prototype] Add bilingual persistent-memory E2E contract (2026-11-21)
 
 - Add a focused RU/EN end-to-end regression for cross-language recall in both directions, persisted snapshot/restore, bitemporal correction, explicit forget, provenance, and grounded abstention.
