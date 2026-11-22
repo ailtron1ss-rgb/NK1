@@ -21,7 +21,11 @@ assert.equal(ledger.certification(1).status,'host-probe');
 
 // Two distinct physical-device records satisfy the default positive threshold.
 ledger.record({at:11,status:'REAL_DEVICE_VERIFIED',capabilities:caps,telemetry:live});
-assert.equal(ledger.certification(2).status,'unavailable');
+const partial = ledger.certification(2);
+assert.equal(partial.status,'host-probe',
+  'one physical record is below threshold; host evidence remains diagnostic-only');
+assert.equal(partial.criteria.verifiedProbes,false);
+assert.equal(partial.criteria.freshTelemetry,false);
 ledger.record({at:12,status:'REAL_DEVICE_VERIFIED',capabilities:caps,telemetry:live});
 assert.equal(ledger.certification(2).status,'verified');
 
