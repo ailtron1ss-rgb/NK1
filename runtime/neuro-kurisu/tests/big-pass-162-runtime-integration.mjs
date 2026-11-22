@@ -35,13 +35,14 @@ const riskArgs={
 const unverifiedRisk=new RiskAwareRecoveryController();
 const highRisk=unverifiedRisk.beforeDecision(riskArgs);
 const verifiedRisk=new RiskAwareRecoveryController().beforeDecision({...riskArgs,verified01:1});
-const userDirectedRisk=new RiskAwareRecoveryController().beforeDecision({...riskArgs,allowRecovery:false});
+const userDirectedController=new RiskAwareRecoveryController();
+const userDirectedRisk=userDirectedController.beforeDecision({...riskArgs,allowRecovery:false});
 assert.ok(highRisk.risk01>verifiedRisk.risk01,'missing verification evidence must increase estimated decision risk');
 assert.equal(highRisk.abstain,true,'very high risk with weak recovery gain must abstain from autonomous action');
 assert.equal(highRisk.recoveryAction,'explore','recovery action must use the best available recovery utility');
 assert.equal(userDirectedRisk.recoveryAction,null,'user-directed work must measure risk without scheduling an autonomous recovery');
 assert.equal(userDirectedRisk.abstain,false,'user-directed work must not be silently abstained by the autonomous recovery controller');
-assert.equal(new RiskAwareRecoveryController().snapshot().recoveryAttempts,0,'measuring user-directed risk must not count a recovery attempt');
+assert.equal(userDirectedController.snapshot().recoveryAttempts,0,'measuring user-directed risk must not count a recovery attempt');
 unverifiedRisk.afterOutcome({reward01:.2,verified01:0,predictionError01:.9,recoveryTriggered:true,recoverySuccessful01:.1,failureSeverity01:.9});
 assert.equal(unverifiedRisk.snapshot().failedRecoveries,1,'failed recovery outcomes must feed calibration');
 const restoredRisk=new RiskAwareRecoveryController();
