@@ -1,3 +1,10 @@
+## [NK1][Autonomy] Wire risk-aware recovery into the runtime (2026-11-22)
+
+- Connect the existing RiskAwareRecoveryController to the real OrganismRuntime decision and outcome path; risk appraisal now combines prediction error, uncertainty, model drift, embodied reliability, available compute budget, and prior physical verification.
+- Apply recovery overrides only to autonomous steps. External/user-directed turns and explicit Core action requests remain unchanged; the Core decision stays canonical and runtime recovery is recorded as a causally linked evidence event.
+- Persist risk calibration and recovery counters in a dedicated bounded sidecar, restore it defensively, and include it in the runtime stop durability boundary.
+- Extend the existing runtime integration contract to cover risk calibration, safe restore, accessor rejection, restart persistence, and fail-soft sidecar recovery.
+
 ## [NK1][Avatar] Stop stale gestures when no idle clip exists (2026-11-22)
 
 - When a loaded GLB has no compatible idle/breathing clip, sleep now clears the currently active gesture instead of leaving its last talk/explore animation running.
