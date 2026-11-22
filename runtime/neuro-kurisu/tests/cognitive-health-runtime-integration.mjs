@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { CognitiveImmuneSystem } from '../src/organism/cognition/CognitiveImmuneSystem.ts';
 import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 
 const dir = await mkdtemp(path.join(os.tmpdir(), 'nk-cognitive-health-runtime-'));
@@ -35,6 +36,7 @@ const makeRuntime = (withProvider = false) => new OrganismRuntime({
   intervalMs: 60_000,
   checkpointMinIntervalMs: 0,
   checkpointMaxDirtyCycles: 1,
+  cognitiveHealthSystem: new CognitiveImmuneSystem(),
   ...(withProvider ? { cognitiveHealthInputProvider: provider } : {}),
 });
 
