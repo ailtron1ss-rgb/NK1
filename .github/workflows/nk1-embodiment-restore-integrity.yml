@@ -17,6 +17,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/EmbodimentSubsystemRuntime.ts"
       - "runtime/neuro-kurisu/tests/embodiment-perception-routing-restore-integrity.mjs"
       - "runtime/neuro-kurisu/tests/device-evidence-ledger-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/device-evidence-certification-threshold.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/nk1-embodiment-restore-integrity.yml"
   pull_request:
@@ -35,6 +36,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/EmbodimentSubsystemRuntime.ts"
       - "runtime/neuro-kurisu/tests/embodiment-perception-routing-restore-integrity.mjs"
       - "runtime/neuro-kurisu/tests/device-evidence-ledger-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/device-evidence-certification-threshold.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/nk1-embodiment-restore-integrity.yml"
 
@@ -62,6 +64,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Perception-routing restore integrity
         run: npm --prefix runtime/neuro-kurisu run test:embodiment-perception-routing-restore
+      - name: Device evidence certification threshold integrity
+        run: npm --prefix runtime/neuro-kurisu run test:device-evidence-certification
       - name: Body subsystem restore sanitization integrity
         run: npm --prefix runtime/neuro-kurisu run test:embodiment-restore-sanitization
       - name: Embodied interaction boundary (aspect 10)
