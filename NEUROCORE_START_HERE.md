@@ -16,7 +16,7 @@
 - Open PRs: 270, all with unique heads; 205 Draft / 65 Ready.
 - [PR #903](https://github.com/ailtron1ss-rgb/NK1/pull/903): 180 ahead / 994 behind current source, merge base 1e83a011fc677ff20f2348570322bd562181d9ff. Preserve it; no rebase/merge. Next step is selective source-based salvage only.
 - [PR #866](https://github.com/ailtron1ss-rgb/NK1/pull/866): 79 ahead / 1,009 behind current source. One of 30 checks fails because the old branch environment cannot import acp.helpers. Current source already has explicit HMX apply/consent behavior and dedicated tests. Treat as potentially superseded, but do not close or delete it.
-- [PR #1084](https://github.com/ailtron1ss-rgb/NK1/pull/1084): existing Draft documentation branch; this handoff/report refresh is being added there. No merge was performed.
+- [PR #1084](https://github.com/ailtron1ss-rgb/NK1/pull/1084): existing Draft documentation branch; this handoff/report refresh is included there. No merge was performed.
 
 ## Release truth
 
