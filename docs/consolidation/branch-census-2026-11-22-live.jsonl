@@ -353,7 +353,7 @@
 {"branch":"docs/neko-nk1-adaptation-tree-20261104","head_sha":"7afd3f3db91b40241de6f8c62b11af18b3e0b1e6","protected":false}
 {"branch":"docs/neurocore-2026-11-01-durable-forget-checkpoint","head_sha":"1629b363053739fdc62ec0b5d9c6127f48e47cbe","protected":false}
 {"branch":"docs/neurocore-live-checkpoint-current-20261121","head_sha":"e0c7ac2c19efbcf8ca7f7560addfb03069598fd9","protected":false}
-{"branch":"docs/neurocore-project-map-analysis-20261121","head_sha":"8d7dddb2a78fb4ed167207631f6013bf668eb091","protected":false}
+{"branch":"docs/neurocore-project-map-analysis-20261121","head_sha":"0f3d4ade4b286fda5f8552d37c9cfab95641ace7","protected":false}
 {"branch":"docs/neurocore-prototype-live-checkpoint-20261121","head_sha":"a52580430597b3c12c2e64ac704303a73c2f71e3","protected":false}
 {"branch":"docs/nk1-branch-divergence-gate-2026-10-27","head_sha":"3fb979df5d87b5cc1b376c36262177b1004a5e84","protected":false}
 {"branch":"docs/nk1-canonical-project-state-2026-10-27","head_sha":"822455b1ececeea40a197237becb4eaf16e33322","protected":false}
