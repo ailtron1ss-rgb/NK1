@@ -1,3 +1,11 @@
+## [NK1][NMCN] Connect Neural Evolution as a bounded runtime advisor (2026-11-22)
+
+- Add an opt-in host-injected bridge from the canonical OrganismRuntime cycle to the NMCN 0.4.x evaluation contract using fixed-size numeric-only state/action/memory-key vectors; no raw user text or memory payload crosses the boundary.
+- Consume NMCN compute recommendations only as advisory requests for extra language deliberation, and only when NK1's existing slow-cognition plan, awake state, resource allocation and cognitive budget allow it.
+- Keep MemoryOS2, P23/P26, world state, ActionGateway and external postcondition verification as the sole canonical owners; NMCN cannot write memories, promote learning candidates or execute actions.
+- Fail closed on malformed output, timeout or transport errors; preserve the canonical cycle and journal bounded unavailability events.
+- Add a focused bridge regression, workflow and integration contract. A real Python sidecar/device deployment and NMCN verified-outcome learning remain unverified.
+
 ## [NK1][Avatar] Stop stale gestures when no idle clip exists (2026-11-22)
 
 - When a loaded GLB has no compatible idle/breathing clip, sleep now clears the currently active gesture instead of leaving its last talk/explore animation running.
