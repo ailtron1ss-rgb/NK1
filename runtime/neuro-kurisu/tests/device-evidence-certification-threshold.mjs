@@ -31,6 +31,7 @@ snapshot.records=[snapshot.records[0],{...snapshot.records[0]}];
 const restored=new DeviceEvidenceLedger();
 restored.restore(snapshot);
 assert.equal(restored.certification(2).criteria.freshTelemetry,false);
-assert.equal(restored.certification(2).status,'unavailable');
+assert.equal(restored.certification(2).status,'host-probe',
+  'duplicate physical records must not certify; the existing host probe remains diagnostic-only');
 
 console.log(JSON.stringify({pass:true,thresholdCases:6,hostProbeExcluded:true,distinctPhysicalRecordsRequired:true}));
