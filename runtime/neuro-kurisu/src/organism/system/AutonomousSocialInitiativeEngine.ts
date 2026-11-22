@@ -280,14 +280,19 @@ export class AutonomousSocialInitiativeEngine {
   observeExternalResponse(text: string, at = Date.now()): { initiativeId: string; topic: string; signal: 'positive' | 'engaged' | 'negative'; relevance01: number } | null {
     const clean = normalizeTopic(text).slice(0, 360);
     if (clean.length < 2) return null;
-    const negative = /\b(?:stop|don't|do not|not interested|boring|drop it|enough)\b|неинтересно|не интересно|не надо(?: об этом)?|прекрати|хватит|не хочу(?: об этом| такой разговор)?|не поднимай(?: эту тему)?/iu.test(clean);
+    // Short negative words are ambiguous outside the current thread (for example, "that movie was boring").
+    // Only an unmistakable standalone stop request may override the topic-link requirement.
+    const explicitStop = /^(?:stop|please stop|drop it|don't bring this up|do not bring this up|не надо(?: об этом)?|прекрати(?: об этом)?|хватит(?: об этом)?|не поднимай(?: эту тему)?)\s*[.!?]*$/iu.test(clean);
+    const negative = explicitStop || /\b(?:not interested|boring|drop it|enough)\b|неинтересно|не интересно|не хочу(?: об этом| такой разговор)?/iu.test(clean);
     const positive = /\b(?:interesting|tell me more|go on|good point|i like that|that's useful|great thought)\b|интересно|расскажи подробнее|расскажи ещё|продолжай|хорошая мысль|любопытно|мне нравится эта мысль/iu.test(clean);
     const latest = this.state.initiatives
       .filter(item => item.status === 'executed' && item.resolvedAt != null && !item.feedbackAt && item.resolvedAt <= at && at - item.resolvedAt <= 24 * 60 * 60_000)
       .sort((a, b) => Number(b.resolvedAt ?? 0) - Number(a.resolvedAt ?? 0))[0];
     if (!latest) return null;
     const relevance = Math.max(topicSimilarity(latest.topic, clean), latest.message ? topicSimilarity(latest.message, clean) : 0);
-    if (!negative && !positive && relevance < .14) return null;
+    // Attribute feedback only when it is about this initiative. A clear standalone stop
+    // command is the sole exception because it directly controls unsolicited outreach.
+    if (!explicitStop && relevance < .14) return null;
     const signal = negative ? 'negative' : positive ? 'positive' : 'engaged';
     latest.feedbackAt = at;
     latest.feedbackSignal = signal;
