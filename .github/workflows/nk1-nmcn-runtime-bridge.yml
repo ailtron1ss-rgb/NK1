@@ -4,6 +4,7 @@ on:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/nmcn/**"
+      - "runtime/neuro-kurisu/scripts/nmcn_sidecar.py"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/nmcn-runtime-bridge.mjs"
       - ".github/workflows/nk1-nmcn-runtime-bridge.yml"
@@ -26,5 +27,7 @@ jobs:
         with:
           node-version-file: ".nvmrc"
           package-manager-cache: false
+      - name: Validate Python sidecar syntax
+        run: python -m py_compile runtime/neuro-kurisu/scripts/nmcn_sidecar.py
       - name: Validate NMCN bridge boundary
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/nmcn-runtime-bridge.mjs
