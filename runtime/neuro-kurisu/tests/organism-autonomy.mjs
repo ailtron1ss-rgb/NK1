@@ -21,6 +21,14 @@ try {
   if (r.core.operationalStatusSnapshot().tick !== tickBeforeAbort) {
     throw new Error('pre-aborted autonomous batch must not mutate organism state');
   }
+  const tickBeforeBudget = r.core.operationalStatusSnapshot().tick;
+  const budgeted = await r.runAutonomousCycles(2, { maxDurationMs: 0 });
+  if (budgeted.cycles !== 0 || budgeted.stopReason !== 'time-budget') {
+    throw new Error(`zero-duration autonomous budget must complete zero cycles: ${JSON.stringify(budgeted)}`);
+  }
+  if (r.core.operationalStatusSnapshot().tick !== tickBeforeBudget) {
+    throw new Error('zero-duration autonomous budget must not mutate organism state');
+  }
   const batch = await r.runAutonomousCycles(2, { yieldEvery: 1 });
   if (batch.cycles !== 2 || batch.requestedCycles !== 2 || batch.stopReason !== 'completed') {
     throw new Error(`autonomous batch must report actual completed cycles: ${JSON.stringify(batch)}`);
