@@ -1,3 +1,9 @@
+## [NK1][Autonomy] Attribute social feedback only to the relevant initiative (2026-11-22)
+
+- Prevent unrelated negative/positive conversational remarks from being recorded as feedback for the most recent proactive thought.
+- Require topic relevance for feedback attribution, while preserving a clear standalone stop command as an immediate negative signal.
+- Extend the existing autonomous social initiative integrity suite with unrelated-negative and explicit-stop regressions.
+
 ## [NK1][Prototype] Add bilingual persistent-memory E2E contract (2026-11-21)
 
 - Add a focused RU/EN end-to-end regression for cross-language recall in both directions, persisted snapshot/restore, bitemporal correction, explicit forget, provenance, and grounded abstention.
