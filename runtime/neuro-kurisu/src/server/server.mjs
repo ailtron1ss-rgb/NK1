@@ -60,7 +60,7 @@ const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
 // External HMX 1.7 imports have a dedicated bounded payload budget; other API routes keep the smaller default.
-const HMX_STAGE_MAX_BODY_BYTES = 4 * 1024 * 1024 + 64 * 1024;
+const HMX_STAGE_MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024;
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
