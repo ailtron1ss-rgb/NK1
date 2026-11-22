@@ -25,7 +25,7 @@ This slice connects the separately developed Python NMCN runtime to the canonica
 - Host transport failures and malformed decisions fail closed and are journaled; they do not fail the cognitive cycle.
 - The included `NmcNLocalHttpPort` is an explicit loopback-only HTTP client for `http://127.0.0.1:8765/evaluate`; it rejects remote hosts, HTTPS, credentials, redirects and alternate paths.
 - The included `scripts/nmcn_sidecar.py` maps the JSON request to the real Python `NeuroCoreRuntime.evaluate()` API. It binds only to `127.0.0.1`, accepts a 16 KiB bounded request, validates fixed vector dimensions and cycle-bound references, and does not log payloads.
-- Start it from an extracted NMCN 0.4.2 package directory with `PYTHONPATH=/path/to/NeuroCore_Neural_Evolution_0.4/src python /path/to/NK1/runtime/neuro-kurisu/scripts/nmcn_sidecar.py --port 8765`. Then inject `new NmcNLocalHttpPort()` into `RuntimeConfig.nmcnRuntime`. NK1 still does not launch processes or open listeners implicitly.
+- Start it from an extracted NMCN 0.4.2 package directory with `PYTHONPATH=/path/to/NeuroCore_Neural_Evolution_0.4/src python /path/to/NK1/runtime/neuro-kurisu/scripts/nmcn_sidecar.py --port 8765`. Then configure the NK1 server environment with `NK1_NMCN_SIDECAR_URL=http://127.0.0.1:8765/evaluate` and optionally `NK1_NMCN_SIDECAR_TIMEOUT_MS=80`. The canonical server composition creates `NmcNLocalHttpPort` only when the URL variable is explicitly set; without it, NMCN remains disabled. NK1 still does not launch processes or open listeners implicitly.
 
 ## Verification boundary
 
