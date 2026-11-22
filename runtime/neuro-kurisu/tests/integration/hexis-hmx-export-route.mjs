@@ -137,6 +137,17 @@ try {
   assert.equal(missingStage.response.status, 404);
   assert.equal(missingStage.payload.error, 'hmx-stage-not-found');
 
+  // The UI permits a 4 MiB file; this route must not inherit the smaller 256 KiB default API body cap.
+  const largeDocument = {
+    ...defaultDocument,
+    sections: { memories: [{ content: 'x'.repeat(300_000) }] },
+  };
+  const largeStageId = await stage(largeDocument);
+  const largeAccepted = await decide(largeStageId, 'accept');
+  assert.equal(largeAccepted.response.status, 200, JSON.stringify(largeAccepted.payload));
+  assert.equal(largeAccepted.payload.stage?.status, 'accepted',
+    'bounded HMX imports larger than the general API body limit must still reach the authoritative stage validator');
+
   console.log('HEXIS_HMX_EXPORT_ROUTE=PASS');
 } finally {
   await stopChild(child);
