@@ -29,4 +29,24 @@ const branch=e.createContinuationBranch('перед переносом на др
 assert.equal(branch.status,'preserved');
 const diag=e.diagnostics();
 assert.ok(diag.evidence>=1 && diag.claims>=1 && diag.goals>=1 && diag.continuityBranches>=1);
+
+const repeatedEvidence=Array.from({length:64},(_,index)=>e.recordEvidence({kind:'experience',summary:'same-millisecond evidence identity',sourceId:`repeat-${index}`}));
+assert.equal(new Set(repeatedEvidence.map(row=>row?.id)).size,64,'every evidence event must receive a unique identity even when timestamps collide');
+
+const restoredEngine=new P34CausalPersonhoodEngine();
+const restoredEvidence={id:'restore-evidence',kind:'experience',summary:'valid restored evidence',weight01:.8,sourceId:'restore',at:100};
+restoredEngine.restore({
+  ...d,
+  evidence:[restoredEvidence,null,{...restoredEvidence,id:'invalid-kind',kind:'unknown'},{...restoredEvidence,summary:'conflicting duplicate'},{...restoredEvidence,id:'restore-second',summary:'second valid record'}],
+  claims:[{id:'restored-claim',subject:'self',predicate:'keeps provenance',confidence01:.8,supportingEvidenceIds:['restore-evidence','missing-evidence'],contradictingEvidenceIds:['missing-evidence'],stable01:.5,firstAt:100,lastAt:100}],
+  goals:[{id:'restored-goal',title:'restore safely',reason:'test',source:'self-authored',autonomy01:1,status:'active',progress01:0,evidenceIds:['restore-evidence','missing-evidence'],createdAt:100,updatedAt:100}],
+  changeRequests:[{id:'restored-change',field:'adaptive-trait:test',before:'',proposed:'test',reason:'test',identityImpact01:.2,requiredApprovals:1,selfDecision:'pending',creatorDecision:'approved',status:'proposed',createdAt:100,resolvedAt:null,evidenceIds:['missing-evidence','restore-evidence']}],
+});
+const restoredSnapshot=restoredEngine.snapshot();
+assert.deepEqual(restoredSnapshot.evidence.map(row=>row.id),['restore-evidence','restore-second'],'restore must reject malformed evidence and retain the first canonical duplicate');
+assert.deepEqual(restoredSnapshot.claims[0].supportingEvidenceIds,['restore-evidence'],'claims must not retain dangling evidence references');
+assert.deepEqual(restoredSnapshot.claims[0].contradictingEvidenceIds,[],'contradiction references must also be reconciled');
+assert.deepEqual(restoredSnapshot.goals[0].evidenceIds,['restore-evidence'],'goals must not retain dangling evidence references');
+assert.deepEqual(restoredSnapshot.changeRequests[0].evidenceIds,['restore-evidence'],'identity changes must not retain dangling evidence references');
+
 console.log('P34_CAUSAL_PERSONHOOD=PASS',JSON.stringify(diag));
