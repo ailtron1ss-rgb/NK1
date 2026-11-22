@@ -1,35 +1,41 @@
-# CURRENT HANDOFF — 2026-11-21
+# CURRENT HANDOFF — 2026-11-22
 
-**Canonical source baseline:** `workpass70-source` @ `f1cbaa9492ea297d67d8c7461642a75de92b677e`.  
-**main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).
+**Canonical source:** workpass70-source @ a98dbfe858be2df19fa01a78639a23f962920aa0.
+**main:** 06e01cdd0a8e60ed70991f22e842887f544d1ebf (release/metadata only).
+**Current source exact-head evidence:** 18/18 GitHub Actions check-runs completed SUCCESS; every check-run is bound to the exact source SHA above. No local test command was run in this pass.
 
-## Exact-source evidence
+## Changes observed since the previous handoff
 
-- Source HEAD commit time: 2026-11-21T07:53:04Z; parent `8d98f271e1374376cc81a9ba0c6e77c014f13ca8`.
-- Exact source Actions: **9/9 SUCCESS** on `f1cbaa9492ea297d67d8c7461642a75de92b677e`; see [daily report](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md) for all nine run links.
-- Full branch census: 1,053 refs / 1,035 unique heads / 3 duplicate-tip groups / 18 excess aliases. Open PR count: 275.
-- [PR #1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059) is Draft, based on the live source SHA. It carries a benchmark-only locale-neutral BM25 tokenization fix and Turkish-I regression. First exact-head Actions: 16/17 SUCCESS; the memory-integrity failure was a fixture contract issue (missing explicit `independenceGroupId` with query evidence enabled), corrected in commit `396e1241226820a0dcd64ea92dbaaf33eaba024f`. Code/test head `67460ab86ca25179b2d4125cc7dbe1d692b60f80` then passed **18/18 exact-head Actions SUCCESS**. The synthetic benchmark remains not-promoted (recallDelta=0); recheck the current PR head after this documentation-only update.
-- PR #903 remains open/Draft; stacked children #916/#928/#947 are merged only into parent branches. Compare live source to #903: 180 ahead / 893 behind; do not rebase, merge or rewrite without a deliberate source-based salvage pass.
-- No PR was merged by this cycle. No branch was deleted or force-pushed.
+- PR #1059 was merged externally on 2026-11-21; locale-neutral BM25 benchmark tokenization is now in the source line. It fixes host-locale variance only; synthetic recallDelta=0, so no retrieval uplift is claimed.
+- PR #1079 merged externally and preserved 15 already-integrated branch histories as additional ancestry without deleting refs.
+- PR #1083 merged externally on 2026-11-22 at the current source HEAD. HMX 1.7 export and bounded external-file staging are present. Current source also exposes stage/decide/apply; explicit apply requires confirmed=true and an accepted stage.
+
+## Live repository census
+
+- Branches: 1,073 refs / 1,055 unique HEADs / 3 exact duplicate-tip groups / 18 excess aliases. No branch was deleted.
+- Open PRs: 270, all with unique heads; 205 Draft / 65 Ready.
+- [PR #903](https://github.com/ailtron1ss-rgb/NK1/pull/903): 180 ahead / 994 behind current source, merge base 1e83a011fc677ff20f2348570322bd562181d9ff. Preserve it; no rebase/merge. Next step is selective source-based salvage only.
+- [PR #866](https://github.com/ailtron1ss-rgb/NK1/pull/866): 79 ahead / 1,009 behind current source. One of 30 checks fails because the old branch environment cannot import acp.helpers. Current source already has explicit HMX apply/consent behavior and dedicated tests. Treat as potentially superseded, but do not close or delete it.
+- [PR #1084](https://github.com/ailtron1ss-rgb/NK1/pull/1084): existing Draft documentation branch; this handoff/report refresh is being added there. No merge was performed.
 
 ## Release truth
 
-- Stable ZIP metadata SHA-256: `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
-- Latest prerelease ZIP metadata SHA-256: `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- ZIP bytes were not materialized; independent hash, extraction manifest and source parity remain UNVERIFIED.
-- Human license review remains pending; redistribution approval is false.
-- The 75-aspect registry is a 2026-11-06 snapshot, not current readiness evidence.
+- Stable tag Neuro and latest prerelease workpass70-hotfix1-2026-10-19 remain the October 19 ZIP assets.
+- GitHub metadata digests: stable c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286; prerelease 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
+- ZIP bytes remain unavailable to this run; independent SHA-256, extraction manifest and source/ZIP parity are UNVERIFIED.
+- contracts/RELEASE_LICENSE_REVIEW.json remains pending: root NOASSERTION, runtime private/all-rights-reserved, 477 locked npm components and 8 source archives require human review; redistributionApproved=false.
 
-## Next P0 / P1
+## Current P0 / P1
 
-1. Re-read PR #1059 current head and exact-SHA Actions; fix only any reproduced failure and keep Draft.
-2. Continue #903 source-based salvage analysis without rewriting branch history.
-3. Materialize the October 19 ZIP through a supported path; independently hash/extract and compare to source.
-4. Run immutable RU/EN holdout with at least five paired seeds.
-5. Complete browser/WebGL and Android/Termux soak; obtain human license review.
+1. Preserve the exact source and PR topology; continue source-based salvage of #903 and #866 without rewriting their history.
+2. Obtain an immutable independent RU/EN holdout with at least five paired seeds; do not promote on synthetic fixtures.
+3. Complete browser/WebGL visual E2E and Android/Termux offline/background soak; measure phone tick and recovery.
+4. Run physical speech tests for lip-sync drift ≤80 ms and interrupt latency ≤200 ms.
+5. Materialize the October 19 Release ZIP through a supported path, independently hash/extract it, and obtain human license/asset approval before any new Release.
 
-**Current cycle report:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md).
-
+**Current cycle report:** docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-22.md.
+**Current working backlog:** docs/NK1_100_PERCENT_COMPLETION_PROGRAM_RU_2026-11-18.md (20 streams / 305 work units; its 2026-11-18 baseline is historical and must be refreshed against live evidence).
+**Research queue:** docs/RESEARCH_INTAKE_LEDGER.md; candidate entries remain research-only/adapt until code, data and license evidence pass.
 ---
 
 ---
