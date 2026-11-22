@@ -11,9 +11,11 @@ from dataclasses import asdict
 import json
 import math
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from typing import Any
 
 from neurocore_neural_evolution.adaptive_core import FastWeightMemory, OnlineLinearWorldModel
+from neurocore_neural_evolution.checkpoint import CheckpointError
 from neurocore_neural_evolution.cognitive_kernel import CognitiveSignal
 from neurocore_neural_evolution.runtime import NeuroCoreRuntime
 
@@ -64,7 +66,8 @@ def _validate(payload: Any) -> tuple[CognitiveSignal, list[float], list[float], 
     return signal, vectors["state"], vectors["action"], vectors["memory_key"], payload["low_power"]
 
 
-def _handler(runtime: NeuroCoreRuntime):
+def _handler(runtime: NeuroCoreRuntime, checkpoint_dir: Path, checkpoint_every: int):
+    calls = {"count": 0}
     class Handler(BaseHTTPRequestHandler):
         server_version = "NMCN-Loopback/0.4"
 
@@ -81,6 +84,13 @@ def _handler(runtime: NeuroCoreRuntime):
                 signal, state, action, memory_key, low_power = _validate(payload)
                 runtime.low_power = low_power
                 decision = runtime.evaluate(signal, state, action, memory_key)
+                calls["count"] += 1
+                if calls["count"] % checkpoint_every == 0:
+                    try:
+                        runtime.save_checkpoint_generation(str(checkpoint_dir), keep=3)
+                    except Exception:
+                        # Advisory persistence failure must not turn a valid decision into an action failure.
+                        print("NMCN checkpoint save failed; current decision remains advisory", flush=True)
                 body = json.dumps(asdict(decision), separators=(",", ":"), allow_nan=False).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -103,20 +113,36 @@ def _handler(runtime: NeuroCoreRuntime):
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the NMCN 0.4.x loopback sidecar")
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--checkpoint-dir", default=str(Path.home() / ".local" / "state" / "neurocore-nmcn"))
+    parser.add_argument("--checkpoint-every", type=int, default=8)
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
+    if not 1 <= args.checkpoint_every <= 1000:
+        parser.error("--checkpoint-every must be between 1 and 1000")
+    checkpoint_dir = Path(args.checkpoint_dir).expanduser()
     runtime = NeuroCoreRuntime(
         memory=FastWeightMemory(dimension=8),
         world_model=OnlineLinearWorldModel(state_dim=8, action_dim=6),
     )
-    server = HTTPServer(("127.0.0.1", args.port), _handler(runtime))
-    print(f"NMCN sidecar listening on http://127.0.0.1:{args.port}/evaluate")
+    try:
+        restored = runtime.load_latest_checkpoint_generation(str(checkpoint_dir), keep=3)
+        print(f"NMCN checkpoint restored generation {restored['generation']}", flush=True)
+    except CheckpointError as exc:
+        # First boot has no generation; a corrupt journal is surfaced, but the
+        # advisory sidecar can still start cold without affecting canonical NK1.
+        print(f"NMCN checkpoint unavailable; starting cold: {str(exc)[:180]}", flush=True)
+    server = HTTPServer(("127.0.0.1", args.port), _handler(runtime, checkpoint_dir, args.checkpoint_every))
+    print(f"NMCN sidecar listening on http://127.0.0.1:{args.port}/evaluate", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        try:
+            runtime.save_checkpoint_generation(str(checkpoint_dir), keep=3)
+        except Exception:
+            print("NMCN checkpoint shutdown save failed", flush=True)
         server.server_close()
 
 
