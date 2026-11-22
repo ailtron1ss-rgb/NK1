@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPluginVoiceTranscriptBridge.ts';
 import type { NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
+import { buildNmcNRuntimeInput, evaluateNmcNRuntime, type NmcNRuntimePort } from '../integration/nmcn/NmcNRuntimeBridge.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
@@ -145,6 +146,10 @@ export interface RuntimeConfig extends OrganismConfig {
   sensorIntervalMs?: number;
   phonePolicy?: Partial<PhonePolicyConfig>;
   languageInvoker?: LanguageInvoker;
+  /** Optional host-injected NMCN advisor; never owns memory or action execution. */
+  nmcnRuntime?: NmcNRuntimePort;
+  /** Sidecar response budget; clamped by the bridge to 10–1000 ms (default 80 ms). */
+  nmcnTimeoutMs?: number;
   /** Exact base-model identity required before any task adapter can route. */
   synapticBaseModelId?: string;
   synapticBaseModelRevisionSha256?: string;
@@ -1076,6 +1081,43 @@ export class OrganismRuntime {
       externalGoal: externalGoalForRuntimeInput(externalText, options.externalGoalPolicy),
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
     });
+    // NMCN is an optional, numeric-only compute advisor. Its failures never fail the canonical cycle.
+    const nmcnDecision = this.config.nmcnRuntime
+      ? await evaluateNmcNRuntime(this.config.nmcnRuntime, buildNmcNRuntimeInput({
+          tick: cycle.state.tick,
+          energy01: Number(cycle.state.needs.energy ?? 0),
+          cognitiveLoad01: Number(cycle.state.needs.cognitiveLoad ?? 1),
+          uncertainty01: Number(cycle.state.needs.uncertainty ?? 1),
+          novelty01: Number(cycle.state.needs.novelty ?? 0),
+          goalPressure01: Number(cycle.state.needs.goalPressure ?? 0),
+          predictionError01: Number(cycle.state.predictionError ?? 0),
+          bodyEnergy01: body.bodyEnergy01,
+          thermalStrain01: body.thermalStrain01,
+          sensoryFreshness01: body.sensoryFreshness01,
+          battery01: body.telemetry.battery01,
+          selectedAction: cycle.decision.selected?.action ?? null,
+          lowPower: resourceAllocation.mode === 'scarce' || resourceAllocation.mode === 'critical' || body.thermalStrain01 >= 0.8,
+        }), { timeoutMs: this.config.nmcnTimeoutMs })
+      : null;
+    if (nmcnDecision) {
+      this.evidenceBus.publish({
+        tick: cycle.state.tick,
+        kind: 'resource',
+        source: 'nmcn-compute-advisor',
+        confidence01: 0.5,
+        payload: {
+          mode: nmcnDecision.mode,
+          reason: nmcnDecision.reason,
+          invokeLanguageCore: nmcnDecision.invokeLanguageCore,
+          distributionShiftDetected: nmcnDecision.distributionShiftDetected,
+          maxReasoningCycles: nmcnDecision.maxReasoningCycles,
+          estimatedAuxiliaryStateBytes: nmcnDecision.estimatedAuxiliaryStateBytes,
+          authority: 'advisory-only',
+        },
+      });
+    } else if (this.config.nmcnRuntime && (Boolean(externalText) || cycle.state.tick % 64 === 0)) {
+      await this.journal.write('warn', 'runtime.nmcn.advisory-unavailable', { tick: cycle.state.tick }).catch(() => {});
+    }
     const priorSpineMode = this.cognitiveSpineScheduler.snapshot().mode;
     const spineDecision = this.cognitiveSpineScheduler.decide({
       tick: cycle.state.tick,
@@ -1147,8 +1189,13 @@ export class OrganismRuntime {
       ...modalityEvents.slice(interpretation.modalityInputs.length).map(event => `[${event.modality}] ${event.summary}`)
     ].filter(Boolean).join('\n');
     const slowCognitionAllowed = executionPlan?.run?.['slow-cognition'] !== false && (Boolean(externalText) || spineDecision.run.research);
+    const nmcnBudgetMode = this.core.cognitiveBudgetOperationalSnapshot()?.mode;
+    const nmcnMayRequestDeliberation = Boolean(
+      slowCognitionAllowed && nmcnDecision?.invokeLanguageCore && body.awake &&
+      resourceAllocation.mode !== 'critical' && nmcnBudgetMode !== 'sleep' && nmcnBudgetMode !== 'defer'
+    );
     const cognitiveProposal = slowCognitionAllowed
-      ? await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal)
+      ? await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate) || nmcnMayRequestDeliberation, !externalText, options.signal)
       : null;
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
