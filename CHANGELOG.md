@@ -1,3 +1,9 @@
+## [NK1][Persistence] Verify HMX explicit apply across server restart (2026-11-22)
+
+- Extend the real-server HMX consent regression to restart against the same durable state directory after an approved import.
+- Verify the accepted stage and canonical hypothesis survive restart, sensitive text remains redacted, and replay does not insert a duplicate.
+- Test-only hardening; no runtime behavior or release artifact is changed.
+
 ## [NK1][Prototype] Add bilingual persistent-memory E2E contract (2026-11-21)
 
 - Add a focused RU/EN end-to-end regression for cross-language recall in both directions, persisted snapshot/restore, bitemporal correction, explicit forget, provenance, and grounded abstention.
