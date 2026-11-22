@@ -97,7 +97,8 @@ export function buildCognitiveFrame(state: OrganismState, observation: OrganismO
   );
   const interruptPriority01=clamp(Math.max(predictionError01*.92, surprise01*.88, goalPressure01*.78, uncertainty01*.74, (1-energy01)*.86, thermal01*.80, ramPressure01*.78));
   const interruptType = predictionError01>.7?'prediction-error':surprise01>.68?'surprise':goalPressure01>.78?'goal-pressure':uncertainty01>.82?'uncertainty':energy01<.18?'resource-critical':thermal01>.82?'thermal-critical':ramPressure01>.86?'memory-pressure':externalInput?'external-input':'none';
-  const interruptDomains = (Object.entries(domains).filter(([domain,active])=>active && ['self','world','memory','agency','embodiment','research','governance'].includes(domain)).map(([domain])=>domain as CognitiveDomain));
+  // Interrupt routing follows the final dirty set, including resource-safety escalations.
+  const interruptDomains = (Object.entries(dirtyDomains).filter(([,active])=>active).map(([domain])=>domain as CognitiveDomain));
   const interrupt={active:interruptPriority01>.72 && interruptType!=='none',priority01:interruptPriority01,type:interruptType,domains:interruptDomains};
   // Attention is scarce by design. It becomes the soft resource shared by all
   // downstream planners instead of each subsystem assuming an unlimited focus.
@@ -111,8 +112,9 @@ export function buildCognitiveFrame(state: OrganismState, observation: OrganismO
     `cap=${cognitiveCapacity01.toFixed(2)}`,
   ].join(';');
 
+  // Keep the compact wake mask consistent with the scheduler's dirty-domain contract.
   let wakeMask=0;
-  if(domains.self) wakeMask|=1; if(domains.world) wakeMask|=2; if(domains.memory) wakeMask|=4; if(domains.agency) wakeMask|=8; if(domains.embodiment) wakeMask|=16; if(domains.research) wakeMask|=32; if(domains.governance) wakeMask|=64;
+  if(dirtyDomains.self) wakeMask|=1; if(dirtyDomains.world) wakeMask|=2; if(dirtyDomains.memory) wakeMask|=4; if(dirtyDomains.agency) wakeMask|=8; if(dirtyDomains.embodiment) wakeMask|=16; if(dirtyDomains.research) wakeMask|=32; if(dirtyDomains.governance) wakeMask|=64;
   return {version:1,tick:state.tick+1,at:state.at,externalInput,signalMask,domains,dirtyDomains,attentionBudget01,deepDemand01,surprise01,novelty01,predictionError01,uncertainty01,goalPressure01,energy01,cognitiveCapacity01,thermal01,ramPressure01,complexity01,expectedInformationGain01,wakeMask,interrupt,reason};
 }
 
