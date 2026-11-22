@@ -259,3 +259,36 @@ test("sleep stops a stale gesture when the model has no compatible idle clip", (
   assert.deepEqual(previous.calls.filter((call) => call[0] === "weight"), [["weight", 0]]);
   assert.deepEqual(previous.calls.filter((call) => call[0] === "stop"), [["stop"]]);
 });
+
+
+test("real Three.js mixer stops advancing a talk clip after sleep without an idle clip", async () => {
+  const THREE = await import("three");
+  const root = new THREE.Group();
+  const chest = new THREE.Object3D();
+  chest.name = "chest";
+  root.add(chest);
+  const talkClip = new THREE.AnimationClip("talk_gesture", 1, [
+    new THREE.NumberKeyframeTrack("chest.rotation[z]", [0, 1], [0, 1]),
+  ]);
+  const mixer = new THREE.AnimationMixer(root);
+  const previous = mixer.clipAction(talkClip);
+  previous.play();
+  mixer.update(0.25);
+  assert.ok(chest.rotation.z > 0.1, "the talk animation must be active before sleep");
+
+  const result = applyAvatarAnimationFrame({
+    mixer,
+    clips: [talkClip],
+    action: "respond",
+    previousAction: previous,
+    previousClipName: "talk_gesture",
+    awake: false,
+    energy: 0.2,
+  });
+  assert.equal(result.activeAction, null);
+  assert.equal(previous.isRunning(), false, "the actual Three.js action must be deactivated");
+  const stoppedRotation = chest.rotation.z;
+  mixer.update(0.25);
+  assert.equal(chest.rotation.z, stoppedRotation, "the stopped gesture must not keep advancing");
+  mixer.stopAllAction();
+});
