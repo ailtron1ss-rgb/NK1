@@ -9,6 +9,11 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/**"
       - "runtime/neuro-kurisu/src/organism/world/**"
       - "runtime/neuro-kurisu/src/organism/research/**"
+      - "runtime/neuro-kurisu/src/organism/integration/hexis/**"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/integration/**"
+      - "app/src/components/HexisControlConsole.tsx"
+      - "app/src/neuro-kurisu/api.ts"
       - "runtime/neuro-kurisu/tests/**"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
@@ -66,6 +71,8 @@ jobs:
           node --experimental-strip-types runtime/neuro-kurisu/tests/idea10-mechanism-runtime-intake.mjs
           node --experimental-strip-types runtime/neuro-kurisu/tests/idea10-mechanism-symmetry.mjs
           node --experimental-strip-types runtime/neuro-kurisu/tests/idea10-scientific-project-verification.mjs
+          node --experimental-strip-types runtime/neuro-kurisu/tests/integration/hexis-hmx-export-contract.mjs
+          node --experimental-strip-types runtime/neuro-kurisu/tests/integration/hexis-hmx-export-route.mjs
       - name: Unified cognitive cycle and boundary
         run: npm --prefix runtime/neuro-kurisu run test:workpass287:cognitive-cycle && npm --prefix runtime/neuro-kurisu run test:cognitive-cycle-boundary-runtime-wiring
       - name: Cognitive resource economy and Will voluntary attention

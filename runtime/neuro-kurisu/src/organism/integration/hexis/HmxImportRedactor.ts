@@ -1,3 +1,4 @@
+import { snapshotPlainData } from '../../core/PlainDataSnapshot.ts';
 export const HMX_IMPORT_REDACTED_PATTERN_IDS = Object.freeze([
   'private-key',
   'credential-url',
@@ -38,4 +39,43 @@ export function redactHmxImportedText(value: string, maxLength = 16_000): string
       typeof prefix === 'string' ? prefix + '[redacted:' + name + ']' : '[redacted:' + name + ']');
   }
   return text.slice(0, bounded);
+}
+
+/**
+ * Creates an accessor-safe bounded data-only HMX export and scrubs every nested
+ * string before it leaves the organism. The pattern set is risk reduction,
+ * not proof that arbitrary free text is free of personal or secret data.
+ */
+export function redactHmxExportValue<T = unknown>(value: T, maxStringLength = 12_000): T {
+  const boundedStringLength = Number.isSafeInteger(maxStringLength)
+    ? Math.max(0, Math.min(48_000, maxStringLength))
+    : 12_000;
+  const snapshot = snapshotPlainData<unknown>(value, {
+    maxDepth: 32,
+    maxNodes: 20_000,
+    maxStringUnits: 1_000_000,
+  });
+  let visited = 0;
+  const visit = (input: unknown, depth: number): unknown => {
+    visited += 1;
+    if (visited > 20_000 || depth > 32) throw new Error('hmx-export-size-limit');
+    if (typeof input === 'string') return redactHmxImportedText(input, boundedStringLength);
+    if (input === null || typeof input === 'boolean' || typeof input === 'number') return input;
+    if (Array.isArray(input)) return input.map(value => visit(value, depth + 1));
+    if (input && typeof input === 'object') {
+      const result: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+        if (Object.keys(result).length >= 2_000) throw new Error('hmx-export-object-size-limit');
+        Object.defineProperty(result, key, {
+          value: visit(value, depth + 1),
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
+      }
+      return result;
+    }
+    throw new Error('hmx-export-unsupported-value');
+  };
+  return visit(snapshot, 0) as T;
 }
