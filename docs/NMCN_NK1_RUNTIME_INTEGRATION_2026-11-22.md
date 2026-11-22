@@ -23,7 +23,9 @@ This slice connects the separately developed Python NMCN runtime to the canonica
 - Integration is opt-in; without `nmcnRuntime`, NK1 behavior is unchanged.
 - Default sidecar response budget is 80 ms; configurable `nmcnTimeoutMs` is clamped to 10–1000 ms. Timeout aborts the host request and degrades to canonical NK1 behavior.
 - Host transport failures and malformed decisions fail closed and are journaled; they do not fail the cognitive cycle.
-- The adapter is transport-neutral. The host may use an embedded Python runtime or a separately managed local sidecar, but NK1 does not launch processes, open network listeners, or assume Python is installed.
+- The included `NmcNLocalHttpPort` is an explicit loopback-only HTTP client for `http://127.0.0.1:8765/evaluate`; it rejects remote hosts, HTTPS, credentials, redirects and alternate paths.
+- The included `scripts/nmcn_sidecar.py` maps the JSON request to the real Python `NeuroCoreRuntime.evaluate()` API. It binds only to `127.0.0.1`, accepts a 16 KiB bounded request, validates fixed vector dimensions and cycle-bound references, and does not log payloads.
+- Start it from an extracted NMCN 0.4.2 package directory with `PYTHONPATH=/path/to/NeuroCore_Neural_Evolution_0.4.2/src python /path/to/NK1/runtime/neuro-kurisu/scripts/nmcn_sidecar.py --port 8765`. Then inject `new NmcNLocalHttpPort()` into `RuntimeConfig.nmcnRuntime`. NK1 still does not launch processes or open listeners implicitly.
 
 ## Verification boundary
 
