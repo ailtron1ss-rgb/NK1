@@ -204,8 +204,7 @@ export class P34CausalPersonhoodEngine {
 
   observeSelfClaim(subject:string,predicate:string,evidenceIds:string[]=[]){
     const s=String(subject).trim().slice(0,100); const p=String(predicate).trim().slice(0,160); if(!s||!p)return null;
-    const id=idFor('claim',`${s}:${p}`);
-    const existing=this.state.claims.find(c=>c.id===id);
+    const existing=this.state.claims.find(c=>c.subject===s&&c.predicate===p);
     const validEvidence=reconcileEvidenceRefs(evidenceIds,new Set(this.state.evidence.map(row=>row.id)));
     if(existing){
       existing.confidence01=clamp(existing.confidence01*.84+Math.min(1,validEvidence.length/3)*.16);
@@ -215,7 +214,7 @@ export class P34CausalPersonhoodEngine {
       this.recomputeMetrics();
       return structuredClone(existing);
     }
-    const row:PersonhoodClaim={id,subject:s,predicate:p,confidence01:clamp(.45+Math.min(.45,validEvidence.length*.12)),supportingEvidenceIds:validEvidence.slice(0,12),contradictingEvidenceIds:[],stable01:.25,firstAt:now(),lastAt:now()};
+    const row:PersonhoodClaim={id:idFor('claim',`${s}:${p}`),subject:s,predicate:p,confidence01:clamp(.45+Math.min(.45,validEvidence.length*.12)),supportingEvidenceIds:validEvidence.slice(0,12),contradictingEvidenceIds:[],stable01:.25,firstAt:now(),lastAt:now()};
     this.state.claims=[row,...this.state.claims].slice(0,128);
     this.recomputeMetrics();
     return structuredClone(row);
