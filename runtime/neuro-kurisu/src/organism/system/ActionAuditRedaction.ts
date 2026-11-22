@@ -29,8 +29,11 @@ export function sanitizeActionAuditValue(value: unknown): unknown {
     seen.add(input);
     budget--;
     try {
-      if (Array.isArray(input)) return input.slice(0, 16).map(item => visit(item, depth + 1));
       const descriptors = Object.getOwnPropertyDescriptors(input);
+      if (Array.isArray(input)) return Array.from({ length: Math.min(input.length, 16) }, (_, index) => {
+        const descriptor = descriptors[String(index)];
+        return descriptor && 'value' in descriptor ? visit(descriptor.value, depth + 1) : '[accessor-omitted]';
+      });
       const output: Record<string, unknown> = {};
       for (const name of Object.keys(descriptors).slice(0, 32)) {
         const descriptor = descriptors[name];
