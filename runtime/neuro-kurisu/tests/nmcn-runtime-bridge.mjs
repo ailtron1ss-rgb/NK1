@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { NmcNLocalHttpPort } from '../src/organism/integration/nmcn/NmcNLocalHttpPort.ts';
 import {
   buildNmcNRuntimeInput,
   evaluateNmcNRuntime,
@@ -84,4 +85,24 @@ const coerciveDecision = await evaluateNmcNRuntime({
 }, input);
 assert.equal(coerciveDecision, null, 'numeric strings must not be accepted as trusted sidecar fields');
 
-console.log('NMCN runtime bridge: bounded projection, strict decision parsing, fail-closed timeout PASS');
+assert.throws(() => new NmcNLocalHttpPort('https://127.0.0.1:8765/evaluate'), /loopback-http/);
+assert.throws(() => new NmcNLocalHttpPort('http://example.com:8765/evaluate'), /loopback-http/);
+assert.throws(() => new NmcNLocalHttpPort('http://127.0.0.1:8765/other'), /loopback-http/);
+let httpRequest;
+const httpPort = new NmcNLocalHttpPort('http://127.0.0.1:8765/evaluate', async (url, init) => {
+  httpRequest = { url: String(url), init };
+  return new Response(JSON.stringify({
+    compute: { mode: 'deliberative', reason: 'high_uncertainty_or_surprise', max_reasoning_cycles: 2 },
+    invoke_language_core: true,
+    invocation_reason: 'high_uncertainty_or_surprise',
+    distribution_shift_detected: false,
+    estimated_auxiliary_state_bytes: 4096,
+  }), { status: 200, headers: { 'content-type': 'application/json' } });
+});
+const httpDecision = await evaluateNmcNRuntime(httpPort, input);
+assert.equal(httpDecision?.invokeLanguageCore, true);
+assert.equal(httpRequest.url, 'http://127.0.0.1:8765/evaluate');
+assert.equal(httpRequest.init.method, 'POST');
+assert.equal(JSON.parse(httpRequest.init.body).signal.payload_ref, 'nk1-cycle:17');
+
+console.log('NMCN runtime bridge: bounded projection, strict parsing, loopback transport and timeout PASS');
