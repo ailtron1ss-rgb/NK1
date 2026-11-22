@@ -14,6 +14,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 
+from neurocore_neural_evolution import __version__ as NMCN_VERSION
 from neurocore_neural_evolution.adaptive_core import FastWeightMemory, OnlineLinearWorldModel
 from neurocore_neural_evolution.checkpoint import CheckpointError
 from neurocore_neural_evolution.cognitive_kernel import CognitiveSignal
@@ -73,7 +74,7 @@ def _validate(payload: Any) -> tuple[CognitiveSignal, list[float], list[float], 
 def _handler(runtime: NeuroCoreRuntime, checkpoint_dir: Path, checkpoint_every: int):
     calls = {"count": 0}
     class Handler(BaseHTTPRequestHandler):
-        server_version = "NMCN-Loopback/0.4"
+        server_version = "NMCN-Loopback/0.4.2"
 
         def do_POST(self) -> None:  # noqa: N802 - stdlib HTTP handler contract
             if self.path != "/evaluate":
@@ -120,6 +121,8 @@ def main() -> None:
     parser.add_argument("--checkpoint-dir", default=str(Path.home() / ".local" / "state" / "neurocore-nmcn"))
     parser.add_argument("--checkpoint-every", type=int, default=8)
     args = parser.parse_args()
+    if NMCN_VERSION != "0.4.2":
+        parser.error(f"expected neurocore-neural-evolution 0.4.2, found {NMCN_VERSION}")
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
     if not 1 <= args.checkpoint_every <= 1000:
