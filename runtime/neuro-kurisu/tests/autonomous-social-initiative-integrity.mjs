@@ -23,6 +23,12 @@ assert.equal(plannedEngine.latestReady(1000),null,'a message cannot be delivered
 assert.equal(plannedEngine.acknowledge(planned.id,1000),false,'delivery cannot precede stagedAt');
 assert.equal(plannedEngine.acknowledge(planned.id,1002),true);
 assert.equal(plannedEngine.acknowledge(planned.id,1003),false,'delivery acknowledgement remains idempotent');
+assert.equal(plannedEngine.observeExternalResponse('That movie was boring',1004),null,
+  'an unrelated negative remark must not be attributed to the latest proactive thought');
+assert.equal(plannedEngine.snapshot().initiatives[0].feedbackSignal,undefined,
+  'unrelated feedback must leave the initiative untouched');
+assert.equal(plannedEngine.observeExternalResponse('Stop.',1005)?.signal,'negative',
+  'an unmistakable standalone stop request must suppress unsolicited outreach');
 
 const staleStage=new AutonomousSocialInitiativeEngine();
 const stalePlan=staleStage.cycle(makeInput(2000)).initiative;
