@@ -1626,9 +1626,20 @@ export class MemoryOS2{
      // provider timeout even when long natural-language queries dilute average fuzzy coverage.
      const queryTokenArray=[...qTokens];
      const memoryTokens=this.tokensFor(m.content);
-     const morphologyEvidence=queryTokenArray.some(queryToken=>queryToken.length>=5&&
-       [...memoryTokens].some(memoryToken=>memoryToken.length>=5&&memoryToken!==queryToken&&
-         (queryToken.startsWith(memoryToken.slice(0,5))||memoryToken.startsWith(queryToken.slice(0,5)))));
+     const morphologyEvidence=queryTokenArray.some(queryToken=>
+       [...memoryTokens].some(memoryToken=>{
+         if(memoryToken===queryToken)return false;
+         const shorter=queryToken.length<=memoryToken.length?queryToken:memoryToken;
+         const longer=queryToken.length<=memoryToken.length?memoryToken:queryToken;
+         const suffix=longer.slice(shorter.length);
+         // Preserve common third-person/plural s/es matches for short but meaningful
+         // roots (e.g. live ↔ lives) without treating arbitrary four-letter prefixes
+         // such as live ↔ liver as the same lexical evidence.
+         const inflectionalMatch=shorter.length>=4&&longer.startsWith(shorter)&&/^(?:s|es)$/u.test(suffix);
+         const stableRootMatch=queryToken.length>=5&&memoryToken.length>=5&&
+           (queryToken.startsWith(memoryToken.slice(0,5))||memoryToken.startsWith(queryToken.slice(0,5)));
+         return inflectionalMatch||stableRootMatch;
+       }));
      const metadataEvidence=this.metadataRecallEnabled&&evidence.metadata>=.66;
      // Bilingual concept grounding: a memory that expresses the query's active
      // concept groups is direct evidence of aboutness even with zero literal token
