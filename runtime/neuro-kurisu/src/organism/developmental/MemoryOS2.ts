@@ -145,6 +145,10 @@ export function isConversationMemory(item:Pick<MemoryItem2,'context'|'source'>):
  return /(?:^|-)(?:conversation|dialogue|chat|session|transcript|message|discussion)-(?:history|summary|record|transcript|log|import|archive)(?:-|$)/u.test(source)||
   /(?:^|-)(?:история-бесед|история-диалога|история-чата|история-сессии|транскрипт-диалога|сводка-разговора)(?:-|$)/u.test(source);
 }
+/** True only for still-unverified HMX records created by the canonical HMX importer. */
+function isUnverifiedHmxImportedMemory(item:Pick<MemoryItem2,'source'|'provenanceClass'|'epistemicStatus'>):boolean{
+ return item.provenanceClass==='external'&&item.epistemicStatus==='hypothesis'&&item.source.trim().toLowerCase().startsWith('hmx:');
+}
 function memoryIntentFit(intent:MemoryQueryIntent,item:MemoryItem2):number{
  const hasGoal=Boolean(String(item.context?.goalId??'').trim())||item.goalRelevance>=.65;
  switch(intent){
@@ -1213,7 +1217,10 @@ export class MemoryOS2{
  }
  private independentEvidenceCount(item:MemoryItem2){return this.normalizeEvidenceSources(item).length;}
  private implicitConflictSignals(newer:MemoryItem2, older:MemoryItem2){
-  if(newer.id===older.id)return {score:0,contextConflict:false,polarityConflict:false,entityOverlap:0,semantic:0};
+  // Imported HMX hypotheses are unverified external claims. Text-only similarity,
+  // polarity and context heuristics must not rewrite their validity or supersede a
+  // local record; only explicit review or grounded evidence reconciliation may do so.
+  if(newer.id===older.id||isUnverifiedHmxImportedMemory(newer)||isUnverifiedHmxImportedMemory(older))return {score:0,contextConflict:false,polarityConflict:false,entityOverlap:0,semantic:0};
   const semantic=cosine(newer.semanticVector.length?newer.semanticVector:vectorize(newer.content),older.semanticVector.length?older.semanticVector:vectorize(older.content));
   const entityOverlap=overlap(newer.entities,older.entities); const newCtx=newer.context??{}; const oldCtx=older.context??{};
   let contextConflict=false; for(const key of Object.keys(newCtx)){if(!(key in oldCtx))continue;const nv=String(newCtx[key]??'').trim().toLowerCase();const ov=String(oldCtx[key]??'').trim().toLowerCase();if(nv&&ov&&nv!==ov){contextConflict=true;break;}}
