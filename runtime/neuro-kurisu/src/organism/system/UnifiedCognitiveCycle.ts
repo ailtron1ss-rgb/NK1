@@ -7,9 +7,8 @@
  * Schema-v1 snapshots are migrated conservatively: their former completion
  * counter is retained as core history, never silently re-labelled as full.
  */
-import { RiskAwareRecoveryController } from '../cognition/RiskAwareRecoveryController.ts';
-import type { RiskAwareRecoveryControllerState } from '../cognition/RiskAwareRecoveryController.ts';
-export type { RiskAwareRecoveryControllerState } from '../cognition/RiskAwareRecoveryController.ts';
+import { RiskAwareRecoveryController, type RiskAwareRecoveryControllerState } from '../cognition/RiskAwareRecoveryController.ts';
+export type { RiskAwareRecoveryControllerState };
 
 import {
   CORE_CYCLE_STAGES,

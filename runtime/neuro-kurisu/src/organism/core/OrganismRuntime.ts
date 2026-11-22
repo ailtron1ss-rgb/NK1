@@ -1213,7 +1213,7 @@ export class OrganismRuntime {
       },
     });
     const projectAllowed = executionPlan?.run?.project !== false && spineDecision.run.project;
-    const planningBudget = projectAllowed
+    const planningBudget = projectAllowed && !riskRecoveryApplied
       ? this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning')
       : { accepted: false };
     const selectedGoal = cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null;
