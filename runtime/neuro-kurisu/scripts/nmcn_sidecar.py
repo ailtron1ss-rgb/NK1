@@ -38,7 +38,11 @@ def _unit(value: Any) -> bool:
 
 
 def _validate(payload: Any) -> tuple[CognitiveSignal, list[float], list[float], list[float], bool]:
-    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+    allowed_fields = {"schema_version", "tick", "state", "action", "memory_key", "signal", "low_power"}
+    if not isinstance(payload, dict) or set(payload) != allowed_fields:
+        raise ValueError("unsupported request fields")
+    schema_version = payload.get("schema_version")
+    if isinstance(schema_version, bool) or not isinstance(schema_version, int) or schema_version != 1:
         raise ValueError("unsupported request schema")
     tick = payload.get("tick")
     if isinstance(tick, bool) or not isinstance(tick, int) or tick < 0:
