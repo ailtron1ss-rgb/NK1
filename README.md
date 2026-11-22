@@ -1,34 +1,38 @@
-## Актуальный live checkpoint — 21 ноября 2026 (после интеграционных проходов)
+## Актуальный live checkpoint — 22 ноября 2026
 
-**Каноническая исходная ветка:** `workpass70-source` @ `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`.  
-**Текущий `main`:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; release/metadata only.  
-**Последний merge в source:** PR #1076, synthetic RU/EN persistent-memory lifecycle E2E.
+**Каноническая исходная ветка:** workpass70-source @ a98dbfe858be2df19fa01a78639a23f962920aa0 (commit [a98dbfe](https://github.com/ailtron1ss-rgb/NK1/commit/a98dbfe858be2df19fa01a78639a23f962920aa0), 2026-11-22T07:59:50Z).
+**Текущий main:** 06e01cdd0a8e60ed70991f22e842887f544d1ebf (release/metadata only).
+**Exact-SHA Actions:** 18/18 completed SUCCESS на a98dbfe858be2df19fa01a78639a23f962920aa0; все check-runs имеют этот же head_sha. workpass70-source не protected; зелёные проверки не являются branch-protection gate.
 
-### Последние интеграции и exact-head CI
+### Последние подтверждённые интеграции
 
-- [PR #1075](https://github.com/ailtron1ss-rgb/NK1/pull/1075) — matched-baseline gate для B261 holdout deltas; squash merge `a9141a085431de7a5bda3873f913ea4b4c1efab2`; **9/9 exact-head checks SUCCESS** до merge.
-- [PR #1078](https://github.com/ailtron1ss-rgb/NK1/pull/1078) — startup health probe treats empty/malformed early responses as retryable not-ready; merge `331eb11ff9d12cdf470788a3464ccecef4412d48`; **3/3 exact-head workflows SUCCESS** до merge.
-- [PR #1081](https://github.com/ailtron1ss-rgb/NK1/pull/1081) — selective OmeStro #10 Mechanism Serendipity port into current research owner/Core; merge `2657da158e02988eed59ed5f174c736ba3152cf6`; **28/28 exact-head workflows SUCCESS** до merge. Discovery is read-only and bounded; candidates enter the ordinary experiment queue as verify-only hypotheses. Scientific evidence credit requires five distinct paired seeds plus independent holdout receipt, rollback availability, one variant and no auto-apply.
-- [PR #1076](https://github.com/ailtron1ss-rgb/NK1/pull/1076) — RU/EN persistent-memory lifecycle E2E; merge `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`; **16/16 exact-head workflows SUCCESS** до merge. It covers synthetic reciprocal cross-language retrieval, file-backed restart, bitemporal correction, explicit forget, provenance and grounded abstention.
-- Последний опубликованный source HEAD: `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`. У всех четырёх указанных PR проверки относились к их собственным exact HEAD перед слиянием; post-merge Actions на самом последнем merge SHA пока не зарегистрированы. Не приписывать pre-merge проверки merge SHA.
+- [PR #1083](https://github.com/ailtron1ss-rgb/NK1/pull/1083) — bounded HMX 1.7 outbound export и external-file staging; merged externally 2026-11-22, merge commit равен текущему source HEAD. В текущем source есть stage → decide → explicit apply: stage/accept не изменяют MemoryOS2; apply требует отдельного confirmed=true и accepted stage. Workflow покрывает typecheck, canonical HMX bridge и consent regression.
+- [PR #1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059) — locale-neutral BM25 benchmark tokenization; merged externally 2026-11-21, merge commit a21821d91ddc27f701c296deac27014247661cde. Исправление нормализует document/query tokens одной locale-neutral политикой. Это устраняет воспроизводимую зависимость от host locale, но не доказывает recall uplift: synthetic recallDelta остаётся 0.
+- [PR #1079](https://github.com/ailtron1ss-rgb/NK1/pull/1079) — preserved 15 already-integrated branch histories as additional ancestry; no source branch deletion.
+- [PR #1076](https://github.com/ailtron1ss-rgb/NK1/pull/1076) — synthetic RU/EN persistent-memory lifecycle E2E; exact PR-head CI passed before merge. Независимый bilingual holdout не подтверждён.
 
-### Доказательные границы и оставшаяся работа
+### Live branch and PR convergence
 
-- **Memory:** RU/EN synthetic E2E — TESTED; независимое bilingual holdout, пять paired seeds и положительный confidence-supported uplift — не заявляются.
-- **Mechanism Serendipity:** структурное discovery, persistence/dedupe, verify-only intake и receipt gate интегрированы и покрыты CI; реальное научное улучшение, причинная валидность внешней гипотезы и recall/decision uplift ещё не доказаны.
-- **Runtime/launch:** clean-install/startup и 30-tick organism smoke проходят CI; наличие настроенной реальной LLM, целевой-host soak и recovery под длительной нагрузкой не подтверждены.
-- **Speech/avatar/mobile:** CI-контракты не заменяют реальный Android/Termux audio test, browser/WebGL visual E2E, lip-sync измерения и device soak.
-- `workpass70-source` не имеет enforced required status checks; зелёный exact-head CI — наблюдаемое свидетельство только для проверенного commit, не гарантия защиты ветки.
+- Full branch pagination: **1,073 refs / 1,055 unique HEADs / 3 duplicate-tip groups / 18 excess aliases**. Exact duplicate groups: 17 refs at 82ea7a8b; two refs at f9621bf3; two refs at 68a03799. Branches сохранены.
+- Open PR census: **270 PRs / 270 unique heads / 205 Draft / 65 Ready**.
+- [PR #903](https://github.com/ailtron1ss-rgb/NK1/pull/903) remains open/Draft: current source → PR head is 180 ahead / 994 behind; merge base 1e83a011fc677ff20f2348570322bd562181d9ff. Не выполнять rebase/merge; только source-based selective salvage после file-level comparison.
+- [PR #866](https://github.com/ailtron1ss-rgb/NK1/pull/866) remains open/Draft: 79 ahead / 1,009 behind current source, merge base 1a0315595302f3154df0ae53e5d9188875311467. Its one failed check is unrelated ACP import failure (ModuleNotFoundError: acp.helpers). Current source already contains canonical HMX stage/decide/apply routes and explicit-apply consent tests; treat #866 as a potentially superseded donor, not a merge candidate. Do not close it automatically.
+- [PR #1084](https://github.com/ailtron1ss-rgb/NK1/pull/1084) is the existing Draft documentation branch used for this handoff refresh; it remains unmerged.
+
+### Доказательные границы
+
+- Memory retrieval: deterministic tokenizer fix is integrated and current source CI is green; independent RU/EN holdout with ≥5 paired seeds and positive confidence-supported uplift are not established.
+- HMX: canonical import stage/accept/apply and replay-idempotency contracts are connected and covered by the source workflow; external donor trust is still unverified.
+- Core/runtime: exact source checks pass, but this does not prove a real 24-hour autonomous cadence or a full long-running cognitive cycle on target hardware.
+- Embodiment/speech/mobile: CI contracts do not replace browser/WebGL visual E2E, physical audio tests, lip-sync measurements or Android/Termux soak.
 
 ### Release и юридический gate
 
-- Текущий latest GitHub Release: tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
-- ZIP bytes не скачивались и не хешировались независимо в этом проходе; extraction manifest и source/ZIP parity остаются **UNVERIFIED**. Ноябрьские source changes не считаются RELEASED.
-- `contracts/RELEASE_LICENSE_REVIEW.json` остаётся pending: root license `NOASSERTION`, runtime private/all-rights-reserved, components и source archives требуют human review; redistribution approval=false.
-- Перед release нужны human legal/asset review, independent archive hash, extraction manifest и точная source/ZIP parity.
+- Stable tag Neuro: Neuro_Kurisu_WORKPASS70_2026-10-19.zip, 135,290,615 bytes, GitHub metadata SHA-256 c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286.
+- Latest prerelease: workpass70-hotfix1-2026-10-19, Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip, 136,354,713 bytes, metadata SHA-256 9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb.
+- ZIP bytes were not materialized; hashes above are GitHub metadata only. Extraction, independent hash and source parity remain UNVERIFIED. Human license review is pending; redistribution approval is false. No November source change is RELEASED.
 
-> Исторические checkpoint-и ниже — архивный контекст, не live truth. Перед каждым merge/release действием заново считывай source SHA, PR, exact-SHA Actions и Release metadata.
-
+> Исторические WorkPass-блоки ниже — архив. Перед каждой новой записью сверяй live source SHA, ancestry, PR base/head и exact-SHA Actions.
 ---
 
 ## Актуальный инженерный checkpoint — 13 ноября 2026
