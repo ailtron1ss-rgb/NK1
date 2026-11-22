@@ -27,6 +27,11 @@ Object.defineProperty(accessor, 'credential', { enumerable: true, get() { getter
 const accessorResult = sanitizeActionAuditValue(accessor);
 assert.equal(getterCalls, 0);
 assert.equal(accessorResult.credential, '[accessor-omitted]');
+const arrayAccessor = [];
+Object.defineProperty(arrayAccessor, '0', { enumerable: true, get() { getterCalls++; return 'must-not-run'; } });
+arrayAccessor.length = 1;
+assert.equal(sanitizeActionAuditValue(arrayAccessor)[0], '[accessor-omitted]');
+assert.equal(getterCalls, 0);
 
 const cyclic = { label: 'safe' };
 cyclic.self = cyclic;
