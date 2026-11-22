@@ -49,6 +49,15 @@ assert.deepEqual(restoredSnapshot.claims[0].contradictingEvidenceIds,[],'contrad
 assert.deepEqual(restoredSnapshot.goals[0].evidenceIds,['restore-evidence'],'goals must not retain dangling evidence references');
 assert.deepEqual(restoredSnapshot.changeRequests[0].evidenceIds,['restore-evidence'],'identity changes must not retain dangling evidence references');
 
+const claimUpsertEngine=new P34CausalPersonhoodEngine();
+const claimEvidenceA=claimUpsertEngine.recordEvidence({kind:'experience',summary:'first claim support',sourceId:'claim-source-a'});
+const claimEvidenceB=claimUpsertEngine.recordEvidence({kind:'experience',summary:'second claim support',sourceId:'claim-source-b'});
+const firstClaim=claimUpsertEngine.observeSelfClaim('self','maintains one canonical claim',[claimEvidenceA.id]);
+const updatedClaim=claimUpsertEngine.observeSelfClaim('self','maintains one canonical claim',[claimEvidenceB.id]);
+assert.equal(updatedClaim.id,firstClaim.id,'repeated observations must update the canonical subject/predicate claim');
+assert.equal(claimUpsertEngine.snapshot().claims.length,1,'repeated observations must not create duplicate claims');
+assert.deepEqual(new Set(updatedClaim.supportingEvidenceIds),new Set([claimEvidenceA.id,claimEvidenceB.id]));
+
 const duplicateRefEngine=new P34CausalPersonhoodEngine();
 const singleEvidence=duplicateRefEngine.recordEvidence({kind:'experience',summary:'one source must count once',sourceId:'single-source'});
 const duplicateClaim=duplicateRefEngine.observeSelfClaim('self','does not inflate evidence',[singleEvidence.id,singleEvidence.id,singleEvidence.id]);
