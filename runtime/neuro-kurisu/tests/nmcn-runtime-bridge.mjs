@@ -73,5 +73,15 @@ assert.equal(timeoutController.aborted, true, 'timeout must signal cancellation 
 
 const invalid = { ...input, state: [2, ...input.state.slice(1)] };
 assert.equal(await evaluateNmcNRuntime({ async evaluate() { throw new Error('must not be called'); } }, invalid), null);
+const forgedReference = { ...input, signal: { ...input.signal, payload_ref: 'raw-user-text' } };
+assert.equal(await evaluateNmcNRuntime({ async evaluate() { throw new Error('must not be called'); } }, forgedReference), null,
+  'the bridge must reject caller-controlled payload references');
+const coerciveDecision = await evaluateNmcNRuntime({
+  async evaluate() {
+    return { compute: { mode: 'deliberative', reason: 'bad', max_reasoning_cycles: '2' },
+      invoke_language_core: true, invocation_reason: 'bad', distribution_shift_detected: false, estimated_auxiliary_state_bytes: 1 };
+  },
+}, input);
+assert.equal(coerciveDecision, null, 'numeric strings must not be accepted as trusted sidecar fields');
 
 console.log('NMCN runtime bridge: bounded projection, strict decision parsing, fail-closed timeout PASS');
