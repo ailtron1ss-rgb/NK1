@@ -10,7 +10,7 @@ Runtime production code не менялся. При проверке HMX persist
 
 | generated | attempted | completed | partially_completed | blocked | deferred | verified |
 |---:|---:|---:|---:|---:|---:|---:|
-| 18 | 15 | 6 | 3 | 6 | 3 | 6 |
+| 18 | 15 | 5 | 4 | 6 | 3 | 5 |
 
 attempted включает завершённые, частично выполненные и заблокированные задачи. completed не означает released.
 
@@ -19,8 +19,8 @@ attempted включает завершённые, частично выполн
 - Repository: https://github.com/ailtron1ss-rgb/NK1
 - workpass70-source: a98dbfe858be2df19fa01a78639a23f962920aa0; main: 06e01cdd0a8e60ed70991f22e842887f544d1ebf.
 - Source exact-SHA Actions: 18/18 SUCCESS; все check-runs завершены и привязаны к source SHA.
-- Branch census before PR #1085: 1,073 refs / 1,055 unique HEADs / 3 duplicate-tip groups / 18 excess aliases. The new PR branch adds one distinct ref/HEAD: derived current total 1,074 / 1,056, with duplicate groups and excess aliases unchanged; full branch pagination was not repeated after branch creation.
-- Open PR census at full-pagination snapshot: 270 open PRs / 270 unique heads / 205 Draft / 65 Ready. After PR #1085, live API confirms 271 open PRs / 271 unique heads / 206 Draft / 65 Ready.
+- Branch census after PR #1085: **1,074 refs / 1,056 unique HEADs / 3 duplicate-tip groups / 18 excess aliases**, confirmed by full 11-page re-pagination.
+- Open PR census after PR #1085: **271 open PRs / 271 unique heads / 206 Draft / 65 Ready**, confirmed by full 3-page REST pagination.
 - workpass70-source protected=false; main protected=false. Не полагаться на branch protection вместо exact-SHA checks.
 
 ### Важные внешние интеграции, наблюдавшиеся в GitHub
@@ -36,6 +36,13 @@ attempted включает завершённые, частично выполн
 - Workflow .github/workflows/nk1-hexis-hmx-canonical-memory-bridge.yml runs npm ci, runtime typecheck, canonical HMX bridge regression, explicit-apply consent regression and Hexis adaptation test. Current source exact Actions include canonical-hmx-memory and action-governance SUCCESS.
 - This proves the tested local server/adapter path, not trustworthiness of every external donor or full interoperability with all Hexis deployments.
 
+### Newly discovered HMX evidence-boundary gap — selective salvage only
+
+- Live source `a98dbfe858be2df19fa01a78639a23f962920aa0`: `MemoryOS2.implicitConflictSignals()` computes context, polarity and identifier-shift heuristics without an HMX provenance boundary; maintenance invokes `adjudicateImplicitConflicts()` on its periodic path. The current `p2887-implicit-stale-conflict-closure.mjs` contains no HMX boundary regression.
+- The canonical HMX bridge writes imported rows with `source` beginning `hmx:`, `provenanceClass=external`, and `epistemicStatus=hypothesis`. Therefore the current source-level path can allow a later local text-only polarity/identifier conflict to close an unverified HMX row's validity interval. This is a code-path finding; a new live runtime reproduction has not yet been run.
+- Open Draft PR #866 contains the targeted `hmxBoundary` guard and regression: skip HMX provenance/export metadata as conflict evidence and prevent polarity/identifier heuristics from auto-superseding an HMX row. Its branch is 79 commits ahead / 1,009 behind live source; exact checks are 29/30 with `independent-evidence-evaluation` failing on `ModuleNotFoundError: No module named 'acp.helpers'`.
+- Do not merge/rebase/force-push #866 and do not create a duplicate PR for the same contract. Preserve #866; selective current-source transfer is blocked until a safe, owner-approved PR disposition is chosen. The rest of the old 21-file HMX patch is not a safe wholesale merge.
+
 ### Дополнительное доказательство persistence после process restart
 
 - До изменения текущий HMX consent test доказывал idempotency только в одном server process; это не закрывало crash/restart границу.
@@ -49,7 +56,7 @@ attempted включает завершённые, частично выполн
 |---|---|---:|---|---|---|---|---|
 | NK1-D2026-11-22-01 | Core / OrganismBus: синхронизировать live source и проверить exact-SHA checks | P0 | Live branch | Низкий, read-only | Все check-runs завершены SUCCESS и имеют один exact head_sha | Branch API + commit check-runs | **done / verified** — 18/18 на a98dbfe |
 | NK1-D2026-11-22-02 | Perception / world model: проверить новый provenance/calibration defect | P2 | 01 | Низкий, no-op | Новый work только при воспроизводимом дефекте admission/provenance | world-perception-integrity check | **deferred / no-new-work** — check SUCCESS, нового failing case нет |
-| NK1-D2026-11-22-03 | Memory ingest/admission: подтвердить, что HMX stage/accept не пишет в canonical memory | P1 | HMX bridge, MemoryOS2 | Средний, обратимый | Stage и accept не меняют MemoryOS2; только explicit apply пишет | HMX bridge + explicit-apply consent workflow | **done / verified** — текущий source workflow и regression присутствуют |
+| NK1-D2026-11-22-03 | Memory ingest/admission: review-only HMX stage/accept и защита imported hypotheses от text-only auto-supersession | P1 | HMX bridge, MemoryOS2 conflict adjudication | Высокий для integrity; кодовый guard обратим | Stage/accept не пишут memory; local polarity/identifier heuristics не закрывают HMX validity без explicit review или grounded evidence | Current MemoryOS2.ts + HMX bridge + stale PR #866 donor patch | **partially_completed** — stage/accept/explicit apply verified; HMX conflict guard отсутствует в live source и найден только в stale #866 |
 | NK1-D2026-11-22-04 | Retrieval: проверить интеграцию locale-neutral BM25 tokenizer | P1 | MemoryOS2 benchmark | Низкий, обратимый | Единая case-normalization policy; Turkish-I regression; exact source checks | PR #1059 merge + current source | **done / verified** — merged externally; uplift не доказан, recallDelta=0 |
 | NK1-D2026-11-22-05 | Consolidation/MemFS: доказать сохранение accepted HMX stage и replay receipt после перезапуска сервера | P1 | HMX bridge, durable organism state, MemoryFabric receipts | Средний, тестовое изменение обратимо | После restart stage и hypothesis остаются; повторный apply вставляет 0 строк и возвращает replay=1 | `hexis-hmx-explicit-apply-consent.mjs`; exact-head HMX workflow | **done / verified** — PR #1085 HMX workflow SUCCESS; `HEXIS_HMX_EXPLICIT_APPLY_CONSENT=PASS` после restart |
 | NK1-D2026-11-22-06 | Motivation/drives: получить 24h initiative cadence telemetry | P1 | Scheduler + target host | Высокий, hardware/soak | ≥1 объяснимая инициатива/час без interrupt/permission violation | Нет 24h telemetry artifact | **blocked** — нет целевого runtime soak |
@@ -64,9 +71,11 @@ attempted включает завершённые, частично выполн
 | NK1-D2026-11-22-15 | Speech: измерить interrupt и audio-lip drift на физическом устройстве | P1 | ASR/TTS + audio device | Высокий, hardware | Lip-sync drift ≤80 ms и interrupt ≤200 ms на реальном устройстве | Нет device trace | **blocked** — hardware measurement отсутствует |
 | NK1-D2026-11-22-16 | Mobile: Android/Termux offline/background soak | P1 | Android phone + Termux | Высокий, hardware | 10k deterministic ticks, ≤50 ms phone tick, state recovery after background/foreground | Нет phone soak artifact | **blocked** — физический device run недоступен |
 | NK1-D2026-11-22-17 | App/API/infra: не создавать новые Supabase/MongoDB/Redis схемы без разрешённой потребности | P2 | Existing adapters + authorization | Низкий, no-op | Только существующий adapter и explicit authorized scope | Current architecture rules | **deferred / no-new-work** — внешняя инфраструктура не менялась |
-| NK1-D2026-11-22-18 | Validation/CI/branch convergence: пересчитать branch и open-PR topology | P0 | GitHub API pagination | Низкий, reversible docs | 1073 refs, 1055 unique heads, 270 open PRs; no branch deletion | 11 branch pages + 3 PR search pages | **done / verified** — census обновлён в existing Draft docs PR #1084 |
+| NK1-D2026-11-22-18 | Validation/CI/branch convergence: пересчитать branch и open-PR topology | P0 | GitHub API pagination | Низкий, reversible docs | 1074 refs, 1056 unique heads, 271 open PRs; no branch deletion | 11 branch pages + 3 PR pages after PR #1085 | **done / verified** — 1074/1056/3 duplicate groups/18 aliases and 271/271/206/65 confirmed |
 
 ## Реальные изменения этого цикла
+
+- Новый HMX safety gap обнаружен статически: live `MemoryOS2` lacks the `hmxBoundary` guard present in stale PR #866. Не портировал код и не создавал дублирующий PR; #866 сохранён как donor, требуется selective salvage после решения по PR disposition. Runtime reproduction остаётся следующим доказательным шагом.
 
 - Runtime production code: не менялся. Test-only persistence regression добавлен в Draft PR [#1085](https://github.com/ailtron1ss-rgb/NK1/pull/1085), branch `test/hexis-hmx-restart-idempotency-20261122`, head `4288d530d16e476d0e83ee3df3cbbb48134fa328`. HMX workflow [run 45030481553](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45030481553) SUCCESS; logs подтвердили typecheck (723 files, Node strip-syntax mode), canonical bridge, consent/restart regression и Hexis adaptation PASS. Все 14 exact-head check-runs на PR #1085 завершились SUCCESS.
 - Документация и handoff обновлены в существующей ветке docs/neurocore-project-map-analysis-20261121 через Draft PR #1084; canonical workpass70-source не изменялся.
@@ -78,7 +87,7 @@ attempted включает завершённые, частично выполн
 | Компонент | Implemented | Connected | Tested | Released |
 |---|---|---|---|---|
 | Core / OrganismBus | Existing canonical implementation | Unified source runtime | Current source 18/18 Actions | November source not released |
-| HMX 1.7 import/export | Bounded export, staging, explicit apply | Server routes + canonical MemoryOS2 bridge | HMX workflow and consent/idempotency regressions in current source CI | Not in October ZIP |
+| HMX 1.7 import/export | Bounded export, staging, explicit apply | Server routes + canonical MemoryOS2 bridge | Stage/accept/apply/replay and post-restart regression PASS; implicit-conflict HMX boundary still absent in live source | Not in October ZIP |
 | BM25 retrieval benchmark | Locale-neutral tokenization fix | Existing benchmark harness | Merged PR #1059; current source checks pass; recallDelta=0 | Not in October ZIP |
 | UserModel explicit forget | Existing v2/tombstone path | Canonical user evidence path | explicit-forget check SUCCESS | Not in October ZIP |
 | Avatar / affect | Existing motor and renderer contracts | Canonical embodiment path | Relevant source CI checks SUCCESS | Visual/device E2E not released |
@@ -95,18 +104,18 @@ attempted включает завершённые, частично выполн
 
 ## Изменения адаптивных целей
 
-- Закрыто: source exact-head sync; BM25 locale-neutral defect is integrated; HMX stage/decide/apply consent and replay contract are connected and CI-covered; current branch/PR census refreshed.
-- Повышен приоритет: source-based salvage analysis for #903 and #866, because source divergence is now quantified and #866 overlaps current HMX behavior.
+- Закрыто: source exact-head sync; BM25 locale-neutral fix integrated; HMX explicit-apply persistence after process restart is tested (PR #1085, 14/14); branch/PR census refreshed.
+- Повышен приоритет: selective HMX conflict-boundary salvage from #866 and source-based salvage of #903. #866 contains a useful guard but is too divergent to merge wholesale; no duplicate PR was created.
 - Не повышать: memory uplift, autonomy, avatar, speech, mobile or release readiness without independent holdout/device/legal evidence.
 
 ## Следующие 5 действий
 
-1. Re-read PR #1085 live head and Actions before any further edit; it is Draft and 14/14 exact-head checks currently pass.
-2. Compare #866 against current HMX bridge file-by-file; preserve it and record only genuinely unique behavior.
-3. Perform source-based selective salvage of #903; preserve its branch history and avoid force-push.
-4. Run independent RU/EN holdout with at least five paired seeds and immutable split manifest.
-5. Materialize the October 19 ZIP through a supported path; independently hash/extract and obtain human license/asset review; schedule browser/WebGL and Android/Termux device soak.
+1. Preserve PR #866 and prepare a narrow current-source reproduction/transfer proposal for its `hmxBoundary` guard; do not merge/rebase it or create a duplicate PR while the donor PR remains open.
+2. Perform source-based selective salvage of #903; preserve its branch history and avoid force-push.
+3. Run independent RU/EN holdout with at least five paired seeds and immutable split manifest.
+4. Materialize the October 19 ZIP through a supported path; independently hash/extract and obtain human license/asset review.
+5. Schedule browser/WebGL and Android/Termux device soak; measure speech interrupt and lip-sync on hardware.
 
 ## Handoff
 
-Next cycle must start from live workpass70-source @ a98dbfe858be2df19fa01a78639a23f962920aa0, not the old 2026-11-21 handoff. First inspect PR #1085 head/Actions and PR #1084 documentation head; then continue #866/#903 source-based salvage. No PR merge, branch deletion, force-push or Release publication was performed.
+Next cycle must start from live workpass70-source @ a98dbfe858be2df19fa01a78639a23f962920aa0, not the old 2026-11-21 handoff. First inspect PR #1085 and #1084 exact heads/Actions; then reproduce the HMX implicit-conflict boundary gap and prepare selective salvage without duplicating #866. No PR merge, branch deletion, force-push or Release publication was performed.
