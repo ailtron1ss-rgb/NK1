@@ -46,7 +46,7 @@ export class RiskAwareRecoveryController{
     recovery=RECOVERY.slice().sort((a,b)=>(args.actionUtilities[b]??.5)-(args.actionUtilities[a]??.5))[0]??'verify';
     bias[recovery]=clamp((bias[recovery]??0)+.052,-.065,.065);this.state.recoveryAttempts++;this.state.selectedRecovery=recovery;this.state.riskEvents++;
   }else{this.state.selectedRecovery=null;}
-  const abstain=risk>.86 && args.recoveryGain01<.35;
+  const abstain=risk>.86 && recoveryGain01<.35;
   if(abstain){this.state.abstainEvents++;bias.defer=clamp((bias.defer??0)+.06,-.065,.065);}
   this.state.selectedRisk01=risk;this.state.meanRisk01=clamp(this.state.meanRisk01*.95+risk*.05);this.state.recoverability01=clamp(this.state.recoverability01*.97+(1-risk)*(1-args.modelDrift01)*.03);
   if(risk<.25)this.state.catastrophicAvoidance01=clamp(this.state.catastrophicAvoidance01*.98+.02);

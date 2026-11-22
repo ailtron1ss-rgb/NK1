@@ -27,8 +27,7 @@ import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
 import { buildIndependentEvaluationEvidenceBundle } from '../system/IndependentEvaluationEvidence.ts';
 import { CognitiveResourceEconomy, cognitiveAttentionIntentFromAction, CognitiveSpineScheduler, type CognitiveSpineScheduleState } from '../system/CognitiveResourceEconomy.ts';
-import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
-import { RiskAwareRecoveryController, type RiskAwareRecoveryControllerState } from '../cognition/RiskAwareRecoveryController.ts';
+import { UnifiedCognitiveCycle, type RiskAwareRecoveryControllerState } from '../system/UnifiedCognitiveCycle.ts';
 import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
 import { CausalDomainClosureLedger, type CausalDomainEvidence } from '../system/CausalDomainClosureLedger.ts';
@@ -335,7 +334,6 @@ export class OrganismRuntime {
   private readonly resourceEconomy = new CognitiveResourceEconomy();
   private readonly cognitiveSpineScheduler = new CognitiveSpineScheduler();
   private readonly cognitiveSpineStore: JsonStateStore<CognitiveSpineScheduleState>;
-  private readonly riskAwareRecovery = new RiskAwareRecoveryController();
   private readonly riskAwareRecoveryStore: JsonStateStore<RiskAwareRecoveryControllerState>;
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
@@ -598,9 +596,9 @@ export class OrganismRuntime {
         }).catch(() => {});
       }
       try {
-        this.riskAwareRecovery.restore(await this.riskAwareRecoveryStore.load() ?? undefined);
+        this.unifiedCycle.restoreRiskAwareRecovery(await this.riskAwareRecoveryStore.load() ?? undefined);
       } catch (error) {
-        this.riskAwareRecovery.restore();
+        this.unifiedCycle.restoreRiskAwareRecovery();
         await this.journal.write('warn', 'runtime.risk-aware-recovery.restore-failed', {
           message: String((error as any)?.message ?? error).slice(0, 180),
         }).catch(() => {});
@@ -1179,7 +1177,7 @@ export class OrganismRuntime {
     }
     const priorEmbodiedRecovery = this.embodiedRecovery.snapshot();
     const lastPhysicalEpisode = priorEmbodiedRecovery.episodes[0];
-    const riskDecision = this.riskAwareRecovery.beforeDecision({
+    const riskDecision = this.unifiedCycle.beforeRiskAwareDecision({
       tick:cycle.state.tick,
       actionUtilities,
       predictionError01:clamp01(cycle.state.predictionError),
@@ -1219,9 +1217,11 @@ export class OrganismRuntime {
       ? this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning')
       : { accepted: false };
     const selectedGoal = cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null;
-    const plan = planningBudget.accepted && projectAllowed
-      ? this.plans.build(selectedGoal, internalAction, 4, 4)
-      : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated');
+    const plan = riskRecoveryApplied
+      ? this.plans.buildBudgetFallback(selectedGoal, internalAction, 'risk-aware-recovery-override')
+      : planningBudget.accepted && projectAllowed
+        ? this.plans.build(selectedGoal, internalAction, 4, 4)
+        : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated');
     const worldRolloutAllowed = executionPlan?.run?.['world-rollout'] !== false && spineDecision.run['world-rollout'];
     const shadowPassAllowed = executionPlan?.run?.shadow !== false && spineDecision.run.shadow;
     const simBudget = worldRolloutAllowed && shadowPassAllowed
@@ -1388,7 +1388,7 @@ export class OrganismRuntime {
     });
     this.realityGrounding.refineLatest({verified01:grounded.verified01,independent01:grounded.independent01,evidence01:grounded.evidence01,consequence01:grounded.consequence01,reason:grounded.reason});
     this.core.setRealityGrounding(this.realityGrounding.snapshot());
-    this.riskAwareRecovery.afterOutcome({
+    this.unifiedCycle.recordRiskAwareOutcome({
       reward01:grounded.reward01,
       verified01:grounded.verified01,
       predictionError01:clamp01(Math.max(cycle.state.predictionError,grounded.consequenceError01)),
@@ -1993,7 +1993,7 @@ export class OrganismRuntime {
   runtimeDecisionSnapshot(){ const p=this.runtimeDecision(); return { ...p, body:this.embodiment.snapshot(), clocks:this.clockScheduler.snapshot() }; }
   evidenceSnapshot(){ return this.evidenceBus.snapshot(); }
   embodiedRecoverySnapshot(){ return this.embodiedRecovery.snapshot(); }
-  riskAwareRecoverySnapshot(){ return this.riskAwareRecovery.snapshot(); }
+  riskAwareRecoverySnapshot(){ return this.unifiedCycle.riskAwareRecoverySnapshot(); }
   cognitiveEventFabricSnapshot(){ return this.cognitiveEventFabric.snapshot(); }
   cognitiveBudgetSnapshot(){ return this.core.cognitiveBudgetOperationalSnapshot(); }
   cognitiveImmuneSnapshot(){ return this.core.cognitiveImmuneSnapshot(); }
@@ -2335,10 +2335,10 @@ export class OrganismRuntime {
 
   private async persistRiskAwareRecovery(): Promise<void> {
     try {
-      await this.riskAwareRecoveryStore.save(this.riskAwareRecovery.snapshot());
+      await this.riskAwareRecoveryStore.save(this.unifiedCycle.riskAwareRecoverySnapshot());
     } catch (error) {
       await this.journal.write('warn', 'runtime.risk-aware-recovery.persist-failed', {
-        tick: this.riskAwareRecovery.snapshot().tick,
+        tick: this.unifiedCycle.riskAwareRecoverySnapshot().tick,
         message: String((error as any)?.message ?? error).slice(0, 180),
       }).catch(() => {});
     }

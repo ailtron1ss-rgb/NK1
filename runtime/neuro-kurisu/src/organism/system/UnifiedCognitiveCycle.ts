@@ -7,6 +7,10 @@
  * Schema-v1 snapshots are migrated conservatively: their former completion
  * counter is retained as core history, never silently re-labelled as full.
  */
+import { RiskAwareRecoveryController } from '../cognition/RiskAwareRecoveryController.ts';
+import type { RiskAwareRecoveryControllerState } from '../cognition/RiskAwareRecoveryController.ts';
+export type { RiskAwareRecoveryControllerState } from '../cognition/RiskAwareRecoveryController.ts';
+
 import {
   CORE_CYCLE_STAGES,
   FULL_COGNITIVE_CYCLE_STAGES,
@@ -101,6 +105,23 @@ export const defaultUnifiedCognitiveCycle = (): UnifiedCognitiveCycleState => ({
 
 export class UnifiedCognitiveCycle {
   private state = defaultUnifiedCognitiveCycle();
+  private readonly riskAwareRecovery = new RiskAwareRecoveryController();
+
+  restoreRiskAwareRecovery(raw?: Partial<RiskAwareRecoveryControllerState> | null): void {
+    this.riskAwareRecovery.restore(raw);
+  }
+
+  riskAwareRecoverySnapshot(): RiskAwareRecoveryControllerState {
+    return this.riskAwareRecovery.snapshot();
+  }
+
+  beforeRiskAwareDecision(args: Parameters<RiskAwareRecoveryController['beforeDecision']>[0]): ReturnType<RiskAwareRecoveryController['beforeDecision']> {
+    return this.riskAwareRecovery.beforeDecision(args);
+  }
+
+  recordRiskAwareOutcome(args: Parameters<RiskAwareRecoveryController['afterOutcome']>[0]): void {
+    this.riskAwareRecovery.afterOutcome(args);
+  }
 
   restore(raw?: RestorableUnifiedCognitiveCycleState | null): void {
     const source = (raw ?? {}) as RestorableUnifiedCognitiveCycleState;
