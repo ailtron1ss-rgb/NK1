@@ -79,9 +79,16 @@ export class DeviceEvidenceLedger {
 
   certification(minVerifiedProbes=2){
     const s=this.state;
-    const verified=s.verifiedProbes>=minVerifiedProbes;
-    const fresh=s.records.filter(r=>r.status==='REAL_DEVICE_VERIFIED'&&r.telemetryFresh).length>=minVerifiedProbes;
-    return {version:1,status:verified&&fresh?'verified':s.hostProbes>0?'host-probe':'unavailable',requiredVerifiedProbes:minVerifiedProbes,criteria:{verifiedProbes:verified,freshTelemetry:fresh},probes:s.probes,verifiedProbes:s.verifiedProbes,hostProbes:s.hostProbes,warning:'Only live Termux Android evidence can satisfy REAL_DEVICE_VERIFIED; host probes never count as physical-device certification.'};
+    // A zero, negative, fractional, non-finite or oversized threshold must never
+    // turn an empty/truncated evidence window into a physical-device certificate.
+    const validThreshold=Number.isSafeInteger(minVerifiedProbes)&&minVerifiedProbes>=1&&minVerifiedProbes<=64;
+    const required=validThreshold?minVerifiedProbes:2;
+    const verified=validThreshold&&s.verifiedProbes>=required;
+    const freshIds=new Set(s.records
+      .filter(r=>r.status==='REAL_DEVICE_VERIFIED'&&r.telemetryFresh)
+      .map(r=>r.id));
+    const fresh=validThreshold&&freshIds.size>=required;
+    return {version:1,status:verified&&fresh?'verified':s.hostProbes>0?'host-probe':'unavailable',requiredVerifiedProbes:required,criteria:{verifiedProbes:verified,freshTelemetry:fresh,thresholdValid:validThreshold},probes:s.probes,verifiedProbes:s.verifiedProbes,hostProbes:s.hostProbes,warning:'Only distinct live Termux Android evidence records can satisfy REAL_DEVICE_VERIFIED; host probes never count as physical-device certification.'};
   }
 
   diagnostics(){return {...this.snapshot(),certification:this.certification()};}
