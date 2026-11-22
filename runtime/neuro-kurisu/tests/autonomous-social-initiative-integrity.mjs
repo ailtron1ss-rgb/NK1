@@ -27,6 +27,10 @@ assert.equal(plannedEngine.observeExternalResponse('That movie was boring',1004)
   'an unrelated negative remark must not be attributed to the latest proactive thought');
 assert.equal(plannedEngine.snapshot().initiatives[0].feedbackSignal,undefined,
   'unrelated feedback must leave the initiative untouched');
+assert.equal(plannedEngine.observeExternalResponse('That was interesting',1004.5),null,
+  'an unrelated positive remark must not be attributed to the latest proactive thought');
+assert.equal(plannedEngine.snapshot().initiatives[0].feedbackSignal,undefined,
+  'unrelated positive feedback must leave the initiative untouched');
 assert.equal(plannedEngine.observeExternalResponse('Stop.',1005)?.signal,'negative',
   'an unmistakable standalone stop request must suppress unsolicited outreach');
 
