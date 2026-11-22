@@ -104,6 +104,10 @@ export function HexisControlConsole() {
 
   const loadHmxFile = async (file?: File) => {
     if (!file) return;
+    // A new or invalid file must not leave an older accepted stage armed for apply.
+    setStageId("");
+    setHmxAccepted(false);
+    setHmxConfirmed(false);
     if (file.size <= 0 || file.size > 4 * 1024 * 1024) {
       setHmxImportDocument(null);
       setHmxImportFileName("");
