@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPluginVoiceTranscriptBridge.ts';
 import type { NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
-import { CognitiveImmuneSystem, type CognitiveHealthInput, type CognitiveHealthInspectionResult, type CognitiveImmuneState } from '../cognition/CognitiveImmuneSystem.ts';
+import type { CognitiveImmuneSystem, CognitiveHealthInput, CognitiveHealthInspectionResult, CognitiveImmuneState } from '../cognition/CognitiveImmuneSystem.ts';
 import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
@@ -165,6 +165,8 @@ export interface RuntimeConfig extends OrganismConfig {
     routing: SynapticAdapterRoutingInput,
   ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
+  /** Optional monitor implementation supplied by the composition root (dependency-inverted). */
+  cognitiveHealthSystem?: CognitiveImmuneSystem;
   /** Optional canonical-ledger adapter. When configured, health is inspected after each completed cognitive cycle. */
   cognitiveHealthInputProvider?: (tick: number) => CognitiveHealthInput | null | Promise<CognitiveHealthInput | null>;
   /** Override the durable cognitive-health sidecar (defaults beside stateFile). */
@@ -371,7 +373,7 @@ export class OrganismRuntime {
     lastCandidateId: null as string | null,
     lastFailureCategory: null as string | null,
   };
-  private readonly cognitiveImmuneSystem = new CognitiveImmuneSystem();
+  private readonly cognitiveImmuneSystem: CognitiveImmuneSystem | null;
   private readonly cognitiveImmuneStore: JsonStateStore<CognitiveImmuneState>;
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
@@ -491,6 +493,7 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
+    this.cognitiveImmuneSystem = config.cognitiveHealthSystem ?? null;
     this.cognitiveImmuneStore = config.cognitiveHealthStore ?? new FileStateStore<CognitiveImmuneState>(`${config.stateFile}.cognitive-health.json`);
     this.cognitiveSpineStore = config.cognitiveSpineStore ?? new FileStateStore<CognitiveSpineScheduleState>(`${config.stateFile}.cognitive-spine.json`);
     this.synapticMatrixStore = new FileStateStore<AdaptiveSynapticMatrixState>(`${config.stateFile}.synaptic-matrix.json`);
@@ -591,11 +594,13 @@ export class OrganismRuntime {
       this.openLoopRadar.restore(restoredOpenLoopState ?? undefined);
       if (!restoredOpenLoopState) await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
-      try {
-        this.cognitiveImmuneSystem.restore(await this.cognitiveImmuneStore.load() ?? undefined);
-      } catch (error) {
-        // Diagnostics must not make a valid organism checkpoint unbootable.
-        await this.journal.write('warn', 'runtime.cognitive-health.restore-failed', { message: String((error as any)?.message ?? error).slice(0, 180) }).catch(() => {});
+      if (this.cognitiveImmuneSystem) {
+        try {
+          this.cognitiveImmuneSystem.restore(await this.cognitiveImmuneStore.load() ?? undefined);
+        } catch (error) {
+          // Diagnostics must not make a valid organism checkpoint unbootable.
+          await this.journal.write('warn', 'runtime.cognitive-health.restore-failed', { message: String((error as any)?.message ?? error).slice(0, 180) }).catch(() => {});
+        }
       }
       try {
         this.cognitiveSpineScheduler.restore(await this.cognitiveSpineStore.load() ?? undefined);
@@ -1641,14 +1646,16 @@ export class OrganismRuntime {
   }
 
   /** Read-only bounded health state, including evidence-linked alerts and audit history. */
-  cognitiveHealthSnapshot() { return this.cognitiveImmuneSystem.healthSnapshot(); }
+  cognitiveHealthSnapshot() { return this.cognitiveImmuneSystem?.healthSnapshot() ?? null; }
 
   /** Feed canonical ledger projections into the runtime-owned health monitor and persist accepted observations. */
   async inspectCognitiveHealth(input: CognitiveHealthInput): Promise<CognitiveHealthInspectionResult> {
     return this.enqueue(async () => {
       if (!this.initialized) throw new Error('organism-runtime-not-initialized');
-      const result = this.cognitiveImmuneSystem.inspectHealth(input);
-      if (result.observationAccepted) await this.cognitiveImmuneStore.save(this.cognitiveImmuneSystem.snapshot());
+      const healthSystem = this.cognitiveImmuneSystem;
+      if (!healthSystem) throw new Error('cognitive-health-system-not-configured');
+      const result = healthSystem.inspectHealth(input);
+      if (result.observationAccepted) await this.cognitiveImmuneStore.save(healthSystem.snapshot());
       return result;
     });
   }
@@ -1657,15 +1664,18 @@ export class OrganismRuntime {
   async reviewCognitiveHealthSignal(id: string, verdict: 'confirmed'|'false-positive'|'recovered', reviewer: string, evidenceRef?: string): Promise<boolean> {
     return this.enqueue(async () => {
       if (!this.initialized) throw new Error('organism-runtime-not-initialized');
-      const reviewed = this.cognitiveImmuneSystem.reviewHealthSignal(id, verdict, reviewer, evidenceRef);
-      if (reviewed) await this.cognitiveImmuneStore.save(this.cognitiveImmuneSystem.snapshot());
+      const healthSystem = this.cognitiveImmuneSystem;
+      if (!healthSystem) return false;
+      const reviewed = healthSystem.reviewHealthSignal(id, verdict, reviewer, evidenceRef);
+      if (reviewed) await this.cognitiveImmuneStore.save(healthSystem.snapshot());
       return reviewed;
     });
   }
 
   private async inspectRuntimeCognitiveHealth(tick: number): Promise<void> {
     const provider = this.config.cognitiveHealthInputProvider;
-    if (!provider) return;
+    const healthSystem = this.cognitiveImmuneSystem;
+    if (!provider || !healthSystem) return;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let timedOut = false;
     try {
@@ -1682,12 +1692,12 @@ export class OrganismRuntime {
         return;
       }
       if (!input) return; // Missing evidence is unknown, never a healthy/recovery sample.
-      const result = this.cognitiveImmuneSystem.inspectHealth({ ...input, tick });
+      const result = healthSystem.inspectHealth({ ...input, tick });
       if (!result.observationAccepted) return;
       // Avoid an fsync on every mobile tick. Persist immediately on lifecycle changes,
       // otherwise checkpoint the bounded observation stream every eighth organism tick.
       if (result.newSignals.length || result.recoveredSignals.length || tick % 8 === 0) {
-        await this.cognitiveImmuneStore.save(this.cognitiveImmuneSystem.snapshot());
+        await this.cognitiveImmuneStore.save(healthSystem.snapshot());
       }
       if (result.newSignals.length || result.recoveredSignals.length) {
         await this.journal.write(result.healthStatus === 'critical' ? 'error' : 'warn', 'runtime.cognitive-health.changed', {
