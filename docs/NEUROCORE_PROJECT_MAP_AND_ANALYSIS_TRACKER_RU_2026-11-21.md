@@ -852,3 +852,29 @@ From this snapshot forward:
 - No runtime PR was merged in this pass. The available snapshot did not establish a candidate with both current-source compatibility and all exact-head acceptance evidence.
 - The GitHub connector available to this session exposes branch creation/ref updates but no branch-ref deletion action; the browser profile also has no saved GitHub sign-in. Thus it was possible to create an auditable retirement register but not to execute branch deletions in this session.
 - The latest release asset was not downloaded; its SHA remains metadata-only. No current-source change is claimed as RELEASED.
+
+
+### 13.8 Closed-PR, tag and repository-policy reference audit (2026-11-22)
+
+A full closed-PR REST scan was completed: 801 records across 9 non-empty pages (eight pages of 100 plus one record). It found **45 unique closed PRs** that refer to at least one of the three shared-HEAD groups as either head or base. The machine-readable evidence is in `docs/consolidation/closed-pr-branch-reference-audit-2026-11-22.jsonl` (45 rows).
+
+| Shared-HEAD group | Closed PR references | Merged | Closed unmerged |
+|---|---:|---:|---:|
+| Consequence Ecology / calibration follow-up pair | 4 | 3 | 1 |
+| World Forge / Shared Future follow-up pair | 4 | 4 | 0 |
+| 17-name `82ea7a8b...` group | 39 | 37 | 2 |
+
+The first two groups overlap in PRs #928 and #1052; the table therefore has 47 group memberships but **45 distinct PRs** overall (42 merged, 3 closed unmerged). Notable retained history includes #916, #928, #1052 and #1054 in the Shared Future → World Forge → Consequence Ecology chain. The 17-name group also has closed-unmerged historical dependencies #121 and #216, in addition to the four open PRs #109, #124, #91 and #86.
+
+A tag scan returned two tags:
+
+- `refs/tags/Neuro` → `c2e8e4a78431734612f89318e79d3491643f24f3`.
+- `refs/tags/workpass70-hotfix1-2026-10-19` → `aa237b8991a666155a4795ce714d0abf8a74b6a4`.
+
+Neither tag directly targets one of the three shared HEAD SHAs. This is only an exact-target comparison; it does not prove that no tag points to an ancestor of a shared HEAD.
+
+The rulesets endpoint returned zero rulesets, and the branch API reports all 1,073 listed refs as not protected. The Actions-workflow and deployment endpoints are not exposed by the connected GitHub fetch integration, so their references could not be verified in this pass.
+
+**Updated deletion decision:** none of the three shared-HEAD groups is approved for deletion. The two 2-name pairs have no current open-PR dependency, but they are part of merged historical PR chains and their closed-PR records must remain traceable. The 17-name group has both open and closed PR dependencies. Workflows/deployments and external consumers are not fully audited. Preserve all refs until those blockers are resolved and a branch-delete operation is available.
+
+This section supersedes any earlier wording in §13.1 or §13.5 that described the two 2-name pairs as possible retirement candidates. They are now classified as **preserve pending complete historical/operational reference audit**, not as deletion candidates.
