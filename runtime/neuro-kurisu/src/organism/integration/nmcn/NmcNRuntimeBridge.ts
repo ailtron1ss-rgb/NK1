@@ -129,10 +129,10 @@ function normalizeDecision(value: unknown): NmcNRuntimeDecision | null {
   const mode = typeof compute.mode === 'string' ? compute.mode.trim().slice(0, 40) : '';
   const computeReason = typeof compute.reason === 'string' ? compute.reason : '';
   const reason = typeof record.invocation_reason === 'string' ? record.invocation_reason : computeReason;
-  const cycles = Number(compute.max_reasoning_cycles);
-  const bytes = Number(record.estimated_auxiliary_state_bytes);
-  if (!mode || !reason.trim() || !Number.isInteger(cycles) || cycles < 0 || cycles > 8 ||
-      !Number.isSafeInteger(bytes) || bytes < 0 || bytes > MAX_AUXILIARY_STATE_BYTES) return null;
+  const cycles = compute.max_reasoning_cycles;
+  const bytes = record.estimated_auxiliary_state_bytes;
+  if (!mode || !reason.trim() || typeof cycles !== 'number' || !Number.isInteger(cycles) || cycles < 0 || cycles > 8 ||
+      typeof bytes !== 'number' || !Number.isSafeInteger(bytes) || bytes < 0 || bytes > MAX_AUXILIARY_STATE_BYTES) return null;
   return {
     mode,
     reason: reason.trim().slice(0, 180),
@@ -157,7 +157,15 @@ export async function evaluateNmcNRuntime(
     boundedVector(input.state, NMCN_STATE_DIMENSION, 'state');
     boundedVector(input.action, NMCN_ACTION_DIMENSION, 'action');
     boundedVector(input.memory_key, NMCN_MEMORY_KEY_DIMENSION, 'memory-key');
-    if (input.schema_version !== NMCN_BRIDGE_SCHEMA_VERSION || !Number.isSafeInteger(input.tick) || input.tick < 0) return null;
+    if (input.schema_version !== NMCN_BRIDGE_SCHEMA_VERSION || !Number.isSafeInteger(input.tick) || input.tick < 0 ||
+        typeof input.low_power !== 'boolean' || !input.signal || typeof input.signal !== 'object') return null;
+    // Bind provenance identifiers to the cycle counter so arbitrary caller text cannot be smuggled as a reference.
+    if (input.signal.signal_id !== `nk1-cycle-${input.tick}` ||
+        input.signal.payload_ref !== `nk1-cycle:${input.tick}` ||
+        !Number.isFinite(input.signal.created_at) || input.signal.created_at < 0) return null;
+    for (const key of ['goal_relevance', 'novelty', 'prediction_error', 'urgency', 'consequence', 'risk', 'uncertainty'] as const) {
+      if (typeof input.signal[key] !== 'number' || !Number.isFinite(input.signal[key]) || input.signal[key] < 0 || input.signal[key] > 1) return null;
+    }
     const timeoutMs = Number.isFinite(options.timeoutMs)
       ? Math.max(10, Math.min(1000, Number(options.timeoutMs)))
       : 80;
