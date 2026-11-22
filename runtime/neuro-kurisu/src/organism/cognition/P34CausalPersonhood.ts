@@ -113,21 +113,61 @@ const defaultState=():P34CausalPersonhoodState=>({
   provenance:{lastEventId:'',lastRevisionReason:'initialization'},
 });
 
-const idFor=(prefix:string, seed:string)=>`${prefix}-${Math.abs([...seed].reduce((h,c)=>Math.imul(31,h)^c.charCodeAt(0),7)).toString(36)}-${now().toString(36)}`;
+let eventSequence=0;
+const idFor=(prefix:string, seed:string)=>{
+  let hash=2166136261;
+  for(const char of seed)hash=Math.imul(hash^char.charCodeAt(0),16777619);
+  eventSequence+=1;
+  return `${prefix}-${(hash>>>0).toString(36)}-${now().toString(36)}-${eventSequence.toString(36)}`;
+};
+const P34_EVIDENCE_KINDS=new Set<P34EvidenceKind>(['experience','outcome','memory','relationship','self-report','device','controlled']);
+const normalizeEvidence=(value:unknown):PersonhoodEvidence|null=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  const row=value as Partial<PersonhoodEvidence>;
+  const id=typeof row.id==='string'?row.id.trim():'';
+  const summary=typeof row.summary==='string'?row.summary.trim():'';
+  const sourceId=typeof row.sourceId==='string'?row.sourceId.trim():'';
+  if(!id||id.length>180||!summary||!P34_EVIDENCE_KINDS.has(row.kind as P34EvidenceKind)||
+    typeof row.weight01!=='number'||!Number.isFinite(row.weight01)||
+    typeof row.at!=='number'||!Number.isFinite(row.at)||row.at<0)return null;
+  return {id,kind:row.kind as P34EvidenceKind,summary:summary.slice(0,240),weight01:clamp(row.weight01),sourceId:sourceId.slice(0,120)||'unknown',at:row.at};
+};
+const reconcileEvidenceRefs=(value:unknown,known:Set<string>):string[]=>{
+  if(!Array.isArray(value))return [];
+  return [...new Set(value.filter((id):id is string=>typeof id==='string'&&known.has(id)) )].slice(0,12);
+};
 
 export class P34CausalPersonhoodEngine {
   private state=defaultState();
 
   restore(v?:P34CausalPersonhoodState){
     const d=defaultState();
+    const evidenceSeen=new Set<string>();
+    const evidence:PersonhoodEvidence[]=[];
+    // Evidence is stored newest-first. Keep the newest bounded window, discard
+    // malformed records, and retain the first canonical occurrence of each ID.
+    for(const candidate of Array.isArray(v?.evidence)?v!.evidence.slice(0,1024):[]){
+      const row=normalizeEvidence(candidate);
+      if(!row||evidenceSeen.has(row.id))continue;
+      evidenceSeen.add(row.id);
+      evidence.push(row);
+      if(evidence.length>=256)break;
+    }
+    const knownEvidenceIds=new Set(evidence.map(row=>row.id));
+    const claims=Array.isArray(v?.claims)?v!.claims.filter((row:any)=>row&&typeof row==='object'&&!Array.isArray(row)&&typeof row.id==='string'&&typeof row.subject==='string'&&typeof row.predicate==='string').slice(0,128).map((row:any)=>({...row,
+      supportingEvidenceIds:reconcileEvidenceRefs(row.supportingEvidenceIds,knownEvidenceIds),
+      contradictingEvidenceIds:reconcileEvidenceRefs(row.contradictingEvidenceIds,knownEvidenceIds),
+    })):[];
+    const goals=Array.isArray(v?.goals)?v!.goals.filter((row:any)=>row&&typeof row==='object'&&!Array.isArray(row)&&typeof row.id==='string'&&typeof row.title==='string').slice(0,96).map((row:any)=>({...row,evidenceIds:reconcileEvidenceRefs(row.evidenceIds,knownEvidenceIds)})):[];
+    const changeRequests=Array.isArray(v?.changeRequests)?v!.changeRequests.filter((row:any)=>row&&typeof row==='object'&&!Array.isArray(row)&&typeof row.id==='string'&&typeof row.field==='string').slice(0,96).map((row:any)=>({...row,evidenceIds:reconcileEvidenceRefs(row.evidenceIds,knownEvidenceIds)})):[];
     this.state={...d,...(v??{}),
-      evidence:Array.isArray(v?.evidence)?v!.evidence.slice(-256):[],
-      claims:Array.isArray(v?.claims)?v!.claims.slice(-128):[],
-      goals:Array.isArray(v?.goals)?v!.goals.slice(-96):[],
-      consentHistory:Array.isArray(v?.consentHistory)?v!.consentHistory.slice(-256):[],
-      changeRequests:Array.isArray(v?.changeRequests)?v!.changeRequests.slice(-96):[],
-      relationshipHistory:Array.isArray(v?.relationshipHistory)?v!.relationshipHistory.slice(-256):[],
-      continuityBranches:Array.isArray(v?.continuityBranches)?v!.continuityBranches.slice(-48):[],
+      evidence,
+      claims,
+      goals,
+      consentHistory:Array.isArray(v?.consentHistory)?v!.consentHistory.slice(0,256):[],
+      changeRequests,
+      relationshipHistory:Array.isArray(v?.relationshipHistory)?v!.relationshipHistory.slice(0,256):[],
+      continuityBranches:Array.isArray(v?.continuityBranches)?v!.continuityBranches.slice(0,48):[],
       identityProfile:{...d.identityProfile,...(v?.identityProfile??{}),adaptiveTraits:Array.isArray(v?.identityProfile?.adaptiveTraits)?v!.identityProfile.adaptiveTraits.slice(0,64):[],adaptiveValues:Array.isArray(v?.identityProfile?.adaptiveValues)?v!.identityProfile.adaptiveValues.slice(0,32):[]},
       current:{...d.current,...(v?.current??{})},
       metrics:{...d.metrics,...(v?.metrics??{})},
@@ -140,12 +180,26 @@ export class P34CausalPersonhoodEngine {
   hasEvidence(id:string){ return this.state.evidence.some(e=>e.id===id); }
   validEvidenceCount(ids:string[]){ return ids.filter(id=>this.hasEvidence(id)).length; }
   recordEvidence(input:{kind:P34EvidenceKind;summary:string;weight01?:number;sourceId?:string}){
-    const summary=String(input.summary).trim().slice(0,240); if(!summary)return null;
-    const row:PersonhoodEvidence={id:idFor('ev',`${input.kind}:${summary}`),kind:input.kind,summary,weight01:clamp(input.weight01??.5),sourceId:String(input.sourceId??'unknown').slice(0,120),at:now()};
+    if(!input||typeof input!=='object'||!P34_EVIDENCE_KINDS.has(input.kind))return null;
+    const summary=typeof input.summary==='string'?input.summary.trim().slice(0,240):'';
+    if(!summary)return null;
+    const sourceId=typeof input.sourceId==='string'?input.sourceId.trim().slice(0,120):'unknown';
+    const row:PersonhoodEvidence={id:idFor('ev',`${input.kind}:${summary}`),kind:input.kind,summary,weight01:clamp(input.weight01??.5),sourceId:sourceId||'unknown',at:now()};
     this.state.evidence=[row,...this.state.evidence].slice(0,256);
+    this.reconcileEvidenceReferences();
     this.state.provenance.lastEventId=row.id;
     this.state.provenance.lastRevisionReason='new-personhood-evidence';
     return structuredClone(row);
+  }
+
+  private reconcileEvidenceReferences(){
+    const known=new Set(this.state.evidence.map(row=>row.id));
+    this.state.claims=this.state.claims.map(row=>({...row,
+      supportingEvidenceIds:reconcileEvidenceRefs(row.supportingEvidenceIds,known),
+      contradictingEvidenceIds:reconcileEvidenceRefs(row.contradictingEvidenceIds,known),
+    }));
+    this.state.goals=this.state.goals.map(row=>({...row,evidenceIds:reconcileEvidenceRefs(row.evidenceIds,known)}));
+    this.state.changeRequests=this.state.changeRequests.map(row=>({...row,evidenceIds:reconcileEvidenceRefs(row.evidenceIds,known)}));
   }
 
   observeSelfClaim(subject:string,predicate:string,evidenceIds:string[]=[]){
