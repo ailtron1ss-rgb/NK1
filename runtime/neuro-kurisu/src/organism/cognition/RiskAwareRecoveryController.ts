@@ -31,7 +31,7 @@ export class RiskAwareRecoveryController{
    catastrophicAvoidance01:unitOr(ownDataValue(raw,'catastrophicAvoidance01'),d.catastrophicAvoidance01),
   };
  }
- beforeDecision(args:{tick:number;actionUtilities:Record<ActionKind,number>;predictionError01:number;uncertainty01:number;modelDrift01:number;recoveryGain01:number;verified01:number;computeBudget01:number}):{actionBias:Record<ActionKind,number>;recoveryAction:ActionKind|null;abstain:boolean;risk01:number;recoverability01:number}{
+ beforeDecision(args:{tick:number;actionUtilities:Record<ActionKind,number>;predictionError01:number;uncertainty01:number;modelDrift01:number;recoveryGain01:number;verified01:number;computeBudget01:number;allowRecovery?:boolean}):{actionBias:Record<ActionKind,number>;recoveryAction:ActionKind|null;abstain:boolean;risk01:number;recoverability01:number}{
   if(!Number.isSafeInteger(args.tick)||args.tick<0) throw new RangeError('risk-aware recovery tick must be a non-negative safe integer');
   this.state.tick=args.tick;this.state.decisions++;
   const predictionError01=clamp(args.predictionError01), uncertainty01=clamp(args.uncertainty01);
@@ -41,12 +41,13 @@ export class RiskAwareRecoveryController{
   const threshold=.58+.12*(1-computeBudget01);
   const bias=Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>;
   for(const a of ACTIONS){const actionRisk=(a==='verify'||a==='explore')?risk*.72:risk*(a==='rest'||a==='wait'?1.05:.96);const penalty=Math.max(0,actionRisk-.55)*.055;bias[a]=clamp(-penalty,-.065,.065);}
+  const recoveryAllowed = args.allowRecovery !== false;
   let recovery:ActionKind|null=null;
-  if(risk>threshold||predictionError01>.78){
+  if(recoveryAllowed && (risk>threshold||predictionError01>.78)){
     recovery=RECOVERY.slice().sort((a,b)=>(args.actionUtilities[b]??.5)-(args.actionUtilities[a]??.5))[0]??'verify';
     bias[recovery]=clamp((bias[recovery]??0)+.052,-.065,.065);this.state.recoveryAttempts++;this.state.selectedRecovery=recovery;this.state.riskEvents++;
   }else{this.state.selectedRecovery=null;}
-  const abstain=risk>.86 && recoveryGain01<.35;
+  const abstain=recoveryAllowed && risk>.86 && recoveryGain01<.35;
   if(abstain){this.state.abstainEvents++;bias.defer=clamp((bias.defer??0)+.06,-.065,.065);}
   this.state.selectedRisk01=risk;this.state.meanRisk01=clamp(this.state.meanRisk01*.95+risk*.05);this.state.recoverability01=clamp(this.state.recoverability01*.97+(1-risk)*(1-args.modelDrift01)*.03);
   if(risk<.25)this.state.catastrophicAvoidance01=clamp(this.state.catastrophicAvoidance01*.98+.02);

@@ -1175,6 +1175,7 @@ export class OrganismRuntime {
         : Number.isFinite(candidate.score) ? clamp01(candidate.score) : .5;
       actionUtilities[candidate.action] = Math.max(actionUtilities[candidate.action], utility);
     }
+    const autonomousRecoveryAllowed = !externalText && cycle.decision.userRequestedAction == null;
     const priorEmbodiedRecovery = this.embodiedRecovery.snapshot();
     const lastPhysicalEpisode = priorEmbodiedRecovery.episodes[0];
     const riskDecision = this.unifiedCycle.beforeRiskAwareDecision({
@@ -1189,9 +1190,9 @@ export class OrganismRuntime {
       recoveryGain01:clamp01(priorEmbodiedRecovery.globalReliability01),
       verified01:clamp01(Number(lastPhysicalEpisode?.verified01 ?? 0)),
       computeBudget01:clamp01(resourceAllocation.totalBudget01),
+      allowRecovery:autonomousRecoveryAllowed,
     });
     // External/user-directed turns and explicit canonical action requests are never overridden.
-    const autonomousRecoveryAllowed = !externalText && cycle.decision.userRequestedAction == null;
     const requestedRecoveryAction:ActionKind|null = riskDecision.recoveryAction === 'defer'
       ? 'wait' : riskDecision.recoveryAction;
     const riskRecoveryApplied = autonomousRecoveryAllowed && (riskDecision.abstain || requestedRecoveryAction !== null);
