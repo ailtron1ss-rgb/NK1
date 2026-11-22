@@ -213,6 +213,15 @@ export interface RuntimeStepOptions {
   externalSource?: RuntimeExternalPluginSource;
 }
 
+export interface AutonomousCycleBatchOptions {
+  /** Cancellation is observed between cycles; an in-flight cycle is allowed to close its state boundary. */
+  signal?: AbortSignal;
+  /** Yield to the host event loop after this many completed cycles. Clamped to [1, 64]. */
+  yieldEvery?: number;
+  /** Optional wall-clock budget in milliseconds. Zero performs no cycles. */
+  maxDurationMs?: number;
+}
+
 export interface VoiceEmotionContext {
   label:string;
   valence01:number;
@@ -653,17 +662,75 @@ export class OrganismRuntime {
   }
 
   /** B368: explicit endogenous cycle with no external command. */
-  async autonomousStep(options: { deliberate?: boolean } = { deliberate: false }): Promise<RuntimeStep> {
+  async autonomousStep(options: { deliberate?: boolean; signal?: AbortSignal } = { deliberate: false }): Promise<RuntimeStep> {
     return this.step(undefined, { deliberate: false, ...options });
   }
 
-  /** B368: bounded sequential autonomous closed loop. */
-  async runAutonomousCycles(count = 1): Promise<{ cycles:number; actions:string[]; worldTicks:number; neuralLearningUpdates:number; temporalUpdates:number; externalCommands:number }> {
+  /**
+   * B368: bounded sequential autonomous closed loop.
+   * Cancellation and time budgets are checked between cycles so a cycle already
+   * mutating canonical state can finish its durability/causal closure boundary.
+   * Periodic setImmediate yields keep timers, UI bridges and device I/O responsive.
+   */
+  async runAutonomousCycles(
+    count = 1,
+    options: AutonomousCycleBatchOptions = {},
+  ): Promise<{
+    cycles:number;
+    requestedCycles:number;
+    stopReason:'completed'|'aborted'|'time-budget';
+    actions:string[];
+    worldTicks:number;
+    neuralLearningUpdates:number;
+    temporalUpdates:number;
+    externalCommands:number;
+  }> {
     const total=Math.max(0,Math.min(512,Math.floor(Number(count)||0)));
+    const rawYieldEvery=Math.floor(Number(options.yieldEvery));
+    const yieldEvery=Number.isFinite(rawYieldEvery)
+      ? Math.max(1,Math.min(64,rawYieldEvery || 1))
+      : 4;
+    const maxDurationMs=options.maxDurationMs;
+    if(maxDurationMs!==undefined && (!Number.isFinite(maxDurationMs) || maxDurationMs<0)){
+      throw new RangeError('autonomous cycle maxDurationMs must be a finite non-negative number');
+    }
+    const startedAt=Date.now();
     const actions:string[]=[];
-    for(let i=0;i<total;i+=1){ const result=await this.autonomousStep(); actions.push(result.worldAction); }
+    let cycles=0;
+    let stopReason:'completed'|'aborted'|'time-budget'='completed';
+
+    while(cycles<total){
+      if(options.signal?.aborted){ stopReason='aborted'; break; }
+      if(maxDurationMs!==undefined && Date.now()-startedAt>=maxDurationMs){
+        stopReason='time-budget';
+        break;
+      }
+
+      const result=await this.autonomousStep({signal:options.signal});
+      actions.push(result.worldAction);
+      cycles+=1;
+
+      if(cycles<total && options.signal?.aborted){ stopReason='aborted'; break; }
+      if(cycles<total && maxDurationMs!==undefined && Date.now()-startedAt>=maxDurationMs){
+        stopReason='time-budget';
+        break;
+      }
+      if(cycles<total && cycles%yieldEvery===0){
+        await new Promise<void>(resolve=>setImmediate(resolve));
+      }
+    }
+
     const neural=this.core.b365UnifiedNeuroCausalDiagnostics();
-    return {cycles:total,actions,worldTicks:this.environment.snapshot().tick,neuralLearningUpdates:Number(neural.learningUpdates??0),temporalUpdates:Number(neural.temporalUpdates??0),externalCommands:0};
+    return {
+      cycles,
+      requestedCycles:total,
+      stopReason,
+      actions,
+      worldTicks:this.environment.snapshot().tick,
+      neuralLearningUpdates:Number(neural.learningUpdates??0),
+      temporalUpdates:Number(neural.temporalUpdates??0),
+      externalCommands:0,
+    };
   }
 
   async step(externalText?: string, options: RuntimeStepOptions = { deliberate: true }): Promise<RuntimeStep> {
