@@ -84,7 +84,13 @@ function assertOracle(label, memory) {
     const changedFields = byteFields.filter(field => JSON.stringify(liveItem[field] ?? null) !== JSON.stringify(restoredItem[field] ?? null));
     for (const field of changedFields) fieldCounts[field]++;
     const byteDelta = estimateRowBytes(restoredItem) - estimateRowBytes(liveItem);
-    if (byteDelta !== 0) rowByteDeltas.push({ id: restoredItem.id, byteDelta, fields: changedFields, before: Object.fromEntries(changedFields.map(field => [field, liveItem[field] ?? null])), after: Object.fromEntries(changedFields.map(field => [field, restoredItem[field] ?? null])) });
+    if (byteDelta !== 0) {
+      const edgeShape = item => ({ id:item.id, supersedesId:item.supersedesId, supersededById:item.supersededById, revisionGroupId:item.revisionGroupId, revisionSequence:item.revisionSequence, recordedFromAt:item.recordedFromAt, recordedUntilAt:item.recordedUntilAt, validFromAt:item.validFromAt, validUntilAt:item.validUntilAt });
+      const nextId = liveItem.supersededById ?? restoredItem.supersededById;
+      const nextLive = nextId ? liveById.get(nextId) : undefined;
+      const nextRestored = nextId ? restoredSnapshot.items.find(item => item.id === nextId) : undefined;
+      rowByteDeltas.push({ id: restoredItem.id, byteDelta, fields: changedFields, before: Object.fromEntries(changedFields.map(field => [field, liveItem[field] ?? null])), after: Object.fromEntries(changedFields.map(field => [field, restoredItem[field] ?? null])), liveEdge:edgeShape(liveItem), restoredEdge:edgeShape(restoredItem), liveSuccessor:nextLive?edgeShape(nextLive):null, restoredSuccessor:nextRestored?edgeShape(nextRestored):null });
+    }
   }
   const liveAccounting = memory.memoryAccountingDiagnostics();
   const byteDiffSummary = { fieldCounts, changedRows: rowByteDeltas.length, totalRowDelta: rowByteDeltas.reduce((sum, row) => sum + row.byteDelta, 0), samples: rowByteDeltas.slice(0, 16) };
