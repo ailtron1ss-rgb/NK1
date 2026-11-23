@@ -1,3 +1,12 @@
+## [NK1][Integration] Risk-aware recovery and cognitive health supervision (2026-11-23)
+
+- Wire RiskAwareRecoveryController into every canonical cognitive cycle. Recovery overrides are allowed only for autonomous turns: external input and explicit user-requested actions retain canonical authority.
+- Persist bounded risk calibration and recovery counters in a fail-soft sidecar; emit risk decision evidence and bind the grounded result to the originating decision.
+- Integrate CognitiveImmuneSystem as an optional evidence-only observer with a 750 ms provider timeout, review APIs and a durable sidecar. Missing provider data remains unknown; observer failures cannot steer actions or learning.
+- Make risk overrides bypass expensive planning and use the bounded fallback; update the planner source-contract regression for the risk budget/fallback gates and user-authority boundary.
+- Add real-runtime health sidecar coverage and run the existing health-monitor regression without modifying package.json.
+- Align the new health workflow with the repository Node 24 .nvmrc and supported checkout/setup-node action versions; remove the non-portable timer-handle .unref call.
+
 ## [NK1][Docs] Preserve project analysis map and current branch integration ledger (2026-11-23)
 
 - Import the dated NeuroCore project-map and daily engineering-cycle records from the 2026-11-22 documentation branch as historical snapshots.
