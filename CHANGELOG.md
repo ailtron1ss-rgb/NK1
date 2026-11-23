@@ -1,3 +1,8 @@
+## [NK1][Cognition] Expose the standalone resource-routing regression (2026-11-23)
+
+- Add `npm run test:cognitive-frame-resource-routing` for the existing WorkPass330 regression.
+- Run HMX review/apply consent integration tests with background autonomous ticks disabled in the test process only; production auto-run remains enabled by default.
+
 ## [NK1][Autonomy] Wire risk-aware recovery into the current runtime (2026-11-23)
 
 - Connect the existing RiskAwareRecoveryController to the current OrganismRuntime decision/outcome path. Risk appraisal weighs prediction error, uncertainty, model drift, embodied reliability, available compute budget and prior physical verification.
