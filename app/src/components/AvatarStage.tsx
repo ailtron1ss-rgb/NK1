@@ -582,17 +582,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           thinking={thinking}
           motorPlan={projection.motorPlan}
           motorSignals={{
-            hasFreshTurn: projection.hasFreshTurn,
-            turnText: lastTurn?.role === "kurisu" ? lastTurn.text : "",
-            awake: snap.awake,
             energy: snap.needs.energy,
             cognitiveLoad: snap.needs.cognitiveLoad,
-            uncertainty: snap.needs.uncertainty,
-            socialNeed: snap.needs.socialNeed,
-            novelty: snap.needs.novelty,
-            goalPressure: snap.needs.goalPressure,
-            predictionError: snap.predictionError,
-            traits: snap.identity.traits,
           }}
           bodyChannels={motionChannelsRef.current}
         /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} motorPlan={projection.motorPlan} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={projection.gaze.x} gazeY={projection.gaze.y} speaking={projection.speaking} mouthPose={projection.mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={motionChannelsRef.current} /> : <>

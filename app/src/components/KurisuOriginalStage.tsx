@@ -94,15 +94,6 @@ function poseForMotorPlan(motorPlan: AvatarMotorIntentPlan, energy01: number, co
 export interface KurisuOriginalMotorSignals {
   energy: number;
   cognitiveLoad: number;
-  uncertainty: number;
-  socialNeed: number;
-  novelty: number;
-  goalPressure: number;
-  predictionError: number;
-  traits: Readonly<Record<string, number>>;
-  hasFreshTurn: boolean;
-  turnText: string;
-  awake: boolean;
 }
 
 export interface KurisuOriginalStageProps {
