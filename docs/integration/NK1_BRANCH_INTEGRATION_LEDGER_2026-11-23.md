@@ -38,7 +38,7 @@
 ### Live repository census — 2026-11-23
 
 - Branch refs: **1,110**; unique tip SHAs: **1,092**; exact duplicate-tip groups: **3**; excess alias refs: **18**.
-- Open PRs: **270**; unique PR head SHAs: **270**; Draft: **205**; Ready: **65**.
+- Open PRs: **271**; unique PR head SHAs: **271**; Draft: **205**; Ready: **66**.
 - The branch count rose by seven refs since the previous 1,103-ref census due to concurrent branch creation. No branch refs were deleted in this pass.
 - Exact duplicate group A — SHA `f9621bf3e4411ce17bc809922a5f90126001f4fd`: `aspect/consequence-ecology-20261117`, `integrate/consequence-calibration-lineage-followup-20261120`.
 - Exact duplicate group B — SHA `68a03799ca0c9f18e4c6e19399ed8018e0215e60`: `aspect/world-forge-integrated-20261117`, `integrate/worldforge-to-sharedfuture-after-calibration-20261120`.
