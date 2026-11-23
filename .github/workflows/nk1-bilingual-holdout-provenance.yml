@@ -1,0 +1,40 @@
+name: NK1 Bilingual Holdout Provenance Manifest
+
+on:
+  push:
+    paths:
+      - 'runtime/neuro-kurisu/scripts/build-bilingual-holdout-from-wikipedia.mjs'
+      - 'runtime/neuro-kurisu/scripts/wikipedia-holdout-provenance.mjs'
+      - 'runtime/neuro-kurisu/tests/bilingual-holdout-provenance.mjs'
+      - 'runtime/neuro-kurisu/tests/fixtures/mock-wikipedia-summary-fetch.mjs'
+      - '.github/workflows/nk1-bilingual-holdout-provenance.yml'
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/scripts/build-bilingual-holdout-from-wikipedia.mjs'
+      - 'runtime/neuro-kurisu/scripts/wikipedia-holdout-provenance.mjs'
+      - 'runtime/neuro-kurisu/tests/bilingual-holdout-provenance.mjs'
+      - 'runtime/neuro-kurisu/tests/fixtures/mock-wikipedia-summary-fetch.mjs'
+      - '.github/workflows/nk1-bilingual-holdout-provenance.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-bilingual-holdout-provenance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Reproduce source manifest with an offline Wikipedia fixture
+        run: node --experimental-strip-types tests/bilingual-holdout-provenance.mjs
