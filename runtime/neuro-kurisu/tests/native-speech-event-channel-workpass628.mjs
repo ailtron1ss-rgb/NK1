@@ -86,6 +86,12 @@ test('native provider input rejects invalid phases, accessors, proxies and coerc
   const valid = channel.publish('speech-after-reject', { phase: 'command-requested' });
   assert.equal(valid.sequence, 1, 'rejected input must not advance operation sequence');
   assert.deepEqual(received.map(event => event.operationId), ['speech-after-reject']);
+
+  const sanitized = channel.publish('speech-sanitized', {
+    phase: 'process-error',
+    reason: 'line\nbreak\tvalue',
+  });
+  assert.equal(sanitized.reason, 'line break value', 'diagnostic control whitespace is normalized');
 });
 
 test('native process events are explicitly not playback lifecycle evidence', () => {
