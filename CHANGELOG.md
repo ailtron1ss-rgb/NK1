@@ -3,11 +3,6 @@
 - Port the missing runtime-wiring regression for durable fitness/lifecycle journals, startup reconciliation and aggregate-only diagnostics.
 - Keep existing P23 evidence, paired-seed, holdout, lifecycle and promotion gates unchanged; this is a wiring regression, not a claim of measured learning uplift.
 
-## [NK1][Learning] Verify canonical P23 journal bootstrap and startup reconciliation (2026-11-23)
-
-- Port the missing runtime-wiring regression for durable fitness/lifecycle journals, startup reconciliation and aggregate-only diagnostics.
-- Keep existing P23 evidence, paired-seed, holdout, lifecycle and promotion gates unchanged; this is a wiring regression, not a claim of measured learning uplift.
-
 ## [NK1][Cognition] Port OmeStro governed cognitive and developmental contracts (2026-11-23)
 
 - Add the 32-concept status registry and bounded contracts for intent, ChronoTruth, negative-space memory, open-loop commitments, undo-first planning, developmental genome, research review and neural-adaptation candidates.
