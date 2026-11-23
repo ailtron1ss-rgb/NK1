@@ -1,7 +1,7 @@
 # NK1 / NeuroCore — Aspect Integration Fabric (wiring)
 
 **Дата:** 2026-11-23  
-**Ствол:** `workpass70-source` @ `fba16fa1f`  
+**Ствол:** `workpass70-source` @ `71343b17c`  
 **Модель:** `organism → 7 физических систем → 75 аспектов → зависимости + branch/PR provenance`  
 **Тип:** read-only слой подключения; поведение runtime не меняется.
 
@@ -15,7 +15,7 @@
 | Узлы графа (organism + systems + aspects) | 83 |
 | Рёбра графа (dependencies + owns + composes) | 175 |
 | Ветки в provenance | 1106 |
-| Owner-файлы существуют | 72 / 75 |
+| Owner-файлы существуют | 75 / 75 |
 | Связность | PASS (83/83) |
 
 Граф связывает каждый аспект с физической системой, каждую систему — с корнем `organism`, а зависимости — с другими аспектами. Ветки и PR не мержатся: они привязаны к аспекту как provenance, чтобы одна и та же ветка не могла «принадлежать» двум аспектам.
@@ -85,7 +85,7 @@
 | 30 | `speech` | `embodiment` | `runtime/neuro-kurisu/src/organism/body/VoiceEmbod…` | 1 | 1 | 1 | yes |
 | 31 | `voice-interaction` | `embodiment` | `runtime/neuro-kurisu/src/organism/body/NativeSpee…` | 1 | 0 | 0 | yes |
 | 32 | `multimodal-interaction` | `embodiment` | `runtime/neuro-kurisu/src/organism/body/Multimodal…` | 2 | 0 | 0 | yes |
-| 33 | `neko` | `research` | `**UNKNOWN**` | 2 | 41 | 1 | **no** |
+| 33 | `neko` | `research` | `runtime/neuro-kurisu/src/organism/integration/neko` | 2 | 41 | 1 | yes |
 | 34 | `hermes` | `research` | `runtime/neuro-kurisu/src/organism/learning/Hermes…` | 1 | 2 | 1 | yes |
 | 35 | `firecrawl` | `research` | `engineering-os/manifest.v1.json` | 1 | 0 | 0 | yes |
 | 36 | `tinyfish` | `research` | `engineering-os/manifest.v1.json` | 1 | 0 | 0 | yes |
@@ -117,8 +117,8 @@
 | 62 | `architecture-tests` | `research` | `tools/verify-integration.mjs` | 1 | 4 | 2 | yes |
 | 63 | `math-tests` | `research` | `runtime/neuro-kurisu/src/organism/memory/MemoryRe…` | 1 | 0 | 0 | yes |
 | 64 | `cognitive-benchmarks` | `research` | `runtime/neuro-kurisu/src/organism/memory/MemoryRe…` | 1 | 7 | 3 | yes |
-| 65 | `autonomy-soak` | `research` | `**UNKNOWN**` | 1 | 0 | 0 | **no** |
-| 66 | `device-e2e` | `research` | `**UNKNOWN**` | 2 | 0 | 0 | **no** |
+| 65 | `autonomy-soak` | `research` | `runtime/neuro-kurisu/tests/p2684-mobile-soak.mjs` | 1 | 0 | 0 | yes |
+| 66 | `device-e2e` | `research` | `runtime/neuro-kurisu/tests/big-pass-177-device-truthfulness.mjs` | 2 | 0 | 0 | yes |
 | 67 | `regression` | `research` | `.github/workflows` | 1 | 4 | 1 | yes |
 | 68 | `independent-holdout` | `research` | `runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_…` | 1 | 22 | 2 | yes |
 | 69 | `branch-consolidation` | `governance` | `docs/BRANCH_CONVERGENCE_AUDIT_2026-11-01_RU.md` | 1 | 15 | 3 | yes |
@@ -131,13 +131,15 @@
 
 ## 4. Пробелы подключения
 
-| n | Аспект | Проблема | Что сделать |
-|---:|---|---|---|
-| 33 | `neko` | owner = `UNKNOWN` | Назначить canonical/adapter owner и добавить evidence |
-| 65 | `autonomy-soak` | owner = `UNKNOWN` | Назначить canonical/adapter owner и добавить evidence |
-| 66 | `device-e2e` | owner = `UNKNOWN` | Назначить canonical/adapter owner и добавить evidence |
+Все **75/75** аспектов имеют существующий owner-файл. Три ранее `UNKNOWN` назначены как `candidate`:
 
-Остальные 72 аспекта имеют существующий owner-файл. 3 `UNKNOWN` — это N.E.K.O. (33), autonomy-soak (65), device-e2e (66); они не ломают граф, но остаются `owner-missing` и должны быть закрыты до объявления полной связности.
+| n | Аспект | Candidate owner | Что остаётся |
+|---:|---|---|---|
+| 33 | `neko` | `runtime/neuro-kurisu/src/organism/integration/neko` | Gateway composition и end-to-end evidence ещё не promoted. |
+| 65 | `autonomy-soak` | `runtime/neuro-kurisu/tests/p2684-mobile-soak.mjs` | Долгий автономный soak (>=1 initiative/hour, explainable causes) не доказан. |
+| 66 | `device-e2e` | `runtime/neuro-kurisu/tests/big-pass-177-device-truthfulness.mjs` | Реальный PC/Android E2E, lip-sync, interrupt и tick-latency ещё не записаны. |
+
+Это не «подключено навсегда»: `candidate` означает, что owner существует и проверяется, но evidence-gate ещё не пройден.
 
 ## 5. Branch/PR provenance
 
@@ -160,6 +162,8 @@ npm --prefix runtime/neuro-kurisu run test:aspect-fabric
 ```
 
 Ожидаемый результат: `ASPECT_FABRIC=PASS aspects=75 domains=10 systems=7 connected=true nodes=83` и `ASPECT_FABRIC_INTEGRATION=PASS`.
+
+Следующий слой проверки — реальная inventory кода/тестов: `docs/ASPECT_REAL_INVENTORY_2026-11-23_RU.md`.
 
 ## 7. Что это даёт для объединения проекта
 

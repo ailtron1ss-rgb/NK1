@@ -1,0 +1,3039 @@
+{
+ "schemaVersion": 1,
+ "generatedAt": "2026-11-23T07:56:04.362Z",
+ "trunk": "71343b17c",
+ "generatedFrom": [
+  "engineering-os/aspects.v1.json",
+  "engineering-os/aspect-fabric.v1.json",
+  "engineering-os/aspect-branch-provenance.v1.json"
+ ],
+ "totals": {
+  "aspects": 75,
+  "ownerExists": 75,
+  "ownerFiles": 67,
+  "ownerDirectories": 8,
+  "testsFound": 65,
+  "branchesAssigned": 711,
+  "openPrs": 164,
+  "candidateOwners": 10,
+  "planned": 11,
+  "noTests": 10,
+  "noBranches": 20
+ },
+ "byReadiness": {
+  "owner+tests+branches": 48,
+  "owner+branches": 7,
+  "owner+tests": 17,
+  "owner-only": 3
+ },
+ "aspects": [
+  {
+   "n": 1,
+   "id": "core-architecture",
+   "titleRu": "Core Architecture",
+   "group": "I",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 13404,
+   "ownerBytes": 1357256,
+   "ownerExports": [
+    "OrganismConfig",
+    "OrganismFacets",
+    "OrganismSystemState",
+    "PersistedOrganism",
+    "OrganismCore"
+   ],
+   "ownerEntries": [],
+   "testsFound": 368,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/action-gateway-idempotency-workpass37.mjs",
+    "runtime/neuro-kurisu/tests/action-ledger-archive-workpass38.mjs",
+    "runtime/neuro-kurisu/tests/b1101-b1350-organism-integration.mjs",
+    "runtime/neuro-kurisu/tests/b1351-b1600-organism-integration.mjs",
+    "runtime/neuro-kurisu/tests/b1701-b2200-organism-integration.mjs"
+   ],
+   "branches": {
+    "total": 27,
+    "open": 10,
+    "merged": 6,
+    "closed": 10,
+    "noPr": 1
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 2,
+   "id": "organism-bus",
+   "titleRu": "OrganismBus",
+   "group": "I",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/cognition/CognitiveNetworkBus.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 163,
+   "ownerBytes": 9289,
+   "ownerExports": [
+    "SpecialistName",
+    "SpecialistSignal",
+    "NetworkBroadcast",
+    "CognitiveNetworkState",
+    "affectWorkspaceActionBias",
+    "CognitiveNetworkBus"
+   ],
+   "ownerEntries": [],
+   "testsFound": 3,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/cognitive-network-bus-boundary.mjs",
+    "runtime/neuro-kurisu/tests/cognitive-network-hardening-workpass39.mjs",
+    "tools/neurok-aspects.test.mjs"
+   ],
+   "branches": {
+    "total": 2,
+    "open": 0,
+    "merged": 2,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 3,
+   "id": "organism-state",
+   "titleRu": "OrganismState",
+   "group": "I",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/persistence/FileStateStore.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 260,
+   "ownerBytes": 10615,
+   "ownerExports": [
+    "StateStoreMetrics",
+    "JsonStateStore",
+    "StateCorruptionError",
+    "StateStoreEncoding",
+    "FileStateStoreOptions",
+    "FileStateStore"
+   ],
+   "ownerEntries": [],
+   "testsFound": 93,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/action-ledger-archive-workpass38.mjs",
+    "runtime/neuro-kurisu/tests/avatar-brain-affect-bridge.mjs",
+    "runtime/neuro-kurisu/tests/avatar-brain-renderer-runtime.mjs",
+    "runtime/neuro-kurisu/tests/b1701-b2200-organism-integration.mjs",
+    "runtime/neuro-kurisu/tests/b2201-b2500-organism-integration.mjs"
+   ],
+   "branches": {
+    "total": 17,
+    "open": 3,
+    "merged": 9,
+    "closed": 4,
+    "noPr": 1
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 4,
+   "id": "cognitive-kernel",
+   "titleRu": "Cognitive Kernel",
+   "group": "I",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/core/CognitiveKernelCoordinator.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 188,
+   "ownerBytes": 15037,
+   "ownerExports": [
+    "CognitiveKernelArbitrationResult",
+    "CognitiveKernelCoordinator"
+   ],
+   "ownerEntries": [],
+   "testsFound": 12,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-176-lifecycle-closure.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-180-lifecycle-function-closure.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-207-brain-atlas-gate.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-208-basal-ganglia.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-209-cerebellum-sparse.mjs"
+   ],
+   "branches": {
+    "total": 6,
+    "open": 5,
+    "merged": 0,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 5,
+   "id": "cognitive-cycle",
+   "titleRu": "Cognitive Cycle",
+   "group": "I",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/core/CognitiveCycleBoundary.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 18,
+   "ownerBytes": 687,
+   "ownerExports": [
+    "CognitiveCycleMode",
+    "assertCognitiveCycleBoundaryInput"
+   ],
+   "ownerEntries": [],
+   "testsFound": 6,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/cognitive-cycle-boundary-runtime-wiring.mjs",
+    "runtime/neuro-kurisu/tests/cognitive-cycle-boundary.mjs",
+    "runtime/neuro-kurisu/tests/operational-microcycle-finite-input.mjs",
+    "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs",
+    "runtime/neuro-kurisu/tests/workpass319-cycle-order.mjs"
+   ],
+   "branches": {
+    "total": 6,
+    "open": 3,
+    "merged": 3,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 6,
+   "id": "engineering-os",
+   "titleRu": "Engineering OS",
+   "group": "I",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "engineering-os/manifest.v1.json",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 632,
+   "ownerBytes": 22497,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 8,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/aspect-fabric-integration.mjs",
+    "tools/neurok-aspect-fabric.mjs",
+    "tools/neurok-aspects.mjs",
+    "tools/neurok-aspects.test.mjs",
+    "tools/neurok-os-patch.mjs"
+   ],
+   "branches": {
+    "total": 1,
+    "open": 0,
+    "merged": 1,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 7,
+   "id": "perception",
+   "titleRu": "Perception",
+   "group": "II",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "world",
+   "owner": "runtime/neuro-kurisu/src/organism/body/PerceptionRouter.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 86,
+   "ownerBytes": 4432,
+   "ownerExports": [
+    "PerceptionRoutingState",
+    "defaultPerceptionRoutingState",
+    "sanitizePerceptionRoutingState",
+    "routePerception",
+    "eventToExternalDetail"
+   ],
+   "ownerEntries": [],
+   "testsFound": 52,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/autonomous-social-anti-repeat-bm25.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-111-self-directed-learning.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-114-reality-memory-self.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-128-154-autonomous-cognitive-life.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-155-core-verified-life.mjs"
+   ],
+   "branches": {
+    "total": 3,
+    "open": 1,
+    "merged": 2,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 8,
+   "id": "world-model",
+   "titleRu": "World Model",
+   "group": "II",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "world",
+   "owner": "runtime/neuro-kurisu/src/organism/world/WorldModel.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 145,
+   "ownerBytes": 6756,
+   "ownerExports": [
+    "InternalWorldState",
+    "PredictedOutcome",
+    "WorldTransition",
+    "WorldModelSnapshot",
+    "WorldModel"
+   ],
+   "ownerEntries": [],
+   "testsFound": 84,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/action-cost-unification-workpass36.mjs",
+    "runtime/neuro-kurisu/tests/autonomous-social-anti-repeat-bm25.mjs",
+    "runtime/neuro-kurisu/tests/b1101-b1350-cognitive.mjs",
+    "runtime/neuro-kurisu/tests/b561-b620-meta-evolution.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-120-developmental-executive.mjs"
+   ],
+   "branches": {
+    "total": 1,
+    "open": 0,
+    "merged": 1,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 9,
+   "id": "reasoning",
+   "titleRu": "Reasoning",
+   "group": "II",
+   "wave": "2",
+   "status": "CONNECTED",
+   "system": "world",
+   "owner": "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts",
+   "ownerStatus": "candidate",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 192,
+   "ownerBytes": 9675,
+   "ownerExports": [
+    "EpistemicSource",
+    "EvidenceClaim",
+    "EpistemicState",
+    "defaultEpistemicState",
+    "ClaimPolarity",
+    "claimPolarity",
+    "PerceptualEpistemicGraph"
+   ],
+   "ownerEntries": [],
+   "testsFound": 25,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/autonomous-dialogue-prompt-workpass48.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-176-longitudinal-integrity.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-91-unified-learning.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-93-real-semantic-vision.mjs"
+   ],
+   "branches": {
+    "total": 1,
+    "open": 0,
+    "merged": 1,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": [
+    "candidate-owner"
+   ]
+  },
+  {
+   "n": 10,
+   "id": "planning",
+   "titleRu": "Planning",
+   "group": "II",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "world",
+   "owner": "runtime/neuro-kurisu/src/organism/world/PlanEngine.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 133,
+   "ownerBytes": 6066,
+   "ownerExports": [
+    "PlanStep",
+    "Plan",
+    "ResidualRewardProvider",
+    "PlanEngine"
+   ],
+   "ownerEntries": [],
+   "testsFound": 35,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-120-core-development-executive.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-128-154-autonomous-cognitive-life.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-201-longitudinal-transfer.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-234-241-neuro-digital-superupdate.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-242-249-neuro-digital-evolution.mjs"
+   ],
+   "branches": {
+    "total": 4,
+    "open": 0,
+    "merged": 2,
+    "closed": 2,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 11,
+   "id": "metacognition",
+   "titleRu": "Metacognition",
+   "group": "II",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/cognition/MetaCognitiveMonitor.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 30,
+   "ownerBytes": 1830,
+   "ownerExports": [
+    "MetaCognitiveState",
+    "defaultMetaCognitiveState",
+    "MetaCognitiveMonitor"
+   ],
+   "ownerEntries": [],
+   "testsFound": 8,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-179-consciousness-battery.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-57-persistence-coordinator.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-81-motive-epistemic-integration.mjs",
+    "runtime/neuro-kurisu/tests/metacognitive-full-cycle-runtime.mjs",
+    "runtime/neuro-kurisu/tests/p31-truthfulness.mjs"
+   ],
+   "branches": {
+    "total": 8,
+    "open": 2,
+    "merged": 4,
+    "closed": 2,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 12,
+   "id": "attention",
+   "titleRu": "Attention",
+   "group": "II",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/cognition/P81PredictiveAttention.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 33,
+   "ownerBytes": 2902,
+   "ownerExports": [
+    "P81Candidate",
+    "P81Input",
+    "P81State",
+    "defaultP81",
+    "P81PredictiveAttention"
+   ],
+   "ownerEntries": [],
+   "testsFound": 190,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/CycleCompletenessPolicy.test.mjs",
+    "runtime/neuro-kurisu/tests/P80_P82_INTEGRATION.test.ts",
+    "runtime/neuro-kurisu/tests/action-cost-unification-workpass36.mjs",
+    "runtime/neuro-kurisu/tests/action-gateway-idempotency-workpass37.mjs",
+    "runtime/neuro-kurisu/tests/autonomous-social-anti-repeat-bm25.mjs"
+   ],
+   "branches": {
+    "total": 6,
+    "open": 2,
+    "merged": 1,
+    "closed": 3,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 13,
+   "id": "memoryos2",
+   "titleRu": "MemoryOS2",
+   "group": "III",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "memory",
+   "owner": "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 2476,
+   "ownerBytes": 202197,
+   "ownerExports": [
+    "EpistemicStatus",
+    "MemoryProvenanceClass",
+    "MemoryEvidenceSource",
+    "MemoryTemporalKind",
+    "MemoryBitemporalInterval",
+    "MemoryItem2",
+    "MemoryQueryIntent",
+    "detectMemoryQueryIntent",
+    "isConversationMemory",
+    "MemoryOSState2",
+    "MemoryEvictionWitness",
+    "defaultMemoryOS2",
+    "MemoryRestoreDiagnostics",
+    "MemoryCapacityExhaustedError",
+    "MemoryRemovalReceipt",
+    "MemoryTemporalMode",
+    "MemoryTemporalQueryOptions",
+    "SemanticMemoryPreview",
+    "SemanticRetrievalPerformanceOptions",
+    "SemanticIndexMaintenanceResult"
+   ],
+   "ownerEntries": [],
+   "testsFound": 91,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md",
+    "runtime/neuro-kurisu/tests/adaptive-memory-strategy-readout.mjs",
+    "runtime/neuro-kurisu/tests/autonomous-dialogue-prompt-workpass48.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-114-reality-memory-self.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-124-reafference-integration.mjs"
+   ],
+   "branches": {
+    "total": 158,
+    "open": 31,
+    "merged": 46,
+    "closed": 63,
+    "noPr": 18
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 14,
+   "id": "retrieval",
+   "titleRu": "Retrieval",
+   "group": "III",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "memory",
+   "owner": "runtime/neuro-kurisu/src/organism/developmental/MemorySignalFusion.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 93,
+   "ownerBytes": 4282,
+   "ownerExports": [
+    "MemoryFusionProfile",
+    "MemorySignalInput",
+    "MemorySignalBreakdown",
+    "MemorySignalFusion",
+    "defaultMemorySignalFusion"
+   ],
+   "ownerEntries": [],
+   "testsFound": 105,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md",
+    "runtime/neuro-kurisu/tests/adaptive-memory-strategy-readout.mjs",
+    "runtime/neuro-kurisu/tests/b561-b620-organism-integration.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-102-memory-replay.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-103-memory-transfer.mjs"
+   ],
+   "branches": {
+    "total": 7,
+    "open": 0,
+    "merged": 4,
+    "closed": 2,
+    "noPr": 1
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 15,
+   "id": "consolidation",
+   "titleRu": "Consolidation",
+   "group": "III",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "memory",
+   "owner": "runtime/neuro-kurisu/src/organism/memory/MemoryConsolidationController.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 144,
+   "ownerBytes": 10766,
+   "ownerExports": [
+    "ConsolidationRoute",
+    "ConsolidationCandidate",
+    "ConsolidationDecision",
+    "MemoryConsolidationState",
+    "sanitizeConsolidationDecision",
+    "sanitizeConsolidationDecisionArray",
+    "MemoryConsolidationController"
+   ],
+   "ownerEntries": [],
+   "testsFound": 77,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/autonomous-dialogue-workpass48.mjs",
+    "runtime/neuro-kurisu/tests/autonomous-social-anti-repeat-bm25.mjs",
+    "runtime/neuro-kurisu/tests/b1351-b1600-lifelong-development.mjs",
+    "runtime/neuro-kurisu/tests/b2515-b2517-holdout.mjs",
+    "runtime/neuro-kurisu/tests/b299-personality-boundary-consolidation.mjs"
+   ],
+   "branches": {
+    "total": 8,
+    "open": 4,
+    "merged": 3,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 16,
+   "id": "continual-learning",
+   "titleRu": "Continual Learning",
+   "group": "III",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "memory",
+   "owner": "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 226,
+   "ownerBytes": 9344,
+   "ownerExports": [
+    "ReplayExperience",
+    "ReplayTrainingReport",
+    "ReplayTrainingOptions",
+    "ContinualReplayBuffer",
+    "trainWithExperienceReplay"
+   ],
+   "ownerEntries": [],
+   "testsFound": 7,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/continual-learning-history-workpass74.mjs",
+    "runtime/neuro-kurisu/tests/continual-learning-policy-sequence-workpass74.mjs",
+    "runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs",
+    "runtime/neuro-kurisu/tests/p26-continual-replay-buffer.mjs",
+    "runtime/neuro-kurisu/tests/p26-drift-aware-learning-controller.mjs"
+   ],
+   "branches": {
+    "total": 22,
+    "open": 8,
+    "merged": 7,
+    "closed": 3,
+    "noPr": 4
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 17,
+   "id": "skill-system",
+   "titleRu": "Skill System",
+   "group": "III",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "memory",
+   "owner": "runtime/neuro-kurisu/src/organism/learning/ProceduralSkillLibrary.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 670,
+   "ownerBytes": 49970,
+   "ownerExports": [
+    "SkillRecord",
+    "CompoundSkillStep",
+    "CompoundSkillPolicy",
+    "CompoundSkillVariant",
+    "SkillMetaOperation",
+    "CompoundSkillRepair",
+    "CompoundSkillAdaptation",
+    "CompoundSkillRecord",
+    "SkillLibraryState",
+    "SkillBiasResult",
+    "defaultSkillLibrary",
+    "ProceduralSkillLibrary"
+   ],
+   "ownerEntries": [],
+   "testsFound": 9,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-100-self-repair.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-101-skill-ecology.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-117-core-learning-loop.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-97-procedural-skills.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-98-compound-device-agency.mjs"
+   ],
+   "branches": {
+    "total": 9,
+    "open": 3,
+    "merged": 5,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 18,
+   "id": "evaluation",
+   "titleRu": "Evaluation",
+   "group": "III",
+   "wave": "2",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 656,
+   "ownerBytes": 51627,
+   "ownerExports": [
+    "hmacSha256Hex",
+    "MemoryRetrievalLanguage",
+    "MemoryRetrievalBenchmarkExample",
+    "MemoryRetrievalBenchmarkProvenance",
+    "MemoryRetrievalBenchmarkOptions",
+    "RetrievalBenchmarkMetrics",
+    "fingerprintMemoryRetrievalDataset",
+    "MemoryRetrievalArmEvidenceV1",
+    "MemoryRetrievalQueryEvidenceV2",
+    "runMemoryOS2RetrievalBenchmark"
+   ],
+   "ownerEntries": [],
+   "testsFound": 88,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-101-skill-ecology.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-163-cognitive-depth.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-163-core-integration.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-164-large-cognitive-pass.mjs"
+   ],
+   "branches": {
+    "total": 7,
+    "open": 0,
+    "merged": 4,
+    "closed": 3,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 19,
+   "id": "selfmodel",
+   "titleRu": "SelfModel",
+   "group": "IV",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/cognition/P32CausalSelfModel.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 192,
+   "ownerBytes": 12150,
+   "ownerExports": [
+    "CausalNode",
+    "CausalEdge",
+    "SelfActionPrediction",
+    "SelfCausalRevision",
+    "CausalInterventionRecord",
+    "CausalSelfModelState",
+    "CausalSelfPreviewInput",
+    "CausalSelfOutcomeInput",
+    "P32CausalSelfModelEngine",
+    "defaultP32CausalSelfModel"
+   ],
+   "ownerEntries": [],
+   "testsFound": 4,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/p290-reality-provenance.mjs",
+    "runtime/neuro-kurisu/tests/p32-causal-self-model.mjs",
+    "runtime/neuro-kurisu/tests/p32-lesion.mjs",
+    "runtime/neuro-kurisu/tests/p32-truthfulness.mjs"
+   ],
+   "branches": {
+    "total": 9,
+    "open": 2,
+    "merged": 5,
+    "closed": 2,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 20,
+   "id": "usermodel",
+   "titleRu": "UserModel",
+   "group": "IV",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/cognition/UserModelEvidenceModel.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 219,
+   "ownerBytes": 16686,
+   "ownerExports": [
+    "UserModelDomain",
+    "UserModelClaimStatus",
+    "UserModelClaim",
+    "UserModelCandidate",
+    "UserModelForgetTombstone",
+    "UserModelStateV1",
+    "UserModelState",
+    "UserModelResult",
+    "UserModelEvidenceModel"
+   ],
+   "ownerEntries": [],
+   "testsFound": 4,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/user-model-evidence-model.mjs",
+    "runtime/neuro-kurisu/tests/user-model-explicit-forget.mjs",
+    "runtime/neuro-kurisu/tests/user-model-http-route.mjs",
+    "runtime/neuro-kurisu/tests/user-model-runtime-persistence.mjs"
+   ],
+   "branches": {
+    "total": 13,
+    "open": 0,
+    "merged": 7,
+    "closed": 4,
+    "noPr": 2
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 21,
+   "id": "personality",
+   "titleRu": "Personality",
+   "group": "IV",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 231,
+   "ownerBytes": 14327,
+   "ownerExports": [
+    "P2702PersonalityState",
+    "P2702PersistentPersonalityDynamics",
+    "defaultP2702PersistentPersonality"
+   ],
+   "ownerEntries": [],
+   "testsFound": 115,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/autonomous-dialogue-prompt-workpass48.mjs",
+    "runtime/neuro-kurisu/tests/avatar-brain-affect-bridge.mjs",
+    "runtime/neuro-kurisu/tests/avatar-brain-renderer-runtime.mjs",
+    "runtime/neuro-kurisu/tests/b2515-b2517-holdout.mjs",
+    "runtime/neuro-kurisu/tests/b299-personality-boundary-consolidation.mjs"
+   ],
+   "branches": {
+    "total": 13,
+    "open": 5,
+    "merged": 3,
+    "closed": 5,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 22,
+   "id": "affect-system",
+   "titleRu": "Affect System",
+   "group": "IV",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "self",
+   "owner": "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 326,
+   "ownerBytes": 23039,
+   "ownerExports": [
+    "EmotionLabel",
+    "EmotionActionTendency",
+    "EmotionEpisode",
+    "FeelingEpisode",
+    "InteroceptiveAffectState",
+    "EmotionOutcomeCalibration",
+    "EmotionAppraisalState",
+    "EmotionAppraisalEngine",
+    "defaultEmotionAppraisalState"
+   ],
+   "ownerEntries": [],
+   "testsFound": 4,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-164-large-cognitive-pass.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-168-causal-life-graph.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs",
+    "runtime/neuro-kurisu/tests/workpass610-emotion-appraisal-restore-integrity.mjs"
+   ],
+   "branches": {
+    "total": 33,
+    "open": 5,
+    "merged": 11,
+    "closed": 16,
+    "noPr": 1
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 23,
+   "id": "motivation",
+   "titleRu": "Motivation",
+   "group": "IV",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "agency",
+   "owner": "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationGoalCoupling.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 92,
+   "ownerBytes": 3543,
+   "ownerExports": [
+    "IntrinsicDriveSignals",
+    "EndogenousCycleInput",
+    "IntrinsicMotivationGoalStepInput",
+    "IntrinsicMotivationGoalStepResult",
+    "IntrinsicMotivationGoalCoupling"
+   ],
+   "ownerEntries": [],
+   "testsFound": 29,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/b451-b500-compute-and-generalization.mjs",
+    "runtime/neuro-kurisu/tests/b451-b500-fair-comparison.mjs",
+    "runtime/neuro-kurisu/tests/b561-b620-meta-evolution.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-127-163-cognitive-organism-continuity.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-183-central-brain.mjs"
+   ],
+   "branches": {
+    "total": 4,
+    "open": 2,
+    "merged": 2,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 24,
+   "id": "autonomy",
+   "titleRu": "Autonomy",
+   "group": "IV",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "agency",
+   "owner": "runtime/neuro-kurisu/src/organism/system/AutonomousRuntimeLifeController.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 211,
+   "ownerBytes": 11694,
+   "ownerExports": [
+    "AmbientMode",
+    "AutonomousRuntimeLifeState",
+    "defaultAutonomousRuntimeLife",
+    "AutonomousRuntimeLifeController"
+   ],
+   "ownerEntries": [],
+   "testsFound": 215,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/action-cost-unification-workpass36.mjs",
+    "runtime/neuro-kurisu/tests/action-gateway-idempotency-workpass37.mjs",
+    "runtime/neuro-kurisu/tests/agency-deliberation-engine-contract.mjs",
+    "runtime/neuro-kurisu/tests/avatar-brain-affect-bridge.mjs",
+    "runtime/neuro-kurisu/tests/avatar-brain-renderer-runtime.mjs"
+   ],
+   "branches": {
+    "total": 16,
+    "open": 3,
+    "merged": 7,
+    "closed": 5,
+    "noPr": 1
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 25,
+   "id": "embodiment",
+   "titleRu": "Embodiment",
+   "group": "V",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 453,
+   "ownerBytes": 25650,
+   "ownerExports": [
+    "VoiceInputResult",
+    "NekoVoiceCaptureRequestProvider",
+    "NekoStreamingAudioOptions",
+    "VoiceCognitiveContextOverrides",
+    "VoiceCognitiveContextSnapshot",
+    "SpeechGatewayResult",
+    "SpeechGatewayDispatcher",
+    "SpeechInterruptGatewayDispatcher",
+    "EmbodimentRuntime"
+   ],
+   "ownerEntries": [],
+   "testsFound": 254,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/autonomous-social-anti-repeat-bm25.mjs",
+    "runtime/neuro-kurisu/tests/avatar-brain-affect-bridge.mjs",
+    "runtime/neuro-kurisu/tests/avatar-brain-renderer-runtime.mjs",
+    "runtime/neuro-kurisu/tests/avatar-renderer-adapter.mjs",
+    "runtime/neuro-kurisu/tests/b2515-b2517-runtime.mjs"
+   ],
+   "branches": {
+    "total": 48,
+    "open": 7,
+    "merged": 16,
+    "closed": 24,
+    "noPr": 1
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 26,
+   "id": "live2d",
+   "titleRu": "Live2D",
+   "group": "V",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "app/public/live2d",
+   "ownerStatus": "canonical",
+   "ownerKind": "directory",
+   "ownerExists": true,
+   "ownerLines": null,
+   "ownerBytes": null,
+   "ownerExports": [],
+   "ownerEntries": [
+    "vendor",
+    "viewer.html"
+   ],
+   "testsFound": 6,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/avatar-renderer-adapter.mjs",
+    "runtime/neuro-kurisu/tests/import-specifier-scanner.test.mjs",
+    "runtime/neuro-kurisu/tests/live2d-integrity.mjs",
+    "tools/audit-assets.mjs",
+    "tools/super-inventory.mjs"
+   ],
+   "branches": {
+    "total": 6,
+    "open": 4,
+    "merged": 0,
+    "closed": 2,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 27,
+   "id": "2-5d",
+   "titleRu": "2.5D",
+   "group": "V",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "app/src/components/avatar/depthRig.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 264,
+   "ownerBytes": 11328,
+   "ownerExports": [
+    "DepthRigRole",
+    "DepthRigTransform",
+    "DepthRigNode",
+    "DepthRigDefinition",
+    "DepthRigIntent",
+    "DepthRigDiagnostic",
+    "DepthRigPose",
+    "validateDepthRig",
+    "orderDepthRigNodes",
+    "resolveDepthRigPose",
+    "DepthRigWorldTransform",
+    "DepthRigWorldPose",
+    "resolveDepthRigWorldPose"
+   ],
+   "ownerEntries": [],
+   "testsFound": 1,
+   "testExamples": [
+    "tools/nk1-aspect-progress.test.mjs"
+   ],
+   "branches": {
+    "total": 12,
+    "open": 6,
+    "merged": 3,
+    "closed": 3,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 28,
+   "id": "3d-avatar",
+   "titleRu": "3D Avatar",
+   "group": "V",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "app/src/components/avatar/vrmRuntimeAdapter.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 324,
+   "ownerBytes": 12501,
+   "ownerExports": [
+    "VrmExpressionFrame",
+    "VrmNormalizedMotorFrame",
+    "VrmNormalizedMotorRig",
+    "VrmFullBodyRig",
+    "VrmNormalizedMotorResult",
+    "configureVrmForNk1NormalizedMotorDrive",
+    "resolveVrmNormalizedMotorRig",
+    "applyVrmNormalizedMotorFrame",
+    "resolveVrmFullBodyRig",
+    "VrmFullBodyApplyResult",
+    "applyVrmFullBodyChannels",
+    "applyVrmExpressionFrame",
+    "updateVrmForNk1Frame",
+    "VrmMetaSummary",
+    "summarizeVrmMeta"
+   ],
+   "ownerEntries": [],
+   "testsFound": 0,
+   "testExamples": [],
+   "branches": {
+    "total": 41,
+    "open": 8,
+    "merged": 12,
+    "closed": 17,
+    "noPr": 4
+   },
+   "readiness": "owner+branches",
+   "gaps": [
+    "no-tests"
+   ]
+  },
+  {
+   "n": 29,
+   "id": "body-intelligence",
+   "titleRu": "Body Intelligence",
+   "group": "V",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "runtime/neuro-kurisu/src/organism/body/P35SemanticWorldBody.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 323,
+   "ownerBytes": 18585,
+   "ownerExports": [
+    "P35Modality",
+    "P35EntityKind",
+    "P35Relation",
+    "P35Entity",
+    "P35RelationRecord",
+    "P35PerceptionClaim",
+    "P35SpatialSelfModel",
+    "P35SemanticWorldBodyState",
+    "P35SemanticInput",
+    "defaultP35SemanticWorldBody",
+    "P35SemanticWorldBodyEngine"
+   ],
+   "ownerEntries": [],
+   "testsFound": 3,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/embodiment-restore-sanitization-integrity.mjs",
+    "runtime/neuro-kurisu/tests/p35-performance.mjs",
+    "runtime/neuro-kurisu/tests/p35-semantic-world-body.mjs"
+   ],
+   "branches": {
+    "total": 4,
+    "open": 0,
+    "merged": 3,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 30,
+   "id": "speech",
+   "titleRu": "Speech",
+   "group": "V",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "runtime/neuro-kurisu/src/organism/body/VoiceEmbodiment.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 16,
+   "ownerBytes": 867,
+   "ownerExports": [
+    "VoiceRuntimeState",
+    "defaultVoiceRuntimeState"
+   ],
+   "ownerEntries": [],
+   "testsFound": 23,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/autonomous-social-anti-repeat-bm25.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-177-android-sensorimotor.mjs",
+    "runtime/neuro-kurisu/tests/embodiment-restore-sanitization-integrity.mjs",
+    "runtime/neuro-kurisu/tests/embodiment-voice-cognitive-context.mjs",
+    "runtime/neuro-kurisu/tests/filesystem-undo-first-integration.mjs"
+   ],
+   "branches": {
+    "total": 1,
+    "open": 1,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 31,
+   "id": "voice-interaction",
+   "titleRu": "Voice Interaction",
+   "group": "V",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "runtime/neuro-kurisu/src/organism/body/NativeSpeechEventChannel.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 121,
+   "ownerBytes": 4620,
+   "ownerExports": [
+    "NativeSpeechProviderPhaseV1",
+    "NativeSpeechProviderEventV1",
+    "NativeSpeechProviderEventInput",
+    "NativeSpeechEventChannel",
+    "createNativeSpeechEventChannel",
+    "nativeSpeechEventChannel"
+   ],
+   "ownerEntries": [],
+   "testsFound": 1,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/native-speech-event-channel-workpass628.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "no-branches"
+   ]
+  },
+  {
+   "n": 32,
+   "id": "multimodal-interaction",
+   "titleRu": "Multimodal Interaction",
+   "group": "V",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "runtime/neuro-kurisu/src/organism/body/MultimodalPerception.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 85,
+   "ownerBytes": 5091,
+   "ownerExports": [
+    "Modality",
+    "ModalityObservation",
+    "MultimodalState",
+    "defaultMultimodalState",
+    "MultimodalPerception"
+   ],
+   "ownerEntries": [],
+   "testsFound": 3,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-53-perceptual-grounding.mjs",
+    "runtime/neuro-kurisu/tests/embodiment-restore-sanitization-integrity.mjs",
+    "runtime/neuro-kurisu/tests/universal-input-interpreter.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "no-branches"
+   ]
+  },
+  {
+   "n": 33,
+   "id": "neko",
+   "titleRu": "N.E.K.O.",
+   "group": "VI",
+   "wave": "4",
+   "status": "PLANNED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/src/organism/integration/neko",
+   "ownerStatus": "candidate",
+   "ownerKind": "directory",
+   "ownerExists": true,
+   "ownerLines": null,
+   "ownerBytes": null,
+   "ownerExports": [],
+   "ownerEntries": [
+    "NekoAsrTranscriptAdapter.ts",
+    "NekoAudioFrameBuffer.ts",
+    "NekoAudioStreamContract.ts",
+    "NekoExternalMarkdownMemoryAdapter.ts",
+    "NekoKnowledgePackImporter.ts",
+    "NekoPluginEventBridge.ts",
+    "NekoPluginGatewayRuntime.ts",
+    "NekoPluginManifestPolicyRegistry.ts",
+    "NekoPluginVoiceTranscriptBridge.ts",
+    "NekoSmartTurnCoordinator.ts",
+    "NekoSpeechAdmissionGate.ts",
+    "NekoVoiceTurnCoordinator.ts",
+    "PluginGatewayAdapter.ts",
+    "PluginMessageIngress.ts"
+   ],
+   "testsFound": 20,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/neko-asr-embodiment-wiring.mjs",
+    "runtime/neuro-kurisu/tests/neko-asr-stream-admission.mjs",
+    "runtime/neuro-kurisu/tests/neko-asr-transcript-adapter.mjs",
+    "runtime/neuro-kurisu/tests/neko-asr-voice-input-evidence.mjs",
+    "runtime/neuro-kurisu/tests/neko-audio-frame-buffer.mjs"
+   ],
+   "branches": {
+    "total": 41,
+    "open": 1,
+    "merged": 20,
+    "closed": 15,
+    "noPr": 5
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": [
+    "candidate-owner",
+    "status-planned"
+   ]
+  },
+  {
+   "n": 34,
+   "id": "hermes",
+   "titleRu": "Hermes",
+   "group": "VI",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/src/organism/learning/HermesVerifiedEvidenceBinding.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 316,
+   "ownerBytes": 14710,
+   "ownerExports": [
+    "ReflectiveEvidenceBindingReport",
+    "bindReflectiveReportsToVerifiedShadowEvidence",
+    "bindIndependentEvaluationToVerifiedShadowEvidence"
+   ],
+   "ownerEntries": [],
+   "testsFound": 1,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/neko-external-markdown-memory-import.mjs"
+   ],
+   "branches": {
+    "total": 2,
+    "open": 1,
+    "merged": 0,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 35,
+   "id": "firecrawl",
+   "titleRu": "Firecrawl",
+   "group": "VI",
+   "wave": "4",
+   "status": "PLANNED",
+   "system": "research",
+   "owner": "engineering-os/manifest.v1.json",
+   "ownerStatus": "candidate",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 632,
+   "ownerBytes": 22497,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 2,
+   "testExamples": [
+    "tools/neurok-os.mjs",
+    "tools/neurok-os.test.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "candidate-owner",
+    "no-branches",
+    "status-planned"
+   ]
+  },
+  {
+   "n": 36,
+   "id": "tinyfish",
+   "titleRu": "TinyFish",
+   "group": "VI",
+   "wave": "4",
+   "status": "PLANNED",
+   "system": "research",
+   "owner": "engineering-os/manifest.v1.json",
+   "ownerStatus": "candidate",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 632,
+   "ownerBytes": 22497,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 2,
+   "testExamples": [
+    "tools/neurok-os.mjs",
+    "tools/neurok-os.test.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "candidate-owner",
+    "no-branches",
+    "status-planned"
+   ]
+  },
+  {
+   "n": 37,
+   "id": "context7",
+   "titleRu": "Context7",
+   "group": "VI",
+   "wave": "4",
+   "status": "PLANNED",
+   "system": "research",
+   "owner": "engineering-os/manifest.v1.json",
+   "ownerStatus": "candidate",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 632,
+   "ownerBytes": 22497,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 2,
+   "testExamples": [
+    "tools/neurok-os.mjs",
+    "tools/neurok-os.test.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "candidate-owner",
+    "no-branches",
+    "status-planned"
+   ]
+  },
+  {
+   "n": 38,
+   "id": "supabase",
+   "titleRu": "Supabase",
+   "group": "VI",
+   "wave": "4",
+   "status": "PLANNED",
+   "system": "research",
+   "owner": "engineering-os/manifest.v1.json",
+   "ownerStatus": "candidate",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 632,
+   "ownerBytes": 22497,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 3,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs",
+    "tools/neurok-os.mjs",
+    "tools/neurok-os.test.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "candidate-owner",
+    "no-branches",
+    "status-planned"
+   ]
+  },
+  {
+   "n": 39,
+   "id": "mongodb",
+   "titleRu": "MongoDB",
+   "group": "VI",
+   "wave": "4",
+   "status": "PLANNED",
+   "system": "research",
+   "owner": "engineering-os/manifest.v1.json",
+   "ownerStatus": "candidate",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 632,
+   "ownerBytes": 22497,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 2,
+   "testExamples": [
+    "tools/neurok-os.mjs",
+    "tools/neurok-os.test.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "candidate-owner",
+    "no-branches",
+    "status-planned"
+   ]
+  },
+  {
+   "n": 40,
+   "id": "redis",
+   "titleRu": "Redis",
+   "group": "VI",
+   "wave": "4",
+   "status": "PLANNED",
+   "system": "research",
+   "owner": "engineering-os/manifest.v1.json",
+   "ownerStatus": "candidate",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 632,
+   "ownerBytes": 22497,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 8,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/code-assimilation-evidence-workpass656.mjs",
+    "runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs",
+    "tools/audit-release-license-readiness.mjs",
+    "tools/audit-release-license-readiness.test.mjs",
+    "tools/neurok-os.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "candidate-owner",
+    "no-branches",
+    "status-planned"
+   ]
+  },
+  {
+   "n": 41,
+   "id": "local-models",
+   "titleRu": "Local Models",
+   "group": "VI",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 165,
+   "ownerBytes": 6950,
+   "ownerExports": [
+    "LocalChatCompletionRequest",
+    "LocalChatCompletionResponse",
+    "LocalChatProviderOptions",
+    "OpenAICompatibleLocalChatProvider"
+   ],
+   "ownerEntries": [],
+   "testsFound": 4,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs",
+    "runtime/neuro-kurisu/tests/local-llm-live-smoke.mjs",
+    "runtime/neuro-kurisu/tests/neuro-plastic-core.mjs",
+    "runtime/neuro-kurisu/tests/workpass79-local-provider-boundary.mjs"
+   ],
+   "branches": {
+    "total": 1,
+    "open": 1,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 42,
+   "id": "cloud-models",
+   "titleRu": "Cloud Models",
+   "group": "VI",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/src/organism/learning/P40ModelEcology.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 185,
+   "ownerBytes": 7190,
+   "ownerExports": [
+    "P40Task",
+    "P40ModelProfile",
+    "P40ModelEcologyState",
+    "defaultP40ModelEcology",
+    "P40SelectInput",
+    "P40ModelEcologyEngine"
+   ],
+   "ownerEntries": [],
+   "testsFound": 3,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-35-hardening.mjs",
+    "runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs",
+    "runtime/neuro-kurisu/tests/p40-model-ecology.mjs"
+   ],
+   "branches": {
+    "total": 1,
+    "open": 0,
+    "merged": 1,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 43,
+   "id": "replit-github",
+   "titleRu": "Replit / GitHub",
+   "group": "VI",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": ".github/workflows",
+   "ownerStatus": "canonical",
+   "ownerKind": "directory",
+   "ownerExists": true,
+   "ownerLines": null,
+   "ownerBytes": null,
+   "ownerExports": [],
+   "ownerEntries": [
+    "actions-history-audit.yml",
+    "adaptive-experience-memory-boundary.yml",
+    "aspect-02-original-2d-art-contract.yml",
+    "aspect10-embodied-interaction.yml",
+    "autonomous-social-initiative-integrity.yml",
+    "avatar-model-preflight.yml",
+    "grounded-spatial-memory-current-source.yml",
+    "hexis-action-consequence-cost-policy.yml",
+    "hyperon-metta-concept-bridge.yml",
+    "interoceptive-estimator-input-integrity.yml",
+    "interoceptive-precision-allocation.yml",
+    "intrinsic-motivation-goal-coupling.yml",
+    "mem0-platform-adapter.yml",
+    "memory-longitudinal-holdout-pairing.yml",
+    "memoryos2-spatial-holdout.yml",
+    "memoryos2-spatial-observation-refresh.yml",
+    "memoryos2-spatial-retrieval.yml",
+    "metacognitive-memory-projection.yml",
+    "neko-operational-journal.yml",
+    "neuro-plastic-core.yml"
+   ],
+   "testsFound": 11,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/constitution-evolution-engine.mjs",
+    "runtime/neuro-kurisu/tests/constitution-evolution-server.mjs",
+    "runtime/neuro-kurisu/tests/neuroforge-engine.mjs",
+    "tools/audit-actions-history.mjs",
+    "tools/audit-actions-history.test.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "no-branches"
+   ]
+  },
+  {
+   "n": 44,
+   "id": "agent-ecosystem",
+   "titleRu": "Agent Ecosystem",
+   "group": "VI",
+   "wave": "4",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": "tools/neurok-os-coordinator.mjs",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 303,
+   "ownerBytes": 13607,
+   "ownerExports": [
+    "normalizeClaimPath"
+   ],
+   "ownerEntries": [],
+   "testsFound": 2,
+   "testExamples": [
+    "tools/neurok-os-coordinator.mjs",
+    "tools/neurok-os-coordinator.test.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "no-branches"
+   ]
+  },
+  {
+   "n": 45,
+   "id": "ethical-gate",
+   "titleRu": "EthicalGate",
+   "group": "VII",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 1442,
+   "ownerBytes": 113225,
+   "ownerExports": [
+    "ActionOutcomeClass",
+    "wasToolExecutorEntered",
+    "ToolExecutionUncertainError",
+    "ToolExecutionNoEffectError",
+    "ToolExecutionPartialError",
+    "ActionAuditRecord",
+    "ActionGatewayExecutionOptions",
+    "ToolObservationSource",
+    "ActionExecutionFinalizationContext",
+    "ActionExecutionLedgerEntry",
+    "ToolExecutionContext",
+    "ActionToolPermissionClass",
+    "ActionToolApprovalOperation",
+    "ActionToolApprovalStatus",
+    "ActionToolApprovalRecord",
+    "ActionToolPermissionSnapshot",
+    "ActionExecutionLedgerSnapshot",
+    "ActionExecutionLedgerArchiveMetadata",
+    "ActionExecutionLedgerArchivePort",
+    "ActionGatewayConfig"
+   ],
+   "ownerEntries": [],
+   "testsFound": 43,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/action-gateway-audit-redaction.mjs",
+    "runtime/neuro-kurisu/tests/action-gateway-idempotency-workpass37.mjs",
+    "runtime/neuro-kurisu/tests/action-ledger-archive-workpass38.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-178-compound-adversarial.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-379-tool-receipt-integration.mjs"
+   ],
+   "branches": {
+    "total": 16,
+    "open": 4,
+    "merged": 2,
+    "closed": 5,
+    "noPr": 5
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 46,
+   "id": "permission-system",
+   "titleRu": "Permission System",
+   "group": "VII",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "runtime/neuro-kurisu/src/organism/system/ApiSecurityPolicy.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 14,
+   "ownerBytes": 1277,
+   "ownerExports": [
+    "ApiSecurityDecision",
+    "isLoopbackHost",
+    "authorizeApiRequest"
+   ],
+   "ownerEntries": [],
+   "testsFound": 1,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/api-security-policy.mjs"
+   ],
+   "branches": {
+    "total": 1,
+    "open": 0,
+    "merged": 1,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 47,
+   "id": "action-verification",
+   "titleRu": "Action Verification",
+   "group": "VII",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "runtime/neuro-kurisu/src/organism/system/OutcomeCognitionFabric.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 357,
+   "ownerBytes": 29130,
+   "ownerExports": [
+    "OutcomeCognitionProjectionInput",
+    "OutcomeCognitionProjection",
+    "OutcomeProjectionIndexEntry",
+    "OutcomeProjectionEvidenceRevision",
+    "OutcomeEvidenceRevisionResult",
+    "OutcomeCognitionFabric"
+   ],
+   "ownerEntries": [],
+   "testsFound": 5,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-379-tool-receipt-integration.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-380-evidence-and-retired-receipts.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-63-outcome-cognition-fabric.mjs",
+    "runtime/neuro-kurisu/tests/workpass57-outcome-causality-index.mjs",
+    "runtime/neuro-kurisu/tests/workpass61-authoritative-receipt-revision.mjs"
+   ],
+   "branches": {
+    "total": 25,
+    "open": 10,
+    "merged": 7,
+    "closed": 7,
+    "noPr": 1
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 48,
+   "id": "memory-safety",
+   "titleRu": "Memory Safety",
+   "group": "VII",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "runtime/neuro-kurisu/src/organism/memory/EvidenceLineageProvenance.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 59,
+   "ownerBytes": 2740,
+   "ownerExports": [
+    "EvidenceLineageClass",
+    "EvidenceLineageProvenance",
+    "normalizeEvidenceLineageProvenance"
+   ],
+   "ownerEntries": [],
+   "testsFound": 0,
+   "testExamples": [],
+   "branches": {
+    "total": 2,
+    "open": 0,
+    "merged": 2,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+branches",
+   "gaps": [
+    "no-tests"
+   ]
+  },
+  {
+   "n": 49,
+   "id": "tool-security",
+   "titleRu": "Tool Security",
+   "group": "VII",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "runtime/neuro-kurisu/src/organism/system/ToolInputContract.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 352,
+   "ownerBytes": 20166,
+   "ownerExports": [
+    "ToolInputType",
+    "ToolInputScalar",
+    "ToolInputNodeContract",
+    "ToolInputContract",
+    "ToolInputContractIssue",
+    "ToolInputContractResult",
+    "assertToolInputContract",
+    "cloneFrozenToolInputContract",
+    "validateToolInputContract",
+    "ToolOutputContract",
+    "cloneFrozenToolOutputContract",
+    "validateToolOutputContract"
+   ],
+   "ownerEntries": [],
+   "testsFound": 0,
+   "testExamples": [],
+   "branches": {
+    "total": 4,
+    "open": 1,
+    "merged": 1,
+    "closed": 2,
+    "noPr": 0
+   },
+   "readiness": "owner+branches",
+   "gaps": [
+    "no-tests"
+   ]
+  },
+  {
+   "n": 50,
+   "id": "self-modification",
+   "titleRu": "Self-Modification",
+   "group": "VII",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "runtime/neuro-kurisu/src/organism/system/SandboxedSelfRewriteEngine.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 5,
+   "ownerBytes": 1161,
+   "ownerExports": [
+    "SelfRewriteState",
+    "SandboxedSelfRewriteEngine"
+   ],
+   "ownerEntries": [],
+   "testsFound": 3,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-250-258-neuro-digital-superupdate.mjs",
+    "runtime/neuro-kurisu/tests/p53-developmental-self-modification.mjs",
+    "runtime/neuro-kurisu/tests/repository-coding-context-engine.mjs"
+   ],
+   "branches": {
+    "total": 4,
+    "open": 2,
+    "merged": 0,
+    "closed": 2,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 51,
+   "id": "reliability",
+   "titleRu": "Reliability",
+   "group": "VII",
+   "wave": "3",
+   "status": "TESTED",
+   "system": "governance",
+   "owner": "runtime/neuro-kurisu/src/organism/persistence/RecoveryWatchdog.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 115,
+   "ownerBytes": 3576,
+   "ownerExports": [
+    "RecoveryStatus",
+    "RecoveryWatchdogState",
+    "RecoveryProbe",
+    "RecoveryWatchdog"
+   ],
+   "ownerEntries": [],
+   "testsFound": 37,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/autonomous-dialogue-workpass48.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-122-external-observer-contradictions.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-125-known-entity-dossier.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-166-world-ensemble-fast.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-166-world-ensemble.mjs"
+   ],
+   "branches": {
+    "total": 8,
+    "open": 0,
+    "merged": 3,
+    "closed": 3,
+    "noPr": 2
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 52,
+   "id": "observability",
+   "titleRu": "Observability",
+   "group": "VII",
+   "wave": "3",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "runtime/neuro-kurisu/src/organism/persistence/OperationalJournal.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 144,
+   "ownerBytes": 5907,
+   "ownerExports": [
+    "OperationalLevel",
+    "OperationalRecord",
+    "OperationalJournalOptions",
+    "OperationalJournalMetrics",
+    "OperationalJournal"
+   ],
+   "ownerEntries": [],
+   "testsFound": 51,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-160-semantic-coverage.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-162-runtime-integration.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-290-core-integration.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-292-core-integration.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-293-core-integration.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "no-branches"
+   ]
+  },
+  {
+   "n": 53,
+   "id": "desktop",
+   "titleRu": "Desktop",
+   "group": "VIII",
+   "wave": "5",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "app",
+   "ownerStatus": "canonical",
+   "ownerKind": "directory",
+   "ownerExists": true,
+   "ownerLines": null,
+   "ownerBytes": null,
+   "ownerExports": [],
+   "ownerEntries": [
+    ".grok",
+    ".prettierrc",
+    "AGENTS.md",
+    "eslint.config.mjs",
+    "migrations",
+    "package-lock.json",
+    "package.json",
+    "public",
+    "scripts",
+    "server",
+    "src",
+    "startup.sh",
+    "tsconfig.json",
+    "vercel.json",
+    "vite.config.ts"
+   ],
+   "testsFound": 0,
+   "testExamples": [],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner-only",
+   "gaps": [
+    "no-tests",
+    "no-branches"
+   ]
+  },
+  {
+   "n": 54,
+   "id": "android",
+   "titleRu": "Android",
+   "group": "VIII",
+   "wave": "5",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "runtime/neuro-kurisu/src/organism/body/AndroidEmbodimentBridge.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 449,
+   "ownerBytes": 28504,
+   "ownerExports": [
+    "TermuxCapabilities",
+    "AndroidTelemetryDiagnostics",
+    "AndroidTelemetrySample",
+    "AndroidSamplingPlan",
+    "invalidateTermuxCapabilityCache",
+    "TermuxTtsOptions",
+    "TermuxSpeechOutcome",
+    "TermuxSpeechInterruptOutcome",
+    "interruptTermuxTts",
+    "CameraCaptureOutcomeUncertainError",
+    "CameraCaptureReceiptResult",
+    "CameraCaptureReceiptLookup"
+   ],
+   "ownerEntries": [],
+   "testsFound": 35,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-177-android-sensorimotor.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-177-device-truthfulness.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-198-android-hardware-gate.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-202-device-evidence.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-305-termux-benchmark.mjs"
+   ],
+   "branches": {
+    "total": 2,
+    "open": 1,
+    "merged": 0,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 55,
+   "id": "termux",
+   "titleRu": "Termux",
+   "group": "VIII",
+   "wave": "5",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "runtime/neuro-kurisu/src/organism/body/NativeSpeechHostRouter.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 97,
+   "ownerBytes": 3858,
+   "ownerExports": [
+    "NativeSpeechRuntimeSource",
+    "NativeSpeechHostEnvelopeV1",
+    "NativeSpeechHostPublisher",
+    "connectNativeSpeechHostRouter"
+   ],
+   "ownerEntries": [],
+   "testsFound": 37,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/b1701-b2200-behavioral-continuity.mjs",
+    "runtime/neuro-kurisu/tests/b1701-b2200-unified-life-continuity.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-177-android-sensorimotor.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-177-device-truthfulness.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-198-android-hardware-gate.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "no-branches"
+   ]
+  },
+  {
+   "n": 56,
+   "id": "ui-ux",
+   "titleRu": "UI/UX",
+   "group": "VIII",
+   "wave": "5",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "app/src/components/AvatarStage.tsx",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 631,
+   "ownerBytes": 36631,
+   "ownerExports": [
+    "AvatarStage"
+   ],
+   "ownerEntries": [],
+   "testsFound": 0,
+   "testExamples": [],
+   "branches": {
+    "total": 3,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 3
+   },
+   "readiness": "owner+branches",
+   "gaps": [
+    "no-tests"
+   ]
+  },
+  {
+   "n": 57,
+   "id": "avatar-interface",
+   "titleRu": "Avatar Interface",
+   "group": "VIII",
+   "wave": "5",
+   "status": "IMPLEMENTED",
+   "system": "embodiment",
+   "owner": "app/src/components/avatar/rendererCapabilityManifest.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 159,
+   "ownerBytes": 8235,
+   "ownerExports": [
+    "AvatarAssetKind",
+    "BodyRendererCapabilityManifest",
+    "RendererCapabilityIssue",
+    "validateRendererCapabilityManifest",
+    "BodyRendererRegistry"
+   ],
+   "ownerEntries": [],
+   "testsFound": 0,
+   "testExamples": [],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner-only",
+   "gaps": [
+    "no-tests",
+    "no-branches"
+   ]
+  },
+  {
+   "n": 58,
+   "id": "synchronization",
+   "titleRu": "Synchronization",
+   "group": "VIII",
+   "wave": "5",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "runtime/neuro-kurisu/src/organism/persistence/PortableSubjectContract.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 132,
+   "ownerBytes": 6382,
+   "ownerExports": [
+    "PORTABLE_SUBJECT_PROTOCOL",
+    "PortableSubjectProjection",
+    "PortableSubjectBundle",
+    "subjectProjectionFromPersisted",
+    "subjectFingerprint",
+    "ensureSubjectIdentity",
+    "buildPortableSubjectBundle",
+    "validatePortableSubjectBundle",
+    "applyPortableSubjectBundle"
+   ],
+   "ownerEntries": [],
+   "testsFound": 1,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/portable-subject-boundary.mjs"
+   ],
+   "branches": {
+    "total": 5,
+    "open": 0,
+    "merged": 4,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 59,
+   "id": "performance",
+   "titleRu": "Performance",
+   "group": "VIII",
+   "wave": "5",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "runtime/neuro-kurisu/src/organism/system/RuntimePerformanceGovernor.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 137,
+   "ownerBytes": 5661,
+   "ownerExports": [
+    "RuntimePerformanceGovernorState",
+    "RuntimePerformanceDecision",
+    "defaultRuntimePerformanceGovernor",
+    "RuntimePerformanceGovernor"
+   ],
+   "ownerEntries": [],
+   "testsFound": 338,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/b1101-b1350-organism-integration.mjs",
+    "runtime/neuro-kurisu/tests/b1101-b1350-performance.mjs",
+    "runtime/neuro-kurisu/tests/b1351-b1600-organism-integration.mjs",
+    "runtime/neuro-kurisu/tests/b1351-b1600-performance.mjs",
+    "runtime/neuro-kurisu/tests/b1701-b2200-organism-integration.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "no-branches"
+   ]
+  },
+  {
+   "n": 60,
+   "id": "unit-tests",
+   "titleRu": "Unit Tests",
+   "group": "IX",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/tests",
+   "ownerStatus": "canonical",
+   "ownerKind": "directory",
+   "ownerExists": true,
+   "ownerLines": null,
+   "ownerBytes": null,
+   "ownerExports": [],
+   "ownerEntries": [
+    "CycleCompletenessPolicy.test.mjs",
+    "INDEPENDENT_BILINGUAL_HOLDOUT.md",
+    "P80_P82_INTEGRATION.test.ts",
+    "action-cost-unification-workpass36.mjs",
+    "action-gateway-audit-redaction.mjs",
+    "action-gateway-idempotency-workpass37.mjs",
+    "action-ledger-archive-workpass38.mjs",
+    "adaptive-experience-consolidator-boundary.mjs",
+    "adaptive-memory-strategy-readout.mjs",
+    "advanced-projection-scheduler.mjs",
+    "agency-deliberation-engine-contract.mjs",
+    "anti-decoration-gates.mjs",
+    "api-security-policy.mjs",
+    "architecture-dependency-boundaries.test.mjs",
+    "aspect-fabric-integration.mjs",
+    "aspect10-embodied-interaction.mjs",
+    "aspect10-grounded-bridge.mjs",
+    "audit-big-pass-124.mjs",
+    "autonomous-dialogue-prompt-workpass48.mjs",
+    "autonomous-dialogue-workpass48.mjs"
+   ],
+   "testsFound": 1546,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "no-branches"
+   ]
+  },
+  {
+   "n": 61,
+   "id": "integration-tests",
+   "titleRu": "Integration Tests",
+   "group": "IX",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/tests",
+   "ownerStatus": "canonical",
+   "ownerKind": "directory",
+   "ownerExists": true,
+   "ownerLines": null,
+   "ownerBytes": null,
+   "ownerExports": [],
+   "ownerEntries": [
+    "CycleCompletenessPolicy.test.mjs",
+    "INDEPENDENT_BILINGUAL_HOLDOUT.md",
+    "P80_P82_INTEGRATION.test.ts",
+    "action-cost-unification-workpass36.mjs",
+    "action-gateway-audit-redaction.mjs",
+    "action-gateway-idempotency-workpass37.mjs",
+    "action-ledger-archive-workpass38.mjs",
+    "adaptive-experience-consolidator-boundary.mjs",
+    "adaptive-memory-strategy-readout.mjs",
+    "advanced-projection-scheduler.mjs",
+    "agency-deliberation-engine-contract.mjs",
+    "anti-decoration-gates.mjs",
+    "api-security-policy.mjs",
+    "architecture-dependency-boundaries.test.mjs",
+    "aspect-fabric-integration.mjs",
+    "aspect10-embodied-interaction.mjs",
+    "aspect10-grounded-bridge.mjs",
+    "audit-big-pass-124.mjs",
+    "autonomous-dialogue-prompt-workpass48.mjs",
+    "autonomous-dialogue-workpass48.mjs"
+   ],
+   "testsFound": 1546,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests"
+   ],
+   "branches": {
+    "total": 1,
+    "open": 0,
+    "merged": 1,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 62,
+   "id": "architecture-tests",
+   "titleRu": "Architecture Tests",
+   "group": "IX",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": "tools/verify-integration.mjs",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 91,
+   "ownerBytes": 6233,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 0,
+   "testExamples": [],
+   "branches": {
+    "total": 4,
+    "open": 2,
+    "merged": 0,
+    "closed": 2,
+    "noPr": 0
+   },
+   "readiness": "owner+branches",
+   "gaps": [
+    "no-tests"
+   ]
+  },
+  {
+   "n": 63,
+   "id": "math-tests",
+   "titleRu": "Mathematical Tests",
+   "group": "IX",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 196,
+   "ownerBytes": 12274,
+   "ownerExports": [
+    "MemoryRetrievalExperimentOptions",
+    "runMemoryOS2RetrievalExperiment"
+   ],
+   "ownerEntries": [],
+   "testsFound": 3,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs",
+    "runtime/neuro-kurisu/tests/run-independent-bilingual-memory-holdout.mjs",
+    "runtime/neuro-kurisu/tests/workpass73-memory-inspect-evidence.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "no-branches"
+   ]
+  },
+  {
+   "n": 64,
+   "id": "cognitive-benchmarks",
+   "titleRu": "Cognitive Benchmarks",
+   "group": "IX",
+   "wave": "6",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 656,
+   "ownerBytes": 51627,
+   "ownerExports": [
+    "hmacSha256Hex",
+    "MemoryRetrievalLanguage",
+    "MemoryRetrievalBenchmarkExample",
+    "MemoryRetrievalBenchmarkProvenance",
+    "MemoryRetrievalBenchmarkOptions",
+    "RetrievalBenchmarkMetrics",
+    "fingerprintMemoryRetrievalDataset",
+    "MemoryRetrievalArmEvidenceV1",
+    "MemoryRetrievalQueryEvidenceV2",
+    "runMemoryOS2RetrievalBenchmark"
+   ],
+   "ownerEntries": [],
+   "testsFound": 10,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs",
+    "runtime/neuro-kurisu/tests/memory-retrieval-annotation-pack.mjs",
+    "runtime/neuro-kurisu/tests/memory-retrieval-cross-lingual-bridge.mjs",
+    "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs",
+    "runtime/neuro-kurisu/tests/memory-semantic-retrieval-benchmark-workpass1.mjs"
+   ],
+   "branches": {
+    "total": 7,
+    "open": 3,
+    "merged": 3,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 65,
+   "id": "autonomy-soak",
+   "titleRu": "Autonomy Soak",
+   "group": "IX",
+   "wave": "5",
+   "status": "PLANNED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/tests/p2684-mobile-soak.mjs",
+   "ownerStatus": "candidate",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 21,
+   "ownerBytes": 1468,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 1,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/p2684-mobile-soak.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "candidate-owner",
+    "no-branches",
+    "status-planned"
+   ]
+  },
+  {
+   "n": 66,
+   "id": "device-e2e",
+   "titleRu": "Device E2E",
+   "group": "IX",
+   "wave": "5",
+   "status": "PLANNED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/tests/big-pass-177-device-truthfulness.mjs",
+   "ownerStatus": "candidate",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 18,
+   "ownerBytes": 1435,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 1,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/big-pass-177-device-truthfulness.mjs"
+   ],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests",
+   "gaps": [
+    "candidate-owner",
+    "no-branches",
+    "status-planned"
+   ]
+  },
+  {
+   "n": 67,
+   "id": "regression",
+   "titleRu": "Regression",
+   "group": "IX",
+   "wave": "5",
+   "status": "IMPLEMENTED",
+   "system": "research",
+   "owner": ".github/workflows",
+   "ownerStatus": "canonical",
+   "ownerKind": "directory",
+   "ownerExists": true,
+   "ownerLines": null,
+   "ownerBytes": null,
+   "ownerExports": [],
+   "ownerEntries": [
+    "actions-history-audit.yml",
+    "adaptive-experience-memory-boundary.yml",
+    "aspect-02-original-2d-art-contract.yml",
+    "aspect10-embodied-interaction.yml",
+    "autonomous-social-initiative-integrity.yml",
+    "avatar-model-preflight.yml",
+    "grounded-spatial-memory-current-source.yml",
+    "hexis-action-consequence-cost-policy.yml",
+    "hyperon-metta-concept-bridge.yml",
+    "interoceptive-estimator-input-integrity.yml",
+    "interoceptive-precision-allocation.yml",
+    "intrinsic-motivation-goal-coupling.yml",
+    "mem0-platform-adapter.yml",
+    "memory-longitudinal-holdout-pairing.yml",
+    "memoryos2-spatial-holdout.yml",
+    "memoryos2-spatial-observation-refresh.yml",
+    "memoryos2-spatial-retrieval.yml",
+    "metacognitive-memory-projection.yml",
+    "neko-operational-journal.yml",
+    "neuro-plastic-core.yml"
+   ],
+   "testsFound": 71,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md",
+    "runtime/neuro-kurisu/tests/autonomous-dialogue-prompt-workpass48.mjs",
+    "runtime/neuro-kurisu/tests/b561-b620-wiring-regression.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-101-skill-ecology.mjs",
+    "runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs"
+   ],
+   "branches": {
+    "total": 4,
+    "open": 1,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 3
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 68,
+   "id": "independent-holdout",
+   "titleRu": "Independent Holdout",
+   "group": "IX",
+   "wave": "6",
+   "status": "PLANNED",
+   "system": "research",
+   "owner": "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 48,
+   "ownerBytes": 3756,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 1,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md"
+   ],
+   "branches": {
+    "total": 22,
+    "open": 2,
+    "merged": 11,
+    "closed": 7,
+    "noPr": 2
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": [
+    "status-planned"
+   ]
+  },
+  {
+   "n": 69,
+   "id": "branch-consolidation",
+   "titleRu": "Branch Consolidation",
+   "group": "X",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "docs/BRANCH_CONVERGENCE_AUDIT_2026-11-01_RU.md",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 69,
+   "ownerBytes": 7751,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 0,
+   "testExamples": [],
+   "branches": {
+    "total": 15,
+    "open": 3,
+    "merged": 11,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+branches",
+   "gaps": [
+    "no-tests"
+   ]
+  },
+  {
+   "n": 70,
+   "id": "ci-cd",
+   "titleRu": "CI/CD",
+   "group": "X",
+   "wave": "1",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": ".github/workflows",
+   "ownerStatus": "canonical",
+   "ownerKind": "directory",
+   "ownerExists": true,
+   "ownerLines": null,
+   "ownerBytes": null,
+   "ownerExports": [],
+   "ownerEntries": [
+    "actions-history-audit.yml",
+    "adaptive-experience-memory-boundary.yml",
+    "aspect-02-original-2d-art-contract.yml",
+    "aspect10-embodied-interaction.yml",
+    "autonomous-social-initiative-integrity.yml",
+    "avatar-model-preflight.yml",
+    "grounded-spatial-memory-current-source.yml",
+    "hexis-action-consequence-cost-policy.yml",
+    "hyperon-metta-concept-bridge.yml",
+    "interoceptive-estimator-input-integrity.yml",
+    "interoceptive-precision-allocation.yml",
+    "intrinsic-motivation-goal-coupling.yml",
+    "mem0-platform-adapter.yml",
+    "memory-longitudinal-holdout-pairing.yml",
+    "memoryos2-spatial-holdout.yml",
+    "memoryos2-spatial-observation-refresh.yml",
+    "memoryos2-spatial-retrieval.yml",
+    "metacognitive-memory-projection.yml",
+    "neko-operational-journal.yml",
+    "neuro-plastic-core.yml"
+   ],
+   "testsFound": 11,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/constitution-evolution-engine.mjs",
+    "runtime/neuro-kurisu/tests/constitution-evolution-server.mjs",
+    "runtime/neuro-kurisu/tests/neuroforge-engine.mjs",
+    "tools/audit-actions-history.mjs",
+    "tools/audit-actions-history.test.mjs"
+   ],
+   "branches": {
+    "total": 4,
+    "open": 0,
+    "merged": 3,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 71,
+   "id": "release-pipeline",
+   "titleRu": "Release Pipeline",
+   "group": "X",
+   "wave": "6",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "scripts/publish-workpass70-main-sync.ps1",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 193,
+   "ownerBytes": 8515,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 2,
+   "testExamples": [
+    "tools/audit-release-license-readiness.test.mjs",
+    "tools/verify-ci-reliability.test.mjs"
+   ],
+   "branches": {
+    "total": 23,
+    "open": 4,
+    "merged": 14,
+    "closed": 3,
+    "noPr": 2
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 72,
+   "id": "license-review",
+   "titleRu": "License Review",
+   "group": "X",
+   "wave": "6",
+   "status": "BLOCKED",
+   "system": "governance",
+   "owner": "contracts/RELEASE_LICENSE_REVIEW.json",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 330,
+   "ownerBytes": 16384,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 5,
+   "testExamples": [
+    "runtime/neuro-kurisu/tests/code-assimilation-evidence-workpass656.mjs",
+    "runtime/neuro-kurisu/tests/neuroforge-engine.mjs",
+    "tools/audit-release-license-readiness.mjs",
+    "tools/audit-release-license-readiness.test.mjs",
+    "tools/super-sbom.mjs"
+   ],
+   "branches": {
+    "total": 4,
+    "open": 1,
+    "merged": 2,
+    "closed": 1,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": []
+  },
+  {
+   "n": 73,
+   "id": "documentation",
+   "titleRu": "Documentation",
+   "group": "X",
+   "wave": "6",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "README.md",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 678,
+   "ownerBytes": 87255,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 0,
+   "testExamples": [],
+   "branches": {
+    "total": 14,
+    "open": 8,
+    "merged": 1,
+    "closed": 3,
+    "noPr": 2
+   },
+   "readiness": "owner+branches",
+   "gaps": [
+    "no-tests"
+   ]
+  },
+  {
+   "n": 74,
+   "id": "backup-recovery",
+   "titleRu": "Backup & Recovery",
+   "group": "X",
+   "wave": "6",
+   "status": "IMPLEMENTED",
+   "system": "governance",
+   "owner": "tools/super-backup.mjs",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 11,
+   "ownerBytes": 644,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 0,
+   "testExamples": [],
+   "branches": {
+    "total": 0,
+    "open": 0,
+    "merged": 0,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner-only",
+   "gaps": [
+    "no-tests",
+    "no-branches"
+   ]
+  },
+  {
+   "n": 75,
+   "id": "continuous-development",
+   "titleRu": "Continuous Development",
+   "group": "X",
+   "wave": "6",
+   "status": "PLANNED",
+   "system": "governance",
+   "owner": "engineering-os/manifest.v1.json",
+   "ownerStatus": "canonical",
+   "ownerKind": "file",
+   "ownerExists": true,
+   "ownerLines": 632,
+   "ownerBytes": 22497,
+   "ownerExports": [],
+   "ownerEntries": [],
+   "testsFound": 2,
+   "testExamples": [
+    "tools/neurok-os.mjs",
+    "tools/neurok-os.test.mjs"
+   ],
+   "branches": {
+    "total": 5,
+    "open": 4,
+    "merged": 1,
+    "closed": 0,
+    "noPr": 0
+   },
+   "readiness": "owner+tests+branches",
+   "gaps": [
+    "status-planned"
+   ]
+  }
+ ]
+}
