@@ -3405,6 +3405,8 @@ export class OrganismCore {
         this.persisted.system.neuralExperienceBranch = this.developmentalNeural.neuralExperienceBranch.snapshot({ clone: false });
         this.persisted.system.spikingPlasticNeuralB269 = this.developmentalNeural.spikingPlasticNeuralB269.snapshot({ clone: false });
         this.syncPersistenceProjection();
+        // Decision receipts are a bounded agency-owned sidecar in the system snapshot.
+        this.persisted.system.autonomousDecisionReceipts=this.organismSystems.agency.decisionReceipts.snapshot();
         return structuredClone(this.persisted);
     }
     recordMatchedCounterfactual(input: {
