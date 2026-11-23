@@ -101,7 +101,7 @@ test("a pinned hosted Kurisu hybrid GLB can be loaded without a manual file down
  assert.match(stage,/fingerprintAvatarModel\(data\)/);
  assert.match(stage,/KURISU_HYBRID_MODEL\.sha256/);
  assert.match(stage,/loadModel\(blob,KURISU_HYBRID_MODEL\.filename,true\)/);
- assert.match(stage,/Загрузить модель Курису v5/);
+ assert.match(stage,/Загрузить встроенную модель v5/);
  assert.ok(animation.includes("rig[_-]?kurisu"),"semantic rig fallback must remain in the extracted resolver");
 });
 
