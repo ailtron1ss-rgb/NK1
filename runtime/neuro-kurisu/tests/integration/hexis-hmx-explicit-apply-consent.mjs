@@ -28,6 +28,13 @@ const memoryIndex = async () => {
   assert.equal(result.ok, true);
   return result.memoryIndex;
 };
+const hmxRowIds = rows => rows
+  .filter(row => typeof row.source === 'string' && row.source.startsWith('hmx:'))
+  .map(row => row.id)
+  .sort();
+const assertHmxRowsUnchanged = (beforeRows, afterRows, message) => {
+  assert.deepEqual(hmxRowIds(afterRows), hmxRowIds(beforeRows), message);
+};
 const stop = async () => {
   const running = child;
   if (!running) return;
@@ -97,8 +104,13 @@ try {
   assert.equal(accepted.stage.status, 'accepted');
 
   const afterAccept = await memoryIndex();
-  assert.equal(afterAccept.length, before.length,
-    'accepting HMX is review-only and must never mutate canonical MemoryOS2');
+  const beforeIds = new Set(before.map(row => row.id));
+  const concurrentRows = afterAccept.filter(row => !beforeIds.has(row.id));
+  console.log('HMX review-only concurrent memory delta', JSON.stringify(
+    concurrentRows.map(({ id, source, kind, summary }) => ({ id, source, kind, summary: String(summary).slice(0, 96) })),
+  ));
+  assertHmxRowsUnchanged(before, afterAccept,
+    'accepting HMX is review-only and must not insert or remove canonical HMX memory rows');
   assert.equal(afterAccept.some(row => row.summary.includes(marker)), false);
 
   const unconfirmedResponse = await post('/api/organism/integration/hexis/hmx/apply', {
@@ -106,7 +118,10 @@ try {
   });
   assert.equal(unconfirmedResponse.status, 403,
     'canonical writes require a separate explicit apply confirmation');
-  assert.equal((await memoryIndex()).length, before.length);
+  const afterUnconfirmed = await memoryIndex();
+  assertHmxRowsUnchanged(before, afterUnconfirmed,
+    'unconfirmed apply must not mutate canonical HMX memory rows');
+  assert.equal(afterUnconfirmed.some(row => row.summary.includes(marker)), false);
 
   const invalidDecision = await post('/api/organism/integration/hexis/hmx/decide', {
     stagingId: staged.stage.stagingId, decision: 'apply',
@@ -141,7 +156,10 @@ try {
   assert.equal(replay.application.inserted, 0);
   assert.equal(replay.application.replayed, 1,
     'a repeated explicit apply must be idempotent through MemoryFabric command receipts');
-  assert.equal((await memoryIndex()).length, afterApply.length);
+  const afterReplay = await memoryIndex();
+  assertHmxRowsUnchanged(afterApply, afterReplay,
+    'replaying the same explicit apply must not create a second HMX memory row');
+  assert.equal(afterReplay.filter(row => row.summary.includes(marker)).length, 1);
 
   // Reboot against the same durable state directory. The accepted stage, imported
   // canonical row and MemoryFabric command receipt must survive process restart.
@@ -166,7 +184,10 @@ try {
     'replaying the persisted accepted stage after restart must not insert another memory');
   assert.equal(restartReplay.application.replayed, 1,
     'the persisted command receipt must make post-restart apply idempotent');
-  assert.equal((await memoryIndex()).length, afterRestart.length);
+  const afterRestartReplay = await memoryIndex();
+  assertHmxRowsUnchanged(afterRestart, afterRestartReplay,
+    'post-restart replay must not create a second HMX memory row');
+  assert.equal(afterRestartReplay.filter(row => row.summary.includes(marker)).length, 1);
 
   console.log('HEXIS_HMX_EXPLICIT_APPLY_CONSENT=PASS');
 } finally {

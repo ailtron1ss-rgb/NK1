@@ -1,3 +1,9 @@
+## [NK1][HMX] Make review-only consent regression concurrency-safe (2026-11-23)
+
+- Assert that HMX review acceptance and unconfirmed apply do not add or remove HMX-sourced canonical MemoryOS2 rows.
+- Keep marker, explicit-apply, hypothesis provenance, redaction and replay-idempotency assertions.
+- Avoid comparing total MemoryOS2 row counts while the server's autonomous runtime clock is enabled; unrelated runtime memories are not HMX import side effects.
+
 ## [NK1][Cognition] Preserve standalone resource-escalation routing regression (2026-11-23)
 
 - Keep the cognitive resource-interrupt routing regression independently runnable through `npm run test:cognitive-frame-resource-routing`.
