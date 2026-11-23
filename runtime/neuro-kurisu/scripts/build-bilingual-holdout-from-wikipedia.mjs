@@ -18,6 +18,7 @@
  */
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { buildWikipediaSourceManifest, createWikipediaSourcePageRecord } from './wikipedia-holdout-provenance.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => { const i = args.indexOf(name); return i < 0 ? undefined : args[i + 1]; };
@@ -126,7 +127,14 @@ async function fetchSummary(lang, title) {
       const data = await response.json();
       const extract = typeof data.extract === 'string' ? data.extract.trim() : '';
       if (extract.length < 40) return null;
-      return { extract, revision: data.revision ?? null, title: data.title ?? title };
+      return {
+        extract,
+        revision: data.revision ?? null,
+        title: data.title ?? title,
+        pageId: Number.isSafeInteger(data.pageid) ? data.pageid : null,
+        timestamp: typeof data.timestamp === 'string' ? data.timestamp : null,
+        canonicalUrl: typeof data.content_urls?.desktop?.page === 'string' ? data.content_urls.desktop.page : null,
+      };
     } catch {
       await sleep(500 * (attempt + 1));
     }
@@ -165,6 +173,7 @@ function memoryRow(id, content, source) {
 const selected = IN_SCOPE ? IN_SCOPE_TOPICS : (TOPIC_LIMIT > 0 ? TOPICS.slice(0, TOPIC_LIMIT) : TOPICS);
 const items = [];
 const pairs = [];
+const sourcePages = [];
 for (const topic of selected) {
   const en = await fetchSummary('en', topic.en);
   await sleep(THROTTLE_MS);
@@ -181,6 +190,18 @@ for (const topic of selected) {
   const memoryId = `wiki-${memoryLanguage}-${index}`;
   if (memoryLanguage === 'en') items.push(memoryRow(memoryId, en.extract, `wikipedia:en:${topic.en}`));
   else items.push(memoryRow(memoryId, ru.extract, `wikipedia:ru:${topic.ru}`));
+  // Retain both source revisions and exact extract hashes, including the
+  // non-admitted language page that establishes the topic correspondence.
+  sourcePages.push(
+    createWikipediaSourcePageRecord({
+      topicId: `topic-${index}`, language: 'en', requestedTitle: topic.en,
+      summary: en, memoryId, usedAsMemory: memoryLanguage === 'en',
+    }),
+    createWikipediaSourcePageRecord({
+      topicId: `topic-${index}`, language: 'ru', requestedTitle: topic.ru,
+      summary: ru, memoryId, usedAsMemory: memoryLanguage === 'ru',
+    }),
+  );
   pairs.push({ en: topic.en, ru: topic.ru, memoryId, memoryLanguage });
 }
 
@@ -249,9 +270,15 @@ for (const language of ['en', 'ru']) {
   });
 }
 
+const sourceManifest = buildWikipediaSourceManifest(sourcePages);
 const provenance = {
   datasetId: 'wikipedia-bilingual-summary-holdout',
-  datasetVersion: `wikipedia-rest-v1-${new Date(now).toISOString().slice(0, 10)}`,
+  // Content-addressed versioning changes whenever an upstream revision or
+  // extracted summary changes; the fixed benchmark clock remains deterministic.
+  datasetVersion: sourceManifest.datasetVersion,
+  sourceManifestSha256: sourceManifest.sourceManifestSha256,
+  manifestAlgorithm: sourceManifest.manifestAlgorithm,
+  sourcePages: sourceManifest.sourcePages,
   sourceRef: 'https://www.wikipedia.org/ (MediaWiki REST summary API, en + ru, CC BY-SA 4.0)',
   labelingProtocol:
     'Mechanical topic correspondence: an English query about topic T is labelled with the Russian memory for the same T, and vice versa. Labels are derived from source-topic identity and never from retriever output. Labels are NOT human-annotated; treat as supporting evidence, not as independent human ground truth.',
