@@ -42,11 +42,14 @@ assert.match(runtimeSource,
   /const projectAllowed = executionPlan\?\.run\?\.project !== false && spineDecision\.run\.project;/,
   'project gating must be driven by the execution plan');
 assert.match(runtimeSource,
-  /const planningBudget = projectAllowed\s*\?\s*this\.core\.cognitiveBudgetSpend\('planning',[\s\S]*?:\s*\{ accepted: false \};/,
-  'a planner-disabled project operation must not spend planning budget');
+  /const planningBudget = projectAllowed && !riskRecoveryApplied\s*\?\s*this\.core\.cognitiveBudgetSpend\('planning',[\s\S]*?:\s*\{ accepted: false \};/,
+  'planning budget must require project permission and must be skipped for autonomous recovery overrides');
 assert.match(runtimeSource,
-  /const plan = planningBudget\.accepted && projectAllowed\s*\?\s*this\.plans\.build\([\s\S]*?:\s*this\.plans\.buildBudgetFallback\(/,
-  'failed or gated planning must choose the one-step fallback rather than beam search');
+  /const autonomousRecoveryAllowed = !externalText && cycle\.decision\.userRequestedAction == null;/,
+  'autonomous recovery must never override external turns or explicit user-selected actions');
+assert.match(runtimeSource,
+  /const plan = riskRecoveryApplied\s*\?\s*this\.plans\.buildBudgetFallback\(selectedGoal, internalAction, 'risk-aware-recovery-override'\)\s*:\s*planningBudget\.accepted && projectAllowed\s*\?\s*this\.plans\.build\([\s\S]*?:\s*this\.plans\.buildBudgetFallback\(/,
+  'recovery overrides must use the one-step fallback and normal planning must remain budget-gated');
 assert.match(runtimeSource,
   /const worldRolloutAllowed = executionPlan\?\.run\?\.\['world-rollout'\] !== false && spineDecision\.run\['world-rollout'\];/,
   'optional world rollout must obey its explicit execution-plan gate');
