@@ -2,6 +2,20 @@ import assert from 'node:assert/strict';
 import { ActiveInformationGainController } from '../src/organism/cognition/ActiveInformationGainController.ts';
 
 const actions=['respond','explore','verify','rest','reflect','wait','defer'];
+
+// The exploration gate must reopen under a strong epistemic signal, but remain closed
+// when evidence is weak even if resources are available.
+const gate = new ActiveInformationGainController();
+const neutral = { tick: 1, baseUtilities: baseUtilities(), uncertainty01: 0.1,
+  predictionError01: 0.1, novelty01: 0.1, computeBudget01: 0.8,
+  risk01: 0.1, grounding01: 0.9, consensus01: 0.9 };
+assert.equal(gate.beforeDecision(neutral).selectedAction, null,
+  'weak epistemic evidence must not start an experiment');
+const strong = gate.beforeDecision({ ...neutral, tick: 2, uncertainty01: 0.9,
+  predictionError01: 0.9, novelty01: 0.9, grounding01: 0.6 });
+assert.ok(strong.selectedAction === 'explore' || strong.selectedAction === 'verify',
+  'strong epistemic evidence with safe resources must reopen an experiment');
+
 const baseUtilities=()=>Object.fromEntries(actions.map(action=>[action,.5]));
 const decision=(controller,tick)=>controller.beforeDecision({
   tick,baseUtilities:baseUtilities(),uncertainty01:.96,predictionError01:.91,novelty01:.92,
