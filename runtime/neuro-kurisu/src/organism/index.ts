@@ -82,9 +82,5 @@ export * from './system/RepositoryCodingContextEngine.ts';
 
 export * from './research/TheInventionLoop.ts';
 
-// OmeStro: coordinated cognitive, developmental and neural-adaptation contracts.
-export * from './system/OmeStroConceptRegistry.ts';
-export * from './system/OmeStroCognitiveGovernance.ts';
-export * from './system/OmeStroDevelopmentProtocol.ts';
-export * from './system/OmeStroNeuralAdaptation.ts';
+// Expose the integrated kernel; internal research contracts remain module-scoped.
 export * from './system/OmeStroIntegrationKernel.ts';
