@@ -23,10 +23,16 @@ test('real tracker covers all 75 aspects with unique ids and nums', () => {
   for (let n = 1; n <= 75; n++) assert.ok(nums.has(n), `missing aspect num ${n}`);
 });
 
-test('every real aspect belongs to at least one wave and has a branch', () => {
+test('75 aspects are grouped into ten shared canonical aspect lines', () => {
+  const declared = Object.values(real.aspectLines).map((line) => line.branch).sort();
+  const assigned = [...new Set(real.aspects.map((a) => real.aspectLines[a.aspectLine]?.branch))].sort();
+  assert.equal(Object.keys(real.aspectLines).length, 10);
+  assert.equal(new Set(real.aspects.map((a) => a.aspectLine)).size, 10);
+  assert.deepEqual(assigned, declared);
   for (const a of real.aspects) {
     assert.ok(a.waves.length >= 1, `${a.id} has no wave`);
-    assert.match(a.branch, /^aspect-\d{2}-[a-z0-9-]+$/, `${a.id} branch malformed: ${a.branch}`);
+    assert.match(a.aspectLine, /^[a-z0-9-]+$/, `${a.id} aspect line malformed: ${a.aspectLine}`);
+    assert.ok(real.aspectLines[a.aspectLine].aspectIds.includes(a.id), `${a.id} missing from line membership`);
   }
 });
 
@@ -41,12 +47,20 @@ test('owner hints for the 2.5D and 3D aspects resolve to real files', () => {
 function baseDoc() {
   return {
     waves: { W1: { name: 'w1' } },
+    aspectLines: { test: { branch: 'aspect/test', aspectIds: ['A01', 'A02'] } },
     aspects: [
-      { id: 'A01', num: 1, waves: ['W1'], dependsOn: [], evidence: [], status: 'PLANNED', branch: 'aspect-01-a' },
-      { id: 'A02', num: 2, waves: ['W1'], dependsOn: ['A01'], evidence: [], status: 'PLANNED', branch: 'aspect-02-b' },
+      { id: 'A01', num: 1, waves: ['W1'], dependsOn: [], evidence: [], status: 'PLANNED', aspectLine: 'test' },
+      { id: 'A02', num: 2, waves: ['W1'], dependsOn: ['A01'], evidence: [], status: 'PLANNED', aspectLine: 'test' },
     ],
   };
 }
+
+test('an unknown aspect line is an integrity error', () => {
+  const doc = baseDoc();
+  doc.aspects[0].aspectLine = 'missing-line';
+  const { errors } = validateTracker(doc);
+  assert.ok(errors.some((e) => e.includes('A01') && e.includes('unknown aspect line')), errors.join('; '));
+});
 
 test('a PASS aspect with no evidence is an integrity error', () => {
   const doc = baseDoc();
