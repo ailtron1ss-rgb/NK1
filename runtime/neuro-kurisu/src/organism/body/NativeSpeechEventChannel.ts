@@ -71,7 +71,7 @@ function readNativeSpeechProviderInput(value: unknown): NativeSpeechProviderEven
   if (data.reason !== undefined
     && (typeof data.reason !== 'string' || data.reason.length > 4096)) return null;
 
-  return data as NativeSpeechProviderEventInput;
+  return data as unknown as NativeSpeechProviderEventInput;
 }
 
 export interface NativeSpeechEventChannel {
