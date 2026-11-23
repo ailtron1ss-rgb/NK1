@@ -863,6 +863,21 @@ export class MemoryOS2{
   item.recordedUntilAt=null;
   if(adjustBytes)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeBytes+estimateMemoryBytes(item));
  }
+ /** Resolve ordinary writes against the active tip, even when callers retain a historical ID. */
+ private currentRevisionTip(requested:MemoryItem2):MemoryItem2{
+  const group=requested.revisionGroupId??requested.id;
+  const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))]
+   .map(itemId=>this.itemIndex.get(itemId)).filter((item):item is MemoryItem2=>Boolean(item));
+  return chain.filter(item=>item.validUntilAt==null).sort((a,b)=>
+   Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||
+   Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)||
+   a.id.localeCompare(b.id)
+  )[0]??requested;
+ }
+ private resolveRevisionTip(id:string):MemoryItem2|null{
+  const requested=this.itemIndex.get(String(id))??this.state.items.find(item=>item.id===String(id));
+  return requested?this.currentRevisionTip(requested):null;
+ }
  private preferIndexRecord(candidate:MemoryItem2,incumbent:MemoryItem2,at:number){
   const currentDelta=Number(this.validAt(candidate,at))-Number(this.validAt(incumbent,at));if(currentDelta)return currentDelta>0;
   const trustDelta=Number(candidate.epistemicStatus!=='quarantined'&&!candidate.dormant)-Number(incumbent.epistemicStatus!=='quarantined'&&!incumbent.dormant);if(trustDelta)return trustDelta>0;
@@ -2065,16 +2080,7 @@ export class MemoryOS2{
  }
  revise(id:string,to:EpistemicStatus,reason:string){
   const requested=this.itemIndex.get(String(id))??this.state.items.find(x=>x.id===id);if(!requested)return;
-  const group=requested.revisionGroupId??requested.id;
-  // A status transition requested by a historical ID applies to the current
-  // revision tip; mutating a superseded parent would move its recordedFromAt
-  // beyond its child and invalidate the persisted supersedes edge on restore.
-  const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))]
-   .map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
-  const m=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>
-   Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||
-   Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)
-  )[0]??requested;
+  const m=this.currentRevisionTip(requested);
   if(m.epistemicStatus===to)return;
   const from=m.epistemicStatus;
   const recordedAt=Math.max(Date.now(),Number(m.recordedFromAt??m.createdAt)+1);
@@ -2083,12 +2089,11 @@ export class MemoryOS2{
   m.epistemicStatus=to;m.lastAccessAt=Date.now();this.state.reconsolidations++;if(to==='quarantined')this.state.quarantined++;
  }
  reviseContent(id:string,newContent:string,options:{reason?:string;validAt?:number;recordedAt?:number;source?:string;epistemicStatus?:EpistemicStatus;salience?:number;confidence?:number;freshnessUntilAt?:number|null;temporalKind?:MemoryTemporalKind}={}){
-   const requested=this.itemIndex.get(id); if(!requested||!String(newContent).trim())return null;
+   const requested=this.itemIndex.get(String(id)); if(!requested||!String(newContent).trim())return null;
    const group=requested.revisionGroupId??requested.id;
-   // A correction against a historical ID revises the current tip of that same
-   // chain, avoiding a fork that would make point-in-time recall ambiguous.
+   // A correction against a historical ID revises the current tip of that same chain.
    const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))].map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
-   const parent=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt))[0]??requested;
+   const parent=this.currentRevisionTip(requested);
    const canonicalContent=canonicalizeMemoryContent(newContent);
    if(canonicalizeMemoryContent(parent.content)===canonicalContent)return structuredClone(parent);
    const requestedAt=Number.isFinite(Number(options.validAt))?Number(options.validAt):Date.now();
@@ -2129,7 +2134,7 @@ export class MemoryOS2{
  }
 
  updateContext(id:string, patch:Record<string,string|undefined>) {
-   const m=this.itemIndex.get(String(id));if(!m)return null;
+   const m=this.resolveRevisionTip(id);if(!m)return null;
    const before=estimateMemoryBytes(m);
    const previousBitemporal=this.bitemporalIntervalFor(m);
    this.spatialIndex.remove(m.id);
@@ -2157,7 +2162,7 @@ export class MemoryOS2{
   * transaction-time history so a past knowledgeAtAt query cannot see future links.
   */
  addLinks(id:string, patch:Partial<Pick<MemoryItem2,'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'>>, reason='relationship-import'):MemoryItem2|null {
-   const item=this.itemIndex.get(String(id));
+   const item=this.resolveRevisionTip(id);
    if(!item)return null;
    const beforeBytes=estimateMemoryBytes(item);
    const previousBitemporal=this.bitemporalIntervalFor(item);
@@ -2190,7 +2195,7 @@ export class MemoryOS2{
  }
  /** Merge one independently attributed evidence source through the canonical MemoryOS2 owner. */
  attachEvidenceSource(id:string, source:MemoryEvidenceSource, reason='evidence-lineage'):MemoryItem2|null {
-   const item=this.state.items.find(x=>x.id===id);if(!item)return null;
+   const item=this.resolveRevisionTip(id);if(!item)return null;
    const beforeBytes=estimateMemoryBytes(item);
    const previousBitemporal=this.bitemporalIntervalFor(item);
    const beforeSources=JSON.stringify(item.evidenceSources??[]);
@@ -2220,16 +2225,7 @@ export class MemoryOS2{
  }
 
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'>>, reason='reconsolidation') {
-   const requested=this.itemIndex.get(String(id))??this.state.items.find(x=>x.id===id);if(!requested)return null;
-   const group=requested.revisionGroupId??requested.id;
-   // Keep signal/context updates on the current revision tip when callers retain
-   // an older ID; otherwise a historical parent can be reopened after its successor.
-   const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))]
-    .map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
-   const m=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>
-    Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||
-    Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)
-   )[0]??requested;
+   const m=this.resolveRevisionTip(id);if(!m)return null;
    const beforeBytes=estimateMemoryBytes(m);
    const fromStatus=m.epistemicStatus;
    const previousBitemporal=this.bitemporalIntervalFor(m);
