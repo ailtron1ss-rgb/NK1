@@ -16,15 +16,16 @@
 
 ## Fresh repository census — 2026-11-23
 
-- Branch refs: **1,095**; unique HEAD SHAs: **1,077**.
-- Exact duplicate-tip groups: **3**; excess alias refs: **18**. None of the duplicate branch names is the head of an open PR.
-- Open PRs: **274**; unique PR head SHAs: **274**; Draft: **209**; Ready: **65**.
-- Prefix counts: 274 `aspect/*`, 268 root-name refs, 180 `fix/*`, 159 `work/*`, 62 `consolidation/*`, 44 `feature/*`, 30 `docs/*`, 27 `integrate/*`, 14 `feat/*`.
+- Branch refs: **1,097**; unique HEAD SHAs: **1,078**.
+- Exact duplicate-tip groups: **4**; excess alias refs: **19**. None of the duplicate branch names is the head of an open PR.
+- Open PRs: **275**; unique PR head SHAs: **275**; Draft: **210**; Ready: **65**.
+- Prefix counts: 274 `aspect/*`, 268 root-name refs, 180 `fix/*`, 159 `work/*`, 63 `consolidation/*`, 44 `feature/*`, 31 `docs/*`, 27 `integrate/*`, 14 `feat/*`; remaining prefixes total 37.
 - Duplicate-tip groups eligible for a later, explicitly reviewed alias cleanup:
   - `f9621bf3e4411ce17bc809922a5f90126001f4fd`: `aspect/consequence-ecology-20261117`, `integrate/consequence-calibration-lineage-followup-20261120`.
   - `68a03799ca0c9f18e4c6e19399ed8018e0215e60`: `aspect/world-forge-integrated-20261117`, `integrate/worldforge-to-sharedfuture-after-calibration-20261120`.
+  - `4972c2d5228141ef9673be94fca243614d28d9d6`: `consolidation/nk1-ledger-refresh-20261123`, `workpass70-source`. This same-tip alias appeared during concurrent work and is not a deletion candidate until the other session is confirmed inactive.
   - `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: 17 legacy/workpass refs enumerated in the 2026-11-23 integration ledger.
-- Closing a PR does not delete its source branch. The donor branch refs above remain preserved intentionally.
+- All 19 excess duplicate-tip branch names were checked against the full 275-open-PR list; none is the head branch of an open PR. The source-tip alias `consolidation/nk1-ledger-refresh-20261123` may be active in a parallel session and is excluded from cleanup pending confirmation. Closing a PR does not delete its source branch.
 
 ## Size and repository hygiene
 
