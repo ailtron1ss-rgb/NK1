@@ -14,6 +14,7 @@ import {
   type CoreCycleStage,
   type FullCognitiveCycleStage,
 } from './CycleCompletenessPolicy.ts';
+import { RiskAwareRecoveryController, type RiskAwareRecoveryControllerState } from '../cognition/RiskAwareRecoveryController.ts';
 
 export type UnifiedCycleStage = FullCognitiveCycleStage;
 
@@ -101,6 +102,24 @@ export const defaultUnifiedCognitiveCycle = (): UnifiedCognitiveCycleState => ({
 
 export class UnifiedCognitiveCycle {
   private state = defaultUnifiedCognitiveCycle();
+  private readonly riskAwareRecovery = new RiskAwareRecoveryController();
+
+  restoreRiskAwareRecovery(raw?: Partial<RiskAwareRecoveryControllerState> | null): void {
+    this.riskAwareRecovery.restore(raw);
+  }
+
+  riskAwareRecoverySnapshot(): RiskAwareRecoveryControllerState {
+    return this.riskAwareRecovery.snapshot();
+  }
+
+  beforeRiskAwareDecision(args: Parameters<RiskAwareRecoveryController['beforeDecision']>[0]): ReturnType<RiskAwareRecoveryController['beforeDecision']> {
+    return this.riskAwareRecovery.beforeDecision(args);
+  }
+
+  recordRiskAwareOutcome(args: Parameters<RiskAwareRecoveryController['afterOutcome']>[0]): void {
+    this.riskAwareRecovery.afterOutcome(args);
+  }
+
 
   restore(raw?: RestorableUnifiedCognitiveCycleState | null): void {
     const source = (raw ?? {}) as RestorableUnifiedCognitiveCycleState;
