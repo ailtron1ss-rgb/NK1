@@ -1,9 +1,9 @@
-# NK1 Branch Integration Ledger — 2026-11-23 (post-#1104)
+# NK1 Branch Integration Ledger — 2026-11-23 (post-#1109)
 
 ## Baseline and safety boundary
 
 - Canonical repository: `ailtron1ss-rgb/NK1`.
-- Canonical source: `workpass70-source` at `4972c2d5228141ef9673be94fca243614d28d9d6`.
+- Canonical source: `workpass70-source` at `89a7047cab3dfb3fd23f45c99622435cb3611a7d`.
 - `main` and the published Release ZIP were not modified by this integration pass.
 - A source merge is not a Release ZIP update, target-device soak, independent holdout, or product-readiness claim.
 - Original donor branch refs and commits are preserved unless explicitly stated otherwise. Closing a superseded PR does not delete its branch.
@@ -29,7 +29,7 @@
 
 - PR #1104: https://github.com/ailtron1ss-rgb/NK1/pull/1104
 - Integration branch: `aspect/combined-personhood-info-outcomes-20261123`.
-- Merge SHA / current canonical source: `4972c2d5228141ef9673be94fca243614d28d9d6`.
+- Merge SHA: `4972c2d5228141ef9673be94fca243614d28d9d6`.
 - Exact-head GitHub Actions: **14/14 SUCCESS**.
 - Donor PRs: #1097, #1098, #1085. All three were closed as superseded after merge; original branches remain intact.
 - Scope:
@@ -44,6 +44,23 @@
 - The combined exact-head CI exposed a real Active Information weakness: after hundreds of successful outcomes, action uncertainty collapsed and the old evidence threshold prevented any further experiment. The threshold was calibrated without loosening risk or device-budget checks; weak/strong-signal tests and the 900-cycle closed-loop regression then passed.
 - No new claim of physical durability, power-loss safety or full external Hexis interoperability is made; the HMX test proves same-process-file-backed server restart/replay on the CI path.
 
+## Integration 03 — risk-aware recovery in the current runtime
+
+- PR #1109: https://github.com/ailtron1ss-rgb/NK1/pull/1109
+- Donor PR: #1101 (`aspect/risk-aware-recovery-runtime-wiring-20261122`), originally 37 commits behind the live source and failing two exact-head assertions.
+- Current-source integration branch: `consolidation/nk1-risk-recovery-current-20261123`.
+- Merge SHA / current canonical source: `89a7047cab3dfb3fd23f45c99622435cb3611a7d`.
+- Exact-head Actions: **27 SUCCESS**, one duplicate Module Dependency Audit run was cancelled; no failed or pending checks.
+- Merge commit preserves two parents: current source `5384111285f0f9c46ce452aeca633e47baab3289` first, donor-port branch `a5a9ec5b43df2bbcf08c8ef90886447b1e90dd48` second.
+- Scope:
+  - Harden RiskAwareRecoveryController restore with own-data property reads and bounded normalization.
+  - Connect the existing controller to the current OrganismRuntime and UnifiedCognitiveCycle decision/outcome lifecycle.
+  - Limit recovery and abstention to autonomous cycles; external user turns and explicit Core action requests remain canonical.
+  - Link canonical action, runtime action, risk score and grounded outcome through RuntimeEvidenceBus.
+  - Persist the optional risk sidecar, recover safely from corrupt optional state, and flush it at runtime stop.
+- The donor's planner test expected the old `projectAllowed ?` source shape. The integrated assertion now verifies the stricter `projectAllowed && !riskRecoveryApplied` planning-budget gate and the one-step recovery fallback. The WorkPass162 runtime/restart regression passed.
+- Original PR #1101 was closed as superseded after merge; its source branch remains intact. No branch ref was deleted.
+
 ## Superseded donor PRs now closed
 
 | Donor PR | Integrated in | State | Branch history |
@@ -53,30 +70,30 @@
 | #1096 cognitive wake routing | #1103 | Closed as superseded | Retained |
 | #1097 P34 evidence lifecycle | #1104 | Closed as superseded | Retained |
 | #1098 Active Information Gain outcome closure | #1104 | Closed as superseded | Retained |
+| #1101 Risk-aware recovery runtime wiring | #1109 | Closed as superseded | Retained |
 | #1085 HMX restart idempotency test | #1104 | Closed as superseded | Retained |
 
 ## Current high-collision queue — do not merge blindly
 
 | PR | Area | Shared surfaces | Next safe action |
 |---|---|---|---|
-| #1102 | Cognitive resource wake routing + integration ledger | CognitiveFrame/workflow/package + docs | Runtime feature is already in #1103. Preserve the useful ledger evidence in this refreshed document, then close #1102 as superseded; do not replay its package/workflow/runtime diff. |
+| #1102 | Cognitive resource wake routing + integration ledger | CognitiveFrame/workflow/package + docs | Closed as superseded after #1103/#1106 carried the runtime behavior and ledger; branch retained. |
 | #1095 | Cognitive health supervision | `OrganismRuntime.ts`, `package.json`, workflow | Inspect service ownership, call timing, restore and health-degradation semantics; port only after runtime lifecycle map. |
-| #1101 | Risk-aware recovery runtime wiring | `OrganismRuntime.ts`, `UnifiedCognitiveCycle.ts`, tests | Map decision/outcome ordering and recovery side effects; compare with cooperative cycle changes from #1103 before porting. |
+| #1101 | Risk-aware recovery runtime wiring | `OrganismRuntime.ts`, `UnifiedCognitiveCycle.ts`, tests | Ported onto current source and merged by #1109; original donor branch retained. |
 | #1099 | NMCN advisor bridge | `OrganismRuntime.ts`, server, package, sidecar and new adapters | Keep opt-in and advisory; verify no duplicate memory/action authority, process lifecycle, network timeout or persistence path. |
-| #1084 | Project map and analysis tracker | docs, README, AGENTS and census snapshots | Salvage dated project-map/cycle/census artifacts; do not import stale root checkpoint blocks as current. |
+| #1084 | Project map and analysis tracker | docs, README, AGENTS and census snapshots | Closed unmerged; dated project map, cycle report and census evidence were salvaged through #1106 without stale root checkpoint replacement. |
 
-## Current repository census — 2026-11-23
+## Current repository census — 2026-11-23 (after #1109)
 
-- Branch refs: **1,097**; unique HEADs: **1,078**; duplicate-tip groups: **4**; excess aliases: **19**.
-- Open PRs: **275**; unique PR heads: **275**; Draft: **210**; Ready: **65**.
-- Prefix distribution: `aspect/*` 274; root refs 268; `fix/*` 180; `work/*` 159; `consolidation/*` 63; `feature/*` 44; `docs/*` 31; `integrate/*` 27; `feat/*` 14; remaining prefixes total 37.
-- Four duplicate-tip groups:
+- Branch refs: **1,103**; unique HEAD SHAs: **1,085**; exact duplicate-tip groups: **3**; excess alias refs: **18**.
+- Open PRs: **276**; unique PR head SHAs: **276**; Draft: **209**; Ready: **67**.
+- Prefix distribution from the earlier #1106 census is historical and is not presented as a current count.
+- Three exact duplicate-tip groups:
   1. `f9621bf3e4411ce17bc809922a5f90126001f4fd`: `aspect/consequence-ecology-20261117` and `integrate/consequence-calibration-lineage-followup-20261120`.
   2. `68a03799ca0c9f18e4c6e19399ed8018e0215e60`: `aspect/world-forge-integrated-20261117` and `integrate/worldforge-to-sharedfuture-after-calibration-20261120`.
-  3. `4972c2d5228141ef9673be94fca243614d28d9d6`: `consolidation/nk1-ledger-refresh-20261123` and `workpass70-source`. This alias appeared during concurrent work and is excluded from cleanup until the other session is confirmed inactive.
-  4. `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: 17 legacy/workpass branch refs: `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
-- All 19 excess duplicate-tip branch names were checked against the full 275-open-PR list; none is the head branch of an open PR. The source-tip alias `consolidation/nk1-ledger-refresh-20261123` may be active in a parallel session and is excluded from cleanup pending confirmation. Retain at least one branch ref per duplicate SHA.
-- Actual branch deletion was not performed in this pass: the connected GitHub tool exposes branch listing/creation/ref updates but no delete-ref action. The available TinyFish browser profile has no recorded signed-in sites. A confirmed authenticated GitHub browser session or equivalent authorized delete-ref capability is required to execute cleanup.
+  3. `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: 17 legacy/workpass refs: `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
+- All **18 excess refs** across these three groups were checked against the full **276-open-PR** list; none is the head branch of an open PR. Keep at least one branch ref per SHA. The 17-ref legacy group and the two 2-ref pairs are cleanup candidates, not automatic deletion targets.
+- Branch deletion was not performed: the connected GitHub tool exposes branch listing/creation/ref updates but no delete-ref action. No force-push or branch-ref deletion was attempted.
 
 ## File-size and repository constraints
 

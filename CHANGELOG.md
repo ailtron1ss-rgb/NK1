@@ -1,3 +1,8 @@
+## [NK1][Cognition] Preserve standalone resource-escalation routing regression (2026-11-23)
+
+- Keep the cognitive resource-interrupt routing regression independently runnable through `npm run test:cognitive-frame-resource-routing`.
+- The same regression remains part of the existing WorkPass79 workflow; this adds a focused local entry point without duplicating runtime logic.
+
 ## [NK1][Autonomy] Wire risk-aware recovery into the current runtime (2026-11-23)
 
 - Connect the existing RiskAwareRecoveryController to the current OrganismRuntime decision/outcome path.
