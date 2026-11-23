@@ -197,3 +197,21 @@ test("Avatar3DStage registers the native plugin and updates/disposes VRM runtime
   assert.match(stage, /VRMUtils\.deepDispose\(rt\.loaded\)/);
   assert.match(stage, /applyVrmExpressionFrame\(rt\.vrm/);
 });
+
+
+test("VRM joy expression intensity responds to canonical organism affect", () => {
+  const low = createFakeVrm();
+  const high = createFakeVrm();
+  applyVrmExpressionFrame(low, {
+    emotion: "joy", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    arousal: 0.15, valence: 0.25, warmth: 0.1,
+  });
+  applyVrmExpressionFrame(high, {
+    emotion: "joy", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    arousal: 0.95, valence: 0.95, warmth: 0.95,
+  });
+  assert.ok(
+    high.values.get("happy") > low.values.get("happy"),
+    "higher positive arousal/valence/warmth should increase the VRM happy expression",
+  );
+});
