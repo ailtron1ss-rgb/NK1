@@ -745,6 +745,8 @@ export interface OrganismSystemState {
     openEndedSkillAcquisition?: ReturnType<import('../system/OpenEndedSkillAcquisitionController.ts').OpenEndedSkillAcquisitionController['snapshot']>;
     autobiographicalLifeNarrative?: ReturnType<import('../system/AutobiographicalLifeNarrativeEngine.ts').AutobiographicalLifeNarrativeEngine['snapshot']>;
     autonomousSocialInitiative?: ReturnType<import('../system/AutonomousSocialInitiativeEngine.ts').AutonomousSocialInitiativeEngine['snapshot']>;
+    /** Bounded evidence-derived explanation receipts; stored without importing the agency owner. */
+    autonomousDecisionReceipts?: unknown;
     liveSelfImprovementSupervisor?: ReturnType<import('../system/LiveSelfImprovementSupervisor.ts').LiveSelfImprovementSupervisor['snapshot']>;
     neuroDigitalFusion?: ReturnType<import('../cognition/NeuroDigitalFusionKernel.ts').NeuroDigitalFusionKernel['snapshot']>;
     plasticityHomeostasis?: ReturnType<import('../system/PlasticityHomeostasisGovernor.ts').PlasticityHomeostasisGovernor['snapshot']>;
@@ -992,6 +994,7 @@ function defaultPersisted(): PersistedOrganism {
             openEndedSkillAcquisition: undefined,
             autobiographicalLifeNarrative: undefined,
             autonomousSocialInitiative: undefined,
+            autonomousDecisionReceipts: {version:1,created:0,closed:0,receipts:[]},
             liveSelfImprovementSupervisor: undefined,
             canonicalSelfAgencyAuthority: undefined,
             neuroDigitalFusion: undefined,
@@ -1762,6 +1765,8 @@ export class OrganismCore {
         this.organismSystems.agency.autonomousSocialInitiative.restore(this.persisted.system.autonomousSocialInitiative);
         // Persist any privacy scrubbing performed while restoring queued autonomous dialogue.
         this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        this.organismSystems.agency.decisionReceipts.restore(this.persisted.system.autonomousDecisionReceipts);
+        this.persisted.system.autonomousDecisionReceipts = this.organismSystems.agency.decisionReceipts.snapshot();
         this.organismSystems.agency.liveSelfImprovementSupervisor.restore(this.persisted.system.liveSelfImprovementSupervisor);
         this.developmentalNeural.canonicalSelfAgencyAuthority.restore(this.persisted.system.canonicalSelfAgencyAuthority);
         this.developmentalNeural.neuroDigitalFusion.restore(this.persisted.system.neuroDigitalFusion);
@@ -2821,6 +2826,28 @@ export class OrganismCore {
         }
         return result;
     }
+    /** Latest evidence-derived decision receipt, or null when no cycle has been recorded. */
+    autonomousDecisionReceipt(){return this.organismSystems.agency.decisionReceipts.latest();}
+    autonomousDecisionReceiptForTick(tick:number){return this.organismSystems.agency.decisionReceipts.forTick(tick);}
+    explainAutonomousDecision(tick?:number){return this.organismSystems.agency.decisionReceipts.explain(tick);}
+    autonomousDecisionReceiptDiagnostics(){return this.organismSystems.agency.decisionReceipts.diagnostics();}
+
+    /** Grant or revoke unsolicited user-visible delivery without disabling internal reflection. */
+    setAutonomousInitiativeConsent(granted:boolean){
+        this.organismSystems.agency.autonomousSocialInitiative.setConsent(granted);
+        this.persisted.system.autonomousSocialInitiative=this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        this.markPersistenceDirty();
+        return this.organismSystems.agency.autonomousSocialInitiative.deliveryPolicy();
+    }
+    /** Configure UTC quiet hours for proactive user-visible messages. */
+    setAutonomousInitiativeQuietHours(input:{enabled:boolean;startHourUtc?:number;endHourUtc?:number}){
+        this.organismSystems.agency.autonomousSocialInitiative.setQuietHours(input);
+        this.persisted.system.autonomousSocialInitiative=this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        this.markPersistenceDirty();
+        return this.organismSystems.agency.autonomousSocialInitiative.deliveryPolicy();
+    }
+    autonomousInitiativeDeliveryPolicy(){return this.organismSystems.agency.autonomousSocialInitiative.deliveryPolicy();}
+
     /** Retrieve an internally generated, user-facing dialogue topic. This does not execute tools or contact external services. */
     autonomousSocialInitiativeForGeneration() {
         return this.organismSystems.agency.autonomousSocialInitiative.latestPlanned(Date.now());
@@ -8162,10 +8189,12 @@ export class OrganismCore {
             requestedAction: userRequestedAction,
         });
         decision.semanticEvidence = buildDecisionSemanticEvidence({ stateBefore: previous, candidates: governedCandidates.slice(0, 7), selected: selectedIntent, worldContextKey });
+        let decisionSafety={authorized:false,reason:'no-action-selected'};
         if (selectedIntent) {
             this.cognitiveRuntime.adaptiveDevelopment.observeDecision(selectedIntent.action, !Boolean(observation.text), state.predictionError, n.novelty, candidates);
             this.persisted.facets.advanced.adaptiveDevelopment = this.cognitiveRuntime.adaptiveDevelopment.snapshot();
             const audit = this.cognitiveRuntime.actionGateway.authorize(selectedIntent.action, selectedIntent.goalId ? `goal:${selectedIntent.goalId}` : 'no-goal');
+            decisionSafety={authorized:audit.accepted===true,reason:audit.accepted?(selectedIntent.goalId?`goal:${selectedIntent.goalId}`:'policy-allowed'):String(audit.outcomeClass??'policy-refused')};
             this.memorySubsystem.events.append(makeEvent('action-authorized', state.tick, audit as any));
         }
         if (selectedIntent) {
@@ -8181,6 +8210,32 @@ export class OrganismCore {
         }
         const previousTrace = this.persisted.traces[0];
         this.persisted.traces.unshift(decision);
+        const receiptDrives={
+            epistemic:clamp(state.needs.uncertainty),
+            novelty:clamp(state.needs.novelty),
+            competence:clamp(1-state.needs.cognitiveLoad),
+            coherence:clamp(state.needs.identityCoherence),
+            social:clamp(state.needs.socialNeed),
+            homeostatic:clamp(1-state.needs.energy),
+        };
+        const dominantReceiptDrive=Object.entries(receiptDrives).sort((left,right)=>right[1]-left[1])[0]?.[0]??null;
+        this.organismSystems.agency.decisionReceipts.open({
+            id:`receipt:${state.tick}:${decision.id}`,
+            tick:state.tick,
+            at:state.at,
+            trigger:observation.text?'external-user-turn':canonicalGoalAdmission.admitted?'internally-admitted-goal':'endogenous-drive-appraisal',
+            source:observation.text?'external':'endogenous',
+            driveContributions:receiptDrives,
+            dominantDrive:dominantReceiptDrive,
+            goalId:selectedIntent?.goalId??null,
+            goalSource:canonicalGoalAdmission.admitted?'internal':observation.externalGoal?'external':'none',
+            candidates:governedCandidates.slice(0,8).map(candidate=>({action:candidate.action,score:candidate.score,confidence:candidate.confidence})),
+            selectedAction:selectedIntent?.action??null,
+            confidence01:selectedIntent?.confidence??0,
+            resourceCost01:selectedIntent?.predictedCost??0,
+            safety:decisionSafety,
+        });
+        this.persisted.system.autonomousDecisionReceipts=this.organismSystems.agency.decisionReceipts.snapshot();
         this.developmentalNeural.causalExperience.observe(decision);
         if (this.config.enableLifelongLearning)
             this.cognitiveRuntime.lifelong.observeDecision(decision, state.attentionBudget);
@@ -8852,6 +8907,9 @@ export class OrganismCore {
         this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
         if (trace)
             trace.outcome = { success, reward: outcome.reward, surprise, notes: outcome.notes, at: Date.now() };
+        if(trace&&this.organismSystems.agency.decisionReceipts.close(trace.tick,{
+            success01:gatedSuccess01,reward01:gatedReward01,surprise01:gatedSurprise01,at:state.at,
+        }))this.persisted.system.autonomousDecisionReceipts=this.organismSystems.agency.decisionReceipts.snapshot();
         if (trace?.selected) {
             const matchedContextKey = String(trace.worldContextKey ?? '');
             const calibratedConfidence = this.organismSystems.world.worldCausalCalibration.calibratedConfidence(trace.selected.action, trace.selected.confidence, matchedContextKey || undefined);
@@ -9938,6 +9996,10 @@ export class OrganismCore {
                 }
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
+                if(this.organismSystems.agency.decisionReceipts.recordLearning(trace.tick,{
+                    accepted:b273Learning.accepted,gain01:b273Learning.gain01,
+                    note:b273Learning.completed?'goal-completed':b273Learning.abandoned?'goal-abandoned':b273Learning.revised?'goal-revised':b273Learning.accepted?'goal-progress-accepted':'goal-progress-rejected',
+                }))this.persisted.system.autonomousDecisionReceipts=this.organismSystems.agency.decisionReceipts.snapshot();
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
                 const b274CandidateId = b274Diag.activeCandidateId;
                 if (b274CandidateId) {
