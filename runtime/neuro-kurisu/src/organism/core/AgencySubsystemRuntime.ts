@@ -53,7 +53,7 @@ export interface DecisionReceiptState {
   receipts:AutonomousDecisionReceipt[];
 }
 const defaultDecisionReceiptState=():DecisionReceiptState=>({version:1,created:0,closed:0,receipts:[]});
-const receiptText=(value:unknown,limit=180)=>typeof value==='string'?value.replace(/[\\u0000-\\u001f\\u007f]/g,' ').trim().slice(0,limit):'';
+const receiptText=(value:unknown,limit=180)=>typeof value==='string'?value.replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,limit):'';
 const receiptNumber=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isFinite(value)?value:fallback;
 const receiptClamp=(value:unknown)=>Math.max(0,Math.min(1,receiptNumber(value,0)));
 const receiptOwn=(value:object,key:string):unknown=>{
