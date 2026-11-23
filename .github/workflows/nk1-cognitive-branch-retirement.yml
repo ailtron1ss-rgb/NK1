@@ -1,15 +1,14 @@
-name: NK1 verified cognitive branch retirement
+name: NK1 cognitive branch retirement candidate audit (read-only)
+
 on:
-  push:
-    branches: [workpass70-source]
-    paths:
-      - '.github/workflows/nk1-cognitive-branch-retirement.yml'
   workflow_dispatch:
+
 permissions:
-  contents: write
+  contents: read
   pull-requests: read
+
 jobs:
-  retire:
+  audit:
     if: github.ref == 'refs/heads/workpass70-source'
     runs-on: ubuntu-latest
     steps:
@@ -18,7 +17,7 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - name: Retire only verified duplicate aliases and integrated donor refs
+      - name: Report candidate refs without mutating repository state
         env:
           GH_TOKEN: ${{ github.token }}
         run: node tools/retire-cognitive-branch-refs.mjs
