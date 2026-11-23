@@ -149,7 +149,7 @@ test("the procedural geometry is hidden until a verified external model loads",a
 
 test("3D model failure presents a real retry/import/Live2D recovery path",async()=>{
  const stage=await readFile(stagePath,"utf8"),parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
- assert.match(stage,/Повторить загрузку встроенной модели/);
+ assert.match(stage,/Повторить загрузку модели v5 \(онлайн\)/);
  assert.match(stage,/Выбрать VRM \/ GLB/);
  assert.match(stage,/props\.onReturnTo2D/);
  assert.match(parent,/onReturnTo2D=\{\(\) => setMode\("live2d"\)\}/);
