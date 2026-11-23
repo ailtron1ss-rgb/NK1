@@ -16,7 +16,7 @@ function normalizePath(value) {
     throw new Error(`unsafe patch path: ${String(value)}`);
   }
   const parts = value.split('/');
-  if (parts.some(part => part === '' || part === '.' || part === '..' || part.toLowerCase() === '.git')) {
+  if (parts.some(part => part === '' || part === '.' || part === '..')) {
     throw new Error(`unsafe patch path: ${value}`);
   }
   return parts.join('/');

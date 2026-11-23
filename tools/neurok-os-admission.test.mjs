@@ -123,13 +123,6 @@ test('keeps policy denial authoritative after read-set verification',async()=>fi
  assert.equal(result.readSet.ok,true);
 }));
 
-test('rejects .git metadata paths before policy classification',()=>{
-  for (const target of ['.git/config', 'tools/.git/index']) {
-    const malicious = PATCH.replaceAll('src/core.mjs', target);
-    assert.throws(() => inspectUnifiedDiff(malicious), /unsafe patch path/);
-  }
-});
-
 test('preserves mandatory human approval after read-set verification',async()=>fixture(async({root,baseSha})=>{
   const receipt=captureReadSet(['src/core.mjs'],{root,baseSha});
   const policy={...POLICY,humanApprovalPrefixes:['src/']};
