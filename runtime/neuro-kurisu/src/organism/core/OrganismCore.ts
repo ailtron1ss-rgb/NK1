@@ -394,6 +394,12 @@ const now = () => Date.now();
 export interface OrganismConfig {
     /** Host-owned verifier key lookup; private keys must remain outside NK1. */
     inventionVerifierKeyResolver?: import('../research/TheInventionLoop.ts').InventionVerifierKeyResolver;
+    /** Host-owned identity of the six Science Republic role actors. */
+    scienceRoleIdentityResolver?: import('../research/ScienceRepublic.ts').ScienceRoleIdentityResolver;
+    /** Host-owned primary/holdout evaluator principal resolver for Science Republic. */
+    scienceEvaluatorIdentityResolver?: import('../research/ScienceRepublic.ts').ScienceEvaluatorIdentityResolver;
+    /** Host-owned artifact-store verifier for evidence and Auditor report bytes. */
+    scienceArtifactBytesVerifier?: import('../research/ScienceRepublic.ts').ScienceArtifactBytesVerifier;
     /** Optional host evaluator policy for preregistering each newly generated hypothesis. */
     inventionEvaluationPlanProvider?: (
         experiment: import('../cognition/IntrinsicExperimentGenerator.ts').IntrinsicExperiment,
@@ -1355,6 +1361,12 @@ export class OrganismCore {
         } as Required<OrganismConfig>;
         if (config.inventionVerifierKeyResolver)
             this.organismSystems.configureInventionVerifierKeyResolver(config.inventionVerifierKeyResolver);
+        if (config.scienceRoleIdentityResolver)
+            this.organismSystems.configureScienceRoleIdentityResolver(config.scienceRoleIdentityResolver);
+        if (config.scienceEvaluatorIdentityResolver)
+            this.organismSystems.configureScienceEvaluatorIdentityResolver(config.scienceEvaluatorIdentityResolver);
+        if (config.scienceArtifactBytesVerifier)
+            this.organismSystems.configureScienceArtifactBytesVerifier(config.scienceArtifactBytesVerifier);
         this.cognitiveSubsystemFacadeB297 = new CognitiveSubsystemFacade(this as any);
         this.persistence.configure(this.config.checkpointMinIntervalMs, this.config.checkpointMaxDirtyCycles);
         this.cognitiveRuntime.actionGateway.registerTool({ id: 'organism.inspect', capability: 'core.read', destructive: false, projectAllowed: true, execute: async () => ({ ok: true, verified: true, tick: this.persisted.state.tick, lastAction: this.persisted.state.lastAction, energy: this.persisted.state.needs.energy }) });
@@ -5446,7 +5458,15 @@ export class OrganismCore {
             this.memorySubsystem.events.append(makeEvent('experiment', state.tick, experiment as any));
         }
         if (this.config.enableScientificMethod && experiment) {
-            const experimentSources = ['intrinsic-experiment', `tick:${state.tick}`, `experiment:${experiment.id}`, ...(experiment.source === 'dream-association' ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)] : [])];
+            const experimentSources = [
+                'intrinsic-experiment',
+                `tick:${state.tick}`,
+                `experiment:${experiment.id}`,
+                ...(experiment.linkedGoal ? [`goal:${experiment.linkedGoal}`] : []),
+                ...(experiment.source === 'dream-association'
+                    ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)]
+                    : []),
+            ];
             const research = this.evidenceResearchSubsystem;
             const existingCapture = research.findCapturedExperiment(experiment);
             const existingProject = existingCapture
