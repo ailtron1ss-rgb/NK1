@@ -46,6 +46,13 @@ export function resolveVrmArmIntent(
   let left = base[0] * gestureScale;
   let right = base[1] * gestureScale;
 
+  // A confirmed spoken response uses the same open explaining gesture used by the
+  // Live2D tap-body contract; pending/ended speech is already closed upstream.
+  if (plan.action === "respond" && frame.speaking && plan.gesture) {
+    left = -0.25;
+    right = 0.42;
+  }
+
   if (plan.gesture && (frame.emotion === "anger" || frame.emotion === "frustration")) {
     left = -0.64;
     right = 0.64;

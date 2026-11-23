@@ -14,8 +14,8 @@ test("AvatarStage creates one shared render projection and no longer plans a sec
   assert.match(stage, /import \{ buildAvatarRenderProjection \} from "\.\/avatar\/avatarRenderProjection\.ts"/);
   assert.doesNotMatch(stage, /planAvatarMotorIntent\(/);
   assert.match(stage, /motorPlan\.motionGroup/);
-  assert.match(stage, /speechPhase: projection\.speech\.phase/);
-  assert.match(stage, /gaze: projection\.gaze/);
+  assert.match(stage, /speechPhase: currentProjection\.speech\.phase/);
+  assert.match(stage, /gaze: currentProjection\.gaze/);
 });
 
 test("Original 2D consumes the supplied plan and does not make a duplicate decision", () => {
