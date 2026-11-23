@@ -309,3 +309,23 @@ test("VRM expression application preserves speech visemes while using affect int
   }).weight);
   assert.equal(vrm.values.get("oh"), 0.64);
 });
+
+
+test("normalized VRM consumes shared motor head tilt and clamps it to the calibrated range", () => {
+  const vrm = createFakeVrm();
+  applyVrmNormalizedMotorFrame(vrm, {
+    action: "respond", emotion: "calm", gazeX: 0, gazeY: 0,
+    cognitiveLoad: 0, energy: 1, socialNeed: 0, uncertainty: 0,
+    speaking: false, headTilt: 0.12,
+  });
+  assert.ok(Math.abs(vrm.bones.get("neck").rotation.z - 0.042) < 1e-9);
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.z - 0.078) < 1e-9);
+
+  applyVrmNormalizedMotorFrame(vrm, {
+    action: "respond", emotion: "calm", gazeX: 0, gazeY: 0,
+    cognitiveLoad: 0, energy: 1, socialNeed: 0, uncertainty: 0,
+    speaking: false, headTilt: 9,
+  });
+  assert.ok(Math.abs(vrm.bones.get("neck").rotation.z - 0.0525) < 1e-9);
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.z - 0.0975) < 1e-9);
+});
