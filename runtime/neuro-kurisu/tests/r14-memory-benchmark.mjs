@@ -3,6 +3,9 @@ import { performance } from 'node:perf_hooks';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 
 const os=new MemoryOS2();
+// Exercise the documented 1600-row count cap: raise the byte budget so the 512 KiB
+// default does not evict rows before the count cap is reached.
+os.enforceByteBudget({maxBytes:8*1024*1024});
 const base={salience:.45,emotionalWeight:.05,identityRelevance:.08,goalRelevance:.22,socialRelevance:.08,predictionError:.18,confidence:.74,epistemicStatus:'belief',source:'r14-bench',entities:[],semanticLinks:[],temporalLinks:[],causalLinks:[]};
 for(let i=0;i<1600;i++){
   os.encode({...base,kind:i%11===0?'semantic':'episodic',content:`memory event ${i} project ${i%19} action ${i%7} identifier ARG-${2026+(i%3)}-${String(i).padStart(4,'0')} deployment ${(i%5)}`});

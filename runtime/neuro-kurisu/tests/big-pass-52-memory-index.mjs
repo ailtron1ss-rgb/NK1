@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 
 const m=new MemoryOS2();
+// Exercise the documented 1600-row count cap: raise the byte budget so the 512 KiB
+// default does not evict rows before the count cap is reached.
+m.enforceByteBudget({maxBytes:8*1024*1024});
 const base={kind:'episodic',salience:.4,emotionalWeight:.1,identityRelevance:.2,goalRelevance:.4,socialRelevance:.2,predictionError:.2,confidence:.7,epistemicStatus:'belief',source:'benchmark',entities:[],semanticLinks:[],temporalLinks:[],causalLinks:[]};
 for(let i=0;i<1600;i++){
   const topic=i%5===0?'identity continuity':i%7===0?'battery thermal':i%11===0?'causal research':'generic cognition';

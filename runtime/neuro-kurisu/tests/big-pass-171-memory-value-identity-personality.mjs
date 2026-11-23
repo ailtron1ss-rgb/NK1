@@ -11,7 +11,7 @@ async function strengthenMemory(core, sourceSuffix){
   const snap=core.snapshot();
   const memoryId=snap.system.lastEncodedMemoryIds?.[0];
   assert(memoryId,'observation did not encode a memory');
-  const engine=core.memoryCausalEconomy;
+  const engine=core.memorySubsystem.memoryCausalEconomy;
   const content=core.snapshot().memories?.find(m=>m.id===memoryId)?.content ?? 'controlled developmental claim';
   engine.observeMemory({memoryId,content,tick:snap.state.tick,at:snap.state.at+1,sourceClass:'device',sourceKey:'device',confidence01:.94,contradiction01:0});
   engine.observeMemory({memoryId,content,tick:snap.state.tick,at:snap.state.at+2,sourceClass:'external-api',sourceKey:'oracle',confidence01:.91,contradiction01:0});
@@ -25,11 +25,11 @@ for(let i=0;i<4;i++){
   await a.observe({...base,text:'verify and investigate evidence for the stable signal'});
   const mem=await strengthenMemory(a,`a-${i}`);
   await a.feedback({success:.92,reward:.9,surprise:.68,evidenceSource:'oracle'});
-  const ass=a.memoryCausalEconomy.assessMemory(mem); assert(ass.independentSources>=3,'A memory lost independent-source evidence'); assert(!a.memoryCausalEconomy.shouldQuarantineMemory(mem),'A memory was incorrectly quarantined');
+  const ass=a.memorySubsystem.memoryCausalEconomy.assessMemory(mem); assert(ass.independentSources>=3,'A memory lost independent-source evidence'); assert(!a.memorySubsystem.memoryCausalEconomy.shouldQuarantineMemory(mem),'A memory was incorrectly quarantined');
   await b.observe({...base,text:'verify and investigate evidence for the stable signal'});
   const memB=await strengthenMemory(b,`b-${i}`);
   await b.feedback({success:.18,reward:.1,surprise:.72,evidenceSource:'oracle'});
-  const assB=b.memoryCausalEconomy.assessMemory(memB); assert(assB.independentSources>=3,'B memory lost independent-source evidence'); assert(!b.memoryCausalEconomy.shouldQuarantineMemory(memB),'B memory was incorrectly quarantined');
+  const assB=b.memorySubsystem.memoryCausalEconomy.assessMemory(memB); assert(assB.independentSources>=3,'B memory lost independent-source evidence'); assert(!b.memorySubsystem.memoryCausalEconomy.shouldQuarantineMemory(memB),'B memory was incorrectly quarantined');
 }
 const da=a.developmentalCausalSnapshot(), db=b.developmentalCausalSnapshot();
 assert(da.values.revisions.length>0,'high-outcome history did not produce a value revision');
