@@ -67,19 +67,36 @@ function assertOracle(label, memory) {
   assert.equal(reloaded.indexDiagnostics().pass, true, `${label}: the reloaded index must agree`);
   const restoredSnapshot = reloaded.snapshot();
   if (restoredSnapshot.estimatedBytes !== memory.budgetDiagnostics().estimatedBytes) {
+    const estimateProjectionBytes = (item) => Math.max(96, new TextEncoder().encode(JSON.stringify({
+      content: item.content,
+      tags: item.tags?.length ? item.tags : undefined,
+      context: item.context,
+      s: item.semanticLinks, t: item.temporalLinks, c: item.causalLinks, k: item.contradictionLinks,
+      e: item.evidenceSources, ek: item.evidenceLineageKeys,
+      ri: item.revisionIntegrityIssues?.length ? item.revisionIntegrityIssues : undefined,
+      r: item.revisionHistory, bh: item.bitemporalHistory,
+      rf: item.recordedFromAt, ru: item.recordedUntilAt, fu: item.freshnessUntilAt,
+      fh: item.freshnessHalfLifeMs, tk: item.temporalKind,
+    })).byteLength);
     const rowDiffs = liveSnapshot.items.map((item) => {
       const restored = restoredSnapshot.items.find((row) => row.id === item.id);
       if (!restored) return { id: item.id, missing: true };
       const keys = [...new Set([...Object.keys(item), ...Object.keys(restored)])];
-      const changed = Object.fromEntries(keys
-        .filter((key) => JSON.stringify(item[key] ?? null) !== JSON.stringify(restored[key] ?? null))
-        .map((key) => [key, { live: item[key] ?? null, restored: restored[key] ?? null }]));
-      return Object.keys(changed).length ? { id: item.id, changed } : null;
-    }).filter(Boolean);
+      const changedKeys = keys.filter((key) =>
+        JSON.stringify(item[key] ?? null) !== JSON.stringify(restored[key] ?? null));
+      const liveEstimate = estimateProjectionBytes(item);
+      const restoredEstimate = estimateProjectionBytes(restored);
+      const delta = restoredEstimate - liveEstimate;
+      return delta !== 0 || changedKeys.length
+        ? { id: item.id, liveEstimate, restoredEstimate, delta, changedKeys }
+        : null;
+    }).filter(Boolean).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
     console.log('MEMORY_FUZZ_BYTE_DIAGNOSTICS=', JSON.stringify({
       label, liveBytes: memory.budgetDiagnostics().estimatedBytes,
       restoredBytes: restoredSnapshot.estimatedBytes, liveCount: liveSnapshot.items.length,
-      restoredCount: restoredSnapshot.items.length, rowDiffs: rowDiffs.slice(0, 12),
+      restoredCount: restoredSnapshot.items.length,
+      projectionDelta: rowDiffs.reduce((total, row) => total + row.delta, 0),
+      rowDiffs: rowDiffs.slice(0, 24),
     }));
   }
   assert.equal(
