@@ -49,6 +49,7 @@ import { CognitiveFieldEngine, defaultCognitiveField } from '../cognition/Cognit
 import { CognitivePressureField } from '../cognition/CognitivePressureField.ts';
 import { ContradictionReservoir, defaultContradictionReservoir } from '../cognition/ContradictionReservoir.ts';
 import { CognitiveImmuneSystem, defaultCognitiveImmune } from '../cognition/CognitiveImmuneSystem.ts';
+import { OmeStroIntegrationKernel, type OmeStroKernelDependencies } from '../system/OmeStroIntegrationKernel.ts';
 import { SubjectContinuityFabric } from '../cognition/SubjectContinuityFabric.ts';
 import { SourceMonitor, defaultSourceMonitor } from '../memory/SourceMonitor.ts';
 import { ProceduralSkillLibrary, defaultSkillLibrary } from '../learning/ProceduralSkillLibrary.ts';
@@ -122,6 +123,7 @@ export class CognitiveRuntimeCluster {
   readonly cognitivePressureField = new CognitivePressureField();
   readonly contradictions = new ContradictionReservoir();
   readonly cognitiveImmune = new CognitiveImmuneSystem();
+  readonly omeStroIntegration: OmeStroIntegrationKernel;
   readonly subjectContinuity = new SubjectContinuityFabric();
   lastSubjectContinuity = this.subjectContinuity.build({tick:0,at:0,identity01:.88,identityConservation01:.92,memoryContinuity01:.75,autobiographicalContinuity01:.72,causalContinuity01:.65,grounding01:.35,realityAlignment01:.5,workspace01:.5,crossModalAgreement01:.5,unresolved01:.2,epistemicIntegrity01:.65,agency01:.5,energy01:.8,cognitiveCapacity01:.8,predictionError01:.18,novelty01:.4,goalPressure01:.2,externalInput:false,activeModalities:[]});
   readonly sourceMonitor = new SourceMonitor();
@@ -180,6 +182,7 @@ export class CognitiveRuntimeCluster {
     p61IntegratedMind: P61IntegratedMindKernel;
     p64IntegratedOrganismDynamics: P64IntegratedOrganismDynamics;
     endogenousGoalGenesisB272: B272EndogenousGoalGenesis;
+    omeStroDependencies: Required<Omit<OmeStroKernelDependencies, 'cognitiveImmune'>>;
   }) {
     this.intrinsicMotivationGoalCoupling = new IntrinsicMotivationGoalCoupling(
       this.intrinsicMotivation,
@@ -187,5 +190,6 @@ export class CognitiveRuntimeCluster {
     );
     this.cognitiveKernelCoordinator = new CognitiveKernelCoordinator(input.p61IntegratedMind, input.p64IntegratedOrganismDynamics);
     this.cognitiveSubsystemRegistry = new CognitiveSubsystemRegistry(input.organismSystems);
+    this.omeStroIntegration = new OmeStroIntegrationKernel({ ...input.omeStroDependencies, cognitiveImmune: this.cognitiveImmune });
   }
 }
