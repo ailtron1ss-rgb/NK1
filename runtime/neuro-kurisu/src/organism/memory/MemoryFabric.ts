@@ -221,7 +221,8 @@ export class MemoryFabric {
         this.statsData.encodes++;
         const before=this.memoryOS.size();
         const item=this.memoryOS.encode(command.input,{clone:false,forceDistinct:command.forceDistinct});
-        const created=this.memoryOS.size()>before;
+        const evicted=this.reconcileMemoryRemovalReceipts();
+        const created=this.memoryOS.size()>before||evicted.length>0;
         if(created)this.statsData.newItems++; else this.statsData.reconsolidations++;
         this.touchHot(item.id);
         result=item; memoryId=item.id; outcome='applied';
@@ -361,6 +362,17 @@ export class MemoryFabric {
     if(!projected){this.multiTimescale.removeCanonicalProjection(key);return false;}
     this.multiTimescale.add(projected,false);
     return true;
+  }
+
+  /** Reconcile bounded receipts emitted by the sole canonical MemoryOS2 owner. */
+  private reconcileMemoryRemovalReceipts():string[] {
+    const receipts=this.memoryOS.drainRemovalReceipts();
+    const removed:string[]=[];
+    for(const receipt of receipts){
+      this.purgeDerivedProjectionsForCanonicalId(receipt.id);
+      removed.push(receipt.id);
+    }
+    return removed;
   }
 
   /**
@@ -606,10 +618,11 @@ export class MemoryFabric {
     const byteBudget=Math.max(262144,Math.min(1048576,Math.floor(options.byteBudget??Math.max(262144,Math.min(1048576,Math.floor((options.maxItems??768)*720))))));
     const byteBudgetResult=this.memoryOS.enforceByteBudget({maxBytes:byteBudget,tick,protectedIds:options.protectedIds,reason:'memory-fabric-byte-budget'});
     const afterCanonicalIds=new Set(this.memoryOS.snapshot({clone:false}).items.map(item=>item.id));
+    const reconciledIds=new Set(this.reconcileMemoryRemovalReceipts());
     const evictedIds=[...beforeCanonicalIds].filter(id=>!afterCanonicalIds.has(id));
-    // Capacity/pressure and byte-budget paths mutate MemoryOS2 directly. Reconcile
-    // every derived read surface from the exact canonical before/after delta.
-    for(const id of evictedIds)this.purgeDerivedProjectionsForCanonicalId(id);
+    // The receipt path is authoritative; retain before/after reconciliation as a
+    // defensive fallback for legacy mutation paths that predate removal receipts.
+    for(const id of evictedIds)if(!reconciledIds.has(id))this.purgeDerivedProjectionsForCanonicalId(id);
     if(options.hotBudget!==undefined||options.warmBudget!==undefined||options.coldBudget!==undefined||options.identityTension01!==undefined) this.memoryOS.applyResidencyPlan({hotBudget:options.hotBudget,warmBudget:options.warmBudget,coldBudget:options.coldBudget,pressure01:options.pressure01,identityTension01:options.identityTension01});
     this.lastMaintenanceTick=tick;
     this.statsData.maintenanceRuns++;

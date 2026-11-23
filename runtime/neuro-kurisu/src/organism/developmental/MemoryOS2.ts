@@ -464,6 +464,8 @@ export interface MemoryRestoreDiagnostics {
  duplicateIdsResolved:number;
  invalidRowsDropped:number;
  truncatedRows:number;
+ capacityOverrunRows:number;
+ danglingLinksPruned:number;
  identityConflictsQuarantined:number;
  contentHashMismatchesRepaired:number;
  missingContentHashesRebuilt:number;
@@ -567,6 +569,12 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:strin
 }
 type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'|'bitemporalHistory'|'recordedFromAt'|'recordedUntilAt'|'freshnessUntilAt'|'temporalKind'>>;
 const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory),bh:m.bitemporalHistory,rf:m.recordedFromAt,ru:m.recordedUntilAt,fu:m.freshnessUntilAt,tk:m.temporalKind})).byteLength);
+const MEMORY_OS2_ITEM_CAP=1600;
+const MEMORY_OS2_RESTORE_SCAN_LIMIT=100_000;
+export class MemoryCapacityExhaustedError extends Error {
+ constructor(required:number,available:number){super('Memory capacity exhausted: '+required+' eligible eviction(s) required, only '+available+' available.');this.name='MemoryCapacityExhaustedError';}
+}
+export interface MemoryRemovalReceipt { id:string; reason:string; at:number; bytes:number; }
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions {
  temporalMode?:MemoryTemporalMode;
@@ -585,7 +593,7 @@ export interface SemanticIndexMaintenanceResult {
 }
 export class MemoryOS2{
  private state=defaultMemoryOS2();
- private lastRestoreDiagnosticsData:MemoryRestoreDiagnostics={sourceRows:0,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:0,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
+ private lastRestoreDiagnosticsData:MemoryRestoreDiagnostics={sourceRows:0,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:0,capacityOverrunRows:0,danglingLinksPruned:0,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly spatialIndex=new MemorySpatialIndex();
@@ -608,6 +616,7 @@ export class MemoryOS2{
  private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'|'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[];answerabilityGate:'direct-evidence-or-typed-recall-v1';rankedBeforeGate:number;groundedAfterGate:number;abstained:boolean;abstentionReason:'no-grounded-evidence'|null;spatialRequested:boolean;spatialInvalidQuery:boolean;spatialFrameId:string|null;spatialCandidateCount:number}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:0,groundedAfterGate:0,abstained:false,abstentionReason:null,spatialRequested:false,spatialInvalidQuery:false,spatialFrameId:null,spatialCandidateCount:0};
  private linkSupportCache:Map<string,number>|null=null;
  private linkSupportCacheVersion=-1;
+ private readonly removalReceipts:MemoryRemovalReceipt[]=[];
  private readonly residencyGovernor=new MemoryResidencyGovernor();
  /** Derived bounded embedding index; canonical facts remain exclusively in MemoryOS2 state. */
  private readonly semanticEmbeddingIndex=new Map<string,{contentHash:string;providerId:string;vector:number[];lastUsedAt:number}>();
@@ -1064,13 +1073,14 @@ export class MemoryOS2{
    }
  }
  restore(s:MemoryOSState2|undefined){
-  const sourceItems=Array.isArray(s?.items)?s!.items:[];
-  const boundedItems=sourceItems.slice(0,1600);
+   const sourceItems=Array.isArray(s?.items)?s!.items:[];
+   if(sourceItems.length>MEMORY_OS2_RESTORE_SCAN_LIMIT)throw new RangeError('Memory restore exceeds the safe scan limit of '+MEMORY_OS2_RESTORE_SCAN_LIMIT+' rows.');
+   const boundedItems=sourceItems;
   const restoreNow=Date.now();
   const rawItems:MemoryItem2[]=[];
   let invalidRowsDropped=0;
   let blankIdRowsDropped=0;
-  this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:sourceItems.length-boundedItems.length,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
+  this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:0,capacityOverrunRows:0,danglingLinksPruned:0,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
   for(const candidate of boundedItems){
    const blankIdentity=Boolean(candidate&&typeof candidate==='object'&&!Array.isArray(candidate)&&
     (typeof (candidate as any).id!=='string'||!(candidate as any).id.trim()));
@@ -1123,10 +1133,35 @@ export class MemoryOS2{
    if(existing)existing.count=Math.max(existing.count,blankIdRowsDropped);
    else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count:blankIdRowsDropped}].slice(-64);
   }
-  this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:this.state.items.length};
+  const normalizedRows=this.state.items;
+   const protectedRows=normalizedRows.filter(item=>this.isProtectedMemoryItem(item));
+   const capacityOverrunRows=Math.max(0,protectedRows.length-MEMORY_OS2_ITEM_CAP);
+   const retainedIds=new Set<string>();
+   if(capacityOverrunRows>0){for(const item of protectedRows)retainedIds.add(item.id);}
+   else{
+    const protectedIds=new Set(protectedRows.map(item=>item.id));
+    const slots=MEMORY_OS2_ITEM_CAP-protectedRows.length;
+    const selectedUnprotected=normalizedRows.filter(item=>!protectedIds.has(item.id)).sort((a,b)=>
+     this.memoryRetentionScore(b)-this.memoryRetentionScore(a)||b.lastAccessAt-a.lastAccessAt||b.createdAt-a.createdAt||a.id.localeCompare(b.id)
+    ).slice(0,slots);
+    for(const item of protectedRows)retainedIds.add(item.id);
+    for(const item of selectedUnprotected)retainedIds.add(item.id);
+   }
+   this.state.items=normalizedRows.filter(item=>retainedIds.has(item.id));
+   let danglingLinksPruned=0;
+   const retainedCanonicalIds=new Set(this.state.items.map(item=>item.id));
+   for(const item of this.state.items){
+    for(const field of ['semanticLinks','temporalLinks','causalLinks','contradictionLinks'] as const){
+     const previous=item[field]??[];const next=[...new Set(previous.filter(id=>retainedCanonicalIds.has(id)&&id!==item.id))];
+     danglingLinksPruned+=previous.length-next.length;item[field]=next;
+    }
+    if(item.supersedesId&&!retainedCanonicalIds.has(item.supersedesId)){item.supersedesId=null;danglingLinksPruned++;}
+    if(item.supersededById&&!retainedCanonicalIds.has(item.supersededById)){item.supersededById=null;danglingLinksPruned++;}
+   }
+   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:this.state.items.length,truncatedRows:normalizedRows.length-this.state.items.length,capacityOverrunRows,danglingLinksPruned};
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
-  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.spatialIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.bitemporalMetadataTokenIndex.clear();this.characterGramIndex.clear();this.conceptGroupIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
+  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.spatialIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.bitemporalMetadataTokenIndex.clear();this.characterGramIndex.clear();this.conceptGroupIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.semanticEmbeddingIndex.clear();this.semanticEmbeddingRetry.clear();this.removalReceipts.length=0;this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
   const indexAt=Date.now();
   for(const item of this.state.items){
    const exactKey=`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`;
@@ -1384,7 +1419,16 @@ export class MemoryOS2{
    }).slice(0,6).map(x=>x.id);
    item.causalLinks=this.state.items.slice(0,256).filter(x=>x.causalLinks.includes(item.id)).slice(0,3).map(x=>x.id);
    item.contradictionLinks=best.filter(x=>x.sim>=.64&&sharedEntityCount(entities,x.x.entities)>=2&&hasNegationPolarityDifference(item.content,x.x.content)).map(x=>x.x.id).slice(0,4);
-   this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;if(this.state.items.length>1600){const removed=this.state.items.pop();if(removed){this.removeIndexedId(removed.id);this.itemIndex.delete(removed.id);this.rebuildDedupIndexesFor(removed);}}this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
+   const requiredEvictions=Math.max(0,this.state.items.length-MEMORY_OS2_ITEM_CAP+1);
+   if(requiredEvictions>0){
+    const victims=this.selectCapacityVictims(requiredEvictions);
+    if(victims.length!==requiredEvictions)throw new MemoryCapacityExhaustedError(requiredEvictions,victims.length);
+    for(const victim of victims)if(!this.removeCanonicalItemById(victim.id,'capacity-overflow',false))throw new MemoryCapacityExhaustedError(requiredEvictions,0);
+    const remainingIds=new Set(this.state.items.map(row=>row.id));
+    for(const field of ['semanticLinks','temporalLinks','causalLinks','contradictionLinks'] as const)item[field]=(item[field]??[]).filter(id=>remainingIds.has(id)&&id!==item.id);
+   }
+   this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;
+   this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
    this.contentIndex.set(`${item.kind}|${canonicalizeMemoryContent(item.content)}`,item.id);this.indexItem(item);this.lowerContentCache.delete(item.id);
    for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.linkUpdates++;}}
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
@@ -1965,31 +2009,52 @@ export class MemoryOS2{
  }
  get(id:string){const m=this.state.items.find(x=>x.id===id); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
  markDormant(id:string,dormant=true,reason='memory-economy'){return this.updateSignals(id,{dormant},reason);}
- forgetById(id:string,reason='memory-knockout'){
-   const i=this.state.items.findIndex(x=>x.id===id);
-   if(i<0)return false;
-   const m=this.state.items[i]!;
-   if(m.epistemicStatus==='quarantined'||m.kind==='identity'||m.kind==='autobiographical')return false;
-   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-estimateMemoryBytes(m));
-   this.removeIndexedId(id);
-   this.state.items.splice(i,1);
-   this.itemIndex.delete(id);
-   this.rebuildDedupIndexesFor(m);
-   this.lowerContentCache.delete(id);
-   for(const x of this.state.items){
-     if(x.contradictionLinks?.includes(id))x.contradictionLinks=x.contradictionLinks.filter(v=>v!==id);
-     if(x.temporalLinks?.includes(id))x.temporalLinks=x.temporalLinks.filter(v=>v!==id);
-     if(x.semanticLinks?.includes(id))x.semanticLinks=x.semanticLinks.filter(v=>v!==id);
-     if(x.causalLinks?.includes(id))x.causalLinks=x.causalLinks.filter(v=>v!==id);
-     if(x.supersedesId===id)x.supersedesId=null;
-     if(x.supersededById===id)x.supersededById=null;
-   }
-   this.state.forgetCount++;
-   this.state.reconsolidations++;
-   void reason;
-   return true;
+ private isProtectedMemoryItem(item:Pick<MemoryItem2,'kind'|'epistemicStatus'>):boolean {
+  return item.epistemicStatus==='quarantined'||item.kind==='identity'||item.kind==='autobiographical';
  }
-  enforceByteBudget(options:{maxBytes?:number;tick?:number;protectedIds?:string[];reason?:string}={}){
+ private memoryRetentionScore(item:MemoryItem2):number {
+  return item.salience*.5+item.confidence*.2+item.goalRelevance*.12+item.identityRelevance*.1+Math.min(.08,item.retrievalCount*.01);
+ }
+ private selectCapacityVictims(count:number,protectedIds:ReadonlySet<string>=new Set()):MemoryItem2[] {
+  if(count<=0)return [];
+  return this.state.items.filter(item=>!protectedIds.has(item.id)&&!this.isProtectedMemoryItem(item)).sort((a,b)=>
+   this.memoryRetentionScore(a)-this.memoryRetentionScore(b)||a.lastAccessAt-b.lastAccessAt||a.createdAt-b.createdAt||a.id.localeCompare(b.id)
+  ).slice(0,count);
+ }
+ drainRemovalReceipts():MemoryRemovalReceipt[] { return this.removalReceipts.splice(0,this.removalReceipts.length); }
+ private removeCanonicalItemById(id:string,reason:string,allowProtected=false):boolean {
+  const index=this.state.items.findIndex(item=>item.id===id);
+  if(index<0)return false;
+  const item=this.state.items[index]!;
+  if(!allowProtected&&this.isProtectedMemoryItem(item))return false;
+  const bytes=estimateMemoryBytes(item);
+  this.removeIndexedId(id);
+  this.semanticEmbeddingIndex.delete(id);
+  this.semanticEmbeddingRetry.delete(id);
+  this.lowerContentCache.delete(id);
+  this.state.items.splice(index,1);
+  this.itemIndex.delete(id);
+  this.rebuildDedupIndexesFor(item);
+  for(const remaining of this.state.items){
+   if(remaining.contradictionLinks?.includes(id))remaining.contradictionLinks=remaining.contradictionLinks.filter(value=>value!==id);
+   if(remaining.temporalLinks?.includes(id))remaining.temporalLinks=remaining.temporalLinks.filter(value=>value!==id);
+   if(remaining.semanticLinks?.includes(id))remaining.semanticLinks=remaining.semanticLinks.filter(value=>value!==id);
+   if(remaining.causalLinks?.includes(id))remaining.causalLinks=remaining.causalLinks.filter(value=>value!==id);
+   if(remaining.supersedesId===id)remaining.supersedesId=null;
+   if(remaining.supersededById===id)remaining.supersededById=null;
+  }
+  this.state.estimatedBytes=this.state.items.reduce((total,row)=>total+estimateMemoryBytes(row),0);
+  this.state.forgetCount++;
+  this.state.reconsolidations++;
+  this.linkSupportCache=null;
+  this.removalReceipts.push({id,reason:String(reason||'memory-removal').slice(0,120),at:Date.now(),bytes});
+  if(this.removalReceipts.length>512)this.removalReceipts.shift();
+  return true;
+ }
+ forgetById(id:string,reason='memory-knockout'){
+  return this.removeCanonicalItemById(id,reason,false);
+ }
+ enforceByteBudget(options:{maxBytes?:number;tick?:number;protectedIds?:string[];reason?:string}={}){
    const budget=Math.max(16384,Math.floor(Number(options.maxBytes??this.state.byteBudget??524288)));
    this.state.byteBudget=budget;
    const protectedIds=new Set(options.protectedIds??[]);
@@ -2024,31 +2089,28 @@ export class MemoryOS2{
   }
 
  maintain(options:{pressure01?:number;maxItems?:number}={}){
-   const now=Date.now();
-   const pressure=clamp(options.pressure01??0);
-   for(const m of this.state.items){
-     const ageDays=Math.max(0,(now-m.lastAccessAt)/(1000*60*60*24));
-     const durability=m.salience*.25+m.identityRelevance*.18+m.goalRelevance*.16+m.socialRelevance*.1+m.predictionError*.1+m.confidence*.12+Math.min(.1,m.retrievalCount*.006)+Math.min(.09,m.semanticLinks.length*.02);
-     m.temperature01=memoryTemperature(m,now);
-     const invalidHistorical=m.validUntilAt!=null&&Number(m.validUntilAt)<=now;
-     if((ageDays>21&&durability<.3)||invalidHistorical&&ageDays>7){if(!m.dormant){m.dormant=true;this.state.forgetCount++;}}
-     if(ageDays<7&&m.dormant&&durability>.42&&!invalidHistorical)m.dormant=false;
-   }
-   if(now-this.state.lastConflictScanAt>=1000) this.adjudicateImplicitConflicts({at:now,limit:32,pairBudget:192});
-   const hardCap=Math.max(128,Math.min(1600,Math.floor(options.maxItems??1600)));
-   if(this.state.items.length>hardCap){
-     const score=(m:MemoryItem2)=>m.salience*.5+m.confidence*.2+m.goalRelevance*.12+m.identityRelevance*.1+Math.min(.08,m.retrievalCount*.01);
-     const removable=this.state.items.filter(m=>m.epistemicStatus!=='quarantined'&&m.kind!=='identity'&&m.kind!=='autobiographical').sort((a,b)=>score(a)-score(b));
-     const removeCount=Math.min(this.state.items.length-hardCap,removable.length);
-     for(const m of removable.slice(0,removeCount))this.forgetById(m.id,'capacity');
-   }
-   if(pressure>=.85){
-     const pressureCandidates=this.state.items.filter(m=>m.epistemicStatus!=='quarantined'&&m.kind!=='identity'&&m.kind!=='autobiographical'&&m.dormant).sort((a,b)=>memoryTemperature(a,now)-memoryTemperature(b,now));
-     const removeCount=Math.min(pressureCandidates.length,Math.max(0,Math.floor(this.state.items.length*.12)));
-     for(const m of pressureCandidates.slice(0,removeCount))this.forgetById(m.id,'pressure');
-   }
-   this.state.items=this.state.items.slice(0,1600);
-   this.state.lastMaintenanceAt=now;
+  const now=Date.now();const before=this.state.items.length;const removedIds:string[]=[];
+  const pressure=clamp(options.pressure01??0);
+  for(const m of this.state.items){
+   const ageDays=Math.max(0,(now-m.lastAccessAt)/(1000*60*60*24));
+   const durability=m.salience*.25+m.identityRelevance*.18+m.goalRelevance*.16+m.socialRelevance*.1+m.predictionError*.1+m.confidence*.12+Math.min(.1,m.retrievalCount*.006)+Math.min(.09,m.semanticLinks.length*.02);
+   m.temperature01=memoryTemperature(m,now);
+   const invalidHistorical=m.validUntilAt!=null&&Number(m.validUntilAt)<=now;
+   if((ageDays>21&&durability<.3)||invalidHistorical&&ageDays>7){if(!m.dormant){m.dormant=true;this.state.forgetCount++;}}
+   if(ageDays<7&&m.dormant&&durability>.42&&!invalidHistorical)m.dormant=false;
+  }
+  if(now-this.state.lastConflictScanAt>=1000)this.adjudicateImplicitConflicts({at:now,limit:32,pairBudget:192});
+  const hardCap=Math.max(128,Math.min(MEMORY_OS2_ITEM_CAP,Math.floor(options.maxItems??MEMORY_OS2_ITEM_CAP)));
+  const required=Math.max(0,this.state.items.length-hardCap);
+  for(const victim of this.selectCapacityVictims(required))if(this.forgetById(victim.id,'capacity'))removedIds.push(victim.id);
+  if(pressure>=.85){
+   const candidates=this.state.items.filter(item=>!this.isProtectedMemoryItem(item)&&item.dormant).sort((a,b)=>memoryTemperature(a,now)-memoryTemperature(b,now)||a.lastAccessAt-b.lastAccessAt||a.id.localeCompare(b.id));
+   const pressureCount=Math.min(candidates.length,Math.max(0,Math.floor(this.state.items.length*.12)));
+   for(const victim of candidates.slice(0,pressureCount))if(this.forgetById(victim.id,'pressure'))removedIds.push(victim.id);
+  }
+  this.state.lastMaintenanceAt=now;
+  const capacity=this.capacityDiagnostics();
+  return {hardCap,before,after:this.state.items.length,removedIds,unresolvedCapacity:capacity.overCapacity,capacity};
  }
 
  applyResidencyPlan(input:{hotBudget?:number;warmBudget?:number;coldBudget?:number;pressure01?:number;identityTension01?:number}={}){
@@ -2224,6 +2286,11 @@ export class MemoryOS2{
  }
 
  size(){return this.state.items.length;}
+ capacityDiagnostics(){
+  const protectedRows=this.state.items.filter(item=>this.isProtectedMemoryItem(item)).length;
+  const items=this.state.items.length;
+  return {items,hardCap:MEMORY_OS2_ITEM_CAP,overCapacity:items>MEMORY_OS2_ITEM_CAP,overCapacityRows:Math.max(0,items-MEMORY_OS2_ITEM_CAP),protectedRows,evictableRows:items-protectedRows};
+ }
  retrievalDiagnostics(){return {candidateCount:this.lastCandidateCount,totalItems:this.state.items.length,pruning01:this.state.items.length?Math.max(0,1-this.lastCandidateCount/this.state.items.length):0,signalFusion:true,hybridRetrieval:true,...this.lastHybridDiagnostics};}
  indexDiagnostics(){
    let staleItemIndex=0,missingItemIndex=0,staleExact=0,staleContent=0,dfMismatch=0;
@@ -2281,7 +2348,9 @@ export class MemoryOS2{
   let totalErrors=0,totalWarnings=0;
   const add=(code:string,severity:'error'|'warning',memoryId:string|null,detail:string)=>{if(severity==='error')totalErrors++;else totalWarnings++;if(issues.length<maxIssues)issues.push({code,severity,memoryId,detail:detail.slice(0,240)});};
   if(restore.invalidRowsDropped>0)add('restore-invalid-rows-dropped','error',null,String(restore.invalidRowsDropped)+' malformed snapshot rows were rejected before indexing.');
-  if(restore.truncatedRows>0)add('restore-row-limit-truncated','error',null,String(restore.truncatedRows)+' snapshot rows exceeded the 1600-record restore limit.');
+  if(restore.truncatedRows>0)add('restore-row-limit-truncated','warning',null,String(restore.truncatedRows)+' lower-retention unprotected snapshot rows were omitted to respect the 1600-record restore limit.');
+   if(restore.capacityOverrunRows>0)add('restore-protected-capacity-overrun','warning',null,String(restore.capacityOverrunRows)+' protected snapshot rows exceed the normal 1600-record cap and were preserved losslessly.');
+   if(restore.danglingLinksPruned>0)add('restore-dangling-links-pruned','warning',null,String(restore.danglingLinksPruned)+' relationship references to rows outside the restored canonical set were removed.');
   if(restore.duplicateIdsResolved>0)add('restore-duplicate-ids-resolved','warning',null,String(restore.duplicateIdsResolved)+' duplicate-ID rows were resolved using temporal/revision authority.');
   if(restore.identityConflictsQuarantined>0)add('restore-identity-conflicts-quarantined','error',null,String(restore.identityConflictsQuarantined)+' tied conflicting memory identities were quarantined.');
   if(restore.contentHashMismatchesRepaired>0)add('restore-content-hash-mismatch-repaired','error',null,String(restore.contentHashMismatchesRepaired)+' serialized content hashes differed from canonical content and were repaired during restore.');
@@ -2363,5 +2432,5 @@ export class MemoryOS2{
  implicitConflictDiagnostics(){return {candidates:this.state.implicitConflictCandidates,resolved:this.state.implicitConflictsResolved,deferred:this.state.implicitConflictsDeferred,provenanceProtected:this.state.provenanceProtected,staleRetrievalsAvoided:this.state.staleRetrievalsAvoided,lastScanAt:this.state.lastConflictScanAt};}
  contradictionDiagnostics(){const linked=this.state.items.reduce((n,m)=>n+(m.contradictionLinks?.length??0),0);const withContradictions=this.state.items.filter(m=>(m.contradictionLinks?.length??0)>0).length;return {linkedPairs:linked,itemsWithContradictions:withContradictions,contradictionItemRate01:this.state.items.length?withContradictions/this.state.items.length:0};}
  memoIdentityDiagnostics(){const ids=this.state.items.map(m=>m.id);const stable=this.state.items.filter(m=>m.id===stableMemoryId(m.content,m.kind,m.source)).length;const hashes=this.state.items.filter(m=>m.contentHash===memoContentHash(m.content)).length;const uniqueHashes=new Set(this.state.items.map(m=>m.contentHash)).size;return {items:this.state.items.length,stableIds:stable,stableIdRate01:this.state.items.length?stable/this.state.items.length:1,contentHashes:hashes,contentHashRate01:this.state.items.length?hashes/this.state.items.length:1,uniqueContentHashes:uniqueHashes,hashCollisionFree01:this.state.items.length?uniqueHashes/this.state.items.length:1};}
- snapshot(options:{clone?:boolean}={}){return options.clone===false?this.state:structuredClone(this.state);}
+ snapshot(_options:{clone?:boolean}={}){return structuredClone(this.state);}
 }
