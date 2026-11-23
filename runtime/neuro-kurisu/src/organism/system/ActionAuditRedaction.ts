@@ -5,7 +5,7 @@
 const SECRET_KEY = /(?:authorization|auth[-_]?header|access[-_]?token|refresh[-_]?token|id[-_]?token|api[-_]?key|client[-_]?secret|password|passwd|cookie|set[-_]?cookie|session|credential|private[-_]?key|secret|bearer)/i;
 const SECRET_TEXT = [
   /\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi,
-  /\b(?:sk|rk|pk|ghp|gho|ghu|ghs|github_pat|xox[baprs])[-_]([A-Za-z0-9_-]{12,})\b/gi,
+  /\b((?:sk|rk|pk|ghp|gho|ghu|ghs|github_pat|xox[baprs])[-_])[A-Za-z0-9_-]{12,}\b/gi,
   /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g,
   /([?&](?:access_token|refresh_token|token|api_key|apikey|secret|password|authorization)=)[^&#\s]+/gi,
 ];
