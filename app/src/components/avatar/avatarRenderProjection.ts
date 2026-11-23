@@ -80,6 +80,8 @@ export interface AvatarRenderProjection {
     audioTimeMs: number;
     clockSource: EmbodimentIntentV1["clockSource"];
   };
+  /** Fresh assistant text turn, accepted only outside cancelled/unknown speech phases. */
+  hasFreshTurn: boolean;
   /** Browser-confirmed speaking, not merely a pending speech lifecycle phase. */
   speaking: boolean;
   mouthPose: MouthPose;
@@ -99,6 +101,7 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
   const identityIsValid = speechEventId !== null && audioClockId !== null;
   const speechPhase: SpeechPhase = phase === "speaking" && !identityIsValid ? "unknown" : phase;
   const speaking = input.speaking === true && speechPhase === "speaking" && identityIsValid;
+  const hasFreshTurn = input.hasFreshTurn === true && speechPhase !== "cancelled" && speechPhase !== "unknown";
   const clockSource = CLOCK_SOURCES.includes(input.clockSource) ? input.clockSource : "none";
   const audioTimeMs = clamp(input.audioTimeMs, 0, Number.MAX_SAFE_INTEGER, 0);
 
@@ -118,7 +121,7 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
     action,
     thinking: input.thinking === true,
     speaking,
-    hasFreshTurn: input.hasFreshTurn === true && speechPhase !== "cancelled" && speechPhase !== "unknown",
+    hasFreshTurn,
     turnText: typeof input.turnText === "string" ? input.turnText : "",
     awake: snapshot.awake === true,
     energy: snapshot.needs.energy,
@@ -144,6 +147,7 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
       audioTimeMs,
       clockSource: speechPhase === "unknown" ? "none" : clockSource,
     },
+    hasFreshTurn,
     speaking,
     mouthPose: speaking ? normalizeMouthPose(input.mouthPose) : { ...CLOSED_MOUTH },
     voiceEmphasis: speaking ? clamp(input.voiceEmphasis, 0, 1, 0) : 0,

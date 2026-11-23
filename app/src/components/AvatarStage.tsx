@@ -7,12 +7,10 @@ import {
   type NativeSpeechProviderConnection,
   type NativeSpeechProviderEvent,
 } from "./avatar/nativeSpeechProviderEvents";
-import { planAvatarMotorIntent } from "./avatar/motorIntent";
 import { buildBrowserVoiceProsody, resolveBrowserVoiceAffect } from "./avatar/browserVoiceProsody";
 import {
   advanceBodySwitchFromStart,
   beginBodySwitch,
-  EXPRESSION_TEXT,
   projectSemanticBodyState,
 } from "./avatar/embodimentUiBridge";
 import {
@@ -22,6 +20,7 @@ import {
 } from "./avatar/motionArbitration";
 import { resolveSemanticGestureIntent } from "./avatar/semanticGestureIntent";
 import type { SwitchPlan } from "./avatar/embodimentSwitch";
+import { buildAvatarRenderProjection } from "./avatar/avatarRenderProjection.ts";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -151,13 +150,30 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   // Latest-value refs so the mode-change effect can stay independent of per-tick churn.
   const latestSnapRef = useRef(snap);
   const mouthPoseRef = useRef(mouthPose);
+  const latestProjectionRef = useRef<ReturnType<typeof buildAvatarRenderProjection> | null>(null);
   const lastTurn = snap.chat[snap.chat.length - 1];
-  const originalGazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
-    explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
-    respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
-  };
-  const originalGaze = originalGazeByAction[snap.lastOption] ?? originalGazeByAction.wait;
   const turnKey = lastTurn?.role === "kurisu" ? `${String(lastTurn.id ?? lastTurn.at)}:${String(lastTurn.at)}:${lastTurn.text}` : "";
+  const activeProjectionSession = activeSpeechSessionRef.current;
+  const projectionSession = activeProjectionSession ?? lastSpeechSessionRef.current;
+  const activeBrowserUtterance = Boolean(activeProjectionSession && speechPhaseRef.current === "speaking" && voiceStatus === "speaking");
+  const turnAgeMs = lastTurn?.role === "kurisu" ? Date.now() - Number(lastTurn.at ?? 0) : Number.POSITIVE_INFINITY;
+  const hasFreshTurn = speechPhaseRef.current !== "cancelled" && speechPhaseRef.current !== "unknown"
+    && Number.isFinite(turnAgeMs) && turnAgeMs >= 0 && turnAgeMs <= 5_000;
+  const projection = buildAvatarRenderProjection({
+    snapshot: snap,
+    thinking,
+    speaking: activeBrowserUtterance,
+    hasFreshTurn,
+    turnText: lastTurn?.role === "kurisu" ? lastTurn.text : "",
+    speechPhase: speechPhaseRef.current,
+    speechEventId: projectionSession?.speechEventId ?? null,
+    audioClockId: projectionSession?.audioClockId ?? null,
+    audioTimeMs: Math.max(0, Number(projectionSession?.lastAudioElapsedMs ?? 0)),
+    clockSource: projectionSession?.clockSource ?? "none",
+    mouthPose,
+    voiceEmphasis: activeBrowserUtterance ? Number(projectionSession?.voiceEmphasis ?? 0) : 0,
+  });
+  latestProjectionRef.current = projection;
 
   const stopSpeech = () => {
     const active = activeSpeechSessionRef.current;
@@ -268,20 +284,20 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     previousModeRef.current = mode;
     const revision = ++bodyRevisionRef.current;
     const currentSnap = latestSnapRef.current;
-    const active = activeSpeechSessionRef.current;
-    const gaze = originalGazeByAction[currentSnap.lastOption] ?? originalGazeByAction.wait;
+    const currentProjection = latestProjectionRef.current;
+    if (!currentProjection) return;
     let plan: SwitchPlan;
     try {
       const state = projectSemanticBodyState({
         snapshot: currentSnap,
         revision,
         monotonicMs: performance.now(),
-        headTilt: 0,
-        gaze,
-        speechPhase: speechPhaseRef.current,
-        speechEventId: active?.speechEventId ?? null,
-        audioTimeMs: Number(active?.lastAudioElapsedMs ?? 0),
-        mouth: mouthPoseRef.current,
+        headTilt: currentProjection.motorPlan.headTilt,
+        gaze: currentProjection.gaze,
+        speechPhase: currentProjection.speech.phase,
+        speechEventId: currentProjection.speech.speechEventId,
+        audioTimeMs: currentProjection.speech.audioTimeMs,
+        mouth: currentProjection.mouthPose,
         pose: motionChannelsRef.current,
       });
       plan = beginBodySwitch(from, mode, state).plan;
@@ -497,80 +513,52 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
 
   useEffect(() => {
     const win = frame.current?.contentWindow;
-    if (!win || !live || mode !== "live2d") return;
-    const expression = EXPRESSION_TEXT[snap.emotion.label] ?? "neutral";
-    const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
-      explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
-      respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
-    };
-    const gaze = gazeByAction[snap.lastOption] ?? gazeByAction.wait;
-    const valenceOffset = (snap.emotion.valence - 0.5) * 0.16;
-    const activeSession = activeSpeechSessionRef.current;
-    const session = activeSession ?? lastSpeechSessionRef.current;
-    const activeUtterance = Boolean(activeSession && speechPhaseRef.current === "speaking" && voiceStatus === "speaking");
-    const freshTextTurn = speechPhaseRef.current !== "cancelled" && speechPhaseRef.current !== "unknown" && lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000;
-    const motorPlan = planAvatarMotorIntent({
-      emotion: snap.emotion.label,
-      valence: snap.emotion.valence,
-      arousal: snap.emotion.arousal,
-      action: snap.lastOption,
-      thinking,
-      speaking: activeUtterance,
-      hasFreshTurn: freshTextTurn,
-      turnText: lastTurn?.role === "kurisu" ? lastTurn.text : "",
-      awake: snap.awake,
-      energy: snap.needs.energy,
-      cognitiveLoad: snap.needs.cognitiveLoad,
-      uncertainty: snap.needs.uncertainty,
-      socialNeed: snap.needs.socialNeed,
-      novelty: snap.needs.novelty,
-      goalPressure: snap.needs.goalPressure,
-      predictionError: snap.predictionError,
-      traits: snap.identity.traits,
-    });
-    const bodyGestureActive = motorPlan.gesture;
+    const currentProjection = latestProjectionRef.current;
+    if (!win || !live || mode !== "live2d" || !currentProjection) return;
+    const motorPlan = currentProjection.motorPlan;
     const motionGroup = motorPlan.motionGroup;
     const motionIndex = motorPlan.motionIndex;
-    // Increment only when the semantic motor goal changes. Snapshot ticks and mouth frames
-    // must not continually restart the same motion clip.
-    const motionIdentity = freshTextTurn ? (session?.speechEventId ?? turnKey) : `state:${motorPlan.action}`;
+    // Increment only when the canonical motor goal changes. Snapshot and mouth frames
+    // must not continually restart the same Live2D motion.
+    const motionIdentity = currentProjection.hasFreshTurn
+      ? (currentProjection.speech.speechEventId ?? turnKey)
+      : `state:${motorPlan.action}`;
     const motionSignature = `${motorPlan.action}:${motionGroup}:${motionIndex}:${motionIdentity}`;
     if (motionIntentKeyRef.current !== motionSignature) {
       motionIntentKeyRef.current = motionSignature;
       motionIntentTokenRef.current += 1;
     }
     const motionToken = motionIntentTokenRef.current;
-    const audioTimeMs = activeSession
-      ? speechAudioClockNow(activeSession, performance.now())
-      : Math.max(0, Number(session?.lastAudioElapsedMs ?? 0));
     const intent: EmbodimentIntentV1 = {
       type: "kurisu_embodiment_intent",
       protocolVersion: 1,
       stateVersion: ++intentStateVersionRef.current,
       sentAtEpochMs: Date.now(),
-      speechEventId: session?.speechEventId ?? null,
-      audioClockId: session?.audioClockId ?? null,
-      speechPhase: speechPhaseRef.current,
-      audioTimeMs,
-      clockSource: session?.clockSource ?? "none",
-      priority: speechPhaseRef.current === "cancelled" ? 100 : activeUtterance ? 70 : thinking ? 45 : 30,
-      cancellationToken: session ? `cancel:${session.speechEventId}` : null,
-      expression,
-      expressionIntensity: snap.emotion.arousal,
-      mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
-      gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
+      speechEventId: currentProjection.speech.speechEventId,
+      audioClockId: currentProjection.speech.audioClockId,
+      speechPhase: currentProjection.speech.phase,
+      audioTimeMs: currentProjection.speech.audioTimeMs,
+      clockSource: currentProjection.speech.clockSource,
+      priority: currentProjection.speech.phase === "cancelled" ? 100 : currentProjection.speaking ? 70 : thinking ? 45 : 30,
+      cancellationToken: currentProjection.speech.speechEventId
+        ? `cancel:${currentProjection.speech.speechEventId}`
+        : null,
+      expression: currentProjection.expression,
+      expressionIntensity: currentProjection.expressionIntensity,
+      mouth: currentProjection.mouthPose,
+      gaze: { ...currentProjection.gaze, driven: true },
       body: {
         headTilt: motorPlan.headTilt,
-        gesture: bodyGestureActive,
+        gesture: motorPlan.gesture,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
       },
-      voiceEmphasis: activeUtterance ? (session?.voiceEmphasis ?? 0) : 0,
+      voiceEmphasis: currentProjection.voiceEmphasis,
     };
     latestIntentStateVersionRef.current = intent.stateVersion;
     win.postMessage(intent, window.location.origin);
-  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
+  }, [snap, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
