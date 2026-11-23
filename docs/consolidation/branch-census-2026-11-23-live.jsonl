@@ -391,7 +391,7 @@
 {"branch":"docs/master-plan-open-source-integrations-20261029-14828014251465918336","head_sha":"0d3e570ba546ad221008e13cbddd5ac7b7c58b82","protected":false}
 {"branch":"docs/neko-nk1-adaptation-tree-20261104","head_sha":"7afd3f3db91b40241de6f8c62b11af18b3e0b1e6","protected":false}
 {"branch":"docs/neurocore-2026-11-01-durable-forget-checkpoint","head_sha":"1629b363053739fdc62ec0b5d9c6127f48e47cbe","protected":false}
-{"branch":"docs/neurocore-consolidation-ledger-2026-11-23","head_sha":"04f8da1a3696e564acab59c6f4a8473ba714f62e","protected":false}
+{"branch":"docs/neurocore-consolidation-ledger-2026-11-23","head_sha":"59686d13e4b6224ad714f79bccf1f77616e27a41","protected":false}
 {"branch":"docs/neurocore-live-checkpoint-current-20261121","head_sha":"e0c7ac2c19efbcf8ca7f7560addfb03069598fd9","protected":false}
 {"branch":"docs/neurocore-project-map-analysis-20261121","head_sha":"dc70d485cb1a9d39a1f8375cf8cfa0f937d4bac6","protected":false}
 {"branch":"docs/neurocore-prototype-live-checkpoint-20261121","head_sha":"a52580430597b3c12c2e64ac704303a73c2f71e3","protected":false}
