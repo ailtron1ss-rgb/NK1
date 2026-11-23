@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { ExperienceContinuumFabric } from '../src/organism/memory/ExperienceContinuumFabric.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const mem=(i,now)=>({
   id:`lh-${i}`,content:`long horizon causal transfer ${i} domain ${i%6}`,kind:i%10===0?'identity':'episodic',
@@ -13,12 +14,32 @@ const now=Date.now();
 const f=new ExperienceContinuumFabric({maxNodes:384,maxEdges:1024,maxClusters:96});
 for(let i=0;i<120;i++) f.observe(mem(i,now),{tick:i+1,at:now-i*60000,novelty01:i%6===0?.92:.28,identityContinuity01:.83,valueStability01:.8,evidenceSupport01:.72,activeGoalIds:['g-transfer']});
 let validations=0;
+const verifier=new OutcomeVerificationService();
 for(let tick=1;tick<=320;tick++){
   f.tick({tick,at:now+tick*60000,pressure01:tick%17===0?.9:.56,identityContinuity01:.83,valueStability01:.8,evidenceSupport01:.74,activeGoalIds:['g-transfer']});
   if(tick%40===0){
     const events=f.snapshot().replay.events.slice(-4);
     for(const e of events){
-      f.recordReplayValidation({memoryId:e.memoryId,retentionScore01:.58+(tick%3)*.1,baselineScore01:.48,delayMs:(tick%5+1)*86400000,transferPotential01:.66+(tick%4)*.05,interferenceRisk01:.14,independentVerified:true,evidenceKey:`p2688-lh:${tick}:${e.id}`,taskId:'transfer-task',contextKey:`ctx-${tick%3}`,replayEventId:e.id,at:e.at+(tick%5+1)*86400000});
+      const evidence={
+        memoryId:e.memoryId,evidenceKey:`p2688-lh:${tick}:${e.id}`,
+        taskId:'transfer-task',contextKey:`ctx-${tick%3}`,
+        delayMs:(tick%5+1)*86400000,retentionScore01:.58+(tick%3)*.1,
+        baselineScore01:.48,transferPotential01:.66+(tick%4)*.05,interferenceRisk01:.14
+      };
+      const verification=await verifier.verify({
+        toolId:'p2688-long-horizon-independent-verifier',
+        input:evidence,
+        result:{ok:true,replayEventId:e.id},
+      },()=>({
+        verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,
+        observationId:`p2688-lh-observation:${tick}:${e.id}`,
+        expectedPostcondition:'delayed replay outcome independently measured',
+        observedPostcondition:'delayed replay outcome independently measured'
+      }));
+      f.recordReplayValidation({
+        ...evidence,verification,replayEventId:e.id,
+        at:e.at+(tick%5+1)*86400000
+      });
       validations++;
     }
   }
