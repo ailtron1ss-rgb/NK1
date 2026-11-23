@@ -959,6 +959,7 @@ export class ConsequenceEcologyEngine {
       if (!isRecord(row)) continue;
       const classes = row.sourceClasses;
       const evidenceIds = row.evidenceObservationIds;
+      const calibration = row as unknown as ConsequenceOutcomeCalibrationRecord;
       const skill = row.brierSkillScore;
       if (!boundedString(row.id, 180, false) || row.id !== row.outcomeId ||
           !boundedString(row.outcomeId, 180, false) ||
@@ -975,68 +976,68 @@ export class ConsequenceEcologyEngine {
           !boundedString(row.evidenceRef, 500, false) ||
           !boundedInteger(row.independentSourceCount, 1, 16) ||
           !boundedNumber(row.confidence01, 0.68, 1) || !boundedNumber(row.independent01, 0.5, 1) ||
-          !boundedStringArray(evidenceIds, 16, 180) || evidenceIds.length < row.independentSourceCount ||
-          !boundedStringArray(row.sourceIds, 16, 180) || row.sourceIds.length < row.independentSourceCount ||
-          !boundedStringArray(row.independenceKeys, 16, 120) || row.independenceKeys.length < row.independentSourceCount ||
+          !boundedStringArray(evidenceIds, 16, 180) || !Array.isArray(evidenceIds) || evidenceIds.length < Number(row.independentSourceCount) ||
+          !boundedStringArray(row.sourceIds, 16, 180) || !Array.isArray(row.sourceIds) || row.sourceIds.length < Number(row.independentSourceCount) ||
+          !boundedStringArray(row.independenceKeys, 16, 120) || !Array.isArray(row.independenceKeys) || row.independenceKeys.length < Number(row.independentSourceCount) ||
           !Array.isArray(classes) || classes.length > 5 ||
           !classes.every(value => typeof value === 'string' && allowedClasses.has(value)) ||
           row.authority !== 'independent-external' || row.independentlyVerified !== true ||
           seen.has(row.outcomeId)) continue;
 
-      const analysis = analyses.find(item => item.id === row.analysisId);
-      const option = analysis?.options.find(item => item.id === row.optionId);
-      const node = option?.nodes.find(item => item.id === row.nodeId);
+      const analysis = analyses.find(item => item.id === calibration.analysisId);
+      const option = analysis?.options.find(item => item.id === calibration.optionId);
+      const node = option?.nodes.find(item => item.id === calibration.nodeId);
       const binding = option?.decisionBinding;
       let canonicalOutcome: SharedFutureOutcomeRecord | null = null;
-      try { canonicalOutcome = resolveVerifiedOutcome(row.outcomeId); } catch { canonicalOutcome = null; }
-      if (!analysis || analysis.scenarioId !== row.scenarioId ||
-          analysis.createdAt >= row.observedAt ||
-          option?.decisionId !== row.actionDecisionId ||
-          !binding || binding.actionDecisionId !== row.actionDecisionId ||
+      try { canonicalOutcome = resolveVerifiedOutcome(calibration.outcomeId); } catch { canonicalOutcome = null; }
+      if (!analysis || analysis.scenarioId !== calibration.scenarioId ||
+          analysis.createdAt >= calibration.observedAt ||
+          option?.decisionId !== calibration.actionDecisionId ||
+          !binding || binding.actionDecisionId !== calibration.actionDecisionId ||
           binding.sharedFutureDecisionId !== canonicalOutcome?.sharedFutureDecisionId ||
-          binding.scenarioId !== row.scenarioId || binding.consequenceId !== row.nodeId ||
+          binding.scenarioId !== calibration.scenarioId || binding.consequenceId !== calibration.nodeId ||
           binding.toolId !== canonicalOutcome?.actionToolId ||
           this.canonicalPostcondition(binding.expectedPostcondition) !==
             this.canonicalPostcondition(canonicalOutcome?.expectedPostcondition ?? '') ||
-          !node || Math.abs(node.propagatedProbability01 - row.forecastProbability01) > 1e-9 ||
-          !canonicalOutcome || canonicalOutcome.id !== row.outcomeId ||
+          !node || Math.abs(node.propagatedProbability01 - calibration.forecastProbability01) > 1e-9 ||
+          !canonicalOutcome || canonicalOutcome.id !== calibration.outcomeId ||
           canonicalOutcome.authority !== 'independent-external' || canonicalOutcome.independentlyVerified !== true ||
-          canonicalOutcome.scenarioId !== row.scenarioId || canonicalOutcome.consequenceId !== row.nodeId ||
-          canonicalOutcome.actionDecisionId !== row.actionDecisionId ||
-          canonicalOutcome.executionId !== row.executionId || canonicalOutcome.observationId !== row.observationId ||
-          canonicalOutcome.observedAt !== row.observedAt ||
-          canonicalOutcome.occurred !== row.observed ||
-          Math.abs(canonicalOutcome.forecastProbability01 - row.sharedFutureForecastProbability01) > 1e-9 ||
-          canonicalOutcome.evidenceRef !== row.evidenceRef ||
-          canonicalOutcome.independentSourceCount !== row.independentSourceCount ||
-          Math.abs((canonicalOutcome.confidence01 ?? -1) - row.confidence01) > 1e-9 ||
-          Math.abs((canonicalOutcome.independent01 ?? -1) - row.independent01) > 1e-9 ||
-          new Set(canonicalOutcome.evidenceObservationIds ?? []).size !== row.independentSourceCount ||
-          new Set(canonicalOutcome.sourceIds ?? []).size !== row.independentSourceCount ||
-          new Set(canonicalOutcome.independenceKeys ?? []).size !== row.independentSourceCount ||
+          canonicalOutcome.scenarioId !== calibration.scenarioId || canonicalOutcome.consequenceId !== calibration.nodeId ||
+          canonicalOutcome.actionDecisionId !== calibration.actionDecisionId ||
+          canonicalOutcome.executionId !== calibration.executionId || canonicalOutcome.observationId !== calibration.observationId ||
+          canonicalOutcome.observedAt !== calibration.observedAt ||
+          canonicalOutcome.occurred !== calibration.observed ||
+          Math.abs(canonicalOutcome.forecastProbability01 - calibration.sharedFutureForecastProbability01) > 1e-9 ||
+          canonicalOutcome.evidenceRef !== calibration.evidenceRef ||
+          canonicalOutcome.independentSourceCount !== calibration.independentSourceCount ||
+          Math.abs((canonicalOutcome.confidence01 ?? -1) - calibration.confidence01) > 1e-9 ||
+          Math.abs((canonicalOutcome.independent01 ?? -1) - calibration.independent01) > 1e-9 ||
+          new Set(canonicalOutcome.evidenceObservationIds ?? []).size !== calibration.independentSourceCount ||
+          new Set(canonicalOutcome.sourceIds ?? []).size !== calibration.independentSourceCount ||
+          new Set(canonicalOutcome.independenceKeys ?? []).size !== calibration.independentSourceCount ||
           JSON.stringify([...new Set(canonicalOutcome.evidenceObservationIds ?? [])].slice(0, 16)) !==
-            JSON.stringify(row.evidenceObservationIds) ||
+            JSON.stringify(calibration.evidenceObservationIds) ||
           JSON.stringify([...new Set(canonicalOutcome.sourceIds ?? [])].slice(0, 16)) !==
-            JSON.stringify(row.sourceIds) ||
+            JSON.stringify(calibration.sourceIds) ||
           JSON.stringify([...new Set(canonicalOutcome.independenceKeys ?? [])].slice(0, 16)) !==
-            JSON.stringify(row.independenceKeys)) continue;
+            JSON.stringify(calibration.independenceKeys)) continue;
       const canonicalSourceClasses = [...new Set([
         ...(canonicalOutcome.sourceClasses ?? []),
         ...(canonicalOutcome.sourceClass ? [canonicalOutcome.sourceClass] : []),
       ])].slice(0, 5);
-      if (JSON.stringify(canonicalSourceClasses) !== JSON.stringify(row.sourceClasses)) continue;
+      if (JSON.stringify(canonicalSourceClasses) !== JSON.stringify(calibration.sourceClasses)) continue;
 
-      const target = row.observed ? 1 : 0;
-      const recomputedBrier = Math.round(((row.forecastProbability01 - target) ** 2) * 1e12) / 1e12;
-      const recomputedBaselineBrier = Math.round(((row.sharedFutureForecastProbability01 - target) ** 2) * 1e12) / 1e12;
+      const target = calibration.observed ? 1 : 0;
+      const recomputedBrier = Math.round(((calibration.forecastProbability01 - target) ** 2) * 1e12) / 1e12;
+      const recomputedBaselineBrier = Math.round(((calibration.sharedFutureForecastProbability01 - target) ** 2) * 1e12) / 1e12;
       const recomputedSkill = recomputedBaselineBrier > 0
         ? Math.max(-100, Math.min(1, 1 - recomputedBrier / recomputedBaselineBrier))
         : null;
-      if (Math.abs(recomputedBrier - row.brierScore01) > 1e-9 ||
-          Math.abs(recomputedBaselineBrier - row.sharedFutureBrierScore01) > 1e-9 ||
+      if (Math.abs(recomputedBrier - calibration.brierScore01) > 1e-9 ||
+          Math.abs(recomputedBaselineBrier - calibration.sharedFutureBrierScore01) > 1e-9 ||
           (recomputedSkill === null ? skill !== null : typeof skill !== 'number' || Math.abs(recomputedSkill - skill) > 1e-9)) continue;
 
-      seen.add(row.outcomeId);
+      seen.add(calibration.outcomeId);
       accepted.push(structuredClone(row) as unknown as ConsequenceOutcomeCalibrationRecord);
     }
     return accepted;
