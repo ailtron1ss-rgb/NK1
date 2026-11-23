@@ -1327,17 +1327,51 @@ export class MemoryOS2{
   if(newer.id===older.id||isUnverifiedHmxImportedMemory(newer)||isUnverifiedHmxImportedMemory(older))return {score:0,contextConflict:false,polarityConflict:false,entityOverlap:0,semantic:0};
   const semantic=cosine(newer.semanticVector.length?newer.semanticVector:vectorize(newer.content),older.semanticVector.length?older.semanticVector:vectorize(older.content));
   const entityOverlap=overlap(newer.entities,older.entities); const newCtx=newer.context??{}; const oldCtx=older.context??{};
-  let contextConflict=false; for(const key of Object.keys(newCtx)){if(!(key in oldCtx))continue;const nv=String(newCtx[key]??'').trim().toLowerCase();const ov=String(oldCtx[key]??'').trim().toLowerCase();if(nv&&ov&&nv!==ov){contextConflict=true;break;}}
+  const normalizedContextValue=(value:unknown)=>String(value??'').trim().toLowerCase();
+  const newSubject=normalizedContextValue(newCtx.subject),oldSubject=normalizedContextValue(oldCtx.subject);
+  const newAttribute=normalizedContextValue(newCtx.attribute),oldAttribute=normalizedContextValue(oldCtx.attribute);
+  // Generic context fields such as "value" are only comparable inside the
+  // same subject/attribute scope. Different entities must never become one
+  // revision chain merely because a shared key contains different values.
+  const sameSubjectScope=newSubject===oldSubject;
+  const sameAttributeScope=newAttribute===oldAttribute;
+  let contextConflict=false;
+  if(sameSubjectScope&&sameAttributeScope){
+   for(const key of Object.keys(newCtx)){
+    if(key==='subject'||key==='attribute'||!(key in oldCtx))continue;
+    const nv=normalizedContextValue(newCtx[key]),ov=normalizedContextValue(oldCtx[key]);
+    if(nv&&ov&&nv!==ov){contextConflict=true;break;}
+   }
+  }
   const polarityConflict=sharedEntityCount(newer.entities,older.entities)>=2&&hasNegationPolarityDifference(newer.content,older.content);
-  const identifierShift=identifierLike(newer.content)!==identifierLike(older.content)&&entityOverlap>=.18;
+  const identifierShift=sameSubjectScope&&identifierLike(newer.content)!==identifierLike(older.content)&&entityOverlap>=.18;
   const score=Math.max(contextConflict&&semantic>=.55?.90:0,polarityConflict&&semantic>=.64?.82:0,identifierShift&&semantic>=.70?.76:0);
   return {score,contextConflict,polarityConflict,entityOverlap,semantic};
  }
  adjudicateImplicitConflicts(input:{limit?:number;pairBudget?:number;at?:number}={}):{candidates:number;resolved:number;at:number}{
   const at=Number(input.at??Date.now()); const newerRows=this.state.items.slice().filter(m=>m.validUntilAt==null&&m.epistemicStatus!=='quarantined').sort((a,b)=>Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)).slice(0,Math.max(8,Math.min(64,Math.floor(input.limit??32))));
   let candidates=0,resolved=0,pairs=0; const pairBudget=Math.max(16,Math.min(512,Math.floor(input.pairBudget??192)));
-  for(let ni=0;ni<newerRows.length&&pairs<pairBudget;ni++){const newer=newerRows[ni]!;const newerAt=Number(newer.observedAt??newer.createdAt);
-   for(let oi=ni+1;oi<this.state.items.length&&pairs<pairBudget;oi++){const older=this.state.items[oi]!;if(older.id===newer.id||older.validUntilAt!=null||older.epistemicStatus==='quarantined')continue;const olderAt=Number(older.observedAt??older.createdAt);if(!(olderAt<newerAt))continue;if(newer.revisionGroupId&&older.revisionGroupId&&newer.revisionGroupId===older.revisionGroupId)continue;pairs++;const signal=this.implicitConflictSignals(newer,older);if(signal.score<.75)continue;candidates++;
+  const isStandaloneRevisionRecord=(item:MemoryItem2):boolean=>{
+   const group=item.revisionGroupId??item.id;
+   const groupSize=this.revisionGroupIndex.get(group)?.size??1;
+   return !item.supersedesId&&!item.supersededById&&Number(item.revisionSequence??1)<=1&&groupSize<=1;
+  };
+  for(let ni=0;ni<newerRows.length&&pairs<pairBudget;ni++){
+   const newer=newerRows[ni]!;
+   // Heuristic adjudication only connects standalone observations. Existing
+   // lineages require explicit, lineage-aware revision operations.
+   if(!isStandaloneRevisionRecord(newer))continue;
+   const newerAt=Number(newer.observedAt??newer.createdAt);
+   for(let oi=ni+1;oi<this.state.items.length&&pairs<pairBudget;oi++){
+    const older=this.state.items[oi]!;
+    if(older.id===newer.id||older.validUntilAt!=null||older.epistemicStatus==='quarantined'||!isStandaloneRevisionRecord(older))continue;
+    const olderAt=Number(older.observedAt??older.createdAt);
+    if(!(olderAt<newerAt))continue;
+    if(newer.revisionGroupId&&older.revisionGroupId&&newer.revisionGroupId===older.revisionGroupId)continue;
+    pairs++;
+    const signal=this.implicitConflictSignals(newer,older);
+    if(signal.score<.75)continue;
+    candidates++;
     const newerProv=this.provenanceStrength(newer),olderProv=this.provenanceStrength(older);
     if(olderProv-newerProv>.18){
       const recordedAt=Math.max(at,Number(newer.recordedFromAt??newer.createdAt)+1);
