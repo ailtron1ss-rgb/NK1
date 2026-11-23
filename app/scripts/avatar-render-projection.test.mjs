@@ -89,7 +89,7 @@ test("missing speech identity and malformed numeric samples fail closed", () => 
   assert.equal(projection.speech.audioClockId, null);
   assert.equal(projection.speech.audioTimeMs, 0);
   assert.equal(projection.expressionIntensity, 0);
-  assert.equal(projection.gaze.x, 0);
+  assert.ok(Math.abs(projection.gaze.x - 0.01) < 1e-9, "invalid valence uses neutral offset while preserving the respond gaze baseline");
   assert.equal(projection.voiceEmphasis, 0);
   assert.deepEqual(projection.mouthPose, { open: 0.015, form: 0, viseme: "rest" });
 });
