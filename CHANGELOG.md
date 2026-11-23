@@ -1,3 +1,14 @@
+# WorkPass368 — fail-closed base receipt replay and legacy fingerprint policy (2026-10-26)
+
+- [FIXED] A present but broken receipt replay-index entry (even when every referenced event is missing) now fails for reconciliation instead of creating a second trace under fresh generated IDs.
+- [INTEGRITY] Replay verifies that all three nodes share the same execution/tool identity, their event roles and external flags match the receipt, and any optional decision ID is represented by the causal parent edge.
+- [FAIL-CLOSED] Legacy receipt snapshots without event-bound hashes remain compatible only when they contain no nonempty postcondition text; when the old schema retained only presence flags, exact postcondition identity cannot be proved, so replay is rejected.
+- [REGRESSION] Cover corrupt index no-mutation, hashless legacy replay with empty postconditions, and rejection when legacy hashes cannot distinguish nonempty postcondition content.
+- [VALIDATION] Exact-head CI is required; this entry records implementation, not a test PASS.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass367 — receipt extension lineage and replay verification (2026-10-26)
 
 - [CI-DRIVEN FIX] Initial canonical-kernel run exposed a schema-name mismatch in the new external-evidence lineage guard: observation events store `toolId`, while the base receipt trio stores `tool`. The guard now verifies the actual `toolId` field, and the full exact-head suite is rerun.

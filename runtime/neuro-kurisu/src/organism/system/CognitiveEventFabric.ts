@@ -712,20 +712,31 @@ export class CognitiveEventFabric {
       const evidence=candidateNodes.find(event=>event?.stage==='tool-evidence');
       const complete=Boolean(action&&outcome&&evidence&&candidateNodes.length===3&&outcome.parentIds.includes(action.id)&&evidence.parentIds.includes(outcome.id));
       if(!complete){
-        if(candidateNodes.some(Boolean))throw new Error('tool-receipt-trace-incomplete-reconciliation-required');
+        // A persisted replay index is an explicit claim that this execution already
+        // owns a receipt trace. Missing/partial indexed nodes must never fall through
+        // and create a second receipt under a new set of generated event IDs.
+        if(prior||candidateNodes.some(Boolean))throw new Error('tool-receipt-trace-incomplete-reconciliation-required');
       } else {
         const eventHashes=[action!.payload.projectionHash,outcome!.payload.projectionHash,evidence!.payload.projectionHash];
         const anyEventHash=[action!,outcome!,evidence!].some(event=>hasOwnField(event.payload,'projectionHash'));
-        const eventFingerprintMatches=!anyEventHash||(
+        const legacyPostconditionUnverifiable=!anyEventHash&&
+          (expectedPostconditionHash!==null||observedPostconditionHash!==null);
+        const eventFingerprintMatches=!legacyPostconditionUnverifiable&&(!anyEventHash||(
           eventHashes.every(value=>value===projectionHash)&&
           evidence!.payload.expectedPostconditionHash===expectedPostconditionHash&&
           evidence!.payload.observedPostconditionHash===observedPostconditionHash
-        );
-        const storedMatches=action!.payload.tool===toolId&&
-          action!.payload.decisionId===(decisionId??null)&&
-          outcome!.tick===tick&&outcome!.payload.tool===toolId&&outcome!.payload.ok===ok&&
-          outcome!.payload.verified===verified&&outcome!.payload.outcomeClass===outcomeClass&&
+        ));
+        const idsMatch=action!.payload.executionId===executionId&&
+          outcome!.payload.executionId===executionId&&evidence!.payload.executionId===executionId;
+        const toolsMatch=action!.payload.tool===toolId&&outcome!.payload.tool===toolId&&evidence!.payload.tool===toolId;
+        const decisionLinkMatches=decisionId
+          ?action!.payload.decisionId===decisionId&&action!.payload.decisionLinked===true&&action!.parentIds.includes(decisionId)
+          :action!.payload.decisionId===null&&action!.payload.decisionLinked===false&&action!.parentIds.length===0;
+        const storedMatches=idsMatch&&toolsMatch&&decisionLinkMatches&&
+          action!.external===false&&outcome!.external===false&&evidence!.external===externalObservation&&
+          outcome!.tick===tick&&outcome!.payload.ok===ok&&outcome!.payload.verified===verified&&outcome!.payload.outcomeClass===outcomeClass&&
           Math.abs(clamp01(Number(outcome!.confidence01))-confidence01)<1e-9&&
+          Math.abs(clamp01(Number(evidence!.confidence01))-confidence01)<1e-9&&
           evidence!.payload.verificationBasis===verificationBasis&&evidence!.payload.externalObservation===externalObservation&&
           evidence!.payload.observationId===observationId&&evidence!.payload.observationIntegrated===observationIntegrated&&
           evidence!.payload.expectedPostconditionPresent===Boolean(expectedCanonical)&&

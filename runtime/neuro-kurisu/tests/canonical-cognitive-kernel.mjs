@@ -933,5 +933,80 @@ brokenBaseReceiptRestored.restore(brokenBaseReceiptSnapshot);
 assert.equal(brokenBaseReceiptRestored.hasToolReceiptTrace(receiptInput.executionId),false,
   'the main receipt guard must require the outcome-to-action causal edge after restore');
 console.log('WorkPass367 receipt extension lineage integrity: PASS');
+
+// WorkPass368: a stale replay index cannot create a second trace, and legacy hashes are handled conservatively.
+const brokenReplayIndexFabric=new CognitiveEventFabric(128);
+const brokenReplayIndexInput={
+  ...receiptInput,executionId:'receipt-test:broken-replay-index',decisionId:undefined,
+  expectedPostcondition:'',observedPostcondition:'',
+};
+const brokenReplayTrace=brokenReplayIndexFabric.appendToolReceiptTrace(brokenReplayIndexInput);
+assert.equal(brokenReplayTrace.replayed,false);
+const brokenReplayIndexBefore=brokenReplayIndexFabric.snapshot().total;
+const brokenReplayIndexEntry=brokenReplayIndexFabric.receiptProjectionIndex.get(brokenReplayIndexInput.executionId);
+assert.ok(brokenReplayIndexEntry);
+brokenReplayIndexFabric.receiptProjectionIndex.set(brokenReplayIndexInput.executionId,{
+  ...brokenReplayIndexEntry,
+  actionEventId:'receipt-test:missing-action',
+  outcomeEventId:'receipt-test:missing-outcome',
+  evidenceEventId:'receipt-test:missing-evidence',
+});
+assert.throws(()=>brokenReplayIndexFabric.appendToolReceiptTrace(brokenReplayIndexInput),
+  /tool-receipt-trace-incomplete-reconciliation-required/,
+  'a present but unresolvable replay index must not fall through and append a second trace');
+assert.equal(brokenReplayIndexFabric.snapshot().total,brokenReplayIndexBefore,
+  'fail-closed receipt replay must not increase the event count');
+
+const legacyNoPostconditionInput={
+  ...receiptInput,executionId:'receipt-test:legacy-no-postcondition-hash',decisionId:undefined,
+  expectedPostcondition:'',observedPostcondition:'',
+};
+const legacyNoPostconditionFabric=new CognitiveEventFabric(128);
+const legacyNoPostconditionTrace=legacyNoPostconditionFabric.appendToolReceiptTrace(legacyNoPostconditionInput);
+const legacyNoPostconditionSnapshot=legacyNoPostconditionFabric.snapshot();
+for(const eventId of [legacyNoPostconditionTrace.actionEventId,legacyNoPostconditionTrace.outcomeEventId,legacyNoPostconditionTrace.evidenceEventId]){
+  const event=legacyNoPostconditionSnapshot.recent.find(row=>row.id===eventId)||
+    legacyNoPostconditionSnapshot.receiptEvents.find(row=>row.id===eventId);
+  assert.ok(event);
+  delete event.payload.projectionHash;
+  if(event.id===legacyNoPostconditionTrace.evidenceEventId){
+    delete event.payload.expectedPostconditionHash;
+    delete event.payload.observedPostconditionHash;
+  }
+}
+const legacyNoPostconditionEntry=legacyNoPostconditionSnapshot.receiptProjectionIndex.find(row=>row.executionId===legacyNoPostconditionInput.executionId);
+assert.ok(legacyNoPostconditionEntry);
+delete legacyNoPostconditionEntry.projectionHash;
+const legacyNoPostconditionRestored=new CognitiveEventFabric(128);
+legacyNoPostconditionRestored.restore(legacyNoPostconditionSnapshot);
+assert.equal(legacyNoPostconditionRestored.appendToolReceiptTrace(legacyNoPostconditionInput).replayed,true,
+  'legacy receipt traces without postcondition content remain replay-compatible when visible fields match');
+
+const legacyPostconditionInput={
+  ...receiptInput,executionId:'receipt-test:legacy-postcondition-hash-missing',decisionId:undefined,
+  expectedPostcondition:'value=4',observedPostcondition:'value=4',
+};
+const legacyPostconditionFabric=new CognitiveEventFabric(128);
+const legacyPostconditionTrace=legacyPostconditionFabric.appendToolReceiptTrace(legacyPostconditionInput);
+const legacyPostconditionSnapshot=legacyPostconditionFabric.snapshot();
+for(const eventId of [legacyPostconditionTrace.actionEventId,legacyPostconditionTrace.outcomeEventId,legacyPostconditionTrace.evidenceEventId]){
+  const event=legacyPostconditionSnapshot.recent.find(row=>row.id===eventId)||
+    legacyPostconditionSnapshot.receiptEvents.find(row=>row.id===eventId);
+  assert.ok(event);
+  delete event.payload.projectionHash;
+  if(event.id===legacyPostconditionTrace.evidenceEventId){
+    delete event.payload.expectedPostconditionHash;
+    delete event.payload.observedPostconditionHash;
+  }
+}
+const legacyPostconditionEntry=legacyPostconditionSnapshot.receiptProjectionIndex.find(row=>row.executionId===legacyPostconditionInput.executionId);
+assert.ok(legacyPostconditionEntry);
+delete legacyPostconditionEntry.projectionHash;
+const legacyPostconditionRestored=new CognitiveEventFabric(128);
+legacyPostconditionRestored.restore(legacyPostconditionSnapshot);
+assert.throws(()=>legacyPostconditionRestored.appendToolReceiptTrace(legacyPostconditionInput),
+  /tool-receipt-execution-id-conflict/,
+  'legacy evidence without postcondition hashes cannot prove replay identity for nonempty postconditions');
+console.log('WorkPass368 base receipt replay fail-closed: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
