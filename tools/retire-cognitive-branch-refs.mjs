@@ -41,7 +41,7 @@ const candidates = [
   { name: 'workpass119-skill-retrieval-feedback-curriculum', sha: '82ea7a8b7c9b036e65c8b056acedd1176952dd8f', kind: 'duplicate', keeper: 'workpass206-runtime-evaluator-wiring' },
   { name: 'workpass120-verified-skill-revision-gate', sha: '82ea7a8b7c9b036e65c8b056acedd1176952dd8f', kind: 'duplicate', keeper: 'workpass206-runtime-evaluator-wiring' },
   { name: 'workpass121-ledger-bound-promotion-proposals', sha: '82ea7a8b7c9b036e65c8b056acedd1176952dd8f', kind: 'duplicate', keeper: 'workpass206-runtime-evaluator-wiring' },
-  { name: 'workpass122-promotion-gate-coverage-hardening', sha: '82ea7a8b7c9b036c8b056acedd1176952dd8f', kind: 'duplicate', keeper: 'workpass206-runtime-evaluator-wiring' },
+  { name: 'workpass122-promotion-gate-coverage-hardening', sha: '82ea7a8b7c9b036e65c8b056acedd1176952dd8f', kind: 'duplicate', keeper: 'workpass206-runtime-evaluator-wiring' },
   { name: 'workpass123-authenticated-skill-lifecycle', sha: '82ea7a8b7c9b036e65c8b056acedd1176952dd8f', kind: 'duplicate', keeper: 'workpass206-runtime-evaluator-wiring' },
   { name: 'workpass124-learning-evidence-hardening', sha: '82ea7a8b7c9b036e65c8b056acedd1176952dd8f', kind: 'duplicate', keeper: 'workpass206-runtime-evaluator-wiring' },
   { name: 'workpass135-durable-shadow-run-registry', sha: '82ea7a8b7c9b036e65c8b056acedd1176952dd8f', kind: 'duplicate', keeper: 'workpass206-runtime-evaluator-wiring' },
