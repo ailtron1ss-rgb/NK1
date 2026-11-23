@@ -2277,6 +2277,23 @@ export class MemoryOS2{
   this.lowerContentCache.delete(id);
   this.state.items.splice(index,1);
   this.itemIndex.delete(id);
+  const revisionGroup=String(item.revisionGroupId??item.id);
+  const groupMembers=this.revisionGroupIndex.get(revisionGroup);
+  if(groupMembers){groupMembers.delete(id);if(groupMembers.size===0)this.revisionGroupIndex.delete(revisionGroup);}
+  // Removing the final successor re-opens its predecessor as the active tip.
+  // Record this knowledge transition bitemporally so reloads agree with the
+  // live store and historical queries can still see the former supersession.
+  if(!item.supersededById&&item.supersedesId){
+   const predecessor=this.itemIndex.get(item.supersedesId);
+   if(predecessor?.supersededById===id){
+    const reopenedAt=Math.max(Date.now(),Number(predecessor.recordedFromAt??predecessor.createdAt)+1);
+    const status=predecessor.epistemicStatus;
+    this.beginBitemporalRevision(predecessor,reopenedAt);
+    predecessor.supersededById=null;
+    predecessor.validUntilAt=null;
+    this.recordRevision(predecessor,{at:reopenedAt,from:status,to:status,reason:'successor-'+String(reason||'memory-removal').slice(0,96)+'-removed'});
+   }
+  }
   this.rebuildDedupIndexesFor(item);
   for(const remaining of this.state.items){
    if(remaining.contradictionLinks?.includes(id))remaining.contradictionLinks=remaining.contradictionLinks.filter(value=>value!==id);
