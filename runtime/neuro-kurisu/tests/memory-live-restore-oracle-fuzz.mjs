@@ -64,10 +64,23 @@ function assertOracle(label, memory) {
   reloaded.restore(structuredClone(memory.snapshot()));
   assert.equal(reloaded.doctor().pass, true, `${label}: the reloaded store must be coherent`);
   assert.equal(reloaded.indexDiagnostics().pass, true, `${label}: the reloaded index must agree`);
+  const liveSnapshot = memory.snapshot();
+  const restoredSnapshot = reloaded.snapshot();
+  const byteFields = ['content','tags','context','semanticLinks','temporalLinks','causalLinks','contradictionLinks','evidenceSources','evidenceLineageKeys','revisionIntegrityIssues','revisionHistory','bitemporalHistory','recordedFromAt','recordedUntilAt','freshnessUntilAt','freshnessHalfLifeMs','temporalKind'];
+  const liveById = new Map(liveSnapshot.items.map(item => [item.id, item]));
+  const shapeDiffs = [];
+  for (const restoredItem of restoredSnapshot.items) {
+    const liveItem = liveById.get(restoredItem.id);
+    if (!liveItem) continue;
+    const changedFields = byteFields.filter(field => JSON.stringify(liveItem[field] ?? null) !== JSON.stringify(restoredItem[field] ?? null));
+    if (changedFields.length) shapeDiffs.push({ id: restoredItem.id, fields: changedFields, before: Object.fromEntries(changedFields.map(field => [field, liveItem[field] ?? null])), after: Object.fromEntries(changedFields.map(field => [field, restoredItem[field] ?? null])) });
+    if (shapeDiffs.length >= 8) break;
+  }
+  const liveAccounting = memory.memoryAccountingDiagnostics();
   assert.equal(
-    reloaded.snapshot().estimatedBytes,
-    memory.budgetDiagnostics().estimatedBytes,
-    `${label}: live and reloaded durable byte budgets must agree (no accounting drift)`,
+    restoredSnapshot.estimatedBytes,
+    liveSnapshot.estimatedBytes,
+    `${label}: live and reloaded durable byte budgets must agree (no accounting drift): ${JSON.stringify({ liveAccounting, liveBytes: liveSnapshot.estimatedBytes, restoredBytes: restoredSnapshot.estimatedBytes, shapeDiffs })}`,
   );
   assert.equal(reloaded.size(), memory.size(), `${label}: reload must preserve the item count`);
 }
