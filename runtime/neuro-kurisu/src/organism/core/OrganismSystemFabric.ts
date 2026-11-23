@@ -6,6 +6,9 @@ import { WorldSubsystemRuntime } from './WorldSubsystemRuntime.ts';
 import { EmbodimentSubsystemRuntime } from './EmbodimentSubsystemRuntime.ts';
 import { AgencySubsystemRuntime } from './AgencySubsystemRuntime.ts';
 import { EvidenceResearchSubsystemRuntime } from './EvidenceResearchSubsystemRuntime.ts';
+import { EvidenceFirewallParliamentTrustPort, type ParliamentModelAttestor } from '../system/CognitiveParliamentTrust.ts';
+import type { ParliamentRoleExecutorMap } from '../system/CognitiveParliamentDispatcher.ts';
+import { ParliamentModelAttestationRegistry } from '../system/CognitiveParliamentLocalAdapter.ts';
 import type { InventionVerifierKeyResolver } from '../research/TheInventionLoop.ts';
 import { organismSystemContract, organismSystemContracts, type OrganismSystemContract, type ResolvedOrganismSystemContract, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
 import { WillIntegrationBridge } from '../integration/will/WillIntegrationBridge.ts';
@@ -63,6 +66,9 @@ export class OrganismSystemFabric {
     embodiment: EmbodimentSubsystemRuntime;
     agency: AgencySubsystemRuntime;
     research: EvidenceResearchSubsystemRuntime;
+    parliamentModelAttestor: ParliamentModelAttestor;
+    parliamentRoleExecutors: ParliamentRoleExecutorMap;
+    parliamentModelAttestationRegistry: ParliamentModelAttestationRegistry;
     inventionVerifierKeyResolver: InventionVerifierKeyResolver;
     willIntegration: WillIntegrationBridge;
     luminaAdaptation: LuminaAdaptationFabric;
@@ -71,14 +77,21 @@ export class OrganismSystemFabric {
     conscioAdaptation: ConscioAdaptationFabric;
   }> = {}) {
     this.self=input.self ?? new SelfSubsystemRuntime();
-    this.governance=input.governance ?? new GovernanceSubsystemRuntime();
+    // Research is initialized first so Parliament can consult only canonical Evidence Firewall records.
+    this.research=input.research ?? new EvidenceResearchSubsystemRuntime(input.inventionVerifierKeyResolver);
+    const modelAttestor=input.parliamentModelAttestor ?? (input.parliamentModelAttestationRegistry
+      ? input.parliamentModelAttestationRegistry.attest.bind(input.parliamentModelAttestationRegistry)
+      : undefined);
+    this.governance=input.governance ?? new GovernanceSubsystemRuntime({
+      parliamentTrustPort:new EvidenceFirewallParliamentTrustPort(this.research.evidenceFirewall,modelAttestor,this.research.projectResearchSession),
+      parliamentRoleExecutors:input.parliamentRoleExecutors,
+    });
     this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
     this.memory=input.memory ?? new MemorySubsystemRuntime(this.hexisAdaptation);
     if (input.memory) this.memory.connectHexisAdaptation(this.hexisAdaptation);
     this.world=input.world ?? new WorldSubsystemRuntime();
     this.embodiment=input.embodiment ?? new EmbodimentSubsystemRuntime();
     this.agency=input.agency ?? new AgencySubsystemRuntime();
-    this.research=input.research ?? new EvidenceResearchSubsystemRuntime(input.inventionVerifierKeyResolver);
     this.willIntegration=input.willIntegration ?? new WillIntegrationBridge();
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();

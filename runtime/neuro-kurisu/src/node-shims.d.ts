@@ -27,6 +27,9 @@ declare module 'node:crypto' {
   export function randomUUID(): string;
   export function createPublicKey(key: string | Uint8Array): { asymmetricKeyType?: string };
   export function createHash(algorithm: string): { update(data: string | Uint8Array): any; digest(encoding: string): string };
+  export function randomBytes(size: number): Buffer;
+  export function createHmac(algorithm: string, key: string | Uint8Array): { update(data: string | Uint8Array): { digest(encoding: string): string } };
+  export function timingSafeEqual(left: Uint8Array, right: Uint8Array): boolean;
   export function verify(algorithm: null | string, data: Uint8Array, key: string, signature: Uint8Array): boolean;
   export function sign(algorithm: null | string, data: Uint8Array, key: string): any;
 }
