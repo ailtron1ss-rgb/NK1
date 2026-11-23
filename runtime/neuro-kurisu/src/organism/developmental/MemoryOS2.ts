@@ -2091,7 +2091,16 @@ export class MemoryOS2{
  }
 
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'>>, reason='reconsolidation') {
-   const m=this.state.items.find(x=>x.id===id); if(!m) return null;
+   const requested=this.itemIndex.get(String(id))??this.state.items.find(x=>x.id===id);if(!requested)return null;
+   const group=requested.revisionGroupId??requested.id;
+   // Keep signal/context updates on the current revision tip when callers retain
+   // an older ID; otherwise a historical parent can be reopened after its successor.
+   const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))]
+    .map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
+   const m=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>
+    Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||
+    Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)
+   )[0]??requested;
    const beforeBytes=estimateMemoryBytes(m);
    const fromStatus=m.epistemicStatus;
    const previousBitemporal=this.bitemporalIntervalFor(m);
