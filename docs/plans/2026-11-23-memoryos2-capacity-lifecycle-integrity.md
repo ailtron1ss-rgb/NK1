@@ -120,3 +120,11 @@ Record expected pre-fix failures from the current implementation. Import/setup e
 - [ ] Task 7 integration remains pending: PR #1121 is Draft and not merged. No Release was created.
 - The new default hot cap remains 1,600. A 10,000-record durable/cold-memory architecture is explicitly deferred to a separate measured aspect.
 - Detailed before/after evidence and next waves: runtime/neuro-kurisu/docs/MEMORYOS2_CAPACITY_LIFECYCLE_2026-11-23.md.
+
+
+## Final base refresh and exact-head verification
+
+- [x] Merged the one new, non-overlapping workpass70-source commit d07bec7a75fd986f7a73ef77a6b8afdd1600df04 into the aspect branch.
+- [x] Verified branch is 6 commits ahead and 0 behind current workpass70-source.
+- [x] Exact merge-head run 45125682489 (commit 451e5d69b508100bb94e74311bc87c958f42efd4) passed all 13 memory workflow checks and runtime TypeScript check.
+- PR #1121 remains Draft and unmerged.

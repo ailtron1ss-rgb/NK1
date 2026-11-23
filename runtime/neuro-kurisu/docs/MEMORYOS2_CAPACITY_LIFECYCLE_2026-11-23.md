@@ -114,3 +114,19 @@ The first GREEN run exposed one compatibility issue: restore had incorrectly rem
 ## Release boundary
 
 This code is present only on the aspect branch and Draft PR #1121. It has not been merged to workpass70-source, main, or a published Release ZIP.
+
+
+## Final integration refresh — 23 November 2026
+
+After the initial code verification, workpass70-source advanced by one unrelated commit:
+- New base HEAD: d07bec7a75fd986f7a73ef77a6b8afdd1600df04.
+- Change: structural runtime port for Aspect Fabric in OrganismRuntime.ts; no overlap with MemoryOS2, MemoryFabric, package scripts, workflow or regression tests.
+
+The latest base commit was merged into this aspect branch without rewriting the five-work commit history. The final integration head at the time of verification was 451e5d69b508100bb94e74311bc87c958f42efd4. Compare against current workpass70-source showed:
+- ahead_by = 6 (five feature/documentation commits plus the merge commit);
+- behind_by = 0;
+- the diff still consists only of the intended eight files.
+
+A fresh exact-head workflow run 45125682489 completed SUCCESS on merge head 451e5d69. All 13 checks passed again, including both new regression tests, all existing memory regressions, candidate coverage and runtime TypeScript check.
+
+The PR remains Draft and unmerged. No release artifact or main branch was modified.
