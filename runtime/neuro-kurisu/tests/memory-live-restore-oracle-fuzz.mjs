@@ -68,15 +68,26 @@ function assertOracle(label, memory) {
   const restoredSnapshot = reloaded.snapshot();
   const byteFields = ['content','tags','context','semanticLinks','temporalLinks','causalLinks','contradictionLinks','evidenceSources','evidenceLineageKeys','revisionIntegrityIssues','revisionHistory','bitemporalHistory','recordedFromAt','recordedUntilAt','freshnessUntilAt','freshnessHalfLifeMs','temporalKind'];
   const liveById = new Map(liveSnapshot.items.map(item => [item.id, item]));
-  const shapeDiffs = [];
+  const fieldCounts = Object.fromEntries(byteFields.map(field => [field, 0]));
+  const rowByteDeltas = [];
+  const estimateRowBytes = item => Math.max(96, new TextEncoder().encode(JSON.stringify({
+    content:item.content,tags:(item.tags?.length?item.tags:undefined),context:item.context,
+    s:item.semanticLinks,t:item.temporalLinks,c:item.causalLinks,k:item.contradictionLinks,
+    e:item.evidenceSources,ek:item.evidenceLineageKeys,
+    ri:(item.revisionIntegrityIssues?.length?item.revisionIntegrityIssues:undefined),
+    r:item.revisionHistory,bh:item.bitemporalHistory,rf:item.recordedFromAt,ru:item.recordedUntilAt,
+    fu:item.freshnessUntilAt,fh:item.freshnessHalfLifeMs,tk:item.temporalKind,
+  })).byteLength);
   for (const restoredItem of restoredSnapshot.items) {
     const liveItem = liveById.get(restoredItem.id);
     if (!liveItem) continue;
     const changedFields = byteFields.filter(field => JSON.stringify(liveItem[field] ?? null) !== JSON.stringify(restoredItem[field] ?? null));
-    if (changedFields.length) shapeDiffs.push({ id: restoredItem.id, fields: changedFields, before: Object.fromEntries(changedFields.map(field => [field, liveItem[field] ?? null])), after: Object.fromEntries(changedFields.map(field => [field, restoredItem[field] ?? null])) });
-    if (shapeDiffs.length >= 8) break;
+    for (const field of changedFields) fieldCounts[field]++;
+    const byteDelta = estimateRowBytes(restoredItem) - estimateRowBytes(liveItem);
+    if (byteDelta !== 0) rowByteDeltas.push({ id: restoredItem.id, byteDelta, fields: changedFields, before: Object.fromEntries(changedFields.map(field => [field, liveItem[field] ?? null])), after: Object.fromEntries(changedFields.map(field => [field, restoredItem[field] ?? null])) });
   }
   const liveAccounting = memory.memoryAccountingDiagnostics();
+  const byteDiffSummary = { fieldCounts, changedRows: rowByteDeltas.length, totalRowDelta: rowByteDeltas.reduce((sum, row) => sum + row.byteDelta, 0), samples: rowByteDeltas.slice(0, 16) };
   assert.equal(
     restoredSnapshot.estimatedBytes,
     liveSnapshot.estimatedBytes,
